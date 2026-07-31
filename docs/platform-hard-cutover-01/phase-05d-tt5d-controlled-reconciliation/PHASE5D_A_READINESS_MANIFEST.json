@@ -34,6 +34,17 @@
     "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql",
     "scripts/generate-phase5d-a-package.mjs",
     "scripts/verify-phase5d-a.mjs",
-    "scripts/sync-phase5d-checksum-manifest.mjs"
-  ]
+    "scripts/sync-phase5d-checksum-manifest.mjs",
+    "evidence/06_PRODUCTION_PROMOTION_CONTRACT.json",
+    "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
+    "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json"
+  ],
+  "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_FAIL_CLOSED_GUARDS_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_CANONICAL_SOURCE_SYNCHRONIZED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_PRODUCTION_PROMOTION_CONTRACT_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_ROLLBACK_HARDENED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO_RECONFIRMED"
+  ],
+  "hardening": "PHASE5D_A1_PRE_STAGING_GO"
 }

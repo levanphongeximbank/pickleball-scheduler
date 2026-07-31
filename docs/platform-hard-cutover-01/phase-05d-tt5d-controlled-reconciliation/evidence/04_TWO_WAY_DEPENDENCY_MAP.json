@@ -122,5 +122,15 @@
       "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
     }
   ],
-  "dependencyClosureResult": "PASS"
+  "dependencyClosureResult": "PASS",
+  "canonicalSourceSync": "PHASE5D_A1_COMPLETED",
+  "productionPromotionContract": "PASS",
+  "phase5dAModifiesHistoricalPhase5B5CEvidence": false,
+  "phase5dAUpdatesActiveOperationalConsumers": [
+    "four TT5D source SQL",
+    "four M9 TT5D copies",
+    "M9_MANIFEST hashes",
+    "00_SOURCE_PROVENANCE hashes",
+    "PHASE5B_CHECKSUM_MANIFEST hashes"
+  ]
 }

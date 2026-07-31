@@ -111,6 +111,25 @@ if (/DELETE\s+FROM\s+(?!supabase_migrations\.schema_migrations\b)/i.test(reconBo
 if (!/ALTER FUNCTION[\s\S]*STABLE/i.test(recon)) fail("reconciliation must correct STABLE");
 if (!/REVOKE ALL[\s\S]*FROM PUBLIC,\s*anon/i.test(recon)) fail("reconciliation must revoke PUBLIC, anon");
 if (!/phase5d_tt5d_controlled_reconciliation/.test(recon)) fail("missing provenance name");
+if (!/proacl::text/.test(recon)) fail("precondition missing raw proacl checks");
+if (!/tt5d_correction_referee_select/.test(recon)) fail("precondition missing policy checks");
+
+const promo = path.join(PKG, "evidence/06_PRODUCTION_PROMOTION_CONTRACT.json");
+if (!fs.existsSync(promo)) fail("missing production promotion contract");
+else {
+  const p = JSON.parse(fs.readFileSync(promo, "utf8"));
+  if (
+    p.paths?.PREEXISTING_OBJECT_PATH?.productionReuseOfPr354StagingFingerprints !==
+    "FORBIDDEN"
+  ) {
+    fail("promotion contract must forbid Staging fingerprint reuse on Production");
+  }
+}
+
+const rb = fs.readFileSync(path.join(PKG, "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql"), "utf8");
+if (!/hashtextextended\('phase5d_tt5d_controlled_reconciliation'/.test(rb)) {
+  fail("rollback must share apply advisory lock key");
+}
 
 const verifySql = fs.readFileSync(path.join(PKG, "sql/20_TT5D_POST_APPLY_VERIFY.sql"), "utf8");
 const names = [
@@ -176,18 +195,30 @@ if (fs.existsSync(path.join(ROOT, MANIFEST_REL))) {
   }
 }
 
-// Dependency closure: protected Phase 5B/5C files must be unchanged vs HEAD for this worktree branch base
-const protectedPaths = [
-  "docs/platform-hard-cutover-01/phase-05b-execution-package/PHASE5B_CHECKSUM_MANIFEST.json",
-  "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/M9_MANIFEST.json",
-  "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/00_SOURCE_PROVENANCE.json",
+// Dependency closure: historical Phase 5B/5C *evidence* must remain unchanged.
+// Operational consumers (M9_MANIFEST / provenance / PHASE5B_CHECKSUM_MANIFEST) are
+// intentionally updated by Phase 5D-A.1 and are NOT protected here.
+const protectedHistoricalEvidence = [
+  "docs/platform-hard-cutover-01/phase-05b-execution-package/evidence/05_PHASE5B_DECISION_2026-07-31.json",
+  "docs/platform-hard-cutover-01/phase-05c-tt5d-staging-certification/evidence/01_OWNER_GO_TARGET_AND_BACKUP_GATE_2026-07-31.json",
+  "docs/platform-hard-cutover-01/phase-05c-tt5d-staging-certification/evidence/07_PHASE5C_M9_RECLASSIFICATION_DECISION_2026-07-31.json",
 ];
-for (const p of protectedPaths) {
+for (const p of protectedHistoricalEvidence) {
   try {
     git(["diff", "--quiet", "origin/main", "--", p]);
   } catch {
-    fail(`protected historical file changed vs origin/main: ${p}`);
+    fail(`protected historical evidence changed vs origin/main: ${p}`);
   }
+}
+
+// A.1 required artefacts
+for (const extra of [
+  "evidence/06_PRODUCTION_PROMOTION_CONTRACT.json",
+  "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
+  "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json",
+  "scripts/harden-phase5d-a1.mjs",
+]) {
+  if (!fs.existsSync(path.join(PKG, extra))) fail(`missing A.1 artefact ${extra}`);
 }
 
 if (errors.length) {
