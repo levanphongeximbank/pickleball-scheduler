@@ -1,6 +1,7 @@
 {
   "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5A_PRODUCTION_READ_ONLY_INVENTORY",
-  "generatedAt": "2026-07-30T23:30:00.000Z",
+  "generatedAt": "2026-07-31T00:15:00.000Z",
+  "correction": "PHASE5A_V2_OWNER_HOLD",
   "mode": "READ_ONLY_SELECT_AND_METADATA",
   "mutationsExecuted": 0,
   "backupCreated": false,
@@ -41,38 +42,153 @@
     "classification": "BLOCKED",
     "note": "Single-user or low-user-count arguments MUST NOT waive backup gate."
   },
-  "protectedObjects": {
-    "auth.users": { "exists": true, "rowCount": 61 },
-    "public.profiles": { "exists": true, "rowCount": 61 },
-    "public.venues": { "exists": true, "rowCount": 1 },
-    "public.tenant_members": { "exists": true, "rowCount": 2 },
-    "public.roles": { "exists": true, "rowCount": 20 },
-    "public.permissions": { "exists": true, "rowCount": 122 },
-    "public.role_permissions": { "exists": true, "rowCount": 466 },
-    "public.plans": { "exists": true, "rowCount": 4 },
-    "public.plan_limits": { "exists": true, "rowCount": 4 },
-    "public.club_data_v3": { "exists": true, "rowCount": 1, "policyCount": 4 },
-    "public_catalog_list_*": {
+  "objectClassification": {
+    "rule": "Do not claim all protected/canonical objects are outside wipe. Distinguish row-preserved infrastructure from schema-preserved intentional business-row wipe.",
+    "rowPreservedInfrastructureCatalog": {
+      "classification": "NOT_IN_WIPE_TARGET / ROW_COUNTS_PRESERVED",
+      "objects": {
+        "auth.users": {
+          "exists": true,
+          "rowCount": 61,
+          "inWipeTarget": false,
+          "schemaDropped": false,
+          "rowsWiped": false,
+          "reseedRequired": false
+        },
+        "public.profiles": {
+          "exists": true,
+          "rowCount": 61,
+          "inWipeTarget": false,
+          "schemaDropped": false,
+          "rowsWiped": false,
+          "reseedRequired": false
+        },
+        "public.venues": {
+          "exists": true,
+          "rowCount": 1,
+          "inWipeTarget": false,
+          "schemaDropped": false,
+          "rowsWiped": false,
+          "reseedRequired": false
+        },
+        "public.tenant_members": {
+          "exists": true,
+          "rowCount": 2,
+          "inWipeTarget": false,
+          "schemaDropped": false,
+          "rowsWiped": false,
+          "reseedRequired": false
+        },
+        "public.roles": {
+          "exists": true,
+          "rowCount": 20,
+          "inWipeTarget": false,
+          "schemaDropped": false,
+          "rowsWiped": false,
+          "reseedRequired": false
+        },
+        "public.permissions": {
+          "exists": true,
+          "rowCount": 122,
+          "inWipeTarget": false,
+          "schemaDropped": false,
+          "rowsWiped": false,
+          "reseedRequired": false
+        },
+        "public.role_permissions": {
+          "exists": true,
+          "rowCount": 466,
+          "inWipeTarget": false,
+          "schemaDropped": false,
+          "rowsWiped": false,
+          "reseedRequired": false
+        },
+        "public.plans": {
+          "exists": true,
+          "rowCount": 4,
+          "inWipeTarget": false,
+          "schemaDropped": false,
+          "rowsWiped": false,
+          "reseedRequired": false
+        },
+        "public.plan_limits": {
+          "exists": true,
+          "rowCount": 4,
+          "inWipeTarget": false,
+          "schemaDropped": false,
+          "rowsWiped": false,
+          "reseedRequired": false
+        }
+      }
+    },
+    "schemaPreservedBusinessRowsIntentionallyWipedAndReseeded": {
+      "classification": "SCHEMA_PRESERVED_ROWS_INTENTIONALLY_WIPED_AND_RESEEDED",
+      "objects": {
+        "public.club_data_v3": {
+          "exists": true,
+          "rowCount": 1,
+          "policyCount": 4,
+          "inWipeTarget": true,
+          "schemaDropped": false,
+          "rowsWiped": true,
+          "reseedRequired": true,
+          "wipeMechanism": "DELETE FROM public.club_data_v3"
+        },
+        "ratingV5TablesAndConfig": {
+          "tables": [
+            "rating_v5_reassessment_approvals",
+            "player_rating_profiles",
+            "player_rating_events",
+            "player_skill_assessments",
+            "rating_v5_pilot_enrollments",
+            "rating_v5_idempotency",
+            "rating_snapshots",
+            "rating_review_cases",
+            "rating_evidence",
+            "pick_vn_player_ratings",
+            "rating_calibration_versions",
+            "rating_v5_rollout_config"
+          ],
+          "functionCountPresent": 25,
+          "tenantIdColumnTypeSample": "text",
+          "inWipeTarget": true,
+          "schemaDropped": false,
+          "rowsWiped": true,
+          "reseedRequired": true,
+          "note": "Schema/functions retained; business rows + config rows wiped then reseeded under Owner GO"
+        },
+        "publicCatalogBackingTables": {
+          "tables": [
+            "public_catalog_courts",
+            "public_catalog_tournaments",
+            "public_catalog_rankings"
+          ],
+          "inWipeTarget": true,
+          "schemaDropped": false,
+          "rowsWiped": true,
+          "reseedRequired": true,
+          "currentRowCountsSanitized": {
+            "public_catalog_courts": 4,
+            "public_catalog_tournaments": 0,
+            "public_catalog_rankings": 0
+          }
+        }
+      }
+    },
+    "publicCatalogListRpcs": {
+      "classification": "FUNCTION_OBJECTS_PRESERVED",
       "rpcCount": 4,
       "names": [
         "public_catalog_list_clubs(p_limit integer, p_offset integer, p_sort text)",
         "public_catalog_list_courts(p_limit integer, p_offset integer, p_sort text, p_club_id text)",
         "public_catalog_list_rankings(p_limit integer, p_offset integer, p_sort text, p_category text)",
         "public_catalog_list_tournaments(p_limit integer, p_offset integer, p_sort text)"
-      ]
-    },
-    "ratingV5": {
-      "tablePresent": [
-        "player_rating_profiles",
-        "player_rating_events",
-        "player_skill_assessments",
-        "rating_v5_idempotency",
-        "rating_v5_pilot_enrollments",
-        "rating_v5_reassessment_approvals",
-        "rating_v5_rollout_config"
       ],
-      "functionCount": 25,
-      "tenantIdColumnTypeSample": "text"
+      "inWipeTarget": false,
+      "schemaDropped": false,
+      "rowsWiped": false,
+      "reseedRequired": false,
+      "note": "RPC function objects are preserved. Do not confuse with backing-table row wipe above."
     }
   },
   "profileRoleDistributionSanitized": [
@@ -89,6 +205,7 @@
   "clubAiData": {
     "exists": true,
     "rowCount": 0,
+    "ownerTarget": "PERMANENT_DROP_NO_RECREATE",
     "g3b12": {
       "migrationPresent": "prod_sec_g3_b12_01_club_ai_data_anon_write_lockdown",
       "rlsEnabled": true,
@@ -98,10 +215,35 @@
       "policy": {
         "name": "club_ai_data_deny_all_clients",
         "command": "ALL",
+        "permissive": false,
         "using": "false",
         "withCheck": "false"
       },
-      "status": "already_present_and_verified"
+      "status": "already_present_and_verified_until_drop"
+    },
+    "dependencyInventoryReadOnly": {
+      "foreignKeysInbound": 0,
+      "foreignKeysOutbound": 0,
+      "viewsOrMaterializedViewsReferencing": 0,
+      "triggersNonInternal": 0,
+      "policies": 1,
+      "policyNames": ["club_ai_data_deny_all_clients"],
+      "functionsProceduresReferencingName": 0,
+      "grants": {
+        "anon": 0,
+        "authenticated": 0,
+        "public": 0,
+        "service_rolePrivilegeCount": 7,
+        "postgresPrivilegeCount": 7
+      },
+      "pgDependAutoOnly": [
+        "pg_attrdef (column default)",
+        "pg_constraint club_ai_data_pkey",
+        "pg_policy (deny_all_clients)"
+      ],
+      "indexCount": 1,
+      "classification": "DEPENDENCY_CLOSURE_PASS_FOR_PERMANENT_DROP",
+      "executeDropBlockedUntil": "proven Production backup/restore + Owner GO"
     }
   },
   "wipeImpactInventory": {
@@ -118,6 +260,7 @@
     ],
     "absentCount": 6,
     "totalRowsAcrossPresentWipeTargets": 1119,
+    "totalRowsRecalculationConfirmed": true,
     "nonzeroRowTablesSanitized": [
       { "table": "audit_logs", "rows": 489 },
       { "table": "idempotency_requests", "rows": 118 },
@@ -157,19 +300,25 @@
     "dropClubAiDataSeparate": {
       "sql": "docs/platform-hard-cutover-01/phase-04/sql/destructive/20_DROP_CLUB_AI_DATA.sql",
       "inOrderedWipe": false,
-      "currentRows": 0
+      "inWipeTarget": false,
+      "schemaDropped": true,
+      "rowsWiped": false,
+      "reseedRequired": false,
+      "recreateRequired": false,
+      "currentRows": 0,
+      "ownerTarget": "PERMANENT_DROP_NO_RECREATE"
     },
-    "protectedNotInWipeTarget": {
-      "auth.users": false,
-      "profiles": false,
-      "venues": false,
-      "tenant_members": false,
-      "roles": false,
-      "permissions": false,
-      "role_permissions": false,
-      "plans": false,
-      "plan_limits": false,
-      "proof": "PASS"
+    "identityCatalogNotInWipeTargetProof": {
+      "auth.users": { "inWipeTarget": false, "schemaDropped": false, "rowsWiped": false, "reseedRequired": false },
+      "profiles": { "inWipeTarget": false, "schemaDropped": false, "rowsWiped": false, "reseedRequired": false },
+      "venues": { "inWipeTarget": false, "schemaDropped": false, "rowsWiped": false, "reseedRequired": false },
+      "tenant_members": { "inWipeTarget": false, "schemaDropped": false, "rowsWiped": false, "reseedRequired": false },
+      "roles": { "inWipeTarget": false, "schemaDropped": false, "rowsWiped": false, "reseedRequired": false },
+      "permissions": { "inWipeTarget": false, "schemaDropped": false, "rowsWiped": false, "reseedRequired": false },
+      "role_permissions": { "inWipeTarget": false, "schemaDropped": false, "rowsWiped": false, "reseedRequired": false },
+      "plans": { "inWipeTarget": false, "schemaDropped": false, "rowsWiped": false, "reseedRequired": false },
+      "plan_limits": { "inWipeTarget": false, "schemaDropped": false, "rowsWiped": false, "reseedRequired": false },
+      "proof": "PASS_IDENTITY_AND_CATALOG_ROWS_NOT_IN_WIPE_SQL"
     }
   },
   "secretsPrinted": false,

@@ -1,6 +1,7 @@
 {
   "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5A_BACKUP_ROLLBACK_RESEED_GATE",
-  "generatedAt": "2026-07-30T23:40:00.000Z",
+  "generatedAt": "2026-07-31T00:20:00.000Z",
+  "correction": "PHASE5A_V2_OWNER_HOLD",
   "mode": "READ_ONLY_EVALUATION",
   "mutationsExecuted": 0,
   "backupCreated": false,
@@ -13,14 +14,28 @@
       "reason": "PITR/backup/restore not proven for Production in this workstream. Historical honesty: PITR NOT_ASSUMED_ENABLED. Staging has Owner backup confirmation; Production does not for hard-cutover.",
       "waiverForbidden": "low_user_count_or_single_owner_not_accepted"
     },
-    "dropClubAiDataRecreatePackage": {
-      "status": "FAIL",
-      "classification": "INCOMPLETE",
+    "dropClubAiDataPermanent": {
+      "status": "CONDITIONAL",
+      "ownerTarget": "PERMANENT_DROP_NO_RECREATE",
+      "recreatePackageRequired": false,
+      "recreatePackageCreated": false,
       "dropSqlPresent": "docs/platform-hard-cutover-01/phase-04/sql/destructive/20_DROP_CLUB_AI_DATA.sql",
-      "legacyCreateFound": "docs/supabase-club-v3.sql (creates table WITH permissive anon policies — UNSAFE as post-DROP recreate alone)",
-      "g3b12LockdownPresent": "docs/production-security/prod-sec-g3-b12-01/",
-      "dedicatedSafeRecreateRunbook": false,
-      "note": "Need Owner-approved recreate = table DDL + G3-B12 lockdown (or permanent DROP acceptance with no recreate)."
+      "dependencyClosureClassification": "DEPENDENCY_CLOSURE_PASS_FOR_PERMANENT_DROP",
+      "dependencyInventorySummary": {
+        "foreignKeysInbound": 0,
+        "foreignKeysOutbound": 0,
+        "viewsOrMaterializedViews": 0,
+        "functionsProceduresReferencing": 0,
+        "triggersNonInternal": 0,
+        "policiesSelfOwned": 1,
+        "externalCatalogBlockers": 0
+      },
+      "executeDropRequires": [
+        "proven Production backup/restore",
+        "dependency closure PASS (met in this read-only inventory)",
+        "Owner GO"
+      ],
+      "note": "Permanent DROP requires dependency closure + proven backup/restore. Do not create a recreate package."
     },
     "reseedScriptsSeventeenGroups": {
       "status": "PASS_STRUCTURE",
@@ -45,7 +60,8 @@
       ],
       "verifyScript": "99_VERIFY_RESEED.sql",
       "dependencyNote": "07–11 require M8 applied; 13–15 require M1–M3; 16 requires M5; 17 requires M6",
-      "executedOnProduction": false
+      "executedOnProduction": false,
+      "mustPassBeforeHardCutoverFlagsOn": true
     },
     "ownerAuthPreservationAssertions": {
       "status": "PASS_STRUCTURE",
@@ -64,23 +80,28 @@
         "VITE_COMPETITION_REMOTE_SSOT_ENABLED",
         "VITE_PICK_VN_RATING_V5_ENABLED"
       ],
-      "phase4Guidance": "Flags remain OFF until Phase 5 Owner GO"
+      "buildTimeNote": "VITE_* flags are compiled from import.meta.env — set approved Production values BEFORE build/deploy",
+      "keepOffUntil": "migrations + wipe + reseed verification PASS"
     },
     "productionOperatorAcceptanceRunnableAfterCutover": {
       "status": "CONDITIONAL",
       "runnerPresent": "src/features/platform-hard-cutover/operatorAcceptanceRunner.js",
       "stagingFinalResult": "17/17 PASS (evidence 33–35)",
       "productionRunnableIf": [
-        "M0–M11 applied/promoted as required",
-        "wipe+DROP+reseed complete",
-        "Production SPA deployed on cutover SHA",
-        "cutover flags enabled under Owner GO",
+        "M0–M11 applied as required with execution packs complete",
+        "wipe + permanent DROP club_ai_data + reseed verify PASS",
+        "approved VITE_* set before build",
+        "Production SPA deployed on approved cutover SHA Ready/Current",
         "Owner session available (no password invent)"
       ],
       "runnerExecutedThisWorkstream": false
     },
+    "m9M10M11ExecutionArtifacts": {
+      "status": "IMPLEMENTATION_REQUIRED",
+      "executionRunbookAccepted": false
+    },
     "exactStopRollbackPointsByFamily": {
-      "M0": "Leave locked; do not reopen anon writes",
+      "M0": "Leave locked until permanent DROP; do not reopen anon writes",
       "M1": "package 90_*.sql",
       "M2": "docs/supabase-finance-phase1f-rollback.sql",
       "M3": "CRM staging rollback SQL",
@@ -89,19 +110,23 @@
       "M6": "coaching 90_*.sql",
       "M7": "recreate / Owner emergency",
       "M8": "m8 90_ROLLBACK.sql (before wipe/DROP/flags)",
-      "M9": "stop promote remainder; partial rollback only",
-      "M10": "stop promote referee V5; partial",
-      "M11": "stop digest patch; RC1 remains",
+      "M9": "unavailable until IMPLEMENTATION_REQUIRED pack exists",
+      "M10": "unavailable until IMPLEMENTATION_REQUIRED pack exists",
+      "M11": "unavailable until IMPLEMENTATION_REQUIRED pack exists",
       "wipe": "requires proven Production backup/restore BEFORE execute",
-      "drop_club_ai_data": "irreversible without safe recreate package",
-      "flags": "soft rollback = set flags OFF + prior SPA deploy"
+      "drop_club_ai_data": "permanent; requires dependency closure PASS + proven backup/restore; no recreate",
+      "flags": "keep OFF until reseed verify PASS; then set VITE_* before build; soft rollback = prior deploy with flags OFF"
     }
   },
   "overallGate": "BLOCKED",
   "blockingReasons": [
     "BACKUP_PITR_RESTORE_NOT_PROVABLE",
-    "CLUB_AI_DATA_SAFE_RECREATE_PACKAGE_INCOMPLETE",
-    "ORDERED_RUNBOOK_MUST_BE_OWNER_ACCEPTED_AS_SINGLE_SSOT"
+    "M9_M10_M11_EXECUTION_ARTIFACTS_IMPLEMENTATION_REQUIRED",
+    "EXECUTION_RUNBOOK_NOT_ACCEPTED",
+    "PRODUCTION_EXECUTION_GO_FALSE"
   ],
+  "canonicalMigrationScope": "M0_TO_M11_ACCEPTED",
+  "executionRunbookAccepted": false,
+  "productionExecutionGo": false,
   "secretsPrinted": false
 }

@@ -1,6 +1,7 @@
 {
   "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5A_MIGRATION_M0_M11_PARITY",
-  "generatedAt": "2026-07-30T23:35:00.000Z",
+  "generatedAt": "2026-07-31T00:18:00.000Z",
+  "correction": "PHASE5A_V2_OWNER_HOLD",
   "mode": "READ_ONLY",
   "mutationsExecuted": 0,
   "sqlInvented": false,
@@ -11,10 +12,95 @@
     "productionCutoverPlanSays": "Apply migrations M1→M8",
     "migrationManifestSays": "Apply order M0→M11",
     "stagingRehearsalPlanSays": "Apply migration families M1→M8",
-    "resolutionRequiredForGo": true,
-    "resolvedBy": "docs/platform-hard-cutover-01/phase-05-readiness/PHASE5_ORDERED_RUNBOOK_DRAFT.md",
-    "canonicalOrderForPhase5": "M0→M11 (MIGRATION_MANIFEST is SSOT; PRODUCTION_CUTOVER_PLAN M1→M8 is incomplete/stale)",
-    "goBlockedUntilOwnerAcceptsSingleRunbook": true
+    "ownerArchitectureDecision": "ACCEPT M0→M11 as canonical migration SCOPE/ORDER baseline",
+    "canonicalMigrationScope": "M0_TO_M11_ACCEPTED",
+    "executionRunbookAccepted": false,
+    "resolvedByDraft": "docs/platform-hard-cutover-01/phase-05-readiness/PHASE5_ORDERED_RUNBOOK_DRAFT.md",
+    "note": "Draft is sequence/honesty only — NOT Owner-accepted execution-ready runbook"
+  },
+  "m9M10M11ExecutionPackageHonesty": {
+    "rule": "Promote from Staging alone is NOT an execution-ready instruction. Exact ordered paths + immutable checksums + verify + rollback/irreversibility + Production applicability required.",
+    "M9": {
+      "status": "IMPLEMENTATION_REQUIRED",
+      "productionApplicability": "NOT_PACKAGED_FOR_PRODUCTION_EXECUTION",
+      "exactOrderedArtifactPaths": null,
+      "immutableChecksums": null,
+      "dependencyOrder": null,
+      "exactVerificationPackage": null,
+      "rollbackLimitOrIrreversibility": "unknown until packaged",
+      "candidateScatteredSqlWithSha256NotAnExecutionPack": [
+        {
+          "path": "docs/v5/PHASE_TT2B_LINEUP_DEADLINE_SERVER_TIME.sql",
+          "sha256": "777BFC77661AE1E18FFF442CB7B78F38EE6C724F17A7A9B1DDECF4A0053FC91B"
+        },
+        {
+          "path": "docs/v5/PHASE_TT2C_LINEUP_VALIDATION.sql",
+          "sha256": "91EE6A53D6162DA6E2E35A508E44A7FB8D679974B729F7FCE6364199EE45AA25"
+        },
+        {
+          "path": "docs/v5/PHASE_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
+          "sha256": "F49B5CF09AAFE9B5AC39454F2A1F56029559092A31BCA828E0CDC12EB789CE06"
+        },
+        {
+          "path": "docs/v5/PHASE_TT2D_RANDOMIZE_LOCK_WORKFLOW.sql",
+          "sha256": "847F04D822D9B3779D4D6E74072FBAFB18E38784C0DB52B67CD34346DBC13378"
+        },
+        {
+          "path": "docs/v5/PHASE_TT2E_ATOMIC_PUBLISH_WORKFLOW.sql",
+          "sha256": "43FFBC7B35C3666D5DC25AE6401F5AB819E4DDCD0CB720C219D83ECF58BFF1D7"
+        },
+        {
+          "path": "docs/v5/PHASE_TT2E_GET_SETUP_FIX.sql",
+          "sha256": "24F728EE957733C5F9CABBB0B479BB9DE50BA1CA7F9C5114C740CF48D3BE2F87"
+        }
+      ],
+      "gap": "No single Owner-approved Production ordered pack covering phase_tt2*..tt6b_* with verify+rollback and Production applicability proof. TT3–TT6 SQL exists scattered under docs/v5 but is not packaged as Phase 5 execution artifacts."
+    },
+    "M10": {
+      "status": "IMPLEMENTATION_REQUIRED",
+      "productionApplicability": "NOT_PACKAGED_FOR_PRODUCTION_EXECUTION",
+      "exactOrderedArtifactPaths": null,
+      "immutableChecksums": null,
+      "dependencyOrder": null,
+      "exactVerificationPackage": null,
+      "rollbackLimitOrIrreversibility": "partial/unknown until packaged; PHASE_V5D4_ATOMIC_ROLLBACK.sql exists as candidate only",
+      "candidateScatteredSqlWithSha256NotAnExecutionPack": [
+        {
+          "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql",
+          "sha256": "C1A079535A6295CB3D185AEE9C9B2E54DA6ED0AEBBEB67BBFD4B929DD13C0F8E"
+        },
+        {
+          "path": "docs/v5/referee-v5/PHASE_V5D_REFEREE_PERSISTENCE.sql",
+          "sha256": "5C3BCDA4E38449021516D0B966AB553E6F79D58A409B2D75AF59160F6295FDB9"
+        },
+        {
+          "path": "docs/v5/referee-v5/PHASE_V5D1_REFEREE_HARDENING.sql",
+          "sha256": "CAF20D89B35BEE42F2E06F20DDC0B498FFB7B2081A30A8CD4057DEDCFC47A579"
+        },
+        {
+          "path": "docs/v5/referee-v5/PHASE_V5D32_IDEMPOTENCY_UNDO.sql",
+          "sha256": "F0D0EB05C83883078B812E88E7515733017F9FA48FDA9FBD629E85D35A79C17D"
+        },
+        {
+          "path": "docs/v5/referee-v5/PHASE_V5D4_ATOMIC_ROLLBACK.sql",
+          "sha256": "EE482EEAD1791633CDB6B0989D470076CBC12D99902FE7DF28C277D0951267E1"
+        }
+      ],
+      "gap": "Staging migration names historically present; Production schema_migrations lacks phase_v5a_referee*/phase_v5d*. No Phase 5 Production ordered apply+verify pack with immutable checksums."
+    },
+    "M11": {
+      "status": "IMPLEMENTATION_REQUIRED",
+      "productionApplicability": "NOT_PACKAGED_FOR_PRODUCTION_EXECUTION",
+      "exactOrderedArtifactPaths": null,
+      "immutableChecksums": null,
+      "dependencyOrder": "RC1 present on Production (private_pairing_rc1_archive_rule_set); digest patch missing",
+      "exactVerificationPackage": null,
+      "rollbackLimitOrIrreversibility": "unknown — digest SQL artifact not found in repo",
+      "candidateScatteredSqlWithSha256NotAnExecutionPack": [],
+      "gap": "No docs SQL matching private_pairing_pr4_digest_patch. Cannot invent/export/apply."
+    },
+    "executionRunbookAccepted": false,
+    "sqlInventedOrAppliedInThisCorrection": false
   },
   "parityMatrix": [
     {
@@ -113,7 +199,8 @@
     {
       "family": "M9",
       "name": "Team Tournament remainder",
-      "status": "partially_present",
+      "status": "IMPLEMENTATION_REQUIRED",
+      "productionObjectPresence": "partially_present_p1_tt1b_only",
       "evidence": {
         "presentMigrations": [
           "tt1b_prereq_schema",
@@ -125,16 +212,16 @@
         ],
         "teamTournamentTablesPresent": true,
         "tt2_to_tt6b_migrationsNamedInSchemaMigrations": 0,
-        "ttFunctionCountApprox": 61,
-        "note": "P1/TT1B present; MIGRATION_MANIFEST remainder (phase_tt2*..tt6b_*) not found as named migrations — promote from Staging export, do not invent"
+        "ttFunctionCountApprox": 61
       },
-      "action": "Owner-approved promote of Staging TT remainder only",
-      "stopRollbackPoint": "partial; stop before wipe if remainder verify fails"
+      "action": "Package exact ordered Production artifacts with checksums/verify/rollback before any apply",
+      "stopRollbackPoint": "unavailable until execution pack exists"
     },
     {
       "family": "M10",
       "name": "Referee V5",
-      "status": "missing",
+      "status": "IMPLEMENTATION_REQUIRED",
+      "productionObjectPresence": "missing_v5_legacy_token_rpcs_only",
       "evidence": {
         "phase_v5a_referee_migrations": 0,
         "phase_v5d_migrations": 0,
@@ -144,27 +231,30 @@
         ],
         "wipeRefereeBridgeTablesPresent": false
       },
-      "action": "promote Staging phase_v5a_referee* / phase_v5d* — do not invent",
-      "stopRollbackPoint": "partial; prefer after M8"
+      "action": "Package exact ordered Production artifacts with checksums/verify/rollback before any apply",
+      "stopRollbackPoint": "unavailable until execution pack exists"
     },
     {
       "family": "M11",
       "name": "Private pairing digest",
-      "status": "partially_present",
+      "status": "IMPLEMENTATION_REQUIRED",
+      "productionObjectPresence": "partially_present_rc1_digest_missing",
       "evidence": {
         "rc1MigrationPresent": "private_pairing_rc1_archive_rule_set",
         "privatePairingTablesPresent": true,
         "digestPatchMigration": "missing",
-        "digestLikeFunctions": 0
+        "digestLikeFunctions": 0,
+        "digestSqlInRepo": false
       },
-      "action": "promote Staging private_pairing_pr4_digest_patch after RC1 confirmed",
-      "stopRollbackPoint": "before wipe if digest verify fails"
+      "action": "Locate or author Owner-approved digest package; do not invent in this workstream",
+      "stopRollbackPoint": "unavailable until execution pack exists"
     }
   ],
   "summaryCounts": {
     "already_present_and_verified": 1,
-    "partially_present": 2,
-    "missing": 9,
+    "partially_present": 0,
+    "missing": 8,
+    "implementation_required": 3,
     "signature_schema_drift": 0,
     "verification_unavailable": 0
   },
