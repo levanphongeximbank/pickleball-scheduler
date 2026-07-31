@@ -1,0 +1,36 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO",
+  "decision": "READY_FOR_OWNER_STAGING_GO",
+  "meaning": "Package ready for Owner review of a separate explicit Staging mutation authorization (Phase 5D-B). Not authorization itself.",
+  "StagingDatabaseMutations": 0,
+  "ProductionAccess": 0,
+  "ProductionDatabaseMutations": 0,
+  "RestoreExecutions": 0,
+  "retainedBlockers": {
+    "BLOCKED_PHASE5C_TT5D_CERTIFICATION": true,
+    "BLOCKED_STAGING_TT5D_PREEXISTING_WITHOUT_CONTROLLED_MIGRATION_PROVENANCE": true,
+    "BLOCKED_PHASE5B_EXECUTION_PACKAGE": true,
+    "BLOCKED_PHASE5_READINESS": true
+  },
+  "m9": {
+    "executableApplyCount": 20,
+    "nonExecutableCandidateCount": 4,
+    "tt5dMovedToOrderedApply": false,
+    "tt5dDeclaredExecutable": false
+  },
+  "continuingPhase5": {
+    "executionRunbookAccepted": false,
+    "productionExecutionGo": false,
+    "PHASE_05_COMPLETE": "NOT_ISSUED"
+  },
+  "phase5dB": "NOT_STARTED",
+  "phase6": "NOT_STARTED",
+  "rollbackReady": true,
+  "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READ_ONLY_BASELINE_CAPTURED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_SEMANTIC_DELTA_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_DEPENDENCY_CLOSURE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_ROLLBACK_READY",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO"
+  ]
+}

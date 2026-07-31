@@ -1,0 +1,39 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READINESS_MANIFEST",
+  "decision": "READY_FOR_OWNER_STAGING_GO",
+  "authorizedStagingRef": "qyewbxjsiiyufanzcjcq",
+  "forbiddenProductionRef": "expuvcohlcjzvrrauvud",
+  "functionCount": 13,
+  "migrationName": "phase5d_tt5d_controlled_reconciliation",
+  "migrationVersion": "20260731150000",
+  "mutationAllowlistIds": [
+    "VOLATILITY_EFFECTIVE_STATUS_IMMUTABLE_TO_STABLE",
+    "ACL_REVOKE_ANON_PUBLIC_AND_ALIGN_ALLOWLIST",
+    "TABLE_ACL_CORRECTION_REQUESTS_AUTHENTICATED_SELECT_ONLY",
+    "MIGRATION_PROVENANCE_INSERT"
+  ],
+  "historicalPhase5B5CUnchanged": true,
+  "m9ExecutableApplyCount": 20,
+  "m9NonExecutableCandidateCount": 4,
+  "StagingDatabaseMutations": 0,
+  "ProductionAccess": 0,
+  "ProductionDatabaseMutations": 0,
+  "RestoreExecutions": 0,
+  "packageFiles": [
+    "README.md",
+    "PHASE5D_A_READINESS_MANIFEST.json",
+    "PHASE5D_CHECKSUM_MANIFEST.json",
+    "evidence/01_STAGING_TARGET_AND_BASELINE_GATE.json",
+    "evidence/02_TT5D_EXACT_CATALOG_BASELINE.json",
+    "evidence/03_TT5D_SEMANTIC_DELTA.json",
+    "evidence/04_TWO_WAY_DEPENDENCY_MAP.json",
+    "evidence/05_PHASE5D_A_DECISION.json",
+    "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
+    "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql",
+    "sql/20_TT5D_POST_APPLY_VERIFY.sql",
+    "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql",
+    "scripts/generate-phase5d-a-package.mjs",
+    "scripts/verify-phase5d-a.mjs",
+    "scripts/sync-phase5d-checksum-manifest.mjs"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READ_ONLY_BASELINE_CAPTURED",
+  "mode": "READ_ONLY_SELECT_CATALOG_ONLY",
+  "StagingDatabaseMutations": 0,
+  "ProductionAccess": 0,
+  "ProductionDatabaseMutations": 0,
+  "RestoreExecutions": 0,
+  "targetGuard": {
+    "authorizedProjectRef": "qyewbxjsiiyufanzcjcq",
+    "forbiddenProductionRef": "expuvcohlcjzvrrauvud",
+    "mcpServer": "project-0-pickleball-scheduler-supabase-staging",
+    "mcpConfigProjectRef": "qyewbxjsiiyufanzcjcq",
+    "identityProof": {
+      "club_ai_data_absent": true,
+      "referee_assignments_present": true,
+      "correction_table_present": true,
+      "database_name": "postgres",
+      "note": "MCP staging project_ref matched via .cursor/mcp.json binding plus catalog fingerprint; Production MCP not queried"
+    },
+    "result": "PASS_TARGET_STAGING"
+  },
+  "predecessor": {
+    "phase5c": "PLATFORM_HARD_CUTOVER_01_PHASE5C_CLOSED_WITH_BLOCKERS",
+    "originMain": "42d7a34887f77494103a34e77d58dfa365ed7708"
+  },
+  "rowValuesCaptured": false
+}

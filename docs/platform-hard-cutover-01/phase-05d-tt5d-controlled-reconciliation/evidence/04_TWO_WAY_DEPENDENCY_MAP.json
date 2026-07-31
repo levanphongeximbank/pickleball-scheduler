@@ -1,0 +1,126 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_DEPENDENCY_CLOSURE_VERIFIED",
+  "phase5dAModifiesHistoricalPhase5B5C": false,
+  "forward": {
+    "docs/v5/team-tournament/tt5/TT5-D_*.sql": [
+      "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/190|200|210|220_TT5D_*.sql",
+      "M9_MANIFEST.json nonExecutionCandidates",
+      "00_SOURCE_PROVENANCE.json",
+      "PHASE5B_CHECKSUM_MANIFEST.json",
+      "PHASE5_ORDERED_RUNBOOK_CANDIDATE.md",
+      "Phase 5C evidence + 99_TT5D_VERIFY.sql",
+      "Phase 5D-A sql/10 reconciliation (derived contract)",
+      "Phase 5D-A tests/verifier"
+    ],
+    "phase5d sql/10_TT5D_CONTROLLED_RECONCILIATION.sql": [
+      "sql/20_TT5D_POST_APPLY_VERIFY.sql",
+      "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql",
+      "evidence/03_TT5D_SEMANTIC_DELTA.json mutationAllowlist",
+      "scripts/verify-phase5d-a.mjs",
+      "PHASE5D_A_READINESS_MANIFEST.json",
+      "tests/platform-hard-cutover-01-phase-05d-a-readiness.test.js"
+    ]
+  },
+  "reverse": {
+    "scripts/verify-phase5d-a.mjs": [
+      "PHASE5D_CHECKSUM_MANIFEST.json",
+      "PHASE5D_A_READINESS_MANIFEST.json",
+      "evidence/*",
+      "sql/*"
+    ],
+    "phase-05b verify-phase5b-checksums.mjs": [
+      "PHASE5B_CHECKSUM_MANIFEST.json (42 files) — NOT modified by Phase 5D-A"
+    ],
+    "sync-phase5b-checksum-manifest.mjs": [
+      "PHASE5B_CHECKSUM_MANIFEST.json allowlist paths — check mode only in Phase 5D-A"
+    ]
+  },
+  "futureUpdateRequirementsWithoutRewritingHistory": [
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/PHASE5B_CHECKSUM_MANIFEST.json",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/M9_MANIFEST.json",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "TT5D remains non-executable (4) until post-certification Owner decision"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/00_SOURCE_PROVENANCE.json",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/M0_M11_EXECUTION_MANIFEST.json",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/PHASE5_ORDERED_RUNBOOK_CANDIDATE.md",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/190_TT5D_ASSIGNMENT_SAFETY.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "After Owner Staging GO + successful 5D-B: consider STABLE + explicit anon revoke in source/M9 copy, then checksum rematerialize"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/200_TT5D_REOPEN_RESULT.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/210_TT5D_CORRECTION.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/220_TT5D_SECURITY_GUARDS.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "After Owner Staging GO + successful 5D-B: consider STABLE + explicit anon revoke in source/M9 copy, then checksum rematerialize"
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "tests/platform-hard-cutover-01-phase-05b-package.test.js",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "tests/platform-hard-cutover-01-phase-05c-tt5d-certification.test.js",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/scripts/verify-phase5b-checksums.mjs",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05c-tt5d-staging-certification/scripts/sync-phase5b-checksum-manifest.mjs",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    }
+  ],
+  "dependencyClosureResult": "PASS"
+}
