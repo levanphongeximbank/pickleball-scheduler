@@ -157,8 +157,7 @@ if (fs.existsSync(path.join(ROOT, MANIFEST_REL))) {
     const idx = readIndexBlob(rel);
     if (idx) {
       const d1 = spawnSync("git", ["diff", "--quiet", "--", rel], { cwd: ROOT });
-      const d2 = spawnSync("git", ["diff", "--quiet", "--cached", "--", rel], { cwd: ROOT });
-      if (d1.status !== 0 || d2.status !== 0) fail(`working-tree dirty vs index: ${rel}`);
+      if (d1.status !== 0) fail(`working-tree dirty vs index: ${rel}`);
       const got = sha256Exact(idx.bytes);
       if (got !== String(entry.sha256ExactGitBlobBytes).toUpperCase()) {
         fail(`checksum mismatch ${rel}`);

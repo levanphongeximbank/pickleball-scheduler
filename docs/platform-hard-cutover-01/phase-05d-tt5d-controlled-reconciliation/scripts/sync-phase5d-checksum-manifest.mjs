@@ -55,12 +55,12 @@ function gitBlobOidForBytes(buf) {
   if (store.status !== 0) throw new Error("git hash-object failed");
   return store.stdout.toString("utf8").trim();
 }
-function assertClean(rel) {
+function assertWorkingTreeMatchesIndex(rel) {
   const norm = rel.replace(/\\/g, "/");
+  // Compare working tree to index only (autocrlf-safe). Index may differ from HEAD during sync.
   const d1 = spawnSync("git", ["diff", "--quiet", "--", norm], { cwd: ROOT });
-  const d2 = spawnSync("git", ["diff", "--quiet", "--cached", "--", norm], { cwd: ROOT });
-  if (d1.status !== 0 || d2.status !== 0) {
-    throw new Error(`tracked path dirty vs index/HEAD: ${norm}`);
+  if (d1.status !== 0) {
+    throw new Error(`working tree dirty vs index: ${norm}`);
   }
 }
 
@@ -71,7 +71,7 @@ function readIndexOrWt(rel) {
     encoding: "utf8",
   });
   if (oidR.status === 0) {
-    assertClean(norm);
+    assertWorkingTreeMatchesIndex(norm);
     const oid = oidR.stdout.trim();
     const blob = spawnSync("git", ["cat-file", "blob", oid], { cwd: ROOT, encoding: "buffer" });
     if (blob.status === 0) {
