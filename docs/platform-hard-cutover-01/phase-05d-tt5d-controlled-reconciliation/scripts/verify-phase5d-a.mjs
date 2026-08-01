@@ -339,20 +339,27 @@ if (!/DELETE FROM supabase_migrations\.schema_migrations/i.test(rb)) {
   fail("rollback must remove provenance row");
 }
 
-// sql/10/20/90 remain frozen; sql/00 regenerated with quoted JSONB literals (5D-C).
-const FROZEN_MUTATION_SQL = {
+// sql/10/20/90 regenerated with CATALOG_EXPR_CANON_V1 (5D-E); prior frozen blobs superseded.
+const SUPERSEDED_MUTATION_SQL = {
   "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql": "76c269451348d5823ffb275a368fd9ff385f6d08",
   "sql/20_TT5D_POST_APPLY_VERIFY.sql": "4e3d02d067b8bc50619cf96a1742fd870637e8bf",
   "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql": "2e5a1cd17c74f7b669757c3a9fd3d7be11c3d2f0",
 };
 const SUPERSEDED_INVALID_SQL00 = "9989e54211a93ba79b8e6e87833e825a7419a24a";
-for (const [rel, oid] of Object.entries(FROZEN_MUTATION_SQL)) {
+const SUPERSEDED_REGISTRY_FP =
+  "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e";
+for (const [rel, oid] of Object.entries(SUPERSEDED_MUTATION_SQL)) {
   const got = spawnSync("git", ["hash-object", path.join(PKG, rel)], {
     cwd: ROOT,
     encoding: "utf8",
   });
-  if (got.status !== 0 || got.stdout.trim() !== oid) {
-    fail(`frozen ${rel} blob ${got.stdout?.trim()} != ${oid}`);
+  if (got.status !== 0) fail(`hash-object failed for ${rel}`);
+  if (got.stdout.trim() === oid) {
+    fail(`${rel} still equals superseded pre-CATALOG_EXPR_CANON_V1 blob ${oid}`);
+  }
+  const body = fs.readFileSync(path.join(PKG, rel), "utf8");
+  if (!body.includes("CATALOG_EXPR_CANON_V1") && !/canon_steps/.test(body)) {
+    fail(`${rel} missing CATALOG_EXPR_CANON_V1 matcher`);
   }
 }
 const sql00Oid = spawnSync("git", ["hash-object", path.join(PKG, "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql")], {
@@ -378,6 +385,15 @@ if (transportMan.supersededInvalidJsonbBlobs?.canonicalSql00?.gitBlob !== SUPERS
 }
 if (!transportMan.markers?.includes("PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED")) {
   fail("transport manifest missing JSONB renderer corrected marker");
+}
+if (!transportMan.markers?.includes("PLATFORM_HARD_CUTOVER_01_PHASE5D_GUARD_PAREN_NORMALIZATION_CORRECTED")) {
+  fail("transport manifest missing paren normalization corrected marker");
+}
+if (transportMan.registryFingerprint === SUPERSEDED_REGISTRY_FP) {
+  fail("transport manifest registry fingerprint still equals superseded fingerprint");
+}
+if (transportMan.supersededRegistryFingerprint !== SUPERSEDED_REGISTRY_FP) {
+  fail("transport manifest must record superseded registry fingerprint");
 }
 
 function countBareExpectedJsonb(sqlText) {

@@ -27,6 +27,7 @@
   "phase6": "NOT_STARTED",
   "rollbackReady": true,
   "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_GUARD_PAREN_NORMALIZATION_CORRECTED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
@@ -297,7 +298,9 @@
     "evidence": "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
     "batchCount": 9,
     "encodedPayloadLimit": 28000,
-    "canonicalSql00GitBlob": "72a4ad9da7e516af6947479b2ee36f8d43a57303",
+    "canonicalSql00GitBlob": "63ddd68921466a12b1b71471792999fabe9a6a9f",
     "jsonbLiteralRenderer": "renderJsonbLiteral"
-  }
+  },
+  "supersededRegistryFingerprint": "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e",
+  "catalogExpressionComparison": "CATALOG_EXPR_CANON_V1"
 }

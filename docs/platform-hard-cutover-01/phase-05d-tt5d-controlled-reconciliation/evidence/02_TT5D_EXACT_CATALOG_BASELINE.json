@@ -438,8 +438,20 @@
       "CONSTRAINT_CATALOG_V1",
       "COLUMN_DEFAULT_EXPR_V1",
       "PROCONFIG_TEXT_ARRAY_V1",
-      "WS_COLLAPSE_V1"
+      "WS_COLLAPSE_V1",
+      "CATALOG_EXPR_CANON_V1"
     ],
+    "catalogExpressionComparison": {
+      "version": "CATALOG_EXPR_CANON_V1",
+      "scope": [
+        "constraint.pg_get_expr(conbin)",
+        "index.pg_get_expr(indpred)"
+      ],
+      "normalization": "COLLAPSE_POSIX_WHITESPACE_THEN_STRIP_REDUNDANT_WHOLE_EXPRESSION_PARENTHESES",
+      "comparison": "EXACT_AFTER_NORMALIZATION",
+      "preservesInternalGrouping": true,
+      "preservesQuotedLiteralsAndIdentifiers": true
+    },
     "preMutationGuardCount": 189,
     "sql00ShadowParity": "SELECT_ONLY_UNION_ALL_REGISTRY"
   }

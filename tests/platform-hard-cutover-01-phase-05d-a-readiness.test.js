@@ -14,6 +14,8 @@ import {
   canonicalizeAclRows,
   parseIndexCatalogFromDef,
   normalizeConstraintExpr,
+  canonicalizeCatalogExpr,
+  isRedundantOuterParenWrapper,
   sqlIndexCatalogMatch,
   sqlConstraintCatalogMatch,
   sqlColumnDefaultMatch,
@@ -21,6 +23,7 @@ import {
   wsCollapseJs,
   renderJsonbLiteral,
   guardRow,
+  CATALOG_EXPR_CANON_VERSION,
 } from "../docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/scripts/phase5d-a4-guard-contracts.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -348,8 +351,18 @@ test("A.5 transport batches preserve 189-guard parity under 28000-byte encoded l
     ["sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql", "2e5a1cd17c74f7b669757c3a9fd3d7be11c3d2f0"],
   ]) {
     const r = spawnSync("git", ["hash-object", path.join(PKG, rel)], { cwd: ROOT, encoding: "utf8" });
-    assert.equal(r.stdout.trim(), oid, rel);
+    assert.notEqual(r.stdout.trim(), oid, `${rel} must leave superseded pre-canon blob`);
+    assert.match(fs.readFileSync(path.join(PKG, rel), "utf8"), /canon_steps/);
   }
+  assert.notEqual(
+    reg.registryFingerprint,
+    "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e",
+  );
+  assert.equal(
+    reg.supersededRegistryFingerprint,
+    "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e",
+  );
+  assert.equal(reg.catalogExpressionComparison, CATALOG_EXPR_CANON_VERSION);
 });
 
 test("zero forbidden serialized catalog guards in sql/10/20/90", () => {
@@ -460,6 +473,7 @@ test("CONSTRAINT_CATALOG_V1 whitespace PASS and status/operator negatives", () =
     expectedExprNormalized: normalizeConstraintExpr(raw),
   });
   assert.match(ok, /pg_get_expr\(c\.conbin, c\.conrelid, false\)/);
+  assert.match(ok, /canon_steps/);
   assert.doesNotMatch(ok, /pg_get_constraintdef/);
   const removed = sqlConstraintCatalogMatch({
     tableName: "referee_assignments",
@@ -475,6 +489,85 @@ test("CONSTRAINT_CATALOG_V1 whitespace PASS and status/operator negatives", () =
     expectedExprNormalized: normalizeConstraintExpr(raw.replace(" = ANY ", " <> ALL ")),
   });
   assert.notEqual(ok, opChanged);
+});
+
+test("CATALOG_EXPR_CANON_V1: diagnosed false negatives and strict semantic negatives", () => {
+  const double =
+    "((status = ANY (ARRAY['pending'::text, 'active'::text, 'expired'::text, 'revoked'::text, 'completed'::text])))";
+  const single =
+    "(status = ANY (ARRAY['pending'::text, 'active'::text, 'expired'::text, 'revoked'::text, 'completed'::text]))";
+  const bare =
+    "status = ANY (ARRAY['pending'::text, 'active'::text, 'expired'::text, 'revoked'::text, 'completed'::text])";
+  assert.equal(canonicalizeCatalogExpr(double), canonicalizeCatalogExpr(single));
+  assert.equal(canonicalizeCatalogExpr(single), canonicalizeCatalogExpr(bare));
+  assert.equal(
+    normalizeConstraintExpr(`CHECK ${double}`),
+    canonicalizeCatalogExpr(single),
+  );
+  assert.equal(
+    canonicalizeCatalogExpr("(sub_match_id IS NOT NULL)"),
+    canonicalizeCatalogExpr("sub_match_id IS NOT NULL"),
+  );
+  assert.equal(
+    canonicalizeCatalogExpr("(status = 'pending'::text)"),
+    canonicalizeCatalogExpr("status = 'pending'::text"),
+  );
+  assert.equal(
+    parseIndexCatalogFromDef(
+      "CREATE INDEX referee_assignments_sub_match_idx ON public.referee_assignments USING btree (sub_match_id, status) WHERE (sub_match_id IS NOT NULL)",
+      "postgres",
+    ).predicateNormalized,
+    "sub_match_id IS NOT NULL",
+  );
+  assert.equal(
+    parseIndexCatalogFromDef(
+      "CREATE INDEX tt5d_correction_pending_idx ON public.team_tournament_referee_correction_requests USING btree (tenant_id, tournament_id, status) WHERE (status = 'pending'::text)",
+      "postgres",
+    ).predicateNormalized,
+    "status = 'pending'::text",
+  );
+  // Meaningful internal grouping preserved.
+  assert.notEqual(
+    canonicalizeCatalogExpr("(a) OR (b)"),
+    canonicalizeCatalogExpr("a OR b"),
+  );
+  assert.equal(isRedundantOuterParenWrapper("(a) OR (b)"), false);
+  // Different status values / predicates / key order remain mismatches.
+  assert.notEqual(
+    normalizeConstraintExpr(
+      "CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text])))",
+    ),
+    normalizeConstraintExpr(
+      "CHECK ((status = ANY (ARRAY['pending'::text, 'expired'::text])))",
+    ),
+  );
+  const idxA = parseIndexCatalogFromDef(
+    "CREATE INDEX i ON public.t USING btree (sub_match_id, status) WHERE (sub_match_id IS NOT NULL)",
+    "postgres",
+  );
+  const idxB = parseIndexCatalogFromDef(
+    "CREATE INDEX i ON public.t USING btree (sub_match_id, status) WHERE (sub_match_id IS NULL)",
+    "postgres",
+  );
+  assert.notEqual(idxA.predicateNormalized, idxB.predicateNormalized);
+  assert.notEqual(
+    sqlIndexCatalogMatch({ ...idxA, keyColumns: ["sub_match_id", "status"] }),
+    sqlIndexCatalogMatch({ ...idxA, keyColumns: ["status", "sub_match_id"] }),
+  );
+  // Literals with parentheses / apostrophes preserved.
+  assert.equal(
+    canonicalizeCatalogExpr("(note = '(x)'::text)"),
+    "note = '(x)'::text",
+  );
+  assert.equal(
+    canonicalizeCatalogExpr("(label = 'O''Reilly'::text)"),
+    "label = 'O''Reilly'::text",
+  );
+  const idxSql = sqlIndexCatalogMatch(idxA);
+  assert.match(idxSql, /canon_steps/);
+  assert.match(idxSql, /pg_get_userbyid\(i\.relowner\) = 'postgres'/);
+  assert.match(idxSql, /idx\.indisunique = FALSE/);
+  assert.equal(CATALOG_EXPR_CANON_VERSION, "CATALOG_EXPR_CANON_V1");
 });
 
 test("COLUMN_DEFAULT_EXPR_V1 formatting PASS and value/type/null negatives", () => {
@@ -685,23 +778,32 @@ test("5D-C zero bare expected_json JSONB casts in sql/00 and transport batches",
   assert.equal(totalQuoted, 189);
 });
 
-test("5D-C sql/10 sql/20 sql/90 remain non-executable under SELECT-only auth and frozen", () => {
+test("5D-E sql/10 sql/20 sql/90 regenerated with CATALOG_EXPR_CANON_V1; SELECT-only auth unchanged", () => {
   for (const [rel, oid] of [
     ["sql/10_TT5D_CONTROLLED_RECONCILIATION.sql", "76c269451348d5823ffb275a368fd9ff385f6d08"],
     ["sql/20_TT5D_POST_APPLY_VERIFY.sql", "4e3d02d067b8bc50619cf96a1742fd870637e8bf"],
     ["sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql", "2e5a1cd17c74f7b669757c3a9fd3d7be11c3d2f0"],
   ]) {
     const r = spawnSync("git", ["hash-object", path.join(PKG, rel)], { cwd: ROOT, encoding: "utf8" });
-    assert.equal(r.stdout.trim(), oid, rel);
+    assert.notEqual(r.stdout.trim(), oid, rel);
     const sql = fs.readFileSync(path.join(PKG, rel), "utf8");
     assert.equal(countBareExpectedJsonb(sql).bare, 0);
     assert.match(sql, /\bBEGIN\b|\bDO\s+\$/i);
+    assert.match(sql, /canon_steps/);
   }
   const d = readJson("evidence/05_PHASE5D_A_DECISION.json");
   assert.equal(d.nextAuth, "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
   assert.equal(d.continuingPhase5.productionExecutionGo, false);
   assert.equal(d.m9.executableApplyCount, 20);
   assert.equal(d.m9.nonExecutableCandidateCount, 4);
+  assert.equal(d.catalogExpressionComparison, CATALOG_EXPR_CANON_VERSION);
+  assert.equal(
+    d.supersededRegistryFingerprint,
+    "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e",
+  );
+  assert.ok(
+    d.markers.includes("PLATFORM_HARD_CUTOVER_01_PHASE5D_GUARD_PAREN_NORMALIZATION_CORRECTED"),
+  );
 });
 
 test("Phase 5D-A verifier script PASS", () => {

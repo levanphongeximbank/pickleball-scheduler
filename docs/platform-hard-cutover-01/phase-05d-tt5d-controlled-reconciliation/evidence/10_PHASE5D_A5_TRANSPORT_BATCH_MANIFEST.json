@@ -3,13 +3,13 @@
   "nextAuth": "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY",
   "canonicalSql00": {
     "path": "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
-    "gitBlob": "72a4ad9da7e516af6947479b2ee36f8d43a57303",
-    "sha256": "17d89e682b16a7ebea59c3209e0661412e83849a8a162595f92b3b1a8fdeda10",
-    "rawBytes": 443602,
+    "gitBlob": "63ddd68921466a12b1b71471792999fabe9a6a9f",
+    "sha256": "dedd0705acc15870d18e22c070d49189ec0a4783f9877647957be56408ae9497",
+    "rawBytes": 458181,
     "byteForByteFrozen": false,
     "jsonbLiteralRenderer": "renderJsonbLiteral"
   },
-  "authoritativeRegistryFingerprint": "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e",
+  "authoritativeRegistryFingerprint": "228f530a4867a5a3b82fc03032b3e078d38994df5905cac369fdb9497b508d92",
   "totalGuards": 189,
   "batchCount": 9,
   "encodedPayloadLimit": 28000,
@@ -31,10 +31,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_001",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_001.sql",
-      "contentSha256": "aebeafbb4abcc60c9c6f7324145007353e2c961f2a70d13be10c79de3071eea1",
-      "gitBlob": "0eac74dca1423932cf22e98281fb63786f56093f",
-      "rawByteCount": 19781,
-      "encodedExecuteSqlPayloadByteCount": 20228,
+      "contentSha256": "1539cd55e4010780a37bdb08728820c919b729b2f5cd4b73e86fabc83357ee4e",
+      "gitBlob": "952d1cf0d3533031a3d60c3f51e9999c6f5370dc",
+      "rawByteCount": 27082,
+      "encodedExecuteSqlPayloadByteCount": 27823,
       "first_guard_order": 1,
       "last_guard_order": 14,
       "guard_count": 14,
@@ -108,17 +108,17 @@
         {
           "guard_order": 11,
           "guard_id": "table.referee_assignments.status_check",
-          "fingerprint": "bb03bb61913bc256ccc1752b89a2b794d9c3f1fa021c2f9e2dfb1ebb295852f0"
+          "fingerprint": "52018aafe7a270c2fa4c1849fad8333aab6d20bb35f76774e972c798a48437ce"
         },
         {
           "guard_order": 12,
           "guard_id": "table.referee_assignments.sub_match_index",
-          "fingerprint": "b2ff4e8e841304d46c4aa5d48f2d239d6cd7c6b56e982e6211c6a56f077e94d9"
+          "fingerprint": "8142d11cf7518607e6638c8a9b6b14b8c5b07d1491a578411881eadf36749598"
         },
         {
           "guard_order": 13,
           "guard_id": "table.correction.index",
-          "fingerprint": "eb87e78b016fa8bc5c26bf3eab5f850199f534da7c434aa78c28c7700ff1565a"
+          "fingerprint": "0dcf18b3393bda3815a8e6f988735c044b3c9a998c9b8d71e9b97627e26c2631"
         },
         {
           "guard_order": 14,
@@ -130,10 +130,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_002",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_002.sql",
-      "contentSha256": "7ba0421a5e3031297de150faa53c70249c9e61522bd03c5d69b2bc8a11a5c277",
-      "gitBlob": "13e22cbfef7f9786f61fbcf203429da8d599163d",
-      "rawByteCount": 25166,
-      "encodedExecuteSqlPayloadByteCount": 25931,
+      "contentSha256": "2d3465a7a8fc336694d1f5a75ee91af495ca5b7da1ebbc58ff8f01d805e4ca0c",
+      "gitBlob": "3998295a7eb17703a74cdca2c9e9c466d1d4c5cc",
+      "rawByteCount": 25189,
+      "encodedExecuteSqlPayloadByteCount": 25954,
       "first_guard_order": 15,
       "last_guard_order": 28,
       "guard_count": 14,
@@ -229,10 +229,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_003",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_003.sql",
-      "contentSha256": "5989de81fe11dc5508145594c5d421afecb1dcbce72c085b88ed0493b0d3f069",
-      "gitBlob": "255ada33aee91d3459ee9437cef127ca196c2c0c",
-      "rawByteCount": 27398,
-      "encodedExecuteSqlPayloadByteCount": 27919,
+      "contentSha256": "a3414f5fa0de4a3ace7f835452b2a56b5c52a7426f06f3d1dd0b114b0b52853b",
+      "gitBlob": "a516d2c1d9ec8c0c271fb13f99a1ac5213096abe",
+      "rawByteCount": 27421,
+      "encodedExecuteSqlPayloadByteCount": 27942,
       "first_guard_order": 29,
       "last_guard_order": 52,
       "guard_count": 24,
@@ -388,10 +388,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_004",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_004.sql",
-      "contentSha256": "bba1417b49df305457572a2c3d2f12298ce257ebf6bef06feeb30c5bbf831f09",
-      "gitBlob": "e3ec858934ce678f27657fcc3e0db5eac1b95450",
-      "rawByteCount": 26503,
-      "encodedExecuteSqlPayloadByteCount": 27055,
+      "contentSha256": "dc352bb0bcc468333e375899c03215e44e92440e691c1c56215f1fbdc72d5715",
+      "gitBlob": "6e4138d7b25784f2b16406818a2b1ae1858e49fa",
+      "rawByteCount": 26526,
+      "encodedExecuteSqlPayloadByteCount": 27078,
       "first_guard_order": 53,
       "last_guard_order": 75,
       "guard_count": 23,
@@ -541,10 +541,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_005",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_005.sql",
-      "contentSha256": "87d8f8c6d63bfb88780763e18ee56a1f9425900845bb626b9b2d71e3f3364e4a",
-      "gitBlob": "681f01114ea1b6d8efe6e9ee3aa48bc5184583a8",
-      "rawByteCount": 27421,
-      "encodedExecuteSqlPayloadByteCount": 27945,
+      "contentSha256": "04aba25bc54a28e7c2172902be608fb17bb4171282f5b489146b90005c5f51bc",
+      "gitBlob": "c6cd43718b604dd22ee20b5436cf5c92ef60df6a",
+      "rawByteCount": 27444,
+      "encodedExecuteSqlPayloadByteCount": 27968,
       "first_guard_order": 76,
       "last_guard_order": 98,
       "guard_count": 23,
@@ -694,10 +694,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_006",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_006.sql",
-      "contentSha256": "8af9b195097cc91ed6d8ba557220196a8e0870a783699b719f24fd7eb73edb7e",
-      "gitBlob": "b1f5ab3211f4bc0aaec32cc2419509fa9a01c341",
-      "rawByteCount": 27009,
-      "encodedExecuteSqlPayloadByteCount": 27563,
+      "contentSha256": "aa73084ee145d741f635d0d76c474a516d0bbad36ae3340717038488232da227",
+      "gitBlob": "87d110ad1e112ca96927adf8302b3c14ae8337d3",
+      "rawByteCount": 27032,
+      "encodedExecuteSqlPayloadByteCount": 27586,
       "first_guard_order": 99,
       "last_guard_order": 123,
       "guard_count": 25,
@@ -859,10 +859,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_007",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_007.sql",
-      "contentSha256": "03ef67679f0a8eb75f26e81b9ded9b429065995b48e0dee1170a0147732ca3cb",
-      "gitBlob": "03b319517af7e62192a7372fdcee5a44072359ea",
-      "rawByteCount": 27237,
-      "encodedExecuteSqlPayloadByteCount": 27791,
+      "contentSha256": "76549f0304f1c8786b039c23c5a9f7d314a56cdb7bbc293bce22faf1653aeefa",
+      "gitBlob": "da5009aee005a01a0a71d667441566f021b02c3d",
+      "rawByteCount": 27260,
+      "encodedExecuteSqlPayloadByteCount": 27814,
       "first_guard_order": 124,
       "last_guard_order": 148,
       "guard_count": 25,
@@ -1024,10 +1024,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_008",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_008.sql",
-      "contentSha256": "61119d1b2b05a03fa567e69d0ec098ca4249c55df42a8303be188bd878360ff5",
-      "gitBlob": "825f1584723a44ac59ad205930afcfccc4eb7021",
-      "rawByteCount": 24819,
-      "encodedExecuteSqlPayloadByteCount": 25253,
+      "contentSha256": "aef1436d1726b5a97ff93350242052ab9e640a3dbb567740bf0dff0213fe4854",
+      "gitBlob": "d34c15778b082fad07cf1aa999c21c42ef8950c9",
+      "rawByteCount": 24842,
+      "encodedExecuteSqlPayloadByteCount": 25276,
       "first_guard_order": 149,
       "last_guard_order": 171,
       "guard_count": 23,
@@ -1177,10 +1177,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_009",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_009.sql",
-      "contentSha256": "67abcb263161bf6edb1070f3f6392c78c8563b0f103851f71bd7c4e43894ff38",
-      "gitBlob": "9a43bb3e7a1c30cc1c93d6416335f4c094ec9ad8",
-      "rawByteCount": 22749,
-      "encodedExecuteSqlPayloadByteCount": 23200,
+      "contentSha256": "b42ec16d235ede4041077181ca5d8de4d9c8bb39cd33dbdf04154301087a263f",
+      "gitBlob": "e830e1ac945ccbd1da30e2bf5f5fc12952044e12",
+      "rawByteCount": 22772,
+      "encodedExecuteSqlPayloadByteCount": 23223,
       "first_guard_order": 172,
       "last_guard_order": 189,
       "guard_count": 18,
@@ -1357,7 +1357,15 @@
       }
     ]
   },
+  "supersededRegistryFingerprint": "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e",
+  "supersededSql102090Blobs": {
+    "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql": "76c269451348d5823ffb275a368fd9ff385f6d08",
+    "sql/20_TT5D_POST_APPLY_VERIFY.sql": "4e3d02d067b8bc50619cf96a1742fd870637e8bf",
+    "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql": "2e5a1cd17c74f7b669757c3a9fd3d7be11c3d2f0"
+  },
+  "catalogExpressionComparison": "CATALOG_EXPR_CANON_V1",
   "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_GUARD_PAREN_NORMALIZATION_CORRECTED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",

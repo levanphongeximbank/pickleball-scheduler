@@ -1,7 +1,7 @@
 /**
- * Phase 5D-A.4 / A.5 / 5D-C — typed catalog guard registry + sql/00 shadow + transport batches.
+ * Phase 5D-A.4 / A.5 / 5D-C / 5D-E — typed catalog guard registry + sql/00 shadow + transport batches.
  * Repository-only. No database. No git add/commit/push.
- * 5D-C regenerates sql/00 + transport batches with valid JSONB literals; sql/10/20/90 remain frozen.
+ * 5D-E regenerates sql/00 + transport + sql/10/20/90 with CATALOG_EXPR_CANON_V1 paren normalization.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -20,6 +20,7 @@ import {
   shadowPreflightSql,
   sqlStr,
   sqlWsCollapseV1,
+  CATALOG_EXPR_CANON_VERSION,
   TRANSPORT_ENCODED_PAYLOAD_LIMIT,
 } from "./phase5d-a4-guard-contracts.mjs";
 
@@ -33,12 +34,16 @@ const LOCK_KEY = "phase5d_tt5d_controlled_reconciliation";
 const AUTHORIZED_STAGING = "qyewbxjsiiyufanzcjcq";
 const FORBIDDEN_PROD = "expuvcohlcjzvrrauvud";
 
-/** sql/10/20/90 remain byte-frozen (no expected_json JSONB literals). sql/00 regenerated in 5D-C. */
-const FROZEN_SQL_BLOBS = {
+/** Prior 5D-C frozen sql/10/20/90 blobs — superseded by CATALOG_EXPR_CANON_V1 regeneration (5D-E). */
+const SUPERSEDED_SQL_10_20_90_BLOBS = {
   "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql": "76c269451348d5823ffb275a368fd9ff385f6d08",
   "sql/20_TT5D_POST_APPLY_VERIFY.sql": "4e3d02d067b8bc50619cf96a1742fd870637e8bf",
   "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql": "2e5a1cd17c74f7b669757c3a9fd3d7be11c3d2f0",
 };
+
+/** Prior registry fingerprint (paren false-negative matcher) — superseded by 5D-E. */
+const SUPERSEDED_REGISTRY_FINGERPRINT =
+  "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e";
 
 /** Historical A.5 blobs with bare {...}::jsonb — invalid PostgreSQL; never execute again. */
 const SUPERSEDED_INVALID_JSONB_BLOBS = {
@@ -100,22 +105,17 @@ function gitHashObjectBytes(buf) {
   return r.stdout.toString("utf8").trim();
 }
 
-function writeFrozenSql(rel, text) {
+function writeRegeneratedSql(rel, text) {
   const next = text.endsWith("\n") ? text : `${text}\n`;
-  const expected = FROZEN_SQL_BLOBS[rel];
-  if (!expected) throw new Error(`no frozen blob for ${rel}`);
+  const superseded = SUPERSEDED_SQL_10_20_90_BLOBS[rel];
   const oid = gitHashObjectBytes(Buffer.from(next, "utf8"));
-  if (oid !== expected) {
+  if (superseded && oid === superseded) {
     throw new Error(
-      `PHASE5D_A5_TRANSPORT_PACKAGE_BLOCKED: ${rel} would drift (got ${oid}, required ${expected})`,
+      `PHASE5D_E_BLOCKED: ${rel} still equals superseded pre-CATALOG_EXPR_CANON_V1 blob ${superseded}`,
     );
   }
-  // Restore after generate weak overwrite without changing committed bytes.
   write(rel, next);
-  const wtOid = gitHashObjectBytes(fs.readFileSync(path.join(PKG, rel)));
-  if (wtOid !== expected) {
-    throw new Error(`PHASE5D_A5_TRANSPORT_PACKAGE_BLOCKED: ${rel} WT blob ${wtOid} != ${expected}`);
-  }
+  return oid;
 }
 
 /** Exact normalized comparison of live pg_get_expr(..., false) vs expected literal. */
@@ -226,12 +226,12 @@ GRANT EXECUTE ON FUNCTION public.${f.name}(${short}) TO ${roles.join(", ")};`;
   })
   .join("\n\n");
 
-writeFrozenSql(
+writeRegeneratedSql(
   "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql",
   `-- Phase 5D hardened reconciliation — AUTHOR ONLY until Owner Staging GO.
 -- Staging ONLY (${AUTHORIZED_STAGING}). Forbidden Production target: ${FORBIDDEN_PROD}.
 -- Catalog/ACL/volatility reconciliation only. No table drops, truncates, or business-row deletes.
--- Pre-mutation guards generated from typed registry (ACL_EXPLODED_SET_V1, INDEX_CATALOG_V1, CONSTRAINT_CATALOG_V1, COLUMN_DEFAULT_EXPR_V1, PROCONFIG_TEXT_ARRAY_V1, WS_COLLAPSE_V1).
+-- Pre-mutation guards generated from typed registry (ACL_EXPLODED_SET_V1, INDEX_CATALOG_V1, CONSTRAINT_CATALOG_V1, COLUMN_DEFAULT_EXPR_V1, PROCONFIG_TEXT_ARRAY_V1, WS_COLLAPSE_V1, CATALOG_EXPR_CANON_V1).
 
 BEGIN;
 SET LOCAL lock_timeout = '5s';
@@ -263,7 +263,7 @@ COMMIT;
 `,
 );
 
-writeFrozenSql(
+writeRegeneratedSql(
   "sql/20_TT5D_POST_APPLY_VERIFY.sql",
   `-- Phase 5D post-apply verify — typed catalog guards (registry post state).
 DO $verify$
@@ -297,7 +297,7 @@ $verify$;
 `,
 );
 
-writeFrozenSql(
+writeRegeneratedSql(
   "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql",
   `-- Phase 5D exact baseline rollback — same advisory lock as apply. Fail closed typed guards.
 BEGIN;
@@ -462,7 +462,17 @@ baseline.typedCatalogGuardComparison = {
     "COLUMN_DEFAULT_EXPR_V1",
     "PROCONFIG_TEXT_ARRAY_V1",
     "WS_COLLAPSE_V1",
+    "CATALOG_EXPR_CANON_V1",
   ],
+  catalogExpressionComparison: {
+    version: CATALOG_EXPR_CANON_VERSION,
+    scope: ["constraint.pg_get_expr(conbin)", "index.pg_get_expr(indpred)"],
+    normalization:
+      "COLLAPSE_POSIX_WHITESPACE_THEN_STRIP_REDUNDANT_WHOLE_EXPRESSION_PARENTHESES",
+    comparison: "EXACT_AFTER_NORMALIZATION",
+    preservesInternalGrouping: true,
+    preservesQuotedLiteralsAndIdentifiers: true,
+  },
   preMutationGuardCount: preRegistry.length,
   sql00ShadowParity: "SELECT_ONLY_UNION_ALL_REGISTRY",
 };
@@ -491,6 +501,11 @@ const registryFingerprint = crypto
     "utf8",
   )
   .digest("hex");
+if (registryFingerprint === SUPERSEDED_REGISTRY_FINGERPRINT) {
+  throw new Error(
+    "PHASE5D_E_BLOCKED: registry fingerprint unchanged after CATALOG_EXPR_CANON_V1 repair",
+  );
+}
 
 const transportBatches = partitionGuardsForTransport(preRegistry, {
   maxEncodedBytes: TRANSPORT_ENCODED_PAYLOAD_LIMIT,
@@ -547,7 +562,11 @@ for (let i = 0; i < transportManifest.batches.length; i++) {
   }
 }
 transportManifest.supersededInvalidJsonbBlobs = SUPERSEDED_INVALID_JSONB_BLOBS;
+transportManifest.supersededRegistryFingerprint = SUPERSEDED_REGISTRY_FINGERPRINT;
+transportManifest.supersededSql102090Blobs = SUPERSEDED_SQL_10_20_90_BLOBS;
+transportManifest.catalogExpressionComparison = CATALOG_EXPR_CANON_VERSION;
 transportManifest.markers = [
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_GUARD_PAREN_NORMALIZATION_CORRECTED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
@@ -612,6 +631,8 @@ write(
       forbiddenSerializedGuardsEliminated: true,
       contracts: preSummary.contracts,
       registryFingerprint,
+      supersededRegistryFingerprint: SUPERSEDED_REGISTRY_FINGERPRINT,
+      catalogExpressionComparison: CATALOG_EXPR_CANON_VERSION,
     },
     null,
     2,
@@ -620,6 +641,7 @@ write(
 
 const decision = JSON.parse(fs.readFileSync(path.join(PKG, "evidence/05_PHASE5D_A_DECISION.json"), "utf8"));
 decision.markers = [
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_GUARD_PAREN_NORMALIZATION_CORRECTED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
@@ -645,6 +667,8 @@ decision.markers = [
 decision.hardening = "PHASE5D_A5_TRANSPORT_SAFE_BATCHED_SELECT_ONLY_PREFLIGHT";
 decision.decision = "READY_FOR_OWNER_STAGING_GO";
 decision.nextAuth = "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY";
+decision.supersededRegistryFingerprint = SUPERSEDED_REGISTRY_FINGERPRINT;
+decision.catalogExpressionComparison = CATALOG_EXPR_CANON_VERSION;
 decision.jsonbLiteralCorrection = {
   marker: "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
   helper: "renderJsonbLiteral",
@@ -765,12 +789,17 @@ dep.phase5dA5Scope = [
   "phase5d-a4-guard-contracts.mjs partitionGuardsForTransport + shadowPreflightBatchSql",
   "sql/00_transport/00_PREFLIGHT_BATCH_*.sql",
   "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
-  "sql/10 sql/20 sql/90 frozen byte-for-byte; sql/00 regenerated for JSONB literals (5D-C)",
+  "sql/10 sql/20 sql/90 regenerated with CATALOG_EXPR_CANON_V1 (5D-E); sql/00 + transport regenerated",
 ];
 dep.phase5dCScope = [
   "phase5d-a4-guard-contracts.mjs renderJsonbLiteral",
   "regenerated sql/00 + sql/00_transport with quoted JSONB literals",
   "superseded invalid bare {...}::jsonb blobs recorded in evidence/10",
+];
+dep.phase5dEScope = [
+  "phase5d-a4-guard-contracts.mjs CATALOG_EXPR_CANON_V1",
+  "regenerated sql/00 + sql/00_transport + sql/10 + sql/20 + sql/90",
+  "superseded registry fingerprint 19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e",
 ];
 fs.writeFileSync(path.join(PKG, "evidence/04_TWO_WAY_DEPENDENCY_MAP.json"), JSON.stringify(dep, null, 2) + "\n");
 
@@ -801,7 +830,8 @@ Canonical \`sql/00\` remains the authoritative single-file shadow. After 5D-C it
 regenerated with \`renderJsonbLiteral\` (quoted \`'::jsonb\`). Historical invalid
 blob \`9989e54211a93ba79b8e6e87833e825a7419a24a\` is superseded (never execute).
 Transport batches are size-partitioned encodings of the **same** A.4 registry
-predicates. \`sql/10\`/\`sql/20\`/\`sql/90\` remain frozen (no expected_json casts).
+predicates. After 5D-E, constraint/index expression guards use \`CATALOG_EXPR_CANON_V1\`
+and \`sql/10\`/\`sql/20\`/\`sql/90\` are regenerated with the same matcher (not frozen).
 
 ## Guard contracts
 
@@ -810,8 +840,8 @@ predicates. \`sql/10\`/\`sql/20\`/\`sql/90\` remain frozen (no expected_json cas
   never compare \`proconfig::text\`)
 - Relation/function ACL: \`ACL_EXPLODED_SET_V1\` (\`aclexplode\` set equality;
   never \`relacl::text\` / \`proacl::text\` for guards)
-- Indexes: \`INDEX_CATALOG_V1\`
-- Check constraints: \`CONSTRAINT_CATALOG_V1\`
+- Indexes: \`INDEX_CATALOG_V1\` + \`CATALOG_EXPR_CANON_V1\` predicates
+- Check constraints: \`CONSTRAINT_CATALOG_V1\` + \`CATALOG_EXPR_CANON_V1\` expressions
 - Column defaults: \`COLUMN_DEFAULT_EXPR_V1\`
 - Function-body MD5: \`INTENTIONAL_EXACT_FINGERPRINT\`
 - JSONB expected_json: \`renderJsonbLiteral\` (never bare \`{...}::jsonb\`)
@@ -877,7 +907,10 @@ console.log(
       transportBatchCount: transportBatches.length,
       transportEncodedLimit: TRANSPORT_ENCODED_PAYLOAD_LIMIT,
       canonicalSql00GitBlob,
-      frozenSql10_20_90: FROZEN_SQL_BLOBS,
+      supersededSql102090Blobs: SUPERSEDED_SQL_10_20_90_BLOBS,
+      supersededRegistryFingerprint: SUPERSEDED_REGISTRY_FINGERPRINT,
+      registryFingerprint,
+      catalogExpressionComparison: CATALOG_EXPR_CANON_VERSION,
       supersededInvalidCanonicalSql00: SUPERSEDED_INVALID_JSONB_BLOBS.canonicalSql00.gitBlob,
       supersessionLeaves: supersessions.map((s) => s.leaf),
       lockKey: LOCK_KEY,

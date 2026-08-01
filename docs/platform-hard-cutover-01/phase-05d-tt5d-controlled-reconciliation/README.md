@@ -23,7 +23,8 @@ Canonical `sql/00` remains the authoritative single-file shadow. After 5D-C it i
 regenerated with `renderJsonbLiteral` (quoted `'::jsonb`). Historical invalid
 blob `9989e54211a93ba79b8e6e87833e825a7419a24a` is superseded (never execute).
 Transport batches are size-partitioned encodings of the **same** A.4 registry
-predicates. `sql/10`/`sql/20`/`sql/90` remain frozen (no expected_json casts).
+predicates. After 5D-E, constraint/index expression guards use `CATALOG_EXPR_CANON_V1`
+and `sql/10`/`sql/20`/`sql/90` are regenerated with the same matcher (not frozen).
 
 ## Guard contracts
 
@@ -32,8 +33,8 @@ predicates. `sql/10`/`sql/20`/`sql/90` remain frozen (no expected_json casts).
   never compare `proconfig::text`)
 - Relation/function ACL: `ACL_EXPLODED_SET_V1` (`aclexplode` set equality;
   never `relacl::text` / `proacl::text` for guards)
-- Indexes: `INDEX_CATALOG_V1`
-- Check constraints: `CONSTRAINT_CATALOG_V1`
+- Indexes: `INDEX_CATALOG_V1` + `CATALOG_EXPR_CANON_V1` predicates
+- Check constraints: `CONSTRAINT_CATALOG_V1` + `CATALOG_EXPR_CANON_V1` expressions
 - Column defaults: `COLUMN_DEFAULT_EXPR_V1`
 - Function-body MD5: `INTENTIONAL_EXACT_FINGERPRINT`
 - JSONB expected_json: `renderJsonbLiteral` (never bare `{...}::jsonb`)

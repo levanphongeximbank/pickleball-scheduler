@@ -153,11 +153,16 @@
     "phase5d-a4-guard-contracts.mjs partitionGuardsForTransport + shadowPreflightBatchSql",
     "sql/00_transport/00_PREFLIGHT_BATCH_*.sql",
     "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
-    "sql/10 sql/20 sql/90 frozen byte-for-byte; sql/00 regenerated for JSONB literals (5D-C)"
+    "sql/10 sql/20 sql/90 regenerated with CATALOG_EXPR_CANON_V1 (5D-E); sql/00 + transport regenerated"
   ],
   "phase5dCScope": [
     "phase5d-a4-guard-contracts.mjs renderJsonbLiteral",
     "regenerated sql/00 + sql/00_transport with quoted JSONB literals",
     "superseded invalid bare {...}::jsonb blobs recorded in evidence/10"
+  ],
+  "phase5dEScope": [
+    "phase5d-a4-guard-contracts.mjs CATALOG_EXPR_CANON_V1",
+    "regenerated sql/00 + sql/00_transport + sql/10 + sql/20 + sql/90",
+    "superseded registry fingerprint 19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e"
   ]
 }

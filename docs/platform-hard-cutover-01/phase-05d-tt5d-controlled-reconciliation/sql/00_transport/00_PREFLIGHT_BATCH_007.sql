@@ -1,7 +1,7 @@
 -- Phase 5D A.5 transport-safe SELECT-only preflight batch
 -- batch_id=00_PREFLIGHT_BATCH_007
--- manifest_fingerprint=19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e
--- Contract versions: ACL_EXPLODED_SET_V1, INDEX_CATALOG_V1, CONSTRAINT_CATALOG_V1, COLUMN_DEFAULT_EXPR_V1, PROCONFIG_TEXT_ARRAY_V1, WS_COLLAPSE_V1.
+-- manifest_fingerprint=228f530a4867a5a3b82fc03032b3e078d38994df5905cac369fdb9497b508d92
+-- Contract versions: ACL_EXPLODED_SET_V1, INDEX_CATALOG_V1, CONSTRAINT_CATALOG_V1, COLUMN_DEFAULT_EXPR_V1, PROCONFIG_TEXT_ARRAY_V1, WS_COLLAPSE_V1, CATALOG_EXPR_CANON_V1.
 -- One WITH...SELECT only. No BEGIN/COMMIT/DO/DDL/DML/RPC.
 
 WITH guard_results AS (
@@ -375,7 +375,7 @@ SELECT 148 AS guard_order,
        (has_function_privilege('anon', to_regprocedure('public.team_tournament_reopen_referee_match(text, text, text, text)'), 'EXECUTE') IS NOT DISTINCT FROM false) AS matches_guard
 )
 SELECT '00_PREFLIGHT_BATCH_007' AS batch_id,
-       '19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e' AS manifest_fingerprint,
+       '228f530a4867a5a3b82fc03032b3e078d38994df5905cac369fdb9497b508d92' AS manifest_fingerprint,
        guard_order,
        guard_id,
        object_class,

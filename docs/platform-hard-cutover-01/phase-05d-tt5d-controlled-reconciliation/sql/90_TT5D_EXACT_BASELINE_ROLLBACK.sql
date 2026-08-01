@@ -97,7 +97,49 @@ BEGIN
       AND c.convalidated IS TRUE
       AND c.condeferrable IS FALSE
       AND c.condeferred IS FALSE
-      AND btrim(regexp_replace((pg_get_expr(c.conbin, c.conrelid, false))::text, '[[:space:]]+', ' ', 'g')) IS NOT DISTINCT FROM btrim(regexp_replace(('((status = ANY (ARRAY[''pending''::text, ''active''::text, ''expired''::text, ''revoked''::text, ''completed''::text])))')::text, '[[:space:]]+', ' ', 'g'))
+      AND (WITH RECURSIVE canon_steps(n, e) AS (
+  SELECT 0, btrim(regexp_replace((pg_get_expr(c.conbin, c.conrelid, false))::text, '[[:space:]]+', ' ', 'g'))
+  UNION ALL
+  SELECT n + 1, btrim(substr(e, 2, length(e) - 2))
+  FROM canon_steps
+  WHERE n < 16
+    AND length(e) >= 2
+    AND substr(e, 1, 1) = '('
+    AND substr(e, length(e), 1) = ')'
+    AND (
+      WITH masked AS (
+        SELECT regexp_replace(
+                 regexp_replace(e, '''([^'']|'''')*''', '''x''', 'g'),
+                 '"([^"]|"")*"', '"x"', 'g'
+               ) AS m
+      ),
+      parens AS (
+        SELECT regexp_replace(m, '[^()]', '', 'g') AS p FROM masked
+      )
+      SELECT length(p) >= 2
+         AND substr(p, 1, 1) = '('
+         AND substr(p, length(p), 1) = ')'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM generate_series(1, length(p)) AS g(i)
+           WHERE (
+             SELECT sum(
+               CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+             )
+             FROM generate_series(1, g.i) AS x(k)
+           ) = 0
+           AND g.i < length(p)
+         )
+         AND (
+           SELECT sum(
+             CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+           )
+           FROM generate_series(1, length(p)) AS x(k)
+         ) = 0
+      FROM parens
+    )
+)
+SELECT e FROM canon_steps ORDER BY n DESC LIMIT 1) IS NOT DISTINCT FROM 'status = ANY (ARRAY[''pending''::text, ''active''::text, ''expired''::text, ''revoked''::text, ''completed''::text])'
   )) THEN
     RAISE EXCEPTION 'VERIFY table.referee_assignments.status_check';
   END IF;
@@ -120,7 +162,49 @@ BEGIN
         FROM unnest(idx.indkey) WITH ORDINALITY AS k(attnum, ord)
         JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum AND k.attnum > 0
       ) = ARRAY['sub_match_id', 'status']::name[]
-      AND btrim(regexp_replace((pg_get_expr(idx.indpred, idx.indrelid, false))::text, '[[:space:]]+', ' ', 'g')) IS NOT DISTINCT FROM btrim(regexp_replace(('sub_match_id IS NOT NULL')::text, '[[:space:]]+', ' ', 'g'))
+      AND (WITH RECURSIVE canon_steps(n, e) AS (
+  SELECT 0, btrim(regexp_replace((pg_get_expr(idx.indpred, idx.indrelid, false))::text, '[[:space:]]+', ' ', 'g'))
+  UNION ALL
+  SELECT n + 1, btrim(substr(e, 2, length(e) - 2))
+  FROM canon_steps
+  WHERE n < 16
+    AND length(e) >= 2
+    AND substr(e, 1, 1) = '('
+    AND substr(e, length(e), 1) = ')'
+    AND (
+      WITH masked AS (
+        SELECT regexp_replace(
+                 regexp_replace(e, '''([^'']|'''')*''', '''x''', 'g'),
+                 '"([^"]|"")*"', '"x"', 'g'
+               ) AS m
+      ),
+      parens AS (
+        SELECT regexp_replace(m, '[^()]', '', 'g') AS p FROM masked
+      )
+      SELECT length(p) >= 2
+         AND substr(p, 1, 1) = '('
+         AND substr(p, length(p), 1) = ')'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM generate_series(1, length(p)) AS g(i)
+           WHERE (
+             SELECT sum(
+               CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+             )
+             FROM generate_series(1, g.i) AS x(k)
+           ) = 0
+           AND g.i < length(p)
+         )
+         AND (
+           SELECT sum(
+             CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+           )
+           FROM generate_series(1, length(p)) AS x(k)
+         ) = 0
+      FROM parens
+    )
+)
+SELECT e FROM canon_steps ORDER BY n DESC LIMIT 1) IS NOT DISTINCT FROM 'sub_match_id IS NOT NULL'
   )) THEN
     RAISE EXCEPTION 'VERIFY table.referee_assignments.sub_match_index';
   END IF;
@@ -143,7 +227,49 @@ BEGIN
         FROM unnest(idx.indkey) WITH ORDINALITY AS k(attnum, ord)
         JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum AND k.attnum > 0
       ) = ARRAY['tenant_id', 'tournament_id', 'status']::name[]
-      AND btrim(regexp_replace((pg_get_expr(idx.indpred, idx.indrelid, false))::text, '[[:space:]]+', ' ', 'g')) IS NOT DISTINCT FROM btrim(regexp_replace(('status = ''pending''::text')::text, '[[:space:]]+', ' ', 'g'))
+      AND (WITH RECURSIVE canon_steps(n, e) AS (
+  SELECT 0, btrim(regexp_replace((pg_get_expr(idx.indpred, idx.indrelid, false))::text, '[[:space:]]+', ' ', 'g'))
+  UNION ALL
+  SELECT n + 1, btrim(substr(e, 2, length(e) - 2))
+  FROM canon_steps
+  WHERE n < 16
+    AND length(e) >= 2
+    AND substr(e, 1, 1) = '('
+    AND substr(e, length(e), 1) = ')'
+    AND (
+      WITH masked AS (
+        SELECT regexp_replace(
+                 regexp_replace(e, '''([^'']|'''')*''', '''x''', 'g'),
+                 '"([^"]|"")*"', '"x"', 'g'
+               ) AS m
+      ),
+      parens AS (
+        SELECT regexp_replace(m, '[^()]', '', 'g') AS p FROM masked
+      )
+      SELECT length(p) >= 2
+         AND substr(p, 1, 1) = '('
+         AND substr(p, length(p), 1) = ')'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM generate_series(1, length(p)) AS g(i)
+           WHERE (
+             SELECT sum(
+               CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+             )
+             FROM generate_series(1, g.i) AS x(k)
+           ) = 0
+           AND g.i < length(p)
+         )
+         AND (
+           SELECT sum(
+             CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+           )
+           FROM generate_series(1, length(p)) AS x(k)
+         ) = 0
+      FROM parens
+    )
+)
+SELECT e FROM canon_steps ORDER BY n DESC LIMIT 1) IS NOT DISTINCT FROM 'status = ''pending''::text'
   )) THEN
     RAISE EXCEPTION 'VERIFY table.correction.index';
   END IF;
@@ -1312,7 +1438,49 @@ BEGIN
       AND c.convalidated IS TRUE
       AND c.condeferrable IS FALSE
       AND c.condeferred IS FALSE
-      AND btrim(regexp_replace((pg_get_expr(c.conbin, c.conrelid, false))::text, '[[:space:]]+', ' ', 'g')) IS NOT DISTINCT FROM btrim(regexp_replace(('((status = ANY (ARRAY[''pending''::text, ''active''::text, ''expired''::text, ''revoked''::text, ''completed''::text])))')::text, '[[:space:]]+', ' ', 'g'))
+      AND (WITH RECURSIVE canon_steps(n, e) AS (
+  SELECT 0, btrim(regexp_replace((pg_get_expr(c.conbin, c.conrelid, false))::text, '[[:space:]]+', ' ', 'g'))
+  UNION ALL
+  SELECT n + 1, btrim(substr(e, 2, length(e) - 2))
+  FROM canon_steps
+  WHERE n < 16
+    AND length(e) >= 2
+    AND substr(e, 1, 1) = '('
+    AND substr(e, length(e), 1) = ')'
+    AND (
+      WITH masked AS (
+        SELECT regexp_replace(
+                 regexp_replace(e, '''([^'']|'''')*''', '''x''', 'g'),
+                 '"([^"]|"")*"', '"x"', 'g'
+               ) AS m
+      ),
+      parens AS (
+        SELECT regexp_replace(m, '[^()]', '', 'g') AS p FROM masked
+      )
+      SELECT length(p) >= 2
+         AND substr(p, 1, 1) = '('
+         AND substr(p, length(p), 1) = ')'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM generate_series(1, length(p)) AS g(i)
+           WHERE (
+             SELECT sum(
+               CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+             )
+             FROM generate_series(1, g.i) AS x(k)
+           ) = 0
+           AND g.i < length(p)
+         )
+         AND (
+           SELECT sum(
+             CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+           )
+           FROM generate_series(1, length(p)) AS x(k)
+         ) = 0
+      FROM parens
+    )
+)
+SELECT e FROM canon_steps ORDER BY n DESC LIMIT 1) IS NOT DISTINCT FROM 'status = ANY (ARRAY[''pending''::text, ''active''::text, ''expired''::text, ''revoked''::text, ''completed''::text])'
   )) THEN
     RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH table.referee_assignments.status_check';
   END IF;
@@ -1335,7 +1503,49 @@ BEGIN
         FROM unnest(idx.indkey) WITH ORDINALITY AS k(attnum, ord)
         JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum AND k.attnum > 0
       ) = ARRAY['sub_match_id', 'status']::name[]
-      AND btrim(regexp_replace((pg_get_expr(idx.indpred, idx.indrelid, false))::text, '[[:space:]]+', ' ', 'g')) IS NOT DISTINCT FROM btrim(regexp_replace(('sub_match_id IS NOT NULL')::text, '[[:space:]]+', ' ', 'g'))
+      AND (WITH RECURSIVE canon_steps(n, e) AS (
+  SELECT 0, btrim(regexp_replace((pg_get_expr(idx.indpred, idx.indrelid, false))::text, '[[:space:]]+', ' ', 'g'))
+  UNION ALL
+  SELECT n + 1, btrim(substr(e, 2, length(e) - 2))
+  FROM canon_steps
+  WHERE n < 16
+    AND length(e) >= 2
+    AND substr(e, 1, 1) = '('
+    AND substr(e, length(e), 1) = ')'
+    AND (
+      WITH masked AS (
+        SELECT regexp_replace(
+                 regexp_replace(e, '''([^'']|'''')*''', '''x''', 'g'),
+                 '"([^"]|"")*"', '"x"', 'g'
+               ) AS m
+      ),
+      parens AS (
+        SELECT regexp_replace(m, '[^()]', '', 'g') AS p FROM masked
+      )
+      SELECT length(p) >= 2
+         AND substr(p, 1, 1) = '('
+         AND substr(p, length(p), 1) = ')'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM generate_series(1, length(p)) AS g(i)
+           WHERE (
+             SELECT sum(
+               CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+             )
+             FROM generate_series(1, g.i) AS x(k)
+           ) = 0
+           AND g.i < length(p)
+         )
+         AND (
+           SELECT sum(
+             CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+           )
+           FROM generate_series(1, length(p)) AS x(k)
+         ) = 0
+      FROM parens
+    )
+)
+SELECT e FROM canon_steps ORDER BY n DESC LIMIT 1) IS NOT DISTINCT FROM 'sub_match_id IS NOT NULL'
   )) THEN
     RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH table.referee_assignments.sub_match_index';
   END IF;
@@ -1358,7 +1568,49 @@ BEGIN
         FROM unnest(idx.indkey) WITH ORDINALITY AS k(attnum, ord)
         JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum AND k.attnum > 0
       ) = ARRAY['tenant_id', 'tournament_id', 'status']::name[]
-      AND btrim(regexp_replace((pg_get_expr(idx.indpred, idx.indrelid, false))::text, '[[:space:]]+', ' ', 'g')) IS NOT DISTINCT FROM btrim(regexp_replace(('status = ''pending''::text')::text, '[[:space:]]+', ' ', 'g'))
+      AND (WITH RECURSIVE canon_steps(n, e) AS (
+  SELECT 0, btrim(regexp_replace((pg_get_expr(idx.indpred, idx.indrelid, false))::text, '[[:space:]]+', ' ', 'g'))
+  UNION ALL
+  SELECT n + 1, btrim(substr(e, 2, length(e) - 2))
+  FROM canon_steps
+  WHERE n < 16
+    AND length(e) >= 2
+    AND substr(e, 1, 1) = '('
+    AND substr(e, length(e), 1) = ')'
+    AND (
+      WITH masked AS (
+        SELECT regexp_replace(
+                 regexp_replace(e, '''([^'']|'''')*''', '''x''', 'g'),
+                 '"([^"]|"")*"', '"x"', 'g'
+               ) AS m
+      ),
+      parens AS (
+        SELECT regexp_replace(m, '[^()]', '', 'g') AS p FROM masked
+      )
+      SELECT length(p) >= 2
+         AND substr(p, 1, 1) = '('
+         AND substr(p, length(p), 1) = ')'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM generate_series(1, length(p)) AS g(i)
+           WHERE (
+             SELECT sum(
+               CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+             )
+             FROM generate_series(1, g.i) AS x(k)
+           ) = 0
+           AND g.i < length(p)
+         )
+         AND (
+           SELECT sum(
+             CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+           )
+           FROM generate_series(1, length(p)) AS x(k)
+         ) = 0
+      FROM parens
+    )
+)
+SELECT e FROM canon_steps ORDER BY n DESC LIMIT 1) IS NOT DISTINCT FROM 'status = ''pending''::text'
   )) THEN
     RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH table.correction.index';
   END IF;

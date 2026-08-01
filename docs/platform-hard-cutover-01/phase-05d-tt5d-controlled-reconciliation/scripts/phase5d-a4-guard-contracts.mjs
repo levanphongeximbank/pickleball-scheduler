@@ -37,6 +37,127 @@ export function sqlWsCollapseV1(exprSql) {
   return `btrim(regexp_replace((${exprSql})::text, '[[:space:]]+', ' ', 'g'))`;
 }
 
+/**
+ * CATALOG_EXPR_CANON_V1 — shared catalog-expression canonicalization for
+ * constraint CHECK expressions and index predicates (expected + live pg_get_expr).
+ * Whitespace collapse + strip redundant whole-expression parentheses only.
+ * Does not alter operators, value/column order, casts, ARRAY shape, or quoted content.
+ */
+export const CATALOG_EXPR_CANON_VERSION = "CATALOG_EXPR_CANON_V1";
+
+/**
+ * True when s is wrapped by a single pair of parentheses that enclose the entire
+ * expression (quote-aware; doubled quotes inside literals preserved).
+ */
+export function isRedundantOuterParenWrapper(s) {
+  if (typeof s !== "string" || s.length < 2) return false;
+  if (s[0] !== "(" || s[s.length - 1] !== ")") return false;
+  let depth = 0;
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inSingle) {
+      if (ch === "'") {
+        if (i + 1 < s.length && s[i + 1] === "'") {
+          i += 1;
+          continue;
+        }
+        inSingle = false;
+      }
+      continue;
+    }
+    if (inDouble) {
+      if (ch === '"') {
+        if (i + 1 < s.length && s[i + 1] === '"') {
+          i += 1;
+          continue;
+        }
+        inDouble = false;
+      }
+      continue;
+    }
+    if (ch === "'") {
+      inSingle = true;
+      continue;
+    }
+    if (ch === '"') {
+      inDouble = true;
+      continue;
+    }
+    if (ch === "(") depth += 1;
+    else if (ch === ")") {
+      depth -= 1;
+      if (depth < 0) return false;
+      if (depth === 0 && i < s.length - 1) return false;
+    }
+  }
+  return depth === 0 && !inSingle && !inDouble;
+}
+
+/** Canonicalize a catalog expression or index predicate (JS side). */
+export function canonicalizeCatalogExpr(expr) {
+  if (expr == null) return null;
+  let s = wsCollapseJs(String(expr));
+  while (isRedundantOuterParenWrapper(s)) {
+    s = wsCollapseJs(s.slice(1, -1));
+  }
+  return s;
+}
+
+/**
+ * SQL scalar applying CATALOG_EXPR_CANON_V1 to a live expression SQL fragment.
+ * Quote-aware outer-paren unwrap via masked paren skeleton; max 16 unwraps.
+ */
+export function sqlCatalogExprCanonV1(exprSql) {
+  // Mask literals so paren skeleton ignores parentheses inside quotes, then
+  // unwrap only when the skeleton is a single outer wrapper for the whole text.
+  const seed = sqlWsCollapseV1(exprSql);
+  return `(WITH RECURSIVE canon_steps(n, e) AS (
+  SELECT 0, ${seed}
+  UNION ALL
+  SELECT n + 1, btrim(substr(e, 2, length(e) - 2))
+  FROM canon_steps
+  WHERE n < 16
+    AND length(e) >= 2
+    AND substr(e, 1, 1) = '('
+    AND substr(e, length(e), 1) = ')'
+    AND (
+      WITH masked AS (
+        SELECT regexp_replace(
+                 regexp_replace(e, '''([^'']|'''')*''', '''x''', 'g'),
+                 '"([^"]|"")*"', '"x"', 'g'
+               ) AS m
+      ),
+      parens AS (
+        SELECT regexp_replace(m, '[^()]', '', 'g') AS p FROM masked
+      )
+      SELECT length(p) >= 2
+         AND substr(p, 1, 1) = '('
+         AND substr(p, length(p), 1) = ')'
+         AND NOT EXISTS (
+           SELECT 1
+           FROM generate_series(1, length(p)) AS g(i)
+           WHERE (
+             SELECT sum(
+               CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+             )
+             FROM generate_series(1, g.i) AS x(k)
+           ) = 0
+           AND g.i < length(p)
+         )
+         AND (
+           SELECT sum(
+             CASE substr(p, k, 1) WHEN '(' THEN 1 WHEN ')' THEN -1 ELSE 0 END
+           )
+           FROM generate_series(1, length(p)) AS x(k)
+         ) = 0
+      FROM parens
+    )
+)
+SELECT e FROM canon_steps ORDER BY n DESC LIMIT 1)`;
+}
+
 export function asProconfigElements(pc) {
   if (Array.isArray(pc)) return pc;
   throw new Error(
@@ -191,7 +312,7 @@ export function parseIndexCatalogFromDef(def, owner = "postgres") {
   if (!m) throw new Error(`cannot parse index def: ${def}`);
   let predicate = m[6] ?? null;
   if (predicate) {
-    predicate = wsCollapseJs(predicate.replace(/^\(|\)$/g, ""));
+    predicate = canonicalizeCatalogExpr(predicate);
   }
   return {
     indexName: m[2],
@@ -217,7 +338,7 @@ export function sqlIndexCatalogMatch({
   const predMatch =
     predicateNormalized == null
       ? "idx.indpred IS NULL"
-      : `${sqlWsCollapseV1("pg_get_expr(idx.indpred, idx.indrelid, false)")} IS NOT DISTINCT FROM ${sqlWsCollapseV1(sqlStr(predicateNormalized))}`;
+      : `${sqlCatalogExprCanonV1("pg_get_expr(idx.indpred, idx.indrelid, false)")} IS NOT DISTINCT FROM ${sqlStr(canonicalizeCatalogExpr(predicateNormalized))}`;
   return `EXISTS (
     SELECT 1
     FROM pg_index idx
@@ -241,7 +362,7 @@ export function sqlIndexCatalogMatch({
 }
 
 export function normalizeConstraintExpr(expr) {
-  return wsCollapseJs(String(expr).replace(/^CHECK\s+/i, ""));
+  return canonicalizeCatalogExpr(String(expr).replace(/^CHECK\s+/i, ""));
 }
 
 export function sqlConstraintCatalogMatch({ tableName, constraintName, expectedExprNormalized }) {
@@ -258,7 +379,7 @@ export function sqlConstraintCatalogMatch({ tableName, constraintName, expectedE
       AND c.convalidated IS TRUE
       AND c.condeferrable IS FALSE
       AND c.condeferred IS FALSE
-      AND ${sqlWsCollapseV1("pg_get_expr(c.conbin, c.conrelid, false)")} IS NOT DISTINCT FROM ${sqlWsCollapseV1(sqlStr(norm))}
+      AND ${sqlCatalogExprCanonV1("pg_get_expr(c.conbin, c.conrelid, false)")} IS NOT DISTINCT FROM ${sqlStr(norm)}
   )`;
 }
 
@@ -339,7 +460,7 @@ export function shadowPreflightBatchSql(guards, { batchId, manifestFingerprint }
   return `-- Phase 5D A.5 transport-safe SELECT-only preflight batch
 -- batch_id=${batchId}
 -- manifest_fingerprint=${manifestFingerprint}
--- Contract versions: ACL_EXPLODED_SET_V1, INDEX_CATALOG_V1, CONSTRAINT_CATALOG_V1, COLUMN_DEFAULT_EXPR_V1, PROCONFIG_TEXT_ARRAY_V1, WS_COLLAPSE_V1.
+-- Contract versions: ACL_EXPLODED_SET_V1, INDEX_CATALOG_V1, CONSTRAINT_CATALOG_V1, COLUMN_DEFAULT_EXPR_V1, PROCONFIG_TEXT_ARRAY_V1, WS_COLLAPSE_V1, CATALOG_EXPR_CANON_V1.
 -- One WITH...SELECT only. No BEGIN/COMMIT/DO/DDL/DML/RPC.
 
 WITH guard_results AS (
@@ -1199,7 +1320,7 @@ export function shadowPreflightSql(guards) {
 ${rows}
 )`;
   return `-- Phase 5D precondition — SELECT-only typed guard shadow (registry parity with sql/10 pre guards).
--- Contract versions: ACL_EXPLODED_SET_V1, INDEX_CATALOG_V1, CONSTRAINT_CATALOG_V1, COLUMN_DEFAULT_EXPR_V1, PROCONFIG_TEXT_ARRAY_V1, WS_COLLAPSE_V1.
+-- Contract versions: ACL_EXPLODED_SET_V1, INDEX_CATALOG_V1, CONSTRAINT_CATALOG_V1, COLUMN_DEFAULT_EXPR_V1, PROCONFIG_TEXT_ARRAY_V1, WS_COLLAPSE_V1, CATALOG_EXPR_CANON_V1.
 -- Returns all guard rows then a deterministic summary. Non-fail-fast. No DDL/DML/BEGIN/COMMIT/DO.
 
 ${cte}

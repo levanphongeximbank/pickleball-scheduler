@@ -337,9 +337,9 @@
         "contract_version": "CONSTRAINT_CATALOG_V1",
         "comparison_class": "NORMALIZED_EXPRESSION",
         "expected_json": {
-          "exprNormalized": "((status = ANY (ARRAY['pending'::text, 'active'::text, 'expired'::text, 'revoked'::text, 'completed'::text])))"
+          "exprNormalized": "status = ANY (ARRAY['pending'::text, 'active'::text, 'expired'::text, 'revoked'::text, 'completed'::text])"
         },
-        "predicateFingerprint": "bb03bb61913bc256ccc1752b89a2b794d9c3f1fa021c2f9e2dfb1ebb295852f0"
+        "predicateFingerprint": "52018aafe7a270c2fa4c1849fad8333aab6d20bb35f76774e972c798a48437ce"
       },
       {
         "guard_order": 12,
@@ -360,7 +360,7 @@
           "owner": "postgres",
           "unique": false
         },
-        "predicateFingerprint": "b2ff4e8e841304d46c4aa5d48f2d239d6cd7c6b56e982e6211c6a56f077e94d9"
+        "predicateFingerprint": "8142d11cf7518607e6638c8a9b6b14b8c5b07d1491a578411881eadf36749598"
       },
       {
         "guard_order": 13,
@@ -382,7 +382,7 @@
           "owner": "postgres",
           "unique": false
         },
-        "predicateFingerprint": "eb87e78b016fa8bc5c26bf3eab5f850199f534da7c434aa78c28c7700ff1565a"
+        "predicateFingerprint": "0dcf18b3393bda3815a8e6f988735c044b3c9a998c9b8d71e9b97627e26c2631"
       },
       {
         "guard_order": 14,
@@ -3532,5 +3532,7 @@
     "INTENTIONAL_EXACT_FINGERPRINT": 13,
     "PROCONFIG_TEXT_ARRAY_V1": 13
   },
-  "registryFingerprint": "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e"
+  "registryFingerprint": "228f530a4867a5a3b82fc03032b3e078d38994df5905cac369fdb9497b508d92",
+  "supersededRegistryFingerprint": "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e",
+  "catalogExpressionComparison": "CATALOG_EXPR_CANON_V1"
 }
