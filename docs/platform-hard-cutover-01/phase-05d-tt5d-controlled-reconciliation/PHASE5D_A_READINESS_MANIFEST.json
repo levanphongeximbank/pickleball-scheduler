@@ -38,9 +38,15 @@
     "evidence/06_PRODUCTION_PROMOTION_CONTRACT.json",
     "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
     "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json",
-    "scripts/harden-phase5d-a1.mjs"
+    "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json",
+    "scripts/harden-phase5d-a1.mjs",
+    "scripts/phase5d-a4-guard-contracts.mjs"
   ],
   "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_SELECT_ONLY_PREFLIGHT_PARITY_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_NO_SERIALIZED_CATALOG_GUARDS_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_READY_FOR_SELECT_ONLY_STAGING_PREFLIGHT_GO",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_TEXT_ARRAY_GUARDS_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_REPRESENTATION_DRIFT_RESOLVED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_GENERATOR_IDEMPOTENCE_VERIFIED",
@@ -55,7 +61,8 @@
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_ROLLBACK_HARDENED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO_RECONFIRMED"
   ],
-  "hardening": "PHASE5D_A3_PROCONFIG_TEXT_ARRAY_V1",
+  "hardening": "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE",
+  "nextAuth": "SELECT_ONLY_STAGING_PREFLIGHT_ONLY",
   "policyExpressionComparison": {
     "version": "WS_COLLAPSE_V1",
     "scope": "tt5d_correction_referee_select.polqual",
@@ -90,5 +97,25 @@
       "schemaDrift": false,
       "committedStagingMutations": 0
     }
+  },
+  "typedCatalogGuardComparison": {
+    "version": "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE",
+    "forbiddenSerializedGuards": [
+      "relacl::text",
+      "proacl::text",
+      "pg_get_indexdef(...) IS DISTINCT FROM",
+      "pg_get_constraintdef(...) IS DISTINCT FROM",
+      "information_schema.column_default equality"
+    ],
+    "contracts": [
+      "ACL_EXPLODED_SET_V1",
+      "INDEX_CATALOG_V1",
+      "CONSTRAINT_CATALOG_V1",
+      "COLUMN_DEFAULT_EXPR_V1",
+      "PROCONFIG_TEXT_ARRAY_V1",
+      "WS_COLLAPSE_V1"
+    ],
+    "preMutationGuardCount": 189,
+    "sql00ShadowParity": "SELECT_ONLY_UNION_ALL_REGISTRY"
   }
 }

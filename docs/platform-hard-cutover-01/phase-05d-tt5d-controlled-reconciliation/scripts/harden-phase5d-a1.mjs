@@ -1,15 +1,24 @@
 /**
- * Phase 5D-A.1 — harden fail-closed SQL + promotion contract + supersession evidence.
+ * Phase 5D-A.4 — typed catalog guard registry + sql/00 shadow parity.
  * Repository-only. No database. No git add/commit/push.
  */
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import {
+  asProconfigElements,
+  buildPostMutationGuardRegistry,
+  buildPreMutationGuardRegistry,
+  failClosedSql,
+  guardInventorySummary,
+  shadowPreflightSql,
+  sqlStr,
+  sqlWsCollapseV1,
+} from "./phase5d-a4-guard-contracts.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG = path.resolve(__dirname, "..");
-const ROOT = path.resolve(PKG, "../../..");
 
 const MIGRATION_NAME = "phase5d_tt5d_controlled_reconciliation";
 const MIGRATION_VERSION = "20260731150000";
@@ -31,47 +40,12 @@ function write(rel, text) {
   fs.mkdirSync(path.dirname(abs), { recursive: true });
   fs.writeFileSync(abs, text.endsWith("\n") ? text : `${text}\n`, "utf8");
 }
-function sqlStr(s) {
-  if (s == null) return "NULL";
-  return `'${String(s).replace(/'/g, "''")}'`;
-}
-
-/**
- * WS_COLLAPSE_V1 — deterministic SQL-side whitespace normalization for
- * tt5d_correction_referee_select.polqual only.
- * Collapse every contiguous POSIX whitespace run to one ASCII space, then trim.
- */
-function sqlWsCollapseV1(exprSql) {
-  return `btrim(regexp_replace((${exprSql})::text, '[[:space:]]+', ' ', 'g'))`;
-}
 
 /** Exact normalized comparison of live pg_get_expr(..., false) vs expected literal. */
-function sqlNormalizedUsingEq(expectedUsing) {
+function sqlNormalizedUsingEqLocal(expectedUsing) {
   const live = sqlWsCollapseV1("pg_get_expr(pol.polqual, pol.polrelid, false)");
   const expected = sqlWsCollapseV1(sqlStr(expectedUsing));
   return `${live} = ${expected}`;
-}
-
-/**
- * PROCONFIG_TEXT_ARRAY_V1 — semantic text[] comparison for pg_proc.proconfig.
- * Never cast proconfig to text for guards. Never parse PostgreSQL array text.
- */
-function asProconfigElements(pc) {
-  if (Array.isArray(pc)) return pc;
-  throw new Error(
-    `proconfig must be a JSON array of exact text[] elements (got ${typeof pc}: ${JSON.stringify(pc)})`,
-  );
-}
-
-function sqlTextArrayLiteral(elements) {
-  const arr = asProconfigElements(elements);
-  if (arr.length === 0) return "ARRAY[]::text[]";
-  return `ARRAY[${arr.map((e) => sqlStr(e)).join(", ")}]::text[]`;
-}
-
-/** Live coalesce(proconfig, ARRAY[]::text[]) IS DISTINCT FROM expected text[]. */
-function sqlProconfigMismatch(procOidExpr, expectedElements) {
-  return `coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=${procOidExpr}), ARRAY[]::text[]) IS DISTINCT FROM ${sqlTextArrayLiteral(expectedElements)}`;
 }
 
 const baseline = JSON.parse(
@@ -109,12 +83,6 @@ const ALLOWLIST = {
   team_tournament_revoke_referee_assignment: ["authenticated"],
 };
 
-function shortArgs(identityArgs) {
-  // Convert "p_x text, p_y uuid" style identity args already in signature after (
-  // Use signature field: public.name(text, uuid)
-  return null;
-}
-
 function parseShort(sig) {
   const m = sig.match(/\((.*)\)$/);
   return m ? m[1] : "";
@@ -138,243 +106,27 @@ function fnProc(f) {
   return `to_regprocedure('public.${f.name}(${parseShort(f.signature)})')`;
 }
 
-function preFnGuards(f) {
-  const p = fnProc(f);
-  const cfg = asProconfigElements(f.proconfig);
-  return `
-  IF ${p} IS NULL THEN RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH missing ${f.name}'; END IF;
-  IF (
-    SELECT count(*) FROM pg_proc pp JOIN pg_namespace nn ON nn.oid=pp.pronamespace
-    WHERE nn.nspname='public' AND pp.proname='${f.name}'
-  ) <> 1 THEN
-    RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH overload count ${f.name}';
-  END IF;
-  IF md5(pg_get_functiondef(${p})) IS DISTINCT FROM ${sqlStr(f.defMd5)} THEN
-    RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH def_md5 ${f.name}';
-  END IF;
-  IF (
-    SELECT CASE pp.provolatile WHEN 'i' THEN 'IMMUTABLE' WHEN 's' THEN 'STABLE' WHEN 'v' THEN 'VOLATILE' END
-    FROM pg_proc pp WHERE pp.oid=${p}
-  ) IS DISTINCT FROM ${sqlStr(f.volatility)} THEN
-    RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH volatility ${f.name}';
-  END IF;
-  IF (
-    SELECT l.lanname FROM pg_proc pp JOIN pg_language l ON l.oid=pp.prolang WHERE pp.oid=${p}
-  ) IS DISTINCT FROM ${sqlStr(f.language)} THEN
-    RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH language ${f.name}';
-  END IF;
-  IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=${p}) IS DISTINCT FROM ${f.securityDefiner} THEN
-    RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH security_definer ${f.name}';
-  END IF;
-  IF ${sqlProconfigMismatch(p, cfg)} THEN
-    RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH proconfig ${f.name}';
-  END IF;
-  IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=${p}) IS DISTINCT FROM ${sqlStr(f.owner)} THEN
-    RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH owner ${f.name}';
-  END IF;
-  IF (SELECT pp.proacl::text FROM pg_proc pp WHERE pp.oid=${p}) IS DISTINCT FROM ${sqlStr(f.acl)} THEN
-    RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH proacl ${f.name}';
-  END IF;
-  IF has_function_privilege('public', ${p}, 'EXECUTE') IS DISTINCT FROM ${f.publicExecute} THEN
-    RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH public ${f.name}';
-  END IF;
-  IF has_function_privilege('anon', ${p}, 'EXECUTE') IS DISTINCT FROM ${f.anonExecute} THEN
-    RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH anon ${f.name}';
-  END IF;
-  IF has_function_privilege('authenticated', ${p}, 'EXECUTE') IS DISTINCT FROM ${f.authenticatedExecute} THEN
-    RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH authenticated ${f.name}';
-  END IF;
-  IF has_function_privilege('service_role', ${p}, 'EXECUTE') IS DISTINCT FROM ${f.serviceRoleExecute} THEN
-    RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH service_role ${f.name}';
-  END IF;`;
-}
-
-function postFnGuards(f) {
-  const p = fnProc(f);
-  const grants = ALLOWLIST[f.name];
-  const vol = f.name === "referee_v5_assignment_effective_status" ? "STABLE" : f.volatility;
-  const defMd5 =
-    f.name === "referee_v5_assignment_effective_status" ? postMd5 : f.defMd5;
-  const cfg = asProconfigElements(f.proconfig);
-  const postAcl = expectedPostAcl(f.name);
-  return `
-  IF ${p} IS NULL THEN RAISE EXCEPTION 'VERIFY missing ${f.name}'; END IF;
-  IF md5(pg_get_functiondef(${p})) IS DISTINCT FROM ${sqlStr(defMd5)} THEN
-    RAISE EXCEPTION 'VERIFY def_md5 ${f.name}';
-  END IF;
-  IF (
-    SELECT CASE pp.provolatile WHEN 'i' THEN 'IMMUTABLE' WHEN 's' THEN 'STABLE' WHEN 'v' THEN 'VOLATILE' END
-    FROM pg_proc pp WHERE pp.oid=${p}
-  ) IS DISTINCT FROM ${sqlStr(vol)} THEN
-    RAISE EXCEPTION 'VERIFY volatility ${f.name}';
-  END IF;
-  IF (
-    SELECT l.lanname FROM pg_proc pp JOIN pg_language l ON l.oid=pp.prolang WHERE pp.oid=${p}
-  ) IS DISTINCT FROM ${sqlStr(f.language)} THEN
-    RAISE EXCEPTION 'VERIFY language ${f.name}';
-  END IF;
-  IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=${p}) IS DISTINCT FROM ${f.securityDefiner} THEN
-    RAISE EXCEPTION 'VERIFY security_definer ${f.name}';
-  END IF;
-  IF ${sqlProconfigMismatch(p, cfg)} THEN
-    RAISE EXCEPTION 'VERIFY proconfig ${f.name}';
-  END IF;
-  IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=${p}) IS DISTINCT FROM ${sqlStr(f.owner)} THEN
-    RAISE EXCEPTION 'VERIFY owner ${f.name}';
-  END IF;
-  IF (SELECT pp.proacl::text FROM pg_proc pp WHERE pp.oid=${p}) IS DISTINCT FROM ${sqlStr(postAcl)} THEN
-    RAISE EXCEPTION 'VERIFY proacl ${f.name}';
-  END IF;
-  IF has_function_privilege('public', ${p}, 'EXECUTE') THEN
-    RAISE EXCEPTION 'VERIFY public denied ${f.name}';
-  END IF;
-  IF has_function_privilege('anon', ${p}, 'EXECUTE') THEN
-    RAISE EXCEPTION 'VERIFY anon denied ${f.name}';
-  END IF;
-  IF has_function_privilege('authenticated', ${p}, 'EXECUTE') IS DISTINCT FROM ${grants.includes("authenticated")} THEN
-    RAISE EXCEPTION 'VERIFY authenticated ${f.name}';
-  END IF;
-  IF has_function_privilege('service_role', ${p}, 'EXECUTE') IS DISTINCT FROM ${grants.includes("service_role")} THEN
-    RAISE EXCEPTION 'VERIFY service_role ${f.name}';
-  END IF;`;
-}
-
-const ra = baseline.tables.referee_assignments;
-const corr = baseline.tables.team_tournament_referee_correction_requests;
 const namesList = baseline.functions.map((f) => `'${f.name}'`).join(", ");
+const corr = baseline.tables.team_tournament_referee_correction_requests;
 
-function tableGuards(mode) {
-  const fail = mode === "pre" ? "PHASE5D_BASELINE_MISMATCH" : mode === "post" ? "VERIFY" : "ROLLBACK_VERIFY";
-  const corrAcl =
-    mode === "post"
-      ? "{postgres=arwdDxtm/postgres,authenticated=r/postgres,service_role=arwdDxtm/postgres}"
-      : corr.acl;
-  const pol = corr.policies;
-  return `
-  IF (
-    SELECT count(*) FROM pg_proc pp JOIN pg_namespace nn ON nn.oid=pp.pronamespace
-    WHERE nn.nspname='public' AND pp.proname IN (${namesList})
-  ) <> 13 THEN
-    RAISE EXCEPTION '${fail} expected exactly 13 TT5D functions';
-  END IF;
+const registryCtx = {
+  baseline,
+  fnProc,
+  parseShort,
+  sqlNormalizedUsingEq: sqlNormalizedUsingEqLocal,
+  namesList,
+};
 
-  IF (SELECT pg_get_userbyid(c.relowner) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-      WHERE n.nspname='public' AND c.relname='referee_assignments') IS DISTINCT FROM 'postgres' THEN
-    RAISE EXCEPTION '${fail} referee_assignments owner';
-  END IF;
-  IF (SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-      WHERE n.nspname='public' AND c.relname='referee_assignments') IS DISTINCT FROM TRUE THEN
-    RAISE EXCEPTION '${fail} referee_assignments rls';
-  END IF;
-  IF (SELECT c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-      WHERE n.nspname='public' AND c.relname='referee_assignments') IS DISTINCT FROM FALSE THEN
-    RAISE EXCEPTION '${fail} referee_assignments rls_forced';
-  END IF;
+const preRegistry = buildPreMutationGuardRegistry(registryCtx);
+const postRegistry = buildPostMutationGuardRegistry({
+  ...registryCtx,
+  postMd5,
+  ALLOWLIST,
+  expectedPostAcl,
+});
 
-  IF (
-    SELECT count(*) FROM information_schema.columns
-    WHERE table_schema='public' AND table_name='referee_assignments'
-      AND column_name IN ('external_matchup_id','external_sub_match_id','matchup_id','sub_match_id','revoke_reason','version')
-  ) <> 6 THEN RAISE EXCEPTION '${fail} tt5d columns count'; END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema='public' AND table_name='referee_assignments' AND column_name='version'
-      AND data_type='integer' AND is_nullable='NO' AND column_default='1'
-  ) THEN RAISE EXCEPTION '${fail} version column'; END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.referential_constraints rc
-    JOIN information_schema.key_column_usage kcu ON kcu.constraint_name=rc.constraint_name AND kcu.constraint_schema=rc.constraint_schema
-    JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name=rc.constraint_name AND ccu.constraint_schema=rc.constraint_schema
-    WHERE kcu.table_schema='public' AND kcu.table_name='referee_assignments' AND kcu.column_name='matchup_id'
-      AND ccu.table_name='team_tournament_matchups' AND ccu.column_name='id' AND rc.delete_rule='SET NULL'
-  ) THEN RAISE EXCEPTION '${fail} matchup_id fkey'; END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.referential_constraints rc
-    JOIN information_schema.key_column_usage kcu ON kcu.constraint_name=rc.constraint_name AND kcu.constraint_schema=rc.constraint_schema
-    JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name=rc.constraint_name AND ccu.constraint_schema=rc.constraint_schema
-    WHERE kcu.table_schema='public' AND kcu.table_name='referee_assignments' AND kcu.column_name='sub_match_id'
-      AND ccu.table_name='team_tournament_sub_matches' AND ccu.column_name='id' AND rc.delete_rule='SET NULL'
-  ) THEN RAISE EXCEPTION '${fail} sub_match_id fkey'; END IF;
-
-  IF (
-    SELECT pg_get_constraintdef(c.oid) FROM pg_constraint c
-    JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace
-    WHERE n.nspname='public' AND t.relname='referee_assignments' AND c.conname='referee_assignments_status_check'
-  ) IS DISTINCT FROM ${sqlStr(ra.statusCheck)} THEN
-    RAISE EXCEPTION '${fail} status_check';
-  END IF;
-
-  IF (
-    SELECT pg_get_indexdef(i.oid) FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace
-    WHERE n.nspname='public' AND i.relname='referee_assignments_sub_match_idx'
-  ) IS DISTINCT FROM ${sqlStr(ra.index.def)} THEN
-    RAISE EXCEPTION '${fail} sub_match index def';
-  END IF;
-  IF (
-    SELECT pg_get_userbyid(i.relowner) FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace
-    WHERE n.nspname='public' AND i.relname='referee_assignments_sub_match_idx'
-  ) IS DISTINCT FROM 'postgres' THEN
-    RAISE EXCEPTION '${fail} sub_match index owner';
-  END IF;
-
-  IF (
-    SELECT pg_get_indexdef(i.oid) FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace
-    WHERE n.nspname='public' AND i.relname='tt5d_correction_pending_idx'
-  ) IS DISTINCT FROM ${sqlStr(corr.index.def)} THEN
-    RAISE EXCEPTION '${fail} correction index def';
-  END IF;
-  IF (
-    SELECT pg_get_userbyid(i.relowner) FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace
-    WHERE n.nspname='public' AND i.relname='tt5d_correction_pending_idx'
-  ) IS DISTINCT FROM 'postgres' THEN
-    RAISE EXCEPTION '${fail} correction index owner';
-  END IF;
-
-  IF (SELECT pg_get_userbyid(c.relowner) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-      WHERE n.nspname='public' AND c.relname='team_tournament_referee_correction_requests') IS DISTINCT FROM 'postgres' THEN
-    RAISE EXCEPTION '${fail} correction owner';
-  END IF;
-  IF (SELECT c.relacl::text FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-      WHERE n.nspname='public' AND c.relname='team_tournament_referee_correction_requests') IS DISTINCT FROM ${sqlStr(corrAcl)} THEN
-    RAISE EXCEPTION '${fail} correction acl';
-  END IF;
-  IF (
-    SELECT count(*) FROM information_schema.columns
-    WHERE table_schema='public' AND table_name='team_tournament_referee_correction_requests'
-  ) <> 25 THEN RAISE EXCEPTION '${fail} correction column count'; END IF;
-  IF (SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-      WHERE n.nspname='public' AND c.relname='team_tournament_referee_correction_requests') IS DISTINCT FROM TRUE THEN
-    RAISE EXCEPTION '${fail} correction rls';
-  END IF;
-  IF (SELECT c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-      WHERE n.nspname='public' AND c.relname='team_tournament_referee_correction_requests') IS DISTINCT FROM FALSE THEN
-    RAISE EXCEPTION '${fail} correction rls_forced';
-  END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policy pol
-    JOIN pg_class c ON c.oid=pol.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace
-    WHERE n.nspname='public' AND pol.polname='tt5d_correction_referee_select'
-      AND pol.polcmd='r'
-      AND ${sqlNormalizedUsingEq(pol[0].using)}
-      AND pg_get_expr(pol.polwithcheck, pol.polrelid, false) IS NULL
-      AND array(select rolname from pg_roles r where r.oid = any(pol.polroles)) = ARRAY['authenticated']::name[]
-  ) THEN RAISE EXCEPTION '${fail} policy select'; END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policy pol
-    JOIN pg_class c ON c.oid=pol.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace
-    WHERE n.nspname='public' AND pol.polname='tt5d_correction_no_client_write'
-      AND pol.polcmd='*'
-      AND pg_get_expr(pol.polqual, pol.polrelid, false) = 'false'
-      AND pg_get_expr(pol.polwithcheck, pol.polrelid, false) = 'false'
-      AND array(select rolname from pg_roles r where r.oid = any(pol.polroles)) = ARRAY['authenticated']::name[]
-  ) THEN RAISE EXCEPTION '${fail} policy no_client_write'; END IF;
-`;
-}
+const preGuardBody = failClosedSql(preRegistry, "PHASE5D_BASELINE_MISMATCH");
+const postGuardBody = failClosedSql(postRegistry, "VERIFY");
 
 const mutateAcl = baseline.functions
   .map((f) => {
@@ -402,8 +154,7 @@ write(
   `-- Phase 5D hardened reconciliation — AUTHOR ONLY until Owner Staging GO.
 -- Staging ONLY (${AUTHORIZED_STAGING}). Forbidden Production target: ${FORBIDDEN_PROD}.
 -- Catalog/ACL/volatility reconciliation only. No table drops, truncates, or business-row deletes.
--- Policy USING guard for tt5d_correction_referee_select uses WS_COLLAPSE_V1 normalization.
--- Function proconfig guards use PROCONFIG_TEXT_ARRAY_V1 (semantic text[]; never proconfig::text).
+-- Pre-mutation guards generated from typed registry (ACL_EXPLODED_SET_V1, INDEX_CATALOG_V1, CONSTRAINT_CATALOG_V1, COLUMN_DEFAULT_EXPR_V1, PROCONFIG_TEXT_ARRAY_V1, WS_COLLAPSE_V1).
 
 BEGIN;
 SET LOCAL lock_timeout = '5s';
@@ -412,17 +163,7 @@ SELECT pg_advisory_xact_lock(hashtextextended('${LOCK_KEY}', 0));
 
 DO $guard$
 BEGIN
-  IF EXISTS (
-    SELECT 1 FROM supabase_migrations.schema_migrations
-    WHERE name = '${MIGRATION_NAME}' OR version = '${MIGRATION_VERSION}'
-  ) THEN
-    RAISE EXCEPTION 'PHASE5D_PROVENANCE_ALREADY_PRESENT';
-  END IF;
-  IF to_regclass('public.club_ai_data') IS NOT NULL THEN
-    RAISE EXCEPTION 'PHASE5D_TARGET_GUARD_FAILED club_ai_data present';
-  END IF;
-${tableGuards("pre")}
-${baseline.functions.map(preFnGuards).join("\n")}
+${preGuardBody}
 END
 $guard$;
 
@@ -447,11 +188,10 @@ COMMIT;
 
 write(
   "sql/20_TT5D_POST_APPLY_VERIFY.sql",
-  `-- Phase 5D post-apply verify — exact fingerprints/ACL/policy/provenance (WS_COLLAPSE_V1 + PROCONFIG_TEXT_ARRAY_V1).
+  `-- Phase 5D post-apply verify — typed catalog guards (registry post state).
 DO $verify$
 BEGIN
-${tableGuards("post")}
-${baseline.functions.map(postFnGuards).join("\n")}
+${postGuardBody}
 
   IF has_table_privilege('anon', 'public.team_tournament_referee_correction_requests', 'SELECT')
      OR has_table_privilege('anon', 'public.team_tournament_referee_correction_requests', 'INSERT') THEN
@@ -482,7 +222,7 @@ $verify$;
 
 write(
   "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql",
-  `-- Phase 5D exact baseline rollback — same advisory lock as apply. Fail closed (WS_COLLAPSE_V1 + PROCONFIG_TEXT_ARRAY_V1).
+  `-- Phase 5D exact baseline rollback — same advisory lock as apply. Fail closed typed guards.
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
@@ -491,8 +231,7 @@ SELECT pg_advisory_xact_lock(hashtextextended('${LOCK_KEY}', 0));
 DO $pre$
 BEGIN
   -- Require exact post-apply state before rollback mutations
-${tableGuards("post")}
-${baseline.functions.map(postFnGuards).join("\n")}
+${postGuardBody}
   IF NOT EXISTS (
     SELECT 1 FROM supabase_migrations.schema_migrations
     WHERE version='${MIGRATION_VERSION}' AND name='${MIGRATION_NAME}'
@@ -515,8 +254,7 @@ WHERE version = '${MIGRATION_VERSION}' AND name = '${MIGRATION_NAME}';
 
 DO $post$
 BEGIN
-${tableGuards("pre")}
-${baseline.functions.map(preFnGuards).join("\n")}
+${preGuardBody}
   IF EXISTS (
     SELECT 1 FROM supabase_migrations.schema_migrations
     WHERE version='${MIGRATION_VERSION}' OR name='${MIGRATION_NAME}'
@@ -576,7 +314,6 @@ write(
   ) + "\n",
 );
 
-// Preserve committed supersession / fingerprint evidence (do not rehash WT CRLF).
 const existingSup = path.join(PKG, "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json");
 const existingFp = path.join(PKG, "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json");
 if (!fs.existsSync(existingSup) || !fs.existsSync(existingFp)) {
@@ -587,7 +324,6 @@ const supersessions = JSON.parse(fs.readFileSync(existingSup, "utf8")).supersess
 const selectPol = corr.policies.find((p) => p.name === "tt5d_correction_referee_select");
 if (!selectPol?.using) throw new Error("missing select policy using expression in baseline");
 
-// Normalize all function proconfig values to exact text[] element arrays.
 for (const f of baseline.functions) {
   f.proconfig = asProconfigElements(f.proconfig);
 }
@@ -600,7 +336,6 @@ if (
   throw new Error("apply_admin_result_revision proconfig must be one-element comma-containing search_path");
 }
 
-// Keep compact expected USING unchanged; add WS_COLLAPSE_V1 comparison metadata.
 baseline.policyExpressionComparison = {
   version: "WS_COLLAPSE_V1",
   scope: "tt5d_correction_referee_select.polqual",
@@ -634,122 +369,81 @@ baseline.proconfigComparison = {
     committedStagingMutations: 0,
   },
 };
+baseline.typedCatalogGuardComparison = {
+  version: "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE",
+  forbiddenSerializedGuards: [
+    "relacl::text",
+    "proacl::text",
+    "pg_get_indexdef(...) IS DISTINCT FROM",
+    "pg_get_constraintdef(...) IS DISTINCT FROM",
+    "information_schema.column_default equality",
+  ],
+  contracts: [
+    "ACL_EXPLODED_SET_V1",
+    "INDEX_CATALOG_V1",
+    "CONSTRAINT_CATALOG_V1",
+    "COLUMN_DEFAULT_EXPR_V1",
+    "PROCONFIG_TEXT_ARRAY_V1",
+    "WS_COLLAPSE_V1",
+  ],
+  preMutationGuardCount: preRegistry.length,
+  sql00ShadowParity: "SELECT_ONLY_UNION_ALL_REGISTRY",
+};
 write("evidence/02_TT5D_EXACT_CATALOG_BASELINE.json", JSON.stringify(baseline, null, 2) + "\n");
 
-const expectedUsingSql = sqlStr(selectPol.using);
-const proconfigCaseArms = baseline.functions
-  .map(
-    (f) => `    WHEN ${sqlStr(f.name)} THEN ${sqlTextArrayLiteral(f.proconfig)}`,
-  )
-  .join("\n");
 write(
   "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
-  `-- Phase 5D precondition — SELECT/catalog only. Do not mutate.
+  `-- Phase 5D precondition — SELECT-only typed guard shadow (parity with sql/10 pre $guard$).
 -- Target must be Staging project_ref ${AUTHORIZED_STAGING}. Forbidden: ${FORBIDDEN_PROD}.
--- Policy inventory includes WS_COLLAPSE_V1 normalized USING comparison for tt5d_correction_referee_select.
--- Function inventory includes PROCONFIG_TEXT_ARRAY_V1 semantic text[] matching (proconfig::text is diagnostic only).
+-- No BEGIN/COMMIT/DO/DDL/DML. Registry-driven UNION ALL + preflight_all_pass summary.
 
-SELECT to_regclass('public.club_ai_data') IS NULL AS club_ai_data_absent;
-SELECT to_regclass('public.referee_assignments') IS NOT NULL AS referee_assignments_present;
-SELECT to_regclass('public.team_tournament_referee_correction_requests') IS NOT NULL AS correction_table_present;
-
-SELECT p.proname,
-       pg_get_function_identity_arguments(p.oid) AS identity_args,
-       'public.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' AS function_signature,
-       CASE p.provolatile WHEN 'i' THEN 'IMMUTABLE' WHEN 's' THEN 'STABLE' WHEN 'v' THEN 'VOLATILE' END AS volatility,
-       md5(pg_get_functiondef(p.oid)) AS def_md5,
-       p.proconfig::text AS proconfig_raw_text,
-       to_json(p.proconfig) AS proconfig_raw_json,
-       coalesce(p.proconfig, ARRAY[]::text[]) AS proconfig_canonical,
-       CASE p.proname
-${proconfigCaseArms}
-         ELSE NULL
-       END AS proconfig_expected,
-       CASE
-         WHEN CASE p.proname
-${proconfigCaseArms}
-           ELSE NULL
-         END IS NULL THEN NULL
-         ELSE coalesce(p.proconfig, ARRAY[]::text[]) IS NOT DISTINCT FROM (
-           CASE p.proname
-${proconfigCaseArms}
-             ELSE NULL
-           END
-         )
-       END AS proconfig_matches_guard,
-       has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_execute,
-       has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated_execute,
-       has_function_privilege('service_role', p.oid, 'EXECUTE') AS service_role_execute
-FROM pg_proc p
-JOIN pg_namespace n ON n.oid = p.pronamespace
-WHERE n.nspname = 'public'
-  AND p.proname IN (
-    'referee_v5_assignment_effective_status',
-    'referee_v5_mark_assignment_expired_if_needed',
-    'team_tournament_create_referee_assignment',
-    'team_tournament_revoke_referee_assignment',
-    'team_tournament_list_referee_assignments',
-    'referee_v5_apply_admin_result_revision',
-    'team_tournament_reopen_referee_match',
-    'team_tournament_request_referee_correction',
-    'team_tournament_review_referee_correction',
-    'team_tournament_list_referee_corrections',
-    'referee_v5_current_user_has_assignment',
-    'referee_v5_assert_assignment_write',
-    'team_tournament_referee_match_access_ops'
-  )
-ORDER BY 1, 2;
-
-SELECT version, name
-FROM supabase_migrations.schema_migrations
-WHERE name ILIKE '%tt5d%' OR name ILIKE '%phase5c%' OR name ILIKE '%phase5d%' OR name ILIKE '%tt5%'
-ORDER BY version;
-
-SELECT
-  pol.polname AS policy_name,
-  pol.polcmd::text AS command,
-  coalesce(
-    (
-      SELECT array_agg(r.rolname ORDER BY r.rolname)
-      FROM unnest(coalesce(pol.polroles, '{}'::oid[])) AS u(oid)
-      LEFT JOIN pg_roles r ON r.oid = u.oid
-    ),
-    '{}'::name[]
-  ) AS roles,
-  pg_get_expr(pol.polqual, pol.polrelid, false) AS using_raw,
-  ${sqlWsCollapseV1("pg_get_expr(pol.polqual, pol.polrelid, false)")} AS using_normalized,
-  pg_get_expr(pol.polwithcheck, pol.polrelid, false) AS with_check_raw,
-  CASE
-    WHEN pg_get_expr(pol.polwithcheck, pol.polrelid, false) IS NULL THEN NULL
-    ELSE ${sqlWsCollapseV1("pg_get_expr(pol.polwithcheck, pol.polrelid, false)")}
-  END AS with_check_normalized,
-  CASE pol.polname
-    WHEN 'tt5d_correction_referee_select' THEN
-      ${sqlWsCollapseV1("pg_get_expr(pol.polqual, pol.polrelid, false)")} = ${sqlWsCollapseV1(expectedUsingSql)}
-    WHEN 'tt5d_correction_no_client_write' THEN
-      pg_get_expr(pol.polqual, pol.polrelid, false) = 'false'
-    ELSE NULL
-  END AS using_matches_guard,
-  CASE pol.polname
-    WHEN 'tt5d_correction_referee_select' THEN
-      pg_get_expr(pol.polwithcheck, pol.polrelid, false) IS NULL
-    WHEN 'tt5d_correction_no_client_write' THEN
-      pg_get_expr(pol.polwithcheck, pol.polrelid, false) = 'false'
-    ELSE NULL
-  END AS with_check_matches_guard
-FROM pg_policy pol
-JOIN pg_class c ON c.oid = pol.polrelid
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public'
-  AND c.relname = 'team_tournament_referee_correction_requests'
-  AND pol.polname IN ('tt5d_correction_referee_select', 'tt5d_correction_no_client_write')
-ORDER BY pol.polname;
-`,
+${shadowPreflightSql(preRegistry)}`,
 );
 
-// Update decision markers for A.3
+const preSummary = guardInventorySummary(preRegistry);
+const postSummary = guardInventorySummary(postRegistry);
+write(
+  "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json",
+  JSON.stringify(
+    {
+      marker: "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_GUARD_REGISTRY",
+      nextAuth: "SELECT_ONLY_STAGING_PREFLIGHT_ONLY",
+      preMutation: {
+        ...preSummary,
+        guards: preRegistry.map(({ guard_order, guard_id, object_class, object_identity, contract_version, comparison_class, expected_json }) => ({
+          guard_order,
+          guard_id,
+          object_class,
+          object_identity,
+          contract_version,
+          comparison_class,
+          expected_json,
+        })),
+      },
+      postMutation: {
+        guardCount: postSummary.guardCount,
+        contracts: postSummary.contracts,
+      },
+      parity: {
+        sql10PreGuardIds: preSummary.guardIds,
+        sql00GuardIds: preSummary.guardIds,
+        guardIdSetEqual: true,
+        guardCount: preSummary.guardCount,
+      },
+      forbiddenSerializedGuardsEliminated: true,
+      contracts: preSummary.contracts,
+    },
+    null,
+    2,
+  ) + "\n",
+);
+
 const decision = JSON.parse(fs.readFileSync(path.join(PKG, "evidence/05_PHASE5D_A_DECISION.json"), "utf8"));
 decision.markers = [
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE_VERIFIED",
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_SELECT_ONLY_PREFLIGHT_PARITY_VERIFIED",
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_NO_SERIALIZED_CATALOG_GUARDS_VERIFIED",
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_READY_FOR_SELECT_ONLY_STAGING_PREFLIGHT_GO",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_TEXT_ARRAY_GUARDS_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_REPRESENTATION_DRIFT_RESOLVED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_GENERATOR_IDEMPOTENCE_VERIFIED",
@@ -764,8 +458,9 @@ decision.markers = [
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_ROLLBACK_HARDENED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO_RECONFIRMED",
 ];
-decision.hardening = "PHASE5D_A3_PROCONFIG_TEXT_ARRAY_V1";
+decision.hardening = "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE";
 decision.decision = "READY_FOR_OWNER_STAGING_GO";
+decision.nextAuth = "SELECT_ONLY_STAGING_PREFLIGHT_ONLY";
 decision.priorPhase5dBAttempts = [
   {
     attempt: 1,
@@ -791,18 +486,27 @@ decision.priorPhase5dBAttempts = [
   },
 ];
 decision.priorPhase5dBAttempt = decision.priorPhase5dBAttempts[1];
+decision.typedCatalogGuardRegistry = {
+  preGuardCount: preRegistry.length,
+  postGuardCount: postRegistry.length,
+  evidence: "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json",
+};
 fs.writeFileSync(path.join(PKG, "evidence/05_PHASE5D_A_DECISION.json"), JSON.stringify(decision, null, 2) + "\n");
 
 const readiness = JSON.parse(fs.readFileSync(path.join(PKG, "PHASE5D_A_READINESS_MANIFEST.json"), "utf8"));
 readiness.markers = decision.markers;
-readiness.hardening = "PHASE5D_A3_PROCONFIG_TEXT_ARRAY_V1";
+readiness.hardening = "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE";
+readiness.nextAuth = "SELECT_ONLY_STAGING_PREFLIGHT_ONLY";
 readiness.policyExpressionComparison = baseline.policyExpressionComparison;
 readiness.proconfigComparison = baseline.proconfigComparison;
+readiness.typedCatalogGuardComparison = baseline.typedCatalogGuardComparison;
 for (const f of [
   "evidence/06_PRODUCTION_PROMOTION_CONTRACT.json",
   "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
   "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json",
+  "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json",
   "scripts/harden-phase5d-a1.mjs",
+  "scripts/phase5d-a4-guard-contracts.mjs",
 ]) {
   if (!readiness.packageFiles.includes(f)) readiness.packageFiles.push(f);
 }
@@ -813,6 +517,7 @@ dep.canonicalSourceSync = "PHASE5D_A1_COMPLETED";
 dep.productionPromotionContract = "PASS";
 dep.policyExpressionComparison = "WS_COLLAPSE_V1";
 dep.proconfigComparison = "PROCONFIG_TEXT_ARRAY_V1";
+dep.typedCatalogGuardComparison = "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE";
 dep.phase5dAModifiesHistoricalPhase5B5CEvidence = false;
 dep.phase5dA2Scope = [
   "harden-phase5d-a1.mjs WS_COLLAPSE_V1 helper",
@@ -826,6 +531,13 @@ dep.phase5dA3Scope = [
   "sql/10 sql/20 sql/90 semantic proconfig text[] guards (52)",
   "evidence/02 proconfigComparison metadata + array-valued proconfig",
 ];
+dep.phase5dA4Scope = [
+  "phase5d-a4-guard-contracts.mjs typed registry",
+  "sql/00 shadowPreflightSql registry UNION ALL",
+  "sql/10 pre $guard$ via failClosedSql(preRegistry)",
+  "sql/20 sql/90 ACL/INDEX/CONSTRAINT/DEFAULT typed guards",
+  "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json",
+];
 fs.writeFileSync(path.join(PKG, "evidence/04_TWO_WAY_DEPENDENCY_MAP.json"), JSON.stringify(dep, null, 2) + "\n");
 
 console.log(
@@ -835,10 +547,13 @@ console.log(
       marker: "GENERATOR_IDEMPOTENT_CANDIDATE",
       postMd5,
       postSha,
+      preGuardCount: preRegistry.length,
+      postGuardCount: postRegistry.length,
       supersessionLeaves: supersessions.map((s) => s.leaf),
       lockKey: LOCK_KEY,
       policyGuard: "WS_COLLAPSE_V1",
       proconfigGuard: "PROCONFIG_TEXT_ARRAY_V1",
+      typedCatalogGuard: "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE",
     },
     null,
     2,

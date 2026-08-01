@@ -422,5 +422,25 @@
     "semanticTokensMayDiffer": false,
     "expectedNormalizedUsing": "(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))",
     "note": "Compact expected string is the canonical normalized expected value, not a claim of raw byte-identical live pg_get_expr output."
+  },
+  "typedCatalogGuardComparison": {
+    "version": "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE",
+    "forbiddenSerializedGuards": [
+      "relacl::text",
+      "proacl::text",
+      "pg_get_indexdef(...) IS DISTINCT FROM",
+      "pg_get_constraintdef(...) IS DISTINCT FROM",
+      "information_schema.column_default equality"
+    ],
+    "contracts": [
+      "ACL_EXPLODED_SET_V1",
+      "INDEX_CATALOG_V1",
+      "CONSTRAINT_CATALOG_V1",
+      "COLUMN_DEFAULT_EXPR_V1",
+      "PROCONFIG_TEXT_ARRAY_V1",
+      "WS_COLLAPSE_V1"
+    ],
+    "preMutationGuardCount": 189,
+    "sql00ShadowParity": "SELECT_ONLY_UNION_ALL_REGISTRY"
   }
 }

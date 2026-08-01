@@ -127,6 +127,7 @@
   "productionPromotionContract": "PASS",
   "policyExpressionComparison": "WS_COLLAPSE_V1",
   "proconfigComparison": "PROCONFIG_TEXT_ARRAY_V1",
+  "typedCatalogGuardComparison": "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE",
   "phase5dAModifiesHistoricalPhase5B5CEvidence": false,
   "phase5dA2Scope": [
     "harden-phase5d-a1.mjs WS_COLLAPSE_V1 helper",
@@ -139,5 +140,12 @@
     "sql/00 proconfig text[] inventory",
     "sql/10 sql/20 sql/90 semantic proconfig text[] guards (52)",
     "evidence/02 proconfigComparison metadata + array-valued proconfig"
+  ],
+  "phase5dA4Scope": [
+    "phase5d-a4-guard-contracts.mjs typed registry",
+    "sql/00 shadowPreflightSql registry UNION ALL",
+    "sql/10 pre $guard$ via failClosedSql(preRegistry)",
+    "sql/20 sql/90 ACL/INDEX/CONSTRAINT/DEFAULT typed guards",
+    "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json"
   ]
 }

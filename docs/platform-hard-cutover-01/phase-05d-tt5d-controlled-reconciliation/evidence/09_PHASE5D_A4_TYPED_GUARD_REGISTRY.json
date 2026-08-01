@@ -1,0 +1,3154 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_GUARD_REGISTRY",
+  "nextAuth": "SELECT_ONLY_STAGING_PREFLIGHT_ONLY",
+  "preMutation": {
+    "guardCount": 189,
+    "guardIds": [
+      "provenance.absent",
+      "provenance.club_ai_data_absent",
+      "table.function_count_13",
+      "table.referee_assignments.owner",
+      "table.referee_assignments.rls",
+      "table.referee_assignments.rls_forced",
+      "table.referee_assignments.tt5d_columns_count",
+      "table.referee_assignments.version_column",
+      "table.referee_assignments.matchup_id_fkey",
+      "table.referee_assignments.sub_match_id_fkey",
+      "table.referee_assignments.status_check",
+      "table.referee_assignments.sub_match_index",
+      "table.correction.index",
+      "table.correction.owner",
+      "table.correction.acl",
+      "table.correction.column_count",
+      "table.correction.rls",
+      "table.correction.rls_forced",
+      "policy.tt5d_correction_referee_select",
+      "policy.tt5d_correction_no_client_write",
+      "fn.referee_v5_apply_admin_result_revision.missing",
+      "fn.referee_v5_apply_admin_result_revision.overload_count",
+      "fn.referee_v5_apply_admin_result_revision.def_md5",
+      "fn.referee_v5_apply_admin_result_revision.volatility",
+      "fn.referee_v5_apply_admin_result_revision.language",
+      "fn.referee_v5_apply_admin_result_revision.security_definer",
+      "fn.referee_v5_apply_admin_result_revision.proconfig",
+      "fn.referee_v5_apply_admin_result_revision.owner",
+      "fn.referee_v5_apply_admin_result_revision.proacl",
+      "fn.referee_v5_apply_admin_result_revision.public_execute",
+      "fn.referee_v5_apply_admin_result_revision.anon_execute",
+      "fn.referee_v5_apply_admin_result_revision.authenticated_execute",
+      "fn.referee_v5_apply_admin_result_revision.service_role_execute",
+      "fn.referee_v5_assert_assignment_write.missing",
+      "fn.referee_v5_assert_assignment_write.overload_count",
+      "fn.referee_v5_assert_assignment_write.def_md5",
+      "fn.referee_v5_assert_assignment_write.volatility",
+      "fn.referee_v5_assert_assignment_write.language",
+      "fn.referee_v5_assert_assignment_write.security_definer",
+      "fn.referee_v5_assert_assignment_write.proconfig",
+      "fn.referee_v5_assert_assignment_write.owner",
+      "fn.referee_v5_assert_assignment_write.proacl",
+      "fn.referee_v5_assert_assignment_write.public_execute",
+      "fn.referee_v5_assert_assignment_write.anon_execute",
+      "fn.referee_v5_assert_assignment_write.authenticated_execute",
+      "fn.referee_v5_assert_assignment_write.service_role_execute",
+      "fn.referee_v5_assignment_effective_status.missing",
+      "fn.referee_v5_assignment_effective_status.overload_count",
+      "fn.referee_v5_assignment_effective_status.def_md5",
+      "fn.referee_v5_assignment_effective_status.volatility",
+      "fn.referee_v5_assignment_effective_status.language",
+      "fn.referee_v5_assignment_effective_status.security_definer",
+      "fn.referee_v5_assignment_effective_status.proconfig",
+      "fn.referee_v5_assignment_effective_status.owner",
+      "fn.referee_v5_assignment_effective_status.proacl",
+      "fn.referee_v5_assignment_effective_status.public_execute",
+      "fn.referee_v5_assignment_effective_status.anon_execute",
+      "fn.referee_v5_assignment_effective_status.authenticated_execute",
+      "fn.referee_v5_assignment_effective_status.service_role_execute",
+      "fn.referee_v5_current_user_has_assignment.missing",
+      "fn.referee_v5_current_user_has_assignment.overload_count",
+      "fn.referee_v5_current_user_has_assignment.def_md5",
+      "fn.referee_v5_current_user_has_assignment.volatility",
+      "fn.referee_v5_current_user_has_assignment.language",
+      "fn.referee_v5_current_user_has_assignment.security_definer",
+      "fn.referee_v5_current_user_has_assignment.proconfig",
+      "fn.referee_v5_current_user_has_assignment.owner",
+      "fn.referee_v5_current_user_has_assignment.proacl",
+      "fn.referee_v5_current_user_has_assignment.public_execute",
+      "fn.referee_v5_current_user_has_assignment.anon_execute",
+      "fn.referee_v5_current_user_has_assignment.authenticated_execute",
+      "fn.referee_v5_current_user_has_assignment.service_role_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.missing",
+      "fn.referee_v5_mark_assignment_expired_if_needed.overload_count",
+      "fn.referee_v5_mark_assignment_expired_if_needed.def_md5",
+      "fn.referee_v5_mark_assignment_expired_if_needed.volatility",
+      "fn.referee_v5_mark_assignment_expired_if_needed.language",
+      "fn.referee_v5_mark_assignment_expired_if_needed.security_definer",
+      "fn.referee_v5_mark_assignment_expired_if_needed.proconfig",
+      "fn.referee_v5_mark_assignment_expired_if_needed.owner",
+      "fn.referee_v5_mark_assignment_expired_if_needed.proacl",
+      "fn.referee_v5_mark_assignment_expired_if_needed.public_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.anon_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.authenticated_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.service_role_execute",
+      "fn.team_tournament_create_referee_assignment.missing",
+      "fn.team_tournament_create_referee_assignment.overload_count",
+      "fn.team_tournament_create_referee_assignment.def_md5",
+      "fn.team_tournament_create_referee_assignment.volatility",
+      "fn.team_tournament_create_referee_assignment.language",
+      "fn.team_tournament_create_referee_assignment.security_definer",
+      "fn.team_tournament_create_referee_assignment.proconfig",
+      "fn.team_tournament_create_referee_assignment.owner",
+      "fn.team_tournament_create_referee_assignment.proacl",
+      "fn.team_tournament_create_referee_assignment.public_execute",
+      "fn.team_tournament_create_referee_assignment.anon_execute",
+      "fn.team_tournament_create_referee_assignment.authenticated_execute",
+      "fn.team_tournament_create_referee_assignment.service_role_execute",
+      "fn.team_tournament_list_referee_assignments.missing",
+      "fn.team_tournament_list_referee_assignments.overload_count",
+      "fn.team_tournament_list_referee_assignments.def_md5",
+      "fn.team_tournament_list_referee_assignments.volatility",
+      "fn.team_tournament_list_referee_assignments.language",
+      "fn.team_tournament_list_referee_assignments.security_definer",
+      "fn.team_tournament_list_referee_assignments.proconfig",
+      "fn.team_tournament_list_referee_assignments.owner",
+      "fn.team_tournament_list_referee_assignments.proacl",
+      "fn.team_tournament_list_referee_assignments.public_execute",
+      "fn.team_tournament_list_referee_assignments.anon_execute",
+      "fn.team_tournament_list_referee_assignments.authenticated_execute",
+      "fn.team_tournament_list_referee_assignments.service_role_execute",
+      "fn.team_tournament_list_referee_corrections.missing",
+      "fn.team_tournament_list_referee_corrections.overload_count",
+      "fn.team_tournament_list_referee_corrections.def_md5",
+      "fn.team_tournament_list_referee_corrections.volatility",
+      "fn.team_tournament_list_referee_corrections.language",
+      "fn.team_tournament_list_referee_corrections.security_definer",
+      "fn.team_tournament_list_referee_corrections.proconfig",
+      "fn.team_tournament_list_referee_corrections.owner",
+      "fn.team_tournament_list_referee_corrections.proacl",
+      "fn.team_tournament_list_referee_corrections.public_execute",
+      "fn.team_tournament_list_referee_corrections.anon_execute",
+      "fn.team_tournament_list_referee_corrections.authenticated_execute",
+      "fn.team_tournament_list_referee_corrections.service_role_execute",
+      "fn.team_tournament_referee_match_access_ops.missing",
+      "fn.team_tournament_referee_match_access_ops.overload_count",
+      "fn.team_tournament_referee_match_access_ops.def_md5",
+      "fn.team_tournament_referee_match_access_ops.volatility",
+      "fn.team_tournament_referee_match_access_ops.language",
+      "fn.team_tournament_referee_match_access_ops.security_definer",
+      "fn.team_tournament_referee_match_access_ops.proconfig",
+      "fn.team_tournament_referee_match_access_ops.owner",
+      "fn.team_tournament_referee_match_access_ops.proacl",
+      "fn.team_tournament_referee_match_access_ops.public_execute",
+      "fn.team_tournament_referee_match_access_ops.anon_execute",
+      "fn.team_tournament_referee_match_access_ops.authenticated_execute",
+      "fn.team_tournament_referee_match_access_ops.service_role_execute",
+      "fn.team_tournament_reopen_referee_match.missing",
+      "fn.team_tournament_reopen_referee_match.overload_count",
+      "fn.team_tournament_reopen_referee_match.def_md5",
+      "fn.team_tournament_reopen_referee_match.volatility",
+      "fn.team_tournament_reopen_referee_match.language",
+      "fn.team_tournament_reopen_referee_match.security_definer",
+      "fn.team_tournament_reopen_referee_match.proconfig",
+      "fn.team_tournament_reopen_referee_match.owner",
+      "fn.team_tournament_reopen_referee_match.proacl",
+      "fn.team_tournament_reopen_referee_match.public_execute",
+      "fn.team_tournament_reopen_referee_match.anon_execute",
+      "fn.team_tournament_reopen_referee_match.authenticated_execute",
+      "fn.team_tournament_reopen_referee_match.service_role_execute",
+      "fn.team_tournament_request_referee_correction.missing",
+      "fn.team_tournament_request_referee_correction.overload_count",
+      "fn.team_tournament_request_referee_correction.def_md5",
+      "fn.team_tournament_request_referee_correction.volatility",
+      "fn.team_tournament_request_referee_correction.language",
+      "fn.team_tournament_request_referee_correction.security_definer",
+      "fn.team_tournament_request_referee_correction.proconfig",
+      "fn.team_tournament_request_referee_correction.owner",
+      "fn.team_tournament_request_referee_correction.proacl",
+      "fn.team_tournament_request_referee_correction.public_execute",
+      "fn.team_tournament_request_referee_correction.anon_execute",
+      "fn.team_tournament_request_referee_correction.authenticated_execute",
+      "fn.team_tournament_request_referee_correction.service_role_execute",
+      "fn.team_tournament_review_referee_correction.missing",
+      "fn.team_tournament_review_referee_correction.overload_count",
+      "fn.team_tournament_review_referee_correction.def_md5",
+      "fn.team_tournament_review_referee_correction.volatility",
+      "fn.team_tournament_review_referee_correction.language",
+      "fn.team_tournament_review_referee_correction.security_definer",
+      "fn.team_tournament_review_referee_correction.proconfig",
+      "fn.team_tournament_review_referee_correction.owner",
+      "fn.team_tournament_review_referee_correction.proacl",
+      "fn.team_tournament_review_referee_correction.public_execute",
+      "fn.team_tournament_review_referee_correction.anon_execute",
+      "fn.team_tournament_review_referee_correction.authenticated_execute",
+      "fn.team_tournament_review_referee_correction.service_role_execute",
+      "fn.team_tournament_revoke_referee_assignment.missing",
+      "fn.team_tournament_revoke_referee_assignment.overload_count",
+      "fn.team_tournament_revoke_referee_assignment.def_md5",
+      "fn.team_tournament_revoke_referee_assignment.volatility",
+      "fn.team_tournament_revoke_referee_assignment.language",
+      "fn.team_tournament_revoke_referee_assignment.security_definer",
+      "fn.team_tournament_revoke_referee_assignment.proconfig",
+      "fn.team_tournament_revoke_referee_assignment.owner",
+      "fn.team_tournament_revoke_referee_assignment.proacl",
+      "fn.team_tournament_revoke_referee_assignment.public_execute",
+      "fn.team_tournament_revoke_referee_assignment.anon_execute",
+      "fn.team_tournament_revoke_referee_assignment.authenticated_execute",
+      "fn.team_tournament_revoke_referee_assignment.service_role_execute"
+    ],
+    "contracts": {
+      "TYPED_COMPARISON": 144,
+      "COLUMN_DEFAULT_EXPR_V1": 1,
+      "CONSTRAINT_CATALOG_V1": 1,
+      "INDEX_CATALOG_V1": 2,
+      "ACL_EXPLODED_SET_V1": 14,
+      "WS_COLLAPSE_V1": 1,
+      "INTENTIONAL_EXACT_FINGERPRINT": 13,
+      "PROCONFIG_TEXT_ARRAY_V1": 13
+    },
+    "guards": [
+      {
+        "guard_order": 1,
+        "guard_id": "provenance.absent",
+        "object_class": "migration_provenance",
+        "object_identity": "supabase_migrations.schema_migrations",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": false
+        }
+      },
+      {
+        "guard_order": 2,
+        "guard_id": "provenance.club_ai_data_absent",
+        "object_class": "table",
+        "object_identity": "public.club_ai_data",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "absent": true
+        }
+      },
+      {
+        "guard_order": 3,
+        "guard_id": "table.function_count_13",
+        "object_class": "function_set",
+        "object_identity": "public.tt5d_functions",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "count": 13
+        }
+      },
+      {
+        "guard_order": 4,
+        "guard_id": "table.referee_assignments.owner",
+        "object_class": "table",
+        "object_identity": "public.referee_assignments",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 5,
+        "guard_id": "table.referee_assignments.rls",
+        "object_class": "table",
+        "object_identity": "public.referee_assignments",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "relrowsecurity": true
+        }
+      },
+      {
+        "guard_order": 6,
+        "guard_id": "table.referee_assignments.rls_forced",
+        "object_class": "table",
+        "object_identity": "public.referee_assignments",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "relforcerowsecurity": false
+        }
+      },
+      {
+        "guard_order": 7,
+        "guard_id": "table.referee_assignments.tt5d_columns_count",
+        "object_class": "table",
+        "object_identity": "public.referee_assignments",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "tt5d_column_count": 6
+        }
+      },
+      {
+        "guard_order": 8,
+        "guard_id": "table.referee_assignments.version_column",
+        "object_class": "column",
+        "object_identity": "public.referee_assignments.version",
+        "contract_version": "COLUMN_DEFAULT_EXPR_V1",
+        "comparison_class": "NORMALIZED_EXPRESSION",
+        "expected_json": {
+          "dataType": "integer",
+          "notNull": true,
+          "defaultExprNormalized": "1"
+        }
+      },
+      {
+        "guard_order": 9,
+        "guard_id": "table.referee_assignments.matchup_id_fkey",
+        "object_class": "foreign_key",
+        "object_identity": "public.referee_assignments.matchup_id",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "references": "public.team_tournament_matchups(id)",
+          "onDelete": "SET NULL"
+        }
+      },
+      {
+        "guard_order": 10,
+        "guard_id": "table.referee_assignments.sub_match_id_fkey",
+        "object_class": "foreign_key",
+        "object_identity": "public.referee_assignments.sub_match_id",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "references": "public.team_tournament_sub_matches(id)",
+          "onDelete": "SET NULL"
+        }
+      },
+      {
+        "guard_order": 11,
+        "guard_id": "table.referee_assignments.status_check",
+        "object_class": "constraint",
+        "object_identity": "public.referee_assignments.referee_assignments_status_check",
+        "contract_version": "CONSTRAINT_CATALOG_V1",
+        "comparison_class": "NORMALIZED_EXPRESSION",
+        "expected_json": {
+          "exprNormalized": "((status = ANY (ARRAY['pending'::text, 'active'::text, 'expired'::text, 'revoked'::text, 'completed'::text])))"
+        }
+      },
+      {
+        "guard_order": 12,
+        "guard_id": "table.referee_assignments.sub_match_index",
+        "object_class": "index",
+        "object_identity": "public.referee_assignments_sub_match_idx",
+        "contract_version": "INDEX_CATALOG_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "indexName": "referee_assignments_sub_match_idx",
+          "tableName": "referee_assignments",
+          "amname": "btree",
+          "keyColumns": [
+            "sub_match_id",
+            "status"
+          ],
+          "predicateNormalized": "sub_match_id IS NOT NULL",
+          "owner": "postgres",
+          "unique": false
+        }
+      },
+      {
+        "guard_order": 13,
+        "guard_id": "table.correction.index",
+        "object_class": "index",
+        "object_identity": "public.tt5d_correction_pending_idx",
+        "contract_version": "INDEX_CATALOG_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "indexName": "tt5d_correction_pending_idx",
+          "tableName": "team_tournament_referee_correction_requests",
+          "amname": "btree",
+          "keyColumns": [
+            "tenant_id",
+            "tournament_id",
+            "status"
+          ],
+          "predicateNormalized": "status = 'pending'::text",
+          "owner": "postgres",
+          "unique": false
+        }
+      },
+      {
+        "guard_order": 14,
+        "guard_id": "table.correction.owner",
+        "object_class": "table",
+        "object_identity": "public.team_tournament_referee_correction_requests",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 15,
+        "guard_id": "table.correction.acl",
+        "object_class": "table",
+        "object_identity": "public.team_tournament_referee_correction_requests",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "INSERT",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "postgres",
+              "privilege_type": "SELECT",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "postgres",
+              "privilege_type": "UPDATE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "postgres",
+              "privilege_type": "DELETE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "postgres",
+              "privilege_type": "TRUNCATE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "postgres",
+              "privilege_type": "REFERENCES",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "postgres",
+              "privilege_type": "TRIGGER",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "postgres",
+              "privilege_type": "MAINTAIN",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "INSERT",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "SELECT",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "UPDATE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "DELETE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "TRUNCATE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "REFERENCES",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "TRIGGER",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "MAINTAIN",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "INSERT",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "SELECT",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "UPDATE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "DELETE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "TRUNCATE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "REFERENCES",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "TRIGGER",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "MAINTAIN",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 16,
+        "guard_id": "table.correction.column_count",
+        "object_class": "table",
+        "object_identity": "public.team_tournament_referee_correction_requests",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "column_count": 25
+        }
+      },
+      {
+        "guard_order": 17,
+        "guard_id": "table.correction.rls",
+        "object_class": "table",
+        "object_identity": "public.team_tournament_referee_correction_requests",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "relrowsecurity": true
+        }
+      },
+      {
+        "guard_order": 18,
+        "guard_id": "table.correction.rls_forced",
+        "object_class": "table",
+        "object_identity": "public.team_tournament_referee_correction_requests",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "relforcerowsecurity": false
+        }
+      },
+      {
+        "guard_order": 19,
+        "guard_id": "policy.tt5d_correction_referee_select",
+        "object_class": "policy",
+        "object_identity": "public.team_tournament_referee_correction_requests.tt5d_correction_referee_select",
+        "contract_version": "WS_COLLAPSE_V1",
+        "comparison_class": "NORMALIZED_EXPRESSION",
+        "expected_json": {
+          "cmd": "r",
+          "roles": [
+            "authenticated"
+          ],
+          "usingNormalized": "(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))",
+          "withCheck": null
+        }
+      },
+      {
+        "guard_order": 20,
+        "guard_id": "policy.tt5d_correction_no_client_write",
+        "object_class": "policy",
+        "object_identity": "public.team_tournament_referee_correction_requests.tt5d_correction_no_client_write",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "cmd": "*",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "false",
+          "withCheck": "false"
+        }
+      },
+      {
+        "guard_order": 21,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.missing",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 22,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.overload_count",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 23,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.def_md5",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "11b7d3121eb0efd7c05cf2fd8a92da19"
+        }
+      },
+      {
+        "guard_order": 24,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.volatility",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "VOLATILE"
+        }
+      },
+      {
+        "guard_order": 25,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.language",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "plpgsql"
+        }
+      },
+      {
+        "guard_order": 26,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.security_definer",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": true
+        }
+      },
+      {
+        "guard_order": 27,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.proconfig",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": [
+            "search_path=pg_catalog, public"
+          ]
+        }
+      },
+      {
+        "guard_order": 28,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.owner",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 29,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.proacl",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 30,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.public_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 31,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": false
+        }
+      },
+      {
+        "guard_order": 32,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": false
+        }
+      },
+      {
+        "guard_order": 33,
+        "guard_id": "fn.referee_v5_apply_admin_result_revision.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      },
+      {
+        "guard_order": 34,
+        "guard_id": "fn.referee_v5_assert_assignment_write.missing",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 35,
+        "guard_id": "fn.referee_v5_assert_assignment_write.overload_count",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 36,
+        "guard_id": "fn.referee_v5_assert_assignment_write.def_md5",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "e7854c03e3ffebf81a7928d6b8740ad5"
+        }
+      },
+      {
+        "guard_order": 37,
+        "guard_id": "fn.referee_v5_assert_assignment_write.volatility",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "VOLATILE"
+        }
+      },
+      {
+        "guard_order": 38,
+        "guard_id": "fn.referee_v5_assert_assignment_write.language",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "plpgsql"
+        }
+      },
+      {
+        "guard_order": 39,
+        "guard_id": "fn.referee_v5_assert_assignment_write.security_definer",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": true
+        }
+      },
+      {
+        "guard_order": 40,
+        "guard_id": "fn.referee_v5_assert_assignment_write.proconfig",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": [
+            "search_path=public"
+          ]
+        }
+      },
+      {
+        "guard_order": 41,
+        "guard_id": "fn.referee_v5_assert_assignment_write.owner",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 42,
+        "guard_id": "fn.referee_v5_assert_assignment_write.proacl",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 43,
+        "guard_id": "fn.referee_v5_assert_assignment_write.public_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 44,
+        "guard_id": "fn.referee_v5_assert_assignment_write.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": false
+        }
+      },
+      {
+        "guard_order": 45,
+        "guard_id": "fn.referee_v5_assert_assignment_write.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": true
+        }
+      },
+      {
+        "guard_order": 46,
+        "guard_id": "fn.referee_v5_assert_assignment_write.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      },
+      {
+        "guard_order": 47,
+        "guard_id": "fn.referee_v5_assignment_effective_status.missing",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 48,
+        "guard_id": "fn.referee_v5_assignment_effective_status.overload_count",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 49,
+        "guard_id": "fn.referee_v5_assignment_effective_status.def_md5",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "c91ffb1ec3faa1e6fa2b3ea9395c4058"
+        }
+      },
+      {
+        "guard_order": 50,
+        "guard_id": "fn.referee_v5_assignment_effective_status.volatility",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "IMMUTABLE"
+        }
+      },
+      {
+        "guard_order": 51,
+        "guard_id": "fn.referee_v5_assignment_effective_status.language",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "sql"
+        }
+      },
+      {
+        "guard_order": 52,
+        "guard_id": "fn.referee_v5_assignment_effective_status.security_definer",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": false
+        }
+      },
+      {
+        "guard_order": 53,
+        "guard_id": "fn.referee_v5_assignment_effective_status.proconfig",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": []
+        }
+      },
+      {
+        "guard_order": 54,
+        "guard_id": "fn.referee_v5_assignment_effective_status.owner",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 55,
+        "guard_id": "fn.referee_v5_assignment_effective_status.proacl",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "anon",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 56,
+        "guard_id": "fn.referee_v5_assignment_effective_status.public_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 57,
+        "guard_id": "fn.referee_v5_assignment_effective_status.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": true
+        }
+      },
+      {
+        "guard_order": 58,
+        "guard_id": "fn.referee_v5_assignment_effective_status.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": true
+        }
+      },
+      {
+        "guard_order": 59,
+        "guard_id": "fn.referee_v5_assignment_effective_status.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      },
+      {
+        "guard_order": 60,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.missing",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 61,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.overload_count",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 62,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.def_md5",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "2223a22afbef0ccccc0d0df04ae873f1"
+        }
+      },
+      {
+        "guard_order": 63,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.volatility",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "STABLE"
+        }
+      },
+      {
+        "guard_order": 64,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.language",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "sql"
+        }
+      },
+      {
+        "guard_order": 65,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.security_definer",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": true
+        }
+      },
+      {
+        "guard_order": 66,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.proconfig",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": [
+            "search_path=public"
+          ]
+        }
+      },
+      {
+        "guard_order": 67,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.owner",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 68,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.proacl",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "anon",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 69,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.public_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 70,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": true
+        }
+      },
+      {
+        "guard_order": 71,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": true
+        }
+      },
+      {
+        "guard_order": 72,
+        "guard_id": "fn.referee_v5_current_user_has_assignment.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      },
+      {
+        "guard_order": 73,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.missing",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 74,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.overload_count",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 75,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.def_md5",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "0f2e5ea3915cf34cdb0297ac3a844d4d"
+        }
+      },
+      {
+        "guard_order": 76,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.volatility",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "VOLATILE"
+        }
+      },
+      {
+        "guard_order": 77,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.language",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "plpgsql"
+        }
+      },
+      {
+        "guard_order": 78,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.security_definer",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": true
+        }
+      },
+      {
+        "guard_order": 79,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.proconfig",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": [
+            "search_path=public"
+          ]
+        }
+      },
+      {
+        "guard_order": 80,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.owner",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 81,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.proacl",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 82,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.public_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 83,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": false
+        }
+      },
+      {
+        "guard_order": 84,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": true
+        }
+      },
+      {
+        "guard_order": 85,
+        "guard_id": "fn.referee_v5_mark_assignment_expired_if_needed.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      },
+      {
+        "guard_order": 86,
+        "guard_id": "fn.team_tournament_create_referee_assignment.missing",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 87,
+        "guard_id": "fn.team_tournament_create_referee_assignment.overload_count",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 88,
+        "guard_id": "fn.team_tournament_create_referee_assignment.def_md5",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "08f6d53845ba88c750caef815543fa46"
+        }
+      },
+      {
+        "guard_order": 89,
+        "guard_id": "fn.team_tournament_create_referee_assignment.volatility",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "VOLATILE"
+        }
+      },
+      {
+        "guard_order": 90,
+        "guard_id": "fn.team_tournament_create_referee_assignment.language",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "plpgsql"
+        }
+      },
+      {
+        "guard_order": 91,
+        "guard_id": "fn.team_tournament_create_referee_assignment.security_definer",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": true
+        }
+      },
+      {
+        "guard_order": 92,
+        "guard_id": "fn.team_tournament_create_referee_assignment.proconfig",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": [
+            "search_path=public"
+          ]
+        }
+      },
+      {
+        "guard_order": 93,
+        "guard_id": "fn.team_tournament_create_referee_assignment.owner",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 94,
+        "guard_id": "fn.team_tournament_create_referee_assignment.proacl",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 95,
+        "guard_id": "fn.team_tournament_create_referee_assignment.public_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 96,
+        "guard_id": "fn.team_tournament_create_referee_assignment.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": false
+        }
+      },
+      {
+        "guard_order": 97,
+        "guard_id": "fn.team_tournament_create_referee_assignment.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": true
+        }
+      },
+      {
+        "guard_order": 98,
+        "guard_id": "fn.team_tournament_create_referee_assignment.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      },
+      {
+        "guard_order": 99,
+        "guard_id": "fn.team_tournament_list_referee_assignments.missing",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 100,
+        "guard_id": "fn.team_tournament_list_referee_assignments.overload_count",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 101,
+        "guard_id": "fn.team_tournament_list_referee_assignments.def_md5",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "9ec273071d309641425a3d30d704a14b"
+        }
+      },
+      {
+        "guard_order": 102,
+        "guard_id": "fn.team_tournament_list_referee_assignments.volatility",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "STABLE"
+        }
+      },
+      {
+        "guard_order": 103,
+        "guard_id": "fn.team_tournament_list_referee_assignments.language",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "plpgsql"
+        }
+      },
+      {
+        "guard_order": 104,
+        "guard_id": "fn.team_tournament_list_referee_assignments.security_definer",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": true
+        }
+      },
+      {
+        "guard_order": 105,
+        "guard_id": "fn.team_tournament_list_referee_assignments.proconfig",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": [
+            "search_path=public"
+          ]
+        }
+      },
+      {
+        "guard_order": 106,
+        "guard_id": "fn.team_tournament_list_referee_assignments.owner",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 107,
+        "guard_id": "fn.team_tournament_list_referee_assignments.proacl",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 108,
+        "guard_id": "fn.team_tournament_list_referee_assignments.public_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 109,
+        "guard_id": "fn.team_tournament_list_referee_assignments.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": false
+        }
+      },
+      {
+        "guard_order": 110,
+        "guard_id": "fn.team_tournament_list_referee_assignments.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": true
+        }
+      },
+      {
+        "guard_order": 111,
+        "guard_id": "fn.team_tournament_list_referee_assignments.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_assignments(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      },
+      {
+        "guard_order": 112,
+        "guard_id": "fn.team_tournament_list_referee_corrections.missing",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 113,
+        "guard_id": "fn.team_tournament_list_referee_corrections.overload_count",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 114,
+        "guard_id": "fn.team_tournament_list_referee_corrections.def_md5",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "513f41aabc74d5864a879d714796b53a"
+        }
+      },
+      {
+        "guard_order": 115,
+        "guard_id": "fn.team_tournament_list_referee_corrections.volatility",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "STABLE"
+        }
+      },
+      {
+        "guard_order": 116,
+        "guard_id": "fn.team_tournament_list_referee_corrections.language",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "plpgsql"
+        }
+      },
+      {
+        "guard_order": 117,
+        "guard_id": "fn.team_tournament_list_referee_corrections.security_definer",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": true
+        }
+      },
+      {
+        "guard_order": 118,
+        "guard_id": "fn.team_tournament_list_referee_corrections.proconfig",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": [
+            "search_path=public"
+          ]
+        }
+      },
+      {
+        "guard_order": 119,
+        "guard_id": "fn.team_tournament_list_referee_corrections.owner",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 120,
+        "guard_id": "fn.team_tournament_list_referee_corrections.proacl",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 121,
+        "guard_id": "fn.team_tournament_list_referee_corrections.public_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 122,
+        "guard_id": "fn.team_tournament_list_referee_corrections.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": false
+        }
+      },
+      {
+        "guard_order": 123,
+        "guard_id": "fn.team_tournament_list_referee_corrections.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": true
+        }
+      },
+      {
+        "guard_order": 124,
+        "guard_id": "fn.team_tournament_list_referee_corrections.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_list_referee_corrections(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      },
+      {
+        "guard_order": 125,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.missing",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 126,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.overload_count",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 127,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.def_md5",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "4229dd7686b6eaae990e9353e764f927"
+        }
+      },
+      {
+        "guard_order": 128,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.volatility",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "VOLATILE"
+        }
+      },
+      {
+        "guard_order": 129,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.language",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "plpgsql"
+        }
+      },
+      {
+        "guard_order": 130,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.security_definer",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": true
+        }
+      },
+      {
+        "guard_order": 131,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.proconfig",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": [
+            "search_path=public"
+          ]
+        }
+      },
+      {
+        "guard_order": 132,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.owner",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 133,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.proacl",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 134,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.public_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 135,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": false
+        }
+      },
+      {
+        "guard_order": 136,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": true
+        }
+      },
+      {
+        "guard_order": 137,
+        "guard_id": "fn.team_tournament_referee_match_access_ops.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_referee_match_access_ops(text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      },
+      {
+        "guard_order": 138,
+        "guard_id": "fn.team_tournament_reopen_referee_match.missing",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 139,
+        "guard_id": "fn.team_tournament_reopen_referee_match.overload_count",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 140,
+        "guard_id": "fn.team_tournament_reopen_referee_match.def_md5",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "81f3b086288dc8da26700349bbbab3b2"
+        }
+      },
+      {
+        "guard_order": 141,
+        "guard_id": "fn.team_tournament_reopen_referee_match.volatility",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "VOLATILE"
+        }
+      },
+      {
+        "guard_order": 142,
+        "guard_id": "fn.team_tournament_reopen_referee_match.language",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "plpgsql"
+        }
+      },
+      {
+        "guard_order": 143,
+        "guard_id": "fn.team_tournament_reopen_referee_match.security_definer",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": true
+        }
+      },
+      {
+        "guard_order": 144,
+        "guard_id": "fn.team_tournament_reopen_referee_match.proconfig",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": [
+            "search_path=public"
+          ]
+        }
+      },
+      {
+        "guard_order": 145,
+        "guard_id": "fn.team_tournament_reopen_referee_match.owner",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 146,
+        "guard_id": "fn.team_tournament_reopen_referee_match.proacl",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 147,
+        "guard_id": "fn.team_tournament_reopen_referee_match.public_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 148,
+        "guard_id": "fn.team_tournament_reopen_referee_match.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": false
+        }
+      },
+      {
+        "guard_order": 149,
+        "guard_id": "fn.team_tournament_reopen_referee_match.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": true
+        }
+      },
+      {
+        "guard_order": 150,
+        "guard_id": "fn.team_tournament_reopen_referee_match.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      },
+      {
+        "guard_order": 151,
+        "guard_id": "fn.team_tournament_request_referee_correction.missing",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 152,
+        "guard_id": "fn.team_tournament_request_referee_correction.overload_count",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 153,
+        "guard_id": "fn.team_tournament_request_referee_correction.def_md5",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "42b96c5091086edfc822392ed49999d2"
+        }
+      },
+      {
+        "guard_order": 154,
+        "guard_id": "fn.team_tournament_request_referee_correction.volatility",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "VOLATILE"
+        }
+      },
+      {
+        "guard_order": 155,
+        "guard_id": "fn.team_tournament_request_referee_correction.language",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "plpgsql"
+        }
+      },
+      {
+        "guard_order": 156,
+        "guard_id": "fn.team_tournament_request_referee_correction.security_definer",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": true
+        }
+      },
+      {
+        "guard_order": 157,
+        "guard_id": "fn.team_tournament_request_referee_correction.proconfig",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": [
+            "search_path=public"
+          ]
+        }
+      },
+      {
+        "guard_order": 158,
+        "guard_id": "fn.team_tournament_request_referee_correction.owner",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 159,
+        "guard_id": "fn.team_tournament_request_referee_correction.proacl",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 160,
+        "guard_id": "fn.team_tournament_request_referee_correction.public_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 161,
+        "guard_id": "fn.team_tournament_request_referee_correction.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": false
+        }
+      },
+      {
+        "guard_order": 162,
+        "guard_id": "fn.team_tournament_request_referee_correction.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": true
+        }
+      },
+      {
+        "guard_order": 163,
+        "guard_id": "fn.team_tournament_request_referee_correction.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      },
+      {
+        "guard_order": 164,
+        "guard_id": "fn.team_tournament_review_referee_correction.missing",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 165,
+        "guard_id": "fn.team_tournament_review_referee_correction.overload_count",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 166,
+        "guard_id": "fn.team_tournament_review_referee_correction.def_md5",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "175c9ee13eeefaccdbb67160cd0a5a16"
+        }
+      },
+      {
+        "guard_order": 167,
+        "guard_id": "fn.team_tournament_review_referee_correction.volatility",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "VOLATILE"
+        }
+      },
+      {
+        "guard_order": 168,
+        "guard_id": "fn.team_tournament_review_referee_correction.language",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "plpgsql"
+        }
+      },
+      {
+        "guard_order": 169,
+        "guard_id": "fn.team_tournament_review_referee_correction.security_definer",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": true
+        }
+      },
+      {
+        "guard_order": 170,
+        "guard_id": "fn.team_tournament_review_referee_correction.proconfig",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": [
+            "search_path=public"
+          ]
+        }
+      },
+      {
+        "guard_order": 171,
+        "guard_id": "fn.team_tournament_review_referee_correction.owner",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 172,
+        "guard_id": "fn.team_tournament_review_referee_correction.proacl",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 173,
+        "guard_id": "fn.team_tournament_review_referee_correction.public_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 174,
+        "guard_id": "fn.team_tournament_review_referee_correction.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": false
+        }
+      },
+      {
+        "guard_order": 175,
+        "guard_id": "fn.team_tournament_review_referee_correction.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": true
+        }
+      },
+      {
+        "guard_order": 176,
+        "guard_id": "fn.team_tournament_review_referee_correction.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      },
+      {
+        "guard_order": 177,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.missing",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "present": true
+        }
+      },
+      {
+        "guard_order": 178,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.overload_count",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "overload_count": 1
+        }
+      },
+      {
+        "guard_order": 179,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.def_md5",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "INTENTIONAL_EXACT_FINGERPRINT",
+        "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
+        "expected_json": {
+          "defMd5": "f3280a760c9f4449aee6916d16c5026d"
+        }
+      },
+      {
+        "guard_order": 180,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.volatility",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "volatility": "VOLATILE"
+        }
+      },
+      {
+        "guard_order": 181,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.language",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "language": "plpgsql"
+        }
+      },
+      {
+        "guard_order": 182,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.security_definer",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "securityDefiner": true
+        }
+      },
+      {
+        "guard_order": 183,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.proconfig",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "PROCONFIG_TEXT_ARRAY_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "proconfig": [
+            "search_path=public"
+          ]
+        }
+      },
+      {
+        "guard_order": 184,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.owner",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "owner": "postgres"
+        }
+      },
+      {
+        "guard_order": 185,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.proacl",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "ACL_EXPLODED_SET_V1",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "aclExploded": [
+            {
+              "grantee": "postgres",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "authenticated",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            },
+            {
+              "grantee": "service_role",
+              "privilege_type": "EXECUTE",
+              "grantor": "postgres",
+              "is_grantable": false
+            }
+          ]
+        }
+      },
+      {
+        "guard_order": 186,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.public_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "publicExecute": false
+        }
+      },
+      {
+        "guard_order": 187,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.anon_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "anonExecute": false
+        }
+      },
+      {
+        "guard_order": 188,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.authenticated_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "authenticatedExecute": true
+        }
+      },
+      {
+        "guard_order": 189,
+        "guard_id": "fn.team_tournament_revoke_referee_assignment.service_role_execute",
+        "object_class": "function",
+        "object_identity": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+        "contract_version": "TYPED_COMPARISON",
+        "comparison_class": "TYPED_COMPARISON",
+        "expected_json": {
+          "serviceRoleExecute": true
+        }
+      }
+    ]
+  },
+  "postMutation": {
+    "guardCount": 174,
+    "contracts": {
+      "TYPED_COMPARISON": 129,
+      "COLUMN_DEFAULT_EXPR_V1": 1,
+      "CONSTRAINT_CATALOG_V1": 1,
+      "INDEX_CATALOG_V1": 2,
+      "ACL_EXPLODED_SET_V1": 14,
+      "WS_COLLAPSE_V1": 1,
+      "INTENTIONAL_EXACT_FINGERPRINT": 13,
+      "PROCONFIG_TEXT_ARRAY_V1": 13
+    }
+  },
+  "parity": {
+    "sql10PreGuardIds": [
+      "provenance.absent",
+      "provenance.club_ai_data_absent",
+      "table.function_count_13",
+      "table.referee_assignments.owner",
+      "table.referee_assignments.rls",
+      "table.referee_assignments.rls_forced",
+      "table.referee_assignments.tt5d_columns_count",
+      "table.referee_assignments.version_column",
+      "table.referee_assignments.matchup_id_fkey",
+      "table.referee_assignments.sub_match_id_fkey",
+      "table.referee_assignments.status_check",
+      "table.referee_assignments.sub_match_index",
+      "table.correction.index",
+      "table.correction.owner",
+      "table.correction.acl",
+      "table.correction.column_count",
+      "table.correction.rls",
+      "table.correction.rls_forced",
+      "policy.tt5d_correction_referee_select",
+      "policy.tt5d_correction_no_client_write",
+      "fn.referee_v5_apply_admin_result_revision.missing",
+      "fn.referee_v5_apply_admin_result_revision.overload_count",
+      "fn.referee_v5_apply_admin_result_revision.def_md5",
+      "fn.referee_v5_apply_admin_result_revision.volatility",
+      "fn.referee_v5_apply_admin_result_revision.language",
+      "fn.referee_v5_apply_admin_result_revision.security_definer",
+      "fn.referee_v5_apply_admin_result_revision.proconfig",
+      "fn.referee_v5_apply_admin_result_revision.owner",
+      "fn.referee_v5_apply_admin_result_revision.proacl",
+      "fn.referee_v5_apply_admin_result_revision.public_execute",
+      "fn.referee_v5_apply_admin_result_revision.anon_execute",
+      "fn.referee_v5_apply_admin_result_revision.authenticated_execute",
+      "fn.referee_v5_apply_admin_result_revision.service_role_execute",
+      "fn.referee_v5_assert_assignment_write.missing",
+      "fn.referee_v5_assert_assignment_write.overload_count",
+      "fn.referee_v5_assert_assignment_write.def_md5",
+      "fn.referee_v5_assert_assignment_write.volatility",
+      "fn.referee_v5_assert_assignment_write.language",
+      "fn.referee_v5_assert_assignment_write.security_definer",
+      "fn.referee_v5_assert_assignment_write.proconfig",
+      "fn.referee_v5_assert_assignment_write.owner",
+      "fn.referee_v5_assert_assignment_write.proacl",
+      "fn.referee_v5_assert_assignment_write.public_execute",
+      "fn.referee_v5_assert_assignment_write.anon_execute",
+      "fn.referee_v5_assert_assignment_write.authenticated_execute",
+      "fn.referee_v5_assert_assignment_write.service_role_execute",
+      "fn.referee_v5_assignment_effective_status.missing",
+      "fn.referee_v5_assignment_effective_status.overload_count",
+      "fn.referee_v5_assignment_effective_status.def_md5",
+      "fn.referee_v5_assignment_effective_status.volatility",
+      "fn.referee_v5_assignment_effective_status.language",
+      "fn.referee_v5_assignment_effective_status.security_definer",
+      "fn.referee_v5_assignment_effective_status.proconfig",
+      "fn.referee_v5_assignment_effective_status.owner",
+      "fn.referee_v5_assignment_effective_status.proacl",
+      "fn.referee_v5_assignment_effective_status.public_execute",
+      "fn.referee_v5_assignment_effective_status.anon_execute",
+      "fn.referee_v5_assignment_effective_status.authenticated_execute",
+      "fn.referee_v5_assignment_effective_status.service_role_execute",
+      "fn.referee_v5_current_user_has_assignment.missing",
+      "fn.referee_v5_current_user_has_assignment.overload_count",
+      "fn.referee_v5_current_user_has_assignment.def_md5",
+      "fn.referee_v5_current_user_has_assignment.volatility",
+      "fn.referee_v5_current_user_has_assignment.language",
+      "fn.referee_v5_current_user_has_assignment.security_definer",
+      "fn.referee_v5_current_user_has_assignment.proconfig",
+      "fn.referee_v5_current_user_has_assignment.owner",
+      "fn.referee_v5_current_user_has_assignment.proacl",
+      "fn.referee_v5_current_user_has_assignment.public_execute",
+      "fn.referee_v5_current_user_has_assignment.anon_execute",
+      "fn.referee_v5_current_user_has_assignment.authenticated_execute",
+      "fn.referee_v5_current_user_has_assignment.service_role_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.missing",
+      "fn.referee_v5_mark_assignment_expired_if_needed.overload_count",
+      "fn.referee_v5_mark_assignment_expired_if_needed.def_md5",
+      "fn.referee_v5_mark_assignment_expired_if_needed.volatility",
+      "fn.referee_v5_mark_assignment_expired_if_needed.language",
+      "fn.referee_v5_mark_assignment_expired_if_needed.security_definer",
+      "fn.referee_v5_mark_assignment_expired_if_needed.proconfig",
+      "fn.referee_v5_mark_assignment_expired_if_needed.owner",
+      "fn.referee_v5_mark_assignment_expired_if_needed.proacl",
+      "fn.referee_v5_mark_assignment_expired_if_needed.public_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.anon_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.authenticated_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.service_role_execute",
+      "fn.team_tournament_create_referee_assignment.missing",
+      "fn.team_tournament_create_referee_assignment.overload_count",
+      "fn.team_tournament_create_referee_assignment.def_md5",
+      "fn.team_tournament_create_referee_assignment.volatility",
+      "fn.team_tournament_create_referee_assignment.language",
+      "fn.team_tournament_create_referee_assignment.security_definer",
+      "fn.team_tournament_create_referee_assignment.proconfig",
+      "fn.team_tournament_create_referee_assignment.owner",
+      "fn.team_tournament_create_referee_assignment.proacl",
+      "fn.team_tournament_create_referee_assignment.public_execute",
+      "fn.team_tournament_create_referee_assignment.anon_execute",
+      "fn.team_tournament_create_referee_assignment.authenticated_execute",
+      "fn.team_tournament_create_referee_assignment.service_role_execute",
+      "fn.team_tournament_list_referee_assignments.missing",
+      "fn.team_tournament_list_referee_assignments.overload_count",
+      "fn.team_tournament_list_referee_assignments.def_md5",
+      "fn.team_tournament_list_referee_assignments.volatility",
+      "fn.team_tournament_list_referee_assignments.language",
+      "fn.team_tournament_list_referee_assignments.security_definer",
+      "fn.team_tournament_list_referee_assignments.proconfig",
+      "fn.team_tournament_list_referee_assignments.owner",
+      "fn.team_tournament_list_referee_assignments.proacl",
+      "fn.team_tournament_list_referee_assignments.public_execute",
+      "fn.team_tournament_list_referee_assignments.anon_execute",
+      "fn.team_tournament_list_referee_assignments.authenticated_execute",
+      "fn.team_tournament_list_referee_assignments.service_role_execute",
+      "fn.team_tournament_list_referee_corrections.missing",
+      "fn.team_tournament_list_referee_corrections.overload_count",
+      "fn.team_tournament_list_referee_corrections.def_md5",
+      "fn.team_tournament_list_referee_corrections.volatility",
+      "fn.team_tournament_list_referee_corrections.language",
+      "fn.team_tournament_list_referee_corrections.security_definer",
+      "fn.team_tournament_list_referee_corrections.proconfig",
+      "fn.team_tournament_list_referee_corrections.owner",
+      "fn.team_tournament_list_referee_corrections.proacl",
+      "fn.team_tournament_list_referee_corrections.public_execute",
+      "fn.team_tournament_list_referee_corrections.anon_execute",
+      "fn.team_tournament_list_referee_corrections.authenticated_execute",
+      "fn.team_tournament_list_referee_corrections.service_role_execute",
+      "fn.team_tournament_referee_match_access_ops.missing",
+      "fn.team_tournament_referee_match_access_ops.overload_count",
+      "fn.team_tournament_referee_match_access_ops.def_md5",
+      "fn.team_tournament_referee_match_access_ops.volatility",
+      "fn.team_tournament_referee_match_access_ops.language",
+      "fn.team_tournament_referee_match_access_ops.security_definer",
+      "fn.team_tournament_referee_match_access_ops.proconfig",
+      "fn.team_tournament_referee_match_access_ops.owner",
+      "fn.team_tournament_referee_match_access_ops.proacl",
+      "fn.team_tournament_referee_match_access_ops.public_execute",
+      "fn.team_tournament_referee_match_access_ops.anon_execute",
+      "fn.team_tournament_referee_match_access_ops.authenticated_execute",
+      "fn.team_tournament_referee_match_access_ops.service_role_execute",
+      "fn.team_tournament_reopen_referee_match.missing",
+      "fn.team_tournament_reopen_referee_match.overload_count",
+      "fn.team_tournament_reopen_referee_match.def_md5",
+      "fn.team_tournament_reopen_referee_match.volatility",
+      "fn.team_tournament_reopen_referee_match.language",
+      "fn.team_tournament_reopen_referee_match.security_definer",
+      "fn.team_tournament_reopen_referee_match.proconfig",
+      "fn.team_tournament_reopen_referee_match.owner",
+      "fn.team_tournament_reopen_referee_match.proacl",
+      "fn.team_tournament_reopen_referee_match.public_execute",
+      "fn.team_tournament_reopen_referee_match.anon_execute",
+      "fn.team_tournament_reopen_referee_match.authenticated_execute",
+      "fn.team_tournament_reopen_referee_match.service_role_execute",
+      "fn.team_tournament_request_referee_correction.missing",
+      "fn.team_tournament_request_referee_correction.overload_count",
+      "fn.team_tournament_request_referee_correction.def_md5",
+      "fn.team_tournament_request_referee_correction.volatility",
+      "fn.team_tournament_request_referee_correction.language",
+      "fn.team_tournament_request_referee_correction.security_definer",
+      "fn.team_tournament_request_referee_correction.proconfig",
+      "fn.team_tournament_request_referee_correction.owner",
+      "fn.team_tournament_request_referee_correction.proacl",
+      "fn.team_tournament_request_referee_correction.public_execute",
+      "fn.team_tournament_request_referee_correction.anon_execute",
+      "fn.team_tournament_request_referee_correction.authenticated_execute",
+      "fn.team_tournament_request_referee_correction.service_role_execute",
+      "fn.team_tournament_review_referee_correction.missing",
+      "fn.team_tournament_review_referee_correction.overload_count",
+      "fn.team_tournament_review_referee_correction.def_md5",
+      "fn.team_tournament_review_referee_correction.volatility",
+      "fn.team_tournament_review_referee_correction.language",
+      "fn.team_tournament_review_referee_correction.security_definer",
+      "fn.team_tournament_review_referee_correction.proconfig",
+      "fn.team_tournament_review_referee_correction.owner",
+      "fn.team_tournament_review_referee_correction.proacl",
+      "fn.team_tournament_review_referee_correction.public_execute",
+      "fn.team_tournament_review_referee_correction.anon_execute",
+      "fn.team_tournament_review_referee_correction.authenticated_execute",
+      "fn.team_tournament_review_referee_correction.service_role_execute",
+      "fn.team_tournament_revoke_referee_assignment.missing",
+      "fn.team_tournament_revoke_referee_assignment.overload_count",
+      "fn.team_tournament_revoke_referee_assignment.def_md5",
+      "fn.team_tournament_revoke_referee_assignment.volatility",
+      "fn.team_tournament_revoke_referee_assignment.language",
+      "fn.team_tournament_revoke_referee_assignment.security_definer",
+      "fn.team_tournament_revoke_referee_assignment.proconfig",
+      "fn.team_tournament_revoke_referee_assignment.owner",
+      "fn.team_tournament_revoke_referee_assignment.proacl",
+      "fn.team_tournament_revoke_referee_assignment.public_execute",
+      "fn.team_tournament_revoke_referee_assignment.anon_execute",
+      "fn.team_tournament_revoke_referee_assignment.authenticated_execute",
+      "fn.team_tournament_revoke_referee_assignment.service_role_execute"
+    ],
+    "sql00GuardIds": [
+      "provenance.absent",
+      "provenance.club_ai_data_absent",
+      "table.function_count_13",
+      "table.referee_assignments.owner",
+      "table.referee_assignments.rls",
+      "table.referee_assignments.rls_forced",
+      "table.referee_assignments.tt5d_columns_count",
+      "table.referee_assignments.version_column",
+      "table.referee_assignments.matchup_id_fkey",
+      "table.referee_assignments.sub_match_id_fkey",
+      "table.referee_assignments.status_check",
+      "table.referee_assignments.sub_match_index",
+      "table.correction.index",
+      "table.correction.owner",
+      "table.correction.acl",
+      "table.correction.column_count",
+      "table.correction.rls",
+      "table.correction.rls_forced",
+      "policy.tt5d_correction_referee_select",
+      "policy.tt5d_correction_no_client_write",
+      "fn.referee_v5_apply_admin_result_revision.missing",
+      "fn.referee_v5_apply_admin_result_revision.overload_count",
+      "fn.referee_v5_apply_admin_result_revision.def_md5",
+      "fn.referee_v5_apply_admin_result_revision.volatility",
+      "fn.referee_v5_apply_admin_result_revision.language",
+      "fn.referee_v5_apply_admin_result_revision.security_definer",
+      "fn.referee_v5_apply_admin_result_revision.proconfig",
+      "fn.referee_v5_apply_admin_result_revision.owner",
+      "fn.referee_v5_apply_admin_result_revision.proacl",
+      "fn.referee_v5_apply_admin_result_revision.public_execute",
+      "fn.referee_v5_apply_admin_result_revision.anon_execute",
+      "fn.referee_v5_apply_admin_result_revision.authenticated_execute",
+      "fn.referee_v5_apply_admin_result_revision.service_role_execute",
+      "fn.referee_v5_assert_assignment_write.missing",
+      "fn.referee_v5_assert_assignment_write.overload_count",
+      "fn.referee_v5_assert_assignment_write.def_md5",
+      "fn.referee_v5_assert_assignment_write.volatility",
+      "fn.referee_v5_assert_assignment_write.language",
+      "fn.referee_v5_assert_assignment_write.security_definer",
+      "fn.referee_v5_assert_assignment_write.proconfig",
+      "fn.referee_v5_assert_assignment_write.owner",
+      "fn.referee_v5_assert_assignment_write.proacl",
+      "fn.referee_v5_assert_assignment_write.public_execute",
+      "fn.referee_v5_assert_assignment_write.anon_execute",
+      "fn.referee_v5_assert_assignment_write.authenticated_execute",
+      "fn.referee_v5_assert_assignment_write.service_role_execute",
+      "fn.referee_v5_assignment_effective_status.missing",
+      "fn.referee_v5_assignment_effective_status.overload_count",
+      "fn.referee_v5_assignment_effective_status.def_md5",
+      "fn.referee_v5_assignment_effective_status.volatility",
+      "fn.referee_v5_assignment_effective_status.language",
+      "fn.referee_v5_assignment_effective_status.security_definer",
+      "fn.referee_v5_assignment_effective_status.proconfig",
+      "fn.referee_v5_assignment_effective_status.owner",
+      "fn.referee_v5_assignment_effective_status.proacl",
+      "fn.referee_v5_assignment_effective_status.public_execute",
+      "fn.referee_v5_assignment_effective_status.anon_execute",
+      "fn.referee_v5_assignment_effective_status.authenticated_execute",
+      "fn.referee_v5_assignment_effective_status.service_role_execute",
+      "fn.referee_v5_current_user_has_assignment.missing",
+      "fn.referee_v5_current_user_has_assignment.overload_count",
+      "fn.referee_v5_current_user_has_assignment.def_md5",
+      "fn.referee_v5_current_user_has_assignment.volatility",
+      "fn.referee_v5_current_user_has_assignment.language",
+      "fn.referee_v5_current_user_has_assignment.security_definer",
+      "fn.referee_v5_current_user_has_assignment.proconfig",
+      "fn.referee_v5_current_user_has_assignment.owner",
+      "fn.referee_v5_current_user_has_assignment.proacl",
+      "fn.referee_v5_current_user_has_assignment.public_execute",
+      "fn.referee_v5_current_user_has_assignment.anon_execute",
+      "fn.referee_v5_current_user_has_assignment.authenticated_execute",
+      "fn.referee_v5_current_user_has_assignment.service_role_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.missing",
+      "fn.referee_v5_mark_assignment_expired_if_needed.overload_count",
+      "fn.referee_v5_mark_assignment_expired_if_needed.def_md5",
+      "fn.referee_v5_mark_assignment_expired_if_needed.volatility",
+      "fn.referee_v5_mark_assignment_expired_if_needed.language",
+      "fn.referee_v5_mark_assignment_expired_if_needed.security_definer",
+      "fn.referee_v5_mark_assignment_expired_if_needed.proconfig",
+      "fn.referee_v5_mark_assignment_expired_if_needed.owner",
+      "fn.referee_v5_mark_assignment_expired_if_needed.proacl",
+      "fn.referee_v5_mark_assignment_expired_if_needed.public_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.anon_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.authenticated_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.service_role_execute",
+      "fn.team_tournament_create_referee_assignment.missing",
+      "fn.team_tournament_create_referee_assignment.overload_count",
+      "fn.team_tournament_create_referee_assignment.def_md5",
+      "fn.team_tournament_create_referee_assignment.volatility",
+      "fn.team_tournament_create_referee_assignment.language",
+      "fn.team_tournament_create_referee_assignment.security_definer",
+      "fn.team_tournament_create_referee_assignment.proconfig",
+      "fn.team_tournament_create_referee_assignment.owner",
+      "fn.team_tournament_create_referee_assignment.proacl",
+      "fn.team_tournament_create_referee_assignment.public_execute",
+      "fn.team_tournament_create_referee_assignment.anon_execute",
+      "fn.team_tournament_create_referee_assignment.authenticated_execute",
+      "fn.team_tournament_create_referee_assignment.service_role_execute",
+      "fn.team_tournament_list_referee_assignments.missing",
+      "fn.team_tournament_list_referee_assignments.overload_count",
+      "fn.team_tournament_list_referee_assignments.def_md5",
+      "fn.team_tournament_list_referee_assignments.volatility",
+      "fn.team_tournament_list_referee_assignments.language",
+      "fn.team_tournament_list_referee_assignments.security_definer",
+      "fn.team_tournament_list_referee_assignments.proconfig",
+      "fn.team_tournament_list_referee_assignments.owner",
+      "fn.team_tournament_list_referee_assignments.proacl",
+      "fn.team_tournament_list_referee_assignments.public_execute",
+      "fn.team_tournament_list_referee_assignments.anon_execute",
+      "fn.team_tournament_list_referee_assignments.authenticated_execute",
+      "fn.team_tournament_list_referee_assignments.service_role_execute",
+      "fn.team_tournament_list_referee_corrections.missing",
+      "fn.team_tournament_list_referee_corrections.overload_count",
+      "fn.team_tournament_list_referee_corrections.def_md5",
+      "fn.team_tournament_list_referee_corrections.volatility",
+      "fn.team_tournament_list_referee_corrections.language",
+      "fn.team_tournament_list_referee_corrections.security_definer",
+      "fn.team_tournament_list_referee_corrections.proconfig",
+      "fn.team_tournament_list_referee_corrections.owner",
+      "fn.team_tournament_list_referee_corrections.proacl",
+      "fn.team_tournament_list_referee_corrections.public_execute",
+      "fn.team_tournament_list_referee_corrections.anon_execute",
+      "fn.team_tournament_list_referee_corrections.authenticated_execute",
+      "fn.team_tournament_list_referee_corrections.service_role_execute",
+      "fn.team_tournament_referee_match_access_ops.missing",
+      "fn.team_tournament_referee_match_access_ops.overload_count",
+      "fn.team_tournament_referee_match_access_ops.def_md5",
+      "fn.team_tournament_referee_match_access_ops.volatility",
+      "fn.team_tournament_referee_match_access_ops.language",
+      "fn.team_tournament_referee_match_access_ops.security_definer",
+      "fn.team_tournament_referee_match_access_ops.proconfig",
+      "fn.team_tournament_referee_match_access_ops.owner",
+      "fn.team_tournament_referee_match_access_ops.proacl",
+      "fn.team_tournament_referee_match_access_ops.public_execute",
+      "fn.team_tournament_referee_match_access_ops.anon_execute",
+      "fn.team_tournament_referee_match_access_ops.authenticated_execute",
+      "fn.team_tournament_referee_match_access_ops.service_role_execute",
+      "fn.team_tournament_reopen_referee_match.missing",
+      "fn.team_tournament_reopen_referee_match.overload_count",
+      "fn.team_tournament_reopen_referee_match.def_md5",
+      "fn.team_tournament_reopen_referee_match.volatility",
+      "fn.team_tournament_reopen_referee_match.language",
+      "fn.team_tournament_reopen_referee_match.security_definer",
+      "fn.team_tournament_reopen_referee_match.proconfig",
+      "fn.team_tournament_reopen_referee_match.owner",
+      "fn.team_tournament_reopen_referee_match.proacl",
+      "fn.team_tournament_reopen_referee_match.public_execute",
+      "fn.team_tournament_reopen_referee_match.anon_execute",
+      "fn.team_tournament_reopen_referee_match.authenticated_execute",
+      "fn.team_tournament_reopen_referee_match.service_role_execute",
+      "fn.team_tournament_request_referee_correction.missing",
+      "fn.team_tournament_request_referee_correction.overload_count",
+      "fn.team_tournament_request_referee_correction.def_md5",
+      "fn.team_tournament_request_referee_correction.volatility",
+      "fn.team_tournament_request_referee_correction.language",
+      "fn.team_tournament_request_referee_correction.security_definer",
+      "fn.team_tournament_request_referee_correction.proconfig",
+      "fn.team_tournament_request_referee_correction.owner",
+      "fn.team_tournament_request_referee_correction.proacl",
+      "fn.team_tournament_request_referee_correction.public_execute",
+      "fn.team_tournament_request_referee_correction.anon_execute",
+      "fn.team_tournament_request_referee_correction.authenticated_execute",
+      "fn.team_tournament_request_referee_correction.service_role_execute",
+      "fn.team_tournament_review_referee_correction.missing",
+      "fn.team_tournament_review_referee_correction.overload_count",
+      "fn.team_tournament_review_referee_correction.def_md5",
+      "fn.team_tournament_review_referee_correction.volatility",
+      "fn.team_tournament_review_referee_correction.language",
+      "fn.team_tournament_review_referee_correction.security_definer",
+      "fn.team_tournament_review_referee_correction.proconfig",
+      "fn.team_tournament_review_referee_correction.owner",
+      "fn.team_tournament_review_referee_correction.proacl",
+      "fn.team_tournament_review_referee_correction.public_execute",
+      "fn.team_tournament_review_referee_correction.anon_execute",
+      "fn.team_tournament_review_referee_correction.authenticated_execute",
+      "fn.team_tournament_review_referee_correction.service_role_execute",
+      "fn.team_tournament_revoke_referee_assignment.missing",
+      "fn.team_tournament_revoke_referee_assignment.overload_count",
+      "fn.team_tournament_revoke_referee_assignment.def_md5",
+      "fn.team_tournament_revoke_referee_assignment.volatility",
+      "fn.team_tournament_revoke_referee_assignment.language",
+      "fn.team_tournament_revoke_referee_assignment.security_definer",
+      "fn.team_tournament_revoke_referee_assignment.proconfig",
+      "fn.team_tournament_revoke_referee_assignment.owner",
+      "fn.team_tournament_revoke_referee_assignment.proacl",
+      "fn.team_tournament_revoke_referee_assignment.public_execute",
+      "fn.team_tournament_revoke_referee_assignment.anon_execute",
+      "fn.team_tournament_revoke_referee_assignment.authenticated_execute",
+      "fn.team_tournament_revoke_referee_assignment.service_role_execute"
+    ],
+    "guardIdSetEqual": true,
+    "guardCount": 189
+  },
+  "forbiddenSerializedGuardsEliminated": true,
+  "contracts": {
+    "TYPED_COMPARISON": 144,
+    "COLUMN_DEFAULT_EXPR_V1": 1,
+    "CONSTRAINT_CATALOG_V1": 1,
+    "INDEX_CATALOG_V1": 2,
+    "ACL_EXPLODED_SET_V1": 14,
+    "WS_COLLAPSE_V1": 1,
+    "INTENTIONAL_EXACT_FINGERPRINT": 13,
+    "PROCONFIG_TEXT_ARRAY_V1": 13
+  }
+}

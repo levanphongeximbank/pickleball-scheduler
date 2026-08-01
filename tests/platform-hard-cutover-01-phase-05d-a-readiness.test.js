@@ -1,5 +1,5 @@
 /**
- * Phase 5D-A / A.1 / A.2 readiness package static tests.
+ * Phase 5D-A / A.1 / A.2 / A.3 / A.4 readiness package static tests.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -8,6 +8,18 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import {
+  parseAclText,
+  aclSetsEqual,
+  canonicalizeAclRows,
+  parseIndexCatalogFromDef,
+  normalizeConstraintExpr,
+  sqlIndexCatalogMatch,
+  sqlConstraintCatalogMatch,
+  sqlColumnDefaultMatch,
+  sqlAclSetMatch,
+  wsCollapseJs,
+} from "../docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/scripts/phase5d-a4-guard-contracts.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -22,13 +34,23 @@ const COMPACT_USING =
 const PRETTY_USING =
   "(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM referee_assignments ra\n  WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))";
 
-/** JS mirror of WS_COLLAPSE_V1 (POSIX whitespace → single space + trim). */
 function wsCollapseV1(s) {
-  return String(s).replace(/[\s]+/g, " ").trim();
+  return wsCollapseJs(s);
 }
 
 function readJson(rel) {
   return JSON.parse(fs.readFileSync(path.join(PKG, rel), "utf8"));
+}
+
+function stripComments(sql) {
+  return sql
+    .split(/\r?\n/)
+    .filter((l) => !/^\s*--/.test(l))
+    .join("\n");
+}
+
+function extractGuardIds(sql) {
+  return [...sql.matchAll(/(?:^|\n)\s*--\s*GUARD_ID:\s*(\S+)/g)].map((m) => m[1]);
 }
 
 function shaFile(rel) {
@@ -56,7 +78,7 @@ function shaFile(rel) {
 const NORM_GUARD_RE =
   /btrim\(\s*regexp_replace\(\s*\(?\s*pg_get_expr\(\s*pol\.polqual\s*,\s*pol\.polrelid\s*,\s*false\s*\)\s*\)?::text\s*,\s*'\[\[:space:\]\]\+'\s*,\s*' '\s*,\s*'g'\s*\)\s*\)\s*=\s*btrim\(\s*regexp_replace\(/g;
 
-test("Phase 5D-A package files exist including A.1/A.2 artefacts", () => {
+test("Phase 5D-A package files exist including A.1/A.2/A.4 artefacts", () => {
   for (const f of [
     "README.md",
     "PHASE5D_A_READINESS_MANIFEST.json",
@@ -69,12 +91,14 @@ test("Phase 5D-A package files exist including A.1/A.2 artefacts", () => {
     "evidence/06_PRODUCTION_PROMOTION_CONTRACT.json",
     "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
     "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json",
+    "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json",
     "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
     "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql",
     "sql/20_TT5D_POST_APPLY_VERIFY.sql",
     "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql",
     "scripts/verify-phase5d-a.mjs",
     "scripts/harden-phase5d-a1.mjs",
+    "scripts/phase5d-a4-guard-contracts.mjs",
   ]) {
     assert.ok(fs.existsSync(path.join(PKG, f)), f);
   }
@@ -110,6 +134,8 @@ test("baseline lists exactly 13 TT5D functions and WS_COLLAPSE_V1 + PROCONFIG_TE
   assert.equal(b.proconfigComparison.caseSensitive, true);
   assert.equal(b.proconfigComparison.innerElementNormalization, "NONE");
   assert.equal(b.proconfigComparison.commaContainingElementPreserved, true);
+  assert.equal(b.typedCatalogGuardComparison.version, "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE");
+  assert.ok(b.typedCatalogGuardComparison.contracts.includes("ACL_EXPLODED_SET_V1"));
   for (const f of b.functions) {
     assert.ok(Array.isArray(f.proconfig), `${f.name} proconfig must be array`);
   }
@@ -131,8 +157,7 @@ test("PROCONFIG_TEXT_ARRAY_V1 semantic negatives remain significant", () => {
 });
 
 test("sql/10/20/90 use 13/13/26 semantic text[] proconfig guards and no proconfig::text comparisons", () => {
-  const guardRe =
-    /coalesce\(\(SELECT pp\.proconfig FROM pg_proc pp WHERE pp\.oid=/g;
+  const guardRe = /coalesce\(\(SELECT pp\.proconfig FROM pg_proc pp WHERE pp\.oid=/g;
   const castCompareRe =
     /pp\.proconfig::text|proconfig::text\s*FROM|coalesce\(\(SELECT pp\.proconfig::text/;
   const sql10 = fs.readFileSync(path.join(PKG, "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql"), "utf8");
@@ -146,10 +171,7 @@ test("sql/10/20/90 use 13/13/26 semantic text[] proconfig guards and no proconfi
     ["sql/20", sql20],
     ["sql/90", sql90],
   ]) {
-    const body = sql
-      .split(/\r?\n/)
-      .filter((l) => !/^\s*--/.test(l))
-      .join("\n");
+    const body = stripComments(sql);
     assert.doesNotMatch(body, castCompareRe, `${name} still compares via proconfig::text`);
     assert.match(sql, /ARRAY\['search_path=pg_catalog, public'\]::text\[\]/);
     assert.match(sql, /ARRAY\[\]::text\[\]/);
@@ -165,7 +187,7 @@ test("semantic findings 1-7 confirmed", () => {
   }
 });
 
-test("decision READY_FOR_OWNER_STAGING_GO retains blockers and M9 20/4", () => {
+test("decision READY_FOR_OWNER_STAGING_GO retains blockers, M9 20/4, and A.4 markers", () => {
   const d = readJson("evidence/05_PHASE5D_A_DECISION.json");
   assert.equal(d.decision, "READY_FOR_OWNER_STAGING_GO");
   assert.equal(d.StagingDatabaseMutations, 0);
@@ -178,20 +200,20 @@ test("decision READY_FOR_OWNER_STAGING_GO retains blockers and M9 20/4", () => {
   assert.equal(d.continuingPhase5.PHASE_05_COMPLETE, "NOT_ISSUED");
   assert.equal(d.retainedBlockers.BLOCKED_PHASE5C_TT5D_CERTIFICATION, true);
   assert.equal(d.retainedBlockers.BLOCKED_PHASE5_READINESS, true);
-  assert.equal(d.hardening, "PHASE5D_A3_PROCONFIG_TEXT_ARRAY_V1");
-  assert.ok(
-    d.markers.includes("PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_READY_FOR_STAGING_GO_REISSUE"),
-  );
-  assert.ok(
-    d.markers.includes(
-      "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_TEXT_ARRAY_GUARDS_VERIFIED",
-    ),
-  );
-  assert.ok(
-    d.markers.includes(
-      "PLATFORM_HARD_CUTOVER_01_PHASE5D_POLICY_GUARD_NORMALIZATION_VERIFIED",
-    ),
-  );
+  assert.equal(d.hardening, "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE");
+  assert.equal(d.nextAuth, "SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
+  assert.equal(d.typedCatalogGuardRegistry.preGuardCount, 189);
+  for (const m of [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_SELECT_ONLY_PREFLIGHT_PARITY_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_NO_SERIALIZED_CATALOG_GUARDS_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_READY_FOR_SELECT_ONLY_STAGING_PREFLIGHT_GO",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_TEXT_ARRAY_GUARDS_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_READY_FOR_STAGING_GO_REISSUE",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_POLICY_GUARD_NORMALIZATION_VERIFIED",
+  ]) {
+    assert.ok(d.markers.includes(m), m);
+  }
 });
 
 test("WS_COLLAPSE_V1: compact and pretty representations normalize identically", () => {
@@ -264,43 +286,220 @@ test("no_client_write remains exact false/false", () => {
   }
 });
 
-test("sql/00 is SELECT/catalog-only with normalized policy inventory and proconfig text[] match", () => {
-  const sql = fs.readFileSync(path.join(PKG, "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"), "utf8");
-  assert.match(sql, /using_matches_guard/);
-  assert.match(sql, /with_check_matches_guard/);
-  assert.match(sql, /using_normalized/);
-  assert.match(sql, /WS_COLLAPSE_V1|btrim\(regexp_replace/);
-  assert.match(sql, /proconfig_matches_guard/);
-  assert.match(sql, /proconfig_raw_text/);
-  assert.match(sql, /proconfig_canonical/);
-  assert.match(sql, /coalesce\(p\.proconfig, ARRAY\[\]::text\[\]\)/);
-  assert.match(sql, /ARRAY\['search_path=pg_catalog, public'\]::text\[\]/);
-  const body = sql
-    .split(/\r?\n/)
-    .filter((l) => !/^\s*--/.test(l))
-    .join("\n");
-  assert.doesNotMatch(body, /\b(INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE|CREATE|GRANT|REVOKE|BEGIN|COMMIT)\b/i);
-  // Diagnostic cast allowed; matching must not use ::text equality to expected string form.
-  assert.doesNotMatch(
-    body,
-    /proconfig_matches_guard[\s\S]*proconfig::text\s*=/,
-  );
+test("A.4 typed guard registry exists with exact sql/00↔sql/10 parity", () => {
+  const reg = readJson("evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json");
+  assert.equal(reg.nextAuth, "SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
+  assert.equal(reg.preMutation.guardCount, 189);
+  assert.equal(reg.parity.guardCount, 189);
+  assert.equal(reg.parity.guardIdSetEqual, true);
+  const sql10 = fs.readFileSync(path.join(PKG, "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql"), "utf8");
+  const sql00 = fs.readFileSync(path.join(PKG, "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"), "utf8");
+  const ids10 = extractGuardIds(sql10);
+  const ids00 = [
+    ...new Set([...sql00.matchAll(/'([^']+)'\s+AS\s+guard_id/g)].map((m) => m[1])),
+  ];
+  assert.equal(ids10.length, 189);
+  assert.deepEqual(new Set(ids10), new Set(reg.preMutation.guardIds));
+  assert.deepEqual(new Set(ids00), new Set(reg.preMutation.guardIds));
 });
 
-test("precondition SQL retains fail-closed ACL/fingerprint guards and mutation allowlist", () => {
-  const sql = fs.readFileSync(
-    path.join(PKG, "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql"),
-    "utf8",
+test("zero forbidden serialized catalog guards in sql/10/20/90", () => {
+  const forbidden = [
+    [/relacl::text/i, "relacl::text"],
+    [/proacl::text/i, "proacl::text"],
+    [/pg_get_indexdef\([^)]*\)\s*IS\s+DISTINCT\s+FROM/i, "pg_get_indexdef"],
+    [/pg_get_constraintdef\([^)]*\)\s*IS\s+DISTINCT\s+FROM/i, "pg_get_constraintdef"],
+    [/column_default\s*=\s*'/i, "column_default="],
+  ];
+  for (const f of [
+    "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql",
+    "sql/20_TT5D_POST_APPLY_VERIFY.sql",
+    "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql",
+  ]) {
+    const body = stripComments(fs.readFileSync(path.join(PKG, f), "utf8"));
+    for (const [re, label] of forbidden) {
+      assert.doesNotMatch(body, re, `${f} still has forbidden ${label}`);
+    }
+    assert.match(body, /aclexplode/);
+  }
+});
+
+test("ACL_EXPLODED_SET_V1 positive reorder and negative privilege/grantor/grantee/grantable/PUBLIC", () => {
+  const baselineText = "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}";
+  const reordered = "{service_role=X/postgres,postgres=X/postgres,authenticated=X/postgres}";
+  assert.equal(aclSetsEqual(parseAclText(baselineText), parseAclText(reordered)), true);
+  assert.equal(
+    aclSetsEqual(parseAclText(baselineText), parseAclText("{postgres=X/postgres,authenticated=X/postgres}")),
+    false,
   );
-  assert.match(sql, /proacl::text/);
-  assert.match(sql, /coalesce\(\(SELECT pp\.proconfig FROM pg_proc/);
+  assert.equal(
+    aclSetsEqual(parseAclText("{postgres=X/postgres}"), parseAclText("{postgres=X/alice}")),
+    false,
+  );
+  assert.equal(
+    aclSetsEqual(parseAclText("{postgres=X/postgres}"), parseAclText("{alice=X/postgres}")),
+    false,
+  );
+  assert.equal(
+    aclSetsEqual(parseAclText("{postgres=X/postgres}"), parseAclText("{postgres=X*/postgres}")),
+    false,
+  );
+  assert.equal(
+    aclSetsEqual(parseAclText("{postgres=X/postgres}"), parseAclText("{=X/postgres,postgres=X/postgres}")),
+    false,
+  );
+  const sql = sqlAclSetMatch({
+    kind: "function",
+    objectSql: "to_regprocedure('public.demo()')",
+    expectedAclText: baselineText,
+  });
+  assert.match(sql, /aclexplode/);
+  assert.match(sql, /\(\([\s\S]*EXCEPT[\s\S]*\)\s*UNION ALL\s*\([\s\S]*EXCEPT/);
+  assert.doesNotMatch(sql, /proacl::text/);
+  assert.deepEqual(canonicalizeAclRows(parseAclText("{=r/postgres}"))[0].grantee, "PUBLIC");
+});
+
+test("INDEX_CATALOG_V1 whitespace-stable positives and structural negatives", () => {
+  const def =
+    "CREATE INDEX referee_assignments_sub_match_idx ON public.referee_assignments USING btree (sub_match_id, status) WHERE (sub_match_id IS NOT NULL)";
+  const prettyPred = "sub_match_id   IS\n  NOT NULL";
+  const cat = parseIndexCatalogFromDef(def, "postgres");
+  assert.deepEqual(cat.keyColumns, ["sub_match_id", "status"]);
+  assert.equal(wsCollapseJs(prettyPred), cat.predicateNormalized);
+  const ok = sqlIndexCatalogMatch({
+    indexName: cat.indexName,
+    tableName: cat.tableName,
+    keyColumns: cat.keyColumns,
+    predicateNormalized: cat.predicateNormalized,
+    amname: cat.amname,
+    owner: cat.owner,
+    unique: cat.unique,
+  });
+  const swapped = sqlIndexCatalogMatch({
+    indexName: cat.indexName,
+    tableName: cat.tableName,
+    keyColumns: ["status", "sub_match_id"],
+    predicateNormalized: cat.predicateNormalized,
+    amname: cat.amname,
+    owner: cat.owner,
+    unique: cat.unique,
+  });
+  assert.notEqual(ok, swapped);
+  assert.match(ok, /ARRAY\['sub_match_id', 'status'\]/);
+  assert.match(swapped, /ARRAY\['status', 'sub_match_id'\]/);
+  const badPred = sqlIndexCatalogMatch({
+    ...cat,
+    predicateNormalized: "sub_match_id IS NULL",
+  });
+  assert.match(badPred, /sub_match_id IS NULL/);
+  assert.doesNotMatch(ok, /pg_get_indexdef\([^)]*\)\s+IS DISTINCT FROM/);
+  const badOwner = sqlIndexCatalogMatch({ ...cat, owner: "not_postgres" });
+  assert.match(badOwner, /not_postgres/);
+  const badAm = sqlIndexCatalogMatch({ ...cat, amname: "hash" });
+  assert.match(badAm, /'hash'/);
+});
+
+test("CONSTRAINT_CATALOG_V1 whitespace PASS and status/operator negatives", () => {
+  const raw =
+    "CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'expired'::text, 'revoked'::text, 'completed'::text])))";
+  const multiline =
+    "CHECK ((status = ANY (ARRAY['pending'::text,\n  'active'::text, 'expired'::text, 'revoked'::text, 'completed'::text])))";
+  assert.equal(normalizeConstraintExpr(raw), normalizeConstraintExpr(multiline));
+  const ok = sqlConstraintCatalogMatch({
+    tableName: "referee_assignments",
+    constraintName: "referee_assignments_status_check",
+    expectedExprNormalized: normalizeConstraintExpr(raw),
+  });
+  assert.match(ok, /pg_get_expr\(c\.conbin, c\.conrelid, false\)/);
+  assert.doesNotMatch(ok, /pg_get_constraintdef/);
+  const removed = sqlConstraintCatalogMatch({
+    tableName: "referee_assignments",
+    constraintName: "referee_assignments_status_check",
+    expectedExprNormalized: normalizeConstraintExpr(
+      raw.replace(", 'completed'::text", ""),
+    ),
+  });
+  assert.notEqual(ok, removed);
+  const opChanged = sqlConstraintCatalogMatch({
+    tableName: "referee_assignments",
+    constraintName: "referee_assignments_status_check",
+    expectedExprNormalized: normalizeConstraintExpr(raw.replace(" = ANY ", " <> ALL ")),
+  });
+  assert.notEqual(ok, opChanged);
+});
+
+test("COLUMN_DEFAULT_EXPR_V1 formatting PASS and value/type/null negatives", () => {
+  const ok = sqlColumnDefaultMatch({
+    tableName: "referee_assignments",
+    columnName: "version",
+    dataTypeRegtype: "integer",
+    notNull: true,
+    defaultExprNormalized: "1",
+  });
+  const spaced = sqlColumnDefaultMatch({
+    tableName: "referee_assignments",
+    columnName: "version",
+    dataTypeRegtype: "integer",
+    notNull: true,
+    defaultExprNormalized: " 1 ",
+  });
+  assert.match(ok, /pg_get_expr\(ad\.adbin, ad\.adrelid, false\)/);
+  assert.doesNotMatch(ok, /column_default/);
+  assert.match(spaced, /' 1 '/);
+  const changed = sqlColumnDefaultMatch({
+    tableName: "referee_assignments",
+    columnName: "version",
+    dataTypeRegtype: "integer",
+    notNull: true,
+    defaultExprNormalized: "2",
+  });
+  assert.notEqual(ok, changed);
+  const removed = sqlColumnDefaultMatch({
+    tableName: "referee_assignments",
+    columnName: "version",
+    dataTypeRegtype: "integer",
+    notNull: true,
+    defaultExprNormalized: null,
+  });
+  assert.match(removed, /ad\.adbin IS NULL/);
+  const nullable = sqlColumnDefaultMatch({
+    tableName: "referee_assignments",
+    columnName: "version",
+    dataTypeRegtype: "integer",
+    notNull: false,
+    defaultExprNormalized: "1",
+  });
+  assert.match(nullable, /a\.attnotnull IS FALSE|a\.attnotnull = FALSE|NOT a\.attnotnull/);
+});
+
+test("sql/00 is SELECT-only registry shadow with preflight_all_pass summary columns", () => {
+  const sql = fs.readFileSync(path.join(PKG, "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"), "utf8");
+  assert.match(sql, /preflight_all_pass/);
+  assert.match(sql, /total_guard_count/);
+  assert.match(sql, /passed_guard_count/);
+  assert.match(sql, /failed_guard_count/);
+  assert.match(sql, /matches_guard/);
+  assert.match(sql, /guard_id/);
+  assert.match(sql, /aclexplode/);
+  assert.match(sql, /WS_COLLAPSE_V1|btrim\(regexp_replace/);
+  assert.match(sql, /ARRAY\['search_path=pg_catalog, public'\]::text\[\]/);
+  assert.match(sql, /coalesce\(.*proconfig.*ARRAY\[\]::text\[\]/);
+  const body = stripComments(sql);
   assert.doesNotMatch(
-    sql
-      .split(/\r?\n/)
-      .filter((l) => !/^\s*--/.test(l))
-      .join("\n"),
-    /pp\.proconfig::text/,
+    body,
+    /\b(INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|ALTER\s+|DROP\s+|TRUNCATE\s+TABLE|CREATE\s+|GRANT\s+|REVOKE\s+|BEGIN\b|COMMIT\b|\bDO\s+\$)/i,
   );
+  assert.doesNotMatch(body, /relacl::text|proacl::text/);
+  // Diagnostic actual_json must not drive matches_guard (matches_guard uses matchesSql only).
+  assert.match(sql, /AS matches_guard/);
+});
+
+test("precondition SQL retains typed ACL/fingerprint guards and mutation allowlist", () => {
+  const sql = fs.readFileSync(path.join(PKG, "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql"), "utf8");
+  assert.match(sql, /aclexplode/);
+  assert.match(sql, /-- GUARD_ID:/);
+  assert.match(sql, /coalesce\(\(SELECT pp\.proconfig FROM pg_proc/);
+  assert.doesNotMatch(stripComments(sql), /pp\.proconfig::text|proacl::text|relacl::text/);
   assert.match(sql, /has_function_privilege\('public'/);
   assert.match(sql, /pg_get_userbyid/);
   assert.match(sql, /tt5d_correction_referee_select/);
@@ -316,29 +515,29 @@ test("precondition SQL retains fail-closed ACL/fingerprint guards and mutation a
     (sql.match(/ALTER FUNCTION public\.referee_v5_assignment_effective_status/g) || []).length,
     1,
   );
+  assert.match(sql, /fn\.referee_v5_assignment_effective_status\.def_md5/);
 });
 
-test("post-apply verify has definition fingerprints and allowlists", () => {
+test("post-apply verify has definition fingerprints and typed ACL", () => {
   const sql = fs.readFileSync(path.join(PKG, "sql/20_TT5D_POST_APPLY_VERIFY.sql"), "utf8");
   const fp = readJson("evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json");
   assert.match(sql, new RegExp(fp.postApplyDefMd5));
   assert.match(sql, /STABLE/);
-  assert.match(sql, /proacl::text/);
-  assert.match(sql, /anon denied|VERIFY anon/i);
-  assert.match(sql, /authenticated=r\/postgres|authenticated SELECT/i);
+  assert.match(sql, /aclexplode/);
+  assert.doesNotMatch(stripComments(sql), /proacl::text|relacl::text/);
+  assert.match(sql, /anon denied|VERIFY anon|authenticated/i);
 });
 
-test("rollback shares advisory lock and fail-closed target/state guards", () => {
-  const apply = fs.readFileSync(
-    path.join(PKG, "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql"),
-    "utf8",
-  );
+test("rollback shares advisory lock and typed guard blocks", () => {
+  const apply = fs.readFileSync(path.join(PKG, "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql"), "utf8");
   const rb = fs.readFileSync(path.join(PKG, "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql"), "utf8");
   assert.match(apply, /hashtextextended\('phase5d_tt5d_controlled_reconciliation'/);
   assert.match(rb, /hashtextextended\('phase5d_tt5d_controlled_reconciliation'/);
   assert.match(rb, /ROLLBACK_TARGET_MISSING_PROVENANCE|VERIFY/);
   assert.match(rb, /ALTER FUNCTION[\s\S]*IMMUTABLE/i);
   assert.match(rb, /ROLLBACK_PROVENANCE_STILL_PRESENT|ROLLBACK_VERIFY|PHASE5D_BASELINE_MISMATCH/);
+  assert.match(rb, /aclexplode/);
+  assert.doesNotMatch(stripComments(rb), /proacl::text|relacl::text/);
 });
 
 test("canonical IMMUTABLE→STABLE and source/M9 byte-sync", () => {
@@ -391,11 +590,17 @@ test("historical Phase 5B/5C evidence JSON unchanged vs d06ad59a", () => {
     const r = spawnSync(
       "git",
       ["diff", "--quiet", "d06ad59a689b56ab76e16661015dc768dd6cf991", "--", p],
-      {
-        cwd: ROOT,
-        encoding: "utf8",
-      },
+      { cwd: ROOT, encoding: "utf8" },
     );
     assert.equal(r.status, 0, `historical evidence changed: ${p}`);
   }
+});
+
+test("next permitted execution is SELECT-only sql/00 not sql/10", () => {
+  const d = readJson("evidence/05_PHASE5D_A_DECISION.json");
+  const readiness = readJson("PHASE5D_A_READINESS_MANIFEST.json");
+  assert.equal(d.nextAuth, "SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
+  assert.match(JSON.stringify(readiness), /SELECT_ONLY|sql\/00|PREFLIGHT/);
+  assert.equal(d.continuingPhase5.productionExecutionGo, false);
+  assert.equal(d.continuingPhase5.PHASE_05_COMPLETE, "NOT_ISSUED");
 });
