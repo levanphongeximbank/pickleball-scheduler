@@ -80,7 +80,7 @@ test("Phase 5D-A package files exist including A.1/A.2 artefacts", () => {
   }
 });
 
-test("baseline lists exactly 13 TT5D functions and WS_COLLAPSE_V1 metadata", () => {
+test("baseline lists exactly 13 TT5D functions and WS_COLLAPSE_V1 + PROCONFIG_TEXT_ARRAY_V1 metadata", () => {
   const b = readJson("evidence/02_TT5D_EXACT_CATALOG_BASELINE.json");
   assert.equal(b.functionCount, 13);
   assert.equal(b.functions.length, 13);
@@ -97,6 +97,63 @@ test("baseline lists exactly 13 TT5D functions and WS_COLLAPSE_V1 metadata", () 
   assert.equal(b.policyExpressionComparison.comparison, "EXACT_AFTER_NORMALIZATION");
   assert.equal(b.policyExpressionComparison.semanticTokensMayDiffer, false);
   assert.equal(b.policyExpressionComparison.expectedNormalizedUsing, COMPACT_USING);
+  assert.equal(b.proconfigComparison.version, "PROCONFIG_TEXT_ARRAY_V1");
+  assert.equal(b.proconfigComparison.catalogType, "text[]");
+  assert.equal(
+    b.proconfigComparison.comparison,
+    "EXACT_ELEMENTWISE_AFTER_NULL_TO_EMPTY_ARRAY",
+  );
+  assert.equal(b.proconfigComparison.textSerializationCompared, false);
+  assert.equal(b.proconfigComparison.nullHandling, "COALESCE_NULL_TO_EMPTY_TEXT_ARRAY");
+  assert.equal(b.proconfigComparison.orderSensitive, true);
+  assert.equal(b.proconfigComparison.multiplicitySensitive, true);
+  assert.equal(b.proconfigComparison.caseSensitive, true);
+  assert.equal(b.proconfigComparison.innerElementNormalization, "NONE");
+  assert.equal(b.proconfigComparison.commaContainingElementPreserved, true);
+  for (const f of b.functions) {
+    assert.ok(Array.isArray(f.proconfig), `${f.name} proconfig must be array`);
+  }
+  const applyAdmin = b.functions.find((f) => f.name === "referee_v5_apply_admin_result_revision");
+  assert.deepEqual(applyAdmin.proconfig, ["search_path=pg_catalog, public"]);
+  assert.notDeepEqual(applyAdmin.proconfig, ["search_path=pg_catalog", "public"]);
+  const effective = b.functions.find((f) => f.name === "referee_v5_assignment_effective_status");
+  assert.deepEqual(effective.proconfig, []);
+});
+
+test("PROCONFIG_TEXT_ARRAY_V1 semantic negatives remain significant", () => {
+  const one = ["search_path=pg_catalog, public"];
+  assert.notDeepEqual(one, ["search_path=public, pg_catalog"]);
+  assert.notDeepEqual(one, ["search_path=pg_catalog", "public"]);
+  assert.notDeepEqual(one, ["search_path=pg_catalog, public", "extra=1"]);
+  assert.notDeepEqual(one, []);
+  assert.notDeepEqual(one, ["Search_path=pg_catalog, public"]);
+  assert.notDeepEqual(one, ["search_path=pg_catalog,public"]);
+});
+
+test("sql/10/20/90 use 13/13/26 semantic text[] proconfig guards and no proconfig::text comparisons", () => {
+  const guardRe =
+    /coalesce\(\(SELECT pp\.proconfig FROM pg_proc pp WHERE pp\.oid=/g;
+  const castCompareRe =
+    /pp\.proconfig::text|proconfig::text\s*FROM|coalesce\(\(SELECT pp\.proconfig::text/;
+  const sql10 = fs.readFileSync(path.join(PKG, "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql"), "utf8");
+  const sql20 = fs.readFileSync(path.join(PKG, "sql/20_TT5D_POST_APPLY_VERIFY.sql"), "utf8");
+  const sql90 = fs.readFileSync(path.join(PKG, "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql"), "utf8");
+  assert.equal((sql10.match(guardRe) || []).length, 13);
+  assert.equal((sql20.match(guardRe) || []).length, 13);
+  assert.equal((sql90.match(guardRe) || []).length, 26);
+  for (const [name, sql] of [
+    ["sql/10", sql10],
+    ["sql/20", sql20],
+    ["sql/90", sql90],
+  ]) {
+    const body = sql
+      .split(/\r?\n/)
+      .filter((l) => !/^\s*--/.test(l))
+      .join("\n");
+    assert.doesNotMatch(body, castCompareRe, `${name} still compares via proconfig::text`);
+    assert.match(sql, /ARRAY\['search_path=pg_catalog, public'\]::text\[\]/);
+    assert.match(sql, /ARRAY\[\]::text\[\]/);
+  }
 });
 
 test("semantic findings 1-7 confirmed", () => {
@@ -121,8 +178,14 @@ test("decision READY_FOR_OWNER_STAGING_GO retains blockers and M9 20/4", () => {
   assert.equal(d.continuingPhase5.PHASE_05_COMPLETE, "NOT_ISSUED");
   assert.equal(d.retainedBlockers.BLOCKED_PHASE5C_TT5D_CERTIFICATION, true);
   assert.equal(d.retainedBlockers.BLOCKED_PHASE5_READINESS, true);
+  assert.equal(d.hardening, "PHASE5D_A3_PROCONFIG_TEXT_ARRAY_V1");
   assert.ok(
-    d.markers.includes("PLATFORM_HARD_CUTOVER_01_PHASE5D_READY_FOR_STAGING_GO_REISSUE"),
+    d.markers.includes("PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_READY_FOR_STAGING_GO_REISSUE"),
+  );
+  assert.ok(
+    d.markers.includes(
+      "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_TEXT_ARRAY_GUARDS_VERIFIED",
+    ),
   );
   assert.ok(
     d.markers.includes(
@@ -201,17 +264,27 @@ test("no_client_write remains exact false/false", () => {
   }
 });
 
-test("sql/00 is SELECT/catalog-only with normalized policy inventory", () => {
+test("sql/00 is SELECT/catalog-only with normalized policy inventory and proconfig text[] match", () => {
   const sql = fs.readFileSync(path.join(PKG, "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"), "utf8");
   assert.match(sql, /using_matches_guard/);
   assert.match(sql, /with_check_matches_guard/);
   assert.match(sql, /using_normalized/);
   assert.match(sql, /WS_COLLAPSE_V1|btrim\(regexp_replace/);
+  assert.match(sql, /proconfig_matches_guard/);
+  assert.match(sql, /proconfig_raw_text/);
+  assert.match(sql, /proconfig_canonical/);
+  assert.match(sql, /coalesce\(p\.proconfig, ARRAY\[\]::text\[\]\)/);
+  assert.match(sql, /ARRAY\['search_path=pg_catalog, public'\]::text\[\]/);
   const body = sql
     .split(/\r?\n/)
     .filter((l) => !/^\s*--/.test(l))
     .join("\n");
-  assert.doesNotMatch(body, /\b(INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE|CREATE|GRANT|REVOKE)\b/i);
+  assert.doesNotMatch(body, /\b(INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE|CREATE|GRANT|REVOKE|BEGIN|COMMIT)\b/i);
+  // Diagnostic cast allowed; matching must not use ::text equality to expected string form.
+  assert.doesNotMatch(
+    body,
+    /proconfig_matches_guard[\s\S]*proconfig::text\s*=/,
+  );
 });
 
 test("precondition SQL retains fail-closed ACL/fingerprint guards and mutation allowlist", () => {
@@ -220,7 +293,14 @@ test("precondition SQL retains fail-closed ACL/fingerprint guards and mutation a
     "utf8",
   );
   assert.match(sql, /proacl::text/);
-  assert.match(sql, /proconfig/);
+  assert.match(sql, /coalesce\(\(SELECT pp\.proconfig FROM pg_proc/);
+  assert.doesNotMatch(
+    sql
+      .split(/\r?\n/)
+      .filter((l) => !/^\s*--/.test(l))
+      .join("\n"),
+    /pp\.proconfig::text/,
+  );
   assert.match(sql, /has_function_privilege\('public'/);
   assert.match(sql, /pg_get_userbyid/);
   assert.match(sql, /tt5d_correction_referee_select/);
@@ -301,17 +381,21 @@ test("Phase 5D-A verifier script PASS", () => {
   assert.match(r.stdout, /PASS Phase 5D-A verifier/);
 });
 
-test("historical Phase 5B/5C evidence JSON unchanged vs origin/main", () => {
+test("historical Phase 5B/5C evidence JSON unchanged vs d06ad59a", () => {
   const protectedEvidence = [
     "docs/platform-hard-cutover-01/phase-05b-execution-package/evidence/05_PHASE5B_DECISION_2026-07-31.json",
     "docs/platform-hard-cutover-01/phase-05c-tt5d-staging-certification/evidence/01_OWNER_GO_TARGET_AND_BACKUP_GATE_2026-07-31.json",
     "docs/platform-hard-cutover-01/phase-05c-tt5d-staging-certification/evidence/07_PHASE5C_M9_RECLASSIFICATION_DECISION_2026-07-31.json",
   ];
   for (const p of protectedEvidence) {
-    const r = spawnSync("git", ["diff", "--quiet", "origin/main", "--", p], {
-      cwd: ROOT,
-      encoding: "utf8",
-    });
+    const r = spawnSync(
+      "git",
+      ["diff", "--quiet", "d06ad59a689b56ab76e16661015dc768dd6cf991", "--", p],
+      {
+        cwd: ROOT,
+        encoding: "utf8",
+      },
+    );
     assert.equal(r.status, 0, `historical evidence changed: ${p}`);
   }
 });

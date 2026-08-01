@@ -125,19 +125,19 @@
   "dependencyClosureResult": "PASS",
   "canonicalSourceSync": "PHASE5D_A1_COMPLETED",
   "productionPromotionContract": "PASS",
-  "phase5dAModifiesHistoricalPhase5B5CEvidence": false,
-  "phase5dAUpdatesActiveOperationalConsumers": [
-    "four TT5D source SQL",
-    "four M9 TT5D copies",
-    "M9_MANIFEST hashes",
-    "00_SOURCE_PROVENANCE hashes",
-    "PHASE5B_CHECKSUM_MANIFEST hashes"
-  ],
   "policyExpressionComparison": "WS_COLLAPSE_V1",
+  "proconfigComparison": "PROCONFIG_TEXT_ARRAY_V1",
+  "phase5dAModifiesHistoricalPhase5B5CEvidence": false,
   "phase5dA2Scope": [
     "harden-phase5d-a1.mjs WS_COLLAPSE_V1 helper",
     "sql/00 normalized policy inventory",
     "sql/10 sql/20 sql/90 select-policy USING guards",
     "evidence/02 policyExpressionComparison metadata"
+  ],
+  "phase5dA3Scope": [
+    "harden-phase5d-a1.mjs PROCONFIG_TEXT_ARRAY_V1 helper",
+    "sql/00 proconfig text[] inventory",
+    "sql/10 sql/20 sql/90 semantic proconfig text[] guards (52)",
+    "evidence/02 proconfigComparison metadata + array-valued proconfig"
   ]
 }

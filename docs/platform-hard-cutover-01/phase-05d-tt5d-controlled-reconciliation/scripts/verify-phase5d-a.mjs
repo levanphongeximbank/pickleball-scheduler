@@ -163,20 +163,65 @@ if (
 ) {
   fail("evidence/02 missing WS_COLLAPSE_V1 policyExpressionComparison contract");
 }
+if (
+  baseline.proconfigComparison?.version !== "PROCONFIG_TEXT_ARRAY_V1" ||
+  baseline.proconfigComparison?.textSerializationCompared !== false ||
+  baseline.proconfigComparison?.comparison !==
+    "EXACT_ELEMENTWISE_AFTER_NULL_TO_EMPTY_ARRAY"
+) {
+  fail("evidence/02 missing PROCONFIG_TEXT_ARRAY_V1 contract");
+}
+for (const f of baseline.functions || []) {
+  if (!Array.isArray(f.proconfig)) fail(`${f.name} proconfig must be array`);
+}
+const applyAdmin = (baseline.functions || []).find(
+  (f) => f.name === "referee_v5_apply_admin_result_revision",
+);
+if (
+  !applyAdmin ||
+  applyAdmin.proconfig.length !== 1 ||
+  applyAdmin.proconfig[0] !== "search_path=pg_catalog, public"
+) {
+  fail("apply_admin_result_revision proconfig must be one-element comma-containing array");
+}
 
 const sql00 = fs.readFileSync(path.join(PKG, "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"), "utf8");
 if (!/using_matches_guard/.test(sql00) || !/btrim\(regexp_replace/.test(sql00)) {
   fail("sql/00 missing normalized policy inventory");
 }
+if (!/proconfig_matches_guard/.test(sql00) || !/coalesce\(p\.proconfig, ARRAY\[\]::text\[\]\)/.test(sql00)) {
+  fail("sql/00 missing PROCONFIG_TEXT_ARRAY_V1 inventory");
+}
 const sql00Body = sql00
   .split(/\r?\n/)
   .filter((l) => !/^\s*--/.test(l))
   .join("\n");
-if (/\b(INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE|CREATE|GRANT|REVOKE)\b/i.test(sql00Body)) {
+if (/\b(INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE|CREATE|GRANT|REVOKE|BEGIN|COMMIT)\b/i.test(sql00Body)) {
   fail("sql/00 must remain SELECT-only");
 }
 
 const verifySql = fs.readFileSync(path.join(PKG, "sql/20_TT5D_POST_APPLY_VERIFY.sql"), "utf8");
+const proconfigGuardRe = /coalesce\(\(SELECT pp\.proconfig FROM pg_proc pp WHERE pp\.oid=/g;
+const sql10Guards = recon.match(proconfigGuardRe) || [];
+const sql20Guards = verifySql.match(proconfigGuardRe) || [];
+const sql90Guards = rb.match(proconfigGuardRe) || [];
+if (sql10Guards.length !== 13) fail(`sql/10 expected 13 proconfig text[] guards, got ${sql10Guards.length}`);
+if (sql20Guards.length !== 13) fail(`sql/20 expected 13 proconfig text[] guards, got ${sql20Guards.length}`);
+if (sql90Guards.length !== 26) fail(`sql/90 expected 26 proconfig text[] guards, got ${sql90Guards.length}`);
+for (const [label, sql] of [
+  ["sql/10", recon],
+  ["sql/20", verifySql],
+  ["sql/90", rb],
+]) {
+  const body = sql
+    .split(/\r?\n/)
+    .filter((l) => !/^\s*--/.test(l))
+    .join("\n");
+  if (/pp\.proconfig::text/.test(body) || /coalesce\(\(SELECT pp\.proconfig::text/.test(body)) {
+    fail(`${label} still compares via proconfig::text`);
+  }
+}
+
 const names = [
   "referee_v5_assignment_effective_status",
   "referee_v5_mark_assignment_expired_if_needed",

@@ -41,6 +41,10 @@
     "scripts/harden-phase5d-a1.mjs"
   ],
   "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_TEXT_ARRAY_GUARDS_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_REPRESENTATION_DRIFT_RESOLVED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_GENERATOR_IDEMPOTENCE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_READY_FOR_STAGING_GO_REISSUE",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_POLICY_GUARD_NORMALIZATION_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_PRECONDITION_REPRESENTATION_DRIFT_RESOLVED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_GENERATOR_IDEMPOTENCE_REVERIFIED",
@@ -51,7 +55,7 @@
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_ROLLBACK_HARDENED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO_RECONFIRMED"
   ],
-  "hardening": "PHASE5D_A2_POLICY_GUARD_WS_COLLAPSE_V1",
+  "hardening": "PHASE5D_A3_PROCONFIG_TEXT_ARRAY_V1",
   "policyExpressionComparison": {
     "version": "WS_COLLAPSE_V1",
     "scope": "tt5d_correction_referee_select.polqual",
@@ -61,5 +65,30 @@
     "semanticTokensMayDiffer": false,
     "expectedNormalizedUsing": "(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))",
     "note": "Compact expected string is the canonical normalized expected value, not a claim of raw byte-identical live pg_get_expr output."
+  },
+  "proconfigComparison": {
+    "version": "PROCONFIG_TEXT_ARRAY_V1",
+    "catalogType": "text[]",
+    "comparison": "EXACT_ELEMENTWISE_AFTER_NULL_TO_EMPTY_ARRAY",
+    "textSerializationCompared": false,
+    "nullHandling": "COALESCE_NULL_TO_EMPTY_TEXT_ARRAY",
+    "orderSensitive": true,
+    "multiplicitySensitive": true,
+    "caseSensitive": true,
+    "innerElementNormalization": "NONE",
+    "commaContainingElementPreserved": true,
+    "representationOnlyMismatch": {
+      "function": "referee_v5_apply_admin_result_revision",
+      "priorGuardExpectedText": "{search_path=pg_catalog, public}",
+      "liveProconfigText": "{\"search_path=pg_catalog, public\"}",
+      "semanticElements": [
+        "search_path=pg_catalog, public"
+      ],
+      "functionBodyDrift": false,
+      "policyDrift": false,
+      "aclDrift": false,
+      "schemaDrift": false,
+      "committedStagingMutations": 0
+    }
   }
 }

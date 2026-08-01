@@ -15,6 +15,18 @@ migration provenance.
 This is **not** Staging mutation authorization. A separate Owner GO is required
 before Phase 5D-B.
 
+## Guard contracts
+
+- Policy USING (`tt5d_correction_referee_select`): `WS_COLLAPSE_V1`
+- Function `proconfig`: `PROCONFIG_TEXT_ARRAY_V1` (exact `text[]` element-wise;
+  never compare `proconfig::text`)
+
+## Prior Phase 5D-B attempts (no committed Staging mutation)
+
+1. Policy whitespace representation mismatch — `sql/10` not executed.
+2. `sql/00` PASS; `sql/10` aborted in `$guard$` on `proconfig::text` representation
+   before mutation; transaction rolled back; committed mutations=0.
+
 ## Retained blockers
 
 - `BLOCKED_PHASE5C_TT5D_CERTIFICATION`

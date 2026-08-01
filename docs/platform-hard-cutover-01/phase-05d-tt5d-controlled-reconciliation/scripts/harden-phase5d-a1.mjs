@@ -52,6 +52,28 @@ function sqlNormalizedUsingEq(expectedUsing) {
   return `${live} = ${expected}`;
 }
 
+/**
+ * PROCONFIG_TEXT_ARRAY_V1 — semantic text[] comparison for pg_proc.proconfig.
+ * Never cast proconfig to text for guards. Never parse PostgreSQL array text.
+ */
+function asProconfigElements(pc) {
+  if (Array.isArray(pc)) return pc;
+  throw new Error(
+    `proconfig must be a JSON array of exact text[] elements (got ${typeof pc}: ${JSON.stringify(pc)})`,
+  );
+}
+
+function sqlTextArrayLiteral(elements) {
+  const arr = asProconfigElements(elements);
+  if (arr.length === 0) return "ARRAY[]::text[]";
+  return `ARRAY[${arr.map((e) => sqlStr(e)).join(", ")}]::text[]`;
+}
+
+/** Live coalesce(proconfig, ARRAY[]::text[]) IS DISTINCT FROM expected text[]. */
+function sqlProconfigMismatch(procOidExpr, expectedElements) {
+  return `coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=${procOidExpr}), ARRAY[]::text[]) IS DISTINCT FROM ${sqlTextArrayLiteral(expectedElements)}`;
+}
+
 const baseline = JSON.parse(
   fs.readFileSync(path.join(PKG, "evidence/02_TT5D_EXACT_CATALOG_BASELINE.json"), "utf8"),
 );
@@ -118,7 +140,7 @@ function fnProc(f) {
 
 function preFnGuards(f) {
   const p = fnProc(f);
-  const cfg = f.proconfig || "{}";
+  const cfg = asProconfigElements(f.proconfig);
   return `
   IF ${p} IS NULL THEN RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH missing ${f.name}'; END IF;
   IF (
@@ -144,7 +166,7 @@ function preFnGuards(f) {
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=${p}) IS DISTINCT FROM ${f.securityDefiner} THEN
     RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH security_definer ${f.name}';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=${p}), '{}') IS DISTINCT FROM ${sqlStr(cfg)} THEN
+  IF ${sqlProconfigMismatch(p, cfg)} THEN
     RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH proconfig ${f.name}';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=${p}) IS DISTINCT FROM ${sqlStr(f.owner)} THEN
@@ -173,7 +195,7 @@ function postFnGuards(f) {
   const vol = f.name === "referee_v5_assignment_effective_status" ? "STABLE" : f.volatility;
   const defMd5 =
     f.name === "referee_v5_assignment_effective_status" ? postMd5 : f.defMd5;
-  const cfg = f.proconfig || "{}";
+  const cfg = asProconfigElements(f.proconfig);
   const postAcl = expectedPostAcl(f.name);
   return `
   IF ${p} IS NULL THEN RAISE EXCEPTION 'VERIFY missing ${f.name}'; END IF;
@@ -194,7 +216,7 @@ function postFnGuards(f) {
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=${p}) IS DISTINCT FROM ${f.securityDefiner} THEN
     RAISE EXCEPTION 'VERIFY security_definer ${f.name}';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=${p}), '{}') IS DISTINCT FROM ${sqlStr(cfg)} THEN
+  IF ${sqlProconfigMismatch(p, cfg)} THEN
     RAISE EXCEPTION 'VERIFY proconfig ${f.name}';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=${p}) IS DISTINCT FROM ${sqlStr(f.owner)} THEN
@@ -381,6 +403,7 @@ write(
 -- Staging ONLY (${AUTHORIZED_STAGING}). Forbidden Production target: ${FORBIDDEN_PROD}.
 -- Catalog/ACL/volatility reconciliation only. No table drops, truncates, or business-row deletes.
 -- Policy USING guard for tt5d_correction_referee_select uses WS_COLLAPSE_V1 normalization.
+-- Function proconfig guards use PROCONFIG_TEXT_ARRAY_V1 (semantic text[]; never proconfig::text).
 
 BEGIN;
 SET LOCAL lock_timeout = '5s';
@@ -424,7 +447,7 @@ COMMIT;
 
 write(
   "sql/20_TT5D_POST_APPLY_VERIFY.sql",
-  `-- Phase 5D post-apply verify — exact fingerprints/ACL/policy/provenance (WS_COLLAPSE_V1 for select policy).
+  `-- Phase 5D post-apply verify — exact fingerprints/ACL/policy/provenance (WS_COLLAPSE_V1 + PROCONFIG_TEXT_ARRAY_V1).
 DO $verify$
 BEGIN
 ${tableGuards("post")}
@@ -459,7 +482,7 @@ $verify$;
 
 write(
   "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql",
-  `-- Phase 5D exact baseline rollback — same advisory lock as apply. Fail closed (WS_COLLAPSE_V1).
+  `-- Phase 5D exact baseline rollback — same advisory lock as apply. Fail closed (WS_COLLAPSE_V1 + PROCONFIG_TEXT_ARRAY_V1).
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
@@ -564,6 +587,19 @@ const supersessions = JSON.parse(fs.readFileSync(existingSup, "utf8")).supersess
 const selectPol = corr.policies.find((p) => p.name === "tt5d_correction_referee_select");
 if (!selectPol?.using) throw new Error("missing select policy using expression in baseline");
 
+// Normalize all function proconfig values to exact text[] element arrays.
+for (const f of baseline.functions) {
+  f.proconfig = asProconfigElements(f.proconfig);
+}
+const applyAdmin = baseline.functions.find((f) => f.name === "referee_v5_apply_admin_result_revision");
+if (
+  !applyAdmin ||
+  applyAdmin.proconfig.length !== 1 ||
+  applyAdmin.proconfig[0] !== "search_path=pg_catalog, public"
+) {
+  throw new Error("apply_admin_result_revision proconfig must be one-element comma-containing search_path");
+}
+
 // Keep compact expected USING unchanged; add WS_COLLAPSE_V1 comparison metadata.
 baseline.policyExpressionComparison = {
   version: "WS_COLLAPSE_V1",
@@ -575,14 +611,43 @@ baseline.policyExpressionComparison = {
   expectedNormalizedUsing: selectPol.using,
   note: "Compact expected string is the canonical normalized expected value, not a claim of raw byte-identical live pg_get_expr output.",
 };
+baseline.proconfigComparison = {
+  version: "PROCONFIG_TEXT_ARRAY_V1",
+  catalogType: "text[]",
+  comparison: "EXACT_ELEMENTWISE_AFTER_NULL_TO_EMPTY_ARRAY",
+  textSerializationCompared: false,
+  nullHandling: "COALESCE_NULL_TO_EMPTY_TEXT_ARRAY",
+  orderSensitive: true,
+  multiplicitySensitive: true,
+  caseSensitive: true,
+  innerElementNormalization: "NONE",
+  commaContainingElementPreserved: true,
+  representationOnlyMismatch: {
+    function: "referee_v5_apply_admin_result_revision",
+    priorGuardExpectedText: "{search_path=pg_catalog, public}",
+    liveProconfigText: '{"search_path=pg_catalog, public"}',
+    semanticElements: ["search_path=pg_catalog, public"],
+    functionBodyDrift: false,
+    policyDrift: false,
+    aclDrift: false,
+    schemaDrift: false,
+    committedStagingMutations: 0,
+  },
+};
 write("evidence/02_TT5D_EXACT_CATALOG_BASELINE.json", JSON.stringify(baseline, null, 2) + "\n");
 
 const expectedUsingSql = sqlStr(selectPol.using);
+const proconfigCaseArms = baseline.functions
+  .map(
+    (f) => `    WHEN ${sqlStr(f.name)} THEN ${sqlTextArrayLiteral(f.proconfig)}`,
+  )
+  .join("\n");
 write(
   "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
   `-- Phase 5D precondition — SELECT/catalog only. Do not mutate.
 -- Target must be Staging project_ref ${AUTHORIZED_STAGING}. Forbidden: ${FORBIDDEN_PROD}.
 -- Policy inventory includes WS_COLLAPSE_V1 normalized USING comparison for tt5d_correction_referee_select.
+-- Function inventory includes PROCONFIG_TEXT_ARRAY_V1 semantic text[] matching (proconfig::text is diagnostic only).
 
 SELECT to_regclass('public.club_ai_data') IS NULL AS club_ai_data_absent;
 SELECT to_regclass('public.referee_assignments') IS NOT NULL AS referee_assignments_present;
@@ -590,8 +655,28 @@ SELECT to_regclass('public.team_tournament_referee_correction_requests') IS NOT 
 
 SELECT p.proname,
        pg_get_function_identity_arguments(p.oid) AS identity_args,
+       'public.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' AS function_signature,
        CASE p.provolatile WHEN 'i' THEN 'IMMUTABLE' WHEN 's' THEN 'STABLE' WHEN 'v' THEN 'VOLATILE' END AS volatility,
        md5(pg_get_functiondef(p.oid)) AS def_md5,
+       p.proconfig::text AS proconfig_raw_text,
+       to_json(p.proconfig) AS proconfig_raw_json,
+       coalesce(p.proconfig, ARRAY[]::text[]) AS proconfig_canonical,
+       CASE p.proname
+${proconfigCaseArms}
+         ELSE NULL
+       END AS proconfig_expected,
+       CASE
+         WHEN CASE p.proname
+${proconfigCaseArms}
+           ELSE NULL
+         END IS NULL THEN NULL
+         ELSE coalesce(p.proconfig, ARRAY[]::text[]) IS NOT DISTINCT FROM (
+           CASE p.proname
+${proconfigCaseArms}
+             ELSE NULL
+           END
+         )
+       END AS proconfig_matches_guard,
        has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_execute,
        has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated_execute,
        has_function_privilege('service_role', p.oid, 'EXECUTE') AS service_role_execute
@@ -662,9 +747,13 @@ ORDER BY pol.polname;
 `,
 );
 
-// Update decision markers for A.2
+// Update decision markers for A.3
 const decision = JSON.parse(fs.readFileSync(path.join(PKG, "evidence/05_PHASE5D_A_DECISION.json"), "utf8"));
 decision.markers = [
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_TEXT_ARRAY_GUARDS_VERIFIED",
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_REPRESENTATION_DRIFT_RESOLVED",
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_GENERATOR_IDEMPOTENCE_VERIFIED",
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_READY_FOR_STAGING_GO_REISSUE",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_POLICY_GUARD_NORMALIZATION_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_PRECONDITION_REPRESENTATION_DRIFT_RESOLVED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_GENERATOR_IDEMPOTENCE_REVERIFIED",
@@ -675,21 +764,40 @@ decision.markers = [
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_ROLLBACK_HARDENED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO_RECONFIRMED",
 ];
-decision.hardening = "PHASE5D_A2_POLICY_GUARD_WS_COLLAPSE_V1";
+decision.hardening = "PHASE5D_A3_PROCONFIG_TEXT_ARRAY_V1";
 decision.decision = "READY_FOR_OWNER_STAGING_GO";
-decision.priorPhase5dBAttempt = {
-  stop: "PHASE5D_B_BLOCKED_PRECONDITION_NO_MUTATION",
-  sql10Executed: false,
-  StagingDatabaseMutations: 0,
-  RestoreExecutions: 0,
-  rootCause: "pg_get_expr pretty-print whitespace vs compact expected USING for tt5d_correction_referee_select",
-};
+decision.priorPhase5dBAttempts = [
+  {
+    attempt: 1,
+    stop: "PHASE5D_B_BLOCKED_PRECONDITION_NO_MUTATION",
+    sql10Executed: false,
+    StagingDatabaseMutations: 0,
+    RestoreExecutions: 0,
+    rootCause: "pg_get_expr pretty-print whitespace vs compact expected USING for tt5d_correction_referee_select",
+  },
+  {
+    attempt: 2,
+    stop: "PHASE5D_B_BLOCKED_APPLY_BASELINE_MISMATCH_NO_MUTATION",
+    sql00Pass: true,
+    sql10ExecutionAttempts: 1,
+    sql10Committed: false,
+    sql20Executed: false,
+    sql90Executed: false,
+    StagingDatabaseMutations: 0,
+    RestoreExecutions: 0,
+    exactError: "P0001: PHASE5D_BASELINE_MISMATCH proconfig referee_v5_apply_admin_result_revision",
+    rootCause:
+      "proconfig::text representation mismatch for comma-containing search_path text[] element; semantic proconfig unchanged",
+  },
+];
+decision.priorPhase5dBAttempt = decision.priorPhase5dBAttempts[1];
 fs.writeFileSync(path.join(PKG, "evidence/05_PHASE5D_A_DECISION.json"), JSON.stringify(decision, null, 2) + "\n");
 
 const readiness = JSON.parse(fs.readFileSync(path.join(PKG, "PHASE5D_A_READINESS_MANIFEST.json"), "utf8"));
 readiness.markers = decision.markers;
-readiness.hardening = "PHASE5D_A2_POLICY_GUARD_WS_COLLAPSE_V1";
+readiness.hardening = "PHASE5D_A3_PROCONFIG_TEXT_ARRAY_V1";
 readiness.policyExpressionComparison = baseline.policyExpressionComparison;
+readiness.proconfigComparison = baseline.proconfigComparison;
 for (const f of [
   "evidence/06_PRODUCTION_PROMOTION_CONTRACT.json",
   "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
@@ -704,12 +812,19 @@ const dep = JSON.parse(fs.readFileSync(path.join(PKG, "evidence/04_TWO_WAY_DEPEN
 dep.canonicalSourceSync = "PHASE5D_A1_COMPLETED";
 dep.productionPromotionContract = "PASS";
 dep.policyExpressionComparison = "WS_COLLAPSE_V1";
+dep.proconfigComparison = "PROCONFIG_TEXT_ARRAY_V1";
 dep.phase5dAModifiesHistoricalPhase5B5CEvidence = false;
 dep.phase5dA2Scope = [
   "harden-phase5d-a1.mjs WS_COLLAPSE_V1 helper",
   "sql/00 normalized policy inventory",
   "sql/10 sql/20 sql/90 select-policy USING guards",
   "evidence/02 policyExpressionComparison metadata",
+];
+dep.phase5dA3Scope = [
+  "harden-phase5d-a1.mjs PROCONFIG_TEXT_ARRAY_V1 helper",
+  "sql/00 proconfig text[] inventory",
+  "sql/10 sql/20 sql/90 semantic proconfig text[] guards (52)",
+  "evidence/02 proconfigComparison metadata + array-valued proconfig",
 ];
 fs.writeFileSync(path.join(PKG, "evidence/04_TWO_WAY_DEPENDENCY_MAP.json"), JSON.stringify(dep, null, 2) + "\n");
 
@@ -723,6 +838,7 @@ console.log(
       supersessionLeaves: supersessions.map((s) => s.leaf),
       lockKey: LOCK_KEY,
       policyGuard: "WS_COLLAPSE_V1",
+      proconfigGuard: "PROCONFIG_TEXT_ARRAY_V1",
     },
     null,
     2,

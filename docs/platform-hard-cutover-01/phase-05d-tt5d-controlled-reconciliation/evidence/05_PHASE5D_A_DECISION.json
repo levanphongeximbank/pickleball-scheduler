@@ -27,6 +27,10 @@
   "phase6": "NOT_STARTED",
   "rollbackReady": true,
   "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_TEXT_ARRAY_GUARDS_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_REPRESENTATION_DRIFT_RESOLVED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_GENERATOR_IDEMPOTENCE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_READY_FOR_STAGING_GO_REISSUE",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_POLICY_GUARD_NORMALIZATION_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_PRECONDITION_REPRESENTATION_DRIFT_RESOLVED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_GENERATOR_IDEMPOTENCE_REVERIFIED",
@@ -37,12 +41,41 @@
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_ROLLBACK_HARDENED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO_RECONFIRMED"
   ],
-  "hardening": "PHASE5D_A2_POLICY_GUARD_WS_COLLAPSE_V1",
+  "hardening": "PHASE5D_A3_PROCONFIG_TEXT_ARRAY_V1",
+  "priorPhase5dBAttempts": [
+    {
+      "attempt": 1,
+      "stop": "PHASE5D_B_BLOCKED_PRECONDITION_NO_MUTATION",
+      "sql10Executed": false,
+      "StagingDatabaseMutations": 0,
+      "RestoreExecutions": 0,
+      "rootCause": "pg_get_expr pretty-print whitespace vs compact expected USING for tt5d_correction_referee_select"
+    },
+    {
+      "attempt": 2,
+      "stop": "PHASE5D_B_BLOCKED_APPLY_BASELINE_MISMATCH_NO_MUTATION",
+      "sql00Pass": true,
+      "sql10ExecutionAttempts": 1,
+      "sql10Committed": false,
+      "sql20Executed": false,
+      "sql90Executed": false,
+      "StagingDatabaseMutations": 0,
+      "RestoreExecutions": 0,
+      "exactError": "P0001: PHASE5D_BASELINE_MISMATCH proconfig referee_v5_apply_admin_result_revision",
+      "rootCause": "proconfig::text representation mismatch for comma-containing search_path text[] element; semantic proconfig unchanged"
+    }
+  ],
   "priorPhase5dBAttempt": {
-    "stop": "PHASE5D_B_BLOCKED_PRECONDITION_NO_MUTATION",
-    "sql10Executed": false,
+    "attempt": 2,
+    "stop": "PHASE5D_B_BLOCKED_APPLY_BASELINE_MISMATCH_NO_MUTATION",
+    "sql00Pass": true,
+    "sql10ExecutionAttempts": 1,
+    "sql10Committed": false,
+    "sql20Executed": false,
+    "sql90Executed": false,
     "StagingDatabaseMutations": 0,
     "RestoreExecutions": 0,
-    "rootCause": "pg_get_expr pretty-print whitespace vs compact expected USING for tt5d_correction_referee_select"
+    "exactError": "P0001: PHASE5D_BASELINE_MISMATCH proconfig referee_v5_apply_admin_result_revision",
+    "rootCause": "proconfig::text representation mismatch for comma-containing search_path text[] element; semantic proconfig unchanged"
   }
 }

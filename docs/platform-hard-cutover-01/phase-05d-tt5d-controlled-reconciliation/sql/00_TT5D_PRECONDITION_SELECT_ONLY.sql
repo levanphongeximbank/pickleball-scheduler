@@ -1,6 +1,7 @@
 -- Phase 5D precondition — SELECT/catalog only. Do not mutate.
 -- Target must be Staging project_ref qyewbxjsiiyufanzcjcq. Forbidden: expuvcohlcjzvrrauvud.
 -- Policy inventory includes WS_COLLAPSE_V1 normalized USING comparison for tt5d_correction_referee_select.
+-- Function inventory includes PROCONFIG_TEXT_ARRAY_V1 semantic text[] matching (proconfig::text is diagnostic only).
 
 SELECT to_regclass('public.club_ai_data') IS NULL AS club_ai_data_absent;
 SELECT to_regclass('public.referee_assignments') IS NOT NULL AS referee_assignments_present;
@@ -8,8 +9,64 @@ SELECT to_regclass('public.team_tournament_referee_correction_requests') IS NOT 
 
 SELECT p.proname,
        pg_get_function_identity_arguments(p.oid) AS identity_args,
+       'public.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' AS function_signature,
        CASE p.provolatile WHEN 'i' THEN 'IMMUTABLE' WHEN 's' THEN 'STABLE' WHEN 'v' THEN 'VOLATILE' END AS volatility,
        md5(pg_get_functiondef(p.oid)) AS def_md5,
+       p.proconfig::text AS proconfig_raw_text,
+       to_json(p.proconfig) AS proconfig_raw_json,
+       coalesce(p.proconfig, ARRAY[]::text[]) AS proconfig_canonical,
+       CASE p.proname
+    WHEN 'referee_v5_apply_admin_result_revision' THEN ARRAY['search_path=pg_catalog, public']::text[]
+    WHEN 'referee_v5_assert_assignment_write' THEN ARRAY['search_path=public']::text[]
+    WHEN 'referee_v5_assignment_effective_status' THEN ARRAY[]::text[]
+    WHEN 'referee_v5_current_user_has_assignment' THEN ARRAY['search_path=public']::text[]
+    WHEN 'referee_v5_mark_assignment_expired_if_needed' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_create_referee_assignment' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_list_referee_assignments' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_list_referee_corrections' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_referee_match_access_ops' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_reopen_referee_match' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_request_referee_correction' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_review_referee_correction' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_revoke_referee_assignment' THEN ARRAY['search_path=public']::text[]
+         ELSE NULL
+       END AS proconfig_expected,
+       CASE
+         WHEN CASE p.proname
+    WHEN 'referee_v5_apply_admin_result_revision' THEN ARRAY['search_path=pg_catalog, public']::text[]
+    WHEN 'referee_v5_assert_assignment_write' THEN ARRAY['search_path=public']::text[]
+    WHEN 'referee_v5_assignment_effective_status' THEN ARRAY[]::text[]
+    WHEN 'referee_v5_current_user_has_assignment' THEN ARRAY['search_path=public']::text[]
+    WHEN 'referee_v5_mark_assignment_expired_if_needed' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_create_referee_assignment' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_list_referee_assignments' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_list_referee_corrections' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_referee_match_access_ops' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_reopen_referee_match' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_request_referee_correction' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_review_referee_correction' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_revoke_referee_assignment' THEN ARRAY['search_path=public']::text[]
+           ELSE NULL
+         END IS NULL THEN NULL
+         ELSE coalesce(p.proconfig, ARRAY[]::text[]) IS NOT DISTINCT FROM (
+           CASE p.proname
+    WHEN 'referee_v5_apply_admin_result_revision' THEN ARRAY['search_path=pg_catalog, public']::text[]
+    WHEN 'referee_v5_assert_assignment_write' THEN ARRAY['search_path=public']::text[]
+    WHEN 'referee_v5_assignment_effective_status' THEN ARRAY[]::text[]
+    WHEN 'referee_v5_current_user_has_assignment' THEN ARRAY['search_path=public']::text[]
+    WHEN 'referee_v5_mark_assignment_expired_if_needed' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_create_referee_assignment' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_list_referee_assignments' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_list_referee_corrections' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_referee_match_access_ops' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_reopen_referee_match' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_request_referee_correction' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_review_referee_correction' THEN ARRAY['search_path=public']::text[]
+    WHEN 'team_tournament_revoke_referee_assignment' THEN ARRAY['search_path=public']::text[]
+             ELSE NULL
+           END
+         )
+       END AS proconfig_matches_guard,
        has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_execute,
        has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated_execute,
        has_function_privilege('service_role', p.oid, 'EXECUTE') AS service_role_execute

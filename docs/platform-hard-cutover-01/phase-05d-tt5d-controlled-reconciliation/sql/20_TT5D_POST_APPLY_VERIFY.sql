@@ -1,4 +1,4 @@
--- Phase 5D post-apply verify — exact fingerprints/ACL/policy/provenance (WS_COLLAPSE_V1 for select policy).
+-- Phase 5D post-apply verify — exact fingerprints/ACL/policy/provenance (WS_COLLAPSE_V1 + PROCONFIG_TEXT_ARRAY_V1).
 DO $verify$
 BEGIN
 
@@ -144,7 +144,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)')) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'VERIFY security_definer referee_v5_apply_admin_result_revision';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)')), '{}') IS DISTINCT FROM '{search_path=pg_catalog, public}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=pg_catalog, public']::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig referee_v5_apply_admin_result_revision';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)')) IS DISTINCT FROM 'postgres' THEN
@@ -184,7 +184,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)')) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'VERIFY security_definer referee_v5_assert_assignment_write';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)')), '{}') IS DISTINCT FROM '{search_path=public}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig referee_v5_assert_assignment_write';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)')) IS DISTINCT FROM 'postgres' THEN
@@ -224,7 +224,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)')) IS DISTINCT FROM false THEN
     RAISE EXCEPTION 'VERIFY security_definer referee_v5_assignment_effective_status';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)')), '{}') IS DISTINCT FROM '{}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY[]::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig referee_v5_assignment_effective_status';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)')) IS DISTINCT FROM 'postgres' THEN
@@ -264,7 +264,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])')) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'VERIFY security_definer referee_v5_current_user_has_assignment';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])')), '{}') IS DISTINCT FROM '{search_path=public}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig referee_v5_current_user_has_assignment';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])')) IS DISTINCT FROM 'postgres' THEN
@@ -304,7 +304,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_mark_assignment_expired_if_needed(uuid)')) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'VERIFY security_definer referee_v5_mark_assignment_expired_if_needed';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_mark_assignment_expired_if_needed(uuid)')), '{}') IS DISTINCT FROM '{search_path=public}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_mark_assignment_expired_if_needed(uuid)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig referee_v5_mark_assignment_expired_if_needed';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_mark_assignment_expired_if_needed(uuid)')) IS DISTINCT FROM 'postgres' THEN
@@ -344,7 +344,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)')) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'VERIFY security_definer team_tournament_create_referee_assignment';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)')), '{}') IS DISTINCT FROM '{search_path=public}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig team_tournament_create_referee_assignment';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)')) IS DISTINCT FROM 'postgres' THEN
@@ -384,7 +384,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_list_referee_assignments(text, text)')) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'VERIFY security_definer team_tournament_list_referee_assignments';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_list_referee_assignments(text, text)')), '{}') IS DISTINCT FROM '{search_path=public}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_list_referee_assignments(text, text)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig team_tournament_list_referee_assignments';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_list_referee_assignments(text, text)')) IS DISTINCT FROM 'postgres' THEN
@@ -424,7 +424,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_list_referee_corrections(text, text)')) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'VERIFY security_definer team_tournament_list_referee_corrections';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_list_referee_corrections(text, text)')), '{}') IS DISTINCT FROM '{search_path=public}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_list_referee_corrections(text, text)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig team_tournament_list_referee_corrections';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_list_referee_corrections(text, text)')) IS DISTINCT FROM 'postgres' THEN
@@ -464,7 +464,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_referee_match_access_ops(text, text)')) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'VERIFY security_definer team_tournament_referee_match_access_ops';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_referee_match_access_ops(text, text)')), '{}') IS DISTINCT FROM '{search_path=public}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_referee_match_access_ops(text, text)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig team_tournament_referee_match_access_ops';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_referee_match_access_ops(text, text)')) IS DISTINCT FROM 'postgres' THEN
@@ -504,7 +504,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_reopen_referee_match(text, text, text, text)')) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'VERIFY security_definer team_tournament_reopen_referee_match';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_reopen_referee_match(text, text, text, text)')), '{}') IS DISTINCT FROM '{search_path=public}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_reopen_referee_match(text, text, text, text)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig team_tournament_reopen_referee_match';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_reopen_referee_match(text, text, text, text)')) IS DISTINCT FROM 'postgres' THEN
@@ -544,7 +544,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)')) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'VERIFY security_definer team_tournament_request_referee_correction';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)')), '{}') IS DISTINCT FROM '{search_path=public}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig team_tournament_request_referee_correction';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)')) IS DISTINCT FROM 'postgres' THEN
@@ -584,7 +584,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)')) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'VERIFY security_definer team_tournament_review_referee_correction';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)')), '{}') IS DISTINCT FROM '{search_path=public}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig team_tournament_review_referee_correction';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)')) IS DISTINCT FROM 'postgres' THEN
@@ -624,7 +624,7 @@ BEGIN
   IF (SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)')) IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'VERIFY security_definer team_tournament_revoke_referee_assignment';
   END IF;
-  IF coalesce((SELECT pp.proconfig::text FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)')), '{}') IS DISTINCT FROM '{search_path=public}' THEN
+  IF coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[] THEN
     RAISE EXCEPTION 'VERIFY proconfig team_tournament_revoke_referee_assignment';
   END IF;
   IF (SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)')) IS DISTINCT FROM 'postgres' THEN
