@@ -1,4 +1,4 @@
--- Phase 5D-A.1 exact baseline rollback — same advisory lock as apply. Fail closed.
+-- Phase 5D exact baseline rollback — same advisory lock as apply. Fail closed (WS_COLLAPSE_V1).
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
@@ -116,8 +116,8 @@ BEGIN
     JOIN pg_class c ON c.oid=pol.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='public' AND pol.polname='tt5d_correction_referee_select'
       AND pol.polcmd='r'
-      AND pg_get_expr(pol.polqual, pol.polrelid) = '(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))'
-      AND pg_get_expr(pol.polwithcheck, pol.polrelid) IS NULL
+      AND btrim(regexp_replace((pg_get_expr(pol.polqual, pol.polrelid, false))::text, '[[:space:]]+', ' ', 'g')) = btrim(regexp_replace(('(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))')::text, '[[:space:]]+', ' ', 'g'))
+      AND pg_get_expr(pol.polwithcheck, pol.polrelid, false) IS NULL
       AND array(select rolname from pg_roles r where r.oid = any(pol.polroles)) = ARRAY['authenticated']::name[]
   ) THEN RAISE EXCEPTION 'VERIFY policy select'; END IF;
 
@@ -126,8 +126,8 @@ BEGIN
     JOIN pg_class c ON c.oid=pol.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='public' AND pol.polname='tt5d_correction_no_client_write'
       AND pol.polcmd='*'
-      AND pg_get_expr(pol.polqual, pol.polrelid) = 'false'
-      AND pg_get_expr(pol.polwithcheck, pol.polrelid) = 'false'
+      AND pg_get_expr(pol.polqual, pol.polrelid, false) = 'false'
+      AND pg_get_expr(pol.polwithcheck, pol.polrelid, false) = 'false'
       AND array(select rolname from pg_roles r where r.oid = any(pol.polroles)) = ARRAY['authenticated']::name[]
   ) THEN RAISE EXCEPTION 'VERIFY policy no_client_write'; END IF;
 
@@ -819,8 +819,8 @@ BEGIN
     JOIN pg_class c ON c.oid=pol.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='public' AND pol.polname='tt5d_correction_referee_select'
       AND pol.polcmd='r'
-      AND pg_get_expr(pol.polqual, pol.polrelid) = '(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))'
-      AND pg_get_expr(pol.polwithcheck, pol.polrelid) IS NULL
+      AND btrim(regexp_replace((pg_get_expr(pol.polqual, pol.polrelid, false))::text, '[[:space:]]+', ' ', 'g')) = btrim(regexp_replace(('(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))')::text, '[[:space:]]+', ' ', 'g'))
+      AND pg_get_expr(pol.polwithcheck, pol.polrelid, false) IS NULL
       AND array(select rolname from pg_roles r where r.oid = any(pol.polroles)) = ARRAY['authenticated']::name[]
   ) THEN RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH policy select'; END IF;
 
@@ -829,8 +829,8 @@ BEGIN
     JOIN pg_class c ON c.oid=pol.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='public' AND pol.polname='tt5d_correction_no_client_write'
       AND pol.polcmd='*'
-      AND pg_get_expr(pol.polqual, pol.polrelid) = 'false'
-      AND pg_get_expr(pol.polwithcheck, pol.polrelid) = 'false'
+      AND pg_get_expr(pol.polqual, pol.polrelid, false) = 'false'
+      AND pg_get_expr(pol.polwithcheck, pol.polrelid, false) = 'false'
       AND array(select rolname from pg_roles r where r.oid = any(pol.polroles)) = ARRAY['authenticated']::name[]
   ) THEN RAISE EXCEPTION 'PHASE5D_BASELINE_MISMATCH policy no_client_write'; END IF;
 

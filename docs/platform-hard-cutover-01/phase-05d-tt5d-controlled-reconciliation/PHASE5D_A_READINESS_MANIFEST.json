@@ -37,14 +37,29 @@
     "scripts/sync-phase5d-checksum-manifest.mjs",
     "evidence/06_PRODUCTION_PROMOTION_CONTRACT.json",
     "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
-    "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json"
+    "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json",
+    "scripts/harden-phase5d-a1.mjs"
   ],
   "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_POLICY_GUARD_NORMALIZATION_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_PRECONDITION_REPRESENTATION_DRIFT_RESOLVED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_GENERATOR_IDEMPOTENCE_REVERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_READY_FOR_STAGING_GO_REISSUE",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_FAIL_CLOSED_GUARDS_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_CANONICAL_SOURCE_SYNCHRONIZED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_PRODUCTION_PROMOTION_CONTRACT_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_ROLLBACK_HARDENED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO_RECONFIRMED"
   ],
-  "hardening": "PHASE5D_A1_PRE_STAGING_GO"
+  "hardening": "PHASE5D_A2_POLICY_GUARD_WS_COLLAPSE_V1",
+  "policyExpressionComparison": {
+    "version": "WS_COLLAPSE_V1",
+    "scope": "tt5d_correction_referee_select.polqual",
+    "pgGetExprPretty": false,
+    "normalization": "COLLAPSE_POSIX_WHITESPACE_TO_SINGLE_SPACE_AND_TRIM",
+    "comparison": "EXACT_AFTER_NORMALIZATION",
+    "semanticTokensMayDiffer": false,
+    "expectedNormalizedUsing": "(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))",
+    "note": "Compact expected string is the canonical normalized expected value, not a claim of raw byte-identical live pg_get_expr output."
+  }
 }

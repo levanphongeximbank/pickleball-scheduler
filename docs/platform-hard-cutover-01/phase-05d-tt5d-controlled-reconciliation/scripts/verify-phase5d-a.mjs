@@ -113,6 +113,20 @@ if (!/REVOKE ALL[\s\S]*FROM PUBLIC,\s*anon/i.test(recon)) fail("reconciliation m
 if (!/phase5d_tt5d_controlled_reconciliation/.test(recon)) fail("missing provenance name");
 if (!/proacl::text/.test(recon)) fail("precondition missing raw proacl checks");
 if (!/tt5d_correction_referee_select/.test(recon)) fail("precondition missing policy checks");
+if (
+  !/btrim\(\s*regexp_replace\(\s*\(?\s*pg_get_expr\(\s*pol\.polqual\s*,\s*pol\.polrelid\s*,\s*false\s*\)/.test(
+    recon,
+  )
+) {
+  fail("sql/10 missing WS_COLLAPSE_V1 normalized select-policy USING guard");
+}
+if (
+  /pg_get_expr\(\s*pol\.polqual\s*,\s*pol\.polrelid\s*\)\s*=\s*'\(team_tournament_can_manage/.test(
+    recon,
+  )
+) {
+  fail("sql/10 still has raw direct select-policy USING comparison");
+}
 
 const promo = path.join(PKG, "evidence/06_PRODUCTION_PROMOTION_CONTRACT.json");
 if (!fs.existsSync(promo)) fail("missing production promotion contract");
@@ -129,6 +143,37 @@ else {
 const rb = fs.readFileSync(path.join(PKG, "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql"), "utf8");
 if (!/hashtextextended\('phase5d_tt5d_controlled_reconciliation'/.test(rb)) {
   fail("rollback must share apply advisory lock key");
+}
+const normCount = [
+  recon,
+  fs.readFileSync(path.join(PKG, "sql/20_TT5D_POST_APPLY_VERIFY.sql"), "utf8"),
+  rb,
+]
+  .join("\n")
+  .match(
+    /btrim\(\s*regexp_replace\(\s*\(?\s*pg_get_expr\(\s*pol\.polqual\s*,\s*pol\.polrelid\s*,\s*false\s*\)/g,
+  );
+if (!normCount || normCount.length !== 4) {
+  fail(`expected 4 WS_COLLAPSE_V1 select-policy guards, got ${normCount?.length ?? 0}`);
+}
+
+if (
+  baseline.policyExpressionComparison?.version !== "WS_COLLAPSE_V1" ||
+  baseline.policyExpressionComparison?.comparison !== "EXACT_AFTER_NORMALIZATION"
+) {
+  fail("evidence/02 missing WS_COLLAPSE_V1 policyExpressionComparison contract");
+}
+
+const sql00 = fs.readFileSync(path.join(PKG, "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"), "utf8");
+if (!/using_matches_guard/.test(sql00) || !/btrim\(regexp_replace/.test(sql00)) {
+  fail("sql/00 missing normalized policy inventory");
+}
+const sql00Body = sql00
+  .split(/\r?\n/)
+  .filter((l) => !/^\s*--/.test(l))
+  .join("\n");
+if (/\b(INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE|CREATE|GRANT|REVOKE)\b/i.test(sql00Body)) {
+  fail("sql/00 must remain SELECT-only");
 }
 
 const verifySql = fs.readFileSync(path.join(PKG, "sql/20_TT5D_POST_APPLY_VERIFY.sql"), "utf8");

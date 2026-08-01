@@ -363,5 +363,15 @@
     ],
     "classification": "TT5D_OBJECTS_PRESENT_WITHOUT_CONTROLLED_MIGRATION_PROVENANCE"
   },
-  "rowValuesCaptured": false
+  "rowValuesCaptured": false,
+  "policyExpressionComparison": {
+    "version": "WS_COLLAPSE_V1",
+    "scope": "tt5d_correction_referee_select.polqual",
+    "pgGetExprPretty": false,
+    "normalization": "COLLAPSE_POSIX_WHITESPACE_TO_SINGLE_SPACE_AND_TRIM",
+    "comparison": "EXACT_AFTER_NORMALIZATION",
+    "semanticTokensMayDiffer": false,
+    "expectedNormalizedUsing": "(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))",
+    "note": "Compact expected string is the canonical normalized expected value, not a claim of raw byte-identical live pg_get_expr output."
+  }
 }

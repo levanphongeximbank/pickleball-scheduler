@@ -36,6 +36,22 @@ function sqlStr(s) {
   return `'${String(s).replace(/'/g, "''")}'`;
 }
 
+/**
+ * WS_COLLAPSE_V1 — deterministic SQL-side whitespace normalization for
+ * tt5d_correction_referee_select.polqual only.
+ * Collapse every contiguous POSIX whitespace run to one ASCII space, then trim.
+ */
+function sqlWsCollapseV1(exprSql) {
+  return `btrim(regexp_replace((${exprSql})::text, '[[:space:]]+', ' ', 'g'))`;
+}
+
+/** Exact normalized comparison of live pg_get_expr(..., false) vs expected literal. */
+function sqlNormalizedUsingEq(expectedUsing) {
+  const live = sqlWsCollapseV1("pg_get_expr(pol.polqual, pol.polrelid, false)");
+  const expected = sqlWsCollapseV1(sqlStr(expectedUsing));
+  return `${live} = ${expected}`;
+}
+
 const baseline = JSON.parse(
   fs.readFileSync(path.join(PKG, "evidence/02_TT5D_EXACT_CATALOG_BASELINE.json"), "utf8"),
 );
@@ -321,8 +337,8 @@ function tableGuards(mode) {
     JOIN pg_class c ON c.oid=pol.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='public' AND pol.polname='tt5d_correction_referee_select'
       AND pol.polcmd='r'
-      AND pg_get_expr(pol.polqual, pol.polrelid) = ${sqlStr(pol[0].using)}
-      AND pg_get_expr(pol.polwithcheck, pol.polrelid) IS NULL
+      AND ${sqlNormalizedUsingEq(pol[0].using)}
+      AND pg_get_expr(pol.polwithcheck, pol.polrelid, false) IS NULL
       AND array(select rolname from pg_roles r where r.oid = any(pol.polroles)) = ARRAY['authenticated']::name[]
   ) THEN RAISE EXCEPTION '${fail} policy select'; END IF;
 
@@ -331,8 +347,8 @@ function tableGuards(mode) {
     JOIN pg_class c ON c.oid=pol.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='public' AND pol.polname='tt5d_correction_no_client_write'
       AND pol.polcmd='*'
-      AND pg_get_expr(pol.polqual, pol.polrelid) = 'false'
-      AND pg_get_expr(pol.polwithcheck, pol.polrelid) = 'false'
+      AND pg_get_expr(pol.polqual, pol.polrelid, false) = 'false'
+      AND pg_get_expr(pol.polwithcheck, pol.polrelid, false) = 'false'
       AND array(select rolname from pg_roles r where r.oid = any(pol.polroles)) = ARRAY['authenticated']::name[]
   ) THEN RAISE EXCEPTION '${fail} policy no_client_write'; END IF;
 `;
@@ -361,9 +377,10 @@ GRANT EXECUTE ON FUNCTION public.${f.name}(${short}) TO ${roles.join(", ")};`;
 
 write(
   "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql",
-  `-- Phase 5D-A.1 hardened reconciliation — AUTHOR ONLY. Do not execute in Phase 5D-A.
+  `-- Phase 5D hardened reconciliation — AUTHOR ONLY until Owner Staging GO.
 -- Staging ONLY (${AUTHORIZED_STAGING}). Forbidden Production target: ${FORBIDDEN_PROD}.
 -- Catalog/ACL/volatility reconciliation only. No table drops, truncates, or business-row deletes.
+-- Policy USING guard for tt5d_correction_referee_select uses WS_COLLAPSE_V1 normalization.
 
 BEGIN;
 SET LOCAL lock_timeout = '5s';
@@ -407,7 +424,7 @@ COMMIT;
 
 write(
   "sql/20_TT5D_POST_APPLY_VERIFY.sql",
-  `-- Phase 5D-A.1 post-apply verify — exact fingerprints/ACL/policy/provenance.
+  `-- Phase 5D post-apply verify — exact fingerprints/ACL/policy/provenance (WS_COLLAPSE_V1 for select policy).
 DO $verify$
 BEGIN
 ${tableGuards("post")}
@@ -442,7 +459,7 @@ $verify$;
 
 write(
   "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql",
-  `-- Phase 5D-A.1 exact baseline rollback — same advisory lock as apply. Fail closed.
+  `-- Phase 5D exact baseline rollback — same advisory lock as apply. Fail closed (WS_COLLAPSE_V1).
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '60s';
@@ -536,111 +553,148 @@ write(
   ) + "\n",
 );
 
-const oldHashes = {
-  "190_TT5D_ASSIGNMENT_SAFETY.sql":
-    "5ABEE354336E5A6D8744558D880F86803C33C283E95A43A4CD9877A2E3B69E70",
-  "200_TT5D_REOPEN_RESULT.sql":
-    "7DB37D8A39B35789DF6D3948F6899B8ED0D950A6963E97855F0F579FDF43A755",
-  "210_TT5D_CORRECTION.sql":
-    "F9941BF7316273247D317B2344E2404FC7177F6CD28BB650C0E6BB9CBB66D0B7",
-  "220_TT5D_SECURITY_GUARDS.sql":
-    "DC359FFAA81F4217491339AF879B509A0903AB98D176C3F7D5E98F3D1A94045F",
+// Preserve committed supersession / fingerprint evidence (do not rehash WT CRLF).
+const existingSup = path.join(PKG, "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json");
+const existingFp = path.join(PKG, "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json");
+if (!fs.existsSync(existingSup) || !fs.existsSync(existingFp)) {
+  throw new Error("A.2 requires existing supersession/fingerprint evidence from A.1");
+}
+const supersessions = JSON.parse(fs.readFileSync(existingSup, "utf8")).supersessions;
+
+const selectPol = corr.policies.find((p) => p.name === "tt5d_correction_referee_select");
+if (!selectPol?.using) throw new Error("missing select policy using expression in baseline");
+
+// Keep compact expected USING unchanged; add WS_COLLAPSE_V1 comparison metadata.
+baseline.policyExpressionComparison = {
+  version: "WS_COLLAPSE_V1",
+  scope: "tt5d_correction_referee_select.polqual",
+  pgGetExprPretty: false,
+  normalization: "COLLAPSE_POSIX_WHITESPACE_TO_SINGLE_SPACE_AND_TRIM",
+  comparison: "EXACT_AFTER_NORMALIZATION",
+  semanticTokensMayDiffer: false,
+  expectedNormalizedUsing: selectPol.using,
+  note: "Compact expected string is the canonical normalized expected value, not a claim of raw byte-identical live pg_get_expr output.",
 };
-const pairs = [
-  [
-    "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
-    "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/190_TT5D_ASSIGNMENT_SAFETY.sql",
-    "190_TT5D_ASSIGNMENT_SAFETY.sql",
-  ],
-  [
-    "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
-    "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/200_TT5D_REOPEN_RESULT.sql",
-    "200_TT5D_REOPEN_RESULT.sql",
-  ],
-  [
-    "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
-    "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/210_TT5D_CORRECTION.sql",
-    "210_TT5D_CORRECTION.sql",
-  ],
-  [
-    "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql",
-    "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/220_TT5D_SECURITY_GUARDS.sql",
-    "220_TT5D_SECURITY_GUARDS.sql",
-  ],
-];
+write("evidence/02_TT5D_EXACT_CATALOG_BASELINE.json", JSON.stringify(baseline, null, 2) + "\n");
 
-const supersessions = pairs.map(([src, m9, leaf]) => {
-  const sb = fs.readFileSync(path.join(ROOT, src));
-  const mb = fs.readFileSync(path.join(ROOT, m9));
-  const neu = crypto.createHash("sha256").update(sb).digest("hex").toUpperCase();
-  const neuM9 = crypto.createHash("sha256").update(mb).digest("hex").toUpperCase();
-  if (!sb.equals(mb)) throw new Error(`source/M9 not byte-identical: ${leaf}`);
-  return {
-    leaf,
-    sourcePath: src,
-    m9Path: m9,
-    oldSha256ExactGitBlobBytes: oldHashes[leaf],
-    newSha256ExactGitBlobBytes: neu,
-    sourceEqualsM9: neu === neuM9,
-    remainsNonExecutable: true,
-  };
-});
-
+const expectedUsingSql = sqlStr(selectPol.using);
 write(
-  "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
-  JSON.stringify(
-    {
-      marker: "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_CANONICAL_SOURCE_SYNCHRONIZED",
-      corrections: [
-        "referee_v5_assignment_effective_status IMMUTABLE→STABLE",
-        "deterministic REVOKE ALL FROM PUBLIC,anon,authenticated,service_role then GRANT allowlist for all 13",
-        "correction table deterministic ACL",
-      ],
-      supersessions,
-      m9: { executableApplyCount: 20, nonExecutableCandidateCount: 4, tt5dMovedToOrderedApply: false },
-      historicalPhase5B5CEvidenceRewritten: false,
-    },
-    null,
-    2,
-  ) + "\n",
+  "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
+  `-- Phase 5D precondition — SELECT/catalog only. Do not mutate.
+-- Target must be Staging project_ref ${AUTHORIZED_STAGING}. Forbidden: ${FORBIDDEN_PROD}.
+-- Policy inventory includes WS_COLLAPSE_V1 normalized USING comparison for tt5d_correction_referee_select.
+
+SELECT to_regclass('public.club_ai_data') IS NULL AS club_ai_data_absent;
+SELECT to_regclass('public.referee_assignments') IS NOT NULL AS referee_assignments_present;
+SELECT to_regclass('public.team_tournament_referee_correction_requests') IS NOT NULL AS correction_table_present;
+
+SELECT p.proname,
+       pg_get_function_identity_arguments(p.oid) AS identity_args,
+       CASE p.provolatile WHEN 'i' THEN 'IMMUTABLE' WHEN 's' THEN 'STABLE' WHEN 'v' THEN 'VOLATILE' END AS volatility,
+       md5(pg_get_functiondef(p.oid)) AS def_md5,
+       has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_execute,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated_execute,
+       has_function_privilege('service_role', p.oid, 'EXECUTE') AS service_role_execute
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname IN (
+    'referee_v5_assignment_effective_status',
+    'referee_v5_mark_assignment_expired_if_needed',
+    'team_tournament_create_referee_assignment',
+    'team_tournament_revoke_referee_assignment',
+    'team_tournament_list_referee_assignments',
+    'referee_v5_apply_admin_result_revision',
+    'team_tournament_reopen_referee_match',
+    'team_tournament_request_referee_correction',
+    'team_tournament_review_referee_correction',
+    'team_tournament_list_referee_corrections',
+    'referee_v5_current_user_has_assignment',
+    'referee_v5_assert_assignment_write',
+    'team_tournament_referee_match_access_ops'
+  )
+ORDER BY 1, 2;
+
+SELECT version, name
+FROM supabase_migrations.schema_migrations
+WHERE name ILIKE '%tt5d%' OR name ILIKE '%phase5c%' OR name ILIKE '%phase5d%' OR name ILIKE '%tt5%'
+ORDER BY version;
+
+SELECT
+  pol.polname AS policy_name,
+  pol.polcmd::text AS command,
+  coalesce(
+    (
+      SELECT array_agg(r.rolname ORDER BY r.rolname)
+      FROM unnest(coalesce(pol.polroles, '{}'::oid[])) AS u(oid)
+      LEFT JOIN pg_roles r ON r.oid = u.oid
+    ),
+    '{}'::name[]
+  ) AS roles,
+  pg_get_expr(pol.polqual, pol.polrelid, false) AS using_raw,
+  ${sqlWsCollapseV1("pg_get_expr(pol.polqual, pol.polrelid, false)")} AS using_normalized,
+  pg_get_expr(pol.polwithcheck, pol.polrelid, false) AS with_check_raw,
+  CASE
+    WHEN pg_get_expr(pol.polwithcheck, pol.polrelid, false) IS NULL THEN NULL
+    ELSE ${sqlWsCollapseV1("pg_get_expr(pol.polwithcheck, pol.polrelid, false)")}
+  END AS with_check_normalized,
+  CASE pol.polname
+    WHEN 'tt5d_correction_referee_select' THEN
+      ${sqlWsCollapseV1("pg_get_expr(pol.polqual, pol.polrelid, false)")} = ${sqlWsCollapseV1(expectedUsingSql)}
+    WHEN 'tt5d_correction_no_client_write' THEN
+      pg_get_expr(pol.polqual, pol.polrelid, false) = 'false'
+    ELSE NULL
+  END AS using_matches_guard,
+  CASE pol.polname
+    WHEN 'tt5d_correction_referee_select' THEN
+      pg_get_expr(pol.polwithcheck, pol.polrelid, false) IS NULL
+    WHEN 'tt5d_correction_no_client_write' THEN
+      pg_get_expr(pol.polwithcheck, pol.polrelid, false) = 'false'
+    ELSE NULL
+  END AS with_check_matches_guard
+FROM pg_policy pol
+JOIN pg_class c ON c.oid = pol.polrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public'
+  AND c.relname = 'team_tournament_referee_correction_requests'
+  AND pol.polname IN ('tt5d_correction_referee_select', 'tt5d_correction_no_client_write')
+ORDER BY pol.polname;
+`,
 );
 
-write(
-  "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json",
-  JSON.stringify(
-    {
-      derivation: "IMMUTABLE_TOKEN_REPLACED_WITH_STABLE_IN_CAPTURED_PG_GET_FUNCTIONDEF",
-      baselineDefMd5: baseMd5,
-      baselineDefSha256: baseSha,
-      postApplyDefMd5: postMd5,
-      postApplyDefSha256: postSha,
-      mutatedDatabaseCaptureUsed: false,
-    },
-    null,
-    2,
-  ) + "\n",
-);
-
-// Update decision markers
+// Update decision markers for A.2
 const decision = JSON.parse(fs.readFileSync(path.join(PKG, "evidence/05_PHASE5D_A_DECISION.json"), "utf8"));
 decision.markers = [
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_POLICY_GUARD_NORMALIZATION_VERIFIED",
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_PRECONDITION_REPRESENTATION_DRIFT_RESOLVED",
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_GENERATOR_IDEMPOTENCE_REVERIFIED",
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_READY_FOR_STAGING_GO_REISSUE",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_FAIL_CLOSED_GUARDS_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_CANONICAL_SOURCE_SYNCHRONIZED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_PRODUCTION_PROMOTION_CONTRACT_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_ROLLBACK_HARDENED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO_RECONFIRMED",
 ];
-decision.hardening = "PHASE5D_A1_PRE_STAGING_GO";
+decision.hardening = "PHASE5D_A2_POLICY_GUARD_WS_COLLAPSE_V1";
 decision.decision = "READY_FOR_OWNER_STAGING_GO";
+decision.priorPhase5dBAttempt = {
+  stop: "PHASE5D_B_BLOCKED_PRECONDITION_NO_MUTATION",
+  sql10Executed: false,
+  StagingDatabaseMutations: 0,
+  RestoreExecutions: 0,
+  rootCause: "pg_get_expr pretty-print whitespace vs compact expected USING for tt5d_correction_referee_select",
+};
 fs.writeFileSync(path.join(PKG, "evidence/05_PHASE5D_A_DECISION.json"), JSON.stringify(decision, null, 2) + "\n");
 
 const readiness = JSON.parse(fs.readFileSync(path.join(PKG, "PHASE5D_A_READINESS_MANIFEST.json"), "utf8"));
 readiness.markers = decision.markers;
-readiness.hardening = "PHASE5D_A1_PRE_STAGING_GO";
+readiness.hardening = "PHASE5D_A2_POLICY_GUARD_WS_COLLAPSE_V1";
+readiness.policyExpressionComparison = baseline.policyExpressionComparison;
 for (const f of [
   "evidence/06_PRODUCTION_PROMOTION_CONTRACT.json",
   "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
   "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json",
+  "scripts/harden-phase5d-a1.mjs",
 ]) {
   if (!readiness.packageFiles.includes(f)) readiness.packageFiles.push(f);
 }
@@ -649,13 +703,13 @@ fs.writeFileSync(path.join(PKG, "PHASE5D_A_READINESS_MANIFEST.json"), JSON.strin
 const dep = JSON.parse(fs.readFileSync(path.join(PKG, "evidence/04_TWO_WAY_DEPENDENCY_MAP.json"), "utf8"));
 dep.canonicalSourceSync = "PHASE5D_A1_COMPLETED";
 dep.productionPromotionContract = "PASS";
+dep.policyExpressionComparison = "WS_COLLAPSE_V1";
 dep.phase5dAModifiesHistoricalPhase5B5CEvidence = false;
-dep.phase5dAUpdatesActiveOperationalConsumers = [
-  "four TT5D source SQL",
-  "four M9 TT5D copies",
-  "M9_MANIFEST hashes",
-  "00_SOURCE_PROVENANCE hashes",
-  "PHASE5B_CHECKSUM_MANIFEST hashes",
+dep.phase5dA2Scope = [
+  "harden-phase5d-a1.mjs WS_COLLAPSE_V1 helper",
+  "sql/00 normalized policy inventory",
+  "sql/10 sql/20 sql/90 select-policy USING guards",
+  "evidence/02 policyExpressionComparison metadata",
 ];
 fs.writeFileSync(path.join(PKG, "evidence/04_TWO_WAY_DEPENDENCY_MAP.json"), JSON.stringify(dep, null, 2) + "\n");
 
@@ -663,10 +717,12 @@ console.log(
   JSON.stringify(
     {
       ok: true,
+      marker: "GENERATOR_IDEMPOTENT_CANDIDATE",
       postMd5,
       postSha,
-      supersessions,
+      supersessionLeaves: supersessions.map((s) => s.leaf),
       lockKey: LOCK_KEY,
+      policyGuard: "WS_COLLAPSE_V1",
     },
     null,
     2,
