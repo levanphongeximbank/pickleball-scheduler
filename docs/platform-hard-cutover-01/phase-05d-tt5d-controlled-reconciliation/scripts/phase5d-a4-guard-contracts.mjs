@@ -1,7 +1,8 @@
 /**
- * Phase 5D-A.4 — typed catalog guard contracts (registry + sql/00 shadow parity).
+ * Phase 5D-A.4 / A.5 — typed catalog guard contracts (registry + sql/00 shadow + transport batches).
  * Repository-only. No database.
  */
+import crypto from "node:crypto";
 
 const PRIV_LETTER = {
   a: "INSERT",
@@ -288,7 +289,7 @@ function pushGuard(guards, partial) {
   });
 }
 
-function guardRow(g) {
+export function guardRow(g) {
   const expectedJson = JSON.stringify(g.expected_json);
   const actualExpr = g.diagnosticSql
     ? `coalesce(${g.diagnosticSql}, jsonb_build_object('matches', (${g.matchesSql})))`
@@ -301,6 +302,157 @@ function guardRow(g) {
        ${expectedJson}::jsonb AS expected_json,
        ${actualExpr} AS actual_json,
        (${g.matchesSql}) AS matches_guard`;
+}
+
+/** Predicate fingerprint for transport/registry parity (matchesSql + expected_json only). */
+export function guardPredicateFingerprint(g) {
+  const payload = JSON.stringify({
+    guard_id: g.guard_id,
+    matchesSql: g.matchesSql,
+    expected_json: g.expected_json,
+    contract_version: g.contract_version,
+  });
+  return crypto.createHash("sha256").update(payload, "utf8").digest("hex");
+}
+
+export function encodedExecuteSqlPayloadBytes(fileText) {
+  return Buffer.byteLength(JSON.stringify({ query: fileText }), "utf8");
+}
+
+export const TRANSPORT_ENCODED_PAYLOAD_LIMIT = 28000;
+
+/**
+ * Single-statement SELECT-only batch shadow for a contiguous guard slice.
+ * Includes constant batch_id + manifest_fingerprint columns.
+ */
+export function shadowPreflightBatchSql(guards, { batchId, manifestFingerprint }) {
+  if (!guards.length) throw new Error("shadowPreflightBatchSql requires >=1 guard");
+  const rows = guards.map(guardRow).join("\nUNION ALL\n");
+  return `-- Phase 5D A.5 transport-safe SELECT-only preflight batch
+-- batch_id=${batchId}
+-- manifest_fingerprint=${manifestFingerprint}
+-- Contract versions: ACL_EXPLODED_SET_V1, INDEX_CATALOG_V1, CONSTRAINT_CATALOG_V1, COLUMN_DEFAULT_EXPR_V1, PROCONFIG_TEXT_ARRAY_V1, WS_COLLAPSE_V1.
+-- One WITH...SELECT only. No BEGIN/COMMIT/DO/DDL/DML/RPC.
+
+WITH guard_results AS (
+${rows}
+)
+SELECT ${sqlStr(batchId)} AS batch_id,
+       ${sqlStr(manifestFingerprint)} AS manifest_fingerprint,
+       guard_order,
+       guard_id,
+       object_class,
+       object_identity,
+       contract_version,
+       expected_json,
+       actual_json,
+       matches_guard
+FROM guard_results
+ORDER BY guard_order;
+`;
+}
+
+/**
+ * Partition ordered guards by encoded MCP execute_sql payload size.
+ * Never splits a single guard. Stops if one guard alone exceeds the limit.
+ */
+export function partitionGuardsForTransport(guards, {
+  maxEncodedBytes = TRANSPORT_ENCODED_PAYLOAD_LIMIT,
+  manifestFingerprint,
+  batchIdPrefix = "00_PREFLIGHT_BATCH_",
+} = {}) {
+  if (!Array.isArray(guards) || guards.length === 0) {
+    throw new Error("partitionGuardsForTransport requires non-empty guards");
+  }
+  const batches = [];
+  let current = [];
+
+  const render = (slice, index1) => {
+    const batchId = `${batchIdPrefix}${String(index1).padStart(3, "0")}`;
+    const sql = shadowPreflightBatchSql(slice, { batchId, manifestFingerprint });
+    return { batchId, sql, encodedBytes: encodedExecuteSqlPayloadBytes(sql) };
+  };
+
+  for (const g of guards) {
+    const alone = render([g], batches.length + 1);
+    if (alone.encodedBytes > maxEncodedBytes) {
+      throw new Error(
+        `PHASE5D_A5_TRANSPORT_PACKAGE_BLOCKED: guard ${g.guard_id} alone encodes to ${alone.encodedBytes} > ${maxEncodedBytes}`,
+      );
+    }
+    const trial = [...current, g];
+    const trialRender = render(trial, batches.length + 1);
+    if (trialRender.encodedBytes <= maxEncodedBytes) {
+      current = trial;
+      continue;
+    }
+    if (current.length === 0) {
+      throw new Error(`PHASE5D_A5_TRANSPORT_PACKAGE_BLOCKED: cannot place guard ${g.guard_id}`);
+    }
+    batches.push(current);
+    current = [g];
+  }
+  if (current.length) batches.push(current);
+
+  return batches.map((slice, i) => {
+    const { batchId, sql, encodedBytes } = render(slice, i + 1);
+    return {
+      batch_id: batchId,
+      fileName: `${batchId}.sql`,
+      sql,
+      encodedBytes,
+      rawBytes: Buffer.byteLength(sql, "utf8"),
+      first_guard_order: slice[0].guard_order,
+      last_guard_order: slice[slice.length - 1].guard_order,
+      guard_count: slice.length,
+      guard_ids: slice.map((g) => g.guard_id),
+      guards: slice,
+    };
+  });
+}
+
+export function buildTransportBatchManifest({
+  canonicalSql00,
+  canonicalSql00GitBlob,
+  canonicalSql00Sha256,
+  registryFingerprint,
+  preRegistry,
+  batches,
+  aggregationContract,
+}) {
+  return {
+    marker: "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST",
+    nextAuth: "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY",
+    canonicalSql00: {
+      path: "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
+      gitBlob: canonicalSql00GitBlob,
+      sha256: canonicalSql00Sha256,
+      rawBytes: Buffer.byteLength(canonicalSql00, "utf8"),
+      byteForByteFrozen: true,
+    },
+    authoritativeRegistryFingerprint: registryFingerprint,
+    totalGuards: preRegistry.length,
+    batchCount: batches.length,
+    encodedPayloadLimit: TRANSPORT_ENCODED_PAYLOAD_LIMIT,
+    aggregationContract,
+    batches: batches.map((b) => ({
+      batch_id: b.batch_id,
+      path: `sql/00_transport/${b.fileName}`,
+      contentSha256: crypto.createHash("sha256").update(b.sql, "utf8").digest("hex"),
+      gitBlob: null, // filled by writer after git hash-object
+      rawByteCount: b.rawBytes,
+      encodedExecuteSqlPayloadByteCount: b.encodedBytes,
+      first_guard_order: b.first_guard_order,
+      last_guard_order: b.last_guard_order,
+      guard_count: b.guard_count,
+      guard_ids: b.guard_ids,
+      predicateFingerprints: b.guards.map((g) => ({
+        guard_order: g.guard_order,
+        guard_id: g.guard_id,
+        fingerprint: guardPredicateFingerprint(g),
+      })),
+    })),
+  };
 }
 
 /**

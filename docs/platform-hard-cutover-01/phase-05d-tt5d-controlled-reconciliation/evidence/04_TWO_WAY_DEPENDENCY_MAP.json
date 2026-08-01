@@ -128,6 +128,7 @@
   "policyExpressionComparison": "WS_COLLAPSE_V1",
   "proconfigComparison": "PROCONFIG_TEXT_ARRAY_V1",
   "typedCatalogGuardComparison": "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE",
+  "transportBatchPackage": "PHASE5D_A5_TRANSPORT_SAFE_BATCHED_SELECT_ONLY",
   "phase5dAModifiesHistoricalPhase5B5CEvidence": false,
   "phase5dA2Scope": [
     "harden-phase5d-a1.mjs WS_COLLAPSE_V1 helper",
@@ -147,5 +148,11 @@
     "sql/10 pre $guard$ via failClosedSql(preRegistry)",
     "sql/20 sql/90 ACL/INDEX/CONSTRAINT/DEFAULT typed guards",
     "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json"
+  ],
+  "phase5dA5Scope": [
+    "phase5d-a4-guard-contracts.mjs partitionGuardsForTransport + shadowPreflightBatchSql",
+    "sql/00_transport/00_PREFLIGHT_BATCH_*.sql",
+    "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
+    "canonical sql/00 sql/10 sql/20 sql/90 frozen byte-for-byte"
   ]
 }

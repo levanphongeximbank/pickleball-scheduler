@@ -1,6 +1,6 @@
 {
   "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_GUARD_REGISTRY",
-  "nextAuth": "SELECT_ONLY_STAGING_PREFLIGHT_ONLY",
+  "nextAuth": "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY",
   "preMutation": {
     "guardCount": 189,
     "guardIds": [
@@ -214,7 +214,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": false
-        }
+        },
+        "predicateFingerprint": "cadff987abd9ccd0acbf392c0ac52b493be0a4122c969c0c9c45371bd6d5df97"
       },
       {
         "guard_order": 2,
@@ -225,7 +226,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "absent": true
-        }
+        },
+        "predicateFingerprint": "d1cdb7844d81eb85c7d2947e74a80a4980d864257f22437fa6b257c4d822176c"
       },
       {
         "guard_order": 3,
@@ -236,7 +238,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "count": 13
-        }
+        },
+        "predicateFingerprint": "afa107fbeb56bbb3470094f3b3e8dda58bc0fe4df334791ac845c5f007764e17"
       },
       {
         "guard_order": 4,
@@ -247,7 +250,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "28f2a01e2508984124cf9a5dd236d10fba8e2815b048243194d7c7bb4f9cd2da"
       },
       {
         "guard_order": 5,
@@ -258,7 +262,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "relrowsecurity": true
-        }
+        },
+        "predicateFingerprint": "76ca85618684a33f36df2aef046321c8f5294e1c9749aba95e5bbfd8bc2f936c"
       },
       {
         "guard_order": 6,
@@ -269,7 +274,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "relforcerowsecurity": false
-        }
+        },
+        "predicateFingerprint": "5098738144dd82386f15983e0d2afcb13158a084082b1a0ee09ae9e4867ef08b"
       },
       {
         "guard_order": 7,
@@ -280,7 +286,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "tt5d_column_count": 6
-        }
+        },
+        "predicateFingerprint": "6dd10660f84cd6211559e258205e0a6a5d9ef26692bd61a4a358c9cddc364c7e"
       },
       {
         "guard_order": 8,
@@ -293,7 +300,8 @@
           "dataType": "integer",
           "notNull": true,
           "defaultExprNormalized": "1"
-        }
+        },
+        "predicateFingerprint": "26120d818e9956f48f87120fd142ea8f9057d606f480c80438720f9afbde20a9"
       },
       {
         "guard_order": 9,
@@ -305,7 +313,8 @@
         "expected_json": {
           "references": "public.team_tournament_matchups(id)",
           "onDelete": "SET NULL"
-        }
+        },
+        "predicateFingerprint": "a3341654c53357187887f9b44484cc937926a3083c2c80145aa46143bafd588a"
       },
       {
         "guard_order": 10,
@@ -317,7 +326,8 @@
         "expected_json": {
           "references": "public.team_tournament_sub_matches(id)",
           "onDelete": "SET NULL"
-        }
+        },
+        "predicateFingerprint": "90ae3db5b4a0f775aea7058d85cd5d7ce3c7d35a7f38dcd2173300bf3c72f202"
       },
       {
         "guard_order": 11,
@@ -328,7 +338,8 @@
         "comparison_class": "NORMALIZED_EXPRESSION",
         "expected_json": {
           "exprNormalized": "((status = ANY (ARRAY['pending'::text, 'active'::text, 'expired'::text, 'revoked'::text, 'completed'::text])))"
-        }
+        },
+        "predicateFingerprint": "bb03bb61913bc256ccc1752b89a2b794d9c3f1fa021c2f9e2dfb1ebb295852f0"
       },
       {
         "guard_order": 12,
@@ -348,7 +359,8 @@
           "predicateNormalized": "sub_match_id IS NOT NULL",
           "owner": "postgres",
           "unique": false
-        }
+        },
+        "predicateFingerprint": "b2ff4e8e841304d46c4aa5d48f2d239d6cd7c6b56e982e6211c6a56f077e94d9"
       },
       {
         "guard_order": 13,
@@ -369,7 +381,8 @@
           "predicateNormalized": "status = 'pending'::text",
           "owner": "postgres",
           "unique": false
-        }
+        },
+        "predicateFingerprint": "eb87e78b016fa8bc5c26bf3eab5f850199f534da7c434aa78c28c7700ff1565a"
       },
       {
         "guard_order": 14,
@@ -380,7 +393,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "764eda149c326e3538e6b4373ed6dbd4d34791accec31b0f3ea98a2fb0259b02"
       },
       {
         "guard_order": 15,
@@ -536,7 +550,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "cb2e5824098b3bdfc1ed539f41aaf60b12858233df72411fe285757dfaa6ff77"
       },
       {
         "guard_order": 16,
@@ -547,7 +562,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "column_count": 25
-        }
+        },
+        "predicateFingerprint": "1fa269035ff8ad3bfcf3ff2215134a4a877da7b086f2a2710e4732424605fb81"
       },
       {
         "guard_order": 17,
@@ -558,7 +574,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "relrowsecurity": true
-        }
+        },
+        "predicateFingerprint": "2591ef1fb16044d01f15563afde65ced86382dd8854f2622627717062a2071db"
       },
       {
         "guard_order": 18,
@@ -569,7 +586,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "relforcerowsecurity": false
-        }
+        },
+        "predicateFingerprint": "c580c8885a5975cd4b12033c0d8ef2c4d6893c519739994c58e415ce44d0d200"
       },
       {
         "guard_order": 19,
@@ -585,7 +603,8 @@
           ],
           "usingNormalized": "(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))",
           "withCheck": null
-        }
+        },
+        "predicateFingerprint": "c315cc10563b3e0a475d36f386c21ee281d7eaab954baa6b667bec7b2ebec267"
       },
       {
         "guard_order": 20,
@@ -601,7 +620,8 @@
           ],
           "using": "false",
           "withCheck": "false"
-        }
+        },
+        "predicateFingerprint": "ae5e1486b59126bb022cc0e2933bcb9db93b50d0c6c50a1b8146e3d2182ca5dc"
       },
       {
         "guard_order": 21,
@@ -612,7 +632,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "43a2406772d748f4f366068ddb799d2b847dfbc4981e2b9a6e1b0a5ff8ee944c"
       },
       {
         "guard_order": 22,
@@ -623,7 +644,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "6427af6e0e7b1165db4bced42021315bc298de50e0e3443f88fdba5dab9c8549"
       },
       {
         "guard_order": 23,
@@ -634,7 +656,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "11b7d3121eb0efd7c05cf2fd8a92da19"
-        }
+        },
+        "predicateFingerprint": "56cba62321ac2094bdb8d92d938b883549606533f80d9f16bd19b2272a2d074d"
       },
       {
         "guard_order": 24,
@@ -645,7 +668,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "VOLATILE"
-        }
+        },
+        "predicateFingerprint": "ee627481b6eed1220069ee2e36c45908f637b7cfff829f8dbf5773ce7c5aca30"
       },
       {
         "guard_order": 25,
@@ -656,7 +680,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "plpgsql"
-        }
+        },
+        "predicateFingerprint": "ead0928f7104c8286b2f59c58406bbcc924d6d56019826cb1194b383f0a7cefc"
       },
       {
         "guard_order": 26,
@@ -667,7 +692,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": true
-        }
+        },
+        "predicateFingerprint": "c5c0e3726edd4fbbcc39ba62d1337bad6883070ff1f7e2655d106bfca9874c3a"
       },
       {
         "guard_order": 27,
@@ -680,7 +706,8 @@
           "proconfig": [
             "search_path=pg_catalog, public"
           ]
-        }
+        },
+        "predicateFingerprint": "9caf1ffef7790974ced2e196befb95043c58a59d2a90175a88978b7914a456b3"
       },
       {
         "guard_order": 28,
@@ -691,7 +718,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "dc09b05a35b0b1174f4c7780f8b0994cc5d3fd84aa5d908b73c517f9c43a662e"
       },
       {
         "guard_order": 29,
@@ -715,7 +743,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "b5f0945edaf62e6f8897bace86aa4cdf71f4802a6c4e87502a16e90923c4e243"
       },
       {
         "guard_order": 30,
@@ -726,7 +755,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "937d585bdcc12bf814f6213593a091c00842bb5ea83dd9cc8502955040fd64bc"
       },
       {
         "guard_order": 31,
@@ -737,7 +767,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": false
-        }
+        },
+        "predicateFingerprint": "ea53a572d4640b85b036881e27b0bfb5e94682bf96218ad0ac78e575a91ffcbd"
       },
       {
         "guard_order": 32,
@@ -748,7 +779,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": false
-        }
+        },
+        "predicateFingerprint": "76f221e251bf2d34567bcf7100c55f0dc4b1cbbc73d53b25377b7bb62b912251"
       },
       {
         "guard_order": 33,
@@ -759,7 +791,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "c9d166f15079f983584c2ab58dcb584f461c68f0fab62dbc6f634ab37b1e170c"
       },
       {
         "guard_order": 34,
@@ -770,7 +803,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "fd9061be30b3bad5a50dc95e75909659022de19dd20430e6068a7be4bce84f1f"
       },
       {
         "guard_order": 35,
@@ -781,7 +815,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "6b59427f1a6f63b92853a1961a68572f17b3cf512d942d4a8d812aece6cfefcf"
       },
       {
         "guard_order": 36,
@@ -792,7 +827,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "e7854c03e3ffebf81a7928d6b8740ad5"
-        }
+        },
+        "predicateFingerprint": "57617c70f7564c8e3e988ac974da6c69af66bcc110740ef17ba01a9c82dff16a"
       },
       {
         "guard_order": 37,
@@ -803,7 +839,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "VOLATILE"
-        }
+        },
+        "predicateFingerprint": "a569f8005e21d2e03ff5d8e225ff36c4caa1cec0472e7f7f70946bfade0ee2f7"
       },
       {
         "guard_order": 38,
@@ -814,7 +851,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "plpgsql"
-        }
+        },
+        "predicateFingerprint": "6f3d1aa78cdb26e2c59e64a190d10f8430fe1681658a96121816358e5300c0e8"
       },
       {
         "guard_order": 39,
@@ -825,7 +863,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": true
-        }
+        },
+        "predicateFingerprint": "e2cea44d7a278b2a75e5bf5590d1455bd6a0c9e5cb7a9748baef08764d22cff3"
       },
       {
         "guard_order": 40,
@@ -838,7 +877,8 @@
           "proconfig": [
             "search_path=public"
           ]
-        }
+        },
+        "predicateFingerprint": "75ec85e9dd0a45127982fe45e4d0a1c75dfc33fa2fba8125cd5124b1b7ca3b82"
       },
       {
         "guard_order": 41,
@@ -849,7 +889,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "a68f6e35e98018c1a56fe018f060eac61f503845e78a71c56797f26376bd45d8"
       },
       {
         "guard_order": 42,
@@ -879,7 +920,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "2455eabe093ea049bafd649e1207caecdacf8ca9ce2602ef488521eecb869011"
       },
       {
         "guard_order": 43,
@@ -890,7 +932,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "aca7208e4feff3b1d9083637664a509747f81309e31819a6879ee7d5aa3aa15f"
       },
       {
         "guard_order": 44,
@@ -901,7 +944,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": false
-        }
+        },
+        "predicateFingerprint": "0fb826d5f8be1491a4ba340eb3816b232da80a04f63e5061969d04e22227ee7b"
       },
       {
         "guard_order": 45,
@@ -912,7 +956,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": true
-        }
+        },
+        "predicateFingerprint": "85867800c460087a1e461f4d428cd46d7f2016efdcd270e6b362c654694909a3"
       },
       {
         "guard_order": 46,
@@ -923,7 +968,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "619c725ba3c5cb415215995a83230f88e529590f413150a66be5e128093ed6d9"
       },
       {
         "guard_order": 47,
@@ -934,7 +980,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "1d4b1724efd620db556ee092838d0996305c4c56a6f620dd2875357acebf7060"
       },
       {
         "guard_order": 48,
@@ -945,7 +992,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "fca05083e27095a15df297cca2871f3de98cc1d7b7aac6de2308377118bf8a32"
       },
       {
         "guard_order": 49,
@@ -956,7 +1004,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "c91ffb1ec3faa1e6fa2b3ea9395c4058"
-        }
+        },
+        "predicateFingerprint": "e1c094566cffde2a5160316ef2f756ddd55f7e72bd46d3a183e677c7e1e6650d"
       },
       {
         "guard_order": 50,
@@ -967,7 +1016,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "IMMUTABLE"
-        }
+        },
+        "predicateFingerprint": "889bd7a3c4d28e878c64e63e26991898b87a627a4ea4d400aa929f02cc3c3013"
       },
       {
         "guard_order": 51,
@@ -978,7 +1028,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "sql"
-        }
+        },
+        "predicateFingerprint": "9a77f4817c669dc883f1ef974510220d0cf56a5666a7950939c3e084f5a65922"
       },
       {
         "guard_order": 52,
@@ -989,7 +1040,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": false
-        }
+        },
+        "predicateFingerprint": "a12f38e86e84cb9ec6e9cb53ddbe1c561fbd56c4cc51c248ebf5eab87318f0de"
       },
       {
         "guard_order": 53,
@@ -1000,7 +1052,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "proconfig": []
-        }
+        },
+        "predicateFingerprint": "561e38174d78f5cd155f0c223500f02401d64ba755a602072b154ed13d55ca5a"
       },
       {
         "guard_order": 54,
@@ -1011,7 +1064,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "a1286b84102ef2c3ad44dbf2827d435f40895cec9527fc0df5164a92f6c58666"
       },
       {
         "guard_order": 55,
@@ -1047,7 +1101,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "2607a594b43cf4a27667fa27943de4b683a69eda44571448fc1e954461eb612c"
       },
       {
         "guard_order": 56,
@@ -1058,7 +1113,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "a300d22069617ba2ef0e1336ba9ffdf0676a4ffe8f4d7e3f670faab4bce21d59"
       },
       {
         "guard_order": 57,
@@ -1069,7 +1125,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": true
-        }
+        },
+        "predicateFingerprint": "2936a98283cbaba87319faafdbf2e84bdd93b322acb08346b13a4b5f781b61fe"
       },
       {
         "guard_order": 58,
@@ -1080,7 +1137,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": true
-        }
+        },
+        "predicateFingerprint": "408b559ef447a81b8d3330aa5b592c4fcfe1f3cf241df361563a0b29508341fa"
       },
       {
         "guard_order": 59,
@@ -1091,7 +1149,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "17d4d0df44c4b6560bbb0a9f0dcf450f0c606557f3ed551601884e0d58b6fbf6"
       },
       {
         "guard_order": 60,
@@ -1102,7 +1161,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "78c36b204efd7a88d92b7a5fc398166626685bcb5db86646b4eef51d3174ebe1"
       },
       {
         "guard_order": 61,
@@ -1113,7 +1173,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "839e889253b7b23eaf5ae76706ffa8dd364e1c345c2770f1007a1390a896c1fe"
       },
       {
         "guard_order": 62,
@@ -1124,7 +1185,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "2223a22afbef0ccccc0d0df04ae873f1"
-        }
+        },
+        "predicateFingerprint": "c51db8e2c72b93f0a13ae6a84c62c680dd40ca42d1f126aec5c2e8f4cf13a3a3"
       },
       {
         "guard_order": 63,
@@ -1135,7 +1197,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "STABLE"
-        }
+        },
+        "predicateFingerprint": "88a0e97024d4ff395a230a142d1d620786c71d28e1b2cc728afd1965ad344477"
       },
       {
         "guard_order": 64,
@@ -1146,7 +1209,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "sql"
-        }
+        },
+        "predicateFingerprint": "4475479aee22c75833b070f06ef5235639ffcfd3426135098e51f003f6cddcf8"
       },
       {
         "guard_order": 65,
@@ -1157,7 +1221,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": true
-        }
+        },
+        "predicateFingerprint": "c0178c1f7b498031170e3cadba71cd2b62a39895248087dd85418d5f7c513d34"
       },
       {
         "guard_order": 66,
@@ -1170,7 +1235,8 @@
           "proconfig": [
             "search_path=public"
           ]
-        }
+        },
+        "predicateFingerprint": "8f7392fd14fc64dd3590c6cbde6e716959bc63f3a16cd28aa2344b08bff696cc"
       },
       {
         "guard_order": 67,
@@ -1181,7 +1247,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "8f018e5a6a6efcc42b27a81ae11998d130568979020512ce435800f473e5a27a"
       },
       {
         "guard_order": 68,
@@ -1217,7 +1284,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "074b45754ffbd396536f2e1f07062c5212cd8a42843620e31c8e75b481cd8a06"
       },
       {
         "guard_order": 69,
@@ -1228,7 +1296,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "90e7896c1a228e6c3a2e1a7710079d59d67dd3785bfc0ae5f604a7cf9c01c79c"
       },
       {
         "guard_order": 70,
@@ -1239,7 +1308,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": true
-        }
+        },
+        "predicateFingerprint": "478ea11bace836794ed713241c3eb7a4c37f69a8a36ea5c75d776aa2376be743"
       },
       {
         "guard_order": 71,
@@ -1250,7 +1320,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": true
-        }
+        },
+        "predicateFingerprint": "0e9cd5b6301b5dca68604d75604c7855575cce5d18cda10e0f9d07cd3fbdc987"
       },
       {
         "guard_order": 72,
@@ -1261,7 +1332,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "7ec8904304a9165e097f88bb25ee5ac5a2f31c30c0f297dcdad69397ef33d9c6"
       },
       {
         "guard_order": 73,
@@ -1272,7 +1344,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "eaed9a3b4001e14b16c8c40111f85265c0e9eadb81ab8627e6ca6321b86d169a"
       },
       {
         "guard_order": 74,
@@ -1283,7 +1356,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "316de7ed29735f5c9a8d6fc0e61cf53b94eae9d0e3cd9f9ba8b9975c08f8c8fb"
       },
       {
         "guard_order": 75,
@@ -1294,7 +1368,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "0f2e5ea3915cf34cdb0297ac3a844d4d"
-        }
+        },
+        "predicateFingerprint": "67fb87bf330587101bc8c308ee76d1e814c818ae6a9b18e2632b4fa8ad511adf"
       },
       {
         "guard_order": 76,
@@ -1305,7 +1380,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "VOLATILE"
-        }
+        },
+        "predicateFingerprint": "e6caf8423870880b5ce5b578e75a3e01abaa9418bd47eb41bf505672c5d2f86c"
       },
       {
         "guard_order": 77,
@@ -1316,7 +1392,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "plpgsql"
-        }
+        },
+        "predicateFingerprint": "212767c9670ffc57a9300d7402b5243a1e927cdcea0b7d0cb7b82e7dca82fd8e"
       },
       {
         "guard_order": 78,
@@ -1327,7 +1404,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": true
-        }
+        },
+        "predicateFingerprint": "8224bcccacdf36012cf14425152c187ba790c212ffab92f7bb3e388f76cb224e"
       },
       {
         "guard_order": 79,
@@ -1340,7 +1418,8 @@
           "proconfig": [
             "search_path=public"
           ]
-        }
+        },
+        "predicateFingerprint": "fbb3b5eaa2c60aa4a91131eed0f0658986f6927ed7ac2f0b45ac390eafa69e12"
       },
       {
         "guard_order": 80,
@@ -1351,7 +1430,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "fa5e84c8d3ce1c15b7465b1653fa6b2bd34b0283a356105611bba9f2411a7c87"
       },
       {
         "guard_order": 81,
@@ -1381,7 +1461,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "11269dfb5dc87d6250b419834841970692065f923425b044d7095e2820ad4424"
       },
       {
         "guard_order": 82,
@@ -1392,7 +1473,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "9cd1e38f971f6808e86553500ec256722d734098ffae15d8ad61e0cdd5fd978c"
       },
       {
         "guard_order": 83,
@@ -1403,7 +1485,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": false
-        }
+        },
+        "predicateFingerprint": "44400f7ff66caa90dc83c06fc3b4f6a94d6b2b952dcc1a05ca3e3a02db5e2936"
       },
       {
         "guard_order": 84,
@@ -1414,7 +1497,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": true
-        }
+        },
+        "predicateFingerprint": "83daffb82075ddad99c4e115ded74babe4a6251f4dc11a41865676eb7a7e2d8b"
       },
       {
         "guard_order": 85,
@@ -1425,7 +1509,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "6b25e662b641baacbbac785c4bca947dbbaf5a263081b5d27fb9707c1ec873e1"
       },
       {
         "guard_order": 86,
@@ -1436,7 +1521,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "79a33ca093d93a4ec673a3a98e7a8088b400a2d542ef19eb04cf112dd3e767ab"
       },
       {
         "guard_order": 87,
@@ -1447,7 +1533,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "a59fd103feaea370069160626eca4fd96f1998c3d5061ab30d9bfdf047c92230"
       },
       {
         "guard_order": 88,
@@ -1458,7 +1545,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "08f6d53845ba88c750caef815543fa46"
-        }
+        },
+        "predicateFingerprint": "f05de49e59447c1015165ebd06e0059196f0b33ec7551c251d40e3de891d4459"
       },
       {
         "guard_order": 89,
@@ -1469,7 +1557,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "VOLATILE"
-        }
+        },
+        "predicateFingerprint": "2eca5a9dc09d00bd9282ccceb67e2ac79f3d91044f0bb50fe970435319f9ff18"
       },
       {
         "guard_order": 90,
@@ -1480,7 +1569,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "plpgsql"
-        }
+        },
+        "predicateFingerprint": "05c1d6ab28a09cd652bf7a0bbe64ece5623096c3821d56f8511f3752dd473584"
       },
       {
         "guard_order": 91,
@@ -1491,7 +1581,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": true
-        }
+        },
+        "predicateFingerprint": "df13f53fd14b4e0eaa29fc4c6e44173fd4c7426d9dd51a6685cba1d89bfcfc60"
       },
       {
         "guard_order": 92,
@@ -1504,7 +1595,8 @@
           "proconfig": [
             "search_path=public"
           ]
-        }
+        },
+        "predicateFingerprint": "d4429362125b30dc99c74f6bf530ea8d30501f0c461a9f597bb553749aaa82ee"
       },
       {
         "guard_order": 93,
@@ -1515,7 +1607,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "63027d9ec78fa391214de6ae3efc6b92aadf366ce14338e33a267b40d6aa7222"
       },
       {
         "guard_order": 94,
@@ -1545,7 +1638,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "0640e397e6741348769a825332709320a3c84c6cf286fde6960b40060e31263a"
       },
       {
         "guard_order": 95,
@@ -1556,7 +1650,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "2926d5520ba74bda682943713d43e228e32ef08ad751b98a051cd3a11c9e0628"
       },
       {
         "guard_order": 96,
@@ -1567,7 +1662,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": false
-        }
+        },
+        "predicateFingerprint": "9d39d091ff5905f89901675f26c02057c7d2d91381c1669f741f75ee84c12dc7"
       },
       {
         "guard_order": 97,
@@ -1578,7 +1674,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": true
-        }
+        },
+        "predicateFingerprint": "dd716e382bf3bbe3da4531c0d96be3082248e3ba47575eb7977b9855f7040528"
       },
       {
         "guard_order": 98,
@@ -1589,7 +1686,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "a0bd5935fcc23f284550679afb1c2244ae3636bbb54b35222027819ccd47fb98"
       },
       {
         "guard_order": 99,
@@ -1600,7 +1698,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "9fb683fd1de94574ff07acce9f9a9b37cdaf71a11ec32f4da6719c19e0e1cf14"
       },
       {
         "guard_order": 100,
@@ -1611,7 +1710,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "cd9c21ae94d26a2d7d342b6cc9eb164a5d592f79671d3d3405ee37c1c2548779"
       },
       {
         "guard_order": 101,
@@ -1622,7 +1722,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "9ec273071d309641425a3d30d704a14b"
-        }
+        },
+        "predicateFingerprint": "a9298b4c564638315d48f551e1efb6082804d50169e810f7d0dde9d8e52d0877"
       },
       {
         "guard_order": 102,
@@ -1633,7 +1734,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "STABLE"
-        }
+        },
+        "predicateFingerprint": "828d34202b6bb2a65f5708744c729fad89fdef17af9a4873ad12313a0520431d"
       },
       {
         "guard_order": 103,
@@ -1644,7 +1746,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "plpgsql"
-        }
+        },
+        "predicateFingerprint": "89a87aff4000479b9f4dc4ad3b2154ea5f1b39f5698270616f10f2e464f71677"
       },
       {
         "guard_order": 104,
@@ -1655,7 +1758,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": true
-        }
+        },
+        "predicateFingerprint": "1609d9f2ffd7e7977887069f4687322f068ab39663d3b87e40ef02304162a049"
       },
       {
         "guard_order": 105,
@@ -1668,7 +1772,8 @@
           "proconfig": [
             "search_path=public"
           ]
-        }
+        },
+        "predicateFingerprint": "82498bcd5f1673783bfcc627600ee5a0ea2f619bfd1840464d576437e6ea1615"
       },
       {
         "guard_order": 106,
@@ -1679,7 +1784,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "2fa0f1fb9ff002a90d0a1c4b5c9a394339c4e7f70f45162a79a772f8aa9ad4cb"
       },
       {
         "guard_order": 107,
@@ -1709,7 +1815,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "f81adaa91a1f5cc0493cd4148ed56c26587da4f19ecd9541c5ed8bfadc63c8b2"
       },
       {
         "guard_order": 108,
@@ -1720,7 +1827,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "2ed116b0211401b0f31fc686211e6a196fe0f87f1cbfeb737f7441a85d7b7dff"
       },
       {
         "guard_order": 109,
@@ -1731,7 +1839,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": false
-        }
+        },
+        "predicateFingerprint": "c1ce96a0cb6801842af404ab557685db0d931b8fe266756f1b831465d759916c"
       },
       {
         "guard_order": 110,
@@ -1742,7 +1851,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": true
-        }
+        },
+        "predicateFingerprint": "c14ff525e288bd2606fd6e866221af8ec7d6885a6ae29333adad29e2455532ed"
       },
       {
         "guard_order": 111,
@@ -1753,7 +1863,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "856c66c6d84fd8c5522dc2810cfb31993ed4e2b6688e01a95c897229c852ac3d"
       },
       {
         "guard_order": 112,
@@ -1764,7 +1875,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "1df54e1b92e97240e7ccd34368112d19c540661271bf7ef525822ecc82651cc8"
       },
       {
         "guard_order": 113,
@@ -1775,7 +1887,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "2d02366d6fc9e4a4b05b8e56d7dd06c96730e7d795e91fbf859caca819c2f19a"
       },
       {
         "guard_order": 114,
@@ -1786,7 +1899,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "513f41aabc74d5864a879d714796b53a"
-        }
+        },
+        "predicateFingerprint": "bf7480fd3b60e7ea7ffe3d5c597b3b0dbbf97b0ee647910365182e73105bb561"
       },
       {
         "guard_order": 115,
@@ -1797,7 +1911,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "STABLE"
-        }
+        },
+        "predicateFingerprint": "ffd9ba632e6a384de103f98745cece296d73ca515d381332ef4df8065e314e86"
       },
       {
         "guard_order": 116,
@@ -1808,7 +1923,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "plpgsql"
-        }
+        },
+        "predicateFingerprint": "bd9daeb7f76a1185398b253fbfb5e4f94c2adb298d409a0a23464b943b1f7253"
       },
       {
         "guard_order": 117,
@@ -1819,7 +1935,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": true
-        }
+        },
+        "predicateFingerprint": "648cc971ee2d2c99dcbd5c12ca5ed7367b5710f2ce8fce17eee6a8df2856927c"
       },
       {
         "guard_order": 118,
@@ -1832,7 +1949,8 @@
           "proconfig": [
             "search_path=public"
           ]
-        }
+        },
+        "predicateFingerprint": "4e59fcf2d16b92ea05e951ae017be7f9d56b876d1039d2e8ffe089f98a128681"
       },
       {
         "guard_order": 119,
@@ -1843,7 +1961,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "ae91fa55a2de4ffc3e2733cc82943d4e3111c63da150615dde13cf30b44bfbf0"
       },
       {
         "guard_order": 120,
@@ -1873,7 +1992,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "4554099fd21c7eb450bdc8bb8f319dab6761f6787f73898bdd9a3ea5c9de2be2"
       },
       {
         "guard_order": 121,
@@ -1884,7 +2004,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "3aa73f46ca836f09cc05ee3255921b27286722546e22b530ab79eaceeab0f20f"
       },
       {
         "guard_order": 122,
@@ -1895,7 +2016,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": false
-        }
+        },
+        "predicateFingerprint": "9f0a668d149771ce024be2b46d93d45b6a2dc5777c7429f65b18c2abc1c2a0bc"
       },
       {
         "guard_order": 123,
@@ -1906,7 +2028,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": true
-        }
+        },
+        "predicateFingerprint": "5bd4072bcc0aad3e4039ffc316cd152943fed6f13d6eb7a089bd3c10b87f8d24"
       },
       {
         "guard_order": 124,
@@ -1917,7 +2040,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "a5bc9591778bd71095eb1a8b404a7fa947eb02c3af7333aa13afbb5118de9d01"
       },
       {
         "guard_order": 125,
@@ -1928,7 +2052,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "0436108683dc3d34437e04461982aedd79c3c4bb5324b55eae3bc746c9b6b455"
       },
       {
         "guard_order": 126,
@@ -1939,7 +2064,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "aaef2741182489d21a47b2ad118cbba709c5986462794a80f10b04ee4da0b5f6"
       },
       {
         "guard_order": 127,
@@ -1950,7 +2076,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "4229dd7686b6eaae990e9353e764f927"
-        }
+        },
+        "predicateFingerprint": "6b3c6db391ab0fa1b7bbb621d8e93223bba0b37dc03b3a327e05598fd6c1eefc"
       },
       {
         "guard_order": 128,
@@ -1961,7 +2088,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "VOLATILE"
-        }
+        },
+        "predicateFingerprint": "fec8110c0b42b9048ac2e5f22a0164852d7efe2b6ad52b3304bf5c5b095a9ab3"
       },
       {
         "guard_order": 129,
@@ -1972,7 +2100,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "plpgsql"
-        }
+        },
+        "predicateFingerprint": "9ea851033822e973f7b280958fc9805ab37abc304efb259d8bd7bf83b25edbb9"
       },
       {
         "guard_order": 130,
@@ -1983,7 +2112,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": true
-        }
+        },
+        "predicateFingerprint": "17b648989c7cad42b635481e7e1628ca547b54dd416e699211eade052397800e"
       },
       {
         "guard_order": 131,
@@ -1996,7 +2126,8 @@
           "proconfig": [
             "search_path=public"
           ]
-        }
+        },
+        "predicateFingerprint": "f3ce92c652227dce1389ed77ea925959b6abd4cc605aaf63c4e787674f25ee95"
       },
       {
         "guard_order": 132,
@@ -2007,7 +2138,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "f2f24951f458cb6eb659c45ef30649d81fe296d3eab4f3d8a6fd7f89832bc2a0"
       },
       {
         "guard_order": 133,
@@ -2037,7 +2169,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "8e1fc42845adbc88f1384e556e5f7d9d3b042b7f3929706ae054a1d748ecb07a"
       },
       {
         "guard_order": 134,
@@ -2048,7 +2181,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "604cc12b8de3dd1b96d1e8e28a0d6bd7e128a479fed1ff578cc02d7458d1182b"
       },
       {
         "guard_order": 135,
@@ -2059,7 +2193,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": false
-        }
+        },
+        "predicateFingerprint": "af77f3e4d84614ab200d95f06637bf4868300cfdef6c51769a9d54d1dd16a271"
       },
       {
         "guard_order": 136,
@@ -2070,7 +2205,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": true
-        }
+        },
+        "predicateFingerprint": "37db289022ef412916b3c1a03e0395bce7058dcb31c0b1313f7e1f311cb6e276"
       },
       {
         "guard_order": 137,
@@ -2081,7 +2217,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "8c30de844fb2b1eb2c215d0412b6baf26cde10e8d49a6894f2482590671557e2"
       },
       {
         "guard_order": 138,
@@ -2092,7 +2229,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "4eddc42060df4bbe3c0bd6bfdf736a82eb25b041f0d98a724ed86a31bc8764f1"
       },
       {
         "guard_order": 139,
@@ -2103,7 +2241,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "dfbdf1955b7105ed5fbff66d44ef06f39b454d4ec8e34e499a0785b046e86457"
       },
       {
         "guard_order": 140,
@@ -2114,7 +2253,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "81f3b086288dc8da26700349bbbab3b2"
-        }
+        },
+        "predicateFingerprint": "94511cf2a52d0f60cde99fdfd6d3098ec83f5b3bbd8e1318601a1c571b3ecd6e"
       },
       {
         "guard_order": 141,
@@ -2125,7 +2265,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "VOLATILE"
-        }
+        },
+        "predicateFingerprint": "bad4fd8f4f7a5e3d526547ea69b0fb588360b4b0865e1d25276056768ba0d535"
       },
       {
         "guard_order": 142,
@@ -2136,7 +2277,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "plpgsql"
-        }
+        },
+        "predicateFingerprint": "563d6f25a96a38aa575e3ac18d7cfb843cd31dbe2a0792ddef854d33717c7f54"
       },
       {
         "guard_order": 143,
@@ -2147,7 +2289,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": true
-        }
+        },
+        "predicateFingerprint": "f25038daf4e38d07629e549e6856f3c4b3d54f6700fcda809381fa4361ddfa43"
       },
       {
         "guard_order": 144,
@@ -2160,7 +2303,8 @@
           "proconfig": [
             "search_path=public"
           ]
-        }
+        },
+        "predicateFingerprint": "ba3925f4b0b28a80f7f486a6a42cab1b3c6f434fe6ee20fe8c5c38e6963509bc"
       },
       {
         "guard_order": 145,
@@ -2171,7 +2315,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "b40611fa0ee0fea90acf3120a2617652d92204b6f2692adac6c7ee26d5a4d943"
       },
       {
         "guard_order": 146,
@@ -2201,7 +2346,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "f8c7c3334712d3002f03c53a4d1faf6b3d7d82ad17a606d810b016535e9b7e01"
       },
       {
         "guard_order": 147,
@@ -2212,7 +2358,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "03a38704890f288ad8e4902c3b208fb08029a0033f5b6763e2c15b47205d57ab"
       },
       {
         "guard_order": 148,
@@ -2223,7 +2370,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": false
-        }
+        },
+        "predicateFingerprint": "375cff5fc9120ab9e7428baee0c34a93fc91fc9df98ea2b64957aea61d9c66b2"
       },
       {
         "guard_order": 149,
@@ -2234,7 +2382,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": true
-        }
+        },
+        "predicateFingerprint": "e69ed593959c1ecdbedb8e4a4252e5a3284cbb3dc35818a4b60269fa91486e54"
       },
       {
         "guard_order": 150,
@@ -2245,7 +2394,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "e7f0d809cef1552a2348c35e7805bb7bcb9e81032a753e811d0ed3e930cb0e19"
       },
       {
         "guard_order": 151,
@@ -2256,7 +2406,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "f4d48ec00914a4b4450fbefa61f2ef15785bff9086120b8d6fd07dd583b9a24b"
       },
       {
         "guard_order": 152,
@@ -2267,7 +2418,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "5bda3ed88f948e748588a5ee66f2977b2d56eca890e60a21ed5fb0ff8f8037a0"
       },
       {
         "guard_order": 153,
@@ -2278,7 +2430,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "42b96c5091086edfc822392ed49999d2"
-        }
+        },
+        "predicateFingerprint": "83ad0a537e88a3121c4239664f698b84332bfe5a68e1e0db53c945177c11251a"
       },
       {
         "guard_order": 154,
@@ -2289,7 +2442,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "VOLATILE"
-        }
+        },
+        "predicateFingerprint": "125a89b0851102cc7e02e4a5b2488455a635e4dcd20fb697936699069fc24d7d"
       },
       {
         "guard_order": 155,
@@ -2300,7 +2454,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "plpgsql"
-        }
+        },
+        "predicateFingerprint": "cc2af3150da56447201cad413a247642a446176ebcf5b4f98a0eadf2a9aff65f"
       },
       {
         "guard_order": 156,
@@ -2311,7 +2466,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": true
-        }
+        },
+        "predicateFingerprint": "14a0392996e8ab0e8ceeafab37e3707f53b8fb444d92e8121f2e03eee85510a2"
       },
       {
         "guard_order": 157,
@@ -2324,7 +2480,8 @@
           "proconfig": [
             "search_path=public"
           ]
-        }
+        },
+        "predicateFingerprint": "96b59d7b9515c52b22409f7fa05bc5748361ef14fe4bcea62947fa89d3ecf93e"
       },
       {
         "guard_order": 158,
@@ -2335,7 +2492,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "a92c276cd2f594f8cd8d4eca42b5a8d517bf9f2773372180171c9a00b6b19e7e"
       },
       {
         "guard_order": 159,
@@ -2365,7 +2523,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "ce4422449e9b81316a1995081d7d8ec1103903d1587c6254972e7b540030a30e"
       },
       {
         "guard_order": 160,
@@ -2376,7 +2535,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "78adb52780a408a16ba3b00713220110ee9fdaa56e17a36e8ad726ef92422fcd"
       },
       {
         "guard_order": 161,
@@ -2387,7 +2547,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": false
-        }
+        },
+        "predicateFingerprint": "1bc54e7b7a7b55e56eba3346e84b66a283aa8ca603c1e224d06c075c49468f60"
       },
       {
         "guard_order": 162,
@@ -2398,7 +2559,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": true
-        }
+        },
+        "predicateFingerprint": "a12377a9c5fb5c048b727dc6c5e8d2cebf662d4eaea9f99eafcca6ddcf92346c"
       },
       {
         "guard_order": 163,
@@ -2409,7 +2571,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "1e297590cdf77bf62da95b2d8376283f1dfa05f1002cf8486e308005cc345002"
       },
       {
         "guard_order": 164,
@@ -2420,7 +2583,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "c8a7e409d2b27876f37ccea9027ba88da7e5a12091c4d49db4ab1c95d8b0945f"
       },
       {
         "guard_order": 165,
@@ -2431,7 +2595,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "eea28a8e7dd8c95fb054fb8066d8a9d274c50123816caa68cc2e79f19b1300d9"
       },
       {
         "guard_order": 166,
@@ -2442,7 +2607,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "175c9ee13eeefaccdbb67160cd0a5a16"
-        }
+        },
+        "predicateFingerprint": "8e12099576cb176a045023cbc04d80e921f4574e6eac22ba92b8f180494062ff"
       },
       {
         "guard_order": 167,
@@ -2453,7 +2619,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "VOLATILE"
-        }
+        },
+        "predicateFingerprint": "57af14523866b215eed38d4f08187437b19807388f0fcfb8df4ca422edb147af"
       },
       {
         "guard_order": 168,
@@ -2464,7 +2631,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "plpgsql"
-        }
+        },
+        "predicateFingerprint": "fb9cb8a9b3103acf95af51bcea2ccb154435a0dead641ab5a766b52d31faa45d"
       },
       {
         "guard_order": 169,
@@ -2475,7 +2643,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": true
-        }
+        },
+        "predicateFingerprint": "8fb41c0f753f2e62d2fd1e7d533c3bc87ae4fbe262e3b50396ee4ba573dd401d"
       },
       {
         "guard_order": 170,
@@ -2488,7 +2657,8 @@
           "proconfig": [
             "search_path=public"
           ]
-        }
+        },
+        "predicateFingerprint": "666b081e3031603023f5a080d3d87ead7df0ff0f908a01914313aad5cad295cf"
       },
       {
         "guard_order": 171,
@@ -2499,7 +2669,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "b831004f9014fb45c6046801b27bd890c42ac8e196f79a4cbd7e7d317112a080"
       },
       {
         "guard_order": 172,
@@ -2529,7 +2700,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "f273b9cb8689713224e80d8834961a4753dd5c0e3649cf73ad8c15570e870476"
       },
       {
         "guard_order": 173,
@@ -2540,7 +2712,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "4fc2cf963523f8c5e02c0e7a81245dbf2b4679011d10339166c432752dd5b460"
       },
       {
         "guard_order": 174,
@@ -2551,7 +2724,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": false
-        }
+        },
+        "predicateFingerprint": "d96f570da01f00f557f6c9f848147572b43d13e0cbf12fc8a45be061cff3598d"
       },
       {
         "guard_order": 175,
@@ -2562,7 +2736,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": true
-        }
+        },
+        "predicateFingerprint": "e61225634ee55c96315b2e3be73b90a1abb827dd8d1387039f863516ed4fbbd6"
       },
       {
         "guard_order": 176,
@@ -2573,7 +2748,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "12b7a03c7638982f67c9594a12050830fda2cb48a58f2666081a874b3e70aee7"
       },
       {
         "guard_order": 177,
@@ -2584,7 +2760,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "present": true
-        }
+        },
+        "predicateFingerprint": "37474a1e563f2fb113370855376bde9eb8daa9eef79fa2729d61fedcba6cf6df"
       },
       {
         "guard_order": 178,
@@ -2595,7 +2772,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "overload_count": 1
-        }
+        },
+        "predicateFingerprint": "9543e814e349bb9df31c524990ae57b0d3d2b30feff911d5071f3066f24fb50b"
       },
       {
         "guard_order": 179,
@@ -2606,7 +2784,8 @@
         "comparison_class": "INTENTIONAL_EXACT_FINGERPRINT",
         "expected_json": {
           "defMd5": "f3280a760c9f4449aee6916d16c5026d"
-        }
+        },
+        "predicateFingerprint": "1e8c333e08d72f695b346d306abe507d5bef9efceda30c1c090f5eedb10eea3c"
       },
       {
         "guard_order": 180,
@@ -2617,7 +2796,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "volatility": "VOLATILE"
-        }
+        },
+        "predicateFingerprint": "0f0c247075f0e6a4f71ad53844b5575688df73ea5d074a383f09e41e202d2d1f"
       },
       {
         "guard_order": 181,
@@ -2628,7 +2808,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "language": "plpgsql"
-        }
+        },
+        "predicateFingerprint": "83197292b6be26c819c3b1136d8ffd4f381202c605cf55199ebd1e89a245218c"
       },
       {
         "guard_order": 182,
@@ -2639,7 +2820,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "securityDefiner": true
-        }
+        },
+        "predicateFingerprint": "f9178b711e81697de1b2bd342f0e244df0e71b61743bb96284f8e2c6e8ca44bf"
       },
       {
         "guard_order": 183,
@@ -2652,7 +2834,8 @@
           "proconfig": [
             "search_path=public"
           ]
-        }
+        },
+        "predicateFingerprint": "e3d9c8e247140117eec344b49710ffa6840bc1cba45e7385317ef042f39a097d"
       },
       {
         "guard_order": 184,
@@ -2663,7 +2846,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "owner": "postgres"
-        }
+        },
+        "predicateFingerprint": "f94ef51459057e04cbfb818e41bbec16ea8955dd1f5afcb469e342b5e40d2f35"
       },
       {
         "guard_order": 185,
@@ -2693,7 +2877,8 @@
               "is_grantable": false
             }
           ]
-        }
+        },
+        "predicateFingerprint": "334dbef3c52a3b8a4847a744e57a90af1d2d74035f1f2dd5b51f6abafffc3e2c"
       },
       {
         "guard_order": 186,
@@ -2704,7 +2889,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "publicExecute": false
-        }
+        },
+        "predicateFingerprint": "0049928bdde26169039d157eea2b0eb75f73597071ce648f8750c34f8f152ce8"
       },
       {
         "guard_order": 187,
@@ -2715,7 +2901,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "anonExecute": false
-        }
+        },
+        "predicateFingerprint": "38f780e610c57f240a4403525db66c88c77d1b7680173c67540266319b1bd2bd"
       },
       {
         "guard_order": 188,
@@ -2726,7 +2913,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "authenticatedExecute": true
-        }
+        },
+        "predicateFingerprint": "0ea6a3e3312529a3faebb55c7abb8c90cecc48d1e6256df86a7ed190a27d4be9"
       },
       {
         "guard_order": 189,
@@ -2737,7 +2925,8 @@
         "comparison_class": "TYPED_COMPARISON",
         "expected_json": {
           "serviceRoleExecute": true
-        }
+        },
+        "predicateFingerprint": "67e9b869543f71769d3e0c1ab0f33e65e29024ba2bc5de31749f3dd2e5606a68"
       }
     ]
   },
@@ -3137,8 +3326,200 @@
       "fn.team_tournament_revoke_referee_assignment.authenticated_execute",
       "fn.team_tournament_revoke_referee_assignment.service_role_execute"
     ],
+    "transportFlattenedGuardIds": [
+      "provenance.absent",
+      "provenance.club_ai_data_absent",
+      "table.function_count_13",
+      "table.referee_assignments.owner",
+      "table.referee_assignments.rls",
+      "table.referee_assignments.rls_forced",
+      "table.referee_assignments.tt5d_columns_count",
+      "table.referee_assignments.version_column",
+      "table.referee_assignments.matchup_id_fkey",
+      "table.referee_assignments.sub_match_id_fkey",
+      "table.referee_assignments.status_check",
+      "table.referee_assignments.sub_match_index",
+      "table.correction.index",
+      "table.correction.owner",
+      "table.correction.acl",
+      "table.correction.column_count",
+      "table.correction.rls",
+      "table.correction.rls_forced",
+      "policy.tt5d_correction_referee_select",
+      "policy.tt5d_correction_no_client_write",
+      "fn.referee_v5_apply_admin_result_revision.missing",
+      "fn.referee_v5_apply_admin_result_revision.overload_count",
+      "fn.referee_v5_apply_admin_result_revision.def_md5",
+      "fn.referee_v5_apply_admin_result_revision.volatility",
+      "fn.referee_v5_apply_admin_result_revision.language",
+      "fn.referee_v5_apply_admin_result_revision.security_definer",
+      "fn.referee_v5_apply_admin_result_revision.proconfig",
+      "fn.referee_v5_apply_admin_result_revision.owner",
+      "fn.referee_v5_apply_admin_result_revision.proacl",
+      "fn.referee_v5_apply_admin_result_revision.public_execute",
+      "fn.referee_v5_apply_admin_result_revision.anon_execute",
+      "fn.referee_v5_apply_admin_result_revision.authenticated_execute",
+      "fn.referee_v5_apply_admin_result_revision.service_role_execute",
+      "fn.referee_v5_assert_assignment_write.missing",
+      "fn.referee_v5_assert_assignment_write.overload_count",
+      "fn.referee_v5_assert_assignment_write.def_md5",
+      "fn.referee_v5_assert_assignment_write.volatility",
+      "fn.referee_v5_assert_assignment_write.language",
+      "fn.referee_v5_assert_assignment_write.security_definer",
+      "fn.referee_v5_assert_assignment_write.proconfig",
+      "fn.referee_v5_assert_assignment_write.owner",
+      "fn.referee_v5_assert_assignment_write.proacl",
+      "fn.referee_v5_assert_assignment_write.public_execute",
+      "fn.referee_v5_assert_assignment_write.anon_execute",
+      "fn.referee_v5_assert_assignment_write.authenticated_execute",
+      "fn.referee_v5_assert_assignment_write.service_role_execute",
+      "fn.referee_v5_assignment_effective_status.missing",
+      "fn.referee_v5_assignment_effective_status.overload_count",
+      "fn.referee_v5_assignment_effective_status.def_md5",
+      "fn.referee_v5_assignment_effective_status.volatility",
+      "fn.referee_v5_assignment_effective_status.language",
+      "fn.referee_v5_assignment_effective_status.security_definer",
+      "fn.referee_v5_assignment_effective_status.proconfig",
+      "fn.referee_v5_assignment_effective_status.owner",
+      "fn.referee_v5_assignment_effective_status.proacl",
+      "fn.referee_v5_assignment_effective_status.public_execute",
+      "fn.referee_v5_assignment_effective_status.anon_execute",
+      "fn.referee_v5_assignment_effective_status.authenticated_execute",
+      "fn.referee_v5_assignment_effective_status.service_role_execute",
+      "fn.referee_v5_current_user_has_assignment.missing",
+      "fn.referee_v5_current_user_has_assignment.overload_count",
+      "fn.referee_v5_current_user_has_assignment.def_md5",
+      "fn.referee_v5_current_user_has_assignment.volatility",
+      "fn.referee_v5_current_user_has_assignment.language",
+      "fn.referee_v5_current_user_has_assignment.security_definer",
+      "fn.referee_v5_current_user_has_assignment.proconfig",
+      "fn.referee_v5_current_user_has_assignment.owner",
+      "fn.referee_v5_current_user_has_assignment.proacl",
+      "fn.referee_v5_current_user_has_assignment.public_execute",
+      "fn.referee_v5_current_user_has_assignment.anon_execute",
+      "fn.referee_v5_current_user_has_assignment.authenticated_execute",
+      "fn.referee_v5_current_user_has_assignment.service_role_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.missing",
+      "fn.referee_v5_mark_assignment_expired_if_needed.overload_count",
+      "fn.referee_v5_mark_assignment_expired_if_needed.def_md5",
+      "fn.referee_v5_mark_assignment_expired_if_needed.volatility",
+      "fn.referee_v5_mark_assignment_expired_if_needed.language",
+      "fn.referee_v5_mark_assignment_expired_if_needed.security_definer",
+      "fn.referee_v5_mark_assignment_expired_if_needed.proconfig",
+      "fn.referee_v5_mark_assignment_expired_if_needed.owner",
+      "fn.referee_v5_mark_assignment_expired_if_needed.proacl",
+      "fn.referee_v5_mark_assignment_expired_if_needed.public_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.anon_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.authenticated_execute",
+      "fn.referee_v5_mark_assignment_expired_if_needed.service_role_execute",
+      "fn.team_tournament_create_referee_assignment.missing",
+      "fn.team_tournament_create_referee_assignment.overload_count",
+      "fn.team_tournament_create_referee_assignment.def_md5",
+      "fn.team_tournament_create_referee_assignment.volatility",
+      "fn.team_tournament_create_referee_assignment.language",
+      "fn.team_tournament_create_referee_assignment.security_definer",
+      "fn.team_tournament_create_referee_assignment.proconfig",
+      "fn.team_tournament_create_referee_assignment.owner",
+      "fn.team_tournament_create_referee_assignment.proacl",
+      "fn.team_tournament_create_referee_assignment.public_execute",
+      "fn.team_tournament_create_referee_assignment.anon_execute",
+      "fn.team_tournament_create_referee_assignment.authenticated_execute",
+      "fn.team_tournament_create_referee_assignment.service_role_execute",
+      "fn.team_tournament_list_referee_assignments.missing",
+      "fn.team_tournament_list_referee_assignments.overload_count",
+      "fn.team_tournament_list_referee_assignments.def_md5",
+      "fn.team_tournament_list_referee_assignments.volatility",
+      "fn.team_tournament_list_referee_assignments.language",
+      "fn.team_tournament_list_referee_assignments.security_definer",
+      "fn.team_tournament_list_referee_assignments.proconfig",
+      "fn.team_tournament_list_referee_assignments.owner",
+      "fn.team_tournament_list_referee_assignments.proacl",
+      "fn.team_tournament_list_referee_assignments.public_execute",
+      "fn.team_tournament_list_referee_assignments.anon_execute",
+      "fn.team_tournament_list_referee_assignments.authenticated_execute",
+      "fn.team_tournament_list_referee_assignments.service_role_execute",
+      "fn.team_tournament_list_referee_corrections.missing",
+      "fn.team_tournament_list_referee_corrections.overload_count",
+      "fn.team_tournament_list_referee_corrections.def_md5",
+      "fn.team_tournament_list_referee_corrections.volatility",
+      "fn.team_tournament_list_referee_corrections.language",
+      "fn.team_tournament_list_referee_corrections.security_definer",
+      "fn.team_tournament_list_referee_corrections.proconfig",
+      "fn.team_tournament_list_referee_corrections.owner",
+      "fn.team_tournament_list_referee_corrections.proacl",
+      "fn.team_tournament_list_referee_corrections.public_execute",
+      "fn.team_tournament_list_referee_corrections.anon_execute",
+      "fn.team_tournament_list_referee_corrections.authenticated_execute",
+      "fn.team_tournament_list_referee_corrections.service_role_execute",
+      "fn.team_tournament_referee_match_access_ops.missing",
+      "fn.team_tournament_referee_match_access_ops.overload_count",
+      "fn.team_tournament_referee_match_access_ops.def_md5",
+      "fn.team_tournament_referee_match_access_ops.volatility",
+      "fn.team_tournament_referee_match_access_ops.language",
+      "fn.team_tournament_referee_match_access_ops.security_definer",
+      "fn.team_tournament_referee_match_access_ops.proconfig",
+      "fn.team_tournament_referee_match_access_ops.owner",
+      "fn.team_tournament_referee_match_access_ops.proacl",
+      "fn.team_tournament_referee_match_access_ops.public_execute",
+      "fn.team_tournament_referee_match_access_ops.anon_execute",
+      "fn.team_tournament_referee_match_access_ops.authenticated_execute",
+      "fn.team_tournament_referee_match_access_ops.service_role_execute",
+      "fn.team_tournament_reopen_referee_match.missing",
+      "fn.team_tournament_reopen_referee_match.overload_count",
+      "fn.team_tournament_reopen_referee_match.def_md5",
+      "fn.team_tournament_reopen_referee_match.volatility",
+      "fn.team_tournament_reopen_referee_match.language",
+      "fn.team_tournament_reopen_referee_match.security_definer",
+      "fn.team_tournament_reopen_referee_match.proconfig",
+      "fn.team_tournament_reopen_referee_match.owner",
+      "fn.team_tournament_reopen_referee_match.proacl",
+      "fn.team_tournament_reopen_referee_match.public_execute",
+      "fn.team_tournament_reopen_referee_match.anon_execute",
+      "fn.team_tournament_reopen_referee_match.authenticated_execute",
+      "fn.team_tournament_reopen_referee_match.service_role_execute",
+      "fn.team_tournament_request_referee_correction.missing",
+      "fn.team_tournament_request_referee_correction.overload_count",
+      "fn.team_tournament_request_referee_correction.def_md5",
+      "fn.team_tournament_request_referee_correction.volatility",
+      "fn.team_tournament_request_referee_correction.language",
+      "fn.team_tournament_request_referee_correction.security_definer",
+      "fn.team_tournament_request_referee_correction.proconfig",
+      "fn.team_tournament_request_referee_correction.owner",
+      "fn.team_tournament_request_referee_correction.proacl",
+      "fn.team_tournament_request_referee_correction.public_execute",
+      "fn.team_tournament_request_referee_correction.anon_execute",
+      "fn.team_tournament_request_referee_correction.authenticated_execute",
+      "fn.team_tournament_request_referee_correction.service_role_execute",
+      "fn.team_tournament_review_referee_correction.missing",
+      "fn.team_tournament_review_referee_correction.overload_count",
+      "fn.team_tournament_review_referee_correction.def_md5",
+      "fn.team_tournament_review_referee_correction.volatility",
+      "fn.team_tournament_review_referee_correction.language",
+      "fn.team_tournament_review_referee_correction.security_definer",
+      "fn.team_tournament_review_referee_correction.proconfig",
+      "fn.team_tournament_review_referee_correction.owner",
+      "fn.team_tournament_review_referee_correction.proacl",
+      "fn.team_tournament_review_referee_correction.public_execute",
+      "fn.team_tournament_review_referee_correction.anon_execute",
+      "fn.team_tournament_review_referee_correction.authenticated_execute",
+      "fn.team_tournament_review_referee_correction.service_role_execute",
+      "fn.team_tournament_revoke_referee_assignment.missing",
+      "fn.team_tournament_revoke_referee_assignment.overload_count",
+      "fn.team_tournament_revoke_referee_assignment.def_md5",
+      "fn.team_tournament_revoke_referee_assignment.volatility",
+      "fn.team_tournament_revoke_referee_assignment.language",
+      "fn.team_tournament_revoke_referee_assignment.security_definer",
+      "fn.team_tournament_revoke_referee_assignment.proconfig",
+      "fn.team_tournament_revoke_referee_assignment.owner",
+      "fn.team_tournament_revoke_referee_assignment.proacl",
+      "fn.team_tournament_revoke_referee_assignment.public_execute",
+      "fn.team_tournament_revoke_referee_assignment.anon_execute",
+      "fn.team_tournament_revoke_referee_assignment.authenticated_execute",
+      "fn.team_tournament_revoke_referee_assignment.service_role_execute"
+    ],
     "guardIdSetEqual": true,
-    "guardCount": 189
+    "guardCount": 189,
+    "transportBatchCount": 9
   },
   "forbiddenSerializedGuardsEliminated": true,
   "contracts": {
@@ -3150,5 +3531,6 @@
     "WS_COLLAPSE_V1": 1,
     "INTENTIONAL_EXACT_FINGERPRINT": 13,
     "PROCONFIG_TEXT_ARRAY_V1": 13
-  }
+  },
+  "registryFingerprint": "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e"
 }

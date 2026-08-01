@@ -1,5 +1,5 @@
 /**
- * Phase 5D-A / A.1 / A.2 / A.3 / A.4 readiness package static tests.
+ * Phase 5D-A / A.1 / A.2 / A.3 / A.4 / A.5 readiness package static tests.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -78,7 +78,7 @@ function shaFile(rel) {
 const NORM_GUARD_RE =
   /btrim\(\s*regexp_replace\(\s*\(?\s*pg_get_expr\(\s*pol\.polqual\s*,\s*pol\.polrelid\s*,\s*false\s*\)\s*\)?::text\s*,\s*'\[\[:space:\]\]\+'\s*,\s*' '\s*,\s*'g'\s*\)\s*\)\s*=\s*btrim\(\s*regexp_replace\(/g;
 
-test("Phase 5D-A package files exist including A.1/A.2/A.4 artefacts", () => {
+test("Phase 5D-A package files exist including A.1/A.2/A.4/A.5 artefacts", () => {
   for (const f of [
     "README.md",
     "PHASE5D_A_READINESS_MANIFEST.json",
@@ -92,6 +92,7 @@ test("Phase 5D-A package files exist including A.1/A.2/A.4 artefacts", () => {
     "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
     "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json",
     "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json",
+    "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
     "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
     "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql",
     "sql/20_TT5D_POST_APPLY_VERIFY.sql",
@@ -102,6 +103,10 @@ test("Phase 5D-A package files exist including A.1/A.2/A.4 artefacts", () => {
   ]) {
     assert.ok(fs.existsSync(path.join(PKG, f)), f);
   }
+  const transportDir = path.join(PKG, "sql/00_transport");
+  assert.ok(fs.existsSync(transportDir), "sql/00_transport");
+  const batches = fs.readdirSync(transportDir).filter((n) => /^00_PREFLIGHT_BATCH_\d+\.sql$/.test(n));
+  assert.ok(batches.length >= 1, "at least one transport batch");
 });
 
 test("baseline lists exactly 13 TT5D functions and WS_COLLAPSE_V1 + PROCONFIG_TEXT_ARRAY_V1 metadata", () => {
@@ -187,7 +192,7 @@ test("semantic findings 1-7 confirmed", () => {
   }
 });
 
-test("decision READY_FOR_OWNER_STAGING_GO retains blockers, M9 20/4, and A.4 markers", () => {
+test("decision READY_FOR_OWNER_STAGING_GO retains blockers, M9 20/4, and A.5 markers", () => {
   const d = readJson("evidence/05_PHASE5D_A_DECISION.json");
   assert.equal(d.decision, "READY_FOR_OWNER_STAGING_GO");
   assert.equal(d.StagingDatabaseMutations, 0);
@@ -200,16 +205,16 @@ test("decision READY_FOR_OWNER_STAGING_GO retains blockers, M9 20/4, and A.4 mar
   assert.equal(d.continuingPhase5.PHASE_05_COMPLETE, "NOT_ISSUED");
   assert.equal(d.retainedBlockers.BLOCKED_PHASE5C_TT5D_CERTIFICATION, true);
   assert.equal(d.retainedBlockers.BLOCKED_PHASE5_READINESS, true);
-  assert.equal(d.hardening, "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE");
-  assert.equal(d.nextAuth, "SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
+  assert.equal(d.hardening, "PHASE5D_A5_TRANSPORT_SAFE_BATCHED_SELECT_ONLY_PREFLIGHT");
+  assert.equal(d.nextAuth, "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
   assert.equal(d.typedCatalogGuardRegistry.preGuardCount, 189);
   for (const m of [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_CANONICAL_SQL00_UNCHANGED_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_READY_FOR_BATCHED_SELECT_ONLY_STAGING_GO",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE_VERIFIED",
-    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_SELECT_ONLY_PREFLIGHT_PARITY_VERIFIED",
-    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_NO_SERIALIZED_CATALOG_GUARDS_VERIFIED",
-    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_READY_FOR_SELECT_ONLY_STAGING_PREFLIGHT_GO",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_TEXT_ARRAY_GUARDS_VERIFIED",
-    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_READY_FOR_STAGING_GO_REISSUE",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_POLICY_GUARD_NORMALIZATION_VERIFIED",
   ]) {
     assert.ok(d.markers.includes(m), m);
@@ -288,7 +293,7 @@ test("no_client_write remains exact false/false", () => {
 
 test("A.4 typed guard registry exists with exact sql/00↔sql/10 parity", () => {
   const reg = readJson("evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json");
-  assert.equal(reg.nextAuth, "SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
+  assert.equal(reg.nextAuth, "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
   assert.equal(reg.preMutation.guardCount, 189);
   assert.equal(reg.parity.guardCount, 189);
   assert.equal(reg.parity.guardIdSetEqual, true);
@@ -301,6 +306,40 @@ test("A.4 typed guard registry exists with exact sql/00↔sql/10 parity", () => 
   assert.equal(ids10.length, 189);
   assert.deepEqual(new Set(ids10), new Set(reg.preMutation.guardIds));
   assert.deepEqual(new Set(ids00), new Set(reg.preMutation.guardIds));
+});
+
+test("A.5 transport batches preserve 189-guard parity under 28000-byte encoded limit", () => {
+  const man = readJson("evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json");
+  const reg = readJson("evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json");
+  assert.equal(man.totalGuards, 189);
+  assert.equal(man.canonicalSql00.gitBlob, "9989e54211a93ba79b8e6e87833e825a7419a24a");
+  assert.equal(man.encodedPayloadLimit, 28000);
+  assert.equal(man.nextAuth, "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
+  const flat = man.batches.flatMap((b) => b.guard_ids);
+  assert.equal(flat.length, 189);
+  assert.equal(new Set(flat).size, 189);
+  assert.deepEqual(flat, reg.preMutation.guardIds);
+  for (const b of man.batches) {
+    assert.ok(b.encodedExecuteSqlPayloadByteCount <= 28000, b.batch_id);
+    const sql = fs.readFileSync(path.join(PKG, b.path), "utf8");
+    const enc = Buffer.byteLength(JSON.stringify({ query: sql }), "utf8");
+    assert.equal(enc, b.encodedExecuteSqlPayloadByteCount);
+    assert.match(sql, /\bWITH\b/);
+    assert.doesNotMatch(stripComments(sql), /\b(BEGIN|COMMIT|INSERT\s+INTO|ALTER\s+|GRANT\s+)\b/i);
+  }
+  const sql00Blob = spawnSync("git", ["hash-object", path.join(PKG, "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql")], {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  assert.equal(sql00Blob.stdout.trim(), "9989e54211a93ba79b8e6e87833e825a7419a24a");
+  for (const [rel, oid] of [
+    ["sql/10_TT5D_CONTROLLED_RECONCILIATION.sql", "76c269451348d5823ffb275a368fd9ff385f6d08"],
+    ["sql/20_TT5D_POST_APPLY_VERIFY.sql", "4e3d02d067b8bc50619cf96a1742fd870637e8bf"],
+    ["sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql", "2e5a1cd17c74f7b669757c3a9fd3d7be11c3d2f0"],
+  ]) {
+    const r = spawnSync("git", ["hash-object", path.join(PKG, rel)], { cwd: ROOT, encoding: "utf8" });
+    assert.equal(r.stdout.trim(), oid, rel);
+  }
 });
 
 test("zero forbidden serialized catalog guards in sql/10/20/90", () => {
@@ -596,11 +635,11 @@ test("historical Phase 5B/5C evidence JSON unchanged vs d06ad59a", () => {
   }
 });
 
-test("next permitted execution is SELECT-only sql/00 not sql/10", () => {
+test("next permitted execution is batched SELECT-only transport preflight, not sql/10", () => {
   const d = readJson("evidence/05_PHASE5D_A_DECISION.json");
   const readiness = readJson("PHASE5D_A_READINESS_MANIFEST.json");
-  assert.equal(d.nextAuth, "SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
-  assert.match(JSON.stringify(readiness), /SELECT_ONLY|sql\/00|PREFLIGHT/);
+  assert.equal(d.nextAuth, "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
+  assert.match(JSON.stringify(readiness), /BATCHED_SELECT_ONLY|00_transport|PREFLIGHT/);
   assert.equal(d.continuingPhase5.productionExecutionGo, false);
   assert.equal(d.continuingPhase5.PHASE_05_COMPLETE, "NOT_ISSUED");
 });

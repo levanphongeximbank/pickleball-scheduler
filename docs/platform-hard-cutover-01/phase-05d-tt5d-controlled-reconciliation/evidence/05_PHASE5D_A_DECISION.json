@@ -27,6 +27,10 @@
   "phase6": "NOT_STARTED",
   "rollbackReady": true,
   "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_CANONICAL_SQL00_UNCHANGED_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_READY_FOR_BATCHED_SELECT_ONLY_STAGING_GO",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_SELECT_ONLY_PREFLIGHT_PARITY_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_NO_SERIALIZED_CATALOG_GUARDS_VERIFIED",
@@ -45,8 +49,8 @@
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_ROLLBACK_HARDENED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO_RECONFIRMED"
   ],
-  "hardening": "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE",
-  "nextAuth": "SELECT_ONLY_STAGING_PREFLIGHT_ONLY",
+  "hardening": "PHASE5D_A5_TRANSPORT_SAFE_BATCHED_SELECT_ONLY_PREFLIGHT",
+  "nextAuth": "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY",
   "priorPhase5dBAttempts": [
     {
       "attempt": 1,
@@ -68,24 +72,37 @@
       "RestoreExecutions": 0,
       "exactError": "P0001: PHASE5D_BASELINE_MISMATCH proconfig referee_v5_apply_admin_result_revision",
       "rootCause": "proconfig::text representation mismatch for comma-containing search_path text[] element; semantic proconfig unchanged"
+    },
+    {
+      "attempt": 3,
+      "stop": "PHASE5D_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+      "sql00CanonicalAttempted": true,
+      "sql00CanonicalExecuted": false,
+      "cause": "agent→MCP execute_sql transport could not submit complete ~443KB sql/00 payload",
+      "databaseGuardResultsReceived": 0,
+      "StagingDatabaseMutations": 0,
+      "sql10Executed": false
     }
   ],
   "priorPhase5dBAttempt": {
-    "attempt": 2,
-    "stop": "PHASE5D_B_BLOCKED_APPLY_BASELINE_MISMATCH_NO_MUTATION",
-    "sql00Pass": true,
-    "sql10ExecutionAttempts": 1,
-    "sql10Committed": false,
-    "sql20Executed": false,
-    "sql90Executed": false,
+    "attempt": 3,
+    "stop": "PHASE5D_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+    "sql00CanonicalAttempted": true,
+    "sql00CanonicalExecuted": false,
+    "cause": "agent→MCP execute_sql transport could not submit complete ~443KB sql/00 payload",
+    "databaseGuardResultsReceived": 0,
     "StagingDatabaseMutations": 0,
-    "RestoreExecutions": 0,
-    "exactError": "P0001: PHASE5D_BASELINE_MISMATCH proconfig referee_v5_apply_admin_result_revision",
-    "rootCause": "proconfig::text representation mismatch for comma-containing search_path text[] element; semantic proconfig unchanged"
+    "sql10Executed": false
   },
   "typedCatalogGuardRegistry": {
     "preGuardCount": 189,
     "postGuardCount": 174,
     "evidence": "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json"
+  },
+  "transportBatchPackage": {
+    "evidence": "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
+    "batchCount": 9,
+    "encodedPayloadLimit": 28000,
+    "canonicalSql00GitBlob": "9989e54211a93ba79b8e6e87833e825a7419a24a"
   }
 }

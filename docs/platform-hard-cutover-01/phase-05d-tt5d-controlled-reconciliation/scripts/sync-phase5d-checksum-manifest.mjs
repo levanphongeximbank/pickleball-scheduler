@@ -22,7 +22,7 @@ const PKG_REL =
 const MANIFEST_REL = `${PKG_REL}/PHASE5D_CHECKSUM_MANIFEST.json`;
 const writeMode = process.argv.includes("--write");
 
-const ALLOWLIST = [
+const ALLOWLIST_BASE = [
   "README.md",
   "PHASE5D_A_READINESS_MANIFEST.json",
   "evidence/01_STAGING_TARGET_AND_BASELINE_GATE.json",
@@ -34,6 +34,7 @@ const ALLOWLIST = [
   "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
   "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json",
   "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json",
+  "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
   "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
   "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql",
   "sql/20_TT5D_POST_APPLY_VERIFY.sql",
@@ -44,6 +45,21 @@ const ALLOWLIST = [
   "scripts/verify-phase5d-a.mjs",
   "scripts/sync-phase5d-checksum-manifest.mjs",
 ].map((p) => `${PKG_REL}/${p}`.replace(/\\/g, "/"));
+
+// Dynamically include transport batch SQL files when present.
+function expandAllowlist(base) {
+  const transportDir = path.join(PKG, "sql/00_transport");
+  const out = [...base];
+  if (fs.existsSync(transportDir)) {
+    for (const name of fs.readdirSync(transportDir).sort()) {
+      if (/^00_PREFLIGHT_BATCH_\d+\.sql$/.test(name)) {
+        out.push(`${PKG_REL}/sql/00_transport/${name}`);
+      }
+    }
+  }
+  return out;
+}
+const ALLOWLIST = expandAllowlist(ALLOWLIST_BASE);
 
 function sha256Exact(buf) {
   return crypto.createHash("sha256").update(buf).digest("hex").toUpperCase();

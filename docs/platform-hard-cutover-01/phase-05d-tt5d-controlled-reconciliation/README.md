@@ -15,8 +15,13 @@ migration provenance.
 This is **not** Staging mutation authorization. A separate Owner GO is required
 before Phase 5D-B.
 
-**Next authorization (A.4):** `SELECT_ONLY_STAGING_PREFLIGHT_ONLY` — execute
-committed `sql/00` only. Does **not** authorize `sql/10`, `sql/20`, or `sql/90`.
+**Next authorization (A.5):** `BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY` —
+execute every committed `sql/00_transport/00_PREFLIGHT_BATCH_*.sql` exactly once
+(SELECT-only). Does **not** authorize `sql/10`, `sql/20`, or `sql/90`.
+
+Canonical `sql/00` remains the authoritative single-file shadow and is frozen
+byte-for-byte (`9989e54211a93ba79b8e6e87833e825a7419a24a`). Transport batches are
+size-partitioned encodings of the **same** A.4 registry predicates.
 
 ## Guard contracts
 
@@ -29,14 +34,11 @@ committed `sql/00` only. Does **not** authorize `sql/10`, `sql/20`, or `sql/90`.
 - Check constraints: `CONSTRAINT_CATALOG_V1`
 - Column defaults: `COLUMN_DEFAULT_EXPR_V1`
 - Function-body MD5: `INTENTIONAL_EXACT_FINGERPRINT`
-
-`sql/00` is a complete SELECT-only, non-fail-fast shadow of every `sql/10`
-pre-mutation guard (`guard_id` parity exact; summary:
-`total_guard_count` / `passed_guard_count` / `failed_guard_count` /
-`preflight_all_pass`).
+- Transport batches: encoded MCP `execute_sql` payload ≤ 28000 bytes
 
 Registry: `evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json` +
 `scripts/phase5d-a4-guard-contracts.mjs`.
+Transport manifest: `evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json`.
 
 ## Prior Phase 5D-B attempts (no committed Staging mutation)
 
@@ -44,6 +46,8 @@ Registry: `evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json` +
 2. `sql/00` PASS; `sql/10` aborted in `$guard$` on `proconfig::text` representation
    before mutation; transaction rolled back; committed mutations=0.
    Cumulative `sql/10` attempts=1; committed Staging mutation transactions=0.
+3. Canonical `sql/00` SELECT-only GO blocked: agent→MCP transport could not submit
+   the complete ~443KB payload; database guard results received=0; mutations=0.
 
 ## Retained blockers
 

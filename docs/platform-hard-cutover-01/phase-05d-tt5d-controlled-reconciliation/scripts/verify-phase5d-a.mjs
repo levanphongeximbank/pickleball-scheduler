@@ -64,6 +64,7 @@ const required = [
   "evidence/04_TWO_WAY_DEPENDENCY_MAP.json",
   "evidence/05_PHASE5D_A_DECISION.json",
   "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json",
+  "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
   "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
   "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql",
   "sql/20_TT5D_POST_APPLY_VERIFY.sql",
@@ -90,26 +91,33 @@ if (decision.continuingPhase5?.executionRunbookAccepted !== false) fail("runbook
 if (decision.continuingPhase5?.productionExecutionGo !== false) fail("Production GO must remain false");
 if (decision.continuingPhase5?.PHASE_05_COMPLETE !== "NOT_ISSUED") fail("PHASE_05_COMPLETE must remain NOT_ISSUED");
 if (decision.m9?.tt5dDeclaredExecutable !== false) fail("TT5D must not be declared executable");
-if (decision.hardening !== "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE") {
-  fail("decision hardening must be PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE");
+if (decision.hardening !== "PHASE5D_A5_TRANSPORT_SAFE_BATCHED_SELECT_ONLY_PREFLIGHT") {
+  fail("decision hardening must be PHASE5D_A5_TRANSPORT_SAFE_BATCHED_SELECT_ONLY_PREFLIGHT");
+}
+if (decision.nextAuth !== "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY") {
+  fail("decision nextAuth must be BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
 }
 for (const m of [
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_CANONICAL_SQL00_UNCHANGED_VERIFIED",
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_READY_FOR_BATCHED_SELECT_ONLY_STAGING_GO",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_SELECT_ONLY_PREFLIGHT_PARITY_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_NO_SERIALIZED_CATALOG_GUARDS_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_READY_FOR_SELECT_ONLY_STAGING_PREFLIGHT_GO",
 ]) {
-  if (!decision.markers?.includes(m)) fail(`missing A.4 marker ${m}`);
+  if (!decision.markers?.includes(m)) fail(`missing marker ${m}`);
 }
 
 const registry = JSON.parse(
   fs.readFileSync(path.join(PKG, "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json"), "utf8"),
 );
-if (!registry.preMutation?.guardCount || registry.preMutation.guardCount < 1) {
-  fail("registry guard count must be > 0");
+if (!registry.preMutation?.guardCount || registry.preMutation.guardCount !== 189) {
+  fail("registry guard count must be 189");
 }
-if (registry.nextAuth !== "SELECT_ONLY_STAGING_PREFLIGHT_ONLY") {
-  fail("registry nextAuth must be SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
+if (registry.nextAuth !== "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY") {
+  fail("registry nextAuth must be BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
 }
 
 const baseline = JSON.parse(
@@ -323,6 +331,65 @@ for (const n of names) {
 if (!/ALTER FUNCTION[\s\S]*IMMUTABLE/i.test(rb)) fail("rollback must restore IMMUTABLE");
 if (!/DELETE FROM supabase_migrations\.schema_migrations/i.test(rb)) {
   fail("rollback must remove provenance row");
+}
+
+// A.5 transport package
+const FROZEN = {
+  "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql": "9989e54211a93ba79b8e6e87833e825a7419a24a",
+  "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql": "76c269451348d5823ffb275a368fd9ff385f6d08",
+  "sql/20_TT5D_POST_APPLY_VERIFY.sql": "4e3d02d067b8bc50619cf96a1742fd870637e8bf",
+  "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql": "2e5a1cd17c74f7b669757c3a9fd3d7be11c3d2f0",
+};
+for (const [rel, oid] of Object.entries(FROZEN)) {
+  const got = spawnSync("git", ["hash-object", path.join(PKG, rel)], {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  if (got.status !== 0 || got.stdout.trim() !== oid) {
+    fail(`frozen ${rel} blob ${got.stdout?.trim()} != ${oid}`);
+  }
+}
+
+const transportManPath = path.join(PKG, "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json");
+if (!fs.existsSync(transportManPath)) fail("missing evidence/10 transport manifest");
+const transportMan = JSON.parse(fs.readFileSync(transportManPath, "utf8"));
+if (transportMan.totalGuards !== 189) fail("transport totalGuards must be 189");
+if (transportMan.canonicalSql00?.gitBlob !== FROZEN["sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"]) {
+  fail("transport manifest canonical sql/00 blob mismatch");
+}
+if (!Array.isArray(transportMan.batches) || transportMan.batches.length < 1) {
+  fail("transport batches missing");
+}
+const flatIds = transportMan.batches.flatMap((b) => b.guard_ids);
+if (flatIds.length !== 189 || new Set(flatIds).size !== 189) {
+  fail("transport flattened guard_id parity failed");
+}
+for (let i = 0; i < registryIds.length; i++) {
+  if (flatIds[i] !== registryIds[i]) fail(`transport guard order drift at ${i}`);
+}
+for (const b of transportMan.batches) {
+  if (b.encodedExecuteSqlPayloadByteCount > 28000) {
+    fail(`${b.batch_id} encoded payload ${b.encodedExecuteSqlPayloadByteCount} > 28000`);
+  }
+  const batchPath = path.join(PKG, b.path);
+  if (!fs.existsSync(batchPath)) fail(`missing batch file ${b.path}`);
+  const sql = fs.readFileSync(batchPath, "utf8");
+  const enc = Buffer.byteLength(JSON.stringify({ query: sql }), "utf8");
+  if (enc !== b.encodedExecuteSqlPayloadByteCount) {
+    fail(`${b.batch_id} encoded size drift file=${enc} manifest=${b.encodedExecuteSqlPayloadByteCount}`);
+  }
+  const body = stripComments(sql);
+  if (
+    /\b(INSERT\s+INTO|DELETE\s+FROM|ALTER\s+|DROP\s+|TRUNCATE\s+TABLE|CREATE\s+|GRANT\s+|REVOKE\s+|BEGIN\b|COMMIT\b|\bDO\s+\$|CALL\s+)/i.test(
+      body,
+    )
+  ) {
+    fail(`${b.batch_id} must remain SELECT-only`);
+  }
+  if (!/\bWITH\s+guard_results\s+AS\b/i.test(sql)) fail(`${b.batch_id} missing WITH guard_results AS`);
+  if ((sql.match(/\bWITH\s+guard_results\s+AS\b/gi) || []).length !== 1) {
+    fail(`${b.batch_id} must have exactly one WITH guard_results AS`);
+  }
 }
 
 if (fs.existsSync(path.join(ROOT, MANIFEST_REL))) {
