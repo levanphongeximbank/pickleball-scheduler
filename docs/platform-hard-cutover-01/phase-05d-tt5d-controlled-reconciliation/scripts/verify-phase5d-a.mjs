@@ -98,9 +98,9 @@ if (decision.nextAuth !== "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY") {
   fail("decision nextAuth must be BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
 }
 for (const m of [
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
-  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_CANONICAL_SQL00_UNCHANGED_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_READY_FOR_BATCHED_SELECT_ONLY_STAGING_GO",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_SELECT_ONLY_PREFLIGHT_PARITY_VERIFIED",
@@ -108,6 +108,12 @@ for (const m of [
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_READY_FOR_SELECT_ONLY_STAGING_PREFLIGHT_GO",
 ]) {
   if (!decision.markers?.includes(m)) fail(`missing marker ${m}`);
+}
+if (decision.markers?.includes("PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_CANONICAL_SQL00_UNCHANGED_VERIFIED")) {
+  fail("A5_CANONICAL_SQL00_UNCHANGED marker must remain superseded (not re-asserted after 5D-C)");
+}
+if (decision.jsonbLiteralCorrection?.helper !== "renderJsonbLiteral") {
+  fail("decision must record jsonbLiteralCorrection.renderJsonbLiteral");
 }
 
 const registry = JSON.parse(
@@ -333,14 +339,14 @@ if (!/DELETE FROM supabase_migrations\.schema_migrations/i.test(rb)) {
   fail("rollback must remove provenance row");
 }
 
-// A.5 transport package
-const FROZEN = {
-  "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql": "9989e54211a93ba79b8e6e87833e825a7419a24a",
+// sql/10/20/90 remain frozen; sql/00 regenerated with quoted JSONB literals (5D-C).
+const FROZEN_MUTATION_SQL = {
   "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql": "76c269451348d5823ffb275a368fd9ff385f6d08",
   "sql/20_TT5D_POST_APPLY_VERIFY.sql": "4e3d02d067b8bc50619cf96a1742fd870637e8bf",
   "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql": "2e5a1cd17c74f7b669757c3a9fd3d7be11c3d2f0",
 };
-for (const [rel, oid] of Object.entries(FROZEN)) {
+const SUPERSEDED_INVALID_SQL00 = "9989e54211a93ba79b8e6e87833e825a7419a24a";
+for (const [rel, oid] of Object.entries(FROZEN_MUTATION_SQL)) {
   const got = spawnSync("git", ["hash-object", path.join(PKG, rel)], {
     cwd: ROOT,
     encoding: "utf8",
@@ -349,14 +355,45 @@ for (const [rel, oid] of Object.entries(FROZEN)) {
     fail(`frozen ${rel} blob ${got.stdout?.trim()} != ${oid}`);
   }
 }
+const sql00Oid = spawnSync("git", ["hash-object", path.join(PKG, "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql")], {
+  cwd: ROOT,
+  encoding: "utf8",
+}).stdout.trim();
+if (sql00Oid === SUPERSEDED_INVALID_SQL00) {
+  fail("sql/00 still equals superseded invalid bare-jsonb blob");
+}
 
 const transportManPath = path.join(PKG, "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json");
 if (!fs.existsSync(transportManPath)) fail("missing evidence/10 transport manifest");
 const transportMan = JSON.parse(fs.readFileSync(transportManPath, "utf8"));
 if (transportMan.totalGuards !== 189) fail("transport totalGuards must be 189");
-if (transportMan.canonicalSql00?.gitBlob !== FROZEN["sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"]) {
-  fail("transport manifest canonical sql/00 blob mismatch");
+if (transportMan.canonicalSql00?.gitBlob !== sql00Oid) {
+  fail("transport manifest canonical sql/00 blob mismatch vs working tree");
 }
+if (transportMan.canonicalSql00?.gitBlob === SUPERSEDED_INVALID_SQL00) {
+  fail("transport manifest still points at superseded invalid sql/00");
+}
+if (transportMan.supersededInvalidJsonbBlobs?.canonicalSql00?.gitBlob !== SUPERSEDED_INVALID_SQL00) {
+  fail("transport manifest must record superseded invalid sql/00 blob");
+}
+if (!transportMan.markers?.includes("PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED")) {
+  fail("transport manifest missing JSONB renderer corrected marker");
+}
+
+function countBareExpectedJsonb(sqlText) {
+  let bare = 0;
+  let quoted = 0;
+  for (const m of sqlText.matchAll(/^\s*(.+?)::jsonb AS expected_json/gm)) {
+    const expr = m[1].trim();
+    if (expr.startsWith("'") || expr.startsWith("$")) quoted += 1;
+    else bare += 1;
+  }
+  return { bare, quoted };
+}
+const sql00Text = fs.readFileSync(path.join(PKG, "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"), "utf8");
+const sql00Casts = countBareExpectedJsonb(sql00Text);
+if (sql00Casts.bare !== 0) fail(`sql/00 has ${sql00Casts.bare} bare expected_json JSONB literals`);
+if (sql00Casts.quoted < 189) fail(`sql/00 quoted expected_json casts ${sql00Casts.quoted} < 189`);
 if (!Array.isArray(transportMan.batches) || transportMan.batches.length < 1) {
   fail("transport batches missing");
 }
@@ -377,6 +414,11 @@ for (const b of transportMan.batches) {
   const enc = Buffer.byteLength(JSON.stringify({ query: sql }), "utf8");
   if (enc !== b.encodedExecuteSqlPayloadByteCount) {
     fail(`${b.batch_id} encoded size drift file=${enc} manifest=${b.encodedExecuteSqlPayloadByteCount}`);
+  }
+  const casts = countBareExpectedJsonb(sql);
+  if (casts.bare !== 0) fail(`${b.batch_id} has bare expected_json JSONB literals`);
+  if (casts.quoted !== b.guard_count) {
+    fail(`${b.batch_id} quoted expected_json ${casts.quoted} != guard_count ${b.guard_count}`);
   }
   const body = stripComments(sql);
   if (

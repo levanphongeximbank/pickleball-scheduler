@@ -10,7 +10,7 @@ SELECT 1 AS guard_order,
        'migration_provenance' AS object_class,
        'supabase_migrations.schema_migrations' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"present":false}::jsonb AS expected_json,
+       '{"present":false}'::jsonb AS expected_json,
        jsonb_build_object('matches', (NOT EXISTS (
       SELECT 1 FROM supabase_migrations.schema_migrations
       WHERE name = 'phase5d_tt5d_controlled_reconciliation' OR version = '20260731150000'
@@ -25,7 +25,7 @@ SELECT 2 AS guard_order,
        'table' AS object_class,
        'public.club_ai_data' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"absent":true}::jsonb AS expected_json,
+       '{"absent":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (to_regclass('public.club_ai_data') IS NULL)) AS actual_json,
        (to_regclass('public.club_ai_data') IS NULL) AS matches_guard
 UNION ALL
@@ -34,7 +34,7 @@ SELECT 3 AS guard_order,
        'function_set' AS object_class,
        'public.tt5d_functions' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"count":13}::jsonb AS expected_json,
+       '{"count":13}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
       SELECT count(*) FROM pg_proc pp JOIN pg_namespace nn ON nn.oid=pp.pronamespace
       WHERE nn.nspname='public' AND pp.proname IN ('referee_v5_apply_admin_result_revision', 'referee_v5_assert_assignment_write', 'referee_v5_assignment_effective_status', 'referee_v5_current_user_has_assignment', 'referee_v5_mark_assignment_expired_if_needed', 'team_tournament_create_referee_assignment', 'team_tournament_list_referee_assignments', 'team_tournament_list_referee_corrections', 'team_tournament_referee_match_access_ops', 'team_tournament_reopen_referee_match', 'team_tournament_request_referee_correction', 'team_tournament_review_referee_correction', 'team_tournament_revoke_referee_assignment')
@@ -49,7 +49,7 @@ SELECT 4 AS guard_order,
        'table' AS object_class,
        'public.referee_assignments' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"owner":"postgres"}::jsonb AS expected_json,
+       '{"owner":"postgres"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT pg_get_userbyid(c.relowner) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname='public' AND c.relname='referee_assignments') IS NOT DISTINCT FROM 'postgres')) AS actual_json,
        ((SELECT pg_get_userbyid(c.relowner) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -60,7 +60,7 @@ SELECT 5 AS guard_order,
        'table' AS object_class,
        'public.referee_assignments' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"relrowsecurity":true}::jsonb AS expected_json,
+       '{"relrowsecurity":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname='public' AND c.relname='referee_assignments') IS NOT DISTINCT FROM TRUE)) AS actual_json,
        ((SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -71,7 +71,7 @@ SELECT 6 AS guard_order,
        'table' AS object_class,
        'public.referee_assignments' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"relforcerowsecurity":false}::jsonb AS expected_json,
+       '{"relforcerowsecurity":false}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname='public' AND c.relname='referee_assignments') IS NOT DISTINCT FROM FALSE)) AS actual_json,
        ((SELECT c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -82,7 +82,7 @@ SELECT 7 AS guard_order,
        'table' AS object_class,
        'public.referee_assignments' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"tt5d_column_count":6}::jsonb AS expected_json,
+       '{"tt5d_column_count":6}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
       SELECT count(*) FROM information_schema.columns
       WHERE table_schema='public' AND table_name='referee_assignments'
@@ -99,7 +99,7 @@ SELECT 8 AS guard_order,
        'column' AS object_class,
        'public.referee_assignments.version' AS object_identity,
        'COLUMN_DEFAULT_EXPR_V1' AS contract_version,
-       {"dataType":"integer","notNull":true,"defaultExprNormalized":"1"}::jsonb AS expected_json,
+       '{"dataType":"integer","notNull":true,"defaultExprNormalized":"1"}'::jsonb AS expected_json,
        jsonb_build_object('matches', (EXISTS (
     SELECT 1
     FROM pg_attribute a
@@ -136,7 +136,7 @@ SELECT 9 AS guard_order,
        'foreign_key' AS object_class,
        'public.referee_assignments.matchup_id' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"references":"public.team_tournament_matchups(id)","onDelete":"SET NULL"}::jsonb AS expected_json,
+       '{"references":"public.team_tournament_matchups(id)","onDelete":"SET NULL"}'::jsonb AS expected_json,
        jsonb_build_object('matches', (EXISTS (
       SELECT 1 FROM information_schema.referential_constraints rc
       JOIN information_schema.key_column_usage kcu ON kcu.constraint_name=rc.constraint_name AND kcu.constraint_schema=rc.constraint_schema
@@ -157,7 +157,7 @@ SELECT 10 AS guard_order,
        'foreign_key' AS object_class,
        'public.referee_assignments.sub_match_id' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"references":"public.team_tournament_sub_matches(id)","onDelete":"SET NULL"}::jsonb AS expected_json,
+       '{"references":"public.team_tournament_sub_matches(id)","onDelete":"SET NULL"}'::jsonb AS expected_json,
        jsonb_build_object('matches', (EXISTS (
       SELECT 1 FROM information_schema.referential_constraints rc
       JOIN information_schema.key_column_usage kcu ON kcu.constraint_name=rc.constraint_name AND kcu.constraint_schema=rc.constraint_schema
@@ -178,7 +178,7 @@ SELECT 11 AS guard_order,
        'constraint' AS object_class,
        'public.referee_assignments.referee_assignments_status_check' AS object_identity,
        'CONSTRAINT_CATALOG_V1' AS contract_version,
-       {"exprNormalized":"((status = ANY (ARRAY['pending'::text, 'active'::text, 'expired'::text, 'revoked'::text, 'completed'::text])))"}::jsonb AS expected_json,
+       '{"exprNormalized":"((status = ANY (ARRAY[''pending''::text, ''active''::text, ''expired''::text, ''revoked''::text, ''completed''::text])))"}'::jsonb AS expected_json,
        jsonb_build_object('matches', (EXISTS (
     SELECT 1
     FROM pg_constraint c
@@ -213,7 +213,7 @@ SELECT 12 AS guard_order,
        'index' AS object_class,
        'public.referee_assignments_sub_match_idx' AS object_identity,
        'INDEX_CATALOG_V1' AS contract_version,
-       {"indexName":"referee_assignments_sub_match_idx","tableName":"referee_assignments","amname":"btree","keyColumns":["sub_match_id","status"],"predicateNormalized":"sub_match_id IS NOT NULL","owner":"postgres","unique":false}::jsonb AS expected_json,
+       '{"indexName":"referee_assignments_sub_match_idx","tableName":"referee_assignments","amname":"btree","keyColumns":["sub_match_id","status"],"predicateNormalized":"sub_match_id IS NOT NULL","owner":"postgres","unique":false}'::jsonb AS expected_json,
        jsonb_build_object('matches', (EXISTS (
     SELECT 1
     FROM pg_index idx
@@ -260,7 +260,7 @@ SELECT 13 AS guard_order,
        'index' AS object_class,
        'public.tt5d_correction_pending_idx' AS object_identity,
        'INDEX_CATALOG_V1' AS contract_version,
-       {"indexName":"tt5d_correction_pending_idx","tableName":"team_tournament_referee_correction_requests","amname":"btree","keyColumns":["tenant_id","tournament_id","status"],"predicateNormalized":"status = 'pending'::text","owner":"postgres","unique":false}::jsonb AS expected_json,
+       '{"indexName":"tt5d_correction_pending_idx","tableName":"team_tournament_referee_correction_requests","amname":"btree","keyColumns":["tenant_id","tournament_id","status"],"predicateNormalized":"status = ''pending''::text","owner":"postgres","unique":false}'::jsonb AS expected_json,
        jsonb_build_object('matches', (EXISTS (
     SELECT 1
     FROM pg_index idx
@@ -307,7 +307,7 @@ SELECT 14 AS guard_order,
        'table' AS object_class,
        'public.team_tournament_referee_correction_requests' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"owner":"postgres"}::jsonb AS expected_json,
+       '{"owner":"postgres"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT pg_get_userbyid(c.relowner) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname='public' AND c.relname='team_tournament_referee_correction_requests') IS NOT DISTINCT FROM 'postgres')) AS actual_json,
        ((SELECT pg_get_userbyid(c.relowner) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace

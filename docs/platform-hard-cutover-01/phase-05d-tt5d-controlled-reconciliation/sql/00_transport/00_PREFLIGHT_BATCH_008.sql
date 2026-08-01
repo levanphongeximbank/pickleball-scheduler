@@ -10,7 +10,7 @@ SELECT 149 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_reopen_referee_match(text, text, text, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"authenticatedExecute":true}::jsonb AS expected_json,
+       '{"authenticatedExecute":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('authenticated', to_regprocedure('public.team_tournament_reopen_referee_match(text, text, text, text)'), 'EXECUTE') IS NOT DISTINCT FROM true)) AS actual_json,
        (has_function_privilege('authenticated', to_regprocedure('public.team_tournament_reopen_referee_match(text, text, text, text)'), 'EXECUTE') IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -19,7 +19,7 @@ SELECT 150 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_reopen_referee_match(text, text, text, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"serviceRoleExecute":true}::jsonb AS expected_json,
+       '{"serviceRoleExecute":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('service_role', to_regprocedure('public.team_tournament_reopen_referee_match(text, text, text, text)'), 'EXECUTE') IS NOT DISTINCT FROM true)) AS actual_json,
        (has_function_privilege('service_role', to_regprocedure('public.team_tournament_reopen_referee_match(text, text, text, text)'), 'EXECUTE') IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -28,7 +28,7 @@ SELECT 151 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"present":true}::jsonb AS expected_json,
+       '{"present":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)') IS NOT NULL)) AS actual_json,
        (to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)') IS NOT NULL) AS matches_guard
 UNION ALL
@@ -37,7 +37,7 @@ SELECT 152 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"overload_count":1}::jsonb AS expected_json,
+       '{"overload_count":1}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT count(*) FROM pg_proc pp JOIN pg_namespace nn ON nn.oid=pp.pronamespace
           WHERE nn.nspname='public' AND pp.proname='team_tournament_request_referee_correction'
@@ -52,7 +52,7 @@ SELECT 153 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'INTENTIONAL_EXACT_FINGERPRINT' AS contract_version,
-       {"defMd5":"42b96c5091086edfc822392ed49999d2"}::jsonb AS expected_json,
+       '{"defMd5":"42b96c5091086edfc822392ed49999d2"}'::jsonb AS expected_json,
        jsonb_build_object('matches', (md5(pg_get_functiondef(to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)'))) IS NOT DISTINCT FROM '42b96c5091086edfc822392ed49999d2')) AS actual_json,
        (md5(pg_get_functiondef(to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)'))) IS NOT DISTINCT FROM '42b96c5091086edfc822392ed49999d2') AS matches_guard
 UNION ALL
@@ -61,7 +61,7 @@ SELECT 154 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"volatility":"VOLATILE"}::jsonb AS expected_json,
+       '{"volatility":"VOLATILE"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT CASE pp.provolatile WHEN 'i' THEN 'IMMUTABLE' WHEN 's' THEN 'STABLE' WHEN 'v' THEN 'VOLATILE' END
           FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)')
@@ -76,7 +76,7 @@ SELECT 155 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"language":"plpgsql"}::jsonb AS expected_json,
+       '{"language":"plpgsql"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT l.lanname FROM pg_proc pp JOIN pg_language l ON l.oid=pp.prolang WHERE pp.oid=to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)')
         ) IS NOT DISTINCT FROM 'plpgsql')) AS actual_json,
@@ -89,7 +89,7 @@ SELECT 156 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"securityDefiner":true}::jsonb AS expected_json,
+       '{"securityDefiner":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)')) IS NOT DISTINCT FROM true)) AS actual_json,
        ((SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)')) IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -98,7 +98,7 @@ SELECT 157 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'PROCONFIG_TEXT_ARRAY_V1' AS contract_version,
-       {"proconfig":["search_path=public"]}::jsonb AS expected_json,
+       '{"proconfig":["search_path=public"]}'::jsonb AS expected_json,
        jsonb_build_object('matches', (NOT (coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[]))) AS actual_json,
        (NOT (coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[])) AS matches_guard
 UNION ALL
@@ -107,7 +107,7 @@ SELECT 158 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"owner":"postgres"}::jsonb AS expected_json,
+       '{"owner":"postgres"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)')) IS NOT DISTINCT FROM 'postgres')) AS actual_json,
        ((SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)')) IS NOT DISTINCT FROM 'postgres') AS matches_guard
 UNION ALL
@@ -116,7 +116,7 @@ SELECT 159 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'ACL_EXPLODED_SET_V1' AS contract_version,
-       {"aclExploded":[{"grantee":"postgres","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false}]}::jsonb AS expected_json,
+       '{"aclExploded":[{"grantee":"postgres","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false}]}'::jsonb AS expected_json,
        coalesce((SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY grantee, privilege_type, grantor, is_grantable), '[]'::jsonb)
     FROM (SELECT CASE grantee WHEN 0 THEN 'PUBLIC' ELSE pg_get_userbyid(grantee) END AS grantee,
            privilege_type,
@@ -181,7 +181,7 @@ SELECT 160 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"publicExecute":false}::jsonb AS expected_json,
+       '{"publicExecute":false}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('public', to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)'), 'EXECUTE') IS NOT DISTINCT FROM false)) AS actual_json,
        (has_function_privilege('public', to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)'), 'EXECUTE') IS NOT DISTINCT FROM false) AS matches_guard
 UNION ALL
@@ -190,7 +190,7 @@ SELECT 161 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"anonExecute":false}::jsonb AS expected_json,
+       '{"anonExecute":false}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('anon', to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)'), 'EXECUTE') IS NOT DISTINCT FROM false)) AS actual_json,
        (has_function_privilege('anon', to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)'), 'EXECUTE') IS NOT DISTINCT FROM false) AS matches_guard
 UNION ALL
@@ -199,7 +199,7 @@ SELECT 162 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"authenticatedExecute":true}::jsonb AS expected_json,
+       '{"authenticatedExecute":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('authenticated', to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)'), 'EXECUTE') IS NOT DISTINCT FROM true)) AS actual_json,
        (has_function_privilege('authenticated', to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)'), 'EXECUTE') IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -208,7 +208,7 @@ SELECT 163 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"serviceRoleExecute":true}::jsonb AS expected_json,
+       '{"serviceRoleExecute":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('service_role', to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)'), 'EXECUTE') IS NOT DISTINCT FROM true)) AS actual_json,
        (has_function_privilege('service_role', to_regprocedure('public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)'), 'EXECUTE') IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -217,7 +217,7 @@ SELECT 164 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"present":true}::jsonb AS expected_json,
+       '{"present":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)') IS NOT NULL)) AS actual_json,
        (to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)') IS NOT NULL) AS matches_guard
 UNION ALL
@@ -226,7 +226,7 @@ SELECT 165 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"overload_count":1}::jsonb AS expected_json,
+       '{"overload_count":1}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT count(*) FROM pg_proc pp JOIN pg_namespace nn ON nn.oid=pp.pronamespace
           WHERE nn.nspname='public' AND pp.proname='team_tournament_review_referee_correction'
@@ -241,7 +241,7 @@ SELECT 166 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)' AS object_identity,
        'INTENTIONAL_EXACT_FINGERPRINT' AS contract_version,
-       {"defMd5":"175c9ee13eeefaccdbb67160cd0a5a16"}::jsonb AS expected_json,
+       '{"defMd5":"175c9ee13eeefaccdbb67160cd0a5a16"}'::jsonb AS expected_json,
        jsonb_build_object('matches', (md5(pg_get_functiondef(to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)'))) IS NOT DISTINCT FROM '175c9ee13eeefaccdbb67160cd0a5a16')) AS actual_json,
        (md5(pg_get_functiondef(to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)'))) IS NOT DISTINCT FROM '175c9ee13eeefaccdbb67160cd0a5a16') AS matches_guard
 UNION ALL
@@ -250,7 +250,7 @@ SELECT 167 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"volatility":"VOLATILE"}::jsonb AS expected_json,
+       '{"volatility":"VOLATILE"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT CASE pp.provolatile WHEN 'i' THEN 'IMMUTABLE' WHEN 's' THEN 'STABLE' WHEN 'v' THEN 'VOLATILE' END
           FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)')
@@ -265,7 +265,7 @@ SELECT 168 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"language":"plpgsql"}::jsonb AS expected_json,
+       '{"language":"plpgsql"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT l.lanname FROM pg_proc pp JOIN pg_language l ON l.oid=pp.prolang WHERE pp.oid=to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)')
         ) IS NOT DISTINCT FROM 'plpgsql')) AS actual_json,
@@ -278,7 +278,7 @@ SELECT 169 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"securityDefiner":true}::jsonb AS expected_json,
+       '{"securityDefiner":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)')) IS NOT DISTINCT FROM true)) AS actual_json,
        ((SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)')) IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -287,7 +287,7 @@ SELECT 170 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)' AS object_identity,
        'PROCONFIG_TEXT_ARRAY_V1' AS contract_version,
-       {"proconfig":["search_path=public"]}::jsonb AS expected_json,
+       '{"proconfig":["search_path=public"]}'::jsonb AS expected_json,
        jsonb_build_object('matches', (NOT (coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[]))) AS actual_json,
        (NOT (coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[])) AS matches_guard
 UNION ALL
@@ -296,7 +296,7 @@ SELECT 171 AS guard_order,
        'function' AS object_class,
        'public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"owner":"postgres"}::jsonb AS expected_json,
+       '{"owner":"postgres"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)')) IS NOT DISTINCT FROM 'postgres')) AS actual_json,
        ((SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)')) IS NOT DISTINCT FROM 'postgres') AS matches_guard
 )

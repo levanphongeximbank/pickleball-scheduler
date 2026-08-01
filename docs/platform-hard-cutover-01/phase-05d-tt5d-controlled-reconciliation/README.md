@@ -13,15 +13,17 @@ migration provenance.
 `READY_FOR_OWNER_STAGING_GO`
 
 This is **not** Staging mutation authorization. A separate Owner GO is required
-before Phase 5D-B.
+before Phase 5D-B / corrected batched SELECT-only preflight.
 
-**Next authorization (A.5):** `BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY` —
+**Next authorization:** `BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY` —
 execute every committed `sql/00_transport/00_PREFLIGHT_BATCH_*.sql` exactly once
 (SELECT-only). Does **not** authorize `sql/10`, `sql/20`, or `sql/90`.
 
-Canonical `sql/00` remains the authoritative single-file shadow and is frozen
-byte-for-byte (`9989e54211a93ba79b8e6e87833e825a7419a24a`). Transport batches are
-size-partitioned encodings of the **same** A.4 registry predicates.
+Canonical `sql/00` remains the authoritative single-file shadow. After 5D-C it is
+regenerated with `renderJsonbLiteral` (quoted `'::jsonb`). Historical invalid
+blob `9989e54211a93ba79b8e6e87833e825a7419a24a` is superseded (never execute).
+Transport batches are size-partitioned encodings of the **same** A.4 registry
+predicates. `sql/10`/`sql/20`/`sql/90` remain frozen (no expected_json casts).
 
 ## Guard contracts
 
@@ -34,6 +36,7 @@ size-partitioned encodings of the **same** A.4 registry predicates.
 - Check constraints: `CONSTRAINT_CATALOG_V1`
 - Column defaults: `COLUMN_DEFAULT_EXPR_V1`
 - Function-body MD5: `INTENTIONAL_EXACT_FINGERPRINT`
+- JSONB expected_json: `renderJsonbLiteral` (never bare `{...}::jsonb`)
 - Transport batches: encoded MCP `execute_sql` payload ≤ 28000 bytes
 
 Registry: `evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json` +
@@ -48,6 +51,9 @@ Transport manifest: `evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json`.
    Cumulative `sql/10` attempts=1; committed Staging mutation transactions=0.
 3. Canonical `sql/00` SELECT-only GO blocked: agent→MCP transport could not submit
    the complete ~443KB payload; database guard results received=0; mutations=0.
+4. Batched SELECT-only preflight: all 9 old transport batches reached Postgres once
+   and failed parse (`42601` bare `{...}::jsonb`); guard rows=0; mutations=0.
+   Old batch blobs superseded; never retry.
 
 ## Retained blockers
 

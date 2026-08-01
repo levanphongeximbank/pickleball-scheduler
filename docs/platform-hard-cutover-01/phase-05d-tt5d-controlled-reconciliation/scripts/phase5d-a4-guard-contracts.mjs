@@ -23,6 +23,15 @@ export function sqlStr(s) {
   return `'${String(s).replace(/'/g, "''")}'`;
 }
 
+/**
+ * Authoritative PostgreSQL JSONB literal for serialized JS values.
+ * Emits a single-quoted SQL string (apostrophes doubled) cast to jsonb.
+ * Never emit bare {...}::jsonb / [...]::jsonb from JSON.stringify.
+ */
+export function renderJsonbLiteral(value) {
+  return `${sqlStr(JSON.stringify(value))}::jsonb`;
+}
+
 /** WS_COLLAPSE_V1 — collapse POSIX whitespace runs to one space, then trim. */
 export function sqlWsCollapseV1(exprSql) {
   return `btrim(regexp_replace((${exprSql})::text, '[[:space:]]+', ' ', 'g'))`;
@@ -290,7 +299,6 @@ function pushGuard(guards, partial) {
 }
 
 export function guardRow(g) {
-  const expectedJson = JSON.stringify(g.expected_json);
   const actualExpr = g.diagnosticSql
     ? `coalesce(${g.diagnosticSql}, jsonb_build_object('matches', (${g.matchesSql})))`
     : `jsonb_build_object('matches', (${g.matchesSql}))`;
@@ -299,7 +307,7 @@ export function guardRow(g) {
        ${sqlStr(g.object_class)} AS object_class,
        ${sqlStr(g.object_identity)} AS object_identity,
        ${sqlStr(g.contract_version)} AS contract_version,
-       ${expectedJson}::jsonb AS expected_json,
+       ${renderJsonbLiteral(g.expected_json)} AS expected_json,
        ${actualExpr} AS actual_json,
        (${g.matchesSql}) AS matches_guard`;
 }
@@ -428,7 +436,8 @@ export function buildTransportBatchManifest({
       gitBlob: canonicalSql00GitBlob,
       sha256: canonicalSql00Sha256,
       rawBytes: Buffer.byteLength(canonicalSql00, "utf8"),
-      byteForByteFrozen: true,
+      byteForByteFrozen: false,
+      jsonbLiteralRenderer: "renderJsonbLiteral",
     },
     authoritativeRegistryFingerprint: registryFingerprint,
     totalGuards: preRegistry.length,

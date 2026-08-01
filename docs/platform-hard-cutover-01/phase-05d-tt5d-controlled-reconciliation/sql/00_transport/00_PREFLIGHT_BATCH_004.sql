@@ -10,7 +10,7 @@ SELECT 53 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)' AS object_identity,
        'PROCONFIG_TEXT_ARRAY_V1' AS contract_version,
-       {"proconfig":[]}::jsonb AS expected_json,
+       '{"proconfig":[]}'::jsonb AS expected_json,
        jsonb_build_object('matches', (NOT (coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY[]::text[]))) AS actual_json,
        (NOT (coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY[]::text[])) AS matches_guard
 UNION ALL
@@ -19,7 +19,7 @@ SELECT 54 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"owner":"postgres"}::jsonb AS expected_json,
+       '{"owner":"postgres"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)')) IS NOT DISTINCT FROM 'postgres')) AS actual_json,
        ((SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)')) IS NOT DISTINCT FROM 'postgres') AS matches_guard
 UNION ALL
@@ -28,7 +28,7 @@ SELECT 55 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)' AS object_identity,
        'ACL_EXPLODED_SET_V1' AS contract_version,
-       {"aclExploded":[{"grantee":"postgres","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"anon","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false}]}::jsonb AS expected_json,
+       '{"aclExploded":[{"grantee":"postgres","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"anon","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false}]}'::jsonb AS expected_json,
        coalesce((SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY grantee, privilege_type, grantor, is_grantable), '[]'::jsonb)
     FROM (SELECT CASE grantee WHEN 0 THEN 'PUBLIC' ELSE pg_get_userbyid(grantee) END AS grantee,
            privilege_type,
@@ -97,7 +97,7 @@ SELECT 56 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"publicExecute":false}::jsonb AS expected_json,
+       '{"publicExecute":false}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('public', to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)'), 'EXECUTE') IS NOT DISTINCT FROM false)) AS actual_json,
        (has_function_privilege('public', to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)'), 'EXECUTE') IS NOT DISTINCT FROM false) AS matches_guard
 UNION ALL
@@ -106,7 +106,7 @@ SELECT 57 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"anonExecute":true}::jsonb AS expected_json,
+       '{"anonExecute":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('anon', to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)'), 'EXECUTE') IS NOT DISTINCT FROM true)) AS actual_json,
        (has_function_privilege('anon', to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)'), 'EXECUTE') IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -115,7 +115,7 @@ SELECT 58 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"authenticatedExecute":true}::jsonb AS expected_json,
+       '{"authenticatedExecute":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('authenticated', to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)'), 'EXECUTE') IS NOT DISTINCT FROM true)) AS actual_json,
        (has_function_privilege('authenticated', to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)'), 'EXECUTE') IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -124,7 +124,7 @@ SELECT 59 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"serviceRoleExecute":true}::jsonb AS expected_json,
+       '{"serviceRoleExecute":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('service_role', to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)'), 'EXECUTE') IS NOT DISTINCT FROM true)) AS actual_json,
        (has_function_privilege('service_role', to_regprocedure('public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)'), 'EXECUTE') IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -133,7 +133,7 @@ SELECT 60 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"present":true}::jsonb AS expected_json,
+       '{"present":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])') IS NOT NULL)) AS actual_json,
        (to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])') IS NOT NULL) AS matches_guard
 UNION ALL
@@ -142,7 +142,7 @@ SELECT 61 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"overload_count":1}::jsonb AS expected_json,
+       '{"overload_count":1}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT count(*) FROM pg_proc pp JOIN pg_namespace nn ON nn.oid=pp.pronamespace
           WHERE nn.nspname='public' AND pp.proname='referee_v5_current_user_has_assignment'
@@ -157,7 +157,7 @@ SELECT 62 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'INTENTIONAL_EXACT_FINGERPRINT' AS contract_version,
-       {"defMd5":"2223a22afbef0ccccc0d0df04ae873f1"}::jsonb AS expected_json,
+       '{"defMd5":"2223a22afbef0ccccc0d0df04ae873f1"}'::jsonb AS expected_json,
        jsonb_build_object('matches', (md5(pg_get_functiondef(to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])'))) IS NOT DISTINCT FROM '2223a22afbef0ccccc0d0df04ae873f1')) AS actual_json,
        (md5(pg_get_functiondef(to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])'))) IS NOT DISTINCT FROM '2223a22afbef0ccccc0d0df04ae873f1') AS matches_guard
 UNION ALL
@@ -166,7 +166,7 @@ SELECT 63 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"volatility":"STABLE"}::jsonb AS expected_json,
+       '{"volatility":"STABLE"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT CASE pp.provolatile WHEN 'i' THEN 'IMMUTABLE' WHEN 's' THEN 'STABLE' WHEN 'v' THEN 'VOLATILE' END
           FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])')
@@ -181,7 +181,7 @@ SELECT 64 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"language":"sql"}::jsonb AS expected_json,
+       '{"language":"sql"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT l.lanname FROM pg_proc pp JOIN pg_language l ON l.oid=pp.prolang WHERE pp.oid=to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])')
         ) IS NOT DISTINCT FROM 'sql')) AS actual_json,
@@ -194,7 +194,7 @@ SELECT 65 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"securityDefiner":true}::jsonb AS expected_json,
+       '{"securityDefiner":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])')) IS NOT DISTINCT FROM true)) AS actual_json,
        ((SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])')) IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -203,7 +203,7 @@ SELECT 66 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'PROCONFIG_TEXT_ARRAY_V1' AS contract_version,
-       {"proconfig":["search_path=public"]}::jsonb AS expected_json,
+       '{"proconfig":["search_path=public"]}'::jsonb AS expected_json,
        jsonb_build_object('matches', (NOT (coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[]))) AS actual_json,
        (NOT (coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=public']::text[])) AS matches_guard
 UNION ALL
@@ -212,7 +212,7 @@ SELECT 67 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"owner":"postgres"}::jsonb AS expected_json,
+       '{"owner":"postgres"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])')) IS NOT DISTINCT FROM 'postgres')) AS actual_json,
        ((SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])')) IS NOT DISTINCT FROM 'postgres') AS matches_guard
 UNION ALL
@@ -221,7 +221,7 @@ SELECT 68 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'ACL_EXPLODED_SET_V1' AS contract_version,
-       {"aclExploded":[{"grantee":"postgres","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"anon","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false}]}::jsonb AS expected_json,
+       '{"aclExploded":[{"grantee":"postgres","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"anon","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"EXECUTE","grantor":"postgres","is_grantable":false}]}'::jsonb AS expected_json,
        coalesce((SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY grantee, privilege_type, grantor, is_grantable), '[]'::jsonb)
     FROM (SELECT CASE grantee WHEN 0 THEN 'PUBLIC' ELSE pg_get_userbyid(grantee) END AS grantee,
            privilege_type,
@@ -290,7 +290,7 @@ SELECT 69 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"publicExecute":false}::jsonb AS expected_json,
+       '{"publicExecute":false}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('public', to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])'), 'EXECUTE') IS NOT DISTINCT FROM false)) AS actual_json,
        (has_function_privilege('public', to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])'), 'EXECUTE') IS NOT DISTINCT FROM false) AS matches_guard
 UNION ALL
@@ -299,7 +299,7 @@ SELECT 70 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"anonExecute":true}::jsonb AS expected_json,
+       '{"anonExecute":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('anon', to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])'), 'EXECUTE') IS NOT DISTINCT FROM true)) AS actual_json,
        (has_function_privilege('anon', to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])'), 'EXECUTE') IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -308,7 +308,7 @@ SELECT 71 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"authenticatedExecute":true}::jsonb AS expected_json,
+       '{"authenticatedExecute":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('authenticated', to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])'), 'EXECUTE') IS NOT DISTINCT FROM true)) AS actual_json,
        (has_function_privilege('authenticated', to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])'), 'EXECUTE') IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -317,7 +317,7 @@ SELECT 72 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_current_user_has_assignment(text, text, text, text[])' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"serviceRoleExecute":true}::jsonb AS expected_json,
+       '{"serviceRoleExecute":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (has_function_privilege('service_role', to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])'), 'EXECUTE') IS NOT DISTINCT FROM true)) AS actual_json,
        (has_function_privilege('service_role', to_regprocedure('public.referee_v5_current_user_has_assignment(text, text, text, text[])'), 'EXECUTE') IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -326,7 +326,7 @@ SELECT 73 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_mark_assignment_expired_if_needed(uuid)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"present":true}::jsonb AS expected_json,
+       '{"present":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (to_regprocedure('public.referee_v5_mark_assignment_expired_if_needed(uuid)') IS NOT NULL)) AS actual_json,
        (to_regprocedure('public.referee_v5_mark_assignment_expired_if_needed(uuid)') IS NOT NULL) AS matches_guard
 UNION ALL
@@ -335,7 +335,7 @@ SELECT 74 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_mark_assignment_expired_if_needed(uuid)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"overload_count":1}::jsonb AS expected_json,
+       '{"overload_count":1}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT count(*) FROM pg_proc pp JOIN pg_namespace nn ON nn.oid=pp.pronamespace
           WHERE nn.nspname='public' AND pp.proname='referee_v5_mark_assignment_expired_if_needed'
@@ -350,7 +350,7 @@ SELECT 75 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_mark_assignment_expired_if_needed(uuid)' AS object_identity,
        'INTENTIONAL_EXACT_FINGERPRINT' AS contract_version,
-       {"defMd5":"0f2e5ea3915cf34cdb0297ac3a844d4d"}::jsonb AS expected_json,
+       '{"defMd5":"0f2e5ea3915cf34cdb0297ac3a844d4d"}'::jsonb AS expected_json,
        jsonb_build_object('matches', (md5(pg_get_functiondef(to_regprocedure('public.referee_v5_mark_assignment_expired_if_needed(uuid)'))) IS NOT DISTINCT FROM '0f2e5ea3915cf34cdb0297ac3a844d4d')) AS actual_json,
        (md5(pg_get_functiondef(to_regprocedure('public.referee_v5_mark_assignment_expired_if_needed(uuid)'))) IS NOT DISTINCT FROM '0f2e5ea3915cf34cdb0297ac3a844d4d') AS matches_guard
 )

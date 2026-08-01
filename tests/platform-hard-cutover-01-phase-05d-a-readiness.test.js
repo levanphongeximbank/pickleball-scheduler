@@ -19,6 +19,8 @@ import {
   sqlColumnDefaultMatch,
   sqlAclSetMatch,
   wsCollapseJs,
+  renderJsonbLiteral,
+  guardRow,
 } from "../docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/scripts/phase5d-a4-guard-contracts.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -208,10 +210,11 @@ test("decision READY_FOR_OWNER_STAGING_GO retains blockers, M9 20/4, and A.5 mar
   assert.equal(d.hardening, "PHASE5D_A5_TRANSPORT_SAFE_BATCHED_SELECT_ONLY_PREFLIGHT");
   assert.equal(d.nextAuth, "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
   assert.equal(d.typedCatalogGuardRegistry.preGuardCount, 189);
+  assert.equal(d.jsonbLiteralCorrection.helper, "renderJsonbLiteral");
   for (const m of [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
-    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_CANONICAL_SQL00_UNCHANGED_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_READY_FOR_BATCHED_SELECT_ONLY_STAGING_GO",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_TEXT_ARRAY_GUARDS_VERIFIED",
@@ -219,6 +222,9 @@ test("decision READY_FOR_OWNER_STAGING_GO retains blockers, M9 20/4, and A.5 mar
   ]) {
     assert.ok(d.markers.includes(m), m);
   }
+  assert.ok(
+    !d.markers.includes("PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_CANONICAL_SQL00_UNCHANGED_VERIFIED"),
+  );
 });
 
 test("WS_COLLAPSE_V1: compact and pretty representations normalize identically", () => {
@@ -312,7 +318,11 @@ test("A.5 transport batches preserve 189-guard parity under 28000-byte encoded l
   const man = readJson("evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json");
   const reg = readJson("evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json");
   assert.equal(man.totalGuards, 189);
-  assert.equal(man.canonicalSql00.gitBlob, "9989e54211a93ba79b8e6e87833e825a7419a24a");
+  assert.notEqual(man.canonicalSql00.gitBlob, "9989e54211a93ba79b8e6e87833e825a7419a24a");
+  assert.equal(
+    man.supersededInvalidJsonbBlobs.canonicalSql00.gitBlob,
+    "9989e54211a93ba79b8e6e87833e825a7419a24a",
+  );
   assert.equal(man.encodedPayloadLimit, 28000);
   assert.equal(man.nextAuth, "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
   const flat = man.batches.flatMap((b) => b.guard_ids);
@@ -331,7 +341,7 @@ test("A.5 transport batches preserve 189-guard parity under 28000-byte encoded l
     cwd: ROOT,
     encoding: "utf8",
   });
-  assert.equal(sql00Blob.stdout.trim(), "9989e54211a93ba79b8e6e87833e825a7419a24a");
+  assert.equal(sql00Blob.stdout.trim(), man.canonicalSql00.gitBlob);
   for (const [rel, oid] of [
     ["sql/10_TT5D_CONTROLLED_RECONCILIATION.sql", "76c269451348d5823ffb275a368fd9ff385f6d08"],
     ["sql/20_TT5D_POST_APPLY_VERIFY.sql", "4e3d02d067b8bc50619cf96a1742fd870637e8bf"],
@@ -607,6 +617,91 @@ test("Production promotion contract forbids Staging fingerprint reuse", () => {
   assert.ok(c.paths.FRESH_ABSENT_OBJECT_PATH);
   assert.equal(c.ProductionAccess, 0);
   assert.equal(c.productionExecutionGo ?? false, false);
+});
+
+test("5D-C renderJsonbLiteral produces quoted PostgreSQL JSONB literals", () => {
+  assert.equal(renderJsonbLiteral({ a: 1 }), `'{"a":1}'::jsonb`);
+  assert.equal(renderJsonbLiteral(["x"]), `'["x"]'::jsonb`);
+  assert.equal(renderJsonbLiteral(null), `'null'::jsonb`);
+  assert.equal(renderJsonbLiteral(true), `'true'::jsonb`);
+  assert.equal(renderJsonbLiteral(0), `'0'::jsonb`);
+  assert.equal(renderJsonbLiteral({ note: "O'Reilly" }), `'{"note":"O''Reilly"}'::jsonb`);
+  assert.equal(renderJsonbLiteral({ u: "cá-✓" }), `'{"u":"cá-✓"}'::jsonb`);
+  assert.equal(renderJsonbLiteral({ p: "a\\b" }), `'{"p":"a\\\\b"}'::jsonb`);
+  assert.equal(
+    renderJsonbLiteral({ nested: { arr: [1, null, false] } }),
+    `'{"nested":{"arr":[1,null,false]}}'::jsonb`,
+  );
+  // Removing SQL quoting must fail the contract shape.
+  const broken = `${JSON.stringify({ a: 1 })}::jsonb`;
+  assert.notEqual(broken, renderJsonbLiteral({ a: 1 }));
+  assert.match(broken, /^\{/);
+  assert.doesNotMatch(renderJsonbLiteral({ a: 1 }), /^\{/);
+});
+
+test("5D-C guardRow expected_json is quoted; matches_guard ignores diagnostic", () => {
+  const g = {
+    guard_order: 1,
+    guard_id: "t.apostrophe",
+    object_class: "table",
+    object_identity: "public.t",
+    contract_version: "TYPED_COMPARISON",
+    expected_json: { label: "it's" },
+    matchesSql: "TRUE",
+    diagnosticSql: "jsonb_build_object('diag', 1)",
+  };
+  const row = guardRow(g);
+  assert.match(row, /'\{"label":"it''s"\}'::jsonb AS expected_json/);
+  assert.doesNotMatch(row, /^\s*\{/m);
+  assert.match(row, /\(TRUE\) AS matches_guard/);
+  assert.match(row, /coalesce\(jsonb_build_object\('diag', 1\)/);
+});
+
+function countBareExpectedJsonb(sqlText) {
+  let bare = 0;
+  let quoted = 0;
+  for (const m of sqlText.matchAll(/^\s*(.+?)::jsonb AS expected_json/gm)) {
+    const expr = m[1].trim();
+    if (expr.startsWith("'") || expr.startsWith("$")) quoted += 1;
+    else bare += 1;
+  }
+  return { bare, quoted };
+}
+
+test("5D-C zero bare expected_json JSONB casts in sql/00 and transport batches", () => {
+  const sql00 = fs.readFileSync(path.join(PKG, "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"), "utf8");
+  const c00 = countBareExpectedJsonb(sql00);
+  assert.equal(c00.bare, 0);
+  assert.ok(c00.quoted >= 189);
+  const man = readJson("evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json");
+  let totalQuoted = 0;
+  for (const b of man.batches) {
+    const sql = fs.readFileSync(path.join(PKG, b.path), "utf8");
+    const c = countBareExpectedJsonb(sql);
+    assert.equal(c.bare, 0, b.batch_id);
+    assert.equal(c.quoted, b.guard_count, b.batch_id);
+    totalQuoted += c.quoted;
+  }
+  assert.equal(totalQuoted, 189);
+});
+
+test("5D-C sql/10 sql/20 sql/90 remain non-executable under SELECT-only auth and frozen", () => {
+  for (const [rel, oid] of [
+    ["sql/10_TT5D_CONTROLLED_RECONCILIATION.sql", "76c269451348d5823ffb275a368fd9ff385f6d08"],
+    ["sql/20_TT5D_POST_APPLY_VERIFY.sql", "4e3d02d067b8bc50619cf96a1742fd870637e8bf"],
+    ["sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql", "2e5a1cd17c74f7b669757c3a9fd3d7be11c3d2f0"],
+  ]) {
+    const r = spawnSync("git", ["hash-object", path.join(PKG, rel)], { cwd: ROOT, encoding: "utf8" });
+    assert.equal(r.stdout.trim(), oid, rel);
+    const sql = fs.readFileSync(path.join(PKG, rel), "utf8");
+    assert.equal(countBareExpectedJsonb(sql).bare, 0);
+    assert.match(sql, /\bBEGIN\b|\bDO\s+\$/i);
+  }
+  const d = readJson("evidence/05_PHASE5D_A_DECISION.json");
+  assert.equal(d.nextAuth, "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY");
+  assert.equal(d.continuingPhase5.productionExecutionGo, false);
+  assert.equal(d.m9.executableApplyCount, 20);
+  assert.equal(d.m9.nonExecutableCandidateCount, 4);
 });
 
 test("Phase 5D-A verifier script PASS", () => {

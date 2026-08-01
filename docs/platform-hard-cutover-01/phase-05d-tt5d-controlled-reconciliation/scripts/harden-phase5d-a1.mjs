@@ -1,7 +1,7 @@
 /**
- * Phase 5D-A.4 / A.5 — typed catalog guard registry + sql/00 shadow + transport batches.
+ * Phase 5D-A.4 / A.5 / 5D-C — typed catalog guard registry + sql/00 shadow + transport batches.
  * Repository-only. No database. No git add/commit/push.
- * A.5 freezes sql/00/10/20/90 byte-for-byte to HEAD A.4 blobs while emitting sql/00_transport/.
+ * 5D-C regenerates sql/00 + transport batches with valid JSONB literals; sql/10/20/90 remain frozen.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -33,12 +33,46 @@ const LOCK_KEY = "phase5d_tt5d_controlled_reconciliation";
 const AUTHORIZED_STAGING = "qyewbxjsiiyufanzcjcq";
 const FORBIDDEN_PROD = "expuvcohlcjzvrrauvud";
 
-/** A.4 frozen blobs — A.5 must not change these files. */
+/** sql/10/20/90 remain byte-frozen (no expected_json JSONB literals). sql/00 regenerated in 5D-C. */
 const FROZEN_SQL_BLOBS = {
-  "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql": "9989e54211a93ba79b8e6e87833e825a7419a24a",
   "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql": "76c269451348d5823ffb275a368fd9ff385f6d08",
   "sql/20_TT5D_POST_APPLY_VERIFY.sql": "4e3d02d067b8bc50619cf96a1742fd870637e8bf",
   "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql": "2e5a1cd17c74f7b669757c3a9fd3d7be11c3d2f0",
+};
+
+/** Historical A.5 blobs with bare {...}::jsonb — invalid PostgreSQL; never execute again. */
+const SUPERSEDED_INVALID_JSONB_BLOBS = {
+  classification: "PHASE5D_JSONB_LITERAL_RENDERER_ROOT_CAUSE_CONFIRMED",
+  rootCause:
+    "guardRow emitted JSON.stringify(expected_json) directly as {...}::jsonb without a PostgreSQL string literal",
+  stop: "PHASE5D_BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+  oldInvalidBatchAttempts: 9,
+  successfulOldBatches: 0,
+  guardRowsReceived: 0,
+  sql10AttemptsRemain: 1,
+  StagingMutations: 0,
+  ProductionAccess: 0,
+  canonicalSql00: {
+    path: "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
+    gitBlob: "9989e54211a93ba79b8e6e87833e825a7419a24a",
+    status: "INVALID_SUPERSEDED",
+  },
+  transportManifest: {
+    path: "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
+    gitBlob: "9f0dc89450823f0b34434408bf16ea60cdba838f",
+    status: "INVALID_SUPERSEDED",
+  },
+  transportBatches: [
+    { file: "00_PREFLIGHT_BATCH_001.sql", gitBlob: "6ef005e9c275663271c560e4d5dcea24a5165f9e" },
+    { file: "00_PREFLIGHT_BATCH_002.sql", gitBlob: "4e30aa7f23f1648b092390cd197a7ce797359f83" },
+    { file: "00_PREFLIGHT_BATCH_003.sql", gitBlob: "86a7f0e346029c4fbb7b56849e7b73d71091e20e" },
+    { file: "00_PREFLIGHT_BATCH_004.sql", gitBlob: "e819ae1ab4dd2533717d6c43fdcc9722de94ffbd" },
+    { file: "00_PREFLIGHT_BATCH_005.sql", gitBlob: "d01c3cc7453cc267fdeef746cd7065744a9ce330" },
+    { file: "00_PREFLIGHT_BATCH_006.sql", gitBlob: "299513dc68fe2357d354d9d1bab1e80908040cd1" },
+    { file: "00_PREFLIGHT_BATCH_007.sql", gitBlob: "aeb62bb008b93f12b4d9cebc80a610894209e13e" },
+    { file: "00_PREFLIGHT_BATCH_008.sql", gitBlob: "e9bbe1b91c79b322b65654fc05d680d8d2d4f97f" },
+    { file: "00_PREFLIGHT_BATCH_009.sql", gitBlob: "0d5b292acf9efdca4be59b57ff1c2949e0838816" },
+  ],
 };
 
 const EFFECTIVE_BASELINE_DEF =
@@ -434,11 +468,12 @@ baseline.typedCatalogGuardComparison = {
 };
 write("evidence/02_TT5D_EXACT_CATALOG_BASELINE.json", JSON.stringify(baseline, null, 2) + "\n");
 
-writeFrozenSql(
+write(
   "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
   `-- Phase 5D precondition — SELECT-only typed guard shadow (parity with sql/10 pre $guard$).
 -- Target must be Staging project_ref ${AUTHORIZED_STAGING}. Forbidden: ${FORBIDDEN_PROD}.
 -- No BEGIN/COMMIT/DO/DDL/DML. Registry-driven UNION ALL + preflight_all_pass summary.
+-- expected_json via renderJsonbLiteral (quoted SQL string)::jsonb — never bare {...}::jsonb.
 
 ${shadowPreflightSql(preRegistry)}`,
 );
@@ -475,6 +510,10 @@ for (const b of transportBatches) {
 }
 
 const canonicalSql00 = fs.readFileSync(path.join(PKG, "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"), "utf8");
+const canonicalSql00GitBlob = gitHashObjectBytes(Buffer.from(canonicalSql00, "utf8"));
+if (canonicalSql00GitBlob === SUPERSEDED_INVALID_JSONB_BLOBS.canonicalSql00.gitBlob) {
+  throw new Error("PHASE5D_C_BLOCKED: regenerated sql/00 still equals superseded invalid blob");
+}
 const aggregationContract = {
   mode: "CLIENT_SIDE_AGGREGATION_OF_COMPLETE_BATCH_RESULTS",
   notes: [
@@ -493,7 +532,7 @@ const aggregationContract = {
 
 const transportManifest = buildTransportBatchManifest({
   canonicalSql00,
-  canonicalSql00GitBlob: FROZEN_SQL_BLOBS["sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"],
+  canonicalSql00GitBlob,
   canonicalSql00Sha256: crypto.createHash("sha256").update(canonicalSql00, "utf8").digest("hex"),
   registryFingerprint,
   preRegistry,
@@ -502,20 +541,35 @@ const transportManifest = buildTransportBatchManifest({
 });
 for (let i = 0; i < transportManifest.batches.length; i++) {
   transportManifest.batches[i].gitBlob = transportBatches[i].gitBlob;
+  const old = SUPERSEDED_INVALID_JSONB_BLOBS.transportBatches[i];
+  if (old && transportManifest.batches[i].gitBlob === old.gitBlob) {
+    throw new Error(`PHASE5D_C_BLOCKED: batch ${transportManifest.batches[i].batch_id} still equals superseded invalid blob`);
+  }
 }
+transportManifest.supersededInvalidJsonbBlobs = SUPERSEDED_INVALID_JSONB_BLOBS;
 transportManifest.markers = [
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
-  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_CANONICAL_SQL00_UNCHANGED_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_READY_FOR_BATCHED_SELECT_ONLY_STAGING_GO",
 ];
 transportManifest.priorBlockedSelectOnlyAttempt = {
   stop: "PHASE5D_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
-  canonicalSql00GitBlob: FROZEN_SQL_BLOBS["sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"],
+  canonicalSql00GitBlob: SUPERSEDED_INVALID_JSONB_BLOBS.canonicalSql00.gitBlob,
   canonicalSql00Bytes: 442726,
   cause: "agent→MCP execute_sql transport could not submit the complete payload",
   databaseGuardResultsReceived: 0,
   transportAttempts: 1,
+};
+transportManifest.priorBlockedBatchedSelectOnlyAttempt = {
+  stop: "PHASE5D_BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+  cause: "PostgreSQL 42601 bare {...}::jsonb AS expected_json (renderer defect)",
+  oldInvalidBatchAttempts: 9,
+  successfulOldBatches: 0,
+  guardRowsReceived: 0,
+  StagingMutations: 0,
+  ProductionAccess: 0,
+  supersededBlobs: SUPERSEDED_INVALID_JSONB_BLOBS.transportBatches,
 };
 write(
   "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
@@ -566,9 +620,9 @@ write(
 
 const decision = JSON.parse(fs.readFileSync(path.join(PKG, "evidence/05_PHASE5D_A_DECISION.json"), "utf8"));
 decision.markers = [
+  "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
-  "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_CANONICAL_SQL00_UNCHANGED_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_READY_FOR_BATCHED_SELECT_ONLY_STAGING_GO",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE_VERIFIED",
   "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_SELECT_ONLY_PREFLIGHT_PARITY_VERIFIED",
@@ -591,6 +645,12 @@ decision.markers = [
 decision.hardening = "PHASE5D_A5_TRANSPORT_SAFE_BATCHED_SELECT_ONLY_PREFLIGHT";
 decision.decision = "READY_FOR_OWNER_STAGING_GO";
 decision.nextAuth = "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY";
+decision.jsonbLiteralCorrection = {
+  marker: "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
+  helper: "renderJsonbLiteral",
+  supersededInvalid: SUPERSEDED_INVALID_JSONB_BLOBS,
+  historicalMarkerSuperseded: "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_CANONICAL_SQL00_UNCHANGED_VERIFIED",
+};
 decision.priorPhase5dBAttempts = [
   {
     attempt: 1,
@@ -624,8 +684,20 @@ decision.priorPhase5dBAttempts = [
     StagingDatabaseMutations: 0,
     sql10Executed: false,
   },
+  {
+    attempt: 4,
+    stop: "PHASE5D_BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+    oldInvalidBatchAttempts: 9,
+    successfulOldBatches: 0,
+    guardRowsReceived: 0,
+    cause: "PostgreSQL 42601 bare {...}::jsonb AS expected_json from guardRow JSON.stringify without sqlStr",
+    StagingDatabaseMutations: 0,
+    ProductionAccess: 0,
+    sql10Executed: false,
+    supersededInvalidBlobs: SUPERSEDED_INVALID_JSONB_BLOBS,
+  },
 ];
-decision.priorPhase5dBAttempt = decision.priorPhase5dBAttempts[2];
+decision.priorPhase5dBAttempt = decision.priorPhase5dBAttempts[3];
 decision.typedCatalogGuardRegistry = {
   preGuardCount: preRegistry.length,
   postGuardCount: postRegistry.length,
@@ -635,7 +707,8 @@ decision.transportBatchPackage = {
   evidence: "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
   batchCount: transportBatches.length,
   encodedPayloadLimit: TRANSPORT_ENCODED_PAYLOAD_LIMIT,
-  canonicalSql00GitBlob: FROZEN_SQL_BLOBS["sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"],
+  canonicalSql00GitBlob,
+  jsonbLiteralRenderer: "renderJsonbLiteral",
 };
 fs.writeFileSync(path.join(PKG, "evidence/05_PHASE5D_A_DECISION.json"), JSON.stringify(decision, null, 2) + "\n");
 
@@ -692,7 +765,12 @@ dep.phase5dA5Scope = [
   "phase5d-a4-guard-contracts.mjs partitionGuardsForTransport + shadowPreflightBatchSql",
   "sql/00_transport/00_PREFLIGHT_BATCH_*.sql",
   "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
-  "canonical sql/00 sql/10 sql/20 sql/90 frozen byte-for-byte",
+  "sql/10 sql/20 sql/90 frozen byte-for-byte; sql/00 regenerated for JSONB literals (5D-C)",
+];
+dep.phase5dCScope = [
+  "phase5d-a4-guard-contracts.mjs renderJsonbLiteral",
+  "regenerated sql/00 + sql/00_transport with quoted JSONB literals",
+  "superseded invalid bare {...}::jsonb blobs recorded in evidence/10",
 ];
 fs.writeFileSync(path.join(PKG, "evidence/04_TWO_WAY_DEPENDENCY_MAP.json"), JSON.stringify(dep, null, 2) + "\n");
 
@@ -713,15 +791,17 @@ migration provenance.
 \`READY_FOR_OWNER_STAGING_GO\`
 
 This is **not** Staging mutation authorization. A separate Owner GO is required
-before Phase 5D-B.
+before Phase 5D-B / corrected batched SELECT-only preflight.
 
-**Next authorization (A.5):** \`BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY\` —
+**Next authorization:** \`BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY\` —
 execute every committed \`sql/00_transport/00_PREFLIGHT_BATCH_*.sql\` exactly once
 (SELECT-only). Does **not** authorize \`sql/10\`, \`sql/20\`, or \`sql/90\`.
 
-Canonical \`sql/00\` remains the authoritative single-file shadow and is frozen
-byte-for-byte (\`9989e54211a93ba79b8e6e87833e825a7419a24a\`). Transport batches are
-size-partitioned encodings of the **same** A.4 registry predicates.
+Canonical \`sql/00\` remains the authoritative single-file shadow. After 5D-C it is
+regenerated with \`renderJsonbLiteral\` (quoted \`'::jsonb\`). Historical invalid
+blob \`9989e54211a93ba79b8e6e87833e825a7419a24a\` is superseded (never execute).
+Transport batches are size-partitioned encodings of the **same** A.4 registry
+predicates. \`sql/10\`/\`sql/20\`/\`sql/90\` remain frozen (no expected_json casts).
 
 ## Guard contracts
 
@@ -734,6 +814,7 @@ size-partitioned encodings of the **same** A.4 registry predicates.
 - Check constraints: \`CONSTRAINT_CATALOG_V1\`
 - Column defaults: \`COLUMN_DEFAULT_EXPR_V1\`
 - Function-body MD5: \`INTENTIONAL_EXACT_FINGERPRINT\`
+- JSONB expected_json: \`renderJsonbLiteral\` (never bare \`{...}::jsonb\`)
 - Transport batches: encoded MCP \`execute_sql\` payload ≤ ${TRANSPORT_ENCODED_PAYLOAD_LIMIT} bytes
 
 Registry: \`evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json\` +
@@ -748,6 +829,9 @@ Transport manifest: \`evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json\`.
    Cumulative \`sql/10\` attempts=1; committed Staging mutation transactions=0.
 3. Canonical \`sql/00\` SELECT-only GO blocked: agent→MCP transport could not submit
    the complete ~443KB payload; database guard results received=0; mutations=0.
+4. Batched SELECT-only preflight: all 9 old transport batches reached Postgres once
+   and failed parse (\`42601\` bare \`{...}::jsonb\`); guard rows=0; mutations=0.
+   Old batch blobs superseded; never retry.
 
 ## Retained blockers
 
@@ -792,13 +876,16 @@ console.log(
       postGuardCount: postRegistry.length,
       transportBatchCount: transportBatches.length,
       transportEncodedLimit: TRANSPORT_ENCODED_PAYLOAD_LIMIT,
-      frozenSql00: FROZEN_SQL_BLOBS["sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql"],
+      canonicalSql00GitBlob,
+      frozenSql10_20_90: FROZEN_SQL_BLOBS,
+      supersededInvalidCanonicalSql00: SUPERSEDED_INVALID_JSONB_BLOBS.canonicalSql00.gitBlob,
       supersessionLeaves: supersessions.map((s) => s.leaf),
       lockKey: LOCK_KEY,
       policyGuard: "WS_COLLAPSE_V1",
       proconfigGuard: "PROCONFIG_TEXT_ARRAY_V1",
       typedCatalogGuard: "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE",
       transportPackage: "PHASE5D_A5_TRANSPORT_SAFE_BATCHED_SELECT_ONLY_PREFLIGHT",
+      jsonbLiteralRenderer: "renderJsonbLiteral",
     },
     null,
     2,

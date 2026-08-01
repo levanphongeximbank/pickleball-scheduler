@@ -3,10 +3,11 @@
   "nextAuth": "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY",
   "canonicalSql00": {
     "path": "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
-    "gitBlob": "9989e54211a93ba79b8e6e87833e825a7419a24a",
-    "sha256": "d3135a72e8fb1fbca0f340657162fc7b4ca357bda5ea6ff0a37e4f9db3863294",
-    "rawBytes": 442726,
-    "byteForByteFrozen": true
+    "gitBlob": "72a4ad9da7e516af6947479b2ee36f8d43a57303",
+    "sha256": "17d89e682b16a7ebea59c3209e0661412e83849a8a162595f92b3b1a8fdeda10",
+    "rawBytes": 443602,
+    "byteForByteFrozen": false,
+    "jsonbLiteralRenderer": "renderJsonbLiteral"
   },
   "authoritativeRegistryFingerprint": "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e",
   "totalGuards": 189,
@@ -30,10 +31,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_001",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_001.sql",
-      "contentSha256": "f29f13d405e33ebf3daba50190d70a3923c16e14775b3bdacea4fcf28c69f90c",
-      "gitBlob": "6ef005e9c275663271c560e4d5dcea24a5165f9e",
-      "rawByteCount": 19741,
-      "encodedExecuteSqlPayloadByteCount": 20188,
+      "contentSha256": "aebeafbb4abcc60c9c6f7324145007353e2c961f2a70d13be10c79de3071eea1",
+      "gitBlob": "0eac74dca1423932cf22e98281fb63786f56093f",
+      "rawByteCount": 19781,
+      "encodedExecuteSqlPayloadByteCount": 20228,
       "first_guard_order": 1,
       "last_guard_order": 14,
       "guard_count": 14,
@@ -129,10 +130,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_002",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_002.sql",
-      "contentSha256": "2027abd139383be5a954071a34b8eee0b2f6bf2794be70770d367413c0dff6c3",
-      "gitBlob": "4e30aa7f23f1648b092390cd197a7ce797359f83",
-      "rawByteCount": 25138,
-      "encodedExecuteSqlPayloadByteCount": 25903,
+      "contentSha256": "7ba0421a5e3031297de150faa53c70249c9e61522bd03c5d69b2bc8a11a5c277",
+      "gitBlob": "13e22cbfef7f9786f61fbcf203429da8d599163d",
+      "rawByteCount": 25166,
+      "encodedExecuteSqlPayloadByteCount": 25931,
       "first_guard_order": 15,
       "last_guard_order": 28,
       "guard_count": 14,
@@ -228,10 +229,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_003",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_003.sql",
-      "contentSha256": "7f118253f3a522f361f23bc2499bf1f08aa77ea7839b9992df153b526451988f",
-      "gitBlob": "86a7f0e346029c4fbb7b56849e7b73d71091e20e",
-      "rawByteCount": 27350,
-      "encodedExecuteSqlPayloadByteCount": 27871,
+      "contentSha256": "5989de81fe11dc5508145594c5d421afecb1dcbce72c085b88ed0493b0d3f069",
+      "gitBlob": "255ada33aee91d3459ee9437cef127ca196c2c0c",
+      "rawByteCount": 27398,
+      "encodedExecuteSqlPayloadByteCount": 27919,
       "first_guard_order": 29,
       "last_guard_order": 52,
       "guard_count": 24,
@@ -387,10 +388,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_004",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_004.sql",
-      "contentSha256": "6c1cb91ec9bb3ba3ee20dec2d1428ff495726ae70f6513077a681f2457112573",
-      "gitBlob": "e819ae1ab4dd2533717d6c43fdcc9722de94ffbd",
-      "rawByteCount": 26457,
-      "encodedExecuteSqlPayloadByteCount": 27009,
+      "contentSha256": "bba1417b49df305457572a2c3d2f12298ce257ebf6bef06feeb30c5bbf831f09",
+      "gitBlob": "e3ec858934ce678f27657fcc3e0db5eac1b95450",
+      "rawByteCount": 26503,
+      "encodedExecuteSqlPayloadByteCount": 27055,
       "first_guard_order": 53,
       "last_guard_order": 75,
       "guard_count": 23,
@@ -540,10 +541,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_005",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_005.sql",
-      "contentSha256": "bc4336c75e34f5486c9b274c9feb8b6181ff4ffde7ca5ed838c024be4c4fe14f",
-      "gitBlob": "d01c3cc7453cc267fdeef746cd7065744a9ce330",
-      "rawByteCount": 27375,
-      "encodedExecuteSqlPayloadByteCount": 27899,
+      "contentSha256": "87d8f8c6d63bfb88780763e18ee56a1f9425900845bb626b9b2d71e3f3364e4a",
+      "gitBlob": "681f01114ea1b6d8efe6e9ee3aa48bc5184583a8",
+      "rawByteCount": 27421,
+      "encodedExecuteSqlPayloadByteCount": 27945,
       "first_guard_order": 76,
       "last_guard_order": 98,
       "guard_count": 23,
@@ -693,10 +694,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_006",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_006.sql",
-      "contentSha256": "74381ea58a1e401164981666c74ed643053779791698bbb3ae851e7cd0e180a6",
-      "gitBlob": "299513dc68fe2357d354d9d1bab1e80908040cd1",
-      "rawByteCount": 26959,
-      "encodedExecuteSqlPayloadByteCount": 27513,
+      "contentSha256": "8af9b195097cc91ed6d8ba557220196a8e0870a783699b719f24fd7eb73edb7e",
+      "gitBlob": "b1f5ab3211f4bc0aaec32cc2419509fa9a01c341",
+      "rawByteCount": 27009,
+      "encodedExecuteSqlPayloadByteCount": 27563,
       "first_guard_order": 99,
       "last_guard_order": 123,
       "guard_count": 25,
@@ -858,10 +859,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_007",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_007.sql",
-      "contentSha256": "2622d6048c6311db52a6367cfd85e5ba35ba29f93e9f3f4582bf603532c6c686",
-      "gitBlob": "aeb62bb008b93f12b4d9cebc80a610894209e13e",
-      "rawByteCount": 27187,
-      "encodedExecuteSqlPayloadByteCount": 27741,
+      "contentSha256": "03ef67679f0a8eb75f26e81b9ded9b429065995b48e0dee1170a0147732ca3cb",
+      "gitBlob": "03b319517af7e62192a7372fdcee5a44072359ea",
+      "rawByteCount": 27237,
+      "encodedExecuteSqlPayloadByteCount": 27791,
       "first_guard_order": 124,
       "last_guard_order": 148,
       "guard_count": 25,
@@ -1023,10 +1024,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_008",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_008.sql",
-      "contentSha256": "690762ce7b9521fe776ccf067171c273e8e92bb4c0f98efefb166aa144b950db",
-      "gitBlob": "e9bbe1b91c79b322b65654fc05d680d8d2d4f97f",
-      "rawByteCount": 24773,
-      "encodedExecuteSqlPayloadByteCount": 25207,
+      "contentSha256": "61119d1b2b05a03fa567e69d0ec098ca4249c55df42a8303be188bd878360ff5",
+      "gitBlob": "825f1584723a44ac59ad205930afcfccc4eb7021",
+      "rawByteCount": 24819,
+      "encodedExecuteSqlPayloadByteCount": 25253,
       "first_guard_order": 149,
       "last_guard_order": 171,
       "guard_count": 23,
@@ -1176,10 +1177,10 @@
     {
       "batch_id": "00_PREFLIGHT_BATCH_009",
       "path": "sql/00_transport/00_PREFLIGHT_BATCH_009.sql",
-      "contentSha256": "235c067acb447b2bb3ed78bff127a25d84f9a2a8a40435c761d56d6cc161c784",
-      "gitBlob": "0d5b292acf9efdca4be59b57ff1c2949e0838816",
-      "rawByteCount": 22713,
-      "encodedExecuteSqlPayloadByteCount": 23164,
+      "contentSha256": "67abcb263161bf6edb1070f3f6392c78c8563b0f103851f71bd7c4e43894ff38",
+      "gitBlob": "9a43bb3e7a1c30cc1c93d6416335f4c094ec9ad8",
+      "rawByteCount": 22749,
+      "encodedExecuteSqlPayloadByteCount": 23200,
       "first_guard_order": 172,
       "last_guard_order": 189,
       "guard_count": 18,
@@ -1297,10 +1298,69 @@
       ]
     }
   ],
+  "supersededInvalidJsonbBlobs": {
+    "classification": "PHASE5D_JSONB_LITERAL_RENDERER_ROOT_CAUSE_CONFIRMED",
+    "rootCause": "guardRow emitted JSON.stringify(expected_json) directly as {...}::jsonb without a PostgreSQL string literal",
+    "stop": "PHASE5D_BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+    "oldInvalidBatchAttempts": 9,
+    "successfulOldBatches": 0,
+    "guardRowsReceived": 0,
+    "sql10AttemptsRemain": 1,
+    "StagingMutations": 0,
+    "ProductionAccess": 0,
+    "canonicalSql00": {
+      "path": "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
+      "gitBlob": "9989e54211a93ba79b8e6e87833e825a7419a24a",
+      "status": "INVALID_SUPERSEDED"
+    },
+    "transportManifest": {
+      "path": "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
+      "gitBlob": "9f0dc89450823f0b34434408bf16ea60cdba838f",
+      "status": "INVALID_SUPERSEDED"
+    },
+    "transportBatches": [
+      {
+        "file": "00_PREFLIGHT_BATCH_001.sql",
+        "gitBlob": "6ef005e9c275663271c560e4d5dcea24a5165f9e"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_002.sql",
+        "gitBlob": "4e30aa7f23f1648b092390cd197a7ce797359f83"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_003.sql",
+        "gitBlob": "86a7f0e346029c4fbb7b56849e7b73d71091e20e"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_004.sql",
+        "gitBlob": "e819ae1ab4dd2533717d6c43fdcc9722de94ffbd"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_005.sql",
+        "gitBlob": "d01c3cc7453cc267fdeef746cd7065744a9ce330"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_006.sql",
+        "gitBlob": "299513dc68fe2357d354d9d1bab1e80908040cd1"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_007.sql",
+        "gitBlob": "aeb62bb008b93f12b4d9cebc80a610894209e13e"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_008.sql",
+        "gitBlob": "e9bbe1b91c79b322b65654fc05d680d8d2d4f97f"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_009.sql",
+        "gitBlob": "0d5b292acf9efdca4be59b57ff1c2949e0838816"
+      }
+    ]
+  },
   "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
-    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_CANONICAL_SQL00_UNCHANGED_VERIFIED",
     "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_READY_FOR_BATCHED_SELECT_ONLY_STAGING_GO"
   ],
   "priorBlockedSelectOnlyAttempt": {
@@ -1310,5 +1370,52 @@
     "cause": "agent→MCP execute_sql transport could not submit the complete payload",
     "databaseGuardResultsReceived": 0,
     "transportAttempts": 1
+  },
+  "priorBlockedBatchedSelectOnlyAttempt": {
+    "stop": "PHASE5D_BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+    "cause": "PostgreSQL 42601 bare {...}::jsonb AS expected_json (renderer defect)",
+    "oldInvalidBatchAttempts": 9,
+    "successfulOldBatches": 0,
+    "guardRowsReceived": 0,
+    "StagingMutations": 0,
+    "ProductionAccess": 0,
+    "supersededBlobs": [
+      {
+        "file": "00_PREFLIGHT_BATCH_001.sql",
+        "gitBlob": "6ef005e9c275663271c560e4d5dcea24a5165f9e"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_002.sql",
+        "gitBlob": "4e30aa7f23f1648b092390cd197a7ce797359f83"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_003.sql",
+        "gitBlob": "86a7f0e346029c4fbb7b56849e7b73d71091e20e"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_004.sql",
+        "gitBlob": "e819ae1ab4dd2533717d6c43fdcc9722de94ffbd"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_005.sql",
+        "gitBlob": "d01c3cc7453cc267fdeef746cd7065744a9ce330"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_006.sql",
+        "gitBlob": "299513dc68fe2357d354d9d1bab1e80908040cd1"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_007.sql",
+        "gitBlob": "aeb62bb008b93f12b4d9cebc80a610894209e13e"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_008.sql",
+        "gitBlob": "e9bbe1b91c79b322b65654fc05d680d8d2d4f97f"
+      },
+      {
+        "file": "00_PREFLIGHT_BATCH_009.sql",
+        "gitBlob": "0d5b292acf9efdca4be59b57ff1c2949e0838816"
+      }
+    ]
   }
 }

@@ -10,7 +10,7 @@ SELECT 15 AS guard_order,
        'table' AS object_class,
        'public.team_tournament_referee_correction_requests' AS object_identity,
        'ACL_EXPLODED_SET_V1' AS contract_version,
-       {"aclExploded":[{"grantee":"postgres","privilege_type":"INSERT","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"SELECT","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"UPDATE","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"DELETE","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"TRUNCATE","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"REFERENCES","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"TRIGGER","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"MAINTAIN","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"INSERT","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"SELECT","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"UPDATE","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"DELETE","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"TRUNCATE","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"REFERENCES","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"TRIGGER","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"MAINTAIN","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"INSERT","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"SELECT","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"UPDATE","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"DELETE","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"TRUNCATE","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"REFERENCES","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"TRIGGER","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"MAINTAIN","grantor":"postgres","is_grantable":false}]}::jsonb AS expected_json,
+       '{"aclExploded":[{"grantee":"postgres","privilege_type":"INSERT","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"SELECT","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"UPDATE","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"DELETE","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"TRUNCATE","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"REFERENCES","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"TRIGGER","grantor":"postgres","is_grantable":false},{"grantee":"postgres","privilege_type":"MAINTAIN","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"INSERT","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"SELECT","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"UPDATE","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"DELETE","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"TRUNCATE","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"REFERENCES","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"TRIGGER","grantor":"postgres","is_grantable":false},{"grantee":"authenticated","privilege_type":"MAINTAIN","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"INSERT","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"SELECT","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"UPDATE","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"DELETE","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"TRUNCATE","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"REFERENCES","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"TRIGGER","grantor":"postgres","is_grantable":false},{"grantee":"service_role","privilege_type":"MAINTAIN","grantor":"postgres","is_grantable":false}]}'::jsonb AS expected_json,
        coalesce((SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY grantee, privilege_type, grantor, is_grantable), '[]'::jsonb)
     FROM (SELECT CASE grantee WHEN 0 THEN 'PUBLIC' ELSE pg_get_userbyid(grantee) END AS grantee,
            privilege_type,
@@ -169,7 +169,7 @@ SELECT 16 AS guard_order,
        'table' AS object_class,
        'public.team_tournament_referee_correction_requests' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"column_count":25}::jsonb AS expected_json,
+       '{"column_count":25}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
       SELECT count(*) FROM information_schema.columns
       WHERE table_schema='public' AND table_name='team_tournament_referee_correction_requests'
@@ -184,7 +184,7 @@ SELECT 17 AS guard_order,
        'table' AS object_class,
        'public.team_tournament_referee_correction_requests' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"relrowsecurity":true}::jsonb AS expected_json,
+       '{"relrowsecurity":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname='public' AND c.relname='team_tournament_referee_correction_requests') IS NOT DISTINCT FROM TRUE)) AS actual_json,
        ((SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -195,7 +195,7 @@ SELECT 18 AS guard_order,
        'table' AS object_class,
        'public.team_tournament_referee_correction_requests' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"relforcerowsecurity":false}::jsonb AS expected_json,
+       '{"relforcerowsecurity":false}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname='public' AND c.relname='team_tournament_referee_correction_requests') IS NOT DISTINCT FROM FALSE)) AS actual_json,
        ((SELECT c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -206,7 +206,7 @@ SELECT 19 AS guard_order,
        'policy' AS object_class,
        'public.team_tournament_referee_correction_requests.tt5d_correction_referee_select' AS object_identity,
        'WS_COLLAPSE_V1' AS contract_version,
-       {"cmd":"r","roles":["authenticated"],"usingNormalized":"(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))","withCheck":null}::jsonb AS expected_json,
+       '{"cmd":"r","roles":["authenticated"],"usingNormalized":"(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))","withCheck":null}'::jsonb AS expected_json,
        jsonb_build_object('matches', (EXISTS (
       SELECT 1 FROM pg_policy pol
       JOIN pg_class c ON c.oid=pol.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -231,7 +231,7 @@ SELECT 20 AS guard_order,
        'policy' AS object_class,
        'public.team_tournament_referee_correction_requests.tt5d_correction_no_client_write' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"cmd":"*","roles":["authenticated"],"using":"false","withCheck":"false"}::jsonb AS expected_json,
+       '{"cmd":"*","roles":["authenticated"],"using":"false","withCheck":"false"}'::jsonb AS expected_json,
        jsonb_build_object('matches', (EXISTS (
       SELECT 1 FROM pg_policy pol
       JOIN pg_class c ON c.oid=pol.polrelid JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -256,7 +256,7 @@ SELECT 21 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"present":true}::jsonb AS expected_json,
+       '{"present":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', (to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)') IS NOT NULL)) AS actual_json,
        (to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)') IS NOT NULL) AS matches_guard
 UNION ALL
@@ -265,7 +265,7 @@ SELECT 22 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"overload_count":1}::jsonb AS expected_json,
+       '{"overload_count":1}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT count(*) FROM pg_proc pp JOIN pg_namespace nn ON nn.oid=pp.pronamespace
           WHERE nn.nspname='public' AND pp.proname='referee_v5_apply_admin_result_revision'
@@ -280,7 +280,7 @@ SELECT 23 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)' AS object_identity,
        'INTENTIONAL_EXACT_FINGERPRINT' AS contract_version,
-       {"defMd5":"11b7d3121eb0efd7c05cf2fd8a92da19"}::jsonb AS expected_json,
+       '{"defMd5":"11b7d3121eb0efd7c05cf2fd8a92da19"}'::jsonb AS expected_json,
        jsonb_build_object('matches', (md5(pg_get_functiondef(to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)'))) IS NOT DISTINCT FROM '11b7d3121eb0efd7c05cf2fd8a92da19')) AS actual_json,
        (md5(pg_get_functiondef(to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)'))) IS NOT DISTINCT FROM '11b7d3121eb0efd7c05cf2fd8a92da19') AS matches_guard
 UNION ALL
@@ -289,7 +289,7 @@ SELECT 24 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"volatility":"VOLATILE"}::jsonb AS expected_json,
+       '{"volatility":"VOLATILE"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT CASE pp.provolatile WHEN 'i' THEN 'IMMUTABLE' WHEN 's' THEN 'STABLE' WHEN 'v' THEN 'VOLATILE' END
           FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)')
@@ -304,7 +304,7 @@ SELECT 25 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"language":"plpgsql"}::jsonb AS expected_json,
+       '{"language":"plpgsql"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((
           SELECT l.lanname FROM pg_proc pp JOIN pg_language l ON l.oid=pp.prolang WHERE pp.oid=to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)')
         ) IS NOT DISTINCT FROM 'plpgsql')) AS actual_json,
@@ -317,7 +317,7 @@ SELECT 26 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"securityDefiner":true}::jsonb AS expected_json,
+       '{"securityDefiner":true}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)')) IS NOT DISTINCT FROM true)) AS actual_json,
        ((SELECT pp.prosecdef FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)')) IS NOT DISTINCT FROM true) AS matches_guard
 UNION ALL
@@ -326,7 +326,7 @@ SELECT 27 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)' AS object_identity,
        'PROCONFIG_TEXT_ARRAY_V1' AS contract_version,
-       {"proconfig":["search_path=pg_catalog, public"]}::jsonb AS expected_json,
+       '{"proconfig":["search_path=pg_catalog, public"]}'::jsonb AS expected_json,
        jsonb_build_object('matches', (NOT (coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=pg_catalog, public']::text[]))) AS actual_json,
        (NOT (coalesce((SELECT pp.proconfig FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)')), ARRAY[]::text[]) IS DISTINCT FROM ARRAY['search_path=pg_catalog, public']::text[])) AS matches_guard
 UNION ALL
@@ -335,7 +335,7 @@ SELECT 28 AS guard_order,
        'function' AS object_class,
        'public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)' AS object_identity,
        'TYPED_COMPARISON' AS contract_version,
-       {"owner":"postgres"}::jsonb AS expected_json,
+       '{"owner":"postgres"}'::jsonb AS expected_json,
        jsonb_build_object('matches', ((SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)')) IS NOT DISTINCT FROM 'postgres')) AS actual_json,
        ((SELECT pg_get_userbyid(pp.proowner) FROM pg_proc pp WHERE pp.oid=to_regprocedure('public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)')) IS NOT DISTINCT FROM 'postgres') AS matches_guard
 )
