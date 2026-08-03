@@ -1,0 +1,29 @@
+{
+  "marker": "PHASE5D_M11_AUTHORITY_RESOLUTION_V1",
+  "resolution": "TRACKED_CANONICAL_DIGEST_PATCH_SQL",
+  "artifact": {
+    "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/sql/10_PRIVATE_PAIRING_PR4_DIGEST_PATCH.sql",
+    "sha256": "73a0678fea4c2377d35a2c7a53db1992c7fec2f33eed3eeb482eff36dedb64cc",
+    "bytes": 1914,
+    "migrationId": "M11.digest"
+  },
+  "preservesPrivatePairingV2Behavior": true,
+  "hardCutoverPolicyUnchanged": true,
+  "verification": {
+    "usesExtensionsDigest": true,
+    "searchPathIncludesExtensions": true,
+    "noCredentials": true
+  },
+  "relatedTracked": [
+    {
+      "path": "docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_PR4.sql",
+      "role": "base"
+    },
+    {
+      "path": "docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_PR4_RAISE_PATCH.sql",
+      "role": "raise_patch"
+    }
+  ],
+  "localWaiver": false,
+  "verdict": "CLOSED_BY_TRACKED_CANONICAL_SQL"
+}

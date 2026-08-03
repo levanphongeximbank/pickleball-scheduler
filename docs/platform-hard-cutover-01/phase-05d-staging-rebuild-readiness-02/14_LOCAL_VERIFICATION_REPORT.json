@@ -1,0 +1,19 @@
+{
+  "marker": "PHASE5D_LOCAL_VERIFICATION_REPORT_V1",
+  "pass": true,
+  "errors": [],
+  "ledgerEntryCount": 119,
+  "dependencyValidation": {
+    "unresolved": 0,
+    "forward": 0,
+    "self": 0,
+    "cycles": 0,
+    "duplicatePaths": 0,
+    "duplicateMigrationIds": 0
+  },
+  "m9Parity": true,
+  "m10Parity": true,
+  "m11Digest": true,
+  "tenantGate": true,
+  "secretScanHits": 0
+}

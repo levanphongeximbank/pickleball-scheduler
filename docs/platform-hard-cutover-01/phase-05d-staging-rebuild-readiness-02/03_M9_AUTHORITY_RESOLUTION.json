@@ -1,0 +1,589 @@
+{
+  "marker": "PHASE5D_M9_AUTHORITY_RESOLUTION_V1",
+  "method": "promote_tracked_candidate_chain",
+  "stagingExportUsed": false,
+  "cacheEvidenceUsed": false,
+  "promotedEntries": [
+    {
+      "migrationId": "M9.01",
+      "path": "docs/v5/PHASE_TT1B_TEAM_TOURNAMENT_SSOT.sql",
+      "sha256": "86af2aa45f9fb622654c30f5aaa3d69a14ce39e5ee1f9ba861fa90b86a842eb7",
+      "bytes": 48240
+    },
+    {
+      "migrationId": "M9.02",
+      "path": "docs/v5/PHASE_TT2B_LINEUP_DEADLINE_SERVER_TIME.sql",
+      "sha256": "777bfc77661ae1e18fff442cb7b78f38ee6c724f17a7a9b1ddecf4a0053fc91b",
+      "bytes": 11380
+    },
+    {
+      "migrationId": "M9.03",
+      "path": "docs/v5/PHASE_TT2C_LINEUP_VALIDATION.sql",
+      "sha256": "91ee6a53d6162da6e2e35a508e44a7fb8d679974b729f7fce6364199ee45aa25",
+      "bytes": 19135
+    },
+    {
+      "migrationId": "M9.04",
+      "path": "docs/v5/PHASE_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
+      "sha256": "f49b5cf09aafe9b5ac39454f2a1f56029559092a31bca828e0cdc12eb789ce06",
+      "bytes": 3777
+    },
+    {
+      "migrationId": "M9.05",
+      "path": "docs/v5/PHASE_TT2D_RANDOMIZE_LOCK_WORKFLOW.sql",
+      "sha256": "847f04d822d9b3779d4d6e74072fbafb18e38784c0db52b67cd34346dbc13378",
+      "bytes": 37333
+    },
+    {
+      "migrationId": "M9.06",
+      "path": "docs/v5/PHASE_TT2E_ATOMIC_PUBLISH_WORKFLOW.sql",
+      "sha256": "43ffbc7b35c3666d5dc25ae6401f5ab819e4ddcd0cb720c219d83ecf58bff1d7",
+      "bytes": 27106
+    },
+    {
+      "migrationId": "M9.07",
+      "path": "docs/v5/PHASE_TT2E_GET_SETUP_FIX.sql",
+      "sha256": "24f728ee957733c5f9cabbb0b479bb9de50ba1ca7f9c5114c740cf48d3be2f87",
+      "bytes": 11022
+    },
+    {
+      "migrationId": "M9.08",
+      "path": "docs/v5/PHASE_TT3_GET_SETUP_PATCH.sql",
+      "sha256": "58007708ddbc43e4dc505fbe485e8669ba1d22be0cbaf999324035ae4fe5a03f",
+      "bytes": 11514
+    },
+    {
+      "migrationId": "M9.09",
+      "path": "docs/v5/PHASE_TT3_LINEUP_OVERRIDE.sql",
+      "sha256": "51ea187326fa886915cee7d8ca67b384b582f02763e413a7e3634606cdc14f96",
+      "bytes": 37144
+    },
+    {
+      "migrationId": "M9.10",
+      "path": "docs/v5/PHASE_TT4_FORFEIT_WITHDRAWAL.sql",
+      "sha256": "e9b91652686c14f539cb8496c08a832b19f793b23cb5851e95daa7db8e244ca4",
+      "bytes": 31646
+    },
+    {
+      "migrationId": "M9.11",
+      "path": "docs/v5/PHASE_TT4_GET_SETUP_PATCH.sql",
+      "sha256": "9a06a9129ae26e23ac367eee12ce4548c2a06d3f184840d5cc21e88152c7525f",
+      "bytes": 12252
+    },
+    {
+      "migrationId": "M9.12",
+      "path": "docs/v5/team-tournament/p1/PHASE_P1_2_S1B_SNAPSHOT_SCHEMA.sql",
+      "sha256": "7e28935de1b7d5371de6007ffa173a1ff87a48fba850d18f33640c5542547ad1",
+      "bytes": 24659
+    },
+    {
+      "migrationId": "M9.13",
+      "path": "docs/v5/team-tournament/p1/PHASE_P1_2_S1C_GET_SETUP_V7.sql",
+      "sha256": "3f2285719128033b04fee3e3e6e75c98120395b001dd3080a921b064de681813",
+      "bytes": 26895
+    },
+    {
+      "migrationId": "M9.14",
+      "path": "docs/v5/team-tournament/p1/PHASE_P1_3_DOMAIN_PERSISTENCE_SCHEMA.sql",
+      "sha256": "a2d8104b5976bcadd42db2828d683d57452154701c04c7704979b3fa5e201a02",
+      "bytes": 3609
+    },
+    {
+      "migrationId": "M9.15",
+      "path": "docs/v5/team-tournament/p1/PHASE_P1_3_DOMAIN_PERSISTENCE_RPCS.sql",
+      "sha256": "3d6412ffdfef9397c25dbed1bfe552df83587098eca0bdd901228e5862db1cd2",
+      "bytes": 30859
+    },
+    {
+      "migrationId": "M9.16",
+      "path": "docs/v5/team-tournament/p1/PHASE_P1_3_GET_SETUP_V7_GROUPS.sql",
+      "sha256": "d6cb25594547223205170a9070649e5a3a7c8027213802f428d5fad2f4c410c7",
+      "bytes": 27244
+    },
+    {
+      "migrationId": "M9.17",
+      "path": "docs/v5/team-tournament/p1/PHASE_P1_3_SAVE_DRAFT_RPC.sql",
+      "sha256": "a8f28d9d1863fd757daebda101aeea3540fa64fceaa731c730ff35f475a759bc",
+      "bytes": 4504
+    },
+    {
+      "migrationId": "M9.18",
+      "path": "docs/v5/team-tournament/tt5/TT5-B_BRIDGE_SCHEMA.sql",
+      "sha256": "20ba83b55e9bb02f5097e8bd2b70432ab3e1579fed0b4704db7621a739c108a5",
+      "bytes": 6375
+    },
+    {
+      "migrationId": "M9.19",
+      "path": "docs/v5/team-tournament/tt5/TT5-B_PROVISION_RPC.sql",
+      "sha256": "e70e0494c24cbef6e17065ddfb4f68793a50e33798419dc014f801335cffee3f",
+      "bytes": 22664
+    },
+    {
+      "migrationId": "M9.20",
+      "path": "docs/v5/team-tournament/tt5/TT5-B_GET_SETUP_PATCH.sql",
+      "sha256": "734994d3d069cfd1196dde4efd5e200981e98f302e90129e8cca4a8abafd875b",
+      "bytes": 12638
+    },
+    {
+      "migrationId": "M9.21",
+      "path": "docs/v5/team-tournament/tt5/TT5-B_LEGACY_LOCK_GUARD.sql",
+      "sha256": "60fdc7da03d9f1382c1c067b81ba1bcab4c48538e66e648fc51db1df18e06bba",
+      "bytes": 13570
+    },
+    {
+      "migrationId": "M9.22",
+      "path": "docs/v5/team-tournament/tt5/TT5-C_REPROVISION_STATE.sql",
+      "sha256": "fdcc80a11db041e96fc6f441f22f5ae5585fa7856ba884f8e0da16b05a7c6c98",
+      "bytes": 15020
+    },
+    {
+      "migrationId": "M9.23",
+      "path": "docs/v5/team-tournament/tt5/TT5-C_RESULT_PROPAGATION.sql",
+      "sha256": "d5d47f3f2251ae0e7f819287f2a97a7884a4d3ccadb1107cfd8389b46ba437bd",
+      "bytes": 15945
+    },
+    {
+      "migrationId": "M9.24",
+      "path": "docs/v5/team-tournament/tt5/TT5-C_RESULT_OUTBOX_CONSUMER.sql",
+      "sha256": "72dbcd0b9c65b8da435e5c31427f725ccb63058eaf80226959adae609d8f6ef9",
+      "bytes": 4687
+    },
+    {
+      "migrationId": "M9.25",
+      "path": "docs/v5/team-tournament/tt5/TT5-C_STANDINGS_RECOMPUTE.sql",
+      "sha256": "e0ad7146b005635a7eb6122eebd4edfc7026f554baca2ca5c7f4e112075cb226",
+      "bytes": 1371
+    },
+    {
+      "migrationId": "M9.26",
+      "path": "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+      "sha256": "70bb2c26723bc3615bc5353159364656bba031fe510c4d28b8e0bb2cc9ecbcaa",
+      "bytes": 15730
+    },
+    {
+      "migrationId": "M9.27",
+      "path": "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+      "sha256": "732e4109d758dfcc7bc56926e8c70eee529af5bf436b3885e77f5f13903923b3",
+      "bytes": 16457
+    },
+    {
+      "migrationId": "M9.28",
+      "path": "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+      "sha256": "28f0e9366e51c9589ea8e4ea0f4064a5bb0a5de70b4210a5da398ca3569b6218",
+      "bytes": 10026
+    },
+    {
+      "migrationId": "M9.29",
+      "path": "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql",
+      "sha256": "61943ad79d7edb7faf7718064c60c2269193dfffdd6c8464ee7bcd123012f5fa",
+      "bytes": 11406
+    },
+    {
+      "migrationId": "M9.30",
+      "path": "docs/v5/team-tournament/tt6/TT6-B_REALTIME_CORE.sql",
+      "sha256": "96f1e54da172381d8cb251c0bfdff2177d4e62cfcebc409bb90d4b7c7d86c0c4",
+      "bytes": 1426
+    },
+    {
+      "migrationId": "M9.31",
+      "path": "docs/v5/team-tournament/tt6/TT6-B_REALTIME_SECURITY.sql",
+      "sha256": "a144e6bb190c22b5e44cfd8818de88981ebf855598bdf24ed3396993f913e4e1",
+      "bytes": 4378
+    }
+  ],
+  "tt5dRequiredFiles": [
+    "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+    "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql"
+  ],
+  "objectLevelStaticParity": {
+    "tt5dFunctionCount": 13,
+    "m9FunctionCount": 101,
+    "tt5dFunctionsMissingFromPromotedChain": [],
+    "parityPass": true
+  },
+  "objectsByFile": [
+    {
+      "path": "docs/v5/PHASE_TT1B_TEAM_TOURNAMENT_SSOT.sql",
+      "tables": [
+        "team_tournament_command_log",
+        "team_tournament_lineup_revisions",
+        "team_tournament_dreambreaker_states",
+        "team_tournament_forfeit_events",
+        "team_tournament_sync_mismatch"
+      ],
+      "functions": [
+        "team_tournament_payload_hash",
+        "team_tournament_begin_command",
+        "team_tournament_finish_command",
+        "team_tournament_version_conflict",
+        "team_tournament_write_lineup_revision",
+        "team_tournament_get_visible_lineups",
+        "team_tournament_submit_lineup",
+        "team_tournament_lock_matchup",
+        "team_tournament_publish_matchup",
+        "team_tournament_confirm_sub_match",
+        "team_tournament_apply_forfeit",
+        "team_tournament_save_lineup_draft",
+        "team_tournament_upsert_standings"
+      ],
+      "policies": [
+        "team_tournament_command_log_manage",
+        "team_tournament_lineup_revisions_manage",
+        "team_tournament_dreambreaker_manage",
+        "team_tournament_forfeit_manage",
+        "team_tournament_sync_mismatch_manage"
+      ]
+    },
+    {
+      "path": "docs/v5/PHASE_TT2B_LINEUP_DEADLINE_SERVER_TIME.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_lineup_deadline_fields",
+        "team_tournament_get_setup"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/PHASE_TT2C_LINEUP_VALIDATION.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_normalize_gender_key",
+        "team_tournament_resolve_player_gender_key",
+        "team_tournament_resolve_player_status",
+        "team_tournament_lineup_validation_fail",
+        "team_tournament_validate_lineup_selections",
+        "team_tournament_save_lineup_draft_legacy"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/PHASE_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_submit_lineup"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/PHASE_TT2D_RANDOMIZE_LOCK_WORKFLOW.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_normalize_missing_lineup_policy",
+        "team_tournament_lineup_is_submitted",
+        "team_tournament_lineup_policy_handled",
+        "team_tournament_deadline_passed",
+        "team_tournament_build_random_lineup_selections",
+        "team_tournament_matchup_lineup_ops",
+        "team_tournament_mark_missing_lineup_policy",
+        "team_tournament_randomize_lineup",
+        "team_tournament_lock_matchup",
+        "team_tournament_get_setup"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/PHASE_TT2E_ATOMIC_PUBLISH_WORKFLOW.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_matchup_publish_ops",
+        "team_tournament_publish_matchup",
+        "team_tournament_get_visible_lineups",
+        "team_tournament_get_setup"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/PHASE_TT2E_GET_SETUP_FIX.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_get_setup"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/PHASE_TT3_GET_SETUP_PATCH.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_get_setup"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/PHASE_TT3_LINEUP_OVERRIDE.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_write_lineup_revision",
+        "team_tournament_matchup_has_confirmed_result",
+        "team_tournament_matchup_is_started",
+        "team_tournament_lineup_override_ops",
+        "team_tournament_override_lineup",
+        "team_tournament_matchup_publish_ops",
+        "team_tournament_publish_matchup",
+        "team_tournament_get_visible_lineups",
+        "team_tournament_get_lineup_override_ops"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/PHASE_TT4_FORFEIT_WITHDRAWAL.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_technical_score_defaults",
+        "team_tournament_resolve_technical_score",
+        "team_tournament_sub_match_is_confirmed_normal",
+        "team_tournament_recompute_matchup_result",
+        "team_tournament_recompute_standings_cache",
+        "team_tournament_sub_match_forfeit_ops",
+        "team_tournament_apply_forfeit",
+        "team_tournament_withdraw_team"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/PHASE_TT4_GET_SETUP_PATCH.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_get_setup"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/p1/PHASE_P1_2_S1B_SNAPSHOT_SCHEMA.sql",
+      "tables": [
+        "team_tournament_setup_snapshots"
+      ],
+      "functions": [
+        "team_tournament_is_sha256_hex",
+        "team_tournament_sha256_utf8",
+        "team_tournament_verify_canonical_text_hash",
+        "team_tournament_normalized_read_hash",
+        "team_tournament_setup_snapshots_immutable_guard",
+        "team_tournament_setup_snapshot_archive",
+        "team_tournament_create_setup_snapshot"
+      ],
+      "policies": [
+        "team_tournament_setup_snapshots_select"
+      ]
+    },
+    {
+      "path": "docs/v5/team-tournament/p1/PHASE_P1_2_S1C_GET_SETUP_V7.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_get_setup"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/p1/PHASE_P1_3_DOMAIN_PERSISTENCE_SCHEMA.sql",
+      "tables": [
+        "team_tournament_groups"
+      ],
+      "functions": [],
+      "policies": [
+        "team_tournament_groups_select",
+        "team_tournament_groups_manage"
+      ]
+    },
+    {
+      "path": "docs/v5/team-tournament/p1/PHASE_P1_3_DOMAIN_PERSISTENCE_RPCS.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_setup_norm_projection",
+        "team_tournament_setup_mutation_prepare",
+        "team_tournament_setup_mutation_bump_version",
+        "team_tournament_setup_mutation_finalize",
+        "team_tournament_apply_domain_setup_mutation",
+        "team_tournament_save_discipline",
+        "team_tournament_remove_discipline",
+        "team_tournament_reorder_disciplines",
+        "team_tournament_replace_groups",
+        "team_tournament_clear_groups",
+        "team_tournament_replace_matchups",
+        "team_tournament_update_matchup_schedule",
+        "team_tournament_apply_schedule_batch",
+        "team_tournament_publish_schedule",
+        "team_tournament_lock_schedule"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/p1/PHASE_P1_3_GET_SETUP_V7_GROUPS.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_get_setup"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/p1/PHASE_P1_3_SAVE_DRAFT_RPC.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_save_draft"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-B_BRIDGE_SCHEMA.sql",
+      "tables": [
+        "team_sub_match_referee_links"
+      ],
+      "functions": [
+        "team_tournament_referee_link_blocks_legacy",
+        "team_tournament_sub_match_is_dreambreaker",
+        "team_tournament_get_active_referee_link"
+      ],
+      "policies": [
+        "tt5b_referee_links_manage",
+        "tt5b_referee_links_referee_select"
+      ]
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-B_PROVISION_RPC.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_build_v5_state_shell",
+        "team_tournament_provision_eligibility",
+        "team_tournament_provision_referee_match",
+        "team_tournament_revoke_referee_link"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-B_GET_SETUP_PATCH.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_get_setup"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-B_LEGACY_LOCK_GUARD.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_sub_match_score_ops",
+        "team_tournament_sub_match_referee_link_ops",
+        "team_tournament_save_sub_match_draft",
+        "team_tournament_confirm_sub_match"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-C_REPROVISION_STATE.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_referee_snapshot_stale",
+        "team_tournament_sub_match_referee_link_ops",
+        "team_tournament_resync_referee_link",
+        "team_tournament_sub_match_score_ops"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-C_RESULT_PROPAGATION.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_map_referee_v5_result",
+        "team_tournament_apply_referee_v5_result",
+        "team_tournament_consume_referee_v5_outbox",
+        "team_tournament_drain_referee_v5_outbox"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-C_RESULT_OUTBOX_CONSUMER.sql",
+      "tables": [
+        "team_tournament_referee_event_inbox"
+      ],
+      "functions": [
+        "team_tournament_referee_event_payload_hash",
+        "team_tournament_referee_normalize_event_type",
+        "team_tournament_referee_outbox_is_consumable"
+      ],
+      "policies": [
+        "tt5c_referee_inbox_manage"
+      ]
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-C_STANDINGS_RECOMPUTE.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_referee_v5_recompute_after_result"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+      "tables": [],
+      "functions": [
+        "referee_v5_assignment_effective_status",
+        "referee_v5_mark_assignment_expired_if_needed",
+        "team_tournament_create_referee_assignment",
+        "team_tournament_revoke_referee_assignment",
+        "team_tournament_list_referee_assignments"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+      "tables": [
+        "team_tournament_referee_correction_requests"
+      ],
+      "functions": [
+        "team_tournament_request_referee_correction",
+        "team_tournament_review_referee_correction",
+        "team_tournament_list_referee_corrections"
+      ],
+      "policies": [
+        "tt5d_correction_referee_select",
+        "tt5d_correction_no_client_write"
+      ]
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+      "tables": [],
+      "functions": [
+        "referee_v5_apply_admin_result_revision",
+        "team_tournament_reopen_referee_match"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql",
+      "tables": [],
+      "functions": [
+        "referee_v5_current_user_has_assignment",
+        "referee_v5_assert_assignment_write",
+        "team_tournament_referee_match_access_ops"
+      ],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/tt6/TT6-B_REALTIME_CORE.sql",
+      "tables": [],
+      "functions": [],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/team-tournament/tt6/TT6-B_REALTIME_SECURITY.sql",
+      "tables": [],
+      "functions": [
+        "team_tournament_tenant_allowed",
+        "team_tournament_is_matchup_participant",
+        "team_tournament_is_sub_match_participant"
+      ],
+      "policies": [
+        "tt6_matchups_realtime_select",
+        "tt6_sub_matches_realtime_select",
+        "tt6_bridge_realtime_select"
+      ]
+    }
+  ],
+  "runtimeConsumers": [
+    "tests/team-tournament-tt5d.test.js",
+    "docs/v5/team-tournament/tt5/TT5-D_IMPLEMENTATION.md",
+    "src/features/platform-hard-cutover/runtimeAuthorityMatrix.js#team_tournament"
+  ],
+  "verdict": "TRACKED_CHAIN_PROMOTED_WITH_OBJECT_PARITY"
+}
