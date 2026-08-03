@@ -1,0 +1,117 @@
+{
+  "marker": "PHASE5D_EDGE_FUNCTION_CONTRACT_V1",
+  "functions": [
+    {
+      "functionName": "rating-v5-complete-assessment",
+      "sources": [
+        {
+          "path": "supabase/functions/rating-v5-complete-assessment/index.ts",
+          "sha256": "0bac8a2bc96f1a696865592291333550ab955c9679f1542c871d8ebb836bc36c",
+          "bytes": 1868
+        },
+        {
+          "path": "supabase/functions/_shared/ratingV5Server.mjs",
+          "sha256": "83bdebac1609cff7611d042ca78a18ee55f2d0c70db1fe45e8b3b2ce4f35a1ce",
+          "bytes": 95235
+        }
+      ],
+      "deploymentManifest": {
+        "runtime": "supabase-edge-functions",
+        "entrypoint": "supabase/functions/rating-v5-complete-assessment/index.ts",
+        "sharedModules": [
+          "supabase/functions/_shared/ratingV5Server.mjs"
+        ],
+        "deployCommandTemplate": "supabase functions deploy <name> --project-ref <NEW_PROJECT_REF>",
+        "secretsNotIncluded": true
+      },
+      "environmentConfigContract": {
+        "requiredNames": [
+          "SUPABASE_URL",
+          "SUPABASE_SERVICE_ROLE_KEY"
+        ],
+        "values": "NOT_EMBEDDED",
+        "note": "Names only; no secret values in this package"
+      },
+      "authenticationAuthorizationMatrix": {
+        "authorized": [
+          "service_role / trusted backend invoke with valid JWT per function contract"
+        ],
+        "unauthorized": [
+          "anon key direct invoke without required claims",
+          "missing Authorization header"
+        ],
+        "failClosed": true
+      },
+      "verificationProcedure": {
+        "authorizedInvocation": "POST function URL with valid auth; expect 2xx and schema-valid body",
+        "unauthorizedInvocation": "POST without auth or with anon-only; expect 401/403",
+        "evidenceRequiredPostCreate": [
+          "HTTP status",
+          "response error code",
+          "no secret leakage"
+        ]
+      },
+      "postCreateGates": [
+        "G15"
+      ],
+      "liveDeployExecuted": false,
+      "liveInvocationExecuted": false
+    },
+    {
+      "functionName": "referee-v5-match",
+      "sources": [
+        {
+          "path": "supabase/functions/referee-v5-match/index.ts",
+          "sha256": "36babab9fffb238e8ccf5f326a0684de5632c7280fa4634e4ad384bed5269ed1",
+          "bytes": 1192
+        },
+        {
+          "path": "supabase/functions/_shared/refereeV5Server.mjs",
+          "sha256": "de0dd582d8b828f64d30ea2f08b7d53ade043b447028ccc21a56640b9e877be5",
+          "bytes": 86946
+        }
+      ],
+      "deploymentManifest": {
+        "runtime": "supabase-edge-functions",
+        "entrypoint": "supabase/functions/referee-v5-match/index.ts",
+        "sharedModules": [
+          "supabase/functions/_shared/refereeV5Server.mjs"
+        ],
+        "deployCommandTemplate": "supabase functions deploy <name> --project-ref <NEW_PROJECT_REF>",
+        "secretsNotIncluded": true
+      },
+      "environmentConfigContract": {
+        "requiredNames": [
+          "SUPABASE_URL",
+          "SUPABASE_SERVICE_ROLE_KEY"
+        ],
+        "values": "NOT_EMBEDDED",
+        "note": "Names only; no secret values in this package"
+      },
+      "authenticationAuthorizationMatrix": {
+        "authorized": [
+          "service_role / trusted backend invoke with valid JWT per function contract"
+        ],
+        "unauthorized": [
+          "anon key direct invoke without required claims",
+          "missing Authorization header"
+        ],
+        "failClosed": true
+      },
+      "verificationProcedure": {
+        "authorizedInvocation": "POST function URL with valid auth; expect 2xx and schema-valid body",
+        "unauthorizedInvocation": "POST without auth or with anon-only; expect 401/403",
+        "evidenceRequiredPostCreate": [
+          "HTTP status",
+          "response error code",
+          "no secret leakage"
+        ]
+      },
+      "postCreateGates": [
+        "G16"
+      ],
+      "liveDeployExecuted": false,
+      "liveInvocationExecuted": false
+    }
+  ]
+}

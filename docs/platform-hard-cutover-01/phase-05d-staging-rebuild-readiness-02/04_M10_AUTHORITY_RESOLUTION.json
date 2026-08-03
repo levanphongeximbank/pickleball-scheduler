@@ -1,0 +1,124 @@
+{
+  "marker": "PHASE5D_M10_AUTHORITY_RESOLUTION_V1",
+  "method": "promote_tracked_candidate_chain",
+  "stagingExportUsed": false,
+  "cacheEvidenceUsed": false,
+  "promotedEntries": [
+    {
+      "migrationId": "M10.1",
+      "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql",
+      "sha256": "c1a079535a6295cb3d185aee9c9b2e54da6ed0aebbeb67bbfd4b929dd13c0f8e",
+      "bytes": 13070
+    },
+    {
+      "migrationId": "M10.2",
+      "path": "docs/v5/referee-v5/PHASE_V5D_REFEREE_PERSISTENCE.sql",
+      "sha256": "5c3bcda4e38449021516d0b966ab553e6f79d58a409b2d75af59160f6295fdb9",
+      "bytes": 15357
+    },
+    {
+      "migrationId": "M10.3",
+      "path": "docs/v5/referee-v5/PHASE_V5D1_REFEREE_HARDENING.sql",
+      "sha256": "caf20d89b35bee42f2e06f20ddc0b498ffb7b2081a30a8cd4057dedcfc47a579",
+      "bytes": 16608
+    }
+  ],
+  "objectLevelStaticParity": {
+    "functionCount": 9,
+    "functions": [
+      "referee_v5_apply_match_command",
+      "referee_v5_commit_match_finalization",
+      "referee_v5_commit_match_transition",
+      "referee_v5_current_user_has_assignment",
+      "referee_v5_deny_match_events_mutation",
+      "referee_v5_finalize_match_result",
+      "referee_v5_get_match_state",
+      "referee_v5_is_super_admin",
+      "referee_v5_match_state_id"
+    ],
+    "tables": [
+      "match_disputes",
+      "match_events",
+      "match_game_states",
+      "match_incidents",
+      "match_integration_outbox",
+      "match_live_states",
+      "match_participant_positions",
+      "match_result_revisions",
+      "match_sync_mutations",
+      "referee_assignments",
+      "referee_device_sessions"
+    ],
+    "policies": [
+      "match_events_no_client_write",
+      "match_events_referee_select",
+      "match_integration_outbox_no_client",
+      "match_live_states_no_client_write",
+      "match_live_states_referee_select",
+      "match_result_revisions_no_client_write",
+      "match_sync_mutations_no_client_write",
+      "referee_assignments_self_select"
+    ],
+    "edgeFunctionDependency": "supabase/functions/referee-v5-match",
+    "parityPass": true
+  },
+  "objectsByFile": [
+    {
+      "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql",
+      "tables": [
+        "referee_assignments",
+        "match_live_states",
+        "match_participant_positions",
+        "match_events",
+        "match_game_states",
+        "match_result_revisions",
+        "match_incidents",
+        "match_disputes",
+        "referee_device_sessions",
+        "match_sync_mutations"
+      ],
+      "functions": [],
+      "policies": []
+    },
+    {
+      "path": "docs/v5/referee-v5/PHASE_V5D_REFEREE_PERSISTENCE.sql",
+      "tables": [],
+      "functions": [
+        "referee_v5_match_state_id",
+        "referee_v5_current_user_has_assignment",
+        "referee_v5_is_super_admin",
+        "referee_v5_get_match_state",
+        "referee_v5_apply_match_command",
+        "referee_v5_finalize_match_result"
+      ],
+      "policies": [
+        "match_live_states_referee_select",
+        "match_events_referee_select",
+        "referee_assignments_self_select",
+        "match_events_no_client_write",
+        "match_live_states_no_client_write",
+        "match_result_revisions_no_client_write",
+        "match_sync_mutations_no_client_write"
+      ]
+    },
+    {
+      "path": "docs/v5/referee-v5/PHASE_V5D1_REFEREE_HARDENING.sql",
+      "tables": [
+        "match_integration_outbox"
+      ],
+      "functions": [
+        "referee_v5_deny_match_events_mutation",
+        "referee_v5_commit_match_transition",
+        "referee_v5_commit_match_finalization"
+      ],
+      "policies": [
+        "match_integration_outbox_no_client"
+      ]
+    }
+  ],
+  "runtimeConsumers": [
+    "supabase/functions/referee-v5-match/index.ts",
+    "src/features/platform-hard-cutover/runtimeAuthorityMatrix.js#referee"
+  ],
+  "verdict": "TRACKED_CHAIN_PROMOTED_WITH_OBJECT_PARITY"
+}

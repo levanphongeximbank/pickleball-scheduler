@@ -1,0 +1,88 @@
+{
+  "marker": "PHASE5D_BOOTSTRAP_SEED_LEDGER_V1",
+  "version": 1,
+  "executionInThisWorkstream": false,
+  "items": [
+    {
+      "id": "SEED.AUTH_USERS",
+      "classification": "mandatory schema-independent bootstrap",
+      "path": null,
+      "note": "Supabase Auth Admin creates users; not SQL-reconstructible",
+      "external": "SUPABASE_AUTH"
+    },
+    {
+      "id": "SEED.SUPER_ADMIN_PROFILE",
+      "classification": "mandatory schema-independent bootstrap",
+      "path": "docs/SUPABASE-STAGING-CHECKLIST.md",
+      "note": "Documented profile role elevation procedure; values not embedded"
+    },
+    {
+      "id": "SEED.VENUE_BINDING",
+      "classification": "mandatory schema-independent bootstrap",
+      "path": "docs/SUPABASE-STAGING-CHECKLIST.md",
+      "note": "venues insert + profiles.venue_id binding; IDs chosen per environment without baking secrets"
+    },
+    {
+      "id": "SEED.CRM_PERMS",
+      "classification": "mandatory reference/permission seed",
+      "path": "docs/crm/phase-1h/10_CRM_PHASE_1H_PERMISSION_SEED.sql",
+      "sha256": "2db66238391d39de992c2848d142ef0f42a515be2e252d67de2ff178e891512b",
+      "bytes": 6703
+    },
+    {
+      "id": "SEED.REPORTING_PERMS",
+      "classification": "mandatory reference/permission seed",
+      "path": "docs/reporting-analytics/reporting-02/40_REPORTING_02_PERMISSION_SEED.sql",
+      "sha256": "66b86bad5d25efa2dfca2b1e3267c2e1992d7caf439f5608b97ee7c0644a88d6",
+      "bytes": 4004
+    },
+    {
+      "id": "SEED.NEWS_PERMS",
+      "classification": "mandatory reference/permission seed",
+      "path": "docs/news-public-content/news-03/10_NEWS_PHASE_03_PERMISSION_SEED.sql",
+      "sha256": "4b5aebee789cc0a51fb7167865952c2a87871670346f28b83b60964a15d388b3",
+      "bytes": 2950
+    },
+    {
+      "id": "SEED.COACHING_02_PERMS",
+      "classification": "mandatory reference/permission seed",
+      "path": "docs/coaching-training/coaching-02/15_COACHING_02_PERMISSION_SEED.sql",
+      "sha256": "d332e147a24bc280cebba954181a153f0222499c4177d42fcf8f99115a9c382c",
+      "bytes": 4664
+    },
+    {
+      "id": "SEED.COACHING_04_PERMS",
+      "classification": "mandatory reference/permission seed",
+      "path": "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.sql",
+      "sha256": "c15f1779c852b763f05ddeac51fde24c6793c41ea670f7c822b06b27212b11a8",
+      "bytes": 4871
+    },
+    {
+      "id": "SEED.V52_ROLES",
+      "classification": "mandatory reference/permission seed",
+      "path": "docs/v5/PHASE_V52_PRODUCTION_RBAC_ROLES.sql",
+      "sha256": "e08d0b1565e0e541d947d1fe8947caf97c3f3fa1045fde4dae576c3518fecfdc",
+      "bytes": 11691
+    },
+    {
+      "id": "FIX.PHASE4_RESEED_PACKAGE",
+      "classification": "acceptance fixture only",
+      "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/",
+      "note": "Phase 4 reseed/*.sql used only after identity prerequisites; not blank schema"
+    },
+    {
+      "id": "FIX.RATING_PILOT",
+      "classification": "acceptance fixture only",
+      "path": "docs/platform-hard-cutover-01/phase-04/sql/rating-v5-staging-owner-pilot-activation/",
+      "note": "Owner pilot enrollment fixtures"
+    },
+    {
+      "id": "PROHIBITED.V52_STAGING_RBAC_SEED",
+      "classification": "prohibited environment-specific seed",
+      "path": "docs/v5/PHASE_V52_STAGING_RBAC_SEED.sql",
+      "sha256": "f1a93f1d4774948bd9c69a82c63bc5c7c747aec9d65663a5b9061e5a64592222",
+      "bytes": 6406,
+      "note": "Must not run on blank rebuild without rewrite"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "marker": "PHASE5D_USER_AVATARS_STORAGE_CONTRACT_V1",
+  "canonicalArtifact": {
+    "path": "docs/supabase-identity-avatars-storage.sql",
+    "sha256": "789a11e7b6d9eddc800150b1ec17f6ef94e98c5062f76e5f50367b7c0ef21173",
+    "bytes": 1970
+  },
+  "bucketSpecification": {
+    "bucketId": "user-avatars",
+    "public": false,
+    "inferredFromSql": true
+  },
+  "policyAccessMatrix": {
+    "authorized": [
+      "authenticated user uploading/reading own avatar path under auth.uid()"
+    ],
+    "unauthorized": [
+      "cross-user path access",
+      "anon write"
+    ]
+  },
+  "deterministicApplyProcedure": [
+    "Apply docs/supabase-identity-avatars-storage.sql on blank project after identity sprint1",
+    "Confirm bucket user-avatars exists",
+    "Confirm storage policies present"
+  ],
+  "deterministicVerificationProcedure": {
+    "authorized": "Upload object to user-avatars/{auth.uid()}/... succeeds",
+    "unauthorized": "Upload to another uid path or anon write fails"
+  },
+  "postCreateGate": "G14",
+  "liveBucketCreationExecuted": false,
+  "liveAccessVerificationExecuted": false
+}
