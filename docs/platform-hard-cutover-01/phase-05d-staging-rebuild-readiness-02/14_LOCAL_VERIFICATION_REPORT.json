@@ -1,5 +1,5 @@
 {
-  "marker": "PHASE5D_LOCAL_VERIFICATION_REPORT_V1",
+  "marker": "PHASE5D_LOCAL_VERIFICATION_REPORT_V2",
   "pass": true,
   "errors": [],
   "ledgerEntryCount": 119,
@@ -8,12 +8,44 @@
     "forward": 0,
     "self": 0,
     "cycles": 0,
-    "duplicatePaths": 0,
-    "duplicateMigrationIds": 0
+    "duplicateMigrationIds": 0,
+    "duplicatePaths": 0
   },
-  "m9Parity": true,
-  "m10Parity": true,
-  "m11Digest": true,
+  "m9Coverage": {
+    "pass": true,
+    "requiredFunctions": 4,
+    "requiredTables": 0,
+    "provenFunctions": 4,
+    "provenTables": 0,
+    "missing": {
+      "functions": [],
+      "tables": []
+    },
+    "unclassified": 0
+  },
+  "m10Coverage": {
+    "pass": true,
+    "requiredFunctions": 3,
+    "requiredTables": 4,
+    "provenFunctions": 3,
+    "provenTables": 4,
+    "missing": {
+      "functions": [],
+      "tables": []
+    },
+    "unclassified": 0
+  },
+  "inventory": {
+    "classifiedFiles": 119,
+    "unclassified": 0
+  },
+  "storageConsistency": true,
+  "edgeContractCount": 2,
   "tenantGate": true,
-  "secretScanHits": 0
+  "secretScan": {
+    "files": 145,
+    "hits": []
+  },
+  "implementationCommitSha": "4aa196de3d88b8ea45afc1f7cce9c0d37641736e",
+  "evidenceBinding": "PHASE5D_EVIDENCE_COMMIT_BINDING_V1"
 }

@@ -1,7 +1,7 @@
 {
   "marker": "PHASE5D_EVIDENCE_COMMIT_BINDING_V1",
-  "implementationCommitSha": "af8edef0060f5dbcb06f67f2bdd5d4e48775cbee",
-  "generatedAt": "2026-08-03T14:11:13.300Z",
+  "implementationCommitSha": "4aa196de3d88b8ea45afc1f7cce9c0d37641736e",
+  "generatedAt": "2026-08-03T14:44:40.534Z",
   "localVerificationPass": true,
   "stagingAccessMutation": "0/0",
   "productionAccessMutation": "0/0",
@@ -28,13 +28,13 @@
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/03_M9_AUTHORITY_RESOLUTION.json",
-      "sha256": "0297a9758f72e4562a7f946619b3329adddc9aa95fab742d399a76ce5ba8ba2f",
-      "bytes": 19350
+      "sha256": "5e0f67163e1336514d0fe487faa714f551d380c9880c52d856c1062426235d2e",
+      "bytes": 171694
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/04_M10_AUTHORITY_RESOLUTION.json",
-      "sha256": "a6040f126b4cb592d4f482e9a13d89859b09e26cb57ee7d57517b2b2a5392315",
-      "bytes": 3897
+      "sha256": "f39b926f1ab216b7b9aa1691ac3fe77e93da4cd317039a37d17ce72b58409df4",
+      "bytes": 62235
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/05_M11_AUTHORITY_RESOLUTION.json",
@@ -43,13 +43,13 @@
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/06_CLOSED_EXPECTED_OBJECT_INVENTORY.json",
-      "sha256": "5472421dbc84a9918a03445e9cc98b0ce3344ee108c6d096562e9d6e0abc53a0",
-      "bytes": 73478
+      "sha256": "eaecc69c9261e6f040f406cde9aadad4c05575aeb2a1f5d8cf4c1502a3bcd3ea",
+      "bytes": 1719854
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/07_BOOTSTRAP_SEED_LEDGER.json",
-      "sha256": "8bcd8e1077bf34e12eb3cf29f32541ad04516c6065dd346da2da964d2905f6a7",
-      "bytes": 3529
+      "sha256": "5e21fee65648d484febae6f7ee2d13a35baf36ff4cb28e797a8618421ab8c7cf",
+      "bytes": 9488
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/08_HARD_CUTOVER_ACCEPTANCE_CONFIGURATION.json",
@@ -58,18 +58,18 @@
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/09_EDGE_FUNCTION_DEPLOYMENT_AUTH_CONTRACT.json",
-      "sha256": "222c71f0a0bff1928debc35016934e6b13a5cca6241ee68aa72ad1e4b6643211",
-      "bytes": 4014
+      "sha256": "f77cbd020163a2326577d527024b4060f0b6947e0b5fcc3a89be5cc965aaf41d",
+      "bytes": 4971
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/10_USER_AVATARS_STORAGE_CONTRACT.json",
-      "sha256": "37da7c84167b79bf98cf68e3321ed34e88f8292e6a797692de7a9f74ce03e074",
-      "bytes": 1094
+      "sha256": "88dc1010bca398d23c7d01dfffc6250be8da5b19c9223c717647b4dd81ffde5e",
+      "bytes": 2443
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/11_TENANT_TYPE_STATIC_GATE_RESULTS.json",
-      "sha256": "9fd6655b26cf32cc6e8fabbc43d216bc14a046775eb1092c86d2562f450aba54",
-      "bytes": 35795
+      "sha256": "c1f8e43387883773aaf71b693780353ffe1486178495166f1a2cbe54797a5c06",
+      "bytes": 38985
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/12_COACHING_04_AUTHORITY_DECISION.json",
@@ -87,24 +87,29 @@
       "bytes": 1914
     },
     {
+      "path": "scripts/phase5d-br01-br10/contract-analyzer.mjs",
+      "sha256": "fde3067d16855bb37a404bba23bbfbd56f6b475a692eb6011ee31e480473542b",
+      "bytes": 9389
+    },
+    {
       "path": "scripts/phase5d-br01-br10/generate-package.mjs",
-      "sha256": "052153f0e4806a7a7276838a96b4ebafed364eb13ad8e8939c7d7e51b682b1d2",
-      "bytes": 14458
+      "sha256": "0b7a5ac59df61bac8c2bcf524c4ba2d7cce636e355a28984a14add4e1de2785f",
+      "bytes": 14422
     },
     {
       "path": "scripts/phase5d-br01-br10/generate-rest.mjs",
-      "sha256": "882e6b5ee938940d8713dbca0b32de60cc0b2799526208438d3187b7c54ef168",
-      "bytes": 17358
+      "sha256": "53c5b0a62ed02fba5d4ec1fedef577a76fa3bee112538dd2707d16324bae6dce",
+      "bytes": 21610
     },
     {
       "path": "scripts/phase5d-br01-br10/verify-local-package.mjs",
-      "sha256": "da2541557541a94dd0b89cb763c25075fae6d45eae686bd37b96d139fb820990",
-      "bytes": 4831
+      "sha256": "9f1280472cf977e19735729a0bc2c00a0c41dc84a4dabc6b42b7c71ca74fb2c2",
+      "bytes": 6282
     },
     {
       "path": "scripts/phase5d-br01-br10/verify-tenant-type-static-gate.mjs",
-      "sha256": "e0723dbdcfe252ccc97e39c063a5f8d2fde99ccae38bc350b00cd4e93a27e217",
-      "bytes": 3407
+      "sha256": "22971fa433ade73d455c6ef1bd94023a3d02e5679663b1d4e4ca1c614fb941e3",
+      "bytes": 2665
     },
     {
       "path": "scripts/phase5d-br01-br10/write-matrix-manifest.mjs",
@@ -113,13 +118,13 @@
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/14_LOCAL_VERIFICATION_REPORT.json",
-      "sha256": "98cac1a07a8b1fb71ba0c644858e4bd11fef90f8e83d4f9cbf4af80ae6bdaea2",
-      "bytes": 513
+      "sha256": "fa461036dce487b01fbd398ddb0ed8a00503f04498db473caf49f27f63f39ff7",
+      "bytes": 1075
     },
     {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/15_ARTIFACT_HASH_MANIFEST.json",
-      "sha256": "12c35a00ff85e9e52d0b2b528d6b8c0a9d2a0ffc28962483b77256dc1035a57f",
-      "bytes": 4723
+      "sha256": "844a5035453d0fb164eecbc4df248d8ddc66f23eecd17a385f956dc67f82ccdc",
+      "bytes": 4909
     }
   ]
 }
