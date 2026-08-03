@@ -1,8 +1,8 @@
 {
-  "marker": "PHASE5D_LOCAL_VERIFICATION_REPORT_V2",
+  "marker": "PHASE5D_LOCAL_VERIFICATION_REPORT_V3",
   "pass": true,
   "errors": [],
-  "ledgerEntryCount": 119,
+  "ledgerEntryCount": 121,
   "dependencyValidation": {
     "unresolved": 0,
     "forward": 0,
@@ -21,7 +21,285 @@
       "functions": [],
       "tables": []
     },
-    "unclassified": 0
+    "unclassified": 0,
+    "exact": {
+      "pass": true,
+      "functions": [
+        {
+          "name": "team_tournament_create_referee_assignment",
+          "required": {
+            "name": "team_tournament_create_referee_assignment",
+            "parameters": [
+              "p_tournament_id",
+              "p_matchup_id",
+              "p_sub_match_id",
+              "p_referee_user_id",
+              "p_expires_at",
+              "p_activate",
+              "p_idempotency_key",
+              "p_reason"
+            ],
+            "parameterDetails": [
+              {
+                "name": "p_tournament_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_matchup_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_sub_match_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_referee_user_id",
+                "type": "uuid",
+                "hasDefault": false
+              },
+              {
+                "name": "p_expires_at",
+                "type": "timestamptz",
+                "hasDefault": true
+              },
+              {
+                "name": "p_activate",
+                "type": "boolean",
+                "hasDefault": true
+              },
+              {
+                "name": "p_idempotency_key",
+                "type": "text",
+                "hasDefault": true
+              },
+              {
+                "name": "p_reason",
+                "type": "text",
+                "hasDefault": true
+              }
+            ],
+            "optionalParameters": [
+              "p_expires_at",
+              "p_activate",
+              "p_idempotency_key",
+              "p_reason"
+            ],
+            "returns": "json",
+            "security": "definer",
+            "searchPathIncludes": [
+              "public"
+            ],
+            "executeRoles": [
+              "authenticated"
+            ],
+            "deniedRoles": [
+              "public",
+              "anon"
+            ]
+          },
+          "candidates": [
+            {
+              "signature": "team_tournament_create_referee_assignment(p_tournament_id text,p_matchup_id text,p_sub_match_id text,p_referee_user_id uuid,p_expires_at timestamptz default null,p_activate boolean default true,p_idempotency_key text default null,p_reason text default 'tt5d_assign')",
+              "parametersExact": true,
+              "parameterTypesDefaultsExact": true,
+              "optionalDefaultsExact": true,
+              "returnType": true,
+              "securityMode": true,
+              "searchPathExact": true,
+              "executeRoles": true,
+              "deniedRoles": true
+            }
+          ],
+          "pass": true
+        },
+        {
+          "name": "team_tournament_revoke_referee_assignment",
+          "required": {
+            "name": "team_tournament_revoke_referee_assignment",
+            "parameters": [
+              "p_tournament_id",
+              "p_assignment_id",
+              "p_expected_version",
+              "p_reason",
+              "p_idempotency_key"
+            ],
+            "parameterDetails": [
+              {
+                "name": "p_tournament_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_assignment_id",
+                "type": "uuid",
+                "hasDefault": false
+              },
+              {
+                "name": "p_expected_version",
+                "type": "integer",
+                "hasDefault": false
+              },
+              {
+                "name": "p_reason",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_idempotency_key",
+                "type": "text",
+                "hasDefault": true
+              }
+            ],
+            "optionalParameters": [
+              "p_idempotency_key"
+            ],
+            "returns": "json",
+            "security": "definer",
+            "searchPathIncludes": [
+              "public"
+            ],
+            "executeRoles": [
+              "authenticated"
+            ],
+            "deniedRoles": [
+              "public",
+              "anon"
+            ]
+          },
+          "candidates": [
+            {
+              "signature": "team_tournament_revoke_referee_assignment(p_tournament_id text,p_assignment_id uuid,p_expected_version integer,p_reason text,p_idempotency_key text default null)",
+              "parametersExact": true,
+              "parameterTypesDefaultsExact": true,
+              "optionalDefaultsExact": true,
+              "returnType": true,
+              "securityMode": true,
+              "searchPathExact": true,
+              "executeRoles": true,
+              "deniedRoles": true
+            }
+          ],
+          "pass": true
+        },
+        {
+          "name": "team_tournament_referee_match_access_ops",
+          "required": {
+            "name": "team_tournament_referee_match_access_ops",
+            "parameters": [
+              "p_tournament_id",
+              "p_match_id"
+            ],
+            "parameterDetails": [
+              {
+                "name": "p_tournament_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_match_id",
+                "type": "text",
+                "hasDefault": false
+              }
+            ],
+            "optionalParameters": [],
+            "returns": "json",
+            "security": "definer",
+            "searchPathIncludes": [
+              "public"
+            ],
+            "executeRoles": [
+              "authenticated"
+            ],
+            "deniedRoles": [
+              "public",
+              "anon"
+            ]
+          },
+          "candidates": [
+            {
+              "signature": "team_tournament_referee_match_access_ops(p_tournament_id text,p_match_id text)",
+              "parametersExact": true,
+              "parameterTypesDefaultsExact": true,
+              "optionalDefaultsExact": true,
+              "returnType": true,
+              "securityMode": true,
+              "searchPathExact": true,
+              "executeRoles": true,
+              "deniedRoles": true
+            }
+          ],
+          "pass": true
+        },
+        {
+          "name": "team_tournament_reopen_referee_match",
+          "required": {
+            "name": "team_tournament_reopen_referee_match",
+            "parameters": [
+              "p_tournament_id",
+              "p_sub_match_id",
+              "p_reason",
+              "p_idempotency_key"
+            ],
+            "parameterDetails": [
+              {
+                "name": "p_tournament_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_sub_match_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_reason",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_idempotency_key",
+                "type": "text",
+                "hasDefault": true
+              }
+            ],
+            "optionalParameters": [
+              "p_idempotency_key"
+            ],
+            "returns": "json",
+            "security": "definer",
+            "searchPathIncludes": [
+              "public"
+            ],
+            "executeRoles": [
+              "authenticated"
+            ],
+            "deniedRoles": [
+              "public",
+              "anon"
+            ]
+          },
+          "candidates": [
+            {
+              "signature": "team_tournament_reopen_referee_match(p_tournament_id text,p_sub_match_id text,p_reason text,p_idempotency_key text default null)",
+              "parametersExact": true,
+              "parameterTypesDefaultsExact": true,
+              "optionalDefaultsExact": true,
+              "returnType": true,
+              "securityMode": true,
+              "searchPathExact": true,
+              "executeRoles": true,
+              "deniedRoles": true
+            }
+          ],
+          "pass": true
+        }
+      ],
+      "tables": [],
+      "unresolvedDynamicDdl": []
+    }
   },
   "m10Coverage": {
     "pass": true,
@@ -33,19 +311,378 @@
       "functions": [],
       "tables": []
     },
-    "unclassified": 0
+    "unclassified": 0,
+    "exact": {
+      "pass": true,
+      "functions": [
+        {
+          "name": "referee_v5_get_match_state",
+          "required": {
+            "name": "referee_v5_get_match_state",
+            "parameters": [
+              "p_tenant_id",
+              "p_tournament_id",
+              "p_match_id"
+            ],
+            "parameterDetails": [
+              {
+                "name": "p_tenant_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_tournament_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_match_id",
+                "type": "text",
+                "hasDefault": false
+              }
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPathIncludes": [
+              "public"
+            ],
+            "executeRoles": [
+              "authenticated"
+            ],
+            "deniedRoles": [
+              "public"
+            ]
+          },
+          "candidates": [
+            {
+              "signature": "referee_v5_get_match_state(p_tenant_id text,p_tournament_id text,p_match_id text)",
+              "parametersExact": true,
+              "parameterTypesDefaultsExact": true,
+              "optionalDefaultsExact": true,
+              "returnType": true,
+              "securityMode": true,
+              "searchPathExact": true,
+              "executeRoles": true,
+              "deniedRoles": true
+            }
+          ],
+          "pass": true
+        },
+        {
+          "name": "referee_v5_commit_match_transition",
+          "required": {
+            "name": "referee_v5_commit_match_transition",
+            "parameters": [
+              "p_tenant_id",
+              "p_tournament_id",
+              "p_match_id",
+              "p_actor_id",
+              "p_command_type",
+              "p_command_payload",
+              "p_expected_state_version",
+              "p_expected_event_sequence",
+              "p_client_mutation_id",
+              "p_idempotency_key",
+              "p_request_hash",
+              "p_next_state",
+              "p_generated_events",
+              "p_state_before_hash",
+              "p_state_after_hash",
+              "p_state_before",
+              "p_staging_fault"
+            ],
+            "parameterDetails": [
+              {
+                "name": "p_tenant_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_tournament_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_match_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_actor_id",
+                "type": "uuid",
+                "hasDefault": false
+              },
+              {
+                "name": "p_command_type",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_command_payload",
+                "type": "jsonb",
+                "hasDefault": false
+              },
+              {
+                "name": "p_expected_state_version",
+                "type": "integer",
+                "hasDefault": false
+              },
+              {
+                "name": "p_expected_event_sequence",
+                "type": "bigint",
+                "hasDefault": false
+              },
+              {
+                "name": "p_client_mutation_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_idempotency_key",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_request_hash",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_next_state",
+                "type": "jsonb",
+                "hasDefault": false
+              },
+              {
+                "name": "p_generated_events",
+                "type": "jsonb",
+                "hasDefault": false
+              },
+              {
+                "name": "p_state_before_hash",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_state_after_hash",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_state_before",
+                "type": "jsonb",
+                "hasDefault": true
+              },
+              {
+                "name": "p_staging_fault",
+                "type": "text",
+                "hasDefault": true
+              }
+            ],
+            "optionalParameters": [
+              "p_state_before",
+              "p_staging_fault"
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPathIncludes": [
+              "pg_catalog",
+              "public"
+            ],
+            "executeRoles": [
+              "service_role"
+            ],
+            "deniedRoles": [
+              "public",
+              "anon",
+              "authenticated"
+            ]
+          },
+          "candidates": [
+            {
+              "signature": "referee_v5_commit_match_transition(p_tenant_id text,p_tournament_id text,p_match_id text,p_actor_id uuid,p_command_type text,p_command_payload jsonb,p_expected_state_version integer,p_expected_event_sequence bigint,p_client_mutation_id text,p_idempotency_key text,p_request_hash text,p_next_state jsonb,p_generated_events jsonb,p_state_before_hash text,p_state_after_hash text,p_state_before jsonb default null,p_staging_fault text default null)",
+              "parametersExact": true,
+              "parameterTypesDefaultsExact": true,
+              "optionalDefaultsExact": true,
+              "returnType": true,
+              "securityMode": true,
+              "searchPathExact": true,
+              "executeRoles": true,
+              "deniedRoles": true
+            }
+          ],
+          "pass": true
+        },
+        {
+          "name": "referee_v5_commit_match_finalization",
+          "required": {
+            "name": "referee_v5_commit_match_finalization",
+            "parameters": [
+              "p_tenant_id",
+              "p_tournament_id",
+              "p_match_id",
+              "p_actor_id",
+              "p_expected_state_version",
+              "p_idempotency_key",
+              "p_request_hash",
+              "p_revision",
+              "p_outbox_events",
+              "p_override_reason",
+              "p_staging_fault"
+            ],
+            "parameterDetails": [
+              {
+                "name": "p_tenant_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_tournament_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_match_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_actor_id",
+                "type": "uuid",
+                "hasDefault": false
+              },
+              {
+                "name": "p_expected_state_version",
+                "type": "integer",
+                "hasDefault": false
+              },
+              {
+                "name": "p_idempotency_key",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_request_hash",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_revision",
+                "type": "jsonb",
+                "hasDefault": false
+              },
+              {
+                "name": "p_outbox_events",
+                "type": "jsonb",
+                "hasDefault": true
+              },
+              {
+                "name": "p_override_reason",
+                "type": "text",
+                "hasDefault": true
+              },
+              {
+                "name": "p_staging_fault",
+                "type": "text",
+                "hasDefault": true
+              }
+            ],
+            "optionalParameters": [
+              "p_outbox_events",
+              "p_override_reason",
+              "p_staging_fault"
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPathIncludes": [
+              "pg_catalog",
+              "public"
+            ],
+            "executeRoles": [
+              "service_role"
+            ],
+            "deniedRoles": [
+              "public",
+              "anon",
+              "authenticated"
+            ]
+          },
+          "candidates": [
+            {
+              "signature": "referee_v5_commit_match_finalization(p_tenant_id text,p_tournament_id text,p_match_id text,p_actor_id uuid,p_expected_state_version integer,p_idempotency_key text,p_request_hash text,p_revision jsonb,p_outbox_events jsonb default '[]'::jsonb,p_override_reason text default null,p_staging_fault text default null)",
+              "parametersExact": true,
+              "parameterTypesDefaultsExact": true,
+              "optionalDefaultsExact": true,
+              "returnType": true,
+              "securityMode": true,
+              "searchPathExact": true,
+              "executeRoles": true,
+              "deniedRoles": true
+            }
+          ],
+          "pass": true
+        }
+      ],
+      "tables": [
+        {
+          "name": "referee_assignments",
+          "rlsEnabled": true,
+          "actualRls": {
+            "table": "referee_assignments",
+            "enabled": true,
+            "forced": false,
+            "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql"
+          },
+          "pass": true
+        },
+        {
+          "name": "match_live_states",
+          "rlsEnabled": true,
+          "actualRls": {
+            "table": "match_live_states",
+            "enabled": true,
+            "forced": false,
+            "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql"
+          },
+          "pass": true
+        },
+        {
+          "name": "match_events",
+          "rlsEnabled": true,
+          "actualRls": {
+            "table": "match_events",
+            "enabled": true,
+            "forced": false,
+            "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql"
+          },
+          "pass": true
+        },
+        {
+          "name": "match_sync_mutations",
+          "rlsEnabled": true,
+          "actualRls": {
+            "table": "match_sync_mutations",
+            "enabled": true,
+            "forced": false,
+            "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql"
+          },
+          "pass": true
+        }
+      ],
+      "unresolvedDynamicDdl": []
+    }
   },
   "inventory": {
-    "classifiedFiles": 119,
-    "unclassified": 0
+    "classifiedFiles": 121,
+    "unclassified": 0,
+    "unresolvedDynamicDdl": []
   },
   "storageConsistency": true,
   "edgeContractCount": 2,
   "tenantGate": true,
   "secretScan": {
-    "files": 145,
+    "files": 187,
     "hits": []
   },
-  "implementationCommitSha": "4aa196de3d88b8ea45afc1f7cce9c0d37641736e",
+  "implementationCommitSha": "1800038af82e7a455208e77867726628a2f51c3a",
   "evidenceBinding": "PHASE5D_EVIDENCE_COMMIT_BINDING_V1"
 }
