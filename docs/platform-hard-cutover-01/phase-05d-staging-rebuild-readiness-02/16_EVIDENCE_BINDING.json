@@ -1,7 +1,15 @@
 {
-  "marker": "PHASE5D_ARTIFACT_HASH_MANIFEST_V1",
+  "marker": "PHASE5D_EVIDENCE_COMMIT_BINDING_V1",
   "implementationCommitSha": "af8edef0060f5dbcb06f67f2bdd5d4e48775cbee",
-  "classification": "EVIDENCE_READBACK_PENDING_INDEPENDENT_REVIEW",
+  "generatedAt": "2026-08-03T14:11:13.300Z",
+  "localVerificationPass": true,
+  "stagingAccessMutation": "0/0",
+  "productionAccessMutation": "0/0",
+  "databaseWrites": 0,
+  "deployments": 0,
+  "ownerGoClaimed": false,
+  "phase05CompleteIssued": false,
+  "g01_g17": "NOT_EXECUTED",
   "artifacts": [
     {
       "path": "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.sql",
@@ -102,6 +110,16 @@
       "path": "scripts/phase5d-br01-br10/write-matrix-manifest.mjs",
       "sha256": "27fc12c95f377da6760fcd094108d72d81a9e303d4887be303a6967fe7315b36",
       "bytes": 3667
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/14_LOCAL_VERIFICATION_REPORT.json",
+      "sha256": "98cac1a07a8b1fb71ba0c644858e4bd11fef90f8e83d4f9cbf4af80ae6bdaea2",
+      "bytes": 513
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/15_ARTIFACT_HASH_MANIFEST.json",
+      "sha256": "12c35a00ff85e9e52d0b2b528d6b8c0a9d2a0ffc28962483b77256dc1035a57f",
+      "bytes": 4723
     }
   ]
 }
