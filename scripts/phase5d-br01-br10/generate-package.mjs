@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { createRequire } from "module";
+import { topology as computeTopology } from "./contract-analyzer.mjs";
 
 const ROOT = process.cwd();
 const PKG = "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02";
@@ -374,14 +375,7 @@ const ledgerDoc = {
   distinctFromEvidenceInventory: true,
   evidenceInventoryEntriesReference: 155,
   entryCount: ledger.length,
-  topology: {
-    unresolved: 0,
-    forward: 0,
-    self: 0,
-    cycles: 0,
-    duplicateMigrationIds: 0,
-    duplicatePaths: 0,
-  },
+  topology: computeTopology(ledger),
   externalDependencies,
   excludedFromThisLedger: [
     {

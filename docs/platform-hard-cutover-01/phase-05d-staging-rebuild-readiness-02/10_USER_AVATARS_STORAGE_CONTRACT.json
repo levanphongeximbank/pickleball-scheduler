@@ -7,16 +7,60 @@
   },
   "bucketSpecification": {
     "bucketId": "user-avatars",
-    "public": false,
+    "public": true,
     "inferredFromSql": true
   },
   "policyAccessMatrix": {
     "authorized": [
-      "authenticated user uploading/reading own avatar path under auth.uid()"
+      "anonymous SELECT",
+      "authenticated SELECT",
+      "authenticated INSERT/UPDATE/DELETE only below own auth.uid() path"
     ],
     "unauthorized": [
-      "cross-user path access",
-      "anon write"
+      "anonymous write",
+      "cross-user INSERT/UPDATE/DELETE"
+    ],
+    "policies": [
+      {
+        "name": "user_avatars_select",
+        "table": "storage.objects",
+        "command": "select",
+        "roles": "authenticated",
+        "using": "",
+        "withCheck": ""
+      },
+      {
+        "name": "user_avatars_select_anon",
+        "table": "storage.objects",
+        "command": "select",
+        "roles": "anon",
+        "using": "",
+        "withCheck": ""
+      },
+      {
+        "name": "user_avatars_insert",
+        "table": "storage.objects",
+        "command": "insert",
+        "roles": "authenticated",
+        "using": "",
+        "withCheck": "bucket_id = 'user-avatars' and (storage.foldername(name))[1] = auth.uid()::text"
+      },
+      {
+        "name": "user_avatars_update",
+        "table": "storage.objects",
+        "command": "update",
+        "roles": "authenticated",
+        "using": "bucket_id = 'user-avatars' and (storage.foldername(name))[1] = auth.uid()::text",
+        "withCheck": "bucket_id = 'user-avatars' and (storage.foldername(name))[1] = auth.uid()::text"
+      },
+      {
+        "name": "user_avatars_delete",
+        "table": "storage.objects",
+        "command": "delete",
+        "roles": "authenticated",
+        "using": "",
+        "withCheck": ""
+      }
     ]
   },
   "deterministicApplyProcedure": [
@@ -30,5 +74,6 @@
   },
   "postCreateGate": "G14",
   "liveBucketCreationExecuted": false,
-  "liveAccessVerificationExecuted": false
+  "liveAccessVerificationExecuted": false,
+  "consistencyPass": true
 }

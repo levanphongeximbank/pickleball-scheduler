@@ -1,9 +1,31 @@
 {
-  "marker": "PHASE5D_TENANT_TYPE_STATIC_GATE_V1",
+  "marker": "PHASE5D_TENANT_TYPE_STATIC_GATE_V2",
   "pass": true,
   "zeroIncompatibleTenantIdUuidInLedger": true,
   "venuesIdCompatibleWithText": true,
   "userVenueIdReturnsText": true,
+  "venuesDefinitions": [
+    {
+      "path": "docs/supabase-rbac.sql",
+      "type": "text"
+    }
+  ],
+  "userVenueDefinitions": [
+    {
+      "path": "docs/supabase-rbac.sql",
+      "parameters": "",
+      "returns": "text"
+    }
+  ],
+  "effectiveVenueDefinition": {
+    "path": "docs/supabase-rbac.sql",
+    "type": "text"
+  },
+  "effectiveUserVenueDefinition": {
+    "path": "docs/supabase-rbac.sql",
+    "parameters": "",
+    "returns": "text"
+  },
   "findingCount": 0,
   "findings": [],
   "inspectedFileCount": 119,
@@ -13,1071 +35,1071 @@
       "path": "docs/supabase-club-v3.sql",
       "sha256": "cf05da986b300b6266691b477753617031d18ac11ee5bc0fe7972d28b17f682a",
       "bytes": 1955,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.02",
       "path": "docs/supabase-rbac.sql",
       "sha256": "df6a573e70984d49f904bf6fe7011a0f6583ea573f6952477778e2e4670fb58b",
       "bytes": 10309,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.03",
       "path": "docs/supabase-club-v3-rls.sql",
       "sha256": "e98622cdc454f97a8e2fe9fb93b2d1d29d4221944435203e985658573d545e5a",
       "bytes": 2445,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.04",
       "path": "docs/supabase-match-live.sql",
       "sha256": "b9cd5f64813f85d8c145bc2cbadd101b74168df5717c6a091f7b5fb0abcaa370",
       "bytes": 2291,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.05",
       "path": "docs/supabase-match-live-rls.sql",
       "sha256": "7905701ba1e82baaba0e067ae990e221ea75a24792684d2b0aaf7f03741c7570",
       "bytes": 8839,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.06",
       "path": "docs/supabase-security-hardening-v357.sql",
       "sha256": "5fc3a0a5d72d7b99d0d26b46585e72d542a0731a6a3d3293c06c062631932799",
       "bytes": 1934,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.07",
       "path": "docs/supabase-match-live-v2.sql",
       "sha256": "8c123a4d3119867872587952113465b88e9f0684f2f3c1e8101ac6e970076971",
       "bytes": 446,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.08",
       "path": "docs/supabase-identity-v40-sprint1.sql",
       "sha256": "2d74a644fbd46a08d3c83ab014dbe0d44f393d53a42187bae7af926aa23f0db9",
       "bytes": 13211,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.09",
       "path": "docs/supabase-identity-v40-phaseB.sql",
       "sha256": "9c1f2873f750c72252e700a54ae6ff04fb30cc60a0e1ec2730ad323f7cc4a58d",
       "bytes": 1956,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.10",
       "path": "docs/supabase-identity-v40-phaseC.sql",
       "sha256": "4ec6849e5319637000a3a01b8875fb3766d128bb19cb9992eba9db85f520825a",
       "bytes": 9897,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.11",
       "path": "docs/supabase-multi-tenant-sprint2.sql",
       "sha256": "f7270c039653573fb6d71ac4dad970aeaf9753c3dfb8c39a5f1a1c6f6ce09dcd",
       "bytes": 1355,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.12",
       "path": "docs/supabase-subscription-sprint4.sql",
       "sha256": "c88462b1dfb258f3c75ffcefe16edc43c187fbe23b1eae20d7068f50f41038a7",
       "bytes": 1196,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.13",
       "path": "docs/supabase-ai-assistant-sprint7.sql",
       "sha256": "ab43ad8561922a598c3406cdeec38c13b68750d87873037af85f04defb37f0f5",
       "bytes": 2341,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.14",
       "path": "docs/supabase-mobile-sprint9.sql",
       "sha256": "a583d039a9fe07f18d0fd84f6a15e631d62404f6afe1d8319d6963a37567a9d9",
       "bytes": 5965,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.15",
       "path": "docs/supabase-sprint10.sql",
       "sha256": "d4f110359c55825110c3a69caa3cafdf73b88f9cfc74aa19a9b24a215cb706f6",
       "bytes": 8225,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 1,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.16",
       "path": "docs/supabase-identity-avatars-storage.sql",
       "sha256": "789a11e7b6d9eddc800150b1ec17f6ef94e98c5062f76e5f50367b7c0ef21173",
       "bytes": 1970,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F0.17",
       "path": "docs/v5/PHASE_V52_PRODUCTION_RBAC_ROLES.sql",
       "sha256": "e08d0b1565e0e541d947d1fe8947caf97c3f3fa1045fde4dae576c3518fecfdc",
       "bytes": 11691,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F1.01",
       "path": "docs/supabase-billing-phase9.sql",
       "sha256": "55c7eeb8761db0a141e42692776bec9dde74c16a0f2f9c9b66e21c73ac3a36d1",
       "bytes": 13947,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F1.02",
       "path": "docs/supabase-billing-phase9-trial-rpc.sql",
       "sha256": "27385c08c165433ad35ca79ef0b83a7709d7b70fb87a7cb680b39530a0a7c7c4",
       "bytes": 3669,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F1.03",
       "path": "docs/supabase-sprint10-phase11a-rls.sql",
       "sha256": "e4cf6106aa9f9efeffce47b298cf620b1a4d94b03bec542a4006135b58b2fc5d",
       "bytes": 9688,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F1.04",
       "path": "docs/supabase-sprint10-phase11b-persistence.sql",
       "sha256": "28641719ea25085889d869aa37033e060efb8367dd8ce9ecfa1b9cddf9854d71",
       "bytes": 4498,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F1.05",
       "path": "docs/supabase-sprint10-phase11c-api-key-guard.sql",
       "sha256": "885f577c8d98bc52265dec5ee8c3bb750d767a11b619f31b0dc2ef78892b4f75",
       "bytes": 524,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F1.06",
       "path": "docs/supabase-sprint10-phase11e-integration-audit.sql",
       "sha256": "c9638d3d5ff5169dc99216c2e00670de422ef8ec1398d20f715c72e8f125ef20",
       "bytes": 7576,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "F1.07",
       "path": "docs/supabase-phase16-kn6-qr-checkins-rls.sql",
       "sha256": "5ba9ad9c94fba4927544be3b856b45f81f41debee27c288e02a93eab77aa531f",
       "bytes": 2972,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M0.10",
       "path": "docs/production-security/prod-sec-g3-b12-01/10_CLUB_AI_DATA_ANON_WRITE_LOCKDOWN.sql",
       "sha256": "d9d9b3d8d5ca9a484e8a5b237717e98d136fee7d0eebc5687d3c7749d74c483a",
       "bytes": 2177,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M1.10",
       "path": "docs/customer-management/phase-3/10_CUSTOMER_PHASE_3_TABLES.sql",
       "sha256": "d3272c99f5a839e4a7a14c45b799285b4ea0c7c32d6655b898e4890f543489c9",
       "bytes": 8568,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M1.20",
       "path": "docs/customer-management/phase-3/20_CUSTOMER_PHASE_3_INDEXES.sql",
       "sha256": "e8c59d00a845a3722c1de032f109decdd66ccd99a71d8a7398d873afbb268318",
       "bytes": 2913,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M1.30",
       "path": "docs/customer-management/phase-3/30_CUSTOMER_PHASE_3_RLS.sql",
       "sha256": "ecbaf2e1a34ad1b2f158a94b5952fd8371f6d6d84a1db1809a5415cb7ee00d0c",
       "bytes": 6808,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M1.40",
       "path": "docs/customer-management/phase-3/40_CUSTOMER_PHASE_3_SAVE_RPC.sql",
       "sha256": "6e758dea1b24ae4540b542861dfcbfb0192e5f78bc0e313cc4bfb15d4d6b6863",
       "bytes": 11220,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M1.50",
       "path": "docs/customer-management/phase-3/50_CUSTOMER_PHASE_3_GRANTS.sql",
       "sha256": "204834071c6c55c08a131611ebfcf6202b18bdd400b0e363d4f5a183992a9338",
       "bytes": 2233,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M2.10",
       "path": "docs/supabase-finance-phase1f.sql",
       "sha256": "618f46a2dcc4eadd8eb6375ed03ccd4b86427e2448d8e56cefaf3c43c409a926",
       "bytes": 54025,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M3G.10",
       "path": "docs/crm/phase-1g/10_CRM_PHASE_1G_TABLES.sql",
       "sha256": "0b722ad23be05d3e7985fe077c61d4e9f8cc163bd140c75b8f9f321b92945d8a",
       "bytes": 8041,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M3G.20",
       "path": "docs/crm/phase-1g/20_CRM_PHASE_1G_INDEXES.sql",
       "sha256": "426faa1e0df05a9affce4aa8bd216aef18ce6cd30c392109f6072a7802fa4979",
       "bytes": 2196,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M3G.30",
       "path": "docs/crm/phase-1g/30_CRM_PHASE_1G_RLS.sql",
       "sha256": "a15c49cf38ba2ec03c3d3da6352f3dff63b6966c5d283b134ec8916bc045d50a",
       "bytes": 9125,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M3G.40",
       "path": "docs/crm/phase-1g/40_CRM_PHASE_1G_CLAIM_RELEASE_RPCS.sql",
       "sha256": "e0479ee060d484f13c8fd17384c7cd971c940f26eafa44f0f9d1ba3613c6ba2a",
       "bytes": 6927,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M3G.50",
       "path": "docs/crm/phase-1g/50_CRM_PHASE_1G_GRANTS.sql",
       "sha256": "834d2d8757d11ddeba443e39e3bee1ebc5aa98b7e1f428053204b474330b8dfd",
       "bytes": 2216,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M3G.60",
       "path": "docs/crm/phase-1g/60_CRM_PHASE_1G_CONSENT_IMMUTABLE.sql",
       "sha256": "12a80394d5730e0d3b4ae462a6b5aa6ea00720fc8e8a8d63e03629c2ffdcb274",
       "bytes": 1745,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M3H.10",
       "path": "docs/crm/phase-1h/10_CRM_PHASE_1H_PERMISSION_SEED.sql",
       "sha256": "2db66238391d39de992c2848d142ef0f42a515be2e252d67de2ff178e891512b",
       "bytes": 6703,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M3H.20",
       "path": "docs/crm/phase-1h/20_CRM_PHASE_1H_ROLE_PERMISSION_ASSIGNMENT.sql",
       "sha256": "9591587606210b3ddd4150a5b6b72ed0b384dcf071e24a738841046eadf5d8b2",
       "bytes": 4140,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M4.10",
       "path": "docs/reporting-analytics/reporting-02/10_REPORTING_02_TABLES.sql",
       "sha256": "986215e711647dfcc8a9a070340da604a265e2df3351ee57310f33c23d0681d6",
       "bytes": 16900,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M4.20",
       "path": "docs/reporting-analytics/reporting-02/20_REPORTING_02_INDEXES.sql",
       "sha256": "27fbcbb7e0c0fa026494cedb0e168f17f66c1eaf74542a2712b84a5571d62d1f",
       "bytes": 2751,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M4.30",
       "path": "docs/reporting-analytics/reporting-02/30_REPORTING_02_RLS.sql",
       "sha256": "d7e6afb87a552854c2b671dd7fc574db0717522848ae20a233b2ab8778d3aed5",
       "bytes": 6290,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M4.40",
       "path": "docs/reporting-analytics/reporting-02/40_REPORTING_02_PERMISSION_SEED.sql",
       "sha256": "66b86bad5d25efa2dfca2b1e3267c2e1992d7caf439f5608b97ee7c0644a88d6",
       "bytes": 4004,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M4.50",
       "path": "docs/reporting-analytics/reporting-02/50_REPORTING_02_GRANTS.sql",
       "sha256": "97eac8d07d075feff2f46837267d897948b96e0cfd8ffe98ad1c582c4a7eac80",
       "bytes": 2449,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M5.10",
       "path": "docs/news-public-content/news-02/10_NEWS_PHASE_02_TABLES.sql",
       "sha256": "452d4b3c58536a7076ca58f51efb755b3bbddf25872da3d41766721645512611",
       "bytes": 15369,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M5.20",
       "path": "docs/news-public-content/news-02/20_NEWS_PHASE_02_INDEXES.sql",
       "sha256": "c827062adceb739d744ab64a0541692d33401607447b9d4146e6d147d51ce077",
       "bytes": 4278,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M5.30",
       "path": "docs/news-public-content/news-02/30_NEWS_PHASE_02_RLS.sql",
       "sha256": "3f8cbc7d5ab3974413f6ba5cf37f2a4bff421d5783035f48cd005ddccd2b1087",
       "bytes": 9602,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M5.40",
       "path": "docs/news-public-content/news-02/40_NEWS_PHASE_02_SAVE_RPC.sql",
       "sha256": "c910bdac3811f95bd185c4afa8e454e25a193861c8cd1d634bfd926f6e6bdaa8",
       "bytes": 19268,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M5.50",
       "path": "docs/news-public-content/news-02/50_NEWS_PHASE_02_GRANTS.sql",
       "sha256": "414b26d1c2621f03f0c81a170cf6a2e57dbb2646b07e47b067856c725ca6fcc8",
       "bytes": 4626,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M5.60",
       "path": "docs/news-public-content/news-02/60_NEWS_PHASE_02_IMMUTABLE_REVISIONS.sql",
       "sha256": "de983b57f7c51aaef750d47817f65ef521b4a35e70e39c93976b92b8dab4fc92",
       "bytes": 3234,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M5N3.10",
       "path": "docs/news-public-content/news-03/10_NEWS_PHASE_03_PERMISSION_SEED.sql",
       "sha256": "4b5aebee789cc0a51fb7167865952c2a87871670346f28b83b60964a15d388b3",
       "bytes": 2950,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M5N4.10",
       "path": "docs/news-public-content/news-04/10_NEWS_PHASE_04_PUBLIC_RPC_LIVE_ONLY.sql",
       "sha256": "556e97f96afb0a48095c1d26ef6768ac6718c5a3fe764bc8caf336da1a3ff2ea",
       "bytes": 5863,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6.10",
       "path": "docs/coaching-training/coaching-02/10_COACHING_02_TABLES.sql",
       "sha256": "f35609aca3db5f3bbdfc1bf3d5fcac514a487275c7677ced662354d6a76d9436",
       "bytes": 22528,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6.15",
       "path": "docs/coaching-training/coaching-02/15_COACHING_02_PERMISSION_SEED.sql",
       "sha256": "d332e147a24bc280cebba954181a153f0222499c4177d42fcf8f99115a9c382c",
       "bytes": 4664,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6.20",
       "path": "docs/coaching-training/coaching-02/20_COACHING_02_INDEXES.sql",
       "sha256": "3c7f429d0c4a83409254f34eee7ed1b02e8d9fdf6e63885bf9c1b4f2d09dac4d",
       "bytes": 2754,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6.30",
       "path": "docs/coaching-training/coaching-02/30_COACHING_02_RLS.sql",
       "sha256": "62235c0d0829878839804b642c57d772a28305b108b8164327f07e2190a5083c",
       "bytes": 21574,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6.40",
       "path": "docs/coaching-training/coaching-02/40_COACHING_02_ATTENDANCE_CORRECTION_RPC.sql",
       "sha256": "2be049e2acdebfddd57691b39901cf8235caf37466060b625735f98f471262e4",
       "bytes": 6568,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6.45",
       "path": "docs/coaching-training/coaching-02/45_COACHING_02_ENTITLEMENT_CONSUME_RPC.sql",
       "sha256": "f01000d27953eb001b38ba87b0c6b0fbd089e3309b23ca318db100e050f2f14c",
       "bytes": 8328,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6.50",
       "path": "docs/coaching-training/coaching-02/50_COACHING_02_GRANTS.sql",
       "sha256": "38f8a1d497d67db1badea9e27ddb9bbd67a938d716841ffd73e182962b0ecf74",
       "bytes": 7909,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6.60",
       "path": "docs/coaching-training/coaching-02/60_COACHING_02_IMMUTABLE.sql",
       "sha256": "ed605d59a08a7964e5c88aefc1c8211751b7e86734ce287d7c3786049339376f",
       "bytes": 3094,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6C4.10",
       "path": "docs/coaching-training/coaching-04/10_COACHING_04_ASSIGNMENT_HELPERS.sql",
       "sha256": "593bcaa57ab82ac5d6507b381f0ec452497b0502d02ff4d5ecfd489acb8faeff",
       "bytes": 9993,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6C4.11",
       "path": "docs/coaching-training/coaching-04/11_COACHING_04_PLAYER_SELF_SCOPE_HELPERS.sql",
       "sha256": "05683f2992fed053d678b2c6e718c11577d67a4063fa7323b3c3e4de1bc49cf5",
       "bytes": 7174,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6C4.20",
       "path": "docs/coaching-training/coaching-04/20_COACHING_04_ASSIGNMENT_RLS.sql",
       "sha256": "1cab2de20b1aa8a776abcdc27c1a5ef1ab11daef2de363d6e4f4df2d70e046f4",
       "bytes": 15202,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6C4.21",
       "path": "docs/coaching-training/coaching-04/21_COACHING_04_PLAYER_SELF_SCOPE_RLS.sql",
       "sha256": "73a034ee6068872d0e137a54d6a8c3ff3f831b92bedbccbc899a425fb002dcab",
       "bytes": 11182,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6C4.30",
       "path": "docs/coaching-training/coaching-04/30_COACHING_04_SCOPED_RPCS.sql",
       "sha256": "6ca0b25e623baeb285b345029d6970b67972b290d05f37e7f0b52f43fb2f0784",
       "bytes": 20483,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6C4.41",
       "path": "docs/coaching-training/coaching-04/41_COACHING_04_HELPER_EXECUTE_ACL_HARDENING.sql",
       "sha256": "b693d6fb64fc317eee0d94c5439f9a22fc82492656cb15b38a5dc117d30efa1e",
       "bytes": 5617,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M6C4.40",
       "path": "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.sql",
       "sha256": "c15f1779c852b763f05ddeac51fde24c6793c41ea670f7c822b06b27212b11a8",
       "bytes": 4871,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M7.cc02",
       "path": "docs/competition-core/supabase-cc02-rating-v2.sql",
       "sha256": "e835e67d41dda80dd9090154426bd7f8405066fdbfa37d9942c7405536503020",
       "bytes": 4465,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M7.cc02c",
       "path": "docs/competition-core/supabase-cc02c-rating-durability.sql",
       "sha256": "8ea1d222bc844aa5cd893865382feef4005ecd274a08ac0c00e502e55a038735",
       "bytes": 6436,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M8.10",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/10_TABLES.sql",
       "sha256": "b411bb74e8a5437ce6e0968a349b7db36847db3449f7cdf564e1dea23935bd5c",
       "bytes": 5239,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M8.20",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/20_INDEXES.sql",
       "sha256": "6c19f797cef27dba47abcb7defd174be1edcd7085e0591970d2f35d5729a8959",
       "bytes": 848,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M8.30",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/30_RLS.sql",
       "sha256": "11090fa1269caae0dd99031f66e4a65c989fbcdd8d589d341406768c06763e52",
       "bytes": 8118,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M8.40",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/40_RPC_COMMAND_AND_FINALIZE.sql",
       "sha256": "22ce9020f50f534059d85a1e12ed83f716c5f895ef619fb53f78ac21442978ba",
       "bytes": 8676,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M8.50",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/50_GRANTS.sql",
       "sha256": "6c5c0a5e8957f592d6d202b4edf22cc180b03838b30088199af2cc2d85710fa3",
       "bytes": 1535,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M8.51",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/51_GRANTS_TIGHTEN.sql",
       "sha256": "ac12053dc2e1ca26e068484cdc18b303354bb2c1dbf07f2bd9abdaa6f399da89",
       "bytes": 4427,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M8.52",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/m8-competition-remote-ssot/52_GRANTS_EXACT_BASELINE.sql",
       "sha256": "4a915a5a1cd4d9349abc7fd1f11236f1eb5249cb3a653308ce125cee4e33264b",
       "bytes": 1920,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.01",
       "path": "docs/v5/PHASE_TT1B_TEAM_TOURNAMENT_SSOT.sql",
       "sha256": "86af2aa45f9fb622654c30f5aaa3d69a14ce39e5ee1f9ba861fa90b86a842eb7",
       "bytes": 48240,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.02",
       "path": "docs/v5/PHASE_TT2B_LINEUP_DEADLINE_SERVER_TIME.sql",
       "sha256": "777bfc77661ae1e18fff442cb7b78f38ee6c724f17a7a9b1ddecf4a0053fc91b",
       "bytes": 11380,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.03",
       "path": "docs/v5/PHASE_TT2C_LINEUP_VALIDATION.sql",
       "sha256": "91ee6a53d6162da6e2e35a508e44a7fb8d679974b729f7fce6364199ee45aa25",
       "bytes": 19135,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.04",
       "path": "docs/v5/PHASE_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
       "sha256": "f49b5cf09aafe9b5ac39454f2a1f56029559092a31bca828e0cdc12eb789ce06",
       "bytes": 3777,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.05",
       "path": "docs/v5/PHASE_TT2D_RANDOMIZE_LOCK_WORKFLOW.sql",
       "sha256": "847f04d822d9b3779d4d6e74072fbafb18e38784c0db52b67cd34346dbc13378",
       "bytes": 37333,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.06",
       "path": "docs/v5/PHASE_TT2E_ATOMIC_PUBLISH_WORKFLOW.sql",
       "sha256": "43ffbc7b35c3666d5dc25ae6401f5ab819e4ddcd0cb720c219d83ecf58bff1d7",
       "bytes": 27106,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.07",
       "path": "docs/v5/PHASE_TT2E_GET_SETUP_FIX.sql",
       "sha256": "24f728ee957733c5f9cabbb0b479bb9de50ba1ca7f9c5114c740cf48d3be2f87",
       "bytes": 11022,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.08",
       "path": "docs/v5/PHASE_TT3_GET_SETUP_PATCH.sql",
       "sha256": "58007708ddbc43e4dc505fbe485e8669ba1d22be0cbaf999324035ae4fe5a03f",
       "bytes": 11514,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.09",
       "path": "docs/v5/PHASE_TT3_LINEUP_OVERRIDE.sql",
       "sha256": "51ea187326fa886915cee7d8ca67b384b582f02763e413a7e3634606cdc14f96",
       "bytes": 37144,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.10",
       "path": "docs/v5/PHASE_TT4_FORFEIT_WITHDRAWAL.sql",
       "sha256": "e9b91652686c14f539cb8496c08a832b19f793b23cb5851e95daa7db8e244ca4",
       "bytes": 31646,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.11",
       "path": "docs/v5/PHASE_TT4_GET_SETUP_PATCH.sql",
       "sha256": "9a06a9129ae26e23ac367eee12ce4548c2a06d3f184840d5cc21e88152c7525f",
       "bytes": 12252,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.12",
       "path": "docs/v5/team-tournament/p1/PHASE_P1_2_S1B_SNAPSHOT_SCHEMA.sql",
       "sha256": "7e28935de1b7d5371de6007ffa173a1ff87a48fba850d18f33640c5542547ad1",
       "bytes": 24659,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.13",
       "path": "docs/v5/team-tournament/p1/PHASE_P1_2_S1C_GET_SETUP_V7.sql",
       "sha256": "3f2285719128033b04fee3e3e6e75c98120395b001dd3080a921b064de681813",
       "bytes": 26895,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.14",
       "path": "docs/v5/team-tournament/p1/PHASE_P1_3_DOMAIN_PERSISTENCE_SCHEMA.sql",
       "sha256": "a2d8104b5976bcadd42db2828d683d57452154701c04c7704979b3fa5e201a02",
       "bytes": 3609,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.15",
       "path": "docs/v5/team-tournament/p1/PHASE_P1_3_DOMAIN_PERSISTENCE_RPCS.sql",
       "sha256": "3d6412ffdfef9397c25dbed1bfe552df83587098eca0bdd901228e5862db1cd2",
       "bytes": 30859,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.16",
       "path": "docs/v5/team-tournament/p1/PHASE_P1_3_GET_SETUP_V7_GROUPS.sql",
       "sha256": "d6cb25594547223205170a9070649e5a3a7c8027213802f428d5fad2f4c410c7",
       "bytes": 27244,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.17",
       "path": "docs/v5/team-tournament/p1/PHASE_P1_3_SAVE_DRAFT_RPC.sql",
       "sha256": "a8f28d9d1863fd757daebda101aeea3540fa64fceaa731c730ff35f475a759bc",
       "bytes": 4504,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.18",
       "path": "docs/v5/team-tournament/tt5/TT5-B_BRIDGE_SCHEMA.sql",
       "sha256": "20ba83b55e9bb02f5097e8bd2b70432ab3e1579fed0b4704db7621a739c108a5",
       "bytes": 6375,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.19",
       "path": "docs/v5/team-tournament/tt5/TT5-B_PROVISION_RPC.sql",
       "sha256": "e70e0494c24cbef6e17065ddfb4f68793a50e33798419dc014f801335cffee3f",
       "bytes": 22664,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.20",
       "path": "docs/v5/team-tournament/tt5/TT5-B_GET_SETUP_PATCH.sql",
       "sha256": "734994d3d069cfd1196dde4efd5e200981e98f302e90129e8cca4a8abafd875b",
       "bytes": 12638,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.21",
       "path": "docs/v5/team-tournament/tt5/TT5-B_LEGACY_LOCK_GUARD.sql",
       "sha256": "60fdc7da03d9f1382c1c067b81ba1bcab4c48538e66e648fc51db1df18e06bba",
       "bytes": 13570,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.22",
       "path": "docs/v5/team-tournament/tt5/TT5-C_REPROVISION_STATE.sql",
       "sha256": "fdcc80a11db041e96fc6f441f22f5ae5585fa7856ba884f8e0da16b05a7c6c98",
       "bytes": 15020,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.23",
       "path": "docs/v5/team-tournament/tt5/TT5-C_RESULT_PROPAGATION.sql",
       "sha256": "d5d47f3f2251ae0e7f819287f2a97a7884a4d3ccadb1107cfd8389b46ba437bd",
       "bytes": 15945,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.24",
       "path": "docs/v5/team-tournament/tt5/TT5-C_RESULT_OUTBOX_CONSUMER.sql",
       "sha256": "72dbcd0b9c65b8da435e5c31427f725ccb63058eaf80226959adae609d8f6ef9",
       "bytes": 4687,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.25",
       "path": "docs/v5/team-tournament/tt5/TT5-C_STANDINGS_RECOMPUTE.sql",
       "sha256": "e0ad7146b005635a7eb6122eebd4edfc7026f554baca2ca5c7f4e112075cb226",
       "bytes": 1371,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.26",
       "path": "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
       "sha256": "70bb2c26723bc3615bc5353159364656bba031fe510c4d28b8e0bb2cc9ecbcaa",
       "bytes": 15730,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.27",
       "path": "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
       "sha256": "732e4109d758dfcc7bc56926e8c70eee529af5bf436b3885e77f5f13903923b3",
       "bytes": 16457,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.28",
       "path": "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
       "sha256": "28f0e9366e51c9589ea8e4ea0f4064a5bb0a5de70b4210a5da398ca3569b6218",
       "bytes": 10026,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.29",
       "path": "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql",
       "sha256": "61943ad79d7edb7faf7718064c60c2269193dfffdd6c8464ee7bcd123012f5fa",
       "bytes": 11406,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.30",
       "path": "docs/v5/team-tournament/tt6/TT6-B_REALTIME_CORE.sql",
       "sha256": "96f1e54da172381d8cb251c0bfdff2177d4e62cfcebc409bb90d4b7c7d86c0c4",
       "bytes": 1426,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M9.31",
       "path": "docs/v5/team-tournament/tt6/TT6-B_REALTIME_SECURITY.sql",
       "sha256": "a144e6bb190c22b5e44cfd8818de88981ebf855598bdf24ed3396993f913e4e1",
       "bytes": 4378,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M10.1",
       "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql",
       "sha256": "c1a079535a6295cb3d185aee9c9b2e54da6ed0aebbeb67bbfd4b929dd13c0f8e",
       "bytes": 13070,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M10.2",
       "path": "docs/v5/referee-v5/PHASE_V5D_REFEREE_PERSISTENCE.sql",
       "sha256": "5c3bcda4e38449021516d0b966ab553e6f79d58a409b2d75af59160f6295fdb9",
       "bytes": 15357,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M10.3",
       "path": "docs/v5/referee-v5/PHASE_V5D1_REFEREE_HARDENING.sql",
       "sha256": "caf20d89b35bee42f2e06f20ddc0b498ffb7b2081a30a8cd4057dedcfc47a579",
       "bytes": 16608,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M11.pr4",
       "path": "docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_PR4.sql",
       "sha256": "dd4bb5d755063cdd8fcd96ca3d4b3999f7c8e2f982121d357af3014f95a4fa4c",
       "bytes": 46163,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M11.digest",
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/sql/10_PRIVATE_PAIRING_PR4_DIGEST_PATCH.sql",
       "sha256": "73a0678fea4c2377d35a2c7a53db1992c7fec2f33eed3eeb482eff36dedb64cc",
       "bytes": 1914,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "M11.raise",
       "path": "docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_PR4_RAISE_PATCH.sql",
       "sha256": "a8b821c59f3696b2bcf30a2fb660cb22ac8ec03915fe7fb7751abe246666a5cc",
       "bytes": 1538,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "P4.court1",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/court-cluster-admin-rpc-staging/10_PHASE_33_COURT_CLAIM_REQUESTS.sql",
       "sha256": "9f2aeba50871b4cd4b8faf02fae5ebe0f56f2ca9e116f814f55e53052c904d5c",
       "bytes": 15567,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "P4.court2",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/court-cluster-admin-rpc-staging/20_PHASE_36_COURT_CLUSTER_CLOUD_SYNC.sql",
       "sha256": "cde527debdc142e4830fec21fec0e7d92dbedfbdad6ac911d307be938e0472d1",
       "bytes": 6886,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "P4.court3",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/court-cluster-admin-rpc-staging/30_PHASE_37_CLUB_REGISTERABLE_CLUSTERS.sql",
       "sha256": "21171975431a696220fc638a3d3a11b0e31ec4536df27feeb36aa56947c505b2",
       "bytes": 1766,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "P4.courtAuth",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/court-admin-upsert-venue-owner-auth/10_COURT_ADMIN_UPSERT_VENUE_OWNER_AUTH.sql",
       "sha256": "042c826ce49d86cf1279ebf2d46b00cbb369eea7f616884aed0ea5daca62086e",
       "bytes": 4725,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "P4.rateRbac",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/rating-v5-owner-assess-self-rbac/10_OWNER_ASSESS_SELF_RBAC.sql",
       "sha256": "814d8bd3378219cf8d2e563ae38e6a3e22dab0b90b8140b7708b26a7260923d1",
       "bytes": 949,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     },
     {
       "migrationId": "P4.pairView",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/pairing-owner-view-rbac/10_OWNER_PAIRING_VIEW_RBAC.sql",
       "sha256": "b76e6e9909266015114275d944bdd4222578a15cf81bf91476f1404543e18675",
       "bytes": 896,
-      "tenantIdUuid": 0,
-      "pTenantIdUuid": 0,
-      "uuidEqText": 0
+      "incompatibleIdDeclarations": 0,
+      "uuidTextCasts": 0,
+      "uuidTextComparisons": 0
     }
   ]
 }
