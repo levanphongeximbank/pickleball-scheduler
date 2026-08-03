@@ -26,7 +26,7 @@
         "table": "storage.objects",
         "command": "select",
         "roles": "authenticated",
-        "using": "",
+        "using": "bucket_id = 'user-avatars'",
         "withCheck": ""
       },
       {
@@ -34,7 +34,7 @@
         "table": "storage.objects",
         "command": "select",
         "roles": "anon",
-        "using": "",
+        "using": "bucket_id = 'user-avatars'",
         "withCheck": ""
       },
       {
@@ -58,9 +58,25 @@
         "table": "storage.objects",
         "command": "delete",
         "roles": "authenticated",
-        "using": "",
+        "using": "bucket_id = 'user-avatars' and (storage.foldername(name))[1] = auth.uid()::text",
         "withCheck": ""
       }
+    ]
+  },
+  "sourceDerivedContract": {
+    "bucketPublic": true,
+    "anonymousSelect": true,
+    "anonymousWritePolicies": 0,
+    "unsafeAuthenticatedWritePolicies": 0,
+    "authenticatedOwnInsert": true,
+    "authenticatedOwnUpdate": true,
+    "authenticatedOwnDelete": true,
+    "policyNames": [
+      "user_avatars_delete",
+      "user_avatars_insert",
+      "user_avatars_select",
+      "user_avatars_select_anon",
+      "user_avatars_update"
     ]
   },
   "deterministicApplyProcedure": [

@@ -4,7 +4,7 @@
   "approvedApplySequenceClaim": false,
   "distinctFromEvidenceInventory": true,
   "evidenceInventoryEntriesReference": 155,
-  "entryCount": 119,
+  "entryCount": 121,
   "topology": {
     "unresolved": 0,
     "forward": 0,
@@ -1377,6 +1377,30 @@
     },
     {
       "order": 111,
+      "migrationId": "M10.4",
+      "path": "docs/v5/referee-v5/PHASE_V5D32_IDEMPOTENCY_UNDO.sql",
+      "sha256": "f0d0eb05c83883078b812e88e7515733017f9fa48fda9fbd629e85d35a79c17d",
+      "bytes": 8207,
+      "dependencies": [
+        "M10.3"
+      ],
+      "purpose": "M10 promoted tracked PHASE_V5D32_IDEMPOTENCY_UNDO.sql",
+      "family": "M10"
+    },
+    {
+      "order": 112,
+      "migrationId": "M10.5",
+      "path": "docs/v5/referee-v5/PHASE_V5D4_ATOMIC_ROLLBACK.sql",
+      "sha256": "ee482eead1791633cdb6b0989d470076cbc12d99902fe7df28c277d0951267e1",
+      "bytes": 5562,
+      "dependencies": [
+        "M10.4"
+      ],
+      "purpose": "M10 promoted tracked PHASE_V5D4_ATOMIC_ROLLBACK.sql",
+      "family": "M10"
+    },
+    {
+      "order": 113,
       "migrationId": "M11.pr4",
       "path": "docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_PR4.sql",
       "sha256": "dd4bb5d755063cdd8fcd96ca3d4b3999f7c8e2f982121d357af3014f95a4fa4c",
@@ -1388,7 +1412,7 @@
       "family": "M11"
     },
     {
-      "order": 112,
+      "order": 114,
       "migrationId": "M11.digest",
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/sql/10_PRIVATE_PAIRING_PR4_DIGEST_PATCH.sql",
       "sha256": "73a0678fea4c2377d35a2c7a53db1992c7fec2f33eed3eeb482eff36dedb64cc",
@@ -1400,7 +1424,7 @@
       "family": "M11"
     },
     {
-      "order": 113,
+      "order": 115,
       "migrationId": "M11.raise",
       "path": "docs/v5/PHASE_PRIVATE_PAIRING_RULES_V2_PR4_RAISE_PATCH.sql",
       "sha256": "a8b821c59f3696b2bcf30a2fb660cb22ac8ec03915fe7fb7751abe246666a5cc",
@@ -1412,7 +1436,7 @@
       "family": "M11"
     },
     {
-      "order": 114,
+      "order": 116,
       "migrationId": "P4.court1",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/court-cluster-admin-rpc-staging/10_PHASE_33_COURT_CLAIM_REQUESTS.sql",
       "sha256": "9f2aeba50871b4cd4b8faf02fae5ebe0f56f2ca9e116f814f55e53052c904d5c",
@@ -1424,7 +1448,7 @@
       "family": "P4"
     },
     {
-      "order": 115,
+      "order": 117,
       "migrationId": "P4.court2",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/court-cluster-admin-rpc-staging/20_PHASE_36_COURT_CLUSTER_CLOUD_SYNC.sql",
       "sha256": "cde527debdc142e4830fec21fec0e7d92dbedfbdad6ac911d307be938e0472d1",
@@ -1436,7 +1460,7 @@
       "family": "P4"
     },
     {
-      "order": 116,
+      "order": 118,
       "migrationId": "P4.court3",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/court-cluster-admin-rpc-staging/30_PHASE_37_CLUB_REGISTERABLE_CLUSTERS.sql",
       "sha256": "21171975431a696220fc638a3d3a11b0e31ec4536df27feeb36aa56947c505b2",
@@ -1448,7 +1472,7 @@
       "family": "P4"
     },
     {
-      "order": 117,
+      "order": 119,
       "migrationId": "P4.courtAuth",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/court-admin-upsert-venue-owner-auth/10_COURT_ADMIN_UPSERT_VENUE_OWNER_AUTH.sql",
       "sha256": "042c826ce49d86cf1279ebf2d46b00cbb369eea7f616884aed0ea5daca62086e",
@@ -1460,7 +1484,7 @@
       "family": "P4"
     },
     {
-      "order": 118,
+      "order": 120,
       "migrationId": "P4.rateRbac",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/rating-v5-owner-assess-self-rbac/10_OWNER_ASSESS_SELF_RBAC.sql",
       "sha256": "814d8bd3378219cf8d2e563ae38e6a3e22dab0b90b8140b7708b26a7260923d1",
@@ -1472,7 +1496,7 @@
       "family": "P4"
     },
     {
-      "order": 119,
+      "order": 121,
       "migrationId": "P4.pairView",
       "path": "docs/platform-hard-cutover-01/phase-04/sql/pairing-owner-view-rbac/10_OWNER_PAIRING_VIEW_RBAC.sql",
       "sha256": "b76e6e9909266015114275d944bdd4222578a15cf81bf91476f1404543e18675",

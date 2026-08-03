@@ -3,7 +3,8 @@ import path from "path";
 import crypto from "crypto";
 import { execSync } from "child_process";
 import { pathToFileURL } from "url";
-import { extractSql, consumerRefs, envReads, hashFile } from "./contract-analyzer.mjs";
+import { extractSql, consumerRefs, envReads, hashFile, verifyRequiredContracts, effectiveSqlState } from "./contract-analyzer.mjs";
+import { deriveM9Requirements, deriveM10Requirements, deriveEdgeSourceContract, deriveStorageSourceContract } from "./contract-requirements.mjs";
 
 const ROOT = process.cwd();
 const PKG = "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02";
@@ -53,7 +54,8 @@ const m9Required = consumerRefs(m9ConsumerFiles);
 const m9Actual = { functions:functionNames(m9Objects), tables:tableNames(m9Objects), signatures:signatures(m9Objects), policies:policyKeys(m9Objects) };
 const tt5dMissing = { functions:missing(m9Required.functions,m9Actual.functions), tables:missing(m9Required.tables,m9Actual.tables) };
 const m9Unclassified=m9Objects.flatMap(o=>o.unclassified.map(x=>({path:o.path,...x})));
-const m9Pass=!tt5dMissing.functions.length&&!tt5dMissing.tables.length&&!m9Unclassified.length;
+const m9ContractCoverage=verifyRequiredContracts(m9Entries,deriveM9Requirements());
+const m9Pass=!tt5dMissing.functions.length&&!tt5dMissing.tables.length&&!m9Unclassified.length&&m9ContractCoverage.pass;
 
 writeJson(`${PKG}/03_M9_AUTHORITY_RESOLUTION.json`, {
   marker: "PHASE5D_M9_AUTHORITY_RESOLUTION_V1",
@@ -75,6 +77,7 @@ writeJson(`${PKG}/03_M9_AUTHORITY_RESOLUTION.json`, {
     promotedPolicyContractCount: m9Actual.policies.length,
     missing: tt5dMissing,
     unclassified: m9Unclassified,
+    exactContractCoverage: m9ContractCoverage,
     parityPass: m9Pass,
   },
   objectsByFile: m9Objects,
@@ -92,7 +95,8 @@ const m10Required=consumerRefs(m10ConsumerFiles);
 const m10Actual={functions:functionNames(m10Objects),tables:tableNames(m10Objects),signatures:signatures(m10Objects),policies:policyKeys(m10Objects),rls:m10Objects.flatMap(o=>o.rls),grants:m10Objects.flatMap(o=>o.grants),revokes:m10Objects.flatMap(o=>o.revokes)};
 const m10Missing={functions:missing(m10Required.functions,m10Actual.functions),tables:missing(m10Required.tables,m10Actual.tables)};
 const m10Unclassified=m10Objects.flatMap(o=>o.unclassified.map(x=>({path:o.path,...x})));
-const m10Pass=!m10Missing.functions.length&&!m10Missing.tables.length&&!m10Unclassified.length&&m10Actual.rls.length>0&&m10Actual.grants.length>0&&m10Actual.revokes.length>0;
+const m10ContractCoverage=verifyRequiredContracts(m10Entries,deriveM10Requirements());
+const m10Pass=!m10Missing.functions.length&&!m10Missing.tables.length&&!m10Unclassified.length&&m10ContractCoverage.pass;
 writeJson(`${PKG}/04_M10_AUTHORITY_RESOLUTION.json`, {
   marker: "PHASE5D_M10_AUTHORITY_RESOLUTION_V1",
   method: "promote_tracked_candidate_chain",
@@ -113,6 +117,7 @@ writeJson(`${PKG}/04_M10_AUTHORITY_RESOLUTION.json`, {
     rlsContracts: m10Actual.rls,
     grants: m10Actual.grants,
     revokes: m10Actual.revokes,
+    exactContractCoverage: m10ContractCoverage,
     edgeFunctionDependency: "supabase/functions/referee-v5-match",
     parityPass: m10Pass,
   },
@@ -155,9 +160,11 @@ writeJson(`${PKG}/05_M11_AUTHORITY_RESOLUTION.json`, {
 // Closed object inventory
 const allObjects = ledger.map((e) => extractSqlObjects(e.path));
 const inventoryUnclassified=allObjects.flatMap(o=>o.unclassified.map(x=>({path:o.path,...x})));
+const effectiveInventory=effectiveSqlState(ledger);
 const closedInventory = {
   marker: "PHASE5D_CLOSED_EXPECTED_OBJECT_INVENTORY_V1",
-  coversProposedBlankDbBuild: inventoryUnclassified.length===0,
+  coversProposedBlankDbBuild: inventoryUnclassified.length===0&&effectiveInventory.unresolvedDynamicDdl.length===0,
+  effectiveState: {tables:[...effectiveInventory.tables.keys()],functions:[...effectiveInventory.functions.values()],policies:[...effectiveInventory.policies.values()],triggers:[...effectiveInventory.triggers.values()],indexes:[...effectiveInventory.indexes.values()],views:[...effectiveInventory.views.keys()],materializedViews:[...effectiveInventory.materializedViews.keys()],sequences:[...effectiveInventory.sequences.keys()],types:[...effectiveInventory.types.values()],domains:[...effectiveInventory.domains.values()],rls:[...effectiveInventory.rls.values()],functionAcl:Object.fromEntries([...effectiveInventory.functionAcl].map(([k,v])=>[k,Object.fromEntries(v)])),unresolvedDynamicDdl:[...new Set(effectiveInventory.unresolvedDynamicDdl)]},
   ledgerEntryCount: ledger.length,
   aggregates: {
     schemas: [...new Set(allObjects.flatMap(o=>o.schemas))].sort(), extensions:[...new Set(allObjects.flatMap(o=>o.extensions))].sort(), types:allObjects.flatMap(o=>o.types), domains:allObjects.flatMap(o=>o.domains),
@@ -326,6 +333,7 @@ function edgeContract(name) {
   const environmentSources=[indexRel];
   const requiredNames=[...new Set(environmentSources.flatMap(envReads))].sort();
   const isRating=name.startsWith("rating");
+  const sourceDerivedContract=deriveEdgeSourceContract(name);
   return {
     functionName: name,
     sources: [
@@ -344,6 +352,7 @@ function edgeContract(name) {
       values: "NOT_EMBEDDED",
       note: "Names only; no secret values in this package",
     },
+    sourceDerivedContract,
     authenticationAuthorizationMatrix: {
       callerCredential: "Authenticated user bearer token in Authorization header",
       internalCredential: "SUPABASE_SERVICE_ROLE_KEY is server-only configuration and MUST NOT be supplied by clients",
@@ -373,6 +382,7 @@ writeJson(`${PKG}/09_EDGE_FUNCTION_DEPLOYMENT_AUTH_CONTRACT.json`, {
 const storageSql = "docs/supabase-identity-avatars-storage.sql";
 const storageText = fs.readFileSync(path.join(ROOT, storageSql), "utf8");
 const storageObjects=extractSql(storageSql);
+const storageSourceContract=deriveStorageSourceContract(storageSql);
 const avatarBucket=storageObjects.storageBuckets.find(b=>b.id==="user-avatars");
 const avatarPolicies=storageObjects.policies.filter(p=>p.table==="storage.objects"&&p.name.startsWith("user_avatars"));
 writeJson(`${PKG}/10_USER_AVATARS_STORAGE_CONTRACT.json`, {
@@ -388,6 +398,7 @@ writeJson(`${PKG}/10_USER_AVATARS_STORAGE_CONTRACT.json`, {
     unauthorized: ["anonymous write", "cross-user INSERT/UPDATE/DELETE"],
     policies: avatarPolicies,
   },
+  sourceDerivedContract: storageSourceContract,
   deterministicApplyProcedure: [
     "Apply docs/supabase-identity-avatars-storage.sql on blank project after identity sprint1",
     "Confirm bucket user-avatars exists",
@@ -400,7 +411,7 @@ writeJson(`${PKG}/10_USER_AVATARS_STORAGE_CONTRACT.json`, {
   postCreateGate: "G14",
   liveBucketCreationExecuted: false,
   liveAccessVerificationExecuted: false,
-  consistencyPass: avatarBucket?.public===true && avatarPolicies.some(p=>p.command==="select"&&p.roles==="anon") && /for\s+insert\s+to\s+authenticated[\s\S]*?auth\.uid\(\)::text/i.test(storageText) && /for\s+update\s+to\s+authenticated[\s\S]*?using[\s\S]*?auth\.uid\(\)::text[\s\S]*?with check[\s\S]*?auth\.uid\(\)::text/i.test(storageText) && /for\s+delete\s+to\s+authenticated[\s\S]*?auth\.uid\(\)::text/i.test(storageText),
+  consistencyPass: avatarBucket?.public===true && Object.entries(storageSourceContract).filter(([k])=>!["policyNames","anonymousWritePolicies","unsafeAuthenticatedWritePolicies"].includes(k)).every(([,v])=>v===true) && storageSourceContract.anonymousWritePolicies===0 && storageSourceContract.unsafeAuthenticatedWritePolicies===0,
 });
 
 // Coaching-04 decision
