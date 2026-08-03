@@ -3,6 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import { execSync } from "child_process";
 import { pathToFileURL } from "url";
+import { extractSql, consumerRefs, envReads, hashFile } from "./contract-analyzer.mjs";
 
 const ROOT = process.cwd();
 const PKG = "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02";
@@ -28,23 +29,12 @@ function writeJson(rel, obj) {
 const ledger = JSON.parse(fs.readFileSync(path.join(ROOT, SCRIPTS, "_ledger_snapshot.json"), "utf8"));
 const head = execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
 
-// Extract objects from SQL via regex for static parity
-function extractSqlObjects(rel) {
-  const text = fs.readFileSync(path.join(ROOT, rel), "utf8");
-  const tables = [...text.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?([a-z0-9_]+)/gi)].map(
-    (m) => m[1].toLowerCase()
-  );
-  const functions = [
-    ...text.matchAll(/create\s+or\s+replace\s+function\s+(?:public\.)?([a-z0-9_]+)\s*\(/gi),
-  ].map((m) => m[1].toLowerCase());
-  const policies = [...text.matchAll(/create\s+policy\s+([a-z0-9_]+)/gi)].map((m) => m[1].toLowerCase());
-  return {
-    path: rel,
-    tables: [...new Set(tables)],
-    functions: [...new Set(functions)],
-    policies: [...new Set(policies)],
-  };
-}
+const extractSqlObjects = extractSql;
+const functionNames = (objects) => objects.flatMap((o) => o.functions.map((f) => f.name));
+const tableNames = (objects) => objects.flatMap((o) => o.tables);
+const policyKeys = (objects) => objects.flatMap((o) => o.policies.map((p) => `${p.table}:${p.name}:${p.command}:${p.roles}:${p.using}:${p.withCheck}`));
+const signatures = (objects) => objects.flatMap((o) => o.functions.map((f) => `${f.name}(${f.parameters.join(",")}) returns ${f.returns}`));
+const missing = (required, actual) => required.filter((x) => !new Set(actual).has(x));
 
 const m9Entries = ledger.filter((e) => e.family === "M9");
 const m10Entries = ledger.filter((e) => e.family === "M10");
@@ -57,9 +47,13 @@ const tt5dRequired = [
 
 const m9Objects = m9Entries.map((e) => extractSqlObjects(e.path));
 const m9AllFns = new Set(m9Objects.flatMap((o) => o.functions));
-const tt5dObjects = tt5dRequired.map((p) => extractSqlObjects(p));
-const tt5dFns = new Set(tt5dObjects.flatMap((o) => o.functions));
-const tt5dMissing = [...tt5dFns].filter((f) => !m9AllFns.has(f));
+const tt5dObjects = tt5dRequired.map(extractSqlObjects);
+const m9ConsumerFiles = ["tests/team-tournament-tt5d.test.js", "src/features/team-tournament/services/tt5dService.js", "docs/v5/team-tournament/tt5/TT5-D_IMPLEMENTATION.md"].filter((p)=>fs.existsSync(path.join(ROOT,p)));
+const m9Required = consumerRefs(m9ConsumerFiles);
+const m9Actual = { functions:functionNames(m9Objects), tables:tableNames(m9Objects), signatures:signatures(m9Objects), policies:policyKeys(m9Objects) };
+const tt5dMissing = { functions:missing(m9Required.functions,m9Actual.functions), tables:missing(m9Required.tables,m9Actual.tables) };
+const m9Unclassified=m9Objects.flatMap(o=>o.unclassified.map(x=>({path:o.path,...x})));
+const m9Pass=!tt5dMissing.functions.length&&!tt5dMissing.tables.length&&!m9Unclassified.length;
 
 writeJson(`${PKG}/03_M9_AUTHORITY_RESOLUTION.json`, {
   marker: "PHASE5D_M9_AUTHORITY_RESOLUTION_V1",
@@ -74,10 +68,14 @@ writeJson(`${PKG}/03_M9_AUTHORITY_RESOLUTION.json`, {
   })),
   tt5dRequiredFiles: tt5dRequired,
   objectLevelStaticParity: {
-    tt5dFunctionCount: tt5dFns.size,
-    m9FunctionCount: m9AllFns.size,
-    tt5dFunctionsMissingFromPromotedChain: tt5dMissing,
-    parityPass: tt5dMissing.length === 0,
+    requirementDerivation: m9Required,
+    requiredFunctionCount: m9Required.functions.length,
+    requiredTableCount: m9Required.tables.length,
+    promotedFunctionSignatureCount: m9Actual.signatures.length,
+    promotedPolicyContractCount: m9Actual.policies.length,
+    missing: tt5dMissing,
+    unclassified: m9Unclassified,
+    parityPass: m9Pass,
   },
   objectsByFile: m9Objects,
   runtimeConsumers: [
@@ -85,22 +83,16 @@ writeJson(`${PKG}/03_M9_AUTHORITY_RESOLUTION.json`, {
     "docs/v5/team-tournament/tt5/TT5-D_IMPLEMENTATION.md",
     "src/features/platform-hard-cutover/runtimeAuthorityMatrix.js#team_tournament",
   ],
-  verdict: tt5dMissing.length === 0 ? "TRACKED_CHAIN_PROMOTED_WITH_OBJECT_PARITY" : "GAP",
+  verdict: m9Pass ? "TRACKED_CHAIN_PROMOTED_WITH_INDEPENDENT_CONSUMER_PARITY" : "GAP",
 });
 
 const m10Objects = m10Entries.map((e) => extractSqlObjects(e.path));
-const m10Fns = new Set(m10Objects.flatMap((o) => o.functions));
-const requiredRefereeFns = [
-  "referee_v5_claim_match",
-  "referee_v5_submit_score",
-  "referee_v5_get_match",
-  "referee_v5_rebuild_state",
-].filter((name) => {
-  // only require if present in source files
-  return m10Objects.some((o) => o.functions.includes(name) || true);
-});
-// Derive required set from extracted functions containing referee_v5
-const refereeFns = [...m10Fns].filter((f) => f.startsWith("referee_v5") || f.includes("referee"));
+const m10ConsumerFiles=["supabase/functions/referee-v5-match/index.ts","src/features/referee-v5/server/edgeHttpHandler.js","src/features/referee-v5/persistence/RefereeV5SupabaseRepository.js","src/features/referee-v5/persistence/RefereeV5RpcAtomicCommitService.js",...fs.readdirSync(path.join(ROOT,"tests/referee-v5")).filter(n=>n.endsWith(".js")).map(n=>`tests/referee-v5/${n}`)];
+const m10Required=consumerRefs(m10ConsumerFiles);
+const m10Actual={functions:functionNames(m10Objects),tables:tableNames(m10Objects),signatures:signatures(m10Objects),policies:policyKeys(m10Objects),rls:m10Objects.flatMap(o=>o.rls),grants:m10Objects.flatMap(o=>o.grants),revokes:m10Objects.flatMap(o=>o.revokes)};
+const m10Missing={functions:missing(m10Required.functions,m10Actual.functions),tables:missing(m10Required.tables,m10Actual.tables)};
+const m10Unclassified=m10Objects.flatMap(o=>o.unclassified.map(x=>({path:o.path,...x})));
+const m10Pass=!m10Missing.functions.length&&!m10Missing.tables.length&&!m10Unclassified.length&&m10Actual.rls.length>0&&m10Actual.grants.length>0&&m10Actual.revokes.length>0;
 writeJson(`${PKG}/04_M10_AUTHORITY_RESOLUTION.json`, {
   marker: "PHASE5D_M10_AUTHORITY_RESOLUTION_V1",
   method: "promote_tracked_candidate_chain",
@@ -113,19 +105,23 @@ writeJson(`${PKG}/04_M10_AUTHORITY_RESOLUTION.json`, {
     bytes: e.bytes,
   })),
   objectLevelStaticParity: {
-    functionCount: refereeFns.length,
-    functions: refereeFns.sort(),
-    tables: [...new Set(m10Objects.flatMap((o) => o.tables))].sort(),
-    policies: [...new Set(m10Objects.flatMap((o) => o.policies))].sort(),
+    requirementDerivation: m10Required,
+    functionSignatureCount: m10Actual.signatures.length,
+    policyContractCount: m10Actual.policies.length,
+    missing: m10Missing,
+    unclassified: m10Unclassified,
+    rlsContracts: m10Actual.rls,
+    grants: m10Actual.grants,
+    revokes: m10Actual.revokes,
     edgeFunctionDependency: "supabase/functions/referee-v5-match",
-    parityPass: refereeFns.length > 0,
+    parityPass: m10Pass,
   },
   objectsByFile: m10Objects,
   runtimeConsumers: [
     "supabase/functions/referee-v5-match/index.ts",
     "src/features/platform-hard-cutover/runtimeAuthorityMatrix.js#referee",
   ],
-  verdict: "TRACKED_CHAIN_PROMOTED_WITH_OBJECT_PARITY",
+  verdict: m10Pass ? "TRACKED_CHAIN_PROMOTED_WITH_INDEPENDENT_CONSUMER_PARITY" : "GAP",
 });
 
 const digestRel =
@@ -158,14 +154,15 @@ writeJson(`${PKG}/05_M11_AUTHORITY_RESOLUTION.json`, {
 
 // Closed object inventory
 const allObjects = ledger.map((e) => extractSqlObjects(e.path));
+const inventoryUnclassified=allObjects.flatMap(o=>o.unclassified.map(x=>({path:o.path,...x})));
 const closedInventory = {
   marker: "PHASE5D_CLOSED_EXPECTED_OBJECT_INVENTORY_V1",
-  coversProposedBlankDbBuild: true,
+  coversProposedBlankDbBuild: inventoryUnclassified.length===0,
   ledgerEntryCount: ledger.length,
   aggregates: {
-    tables: [...new Set(allObjects.flatMap((o) => o.tables))].sort(),
-    functions: [...new Set(allObjects.flatMap((o) => o.functions))].sort(),
-    policies: [...new Set(allObjects.flatMap((o) => o.policies))].sort(),
+    schemas: [...new Set(allObjects.flatMap(o=>o.schemas))].sort(), extensions:[...new Set(allObjects.flatMap(o=>o.extensions))].sort(), types:allObjects.flatMap(o=>o.types), domains:allObjects.flatMap(o=>o.domains),
+    tables: [...new Set(tableNames(allObjects))].sort(), columns:allObjects.flatMap(o=>o.columns), constraints:allObjects.flatMap(o=>o.constraints), indexes:allObjects.flatMap(o=>o.indexes), views:[...new Set(allObjects.flatMap(o=>o.views))].sort(), materializedViews:[...new Set(allObjects.flatMap(o=>o.materializedViews))].sort(), sequences:[...new Set(allObjects.flatMap(o=>o.sequences))].sort(),
+    functions: allObjects.flatMap(o=>o.functions), procedures:allObjects.flatMap(o=>o.procedures), triggers:allObjects.flatMap(o=>o.triggers), rls:allObjects.flatMap(o=>o.rls), policies:allObjects.flatMap(o=>o.policies), grants:allObjects.flatMap(o=>o.grants), revokes:allObjects.flatMap(o=>o.revokes), storageBuckets:allObjects.flatMap(o=>o.storageBuckets), unclassified:inventoryUnclassified,
   },
   byMigrationId: Object.fromEntries(
     ledger.map((e, i) => [
@@ -262,6 +259,13 @@ const seedLedger = {
     },
   ],
 };
+for (const item of seedLedger.items) {
+  if (!item.path || item.external) continue;
+  const abs=path.join(ROOT,item.path);
+  if (!fs.existsSync(abs)) throw new Error(`seed source missing: ${item.path}`);
+  if (fs.statSync(abs).isFile()) Object.assign(item,hashFile(item.path));
+  else item.sources=fs.readdirSync(abs,{recursive:true,withFileTypes:true}).filter(e=>e.isFile()).map(e=>path.relative(ROOT,path.join(e.parentPath,e.name)).replace(/\\/g,"/")).sort().map(p=>({path:p,...hashFile(p)}));
+}
 writeJson(`${PKG}/07_BOOTSTRAP_SEED_LEDGER.json`, seedLedger);
 
 // Hard-cutover acceptance configuration derived from runtimeAuthorityMatrix
@@ -319,6 +323,9 @@ function edgeContract(name) {
     name.startsWith("rating")
       ? "supabase/functions/_shared/ratingV5Server.mjs"
       : "supabase/functions/_shared/refereeV5Server.mjs";
+  const environmentSources=[indexRel];
+  const requiredNames=[...new Set(environmentSources.flatMap(envReads))].sort();
+  const isRating=name.startsWith("rating");
   return {
     functionName: name,
     sources: [
@@ -333,18 +340,20 @@ function edgeContract(name) {
       secretsNotIncluded: true,
     },
     environmentConfigContract: {
-      requiredNames: ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
+      requiredNames,
       values: "NOT_EMBEDDED",
       note: "Names only; no secret values in this package",
     },
     authenticationAuthorizationMatrix: {
-      authorized: ["service_role / trusted backend invoke with valid JWT per function contract"],
-      unauthorized: ["anon key direct invoke without required claims", "missing Authorization header"],
+      callerCredential: "Authenticated user bearer token in Authorization header",
+      internalCredential: "SUPABASE_SERVICE_ROLE_KEY is server-only configuration and MUST NOT be supplied by clients",
+      authorized: isRating ? ["authenticated caller completes own pending assessment within same tenant"] : ["authenticated assigned referee; director/admin override only where source role policy permits"],
+      unauthorized: isRating ? ["missing/invalid bearer: 401 AUTH_REQUIRED", "cross-user or cross-tenant assessment: 403/404 fail-closed", "already completed/invalid state: 409"] : ["missing/invalid bearer: 401 AUTH_REQUIRED", "unassigned referee: 403 REFEREE_NOT_ASSIGNED", "cross-tenant or missing match: 403/404", "invalid command/domain transition: 400/409"],
       failClosed: true,
     },
     verificationProcedure: {
-      authorizedInvocation: "POST function URL with valid auth; expect 2xx and schema-valid body",
-      unauthorizedInvocation: "POST without auth or with anon-only; expect 401/403",
+      authorizedInvocation: "POST with authenticated user bearer; verify ownership/tenant/assignment/role and expect source-defined 2xx body",
+      unauthorizedInvocation: "Exercise missing bearer, wrong owner/tenant, unassigned referee and insufficient-role cases; require the listed 4xx code",
       evidenceRequiredPostCreate: ["HTTP status", "response error code", "no secret leakage"],
     },
     postCreateGates: name.startsWith("rating") ? ["G15"] : ["G16"],
@@ -363,17 +372,21 @@ writeJson(`${PKG}/09_EDGE_FUNCTION_DEPLOYMENT_AUTH_CONTRACT.json`, {
 // Storage contract
 const storageSql = "docs/supabase-identity-avatars-storage.sql";
 const storageText = fs.readFileSync(path.join(ROOT, storageSql), "utf8");
+const storageObjects=extractSql(storageSql);
+const avatarBucket=storageObjects.storageBuckets.find(b=>b.id==="user-avatars");
+const avatarPolicies=storageObjects.policies.filter(p=>p.table==="storage.objects"&&p.name.startsWith("user_avatars"));
 writeJson(`${PKG}/10_USER_AVATARS_STORAGE_CONTRACT.json`, {
   marker: "PHASE5D_USER_AVATARS_STORAGE_CONTRACT_V1",
   canonicalArtifact: { path: storageSql, ...sha256File(storageSql) },
   bucketSpecification: {
     bucketId: "user-avatars",
-    public: /public:\s*false|public\s*=\s*false/i.test(storageText) || /not public|private/i.test(storageText),
+    public: avatarBucket?.public,
     inferredFromSql: true,
   },
   policyAccessMatrix: {
-    authorized: ["authenticated user uploading/reading own avatar path under auth.uid()"],
-    unauthorized: ["cross-user path access", "anon write"],
+    authorized: ["anonymous SELECT", "authenticated SELECT", "authenticated INSERT/UPDATE/DELETE only below own auth.uid() path"],
+    unauthorized: ["anonymous write", "cross-user INSERT/UPDATE/DELETE"],
+    policies: avatarPolicies,
   },
   deterministicApplyProcedure: [
     "Apply docs/supabase-identity-avatars-storage.sql on blank project after identity sprint1",
@@ -387,6 +400,7 @@ writeJson(`${PKG}/10_USER_AVATARS_STORAGE_CONTRACT.json`, {
   postCreateGate: "G14",
   liveBucketCreationExecuted: false,
   liveAccessVerificationExecuted: false,
+  consistencyPass: avatarBucket?.public===true && avatarPolicies.some(p=>p.command==="select"&&p.roles==="anon") && /for\s+insert\s+to\s+authenticated[\s\S]*?auth\.uid\(\)::text/i.test(storageText) && /for\s+update\s+to\s+authenticated[\s\S]*?using[\s\S]*?auth\.uid\(\)::text[\s\S]*?with check[\s\S]*?auth\.uid\(\)::text/i.test(storageText) && /for\s+delete\s+to\s+authenticated[\s\S]*?auth\.uid\(\)::text/i.test(storageText),
 });
 
 // Coaching-04 decision

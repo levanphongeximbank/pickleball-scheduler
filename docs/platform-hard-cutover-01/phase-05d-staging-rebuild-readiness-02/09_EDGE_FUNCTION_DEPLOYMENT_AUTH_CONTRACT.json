@@ -26,25 +26,30 @@
       },
       "environmentConfigContract": {
         "requiredNames": [
-          "SUPABASE_URL",
-          "SUPABASE_SERVICE_ROLE_KEY"
+          "RATING_V5_CORS_ORIGINS",
+          "SUPABASE_ANON_KEY",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "SUPABASE_URL"
         ],
         "values": "NOT_EMBEDDED",
         "note": "Names only; no secret values in this package"
       },
       "authenticationAuthorizationMatrix": {
+        "callerCredential": "Authenticated user bearer token in Authorization header",
+        "internalCredential": "SUPABASE_SERVICE_ROLE_KEY is server-only configuration and MUST NOT be supplied by clients",
         "authorized": [
-          "service_role / trusted backend invoke with valid JWT per function contract"
+          "authenticated caller completes own pending assessment within same tenant"
         ],
         "unauthorized": [
-          "anon key direct invoke without required claims",
-          "missing Authorization header"
+          "missing/invalid bearer: 401 AUTH_REQUIRED",
+          "cross-user or cross-tenant assessment: 403/404 fail-closed",
+          "already completed/invalid state: 409"
         ],
         "failClosed": true
       },
       "verificationProcedure": {
-        "authorizedInvocation": "POST function URL with valid auth; expect 2xx and schema-valid body",
-        "unauthorizedInvocation": "POST without auth or with anon-only; expect 401/403",
+        "authorizedInvocation": "POST with authenticated user bearer; verify ownership/tenant/assignment/role and expect source-defined 2xx body",
+        "unauthorizedInvocation": "Exercise missing bearer, wrong owner/tenant, unassigned referee and insufficient-role cases; require the listed 4xx code",
         "evidenceRequiredPostCreate": [
           "HTTP status",
           "response error code",
@@ -82,25 +87,30 @@
       },
       "environmentConfigContract": {
         "requiredNames": [
-          "SUPABASE_URL",
-          "SUPABASE_SERVICE_ROLE_KEY"
+          "SUPABASE_ANON_KEY",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "SUPABASE_URL"
         ],
         "values": "NOT_EMBEDDED",
         "note": "Names only; no secret values in this package"
       },
       "authenticationAuthorizationMatrix": {
+        "callerCredential": "Authenticated user bearer token in Authorization header",
+        "internalCredential": "SUPABASE_SERVICE_ROLE_KEY is server-only configuration and MUST NOT be supplied by clients",
         "authorized": [
-          "service_role / trusted backend invoke with valid JWT per function contract"
+          "authenticated assigned referee; director/admin override only where source role policy permits"
         ],
         "unauthorized": [
-          "anon key direct invoke without required claims",
-          "missing Authorization header"
+          "missing/invalid bearer: 401 AUTH_REQUIRED",
+          "unassigned referee: 403 REFEREE_NOT_ASSIGNED",
+          "cross-tenant or missing match: 403/404",
+          "invalid command/domain transition: 400/409"
         ],
         "failClosed": true
       },
       "verificationProcedure": {
-        "authorizedInvocation": "POST function URL with valid auth; expect 2xx and schema-valid body",
-        "unauthorizedInvocation": "POST without auth or with anon-only; expect 401/403",
+        "authorizedInvocation": "POST with authenticated user bearer; verify ownership/tenant/assignment/role and expect source-defined 2xx body",
+        "unauthorizedInvocation": "Exercise missing bearer, wrong owner/tenant, unassigned referee and insufficient-role cases; require the listed 4xx code",
         "evidenceRequiredPostCreate": [
           "HTTP status",
           "response error code",

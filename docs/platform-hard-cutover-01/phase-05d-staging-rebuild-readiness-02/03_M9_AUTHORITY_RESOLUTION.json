@@ -198,14 +198,39 @@
     "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql"
   ],
   "objectLevelStaticParity": {
-    "tt5dFunctionCount": 13,
-    "m9FunctionCount": 101,
-    "tt5dFunctionsMissingFromPromotedChain": [],
+    "requirementDerivation": {
+      "functions": [
+        "team_tournament_create_referee_assignment",
+        "team_tournament_referee_match_access_ops",
+        "team_tournament_reopen_referee_match",
+        "team_tournament_revoke_referee_assignment"
+      ],
+      "tables": [],
+      "sources": [
+        "tests/team-tournament-tt5d.test.js",
+        "docs/v5/team-tournament/tt5/TT5-D_IMPLEMENTATION.md"
+      ]
+    },
+    "requiredFunctionCount": 4,
+    "requiredTableCount": 0,
+    "promotedFunctionSignatureCount": 122,
+    "promotedPolicyContractCount": 16,
+    "missing": {
+      "functions": [],
+      "tables": []
+    },
+    "unclassified": [],
     "parityPass": true
   },
   "objectsByFile": [
     {
       "path": "docs/v5/PHASE_TT1B_TEAM_TOURNAMENT_SSOT.sql",
+      "schemas": [],
+      "extensions": [
+        "pgcrypto"
+      ],
+      "types": [],
+      "domains": [],
       "tables": [
         "team_tournament_command_log",
         "team_tournament_lineup_revisions",
@@ -213,371 +238,4859 @@
         "team_tournament_forfeit_events",
         "team_tournament_sync_mismatch"
       ],
+      "columns": [
+        {
+          "table": "team_tournaments",
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_matchups",
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineups",
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_sub_matches",
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_standings",
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_matchups",
+          "name": "schedule_meta",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb;",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_matchups",
+          "name": "result_type",
+          "type": "text",
+          "nullable": false,
+          "default": "'normal'",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_command_log",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "team_tournament_command_log",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_command_log",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_command_log",
+          "name": "command_name",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_command_log",
+          "name": "idempotency_key",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_command_log",
+          "name": "payload_hash",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_command_log",
+          "name": "result_json",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_command_log",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "lineup_id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "",
+          "constraints": "references public.team_tournament_lineups(id)"
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "revision_no",
+          "type": "integer",
+          "nullable": false,
+          "default": "",
+          "constraints": "check (revision_no >= 1)"
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "action_type",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": "check (action_type in ('draft','submit','lock','publish','randomize','btc_override','withdraw'))"
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "status_before",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "status_after",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "selections_before",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "selections_after",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "version_before",
+          "type": "integer",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "version_after",
+          "type": "integer",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "reason",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "request_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "actor_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references auth.users(id)"
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "actor_role",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "matchup_id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "",
+          "constraints": "unique"
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'pending'",
+          "constraints": "check (status in ('pending','lineup_open','ready','in_progress','completed'))"
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "team_a_order",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "team_b_order",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "team_a_score",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "team_b_score",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "winner_team_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "order_lock_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "orders_locked_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "order_source_a",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "order_source_b",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "rotation",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "sub_match_external_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": "check (version >= 1)"
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "name": "updated_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references auth.users(id)"
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "matchup_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.team_tournament_matchups(id)"
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "sub_match_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.team_tournament_sub_matches(id)"
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "scope",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": "check (scope in ('sub_match','matchup','team_withdrawal'))"
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "result_type",
+          "type": "text",
+          "nullable": false,
+          "default": "'forfeit'",
+          "constraints": "check (result_type in ('forfeit','technical','withdrawn','no_show','injury'))"
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "forfeit_reason",
+          "type": "text",
+          "nullable": false,
+          "default": "''",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "forfeiting_team_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "awarded_winner_team_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "technical_score",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "affects_standings",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "affects_point_difference",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "affects_elo",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "approved_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references auth.users(id)"
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "approved_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "idempotency_key",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": "check (version >= 1)"
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "name": "entity_type",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "name": "entity_key",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "name": "blob_hash",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "name": "cloud_hash",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "name": "blob_snapshot",
+          "type": "jsonb",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "name": "cloud_snapshot",
+          "type": "jsonb",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "name": "detected_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "name": "resolved_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "name": "resolution_note",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        }
+      ],
+      "constraints": [
+        {
+          "table": "team_tournament_command_log",
+          "definition": "unique (tenant_id, tournament_id, command_name, idempotency_key)"
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "definition": "unique (lineup_id, revision_no)"
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "definition": "unique (tenant_id, tournament_id, idempotency_key)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_team_tournament_command_log_tenant",
+          "table": "team_tournament_command_log",
+          "definition": "create index if not exists idx_team_tournament_command_log_tenant on public.team_tournament_command_log (tenant_id, tournament_id, created_at desc);"
+        },
+        {
+          "name": "idx_team_tournament_lineup_revisions_lineup",
+          "table": "team_tournament_lineup_revisions",
+          "definition": "create index if not exists idx_team_tournament_lineup_revisions_lineup on public.team_tournament_lineup_revisions (lineup_id, revision_no desc);"
+        },
+        {
+          "name": "idx_team_tournament_sync_mismatch_open",
+          "table": "team_tournament_sync_mismatch",
+          "definition": "create index if not exists idx_team_tournament_sync_mismatch_open on public.team_tournament_sync_mismatch (tenant_id, tournament_id, detected_at desc) where resolved_at is null;"
+        }
+      ],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_payload_hash",
-        "team_tournament_begin_command",
-        "team_tournament_finish_command",
-        "team_tournament_version_conflict",
-        "team_tournament_write_lineup_revision",
-        "team_tournament_get_visible_lineups",
-        "team_tournament_submit_lineup",
-        "team_tournament_lock_matchup",
-        "team_tournament_publish_matchup",
-        "team_tournament_confirm_sub_match",
-        "team_tournament_apply_forfeit",
-        "team_tournament_save_lineup_draft",
-        "team_tournament_upsert_standings"
+        {
+          "name": "team_tournament_payload_hash",
+          "parameters": [
+            "p_payload jsonb"
+          ],
+          "returns": "text",
+          "security": "invoker",
+          "searchPath": "public, extensions as $$ select encode(extensions.digest(coalesce(p_payload::text, ''), 'sha256'), 'hex')"
+        },
+        {
+          "name": "team_tournament_begin_command",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_command_name text",
+            "p_idempotency_key text",
+            "p_payload jsonb"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_hash text"
+        },
+        {
+          "name": "team_tournament_finish_command",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_command_name text",
+            "p_idempotency_key text",
+            "p_payload_hash text",
+            "p_result jsonb"
+          ],
+          "returns": "void",
+          "security": "definer",
+          "searchPath": "public as $$ begin if p_idempotency_key is null or btrim(p_idempotency_key) = '' then return"
+        },
+        {
+          "name": "team_tournament_version_conflict",
+          "parameters": [
+            "p_entity text",
+            "p_expected integer",
+            "p_actual integer"
+          ],
+          "returns": "json",
+          "security": "invoker",
+          "searchPath": ""
+        },
+        {
+          "name": "team_tournament_write_lineup_revision",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_lineup_id uuid",
+            "p_action_type text",
+            "p_status_before text",
+            "p_status_after text",
+            "p_selections_before jsonb",
+            "p_selections_after jsonb",
+            "p_version_before integer",
+            "p_version_after integer",
+            "p_reason text null",
+            "p_request_id text null"
+          ],
+          "returns": "void",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_next integer"
+        },
+        {
+          "name": "team_tournament_get_visible_lineups",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_viewer_team_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_submit_lineup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_team_id text",
+            "p_selections jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_lock_matchup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_publish_matchup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_confirm_sub_match",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_sub_match_id text",
+            "p_score jsonb",
+            "p_winner_team_id text null",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_apply_forfeit",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_sub_match_id text null",
+            "p_forfeiting_team_id text null",
+            "p_scope text 'sub_match'",
+            "p_result_type text 'forfeit'",
+            "p_forfeit_reason text ''",
+            "p_technical_score jsonb '{}'::jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_save_lineup_draft",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_team_id text",
+            "p_selections jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_upsert_standings",
+          "parameters": [
+            "p_tournament_id text",
+            "p_standings jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
+      ],
+      "procedures": [],
+      "triggers": [],
+      "rls": [
+        {
+          "table": "team_tournament_command_log",
+          "enabled": true,
+          "forced": false
+        },
+        {
+          "table": "team_tournament_lineup_revisions",
+          "enabled": true,
+          "forced": false
+        },
+        {
+          "table": "team_tournament_dreambreaker_states",
+          "enabled": true,
+          "forced": false
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "enabled": true,
+          "forced": false
+        },
+        {
+          "table": "team_tournament_sync_mismatch",
+          "enabled": true,
+          "forced": false
+        }
       ],
       "policies": [
-        "team_tournament_command_log_manage",
-        "team_tournament_lineup_revisions_manage",
-        "team_tournament_dreambreaker_manage",
-        "team_tournament_forfeit_manage",
-        "team_tournament_sync_mismatch_manage"
-      ]
+        {
+          "name": "team_tournament_command_log_manage",
+          "table": "team_tournament_command_log",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "public.is_super_admin() or public.team_tournament_can_manage()",
+          "withCheck": "public.is_super_admin() or public.team_tournament_can_manage()"
+        },
+        {
+          "name": "team_tournament_lineup_revisions_manage",
+          "table": "team_tournament_lineup_revisions",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "public.is_super_admin() or public.team_tournament_can_manage()",
+          "withCheck": "public.is_super_admin() or public.team_tournament_can_manage()"
+        },
+        {
+          "name": "team_tournament_dreambreaker_manage",
+          "table": "team_tournament_dreambreaker_states",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "public.is_super_admin() or tenant_id = (select venue_id from public.profiles where id = auth.uid())",
+          "withCheck": "public.is_super_admin() or ( tenant_id = (select venue_id from public.profiles where id = auth.uid()) and (public.team_tournament_can_manage() or public.team_tournament_can_manage_results()) )"
+        },
+        {
+          "name": "team_tournament_forfeit_manage",
+          "table": "team_tournament_forfeit_events",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "public.is_super_admin() or tenant_id = (select venue_id from public.profiles where id = auth.uid())",
+          "withCheck": "public.is_super_admin() or ( tenant_id = (select venue_id from public.profiles where id = auth.uid()) and public.team_tournament_can_manage() )"
+        },
+        {
+          "name": "team_tournament_sync_mismatch_manage",
+          "table": "team_tournament_sync_mismatch",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "public.is_super_admin() or public.team_tournament_can_manage()",
+          "withCheck": "public.is_super_admin() or public.team_tournament_can_manage()"
+        }
+      ],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_save_lineup_draft(text, text, text, jsonb, integer, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_upsert_standings(text, jsonb, integer, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_get_visible_lineups(text, text, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_begin_command(text, text, text, text, jsonb)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_apply_forfeit(text, text, text, text, text, text, text, jsonb, integer, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_save_lineup_draft(text, text, text, jsonb, integer, text)",
+          "roles": "public, anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_upsert_standings(text, jsonb, integer, text)",
+          "roles": "public, anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_save_lineup_draft_legacy(text, text, text, jsonb)",
+          "roles": "public, anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_upsert_standings_legacy(text, jsonb)",
+          "roles": "public, anon"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/PHASE_TT2B_LINEUP_DEADLINE_SERVER_TIME.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_lineup_deadline_fields",
-        "team_tournament_get_setup"
+        {
+          "name": "team_tournament_lineup_deadline_fields",
+          "parameters": [
+            "p_lineup_lock_at timestamptz",
+            "p_matchup_status text",
+            "p_lineup_status text",
+            "p_lineup_locked_at timestamptz null"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_status text"
+        },
+        {
+          "name": "team_tournament_get_setup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_viewer_team_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_lineup_deadline_fields( timestamptz, text, text, timestamptz )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_get_setup(text, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/PHASE_TT2C_LINEUP_VALIDATION.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_normalize_gender_key",
-        "team_tournament_resolve_player_gender_key",
-        "team_tournament_resolve_player_status",
-        "team_tournament_lineup_validation_fail",
-        "team_tournament_validate_lineup_selections",
-        "team_tournament_save_lineup_draft_legacy"
+        {
+          "name": "team_tournament_normalize_gender_key",
+          "parameters": [
+            "p_gender text"
+          ],
+          "returns": "text",
+          "security": "invoker",
+          "searchPath": "public as $$ select case when lower(trim(coalesce(p_gender, ''))) in ('nam', 'male', 'm') then 'male' when lower(trim(coalesce(p_gender, ''))) in ('nữ', 'nu', 'female', 'f', 'n') then 'female' when lower(trim(coalesce(p_gender, ''))) in ('other', 'khac', 'khác') then 'other' else 'unknown' end"
+        },
+        {
+          "name": "team_tournament_resolve_player_gender_key",
+          "parameters": [
+            "p_player_id text",
+            "p_tenant_id text",
+            "p_club_id text null"
+          ],
+          "returns": "text",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_gender text"
+        },
+        {
+          "name": "team_tournament_resolve_player_status",
+          "parameters": [
+            "p_player_id text"
+          ],
+          "returns": "text",
+          "security": "invoker",
+          "searchPath": "public as $$ select coalesce( nullif(trim(p.status), ''), case when p.id is not null then 'active' else null end, 'unknown' ) from (select 1) x left join public.profiles p on nullif(trim(p.player_id), '') = nullif(trim(p_player_id), '') limit 1"
+        },
+        {
+          "name": "team_tournament_lineup_validation_fail",
+          "parameters": [
+            "p_code text",
+            "p_message text",
+            "p_field_errors jsonb '{}'::jsonb",
+            "p_rule_violations jsonb '[]'::jsonb",
+            "p_invalid_player_ids jsonb '[]'::jsonb",
+            "p_invalid_discipline_ids jsonb '[]'::jsonb",
+            "p_lineup_version integer null"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ select jsonb_build_object( 'ok', false, 'code', p_code, 'message', p_message, 'error', p_message, 'fielderrors', coalesce(p_field_errors, '{}'::jsonb), 'ruleviolations', coalesce(p_rule_violations, '[]'::jsonb), 'invalidplayerids', coalesce(p_invalid_player_ids, '[]'::jsonb), 'invaliddisciplineids', coalesce(p_invalid_discipline_ids, '[]'::jsonb), 'servertime', now(), 'lineupversion', p_lineup_version )"
+        },
+        {
+          "name": "team_tournament_validate_lineup_selections",
+          "parameters": [
+            "p_header public.team_tournaments",
+            "p_team_external_id text",
+            "p_matchup_id text",
+            "p_selections jsonb",
+            "p_is_submit boolean false"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_team public.team_tournament_teams"
+        },
+        {
+          "name": "team_tournament_save_lineup_draft_legacy",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_team_id text",
+            "p_selections jsonb"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_normalize_gender_key(text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_resolve_player_gender_key(text, text, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_resolve_player_status(text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_validate_lineup_selections( public.team_tournaments, text, text, jsonb, boolean )",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/PHASE_TT2C_SUBMIT_LINEUP_VALIDATION.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_submit_lineup"
+        {
+          "name": "team_tournament_submit_lineup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_team_id text",
+            "p_selections jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/PHASE_TT2D_RANDOMIZE_LOCK_WORKFLOW.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_normalize_missing_lineup_policy",
-        "team_tournament_lineup_is_submitted",
-        "team_tournament_lineup_policy_handled",
-        "team_tournament_deadline_passed",
-        "team_tournament_build_random_lineup_selections",
-        "team_tournament_matchup_lineup_ops",
-        "team_tournament_mark_missing_lineup_policy",
-        "team_tournament_randomize_lineup",
-        "team_tournament_lock_matchup",
-        "team_tournament_get_setup"
+        {
+          "name": "team_tournament_normalize_missing_lineup_policy",
+          "parameters": [
+            "p_policy text"
+          ],
+          "returns": "text",
+          "security": "invoker",
+          "searchPath": "public as $$ select case lower(trim(coalesce(p_policy, ''))) when 'random' then 'random' when 'forfeit' then 'forfeit_pending' when 'forfeit_pending' then 'forfeit_pending' when 'btc_override' then 'manual_pending' when 'manual' then 'manual_pending' when 'manual_pending' then 'manual_pending' else 'random' end"
+        },
+        {
+          "name": "team_tournament_lineup_is_submitted",
+          "parameters": [
+            "p_status text"
+          ],
+          "returns": "boolean",
+          "security": "invoker",
+          "searchPath": "public as $$ select coalesce(p_status, 'not_submitted') in ('submitted', 'locked', 'published')"
+        },
+        {
+          "name": "team_tournament_lineup_policy_handled",
+          "parameters": [
+            "p_lineup public.team_tournament_lineups",
+            "p_policy text"
+          ],
+          "returns": "boolean",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_policy text := public.team_tournament_normalize_missing_lineup_policy(p_policy)"
+        },
+        {
+          "name": "team_tournament_deadline_passed",
+          "parameters": [
+            "p_lineup_lock_at timestamptz",
+            "p_now timestamptz now("
+          ],
+          "returns": "boolean",
+          "security": "invoker",
+          "searchPath": "public as $$ select p_lineup_lock_at is not null and p_now >= p_lineup_lock_at"
+        },
+        {
+          "name": "team_tournament_build_random_lineup_selections",
+          "parameters": [
+            "p_header public.team_tournaments",
+            "p_team_external_id text",
+            "p_matchup_id text",
+            "p_seed text null",
+            "p_allow_reuse boolean null"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_team public.team_tournament_teams"
+        },
+        {
+          "name": "team_tournament_matchup_lineup_ops",
+          "parameters": [
+            "p_header public.team_tournaments",
+            "p_matchup public.team_tournament_matchups",
+            "p_now timestamptz now("
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_policy text"
+        },
+        {
+          "name": "team_tournament_mark_missing_lineup_policy",
+          "parameters": [
+            "p_lineup public.team_tournament_lineups",
+            "p_policy text",
+            "p_actor_note text null"
+          ],
+          "returns": "public.team_tournament_lineups",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_policy text := public.team_tournament_normalize_missing_lineup_policy(p_policy)"
+        },
+        {
+          "name": "team_tournament_randomize_lineup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_team_id text",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_lock_matchup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_get_setup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_viewer_team_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_randomize_lineup(text, text, text, integer, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_normalize_missing_lineup_policy(text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_matchup_lineup_ops(public.team_tournaments, public.team_tournament_matchups, timestamptz)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_get_setup(text, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_randomize_lineup(text, text, text, integer, text)",
+          "roles": "public"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_randomize_lineup(text, text, text, integer, text)",
+          "roles": "anon"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/PHASE_TT2E_ATOMIC_PUBLISH_WORKFLOW.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_matchup_publish_ops",
-        "team_tournament_publish_matchup",
-        "team_tournament_get_visible_lineups",
-        "team_tournament_get_setup"
+        {
+          "name": "team_tournament_matchup_publish_ops",
+          "parameters": [
+            "p_header public.team_tournaments",
+            "p_matchup public.team_tournament_matchups",
+            "p_now timestamptz now("
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_lineup_ops jsonb"
+        },
+        {
+          "name": "team_tournament_publish_matchup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_expected_matchup_version integer",
+            "p_expected_lineup_a_version integer",
+            "p_expected_lineup_b_version integer",
+            "p_idempotency_key text"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_publish_matchup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_get_visible_lineups",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_viewer_team_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_get_setup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_viewer_team_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_matchup_publish_ops(public.team_tournaments, public.team_tournament_matchups, timestamptz)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_publish_matchup(text, text, integer, integer, integer, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_publish_matchup(text, text, integer, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_get_visible_lineups(text, text, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_get_setup(text, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_matchup_publish_ops(public.team_tournaments, public.team_tournament_matchups, timestamptz)",
+          "roles": "public"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_publish_matchup(text, text, integer, integer, integer, text)",
+          "roles": "public"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_publish_matchup(text, text, integer, text)",
+          "roles": "public"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/PHASE_TT2E_GET_SETUP_FIX.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_get_setup"
+        {
+          "name": "team_tournament_get_setup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_viewer_team_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_get_setup(text, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/PHASE_TT3_GET_SETUP_PATCH.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_get_setup"
+        {
+          "name": "team_tournament_get_setup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_viewer_team_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_get_setup(text, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/PHASE_TT3_LINEUP_OVERRIDE.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
-      "functions": [
-        "team_tournament_write_lineup_revision",
-        "team_tournament_matchup_has_confirmed_result",
-        "team_tournament_matchup_is_started",
-        "team_tournament_lineup_override_ops",
-        "team_tournament_override_lineup",
-        "team_tournament_matchup_publish_ops",
-        "team_tournament_publish_matchup",
-        "team_tournament_get_visible_lineups",
-        "team_tournament_get_lineup_override_ops"
+      "columns": [
+        {
+          "table": "team_tournament_matchups",
+          "name": "requires_republish",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false;",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_lineups",
+          "name": "overridden_at",
+          "type": "timestamptz,",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        }
       ],
-      "policies": []
+      "constraints": [],
+      "indexes": [
+        {
+          "name": "idx_team_tournament_matchups_requires_republish",
+          "table": "team_tournament_matchups",
+          "definition": "create index if not exists idx_team_tournament_matchups_requires_republish on public.team_tournament_matchups (team_tournament_id, requires_republish) where requires_republish;"
+        }
+      ],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
+      "functions": [
+        {
+          "name": "team_tournament_write_lineup_revision",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_lineup_id uuid",
+            "p_action_type text",
+            "p_status_before text",
+            "p_status_after text",
+            "p_selections_before jsonb",
+            "p_selections_after jsonb",
+            "p_version_before integer",
+            "p_version_after integer",
+            "p_reason text null",
+            "p_request_id text null",
+            "p_actor_role text null"
+          ],
+          "returns": "void",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_next integer"
+        },
+        {
+          "name": "team_tournament_matchup_has_confirmed_result",
+          "parameters": [
+            "p_matchup_id uuid"
+          ],
+          "returns": "boolean",
+          "security": "invoker",
+          "searchPath": "public as $$ select exists ( select 1 from public.team_tournament_sub_matches sm where sm.matchup_id = p_matchup_id and sm.result_confirmed_at is not null )"
+        },
+        {
+          "name": "team_tournament_matchup_is_started",
+          "parameters": [
+            "p_matchup public.team_tournament_matchups"
+          ],
+          "returns": "boolean",
+          "security": "invoker",
+          "searchPath": "public as $$ select p_matchup.status in ('in_progress', 'completed') or exists ( select 1 from public.team_tournament_sub_matches sm where sm.matchup_id = p_matchup.id and sm.status in ('playing', 'completed', 'forfeit') )"
+        },
+        {
+          "name": "team_tournament_lineup_override_ops",
+          "parameters": [
+            "p_header public.team_tournaments",
+            "p_matchup public.team_tournament_matchups",
+            "p_lineup public.team_tournament_lineups",
+            "p_team_id text"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_can_override boolean := false"
+        },
+        {
+          "name": "team_tournament_override_lineup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_team_id text",
+            "p_selections jsonb",
+            "p_reason text",
+            "p_expected_matchup_version integer",
+            "p_expected_lineup_version integer",
+            "p_idempotency_key text"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_matchup_publish_ops",
+          "parameters": [
+            "p_header public.team_tournaments",
+            "p_matchup public.team_tournament_matchups",
+            "p_now timestamptz now("
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_lineup_a public.team_tournament_lineups"
+        },
+        {
+          "name": "team_tournament_publish_matchup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_expected_matchup_version integer",
+            "p_expected_lineup_a_version integer",
+            "p_expected_lineup_b_version integer",
+            "p_idempotency_key text"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_get_visible_lineups",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_viewer_team_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_get_lineup_override_ops",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_team_id text"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
+      ],
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_override_lineup( text, text, text, jsonb, text, integer, integer, text )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_lineup_override_ops( public.team_tournaments, public.team_tournament_matchups, public.team_tournament_lineups, text )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_matchup_has_confirmed_result(uuid)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_get_lineup_override_ops(text, text, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_override_lineup( text, text, text, jsonb, text, integer, integer, text )",
+          "roles": "public"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_lineup_override_ops( public.team_tournaments, public.team_tournament_matchups, public.team_tournament_lineups, text )",
+          "roles": "public"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_matchup_has_confirmed_result(uuid)",
+          "roles": "public"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_get_lineup_override_ops(text, text, text)",
+          "roles": "public"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/PHASE_TT4_FORFEIT_WITHDRAWAL.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
-      "functions": [
-        "team_tournament_technical_score_defaults",
-        "team_tournament_resolve_technical_score",
-        "team_tournament_sub_match_is_confirmed_normal",
-        "team_tournament_recompute_matchup_result",
-        "team_tournament_recompute_standings_cache",
-        "team_tournament_sub_match_forfeit_ops",
-        "team_tournament_apply_forfeit",
-        "team_tournament_withdraw_team"
+      "columns": [
+        {
+          "table": "team_tournament_teams",
+          "name": "withdrawn",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false;",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_teams",
+          "name": "withdrawn_at",
+          "type": "timestamptz;",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_teams",
+          "name": "withdrawal_reason",
+          "type": "text;",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "reason_code",
+          "type": "text",
+          "nullable": false,
+          "default": "'';",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "request_id",
+          "type": "text;",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "actor_role",
+          "type": "text;",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "before_data",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb;",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_forfeit_events",
+          "name": "after_data",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb;",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_standings",
+          "name": "forfeit_count",
+          "type": "int",
+          "nullable": false,
+          "default": "0;",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_matchups",
+          "name": "standings_recalc_required",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false;",
+          "constraints": ""
+        }
       ],
-      "policies": []
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
+      "functions": [
+        {
+          "name": "team_tournament_technical_score_defaults",
+          "parameters": [
+            "p_settings jsonb"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ select jsonb_build_object( 'winnerpoints', coalesce((p_settings->'technicalscoredefaults'->>'winnerpoints')::int, 11), 'loserpoints', coalesce((p_settings->'technicalscoredefaults'->>'loserpoints')::int, 0), 'affectsstandings', coalesce((p_settings->'technicalscoredefaults'->>'affectsstandings')::boolean, true), 'affectspointdifference', coalesce((p_settings->'technicalscoredefaults'->>'affectspointdifference')::boolean, true), 'affectselo', coalesce((p_settings->'technicalscoredefaults'->>'affectselo')::boolean, false) )"
+        },
+        {
+          "name": "team_tournament_resolve_technical_score",
+          "parameters": [
+            "p_settings jsonb",
+            "p_team_a_id text",
+            "p_team_b_id text",
+            "p_forfeiting_team_id text",
+            "p_override jsonb '{}'::jsonb"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_defaults jsonb"
+        },
+        {
+          "name": "team_tournament_sub_match_is_confirmed_normal",
+          "parameters": [
+            "p_sub_match public.team_tournament_sub_matches"
+          ],
+          "returns": "boolean",
+          "security": "invoker",
+          "searchPath": "public as $$ select p_sub_match.status = 'completed' and p_sub_match.result_confirmed_at is not null"
+        },
+        {
+          "name": "team_tournament_recompute_matchup_result",
+          "parameters": [
+            "p_matchup_id uuid"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_matchup public.team_tournament_matchups"
+        },
+        {
+          "name": "team_tournament_recompute_standings_cache",
+          "parameters": [
+            "p_team_tournament_id uuid"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_sub_match_forfeit_ops",
+          "parameters": [
+            "p_header public.team_tournaments",
+            "p_matchup public.team_tournament_matchups",
+            "p_sub_match public.team_tournament_sub_matches"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_can_manage boolean := public.team_tournament_can_manage()"
+        },
+        {
+          "name": "team_tournament_apply_forfeit",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_sub_match_id text null",
+            "p_forfeiting_team_id text null",
+            "p_scope text 'sub_match'",
+            "p_result_type text 'forfeit'",
+            "p_forfeit_reason text ''",
+            "p_technical_score jsonb '{}'::jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null",
+            "p_reason_code text ''",
+            "p_request_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_withdraw_team",
+          "parameters": [
+            "p_tournament_id text",
+            "p_team_id text",
+            "p_reason text ''",
+            "p_reason_code text 'team_withdrawal'",
+            "p_idempotency_key text null",
+            "p_request_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
+      ],
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_apply_forfeit(text, text, text, text, text, text, text, jsonb, integer, text, text, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_withdraw_team(text, text, text, text, text, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_sub_match_forfeit_ops(public.team_tournaments, public.team_tournament_matchups, public.team_tournament_sub_matches)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_apply_forfeit(text, text, text, text, text, text, text, jsonb, integer, text, text, text)",
+          "roles": "public, anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_withdraw_team(text, text, text, text, text, text)",
+          "roles": "public, anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_sub_match_forfeit_ops(public.team_tournaments, public.team_tournament_matchups, public.team_tournament_sub_matches)",
+          "roles": "public, anon"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/PHASE_TT4_GET_SETUP_PATCH.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_get_setup"
+        {
+          "name": "team_tournament_get_setup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_viewer_team_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_get_setup(text, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/p1/PHASE_P1_2_S1B_SNAPSHOT_SCHEMA.sql",
+      "schemas": [],
+      "extensions": [
+        "pgcrypto"
+      ],
+      "types": [],
+      "domains": [],
       "tables": [
         "team_tournament_setup_snapshots"
       ],
+      "columns": [
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "team_tournament_id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "tournament_version",
+          "type": "integer",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "schema_version",
+          "type": "integer",
+          "nullable": false,
+          "default": "7",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "command_name",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "idempotency_key",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "payload_hash",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "engine_input_hash",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "engine_output_hash",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "snapshot_hash",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "engine_version",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "rules_version",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "snapshot_json",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "normalized_read_hash",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "actor_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "retention_class",
+          "type": "text",
+          "nullable": false,
+          "default": "'active'",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "archived_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "legal_hold",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        }
+      ],
+      "constraints": [
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "constraint team_tournament_setup_snapshots_tournament_version_chk check (tournament_version >= 1)"
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "constraint team_tournament_setup_snapshots_schema_version_chk check (schema_version >= 7)"
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "constraint team_tournament_setup_snapshots_idempotency_key_len_chk check (char_length(btrim(idempotency_key)) >= 1 and char_length(idempotency_key) <= 128)"
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "constraint team_tournament_setup_snapshots_payload_hash_fmt_chk check (payload_hash ~ '^[0-9a-f]{64}$')"
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "constraint team_tournament_setup_snapshots_engine_input_hash_fmt_chk check (engine_input_hash ~ '^[0-9a-f]{64}$')"
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "constraint team_tournament_setup_snapshots_engine_output_hash_fmt_chk check (engine_output_hash ~ '^[0-9a-f]{64}$')"
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "constraint team_tournament_setup_snapshots_snapshot_hash_fmt_chk check (snapshot_hash ~ '^[0-9a-f]{64}$')"
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "constraint team_tournament_setup_snapshots_normalized_read_hash_fmt_chk check (normalized_read_hash ~ '^[0-9a-f]{64}$')"
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "constraint team_tournament_setup_snapshots_retention_class_chk check (retention_class in ('active', 'archived', 'compacted'))"
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "constraint team_tournament_setup_snapshots_command_name_chk check (command_name in ( 'discipline.save', 'discipline.remove', 'discipline.reorder', 'groups.replace', 'groups.clear', 'matchups.replace', 'schedule.update', 'schedule.batch', 'schedule.publish', 'schedule.lock', 'deputies.set', 'dreambreaker.order_submit', 'dreambreaker.order_lock', 'dreambreaker.point', 'dreambreaker.sync', 'awards.update', 'awards.assign', 'awards.auto_assign', 'tournament.save_draft', 'tournament.close', 'snapshot.restore' ))"
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "constraint team_tournament_setup_snapshots_one_per_version_uidx unique (tenant_id, tournament_id, tournament_version)"
+        },
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "constraint team_tournament_setup_snapshots_idempotency_uidx unique (tenant_id, tournament_id, command_name, idempotency_key)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_team_tournament_setup_snapshots_latest",
+          "table": "team_tournament_setup_snapshots",
+          "definition": "create index if not exists idx_team_tournament_setup_snapshots_latest on public.team_tournament_setup_snapshots (tenant_id, tournament_id, tournament_version desc);"
+        },
+        {
+          "name": "idx_team_tournament_setup_snapshots_timeline",
+          "table": "team_tournament_setup_snapshots",
+          "definition": "create index if not exists idx_team_tournament_setup_snapshots_timeline on public.team_tournament_setup_snapshots (tenant_id, tournament_id, created_at desc);"
+        },
+        {
+          "name": "idx_team_tournament_setup_snapshots_command_history",
+          "table": "team_tournament_setup_snapshots",
+          "definition": "create index if not exists idx_team_tournament_setup_snapshots_command_history on public.team_tournament_setup_snapshots (tenant_id, tournament_id, command_name, created_at desc);"
+        },
+        {
+          "name": "idx_team_tournament_setup_snapshots_retention",
+          "table": "team_tournament_setup_snapshots",
+          "definition": "create index if not exists idx_team_tournament_setup_snapshots_retention on public.team_tournament_setup_snapshots (retention_class, archived_at) where retention_class <> 'active';"
+        },
+        {
+          "name": "idx_team_tournament_setup_snapshots_team_tournament",
+          "table": "team_tournament_setup_snapshots",
+          "definition": "create index if not exists idx_team_tournament_setup_snapshots_team_tournament on public.team_tournament_setup_snapshots (team_tournament_id, tournament_version desc);"
+        }
+      ],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_is_sha256_hex",
-        "team_tournament_sha256_utf8",
-        "team_tournament_verify_canonical_text_hash",
-        "team_tournament_normalized_read_hash",
-        "team_tournament_setup_snapshots_immutable_guard",
-        "team_tournament_setup_snapshot_archive",
-        "team_tournament_create_setup_snapshot"
+        {
+          "name": "team_tournament_is_sha256_hex",
+          "parameters": [
+            "p_hash text"
+          ],
+          "returns": "boolean",
+          "security": "invoker",
+          "searchPath": "public as $$ select coalesce(p_hash, '') ~ '^[0-9a-f]{64}$'"
+        },
+        {
+          "name": "team_tournament_sha256_utf8",
+          "parameters": [
+            "p_text text"
+          ],
+          "returns": "text",
+          "security": "invoker",
+          "searchPath": "public, extensions as $$ select encode(extensions.digest(coalesce(p_text, ''), 'sha256'), 'hex')"
+        },
+        {
+          "name": "team_tournament_verify_canonical_text_hash",
+          "parameters": [
+            "p_canonical_text text",
+            "p_expected_hash text"
+          ],
+          "returns": "boolean",
+          "security": "invoker",
+          "searchPath": "public, extensions as $$ select public.team_tournament_is_sha256_hex(p_expected_hash) and public.team_tournament_sha256_utf8(p_canonical_text) = lower(p_expected_hash)"
+        },
+        {
+          "name": "team_tournament_normalized_read_hash",
+          "parameters": [
+            "p_read_model_json jsonb"
+          ],
+          "returns": "text",
+          "security": "invoker",
+          "searchPath": "public, extensions as $$ select public.team_tournament_sha256_utf8(coalesce(p_read_model_json::text, '{}'))"
+        },
+        {
+          "name": "team_tournament_setup_snapshots_immutable_guard",
+          "parameters": [],
+          "returns": "trigger",
+          "security": "invoker",
+          "searchPath": "public as $$ begin if tg_op = 'delete' then raise exception 'snapshot_delete_forbidden' using errcode = 'p0001'"
+        },
+        {
+          "name": "team_tournament_setup_snapshot_archive",
+          "parameters": [
+            "p_snapshot_id uuid",
+            "p_retention_class text 'archived'"
+          ],
+          "returns": "void",
+          "security": "definer",
+          "searchPath": "public as $$ begin if not public.is_super_admin() then raise exception 'permission_denied' using errcode = 'p0001'"
+        },
+        {
+          "name": "team_tournament_create_setup_snapshot",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_team_tournament_id uuid",
+            "p_tournament_version integer",
+            "p_schema_version integer",
+            "p_command_name text",
+            "p_idempotency_key text",
+            "p_payload_hash text",
+            "p_engine_input_hash text",
+            "p_engine_output_hash text",
+            "p_snapshot_hash text",
+            "p_snapshot_canonical_text text",
+            "p_engine_version text",
+            "p_rules_version text",
+            "p_snapshot_json jsonb",
+            "p_normalized_read_hash text",
+            "p_actor_id uuid null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public, extensions as $$ declare v_existing public.team_tournament_setup_snapshots"
+        }
+      ],
+      "procedures": [],
+      "triggers": [
+        {
+          "name": "team_tournament_setup_snapshots_immutable_trg",
+          "table": "team_tournament_setup_snapshots",
+          "definition": "create trigger team_tournament_setup_snapshots_immutable_trg before update or delete on public.team_tournament_setup_snapshots for each row execute function public.team_tournament_setup_snapshots_immutable_guard();"
+        }
+      ],
+      "rls": [
+        {
+          "table": "team_tournament_setup_snapshots",
+          "enabled": true,
+          "forced": false
+        }
       ],
       "policies": [
-        "team_tournament_setup_snapshots_select"
-      ]
+        {
+          "name": "team_tournament_setup_snapshots_select",
+          "table": "team_tournament_setup_snapshots",
+          "command": "select",
+          "roles": "authenticated",
+          "using": "",
+          "withCheck": ""
+        }
+      ],
+      "grants": [
+        {
+          "privileges": "select",
+          "object": "public.team_tournament_setup_snapshots",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "public.team_tournament_setup_snapshots",
+          "roles": "anon, authenticated"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_create_setup_snapshot( text, text, uuid, integer, integer, text, text, text, text, text, text, text, text, text, jsonb, text, uuid )",
+          "roles": "public, anon, authenticated"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_setup_snapshot_archive(uuid, text)",
+          "roles": "public, anon, authenticated"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/p1/PHASE_P1_2_S1C_GET_SETUP_V7.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_get_setup"
+        {
+          "name": "team_tournament_get_setup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_viewer_team_id text null",
+            "p_schema_version integer null",
+            "p_diagnostic boolean false"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public, extensions as $ttsetup$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_get_setup(text, text, integer, boolean)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/p1/PHASE_P1_3_DOMAIN_PERSISTENCE_SCHEMA.sql",
+      "schemas": [],
+      "extensions": [
+        "pgcrypto"
+      ],
+      "types": [],
+      "domains": [],
       "tables": [
         "team_tournament_groups"
       ],
+      "columns": [
+        {
+          "table": "team_tournament_disciplines",
+          "name": "discipline_kind",
+          "type": "text",
+          "nullable": false,
+          "default": "'doubles', add column if",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_disciplines",
+          "name": "constraint",
+          "type": "team_tournament_disciplines_discipline_kind_check",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_disciplines",
+          "name": "constraint",
+          "type": "team_tournament_disciplines_activation_rule_check",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_groups",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "team_tournament_groups",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_groups",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_groups",
+          "name": "team_tournament_id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "",
+          "constraints": "references public.team_tournaments(id)"
+        },
+        {
+          "table": "team_tournament_groups",
+          "name": "external_group_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_groups",
+          "name": "name",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_groups",
+          "name": "sort_order",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_groups",
+          "name": "team_ids",
+          "type": "text[]",
+          "nullable": false,
+          "default": "'{}'",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_groups",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_groups",
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        }
+      ],
+      "constraints": [
+        {
+          "table": "team_tournament_disciplines",
+          "definition": "drop constraint if exists team_tournament_disciplines_discipline_kind_check;"
+        },
+        {
+          "table": "team_tournament_disciplines",
+          "definition": "drop constraint if exists team_tournament_disciplines_activation_rule_check;"
+        },
+        {
+          "table": "team_tournament_groups",
+          "definition": "unique (team_tournament_id, external_group_id)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_team_tournament_groups_order",
+          "table": "team_tournament_groups",
+          "definition": "create index if not exists idx_team_tournament_groups_order on public.team_tournament_groups (team_tournament_id, sort_order);"
+        }
+      ],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [],
+      "procedures": [],
+      "triggers": [],
+      "rls": [
+        {
+          "table": "team_tournament_groups",
+          "enabled": true,
+          "forced": false
+        }
+      ],
       "policies": [
-        "team_tournament_groups_select",
-        "team_tournament_groups_manage"
-      ]
+        {
+          "name": "team_tournament_groups_select",
+          "table": "team_tournament_groups",
+          "command": "select",
+          "roles": "authenticated",
+          "using": "",
+          "withCheck": ""
+        },
+        {
+          "name": "team_tournament_groups_manage",
+          "table": "team_tournament_groups",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "public.is_super_admin() or ( tenant_id = (select venue_id from public.profiles where id = auth.uid()) and public.team_tournament_can_manage() )",
+          "withCheck": "public.is_super_admin() or ( tenant_id = (select venue_id from public.profiles where id = auth.uid()) and public.team_tournament_can_manage() )"
+        }
+      ],
+      "grants": [
+        {
+          "privileges": "select",
+          "object": "public.team_tournament_groups",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "public.team_tournament_groups",
+          "roles": "anon"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/p1/PHASE_P1_3_DOMAIN_PERSISTENCE_RPCS.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_setup_norm_projection",
-        "team_tournament_setup_mutation_prepare",
-        "team_tournament_setup_mutation_bump_version",
-        "team_tournament_setup_mutation_finalize",
-        "team_tournament_apply_domain_setup_mutation",
-        "team_tournament_save_discipline",
-        "team_tournament_remove_discipline",
-        "team_tournament_reorder_disciplines",
-        "team_tournament_replace_groups",
-        "team_tournament_clear_groups",
-        "team_tournament_replace_matchups",
-        "team_tournament_update_matchup_schedule",
-        "team_tournament_apply_schedule_batch",
-        "team_tournament_publish_schedule",
-        "team_tournament_lock_schedule"
+        {
+          "name": "team_tournament_setup_norm_projection",
+          "parameters": [
+            "p_team_tournament_id uuid",
+            "p_tournament_id text",
+            "p_version integer"
+          ],
+          "returns": "jsonb",
+          "security": "definer",
+          "searchPath": "public as $$ select jsonb_build_object( 'schemaversion', 7, 'tournamentid', p_tournament_id, 'tournamentversion', p_version, 'teams', coalesce(( select jsonb_agg(jsonb_build_object('id', t.external_team_id, 'name', t.name) order by t.external_team_id) from public.team_tournament_teams t where t.team_tournament_id = p_team_tournament_id ), '[]'::jsonb), 'disciplines', coalesce(( select jsonb_agg(jsonb_build_object( 'id', d.external_discipline_id, 'name', d.name, 'categorytype', d.category_type, 'genderrequirement', d.gender_requirement, 'playercount', d.player_count, 'sortorder', d.sort_order, 'scoringformat', d.scoring_format, 'countstowardresult', d.counts_toward_result, 'disciplinekind', d.discipline_kind, 'activationrule', d.activation_rule, 'enabled', d.enabled ) order by d.sort_order, d.external_discipline_id) from public.team_tournament_disciplines d where d.team_tournament_id = p_team_tournament_id ), '[]'::jsonb), 'groups', coalesce(( select jsonb_agg(jsonb_build_object( 'id', g.external_group_id, 'name', g.name, 'sortorder', g.sort_order, 'teamids', g.team_ids ) order by g.sort_order, g.external_group_id) from public.team_tournament_groups g where g.team_tournament_id = p_team_tournament_id ), '[]'::jsonb), 'matchups', coalesce(( select jsonb_agg(jsonb_build_object( 'id', m.external_matchup_id, 'teamaid', m.team_a_id, 'teambid', m.team_b_id, 'scheduledat', m.scheduled_at, 'lineuplockat', m.lineup_lock_at, 'courtlabel', m.court_label, 'status', m.status, 'schedulemeta', m.schedule_meta, 'groupid', nullif(m.schedule_meta->>'groupid',''), 'roundnumber', m.schedule_meta->'roundnumber', 'matchnumberinround', m.schedule_meta->'matchnumberinround', 'stage', nullif(m.schedule_meta->>'stage',''), 'nextmatchupid', nullif(m.schedule_meta->>'nextmatchupid',''), 'submatches', coalesce(( select jsonb_agg(jsonb_build_object( 'id', sm.external_sub_match_id, 'disciplineid', sm.discipline_external_id, 'sortorder', sm.sort_order, 'status', sm.status ) order by sm.sort_order, sm.external_sub_match_id) from public.team_tournament_sub_matches sm where sm.matchup_id = m.id ), '[]'::jsonb) ) order by m.scheduled_at nulls last, m.external_matchup_id) from public.team_tournament_matchups m where m.team_tournament_id = p_team_tournament_id ), '[]'::jsonb), 'schedule', coalesce(( select jsonb_agg(jsonb_build_object( 'matchupid', m.external_matchup_id, 'scheduledat', m.scheduled_at, 'courtlabel', m.court_label, 'groupid', m.schedule_meta->>'groupid', 'roundnumber', m.schedule_meta->'roundnumber', 'matchnumberinround', m.schedule_meta->'matchnumberinround', 'stage', m.schedule_meta->>'stage' ) order by m.scheduled_at nulls last, m.external_matchup_id) from public.team_tournament_matchups m where m.team_tournament_id = p_team_tournament_id ), '[]'::jsonb), 'schedulepublish', coalesce((select settings->'schedulepublish' from public.team_tournaments where id = p_team_tournament_id), '{}'::jsonb), 'dreambreaker', coalesce((select settings->'dreambreaker' from public.team_tournaments where id = p_team_tournament_id), '{}'::jsonb), 'awards', coalesce((select settings->'awards' from public.team_tournaments where id = p_team_tournament_id), '{}'::jsonb), 'closing', coalesce((select settings->'closing' from public.team_tournaments where id = p_team_tournament_id), '{\"closed\":false}'::jsonb) )"
+        },
+        {
+          "name": "team_tournament_setup_mutation_prepare",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_command text",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_setup_mutation_bump_version",
+          "parameters": [
+            "p_team_tournament_id uuid",
+            "p_expected_version integer"
+          ],
+          "returns": "integer",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_version integer"
+        },
+        {
+          "name": "team_tournament_setup_mutation_finalize",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_team_tournament_id uuid",
+            "p_new_version integer",
+            "p_envelope jsonb",
+            "p_snapshot_payload_hash text",
+            "p_command_payload_hash text",
+            "p_norm_projection jsonb",
+            "p_actor_id uuid"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_snapshot json"
+        },
+        {
+          "name": "team_tournament_apply_domain_setup_mutation",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_command text",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_prepare json"
+        },
+        {
+          "name": "team_tournament_save_discipline",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ select public.team_tournament_apply_domain_setup_mutation($1,$2,'discipline.save',$3,$4)"
+        },
+        {
+          "name": "team_tournament_remove_discipline",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ select public.team_tournament_apply_domain_setup_mutation($1,$2,'discipline.remove',$3,$4)"
+        },
+        {
+          "name": "team_tournament_reorder_disciplines",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ select public.team_tournament_apply_domain_setup_mutation($1,$2,'discipline.reorder',$3,$4)"
+        },
+        {
+          "name": "team_tournament_replace_groups",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ select public.team_tournament_apply_domain_setup_mutation($1,$2,'groups.replace',$3,$4)"
+        },
+        {
+          "name": "team_tournament_clear_groups",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ select public.team_tournament_apply_domain_setup_mutation($1,$2,'groups.clear',$3,$4)"
+        },
+        {
+          "name": "team_tournament_replace_matchups",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ select public.team_tournament_apply_domain_setup_mutation($1,$2,'matchups.replace',$3,$4)"
+        },
+        {
+          "name": "team_tournament_update_matchup_schedule",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ select public.team_tournament_apply_domain_setup_mutation($1,$2,'schedule.update',$3,$4)"
+        },
+        {
+          "name": "team_tournament_apply_schedule_batch",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ select public.team_tournament_apply_domain_setup_mutation($1,$2,'schedule.batch',$3,$4)"
+        },
+        {
+          "name": "team_tournament_publish_schedule",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ select public.team_tournament_apply_domain_setup_mutation($1,$2,'schedule.publish',$3,$4)"
+        },
+        {
+          "name": "team_tournament_lock_schedule",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ select public.team_tournament_apply_domain_setup_mutation($1,$2,'schedule.lock',$3,$4)"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_save_discipline(text,jsonb,integer,text), public.team_tournament_remove_discipline(text,jsonb,integer,text), public.team_tournament_reorder_disciplines(text,jsonb,integer,text), public.team_tournament_replace_groups(text,jsonb,integer,text), public.team_tournament_clear_groups(text,jsonb,integer,text), public.team_tournament_replace_matchups(text,jsonb,integer,text), public.team_tournament_update_matchup_schedule(text,jsonb,integer,text), public.team_tournament_apply_schedule_batch(text,jsonb,integer,text), public.team_tournament_publish_schedule(text,jsonb,integer,text), public.team_tournament_lock_schedule(text,jsonb,integer,text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_setup_mutation_prepare(text,jsonb,text,integer,text), public.team_tournament_setup_mutation_finalize(text,text,uuid,integer,jsonb,text,text,jsonb,uuid), public.team_tournament_apply_domain_setup_mutation(text,jsonb,text,integer,text)",
+          "roles": "public, anon, authenticated"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_save_discipline(text,jsonb,integer,text), public.team_tournament_remove_discipline(text,jsonb,integer,text), public.team_tournament_reorder_disciplines(text,jsonb,integer,text), public.team_tournament_replace_groups(text,jsonb,integer,text), public.team_tournament_clear_groups(text,jsonb,integer,text), public.team_tournament_replace_matchups(text,jsonb,integer,text), public.team_tournament_update_matchup_schedule(text,jsonb,integer,text), public.team_tournament_apply_schedule_batch(text,jsonb,integer,text), public.team_tournament_publish_schedule(text,jsonb,integer,text), public.team_tournament_lock_schedule(text,jsonb,integer,text)",
+          "roles": "anon, public"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/p1/PHASE_P1_3_GET_SETUP_V7_GROUPS.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_get_setup"
+        {
+          "name": "team_tournament_get_setup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_viewer_team_id text null",
+            "p_schema_version integer null",
+            "p_diagnostic boolean false"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public, extensions as $ttsetup$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_get_setup(text, text, integer, boolean)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/p1/PHASE_P1_3_SAVE_DRAFT_RPC.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
-      "functions": [
-        "team_tournament_save_draft"
+      "columns": [
+        {
+          "table": "team_tournament_setup_snapshots",
+          "name": "constraint",
+          "type": "team_tournament_setup_snapshots_command_name_chk",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        }
       ],
-      "policies": []
+      "constraints": [
+        {
+          "table": "team_tournament_setup_snapshots",
+          "definition": "drop constraint if exists team_tournament_setup_snapshots_command_name_chk;"
+        }
+      ],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
+      "functions": [
+        {
+          "name": "team_tournament_save_draft",
+          "parameters": [
+            "p_tournament_id text",
+            "p_envelope jsonb",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_prepare json"
+        }
+      ],
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_save_draft(text, jsonb, integer, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_save_draft(text, jsonb, integer, text)",
+          "roles": "public, anon"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt5/TT5-B_BRIDGE_SCHEMA.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [
         "team_sub_match_referee_links"
       ],
+      "columns": [
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "team_tournament_id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "",
+          "constraints": "references public.team_tournaments(id)"
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "matchup_id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "",
+          "constraints": "references public.team_tournament_matchups(id)"
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "external_matchup_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "sub_match_id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "",
+          "constraints": "references public.team_tournament_sub_matches(id)"
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "external_sub_match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "referee_match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "referee_assignment_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.referee_assignments(id)"
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'provisioned'",
+          "constraints": "check (status in ( 'pending', 'provisioned', 'assigned', 'active', 'finalized', 'sync_error', 'revoked', 'reprovision_required' ))"
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "provision_version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": "check (provision_version >= 1)"
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "provisioned_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "linked_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "locked_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "last_result_revision_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "last_outbox_event_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "snapshot",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "revoke_reason",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "revoked_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "revoked_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references auth.users(id)"
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references auth.users(id)"
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": "check (version >= 1)"
+        }
+      ],
+      "constraints": [
+        {
+          "table": "team_sub_match_referee_links",
+          "definition": "unique (sub_match_id)"
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "definition": "unique (referee_match_id)"
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "definition": "unique (tenant_id, external_sub_match_id)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_tt5b_referee_links_tournament",
+          "table": "team_sub_match_referee_links",
+          "definition": "create index if not exists idx_tt5b_referee_links_tournament on public.team_sub_match_referee_links (tenant_id, tournament_id, status);"
+        },
+        {
+          "name": "idx_tt5b_referee_links_matchup",
+          "table": "team_sub_match_referee_links",
+          "definition": "create index if not exists idx_tt5b_referee_links_matchup on public.team_sub_match_referee_links (matchup_id, status);"
+        }
+      ],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_referee_link_blocks_legacy",
-        "team_tournament_sub_match_is_dreambreaker",
-        "team_tournament_get_active_referee_link"
+        {
+          "name": "team_tournament_referee_link_blocks_legacy",
+          "parameters": [
+            "p_status text"
+          ],
+          "returns": "boolean",
+          "security": "invoker",
+          "searchPath": "public as $$ select coalesce(p_status, '') in ( 'pending', 'provisioned', 'assigned', 'active', 'finalized', 'sync_error', 'reprovision_required' )"
+        },
+        {
+          "name": "team_tournament_sub_match_is_dreambreaker",
+          "parameters": [
+            "p_sub_match public.team_tournament_sub_matches",
+            "p_matchup public.team_tournament_matchups"
+          ],
+          "returns": "boolean",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_discipline record"
+        },
+        {
+          "name": "team_tournament_get_active_referee_link",
+          "parameters": [
+            "p_sub_match_id uuid"
+          ],
+          "returns": "public.team_sub_match_referee_links",
+          "security": "invoker",
+          "searchPath": "public as $$ select l.* from public.team_sub_match_referee_links l where l.sub_match_id = p_sub_match_id and l.status not in ('revoked') limit 1"
+        }
+      ],
+      "procedures": [],
+      "triggers": [],
+      "rls": [
+        {
+          "table": "team_sub_match_referee_links",
+          "enabled": true,
+          "forced": false
+        }
       ],
       "policies": [
-        "tt5b_referee_links_manage",
-        "tt5b_referee_links_referee_select"
-      ]
+        {
+          "name": "tt5b_referee_links_manage",
+          "table": "team_sub_match_referee_links",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "public.is_super_admin() or ( tenant_id = (select venue_id from public.profiles where id = auth.uid()) and public.team_tournament_can_manage() )",
+          "withCheck": "public.is_super_admin() or ( tenant_id = (select venue_id from public.profiles where id = auth.uid()) and public.team_tournament_can_manage() )"
+        },
+        {
+          "name": "tt5b_referee_links_referee_select",
+          "table": "team_sub_match_referee_links",
+          "command": "select",
+          "roles": "public",
+          "using": "",
+          "withCheck": ""
+        }
+      ],
+      "grants": [
+        {
+          "privileges": "select, insert, update",
+          "object": "public.team_sub_match_referee_links",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "all",
+          "object": "public.team_sub_match_referee_links",
+          "roles": "service_role"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "public.team_sub_match_referee_links",
+          "roles": "anon"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt5/TT5-B_PROVISION_RPC.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_build_v5_state_shell",
-        "team_tournament_provision_eligibility",
-        "team_tournament_provision_referee_match",
-        "team_tournament_revoke_referee_link"
+        {
+          "name": "team_tournament_build_v5_state_shell",
+          "parameters": [
+            "p_match_id text",
+            "p_team_a_id text",
+            "p_team_b_id text",
+            "p_players_a text[]",
+            "p_players_b text[]",
+            "p_match_type text",
+            "p_scoring_format jsonb '{}'::jsonb"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_points int := coalesce((p_scoring_format->>'pointstowin')::int, 11)"
+        },
+        {
+          "name": "team_tournament_provision_eligibility",
+          "parameters": [
+            "p_header public.team_tournaments",
+            "p_matchup public.team_tournament_matchups",
+            "p_sub_match public.team_tournament_sub_matches",
+            "p_referee_assignment_id uuid null"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_lineup_a public.team_tournament_lineups"
+        },
+        {
+          "name": "team_tournament_provision_referee_match",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_sub_match_id text",
+            "p_referee_assignment_id uuid",
+            "p_expected_sub_match_version integer null",
+            "p_idempotency_key text null",
+            "p_reason text 'tt5b_provision'",
+            "p_source text 'btc'"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_revoke_referee_link",
+          "parameters": [
+            "p_tournament_id text",
+            "p_sub_match_id text",
+            "p_reason text",
+            "p_expected_link_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_provision_referee_match( text, text, text, uuid, integer, text, text, text )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_revoke_referee_link( text, text, text, integer, text )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_provision_eligibility( public.team_tournaments, public.team_tournament_matchups, public.team_tournament_sub_matches, uuid )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_build_v5_state_shell( text, text, text, text[], text[], text, jsonb )",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_provision_referee_match( text, text, text, uuid, integer, text, text, text )",
+          "roles": "public"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_revoke_referee_link( text, text, text, integer, text )",
+          "roles": "public"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt5/TT5-B_GET_SETUP_PATCH.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_get_setup"
+        {
+          "name": "team_tournament_get_setup",
+          "parameters": [
+            "p_tournament_id text",
+            "p_viewer_team_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_get_setup(text, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt5/TT5-B_LEGACY_LOCK_GUARD.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_sub_match_score_ops",
-        "team_tournament_sub_match_referee_link_ops",
-        "team_tournament_save_sub_match_draft",
-        "team_tournament_confirm_sub_match"
+        {
+          "name": "team_tournament_sub_match_score_ops",
+          "parameters": [
+            "p_header public.team_tournaments",
+            "p_matchup public.team_tournament_matchups",
+            "p_sub_match public.team_tournament_sub_matches"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_link public.team_sub_match_referee_links"
+        },
+        {
+          "name": "team_tournament_sub_match_referee_link_ops",
+          "parameters": [
+            "p_header public.team_tournaments",
+            "p_matchup public.team_tournament_matchups",
+            "p_sub_match public.team_tournament_sub_matches"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_link public.team_sub_match_referee_links"
+        },
+        {
+          "name": "team_tournament_save_sub_match_draft",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_sub_match_id text",
+            "p_score jsonb"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_confirm_sub_match",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_sub_match_id text",
+            "p_score jsonb",
+            "p_winner_team_id text null",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_sub_match_score_ops( public.team_tournaments, public.team_tournament_matchups, public.team_tournament_sub_matches )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_sub_match_referee_link_ops( public.team_tournaments, public.team_tournament_matchups, public.team_tournament_sub_matches )",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt5/TT5-C_REPROVISION_STATE.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_referee_snapshot_stale",
-        "team_tournament_sub_match_referee_link_ops",
-        "team_tournament_resync_referee_link",
-        "team_tournament_sub_match_score_ops"
+        {
+          "name": "team_tournament_referee_snapshot_stale",
+          "parameters": [
+            "p_link public.team_sub_match_referee_links",
+            "p_matchup public.team_tournament_matchups"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_lineup_a public.team_tournament_lineups"
+        },
+        {
+          "name": "team_tournament_sub_match_referee_link_ops",
+          "parameters": [
+            "p_header public.team_tournaments",
+            "p_matchup public.team_tournament_matchups",
+            "p_sub_match public.team_tournament_sub_matches"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_link public.team_sub_match_referee_links"
+        },
+        {
+          "name": "team_tournament_resync_referee_link",
+          "parameters": [
+            "p_tournament_id text",
+            "p_sub_match_id text",
+            "p_expected_link_version integer null",
+            "p_reason text 'tt5c_resync'"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_sub_match_score_ops",
+          "parameters": [
+            "p_header public.team_tournaments",
+            "p_matchup public.team_tournament_matchups",
+            "p_sub_match public.team_tournament_sub_matches"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_link public.team_sub_match_referee_links"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_resync_referee_link(text, text, integer, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_referee_snapshot_stale( public.team_sub_match_referee_links, public.team_tournament_matchups )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_sub_match_referee_link_ops( public.team_tournaments, public.team_tournament_matchups, public.team_tournament_sub_matches )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_sub_match_score_ops( public.team_tournaments, public.team_tournament_matchups, public.team_tournament_sub_matches )",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt5/TT5-C_RESULT_PROPAGATION.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_map_referee_v5_result",
-        "team_tournament_apply_referee_v5_result",
-        "team_tournament_consume_referee_v5_outbox",
-        "team_tournament_drain_referee_v5_outbox"
+        {
+          "name": "team_tournament_map_referee_v5_result",
+          "parameters": [
+            "p_revision public.match_result_revisions",
+            "p_matchup public.team_tournament_matchups"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_score jsonb"
+        },
+        {
+          "name": "team_tournament_apply_referee_v5_result",
+          "parameters": [
+            "p_outbox public.match_integration_outbox",
+            "p_revision public.match_result_revisions",
+            "p_link public.team_sub_match_referee_links",
+            "p_matchup public.team_tournament_matchups",
+            "p_sub_match public.team_tournament_sub_matches",
+            "p_header public.team_tournaments",
+            "p_payload_hash text",
+            "p_correlation_id text null"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_mapped jsonb"
+        },
+        {
+          "name": "team_tournament_consume_referee_v5_outbox",
+          "parameters": [
+            "p_outbox_id uuid",
+            "p_correlation_id text null"
+          ],
+          "returns": "jsonb",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_outbox public.match_integration_outbox"
+        },
+        {
+          "name": "team_tournament_drain_referee_v5_outbox",
+          "parameters": [
+            "p_limit integer 10"
+          ],
+          "returns": "jsonb",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_row record"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_consume_referee_v5_outbox(uuid, text)",
+          "roles": "service_role"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_drain_referee_v5_outbox(integer)",
+          "roles": "service_role"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_map_referee_v5_result( public.match_result_revisions, public.team_tournament_matchups )",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_consume_referee_v5_outbox(uuid, text)",
+          "roles": "public, anon, authenticated"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_drain_referee_v5_outbox(integer)",
+          "roles": "public, anon, authenticated"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt5/TT5-C_RESULT_OUTBOX_CONSUMER.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [
         "team_tournament_referee_event_inbox"
       ],
+      "columns": [
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "outbox_event_id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "",
+          "constraints": "unique"
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "event_type",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "matchup_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.team_tournament_matchups(id)"
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "sub_match_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.team_tournament_sub_matches(id)"
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "external_sub_match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "referee_match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "result_revision_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.match_result_revisions(id)"
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "result_version",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "payload_hash",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "payload",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "source",
+          "type": "text",
+          "nullable": false,
+          "default": "'referee_v5'",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "correlation_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'processed'",
+          "constraints": "check (status in ('processed', 'failed', 'skipped', 'payload_mismatch'))"
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "error_code",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "processed_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        }
+      ],
+      "constraints": [],
+      "indexes": [
+        {
+          "name": "idx_tt5c_referee_inbox_tournament",
+          "table": "team_tournament_referee_event_inbox",
+          "definition": "create index if not exists idx_tt5c_referee_inbox_tournament on public.team_tournament_referee_event_inbox (tenant_id, tournament_id, external_sub_match_id);"
+        }
+      ],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_referee_event_payload_hash",
-        "team_tournament_referee_normalize_event_type",
-        "team_tournament_referee_outbox_is_consumable"
+        {
+          "name": "team_tournament_referee_event_payload_hash",
+          "parameters": [
+            "p_payload jsonb"
+          ],
+          "returns": "text",
+          "security": "invoker",
+          "searchPath": "public as $$ select md5(coalesce(p_payload::text, '{}'))"
+        },
+        {
+          "name": "team_tournament_referee_normalize_event_type",
+          "parameters": [
+            "p_event_type text",
+            "p_revision_status text null"
+          ],
+          "returns": "text",
+          "security": "invoker",
+          "searchPath": "public as $$ select case when coalesce(p_revision_status, '') in ('cancelled', 'void') then 'referee_match_reopened' when coalesce(p_event_type, '') = 'standings_recalc_requested' and coalesce(p_revision_status, '') in ('overridden', 'overridden') then 'referee_result_revised' when coalesce(p_event_type, '') = 'standings_recalc_requested' then 'referee_match_finalized' else coalesce(p_event_type, 'unknown') end"
+        },
+        {
+          "name": "team_tournament_referee_outbox_is_consumable",
+          "parameters": [
+            "p_event_type text"
+          ],
+          "returns": "boolean",
+          "security": "invoker",
+          "searchPath": "public as $$ select coalesce(p_event_type, '') in ('standings_recalc_requested')"
+        }
+      ],
+      "procedures": [],
+      "triggers": [],
+      "rls": [
+        {
+          "table": "team_tournament_referee_event_inbox",
+          "enabled": true,
+          "forced": false
+        }
       ],
       "policies": [
-        "tt5c_referee_inbox_manage"
-      ]
+        {
+          "name": "tt5c_referee_inbox_manage",
+          "table": "team_tournament_referee_event_inbox",
+          "command": "select",
+          "roles": "authenticated",
+          "using": "",
+          "withCheck": ""
+        }
+      ],
+      "grants": [
+        {
+          "privileges": "select",
+          "object": "public.team_tournament_referee_event_inbox",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "all",
+          "object": "public.team_tournament_referee_event_inbox",
+          "roles": "service_role"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "public.team_tournament_referee_event_inbox",
+          "roles": "anon"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt5/TT5-C_STANDINGS_RECOMPUTE.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_referee_v5_recompute_after_result"
+        {
+          "name": "team_tournament_referee_v5_recompute_after_result",
+          "parameters": [
+            "p_team_tournament_id uuid",
+            "p_matchup_id uuid"
+          ],
+          "returns": "jsonb",
+          "security": "invoker",
+          "searchPath": "public as $$ declare v_matchup_result jsonb"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_referee_v5_recompute_after_result(uuid, uuid)",
+          "roles": "service_role"
+        }
+      ],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
-      "functions": [
-        "referee_v5_assignment_effective_status",
-        "referee_v5_mark_assignment_expired_if_needed",
-        "team_tournament_create_referee_assignment",
-        "team_tournament_revoke_referee_assignment",
-        "team_tournament_list_referee_assignments"
+      "columns": [
+        {
+          "table": "referee_assignments",
+          "name": "external_matchup_id",
+          "type": "text,",
+          "nullable": false,
+          "default": "1;",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "constraint",
+          "type": "referee_assignments_status_check",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        }
       ],
-      "policies": []
+      "constraints": [
+        {
+          "table": "referee_assignments",
+          "definition": "drop constraint if exists referee_assignments_status_check;"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "referee_assignments_sub_match_idx",
+          "table": "referee_assignments",
+          "definition": "create index if not exists referee_assignments_sub_match_idx on public.referee_assignments (sub_match_id, status) where sub_match_id is not null;"
+        }
+      ],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
+      "functions": [
+        {
+          "name": "referee_v5_assignment_effective_status",
+          "parameters": [
+            "p_status text",
+            "p_expires_at timestamptz",
+            "p_revoked_at timestamptz"
+          ],
+          "returns": "text",
+          "security": "invoker",
+          "searchPath": ""
+        },
+        {
+          "name": "referee_v5_mark_assignment_expired_if_needed",
+          "parameters": [
+            "p_assignment_id uuid"
+          ],
+          "returns": "public.referee_assignments",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_row public.referee_assignments"
+        },
+        {
+          "name": "team_tournament_create_referee_assignment",
+          "parameters": [
+            "p_tournament_id text",
+            "p_matchup_id text",
+            "p_sub_match_id text",
+            "p_referee_user_id uuid",
+            "p_expires_at timestamptz null",
+            "p_activate boolean true",
+            "p_idempotency_key text null",
+            "p_reason text 'tt5d_assign'"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_revoke_referee_assignment",
+          "parameters": [
+            "p_tournament_id text",
+            "p_assignment_id uuid",
+            "p_expected_version integer",
+            "p_reason text",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_list_referee_assignments",
+          "parameters": [
+            "p_tournament_id text",
+            "p_sub_match_id text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
+      ],
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+          "roles": "authenticated, service_role"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+          "roles": "authenticated, service_role"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_create_referee_assignment( text, text, text, uuid, timestamptz, boolean, text, text )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_revoke_referee_assignment( text, uuid, integer, text, text )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_list_referee_assignments(text, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+          "roles": "public"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+          "roles": "public, anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_create_referee_assignment( text, text, text, uuid, timestamptz, boolean, text, text )",
+          "roles": "public, anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_revoke_referee_assignment( text, uuid, integer, text, text )",
+          "roles": "public, anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_list_referee_assignments(text, text)",
+          "roles": "public, anon"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [
         "team_tournament_referee_correction_requests"
       ],
+      "columns": [
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "team_tournament_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.team_tournaments"
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "matchup_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.team_tournament_matchups"
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "sub_match_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.team_tournament_sub_matches"
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "external_sub_match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "result_revision_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.match_result_revisions"
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "proposed_score",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "proposed_winner",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "reason",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "requested_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "requested_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'pending'",
+          "constraints": "check (status in ('pending', 'approved', 'rejected', 'cancelled'))"
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "reviewed_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "reviewed_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "review_reason",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "request_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "idempotency_key",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "assignment_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.referee_assignments"
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "new_revision_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.match_result_revisions"
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        }
+      ],
+      "constraints": [
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "definition": "unique (tenant_id, tournament_id, request_id)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "tt5d_correction_pending_idx",
+          "table": "team_tournament_referee_correction_requests",
+          "definition": "create index if not exists tt5d_correction_pending_idx on public.team_tournament_referee_correction_requests (tenant_id, tournament_id, status) where status = 'pending';"
+        }
+      ],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_request_referee_correction",
-        "team_tournament_review_referee_correction",
-        "team_tournament_list_referee_corrections"
+        {
+          "name": "team_tournament_request_referee_correction",
+          "parameters": [
+            "p_tournament_id text",
+            "p_match_id text",
+            "p_result_revision_id uuid",
+            "p_proposed_score jsonb",
+            "p_proposed_winner text",
+            "p_reason text",
+            "p_request_id text",
+            "p_expected_revision_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_review_referee_correction",
+          "parameters": [
+            "p_tournament_id text",
+            "p_correction_request_id uuid",
+            "p_decision text",
+            "p_review_reason text null",
+            "p_expected_version integer null",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        },
+        {
+          "name": "team_tournament_list_referee_corrections",
+          "parameters": [
+            "p_tournament_id text",
+            "p_status text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
+      ],
+      "procedures": [],
+      "triggers": [],
+      "rls": [
+        {
+          "table": "team_tournament_referee_correction_requests",
+          "enabled": true,
+          "forced": false
+        }
       ],
       "policies": [
-        "tt5d_correction_referee_select",
-        "tt5d_correction_no_client_write"
-      ]
+        {
+          "name": "tt5d_correction_referee_select",
+          "table": "team_tournament_referee_correction_requests",
+          "command": "select",
+          "roles": "authenticated",
+          "using": "",
+          "withCheck": ""
+        },
+        {
+          "name": "tt5d_correction_no_client_write",
+          "table": "team_tournament_referee_correction_requests",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "false",
+          "withCheck": "false"
+        }
+      ],
+      "grants": [
+        {
+          "privileges": "select",
+          "object": "public.team_tournament_referee_correction_requests",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "all",
+          "object": "public.team_tournament_referee_correction_requests",
+          "roles": "service_role"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_request_referee_correction( text, text, uuid, jsonb, text, text, text, integer, text )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_review_referee_correction( text, uuid, text, text, integer, text )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_list_referee_corrections(text, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "public.team_tournament_referee_correction_requests",
+          "roles": "anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_request_referee_correction( text, text, uuid, jsonb, text, text, text, integer, text )",
+          "roles": "public, anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_review_referee_correction( text, uuid, text, text, integer, text )",
+          "roles": "public, anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_list_referee_corrections(text, text)",
+          "roles": "public, anon"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "referee_v5_apply_admin_result_revision",
-        "team_tournament_reopen_referee_match"
+        {
+          "name": "referee_v5_apply_admin_result_revision",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_match_id text",
+            "p_actor_id uuid",
+            "p_revision_status text",
+            "p_proposed_score jsonb",
+            "p_proposed_winner text",
+            "p_reason text",
+            "p_idempotency_key text",
+            "p_expected_result_revision_id uuid null"
+          ],
+          "returns": "jsonb",
+          "security": "definer",
+          "searchPath": "pg_catalog, public as $$ declare v_match_state_id text"
+        },
+        {
+          "name": "team_tournament_reopen_referee_match",
+          "parameters": [
+            "p_tournament_id text",
+            "p_sub_match_id text",
+            "p_reason text",
+            "p_idempotency_key text null"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.referee_v5_apply_admin_result_revision( text, text, text, uuid, text, jsonb, text, text, text, uuid )",
+          "roles": "service_role"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_reopen_referee_match(text, text, text, text)",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_apply_admin_result_revision( text, text, text, uuid, text, jsonb, text, text, text, uuid )",
+          "roles": "public, anon, authenticated"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_reopen_referee_match(text, text, text, text)",
+          "roles": "public, anon"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "referee_v5_current_user_has_assignment",
-        "referee_v5_assert_assignment_write",
-        "team_tournament_referee_match_access_ops"
+        {
+          "name": "referee_v5_current_user_has_assignment",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_match_id text",
+            "p_roles text[] array['referee'",
+            "'scorekeeper']"
+          ],
+          "returns": "boolean",
+          "security": "definer",
+          "searchPath": "public as $$ select exists ( select 1 from public.referee_assignments ra where ra.tenant_id = p_tenant_id and ra.tournament_id = p_tournament_id and ra.match_id = p_match_id and ra.referee_user_id = auth.uid() and ra.role = any (p_roles) and public.referee_v5_assignment_effective_status(ra.status, ra.expires_at, ra.revoked_at) = 'active' )"
+        },
+        {
+          "name": "referee_v5_assert_assignment_write",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_match_id text",
+            "p_actor_id uuid",
+            "p_allow_read_only boolean false"
+          ],
+          "returns": "jsonb",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_row public.referee_assignments"
+        },
+        {
+          "name": "team_tournament_referee_match_access_ops",
+          "parameters": [
+            "p_tournament_id text",
+            "p_match_id text"
+          ],
+          "returns": "json",
+          "security": "definer",
+          "searchPath": "public as $$ declare v_header public.team_tournaments"
+        }
       ],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.referee_v5_assert_assignment_write( text, text, text, uuid, boolean )",
+          "roles": "authenticated, service_role"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_referee_match_access_ops(text, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_assert_assignment_write( text, text, text, uuid, boolean )",
+          "roles": "public, anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_referee_match_access_ops(text, text)",
+          "roles": "public, anon"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+          "roles": "public"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt6/TT6-B_REALTIME_CORE.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [],
-      "policies": []
+      "procedures": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [],
+      "revokes": [],
+      "storageBuckets": [],
+      "unclassified": []
     },
     {
       "path": "docs/v5/team-tournament/tt6/TT6-B_REALTIME_SECURITY.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
       "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
       "functions": [
-        "team_tournament_tenant_allowed",
-        "team_tournament_is_matchup_participant",
-        "team_tournament_is_sub_match_participant"
+        {
+          "name": "team_tournament_tenant_allowed",
+          "parameters": [
+            "p_tenant_id text"
+          ],
+          "returns": "boolean",
+          "security": "definer",
+          "searchPath": "public as $$ select public.is_super_admin() or p_tenant_id = (select venue_id from public.profiles where id = auth.uid())"
+        },
+        {
+          "name": "team_tournament_is_matchup_participant",
+          "parameters": [
+            "p_matchup_id uuid"
+          ],
+          "returns": "boolean",
+          "security": "definer",
+          "searchPath": "public as $$ select exists ( select 1 from public.team_tournament_matchups m where m.id = p_matchup_id and ( public.team_tournament_can_manage() or ( public.team_tournament_user_player_id() is not null and ( public.team_tournament_is_captain( m.team_tournament_id, m.team_a_id, public.team_tournament_user_player_id() ) or public.team_tournament_is_captain( m.team_tournament_id, m.team_b_id, public.team_tournament_user_player_id() ) ) ) ) )"
+        },
+        {
+          "name": "team_tournament_is_sub_match_participant",
+          "parameters": [
+            "p_sub_match_id uuid"
+          ],
+          "returns": "boolean",
+          "security": "definer",
+          "searchPath": "public as $$ select public.team_tournament_is_matchup_participant( (select matchup_id from public.team_tournament_sub_matches where id = p_sub_match_id) )"
+        }
+      ],
+      "procedures": [],
+      "triggers": [],
+      "rls": [
+        {
+          "table": "team_tournament_matchups",
+          "enabled": true,
+          "forced": false
+        },
+        {
+          "table": "team_tournament_sub_matches",
+          "enabled": true,
+          "forced": false
+        },
+        {
+          "table": "team_sub_match_referee_links",
+          "enabled": true,
+          "forced": false
+        }
       ],
       "policies": [
-        "tt6_matchups_realtime_select",
-        "tt6_sub_matches_realtime_select",
-        "tt6_bridge_realtime_select"
-      ]
+        {
+          "name": "tt6_matchups_realtime_select",
+          "table": "team_tournament_matchups",
+          "command": "select",
+          "roles": "authenticated",
+          "using": "",
+          "withCheck": ""
+        },
+        {
+          "name": "tt6_sub_matches_realtime_select",
+          "table": "team_tournament_sub_matches",
+          "command": "select",
+          "roles": "authenticated",
+          "using": "",
+          "withCheck": ""
+        },
+        {
+          "name": "tt6_bridge_realtime_select",
+          "table": "team_sub_match_referee_links",
+          "command": "select",
+          "roles": "authenticated",
+          "using": "",
+          "withCheck": ""
+        }
+      ],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_tenant_allowed(text)",
+          "roles": "authenticated, service_role"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_is_matchup_participant(uuid)",
+          "roles": "authenticated, service_role"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.team_tournament_is_sub_match_participant(uuid)",
+          "roles": "authenticated, service_role"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_tenant_allowed(text)",
+          "roles": "public"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_is_matchup_participant(uuid)",
+          "roles": "public"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.team_tournament_is_sub_match_participant(uuid)",
+          "roles": "public"
+        }
+      ],
+      "storageBuckets": [],
+      "unclassified": []
     }
   ],
   "runtimeConsumers": [
@@ -585,5 +5098,5 @@
     "docs/v5/team-tournament/tt5/TT5-D_IMPLEMENTATION.md",
     "src/features/platform-hard-cutover/runtimeAuthorityMatrix.js#team_tournament"
   ],
-  "verdict": "TRACKED_CHAIN_PROMOTED_WITH_OBJECT_PARITY"
+  "verdict": "TRACKED_CHAIN_PROMOTED_WITH_INDEPENDENT_CONSUMER_PARITY"
 }
