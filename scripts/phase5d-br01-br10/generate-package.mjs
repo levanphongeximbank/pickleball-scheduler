@@ -268,6 +268,8 @@ const m10 = [
   "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql",
   "docs/v5/referee-v5/PHASE_V5D_REFEREE_PERSISTENCE.sql",
   "docs/v5/referee-v5/PHASE_V5D1_REFEREE_HARDENING.sql",
+  "docs/v5/referee-v5/PHASE_V5D32_IDEMPOTENCY_UNDO.sql",
+  "docs/v5/referee-v5/PHASE_V5D4_ATOMIC_ROLLBACK.sql",
 ];
 prev = "M8.40";
 m10.forEach((p, i) => {

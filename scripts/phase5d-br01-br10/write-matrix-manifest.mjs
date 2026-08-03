@@ -31,17 +31,7 @@ const files = [
   ...walk(path.join(ROOT, "scripts/phase5d-br01-br10")),
   "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.sql",
 ];
-const uniq = [...new Set(files)].filter((f) => !f.includes("_ledger_snapshot")).sort();
-
-const manifest = {
-  marker: "PHASE5D_ARTIFACT_HASH_MANIFEST_V1",
-  note: "Implementation-commit artifact hashes; evidence commit rebinds implementationCommitSha after commit",
-  artifacts: uniq.map(sha),
-};
-fs.writeFileSync(
-  path.join(ROOT, `${PKG}/15_ARTIFACT_HASH_MANIFEST.json`),
-  JSON.stringify(manifest, null, 2) + "\n"
-);
+const uniq = [...new Set(files)].filter((f) => !f.includes("_ledger_snapshot") && !/[\\/]1[45]_(?:LOCAL_VERIFICATION_REPORT|ARTIFACT_HASH_MANIFEST)\.json$/.test(f)).sort();
 
 const ledger = JSON.parse(
   fs.readFileSync(path.join(ROOT, `${PKG}/02_PROPOSED_EXECUTABLE_BLANK_DB_LEDGER.json`), "utf8")
@@ -114,6 +104,17 @@ const matrix = {
 fs.writeFileSync(
   path.join(ROOT, `${PKG}/13_BR01_BR10_CLOSURE_MATRIX.json`),
   JSON.stringify(matrix, null, 2) + "\n"
+);
+
+const manifest = {
+  marker: "PHASE5D_ARTIFACT_HASH_MANIFEST_V2",
+  scope: "Immutable implementation artifacts only; excludes mutable verification report 14 and self-referential manifest 15",
+  excluded: [`${PKG}/14_LOCAL_VERIFICATION_REPORT.json`, `${PKG}/15_ARTIFACT_HASH_MANIFEST.json`],
+  artifacts: uniq.map(sha),
+};
+fs.writeFileSync(
+  path.join(ROOT, `${PKG}/15_ARTIFACT_HASH_MANIFEST.json`),
+  JSON.stringify(manifest, null, 2) + "\n"
 );
 
 console.log(
