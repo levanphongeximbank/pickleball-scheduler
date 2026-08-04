@@ -6,7 +6,7 @@
 
 **Verdict:** `PHASE6_READINESS_BLOCKED`
 
-**Readiness:** **36%** (9.0 weighted-ready points / 25 controls; closed = 1, accepted observation = 0.5, open/unknown = 0)
+**Readiness:** **38%** (10.0 weighted-ready points / 26 controls; closed = 1, accepted observation = 0.5, open/unknown = 0; rounded down)
 
 **Production GO:** `NO`
 
@@ -19,9 +19,10 @@ PHASE6_PRODUCTION_ACCESS=0
 PHASE6_PRODUCTION_MUTATIONS=0
 PRODUCTION_GO=NO
 DATABASE_LIVE_RECHECK=READ_ONLY_PARTIAL
+AUTHORIZED_STAGING_MIGRATIONS_ALREADY_CERTIFIED=2
 ```
 
-No SQL, migration, deploy, environment change, Staging mutation, Production access, reset, rebase, amend, clean, force-push, or merge was performed.
+This reconciliation performed no SQL, migration, deploy, environment change, Staging mutation, or Production access. It incorporates two previously authorized and certified Staging migrations from PRs #358–#360; no Production claim is inferred from them.
 
 ## Repository baseline
 
@@ -30,8 +31,8 @@ No SQL, migration, deploy, environment change, Staging mutation, Production acce
 | Fetched baseline | `git fetch origin --prune` completed |
 | Original worktree branch | `fix/phase5d-br01-br10-local-closure` |
 | Original worktree HEAD | `e21ead54efeb642f963c3421dedc9c283d704037` |
-| `origin/main` | `15f21e15a7127748e093cdc0494f2ca00f3dce42` |
-| Phase 5 merge ancestry | Merge commit `15f21e15...` is an ancestor of `origin/main` (it is the current tip) |
+| `origin/main` | `9360fcc9` (PR #360 merged) |
+| Phase 5 merge ancestry | Merge commit `15f21e15...` remains an ancestor of current `origin/main@9360fcc9` |
 | Original worktree status | Untracked `.codex/` plus two Phase 5 post-apply certification files; no modified/untracked application source file |
 | Original branch history | Six Phase 5D commits ahead of its historical base; not used for Phase 6 integration |
 | Stash inventory | Empty |
@@ -49,20 +50,23 @@ The two untracked certification files in the original worktree are also tracked 
 - Phase AI V5.2 Staging post-apply evidence is merged and records migration `20260804011017`, expected Phase 5 objects, RLS/policies, Realtime publication, and zero smoke residue.
 - Foundation locks, no-new lint gate, focused regression tests, full unit suite, build, and package/lock integrity pass on fresh `origin/main`.
 - Production access and all database/environment mutations in this audit are zero.
+- Staging Security Invoker remediation is merged and certified: both target views use `security_invoker=true`; authenticated Owner A/B positive and negative isolation passes.
+- Staging `club_data_v3` legacy anon SELECT/INSERT/UPDATE policies are removed by migration `20260804041304`; anon read returns 0, anon INSERT is denied by RLS, anon UPDATE affects 0 rows, and fixture cleanup is 0/0.
 
 ### Open blockers and unknown gates
 
 1. **CRITICAL — Production authorization:** `productionExecutionGo=false`; no Owner Production GO may be inferred or issued.
-2. **CRITICAL — Backup/recovery:** usable Production backup, PITR state, restore target, and restore rehearsal remain unproven.
+2. **CRITICAL — Backup/recovery completion:** Production daily database backups and a restore-to-new-project drill are evidenced; Owner accepted max RPO 24 hours without PITR. Storage objects are excluded, Storage backup remains open, and measured/accepted RTO is not recorded.
 3. **HIGH — M9/TT5D provenance:** mainline Phase 5C records conflicting pre-existing TT5D topology and keeps M9 non-executable. The later BR01–BR10 closure package is not merged into `origin/main`.
 4. **HIGH — Execution package/runbook:** the canonical M0–M11 execution runbook remains unaccepted and Production SQL ordering/applicability is not execution-approved.
 5. **HIGH — Production environment/deployment:** Production environment variables, flag values, Realtime publication, monitoring/logging, canary plan, and deployment gates lack current Owner-certified evidence.
-6. **HIGH — Production security acceptance:** Production RLS/RBAC, anonymous/public write exposure, tenant isolation, privileged RPC paths, and eight-role operator acceptance are not currently certified for this cutover.
-7. **CRITICAL — Advisor findings:** current Staging read-only advisors report 516 security findings, including 2 ERROR security-definer views and 6 ERROR public tables without RLS, plus 504 performance findings. These require object-level triage before execution readiness.
+6. **HIGH — Production security acceptance:** Staging target remediation is certified, but Production RLS/RBAC, anonymous/public write exposure, tenant isolation, privileged RPC paths, and eight-role operator acceptance are not currently certified for this cutover.
+7. **CRITICAL — Remaining advisor findings:** the two target Security Definer View ERRORs are cleared and the observed Staging security total fell from 516 to 514. Six ERROR public tables without RLS and the remaining privileged-function/advisor inventory still require object-level triage.
 
 ### Accepted observations
 
 - Supabase Branching tool permission validation returned “Project reference is missing”; Phase 5 classified it non-blocking for the completed Staging certification.
+- Owner accepted scheduled daily Production database backups with `ACCEPTED_RPO_MAX=24_HOURS`; PITR is not required for this phase. This acceptance does not cover Storage objects or establish RTO.
 - `npm ci` reports 20 dependency vulnerabilities (5 moderate, 15 high). No package or lock change was authorized; exploitability and release disposition require Owner/security review.
 - Build succeeds with existing large-chunk and browser `node:crypto` externalization warnings.
 - Local credential-dependent Staging smoke was not run. The merged Phase 5 certificate contains equivalent read-only DB evidence; this Phase 6 audit did not fabricate a rerun.
@@ -75,25 +79,28 @@ The two untracked certification files in the original worktree are also tracked 
 
 ## Staging evidence (repository only)
 
-`DATABASE_LIVE_RECHECK=READ_ONLY_PARTIAL`. The Staging MCP target was proven before database inventory by active Edge Function entrypoint paths containing `user_fn_qyewbxjsiiyufanzcjcq`. Only purpose-built read-only inventory tools were used; no raw SQL or mutation tool was called.
+`DATABASE_LIVE_RECHECK=READ_ONLY_PARTIAL`. The original audit used purpose-built read-only inventory. Later sessions used explicit Owner-authorized Staging SQL for the two target remediations and fixture QA; those mutations are bounded by the merged certification evidence. This reconciliation itself performed no database call or mutation.
 
-Merged Phase 5 evidence for Staging project `qyewbxjsiiyufanzcjcq` records:
+Merged Phase 5 plus PRs #358–#360 evidence for Staging project `qyewbxjsiiyufanzcjcq` records:
 
-- 164 migrations are listed; the latest include `phase5d_tt5d_controlled_reconciliation` (`20260731150000`) and `phase_ai_v52_phase5` (`20260804011017`);
+- at least 166 migrations are evidenced after adding the two certified Phase 6 Staging migrations;
 - `ai_workflow_checklists` with seven expected columns, PK and tenant/tournament/item unique constraint;
 - RLS enabled, three authenticated INSERT/SELECT/UPDATE policies, valid indexes;
 - Realtime publication includes `ai_workflow_checklists`, `court_engine_active_sessions`, and `court_engine_stores`;
 - zero smoke residue across `court_engine_stores`, `ai_suggestions`, and `ai_workflow_checklists`;
 - `club_data_v3`, `ai_suggestions`, `court_engine_stores`, `court_engine_active_sessions`, `team_tournament_referee_correction_requests`, and `ai_workflow_checklists` have RLS enabled and report 0 rows;
-- no current advisor lint targets `ai_workflow_checklists`; `club_data_v3` has two always-true RLS policy WARNs, and `court_engine_stores` has performance observations;
-- current advisors total 516 security findings: 2 ERROR security-definer views, 6 ERROR public tables without RLS, 204 WARN anon-executable security-definer functions, 271 WARN authenticated-executable security-definer functions, and other INFO/WARN findings;
+- no current advisor lint targets `ai_workflow_checklists`; the two prior always-true anon policies on `club_data_v3` are removed, while `court_engine_stores` retains performance observations;
+- migration `20260804031702 / phase6_security_invoker_view_remediation_01` set `public.tenants` and `public.club_data_v3_safe` to `security_invoker=true`;
+- migration `20260804041304 / phase6_club_data_v3_anon_policy_remediation_02` removed the three legacy anon policies on `public.club_data_v3` while retaining RLS and four authenticated policies;
+- authenticated Owner A/B fixtures prove own-tenant positive reads and foreign-tenant denial through both remediated views; anon read/write negative probes pass after the second remediation; cleanup counts are zero;
+- observed advisors fell from 516 to 514 security findings after the two Security Definer View ERRORs cleared; six ERROR public tables without RLS and the remaining WARN/INFO inventory persist;
 - current performance advisors total 504 findings, including 109 multiple-permissive-policy WARNs and 2 duplicate-index WARNs.
 
-Because hard safety forbids SQL, this partial live recheck does not assert exact policy definitions, Realtime publication membership, protected auth/catalog counts, or full TT5D cutover topology. Those retain merged evidence or require a future approved capability that can prove them without raw SQL.
+The targeted certifications assert exact view/policy state and runtime behavior only for the remediated objects. Realtime publication membership, protected auth/catalog counts, full TT5D cutover topology, and the broader platform inventory retain prior evidence or require separate approved verification.
 
 ## Production readiness conclusion
 
-Repository evidence supports continued release preparation, but not Phase 6 execution and not Production GO. The mandatory backup/restore and authorization gates are CRITICAL; M9/TT5D provenance, execution runbook acceptance, current Production security/environment evidence, monitoring, and operator acceptance remain HIGH or unknown. Under the required rule that any unresolved HIGH/CRITICAL blocker yields BLOCKED, the only valid verdict is:
+Repository and Staging evidence support continued release preparation, but not Phase 6 execution and not Production GO. Database backup evidence improved, but Storage recovery/RTO and authorization remain CRITICAL; M9/TT5D provenance, execution runbook acceptance, remaining advisor ERRORs, current Production security/environment evidence, monitoring, and operator acceptance remain HIGH/CRITICAL or unknown. Under the required rule that any unresolved HIGH/CRITICAL blocker yields BLOCKED, the only valid verdict is:
 
 `PHASE6_READINESS_BLOCKED`
 
@@ -109,12 +116,16 @@ Repository evidence supports continued release preparation, but not Phase 6 exec
 | `npm run build` | PASS; PWA generated; existing warnings observed |
 | Secret scan | PASS_WITH_REVIEW: no token-format/private-key signature found; broad value-name heuristic produced expected references/fixtures and was not misreported as zero |
 | `git diff` / `git diff --cached` before evidence | Clean |
+| Security remediation contract tests | PASS; 6/6 targeted tests |
 | `package.json` blob | Matches `origin/main` (`57a291a90903f3f11c081f7e032598b94ba0c198`) |
 | `package-lock.json` blob | Matches `origin/main` (`0bc30b2dabf45d98c3bdabb583f88ce99496999f`) |
 
 ## Primary evidence sources
 
 - `docs/v5/PHASE_AI_V52_PHASE5_STAGING_POST_APPLY_CERTIFICATION.{md,json}`
+- `docs/v6/security-invoker-view-remediation-01/POST_APPLY_CERTIFICATION.{md,json}`
+- `docs/v6/security-invoker-view-remediation-01/FINAL_FIXTURE_QA_EVIDENCE.{md,json}`
+- `docs/v6/club-data-v3-anon-policy-remediation-02/POST_APPLY_CERTIFICATION.{md,json}`
 - `docs/platform-hard-cutover-01/phase-04/` and its manifests/evidence
 - `docs/platform-hard-cutover-01/phase-05-readiness/`
 - `docs/platform-hard-cutover-01/phase-05b-execution-package/`
