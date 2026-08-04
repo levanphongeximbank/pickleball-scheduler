@@ -6,6 +6,9 @@ const root = new URL("../docs/v6/staging-anon-rpc-allowlist-remediation-01/", im
 const applySql = fs.readFileSync(new URL("01_APPLY.sql", root), "utf8");
 const verifySql = fs.readFileSync(new URL("02_VERIFY.sql", root), "utf8");
 const rollbackSql = fs.readFileSync(new URL("03_ROLLBACK.sql", root), "utf8");
+const certification = JSON.parse(
+  fs.readFileSync(new URL("POST_APPLY_CERTIFICATION.json", root), "utf8"),
+);
 
 test("anonymous allowlist contains exactly seven exact overloads", () => {
   const entries = applySql.match(/'public\.[^']+'::regprocedure/g) ?? [];
@@ -30,3 +33,13 @@ test("verification is exact and rollback consumes the snapshot", () => {
   assert.match(rollbackSql, /grant execute on functions to anon/i);
 });
 
+test("post-apply evidence binds catalog and runtime outcomes", () => {
+  assert.equal(certification.migration.version, "20260804082418");
+  assert.equal(certification.catalog.anonCallableAfter, 7);
+  assert.equal(certification.catalog.pseudoPublicCallableAfter, 0);
+  assert.equal(certification.catalog.defaultAnonExecuteAfter, false);
+  assert.equal(certification.runtime.anonymousAllowlistPositive.passed, 7);
+  assert.equal(certification.runtime.anonymousPrivilegedNegative.passed, 3);
+  assert.equal(certification.runtime.crossTenantLeak, false);
+  assert.equal(certification.productionGo, false);
+});

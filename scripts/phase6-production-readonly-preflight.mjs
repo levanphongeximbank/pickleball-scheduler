@@ -48,7 +48,9 @@ if (fs.existsSync(envPath)) {
 const url = [process.env.SUPABASE_URL, process.env.VITE_SUPABASE_URL]
   .map((value) => String(value || "").replace(/\/$/, ""))
   .find((value) => value.includes(PRODUCTION_REF)) || "";
-const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "");
+const serviceKey = String(
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE || "",
+);
 const anonKey = String(process.env.VITE_SUPABASE_ANON_KEY || "");
 
 if (!url.includes(PRODUCTION_REF)) throw new Error("Production URL identity mismatch");

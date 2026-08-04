@@ -1,0 +1,134 @@
+{
+  "marker": "PHASE6_PRODUCTION_READ_ONLY_LIVE_EVIDENCE_V1",
+  "capturedAt": "2026-08-04T08:28:37.803Z",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "access": {
+    "productionAccess": 1,
+    "databaseMutations": 0,
+    "storageMutations": 0,
+    "deployments": 0
+  },
+  "authSettingsReachable": true,
+  "serviceRoleTableReads": [
+    {
+      "table": "profiles",
+      "status": 200,
+      "rowVisible": 1
+    },
+    {
+      "table": "venues",
+      "status": 200,
+      "rowVisible": 1
+    },
+    {
+      "table": "tenant_members",
+      "status": 200,
+      "rowVisible": 1
+    },
+    {
+      "table": "club_data_v3",
+      "status": 200,
+      "rowVisible": 1
+    },
+    {
+      "table": "ai_suggestions",
+      "status": 200,
+      "rowVisible": 0
+    },
+    {
+      "table": "court_engine_stores",
+      "status": 200,
+      "rowVisible": 0
+    },
+    {
+      "table": "court_engine_active_sessions",
+      "status": 200,
+      "rowVisible": 0
+    },
+    {
+      "table": "team_tournament_referee_correction_requests",
+      "status": 404,
+      "rowVisible": null
+    },
+    {
+      "table": "ai_workflow_checklists",
+      "status": 200,
+      "rowVisible": 0
+    }
+  ],
+  "anonymousNegativeReads": [
+    {
+      "table": "profiles",
+      "status": 200,
+      "rowVisible": 0
+    },
+    {
+      "table": "tenant_members",
+      "status": 200,
+      "rowVisible": 0
+    },
+    {
+      "table": "club_data_v3",
+      "status": 200,
+      "rowVisible": 0
+    },
+    {
+      "table": "ai_suggestions",
+      "status": 200,
+      "rowVisible": 0
+    },
+    {
+      "table": "court_engine_stores",
+      "status": 200,
+      "rowVisible": 0
+    },
+    {
+      "table": "court_engine_active_sessions",
+      "status": 200,
+      "rowVisible": 0
+    },
+    {
+      "table": "team_tournament_referee_correction_requests",
+      "status": 404,
+      "rowVisible": null
+    },
+    {
+      "table": "ai_workflow_checklists",
+      "status": 200,
+      "rowVisible": 0
+    }
+  ],
+  "storage": {
+    "bucketNames": [
+      "tournament-broadcast-vods",
+      "user-avatars"
+    ],
+    "inventories": [
+      {
+        "bucket": "user-avatars",
+        "status": 200,
+        "pass": true,
+        "objectCount": 2,
+        "bytes": 497236,
+        "requests": 3
+      },
+      {
+        "bucket": "tournament-broadcast-vods",
+        "status": 200,
+        "pass": true,
+        "objectCount": 0,
+        "bytes": 0,
+        "requests": 1
+      }
+    ]
+  },
+  "elapsedSeconds": 2,
+  "limitations": [
+    "PostgREST probes do not replace direct pg_catalog migration/RLS/ACL inventory",
+    "Storage inventory records aggregate counts/bytes only and does not prove restore"
+  ],
+  "pass": false,
+  "failures": [
+    "service read team_tournament_referee_correction_requests HTTP 404"
+  ]
+}

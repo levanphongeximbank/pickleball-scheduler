@@ -123,7 +123,7 @@ region = $([Environment]::GetEnvironmentVariable('PHASE6_STORAGE_DEST_REGION'))
       Invoke-RcloneJson @(
         'copy', "phase6_source:$bucket", "phase6_dest:$bucket",
         '--config', $tempConfig, '--transfers', '4', '--checkers', '8',
-        '--metadata', '--no-traverse'
+        '--size-only', '--no-traverse'
       ) | Out-Null
     }
 

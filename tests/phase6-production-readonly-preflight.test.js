@@ -24,3 +24,8 @@ test("Production preflight supports a gitignored local credential file", () => {
   assert.match(source, /PHASE6_PRODUCTION_ENV_FILE/);
   assert.doesNotMatch(source, /console\.log\([^)]*(serviceKey|anonKey|SUPABASE_SERVICE_ROLE_KEY)/);
 });
+
+test("Production preflight accepts the local service-role alias without logging it", () => {
+  assert.match(source, /SUPABASE_SERVICE_ROLE_KEY \|\| process\.env\.SUPABASE_SERVICE_ROLE/);
+  assert.doesNotMatch(source, /console\.log\([^)]*(serviceKey|SUPABASE_SERVICE_ROLE)/);
+});
