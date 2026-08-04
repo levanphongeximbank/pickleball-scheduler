@@ -1,0 +1,39 @@
+{
+  "marker": "PHASE6_DEPENDENCY_SECURITY_BASELINE_V1",
+  "capturedAt": "2026-08-04T06:50:00Z",
+  "packageJsonSha256Lf": "3D40EFE6028E1A8C001542F9F9CE2206979F6BDCD21643AC2084620A6ABDF49D",
+  "packageLockSha256Lf": "241F072B48B81F42123E26E67AD3E8A4B3E47C33B7FF7EDFCF92D81875F2E273",
+  "npmAuditBefore": {
+    "critical": 0,
+    "high": 6,
+    "total": 6
+  },
+  "npmAuditAfter": {
+    "critical": 0,
+    "high": 2,
+    "total": 2,
+    "sharedRootCause": "GHSA-qwww-vcr4-c8h2 in react-router, surfaced through react-router-dom"
+  },
+  "patchedPackages": {
+    "brace-expansion": ["2.1.4", "5.0.9"],
+    "fast-uri": ["3.1.5"],
+    "postcss": ["8.5.25"],
+    "undici": ["7.29.0"],
+    "react-router-dom": ["7.18.2"],
+    "react-router": ["7.18.2"]
+  },
+  "openObservation": {
+    "id": "PHASE6-OBS-NPM-RR-RSC-CSRF",
+    "severityReported": "HIGH",
+    "disposition": "ACCEPT_AS_NON_APPLICABLE_RUNTIME_OBSERVATION_PENDING_UPSTREAM_STABLE_FIX",
+    "reason": "The advisory targets React Router RSC Mode action processing. This repository is a Vite client SPA and registers routes with BrowserRouter; no RSC, SSR, ServerRouter, createCallServer, or server action runtime is present.",
+    "controls": [
+      "Pin react-router-dom 7.18.2 exactly",
+      "Do not enable React Router RSC/SSR/server actions before upgrading beyond the advisory range",
+      "Re-run npm audit before Production cutover and upgrade when a stable fixed release exists"
+    ],
+    "productionGoImpact": "OBSERVATION_ONLY_WHILE_RSC_REMAINS_ABSENT"
+  },
+  "productionMutation": 0,
+  "stagingMutation": 0
+}

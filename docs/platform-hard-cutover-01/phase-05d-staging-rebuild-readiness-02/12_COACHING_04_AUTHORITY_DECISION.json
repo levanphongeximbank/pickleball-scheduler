@@ -1,0 +1,18 @@
+{
+  "marker": "PHASE5D_COACHING_04_AUTHORITY_DECISION_V1",
+  "decision": "PROMOTE_TO_CANONICAL",
+  "runtimeDependencyProven": true,
+  "runtimeEvidence": [
+    "src/features/coaching/runtime/constants.js",
+    "src/features/coaching/constants/permissions.js",
+    "src/features/coaching/runtime/playerSelfScope.js"
+  ],
+  "proposalPath": "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.proposal.sql",
+  "canonicalReplacement": {
+    "path": "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.sql",
+    "sha256": "46062d071c55f55fa4521151c26d1584237831a42103b52075948f09b1be3793",
+    "bytes": 4962
+  },
+  "proposalExcludedFromExecutableLedger": true,
+  "localOnlySubstitute": false
+}

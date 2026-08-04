@@ -1,0 +1,296 @@
+{
+  "marker": "PHASE5D_EDGE_FUNCTION_CONTRACT_V1",
+  "functions": [
+    {
+      "functionName": "rating-v5-complete-assessment",
+      "sources": [
+        {
+          "path": "supabase/functions/rating-v5-complete-assessment/index.ts",
+          "sha256": "0bac8a2bc96f1a696865592291333550ab955c9679f1542c871d8ebb836bc36c",
+          "bytes": 1868
+        },
+        {
+          "path": "supabase/functions/_shared/ratingV5Server.mjs",
+          "sha256": "83bdebac1609cff7611d042ca78a18ee55f2d0c70db1fe45e8b3b2ce4f35a1ce",
+          "bytes": 95235
+        }
+      ],
+      "deploymentManifest": {
+        "runtime": "supabase-edge-functions",
+        "entrypoint": "supabase/functions/rating-v5-complete-assessment/index.ts",
+        "sharedModules": [
+          "supabase/functions/_shared/ratingV5Server.mjs"
+        ],
+        "deployCommandTemplate": "supabase functions deploy <name> --project-ref <NEW_PROJECT_REF>",
+        "secretsNotIncluded": true
+      },
+      "environmentConfigContract": {
+        "requiredNames": [
+          "RATING_V5_CORS_ORIGINS",
+          "SUPABASE_ANON_KEY",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "SUPABASE_URL"
+        ],
+        "values": "NOT_EMBEDDED",
+        "note": "Names only; no secret values in this package"
+      },
+      "sourceDerivedContract": {
+        "sources": [
+          "supabase/functions/rating-v5-complete-assessment/index.ts",
+          "src/features/pick-vn-rating-v5/server/edgeEntry.js",
+          "src/features/pick-vn-rating-v5/server/edgeHttpHelpers.js"
+        ],
+        "environment": [
+          "RATING_V5_CORS_ORIGINS",
+          "SUPABASE_ANON_KEY",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "SUPABASE_URL"
+        ],
+        "callerBearer": true,
+        "authenticatedUser": true,
+        "authenticationEnforced": true,
+        "userClientUsesAnonBearer": true,
+        "serviceClientUsesServiceKey": true,
+        "serviceRoleInternal": true,
+        "tenantAuthorization": true,
+        "tenantEnforced": true,
+        "ownershipAuthorization": true,
+        "assignmentAuthorization": null,
+        "assignmentEnforced": null,
+        "roleAuthorization": null,
+        "statusMap": [
+          {
+            "code": "UNAUTHORIZED",
+            "status": 401
+          },
+          {
+            "code": "FORBIDDEN",
+            "status": 403
+          },
+          {
+            "code": "TENANT_UNRESOLVED",
+            "status": 403
+          },
+          {
+            "code": "ASSESSMENT_NOT_FOUND",
+            "status": 404
+          },
+          {
+            "code": "ASSESSMENT_ALREADY_COMPLETED",
+            "status": 200
+          },
+          {
+            "code": "SINGLES_NOT_IMPLEMENTED",
+            "status": 422
+          },
+          {
+            "code": "METHOD_NOT_ALLOWED",
+            "status": 405
+          },
+          {
+            "code": "PERSISTENCE_FAILED",
+            "status": 500
+          },
+          {
+            "code": "EDGE_MISCONFIGURED",
+            "status": 500
+          },
+          {
+            "code": "EDGE_RUNTIME_ERROR",
+            "status": 500
+          }
+        ],
+        "statusMapperReachable": true,
+        "statusCodes": [
+          200,
+          401,
+          403,
+          404,
+          405,
+          422,
+          500
+        ],
+        "errorCodes": [
+          "ASSESSMENT_ALREADY_COMPLETED",
+          "ASSESSMENT_NOT_FOUND",
+          "EDGE_MISCONFIGURED",
+          "EDGE_RUNTIME_ERROR",
+          "FORBIDDEN",
+          "METHOD_NOT_ALLOWED",
+          "PERSISTENCE_FAILED",
+          "SINGLES_NOT_IMPLEMENTED",
+          "TENANT_UNRESOLVED",
+          "UNAUTHORIZED"
+        ]
+      },
+      "authenticationAuthorizationMatrix": {
+        "callerCredential": "Authenticated user bearer token in Authorization header",
+        "internalCredential": "SUPABASE_SERVICE_ROLE_KEY is server-only configuration and MUST NOT be supplied by clients",
+        "authorized": [
+          "authenticated caller completes own pending assessment within same tenant"
+        ],
+        "unauthorized": [
+          "missing/invalid bearer: 401 AUTH_REQUIRED",
+          "cross-user or cross-tenant assessment: 403/404 fail-closed",
+          "already completed/invalid state: 409"
+        ],
+        "failClosed": true
+      },
+      "verificationProcedure": {
+        "authorizedInvocation": "POST with authenticated user bearer; verify ownership/tenant/assignment/role and expect source-defined 2xx body",
+        "unauthorizedInvocation": "Exercise missing bearer, wrong owner/tenant, unassigned referee and insufficient-role cases; require the listed 4xx code",
+        "evidenceRequiredPostCreate": [
+          "HTTP status",
+          "response error code",
+          "no secret leakage"
+        ]
+      },
+      "postCreateGates": [
+        "G15"
+      ],
+      "liveDeployExecuted": false,
+      "liveInvocationExecuted": false
+    },
+    {
+      "functionName": "referee-v5-match",
+      "sources": [
+        {
+          "path": "supabase/functions/referee-v5-match/index.ts",
+          "sha256": "36babab9fffb238e8ccf5f326a0684de5632c7280fa4634e4ad384bed5269ed1",
+          "bytes": 1192
+        },
+        {
+          "path": "supabase/functions/_shared/refereeV5Server.mjs",
+          "sha256": "de0dd582d8b828f64d30ea2f08b7d53ade043b447028ccc21a56640b9e877be5",
+          "bytes": 86946
+        }
+      ],
+      "deploymentManifest": {
+        "runtime": "supabase-edge-functions",
+        "entrypoint": "supabase/functions/referee-v5-match/index.ts",
+        "sharedModules": [
+          "supabase/functions/_shared/refereeV5Server.mjs"
+        ],
+        "deployCommandTemplate": "supabase functions deploy <name> --project-ref <NEW_PROJECT_REF>",
+        "secretsNotIncluded": true
+      },
+      "environmentConfigContract": {
+        "requiredNames": [
+          "SUPABASE_ANON_KEY",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "SUPABASE_URL"
+        ],
+        "values": "NOT_EMBEDDED",
+        "note": "Names only; no secret values in this package"
+      },
+      "sourceDerivedContract": {
+        "sources": [
+          "supabase/functions/referee-v5-match/index.ts",
+          "src/features/referee-v5/server/edgeHttpHandler.js",
+          "src/features/referee-v5/server/edgeHttpHandler.js"
+        ],
+        "environment": [
+          "SUPABASE_ANON_KEY",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "SUPABASE_URL"
+        ],
+        "callerBearer": true,
+        "authenticatedUser": true,
+        "authenticationEnforced": true,
+        "userClientUsesAnonBearer": true,
+        "serviceClientUsesServiceKey": true,
+        "serviceRoleInternal": true,
+        "tenantAuthorization": true,
+        "tenantEnforced": true,
+        "ownershipAuthorization": null,
+        "assignmentAuthorization": true,
+        "assignmentEnforced": true,
+        "roleAuthorization": true,
+        "statusMap": [
+          {
+            "code": "TENANT_ACCESS_DENIED",
+            "status": 401
+          },
+          {
+            "code": "REFEREE_NOT_ASSIGNED",
+            "status": 403
+          },
+          {
+            "code": "ASSIGNMENT_REVOKED",
+            "status": 403
+          },
+          {
+            "code": "ASSIGNMENT_EXPIRED",
+            "status": 403
+          },
+          {
+            "code": "MATCH_STATE_CONFLICT",
+            "status": 409
+          },
+          {
+            "code": "EVENT_SEQUENCE_CONFLICT",
+            "status": 409
+          },
+          {
+            "code": "IDEMPOTENCY_KEY_REUSE_MISMATCH",
+            "status": 409
+          },
+          {
+            "code": "MATCH_LOCKED",
+            "status": 409
+          },
+          {
+            "code": "MATCH_NOT_FOUND",
+            "status": 404
+          }
+        ],
+        "statusMapperReachable": true,
+        "statusCodes": [
+          401,
+          403,
+          404,
+          409
+        ],
+        "errorCodes": [
+          "ASSIGNMENT_EXPIRED",
+          "ASSIGNMENT_REVOKED",
+          "EVENT_SEQUENCE_CONFLICT",
+          "IDEMPOTENCY_KEY_REUSE_MISMATCH",
+          "MATCH_LOCKED",
+          "MATCH_NOT_FOUND",
+          "MATCH_STATE_CONFLICT",
+          "REFEREE_NOT_ASSIGNED",
+          "TENANT_ACCESS_DENIED"
+        ]
+      },
+      "authenticationAuthorizationMatrix": {
+        "callerCredential": "Authenticated user bearer token in Authorization header",
+        "internalCredential": "SUPABASE_SERVICE_ROLE_KEY is server-only configuration and MUST NOT be supplied by clients",
+        "authorized": [
+          "authenticated assigned referee; director/admin override only where source role policy permits"
+        ],
+        "unauthorized": [
+          "missing/invalid bearer: 401 AUTH_REQUIRED",
+          "unassigned referee: 403 REFEREE_NOT_ASSIGNED",
+          "cross-tenant or missing match: 403/404",
+          "invalid command/domain transition: 400/409"
+        ],
+        "failClosed": true
+      },
+      "verificationProcedure": {
+        "authorizedInvocation": "POST with authenticated user bearer; verify ownership/tenant/assignment/role and expect source-defined 2xx body",
+        "unauthorizedInvocation": "Exercise missing bearer, wrong owner/tenant, unassigned referee and insufficient-role cases; require the listed 4xx code",
+        "evidenceRequiredPostCreate": [
+          "HTTP status",
+          "response error code",
+          "no secret leakage"
+        ]
+      },
+      "postCreateGates": [
+        "G16"
+      ],
+      "liveDeployExecuted": false,
+      "liveInvocationExecuted": false
+    }
+  ]
+}

@@ -1,0 +1,5680 @@
+{
+  "marker": "PHASE5D_M10_AUTHORITY_RESOLUTION_V1",
+  "method": "promote_tracked_candidate_chain",
+  "stagingExportUsed": false,
+  "cacheEvidenceUsed": false,
+  "promotedEntries": [
+    {
+      "migrationId": "M10.1",
+      "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql",
+      "sha256": "c1a079535a6295cb3d185aee9c9b2e54da6ed0aebbeb67bbfd4b929dd13c0f8e",
+      "bytes": 13070
+    },
+    {
+      "migrationId": "M10.2",
+      "path": "docs/v5/referee-v5/PHASE_V5D_REFEREE_PERSISTENCE.sql",
+      "sha256": "5c3bcda4e38449021516d0b966ab553e6f79d58a409b2d75af59160f6295fdb9",
+      "bytes": 15357
+    },
+    {
+      "migrationId": "M10.3",
+      "path": "docs/v5/referee-v5/PHASE_V5D1_REFEREE_HARDENING.sql",
+      "sha256": "caf20d89b35bee42f2e06f20ddc0b498ffb7b2081a30a8cd4057dedcfc47a579",
+      "bytes": 16608
+    },
+    {
+      "migrationId": "M10.4",
+      "path": "docs/v5/referee-v5/PHASE_V5D32_IDEMPOTENCY_UNDO.sql",
+      "sha256": "f0d0eb05c83883078b812e88e7515733017f9fa48fda9fbd629e85d35a79c17d",
+      "bytes": 8207
+    },
+    {
+      "migrationId": "M10.5",
+      "path": "docs/v5/referee-v5/PHASE_V5D4_ATOMIC_ROLLBACK.sql",
+      "sha256": "ee482eead1791633cdb6b0989d470076cbc12d99902fe7df28c277d0951267e1",
+      "bytes": 5562
+    }
+  ],
+  "objectLevelStaticParity": {
+    "requirementDerivation": {
+      "functions": [
+        "referee_v5_commit_match_finalization",
+        "referee_v5_commit_match_transition",
+        "referee_v5_get_match_state"
+      ],
+      "tables": [
+        "match_events",
+        "match_live_states",
+        "match_sync_mutations",
+        "referee_assignments"
+      ],
+      "sources": [
+        "supabase/functions/referee-v5-match/index.ts",
+        "src/features/referee-v5/server/edgeHttpHandler.js",
+        "src/features/referee-v5/persistence/RefereeV5SupabaseRepository.js",
+        "src/features/referee-v5/persistence/RefereeV5RpcAtomicCommitService.js",
+        "tests/referee-v5/referee-v5-command.test.js",
+        "tests/referee-v5/referee-v5-d1.test.js",
+        "tests/referee-v5/referee-v5-e1-realtime.test.js",
+        "tests/referee-v5/referee-v5-engine.test.js",
+        "tests/referee-v5/referee-v5-persistence.test.js",
+        "tests/referee-v5/testHelpers.js"
+      ]
+    },
+    "functionSignatureCount": 11,
+    "policyContractCount": 8,
+    "missing": {
+      "functions": [],
+      "tables": []
+    },
+    "unclassified": [],
+    "rlsContracts": [
+      {
+        "table": "referee_assignments",
+        "enabled": true,
+        "forced": false
+      },
+      {
+        "table": "match_live_states",
+        "enabled": true,
+        "forced": false
+      },
+      {
+        "table": "match_events",
+        "enabled": true,
+        "forced": false
+      },
+      {
+        "table": "match_result_revisions",
+        "enabled": true,
+        "forced": false
+      },
+      {
+        "table": "match_disputes",
+        "enabled": true,
+        "forced": false
+      },
+      {
+        "table": "match_sync_mutations",
+        "enabled": true,
+        "forced": false
+      },
+      {
+        "table": "match_integration_outbox",
+        "enabled": true,
+        "forced": false
+      }
+    ],
+    "grants": [
+      {
+        "privileges": "execute",
+        "object": "function public.referee_v5_get_match_state(text, text, text)",
+        "roles": "authenticated"
+      },
+      {
+        "privileges": "execute",
+        "object": "function public.referee_v5_apply_match_command( text, text, text, text, jsonb, integer, bigint, text, text )",
+        "roles": "authenticated"
+      },
+      {
+        "privileges": "execute",
+        "object": "function public.referee_v5_finalize_match_result( text, text, text, integer, text, text, boolean )",
+        "roles": "authenticated"
+      },
+      {
+        "privileges": "execute",
+        "object": "function public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text )",
+        "roles": "service_role"
+      },
+      {
+        "privileges": "execute",
+        "object": "function public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text )",
+        "roles": "service_role"
+      },
+      {
+        "privileges": "execute",
+        "object": "function public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text, jsonb, text )",
+        "roles": "service_role"
+      },
+      {
+        "privileges": "execute",
+        "object": "function public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text, text )",
+        "roles": "service_role"
+      }
+    ],
+    "revokes": [
+      {
+        "privileges": "all",
+        "object": "function public.referee_v5_get_match_state(text, text, text)",
+        "roles": "public"
+      },
+      {
+        "privileges": "all",
+        "object": "function public.referee_v5_apply_match_command( text, text, text, text, jsonb, integer, bigint, text, text )",
+        "roles": "public"
+      },
+      {
+        "privileges": "all",
+        "object": "function public.referee_v5_finalize_match_result( text, text, text, integer, text, text, boolean )",
+        "roles": "public"
+      },
+      {
+        "privileges": "all",
+        "object": "function public.referee_v5_apply_match_command( text, text, text, text, jsonb, integer, bigint, text, text )",
+        "roles": "public, anon, authenticated"
+      },
+      {
+        "privileges": "all",
+        "object": "function public.referee_v5_finalize_match_result( text, text, text, integer, text, text, boolean )",
+        "roles": "public, anon, authenticated"
+      },
+      {
+        "privileges": "all",
+        "object": "function public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text )",
+        "roles": "public, anon, authenticated"
+      },
+      {
+        "privileges": "all",
+        "object": "function public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text )",
+        "roles": "public, anon, authenticated"
+      },
+      {
+        "privileges": "all",
+        "object": "function public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text, jsonb, text )",
+        "roles": "public, anon, authenticated"
+      },
+      {
+        "privileges": "all",
+        "object": "function public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text, text )",
+        "roles": "public, anon, authenticated"
+      }
+    ],
+    "exactContractCoverage": {
+      "pass": true,
+      "functions": [
+        {
+          "name": "referee_v5_get_match_state",
+          "required": {
+            "name": "referee_v5_get_match_state",
+            "parameters": [
+              "p_tenant_id",
+              "p_tournament_id",
+              "p_match_id"
+            ],
+            "parameterDetails": [
+              {
+                "name": "p_tenant_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_tournament_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_match_id",
+                "type": "text",
+                "hasDefault": false
+              }
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPathIncludes": [
+              "public"
+            ],
+            "executeRoles": [
+              "authenticated"
+            ],
+            "deniedRoles": [
+              "public"
+            ]
+          },
+          "candidates": [
+            {
+              "signature": "referee_v5_get_match_state(p_tenant_id text,p_tournament_id text,p_match_id text)",
+              "parametersExact": true,
+              "parameterTypesDefaultsExact": true,
+              "optionalDefaultsExact": true,
+              "returnType": true,
+              "securityMode": true,
+              "searchPathExact": true,
+              "executeRoles": true,
+              "deniedRoles": true
+            }
+          ],
+          "pass": true
+        },
+        {
+          "name": "referee_v5_commit_match_transition",
+          "required": {
+            "name": "referee_v5_commit_match_transition",
+            "parameters": [
+              "p_tenant_id",
+              "p_tournament_id",
+              "p_match_id",
+              "p_actor_id",
+              "p_command_type",
+              "p_command_payload",
+              "p_expected_state_version",
+              "p_expected_event_sequence",
+              "p_client_mutation_id",
+              "p_idempotency_key",
+              "p_request_hash",
+              "p_next_state",
+              "p_generated_events",
+              "p_state_before_hash",
+              "p_state_after_hash",
+              "p_state_before",
+              "p_staging_fault"
+            ],
+            "parameterDetails": [
+              {
+                "name": "p_tenant_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_tournament_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_match_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_actor_id",
+                "type": "uuid",
+                "hasDefault": false
+              },
+              {
+                "name": "p_command_type",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_command_payload",
+                "type": "jsonb",
+                "hasDefault": false
+              },
+              {
+                "name": "p_expected_state_version",
+                "type": "integer",
+                "hasDefault": false
+              },
+              {
+                "name": "p_expected_event_sequence",
+                "type": "bigint",
+                "hasDefault": false
+              },
+              {
+                "name": "p_client_mutation_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_idempotency_key",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_request_hash",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_next_state",
+                "type": "jsonb",
+                "hasDefault": false
+              },
+              {
+                "name": "p_generated_events",
+                "type": "jsonb",
+                "hasDefault": false
+              },
+              {
+                "name": "p_state_before_hash",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_state_after_hash",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_state_before",
+                "type": "jsonb",
+                "hasDefault": true
+              },
+              {
+                "name": "p_staging_fault",
+                "type": "text",
+                "hasDefault": true
+              }
+            ],
+            "optionalParameters": [
+              "p_state_before",
+              "p_staging_fault"
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPathIncludes": [
+              "pg_catalog",
+              "public"
+            ],
+            "executeRoles": [
+              "service_role"
+            ],
+            "deniedRoles": [
+              "public",
+              "anon",
+              "authenticated"
+            ]
+          },
+          "candidates": [
+            {
+              "signature": "referee_v5_commit_match_transition(p_tenant_id text,p_tournament_id text,p_match_id text,p_actor_id uuid,p_command_type text,p_command_payload jsonb,p_expected_state_version integer,p_expected_event_sequence bigint,p_client_mutation_id text,p_idempotency_key text,p_request_hash text,p_next_state jsonb,p_generated_events jsonb,p_state_before_hash text,p_state_after_hash text,p_state_before jsonb default null,p_staging_fault text default null)",
+              "parametersExact": true,
+              "parameterTypesDefaultsExact": true,
+              "optionalDefaultsExact": true,
+              "returnType": true,
+              "securityMode": true,
+              "searchPathExact": true,
+              "executeRoles": true,
+              "deniedRoles": true
+            }
+          ],
+          "pass": true
+        },
+        {
+          "name": "referee_v5_commit_match_finalization",
+          "required": {
+            "name": "referee_v5_commit_match_finalization",
+            "parameters": [
+              "p_tenant_id",
+              "p_tournament_id",
+              "p_match_id",
+              "p_actor_id",
+              "p_expected_state_version",
+              "p_idempotency_key",
+              "p_request_hash",
+              "p_revision",
+              "p_outbox_events",
+              "p_override_reason",
+              "p_staging_fault"
+            ],
+            "parameterDetails": [
+              {
+                "name": "p_tenant_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_tournament_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_match_id",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_actor_id",
+                "type": "uuid",
+                "hasDefault": false
+              },
+              {
+                "name": "p_expected_state_version",
+                "type": "integer",
+                "hasDefault": false
+              },
+              {
+                "name": "p_idempotency_key",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_request_hash",
+                "type": "text",
+                "hasDefault": false
+              },
+              {
+                "name": "p_revision",
+                "type": "jsonb",
+                "hasDefault": false
+              },
+              {
+                "name": "p_outbox_events",
+                "type": "jsonb",
+                "hasDefault": true
+              },
+              {
+                "name": "p_override_reason",
+                "type": "text",
+                "hasDefault": true
+              },
+              {
+                "name": "p_staging_fault",
+                "type": "text",
+                "hasDefault": true
+              }
+            ],
+            "optionalParameters": [
+              "p_outbox_events",
+              "p_override_reason",
+              "p_staging_fault"
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPathIncludes": [
+              "pg_catalog",
+              "public"
+            ],
+            "executeRoles": [
+              "service_role"
+            ],
+            "deniedRoles": [
+              "public",
+              "anon",
+              "authenticated"
+            ]
+          },
+          "candidates": [
+            {
+              "signature": "referee_v5_commit_match_finalization(p_tenant_id text,p_tournament_id text,p_match_id text,p_actor_id uuid,p_expected_state_version integer,p_idempotency_key text,p_request_hash text,p_revision jsonb,p_outbox_events jsonb default '[]'::jsonb,p_override_reason text default null,p_staging_fault text default null)",
+              "parametersExact": true,
+              "parameterTypesDefaultsExact": true,
+              "optionalDefaultsExact": true,
+              "returnType": true,
+              "securityMode": true,
+              "searchPathExact": true,
+              "executeRoles": true,
+              "deniedRoles": true
+            }
+          ],
+          "pass": true
+        }
+      ],
+      "tables": [
+        {
+          "name": "referee_assignments",
+          "rlsEnabled": true,
+          "actualRls": {
+            "table": "referee_assignments",
+            "enabled": true,
+            "forced": false,
+            "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql"
+          },
+          "pass": true
+        },
+        {
+          "name": "match_live_states",
+          "rlsEnabled": true,
+          "actualRls": {
+            "table": "match_live_states",
+            "enabled": true,
+            "forced": false,
+            "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql"
+          },
+          "pass": true
+        },
+        {
+          "name": "match_events",
+          "rlsEnabled": true,
+          "actualRls": {
+            "table": "match_events",
+            "enabled": true,
+            "forced": false,
+            "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql"
+          },
+          "pass": true
+        },
+        {
+          "name": "match_sync_mutations",
+          "rlsEnabled": true,
+          "actualRls": {
+            "table": "match_sync_mutations",
+            "enabled": true,
+            "forced": false,
+            "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql"
+          },
+          "pass": true
+        }
+      ],
+      "unresolvedDynamicDdl": []
+    },
+    "edgeFunctionDependency": "supabase/functions/referee-v5-match",
+    "parityPass": true
+  },
+  "objectsByFile": [
+    {
+      "path": "docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
+      "tables": [
+        "referee_assignments",
+        "match_live_states",
+        "match_participant_positions",
+        "match_events",
+        "match_game_states",
+        "match_result_revisions",
+        "match_incidents",
+        "match_disputes",
+        "referee_device_sessions",
+        "match_sync_mutations"
+      ],
+      "columns": [
+        {
+          "table": "referee_assignments",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "referee_assignments",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "referee_user_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "referee_assignments",
+          "name": "referee_display_name",
+          "type": "text",
+          "nullable": false,
+          "default": "''",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "role",
+          "type": "text",
+          "nullable": false,
+          "default": "'referee'",
+          "constraints": "check (role in ('referee', 'scorekeeper', 'head_referee'))"
+        },
+        {
+          "table": "referee_assignments",
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'active'",
+          "constraints": "check (status in ('active', 'revoked', 'completed'))"
+        },
+        {
+          "table": "referee_assignments",
+          "name": "token_hash",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "token_expires_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "assigned_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "referee_assignments",
+          "name": "assigned_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "revoked_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "revoked_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "referee_assignments",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": "primary key"
+        },
+        {
+          "table": "match_live_states",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "game_number",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "revision",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'not_started'",
+          "constraints": "check (status in ( 'not_started', 'in_progress', 'paused', 'game_break', 'completed', 'locked', 'disputed', 'cancelled' ))"
+        },
+        {
+          "table": "match_live_states",
+          "name": "team_a_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "team_b_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "team_a_score",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "team_b_score",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "team_a_side_out_score",
+          "type": "integer",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "team_b_side_out_score",
+          "type": "integer",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "server_number",
+          "type": "smallint",
+          "nullable": true,
+          "default": "",
+          "constraints": "check (server_number in (1, 2))"
+        },
+        {
+          "table": "match_live_states",
+          "name": "serving_team_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "serving_player_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "receiving_team_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "receiving_player_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "serving_court_side",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": "check (serving_court_side in ('left_service_court', 'right_service_court'))"
+        },
+        {
+          "table": "match_live_states",
+          "name": "receiving_court_side",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": "check (receiving_court_side in ('left_service_court', 'right_service_court'))"
+        },
+        {
+          "table": "match_live_states",
+          "name": "serving_court_end",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": "check (serving_court_end in ('near_end', 'far_end'))"
+        },
+        {
+          "table": "match_live_states",
+          "name": "receiving_court_end",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": "check (receiving_court_end in ('near_end', 'far_end'))"
+        },
+        {
+          "table": "match_live_states",
+          "name": "serve_direction",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "court_orientation",
+          "type": "text",
+          "nullable": false,
+          "default": "'referee_physical_view'",
+          "constraints": "check (court_orientation in ('referee_physical_view', 'team_fixed_view'))"
+        },
+        {
+          "table": "match_live_states",
+          "name": "team_a_end",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": "check (team_a_end in ('near_end', 'far_end'))"
+        },
+        {
+          "table": "match_live_states",
+          "name": "team_b_end",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": "check (team_b_end in ('near_end', 'far_end'))"
+        },
+        {
+          "table": "match_live_states",
+          "name": "participants",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "scoring_format",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "points_to_win",
+          "type": "integer",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "win_by",
+          "type": "integer",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "maximum_score",
+          "type": "integer",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "best_of",
+          "type": "smallint",
+          "nullable": false,
+          "default": "1",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "scoring_system",
+          "type": "text",
+          "nullable": false,
+          "default": "'side_out'",
+          "constraints": "check (scoring_system in ('side_out', 'rally'))"
+        },
+        {
+          "table": "match_live_states",
+          "name": "last_event_sequence",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "locked_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "locked_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "match_live_states",
+          "name": "confirmed_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "confirmed_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "match_live_states",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "match_participant_positions",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "match_participant_positions",
+          "name": "match_state_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": "references public.match_live_states"
+        },
+        {
+          "table": "match_participant_positions",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_participant_positions",
+          "name": "player_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_participant_positions",
+          "name": "team_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_participant_positions",
+          "name": "court_end",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": "check (court_end in ('near_end', 'far_end'))"
+        },
+        {
+          "table": "match_participant_positions",
+          "name": "court_side",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": "check (court_side in ('left_service_court', 'right_service_court'))"
+        },
+        {
+          "table": "match_participant_positions",
+          "name": "is_server",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "constraints": ""
+        },
+        {
+          "table": "match_participant_positions",
+          "name": "is_receiver",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "constraints": ""
+        },
+        {
+          "table": "match_participant_positions",
+          "name": "snapshot_version",
+          "type": "integer",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_participant_positions",
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "match_events",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "match_state_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": "references public.match_live_states"
+        },
+        {
+          "table": "match_events",
+          "name": "game_number",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "event_sequence",
+          "type": "bigint",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "event_type",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "payload",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "state_version_before",
+          "type": "integer",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "state_version_after",
+          "type": "integer",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "reverted_event_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.match_events"
+        },
+        {
+          "table": "match_events",
+          "name": "client_mutation_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "idempotency_key",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "actor_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "match_events",
+          "name": "actor_role",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "occurred_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "match_events",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "match_game_states",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "match_game_states",
+          "name": "match_state_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": "references public.match_live_states"
+        },
+        {
+          "table": "match_game_states",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_game_states",
+          "name": "game_number",
+          "type": "integer",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_game_states",
+          "name": "team_a_score",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "constraints": ""
+        },
+        {
+          "table": "match_game_states",
+          "name": "team_b_score",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "constraints": ""
+        },
+        {
+          "table": "match_game_states",
+          "name": "winner_team_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_game_states",
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'in_progress'",
+          "constraints": "check (status in ('in_progress', 'completed', 'forfeit'))"
+        },
+        {
+          "table": "match_game_states",
+          "name": "started_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_game_states",
+          "name": "completed_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "revision",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'confirmed'",
+          "constraints": "check (status in ('confirmed', 'disputed', 'overridden', 'void'))"
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "team_a_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "team_b_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "winner_team_id",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "final_score",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "games",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "completion_reason",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "finalized_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "finalized_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "override_reason",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "overridden_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "idempotency_key",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "rating_evidence_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "rating_applied_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "match_incidents",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "match_incidents",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_incidents",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_incidents",
+          "name": "match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_incidents",
+          "name": "incident_type",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_incidents",
+          "name": "description",
+          "type": "text",
+          "nullable": false,
+          "default": "''",
+          "constraints": ""
+        },
+        {
+          "table": "match_incidents",
+          "name": "reported_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "match_incidents",
+          "name": "reported_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "match_incidents",
+          "name": "related_event_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.match_events"
+        },
+        {
+          "table": "match_incidents",
+          "name": "metadata",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "match_disputes",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "match_disputes",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_disputes",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_disputes",
+          "name": "match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_disputes",
+          "name": "result_revision_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.match_result_revisions"
+        },
+        {
+          "table": "match_disputes",
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'open'",
+          "constraints": "check (status in ('open', 'under_review', 'resolved', 'rejected'))"
+        },
+        {
+          "table": "match_disputes",
+          "name": "filed_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "match_disputes",
+          "name": "filed_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "match_disputes",
+          "name": "deadline_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_disputes",
+          "name": "resolution",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_disputes",
+          "name": "resolved_by",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.profiles"
+        },
+        {
+          "table": "match_disputes",
+          "name": "resolved_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_disputes",
+          "name": "evidence_files",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "referee_device_sessions",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "referee_device_sessions",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "referee_device_sessions",
+          "name": "assignment_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "",
+          "constraints": "references public.referee_assignments"
+        },
+        {
+          "table": "referee_device_sessions",
+          "name": "device_label",
+          "type": "text",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "referee_device_sessions",
+          "name": "is_primary",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true",
+          "constraints": ""
+        },
+        {
+          "table": "referee_device_sessions",
+          "name": "last_seen_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "referee_device_sessions",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": "match_state_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": "references public.match_live_states"
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": "client_mutation_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": "idempotency_key",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": "mutation_type",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": "request_payload",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": "response_payload",
+          "type": "jsonb",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'applied'",
+          "constraints": "check (status in ('applied', 'rejected', 'conflict'))"
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        }
+      ],
+      "constraints": [
+        {
+          "table": "referee_assignments",
+          "name": null,
+          "definition": "unique (tenant_id, tournament_id, match_id, role, referee_user_id)"
+        },
+        {
+          "table": "match_participant_positions",
+          "name": null,
+          "definition": "unique (match_state_id, player_id, snapshot_version)"
+        },
+        {
+          "table": "match_events",
+          "name": null,
+          "definition": "unique (match_state_id, event_sequence)"
+        },
+        {
+          "table": "match_events",
+          "name": null,
+          "definition": "unique (match_state_id, idempotency_key)"
+        },
+        {
+          "table": "match_game_states",
+          "name": null,
+          "definition": "unique (match_state_id, game_number)"
+        },
+        {
+          "table": "match_result_revisions",
+          "name": null,
+          "definition": "unique (tenant_id, tournament_id, match_id, revision)"
+        },
+        {
+          "table": "match_result_revisions",
+          "name": null,
+          "definition": "unique (tenant_id, tournament_id, match_id, idempotency_key)"
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": null,
+          "definition": "unique (match_state_id, idempotency_key)"
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": null,
+          "definition": "unique (match_state_id, client_mutation_id)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "referee_assignments_match_idx",
+          "table": "referee_assignments",
+          "definition": "create index if not exists referee_assignments_match_idx on public.referee_assignments (tenant_id, tournament_id, match_id) where status = 'active';"
+        },
+        {
+          "name": "referee_assignments_referee_idx",
+          "table": "referee_assignments",
+          "definition": "create index if not exists referee_assignments_referee_idx on public.referee_assignments (referee_user_id, status);"
+        },
+        {
+          "name": "match_live_states_tournament_idx",
+          "table": "match_live_states",
+          "definition": "create index if not exists match_live_states_tournament_idx on public.match_live_states (tenant_id, tournament_id);"
+        },
+        {
+          "name": "match_events_match_idx",
+          "table": "match_events",
+          "definition": "create index if not exists match_events_match_idx on public.match_events (tenant_id, tournament_id, match_id, event_sequence);"
+        }
+      ],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
+      "functions": [],
+      "procedures": [],
+      "functionAlters": [],
+      "triggers": [],
+      "rls": [
+        {
+          "table": "referee_assignments",
+          "enabled": true,
+          "forced": false
+        },
+        {
+          "table": "match_live_states",
+          "enabled": true,
+          "forced": false
+        },
+        {
+          "table": "match_events",
+          "enabled": true,
+          "forced": false
+        },
+        {
+          "table": "match_result_revisions",
+          "enabled": true,
+          "forced": false
+        },
+        {
+          "table": "match_disputes",
+          "enabled": true,
+          "forced": false
+        },
+        {
+          "table": "match_sync_mutations",
+          "enabled": true,
+          "forced": false
+        }
+      ],
+      "policies": [],
+      "grants": [],
+      "revokes": [],
+      "drops": [],
+      "dataStatements": [
+        {
+          "command": "insert",
+          "statement": "insert into public.permissions (id, module, action, description) values ('referee_v5.view_assigned', 'referee_v5', 'view', 'xem trận được phân công v5'), ('referee_v5.apply_event', 'referee_v5', 'apply_event', 'gửi match event (intent only)'), ('referee_v5.finalize', 'referee_v5', 'finalize', 'chốt kết quả trận v5'), ('referee_v5.override', 'referee_v5', 'override', 'override kết quả có lý do'), ('referee_v5.resolve_dispute', 'referee_v5', 'resolve_dispute', 'xử lý tranh chấp'), ('referee_v5.assign', 'referee_v5', 'assign', 'phân công trọng tài v5') on conflict (id) do update set module = excluded.module, action = excluded.action, description = excluded.description;"
+        }
+      ],
+      "doBlocks": [],
+      "storageBuckets": [],
+      "unclassified": [],
+      "operations": [
+        {
+          "kind": "dataStatement",
+          "value": {
+            "command": "insert",
+            "statement": "insert into public.permissions (id, module, action, description) values ('referee_v5.view_assigned', 'referee_v5', 'view', 'xem trận được phân công v5'), ('referee_v5.apply_event', 'referee_v5', 'apply_event', 'gửi match event (intent only)'), ('referee_v5.finalize', 'referee_v5', 'finalize', 'chốt kết quả trận v5'), ('referee_v5.override', 'referee_v5', 'override', 'override kết quả có lý do'), ('referee_v5.resolve_dispute', 'referee_v5', 'resolve_dispute', 'xử lý tranh chấp'), ('referee_v5.assign', 'referee_v5', 'assign', 'phân công trọng tài v5') on conflict (id) do update set module = excluded.module, action = excluded.action, description = excluded.description;"
+          }
+        },
+        {
+          "kind": "tables",
+          "value": "referee_assignments"
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "gen_random_uuid()",
+            "constraints": "primary key"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "tenant_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "tournament_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "match_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "referee_user_id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.profiles"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "referee_display_name",
+            "type": "text",
+            "nullable": false,
+            "default": "''",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "role",
+            "type": "text",
+            "nullable": false,
+            "default": "'referee'",
+            "constraints": "check (role in ('referee', 'scorekeeper', 'head_referee'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "status",
+            "type": "text",
+            "nullable": false,
+            "default": "'active'",
+            "constraints": "check (status in ('active', 'revoked', 'completed'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "token_hash",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "token_expires_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "assigned_by",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.profiles"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "assigned_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "revoked_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "revoked_by",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.profiles"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "updated_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "referee_assignments",
+            "name": null,
+            "definition": "unique (tenant_id, tournament_id, match_id, role, referee_user_id)"
+          }
+        },
+        {
+          "kind": "indexes",
+          "value": {
+            "name": "referee_assignments_match_idx",
+            "table": "referee_assignments",
+            "definition": "create index if not exists referee_assignments_match_idx on public.referee_assignments (tenant_id, tournament_id, match_id) where status = 'active';"
+          }
+        },
+        {
+          "kind": "indexes",
+          "value": {
+            "name": "referee_assignments_referee_idx",
+            "table": "referee_assignments",
+            "definition": "create index if not exists referee_assignments_referee_idx on public.referee_assignments (referee_user_id, status);"
+          }
+        },
+        {
+          "kind": "tables",
+          "value": "match_live_states"
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "id",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": "primary key"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "tenant_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "tournament_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "match_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "game_number",
+            "type": "integer",
+            "nullable": false,
+            "default": "1",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "version",
+            "type": "integer",
+            "nullable": false,
+            "default": "0",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "revision",
+            "type": "integer",
+            "nullable": false,
+            "default": "0",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "status",
+            "type": "text",
+            "nullable": false,
+            "default": "'not_started'",
+            "constraints": "check (status in ( 'not_started', 'in_progress', 'paused', 'game_break', 'completed', 'locked', 'disputed', 'cancelled' ))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "team_a_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "team_b_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "team_a_score",
+            "type": "integer",
+            "nullable": false,
+            "default": "0",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "team_b_score",
+            "type": "integer",
+            "nullable": false,
+            "default": "0",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "team_a_side_out_score",
+            "type": "integer",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "team_b_side_out_score",
+            "type": "integer",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "server_number",
+            "type": "smallint",
+            "nullable": true,
+            "default": "",
+            "constraints": "check (server_number in (1, 2))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "serving_team_id",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "serving_player_id",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "receiving_team_id",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "receiving_player_id",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "serving_court_side",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": "check (serving_court_side in ('left_service_court', 'right_service_court'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "receiving_court_side",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": "check (receiving_court_side in ('left_service_court', 'right_service_court'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "serving_court_end",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": "check (serving_court_end in ('near_end', 'far_end'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "receiving_court_end",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": "check (receiving_court_end in ('near_end', 'far_end'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "serve_direction",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "court_orientation",
+            "type": "text",
+            "nullable": false,
+            "default": "'referee_physical_view'",
+            "constraints": "check (court_orientation in ('referee_physical_view', 'team_fixed_view'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "team_a_end",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": "check (team_a_end in ('near_end', 'far_end'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "team_b_end",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": "check (team_b_end in ('near_end', 'far_end'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "participants",
+            "type": "jsonb",
+            "nullable": false,
+            "default": "'[]'::jsonb",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "scoring_format",
+            "type": "jsonb",
+            "nullable": false,
+            "default": "'{}'::jsonb",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "points_to_win",
+            "type": "integer",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "win_by",
+            "type": "integer",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "maximum_score",
+            "type": "integer",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "best_of",
+            "type": "smallint",
+            "nullable": false,
+            "default": "1",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "scoring_system",
+            "type": "text",
+            "nullable": false,
+            "default": "'side_out'",
+            "constraints": "check (scoring_system in ('side_out', 'rally'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "last_event_sequence",
+            "type": "bigint",
+            "nullable": false,
+            "default": "0",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "locked_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "locked_by",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.profiles"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "confirmed_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "confirmed_by",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.profiles"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "updated_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "indexes",
+          "value": {
+            "name": "match_live_states_tournament_idx",
+            "table": "match_live_states",
+            "definition": "create index if not exists match_live_states_tournament_idx on public.match_live_states (tenant_id, tournament_id);"
+          }
+        },
+        {
+          "kind": "tables",
+          "value": "match_participant_positions"
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_participant_positions",
+            "name": "id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "gen_random_uuid()",
+            "constraints": "primary key"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_participant_positions",
+            "name": "match_state_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": "references public.match_live_states"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_participant_positions",
+            "name": "tenant_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_participant_positions",
+            "name": "player_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_participant_positions",
+            "name": "team_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_participant_positions",
+            "name": "court_end",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": "check (court_end in ('near_end', 'far_end'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_participant_positions",
+            "name": "court_side",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": "check (court_side in ('left_service_court', 'right_service_court'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_participant_positions",
+            "name": "is_server",
+            "type": "boolean",
+            "nullable": false,
+            "default": "false",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_participant_positions",
+            "name": "is_receiver",
+            "type": "boolean",
+            "nullable": false,
+            "default": "false",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_participant_positions",
+            "name": "snapshot_version",
+            "type": "integer",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_participant_positions",
+            "name": "updated_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "match_participant_positions",
+            "name": null,
+            "definition": "unique (match_state_id, player_id, snapshot_version)"
+          }
+        },
+        {
+          "kind": "tables",
+          "value": "match_events"
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "gen_random_uuid()",
+            "constraints": "primary key"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "tenant_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "tournament_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "match_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "match_state_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": "references public.match_live_states"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "game_number",
+            "type": "integer",
+            "nullable": false,
+            "default": "1",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "event_sequence",
+            "type": "bigint",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "event_type",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "payload",
+            "type": "jsonb",
+            "nullable": false,
+            "default": "'{}'::jsonb",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "state_version_before",
+            "type": "integer",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "state_version_after",
+            "type": "integer",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "reverted_event_id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.match_events"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "client_mutation_id",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "idempotency_key",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "actor_id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.profiles"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "actor_role",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "occurred_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "match_events",
+            "name": null,
+            "definition": "unique (match_state_id, event_sequence)"
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "match_events",
+            "name": null,
+            "definition": "unique (match_state_id, idempotency_key)"
+          }
+        },
+        {
+          "kind": "indexes",
+          "value": {
+            "name": "match_events_match_idx",
+            "table": "match_events",
+            "definition": "create index if not exists match_events_match_idx on public.match_events (tenant_id, tournament_id, match_id, event_sequence);"
+          }
+        },
+        {
+          "kind": "tables",
+          "value": "match_game_states"
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_game_states",
+            "name": "id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "gen_random_uuid()",
+            "constraints": "primary key"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_game_states",
+            "name": "match_state_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": "references public.match_live_states"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_game_states",
+            "name": "tenant_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_game_states",
+            "name": "game_number",
+            "type": "integer",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_game_states",
+            "name": "team_a_score",
+            "type": "integer",
+            "nullable": false,
+            "default": "0",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_game_states",
+            "name": "team_b_score",
+            "type": "integer",
+            "nullable": false,
+            "default": "0",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_game_states",
+            "name": "winner_team_id",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_game_states",
+            "name": "status",
+            "type": "text",
+            "nullable": false,
+            "default": "'in_progress'",
+            "constraints": "check (status in ('in_progress', 'completed', 'forfeit'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_game_states",
+            "name": "started_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_game_states",
+            "name": "completed_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "match_game_states",
+            "name": null,
+            "definition": "unique (match_state_id, game_number)"
+          }
+        },
+        {
+          "kind": "tables",
+          "value": "match_result_revisions"
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "gen_random_uuid()",
+            "constraints": "primary key"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "tenant_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "tournament_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "match_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "revision",
+            "type": "integer",
+            "nullable": false,
+            "default": "1",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "status",
+            "type": "text",
+            "nullable": false,
+            "default": "'confirmed'",
+            "constraints": "check (status in ('confirmed', 'disputed', 'overridden', 'void'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "team_a_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "team_b_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "winner_team_id",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "final_score",
+            "type": "jsonb",
+            "nullable": false,
+            "default": "'{}'::jsonb",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "games",
+            "type": "jsonb",
+            "nullable": false,
+            "default": "'[]'::jsonb",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "completion_reason",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "finalized_by",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.profiles"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "finalized_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "override_reason",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "overridden_by",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.profiles"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "idempotency_key",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "rating_evidence_id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "rating_applied_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "match_result_revisions",
+            "name": null,
+            "definition": "unique (tenant_id, tournament_id, match_id, revision)"
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "match_result_revisions",
+            "name": null,
+            "definition": "unique (tenant_id, tournament_id, match_id, idempotency_key)"
+          }
+        },
+        {
+          "kind": "tables",
+          "value": "match_incidents"
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_incidents",
+            "name": "id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "gen_random_uuid()",
+            "constraints": "primary key"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_incidents",
+            "name": "tenant_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_incidents",
+            "name": "tournament_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_incidents",
+            "name": "match_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_incidents",
+            "name": "incident_type",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_incidents",
+            "name": "description",
+            "type": "text",
+            "nullable": false,
+            "default": "''",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_incidents",
+            "name": "reported_by",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.profiles"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_incidents",
+            "name": "reported_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_incidents",
+            "name": "related_event_id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.match_events"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_incidents",
+            "name": "metadata",
+            "type": "jsonb",
+            "nullable": false,
+            "default": "'{}'::jsonb",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "tables",
+          "value": "match_disputes"
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "gen_random_uuid()",
+            "constraints": "primary key"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "tenant_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "tournament_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "match_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "result_revision_id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.match_result_revisions"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "status",
+            "type": "text",
+            "nullable": false,
+            "default": "'open'",
+            "constraints": "check (status in ('open', 'under_review', 'resolved', 'rejected'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "filed_by",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.profiles"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "filed_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "deadline_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "resolution",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "resolved_by",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.profiles"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "resolved_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_disputes",
+            "name": "evidence_files",
+            "type": "jsonb",
+            "nullable": false,
+            "default": "'[]'::jsonb",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "tables",
+          "value": "referee_device_sessions"
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_device_sessions",
+            "name": "id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "gen_random_uuid()",
+            "constraints": "primary key"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_device_sessions",
+            "name": "tenant_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_device_sessions",
+            "name": "assignment_id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "",
+            "constraints": "references public.referee_assignments"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_device_sessions",
+            "name": "device_label",
+            "type": "text",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_device_sessions",
+            "name": "is_primary",
+            "type": "boolean",
+            "nullable": false,
+            "default": "true",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_device_sessions",
+            "name": "last_seen_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_device_sessions",
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "tables",
+          "value": "match_sync_mutations"
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "gen_random_uuid()",
+            "constraints": "primary key"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "tenant_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "match_state_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": "references public.match_live_states"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "client_mutation_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "idempotency_key",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "mutation_type",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "request_payload",
+            "type": "jsonb",
+            "nullable": false,
+            "default": "'{}'::jsonb",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "response_payload",
+            "type": "jsonb",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "status",
+            "type": "text",
+            "nullable": false,
+            "default": "'applied'",
+            "constraints": "check (status in ('applied', 'rejected', 'conflict'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": null,
+            "definition": "unique (match_state_id, idempotency_key)"
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": null,
+            "definition": "unique (match_state_id, client_mutation_id)"
+          }
+        },
+        {
+          "kind": "rls",
+          "value": {
+            "table": "referee_assignments",
+            "enabled": true,
+            "forced": false
+          }
+        },
+        {
+          "kind": "rls",
+          "value": {
+            "table": "match_live_states",
+            "enabled": true,
+            "forced": false
+          }
+        },
+        {
+          "kind": "rls",
+          "value": {
+            "table": "match_events",
+            "enabled": true,
+            "forced": false
+          }
+        },
+        {
+          "kind": "rls",
+          "value": {
+            "table": "match_result_revisions",
+            "enabled": true,
+            "forced": false
+          }
+        },
+        {
+          "kind": "rls",
+          "value": {
+            "table": "match_disputes",
+            "enabled": true,
+            "forced": false
+          }
+        },
+        {
+          "kind": "rls",
+          "value": {
+            "table": "match_sync_mutations",
+            "enabled": true,
+            "forced": false
+          }
+        }
+      ]
+    },
+    {
+      "path": "docs/v5/referee-v5/PHASE_V5D_REFEREE_PERSISTENCE.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
+      "tables": [],
+      "columns": [
+        {
+          "table": "match_live_states",
+          "name": "state_payload",
+          "type": "jsonb,",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "state_version",
+          "alteration": "set default 0;",
+          "default": "0;"
+        },
+        {
+          "table": "match_events",
+          "name": "command_type",
+          "type": "text,",
+          "nullable": false,
+          "default": "'{}'::jsonb, add column if",
+          "constraints": ""
+        },
+        {
+          "table": "match_sync_mutations",
+          "name": "expires_at",
+          "type": "timestamptz,",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "constraint",
+          "type": "match_result_revisions_status_check",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "supersedes_revision",
+          "type": "integer,",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        }
+      ],
+      "constraints": [
+        {
+          "table": "match_events",
+          "name": "match_events_match_state_id_idempotency_key_key",
+          "action": "drop",
+          "definition": "drop constraint match_events_match_state_id_idempotency_key_key;"
+        },
+        {
+          "table": "match_result_revisions",
+          "name": "match_result_revisions_status_check",
+          "action": "drop",
+          "definition": "drop constraint match_result_revisions_status_check;"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "match_events_idempotency_partial_idx",
+          "table": "match_events",
+          "definition": "create unique index if not exists match_events_idempotency_partial_idx on public.match_events (match_state_id, idempotency_key) where idempotency_key is not null;"
+        },
+        {
+          "name": "match_events_replay_idx",
+          "table": "match_events",
+          "definition": "create index if not exists match_events_replay_idx on public.match_events (match_state_id, event_sequence asc);"
+        }
+      ],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
+      "functions": [
+        {
+          "name": "referee_v5_match_state_id",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_match_id text"
+          ],
+          "returns": "text",
+          "security": "invoker",
+          "searchPath": ""
+        },
+        {
+          "name": "referee_v5_current_user_has_assignment",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_match_id text",
+            "p_roles text[] default array['referee'",
+            "'scorekeeper']"
+          ],
+          "returns": "boolean",
+          "security": "definer",
+          "searchPath": "public"
+        },
+        {
+          "name": "referee_v5_is_super_admin",
+          "parameters": [],
+          "returns": "boolean",
+          "security": "definer",
+          "searchPath": "public"
+        },
+        {
+          "name": "referee_v5_get_match_state",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_match_id text"
+          ],
+          "returns": "jsonb",
+          "security": "definer",
+          "searchPath": "public"
+        },
+        {
+          "name": "referee_v5_apply_match_command",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_match_id text",
+            "p_command_type text",
+            "p_payload jsonb default '{}'::jsonb",
+            "p_expected_version integer default null",
+            "p_expected_sequence bigint default null",
+            "p_client_mutation_id text default null",
+            "p_idempotency_key text default null"
+          ],
+          "returns": "jsonb",
+          "security": "definer",
+          "searchPath": "public"
+        },
+        {
+          "name": "referee_v5_finalize_match_result",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_match_id text",
+            "p_expected_version integer",
+            "p_idempotency_key text",
+            "p_override_reason text default null",
+            "p_is_override boolean default false"
+          ],
+          "returns": "jsonb",
+          "security": "definer",
+          "searchPath": "public"
+        }
+      ],
+      "procedures": [],
+      "functionAlters": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [
+        {
+          "name": "match_live_states_referee_select",
+          "table": "match_live_states",
+          "command": "select",
+          "roles": "authenticated",
+          "using": "public.referee_v5_is_super_admin() or public.referee_v5_current_user_has_assignment(tenant_id, tournament_id, match_id)",
+          "withCheck": ""
+        },
+        {
+          "name": "match_events_referee_select",
+          "table": "match_events",
+          "command": "select",
+          "roles": "authenticated",
+          "using": "public.referee_v5_is_super_admin() or public.referee_v5_current_user_has_assignment(tenant_id, tournament_id, match_id)",
+          "withCheck": ""
+        },
+        {
+          "name": "referee_assignments_self_select",
+          "table": "referee_assignments",
+          "command": "select",
+          "roles": "authenticated",
+          "using": "public.referee_v5_is_super_admin() or referee_user_id = auth.uid()",
+          "withCheck": ""
+        },
+        {
+          "name": "match_events_no_client_write",
+          "table": "match_events",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "false",
+          "withCheck": "false"
+        },
+        {
+          "name": "match_live_states_no_client_write",
+          "table": "match_live_states",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "false",
+          "withCheck": "false"
+        },
+        {
+          "name": "match_result_revisions_no_client_write",
+          "table": "match_result_revisions",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "false",
+          "withCheck": "false"
+        },
+        {
+          "name": "match_sync_mutations_no_client_write",
+          "table": "match_sync_mutations",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "false",
+          "withCheck": "false"
+        }
+      ],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.referee_v5_get_match_state(text, text, text)",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.referee_v5_apply_match_command( text, text, text, text, jsonb, integer, bigint, text, text )",
+          "roles": "authenticated"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.referee_v5_finalize_match_result( text, text, text, integer, text, text, boolean )",
+          "roles": "authenticated"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_get_match_state(text, text, text)",
+          "roles": "public"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_apply_match_command( text, text, text, text, jsonb, integer, bigint, text, text )",
+          "roles": "public"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_finalize_match_result( text, text, text, integer, text, text, boolean )",
+          "roles": "public"
+        }
+      ],
+      "drops": [
+        {
+          "kind": "index",
+          "name": "match_events_idempotency_partial_idx",
+          "parameterTypes": [],
+          "statement": "drop index if exists match_events_idempotency_partial_idx;"
+        },
+        {
+          "kind": "policy",
+          "name": "match_live_states_referee_select",
+          "parameterTypes": [],
+          "statement": "drop policy if exists match_live_states_referee_select on public.match_live_states;"
+        },
+        {
+          "kind": "policy",
+          "name": "match_events_referee_select",
+          "parameterTypes": [],
+          "statement": "drop policy if exists match_events_referee_select on public.match_events;"
+        },
+        {
+          "kind": "policy",
+          "name": "referee_assignments_self_select",
+          "parameterTypes": [],
+          "statement": "drop policy if exists referee_assignments_self_select on public.referee_assignments;"
+        },
+        {
+          "kind": "policy",
+          "name": "match_events_no_client_write",
+          "parameterTypes": [],
+          "statement": "drop policy if exists match_events_no_client_write on public.match_events;"
+        },
+        {
+          "kind": "policy",
+          "name": "match_live_states_no_client_write",
+          "parameterTypes": [],
+          "statement": "drop policy if exists match_live_states_no_client_write on public.match_live_states;"
+        },
+        {
+          "kind": "policy",
+          "name": "match_result_revisions_no_client_write",
+          "parameterTypes": [],
+          "statement": "drop policy if exists match_result_revisions_no_client_write on public.match_result_revisions;"
+        },
+        {
+          "kind": "policy",
+          "name": "match_sync_mutations_no_client_write",
+          "parameterTypes": [],
+          "statement": "drop policy if exists match_sync_mutations_no_client_write on public.match_sync_mutations;"
+        }
+      ],
+      "dataStatements": [
+        {
+          "command": "update",
+          "statement": "update public.match_live_states set state_version = coalesce(state_version, version, 0) where state_version is null;"
+        },
+        {
+          "command": "update",
+          "statement": "update public.match_events set command_type = coalesce(command_type, event_type), command_payload = case when command_payload = '{}'::jsonb then payload else command_payload end where command_type is null;"
+        }
+      ],
+      "doBlocks": [],
+      "storageBuckets": [],
+      "unclassified": [],
+      "operations": [
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "state_payload",
+            "type": "jsonb,",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "dataStatement",
+          "value": {
+            "command": "update",
+            "statement": "update public.match_live_states set state_version = coalesce(state_version, version, 0) where state_version is null;"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "state_version",
+            "alteration": "set default 0;",
+            "default": "0;"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_events",
+            "name": "command_type",
+            "type": "text,",
+            "nullable": false,
+            "default": "'{}'::jsonb, add column if",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "dataStatement",
+          "value": {
+            "command": "update",
+            "statement": "update public.match_events set command_type = coalesce(command_type, event_type), command_payload = case when command_payload = '{}'::jsonb then payload else command_payload end where command_type is null;"
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "match_events",
+            "name": "match_events_match_state_id_idempotency_key_key",
+            "action": "drop",
+            "definition": "drop constraint match_events_match_state_id_idempotency_key_key;"
+          }
+        },
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "index",
+            "name": "match_events_idempotency_partial_idx",
+            "parameterTypes": [],
+            "statement": "drop index if exists match_events_idempotency_partial_idx;"
+          }
+        },
+        {
+          "kind": "indexes",
+          "value": {
+            "name": "match_events_idempotency_partial_idx",
+            "table": "match_events",
+            "definition": "create unique index if not exists match_events_idempotency_partial_idx on public.match_events (match_state_id, idempotency_key) where idempotency_key is not null;"
+          }
+        },
+        {
+          "kind": "indexes",
+          "value": {
+            "name": "match_events_replay_idx",
+            "table": "match_events",
+            "definition": "create index if not exists match_events_replay_idx on public.match_events (match_state_id, event_sequence asc);"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "expires_at",
+            "type": "timestamptz,",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "match_result_revisions_status_check",
+            "action": "drop",
+            "definition": "drop constraint match_result_revisions_status_check;"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "constraint",
+            "type": "match_result_revisions_status_check",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_result_revisions",
+            "name": "supersedes_revision",
+            "type": "integer,",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "functions",
+          "value": {
+            "name": "referee_v5_match_state_id",
+            "parameters": [
+              "p_tenant_id text",
+              "p_tournament_id text",
+              "p_match_id text"
+            ],
+            "returns": "text",
+            "security": "invoker",
+            "searchPath": ""
+          }
+        },
+        {
+          "kind": "functions",
+          "value": {
+            "name": "referee_v5_current_user_has_assignment",
+            "parameters": [
+              "p_tenant_id text",
+              "p_tournament_id text",
+              "p_match_id text",
+              "p_roles text[] default array['referee'",
+              "'scorekeeper']"
+            ],
+            "returns": "boolean",
+            "security": "definer",
+            "searchPath": "public"
+          }
+        },
+        {
+          "kind": "functions",
+          "value": {
+            "name": "referee_v5_is_super_admin",
+            "parameters": [],
+            "returns": "boolean",
+            "security": "definer",
+            "searchPath": "public"
+          }
+        },
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "policy",
+            "name": "match_live_states_referee_select",
+            "parameterTypes": [],
+            "statement": "drop policy if exists match_live_states_referee_select on public.match_live_states;"
+          }
+        },
+        {
+          "kind": "policies",
+          "value": {
+            "name": "match_live_states_referee_select",
+            "table": "match_live_states",
+            "command": "select",
+            "roles": "authenticated",
+            "using": "public.referee_v5_is_super_admin() or public.referee_v5_current_user_has_assignment(tenant_id, tournament_id, match_id)",
+            "withCheck": ""
+          }
+        },
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "policy",
+            "name": "match_events_referee_select",
+            "parameterTypes": [],
+            "statement": "drop policy if exists match_events_referee_select on public.match_events;"
+          }
+        },
+        {
+          "kind": "policies",
+          "value": {
+            "name": "match_events_referee_select",
+            "table": "match_events",
+            "command": "select",
+            "roles": "authenticated",
+            "using": "public.referee_v5_is_super_admin() or public.referee_v5_current_user_has_assignment(tenant_id, tournament_id, match_id)",
+            "withCheck": ""
+          }
+        },
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "policy",
+            "name": "referee_assignments_self_select",
+            "parameterTypes": [],
+            "statement": "drop policy if exists referee_assignments_self_select on public.referee_assignments;"
+          }
+        },
+        {
+          "kind": "policies",
+          "value": {
+            "name": "referee_assignments_self_select",
+            "table": "referee_assignments",
+            "command": "select",
+            "roles": "authenticated",
+            "using": "public.referee_v5_is_super_admin() or referee_user_id = auth.uid()",
+            "withCheck": ""
+          }
+        },
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "policy",
+            "name": "match_events_no_client_write",
+            "parameterTypes": [],
+            "statement": "drop policy if exists match_events_no_client_write on public.match_events;"
+          }
+        },
+        {
+          "kind": "policies",
+          "value": {
+            "name": "match_events_no_client_write",
+            "table": "match_events",
+            "command": "all",
+            "roles": "authenticated",
+            "using": "false",
+            "withCheck": "false"
+          }
+        },
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "policy",
+            "name": "match_live_states_no_client_write",
+            "parameterTypes": [],
+            "statement": "drop policy if exists match_live_states_no_client_write on public.match_live_states;"
+          }
+        },
+        {
+          "kind": "policies",
+          "value": {
+            "name": "match_live_states_no_client_write",
+            "table": "match_live_states",
+            "command": "all",
+            "roles": "authenticated",
+            "using": "false",
+            "withCheck": "false"
+          }
+        },
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "policy",
+            "name": "match_result_revisions_no_client_write",
+            "parameterTypes": [],
+            "statement": "drop policy if exists match_result_revisions_no_client_write on public.match_result_revisions;"
+          }
+        },
+        {
+          "kind": "policies",
+          "value": {
+            "name": "match_result_revisions_no_client_write",
+            "table": "match_result_revisions",
+            "command": "all",
+            "roles": "authenticated",
+            "using": "false",
+            "withCheck": "false"
+          }
+        },
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "policy",
+            "name": "match_sync_mutations_no_client_write",
+            "parameterTypes": [],
+            "statement": "drop policy if exists match_sync_mutations_no_client_write on public.match_sync_mutations;"
+          }
+        },
+        {
+          "kind": "policies",
+          "value": {
+            "name": "match_sync_mutations_no_client_write",
+            "table": "match_sync_mutations",
+            "command": "all",
+            "roles": "authenticated",
+            "using": "false",
+            "withCheck": "false"
+          }
+        },
+        {
+          "kind": "functions",
+          "value": {
+            "name": "referee_v5_get_match_state",
+            "parameters": [
+              "p_tenant_id text",
+              "p_tournament_id text",
+              "p_match_id text"
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPath": "public"
+          }
+        },
+        {
+          "kind": "functions",
+          "value": {
+            "name": "referee_v5_apply_match_command",
+            "parameters": [
+              "p_tenant_id text",
+              "p_tournament_id text",
+              "p_match_id text",
+              "p_command_type text",
+              "p_payload jsonb default '{}'::jsonb",
+              "p_expected_version integer default null",
+              "p_expected_sequence bigint default null",
+              "p_client_mutation_id text default null",
+              "p_idempotency_key text default null"
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPath": "public"
+          }
+        },
+        {
+          "kind": "functions",
+          "value": {
+            "name": "referee_v5_finalize_match_result",
+            "parameters": [
+              "p_tenant_id text",
+              "p_tournament_id text",
+              "p_match_id text",
+              "p_expected_version integer",
+              "p_idempotency_key text",
+              "p_override_reason text default null",
+              "p_is_override boolean default false"
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPath": "public"
+          }
+        },
+        {
+          "kind": "revokes",
+          "value": {
+            "privileges": "all",
+            "object": "function public.referee_v5_get_match_state(text, text, text)",
+            "roles": "public"
+          }
+        },
+        {
+          "kind": "grants",
+          "value": {
+            "privileges": "execute",
+            "object": "function public.referee_v5_get_match_state(text, text, text)",
+            "roles": "authenticated"
+          }
+        },
+        {
+          "kind": "revokes",
+          "value": {
+            "privileges": "all",
+            "object": "function public.referee_v5_apply_match_command( text, text, text, text, jsonb, integer, bigint, text, text )",
+            "roles": "public"
+          }
+        },
+        {
+          "kind": "grants",
+          "value": {
+            "privileges": "execute",
+            "object": "function public.referee_v5_apply_match_command( text, text, text, text, jsonb, integer, bigint, text, text )",
+            "roles": "authenticated"
+          }
+        },
+        {
+          "kind": "revokes",
+          "value": {
+            "privileges": "all",
+            "object": "function public.referee_v5_finalize_match_result( text, text, text, integer, text, text, boolean )",
+            "roles": "public"
+          }
+        },
+        {
+          "kind": "grants",
+          "value": {
+            "privileges": "execute",
+            "object": "function public.referee_v5_finalize_match_result( text, text, text, integer, text, text, boolean )",
+            "roles": "authenticated"
+          }
+        }
+      ]
+    },
+    {
+      "path": "docs/v5/referee-v5/PHASE_V5D1_REFEREE_HARDENING.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
+      "tables": [
+        "match_integration_outbox"
+      ],
+      "columns": [
+        {
+          "table": "match_sync_mutations",
+          "name": "request_hash",
+          "type": "text,",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_live_states",
+          "name": "state_hash",
+          "type": "text;",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_integration_outbox",
+          "name": "id",
+          "type": "uuid",
+          "nullable": true,
+          "default": "gen_random_uuid()",
+          "constraints": "primary key"
+        },
+        {
+          "table": "match_integration_outbox",
+          "name": "tenant_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_integration_outbox",
+          "name": "tournament_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_integration_outbox",
+          "name": "match_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_integration_outbox",
+          "name": "match_state_id",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": "references public.match_live_states"
+        },
+        {
+          "table": "match_integration_outbox",
+          "name": "event_type",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": "check (event_type in ( 'bracket_advance_requested', 'standings_recalc_requested', 'notification_requested', 'rating_evidence_requested' ))"
+        },
+        {
+          "table": "match_integration_outbox",
+          "name": "payload",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'{}'::jsonb",
+          "constraints": ""
+        },
+        {
+          "table": "match_integration_outbox",
+          "name": "idempotency_key",
+          "type": "text",
+          "nullable": false,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "match_integration_outbox",
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'pending'",
+          "constraints": "check (status in ('pending', 'processing', 'completed', 'failed', 'cancelled'))"
+        },
+        {
+          "table": "match_integration_outbox",
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "constraints": ""
+        },
+        {
+          "table": "match_integration_outbox",
+          "name": "processed_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "expires_at",
+          "type": "timestamptz;",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "constraint",
+          "type": "referee_assignments_expiry_order_chk",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        },
+        {
+          "table": "referee_assignments",
+          "name": "constraint",
+          "type": "referee_assignments_revoked_order_chk",
+          "nullable": true,
+          "default": "",
+          "constraints": ""
+        }
+      ],
+      "constraints": [
+        {
+          "table": "match_sync_mutations",
+          "name": "match_sync_mutations_match_state_id_idempotency_key_key",
+          "action": "drop",
+          "definition": "drop constraint match_sync_mutations_match_state_id_idempotency_key_key;"
+        },
+        {
+          "table": "match_integration_outbox",
+          "name": null,
+          "definition": "unique (match_state_id, idempotency_key)"
+        },
+        {
+          "table": "referee_assignments",
+          "name": "referee_assignments_expiry_order_chk",
+          "action": "drop",
+          "definition": "drop constraint referee_assignments_expiry_order_chk;"
+        },
+        {
+          "table": "referee_assignments",
+          "name": "referee_assignments_revoked_order_chk",
+          "action": "drop",
+          "definition": "drop constraint referee_assignments_revoked_order_chk;"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "match_sync_mutations_match_idempotency_uq",
+          "table": "match_sync_mutations",
+          "definition": "create unique index if not exists match_sync_mutations_match_idempotency_uq on public.match_sync_mutations (match_state_id, idempotency_key);"
+        },
+        {
+          "name": "match_integration_outbox_pending_idx",
+          "table": "match_integration_outbox",
+          "definition": "create index if not exists match_integration_outbox_pending_idx on public.match_integration_outbox (status, created_at) where status = 'pending';"
+        },
+        {
+          "name": "referee_assignments_active_role_uq",
+          "table": "referee_assignments",
+          "definition": "create unique index if not exists referee_assignments_active_role_uq on public.referee_assignments (tenant_id, tournament_id, match_id, role, referee_user_id) where status = 'active';"
+        },
+        {
+          "name": "referee_assignments_tenant_user_idx",
+          "table": "referee_assignments",
+          "definition": "create index if not exists referee_assignments_tenant_user_idx on public.referee_assignments (tenant_id, referee_user_id, status);"
+        }
+      ],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
+      "functions": [
+        {
+          "name": "referee_v5_deny_match_events_mutation",
+          "parameters": [],
+          "returns": "trigger",
+          "security": "definer",
+          "searchPath": "pg_catalog, public"
+        },
+        {
+          "name": "referee_v5_commit_match_transition",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_match_id text",
+            "p_actor_id uuid",
+            "p_command_type text",
+            "p_command_payload jsonb",
+            "p_expected_state_version integer",
+            "p_expected_event_sequence bigint",
+            "p_client_mutation_id text",
+            "p_idempotency_key text",
+            "p_request_hash text",
+            "p_next_state jsonb",
+            "p_generated_events jsonb",
+            "p_state_before_hash text",
+            "p_state_after_hash text"
+          ],
+          "returns": "jsonb",
+          "security": "definer",
+          "searchPath": "pg_catalog, public"
+        },
+        {
+          "name": "referee_v5_commit_match_finalization",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_match_id text",
+            "p_actor_id uuid",
+            "p_expected_state_version integer",
+            "p_idempotency_key text",
+            "p_request_hash text",
+            "p_revision jsonb",
+            "p_outbox_events jsonb default '[]'::jsonb",
+            "p_override_reason text default null"
+          ],
+          "returns": "jsonb",
+          "security": "definer",
+          "searchPath": "pg_catalog, public"
+        }
+      ],
+      "procedures": [],
+      "functionAlters": [],
+      "triggers": [
+        {
+          "name": "trg_match_events_deny_update",
+          "table": "match_events",
+          "definition": "create trigger trg_match_events_deny_update before update on public.match_events for each row execute function public.referee_v5_deny_match_events_mutation();"
+        },
+        {
+          "name": "trg_match_events_deny_delete",
+          "table": "match_events",
+          "definition": "create trigger trg_match_events_deny_delete before delete on public.match_events for each row execute function public.referee_v5_deny_match_events_mutation();"
+        }
+      ],
+      "rls": [
+        {
+          "table": "match_integration_outbox",
+          "enabled": true,
+          "forced": false
+        }
+      ],
+      "policies": [
+        {
+          "name": "match_integration_outbox_no_client",
+          "table": "match_integration_outbox",
+          "command": "all",
+          "roles": "authenticated",
+          "using": "false",
+          "withCheck": "false"
+        }
+      ],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text )",
+          "roles": "service_role"
+        },
+        {
+          "privileges": "execute",
+          "object": "function public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text )",
+          "roles": "service_role"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_apply_match_command( text, text, text, text, jsonb, integer, bigint, text, text )",
+          "roles": "public, anon, authenticated"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_finalize_match_result( text, text, text, integer, text, text, boolean )",
+          "roles": "public, anon, authenticated"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text )",
+          "roles": "public, anon, authenticated"
+        },
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text )",
+          "roles": "public, anon, authenticated"
+        }
+      ],
+      "drops": [
+        {
+          "kind": "trigger",
+          "name": "trg_match_events_deny_update",
+          "parameterTypes": [],
+          "statement": "drop trigger if exists trg_match_events_deny_update on public.match_events;"
+        },
+        {
+          "kind": "trigger",
+          "name": "trg_match_events_deny_delete",
+          "parameterTypes": [],
+          "statement": "drop trigger if exists trg_match_events_deny_delete on public.match_events;"
+        },
+        {
+          "kind": "policy",
+          "name": "match_integration_outbox_no_client",
+          "parameterTypes": [],
+          "statement": "drop policy if exists match_integration_outbox_no_client on public.match_integration_outbox;"
+        }
+      ],
+      "dataStatements": [],
+      "doBlocks": [],
+      "storageBuckets": [],
+      "unclassified": [],
+      "operations": [
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "request_hash",
+            "type": "text,",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "match_sync_mutations",
+            "name": "match_sync_mutations_match_state_id_idempotency_key_key",
+            "action": "drop",
+            "definition": "drop constraint match_sync_mutations_match_state_id_idempotency_key_key;"
+          }
+        },
+        {
+          "kind": "indexes",
+          "value": {
+            "name": "match_sync_mutations_match_idempotency_uq",
+            "table": "match_sync_mutations",
+            "definition": "create unique index if not exists match_sync_mutations_match_idempotency_uq on public.match_sync_mutations (match_state_id, idempotency_key);"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_live_states",
+            "name": "state_hash",
+            "type": "text;",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "tables",
+          "value": "match_integration_outbox"
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_integration_outbox",
+            "name": "id",
+            "type": "uuid",
+            "nullable": true,
+            "default": "gen_random_uuid()",
+            "constraints": "primary key"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_integration_outbox",
+            "name": "tenant_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_integration_outbox",
+            "name": "tournament_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_integration_outbox",
+            "name": "match_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_integration_outbox",
+            "name": "match_state_id",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": "references public.match_live_states"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_integration_outbox",
+            "name": "event_type",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": "check (event_type in ( 'bracket_advance_requested', 'standings_recalc_requested', 'notification_requested', 'rating_evidence_requested' ))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_integration_outbox",
+            "name": "payload",
+            "type": "jsonb",
+            "nullable": false,
+            "default": "'{}'::jsonb",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_integration_outbox",
+            "name": "idempotency_key",
+            "type": "text",
+            "nullable": false,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_integration_outbox",
+            "name": "status",
+            "type": "text",
+            "nullable": false,
+            "default": "'pending'",
+            "constraints": "check (status in ('pending', 'processing', 'completed', 'failed', 'cancelled'))"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_integration_outbox",
+            "name": "created_at",
+            "type": "timestamptz",
+            "nullable": false,
+            "default": "now()",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "match_integration_outbox",
+            "name": "processed_at",
+            "type": "timestamptz",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "match_integration_outbox",
+            "name": null,
+            "definition": "unique (match_state_id, idempotency_key)"
+          }
+        },
+        {
+          "kind": "indexes",
+          "value": {
+            "name": "match_integration_outbox_pending_idx",
+            "table": "match_integration_outbox",
+            "definition": "create index if not exists match_integration_outbox_pending_idx on public.match_integration_outbox (status, created_at) where status = 'pending';"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "expires_at",
+            "type": "timestamptz;",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "referee_assignments",
+            "name": "referee_assignments_expiry_order_chk",
+            "action": "drop",
+            "definition": "drop constraint referee_assignments_expiry_order_chk;"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "constraint",
+            "type": "referee_assignments_expiry_order_chk",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "constraints",
+          "value": {
+            "table": "referee_assignments",
+            "name": "referee_assignments_revoked_order_chk",
+            "action": "drop",
+            "definition": "drop constraint referee_assignments_revoked_order_chk;"
+          }
+        },
+        {
+          "kind": "columns",
+          "value": {
+            "table": "referee_assignments",
+            "name": "constraint",
+            "type": "referee_assignments_revoked_order_chk",
+            "nullable": true,
+            "default": "",
+            "constraints": ""
+          }
+        },
+        {
+          "kind": "indexes",
+          "value": {
+            "name": "referee_assignments_active_role_uq",
+            "table": "referee_assignments",
+            "definition": "create unique index if not exists referee_assignments_active_role_uq on public.referee_assignments (tenant_id, tournament_id, match_id, role, referee_user_id) where status = 'active';"
+          }
+        },
+        {
+          "kind": "indexes",
+          "value": {
+            "name": "referee_assignments_tenant_user_idx",
+            "table": "referee_assignments",
+            "definition": "create index if not exists referee_assignments_tenant_user_idx on public.referee_assignments (tenant_id, referee_user_id, status);"
+          }
+        },
+        {
+          "kind": "functions",
+          "value": {
+            "name": "referee_v5_deny_match_events_mutation",
+            "parameters": [],
+            "returns": "trigger",
+            "security": "definer",
+            "searchPath": "pg_catalog, public"
+          }
+        },
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "trigger",
+            "name": "trg_match_events_deny_update",
+            "parameterTypes": [],
+            "statement": "drop trigger if exists trg_match_events_deny_update on public.match_events;"
+          }
+        },
+        {
+          "kind": "triggers",
+          "value": {
+            "name": "trg_match_events_deny_update",
+            "table": "match_events",
+            "definition": "create trigger trg_match_events_deny_update before update on public.match_events for each row execute function public.referee_v5_deny_match_events_mutation();"
+          }
+        },
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "trigger",
+            "name": "trg_match_events_deny_delete",
+            "parameterTypes": [],
+            "statement": "drop trigger if exists trg_match_events_deny_delete on public.match_events;"
+          }
+        },
+        {
+          "kind": "triggers",
+          "value": {
+            "name": "trg_match_events_deny_delete",
+            "table": "match_events",
+            "definition": "create trigger trg_match_events_deny_delete before delete on public.match_events for each row execute function public.referee_v5_deny_match_events_mutation();"
+          }
+        },
+        {
+          "kind": "functions",
+          "value": {
+            "name": "referee_v5_commit_match_transition",
+            "parameters": [
+              "p_tenant_id text",
+              "p_tournament_id text",
+              "p_match_id text",
+              "p_actor_id uuid",
+              "p_command_type text",
+              "p_command_payload jsonb",
+              "p_expected_state_version integer",
+              "p_expected_event_sequence bigint",
+              "p_client_mutation_id text",
+              "p_idempotency_key text",
+              "p_request_hash text",
+              "p_next_state jsonb",
+              "p_generated_events jsonb",
+              "p_state_before_hash text",
+              "p_state_after_hash text"
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPath": "pg_catalog, public"
+          }
+        },
+        {
+          "kind": "functions",
+          "value": {
+            "name": "referee_v5_commit_match_finalization",
+            "parameters": [
+              "p_tenant_id text",
+              "p_tournament_id text",
+              "p_match_id text",
+              "p_actor_id uuid",
+              "p_expected_state_version integer",
+              "p_idempotency_key text",
+              "p_request_hash text",
+              "p_revision jsonb",
+              "p_outbox_events jsonb default '[]'::jsonb",
+              "p_override_reason text default null"
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPath": "pg_catalog, public"
+          }
+        },
+        {
+          "kind": "revokes",
+          "value": {
+            "privileges": "all",
+            "object": "function public.referee_v5_apply_match_command( text, text, text, text, jsonb, integer, bigint, text, text )",
+            "roles": "public, anon, authenticated"
+          }
+        },
+        {
+          "kind": "revokes",
+          "value": {
+            "privileges": "all",
+            "object": "function public.referee_v5_finalize_match_result( text, text, text, integer, text, text, boolean )",
+            "roles": "public, anon, authenticated"
+          }
+        },
+        {
+          "kind": "revokes",
+          "value": {
+            "privileges": "all",
+            "object": "function public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text )",
+            "roles": "public, anon, authenticated"
+          }
+        },
+        {
+          "kind": "revokes",
+          "value": {
+            "privileges": "all",
+            "object": "function public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text )",
+            "roles": "public, anon, authenticated"
+          }
+        },
+        {
+          "kind": "grants",
+          "value": {
+            "privileges": "execute",
+            "object": "function public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text )",
+            "roles": "service_role"
+          }
+        },
+        {
+          "kind": "grants",
+          "value": {
+            "privileges": "execute",
+            "object": "function public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text )",
+            "roles": "service_role"
+          }
+        },
+        {
+          "kind": "rls",
+          "value": {
+            "table": "match_integration_outbox",
+            "enabled": true,
+            "forced": false
+          }
+        },
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "policy",
+            "name": "match_integration_outbox_no_client",
+            "parameterTypes": [],
+            "statement": "drop policy if exists match_integration_outbox_no_client on public.match_integration_outbox;"
+          }
+        },
+        {
+          "kind": "policies",
+          "value": {
+            "name": "match_integration_outbox_no_client",
+            "table": "match_integration_outbox",
+            "command": "all",
+            "roles": "authenticated",
+            "using": "false",
+            "withCheck": "false"
+          }
+        }
+      ]
+    },
+    {
+      "path": "docs/v5/referee-v5/PHASE_V5D32_IDEMPOTENCY_UNDO.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
+      "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
+      "functions": [
+        {
+          "name": "referee_v5_commit_match_transition",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_match_id text",
+            "p_actor_id uuid",
+            "p_command_type text",
+            "p_command_payload jsonb",
+            "p_expected_state_version integer",
+            "p_expected_event_sequence bigint",
+            "p_client_mutation_id text",
+            "p_idempotency_key text",
+            "p_request_hash text",
+            "p_next_state jsonb",
+            "p_generated_events jsonb",
+            "p_state_before_hash text",
+            "p_state_after_hash text",
+            "p_state_before jsonb default null",
+            "p_staging_fault text default null"
+          ],
+          "returns": "jsonb",
+          "security": "definer",
+          "searchPath": "pg_catalog, public"
+        }
+      ],
+      "procedures": [],
+      "functionAlters": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text, jsonb, text )",
+          "roles": "service_role"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text, jsonb, text )",
+          "roles": "public, anon, authenticated"
+        }
+      ],
+      "drops": [
+        {
+          "kind": "function",
+          "name": "referee_v5_commit_match_transition",
+          "parameterTypes": [
+            "text",
+            "text",
+            "text",
+            "uuid",
+            "text",
+            "jsonb",
+            "integer",
+            "bigint",
+            "text",
+            "text",
+            "text",
+            "jsonb",
+            "jsonb",
+            "text",
+            "text"
+          ],
+          "statement": "drop function if exists public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text );"
+        },
+        {
+          "kind": "function",
+          "name": "referee_v5_commit_match_transition",
+          "parameterTypes": [
+            "text",
+            "text",
+            "text",
+            "uuid",
+            "text",
+            "jsonb",
+            "integer",
+            "bigint",
+            "text",
+            "text",
+            "text",
+            "jsonb",
+            "jsonb",
+            "text",
+            "text",
+            "text"
+          ],
+          "statement": "drop function if exists public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text, text );"
+        }
+      ],
+      "dataStatements": [],
+      "doBlocks": [],
+      "storageBuckets": [],
+      "unclassified": [],
+      "operations": [
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "function",
+            "name": "referee_v5_commit_match_transition",
+            "parameterTypes": [
+              "text",
+              "text",
+              "text",
+              "uuid",
+              "text",
+              "jsonb",
+              "integer",
+              "bigint",
+              "text",
+              "text",
+              "text",
+              "jsonb",
+              "jsonb",
+              "text",
+              "text"
+            ],
+            "statement": "drop function if exists public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text );"
+          }
+        },
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "function",
+            "name": "referee_v5_commit_match_transition",
+            "parameterTypes": [
+              "text",
+              "text",
+              "text",
+              "uuid",
+              "text",
+              "jsonb",
+              "integer",
+              "bigint",
+              "text",
+              "text",
+              "text",
+              "jsonb",
+              "jsonb",
+              "text",
+              "text",
+              "text"
+            ],
+            "statement": "drop function if exists public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text, text );"
+          }
+        },
+        {
+          "kind": "functions",
+          "value": {
+            "name": "referee_v5_commit_match_transition",
+            "parameters": [
+              "p_tenant_id text",
+              "p_tournament_id text",
+              "p_match_id text",
+              "p_actor_id uuid",
+              "p_command_type text",
+              "p_command_payload jsonb",
+              "p_expected_state_version integer",
+              "p_expected_event_sequence bigint",
+              "p_client_mutation_id text",
+              "p_idempotency_key text",
+              "p_request_hash text",
+              "p_next_state jsonb",
+              "p_generated_events jsonb",
+              "p_state_before_hash text",
+              "p_state_after_hash text",
+              "p_state_before jsonb default null",
+              "p_staging_fault text default null"
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPath": "pg_catalog, public"
+          }
+        },
+        {
+          "kind": "revokes",
+          "value": {
+            "privileges": "all",
+            "object": "function public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text, jsonb, text )",
+            "roles": "public, anon, authenticated"
+          }
+        },
+        {
+          "kind": "grants",
+          "value": {
+            "privileges": "execute",
+            "object": "function public.referee_v5_commit_match_transition( text, text, text, uuid, text, jsonb, integer, bigint, text, text, text, jsonb, jsonb, text, text, jsonb, text )",
+            "roles": "service_role"
+          }
+        }
+      ]
+    },
+    {
+      "path": "docs/v5/referee-v5/PHASE_V5D4_ATOMIC_ROLLBACK.sql",
+      "schemas": [],
+      "extensions": [],
+      "types": [],
+      "domains": [],
+      "tables": [],
+      "columns": [],
+      "constraints": [],
+      "indexes": [],
+      "views": [],
+      "materializedViews": [],
+      "sequences": [],
+      "functions": [
+        {
+          "name": "referee_v5_commit_match_finalization",
+          "parameters": [
+            "p_tenant_id text",
+            "p_tournament_id text",
+            "p_match_id text",
+            "p_actor_id uuid",
+            "p_expected_state_version integer",
+            "p_idempotency_key text",
+            "p_request_hash text",
+            "p_revision jsonb",
+            "p_outbox_events jsonb default '[]'::jsonb",
+            "p_override_reason text default null",
+            "p_staging_fault text default null"
+          ],
+          "returns": "jsonb",
+          "security": "definer",
+          "searchPath": "pg_catalog, public"
+        }
+      ],
+      "procedures": [],
+      "functionAlters": [],
+      "triggers": [],
+      "rls": [],
+      "policies": [],
+      "grants": [
+        {
+          "privileges": "execute",
+          "object": "function public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text, text )",
+          "roles": "service_role"
+        }
+      ],
+      "revokes": [
+        {
+          "privileges": "all",
+          "object": "function public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text, text )",
+          "roles": "public, anon, authenticated"
+        }
+      ],
+      "drops": [
+        {
+          "kind": "function",
+          "name": "referee_v5_commit_match_finalization",
+          "parameterTypes": [
+            "text",
+            "text",
+            "text",
+            "uuid",
+            "integer",
+            "text",
+            "text",
+            "jsonb",
+            "jsonb",
+            "text"
+          ],
+          "statement": "drop function if exists public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text );"
+        }
+      ],
+      "dataStatements": [],
+      "doBlocks": [],
+      "storageBuckets": [],
+      "unclassified": [],
+      "operations": [
+        {
+          "kind": "drop",
+          "value": {
+            "kind": "function",
+            "name": "referee_v5_commit_match_finalization",
+            "parameterTypes": [
+              "text",
+              "text",
+              "text",
+              "uuid",
+              "integer",
+              "text",
+              "text",
+              "jsonb",
+              "jsonb",
+              "text"
+            ],
+            "statement": "drop function if exists public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text );"
+          }
+        },
+        {
+          "kind": "functions",
+          "value": {
+            "name": "referee_v5_commit_match_finalization",
+            "parameters": [
+              "p_tenant_id text",
+              "p_tournament_id text",
+              "p_match_id text",
+              "p_actor_id uuid",
+              "p_expected_state_version integer",
+              "p_idempotency_key text",
+              "p_request_hash text",
+              "p_revision jsonb",
+              "p_outbox_events jsonb default '[]'::jsonb",
+              "p_override_reason text default null",
+              "p_staging_fault text default null"
+            ],
+            "returns": "jsonb",
+            "security": "definer",
+            "searchPath": "pg_catalog, public"
+          }
+        },
+        {
+          "kind": "revokes",
+          "value": {
+            "privileges": "all",
+            "object": "function public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text, text )",
+            "roles": "public, anon, authenticated"
+          }
+        },
+        {
+          "kind": "grants",
+          "value": {
+            "privileges": "execute",
+            "object": "function public.referee_v5_commit_match_finalization( text, text, text, uuid, integer, text, text, jsonb, jsonb, text, text )",
+            "roles": "service_role"
+          }
+        }
+      ]
+    }
+  ],
+  "runtimeConsumers": [
+    "supabase/functions/referee-v5-match/index.ts",
+    "src/features/platform-hard-cutover/runtimeAuthorityMatrix.js#referee"
+  ],
+  "verdict": "TRACKED_CHAIN_PROMOTED_WITH_INDEPENDENT_CONSUMER_PARITY"
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-08-04T15:27:11+07:00",
+  "ownerCheckpoint": "OWNER GO — RUN STORAGE RESTORE DRILL",
+  "operation": "phase6_storage_copy_reconciliation",
+  "sourceProjectRef": "expuvcohlcjzvrrauvud",
+  "destinationProjectRef": "shxzwppmgtwtwswdhouh",
+  "sourceMutation": 0,
+  "productionMutation": 0,
+  "recoveryProjectMutationAuthorized": true,
+  "elapsedSeconds": 4.408,
+  "buckets": [
+    {"bucket":"user-avatars","sourceCount":2,"sourceBytes":497236,"destinationCountBefore":2,"destinationBytesBefore":497236,"destinationCountAfter":2,"destinationBytesAfter":497236,"oneWaySizeCheck":"PASS"},
+    {"bucket":"tournament-broadcast-vods","sourceCount":0,"sourceBytes":0,"destinationCountBefore":0,"destinationBytesBefore":0,"destinationCountAfter":0,"destinationBytesAfter":0,"oneWaySizeCheck":"PASS"}
+  ],
+  "copyResult": "PASS",
+  "contentEquivalence": "PASS",
+  "measuredReconciliationSeconds": 4.408,
+  "fullEmptyDestinationRestoreRto": "NOT_PROVEN_DESTINATION_WAS_PREPOPULATED",
+  "productionGo": false
+}

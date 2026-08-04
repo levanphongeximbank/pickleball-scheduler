@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "environment": "STAGING",
+  "certifiedAt": "2026-08-04T15:26:30+07:00",
+  "ownerCheckpoint": "OWNER GO — APPLY STAGING EXACT ANON RPC ALLOWLIST REMEDIATION",
+  "migration": {"version":"20260804082418","name":"phase6_staging_exact_anon_rpc_allowlist_remediation_01","applied":true},
+  "catalog": {
+    "securityDefinerFunctions": 298,
+    "aclSnapshotRows": 298,
+    "anonCallableBefore": 204,
+    "anonCallableAfter": 7,
+    "pseudoPublicCallableBefore": 151,
+    "pseudoPublicCallableAfter": 0,
+    "defaultAnonExecuteAfter": false
+  },
+  "advisor": {"error":0,"anonSecurityDefinerExecutable":7,"authenticatedSecurityDefinerExecutable":271,"authLeakedPasswordProtection":1,"rlsEnabledNoPolicyInfo":11},
+  "runtime": {
+    "anonymousAllowlistPositive": {"tested":7,"passed":7,"http200":7,"invalidMutationTokenUsed":true},
+    "anonymousPrivilegedNegative": {"tested":3,"passed":3,"http401":3},
+    "authenticatedTenantAB": "PASS_WITH_EMPTY_FIXTURE",
+    "crossTenantLeak": false,
+    "dataMutations": 0
+  },
+  "productionMutation": 0,
+  "productionGo": false,
+  "status": "PASS_WITH_INTENTIONAL_ANON_AND_AUTHENTICATED_RPC_OBSERVATIONS"
+}

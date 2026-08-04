@@ -1,0 +1,68 @@
+{
+  "marker": "PHASE6_PRODUCTION_READ_ONLY_PREFLIGHT_V1",
+  "capturedAt": "2026-08-04T06:55:00Z",
+  "access": {
+    "vercelMetadataRead": true,
+    "supabaseProductionAccess": true,
+    "secretValuesReadOrPrinted": false,
+    "productionMutations": 0,
+    "deployments": 0
+  },
+  "vercelProject": {
+    "name": "pickleball-scheduler",
+    "id": "prj_glU9Gr0zPaNoMlTcIJCAHVk5UowG",
+    "framework": "Vite",
+    "nodeVersion": "24.x",
+    "latestProduction": {
+      "state": "READY",
+      "createdAt": "2026-08-04T06:26:26.206Z",
+      "readyAt": "2026-08-04T06:28:32.126Z",
+      "githubCommitSha": "af19823da8c2b627a913c831f65a7618f310fddf",
+      "canonicalDomain": "https://pickvn.app"
+    },
+    "availabilityProbe": {
+      "method": "HEAD",
+      "capturedAt": "2026-08-04T06:58:20Z",
+      "status": 200,
+      "server": "Vercel",
+      "contentType": "text/html; charset=utf-8",
+      "hsts": true
+    }
+  },
+  "productionEnvironment": {
+    "nameCount": 27,
+    "valuesInspected": false,
+    "requiredPresent": [
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "SUPABASE_URL",
+      "VITE_RBAC_ENABLED",
+      "VITE_SUPABASE_ANON_KEY",
+      "VITE_SUPABASE_URL"
+    ],
+    "requiredMissing": [
+      "VITE_PLATFORM_HARD_CUTOVER_ENABLED",
+      "VITE_COMPETITION_REMOTE_SSOT_ENABLED"
+    ],
+    "domainDrift": {
+      "current": "https://pickvn.app",
+      "staleChecklistValue": "https://pickleball-scheduler-eight.vercel.app",
+      "status": "REQUIRES_CHECKLIST_AND_CORS_RECONCILIATION"
+    }
+  },
+  "databasePreflight": {
+    "status": "REST_AND_STORAGE_PASS_DIRECT_CATALOG_DEFERRED_TO_STOP_BEFORE_MUTATION_GATE",
+    "mustRemainReadOnly": true,
+    "requiredBeforeGo": [
+      "migration inventory and drift",
+      "RLS and policy inventory",
+      "anonymous/public write exposure",
+      "privileged function execute grants",
+      "Realtime publication membership",
+      "protected object counts and tenant isolation prerequisites"
+    ]
+  },
+  "restEvidence": "PHASE6_PRODUCTION_READ_ONLY_LIVE_EVIDENCE.json",
+  "ownerDisposition": "OWNER_ACCEPTED_PRE_CUTOVER_STOP_GATES",
+  "verdict": "PASS_WITH_EXPECTED_CUTOVER_DELTA",
+  "productionGo": false
+}

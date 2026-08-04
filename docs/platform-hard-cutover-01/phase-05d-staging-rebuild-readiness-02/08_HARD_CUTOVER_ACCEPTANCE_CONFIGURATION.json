@@ -1,0 +1,76 @@
+{
+  "marker": "PHASE5D_HARD_CUTOVER_ACCEPTANCE_CONFIGURATION_V1",
+  "derivedFrom": [
+    {
+      "path": "src/features/platform-hard-cutover/runtimeAuthorityMatrix.js",
+      "sha256": "62ebc9596ba94223ebb72bd97d951c006986fbdfd2c7c0398cc77c126322b774",
+      "bytes": 21783
+    },
+    {
+      "path": "src/features/platform-hard-cutover/legacyAuthorityPolicy.js",
+      "sha256": "da716241d8abb704fdc6f465b34854b5b4a631042e4e4817b375d0e8cda86225",
+      "bytes": 10735
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-04/manifests/RUNTIME_MANIFEST.md",
+      "sha256": "30a16a6f5ebec71829b91ac1b7bd3843dc52c39a88c897829943b20c0c437413",
+      "bytes": 4102
+    }
+  ],
+  "inventedFlagValues": false,
+  "requiredCanonicalRuntime": {
+    "VITE_PLATFORM_HARD_CUTOVER_ENABLED": {
+      "acceptanceValue": "true",
+      "sourceSymbol": "HARD_CUTOVER_FLAG",
+      "sourcePath": "src/features/platform-hard-cutover/runtimeAuthorityMatrix.js",
+      "rationale": "Acceptance environment must prove hard-cutover canonical behavior"
+    },
+    "VITE_RBAC_ENABLED": {
+      "acceptanceValue": "true",
+      "source": "runtimeAuthorityMatrix.rbac_catalog.allowedFlag",
+      "rationale": "RBAC catalog must not silently allow under HC"
+    },
+    "VITE_COMPETITION_REMOTE_SSOT_ENABLED": {
+      "acceptanceValue": "true",
+      "sourceSymbol": "COMPETITION_REMOTE_SSOT_ENABLED",
+      "rationale": "Competition remote SSOT domain activation for acceptance of M8 path"
+    }
+  },
+  "forbiddenUnderAcceptance": [
+    "legacy writers as SoT",
+    "adapters writing localStorage SoT",
+    "localStorage authority",
+    "mocks / demo persistence",
+    "silent fallback paths listed in RUNTIME_AUTHORITY_MATRIX.forbiddenFallback"
+  ],
+  "matrixAllowedFlagLiteralsObserved": [
+    "string|null",
+    "null",
+    "\"VITE_RBAC_ENABLED\"",
+    "null",
+    "null",
+    "HARD_CUTOVER_FLAG",
+    "null",
+    "\"VITE_COURT_RUNTIME_AUTHORITY=durable\"",
+    "null",
+    "null",
+    "null",
+    "null",
+    "HARD_CUTOVER_FLAG",
+    "null",
+    "null",
+    "COMPETITION_REMOTE_SSOT_FLAG",
+    "null",
+    "null",
+    "\"VITE_PICK_VN_RATING_V5_ENABLED\"",
+    "\"VITE_PUBLIC_NEWS_SOURCE=live\"",
+    "null",
+    "null",
+    "\"VITE_MARKETPLACE_ENABLED\"",
+    "HARD_CUTOVER_FLAG",
+    "\"VITE_ENABLE_AI_ENGINE\"",
+    "HARD_CUTOVER_FLAG",
+    "HARD_CUTOVER_FLAG"
+  ],
+  "note": "Values derived from tracked runtime symbols/policy docs only; no env secrets embedded"
+}

@@ -1,0 +1,221 @@
+{
+  "marker": "PHASE5D_BOOTSTRAP_SEED_LEDGER_V1",
+  "version": 1,
+  "executionInThisWorkstream": false,
+  "items": [
+    {
+      "id": "SEED.AUTH_USERS",
+      "classification": "mandatory schema-independent bootstrap",
+      "path": null,
+      "note": "Supabase Auth Admin creates users; not SQL-reconstructible",
+      "external": "SUPABASE_AUTH"
+    },
+    {
+      "id": "SEED.SUPER_ADMIN_PROFILE",
+      "classification": "mandatory schema-independent bootstrap",
+      "path": "docs/SUPABASE-STAGING-CHECKLIST.md",
+      "note": "Documented profile role elevation procedure; values not embedded",
+      "sha256": "39943b1e3dece33afa5c7fe0e54d016002a143e2c96d1efbf47d8a2ecb352d21",
+      "bytes": 10958
+    },
+    {
+      "id": "SEED.VENUE_BINDING",
+      "classification": "mandatory schema-independent bootstrap",
+      "path": "docs/SUPABASE-STAGING-CHECKLIST.md",
+      "note": "venues insert + profiles.venue_id binding; IDs chosen per environment without baking secrets",
+      "sha256": "39943b1e3dece33afa5c7fe0e54d016002a143e2c96d1efbf47d8a2ecb352d21",
+      "bytes": 10958
+    },
+    {
+      "id": "SEED.CRM_PERMS",
+      "classification": "mandatory reference/permission seed",
+      "path": "docs/crm/phase-1h/10_CRM_PHASE_1H_PERMISSION_SEED.sql",
+      "sha256": "2db66238391d39de992c2848d142ef0f42a515be2e252d67de2ff178e891512b",
+      "bytes": 6703
+    },
+    {
+      "id": "SEED.REPORTING_PERMS",
+      "classification": "mandatory reference/permission seed",
+      "path": "docs/reporting-analytics/reporting-02/40_REPORTING_02_PERMISSION_SEED.sql",
+      "sha256": "66b86bad5d25efa2dfca2b1e3267c2e1992d7caf439f5608b97ee7c0644a88d6",
+      "bytes": 4004
+    },
+    {
+      "id": "SEED.NEWS_PERMS",
+      "classification": "mandatory reference/permission seed",
+      "path": "docs/news-public-content/news-03/10_NEWS_PHASE_03_PERMISSION_SEED.sql",
+      "sha256": "4b5aebee789cc0a51fb7167865952c2a87871670346f28b83b60964a15d388b3",
+      "bytes": 2950
+    },
+    {
+      "id": "SEED.COACHING_02_PERMS",
+      "classification": "mandatory reference/permission seed",
+      "path": "docs/coaching-training/coaching-02/15_COACHING_02_PERMISSION_SEED.sql",
+      "sha256": "d332e147a24bc280cebba954181a153f0222499c4177d42fcf8f99115a9c382c",
+      "bytes": 4664
+    },
+    {
+      "id": "SEED.COACHING_04_PERMS",
+      "classification": "mandatory reference/permission seed",
+      "path": "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.sql",
+      "sha256": "46062d071c55f55fa4521151c26d1584237831a42103b52075948f09b1be3793",
+      "bytes": 4962
+    },
+    {
+      "id": "SEED.V52_ROLES",
+      "classification": "mandatory reference/permission seed",
+      "path": "docs/v5/PHASE_V52_PRODUCTION_RBAC_ROLES.sql",
+      "sha256": "e08d0b1565e0e541d947d1fe8947caf97c3f3fa1045fde4dae576c3518fecfdc",
+      "bytes": 11691
+    },
+    {
+      "id": "FIX.PHASE4_RESEED_PACKAGE",
+      "classification": "acceptance fixture only",
+      "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/",
+      "note": "Phase 4 reseed/*.sql used only after identity prerequisites; not blank schema",
+      "sources": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/00_ORDER_AND_SAFETY.md",
+          "sha256": "ac611a550c730cd5372cb605cd2715ac1cb749729bee44697264406a41514ec7",
+          "bytes": 1619
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/01_OWNER_TENANT_VERIFY_ONLY.sql",
+          "sha256": "db4f930221b7748c5d0fa72f815413eb1c1dac94d39b713d67b118594eb772ef",
+          "bytes": 845
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/02_CLUB.sql",
+          "sha256": "4f48744844322cac8d4e2facb16fbfb665591973ebbdb010da102d17678200c9",
+          "bytes": 1632
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/03_VENUE.sql",
+          "sha256": "817e44cc3f1e5624eeac0e124da039f594e994f134934675e24741e82c4921b0",
+          "bytes": 925
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/04_COURTS.sql",
+          "sha256": "0b5aead469664177362aeee3c6157287cc5c5c619942650605524bbdfe70c381",
+          "bytes": 790
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/05_PLAYER.sql",
+          "sha256": "55c4bee73258b4f5aaafbb0415098a7e8f9372caa127e829a183a41fa535e65d",
+          "bytes": 626
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/06_RATING_PROFILE.sql",
+          "sha256": "875ec2c32ec5838aa5323736704681bae2fb055a09d030a3e97e602cd9008e02",
+          "bytes": 730
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/07_COMPETITION.sql",
+          "sha256": "c91cfed6128e91098c7180eeef11127ba888e373323655f7808b672b0e99224a",
+          "bytes": 892
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/08_PARTICIPANTS.sql",
+          "sha256": "c94371dbf0d2f8bfef1bed094ae9898dcba65b42aab8454bd9aa597ab0af9b2e",
+          "bytes": 694
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/09_SCHEDULE.sql",
+          "sha256": "e46279845c83a9e2957f189513544cc4dc06f209a849cbfca92cde79246d9d04",
+          "bytes": 662
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/10_MATCH.sql",
+          "sha256": "48b5f8eae57f286815a061a52255f340f91a86d4ed3653dfc9aa6f5bfd5bfc30",
+          "bytes": 635
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/11_FINALIZED_RESULT.sql",
+          "sha256": "96d9bb65a069c8d77e4141c0c63ebdfabedff7a9b1e65712e739440d25f27396",
+          "bytes": 1530
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/12_PUBLIC_CATALOG.sql",
+          "sha256": "690f06864180145bcb29038b868def081124b2a3d4e7a2cf5228134eb18530e1",
+          "bytes": 528
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/13_CUSTOMER.sql",
+          "sha256": "2315290a0298af9855b552d605750e31dba584211034e678e2f9d7988dbbf457",
+          "bytes": 533
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/14_CRM.sql",
+          "sha256": "b45d3f761319d27fcd66ef1f14a0c93e49c47031ce533ca3f7a7b766da7a4aca",
+          "bytes": 466
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/15_FINANCE.sql",
+          "sha256": "7c62dc9260e80ffaa9342a29025f45658408f74b713aa0492963b900a72e610f",
+          "bytes": 546
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/16_NEWS.sql",
+          "sha256": "772a5c9b4d7e56c922d0d07f88887d9ad13f1eee8da379769a67656bbba236bc",
+          "bytes": 530
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/17_COACHING_FIRST_USE.sql",
+          "sha256": "77deab2fc78c07c7feb88df259aafcb5e018188943fbe6d0bb5b288f88e7c4e9",
+          "bytes": 843
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/99_VERIFY_RESEED.sql",
+          "sha256": "a76b5091f70b7067d82a5f05195fa9356f5ac6d59a6a934413647c9bed3f68b1",
+          "bytes": 1150
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/reseed/README.md",
+          "sha256": "d28086802985b755d7f585db97c9b4e57ae44c7794717bb5d11a4379082417d4",
+          "bytes": 1207
+        }
+      ]
+    },
+    {
+      "id": "FIX.RATING_PILOT",
+      "classification": "acceptance fixture only",
+      "path": "docs/platform-hard-cutover-01/phase-04/sql/rating-v5-staging-owner-pilot-activation/",
+      "note": "Owner pilot enrollment fixtures",
+      "sources": [
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/rating-v5-staging-owner-pilot-activation/10_ROLLOUT_CONFIG.sql",
+          "sha256": "a659a037f36f141784047943c45b93d0664bf5f8d97f0a2f6c5b3e80793a99e8",
+          "bytes": 806
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/rating-v5-staging-owner-pilot-activation/20_PILOT_ENROLLMENT.sql",
+          "sha256": "550851207205905c441fd63ac07078cd884c2489dabcfeb34a0281a64027f7f1",
+          "bytes": 1313
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/rating-v5-staging-owner-pilot-activation/90_ROLLBACK.sql",
+          "sha256": "2c4ded0971e18a41a325a4d13e3f7fe6a8867d9bc4aab6cd63f54f870c2b6f38",
+          "bytes": 748
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/rating-v5-staging-owner-pilot-activation/99_VERIFY.sql",
+          "sha256": "e3250f49cd83212b847dd415f1199641b92cc7fed377189713aff3dfb2589966",
+          "bytes": 821
+        },
+        {
+          "path": "docs/platform-hard-cutover-01/phase-04/sql/rating-v5-staging-owner-pilot-activation/README.md",
+          "sha256": "63203812228acb7d1cf161a73f78b9c18cf344f1ea405c4b9d88aec1018f783a",
+          "bytes": 1567
+        }
+      ]
+    },
+    {
+      "id": "PROHIBITED.V52_STAGING_RBAC_SEED",
+      "classification": "prohibited environment-specific seed",
+      "path": "docs/v5/PHASE_V52_STAGING_RBAC_SEED.sql",
+      "sha256": "f1a93f1d4774948bd9c69a82c63bc5c7c747aec9d65663a5b9061e5a64592222",
+      "bytes": 6406,
+      "note": "Must not run on blank rebuild without rewrite"
+    }
+  ]
+}

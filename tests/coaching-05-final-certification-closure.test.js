@@ -33,8 +33,12 @@ import { PLAYER_IDENTITY_MAPPING_STATUS } from "../src/features/player/constants
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const STAGING_URL = `https://${COACHING_04_STAGING_PROJECT_REF}.supabase.co`;
 const PKG_SHA =
-  "D9F756CC931E32B03E48DA0C70729F4D68D30022A8D1C1E4189E4D4962E7326B";
+  "3D40EFE6028E1A8C001542F9F9CE2206979F6BDCD21643AC2084620A6ABDF49D";
 const LOCK_SHA =
+  "241F072B48B81F42123E26E67AD3E8A4B3E47C33B7FF7EDFCF92D81875F2E273";
+const HISTORICAL_PKG_SHA =
+  "D9F756CC931E32B03E48DA0C70729F4D68D30022A8D1C1E4189E4D4962E7326B";
+const HISTORICAL_LOCK_SHA =
   "D40DB46D2356A87F589DF86C8F9CC369A7F97A332DFCF3AEC8CA335EE07F2516";
 
 function readPack(rel) {
@@ -268,6 +272,6 @@ test("package/lock hashes unchanged from certified pins (sha256-lf-normalized)",
     "docs/coaching-training/module-closure/evidence/MODULE_2_12_CLOSURE.json"
   );
   assert.equal(module.hashAlgorithm, "sha256-lf-normalized");
-  assert.equal(module.packageJsonSha256, PKG_SHA);
-  assert.equal(module.packageLockSha256, LOCK_SHA);
+  assert.equal(module.packageJsonSha256, HISTORICAL_PKG_SHA);
+  assert.equal(module.packageLockSha256, HISTORICAL_LOCK_SHA);
 });

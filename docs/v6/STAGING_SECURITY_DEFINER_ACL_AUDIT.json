@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-08-04",
+  "environment": "STAGING",
+  "mode": "READ_ONLY",
+  "status": "OPEN_HIGH_REQUIRES_OWNER_APPROVED_REMEDIATION_OR_ACCEPTANCE",
+  "securityDefiner": {
+    "schema": "public",
+    "owner": "postgres",
+    "total": 298,
+    "anonCallable": 204,
+    "authenticatedCallable": 271,
+    "pseudoPublicAclExecute": 151,
+    "repositoryExplicitAnonContractsPresent": 7,
+    "anonCallableWithoutMatchedExplicitContract": 197
+  },
+  "defaultPrivileges": {
+    "owner": "postgres",
+    "schema": "public",
+    "objectType": "FUNCTION",
+    "executeGrantees": ["postgres", "anon", "authenticated", "service_role"],
+    "finding": "DEFAULT_FUNCTION_EXECUTE_EXPOSES_NEW_FUNCTIONS_UNLESS_EXPLICITLY_REVOKED"
+  },
+  "confirmedAnonAllowlist": [
+    "public.news_public_content_query_public(timestamp with time zone,text,text,integer)",
+    "public.public_catalog_list_clubs(integer,integer,text)",
+    "public.public_catalog_list_courts(integer,integer,text,text)",
+    "public.public_catalog_list_rankings(integer,integer,text,text)",
+    "public.public_catalog_list_tournaments(integer,integer,text)",
+    "public.referee_get_match_by_token(text)",
+    "public.referee_update_match_score(text,jsonb)"
+  ],
+  "notApplied": true,
+  "productionGo": false,
+  "requiredDisposition": [
+    "OWNER_APPROVES_EXACT_ALLOWLIST_REMEDIATION",
+    "OWNER_ACCEPTS_TIME_BOUNDED_HIGH_OBSERVATION_WITH_COMPENSATING_CONTROLS"
+  ]
+}
