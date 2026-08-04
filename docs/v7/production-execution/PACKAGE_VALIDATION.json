@@ -1,0 +1,19 @@
+{
+  "packageVersion": "phase7-canonical-production-execution-1",
+  "baselineSha": "fe80e367e848da7c4448b8a40b5a0641014ce37b",
+  "fileCount": 12,
+  "ledgerStepCount": 11,
+  "unresolvedDependencies": 0,
+  "forwardDependencies": 0,
+  "cycles": 0,
+  "duplicateStepIds": 0,
+  "missingArtifacts": 0,
+  "untrackedArtifacts": 0,
+  "checksumMismatches": 0,
+  "hiddenManualSteps": 0,
+  "undefinedAbortConditions": 0,
+  "undefinedRollbackPoints": 0,
+  "embeddedSecretFindings": 0,
+  "manifestEntries": 11,
+  "validationVerdict": "PASS_WITH_OBSERVATIONS"
+}

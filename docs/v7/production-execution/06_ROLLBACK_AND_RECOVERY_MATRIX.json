@@ -1,0 +1,138 @@
+{
+  "packageVersion": "phase7-canonical-production-execution-1",
+  "baselineSha": "fe80e367e848da7c4448b8a40b5a0641014ce37b",
+  "mutations": [
+    {
+      "stepId": "STEP-01",
+      "reversibleBySQL": false,
+      "requiresForwardFix": false,
+      "requiresDatabaseRestore": false,
+      "requiresStorageRestore": false,
+      "priorDeploymentRollback": false,
+      "dataLossRisk": "none",
+      "rollbackOwner": "Owner",
+      "maximumDecisionTime": "N/A",
+      "verificationAfterRollback": "N/A"
+    },
+    {
+      "stepId": "STEP-02",
+      "reversibleBySQL": true,
+      "requiresForwardFix": false,
+      "requiresDatabaseRestore": false,
+      "requiresStorageRestore": false,
+      "priorDeploymentRollback": false,
+      "dataLossRisk": "low",
+      "rollbackOwner": "Owner",
+      "maximumDecisionTime": "Before STEP-03",
+      "verificationAfterRollback": "notification foundation tables and RLS removed or reverted"
+    },
+    {
+      "stepId": "STEP-03",
+      "reversibleBySQL": true,
+      "requiresForwardFix": false,
+      "requiresDatabaseRestore": false,
+      "requiresStorageRestore": false,
+      "priorDeploymentRollback": false,
+      "dataLossRisk": "low",
+      "rollbackOwner": "Owner",
+      "maximumDecisionTime": "Before STEP-04",
+      "verificationAfterRollback": "RPC grants and hardening reverted"
+    },
+    {
+      "stepId": "STEP-04",
+      "reversibleBySQL": true,
+      "requiresForwardFix": false,
+      "requiresDatabaseRestore": false,
+      "requiresStorageRestore": false,
+      "priorDeploymentRollback": false,
+      "dataLossRisk": "low",
+      "rollbackOwner": "Owner",
+      "maximumDecisionTime": "Before STEP-05",
+      "verificationAfterRollback": "worker schema reverted"
+    },
+    {
+      "stepId": "STEP-05",
+      "reversibleBySQL": true,
+      "requiresForwardFix": false,
+      "requiresDatabaseRestore": false,
+      "requiresStorageRestore": false,
+      "priorDeploymentRollback": false,
+      "dataLossRisk": "low",
+      "rollbackOwner": "Owner",
+      "maximumDecisionTime": "Before STEP-06",
+      "verificationAfterRollback": "ops helpers and queue controls reverted"
+    },
+    {
+      "stepId": "STEP-06",
+      "reversibleBySQL": true,
+      "requiresForwardFix": false,
+      "requiresDatabaseRestore": false,
+      "requiresStorageRestore": false,
+      "priorDeploymentRollback": false,
+      "dataLossRisk": "none",
+      "rollbackOwner": "Owner",
+      "maximumDecisionTime": "Before STEP-07",
+      "verificationAfterRollback": "runtime config reverted"
+    },
+    {
+      "stepId": "STEP-07",
+      "reversibleBySQL": true,
+      "requiresForwardFix": false,
+      "requiresDatabaseRestore": false,
+      "requiresStorageRestore": false,
+      "priorDeploymentRollback": false,
+      "dataLossRisk": "none",
+      "rollbackOwner": "Owner",
+      "maximumDecisionTime": "Before STEP-08",
+      "verificationAfterRollback": "security hardening reverted"
+    },
+    {
+      "stepId": "STEP-08",
+      "reversibleBySQL": false,
+      "requiresForwardFix": false,
+      "requiresDatabaseRestore": false,
+      "requiresStorageRestore": false,
+      "priorDeploymentRollback": true,
+      "dataLossRisk": "none",
+      "rollbackOwner": "Owner",
+      "maximumDecisionTime": "Immediate after deployment health check",
+      "verificationAfterRollback": "previous Vercel production deployment restored"
+    },
+    {
+      "stepId": "STEP-09",
+      "reversibleBySQL": false,
+      "requiresForwardFix": false,
+      "requiresDatabaseRestore": false,
+      "requiresStorageRestore": false,
+      "priorDeploymentRollback": true,
+      "dataLossRisk": "none",
+      "rollbackOwner": "Owner",
+      "maximumDecisionTime": "During canary only",
+      "verificationAfterRollback": "traffic returned to prior production deployment"
+    },
+    {
+      "stepId": "STEP-10",
+      "reversibleBySQL": false,
+      "requiresForwardFix": false,
+      "requiresDatabaseRestore": false,
+      "requiresStorageRestore": false,
+      "priorDeploymentRollback": true,
+      "dataLossRisk": "none",
+      "rollbackOwner": "Owner",
+      "maximumDecisionTime": "After first failing verification item",
+      "verificationAfterRollback": "verification rerun against prior stable deployment"
+    },
+    {
+      "stepId": "STEP-11",
+      "reversibleBySQL": false,
+      "requiresForwardFix": false,
+      "requiresDatabaseRestore": false,
+      "requiresStorageRestore": false,
+      "priorDeploymentRollback": false,
+      "dataLossRisk": "none",
+      "rollbackOwner": "Owner",
+      "maximumDecisionTime": "N/A",
+      "verificationAfterRollback": "N/A"
+    }
+  ]
+}

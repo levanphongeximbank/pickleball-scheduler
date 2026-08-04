@@ -1,0 +1,12 @@
+{
+  "timestamps": "",
+  "operator": "",
+  "commandOrActionIdentifier": "",
+  "expectedState": "",
+  "actualState": "",
+  "mutations": "",
+  "verification": "",
+  "decision": "",
+  "rollbackEvent": "",
+  "finalVerdict": ""
+}
