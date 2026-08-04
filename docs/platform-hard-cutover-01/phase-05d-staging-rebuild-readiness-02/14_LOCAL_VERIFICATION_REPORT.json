@@ -680,9 +680,7 @@
   "edgeContractCount": 2,
   "tenantGate": true,
   "secretScan": {
-    "files": 187,
+    "files": 217,
     "hits": []
-  },
-  "implementationCommitSha": "1800038af82e7a455208e77867726628a2f51c3a",
-  "evidenceBinding": "PHASE5D_EVIDENCE_COMMIT_BINDING_V1"
+  }
 }

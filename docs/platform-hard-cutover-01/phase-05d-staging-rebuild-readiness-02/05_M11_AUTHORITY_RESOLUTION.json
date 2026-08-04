@@ -3,8 +3,8 @@
   "resolution": "TRACKED_CANONICAL_DIGEST_PATCH_SQL",
   "artifact": {
     "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/sql/10_PRIVATE_PAIRING_PR4_DIGEST_PATCH.sql",
-    "sha256": "73a0678fea4c2377d35a2c7a53db1992c7fec2f33eed3eeb482eff36dedb64cc",
-    "bytes": 1914,
+    "sha256": "5610e55a24ab2b7bfc3804877bf44199eda96cd14e40464f1d47e78d864ea150",
+    "bytes": 1958,
     "migrationId": "M11.digest"
   },
   "preservesPrivatePairingV2Behavior": true,

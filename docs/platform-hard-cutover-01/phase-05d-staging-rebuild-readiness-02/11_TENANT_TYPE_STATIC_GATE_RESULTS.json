@@ -1797,8 +1797,8 @@
     {
       "migrationId": "M6C4.40",
       "path": "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.sql",
-      "sha256": "c15f1779c852b763f05ddeac51fde24c6793c41ea670f7c822b06b27212b11a8",
-      "bytes": 4871
+      "sha256": "46062d071c55f55fa4521151c26d1584237831a42103b52075948f09b1be3793",
+      "bytes": 4962
     },
     {
       "migrationId": "M7.cc02",
@@ -2079,8 +2079,8 @@
     {
       "migrationId": "M11.digest",
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/sql/10_PRIVATE_PAIRING_PR4_DIGEST_PATCH.sql",
-      "sha256": "73a0678fea4c2377d35a2c7a53db1992c7fec2f33eed3eeb482eff36dedb64cc",
-      "bytes": 1914
+      "sha256": "5610e55a24ab2b7bfc3804877bf44199eda96cd14e40464f1d47e78d864ea150",
+      "bytes": 1958
     },
     {
       "migrationId": "M11.raise",

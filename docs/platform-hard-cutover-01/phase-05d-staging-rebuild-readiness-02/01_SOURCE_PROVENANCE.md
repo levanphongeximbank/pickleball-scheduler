@@ -13,5 +13,5 @@ All B-R01–B-R10 closing artifacts in this package are repository-tracked, hash
 
 ## Branch / base
 
-- Branch: `fix/phase5d-br01-br10-local-closure`
-- Fresh `origin/main` at package generation HEAD (see evidence commit for exact SHA)
+- Integrated by the active Phase 6 completion branch.
+- Exact implementation SHA is recorded by `16_EVIDENCE_BINDING.json`.

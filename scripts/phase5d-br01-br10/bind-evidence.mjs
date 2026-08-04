@@ -45,8 +45,10 @@ const all = [
 const implementationArtifacts = all.filter((p) => !EVIDENCE_ONLY.has(p)).map(sha);
 
 const manifest = {
-  marker: 'PHASE5D_ARTIFACT_HASH_MANIFEST_V1',
+  marker: 'PHASE5D_ARTIFACT_HASH_MANIFEST_V2',
   implementationCommitSha: impl,
+  scope: 'Immutable implementation artifacts only; excludes mutable verification report 14, self-referential manifest 15, and evidence binding 16',
+  excluded: [...EVIDENCE_ONLY].filter((p) => p.startsWith(PKG)),
   classification: 'EVIDENCE_READBACK_PENDING_INDEPENDENT_REVIEW',
   artifacts: implementationArtifacts,
 };
@@ -55,6 +57,9 @@ fs.writeFileSync(path.join(ROOT, PKG, '15_ARTIFACT_HASH_MANIFEST.json'), JSON.st
 
 const vrPath = path.join(ROOT, PKG, '14_LOCAL_VERIFICATION_REPORT.json');
 const vr = JSON.parse(fs.readFileSync(vrPath, 'utf8'));
+if (vr.pass !== true || (vr.errors || []).length !== 0) {
+  throw new Error('Refusing to bind evidence: local verification report is not PASS');
+}
 vr.implementationCommitSha = impl;
 vr.evidenceBinding = 'PHASE5D_EVIDENCE_COMMIT_BINDING_V1';
 fs.writeFileSync(vrPath, JSON.stringify(vr, null, 2) + '\n');
@@ -69,7 +74,7 @@ const evidence = {
   marker: 'PHASE5D_EVIDENCE_COMMIT_BINDING_V1',
   implementationCommitSha: impl,
   generatedAt: new Date().toISOString(),
-  localVerificationPass: true,
+  localVerificationPass: vr.pass,
   stagingAccessMutation: '0/0',
   productionAccessMutation: '0/0',
   databaseWrites: 0,

@@ -12,5 +12,10 @@ const patterns=[
 
 export function findSecretCandidates(text){
   const sanitized=String(text).replace(/\$\{[A-Z_][A-Z0-9_]*\}|\$[A-Z_][A-Z0-9_]*|Deno\.env\.get\([^)]*\)|process\.env\.[A-Z_][A-Z0-9_]*/g,"ENV_REFERENCE");
-  return patterns.flatMap((pattern,index)=>[...sanitized.matchAll(new RegExp(pattern.source,`${pattern.flags.replace("g","")}g`))].filter(m=>!m[0].includes("ENV_REFERENCE")).map(m=>({pattern:index,match:m[0].slice(0,80)})));
+  return patterns.flatMap((pattern,index)=>[...sanitized.matchAll(new RegExp(pattern.source,`${pattern.flags.replace("g","")}g`))]
+    .filter(m=>!m[0].includes("ENV_REFERENCE"))
+    // Object member references such as `password: actor.password` are code,
+    // not embedded credential values. Quoted values remain reportable.
+    .filter(m=>!(index===5 && !/\s*[=:]\s*["']/.test(m[0]) && /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+$/.test(m[1]||"")))
+    .map(m=>({pattern:index,match:m[0].slice(0,80)})));
 }
