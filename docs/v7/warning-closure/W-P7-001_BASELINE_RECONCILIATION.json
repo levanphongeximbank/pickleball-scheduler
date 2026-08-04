@@ -1,0 +1,21 @@
+{
+    "generatedAt":  "2026-08-04T23:04:27.0595088+07:00",
+    "oldBaseline":  "959c8067ea756aa32e50b549a97cd4e762786ff7",
+    "newBaseline":  "bd08d448e3c207ac6d5871a734c346f6bb290c40",
+    "staleHardcodedExecutionGuards":  0,
+    "staleHardcodedExecutionGuardFiles":  [
+
+                                          ],
+    "historicalEvidenceOnlyCount":  7,
+    "historicalEvidenceOnlyFiles":  [
+                                        "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\phase1b\\PHASE_1B_PRODUCTION_ROLLOUT_PLAN.md",
+                                        "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\qa-evidence\\phase1b-production\\APPLY_REPORT.json",
+                                        "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\qa-evidence\\phase1b-production\\DEPLOY_REPORT.json",
+                                        "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\qa-evidence\\phase1b-production\\ROLLOUT_FINAL_REPORT.md",
+                                        "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\qa-evidence\\phase1b-production\\SMOKE_REPORT.json",
+                                        "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\qa-evidence\\phase1b-production\\SMOKE_REPORT.md",
+                                        "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v7\\warning-closure\\W-P7-001_BASELINE_RECONCILIATION.json"
+                                    ],
+    "packageIntegrityDefect":  "closed_via_canonical_package_baseline_update",
+    "staleExecutionGuardCount":  0
+}
