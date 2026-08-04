@@ -1,10 +1,13 @@
 {
   "marker": "PHASE5D_ARTIFACT_HASH_MANIFEST_V2",
-  "scope": "Immutable implementation artifacts only; excludes mutable verification report 14 and self-referential manifest 15",
+  "implementationCommitSha": "ea992030d52e5e7dfa501e538eb756b417feae58",
+  "scope": "Immutable implementation artifacts only; excludes mutable verification report 14, self-referential manifest 15, and evidence binding 16",
   "excluded": [
     "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/14_LOCAL_VERIFICATION_REPORT.json",
-    "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/15_ARTIFACT_HASH_MANIFEST.json"
+    "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/15_ARTIFACT_HASH_MANIFEST.json",
+    "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/16_EVIDENCE_BINDING.json"
   ],
+  "classification": "EVIDENCE_READBACK_PENDING_INDEPENDENT_REVIEW",
   "artifacts": [
     {
       "path": "docs/coaching-training/coaching-04/40_COACHING_04_PERMISSION_SEED_AND_GRANTS.sql",
@@ -77,19 +80,9 @@
       "bytes": 2585
     },
     {
-      "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/16_EVIDENCE_BINDING.json",
-      "sha256": "1cf9cb15e4013702800127a582adedde0bfbb2c4e8d74a11793db16dd6137beb",
-      "bytes": 6296
-    },
-    {
       "path": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/sql/10_PRIVATE_PAIRING_PR4_DIGEST_PATCH.sql",
       "sha256": "5610e55a24ab2b7bfc3804877bf44199eda96cd14e40464f1d47e78d864ea150",
       "bytes": 1958
-    },
-    {
-      "path": "scripts/phase5d-br01-br10/bind-evidence.mjs",
-      "sha256": "c707c7b15de37161a289f7b982396a08228fa4e9bb1f0b6dbb93387d5331d397",
-      "bytes": 3385
     },
     {
       "path": "scripts/phase5d-br01-br10/contract-analyzer.mjs",
