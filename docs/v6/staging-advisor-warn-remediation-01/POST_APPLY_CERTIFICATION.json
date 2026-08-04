@@ -11,9 +11,16 @@
     "policyState": "USING_FALSE_WITH_CHECK_FALSE",
     "advisorBefore": {"error":0,"function_search_path_mutable":22,"rls_policy_always_true":3,"anon_security_definer_function_executable":204,"authenticated_security_definer_function_executable":271,"auth_leaked_password_protection":1,"rls_enabled_no_policy_info":11},
     "advisorAfter": {"error":0,"function_search_path_mutable":0,"rls_policy_always_true":0,"anon_security_definer_function_executable":204,"authenticated_security_definer_function_executable":271,"auth_leaked_password_protection":1,"rls_enabled_no_policy_info":11},
-    "authenticatedTenantRegression": "BLOCKED_MISSING_STAGING_RUNTIME_ENV"
+    "authenticatedTenantRegression": {
+      "status": "PASS_WITH_EMPTY_FIXTURE",
+      "mode": "AUTHENTICATED_JWT_READ_ONLY",
+      "dataMutations": 0,
+      "ownerA": {"authenticated":true,"ownTenantVisible":true,"foreignTenantVisible":false},
+      "ownerB": {"authenticated":true,"ownTenantVisible":true,"foreignTenantVisible":false},
+      "clubDataV3Safe": "EMPTY_FIXTURE_NO_FOREIGN_VISIBILITY"
+    }
   },
   "productionMutation": 0,
   "productionGo": false,
-  "status": "CATALOG_AND_ADVISOR_PASS_RUNTIME_REGRESSION_PENDING"
+  "status": "PASS_WITH_EMPTY_FIXTURE_OBSERVATION"
 }

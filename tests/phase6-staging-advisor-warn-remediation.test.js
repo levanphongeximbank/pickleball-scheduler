@@ -44,7 +44,10 @@ test("post-apply evidence closes only catalog and Advisor gates", () => {
   assert.equal(certification.verification.failClosedPolicies, 3);
   assert.equal(certification.verification.advisorAfter.function_search_path_mutable, 0);
   assert.equal(certification.verification.advisorAfter.rls_policy_always_true, 0);
-  assert.match(certification.status, /RUNTIME_REGRESSION_PENDING$/);
+  assert.equal(certification.verification.authenticatedTenantRegression.status, "PASS_WITH_EMPTY_FIXTURE");
+  assert.equal(certification.verification.authenticatedTenantRegression.ownerA.foreignTenantVisible, false);
+  assert.equal(certification.verification.authenticatedTenantRegression.ownerB.foreignTenantVisible, false);
+  assert.equal(certification.status, "PASS_WITH_EMPTY_FIXTURE_OBSERVATION");
   assert.equal(certification.productionMutation, 0);
   assert.equal(certification.productionGo, false);
 });

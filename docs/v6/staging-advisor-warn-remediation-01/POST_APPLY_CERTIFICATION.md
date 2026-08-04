@@ -14,12 +14,12 @@
 - `function_search_path_mutable` decreased from 22 to 0.
 - `rls_policy_always_true` decreased from 3 to 0.
 
-## Pending runtime evidence
+## Runtime regression
 
-Authenticated Tenant A/B regression could not run from this worktree because
-the Staging URL, anon key, and Owner A/B credential environment are not present.
-The catalog and Advisor gates pass, but runtime certification remains pending.
+Authenticated JWT read-only QA passed for Owner A and Owner B. Each actor saw
+only their own tenant and never the foreign tenant. `club_data_v3_safe` had no
+fixture rows for either actor, so that view is recorded as
+`PASS_WITH_EMPTY_FIXTURE`; there was no foreign visibility and no data mutation.
 
 The remaining 204 anon and 271 authenticated `SECURITY DEFINER` warnings are a
 separate ACL workstream and are not misreported as closed here.
-
