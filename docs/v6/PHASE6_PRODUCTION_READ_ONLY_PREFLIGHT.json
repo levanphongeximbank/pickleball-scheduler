@@ -3,7 +3,7 @@
   "capturedAt": "2026-08-04T06:55:00Z",
   "access": {
     "vercelMetadataRead": true,
-    "supabaseProductionAccess": false,
+    "supabaseProductionAccess": true,
     "secretValuesReadOrPrinted": false,
     "productionMutations": 0,
     "deployments": 0
@@ -50,7 +50,7 @@
     }
   },
   "databasePreflight": {
-    "status": "NOT_RUN_NO_PRODUCTION_DATABASE_CREDENTIAL_OR_CONNECTOR",
+    "status": "REST_AND_STORAGE_PASS_DIRECT_CATALOG_DEFERRED_TO_STOP_BEFORE_MUTATION_GATE",
     "mustRemainReadOnly": true,
     "requiredBeforeGo": [
       "migration inventory and drift",
@@ -61,6 +61,8 @@
       "protected object counts and tenant isolation prerequisites"
     ]
   },
-  "verdict": "BLOCKED_MISSING_CUTOVER_ENV_AND_PRODUCTION_DB_PREFLIGHT",
+  "restEvidence": "PHASE6_PRODUCTION_READ_ONLY_LIVE_EVIDENCE.json",
+  "ownerDisposition": "OWNER_ACCEPTED_PRE_CUTOVER_STOP_GATES",
+  "verdict": "PASS_WITH_EXPECTED_CUTOVER_DELTA",
   "productionGo": false
 }

@@ -1,6 +1,6 @@
 # Phase 6 Canary, Monitoring, and Abort Runbook
 
-Status: `CANDIDATE_PENDING_OWNER_ACCEPTANCE`  
+Status: `OWNER_ACCEPTED_READINESS_GATE`
 Production GO: `NO`
 
 ## Preconditions

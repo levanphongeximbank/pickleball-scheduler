@@ -7,7 +7,7 @@ const evidence = JSON.parse(fs.readFileSync("docs/v6/PHASE6_OWNER_DISPOSITION_CH
 test("Owner checkpoint cannot authorize Production mutation", () => {
   assert.equal(evidence.productionGo, false);
   assert.equal(evidence.productionMutationAuthorized, false);
-  assert.equal(evidence.status, "PENDING_OWNER_ACCEPTANCE");
+  assert.equal(evidence.status, "OWNER_ACCEPTED");
   assert.match(evidence.requiredAcceptance, /PRODUCTION GO REMAINS NO$/);
 });
 
@@ -17,4 +17,3 @@ test("all current readiness observations are explicit", () => {
     assert.ok(evidence.observations.includes(required));
   }
 });
-
