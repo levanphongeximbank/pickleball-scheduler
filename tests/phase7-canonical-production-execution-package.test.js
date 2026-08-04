@@ -31,8 +31,17 @@ test("canonical production execution package is fully tracked and parseable", ()
   }
 
   const validation = JSON.parse(fs.readFileSync(path.join(packageRoot, "PACKAGE_VALIDATION.json"), "utf8"));
+  assert.equal(validation.authoritySchemaVersion, 2);
   assert.equal(validation.fileCount, 13);
   assert.equal(validation.ledgerStepCount, 11);
+  assert.equal(validation.manifestGitBlobDigestAuthority, "derive_from_approvedExecutionHead_git_blob");
+  assert.ok(/^[A-F0-9]{64}$/.test(validation.preRemediationMainManifestGitBlobDigest));
+  assert.ok(/^[A-F0-9]{64}$/.test(validation.stalePriorManifestAuthorityDigest));
+  assert.ok(/^[A-F0-9]{64}$/.test(validation.checkoutDependentWorkingTreeDigestExample));
+  assert.equal(validation.oldAuthoritySchemaAccepted, "NO");
+  assert.equal(validation.checkoutDependentActiveDigestComparisons, 0);
+  assert.equal(validation.staleActiveCd19AuthorityOccurrences, 0);
+  assert.equal(validation.ed017ActiveAuthorityOccurrences, 0);
   assert.equal(validation.unresolvedDependencies, 0);
   assert.equal(validation.cycles, 0);
   assert.equal(validation.duplicateStepIds, 0);
@@ -45,6 +54,7 @@ test("canonical production execution package is fully tracked and parseable", ()
   assert.equal(validation.embeddedSecretFindings, 0);
   assert.equal(validation.staleActiveShaGuards, 0);
   assert.equal(validation.ambiguousShaAuthorities, 0);
+  assert.ok(!Object.prototype.hasOwnProperty.call(validation, "packageManifestDigest"));
 });
 
 test("manifest lines match actual package file hashes", () => {
