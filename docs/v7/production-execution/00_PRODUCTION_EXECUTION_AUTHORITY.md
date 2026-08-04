@@ -2,7 +2,7 @@
 
 Target project_ref: `expuvcohlcjzvrrauvud`
 
-Baseline SHA: `fe80e367e848da7c4448b8a40b5a0641014ce37b`
+Baseline SHA: `bd08d448e3c207ac6d5871a734c346f6bb290c40`
 
 Package scope: this repository-tracked production execution package defines only the deterministic post-GO authority, preflight, ordered execution, canary, rollback, verification, and evidence boundaries for the exact Production target above.
 

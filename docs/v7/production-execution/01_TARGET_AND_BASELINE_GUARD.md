@@ -2,7 +2,7 @@
 
 Exact target project_ref: `expuvcohlcjzvrrauvud`
 
-Exact baseline SHA: `fe80e367e848da7c4448b8a40b5a0641014ce37b`
+Exact baseline SHA: `bd08d448e3c207ac6d5871a734c346f6bb290c40`
 
 Guard requirements:
 - origin/main must match the exact baseline recorded above at package review time.
