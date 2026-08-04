@@ -6,6 +6,9 @@ const root = new URL("../docs/v6/staging-advisor-warn-remediation-01/", import.m
 const applySql = fs.readFileSync(new URL("01_APPLY.sql", root), "utf8");
 const verifySql = fs.readFileSync(new URL("02_VERIFY.sql", root), "utf8");
 const rollbackSql = fs.readFileSync(new URL("03_ROLLBACK.sql", root), "utf8");
+const certification = JSON.parse(
+  fs.readFileSync(new URL("POST_APPLY_CERTIFICATION.json", root), "utf8"),
+);
 
 test("apply hardens exactly 22 Advisor-listed function signatures", () => {
   const alters = applySql.match(/alter function public\.[^;]+ set search_path = pg_catalog, public;/gi) ?? [];
@@ -35,3 +38,13 @@ test("verification and rollback are present and symmetric", () => {
   assert.match(rollbackSql, /with check \(true\)/i);
 });
 
+test("post-apply evidence closes only catalog and Advisor gates", () => {
+  assert.equal(certification.migration.version, "20260804074144");
+  assert.equal(certification.verification.searchPathHardened, 22);
+  assert.equal(certification.verification.failClosedPolicies, 3);
+  assert.equal(certification.verification.advisorAfter.function_search_path_mutable, 0);
+  assert.equal(certification.verification.advisorAfter.rls_policy_always_true, 0);
+  assert.match(certification.status, /RUNTIME_REGRESSION_PENDING$/);
+  assert.equal(certification.productionMutation, 0);
+  assert.equal(certification.productionGo, false);
+});

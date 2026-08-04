@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "environment": "STAGING",
+  "certifiedAt": "2026-08-04T14:44:00+07:00",
+  "ownerCheckpoint": "OWNER GO — APPLY STAGING ADVISOR WARN REMEDIATION 01",
+  "migration": {"version":"20260804074144","name":"phase6_staging_advisor_warn_remediation_01","applied":true},
+  "verification": {
+    "searchPathHardened": 22,
+    "searchPathTargets": 22,
+    "failClosedPolicies": 3,
+    "policyState": "USING_FALSE_WITH_CHECK_FALSE",
+    "advisorBefore": {"error":0,"function_search_path_mutable":22,"rls_policy_always_true":3,"anon_security_definer_function_executable":204,"authenticated_security_definer_function_executable":271,"auth_leaked_password_protection":1,"rls_enabled_no_policy_info":11},
+    "advisorAfter": {"error":0,"function_search_path_mutable":0,"rls_policy_always_true":0,"anon_security_definer_function_executable":204,"authenticated_security_definer_function_executable":271,"auth_leaked_password_protection":1,"rls_enabled_no_policy_info":11},
+    "authenticatedTenantRegression": "BLOCKED_MISSING_STAGING_RUNTIME_ENV"
+  },
+  "productionMutation": 0,
+  "productionGo": false,
+  "status": "CATALOG_AND_ADVISOR_PASS_RUNTIME_REGRESSION_PENDING"
+}

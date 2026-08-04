@@ -77,8 +77,18 @@ $tempConfig = Join-Path ([IO.Path]::GetTempPath()) ("phase6-rclone-{0}.conf" -f 
 function Invoke-RcloneJson {
   param([string[]]$Arguments)
   $rclonePath = if ($rclone.PSObject.Properties.Name -contains 'Source') { $rclone.Source } else { $rclone.FullName }
-  $output = & $rclonePath @Arguments 2>&1
-  if ($LASTEXITCODE -ne 0) { throw ($output -join [Environment]::NewLine) }
+  # Successful rclone status notices are written to stderr. Windows PowerShell
+  # wraps redirected native stderr as ErrorRecord objects, which would become a
+  # terminating error under the script-level Stop preference.
+  $previousErrorActionPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    $output = & $rclonePath @Arguments 2>&1
+    $exitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
+  if ($exitCode -ne 0) { throw ($output -join [Environment]::NewLine) }
   return ($output -join [Environment]::NewLine)
 }
 

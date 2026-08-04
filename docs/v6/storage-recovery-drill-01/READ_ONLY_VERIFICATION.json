@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-08-04T14:44:05+07:00",
+  "operation": "phase6_storage_verify",
+  "sourceProjectRef": "expuvcohlcjzvrrauvud",
+  "destinationProjectRef": "shxzwppmgtwtwswdhouh",
+  "sourceMutation": 0,
+  "productionMutation": 0,
+  "destructiveOperation": false,
+  "elapsedSeconds": 2.975,
+  "buckets": [
+    {"bucket":"user-avatars","sourceCount":2,"sourceBytes":497236,"destinationCount":2,"destinationBytes":497236,"rcloneOneWaySizeCheck":"PASS"},
+    {"bucket":"tournament-broadcast-vods","sourceCount":0,"sourceBytes":0,"destinationCount":0,"destinationBytes":0,"rcloneOneWaySizeCheck":"PASS"}
+  ],
+  "result": "READ_ONLY_CONTENT_EQUIVALENCE_PASS",
+  "restoreRto": "NOT_MEASURED_THIS_RUN",
+  "copyExecutedThisRun": false,
+  "productionGo": false
+}

@@ -35,3 +35,10 @@ test('storage drill supports a gitignored local credential file', async () => {
   assert.match(script, /\.env\.phase6-storage\.local/);
   assert.match(script, /phase6_storage_dest_project_ref/);
 });
+
+test('successful rclone stderr notices do not fail verification', async () => {
+  const script = await readScript();
+  assert.match(script, /\$erroractionpreference = 'continue'/);
+  assert.match(script, /\$exitcode = \$lastexitcode/);
+  assert.match(script, /if \(\$exitcode -ne 0\)/);
+});
