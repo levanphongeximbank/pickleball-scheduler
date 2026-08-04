@@ -1,0 +1,127 @@
+{
+  "certification": "PHASE 5 — STAGING POST-APPLY CERTIFICATION",
+  "generated_at": "2026-08-04T08:21:57.3753968+07:00",
+  "target": {
+    "project_ref": "qyewbxjsiiyufanzcjcq",
+    "environment": "staging",
+    "proof": "Supabase staging Edge Function entrypoint paths contain user_fn_qyewbxjsiiyufanzcjcq",
+    "current_user": "postgres"
+  },
+  "forbidden_production": {
+    "project_ref": "expuvcohlcjzvrrauvud",
+    "accessed": false,
+    "mutations": 0
+  },
+  "repository": {
+    "branch": "fix/phase5d-br01-br10-local-closure",
+    "head": "e21ead54efeb642f963c3421dedc9c283d704037",
+    "origin_main": "42d7a34887f77494103a34e77d58dfa365ed7708",
+    "merge_base": "42d7a34887f77494103a34e77d58dfa365ed7708",
+    "ahead_of_origin_main": 6,
+    "behind_origin_main": 0,
+    "preexisting_untracked": [".codex/"],
+    "package_json_sha256_before": "CF0361BF8FC7F4AE6AA39587AB8489F4C1D3489C04B2E980EEC8E6EB396AFE0E",
+    "package_json_sha256_after": "CF0361BF8FC7F4AE6AA39587AB8489F4C1D3489C04B2E980EEC8E6EB396AFE0E",
+    "package_lock_sha256_before": "844840CA58B3EADCC4A1D090ABDCFCD057B7562F48BB1450D4A8AD1A1763B448",
+    "package_lock_sha256_after": "844840CA58B3EADCC4A1D090ABDCFCD057B7562F48BB1450D4A8AD1A1763B448",
+    "package_files_unchanged": true
+  },
+  "phase5_scope": {
+    "sql": "docs/v5/PHASE_AI_V52_PHASE5.sql",
+    "rollout": "docs/v5/PHASE_AI_V52_ROLLOUT.md",
+    "manual_qa": "docs/v5/PHASE_AI_V52_MANUAL_QA.md",
+    "staging_smoke": "scripts/verify-ai-v52-staging-smoke.mjs",
+    "focused_tests": [
+      "tests/ai-assistant-sprint7.test.js",
+      "tests/ai-auto-sync.test.js",
+      "tests/cloud-sync.test.js",
+      "tests/court-engine-cloud.test.js",
+      "tests/court-engine.test.js"
+    ]
+  },
+  "database_verification": {
+    "mode": "read-only",
+    "mutations": 0,
+    "migration": {
+      "name": "phase_ai_v52_phase5",
+      "version": "20260804011017",
+      "present": true
+    },
+    "ai_workflow_checklists": {
+      "exists": true,
+      "columns": [
+        {"name": "id", "type": "uuid", "nullable": false, "default": "gen_random_uuid()"},
+        {"name": "tenant_id", "type": "text", "nullable": false, "default": null},
+        {"name": "tournament_id", "type": "text", "nullable": false, "default": null},
+        {"name": "item_key", "type": "text", "nullable": false, "default": null},
+        {"name": "completed", "type": "boolean", "nullable": false, "default": "false"},
+        {"name": "updated_at", "type": "timestamp with time zone", "nullable": false, "default": "now()"},
+        {"name": "updated_by", "type": "text", "nullable": true, "default": null}
+      ],
+      "constraints": [
+        "PRIMARY KEY (id)",
+        "UNIQUE (tenant_id, tournament_id, item_key)"
+      ],
+      "rls_enabled": true,
+      "rls_forced": false,
+      "policies": [
+        "ai_workflow_checklists_insert: INSERT authenticated",
+        "ai_workflow_checklists_select: SELECT authenticated",
+        "ai_workflow_checklists_update: UPDATE authenticated"
+      ],
+      "unexpected_policy_count": 0,
+      "indexes": [
+        {"name": "ai_workflow_checklists_pkey", "valid": true, "ready": true, "unique": true},
+        {"name": "ai_workflow_checklists_tenant_id_tournament_id_item_key_key", "valid": true, "ready": true, "unique": true},
+        {"name": "ai_workflow_checklists_tenant_tournament_idx", "valid": true, "ready": true, "unique": false}
+      ]
+    },
+    "club_data_v3_version": {
+      "type": "integer",
+      "nullable": false,
+      "default": "0",
+      "valid": true,
+      "note": "Existing schema default is 0; Phase 5 ADD COLUMN IF NOT EXISTS did not replace it."
+    },
+    "supabase_realtime_tables": [
+      "ai_workflow_checklists",
+      "court_engine_active_sessions",
+      "court_engine_stores"
+    ],
+    "smoke_residue": {
+      "court_engine_stores": 0,
+      "ai_suggestions": 0,
+      "ai_workflow_checklists": 0
+    },
+    "advisor": {
+      "ai_workflow_checklists_security_lints": 0,
+      "ai_workflow_checklists_performance_lints": 0,
+      "observation": "Existing advisor findings on club_data_v3 and court_engine_stores are outside the new ai_workflow_checklists object and were not mutated during certification."
+    }
+  },
+  "validation": {
+    "npm_ci": {
+      "status": "PASS_WITH_OBSERVATION",
+      "packages_added": 644,
+      "packages_audited": 645,
+      "vulnerabilities": {"moderate": 5, "high": 15}
+    },
+    "ci_foundation_lock": "PASS",
+    "lint_no_new": "PASS",
+    "focused_tests": {"status": "PASS", "passed": 66, "failed": 0},
+    "build": "PASS",
+    "secret_scan": {"status": "PASS", "tracked_files_scanned": 8858, "suspicious_files": 0},
+    "package_lock_unchanged": true
+  },
+  "observations": [
+    "Branching list_branches returns: Project reference is missing when validating permissions; non-blocking for database certification.",
+    "The repository staging smoke CLI cannot run without a Staging URL and service-role key in local env; equivalent database verification remained read-only and found zero residue.",
+    "npm ci reports 20 dependency vulnerabilities (5 moderate, 15 high); no automatic audit fix was run.",
+    "Build passes with existing large-chunk and browser externalization warnings.",
+    "Existing advisor findings on broader club_data_v3/court_engine_stores objects were observed; no advisor lint targets ai_workflow_checklists."
+  ],
+  "database_mutations_during_certification": 0,
+  "production_mutations": 0,
+  "verdict": "PHASE5_STAGING_POST_APPLY_CERTIFIED_WITH_OBSERVATIONS",
+  "completion_percent": 100
+}
