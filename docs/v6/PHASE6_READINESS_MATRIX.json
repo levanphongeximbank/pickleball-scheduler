@@ -10,7 +10,7 @@
   "verdict": "PHASE6_READINESS_BLOCKED",
   "readinessPercent": 36,
   "productionGo": false,
-  "databaseLiveRecheck": "NOT_ATTEMPTED",
+  "databaseLiveRecheck": "READ_ONLY_PARTIAL",
   "safety": {
     "databaseMutations": 0,
     "stagingMutations": 0,
@@ -26,7 +26,7 @@
     {"domain":"Git/repository","requirement":"Fresh origin/main baseline and isolated evidence branch","evidence":"fetch; ancestor check; disposable worktree at 15f21e15","status":"CLOSED_WITH_EVIDENCE","severity":"HIGH","ownerAction":"Review exact evidence-only diff","blockingPhase6Execution":false,"blockingProductionGo":false},
     {"domain":"Git/repository","requirement":"No uncommitted source evidence overwritten","evidence":"Original status has .codex and two certification artifacts only; no application source changes","status":"CLOSED_WITH_EVIDENCE","severity":"HIGH","ownerAction":"Preserve original worktree","blockingPhase6Execution":false,"blockingProductionGo":false},
     {"domain":"Evidence integrity","requirement":"Phase 5 closure evidence canonical on main","evidence":"AI post-apply certificate merged; BR01-BR10 six-commit package absent from main","status":"UNKNOWN_REQUIRES_EVIDENCE","severity":"HIGH","ownerAction":"Decide and merge/recreate canonical BR01-BR10 evidence","blockingPhase6Execution":true,"blockingProductionGo":true},
-    {"domain":"Database","requirement":"Current Staging migration/object/policy state","evidence":"Merged 2026-08-04 certificate only; DATABASE_LIVE_RECHECK=NOT_ATTEMPTED","status":"ACCEPTED_OBSERVATION","severity":"MEDIUM","ownerAction":"Authorize proven-target read-only recheck if freshness is required","blockingPhase6Execution":false,"blockingProductionGo":true},
+    {"domain":"Database","requirement":"Current Staging migration/object/policy state","evidence":"Proven-target non-SQL recheck: 164 migrations; target tables RLS-enabled and zero rows; exact policies/Realtime not rechecked","status":"ACCEPTED_OBSERVATION","severity":"MEDIUM","ownerAction":"Complete remaining non-SQL read-only inventory before execution","blockingPhase6Execution":false,"blockingProductionGo":true},
     {"domain":"Database","requirement":"No smoke residue in Phase 5 objects","evidence":"Merged certificate records zero rows in three smoke targets","status":"CLOSED_WITH_EVIDENCE","severity":"HIGH","ownerAction":"Recheck if new smoke runs occur","blockingPhase6Execution":false,"blockingProductionGo":false},
     {"domain":"Migration","requirement":"M0-M11 exact ordering and checksum integrity","evidence":"Phase 5B checksum tests PASS; runbook remains unaccepted","status":"OPEN_BLOCKER","severity":"HIGH","ownerAction":"Accept exact ordered execution runbook","blockingPhase6Execution":true,"blockingProductionGo":true},
     {"domain":"Migration","requirement":"M9/TT5D controlled provenance","evidence":"Phase 5C decision remains blocked and TT5D non-executable","status":"OPEN_BLOCKER","severity":"HIGH","ownerAction":"Approve canonical reconciliation with controlled provenance","blockingPhase6Execution":true,"blockingProductionGo":true},
@@ -47,6 +47,6 @@
     {"domain":"Evidence integrity","requirement":"Package and lock unchanged","evidence":"Git blob hashes match origin/main after npm ci","status":"CLOSED_WITH_EVIDENCE","severity":"HIGH","ownerAction":"Preserve exact blobs","blockingPhase6Execution":false,"blockingProductionGo":false},
     {"domain":"Evidence integrity","requirement":"Code validation","evidence":"foundation, lint, 141 focused, 6837 unit tests, build all PASS","status":"CLOSED_WITH_EVIDENCE","severity":"HIGH","ownerAction":"Review CI parity","blockingPhase6Execution":false,"blockingProductionGo":false},
     {"domain":"Production authorization","requirement":"Explicit Owner Production GO","evidence":"productionExecutionGo=false and request states Production GO=NO","status":"OPEN_BLOCKER","severity":"CRITICAL","ownerAction":"Do not issue GO until every mandatory gate is closed","blockingPhase6Execution":true,"blockingProductionGo":true},
-    {"domain":"Security","requirement":"Current Supabase advisor disposition","evidence":"Existing broader findings acknowledged; detailed current evidence unavailable","status":"UNKNOWN_REQUIRES_EVIDENCE","severity":"HIGH","ownerAction":"Capture and disposition read-only advisor output on proven target","blockingPhase6Execution":true,"blockingProductionGo":true}
+    {"domain":"Security","requirement":"Current Supabase advisor disposition","evidence":"Proven-target Staging: 516 security findings including 8 ERROR; 504 performance findings","status":"OPEN_BLOCKER","severity":"CRITICAL","ownerAction":"Triage ERROR findings and privileged-function exposure; bind disposition evidence","blockingPhase6Execution":true,"blockingProductionGo":true}
   ]
 }

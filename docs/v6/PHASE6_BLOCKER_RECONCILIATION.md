@@ -14,7 +14,7 @@
 | Branching tool observation | `ACCEPTED_OBSERVATION` | LOW | Merged Phase 5 certificate records missing project-ref permission validation; DB certification was otherwise target-bound | Fix tool binding before relying on Branching; no effect on this repository-only audit |
 | npm vulnerabilities | `ACCEPTED_OBSERVATION` | HIGH | Reproduced: 5 moderate + 15 high; merged Phase 5 evidence already retained this observation | Security/Owner triage exploitability and document accept/remediate/defer decision; do not auto-fix package files |
 | Build warnings | `ACCEPTED_OBSERVATION` | MEDIUM | Build PASS; large chunk and browser `node:crypto` externalization warnings reproduced | Confirm runtime path is safe; track bundle split separately if accepted |
-| Supabase advisor findings | `UNKNOWN_REQUIRES_EVIDENCE` | HIGH | Phase 5 certificate acknowledges existing `club_data_v3`/`court_engine_stores` findings without complete disposition | Export current read-only advisor report on proven Staging target and disposition each finding |
+| Supabase advisor findings | `OPEN_BLOCKER` | CRITICAL | Current proven-target Staging advisors: 516 security findings (8 ERROR, including security-definer views and public tables without RLS) plus 504 performance findings | Triage every ERROR and privileged-function exposure; bind remediation/defer decisions to exact objects and evidence |
 | Clubs RLS / cross-tenant historical risk | `CLOSED_WITH_EVIDENCE` | HIGH | `docs/clubs-rls-remediation-01/CLUBS_RLS_PRODUCTION_APPLY_01_CERTIFIED.md` and its evidence package record remediation; no new live claim made | Preserve evidence; re-certify tenant isolation as a cutover Production gate |
 | Production publication / Realtime readiness | `OPEN_BLOCKER` | HIGH | Staging Phase 5 publication is evidenced; Production publication was not accessed or certified | Verify exact tables/publication read-only after Owner authorizes a future Production readiness session |
 | M8 text-tenant hotfix | `CLOSED_WITH_EVIDENCE` | HIGH | Mainline M8 manifest uses text tenant contract; focused tests for hotfix and SSOT pass | Preserve checksum/order in final execution package |
@@ -26,15 +26,15 @@
 | Staging operator acceptance | `CLOSED_WITH_EVIDENCE` | MEDIUM | Phase 4 final evidence records 17/17 PASS and security reconciliation PASS | Retain; rerun only if execution package/runtime changes materially |
 | Production operator acceptance | `OPEN_BLOCKER` | HIGH | GA Production QA role matrix and manual acceptance remain incomplete | Complete signed eight-role QA after approved deployment and before GO |
 | Package/lock integrity | `CLOSED_WITH_EVIDENCE` | HIGH | Fresh main blobs match after `npm ci`; no package file edits | Preserve exact blobs through PR review |
-| Current Staging live drift | `UNKNOWN_REQUIRES_EVIDENCE` | MEDIUM | `DATABASE_LIVE_RECHECK=NOT_ATTEMPTED`; no proven callable read-only tool | Optional before Phase 6 execution; mandatory if merged evidence becomes stale or topology changes |
+| Current Staging live drift | `UNKNOWN_REQUIRES_EVIDENCE` | MEDIUM | `DATABASE_LIVE_RECHECK=READ_ONLY_PARTIAL`: migrations, table/RLS summaries, row counts, and advisors checked; exact policies/Realtime/protected counts not rechecked because SQL is forbidden | Complete remaining checks through approved non-SQL read-only capabilities before execution |
 
 ## Reconciliation result
 
 - `CLOSED_WITH_EVIDENCE`: 4
-- `OPEN_BLOCKER`: 8
+- `OPEN_BLOCKER`: 9
 - `ACCEPTED_OBSERVATION`: 3
 - `DEFERRED_WITH_OWNER_APPROVAL`: 0 (no new Owner approval was inferred)
 - `OUT_OF_SCOPE`: 0
-- `UNKNOWN_REQUIRES_EVIDENCE`: 6
+- `UNKNOWN_REQUIRES_EVIDENCE`: 5
 
 The CRITICAL backup/recovery and authorization blockers, plus multiple HIGH execution/security blockers, require `PHASE6_READINESS_BLOCKED`.

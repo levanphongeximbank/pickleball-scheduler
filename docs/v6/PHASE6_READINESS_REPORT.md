@@ -18,7 +18,7 @@ PHASE6_STAGING_MUTATIONS=0
 PHASE6_PRODUCTION_ACCESS=0
 PHASE6_PRODUCTION_MUTATIONS=0
 PRODUCTION_GO=NO
-DATABASE_LIVE_RECHECK=NOT_ATTEMPTED
+DATABASE_LIVE_RECHECK=READ_ONLY_PARTIAL
 ```
 
 No SQL, migration, deploy, environment change, Staging mutation, Production access, reset, rebase, amend, clean, force-push, or merge was performed.
@@ -58,7 +58,7 @@ The two untracked certification files in the original worktree are also tracked 
 4. **HIGH — Execution package/runbook:** the canonical M0–M11 execution runbook remains unaccepted and Production SQL ordering/applicability is not execution-approved.
 5. **HIGH — Production environment/deployment:** Production environment variables, flag values, Realtime publication, monitoring/logging, canary plan, and deployment gates lack current Owner-certified evidence.
 6. **HIGH — Production security acceptance:** Production RLS/RBAC, anonymous/public write exposure, tenant isolation, privileged RPC paths, and eight-role operator acceptance are not currently certified for this cutover.
-7. **HIGH — Advisor findings:** merged evidence acknowledges existing findings on `club_data_v3` and `court_engine_stores`, but gives no complete current disposition. Live recheck was unavailable.
+7. **CRITICAL — Advisor findings:** current Staging read-only advisors report 516 security findings, including 2 ERROR security-definer views and 6 ERROR public tables without RLS, plus 504 performance findings. These require object-level triage before execution readiness.
 
 ### Accepted observations
 
@@ -75,18 +75,21 @@ The two untracked certification files in the original worktree are also tracked 
 
 ## Staging evidence (repository only)
 
-`DATABASE_LIVE_RECHECK=NOT_ATTEMPTED`. No callable Supabase read-only MCP/tool with proven target binding was available in this session. This is not treated as a failure because merged evidence is available, but no claim is made about drift after its timestamp.
+`DATABASE_LIVE_RECHECK=READ_ONLY_PARTIAL`. The Staging MCP target was proven before database inventory by active Edge Function entrypoint paths containing `user_fn_qyewbxjsiiyufanzcjcq`. Only purpose-built read-only inventory tools were used; no raw SQL or mutation tool was called.
 
 Merged Phase 5 evidence for Staging project `qyewbxjsiiyufanzcjcq` records:
 
-- migration `phase_ai_v52_phase5` / version `20260804011017` present;
+- 164 migrations are listed; the latest include `phase5d_tt5d_controlled_reconciliation` (`20260731150000`) and `phase_ai_v52_phase5` (`20260804011017`);
 - `ai_workflow_checklists` with seven expected columns, PK and tenant/tournament/item unique constraint;
 - RLS enabled, three authenticated INSERT/SELECT/UPDATE policies, valid indexes;
 - Realtime publication includes `ai_workflow_checklists`, `court_engine_active_sessions`, and `court_engine_stores`;
 - zero smoke residue across `court_engine_stores`, `ai_suggestions`, and `ai_workflow_checklists`;
-- no advisor lint targeting the new checklist table, with broader existing findings retained as observations.
+- `club_data_v3`, `ai_suggestions`, `court_engine_stores`, `court_engine_active_sessions`, `team_tournament_referee_correction_requests`, and `ai_workflow_checklists` have RLS enabled and report 0 rows;
+- no current advisor lint targets `ai_workflow_checklists`; `club_data_v3` has two always-true RLS policy WARNs, and `court_engine_stores` has performance observations;
+- current advisors total 516 security findings: 2 ERROR security-definer views, 6 ERROR public tables without RLS, 204 WARN anon-executable security-definer functions, 271 WARN authenticated-executable security-definer functions, and other INFO/WARN findings;
+- current performance advisors total 504 findings, including 109 multiple-permissive-policy WARNs and 2 duplicate-index WARNs.
 
-No current live assertion is made for schema drift, protected counts, migration history after 2026-08-04 08:21 +07:00, or resolution of the older TT5D cutover topology.
+Because hard safety forbids SQL, this partial live recheck does not assert exact policy definitions, Realtime publication membership, protected auth/catalog counts, or full TT5D cutover topology. Those retain merged evidence or require a future approved capability that can prove them without raw SQL.
 
 ## Production readiness conclusion
 
