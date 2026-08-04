@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-08-04T13:00:00+07:00",
+  "mode": "READ_ONLY_AUDIT",
+  "environment": "staging",
+  "supabase_project_ref": "qyewbxjsiiyufanzcjcq",
+  "baseline": "177aae7b",
+  "summary": {
+    "advisor_error_targets": 6,
+    "confirmed_rls_disabled": 6,
+    "zero_row_tables": 6,
+    "tables_with_policies": 0,
+    "tables_with_anon_full_dml": 6,
+    "tables_with_authenticated_full_dml": 6,
+    "remediate": 6,
+    "defer": 0,
+    "out_of_scope": 0,
+    "verdict": "REMEDIATION_REQUIRED"
+  },
+  "targets": [
+    {"table":"match_game_states","domain":"referee_v5","rows":0,"tenant_scope":"tenant_id","rls":false,"policy_count":0,"anon_privileges":["SELECT","INSERT","UPDATE","DELETE"],"authenticated_privileges":["SELECT","INSERT","UPDATE","DELETE"],"provenance":"docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql","classification":"OPEN_BLOCKER"},
+    {"table":"match_incidents","domain":"referee_v5","rows":0,"tenant_scope":"tenant_id","rls":false,"policy_count":0,"anon_privileges":["SELECT","INSERT","UPDATE","DELETE"],"authenticated_privileges":["SELECT","INSERT","UPDATE","DELETE"],"provenance":"docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql","classification":"OPEN_BLOCKER"},
+    {"table":"match_participant_positions","domain":"referee_v5","rows":0,"tenant_scope":"tenant_id","rls":false,"policy_count":0,"anon_privileges":["SELECT","INSERT","UPDATE","DELETE"],"authenticated_privileges":["SELECT","INSERT","UPDATE","DELETE"],"provenance":"docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql","classification":"OPEN_BLOCKER"},
+    {"table":"referee_device_sessions","domain":"referee_v5","rows":0,"tenant_scope":"tenant_id","rls":false,"policy_count":0,"anon_privileges":["SELECT","INSERT","UPDATE","DELETE"],"authenticated_privileges":["SELECT","INSERT","UPDATE","DELETE"],"provenance":"docs/v5/referee-v5/PHASE_V5A_REFEREE_FOUNDATION.sql","classification":"OPEN_BLOCKER"},
+    {"table":"rating_proposals","domain":"rating_cc02","rows":0,"tenant_scope":"via player_rating_id -> player_ratings.tenant_id","rls":false,"policy_count":0,"anon_privileges":["SELECT","INSERT","UPDATE","DELETE"],"authenticated_privileges":["SELECT","INSERT","UPDATE","DELETE"],"provenance":"docs/competition-core/supabase-cc02-rating-v2.sql","classification":"OPEN_BLOCKER"},
+    {"table":"rating_confidence_events","domain":"rating_cc02","rows":0,"tenant_scope":"via player_rating_id -> player_ratings.tenant_id","rls":false,"policy_count":0,"anon_privileges":["SELECT","INSERT","UPDATE","DELETE"],"authenticated_privileges":["SELECT","INSERT","UPDATE","DELETE"],"provenance":"docs/competition-core/supabase-cc02-rating-v2.sql","classification":"OPEN_BLOCKER"}
+  ],
+  "safety": {
+    "staging_mutations": 0,
+    "production_access": 0,
+    "production_mutations": 0
+  }
+}
+
