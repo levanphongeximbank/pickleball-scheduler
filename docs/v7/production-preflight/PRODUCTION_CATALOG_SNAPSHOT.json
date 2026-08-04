@@ -1,0 +1,66 @@
+{
+  "marker": "PHASE7_PRODUCTION_CATALOG_SNAPSHOT_V1",
+  "capturedAt": "2026-08-04T11:36:46Z",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "queryRole": "supabase_read_only_user",
+  "roleCapabilities": {
+    "rolsuper": false,
+    "rolcreaterole": false,
+    "rolcreatedb": false,
+    "rolreplication": false,
+    "rolbypassrls": true,
+    "canCreateDatabase": false,
+    "canCreateInPublicSchema": false
+  },
+  "migrations": {
+    "count": 169,
+    "firstVersion": "20260707091240",
+    "latestVersion": "20260804082418"
+  },
+  "rlsCoverage": {
+    "totalTablesPublicAndStorage": 194,
+    "rlsEnabledTables": 194,
+    "rlsDisabledTables": 0,
+    "rlsEnabledButNoPolicyTables": [
+      "public.match_disputes",
+      "public.match_game_states",
+      "public.match_incidents",
+      "public.match_participant_positions",
+      "public.player_identity_links",
+      "public.public_catalog_courts",
+      "public.public_catalog_rankings",
+      "public.public_catalog_tournaments",
+      "public.rating_confidence_events",
+      "public.rating_proposals",
+      "public.referee_device_sessions",
+      "storage.buckets",
+      "storage.buckets_analytics",
+      "storage.buckets_vectors",
+      "storage.migrations",
+      "storage.objects",
+      "storage.s3_multipart_uploads",
+      "storage.s3_multipart_uploads_parts",
+      "storage.vector_indexes"
+    ]
+  },
+  "aclSurface": {
+    "anonOrPublicTableGrants": 0,
+    "publicExecuteRoutineCount": 54,
+    "anonSecurityDefinerExecutableCount": 7,
+    "anonSecurityDefinerFunctions": [
+      "public.news_public_content_query_public(p_now timestamp with time zone, p_locale text, p_content_scope text, p_limit integer)",
+      "public.public_catalog_list_clubs(p_limit integer, p_offset integer, p_sort text)",
+      "public.public_catalog_list_courts(p_limit integer, p_offset integer, p_sort text, p_club_id text)",
+      "public.public_catalog_list_rankings(p_limit integer, p_offset integer, p_sort text, p_category text)",
+      "public.public_catalog_list_tournaments(p_limit integer, p_offset integer, p_sort text)",
+      "public.referee_get_match_by_token(p_token text)",
+      "public.referee_update_match_score(p_token text, p_payload jsonb)"
+    ]
+  },
+  "counters": {
+    "productionReadOnlyAccessCount": 15,
+    "productionMutations": 0,
+    "stagingMutations": 0
+  },
+  "status": "PASS_WITH_OBSERVATIONS"
+}

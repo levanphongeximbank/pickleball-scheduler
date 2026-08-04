@@ -1,0 +1,14 @@
+{
+  "marker": "PHASE7_TARGET_GUARD_EVIDENCE_V1",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "expectedEndpoint": "/v1/projects/{ref}/database/query/read-only",
+  "guardAssertions": {
+    "targetPinned": true,
+    "singleSelectOnly": true,
+    "mutationKeywordsRejected": true
+  },
+  "validatedBy": [
+    "tests/phase7-production-readonly-catalog.test.js"
+  ],
+  "status": "PASS"
+}

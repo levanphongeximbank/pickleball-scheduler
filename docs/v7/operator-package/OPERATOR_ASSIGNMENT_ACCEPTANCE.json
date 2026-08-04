@@ -1,0 +1,16 @@
+{
+  "acceptedAt": "2026-08-04",
+  "acceptedBy": "Le Phong",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "baselineSha": "3418821f1cc45a537c76aa7313011923555639d4",
+  "assignments": {
+    "databaseAuditOperator": "Codex",
+    "qaEvidenceObserver": "Codex",
+    "releaseOperator": "Le Phong",
+    "communicationOwner": "Le Phong"
+  },
+  "assignmentAccepted": true,
+  "finalPackageAccepted": true,
+  "reasonFinalPackagePending": null,
+  "productionGo": false
+}

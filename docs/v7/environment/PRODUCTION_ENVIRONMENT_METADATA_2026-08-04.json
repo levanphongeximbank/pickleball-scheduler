@@ -1,0 +1,13 @@
+{
+  "marker": "PHASE7_PRODUCTION_ENVIRONMENT_METADATA_V1",
+  "capturedAt": "2026-08-04",
+  "source": "Vercel CLI env list production metadata only",
+  "project": "pickleball-scheduler",
+  "valuesInspected": false,
+  "presentRequiredNames": ["SUPABASE_SERVICE_ROLE_KEY","SUPABASE_URL","VITE_RBAC_ENABLED","VITE_SUPABASE_ANON_KEY","VITE_SUPABASE_URL","VITE_PLATFORM_HARD_CUTOVER_ENABLED","VITE_COMPETITION_REMOTE_SSOT_ENABLED"],
+  "missingCutoverNames": [],
+  "latestProductionDeployment": {"state":"READY","githubCommitSha":"3418821f1cc45a537c76aa7313011923555639d4","trigger":"automatic Git integration after PR #365 merge"},
+  "agentDeployments": 0,
+  "environmentMutations": 2,
+  "status": "PASS_FAIL_CLOSED_NAMES_PRESENT"
+}

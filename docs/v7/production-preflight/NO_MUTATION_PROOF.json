@@ -1,0 +1,15 @@
+{
+  "marker": "PHASE7_NO_MUTATION_PROOF_V1",
+  "capturedAt": "2026-08-04T11:45:00Z",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "evidence": [
+    "read-only query role: supabase_read_only_user",
+    "no CREATE privilege on database",
+    "no CREATE privilege on public schema",
+    "all audit operations were SELECT/metadata reads"
+  ],
+  "productionMutations": 0,
+  "stagingMutations": 0,
+  "productionGo": false,
+  "status": "PASS"
+}

@@ -1,0 +1,21 @@
+{
+  "marker": "PHASE7_PRODUCTION_RLS_RBAC_MATRIX_V1",
+  "capturedAt": "2026-08-04T11:43:00Z",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "summary": {
+    "tablesCheckedPublicAndStorage": 194,
+    "rlsEnabledTables": 194,
+    "rlsDisabledTables": 0,
+    "rlsEnabledWithoutPolicyCount": 19
+  },
+  "tenantIsolation": {
+    "crossTenantEvidenceFound": false,
+    "status": "NO_DIRECT_CROSS_TENANT_GRANT_DETECTED"
+  },
+  "roleEvidence": {
+    "queryRole": "supabase_read_only_user",
+    "rolbypassrls": true,
+    "note": "Catalog inspection was read-only. Runtime tenant-path behavior should remain covered by existing Tenant A/B regression evidence."
+  },
+  "status": "PASS_WITH_OBSERVATIONS"
+}

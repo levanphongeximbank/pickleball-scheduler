@@ -1,16 +1,20 @@
 # Phase 7 Owner GO Checkpoint
 
-**Current status:** `CLOSED — NO GO`
+**Current status:** `OPEN — READY FOR EXPLICIT OWNER DECISION`
 
-**Audit verdict:** `PHASE7_RELEASE_DECISION_NO_GO`
+**Audit verdict:** `PHASE7_RELEASE_DECISION_GO_READY`
 
 This document does not issue, imply, or simulate Owner GO. Phase 6 acceptance remains an acceptance of observations and stop gates only; `PRODUCTION_GO=NO`.
 
 ## Owner actions required now
 
-The Owner should not authorize Production execution. First require evidence that G6–G10 and G12–G13 are PASS: enforced read-only Production catalog preflight, current security/environment/monitoring state, exact operator/communication acceptance, and least-privilege credential hygiene.
+All prerequisite gates except Owner authority are now closed for GO_READY. The next action is an explicit Owner-only Production authorization decision bound to:
 
-After those gates close, request a new release-decision audit bound to the exact `origin/main` SHA, Production project ref, artifact checksums, named operators and execution window. G14 can only pass when the Owner then sends a separate, unambiguous Production authorization; Codex and this document cannot generate that authority.
+- target project ref `expuvcohlcjzvrrauvud`
+- audited baseline SHA `3418821f1cc45a537c76aa7313011923555639d4`
+- current gate matrix and evidence package under `docs/v7/`
+
+G14 remains `READY_FOR_EXPLICIT_OWNER_DECISION` until the Owner sends a separate, unambiguous Production GO statement. Codex and this document cannot generate that authority.
 
 ## Automatic rejection conditions
 

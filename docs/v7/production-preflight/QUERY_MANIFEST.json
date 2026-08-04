@@ -1,0 +1,11 @@
+{
+  "marker": "PHASE7_READ_ONLY_QUERY_MANIFEST_V1",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "managementApiEndpoint": "/v1/projects/{ref}/database/query/read-only",
+  "queryRole": "supabase_read_only_user",
+  "script": "scripts/phase7-production-readonly-catalog.mjs",
+  "queries": ["identity","migrations","schemas","tables_rls","policies","routines","table_grants","routine_grants","default_privileges","publications","extensions"],
+  "guard": {"singleStatement":true,"selectOnly":true,"targetPinned":true,"mutationKeywordsRejected":true},
+  "productionMutations": 0,
+  "status": "LIVE_CAPTURE_EXECUTED_VIA_READ_ONLY_ROLE"
+}

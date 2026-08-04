@@ -1,0 +1,10 @@
+{
+  "marker": "PHASE7_DEFAULT_PRIVILEGE_AUDIT_V1",
+  "capturedAt": "2026-08-04T11:44:00Z",
+  "highlight": [
+    "public schema default object privileges include anon/authenticated grants for supabase_admin-owned objects",
+    "effective anonymous table grants in public/storage remain zero"
+  ],
+  "riskClass": "OBSERVATION",
+  "status": "REVIEWED"
+}

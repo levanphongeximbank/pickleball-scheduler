@@ -1,0 +1,14 @@
+{
+  "marker": "PHASE7_CREDENTIAL_HYGIENE_NO_MUTATION_PROOF_V1",
+  "queryRole": "supabase_read_only_user",
+  "rolePrivileges": {
+    "rolsuper": false,
+    "rolcreaterole": false,
+    "rolcreatedb": false,
+    "canCreateDatabase": false,
+    "canCreateInPublicSchema": false
+  },
+  "productionMutations": 0,
+  "stagingMutations": 0,
+  "status": "PASS"
+}
