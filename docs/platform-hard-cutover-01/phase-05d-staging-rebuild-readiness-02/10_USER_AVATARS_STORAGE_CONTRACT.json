@@ -1,0 +1,95 @@
+{
+  "marker": "PHASE5D_USER_AVATARS_STORAGE_CONTRACT_V1",
+  "canonicalArtifact": {
+    "path": "docs/supabase-identity-avatars-storage.sql",
+    "sha256": "789a11e7b6d9eddc800150b1ec17f6ef94e98c5062f76e5f50367b7c0ef21173",
+    "bytes": 1970
+  },
+  "bucketSpecification": {
+    "bucketId": "user-avatars",
+    "public": true,
+    "inferredFromSql": true
+  },
+  "policyAccessMatrix": {
+    "authorized": [
+      "anonymous SELECT",
+      "authenticated SELECT",
+      "authenticated INSERT/UPDATE/DELETE only below own auth.uid() path"
+    ],
+    "unauthorized": [
+      "anonymous write",
+      "cross-user INSERT/UPDATE/DELETE"
+    ],
+    "policies": [
+      {
+        "name": "user_avatars_select",
+        "table": "storage.objects",
+        "command": "select",
+        "roles": "authenticated",
+        "using": "bucket_id = 'user-avatars'",
+        "withCheck": ""
+      },
+      {
+        "name": "user_avatars_select_anon",
+        "table": "storage.objects",
+        "command": "select",
+        "roles": "anon",
+        "using": "bucket_id = 'user-avatars'",
+        "withCheck": ""
+      },
+      {
+        "name": "user_avatars_insert",
+        "table": "storage.objects",
+        "command": "insert",
+        "roles": "authenticated",
+        "using": "",
+        "withCheck": "bucket_id = 'user-avatars' and (storage.foldername(name))[1] = auth.uid()::text"
+      },
+      {
+        "name": "user_avatars_update",
+        "table": "storage.objects",
+        "command": "update",
+        "roles": "authenticated",
+        "using": "bucket_id = 'user-avatars' and (storage.foldername(name))[1] = auth.uid()::text",
+        "withCheck": "bucket_id = 'user-avatars' and (storage.foldername(name))[1] = auth.uid()::text"
+      },
+      {
+        "name": "user_avatars_delete",
+        "table": "storage.objects",
+        "command": "delete",
+        "roles": "authenticated",
+        "using": "bucket_id = 'user-avatars' and (storage.foldername(name))[1] = auth.uid()::text",
+        "withCheck": ""
+      }
+    ]
+  },
+  "sourceDerivedContract": {
+    "bucketPublic": true,
+    "anonymousSelect": true,
+    "anonymousWritePolicies": 0,
+    "unsafeAuthenticatedWritePolicies": 0,
+    "authenticatedOwnInsert": true,
+    "authenticatedOwnUpdate": true,
+    "authenticatedOwnDelete": true,
+    "policyNames": [
+      "user_avatars_delete",
+      "user_avatars_insert",
+      "user_avatars_select",
+      "user_avatars_select_anon",
+      "user_avatars_update"
+    ]
+  },
+  "deterministicApplyProcedure": [
+    "Apply docs/supabase-identity-avatars-storage.sql on blank project after identity sprint1",
+    "Confirm bucket user-avatars exists",
+    "Confirm storage policies present"
+  ],
+  "deterministicVerificationProcedure": {
+    "authorized": "Upload object to user-avatars/{auth.uid()}/... succeeds",
+    "unauthorized": "Upload to another uid path or anon write fails"
+  },
+  "postCreateGate": "G14",
+  "liveBucketCreationExecuted": false,
+  "liveAccessVerificationExecuted": false,
+  "consistencyPass": true
+}

@@ -1,0 +1,73 @@
+{
+  "marker": "PHASE5D_BR01_BR10_CLOSURE_MATRIX_V1",
+  "verdictCandidate": "LOCAL_TECHNICAL_CLOSURE_PROPOSED_PENDING_INDEPENDENT_REVIEW",
+  "blockers": [
+    {
+      "id": "B-R01",
+      "status": "PROPOSED_CLOSED",
+      "evidence": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/02_PROPOSED_EXECUTABLE_BLANK_DB_LEDGER.json"
+    },
+    {
+      "id": "B-R02",
+      "status": "PROPOSED_CLOSED",
+      "evidence": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/03_M9_AUTHORITY_RESOLUTION.json"
+    },
+    {
+      "id": "B-R03",
+      "status": "PROPOSED_CLOSED",
+      "evidence": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/04_M10_AUTHORITY_RESOLUTION.json"
+    },
+    {
+      "id": "B-R04",
+      "status": "PROPOSED_CLOSED",
+      "evidence": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/05_M11_AUTHORITY_RESOLUTION.json"
+    },
+    {
+      "id": "B-R05",
+      "status": "PROPOSED_CLOSED",
+      "evidence": [
+        "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/06_CLOSED_EXPECTED_OBJECT_INVENTORY.json",
+        "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/08_HARD_CUTOVER_ACCEPTANCE_CONFIGURATION.json"
+      ]
+    },
+    {
+      "id": "B-R06",
+      "status": "PROPOSED_CLOSED",
+      "evidence": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/07_BOOTSTRAP_SEED_LEDGER.json"
+    },
+    {
+      "id": "B-R07",
+      "status": "PROPOSED_CLOSED",
+      "evidence": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/09_EDGE_FUNCTION_DEPLOYMENT_AUTH_CONTRACT.json"
+    },
+    {
+      "id": "B-R08",
+      "status": "PROPOSED_CLOSED",
+      "evidence": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/10_USER_AVATARS_STORAGE_CONTRACT.json"
+    },
+    {
+      "id": "B-R09",
+      "status": "PROPOSED_CLOSED",
+      "evidence": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/11_TENANT_TYPE_STATIC_GATE_RESULTS.json"
+    },
+    {
+      "id": "B-R10",
+      "status": "PROPOSED_CLOSED",
+      "evidence": "docs/platform-hard-cutover-01/phase-05d-staging-rebuild-readiness-02/12_COACHING_04_AUTHORITY_DECISION.json"
+    },
+    {
+      "id": "B-R11",
+      "status": "ACCEPTED_ORTHOGONAL",
+      "evidence": "unchanged from V1R3"
+    },
+    {
+      "id": "B-R12",
+      "status": "OPEN",
+      "evidence": "GO-A not claimed"
+    }
+  ],
+  "ledgerEntryCount": 121,
+  "g01_g17": "NOT_EXECUTED",
+  "ownerGoClaimed": false,
+  "phase05CompleteIssued": false
+}
