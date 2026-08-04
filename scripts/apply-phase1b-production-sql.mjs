@@ -4,7 +4,8 @@
  *
  * Requires explicit Owner GO:
  *   PHASE1B_PRODUCTION_GO=1
- *   APPROVED_MAIN_SHA=959c8067ea756aa32e50b549a97cd4e762786ff7
+ *   PHASE7_EXECUTION_AUTHORITY_FILE=<local gitignored authority json>
+ *   PHASE7_CREDENTIAL_FILE=<local gitignored credential file>
  *   SUPABASE_ACCESS_TOKEN
  *
  * Hard guards:
@@ -25,10 +26,10 @@ import {
   PHASE_1B_KNOWN_AUDIT_ACTIONS,
   LEGACY_FIXED_45A3C_AUDIT_ACTIONS,
 } from "./apply-phase1b-staging-sql.mjs";
+import { assertPhase7ExecutionAuthority } from "./phase7-execution-authority.mjs";
 
 const STAGING_REF = "qyewbxjsiiyufanzcjcq";
 const PRODUCTION_REF = "expuvcohlcjzvrrauvud";
-const APPROVED_MAIN_SHA = "959c8067ea756aa32e50b549a97cd4e762786ff7";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = path.join(rootDir, "docs/v5/qa-evidence/phase1b-production");
 
@@ -190,8 +191,15 @@ async function main() {
   loadProjectEnv();
   fs.mkdirSync(outDir, { recursive: true });
 
+  const authorityGuard = assertPhase7ExecutionAuthority({
+    rootDir,
+    authorityFilePath: String(process.env.PHASE7_EXECUTION_AUTHORITY_FILE || "").trim(),
+    runtimeTargetProjectRef: PRODUCTION_REF,
+    credentialFilePath: String(process.env.PHASE7_CREDENTIAL_FILE || ".env.phase7-production.local").trim(),
+  });
+
+  const approvedExecutionHead = authorityGuard.authority.approvedExecutionHead;
   const go = String(process.env.PHASE1B_PRODUCTION_GO || "").trim() === "1";
-  const approved = String(process.env.APPROVED_MAIN_SHA || APPROVED_MAIN_SHA).trim();
   const token = String(process.env.SUPABASE_ACCESS_TOKEN || "").trim();
   const originMain = execSync("git rev-parse origin/main", { cwd: rootDir, encoding: "utf8" }).trim();
 
@@ -200,8 +208,15 @@ async function main() {
     kind: "PRODUCTION_SQL_APPLY",
     productionRef: PRODUCTION_REF,
     stagingRef: STAGING_REF,
-    approvedMainSha: APPROVED_MAIN_SHA,
+    approvedMainSha: approvedExecutionHead,
     originMainSha: originMain,
+    authorityGuard: {
+      approvedExecutionHead,
+      packageSourceCommit: authorityGuard.authority.packageSourceCommit,
+      packageManifestDigest: authorityGuard.authority.packageManifestDigest,
+      ownerAuthorizationMarker: authorityGuard.authority.ownerAuthorizationMarker,
+      ledgerStepCount: authorityGuard.authority.ledgerStepCount,
+    },
     startedAt: new Date().toISOString(),
     preflight: null,
     files: [],
@@ -213,7 +228,7 @@ async function main() {
   console.log("=== Phase 1B PRODUCTION SQL Apply ===");
   console.log(`PRODUCTION: ${PRODUCTION_REF}`);
   console.log(`STAGING (must not use): ${STAGING_REF}`);
-  console.log(`APPROVED SHA: ${APPROVED_MAIN_SHA}`);
+  console.log(`APPROVED EXECUTION HEAD: ${approvedExecutionHead}`);
   console.log(`origin/main: ${originMain}`);
 
   if (!go) {
@@ -224,17 +239,9 @@ async function main() {
     process.exitCode = 2;
     return;
   }
-  if (approved !== APPROVED_MAIN_SHA) {
-    report.status = "BLOCKED_SHA_MISMATCH";
-    report.error = `APPROVED_MAIN_SHA must be ${APPROVED_MAIN_SHA}`;
-    fs.writeFileSync(path.join(outDir, "APPLY_REPORT.json"), JSON.stringify(report, null, 2));
-    console.error(report.error);
-    process.exitCode = 2;
-    return;
-  }
-  if (originMain !== APPROVED_MAIN_SHA) {
+  if (originMain !== approvedExecutionHead) {
     report.status = "BLOCKED_ORIGIN_MAIN_DRIFT";
-    report.error = `origin/main ${originMain} != approved ${APPROVED_MAIN_SHA}`;
+    report.error = `origin/main ${originMain} != approved ${approvedExecutionHead}`;
     fs.writeFileSync(path.join(outDir, "APPLY_REPORT.json"), JSON.stringify(report, null, 2));
     console.error(report.error);
     process.exitCode = 2;
@@ -271,6 +278,14 @@ async function main() {
       exitCode = 3;
       return;
     }
+
+    // Repeat full local guard immediately before first mutation.
+    assertPhase7ExecutionAuthority({
+      rootDir,
+      authorityFilePath: String(process.env.PHASE7_EXECUTION_AUTHORITY_FILE || "").trim(),
+      runtimeTargetProjectRef: PRODUCTION_REF,
+      credentialFilePath: String(process.env.PHASE7_CREDENTIAL_FILE || ".env.phase7-production.local").trim(),
+    });
 
     for (let i = 0; i < SQL_FILES.length; i += 1) {
       const file = SQL_FILES[i];

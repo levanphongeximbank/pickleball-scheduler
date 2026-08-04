@@ -1,7 +1,11 @@
 # Preflight Checklist
 
 - target project_ref confirmed: `expuvcohlcjzvrrauvud`
-- baseline SHA confirmed: `fe80e367e848da7c4448b8a40b5a0641014ce37b`
+- package source commit confirmed: `93b14e08ae7fa4c20886c8770b168f2495540484`
+- certified package manifest digest confirmed: `CD19CBF6205C601A573A8F5D2A81568F4FA8A7C2BA0D389B02A02C987A1F7E67`
+- execution authority input supplied and valid (`productionGo = YES` only for real execution)
+- approvedExecutionHead equals both local `HEAD` and `origin/main`
+- packageSourceCommit is ancestor of approvedExecutionHead
 - credential hygiene reviewed and gitignored local credential path verified
 - backup and recovery prerequisites confirmed from canonical Phase 6 evidence
 - backup and recovery authority present in `docs/platform-governance-operations/pgo-02-incident-recovery-readiness/04_BACKUP_RESTORE_AND_RECOVERY_AUTHORITY.md`
@@ -11,4 +15,5 @@
 - notification SQL pack artifacts present in `docs/supabase-notification-phase2b-production-*.sql`
 - canary plan present and bounded
 - rollback matrix present and bounded
+- warning closure statuses W-P7-001, W-P7-002, W-P7-003 remain CLOSED
 - fresh Owner GO required before any mutation step

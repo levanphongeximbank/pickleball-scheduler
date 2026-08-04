@@ -1,0 +1,64 @@
+{
+    "generatedAt":  "2026-08-04T23:44:50.9389477+07:00",
+    "currentMain":  "748bf75fc4bc38e1f52bd48ecade15df0cf57815",
+    "packageSourceCommit":  "93b14e08ae7fa4c20886c8770b168f2495540484",
+    "activeFilesScanned":  11,
+    "totalShaHits":  7,
+    "staleSelfInvalidatingCount":  0,
+    "ambiguousShaAuthorityCount":  0,
+    "countsByClass":  {
+                          "classification":  "package source ancestry guard",
+                          "count":  7
+                      },
+    "rows":  [
+                 {
+                     "file":  "docs/v7/production-execution/00_PRODUCTION_EXECUTION_AUTHORITY.md",
+                     "line":  5,
+                     "sha":  "93b14e08ae7fa4c20886c8770b168f2495540484",
+                     "classification":  "package source ancestry guard",
+                     "lineText":  "Package source commit (immutable ancestry anchor): `93b14e08ae7fa4c20886c8770b168f2495540484`"
+                 },
+                 {
+                     "file":  "docs/v7/production-execution/01_TARGET_AND_BASELINE_GUARD.md",
+                     "line":  5,
+                     "sha":  "93b14e08ae7fa4c20886c8770b168f2495540484",
+                     "classification":  "package source ancestry guard",
+                     "lineText":  "Immutable package source commit: `93b14e08ae7fa4c20886c8770b168f2495540484`"
+                 },
+                 {
+                     "file":  "docs/v7/production-execution/02_ORDERED_EXECUTION_LEDGER.json",
+                     "line":  3,
+                     "sha":  "93b14e08ae7fa4c20886c8770b168f2495540484",
+                     "classification":  "package source ancestry guard",
+                     "lineText":  "\"packageSourceCommit\": \"93b14e08ae7fa4c20886c8770b168f2495540484\","
+                 },
+                 {
+                     "file":  "docs/v7/production-execution/03_PREFLIGHT_CHECKLIST.md",
+                     "line":  4,
+                     "sha":  "93b14e08ae7fa4c20886c8770b168f2495540484",
+                     "classification":  "package source ancestry guard",
+                     "lineText":  "- package source commit confirmed: `93b14e08ae7fa4c20886c8770b168f2495540484`"
+                 },
+                 {
+                     "file":  "docs/v7/production-execution/06_ROLLBACK_AND_RECOVERY_MATRIX.json",
+                     "line":  3,
+                     "sha":  "93b14e08ae7fa4c20886c8770b168f2495540484",
+                     "classification":  "package source ancestry guard",
+                     "lineText":  "\"packageSourceCommit\": \"93b14e08ae7fa4c20886c8770b168f2495540484\","
+                 },
+                 {
+                     "file":  "docs/v7/production-execution/09_OWNER_GO_CHECKPOINT.md",
+                     "line":  5,
+                     "sha":  "93b14e08ae7fa4c20886c8770b168f2495540484",
+                     "classification":  "package source ancestry guard",
+                     "lineText":  "- packageSourceCommit ancestry anchor (`93b14e08ae7fa4c20886c8770b168f2495540484`)"
+                 },
+                 {
+                     "file":  "docs/v7/production-execution/PACKAGE_VALIDATION.json",
+                     "line":  3,
+                     "sha":  "93b14e08ae7fa4c20886c8770b168f2495540484",
+                     "classification":  "package source ancestry guard",
+                     "lineText":  "\"packageSourceCommit\": \"93b14e08ae7fa4c20886c8770b168f2495540484\","
+                 }
+             ]
+}

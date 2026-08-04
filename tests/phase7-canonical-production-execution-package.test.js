@@ -16,6 +16,7 @@ const files = [
   "07_POST_DEPLOY_VERIFICATION.md",
   "08_EXECUTION_EVIDENCE.template.json",
   "09_OWNER_GO_CHECKPOINT.md",
+  "10_EXECUTION_AUTHORITY_INPUT.template.json",
   "MANIFEST.sha256",
   "PACKAGE_VALIDATION.json",
 ];
@@ -30,7 +31,7 @@ test("canonical production execution package is fully tracked and parseable", ()
   }
 
   const validation = JSON.parse(fs.readFileSync(path.join(packageRoot, "PACKAGE_VALIDATION.json"), "utf8"));
-  assert.equal(validation.fileCount, 12);
+  assert.equal(validation.fileCount, 13);
   assert.equal(validation.ledgerStepCount, 11);
   assert.equal(validation.unresolvedDependencies, 0);
   assert.equal(validation.cycles, 0);
@@ -42,6 +43,8 @@ test("canonical production execution package is fully tracked and parseable", ()
   assert.equal(validation.undefinedAbortConditions, 0);
   assert.equal(validation.undefinedRollbackPoints, 0);
   assert.equal(validation.embeddedSecretFindings, 0);
+  assert.equal(validation.staleActiveShaGuards, 0);
+  assert.equal(validation.ambiguousShaAuthorities, 0);
 });
 
 test("manifest lines match actual package file hashes", () => {

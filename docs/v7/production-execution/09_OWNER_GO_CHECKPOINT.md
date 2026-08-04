@@ -1,12 +1,17 @@
 # Owner GO Checkpoint
 
 Execution is prohibited until the Owner issues a new GO bound to:
-- exact origin/main SHA after package merge
+- exact approvedExecutionHead (must equal local HEAD and origin/main)
+- packageSourceCommit ancestry anchor (`93b14e08ae7fa4c20886c8770b168f2495540484`)
 - exact package manifest SHA256
 - exact target project_ref
 - exact package version
 - exact execution window
 
-Current canonical baseline to bind: `bd08d448e3c207ac6d5871a734c346f6bb290c40`
+Execution authority input for this checkpoint must be provided via:
+- `docs/v7/production-execution/10_EXECUTION_AUTHORITY_INPUT.template.json` shape
+- local, gitignored execution authority file for the exact execution window
+
+Default checked-in template state: `productionGo = NO`
 
 The prior Owner GO is stale and non-transferable for any materially changed or newly tracked package.

@@ -1,0 +1,80 @@
+[
+    {
+        "file":  "docs/v7/production-execution/00_PRODUCTION_EXECUTION_AUTHORITY.md",
+        "line":  5,
+        "sha":  "bd08d448e3c207ac6d5871a734c346f6bb290c40",
+        "lineText":  "Baseline SHA: `bd08d448e3c207ac6d5871a734c346f6bb290c40`"
+    },
+    {
+        "file":  "docs/v7/production-execution/01_TARGET_AND_BASELINE_GUARD.md",
+        "line":  5,
+        "sha":  "bd08d448e3c207ac6d5871a734c346f6bb290c40",
+        "lineText":  "Exact baseline SHA: `bd08d448e3c207ac6d5871a734c346f6bb290c40`"
+    },
+    {
+        "file":  "docs/v7/production-execution/01_TARGET_AND_BASELINE_GUARD.md",
+        "line":  12,
+        "sha":  "9024b62e2c47de2de28d1de62f4e0a015b110040",
+        "lineText":  "- Ancestry must remain intact from the evidence commit `9024b62e2c47de2de28d1de62f4e0a015b110040` to origin/main."
+    },
+    {
+        "file":  "docs/v7/production-execution/02_ORDERED_EXECUTION_LEDGER.json",
+        "line":  3,
+        "sha":  "bd08d448e3c207ac6d5871a734c346f6bb290c40",
+        "lineText":  "\"baselineSha\": \"bd08d448e3c207ac6d5871a734c346f6bb290c40\","
+    },
+    {
+        "file":  "docs/v7/production-execution/03_PREFLIGHT_CHECKLIST.md",
+        "line":  4,
+        "sha":  "fe80e367e848da7c4448b8a40b5a0641014ce37b",
+        "lineText":  "- baseline SHA confirmed: `fe80e367e848da7c4448b8a40b5a0641014ce37b`"
+    },
+    {
+        "file":  "docs/v7/production-execution/06_ROLLBACK_AND_RECOVERY_MATRIX.json",
+        "line":  3,
+        "sha":  "bd08d448e3c207ac6d5871a734c346f6bb290c40",
+        "lineText":  "\"baselineSha\": \"bd08d448e3c207ac6d5871a734c346f6bb290c40\","
+    },
+    {
+        "file":  "docs/v7/production-execution/09_OWNER_GO_CHECKPOINT.md",
+        "line":  10,
+        "sha":  "bd08d448e3c207ac6d5871a734c346f6bb290c40",
+        "lineText":  "Current canonical baseline to bind: `bd08d448e3c207ac6d5871a734c346f6bb290c40`"
+    },
+    {
+        "file":  "docs/v7/production-execution/PACKAGE_VALIDATION.json",
+        "line":  3,
+        "sha":  "bd08d448e3c207ac6d5871a734c346f6bb290c40",
+        "lineText":  "\"baselineSha\": \"bd08d448e3c207ac6d5871a734c346f6bb290c40\","
+    },
+    {
+        "file":  "scripts/apply-phase1b-production-sql.mjs",
+        "line":  7,
+        "sha":  "959c8067ea756aa32e50b549a97cd4e762786ff7",
+        "lineText":  "*   APPROVED_MAIN_SHA=959c8067ea756aa32e50b549a97cd4e762786ff7"
+    },
+    {
+        "file":  "scripts/apply-phase1b-production-sql.mjs",
+        "line":  31,
+        "sha":  "959c8067ea756aa32e50b549a97cd4e762786ff7",
+        "lineText":  "const APPROVED_MAIN_SHA = \"959c8067ea756aa32e50b549a97cd4e762786ff7\";"
+    },
+    {
+        "file":  "scripts/phase7-warning-closure-readonly.mjs",
+        "line":  5,
+        "sha":  "bd08d448e3c207ac6d5871a734c346f6bb290c40",
+        "lineText":  "const APPROVED_MAIN_SHA = \"bd08d448e3c207ac6d5871a734c346f6bb290c40\";"
+    },
+    {
+        "file":  "scripts/preflight-phase1b-production-readonly.mjs",
+        "line":  30,
+        "sha":  "959c8067ea756aa32e50b549a97cd4e762786ff7",
+        "lineText":  "const APPROVED_MAIN_SHA = \"959c8067ea756aa32e50b549a97cd4e762786ff7\";"
+    },
+    {
+        "file":  "scripts/verify-phase1b-production-smoke.mjs",
+        "line":  17,
+        "sha":  "959c8067ea756aa32e50b549a97cd4e762786ff7",
+        "lineText":  "const APPROVED_MAIN_SHA = \"959c8067ea756aa32e50b549a97cd4e762786ff7\";"
+    }
+]
