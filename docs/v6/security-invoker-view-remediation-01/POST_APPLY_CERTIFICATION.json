@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-08-04T10:36:00+07:00",
+  "environment": {
+    "name": "staging",
+    "supabase_project_ref": "qyewbxjsiiyufanzcjcq",
+    "production_access_count": 0,
+    "production_mutation_count": 0
+  },
+  "baseline": {
+    "pull_request": 358,
+    "merge_commit": "a7c7a1d4a4f53c9c19edfde6a641c0ee159a9740"
+  },
+  "migration": {
+    "version": "20260804031702",
+    "name": "phase6_security_invoker_view_remediation_01",
+    "applied": true,
+    "rollback_run": false
+  },
+  "views": [
+    {
+      "name": "public.tenants",
+      "security_invoker": true,
+      "select_acl_preserved_for": ["anon", "authenticated", "service_role"]
+    },
+    {
+      "name": "public.club_data_v3_safe",
+      "security_invoker": true,
+      "select_acl_preserved_for": ["anon", "authenticated", "service_role"]
+    }
+  ],
+  "advisor": {
+    "target_security_definer_view_findings_remaining": 0,
+    "observed_total_before": 516,
+    "observed_total_after": 514
+  },
+  "authenticated_tenant_qa": {
+    "status": "PASS_WITH_EMPTY_FIXTURE",
+    "real_jwt_used": true,
+    "actors_ready": [
+      {"email": "owner@staging.local", "tenant_id": "venue-staging-a", "role": "VENUE_OWNER", "status": "active"},
+      {"email": "owner-b@staging.local", "tenant_id": "venue-staging-b", "role": "VENUE_OWNER", "status": "active"}
+    ],
+    "required_views": ["public.tenants", "public.club_data_v3_safe"],
+    "harness": "scripts/verify-phase6-security-invoker-views-staging.mjs",
+    "data_mutations": 0,
+    "results": {
+      "owner_a": {
+        "authenticated": true,
+        "tenants": "PASS_OWN_ONLY_FOREIGN_NOT_VISIBLE",
+        "club_data_v3_safe": "EMPTY_FIXTURE_NO_FOREIGN_VISIBLE"
+      },
+      "owner_b": {
+        "authenticated": true,
+        "tenants": "PASS_OWN_ONLY_FOREIGN_NOT_VISIBLE",
+        "club_data_v3_safe": "EMPTY_FIXTURE_NO_FOREIGN_VISIBLE"
+      }
+    }
+  },
+  "certification": {
+    "status": "PASS_WITH_EMPTY_FIXTURE",
+    "structural_post_apply": "PASS",
+    "authenticated_bidirectional_isolation": "PASS_FOR_TENANTS_CLUB_DATA_POSITIVE_PATH_EMPTY_FIXTURE",
+    "data_rows_mutated": 0,
+    "production_go": "NO_CHANGE_NO_GO"
+  }
+}
