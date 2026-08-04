@@ -585,7 +585,7 @@ async function main() {
     authorityGuard: {
       approvedExecutionHead,
       packageSourceCommit: guard.authority.packageSourceCommit,
-      packageManifestDigest: guard.authority.packageManifestDigest,
+      manifestGitBlobDigest: guard.authority.manifestGitBlobDigest,
       ledgerStepCount: guard.authority.ledgerStepCount,
       ownerAuthorizationMarker: guard.authority.ownerAuthorizationMarker,
     },

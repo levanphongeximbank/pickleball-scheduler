@@ -183,7 +183,7 @@ async function main() {
     authorityGuard: {
       approvedExecutionHead,
       packageSourceCommit: authorityGuard.authority.packageSourceCommit,
-      packageManifestDigest: authorityGuard.authority.packageManifestDigest,
+      manifestGitBlobDigest: authorityGuard.authority.manifestGitBlobDigest,
       packageSourceIsAncestorOfApprovedHead: true,
       ownerAuthorizationMarker: authorityGuard.authority.ownerAuthorizationMarker,
     },

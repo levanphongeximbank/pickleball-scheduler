@@ -1,25 +1,36 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 export const PHASE7_CERTIFIED_CONSTANTS = {
+  authoritySchemaVersion: 2,
   packageSourceCommit: "93b14e08ae7fa4c20886c8770b168f2495540484",
   packageVersion: "phase7-canonical-production-execution-1",
-  packageManifestDigest: "CD19CBF6205C601A573A8F5D2A81568F4FA8A7C2BA0D389B02A02C987A1F7E67",
   targetProjectRef: "expuvcohlcjzvrrauvud",
   ledgerStepCount: 11,
 };
 
 const SHA40_RE = /^[0-9a-f]{40}$/i;
+const SHA256_RE = /^[A-Fa-f0-9]{64}$/;
+const MANIFEST_PATH = "docs/v7/production-execution/MANIFEST.sha256";
 
-function runGit(rootDir, args) {
-  return execSync(`git ${args}`, { cwd: rootDir, encoding: "utf8" }).trim();
+function runGit(rootDir, args, opts = {}) {
+  const encoding = Object.prototype.hasOwnProperty.call(opts, "encoding") ? opts.encoding : "utf8";
+  const out = execFileSync("git", args, {
+    cwd: rootDir,
+    encoding,
+    stdio: opts.stdio,
+  });
+  if (typeof out === "string") {
+    return out.trim();
+  }
+  return out;
 }
 
 function gitExitOk(rootDir, args) {
   try {
-    execSync(`git ${args}`, { cwd: rootDir, stdio: "ignore" });
+    runGit(rootDir, args, { stdio: "ignore" });
     return true;
   } catch {
     return false;
@@ -40,26 +51,83 @@ function ensureInteger(value, field) {
   return value;
 }
 
+function ensureSha256(value, field) {
+  const s = ensureString(value, field);
+  if (!SHA256_RE.test(s)) {
+    throw new Error(`Blocked: ${field} must be a 64-char SHA256`);
+  }
+  return s.toUpperCase();
+}
+
 function parseManifestLine(line) {
   const m = line.match(/^([A-Fa-f0-9]{64})\s{2}(.+)$/);
   if (!m) {
     throw new Error(`Blocked: invalid MANIFEST line: ${line}`);
   }
-  return { hash: m[1].toUpperCase(), artifactPath: m[2] };
+  if (m[2].startsWith("../") || m[2].includes("..\\") || m[2].includes(":\\") || m[2].startsWith("/")) {
+    throw new Error(`Blocked: invalid MANIFEST artifact path: ${m[2]}`);
+  }
+  return { hash: m[1].toUpperCase(), artifactPath: m[2].replace(/\\/g, "/") };
 }
 
-function fileSha256Upper(fullPath) {
-  return crypto.createHash("sha256").update(fs.readFileSync(fullPath)).digest("hex").toUpperCase();
+function sha256Upper(bytes) {
+  return crypto.createHash("sha256").update(bytes).digest("hex").toUpperCase();
+}
+
+function resolveGitBlobObject(rootDir, rev, repoPath) {
+  try {
+    return runGit(rootDir, ["rev-parse", `${rev}:${repoPath}`]);
+  } catch {
+    throw new Error(`Blocked: cannot resolve git blob ${rev}:${repoPath}`);
+  }
+}
+
+function readGitBlob(rootDir, rev, repoPath) {
+  const objectId = resolveGitBlobObject(rootDir, rev, repoPath);
+  try {
+    return runGit(rootDir, ["cat-file", "blob", objectId], { encoding: null });
+  } catch {
+    throw new Error(`Blocked: cannot read git blob ${objectId} for ${repoPath}`);
+  }
+}
+
+function readManifestLinesFromBlob(rootDir, approvedExecutionHead, manifestRelativePath) {
+  const blob = readGitBlob(rootDir, approvedExecutionHead, manifestRelativePath);
+  const lines = String(blob)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return { blob, lines };
+}
+
+export function computeWorkingTreeManifestDigest(rootDir, manifestRelativePath = MANIFEST_PATH) {
+  return sha256Upper(fs.readFileSync(path.join(rootDir, manifestRelativePath)));
+}
+
+export function computeManifestGitBlobDigest(rootDir, approvedExecutionHead, manifestRelativePath = MANIFEST_PATH) {
+  const blob = readGitBlob(rootDir, approvedExecutionHead, manifestRelativePath);
+  return sha256Upper(blob);
 }
 
 export function loadExecutionAuthority(authorityFilePath) {
   const raw = fs.readFileSync(authorityFilePath, "utf8");
   const data = JSON.parse(raw);
+
+  if (data.packageManifestDigest && !data.manifestGitBlobDigest) {
+    throw new Error(
+      "Blocked: authority schema v1 is rejected (packageManifestDigest is obsolete; use authoritySchemaVersion=2 + manifestGitBlobDigest)"
+    );
+  }
+  if (data.packageManifestDigest && data.manifestGitBlobDigest) {
+    throw new Error("Blocked: ambiguous authority digest fields (packageManifestDigest + manifestGitBlobDigest)");
+  }
+
   const authority = {
+    authoritySchemaVersion: ensureInteger(data.authoritySchemaVersion, "authoritySchemaVersion"),
     approvedExecutionHead: ensureString(data.approvedExecutionHead, "approvedExecutionHead"),
     packageSourceCommit: ensureString(data.packageSourceCommit, "packageSourceCommit"),
     packageVersion: ensureString(data.packageVersion, "packageVersion"),
-    packageManifestDigest: ensureString(data.packageManifestDigest, "packageManifestDigest"),
+    manifestGitBlobDigest: ensureSha256(data.manifestGitBlobDigest, "manifestGitBlobDigest"),
     targetProjectRef: ensureString(data.targetProjectRef, "targetProjectRef"),
     ledgerStepCount: ensureInteger(data.ledgerStepCount, "ledgerStepCount"),
     issuedAt: ensureString(data.issuedAt, "issuedAt"),
@@ -74,8 +142,8 @@ export function loadExecutionAuthority(authorityFilePath) {
   if (!SHA40_RE.test(authority.packageSourceCommit)) {
     throw new Error("Blocked: packageSourceCommit must be a 40-char SHA");
   }
-  if (!/^[A-Fa-f0-9]{64}$/.test(authority.packageManifestDigest)) {
-    throw new Error("Blocked: packageManifestDigest must be a 64-char SHA256");
+  if (authority.authoritySchemaVersion !== 2) {
+    throw new Error(`Blocked: unsupported authoritySchemaVersion=${authority.authoritySchemaVersion}; expected=2`);
   }
   if (!authority.executionWindow || typeof authority.executionWindow !== "object") {
     throw new Error("Blocked: missing executionWindow");
@@ -92,28 +160,28 @@ export function loadExecutionAuthority(authorityFilePath) {
   return authority;
 }
 
-export function verifyManifestEntries(rootDir, manifestRelativePath = "docs/v7/production-execution/MANIFEST.sha256") {
-  const manifestPath = path.join(rootDir, manifestRelativePath);
-  const lines = fs
-    .readFileSync(manifestPath, "utf8")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+export function verifyManifestEntries(rootDir, approvedExecutionHead, manifestRelativePath = MANIFEST_PATH) {
+  const { lines, blob } = readManifestLinesFromBlob(rootDir, approvedExecutionHead, manifestRelativePath);
 
   const parsed = lines.map(parseManifestLine);
   const mismatches = [];
   for (const entry of parsed) {
-    const full = path.join(rootDir, entry.artifactPath);
-    if (!fs.existsSync(full)) {
-      mismatches.push({ artifactPath: entry.artifactPath, expected: entry.hash, actual: "MISSING" });
+    let actual;
+    try {
+      actual = sha256Upper(readGitBlob(rootDir, approvedExecutionHead, entry.artifactPath));
+    } catch {
+      mismatches.push({ artifactPath: entry.artifactPath, expected: entry.hash, actual: "MISSING_BLOB" });
       continue;
     }
-    const actual = fileSha256Upper(full);
     if (actual !== entry.hash) {
       mismatches.push({ artifactPath: entry.artifactPath, expected: entry.hash, actual });
     }
   }
-  return { entryCount: parsed.length, mismatches };
+  return {
+    entryCount: parsed.length,
+    mismatches,
+    manifestGitBlobDigest: sha256Upper(blob),
+  };
 }
 
 function toRepoRelative(rootDir, anyPath) {
@@ -126,7 +194,7 @@ function toRepoRelative(rootDir, anyPath) {
 }
 
 function ensureCleanWorktree(rootDir, allowedUntrackedRelPaths = []) {
-  const status = runGit(rootDir, "status --porcelain");
+  const status = runGit(rootDir, ["status", "--porcelain"]);
   if (!status) {
     return { clean: true, untrackedCount: 0 };
   }
@@ -155,10 +223,10 @@ function ensureLocalUntrackedGitignoredFile(rootDir, filePath, label) {
   if (!fs.existsSync(fullPath)) {
     throw new Error(`Blocked: ${label} not found: ${filePath}`);
   }
-  if (gitExitOk(rootDir, `ls-files --error-unmatch -- ${relPath}`)) {
+  if (gitExitOk(rootDir, ["ls-files", "--error-unmatch", "--", relPath])) {
     throw new Error(`Blocked: ${label} is tracked by git: ${relPath}`);
   }
-  if (!gitExitOk(rootDir, `check-ignore -q -- ${relPath}`)) {
+  if (!gitExitOk(rootDir, ["check-ignore", "-q", "--", relPath])) {
     throw new Error(`Blocked: ${label} is not gitignored: ${relPath}`);
   }
   return relPath;
@@ -230,8 +298,8 @@ export function assertPhase7ExecutionAuthority(options) {
   const authority = loadExecutionAuthority(fullAuthorityPath);
   ensureCleanWorktree(rootDir, [authorityRelPath, credentialRelPath]);
 
-  const originMain = runGit(rootDir, "rev-parse origin/main");
-  const headSha = runGit(rootDir, "rev-parse HEAD");
+  const originMain = runGit(rootDir, ["rev-parse", "origin/main"]);
+  const headSha = runGit(rootDir, ["rev-parse", "HEAD"]);
 
   if (originMain !== authority.approvedExecutionHead) {
     throw new Error(
@@ -241,12 +309,24 @@ export function assertPhase7ExecutionAuthority(options) {
   if (headSha !== authority.approvedExecutionHead) {
     throw new Error(`Blocked: HEAD mismatch. expected=${authority.approvedExecutionHead} actual=${headSha}`);
   }
-  if (!gitExitOk(rootDir, `merge-base --is-ancestor ${authority.packageSourceCommit} ${authority.approvedExecutionHead}`)) {
+  if (
+    !gitExitOk(rootDir, [
+      "merge-base",
+      "--is-ancestor",
+      authority.packageSourceCommit,
+      authority.approvedExecutionHead,
+    ])
+  ) {
     throw new Error(
       `Blocked: package source commit is not ancestor of approved execution head (${authority.packageSourceCommit} -> ${authority.approvedExecutionHead})`
     );
   }
 
+  if (authority.authoritySchemaVersion !== expected.authoritySchemaVersion) {
+    throw new Error(
+      `Blocked: authoritySchemaVersion mismatch. expected=${expected.authoritySchemaVersion} actual=${authority.authoritySchemaVersion}`
+    );
+  }
   if (authority.packageSourceCommit !== expected.packageSourceCommit) {
     throw new Error(
       `Blocked: packageSourceCommit mismatch. expected=${expected.packageSourceCommit} actual=${authority.packageSourceCommit}`
@@ -263,26 +343,26 @@ export function assertPhase7ExecutionAuthority(options) {
     );
   }
 
-  const manifest = verifyManifestEntries(rootDir);
+  const manifest = verifyManifestEntries(rootDir, authority.approvedExecutionHead);
   if (manifest.mismatches.length > 0) {
     throw new Error(`Blocked: manifest entry mismatch count=${manifest.mismatches.length}`);
   }
 
-  const manifestDigest = fileSha256Upper(path.join(rootDir, "docs/v7/production-execution/MANIFEST.sha256"));
-  if (authority.packageManifestDigest.toUpperCase() !== expected.packageManifestDigest) {
+  const manifestGitBlobDigest = manifest.manifestGitBlobDigest;
+  const workingTreeManifestDigest = computeWorkingTreeManifestDigest(rootDir);
+  if (authority.manifestGitBlobDigest !== manifestGitBlobDigest) {
     throw new Error(
-      `Blocked: authority manifest digest mismatch expected certified digest ${expected.packageManifestDigest}`
+      `Blocked: authority manifest git-blob digest mismatch. expected=${manifestGitBlobDigest} actual=${authority.manifestGitBlobDigest}`
     );
   }
-  if (manifestDigest !== expected.packageManifestDigest) {
+  if (expected.manifestGitBlobDigest && expected.manifestGitBlobDigest !== manifestGitBlobDigest) {
     throw new Error(
-      `Blocked: current MANIFEST digest mismatch. expected=${expected.packageManifestDigest} actual=${manifestDigest}`
+      `Blocked: certified manifestGitBlobDigest mismatch. expected=${expected.manifestGitBlobDigest} actual=${manifestGitBlobDigest}`
     );
   }
 
-  const ledger = JSON.parse(
-    fs.readFileSync(path.join(rootDir, "docs/v7/production-execution/02_ORDERED_EXECUTION_LEDGER.json"), "utf8")
-  );
+  const ledgerBlob = readGitBlob(rootDir, authority.approvedExecutionHead, "docs/v7/production-execution/02_ORDERED_EXECUTION_LEDGER.json");
+  const ledger = JSON.parse(String(ledgerBlob));
   const stepCount = Array.isArray(ledger.steps) ? ledger.steps.length : 0;
   if (authority.ledgerStepCount !== expected.ledgerStepCount || stepCount !== expected.ledgerStepCount) {
     throw new Error(
@@ -296,7 +376,8 @@ export function assertPhase7ExecutionAuthority(options) {
     authority,
     originMain,
     headSha,
-    manifestDigest,
+    manifestGitBlobDigest,
+    workingTreeManifestDigest,
     manifestEntryCount: manifest.entryCount,
     ledgerStepCount: stepCount,
     warning,
