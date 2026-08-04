@@ -1,6 +1,11 @@
 {
+  "authoritySchemaVersion": 2,
   "packageVersion": "phase7-canonical-production-execution-1",
   "packageSourceCommit": "93b14e08ae7fa4c20886c8770b168f2495540484",
+  "manifestGitBlobDigestAuthority": "derive_from_approvedExecutionHead_git_blob",
+  "preRemediationMainManifestGitBlobDigest": "6C3EACB32EDED2332D441C813B1AAC6B05869648583B002C2AC741965C51BDD1",
+  "stalePriorManifestAuthorityDigest": "CD19CBF6205C601A573A8F5D2A81568F4FA8A7C2BA0D389B02A02C987A1F7E67",
+  "checkoutDependentWorkingTreeDigestExample": "ED017FA4624AE3D2F07F7C00AADCCDB59D43E8E3B74FA20B1AA2B6A87496F5D8",
   "approvedExecutionHeadAuthority": "owner_bound_execution_authority_input",
   "fileCount": 13,
   "ledgerStepCount": 11,
@@ -17,6 +22,10 @@
   "embeddedSecretFindings": 0,
   "staleActiveShaGuards": 0,
   "ambiguousShaAuthorities": 0,
+  "checkoutDependentActiveDigestComparisons": 0,
+  "staleActiveCd19AuthorityOccurrences": 0,
+  "ed017ActiveAuthorityOccurrences": 0,
+  "oldAuthoritySchemaAccepted": "NO",
   "manifestEntries": 12,
   "validationVerdict": "PASS_WITH_OBSERVATIONS"
 }

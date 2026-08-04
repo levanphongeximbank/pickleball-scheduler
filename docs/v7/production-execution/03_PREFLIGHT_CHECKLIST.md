@@ -2,7 +2,10 @@
 
 - target project_ref confirmed: `expuvcohlcjzvrrauvud`
 - package source commit confirmed: `93b14e08ae7fa4c20886c8770b168f2495540484`
-- certified package manifest digest confirmed: `CD19CBF6205C601A573A8F5D2A81568F4FA8A7C2BA0D389B02A02C987A1F7E67`
+- authority schema version confirmed: `2`
+- manifestGitBlobDigest in authority file equals SHA-256 of git blob bytes at `approvedExecutionHead:docs/v7/production-execution/MANIFEST.sha256`
+- manifestEntryVerification passed against approvedExecutionHead git blobs
+- workingTreeManifestDigest recorded for diagnostics only (non-authorizing)
 - execution authority input supplied and valid (`productionGo = YES` only for real execution)
 - approvedExecutionHead equals both local `HEAD` and `origin/main`
 - packageSourceCommit is ancestor of approvedExecutionHead

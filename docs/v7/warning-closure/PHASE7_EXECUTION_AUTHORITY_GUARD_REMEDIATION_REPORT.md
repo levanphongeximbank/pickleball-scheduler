@@ -7,7 +7,9 @@ The prior model hard-coded a pre-merge baseline SHA into reusable guard files an
 The remediation separates three independent authorities:
 - PACKAGE_SOURCE_COMMIT: immutable ancestry anchor set to 93b14e08ae7fa4c20886c8770b168f2495540484
 - APPROVED_EXECUTION_HEAD: supplied by fresh Owner GO input at execution time and must equal both origin/main and local HEAD
-- PACKAGE_MANIFEST_DIGEST: certified digest that must match MANIFEST.sha256 plus full per-entry hash verification
+- manifestGitBlobDigest: SHA-256 of git blob bytes for approvedExecutionHead:docs/v7/production-execution/MANIFEST.sha256
+
+Authority schema v2 is mandatory. Legacy schema/field (`packageManifestDigest`) is rejected fail-closed.
 
 ## Implementation
 - Added shared guard module: scripts/phase7-execution-authority.mjs
@@ -25,12 +27,19 @@ Before any Production access, scripts now require:
 - HEAD == approvedExecutionHead
 - packageSourceCommit is ancestor of approvedExecutionHead
 - target project ref matches exactly
-- package version and manifest digest match
-- all MANIFEST entries verify
+- package version matches
+- manifestGitBlobDigest in authority equals canonical git blob digest resolved from approvedExecutionHead
+- all MANIFEST entries verify against git blob content from approvedExecutionHead
+- workingTreeManifestDigest is diagnostic only and never authorizes execution
 - ledger step count is 11
 - clean worktree
 - warning closure statuses remain CLOSED
 - credential file exists, is untracked, and gitignored
+
+## Digest Evidence Classification
+- CD19CBF6205C601A573A8F5D2A81568F4FA8A7C2BA0D389B02A02C987A1F7E67: stale prior authority digest (historical only)
+- ED017FA4624AE3D2F07F7C00AADCCDB59D43E8E3B74FA20B1AA2B6A87496F5D8: checkout-dependent working-tree diagnostic (non-authorizing)
+- 6C3EACB32EDED2332D441C813B1AAC6B05869648583B002C2AC741965C51BDD1: pre-remediation main git blob digest evidence
 
 ## Safety Defaults
 The checked-in template remains non-authorizing:
