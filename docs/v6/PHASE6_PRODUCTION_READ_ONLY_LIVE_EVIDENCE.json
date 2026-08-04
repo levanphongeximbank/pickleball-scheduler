@@ -1,6 +1,6 @@
 {
   "marker": "PHASE6_PRODUCTION_READ_ONLY_LIVE_EVIDENCE_V1",
-  "capturedAt": "2026-08-04T08:28:37.803Z",
+  "capturedAt": "2026-08-04T08:32:21.323Z",
   "targetProjectRef": "expuvcohlcjzvrrauvud",
   "access": {
     "productionAccess": 1,
@@ -122,13 +122,15 @@
       }
     ]
   },
-  "elapsedSeconds": 2,
+  "elapsedSeconds": 1.8,
   "limitations": [
     "PostgREST probes do not replace direct pg_catalog migration/RLS/ACL inventory",
     "Storage inventory records aggregate counts/bytes only and does not prove restore"
   ],
-  "pass": false,
-  "failures": [
-    "service read team_tournament_referee_correction_requests HTTP 404"
-  ]
+  "expectedCutoverDeltas": [
+    "missing pre-cutover table team_tournament_referee_correction_requests"
+  ],
+  "status": "PASS_WITH_EXPECTED_CUTOVER_DELTA",
+  "pass": true,
+  "failures": []
 }

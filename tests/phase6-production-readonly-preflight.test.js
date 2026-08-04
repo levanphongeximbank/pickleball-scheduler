@@ -29,3 +29,9 @@ test("Production preflight accepts the local service-role alias without logging 
   assert.match(source, /SUPABASE_SERVICE_ROLE_KEY \|\| process\.env\.SUPABASE_SERVICE_ROLE/);
   assert.doesNotMatch(source, /console\.log\([^)]*(serviceKey|SUPABASE_SERVICE_ROLE)/);
 });
+
+test("known M9 table absence is recorded as an expected cutover delta", () => {
+  assert.match(source, /EXPECTED_PRE_CUTOVER_MISSING_TABLES/);
+  assert.match(source, /team_tournament_referee_correction_requests/);
+  assert.match(source, /PASS_WITH_EXPECTED_CUTOVER_DELTA/);
+});

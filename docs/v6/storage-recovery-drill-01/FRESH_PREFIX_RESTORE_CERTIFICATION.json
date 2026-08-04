@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "certifiedAt": "2026-08-04T15:31:29+07:00",
+  "ownerCheckpoint": "OWNER GO — RUN STORAGE RESTORE DRILL",
+  "sourceProjectRef": "expuvcohlcjzvrrauvud",
+  "destinationProjectRef": "shxzwppmgtwtwswdhouh",
+  "destinationPrefix": "phase6-restore-drill-20260804-1530",
+  "sourceMutation": 0,
+  "productionMutation": 0,
+  "destructiveOperation": false,
+  "freshDestination": true,
+  "restore": {
+    "startedEmpty": true,
+    "elapsedSeconds": 6.656,
+    "sourceObjects": 2,
+    "sourceBytes": 497236,
+    "restoredObjects": 2,
+    "restoredBytes": 497236,
+    "oneWaySizeCheck": "PASS",
+    "status": "PASS"
+  },
+  "independentVerification": {
+    "elapsedSeconds": 3.685,
+    "objects": 2,
+    "bytes": 497236,
+    "oneWaySizeCheck": "PASS",
+    "status": "PASS"
+  },
+  "measuredStorageRestoreRtoSeconds": 6.656,
+  "temporaryKeysRevoked": false,
+  "recoveryPrefixCleanup": "DEFERRED_NON_DESTRUCTIVE",
+  "productionGo": false,
+  "status": "RESTORE_AND_VERIFY_PASS_PENDING_TEMP_KEY_REVOCATION"
+}

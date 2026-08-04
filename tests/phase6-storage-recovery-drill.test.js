@@ -17,9 +17,16 @@ test('copy is fail-closed behind execute switch and exact Owner GO token', async
   const script = await readScript();
   assert.match(script, /\$mode -eq 'copy'.*\(-not \$execute.*ownergotoken/s);
   assert.match(script, /owner_go_storage_restore_drill/);
-  assert.match(script, /'copy', "phase6_source:\$bucket", "phase6_dest:\$bucket"/);
+  assert.match(script, /'copy', "phase6_source:\$bucket", \$destpath/);
   assert.match(script, /'--size-only', '--no-traverse'/);
   assert.doesNotMatch(script, /'--metadata'/);
+});
+
+test('fresh restore measurement is isolated behind a validated destination prefix', async () => {
+  const script = await readScript();
+  assert.match(script, /destinationprefix/);
+  assert.match(script, /\^phase6-restore-drill-/);
+  assert.match(script, /"phase6_dest:\$bucket\/\$destinationprefix"/);
 });
 
 test('evidence excludes credentials and verifies count, bytes, and one-way object size', async () => {
@@ -51,4 +58,17 @@ test('committed Storage evidence does not overstate empty-destination RTO', asyn
   assert.equal(evidence.contentEquivalence, 'PASS');
   assert.equal(evidence.productionMutation, 0);
   assert.match(evidence.fullEmptyDestinationRestoreRto, /^NOT_PROVEN_/);
+});
+
+test('fresh-prefix certificate proves measured restore but keeps key revocation open', async () => {
+  const evidence = JSON.parse(await readFile(new URL('../docs/v6/storage-recovery-drill-01/FRESH_PREFIX_RESTORE_CERTIFICATION.json', import.meta.url), 'utf8'));
+  assert.equal(evidence.freshDestination, true);
+  assert.equal(evidence.restore.startedEmpty, true);
+  assert.equal(evidence.restore.sourceObjects, evidence.restore.restoredObjects);
+  assert.equal(evidence.restore.sourceBytes, evidence.restore.restoredBytes);
+  assert.equal(evidence.restore.status, 'PASS');
+  assert.equal(evidence.independentVerification.status, 'PASS');
+  assert.equal(evidence.measuredStorageRestoreRtoSeconds, 6.656);
+  assert.equal(evidence.temporaryKeysRevoked, false);
+  assert.match(evidence.status, /PENDING_TEMP_KEY_REVOCATION$/);
 });

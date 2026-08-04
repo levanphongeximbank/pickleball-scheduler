@@ -25,6 +25,9 @@ const ANON_DENY_TABLES = [
   "ai_workflow_checklists",
 ];
 const EXPECTED_BUCKETS = ["user-avatars", "tournament-broadcast-vods"];
+const EXPECTED_PRE_CUTOVER_MISSING_TABLES = new Set([
+  "team_tournament_referee_correction_requests",
+]);
 const outputPath = path.resolve(
   process.argv[2] || "docs/v6/PHASE6_PRODUCTION_READ_ONLY_LIVE_EVIDENCE.json",
 );
@@ -123,9 +126,16 @@ const bucketNames = Array.isArray(bucketsResult.body) ? bucketsResult.body.map((
 const storage = await Promise.all(EXPECTED_BUCKETS.map(bucketInventory));
 
 const failures = [];
+const expectedCutoverDeltas = [];
 if (!authSettings.ok) failures.push(`auth settings HTTP ${authSettings.status}`);
 if (!bucketsResult.ok) failures.push(`bucket list HTTP ${bucketsResult.status}`);
-for (const p of serviceTables) if (p.status !== 200) failures.push(`service read ${p.table} HTTP ${p.status}`);
+for (const p of serviceTables) {
+  if (p.status === 404 && EXPECTED_PRE_CUTOVER_MISSING_TABLES.has(p.table)) {
+    expectedCutoverDeltas.push(`missing pre-cutover table ${p.table}`);
+  } else if (p.status !== 200) {
+    failures.push(`service read ${p.table} HTTP ${p.status}`);
+  }
+}
 for (const p of anonTables) {
   const denied = [401, 403, 404].includes(p.status) || (p.status === 200 && p.rowVisible === 0);
   if (!denied) failures.push(`anon visibility ${p.table} status=${p.status} rows=${p.rowVisible}`);
@@ -147,6 +157,8 @@ const evidence = {
     "PostgREST probes do not replace direct pg_catalog migration/RLS/ACL inventory",
     "Storage inventory records aggregate counts/bytes only and does not prove restore",
   ],
+  expectedCutoverDeltas,
+  status: failures.length ? "FAIL" : expectedCutoverDeltas.length ? "PASS_WITH_EXPECTED_CUTOVER_DELTA" : "PASS",
   pass: failures.length === 0,
   failures,
 };

@@ -5,7 +5,8 @@ param(
   [switch]$Execute,
   [string]$OwnerGoToken = '',
   [string]$EvidencePath = '',
-  [string]$EnvFile = '.env.phase6-storage.local'
+  [string]$EnvFile = '.env.phase6-storage.local',
+  [string]$DestinationPrefix = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -61,6 +62,9 @@ if ($destEndpoint -notmatch [regex]::Escape($destProjectRef)) {
 if ($Mode -eq 'copy' -and (-not $Execute -or $OwnerGoToken -ne 'OWNER_GO_STORAGE_RESTORE_DRILL')) {
   throw 'Copy requires -Execute and OwnerGoToken=OWNER_GO_STORAGE_RESTORE_DRILL.'
 }
+if ($DestinationPrefix -and $DestinationPrefix -notmatch '^phase6-restore-drill-[a-zA-Z0-9-]+$') {
+  throw 'DestinationPrefix must be an isolated phase6-restore-drill-* namespace.'
+}
 
 $rclone = Get-Command rclone -ErrorAction SilentlyContinue
 if (-not $rclone) {
@@ -114,25 +118,26 @@ region = $([Environment]::GetEnvironmentVariable('PHASE6_STORAGE_DEST_REGION'))
 
   $bucketEvidence = @()
   foreach ($bucket in $allowedBuckets) {
+    $destPath = if ($DestinationPrefix) { "phase6_dest:$bucket/$DestinationPrefix" } else { "phase6_dest:$bucket" }
     $sourceSize = Invoke-RcloneJson @('size', "phase6_source:$bucket", '--json', '--config', $tempConfig)
     $source = $sourceSize | ConvertFrom-Json
-    $destBeforeSize = Invoke-RcloneJson @('size', "phase6_dest:$bucket", '--json', '--config', $tempConfig)
+    $destBeforeSize = Invoke-RcloneJson @('size', $destPath, '--json', '--config', $tempConfig)
     $destBefore = $destBeforeSize | ConvertFrom-Json
 
     if ($Mode -eq 'copy') {
       Invoke-RcloneJson @(
-        'copy', "phase6_source:$bucket", "phase6_dest:$bucket",
+        'copy', "phase6_source:$bucket", $destPath,
         '--config', $tempConfig, '--transfers', '4', '--checkers', '8',
         '--size-only', '--no-traverse'
       ) | Out-Null
     }
 
-    $destAfterSize = Invoke-RcloneJson @('size', "phase6_dest:$bucket", '--json', '--config', $tempConfig)
+    $destAfterSize = Invoke-RcloneJson @('size', $destPath, '--json', '--config', $tempConfig)
     $destAfter = $destAfterSize | ConvertFrom-Json
     $verified = $false
     if ($Mode -eq 'verify' -or $Mode -eq 'copy') {
       Invoke-RcloneJson @(
-        'check', "phase6_source:$bucket", "phase6_dest:$bucket",
+        'check', "phase6_source:$bucket", $destPath,
         '--config', $tempConfig, '--one-way', '--size-only'
       ) | Out-Null
       $verified = ($source.count -eq $destAfter.count -and $source.bytes -eq $destAfter.bytes)
@@ -156,6 +161,7 @@ region = $([Environment]::GetEnvironmentVariable('PHASE6_STORAGE_DEST_REGION'))
     operation = "phase6_storage_$Mode"
     sourceProjectRef = $sourceProjectRef
     destinationProjectRef = $destProjectRef
+    destinationPrefix = if ($DestinationPrefix) { $DestinationPrefix } else { $null }
     sourceMutation = 0
     productionMutation = 0
     destructiveOperation = $false
