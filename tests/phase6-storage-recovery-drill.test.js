@@ -60,7 +60,7 @@ test('committed Storage evidence does not overstate empty-destination RTO', asyn
   assert.match(evidence.fullEmptyDestinationRestoreRto, /^NOT_PROVEN_/);
 });
 
-test('fresh-prefix certificate proves measured restore but keeps key revocation open', async () => {
+test('fresh-prefix certificate proves measured restore and Owner closeout', async () => {
   const evidence = JSON.parse(await readFile(new URL('../docs/v6/storage-recovery-drill-01/FRESH_PREFIX_RESTORE_CERTIFICATION.json', import.meta.url), 'utf8'));
   assert.equal(evidence.freshDestination, true);
   assert.equal(evidence.restore.startedEmpty, true);
@@ -69,6 +69,7 @@ test('fresh-prefix certificate proves measured restore but keeps key revocation 
   assert.equal(evidence.restore.status, 'PASS');
   assert.equal(evidence.independentVerification.status, 'PASS');
   assert.equal(evidence.measuredStorageRestoreRtoSeconds, 6.656);
-  assert.equal(evidence.temporaryKeysRevoked, false);
-  assert.match(evidence.status, /PENDING_TEMP_KEY_REVOCATION$/);
+  assert.equal(evidence.temporaryKeysRevoked, true);
+  assert.equal(evidence.ownerAcceptedRtoSeconds, 6.656);
+  assert.equal(evidence.status, 'PASS');
 });

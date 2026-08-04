@@ -19,8 +19,7 @@ The drill objects remain under
 `phase6-restore-drill-20260804-1530` in the recovery project. Cleanup is deferred
 because no destructive authorization was given.
 
-## Remaining closeout action
+## Owner closeout
 
-Owner must revoke both temporary S3 access-key pairs. Until confirmed, this
-certificate status is `RESTORE_AND_VERIFY_PASS_PENDING_TEMP_KEY_REVOCATION`.
-
+Owner confirmed both temporary S3 access-key pairs were revoked and accepted the
+measured Storage restore RTO of 6.656 seconds. Certificate status: `PASS`.

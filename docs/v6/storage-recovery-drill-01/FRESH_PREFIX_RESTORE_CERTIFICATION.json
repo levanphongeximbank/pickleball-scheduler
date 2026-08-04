@@ -27,8 +27,10 @@
     "status": "PASS"
   },
   "measuredStorageRestoreRtoSeconds": 6.656,
-  "temporaryKeysRevoked": false,
+  "temporaryKeysRevoked": true,
+  "ownerAcceptedRtoSeconds": 6.656,
+  "ownerCloseout": "OWNER ACCEPT — STORAGE RESTORE RTO 6.656 SECONDS",
   "recoveryPrefixCleanup": "DEFERRED_NON_DESTRUCTIVE",
   "productionGo": false,
-  "status": "RESTORE_AND_VERIFY_PASS_PENDING_TEMP_KEY_REVOCATION"
+  "status": "PASS"
 }
