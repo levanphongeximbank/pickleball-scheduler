@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { execFileSync } from "node:child_process";
 
 const packageRoot = path.resolve("docs/v7/production-execution");
 const files = [
@@ -23,6 +24,12 @@ const files = [
 
 function sha256(filePath) {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex").toUpperCase();
+}
+
+function gitBlobSha256(repoRelPath) {
+  const head = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  const blob = execFileSync("git", ["cat-file", "blob", `${head}:${repoRelPath}`], { encoding: null });
+  return crypto.createHash("sha256").update(blob).digest("hex").toUpperCase();
 }
 
 test("canonical production execution package is fully tracked and parseable", () => {
@@ -59,6 +66,11 @@ test("canonical production execution package is fully tracked and parseable", ()
 
 test("manifest lines match actual package file hashes", () => {
   const manifestLines = fs.readFileSync(path.join(packageRoot, "MANIFEST.sha256"), "utf8").trim().split(/\r?\n/);
-  const actual = files.filter(fileName => fileName !== "MANIFEST.sha256").map(fileName => `${sha256(path.join(packageRoot, fileName))}  docs/v7/production-execution/${fileName}`);
+  const actual = files
+    .filter(fileName => fileName !== "MANIFEST.sha256")
+    .map(fileName => {
+      const repoRel = `docs/v7/production-execution/${fileName}`;
+      return `${gitBlobSha256(repoRel)}  ${repoRel}`;
+    });
   assert.deepEqual(manifestLines, actual);
 });
