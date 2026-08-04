@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-04T00:00:00+07:00",
+  "baseline": {
+    "originMain": "15f21e15a7127748e093cdc0494f2ca00f3dce42",
+    "originalBranch": "fix/phase5d-br01-br10-local-closure",
+    "originalHead": "e21ead54efeb642f963c3421dedc9c283d704037",
+    "evidenceBranch": "agent/platform-hard-cutover-phase6-readiness"
+  },
+  "verdict": "PHASE6_READINESS_BLOCKED",
+  "readinessPercent": 36,
+  "productionGo": false,
+  "databaseLiveRecheck": "READ_ONLY_PARTIAL",
+  "safety": {
+    "databaseMutations": 0,
+    "stagingMutations": 0,
+    "productionAccess": 0,
+    "productionMutations": 0
+  },
+  "scoring": {
+    "method": "closed=1, accepted_observation=0.5, open_or_unknown=0",
+    "weightedReadyPoints": 9.0,
+    "controlCount": 25
+  },
+  "rows": [
+    {"domain":"Git/repository","requirement":"Fresh origin/main baseline and isolated evidence branch","evidence":"fetch; ancestor check; disposable worktree at 15f21e15","status":"CLOSED_WITH_EVIDENCE","severity":"HIGH","ownerAction":"Review exact evidence-only diff","blockingPhase6Execution":false,"blockingProductionGo":false},
+    {"domain":"Git/repository","requirement":"No uncommitted source evidence overwritten","evidence":"Original status has .codex and two certification artifacts only; no application source changes","status":"CLOSED_WITH_EVIDENCE","severity":"HIGH","ownerAction":"Preserve original worktree","blockingPhase6Execution":false,"blockingProductionGo":false},
+    {"domain":"Evidence integrity","requirement":"Phase 5 closure evidence canonical on main","evidence":"AI post-apply certificate merged; BR01-BR10 six-commit package absent from main","status":"UNKNOWN_REQUIRES_EVIDENCE","severity":"HIGH","ownerAction":"Decide and merge/recreate canonical BR01-BR10 evidence","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Database","requirement":"Current Staging migration/object/policy state","evidence":"Proven-target non-SQL recheck: 164 migrations; target tables RLS-enabled and zero rows; exact policies/Realtime not rechecked","status":"ACCEPTED_OBSERVATION","severity":"MEDIUM","ownerAction":"Complete remaining non-SQL read-only inventory before execution","blockingPhase6Execution":false,"blockingProductionGo":true},
+    {"domain":"Database","requirement":"No smoke residue in Phase 5 objects","evidence":"Merged certificate records zero rows in three smoke targets","status":"CLOSED_WITH_EVIDENCE","severity":"HIGH","ownerAction":"Recheck if new smoke runs occur","blockingPhase6Execution":false,"blockingProductionGo":false},
+    {"domain":"Migration","requirement":"M0-M11 exact ordering and checksum integrity","evidence":"Phase 5B checksum tests PASS; runbook remains unaccepted","status":"OPEN_BLOCKER","severity":"HIGH","ownerAction":"Accept exact ordered execution runbook","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Migration","requirement":"M9/TT5D controlled provenance","evidence":"Phase 5C decision remains blocked and TT5D non-executable","status":"OPEN_BLOCKER","severity":"HIGH","ownerAction":"Approve canonical reconciliation with controlled provenance","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Migration","requirement":"M8 text tenant compatibility","evidence":"Mainline package and focused tests use text tenant IDs","status":"CLOSED_WITH_EVIDENCE","severity":"HIGH","ownerAction":"Preserve package checksums","blockingPhase6Execution":false,"blockingProductionGo":false},
+    {"domain":"Security","requirement":"No anonymous/public write exposure","evidence":"Static packages exist; no current Production ACL inventory","status":"UNKNOWN_REQUIRES_EVIDENCE","severity":"HIGH","ownerAction":"Run approved read-only ACL inventory and negative QA","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Security","requirement":"Dependency vulnerability disposition","evidence":"npm ci reports 5 moderate and 15 high","status":"ACCEPTED_OBSERVATION","severity":"HIGH","ownerAction":"Security triage and explicit disposition","blockingPhase6Execution":false,"blockingProductionGo":true},
+    {"domain":"RLS/RBAC","requirement":"Production RLS and privileged RPC certification","evidence":"Code/tests pass; current Production DB not accessed","status":"UNKNOWN_REQUIRES_EVIDENCE","severity":"HIGH","ownerAction":"Complete approved read-only inventory and role-negative tests","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Tenant isolation","requirement":"Cross-tenant isolation","evidence":"Historical Clubs RLS certification plus static tests; cutover Production acceptance missing","status":"OPEN_BLOCKER","severity":"HIGH","ownerAction":"Execute signed tenant A/B negative QA before GO","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Backup/recovery","requirement":"Usable backup, PITR, RTO/RPO, restore proof","evidence":"Phase 5A BLOCKED_NOT_PROVABLE","status":"OPEN_BLOCKER","severity":"CRITICAL","ownerAction":"Create/verify backup and rehearse restore","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Rollback","requirement":"Complete rollback package and decision points","evidence":"Rollback SQL exists; replaced-object/data recovery depends on proven backup and accepted runbook","status":"OPEN_BLOCKER","severity":"HIGH","ownerAction":"Approve exact rollback/abort matrix and restore dependency","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Deployment","requirement":"Deployment gates and canary strategy","evidence":"No current accepted canary, thresholds, or abort criteria","status":"OPEN_BLOCKER","severity":"HIGH","ownerAction":"Define canary cohort, success metrics, abort and rollback owner","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Deployment","requirement":"Buildable mainline artifact","evidence":"npm run build PASS with PWA output","status":"CLOSED_WITH_EVIDENCE","severity":"HIGH","ownerAction":"Review existing warnings","blockingPhase6Execution":false,"blockingProductionGo":false},
+    {"domain":"Monitoring","requirement":"Logs, dashboards, alerts, ownership","evidence":"No current cutover monitoring acceptance package found","status":"OPEN_BLOCKER","severity":"HIGH","ownerAction":"Bind metrics, alerts, owners, and observation window","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Environment","requirement":"Production environment metadata readiness","evidence":"GA environment checklist remains pending; env not accessed","status":"UNKNOWN_REQUIRES_EVIDENCE","severity":"HIGH","ownerAction":"Validate target and required names without exposing values","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Feature flags","requirement":"Cutover flags and safe defaults","evidence":"Static defaults documented; deployed Production values not verified","status":"UNKNOWN_REQUIRES_EVIDENCE","severity":"HIGH","ownerAction":"Approve flag matrix and rollback-off sequence","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Operator acceptance","requirement":"Staging operator acceptance","evidence":"Phase 4 evidence 17/17 PASS","status":"CLOSED_WITH_EVIDENCE","severity":"MEDIUM","ownerAction":"Rerun after material package/runtime changes only","blockingPhase6Execution":false,"blockingProductionGo":false},
+    {"domain":"Operator acceptance","requirement":"Production eight-role acceptance","evidence":"GA Production QA checklist incomplete","status":"OPEN_BLOCKER","severity":"HIGH","ownerAction":"Complete and sign Production QA after authorized deployment","blockingPhase6Execution":false,"blockingProductionGo":true},
+    {"domain":"Evidence integrity","requirement":"Package and lock unchanged","evidence":"Git blob hashes match origin/main after npm ci","status":"CLOSED_WITH_EVIDENCE","severity":"HIGH","ownerAction":"Preserve exact blobs","blockingPhase6Execution":false,"blockingProductionGo":false},
+    {"domain":"Evidence integrity","requirement":"Code validation","evidence":"foundation, lint, 141 focused, 6837 unit tests, build all PASS","status":"CLOSED_WITH_EVIDENCE","severity":"HIGH","ownerAction":"Review CI parity","blockingPhase6Execution":false,"blockingProductionGo":false},
+    {"domain":"Production authorization","requirement":"Explicit Owner Production GO","evidence":"productionExecutionGo=false and request states Production GO=NO","status":"OPEN_BLOCKER","severity":"CRITICAL","ownerAction":"Do not issue GO until every mandatory gate is closed","blockingPhase6Execution":true,"blockingProductionGo":true},
+    {"domain":"Security","requirement":"Current Supabase advisor disposition","evidence":"Proven-target Staging: 516 security findings including 8 ERROR; 504 performance findings","status":"OPEN_BLOCKER","severity":"CRITICAL","ownerAction":"Triage ERROR findings and privileged-function exposure; bind disposition evidence","blockingPhase6Execution":true,"blockingProductionGo":true}
+  ]
+}
