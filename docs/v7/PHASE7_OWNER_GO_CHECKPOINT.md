@@ -1,6 +1,7 @@
 # Phase 7 Owner GO Checkpoint
 
-**Current status:** `CLOSED — NO GO`  
+**Current status:** `CLOSED — NO GO`
+
 **Audit verdict:** `PHASE7_RELEASE_DECISION_NO_GO`
 
 This document does not issue, imply, or simulate Owner GO. Phase 6 acceptance remains an acceptance of observations and stop gates only; `PRODUCTION_GO=NO`.

@@ -1,8 +1,11 @@
 # Platform Hard Cutover — Phase 7 Production Release Decision Audit
 
-**Audit date:** 2026-08-04  
-**Verdict:** `PHASE7_RELEASE_DECISION_NO_GO`  
-**Readiness:** 47% (7 PASS / 8 BLOCKED)  
+**Audit date:** 2026-08-04
+
+**Verdict:** `PHASE7_RELEASE_DECISION_NO_GO`
+
+**Readiness:** 47% (7 PASS / 8 BLOCKED)
+
 **Production GO:** `NO`
 
 ## Decision
