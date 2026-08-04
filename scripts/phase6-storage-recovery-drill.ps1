@@ -4,11 +4,26 @@ param(
   [string]$Mode = 'inventory',
   [switch]$Execute,
   [string]$OwnerGoToken = '',
-  [string]$EvidencePath = ''
+  [string]$EvidencePath = '',
+  [string]$EnvFile = '.env.phase6-storage.local'
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+
+if (Test-Path -LiteralPath $EnvFile) {
+  foreach ($rawLine in Get-Content -LiteralPath $EnvFile) {
+    $line = $rawLine.Trim()
+    if (-not $line -or $line.StartsWith('#')) { continue }
+    $separator = $line.IndexOf('=')
+    if ($separator -lt 1) { continue }
+    $name = $line.Substring(0, $separator).Trim()
+    $value = $line.Substring($separator + 1).Trim().Trim('"').Trim("'")
+    if (-not [Environment]::GetEnvironmentVariable($name)) {
+      [Environment]::SetEnvironmentVariable($name, $value, 'Process')
+    }
+  }
+}
 
 $sourceProjectRef = 'expuvcohlcjzvrrauvud'
 $allowedBuckets = @('user-avatars', 'tournament-broadcast-vods')

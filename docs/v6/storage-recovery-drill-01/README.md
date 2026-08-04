@@ -17,7 +17,7 @@ The script uses `rclone copy`, never `sync`, and contains no delete operation. P
 1. Install `rclone` and verify `rclone version`. This workstation has verified portable `rclone v1.74.4` at `%LOCALAPPDATA%\rclone\rclone.exe`.
 2. In Production and the recovery project, open **Storage → S3 Configuration** and create temporary S3 access keys.
 3. Confirm the destination project is disposable/recovery-only and both destination buckets already exist with matching configuration.
-4. Set the environment variables listed in `ENVIRONMENT.template` locally. Never commit their values.
+4. Copy `ENVIRONMENT.template` to repository root as `.env.phase6-storage.local`, fill the temporary credentials and Production region, and never commit that ignored file.
 
 ## Execution sequence
 

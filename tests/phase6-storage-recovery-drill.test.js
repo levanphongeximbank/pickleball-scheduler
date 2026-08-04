@@ -29,3 +29,9 @@ test('evidence excludes credentials and verifies count, bytes, and one-way objec
   assert.doesNotMatch(evidenceBlock, /access_key|secret_access|secretaccess/);
   assert.match(script, /remove-item -literalpath \$tempconfig -force/);
 });
+
+test('storage drill supports a gitignored local credential file', async () => {
+  const script = await readScript();
+  assert.match(script, /\.env\.phase6-storage\.local/);
+  assert.match(script, /phase6_storage_dest_project_ref/);
+});

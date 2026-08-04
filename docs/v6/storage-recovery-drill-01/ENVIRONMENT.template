@@ -5,8 +5,8 @@ PHASE6_STORAGE_SOURCE_REGION=<production-region>
 PHASE6_STORAGE_SOURCE_ACCESS_KEY_ID=<temporary-production-s3-access-key-id>
 PHASE6_STORAGE_SOURCE_SECRET_ACCESS_KEY=<temporary-production-s3-secret>
 
-PHASE6_STORAGE_DEST_PROJECT_REF=<recovery-project-ref>
-PHASE6_STORAGE_DEST_ENDPOINT=https://<recovery-project-ref>.storage.supabase.co/storage/v1/s3
-PHASE6_STORAGE_DEST_REGION=<recovery-region>
+PHASE6_STORAGE_DEST_PROJECT_REF=shxzwppmgtwtwswdhouh
+PHASE6_STORAGE_DEST_ENDPOINT=https://shxzwppmgtwtwswdhouh.storage.supabase.co/storage/v1/s3
+PHASE6_STORAGE_DEST_REGION=ap-northeast-1
 PHASE6_STORAGE_DEST_ACCESS_KEY_ID=<temporary-recovery-s3-access-key-id>
 PHASE6_STORAGE_DEST_SECRET_ACCESS_KEY=<temporary-recovery-s3-secret>
