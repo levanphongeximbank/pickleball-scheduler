@@ -1,0 +1,23 @@
+{
+  "verdict": "PHASE7_RELEASE_DECISION_GO_READY",
+  "gates": {
+    "G1": "PASS",
+    "G2": "PASS",
+    "G3": "PASS",
+    "G4": "PASS",
+    "G5": "PASS_WITH_OBSERVATION",
+    "G6": "PASS",
+    "G7": "PASS_WITH_OBSERVATION",
+    "G8": "PASS_WITH_OBSERVATION",
+    "G9": "PASS",
+    "G10": "PASS_WITH_OBSERVATION",
+    "G11": "PASS",
+    "G12": "PASS",
+    "G13": "PASS_WITH_OBSERVATION",
+    "G14": "READY_FOR_EXPLICIT_OWNER_DECISION",
+    "G15": "PASS"
+  },
+  "productionGo": false,
+  "productionMutations": 0,
+  "stagingMutations": 0
+}

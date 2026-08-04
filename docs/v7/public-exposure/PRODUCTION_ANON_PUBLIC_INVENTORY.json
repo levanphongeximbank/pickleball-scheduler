@@ -1,0 +1,18 @@
+{
+  "marker": "PHASE7_PRODUCTION_ANON_PUBLIC_INVENTORY_V1",
+  "capturedAt": "2026-08-04T11:44:00Z",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "anonOrPublicTableGrantCount": 0,
+  "publicExecuteRoutineCount": 54,
+  "anonSecurityDefinerExecutableCount": 7,
+  "anonSecurityDefinerExecutable": [
+    "public.news_public_content_query_public(p_now timestamp with time zone, p_locale text, p_content_scope text, p_limit integer)",
+    "public.public_catalog_list_clubs(p_limit integer, p_offset integer, p_sort text)",
+    "public.public_catalog_list_courts(p_limit integer, p_offset integer, p_sort text, p_club_id text)",
+    "public.public_catalog_list_rankings(p_limit integer, p_offset integer, p_sort text, p_category text)",
+    "public.public_catalog_list_tournaments(p_limit integer, p_offset integer, p_sort text)",
+    "public.referee_get_match_by_token(p_token text)",
+    "public.referee_update_match_score(p_token text, p_payload jsonb)"
+  ],
+  "status": "PASS_WITH_OBSERVATIONS"
+}

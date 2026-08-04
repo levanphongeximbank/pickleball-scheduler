@@ -1,0 +1,11 @@
+{
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "repositorySha": "OWNER_CONFIRMS_FRESH_SHA",
+  "databaseOperator": "OWNER_ASSIGNS",
+  "releaseOperator": "OWNER_ASSIGNS",
+  "qaObserver": "OWNER_ASSIGNS",
+  "communicationOwner": "OWNER_ASSIGNS",
+  "window": "OWNER_ASSIGNS",
+  "accepted": false,
+  "productionGo": false
+}
