@@ -22,10 +22,6 @@ const files = [
   "PACKAGE_VALIDATION.json",
 ];
 
-function sha256(filePath) {
-  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex").toUpperCase();
-}
-
 function gitBlobSha256(repoRelPath) {
   const head = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
   const blob = execFileSync("git", ["cat-file", "blob", `${head}:${repoRelPath}`], { encoding: null });
