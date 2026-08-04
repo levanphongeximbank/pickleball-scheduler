@@ -1,0 +1,49 @@
+{
+  "generated_at": "2026-08-04T11:45:00+07:00",
+  "environment": "staging",
+  "supabase_project_ref": "qyewbxjsiiyufanzcjcq",
+  "migration": {
+    "version": "20260804041304",
+    "name": "phase6_club_data_v3_anon_policy_remediation_02",
+    "applied": true,
+    "rollback_run": false
+  },
+  "structural_verification": {
+    "rls_enabled": true,
+    "legacy_anon_policies_remaining": 0,
+    "authenticated_policies_remaining": 4
+  },
+  "runtime_qa": {
+    "owner_a": {
+      "authenticated": true,
+      "tenant_isolation": "PASS",
+      "club_data_positive_path": "PASS",
+      "foreign_visible": false
+    },
+    "owner_b": {
+      "authenticated": true,
+      "tenant_isolation": "PASS",
+      "club_data_positive_path": "PASS",
+      "foreign_visible": false
+    },
+    "anon": {
+      "safe_view_rows_visible": 0,
+      "insert_blocked_by_rls": true,
+      "update_affected_rows": 0,
+      "status": "PASS"
+    }
+  },
+  "cleanup": {
+    "setup_rows_inserted": 4,
+    "successful_anon_write_rows": 0,
+    "rows_deleted": 4,
+    "club_data_remaining": 0,
+    "governance_remaining": 0
+  },
+  "production": {
+    "access_count": 0,
+    "mutation_count": 0
+  },
+  "verdict": "PASS",
+  "production_authorized": false
+}

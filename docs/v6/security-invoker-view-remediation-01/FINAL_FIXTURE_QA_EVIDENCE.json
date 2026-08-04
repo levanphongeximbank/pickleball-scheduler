@@ -1,0 +1,44 @@
+{
+  "generated_at": "2026-08-04T11:20:00+07:00",
+  "environment": "staging",
+  "supabase_project_ref": "qyewbxjsiiyufanzcjcq",
+  "baseline_merge_commit": "d800d2f9",
+  "authenticated_tenant_ab": {
+    "status": "PASS",
+    "real_jwt_used": true,
+    "owner_a": {
+      "tenant_id": "venue-staging-a",
+      "tenants_visible": ["venue-staging-a"],
+      "club_fixture_visible": ["phase6-security-invoker-qa-a"],
+      "foreign_visible": false
+    },
+    "owner_b": {
+      "tenant_id": "venue-staging-b",
+      "tenants_visible": ["venue-staging-b"],
+      "club_fixture_visible": ["phase6-security-invoker-qa-b"],
+      "foreign_visible": false
+    }
+  },
+  "anon_probe": {
+    "status": "FAIL",
+    "rows_visible": 2,
+    "visible_fixture_ids": [
+      "phase6-security-invoker-qa-a",
+      "phase6-security-invoker-qa-b"
+    ],
+    "root_cause": "public.club_data_v3 policy club_data_v3_anon_select uses USING (true)"
+  },
+  "fixtures": {
+    "sensitive_data_used": false,
+    "rows_inserted": 4,
+    "rows_deleted": 4,
+    "club_data_remaining": 0,
+    "governance_remaining": 0
+  },
+  "production": {
+    "access_count": 0,
+    "mutation_count": 0
+  },
+  "verdict": "BLOCKED_ANON_READ_EXPOSURE",
+  "next_action": "PREPARE_STAGING_ONLY_ANON_POLICY_REMEDIATION_WITH_ROLLBACK_AND_VERIFICATION"
+}
