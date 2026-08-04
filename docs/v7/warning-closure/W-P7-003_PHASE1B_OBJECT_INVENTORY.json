@@ -1,0 +1,359 @@
+{
+  "generatedAt": "2026-08-04T16:02:50.232Z",
+  "source": "production-readonly-catalog",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "payload": {
+    "phase1b_objects": [
+      {
+        "schema": "public",
+        "object_name": "club_add_member",
+        "object_type": "FUNCTION",
+        "signature": "p_request_id uuid, p_club_id text, p_target_user_id uuid, p_membership_type text, p_expected_version integer",
+        "owner": "postgres",
+        "security_mode": "SECURITY DEFINER",
+        "search_path": "public",
+        "definition_md5": "b54e54a217b8421acce0dc66191ab293",
+        "grants": [
+          {
+            "grantee": "anon",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "PUBLIC",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "EXECUTE"
+          }
+        ],
+        "expected_artifact": "docs/v5/phase45a4c1/PHASE_45A4C1_MEMBER_RPC.sql",
+        "ledger_step": "STEP-03",
+        "classification": "EXISTS_COMPATIBLE_IDEMPOTENT"
+      },
+      {
+        "schema": "public",
+        "object_name": "club_assign_vice_president",
+        "object_type": "FUNCTION",
+        "signature": "p_request_id uuid, p_club_id text, p_member_user_id uuid, p_expected_club_version integer",
+        "owner": "postgres",
+        "security_mode": "SECURITY DEFINER",
+        "search_path": "public",
+        "definition_md5": "d1e951a35d32919a738f7db6734f8900",
+        "grants": [
+          {
+            "grantee": "anon",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "PUBLIC",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "EXECUTE"
+          }
+        ],
+        "expected_artifact": "docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql",
+        "ledger_step": "STEP-05",
+        "classification": "EXISTS_COMPATIBLE_IDEMPOTENT"
+      },
+      {
+        "schema": "public",
+        "object_name": "club_clear_vice_president",
+        "object_type": "FUNCTION",
+        "signature": "p_request_id uuid, p_club_id text, p_expected_club_version integer, p_member_user_id uuid",
+        "owner": "postgres",
+        "security_mode": "SECURITY DEFINER",
+        "search_path": "public",
+        "definition_md5": "010007d3d94ade037a576e89b9c5ec63",
+        "grants": [
+          {
+            "grantee": "anon",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "PUBLIC",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "EXECUTE"
+          }
+        ],
+        "expected_artifact": "docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql",
+        "ledger_step": "STEP-05",
+        "classification": "EXISTS_COMPATIBLE_IDEMPOTENT"
+      },
+      {
+        "schema": "public",
+        "object_name": "club_list_members",
+        "object_type": "FUNCTION",
+        "signature": "p_club_id text",
+        "owner": "postgres",
+        "security_mode": "SECURITY DEFINER",
+        "search_path": "public",
+        "definition_md5": "eabcddae4bf025dfde45056d48c2afa7",
+        "grants": [
+          {
+            "grantee": "anon",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "PUBLIC",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "EXECUTE"
+          }
+        ],
+        "expected_artifact": "docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql",
+        "ledger_step": "STEP-05",
+        "classification": "EXISTS_COMPATIBLE_IDEMPOTENT"
+      },
+      {
+        "schema": "public",
+        "object_name": "club_remove_member",
+        "object_type": "FUNCTION",
+        "signature": "p_request_id uuid, p_club_id text, p_target_user_id uuid, p_expected_version integer",
+        "owner": "postgres",
+        "security_mode": "SECURITY DEFINER",
+        "search_path": "public",
+        "definition_md5": "ae4f0a5710a06c3d1ae0446c0dc571a6",
+        "grants": [
+          {
+            "grantee": "anon",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "PUBLIC",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "EXECUTE"
+          }
+        ],
+        "expected_artifact": "docs/v5/phase45a4c1/PHASE_45A4C1_MEMBER_RPC.sql",
+        "ledger_step": "STEP-03",
+        "classification": "EXISTS_COMPATIBLE_IDEMPOTENT"
+      },
+      {
+        "schema": "public",
+        "object_name": "club_restore_member",
+        "object_type": "FUNCTION",
+        "signature": "p_request_id uuid, p_club_id text, p_target_user_id uuid, p_expected_version integer",
+        "owner": "postgres",
+        "security_mode": "SECURITY DEFINER",
+        "search_path": "public",
+        "definition_md5": "483b741e47983ea55bc5bdc44ef5209d",
+        "grants": [
+          {
+            "grantee": "anon",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "PUBLIC",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "EXECUTE"
+          }
+        ],
+        "expected_artifact": "docs/v5/phase45a4d1/PHASE_45A4D1_MEMBER_RESTORE_RPC.sql",
+        "ledger_step": "STEP-04",
+        "classification": "EXISTS_COMPATIBLE_IDEMPOTENT"
+      },
+      {
+        "schema": "public",
+        "object_name": "club_update",
+        "object_type": "FUNCTION",
+        "signature": "p_request_id uuid, p_club_id text, p_expected_club_version integer, p_name text, p_code text, p_description text, p_status text, p_registered_cluster_id text",
+        "owner": "postgres",
+        "security_mode": "SECURITY DEFINER",
+        "search_path": "public",
+        "definition_md5": "3bc15f24d383d792d0a26efd6c93f3b3",
+        "grants": [
+          {
+            "grantee": "anon",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "PUBLIC",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "EXECUTE"
+          }
+        ],
+        "expected_artifact": "docs/v5/phase45a3c/PHASE_45A3C_CLUB_UPDATE_RPC.sql",
+        "ledger_step": "STEP-02",
+        "classification": "EXISTS_COMPATIBLE_IDEMPOTENT"
+      },
+      {
+        "schema": "public",
+        "object_name": "phase42_can_manage_vice_presidents",
+        "object_type": "FUNCTION",
+        "signature": "p_club_id text",
+        "owner": "postgres",
+        "security_mode": "SECURITY DEFINER",
+        "search_path": "public",
+        "definition_md5": "0ad3669af9ea5f25c48ed904c39b3df6",
+        "grants": [
+          {
+            "grantee": "anon",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "PUBLIC",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "EXECUTE"
+          }
+        ],
+        "expected_artifact": "docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql",
+        "ledger_step": "STEP-05",
+        "classification": "EXISTS_COMPATIBLE_IDEMPOTENT"
+      },
+      {
+        "schema": "public",
+        "object_name": "phase42_can_update_club",
+        "object_type": "FUNCTION",
+        "signature": "p_club_id text",
+        "owner": "postgres",
+        "security_mode": "SECURITY DEFINER",
+        "search_path": "public",
+        "definition_md5": "d6d5fbd7a6b2c19cf28aa6f928396e81",
+        "grants": [
+          {
+            "grantee": "anon",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "PUBLIC",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "EXECUTE"
+          }
+        ],
+        "expected_artifact": "docs/v5/phase45a3c/PHASE_45A3C_CLUB_UPDATE_RPC.sql",
+        "ledger_step": "STEP-02",
+        "classification": "EXISTS_COMPATIBLE_IDEMPOTENT"
+      },
+      {
+        "schema": "public",
+        "object_name": "phase42_club_canonical",
+        "object_type": "FUNCTION",
+        "signature": "p_club_id text",
+        "owner": "postgres",
+        "security_mode": "SECURITY DEFINER",
+        "search_path": "public",
+        "definition_md5": "7d1974c457127106a9986894af219a90",
+        "grants": [
+          {
+            "grantee": "anon",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "authenticated",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "postgres",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "PUBLIC",
+            "privilege": "EXECUTE"
+          },
+          {
+            "grantee": "service_role",
+            "privilege": "EXECUTE"
+          }
+        ],
+        "expected_artifact": "docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql",
+        "ledger_step": "STEP-05",
+        "classification": "EXISTS_COMPATIBLE_IDEMPOTENT"
+      }
+    ]
+  }
+}

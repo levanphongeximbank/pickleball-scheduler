@@ -1,0 +1,95 @@
+{
+    "generatedAt":  "2026-08-04T23:04:09.0145823+07:00",
+    "totalMatches":  97,
+    "totalFiles":  22,
+    "files":  [
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\club-phase2\\CLUB_DOMAIN_MODEL.md",
+                      "matches":  1
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\club-phase2\\CLUB_PHASE2_DOMAIN_FREEZE.md",
+                      "matches":  2
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\club-phase2\\CLUB_PHASE2C_ROSTER_ASSIGNMENTS_DESIGN.md",
+                      "matches":  3
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\PHASE_42_CLUB_STORAGE_CLEAN_RESET.md",
+                      "matches":  2
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\PHASE_42B_SCHEMA.sql",
+                      "matches":  4
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\PHASE_42C_RLS_RPC.sql",
+                      "matches":  4
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\PHASE_42E_RESET.sql",
+                      "matches":  3
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\PHASE_42G_CLUB_CREATE_OWNER.sql",
+                      "matches":  2
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\PHASE_42H_ORPHAN_PROFILE_LINKS.sql",
+                      "matches":  1
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\PHASE_42I_MEMBERSHIP_REVIEW.sql",
+                      "matches":  1
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\PHASE_42I1_MEMBERSHIP_REVIEW_HOTFIX.sql",
+                      "matches":  1
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\PHASE_42I1_STAGING_SMOKE.sql",
+                      "matches":  3
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\docs\\v5\\PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL.sql",
+                      "matches":  1
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\scripts\\apply-phase1b-club-update-authz-gate-staging.mjs",
+                      "matches":  6
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\scripts\\apply-phase1c-club-owner-assign-authz-gate-production.mjs",
+                      "matches":  10
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\scripts\\apply-phase1c-club-owner-assign-authz-gate-staging.mjs",
+                      "matches":  8
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\scripts\\phase7-warning-closure-readonly.mjs",
+                      "matches":  7
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\scripts\\preflight-phase1b-production-readonly.mjs",
+                      "matches":  7
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\scripts\\preflight-phase1c-club-owner-assign-authz-production-readonly.mjs",
+                      "matches":  6
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\scripts\\verify-phase1b-production-smoke.mjs",
+                      "matches":  10
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\scripts\\verify-phase1b-staging-live-qa.mjs",
+                      "matches":  10
+                  },
+                  {
+                      "path":  "C:\\Users\\Le Phong\\pickleball-scheduler-wt-p5d-br01-br10\\.phase7-execution\\scripts\\verify-phase1c-browser-qa-staging.mjs",
+                      "matches":  5
+                  }
+              ]
+}

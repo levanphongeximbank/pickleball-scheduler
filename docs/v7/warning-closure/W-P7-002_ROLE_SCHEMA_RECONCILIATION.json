@@ -1,0 +1,192 @@
+{
+  "generatedAt": "2026-08-04T16:02:50.231Z",
+  "source": "production-readonly-catalog",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "payload": {
+    "target_ref": "expuvcohlcjzvrrauvud",
+    "club_members_columns": [
+      {
+        "column_name": "id",
+        "data_type": "uuid",
+        "udt_name": "uuid",
+        "is_nullable": "NO",
+        "ordinal_position": 1
+      },
+      {
+        "column_name": "tenant_id",
+        "data_type": "text",
+        "udt_name": "text",
+        "is_nullable": "NO",
+        "ordinal_position": 2
+      },
+      {
+        "column_name": "club_id",
+        "data_type": "text",
+        "udt_name": "text",
+        "is_nullable": "NO",
+        "ordinal_position": 3
+      },
+      {
+        "column_name": "user_id",
+        "data_type": "uuid",
+        "udt_name": "uuid",
+        "is_nullable": "NO",
+        "ordinal_position": 4
+      },
+      {
+        "column_name": "athlete_id",
+        "data_type": "uuid",
+        "udt_name": "uuid",
+        "is_nullable": "YES",
+        "ordinal_position": 5
+      },
+      {
+        "column_name": "membership_type",
+        "data_type": "text",
+        "udt_name": "text",
+        "is_nullable": "NO",
+        "ordinal_position": 6
+      },
+      {
+        "column_name": "status",
+        "data_type": "text",
+        "udt_name": "text",
+        "is_nullable": "NO",
+        "ordinal_position": 7
+      },
+      {
+        "column_name": "joined_at",
+        "data_type": "timestamp with time zone",
+        "udt_name": "timestamptz",
+        "is_nullable": "NO",
+        "ordinal_position": 8
+      },
+      {
+        "column_name": "left_at",
+        "data_type": "timestamp with time zone",
+        "udt_name": "timestamptz",
+        "is_nullable": "YES",
+        "ordinal_position": 9
+      },
+      {
+        "column_name": "version",
+        "data_type": "integer",
+        "udt_name": "int4",
+        "is_nullable": "NO",
+        "ordinal_position": 10
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "udt_name": "timestamptz",
+        "is_nullable": "NO",
+        "ordinal_position": 11
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "udt_name": "timestamptz",
+        "is_nullable": "NO",
+        "ordinal_position": 12
+      }
+    ],
+    "club_members_role_like_columns": [],
+    "canonical_role_fields": {
+      "tenant_members_role_code_exists": true,
+      "club_governance_role_code_exists": true
+    },
+    "dependency_inventory": {
+      "functions_with_club_members_role_code": [],
+      "functions_with_role_code": [
+        {
+          "name": "club_assign_owner",
+          "signature": "p_request_id uuid, p_club_id text, p_member_user_id uuid, p_expected_club_version integer",
+          "oid": "19971"
+        },
+        {
+          "name": "club_assign_vice_president",
+          "signature": "p_request_id uuid, p_club_id text, p_member_user_id uuid, p_expected_club_version integer",
+          "oid": "19974"
+        },
+        {
+          "name": "club_clear_owner",
+          "signature": "p_request_id uuid, p_club_id text, p_expected_club_version integer",
+          "oid": "19972"
+        },
+        {
+          "name": "club_clear_vice_president",
+          "signature": "p_request_id uuid, p_club_id text, p_expected_club_version integer, p_member_user_id uuid",
+          "oid": "21175"
+        },
+        {
+          "name": "club_create",
+          "signature": "p_request_id uuid, p_tenant_id text, p_name text, p_code text, p_description text, p_registered_cluster_id text",
+          "oid": "19961"
+        },
+        {
+          "name": "club_leave_membership",
+          "signature": "p_request_id uuid, p_club_id text",
+          "oid": "19976"
+        },
+        {
+          "name": "club_list_members",
+          "signature": "p_club_id text",
+          "oid": "19964"
+        },
+        {
+          "name": "club_remove_member",
+          "signature": "p_request_id uuid, p_club_id text, p_target_user_id uuid, p_expected_version integer",
+          "oid": "20853"
+        },
+        {
+          "name": "club_remove_vice_president",
+          "signature": "p_request_id uuid, p_club_id text, p_member_user_id uuid, p_expected_club_version integer",
+          "oid": "19975"
+        },
+        {
+          "name": "club_transfer_president",
+          "signature": "p_request_id uuid, p_club_id text, p_next_user_id uuid, p_expected_club_version integer",
+          "oid": "19973"
+        },
+        {
+          "name": "phase42_can_assign_club_owner",
+          "signature": "p_club_id text",
+          "oid": "21181"
+        },
+        {
+          "name": "phase42_can_manage_vice_presidents",
+          "signature": "p_club_id text",
+          "oid": "21174"
+        },
+        {
+          "name": "phase42_can_review_membership",
+          "signature": "p_club_id text",
+          "oid": "20233"
+        },
+        {
+          "name": "phase42_can_transfer_president",
+          "signature": "p_club_id text",
+          "oid": "21205"
+        },
+        {
+          "name": "phase42_can_update_club",
+          "signature": "p_club_id text",
+          "oid": "21152"
+        },
+        {
+          "name": "phase42_club_canonical",
+          "signature": "p_club_id text",
+          "oid": "19951"
+        },
+        {
+          "name": "phase42_has_gov_role",
+          "signature": "p_club_id text, p_roles text[]",
+          "oid": "19947"
+        }
+      ],
+      "policies_with_role_code": [],
+      "views_with_role_code": [],
+      "triggers_with_role_code": []
+    }
+  }
+}
