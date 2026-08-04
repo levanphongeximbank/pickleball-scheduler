@@ -6,14 +6,18 @@ Package source commit (immutable ancestry anchor): `93b14e08ae7fa4c20886c8770b16
 
 Certified package version: `phase7-canonical-production-execution-1`
 
-Certified package manifest digest: `CD19CBF6205C601A573A8F5D2A81568F4FA8A7C2BA0D389B02A02C987A1F7E67`
+Authority schema version: `2`
+
+manifestGitBlobDigest authority: derived at execution time from git blob bytes of `approvedExecutionHead:docs/v7/production-execution/MANIFEST.sha256`
 
 Package scope: this repository-tracked production execution package defines only the deterministic post-GO authority, preflight, ordered execution, canary, rollback, verification, and evidence boundaries for the exact Production target above.
 
 Execution authority model (fail-closed):
 - `PACKAGE_SOURCE_COMMIT` is immutable and must remain an ancestor of the approved execution head.
 - `APPROVED_EXECUTION_HEAD` must be supplied by a fresh Owner GO input and must equal both `origin/main` and local `HEAD` at execution time.
-- `PACKAGE_MANIFEST_DIGEST` must match the certified digest and all manifest entry hashes must verify.
+- `MANIFEST_GIT_BLOB_DIGEST` is the SHA-256 of the git blob bytes at `approvedExecutionHead:docs/v7/production-execution/MANIFEST.sha256`.
+- `manifestEntryVerification` must pass by validating every manifest entry hash against git blob content resolved from `approvedExecutionHead`.
+- `workingTreeManifestDigest` is diagnostic only and cannot authorize execution.
 - Checked-in template authority remains `Production GO = NO` by default.
 
 Authority boundary:
