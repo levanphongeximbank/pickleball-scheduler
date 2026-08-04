@@ -1,0 +1,15 @@
+{
+  "approvedExecutionHead": "",
+  "packageSourceCommit": "93b14e08ae7fa4c20886c8770b168f2495540484",
+  "packageVersion": "phase7-canonical-production-execution-1",
+  "packageManifestDigest": "CD19CBF6205C601A573A8F5D2A81568F4FA8A7C2BA0D389B02A02C987A1F7E67",
+  "targetProjectRef": "expuvcohlcjzvrrauvud",
+  "ledgerStepCount": 11,
+  "issuedAt": "",
+  "executionWindow": {
+    "start": "",
+    "end": ""
+  },
+  "ownerAuthorizationMarker": "",
+  "productionGo": "NO"
+}

@@ -1,6 +1,8 @@
 {
   "packageVersion": "phase7-canonical-production-execution-1",
-  "baselineSha": "bd08d448e3c207ac6d5871a734c346f6bb290c40",
+  "packageSourceCommit": "93b14e08ae7fa4c20886c8770b168f2495540484",
+  "approvedExecutionHeadSource": "owner_bound_execution_authority_input",
+  "authorityTemplatePath": "docs/v7/production-execution/10_EXECUTION_AUTHORITY_INPUT.template.json",
   "targetProjectRef": "expuvcohlcjzvrrauvud",
   "steps": [
     {
@@ -13,7 +15,7 @@
       "target": "expuvcohlcjzvrrauvud",
       "mutationClass": "read-only",
       "expectedMutation": "0",
-      "precondition": "fresh origin/main matches baseline, execution worktree is clean, and a new Owner GO is required for any later mutation",
+      "precondition": "fresh origin/main and local HEAD match approvedExecutionHead, execution worktree is clean, and a new Owner GO is required for any later mutation",
       "commandOrOperatorAction": "Review backup, restore, monitoring, and data-copy evidence only",
       "verification": "Compare authority, target ref, and evidence counters against canonical docs",
       "expectedResult": "Read-only package evidence is consistent and mutation-free",

@@ -1,7 +1,8 @@
 {
   "packageVersion": "phase7-canonical-production-execution-1",
-  "baselineSha": "bd08d448e3c207ac6d5871a734c346f6bb290c40",
-  "fileCount": 12,
+  "packageSourceCommit": "93b14e08ae7fa4c20886c8770b168f2495540484",
+  "approvedExecutionHeadAuthority": "owner_bound_execution_authority_input",
+  "fileCount": 13,
   "ledgerStepCount": 11,
   "unresolvedDependencies": 0,
   "forwardDependencies": 0,
@@ -14,6 +15,8 @@
   "undefinedAbortConditions": 0,
   "undefinedRollbackPoints": 0,
   "embeddedSecretFindings": 0,
-  "manifestEntries": 11,
+  "staleActiveShaGuards": 0,
+  "ambiguousShaAuthorities": 0,
+  "manifestEntries": 12,
   "validationVerdict": "PASS_WITH_OBSERVATIONS"
 }

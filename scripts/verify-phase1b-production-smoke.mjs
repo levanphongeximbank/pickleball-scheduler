@@ -4,17 +4,17 @@
  * Target: expuvcohlcjzvrrauvud only. Staging hard-blocked.
  *
  * Auth: admin magic-link OTP (no password reset on Production users).
- * Requires: SUPABASE_ACCESS_TOKEN, PHASE1B_PRODUCTION_GO=1
+ * Requires: SUPABASE_ACCESS_TOKEN, PHASE1B_PRODUCTION_GO=1, PHASE7_EXECUTION_AUTHORITY_FILE
  */
 import fs from "node:fs";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { fileURLToPath } from "node:url";
 import { loadProjectEnv } from "./load-env.mjs";
+import { assertPhase7ExecutionAuthority } from "./phase7-execution-authority.mjs";
 
 const STAGING_REF = "qyewbxjsiiyufanzcjcq";
 const PRODUCTION_REF = "expuvcohlcjzvrrauvud";
-const APPROVED_MAIN_SHA = "959c8067ea756aa32e50b549a97cd4e762786ff7";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = path.join(rootDir, "docs/v5/qa-evidence/phase1b-production");
 
@@ -163,6 +163,15 @@ async function main() {
   loadProjectEnv();
   fs.mkdirSync(outDir, { recursive: true });
 
+  const authorityGuard = assertPhase7ExecutionAuthority({
+    rootDir,
+    authorityFilePath: String(process.env.PHASE7_EXECUTION_AUTHORITY_FILE || "").trim(),
+    runtimeTargetProjectRef: PRODUCTION_REF,
+    credentialFilePath: String(process.env.PHASE7_CREDENTIAL_FILE || ".env.phase7-production.local").trim(),
+  });
+
+  const approvedExecutionHead = authorityGuard.authority.approvedExecutionHead;
+
   const go = String(process.env.PHASE1B_PRODUCTION_GO || "").trim() === "1";
   const token = String(process.env.SUPABASE_ACCESS_TOKEN || "").trim();
   const report = {
@@ -170,7 +179,14 @@ async function main() {
     kind: "PRODUCTION_SMOKE",
     productionRef: PRODUCTION_REF,
     stagingRef: STAGING_REF,
-    approvedMainSha: APPROVED_MAIN_SHA,
+    approvedMainSha: approvedExecutionHead,
+    authorityGuard: {
+      approvedExecutionHead,
+      packageSourceCommit: authorityGuard.authority.packageSourceCommit,
+      packageManifestDigest: authorityGuard.authority.packageManifestDigest,
+      packageSourceIsAncestorOfApprovedHead: true,
+      ownerAuthorizationMarker: authorityGuard.authority.ownerAuthorizationMarker,
+    },
     startedAt: new Date().toISOString(),
     actors: [],
     matrices: {
@@ -188,7 +204,7 @@ async function main() {
 
   console.log("=== Phase 1B Production Smoke ===");
   console.log(`PRODUCTION: ${PRODUCTION_REF}`);
-  console.log(`APPROVED SHA: ${APPROVED_MAIN_SHA}`);
+  console.log(`APPROVED EXECUTION HEAD: ${approvedExecutionHead}`);
 
   if (!go) {
     report.status = "BLOCKED_NO_GO";
@@ -942,7 +958,8 @@ select json_build_object(
       `**Verdict:** ${report.status}`,
       `**Totals:** ${report.totals.pass} pass / ${report.totals.fail} fail`,
       `**Production:** \`${PRODUCTION_REF}\``,
-      `**Code SHA:** \`${APPROVED_MAIN_SHA}\``,
+      `**Code SHA:** \`${approvedExecutionHead}\``,
+      `**Package source commit:** \`${authorityGuard.authority.packageSourceCommit}\``,
       `**Club:** \`${clubId}\``,
       "",
       "## Authorization matrix (club_update)",

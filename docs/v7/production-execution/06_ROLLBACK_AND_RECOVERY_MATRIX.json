@@ -1,6 +1,7 @@
 {
   "packageVersion": "phase7-canonical-production-execution-1",
-  "baselineSha": "bd08d448e3c207ac6d5871a734c346f6bb290c40",
+  "packageSourceCommit": "93b14e08ae7fa4c20886c8770b168f2495540484",
+  "approvedExecutionHeadSource": "owner_bound_execution_authority_input",
   "mutations": [
     {
       "stepId": "STEP-01",

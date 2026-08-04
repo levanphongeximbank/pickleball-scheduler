@@ -1,18 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { assertPhase7ExecutionAuthority } from "./phase7-execution-authority.mjs";
 
 const ref = "expuvcohlcjzvrrauvud";
-const APPROVED_MAIN_SHA = "bd08d448e3c207ac6d5871a734c346f6bb290c40";
-const expectedRef = "expuvcohlcjzvrrauvud";
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-if (ref !== expectedRef) {
-  throw new Error(`Blocked: target project ref mismatch. expected=${expectedRef} actual=${ref}`);
-}
-
-const currentMainSha = process.env.PHASE7_ORIGIN_MAIN_SHA;
-if (currentMainSha && currentMainSha !== APPROVED_MAIN_SHA) {
-  throw new Error(`Blocked: origin/main SHA mismatch. expected=${APPROVED_MAIN_SHA} actual=${currentMainSha}`);
-}
+assertPhase7ExecutionAuthority({
+  rootDir,
+  authorityFilePath: String(process.env.PHASE7_EXECUTION_AUTHORITY_FILE || "").trim(),
+  runtimeTargetProjectRef: ref,
+  credentialFilePath: String(process.env.PHASE7_CREDENTIAL_FILE || ".env.phase7-production.local").trim(),
+});
 
 const token = process.env.SUPABASE_ACCESS_TOKEN;
 if (!token) {

@@ -24,10 +24,10 @@ import {
   parseActionLiteralsFromConstraintDef,
   assessAuditPreflight,
 } from "./apply-phase1b-staging-sql.mjs";
+import { assertPhase7ExecutionAuthority } from "./phase7-execution-authority.mjs";
 
 const STAGING_REF = "qyewbxjsiiyufanzcjcq";
 const PRODUCTION_REF = "expuvcohlcjzvrrauvud";
-const APPROVED_MAIN_SHA = "959c8067ea756aa32e50b549a97cd4e762786ff7";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = path.join(rootDir, "docs/v5/qa-evidence/phase1b-production");
 const OUT_JSON = path.join(OUT_DIR, "PRODUCTION_PREFLIGHT_REPORT.json");
@@ -84,12 +84,13 @@ function gitSha(rev) {
   }
 }
 
-const SNAPSHOT_SQL = `
+function buildSnapshotSql(approvedExecutionHead) {
+  return `
 select json_build_object(
   'target_safety', json_build_object(
     'expected_production_ref', '${PRODUCTION_REF}',
     'staging_ref_must_not_be_used', '${STAGING_REF}',
-    'approved_main_sha', '${APPROVED_MAIN_SHA}'
+    'approved_main_sha', '${approvedExecutionHead}'
   ),
   'audit', json_build_object(
     'constraint_exists', exists (
@@ -354,6 +355,7 @@ select json_build_object(
   )
 ) as snapshot;
 `;
+}
 
 function requiredClubColumnsPresent(cols) {
   const names = new Set((cols || []).map((c) => c.column_name));
@@ -384,7 +386,7 @@ function requiredMemberColumnsPresent(cols) {
   };
 }
 
-function buildVerdict(report) {
+function buildVerdict(report, approvedExecutionHead) {
   const blockers = [];
   const warnings = [];
 
@@ -394,9 +396,9 @@ function buildVerdict(report) {
   if (report.targetSafety?.stagingQueried) {
     blockers.push("Staging was queried — abort");
   }
-  if (report.targetSafety?.approvedMainShaOnOrigin !== APPROVED_MAIN_SHA) {
+  if (report.targetSafety?.approvedMainShaOnOrigin !== approvedExecutionHead) {
     warnings.push(
-      `origin/main SHA is ${report.targetSafety?.approvedMainShaOnOrigin}; expected ${APPROVED_MAIN_SHA}`
+      `origin/main SHA is ${report.targetSafety?.approvedMainShaOnOrigin}; expected ${approvedExecutionHead}`
     );
   }
 
@@ -454,7 +456,7 @@ function buildVerdict(report) {
   return { verdict, blockers, warnings, clubCols, memberCols };
 }
 
-function toMarkdown(report) {
+function toMarkdown(report, approvedExecutionHead) {
   const v = report.verdict;
   const lines = [];
   lines.push("# Phase 1B — Production Preflight Report (READ-ONLY)");
@@ -537,7 +539,7 @@ function toMarkdown(report) {
   });
   lines.push("");
   lines.push("## Proposed code deployment");
-  lines.push(`1. Deploy app from main SHA \`${APPROVED_MAIN_SHA}\` **after** SQL catalog verification.`);
+  lines.push(`1. Deploy app from main SHA \`${approvedExecutionHead}\` **after** SQL catalog verification.`);
   lines.push("2. Do not enable Phase 1C.");
   lines.push("");
   lines.push("## Explicit confirmation");
@@ -548,6 +550,15 @@ function toMarkdown(report) {
 
 async function main() {
   loadProjectEnv();
+
+  const guard = assertPhase7ExecutionAuthority({
+    rootDir,
+    authorityFilePath: String(process.env.PHASE7_EXECUTION_AUTHORITY_FILE || "").trim(),
+    runtimeTargetProjectRef: PRODUCTION_REF,
+    credentialFilePath: String(process.env.PHASE7_CREDENTIAL_FILE || ".env.phase7-production.local").trim(),
+  });
+
+  const approvedExecutionHead = guard.authority.approvedExecutionHead;
   const token = String(process.env.SUPABASE_ACCESS_TOKEN || "").trim();
   if (!token) {
     console.error("Set SUPABASE_ACCESS_TOKEN");
@@ -567,9 +578,16 @@ async function main() {
       productionRef: PRODUCTION_REF,
       stagingRef: STAGING_REF,
       stagingQueried: false,
-      approvedMainSha: APPROVED_MAIN_SHA,
+      approvedMainSha: approvedExecutionHead,
       approvedMainShaOnOrigin: originMain,
       headSha: gitSha("HEAD"),
+    },
+    authorityGuard: {
+      approvedExecutionHead,
+      packageSourceCommit: guard.authority.packageSourceCommit,
+      packageManifestDigest: guard.authority.packageManifestDigest,
+      ledgerStepCount: guard.authority.ledgerStepCount,
+      ownerAuthorizationMarker: guard.authority.ownerAuthorizationMarker,
     },
     snapshot: null,
     auditAssessment: null,
@@ -604,7 +622,7 @@ async function main() {
         purpose: "Verify functions, auth predicates, audit constraint, canonical VP fields",
       },
       {
-        file: `(code deploy) main@${APPROVED_MAIN_SHA}`,
+        file: `(code deploy) main@${approvedExecutionHead}`,
         purpose: "Deploy application code after SQL verify; no Phase 1C",
       },
     ],
@@ -618,11 +636,15 @@ async function main() {
   console.log("Phase 1B Production READ-ONLY preflight");
   console.log(`PRODUCTION: ${PRODUCTION_REF}`);
   console.log(`STAGING: ${STAGING_REF} (must NOT be queried)`);
-  console.log(`APPROVED SHA: ${APPROVED_MAIN_SHA}`);
+  console.log(`APPROVED EXECUTION HEAD: ${approvedExecutionHead}`);
   console.log("Mode: SELECT-only — no apply / no deploy / no data mutation");
 
   try {
-    const body = await executeProductionSelect(token, SNAPSHOT_SQL, "production-snapshot");
+    const body = await executeProductionSelect(
+      token,
+      buildSnapshotSql(approvedExecutionHead),
+      "production-snapshot"
+    );
     const snapshot = Array.isArray(body) ? body[0]?.snapshot : body?.snapshot;
     if (!snapshot) {
       throw new Error(`Unexpected snapshot response: ${JSON.stringify(body).slice(0, 500)}`);
@@ -677,7 +699,7 @@ async function main() {
       bodyChecks: snapshot.rpc_body_checks || null,
     };
 
-    const verdict = buildVerdict(report);
+    const verdict = buildVerdict(report, approvedExecutionHead);
     report.verdict = verdict;
 
     const orderSafe =
@@ -698,7 +720,7 @@ async function main() {
       ],
       code: [
         `Redeploy previous production app SHA (pre-Phase-1B client cutover) if client regressions appear.`,
-        `Approved Phase 1B code SHA to roll forward: ${APPROVED_MAIN_SHA}`,
+        `Approved Phase 1B code SHA to roll forward: ${approvedExecutionHead}`,
         "Feature-flag Club Storage V2 OFF restores V1 fallbacks for add/remove where present.",
       ],
       conditions: [
@@ -713,7 +735,7 @@ async function main() {
 
     report.smokeTestPlan = {
       productionRef: PRODUCTION_REF,
-      codeSha: APPROVED_MAIN_SHA,
+      codeSha: approvedExecutionHead,
       cases: [
         "club profile update (authorized) + version increment + club.update audit",
         "stale expected version → VERSION_CONFLICT",
@@ -733,7 +755,7 @@ async function main() {
     fs.mkdirSync(OUT_DIR, { recursive: true });
     // Strip potentially huge policy expressions from console; keep full in JSON.
     fs.writeFileSync(OUT_JSON, JSON.stringify(report, null, 2));
-    fs.writeFileSync(OUT_MD, toMarkdown(report));
+    fs.writeFileSync(OUT_MD, toMarkdown(report, approvedExecutionHead));
 
     console.log(`\nVerdict: ${verdict.verdict}`);
     console.log(`Evidence JSON: ${OUT_JSON}`);
