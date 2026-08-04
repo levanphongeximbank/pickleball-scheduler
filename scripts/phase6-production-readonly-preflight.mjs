@@ -29,7 +29,25 @@ const outputPath = path.resolve(
   process.argv[2] || "docs/v6/PHASE6_PRODUCTION_READ_ONLY_LIVE_EVIDENCE.json",
 );
 
-const url = String(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
+const envPath = path.resolve(process.env.PHASE6_PRODUCTION_ENV_FILE || ".env.phase6-production.local");
+if (fs.existsSync(envPath)) {
+  for (const rawLine of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const at = line.indexOf("=");
+    if (at < 1) continue;
+    const name = line.slice(0, at).trim();
+    let value = line.slice(at + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    if (!(name in process.env)) process.env[name] = value;
+  }
+}
+
+const url = [process.env.SUPABASE_URL, process.env.VITE_SUPABASE_URL]
+  .map((value) => String(value || "").replace(/\/$/, ""))
+  .find((value) => value.includes(PRODUCTION_REF)) || "";
 const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "");
 const anonKey = String(process.env.VITE_SUPABASE_ANON_KEY || "");
 

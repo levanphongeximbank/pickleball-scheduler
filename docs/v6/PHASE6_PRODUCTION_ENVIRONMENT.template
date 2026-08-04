@@ -1,0 +1,5 @@
+# Copy to repository root as .env.phase6-production.local (gitignored).
+# Never paste real values into chat or commit them.
+SUPABASE_URL=https://expuvcohlcjzvrrauvud.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=OWNER_FILLS_PRODUCTION_SERVICE_ROLE_KEY
+VITE_SUPABASE_ANON_KEY=OWNER_FILLS_PRODUCTION_ANON_KEY
