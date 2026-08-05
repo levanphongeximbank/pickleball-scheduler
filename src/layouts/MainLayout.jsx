@@ -23,14 +23,21 @@ import MobileDrawer from "../features/mobile/layout/MobileDrawer.jsx";
 import { MobileNavProvider } from "../features/mobile/context/MobileNavProvider.jsx";
 import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
 import { SHELL_COLORS } from "../components/shell/shellTokens.js";
+import {
+  CanonicalAppShell,
+  isCanonicalAppShellEnabled,
+} from "../features/canonical-shell/index.js";
 
-function MainLayoutContent() {
+function LegacyMainLayoutContent() {
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
     <MobileNavProvider openDrawer={() => setDrawerOpen(true)}>
-      <Box sx={{ display: "flex", minHeight: "100dvh", bgcolor: SHELL_COLORS.pageBg }}>
+      <Box
+        data-testid="legacy-app-shell"
+        sx={{ display: "flex", minHeight: "100dvh", bgcolor: SHELL_COLORS.pageBg }}
+      >
         {!isMobile && <Sidebar />}
 
         <Box
@@ -72,6 +79,15 @@ function MainLayoutContent() {
       </Box>
     </MobileNavProvider>
   );
+}
+
+function MainLayoutContent() {
+  // Feature-flagged Figure 1 shell — default OFF preserves legacy rollback path.
+  // Never render both shells simultaneously.
+  if (isCanonicalAppShellEnabled()) {
+    return <CanonicalAppShell />;
+  }
+  return <LegacyMainLayoutContent />;
 }
 
 export default function MainLayout() {

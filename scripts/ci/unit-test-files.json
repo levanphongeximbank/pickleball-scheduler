@@ -90,6 +90,7 @@
   "tests/rbac.test.js",
   "tests/venue-owner-club.test.js",
   "tests/app-shell-v5.test.js",
+  "tests/canonical-shell-phase2.test.js",
   "tests/rls-access.test.js",
   "tests/tenant.test.js",
   "tests/tenant-profile-venue-runtime.test.js",
