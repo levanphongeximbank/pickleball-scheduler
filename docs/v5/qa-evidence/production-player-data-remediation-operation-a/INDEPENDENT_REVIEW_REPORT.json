@@ -1,0 +1,25 @@
+{
+  "verdict": "PRODUCTION_PLAYER_GENDER_OPERATION_A_HARDENED_READY_FOR_COMMIT_REVIEW",
+  "independentReviewBlockers": 0,
+  "answers": {
+    "1_operation_a_data_only": "YES",
+    "2_check_excluded": "YES",
+    "3_update_limited_to_captured_nam_rows": "YES_SAFE",
+    "4_row_count_drift_fail_closed": "YES",
+    "5_updated_at_drift_fail_closed": "YES",
+    "6_backup_persistent_batch_specific": "YES",
+    "7_rollback_cannot_overwrite_later_changes": "YES_SAFE",
+    "8_rollback_deterministic": "YES",
+    "9_operation_a_b_separated": "YES",
+    "10_implies_production_go": "NO",
+    "11_production_or_staging_mutations": "NO",
+    "12_unrelated_files_untouched": "YES",
+    "13_package_lockfiles_unchanged": "YES"
+  },
+  "productionGo": "NO",
+  "commit": false,
+  "push": false,
+  "productionMutations": 0,
+  "stagingMutations": 0,
+  "sqlApply": 0
+}
