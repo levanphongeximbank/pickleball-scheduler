@@ -1,0 +1,82 @@
+{
+  "recordType": "POST_MERGE_EVIDENCE_CONTRACT_REMEDIATION",
+  "correctedAt": "2026-08-05T21:50:00+07:00",
+  "prMerge": {
+    "pullRequest": 377,
+    "mergeCommit": "2882b334f23a0113b6203853816c395007e4bc21",
+    "mergeMethod": "squash",
+    "auditPackageFileCount": 31
+  },
+  "postMergeVerificationFailure": {
+    "verdict": "TOURNAMENT_PRODUCTION_AUDIT_POST_MERGE_VERIFICATION_FAIL_IMPLEMENTATION_HOLD",
+    "historicalFailPreserved": true,
+    "overwritten": false,
+    "testsTotal": 11,
+    "testsPassed": 10,
+    "testsFailed": 1,
+    "failingSubtest": "all six original screenshots are local-only and commit-ineligible",
+    "failureReason": "ENOENT for intentionally uncommitted LOCAL_EVIDENCE_ONLY PNG binaries on a clean clone of main",
+    "exampleEnoentPath": "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(379).png",
+    "mergedAuditContentCorrect": true,
+    "mergedFileScopeCorrect": true,
+    "pngMissingFromIntendedCommit": false,
+    "pngNeverIntendedForCommit": true,
+    "rootCause": "Evidence contract test incorrectly required local-only screenshot binaries to exist on disk"
+  },
+  "correctionApplied": {
+    "scope": "TEST_AND_DOCS_ONLY",
+    "changesEvidenceTestSemanticsOnly": true,
+    "filesChanged": [
+      "tests/tournament-production-remediation-evidence.test.js",
+      "docs/v5/qa-evidence/tournament-production-remediation/evidence/POST_MERGE_EVIDENCE_CONTRACT_REMEDIATION_2026-08-05.json"
+    ],
+    "contractFlags": {
+      "LOCAL_EVIDENCE_METADATA_REQUIRED": "YES",
+      "LOCAL_BINARY_PRESENCE_REQUIRED": "NO",
+      "OPTIONAL_LOCAL_BINARY_INTEGRITY_CHECK": "YES"
+    },
+    "behavior": {
+      "absentLocalBinary": "Validate committed manifest metadata and Git-tree exclusion; continue PASS",
+      "presentLocalBinary": "Optionally verify checksum, byte size, and dimensions; checksum mismatch still FAIL",
+      "piiClassificationChecksWeakened": false,
+      "gitExclusionChecksWeakened": false
+    }
+  },
+  "unchangedAssertions": {
+    "AUDIT_COUNTERS_CHANGED": "NO",
+    "RUNTIME_CONCLUSIONS_CHANGED": "NO",
+    "PRODUCTION_QUERIES_RERUN": 0,
+    "PRODUCTION_MUTATIONS": 0,
+    "SQL_APPLY": 0,
+    "DEPLOYMENTS": 0,
+    "ROUTES_INVENTORIED": 54,
+    "CANONICAL_ROUTES": 8,
+    "LEGACY_ROUTES": 46,
+    "DUPLICATE_CONFLICT_ROUTE_COUNT": 7,
+    "DURABLE_WRITER_COUNT": 6,
+    "DUAL_WRITER_COUNT": 3,
+    "DUAL_READER_COUNT": 4,
+    "LOCALSTORAGE_MOCK_FALLBACK_COUNT": 3,
+    "PRODUCTION_READ_ONLY_QUERY_COUNT": 7,
+    "PRODUCTION_GO": "NO"
+  },
+  "implementationStatus": {
+    "IMPLEMENTATION_GO": "NO",
+    "implementationRemainsOnHold": true,
+    "holdReason": "Pending merge of this evidence-contract fix and fresh-main post-merge verification"
+  },
+  "constraintsObserved": {
+    "implementationFilesChanged": 0,
+    "packageLockfileChanges": 0,
+    "sqlMigrationChanges": 0,
+    "pngFilesAdded": 0,
+    "productionQueriesRerun": 0,
+    "productionMutations": 0,
+    "sqlApply": 0,
+    "deployments": 0,
+    "commitsCreated": 0,
+    "pushes": 0,
+    "stagedFiles": 0
+  },
+  "proposedVerdict": "TOURNAMENT_POST_MERGE_EVIDENCE_CONTRACT_REMEDIATION_COMPLETE_READY_FOR_REVIEW"
+}

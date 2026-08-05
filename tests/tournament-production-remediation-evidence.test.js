@@ -3,11 +3,17 @@
  * (commit-gate + runtime-authority counter reconciliation).
  */
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
+
+/** Evidence contract flags for LOCAL_EVIDENCE_ONLY screenshots */
+const LOCAL_EVIDENCE_METADATA_REQUIRED = "YES";
+const LOCAL_BINARY_PRESENCE_REQUIRED = "NO";
+const OPTIONAL_LOCAL_BINARY_INTEGRITY_CHECK = "YES";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pkg = join(root, "docs", "v5", "qa-evidence", "tournament-production-remediation");
@@ -45,6 +51,16 @@ const REQUIRED_JSON = [
   "evidence/PRELIMINARY_EVIDENCE_RECONCILIATION_2026-08-05.json",
   "evidence/INDEPENDENT_REREVIEW_2026-08-05.json",
   "evidence/RUNTIME_AUTHORITY_COUNTER_RECONCILIATION_2026-08-05.json",
+  "evidence/POST_MERGE_EVIDENCE_CONTRACT_REMEDIATION_2026-08-05.json",
+];
+
+const EXPECTED_OWNER_FILENAMES = [
+  "image(379).png",
+  "image(380).png",
+  "image(381).png",
+  "image(382).png",
+  "image(383).png",
+  "image(384).png",
 ];
 
 const EXPECTED_SHA256 = {
@@ -93,6 +109,25 @@ const LMF_REQUIRED = [
 
 function sha256File(absPath) {
   return createHash("sha256").update(readFileSync(absPath)).digest("hex");
+}
+
+function isValidSha256Hex(value) {
+  return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
+}
+
+function readPngDimensions(absPath) {
+  const buf = readFileSync(absPath);
+  assert.equal(buf.length >= 24, true, `PNG too small: ${absPath}`);
+  assert.equal(buf.toString("ascii", 1, 4), "PNG", `not a PNG: ${absPath}`);
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
+
+function gitLines(args) {
+  return execFileSync("git", args, { cwd: root, encoding: "utf8" })
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/\\/g, "/"));
 }
 
 function listFilesRecursive(dir) {
@@ -249,16 +284,81 @@ describe("tournament-production-remediation evidence package (canonical)", () =>
   });
 
   it("all six original screenshots are local-only and commit-ineligible", () => {
+    assert.equal(LOCAL_EVIDENCE_METADATA_REQUIRED, "YES");
+    assert.equal(LOCAL_BINARY_PRESENCE_REQUIRED, "NO");
+    assert.equal(OPTIONAL_LOCAL_BINARY_INTEGRITY_CHECK, "YES");
+
     const manifest = JSON.parse(
       readFileSync(join(pkg, "evidence/SCREENSHOT_MANIFEST_2026-08-05.json"), "utf8")
     );
     assert.equal(manifest.entries.length, 6);
+    assert.equal(manifest.counts.originalScreenshotCount, 6);
+    assert.equal(manifest.counts.localEvidenceOnlyCount, 6);
     assert.equal(manifest.counts.commitEligibleCount, 0);
+    assert.equal(manifest.counts.stageEligibleCount, 0);
+    assert.deepEqual(manifest.ownerSuppliedFilenames, EXPECTED_OWNER_FILENAMES);
+    assert.equal(manifest.policy.evidenceClassification, "LOCAL_EVIDENCE_ONLY");
+    assert.equal(manifest.policy.commitEligibility, "NO_PENDING_REDACTION");
+    assert.equal(manifest.policy.stageEligibility, "NO");
+    assert.equal(manifest.policy.originalFileModified, "NO");
+    assert.equal(manifest.policy.piiPresent, "YES");
+    assert.equal(manifest.defectMappingValidation?.allMappingsValid, true);
+    assert.equal(Array.isArray(manifest.defectMappingValidation?.mappings), true);
+    assert.equal(manifest.defectMappingValidation.mappings.length >= 5, true);
+
+    const tracked = new Set(gitLines(["ls-files"]));
+    const committedTree = new Set(gitLines(["ls-tree", "-r", "--name-only", "HEAD"]));
+    let originalPngTrackedCount = 0;
+    let originalPngInCommittedTreeCount = 0;
+
     for (const entry of manifest.entries) {
+      assert.equal(EXPECTED_OWNER_FILENAMES.includes(entry.ownerFilename), true);
       assert.equal(entry.evidenceClassification, "LOCAL_EVIDENCE_ONLY");
       assert.equal(entry.commitEligibility, "NO_PENDING_REDACTION");
-      assert.equal(sha256File(join(root, entry.canonicalPath)), EXPECTED_SHA256[entry.ownerFilename]);
+      assert.equal(entry.stageEligibility, "NO");
+      assert.equal(entry.originalFileModified, "NO");
+      assert.equal(entry.piiPresent, "YES");
+      assert.equal(isValidSha256Hex(entry.sha256), true, `invalid sha256 metadata: ${entry.ownerFilename}`);
+      assert.equal(entry.sha256, EXPECTED_SHA256[entry.ownerFilename]);
+      assert.equal(typeof entry.sizeBytes, "number");
+      assert.equal(entry.sizeBytes > 0, true);
+      if (entry.dimensions != null) {
+        assert.equal(typeof entry.dimensions.width, "number");
+        assert.equal(typeof entry.dimensions.height, "number");
+        assert.equal(entry.dimensions.width > 0, true);
+        assert.equal(entry.dimensions.height > 0, true);
+      }
+      assert.equal(typeof entry.defectId, "string");
+      assert.equal(entry.defectId.length > 0, true);
+      assert.equal(entry.defectMappingValid, true);
+      assert.equal(typeof entry.canonicalPath, "string");
+      assert.match(entry.canonicalPath, /\.png$/);
+
+      const rel = entry.canonicalPath.replace(/\\/g, "/");
+      if (tracked.has(rel)) originalPngTrackedCount += 1;
+      if (committedTree.has(rel)) originalPngInCommittedTreeCount += 1;
+
+      const abs = join(root, entry.canonicalPath);
+      if (!existsSync(abs)) {
+        // LOCAL_BINARY_PRESENCE_REQUIRED=NO — committed manifest metadata is sufficient.
+        continue;
+      }
+
+      // OPTIONAL_LOCAL_BINARY_INTEGRITY_CHECK=YES — mismatch must still fail.
+      assert.equal(sha256File(abs), EXPECTED_SHA256[entry.ownerFilename]);
+      assert.equal(sha256File(abs), entry.sha256);
+      assert.equal(statSync(abs).size, entry.sizeBytes);
+      if (entry.dimensions != null) {
+        assert.deepEqual(readPngDimensions(abs), entry.dimensions);
+      }
     }
+
+    assert.deepEqual(
+      manifest.entries.map((e) => e.ownerFilename).sort(),
+      [...EXPECTED_OWNER_FILENAMES].sort()
+    );
+    assert.equal(originalPngTrackedCount, 0);
+    assert.equal(originalPngInCommittedTreeCount, 0);
   });
 
   it("preliminary directory is redirect-only and canonical evidence authority is unique", () => {
