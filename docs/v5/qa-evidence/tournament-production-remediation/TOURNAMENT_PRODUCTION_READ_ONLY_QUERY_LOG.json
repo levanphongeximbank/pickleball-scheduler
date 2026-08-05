@@ -1,0 +1,285 @@
+{
+  "workstream": "tournament-production-remediation",
+  "logDate": "2026-08-05",
+  "ownerAuthorization": "GO_TOURNAMENT_PRODUCTION_READ_ONLY_QUERY_AUDIT=YES",
+  "environment": "production",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "mcpServer": "supabase-production",
+  "readOnlyMode": true,
+  "executionPolicy": "READ_ONLY_ZERO_MUTATION",
+  "authoritativeProductionQueryTransport": {
+    "transport": "supabase-production MCP",
+    "project_ref": "expuvcohlcjzvrrauvud",
+    "read_only": true,
+    "features": "database",
+    "localCredentialScriptUsed": false,
+    "auditScriptCommitEligibility": "NO_LOCAL_AUDIT_HELPER",
+    "note": "Live Production SELECT audit executed via MCP execute_sql only. scripts/tournament-production-readonly-audit.mjs was not the approved transport and remains untracked (NO_LOCAL_AUDIT_HELPER)."
+  },
+  "productionMutations": 0,
+  "queriesExecuted": 7,
+  "queriesBlocked": 0,
+  "status": "COMPLETED_WITH_FINDINGS",
+  "preflight": {
+    "projectRef": "expuvcohlcjzvrrauvud",
+    "targetEnvironment": "Production",
+    "mcpServer": "supabase-production",
+    "readOnlyMode": true,
+    "branchVerified": "fix/tournament-production-runtime-and-canonical-route-remediation",
+    "headVerified": "e53694174b92c31f6dfd5725ab3e74ea3cc13e29",
+    "liveConnectionProven": true
+  },
+  "observedTournamentIds": [
+    "tournament-1785921300822",
+    "tournament-1785921409840",
+    "tournament-1785921550968"
+  ],
+  "ownerTournamentReconciliation": {
+    "tournament-1785921300822": {
+      "recordExistsInCloudBlob": false,
+      "recordExistsInTeamTournaments": false,
+      "recordExistsInPublicCatalog": false,
+      "persistedType": null,
+      "persistedStatus": null,
+      "persistedTenantId": null,
+      "persistedClubId": null,
+      "persistedVenueId": null,
+      "missingTenantErrorOrigin": [
+        "localStorage_client_blob_not_cloud",
+        "loader_mapping",
+        "route_context",
+        "default-tenant_fallback_on_official_path"
+      ]
+    },
+    "tournament-1785921409840": {
+      "recordExistsInCloudBlob": false,
+      "recordExistsInTeamTournaments": false,
+      "recordExistsInPublicCatalog": false,
+      "persistedType": null,
+      "persistedStatus": null,
+      "persistedTenantId": null,
+      "persistedClubId": null,
+      "persistedVenueId": null,
+      "hostClubObservedInScreenshot": "ACCC",
+      "acccClubCloud": {
+        "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "tenant_id": "venue-prod-main",
+        "blob_venue_id": "venue-prod-main",
+        "status": "active"
+      },
+      "missingTenantErrorOrigin": [
+        "localStorage_client_blob_not_cloud",
+        "dual_reader_pairing_scope_omits_tenantId",
+        "loader_mapping"
+      ]
+    },
+    "tournament-1785921550968": {
+      "recordExistsInCloudBlob": false,
+      "recordExistsInTeamTournaments": false,
+      "recordExistsInPublicCatalog": false,
+      "persistedType": null,
+      "persistedStatus": null,
+      "persistedTenantId": null,
+      "persistedClubId": null,
+      "persistedVenueId": null,
+      "missingTenantErrorOrigin": [
+        "localStorage_client_blob_not_cloud",
+        "default-tenant_fallback",
+        "loader_mapping",
+        "route_context"
+      ]
+    }
+  },
+  "cloudInventorySnapshot": {
+    "club_data_v3_rows": 1,
+    "club_data_v3_tournament_objects": 0,
+    "soleBlobClubId": "club-219e4a7cbd73437eb6271f02a53314c3",
+    "soleBlobVenueId": "venue-prod-main",
+    "team_tournaments_total": 56,
+    "team_tournaments_owner_id_matches": 0,
+    "public_catalog_published_count": 0,
+    "tournament_match_live_owner_id_matches": 0
+  },
+  "queryResults": [
+    {
+      "queryId": "Q-001",
+      "timestampUtc": "2026-08-05T10:36:00.000Z",
+      "mcpServer": "supabase-production",
+      "projectRef": "expuvcohlcjzvrrauvud",
+      "purpose": "Resolve hosting club for owner-observed daily tournament",
+      "exactSql": "SELECT CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS utc_now, club_id, venue_id, synced_at FROM public.club_data_v3 WHERE data->'tournaments' @> '[{\"id\":\"tournament-1785921300822\"}]'::jsonb LIMIT 5;",
+      "readOnlyProof": "Single-statement SELECT; no DML/DDL; MCP read_only=true",
+      "tablesInspected": ["club_data_v3"],
+      "rowsReturned": 0,
+      "aggregateResult": {
+        "found": false,
+        "textScanHits": 0,
+        "club_blob_rows": 1
+      },
+      "piiHandling": "No PII selected",
+      "mutationCount": 0,
+      "status": "PASS_WITH_FINDINGS",
+      "finding": "Owner daily tournament ID absent from Production club_data_v3"
+    },
+    {
+      "queryId": "Q-002",
+      "timestampUtc": "2026-08-05T10:36:00.000Z",
+      "mcpServer": "supabase-production",
+      "projectRef": "expuvcohlcjzvrrauvud",
+      "purpose": "Resolve hosting club/tenant for internal tournament",
+      "exactSql": "SELECT CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS utc_now, club_id, venue_id, synced_at FROM public.club_data_v3 WHERE data->'tournaments' @> '[{\"id\":\"tournament-1785921409840\"}]'::jsonb LIMIT 5;",
+      "readOnlyProof": "Single-statement SELECT; no DML/DDL; MCP read_only=true",
+      "tablesInspected": ["club_data_v3"],
+      "rowsReturned": 0,
+      "aggregateResult": {
+        "found": false,
+        "textScanHits": 0
+      },
+      "piiHandling": "No PII selected",
+      "mutationCount": 0,
+      "status": "PASS_WITH_FINDINGS",
+      "finding": "Owner internal tournament ID absent from Production club_data_v3"
+    },
+    {
+      "queryId": "Q-003",
+      "timestampUtc": "2026-08-05T10:36:00.000Z",
+      "mcpServer": "supabase-production",
+      "projectRef": "expuvcohlcjzvrrauvud",
+      "purpose": "Resolve hosting club/tenant for official tournament",
+      "exactSql": "SELECT CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS utc_now, club_id, venue_id, synced_at FROM public.club_data_v3 WHERE data->'tournaments' @> '[{\"id\":\"tournament-1785921550968\"}]'::jsonb LIMIT 5;",
+      "readOnlyProof": "Single-statement SELECT; no DML/DDL; MCP read_only=true",
+      "tablesInspected": ["club_data_v3"],
+      "rowsReturned": 0,
+      "aggregateResult": {
+        "found": false,
+        "textScanHits": 0
+      },
+      "piiHandling": "No PII selected",
+      "mutationCount": 0,
+      "status": "PASS_WITH_FINDINGS",
+      "finding": "Owner official tournament ID absent from Production club_data_v3"
+    },
+    {
+      "queryId": "Q-004",
+      "timestampUtc": "2026-08-05T10:37:32.084Z",
+      "mcpServer": "supabase-production",
+      "projectRef": "expuvcohlcjzvrrauvud",
+      "purpose": "Verify ACCC host club tenant_id",
+      "exactSql": "SELECT CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS utc_now, id, left(name, 32) AS name_prefix, tenant_id, status FROM public.clubs WHERE name ILIKE '%ACCC%' LIMIT 10;",
+      "readOnlyProof": "Single-statement SELECT; truncated name_prefix only; no email/phone",
+      "tablesInspected": ["clubs"],
+      "rowsReturned": 1,
+      "aggregateResult": {
+        "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "tenant_id": "venue-prod-main",
+        "status": "active",
+        "name_prefix": "CLB ACCC"
+      },
+      "piiHandling": "name truncated to 32 chars; no member PII",
+      "mutationCount": 0,
+      "status": "PASS",
+      "finding": "ACCC club has explicit Production tenant_id=venue-prod-main (not default-tenant)"
+    },
+    {
+      "queryId": "Q-005",
+      "timestampUtc": "2026-08-05T10:37:01.348Z",
+      "mcpServer": "supabase-production",
+      "projectRef": "expuvcohlcjzvrrauvud",
+      "purpose": "Check tournament tenantId stamp in blob payload",
+      "exactSql": "SELECT CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS utc_now, count(*)::int AS tournament_object_count, count(*) FILTER (WHERE COALESCE(t.value->>'tenantId','') = '')::int AS missing_tenant_id, count(*) FILTER (WHERE lower(COALESCE(t.value->>'tenantId','')) IN ('default-tenant','default'))::int AS default_tenant_stamp, count(*) FILTER (WHERE COALESCE(t.value->>'clubId','') = '')::int AS missing_club_id FROM public.club_data_v3 c CROSS JOIN LATERAL jsonb_array_elements(COALESCE(c.data->'tournaments','[]'::jsonb)) AS t(value);",
+      "readOnlyProof": "Single-statement SELECT aggregates only",
+      "tablesInspected": ["club_data_v3"],
+      "rowsReturned": 1,
+      "aggregateResult": {
+        "tournament_object_count": 0,
+        "missing_tenant_id": 0,
+        "default_tenant_stamp": 0,
+        "missing_club_id": 0,
+        "sole_blob_tournaments_len": 0
+      },
+      "piiHandling": "Aggregates only",
+      "mutationCount": 0,
+      "status": "PASS_WITH_FINDINGS",
+      "finding": "Production cloud blob contains zero tournament objects; owner IDs cannot have cloud tenantId stamps"
+    },
+    {
+      "queryId": "Q-006",
+      "timestampUtc": "2026-08-05T10:39:00.965Z",
+      "mcpServer": "supabase-production",
+      "projectRef": "expuvcohlcjzvrrauvud",
+      "purpose": "Verify no team_tournament cloud row for individual tournament IDs",
+      "exactSql": "SELECT CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS utc_now, count(*)::int AS team_tournament_total_rows, count(*) FILTER (WHERE id::text IN ('tournament-1785921300822','tournament-1785921409840','tournament-1785921550968'))::int AS owner_id_matches FROM public.team_tournaments;",
+      "readOnlyProof": "Single-statement SELECT aggregates; id cast to text for comparison",
+      "tablesInspected": ["team_tournaments"],
+      "rowsReturned": 1,
+      "aggregateResult": {
+        "team_tournament_total_rows": 56,
+        "owner_id_matches": 0
+      },
+      "piiHandling": "Counts only",
+      "mutationCount": 0,
+      "status": "PASS",
+      "finding": "Owner individual tournament IDs are not team_tournaments cloud rows"
+    },
+    {
+      "queryId": "Q-007",
+      "timestampUtc": "2026-08-05T10:37:32.016Z",
+      "mcpServer": "supabase-production",
+      "projectRef": "expuvcohlcjzvrrauvud",
+      "purpose": "Public catalog visibility of observed tournaments",
+      "exactSql": "SELECT CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS utc_now, count(*)::int AS published_count, count(*) FILTER (WHERE id IN ('tournament-1785921300822','tournament-1785921409840','tournament-1785921550968'))::int AS owner_ids_visible FROM public.public_catalog_tournaments WHERE publication_state = 'published';",
+      "readOnlyProof": "Single-statement SELECT on projection table (not mutation RPC); equivalent to STABLE public_catalog_list_tournaments source",
+      "tablesInspected": ["public_catalog_tournaments"],
+      "rowsReturned": 1,
+      "aggregateResult": {
+        "published_count": 0,
+        "owner_ids_visible": 0
+      },
+      "piiHandling": "Counts only",
+      "mutationCount": 0,
+      "status": "PASS",
+      "finding": "No published public catalog tournaments; owner IDs not publicly visible"
+    }
+  ],
+  "supplementarySelects": [
+    {
+      "purpose": "Text-scan owner IDs across club_data_v3",
+      "utc": "2026-08-05T10:36:45.246Z",
+      "result": { "club_blob_rows": 1, "hit_daily": 0, "hit_internal": 0, "hit_official": 0 },
+      "mutationCount": 0
+    },
+    {
+      "purpose": "Sole blob tournament array metadata",
+      "utc": "2026-08-05T10:37:14.515Z",
+      "result": {
+        "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "venue_id": "venue-prod-main",
+        "version": 1,
+        "tournaments_type": "array",
+        "tournaments_len": 0
+      },
+      "mutationCount": 0
+    },
+    {
+      "purpose": "Club-to-tenant and blob venue join for ACCC",
+      "utc": "2026-08-05T10:37:56.307Z",
+      "result": {
+        "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+        "tenant_id": "venue-prod-main",
+        "blob_venue_id": "venue-prod-main",
+        "status": "active"
+      },
+      "mutationCount": 0
+    },
+    {
+      "purpose": "tournament_match_live rows for owner IDs",
+      "utc": "2026-08-05T10:37:49.856Z",
+      "result": { "match_live_rows": 0 },
+      "mutationCount": 0
+    }
+  ],
+  "forbiddenOperations": [
+    "INSERT", "UPDATE", "DELETE", "UPSERT", "TRUNCATE", "DDL",
+    "apply_migration", "mutation RPC"
+  ]
+}

@@ -1,0 +1,159 @@
+{
+  "workstream": "tournament-production-remediation",
+  "auditDate": "2026-08-05",
+  "finalVerdict": "TOURNAMENT_PRODUCTION_AUDIT_COMPLETE_READY_FOR_IMPLEMENTATION",
+  "productionGo": "NO",
+  "productionMutations": 0,
+  "ownerAuthorization": "GO_TOURNAMENT_PRODUCTION_READ_ONLY_QUERY_AUDIT=YES",
+  "mcpServerUsed": "supabase-production",
+  "connectedProjectRef": "expuvcohlcjzvrrauvud",
+  "readOnlyModeProven": true,
+  "canonicalEvidenceAuthority": "docs/v5/qa-evidence/tournament-production-remediation",
+  "mcpConfigCommitEligibility": "NO",
+  "mcpConfigNote": "LOCAL_ONLY_NOT_COMMIT_ELIGIBLE — .cursor/mcp.json working tree change must not be staged or committed",
+  "authoritativeProductionQueryTransport": {
+    "transport": "supabase-production MCP",
+    "project_ref": "expuvcohlcjzvrrauvud",
+    "read_only": true,
+    "features": "database",
+    "localCredentialScriptUsed": false,
+    "localCredentialScriptPath": "scripts/tournament-production-readonly-audit.mjs",
+    "auditScriptCommitEligibility": "NO_LOCAL_AUDIT_HELPER"
+  },
+  "screenshotCommitPolicy": {
+    "originalCount": 6,
+    "evidenceClassification": "LOCAL_EVIDENCE_ONLY",
+    "commitEligibility": "NO_PENDING_REDACTION",
+    "stageEligibility": "NO",
+    "originalFileModified": "NO",
+    "piiPresent": "YES",
+    "commitEligibleCount": 0,
+    "redactedDerivativesCreatedThisIteration": false
+  },
+  "remediationPlanSequence": [
+    "WP1_PRESERVE_AND_EXPORT_BROWSER_LOCAL_TOURNAMENTS",
+    "WP2_ESTABLISH_CLOUD_TOURNAMENT_DURABLE_AUTHORITY",
+    "WP3_MIGRATE_OR_RECONCILE_EXISTING_LOCAL_ONLY_TOURNAMENTS",
+    "WP4_PROPAGATE_TENANT_CLUB_AND_VENUE_SCOPE",
+    "WP5_ELIMINATE_DUAL_WRITERS_AND_DUAL_READERS",
+    "WP6_CONTROLLED_LEGACY_ROUTE_MIGRATION",
+    "WP7_COMPLETE_RBAC_AND_TENANT_ISOLATION",
+    "WP8_PRODUCTION_SAFE_ROLLOUT_AND_ROLLBACK"
+  ],
+  "remediationPlanFirstWorkPackage": "WP1_PRESERVE_AND_EXPORT_BROWSER_LOCAL_TOURNAMENTS",
+  "independentReviewStatus": "PRIOR_FAILS_PRESERVED_COUNTER_RECONCILIATION_AWAITING_REREVIEW",
+  "priorIndependentVerdict": "TOURNAMENT_PRODUCTION_AUDIT_INDEPENDENT_REVIEW_FAIL_NO_COMMIT",
+  "priorIndependentRereviewVerdict": "TOURNAMENT_PRODUCTION_AUDIT_INDEPENDENT_REREVIEW_FAIL_NO_COMMIT",
+  "counters": {
+    "routesInventoried": 54,
+    "primaryRouteClassification": {
+      "CANONICAL_ROUTES": 8,
+      "LEGACY_ROUTES": 46,
+      "DUPLICATE_ROUTES": 0,
+      "SHADOW_ROUTES": 0,
+      "DEAD_ROUTES": 0,
+      "UNRESOLVED_ROUTES": 0,
+      "PRIMARY_CLASSIFICATION_SUM": 54,
+      "PRIMARY_CLASSIFICATION_SUM_MATCHES_TOTAL": true
+    },
+    "secondaryRouteAttributes": {
+      "DUPLICATE_CONFLICT_ROUTE_COUNT": 7,
+      "ROUTE_CONFLICT_COUNT": 1,
+      "LEGACY_ACTIVE_RUNTIME_COUNT": 4,
+      "COMPATIBILITY_REDIRECT_COUNT": 0,
+      "ENGINE_4_ROUTE_COUNT": 7,
+      "PUBLIC_ROUTE_COUNT": 1,
+      "RELATED_PORTAL_ROUTE_COUNT": 3
+    },
+    "productionObjects": {
+      "PRODUCTION_CONTAINER_ROWS_INSPECTED": 1,
+      "PRODUCTION_DURABLE_TOURNAMENT_RECORDS_INSPECTED": 0,
+      "OWNER_TOURNAMENT_IDS_REQUESTED": 3,
+      "OWNER_TOURNAMENT_IDS_FOUND": 0,
+      "OWNER_TOURNAMENT_IDS_ABSENT": 3,
+      "PRODUCTION_TOURNAMENT_OBJECTS_INSPECTED_DEFINITION": "Count of durable tournament records found in Production cloud stores (club_data_v3.tournaments[] elements + matching team_tournaments / catalog rows). A club_data_v3 container row with tournaments_len=0 is a container inspection, not a tournament object."
+    },
+    "durableWriterCount": 6,
+    "dualWriterCount": 3,
+    "dualWriterPatternIds": ["DW-01", "DW-02", "DW-03"],
+    "dualReaderCount": 4,
+    "localStorageMockFallbackCount": 3,
+    "localStorageMockFallbackPathIds": ["LMF-01", "LMF-02", "LMF-03"],
+    "productionReadOnlyQueryCount": 7,
+    "blockerCount": 0,
+    "warningCount": 5,
+    "defectsOpen": 5
+  },
+  "runtimeAuthorityCounterReconciliation": {
+    "record": "evidence/RUNTIME_AUTHORITY_COUNTER_RECONCILIATION_2026-08-05.json",
+    "dualWriterCorrectionAction": "ADDED_MISSING_EVIDENCE",
+    "localStorageMockFallbackCorrectionAction": "REDUCED_UNSUPPORTED_COUNT",
+    "priorUnsupportedLocalStorageMockFallbackCount": 4,
+    "independentRereviewFailPreserved": "TOURNAMENT_PRODUCTION_AUDIT_INDEPENDENT_REREVIEW_FAIL_NO_COMMIT"
+  },
+  "ownerRootCauses": {
+    "tournament-1785921300822": {
+      "defectId": "TP-UI-001",
+      "classification": "LOCAL_BROWSER_ONLY_OBJECT",
+      "titleAndPlayersSource": {
+        "tournamentTitleReader": "getTournament(activeClubId, tournamentId) → loadClubData → localStorage",
+        "localStorageKeyProven": "pickleball-club-data-v3::{clubId}",
+        "playerListReader": "useClubPairingCandidatePool(activeClubId) — pairing-candidates gateway (club-scoped), not cloud tournament blob",
+        "cloudDurableRecord": false
+      },
+      "whyAcccTenantNotReached": "Daily path never calls resolvePairingScopeTenantId / does not pass tenantId into prepareLivePrivatePairingOptions; club pairing pool does not require tenantId",
+      "sameBrowserRefreshPreserves": true,
+      "otherBrowserOrDeviceRetrieves": false,
+      "dataLossRisk": "HIGH on browser storage clear / device switch — not in Production club_data_v3",
+      "migrationRequirement": "Required before treating Production cloud as SSOT for these IDs"
+    },
+    "tournament-1785921409840": {
+      "defectId": "TP-UI-002",
+      "classification": "LOCAL_BROWSER_ONLY_OBJECT",
+      "titleAndPlayersSource": {
+        "tournamentTitleReader": "getTournament(tournamentClubId, tournamentId) → loadClubData → localStorage",
+        "localStorageKeyProven": "pickleball-club-data-v3::{clubId}",
+        "playerListReader": "resolveTeamTournamentAthleteTenantId + club/tenant candidate pools (34 eligible in screenshot)",
+        "cloudDurableRecord": false
+      },
+      "whyAcccTenantNotReached": "ACCC clubs.tenant_id=venue-prod-main proven in Production; athlete pool may resolve tenant, but handleStartGuidedFlow omits tenantId when calling prepareLivePrivatePairingOptions",
+      "sameBrowserRefreshPreserves": true,
+      "otherBrowserOrDeviceRetrieves": false,
+      "dataLossRisk": "HIGH",
+      "migrationRequirement": "Required"
+    },
+    "tournament-1785921550968": {
+      "defectId": "TP-UI-003",
+      "classification": "LOCAL_BROWSER_ONLY_OBJECT",
+      "titleAndPlayersSource": {
+        "tournamentTitleReader": "getTournament(activeClubId, tournamentId) → loadClubData → localStorage",
+        "localStorageKeyProven": "pickleball-club-data-v3::{clubId}",
+        "playerListReader": "useTenantPairingCandidatePool(tenantId) where tenantId may be resolveTenantIdForClub → default-tenant",
+        "cloudDurableRecord": false
+      },
+      "whyAcccTenantNotReached": "Official memo uses resolveTenantIdForClub(activeClubId) which falls back to default-tenant from local club registry; Production clubs.tenant_id=venue-prod-main is not consumed by that path; tenant pool rejects placeholder",
+      "sameBrowserRefreshPreserves": true,
+      "otherBrowserOrDeviceRetrieves": false,
+      "dataLossRisk": "HIGH",
+      "migrationRequirement": "Required"
+    }
+  },
+  "acccTenantId": "venue-prod-main",
+  "localStorageKeysConfirmed": [
+    "pickleball-club-data-v3::{clubId}"
+  ],
+  "rbacResult": "PARTIALLY_PROVEN",
+  "tenantIsolationResult": "PARTIALLY_PROVEN",
+  "readyForImplementation": true,
+  "blockers": [],
+  "warnings": [
+    "Owner tournament objects exist only in browser localStorage — not Production club_data_v3",
+    "updateTournament does not require resolved tenantId at service layer",
+    "UI pairing actions not disabled when tenant scope missing",
+    "Engine 4.0 /tournaments/:id/* lacks explicit RouteAccessGate prefix",
+    "All six original Owner screenshots are LOCAL_EVIDENCE_ONLY / commitEligibility=NO_PENDING_REDACTION — not part of Git commit package",
+    "HIDING_THE_MISSING_TENANT_BANNER_IS_NOT_A_VALID_FIRST_REMEDIATION — remediation begins at WP1 preserve/export",
+    "PRODUCTION_DATA_MIGRATION_REQUIRES_SEPARATE_OWNER_GO",
+    "Runtime authority counters reconciled 2026-08-05: DUAL_WRITER_COUNT=3 (DW-01..DW-03); LOCALSTORAGE_MOCK_FALLBACK_COUNT=3 (LMF-01..LMF-03; prior 4 unsupported)"
+  ]
+}

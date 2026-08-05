@@ -1,0 +1,34 @@
+{
+  "recordType": "INDEPENDENT_REREVIEW",
+  "reviewedAt": "2026-08-05T18:55:00+07:00",
+  "independentVerdict": "TOURNAMENT_PRODUCTION_AUDIT_INDEPENDENT_REREVIEW_FAIL_NO_COMMIT",
+  "historicalFactPreserved": true,
+  "priorIndependentVerdict": "TOURNAMENT_PRODUCTION_AUDIT_INDEPENDENT_REVIEW_FAIL_NO_COMMIT",
+  "commitGateCorrectionVerdict": "TOURNAMENT_AUDIT_COMMIT_GATE_CORRECTION_COMPLETE_READY_FOR_REREVIEW",
+  "productionGo": "NO",
+  "productionMutations": 0,
+  "passOnCommitGateItems": {
+    "screenshotGovernance": true,
+    "gitExcludeAllSixOriginals": true,
+    "preliminaryRedirectOnly": true,
+    "remediationWp1First": true,
+    "mcpAndAuditScriptExcluded": true,
+    "routeAndProductionCountersReconcile": true,
+    "evidenceTestsPass": true
+  },
+  "failFindings": [
+    {
+      "id": "IR-RR-001",
+      "severity": "HIGH",
+      "title": "dualWriterCount asserted 3 but only 2 patterns enumerated",
+      "detail": "TOURNAMENT_RUNTIME_AUTHORITY_MATRIX.json dualWriterPatterns length was 2 while counters asserted dualWriterCount=3."
+    },
+    {
+      "id": "IR-RR-002",
+      "severity": "HIGH",
+      "title": "localStorageMockFallbackCount asserted 4 but only 3 paths enumerated in RUNTIME_TRACE",
+      "detail": "Audit report/matrix asserted localStorageMockFallbackCount=4 while RUNTIME_TRACE counts.localStorageMockFallbackPaths=3 with no enumerated path array."
+    }
+  ],
+  "note": "This FAIL is preserved. Subsequent evidence-only reconciliation is recorded in RUNTIME_AUTHORITY_COUNTER_RECONCILIATION_2026-08-05.json; a further independent re-review is required."
+}

@@ -1,0 +1,102 @@
+{
+  "recordType": "RUNTIME_AUTHORITY_COUNTER_RECONCILIATION",
+  "reconciledAt": "2026-08-05T19:10:00+07:00",
+  "productionGo": "NO",
+  "productionMutations": 0,
+  "productionQueriesRerun": 0,
+  "implementationChanges": 0,
+  "reReviewRequired": true,
+  "commitStillNotPerformed": true,
+  "priorFailures": {
+    "independentReviewFail": "TOURNAMENT_PRODUCTION_AUDIT_INDEPENDENT_REVIEW_FAIL_NO_COMMIT",
+    "commitGateCorrection": "TOURNAMENT_AUDIT_COMMIT_GATE_CORRECTION_COMPLETE_READY_FOR_REREVIEW",
+    "independentRereviewFail": "TOURNAMENT_PRODUCTION_AUDIT_INDEPENDENT_REREVIEW_FAIL_NO_COMMIT",
+    "independentRereviewRecord": "evidence/INDEPENDENT_REREVIEW_2026-08-05.json"
+  },
+  "countingRules": {
+    "dualWriterPattern": "Two or more independently reachable Production runtime paths can write the same business object or equivalent durable representations; each path source-traced; not merely two functions calling the same single writer; exclude test-only, migration-only, unreachable code.",
+    "localStorageMockFallbackPath": "Production-reachable runtime can read/write localStorage, browser persistence, mock data, or a fallback authority; distinct source file+entry+behavior; repeated callers of the same underlying mechanism are not double-counted unless independently selectable authorities. Same localStorage key is not counted once as reader and once as writer."
+  },
+  "IR-RR-001": {
+    "finding": "dualWriterCount=3 asserted, only 2 patterns enumerated",
+    "originalAssertedCounter": 3,
+    "originallyEnumeratedPatterns": ["blob_vs_cloud_club_sync", "engine4_settings_vs_events_direct"],
+    "sourceReviewPerformed": [
+      "teamTournamentUiOrchestrator.patchTeamData (blob writes in legacy/shadow)",
+      "shadowTeamTournamentRepository.delegateMutation → cloud team_tournament_* RPCs",
+      "teamTournamentDataMode mapLegacyFlagsToMode → SHADOW when VITE_TEAM_TOURNAMENT_SUPABASE=true",
+      "Q-006 team_tournaments total=56",
+      "referee direct fallback rejected (isSecureRuntime true on PROD)",
+      "competition_ssot vs match_live mutually exclusive flags",
+      "Engine 4.0 cloud tables supabaseWired=false"
+    ],
+    "finalProvenPatterns": [
+      {
+        "patternId": "DW-01",
+        "name": "blob_vs_cloud_club_sync",
+        "action": "RETAINED_WITH_FULL_TRACE"
+      },
+      {
+        "patternId": "DW-02",
+        "name": "engine4_settings_vs_events_direct",
+        "action": "RETAINED_WITH_FULL_TRACE"
+      },
+      {
+        "patternId": "DW-03",
+        "name": "team_tournament_blob_vs_cloud_rpc",
+        "action": "ADDED_MISSING_EVIDENCE",
+        "businessObject": "Team tournament aggregate (teamData blob vs team_tournaments / RPCs)"
+      }
+    ],
+    "finalAuthoritativeCounter": 3,
+    "correctionAction": "ADDED_MISSING_EVIDENCE",
+    "note": "Prior count of 3 was directionally correct but unsupported by enumeration; DW-03 now fully traced."
+  },
+  "IR-RR-002": {
+    "finding": "localStorageMockFallbackCount=4 asserted, only 3 paths in RUNTIME_TRACE",
+    "originalAssertedCounter": 4,
+    "originallyEnumeratedPathsInRuntimeTrace": 3,
+    "originallyEnumeratedPathDetails": "RUNTIME_TRACE previously asserted count=3 without stable IDs/array; matrix implied four candidates including referee !isSecureRuntime",
+    "sourceReviewPerformed": [
+      "clubStorage pickleball-club-data-v3::{clubId}",
+      "resolveTenantIdForClub → DEFAULT_TENANT_ID",
+      "publicTournamentsRankingsDataSource allowMockFallback + MOCK_TOURNAMENTS",
+      "isRefereeDirectFallbackAllowed / isSecureRuntime (PROD always secure)",
+      "sessionStorage score drafts (rejected — ephemeral)",
+      "findTournamentClubId (rejected — same as LMF-01)"
+    ],
+    "finalProvenPaths": [
+      {
+        "pathId": "LMF-01",
+        "mechanismType": "LOCALSTORAGE",
+        "keyOrFallbackValue": "pickleball-club-data-v3::{clubId}"
+      },
+      {
+        "pathId": "LMF-02",
+        "mechanismType": "FALLBACK",
+        "keyOrFallbackValue": "default-tenant"
+      },
+      {
+        "pathId": "LMF-03",
+        "mechanismType": "MOCK",
+        "keyOrFallbackValue": "MOCK_TOURNAMENTS"
+      }
+    ],
+    "rejectedFourthCandidate": {
+      "candidate": "referee_direct_table_write_when_not_secure_runtime",
+      "reason": "Not Production-reachable; isSecureRuntime() true on Production builds"
+    },
+    "finalAuthoritativeCounter": 3,
+    "correctionAction": "REDUCED_UNSUPPORTED_COUNT",
+    "note": "Prior value 4 double-counted/asserted an unenumerated Production-unreachable referee fallback."
+  },
+  "finalAuthoritativeCounters": {
+    "DUAL_WRITER_COUNT": 3,
+    "DUAL_WRITER_PATTERN_IDS": ["DW-01", "DW-02", "DW-03"],
+    "LOCALSTORAGE_MOCK_FALLBACK_COUNT": 3,
+    "LOCALSTORAGE_MOCK_FALLBACK_PATH_IDS": ["LMF-01", "LMF-02", "LMF-03"],
+    "DUAL_READER_COUNT": 4,
+    "DURABLE_WRITER_COUNT": 6
+  },
+  "proposedCorrectionVerdict": "TOURNAMENT_RUNTIME_AUTHORITY_COUNTER_RECONCILIATION_COMPLETE_READY_FOR_REREVIEW"
+}

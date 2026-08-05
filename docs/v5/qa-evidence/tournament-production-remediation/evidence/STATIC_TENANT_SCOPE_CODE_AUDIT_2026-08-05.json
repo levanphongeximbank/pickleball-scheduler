@@ -1,0 +1,139 @@
+{
+  "workstream": "tournament-production-remediation",
+  "auditDate": "2026-08-05",
+  "canonicalEvidenceAuthority": "docs/v5/qa-evidence/tournament-production-remediation",
+  "auditType": "STATIC_CODE_INSPECTION",
+  "productionMutations": 0,
+  "router": {
+    "file": "src/router.jsx",
+    "legacyRoutes": [
+      "/tournament/daily/:tournamentId → DailyPlaySetup",
+      "/tournament/internal/:tournamentId → InternalTournamentSetup",
+      "/tournament/official/:tournamentId → OfficialTournamentSetup"
+    ],
+    "canonicalRoutes": [
+      "/tournaments/:tournamentId/engine → TournamentEnginePage",
+      "/tournaments/:tournamentId/seed → TournamentEnginePage",
+      "/tournaments/:tournamentId/draw → TournamentEnginePage",
+      "/tournaments/:tournamentId/schedule → TournamentEnginePage",
+      "/tournaments/:tournamentId/courts → TournamentEnginePage",
+      "/tournaments/:tournamentId/ranking → TournamentEnginePage",
+      "/tournaments/:tournamentId/logs → TournamentEnginePage"
+    ],
+    "redirectShimObserved": false,
+    "dispositionExpected": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION"
+  },
+  "tenantResolution": {
+    "resolveTenantIdForClub": {
+      "file": "src/features/tenant/guards/tenantGuard.js",
+      "behavior": "Returns tenantIdFromRecord(club) || DEFAULT_TENANT_ID (default-tenant)",
+      "risk": "Yields placeholder when club lacks explicit tenant"
+    },
+    "resolvePairingScopeTenantId": {
+      "file": "src/features/pairing-candidates/pairingScopeResolver.js",
+      "behavior": "Rejects placeholder via isPlaceholderTenantId; returns null instead of default-tenant"
+    },
+    "resolveLivePairingScope": {
+      "file": "src/features/private-pairing-rules/runtime/resolveLivePairingScope.js",
+      "behavior": "Requires tenantId from input.tenantId || tournament.tenantId || currentTenantId; fails closed with diagnostic message"
+    },
+    "loadTenantPairingCandidatePool": {
+      "file": "src/features/pairing-candidates/screenCandidateAdapters.js",
+      "behavior": "Rejects placeholder/missing tenantId with WRONG_SCOPE"
+    }
+  },
+  "pageLoaders": {
+    "DailyPlaySetup": {
+      "file": "src/pages/tournament/DailyPlaySetup.jsx",
+      "clubScope": "activeClubId only",
+      "queryClubFallback": false,
+      "findTournamentClubId": false,
+      "tenantHook": "useClubPairingCandidatePool(activeClubId) — no tenantId passed",
+      "prepareLivePrivatePairingOptionsWiring": "Invoked via daily fair-match path; scope inputs omit tenantId"
+    },
+    "InternalTournamentSetup": {
+      "file": "src/pages/tournament/InternalTournamentSetup.jsx",
+      "clubScope": "?club= || findTournamentClubId || activeClubId",
+      "playerTenantId": "resolveTeamTournamentAthleteTenantId (strict resolver)",
+      "prepareLivePrivatePairingOptionsWiring": "handleStartGuidedFlow passes clubId, tournamentId only — omits tenantId, currentTenantId, tournament",
+      "referenceGap": "TeamTournamentSetup passes full tenant scope at saveDraft"
+    },
+    "OfficialTournamentSetup": {
+      "file": "src/pages/tournament/OfficialTournamentSetup.jsx",
+      "clubScope": "activeClubId only",
+      "queryClubFallback": false,
+      "tenantIdMemo": "tournament?.tenantId || resolveTenantIdForClub(activeClubId) || currentTenantId",
+      "tenantPoolHook": "useTenantPairingCandidatePool(tenantId) — fails when resolveTenantIdForClub returns default-tenant",
+      "prepareLivePrivatePairingOptionsWiring": "handleStartGuidedFlow passes clubId: activeClubId, tournamentId only"
+    },
+    "TeamTournamentSetup": {
+      "file": "src/pages/tournament/TeamTournamentSetup.jsx",
+      "note": "Reference implementation — passes tenantId, clubFromQuery, tournament, currentTenantId to prepareLivePrivatePairingOptions"
+    },
+    "TournamentEnginePage": {
+      "file": "src/features/tournament-engine/hooks/useTournamentEngine.js",
+      "clubScope": "activeClubId only",
+      "tenantContextUsage": false,
+      "clubDiscovery": false
+    }
+  },
+  "clubToTenantMapping": {
+    "tournamentRecord": "src/models/tournament/tournament.js — clubId required; tenantId optional on normalize",
+    "clubRecord": "src/models/club.js — tenantId ↔ venueId mirrored",
+    "venueRegistry": "src/features/tenant/services/tenantService.js — loadVenues / getTenantById",
+    "clubBlobScan": "src/features/club/services/clubTournamentBridge.js — findTournamentClubId, resolveTournamentClubId"
+  },
+  "urlQueryFallback": {
+    "clubParamSupported": ["InternalTournamentSetup", "TeamTournamentSetup", "TeamPortal", "TeamRefereePortal"],
+    "clubParamNotSupported": ["DailyPlaySetup", "OfficialTournamentSetup", "TournamentEnginePage"]
+  },
+  "defaultTenantUsage": {
+    "constant": "DEFAULT_TENANT_ID = default-tenant in src/models/tenant.js",
+    "resolveTenantIdForClubFallback": true,
+    "pairingScopeRejectsPlaceholder": true,
+    "inconsistency": "Official tenant memo may pass default-tenant to hooks that reject it"
+  },
+  "contextProviders": {
+    "mainLayoutStack": "TenantProvider → ClubProvider → SeasonProvider → TenantGate",
+    "legacyPages": "useClub + useTenant; blob via getTournament(activeClubId, id)",
+    "engine40": "useTournamentEngine — useClub + useAuth; no useTenant; no findTournamentClubId"
+  },
+  "readerFallbackChains": {
+    "pairingCandidates": "createPairingCandidateService → listSelectPlayersScopeRows → pairingEligibilityEvaluator",
+    "tenantWidePool": "listClubsForPairingTenant → per-club loadClubPairingCandidatePool",
+    "privatePairingRules": "prepareLivePrivatePairingOptions → resolveLivePairingScope → loadActiveRulesForLiveScope",
+    "legacyBlobFallbackInPairing": "Explicitly forbidden in pairing path comments/tests"
+  },
+  "mutationGuards": {
+    "resolveLivePairingScope": "ok:false when tenantId missing — blocks rule load",
+    "loadTenantPairingCandidatePool": "ok:false for placeholder tenant",
+    "assertTenantForMutation": "clubTenantService.js — club create/RBAC mutations",
+    "assertTournamentAccess": "tournamentService.js — guardRecordTenant when tenantId passed",
+    "updateTournamentGap": "updateTournament / daily fair-match mutations do not require resolved tenant at service layer"
+  },
+  "uiDisableWhenTenantMissing": {
+    "internalPlayerPick": "Disabled on empty selection, not on missing tenant",
+    "officialAllClubsPicker": "Not disabled; shows empty list + error",
+    "guidedFlowPairing": "Buttons remain enabled; error on click via prepareLivePrivatePairingOptions",
+    "dailyFairMatch": "Not proactively disabled",
+    "tournamentManageGate": "Blocks page on RBAC/tenant mismatch for gated routes"
+  },
+  "missingTenantCanReachWriter": {
+    "confirmed": false,
+    "staticFinding": "Pairing/private-rules path fails closed; tournament blob updateTournament may still accept writes scoped by clubId only",
+    "requiresRuntimeTrace": true
+  },
+  "genderNormalization": {
+    "adapters": ["normalizePlayerGender in profileAdapter, athleteAdapter, blobPlayerAdapter"],
+    "pairingEngines": ["normalizeGender in ai/pairing.js, private-pairing-rules/runtime/generateTeamCandidates.js"],
+    "uiDisplayGap": "Raw gender values may display when list renders source field without normalization layer",
+    "defectLink": "TP-UI-005 dependency only — do not expand scope"
+  },
+  "hypothesesLinkedToDefects": {
+    "TP-UI-001": "Daily legacy runtime + prepareLivePrivatePairingOptions missing tenant wiring",
+    "TP-UI-002": "Dual reader — athlete pool resolves tenant; guided flow does not pass it",
+    "TP-UI-003": "resolveTenantIdForClub default-tenant rejected by tenant-wide pool loader",
+    "TP-UI-004": "Parallel route families without redirect; Engine 4.0 tenant-blind",
+    "TP-UI-005": "Display normalization gap — dependency record only"
+  }
+}

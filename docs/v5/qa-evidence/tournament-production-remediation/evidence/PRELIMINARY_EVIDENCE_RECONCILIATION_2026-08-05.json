@@ -1,0 +1,138 @@
+{
+  "recordType": "PRELIMINARY_EVIDENCE_RECONCILIATION",
+  "reconciledAt": "2026-08-05T18:20:00+07:00",
+  "preliminaryDirectory": "docs/tournament-production-remediation/",
+  "canonicalEvidenceAuthority": "docs/v5/qa-evidence/tournament-production-remediation/",
+  "canonicalEvidenceAuthorityCount": 1,
+  "policy": {
+    "preliminaryIsAuthoritative": false,
+    "auditCountersMaintainedInPreliminary": false,
+    "originalScreenshotsPartOfGitCommit": false
+  },
+  "screenshotSha256Verification": [
+    {
+      "filename": "image(379).png",
+      "sha256": "55126ba868b23095ec604304043eaf255cf597338a8a83bc33d6c7572fd4320b",
+      "preliminaryMatchesCanonical": true
+    },
+    {
+      "filename": "image(380).png",
+      "sha256": "0a9b9ccab7507c175b4412439880c99097e65f7f6da66360cb5f3eaa515c5b86",
+      "preliminaryMatchesCanonical": true
+    },
+    {
+      "filename": "image(381).png",
+      "sha256": "3bcc2b7a9bef08b9381bdce8eb3d8e4be69beac995f6082c54fbfe172c9a9b7f",
+      "preliminaryMatchesCanonical": true
+    },
+    {
+      "filename": "image(382).png",
+      "sha256": "6014cdf4798f36e50d7fd692a978ee94e91b9c3d9ca38010f1c2c54e0491ac5b",
+      "preliminaryMatchesCanonical": true
+    },
+    {
+      "filename": "image(383).png",
+      "sha256": "7afead214366e97e1e2b8eb052689875b72a75b87ec8cc99b76966b5b9dd9bcc",
+      "preliminaryMatchesCanonical": true
+    },
+    {
+      "filename": "image(384).png",
+      "sha256": "38369a94f4dc182d4d64ecfa68795d1ca5f5c66531dedfd8fd57afad2935f1bf",
+      "preliminaryMatchesCanonical": true
+    }
+  ],
+  "allScreenshotShaMatches": true,
+  "canonicalRequiredEvidencePresent": true,
+  "removedPreliminaryDuplicates": [
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/00_BASELINE_AND_SAFETY.md",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/00_BASELINE_AND_SAFETY.md",
+      "disposition": "REMOVED_AFTER_CANONICAL_SUPERSEDES"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/01_OWNER_REPORTED_DEFECTS_2026-08-05.md",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/01_OWNER_REPORTED_DEFECTS_2026-08-05.md",
+      "disposition": "REMOVED_AFTER_CANONICAL_SUPERSEDES"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/evidence/OWNER_REPORTED_DEFECTS_2026-08-05.json",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/evidence/OWNER_REPORTED_DEFECTS_2026-08-05.json",
+      "disposition": "REMOVED_AFTER_CANONICAL_SUPERSEDES"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/evidence/PRODUCTION_MUTATION_LEDGER_2026-08-05.json",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/evidence/PRODUCTION_MUTATION_LEDGER_2026-08-05.json",
+      "disposition": "REMOVED_AFTER_CANONICAL_SUPERSEDES"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/evidence/SCREENSHOT_INGEST_STATUS_2026-08-05.json",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/evidence/SCREENSHOT_INGEST_STATUS_2026-08-05.json",
+      "disposition": "REMOVED_AFTER_CANONICAL_SUPERSEDES"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/evidence/SCREENSHOT_MANIFEST_2026-08-05.json",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/evidence/SCREENSHOT_MANIFEST_2026-08-05.json",
+      "disposition": "REMOVED_AFTER_CANONICAL_SUPERSEDES"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/evidence/STATIC_TENANT_SCOPE_CODE_AUDIT_2026-08-05.json",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/evidence/STATIC_TENANT_SCOPE_CODE_AUDIT_2026-08-05.json",
+      "disposition": "REMOVED_AFTER_CANONICAL_SUPERSEDES"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/README.md",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/README.md",
+      "disposition": "REMOVED_AFTER_CANONICAL_SUPERSEDES"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(379).png",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(379).png",
+      "sha256Match": true,
+      "disposition": "REMOVED_DUPLICATE_LOCAL_COPY_CANONICAL_ORIGINAL_PRESERVED"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(380).png",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(380).png",
+      "sha256Match": true,
+      "disposition": "REMOVED_DUPLICATE_LOCAL_COPY_CANONICAL_ORIGINAL_PRESERVED"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(381).png",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(381).png",
+      "sha256Match": true,
+      "disposition": "REMOVED_DUPLICATE_LOCAL_COPY_CANONICAL_ORIGINAL_PRESERVED"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(382).png",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(382).png",
+      "sha256Match": true,
+      "disposition": "REMOVED_DUPLICATE_LOCAL_COPY_CANONICAL_ORIGINAL_PRESERVED"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(383).png",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(383).png",
+      "sha256Match": true,
+      "disposition": "REMOVED_DUPLICATE_LOCAL_COPY_CANONICAL_ORIGINAL_PRESERVED"
+    },
+    {
+      "preliminaryPath": "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(384).png",
+      "canonicalCounterpart": "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(384).png",
+      "sha256Match": true,
+      "disposition": "REMOVED_DUPLICATE_LOCAL_COPY_CANONICAL_ORIGINAL_PRESERVED"
+    }
+  ],
+  "retainedPreliminaryFiles": [
+    "docs/tournament-production-remediation/CANONICAL_REDIRECT.md"
+  ],
+  "methodsNotUsed": [
+    "git clean",
+    "wildcard repository cleanup",
+    "recursive deletion outside docs/tournament-production-remediation/"
+  ],
+  "canonicalScreenshotOriginalsDeleted": false,
+  "postReconciliationExpected": {
+    "PRELIMINARY_NON_REDIRECT_FILE_COUNT": 0,
+    "PRELIMINARY_SCREENSHOT_COUNT": 0,
+    "CANONICAL_EVIDENCE_AUTHORITY_COUNT": 1
+  }
+}

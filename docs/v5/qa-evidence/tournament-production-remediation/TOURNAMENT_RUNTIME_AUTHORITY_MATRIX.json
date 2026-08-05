@@ -1,0 +1,292 @@
+{
+  "workstream": "tournament-production-remediation",
+  "auditDate": "2026-08-05",
+  "countingRules": {
+    "dualWriterPattern": "Two or more independently reachable Production runtime paths can write the same business object or equivalent durable representations; each path source-traced through handler/service/RPC/table/API; not merely two functions calling the same single writer; exclude test-only, migration-only, and unreachable code.",
+    "localStorageMockFallbackPath": "Production-reachable runtime can read from or write to localStorage, browser persistence, mock data, or a fallback authority; each path has distinct source file, entry point, and behavior; repeated callers of the same underlying mechanism are not double-counted unless independently selectable authorities. Reader+writer of the same localStorage key count as one LOCALSTORAGE authority unless separately selectable."
+  },
+  "liveProductionReconciliation": {
+    "date": "2026-08-05",
+    "mcpServer": "supabase-production",
+    "projectRef": "expuvcohlcjzvrrauvud",
+    "club_data_v3_tournament_objects": 0,
+    "ownerIdsPresentInCloud": false,
+    "acccClubTenantId": "venue-prod-main",
+    "conclusion": "Individual tournament durable authority for Owner defects is client localStorage blob, not Production club_data_v3. Cloud clubs.tenant_id is healthy for ACCC.",
+    "localStorageMockFallbackCount": 3,
+    "dualReaderCount": 4,
+    "dualWriterCount": 3,
+    "durableWriterCount": 6,
+    "primaryRouteClassificationMatchesTotal": true,
+    "counterReconciliationAt": "2026-08-05T19:10:00+07:00",
+    "counterReconciliationRecord": "evidence/RUNTIME_AUTHORITY_COUNTER_RECONCILIATION_2026-08-05.json"
+  },
+  "entries": [
+    {
+      "domain": "individual_tournament_blob",
+      "classification": "LEGACY_ACTIVE_RUNTIME",
+      "pageTypes": ["daily", "internal", "official", "bracket", "config", "portal"],
+      "productionReader": "loadClubData(clubId).tournaments[] → getTournament",
+      "productionWriter": "saveClubData via updateTournament/createTournament",
+      "durableStore": "localStorage pickleball-club-data-v3::{clubId}",
+      "cloudSync": "syncClubToCloud → club_data_v3 (full blob push, debounced)",
+      "engine40Overlap": "Same blob; engineV4 nested in settings",
+      "redirectToCanonical": false,
+      "defectLinks": ["TP-UI-001", "TP-UI-002", "TP-UI-003", "TP-UI-004"]
+    },
+    {
+      "domain": "tournament_engine_4",
+      "classification": "DUPLICATE_RUNTIME",
+      "routes": "/tournaments/:id/*",
+      "productionReader": "getTournament(activeClubId, id) → settings.engineV4",
+      "productionWriter": "updateTournament({ settings: { engineV4 } }); applyEnginePlanToEvent → events[]",
+      "durableStore": "Same club blob",
+      "supabaseTablesPlanned": ["tournament_participants", "tournament_groups", "tournament_matches", "tournament_rankings", "tournament_engine_runs"],
+      "supabaseWired": false,
+      "redirectFromLegacy": false,
+      "defectLinks": ["TP-UI-004"]
+    },
+    {
+      "domain": "team_tournament",
+      "classification": "SHADOW_DUAL_PATH",
+      "modes": {
+        "legacy": "blob read; setup mutations NOT_IMPLEMENTED in repository",
+        "shadow": "blob read + cloud compare; cloud write for commands; blob write for setup patchTeamData",
+        "cloud_primary": "cloud read/write (env-gated; TT-1B blocked at runtime)"
+      },
+      "envFlags": ["VITE_TEAM_TOURNAMENT_DATA_MODE", "VITE_TEAM_TOURNAMENT_SUPABASE"],
+      "productionReader": "team_tournament_get_setup OR blob teamData",
+      "productionWriter": "team_tournament_* command RPCs + blob patchTeamData in shadow/legacy",
+      "referenceImplementation": "TeamTournamentSetup — full tenant scope wiring",
+      "dualWriterPatternId": "DW-03"
+    },
+    {
+      "domain": "pairing_candidates",
+      "classification": "CANONICAL_GATEWAY",
+      "readers": ["loadClubPairingCandidatePool", "loadTenantPairingCandidatePool"],
+      "tenantResolverStrict": "resolvePairingScopeTenantId — rejects default-tenant",
+      "tenantResolverPermissive": "resolveTenantIdForClub — falls back to default-tenant",
+      "defectLinks": ["TP-UI-001", "TP-UI-002", "TP-UI-003"]
+    },
+    {
+      "domain": "private_pairing_rules",
+      "classification": "CANONICAL_GATEWAY",
+      "scopeResolver": "resolveLivePairingScope",
+      "preparePath": "prepareLivePrivatePairingOptions",
+      "failClosedOnMissingTenant": true,
+      "uiWiringGap": "Internal/Official/Daily omit tenantId in prepareLivePrivatePairingOptions calls",
+      "defectLinks": ["TP-UI-001", "TP-UI-002"]
+    },
+    {
+      "domain": "referee_individual",
+      "classification": "RPC_SCOPED",
+      "table": "tournament_match_live",
+      "readRpc": "referee_get_match_by_token",
+      "writeRpc": "referee_update_match_score",
+      "devFallback": "direct table write when !isSecureRuntime — NOT Production-reachable (isSecureRuntime true on PROD builds)",
+      "productionReachableDirectFallback": false
+    },
+    {
+      "domain": "competition_ssot",
+      "classification": "HARD_CUTOVER_WRITER",
+      "finalizeRpc": "competition_ssot_finalize_match_result",
+      "forbiddenFallback": "direct tournament_match_live write in secure runtime"
+    },
+    {
+      "domain": "public_catalog",
+      "classification": "RPC_READONLY",
+      "reader": "public_catalog_list_tournaments",
+      "mockFallbackPathId": "LMF-03",
+      "forbiddenFallback": "mockPublicData as SoT under hard cutover — still Production-reachable when public source allows mock"
+    }
+  ],
+  "dualReaderPatterns": [
+    {
+      "patternId": "DR-01",
+      "name": "internal_athlete_pool_vs_pairing_scope",
+      "readerA": "resolveTeamTournamentAthleteTenantId → listCandidates",
+      "readerB": "resolveLivePairingScope (no tenant passed from UI)",
+      "symptom": "Players load; pairing fails with missing tenantId",
+      "defect": "TP-UI-002"
+    },
+    {
+      "patternId": "DR-02",
+      "name": "official_tenant_resolver_split",
+      "readerA": "resolveTenantIdForClub → default-tenant",
+      "readerB": "loadTenantPairingCandidatePool rejects placeholder",
+      "symptom": "Chưa có tenant hợp lệ để tải Toàn bộ CLB",
+      "defect": "TP-UI-003"
+    },
+    {
+      "patternId": "DR-03",
+      "name": "legacy_setup_vs_engine40",
+      "readerA": "Internal/Official/Daily setup pages → events[]",
+      "readerB": "TournamentEnginePage → settings.engineV4",
+      "symptom": "Same tournament blob, divergent mutation surfaces",
+      "defect": "TP-UI-004"
+    },
+    {
+      "patternId": "DR-04",
+      "name": "team_shadow_blob_cloud",
+      "readerA": "blobTeamTournamentRepository",
+      "readerB": "cloudTeamTournamentRepository",
+      "writeAuthority": "cloud commands + blob setup writes in shadow (see DW-03)"
+    }
+  ],
+  "dualWriterPatterns": [
+    {
+      "patternId": "DW-01",
+      "name": "blob_vs_cloud_club_sync",
+      "businessObject": "Club unified blob (tournaments[], players, courts, settings)",
+      "writerAEntryPoint": "createTournament / updateTournament / deleteTournament UI handlers",
+      "writerAService": "tournamentService → saveClubData",
+      "writerADurableTarget": "localStorage key pickleball-club-data-v3::{clubId}",
+      "writerBEntryPoint": "scheduleClubCloudPush / syncClubToCloud after local save",
+      "writerBService": "clubStorage cloud sync",
+      "writerBDurableTarget": "public.club_data_v3.data (full blob)",
+      "runtimeReachabilityA": "Production-reachable on all legacy/Engine tournament organizer writes",
+      "runtimeReachabilityB": "Production-reachable debounced cloud push when Supabase configured",
+      "sameOrEquivalentBusinessObjectProof": "Both persist the same club schema blob; cloud is async replica of local saveClubData payload",
+      "conflictDescription": "Local SSOT can diverge from cloud if push fails, is delayed, or tenant/club guard differs between local write and cloud push",
+      "sourceEvidence": [
+        "src/domain/tournamentService.js",
+        "src/domain/clubStorage.js"
+      ],
+      "classificationConfidence": "HIGH",
+      "risk": "Version skew if tenant guard fails on push"
+    },
+    {
+      "patternId": "DW-02",
+      "name": "engine4_settings_vs_events_direct",
+      "businessObject": "Individual tournament bracket/plan state (same tournament id)",
+      "writerAEntryPoint": "TournamentEnginePage / useTournamentEngine persistence",
+      "writerAService": "updateTournament({ settings: { engineV4 } })",
+      "writerADurableTarget": "club blob tournaments[].settings.engineV4",
+      "writerBEntryPoint": "Daily/Internal/Official setup pages (events[], groupings, schedules)",
+      "writerBService": "updateTournament patching events[] / related fields",
+      "writerBDurableTarget": "club blob tournaments[].events[] (and sibling setup fields)",
+      "runtimeReachabilityA": "Production-reachable via /tournaments/:id/* Engine 4.0 routes",
+      "runtimeReachabilityB": "Production-reachable via legacy /tournament/daily|internal|official/:id without redirect",
+      "sameOrEquivalentBusinessObjectProof": "Both mutate the same tournament record in pickleball-club-data-v3::{clubId}; engine plan vs events[] represent bracket/schedule authority",
+      "conflictDescription": "Parallel mutation surfaces without shared writer gate → inconsistent bracket/plan state (TP-UI-004)",
+      "sourceEvidence": [
+        "src/features/tournament (engine adapters)",
+        "src/pages/tournament/InternalTournamentSetup.jsx",
+        "src/pages/tournament/OfficialTournamentSetup.jsx",
+        "src/pages/tournament/DailyPlaySetup.jsx",
+        "src/domain/tournamentService.js"
+      ],
+      "classificationConfidence": "HIGH",
+      "risk": "Inconsistent bracket state",
+      "defect": "TP-UI-004"
+    },
+    {
+      "patternId": "DW-03",
+      "name": "team_tournament_blob_vs_cloud_rpc",
+      "businessObject": "Team tournament aggregate (teams, matchups, lineups, standings, setup teamData)",
+      "writerAEntryPoint": "TeamTournamentSetup.saveTeamData / useTeamTournamentPage.patchTeamData / persistSetupTeamData (non-cloud modes)",
+      "writerAService": "teamTournamentUiOrchestrator.patchTeamData → legacyPatchTeamData → teamTournamentService → updateTournament → saveClubData",
+      "writerADurableTarget": "localStorage pickleball-club-data-v3::{clubId} → tournaments[].teamData",
+      "writerBEntryPoint": "TeamPortal / TeamRefereePortal runMutation (submitLineup, confirmSubMatch, publishMatchup, …)",
+      "writerBService": "shadowTeamTournamentRepository.delegateMutation → cloudTeamTournamentRepository → team_tournament_* RPCs",
+      "writerBDurableTarget": "public.team_tournaments (+ related team tournament tables)",
+      "runtimeReachabilityA": "Production-reachable in legacy and shadow modes (shadow is default when VITE_TEAM_TOURNAMENT_SUPABASE=true)",
+      "runtimeReachabilityB": "Production-reachable when VITE_TEAM_TOURNAMENT_SUPABASE=true (shadow); Q-006 team_tournaments total=56",
+      "sameOrEquivalentBusinessObjectProof": "Shadow mode keeps blob setup writes and cloud command writes as independent durable authorities for the same team-tournament aggregate; maybeMirrorAfterCloudSuccess does not apply in shadow",
+      "conflictDescription": "Blob teamData and cloud team_tournaments can diverge under shadow dual-path (setup on blob, commands on cloud)",
+      "sourceEvidence": [
+        "src/features/team-tournament/ui/teamTournamentUiOrchestrator.js",
+        "src/features/team-tournament/repositories/teamTournamentDataMode.js",
+        "src/features/team-tournament/repositories/shadowTeamTournamentRepository.js",
+        "src/features/team-tournament/repositories/cloudTeamTournamentRepository.js",
+        "src/pages/tournament/TeamTournamentSetup.jsx",
+        "docs/v5/qa-evidence/tournament-production-remediation/TOURNAMENT_PRODUCTION_READ_ONLY_QUERY_LOG.json (Q-006)"
+      ],
+      "classificationConfidence": "HIGH",
+      "notSameAsDw01": "DW-01 is full club blob ↔ club_data_v3 sync; DW-03 is nested teamData blob ↔ normalized team_tournament_* cloud tables/RPCs"
+    }
+  ],
+  "localStorageMockFallbackPaths": [
+    {
+      "pathId": "LMF-01",
+      "mechanismType": "LOCALSTORAGE",
+      "entryPoint": "getTournament / createTournament / updateTournament → loadClubData / saveClubData",
+      "sourceFile": "src/domain/tournamentService.js; src/domain/clubStorage.js",
+      "keyOrFallbackValue": "pickleball-club-data-v3::{clubId}",
+      "triggerCondition": "Any Daily/Internal/Official/Engine organizer read-write of individual tournament records",
+      "returnedOrPersistedObject": "Club blob including tournaments[]",
+      "productionReachable": true,
+      "authorityImpact": "Durable tournament SSOT for Owner-reported IDs (absent from Production club_data_v3.tournaments[])",
+      "sameMechanismAsAnotherPath": null,
+      "sourceEvidence": [
+        "src/domain/clubStorage.js",
+        "src/domain/tournamentService.js",
+        "evidence/RUNTIME_TRACE_2026-08-05.json"
+      ],
+      "classificationConfidence": "HIGH"
+    },
+    {
+      "pathId": "LMF-02",
+      "mechanismType": "FALLBACK",
+      "entryPoint": "resolveTenantIdForClub(clubId); createTournament tenant stamp",
+      "sourceFile": "src/features/tenant/guards/tenantGuard.js",
+      "keyOrFallbackValue": "DEFAULT_TENANT_ID = default-tenant",
+      "triggerCondition": "Club registry record lacks explicit tenantId (tenantIdFromRecord falsy)",
+      "returnedOrPersistedObject": "Placeholder tenant id used by Official memo / createTournament",
+      "productionReachable": true,
+      "authorityImpact": "Injects placeholder tenant; tenant-wide pool rejects → TP-UI-003",
+      "sameMechanismAsAnotherPath": null,
+      "sourceEvidence": [
+        "src/features/tenant/guards/tenantGuard.js",
+        "src/models/tenant.js",
+        "src/pages/tournament/OfficialTournamentSetup.jsx",
+        "evidence/STATIC_TENANT_SCOPE_CODE_AUDIT_2026-08-05.json"
+      ],
+      "classificationConfidence": "HIGH"
+    },
+    {
+      "pathId": "LMF-03",
+      "mechanismType": "MOCK",
+      "entryPoint": "loadPublicTournamentsPageResult → resolvePublicListDataResult({ allowMockFallback: true })",
+      "sourceFile": "src/features/public-portal/services/publicTournamentsRankingsDataSource.js; src/data/public/mockPublicData.js",
+      "keyOrFallbackValue": "MOCK_TOURNAMENTS",
+      "triggerCondition": "Public tournaments source allows mock; live list empty / below minLength / load error",
+      "returnedOrPersistedObject": "Hardcoded public tournament catalog fixtures",
+      "productionReachable": true,
+      "authorityImpact": "Public /tournaments catalog can substitute mock fixtures as list authority",
+      "sameMechanismAsAnotherPath": null,
+      "sourceEvidence": [
+        "src/features/public-portal/services/publicTournamentsRankingsDataSource.js",
+        "src/features/experience-channels/public-portal/data-source/resolvePublicListDataResult.js",
+        "src/data/public/mockPublicData.js"
+      ],
+      "classificationConfidence": "HIGH"
+    }
+  ],
+  "rejectedLocalStorageMockFallbackCandidates": [
+    {
+      "candidate": "referee_direct_table_write_when_not_secure_runtime",
+      "reason": "isSecureRuntime() is true on Production builds (import.meta.env.PROD); isRefereeDirectFallbackAllowed() is false — not Production-reachable. Prior count of 4 incorrectly included this path."
+    },
+    {
+      "candidate": "sessionStorage_score_draft",
+      "reason": "Ephemeral UI draft overlay; not independently selectable durable tournament authority"
+    },
+    {
+      "candidate": "findTournamentClubId",
+      "reason": "Same underlying club-blob localStorage mechanism as LMF-01"
+    }
+  ],
+  "mutationGuardGaps": [
+    {
+      "path": "updateTournament",
+      "guard": "guardClubAction / guardDirectorAction",
+      "missing": "resolved tenantId required before write"
+    },
+    {
+      "path": "prepareLivePrivatePairingOptions callers",
+      "guard": "resolveLivePairingScope fail-closed",
+      "missing": "UI disable before click; tenant not passed from resolved pool"
+    }
+  ]
+}

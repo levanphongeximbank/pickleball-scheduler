@@ -1,0 +1,945 @@
+{
+  "workstream": "tournament-production-remediation",
+  "auditDate": "2026-08-05",
+  "source": "src/router.jsx",
+  "routeFamilies": {
+    "legacySingular": "/tournament/*",
+    "canonicalPlural": "/tournaments/:tournamentId/*",
+    "publicCatalog": "/tournaments"
+  },
+  "redirectShimObserved": false,
+  "reactRouterLoaders": false,
+  "layoutProviders": {
+    "mainLayout": [
+      "TenantProvider",
+      "ClusterProvider",
+      "ClubProvider",
+      "SeasonProvider",
+      "NotificationRuntimeProvider",
+      "CommunicationRuntimeProvider",
+      "FinanceStagingRuntimeProvider",
+      "RouteAccessGate",
+      "TenantGate",
+      "OperationalRouteGate"
+    ],
+    "publicLayout": [
+      "PublicLayout only for /tournaments catalog"
+    ]
+  },
+  "routes": [
+    {
+      "path": "/tournaments",
+      "component": "PublicTournamentsPage",
+      "family": "public",
+      "readers": [
+        "public_catalog_list_tournaments"
+      ],
+      "writers": [],
+      "primaryClassification": "CANONICAL",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": true,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament",
+      "component": "TournamentShell/TournamentHome",
+      "family": "legacy",
+      "readers": [
+        "listTournaments"
+      ],
+      "writers": [
+        "createTournament",
+        "deleteTournament"
+      ],
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/list",
+      "component": "TournamentListPage",
+      "family": "legacy",
+      "readers": [
+        "listTournaments"
+      ],
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/create",
+      "component": "TournamentCreatePage",
+      "family": "legacy",
+      "writers": [
+        "createTournament"
+      ],
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/types",
+      "component": "TournamentTypesHubPage",
+      "family": "legacy",
+      "notes": "navigation hub",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/types/:category",
+      "component": "TournamentTypePage",
+      "family": "legacy",
+      "readers": [
+        "listTournaments"
+      ],
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/roster",
+      "component": "TournamentRosterHubPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/organize",
+      "component": "TournamentOrganizeHubPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/operations",
+      "component": "TournamentOperationsHubPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/results",
+      "component": "TournamentResultsHubPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/register",
+      "component": "TournamentRegisterHub",
+      "family": "legacy",
+      "readers": [
+        "listTournaments"
+      ],
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/my",
+      "component": "IndividualPlayerPortalPage",
+      "family": "legacy",
+      "readers": [
+        "getTournament"
+      ],
+      "writers": [
+        "updateTournament"
+      ],
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/my/:tournamentId",
+      "component": "IndividualPlayerPortalPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/:tournamentId/public",
+      "component": "IndividualTournamentPublicPage",
+      "family": "legacy",
+      "readers": [
+        "getTournament"
+      ],
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/:tournamentId/register",
+      "component": "IndividualRegistrationPage",
+      "family": "legacy",
+      "readers": [
+        "getTournament"
+      ],
+      "writers": [
+        "updateTournament"
+      ],
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/teams",
+      "component": "TournamentTeamsHub",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/teams/presets",
+      "component": "TournamentTeamPresetsHub",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/teams/build/manual",
+      "component": "TournamentTeamBuildManualHub",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/teams/build/random",
+      "component": "TournamentTeamBuildRandomHub",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/teams/build/draft",
+      "component": "TournamentTeamBuildDraftHub",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/schedule",
+      "component": "TournamentScheduleHub",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/match-reports",
+      "component": "TournamentMatchReportsHub",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/config",
+      "component": "TournamentConfigHubPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/config/format",
+      "component": "TournamentConfigFormatHub",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/config/settings",
+      "component": "TournamentConfigSettingsHub",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/config/age-rules",
+      "component": "TournamentAgeRulesPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/config/gender-rules",
+      "component": "TournamentGenderRulesPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/config/fee",
+      "component": "TournamentFeePage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/config/regulations",
+      "component": "TournamentRegulationsPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/eligibility",
+      "component": "TournamentTeamEligibilityHub",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/eligibility/check",
+      "component": "TournamentEligibilityPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/entry-fee",
+      "component": "TournamentFeePage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/publish-schedule",
+      "component": "TournamentPublishSchedulePage",
+      "family": "legacy",
+      "writers": [
+        "updateTournament"
+      ],
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/referee-assign",
+      "component": "TournamentRefereeAssignPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/awards",
+      "component": "TournamentAwardsPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/withdrawal",
+      "component": "TournamentWithdrawalPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/bracket",
+      "component": "TournamentBracketHub",
+      "family": "legacy",
+      "readers": [
+        "listTournaments"
+      ],
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/daily-play",
+      "component": "DailyPlayLauncher",
+      "family": "related",
+      "notes": "launcher → /tournament/daily/:id",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": true,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/daily/:tournamentId",
+      "component": "DailyPlaySetup",
+      "family": "legacy-runtime",
+      "defect": "TP-UI-001",
+      "readers": [
+        "getTournament",
+        "useClubPairingCandidatePool",
+        "loadCourtsForClub"
+      ],
+      "writers": [
+        "updateTournament",
+        "setTournamentStatus",
+        "lockCourt"
+      ],
+      "tenantResolution": "activeClubId only; no ?club=",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": true,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/internal/:tournamentId",
+      "component": "InternalTournamentSetup",
+      "family": "legacy-runtime",
+      "defect": "TP-UI-002",
+      "readers": [
+        "getTournament",
+        "useClubPairingCandidatePool",
+        "useTenantPairingCandidatePool"
+      ],
+      "writers": [
+        "updateTournament",
+        "advanceTournamentStatus"
+      ],
+      "tenantResolution": "?club= || findTournamentClubId || activeClubId",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": true,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/internal/:tournamentId/bracket",
+      "component": "TournamentBracketPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/official/:tournamentId",
+      "component": "OfficialTournamentSetup",
+      "family": "legacy-runtime",
+      "defect": "TP-UI-003",
+      "readers": [
+        "getTournament",
+        "useTenantPairingCandidatePool"
+      ],
+      "writers": [
+        "updateTournament"
+      ],
+      "tenantResolution": "resolveTenantIdForClub(activeClubId) may yield default-tenant",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": true,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/official/:tournamentId/bracket",
+      "component": "TournamentBracketPage",
+      "family": "legacy",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/team/:tournamentId",
+      "component": "TeamTournamentSetup",
+      "family": "legacy-runtime",
+      "readers": [
+        "getTeamTournamentRepository",
+        "getTournament blob fallback"
+      ],
+      "writers": [
+        "team_tournament_* RPCs",
+        "teamTournamentService blob"
+      ],
+      "tenantResolution": "reference implementation — full scope to prepareLivePrivatePairingOptions",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": true,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournament/director/:tournamentId",
+      "component": "TournamentDirectorMode",
+      "family": "legacy",
+      "readers": [
+        "getTournament",
+        "tournament_match_live"
+      ],
+      "writers": [
+        "updateTournament directorMode",
+        "referee RPCs"
+      ],
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/team-portal/:tournamentId",
+      "component": "TeamPortal",
+      "family": "related",
+      "readers": [
+        "getTeamTournamentRepository"
+      ],
+      "writers": [
+        "saveDraftLineup RPC"
+      ],
+      "tenantResolution": "findTournamentClubId from blob scan",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": true,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/team-referee/:tournamentId",
+      "component": "TeamRefereePortal",
+      "family": "related",
+      "primaryClassification": "LEGACY",
+      "secondaryAttributes": {
+        "engine4": false,
+        "publicCatalog": false,
+        "relatedPortal": true,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": false,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournaments/:tournamentId/engine",
+      "component": "TournamentEnginePage",
+      "family": "canonical-engine40",
+      "defect": "TP-UI-004",
+      "readers": [
+        "getTournament"
+      ],
+      "writers": [
+        "updateTournament settings.engineV4",
+        "applyEnginePlanToEvent"
+      ],
+      "tenantResolution": "activeClubId only; no TenantContext",
+      "primaryClassification": "CANONICAL",
+      "secondaryAttributes": {
+        "engine4": true,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": true,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournaments/:tournamentId/seed",
+      "component": "TournamentEnginePage",
+      "family": "canonical-engine40",
+      "primaryClassification": "CANONICAL",
+      "secondaryAttributes": {
+        "engine4": true,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": true,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournaments/:tournamentId/draw",
+      "component": "TournamentEnginePage",
+      "family": "canonical-engine40",
+      "primaryClassification": "CANONICAL",
+      "secondaryAttributes": {
+        "engine4": true,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": true,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournaments/:tournamentId/schedule",
+      "component": "TournamentEnginePage",
+      "family": "canonical-engine40",
+      "primaryClassification": "CANONICAL",
+      "secondaryAttributes": {
+        "engine4": true,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": true,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournaments/:tournamentId/courts",
+      "component": "TournamentEnginePage",
+      "family": "canonical-engine40",
+      "primaryClassification": "CANONICAL",
+      "secondaryAttributes": {
+        "engine4": true,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": true,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournaments/:tournamentId/ranking",
+      "component": "TournamentEnginePage",
+      "family": "canonical-engine40",
+      "primaryClassification": "CANONICAL",
+      "secondaryAttributes": {
+        "engine4": true,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": true,
+        "compatibilityRedirect": false
+      }
+    },
+    {
+      "path": "/tournaments/:tournamentId/logs",
+      "component": "TournamentEnginePage",
+      "family": "canonical-engine40",
+      "primaryClassification": "CANONICAL",
+      "secondaryAttributes": {
+        "engine4": true,
+        "publicCatalog": false,
+        "relatedPortal": false,
+        "legacyActiveRuntime": false,
+        "duplicateConflictWithLegacySetup": true,
+        "compatibilityRedirect": false
+      }
+    }
+  ],
+  "routeCounts": {
+    "totalInventoried": 54,
+    "primaryClassification": {
+      "CANONICAL": 8,
+      "LEGACY": 46,
+      "DUPLICATE": 0,
+      "SHADOW": 0,
+      "DEAD": 0,
+      "UNRESOLVED": 0,
+      "PRIMARY_CLASSIFICATION_SUM": 54,
+      "PRIMARY_CLASSIFICATION_SUM_MATCHES_TOTAL": true
+    },
+    "secondaryAttributes": {
+      "duplicateConflictRouteCount": 7,
+      "routeConflictCount": 1,
+      "legacyActiveRuntimeCount": 4,
+      "compatibilityRedirectCount": 0,
+      "engine4RouteCount": 7,
+      "publicRouteCount": 1,
+      "relatedPortalRouteCount": 3
+    },
+    "definitions": {
+      "primary": "Exactly one of CANONICAL|LEGACY|DUPLICATE|SHADOW|DEAD|UNRESOLVED per route; sum must equal totalInventoried",
+      "duplicatePrimary": "Reserved for routes whose sole authority class is DUPLICATE. Engine 4.0 routes are primary CANONICAL with secondary duplicateConflictWithLegacySetup.",
+      "priorInconsistency": "Previous DUPLICATE_ROUTES=7 was a secondary conflict attribute incorrectly added into primary totals (8+44+7)."
+    }
+  },
+  "ownerObservedLegacyRoutes": [
+    "/tournament/daily/tournament-1785921300822",
+    "/tournament/internal/tournament-1785921409840",
+    "/tournament/official/tournament-1785921550968"
+  ],
+  "classificationPolicy": {
+    "CANONICAL": [
+      "/tournaments public catalog",
+      "/tournaments/:id/* Engine 4.0"
+    ],
+    "LEGACY": [
+      "/tournament/* hubs and setup",
+      "legacy-runtime setup pages",
+      "related portals /daily-play /team-portal /team-referee"
+    ],
+    "DUPLICATE": "none as primary in this inventory",
+    "SHADOW": "none",
+    "DEAD": "none",
+    "UNRESOLVED": "none"
+  }
+}

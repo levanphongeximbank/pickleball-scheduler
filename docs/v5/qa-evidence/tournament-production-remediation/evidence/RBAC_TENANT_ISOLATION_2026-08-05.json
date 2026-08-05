@@ -1,0 +1,52 @@
+{
+  "auditDate": "2026-08-05",
+  "method": ["STATIC_SOURCE", "EXISTING_TESTS", "READ_ONLY_PRODUCTION_METADATA"],
+  "productionMutationTestsExecuted": 0,
+  "roles": {
+    "SUPER_ADMIN": {
+      "routeAccess": "STATICALLY_PROVEN",
+      "tournamentManage": "STATICALLY_PROVEN",
+      "tenantIsolation": "PARTIALLY_PROVEN",
+      "notes": "RouteAccessGate bypass for global roles; TournamentManageGate uses currentTenantId — SUPER_ADMIN may cross-tenant when record tenant mismatches header tenant"
+    },
+    "CLUB_OWNER": {
+      "routeAccess": "STATICALLY_PROVEN",
+      "tournamentManage": "STATICALLY_PROVEN",
+      "tenantIsolation": "STATICALLY_PROVEN",
+      "notes": "guardClubAction + assertTournamentAccess + guardRecordTenant when tenantId passed"
+    },
+    "CLUB_MANAGER": {
+      "routeAccess": "STATICALLY_PROVEN",
+      "tournamentManage": "PARTIALLY_PROVEN",
+      "tenantIsolation": "STATICALLY_PROVEN",
+      "notes": "TOURNAMENT_UPDATE permission dependent; same tenant guards as owner when permitted"
+    },
+    "REFEREE": {
+      "routeAccess": "STATICALLY_PROVEN",
+      "tournamentManage": "BLOCKED",
+      "tenantIsolation": "STATICALLY_PROVEN",
+      "notes": "Token-scoped RPC referee_get_match_by_token / referee_update_match_score; portal deep-link skips club guard for PLAYER/REFEREE captains only"
+    },
+    "PLAYER": {
+      "routeAccess": "STATICALLY_PROVEN",
+      "tournamentManage": "BLOCKED",
+      "tenantIsolation": "PARTIALLY_PROVEN",
+      "notes": "Portal routes via assertTournamentPortalAccess; tournament RBAC scope PERMISSION_SCOPE.TOURNAMENT for captain roles"
+    }
+  },
+  "rlsEvidence": {
+    "club_data_v3": "RLS enabled; production policy evolved via clubs-rls-remediation — service role bypass for audit SELECT",
+    "team_tournaments": "RLS + command RPC guards per TT-1B docs",
+    "tournament_match_live": "RLS; referee RPC token scoped",
+    "public_catalog": "Projection table + STABLE read RPC only"
+  },
+  "tenantIsolationGuards": [
+    { "guard": "guardRecordTenant", "file": "src/features/tenant/guards/tenantGuard.js", "classification": "STATICALLY_PROVEN" },
+    { "guard": "assertTournamentAccess", "file": "src/domain/tournamentService.js", "classification": "STATICALLY_PROVEN" },
+    { "guard": "TournamentManageGate", "file": "src/components/tournament/TournamentManageGate.jsx", "classification": "STATICALLY_PROVEN" },
+    { "guard": "resolvePairingScopeTenantId", "file": "src/features/pairing-candidates/pairingScopeResolver.js", "classification": "STATICALLY_PROVEN" },
+    { "guard": "updateTournament tenant requirement", "classification": "UNRESOLVED", "note": "No tenantId required at service layer" }
+  ],
+  "overallRbacResult": "PARTIALLY_PROVEN",
+  "overallTenantIsolationResult": "PARTIALLY_PROVEN"
+}
