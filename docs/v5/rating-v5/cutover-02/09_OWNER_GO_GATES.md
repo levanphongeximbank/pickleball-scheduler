@@ -8,6 +8,7 @@ STAGING_EXECUTION_GO=NO  # until every row below is evidenced PASS
 |------|-------------------|
 | Local implementation PASS | Code + docs on branch |
 | Focused tests PASS | `tests/rating-v5-cutover-02-dual-read-writer-freeze.test.js` |
+| A3c fixture prep tests PASS | `tests/rating-v5-cutover-02-a3c-fixture-prep.test.js` |
 | Full unit PASS | `npm run test:unit` |
 | Lint PASS | `npm run lint:no-new` |
 | Build PASS | `npm run build` |

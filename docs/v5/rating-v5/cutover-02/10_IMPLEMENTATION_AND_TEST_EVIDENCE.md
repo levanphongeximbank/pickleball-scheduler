@@ -10,6 +10,10 @@
 | RPC client hook | `src/features/pick-vn-rating/services/pickVnRatingRpcService.js` |
 | SQL (author only) | `docs/v5/rating-v5/cutover-02/sql/RATING_V5_CUTOVER_02_STAGING_WRITER_FREEZE_GUARD.sql` |
 | Focused tests | `tests/rating-v5-cutover-02-dual-read-writer-freeze.test.js` |
+| A3c fixture prep | `src/features/player-rating/cutover-02/fixture-prep/` |
+| A3c SQL (author only) | `docs/v5/rating-v5/cutover-02/sql/RATING_V5_CUTOVER_02_A3C_FIXTURE_PREP.sql` |
+| A3c docs | `docs/v5/rating-v5/cutover-02/11_A3C_CONTROLLED_STAGING_FIXTURE_PREP.md` |
+| A3c focused tests | `tests/rating-v5-cutover-02-a3c-fixture-prep.test.js` |
 
 ## Feature flags (default OFF)
 
@@ -22,6 +26,7 @@
 | `VITE_RATING_V5_CUTOVER_02_TENANT_ALLOWLIST` | CSV tenants |
 | `VITE_RATING_V5_SCALE_MAPPING_STATUS` | default `UNAPPROVED` |
 | `VITE_RATING_V5_SCALE_MAPPING_STRATEGY` | default `RAW_ONLY` |
+| `VITE_RATING_V5_CUTOVER_02_FIXTURE_PREP_ENABLED` | A3c fixture prep (default OFF) |
 
 ## Safety counters (this workstream package)
 

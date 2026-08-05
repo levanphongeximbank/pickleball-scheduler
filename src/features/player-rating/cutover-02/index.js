@@ -90,3 +90,18 @@ export {
   SUGGESTED_STAGING_THRESHOLDS,
   RECONCILIATION_OWNER_APPROVAL,
 } from "./reconciliation/metrics.js";
+
+// Browser-safe A3c surface only (trusted orchestrator: ./fixture-prep/index.js).
+export {
+  FIXTURE_PREP_ENV_NAME,
+  isFixturePrepPathEnabled,
+  FIXTURE_COHORT_LABEL,
+  FIXTURE_PREP_OUTCOME,
+  FIXTURE_PREP_VERSION,
+  APPROVED_ID_HASHES,
+  invokeFixturePrepFromBrowser,
+  browserFixturePrepForbiddenPatterns,
+  SELECTED_ARCHITECTURE,
+  DIRECT_RPC_BYPASS_STATUS,
+  MUTATION_BUDGET,
+} from "./fixture-prep/public.js";
