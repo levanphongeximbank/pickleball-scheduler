@@ -1,0 +1,527 @@
+{
+  "phase": "production-player-data-remediation-audit",
+  "generatedAt": "2026-08-05T07:06:58.336Z",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "stagingRefMustNotQuery": "qyewbxjsiiyufanzcjcq",
+  "credential": {
+    "credentialVariableUsed": "SUPABASE_ACCESS_TOKEN",
+    "targetValidationVariable": "SUPABASE_DB_URL",
+    "credentialValidationResult": "PASS",
+    "targetProjectMatch": true,
+    "productionRef": "expuvcohlcjzvrrauvud"
+  },
+  "harnessReadOnlyProof": [
+    "All database calls go through selectSql() with assertReadOnlySql().",
+    "assertReadOnlySql refuses non-SELECT and mutation keywords (insert/update/delete/ddl/etc).",
+    "Management API endpoint used only for SELECT query bodies; no mutation RPC invoked.",
+    "No PostgREST INSERT/UPDATE/DELETE; no auth admin delete; no Storage calls; no deploy.",
+    "Local writes limited to audit report JSON/MD under docs/v5/qa-evidence/..."
+  ],
+  "safety": {
+    "mode": "READ_ONLY_MANAGEMENT_API_SELECT",
+    "productionMutations": 0,
+    "sqlApply": 0,
+    "deployments": 0,
+    "trafficChanges": 0,
+    "productionGo": "NO",
+    "productionReadOnlyQueryCount": 16,
+    "credentialsCleared": "YES"
+  },
+  "ping": {
+    "db": "postgres",
+    "db_user": "postgres"
+  },
+  "gender": {
+    "profiles": {
+      "table": "public.profiles",
+      "column": "gender",
+      "canonicalAllowed": [
+        "male",
+        "female",
+        "other",
+        null
+      ],
+      "totalRows": 61,
+      "exactValueCounts": [
+        {
+          "value": "__NULL__",
+          "count": 25
+        },
+        {
+          "value": "female",
+          "count": 17
+        },
+        {
+          "value": "male",
+          "count": 15
+        },
+        {
+          "value": "Nam",
+          "count": 4
+        }
+      ],
+      "rowsRequiringNormalization": 4,
+      "normalizationCandidatesSample": [
+        {
+          "id": "6e77321e-1182-4174-a08a-3ee2d1833c7c",
+          "email": "hoangmanhluong2405@gmail.com",
+          "gender": "Nam",
+          "created_at": "2026-07-08 07:25:44.102217+00",
+          "updated_at": "2026-07-14 11:51:32.364+00"
+        },
+        {
+          "id": "6ff822c6-c1b6-4ce0-9e20-61f7afc74a88",
+          "email": "gionam76@gmail.com",
+          "gender": "Nam",
+          "created_at": "2026-07-09 09:50:30.627694+00",
+          "updated_at": "2026-07-14 11:51:04.156+00"
+        },
+        {
+          "id": "6dd85e98-e493-4e04-9582-d904e27b3a44",
+          "email": "lephong.eximbank@gmail.com",
+          "gender": "Nam",
+          "created_at": "2026-07-04 10:28:32.241191+00",
+          "updated_at": "2026-07-14 09:44:39.019+00"
+        },
+        {
+          "id": "4cf24ed0-99f8-4997-b803-3c7ff8e32014",
+          "email": "huynhanh1970@gmail.com",
+          "gender": "Nam",
+          "created_at": "2026-07-09 09:37:16.469296+00",
+          "updated_at": "2026-07-10 04:27:34.251+00"
+        }
+      ]
+    },
+    "clubBlobPlayers": {
+      "table": "public.club_data_v3.data.players[]",
+      "column": "gender",
+      "clubCount": 1,
+      "playerCount": 0,
+      "exactValueCounts": [],
+      "rowsRequiringNormalization": 0
+    },
+    "athletes": {
+      "table": "public.athletes",
+      "column": null,
+      "note": "no gender column"
+    }
+  },
+  "femaleZeroProof": {
+    "liveMismatchProof": {
+      "profilesExact": [
+        {
+          "value": "__NULL__",
+          "count": 25
+        },
+        {
+          "value": "female",
+          "count": 17
+        },
+        {
+          "value": "male",
+          "count": 15
+        },
+        {
+          "value": "Nam",
+          "count": 4
+        }
+      ],
+      "blobExact": [],
+      "ifUiCountsOnlyNu_femaleVisibleButZero": true,
+      "ifEngineCountsOnlyFemale_nuVisibleButZero": false,
+      "strictEqualityNuCount": 0,
+      "strictEqualityFemaleCount": 17,
+      "strictEqualityNamCount": 4,
+      "strictEqualityMaleCount": 15
+    },
+    "codePaths": [
+      "src/utils/playerHelpers.js#computePlayerDashboardStats",
+      "src/components/players/PlayerCard.jsx",
+      "src/features/club/services/accountOnlyAthleteService.js#resolveAthleteGender",
+      "src/features/team-tournament/engines/teamRosterHydration.js#computeHydratedRosterStats"
+    ]
+  },
+  "strictReaderDependencies": [
+    {
+      "file": "src/utils/playerHelpers.js",
+      "symbol": "computePlayerDashboardStats",
+      "pattern": "gender === \"Nam\" / \"Nữ\""
+    },
+    {
+      "file": "src/components/players/PlayerCard.jsx",
+      "symbol": "isFemale/isMale styling",
+      "pattern": "gender === \"Nữ\" / \"Nam\""
+    },
+    {
+      "file": "src/engine/index.js",
+      "symbol": "malePlayers filter",
+      "pattern": "gender === \"Nam\""
+    },
+    {
+      "file": "src/legacy/engine-v1/index.js",
+      "symbol": "malePlayers filter",
+      "pattern": "gender === \"Nam\""
+    },
+    {
+      "file": "src/data/samplePlayers.js",
+      "symbol": "seed name picker",
+      "pattern": "gender === \"Nữ\""
+    }
+  ],
+  "testAccounts": {
+    "suspected": [
+      {
+        "id": "f090cb20-b919-4980-9668-4ec9d8bc2688",
+        "email": "phase1c.prod.unrelated.mrr9qm9b@prod-qa.local",
+        "display_name": "phase1c.prod.unrelated.mrr9qm9b",
+        "role": "PLAYER",
+        "status": "active",
+        "gender": null,
+        "player_id": null,
+        "created_at": "2026-07-19 04:01:19.577283+00",
+        "updated_at": "2026-07-19 04:01:19.577283+00",
+        "markers": [
+          "phase1c",
+          "unrelated",
+          "test"
+        ],
+        "memberships": [],
+        "membershipCount": 0,
+        "teamRefCount": 0,
+        "matchRefCount": 0,
+        "auditLogCount": 0,
+        "ratings": null,
+        "createdByAutomatedProdSmoke": true,
+        "classification": "SAFE_TO_QUARANTINE",
+        "classificationReason": "Confirmed smoke/QA origin email and zero membership/team/match/rating/audit dependencies."
+      },
+      {
+        "id": "d05da6d0-8a1e-4d48-8362-89bd0cd5dfd6",
+        "email": "phase1c.prod.stranger.mrr9n3t0@prod-qa.local",
+        "display_name": "phase1c.prod.stranger.mrr9n3t0",
+        "role": "PLAYER",
+        "status": "active",
+        "gender": null,
+        "player_id": null,
+        "created_at": "2026-07-19 03:58:39.003073+00",
+        "updated_at": "2026-07-19 03:58:39.003073+00",
+        "markers": [
+          "phase1c",
+          "stranger",
+          "test"
+        ],
+        "memberships": [],
+        "membershipCount": 0,
+        "teamRefCount": 0,
+        "matchRefCount": 0,
+        "auditLogCount": 0,
+        "ratings": null,
+        "createdByAutomatedProdSmoke": true,
+        "classification": "SAFE_TO_QUARANTINE",
+        "classificationReason": "Confirmed smoke/QA origin email and zero membership/team/match/rating/audit dependencies."
+      },
+      {
+        "id": "f881b6c2-fa1d-4ed0-99ff-5ca98664bd72",
+        "email": "phase1c.prod.vp.mrr9n3t0@prod-qa.local",
+        "display_name": "phase1c.prod.vp.mrr9n3t0",
+        "role": "PLAYER",
+        "status": "active",
+        "gender": null,
+        "player_id": null,
+        "created_at": "2026-07-19 03:58:38.608954+00",
+        "updated_at": "2026-07-19 03:58:38.608954+00",
+        "markers": [
+          "phase1c",
+          "test"
+        ],
+        "memberships": [],
+        "membershipCount": 0,
+        "teamRefCount": 0,
+        "matchRefCount": 0,
+        "auditLogCount": 0,
+        "ratings": null,
+        "createdByAutomatedProdSmoke": true,
+        "classification": "SAFE_TO_QUARANTINE",
+        "classificationReason": "Confirmed smoke/QA origin email and zero membership/team/match/rating/audit dependencies."
+      },
+      {
+        "id": "bde87773-91a9-4155-a310-28708b58193b",
+        "email": "phase1c.prod.player.mrr9n3t0@prod-qa.local",
+        "display_name": "phase1c.prod.player.mrr9n3t0",
+        "role": "PLAYER",
+        "status": "active",
+        "gender": null,
+        "player_id": null,
+        "created_at": "2026-07-19 03:58:38.050119+00",
+        "updated_at": "2026-07-19 03:58:38.050119+00",
+        "markers": [
+          "phase1c",
+          "test"
+        ],
+        "memberships": [],
+        "membershipCount": 0,
+        "teamRefCount": 0,
+        "matchRefCount": 0,
+        "auditLogCount": 0,
+        "ratings": null,
+        "createdByAutomatedProdSmoke": true,
+        "classification": "SAFE_TO_QUARANTINE",
+        "classificationReason": "Confirmed smoke/QA origin email and zero membership/team/match/rating/audit dependencies."
+      },
+      {
+        "id": "d2022403-d4b2-44ba-8e73-2f44e6dd6c31",
+        "email": "phase1c.prod.cm.mrr9n3t0@prod-qa.local",
+        "display_name": "phase1c.prod.cm.mrr9n3t0",
+        "role": "PLAYER",
+        "status": "active",
+        "gender": null,
+        "player_id": null,
+        "created_at": "2026-07-19 03:58:37.311974+00",
+        "updated_at": "2026-07-19 03:58:37.311974+00",
+        "markers": [
+          "phase1c",
+          "test"
+        ],
+        "memberships": [],
+        "membershipCount": 0,
+        "teamRefCount": 0,
+        "matchRefCount": 0,
+        "auditLogCount": 0,
+        "ratings": null,
+        "createdByAutomatedProdSmoke": true,
+        "classification": "SAFE_TO_QUARANTINE",
+        "classificationReason": "Confirmed smoke/QA origin email and zero membership/team/match/rating/audit dependencies."
+      },
+      {
+        "id": "1e2e8b67-6369-46f6-98e5-6101d731191a",
+        "email": "phase1c.prod.vm.mrr9n3t0@prod-qa.local",
+        "display_name": "phase1c.prod.vm.mrr9n3t0",
+        "role": "PLAYER",
+        "status": "active",
+        "gender": null,
+        "player_id": null,
+        "created_at": "2026-07-19 03:58:36.26412+00",
+        "updated_at": "2026-07-19 03:58:36.26412+00",
+        "markers": [
+          "phase1c",
+          "test"
+        ],
+        "memberships": [],
+        "membershipCount": 0,
+        "teamRefCount": 0,
+        "matchRefCount": 0,
+        "auditLogCount": 0,
+        "ratings": null,
+        "createdByAutomatedProdSmoke": true,
+        "classification": "SAFE_TO_QUARANTINE",
+        "classificationReason": "Confirmed smoke/QA origin email and zero membership/team/match/rating/audit dependencies."
+      },
+      {
+        "id": "2776695e-6246-4bd4-86fc-6e87fb6acfcc",
+        "email": "phase1b-smoke-1784389287008@pickleball-scheduler.qa",
+        "display_name": "phase1b-smoke-1784389287008",
+        "role": "PLAYER",
+        "status": "active",
+        "gender": null,
+        "player_id": null,
+        "created_at": "2026-07-18 15:41:27.198497+00",
+        "updated_at": "2026-07-18 15:41:27.198497+00",
+        "markers": [
+          "phase1b",
+          "smoke",
+          "test"
+        ],
+        "memberships": [
+          {
+            "user_id": "2776695e-6246-4bd4-86fc-6e87fb6acfcc",
+            "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+            "status": "removed",
+            "membership_type": "PLAYER",
+            "created_at": "2026-07-18 15:41:28.17507+00"
+          }
+        ],
+        "membershipCount": 1,
+        "teamRefCount": 0,
+        "matchRefCount": 0,
+        "auditLogCount": 0,
+        "ratings": null,
+        "createdByAutomatedProdSmoke": true,
+        "classification": "REFERENCED_CONTROLLED_CLEANUP_REQUIRED",
+        "classificationReason": "Referenced: memberships=1, teamRefs=0, matches=0, rating=false."
+      },
+      {
+        "id": "43d1f04d-22ec-4c76-841e-d16df480b9d9",
+        "email": "phase1b-unrelated-1784389278730@pickleball-scheduler.qa",
+        "display_name": "phase1b-unrelated-1784389278730",
+        "role": "PLAYER",
+        "status": "active",
+        "gender": null,
+        "player_id": null,
+        "created_at": "2026-07-18 15:41:19.233748+00",
+        "updated_at": "2026-07-18 15:41:19.233748+00",
+        "markers": [
+          "phase1b",
+          "unrelated",
+          "test"
+        ],
+        "memberships": [],
+        "membershipCount": 0,
+        "teamRefCount": 0,
+        "matchRefCount": 0,
+        "auditLogCount": 0,
+        "ratings": null,
+        "createdByAutomatedProdSmoke": true,
+        "classification": "SAFE_TO_QUARANTINE",
+        "classificationReason": "Confirmed smoke/QA origin email and zero membership/team/match/rating/audit dependencies."
+      },
+      {
+        "id": "e490cfb9-6d3d-497d-ad4f-9262be5b574d",
+        "email": "phase1b-smoke-1784389191137@pickleball-scheduler.qa",
+        "display_name": "phase1b-smoke-1784389191137",
+        "role": "PLAYER",
+        "status": "active",
+        "gender": null,
+        "player_id": null,
+        "created_at": "2026-07-18 15:39:51.331591+00",
+        "updated_at": "2026-07-18 15:39:51.331591+00",
+        "markers": [
+          "phase1b",
+          "smoke",
+          "test"
+        ],
+        "memberships": [
+          {
+            "user_id": "e490cfb9-6d3d-497d-ad4f-9262be5b574d",
+            "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+            "status": "removed",
+            "membership_type": "PLAYER",
+            "created_at": "2026-07-18 15:39:52.405529+00"
+          }
+        ],
+        "membershipCount": 1,
+        "teamRefCount": 0,
+        "matchRefCount": 0,
+        "auditLogCount": 0,
+        "ratings": null,
+        "createdByAutomatedProdSmoke": true,
+        "classification": "REFERENCED_CONTROLLED_CLEANUP_REQUIRED",
+        "classificationReason": "Referenced: memberships=1, teamRefs=0, matches=0, rating=false."
+      },
+      {
+        "id": "8edf1e99-3c99-4e8b-985b-35e9ff391d6f",
+        "email": "phase1b-unrelated-1784389183882@pickleball-scheduler.qa",
+        "display_name": "phase1b-unrelated-1784389183882",
+        "role": "PLAYER",
+        "status": "active",
+        "gender": null,
+        "player_id": null,
+        "created_at": "2026-07-18 15:39:44.076755+00",
+        "updated_at": "2026-07-18 15:39:44.076755+00",
+        "markers": [
+          "phase1b",
+          "unrelated",
+          "test"
+        ],
+        "memberships": [],
+        "membershipCount": 0,
+        "teamRefCount": 0,
+        "matchRefCount": 0,
+        "auditLogCount": 0,
+        "ratings": null,
+        "createdByAutomatedProdSmoke": true,
+        "classification": "SAFE_TO_QUARANTINE",
+        "classificationReason": "Confirmed smoke/QA origin email and zero membership/team/match/rating/audit dependencies."
+      },
+      {
+        "id": "057c1f18-9e98-4156-8fde-603d25454682",
+        "email": "phase1b-ord-tenant-1784389181392@pickleball-scheduler.qa",
+        "display_name": "phase1b-ord-tenant-1784389181392",
+        "role": "PLAYER",
+        "status": "active",
+        "gender": null,
+        "player_id": null,
+        "created_at": "2026-07-18 15:39:42.130799+00",
+        "updated_at": "2026-07-18 15:39:42.130799+00",
+        "markers": [
+          "phase1b",
+          "test"
+        ],
+        "memberships": [],
+        "membershipCount": 0,
+        "teamRefCount": 0,
+        "matchRefCount": 0,
+        "auditLogCount": 0,
+        "ratings": null,
+        "createdByAutomatedProdSmoke": true,
+        "classification": "SAFE_TO_QUARANTINE",
+        "classificationReason": "Confirmed smoke/QA origin email and zero membership/team/match/rating/audit dependencies."
+      }
+    ],
+    "summary": {
+      "suspectedProfileCount": 11,
+      "confirmedTestIdentityCount": 11,
+      "safeToQuarantine": 9,
+      "referencedCleanup": 2,
+      "retainAsEvidence": 0,
+      "notATestIdentity": 0,
+      "unresolvedIdentityCount": 0,
+      "automatedProdSmokeLikely": 11
+    },
+    "classificationRule": "SAFE_TO_QUARANTINE requires confirmed smoke/QA email origin AND zero deps. Pattern/name alone → NOT_A_TEST_IDENTITY."
+  },
+  "classifications": {
+    "GENDER_MODEL": "B. MULTIPLE_ACTIVE_GENDER_MODELS",
+    "TEST_ACCOUNTS": "B. REFERENCED_REQUIRES_CONTROLLED_CLEANUP"
+  },
+  "plansPreparedNotApplied": {
+    "canonicalGenderNormalization": {
+      "proposedCanonicalValues": [
+        "male",
+        "female",
+        "other",
+        null
+      ],
+      "map": {
+        "Nam": "male",
+        "nam": "male",
+        "M": "male",
+        "male": "male",
+        "Nữ": "female",
+        "Nu": "female",
+        "nữ": "female",
+        "female": "female",
+        "F": "female",
+        "Khác": "other",
+        "other": "other",
+        "": null
+      }
+    },
+    "writerGuard": {
+      "enforce": "normalizeProfileGender on all profiles writers",
+      "stopEmittingVietnameseIntoStoredFields": true
+    },
+    "readCompatibility": {
+      "require": "normalizeAthleteGender / getPlayerGenderKey",
+      "fixStrictEqualityFiles": [
+        "src/utils/playerHelpers.js",
+        "src/components/players/PlayerCard.jsx",
+        "src/engine/index.js",
+        "src/legacy/engine-v1/index.js",
+        "src/data/samplePlayers.js"
+      ]
+    },
+    "testAccountQuarantine": {
+      "safeToQuarantineFirst": true,
+      "referencedNeedsControlledCleanup": true,
+      "retainEvidence": true
+    },
+    "rollback": {
+      "gender": "restore pre-normalization snapshot",
+      "accounts": "un-ban / restore memberships from quarantine ledger"
+    }
+  },
+  "blockers": [],
+  "warnings": [],
+  "queryCount": 16,
+  "verdict": "PRODUCTION_PLAYER_DATA_AUDIT_COMPLETE_READY_FOR_IMPLEMENTATION"
+}

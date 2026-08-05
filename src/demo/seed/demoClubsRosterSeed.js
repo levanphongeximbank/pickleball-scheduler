@@ -77,7 +77,7 @@ export function buildDemoPlayers(count, clubSpec, options = {}) {
       return {
         id: `${clubId}-vdv-${index + 1}`,
         name: `${lastName} ${givenName} ${index + 1}`,
-        gender: isMale ? "Nam" : "Nữ",
+        gender: isMale ? "male" : "female",
         phone: `09${String(basePhone + index).slice(-8)}`,
         level: Math.round(level * 10) / 10,
         rating: Math.round(level * 10) / 10,

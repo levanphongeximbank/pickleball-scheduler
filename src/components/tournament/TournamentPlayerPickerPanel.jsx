@@ -100,8 +100,9 @@ export default function TournamentPlayerPickerPanel({
               onChange={(event) => onGenderFilterChange(event.target.value)}
             >
               <MenuItem value="all">Tất cả</MenuItem>
-              <MenuItem value="Nam">Nam</MenuItem>
-              <MenuItem value="Nữ">Nữ</MenuItem>
+              <MenuItem value="male">Nam</MenuItem>
+              <MenuItem value="female">Nữ</MenuItem>
+              <MenuItem value="other">Khác</MenuItem>
             </Select>
           </FormControl>
         ) : null}

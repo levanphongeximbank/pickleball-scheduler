@@ -150,10 +150,18 @@ test("1B gender normalization — legacy labels via normalizePlayerProfile", () 
   assert.equal(normalizePlayerProfile({ gender: "Nữ" }).gender, "female");
   assert.equal(normalizePlayerProfile({ gender: "M" }).gender, "male");
   assert.equal(normalizePlayerProfile({ gender: "F" }).gender, "female");
-  assert.equal(normalizePlayerProfile({ gender: "other" }).gender, "unknown");
-  assert.equal(normalizePlayerProfile({ gender: "Khác" }).gender, "unknown");
+  // Canonical stored contract: male | female | other | null (not engine unknown)
+  assert.equal(normalizePlayerProfile({ gender: "other" }).gender, "other");
+  assert.equal(normalizePlayerProfile({ gender: "Khác" }).gender, "other");
   // Empty gender string → no invented gender (null), not forced unknown
   assert.equal(normalizePlayerProfile({ gender: "" }).gender, null);
+});
+
+test("1B engine-facing gender adapter maps other/null to unknown", async () => {
+  const { normalizeAthleteGender } = await import("../src/models/player.js");
+  assert.equal(normalizeAthleteGender("other"), "unknown");
+  assert.equal(normalizeAthleteGender("Khác"), "unknown");
+  assert.equal(normalizeAthleteGender(null), "unknown");
 });
 
 test("1B normalized profile — missing optional fields stay null (no invented data)", () => {

@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-08-05T08:20:00.000Z",
+  "phase": "corrective-pass-after-independent-review",
+  "verdict": "PRODUCTION_PLAYER_DATA_REMEDIATION_CORRECTED_READY_FOR_REREVIEW",
+  "focusedGenderRemediation": {
+    "command": "node --test tests/production-player-data-gender-remediation.test.js",
+    "passed": 14,
+    "failed": 0
+  },
+  "focusedGenderProfileDemoTtGender": {
+    "command": "node --test tests/production-player-data-gender-remediation.test.js tests/models.test.js tests/self-profile-gender.test.js tests/demo-clubs-roster-seed.test.js tests/tt-v6-gender-filter-engine-input-hotfix.test.js",
+    "passed": 46,
+    "failed": 0
+  },
+  "quickAddWriter": {
+    "coveredBy": "tests/production-player-data-gender-remediation.test.js#QuickAdd cannot persist Nam/Nữ",
+    "result": "PASS"
+  },
+  "accountOnlyAthlete": {
+    "command": "node --test tests/account-only-athlete.test.js",
+    "passed": 12,
+    "failed": 0,
+    "notes": "Expectations updated to male/female/null; Vietnamese labels covered by athleteGenderDisplayLabel test"
+  },
+  "tournamentFemaleRelated": {
+    "command": "node --test tests/tt-v6-p1_5a-showcase-setup.test.js tests/tt-v6-scope-and-classification.test.js",
+    "passed": 16,
+    "failed": 0
+  },
+  "qaIdentityFilter": {
+    "phase1bSmithGmail": false,
+    "result": "PASS"
+  },
+  "smokeHygieneDryRun": {
+    "result": "PASS",
+    "notes": "Auth ban aborted when email not certified; dry-run performs zero mutations"
+  },
+  "repositoryWideGenderWriterGuard": {
+    "result": "PASS"
+  },
+  "lintNoNew": { "command": "npm run lint:no-new", "result": "PASS" },
+  "build": { "command": "npm run build", "result": "PASS" },
+  "secretScan": { "result": "PASS", "hits": [] },
+  "packageLockfileChanged": false,
+  "productionMutations": 0,
+  "sqlApply": 0,
+  "deployments": 0,
+  "commit": false,
+  "push": false,
+  "productionGo": "NO"
+}

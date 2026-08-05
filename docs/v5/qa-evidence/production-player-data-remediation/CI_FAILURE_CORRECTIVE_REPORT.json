@@ -1,0 +1,59 @@
+{
+  "timestamp": "2026-08-05T09:20:00.000Z",
+  "verdict": "PRODUCTION_PLAYER_DATA_REMEDIATION_CI_CORRECTED_READY_FOR_COMMIT",
+  "prNumber": 371,
+  "failedWorkflowRunId": "30991826297",
+  "baseCommit": "1490863216d87abd35c34f535491d24575ba2ebd",
+  "failingTestPath": "tests/player-management-phase-1b-facade.test.js",
+  "failingTestName": "1B gender normalization — legacy labels via normalizePlayerProfile",
+  "oldExpectedValue": "unknown",
+  "actualCanonicalValue": "other",
+  "rootCause": "Stale Phase 1B test applied engine-facing unknown contract to canonical normalizePlayerProfile stored gender",
+  "exactTestCorrection": {
+    "other": { "from": "unknown", "to": "other" },
+    "Khac": { "from": "unknown", "to": "other" },
+    "engineFacingAssertionsAdded": {
+      "other": "unknown",
+      "Khac": "unknown",
+      "null": "unknown"
+    }
+  },
+  "implementationFilesChanged": 0,
+  "testFilesChanged": ["tests/player-management-phase-1b-facade.test.js"],
+  "evidenceFilesChanged": [
+    "docs/v5/qa-evidence/production-player-data-remediation/CI_FAILURE_CORRECTIVE_REPORT.md",
+    "docs/v5/qa-evidence/production-player-data-remediation/CI_FAILURE_CORRECTIVE_REPORT.json"
+  ],
+  "results": {
+    "phase1bFacade": { "passed": 18, "failed": 0 },
+    "focusedGender": { "passed": 14, "failed": 0 },
+    "accountOnlyAthlete": { "passed": 12, "failed": 0 },
+    "tournamentFemale": { "passed": 16, "failed": 0 },
+    "quickAddWriter": "PASS",
+    "qaFilter": "PASS",
+    "smokeHygieneDryRun": "PASS",
+    "genderWriterGuard": "PASS",
+    "fullUnit": { "tests": 6838, "passed": 6838, "failed": 0, "cancelled": 0, "skipped": 0 },
+    "lintNoNew": "PASS",
+    "build": "PASS",
+    "diffCheck": "PASS",
+    "cachedDiffCheck": "PASS",
+    "secretScan": { "result": "PASS", "hits": 0 },
+    "packageLockfileChanged": false
+  },
+  "spotCheck": {
+    "profileOther": "other",
+    "profileKhac": "other",
+    "engineOther": "unknown"
+  },
+  "unrelatedFilesCount": 0,
+  "stagedFileCount": 0,
+  "productionMutations": 0,
+  "sqlApply": 0,
+  "migrationApply": 0,
+  "deployments": 0,
+  "quarantineOrBanExecution": 0,
+  "commit": false,
+  "push": false,
+  "productionGo": "NO"
+}

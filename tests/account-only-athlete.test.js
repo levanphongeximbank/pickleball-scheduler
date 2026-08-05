@@ -50,12 +50,19 @@ test("buildAccountOnlyPlayerId — tạo id route", () => {
 });
 
 test("resolveAthleteGender — map male/female và profile gender", () => {
-  assert.equal(resolveAthleteGender({ gender: "Nam" }), "Nam");
+  assert.equal(resolveAthleteGender({ gender: "Nam" }), "male");
   assert.equal(
     resolveAthleteGender({}, { assessmentAnswers: { gender: "female" } }),
-    "Nữ"
+    "female"
   );
-  assert.equal(resolveAthleteGender({}), "");
+  assert.equal(resolveAthleteGender({}), null);
+});
+
+test("athleteGenderDisplayLabel — Vietnamese presentation only", async () => {
+  const { athleteGenderDisplayLabel } = await import("../src/models/player.js");
+  assert.equal(athleteGenderDisplayLabel("male"), "Nam");
+  assert.equal(athleteGenderDisplayLabel("female"), "Nữ");
+  assert.equal(athleteGenderDisplayLabel(null), "Chưa xác định");
 });
 
 test("normalizePlayer — giữ unrated khi chưa có điểm", () => {
@@ -120,7 +127,7 @@ test("enrichAccountOnlyAthlete — lấy rating từ RPC", async () => {
   });
 
   assert.equal(player.name, "Rated Player");
-  assert.equal(player.gender, "Nam");
+  assert.equal(player.gender, "male");
   assert.equal(Number(player.level), 4.5);
   assert.equal(player.linkStatus, "account_only");
 

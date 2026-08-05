@@ -1,0 +1,70 @@
+{
+  "timestamp": "2026-08-05T08:35:00.000Z",
+  "worktree": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\hard-cutover\\production-player-data-remediation",
+  "branch": "fix/production-player-data-cleanliness-and-gender-normalization",
+  "currentHead": "e53694174b92c31f6dfd5725ab3e74ea3cc13e29",
+  "originMainSha": "e53694174b92c31f6dfd5725ab3e74ea3cc13e29",
+  "changedFileCounts": {
+    "modifiedTracked": 22,
+    "untrackedPaths": 21,
+    "totalPaths": 43,
+    "staged": 0,
+    "unrelated": 0
+  },
+  "blockers": {
+    "blocker1_quickAddWriter": "CLOSED_PASS",
+    "blocker2_qaFilter": "CLOSED_PASS",
+    "blocker3_authBanEmailGate": "CLOSED_PASS",
+    "blocker4_accountOnlyTests": "CLOSED_PASS",
+    "blockerCount": 0
+  },
+  "warnings": {
+    "pickerCanonical": "CLOSED",
+    "previewFixturesCanonical": "CLOSED",
+    "writerGuardExpanded": "CLOSED",
+    "evidenceAccountOnly": "CLOSED",
+    "highRiskUnresolved": 0,
+    "warningCount": 0,
+    "residualNote": "emailOverrides harness path unused by Production smoke callers"
+  },
+  "quickAddPersistence": {
+    "legacyPersistenceAllowed": false,
+    "persistenceValues": "male|female|other|null",
+    "canonicalHelperVerified": true,
+    "spotCheck": {
+      "Nam": "male",
+      "Nu": "female",
+      "blank": null,
+      "unknown": null
+    }
+  },
+  "phase1bSmithGmailFilterResult": false,
+  "qaApprovedDomainGate": true,
+  "authIdOnlyBanAllowed": false,
+  "authEmailGateVerified": true,
+  "authRejectionMutationCalls": 0,
+  "authDryRunMutationCalls": 0,
+  "accountOnlyAthleteTests": { "passed": 12, "failed": 0 },
+  "tournamentFemaleTests": { "passed": 16, "failed": 0 },
+  "focusedGenderTests": { "passed": 14, "failed": 0 },
+  "focusedBundle": { "passed": 46, "failed": 0 },
+  "quickAddWriterTests": "PASS",
+  "qaFilterTests": "PASS",
+  "smokeHygieneDryRunTests": "PASS",
+  "genderWriterGuard": "PASS",
+  "activeLegacyGenderWriters": 0,
+  "lintNoNew": "PASS",
+  "build": "PASS",
+  "diffCheck": "PASS",
+  "cachedDiffCheck": "PASS",
+  "secretScan": { "result": "PASS", "hits": 0 },
+  "packageLockfileChanged": false,
+  "productionMutations": 0,
+  "sqlApply": 0,
+  "deployments": 0,
+  "quarantineOrBanExecution": 0,
+  "commit": false,
+  "push": false,
+  "productionGo": "NO",
+  "independentReviewVerdict": "PRODUCTION_PLAYER_DATA_REMEDIATION_REVIEW_PASS_READY_FOR_COMMIT"
+}

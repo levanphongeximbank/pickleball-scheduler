@@ -1250,6 +1250,29 @@ select json_build_object(
   console.log(`\nAPPLY STATUS: ${applyReport.status}`);
   console.log(`SMOKE STATUS: ${smokeReport.status}`);
   console.log(`FINAL VERDICT: ${finalVerdict}`);
+
+  try {
+    const { quarantineProductionSmokeUsers } = await import(
+      "./lib/prod-smoke-identity-hygiene.mjs"
+    );
+    smokeReport.qaQuarantine = await quarantineProductionSmokeUsers({
+      admin,
+      managementSql,
+      token,
+      userIds: [venueManager?.id, courtManager?.id, player?.id, vp?.id, stranger?.id].filter(
+        Boolean
+      ),
+      reason: "phase1c-production-authz-smoke",
+    });
+    writeJson("PHASE_1C_PRODUCTION_AUTHZ_GATE_SMOKE_REPORT.json", smokeReport);
+  } catch (qErr) {
+    smokeReport.warnings = [
+      ...(smokeReport.warnings || []),
+      `QA quarantine skipped: ${String(qErr?.message || qErr)}`,
+    ];
+    writeJson("PHASE_1C_PRODUCTION_AUTHZ_GATE_SMOKE_REPORT.json", smokeReport);
+  }
+
   process.exitCode =
     applyReport.status === "PASS" && smokeReport.status === "PASS" ? 0 : 1;
 }

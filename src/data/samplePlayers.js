@@ -71,9 +71,9 @@ function buildDemoPlayers(count = DEMO_PLAYER_COUNT) {
   const players = [];
 
   for (let index = 0; index < count; index += 1) {
-    const gender = index % 3 === 0 ? "Nữ" : "Nam";
+    const gender = index % 3 === 0 ? "female" : "male";
     const ho = HO[index % HO.length];
-    const tenList = gender === "Nữ" ? TEN_NU : TEN_NAM;
+    const tenList = gender === "female" ? TEN_NU : TEN_NAM;
     const ten = tenList[Math.floor(index / HO.length) % tenList.length];
     const level = LEVELS[index % LEVELS.length];
     const suffix = index >= HO.length * TEN_NAM.length ? ` ${index + 1}` : "";

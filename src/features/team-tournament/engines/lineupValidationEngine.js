@@ -77,7 +77,7 @@ function validateGenderRequirement(playerIds, playersById, requirement) {
 
   for (const player of members) {
     const genderKey = getPlayerGenderKey(player.gender);
-    if (genderKey === "unknown" || genderKey === "other") {
+    if (genderKey !== "male" && genderKey !== "female") {
       return {
         code: LINEUP_VALIDATION_CODE.INVALID_GENDER,
         message: `VĐV ${player.name || player.id} thiếu hoặc có giới tính không hợp lệ.`,

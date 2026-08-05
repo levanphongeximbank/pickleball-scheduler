@@ -975,6 +975,32 @@ select json_build_object(
 
     console.log(`\nStatus: ${report.status} (${report.totals.pass} pass / ${report.totals.fail} fail)`);
     console.log(`Evidence: docs/v5/qa-evidence/phase1b-production/SMOKE_REPORT.json`);
+
+    // Reversible quarantine for ephemeral QA actors (no hard-delete by default).
+    try {
+      const { quarantineProductionSmokeUsers } = await import(
+        "./lib/prod-smoke-identity-hygiene.mjs"
+      );
+      const qaIds = [
+        fixture?.ordinary_tenant?.user_id,
+        fixture?.unrelated?.user_id,
+        typeof targetUserId !== "undefined" ? targetUserId : null,
+      ].filter(Boolean);
+      if (qaIds.length) {
+        report.qaQuarantine = await quarantineProductionSmokeUsers({
+          admin,
+          managementSql,
+          token,
+          userIds: qaIds,
+          reason: "phase1b-production-smoke",
+        });
+        fs.writeFileSync(path.join(outDir, "SMOKE_REPORT.json"), JSON.stringify(report, null, 2));
+      }
+    } catch (qErr) {
+      report.warnings.push(`QA quarantine skipped: ${String(qErr?.message || qErr)}`);
+      fs.writeFileSync(path.join(outDir, "SMOKE_REPORT.json"), JSON.stringify(report, null, 2));
+    }
+
     if (report.totals.fail > 0) process.exitCode = 1;
   } catch (err) {
     report.status = "ERROR";

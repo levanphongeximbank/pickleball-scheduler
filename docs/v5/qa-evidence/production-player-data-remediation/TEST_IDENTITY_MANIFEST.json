@@ -1,0 +1,125 @@
+{
+  "generatedAt": "2026-08-05T07:42:00.000Z",
+  "sourceAudit": "PRODUCTION_PLAYER_DATA_AUDIT_REPORT.json",
+  "count": 11,
+  "safeToQuarantine": 9,
+  "referencedControlledCleanup": 2,
+  "retainAsEvidence": 0,
+  "notATestIdentity": 0,
+  "identities": [
+    {
+      "id": "f090cb20-b919-4980-9668-4ec9d8bc2688",
+      "email": "phase1c.prod.unrelated.mrr9qm9b@prod-qa.local",
+      "classification": "SAFE_TO_QUARANTINE",
+      "membershipCount": 0,
+      "teamRefCount": 0,
+      "auditLogCount": 0,
+      "plan": "profiles.status=quarantined + auth ban; hide via qaTestIdentityFilter; no hard-delete"
+    },
+    {
+      "id": "d05da6d0-8a1e-4d48-8362-89bd0cd5dfd6",
+      "email": "phase1c.prod.stranger.mrr9n3t0@prod-qa.local",
+      "classification": "SAFE_TO_QUARANTINE",
+      "membershipCount": 0,
+      "teamRefCount": 0,
+      "auditLogCount": 0,
+      "plan": "profiles.status=quarantined + auth ban; hide via qaTestIdentityFilter; no hard-delete"
+    },
+    {
+      "id": "f881b6c2-fa1d-4ed0-99ff-5ca98664bd72",
+      "email": "phase1c.prod.vp.mrr9n3t0@prod-qa.local",
+      "classification": "SAFE_TO_QUARANTINE",
+      "membershipCount": 0,
+      "teamRefCount": 0,
+      "auditLogCount": 0,
+      "plan": "profiles.status=quarantined + auth ban; hide via qaTestIdentityFilter; no hard-delete"
+    },
+    {
+      "id": "bde87773-91a9-4155-a310-28708b58193b",
+      "email": "phase1c.prod.player.mrr9n3t0@prod-qa.local",
+      "classification": "SAFE_TO_QUARANTINE",
+      "membershipCount": 0,
+      "teamRefCount": 0,
+      "auditLogCount": 0,
+      "plan": "profiles.status=quarantined + auth ban; hide via qaTestIdentityFilter; no hard-delete"
+    },
+    {
+      "id": "d2022403-d4b2-44ba-8e73-2f44e6dd6c31",
+      "email": "phase1c.prod.cm.mrr9n3t0@prod-qa.local",
+      "classification": "SAFE_TO_QUARANTINE",
+      "membershipCount": 0,
+      "teamRefCount": 0,
+      "auditLogCount": 0,
+      "plan": "profiles.status=quarantined + auth ban; hide via qaTestIdentityFilter; no hard-delete"
+    },
+    {
+      "id": "1e2e8b67-6369-46f6-98e5-6101d731191a",
+      "email": "phase1c.prod.vm.mrr9n3t0@prod-qa.local",
+      "classification": "SAFE_TO_QUARANTINE",
+      "membershipCount": 0,
+      "teamRefCount": 0,
+      "auditLogCount": 0,
+      "plan": "profiles.status=quarantined + auth ban; hide via qaTestIdentityFilter; no hard-delete"
+    },
+    {
+      "id": "43d1f04d-22ec-4c76-841e-d16df480b9d9",
+      "email": "phase1b-unrelated-1784389278730@pickleball-scheduler.qa",
+      "classification": "SAFE_TO_QUARANTINE",
+      "membershipCount": 0,
+      "teamRefCount": 0,
+      "auditLogCount": 0,
+      "plan": "profiles.status=quarantined + auth ban; hide via qaTestIdentityFilter; no hard-delete"
+    },
+    {
+      "id": "8edf1e99-3c99-4e8b-985b-35e9ff391d6f",
+      "email": "phase1b-unrelated-1784389183882@pickleball-scheduler.qa",
+      "classification": "SAFE_TO_QUARANTINE",
+      "membershipCount": 0,
+      "teamRefCount": 0,
+      "auditLogCount": 0,
+      "plan": "profiles.status=quarantined + auth ban; hide via qaTestIdentityFilter; no hard-delete"
+    },
+    {
+      "id": "057c1f18-9e98-4156-8fde-603d25454682",
+      "email": "phase1b-ord-tenant-1784389181392@pickleball-scheduler.qa",
+      "classification": "SAFE_TO_QUARANTINE",
+      "membershipCount": 0,
+      "teamRefCount": 0,
+      "auditLogCount": 0,
+      "plan": "profiles.status=quarantined + auth ban; hide via qaTestIdentityFilter; no hard-delete"
+    },
+    {
+      "id": "2776695e-6246-4bd4-86fc-6e87fb6acfcc",
+      "email": "phase1b-smoke-1784389287008@pickleball-scheduler.qa",
+      "classification": "REFERENCED_CONTROLLED_CLEANUP_REQUIRED",
+      "membershipCount": 1,
+      "memberships": [
+        {
+          "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+          "status": "removed",
+          "membership_type": "PLAYER"
+        }
+      ],
+      "teamRefCount": 0,
+      "auditLogCount": 0,
+      "plan": "1) quarantine profile 2) retain removed membership row as history 3) hard-delete only after explicit GO"
+    },
+    {
+      "id": "e490cfb9-6d3d-497d-ad4f-9262be5b574d",
+      "email": "phase1b-smoke-1784389191137@pickleball-scheduler.qa",
+      "classification": "REFERENCED_CONTROLLED_CLEANUP_REQUIRED",
+      "membershipCount": 1,
+      "memberships": [
+        {
+          "club_id": "club-219e4a7cbd73437eb6271f02a53314c3",
+          "status": "removed",
+          "membership_type": "PLAYER"
+        }
+      ],
+      "teamRefCount": 0,
+      "auditLogCount": 0,
+      "plan": "1) quarantine profile 2) retain removed membership row as history 3) hard-delete only after explicit GO"
+    }
+  ],
+  "applied": false
+}

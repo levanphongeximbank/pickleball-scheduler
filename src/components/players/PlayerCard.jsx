@@ -40,6 +40,10 @@ import {
   getPlayerStatusMeta,
   isPlayerUnrated,
 } from "../../utils/playerHelpers.js";
+import {
+  athleteGenderDisplayLabel,
+  getPlayerGenderKey,
+} from "../../models/player.js";
 
 function QuickStatPlaceholder({ label }) {
   return (
@@ -81,9 +85,10 @@ export default function PlayerCard({
   const levelColor = unrated ? "#64748b" : getLevelColor(player.level);
   const levelLabel = unrated ? "Chưa đánh giá" : getLevelLabel(player.level);
   const progress = unrated ? 0 : getLevelProgress(player.level);
-  const genderLabel = player.gender || "Chưa rõ";
-  const isFemale = player.gender === "Nữ";
-  const isMale = player.gender === "Nam";
+  const genderKey = getPlayerGenderKey(player.gender);
+  const genderLabel = athleteGenderDisplayLabel(player.gender);
+  const isFemale = genderKey === "female";
+  const isMale = genderKey === "male";
 
   const statusMeta = useMemo(() => {
     const base = getPlayerStatusMeta(player);
@@ -121,8 +126,8 @@ export default function PlayerCard({
             sx={{
               width: 52,
               height: 52,
-              bgcolor: player.gender === "Nữ" ? "#fce7f3" : "#dbeafe",
-              color: player.gender === "Nữ" ? "#be185d" : "#1d4ed8",
+              bgcolor: isFemale ? "#fce7f3" : "#dbeafe",
+              color: isFemale ? "#be185d" : "#1d4ed8",
               fontWeight: 900,
               fontSize: 20,
             }}

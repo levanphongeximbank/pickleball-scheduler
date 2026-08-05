@@ -33,11 +33,12 @@ import { setInitialSkillLevel } from "../domain/skillLevelChangeService.js";
 import { PICK_VN_MAX, PICK_VN_MIN } from "../features/pick-vn-rating/constants/pickVnRatingScale.js";
 import { canViewPlayerSkillLevel } from "../auth/rbac.js";
 import { loadPlayersFromStorage } from "./selectPlayers.data";
-import { normalizePlayers } from "../models/player.js";
+import { getPlayerGenderKey, normalizePlayers } from "../models/player.js";
 import {
   getPlatformAthletes,
   PLATFORM_ATHLETE_LINK_STATUS,
 } from "../features/club/index.js";
+import { excludeQaTestIdentities } from "../features/player/utils/qaTestIdentityFilter.js";
 import PlayerStats from "../components/players/PlayerStats.jsx";
 import PlayerFilters from "../components/players/PlayerFilters.jsx";
 import PlayerCard from "../components/players/PlayerCard.jsx";
@@ -58,7 +59,7 @@ import {
 
 const defaultPlayerForm = {
   name: "",
-  gender: "Nam",
+  gender: "male",
   phone: "",
   level: 3.5,
 };
@@ -117,7 +118,7 @@ export default function Players() {
       return;
     }
 
-    setPlayers(normalizePlayers(result.players || []));
+    setPlayers(normalizePlayers(excludeQaTestIdentities(result.players || [])));
     setPlatformWarning(result.warning || null);
   }, []);
 
@@ -272,7 +273,7 @@ export default function Players() {
     setEditingPlayer(player);
     setForm({
       name: player.name,
-      gender: player.gender || "Nam",
+      gender: getPlayerGenderKey(player.gender) || "male",
       phone: player.phone || "",
       level: Number(player.level) || 3.5,
     });
@@ -291,7 +292,7 @@ export default function Players() {
     const level = Number(form.level);
     const baseData = {
       name,
-      gender: form.gender,
+      gender: getPlayerGenderKey(form.gender) || null,
       phone: form.phone.trim(),
     };
 
@@ -503,8 +504,9 @@ export default function Players() {
             value={form.gender}
             onChange={(e) => updateForm("gender", e.target.value)}
           >
-            <MenuItem value="Nam">Nam</MenuItem>
-            <MenuItem value="Nữ">Nữ</MenuItem>
+            <MenuItem value="male">Nam</MenuItem>
+            <MenuItem value="female">Nữ</MenuItem>
+            <MenuItem value="other">Khác</MenuItem>
           </TextField>
           <Box sx={{ mt: 2 }}>
             {editingPlayer ? (

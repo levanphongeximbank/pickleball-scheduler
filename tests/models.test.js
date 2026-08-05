@@ -41,6 +41,7 @@ test("normalizePlayer standardizes core player fields and keeps extra data", () 
   });
 
   assert.equal(player.name, "Linh");
+  assert.equal(player.gender, "female");
   assert.equal(player.level, 4.5);
   assert.equal(player.rating, 4.5);
   assert.equal(player.ratingInternal, 4.25);
@@ -59,6 +60,7 @@ test("normalizePlayer maps rating from level when rating is missing", () => {
   });
 
   assert.equal(player.rating, 4);
+  assert.equal(player.gender, "male");
   assert.equal(player.genderKey, "male");
   assert.equal(player.playerType, "member");
 });
@@ -67,8 +69,10 @@ test("getPlayerGenderKey supports Vietnamese and English values", () => {
   assert.equal(getPlayerGenderKey("Nam"), "male");
   assert.equal(getPlayerGenderKey("Nữ"), "female");
   assert.equal(getPlayerGenderKey("male"), "male");
-  assert.equal(getPlayerGenderKey("other"), "unknown");
-  assert.equal(getPlayerGenderKey("khác"), "unknown");
+  assert.equal(getPlayerGenderKey("other"), "other");
+  assert.equal(getPlayerGenderKey("khác"), "other");
+  assert.equal(getPlayerGenderKey(null), null);
+  assert.equal(getPlayerGenderKey(""), null);
 });
 
 test("normalizePlayer keeps extended v3.3 fields", () => {

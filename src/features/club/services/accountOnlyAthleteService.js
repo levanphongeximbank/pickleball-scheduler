@@ -1,7 +1,6 @@
 import { fetchProfileByUserId as defaultFetchProfileByUserId } from "../../../auth/profileService.js";
-import { normalizePlayers } from "../../../models/player.js";
+import { getPlayerGenderKey, normalizePlayers } from "../../../models/player.js";
 import { normalizeUser } from "../../../models/user.js";
-import { GENDER_TO_PLAYER_LABEL } from "../../player-rating/playerSkillAssessmentConfig.js";
 import { RATING_STATUS } from "../../pick-vn-rating/constants/ratingStatus.js";
 import {
   buildClubPlayerRatingMirror,
@@ -69,23 +68,13 @@ export function parsePlatformAthleteRouteId(playerId) {
 }
 
 export function resolveAthleteGender(profile, ratingRecord = null) {
-  const fromProfile = String(profile?.gender || "").trim();
-  if (fromProfile) {
-    const lowered = fromProfile.toLowerCase();
-    if (GENDER_TO_PLAYER_LABEL[lowered]) {
-      return GENDER_TO_PLAYER_LABEL[lowered];
-    }
-    if (["nam", "nữ", "nu", "khác", "khac"].includes(lowered)) {
-      return fromProfile;
-    }
-  }
+  const fromProfile = getPlayerGenderKey(profile?.gender);
+  if (fromProfile) return fromProfile;
 
-  const assessmentGender = ratingRecord?.assessmentAnswers?.gender;
-  if (assessmentGender && GENDER_TO_PLAYER_LABEL[assessmentGender]) {
-    return GENDER_TO_PLAYER_LABEL[assessmentGender];
-  }
-
-  return "";
+  const assessmentGender = getPlayerGenderKey(
+    ratingRecord?.assessmentAnswers?.gender
+  );
+  return assessmentGender || null;
 }
 
 async function fetchRatingRecordForAuthUser(authUserId) {
@@ -109,7 +98,7 @@ function buildBaseAccountOnlyPlayer(profile) {
     name: profile.displayName || profile.email || "VĐV",
     email: profile.email || "",
     phone: profile.phone || "",
-    gender: "",
+    gender: null,
     status: profile.status === "suspended" ? "inactive" : "active",
     active: profile.status !== "suspended",
     authUserId: userId,

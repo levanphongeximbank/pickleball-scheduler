@@ -19,12 +19,13 @@ import {
   saveHistory,
   addMatchHistory,
 } from "../scheduler/history";
+import { getPlayerGenderKey } from "../models/player.js";
 
 export function runMensAI(players) {const history = loadHistory();
 
-  // Chß╗ë lß║Ñy ng╞░ß╗¥i ch╞íi Nam
+  // Chỉ lấy người chơi Nam (canonical male)
   const malePlayers = players.filter(
-    (player) => player.gender === "Nam"
+    (player) => getPlayerGenderKey(player.gender) === "male"
   );
 
   // B╞░ß╗¢c 1
