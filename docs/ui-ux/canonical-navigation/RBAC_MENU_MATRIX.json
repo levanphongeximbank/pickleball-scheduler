@@ -1,0 +1,220 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation — RBAC Menu Matrix",
+    "phase": "1-review",
+    "generatedAt": "2026-08-05",
+    "rolesCovered": 10,
+    "reviewVerdict": "CANONICAL_NAVIGATION_PHASE1_REVIEW_PASS_READY_FOR_COMMIT",
+    "canonicalRoleMapping": {
+      "SUPER_ADMIN": "PLATFORM_ADMIN",
+      "VENUE_OWNER": "TENANT_OWNER",
+      "VENUE_MANAGER": "VENUE_MANAGER",
+      "CASHIER": "CASHIER",
+      "CLUB_OWNER": "CLUB_MANAGER",
+      "CLUB_MANAGER": "CLUB_MANAGER",
+      "COACH": "COACH",
+      "REFEREE": "REFEREE",
+      "PLAYER": "PLAYER",
+      "SYSTEM_TECHNICIAN": "SYSTEM_TECHNICIAN"
+    },
+    "sourceFiles": [
+      "src/config/navigationConfig.js",
+      "src/config/v5Menu/",
+      "src/features/identity/matrix/rolePermissions.js",
+      "docs/ui-ux/canonical-navigation/CANONICAL_ROUTE_INVENTORY.json"
+    ]
+  },
+  "ownerDecisions": {
+    "B01": {
+      "status": "RESOLVED",
+      "canonicalRoute": "/crm/messages",
+      "legacyRoute": "/messages",
+      "menuOwner": "CRM & Chăm sóc khách hàng",
+      "proposedMenuImpact": "Remove /messages from all roles; retain /crm/messages for CRM-eligible roles"
+    },
+    "B02": {
+      "status": "RESOLVED",
+      "canonicalFamily": "/tournaments/:id/*",
+      "legacyFamily": "/tournament/*",
+      "proposedMenuImpact": "Remove all /tournament/* from proposed menu for all roles; navigation points to /tournaments/:id/* only"
+    },
+    "B03": {
+      "status": "RESOLVED",
+      "route": "/player/skill-assessment-v5",
+      "proposedMenuImpact": "Remove from PLAYER mobile bottom nav and player-zone sidebar for all roles; SUPER_ADMIN direct access only"
+    }
+  },
+  "roles": {
+    "SUPER_ADMIN": {
+      "canonicalRole": "PLATFORM_ADMIN",
+      "menuGroups": ["*"],
+      "defaultHome": "/dashboard",
+      "level1Access": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13"],
+      "privatePairingRules": true,
+      "skillAssessmentV5DirectAccess": true,
+      "proposedCanonicalMenuRoutesApprox": 82,
+      "mobileProfile": "manager",
+      "b01Impact": "Sees /crm/messages only (not /messages)",
+      "b02Impact": "Tournament nav via /tournaments/:id/* family only",
+      "b03Impact": "May access /player/skill-assessment-v5 via direct URL only"
+    },
+    "VENUE_OWNER": {
+      "canonicalRole": "TENANT_OWNER",
+      "menuGroups": ["dashboard", "venue-ops", "customers", "club", "tournament", "finance", "tenant", "reports", "crm", "ai", "admin", "support"],
+      "defaultHome": "/dashboard",
+      "level1Access": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "13"],
+      "privatePairingRules": false,
+      "skillAssessmentV5DirectAccess": false,
+      "mobileProfile": "manager",
+      "b01Impact": "/crm/messages in CRM group; /messages removed",
+      "b02Impact": "Legacy /tournament/* sidebar leaves removed from proposed menu",
+      "b03Impact": "No V5 assessment in menu"
+    },
+    "VENUE_MANAGER": {
+      "canonicalRole": "VENUE_MANAGER",
+      "menuGroups": ["dashboard", "venue-ops", "customers", "club", "tournament", "reports", "crm", "ai", "support"],
+      "defaultHome": "/dashboard",
+      "level1Access": ["01", "02", "03", "04", "05", "06", "08", "09", "10", "13"],
+      "privatePairingRules": false,
+      "skillAssessmentV5DirectAccess": false,
+      "mobileProfile": "manager",
+      "b01Impact": "Same as VENUE_OWNER",
+      "b02Impact": "Same as VENUE_OWNER",
+      "b03Impact": "No V5 assessment in menu"
+    },
+    "CASHIER": {
+      "canonicalRole": "CASHIER",
+      "menuGroups": ["dashboard", "venue-ops", "finance", "support"],
+      "defaultHome": "/court-management/bookings",
+      "level1Access": ["01", "02", "07", "13"],
+      "privatePairingRules": false,
+      "skillAssessmentV5DirectAccess": false,
+      "mobileProfile": "manager",
+      "b01Impact": "No messaging menu",
+      "b02Impact": "No tournament menu",
+      "b03Impact": "No V5 assessment"
+    },
+    "CLUB_OWNER": {
+      "canonicalRole": "CLUB_MANAGER",
+      "menuGroups": ["dashboard", "customers", "club", "tournament", "support"],
+      "defaultHome": "/club",
+      "level1Access": ["01", "03", "04", "05", "13"],
+      "privatePairingRules": false,
+      "skillAssessmentV5DirectAccess": false,
+      "mobileProfile": "player",
+      "b01Impact": "No CRM messaging unless CRM group added",
+      "b02Impact": "Tournament via canonical family only",
+      "b03Impact": "No V5 in player mobile nav"
+    },
+    "CLUB_MANAGER": {
+      "canonicalRole": "CLUB_MANAGER",
+      "menuGroups": ["dashboard", "customers", "club", "tournament", "support"],
+      "defaultHome": "/club",
+      "level1Access": ["01", "03", "04", "05", "13"],
+      "privatePairingRules": false,
+      "skillAssessmentV5DirectAccess": false,
+      "mobileProfile": "player",
+      "b01Impact": "Same as CLUB_OWNER",
+      "b02Impact": "Same as CLUB_OWNER",
+      "b03Impact": "No V5 in player mobile nav"
+    },
+    "COACH": {
+      "canonicalRole": "COACH",
+      "menuGroups": ["club", "support"],
+      "defaultHome": "/dashboard",
+      "level1Access": ["04", "13"],
+      "privatePairingRules": false,
+      "skillAssessmentV5DirectAccess": false,
+      "mobileProfile": "manager",
+      "b01Impact": "No messaging",
+      "b02Impact": "No tournament menu",
+      "b03Impact": "No V5 assessment"
+    },
+    "REFEREE": {
+      "canonicalRole": "REFEREE",
+      "menuGroups": ["club", "referee-zone", "support"],
+      "defaultHome": "/referee",
+      "level1Access": ["04", "05", "08", "13"],
+      "privatePairingRules": false,
+      "skillAssessmentV5DirectAccess": false,
+      "mobileProfile": "referee",
+      "blockedRoutes": ["/daily-play", "/tournament/types", "/tournament/operations", "/tournament/config"],
+      "b01Impact": "No messaging",
+      "b02Impact": "Referee zone retained; legacy tournament hubs removed",
+      "b03Impact": "No V5 assessment"
+    },
+    "PLAYER": {
+      "canonicalRole": "PLAYER",
+      "menuGroups": ["club", "tournament", "player-zone", "support"],
+      "defaultHome": "/discover-clubs",
+      "level1Access": ["03", "04", "05", "06", "13"],
+      "privatePairingRules": false,
+      "skillAssessmentV5DirectAccess": false,
+      "mobileProfile": "player",
+      "blockedRoutes": ["/daily-play", "/tournament/types", "/tournament/operations", "/tournament/config"],
+      "hiddenMenuGroups": ["profile"],
+      "b01Impact": "No /messages or /crm/messages in player menu",
+      "b02Impact": "Player tournament leaves from canonical family; legacy /tournament/* hubs removed",
+      "b03Impact": "player-skill-assessment-v5 REMOVED from bottom nav and player-zone (B03 binding)"
+    },
+    "SYSTEM_TECHNICIAN": {
+      "canonicalRole": "SYSTEM_TECHNICIAN",
+      "menuGroups": ["system-tech-zone", "support"],
+      "defaultHome": "/dashboard",
+      "level1Access": ["01", "06", "12", "13"],
+      "privatePairingRules": false,
+      "skillAssessmentV5DirectAccess": false,
+      "mobileProfile": "manager",
+      "b01Impact": "No CRM messaging in tech zone",
+      "b02Impact": "No tournament legacy hubs",
+      "b03Impact": "No V5 in menu (not SUPER_ADMIN)"
+    }
+  },
+  "privatePairingRulesAudit": {
+    "menuKey": "admin-private-pairing-rules",
+    "path": "/admin/ai-pairing/private-rules",
+    "visibleToRoles": ["SUPER_ADMIN", "PLATFORM_ADMIN"],
+    "hiddenFromRoles": [
+      "VENUE_OWNER", "VENUE_MANAGER", "CASHIER", "CLUB_OWNER", "CLUB_MANAGER",
+      "COACH", "REFEREE", "PLAYER", "SYSTEM_TECHNICIAN"
+    ],
+    "gates": [
+      "VITE_PRIVATE_PAIRING_RULES_ENABLED",
+      "roles: PLATFORM_ADMIN | SUPER_ADMIN",
+      "permission: pairing.private_rules.view",
+      "SuperAdminRouteGuard",
+      "SuperAdminFeatureGate (UI fail-closed)"
+    ],
+    "verdict": "PASS — fully hidden from unauthorized roles"
+  },
+  "proposedCanonicalMenuPolicy": {
+    "singleRegistry": true,
+    "desktopMobileSameSource": true,
+    "globalSearchUsesCanonicalOnly": true,
+    "breadcrumbsUseCanonicalOnly": true,
+    "duplicateActiveCanonicalMenuEntries": 0,
+    "shadowPartialNotGenerallyAvailable": true,
+    "removedFromProposedMenu": [
+      "/messages",
+      "/player/skill-assessment-v5",
+      "all /tournament/* hub routes (43 routes)"
+    ]
+  },
+  "unfinishedFeaturesMenuPolicy": {
+    "shadowRoutes": [
+      {
+        "path": "/player/skill-assessment-v5",
+        "ownerDecision": "B03",
+        "proposedMenuActive": false,
+        "rbacVisibility": ["SUPER_ADMIN"]
+      }
+    ],
+    "partialBadgeRoutes": [
+      "/crm/messages", "/crm/templates", "/crm/campaigns", "/crm/history", "/crm/reminders/booking", "/reports"
+    ],
+    "partialPolicy": "May appear in proposed menu with PARTIAL badge — not generally available until feature complete",
+    "comingSoonVisible": [
+      "/coming-soon/tech-error-log", "/coming-soon/tech-diagnostics", "/coming-soon/tech-support-history"
+    ]
+  }
+}
