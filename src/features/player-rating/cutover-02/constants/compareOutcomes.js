@@ -1,0 +1,27 @@
+/**
+ * RATING-V5-CUTOVER-02 — Dual-read compare outcome taxonomy.
+ * Classification only; never promotes V5 to published authority.
+ */
+
+export const DUAL_READ_COMPARE_OUTCOME = Object.freeze({
+  V2_PRESENT_V5_PRESENT: "V2_PRESENT_V5_PRESENT",
+  V2_PRESENT_V5_MISSING: "V2_PRESENT_V5_MISSING",
+  V2_MISSING_V5_PRESENT: "V2_MISSING_V5_PRESENT",
+  BOTH_MISSING: "BOTH_MISSING",
+  V5_INVALIDATED: "V5_INVALIDATED",
+  SCALE_MAPPING_UNAPPROVED: "SCALE_MAPPING_UNAPPROVED",
+  VALUE_OUT_OF_RANGE: "VALUE_OUT_OF_RANGE",
+  STALE_V2: "STALE_V2",
+  STALE_V5: "STALE_V5",
+  TENANT_OR_IDENTITY_MISMATCH: "TENANT_OR_IDENTITY_MISMATCH",
+  READ_ERROR_V2: "READ_ERROR_V2",
+  READ_ERROR_V5: "READ_ERROR_V5",
+});
+
+export const DUAL_READ_COMPARE_OUTCOME_SET = new Set(
+  Object.values(DUAL_READ_COMPARE_OUTCOME)
+);
+
+export function isKnownDualReadCompareOutcome(code) {
+  return DUAL_READ_COMPARE_OUTCOME_SET.has(String(code || ""));
+}

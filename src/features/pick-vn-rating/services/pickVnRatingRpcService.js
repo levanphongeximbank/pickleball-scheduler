@@ -1,4 +1,6 @@
 import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
+import { CUTOVER_02_WRITER_ID } from "../../player-rating/cutover-02/constants/writerIds.js";
+import { withWriterFreezeGuard } from "../../player-rating/cutover-02/writer-freeze/freezePolicy.js";
 
 let testRpcClientOverride = null;
 
@@ -51,7 +53,17 @@ async function callPickVnRpc(rpcName, args = {}) {
 }
 
 export async function rpcPickVnSyncRating(record) {
-  return callPickVnRpc("pick_vn_sync_rating", { p_row: record });
+  // CUTOVER-02: Staging writer-freeze guard (default OFF; Production deny forces OFF).
+  // Client guard alone cannot stop direct RPC — see cutover-02 SQL guard (authored, not applied).
+  return withWriterFreezeGuard(
+    CUTOVER_02_WRITER_ID.PICK_VN_SYNC_RATING_RPC,
+    () => callPickVnRpc("pick_vn_sync_rating", { p_row: record }),
+    {
+      playerId: record?.auth_user_id || record?.authUserId || record?.player_id || null,
+      source: "rpcPickVnSyncRating",
+      details: { rpc: "pick_vn_sync_rating" },
+    }
+  );
 }
 
 export async function rpcPickVnVerifyRating(payload) {

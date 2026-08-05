@@ -495,5 +495,6 @@
   "tests/platform-hard-cutover-01-pre-staging-coaching.test.js",
   "tests/platform-hard-cutover-01-pre-staging-messaging.test.js",
   "tests/platform-hard-cutover-01-pre-staging-dashboard.test.js",
-  "tests/platform-hard-cutover-01-pre-staging-reseed.test.js"
+  "tests/platform-hard-cutover-01-pre-staging-reseed.test.js",
+  "tests/rating-v5-cutover-02-dual-read-writer-freeze.test.js"
 ]
