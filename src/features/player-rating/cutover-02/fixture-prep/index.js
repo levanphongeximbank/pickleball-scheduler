@@ -75,3 +75,14 @@ export {
   invokeFixturePrepFromBrowser,
   browserFixturePrepForbiddenPatterns,
 } from "./clientInvoke.js";
+
+export {
+  A3D_SECURITY_MIGRATION_IDENTITY,
+  A3D_SECURITY_SQL_RELATIVE_PATH,
+  A3C_PRE_CORRECTIVE_GRANTS,
+  A3C_INTENDED_GRANTS,
+  A3C_FUNCTION_GRANT_INVENTORY,
+  A3C_EDGE_DB_CALL_PATH,
+  A3D_SECURITY_ROLLBACK_GRANT_MODEL,
+  evaluateIntendedExecuteGrant,
+} from "./grantModel.js";

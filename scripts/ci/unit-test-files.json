@@ -364,6 +364,7 @@
   "tests/public-portal-final-phase-a-readiness.test.js",
   "tests/rally-scoring.test.js",
   "tests/rating-v5-cutover-02-a3c-fixture-prep.test.js",
+  "tests/rating-v5-cutover-02-a3d-least-privilege-grants.test.js",
   "tests/rating-v5-cutover-02-dual-read-writer-freeze.test.js",
   "tests/rbac-v52.test.js",
   "tests/rbac.test.js",
