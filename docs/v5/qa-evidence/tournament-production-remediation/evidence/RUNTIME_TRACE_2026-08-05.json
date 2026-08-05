@@ -1,0 +1,122 @@
+{
+  "auditDate": "2026-08-05",
+  "method": "STATIC_SOURCE_TRACE",
+  "productionMutations": 0,
+  "counterReconciliationAt": "2026-08-05T19:10:00+07:00",
+  "routes": [
+    {
+      "url": "/tournament/daily/tournament-1785921300822",
+      "defectId": "TP-UI-001",
+      "trace": [
+        { "layer": "URL", "detail": "Legacy singular path; no ?club=; activeClubId from header" },
+        { "layer": "router", "file": "src/router.jsx", "route": "/tournament/daily/:tournamentId", "component": "DailyPlaySetup" },
+        { "layer": "routeGuard", "detail": "RouteAccessGate TOURNAMENT_VIEW; TenantGate; OperationalRouteGate exempt /tournament" },
+        { "layer": "layout", "detail": "MainLayout → TenantProvider, ClubProvider, SeasonProvider" },
+        { "layer": "pageGate", "file": "src/components/tournament/TournamentManageGate.jsx", "checks": ["assertTournamentAccess(activeClubId, id, { tenantId: currentTenantId })", "can(TOURNAMENT_UPDATE)"] },
+        { "layer": "clubResolver", "detail": "activeClubId only — NO findTournamentClubId, NO ?club=" },
+        { "layer": "tenantResolver", "detail": "NOT passed to useClubPairingCandidatePool; pairing scope omits tenantId" },
+        { "layer": "tournamentReader", "file": "src/domain/tournamentService.js", "fn": "getTournament(activeClubId, tournamentId)", "store": "localStorage pickleball-club-data-v3::{clubId}", "lmfPathId": "LMF-01" },
+        { "layer": "candidateReader", "file": "src/features/pairing-candidates", "fn": "useClubPairingCandidatePool(activeClubId)", "authority": "rpcV2ClubListMembers + profiles (club scope)" },
+        { "layer": "pairingService", "file": "src/tournament/engines/dailyPlayEngine.js", "fn": "createFairDailyMatches → prepareLivePrivatePairingOptions({ clubId, tournamentId })", "gap": "tenantId/currentTenantId/tournament omitted" },
+        { "layer": "scopeGuard", "file": "src/features/private-pairing-rules/runtime/resolveLivePairingScope.js", "result": "ok:false missing tenantId" },
+        { "layer": "durableSource", "detail": "club_data_v3 blob via saveClubData; async syncClubToCloud", "dualWriterPatternId": "DW-01" },
+        { "layer": "uiOutput", "detail": "34 players visible; pairing error alert; action buttons enabled until click fails" }
+      ],
+      "writerPathStatic": {
+        "uiAction": "handleCreateMatches / toggleDailyCheckIn / updateTournament",
+        "handler": "createFairDailyMatches or updateTournament",
+        "validation": "guardClubAction(TOURNAMENT_UPDATE) only",
+        "scopeGuard": "prepareLivePrivatePairingOptions fails before match create; updateTournament does NOT require tenantId",
+        "service": "tournamentService.updateTournament → saveClubData",
+        "durable": "localStorage blob → scheduleClubCloudPush",
+        "canReachWriterWithoutTenant": "PARTIALLY_PROVEN — status/check-in updates may succeed; fair-match pairing blocked at prepare step"
+      },
+      "whyPlayersLoadWithoutTenant": "useClubPairingCandidatePool resolves club-scoped members via clubId only; does not require tenantId for club-scoped list",
+      "engine40Diff": "TournamentEnginePage uses same getTournament(activeClubId) but writes settings.engineV4; no pairing candidate pool"
+    },
+    {
+      "url": "/tournament/internal/tournament-1785921409840",
+      "defectId": "TP-UI-002",
+      "trace": [
+        { "layer": "URL", "detail": "Legacy path; supports ?club=; findTournamentClubId (same LMF-01 blob scan, not a separate LMF)" },
+        { "layer": "router", "file": "src/router.jsx", "route": "/tournament/internal/:tournamentId", "component": "InternalTournamentSetup" },
+        { "layer": "pageGate", "file": "TournamentManageGate.jsx" },
+        { "layer": "clubResolver", "file": "src/pages/tournament/InternalTournamentSetup.jsx", "chain": "?club= → findTournamentClubId → activeClubId; switchClub on mismatch" },
+        { "layer": "tenantResolverAthletes", "fn": "resolveTeamTournamentAthleteTenantId", "authority": "resolvePairingScopeTenantId (strict, rejects default-tenant)" },
+        { "layer": "candidateReader", "fn": "useClubPairingCandidatePool / listAvailableAthletes", "result": "34 eligible — owner screenshot diagnostic" },
+        { "layer": "tenantResolverPairing", "fn": "prepareLivePrivatePairingOptions in handleStartGuidedFlow", "gap": "passes clubId+tournamentId only" },
+        { "layer": "scopeGuard", "fn": "resolveLivePairingScope", "result": "missing tenantId error string matches owner evidence" },
+        { "layer": "tournamentReader", "fn": "getTournament(tournamentClubId, tournamentId)", "lmfPathId": "LMF-01" },
+        { "layer": "durableSource", "detail": "club blob SSOT" },
+        { "layer": "uiOutput", "detail": "Players + controls visible; pairing scope error on guided flow" }
+      ],
+      "writerPathStatic": {
+        "uiAction": "guided flow / grouping / updateTournament",
+        "scopeGuard": "prepareLivePrivatePairingOptions fail-closed; updateTournament no tenant required",
+        "canReachWriterWithoutTenant": "PARTIALLY_PROVEN — blob patch via updateTournament may proceed if user bypasses pairing"
+      },
+      "dualReaderProven": true,
+      "referenceImplementation": "TeamTournamentSetup passes full tenant scope to prepareLivePrivatePairingOptions"
+    },
+    {
+      "url": "/tournament/official/tournament-1785921550968",
+      "defectId": "TP-UI-003",
+      "trace": [
+        { "layer": "URL", "detail": "Legacy official path; activeClubId only" },
+        { "layer": "router", "route": "/tournament/official/:tournamentId", "component": "OfficialTournamentSetup" },
+        { "layer": "tenantResolverMemo", "fn": "tournament?.tenantId || resolveTenantIdForClub(activeClubId) || currentTenantId", "risk": "resolveTenantIdForClub → default-tenant", "lmfPathId": "LMF-02" },
+        { "layer": "tenantPoolReader", "fn": "useTenantPairingCandidatePool(tenantId)", "file": "screenCandidateAdapters.loadTenantPairingCandidatePool", "reject": "isPlaceholderTenantId → error Chưa có tenant hợp lệ..." },
+        { "layer": "clubPoolReader", "fn": "useClubPairingCandidatePool(activeClubId, { tenantId })" },
+        { "layer": "registrationUI", "detail": "0/0 players — tenant-wide pool empty/failed" },
+        { "layer": "pairingService", "fn": "prepareLivePrivatePairingOptions without tenant in guided flow" },
+        { "layer": "durableSource", "detail": "club blob; no per-tournament Supabase registration table for individual official", "lmfPathId": "LMF-01" }
+      ],
+      "writerPathStatic": {
+        "canReachWriterWithoutTenant": "UNRESOLVED for registration writes — UI blocked by empty pool; updateTournament still club-guard only"
+      },
+      "splitResolverProven": true
+    }
+  ],
+  "localStorageMockFallbackPaths": [
+    {
+      "pathId": "LMF-01",
+      "mechanismType": "LOCALSTORAGE",
+      "entryPoint": "getTournament / createTournament / updateTournament → loadClubData / saveClubData",
+      "sourceFile": "src/domain/tournamentService.js; src/domain/clubStorage.js",
+      "keyOrFallbackValue": "pickleball-club-data-v3::{clubId}",
+      "triggerCondition": "Organizer tournament read/write on Daily/Internal/Official/Engine routes",
+      "productionReachable": true,
+      "classificationConfidence": "HIGH"
+    },
+    {
+      "pathId": "LMF-02",
+      "mechanismType": "FALLBACK",
+      "entryPoint": "resolveTenantIdForClub",
+      "sourceFile": "src/features/tenant/guards/tenantGuard.js",
+      "keyOrFallbackValue": "default-tenant",
+      "triggerCondition": "Club registry tenant missing",
+      "productionReachable": true,
+      "classificationConfidence": "HIGH"
+    },
+    {
+      "pathId": "LMF-03",
+      "mechanismType": "MOCK",
+      "entryPoint": "loadPublicTournamentsPageResult → resolvePublicListDataResult(allowMockFallback:true)",
+      "sourceFile": "src/features/public-portal/services/publicTournamentsRankingsDataSource.js; src/data/public/mockPublicData.js",
+      "keyOrFallbackValue": "MOCK_TOURNAMENTS",
+      "triggerCondition": "Public catalog live list empty/short/error with mock allowed",
+      "productionReachable": true,
+      "classificationConfidence": "HIGH"
+    }
+  ],
+  "counts": {
+    "dualReaderPatterns": 4,
+    "dualWriterPatterns": 3,
+    "dualWriterPatternIds": ["DW-01", "DW-02", "DW-03"],
+    "durableWriterDomains": 6,
+    "localStorageMockFallbackPaths": 3,
+    "localStorageMockFallbackPathIds": ["LMF-01", "LMF-02", "LMF-03"],
+    "legacyIndependentRuntimeAuthority": true,
+    "engine40RedirectShim": false
+  }
+}

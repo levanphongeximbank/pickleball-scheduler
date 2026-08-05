@@ -1,0 +1,123 @@
+{
+  "reviewType": "INDEPENDENT_FINAL_REVIEW",
+  "reviewedAtUtc": "2026-08-05T10:54:00.000Z",
+  "proposedVerdictUnderReview": "TOURNAMENT_PRODUCTION_AUDIT_COMPLETE_READY_FOR_IMPLEMENTATION",
+  "independentVerdict": "TOURNAMENT_PRODUCTION_AUDIT_INDEPENDENT_REVIEW_FAIL_NO_COMMIT",
+  "historicalFailPreserved": true,
+  "commitGateCorrectionRecord": "docs/v5/qa-evidence/tournament-production-remediation/evidence/COMMIT_GATE_CORRECTION_2026-08-05.json",
+  "commitGateCorrectionStatus": "CORRECTIONS_APPLIED_AWAITING_INDEPENDENT_REREVIEW",
+  "productionGo": "NO",
+  "productionMutations": 0,
+  "identity": {
+    "worktree": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\hard-cutover\\tournament-production-remediation",
+    "branch": "fix/tournament-production-runtime-and-canonical-route-remediation",
+    "head": "e53694174b92c31f6dfd5725ab3e74ea3cc13e29",
+    "headMatchesExpected": true
+  },
+  "passCriteriaResults": {
+    "countersReconcile": true,
+    "jsonParses": true,
+    "markdownJsonMatch": true,
+    "productionFindingsEvidenceSupported": true,
+    "noImplementationSrcChanges": true,
+    "allSixOriginalScreenshotsExcludedFromCommit": false,
+    "mcpJsonExcludedFromCommit": true,
+    "canonicalEvidenceAuthorityUnambiguous": false,
+    "productionMutationsZero": true,
+    "remediationPlanPrioritizesWP1ThroughWP8": false
+  },
+  "failFindings": [
+    {
+      "id": "IR-FAIL-001",
+      "severity": "HIGH",
+      "title": "Original Owner screenshots incorrectly marked commit-eligible",
+      "detail": "SCREENSHOT_MANIFEST marks image(379)-image(383) commitEligibility=YES. Independent review requires all six originals LOCAL_EVIDENCE_ONLY / COMMIT_ELIGIBILITY=NO_PENDING_REDACTION due to player names, account context, gender, rating, and email (384)."
+    },
+    {
+      "id": "IR-FAIL-002",
+      "severity": "HIGH",
+      "title": "Git exclude covers only image(384).png",
+      "detail": "Worktree info/exclude lists only image(384).png. Committing docs/v5/qa-evidence/... would include five PII-bearing originals."
+    },
+    {
+      "id": "IR-FAIL-003",
+      "severity": "HIGH",
+      "title": "Remediation plan does not prioritize WP1–WP8",
+      "detail": "TOURNAMENT_REMEDIATION_PLAN.md currently leads with tenant-scope wiring (Phase 1) rather than WP1 preserve/export browser-local tournaments → WP2 cloud durable authority → WP3 migrate/reconcile. Plan must not begin by merely clearing the missing-tenant banner."
+    },
+    {
+      "id": "IR-FAIL-004",
+      "severity": "MEDIUM",
+      "title": "Preliminary evidence directory remains competing content",
+      "detail": "docs/tournament-production-remediation/ contains CANONICAL_REDIRECT.md plus full prior package and all six PNG originals. Canonical authority is declared as docs/v5/qa-evidence/... but preliminary path still holds duplicate evidence."
+    }
+  ],
+  "verifiedPassItems": {
+    "routesInventoried": 54,
+    "primaryClassificationSum": 54,
+    "canonicalRoutes": 8,
+    "legacyRoutes": 46,
+    "primaryDuplicateRoutes": 0,
+    "duplicateConflictRouteCount": 7,
+    "legacyActiveRuntimeCount": 4,
+    "compatibilityRedirectCount": 0,
+    "engine4RouteCount": 7,
+    "publicRouteCount": 1,
+    "relatedPortalRouteCount": 3,
+    "productionContainerRowsInspected": 1,
+    "productionDurableTournamentRecordsInspected": 0,
+    "ownerTournamentIdsFound": 0,
+    "ownerTournamentIdsAbsent": 3,
+    "ownerRootCauses": "LOCAL_BROWSER_ONLY_OBJECT x3",
+    "localStorageKeyProven": "pickleball-club-data-v3::{clubId}",
+    "acccTenantId": "venue-prod-main",
+    "durableWriterCount": 6,
+    "dualWriterCount": 3,
+    "dualReaderCount": 4,
+    "localStorageMockFallbackCount": 4,
+    "productionReadOnlyQueryCount": 7,
+    "mcpConfigCommitEligibility": "NO"
+  },
+  "commitEligibilityClassifications": {
+    "originalScreenshots": {
+      "required": "LOCAL_EVIDENCE_ONLY / COMMIT_ELIGIBILITY=NO_PENDING_REDACTION",
+      "currentState": "FAIL — five YES, one NO_PENDING_OWNER_PII_REVIEW"
+    },
+    "mcpConfig": {
+      "path": ".cursor/mcp.json",
+      "commitEligibility": "NO",
+      "stageEligibility": "NO",
+      "localOnly": true
+    },
+    "auditScript": {
+      "path": "scripts/tournament-production-readonly-audit.mjs",
+      "commitEligibility": "NO_LOCAL_AUDIT_HELPER",
+      "disposition": "Keep untracked/unstaged. Live Production audit transport was supabase-production MCP (project_ref=expuvcohlcjzvrrauvud, read_only=true, features=database), not this credential script.",
+      "mutationRisk": "SCRIPT_NOT_USED_FOR_LIVE_AUDIT; COULD_RUN_WITH_WRITE_CAPABLE_CREDENTIALS_IF_MISCONFIGURED"
+    },
+    "evidenceTest": {
+      "path": "tests/tournament-production-remediation-evidence.test.js",
+      "commitEligibility": "YES",
+      "gap": "Updated in commit-gate correction to assert six screenshots NO_PENDING_REDACTION, WP1-first remediation, preliminary redirect-only"
+    },
+    "preliminaryRedirectOnly": {
+      "path": "docs/tournament-production-remediation/CANONICAL_REDIRECT.md",
+      "recommendation": "Commit redirect-only; do not commit duplicated screenshots/manifests from preliminary path",
+      "postCorrectionState": "REDIRECT_ONLY_AFTER_RECONCILIATION"
+    }
+  },
+  "implementationFilesChanged": [],
+  "note": "This record preserves the historical FAIL verdict. Corrections are documented in COMMIT_GATE_CORRECTION_2026-08-05.json; independent re-review is required before any commit.",
+  "subsequentRecords": {
+    "independentRereviewFail": {
+      "record": "evidence/INDEPENDENT_REREVIEW_2026-08-05.json",
+      "verdict": "TOURNAMENT_PRODUCTION_AUDIT_INDEPENDENT_REREVIEW_FAIL_NO_COMMIT",
+      "note": "Historical FAIL preserved; verifiedPassItems.localStorageMockFallbackCount=4 above reflects the then-asserted value later reduced to 3."
+    },
+    "runtimeAuthorityCounterReconciliation": {
+      "record": "evidence/RUNTIME_AUTHORITY_COUNTER_RECONCILIATION_2026-08-05.json",
+      "dualWriterFinal": 3,
+      "localStorageMockFallbackFinal": 3
+    }
+  }
+}

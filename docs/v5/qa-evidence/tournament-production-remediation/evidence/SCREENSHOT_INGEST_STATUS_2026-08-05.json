@@ -1,0 +1,125 @@
+{
+  "status": "INGESTED",
+  "evidenceDate": "2026-08-05",
+  "verifiedAt": "2026-08-05T16:49:00+07:00",
+  "commitGateCorrectionAt": "2026-08-05T18:15:00+07:00",
+  "expectedDirectory": "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner",
+  "canonicalEvidenceAuthority": "docs/v5/qa-evidence/tournament-production-remediation",
+  "filesVerified": 6,
+  "filesExpected": 6,
+  "allVerifiedReadable": true,
+  "sha256Recorded": true,
+  "uniformClassification": {
+    "evidenceClassification": "LOCAL_EVIDENCE_ONLY",
+    "commitEligibility": "NO_PENDING_REDACTION",
+    "stageEligibility": "NO",
+    "originalFileModified": "NO",
+    "piiPresent": "YES"
+  },
+  "counts": {
+    "originalScreenshotCount": 6,
+    "localEvidenceOnlyCount": 6,
+    "commitEligibleCount": 0,
+    "stageEligibleCount": 0,
+    "gitTrackedOriginalCount": 0,
+    "gitStagedOriginalCount": 0
+  },
+  "ingestedFiles": [
+    {
+      "filename": "image(379).png",
+      "sha256": "55126ba868b23095ec604304043eaf255cf597338a8a83bc33d6c7572fd4320b",
+      "sizeBytes": 174417,
+      "dimensions": { "width": 1919, "height": 991 },
+      "evidenceClassification": "LOCAL_EVIDENCE_ONLY",
+      "commitEligibility": "NO_PENDING_REDACTION",
+      "stageEligibility": "NO",
+      "originalFileModified": "NO",
+      "piiPresent": "YES"
+    },
+    {
+      "filename": "image(380).png",
+      "sha256": "0a9b9ccab7507c175b4412439880c99097e65f7f6da66360cb5f3eaa515c5b86",
+      "sizeBytes": 172609,
+      "dimensions": { "width": 1906, "height": 985 },
+      "evidenceClassification": "LOCAL_EVIDENCE_ONLY",
+      "commitEligibility": "NO_PENDING_REDACTION",
+      "stageEligibility": "NO",
+      "originalFileModified": "NO",
+      "piiPresent": "YES"
+    },
+    {
+      "filename": "image(381).png",
+      "sha256": "3bcc2b7a9bef08b9381bdce8eb3d8e4be69beac995f6082c54fbfe172c9a9b7f",
+      "sizeBytes": 179459,
+      "dimensions": { "width": 1907, "height": 988 },
+      "evidenceClassification": "LOCAL_EVIDENCE_ONLY",
+      "commitEligibility": "NO_PENDING_REDACTION",
+      "stageEligibility": "NO",
+      "originalFileModified": "NO",
+      "piiPresent": "YES"
+    },
+    {
+      "filename": "image(382).png",
+      "sha256": "6014cdf4798f36e50d7fd692a978ee94e91b9c3d9ca38010f1c2c54e0491ac5b",
+      "sizeBytes": 192636,
+      "dimensions": { "width": 1888, "height": 987 },
+      "evidenceClassification": "LOCAL_EVIDENCE_ONLY",
+      "commitEligibility": "NO_PENDING_REDACTION",
+      "stageEligibility": "NO",
+      "originalFileModified": "NO",
+      "piiPresent": "YES"
+    },
+    {
+      "filename": "image(383).png",
+      "sha256": "7afead214366e97e1e2b8eb052689875b72a75b87ec8cc99b76966b5b9dd9bcc",
+      "sizeBytes": 176523,
+      "dimensions": { "width": 1918, "height": 1004 },
+      "evidenceClassification": "LOCAL_EVIDENCE_ONLY",
+      "commitEligibility": "NO_PENDING_REDACTION",
+      "stageEligibility": "NO",
+      "originalFileModified": "NO",
+      "piiPresent": "YES"
+    },
+    {
+      "filename": "image(384).png",
+      "sha256": "38369a94f4dc182d4d64ecfa68795d1ca5f5c66531dedfd8fd57afad2935f1bf",
+      "sizeBytes": 169802,
+      "dimensions": { "width": 1913, "height": 994 },
+      "evidenceClassification": "LOCAL_EVIDENCE_ONLY",
+      "commitEligibility": "NO_PENDING_REDACTION",
+      "stageEligibility": "NO",
+      "originalFileModified": "NO",
+      "piiPresent": "YES",
+      "piiType": "email_address_visible",
+      "note": "Original retained locally; not part of Git commit package; redacted derivative deferred — checksums and defect mapping suffice for this iteration"
+    }
+  ],
+  "gitExclude": {
+    "mechanism": ".git/info/exclude",
+    "repositoryGitignoreModified": false,
+    "worktreePrivateExcludePath": "C:/Users/Le Phong/pickleball-scheduler/.git/worktrees/tournament-production-remediation/info/exclude",
+    "commonDirExcludePath": "C:/Users/Le Phong/pickleball-scheduler/.git/info/exclude",
+    "note": "Worktree-private info/exclude was written per Owner instruction. This Git worktree honors common-dir info/exclude for check-ignore/status; the same six original paths were therefore also recorded under the common-dir exclude block (marked BEGIN/END tournament-production-remediation). Repository .gitignore was not modified.",
+    "pathsExcluded": [
+      "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(379).png",
+      "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(380).png",
+      "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(381).png",
+      "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(382).png",
+      "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(383).png",
+      "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(384).png",
+      "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(379).png",
+      "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(380).png",
+      "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(381).png",
+      "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(382).png",
+      "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(383).png",
+      "docs/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/image(384).png"
+    ],
+    "verification": {
+      "ORIGINAL_SCREENSHOTS_TRACKED_COUNT": 0,
+      "ORIGINAL_SCREENSHOTS_STAGED_COUNT": 0,
+      "ORIGINAL_SCREENSHOTS_COMMIT_ELIGIBLE_COUNT": 0,
+      "gitCheckIgnoreMatchCount": 6
+    }
+  },
+  "pendingFiles": []
+}

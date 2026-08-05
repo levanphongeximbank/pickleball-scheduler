@@ -1,0 +1,88 @@
+{
+  "recordType": "COMMIT_GATE_CORRECTION",
+  "correctedAt": "2026-08-05T18:25:00+07:00",
+  "priorIndependentReview": {
+    "record": "docs/v5/qa-evidence/tournament-production-remediation/evidence/INDEPENDENT_FINAL_REVIEW_2026-08-05.json",
+    "independentVerdict": "TOURNAMENT_PRODUCTION_AUDIT_INDEPENDENT_REVIEW_FAIL_NO_COMMIT",
+    "historicalFactPreserved": true,
+    "overwritten": false
+  },
+  "failedConditionsCorrected": [
+    {
+      "id": "IR-FAIL-001",
+      "failedCondition": "Original screenshots marked commitEligibility=YES (379-383) / inconsistent 384",
+      "correctionApplied": "All six originals set evidenceClassification=LOCAL_EVIDENCE_ONLY, commitEligibility=NO_PENDING_REDACTION, stageEligibility=NO, originalFileModified=NO, piiPresent=YES in SCREENSHOT_MANIFEST, SCREENSHOT_INGEST_STATUS, TOURNAMENT_UI_DEFECT_LOG, and related audit fields. Original PNG bytes unchanged; no redacted derivatives created this iteration.",
+      "filesAffected": [
+        "docs/v5/qa-evidence/tournament-production-remediation/evidence/SCREENSHOT_MANIFEST_2026-08-05.json",
+        "docs/v5/qa-evidence/tournament-production-remediation/evidence/SCREENSHOT_INGEST_STATUS_2026-08-05.json",
+        "docs/v5/qa-evidence/tournament-production-remediation/TOURNAMENT_UI_DEFECT_LOG.json",
+        "docs/v5/qa-evidence/tournament-production-remediation/TOURNAMENT_PRODUCTION_AUDIT_REPORT.json",
+        "docs/v5/qa-evidence/tournament-production-remediation/evidence/screenshots/2026-08-05-owner/README.md"
+      ]
+    },
+    {
+      "id": "IR-FAIL-002",
+      "failedCondition": "Git exclude covered only image(384).png",
+      "correctionApplied": "Worktree-private .git/info/exclude (worktrees/.../info/exclude) lists all six originals under canonical and preliminary screenshot paths. Because this Git worktree honors common-dir info/exclude for check-ignore/status, the same paths were also appended under a marked BEGIN/END block in the common-dir exclude. Repository .gitignore not modified. Verified ORIGINAL_SCREENSHOTS_TRACKED_COUNT=0, STAGED_COUNT=0, check-ignore match=6.",
+      "filesAffected": [
+        ".git/worktrees/tournament-production-remediation/info/exclude",
+        ".git/info/exclude (common-dir; marked tournament-production-remediation block only)"
+      ]
+    },
+    {
+      "id": "IR-FAIL-003",
+      "failedCondition": "Remediation plan led with tenant wiring instead of WP1–WP8",
+      "correctionApplied": "TOURNAMENT_REMEDIATION_PLAN.md, TOURNAMENT_ROLLBACK_PLAN.md, and TOURNAMENT_TEST_PLAN.md rewritten to mandatory WP1→WP8 order beginning with preserve/export. Explicit statements: HIDING_THE_MISSING_TENANT_BANNER_IS_NOT_A_VALID_FIRST_REMEDIATION; LOCAL_BROWSER_TOURNAMENT_PRESERVATION_PRECEDES_RUNTIME_CHANGES; PRODUCTION_DATA_MIGRATION_REQUIRES_SEPARATE_OWNER_GO.",
+      "filesAffected": [
+        "docs/v5/qa-evidence/tournament-production-remediation/TOURNAMENT_REMEDIATION_PLAN.md",
+        "docs/v5/qa-evidence/tournament-production-remediation/TOURNAMENT_ROLLBACK_PLAN.md",
+        "docs/v5/qa-evidence/tournament-production-remediation/TOURNAMENT_TEST_PLAN.md"
+      ]
+    },
+    {
+      "id": "IR-FAIL-004",
+      "failedCondition": "Preliminary directory held competing full package + PNGs",
+      "correctionApplied": "After SHA-256 match verification against canonical locals, removed verified preliminary duplicates only. Preliminary directory reduced to CANONICAL_REDIRECT.md. Canonical PNG originals preserved.",
+      "filesAffected": [
+        "docs/tournament-production-remediation/CANONICAL_REDIRECT.md",
+        "docs/v5/qa-evidence/tournament-production-remediation/evidence/PRELIMINARY_EVIDENCE_RECONCILIATION_2026-08-05.json"
+      ]
+    },
+    {
+      "id": "IR-AUDIT-SCRIPT",
+      "failedCondition": "Audit script previously marked YES_WITH_CAVEAT / could be mistaken for approved Production transport",
+      "correctionApplied": "AUDIT_SCRIPT_COMMIT_ELIGIBILITY=NO_LOCAL_AUDIT_HELPER. Script remains untracked/unstaged. Authoritative transport documented as supabase-production MCP project_ref=expuvcohlcjzvrrauvud read_only=true features=database.",
+      "filesAffected": [
+        "docs/v5/qa-evidence/tournament-production-remediation/TOURNAMENT_PRODUCTION_AUDIT_REPORT.json",
+        "docs/v5/qa-evidence/tournament-production-remediation/TOURNAMENT_PRODUCTION_READ_ONLY_QUERY_LOG.json",
+        "docs/v5/qa-evidence/tournament-production-remediation/TOURNAMENT_PRODUCTION_READ_ONLY_QUERY_LOG.md",
+        "tests/tournament-production-remediation-evidence.test.js"
+      ]
+    }
+  ],
+  "constraintsObserved": {
+    "implementationChanges": 0,
+    "productionQueriesRerun": 0,
+    "productionMutations": 0,
+    "sqlApply": 0,
+    "deployments": 0,
+    "commitsCreated": 0,
+    "pushes": 0,
+    "stagedFiles": 0,
+    "mcpConfigAlteredDuringCorrection": false,
+    "srcApiPackageSqlTouched": false
+  },
+  "reReviewRequired": true,
+  "commitStillNotPerformed": true,
+  "proposedCorrectionVerdict": "TOURNAMENT_AUDIT_COMMIT_GATE_CORRECTION_COMPLETE_READY_FOR_REREVIEW",
+  "subsequentIndependentRereviewFail": {
+    "record": "evidence/INDEPENDENT_REREVIEW_2026-08-05.json",
+    "verdict": "TOURNAMENT_PRODUCTION_AUDIT_INDEPENDENT_REREVIEW_FAIL_NO_COMMIT",
+    "findings": ["IR-RR-001", "IR-RR-002"],
+    "historicalFactPreserved": true
+  },
+  "subsequentRuntimeAuthorityCounterReconciliation": {
+    "record": "evidence/RUNTIME_AUTHORITY_COUNTER_RECONCILIATION_2026-08-05.json",
+    "note": "Evidence-only counter reconciliation after IR-RR-001/002; further re-review required"
+  }
+}

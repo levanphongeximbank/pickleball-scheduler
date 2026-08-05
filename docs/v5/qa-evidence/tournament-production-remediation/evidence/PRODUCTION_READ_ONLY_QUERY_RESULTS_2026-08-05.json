@@ -1,0 +1,18 @@
+{
+  "workstream": "tournament-production-remediation",
+  "executedAtUtc": "2026-08-05T10:39:00.965Z",
+  "mcpServer": "supabase-production",
+  "projectRef": "expuvcohlcjzvrrauvud",
+  "readOnlyMode": true,
+  "productionMutations": 0,
+  "queriesExecuted": 7,
+  "summary": {
+    "ownerTournamentsInCloudBlob": 0,
+    "ownerTournamentsInTeamTournaments": 0,
+    "ownerTournamentsInPublicCatalog": 0,
+    "club_data_v3_rows": 1,
+    "club_data_v3_tournament_objects": 0,
+    "acccClubTenantId": "venue-prod-main",
+    "conclusion": "Owner-reported tournaments are client localStorage runtime objects, not Production cloud durable rows. Missing tenantId UI errors originate from loader/route/default-tenant wiring, not missing clubs.tenant_id (ACCC has venue-prod-main)."
+  }
+}
