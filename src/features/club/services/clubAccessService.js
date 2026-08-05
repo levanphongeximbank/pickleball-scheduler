@@ -7,7 +7,6 @@ import {
 import { loadClubs } from "../../../data/club.js";
 import { listClubsForTenant } from "../../tenant/guards/tenantGuard.js";
 import { getCurrentClubMembers } from "./clubMemberService.js";
-import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
 
 /**
  * User có quyền xem CLB này không (ngoài RBAC permission).

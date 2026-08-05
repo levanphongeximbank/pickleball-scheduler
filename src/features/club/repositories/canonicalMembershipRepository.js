@@ -222,7 +222,7 @@ export function createCanonicalMembershipRepository(deps = {}) {
    * @deprecated Prefer listCurrentClubMembers or listClubMembershipHistory.
    */
   async function listActiveClubMembers(clubId, options = {}) {
-    if (Boolean(options.includeInactive)) {
+    if (options.includeInactive) {
       return listClubMembershipHistory(clubId);
     }
     return listCurrentClubMembers(clubId);

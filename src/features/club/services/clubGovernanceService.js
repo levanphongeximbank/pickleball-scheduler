@@ -22,8 +22,8 @@ import { normalizePlayers } from "../../../models/player.js";
 import { normalizeUser } from "../../../models/user.js";
 import { saveAuthSession, loadAuthSession } from "../../../auth/authStorage.js";
 import { getPickVnRatingByAuthUserId, syncRatingToClubPlayer } from "../../pick-vn-rating/services/pickVnRatingService.js";
-import { getClubMembers, getCurrentClubMembers, addMemberToClub } from "./clubMemberService.js";
-import { CLUB_MEMBER_STATUSES, normalizeClubMemberStatus } from "../constants/clubMemberRoles.js";
+import { getCurrentClubMembers, addMemberToClub } from "./clubMemberService.js";
+import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
 import {
   findUserIdByPlayerId,
   saveAthleteClubLink,

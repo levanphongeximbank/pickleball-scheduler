@@ -2,7 +2,6 @@ import { guardClubAction } from "../../../auth/guardAction.js";
 import { PERMISSIONS } from "../../../auth/permissions.js";
 import { guardClubTenant } from "../../tenant/guards/tenantGuard.js";
 import { CLUB_MATCH_TYPES } from "../models/clubMatch.js";
-import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
 import { loadClubExtension } from "../storage/clubExtensionStorage.js";
 import { getCurrentClubMembers } from "./clubMemberService.js";
 import { addClubMatch } from "./clubMatchService.js";

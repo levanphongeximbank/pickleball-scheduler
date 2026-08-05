@@ -96,10 +96,6 @@ export function resolveMembershipAuthUserId(member = {}) {
   ).trim();
 }
 
-function isActiveMembershipStatus(status) {
-  return String(status || "").trim().toLowerCase() === "active";
-}
-
 function collectLinkedUserIdsFromPlayers(players = []) {
   const linkedUserIds = new Set();
   for (const player of players) {

@@ -1,7 +1,6 @@
 import { normalizeRole } from "../../../auth/roles.js";
 import { hasSupabaseConfig, getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
 import { getCurrentClubMembers } from "../../club/services/clubMemberService.js";
-import { CLUB_MEMBER_STATUSES } from "../../club/constants/clubMemberRoles.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { findUserIdByPlayerId } from "../../club/storage/athleteClubLinkStore.js";
 
