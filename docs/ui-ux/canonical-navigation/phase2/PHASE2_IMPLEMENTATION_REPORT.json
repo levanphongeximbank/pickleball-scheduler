@@ -1,0 +1,84 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": "2",
+    "title": "Figure 1 App Shell Foundation",
+    "branch": "feature/canonical-navigation-phase2-figure1-app-shell",
+    "generatedAt": "2026-08-05T11:00:00.000Z",
+    "verdict": "CANONICAL_NAVIGATION_PHASE2_IMPLEMENTED_READY_FOR_REVIEW"
+  },
+  "baseline": {
+    "worktreeHead": "1577785ad2190b51306c98571322871ccf9c3536",
+    "baseOriginMainAtStart": "1577785ad2190b51306c98571322871ccf9c3536",
+    "originMainObservedLater": "48c89233ef771f65fd65de0f4c2268299bad37d9"
+  },
+  "featureFlag": {
+    "name": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "default": false,
+    "productionChanged": false,
+    "dualShellPossible": false,
+    "legacyRollback": "MainLayout → LegacyMainLayoutContent when flag OFF"
+  },
+  "menuRegistry": {
+    "status": "FOUNDATION_READY",
+    "source": "docs/ui-ux/canonical-navigation/CANONICAL_ROUTE_INVENTORY.json",
+    "runtimeModule": "src/features/canonical-shell/config/canonicalMenuData.js",
+    "proposedCanonicalMenuNodes": 82,
+    "level1GroupsRepresented": 13,
+    "level2ModulesRepresented": 53,
+    "level3Support": true,
+    "desktopMobileSingleRegistry": true
+  },
+  "rbacRolesCovered": [
+    "SUPER_ADMIN",
+    "VENUE_OWNER",
+    "VENUE_MANAGER",
+    "CASHIER",
+    "CLUB_OWNER",
+    "CLUB_MANAGER",
+    "COACH",
+    "REFEREE",
+    "PLAYER",
+    "SYSTEM_TECHNICIAN"
+  ],
+  "ownerDecisions": {
+    "B01": "PASS",
+    "B02": "PASS",
+    "B03": "PASS"
+  },
+  "counts": {
+    "filesChangedApprox": 31,
+    "runtimeFilesChanged": 29,
+    "componentsAdded": 12,
+    "componentsModified": 0,
+    "designTokensAdded": 1,
+    "unrelatedFilesCount": 0,
+    "blockerCount": 0,
+    "warningCount": 1
+  },
+  "gates": {
+    "focusedShellTests": "PASS",
+    "navigationTests": "PASS",
+    "rbacTests": "PASS",
+    "responsiveTests": "PASS",
+    "accessibilityTests": "PASS_CONTRACT",
+    "lintNoNew": "PASS",
+    "build": "PASS",
+    "relevantRegression": "PASS_UNIT_WARN_UI",
+    "packageLockfileChanged": "NO",
+    "secretScanHits": 0,
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "commit": "NO",
+    "push": "NO"
+  },
+  "safety": {
+    "noRouteDeletion": true,
+    "noLegacyShellDeletion": true,
+    "noTournamentMigration": true,
+    "noRatingMigration": true,
+    "noSql": true,
+    "noDeploy": true
+  }
+}

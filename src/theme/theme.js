@@ -1,6 +1,7 @@
 import { createTheme } from "@mui/material/styles";
 
 import { LAYOUT, PALETTE, SHAPE, SHELL, TYPOGRAPHY } from "./designTokens.js";
+import { FIGURE1_TOKENS } from "./figure1Tokens.js";
 
 const theme = createTheme({
   palette: {
@@ -168,5 +169,8 @@ const theme = createTheme({
 
 theme.shell = SHELL;
 theme.shellLayout = LAYOUT;
+/** Figure 1 canonical navigation tokens — consumed by canonical-shell when flag ON. */
+theme.canonicalNav = FIGURE1_TOKENS;
+theme.figure1 = FIGURE1_TOKENS;
 
 export default theme;

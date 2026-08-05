@@ -1,0 +1,118 @@
+{
+  "meta": {
+    "phase": "2",
+    "report": "PHASE2_PREVIEW_VERIFICATION_REPORT",
+    "generatedAt": "2026-08-05T12:40:00.000Z",
+    "mode": "verification_only",
+    "finalVerdict": "CANONICAL_NAVIGATION_PHASE2_PREVIEW_PASS_READY_FOR_OWNER_MERGE"
+  },
+  "identity": {
+    "prNumber": 375,
+    "prUrl": "https://github.com/levanphongeximbank/pickleball-scheduler/pull/375",
+    "branch": "feature/canonical-navigation-phase2-figure1-app-shell",
+    "prHeadSha": "49b5256adbe8cb12e2cfdfb8b99192d490ba1233",
+    "freshOriginMainSha": "48c89233ef771f65fd65de0f4c2268299bad37d9",
+    "branchBehindCount": 2,
+    "branchAheadCount": 1,
+    "prState": "OPEN",
+    "isDraft": true,
+    "mergeable": "MERGEABLE",
+    "mergeStateStatus": "CLEAN",
+    "changedFiles": 42,
+    "commitCount": 1
+  },
+  "baseCompatibility": {
+    "fetchOriginMain": true,
+    "behindCommits": [
+      "48c89233 Merge pull request #374 (rating V5 published authority readiness)",
+      "bc57d499 docs(rating): record V5 published authority readiness audit"
+    ],
+    "overlapWithPhase2Files": false,
+    "rebasePerformed": false,
+    "branchModified": false,
+    "compatibilityWithoutRebase": true
+  },
+  "ci": {
+    "productionCiGate": "SUCCESS",
+    "vercelPreview": "SUCCESS",
+    "netlifyDeployPreview": "SUCCESS",
+    "netlifyNeutralChecks": ["Header rules", "Pages changed"],
+    "previewUrl": "https://deploy-preview-375--stirring-bombolone-280231.netlify.app",
+    "vercelPreviewUrl": "https://pickleball-scheduler-git-feature-ca-bd31b0-pickleball-scheduler.vercel.app",
+    "previewShaMatch": true
+  },
+  "featureFlag": {
+    "name": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "productionEnvChanged": false,
+    "previewFlagOn": false,
+    "controlledLocalFlagOn": true
+  },
+  "browserSmoke": {
+    "flagOff": {
+      "result": "PASS",
+      "desktop": "PASS",
+      "tablet": "PASS",
+      "mobile": "PASS",
+      "previewLogin": "PASS",
+      "controlledLocalExclusiveLegacy": "PASS",
+      "consoleErrors": 0
+    },
+    "flagOn": {
+      "result": "PASS",
+      "method": "controlled_local_vite",
+      "desktop": "PASS",
+      "tablet": "PASS",
+      "mobile": "PASS",
+      "navySidebarDesktop": "PASS",
+      "collapseExpandDesktop": "PASS",
+      "drawerTabletMobile": "PASS",
+      "breadcrumbsDesktop": "PASS",
+      "overflowOnShellRoute": "PASS",
+      "consoleErrors": 0,
+      "note": "Dashboard chart pages may overflow on mobile; shell routes (/settings) do not."
+    }
+  },
+  "rbac": {
+    "rolesTested": [
+      "SUPER_ADMIN",
+      "VENUE_OWNER",
+      "CLUB_MANAGER",
+      "REFEREE",
+      "PLAYER"
+    ],
+    "unknownRoleFailClosed": "PASS",
+    "privatePairing": "PASS",
+    "B01": "PASS",
+    "B02": "PASS",
+    "B03": "PASS"
+  },
+  "warnings": {
+    "W01": { "status": "WARNING", "mergeBlocker": false, "summary": "Inter token present; app still loads DM Sans" },
+    "W02": { "status": "WARNING", "mergeBlocker": false, "summary": "Global Search remains legacy under canonical top bar" },
+    "W03": { "status": "WARNING", "mergeBlocker": false, "summary": "Card radius 12 not wired to global MuiCard" },
+    "W04": { "status": "WARNING", "mergeBlocker": false, "summary": "Mobile parameterized route navigate uses active placeholder" },
+    "W05": { "status": "WARNING", "mergeBlocker": false, "summary": "Drawer focus-restore dedicated test absent" }
+  },
+  "qualityGates": {
+    "focusedShellUnit": { "result": "PASS", "passed": 18, "failed": 0 },
+    "appShellV5Unit": { "result": "PASS", "passed": 18, "failed": 0 },
+    "uiTests": { "result": "PASS", "passed": 5, "failed": 0 },
+    "lintNoNew": "PASS",
+    "build": "PASS",
+    "diffCheck": "PASS",
+    "secretScan": "PASS",
+    "packageLockfileChanged": "NO"
+  },
+  "counts": {
+    "blockerCount": 0,
+    "warningCount": 5
+  },
+  "safety": {
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "productionFeatureFlagChanges": 0,
+    "mergePerformed": "NO",
+    "commitOrPushDuringVerification": false,
+    "rebaseResetAmendForcePush": false
+  }
+}

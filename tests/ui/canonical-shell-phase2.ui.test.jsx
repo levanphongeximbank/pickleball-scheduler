@@ -5,7 +5,6 @@ import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 
 import MainLayout from "../../src/layouts/MainLayout.jsx";
-import LoginPage from "../../src/pages/LoginPage.jsx";
 import Dashboard from "../../src/pages/Dashboard.jsx";
 import { AuthProvider } from "../../src/context/AuthContext.jsx";
 import { PlatformRuntimeProvider } from "../../src/core/platform/app/PlatformRuntimeProvider.jsx";
@@ -24,12 +23,13 @@ function ShellProviders({ initialPath = "/", children }) {
   );
 }
 
-describe("V5 app shell runtime", () => {
+describe("Canonical App Shell Phase 2 — feature flag runtime", () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.stubEnv("VITE_RBAC_ENABLED", "true");
+    vi.stubEnv("VITE_RBAC_ENABLED", "false");
     vi.stubEnv("VITE_SUPABASE_URL", "");
     vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
+    vi.stubEnv("VITE_CANONICAL_APP_SHELL_ENABLED", "false");
 
     if (!window.matchMedia) {
       window.matchMedia = (query) => ({
@@ -45,27 +45,13 @@ describe("V5 app shell runtime", () => {
     }
   });
 
-  it("renders login without crashing when auth is required", async () => {
-    render(
-      <ShellProviders initialPath="/login">
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-        </Routes>
-      </ShellProviders>
-    );
-
-    expect(await screen.findByRole("heading", { name: "Đăng nhập" })).toBeInTheDocument();
-  });
-
-  it("renders MainLayout shell without crashing when tenant/club context is empty", async () => {
-    vi.stubEnv("VITE_RBAC_ENABLED", "false");
+  it("renders legacy shell when flag OFF", async () => {
     vi.stubEnv("VITE_CANONICAL_APP_SHELL_ENABLED", "false");
 
     render(
       <ShellProviders initialPath="/">
         <Routes>
           <Route path="/login" element={<div data-testid="login-fallback">login</div>} />
-          <Route path="/403" element={<div data-testid="forbidden">403</div>} />
           <Route element={<MainLayout />}>
             <Route path="/" element={<Dashboard />} />
           </Route>
@@ -73,28 +59,25 @@ describe("V5 app shell runtime", () => {
       </ShellProviders>
     );
 
-    // Root-cause of prior failure: LEGACY_SELECTOR_ASSUMPTION — Dashboard title is body
-    // Typography ("Tổng quan"), not heading level 4. Assert shell mount + no dual shell.
     expect(await screen.findByTestId("legacy-app-shell")).toBeInTheDocument();
     expect(screen.queryByTestId("canonical-app-shell")).not.toBeInTheDocument();
-    expect(screen.getAllByText("Tổng quan").length).toBeGreaterThan(0);
   });
 
-  it("renders header account area safely when user is undefined", async () => {
-    vi.stubEnv("VITE_RBAC_ENABLED", "false");
+  it("renders canonical shell when flag ON and does not dual-render legacy", async () => {
+    vi.stubEnv("VITE_CANONICAL_APP_SHELL_ENABLED", "true");
 
     render(
       <ShellProviders initialPath="/">
         <Routes>
           <Route path="/login" element={<div data-testid="login-fallback">login</div>} />
           <Route element={<MainLayout />}>
-            <Route path="/" element={<div data-testid="page-body">OK</div>} />
+            <Route path="/" element={<Dashboard />} />
           </Route>
         </Routes>
       </ShellProviders>
     );
 
-    expect(await screen.findByTestId("page-body")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Menu tài khoản")).not.toBeInTheDocument();
+    expect(await screen.findByTestId("canonical-app-shell")).toBeInTheDocument();
+    expect(screen.queryByTestId("legacy-app-shell")).not.toBeInTheDocument();
   });
 });

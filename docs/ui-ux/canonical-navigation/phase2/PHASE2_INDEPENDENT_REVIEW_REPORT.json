@@ -1,0 +1,123 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": "2-independent-review",
+    "reviewedHead": "1577785ad2190b51306c98571322871ccf9c3536",
+    "baseOriginMainSha": "1577785ad2190b51306c98571322871ccf9c3536",
+    "generatedAt": "2026-08-05T11:25:00.000Z",
+    "verdict": "CANONICAL_NAVIGATION_PHASE2_REVIEW_PASS_READY_FOR_COMMIT"
+  },
+  "counts": {
+    "changedFiles": 42,
+    "runtimeFiles": 28,
+    "testFiles": 4,
+    "documentationFiles": 10,
+    "unrelatedFiles": 0,
+    "componentsReviewed": 12,
+    "blockerCount": 0,
+    "warningCount": 5
+  },
+  "fileClassification": {
+    "runtimeShell": 18,
+    "navigationRegistry": 7,
+    "themeToken": 2,
+    "featureFlagIntegration": 1,
+    "test": 4,
+    "evidenceDocumentation": 10,
+    "unrelated": 0
+  },
+  "featureFlag": {
+    "name": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "default": "OFF",
+    "absentEnv": "OFF",
+    "falseLike": "OFF",
+    "flagOffResult": "PASS_LEGACY_ONLY",
+    "flagOnResult": "PASS_CANONICAL_ONLY",
+    "dualShellResult": "PASS_NONE",
+    "productionEnvChanged": false
+  },
+  "rollback": {
+    "result": "PASS",
+    "legacyMainLayoutContent": true,
+    "sidebarHeaderUnmodified": true,
+    "dataMigrationRequired": false,
+    "routeAuthorityChangeRequired": false
+  },
+  "canonicalRegistry": {
+    "result": "PASS",
+    "proposedNodes": 82,
+    "level1Groups": 13,
+    "level2Modules": 53,
+    "level3Support": true,
+    "singleDesktopMobileSource": true,
+    "nodeCountReconciliation": {
+      "classification": ["expected_foundation_subset", "counting_model_difference"],
+      "explanation": "82 = proposedCanonicalMenu=true routes. Phase1 81 Level-2 modules counted unique level2 across all 179 routes; Phase2 53 counts unique level2 among the 82 proposed menu routes only. Data model can represent remaining routes without redesign."
+    }
+  },
+  "ownerDecisions": {
+    "B01": "PASS",
+    "B02": "PASS",
+    "B03": "PASS"
+  },
+  "rbac": {
+    "result": "PASS",
+    "rolesCovered": 10,
+    "unknownRolesFailClosed": true,
+    "initialDefect": "unknown roles failed open (~20 leaves); fixed during review",
+    "routeGuardsWeakened": false
+  },
+  "privatePairing": {
+    "result": "PASS",
+    "layers": ["feature_flag", "role_filter", "permission_metadata", "existing_super_admin_route_guard"],
+    "warning": "GlobalSearch still uses legacy MENU_GROUPS; still gated by legacy menuAccess"
+  },
+  "responsive": {
+    "result": "PASS",
+    "desktopExpandedCollapsed": true,
+    "tabletCollapsibleSidebar": true,
+    "mobileDrawerDrilldown": true
+  },
+  "accessibility": {
+    "result": "PASS",
+    "method": "concrete_implementation_inspection_plus_unit_contracts",
+    "warning": "no explicit focus restore to hamburger on drawer close"
+  },
+  "uiFlakyRootCause": {
+    "classification": "LEGACY_SELECTOR_ASSUMPTION",
+    "not": ["TEST_HARNESS_ONLY", "REAL_DUAL_SHELL_DEFECT", "ASYNC_RENDER_RACE", "UNRESOLVED"],
+    "detail": "Test required heading level 4 'Tổng quan'; DashboardAnalyticsView renders body Typography. Legacy shell mounted. Corrected test during review.",
+    "corrected": true
+  },
+  "reviewCorrectionsApplied": [
+    "filterCanonicalMenu unknown-role fail-closed",
+    "tablet viewport uses desktop visibility rules",
+    "app-shell.ui.test.jsx deterministic legacy-shell assertion",
+    "unit test for unknown-role fail-closed"
+  ],
+  "gates": {
+    "focusedShellUnit": { "result": "PASS", "passed": 18, "failed": 0 },
+    "navigationRbacResponsiveA11yContracts": { "result": "PASS" },
+    "phase2Ui": { "result": "PASS", "passed": 2, "failed": 0 },
+    "appShellUi": { "result": "PASS", "passed": 3, "failed": 0 },
+    "appShellV5Unit": { "result": "PASS", "passed": 18, "failed": 0 },
+    "lintNoNew": { "result": "PASS" },
+    "build": { "result": "PASS" },
+    "packageLockfileChanged": "NO",
+    "secretScanHits": 0
+  },
+  "warnings": [
+    "Inter font declared in Figure 1 tokens but app loads DM Sans",
+    "GlobalSearch under canonical shell still uses legacy MENU_GROUPS",
+    "Card radius token not applied to global MuiCard when flag ON",
+    "Mobile drawer parameterized routes navigate to placeholder 'active'",
+    "No explicit focus restore to menu button after drawer close"
+  ],
+  "safety": {
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "commit": "NO",
+    "push": "NO"
+  }
+}
