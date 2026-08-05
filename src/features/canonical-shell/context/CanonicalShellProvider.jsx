@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { useMediaQuery, useTheme } from "@mui/material";
 
 import { FIGURE1_BREAKPOINTS, FIGURE1_LAYOUT, FIGURE1_PALETTE, FIGURE1_TOKENS } from "../../../theme/figure1Tokens.js";
@@ -12,6 +12,7 @@ export default function CanonicalShellProvider({ children }) {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [expandedLevel1, setExpandedLevel1] = useState(() => new Set());
   const [expandedLevel2, setExpandedLevel2] = useState(() => new Set());
+  const menuTriggerRef = useRef(null);
 
   const toggleSidebarCollapsed = useCallback(() => {
     setSidebarCollapsed((prev) => !prev);
@@ -52,6 +53,7 @@ export default function CanonicalShellProvider({ children }) {
       mobileDrawerOpen,
       openMobileDrawer,
       closeMobileDrawer,
+      menuTriggerRef,
       expandedLevel1,
       expandedLevel2,
       toggleLevel1,

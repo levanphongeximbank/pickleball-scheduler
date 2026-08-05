@@ -1,0 +1,72 @@
+{
+  "program": "PICK_VN Canonical Navigation",
+  "phase": 3,
+  "title": "Canonical Menu Completion and Figure 1 Remediation",
+  "branch": "feature/canonical-navigation-phase3-menu-rollout",
+  "baseOriginMainSha": "81511356cd2bc559952d73c6d0a152fe6db61824",
+  "generatedAt": "2026-08-05T15:00:00.000Z",
+  "finalVerdict": "CANONICAL_NAVIGATION_PHASE3_IMPLEMENTED_READY_FOR_REVIEW",
+  "featureFlag": {
+    "name": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "default": "OFF",
+    "flagOff": "legacy shell only",
+    "flagOn": "canonical shell only",
+    "productionUnchanged": true
+  },
+  "warnings": {
+    "W01": "CLOSED",
+    "W02": "CLOSED",
+    "W03": "CLOSED",
+    "W04": "CLOSED",
+    "W05": "CLOSED"
+  },
+  "ownerDecisions": {
+    "B01": "PASS",
+    "B02": "PASS",
+    "B03": "PASS"
+  },
+  "registry": {
+    "inventoriedRoutes": 179,
+    "proposedCanonicalMenu": 82,
+    "level1Groups": 13,
+    "level2Modules": 53,
+    "level3Actions": 82,
+    "activeMenuNodes": 75,
+    "contextualNodesHiddenFromMenu": 7,
+    "partialMenuNodes": 6,
+    "legacyRoutesHidden": 48,
+    "shadowRoutesHidden": 1,
+    "duplicateActiveEntries": 0,
+    "classificationCounts": {
+      "CANONICAL": 89,
+      "HIDDEN_ACTIVE": 40,
+      "LEGACY": 48,
+      "DUPLICATE": 1,
+      "SHADOW": 1
+    }
+  },
+  "rbacRolesCovered": [
+    "SUPER_ADMIN",
+    "VENUE_OWNER",
+    "VENUE_MANAGER",
+    "CASHIER",
+    "CLUB_OWNER",
+    "CLUB_MANAGER",
+    "COACH",
+    "REFEREE",
+    "PLAYER",
+    "SYSTEM_TECHNICIAN"
+  ],
+  "privatePairing": "HIDDEN_FOR_NON_SUPER_ADMIN",
+  "safety": {
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "productionFeatureFlagChanges": 0,
+    "commit": false,
+    "push": false,
+    "packageLockfileChanged": true
+  },
+  "blockerCount": 0,
+  "warningCount": 0
+}

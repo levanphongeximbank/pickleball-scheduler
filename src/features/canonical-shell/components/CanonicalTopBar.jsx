@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import {
   AppBar,
   Box,
@@ -15,20 +15,32 @@ import CanonicalNotificationButton from "./CanonicalNotificationButton.jsx";
 import CanonicalTenantSwitcher from "./CanonicalTenantSwitcher.jsx";
 import CanonicalUserMenu from "./CanonicalUserMenu.jsx";
 import { buildCanonicalBreadcrumbs } from "../services/buildCanonicalBreadcrumbs.js";
+import { buildCanonicalMenuTree } from "../config/canonicalMenuRegistry.js";
 import { useCanonicalShell } from "../hooks/useCanonicalShell.js";
 import { useTenant } from "../../../context/TenantContext.jsx";
+import { useAuth } from "../../../context/AuthContext.jsx";
 
 /**
  * Compact Figure 1 top navigation (56px).
  */
-export default function CanonicalTopBar({ menuTree }) {
+export default function CanonicalTopBar() {
   const location = useLocation();
-  const { palette, layout, isMobile, openMobileDrawer } = useCanonicalShell();
+  const params = useParams();
+  const auth = useAuth();
+  const { palette, layout, isMobile, openMobileDrawer, menuTriggerRef } = useCanonicalShell();
   const { isSuperAdmin } = useTenant();
 
+  // Breadcrumbs match against the full registry so contextual parameterized
+  // routes still resolve labels; auth prevents unauthorized label leaks.
+  const registryTree = useMemo(() => buildCanonicalMenuTree(), []);
   const breadcrumbs = useMemo(
-    () => buildCanonicalBreadcrumbs(location.pathname, { tree: menuTree }),
-    [location.pathname, menuTree]
+    () =>
+      buildCanonicalBreadcrumbs(location.pathname, {
+        tree: registryTree,
+        auth,
+        params,
+      }),
+    [location.pathname, registryTree, auth, params]
   );
 
   return (
@@ -55,9 +67,11 @@ export default function CanonicalTopBar({ menuTree }) {
       >
         {isMobile && (
           <IconButton
+            ref={menuTriggerRef}
             edge="start"
             onClick={openMobileDrawer}
             aria-label="Mở menu điều hướng"
+            data-testid="canonical-mobile-menu-trigger"
             sx={{
               color: "inherit",
               minWidth: layout.touchTargetMin,

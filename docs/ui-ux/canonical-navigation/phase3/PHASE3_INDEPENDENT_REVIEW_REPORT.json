@@ -1,0 +1,119 @@
+{
+  "program": "PICK_VN Canonical Navigation",
+  "phase": 3,
+  "reviewType": "independent",
+  "branch": "feature/canonical-navigation-phase3-menu-rollout",
+  "reviewedAt": "2026-08-05T15:35:00.000Z",
+  "finalVerdict": "CANONICAL_NAVIGATION_PHASE3_REVIEW_PASS_READY_FOR_COMMIT",
+  "reviewedHead": "81511356cd2bc559952d73c6d0a152fe6db61824",
+  "baseOriginMainSha": "81511356cd2bc559952d73c6d0a152fe6db61824",
+  "remoteOriginMainTipAtReview": "2882b334f23a0113b6203853816c395007e4bc21",
+  "diffScope": {
+    "changedFilesCount": 37,
+    "modifiedCount": 14,
+    "untrackedCount": 23,
+    "runtimeFilesCount": 19,
+    "testFilesCount": 3,
+    "documentationFilesCount": 11,
+    "packageDependencyFilesCount": 2,
+    "scriptFilesCount": 1,
+    "unrelatedFilesCount": 0
+  },
+  "dependency": {
+    "verdict": "DEPENDENCY_APPROVED",
+    "package": "@fontsource/inter",
+    "packageJsonRange": "^5.3.0",
+    "lockResolvedVersion": "5.3.0",
+    "bundleImpact": "56 Inter font assets in dist; async-loaded on canonical shell mount; latin + latin-ext present for Vietnamese",
+    "remoteRuntimeNetwork": false,
+    "postinstall": false,
+    "transitiveDependencies": 0
+  },
+  "registry": {
+    "inventoryCoverage": 179,
+    "proposedRegistryRoutes": 82,
+    "activeMenuNodeCount": 75,
+    "contextualRouteCount": 7,
+    "level1Count": 13,
+    "level2Count": 53,
+    "level3Count": 82,
+    "legacyRoutesHidden": 48,
+    "shadowRoutesHidden": 1,
+    "duplicateActiveEntries": 0,
+    "handlingReconciliation": {
+      "ACTIVE_MENU": 75,
+      "CONTEXTUAL_NAVIGATION": 7,
+      "HIDDEN_LEGACY": 43,
+      "HIDDEN_SHADOW": 1,
+      "HIDDEN_ACTIVE": 39,
+      "DEAD": 0,
+      "REDIRECT_METADATA": 6,
+      "TECHNICAL_DIRECT_ACCESS": 8,
+      "NOT_APPLICABLE_TO_MENU": 0,
+      "sum": 179
+    },
+    "singleRegistryResult": "PASS"
+  },
+  "warningsClosure": {
+    "W01": "CLOSED",
+    "W02": "CLOSED",
+    "W03": "CLOSED",
+    "W04": "CLOSED",
+    "W05": "CLOSED"
+  },
+  "ownerDecisions": {
+    "B01": "PASS",
+    "B02": "PASS",
+    "B03": "PASS"
+  },
+  "rbac": {
+    "rolesCovered": 10,
+    "unknownRoleFailClosed": true,
+    "result": "PASS"
+  },
+  "privatePairing": "PASS",
+  "featureFlag": {
+    "name": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "default": "OFF",
+    "flagOffResult": "legacy shell only",
+    "flagOnResult": "canonical shell only",
+    "rollbackResult": "PASS"
+  },
+  "responsive": {
+    "desktop": "PASS",
+    "tablet": "PASS",
+    "mobile": "PASS"
+  },
+  "gates": {
+    "focusedTests": "PASS 14/14",
+    "regressionTests": "PASS (phase2 18/18, app-shell-v5 18/18, ui 8/8)",
+    "accessibilityTests": "PASS (drawer focus restore UI + contracts)",
+    "lint": "PASS",
+    "build": "PASS",
+    "secretScan": "PASS",
+    "packageLockfile": "PASS (Inter only)"
+  },
+  "reviewRemediationsApplied": [
+    "W01 dynamic Inter import on shell mount",
+    "W03 remove MuiPaper.rounded override",
+    "W04 sanitize breadcrumb hrefs for parameterized routes",
+    "W05 viewport-leave drawer close/focus restore",
+    "179-route explicit handling reconciliation service + test"
+  ],
+  "blockerCount": 0,
+  "warningCount": 4,
+  "warnings": [
+    "CanonicalAppShell still statically imported from MainLayout (Phase 2 inheritance); Inter CSS no longer auto-loads under flag OFF",
+    "B01 /messages REDIRECT_LEGACY remains Phase 4 router work",
+    "Shift+Tab focus-trap relies on MUI Modal defaults without dedicated RTL matrix",
+    "origin/main drifted +1 docs commit beyond review baseline 81511356"
+  ],
+  "safety": {
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "productionFeatureFlagChanges": 0,
+    "commit": "NO",
+    "push": "NO"
+  }
+}

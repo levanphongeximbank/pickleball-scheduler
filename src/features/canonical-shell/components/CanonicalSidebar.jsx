@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Box, Chip, Drawer, IconButton, Typography } from "@mui/material";
 import SportsTennisIcon from "@mui/icons-material/SportsTennis";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -7,6 +8,7 @@ import { useLocation } from "react-router-dom";
 import CanonicalSidebarSection from "./CanonicalSidebarSection.jsx";
 import { useCanonicalShell } from "../hooks/useCanonicalShell.js";
 import { APP_PRODUCT_NAME } from "../../../config/appVersion.js";
+import { buildCanonicalMenuTree } from "../config/canonicalMenuRegistry.js";
 
 /**
  * Dark navy Figure 1 sidebar — Level-1 domains + Level-2/3 modules.
@@ -20,6 +22,7 @@ export default function CanonicalSidebar({ menuGroups = [] }) {
     sidebarCollapsed,
     toggleSidebarCollapsed,
   } = useCanonicalShell();
+  const registryTree = useMemo(() => buildCanonicalMenuTree(), []);
 
   if (isMobile) return null;
 
@@ -124,6 +127,7 @@ export default function CanonicalSidebar({ menuGroups = [] }) {
             group={group}
             currentPath={currentPath}
             collapsed={sidebarCollapsed}
+            registryGroup={registryTree.find((g) => g.id === group.id) || group}
           />
         ))}
       </Box>

@@ -1,0 +1,44 @@
+{
+  "inventoriedRoutes": 179,
+  "proposedCanonicalMenu": 82,
+  "activeMenuNodes": 75,
+  "contextualNodesHiddenFromMenu": 7,
+  "level1Groups": 13,
+  "level2Modules": 53,
+  "level3Actions": 82,
+  "partialMenuNodes": 6,
+  "legacyRoutesHidden": 48,
+  "shadowRoutesHidden": 1,
+  "duplicateActiveEntries": 0,
+  "classificationCounts": {
+    "CANONICAL": 89,
+    "HIDDEN_ACTIVE": 40,
+    "LEGACY": 48,
+    "DUPLICATE": 1,
+    "SHADOW": 1
+  },
+  "partialRoutes": [
+    "/reports",
+    "/crm/messages",
+    "/crm/templates",
+    "/crm/campaigns",
+    "/crm/history",
+    "/crm/reminders/booking"
+  ],
+  "contextualParameterizedRoutes": [
+    "/tournaments/:tournamentId/engine",
+    "/tournaments/:tournamentId/seed",
+    "/tournaments/:tournamentId/draw",
+    "/tournaments/:tournamentId/schedule",
+    "/tournaments/:tournamentId/courts",
+    "/tournaments/:tournamentId/ranking",
+    "/tournaments/:tournamentId/logs"
+  ],
+  "singleRegistryConsumers": [
+    "desktop-sidebar",
+    "mobile-drawer",
+    "breadcrumbs",
+    "global-search",
+    "active-route-matching"
+  ]
+}
