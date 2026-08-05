@@ -240,10 +240,10 @@ describe("Phase 1C — Org Chart / Home count parity helper", () => {
 });
 
 describe("Phase 1C — wiring source contracts", () => {
-  it("governance service exposes async V2 candidates via rpcV2ClubListMembers", () => {
+  it("governance service exposes async V2 candidates via listCurrentClubMembers", () => {
     const src = readSrc("src/features/club/services/clubGovernanceService.js");
     assert.match(src, /export async function listClubGovernanceCandidatesAsync/);
-    assert.match(src, /rpcV2ClubListMembers/);
+    assert.match(src, /listCurrentClubMembers/);
     assert.match(src, /if \(isClubStorageV2Enabled\(\)\) \{\s*return \[\];/s);
   });
 

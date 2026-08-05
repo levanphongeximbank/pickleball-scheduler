@@ -6,7 +6,7 @@
  */
 
 import { getSupabaseAuthClient, hasSupabaseConfig } from "../../auth/supabaseClient.js";
-import { rpcV2ClubListMembers } from "../club/services/clubStorageV2RpcService.js";
+import { listCurrentClubMembers } from "../club/services/membershipReadService.js";
 import { createPairingCandidateService } from "./pairingCandidateService.js";
 import { PAIRING_CANDIDATE_STATUS } from "./pairingCandidateContract.js";
 import { PAIRING_CANDIDATE_REASON_CODES } from "./pairingCandidateReasonCodes.js";
@@ -181,7 +181,19 @@ export async function listSelectPlayersScopeRows(clubId, deps = {}) {
     };
   }
 
-  const listMembers = deps.listMembers || rpcV2ClubListMembers;
+  const listMembers =
+    deps.listMembers ||
+    (async (clubId) => {
+      const result = await listCurrentClubMembers(clubId);
+      if (!result.ok) {
+        return {
+          ok: false,
+          code: result.code,
+          error: result.message || result.error,
+        };
+      }
+      return { ok: true, members: result.data || [] };
+    });
   const membersResult = await listMembers(id);
   if (!membersResult?.ok) {
     return {

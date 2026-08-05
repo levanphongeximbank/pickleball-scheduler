@@ -343,9 +343,7 @@ export function createCanonicalPlayerRepository(deps = {}) {
       });
     }
 
-    const membersResult = await membershipRepository.listActiveClubMembers(id, {
-      includeInactive: false,
-    });
+    const membersResult = await membershipRepository.listCurrentClubMembers(id);
     if (!membersResult.ok) return membersResult;
 
     const members = membersResult.data || [];

@@ -10,13 +10,9 @@
 import { createLocalNotification } from "../../mobile/services/notificationService.js";
 import { NOTIFICATION_TYPES } from "../../mobile/constants/notificationTypes.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
-import {
-  CLUB_MEMBER_STATUSES,
-  isClubMemberStatusActive,
-} from "../constants/clubMemberRoles.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
-import { getClubMembers } from "./clubMemberService.js";
-import { rpcV2ClubListMembers } from "./clubStorageV2RpcService.js";
+import { getCurrentClubMembers } from "./clubMemberService.js";
+import { listCurrentClubMemberAuthUserIds } from "./membershipReadService.js";
 import { findUserIdByPlayerId } from "../storage/athleteClubLinkStore.js";
 import {
   emitDomainNotificationEvent,
@@ -31,26 +27,14 @@ import { buildNotificationIdempotencyKey } from "../../notifications/utils/idemp
  */
 async function listClubMemberAuthUserIds(clubId, tenantId) {
   if (isClubStorageV2Enabled()) {
-    const result = await rpcV2ClubListMembers(clubId);
+    const result = await listCurrentClubMemberAuthUserIds(clubId);
     if (!result.ok) {
       return [];
     }
-    const userIds = new Set();
-    for (const row of result.members || []) {
-      if (!isClubMemberStatusActive(row?.status)) {
-        continue;
-      }
-      const userId = String(row.user_id || "").trim();
-      if (userId) {
-        userIds.add(userId);
-      }
-    }
-    return [...userIds];
+    return result.userIds;
   }
 
-  const members = getClubMembers(clubId, tenantId, { skipGovernanceGuard: true }).filter(
-    (member) => member.status === CLUB_MEMBER_STATUSES.ACTIVE
-  );
+  const members = getCurrentClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
   const players = loadPlayersForClub(clubId);
   const userIds = new Set();
 

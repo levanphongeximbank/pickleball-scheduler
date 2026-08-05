@@ -15,12 +15,11 @@ import { useAuth } from "../../../context/AuthContext.jsx";
 import {
   getClubStats,
   getClubRatings,
-  getClubMembers,
+  getCurrentClubMembers,
   getTenantPlayers,
   getRecentClubActivity,
   canViewFullClubMembers,
 } from "../../../features/club/index.js";
-import { CLUB_MEMBER_STATUSES } from "../../../features/club/constants/clubMemberRoles.js";
 import ClubGovernancePanel from "../ClubGovernancePanel.jsx";
 
 function GovernanceSection({ club, tenantId, onRefresh }) {
@@ -58,9 +57,7 @@ export default function ClubOverviewTab({ club, tenantId, onRefresh }) {
 
   const levelDistribution = useMemo(() => {
     if (!fullAccess) return [];
-    const members = getClubMembers(club.id, tenantId).filter(
-      (m) => m.status === CLUB_MEMBER_STATUSES.ACTIVE
-    );
+    const members = getCurrentClubMembers(club.id, tenantId);
     const players = getTenantPlayers(tenantId);
     const byId = new Map(players.map((p) => [p.id, p]));
     const buckets = {};

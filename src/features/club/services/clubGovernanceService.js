@@ -22,8 +22,8 @@ import { normalizePlayers } from "../../../models/player.js";
 import { normalizeUser } from "../../../models/user.js";
 import { saveAuthSession, loadAuthSession } from "../../../auth/authStorage.js";
 import { getPickVnRatingByAuthUserId, syncRatingToClubPlayer } from "../../pick-vn-rating/services/pickVnRatingService.js";
-import { getClubMembers, addMemberToClub } from "./clubMemberService.js";
-import { CLUB_MEMBER_STATUSES, normalizeClubMemberStatus } from "../constants/clubMemberRoles.js";
+import { getCurrentClubMembers, addMemberToClub } from "./clubMemberService.js";
+import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
 import {
   findUserIdByPlayerId,
   saveAthleteClubLink,
@@ -47,11 +47,11 @@ import {
   rpcV2ClubAssignOwner,
   rpcV2ClubClearOwner,
   rpcV2ClubGet,
-  rpcV2ClubListMembers,
   rpcV2ClubTransferPresident,
   rpcV2ClubAssignVicePresident,
   rpcV2ClubClearVicePresident,
 } from "./clubStorageV2RpcService.js";
+import { listCurrentClubMembers } from "./membershipReadService.js";
 import { invalidateAllClubRegistryCache } from "../registry/clubRegistryCache.js";
 import {
   getClusterById,
@@ -847,7 +847,7 @@ export function listClubGovernanceCandidates(clubId, tenantId) {
     return [];
   }
 
-  const members = getClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
+  const members = getCurrentClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
   const players = loadPlayersForClub(clubId);
   const playerById = new Map(players.map((player) => [player.id, player]));
   const candidateMap = new Map();
@@ -958,17 +958,14 @@ export async function listClubGovernanceCandidatesAsync(clubId, tenantId) {
     return [];
   }
 
-  const result = await rpcV2ClubListMembers(trimmedClubId);
+  const result = await listCurrentClubMembers(trimmedClubId);
   if (!result.ok) {
     return [];
   }
 
   const candidateMap = new Map();
-  for (const row of result.members || []) {
-    if (normalizeClubMemberStatus(row.status) !== CLUB_MEMBER_STATUSES.ACTIVE) {
-      continue;
-    }
-    const userId = String(row.user_id || "").trim();
+  for (const row of result.data || []) {
+    const userId = String(row.user_id || row.userId || "").trim();
     if (!userId) {
       continue;
     }

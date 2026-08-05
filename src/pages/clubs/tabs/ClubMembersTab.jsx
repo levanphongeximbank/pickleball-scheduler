@@ -205,7 +205,7 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
 
     setMemberState((prev) => ({ ...prev, state: MEMBERSHIP_READ_STATE.LOADING }));
     canonicalMembershipRepository
-      .listActiveClubMembers(club.id, { includeInactive: true })
+      .listClubMembershipHistory(club.id)
       .then((result) => {
         if (cancelled) {
           return;

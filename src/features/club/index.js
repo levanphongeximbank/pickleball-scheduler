@@ -95,6 +95,7 @@ export {
 
 export {
   getClubMembers,
+  getCurrentClubMembers,
   getClubMembersForTournamentInvite,
   mapV2MemberRowToUi,
   addMemberToClub,
@@ -107,6 +108,15 @@ export {
   formatMemberCommandUserError,
   isProtectedGovernanceMember,
 } from "./services/clubMemberService.js";
+
+export {
+  listCurrentClubMembers,
+  listClubMembershipHistory,
+  listCurrentClubMemberAuthUserIds,
+  mapCurrentClubMembersToUi,
+  mapClubMembershipHistoryToUi,
+  filterLegacyMembersToCurrent,
+} from "./services/membershipReadService.js";
 
 /** Phase 2C — freeze-named membership.* / joinRequest.* ports */
 export {
