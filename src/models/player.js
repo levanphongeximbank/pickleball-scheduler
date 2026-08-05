@@ -17,22 +17,23 @@ function toNumber(value, fallback = 0) {
 }
 
 /**
- * Canonical athlete gender for display, filters, counters, MLP, and engines.
+ * Canonical stored gender contract (profiles / writers / counters).
  * Accepts raw strings or athlete-like objects (`gender` / `sex` / `gioiTinh`).
- * Output is exactly: "male" | "female" | "unknown".
+ * Output is exactly: "male" | "female" | "other" | null.
  * @param {unknown} value
- * @returns {"male"|"female"|"unknown"}
+ * @returns {"male"|"female"|"other"|null}
  */
-export function normalizeAthleteGender(value) {
+export function getPlayerGenderKey(value) {
   const source =
     value && typeof value === "object" && !Array.isArray(value)
       ? value.gender ?? value.sex ?? value.gioiTinh ?? value.gioi_tinh ?? ""
       : value;
-  const raw = String(source ?? "")
+  if (source == null) return null;
+  const raw = String(source)
     .trim()
     .toLowerCase()
     .normalize("NFC");
-  if (!raw) return "unknown";
+  if (!raw || raw === "unknown") return null;
 
   const ascii = raw.normalize("NFD").replace(/\p{M}/gu, "");
 
@@ -45,21 +46,32 @@ export function normalizeAthleteGender(value) {
   ) {
     return "female";
   }
+  if (["other", "khác", "khac"].includes(raw) || ascii === "khac") {
+    return "other";
+  }
 
-  // legacy "other" / "khác" collapse to unknown for MLP eligibility
+  return null;
+}
+
+/**
+ * Engine eligibility gender (MLP / pairing).
+ * Maps canonical other/null → "unknown" so eligibility stays binary male|female.
+ * @param {unknown} value
+ * @returns {"male"|"female"|"unknown"}
+ */
+export function normalizeAthleteGender(value) {
+  const key = getPlayerGenderKey(value);
+  if (key === "male" || key === "female") return key;
   return "unknown";
 }
 
-/** @deprecated Prefer normalizeAthleteGender — same canonical male|female|unknown output. */
-export function getPlayerGenderKey(gender) {
-  return normalizeAthleteGender(gender);
-}
-
+/** Vietnamese presentation labels only — never persist these as stored values. */
 export function athleteGenderDisplayLabel(value) {
-  const key = normalizeAthleteGender(value);
+  const key = getPlayerGenderKey(value);
   if (key === "male") return "Nam";
   if (key === "female") return "Nữ";
-  return "—";
+  if (key === "other") return "Khác";
+  return "Chưa xác định";
 }
 
 function normalizePlayerType(value) {
@@ -214,13 +226,15 @@ export function normalizePlayer(player) {
         Math.max(PICK_VN_MIN, parsePickVnRating(player.level ?? player.rating, 3.5))
       );
 
+  const genderKey = getPlayerGenderKey(player.gender);
   const normalized = {
     ...player,
     ...migratedRating,
     id: player.id,
     name: String(player.name || "Unknown").trim(),
-    gender: player.gender ?? null,
-    genderKey: getPlayerGenderKey(player.gender),
+    // Persist only canonical keys; Vietnamese labels are presentation-only.
+    gender: genderKey,
+    genderKey,
     playerType: normalizePlayerType(player.playerType),
     skillLevel,
     level: skillLevel,

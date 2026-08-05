@@ -39,8 +39,8 @@ afterEach(() => {
 test("buildDemoPlayers — 60 VĐV đa dạng giới tính và level", () => {
   const players = buildDemoPlayers(60, DEMO_ROSTER_CLUBS[0]);
   assert.equal(players.length, 60);
-  assert.ok(players.some((player) => player.gender === "Nam"));
-  assert.ok(players.some((player) => player.gender === "Nữ"));
+  assert.ok(players.some((player) => player.gender === "male"));
+  assert.ok(players.some((player) => player.gender === "female"));
   assert.ok(players.every((player) => player.level >= 1.0 && player.level <= 8.0));
 });
 

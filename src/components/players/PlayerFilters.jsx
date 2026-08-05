@@ -73,8 +73,9 @@ export default function PlayerFilters({
           sx={{ width: { xs: "100%", lg: 130 } }}
         >
           <MenuItem value="all">Tất cả</MenuItem>
-          <MenuItem value="Nam">Nam</MenuItem>
-          <MenuItem value="Nữ">Nữ</MenuItem>
+          <MenuItem value="male">Nam</MenuItem>
+          <MenuItem value="female">Nữ</MenuItem>
+          <MenuItem value="other">Khác</MenuItem>
         </TextField>
 
         <TextField

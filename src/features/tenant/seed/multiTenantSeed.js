@@ -54,7 +54,7 @@ export const SEED_TENANTS = Object.freeze([
 const SEED_MARKER = MULTI_TENANT_SEED_MARKER;
 
 function buildPlayers(count, tenantId, prefix) {
-  const genders = ["Nam", "Nữ"];
+  const genders = ["male", "female"];
   return normalizePlayers(
     Array.from({ length: count }, (_, index) => ({
       id: `${prefix}-player-${index + 1}`,

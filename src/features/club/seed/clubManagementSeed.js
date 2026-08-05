@@ -21,7 +21,7 @@ export const CLUB_MANAGEMENT_DEMO_CLUBS = [
 ];
 
 function buildDemoPlayers(tenantId, prefix, count) {
-  const genders = ["Nam", "Nữ"];
+  const genders = ["male", "female"];
   return normalizePlayers(
     Array.from({ length: count }, (_, index) => ({
       id: `${prefix}-cm-player-${index + 1}`,

@@ -15,13 +15,12 @@ import {
 } from "@mui/material";
 
 import { appendGuestPlayerToClubBlobLegacy } from "../../domain/legacyGuestPlayerBlobWriteAdapter.js";
-import { normalizePlayer } from "../../models/player.js";
 import { PICK_VN_MAX, PICK_VN_MIN } from "../../features/pick-vn-rating/constants/pickVnRatingScale.js";
-import { PLAYER_TYPE } from "../../models/tournament/constants.js";
+import { buildTournamentQuickAddPlayer } from "./buildTournamentQuickAddPlayer.js";
 
 const defaultForm = {
   name: "",
-  gender: "Nam",
+  gender: "male",
   level: 3.5,
   clubName: "",
   phone: "",
@@ -68,17 +67,7 @@ export default function TournamentPlayerQuickAddDialog({
       return;
     }
 
-    const level = Number(form.level) || 3.5;
-    const player = normalizePlayer({
-      id: Date.now(),
-      name,
-      gender: form.gender,
-      level,
-      rating: level,
-      phone: form.phone.trim(),
-      clubName: form.clubName.trim(),
-      playerType: PLAYER_TYPE.GUEST,
-    });
+    const player = buildTournamentQuickAddPlayer(form);
 
     if (!player) {
       setError("Không tạo được hồ sơ VĐV.");
@@ -124,8 +113,9 @@ export default function TournamentPlayerQuickAddDialog({
             fullWidth
             required
           >
-            <MenuItem value="Nam">Nam</MenuItem>
-            <MenuItem value="Nữ">Nữ</MenuItem>
+            <MenuItem value="male">Nam</MenuItem>
+            <MenuItem value="female">Nữ</MenuItem>
+            <MenuItem value="other">Khác</MenuItem>
           </TextField>
           <TextField
             label="CLB đại diện (tuỳ chọn)"

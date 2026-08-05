@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-08-05T08:20:00.000Z",
+  "trackedModified": [
+    "scripts/apply-phase1c-club-owner-assign-authz-gate-production.mjs",
+    "scripts/verify-phase1b-production-smoke.mjs",
+    "src/components/players/PlayerCard.jsx",
+    "src/components/players/PlayerFilters.jsx",
+    "src/components/tournament/TournamentPlayerPickerPanel.jsx",
+    "src/components/tournament/TournamentPlayerQuickAddDialog.jsx",
+    "src/data/samplePlayers.js",
+    "src/demo/seed/demoClubsRosterSeed.js",
+    "src/engine/index.js",
+    "src/features/club/seed/clubManagementSeed.js",
+    "src/features/club/services/accountOnlyAthleteService.js",
+    "src/features/player/adapters/genderAdapter.js",
+    "src/features/team-tournament/engines/lineupValidationEngine.js",
+    "src/features/tenant/seed/multiTenantSeed.js",
+    "src/legacy/engine-v1/index.js",
+    "src/models/player.js",
+    "src/pages/Players.jsx",
+    "src/pages/dev/pairingInterventionPreviewData.js",
+    "src/utils/playerHelpers.js",
+    "tests/account-only-athlete.test.js",
+    "tests/demo-clubs-roster-seed.test.js",
+    "tests/models.test.js"
+  ],
+  "untrackedAdded": [
+    "docs/v5/migrations/",
+    "docs/v5/qa-evidence/production-player-data-remediation/",
+    "scripts/audit-production-player-data-readonly.mjs",
+    "scripts/lib/prod-smoke-identity-hygiene.mjs",
+    "src/components/tournament/buildTournamentQuickAddPlayer.js",
+    "src/features/player/utils/qaTestIdentityFilter.js",
+    "tests/production-player-data-gender-remediation.test.js"
+  ],
+  "diffStat": "22 files changed, 178 insertions(+), 101 deletions(-)",
+  "correctivePassBlockersFixed": [
+    "TournamentPlayerQuickAddDialog + normalizePlayer canonical persist",
+    "qaTestIdentityFilter domain+pattern",
+    "prod-smoke-identity-hygiene Auth ban email gate",
+    "account-only-athlete test expectations"
+  ],
+  "commit": false,
+  "push": false,
+  "productionMutations": 0,
+  "sqlApply": 0,
+  "deployments": 0,
+  "productionGo": "NO"
+}

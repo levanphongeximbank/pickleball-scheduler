@@ -3,7 +3,7 @@ import { loadPlayerHistoryProfileForClub } from "../tournament/engines/playerHis
 import { TOURNAMENT_MODE } from "../models/tournament/constants.js";
 import { todayIsoDate } from "../pages/courtManagement/courtManagement.constants.js";
 import { RATING_STATUS } from "../features/pick-vn-rating/constants/ratingStatus.js";
-import { normalizeAthleteGender } from "../models/player.js";
+import { getPlayerGenderKey } from "../models/player.js";
 
 export function isPlayerUnrated(player) {
   if (!player) {
@@ -93,8 +93,8 @@ export function getTodayCheckedInPlayerIds(clubId) {
 
 export function computePlayerDashboardStats(players = [], clubId) {
   const total = players.length;
-  const male = players.filter((p) => p.gender === "Nam").length;
-  const female = players.filter((p) => p.gender === "Nữ").length;
+  const male = players.filter((p) => getPlayerGenderKey(p.gender) === "male").length;
+  const female = players.filter((p) => getPlayerGenderKey(p.gender) === "female").length;
   const ratedPlayers = players.filter((p) => !isPlayerUnrated(p));
   const averageLevel =
     ratedPlayers.length === 0
@@ -251,13 +251,12 @@ export function filterPlayers(players, filters = {}) {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(keyword));
 
-    const filterGender = normalizeAthleteGender(genderFilter);
+    const filterGender = getPlayerGenderKey(genderFilter);
     const matchesGender =
       genderFilter === "all" ||
       genderFilter === "" ||
       genderFilter == null ||
-      (filterGender !== "unknown" &&
-        normalizeAthleteGender(player.gender) === filterGender);
+      (filterGender != null && getPlayerGenderKey(player.gender) === filterGender);
 
     const matchesLevel =
       isPlayerUnrated(player) ||

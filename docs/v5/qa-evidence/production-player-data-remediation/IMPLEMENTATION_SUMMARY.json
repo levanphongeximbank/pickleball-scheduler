@@ -1,0 +1,50 @@
+{
+  "phase": "production-player-data-remediation-corrective-pass",
+  "generatedAt": "2026-08-05T08:20:00.000Z",
+  "verdict": "PRODUCTION_PLAYER_DATA_REMEDIATION_CORRECTED_READY_FOR_REREVIEW",
+  "priorReviewVerdict": "PRODUCTION_PLAYER_DATA_REMEDIATION_REVIEW_CHANGES_REQUIRED",
+  "productionRef": "expuvcohlcjzvrrauvud",
+  "productionGo": "NO",
+  "safety": {
+    "productionMutations": 0,
+    "sqlApply": 0,
+    "deployments": 0,
+    "trafficChanges": 0,
+    "accountDeletion": 0,
+    "quarantineApplied": 0,
+    "authBanApplied": 0,
+    "commit": false,
+    "push": false
+  },
+  "blockersFixed": {
+    "blocker1_quickAddWriter": "PASS",
+    "blocker2_qaFilterScope": "PASS",
+    "blocker3_authBanEmailGate": "PASS",
+    "blocker4_accountOnlyTests": "PASS"
+  },
+  "warningsAddressed": {
+    "tournamentPlayerPickerPanelCanonicalValues": true,
+    "pairingInterventionPreviewDataCanonical": true,
+    "repositoryWideWriterGuard": true,
+    "evidenceIncludesAccountOnlySuite": true
+  },
+  "canonicalHelperPath": "src/models/player.js#getPlayerGenderKey",
+  "normalizePlayerPersistsCanonicalGender": true,
+  "quickAddHelperPath": "src/components/tournament/buildTournamentQuickAddPlayer.js",
+  "qaFilterPath": "src/features/player/utils/qaTestIdentityFilter.js",
+  "smokeHygienePath": "scripts/lib/prod-smoke-identity-hygiene.mjs",
+  "qaFalsePositivePhase1bSmithGmail": false,
+  "remainingActiveNamNuWriters": 0,
+  "blockerCount": 0,
+  "warningCount": 0,
+  "tests": {
+    "genderRemediation": { "passed": 14, "failed": 0 },
+    "focusedBundle": { "passed": 46, "failed": 0 },
+    "accountOnlyAthlete": { "passed": 12, "failed": 0 },
+    "tournamentFemaleRelated": { "passed": 16, "failed": 0 },
+    "lintNoNew": "PASS",
+    "build": "PASS",
+    "secretScan": "PASS",
+    "packageLockfileChanged": false
+  }
+}

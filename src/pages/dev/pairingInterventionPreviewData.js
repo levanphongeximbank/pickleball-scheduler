@@ -11,14 +11,14 @@ function buildMixedPlayers() {
   const males = Array.from({ length: 8 }, (_, index) => ({
     id: `male-${index + 1}`,
     name: `Nam ${index + 1}`,
-    gender: "Nam",
+    gender: "male",
     level: 3 + index * 0.2,
     rating: 3 + index * 0.2,
   }));
   const females = Array.from({ length: 8 }, (_, index) => ({
     id: `female-${index + 1}`,
     name: `Nu ${index + 1}`,
-    gender: "Nữ",
+    gender: "female",
     level: 3.1 + index * 0.15,
     rating: 3.1 + index * 0.15,
   }));
