@@ -1,0 +1,50 @@
+{
+  "packageId": "production-player-gender-operation-a",
+  "title": "Operation A — profiles.gender Nam to male (data-only)",
+  "status": "PACKAGE_NOT_APPLIED",
+  "productionGo": "NO",
+  "productionProjectRefExpected": "expuvcohlcjzvrrauvud",
+  "authorityMergeCommit": "1577785ad2190b51306c98571322871ccf9c3536",
+  "authorityPr": 371,
+  "proposedAuthorityForFutureExecution": true,
+  "legacyFilesSupersededForExecution": [
+    "docs/v5/migrations/PRODUCTION_PLAYER_GENDER_NAM_TO_MALE.sql",
+    "docs/v5/migrations/PRODUCTION_PLAYER_GENDER_NAM_TO_MALE_PRECHECK.sql",
+    "docs/v5/migrations/PRODUCTION_PLAYER_GENDER_NAM_TO_MALE_FORWARD.sql",
+    "docs/v5/migrations/PRODUCTION_PLAYER_GENDER_NAM_TO_MALE_POSTCHECK.sql",
+    "docs/v5/migrations/PRODUCTION_PLAYER_GENDER_NAM_TO_MALE_ROLLBACK.sql"
+  ],
+  "files": [
+    "00_README.md",
+    "01_PRECHECK_SELECT_ONLY.sql",
+    "02_FORWARD_DATA_ONLY.sql",
+    "03_POSTCHECK_SELECT_ONLY.sql",
+    "04_ROLLBACK_BY_BATCH.sql",
+    "05_OPERATOR_RUNBOOK.md",
+    "06_OWNER_DECISION_PACKAGE.md",
+    "07_PACKAGE_MANIFEST.json"
+  ],
+  "expectedTargetCount": 4,
+  "targetPredicate": "public.profiles.gender = 'Nam'",
+  "targetResultGender": "male",
+  "dataOnly": true,
+  "profilesAlterExcluded": true,
+  "profilesCheckConstraintExcluded": true,
+  "operationBExcluded": true,
+  "authMutationExcluded": true,
+  "hardDeleteExcluded": true,
+  "ledgerTables": [
+    "public._ppdr_op_a_batch",
+    "public._ppdr_op_a_ledger"
+  ],
+  "concurrencyGuard": "pg_advisory_xact_lock(hashtext('OPERATION_A_GENDER_NAM_TO_MALE'))",
+  "ownerPitrConditionRequired": ["BLOCK_UNTIL_PITR_PROVEN", "ACCEPT_LIMITED_NO_PITR_RISK"],
+  "approvedTargetIdsReference": [
+    "4cf24ed0-99f8-4997-b803-3c7ff8e32014",
+    "6dd85e98-e493-4e04-9582-d904e27b3a44",
+    "6e77321e-1182-4174-a08a-3ee2d1833c7c",
+    "6ff822c6-c1b6-4ce0-9e20-61f7afc74a88"
+  ],
+  "applied": false,
+  "sqlExecutedDuringPackageDevelopment": false
+}
