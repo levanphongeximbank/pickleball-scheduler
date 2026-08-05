@@ -1,6 +1,6 @@
 import { normalizeRole } from "../../../auth/roles.js";
 import { hasSupabaseConfig, getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
-import { getClubMembers } from "../../club/services/clubMemberService.js";
+import { getCurrentClubMembers } from "../../club/services/clubMemberService.js";
 import { CLUB_MEMBER_STATUSES } from "../../club/constants/clubMemberRoles.js";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { findUserIdByPlayerId } from "../../club/storage/athleteClubLinkStore.js";
@@ -31,9 +31,7 @@ function profileToRecipient(profile) {
 function listClubMemberRecipients(clubId, tenantId) {
   if (!clubId || !tenantId) return [];
   try {
-    const members = getClubMembers(clubId, tenantId, { skipGovernanceGuard: true }).filter(
-      (member) => member.status === CLUB_MEMBER_STATUSES.ACTIVE
-    );
+    const members = getCurrentClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
     const players = loadPlayersForClub(clubId);
     const out = [];
     for (const member of members) {

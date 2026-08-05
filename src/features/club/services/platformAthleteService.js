@@ -17,10 +17,8 @@ import {
   listSourceClubsAware,
 } from "../repositories/canonicalPlayerPickerAdapter.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
-import {
-  rpcV2ClubListMembers,
-  rpcV2ClubListRegistry,
-} from "./clubStorageV2RpcService.js";
+import { rpcV2ClubListRegistry } from "./clubStorageV2RpcService.js";
+import { listCurrentClubMembers } from "./membershipReadService.js";
 
 export const PLATFORM_ATHLETE_LINK_STATUS = Object.freeze({
   LINKED: "linked",
@@ -150,15 +148,12 @@ async function getV2MembershipLinkedPlayers() {
     if (!club?.id || club.isDefault) {
       continue;
     }
-    const membersResult = await rpcV2ClubListMembers(club.id);
+    const membersResult = await listCurrentClubMembers(club.id);
     if (!membersResult.ok) {
-      memberErrors.push(membersResult.error || `club_list_members failed (${club.id})`);
+      memberErrors.push(membersResult.message || `listCurrentClubMembers failed (${club.id})`);
       continue;
     }
-    for (const member of membersResult.members || []) {
-      if (!isActiveMembershipStatus(member.status || member.membershipStatus)) {
-        continue;
-      }
+    for (const member of membersResult.data || []) {
       const userId = resolveMembershipAuthUserId(member);
       if (!userId) {
         continue;

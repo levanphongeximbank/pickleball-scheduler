@@ -6,7 +6,7 @@ import {
 } from "../../../auth/roles.js";
 import { loadClubs } from "../../../data/club.js";
 import { listClubsForTenant } from "../../tenant/guards/tenantGuard.js";
-import { getClubMembers } from "./clubMemberService.js";
+import { getCurrentClubMembers } from "./clubMemberService.js";
 import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
 
 /**
@@ -40,11 +40,8 @@ export function canUserViewClub(user, clubId, tenantId) {
     return false;
   }
 
-  const members = getClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
-  return members.some(
-    (m) =>
-      m.playerId === user.playerId && m.status === CLUB_MEMBER_STATUSES.ACTIVE
-  );
+  const members = getCurrentClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
+  return members.some((m) => m.playerId === user.playerId);
 }
 
 function listClubsForUserScope(tenantId, user) {

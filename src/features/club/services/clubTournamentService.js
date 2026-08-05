@@ -5,10 +5,9 @@ import { loadClubData, saveClubData } from "../../../domain/clubStorage.js";
 import { guardClubTenant } from "../../tenant/guards/tenantGuard.js";
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
 import { normalizeTournaments } from "../../../models/tournament/index.js";
-import { getClubMembers, getClubMembersForTournamentInvite } from "./clubMemberService.js";
+import { getCurrentClubMembers, getClubMembersForTournamentInvite } from "./clubMemberService.js";
 import { getClubById as getRegistryClubById } from "../../../domain/clubService.js";
 import { getTenantPlayers, getTenantPlayersAware } from "./clubTenantService.js";
-import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
 import { CLUB_STATUSES } from "../constants/clubStatus.js";
 import { isCanonicalPlayerRepositoryEnabled } from "../config/canonicalRepositoryFlags.js";
 import { listPlayersForClubAware } from "../repositories/canonicalPlayerPickerAdapter.js";
@@ -85,10 +84,9 @@ export function createClubInternalTournament(clubId, data = {}, tenantId) {
 
 export function getClubInternalTournamentPlayerPool(clubId, tenantId, options = {}) {
   const useInviteBypass = options.forTournamentInvite === true;
-  const members = (useInviteBypass
+  const members = useInviteBypass
     ? getClubMembersForTournamentInvite(clubId, tenantId)
-    : getClubMembers(clubId, tenantId)
-  ).filter((m) => m.status === CLUB_MEMBER_STATUSES.ACTIVE);
+    : getCurrentClubMembers(clubId, tenantId);
   return members.map((m) => m.playerId);
 }
 

@@ -24,7 +24,7 @@ import {
 import { leaveMyClub } from "../services/clubMembershipRequestService.js";
 import { canViewFullClubMembers } from "../services/clubGovernanceService.js";
 import { isClubStorageV2Enabled } from "../config/clubRegistryFlags.js";
-import { rpcV2ClubListMembers } from "../services/clubStorageV2RpcService.js";
+import { listClubMembershipHistory } from "../services/membershipReadService.js";
 
 const membershipRepo = createCanonicalMembershipRepository();
 
@@ -49,15 +49,15 @@ export async function membershipList(clubId, tenantId, options = {}) {
   }
 
   if (isClubStorageV2Enabled()) {
-    const rpc = await rpcV2ClubListMembers(id);
+    const rpc = await listClubMembershipHistory(id);
     if (!rpc.ok) {
       return {
         ok: false,
         code: rpc.code || API_ERROR_CODES.INTERNAL_ERROR,
-        error: rpc.error || "Không tải được danh sách thành viên.",
+        error: rpc.message || rpc.error || "Không tải được danh sách thành viên.",
       };
     }
-    const members = (rpc.members || []).map((row) => mapV2MemberRowToUi(row));
+    const members = (rpc.data || []).map((row) => mapV2MemberRowToUi(row));
     return {
       ok: true,
       members,
@@ -89,9 +89,7 @@ export async function membershipListActiveRoster(clubId, options = {}) {
     };
   }
 
-  const result = await membershipRepo.listActiveClubMembers(id, {
-    includeInactive: false,
-  });
+  const result = await membershipRepo.listCurrentClubMembers(id);
   if (!result.ok) {
     return {
       ok: false,

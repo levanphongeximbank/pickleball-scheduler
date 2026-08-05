@@ -50,17 +50,17 @@ describe("Phase 1B — RLS / audit / flag ON-OFF regression contracts", () => {
     assert.match(additive, /union/i);
   });
 
-  it("notification bridge uses club_list_members under V2 and blob path under V1", () => {
+  it("notification bridge uses current-only reader under V2 and blob path under V1", () => {
     const src = read("../src/features/club/services/clubScheduleNotificationBridge.js");
     assert.match(src, /isClubStorageV2Enabled\(\)/);
-    assert.match(src, /rpcV2ClubListMembers/);
-    assert.match(src, /getClubMembers/);
+    assert.match(src, /listCurrentClubMemberAuthUserIds/);
+    assert.match(src, /getCurrentClubMembers/);
     assert.match(src, /loadPlayersForClub/);
     const fnStart = src.indexOf("async function listClubMemberAuthUserIds");
     const fn = src.slice(fnStart, fnStart + 1200);
     const v2Idx = fn.indexOf("isClubStorageV2Enabled()");
-    const listIdx = fn.indexOf("rpcV2ClubListMembers");
-    const legacyIdx = fn.indexOf("getClubMembers");
+    const listIdx = fn.indexOf("listCurrentClubMemberAuthUserIds");
+    const legacyIdx = fn.indexOf("getCurrentClubMembers");
     assert.ok(v2Idx >= 0 && listIdx > v2Idx);
     assert.ok(legacyIdx > listIdx);
   });

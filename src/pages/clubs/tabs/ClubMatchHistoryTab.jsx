@@ -29,12 +29,10 @@ import { PERMISSIONS } from "../../../auth/permissions.js";
 import {
   createFriendlyClubMatch,
   getClubMatches,
-  getClubMembers,
+  getCurrentClubMembers,
   getTenantPlayers,
 } from "../../../features/club/index.js";
 import { CLUB_MATCH_TYPES } from "../../../features/club/models/clubMatch.js";
-import { CLUB_MEMBER_STATUSES } from "../../../features/club/constants/clubMemberRoles.js";
-
 const TYPE_LABELS = {
   [CLUB_MATCH_TYPES.FRIENDLY]: "Giao hữu",
   [CLUB_MATCH_TYPES.INTERNAL_TOURNAMENT]: "Giải nội bộ",
@@ -69,9 +67,7 @@ export default function ClubMatchHistoryTab({ club, tenantId, onRefresh }) {
   }, [tenantId, revision]);
 
   const activeMemberIds = useMemo(() => {
-    return getClubMembers(club.id, tenantId)
-      .filter((m) => m.status === CLUB_MEMBER_STATUSES.ACTIVE)
-      .map((m) => m.playerId);
+    return getCurrentClubMembers(club.id, tenantId).map((m) => m.playerId);
   }, [club.id, tenantId, revision]);
 
   const memberPlayers = useMemo(

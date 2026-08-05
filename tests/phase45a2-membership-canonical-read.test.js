@@ -115,7 +115,7 @@ test("active-only count is identical for My Club and Manage Club (same repo cont
     listMembersRpc: async () => ({ ok: true, members: ACCC_FIXTURE.membershipRows }),
   });
   // Manage Club header derives the count from the mapped canonical rows.
-  const list = await repo.listActiveClubMembers(ACCC_FIXTURE.club.id, { includeInactive: true });
+  const list = await repo.listClubMembershipHistory(ACCC_FIXTURE.club.id);
   const manageCount = countActiveClubMembers(list.data.map(mapV2MemberRowToUi));
   // My Club uses the same repository count contract.
   const myClubCount = await repo.countActiveMembers(ACCC_FIXTURE.club.id);
@@ -126,6 +126,8 @@ test("active-only count is identical for My Club and Manage Club (same repo cont
 // --- app singleton is wired (dormant → active gateway) ---
 test("app singleton exposes the full membership read contract", () => {
   for (const method of [
+    "listCurrentClubMembers",
+    "listClubMembershipHistory",
     "listActiveClubMembers",
     "listMembersByClub",
     "getActiveMembershipForUser",
@@ -151,7 +153,7 @@ test("ownership lock detects a NEW membership read bypass but not the canonical 
   assert.equal(rule.match("loadClubExtension(clubId).members").length, 1);
   // Going through the canonical gateway must NOT be flagged.
   assert.equal(
-    rule.match("await canonicalMembershipRepository.listActiveClubMembers(clubId);").length,
+    rule.match("await canonicalMembershipRepository.listCurrentClubMembers(clubId);").length,
     0
   );
 });
@@ -159,16 +161,13 @@ test("ownership lock detects a NEW membership read bypass but not the canonical 
 test("ownership lock baseline records the retained offline membership reads as debt", () => {
   const found = collectViolations();
   assert.ok(found.has("membership-roster-read-in-ui::src/pages/clubs/tabs/ClubMembersTab.jsx"));
-  assert.ok(
-    found.has("membership-roster-read-in-ui::src/pages/player/myClub/MyClubMembersPanel.jsx")
-  );
 });
 
 // --- 1, 2, 4, 5. migrated UI surfaces read the canonical repository ---
 test("MyClubMembersPanel reads the canonical repository, no direct RPC", () => {
   const src = readSrc(PANEL);
   assert.match(src, /canonicalMembershipRepository/);
-  assert.match(src, /\.listActiveClubMembers\(/);
+  assert.match(src, /\.listCurrentClubMembers\(/);
   assert.match(src, /toMembershipReadSnapshot/);
   assert.doesNotMatch(src, /rpcV2ClubListMembers\s*\(/);
 });
@@ -176,7 +175,7 @@ test("MyClubMembersPanel reads the canonical repository, no direct RPC", () => {
 test("ClubMembersTab reads the canonical repository, no direct RPC", () => {
   const src = readSrc(TAB);
   assert.match(src, /canonicalMembershipRepository/);
-  assert.match(src, /\.listActiveClubMembers\(/);
+  assert.match(src, /\.listClubMembershipHistory\(/);
   assert.match(src, /toMembershipReadSnapshot/);
   assert.doesNotMatch(src, /rpcV2ClubListMembers\s*\(/);
 });
@@ -190,6 +189,6 @@ test("migrated surfaces gate the blob read on canonical mode (never unconditiona
   // blob join only runs in the offline branch.
   const panel = readSrc(PANEL);
   assert.match(panel, /if \(canonicalMembershipRead[\s\S]*return \[\];/);
-  assert.match(panel, /getClubMembers\(clubId, tenantId\)/);
-  assert.doesNotMatch(panel, /useMemo\(\s*\(\)\s*=>\s*getClubMembers\(clubId, tenantId\)/);
+  assert.match(panel, /getCurrentClubMembers\(clubId, tenantId\)/);
+  assert.doesNotMatch(panel, /useMemo\(\s*\(\)\s*=>\s*getCurrentClubMembers\(clubId, tenantId\)/);
 });

@@ -25,7 +25,7 @@ import {
   CLUB_MEMBER_ROLE_LABELS,
   canViewFullClubMembers,
   countActiveClubMembers,
-  getClubMembers,
+  getCurrentClubMembers,
   getClubMemberStatusLabel,
   getTenantPlayers,
   getVicePresidentUserIds,
@@ -140,7 +140,7 @@ export default function MyClubMembersPanel({
     let cancelled = false;
     setRemote((prev) => ({ ...prev, state: MEMBERSHIP_READ_STATE.LOADING }));
     canonicalMembershipRepository
-      .listActiveClubMembers(clubId, { includeInactive: true })
+      .listCurrentClubMembers(clubId)
       .then((result) => {
         if (cancelled) {
           return;
@@ -163,7 +163,7 @@ export default function MyClubMembersPanel({
     if (canonicalMembershipRead || !fullAccess || !clubId) {
       return [];
     }
-    return getClubMembers(clubId, tenantId);
+    return getCurrentClubMembers(clubId, tenantId);
   }, [clubId, tenantId, revision, fullAccess, canonicalMembershipRead]);
 
   const playersById = useMemo(() => {

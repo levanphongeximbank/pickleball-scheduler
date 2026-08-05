@@ -142,31 +142,27 @@ export function createCanonicalMembershipRepository(deps = {}) {
     legacyListMembers = null,
   } = deps;
 
-  async function listActiveClubMembers(clubId, options = {}) {
+  async function loadMembershipHistoryRows(clubId) {
     const id = String(clubId || "").trim();
     if (!id) {
       return buildRepoError({ code: "CLUB_ID_REQUIRED", message: "clubId is required." });
     }
 
-    const includeInactive = Boolean(options.includeInactive);
     const v2 = isV2Enabled();
 
     if (!v2) {
       const legacyRows = typeof legacyListMembers === "function" ? legacyListMembers(id) || [] : [];
       const deduped = dedupeMembershipHistory(legacyRows);
-      const active = includeInactive
-        ? deduped.members
-        : deduped.members.filter((m) => m.membershipStatus === "active");
       return buildRepoResult({
-        data: active,
+        data: deduped.members,
         source: CANONICAL_SOURCE.LEGACY_BLOB,
         warnings: deduped.warnings,
         mappingSummary: emptyMappingSummary({
           totalMembers: legacyRows.length,
-          activeMembers: active.filter((m) => m.membershipStatus === "active").length,
+          activeMembers: deduped.members.filter((m) => m.membershipStatus === "active").length,
           duplicatesRemoved: deduped.duplicatesRemoved,
         }),
-        execution: { mode: "legacy", clubId: id },
+        execution: { mode: "legacy", clubId: id, contract: "membership_history" },
       });
     }
 
@@ -181,25 +177,59 @@ export function createCanonicalMembershipRepository(deps = {}) {
 
     const raw = Array.isArray(rpc.members) ? rpc.members : [];
     const deduped = dedupeMembershipHistory(raw);
-    const active = includeInactive
-      ? deduped.members
-      : deduped.members.filter((m) => m.membershipStatus === "active");
-
     return buildRepoResult({
-      data: active,
+      data: deduped.members,
       source: CANONICAL_SOURCE.MEMBERSHIP_SSOT,
       warnings: deduped.warnings,
       mappingSummary: emptyMappingSummary({
         totalMembers: raw.length,
-        activeMembers: active.filter((m) => m.membershipStatus === "active").length,
+        activeMembers: deduped.members.filter((m) => m.membershipStatus === "active").length,
         duplicatesRemoved: deduped.duplicatesRemoved,
       }),
-      execution: { mode: "v2", clubId: id },
+      execution: { mode: "v2", clubId: id, contract: "membership_history" },
     });
   }
 
+  /**
+   * MEMBERSHIP HISTORY CONTRACT — deduped rows for all canonical lifecycle statuses.
+   */
+  async function listClubMembershipHistory(clubId) {
+    return loadMembershipHistoryRows(clubId);
+  }
+
+  /**
+   * CURRENT MEMBERS CONTRACT — canonical active membership only.
+   */
+  async function listCurrentClubMembers(clubId) {
+    const history = await loadMembershipHistoryRows(clubId);
+    if (!history.ok) {
+      return history;
+    }
+    const current = (history.data || []).filter((m) => m.membershipStatus === "active");
+    return buildRepoResult({
+      data: current,
+      source: history.source,
+      warnings: history.warnings,
+      mappingSummary: emptyMappingSummary({
+        ...history.mappingSummary,
+        activeMembers: current.length,
+      }),
+      execution: { ...history.execution, contract: "current_members" },
+    });
+  }
+
+  /**
+   * @deprecated Prefer listCurrentClubMembers or listClubMembershipHistory.
+   */
+  async function listActiveClubMembers(clubId, options = {}) {
+    if (Boolean(options.includeInactive)) {
+      return listClubMembershipHistory(clubId);
+    }
+    return listCurrentClubMembers(clubId);
+  }
+
   async function getActiveMembershipForUser(clubId, userId) {
-    const result = await listActiveClubMembers(clubId, { includeInactive: false });
+    const result = await listCurrentClubMembers(clubId);
     if (!result.ok) return result;
     const uid = String(userId || "").trim();
     const hit = (result.data || []).find((m) => membershipKey(m) === uid) || null;
@@ -220,7 +250,9 @@ export function createCanonicalMembershipRepository(deps = {}) {
    */
   async function getMemberByUserId(clubId, userId, options = {}) {
     const includeInactive = options.includeInactive !== false;
-    const result = await listActiveClubMembers(clubId, { includeInactive });
+    const result = includeInactive
+      ? await listClubMembershipHistory(clubId)
+      : await listCurrentClubMembers(clubId);
     if (!result.ok) return result;
     const uid = String(userId || "").trim();
     const hit = (result.data || []).find((m) => membershipKey(m) === uid) || null;
@@ -240,7 +272,7 @@ export function createCanonicalMembershipRepository(deps = {}) {
    * @returns {Promise<object>} repo result with numeric `data`
    */
   async function countActiveMembers(clubId) {
-    const result = await listActiveClubMembers(clubId, { includeInactive: false });
+    const result = await listCurrentClubMembers(clubId);
     if (!result.ok) return result;
     return buildRepoResult({
       data: (result.data || []).length,
@@ -280,9 +312,11 @@ export function createCanonicalMembershipRepository(deps = {}) {
   }
 
   return {
+    listCurrentClubMembers,
+    listClubMembershipHistory,
     listActiveClubMembers,
-    // Contract alias (Phase 45A.2 §3): listMembersByClub === listActiveClubMembers.
-    listMembersByClub: listActiveClubMembers,
+    // Contract alias (Phase 45A.2 §3): listMembersByClub === current members only.
+    listMembersByClub: listCurrentClubMembers,
     getActiveMembershipForUser,
     getMemberByUserId,
     countActiveMembers,

@@ -4,7 +4,7 @@ import { guardClubTenant } from "../../tenant/guards/tenantGuard.js";
 import { CLUB_MATCH_TYPES } from "../models/clubMatch.js";
 import { CLUB_MEMBER_STATUSES } from "../constants/clubMemberRoles.js";
 import { loadClubExtension } from "../storage/clubExtensionStorage.js";
-import { getClubMembers } from "./clubMemberService.js";
+import { getCurrentClubMembers } from "./clubMemberService.js";
 import { addClubMatch } from "./clubMatchService.js";
 import { applyClubMatchEloById } from "./clubEloService.js";
 
@@ -19,9 +19,7 @@ function guardMatchWrite(clubId, tenantId) {
 }
 
 function assertPlayersAreMembers(clubId, playerIds, tenantId) {
-  const members = getClubMembers(clubId, tenantId).filter(
-    (m) => m.status === CLUB_MEMBER_STATUSES.ACTIVE
-  );
+  const members = getCurrentClubMembers(clubId, tenantId);
   const memberIds = new Set(members.map((m) => m.playerId));
 
   for (const playerId of playerIds) {

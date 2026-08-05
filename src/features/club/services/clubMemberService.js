@@ -8,6 +8,7 @@ import { API_ERROR_CODES } from "../../api/constants/apiErrors.js";
 import {
   CLUB_MEMBER_STATUSES,
   normalizeClubMemberStatus,
+  isClubMemberStatusActive,
 } from "../constants/clubMemberRoles.js";
 import { canViewFullClubMembers, canDeleteClubMembers, canAddClubMembers } from "./clubGovernanceService.js";
 import {
@@ -253,8 +254,18 @@ export function getClubMembers(clubId, tenantId, options = {}) {
   return ext.members;
 }
 
+/**
+ * CURRENT MEMBERS CONTRACT (legacy blob sync path only).
+ * Under Club Storage V2, callers must use membershipReadService.listCurrentClubMembers.
+ */
+export function getCurrentClubMembers(clubId, tenantId, options = {}) {
+  return getClubMembers(clubId, tenantId, options).filter((member) =>
+    isClubMemberStatusActive(member?.status)
+  );
+}
+
 export function getClubMembersForTournamentInvite(clubId, tenantId) {
-  return getClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
+  return getCurrentClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
 }
 
 /**

@@ -21,7 +21,7 @@ const TAB = "src/pages/clubs/tabs/ClubMembersTab.jsx";
 test("Manage members tab reads member list from canonicalMembershipRepository", () => {
   const src = readSrc(TAB);
   assert.match(src, /canonicalMembershipRepository/);
-  assert.match(src, /\.listActiveClubMembers\(\s*club\.id,\s*\{\s*includeInactive:\s*true\s*\}\s*\)/);
+  assert.match(src, /\.listClubMembershipHistory\(/);
   assert.match(src, /\.map\(mapV2MemberRowToUi\)/);
   assert.match(src, /isCanonicalMembershipReadEnabled/);
   // The direct RPC read must be gone from the UI after the cutover.

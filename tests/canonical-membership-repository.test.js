@@ -26,18 +26,29 @@ test("dedupeMembershipHistory prefers active and is deterministic", () => {
   assert.equal(new Set(userIds).size, userIds.length);
 });
 
-test("listActiveClubMembers returns only active after dedupe (V2)", async () => {
+test("listCurrentClubMembers returns only active after dedupe (V2)", async () => {
   const repo = createCanonicalMembershipRepository({
     isV2Enabled: () => true,
     listMembersRpc: async () => ({ ok: true, members: ACCC_FIXTURE.membershipRows }),
   });
-  const result = await repo.listActiveClubMembers(ACCC_FIXTURE.club.id);
+  const result = await repo.listCurrentClubMembers(ACCC_FIXTURE.club.id);
   assert.equal(result.ok, true);
   assert.equal(result.source, "membership_ssot");
   assert.equal(result.data.length, 10);
   assert.ok(result.data.every((m) => m.status === "active"));
   assert.ok(!result.data.some((m) => m.userId === "user-11"));
   assert.ok(result.mappingSummary.duplicatesRemoved >= 2);
+});
+
+test("listClubMembershipHistory returns deduped lifecycle rows (V2)", async () => {
+  const repo = createCanonicalMembershipRepository({
+    isV2Enabled: () => true,
+    listMembersRpc: async () => ({ ok: true, members: ACCC_FIXTURE.membershipRows }),
+  });
+  const result = await repo.listClubMembershipHistory(ACCC_FIXTURE.club.id);
+  assert.equal(result.ok, true);
+  assert.ok(result.data.some((m) => m.user_id === "user-11" && m.status === "left"));
+  assert.ok(result.data.some((m) => m.user_id === "user-01" && m.status === "active"));
 });
 
 test("getActiveMembershipForUser returns one logical membership", async () => {
