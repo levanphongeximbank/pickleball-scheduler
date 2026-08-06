@@ -37,14 +37,20 @@
 SET search_path = public, auth, pg_temp;
 
 -- -----------------------------------------------------------------------------
--- Fail-closed preflight: WP1 authority must already exist exactly
+-- Fail-closed preflight: WP1 authority must already exist with expected definitions
 -- -----------------------------------------------------------------------------
 DO $preflight$
 DECLARE
   v_missing_cols text;
-  v_missing_constraints text;
-  v_missing_indexes text;
   v_has_auth_ban_applied boolean;
+  v_def text;
+  v_idxdef text;
+  v_spec record;
+  v_tg_oid oid;
+  v_tg_enabled char;
+  v_tg_type integer;
+  v_tg_fn oid;
+  v_tg_fn_name text;
 BEGIN
   IF to_regclass('public.qa_identity_quarantines') IS NULL THEN
     RAISE EXCEPTION
@@ -124,76 +130,226 @@ BEGIN
       USING ERRCODE = 'P0001';
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'qa_identity_quarantines_immutable_fields_trg'
-      AND tgrelid = 'public.qa_identity_quarantines'::regclass
-      AND NOT tgisinternal
-  ) THEN
-    RAISE EXCEPTION
-      'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: immutable-fields trigger missing'
-      USING ERRCODE = 'P0001';
-  END IF;
+  -- Constraint definition validation via pg_get_constraintdef (not name-only)
+  FOR v_spec IN
+    SELECT *
+    FROM (
+      VALUES
+        (
+          'qa_identity_quarantines_lifecycle_state_check',
+          ARRAY['pending', 'active', 'released', 'failed']::text[],
+          ARRAY['reverted']::text[]
+        ),
+        (
+          'qa_identity_quarantines_auth_ban_state_check',
+          ARRAY['pending', 'applied', 'not_required_preexisting', 'reverted', 'failed']::text[],
+          ARRAY[]::text[]
+        ),
+        (
+          'qa_identity_quarantines_identity_bind_check',
+          ARRAY['profile_id', 'auth_user_id']::text[],
+          ARRAY[]::text[]
+        ),
+        (
+          'qa_identity_quarantines_active_success_check',
+          ARRAY['active', 'applied', 'not_required_preexisting', 'activated_at']::text[],
+          ARRAY[]::text[]
+        ),
+        (
+          'qa_identity_quarantines_pending_auth_check',
+          ARRAY['pending', 'activated_at', 'released_at']::text[],
+          ARRAY[]::text[]
+        ),
+        (
+          'qa_identity_quarantines_release_consistency_check',
+          ARRAY['released', 'activated_at', 'released_at', 'released_by']::text[],
+          ARRAY[]::text[]
+        ),
+        (
+          'qa_identity_quarantines_reverted_failure_check',
+          ARRAY['reverted', 'failed']::text[],
+          ARRAY[]::text[]
+        ),
+        (
+          'qa_identity_quarantines_failed_auth_not_active_check',
+          ARRAY['failed', 'active']::text[],
+          ARRAY[]::text[]
+        )
+    ) AS t(conname, required_tokens, forbidden_tokens)
+  LOOP
+    SELECT pg_get_constraintdef(c.oid)
+    INTO v_def
+    FROM pg_constraint c
+    WHERE c.conname = v_spec.conname
+      AND c.conrelid = 'public.qa_identity_quarantines'::regclass;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'qa_identity_quarantines_deny_hard_delete_trg'
-      AND tgrelid = 'public.qa_identity_quarantines'::regclass
-      AND NOT tgisinternal
-  ) THEN
-    RAISE EXCEPTION
-      'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: hard-delete-deny trigger missing'
-      USING ERRCODE = 'P0001';
-  END IF;
+    IF v_def IS NULL THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: missing WP1 constraint %',
+        v_spec.conname
+        USING ERRCODE = 'P0001';
+    END IF;
 
-  SELECT string_agg(required.con, ', ' ORDER BY required.con)
-  INTO v_missing_constraints
-  FROM (
-    VALUES
-      ('qa_identity_quarantines_lifecycle_state_check'),
-      ('qa_identity_quarantines_auth_ban_state_check'),
-      ('qa_identity_quarantines_identity_bind_check'),
-      ('qa_identity_quarantines_active_success_check'),
-      ('qa_identity_quarantines_pending_auth_check'),
-      ('qa_identity_quarantines_release_consistency_check'),
-      ('qa_identity_quarantines_reverted_failure_check'),
-      ('qa_identity_quarantines_failed_auth_not_active_check')
-  ) AS required(con)
-  WHERE NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = required.con
-      AND conrelid = 'public.qa_identity_quarantines'::regclass
-  );
+    IF EXISTS (
+      SELECT 1
+      FROM unnest(v_spec.required_tokens) tok
+      WHERE position(lower(tok) in lower(v_def)) = 0
+    ) THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: incompatible constraint % definition: %',
+        v_spec.conname, v_def
+        USING ERRCODE = 'P0001';
+    END IF;
 
-  IF v_missing_constraints IS NOT NULL THEN
-    RAISE EXCEPTION
-      'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: missing WP1 constraints: %',
-      v_missing_constraints
-      USING ERRCODE = 'P0001';
-  END IF;
+    IF v_spec.conname = 'qa_identity_quarantines_identity_bind_check'
+       AND v_def !~* 'profile_id\s*=\s*auth_user_id' THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: identity-bind definition mismatch: %',
+        v_def
+        USING ERRCODE = 'P0001';
+    END IF;
 
-  SELECT string_agg(required.idx, ', ' ORDER BY required.idx)
-  INTO v_missing_indexes
-  FROM (
-    VALUES
-      ('qa_identity_quarantines_active_profile_uidx'),
-      ('qa_identity_quarantines_active_auth_uidx'),
-      ('qa_identity_quarantines_pending_profile_batch_uidx')
-  ) AS required(idx)
-  WHERE NOT EXISTS (
-    SELECT 1 FROM pg_class c
+    IF EXISTS (
+      SELECT 1
+      FROM unnest(v_spec.forbidden_tokens) tok
+      WHERE position('''' || lower(tok) || '''' in lower(v_def)) > 0
+    ) THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: forbidden token in constraint %: %',
+        v_spec.conname, v_def
+        USING ERRCODE = 'P0001';
+    END IF;
+  END LOOP;
+
+  -- Index definition validation via pg_get_indexdef (not name-only)
+  FOR v_spec IN
+    SELECT *
+    FROM (
+      VALUES
+        (
+          'qa_identity_quarantines_active_profile_uidx',
+          'profile_id',
+          'lifecycle_state',
+          'active'
+        ),
+        (
+          'qa_identity_quarantines_active_auth_uidx',
+          'auth_user_id',
+          'lifecycle_state',
+          'active'
+        ),
+        (
+          'qa_identity_quarantines_pending_profile_batch_uidx',
+          'profile_id',
+          'lifecycle_state',
+          'pending'
+        )
+    ) AS t(idxname, key_col, pred_col, pred_val)
+  LOOP
+    SELECT pg_get_indexdef(c.oid)
+    INTO v_idxdef
+    FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public'
       AND c.relkind = 'i'
-      AND c.relname = required.idx
-  );
+      AND c.relname = v_spec.idxname;
 
-  IF v_missing_indexes IS NOT NULL THEN
-    RAISE EXCEPTION
-      'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: missing WP1 indexes: %',
-      v_missing_indexes
-      USING ERRCODE = 'P0001';
-  END IF;
+    IF v_idxdef IS NULL THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: missing WP1 index %',
+        v_spec.idxname
+        USING ERRCODE = 'P0001';
+    END IF;
+
+    IF v_idxdef !~* 'unique'
+       OR position('qa_identity_quarantines' in lower(v_idxdef)) = 0
+       OR position(lower(v_spec.key_col) in lower(v_idxdef)) = 0
+       OR v_idxdef !~* (v_spec.pred_col || '\s*=\s*''' || v_spec.pred_val || '''')
+    THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: incompatible index % definition: %',
+        v_spec.idxname, v_idxdef
+        USING ERRCODE = 'P0001';
+    END IF;
+
+    IF v_spec.idxname = 'qa_identity_quarantines_pending_profile_batch_uidx'
+       AND position('batch_id' in lower(v_idxdef)) = 0 THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: pending index missing batch_id: %',
+        v_idxdef
+        USING ERRCODE = 'P0001';
+    END IF;
+  END LOOP;
+
+  -- Trigger definition validation: table, timing/event, function, enabled
+  FOR v_spec IN
+    SELECT *
+    FROM (
+      VALUES
+        (
+          'qa_identity_quarantines_immutable_fields_trg',
+          'qa_identity_quarantines_immutable_fields_guard',
+          'UPDATE'::text
+        ),
+        (
+          'qa_identity_quarantines_deny_hard_delete_trg',
+          'qa_identity_quarantines_deny_hard_delete',
+          'DELETE'::text
+        )
+    ) AS t(tgname, fnname, evtype)
+  LOOP
+    SELECT t.oid, t.tgenabled, t.tgtype, t.tgfoid
+    INTO v_tg_oid, v_tg_enabled, v_tg_type, v_tg_fn
+    FROM pg_trigger t
+    WHERE t.tgname = v_spec.tgname
+      AND t.tgrelid = 'public.qa_identity_quarantines'::regclass
+      AND NOT t.tgisinternal;
+
+    IF v_tg_oid IS NULL THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: missing WP1 trigger %',
+        v_spec.tgname
+        USING ERRCODE = 'P0001';
+    END IF;
+
+    -- tgenabled: O = origin/enabled, A = always
+    IF v_tg_enabled IS DISTINCT FROM 'O' AND v_tg_enabled IS DISTINCT FROM 'A' THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: trigger % is not enabled (tgenabled=%)',
+        v_spec.tgname, v_tg_enabled
+        USING ERRCODE = 'P0001';
+    END IF;
+
+    -- BEFORE row trigger bits: tgtype & 2 = before, & 1 = row
+    IF (v_tg_type & 2) = 0 OR (v_tg_type & 1) = 0 THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: trigger % must be BEFORE ROW',
+        v_spec.tgname
+        USING ERRCODE = 'P0001';
+    END IF;
+
+    IF v_spec.evtype = 'UPDATE' AND (v_tg_type & 16) = 0 THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: trigger % must fire on UPDATE',
+        v_spec.tgname
+        USING ERRCODE = 'P0001';
+    END IF;
+
+    IF v_spec.evtype = 'DELETE' AND (v_tg_type & 8) = 0 THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: trigger % must fire on DELETE',
+        v_spec.tgname
+        USING ERRCODE = 'P0001';
+    END IF;
+
+    SELECT p.proname INTO v_tg_fn_name FROM pg_proc p WHERE p.oid = v_tg_fn;
+    IF v_tg_fn_name IS DISTINCT FROM v_spec.fnname THEN
+      RAISE EXCEPTION
+        'QA_IDENTITY_QUARANTINE_AUTHORITY_PREFLIGHT: trigger % must invoke public.%()',
+        v_spec.tgname, v_spec.fnname
+        USING ERRCODE = 'P0001';
+    END IF;
+  END LOOP;
 
   -- Fail closed on unexpected permissive policies already present
   IF EXISTS (
@@ -288,8 +444,15 @@ END
 $sigguard$;
 
 -- -----------------------------------------------------------------------------
--- Additive audit_logs_action_check whitelist (union existing + WP2 actions)
--- Matches repository PHASE_1B additive pattern (no fixed exclusive IN-list).
+-- Additive audit_logs_action_check whitelist
+-- Canonical PHASE_1B pattern:
+--   docs/v5/phase1b/PHASE_1B_AUDIT_WHITELIST_ADDITIVE.sql
+-- Union of:
+--   A) current non-empty DISTINCT audit_logs.action rows
+--   B) complete known historical / Phase 1B defensive action set
+--   C) five WP2 qa_quarantine.* actions
+-- Never shrinks allowed actions that lack stored rows yet.
+-- No audit row DML. Bounded IN-list only (not unrestricted).
 -- -----------------------------------------------------------------------------
 DO $audit_whitelist$
 DECLARE
@@ -299,6 +462,7 @@ BEGIN
   SELECT string_agg(quote_literal(a), ', ' ORDER BY a)
   INTO v_list
   FROM (
+    -- A) Historical rows already on this database (must never be excluded)
     SELECT DISTINCT action AS a
     FROM public.audit_logs
     WHERE action IS NOT NULL
@@ -306,6 +470,59 @@ BEGIN
 
     UNION
 
+    -- B) Known identity / club / Phase 1B actions (may not yet exist as rows)
+    SELECT unnest(ARRAY[
+      -- Identity / admin (identity Phase B + client AUDIT_ACTIONS)
+      'login',
+      'login_failed',
+      'logout',
+      'create',
+      'update',
+      'delete',
+      'assign_role',
+      'permission_change',
+      'password_change',
+      'reset_password',
+      'pairing_override',
+      'group_override',
+      -- Club lifecycle
+      'club.create',
+      'club.update',
+      'club.leave_membership',
+      'club.delete',
+      -- Membership requests
+      'club.membership_request.submit',
+      'club.membership_request.review',
+      'club.membership_request.correction',
+      'club.membership_request.cancel',
+      -- Member commands (Phase 45A.4C / 45A.4D / 1B)
+      'club.member.add',
+      'club.member.remove',
+      'club.member.restore',
+      -- Governance RPC
+      'club.assign_owner',
+      'club.clear_owner',
+      'club.transfer_president',
+      'club.assign_vice_president',
+      'club.clear_vice_president',
+      -- Governance client bridge
+      'club.owner.transfer',
+      'club.president.transfer',
+      'club.vice_president.assign',
+      -- Common client audit strings observed in app code (defensive)
+      'rating.verify',
+      'rating.propose',
+      'audit.view',
+      'workflow.notification',
+      'user.manage.denied',
+      'user.manage.status-change',
+      'payment_success',
+      'approve'
+    ]::text[])
+
+    UNION
+
+    -- C) WP2 QA quarantine lifecycle actions
     SELECT unnest(ARRAY[
       'qa_quarantine.prepare',
       'qa_quarantine.activate_after_auth_ban',
@@ -529,6 +746,9 @@ DECLARE
   v_active public.qa_identity_quarantines%ROWTYPE;
   v_pending public.qa_identity_quarantines%ROWTYPE;
   v_new public.qa_identity_quarantines%ROWTYPE;
+  v_conflict public.qa_identity_quarantines%ROWTYPE;
+  v_constraint text;
+  v_bindings_match boolean;
 BEGIN
   IF NOT public.qa_quarantine_is_authorized_caller() THEN
     RETURN jsonb_build_object('ok', false, 'code', 'forbidden');
@@ -549,6 +769,11 @@ BEGIN
 
   IF p_batch_id IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'code', 'batch_required');
+  END IF;
+
+  -- Executable retired-batch denial (Operation B1 batch permanently non-reusable)
+  IF p_batch_id = 'b37186cf-e620-4f27-aba3-d7e8750ae7df'::uuid THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'retired_batch_forbidden');
   END IF;
 
   IF p_original_auth_banned IS NULL THEN
@@ -695,46 +920,148 @@ BEGIN
   END IF;
 
   -- Failed/released history is never silently reused; always insert a new row.
-  INSERT INTO public.qa_identity_quarantines (
-    profile_id,
-    auth_user_id,
-    venue_id,
-    batch_id,
-    source_operation,
-    allowlist_sha256,
-    snapshot_sha256,
-    lifecycle_state,
-    auth_ban_state,
-    reason,
-    created_by,
-    lifecycle_version,
-    original_profile_status,
-    original_auth_banned,
-    expected_email,
-    allowlist_label,
-    metadata,
-    updated_at
-  ) VALUES (
-    p_profile_id,
-    p_auth_user_id,
-    v_profile.venue_id,
-    p_batch_id,
-    'OPERATION_B1B',
-    v_hash_allow,
-    v_hash_snap,
-    'pending',
-    'pending',
-    v_reason,
-    v_actor,
-    1,
-    p_original_profile_status,
-    p_original_auth_banned,
-    v_email_norm,
-    v_label,
-    v_meta,
-    now()
-  )
-  RETURNING * INTO v_new;
+  BEGIN
+    INSERT INTO public.qa_identity_quarantines (
+      profile_id,
+      auth_user_id,
+      venue_id,
+      batch_id,
+      source_operation,
+      allowlist_sha256,
+      snapshot_sha256,
+      lifecycle_state,
+      auth_ban_state,
+      reason,
+      created_by,
+      lifecycle_version,
+      original_profile_status,
+      original_auth_banned,
+      expected_email,
+      allowlist_label,
+      metadata,
+      updated_at
+    ) VALUES (
+      p_profile_id,
+      p_auth_user_id,
+      v_profile.venue_id,
+      p_batch_id,
+      'OPERATION_B1B',
+      v_hash_allow,
+      v_hash_snap,
+      'pending',
+      'pending',
+      v_reason,
+      v_actor,
+      1,
+      p_original_profile_status,
+      p_original_auth_banned,
+      v_email_norm,
+      v_label,
+      v_meta,
+      now()
+    )
+    RETURNING * INTO v_new;
+  EXCEPTION
+    WHEN unique_violation THEN
+      GET STACKED DIAGNOSTICS v_constraint = CONSTRAINT_NAME;
+      IF coalesce(nullif(trim(v_constraint), ''), '') = '' THEN
+        v_constraint := coalesce(
+          (regexp_match(SQLERRM, '"(qa_identity_quarantines_[a-z0-9_]+)"'))[1],
+          ''
+        );
+      END IF;
+
+      IF v_constraint NOT IN (
+        'qa_identity_quarantines_active_profile_uidx',
+        'qa_identity_quarantines_active_auth_uidx',
+        'qa_identity_quarantines_pending_profile_batch_uidx'
+      ) THEN
+        RAISE;
+      END IF;
+
+      -- Re-read authority after expected live-authority uniqueness race.
+      SELECT * INTO v_conflict
+      FROM public.qa_identity_quarantines q
+      WHERE q.profile_id = p_profile_id
+        AND q.lifecycle_state = 'active'
+      FOR UPDATE;
+
+      IF FOUND THEN
+        v_bindings_match := (
+          v_conflict.profile_id IS NOT DISTINCT FROM p_profile_id
+          AND v_conflict.auth_user_id IS NOT DISTINCT FROM p_auth_user_id
+          AND v_conflict.batch_id IS NOT DISTINCT FROM p_batch_id
+          AND v_conflict.source_operation IS NOT DISTINCT FROM 'OPERATION_B1B'
+          AND v_conflict.allowlist_sha256 IS NOT DISTINCT FROM v_hash_allow
+          AND v_conflict.snapshot_sha256 IS NOT DISTINCT FROM v_hash_snap
+          AND v_conflict.reason IS NOT DISTINCT FROM v_reason
+          AND v_conflict.original_profile_status IS NOT DISTINCT FROM p_original_profile_status
+          AND v_conflict.original_auth_banned IS NOT DISTINCT FROM p_original_auth_banned
+          AND lower(trim(v_conflict.expected_email)) IS NOT DISTINCT FROM v_email_norm
+          AND upper(trim(coalesce(v_conflict.allowlist_label, ''))) IS NOT DISTINCT FROM v_label
+          AND v_conflict.venue_id IS NOT DISTINCT FROM v_profile.venue_id
+        );
+
+        IF v_bindings_match
+           AND v_conflict.auth_ban_state IN ('applied', 'not_required_preexisting') THEN
+          -- Idempotent race win by peer; no duplicate prepare audit.
+          RETURN jsonb_build_object(
+            'ok', true,
+            'code', 'already_quarantined',
+            'quarantine_id', v_conflict.id,
+            'lifecycle_state', v_conflict.lifecycle_state,
+            'auth_ban_state', v_conflict.auth_ban_state,
+            'lifecycle_version', v_conflict.lifecycle_version
+          );
+        END IF;
+
+        IF v_conflict.batch_id IS DISTINCT FROM p_batch_id THEN
+          RETURN jsonb_build_object('ok', false, 'code', 'active_other_batch');
+        END IF;
+
+        RETURN jsonb_build_object('ok', false, 'code', 'prepare_conflict');
+      END IF;
+
+      SELECT * INTO v_conflict
+      FROM public.qa_identity_quarantines q
+      WHERE q.profile_id = p_profile_id
+        AND q.batch_id = p_batch_id
+        AND q.lifecycle_state = 'pending'
+      FOR UPDATE;
+
+      IF FOUND THEN
+        v_bindings_match := (
+          v_conflict.profile_id IS NOT DISTINCT FROM p_profile_id
+          AND v_conflict.auth_user_id IS NOT DISTINCT FROM p_auth_user_id
+          AND v_conflict.batch_id IS NOT DISTINCT FROM p_batch_id
+          AND v_conflict.source_operation IS NOT DISTINCT FROM 'OPERATION_B1B'
+          AND v_conflict.allowlist_sha256 IS NOT DISTINCT FROM v_hash_allow
+          AND v_conflict.snapshot_sha256 IS NOT DISTINCT FROM v_hash_snap
+          AND v_conflict.reason IS NOT DISTINCT FROM v_reason
+          AND v_conflict.original_profile_status IS NOT DISTINCT FROM p_original_profile_status
+          AND v_conflict.original_auth_banned IS NOT DISTINCT FROM p_original_auth_banned
+          AND lower(trim(v_conflict.expected_email)) IS NOT DISTINCT FROM v_email_norm
+          AND upper(trim(coalesce(v_conflict.allowlist_label, ''))) IS NOT DISTINCT FROM v_label
+          AND v_conflict.venue_id IS NOT DISTINCT FROM v_profile.venue_id
+        );
+
+        IF v_bindings_match THEN
+          -- Idempotent pending race; no duplicate prepare audit.
+          RETURN jsonb_build_object(
+            'ok', true,
+            'code', 'prepare_idempotent',
+            'quarantine_id', v_conflict.id,
+            'lifecycle_state', v_conflict.lifecycle_state,
+            'auth_ban_state', v_conflict.auth_ban_state,
+            'lifecycle_version', v_conflict.lifecycle_version
+          );
+        END IF;
+
+        RETURN jsonb_build_object('ok', false, 'code', 'pending_conflict');
+      END IF;
+
+      RETURN jsonb_build_object('ok', false, 'code', 'prepare_conflict');
+  END;
 
   PERFORM public.qa_quarantine_write_audit(
     'qa_quarantine.prepare',
@@ -989,6 +1316,20 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'code', 'invalid_failure_classification');
   END IF;
 
+  -- Exact compensation classification matrix (fail closed; never silently rewrite)
+  -- auth_ban_failed            → failed
+  -- activation_failed_compensated → reverted
+  -- compensation_incomplete    → failed  (never reverted)
+  -- prepare_failure_recorded   → failed
+  IF NOT (
+    (v_class = 'auth_ban_failed' AND v_target_auth = 'failed')
+    OR (v_class = 'activation_failed_compensated' AND v_target_auth = 'reverted')
+    OR (v_class = 'compensation_incomplete' AND v_target_auth = 'failed')
+    OR (v_class = 'prepare_failure_recorded' AND v_target_auth = 'failed')
+  ) THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'invalid_compensation_pair');
+  END IF;
+
   SELECT * INTO v_row
   FROM public.qa_identity_quarantines q
   WHERE q.id = p_quarantine_id
@@ -1050,7 +1391,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.qa_quarantine_record_compensated_failure(uuid, integer, text, text) IS
-  'OPERATION_B1B WP2: record Boundary 2/3 failure as lifecycle_state=failed with auth_ban_state failed|reverted. No lifecycle_state=reverted.';
+  'OPERATION_B1B WP2: record Boundary 2/3 failure as lifecycle_state=failed. Exact matrix: auth_ban_failed→failed; activation_failed_compensated→reverted; compensation_incomplete→failed; prepare_failure_recorded→failed. No lifecycle_state=reverted.';
 
 -- -----------------------------------------------------------------------------
 -- 5) qa_quarantine_release

@@ -64,6 +64,60 @@ function functionBody(sql, name) {
   return m[1];
 }
 
+function doBlockBody(sql, label) {
+  const re = new RegExp(
+    `do\\s+\\$${label}\\$([\\s\\S]*?)\\$${label}\\$\\s*;`,
+    "i"
+  );
+  const m = sql.match(re);
+  assert.ok(m, `DO block $${label}$ required`);
+  return m[1];
+}
+
+const PHASE1B_KNOWN_ACTIONS = [
+  "login",
+  "login_failed",
+  "logout",
+  "create",
+  "update",
+  "delete",
+  "assign_role",
+  "permission_change",
+  "password_change",
+  "reset_password",
+  "pairing_override",
+  "group_override",
+  "club.create",
+  "club.update",
+  "club.leave_membership",
+  "club.delete",
+  "club.membership_request.submit",
+  "club.membership_request.review",
+  "club.membership_request.correction",
+  "club.membership_request.cancel",
+  "club.member.add",
+  "club.member.remove",
+  "club.member.restore",
+  "club.assign_owner",
+  "club.clear_owner",
+  "club.transfer_president",
+  "club.assign_vice_president",
+  "club.clear_vice_president",
+  "club.owner.transfer",
+  "club.president.transfer",
+  "club.vice_president.assign",
+  "rating.verify",
+  "rating.propose",
+  "audit.view",
+  "workflow.notification",
+  "user.manage.denied",
+  "user.manage.status-change",
+  "payment_success",
+  "approve",
+];
+
+const RETIRED_BATCH = "b37186cf-e620-4f27-aba3-d7e8750ae7df";
+
 let assertionCount = 0;
 function check(condition, message) {
   assertionCount += 1;
@@ -90,19 +144,37 @@ test("WP2 package files exist; WP1 unchanged and still present", () => {
 
 test("1) WP2 forward requires WP1 table and WP1 guards", () => {
   const sql = stripSqlComments(read(FORWARD));
+  const preflight = doBlockBody(sql, "preflight");
   check(
-    /qa_identity_quarantines missing \(WP1 required\)/i.test(sql) ||
-      /to_regclass\('public\.qa_identity_quarantines'\)\s+IS\s+NULL/i.test(sql),
+    /qa_identity_quarantines missing \(WP1 required\)/i.test(preflight) ||
+      /to_regclass\('public\.qa_identity_quarantines'\)\s+IS\s+NULL/i.test(preflight),
     "WP1 table required preflight"
   );
-  check(/immutable-fields trigger missing/i.test(sql), "immutable trigger preflight");
-  check(/hard-delete-deny trigger missing/i.test(sql), "hard-delete trigger preflight");
-  check(/auth_ban_applied column is forbidden/i.test(sql), "no auth_ban_applied");
-  check(/qa_identity_quarantines_active_profile_uidx/i.test(sql), "active index preflight");
-  check(/qa_identity_quarantines_pending_profile_batch_uidx/i.test(sql), "pending index preflight");
+  check(/pg_get_constraintdef/i.test(preflight), "constraint definition preflight");
+  check(/pg_get_indexdef/i.test(preflight), "index definition preflight");
+  check(/tgenabled/i.test(preflight), "trigger enabled preflight");
+  check(/tgtype/i.test(preflight), "trigger timing/event preflight");
+  check(/tgfoid|proname/i.test(preflight), "trigger function preflight");
+  check(/qa_identity_quarantines_immutable_fields_trg/i.test(preflight), "immutable trigger preflight");
+  check(/qa_identity_quarantines_deny_hard_delete_trg/i.test(preflight), "hard-delete trigger preflight");
+  check(/auth_ban_applied column is forbidden/i.test(preflight), "no auth_ban_applied");
+  check(/qa_identity_quarantines_active_profile_uidx/i.test(preflight), "active index preflight");
+  check(/qa_identity_quarantines_pending_profile_batch_uidx/i.test(preflight), "pending index preflight");
   check(
     !/create\s+table\s+(if\s+not\s+exists\s+)?public\.qa_identity_quarantines/i.test(sql),
     "WP2 must not redefine WP1 table"
+  );
+  check(
+    !/create\s+(unique\s+)?index|add\s+constraint|create\s+trigger/i.test(
+      preflight.replace(/raise\s+exception[\s\S]*?;/gi, "")
+    ) || !/create\s+trigger/i.test(sql),
+    "WP2 preflight does not repair WP1 objects"
+  );
+  check(
+    !/create\s+trigger\b/i.test(sql) &&
+      !/add\s+constraint\s+qa_identity_quarantines_/i.test(sql) &&
+      !/create\s+unique\s+index\s+.*qa_identity_quarantines_/i.test(sql),
+    "WP2 does not recreate WP1 constraints/indexes/triggers"
   );
 });
 
@@ -278,6 +350,34 @@ test("23-30) activation, compensated failure, release, should_unban", () => {
   check(/lifecycle_state\s*=\s*'failed'/i.test(compensated), "compensated sets lifecycle failed");
   check(!/lifecycle_state\s*=\s*'reverted'/i.test(compensated), "no lifecycle_state reverted");
   check(/auth_ban_failed|activation_failed_compensated|compensation_incomplete|prepare_failure_recorded/i.test(compensated), "approved classifications");
+  check(
+    /v_class\s*=\s*'auth_ban_failed'\s+and\s+v_target_auth\s*=\s*'failed'/i.test(compensated),
+    "matrix auth_ban_failed→failed"
+  );
+  check(
+    /v_class\s*=\s*'activation_failed_compensated'\s+and\s+v_target_auth\s*=\s*'reverted'/i.test(
+      compensated
+    ),
+    "matrix activation_failed_compensated→reverted"
+  );
+  check(
+    /v_class\s*=\s*'compensation_incomplete'\s+and\s+v_target_auth\s*=\s*'failed'/i.test(
+      compensated
+    ),
+    "matrix compensation_incomplete→failed"
+  );
+  check(
+    /v_class\s*=\s*'prepare_failure_recorded'\s+and\s+v_target_auth\s*=\s*'failed'/i.test(
+      compensated
+    ),
+    "matrix prepare_failure_recorded→failed"
+  );
+  check(/invalid_compensation_pair/i.test(compensated), "unknown pair fails closed");
+  check(
+    !/compensation_incomplete'[\s\S]{0,80}reverted/i.test(compensated) ||
+      /compensation_incomplete'\s+and\s+v_target_auth\s*=\s*'failed'/i.test(compensated),
+    "compensation_incomplete never pairs with reverted"
+  );
 
   check(/lifecycle_state\s+is\s+distinct\s+from\s+'active'/i.test(release), "release requires active");
   check(/'applied'\s*,\s*'not_required_preexisting'/i.test(release), "release requires successful auth state");
@@ -474,6 +574,126 @@ test("41-45) rollback scope exact; no cascade; no remote refs; retired markers",
 
   // Silence unused forward reference while keeping dependency assertion
   check(/public\.qa_identity_quarantines/.test(forward), "forward references authority table");
+});
+
+test("H1/L2) prepare executable body rejects retired batch UUID", () => {
+  const sql = stripSqlComments(read(FORWARD));
+  const body = functionBody(sql, "qa_quarantine_prepare");
+  check(
+    new RegExp(
+      `p_batch_id\\s*=\\s*'${RETIRED_BATCH}'::uuid`,
+      "i"
+    ).test(body),
+    "retired UUID compared against p_batch_id in executable body"
+  );
+  check(
+    /retired_batch_forbidden/i.test(body),
+    "retired_batch_forbidden result code in executable body"
+  );
+  check(
+    /p_batch_id\s+is\s+null/i.test(body) && /batch_required/i.test(body),
+    "null batch still rejected"
+  );
+  // Comments-only appearance must not satisfy this test: body is already comment-stripped.
+  check(
+    body.includes(RETIRED_BATCH),
+    "retired UUID present after comment strip in prepare body"
+  );
+});
+
+test("H2) additive audit whitelist is PHASE_1B union + WP2 actions", () => {
+  const sql = stripSqlComments(read(FORWARD));
+  const whitelist = doBlockBody(sql, "audit_whitelist");
+  check(
+    /select\s+distinct\s+action[\s\S]*from\s+public\.audit_logs/i.test(whitelist),
+    "current stored actions union present"
+  );
+  for (const action of PHASE1B_KNOWN_ACTIONS) {
+    check(
+      whitelist.includes(`'${action}'`),
+      `Phase 1B known action present: ${action}`
+    );
+  }
+  for (const action of AUDIT_ACTIONS) {
+    check(whitelist.includes(`'${action}'`), `WP2 audit action present: ${action}`);
+  }
+  check(/club\.membership_request\.submit/i.test(whitelist), "membership actions present");
+  check(/user\.manage\.status-change/i.test(whitelist), "user-management actions present");
+  check(/payment_success/i.test(whitelist), "payment actions present");
+  check(/rating\.verify/i.test(whitelist), "rating actions present");
+  check(/workflow\.notification/i.test(whitelist), "workflow actions present");
+  // Must not be only current rows + WP2 (Phase 1B defensive set required)
+  check(
+    /PHASE_1B|Known identity|phase1b/i.test(read(FORWARD)) &&
+      PHASE1B_KNOWN_ACTIONS.every((a) => whitelist.includes(`'${a}'`)),
+    "whitelist cannot be only current rows plus WP2 actions"
+  );
+  check(!/delete\s+from\s+public\.audit_logs|update\s+public\.audit_logs|truncate\s+public\.audit_logs/i.test(whitelist), "no audit row DML");
+  check(
+    /check\s*\(\s*action\s+in\s*\(%s\)\s*\)|action\s+IN\s*\(%s\)/i.test(whitelist),
+    "bounded IN-list constraint rebuild"
+  );
+  check(!/action\s*~\*|action\s+like\s+'%'/i.test(whitelist), "not unrestricted action check");
+});
+
+test("M2) prepare unique_violation race handler is narrow and idempotent", () => {
+  const sql = stripSqlComments(read(FORWARD));
+  const body = functionBody(sql, "qa_quarantine_prepare");
+  check(/when\s+unique_violation\s+then/i.test(body), "local unique_violation handler");
+  check(/get\s+stacked\s+diagnostics/i.test(body), "GET STACKED DIAGNOSTICS used");
+  check(
+    /qa_identity_quarantines_active_profile_uidx/i.test(body) &&
+      /qa_identity_quarantines_active_auth_uidx/i.test(body) &&
+      /qa_identity_quarantines_pending_profile_batch_uidx/i.test(body),
+    "expected constraint/index names filtered"
+  );
+  check(
+    /if\s+v_constraint\s+not\s+in\s*\([\s\S]*?\)\s*then\s*raise\s*;/i.test(body),
+    "unknown unique violations re-raised"
+  );
+  check(
+    /select\s+\*\s+into\s+v_conflict[\s\S]*for\s+update/i.test(body),
+    "post-conflict authority re-read"
+  );
+  for (const field of [
+    "profile_id",
+    "auth_user_id",
+    "batch_id",
+    "source_operation",
+    "allowlist_sha256",
+    "snapshot_sha256",
+    "reason",
+    "original_profile_status",
+    "original_auth_banned",
+    "expected_email",
+    "allowlist_label",
+    "venue_id",
+  ]) {
+    check(
+      new RegExp(`v_conflict\\.${field}`, "i").test(body),
+      `immutable correlation compares ${field}`
+    );
+  }
+  check(/prepare_idempotent/i.test(body), "matching pending returns prepare_idempotent");
+  check(/already_quarantined/i.test(body), "matching active returns already_quarantined");
+  check(/pending_conflict|prepare_conflict|active_other_batch/i.test(body), "conflict stable codes");
+  // Audit only after successful INSERT path (outside EXCEPTION); idempotent returns skip audit
+  const insertAuditOrder = body.search(/insert\s+into\s+public\.qa_identity_quarantines/i);
+  const exceptionPos = body.search(/when\s+unique_violation/i);
+  const auditPos = body.search(/qa_quarantine_write_audit\s*\(\s*'qa_quarantine\.prepare'/i);
+  check(insertAuditOrder >= 0 && exceptionPos > insertAuditOrder, "handler wraps INSERT");
+  check(
+    auditPos > exceptionPos &&
+      !/qa_quarantine_write_audit[\s\S]*when\s+unique_violation/i.test(
+        body.slice(exceptionPos, auditPos)
+      ),
+    "idempotent retry does not emit prepare audit inside exception path"
+  );
+  check(!/when\s+others\s+then/i.test(body), "no broad WHEN OTHERS in prepare");
+  check(
+    !/return[\s\S]{0,40}23505|sqlstate\s*=\s*'23505'/i.test(body),
+    "raw expected 23505 is not the intended result contract"
+  );
 });
 
 test("report WP2 static assertion count", () => {
