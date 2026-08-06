@@ -149,6 +149,10 @@ export function isCanonicalMenuNodeVisible(node, auth, options = {}) {
   if (!node) return false;
   if (isHiddenByOwnerDecision(node)) return false;
 
+  // Contextual parameterized deep-links stay out of general menu / search surfaces.
+  if (node.contextualOnly && !options.includeContextual) return false;
+  if (String(node.route || "").includes(":") && !options.includeContextual) return false;
+
   const viewport = options.viewport || "desktop";
   if (viewport === "mobile" && node.mobileVisible === false) return false;
   // Tablet uses the collapsible desktop sidebar contract — apply desktop visibility.
@@ -182,6 +186,8 @@ function filterTree(nodes, auth, options) {
       if (!selfVisible && children.length > 0) {
         return { ...node, children, route: undefined };
       }
+      // Prune empty containers (e.g. Level-2 modules whose contextual children were hidden).
+      if (selfVisible && children.length === 0 && !node.route) return null;
       return { ...node, children };
     })
     .filter(Boolean);

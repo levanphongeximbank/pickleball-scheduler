@@ -2,8 +2,8 @@
 export const CANONICAL_MENU_DATA = Object.freeze({
   "meta": {
     "source": "docs/ui-ux/canonical-navigation/CANONICAL_ROUTE_INVENTORY.json",
-    "generatedAt": "2026-08-05T10:32:35.766Z",
-    "phase": "2-foundation",
+    "generatedAt": "2026-08-05T14:37:15.750Z",
+    "phase": "3-menu-completion",
     "proposedCanonicalMenuCount": 82
   },
   "ownerDecisions": {
@@ -1624,9 +1624,10 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "visibilityStatus": "live",
       "activeMatch": "pattern",
       "mobileVisible": false,
-      "desktopVisible": true,
+      "desktopVisible": false,
       "badge": null,
       "proposedCanonicalMenu": true,
+      "contextualOnly": true,
       "classification": "CANONICAL",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1656,9 +1657,10 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "visibilityStatus": "live",
       "activeMatch": "pattern",
       "mobileVisible": false,
-      "desktopVisible": true,
+      "desktopVisible": false,
       "badge": null,
       "proposedCanonicalMenu": true,
+      "contextualOnly": true,
       "classification": "CANONICAL",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1688,9 +1690,10 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "visibilityStatus": "live",
       "activeMatch": "pattern",
       "mobileVisible": false,
-      "desktopVisible": true,
+      "desktopVisible": false,
       "badge": null,
       "proposedCanonicalMenu": true,
+      "contextualOnly": true,
       "classification": "CANONICAL",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1720,9 +1723,10 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "visibilityStatus": "live",
       "activeMatch": "pattern",
       "mobileVisible": false,
-      "desktopVisible": true,
+      "desktopVisible": false,
       "badge": null,
       "proposedCanonicalMenu": true,
+      "contextualOnly": true,
       "classification": "CANONICAL",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1752,9 +1756,10 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "visibilityStatus": "live",
       "activeMatch": "pattern",
       "mobileVisible": false,
-      "desktopVisible": true,
+      "desktopVisible": false,
       "badge": null,
       "proposedCanonicalMenu": true,
+      "contextualOnly": true,
       "classification": "CANONICAL",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1784,9 +1789,10 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "visibilityStatus": "live",
       "activeMatch": "pattern",
       "mobileVisible": false,
-      "desktopVisible": true,
+      "desktopVisible": false,
       "badge": null,
       "proposedCanonicalMenu": true,
+      "contextualOnly": true,
       "classification": "CANONICAL",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1816,9 +1822,10 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "visibilityStatus": "live",
       "activeMatch": "pattern",
       "mobileVisible": false,
-      "desktopVisible": true,
+      "desktopVisible": false,
       "badge": null,
       "proposedCanonicalMenu": true,
+      "contextualOnly": true,
       "classification": "CANONICAL",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2105,11 +2112,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
         "finance.view"
       ],
       "featureFlags": [],
-      "visibilityStatus": "live",
+      "visibilityStatus": "partial",
       "activeMatch": "prefix",
       "mobileVisible": true,
       "desktopVisible": true,
-      "badge": null,
+      "badge": {
+        "label": "PARTIAL",
+        "tone": "partial"
+      },
       "proposedCanonicalMenu": true,
       "classification": "CANONICAL",
       "rbacVisibility": [
@@ -2200,11 +2210,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
         "customer.view"
       ],
       "featureFlags": [],
-      "visibilityStatus": "live",
+      "visibilityStatus": "partial",
       "activeMatch": "prefix",
       "mobileVisible": true,
       "desktopVisible": true,
-      "badge": null,
+      "badge": {
+        "label": "PARTIAL",
+        "tone": "partial"
+      },
       "proposedCanonicalMenu": true,
       "classification": "CANONICAL",
       "rbacVisibility": [
@@ -2232,11 +2245,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
         "customer.view"
       ],
       "featureFlags": [],
-      "visibilityStatus": "live",
+      "visibilityStatus": "partial",
       "activeMatch": "prefix",
       "mobileVisible": true,
       "desktopVisible": true,
-      "badge": null,
+      "badge": {
+        "label": "PARTIAL",
+        "tone": "partial"
+      },
       "proposedCanonicalMenu": true,
       "classification": "CANONICAL",
       "rbacVisibility": [
@@ -2264,11 +2280,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
         "customer.view"
       ],
       "featureFlags": [],
-      "visibilityStatus": "live",
+      "visibilityStatus": "partial",
       "activeMatch": "prefix",
       "mobileVisible": true,
       "desktopVisible": true,
-      "badge": null,
+      "badge": {
+        "label": "PARTIAL",
+        "tone": "partial"
+      },
       "proposedCanonicalMenu": true,
       "classification": "CANONICAL",
       "rbacVisibility": [
@@ -2296,11 +2315,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
         "customer.view"
       ],
       "featureFlags": [],
-      "visibilityStatus": "live",
+      "visibilityStatus": "partial",
       "activeMatch": "prefix",
       "mobileVisible": true,
       "desktopVisible": true,
-      "badge": null,
+      "badge": {
+        "label": "PARTIAL",
+        "tone": "partial"
+      },
       "proposedCanonicalMenu": true,
       "classification": "CANONICAL",
       "rbacVisibility": [
@@ -2329,11 +2351,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
         "customer.view"
       ],
       "featureFlags": [],
-      "visibilityStatus": "live",
+      "visibilityStatus": "partial",
       "activeMatch": "prefix",
       "mobileVisible": true,
       "desktopVisible": true,
-      "badge": null,
+      "badge": {
+        "label": "PARTIAL",
+        "tone": "partial"
+      },
       "proposedCanonicalMenu": true,
       "classification": "CANONICAL",
       "rbacVisibility": [

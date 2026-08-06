@@ -1,0 +1,69 @@
+{
+  "program": "PICK_VN Canonical Navigation",
+  "phase": 3,
+  "title": "CI Failure Triage and Corrective Pass",
+  "pr": 378,
+  "failedHead": "70a8d97410c2e29f5704aa5c6d6de3206ce3fc3e",
+  "generatedAt": "2026-08-05T16:10:00.000Z",
+  "finalVerdict": "CANONICAL_NAVIGATION_PHASE3_CI_CORRECTED_READY_FOR_REREVIEW",
+  "failure": {
+    "workflow": "Production CI Gate",
+    "runUrl": "https://github.com/levanphongeximbank/pickleball-scheduler/actions/runs/31021841700",
+    "job": "verify",
+    "failedStep": "Unit tests",
+    "exactCommand": "npm run test:unit",
+    "exitCode": 1,
+    "deterministic": true,
+    "firstActionableError": "package.json LF-normalized SHA mismatch: expected 3D40EFE6… got C9030322… in business-modules-final-certification and coaching-05-final-certification-closure tests",
+    "failingTests": [
+      "tests/business-modules-final-certification.test.js :: package and lock hashes match baseline; court authority fail-closed remains",
+      "tests/coaching-05-final-certification-closure.test.js :: package/lock hashes unchanged from certified pins (sha256-lf-normalized)"
+    ]
+  },
+  "rootCauseClassification": "PACKAGE_LOCK_DEFECT",
+  "localReproductionResult": "FAIL pre-fix (2 tests); PASS post-fix",
+  "freshOriginMainSha": "6fd0d6ccafa2f2f77cb40eaad7a0cee2d921fa81",
+  "freshOriginMainNote": "Drift is tournament evidence commit #379; no overlap with the four corrective files",
+  "compatibilityResult": "COMPATIBLE_NO_REBASE",
+  "correction": {
+    "filesCorrected": [
+      "tests/business-modules-final-certification.test.js",
+      "tests/coaching-05-final-certification-closure.test.js"
+    ],
+    "runtimeFilesCorrected": 0,
+    "testFilesCorrected": 2,
+    "packageLockfileCorrected": false,
+    "newPackageJsonSha256Lf": "C9030322D904741CE2E2BBF7E45B0D2D23F60E4CB5F349470CE42D45BF1D96CA",
+    "newPackageLockSha256Lf": "E9FBBC076F0F41EB4F7EB40E52F6A448CBE8CCC80709F595EA8D1D7C927AF265"
+  },
+  "gates": {
+    "exactFailedCommandRerun": "PASS 6871/6871",
+    "focusedPhase3": "PASS 14/14",
+    "phase2Shell": "PASS 18/18",
+    "appShellV5": "PASS 18/18",
+    "uiRegression": "PASS 8/8",
+    "accessibility": "PASS",
+    "lintNoNew": "PASS",
+    "build": "PASS",
+    "secretScan": "PASS"
+  },
+  "invariants": {
+    "routeReconciliation": "179/179",
+    "activeMenuNodes": 75,
+    "contextualRoutes": 7,
+    "duplicateActiveEntries": 0,
+    "W01_W05": "CLOSED",
+    "B01_B02_B03": "PASS",
+    "featureFlagDefault": "OFF"
+  },
+  "blockerCount": 0,
+  "warningCount": 0,
+  "safety": {
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "productionFeatureFlagChanges": 0,
+    "commit": "NO",
+    "push": "NO"
+  }
+}

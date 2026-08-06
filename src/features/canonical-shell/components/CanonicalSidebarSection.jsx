@@ -16,9 +16,11 @@ export default function CanonicalSidebarSection({
   currentPath,
   collapsed = false,
   onNavigate,
+  registryGroup,
 }) {
   const { palette, layout, expandedLevel1, toggleLevel1, setExpandedLevel1 } = useCanonicalShell();
-  const activeChild = findActiveCanonicalNode(currentPath, [group]);
+  // Use full registry group so contextual parameterized routes still expand the domain.
+  const activeChild = findActiveCanonicalNode(currentPath, [registryGroup || group]);
   const open = expandedLevel1.has(group.id) || Boolean(activeChild);
 
   useEffect(() => {

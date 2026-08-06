@@ -1,0 +1,77 @@
+{
+  "phase": 3,
+  "generatedAt": "2026-08-05T15:00:00.000Z",
+  "baseOriginMainSha": "81511356cd2bc559952d73c6d0a152fe6db61824",
+  "finalVerdict": "CANONICAL_NAVIGATION_PHASE3_IMPLEMENTED_READY_FOR_REVIEW",
+  "gates": {
+    "focusedPhase3Unit": {
+      "command": "node --test tests/canonical-shell-phase3.test.js",
+      "result": "PASS",
+      "passed": 13,
+      "failed": 0
+    },
+    "phase2UnitRegression": {
+      "command": "node --test tests/canonical-shell-phase2.test.js",
+      "result": "PASS",
+      "passed": 18,
+      "failed": 0
+    },
+    "appShellV5Unit": {
+      "command": "node --test tests/app-shell-v5.test.js",
+      "result": "PASS",
+      "passed": 18,
+      "failed": 0
+    },
+    "uiShellSuite": {
+      "command": "npx vitest run tests/ui/canonical-shell-phase3.ui.test.jsx tests/ui/canonical-shell-phase2.ui.test.jsx tests/ui/app-shell.ui.test.jsx",
+      "result": "PASS",
+      "passed": 8,
+      "failed": 0
+    },
+    "lintNoNew": {
+      "command": "npm run lint:no-new",
+      "result": "PASS"
+    },
+    "build": {
+      "command": "npm run build",
+      "result": "PASS"
+    },
+    "secretScan": {
+      "result": "PASS",
+      "credentialHits": 0,
+      "notes": "False-positive npm integrity hashes ignored"
+    },
+    "packageLockfileReview": {
+      "changed": true,
+      "dependencyAdded": "@fontsource/inter"
+    }
+  },
+  "warningClosure": {
+    "W01": "CLOSED",
+    "W02": "CLOSED",
+    "W03": "CLOSED",
+    "W04": "CLOSED",
+    "W05": "CLOSED"
+  },
+  "ownerDecisions": {
+    "B01": "PASS",
+    "B02": "PASS",
+    "B03": "PASS"
+  },
+  "featureFlag": {
+    "name": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "default": "OFF",
+    "flagOffResult": "legacy shell only",
+    "flagOnResult": "canonical shell only"
+  },
+  "blockerCount": 0,
+  "warningCount": 0,
+  "safety": {
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "productionFeatureFlagChanges": 0,
+    "commit": "NO",
+    "push": "NO"
+  }
+}

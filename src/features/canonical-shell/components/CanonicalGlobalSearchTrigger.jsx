@@ -1,11 +1,10 @@
 import { Box } from "@mui/material";
 
-import GlobalSearch from "../../../components/GlobalSearch.jsx";
+import CanonicalGlobalSearch from "./CanonicalGlobalSearch.jsx";
 import { useCanonicalShell } from "../hooks/useCanonicalShell.js";
 
 /**
- * Global search trigger for Figure 1 top bar — reuses existing GlobalSearch.
- * Desktop + mobile share one search registry (legacy MENU_GROUPS until Phase 5).
+ * Global search trigger for Figure 1 top bar — canonical registry only.
  */
 export default function CanonicalGlobalSearchTrigger() {
   const { isMobile } = useCanonicalShell();
@@ -21,7 +20,7 @@ export default function CanonicalGlobalSearchTrigger() {
       }}
       aria-label="Tìm kiếm toàn cục"
     >
-      <GlobalSearch variant="light" maxWidth={isMobile ? 160 : 520} size="small" />
+      <CanonicalGlobalSearch maxWidth={isMobile ? 160 : 520} size="small" />
     </Box>
   );
 }

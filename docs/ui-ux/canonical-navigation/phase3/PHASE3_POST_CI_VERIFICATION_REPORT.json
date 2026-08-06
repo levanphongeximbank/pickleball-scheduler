@@ -1,0 +1,98 @@
+{
+  "program": "PICK_VN Canonical Navigation",
+  "phase": 3,
+  "title": "Post-CI Verification and Ready-for-Review Decision",
+  "pr": 378,
+  "verifiedHead": "d8f7856e8399fb722575ec3ff76077a94d87b7b6",
+  "generatedAt": "2026-08-05T17:05:00.000Z",
+  "finalVerdict": "CANONICAL_NAVIGATION_PHASE3_POST_CI_VERIFIED_READY_TO_MARK_PR_READY",
+  "identity": {
+    "localHead": "d8f7856e8399fb722575ec3ff76077a94d87b7b6",
+    "remoteBranchSha": "d8f7856e8399fb722575ec3ff76077a94d87b7b6",
+    "prHeadSha": "d8f7856e8399fb722575ec3ff76077a94d87b7b6",
+    "baseBranch": "main",
+    "freshOriginMainSha": "6fd0d6ccafa2f2f77cb40eaad7a0cee2d921fa81",
+    "prState": "OPEN",
+    "prDraft": false,
+    "prMergeable": "MERGEABLE",
+    "prMerged": false,
+    "commitCount": 2,
+    "changedFileCount": 41
+  },
+  "ancestry": {
+    "implementationCommit": "70a8d97410c2e29f5704aa5c6d6de3206ce3fc3e",
+    "implementationIsAncestor": true,
+    "correctiveCommit": "d8f7856e8399fb722575ec3ff76077a94d87b7b6",
+    "originalImplementationFiles": 37,
+    "correctiveFiles": 4,
+    "unexpectedFiles": 0
+  },
+  "correctiveScope": {
+    "certificationPinTests": [
+      "tests/business-modules-final-certification.test.js",
+      "tests/coaching-05-final-certification-closure.test.js"
+    ],
+    "remediationReports": [
+      "docs/ui-ux/canonical-navigation/phase3/PHASE3_CI_FAILURE_REMEDIATION_REPORT.md",
+      "docs/ui-ux/canonical-navigation/phase3/PHASE3_CI_FAILURE_REMEDIATION_REPORT.json"
+    ],
+    "runtimeCorrectiveFiles": 0,
+    "packageLockCorrectiveFiles": 0,
+    "unrelatedCorrectiveFiles": 0
+  },
+  "ci": {
+    "workflow": "Production CI Gate",
+    "runId": 31027206095,
+    "runUrl": "https://github.com/levanphongeximbank/pickleball-scheduler/actions/runs/31027206095",
+    "headSha": "d8f7856e8399fb722575ec3ff76077a94d87b7b6",
+    "status": "completed",
+    "conclusion": "success",
+    "failedJobs": 0,
+    "cancelledJobs": 0
+  },
+  "compatibility": {
+    "classification": "COMPATIBLE_NO_REBASE",
+    "freshOriginMainSha": "6fd0d6ccafa2f2f77cb40eaad7a0cee2d921fa81",
+    "newMainCommitsSinceTip": 0,
+    "overlapCount": 0,
+    "rebasePerformed": false,
+    "mergePerformed": false
+  },
+  "gates": {
+    "unitTests": "PASS 6871/6871",
+    "focusedPhase3Phase2AppShell": "PASS 50/50",
+    "uiShellSuite": "PASS 8/8",
+    "accessibility": "PASS",
+    "lintNoNew": "PASS",
+    "build": "PASS",
+    "secretScan": "PASS",
+    "packageLockValidation": "PASS"
+  },
+  "invariants": {
+    "routeReconciliation": "179/179",
+    "activeMenuNodes": 75,
+    "contextualRoutes": 7,
+    "duplicateActiveEntries": 0,
+    "W01_W05": "CLOSED",
+    "B01_B02_B03": "PASS",
+    "privatePairing": "PASS",
+    "unknownRoleFailClosed": "PASS",
+    "featureFlagDefault": "OFF",
+    "flagOffLegacyOnly": "PASS",
+    "flagOnCanonicalOnly": "PASS",
+    "rollback": "PASS"
+  },
+  "prBodyUpdated": true,
+  "blockerCount": 0,
+  "warningCount": 5,
+  "safety": {
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "productionFeatureFlagChanges": 0,
+    "commit": "NO",
+    "push": "NO",
+    "merge": "NO"
+  },
+  "finalGitStatus": "clean; post-CI reports untracked pending Owner decision"
+}
