@@ -5,7 +5,12 @@ Requires:
 - exact `OPERATION_B1_BATCH_ID`
 - protected original-state snapshot path + SHA-256
 - project ref = `expuvcohlcjzvrrauvud`
-- Owner GO + execute confirmation when not dry-run
+- **separate** rollback Owner GO (forward GO cannot authorize rollback):
+  `APPROVE_OPERATION_B1_ROLLBACK_UNQUARANTINE_ONLY`
+- execute confirmation when not dry-run:
+  `I_UNDERSTAND_THIS_MUTATES_PRODUCTION_QA_ONLY`
+
+Live operator entry: `rollback-live-operator.mjs` (see `07_LIVE_OPERATOR_RUNNER.md`).
 
 Behavior:
 

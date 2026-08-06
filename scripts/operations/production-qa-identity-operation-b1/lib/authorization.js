@@ -7,6 +7,8 @@ import {
   EXPECTED_PRODUCTION_PROJECT_REF,
   REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
   REQUIRED_OWNER_PRODUCTION_GO,
+  REQUIRED_OWNER_PRODUCTION_GO_ROLLBACK,
+  RETIRED_OPERATION_B1_BATCH_IDS,
 } from "./constants.js";
 
 const UUID_RE =
@@ -36,6 +38,8 @@ function collectStructuralReasons(input = {}) {
   ).trim();
   if (!UUID_RE.test(batchId)) {
     reasons.push("malformed_or_missing_batch_id");
+  } else if (RETIRED_OPERATION_B1_BATCH_IDS.includes(batchId)) {
+    reasons.push("retired_batch_id_not_reusable");
   }
 
   const allowlistPath = String(
@@ -57,6 +61,12 @@ function collectStructuralReasons(input = {}) {
   return { reasons, projectRef, batchId, allowlistPath, allowlistSha };
 }
 
+function requiredOwnerGoForMode(mode) {
+  return mode === "rollback"
+    ? REQUIRED_OWNER_PRODUCTION_GO_ROLLBACK
+    : REQUIRED_OWNER_PRODUCTION_GO;
+}
+
 /**
  * @param {Record<string, unknown>} input
  */
@@ -64,6 +74,9 @@ export function evaluateAuthorization(input = {}) {
   const dryRun = parseDryRunFlag(input.DRY_RUN ?? input.dryRun, {
     defaultDryRun: true,
   });
+  const mode = String(input.mode ?? input.AUTHORIZATION_MODE ?? "execute")
+    .trim()
+    .toLowerCase();
   const structural = collectStructuralReasons(input);
   const reasons = [...structural.reasons];
 
@@ -76,8 +89,13 @@ export function evaluateAuthorization(input = {}) {
       ""
   ).trim();
 
+  const requiredGo = requiredOwnerGoForMode(mode);
+
   if (!dryRun) {
-    if (ownerGo !== REQUIRED_OWNER_PRODUCTION_GO) {
+    // Forward GO must never authorize rollback.
+    if (mode === "rollback" && ownerGo === REQUIRED_OWNER_PRODUCTION_GO) {
+      reasons.push("forward_go_cannot_authorize_rollback");
+    } else if (ownerGo !== requiredGo) {
       reasons.push("missing_or_invalid_owner_production_go");
     }
     if (confirm !== REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION) {
@@ -91,12 +109,14 @@ export function evaluateAuthorization(input = {}) {
   return {
     ok,
     dryRun,
+    mode,
     reasons,
     authorized,
     projectRef: structural.projectRef,
     batchId: structural.batchId,
     allowlistPath: structural.allowlistPath,
     allowlistSha: structural.allowlistSha,
+    requiredOwnerGo: requiredGo,
   };
 }
 

@@ -1,0 +1,34 @@
+/**
+ * Operation B1A — live operator constants (no secrets, no identity inventory).
+ */
+
+import {
+  EXPECTED_PRODUCTION_PROJECT_REF,
+  QUARANTINE_BAN_DURATION,
+  QUARANTINE_PROFILE_STATUS,
+  RETIRED_OPERATION_B1_BATCH_IDS,
+  REQUIRED_OWNER_PRODUCTION_GO,
+  REQUIRED_OWNER_PRODUCTION_GO_ROLLBACK,
+  REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
+} from "../constants.js";
+
+export {
+  EXPECTED_PRODUCTION_PROJECT_REF,
+  QUARANTINE_BAN_DURATION,
+  QUARANTINE_PROFILE_STATUS,
+  RETIRED_OPERATION_B1_BATCH_IDS,
+  REQUIRED_OWNER_PRODUCTION_GO,
+  REQUIRED_OWNER_PRODUCTION_GO_ROLLBACK,
+  REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
+};
+
+/** Preferred secret env name (server/operator only). */
+export const ENV_SUPABASE_URL = "SUPABASE_URL";
+export const ENV_SUPABASE_SECRET_KEY = "SUPABASE_SECRET_KEY";
+/** Legacy fallback when project conventions require it. */
+export const ENV_SUPABASE_SERVICE_ROLE_KEY = "SUPABASE_SERVICE_ROLE_KEY";
+
+/** Official GoTrue unban value (auth-js AdminUserAttributes). */
+export const AUTH_UNBAN_DURATION = "none";
+
+export const FORBIDDEN_ENV_SECRET_PREFIXES = Object.freeze(["VITE_"]);
