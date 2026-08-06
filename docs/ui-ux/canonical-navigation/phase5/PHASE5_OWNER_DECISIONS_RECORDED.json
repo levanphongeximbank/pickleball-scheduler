@@ -1,0 +1,134 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 5,
+    "artifact": "PHASE5_OWNER_DECISIONS_RECORDED",
+    "recordedAtHead": "087c61c7d8bb1efdae343685269e53aa75767e21",
+    "freshOriginMainSha": "087c61c7d8bb1efdae343685269e53aa75767e21",
+    "branch": "feature/canonical-navigation-phase5-preview-acceptance",
+    "generatedAt": "2026-08-06T06:00:00.000Z",
+    "verdict": "CANONICAL_NAVIGATION_PHASE5_OWNER_DECISIONS_RECORDED_PREVIEW_GO_YES",
+    "runtimeCodeChanged": false,
+    "testsChanged": false,
+    "envChanged": false,
+    "deployed": false,
+    "draftPrOpened": false,
+    "committed": false,
+    "pushed": false,
+    "sqlMutations": 0,
+    "credentialsExposed": false
+  },
+  "decisions": [
+    {
+      "decisionId": "OD-P5-ENV",
+      "ownerCode": "APPROVED_VERCEL_PREVIEW_ONLY",
+      "status": "APPROVED",
+      "binding": {
+        "primaryEnvironment": "Vercel Preview",
+        "netlifyFirstPass": false
+      }
+    },
+    {
+      "decisionId": "OD-P5-TRIGGER",
+      "ownerCode": "APPROVED_DRAFT_PR_TRIGGER",
+      "status": "APPROVED",
+      "binding": {
+        "trigger": "draft_pr",
+        "bindExactCommitSha": true
+      }
+    },
+    {
+      "decisionId": "OD-P5-FLAG",
+      "ownerCode": "APPROVED_PREVIEW_FLAG_ON",
+      "status": "APPROVED",
+      "binding": {
+        "flag": "VITE_CANONICAL_APP_SHELL_ENABLED",
+        "previewValue": true,
+        "scope": "Vercel Preview only",
+        "productionValue": "OFF_or_absent",
+        "productionRedeploy": false
+      }
+    },
+    {
+      "decisionId": "OD-P5-IDENTITIES",
+      "ownerCode": "APPROVED_NONPROD_TEST_IDENTITIES",
+      "status": "APPROVED",
+      "binding": {
+        "productionIdentities": false,
+        "credentialsInGitReportsLogsScreenshotsPr": false
+      }
+    },
+    {
+      "decisionId": "OD-P5-PLATFORM-ADMIN",
+      "ownerCode": "APPROVED_PACKAGE_A_REUSE_EXISTING_SUPER_ADMIN",
+      "status": "APPROVED",
+      "binding": {
+        "package": "A",
+        "reuseExistingStagingSuperAdmin": true,
+        "createNewUser": false,
+        "literalPlatformAdminInProfilesRole": false
+      }
+    },
+    {
+      "decisionId": "OD-P5-COACH",
+      "ownerCode": "APPROVED_PACKAGE_D_WAIVE",
+      "status": "APPROVED",
+      "classification": "WAIVED_WITH_KNOWN_SCHEMA_GAP",
+      "binding": {
+        "package": "D",
+        "backlog": "PHASE5_BACKLOG_COACH_ROLE_SUPPORT.md"
+      }
+    },
+    {
+      "decisionId": "OD-P5-LIMITED_ROLES",
+      "ownerCode": "APPROVED_DOCUMENT_LIMITATIONS",
+      "status": "APPROVED",
+      "binding": {
+        "roles": ["CLUB_MANAGER", "REFEREE"],
+        "mode": "use_available_with_documented_limitations"
+      }
+    },
+    {
+      "decisionId": "OD-P5-OBSERVABILITY",
+      "ownerCode": "APPROVED_MANUAL_BROWSER_ACCEPTANCE",
+      "status": "APPROVED",
+      "binding": {
+        "mode": "manual_browser",
+        "bypassSecrets": false,
+        "automatedAuthenticatedProbes": false
+      }
+    },
+    {
+      "decisionId": "OD-P5-ROLLBACK",
+      "ownerCode": "APPROVED_PREVIEW_ROLLBACK",
+      "status": "APPROVED",
+      "binding": {
+        "afterFlagOnAcceptance": [
+          "set_preview_flag_off",
+          "redeploy_preview_only",
+          "verify_legacy_shell_restored"
+        ]
+      }
+    }
+  ],
+  "goTokens": {
+    "PREVIEW_IDENTITY_COVERAGE_GO": "YES",
+    "PREVIEW_GO": "YES",
+    "STAGING_AUTH_MUTATION_GO": "NO",
+    "STAGING_DATABASE_MUTATION_GO": "NO",
+    "STAGING_SCHEMA_MUTATION_GO": "NO",
+    "MIGRATION_GO": "NO",
+    "PRODUCTION_GO": "NO",
+    "PRODUCTION_FLAG_CHANGE": "NO",
+    "PRODUCTION_DEPLOYMENT": "NO",
+    "SQL": "NO"
+  },
+  "preflightSnapshot": {
+    "identityCoverageClosed": true,
+    "platformAdminPackage": "A_reuse_super_admin",
+    "coachClassification": "WAIVED_WITH_KNOWN_SCHEMA_GAP",
+    "envGateOpen": false,
+    "ownerAttestation": "PHASE5_OWNER_ATTESTATION.md",
+    "draftPrAllowed": true
+  }
+}

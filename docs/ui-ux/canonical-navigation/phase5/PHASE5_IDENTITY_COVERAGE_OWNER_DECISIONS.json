@@ -1,0 +1,66 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 5,
+    "artifact": "PHASE5_IDENTITY_COVERAGE_OWNER_DECISIONS",
+    "recordedAtHead": "087c61c7d8bb1efdae343685269e53aa75767e21",
+    "branch": "feature/canonical-navigation-phase5-preview-acceptance",
+    "generatedAt": "2026-08-06T07:05:00.000Z",
+    "verdict": "CANONICAL_NAVIGATION_PHASE5_IDENTITY_COVERAGE_OWNER_DECISIONS_RECORDED",
+    "sourceDiscovery": "PHASE5_STAGING_IDENTITY_DISCOVERY.md",
+    "authMutations": 0,
+    "databaseMutations": 0,
+    "schemaMutations": 0,
+    "migrations": 0,
+    "productionMutations": 0,
+    "credentialsExposed": false,
+    "committed": false,
+    "pushed": false,
+    "prOpened": false
+  },
+  "decisions": [
+    {
+      "decisionId": "OD-P5-PLATFORM-ADMIN",
+      "ownerCode": "APPROVED_PACKAGE_A_REUSE_EXISTING_SUPER_ADMIN",
+      "status": "APPROVED",
+      "binding": {
+        "package": "A",
+        "reuseExistingStagingSuperAdmin": true,
+        "createNewPlatformAdminUser": false,
+        "writeLiteralPlatformAdminToProfilesRole": false,
+        "changeRoleConstraints": false,
+        "modifySchema": false,
+        "runMigrations": false,
+        "appEquivalence": "normalizeRole(SUPER_ADMIN)=PLATFORM_ADMIN"
+      }
+    },
+    {
+      "decisionId": "OD-P5-COACH",
+      "ownerCode": "APPROVED_PACKAGE_D_WAIVE",
+      "status": "APPROVED",
+      "classification": "WAIVED_WITH_KNOWN_SCHEMA_GAP",
+      "binding": {
+        "package": "D",
+        "waiveCoachExecutionForPhase5": true,
+        "reason": [
+          "COACH exists in application role model",
+          "COACH missing from Staging roles catalog and profiles_role_check",
+          "correct provisioning requires schema and migration",
+          "Phase 5 will not broaden into role-schema remediation"
+        ],
+        "backlog": "PHASE5_BACKLOG_COACH_ROLE_SUPPORT.md",
+        "substituteForUnrelatedRoleCells": ["VENUE_MANAGER", "PLAYER"]
+      }
+    }
+  ],
+  "goTokens": {
+    "PREVIEW_IDENTITY_COVERAGE_GO": "YES",
+    "STAGING_AUTH_MUTATION_GO": "NO",
+    "STAGING_DATABASE_MUTATION_GO": "NO",
+    "STAGING_SCHEMA_MUTATION_GO": "NO",
+    "MIGRATION_GO": "NO",
+    "PRODUCTION_GO": "NO",
+    "PRODUCTION_MUTATION_GO": "NO",
+    "PRODUCTION_DEPLOYMENT_GO": "NO"
+  }
+}

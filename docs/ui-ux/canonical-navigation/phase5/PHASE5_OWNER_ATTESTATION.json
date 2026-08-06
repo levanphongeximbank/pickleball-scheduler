@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 5,
+    "artifact": "PHASE5_OWNER_ATTESTATION",
+    "generatedAt": "2026-08-06T07:15:00.000Z",
+    "branch": "feature/canonical-navigation-phase5-preview-acceptance",
+    "recordedAtHeadPreCommit": "087c61c7d8bb1efdae343685269e53aa75767e21",
+    "verdict": "CANONICAL_NAVIGATION_PHASE5_OWNER_ATTESTATION_PREVIEW_GO_YES"
+  },
+  "vercel": {
+    "project": "pickleball-scheduler",
+    "previewVariable": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "previewValue": true,
+    "previewScopeConfirmed": true,
+    "previewBranch": "feature/canonical-navigation-phase5-preview-acceptance",
+    "productionFlagTruePresent": false,
+    "productionFlagState": "OFF_OR_ABSENT",
+    "productionEnvChanged": false,
+    "productionRedeployed": false,
+    "productionDeploymentPromoted": false
+  },
+  "identityCoverage": {
+    "decisionsRecorded": true,
+    "platformAdminEquivalent": "READY_VIA_STAGING_SUPER_ADMIN",
+    "coach": "WAIVED_WITH_KNOWN_SCHEMA_GAP"
+  },
+  "goTokens": {
+    "PREVIEW_GO": "YES",
+    "PRODUCTION_GO": "NO",
+    "PRODUCTION_ENV_CHANGE_GO": "NO",
+    "PRODUCTION_DEPLOYMENT_GO": "NO",
+    "STAGING_AUTH_MUTATION_GO": "NO",
+    "STAGING_DATABASE_MUTATION_GO": "NO",
+    "SCHEMA_MUTATION_GO": "NO",
+    "MIGRATION_GO": "NO"
+  },
+  "preflightClosure": {
+    "ISO-01": "PASS",
+    "ISO-02": "PASS",
+    "ISO-03": "PASS",
+    "ENV-01": "PASS",
+    "ENV-02": "PASS",
+    "ENV-03": "PASS",
+    "identityCoverage": "PASS"
+  },
+  "authorizedNextStep": "open_draft_pr_docs_only"
+}

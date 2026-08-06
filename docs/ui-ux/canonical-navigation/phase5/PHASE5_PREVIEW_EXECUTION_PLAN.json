@@ -1,0 +1,203 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 5,
+    "document": "PHASE5_PREVIEW_EXECUTION_PLAN",
+    "generatedAt": "2026-08-06T05:30:00.000Z",
+    "executed": false,
+    "prerequisiteVerdict": "CANONICAL_NAVIGATION_PHASE5_PREVIEW_ACCEPTANCE_READY_WITH_BLOCKERS",
+    "productionGo": false
+  },
+  "order": [
+    {
+      "phase": "A",
+      "name": "owner_gate_blockers",
+      "steps": [
+        "attest_production_baseline",
+        "set_preview_flag_on_vercel_preview_only",
+        "optionally_set_netlify_deploy_preview_flag",
+        "resolve_identity_gaps_or_waive",
+        "decide_observability_mode",
+        "choose_pr_or_redeploy_trigger"
+      ]
+    },
+    {
+      "phase": "B",
+      "name": "automated_preflight",
+      "gates": [
+        {
+          "id": "B1",
+          "type": "unit",
+          "suites": [
+            "tests/canonical-shell-phase2.test.js",
+            "tests/canonical-shell-phase3.test.js",
+            "tests/canonical-shell-phase4-b01-dual-canonical.test.js",
+            "tests/canonical-shell-phase4-b03-guard.test.js",
+            "tests/canonical-shell-phase4-tournament-authz.test.js"
+          ],
+          "passCriteria": "all_pass"
+        },
+        {
+          "id": "B2",
+          "type": "ui_a11y",
+          "suites": [
+            "tests/ui/canonical-shell-phase2.ui.test.jsx",
+            "tests/ui/canonical-shell-phase3.ui.test.jsx",
+            "tests/ui/canonical-shell-phase4-a11y.ui.test.jsx",
+            "tests/ui/canonical-shell-phase4-b03-authz.ui.test.jsx",
+            "tests/ui/canonical-shell-phase4-engine-authz.ui.test.jsx"
+          ],
+          "passCriteria": "all_pass"
+        },
+        {
+          "id": "B3",
+          "type": "route_registry",
+          "passCriteria": "179/179"
+        },
+        {
+          "id": "B4",
+          "type": "authorization",
+          "passCriteria": "phase4_engine_and_b03_pass"
+        },
+        {
+          "id": "B5",
+          "type": "unit_full_optional",
+          "command": "npm run test:unit",
+          "passCriteria": "all_pass"
+        },
+        {
+          "id": "B6",
+          "type": "lint",
+          "command": "npm run lint:no-new",
+          "passCriteria": "PASS"
+        },
+        {
+          "id": "B7",
+          "type": "build",
+          "command": "npm run build",
+          "passCriteria": "PASS"
+        },
+        {
+          "id": "B8",
+          "type": "secret_scan",
+          "passCriteria": "0_hits"
+        }
+      ]
+    },
+    {
+      "phase": "C",
+      "name": "preview_deploy",
+      "steps": [
+        "trigger_pr_or_redeploy",
+        "wait_ci_vercel_netlify",
+        "record_urls_ids_sha_timestamp",
+        "confirm_build_after_flag_set",
+        "reattest_production_unchanged"
+      ],
+      "docsOnlyOrNoopPrSufficient": true
+    },
+    {
+      "phase": "D",
+      "name": "manual_preview_flag_on",
+      "checks": [
+        { "id": "D1", "area": "shell_exclusivity", "passCriteria": "canonical_only_dual_0" },
+        { "id": "D2", "area": "metrics", "passCriteria": "76_7_0_179" },
+        { "id": "D3", "area": "public", "rows": ["P-01", "P-02", "P-03", "P-04", "P-05", "P-06"] },
+        { "id": "D4", "area": "messaging", "rows": ["M-01", "M-02"] },
+        { "id": "D5", "area": "engine", "rows": ["E-01", "E-02", "E-03", "E-04", "E-05", "E-06", "E-07", "E-08", "E-09", "E-10", "E-11"] },
+        { "id": "D6", "area": "rating_v5", "rows": ["R-01", "R-02", "R-03", "R-04", "R-05", "R-06", "R-07"], "note": "R-03 may be waived if PLATFORM_ADMIN missing" },
+        { "id": "D7", "area": "private_pairing", "rows": ["PP-01", "PP-02", "PP-03"] },
+        { "id": "D8", "area": "devices", "profiles": ["desktop", "tablet", "mobile"] },
+        { "id": "D9", "area": "a11y", "profiles": ["keyboard_only", "high_contrast_on", "high_contrast_off"] },
+        { "id": "D10", "area": "chrome", "checks": ["breadcrumbs", "active_highlight", "collapse"] },
+        { "id": "D11", "area": "console", "passCriteria": "errors_0" },
+        { "id": "D12", "area": "role_menus", "roles": ["SUPER_ADMIN", "VENUE_OWNER", "VENUE_MANAGER", "CLUB_OWNER", "PLAYER", "REFEREE"] }
+      ]
+    },
+    {
+      "phase": "E",
+      "name": "rollback_preview_flag_off",
+      "steps": [
+        "set_preview_flag_off",
+        "redeploy_preview_only",
+        "verify_legacy_shell",
+        "verify_inter_not_loaded",
+        "confirm_production_untouched"
+      ]
+    },
+    {
+      "phase": "F",
+      "name": "evidence_package",
+      "artifacts": [
+        "PHASE5_PREVIEW_ACCEPTANCE_EVIDENCE.md",
+        "PHASE5_PREVIEW_ACCEPTANCE_EVIDENCE.json",
+        "screenshots_desktop_tablet_mobile",
+        "deployment_log_ids",
+        "owner_production_isolation_signoff"
+      ]
+    }
+  ],
+  "automated": {
+    "unit": true,
+    "ui": true,
+    "accessibility": true,
+    "routeRegistry": true,
+    "authorization": true,
+    "build": true,
+    "lint": true,
+    "secretScan": true,
+    "plannedSuiteCount": 10
+  },
+  "manualPreview": {
+    "realBrowserNavigation": true,
+    "directLinks": true,
+    "refresh": true,
+    "backForward": true,
+    "responsive": true,
+    "keyboard": true,
+    "roleSpecificMenu": true,
+    "consoleInspection": true,
+    "rollback": true,
+    "plannedManualCheckGroups": 12
+  },
+  "deviceProfiles": ["desktop", "tablet", "mobile"],
+  "accessibilityProfiles": ["keyboard_only", "high_contrast_on", "high_contrast_off"],
+  "rollback": {
+    "scope": "Preview_only",
+    "steps": [
+      "Preview flag OFF/unset",
+      "Redeploy Preview",
+      "Verify legacy shell exclusive",
+      "Confirm Production deployment id unchanged",
+      "Confirm Production flag OFF"
+    ],
+    "sql": false,
+    "dataMigration": false,
+    "productionRedeploy": false
+  },
+  "observability": {
+    "capture": [
+      "browser_console",
+      "network_failures",
+      "failed_route_loads",
+      "authorization_denials",
+      "react_runtime_errors",
+      "redirect_loops",
+      "lazy_import_breaks",
+      "vercel_logs",
+      "netlify_logs",
+      "screenshots",
+      "timestamped_evidence"
+    ],
+    "productionMonitoringChanges": false
+  },
+  "safety": {
+    "deploymentsThisAudit": 0,
+    "envChangesThisAudit": 0,
+    "sqlExecution": 0,
+    "productionFeatureFlagChanges": 0,
+    "commit": "NO",
+    "push": "NO",
+    "pr": "NO"
+  }
+}

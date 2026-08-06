@@ -1,0 +1,94 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 5,
+    "artifact": "PHASE5_IDENTITY_ENV_PREFLIGHT",
+    "generatedAt": "2026-08-06T07:05:00.000Z",
+    "recordedAtHead": "087c61c7d8bb1efdae343685269e53aa75767e21",
+    "gateStatus": "PREVIEW_GO_YES_DRAFT_PR_AUTHORIZED",
+    "previewIdentityCoverageGo": "YES",
+    "previewGo": "YES",
+    "sqlMutations": 0,
+    "envChangedByAgent": false,
+    "draftPrOpened": false,
+    "credentialsExposed": false
+  },
+  "productionIsolation": [
+    { "id": "ISO-01", "check": "record_production_deployment_baseline", "status": "PASS", "required": true },
+    { "id": "ISO-02", "check": "production_canonical_flag_off_or_absent", "status": "PASS", "required": true },
+    { "id": "ISO-03", "check": "no_production_redeploy_planned", "status": "PASS", "required": true }
+  ],
+  "vercelPreviewFlag": [
+    { "id": "ENV-01", "check": "set_preview_flag_true", "flag": "VITE_CANONICAL_APP_SHELL_ENABLED", "scope": "Vercel Preview", "status": "PASS", "required": true },
+    { "id": "ENV-02", "check": "production_flag_unchanged", "status": "PASS", "required": true },
+    { "id": "ENV-03", "check": "draft_pr_build_after_env", "status": "PASS", "required": true },
+    { "id": "ENV-04", "check": "netlify_out_of_first_pass", "status": "PASS", "required": false }
+  ],
+  "identitiesRequired": [
+    {
+      "id": "ID-PA",
+      "role": "PLATFORM_ADMIN",
+      "status": "PASS",
+      "decision": "OD-P5-PLATFORM-ADMIN",
+      "ownerCode": "APPROVED_PACKAGE_A_REUSE_EXISTING_SUPER_ADMIN",
+      "checks": { "ID-PA-01": "PASS", "ID-PA-02": "PASS" }
+    },
+    {
+      "id": "ID-CO",
+      "role": "COACH",
+      "status": "WAIVED",
+      "classification": "WAIVED_WITH_KNOWN_SCHEMA_GAP",
+      "decision": "OD-P5-COACH",
+      "ownerCode": "APPROVED_PACKAGE_D_WAIVE",
+      "backlog": "PHASE5_BACKLOG_COACH_ROLE_SUPPORT.md",
+      "checks": { "ID-CO-01": "WAIVED", "ID-CO-02": "WAIVED" }
+    }
+  ],
+  "identitiesLimited": [
+    {
+      "role": "CLUB_MANAGER",
+      "status": "DOCUMENTED_LIMITATION",
+      "limitation": "No Staging CLUB_MANAGER profile; skip or Owner-mapped substitute; mark LIMITED"
+    },
+    {
+      "role": "REFEREE",
+      "status": "DOCUMENTED_LIMITATION",
+      "limitation": "No REFEREE session profile; use PLAYER for engine deny; token path if available; mark LIMITED"
+    },
+    {
+      "role": "CLUB_OWNER",
+      "email": "club@staging.local",
+      "observedRole": "PLAYER",
+      "status": "DOCUMENTED_LIMITATION",
+      "limitation": "Role drift; do not treat as CLUB_OWNER until Owner repairs"
+    }
+  ],
+  "identitiesReady": [
+    { "role": "SUPER_ADMIN", "email": "admin@staging.local", "status": "PRESENT_ACTIVE", "alsoUsedAs": "PLATFORM_ADMIN_equivalent" },
+    { "role": "VENUE_OWNER", "email": "owner@staging.local", "status": "PRESENT_ACTIVE" },
+    { "role": "VENUE_OWNER_CROSS_TENANT", "email": "owner-b@staging.local", "status": "PRESENT_ACTIVE" },
+    { "role": "VENUE_MANAGER", "email": "manager@staging.local", "status": "PRESENT_ACTIVE" },
+    { "role": "PLAYER", "email": "player@staging.local", "status": "PRESENT_ACTIVE" }
+  ],
+  "observability": {
+    "mode": "manual_browser",
+    "bypassSecrets": false,
+    "automatedAuthenticatedProbes": false
+  },
+  "releaseRule": {
+    "identityCoverage": "PASS",
+    "requiredPassRemaining": [],
+    "previewGo": "YES",
+    "then": "Open Draft PR (docs only) per OD-P5-TRIGGER",
+    "draftPrCurrentlyAllowed": true
+  },
+  "mutationGoTokens": {
+    "STAGING_AUTH_MUTATION_GO": "NO",
+    "STAGING_DATABASE_MUTATION_GO": "NO",
+    "STAGING_SCHEMA_MUTATION_GO": "NO",
+    "MIGRATION_GO": "NO",
+    "PRODUCTION_GO": "NO",
+    "PRODUCTION_MUTATION_GO": "NO",
+    "PRODUCTION_DEPLOYMENT_GO": "NO"
+  }
+}

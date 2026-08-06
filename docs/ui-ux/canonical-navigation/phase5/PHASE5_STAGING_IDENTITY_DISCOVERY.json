@@ -1,0 +1,281 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 5,
+    "artifact": "PHASE5_STAGING_IDENTITY_DISCOVERY",
+    "mode": "read_only_discovery",
+    "generatedAt": "2026-08-06T07:00:00.000Z",
+    "worktreePath": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\ui-ux\\canonical-navigation-phase5",
+    "branch": "feature/canonical-navigation-phase5-preview-acceptance",
+    "head": "087c61c7d8bb1efdae343685269e53aa75767e21",
+    "verdict": "CANONICAL_NAVIGATION_PHASE5_STAGING_IDENTITY_DISCOVERY_READY_FOR_OWNER_EXECUTION_DECISION",
+    "usersCreated": false,
+    "invitesSent": false,
+    "rolesUpdated": false,
+    "profilesUpdated": false,
+    "membershipsUpdated": false,
+    "sqlWrites": 0,
+    "authMutations": 0,
+    "databaseMutations": 0,
+    "productionMutations": 0,
+    "credentialsExposed": false,
+    "committed": false,
+    "pushed": false,
+    "prOpened": false,
+    "envChanged": false,
+    "deployed": false
+  },
+  "ownerConfirmedVercelState": {
+    "project": "pickleball-scheduler",
+    "variable": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "value": true,
+    "environment": "Preview",
+    "branch": "feature/canonical-navigation-phase5-preview-acceptance",
+    "productionChanged": false,
+    "productionRedeployed": false,
+    "agentTouched": false
+  },
+  "projectProof": {
+    "expectedStagingRef": "qyewbxjsiiyufanzcjcq",
+    "confirmedEnvironment": "Staging",
+    "connectedAccessMode": "read_only",
+    "mcpServer": "user-supabase-pickvn-staging-readonly",
+    "dbSessionUser": "supabase_read_only_user",
+    "stagingFingerprint": ["venue-staging-a", "venue-staging-b"],
+    "productionWriteAccessUsed": false,
+    "writeMcpUsed": false
+  },
+  "canonicalSources": {
+    "authUsers": "auth.users",
+    "profiles": "public.profiles",
+    "roleCatalog": "public.roles",
+    "primaryRoleAssignment": "public.profiles.role",
+    "roleAssignmentMirror": "public.user_roles via sync_user_roles_from_profile",
+    "permissions": "public.permissions",
+    "rolePermissions": "public.role_permissions",
+    "tenantMembership": "public.tenant_members + profiles.venue_id/club_id",
+    "platformAdminAuthorization": "App PLATFORM_ADMIN via normalizeRole(SUPER_ADMIN); DB stores SUPER_ADMIN",
+    "coachAuthorization": "App COACH in roles.js/matrix; DB roles row missing; profiles_role_check excludes COACH",
+    "signupBootstrap": "handle_new_user -> profiles.role=PLAYER",
+    "historicalPromoteMethod": "Owner SQL UPDATE profiles.role after signup",
+    "identityRpcPresent": ["identity_admin_update_user", "identity_list_users", "identity_list_audit_logs"]
+  },
+  "roleExistence": {
+    "PLATFORM_ADMIN": {
+      "appCanonical": true,
+      "rolesCatalog": true,
+      "profilesRoleCheckAllowsLiteral": false,
+      "profilesLiteralRows": 0,
+      "dbAlias": "SUPER_ADMIN",
+      "aliasProfilesRows": 3,
+      "roleExistsForPhase5Purpose": "YES_VIA_SUPER_ADMIN_ALIAS"
+    },
+    "COACH": {
+      "appCanonical": true,
+      "rolesCatalog": false,
+      "profilesRoleCheckAllowsLiteral": false,
+      "profilesLiteralRows": 0,
+      "userRolesRows": 0,
+      "roleExistsInDb": false,
+      "roleExistsForPhase5Purpose": "NO_UNTIL_SCHEMA_AND_CATALOG"
+    }
+  },
+  "assignmentMethod": {
+    "exactCurrentMethod": "direct_profiles_role_column",
+    "alsoPresent": ["roles_catalog", "user_roles_mirror", "role_permissions", "tenant_members", "identity_rpcs", "admin_ui"],
+    "notSourceOfTruthForAppShell": ["invitation_alone", "user_roles_without_profiles_role"]
+  },
+  "existingIdentities": {
+    "emailsPublished": false,
+    "PLATFORM_ADMIN_appEffective": true,
+    "PLATFORM_ADMIN_literalDb": false,
+    "COACH": false,
+    "counts": {
+      "profilesSuperAdmin": 3,
+      "stagingLocalSuperAdmin": 2,
+      "profilesCoach": 0,
+      "authUsers": 88,
+      "profiles": 88
+    }
+  },
+  "creationRequirements": {
+    "PLATFORM_ADMIN": {
+      "authUserCreation": "required_if_new_else_reuse",
+      "invitationAcceptance": false,
+      "profileInsertion": "automatic_handle_new_user",
+      "tenantMembership": false,
+      "roleAssignment": "profiles.role=SUPER_ADMIN",
+      "permissionSeed": false,
+      "enrollment": false,
+      "manualPasswordSetup": "required_if_new"
+    },
+    "COACH": {
+      "authUserCreation": true,
+      "invitationAcceptance": false,
+      "profileInsertion": "automatic_handle_new_user",
+      "tenantMembership": "recommended_venue_id",
+      "roleAssignment": "blocked_until_profiles_role_check_and_roles_row",
+      "permissionSeed": "optional_after_roles_row",
+      "enrollment": false,
+      "manualPasswordSetup": true,
+      "schemaChangeRequired": true
+    }
+  },
+  "proposedPackages": [
+    {
+      "id": "A",
+      "role": "PLATFORM_ADMIN",
+      "name": "reuse_existing_super_admin",
+      "schemaChangesRequired": false,
+      "migrationsRequired": false,
+      "mutations": [],
+      "ownerInteractionRequired": true,
+      "rollback": "n/a"
+    },
+    {
+      "id": "B",
+      "role": "PLATFORM_ADMIN",
+      "name": "new_staging_super_admin_labeled_user",
+      "schemaChangesRequired": false,
+      "migrationsRequired": false,
+      "ownerInteractionRequired": true,
+      "actions": [
+        {
+          "targetSystem": "Supabase Auth",
+          "tableOrAction": "create_user_or_app_signup",
+          "recordType": "auth.users",
+          "expectedPreviousState": "absent",
+          "proposedNewState": "active_staging_local_user",
+          "rollbackMethod": "delete_auth_user",
+          "ownerInteractionRequired": true
+        },
+        {
+          "targetSystem": "Postgres",
+          "tableOrAction": "handle_new_user trigger",
+          "recordType": "public.profiles",
+          "expectedPreviousState": "absent",
+          "proposedNewState": "PLAYER",
+          "rollbackMethod": "cascade_with_auth_delete",
+          "ownerInteractionRequired": false
+        },
+        {
+          "targetSystem": "Postgres",
+          "tableOrAction": "UPDATE public.profiles SET role",
+          "recordType": "public.profiles.role",
+          "expectedPreviousState": "PLAYER",
+          "proposedNewState": "SUPER_ADMIN",
+          "rollbackMethod": "UPDATE role back to PLAYER or delete user",
+          "ownerInteractionRequired": true
+        },
+        {
+          "targetSystem": "Postgres",
+          "tableOrAction": "sync_user_roles_from_profile",
+          "recordType": "public.user_roles",
+          "expectedPreviousState": "PLAYER_or_none",
+          "proposedNewState": "SUPER_ADMIN_primary",
+          "rollbackMethod": "trigger_on_profile_rollback",
+          "ownerInteractionRequired": false
+        }
+      ]
+    },
+    {
+      "id": "C",
+      "role": "COACH",
+      "name": "schema_plus_catalog_plus_user",
+      "schemaChangesRequired": true,
+      "migrationsRequired": true,
+      "ownerInteractionRequired": true,
+      "blockedWithoutOwnerSchemaGo": true,
+      "actions": [
+        {
+          "targetSystem": "Postgres",
+          "tableOrAction": "ALTER profiles_role_check",
+          "recordType": "check_constraint",
+          "expectedPreviousState": "COACH_not_allowed",
+          "proposedNewState": "COACH_allowed",
+          "rollbackMethod": "restore_prior_check_ddl",
+          "ownerInteractionRequired": true
+        },
+        {
+          "targetSystem": "Postgres",
+          "tableOrAction": "INSERT public.roles",
+          "recordType": "roles",
+          "expectedPreviousState": "absent",
+          "proposedNewState": "COACH",
+          "rollbackMethod": "DELETE roles WHERE id=COACH",
+          "ownerInteractionRequired": true
+        },
+        {
+          "targetSystem": "Postgres",
+          "tableOrAction": "optional role_permissions seed",
+          "recordType": "role_permissions",
+          "expectedPreviousState": "0",
+          "proposedNewState": "coaching_assigned_grants_optional",
+          "rollbackMethod": "DELETE role_permissions WHERE role_id=COACH",
+          "ownerInteractionRequired": true
+        },
+        {
+          "targetSystem": "Supabase Auth + profiles",
+          "tableOrAction": "create_and_promote",
+          "recordType": "auth.users+profiles",
+          "expectedPreviousState": "absent",
+          "proposedNewState": "COACH_with_venue_id",
+          "rollbackMethod": "delete_user_or_demote",
+          "ownerInteractionRequired": true
+        }
+      ]
+    },
+    {
+      "id": "D",
+      "role": "COACH",
+      "name": "waive_coach_identity_for_phase5",
+      "schemaChangesRequired": false,
+      "migrationsRequired": false,
+      "mutations": [],
+      "ownerInteractionRequired": true,
+      "rollback": "n/a"
+    }
+  ],
+  "stopConditions": {
+    "stagingNotProven": false,
+    "roleAuthorityAmbiguous": false,
+    "schemaChangesRequiredForCoach": true,
+    "migrationsRequiredForCoach": true,
+    "productionAccessDetected": false,
+    "onlyMethodExposesCredentials": false,
+    "overallDiscoveryBlocked": false
+  },
+  "ownerDecisionPrompts": [
+    "PLATFORM_ADMIN: Package A reuse SUPER_ADMIN vs Package B new SUPER_ADMIN-labeled Staging user",
+    "COACH: Package C Staging schema GO vs Package D waive",
+    "Confirm agent remains SQL=NO until Owner executes chosen package"
+  ],
+  "report": {
+    "finalVerdict": "CANONICAL_NAVIGATION_PHASE5_STAGING_IDENTITY_DISCOVERY_READY_FOR_OWNER_EXECUTION_DECISION",
+    "confirmedProjectRef": "qyewbxjsiiyufanzcjcq",
+    "confirmedEnvironment": "Staging",
+    "connectedAccessMode": "read_only",
+    "canonicalAuthSource": "auth.users",
+    "canonicalProfileSource": "public.profiles",
+    "canonicalRoleSource": "public.profiles.role (+ public.roles catalog; SUPER_ADMIN alias for PLATFORM_ADMIN)",
+    "canonicalTenantMembershipSource": "public.tenant_members + profiles.venue_id/club_id",
+    "PLATFORM_ADMIN_role_exists": "YES",
+    "COACH_role_exists": "NO",
+    "existing_PLATFORM_ADMIN_test_identity": "YES",
+    "existing_COACH_test_identity": "NO",
+    "exactProvisioningMethod": "signup_or_auth_create_then_UPDATE_profiles.role_allowed_values_with_user_roles_sync",
+    "ownerInteractionRequired": true,
+    "proposedStagingMutations": ["Package_A_zero", "Package_B_auth_plus_SUPER_ADMIN_promote", "Package_C_schema_plus_COACH", "Package_D_waive"],
+    "rollbackMethod": "demote_or_delete_auth_user_restore_constraint_for_C",
+    "schemaChangesRequired": "YES_FOR_COACH_NO_FOR_PLATFORM_ADMIN",
+    "migrationsRequired": "YES_FOR_COACH_IF_PACKAGE_C",
+    "authMutationsPerformed": 0,
+    "databaseMutationsPerformed": 0,
+    "sqlWriteExecution": 0,
+    "productionMutations": 0,
+    "credentialsExposed": false,
+    "commit": "NO",
+    "push": "NO",
+    "pr": "NO"
+  }
+}
