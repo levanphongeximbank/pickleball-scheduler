@@ -1,0 +1,86 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 4,
+    "artifact": "PHASE4_POST_MERGE_VERIFICATION",
+    "featureBranch": "feature/canonical-navigation-phase4-runtime-cutover",
+    "featureCommit": "14bd1fb0fc530a6aa56214060d822e71fd7239f6",
+    "prNumber": 382,
+    "mergeCommit": "295c3f21fe2591fead9192d415f20b38cf20be26",
+    "freshOriginMain": "295c3f21fe2591fead9192d415f20b38cf20be26",
+    "verdict": "CANONICAL_NAVIGATION_PHASE4_POST_MERGE_VERIFIED_READY_FOR_EVIDENCE_COMMIT",
+    "runtimeOrTestsModified": false,
+    "cleanupPerformed": false,
+    "branchDeleted": false,
+    "worktreeRemoved": false
+  },
+  "mergeVerification": {
+    "mergeCommitAncestorOfOriginMain": true,
+    "featureCommitAncestorOfOriginMain": true,
+    "prState": "MERGED",
+    "prMerged": true,
+    "prChangedFiles": 48,
+    "commitsOnMainAfterMerge": 0
+  },
+  "mergedScope": {
+    "changedFiles": 48,
+    "runtimeFiles": 17,
+    "testFiles": 8,
+    "manifestFiles": 1,
+    "documentationFiles": 22,
+    "unrelatedFiles": 0,
+    "sqlFiles": 0,
+    "environmentFiles": 0,
+    "deploymentFiles": 0,
+    "productionConfigChanges": 0,
+    "packageLockChanged": false
+  },
+  "results": {
+    "B01": "PASS",
+    "B02": "PASS",
+    "retainedTournamentMounts": 43,
+    "redirectsAdded": 0,
+    "B03": "PASS",
+    "B03RoleMatrix": "PASS",
+    "pluralRoutesProtected": 7,
+    "pluralAuthParity": "PASS",
+    "publicCatalog": "PASS",
+    "routeReconciliation": "179/179",
+    "activeMenuNodes": 76,
+    "contextualRoutes": 7,
+    "duplicateActiveEntries": 0
+  },
+  "validation": {
+    "context": "detached origin/main @ 295c3f21",
+    "focusedPhase2to4Unit": "PASS 53/53",
+    "unitTests": "PASS 6908/6908",
+    "unitTestCount": 6908,
+    "focusedUi": "PASS 42/42",
+    "accessibility": "PASS",
+    "lintNoNew": "PASS",
+    "build": "PASS",
+    "secretScan": "PASS 0",
+    "packageLockValidation": "PASS",
+    "gitDiffCached": "EMPTY"
+  },
+  "worktree": {
+    "readable": true,
+    "uncommittedRuntimeChanges": 0,
+    "staged": 0,
+    "ownerUntrackedPreserved": 10,
+    "evidenceDocsUncommitted": true
+  },
+  "blockers": [],
+  "warnings": [
+    "Unit count 6908 > prior Phase 4 baseline 6892 due to legitimate main tip content",
+    "Vite chunk-size warning non-blocking",
+    "Auth OFF + RBAC OFF leaves Engine gate unapplied (local/dev)"
+  ],
+  "productionSafety": {
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "productionFeatureFlagChanges": 0,
+    "PRODUCTION_GO": "NO"
+  }
+}
