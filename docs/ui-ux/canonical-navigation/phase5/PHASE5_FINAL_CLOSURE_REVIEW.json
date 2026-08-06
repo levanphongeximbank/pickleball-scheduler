@@ -1,0 +1,157 @@
+{
+  "program": "PICK_VN_CANONICAL_NAVIGATION",
+  "phase": 5,
+  "document": "PHASE5_FINAL_CLOSURE_REVIEW",
+  "reviewedAt": "2026-08-06",
+  "mode": "READ_ONLY",
+  "finalVerdict": "CANONICAL_NAVIGATION_PHASE5_READY_FOR_MERGE_REVIEW_WITH_ACCEPTED_LIMITATIONS",
+  "baseline": {
+    "branch": "feature/canonical-navigation-phase5-preview-acceptance",
+    "headSha": "dc777a067a64a88c979dffec7c07fb2c1f4c386b",
+    "originMainSha": "3c6c3f0261c843f992e21499569b7df51525ed5d",
+    "originBranchSha": "dc777a067a64a88c979dffec7c07fb2c1f4c386b",
+    "localRemoteMatch": true,
+    "aheadOfMain": 5,
+    "behindMain": 3,
+    "mergeBase": "087c61c7d8bb1efdae343685269e53aa75767e21",
+    "phase4TipIsAncestorOfHead": true,
+    "worktreeBeforeReviewArtifacts": "clean"
+  },
+  "mainDrift": {
+    "commitsAddedToMainSincePhase5Base": [
+      {
+        "sha": "3c6c3f0261c843f992e21499569b7df51525ed5d",
+        "subject": "Merge pull request #384 from levanphongeximbank/fix/operation-b1a-approved-live-runner"
+      },
+      {
+        "sha": "a25a748b",
+        "subject": "fix(prod): harden B1A snapshot SHA-256 and narrow adapter surface"
+      },
+      {
+        "sha": "af63f085",
+        "subject": "fix(prod): add approved Operation B1 live operator runner"
+      }
+    ],
+    "surfacesTouched": {
+      "canonicalNavigationRuntime": false,
+      "routeRegistry": false,
+      "routeGuards": false,
+      "roleNormalization": false,
+      "tournamentEngineRoutes": false,
+      "ratingV5": false,
+      "privatePairing": false,
+      "sharedShellLayout": false,
+      "phase5EvidenceTests": false,
+      "phase5DocumentationPaths": false
+    },
+    "pathIntersectionWithPhase5Branch": [],
+    "unrelatedPathsSummary": [
+      "docs/v5/operations/production-qa-identity-operation-b1/*",
+      "scripts/operations/production-qa-identity-operation-b1/*",
+      "scripts/ci/unit-test-files.json (append B1A live-runner test entry)",
+      "tests/production-qa-identity-operation-b1a-live-runner.test.js"
+    ]
+  },
+  "conflictSimulation": {
+    "method": "git merge-tree",
+    "realMergePerformed": false,
+    "writeTreeExitCode": 0,
+    "conflictCount": 0,
+    "textualConflicts": 0,
+    "filesAffectedByConflict": [],
+    "runtimeOverlap": false,
+    "documentationOverlap": false,
+    "semanticOverlap": "none_material"
+  },
+  "evidenceFreshness": [
+    { "family": "flag_on_preview_screenshots", "classification": "CURRENT_WITH_LIMITATION" },
+    { "family": "rollback_screenshot", "classification": "CURRENT_WITH_LIMITATION" },
+    { "family": "automated_tests_99_99", "classification": "CURRENT" },
+    { "family": "tournament_engine_7_7", "classification": "CURRENT" },
+    { "family": "b03_nine_checks", "classification": "CURRENT" },
+    { "family": "private_pairing_checks", "classification": "CURRENT" },
+    { "family": "public_route_checks", "classification": "CURRENT" },
+    { "family": "accessibility_checks", "classification": "CURRENT" },
+    { "family": "lint_and_build", "classification": "CURRENT" }
+  ],
+  "evidenceFamiliesCurrent": [
+    "automated_tests_99_99",
+    "tournament_engine_7_7",
+    "b03_nine_checks",
+    "private_pairing_checks",
+    "public_route_checks",
+    "accessibility_checks",
+    "lint_and_build"
+  ],
+  "evidenceFamiliesCurrentWithLimitation": [
+    "flag_on_preview_screenshots",
+    "rollback_screenshot"
+  ],
+  "evidenceFamiliesStale": [],
+  "evidenceFamiliesInvalidated": [],
+  "pr": {
+    "number": 385,
+    "state": "OPEN",
+    "isDraft": true,
+    "headRefOid": "dc777a067a64a88c979dffec7c07fb2c1f4c386b",
+    "headMatchesBranch": true,
+    "mergeable": "MERGEABLE",
+    "mergeStateStatus": "CLEAN",
+    "reviewRequests": [],
+    "reviews": [],
+    "unresolvedReviewThreads": 0,
+    "checks": {
+      "verify": "SUCCESS",
+      "vercel": "SUCCESS",
+      "vercelPreviewComments": "SUCCESS",
+      "netlifyDeployPreview": "SUCCESS",
+      "netlifyHeaderRules": "NEUTRAL",
+      "netlifyPagesChanged": "NEUTRAL"
+    }
+  },
+  "limitations": [
+    { "id": "refresh_not_tested", "classification": "ACCEPTABLE_FOR_PHASE5_CLOSURE" },
+    { "id": "back_forward_not_tested", "classification": "ACCEPTABLE_FOR_PHASE5_CLOSURE" },
+    { "id": "high_contrast_not_tested", "classification": "ACCEPTABLE_FOR_PHASE5_CLOSURE" },
+    { "id": "manual_tournament_engine_ui_not_tested", "classification": "ACCEPTABLE_FOR_PHASE5_CLOSURE" },
+    { "id": "manual_rating_v5_shadow_not_tested", "classification": "ACCEPTABLE_FOR_PHASE5_CLOSURE" },
+    { "id": "manual_private_pairing_ui_not_tested", "classification": "ACCEPTABLE_FOR_PHASE5_CLOSURE" },
+    { "id": "non_admin_preview_roles_limited", "classification": "ACCEPTABLE_FOR_PHASE5_CLOSURE" },
+    { "id": "coach_waived_schema_backlog", "classification": "ACCEPTABLE_FOR_PHASE5_CLOSURE" },
+    { "id": "obs_ui_01_tenant_selector_overlap", "classification": "ACCEPTABLE_FOR_PHASE5_CLOSURE" },
+    { "id": "obs_data_runtime_staging", "classification": "ACCEPTABLE_FOR_PHASE5_CLOSURE" }
+  ],
+  "limitationsAccepted": [
+    "refresh_not_tested",
+    "back_forward_not_tested",
+    "high_contrast_not_tested",
+    "manual_tournament_engine_ui_not_tested",
+    "manual_rating_v5_shadow_not_tested",
+    "manual_private_pairing_ui_not_tested",
+    "non_admin_preview_roles_limited",
+    "coach_waived_schema_backlog",
+    "obs_ui_01_tenant_selector_overlap",
+    "obs_data_runtime_staging"
+  ],
+  "retestsRequired": [],
+  "blockers": [],
+  "claims": {
+    "phase5Closed": false,
+    "productionFlagOnAuthorized": false,
+    "ownerMergeGoImplied": false
+  },
+  "safety": {
+    "productionMutations": 0,
+    "environmentChanges": 0,
+    "deployments": 0,
+    "sqlMutations": 0,
+    "stagingMutations": 0,
+    "commit": false,
+    "push": false,
+    "prChange": false
+  },
+  "deliverablesCreatedUncommitted": [
+    "docs/ui-ux/canonical-navigation/phase5/PHASE5_FINAL_CLOSURE_REVIEW.md",
+    "docs/ui-ux/canonical-navigation/phase5/PHASE5_FINAL_CLOSURE_REVIEW.json"
+  ]
+}
