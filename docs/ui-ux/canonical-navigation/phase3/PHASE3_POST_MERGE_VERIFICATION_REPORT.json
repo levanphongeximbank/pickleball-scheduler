@@ -1,0 +1,73 @@
+{
+  "program": "PICK_VN Canonical Navigation",
+  "phase": 3,
+  "title": "Post-Merge Verification",
+  "pr": 378,
+  "mergedHead": "2ef8f1813c7d1566cec4e8bd99778e99c9469cf8",
+  "mergeCommit": "492ad2f347561c31ba9add29773dd27da5372c57",
+  "generatedAt": "2026-08-06T00:55:00.000Z",
+  "finalVerdict": "CANONICAL_NAVIGATION_PHASE3_POST_MERGE_VERIFIED_READY_FOR_CLEANUP",
+  "identity": {
+    "freshOriginMainSha": "492ad2f347561c31ba9add29773dd27da5372c57",
+    "mergeCommit": "492ad2f347561c31ba9add29773dd27da5372c57",
+    "mergeMethod": "merge_commit",
+    "prState": "MERGED",
+    "verificationWorktreePath": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\ui-ux\\canonical-navigation-phase3-post-merge-verify"
+  },
+  "ancestry": {
+    "implementationCommit": "70a8d97410c2e29f5704aa5c6d6de3206ce3fc3e",
+    "implementationIsAncestor": true,
+    "correctiveCommit": "d8f7856e8399fb722575ec3ff76077a94d87b7b6",
+    "correctiveIsAncestor": true,
+    "evidenceCommit": "2ef8f1813c7d1566cec4e8bd99778e99c9469cf8",
+    "evidenceIsAncestor": true,
+    "mergeCommitIsAncestor": true,
+    "mergeCommitIsTip": true
+  },
+  "gates": {
+    "npmCi": "PASS",
+    "unitTests": "PASS 6871/6871",
+    "focusedPhase3Phase2AppShell": "PASS 50/50",
+    "uiShellSuite": "PASS 8/8",
+    "accessibility": "PASS",
+    "lintNoNew": "PASS",
+    "build": "PASS",
+    "secretScan": "PASS",
+    "packageLockValidation": "PASS",
+    "dirtyWorktree": false
+  },
+  "package": {
+    "fontsourceInterRange": "^5.3.0",
+    "fontsourceInterResolved": "5.3.0",
+    "packageJsonSha256Lf": "C9030322D904741CE2E2BBF7E45B0D2D23F60E4CB5F349470CE42D45BF1D96CA",
+    "packageLockSha256Lf": "E9FBBC076F0F41EB4F7EB40E52F6A448CBE8CCC80709F595EA8D1D7C927AF265",
+    "certificationPinsMatch": true
+  },
+  "invariants": {
+    "routeReconciliation": "179/179",
+    "activeMenuNodes": 75,
+    "contextualRoutes": 7,
+    "duplicateActiveEntries": 0,
+    "W01_W05": "CLOSED",
+    "B01_B02_B03": "PASS",
+    "privatePairing": "PASS",
+    "unknownRoleFailClosed": "PASS",
+    "featureFlagDefault": "OFF",
+    "flagOffLegacyOnly": "PASS",
+    "flagOnCanonicalOnly": "PASS",
+    "rollback": "PASS"
+  },
+  "blockerCount": 0,
+  "warningCount": 4,
+  "safety": {
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "productionFeatureFlagChanges": 0,
+    "commit": "NO",
+    "push": "NO",
+    "cleanupPerformed": "NO",
+    "branchDeletion": "NO",
+    "worktreeDeletion": "NO"
+  }
+}
