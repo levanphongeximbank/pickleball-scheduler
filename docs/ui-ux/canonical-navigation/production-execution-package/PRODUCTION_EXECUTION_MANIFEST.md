@@ -79,7 +79,7 @@ This package does **not** authorize Production mutation. All execution GO tokens
 
 ## Current GO token state
 
-All tokens below are **NO**. One generic GO does not imply the others. See [`PRODUCTION_GO_TOKEN_CONTRACT.md`](./PRODUCTION_GO_TOKEN_CONTRACT.md).
+All Production execution tokens below remain **NO**. The separate planning-only token `PRODUCTION_IDENTITY_COVERAGE_PLANNING_GO` is **YES** solely to record Owner-approved waiver planning. One generic GO does not imply the others. See [`PRODUCTION_GO_TOKEN_CONTRACT.md`](./PRODUCTION_GO_TOKEN_CONTRACT.md).
 
 | Token | Value |
 |-------|-------|
