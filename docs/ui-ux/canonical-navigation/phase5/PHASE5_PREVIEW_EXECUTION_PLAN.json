@@ -4,16 +4,20 @@
     "phase": 5,
     "document": "PHASE5_PREVIEW_EXECUTION_PLAN",
     "generatedAt": "2026-08-06T05:30:00.000Z",
-    "updatedAt": "2026-08-06T08:05:00.000Z",
-    "executed": "partial_manual_preview_evidence_plus_rollback_pass",
+    "updatedAt": "2026-08-06T09:00:00.000Z",
+    "executed": "preview_acceptance_rollback_plus_remaining_critical_automated_coverage",
     "manualEvidenceVerdict": "CANONICAL_NAVIGATION_PHASE5_MANUAL_PREVIEW_ACCEPTANCE_PASS_WITH_OBSERVATIONS",
     "rollbackVerdict": "CANONICAL_NAVIGATION_PHASE5_PREVIEW_ROLLBACK_PASS",
+    "criticalCoverageVerdict": "CANONICAL_NAVIGATION_PHASE5_CRITICAL_COVERAGE_PASS_WITH_LIMITATIONS",
+    "criticalCoverageDocs": [
+      "PHASE5_REMAINING_CRITICAL_COVERAGE_AUDIT.md",
+      "PHASE5_FINAL_COVERAGE_MATRIX.md"
+    ],
     "draftPr": 385,
-    "boundSha": "640d18e185de05c9aebf75050d21f2405a2412d7",
+    "boundSha": "7cc0fdee46f4cd0299b99a8b86026a04a8e45d97",
     "prerequisiteVerdict": "CANONICAL_NAVIGATION_PHASE5_PREVIEW_ACCEPTANCE_READY_WITH_BLOCKERS",
     "previewGo": "YES",
-    "productionGo": false,
-    "updatedAt": "2026-08-06T08:30:00.000Z"
+    "productionGo": false
   },
   "order": [
     {

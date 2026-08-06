@@ -1,0 +1,172 @@
+{
+  "program": "PICK_VN_CANONICAL_NAVIGATION",
+  "phase": 5,
+  "document": "PHASE5_REMAINING_CRITICAL_COVERAGE_AUDIT",
+  "executedAt": "2026-08-06",
+  "worktree": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\ui-ux\\canonical-navigation-phase5",
+  "branch": "feature/canonical-navigation-phase5-preview-acceptance",
+  "headSha": "7cc0fdee46f4cd0299b99a8b86026a04a8e45d97",
+  "originMainSha": "3c6c3f0261c843f992e21499569b7df51525ed5d",
+  "draftPr": 385,
+  "finalVerdict": "CANONICAL_NAVIGATION_PHASE5_CRITICAL_COVERAGE_PASS_WITH_LIMITATIONS",
+  "safety": {
+    "runtimeChanges": 0,
+    "testChanges": 0,
+    "environmentChanges": 0,
+    "deployments": 0,
+    "sqlMutations": 0,
+    "stagingMutations": 0,
+    "productionMutations": 0,
+    "commit": false,
+    "push": false,
+    "prChange": false,
+    "localNpmInstallForTestsOnly": true
+  },
+  "priorProvenResults": {
+    "previewAcceptance": "PASS_WITH_OBSERVATIONS",
+    "previewRollback": "PASS",
+    "legacyShellRestored": true,
+    "whiteScreensObserved": 0,
+    "productionTouched": false,
+    "coach": "WAIVED_WITH_KNOWN_SCHEMA_GAP",
+    "platformAdminEquivalent": "COVERED_VIA_STAGING_SUPER_ADMIN"
+  },
+  "tournamentEngine": {
+    "routesIdentified": [
+      "/tournaments/:tournamentId/engine",
+      "/tournaments/:tournamentId/seed",
+      "/tournaments/:tournamentId/draw",
+      "/tournaments/:tournamentId/schedule",
+      "/tournaments/:tournamentId/courts",
+      "/tournaments/:tournamentId/ranking",
+      "/tournaments/:tournamentId/logs"
+    ],
+    "source": "src/auth/tournamentEngineRouteAccess.js#ENGINE_TABS",
+    "routesPassedAutomated": 7,
+    "rows": [
+      { "id": "TE-01", "check": "unauthenticated_denied", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "TE-02", "check": "missing_tournament_update_denied", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "TE-03", "check": "tenant_ownership_mismatch_denied", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "TE-04", "check": "authorized_owner_admin_allowed", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "TE-05", "check": "rbac_off_cannot_bypass", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "TE-06", "check": "seven_tabs_parity", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "TE-07", "check": "catalog_vs_nested_separation", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "TE-08", "check": "manual_preview_engine_deeplink", "classification": "NOT_TESTED", "evidence": "MANUAL_PREVIEW_ABSENT" }
+    ]
+  },
+  "b03": {
+    "route": "/player/skill-assessment-v5",
+    "checksPassedAutomated": 9,
+    "rows": [
+      { "id": "B03-01", "check": "exact_route", "classification": "PASS", "evidence": "AUTOMATED_STATIC" },
+      { "id": "B03-02", "check": "hidden_from_menu", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "B03-03", "check": "hidden_from_search", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "B03-04", "check": "super_admin_allowed", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "B03-05", "check": "platform_admin_equivalent_allowed", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "B03-06", "check": "player_flag_on_enrolled_allowed", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "B03-07", "check": "player_without_enrollment_denied", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "B03-08", "check": "unrelated_roles_denied", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "B03-09", "check": "unauthenticated_denied", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "B03-10", "check": "manual_preview_shadow_url", "classification": "NOT_TESTED", "evidence": "MANUAL_PREVIEW_ABSENT" }
+    ]
+  },
+  "privatePairing": {
+    "route": "/admin/ai-pairing/private-rules",
+    "checksPassedAutomatedCritical": 6,
+    "rows": [
+      { "id": "PP-01", "check": "route_and_feature_gate", "classification": "PASS", "evidence": "AUTOMATED_STATIC" },
+      { "id": "PP-02", "check": "super_admin_authorization", "classification": "PASS", "evidence": "AUTOMATED_STATIC" },
+      { "id": "PP-03", "check": "tenant_visibility_rule", "classification": "PASS_WITH_OBSERVATION", "evidence": "AUTOMATED_STATIC", "observation": "Menu visibility is SUPER_ADMIN-family + flag; not per-tenant menu scoping" },
+      { "id": "PP-04", "check": "unauthorized_role_denial", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "PP-05", "check": "simulation_read_only", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "PP-06", "check": "legacy_not_claimed_canonical", "classification": "PASS", "evidence": "STATIC" },
+      { "id": "PP-07", "check": "manual_preview_private_pairing_ui", "classification": "NOT_TESTED", "evidence": "MANUAL_PREVIEW_ABSENT" }
+    ]
+  },
+  "publicRoutes": {
+    "rows": [
+      { "id": "PUB-01", "route": "/", "classification": "PASS_WITH_OBSERVATION", "isPublicAuthPath": false, "evidence": "STATIC_MANUAL_PREVIEW" },
+      { "id": "PUB-02", "route": "/home", "classification": "PASS", "isPublicAuthPath": true, "evidence": "STATIC" },
+      { "id": "PUB-03", "route": "/clubs", "classification": "PASS", "isPublicAuthPath": true, "evidence": "STATIC" },
+      { "id": "PUB-04", "route": "/courts", "classification": "PASS", "isPublicAuthPath": true, "evidence": "STATIC" },
+      { "id": "PUB-05", "route": "/tournaments", "classification": "PASS", "isPublicAuthPath": true, "evidence": "AUTOMATED_STATIC" },
+      { "id": "PUB-06", "route": "/tournaments/", "classification": "PASS", "isPublicAuthPath": true, "evidence": "AUTOMATED_STATIC" },
+      { "id": "PUB-07", "check": "unauthenticated_no_redirect_public_set", "classification": "PASS", "evidence": "STATIC_AUTOMATED" },
+      { "id": "PUB-08", "check": "white_screen_risk_existing_tests", "classification": "PASS_WITH_OBSERVATION", "evidence": "AUTOMATED" },
+      { "id": "PUB-09", "check": "manual_unauthenticated_preview_browse", "classification": "NOT_TESTED", "evidence": "MANUAL_PREVIEW_ABSENT" }
+    ],
+    "publicRoutesPassed": 5,
+    "unauthenticatedChecksPassed": 1
+  },
+  "navigation": {
+    "rows": [
+      { "id": "NAV-01", "check": "direct_link_route_load", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "NAV-02", "check": "browser_refresh", "classification": "NOT_TESTED", "evidence": "NONE" },
+      { "id": "NAV-03", "check": "back_forward", "classification": "NOT_TESTED", "evidence": "NONE" },
+      { "id": "NAV-04", "check": "active_menu_state", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "NAV-05", "check": "no_dual_shell", "classification": "PASS", "evidence": "AUTOMATED_MANUAL_ROLLBACK" },
+      { "id": "NAV-06", "check": "duplicate_routes_zero", "classification": "PASS", "evidence": "AUTOMATED" }
+    ],
+    "directLinkPassed": true,
+    "refreshPassed": false,
+    "backForwardPassed": false
+  },
+  "accessibility": {
+    "rows": [
+      { "id": "A11Y-01", "check": "keyboard_navigation", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "A11Y-02", "check": "escape_closes_drawer_restores_focus", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "A11Y-03", "check": "tab_shift_tab", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "A11Y-04", "check": "accessible_names_contracts", "classification": "PASS", "evidence": "AUTOMATED" },
+      { "id": "A11Y-05", "check": "high_contrast", "classification": "NOT_TESTED", "evidence": "NONE" }
+    ],
+    "accessibilityChecksPassed": 4
+  },
+  "tests": {
+    "run": 99,
+    "passed": 99,
+    "failed": 0,
+    "suites": [
+      "tests/canonical-shell-phase2.test.js",
+      "tests/canonical-shell-phase3.test.js",
+      "tests/canonical-shell-phase4-b03-guard.test.js",
+      "tests/canonical-shell-phase4-tournament-authz.test.js",
+      "tests/canonical-shell-phase4-b01-dual-canonical.test.js",
+      "tests/private-pairing-rules-pr5-ui-permissions.test.js",
+      "tests/private-pairing-rules-pr45-simulation.test.js",
+      "tests/ui/canonical-shell-phase2.ui.test.jsx",
+      "tests/ui/canonical-shell-phase3.ui.test.jsx",
+      "tests/ui/canonical-shell-phase4-a11y.ui.test.jsx",
+      "tests/ui/canonical-shell-phase4-engine-authz.ui.test.jsx",
+      "tests/ui/canonical-shell-phase4-b03-authz.ui.test.jsx"
+    ],
+    "lintNoNew": "PASS",
+    "build": "PASS",
+    "secretScan": "NOT_RUN_DEDICATED_SCRIPT_DOCS_ONLY"
+  },
+  "observations": [
+    "OBS-P5-CRIT-01: '/' is not isPublicAuthPath when auth ON; public portal home is /home",
+    "OBS-P5-CRIT-02: Engine/B03/PP critical authz proven by automated tests, not Owner Preview screenshots",
+    "OBS-P5-CRIT-03: Browser refresh and back/forward remain NOT_TESTED",
+    "OBS-P5-CRIT-04: High contrast remains NOT_TESTED",
+    "OBS-UI-01 / OBS-DATA-01 / OBS-RUNTIME-01 / OBS-RUNTIME-02 remain open from Preview acceptance"
+  ],
+  "waivedRows": [
+    {
+      "id": "W-COACH",
+      "item": "COACH role identity coverage",
+      "classification": "WAIVED",
+      "detail": "WAIVED_WITH_KNOWN_SCHEMA_GAP",
+      "backlog": "BL-P5-COACH-ROLE-SCHEMA"
+    }
+  ],
+  "remainingNotTested": [
+    "TE-08",
+    "B03-10",
+    "PP-07",
+    "PUB-09",
+    "NAV-02",
+    "NAV-03",
+    "A11Y-05"
+  ],
+  "blockers": []
+}

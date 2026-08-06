@@ -132,3 +132,14 @@ Classification legend: `PASS` · `PASS_WITH_OBSERVATION` · `WAIVED` · `NOT_TES
 | WAIVED | 1 (COACH role) |
 | NOT_TESTED | remainder |
 | FAIL | **0** |
+
+---
+
+## Follow-up — remaining critical coverage (automated; not Owner screenshots)
+
+Screenshot classifications above are unchanged. Critical Engine / B03 / Private Pairing / public-auth / a11y drawer / registry rows that were **NOT_TESTED** here were later covered by **existing** unit/UI tests (no test mutation) and consolidated in:
+
+- [`PHASE5_REMAINING_CRITICAL_COVERAGE_AUDIT.md`](./PHASE5_REMAINING_CRITICAL_COVERAGE_AUDIT.md)
+- [`PHASE5_FINAL_COVERAGE_MATRIX.md`](./PHASE5_FINAL_COVERAGE_MATRIX.md)
+
+Do not treat this follow-up as additional Owner browser proof.

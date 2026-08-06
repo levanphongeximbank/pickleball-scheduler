@@ -156,7 +156,7 @@ Execution may be declared successful only when:
 4. Production mutations = 0; Production flag changes = 0.  
 5. Owner signs isolation attestation.  
 
-Until blockers in Phase A close, status remains **READY_WITH_BLOCKERS** (not yet executed).
+**Status update (2026-08-06, HEAD `7cc0fdee`):** Phase A–E Preview path closed (acceptance `PASS_WITH_OBSERVATIONS`, rollback `PASS`). Remaining critical automated coverage re-executed and recorded in [`PHASE5_REMAINING_CRITICAL_COVERAGE_AUDIT.md`](./PHASE5_REMAINING_CRITICAL_COVERAGE_AUDIT.md) + [`PHASE5_FINAL_COVERAGE_MATRIX.md`](./PHASE5_FINAL_COVERAGE_MATRIX.md). Verdict: **`CANONICAL_NAVIGATION_PHASE5_CRITICAL_COVERAGE_PASS_WITH_LIMITATIONS`**. Manual-only cells (HC, browser refresh/back-forward, unauthenticated Preview browse, Engine/B03/PP screenshots) remain documented limitations — not Phase A blockers.
 
 ---
 

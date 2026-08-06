@@ -1,0 +1,155 @@
+{
+  "program": "PICK_VN_CANONICAL_NAVIGATION",
+  "phase": 5,
+  "document": "PHASE5_FINAL_COVERAGE_MATRIX",
+  "headSha": "7cc0fdee46f4cd0299b99a8b86026a04a8e45d97",
+  "originMainSha": "3c6c3f0261c843f992e21499569b7df51525ed5d",
+  "draftPr": 385,
+  "finalVerdict": "CANONICAL_NAVIGATION_PHASE5_CRITICAL_COVERAGE_PASS_WITH_LIMITATIONS",
+  "relatedDocuments": [
+    "PHASE5_REMAINING_CRITICAL_COVERAGE_AUDIT.md",
+    "PHASE5_MANUAL_PREVIEW_ACCEPTANCE_MATRIX.md",
+    "PHASE5_PREVIEW_ROLLBACK_REPORT.md"
+  ],
+  "programGates": [
+    { "id": "G-PREV", "classification": "PASS_WITH_OBSERVATION" },
+    { "id": "G-ROLL", "classification": "PASS" },
+    { "id": "G-LEG", "classification": "PASS" },
+    { "id": "G-WS", "classification": "PASS" },
+    { "id": "G-PROD", "classification": "PASS" },
+    { "id": "G-SQL", "classification": "PASS" },
+    { "id": "G-COACH", "classification": "WAIVED", "detail": "WAIVED_WITH_KNOWN_SCHEMA_GAP" },
+    { "id": "G-PADM", "classification": "PASS" }
+  ],
+  "tournamentEngine": {
+    "routesIdentified": 7,
+    "routesPassedAutomated": 7,
+    "routes": [
+      "/tournaments/:tournamentId/engine",
+      "/tournaments/:tournamentId/seed",
+      "/tournaments/:tournamentId/draw",
+      "/tournaments/:tournamentId/schedule",
+      "/tournaments/:tournamentId/courts",
+      "/tournaments/:tournamentId/ranking",
+      "/tournaments/:tournamentId/logs"
+    ],
+    "checks": {
+      "unauthenticatedDenied": "PASS",
+      "missingTournamentUpdateDenied": "PASS",
+      "tenantOwnershipMismatchDenied": "PASS",
+      "authorizedAllowed": "PASS",
+      "rbacOffCannotBypass": "PASS",
+      "catalogPublic": "PASS",
+      "manualPreviewDeeplink": "NOT_TESTED"
+    }
+  },
+  "b03": {
+    "checksPassedAutomated": 9,
+    "checks": {
+      "exactRoute": "PASS",
+      "hiddenMenu": "PASS",
+      "hiddenSearch": "PASS",
+      "superAdminAllowed": "PASS",
+      "platformAdminEquivalentAllowed": "PASS",
+      "playerFlagOnEnrolled": "PASS",
+      "playerWithoutEnrollmentDenied": "PASS",
+      "unrelatedRolesDenied": "PASS",
+      "unauthenticatedDenied": "PASS",
+      "manualPreviewShadowUrl": "NOT_TESTED"
+    }
+  },
+  "privatePairing": {
+    "checksPassed": 6,
+    "checks": {
+      "routeAndFeatureGate": "PASS",
+      "superAdminAuthorization": "PASS",
+      "tenantVisibilityRule": "PASS_WITH_OBSERVATION",
+      "unauthorizedRoleDenial": "PASS",
+      "simulationReadOnly": "PASS",
+      "legacyNotClaimedCanonical": "PASS",
+      "manualPreviewUi": "NOT_TESTED"
+    }
+  },
+  "publicRoutes": {
+    "passed": 5,
+    "rootObservation": "PASS_WITH_OBSERVATION",
+    "unauthenticatedChecksPassed": true,
+    "routes": {
+      "/": "PASS_WITH_OBSERVATION",
+      "/home": "PASS",
+      "/clubs": "PASS",
+      "/courts": "PASS",
+      "/tournaments": "PASS",
+      "/tournaments/": "PASS"
+    },
+    "manualUnauthenticatedPreview": "NOT_TESTED"
+  },
+  "navigation": {
+    "directLinkPassed": true,
+    "refreshPassed": false,
+    "backForwardPassed": false,
+    "checks": {
+      "directLink": "PASS",
+      "browserRefresh": "NOT_TESTED",
+      "backForward": "NOT_TESTED",
+      "activeMenuState": "PASS",
+      "noDualShell": "PASS",
+      "duplicateRoutesZero": "PASS",
+      "registry179": "PASS"
+    }
+  },
+  "accessibility": {
+    "checksPassed": 4,
+    "checks": {
+      "keyboard": "PASS",
+      "escapeFocusRestore": "PASS",
+      "tabShiftTab": "PASS",
+      "accessibleNames": "PASS",
+      "highContrast": "NOT_TESTED"
+    }
+  },
+  "tests": {
+    "run": 99,
+    "passed": 99,
+    "failed": 0,
+    "lintNoNew": "PASS",
+    "build": "PASS",
+    "secretScanDedicated": "NOT_TESTED"
+  },
+  "waivedRows": ["G-COACH"],
+  "remainingNotTested": [
+    "Engine manual Preview deep-links",
+    "B03 manual Preview shadow URL",
+    "Private Pairing manual Preview UI",
+    "Unauthenticated public Preview browse",
+    "Browser refresh",
+    "Browser back/forward",
+    "High contrast",
+    "Tablet device Preview",
+    "Limited non-admin role Preview menus",
+    "Dedicated secret scan script"
+  ],
+  "observations": [
+    "OBS-UI-01",
+    "OBS-DATA-01",
+    "OBS-RUNTIME-01",
+    "OBS-RUNTIME-02",
+    "OBS-P5-CRIT-01",
+    "OBS-P5-CRIT-02",
+    "OBS-P5-CRIT-03",
+    "OBS-P5-CRIT-04"
+  ],
+  "blockers": [],
+  "safety": {
+    "runtimeChanges": 0,
+    "testChanges": 0,
+    "environmentChanges": 0,
+    "deployments": 0,
+    "sqlMutations": 0,
+    "stagingMutations": 0,
+    "productionMutations": 0,
+    "commit": false,
+    "push": false,
+    "prChange": false
+  }
+}

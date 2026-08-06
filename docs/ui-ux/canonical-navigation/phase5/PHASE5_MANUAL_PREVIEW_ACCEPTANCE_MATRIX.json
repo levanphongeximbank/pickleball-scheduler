@@ -97,5 +97,10 @@
     { "role": "VENUE_OWNER", "classification": "NOT_TESTED" },
     { "role": "VENUE_MANAGER", "classification": "NOT_TESTED" },
     { "role": "unauthenticated", "classification": "NOT_TESTED" }
-  ]
+  ],
+  "followUpAutomatedCriticalCoverage": {
+    "note": "Screenshot classifications unchanged. Critical NOT_TESTED authz/registry/a11y rows covered later by existing tests — see PHASE5_REMAINING_CRITICAL_COVERAGE_AUDIT and PHASE5_FINAL_COVERAGE_MATRIX. Not Owner browser proof.",
+    "verdict": "CANONICAL_NAVIGATION_PHASE5_CRITICAL_COVERAGE_PASS_WITH_LIMITATIONS",
+    "headShaAtFollowUp": "7cc0fdee46f4cd0299b99a8b86026a04a8e45d97"
+  }
 }
