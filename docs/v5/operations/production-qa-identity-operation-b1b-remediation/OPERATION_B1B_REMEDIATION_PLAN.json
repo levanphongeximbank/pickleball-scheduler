@@ -1,0 +1,408 @@
+{
+  "operation_id": "OPERATION_B1B_DEDICATED_QA_QUARANTINE_REMEDIATION",
+  "document_type": "remediation_planning_package",
+  "planning_only": true,
+  "planning_review_remediation": true,
+  "implementation_authorized": false,
+  "execution_authorized": false,
+  "production_go": false,
+  "base_origin_main_sha": "3c6c3f0261c843f992e21499569b7df51525ed5d",
+  "previous_planning_head": "5f9efa1e92b8926eb004f48fdf1742144e729599",
+  "planning_branch": "plan/operation-b1b-dedicated-qa-quarantine-remediation",
+  "incident_classification": {
+    "code": "SCHEMA_CONTRACT_MISMATCH_FAIL_CLOSED_NO_COMPENSATION",
+    "severity": "P2_PROCESS_SCHEMA_MISMATCH",
+    "data_corruption": false,
+    "compensation_required": false,
+    "production_mutations": 0,
+    "auth_mutations": 0,
+    "profile_mutations": 0,
+    "auth_ban_attempts": 0
+  },
+  "root_cause": {
+    "summary": "Operation B1 hard-coded profiles.status='quarantined' which is rejected by profiles_status_check allowing only active|suspended|invited; package assumed quarantined was canonical; unit tests mocked writers and never validated the real CHECK.",
+    "first_attempted_write": "UPDATE public.profiles SET status='quarantined'",
+    "rejection_constraint": "profiles_status_check",
+    "engine_order_b1_retired": ["profile_status_quarantine", "auth_ban"],
+    "why_auth_ban_not_attempted": "fail_closed_after_profile_write_rejection"
+  },
+  "selected_canonical_model": {
+    "option": "C2",
+    "name": "dedicated_authority_table",
+    "table": "public.qa_identity_quarantines",
+    "profiles_status_check_change_required": false,
+    "profiles_status_runtime_semantics_preserved": true,
+    "dedicated_qa_quarantine_authority": true,
+    "auth_ban_alone_is_canonical_quarantine": false,
+    "suspended_reuse_forbidden": true
+  },
+  "rejected_models": [
+    {
+      "option": "C1",
+      "name": "dedicated_columns_on_profiles",
+      "reason": "Higher profiles blast radius; weak history; couples ops quarantine to identity SSOT"
+    },
+    {
+      "option": "C3",
+      "name": "existing_metadata_or_jsonb",
+      "reason": "No enforceable committed quarantine authority; privacy_settings unsuitable; meta.qaQuarantined is runtime-only"
+    },
+    {
+      "option": "EXTEND_PROFILES_STATUS_CHECK",
+      "name": "add_quarantined_to_profiles_status_check",
+      "reason": "Medium-high global blast radius; conflates QA ops with account lifecycle"
+    },
+    {
+      "option": "REUSE_SUSPENDED",
+      "name": "profiles_status_suspended_as_quarantine",
+      "reason": "Overloads real-user account suspension semantics"
+    },
+    {
+      "option": "AUTH_BAN_APPLIED_BOOLEAN",
+      "name": "auth_ban_applied_boolean_contract",
+      "reason": "Ambiguous success transition; replaced by auth_ban_state lifecycle"
+    }
+  ],
+  "profiles_status_preservation": {
+    "allowed_values": ["active", "suspended", "invited"],
+    "quarantined_legal": false,
+    "must_remain_unchanged_by_b1b_writers": true
+  },
+  "old_go_retirement": {
+    "owner_go": "APPROVE_OPERATION_B1_EXACT_EIGHT_ONLY",
+    "reusable": false,
+    "OLD_OWNER_GO_REUSABLE": "NO"
+  },
+  "old_batch_retirement": {
+    "batch_id": "b37186cf-e620-4f27-aba3-d7e8750ae7df",
+    "reusable": false,
+    "OLD_BATCH_REUSABLE": "NO",
+    "also_retired": ["9c9d5fc7-648e-44c6-a959-e62157f7c970"]
+  },
+  "auth_ban_state_machine": {
+    "field": "auth_ban_state",
+    "removed_field": "auth_ban_applied",
+    "values": {
+      "pending": "Authority prepared; Auth ban not yet confirmed; not fully activated",
+      "applied": "B1B applied Auth ban; independent readback proved success; activation completed",
+      "not_required_preexisting": "Original snapshot already banned; activation completed without claiming B1B applied the ban",
+      "reverted": "B1B Auth ban was applied then deterministically unbanned during compensation; not active",
+      "failed": "Terminal non-active failure state"
+    },
+    "original_auth_banned": "immutable_original_state_snapshot",
+    "active_success_invariant": {
+      "lifecycle_state": "active",
+      "required_auth_ban_state_any_of": ["applied", "not_required_preexisting"]
+    },
+    "controlled_writers": [
+      "qa_quarantine_prepare",
+      "qa_quarantine_activate_after_auth_ban",
+      "qa_quarantine_activate_preexisting_ban",
+      "qa_quarantine_record_compensated_failure",
+      "qa_quarantine_release"
+    ],
+    "optimistic_concurrency_field": "lifecycle_version",
+    "uncontrolled_direct_dml_allowed": false,
+    "release_unban_rule": {
+      "unban_only_if_auth_ban_state": "applied",
+      "and_original_auth_banned": false,
+      "never_unban_preexisting": true
+    }
+  },
+  "dual_write_sequence": [
+    "A_prepare_pending",
+    "B_auth_ban_if_originally_unbanned",
+    "C_independent_auth_readback",
+    "D_controlled_activation_writer",
+    "E_independent_active_authority_readback"
+  ],
+  "dual_write_boundaries": {
+    "boundary_1_prepare_fails": {
+      "auth_mutation": false,
+      "active_quarantine": false,
+      "disposition": "fail_closed"
+    },
+    "boundary_2_prepare_ok_auth_ban_fails": {
+      "authority_transition": "pending_to_failed",
+      "active_quarantine": false,
+      "unban_required": false,
+      "disposition": "fail_closed"
+    },
+    "boundary_3_auth_ban_ok_activation_fails": {
+      "immediate_unban_if_originally_unbanned": true,
+      "verify_unban": true,
+      "record_state": ["reverted", "failed_compensation_incomplete"],
+      "active_quarantine": false,
+      "critical_if_compensation_unverified": true,
+      "go_and_batch_consumed": true,
+      "retry_requires_new_authority": true
+    },
+    "boundary_4_activation_ok_postcheck_fails": {
+      "controlled_release_or_compensate": true,
+      "unban_only_if_b1b_applied_ban": true,
+      "unresolved_drift": "critical"
+    },
+    "boundary_5_impossible_split": {
+      "classification": "security_or_integrity_incident",
+      "stop_remaining_identities": true,
+      "silent_recreate_forbidden": true,
+      "recovery": "exact_snapshot_plus_separately_governed_handling"
+    }
+  },
+  "planned_schema_objects": {
+    "table": "public.qa_identity_quarantines",
+    "key_columns": [
+      "id",
+      "profile_id",
+      "auth_user_id",
+      "venue_id",
+      "batch_id",
+      "source_operation",
+      "allowlist_sha256",
+      "snapshot_sha256",
+      "lifecycle_state",
+      "auth_ban_state",
+      "reason",
+      "created_at",
+      "created_by",
+      "activated_at",
+      "released_at",
+      "released_by",
+      "release_reason",
+      "failure_classification",
+      "lifecycle_version",
+      "original_profile_status",
+      "original_auth_banned",
+      "expected_email",
+      "allowlist_label",
+      "metadata",
+      "updated_at"
+    ],
+    "lifecycle_states": ["pending", "active", "released", "failed"],
+    "auth_ban_states": ["pending", "applied", "not_required_preexisting", "reverted", "failed"],
+    "removed_columns": ["auth_ban_applied"],
+    "constraints": [
+      "lifecycle_state_check",
+      "auth_ban_state_check",
+      "identity_bind_profile_equals_auth",
+      "reason_nonempty",
+      "original_status_domain",
+      "active_success_invariant",
+      "pending_auth_consistency",
+      "release_consistency"
+    ],
+    "indexes": [
+      "unique_active_per_profile",
+      "unique_active_per_auth_user",
+      "batch_lifecycle_state",
+      "active_profile_id_set_based_read",
+      "lifecycle_created_at"
+    ],
+    "immutability_enforcement": {
+      "mechanism": "before_update_trigger_applies_to_service_role",
+      "hard_delete_normal_ops": false,
+      "rls_alone_sufficient": false
+    },
+    "rpcs": [
+      "qa_quarantine_prepare",
+      "qa_quarantine_activate_after_auth_ban",
+      "qa_quarantine_activate_preexisting_ban",
+      "qa_quarantine_record_compensated_failure",
+      "qa_quarantine_release",
+      "qa_quarantine_list_active_batched"
+    ],
+    "set_based_read_objects": [
+      "qa_identity_quarantine_active_v",
+      "qa_quarantine_list_active_batched"
+    ],
+    "executable_sql_in_this_package": false
+  },
+  "immutable_bind_fields": [
+    "id",
+    "profile_id",
+    "auth_user_id",
+    "venue_id",
+    "batch_id",
+    "source_operation",
+    "original_auth_banned",
+    "original_profile_status",
+    "created_at",
+    "created_by",
+    "reason",
+    "allowlist_sha256",
+    "snapshot_sha256",
+    "expected_email",
+    "allowlist_label"
+  ],
+  "mutable_lifecycle_fields": [
+    "lifecycle_state",
+    "auth_ban_state",
+    "activated_at",
+    "released_at",
+    "released_by",
+    "release_reason",
+    "failure_classification",
+    "lifecycle_version",
+    "updated_at"
+  ],
+  "retention_policy": {
+    "policy": "INDEFINITE_APPEND_ONLY_AUDIT",
+    "automatic_purge_in_operation_b1b": false,
+    "hard_delete_normal_ops": false,
+    "released_failed_reverted_retained": true,
+    "archival_requires_separate_governance_workstream": true,
+    "personal_data_minimization": true,
+    "no_unnecessary_pii_duplication_in_metadata": true
+  },
+  "authority_model": {
+    "self_write": false,
+    "tenant_owner_write": false,
+    "normal_user_read": false,
+    "super_admin_rpc": true,
+    "service_role_runner": true,
+    "direct_authenticated_dml": false,
+    "direct_service_role_dml_forbidden_except_break_glass": true,
+    "database_level_immutability_enforcement": true,
+    "profiles_status_mutation_for_quarantine": false,
+    "auth_ban_complementary": true,
+    "tenant_isolation": true,
+    "audit_logging_required": true,
+    "break_glass_requires_owner_go": true
+  },
+  "runtime_migration": {
+    "legacy_status_quarantined_read": "temporary_dual_read_then_deprecate",
+    "legacy_meta_qaQuarantined": "temporary_compatibility_projector",
+    "canonical_read": "lifecycle_state_active_and_auth_ban_state_applied_or_not_required_preexisting",
+    "directory_filter": "excludeQaTestIdentities_updated",
+    "real_user_no_impact_proof_required": true,
+    "anti_n_plus_one_required": true,
+    "allowed_set_based_mechanisms": [
+      "canonical_view_or_read_rpc_join",
+      "one_set_based_join_in_profile_query",
+      "bounded_batched_profile_id_lookup_per_page"
+    ],
+    "prohibited_read_patterns": [
+      "one_query_per_profile",
+      "one_rpc_per_list_row",
+      "unbounded_client_sequential_lookups"
+    ],
+    "bounded_query_gate": {
+      "quarantine_authority_queries_per_page": "O(1)",
+      "max_quarantine_authority_queries_per_page": 1,
+      "independent_of_row_count": true,
+      "integration_tests_assert_max_query_count": true
+    }
+  },
+  "runner_remediation": {
+    "no_profiles_status_mutation": true,
+    "first_write": "qa_quarantine_prepare",
+    "auth_ban_after_prepare_when_originally_unbanned": true,
+    "activation_after_auth_readback": true,
+    "compensation_boundary_3": "immediate_unban_then_record_reverted_or_failed",
+    "go_consumption_on_auth_mutation": true,
+    "retry_after_auth_mutation_requires_new_authority": true,
+    "hard_delete": false,
+    "idempotent": true,
+    "fail_closed": true,
+    "require_fresh_batch_and_go": true,
+    "reject_retired_go_and_batch": true
+  },
+  "testing_requirements": {
+    "mocked_only_approval_allowed": false,
+    "real_postgres_constraint_tests_required": true,
+    "rls_tests_required": true,
+    "rpc_tests_required": true,
+    "service_role_immutability_tests_required": true,
+    "anti_n_plus_one_query_count_tests_required": true,
+    "boundary_3_fault_injection_test_required": true,
+    "exact_eight_tests_required": true,
+    "real_user_protection_tests_required": true,
+    "profiles_status_regression_spot_checks_required": true
+  },
+  "staging_gates": {
+    "backup_evidence": true,
+    "forward_apply": true,
+    "rollback": true,
+    "reapply": true,
+    "idempotency": true,
+    "runtime_smoke": true,
+    "auth_ban_rehearsal": true,
+    "auth_ban_rehearsal_mandatory": true,
+    "auth_ban_rehearsal_waiver_allowed": false,
+    "boundary_3_compensation_proof": true,
+    "independent_review": true,
+    "production_go_before_all_gates": false
+  },
+  "fresh_authorization_requirements": [
+    "merged_implementation",
+    "independent_review",
+    "staging_apply",
+    "staging_rollback",
+    "staging_reapply",
+    "staging_runtime_smoke",
+    "staging_exact_scope_rehearsal",
+    "staging_auth_ban_rehearsal_mandatory_non_waivable",
+    "fresh_revalidation_of_eleven_qa_identities",
+    "fresh_exact_eight_allowlist",
+    "fresh_recovery_snapshot",
+    "byte_sha256_verification_both_artifacts",
+    "new_batch_uuid",
+    "new_owner_risk_decision",
+    "new_exact_production_go",
+    "fresh_project_ref_check",
+    "fresh_git_head_check",
+    "one_time_authority_no_reuse"
+  ],
+  "work_packages": [
+    "WP1_schema_and_migration",
+    "WP2_rls_and_writer_authority",
+    "WP3_runtime_and_filter_migration",
+    "WP4_runner_remediation",
+    "WP5_real_db_constraint_and_integration_tests",
+    "WP6_staging_rehearsal",
+    "WP7_fresh_authorization_package",
+    "WP8_production_execution_and_closure"
+  ],
+  "production_mutation_counters": {
+    "PRODUCTION_MUTATIONS": 0,
+    "STAGING_MUTATIONS": 0,
+    "AUTH_MUTATIONS": 0,
+    "PROFILE_MUTATIONS": 0,
+    "SQL_APPLY": 0,
+    "MIGRATION_APPLY": 0,
+    "DEPLOYMENTS": 0
+  },
+  "governance_flags": {
+    "OLD_OWNER_GO_REUSABLE": "NO",
+    "OLD_BATCH_REUSABLE": "NO",
+    "PRODUCTION_GO": "NO",
+    "EXECUTION_AUTHORIZED": "NO",
+    "PUSHED": "NO",
+    "PR_OPENED": "NO"
+  },
+  "source_review_highlights": {
+    "profiles_status_check_canonical_source": "docs/supabase-rbac.sql",
+    "profiles_status_allowed": ["active", "suspended", "invited"],
+    "existing_dedicated_quarantine_table": false,
+    "runtime_qa_filter": "src/features/player/utils/qaTestIdentityFilter.js",
+    "b1_false_assumption_constant": "QUARANTINE_PROFILE_STATUS=quarantined",
+    "exclusion_lookalike_fixture_only": "phase1b-smith@gmail.com",
+    "approx_profiles_status_consumer_note": "approximately_208_repository_consumers_of_profiles.status_semantics_cited_in_incident_audit"
+  },
+  "required_files": [
+    "00_README.md",
+    "01_ROOT_CAUSE_AND_INCIDENT_CLASSIFICATION.md",
+    "02_CANONICAL_QA_QUARANTINE_DATA_MODEL.md",
+    "03_OPTION_C_DECISION_RECORD.md",
+    "04_FORWARD_MIGRATION_PLAN.md",
+    "05_ROLLBACK_AND_RECOVERY_PLAN.md",
+    "06_RLS_WRITER_AND_AUTHORITY_MODEL.md",
+    "07_RUNTIME_AND_FILTER_MIGRATION_MAP.md",
+    "08_RUNNER_REMEDIATION_PLAN.md",
+    "09_TEST_AND_REAL_CONSTRAINT_COVERAGE_PLAN.md",
+    "10_STAGING_REHEARSAL_AND_ACCEPTANCE_GATES.md",
+    "11_FRESH_AUTHORIZATION_AND_EXECUTION_PROTOCOL.md",
+    "12_IMPLEMENTATION_WORK_PACKAGES.md",
+    "OPERATION_B1B_REMEDIATION_PLAN.json"
+  ]
+}
