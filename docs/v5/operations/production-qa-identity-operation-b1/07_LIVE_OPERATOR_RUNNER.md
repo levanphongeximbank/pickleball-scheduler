@@ -140,7 +140,14 @@ Stop immediately and do not retry if:
 
 ## Adapter surface (narrow)
 
-Allowed: Auth get/ban/unban; profiles conditional status update + verify.
+Allowed (frozen object only):
+`fetchAuthUser`, `fetchProfile`, `fetchAuthBanState`, `fetchReferenceCounts`,
+`updateProfileStatus`, `banAuthUser`, `unbanAuthUser`.
 
-Forbidden: `deleteUser`, account recreate, arbitrary SQL, membership/athlete/
-tenant_staff/tournament/rating/finance writers, schema/migrations.
+Forbidden on returned adapters: raw `admin` / `client` / `supabase`, `from`,
+`rpc`, `deleteUser`, `createUser`, arbitrary `updateUserById`, account recreate,
+membership/athlete/tenant_staff/tournament/rating/finance writers, schema/migrations.
+
+Forward execute verifies recovery snapshot **byte** SHA-256 (`SNAPSHOT_SHA256`)
+before credentials, client construction, or adapters. Mismatch fails closed with
+`recovery_snapshot_sha256_mismatch`.

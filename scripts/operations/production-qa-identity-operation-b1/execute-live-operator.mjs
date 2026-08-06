@@ -13,6 +13,7 @@ import {
   evaluateAuthorization,
   mutationAllowed,
   loadAndValidateAllowlistFile,
+  sha256Hex,
   EXPECTED_PRODUCTION_PROJECT_REF,
 } from "./lib/index.js";
 import { runExecute } from "./execute-reversible-quarantine.mjs";
@@ -43,6 +44,10 @@ function envInput() {
   };
 }
 
+/**
+ * Byte-hash recovery snapshot before credentials / client / adapters / network.
+ * Fail closed on mismatch. Never echo snapshot contents into reasons/errors.
+ */
 function requireRecoverySnapshot(input) {
   const snapPath = String(input.SNAPSHOT_PATH || "").trim();
   const snapSha = String(input.SNAPSHOT_SHA256 || "")
@@ -53,6 +58,15 @@ function requireRecoverySnapshot(input) {
   }
   if (!fs.existsSync(snapPath)) {
     return { ok: false, reasons: ["recovery_snapshot_missing"] };
+  }
+  try {
+    const bytes = fs.readFileSync(snapPath);
+    const actualSha = sha256Hex(bytes);
+    if (actualSha !== snapSha) {
+      return { ok: false, reasons: ["recovery_snapshot_sha256_mismatch"] };
+    }
+  } catch {
+    return { ok: false, reasons: ["recovery_snapshot_read_error"] };
   }
   return { ok: true, snapPath, snapSha };
 }
@@ -121,10 +135,15 @@ export async function runLiveOperatorExecute(input = envInput(), deps = {}) {
       return report;
     }
 
+    // Byte SHA-256 before credentials, client construction, adapters, or network.
     const snap = requireRecoverySnapshot(input);
     if (!snap.ok) {
       report.reasons.push(...snap.reasons);
-      report.failReason = "recovery_snapshot_required";
+      report.failReason = snap.reasons.includes(
+        "recovery_snapshot_sha256_mismatch"
+      )
+        ? "recovery_snapshot_sha256_mismatch"
+        : "recovery_snapshot_required";
       return report;
     }
 

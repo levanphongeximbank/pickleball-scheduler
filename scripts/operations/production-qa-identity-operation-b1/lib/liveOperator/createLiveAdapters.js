@@ -1,6 +1,7 @@
 /**
  * Narrow Operation B1 live adapters — Auth Admin ban/unban + conditional profile status only.
- * No deleteUser, no unrelated table writers, no arbitrary SQL.
+ * Supabase / Auth Admin client stays closure-private. No raw admin/client/from/rpc exposure.
+ * No deleteUser / createUser / arbitrary updateUserById surface.
  */
 
 import {
@@ -9,6 +10,17 @@ import {
   QUARANTINE_PROFILE_STATUS,
 } from "./constants.js";
 import { sanitizeError } from "./sanitize.js";
+
+/** Approved public capability names only — frozen adapter surface. */
+export const OPERATION_B1_LIVE_ADAPTER_CAPABILITIES = Object.freeze([
+  "fetchAuthUser",
+  "fetchProfile",
+  "fetchAuthBanState",
+  "fetchReferenceCounts",
+  "updateProfileStatus",
+  "banAuthUser",
+  "unbanAuthUser",
+]);
 
 async function countExact(client, table, filters = []) {
   let q = client.from(table).select("*", { count: "exact", head: true });
@@ -31,6 +43,8 @@ export async function resolveSupabaseCreateClient(createClientImpl) {
 }
 
 /**
+ * Internal-only admin client constructor. Returned client must never be placed on
+ * the public live-adapter surface.
  * @param {{ url: string, secretKey: string, createClientImpl?: Function }} opts
  */
 export async function createOperationB1AdminClient(opts) {
@@ -45,12 +59,28 @@ export async function createOperationB1AdminClient(opts) {
 }
 
 /**
- * Build package-compatible adapters. Mutation writers require a real admin client.
+ * Build package-compatible adapters. Mutation writers require a real admin client
+ * held in closure only — never returned as `admin` / `client` / `supabase`.
  * @param {{ admin: any }} input
  */
 export function createOperationB1LiveAdapters({ admin }) {
   if (!admin) {
     throw new Error("admin_client_required");
+  }
+
+  async function fetchAuthUser(userId) {
+    try {
+      const { data, error } = await admin.auth.admin.getUserById(userId);
+      if (error || !data?.user) return null;
+      const user = data.user;
+      return {
+        id: user.id,
+        email: user.email || null,
+        banned_until: user.banned_until || null,
+      };
+    } catch {
+      return null;
+    }
   }
 
   async function fetchProfile(profileId) {
@@ -64,9 +94,9 @@ export function createOperationB1LiveAdapters({ admin }) {
   }
 
   async function fetchAuthBanState(userId) {
-    const { data, error } = await admin.auth.admin.getUserById(userId);
-    if (error || !data?.user) return null;
-    const bannedUntil = data.user.banned_until;
+    const user = await fetchAuthUser(userId);
+    if (!user) return null;
+    const bannedUntil = user.banned_until;
     if (!bannedUntil) return false;
     return new Date(bannedUntil).getTime() > Date.now();
   }
@@ -113,6 +143,7 @@ export function createOperationB1LiveAdapters({ admin }) {
 
   /**
    * Conditional profile status update with exact-one-row assertion.
+   * Used for quarantine and restore of exact original profile state.
    */
   async function updateProfileStatus({
     profileId,
@@ -194,7 +225,7 @@ export function createOperationB1LiveAdapters({ admin }) {
   }
 
   const adapters = {
-    admin,
+    fetchAuthUser,
     fetchProfile,
     fetchAuthBanState,
     fetchReferenceCounts,
@@ -202,15 +233,6 @@ export function createOperationB1LiveAdapters({ admin }) {
     banAuthUser,
     unbanAuthUser,
   };
-
-  // Structural impossibility: no deleteUser / recreate surface.
-  Object.defineProperty(adapters, "deleteUser", {
-    enumerable: false,
-    configurable: false,
-    get() {
-      throw new Error("hard_delete_not_permitted_for_operation_b1");
-    },
-  });
 
   return Object.freeze(adapters);
 }

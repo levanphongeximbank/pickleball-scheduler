@@ -27,6 +27,7 @@ import {
   assertSupabaseUrlMatchesProject,
   loadOperatorCredentials,
   createOperationB1LiveAdapters,
+  OPERATION_B1_LIVE_ADAPTER_CAPABILITIES,
   AUTH_UNBAN_DURATION,
   redactSecrets,
 } from "../scripts/operations/production-qa-identity-operation-b1/lib/liveOperator/index.js";
@@ -344,12 +345,37 @@ test("11) Auth email mismatch gives zero mutation calls", async () => {
   assert.equal(profileWrites, 0);
 });
 
-test("12) adapter cannot expose deleteUser", () => {
+test("12) adapter surface is narrow, frozen, and omits raw admin/client", () => {
   assert.equal(hardDeleteUnavailable().available, false);
   const adapters = createOperationB1LiveAdapters({
-    admin: { from() {}, auth: { admin: {} } },
+    admin: {
+      from() {},
+      auth: { admin: { getUserById: async () => ({ data: null, error: null }) } },
+    },
   });
-  assert.throws(() => adapters.deleteUser, /hard_delete_not_permitted/);
+  assert.equal(Object.isFrozen(adapters), true);
+  assert.deepEqual(Object.keys(adapters).sort(), [
+    ...OPERATION_B1_LIVE_ADAPTER_CAPABILITIES,
+  ].sort());
+  assert.equal("admin" in adapters, false);
+  assert.equal("client" in adapters, false);
+  assert.equal("supabase" in adapters, false);
+  assert.equal("deleteUser" in adapters, false);
+  assert.equal("createUser" in adapters, false);
+  assert.equal("from" in adapters, false);
+  assert.equal("rpc" in adapters, false);
+  assert.equal(typeof adapters.deleteUser, "undefined");
+  assert.equal(typeof adapters.createUser, "undefined");
+  assert.equal(typeof adapters.admin, "undefined");
+  assert.equal(typeof adapters.from, "undefined");
+  assert.equal(typeof adapters.rpc, "undefined");
+  assert.equal(typeof adapters.fetchAuthUser, "function");
+  assert.equal(typeof adapters.fetchProfile, "function");
+  assert.equal(typeof adapters.fetchAuthBanState, "function");
+  assert.equal(typeof adapters.fetchReferenceCounts, "function");
+  assert.equal(typeof adapters.updateProfileStatus, "function");
+  assert.equal(typeof adapters.banAuthUser, "function");
+  assert.equal(typeof adapters.unbanAuthUser, "function");
 });
 
 test("13) adapter cannot access unrelated tables via public surface", () => {
@@ -363,6 +389,9 @@ test("13) adapter cannot access unrelated tables via public surface", () => {
   assert.equal(typeof adapters.rpc, "undefined");
   assert.equal(typeof adapters.insert, "undefined");
   assert.equal(typeof adapters.delete, "undefined");
+  assert.equal(typeof adapters.admin, "undefined");
+  assert.equal(typeof adapters.client, "undefined");
+  assert.equal(typeof adapters.supabase, "undefined");
 });
 
 test("14) Auth ban uses the exact approved duration", async () => {
@@ -799,4 +828,192 @@ test("loadOperatorCredentials supports secret key + service-role fallback", () =
   });
   assert.equal(fallback.ok, true);
   assert.equal(fallback.usedServiceRoleFallback, true);
+});
+
+test("recovery snapshot: correct byte SHA-256 passes (dry-run + live gate)", async () => {
+  const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
+  const dry = await runLiveOperatorExecute(baseInput(files), {
+    repoRoots: [root],
+  });
+  assert.equal(dry.ok, true);
+  assert.equal(dry.mutationClientConstructed, false);
+
+  let credsCalls = 0;
+  let adminCalls = 0;
+  const live = await runLiveOperatorExecute(liveAuthInput(files), {
+    repoRoots: [root],
+    loadOperatorCredentials: () => {
+      credsCalls += 1;
+      return {
+        ok: true,
+        url: `https://${EXPECTED_PRODUCTION_PROJECT_REF}.supabase.co`,
+        secretKey: "test-secret-not-logged",
+        projectRef: EXPECTED_PRODUCTION_PROJECT_REF,
+      };
+    },
+    createOperationB1AdminClient: () => {
+      adminCalls += 1;
+      return {
+        from() {
+          throw new Error("network_forbidden_in_tests");
+        },
+        auth: {
+          admin: {
+            getUserById: async () => {
+              throw new Error("network_forbidden_in_tests");
+            },
+            updateUserById: async () => {
+              throw new Error("network_forbidden_in_tests");
+            },
+          },
+        },
+      };
+    },
+  });
+  // Correct hash must pass the snapshot gate and reach credential/client construction.
+  assert.equal(credsCalls >= 1, true);
+  assert.equal(adminCalls >= 1, true);
+  assert.equal(live.mutationClientConstructed, true);
+  assert.equal(
+    live.failReason === "recovery_snapshot_sha256_mismatch",
+    false
+  );
+});
+
+test("recovery snapshot: wrong hash blocks before credentials/client/network", async () => {
+  const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
+  let credsCalls = 0;
+  let adminCalls = 0;
+  let adapterCalls = 0;
+  let networkCalls = 0;
+  let authCalls = 0;
+  let profileCalls = 0;
+
+  const report = await runLiveOperatorExecute(
+    liveAuthInput(files, { SNAPSHOT_SHA256: "a".repeat(64) }),
+    {
+      repoRoots: [root],
+      loadOperatorCredentials: () => {
+        credsCalls += 1;
+        return {
+          ok: true,
+          url: `https://${EXPECTED_PRODUCTION_PROJECT_REF}.supabase.co`,
+          secretKey: "test-secret-not-logged",
+          projectRef: EXPECTED_PRODUCTION_PROJECT_REF,
+        };
+      },
+      createOperationB1AdminClient: () => {
+        adminCalls += 1;
+        networkCalls += 1;
+        return {};
+      },
+      createOperationB1LiveAdapters: () => {
+        adapterCalls += 1;
+        return {
+          fetchAuthUser: async () => {
+            authCalls += 1;
+            networkCalls += 1;
+            return null;
+          },
+          fetchProfile: async () => {
+            profileCalls += 1;
+            networkCalls += 1;
+            return null;
+          },
+          updateProfileStatus: async () => {
+            profileCalls += 1;
+            networkCalls += 1;
+            return { ok: true };
+          },
+          banAuthUser: async () => {
+            authCalls += 1;
+            networkCalls += 1;
+            return { ok: true };
+          },
+        };
+      },
+    }
+  );
+
+  assert.equal(report.ok, false);
+  assert.equal(report.failReason, "recovery_snapshot_sha256_mismatch");
+  assert.ok(report.reasons.includes("recovery_snapshot_sha256_mismatch"));
+  assert.equal(report.mutationClientConstructed, false);
+  assert.equal(report.mutationCalls, 0);
+  assert.equal(credsCalls, 0);
+  assert.equal(adminCalls, 0);
+  assert.equal(adapterCalls, 0);
+  assert.equal(networkCalls, 0);
+  assert.equal(authCalls, 0);
+  assert.equal(profileCalls, 0);
+});
+
+test("recovery snapshot: modified file after hash calculation blocks", async () => {
+  const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
+  const originalSha = files.snSha;
+  fs.writeFileSync(
+    files.snPath,
+    `${JSON.stringify({ tampered: true, marker: "DO_NOT_LOG_SNAPSHOT_BODY" }, null, 2)}\n`,
+    "utf8"
+  );
+  let credsCalls = 0;
+  const report = await runLiveOperatorExecute(
+    liveAuthInput(files, { SNAPSHOT_SHA256: originalSha }),
+    {
+      repoRoots: [root],
+      loadOperatorCredentials: () => {
+        credsCalls += 1;
+        return { ok: true, url: "x", secretKey: "y" };
+      },
+      createOperationB1AdminClient: () => {
+        throw new Error("client_must_not_construct");
+      },
+    }
+  );
+  assert.equal(report.ok, false);
+  assert.equal(report.failReason, "recovery_snapshot_sha256_mismatch");
+  assert.equal(report.mutationClientConstructed, false);
+  assert.equal(credsCalls, 0);
+  const dumped = JSON.stringify(report);
+  assert.equal(dumped.includes("DO_NOT_LOG_SNAPSHOT_BODY"), false);
+  assert.equal(dumped.includes("tampered"), false);
+});
+
+test("recovery snapshot: malformed hash blocks", async () => {
+  const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
+  const report = await runLiveOperatorExecute(
+    baseInput(files, { SNAPSHOT_SHA256: "not-a-sha" }),
+    { repoRoots: [root] }
+  );
+  assert.equal(report.ok, false);
+  assert.ok(report.reasons.includes("missing_or_invalid_recovery_snapshot"));
+  assert.equal(report.mutationClientConstructed, false);
+  assert.equal(report.mutationCalls, 0);
+});
+
+test("recovery snapshot: missing file blocks", async () => {
+  const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
+  const missing = path.join(files.dir, "does-not-exist-snapshot.json");
+  const report = await runLiveOperatorExecute(
+    baseInput(files, { SNAPSHOT_PATH: missing }),
+    { repoRoots: [root] }
+  );
+  assert.equal(report.ok, false);
+  assert.ok(report.reasons.includes("recovery_snapshot_missing"));
+  assert.equal(report.mutationClientConstructed, false);
+  assert.equal(report.mutationCalls, 0);
+});
+
+test("recovery snapshot mismatch: dry-run also fail-closed before adapters", async () => {
+  const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
+  const report = await runLiveOperatorExecute(
+    baseInput(files, { SNAPSHOT_SHA256: "b".repeat(64) }),
+    { repoRoots: [root] }
+  );
+  assert.equal(report.ok, false);
+  assert.equal(report.failReason, "recovery_snapshot_sha256_mismatch");
+  assert.equal(report.dryRun, true);
+  assert.equal(report.mutationClientConstructed, false);
+  assert.equal(report.mutationCalls, 0);
+  assert.equal(report.execute, null);
 });
