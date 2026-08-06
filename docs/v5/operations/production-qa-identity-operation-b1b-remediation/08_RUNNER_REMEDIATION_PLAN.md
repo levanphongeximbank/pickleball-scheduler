@@ -1,162 +1,150 @@
 # 08 — Runner Remediation Plan
 
 **Target:** Future Operation B1B live operator runner (implementation WP4)  
-**This document:** Planning only — do not implement in this task  
-**Retired B1 write target:** `profiles.status = 'quarantined'`
+**Planning only** — do not implement in this corrective docs commit  
+**Retired B1 write target:** `profiles.status = 'quarantined'`  
+**Boolean `auth_ban_applied`:** REMOVED — use `auth_ban_state`
 
 ## Design principles
 
-1. No `profiles.status` mutation for quarantine or unquarantine
-2. Dedicated authority writer is the first durable mutation
-3. Auth ban follows successful authority write
-4. Fail closed; stop on first unresolved live failure
-5. Hard delete unavailable
-6. Fresh GO / batch / hashes only — never reuse retired B1 artifacts
+1. No `profiles.status` mutation
+2. First durable write = `qa_quarantine_prepare` (`pending`/`pending`)
+3. Auth ban only when originally unbanned; always independent readback
+4. Full activation only via controlled activation writers
+5. Auth ban alone is not quarantine
+6. Fail closed; stop on first unresolved live failure
+7. Hard delete unavailable
+8. Fresh GO / batch / hashes only — never reuse retired B1 artifacts
+9. GO/batch consumed once Auth ban mutation occurs
 
 ## No `profiles.status` mutation
 
-Forbidden adapter methods for B1B quarantine path:
+Forbidden: any quarantine path writing `quarantined` or using `suspended` as substitute.  
+Allowed: read `profiles.status` for immutable snapshot / drift only.
 
-- `updateProfileStatus(..., status: 'quarantined')`
-- Any compensation that writes status to/from `quarantined`
-- Using `suspended` as quarantine substitute
+## Controlled authority writers (runner adapters)
 
-Allowed: **read** `profiles.status` for snapshot and drift checks only.
+| Adapter / RPC | Purpose |
+|---------------|---------|
+| `qa_quarantine_prepare` | Create pending authority after gates |
+| `qa_quarantine_activate_after_auth_ban` | pending→active, auth_ban_state→applied |
+| `qa_quarantine_activate_preexisting_ban` | pending→active, auth_ban_state→not_required_preexisting |
+| `qa_quarantine_record_compensated_failure` | Record failed/reverted; no active left |
+| `qa_quarantine_release` | active→released |
 
-## Exact dedicated authority writer
+All transitions carry expected-state + `lifecycle_version` guards. No direct table DML.
 
-Replace profile status writes with:
+## Mandatory dual-write sequence (A–E)
 
-- `applyQaQuarantine({ profileId, authUserId, batchId, reason, expectedEmail, label, originalProfileStatus, originalAuthBanned })`
-- Backed by `qa_quarantine_apply` RPC or equivalent service-role insert preserving invariants
+```text
+A. qa_quarantine_prepare → lifecycle_state=pending, auth_ban_state=pending
+B. Apply Auth ban IFF original_auth_banned=false
+C. Independently read back Auth state
+D. Activation writer (after_auth_ban OR preexisting)
+E. Independently read back active authority
+   (lifecycle_state=active AND auth_ban_state IN (applied, not_required_preexisting))
+```
 
-Idempotency: active row same identity+batch → success no-op.
+## Failure boundaries and compensation
 
-## Auth ban ordering
+### Boundary 1 — Prepare fails before Auth ban
 
-**Execute order (live):**
+- No Auth mutation
+- Zero active quarantine
+- Fail closed
 
-1. Capture / confirm original state (profile status, auth ban, email)
-2. Re-verify eligibility + allowlist bind
-3. **Apply quarantine authority row** (`state=active`)
-4. Verify authority row
-5. Apply Auth ban if not already banned
-6. If Auth ban fails → **compensate by releasing** authority row (not by status rewrite)
-7. Stop on first unresolved failure
+### Boundary 2 — Prepare succeeds; Auth ban fails
 
-**Rollback order:**
+- Controlled transition to `failed`
+- No active quarantine
+- No unban required
+- Fail closed
 
-1. Drift checks
-2. Release authority row
-3. Unban if this operation applied ban and original was unbanned
+### Boundary 3 — Auth ban succeeds; activation fails (**explicit critical split**)
+
+1. Immediate deterministic unban if `original_auth_banned=false`
+2. Verify unban via independent Auth readback
+3. `qa_quarantine_record_compensated_failure` → `reverted` (or `failed` + `compensation_incomplete`)
+4. Assert no active quarantine
+5. If unban or failure recording unverifiable → **critical compensation incomplete**; stop batch
+6. **Owner GO and batch are consumed** because Auth mutation occurred
+7. Retry requires **new** authority (new GO/batch/artifacts); do not reuse the same pending row as an unauthorized silent retry
+
+### Boundary 4 — Activation succeeds; post-activation verification fails
+
+- Controlled release/compensate
+- Unban only if `auth_ban_state='applied'` AND `original_auth_banned=false`
+- Verify authority + Auth; unresolved drift = critical
+
+### Boundary 5 — Impossible split (Auth banned without expected authority)
+
+- Security/integrity incident
+- Stop all remaining identities
+- Do not silently recreate/infer state
+- Exact recovery snapshot + separately governed recovery
+
+## Rollback order
+
+1. Drift / version checks
+2. `qa_quarantine_release` for actives
+3. Unban only when `auth_ban_state='applied'` AND `original_auth_banned=false`
+4. Never unban preexisting bans
 
 ## Idempotency
 
 | State | Forward result |
 |-------|----------------|
-| Already active quarantine + banned as required | `ok`, zero or minimal mutations |
-| Active quarantine, ban missing | Apply ban only |
-| No quarantine, not banned | Authority then ban |
-| Released historically | New active row allowed under new authorization |
+| Already fully activated for same bind+batch | No-op success |
+| Pending awaiting activation | Continue from Auth readback/activation only under gates |
+| No row | Prepare → ban path → activate |
+| Failed/reverted/released history | New prepare under new authorization as required |
 
-## Exact allowlist binding
+## Exact allowlist / artifact / batch binding
 
-Each mutation requires:
-
-- `auth_user_id`, `profile_id`, `expected_email` match live rows
-- `profile_id = auth_user_id`
-- Certified QA email predicate true
-- Label in exact-eight set for the batch
-- Zero forbidden business refs per eligibility policy
-- Not in B2 exclusion labels (QA-01…QA-03) unless a future separate operation says otherwise
-
-## Exact artifact hash binding
-
-Runner must require:
-
-- `ALLOWLIST_PATH` + `ALLOWLIST_SHA256` byte match
-- `RECOVERY_SNAPSHOT_PATH` + `SNAPSHOT_SHA256` byte match
-- Mismatch → zero mutations
-
-## Exact batch binding
-
-- `OPERATION_B1B_BATCH_ID` (name TBD) must be a **new** UUID
-- Reject retired ids including:
+- Live bind: profile_id, auth_user_id, expected_email; `profile_id = auth_user_id`
+- Certified QA email; exact-eight labels; zero forbidden refs; B2 exclusions honored
+- Byte SHA-256 match for allowlist + snapshot
+- New batch UUID; reject retired:
   - `b37186cf-e620-4f27-aba3-d7e8750ae7df`
   - `9c9d5fc7-648e-44c6-a959-e62157f7c970`
-- Every authority row stores this batch_id
+- Store `batch_id` + artifact hashes immutably on prepare
 
-## Project-ref guard
+## Project-ref and fail-closed gates
 
-- `PRODUCTION_PROJECT_REF` must equal expected Production ref when mutating Production
-- Staging rehearsals must use Staging project ref and refuse Production credentials
-- Wrong ref → zero mutations
-
-## Fail-closed gates
-
-All required:
-
-- Fresh Owner GO (new string; not retired B1 GO)
-- Explicit execute confirmation string
-- `DRY_RUN=false` only when authorized
-- Valid batch UUID (non-retired)
-- Hash-verified artifacts
-- Git head / implementation merge checks per protocol doc
-- Adapter surface allowlist (narrow)
-
-Missing any gate ⇒ dry-run or abort with **zero** mutation calls.
-
-## First-write semantics
-
-First durable write = insert/upsert active quarantine authority row.  
-If that fails, Auth ban must not run.
-
-## Partial-failure compensation
-
-| Failure | Compensation |
-|---------|--------------|
-| Authority insert fails | Stop; no Auth ban |
-| Authority ok, Auth ban fails | Release authority row; mark compensated |
-| Release compensation fails | Abort; escalate; do not touch `profiles.status` |
-
-## Rollback
-
-Separate rollback entrypoint + **separate** rollback Owner GO (never forward GO).  
-Batch-scoped release + Auth restore per `05_ROLLBACK_AND_RECOVERY_PLAN.md`.
-
-## Post-execution verification
-
-For each of exact eight:
-
-- Active quarantine row exists (forward) or released (rollback)
-- `profiles.status` equals original snapshot
-- Auth ban matches intended end state
-- No non-target mutations
-- Evidence sanitized (masked ids/emails)
+Wrong project ref / missing fresh GO / bad hashes / dry-run default → zero mutations.
 
 ## GO consumption and batch retirement
 
-- Successful or attempted live authorization consumes the GO (one-time)
-- Batch UUID retired after use (success, partial, or failed live attempt with GO presented)
-- Consumed GO/batch recorded in evidence; never reused
+| Event | GO/batch |
+|-------|----------|
+| Dry-run only | Not consumed |
+| Live execute presented but zero Auth mutations and prepare never durable | Per runner evidence policy; prefer retire batch on live attempt |
+| **Any Auth ban mutation occurred** | **GO and batch consumed** (even if activation fails / compensated) |
+| Successful full activation batch | Consumed |
+| Retry after Auth mutation | **New** GO + batch + artifacts required |
 
-## No hard delete
+## Post-execution verification
 
-`hardDelete.available = false` remains invariant. Any path exposing delete Auth/profile for this operation is a blocker.
+For each target:
 
-## Mapping from B1A surfaces to B1B
+- Fully activated authority (`active` + successful auth_ban_state) or documented terminal failed/reverted
+- `profiles.status` equals original
+- Auth matches intended end state
+- No non-target mutations
+- Sanitized evidence
 
-| B1A surface | B1B fate |
-|-------------|----------|
-| `updateProfileStatus` | Remove from quarantine adapters |
-| `banAuthUser` / `unbanAuthUser` | Keep |
-| `fetchProfile` / `fetchAuthUser` | Keep |
-| `quarantineEngine` status writes | Rewrite to authority writes |
-| `REQUIRED_OWNER_PRODUCTION_GO` B1 string | Retired; new B1B GO required |
-| Retired batch list | Extend with B1 failed batch id |
+## Mapping from B1A surfaces
 
-## Explicit non-goals for runner remediation
+| B1A | B1B |
+|-----|-----|
+| `updateProfileStatus` | Remove |
+| `banAuthUser` / `unbanAuthUser` | Keep (between prepare and activate / on release) |
+| Single apply writer | Split prepare / activate / compensated_failure / release |
+| Status=`quarantined` constant | Deleted from write path |
+| Retired GO/batch lists | Include B1 failed batch; never authorize |
 
-- Retrying Operation B1 as-is
-- Extending CHECK to make B1 status writes succeed
-- Implementing runner in this planning commit
+## Explicit non-goals
+
+- Retry Operation B1 as-is
+- Extend CHECK to allow `quarantined`
+- Implement runner in this docs commit

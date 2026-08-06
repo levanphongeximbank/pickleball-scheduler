@@ -2,131 +2,132 @@
 
 ## Authority summary
 
-| Action | `anon` | Normal authenticated user | Tenant owner / `user.manage` | SUPER_ADMIN (authenticated RPC) | Service-role operator |
-|--------|--------|---------------------------|------------------------------|----------------------------------|------------------------|
-| Read active quarantine (self) | NO | NO | NO (default) | YES (ops) | YES |
-| Read audit inventory | NO | NO | Limited future (same venue audit) optional | YES | YES |
-| Apply quarantine | NO | NO | NO | YES via RPC only | YES via runner/RPC |
-| Release quarantine | NO | NO | NO | YES via RPC only | YES via runner/RPC |
-| Direct table INSERT/UPDATE/DELETE | NO | NO | NO | NO | Prefer RPC; direct DML discouraged except break-glass |
-| Mutate `profiles.status` for QA quarantine | NO | NO | NO | NO | **NO** (forbidden path) |
-| Auth ban/unban | NO | NO | NO | Via Admin API patterns only | YES (runner) |
+| Action | `anon` | Normal user | Tenant owner / `user.manage` | SUPER_ADMIN RPC | Service-role operator |
+|--------|--------|-------------|------------------------------|-----------------|------------------------|
+| Set-based read of active quarantine | NO (default) | Via productized view/RPC only if granted | Venue-scoped optional later | YES | YES |
+| `qa_quarantine_prepare` | NO | NO | NO | YES | YES via runner/RPC |
+| Activate after Auth ban / preexisting | NO | NO | NO | YES | YES |
+| Record compensated failure | NO | NO | NO | YES | YES |
+| Release | NO | NO | NO | YES | YES |
+| Direct table INSERT/UPDATE/DELETE | NO | NO | NO | NO | **Forbidden** except break-glass |
+| Mutate immutable bind fields | NO | NO | NO | NO | **NO** (trigger deny) |
+| Mutate `profiles.status` for QA | NO | NO | NO | NO | **NO** |
+| Auth ban/unban | NO | NO | NO | Admin API patterns | YES (runner) |
 
-## Read authority
+## Controlled writers only
 
-- Default: no client read of quarantine table
-- SUPER_ADMIN may read via SECURITY DEFINER read RPC for ops tooling
-- Optional later: venue-scoped audit read for `user.manage` — **must not** expose other tenants’ quarantine rows
-- Directory/runtime should use boolean projector/`qa_quarantine_is_active` rather than broad SELECT grants
+Canonical lifecycle changes occur **only** through:
 
-## Write authority
+1. `qa_quarantine_prepare`
+2. `qa_quarantine_activate_after_auth_ban`
+3. `qa_quarantine_activate_preexisting_ban`
+4. `qa_quarantine_record_compensated_failure`
+5. `qa_quarantine_release`
 
-- Apply and release only through controlled interfaces
-- Must validate exact profile/auth/email bind
-- Must require non-empty reason and batch_id
-- Must refuse non-allowlisted / non-certified identities at the **runner** layer (DB may additionally constrain original_status domain only)
+Each transition requires expected-state + `lifecycle_version` optimistic concurrency. Mismatch → fail closed. No uncontrolled direct DML.
 
-## Release authority
+## Immutable bind / audit fields
 
-Same as write authority. Release must:
+Database-level BEFORE UPDATE trigger (and DELETE deny for normal ops) must reject changes to:
 
-- Target active row
-- Enforce batch binding when batch-scoped
-- Record `released_by`, `released_at`, `release_reason`
+- `profile_id`, `auth_user_id`, `venue_id`
+- `batch_id`, `source_operation`
+- `original_auth_banned`, `original_profile_status`
+- `created_at`, `created_by`, `reason`
+- artifact correlation (`allowlist_sha256`, `snapshot_sha256`)
+- `expected_email`, `allowlist_label`, `id`
+
+This enforcement **applies when service_role performs UPDATE**. RLS is not sufficient.
+
+## Service-role behavior (Observation 3)
+
+`service_role` bypasses RLS. Mitigations (all mandatory):
+
+1. Database immutability trigger
+2. Narrow controlled writer RPCs (preferred path even for service_role)
+3. Runner authorization gates (project-ref, GO, batch, hashes, dry-run)
+4. Audit events on every lifecycle transition
+5. Prohibition of uncontrolled direct DML in ops policy
+6. Explicit break-glass governance (Owner GO + evidence) for SQL editor emergencies
+7. Tests proving service_role cannot rebind `profile_id`/`auth_user_id`/`batch_id` or overwrite snapshots through normal UPDATE paths
+
+Forbidden: ad-hoc SQL setting `profiles.status` to `quarantined` or `suspended` for QA hygiene.
+
+## Read authority / anti-N+1
+
+Directory, roster, admin list, and bulk profile consumers must use set-based mechanisms (view join, query join, or batched profile-id lookup). Per-row quarantine queries/RPCs are prohibited for list surfaces (see doc 07).
+
+## Write / release authority
+
+- Validate exact profile/auth/email bind at runner layer before prepare
+- Non-empty reason + batch_id required
+- Release unban decision uses `auth_ban_state='applied' AND original_auth_banned=false` only
 
 ## Audit-read authority
 
 - SUPER_ADMIN: full
-- `user.manage`: only if productized and venue-scoped; otherwise deny
-- Emit quarantine apply/release into `public.audit_logs` (or dedicated ops audit) with masked metadata in client-visible channels
+- `user.manage`: only if productized and venue-scoped
+- Emit prepare/activate/fail/release actions to `audit_logs` (masked client-visible metadata)
 
-## Service-role behavior
+## SUPER_ADMIN / tenant / normal user
 
-- Bypasses RLS (Postgres/Supabase default)
-- Therefore **application runner guards are mandatory**: project-ref, GO, batch, allowlist hash, dry-run default
-- Service-role must still call the same semantic writer functions where possible to keep invariants centralized
-- Forbidden: ad-hoc SQL updating `profiles.status` to `quarantined` or `suspended` for QA hygiene
-
-## SUPER_ADMIN behavior
-
-- May call apply/release RPCs when authenticated path is enabled
-- Must not self-quarantine bypass allowlist rules in Production runner
-- Cannot use SUPER_ADMIN UI alone as substitute for Production Owner GO on bulk B1B execution
-
-## Tenant owner behavior
-
-- **Cannot** apply or release QA quarantine
-- Tenant suspension of members remains `profiles.status='suspended'` via existing identity admin flows — distinct semantic
-
-## Normal user behavior
-
-- No read/write
-- Self-service profile updates remain blocked from privileged fields by existing `profiles_guard_privileged_update` (status/role/venue/club)
+- SUPER_ADMIN may call RPCs when enabled; cannot substitute for Production Owner GO on bulk execute
+- Tenant owners cannot apply/release QA quarantine; real suspension remains `profiles.status='suspended'`
+- Normal users: no read/write; self-status changes still blocked by existing profile guards
 
 ## Self-write prohibition
 
-- Users cannot insert their own quarantine row
-- Users cannot set `privacy_settings` keys to fake quarantine authority
-- Users cannot set `profiles.status` to `quarantined` (CHECK + guards)
+Users cannot insert quarantine rows, fake quarantine via `privacy_settings`, or set illegal `profiles.status`.
 
 ## Tenant isolation
 
-- Quarantine rows store `venue_id` snapshot
-- Any authenticated read path must filter by venue unless SUPER_ADMIN
-- Cross-tenant quarantine apply is platform ops only (service-role / SUPER_ADMIN), never tenant lateral movement
+Immutable `venue_id` snapshot; authenticated reads must not cross tenants unless SUPER_ADMIN.
 
-## SECURITY DEFINER RPC expectations
+## SECURITY DEFINER expectations
 
-- `search_path = public` fixed
-- Explicit AuthZ checks inside function body
-- No reliance on caller grants for table DML
-- Validate UUID formats and state transitions
-- Return structured `{ ok, code, ... }` errors
+- Fixed `search_path=public`
+- Explicit AuthZ in body
+- Expected-state / version guards
+- Structured `{ ok, code }` errors
 - Never UPDATE `public.profiles.status`
+- Never mutate immutable columns
 
 ## Direct table write policy
 
 | Role | Policy |
 |------|--------|
 | `anon` / `authenticated` | No direct DML |
-| `service_role` | Technically possible; **policy: use RPC/runner only** |
-| SQL editor break-glass | Incident-only with Owner GO + evidence |
+| `service_role` | RPC-only for lifecycle; trigger blocks immutable tampering |
+| SQL editor break-glass | Incident-only Owner GO + evidence |
 
 ## Grant model
 
 1. REVOKE ALL on table from PUBLIC/anon/authenticated
-2. GRANT EXECUTE on RPCs to intended callers only
-3. Do not GRANT UPDATE on `profiles` beyond existing needs for quarantine
+2. GRANT EXECUTE on lifecycle + set-based read RPCs only as intended
+3. No extra `profiles` UPDATE grants for quarantine
 
 ## Audit logging
 
-Each apply/release should record:
-
-- actor
-- action (`qa_quarantine.apply` / `qa_quarantine.release`)
-- resource ids (profile/auth)
-- batch_id
-- reason
-- success/failure code
-
-No raw secrets; mask emails in shareable evidence.
+Record actor, action (`prepare` / `activate_after_auth_ban` / `activate_preexisting_ban` / `compensated_failure` / `release`), resource ids, batch_id, `auth_ban_state`, `lifecycle_version`, success/failure codes. No secrets.
 
 ## Forbidden writer paths
 
-1. `UPDATE profiles SET status = 'quarantined'`
-2. `UPDATE profiles SET status = 'suspended'` **for the purpose of QA quarantine**
-3. Client-side writes to quarantine table
-4. Overloading `privacy_settings` as quarantine SSOT
-5. Auth ban **without** corresponding quarantine authority row (for B1B batch execution)
-6. Quarantine authority row **without** allowlist bind in Production runner
-7. Reuse of retired GO/batch as AuthZ
+1. `UPDATE profiles SET status='quarantined'`
+2. Using `suspended` for QA quarantine
+3. Client direct table writes
+4. Privacy JSON as quarantine SSOT
+5. Treating Auth ban alone as quarantine activation
+6. Activating without Auth readback when originally unbanned
+7. Uncontrolled UPDATE of bind/snapshot fields (including via service_role)
+8. Reuse of retired GO/batch
+9. Hard delete of authority rows in normal ops
 
 ## Relationship to existing identity writers
 
 | Existing writer | Quarantine interaction |
 |-----------------|------------------------|
-| `identity_admin_update_user` | May still set `active/suspended/invited` for real lifecycle — **not** QA quarantine |
-| `updateProfileRowById` / player write repo | Must not gain quarantine columns-as-SSOT (C1 rejected) |
-| `profiles_guard_privileged_update` | Remains; unchanged purpose |
-| B1A `updateProfileStatus` | **Retired for quarantine purpose**; replace with quarantine authority writer in B1B runner |
-| Auth Admin `updateUserById(ban_duration)` | Retained as complementary control after authority write |
+| `identity_admin_update_user` | Real lifecycle statuses only — not QA quarantine |
+| Player write repos | No quarantine SSOT |
+| `profiles_guard_privileged_update` | Remains |
+| B1A `updateProfileStatus` | Retired for quarantine |
+| Auth Admin ban/unban | Complementary after prepare; activation records success |

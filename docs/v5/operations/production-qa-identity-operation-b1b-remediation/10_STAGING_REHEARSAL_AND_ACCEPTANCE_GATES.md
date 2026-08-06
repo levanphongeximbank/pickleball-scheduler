@@ -1,145 +1,148 @@
 # 10 — Staging Rehearsal and Acceptance Gates
 
 **Rule:** No Production GO before **all** gates in this document pass.  
-**Staging mutations for rehearsal:** Allowed only under Staging credentials and Staging Owner approval (separate from Production GO).  
+**Staging Auth-ban rehearsal:** **MANDATORY and NON-WAIVABLE**  
 **This planning package authorizes:** neither Staging apply nor Production apply.
+
+```text
+STAGING_AUTH_BAN_REHEARSAL_MANDATORY=YES
+STAGING_AUTH_BAN_WAIVER_ALLOWED=NO
+staging_gates.auth_ban_rehearsal=true
+```
+
+If Staging Auth-ban rehearsal cannot be performed safely or cannot be proven, the gate is **BLOCKED**. No Production GO may be issued.
 
 ## Required sequence
 
 1. Staging backup evidence
 2. Migration preflight
 3. Forward apply
-4. Schema verification
-5. RLS verification
-6. Exact test identities preparation
+4. Schema verification (incl. `auth_ban_state`, immutability trigger, active-success CHECK)
+5. RLS + controlled-writer verification
+6. Exact disposable Staging QA identities preparation
 7. Dry-run
-8. Live reversible rehearsal
-9. Auth ban rehearsal where safe
-10. Rollback
-11. Reapply
-12. Idempotency proof
-13. Runtime smoke
-14. No unrelated mutation proof
-15. Evidence package
-16. Independent review
-17. Explicit acceptance sign-off
+8. Live reversible rehearsal (prepare→activate path)
+9. **Mandatory Auth-ban rehearsal** (disposable Staging QA only) with independent readback
+10. Explicit Boundary 3 fault-injection rehearsal **or** harness-equivalent proof on Staging-shaped environment recorded in evidence
+11. Rollback (release + conditional unban)
+12. Reapply
+13. Idempotency proof
+14. Runtime smoke (incl. anti-N+1 list read)
+15. No unrelated mutation proof
+16. Evidence package
+17. Independent review
+18. Explicit acceptance sign-off
 
 ## Gate details
 
 ### G1 — Staging backup evidence
 
-- Documented backup / PITR window note for Staging project
-- Owner acknowledgment stored outside Git if sensitive
+Documented backup / PITR window note for Staging.
 
 ### G2 — Migration preflight
 
-- Confirm target is Staging project ref (not Production)
-- Record current `profiles_status_check` definition
-- Assert no unexpected drift from expected schema
+Confirm Staging project ref; record `profiles_status_check`; assert `quarantined` absent.
 
 ### G3 — Forward apply
 
-- Apply additive quarantine migration only
-- No changes to `profiles_status_check`
-- No backfill of illegal profile statuses
+Additive quarantine migration only; no `profiles_status_check` change; no illegal status backfill.
 
 ### G4 — Schema verification
 
-- Table, constraints, indexes, RPCs exist
-- CHECK regression: `quarantined` update on profiles fails
+- Table, constraints (incl. active-success + auth_ban_state), indexes, RPCs, immutability trigger exist
+- CHECK regression: profiles `quarantined` update fails
+- No `auth_ban_applied` boolean column
 
-### G5 — RLS verification
+### G5 — RLS / writer verification
 
-- Direct authenticated DML denied
-- RPC AuthZ positive/negative tests pass
+Direct authenticated DML denied; lifecycle RPC AuthZ tests pass; service_role immutable-field UPDATE denied by trigger.
 
-### G6 — Exact test identities
+### G6 — Exact disposable Staging QA identities
 
-- Use Staging certified QA fixtures only
-- Classify exact rehearsal set (may be ≤8 on Staging if only N fixtures exist)
-- Never use Production allowlist files against Staging or vice versa
+- Designated disposable Staging QA fixtures only
+- Never Production allowlist against Staging or vice versa
+- No private Production identity dumps in evidence
 
 ### G7 — Dry-run
 
-- Runner dry-run with Staging gates
-- Assert planned mutations == 0
+Zero mutations.
 
 ### G8 — Live reversible rehearsal
 
-- Apply quarantine authority for rehearsal set
-- Verify active rows
-- Verify `profiles.status` unchanged for each target
+Prepare + activate path for rehearsal set; verify fully activated rows; verify `profiles.status` unchanged.
 
-### G9 — Auth ban rehearsal where safe
+### G9 — Auth ban rehearsal (**MANDATORY — NON-WAIVABLE**)
 
-- On Staging only, apply ban duration used by ops
-- Verify login blocked for banned fixture
-- Document any Staging Auth limitations
+- Staging only; disposable QA identities only
+- Execute Auth ban with ops duration
+- Independent Auth readback proves ban
+- Activation writer records `auth_ban_state='applied'` (or preexisting path where applicable)
+- Independent authority readback proves `lifecycle_state='active'`
+- Verify login blocked for banned disposable fixture
+- **If this cannot be performed safely or proven → GATE BLOCKED**
+- **No waiver language applies**
 
-### G10 — Rollback
+### G10 — Boundary 3 proof
 
-- Release authority + unban per originals
-- Verify restoration
+Evidence must include deterministic Auth-ban-success / activation-failure compensation (unban + reverted/failed row + no active + GO/batch consumption rules), via Staging rehearsal or Staging-equivalent harness recorded for acceptance.
 
-### G11 — Reapply
+### G11 — Rollback
 
-- Second forward apply succeeds (fresh or same batch rules as designed)
-- Confirms migration + runner idempotency story
+Release authority + unban only when `auth_ban_state='applied'` and `original_auth_banned=false`; verify restoration; retain released/failed rows (no hard delete).
 
-### G12 — Idempotency
+### G12 — Reapply
 
-- Third apply on already-active set is no-op success
+Second forward apply under rules; proves migration + runner story.
 
-### G13 — Runtime smoke
+### G13 — Idempotency
 
-- Directory exclusion hides quarantined QA fixtures
+Re-apply on already-active set is no-op success.
+
+### G14 — Runtime smoke
+
+- Directory exclusion hides activated quarantined QA fixtures
 - Real-user fixtures remain visible
-- Legal `suspended` fixture still behaves as suspended (not confused with QA quarantine)
+- `suspended` fixture not confused with QA quarantine
+- Anti-N+1: list page uses O(1) quarantine authority queries
 
-### G14 — No unrelated mutation
+### G15 — No unrelated mutation
 
-- Row counts / checksums for non-target profiles unchanged (status, email, role)
-- No unexpected Auth bans outside rehearsal set
+Non-target profiles unchanged; no unexpected Auth bans outside rehearsal set.
 
-### G15 — Evidence package
+### G16 — Evidence package
 
-Sanitized reports only in Git; full artifacts in secure backup:
+Sanitized reports only in Git; full artifacts in secure backup. Include Auth-ban readbacks and Boundary 3 proof references.
 
-- preflight notes
-- apply/rollback/reapply results
-- masked identity lists
-- hashes of Staging allowlist/snapshot used
-- test output summaries
+### G17 — Independent review
 
-### G16 — Independent review
+Second person reviews evidence vs gates; confirms retired B1 GO/batch unused; confirms Auth-ban rehearsal **not waived**.
 
-- Second person reviews evidence vs gates
-- Confirms retired B1 GO/batch not used
+### G18 — Explicit acceptance
 
-### G17 — Explicit acceptance
+All gates PASS before any Production Owner risk decision request. `PRODUCTION_GO` remains NO until doc 11 fresh authorization completes.
 
-Checklist all G1–G16 = PASS before any request for Production Owner risk decision.
-
-## Explicit acceptance gates (summary checklist)
+## Explicit acceptance checklist
 
 - [ ] Staging backup evidence recorded
 - [ ] Forward migration applied on Staging
-- [ ] Schema + RLS verified
+- [ ] Schema + RLS + immutability verified
 - [ ] `profiles_status_check` unchanged
 - [ ] Dry-run zero mutations
-- [ ] Live authority apply succeeded
-- [ ] Auth ban rehearsal succeeded (or waived with written reason)
+- [ ] Live prepare/activate succeeded
+- [ ] **Auth ban rehearsal succeeded with independent readback (NON-WAIVABLE)**
+- [ ] Boundary 3 compensation proof recorded
 - [ ] Rollback succeeded
 - [ ] Reapply succeeded
 - [ ] Idempotency proved
-- [ ] Runtime smoke passed
+- [ ] Runtime smoke + anti-N+1 gate passed
 - [ ] No unrelated mutations
 - [ ] Evidence packaged
 - [ ] Independent review passed
-- [ ] **PRODUCTION_GO remains NO until doc 11 fresh authorization completes**
+- [ ] **PRODUCTION_GO remains NO until doc 11 completes**
 
 ## Non-gates (do not confuse)
 
 - Unit tests green alone ≠ Staging acceptance
-- Historical B1 dry-run evidence ≠ B1B acceptance
-- Production GO string from B1 ≠ Staging or Production authorization for B1B
+- Historical B1 evidence ≠ B1B acceptance
+- Any “waive Auth-ban rehearsal” attempt = **BLOCKED**
+- Retired B1 GO/batch ≠ authorization

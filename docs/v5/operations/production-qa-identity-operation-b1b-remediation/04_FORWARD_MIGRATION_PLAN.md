@@ -6,126 +6,134 @@
 
 ## Goal
 
-Introduce dedicated QA quarantine authority (`public.qa_identity_quarantines` + controlled writers) without modifying `profiles.status` lifecycle semantics or `profiles_status_check`.
+Introduce dedicated QA quarantine authority (`public.qa_identity_quarantines` + controlled lifecycle writers) without modifying `profiles.status` lifecycle semantics or `profiles_status_check`.
 
 ## Future migration sequence
 
 | Step | Object / action | Notes |
 |------|-----------------|-------|
-| M0 | Preflight inventory | Confirm Staging backup; record schema snapshot of `profiles` CHECKs; assert `quarantined` absent from `profiles_status_check` |
-| M1 | Create table `public.qa_identity_quarantines` | Columns per `02_CANONICAL_QA_QUARANTINE_DATA_MODEL.md` |
-| M2 | Add CHECK constraints | state, identity bind, reason, release consistency, original_status |
+| M0 | Preflight inventory | Staging backup; snapshot `profiles_status_check`; assert `quarantined` absent |
+| M1 | Create table `public.qa_identity_quarantines` | Columns per `02_CANONICAL_QA_QUARANTINE_DATA_MODEL.md` including `auth_ban_state`, `lifecycle_state`, `lifecycle_version` |
+| M2 | Add CHECK constraints | lifecycle, auth_ban_state, identity bind, active-success invariant, pending/auth consistency, release consistency, original_status |
 | M3 | Add FK constraints | `profile_id` → profiles; `auth_user_id` → auth.users |
-| M4 | Create indexes | unique partial active-by-profile/auth; batch/state; inventory |
-| M5 | Enable RLS | Default deny for `authenticated` / `anon` |
-| M6 | Grants | Revoke direct DML from `authenticated`/`anon`; grant SELECT limited via policy or deny; service_role bypass noted explicitly |
-| M7 | Writer RPCs / controlled service interface | `qa_quarantine_apply`, `qa_quarantine_release`, optional `qa_quarantine_is_active` read helper |
-| M8 | Audit integration | Write `audit_logs` entries from SECURITY DEFINER writers (or parallel ops audit) |
-| M9 | Optional compatibility view | e.g. `qa_identity_quarantine_active_v` projecting `profile_id`, `qa_quarantined=true` |
-| M10 | Verify | Constraint/index/RLS/RPC existence tests — no Production |
-| M11 | Staging rehearsal | Per `10_STAGING_REHEARSAL_AND_ACCEPTANCE_GATES.md` |
-| M12 | Production apply (future) | Separate Owner GO; never authorized by this planning package |
+| M4 | Create indexes | unique partial active-by-profile/auth; batch/lifecycle; **set-based read** support on active `profile_id` |
+| M5 | Immutable-field enforcement | BEFORE UPDATE trigger (applies to service_role) rejecting immutable bind/audit field changes; deny hard DELETE in normal ops |
+| M6 | Enable RLS | Default deny for `authenticated` / `anon` |
+| M7 | Grants | REVOKE direct DML from ordinary roles; no reliance on RLS alone for service_role |
+| M8 | Controlled writer RPCs | `qa_quarantine_prepare`, `qa_quarantine_activate_after_auth_ban`, `qa_quarantine_activate_preexisting_ban`, `qa_quarantine_record_compensated_failure`, `qa_quarantine_release` |
+| M9 | Set-based read interface | Canonical view and/or batched read RPC for active quarantines (anti-N+1) |
+| M10 | Audit integration | audit_logs from SECURITY DEFINER writers |
+| M11 | Verify | Constraints/indexes/RLS/RPC/immutability/trigger tests — no Production |
+| M12 | Staging rehearsal | Per doc 10 — **Auth-ban rehearsal mandatory, non-waivable** |
+| M13 | Production apply (future) | Separate Owner GO; never authorized by this planning package |
 
 ## Object creation order
 
-1. Extensions if needed (`pgcrypto` / `gen_random_uuid` already expected)
+1. Extensions if needed (`gen_random_uuid` expected)
 2. Table
-3. Constraints (CHECK then FK)
-4. Indexes
-5. Comments
-6. RLS enable + policies
-7. Revoke/grant
-8. Functions (SECURITY DEFINER) + grants execute to intended roles only
-9. Optional view
+3. CHECK then FK constraints
+4. Indexes (including set-based active profile_id)
+5. Immutability + delete-deny triggers
+6. Comments
+7. RLS enable + policies
+8. Revoke/grant
+9. SECURITY DEFINER lifecycle RPCs + execute grants
+10. Canonical active view / batched read RPC
 
 ## Constraints and indexes
 
-Must implement all constraints and indexes named in the data model doc. Especially:
+Must implement all constraints and indexes in the data model, especially:
 
+- Active success invariant: active ⇒ `auth_ban_state in ('applied','not_required_preexisting')`
 - Partial unique active quarantine per profile and per auth user
-- `profile_id = auth_user_id`
-- Release consistency CHECK
+- Indexes supporting **one set-based join or one batched `IN` lookup per page**
 
 ## RLS activation
 
-- `ALTER TABLE … ENABLE ROW LEVEL SECURITY`
-- No broad `authenticated` INSERT/UPDATE/DELETE
-- Read: SUPER_ADMIN and/or `user.manage` with tenant scoping for audit UI if productized later; until then, ops may be service-role only
-- Write: only via SECURITY DEFINER RPCs that assert SUPER_ADMIN **or** explicit service-role operator path documented in `06_RLS_WRITER_AND_AUTHORITY_MODEL.md`
+- Enable RLS; deny broad authenticated INSERT/UPDATE/DELETE
+- Writes **only** via controlled SECURITY DEFINER RPCs with expected-state / `lifecycle_version` guards
+- Note explicitly: `service_role` bypasses RLS → immutability trigger + RPC-only policy remain mandatory
 
 ## Grants
 
-- `REVOKE ALL ON TABLE public.qa_identity_quarantines FROM PUBLIC, anon, authenticated`
-- Grant `SELECT` only if a deliberate authenticated audit path exists
-- `GRANT EXECUTE` on writer RPCs only to roles that must call them (prefer service_role operator + tightly gated authenticated SUPER_ADMIN if UI needed)
+- `REVOKE ALL ON TABLE … FROM PUBLIC, anon, authenticated`
+- Grant `SELECT` only via deliberate set-based view/RPC if productized
+- `GRANT EXECUTE` on lifecycle RPCs only to intended callers
 
-## Writer RPC / controlled service interface (planned contracts)
+## Writer RPC / controlled service interface
 
-### `qa_quarantine_apply(...)`
+### `qa_quarantine_prepare`
 
-Inputs (conceptual): `profile_id`, `auth_user_id`, `batch_id`, `reason`, `expected_email`, `allowlist_label`, optional metadata.
+Creates `lifecycle_state='pending'`, `auth_ban_state='pending'` after gates. Snapshots immutable originals. **No Auth ban. No active quarantine.**
 
-Behavior:
+### `qa_quarantine_activate_after_auth_ban`
 
-1. AuthZ: SUPER_ADMIN or service-role operator context
-2. Verify profile/auth/email bind + certified QA predicate hooks at app layer
-3. Snapshot `profiles.status` into `original_profile_status` (do not update it)
-4. Idempotent insert/select active row
-5. Emit audit event
-6. Return quarantine row id + state
+Requires proven Auth ban readback. Atomically `pending→active`, `pending→applied`, sets `activated_at`, increments `lifecycle_version`.
 
-**Must not** UPDATE `profiles.status`.
+### `qa_quarantine_activate_preexisting_ban`
 
-### `qa_quarantine_release(...)`
+Only when `original_auth_banned=true`. Atomically `pending→active`, `pending→not_required_preexisting`. Does not claim B1B applied the ban.
 
-Inputs: `profile_id` or quarantine `id`, `batch_id`, `release_reason`.
+### `qa_quarantine_record_compensated_failure`
 
-Behavior:
+Records Boundary 2/3 failure dispositions (`failed` / `reverted`), including Auth-ban-success / activation-failure compensation outcomes.
 
-1. AuthZ same as apply
-2. Drift checks
-3. Transition `active` → `released`
-4. Return snapshot fields needed for Auth unban decisions (Auth unban may remain in operator runner, not SQL, to match current Admin API pattern)
+### `qa_quarantine_release`
 
-### Optional read: `qa_quarantine_is_active(profile_id) → boolean`
+`active→released` with release fields. Returns flags so runner unbans **only if** `auth_ban_state='applied'` AND `original_auth_banned=false`.
 
-For directory filters / projectors.
+### Set-based read (mandatory for lists)
+
+Provide at least one of:
+
+- `qa_identity_quarantine_active_v` view joining/filtering `lifecycle_state='active'`
+- `qa_quarantine_list_active(profile_ids uuid[])` batched RPC
+- directory/profile query with **one** left join to active authority
+
+Single-row `qa_quarantine_is_active(profile_id)` may exist for ops tooling but **must not** be used per-row in list rendering.
+
+## Dual-write and Boundary 3 (explicit)
+
+Migration/RPC design must support the runner sequence A→E and all five failure boundaries in doc 02, including:
+
+**Auth ban succeeds + activation fails:**
+
+- unban compensation when originally unbanned
+- verified Auth restore
+- authority recorded as `reverted`/`failed` (not active)
+- GO/batch consumed after Auth mutation
+- no silent retry on the same pending authority without new governance
 
 ## Compatibility views or projectors
 
 | Artifact | Purpose |
 |----------|---------|
-| SQL view of active quarantines | Server-side joins if needed |
-| App projector setting `qaQuarantined: true` | Compatibility with `qaTestIdentityFilter` |
-| **Forbidden** projector writing `status: 'quarantined'` into DB | Must never persist illegal status |
+| Active quarantine view / batched RPC | Anti-N+1 directory/roster reads |
+| App projector `qaQuarantined=true` | Only for fully activated rows |
+| Forbidden DB write of `status='quarantined'` | Never |
 
-Temporary dual-read: filter accepts active quarantine authority OR legacy `status==='quarantined'` OR `meta.qaQuarantined` during migration window; final state prefers authority table / projector only.
+## No-data-loss / retention properties
 
-## No-data-loss properties
-
-- Additive schema only relative to `profiles`
-- No DROP of profiles columns
+- Additive relative to `profiles`
 - No rewrite of existing profile rows
-- Quarantine history retained via released rows
-- Original profile status stored as snapshot text only
+- Indefinite append-only retention of released/failed/reverted rows (see data model retention policy)
+- No automatic purge in B1B
 
 ## Idempotency
 
-- Migration scripts must be re-runnable (`IF NOT EXISTS` / constraint existence guards) in future implementation
-- Apply RPC idempotent for same identity+batch active state
-- Reapply after rollback must recreate authority cleanly
+- Migration objects re-runnable with existence guards
+- Prepare/activate idempotent under expected-state rules
+- Reapply after release requires new prepare under authorization rules
 
 ## Migration verification (future)
 
-Assert:
-
-1. Table exists with expected columns/types
-2. All CHECKs present
-3. Partial unique indexes present
-4. RLS enabled
-5. Direct authenticated INSERT fails
-6. `profiles_status_check` definition **unchanged** and still excludes `quarantined`
-7. Sample apply/release round-trip on Staging fixtures only
+1. Table/columns/`auth_ban_state` present; **no** `auth_ban_applied` boolean
+2. Active-success CHECK present
+3. Immutability trigger blocks service_role UPDATE of `profile_id`/`batch_id`/snapshots
+4. Direct authenticated DML denied
+5. `profiles_status_check` unchanged
+6. Staging prepare→ban→activate→release round-trip
+7. Fault-injection Boundary 3 path available to tests
 
 ## Staging-only first application
 
@@ -133,13 +141,13 @@ Assert:
 STAGING_FIRST=YES
 PRODUCTION_APPLY_IN_THIS_PLAN=NO
 PRODUCTION_GO=NO
+STAGING_AUTH_BAN_REHEARSAL_MANDATORY=YES
+STAGING_AUTH_BAN_WAIVER_ALLOWED=NO
 ```
 
-Production migration apply is a later work package (WP8) gated by Staging acceptance and a **new** Owner GO.
+## Explicit non-actions
 
-## Explicit non-actions for implementers reading this plan
-
-- Do not create executable SQL in the planning directory as “ready to paste Production”
+- No executable Production SQL in this planning package
 - Do not alter `profiles_status_check`
-- Do not backfill fake `quarantined` statuses
+- Do not backfill illegal profile statuses
 - Do not reuse retired B1 GO/batch

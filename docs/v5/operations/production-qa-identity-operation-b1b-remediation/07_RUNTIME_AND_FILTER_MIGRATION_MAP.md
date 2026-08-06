@@ -2,155 +2,139 @@
 
 ## Inventory method
 
-Repository review (planning base `3c6c3f02`) of quarantine-related runtime signals, QA exclusion, Auth ban, suspension, and profile status consumers. No Staging/Production queries performed.
+Repository review (planning base `3c6c3f02`) of quarantine-related runtime signals. No Staging/Production queries performed.
 
 ## Existing `status === 'quarantined'` consumers
 
 | Location | Role | Classification |
 |----------|------|----------------|
-| `src/features/player/utils/qaTestIdentityFilter.js` | Treats `status==='quarantined'` as confirmed QA identity | **MIGRATE** — primary runtime hook |
-| `scripts/operations/production-qa-identity-operation-b1/lib/quarantineEngine.js` | Writes/expects status quarantined | **REPLACE** in B1B runner |
-| `scripts/operations/production-qa-identity-operation-b1/lib/constants.js` | `QUARANTINE_PROFILE_STATUS` | **REPLACE** |
-| `scripts/operations/production-qa-identity-operation-b1/lib/liveOperator/createLiveAdapters.js` | `updateProfileStatus` | **REPLACE** writer |
-| B1 docs under `docs/v5/operations/production-qa-identity-operation-b1/` | Package assumes status quarantine | **SUPERSEDED** by B1B plan (do not edit in this planning task) |
-| `docs/v5/migrations/PRODUCTION_TEST_IDENTITY_QUARANTINE_PLAN.sql` | Planning note | **SUPERSEDED** conceptually |
-| B1 unit/live-runner tests | Mock status quarantined | **REWRITE** under WP5 |
-| Gender remediation QA evidence docs | Historical plan text | **NO RUNTIME CHANGE** — historical |
+| `src/features/player/utils/qaTestIdentityFilter.js` | Treats `status==='quarantined'` as confirmed QA | **MIGRATE** |
+| B1 quarantine engine / constants / live adapters | Writes/expects status quarantined | **REPLACE** in B1B runner |
+| B1 docs / historical quarantine plan SQL | Assumed status quarantine | **SUPERSEDED** (do not edit in this task) |
+| B1 tests | Mock status quarantined | **REWRITE** under WP5 |
 
 ## Existing `qaQuarantined` / `quarantined` boolean consumers
 
 | Location | Role | Classification |
 |----------|------|----------------|
-| `qaTestIdentityFilter.js` — `identity.quarantined === true` | Hide identity | **KEEP** as compatibility input |
-| `qaTestIdentityFilter.js` — `identity.meta?.qaQuarantined === true` | Hide identity | **KEEP** temporary; projector may set |
-| No durable `profiles.meta.qaQuarantined` column found | N/A | **NOT SSOT** |
+| `identity.quarantined === true` | Hide | **KEEP** compatibility |
+| `identity.meta?.qaQuarantined === true` | Hide | **KEEP** temporary via projector |
+| Durable `profiles.meta.qaQuarantined` column | N/A | **NOT SSOT** |
 
 ## Test identity exclusion / QA email domains
 
-| Location | Role |
-|----------|------|
-| `APPROVED_QA_EMAIL_DOMAINS` / `isCertifiedQaEmail` in `qaTestIdentityFilter.js` | Positive classification requires approved domain + certified local-part |
-| `excludeQaTestIdentities` | Directory hide helper |
-| `src/pages/Players.jsx` | Uses `excludeQaTestIdentities` on player load |
-| B1 `allowlist.js` / `eligibility.js` | Import certified email predicate |
+Certified-email helpers and `excludeQaTestIdentities` remain. Quarantine authority is an additional confirmed signal for fully activated rows.
 
-These remain; quarantine authority becomes an additional **confirmed** signal, not a replacement for email certification on allowlist generation.
+Exclusion fixture (lookalike only): `phase1b-smith@gmail.com` — documented rejection case; not a private Production dump.
 
-## Auth ban state
+## Auth ban vs quarantine authority
 
-| Location | Role |
-|----------|------|
-| B1 eligibility / adapters | Read `banned_until`; ban/unban via Admin API |
-| `scripts/lib/prod-smoke-identity-hygiene.mjs` (referenced) | Pattern source for ban duration |
-| Identity reset-password Admin API | Unrelated Auth admin usage |
+| Signal | Role |
+|--------|------|
+| Auth `banned_until` | Complementary access control |
+| Fully activated authority row | **Canonical** quarantine |
+| Auth ban alone | **Not** canonical quarantine |
 
-B1B retains Auth ban as complementary control **after** authority write.
+B1B sequence: prepare → (Auth ban if needed) → Auth readback → activate → authority readback.
 
 ## Account suspension / inactivity / archived-deleted
 
-| Signal | Store | Relation to QA quarantine |
-|--------|-------|---------------------------|
-| Account suspension | `profiles.status='suspended'` | **Distinct** — must not be reused |
-| Invited | `profiles.status='invited'` | Distinct |
-| Athlete inactive/archived | athletes / blob player status | Distinct |
-| Membership removed/left | `club_members.status` | Distinct (B2 territory) |
-| Privacy hide | `privacy_settings.publicProfileEnabled` | Distinct — not quarantine |
-| Hard delete | Auth/profile delete | **Forbidden** for B1B |
+`profiles.status='suspended'` remains distinct and must not be reused for QA quarantine. Hard delete forbidden.
 
-## Writers and guards that can modify related state
+## Writers
 
-| Writer / guard | Can touch | B1B rule |
-|----------------|-----------|----------|
-| `identity_admin_update_user` | `profiles.status` active/suspended/invited | Must not be used for QA quarantine |
-| `profiles_guard_privileged_update` | Blocks self status changes | Keep |
-| Player profile write repos | Profile fields; not quarantine authority | Keep boundary |
-| B1A `updateProfileStatus` | profiles.status | **Remove from quarantine path** |
-| Auth Admin ban | Auth ban state | Keep after authority insert |
-| Future `qa_quarantine_apply/release` | Authority table | **Canonical** |
+| Writer | B1B rule |
+|--------|----------|
+| `identity_admin_update_user` | Real lifecycle only |
+| B1A `updateProfileStatus` | Removed from quarantine path |
+| Lifecycle RPCs (prepare/activate/fail/release) | **Canonical** |
+| Auth Admin ban/unban | After prepare; before/with activation rules |
 
 ## Compatibility mapping
 
 | Legacy signal | Temporary dual-read | Final canonical read |
 |---------------|---------------------|----------------------|
-| `status === 'quarantined'` | Still treated as confirmed QA if ever present historically | Stop relying; optional warn/metric if seen (should be zero rows) |
-| `meta.qaQuarantined === true` | Accepted | Prefer projector from authority; deprecate unstructured meta as SSOT |
-| `quarantined === true` | Accepted | Projector sets from authority |
-| Active row in `qa_identity_quarantines` | Accepted (new) | **Canonical** |
-| Certified QA email alone | Still hides in `excludeQaTestIdentities` | Remains defense-in-depth for directory hygiene |
+| `status === 'quarantined'` | Legacy read only | Deprecate (expect zero legal rows) |
+| `meta.qaQuarantined` | Accepted | Projector from activated authority |
+| `quarantined === true` | Accepted | Projector |
+| `lifecycle_state='active'` AND `auth_ban_state in ('applied','not_required_preexisting')` | New | **Canonical** |
+| Certified QA email | Directory hygiene | Remains defense-in-depth |
+
+## Anti-N+1 requirement (MANDATORY)
+
+Directory, roster, admin list, and bulk profile consumers **must** obtain QA quarantine state through **one** of:
+
+1. Canonical database view or read RPC joining active quarantine authority
+2. One set-based join in the profile/directory query
+3. One bounded batched profile-ID lookup for the **entire page/result set**
+
+### Explicitly prohibited
+
+- One `qa_identity_quarantines` query per profile
+- One RPC per list row
+- Unbounded client-side sequential lookups
+
+### Bounded query-count acceptance gate
+
+For any paginated directory/list read:
+
+```text
+quarantine_authority_queries_per_page = O(1)
+independent_of_row_count = YES
+MAX_QUARANTINE_AUTHORITY_QUERIES_PER_PAGE = 1
+```
+
+(plus the primary page query itself). Integration tests **must** assert this maximum query count.
+
+Indexes supporting set-based active `profile_id` lookup/join are required (see data model / forward migration).
+
+Single-id `is_active` helpers may exist for ops tooling only — not for list rendering loops.
 
 ## Migration sequence (runtime)
 
-1. **WP1/WP2:** Schema + RPC land (no Production GO)
-2. **WP3a:** Add read helper/projector `isQaIdentityQuarantined(profileId|row)`
-3. **WP3b:** Update `isConfirmedQaTestIdentity` to check authority/projector **first**, keep legacy checks
-4. **WP3c:** Ensure Players directory and any other list surfaces use updated helper
-5. **WP4:** Runner writes authority only (no status mutation)
-6. **WP5:** Tests prove legacy status path unused for writes; dual-read still hides correctly
-7. **WP6:** Staging smoke
-8. **Later cleanup:** Remove legacy `status==='quarantined'` write assumptions from ops scripts; keep read fallback until evidence shows zero legacy dependency
+1. WP1/WP2: schema + lifecycle RPCs + set-based read interface
+2. WP3a: projector/helper reading **activated** authority only
+3. WP3b: update `isConfirmedQaTestIdentity` (authority first; legacy dual-read)
+4. WP3c: directory/list surfaces use set-based enrichment (anti-N+1)
+5. WP4: runner prepare/ban/activate (no status mutation)
+6. WP5: constraint + query-count + Boundary 3 fault-injection tests
+7. WP6: Staging smoke including Auth-ban rehearsal (mandatory)
 
 ## Temporary compatibility behavior
 
-During dual-read window:
-
 ```text
 isConfirmedQaTestIdentity =
-  activeQuarantineAuthority
+  fullyActivatedQuarantineAuthority
   OR quarantined flag
   OR meta.qaQuarantined
   OR status === 'quarantined'   -- legacy read only
   OR isCertifiedQaEmail(email)
 ```
 
-Must never persist `status='quarantined'`.
+Never persist `status='quarantined'`.
 
 ## Final canonical read behavior
 
 ```text
-isQaQuarantined = exists active qa_identity_quarantines for profile_id
-isConfirmedQaTestIdentity = isQaQuarantined OR isCertifiedQaEmail(email) [and any product-approved flags]
+isQaQuarantined =
+  lifecycle_state='active'
+  AND auth_ban_state IN ('applied','not_required_preexisting')
+
+isConfirmedQaTestIdentity =
+  isQaQuarantined OR isCertifiedQaEmail(email) [+ approved flags]
 ```
 
-Product may choose to keep certified-email exclusion even without quarantine row (directory hygiene). Quarantine authority remains the ops SSOT for “quarantined by Operation B1B”.
+## UI / directory / auth behavior
 
-## Removal of legacy assumptions
-
-Remove/replace in B1B implementation packages:
-
-- `QUARANTINE_PROFILE_STATUS = 'quarantined'` as write target
-- Engine step “update profile status then ban”
-- Docs stating quarantined is canonical profiles.status value
-- Tests that assert profile status becomes `quarantined`
-
-## UI behavior
-
-- User-facing directories: continue excluding confirmed QA identities
-- Admin identity UI: show account status unchanged (`active` etc.); optional ops badge “QA quarantined” from authority read RPC (SUPER_ADMIN)
-- Do not display illegal status strings
-
-## Directory filtering
-
-- `Players.jsx` path remains `excludeQaTestIdentities`
-- Future directory RPCs (Phase 1I) should exclude suspended accounts as today and additionally exclude active QA quarantines if lists can include QA emails
-
-## Authentication behavior
-
-- Quarantine does not require `profiles.status` change
-- Auth ban prevents login when applied
-- Suspended real users continue to use existing auth/RBAC denial paths
-
-## Business-reference behavior
-
-- B1 eligibility already requires zero business refs for exact-eight
-- Quarantine authority does not delete refs
-- Real users never enter allowlist ⇒ no-impact proof
+- Directories exclude confirmed QA identities via set-based data
+- Admin may show ops badge from authority read (SUPER_ADMIN)
+- Account status UI continues to show legal `profiles.status` values only
+- Auth ban blocks login when applied; suspended users keep existing denial paths
 
 ## No-impact proof for real users
 
-Implementation acceptance must show:
-
 1. Non-allowlisted profiles never receive authority rows in rehearsal
-2. `profiles.status` distribution for non-targets unchanged
-3. Real-user lookalike `phase1b-smith@gmail.com` rejected by certified email predicate
-4. Suspended real users still governed solely by `profiles.status='suspended'`
-5. No RLS change weakens tenant isolation on `profiles`
+2. Non-target `profiles.status` unchanged
+3. Lookalike `phase1b-smith@gmail.com` rejected by certified email predicate
+4. Real suspensions remain `suspended` semantics
+5. Anti-N+1 list reads do not weaken tenant isolation
