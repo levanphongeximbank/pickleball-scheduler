@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 5,
+    "artifact": "PHASE5_PREVIEW_ROLLBACK_REPORT",
+    "generatedAt": "2026-08-06T08:30:00.000Z",
+    "mode": "evidence_recording_only",
+    "verdict": "CANONICAL_NAVIGATION_PHASE5_PREVIEW_ROLLBACK_PASS",
+    "draftPr": 385,
+    "currentHead": "640d18e185de05c9aebf75050d21f2405a2412d7",
+    "branch": "feature/canonical-navigation-phase5-preview-acceptance",
+    "runtimeCodeChanged": false,
+    "testsChanged": false,
+    "sqlMutations": 0,
+    "stagingMutations": 0,
+    "agentDeployments": 0,
+    "productionTouched": false,
+    "committed": false,
+    "pushed": false,
+    "prDraftChanged": false,
+    "prMerged": false
+  },
+  "rollbackExecution": {
+    "flag": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "previousPreviewValue": true,
+    "newPreviewValue": false,
+    "scope": "Preview_only",
+    "previewRedeployPerformed": true,
+    "productionEnvironmentUnchanged": true,
+    "productionDeploymentUnchanged": true,
+    "productionPromotionPerformed": false
+  },
+  "screenshotEvidence": {
+    "previewUrl": true,
+    "route": "/tournament/create",
+    "legacyShellRestored": true,
+    "canonicalShellVisible": false,
+    "legacyBrandingVisible": true,
+    "legacyLeftNavigationVisible": true,
+    "whiteScreen": false,
+    "productionUrl": false,
+    "classification": "PASS"
+  },
+  "gateChecks": [
+    { "id": "RB-FLAG", "check": "preview_flag_false", "status": "PASS" },
+    { "id": "RB-REDEPLOY", "check": "preview_only_redeploy", "status": "PASS" },
+    { "id": "RB-LEGACY", "check": "legacy_shell_exclusive", "status": "PASS" },
+    { "id": "RB-CANONICAL-ABSENT", "check": "canonical_shell_absent", "status": "PASS" },
+    { "id": "RB-WHITE", "check": "no_white_screen", "status": "PASS" },
+    { "id": "RB-PROD-ENV", "check": "production_env_unchanged", "status": "PASS" },
+    { "id": "RB-PROD-DEPLOY", "check": "production_deploy_unchanged", "status": "PASS" },
+    { "id": "RB-PROD-PROMOTE", "check": "no_production_promote", "status": "PASS" }
+  ],
+  "phase5Closed": false,
+  "note": "Rollback gate PASS; flag-ON matrix still has NOT_TESTED cells; PR remains Draft"
+}

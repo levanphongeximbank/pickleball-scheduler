@@ -103,7 +103,7 @@ Classification legend: `PASS` · `PASS_WITH_OBSERVATION` · `WAIVED` · `NOT_TES
 | DEV-TAB | Tablet | **NOT_TESTED** | |
 | A11Y-KB | Keyboard-only | **NOT_TESTED** | |
 | A11Y-HC | High contrast ON/OFF | **NOT_TESTED** | |
-| RB-01 | Flag OFF rollback | **NOT_TESTED** | Pending OD-P5-ROLLBACK execution |
+| RB-01 | Flag OFF rollback | **PASS** | See [`PHASE5_PREVIEW_ROLLBACK_REPORT.md`](./PHASE5_PREVIEW_ROLLBACK_REPORT.md) |
 
 ---
 

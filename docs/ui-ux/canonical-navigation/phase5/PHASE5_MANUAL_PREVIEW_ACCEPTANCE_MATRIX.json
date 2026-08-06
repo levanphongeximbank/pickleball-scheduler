@@ -85,7 +85,7 @@
     { "id": "DEV-TAB", "classification": "NOT_TESTED" },
     { "id": "A11Y-KB", "classification": "NOT_TESTED" },
     { "id": "A11Y-HC", "classification": "NOT_TESTED" },
-    { "id": "RB-01", "classification": "NOT_TESTED" }
+    { "id": "RB-01", "classification": "PASS", "evidence": "PHASE5_PREVIEW_ROLLBACK_REPORT.md" }
   ],
   "roles": [
     { "role": "SUPER_ADMIN", "classification": "PASS" },

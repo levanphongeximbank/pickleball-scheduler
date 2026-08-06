@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 5,
+    "artifact": "PHASE5_PREVIEW_ROLLBACK_MATRIX",
+    "generatedAt": "2026-08-06T08:30:00.000Z",
+    "draftPr": 385,
+    "currentHead": "640d18e185de05c9aebf75050d21f2405a2412d7",
+    "verdictLinked": "CANONICAL_NAVIGATION_PHASE5_PREVIEW_ROLLBACK_PASS"
+  },
+  "counts": {
+    "PASS": 13,
+    "NOT_TESTED": 4,
+    "FAIL": 0,
+    "WAIVED": 0
+  },
+  "flagDeployControls": [
+    { "id": "RB-01", "check": "preview_flag_false", "classification": "PASS" },
+    { "id": "RB-02", "check": "preview_scope_only", "classification": "PASS" },
+    { "id": "RB-03", "check": "preview_redeploy", "classification": "PASS" },
+    { "id": "RB-04", "check": "production_env_unchanged", "classification": "PASS" },
+    { "id": "RB-05", "check": "production_deploy_unchanged", "classification": "PASS" },
+    { "id": "RB-06", "check": "no_production_promote", "classification": "PASS" }
+  ],
+  "shellExclusivity": [
+    { "id": "RB-10", "check": "legacy_shell_restored", "classification": "PASS" },
+    { "id": "RB-11", "check": "canonical_shell_absent", "classification": "PASS" },
+    { "id": "RB-12", "check": "dual_shell_zero", "classification": "PASS" },
+    { "id": "RB-13", "check": "legacy_branding_visible", "classification": "PASS" },
+    { "id": "RB-14", "check": "legacy_left_nav_visible", "classification": "PASS" },
+    { "id": "RB-15", "check": "no_white_screen", "classification": "PASS" }
+  ],
+  "navigationSample": [
+    {
+      "id": "RB-20",
+      "route": "/tournament/create",
+      "previewUrl": true,
+      "productionUrl": false,
+      "classification": "PASS"
+    }
+  ],
+  "notClaimed": [
+    { "id": "RB-30", "classification": "NOT_TESTED" },
+    { "id": "RB-31", "classification": "NOT_TESTED" },
+    { "id": "RB-32", "classification": "NOT_TESTED" },
+    { "id": "RB-33", "classification": "NOT_TESTED_FORBIDDEN" }
+  ]
+}
