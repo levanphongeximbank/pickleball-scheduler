@@ -1,0 +1,95 @@
+{
+  "program": "PICK_VN_CANONICAL_NAVIGATION",
+  "document": "PRODUCTION_EXECUTION_MANIFEST",
+  "packagePath": "docs/ui-ux/canonical-navigation/production-execution-package/",
+  "packagePurpose": "Owner-bound Production execution package for Canonical Navigation flag activation; records bindings, identity/waiver gaps, and runbooks. Does not authorize Production mutation.",
+  "packageStatus": "DRAFT_LOCAL_COMMITTED_NOT_AUTHORIZED_FOR_EXECUTION",
+  "finalReadinessStatus": "EXECUTION_PACKAGE_DRAFT_COMPLETE_NOT_READY_FOR_PRODUCTION_GO",
+  "evidenceTimestamp": "2026-08-06",
+  "planningPredecessorPath": "docs/ui-ux/canonical-navigation/production-activation-readiness/",
+  "sourceBaselineSha": "1bcc4dc729dd53027de1fac1cf39001ea5d29f4b",
+  "authoringBranch": "audit/canonical-navigation-production-execution-readiness",
+  "vercel": {
+    "projectName": "pickleball-scheduler",
+    "projectId": "prj_glU9Gr0zPaNoMlTcIJCAHVk5UowG",
+    "productionDomain": "https://pickvn.app",
+    "productionTarget": "Vercel Production for project pickleball-scheduler"
+  },
+  "flag": {
+    "name": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "productionFlagClassificationBefore": "ABSENT",
+    "productionFlagIntendedAfter": "TRUE",
+    "evaluationMode": "VITE_BUILD_TIME",
+    "redeployRequiredAfterFlagChange": true,
+    "environmentChangeAloneSufficient": false
+  },
+  "executionWindow": {
+    "timezone": "Asia/Ho_Chi_Minh",
+    "start": "2026-08-07T21:00:00+07:00",
+    "end": "2026-08-07T23:00:00+07:00",
+    "mergeFreeze": "YES",
+    "maximumDecisionTimeMinutes": 10,
+    "monitoringIntervalMinutes": 5,
+    "monitoringDurationMinutes": 60
+  },
+  "owners": {
+    "deploymentOperator": "Le Phong",
+    "rollbackOwner": "Le Phong",
+    "monitoringOwner": "Le Phong",
+    "evidenceRecorder": "Le Phong",
+    "ownerApprovalAuthority": "Le Phong"
+  },
+  "placeholders": {
+    "packageDigest": null,
+    "packageDigestStatus": "PENDING",
+    "finalExecutionSha": null,
+    "finalExecutionShaStatus": "PENDING",
+    "finalLiveFlagReAttestation": null,
+    "finalLiveFlagReAttestationStatus": "PENDING",
+    "deploymentId": null,
+    "deploymentIdStatus": "PENDING",
+    "deploymentSha": null,
+    "deploymentShaStatus": "PENDING",
+    "finalOwnerGoTimestamp": null,
+    "finalOwnerGoTimestampStatus": "PENDING"
+  },
+  "goTokens": {
+    "PRODUCTION_GO": "NO",
+    "PRODUCTION_FLAG_CHANGE_GO": "NO",
+    "PRODUCTION_ENV_CHANGE_GO": "NO",
+    "PRODUCTION_REDEPLOY_GO": "NO",
+    "PRODUCTION_BROWSER_ACCEPTANCE_GO": "NO",
+    "PRODUCTION_OPS_BINDING_GO": "NO",
+    "PRODUCTION_FLAG_MECHANICS_GO": "NO",
+    "PRODUCTION_IDENTITY_COVERAGE_GO": "NO"
+  },
+  "identitySummary": {
+    "SUPER_ADMIN": "EXISTING_OWNER_ACCOUNT",
+    "publicUnauthenticated": "AVAILABLE",
+    "nonAdminAllow": "WAIVER_PENDING",
+    "nonAdminDeny": "WAIVER_PENDING",
+    "tenantIsolation": "WAIVER_PENDING",
+    "COACH": "WAIVED_WITH_KNOWN_SCHEMA_GAP"
+  },
+  "packageFiles": [
+    "PRODUCTION_EXECUTION_MANIFEST.md",
+    "PRODUCTION_EXECUTION_MANIFEST.json",
+    "PRODUCTION_IDENTITY_AND_WAIVER_MATRIX.md",
+    "PRODUCTION_BROWSER_ACCEPTANCE_RUNBOOK.md",
+    "PRODUCTION_DEPLOYMENT_AND_FLAG_RUNBOOK.md",
+    "PRODUCTION_ROLLBACK_AND_MONITORING_RUNBOOK.md",
+    "PRODUCTION_GO_TOKEN_CONTRACT.md",
+    "PRODUCTION_EXECUTION_READINESS_CHECKLIST.md"
+  ],
+  "explicitNonActions": {
+    "productionFlagChange": false,
+    "vercelEnvironmentMutation": false,
+    "productionRedeploy": false,
+    "browserAcceptanceExecution": false,
+    "identityMutation": false,
+    "sql": false,
+    "stagingAuthProductionMutation": false,
+    "push": false,
+    "pr": false
+  }
+}
