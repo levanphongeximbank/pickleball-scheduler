@@ -1,0 +1,102 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 4,
+    "artifact": "PHASE4_OWNER_DECISION_PACKAGE",
+    "generatedAt": "2026-08-06T02:08:01.612Z",
+    "currentHead": "6ece104677ec1db4ba1b19bc666a1a41ac2c2a93",
+    "verdict": "CANONICAL_NAVIGATION_PHASE4_BLOCKER_RESOLUTION_PLAN_READY_FOR_OWNER_DECISIONS",
+    "decisionsRequiredCount": 4
+  },
+  "decisions": [
+    {
+      "decisionId": "OD-B01-MESSAGES",
+      "blockerId": "BLK-B01-SEMANTIC",
+      "plainLanguageQuestion": "Should Communication inbox (/messages) and CRM outreach (/crm/messages) stay as two separate business functions, or be collapsed?",
+      "recommendedOption": "A",
+      "recommendedLabel": "Keep both as separate canonical business functions",
+      "rejectedOptions": [
+        {
+          "option": "B",
+          "label": "Make /messages an alias of /crm/messages",
+          "reason": "Functional and RBAC equivalence NOT proven"
+        },
+        {
+          "option": "C",
+          "label": "Retire one function and migrate its capability in Phase 4",
+          "reason": "CRM retirement needs a durable CRM migration program outside Phase 4 nav cutover; retiring COMMS would destroy certified messaging"
+        }
+      ],
+      "consequence": "Revise Phase 1 B01: do NOT redirect /messages→/crm/messages. Restore /messages as canonical Communication route in registry/menu/search (with proper COMMS auth). Keep /crm/messages as canonical CRM outreach.",
+      "risk": "Canonical registry currently treats CRM as sole messaging owner; revising B01 requires registry + menu updates and clear labels so users do not confuse inbox vs outreach.",
+      "implementationImpact": "No alias redirect. Update ownerDecisions/catalog/menu/search; add COMMS route permissions if missing; keep both pages mounted."
+    },
+    {
+      "decisionId": "OD-B02-TOURNAMENT-RETAIN",
+      "blockerId": "BLK-B02-NO-MAP",
+      "plainLanguageQuestion": "Approve retaining all 42 unmapped /tournament/* routes with zero invented redirects until semantic successors exist?",
+      "recommendedOption": "RETAIN_ALL_42_NO_REDIRECT",
+      "recommendedLabel": "Retain all 42; no redirects; writer hygiene only where links already have a tournamentId and a proven same-workflow target",
+      "rejectedOptions": [
+        {
+          "option": "BULK_REDIRECT_TO_ENGINE",
+          "label": "Redirect hubs/setup to Engine tabs",
+          "reason": "Semantic mapping unproven; would break daily/internal/official/team/register/public/director flows"
+        },
+        {
+          "option": "DERIVE_TOURNAMENT_ID",
+          "label": "Invent or guess tournamentId for hub redirects",
+          "reason": "Forbidden by audit rules; unsafe"
+        }
+      ],
+      "consequence": "Phase 4 implements no B02 redirects. Legacy mounts remain for compatibility. Flag ON menu/search continue excluding /tournament/*.",
+      "risk": "Legacy deep links and flag-OFF writers remain until a later incremental migration program.",
+      "implementationImpact": "Docs matrix only for redirects; optional replace_link_writer for Engine breadcrumb/back away from legacy /tournament after OD-PLURAL approved."
+    },
+    {
+      "decisionId": "OD-B03-V5-SHADOW-AUTHZ",
+      "blockerId": "BLK-B03-GUARD",
+      "plainLanguageQuestion": "Who may open /player/skill-assessment-v5 by direct URL: SUPER_ADMIN only (Phase 1 B03 text), or enrolled PLAYER pilots under the V5 product contract?",
+      "recommendedOption": "PILOT_ALIGNED_SHADOW",
+      "recommendedLabel": "Hide from all menus/search; allow authenticated SUPER_ADMIN always for tech eval; allow PLAYER only when VITE_PICK_VN_RATING_V5_ENABLED + active pilot enrollment; deny all others with 403; flag alone never exposes menu",
+      "rejectedOptions": [
+        {
+          "option": "STRICT_SUPER_ADMIN_ONLY",
+          "label": "Router SUPER_ADMIN-only for all direct access",
+          "reason": "Conflicts with V5 foundation PLAYER self-assessment pilot RPCs and existing page access service"
+        },
+        {
+          "option": "KEEP_STATUS_QUO",
+          "label": "Authenticated-only route + PLAYER menu when flag on",
+          "reason": "Violates B03 hide-shadow menu rule and over-exposes via legacy menu writers"
+        }
+      ],
+      "consequence": "Revises B03 direct-access wording from SUPER_ADMIN-only to pilot-aligned shadow. Menu/search remain hidden in every shell.",
+      "risk": "If Owner insists on strict SUPER_ADMIN-only, Rating V5 pilot UX breaks until a separate PLAYER entry is provided.",
+      "implementationImpact": "Change authGuard/menuAccess/navigationConfig (remove PLAYER menu leaf); keep page-level resolveRatingV5Access; add denial tests; no redirect."
+    },
+    {
+      "decisionId": "OD-PLURAL-AUTHZ-PARITY",
+      "blockerId": "BLK-PLURAL-AUTHZ",
+      "plainLanguageQuestion": "Should /tournaments/:tournamentId/* Engine routes require authentication and tournament permissions at least as strong as legacy /tournament/* before Preview flag ON?",
+      "recommendedOption": "PARITY_MIN_AUTH_PLUS_TOURNAMENT_UPDATE",
+      "recommendedLabel": "Remove plural routes from public-auth prefix descendants; require auth; route-level permission tournament.update (matching page gate) or documented split; add tenant/club ownership check before engine load",
+      "rejectedOptions": [
+        {
+          "option": "LEAVE_PUBLIC",
+          "label": "Keep /tournaments/* public-auth",
+          "reason": "Weaker than legacy; exposes engine deep links when auth production enabled"
+        },
+        {
+          "option": "VIEW_ONLY_PARITY",
+          "label": "Only require tournament.view",
+          "reason": "Weaker than current page PermissionGate tournament.update for mutating tabs"
+        }
+      ],
+      "consequence": "Closes Preview blocker BLK-PLURAL-AUTHZ. Public catalog /tournaments (list) remains public; parameterized Engine family becomes protected.",
+      "risk": "Deep links that previously worked anonymously will require login — intentional hardening.",
+      "implementationImpact": "authGuard.js PUBLIC_PATH_PREFIXES refinement; menuAccess.js plural matcher; optional ownership assert in useTournamentEngine/RouteAccessGate; tests in phase4-tournament-authz."
+    }
+  ],
+  "instructions": "Owner must approve or revise each OD-* before Phase 4 runtime implementation. Selecting B for OD-B01 requires proving functional+RBAC equivalence (currently NO)."
+}

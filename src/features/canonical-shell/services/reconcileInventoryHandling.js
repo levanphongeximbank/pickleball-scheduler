@@ -49,6 +49,13 @@ export function resolveInventoryHandlingState(entry) {
     return "HIDDEN_SHADOW";
   }
 
+  // OD-B01 Phase 4: /messages is dual-canonical Communication — not redirect metadata.
+  if (path === B01_LEGACY_MESSAGES_ROUTE && classification === "CANONICAL") {
+    if (entry.proposedCanonicalMenu && node && !node.contextualOnly) {
+      return "ACTIVE_MENU";
+    }
+  }
+
   if (disposition === "REDIRECT_LEGACY" || classification === "DUPLICATE") {
     return "REDIRECT_METADATA";
   }

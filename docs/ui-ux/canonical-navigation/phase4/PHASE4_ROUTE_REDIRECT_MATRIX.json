@@ -1,0 +1,587 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 4,
+    "artifact": "PHASE4_ROUTE_REDIRECT_MATRIX",
+    "generatedAt": "2026-08-06T01:22:27.806Z",
+    "freshOriginMainSha": "6ece104677ec1db4ba1b19bc666a1a41ac2c2a93",
+    "verdict": "CANONICAL_NAVIGATION_PHASE4_READY_WITH_BLOCKERS"
+  },
+  "legend": {
+    "IMPLEMENT_NOW": "Safe to implement in Phase 4 without further product decision",
+    "VERIFY_ONLY": "Already implemented; verify preservation policy",
+    "OWNER_RECONFIRM_REQUIRED": "Disposition exists but semantic proof failed",
+    "RETAIN_NO_REDIRECT": "Keep compatibility mount; do not invent redirect",
+    "GUARD_ONLY": "No redirect; tighten authorization/visibility"
+  },
+  "rows": [
+    {
+      "from": "/messages",
+      "to": "/crm/messages",
+      "type": "replace",
+      "query": true,
+      "hash": true,
+      "paramMap": null,
+      "status": "OWNER_RECONFIRM_REQUIRED",
+      "decision": "B01",
+      "notes": "Semantic conflict MessagingExperience vs CrmMessages"
+    },
+    {
+      "from": "/onboarding/pick-vn-rating",
+      "to": "/player/skill-assessment",
+      "type": "replace",
+      "query": false,
+      "hash": false,
+      "paramMap": null,
+      "status": "VERIFY_ONLY",
+      "decision": null,
+      "notes": "src/router.jsx Navigate replace"
+    },
+    {
+      "from": "/clubs/discover",
+      "to": "/discover-clubs",
+      "type": "replace",
+      "query": false,
+      "hash": false,
+      "paramMap": null,
+      "status": "VERIFY_ONLY",
+      "decision": null,
+      "notes": "src/router.jsx Navigate replace"
+    },
+    {
+      "from": "/club/activity",
+      "to": "/my-club?view=schedule",
+      "type": "replace",
+      "query": false,
+      "hash": false,
+      "paramMap": null,
+      "status": "VERIFY_ONLY",
+      "decision": null,
+      "notes": "src/router.jsx Navigate replace"
+    },
+    {
+      "from": "/courts-ops",
+      "to": "/court-management/courts",
+      "type": "replace",
+      "query": false,
+      "hash": false,
+      "paramMap": null,
+      "status": "VERIFY_ONLY",
+      "decision": null,
+      "notes": "src/router.jsx Navigate replace"
+    },
+    {
+      "from": "/tournament/entry-fee",
+      "to": "/tournament/config/fee",
+      "type": "alias_or_replace",
+      "query": true,
+      "hash": true,
+      "paramMap": null,
+      "status": "VERIFY_ONLY",
+      "decision": "B02",
+      "notes": "Within legacy family; same page component"
+    },
+    {
+      "from": "/tournament",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/list",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/create",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/types",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/types/:category",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": {
+        "tournamentId": "syntactic_only_unproven_semantic"
+      },
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/roster",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/organize",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/operations",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/results",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/config",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/register",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/my",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/my/:tournamentId",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": {
+        "tournamentId": "syntactic_only_unproven_semantic"
+      },
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/:tournamentId/public",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": {
+        "tournamentId": "syntactic_only_unproven_semantic"
+      },
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/:tournamentId/register",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": {
+        "tournamentId": "syntactic_only_unproven_semantic"
+      },
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/bracket",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/teams",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/teams/presets",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/teams/build/manual",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/teams/build/random",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/teams/build/draft",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/schedule",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/match-reports",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/config/format",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/config/settings",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/config/age-rules",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/config/gender-rules",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/config/fee",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/config/regulations",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/eligibility",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/eligibility/check",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/publish-schedule",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/referee-assign",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/awards",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/withdrawal",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/daily/:tournamentId",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": {
+        "tournamentId": "syntactic_only_unproven_semantic"
+      },
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/internal/:tournamentId",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": {
+        "tournamentId": "syntactic_only_unproven_semantic"
+      },
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/internal/:tournamentId/bracket",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": {
+        "tournamentId": "syntactic_only_unproven_semantic"
+      },
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/official/:tournamentId",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": {
+        "tournamentId": "syntactic_only_unproven_semantic"
+      },
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/official/:tournamentId/bracket",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": {
+        "tournamentId": "syntactic_only_unproven_semantic"
+      },
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/team/:tournamentId",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": {
+        "tournamentId": "syntactic_only_unproven_semantic"
+      },
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/tournament/director/:tournamentId",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": {
+        "tournamentId": "syntactic_only_unproven_semantic"
+      },
+      "status": "RETAIN_NO_REDIRECT",
+      "decision": "B02",
+      "notes": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration"
+    },
+    {
+      "from": "/player/skill-assessment-v5",
+      "to": null,
+      "type": null,
+      "query": null,
+      "hash": null,
+      "paramMap": null,
+      "status": "GUARD_ONLY",
+      "decision": "B03",
+      "notes": "HIDE_SHADOW; SUPER_ADMIN direct access; no redirect"
+    }
+  ],
+  "summary": {
+    "implementNow": 0,
+    "verifyOnly": 5,
+    "ownerReconfirmRequired": 1,
+    "retainNoRedirect": 42,
+    "guardOnly": 1
+  }
+}

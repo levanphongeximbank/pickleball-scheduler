@@ -1,0 +1,196 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 4,
+    "artifact": "PHASE4_TOURNAMENT_AUTHZ_PARITY_MATRIX",
+    "generatedAt": "2026-08-06T02:08:01.612Z",
+    "currentHead": "6ece104677ec1db4ba1b19bc666a1a41ac2c2a93",
+    "routesAudited": 7,
+    "parityPassCount": 0,
+    "parityGapCount": 7
+  },
+  "publicCatalogExcluded": {
+    "route": "/tournaments",
+    "component": "PublicTournamentsPage",
+    "note": "Intentionally public catalog; not classified as Engine parity PASS/GAP"
+  },
+  "routes": [
+    {
+      "route": "/tournaments/:tournamentId/engine",
+      "tab": "engine",
+      "component": "TournamentEnginePage",
+      "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+      "permissionGate": {
+        "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+        "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+      },
+      "tenantCheck": "NONE on route; hook uses active club/profile context only",
+      "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+      "legacyEquivalent": "/tournament/internal|official/:tournamentId (setup)",
+      "authorizationParity": "weaker",
+      "missingTests": [
+        "unauthenticated deep link redirects to login",
+        "RBAC denied tournament.view/update → 403",
+        "cross-club/cross-tenant tournamentId rejected before engine load",
+        "role matrix player/manager/referee/admin",
+        "mutate tab requires tournament.update"
+      ]
+    },
+    {
+      "route": "/tournaments/:tournamentId/seed",
+      "tab": "seed",
+      "component": "TournamentEnginePage",
+      "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+      "permissionGate": {
+        "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+        "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+      },
+      "tenantCheck": "NONE on route; hook uses active club/profile context only",
+      "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+      "legacyEquivalent": "mode setup seeding (unproven)",
+      "authorizationParity": "weaker",
+      "missingTests": [
+        "unauthenticated deep link redirects to login",
+        "RBAC denied tournament.view/update → 403",
+        "cross-club/cross-tenant tournamentId rejected before engine load",
+        "role matrix player/manager/referee/admin",
+        "mutate tab requires tournament.update"
+      ]
+    },
+    {
+      "route": "/tournaments/:tournamentId/draw",
+      "tab": "draw",
+      "component": "TournamentEnginePage",
+      "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+      "permissionGate": {
+        "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+        "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+      },
+      "tenantCheck": "NONE on route; hook uses active club/profile context only",
+      "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+      "legacyEquivalent": "/tournament/*/bracket (unproven semantic)",
+      "authorizationParity": "weaker",
+      "missingTests": [
+        "unauthenticated deep link redirects to login",
+        "RBAC denied tournament.view/update → 403",
+        "cross-club/cross-tenant tournamentId rejected before engine load",
+        "role matrix player/manager/referee/admin",
+        "mutate tab requires tournament.update"
+      ]
+    },
+    {
+      "route": "/tournaments/:tournamentId/schedule",
+      "tab": "schedule",
+      "component": "TournamentEnginePage",
+      "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+      "permissionGate": {
+        "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+        "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+      },
+      "tenantCheck": "NONE on route; hook uses active club/profile context only",
+      "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+      "legacyEquivalent": "/tournament/schedule hub or mode setup",
+      "authorizationParity": "weaker",
+      "missingTests": [
+        "unauthenticated deep link redirects to login",
+        "RBAC denied tournament.view/update → 403",
+        "cross-club/cross-tenant tournamentId rejected before engine load",
+        "role matrix player/manager/referee/admin",
+        "mutate tab requires tournament.update"
+      ]
+    },
+    {
+      "route": "/tournaments/:tournamentId/courts",
+      "tab": "courts",
+      "component": "TournamentEnginePage",
+      "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+      "permissionGate": {
+        "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+        "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+      },
+      "tenantCheck": "NONE on route; hook uses active club/profile context only",
+      "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+      "legacyEquivalent": "director/court ops (unproven)",
+      "authorizationParity": "weaker",
+      "missingTests": [
+        "unauthenticated deep link redirects to login",
+        "RBAC denied tournament.view/update → 403",
+        "cross-club/cross-tenant tournamentId rejected before engine load",
+        "role matrix player/manager/referee/admin",
+        "mutate tab requires tournament.update"
+      ]
+    },
+    {
+      "route": "/tournaments/:tournamentId/ranking",
+      "tab": "ranking",
+      "component": "TournamentEnginePage",
+      "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+      "permissionGate": {
+        "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+        "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+      },
+      "tenantCheck": "NONE on route; hook uses active club/profile context only",
+      "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+      "legacyEquivalent": "results surfaces (unproven)",
+      "authorizationParity": "weaker",
+      "missingTests": [
+        "unauthenticated deep link redirects to login",
+        "RBAC denied tournament.view/update → 403",
+        "cross-club/cross-tenant tournamentId rejected before engine load",
+        "role matrix player/manager/referee/admin",
+        "read-only vs mutate tab permission split"
+      ]
+    },
+    {
+      "route": "/tournaments/:tournamentId/logs",
+      "tab": "logs",
+      "component": "TournamentEnginePage",
+      "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+      "permissionGate": {
+        "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+        "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+      },
+      "tenantCheck": "NONE on route; hook uses active club/profile context only",
+      "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+      "legacyEquivalent": "no proven legacy equivalent",
+      "authorizationParity": "weaker",
+      "missingTests": [
+        "unauthenticated deep link redirects to login",
+        "RBAC denied tournament.view/update → 403",
+        "cross-club/cross-tenant tournamentId rejected before engine load",
+        "role matrix player/manager/referee/admin",
+        "read-only vs mutate tab permission split"
+      ]
+    }
+  ],
+  "recommendedTargetPolicy": {
+    "decisionId": "OD-PLURAL-AUTHZ-PARITY",
+    "blockerId": "BLK-PLURAL-AUTHZ",
+    "plainLanguageQuestion": "Should /tournaments/:tournamentId/* Engine routes require authentication and tournament permissions at least as strong as legacy /tournament/* before Preview flag ON?",
+    "recommendedOption": "PARITY_MIN_AUTH_PLUS_TOURNAMENT_UPDATE",
+    "recommendedLabel": "Remove plural routes from public-auth prefix descendants; require auth; route-level permission tournament.update (matching page gate) or documented split; add tenant/club ownership check before engine load",
+    "rejectedOptions": [
+      {
+        "option": "LEAVE_PUBLIC",
+        "label": "Keep /tournaments/* public-auth",
+        "reason": "Weaker than legacy; exposes engine deep links when auth production enabled"
+      },
+      {
+        "option": "VIEW_ONLY_PARITY",
+        "label": "Only require tournament.view",
+        "reason": "Weaker than current page PermissionGate tournament.update for mutating tabs"
+      }
+    ],
+    "consequence": "Closes Preview blocker BLK-PLURAL-AUTHZ. Public catalog /tournaments (list) remains public; parameterized Engine family becomes protected.",
+    "risk": "Deep links that previously worked anonymously will require login — intentional hardening.",
+    "implementationImpact": "authGuard.js PUBLIC_PATH_PREFIXES refinement; menuAccess.js plural matcher; optional ownership assert in useTournamentEngine/RouteAccessGate; tests in phase4-tournament-authz."
+  },
+  "missingTestsAggregate": [
+    "unauthenticated plural deep link → login",
+    "RBAC denied → 403",
+    "cross-tenant/club tournamentId rejected before load",
+    "role matrix coverage",
+    "read-only vs mutate tab permissions",
+    "Engine missing-ID/breadcrumb no longer depends on unprotected public plural access"
+  ]
+}

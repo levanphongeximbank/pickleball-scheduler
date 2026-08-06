@@ -65,12 +65,15 @@ test("phase3 registry validation — complete coverage + zero duplicates", () =>
   assert.ok(result.counts.level3Actions >= 70);
   assert.equal(result.counts.duplicateActiveEntries, 0);
   assert.equal(result.counts.inventoriedRoutes, 179);
-  assert.equal(result.counts.proposedCanonicalMenu, 82);
-  assert.equal(result.counts.legacyRoutesHidden, 48);
+  assert.equal(result.counts.proposedCanonicalMenu, 83);
+  assert.equal(result.counts.legacyRoutesHidden, 47);
   assert.equal(result.counts.shadowRoutesHidden, 1);
   assert.equal(result.counts.partialMenuNodes, 6);
   assert.equal(result.ownerDecisions.B01.hasLegacy, false);
   assert.equal(result.ownerDecisions.B01.hasCanonical, true);
+  assert.equal(result.ownerDecisions.B01.dualCanonical, true);
+  assert.equal(result.ownerDecisions.B01.hasMessagingExperience, true);
+  assert.equal(result.ownerDecisions.B01.hasCrmMessages, true);
   assert.equal(result.ownerDecisions.B03.hasShadow, false);
   assert.ok(result.ownerDecisions.B02.canonicalCount >= 1);
   assert.equal(result.ownerDecisions.B02.legacyHubCount, 0);
@@ -98,9 +101,10 @@ test("phase3 menu — 13 Level-1, PARTIAL badges, contextual params hidden", () 
     visibleDesktop.some((n) => n.route === B03_SHADOW_SKILL_ASSESSMENT_V5),
     false
   );
+  // OD-B01 Phase 4: dual-canonical — both messaging experience and CRM messages.
   assert.equal(
-    visibleDesktop.some((n) => n.route === B01_LEGACY_MESSAGES_ROUTE),
-    false
+    visibleDesktop.filter((n) => n.route === B01_LEGACY_MESSAGES_ROUTE).length,
+    1
   );
   assert.equal(
     visibleDesktop.filter((n) => n.route === B01_CANONICAL_MESSAGES_ROUTE).length,
@@ -125,17 +129,23 @@ test("phase3 W01 — Inter font loading metadata (no remote CDN)", () => {
 test("phase3 W02 — canonical search respects RBAC and hides shadow/legacy", () => {
   const adminHits = buildCanonicalSearchIndex(authFor("SUPER_ADMIN"));
   assert.ok(adminHits.some((h) => h.path === B01_CANONICAL_MESSAGES_ROUTE));
-  assert.equal(adminHits.some((h) => h.path === B01_LEGACY_MESSAGES_ROUTE), false);
+  assert.ok(adminHits.some((h) => h.path === B01_LEGACY_MESSAGES_ROUTE));
   assert.equal(adminHits.some((h) => h.path === B03_SHADOW_SKILL_ASSESSMENT_V5), false);
   assert.equal(adminHits.some((h) => String(h.path).includes(":")), false);
   assert.equal(
     adminHits.filter((h) => h.path === B01_CANONICAL_MESSAGES_ROUTE).length,
     1
   );
+  assert.equal(
+    adminHits.filter((h) => h.path === B01_LEGACY_MESSAGES_ROUTE).length,
+    1
+  );
 
   const playerHits = buildCanonicalSearchIndex(authFor("PLAYER"));
   assert.equal(playerHits.some((h) => h.path === "/admin/ai-pairing/private-rules"), false);
   assert.equal(playerHits.some((h) => h.path === B03_SHADOW_SKILL_ASSESSMENT_V5), false);
+  // PLAYER may see Communication inbox; must not see CRM outreach without perms.
+  assert.equal(playerHits.some((h) => h.path === B01_CANONICAL_MESSAGES_ROUTE), false);
 
   const unknownHits = buildCanonicalSearchIndex(authFor("UNKNOWN_ROLE_XYZ"));
   assert.equal(unknownHits.length, 0);
@@ -222,16 +232,20 @@ test("phase3 inventory handling reconciles to 179", () => {
   assert.equal(result.ok, true);
   assert.equal(result.total, 179);
   assert.equal(result.sumStates, 179);
-  assert.equal(result.counts.ACTIVE_MENU, 75);
+  assert.equal(result.counts.ACTIVE_MENU, 76);
   assert.equal(result.counts.CONTEXTUAL_NAVIGATION, 7);
   assert.equal(result.counts.HIDDEN_SHADOW, 1);
-  assert.ok(result.counts.HIDDEN_LEGACY + result.counts.REDIRECT_METADATA >= 48);
+  assert.ok(result.counts.HIDDEN_LEGACY + result.counts.REDIRECT_METADATA >= 47);
 });
 
 test("phase3 B01/B02/B03 owner decisions", () => {
   const invariants = assertOwnerDecisionMenuInvariants(buildCanonicalMenuTree());
   assert.equal(invariants.hasLegacyMessages, false);
   assert.equal(invariants.hasCanonicalMessages, true);
+  assert.equal(invariants.hasMessagingExperience, true);
+  assert.equal(invariants.hasCrmMessages, true);
+  assert.equal(invariants.dualCanonicalMessages, true);
+  assert.equal(invariants.duplicateMessagesEntries, false);
   assert.equal(invariants.hasShadowSkillV5, false);
   assert.equal(invariants.legacyTournamentHubCount, 0);
   assert.ok(invariants.canonicalTournamentCount >= 1);
@@ -247,7 +261,11 @@ test("phase3 RBAC — 10 roles + unknown fail-closed + Private Pairing", () => {
     const leaves = flattenCanonicalMenu(filterCanonicalMenu(authFor(role), { viewport: "desktop" }));
     assert.ok(Array.isArray(leaves));
     assert.equal(leaves.some((n) => n.route === B03_SHADOW_SKILL_ASSESSMENT_V5), false);
-    assert.equal(leaves.some((n) => n.route === B01_LEGACY_MESSAGES_ROUTE), false);
+    // OD-B01: /messages may appear (AUTHENTICATED); CRM remains permission-scoped.
+    assert.equal(
+      leaves.filter((n) => n.route === B01_LEGACY_MESSAGES_ROUTE).length <= 1,
+      true
+    );
     if (role !== "SUPER_ADMIN") {
       assert.equal(
         leaves.some((n) => n.route === "/admin/ai-pairing/private-rules"),
@@ -284,14 +302,10 @@ test("phase3 desktop/mobile same registry", () => {
   const mobile = flattenCanonicalMenu(filterCanonicalMenu(auth, { viewport: "mobile" }));
   // Same registry source; mobile may hide mobileVisible:false leaves.
   assert.ok(desktop.length >= mobile.length);
-  assert.equal(
-    desktop.some((n) => n.route === "/messages"),
-    false
-  );
-  assert.equal(
-    mobile.some((n) => n.route === "/messages"),
-    false
-  );
+  // OD-B01 Phase 4: dual-canonical messaging experience present for VENUE_OWNER.
+  assert.equal(desktop.some((n) => n.route === "/messages"), true);
+  assert.equal(mobile.some((n) => n.route === "/messages"), true);
+  assert.equal(desktop.some((n) => n.route === "/crm/messages"), true);
 });
 
 test("phase3 permission filtering — finance denied without permission", () => {

@@ -220,7 +220,7 @@ export default function TournamentEnginePage() {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">Không tìm thấy giải đấu.</Alert>
-        <Button startIcon={<ArrowBackIcon />} sx={{ mt: 2 }} onClick={() => navigate("/tournament")}>
+        <Button startIcon={<ArrowBackIcon />} sx={{ mt: 2 }} onClick={() => navigate("/tournaments")}>
           Quay lại
         </Button>
       </Box>
@@ -259,7 +259,7 @@ export default function TournamentEnginePage() {
           message={toastMessage}
         />
         <Breadcrumbs sx={{ mb: 1 }}>
-          <Link component="button" underline="hover" color="inherit" onClick={() => navigate("/tournament")}>
+          <Link component="button" underline="hover" color="inherit" onClick={() => navigate("/tournaments")}>
             Giải đấu
           </Link>
           <Typography color="text.primary">{engine.tournament.name}</Typography>

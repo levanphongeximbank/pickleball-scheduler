@@ -5,11 +5,11 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   "generatedAt": "2026-08-05T14:37:15.749Z",
   "phase": "3-menu-completion",
   "totalRoutes": 179,
-  "proposedCanonicalMenuCount": 82,
+  "proposedCanonicalMenuCount": 83,
   "classificationCounts": {
-    "CANONICAL": 89,
+    "CANONICAL": 90,
     "HIDDEN_ACTIVE": 40,
-    "LEGACY": 48,
+    "LEGACY": 47,
     "DUPLICATE": 1,
     "SHADOW": 1
   }
@@ -1686,15 +1686,15 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   },
   {
     "path": "/messages",
-    "classification": "LEGACY",
-    "disposition": "REDIRECT_LEGACY",
-    "proposedCanonicalMenu": false,
+    "classification": "CANONICAL",
+    "disposition": "RETAIN_CANONICAL",
+    "proposedCanonicalMenu": true,
     "level1": "10",
     "level2": "messaging",
-    "level3": "legacy-inbox",
+    "level3": "inbox",
     "ownerDecision": "B01",
-    "sidebar": false,
-    "mobile": false
+    "sidebar": true,
+    "mobile": true
   },
   {
     "path": "/crm/messages",

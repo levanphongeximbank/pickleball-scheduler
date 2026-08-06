@@ -7,6 +7,7 @@ import { isPickVnRatingV5Enabled } from "../../features/pick-vn-rating-v5/config
 import V5AssessmentWorkspace from "../../features/pick-vn-rating-v5/components/V5AssessmentWorkspace.jsx";
 import { resolveRatingV5Access } from "../../features/pick-vn-rating-v5/services/ratingV5AccessService.js";
 import { resolveAssessmentErrorMessage } from "../../features/pick-vn-rating-v5/constants/assessmentErrorMessages.js";
+import { evaluateSkillAssessmentV5PageAccess } from "../../features/pick-vn-rating-v5/services/skillAssessmentV5RouteAccess.js";
 
 export default function SkillAssessmentV5Page() {
   const navigate = useNavigate();
@@ -17,19 +18,36 @@ export default function SkillAssessmentV5Page() {
     let cancelled = false;
 
     async function checkAccess() {
-      if (!isPickVnRatingV5Enabled()) {
+      const page = evaluateSkillAssessmentV5PageAccess({
+        user,
+        flagEnabled: isPickVnRatingV5Enabled(),
+      });
+
+      if (page.allowed === true) {
         if (!cancelled) {
-          setAccessState({ loading: false, allowed: false, code: "FEATURE_DISABLED", visible: false });
-        }
-        return;
-      }
-      if (!user?.id) {
-        if (!cancelled) {
-          setAccessState({ loading: false, allowed: false, code: "UNAUTHORIZED", visible: false });
+          setAccessState({
+            loading: false,
+            allowed: true,
+            code: page.code,
+            visible: true,
+          });
         }
         return;
       }
 
+      if (page.allowed === false) {
+        if (!cancelled) {
+          setAccessState({
+            loading: false,
+            allowed: false,
+            code: page.code,
+            visible: false,
+          });
+        }
+        return;
+      }
+
+      // PLAYER + flag ON → existing enrollment authority (no parallel auth source).
       const access = await resolveRatingV5Access();
       if (!cancelled) {
         setAccessState({
@@ -48,7 +66,7 @@ export default function SkillAssessmentV5Page() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, user?.id]);
+  }, [authLoading, user]);
 
   if (authLoading || accessState.loading) {
     return (

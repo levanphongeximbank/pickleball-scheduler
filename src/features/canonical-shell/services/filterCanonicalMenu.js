@@ -4,7 +4,8 @@ import { isApiEnabled, isMarketplaceEnabled } from "../../integrations/config/in
 import { isPickVnRatingV5Enabled } from "../../pick-vn-rating-v5/config/flags.js";
 import { isPrivatePairingRulesEnabled } from "../../private-pairing-rules/constants/codes.js";
 import {
-  B01_LEGACY_MESSAGES_ROUTE,
+  B01_MESSAGING_EXPERIENCE_ROUTE,
+  B01_CRM_MESSAGES_ROUTE,
   B03_SHADOW_SKILL_ASSESSMENT_V5,
   OWNER_DECISIONS,
 } from "../config/ownerDecisions.js";
@@ -79,7 +80,7 @@ function isFeatureEnabled(flags = []) {
 
 function isHiddenByOwnerDecision(node) {
   const route = node?.route || "";
-  if (route === B01_LEGACY_MESSAGES_ROUTE) return true;
+  // OD-B01 Phase 4: /messages is canonical Communication — do not hide.
   if (route === B03_SHADOW_SKILL_ASSESSMENT_V5) return true;
   if (route.startsWith("/tournament/") && !route.startsWith("/tournaments/")) {
     // B02: legacy tournament hubs must not appear in proposed menu.
@@ -216,17 +217,23 @@ export function flattenCanonicalMenu(nodes = [], acc = []) {
 export function assertOwnerDecisionMenuInvariants(nodes = []) {
   const flat = flattenCanonicalMenu(nodes);
   const routes = flat.map((n) => n.route);
+  const messagingCount = routes.filter((r) => r === B01_MESSAGING_EXPERIENCE_ROUTE).length;
+  const crmCount = routes.filter((r) => r === B01_CRM_MESSAGES_ROUTE).length;
   return {
     ownerDecisions: OWNER_DECISIONS,
-    hasLegacyMessages: routes.includes(B01_LEGACY_MESSAGES_ROUTE),
-    hasCanonicalMessages: routes.includes("/crm/messages"),
+    // Phase 4 OD-B01: both are canonical; "legacy" flag means messaging experience present.
+    hasMessagingExperience: messagingCount > 0,
+    hasCrmMessages: crmCount > 0,
+    hasLegacyMessages: false,
+    hasCanonicalMessages: crmCount > 0,
     hasShadowSkillV5: routes.includes(B03_SHADOW_SKILL_ASSESSMENT_V5),
     legacyTournamentHubCount: routes.filter(
       (r) => r?.startsWith("/tournament/") && !r.startsWith("/tournaments/")
     ).length,
     canonicalTournamentCount: routes.filter((r) => r?.startsWith("/tournaments/")).length,
-    duplicateMessagesEntries:
-      routes.filter((r) => r === "/messages" || r === "/crm/messages").length > 1 &&
-      routes.includes("/messages"),
+    // Duplicate = same path twice, not the intentional dual-canonical pair.
+    duplicateMessagesEntries: messagingCount > 1 || crmCount > 1,
+    dualCanonicalMessages:
+      messagingCount === 1 && crmCount === 1,
   };
 }
