@@ -10,7 +10,10 @@
     "previewGo": "YES",
     "sqlMutations": 0,
     "envChangedByAgent": false,
-    "draftPrOpened": false,
+    "draftPrOpened": true,
+    "draftPrNumber": 385,
+    "draftPrUrl": "https://github.com/levanphongeximbank/pickleball-scheduler/pull/385",
+    "boundCommitSha": "643ee18d3c0315dd8cd30a61c1260580799c1afd",
     "credentialsExposed": false
   },
   "productionIsolation": [
