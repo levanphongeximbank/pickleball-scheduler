@@ -1,0 +1,127 @@
+{
+  "program": "PICK_VN_CANONICAL_NAVIGATION",
+  "phase": 5,
+  "document": "PHASE5_POST_MERGE_VERIFICATION",
+  "verifiedAt": "2026-08-06",
+  "mode": "READ_ONLY",
+  "finalVerdict": "CANONICAL_NAVIGATION_PHASE5_POST_MERGE_VERIFIED_WITH_OBSERVATIONS_READY_FOR_CLEANUP",
+  "pr": {
+    "number": 385,
+    "state": "MERGED",
+    "mergedAt": "2026-08-06T13:52:00Z",
+    "mergedHeadSha": "4f3638071ee0f0b98d0a4dcb6662775798062de3",
+    "mergeCommitSha": "0b4993c918be4e36bfaea5d6329a1ad1c17accdd"
+  },
+  "baseline": {
+    "branch": "feature/canonical-navigation-phase5-preview-acceptance",
+    "worktreeHead": "4f3638071ee0f0b98d0a4dcb6662775798062de3",
+    "originMainSha": "0b4993c918be4e36bfaea5d6329a1ad1c17accdd",
+    "originFeatureSha": "4f3638071ee0f0b98d0a4dcb6662775798062de3",
+    "worktreeCleanBeforeDeliverables": true,
+    "stagedFiles": [],
+    "modifiedFiles": [],
+    "untrackedFilesBeforeDeliverables": []
+  },
+  "ancestry": {
+    "featureHeadAncestorOfMain": true,
+    "mergeCommitEqualsOriginMain": true,
+    "mergeCommitAncestorOfMain": true,
+    "phase4Ancestors": {
+      "14bd1fb0fc530a6aa56214060d822e71fd7239f6": true,
+      "295c3f21fe2591fead9192d415f20b38cf20be26": true,
+      "1c5ff4d81ab5cff007d4324dadb91a27ce6924c6": true,
+      "087c61c7d8bb1efdae343685269e53aa75767e21": true
+    },
+    "mergeParents": [
+      "3c6c3f0261c843f992e21499569b7df51525ed5d",
+      "4f3638071ee0f0b98d0a4dcb6662775798062de3"
+    ]
+  },
+  "mergedDiff": {
+    "mergedFileCount": 36,
+    "allUnderPhase5DocsPath": true,
+    "runtimeFiles": 0,
+    "testFiles": 0,
+    "packageLockFiles": 0,
+    "environmentFiles": 0,
+    "sqlFiles": 0,
+    "deploymentConfigFiles": 0,
+    "credentialsFindings": 0,
+    "unrelatedFiles": 0
+  },
+  "tests": {
+    "focusedSet": "same_99_as_pre_merge_critical_coverage",
+    "run": 99,
+    "passed": 99,
+    "failed": 0,
+    "unitPassed": 78,
+    "uiPassed": 21,
+    "lintNoNew": "PASS",
+    "build": "PASS",
+    "secretScan": "PASS",
+    "mainPushCiVerify": "SUCCESS"
+  },
+  "evidenceConsistency": {
+    "result": "PASS",
+    "flagOnPreviewAcceptance": "PASS_WITH_OBSERVATIONS",
+    "rollback": "PASS",
+    "previewFlagCurrentlyFalse": true,
+    "productionFlagOffOrAbsent": true,
+    "tournamentEngine7of7": true,
+    "b03NineAutomated": true,
+    "criticalTests99of99": true,
+    "coachWaived": "WAIVED_WITH_KNOWN_SCHEMA_GAP",
+    "acceptedLimitationsRetained": true,
+    "blockers": 0,
+    "phase5ClaimedClosedBeforeMerge": false
+  },
+  "productionBoundary": {
+    "productionGo": "NO",
+    "productionCanonicalFlagEnabledByPhase5": false,
+    "productionFlagState": "OFF_OR_ABSENT",
+    "agentInitiatedProductionDeployment": false,
+    "vercelAutoProductionDeploymentObserved": true,
+    "productionEnvironmentChangedByAgent": false,
+    "previewPromotedByAgent": false,
+    "sqlMutations": 0,
+    "stagingMutations": 0,
+    "authMutations": 0,
+    "observation": {
+      "id": "OBS-P5-PM-01",
+      "deploymentId": 5780757551,
+      "creator": "vercel[bot]",
+      "sha": "0b4993c918be4e36bfaea5d6329a1ad1c17accdd",
+      "environment": "Production",
+      "state": "success",
+      "production_environment_api_flag": false,
+      "note": "Auto Production deploy on main merge; docs-only content; flag-ON not authorized"
+    }
+  },
+  "cleanupReadiness": {
+    "featureWorktreeRegistered": true,
+    "featureWorktreeClean": true,
+    "localBranchExists": true,
+    "remoteBranchExists": true,
+    "branchFullyMergedIntoOriginMain": true,
+    "worktreeLocked": false,
+    "worktreePrunable": true,
+    "unrelatedWorktreesPreserved": true,
+    "ownerRepoPreexistingUntrackedPreserved": true,
+    "ownerRepoUntrackedCount": 10,
+    "stashUnchanged": true,
+    "cleanupSafe": true,
+    "cleanupPerformed": false
+  },
+  "observations": ["OBS-P5-PM-01"],
+  "blockers": [],
+  "safety": {
+    "commit": false,
+    "push": false,
+    "cleanupPerformed": false,
+    "agentDeployments": 0
+  },
+  "deliverablesCreatedUncommitted": [
+    "docs/ui-ux/canonical-navigation/phase5/PHASE5_POST_MERGE_VERIFICATION.md",
+    "docs/ui-ux/canonical-navigation/phase5/PHASE5_POST_MERGE_VERIFICATION.json"
+  ]
+}
