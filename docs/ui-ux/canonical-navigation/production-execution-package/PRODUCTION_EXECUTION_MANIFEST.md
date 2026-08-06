@@ -64,12 +64,42 @@ This package does **not** authorize Production mutation. All execution GO tokens
 
 ---
 
+## Frozen package digest
+
+| Field | Value |
+|-------|--------|
+| Digest algorithm | SHA-256 |
+| Digest input HEAD | `fea727e0c452447d5942ef505a0e8336dfd53011` |
+| Source baseline | `1bcc4dc729dd53027de1fac1cf39001ea5d29f4b` |
+| Canonical digest-manifest format | `<sha256><two spaces><repository-relative-path>` per line; LF endings; trailing LF |
+| `EXECUTION_PACKAGE_DIGEST` | `fda262a74832daf9356ca8bd6744deaaf3e82e15d17bda19cc4957dbb3fbcdce` |
+| Digest calculation timestamp | `2026-08-07T00:00:09+07:00` (`Asia/Ho_Chi_Minh`) |
+| Digest status | `FROZEN_FOR_DRAFT_PR_REVIEW` |
+| Digest binds future Production execution SHA? | **NO** — `FINAL_EXECUTION_SHA` remains PENDING |
+
+### Exact eight-file input set (lexicographic) and per-file SHA-256
+
+Computed from committed bytes at digest input HEAD only (digest-record edits below are outside the frozen input):
+
+```
+77ae2318b1970b18695433ec2918ee2cac50503b197ebac8def7ceedd224bb18  docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_BROWSER_ACCEPTANCE_RUNBOOK.md
+1b8395bed2834295fc59bcbb810bf2892e23f91480397c9714c7086276af2922  docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_DEPLOYMENT_AND_FLAG_RUNBOOK.md
+5947fa12b8fc8e8fc5e68651a359f00992ee43ea8652de1f257a363dd97d20e8  docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_EXECUTION_MANIFEST.json
+e295b3ae2d0244afdb173a4c96e16c4115969150524aef129efd46ca14345129  docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_EXECUTION_MANIFEST.md
+faab54b1407eb6d3b0a21aaba8b0f6cfeffdf203f00f598ce17a230f5f415767  docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_EXECUTION_READINESS_CHECKLIST.md
+3449c0b604aa646b27e107ee9b556d366e1db6950c9decb9733aaf0eea8d8aed  docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_GO_TOKEN_CONTRACT.md
+1b65c6bf9afa353e122d559c017837fb69cc94c4371bd596daa54dfc869359f0  docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_IDENTITY_AND_WAIVER_MATRIX.md
+806ec03bd74174141c156be593da10dd7b7809f880b6efb58575983223a98ea0  docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_ROLLBACK_AND_MONITORING_RUNBOOK.md
+```
+
+---
+
 ## Placeholders (do not invent)
 
 | Placeholder | Current status |
 |-------------|----------------|
-| Package digest | **PENDING** — compute after package content is frozen for execution GO binding |
-| Final execution SHA | **PENDING** — bind exact SHA at execution GO |
+| Package digest | **FROZEN** — `fda262a74832daf9356ca8bd6744deaaf3e82e15d17bda19cc4957dbb3fbcdce` (`FROZEN_FOR_DRAFT_PR_REVIEW`) |
+| Final execution SHA | **PENDING** — bind exact SHA at execution GO (`FINAL_EXECUTION_SHA_BINDING_GO=NO`) |
 | Final live flag re-attestation | **PENDING** — re-attest in Vercel at execution window before flag change |
 | Deployment ID | **PENDING** — capture only after authorized Production redeploy |
 | Deployment SHA | **PENDING** — capture only after authorized Production redeploy |

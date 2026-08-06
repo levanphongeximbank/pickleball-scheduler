@@ -39,9 +39,55 @@
     "evidenceRecorder": "Le Phong",
     "ownerApprovalAuthority": "Le Phong"
   },
+  "packageDigest": {
+    "algorithm": "SHA-256",
+    "digestInputHead": "fea727e0c452447d5942ef505a0e8336dfd53011",
+    "sourceBaselineSha": "1bcc4dc729dd53027de1fac1cf39001ea5d29f4b",
+    "canonicalDigestManifestFormat": "<sha256><two spaces><repository-relative-path> per line; LF endings; trailing LF",
+    "executionPackageDigest": "fda262a74832daf9356ca8bd6744deaaf3e82e15d17bda19cc4957dbb3fbcdce",
+    "digestCalculationTimestamp": "2026-08-07T00:00:09+07:00",
+    "digestCalculationTimezone": "Asia/Ho_Chi_Minh",
+    "digestStatus": "FROZEN_FOR_DRAFT_PR_REVIEW",
+    "bindsFinalExecutionSha": false,
+    "inputFileCount": 8,
+    "perFileSha256": [
+      {
+        "sha256": "77ae2318b1970b18695433ec2918ee2cac50503b197ebac8def7ceedd224bb18",
+        "path": "docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_BROWSER_ACCEPTANCE_RUNBOOK.md"
+      },
+      {
+        "sha256": "1b8395bed2834295fc59bcbb810bf2892e23f91480397c9714c7086276af2922",
+        "path": "docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_DEPLOYMENT_AND_FLAG_RUNBOOK.md"
+      },
+      {
+        "sha256": "5947fa12b8fc8e8fc5e68651a359f00992ee43ea8652de1f257a363dd97d20e8",
+        "path": "docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_EXECUTION_MANIFEST.json"
+      },
+      {
+        "sha256": "e295b3ae2d0244afdb173a4c96e16c4115969150524aef129efd46ca14345129",
+        "path": "docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_EXECUTION_MANIFEST.md"
+      },
+      {
+        "sha256": "faab54b1407eb6d3b0a21aaba8b0f6cfeffdf203f00f598ce17a230f5f415767",
+        "path": "docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_EXECUTION_READINESS_CHECKLIST.md"
+      },
+      {
+        "sha256": "3449c0b604aa646b27e107ee9b556d366e1db6950c9decb9733aaf0eea8d8aed",
+        "path": "docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_GO_TOKEN_CONTRACT.md"
+      },
+      {
+        "sha256": "1b65c6bf9afa353e122d559c017837fb69cc94c4371bd596daa54dfc869359f0",
+        "path": "docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_IDENTITY_AND_WAIVER_MATRIX.md"
+      },
+      {
+        "sha256": "806ec03bd74174141c156be593da10dd7b7809f880b6efb58575983223a98ea0",
+        "path": "docs/ui-ux/canonical-navigation/production-execution-package/PRODUCTION_ROLLBACK_AND_MONITORING_RUNBOOK.md"
+      }
+    ]
+  },
   "placeholders": {
-    "packageDigest": null,
-    "packageDigestStatus": "PENDING",
+    "packageDigest": "fda262a74832daf9356ca8bd6744deaaf3e82e15d17bda19cc4957dbb3fbcdce",
+    "packageDigestStatus": "FROZEN_FOR_DRAFT_PR_REVIEW",
     "finalExecutionSha": null,
     "finalExecutionShaStatus": "PENDING",
     "finalLiveFlagReAttestation": null,

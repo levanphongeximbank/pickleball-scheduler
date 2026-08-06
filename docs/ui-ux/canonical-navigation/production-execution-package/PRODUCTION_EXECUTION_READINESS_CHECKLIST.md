@@ -31,6 +31,7 @@ Gate classifications: `PASS` | `PENDING` | `BLOCKED` | `WAIVED`
 | SUPER_ADMIN identity bound | **PASS** | `EXISTING_OWNER_ACCOUNT`; test required |
 | Public unauthenticated identity bound | **PASS** | `AVAILABLE`; test required |
 | `PRODUCTION_IDENTITY_COVERAGE_PLANNING_GO` | **PASS** | **YES** — Owner waivers bound for Owner-only pilot |
+| Package digest frozen | **PASS** | SHA-256 `fda262a74832daf9356ca8bd6744deaaf3e82e15d17bda19cc4957dbb3fbcdce` over 8 files at input HEAD `fea727e0c452447d5942ef505a0e8336dfd53011`; status `FROZEN_FOR_DRAFT_PR_REVIEW` |
 
 ---
 
@@ -50,9 +51,10 @@ Gate classifications: `PASS` | `PENDING` | `BLOCKED` | `WAIVED`
 
 | Gate | Classification | Notes |
 |------|----------------|-------|
-| Package digest | **PENDING** | Placeholder; do not invent |
-| Final execution SHA | **PENDING** | Placeholder; bind at GO |
+| Final execution SHA | **PENDING** | Placeholder; bind at GO (`FINAL_EXECUTION_SHA_BINDING_GO=NO`) |
 | Live flag re-attestation at execution window | **PENDING** | Required before flag change |
+| Deployment ID / deployment SHA | **PENDING** | Capture only after authorized Production redeploy |
+| Final Owner GO timestamp | **PENDING** | Bind only when Owner issues execution GOs |
 | `PRODUCTION_GO` | **PENDING** | Current value **NO** |
 | `PRODUCTION_FLAG_CHANGE_GO` | **PENDING** | Current value **NO** |
 | `PRODUCTION_ENV_CHANGE_GO` | **PENDING** | Current value **NO** |
