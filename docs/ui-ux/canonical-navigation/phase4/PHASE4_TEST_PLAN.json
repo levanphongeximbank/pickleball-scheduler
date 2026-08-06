@@ -1,0 +1,364 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 4,
+    "artifact": "PHASE4_TEST_PLAN",
+    "generatedAt": "2026-08-06T01:22:27.806Z",
+    "freshOriginMainSha": "6ece104677ec1db4ba1b19bc666a1a41ac2c2a93",
+    "verdict": "CANONICAL_NAVIGATION_PHASE4_READY_WITH_BLOCKERS"
+  },
+  "matrix": [
+    {
+      "id": "T-B01-01",
+      "area": "B01",
+      "title": "Owner reconfirm gate before redirect",
+      "flag": "any",
+      "viewports": [
+        "n/a"
+      ],
+      "required": true,
+      "blockerGate": "BLK-B01-SEMANTIC"
+    },
+    {
+      "id": "T-B01-02",
+      "area": "B01",
+      "title": "/crm/messages sole canonical menu/search authority flag ON",
+      "flag": "ON",
+      "viewports": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B01-03",
+      "area": "B01",
+      "title": "/messages absent from canonical menu/search flag ON",
+      "flag": "ON",
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B01-04",
+      "area": "B01",
+      "title": "If redirect approved: replace + query+hash preservation",
+      "flag": "both",
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "required": true,
+      "dependsOn": "owner_reconfirm"
+    },
+    {
+      "id": "T-B01-05",
+      "area": "B01",
+      "title": "If redirect approved: browser back skips legacy",
+      "flag": "both",
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "required": true,
+      "dependsOn": "owner_reconfirm"
+    },
+    {
+      "id": "T-B01-06",
+      "area": "B01",
+      "title": "Unauthenticated access to legacy and target",
+      "flag": "both",
+      "viewports": [
+        "desktop"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B01-07",
+      "area": "B01",
+      "title": "RBAC denied CRM after redirect (if implemented)",
+      "flag": "both",
+      "viewports": [
+        "desktop"
+      ],
+      "required": true,
+      "dependsOn": "owner_reconfirm"
+    },
+    {
+      "id": "T-B01-08",
+      "area": "B01",
+      "title": "COMMS MessagingExperience regression if not collapsed",
+      "flag": "OFF",
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B02-01",
+      "area": "B02",
+      "title": "No invented redirects for unmapped /tournament/*",
+      "flag": "both",
+      "viewports": [
+        "desktop"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B02-02",
+      "area": "B02",
+      "title": "Canonical plural engine deep links with valid ID",
+      "flag": "ON",
+      "viewports": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B02-03",
+      "area": "B02",
+      "title": "Invalid/missing tournamentId handling",
+      "flag": "ON",
+      "viewports": [
+        "desktop"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B02-04",
+      "area": "B02",
+      "title": "Unauthorized engine access (RBAC on)",
+      "flag": "ON",
+      "viewports": [
+        "desktop"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B02-05",
+      "area": "B02",
+      "title": "Plural routes not public when auth production on",
+      "flag": "ON",
+      "viewports": [
+        "desktop"
+      ],
+      "required": true,
+      "blockerGate": "BLK-PLURAL-AUTHZ"
+    },
+    {
+      "id": "T-B02-06",
+      "area": "B02",
+      "title": "Legacy mode deep links still work (retain)",
+      "flag": "both",
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B02-07",
+      "area": "B02",
+      "title": "Query/hash preservation only for proven redirects",
+      "flag": "both",
+      "viewports": [
+        "desktop"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B02-08",
+      "area": "B02",
+      "title": "Menu/search uniqueness: no /tournament/* under flag ON",
+      "flag": "ON",
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B02-09",
+      "area": "B02",
+      "title": "Breadcrumb correctness for engine tabs",
+      "flag": "ON",
+      "viewports": [
+        "desktop"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B03-01",
+      "area": "B03",
+      "title": "V5 hidden from menu/search flag ON",
+      "flag": "ON",
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B03-02",
+      "area": "B03",
+      "title": "V5 not exposed by rating flag alone in any shell",
+      "flag": "both",
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-B03-03",
+      "area": "B03",
+      "title": "Non-SUPER_ADMIN direct URL denied after guard",
+      "flag": "both",
+      "viewports": [
+        "desktop"
+      ],
+      "required": true,
+      "blockerGate": "BLK-B03-GUARD"
+    },
+    {
+      "id": "T-B03-04",
+      "area": "B03",
+      "title": "SUPER_ADMIN direct URL allowed; no redirect",
+      "flag": "both",
+      "viewports": [
+        "desktop"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-SHELL-01",
+      "area": "shell",
+      "title": "Flag absent/false-like = legacy shell only",
+      "flag": "OFF",
+      "viewports": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-SHELL-02",
+      "area": "shell",
+      "title": "Flag ON = canonical shell only; no dual shell",
+      "flag": "ON",
+      "viewports": [
+        "desktop",
+        "tablet",
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-SHELL-03",
+      "area": "shell",
+      "title": "Rollback flag OFF requires no migration",
+      "flag": "OFF",
+      "viewports": [
+        "desktop"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-SHELL-04",
+      "area": "shell",
+      "title": "Inter CSS not applied under flag OFF",
+      "flag": "OFF",
+      "viewports": [
+        "desktop"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-A11Y-01",
+      "area": "a11y",
+      "title": "Drawer Escape focus restore (existing)",
+      "flag": "ON",
+      "viewports": [
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-A11Y-02",
+      "area": "a11y",
+      "title": "Shift+Tab focus trap observation (non-blocking)",
+      "flag": "ON",
+      "viewports": [
+        "mobile"
+      ],
+      "required": false,
+      "classification": "OBSERVATION"
+    },
+    {
+      "id": "T-X-01",
+      "area": "cross",
+      "title": "No console errors on canonical deep links",
+      "flag": "ON",
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-X-02",
+      "area": "cross",
+      "title": "Browser back after proven redirects",
+      "flag": "both",
+      "viewports": [
+        "desktop",
+        "mobile"
+      ],
+      "required": true
+    },
+    {
+      "id": "T-X-03",
+      "area": "cross",
+      "title": "Production flag remains OFF attestation",
+      "flag": "OFF",
+      "viewports": [
+        "n/a"
+      ],
+      "required": true
+    }
+  ],
+  "coverageChecklist": {
+    "canonicalRouteRedirects": true,
+    "queryPreservation": true,
+    "hashPreservation": true,
+    "rbac": true,
+    "unauthorizedAccess": true,
+    "unauthenticatedAccess": true,
+    "directDeepLinks": true,
+    "browserBack": true,
+    "invalidParameters": true,
+    "menuSearchUniqueness": true,
+    "breadcrumbCorrectness": true,
+    "flagOff": true,
+    "flagOn": true,
+    "rollback": true,
+    "desktop": true,
+    "tablet": true,
+    "mobile": true,
+    "accessibility": true,
+    "noConsoleErrors": true
+  },
+  "proposedTestFiles": [
+    "tests/canonical-shell-phase4-redirects.test.js",
+    "tests/canonical-shell-phase4-b03-guard.test.js",
+    "tests/canonical-shell-phase4-tournament-authz.test.js",
+    "tests/ui/canonical-shell-phase4-a11y.ui.test.jsx"
+  ]
+}

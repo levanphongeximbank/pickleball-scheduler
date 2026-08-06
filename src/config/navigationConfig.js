@@ -449,15 +449,7 @@ export const MENU_GROUPS = [
         match: "player-skill-assessment",
         roles: [ROLES.PLAYER],
       },
-      {
-        key: "player-skill-assessment-v5",
-        icon: NAV_ICON_KEYS["player-skill-assessment"],
-        text: "Đánh giá V5 (shadow)",
-        path: "/player/skill-assessment-v5",
-        match: "player-skill-assessment-v5",
-        roles: [ROLES.PLAYER],
-        requiresFeature: "pickVnRatingV5",
-      },
+      // OD-B03: /player/skill-assessment-v5 is shadow — never expose via PLAYER menu.
       {
         key: "player-home",
         icon: NAV_ICON_KEYS["mobile-player"],
@@ -739,14 +731,7 @@ export const MOBILE_BOTTOM_NAV_PROFILES = Object.freeze({
       iconKey: "skill",
       roles: [ROLES.PLAYER],
     },
-    {
-      key: "player-skill-assessment-v5",
-      label: "Đánh giá V5 (shadow)",
-      path: "/player/skill-assessment-v5",
-      iconKey: "skill",
-      roles: [ROLES.PLAYER],
-      requiresFeature: "pickVnRatingV5",
-    },
+    // OD-B03: V5 shadow excluded from mobile nav.
     {
       key: "player-profile",
       label: "Hồ sơ",

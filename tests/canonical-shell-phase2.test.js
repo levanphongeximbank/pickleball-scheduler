@@ -93,13 +93,16 @@ test("phase2 owner decisions — B01/B02/B03 menu invariants", () => {
   const invariants = assertOwnerDecisionMenuInvariants(tree);
   assert.equal(invariants.hasLegacyMessages, false);
   assert.equal(invariants.hasCanonicalMessages, true);
+  assert.equal(invariants.hasMessagingExperience, true);
+  assert.equal(invariants.hasCrmMessages, true);
+  assert.equal(invariants.dualCanonicalMessages, true);
   assert.equal(invariants.hasShadowSkillV5, false);
   assert.equal(invariants.legacyTournamentHubCount, 0);
   assert.ok(invariants.canonicalTournamentCount >= 1);
   assert.equal(invariants.duplicateMessagesEntries, false);
 
   const flat = flattenCanonicalMenu(tree).map((n) => n.route);
-  assert.equal(flat.includes(B01_LEGACY_MESSAGES_ROUTE), false);
+  assert.equal(flat.includes(B01_LEGACY_MESSAGES_ROUTE), true);
   assert.equal(flat.includes(B03_SHADOW_SKILL_ASSESSMENT_V5), false);
   assert.equal(flat.includes("/crm/messages"), true);
 });
@@ -146,15 +149,12 @@ test("phase2 RBAC — 10 QA roles filter Level-1 access", () => {
     assert.ok(Array.isArray(filtered), role);
     const flat = flattenCanonicalMenu(filtered);
     assert.equal(
-      flat.some((n) => n.route === B01_LEGACY_MESSAGES_ROUTE),
-      false,
-      role
-    );
-    assert.equal(
       flat.some((n) => n.route === B03_SHADOW_SKILL_ASSESSMENT_V5),
       false,
       role
     );
+    // OD-B01: messaging experience may appear; never duplicate same path.
+    assert.ok(flat.filter((n) => n.route === B01_LEGACY_MESSAGES_ROUTE).length <= 1, role);
   }
 });
 

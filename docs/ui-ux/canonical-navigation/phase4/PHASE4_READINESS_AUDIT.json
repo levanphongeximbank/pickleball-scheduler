@@ -1,0 +1,1912 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 4,
+    "task": "LEGACY_RUNTIME_REDIRECT_AND_CUTOVER_READINESS_AUDIT",
+    "generatedAt": "2026-08-06T01:22:27.806Z",
+    "freshOriginMainSha": "6ece104677ec1db4ba1b19bc666a1a41ac2c2a93",
+    "expectedBaseSha": "6ece104677ec1db4ba1b19bc666a1a41ac2c2a93",
+    "baseShaMatch": true,
+    "worktreePath": "C:\\\\Users\\\\Le Phong\\\\PICK_VN-Workstreams\\\\ui-ux\\\\canonical-navigation-phase4",
+    "branch": "feature/canonical-navigation-phase4-runtime-cutover",
+    "phase3Status": "CANONICAL_NAVIGATION_PHASE3_POST_MERGE_CLEANUP_VERIFIED",
+    "phase3Closed": true,
+    "verdict": "CANONICAL_NAVIGATION_PHASE4_READY_WITH_BLOCKERS",
+    "runtimeCodeChanged": false,
+    "redirectsCreated": false,
+    "prOpened": false,
+    "deployed": false,
+    "productionMutated": false
+  },
+  "setup": {
+    "fetchOriginPrune": true,
+    "ownerUntrackedCount": 10,
+    "ownerUntrackedPreserved": true,
+    "ownerTrackedDiffClean": true,
+    "worktreeRegistered": true,
+    "branchCorrect": true,
+    "headEqualsOriginMain": true,
+    "worktreeTrackedCleanBeforeDeliverables": true
+  },
+  "counts": {
+    "inventoriedRoutes": 179,
+    "legacyClassification": 48,
+    "shadow": 1,
+    "duplicate": 1,
+    "legacyRouteAuditScope": 50,
+    "controlledTournamentFamily": 43,
+    "provenRedirectMappingsSafeToImplementNow": 5,
+    "provenNewPhase4Redirects": 0,
+    "unresolvedTournamentMappings": 42,
+    "legacyRuntimeLinkOccurrences": 25,
+    "blockers": 4,
+    "warnings": 5
+  },
+  "B01": {
+    "id": "B01",
+    "classification": "BLOCKED_PENDING_OWNER_RECONFIRM",
+    "ownerDisposition": "REDIRECT_LEGACY",
+    "ownerCanonicalTarget": "/crm/messages",
+    "legacyPath": "/messages",
+    "legacyHandler": "MessagingExperiencePage",
+    "canonicalHandler": "CrmMessagesPage",
+    "semanticEquivalenceProven": false,
+    "evidence": [
+      "src/config/v5Menu/messagingMenu.js documents Messaging Experience as distinct from CRM outreach /crm/messages",
+      "src/features/communication/experience/constants.js MESSAGING_ROUTE_PATH=/messages",
+      "src/router.jsx mounts distinct components at each path",
+      "RBAC: /messages perms=[] vs /crm/messages booking.view|customer.view"
+    ],
+    "canonicalMenuSearchAuthority": {
+      "flagOn": {
+        "menu": "/crm/messages_only",
+        "search": "/crm/messages_only",
+        "messagesAbsent": true
+      },
+      "flagOff": {
+        "menu": "legacy_MESSAGING_MENU_LEAF_/messages_active",
+        "search": "GlobalSearch_indexes_MENU_GROUPS_including_/messages"
+      }
+    },
+    "currentRuntime": "ACTIVE_PAGE_NOT_REDIRECT",
+    "proposedRedirectType": "replace_Navigate_with_search_and_hash_preservation_IF_owner_reconfirms_collapse",
+    "queryPreservation": "REQUIRED_IF_IMPLEMENTED",
+    "hashPreservation": "REQUIRED_IF_IMPLEMENTED",
+    "browserBack": "replace_so_back_skips_legacy",
+    "authBehavior": "target_inherits_MainLayout_auth_gate",
+    "rbacBehavior": "redirect_would_apply_CRM_permissions_and_may_403_former_/messages_users",
+    "directLinkBehavior": "currently_serves_MessagingExperiencePage",
+    "fallbackBehavior": "undefined_until_product_decision",
+    "testsRequired": [
+      "redirect_replace",
+      "query_hash_preservation",
+      "unauthenticated",
+      "rbac_denied_crm",
+      "menu_search_uniqueness_flag_on_off",
+      "comms_surface_regression_if_collapsed"
+    ],
+    "phase4Action": "DO_NOT_IMPLEMENT_UNTIL_OWNER_RECONFIRMS_WHETHER_TO_COLLAPSE_COMMS_INTO_CRM_OR_REVISE_B01"
+  },
+  "B02": {
+    "id": "B02",
+    "classification": "CONTROLLED_RETAIN_NO_PROVEN_PLURAL_MAPPINGS",
+    "ownerDisposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "legacyFamilyCount": 43,
+    "canonicalFamilyPaths": [
+      "/tournaments/:tournamentId/engine",
+      "/tournaments/:tournamentId/seed",
+      "/tournaments/:tournamentId/draw",
+      "/tournaments/:tournamentId/schedule",
+      "/tournaments/:tournamentId/courts",
+      "/tournaments/:tournamentId/ranking",
+      "/tournaments/:tournamentId/logs"
+    ],
+    "provenPluralRedirects": 0,
+    "syntacticParameterNameShared": ":tournamentId",
+    "semanticReplacementProven": false,
+    "additionalBlockers": [
+      "PUBLIC_PATH_PREFIXES includes /tournaments making plural engine routes public-auth",
+      "menuAccess prefix RBAC covers /tournament/ but not /tournaments/:id/*",
+      "TournamentEnginePage missing-ID and breadcrumb navigate back to legacy /tournament",
+      "getTournamentSetupPath and create flows still emit legacy mode URLs"
+    ],
+    "phase4Action": "DO_NOT_INVENT_REDIRECTS; retain legacy mounts; remove canonical-shell dual menu writers already done under flag ON; optional writer hygiene after owner mapping table"
+  },
+  "B03": {
+    "id": "B03",
+    "classification": "HIDE_SHADOW_WITH_GUARD_GAP",
+    "ownerDisposition": "HIDE_SHADOW",
+    "path": "/player/skill-assessment-v5",
+    "canonicalBusinessPath": "/player/skill-assessment",
+    "redirectRequired": false,
+    "redirectSupportedByEvidence": false,
+    "menuSearch": {
+      "flagOn": "HIDDEN",
+      "flagOff": "EXPOSED_TO_PLAYER_WHEN_VITE_PICK_VN_RATING_V5_ENABLED"
+    },
+    "guardActual": "authenticated_only via authGuard.isAuthenticatedOnlyRoute",
+    "guardRequired": "SUPER_ADMIN_direct_access_only",
+    "phase4Action": "ADD_SUPER_ADMIN_ROUTE_GUARD; keep route; ensure flag alone never exposes in any shell; no redirect"
+  },
+  "canonicalShellFlag": {
+    "name": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "absent": "OFF",
+    "falseLike": "OFF",
+    "truthyOnly": [
+      "true",
+      true,
+      "1"
+    ],
+    "offBehavior": "legacy shell only",
+    "onBehavior": "canonical shell only",
+    "dualShell": false,
+    "rollbackRequiresMigration": false,
+    "productionDefault": "OFF",
+    "previewBlockersBeforeFlagOn": [
+      "BLK-B01-SEMANTIC",
+      "BLK-B02-NO-MAP",
+      "BLK-B03-GUARD",
+      "BLK-PLURAL-AUTHZ"
+    ],
+    "evidence": [
+      "src/features/canonical-shell/flags.js",
+      "src/layouts/MainLayout.jsx"
+    ]
+  },
+  "staticImportWarning": {
+    "classification": "OBSERVATION_NOT_BLOCKER",
+    "canonicalCodeLoadsWhenFlagOff": "MODULE_GRAPH_PRESENT_VIA_STATIC_IMPORT_BUT_SHELL_NOT_MOUNTED",
+    "interAssetsLoadWhenFlagOff": false,
+    "bundleSizeImpact": "Canonical shell JS graph bundled with MainLayout; Inter font CSS async-only on mount",
+    "runtimeImpact": "No dual shell render; Inter not applied under OFF",
+    "dynamicImportRequiredInPhase4": false,
+    "evidence": [
+      "src/layouts/MainLayout.jsx:26-29,87-90",
+      "src/features/canonical-shell/components/CanonicalAppShell.jsx:32-46"
+    ]
+  },
+  "accessibilityWarning": {
+    "classification": "OBSERVATION_NOT_BLOCKER",
+    "missingBranch": "Dedicated Shift+Tab / focus-trap RTL assertion beyond Escape restore",
+    "currentMuiBehavior": "MUI Modal/Drawer default focus trap",
+    "dedicatedTestRequiredBeforeRollout": false,
+    "evidence": [
+      "docs/ui-ux/canonical-navigation/phase3/PHASE3_INDEPENDENT_REVIEW_REPORT.md:257-259"
+    ]
+  },
+  "writers": [
+    {
+      "path": "src/config/tournamentRoutes.js",
+      "classification": "runtime_writer",
+      "note": "Central legacy TOURNAMENT_ROUTES + generators; engineTabPath emits canonical plural"
+    },
+    {
+      "path": "src/config/v5Menu/tournamentMenu.js",
+      "classification": "runtime_writer",
+      "note": "Legacy sidebar destinations /tournament/*"
+    },
+    {
+      "path": "src/config/v5Menu/messagingMenu.js",
+      "classification": "runtime_writer",
+      "note": "MESSAGING_MENU_LEAF path=/messages"
+    },
+    {
+      "path": "src/config/v5Menu/index.js",
+      "classification": "runtime_writer",
+      "note": "Composes messaging + tournament legacy menus"
+    },
+    {
+      "path": "src/config/navigationConfig.js",
+      "classification": "runtime_writer",
+      "note": "V5 skill assessment menu/mobile; route permissions map includes /messages"
+    },
+    {
+      "path": "src/components/GlobalSearch.jsx",
+      "classification": "legacy_reader",
+      "note": "Flag OFF search indexes MENU_GROUPS"
+    },
+    {
+      "path": "src/utils/tournamentNavigation.js",
+      "classification": "runtime_writer",
+      "note": "Legacy setup/bracket destinations"
+    },
+    {
+      "path": "src/pages/tournament/TournamentHome.jsx",
+      "classification": "runtime_writer",
+      "note": "Create flow emits daily/internal/official/team legacy paths"
+    },
+    {
+      "path": "src/pages/tournament/TournamentEnginePage.jsx",
+      "classification": "runtime_writer",
+      "note": "Missing ID + breadcrumb navigate(/tournament)"
+    },
+    {
+      "path": "src/components/tournament/ActiveTournamentsPanel.jsx",
+      "classification": "runtime_writer",
+      "note": "Mixed legacy mode routes + canonical engine"
+    },
+    {
+      "path": "src/components/public/PublicHeader.jsx",
+      "classification": "runtime_writer",
+      "note": "Authenticated create link /tournament/create"
+    },
+    {
+      "path": "src/pages/tournament/DailyPlaySetup.jsx",
+      "classification": "runtime_writer",
+      "note": "Legacy daily links"
+    },
+    {
+      "path": "src/pages/tournament/InternalTournamentSetup.jsx",
+      "classification": "runtime_writer",
+      "note": "Legacy internal links"
+    },
+    {
+      "path": "src/pages/tournament/OfficialTournamentSetup.jsx",
+      "classification": "runtime_writer",
+      "note": "Legacy official links"
+    },
+    {
+      "path": "src/pages/tournament/TeamTournamentSetup.jsx",
+      "classification": "runtime_writer",
+      "note": "Legacy team links"
+    },
+    {
+      "path": "src/pages/tournament/IndividualRegistrationPage.jsx",
+      "classification": "runtime_writer",
+      "note": "Legacy registration links"
+    },
+    {
+      "path": "src/pages/tournament/IndividualPlayerPortalPage.jsx",
+      "classification": "runtime_writer",
+      "note": "Legacy player portal links"
+    },
+    {
+      "path": "src/pages/tournament/IndividualTournamentPublicPage.jsx",
+      "classification": "runtime_writer",
+      "note": "Legacy public links"
+    },
+    {
+      "path": "src/pages/clubs/tabs/ClubTournamentsTab.jsx",
+      "classification": "runtime_writer",
+      "note": "Legacy internal setup links"
+    },
+    {
+      "path": "src/pages/clubs/tabs/ClubMatchHistoryTab.jsx",
+      "classification": "runtime_writer",
+      "note": "Legacy tournament links"
+    },
+    {
+      "path": "src/features/communication/experience/constants.js",
+      "classification": "runtime_writer",
+      "note": "MESSAGING_ROUTE_PATH=/messages"
+    },
+    {
+      "path": "src/features/experience-channels/registry/channelRegistry.js",
+      "classification": "runtime_writer",
+      "note": "routeNamespace=/messages"
+    },
+    {
+      "path": "src/features/experience-channels/registry/ownershipRegistry.js",
+      "classification": "runtime_writer",
+      "note": "routeNamespace=/messages"
+    },
+    {
+      "path": "src/router.jsx",
+      "classification": "runtime_writer",
+      "note": "Mounts legacy handlers; hosts pre-existing Navigate redirects"
+    },
+    {
+      "path": "src/auth/authGuard.js",
+      "classification": "runtime_writer",
+      "note": "PUBLIC_PATH_PREFIXES /tournaments; V5 authenticated-only"
+    },
+    {
+      "path": "src/auth/menuAccess.js",
+      "classification": "runtime_writer",
+      "note": "RBAC prefix /tournament/ and /crm/messages; authenticated list includes V5"
+    },
+    {
+      "path": "src/features/canonical-shell/services/filterCanonicalMenu.js",
+      "classification": "canonical_reader",
+      "note": "Hides B01/B02/B03 under flag ON"
+    },
+    {
+      "path": "src/features/canonical-shell/services/buildCanonicalSearchIndex.js",
+      "classification": "canonical_reader",
+      "note": "Excludes /messages and /tournament/*"
+    },
+    {
+      "path": "src/features/canonical-shell/config/ownerDecisions.js",
+      "classification": "canonical_reader",
+      "note": "B01/B02/B03 constants"
+    },
+    {
+      "path": "src/features/canonical-shell/config/canonicalRouteCatalog.js",
+      "classification": "canonical_reader",
+      "note": "Catalog classifications"
+    },
+    {
+      "path": "tests/canonical-shell-phase2.test.js",
+      "classification": "test_only",
+      "note": "Phase 2 shell invariants"
+    },
+    {
+      "path": "tests/canonical-shell-phase3.test.js",
+      "classification": "test_only",
+      "note": "Phase 3 menu/search B01/B02/B03"
+    },
+    {
+      "path": "tests/ui/messaging-experience.ui.test.jsx",
+      "classification": "test_only",
+      "note": "COMMS messaging UI against /messages"
+    },
+    {
+      "path": "docs/ui-ux/canonical-navigation/**",
+      "classification": "docs_only",
+      "note": "Inventory and phase reports"
+    }
+  ],
+  "blockers": [
+    {
+      "id": "BLK-B01-SEMANTIC",
+      "severity": "BLOCKER",
+      "summary": "Owner B01 redirect /messages→/crm/messages conflicts with runtime product separation (MessagingExperience vs CrmMessages) and RBAC widening/narrowing"
+    },
+    {
+      "id": "BLK-B02-NO-MAP",
+      "severity": "BLOCKER",
+      "summary": "43 legacy /tournament/* routes lack proven 1:1 canonical plural targets; inventing redirects forbidden"
+    },
+    {
+      "id": "BLK-B03-GUARD",
+      "severity": "BLOCKER",
+      "summary": "Shadow /player/skill-assessment-v5 is authenticated-only, not SUPER_ADMIN-only; flag OFF legacy menu can expose to PLAYER when V5 flag on"
+    },
+    {
+      "id": "BLK-PLURAL-AUTHZ",
+      "severity": "BLOCKER",
+      "summary": "/tournaments public-auth prefix + missing /tournaments/:id RBAC prefix matcher before Preview flag-ON cutover of engine deep links"
+    }
+  ],
+  "warnings": [
+    {
+      "id": "WARN-STATIC-IMPORT",
+      "classification": "OBSERVATION",
+      "summary": "MainLayout statically imports CanonicalAppShell; JS graph present under flag OFF; Inter CSS dynamically loaded only on mount"
+    },
+    {
+      "id": "WARN-A11Y-SHIFTTAB",
+      "classification": "OBSERVATION",
+      "summary": "Shift+Tab focus-trap RTL matrix missing; Escape restore covered; relies on MUI Modal defaults"
+    },
+    {
+      "id": "WARN-EXISTING-REDIRECT-QS",
+      "classification": "OBSERVATION",
+      "summary": "Pre-existing Navigate redirects do not explicitly preserve search/hash"
+    },
+    {
+      "id": "WARN-ENGINE-FALLBACK-LEGACY",
+      "classification": "OBSERVATION",
+      "summary": "TournamentEnginePage back/breadcrumb still writes legacy /tournament"
+    },
+    {
+      "id": "WARN-LEGACY-WRITERS",
+      "classification": "OBSERVATION",
+      "summary": "Many runtime writers still emit /tournament/* and /messages under flag OFF"
+    }
+  ],
+  "productionSafety": {
+    "productionFlagRemainsOff": true,
+    "productionDeploymentRequiredForAudit": false,
+    "sqlRequired": false,
+    "dataMigrationRequired": false,
+    "databaseMutationRequired": false,
+    "productionGoExists": false,
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "productionFeatureFlagChanges": 0
+  },
+  "proposedImplementation": {
+    "fileCount": 10,
+    "testFileCount": 4,
+    "notes": "Estimate after blocker resolution: router redirect helper, authGuard/menuAccess plural+B03 guards, optional writer hygiene, orphan cleanup, telemetry hook, focused unit/UI tests. B02 bulk redirects excluded until mappings proven."
+  },
+  "routeInventory": [
+    {
+      "route_path": "/club/activity",
+      "canonical_target": "/my-club?view=schedule",
+      "current_runtime_handler": "Navigate",
+      "current_menu_authority": "NONE_OR_HIDDEN",
+      "current_search_authority": "EXCLUDED",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "RBAC_SCOPED"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "IMPLEMENTED",
+      "deep_link_behavior": "REDIRECT_REPLACE",
+      "query_string_preservation": "OVERWRITTEN_BY_TARGET",
+      "hash_preservation": "NOT_EXPLICIT",
+      "parameter_mapping": null,
+      "current_test_coverage": "SPARSE_OR_FEATURE_LOCAL",
+      "classification": "LEGACY",
+      "disposition": "REDIRECT_LEGACY",
+      "ownerDecision": null,
+      "proposed_phase4_action": "ALREADY_REDIRECT_VERIFY_QUERY_HASH"
+    },
+    {
+      "route_path": "/clubs/discover",
+      "canonical_target": "/discover-clubs",
+      "current_runtime_handler": "Navigate",
+      "current_menu_authority": "NONE_OR_HIDDEN",
+      "current_search_authority": "EXCLUDED",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "RBAC_SCOPED"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "IMPLEMENTED",
+      "deep_link_behavior": "REDIRECT_REPLACE",
+      "query_string_preservation": "NOT_EXPLICIT",
+      "hash_preservation": "NOT_EXPLICIT",
+      "parameter_mapping": null,
+      "current_test_coverage": "SPARSE_OR_FEATURE_LOCAL",
+      "classification": "LEGACY",
+      "disposition": "REDIRECT_LEGACY",
+      "ownerDecision": null,
+      "proposed_phase4_action": "ALREADY_REDIRECT_VERIFY_QUERY_HASH"
+    },
+    {
+      "route_path": "/courts-ops",
+      "canonical_target": "/court-management/courts",
+      "current_runtime_handler": "Navigate",
+      "current_menu_authority": "NONE_OR_HIDDEN",
+      "current_search_authority": "EXCLUDED",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "RBAC_SCOPED"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "IMPLEMENTED",
+      "deep_link_behavior": "REDIRECT_REPLACE",
+      "query_string_preservation": "NOT_EXPLICIT",
+      "hash_preservation": "NOT_EXPLICIT",
+      "parameter_mapping": null,
+      "current_test_coverage": "SPARSE_OR_FEATURE_LOCAL",
+      "classification": "LEGACY",
+      "disposition": "REDIRECT_LEGACY",
+      "ownerDecision": null,
+      "proposed_phase4_action": "ALREADY_REDIRECT_VERIFY_QUERY_HASH"
+    },
+    {
+      "route_path": "/messages",
+      "canonical_target": "/crm/messages",
+      "current_runtime_handler": "MessagingExperiencePage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "RBAC_SCOPED"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_METADATA_ONLY",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "REDIRECT_LEGACY",
+      "ownerDecision": "B01",
+      "proposed_phase4_action": "DO_NOT_IMPLEMENT_UNTIL_OWNER_RECONFIRMS_WHETHER_TO_COLLAPSE_COMMS_INTO_CRM_OR_REVISE_B01"
+    },
+    {
+      "route_path": "/onboarding/pick-vn-rating",
+      "canonical_target": "/player/skill-assessment",
+      "current_runtime_handler": "Navigate",
+      "current_menu_authority": "NONE_OR_HIDDEN",
+      "current_search_authority": "EXCLUDED",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "RBAC_SCOPED"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "IMPLEMENTED",
+      "deep_link_behavior": "REDIRECT_REPLACE",
+      "query_string_preservation": "NOT_EXPLICIT",
+      "hash_preservation": "NOT_EXPLICIT",
+      "parameter_mapping": null,
+      "current_test_coverage": "SPARSE_OR_FEATURE_LOCAL",
+      "classification": "LEGACY",
+      "disposition": "REDIRECT_LEGACY",
+      "ownerDecision": null,
+      "proposed_phase4_action": "ALREADY_REDIRECT_VERIFY_QUERY_HASH"
+    },
+    {
+      "route_path": "/player/profile",
+      "canonical_target": null,
+      "current_runtime_handler": "AthleteSelfProfilePage",
+      "current_menu_authority": "NONE_OR_HIDDEN",
+      "current_search_authority": "EXCLUDED",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "AUTHENTICATED"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "RETAIN_CANONICAL",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "SPARSE_OR_FEATURE_LOCAL",
+      "classification": "DUPLICATE",
+      "disposition": "RETAIN_CANONICAL",
+      "ownerDecision": null,
+      "proposed_phase4_action": "RETAIN_DUAL_PERSONA_ENTRY"
+    },
+    {
+      "route_path": "/player/skill-assessment-v5",
+      "canonical_target": null,
+      "current_runtime_handler": "SkillAssessmentV5Page",
+      "current_menu_authority": "NONE_OR_HIDDEN",
+      "current_search_authority": "EXCLUDED",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "SUPER_ADMIN"
+      ],
+      "feature_flag_dependency": [
+        "VITE_PICK_VN_RATING_V5_ENABLED"
+      ],
+      "redirect_status": "NO_REDIRECT_REQUIRED",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "SHADOW",
+      "disposition": "HIDE_SHADOW",
+      "ownerDecision": "B03",
+      "proposed_phase4_action": "ADD_SUPER_ADMIN_ROUTE_GUARD; keep route; ensure flag alone never exposes in any shell; no redirect"
+    },
+    {
+      "route_path": "/tournament",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentShell",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/:tournamentId/public",
+      "canonical_target": null,
+      "current_runtime_handler": "IndividualTournamentPublicPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": {
+        "param": "tournamentId",
+        "pluralFamilyExists": true,
+        "semanticMapProven": false
+      },
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/:tournamentId/register",
+      "canonical_target": null,
+      "current_runtime_handler": "IndividualRegistrationPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": {
+        "param": "tournamentId",
+        "pluralFamilyExists": true,
+        "semanticMapProven": false
+      },
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/awards",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentAwardsPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/bracket",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentBracketHub",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/config",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentConfigHubPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/config/age-rules",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentAgeRulesPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/config/fee",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentFeePage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/config/format",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentConfigFormatHub",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.update"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/config/gender-rules",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentGenderRulesPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/config/regulations",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentRegulationsPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/config/settings",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentConfigSettingsHub",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.update"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/create",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentCreatePage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.create"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/daily/:tournamentId",
+      "canonical_target": null,
+      "current_runtime_handler": "DailyPlaySetup",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": {
+        "param": "tournamentId",
+        "pluralFamilyExists": true,
+        "semanticMapProven": false
+      },
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/director/:tournamentId",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentDirectorMode",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "director.use"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": {
+        "param": "tournamentId",
+        "pluralFamilyExists": true,
+        "semanticMapProven": false
+      },
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/eligibility",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentTeamEligibilityHub",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/eligibility/check",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentEligibilityPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/entry-fee",
+      "canonical_target": "/tournament/config/fee",
+      "current_runtime_handler": "TournamentFeePage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "OPTIONAL_NORMALIZE_WITHIN_LEGACY"
+    },
+    {
+      "route_path": "/tournament/internal/:tournamentId",
+      "canonical_target": null,
+      "current_runtime_handler": "InternalTournamentSetup",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": {
+        "param": "tournamentId",
+        "pluralFamilyExists": true,
+        "semanticMapProven": false
+      },
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/internal/:tournamentId/bracket",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentBracketPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": {
+        "param": "tournamentId",
+        "pluralFamilyExists": true,
+        "semanticMapProven": false
+      },
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/list",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentListPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/match-reports",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentMatchReportsHub",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/my",
+      "canonical_target": null,
+      "current_runtime_handler": "IndividualPlayerPortalPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/my/:tournamentId",
+      "canonical_target": null,
+      "current_runtime_handler": "IndividualPlayerPortalPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": {
+        "param": "tournamentId",
+        "pluralFamilyExists": true,
+        "semanticMapProven": false
+      },
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/official/:tournamentId",
+      "canonical_target": null,
+      "current_runtime_handler": "OfficialTournamentSetup",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": {
+        "param": "tournamentId",
+        "pluralFamilyExists": true,
+        "semanticMapProven": false
+      },
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/official/:tournamentId/bracket",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentBracketPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": {
+        "param": "tournamentId",
+        "pluralFamilyExists": true,
+        "semanticMapProven": false
+      },
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/operations",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentOperationsHubPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/organize",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentOrganizeHubPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/publish-schedule",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentPublishSchedulePage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/referee-assign",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentRefereeAssignPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/register",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentRegisterHub",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/results",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentResultsHubPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/roster",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentRosterHubPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/schedule",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentScheduleHub",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/team/:tournamentId",
+      "canonical_target": null,
+      "current_runtime_handler": "TeamTournamentSetup",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": {
+        "param": "tournamentId",
+        "pluralFamilyExists": true,
+        "semanticMapProven": false
+      },
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/teams",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentTeamsHub",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/teams/build/draft",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentTeamBuildDraftHub",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/teams/build/manual",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentTeamBuildManualHub",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/teams/build/random",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentTeamBuildRandomHub",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/teams/presets",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentTeamPresetsHub",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/types",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentTypesHubPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/types/:category",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentTypePage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    },
+    {
+      "route_path": "/tournament/withdrawal",
+      "canonical_target": null,
+      "current_runtime_handler": "TournamentWithdrawalPage",
+      "current_menu_authority": "LEGACY_V5_MENU_WHEN_FLAG_OFF",
+      "current_search_authority": "LEGACY_GLOBALSEARCH_WHEN_FLAG_OFF",
+      "breadcrumb_authority": "PAGE_LOCAL_OR_NONE",
+      "rbac_guard": [
+        "tournament.view"
+      ],
+      "feature_flag_dependency": [],
+      "redirect_status": "NOT_IMPLEMENTED_NO_PROVEN_TARGET",
+      "deep_link_behavior": "DIRECT_HANDLER",
+      "query_string_preservation": "N_A_UNTIL_REDIRECT",
+      "hash_preservation": "N_A_UNTIL_REDIRECT",
+      "parameter_mapping": null,
+      "current_test_coverage": "PHASE3_MENU_SEARCH_INVARIANTS_ONLY",
+      "classification": "LEGACY",
+      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "ownerDecision": "B02",
+      "proposed_phase4_action": "RETAIN_COMPATIBILITY_NO_REDIRECT_UNTIL_MAPPING_PROVEN"
+    }
+  ],
+  "provenRedirectMappings": [
+    {
+      "from": "/onboarding/pick-vn-rating",
+      "to": "/player/skill-assessment",
+      "status": "ALREADY_IMPLEMENTED",
+      "queryHash": "NOT_PRESERVED_EXPLICITLY",
+      "evidence": "src/router.jsx Navigate replace",
+      "phase4Action": "VERIFY_QUERY_HASH_POLICY_ONLY",
+      "mappingProven": true,
+      "semanticProven": true
+    },
+    {
+      "from": "/clubs/discover",
+      "to": "/discover-clubs",
+      "status": "ALREADY_IMPLEMENTED",
+      "queryHash": "NOT_PRESERVED_EXPLICITLY",
+      "evidence": "src/router.jsx Navigate replace",
+      "phase4Action": "VERIFY_QUERY_HASH_POLICY_ONLY",
+      "mappingProven": true,
+      "semanticProven": true
+    },
+    {
+      "from": "/club/activity",
+      "to": "/my-club?view=schedule",
+      "status": "ALREADY_IMPLEMENTED",
+      "queryHash": "TARGET_OVERWRITES_SOURCE_QUERY",
+      "evidence": "src/router.jsx Navigate replace",
+      "phase4Action": "VERIFY_QUERY_HASH_POLICY_ONLY",
+      "mappingProven": true,
+      "semanticProven": true
+    },
+    {
+      "from": "/courts-ops",
+      "to": "/court-management/courts",
+      "status": "ALREADY_IMPLEMENTED",
+      "queryHash": "NOT_PRESERVED_EXPLICITLY",
+      "evidence": "src/router.jsx Navigate replace",
+      "phase4Action": "VERIFY_QUERY_HASH_POLICY_ONLY",
+      "mappingProven": true,
+      "semanticProven": true
+    },
+    {
+      "from": "/tournament/entry-fee",
+      "to": "/tournament/config/fee",
+      "status": "WITHIN_LEGACY_FAMILY",
+      "mappingProven": true,
+      "notes": "Same TournamentFeePage component mounted at both paths; not a plural-family cutover",
+      "phase4Action": "OPTIONAL_NORMALIZE_TO_SINGLE_PATH",
+      "semanticProven": true
+    }
+  ],
+  "unresolvedMappings": [
+    {
+      "from": "/tournament",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/list",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/create",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/types",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/types/:category",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/roster",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/organize",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/operations",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/results",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/config",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/register",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/my",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/my/:tournamentId",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/:tournamentId/public",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/:tournamentId/register",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/bracket",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/teams",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/teams/presets",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/teams/build/manual",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/teams/build/random",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/teams/build/draft",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/schedule",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/match-reports",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/config/format",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/config/settings",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/config/age-rules",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/config/gender-rules",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/config/fee",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/config/regulations",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/eligibility",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/eligibility/check",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/publish-schedule",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/referee-assign",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/awards",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/withdrawal",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/daily/:tournamentId",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/internal/:tournamentId",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/internal/:tournamentId/bracket",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/official/:tournamentId",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/official/:tournamentId/bracket",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/team/:tournamentId",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    },
+    {
+      "from": "/tournament/director/:tournamentId",
+      "proposedCanonicalFamily": "/tournaments/:tournamentId/*",
+      "mappingProven": false,
+      "reason": "No 1:1 semantic successor in Engine 4.0 plural family; W09 incremental migration",
+      "phase4Action": "RETAIN_COMPATIBILITY_NO_REDIRECT"
+    }
+  ],
+  "safetyAttestation": {
+    "commit": "NO",
+    "push": "NO",
+    "pr": "NO",
+    "runtimeCodeChanged": false
+  }
+}

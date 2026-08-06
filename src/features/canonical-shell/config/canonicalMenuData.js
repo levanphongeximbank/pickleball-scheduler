@@ -4,32 +4,39 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     "source": "docs/ui-ux/canonical-navigation/CANONICAL_ROUTE_INVENTORY.json",
     "generatedAt": "2026-08-05T14:37:15.750Z",
     "phase": "3-menu-completion",
-    "proposedCanonicalMenuCount": 82
+    "proposedCanonicalMenuCount": 83
   },
   "ownerDecisions": {
     "B01": {
       "id": "B01",
-      "status": "RESOLVED",
+      "status": "APPROVED_A_KEEP_SEPARATE",
+      "phase4Code": "APPROVED_A_KEEP_SEPARATE",
+      "messagingExperienceRoute": "/messages",
+      "crmMessagesRoute": "/crm/messages",
       "canonicalRoute": "/crm/messages",
-      "legacyRoute": "/messages",
-      "disposition": "REDIRECT_LEGACY",
-      "menuOwner": "CRM & Chăm sóc khách hàng",
-      "rule": "/messages must not remain a separate active menu item"
+      "communicationRoute": "/messages",
+      "disposition": "KEEP_SEPARATE_CANONICAL",
+      "redirectBetweenRoutes": false,
+      "menuOwnerCrm": "CRM & Chăm sóc khách hàng",
+      "menuOwnerCommunication": "Giao tiếp / Messaging Experience",
+      "rule": "Phase 4 OD-B01: /messages and /crm/messages remain separate canonical business functions; no redirect"
     },
     "B02": {
       "id": "B02",
-      "status": "RESOLVED",
+      "status": "APPROVED_RETAIN_ALL_42",
+      "phase4Code": "APPROVED_RETAIN_ALL_42",
       "canonicalRouteFamily": "/tournaments/:id/*",
       "legacyRouteFamily": "/tournament/*",
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-      "rule": "New navigation points only to /tournaments/:id/*; legacy /tournament/* for compatibility redirects only; no dual active menu"
+      "disposition": "RETAIN_ALL_42_NO_REDIRECT",
+      "rule": "Phase 4 OD-B02: retain all 42 legacy /tournament/* routes; do not invent plural redirects or tournamentId"
     },
     "B03": {
       "id": "B03",
-      "status": "RESOLVED",
+      "status": "APPROVED_PILOT_ALIGNED_SHADOW",
+      "phase4Code": "APPROVED_PILOT_ALIGNED_SHADOW",
       "route": "/player/skill-assessment-v5",
-      "disposition": "HIDE_SHADOW",
-      "rule": "Remove from PLAYER/user-facing menus; flag alone must not expose; direct hidden access SUPER_ADMIN/technical eval only; do not delete route"
+      "disposition": "HIDE_SHADOW_PILOT_ALIGNED",
+      "rule": "Phase 4 OD-B03: hide from menu/search; SUPER_ADMIN/PLATFORM_ADMIN allow; PLAYER only with V5 flag + enrollment; others 403"
     }
   },
   "level1Groups": [
@@ -2193,9 +2200,40 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       ]
     },
     {
+      "id": "nav__10__messaging__inbox",
+      "label": "Tin nhắn",
+      "description": "Messaging Experience — giao tiếp trực tiếp / CLB / cộng đồng",
+      "icon": "chat",
+      "route": "/messages",
+      "level1": "10",
+      "level1Label": "Thông báo",
+      "level2": "messaging",
+      "level2Label": "Giao tiếp",
+      "level3": "inbox",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "AUTHENTICATED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ],
+      "ownerDecision": "B01"
+    },
+    {
       "id": "nav__10__crm__crm-messages",
-      "label": "Crm Messages",
-      "description": "CRM & Chăm sóc khách hàng",
+      "label": "CRM Messages",
+      "description": "CRM outreach — soạn tin nhắn khách hàng (local)",
       "icon": "crm",
       "route": "/crm/messages",
       "level1": "10",
@@ -2226,7 +2264,8 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "sidebar": true,
       "guards": [
         "RouteAccessGate"
-      ]
+      ],
+      "ownerDecision": "B01"
     },
     {
       "id": "nav__10__crm__templates",

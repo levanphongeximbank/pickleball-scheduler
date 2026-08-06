@@ -1,0 +1,92 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 4,
+    "artifact": "PHASE4_OWNER_DECISIONS_RECORDED",
+    "recordedAtHead": "6ece104677ec1db4ba1b19bc666a1a41ac2c2a93",
+    "branch": "feature/canonical-navigation-phase4-runtime-cutover",
+    "sourcePackage": "PHASE4_OWNER_DECISION_PACKAGE.md",
+    "verdict": "CANONICAL_NAVIGATION_PHASE4_OWNER_DECISIONS_RECORDED_READY_FOR_IMPLEMENTATION",
+    "runtimeCodeChanged": false,
+    "routeGuardsChanged": false,
+    "redirectsCreated": false,
+    "testsChanged": false,
+    "commit": "NO",
+    "push": "NO",
+    "pr": "NO"
+  },
+  "decisions": [
+    {
+      "decisionId": "OD-B01-MESSAGES",
+      "ownerCode": "APPROVED_A_KEEP_SEPARATE",
+      "status": "APPROVED",
+      "binding": {
+        "keepSeparate": true,
+        "messagesCanonical": true,
+        "crmMessagesCanonical": true,
+        "phase4RedirectBetweenThem": false
+      }
+    },
+    {
+      "decisionId": "OD-B02-TOURNAMENT-RETAIN",
+      "ownerCode": "APPROVED_RETAIN_ALL_42",
+      "status": "APPROVED",
+      "binding": {
+        "retainLegacyTournamentRoutes": 42,
+        "inventPluralRedirectMappings": false,
+        "inventTournamentIdValues": false
+      }
+    },
+    {
+      "decisionId": "OD-B03-V5-SHADOW-AUTHZ",
+      "ownerCode": "APPROVED_PILOT_ALIGNED_SHADOW",
+      "status": "APPROVED",
+      "binding": {
+        "path": "/player/skill-assessment-v5",
+        "hideFromMenuAndSearch": true,
+        "allowRolesAlways": ["SUPER_ADMIN", "PLATFORM_ADMIN"],
+        "allowPlayerWhen": {
+          "ratingV5FlagEnabled": true,
+          "enrollmentValid": true
+        },
+        "allOtherRoles": "403",
+        "redirect": false
+      }
+    },
+    {
+      "decisionId": "OD-PLURAL-AUTHZ-PARITY",
+      "ownerCode": "APPROVED_ENGINE_PROTECTION",
+      "status": "APPROVED",
+      "binding": {
+        "publicTournamentsCatalogRemainsPublic": true,
+        "engineRoutesRequireAuthentication": true,
+        "engineRoutesRequirePermission": "tournament.update",
+        "engineRoutesRequireOwnershipTenantChecks": true,
+        "engineRouteTabs": [
+          "engine",
+          "seed",
+          "draw",
+          "schedule",
+          "courts",
+          "ranking",
+          "logs"
+        ]
+      }
+    }
+  ],
+  "productionConstraints": {
+    "PRODUCTION_GO": "NO",
+    "PRODUCTION_FLAG_CHANGE": "NO",
+    "SQL": "NO",
+    "DEPLOYMENT": "NO",
+    "productionMutations": 0,
+    "canonicalAppShellProductionFlag": "OFF"
+  },
+  "blockerClosurePlanning": {
+    "BLK-B01-SEMANTIC": "CLOSED_IMPLEMENTED",
+    "BLK-B02-NO-MAP": "CLOSED_IMPLEMENTED_RETAIN",
+    "BLK-B03-GUARD": "CLOSED_IMPLEMENTED",
+    "BLK-PLURAL-AUTHZ": "CLOSED_IMPLEMENTED"
+  },
+  "nextStep": "Ready for review; Production remains OFF; no commit/push/PR in implementation task"
+}

@@ -1,0 +1,1137 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 4,
+    "artifact": "PHASE4_BLOCKER_RESOLUTION_PLAN",
+    "generatedAt": "2026-08-06T02:08:01.612Z",
+    "currentHead": "6ece104677ec1db4ba1b19bc666a1a41ac2c2a93",
+    "branch": "feature/canonical-navigation-phase4-runtime-cutover",
+    "worktree": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\ui-ux\\canonical-navigation-phase4",
+    "priorVerdict": "CANONICAL_NAVIGATION_PHASE4_READY_WITH_BLOCKERS",
+    "verdict": "CANONICAL_NAVIGATION_PHASE4_BLOCKER_RESOLUTION_PLAN_READY_FOR_OWNER_DECISIONS",
+    "runtimeCodeChanged": false,
+    "redirectsCreated": false,
+    "testsChanged": false,
+    "commit": "NO",
+    "push": "NO",
+    "pr": "NO"
+  },
+  "B01": {
+    "blockerId": "BLK-B01-SEMANTIC",
+    "equivalenceProven": false,
+    "recommendedDecision": "A",
+    "recommendedDecisionLabel": "Keep both as separate canonical business functions",
+    "surfaces": {
+      "/messages": {
+        "handler": "MessagingExperiencePage",
+        "businessPurpose": "COMMS inbox for direct/club/community conversations (Messaging Experience)",
+        "targetUsers": "Authenticated messaging users (players/members/staff via COMMS runtime)",
+        "roles": "V5 menu leaf has no explicit roles; with RBAC on leaf filtered (empty perms, not public menu path). Canonical: excluded by B01.",
+        "permissions": [],
+        "tenantBehavior": "Production gateway tenant/club-aware for club/community; direct messaging actor-scoped",
+        "dataSource": "COMMS runtime gateway; intended communication_* schema; demo/in-memory when DEMO",
+        "readOperations": [
+          "list conversations",
+          "messages",
+          "unread",
+          "channels",
+          "requests"
+        ],
+        "writeOperations": [
+          "send/reply",
+          "mark read",
+          "join/leave",
+          "block/report",
+          "moderation"
+        ],
+        "messageTypes": [
+          "direct",
+          "club",
+          "community conversation messages"
+        ],
+        "navigationEntry": "V5 messaging group /messages only (flag OFF)",
+        "searchEntry": "Excluded from canonical search; present in legacy GlobalSearch via MENU_GROUPS when flag OFF",
+        "breadcrumbs": "No page-local; canonical cannot resolve registry node",
+        "deepLinkBehavior": "/messages opens inbox; no thread id route param",
+        "queryStringBehavior": "None consumed; runtime ignores QS for demo enablement",
+        "routeGuard": "MainLayout RouteAccessGate/TenantGate; no page PermissionGate",
+        "featureFlags": [
+          "VITE_COMMUNICATION_RUNTIME_MODE (runtime, not route)"
+        ],
+        "existingTests": [
+          "tests/communication-comms06-messaging-experience.test.js",
+          "tests/communication-comms07-integration-final-certification.test.js",
+          "tests/ui/messaging-experience.ui.test.jsx"
+        ]
+      },
+      "/crm/messages": {
+        "handler": "CrmMessagesPage",
+        "businessPurpose": "Club-scoped CRM outreach compatibility shell: draft/send-local SMS/Zalo/email records + contact history (does not deliver externally)",
+        "targetUsers": "Club/venue customer-care and booking staff",
+        "roles": "V5 CRM group (excludes REFEREE/PLAYER). Canonical Level-1 10 with booking.view|customer.view",
+        "permissions": [
+          "booking.view",
+          "customer.view"
+        ],
+        "tenantBehavior": "Keyed by active clubId localStorage blob; missing/demo club fail-closed; hard cutover blocks writes",
+        "dataSource": "localStorage pickleball-crm-messages-v1::{clubId} and contact-history keys — no Supabase",
+        "readOperations": [
+          "listMessagesResult(clubId)"
+        ],
+        "writeOperations": [
+          "create draft",
+          "mark sent local",
+          "append contact history"
+        ],
+        "messageTypes": [
+          "CRM local draft|sent records; channels sms|zalo|email"
+        ],
+        "navigationEntry": "V5 CRM menu; canonical menu/search; AI in-page nav",
+        "searchEntry": "Canonical search for authorized users",
+        "breadcrumbs": "Canonical registry trail under Thông báo / CRM",
+        "deepLinkBehavior": "/crm/messages opens page; no message-id deep link",
+        "queryStringBehavior": "None",
+        "routeGuard": "RouteAccessGate + page PermissionGate booking.view|customer.view",
+        "featureFlags": [
+          "VITE_PLATFORM_HARD_CUTOVER affects local authority"
+        ],
+        "existingTests": [
+          "tests/crm-phase-1b-foundation.test.js",
+          "tests/finance-crm-phase26-27.test.js",
+          "tests/platform-hard-cutover-01-pre-staging-finance-crm.test.js"
+        ]
+      }
+    },
+    "whyNotB": "Different handlers, data models, tenant boundaries, write semantics, and RBAC",
+    "whyNotCInPhase4": "Retiring CRM needs durable CRM migration; retiring COMMS destroys certified messaging; Phase 4 is navigation cutover"
+  },
+  "B02": {
+    "blockerId": "BLK-B02-NO-MAP",
+    "totalUnresolvedRoutes": 42,
+    "safelyMappableRoutes": 0,
+    "retainRoutes": 42,
+    "redirectRoutes": 0,
+    "replaceLinkWriterRoutes": 0,
+    "canonicalizeInternallyRoutes": 0,
+    "deprecateRoutes": 0,
+    "dispositionUnresolvedRoutes": 0,
+    "matrix": [
+      {
+        "legacyPath": "/tournament",
+        "currentComponent": "TournamentShell",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.overview",
+          "TournamentEnginePage breadcrumb/back",
+          "mobile bottom nav"
+        ],
+        "userWorkflow": "Tournament command center / overview",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/list",
+        "currentComponent": "TournamentListPage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.list",
+          "section hubs"
+        ],
+        "userWorkflow": "Browse tournament list",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/create",
+        "currentComponent": "TournamentCreatePage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.create",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.create",
+          "PublicHeader",
+          "setup fallbacks"
+        ],
+        "userWorkflow": "Create tournament wizard",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/types",
+        "currentComponent": "TournamentTypesHubPage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.typesHub",
+          "v5Menu tournament"
+        ],
+        "userWorkflow": "Choose tournament type hub",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/types/:category",
+        "currentComponent": "TournamentTypePage",
+        "requiredParameters": [
+          "category"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.typeIndividual/typeTeam"
+        ],
+        "userWorkflow": "Choose creation subtype",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/roster",
+        "currentComponent": "TournamentRosterHubPage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "v5Menu tournament"
+        ],
+        "userWorkflow": "Roster operations hub",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/organize",
+        "currentComponent": "TournamentOrganizeHubPage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "v5Menu tournament"
+        ],
+        "userWorkflow": "Organizer workflow hub",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/operations",
+        "currentComponent": "TournamentOperationsHubPage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "v5Menu tournament"
+        ],
+        "userWorkflow": "Operational workflow hub",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/results",
+        "currentComponent": "TournamentResultsHubPage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "v5Menu tournament"
+        ],
+        "userWorkflow": "Results reporting hub",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/config",
+        "currentComponent": "TournamentConfigHubPage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "v5Menu tournament"
+        ],
+        "userWorkflow": "Configuration hub",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/register",
+        "currentComponent": "TournamentRegisterHub",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view|tournament.update",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.register"
+        ],
+        "userWorkflow": "Organizer registration workflow",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/my",
+        "currentComponent": "IndividualPlayerPortalPage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "individualPlayerPortalPath fallback"
+        ],
+        "userWorkflow": "Player tournament portal (no id)",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/my/:tournamentId",
+        "currentComponent": "IndividualPlayerPortalPage",
+        "requiredParameters": [
+          "tournamentId"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "IndividualTournamentPublicPage links"
+        ],
+        "userWorkflow": "Player portal for one tournament",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": "syntactic_path_param_only_no_semantic_redirect",
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/:tournamentId/public",
+        "currentComponent": "IndividualTournamentPublicPage",
+        "requiredParameters": [
+          "tournamentId"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "individualPublicTournamentPath"
+        ],
+        "userWorkflow": "Public-facing tournament details",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": "syntactic_path_param_only_no_semantic_redirect",
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/:tournamentId/register",
+        "currentComponent": "IndividualRegistrationPage",
+        "requiredParameters": [
+          "tournamentId"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "individualPlayerRegistrationPath"
+        ],
+        "userWorkflow": "Player self-registration",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": "syntactic_path_param_only_no_semantic_redirect",
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/bracket",
+        "currentComponent": "TournamentBracketHub",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.bracket"
+        ],
+        "userWorkflow": "Bracket selection hub",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/teams",
+        "currentComponent": "TournamentTeamsHub",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.teams",
+          "teamCaptainMenu"
+        ],
+        "userWorkflow": "Team management hub",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/teams/presets",
+        "currentComponent": "TournamentTeamPresetsHub",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.teamPresets"
+        ],
+        "userWorkflow": "Team presets",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/teams/build/manual",
+        "currentComponent": "TournamentTeamBuildManualHub",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.teamBuildManual"
+        ],
+        "userWorkflow": "Manual team build",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/teams/build/random",
+        "currentComponent": "TournamentTeamBuildRandomHub",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.teamBuildRandom"
+        ],
+        "userWorkflow": "Random team build",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/teams/build/draft",
+        "currentComponent": "TournamentTeamBuildDraftHub",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.teamBuildDraft"
+        ],
+        "userWorkflow": "Draft team build",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/schedule",
+        "currentComponent": "TournamentScheduleHub",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view|director.use",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.schedule",
+          "teamCaptainMenu"
+        ],
+        "userWorkflow": "Schedule hub",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/match-reports",
+        "currentComponent": "TournamentMatchReportsHub",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.matchReports"
+        ],
+        "userWorkflow": "Match reports hub",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/config/format",
+        "currentComponent": "TournamentConfigFormatHub",
+        "requiredParameters": null,
+        "currentPermission": "tournament.update|tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.configFormat"
+        ],
+        "userWorkflow": "Format configuration",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/config/settings",
+        "currentComponent": "TournamentConfigSettingsHub",
+        "requiredParameters": null,
+        "currentPermission": "tournament.update|tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.configSettings"
+        ],
+        "userWorkflow": "Settings configuration",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/config/age-rules",
+        "currentComponent": "TournamentAgeRulesPage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "config hub"
+        ],
+        "userWorkflow": "Age eligibility rules",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/config/gender-rules",
+        "currentComponent": "TournamentGenderRulesPage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "config hub"
+        ],
+        "userWorkflow": "Gender rules",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/config/fee",
+        "currentComponent": "TournamentFeePage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.configFee",
+          "entry-fee alias"
+        ],
+        "userWorkflow": "Entry fee configuration",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/config/regulations",
+        "currentComponent": "TournamentRegulationsPage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "config hub"
+        ],
+        "userWorkflow": "Regulations configuration",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/eligibility",
+        "currentComponent": "TournamentTeamEligibilityHub",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TOURNAMENT_ROUTES.eligibility"
+        ],
+        "userWorkflow": "Eligibility hub",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/eligibility/check",
+        "currentComponent": "TournamentEligibilityPage",
+        "requiredParameters": [
+          "query.tournamentId?"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TournamentHubPages"
+        ],
+        "userWorkflow": "Eligibility check for selected tournament",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/publish-schedule",
+        "currentComponent": "TournamentPublishSchedulePage",
+        "requiredParameters": [
+          "query.tournamentId?"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "Internal/Official setup"
+        ],
+        "userWorkflow": "Publish schedule",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/referee-assign",
+        "currentComponent": "TournamentRefereeAssignPage",
+        "requiredParameters": null,
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "config/operations hub"
+        ],
+        "userWorkflow": "Assign referees",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/awards",
+        "currentComponent": "TournamentAwardsPage",
+        "requiredParameters": [
+          "query.tournamentId?",
+          "query.tab?"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "withdrawal flow"
+        ],
+        "userWorkflow": "Awards management",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/withdrawal",
+        "currentComponent": "TournamentWithdrawalPage",
+        "requiredParameters": [
+          "query.tournamentId?"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "awards flow"
+        ],
+        "userWorkflow": "Withdrawal processing",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": false,
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/daily/:tournamentId",
+        "currentComponent": "DailyPlaySetup",
+        "requiredParameters": [
+          "tournamentId"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TournamentListTable",
+          "ActiveTournamentsPanel",
+          "DailyPlayLauncher",
+          "TournamentHome create"
+        ],
+        "userWorkflow": "Daily play setup",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": "syntactic_path_param_only_no_semantic_redirect",
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/internal/:tournamentId",
+        "currentComponent": "InternalTournamentSetup",
+        "requiredParameters": [
+          "tournamentId"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TournamentListTable",
+          "ActiveTournamentsPanel",
+          "ClubTournamentsTab",
+          "TournamentHome create"
+        ],
+        "userWorkflow": "Internal tournament setup",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": "syntactic_path_param_only_no_semantic_redirect",
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/internal/:tournamentId/bracket",
+        "currentComponent": "TournamentBracketPage",
+        "requiredParameters": [
+          "tournamentId"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "InternalTournamentSetup"
+        ],
+        "userWorkflow": "Internal bracket view",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": "syntactic_path_param_only_no_semantic_redirect",
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/official/:tournamentId",
+        "currentComponent": "OfficialTournamentSetup",
+        "requiredParameters": [
+          "tournamentId"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TournamentListTable",
+          "ActiveTournamentsPanel",
+          "TournamentHome create"
+        ],
+        "userWorkflow": "Official tournament setup",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": "syntactic_path_param_only_no_semantic_redirect",
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/official/:tournamentId/bracket",
+        "currentComponent": "TournamentBracketPage",
+        "requiredParameters": [
+          "tournamentId"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "OfficialTournamentSetup"
+        ],
+        "userWorkflow": "Official bracket view",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": "syntactic_path_param_only_no_semantic_redirect",
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/team/:tournamentId",
+        "currentComponent": "TeamTournamentSetup",
+        "requiredParameters": [
+          "tournamentId"
+        ],
+        "currentPermission": "tournament.view",
+        "generatedLinks": [
+          "TournamentListTable",
+          "ActiveTournamentsPanel",
+          "getTournamentSetupPath",
+          "TournamentHome create"
+        ],
+        "userWorkflow": "Team tournament setup",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": "syntactic_path_param_only_no_semantic_redirect",
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      },
+      {
+        "legacyPath": "/tournament/director/:tournamentId",
+        "currentComponent": "TournamentDirectorMode",
+        "requiredParameters": [
+          "tournamentId"
+        ],
+        "currentPermission": "director.use|tournament.update",
+        "generatedLinks": [
+          "ActiveTournamentsPanel",
+          "mode setup pages"
+        ],
+        "userWorkflow": "Live director operations",
+        "provenPluralRouteExists": false,
+        "tournamentIdDerivableSafely": "syntactic_path_param_only_no_semantic_redirect",
+        "proposedDisposition": "retain",
+        "redirectTarget": null,
+        "rationale": "No proven 1:1 semantic successor in /tournaments/:tournamentId/* Engine family; inventing tournamentId or redirects forbidden"
+      }
+    ],
+    "note": "/tournament/entry-fee excluded (already within-legacy alias to /tournament/config/fee)"
+  },
+  "B03": {
+    "blockerId": "BLK-B03-GUARD",
+    "path": "/player/skill-assessment-v5",
+    "currentAuthorization": {
+      "routerGuard": "none (direct SkillAssessmentV5Page)",
+      "authGuardClass": "authenticated_only",
+      "menuAccess": "listed as no-permission authenticated path",
+      "allowedRolesAtRouter": "any authenticated user (subject to page access service)",
+      "permissions": [],
+      "featureFlag": "VITE_PICK_VN_RATING_V5_ENABLED (page checks; defaults off)",
+      "pageGate": "resolveRatingV5Access — flag + rollout + pilot enrollment",
+      "legacyMenuExposure": "PLAYER desktop/mobile when V5 flag enabled"
+    },
+    "intendedProductOwner": "PLAYER pilot self-assessment (V5 foundation docs) vs Phase 1 B03 text SUPER_ADMIN-only direct access",
+    "playerAccessIntentionalInProduct": true,
+    "superAdminOnlyRequiredByB03Text": true,
+    "conflict": true,
+    "dataExposureRisk": "Enrolled PLAYER can submit own assessment answers and receive rating result via RPC; profile direct writes denied server-side",
+    "writeCapability": true,
+    "existingTests": [
+      "tests/pick-vn-rating-v5-*.test.js",
+      "tests/ui/pick-vn-rating-v5-ui.test.jsx"
+    ],
+    "recommendedAuthorizationPolicy": "HIDE from all menus/search/mobile writers in every shell. Route access: authenticated AND (role in {SUPER_ADMIN, PLATFORM_ADMIN} OR (PLAYER AND VITE_PICK_VN_RATING_V5_ENABLED AND active pilot enrollment via resolveRatingV5Access)). Flag alone must never add a menu leaf. Non-matching users → 403. No redirect."
+  },
+  "pluralAuthz": {
+    "blockerId": "BLK-PLURAL-AUTHZ",
+    "routesAudited": 7,
+    "parityPassCount": 0,
+    "parityGapCount": 7,
+    "routes": [
+      {
+        "route": "/tournaments/:tournamentId/engine",
+        "tab": "engine",
+        "component": "TournamentEnginePage",
+        "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+        "permissionGate": {
+          "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+          "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+        },
+        "tenantCheck": "NONE on route; hook uses active club/profile context only",
+        "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+        "legacyEquivalent": "/tournament/internal|official/:tournamentId (setup)",
+        "authorizationParity": "weaker",
+        "missingTests": [
+          "unauthenticated deep link redirects to login",
+          "RBAC denied tournament.view/update → 403",
+          "cross-club/cross-tenant tournamentId rejected before engine load",
+          "role matrix player/manager/referee/admin",
+          "mutate tab requires tournament.update"
+        ]
+      },
+      {
+        "route": "/tournaments/:tournamentId/seed",
+        "tab": "seed",
+        "component": "TournamentEnginePage",
+        "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+        "permissionGate": {
+          "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+          "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+        },
+        "tenantCheck": "NONE on route; hook uses active club/profile context only",
+        "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+        "legacyEquivalent": "mode setup seeding (unproven)",
+        "authorizationParity": "weaker",
+        "missingTests": [
+          "unauthenticated deep link redirects to login",
+          "RBAC denied tournament.view/update → 403",
+          "cross-club/cross-tenant tournamentId rejected before engine load",
+          "role matrix player/manager/referee/admin",
+          "mutate tab requires tournament.update"
+        ]
+      },
+      {
+        "route": "/tournaments/:tournamentId/draw",
+        "tab": "draw",
+        "component": "TournamentEnginePage",
+        "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+        "permissionGate": {
+          "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+          "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+        },
+        "tenantCheck": "NONE on route; hook uses active club/profile context only",
+        "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+        "legacyEquivalent": "/tournament/*/bracket (unproven semantic)",
+        "authorizationParity": "weaker",
+        "missingTests": [
+          "unauthenticated deep link redirects to login",
+          "RBAC denied tournament.view/update → 403",
+          "cross-club/cross-tenant tournamentId rejected before engine load",
+          "role matrix player/manager/referee/admin",
+          "mutate tab requires tournament.update"
+        ]
+      },
+      {
+        "route": "/tournaments/:tournamentId/schedule",
+        "tab": "schedule",
+        "component": "TournamentEnginePage",
+        "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+        "permissionGate": {
+          "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+          "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+        },
+        "tenantCheck": "NONE on route; hook uses active club/profile context only",
+        "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+        "legacyEquivalent": "/tournament/schedule hub or mode setup",
+        "authorizationParity": "weaker",
+        "missingTests": [
+          "unauthenticated deep link redirects to login",
+          "RBAC denied tournament.view/update → 403",
+          "cross-club/cross-tenant tournamentId rejected before engine load",
+          "role matrix player/manager/referee/admin",
+          "mutate tab requires tournament.update"
+        ]
+      },
+      {
+        "route": "/tournaments/:tournamentId/courts",
+        "tab": "courts",
+        "component": "TournamentEnginePage",
+        "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+        "permissionGate": {
+          "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+          "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+        },
+        "tenantCheck": "NONE on route; hook uses active club/profile context only",
+        "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+        "legacyEquivalent": "director/court ops (unproven)",
+        "authorizationParity": "weaker",
+        "missingTests": [
+          "unauthenticated deep link redirects to login",
+          "RBAC denied tournament.view/update → 403",
+          "cross-club/cross-tenant tournamentId rejected before engine load",
+          "role matrix player/manager/referee/admin",
+          "mutate tab requires tournament.update"
+        ]
+      },
+      {
+        "route": "/tournaments/:tournamentId/ranking",
+        "tab": "ranking",
+        "component": "TournamentEnginePage",
+        "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+        "permissionGate": {
+          "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+          "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+        },
+        "tenantCheck": "NONE on route; hook uses active club/profile context only",
+        "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+        "legacyEquivalent": "results surfaces (unproven)",
+        "authorizationParity": "weaker",
+        "missingTests": [
+          "unauthenticated deep link redirects to login",
+          "RBAC denied tournament.view/update → 403",
+          "cross-club/cross-tenant tournamentId rejected before engine load",
+          "role matrix player/manager/referee/admin",
+          "read-only vs mutate tab permission split"
+        ]
+      },
+      {
+        "route": "/tournaments/:tournamentId/logs",
+        "tab": "logs",
+        "component": "TournamentEnginePage",
+        "roleGuard": "NONE_at_router; PUBLIC_PATH_PREFIXES includes /tournaments so descendants are public-auth",
+        "permissionGate": {
+          "routeLevel": "NONE — menuAccess matches /tournament/ only, not /tournaments/",
+          "pageLevel": "PermissionGate permission=tournament.update (after hook construction)"
+        },
+        "tenantCheck": "NONE on route; hook uses active club/profile context only",
+        "ownershipCheck": "NONE — no assertion that route tournamentId belongs to active tenant/club/user",
+        "legacyEquivalent": "no proven legacy equivalent",
+        "authorizationParity": "weaker",
+        "missingTests": [
+          "unauthenticated deep link redirects to login",
+          "RBAC denied tournament.view/update → 403",
+          "cross-club/cross-tenant tournamentId rejected before engine load",
+          "role matrix player/manager/referee/admin",
+          "read-only vs mutate tab permission split"
+        ]
+      }
+    ],
+    "publicCatalogNote": "/tournaments (PublicTournamentsPage) is intentionally public catalog — out of Engine parity scope; protect only /tournaments/:tournamentId/*"
+  },
+  "ownerDecisionsRequiredCount": 4,
+  "ownerDecisions": [
+    {
+      "decisionId": "OD-B01-MESSAGES",
+      "blockerId": "BLK-B01-SEMANTIC",
+      "plainLanguageQuestion": "Should Communication inbox (/messages) and CRM outreach (/crm/messages) stay as two separate business functions, or be collapsed?",
+      "recommendedOption": "A",
+      "recommendedLabel": "Keep both as separate canonical business functions",
+      "rejectedOptions": [
+        {
+          "option": "B",
+          "label": "Make /messages an alias of /crm/messages",
+          "reason": "Functional and RBAC equivalence NOT proven"
+        },
+        {
+          "option": "C",
+          "label": "Retire one function and migrate its capability in Phase 4",
+          "reason": "CRM retirement needs a durable CRM migration program outside Phase 4 nav cutover; retiring COMMS would destroy certified messaging"
+        }
+      ],
+      "consequence": "Revise Phase 1 B01: do NOT redirect /messages→/crm/messages. Restore /messages as canonical Communication route in registry/menu/search (with proper COMMS auth). Keep /crm/messages as canonical CRM outreach.",
+      "risk": "Canonical registry currently treats CRM as sole messaging owner; revising B01 requires registry + menu updates and clear labels so users do not confuse inbox vs outreach.",
+      "implementationImpact": "No alias redirect. Update ownerDecisions/catalog/menu/search; add COMMS route permissions if missing; keep both pages mounted."
+    },
+    {
+      "decisionId": "OD-B02-TOURNAMENT-RETAIN",
+      "blockerId": "BLK-B02-NO-MAP",
+      "plainLanguageQuestion": "Approve retaining all 42 unmapped /tournament/* routes with zero invented redirects until semantic successors exist?",
+      "recommendedOption": "RETAIN_ALL_42_NO_REDIRECT",
+      "recommendedLabel": "Retain all 42; no redirects; writer hygiene only where links already have a tournamentId and a proven same-workflow target",
+      "rejectedOptions": [
+        {
+          "option": "BULK_REDIRECT_TO_ENGINE",
+          "label": "Redirect hubs/setup to Engine tabs",
+          "reason": "Semantic mapping unproven; would break daily/internal/official/team/register/public/director flows"
+        },
+        {
+          "option": "DERIVE_TOURNAMENT_ID",
+          "label": "Invent or guess tournamentId for hub redirects",
+          "reason": "Forbidden by audit rules; unsafe"
+        }
+      ],
+      "consequence": "Phase 4 implements no B02 redirects. Legacy mounts remain for compatibility. Flag ON menu/search continue excluding /tournament/*.",
+      "risk": "Legacy deep links and flag-OFF writers remain until a later incremental migration program.",
+      "implementationImpact": "Docs matrix only for redirects; optional replace_link_writer for Engine breadcrumb/back away from legacy /tournament after OD-PLURAL approved."
+    },
+    {
+      "decisionId": "OD-B03-V5-SHADOW-AUTHZ",
+      "blockerId": "BLK-B03-GUARD",
+      "plainLanguageQuestion": "Who may open /player/skill-assessment-v5 by direct URL: SUPER_ADMIN only (Phase 1 B03 text), or enrolled PLAYER pilots under the V5 product contract?",
+      "recommendedOption": "PILOT_ALIGNED_SHADOW",
+      "recommendedLabel": "Hide from all menus/search; allow authenticated SUPER_ADMIN always for tech eval; allow PLAYER only when VITE_PICK_VN_RATING_V5_ENABLED + active pilot enrollment; deny all others with 403; flag alone never exposes menu",
+      "rejectedOptions": [
+        {
+          "option": "STRICT_SUPER_ADMIN_ONLY",
+          "label": "Router SUPER_ADMIN-only for all direct access",
+          "reason": "Conflicts with V5 foundation PLAYER self-assessment pilot RPCs and existing page access service"
+        },
+        {
+          "option": "KEEP_STATUS_QUO",
+          "label": "Authenticated-only route + PLAYER menu when flag on",
+          "reason": "Violates B03 hide-shadow menu rule and over-exposes via legacy menu writers"
+        }
+      ],
+      "consequence": "Revises B03 direct-access wording from SUPER_ADMIN-only to pilot-aligned shadow. Menu/search remain hidden in every shell.",
+      "risk": "If Owner insists on strict SUPER_ADMIN-only, Rating V5 pilot UX breaks until a separate PLAYER entry is provided.",
+      "implementationImpact": "Change authGuard/menuAccess/navigationConfig (remove PLAYER menu leaf); keep page-level resolveRatingV5Access; add denial tests; no redirect."
+    },
+    {
+      "decisionId": "OD-PLURAL-AUTHZ-PARITY",
+      "blockerId": "BLK-PLURAL-AUTHZ",
+      "plainLanguageQuestion": "Should /tournaments/:tournamentId/* Engine routes require authentication and tournament permissions at least as strong as legacy /tournament/* before Preview flag ON?",
+      "recommendedOption": "PARITY_MIN_AUTH_PLUS_TOURNAMENT_UPDATE",
+      "recommendedLabel": "Remove plural routes from public-auth prefix descendants; require auth; route-level permission tournament.update (matching page gate) or documented split; add tenant/club ownership check before engine load",
+      "rejectedOptions": [
+        {
+          "option": "LEAVE_PUBLIC",
+          "label": "Keep /tournaments/* public-auth",
+          "reason": "Weaker than legacy; exposes engine deep links when auth production enabled"
+        },
+        {
+          "option": "VIEW_ONLY_PARITY",
+          "label": "Only require tournament.view",
+          "reason": "Weaker than current page PermissionGate tournament.update for mutating tabs"
+        }
+      ],
+      "consequence": "Closes Preview blocker BLK-PLURAL-AUTHZ. Public catalog /tournaments (list) remains public; parameterized Engine family becomes protected.",
+      "risk": "Deep links that previously worked anonymously will require login — intentional hardening.",
+      "implementationImpact": "authGuard.js PUBLIC_PATH_PREFIXES refinement; menuAccess.js plural matcher; optional ownership assert in useTournamentEngine/RouteAccessGate; tests in phase4-tournament-authz."
+    }
+  ],
+  "implementationPlanAfterOwnerDecisions": {
+    "order": [
+      "1. Record owner decisions OD-B01/B02/B03/PLURAL in docs",
+      "2. Authz hardening: authGuard + menuAccess plural + B03 policy (OD-B03/OD-PLURAL)",
+      "3. Registry/menu/search revise B01 to dual-canonical (OD-B01=A)",
+      "4. Optional Engine breadcrumb/back writer hygiene (no B02 redirects)",
+      "5. Tests phase4 b01/b03/authz",
+      "6. Preview verification flag ON with Production OFF"
+    ],
+    "runtimeFiles": [
+      "src/auth/authGuard.js",
+      "src/auth/menuAccess.js",
+      "src/config/navigationConfig.js",
+      "src/config/v5Menu/messagingMenu.js",
+      "src/features/canonical-shell/config/ownerDecisions.js",
+      "src/features/canonical-shell/config/canonicalMenuData.js",
+      "src/features/canonical-shell/config/canonicalRouteCatalog.js",
+      "src/features/canonical-shell/services/filterCanonicalMenu.js",
+      "src/features/canonical-shell/services/buildCanonicalSearchIndex.js",
+      "src/pages/tournament/TournamentEnginePage.jsx",
+      "src/router.jsx"
+    ],
+    "testFiles": [
+      "tests/canonical-shell-phase4-b01-dual-canonical.test.js",
+      "tests/canonical-shell-phase4-b03-guard.test.js",
+      "tests/canonical-shell-phase4-tournament-authz.test.js",
+      "tests/ui/canonical-shell-phase4-a11y.ui.test.jsx"
+    ],
+    "documentationFiles": [
+      "docs/ui-ux/canonical-navigation/phase4/PHASE4_OWNER_DECISIONS_RECORDED.md",
+      "docs/ui-ux/canonical-navigation/phase4/PHASE4_IMPLEMENTATION_REPORT.md",
+      "docs/ui-ux/canonical-navigation/LEGACY_ROUTE_DISPOSITION.md",
+      "docs/ui-ux/canonical-navigation/CANONICAL_ROUTE_INVENTORY.md"
+    ],
+    "commitBoundaries": [
+      "commit 1: docs owner decisions recorded",
+      "commit 2: plural authz + B03 guard policy",
+      "commit 3: B01 dual-canonical registry/menu/search",
+      "commit 4: tests + implementation report"
+    ],
+    "rollbackApproach": "VITE_CANONICAL_APP_SHELL_ENABLED remains OFF in Production; Preview flag OFF restores legacy shell; authz commits revert independently if needed",
+    "previewVerificationPlan": [
+      "Flag OFF: legacy shell, COMMS /messages and CRM both reachable per policy",
+      "Flag ON: dual canonical messages entries labeled distinctly; no /tournament/* menu; V5 hidden; Engine deep links authz-hardened",
+      "RBAC matrix 10 roles desktop+mobile",
+      "No console errors"
+    ],
+    "productionRemainsOff": true
+  },
+  "productionSafety": {
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "productionFeatureFlagChanges": 0
+  },
+  "blockersRemainingUntilOwnerDecisions": [
+    "BLK-B01-SEMANTIC",
+    "BLK-B02-NO-MAP",
+    "BLK-B03-GUARD",
+    "BLK-PLURAL-AUTHZ"
+  ]
+}

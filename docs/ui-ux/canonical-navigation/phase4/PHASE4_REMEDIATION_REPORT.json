@@ -1,0 +1,97 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 4,
+    "artifact": "PHASE4_REMEDIATION_REPORT",
+    "baseHead": "6ece104677ec1db4ba1b19bc666a1a41ac2c2a93",
+    "branch": "feature/canonical-navigation-phase4-runtime-cutover",
+    "priorVerdict": "CANONICAL_NAVIGATION_PHASE4_INDEPENDENT_REVIEW_CHANGES_REQUIRED",
+    "verdict": "CANONICAL_NAVIGATION_PHASE4_REMEDIATION_COMPLETE_READY_FOR_REREVIEW",
+    "commit": "NO",
+    "push": "NO",
+    "pr": "NO"
+  },
+  "ownerDecisions": {
+    "OD-B01": "APPROVED_A_KEEP_SEPARATE",
+    "OD-B02": "APPROVED_RETAIN_ALL_42",
+    "OD-B03": "APPROVED_PILOT_ALIGNED_SHADOW",
+    "OD-PLURAL-AUTHZ": "APPROVED_ENGINE_PROTECTION"
+  },
+  "defects": {
+    "BR-PLURAL-01": "CLOSED",
+    "BR-B03-01": "CLOSED",
+    "BR-PLURAL-02": "CLOSED",
+    "BR-TEST-01": "CLOSED",
+    "BR-DOC-01": "CLOSED"
+  },
+  "results": {
+    "BR_PLURAL_01": "CLOSED",
+    "BR_B03_01": "CLOSED",
+    "tournamentsPublic": "PASS",
+    "tournamentsTrailingSlashPublic": "PASS",
+    "nestedEngineProtected": "PASS",
+    "B01": "PASS",
+    "B02": "PASS",
+    "retainedLegacyTournamentRoutes": 43,
+    "redirectsAdded": 0,
+    "B03RoleMatrix": "PASS",
+    "pluralRoutesProtected": 7,
+    "pluralAuthParity": "PASS_FORCED_AUTHZ_INDEPENDENT_OF_RBAC_FLAG",
+    "publicCatalog": "PASS",
+    "routeReconciliation": "179/179",
+    "activeMenuNodes": 76,
+    "contextualRoutes": 7,
+    "duplicateActiveEntries": 0
+  },
+  "inventory": {
+    "preRemediationBaseline": {
+      "exactChangedFileCount": 40,
+      "modifiedTracked": 17,
+      "untracked": 23,
+      "staged": 0,
+      "runtime": 17,
+      "test": 6,
+      "manifest": 1,
+      "docs": 16,
+      "unrelated": 0
+    },
+    "afterRemediation": {
+      "exactChangedFileCount": 46,
+      "modifiedTracked": 17,
+      "untracked": 29,
+      "staged": 0,
+      "runtime": 17,
+      "test": 8,
+      "manifest": 1,
+      "docs": 20,
+      "unrelated": 0
+    },
+    "packageLockChanged": false,
+    "ownerUntrackedPreserved": 10
+  },
+  "validation": {
+    "focusedPhase2to4Unit": "PASS 53/53",
+    "unitTests": "PASS 6892/6892",
+    "unitTestCount": 6892,
+    "focusedUi": "PASS 42/42",
+    "accessibilityTests": "PASS",
+    "lintNoNew": "PASS",
+    "build": "PASS",
+    "secretScan": "PASS 0",
+    "packageLockValidation": "PASS",
+    "gitDiffCached": "EMPTY"
+  },
+  "blockersRemaining": [],
+  "warnings": [
+    "Static CanonicalAppShell import observation retained",
+    "Vite chunk-size warning non-blocking",
+    "Legacy /tournament/* writers remain under flag OFF by OD-B02"
+  ],
+  "productionSafety": {
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "productionFeatureFlagChanges": 0,
+    "PRODUCTION_GO": "NO"
+  }
+}

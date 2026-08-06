@@ -2,6 +2,7 @@
  * Route guard helpers — auth production (Supabase env) tách khỏi RBAC.
  */
 import { canAccessRoute } from "./menuAccess.js";
+import { isPublicTournamentsCatalogPath } from "./tournamentEngineRouteAccess.js";
 
 export function isAuthRequired({ authProductionEnabled, rbacEnabled }) {
   return Boolean(authProductionEnabled || rbacEnabled);
@@ -12,7 +13,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/forgot-password",
   "/reset-password",
   "/home",
-  "/tournaments",
+  // `/tournaments` catalog is exact-match only (see isPublicAuthPath).
+  // Engine routes `/tournaments/:id/*` are protected (Phase 4 OD-PLURAL-AUTHZ).
   "/clubs",
   "/courts",
   "/rankings",
@@ -23,6 +25,11 @@ const PUBLIC_PATH_PREFIXES = [
 export function isPublicAuthPath(pathname, { authProductionEnabled, rbacEnabled }) {
   if (!pathname) {
     return false;
+  }
+
+  // Public catalog only — not Tournament Engine descendants.
+  if (isPublicTournamentsCatalogPath(pathname)) {
+    return true;
   }
 
   if (PUBLIC_PATH_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
@@ -57,8 +64,7 @@ export function isAuthenticatedOnlyRoute(pathname) {
     pathname.startsWith("/player/skill/") ||
     pathname === "/player/skill-assessment" ||
     pathname.startsWith("/player/skill-assessment/") ||
-    pathname === "/player/skill-assessment-v5" ||
-    pathname.startsWith("/player/skill-assessment-v5/") ||
+    // /player/skill-assessment-v5 is NOT authenticated-only — pilot-aligned shadow guard (OD-B03).
     pathname === "/my-club" ||
     pathname.startsWith("/my-club/") ||
     pathname === "/discover-clubs" ||

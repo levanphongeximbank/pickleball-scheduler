@@ -13,6 +13,7 @@ import {
   userMustChangePassword,
 } from "../../auth/authGuard.js";
 import { getDefaultHomePath, resolveRouteAccessScope } from "../../auth/menuAccess.js";
+import { decideTournamentEngineRouteGate } from "../../auth/tournamentEngineRouteAccess.js";
 import { isClubStorageV2Enabled } from "../../features/club/config/clubRegistryFlags.js";
 import { isTeamTournamentPortalPath } from "../../features/team-tournament/routing/teamPortalRouteScope.js";
 import { ROLES, normalizeRole } from "../../auth/roles.js";
@@ -74,6 +75,42 @@ export default function RouteAccessGate({ children }) {
     !isAuthenticated
   ) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // Phase 4 OD-PLURAL-AUTHZ — Engine: auth + tournament.update + ownership whenever auth is
+  // active, independent of VITE_RBAC_ENABLED (BR-PLURAL-01 remediation).
+  {
+    const engineScope = resolveRouteAccessScope({
+      user,
+      activeClubId,
+      activeClub,
+      activeClusterId,
+      pathname: location.pathname,
+    });
+    const engineDecision = decideTournamentEngineRouteGate({
+      pathname: location.pathname,
+      user,
+      isAuthenticated,
+      scope: engineScope,
+      activeClubId,
+      authProductionEnabled,
+      rbacEnabled,
+      tenantId: user?.tenantId || user?.venueId || activeClub?.venueId || null,
+    });
+    if (engineDecision.apply) {
+      if (engineDecision.redirect === "login") {
+        return <Navigate to="/login" replace state={{ from: location }} />;
+      }
+      if (!engineDecision.ok) {
+        return (
+          <Navigate
+            to="/403"
+            replace
+            state={{ from: location, reason: engineDecision.code }}
+          />
+        );
+      }
+    }
   }
 
   if (!rbacEnabled) {

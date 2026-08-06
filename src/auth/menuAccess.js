@@ -46,7 +46,7 @@ const PUBLIC_MENU_PATHS = new Set([
   "/player/profile",
   "/player/skill",
   "/player/skill-assessment",
-  "/player/skill-assessment-v5",
+  // /player/skill-assessment-v5 excluded — OD-B03 pilot-aligned shadow (not public menu path)
   "/mobile/notifications",
   "/403",
 ]);
@@ -81,6 +81,17 @@ export function getRouteAccessPermissions(pathname) {
 
   if (pathname.startsWith("/tournament/director/")) {
     return [PERMISSIONS.DIRECTOR_USE, PERMISSIONS.TOURNAMENT_UPDATE];
+  }
+
+  // Phase 4 OD-PLURAL-AUTHZ — Engine family requires tournament.update (parity with page gate).
+  // Public catalog `/tournaments` and `/tournaments/` are not Engine routes.
+  {
+    const catalogPath = String(pathname).split("?")[0];
+    const isCatalog =
+      catalogPath === "/tournaments" || catalogPath === "/tournaments/";
+    if (pathname.startsWith("/tournaments/") && !isCatalog) {
+      return [PERMISSIONS.TOURNAMENT_UPDATE];
+    }
   }
 
   if (pathname.startsWith("/referee/match/")) {

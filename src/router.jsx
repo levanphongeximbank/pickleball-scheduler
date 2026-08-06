@@ -8,6 +8,7 @@ import { Box, CircularProgress } from "@mui/material";
 
 import MainLayout from "./layouts/MainLayout";
 import SuperAdminRouteGuard from "./features/pairing-constraints/guards/superAdminRouteGuard.jsx";
+import SkillAssessmentV5RouteGuard from "./features/pick-vn-rating-v5/guards/SkillAssessmentV5RouteGuard.jsx";
 import OperatorAcceptanceRouteGuard from "./features/platform-hard-cutover/OperatorAcceptanceRouteGuard.jsx";
 
 import { AuthProvider } from "./context/AuthContext.jsx";
@@ -487,7 +488,14 @@ export default function Router() {
             <Route path="/player/profile" element={<AthleteSelfProfilePage />} />
             <Route path="/player/skill" element={<PlayerSkillOverviewPage />} />
             <Route path="/player/skill-assessment" element={<FirstSkillAssessmentPage />} />
-            <Route path="/player/skill-assessment-v5" element={<SkillAssessmentV5Page />} />
+            <Route
+              path="/player/skill-assessment-v5"
+              element={
+                <SkillAssessmentV5RouteGuard>
+                  <SkillAssessmentV5Page />
+                </SkillAssessmentV5RouteGuard>
+              }
+            />
 
             <Route path="/users" element={<UserManagementPage />} />
             <Route

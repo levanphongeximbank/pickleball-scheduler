@@ -1,7 +1,6 @@
 import { flattenCanonicalMenu, isCanonicalMenuNodeVisible } from "./filterCanonicalMenu.js";
 import { buildCanonicalMenuTree } from "../config/canonicalMenuRegistry.js";
 import {
-  B01_LEGACY_MESSAGES_ROUTE,
   B03_SHADOW_SKILL_ASSESSMENT_V5,
 } from "../config/ownerDecisions.js";
 import { resolveCanonicalRouteHref, resolveCanonicalRouteHub } from "./resolveCanonicalRouteParams.js";
@@ -9,11 +8,11 @@ import { resolveCanonicalRouteHref, resolveCanonicalRouteHub } from "./resolveCa
 /**
  * Canonical global search index — single registry source (desktop + mobile).
  * Respects RBAC / permissions / owner decisions. Never leaks shadow or legacy aliases.
+ * OD-B01: /messages and /crm/messages are both searchable when visible to the user.
  */
 
 function isSearchableLeaf(node) {
   if (!node?.route) return false;
-  if (node.route === B01_LEGACY_MESSAGES_ROUTE) return false;
   if (node.route === B03_SHADOW_SKILL_ASSESSMENT_V5) return false;
   if (node.route.startsWith("/tournament/") && !node.route.startsWith("/tournaments/")) {
     return false;

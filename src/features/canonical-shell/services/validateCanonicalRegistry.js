@@ -2,6 +2,8 @@ import { buildCanonicalMenuTree } from "../config/canonicalMenuRegistry.js";
 import { CANONICAL_ROUTE_CATALOG } from "../config/canonicalRouteCatalog.js";
 import { flattenCanonicalMenu, assertOwnerDecisionMenuInvariants } from "./filterCanonicalMenu.js";
 import {
+  B01_MESSAGING_EXPERIENCE_ROUTE,
+  B01_CRM_MESSAGES_ROUTE,
   B01_LEGACY_MESSAGES_ROUTE,
   B01_CANONICAL_MESSAGES_ROUTE,
   B02_LEGACY_TOURNAMENT_PREFIX,
@@ -55,8 +57,16 @@ export function validateCanonicalRegistry(options = {}) {
   if (duplicateActiveEntries.length) {
     blockers.push({ id: "DUPLICATE_ACTIVE", routes: duplicateActiveEntries });
   }
-  if (owner.hasLegacyMessages) {
-    blockers.push({ id: "B01_LEGACY_MESSAGES_IN_MENU" });
+  // OD-B01 Phase 4: dual-canonical required — both /messages and /crm/messages.
+  if (!owner.hasMessagingExperience || !owner.hasCrmMessages) {
+    blockers.push({
+      id: "B01_DUAL_CANONICAL_MESSAGES_MISSING",
+      hasMessagingExperience: owner.hasMessagingExperience,
+      hasCrmMessages: owner.hasCrmMessages,
+    });
+  }
+  if (owner.duplicateMessagesEntries) {
+    blockers.push({ id: "B01_DUPLICATE_SAME_PATH_MESSAGES" });
   }
   if (owner.hasShadowSkillV5) {
     blockers.push({ id: "B03_SHADOW_IN_MENU" });
@@ -102,10 +112,15 @@ export function validateCanonicalRegistry(options = {}) {
     },
     ownerDecisions: {
       B01: {
+        messagingExperience: B01_MESSAGING_EXPERIENCE_ROUTE,
+        crmMessages: B01_CRM_MESSAGES_ROUTE,
         canonical: B01_CANONICAL_MESSAGES_ROUTE,
         legacy: B01_LEGACY_MESSAGES_ROUTE,
+        hasMessagingExperience: owner.hasMessagingExperience,
+        hasCrmMessages: owner.hasCrmMessages,
         hasCanonical: owner.hasCanonicalMessages,
-        hasLegacy: owner.hasLegacyMessages,
+        hasLegacy: false,
+        dualCanonical: owner.dualCanonicalMessages,
       },
       B02: {
         canonicalPrefix: B02_CANONICAL_TOURNAMENT_PREFIX,
