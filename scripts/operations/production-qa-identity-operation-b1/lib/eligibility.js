@@ -27,8 +27,11 @@ export function hasBusinessReferences(referenceCounts = {}) {
  * @param {object} allowlistRow
  * @param {{
  *   admin?: any,
+ *   fetchAuthUser?: (id: string) => Promise<{id:string,email?:string|null,banned_until?:string|null}|null>,
+ *   emailOverrides?: Record<string, string>,
  *   fetchProfile?: (id: string) => Promise<{id:string,email:string,status:string}|null>,
  *   fetchReferenceCounts?: (id: string) => Promise<Record<string, number>>,
+ *   fetchAuthBanState?: (id: string) => Promise<boolean|null>,
  * }} adapters
  */
 export async function evaluateIdentityEligibility(allowlistRow, adapters = {}) {
@@ -60,11 +63,36 @@ export async function evaluateIdentityEligibility(allowlistRow, adapters = {}) {
   }
 
   // Auth ID alone is never enough — email must resolve and be certified.
-  const resolved = await resolveAuthUserEmailForQuarantine({
-    admin: adapters.admin,
-    userId: authUserId,
-    emailOverride: adapters.emailOverrides?.[authUserId],
-  });
+  // Prefer narrow fetchAuthUser (no raw admin on live adapter surface).
+  let resolved;
+  const emailOverride = adapters.emailOverrides?.[authUserId];
+  if (emailOverride != null && String(emailOverride).trim()) {
+    resolved = await resolveAuthUserEmailForQuarantine({
+      userId: authUserId,
+      emailOverride,
+    });
+  } else if (typeof adapters.fetchAuthUser === "function") {
+    try {
+      const authUser = await adapters.fetchAuthUser(authUserId);
+      const email = authUser?.email
+        ? String(authUser.email).trim().toLowerCase()
+        : null;
+      resolved = email
+        ? { ok: true, email }
+        : { ok: false, email: null, reason: "email_absent" };
+    } catch (err) {
+      resolved = {
+        ok: false,
+        email: null,
+        reason: String(err?.message || err || "auth_lookup_failed"),
+      };
+    }
+  } else {
+    resolved = await resolveAuthUserEmailForQuarantine({
+      admin: adapters.admin,
+      userId: authUserId,
+    });
+  }
   result.email = resolved.email;
 
   if (!resolved.ok || !resolved.email) {

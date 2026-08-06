@@ -26,7 +26,7 @@ function envInput() {
 }
 
 export async function runRollback(input = envInput(), adapters = {}) {
-  const auth = evaluateAuthorization(input);
+  const auth = evaluateAuthorization({ ...input, mode: "rollback" });
   const report = {
     operation: "OPERATION_B1_ROLLBACK_UNQUARANTINE",
     production_project_ref: EXPECTED_PRODUCTION_PROJECT_REF,

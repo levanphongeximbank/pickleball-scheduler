@@ -39,8 +39,11 @@ No hard delete. No schema change. No new status column.
 | `04_POSTCHECK.md` | future postcheck |
 | `05_ROLLBACK_UNQUARANTINE.md` | future rollback |
 | `06_RISK_AND_RECOVERY.md` | recovery requirements |
+| `07_LIVE_OPERATOR_RUNNER.md` | B1A approved live operator runner |
 | `evidence/` | sanitized package evidence |
 | `scripts/operations/production-qa-identity-operation-b1/` | package scripts |
+| `execute-live-operator.mjs` | B1A live execute entry (dry-run default) |
+| `rollback-live-operator.mjs` | B1A live rollback entry (separate GO) |
 
 ## External allowlist (required; not in Git)
 

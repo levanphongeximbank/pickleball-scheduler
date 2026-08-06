@@ -9,13 +9,27 @@ export const EXPECTED_PRODUCTION_PROJECT_REF = "expuvcohlcjzvrrauvud";
 
 export const EXPECTED_B1_COUNT = 8;
 
-/** Exact future Owner GO value required for mutation. */
+/** Exact future Owner GO value required for forward mutation. */
 export const REQUIRED_OWNER_PRODUCTION_GO =
   "APPROVE_OPERATION_B1_EXACT_EIGHT_ONLY";
+
+/**
+ * Exact Owner GO for rollback/unquarantine only.
+ * Forward GO must never authorize rollback.
+ */
+export const REQUIRED_OWNER_PRODUCTION_GO_ROLLBACK =
+  "APPROVE_OPERATION_B1_ROLLBACK_UNQUARANTINE_ONLY";
 
 /** Exact confirmation string required alongside Owner GO. */
 export const REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION =
   "I_UNDERSTAND_THIS_MUTATES_PRODUCTION_QA_ONLY";
+
+/**
+ * Retired unused batch from blocked no-adapter attempt — never reuse.
+ */
+export const RETIRED_OPERATION_B1_BATCH_IDS = Object.freeze([
+  "9c9d5fc7-648e-44c6-a959-e62157f7c970",
+]);
 
 /** Canonical reversible profile status (existing; no schema change). */
 export const QUARANTINE_PROFILE_STATUS = "quarantined";
