@@ -120,13 +120,14 @@ Do **not** treat historical “Phase 6 — QA Matrix” as the Production activa
 
 See full matrix: [`PRODUCTION_CUTOVER_DEPENDENCY_MATRIX.md`](./PRODUCTION_CUTOVER_DEPENDENCY_MATRIX.md)
 
-| Bucket | Count (approx.) |
-|--------|----------------:|
-| SATISFIED | 10 |
-| SATISFIED_WITH_OBSERVATION | 8 |
-| MUST_CLOSE_BEFORE_PRODUCTION | 11 |
-| MAY_DEFER_WITH_OWNER_ACCEPTANCE | 7 |
+| Bucket | Count |
+|--------|------:|
+| SATISFIED | 6 |
+| SATISFIED_WITH_OBSERVATION | 7 |
+| MUST_CLOSE_BEFORE_PRODUCTION | 13 |
+| MAY_DEFER_WITH_OWNER_ACCEPTANCE | 5 |
 | OUT_OF_SCOPE | 2 |
+| **Total (D-01–D-33)** | **33** |
 
 ---
 
@@ -233,7 +234,9 @@ See [`OWNER_DECISION_PACKAGES.md`](./OWNER_DECISION_PACKAGES.md).
 | Push | **NO** |
 | PR | **NO** |
 
-### Files created (uncommitted)
+### Deliverables (audit-time history)
+
+Created uncommitted during the original read-only audit; subsequently committed through PR #388.
 
 - `docs/ui-ux/canonical-navigation/production-activation-readiness/PRODUCTION_ACTIVATION_READINESS_AUDIT.md`
 - `docs/ui-ux/canonical-navigation/production-activation-readiness/PRODUCTION_ACTIVATION_READINESS_AUDIT.json`
@@ -243,3 +246,5 @@ See [`OWNER_DECISION_PACKAGES.md`](./OWNER_DECISION_PACKAGES.md).
 - `docs/ui-ux/canonical-navigation/production-activation-readiness/PRODUCTION_ROLLBACK_PLAN.md`
 - `docs/ui-ux/canonical-navigation/production-activation-readiness/PRODUCTION_RISK_REGISTER.md`
 - `docs/ui-ux/canonical-navigation/production-activation-readiness/OWNER_DECISION_PACKAGES.md`
+
+Safety table above records **audit-time** execution facts only (`Commit`/`Push`/`PR` = NO during the read-only audit). It does not describe the current PR #388 state.

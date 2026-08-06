@@ -53,20 +53,20 @@ Related: `docs/ui-ux/canonical-navigation/production-activation-readiness/`
 
 ## Package OD-PA-04 — Phase 5 limitation disposition for Production
 
-For each, Owner must choose **RETEST_ON_PRODUCTION** or **ACCEPT_RESIDUAL_RISK**:
+Recommended Production dispositions below are planning guidance only. They do **not** authorize Production flag enablement or execution.
 
-| Limitation | Recommendation |
-|------------|-----------------|
-| Browser refresh NOT_TESTED | RETEST_ON_PRODUCTION |
-| Back/forward NOT_TESTED | RETEST_ON_PRODUCTION |
-| High contrast NOT_TESTED | RETEST or ACCEPT |
-| Manual Tournament Engine UI | ACCEPT if automated 7/7 retained + spot deny cell |
-| Manual Rating V5 shadow UI | RETEST admin allow + non-admin deny spot |
-| Manual Private Pairing UI | RETEST or ACCEPT with automated standing |
-| Non-admin Preview roles limited | RETEST_ON_PRODUCTION or role waiver pack |
-| OBS-UI-01 tenant overlap | ACCEPT or schedule fix |
-| OBS-RUNTIME-01/02 messaging/CRM | ACCEPT (out of shell scope) |
-| OBS-DATA-01 MISSING_IDENTITY_LINK | ACCEPT as data/runtime, not nav |
+| Limitation | Recommended disposition |
+|------------|-------------------------|
+| Browser refresh NOT_TESTED | **RETEST_ON_PRODUCTION** |
+| Browser back/forward NOT_TESTED | **RETEST_ON_PRODUCTION** |
+| High contrast NOT_TESTED | **RETEST_ON_PRODUCTION** |
+| Manual Tournament Engine UI | **RETEST** one authorized allow spot and one unauthorized deny spot |
+| Manual Rating V5 shadow UI | **RETEST** admin allow and non-admin deny |
+| Manual Private Pairing UI | **RETEST** admin allow and non-admin deny |
+| Non-admin Preview roles limited | **RETEST** selected critical Production-safe roles or bind an explicit role waiver |
+| OBS-UI-01 tenant overlap | **ACCEPT_RESIDUAL_RISK** |
+| OBS-RUNTIME-01/02 messaging/CRM | **ACCEPT_OUT_OF_SHELL_SCOPE** |
+| OBS-DATA-01 MISSING_IDENTITY_LINK | **ACCEPT_DATA_RUNTIME_OBSERVATION** unless it blocks navigation |
 
 ---
 

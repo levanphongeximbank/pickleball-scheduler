@@ -61,10 +61,11 @@
 
 | Classification | Count |
 |----------------|------:|
-| SATISFIED | 10 |
-| SATISFIED_WITH_OBSERVATION | 8 |
-| MUST_CLOSE_BEFORE_PRODUCTION | 11 |
-| MAY_DEFER_WITH_OWNER_ACCEPTANCE | 7 |
+| SATISFIED | 6 |
+| SATISFIED_WITH_OBSERVATION | 7 |
+| MUST_CLOSE_BEFORE_PRODUCTION | 13 |
+| MAY_DEFER_WITH_OWNER_ACCEPTANCE | 5 |
 | OUT_OF_SCOPE | 2 |
+| **Total (D-01–D-33)** | **33** |
 
 Note: D-09/D-10/D-12 may move to MAY_DEFER if Owner explicitly accepts residual risk for Production GO; until then they remain MUST_CLOSE.
