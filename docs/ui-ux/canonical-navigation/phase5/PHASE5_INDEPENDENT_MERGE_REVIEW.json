@@ -1,0 +1,135 @@
+{
+  "program": "PICK_VN_CANONICAL_NAVIGATION",
+  "phase": 5,
+  "document": "PHASE5_INDEPENDENT_MERGE_REVIEW",
+  "reviewedAt": "2026-08-06",
+  "mode": "READ_ONLY",
+  "finalVerdict": "CANONICAL_NAVIGATION_PHASE5_INDEPENDENT_REVIEW_PASS_READY_FOR_OWNER_MERGE_GO",
+  "pr": {
+    "number": 385,
+    "state": "OPEN",
+    "isDraft": false,
+    "headSha": "c402c6e992698677c9d069896b068adf383c4d62",
+    "base": "main",
+    "mergeable": "MERGEABLE",
+    "mergeStateStatus": "CLEAN",
+    "unresolvedThreads": 0,
+    "requestedChanges": 0,
+    "reviews": []
+  },
+  "baseline": {
+    "branch": "feature/canonical-navigation-phase5-preview-acceptance",
+    "localHead": "c402c6e992698677c9d069896b068adf383c4d62",
+    "remoteBranchSha": "c402c6e992698677c9d069896b068adf383c4d62",
+    "localRemoteMatch": true,
+    "originMainSha": "3c6c3f0261c843f992e21499569b7df51525ed5d",
+    "mergeBase": "087c61c7d8bb1efdae343685269e53aa75767e21",
+    "aheadOfMain": 6,
+    "behindMain": 3
+  },
+  "diff": {
+    "changedFileCount": 34,
+    "additions": 5422,
+    "deletions": 0,
+    "allUnderPhase5DocsPath": true,
+    "runtimeChanges": 0,
+    "testChanges": 0,
+    "packageLockChanges": 0,
+    "environmentFileChanges": 0,
+    "sqlChanges": 0,
+    "deploymentConfigChanges": 0,
+    "credentialFindings": 0,
+    "unrelatedFiles": 0
+  },
+  "evidenceConsistency": {
+    "previewFlagOnDuringAcceptance": true,
+    "previewFlagFalseAfterRollback": true,
+    "productionFlagOffOrAbsent": true,
+    "productionDeploymentUnchanged": true,
+    "sqlStagingMutationsZero": true,
+    "superAdminCoversPlatformAdminEquivalent": true,
+    "coachWaivedWithSchemaBacklog": true,
+    "obsUi01Accepted": true,
+    "untestedRowsExplicit": true,
+    "blockersZero": true,
+    "phase5NotClaimedClosed": true,
+    "contradictionsFound": [],
+    "staleEvidenceFound": []
+  },
+  "mainDrift": {
+    "commitsOnMainNotInHead": [
+      "3c6c3f0261c843f992e21499569b7df51525ed5d",
+      "a25a748b",
+      "af63f085"
+    ],
+    "newMainCommitsSincePriorClosureReview": 0,
+    "runtimeOverlap": false,
+    "documentationOverlap": false,
+    "semanticOverlap": "none_material",
+    "pathIntersection": [],
+    "conflictSimulation": {
+      "method": "git merge-tree --write-tree",
+      "exitCode": 0,
+      "conflictCount": 0
+    },
+    "retestRequired": false
+  },
+  "checks": {
+    "verify": "SUCCESS",
+    "vercel": "SUCCESS",
+    "vercelPreviewComments": "SUCCESS",
+    "netlifyDeployPreview": "SUCCESS",
+    "netlifyHeaderRules": "NEUTRAL",
+    "netlifyPagesChanged": "NEUTRAL",
+    "requiredFailures": 0,
+    "pendingRequired": 0
+  },
+  "limitations": [
+    { "id": "refresh_not_manual", "classification": "ACCEPTED_FOR_MERGE" },
+    { "id": "back_forward_not_manual", "classification": "ACCEPTED_FOR_MERGE" },
+    { "id": "high_contrast_not_manual", "classification": "ACCEPTED_FOR_MERGE" },
+    { "id": "manual_tournament_engine_ui", "classification": "ACCEPTED_FOR_MERGE" },
+    { "id": "manual_rating_v5_shadow", "classification": "ACCEPTED_FOR_MERGE" },
+    { "id": "manual_private_pairing_ui", "classification": "ACCEPTED_FOR_MERGE" },
+    { "id": "non_admin_roles_limited", "classification": "ACCEPTED_FOR_MERGE" },
+    { "id": "coach_waived", "classification": "ACCEPTED_FOR_MERGE" },
+    { "id": "obs_ui_01_tenant_selector", "classification": "ACCEPTED_FOR_MERGE" },
+    { "id": "obs_data_runtime_staging", "classification": "ACCEPTED_FOR_MERGE" }
+  ],
+  "limitationsAccepted": [
+    "refresh_not_manual",
+    "back_forward_not_manual",
+    "high_contrast_not_manual",
+    "manual_tournament_engine_ui",
+    "manual_rating_v5_shadow",
+    "manual_private_pairing_ui",
+    "non_admin_roles_limited",
+    "coach_waived",
+    "obs_ui_01_tenant_selector",
+    "obs_data_runtime_staging"
+  ],
+  "retestsRequired": [],
+  "blockers": [],
+  "productionBoundary": {
+    "productionGo": "NO",
+    "productionCanonicalFlag": "OFF_OR_ABSENT",
+    "prDocumentationOnly": true,
+    "mergeDeploysCanonicalShellToProduction": false,
+    "vercelProductionPromotionImplied": false,
+    "sqlSchemaAuthMutationImplied": false
+  },
+  "safety": {
+    "productionMutations": 0,
+    "mergePerformed": false,
+    "commit": false,
+    "push": false,
+    "prChange": false,
+    "deployments": 0,
+    "sqlMutations": 0,
+    "stagingMutations": 0
+  },
+  "deliverablesCreatedUncommitted": [
+    "docs/ui-ux/canonical-navigation/phase5/PHASE5_INDEPENDENT_MERGE_REVIEW.md",
+    "docs/ui-ux/canonical-navigation/phase5/PHASE5_INDEPENDENT_MERGE_REVIEW.json"
+  ]
+}
