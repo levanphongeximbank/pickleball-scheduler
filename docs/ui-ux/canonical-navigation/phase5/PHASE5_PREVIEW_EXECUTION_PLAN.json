@@ -4,8 +4,13 @@
     "phase": 5,
     "document": "PHASE5_PREVIEW_EXECUTION_PLAN",
     "generatedAt": "2026-08-06T05:30:00.000Z",
-    "executed": false,
+    "updatedAt": "2026-08-06T08:05:00.000Z",
+    "executed": "partial_manual_preview_evidence",
+    "manualEvidenceVerdict": "CANONICAL_NAVIGATION_PHASE5_MANUAL_PREVIEW_ACCEPTANCE_PASS_WITH_OBSERVATIONS",
+    "draftPr": 385,
+    "boundSha": "7217e8fb3da06cee1ee0940fa665fe694230131f",
     "prerequisiteVerdict": "CANONICAL_NAVIGATION_PHASE5_PREVIEW_ACCEPTANCE_READY_WITH_BLOCKERS",
+    "previewGo": "YES",
     "productionGo": false
   },
   "order": [

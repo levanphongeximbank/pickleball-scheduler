@@ -3,9 +3,10 @@
 **Program:** PICK_VN Canonical Navigation  
 **Phase:** 5 — Planned execution (not run in this audit)  
 **Prerequisite verdict:** `CANONICAL_NAVIGATION_PHASE5_PREVIEW_ACCEPTANCE_READY_WITH_BLOCKERS`  
-**Owner decisions:** [`PHASE5_OWNER_DECISIONS_RECORDED.md`](./PHASE5_OWNER_DECISIONS_RECORDED.md) — recorded; awaiting identity+env preflight  
+**Owner decisions:** [`PHASE5_OWNER_DECISIONS_RECORDED.md`](./PHASE5_OWNER_DECISIONS_RECORDED.md)  
 **Preflight gate:** [`PHASE5_IDENTITY_ENV_PREFLIGHT.md`](./PHASE5_IDENTITY_ENV_PREFLIGHT.md)  
-**PREVIEW_GO:** `YES_AFTER_IDENTITY_AND_ENV_PREFLIGHT`  
+**Owner attestation:** [`PHASE5_OWNER_ATTESTATION.md`](./PHASE5_OWNER_ATTESTATION.md) — **`PREVIEW_GO=YES`**  
+**Manual evidence:** [`PHASE5_MANUAL_PREVIEW_ACCEPTANCE_REPORT.md`](./PHASE5_MANUAL_PREVIEW_ACCEPTANCE_REPORT.md) — **`PASS_WITH_OBSERVATIONS`** (partial matrix; PR #385 · SHA `7217e8fb…`)  
 **Production GO:** **NO**
 
 Machine-readable: [`PHASE5_PREVIEW_EXECUTION_PLAN.json`](./PHASE5_PREVIEW_EXECUTION_PLAN.json)
