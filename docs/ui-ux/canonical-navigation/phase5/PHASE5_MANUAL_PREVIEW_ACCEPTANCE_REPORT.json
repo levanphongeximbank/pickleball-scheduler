@@ -1,0 +1,216 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 5,
+    "artifact": "PHASE5_MANUAL_PREVIEW_ACCEPTANCE_REPORT",
+    "generatedAt": "2026-08-06T08:05:00.000Z",
+    "mode": "evidence_recording_only",
+    "verdict": "CANONICAL_NAVIGATION_PHASE5_MANUAL_PREVIEW_ACCEPTANCE_PASS_WITH_OBSERVATIONS",
+    "draftPr": 385,
+    "boundSha": "7217e8fb3da06cee1ee0940fa665fe694230131f",
+    "branch": "feature/canonical-navigation-phase5-preview-acceptance",
+    "previewEnvironment": "Vercel Preview",
+    "flag": "VITE_CANONICAL_APP_SHELL_ENABLED=true",
+    "runtimeCodeChanged": false,
+    "testsChanged": false,
+    "envChanged": false,
+    "deployedByAgent": false,
+    "prMerged": false,
+    "prDraftChanged": false,
+    "sqlMutations": 0,
+    "stagingMutations": 0,
+    "productionTouched": false,
+    "committed": false,
+    "pushed": false
+  },
+  "prChecks": {
+    "isDraft": true,
+    "state": "OPEN",
+    "headRefOid": "7217e8fb3da06cee1ee0940fa665fe694230131f",
+    "verify": "SUCCESS",
+    "vercelPreviewComments": "SUCCESS",
+    "vercelPreviewStatus": "READY_OR_SUCCESS_PER_AVAILABLE_CHECKS"
+  },
+  "summary": {
+    "desktopSurfacesDemonstrated": 9,
+    "mobileSurfacesDemonstrated": 2,
+    "routesPass": 5,
+    "routesPassWithObservation": 4,
+    "routesWaived": 0,
+    "routesFail": 0,
+    "whiteScreens": 0,
+    "visibleRedConsoleErrors": 0,
+    "fullConsoleAuditClaimed": false
+  },
+  "demonstrated": [
+    {
+      "id": "D-01",
+      "surface": "desktop_dashboard",
+      "classification": "PASS_WITH_OBSERVATION",
+      "canonicalShellVisible": true,
+      "leftNavVisible": true,
+      "whiteScreen": false,
+      "previewUrl": true,
+      "productionUrl": false,
+      "tenant": "venue-staging-a",
+      "role": "SUPER_ADMIN",
+      "observations": ["OBS-UI-01"]
+    },
+    {
+      "id": "D-02",
+      "surface": "tournament_menu",
+      "classification": "PASS",
+      "expands": true,
+      "dailyPlayVisible": true,
+      "refereeVisible": true,
+      "whiteScreen": false
+    },
+    {
+      "id": "D-03",
+      "surface": "daily_play",
+      "route": "/tournament/daily/tournament-1786001834313",
+      "classification": "PASS_WITH_OBSERVATION",
+      "pageRender": true,
+      "activeNavigation": true,
+      "authorizationError": false,
+      "whiteScreen": false,
+      "observations": ["OBS-DATA-01"]
+    },
+    {
+      "id": "D-04",
+      "surface": "rating_menu",
+      "classification": "PASS",
+      "expands": true,
+      "leavesVisible": ["Duyệt trình độ", "Đánh giá trình độ", "Trình độ", "VPR / Ranking"]
+    },
+    {
+      "id": "D-05",
+      "surface": "skill_assessment",
+      "route": "/player/skill-assessment",
+      "classification": "PASS",
+      "pageRender": true,
+      "authorizationError": false,
+      "whiteScreen": false
+    },
+    {
+      "id": "D-06",
+      "surface": "player_skill",
+      "route": "/players/skill",
+      "classification": "PASS_WITH_OBSERVATION",
+      "pageRender": true,
+      "activeNavigation": true,
+      "emptyStagingDataAcceptable": true,
+      "observations": ["OBS-UI-01"]
+    },
+    {
+      "id": "D-07",
+      "surface": "messages",
+      "route": "/messages",
+      "classification": "PASS_WITH_OBSERVATION",
+      "pageRender": true,
+      "whiteScreen": false,
+      "displayedState": "feature_not_activated",
+      "observations": ["OBS-RUNTIME-01"]
+    },
+    {
+      "id": "D-08",
+      "surface": "crm_messages",
+      "route": "/crm/messages",
+      "classification": "PASS_WITH_OBSERVATION",
+      "redirectedToMessages": false,
+      "pageRender": true,
+      "activeNavigation": "CRM Messages",
+      "whiteScreen": false,
+      "displayedState": "CRM_AUTHORITY_UNAVAILABLE",
+      "observations": ["OBS-RUNTIME-02"]
+    },
+    {
+      "id": "D-09",
+      "surface": "b01_route_separation",
+      "classification": "PASS",
+      "routesRemainSeparate": true,
+      "redirectBetweenRoutes": false
+    },
+    {
+      "id": "M-01",
+      "surface": "mobile_dashboard",
+      "viewport": "400x858",
+      "classification": "PASS",
+      "dashboardRender": true,
+      "topBar": true,
+      "bottomNavigation": true,
+      "whiteScreen": false
+    },
+    {
+      "id": "M-02",
+      "surface": "mobile_menu",
+      "classification": "PASS",
+      "menuOpens": true,
+      "canonicalNavigationVisible": true,
+      "overlayVisible": true,
+      "bottomNavigationRemainsVisible": true,
+      "whiteScreen": false,
+      "previewUrl": true
+    }
+  ],
+  "observations": [
+    {
+      "id": "OBS-UI-01",
+      "class": "UI",
+      "summary": "Tenant selector text overlap on desktop",
+      "navigationBlocker": false
+    },
+    {
+      "id": "OBS-DATA-01",
+      "class": "STAGING_DATA",
+      "summary": "MISSING_IDENTITY_LINK / no eligible players on Daily Play",
+      "navigationBlocker": false
+    },
+    {
+      "id": "OBS-RUNTIME-01",
+      "class": "RUNTIME",
+      "summary": "/messages feature not activated",
+      "navigationBlocker": false
+    },
+    {
+      "id": "OBS-RUNTIME-02",
+      "class": "RUNTIME",
+      "summary": "/crm/messages CRM_AUTHORITY_UNAVAILABLE",
+      "navigationBlocker": false
+    }
+  ],
+  "roles": {
+    "tested": ["SUPER_ADMIN"],
+    "platformAdminEquivalent": "PASS_VIA_STAGING_SUPER_ADMIN",
+    "waived": ["COACH"],
+    "notTested": [
+      "unauthenticated",
+      "PLAYER",
+      "VENUE_OWNER",
+      "VENUE_MANAGER",
+      "CLUB_OWNER",
+      "CLUB_MANAGER",
+      "REFEREE",
+      "PLATFORM_ADMIN_literal"
+    ]
+  },
+  "console": {
+    "ownerScreenshotVisibleRedErrors": 0,
+    "fullConsoleAuditClaimed": false
+  },
+  "safety": {
+    "productionTouched": false,
+    "productionFlag": "OFF_OR_ABSENT",
+    "productionEnvChanged": false,
+    "productionRedeployed": false,
+    "productionPromoted": false,
+    "agentDeployments": 0,
+    "sqlMutations": 0,
+    "stagingMutations": 0,
+    "runtimeChanges": false,
+    "testChanges": false,
+    "commit": "NO",
+    "push": "NO",
+    "prChange": "NO"
+  }
+}

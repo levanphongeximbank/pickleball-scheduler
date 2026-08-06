@@ -1,0 +1,272 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 5,
+    "task": "PREVIEW_FLAG_ON_ACCEPTANCE_READINESS_AUDIT",
+    "mode": "readiness_audit_only",
+    "generatedAt": "2026-08-06T05:30:00.000Z",
+    "worktreePath": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\ui-ux\\canonical-navigation-phase5",
+    "branch": "feature/canonical-navigation-phase5-preview-acceptance",
+    "expectedBaseHead": "087c61c7d8bb1efdae343685269e53aa75767e21",
+    "currentHead": "087c61c7d8bb1efdae343685269e53aa75767e21",
+    "freshOriginMainSha": "087c61c7d8bb1efdae343685269e53aa75767e21",
+    "aheadBehindOriginMain": { "ahead": 0, "behind": 0 },
+    "verdict": "CANONICAL_NAVIGATION_PHASE5_PREVIEW_ACCEPTANCE_READY_WITH_BLOCKERS",
+    "previewFlagControlClassification": "PREVIEW_FLAG_CONTROL_READY_WITH_BLOCKERS",
+    "runtimeCodeChanged": false,
+    "testsChanged": false,
+    "envChanged": false,
+    "deployed": false,
+    "prOpened": false,
+    "committed": false,
+    "pushed": false,
+    "productionMutated": false,
+    "sqlExecuted": false,
+    "productionFeatureFlagChanges": 0
+  },
+  "baseline": {
+    "fetchOriginPrune": true,
+    "worktreeStatus": "clean_tracked_before_deliverables",
+    "stagedFiles": [],
+    "untrackedFilesPreDeliverables": [],
+    "ownerUntrackedPreserved": true,
+    "ownerUntrackedExpectedCount": 10,
+    "unrelatedWorktreesBranchesStashes": "untouched",
+    "phase4AncestorsOfOriginMain": [
+      {
+        "sha": "14bd1fb0fc530a6aa56214060d822e71fd7239f6",
+        "ancestor": true
+      },
+      {
+        "sha": "295c3f21fe2591fead9192d415f20b38cf20be26",
+        "ancestor": true
+      },
+      {
+        "sha": "1c5ff4d81ab5cff007d4324dadb91a27ce6924c6",
+        "ancestor": true
+      },
+      {
+        "sha": "087c61c7d8bb1efdae343685269e53aa75767e21",
+        "ancestor": true
+      }
+    ]
+  },
+  "inheritedPhase4Metrics": {
+    "routeRegistry": "179/179",
+    "activeMenuNodes": 76,
+    "contextualRoutes": 7,
+    "duplicateActiveEntries": 0,
+    "B01": "KEEP_SEPARATE",
+    "B02": "RETAIN_LEGACY_NO_INVENTED_REDIRECTS",
+    "B03": "PILOT_ALIGNED_SHADOW_GUARDED",
+    "engineRoutesProtected": 7,
+    "productionFlag": "OFF"
+  },
+  "previewEnvironment": {
+    "flagName": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "flagSource": "src/features/canonical-shell/flags.js",
+    "bakeTime": "vite_build",
+    "truthyValues": [true, "true", "1"],
+    "default": "OFF",
+    "historicalPreviewState": "OFF",
+    "canEnableWithoutAffectingProduction": true,
+    "vercelPreviewSeparateFromProduction": true,
+    "netlifyDeployPreviewSeparateFromProduction": true,
+    "vercelAndNetlifySeparateFromEachOther": true,
+    "tiedToBranchOrPr": "both",
+    "redeployRequiredAfterEnvChange": true,
+    "productionValueIsolatedWhenScoped": true,
+    "secretsExposureByFlagToggle": false,
+    "repoEnvFileChangeRequired": false,
+    "classification": "PREVIEW_FLAG_CONTROL_READY_WITH_BLOCKERS"
+  },
+  "deploymentPath": {
+    "vercelProject": "pickleball-scheduler",
+    "vercelPreviewUrlPattern": "pickleball-scheduler-git-<branch>-….vercel.app",
+    "netlifySite": "stirring-bombolone-280231",
+    "netlifyPreviewUrlPattern": "https://deploy-preview-<PR>--stirring-bombolone-280231.netlify.app",
+    "githubPrChecks": ["verify", "Vercel Preview", "Netlify deploy-preview"],
+    "docsOnlyOrNoopPrSufficient": true,
+    "rollback": "Preview flag OFF + Preview redeploy only",
+    "productionDeployForbidden": true
+  },
+  "roles": {
+    "audited": 10,
+    "ready": 5,
+    "readyWithLimitations": 2,
+    "missing": 2,
+    "notRequired": 0,
+    "classifications": {
+      "unauthenticated": "READY",
+      "PLAYER": "READY",
+      "VENUE_OWNER": "READY",
+      "VENUE_MANAGER": "READY",
+      "CLUB_OWNER": "READY",
+      "CLUB_MANAGER": "READY_WITH_LIMITATIONS",
+      "REFEREE": "READY_WITH_LIMITATIONS",
+      "COACH": "MISSING",
+      "PLATFORM_ADMIN": "MISSING",
+      "SUPER_ADMIN": "READY"
+    }
+  },
+  "routeMatrix": {
+    "document": "PHASE5_PREVIEW_ROUTE_MATRIX.md",
+    "routesInMatrix": 36,
+    "classes": ["public", "messaging", "tournament_engine", "rating_v5", "private_pairing", "shell_invariants"]
+  },
+  "deviceProfiles": ["desktop", "tablet", "mobile"],
+  "accessibilityProfiles": ["keyboard_only", "high_contrast_on", "high_contrast_off"],
+  "observability": {
+    "classification": "READY_WITH_LIMITATIONS",
+    "browserConsole": "READY",
+    "networkFailures": "READY",
+    "failedRouteLoads": "READY",
+    "authorizationDenials": "READY",
+    "reactRuntimeErrors": "READY",
+    "redirectLoops": "READY",
+    "lazyImportBreaks": "READY",
+    "vercelLogs": "READY",
+    "netlifyLogs": "READY",
+    "screenshots": "READY_MANUAL",
+    "timestampedEvidence": "READY",
+    "productionMonitoringChanges": false,
+    "limitation": "VERCEL_AUTOMATION_BYPASS_SECRET may be required for scripted Preview probes"
+  },
+  "automation": {
+    "unit": true,
+    "ui": true,
+    "accessibility": true,
+    "routeRegistry": true,
+    "authorization": true,
+    "build": true,
+    "lint": true,
+    "secretScan": true
+  },
+  "manualPreview": {
+    "realBrowserNavigation": true,
+    "directLinks": true,
+    "refresh": true,
+    "backForward": true,
+    "responsive": true,
+    "keyboard": true,
+    "roleSpecificMenu": true,
+    "consoleInspection": true,
+    "rollback": true
+  },
+  "blockers": [
+    {
+      "id": "BLK-PREVIEW-FLAG",
+      "evidence": "Phase 2 Preview kept VITE_CANONICAL_APP_SHELL_ENABLED OFF; this audit did not change env",
+      "impact": "Flag-ON Preview acceptance cannot start",
+      "remediation": "Owner sets Preview-scoped true on Vercel (and Netlify DP if used); confirm Production OFF; Redeploy Preview",
+      "ownerDecisionRequired": true,
+      "implementationRequired": false,
+      "productionRisk": "low_if_preview_only_high_if_mis_scoped"
+    },
+    {
+      "id": "BLK-PREVIEW-DEPLOYMENT",
+      "evidence": "Branch HEAD equals origin/main; no unique Phase 5 Preview URL yet",
+      "impact": "No dedicated Preview deployment for acceptance until PR or Redeploy",
+      "remediation": "Docs-only/no-op PR after env set, or Owner Redeploy Preview for tip SHA",
+      "ownerDecisionRequired": true,
+      "implementationRequired": false,
+      "productionRisk": "none"
+    },
+    {
+      "id": "BLK-TEST-IDENTITY",
+      "evidence": "No documented Staging PLATFORM_ADMIN or COACH emails; passwords operator-local only",
+      "impact": "Some OD-B03 / unrelated-role browser cells cannot be executed",
+      "remediation": "Owner provisions Staging identities or waives cells to automated suite evidence",
+      "ownerDecisionRequired": true,
+      "implementationRequired": false,
+      "productionRisk": "none"
+    },
+    {
+      "id": "BLK-ROLE-COVERAGE",
+      "evidence": "CLUB_MANAGER Staging seed incomplete; COACH/PLATFORM_ADMIN missing",
+      "impact": "Full role×menu Preview matrix incomplete",
+      "remediation": "Provision or Owner-waive limited roles",
+      "ownerDecisionRequired": true,
+      "implementationRequired": false,
+      "productionRisk": "none"
+    },
+    {
+      "id": "BLK-OBSERVABILITY",
+      "evidence": "Historical Preview automation blocked without VERCEL_AUTOMATION_BYPASS_SECRET",
+      "impact": "Scripted Preview smoke may fail; manual still viable",
+      "remediation": "Operator local bypass for scripts or accept manual-only evidence",
+      "ownerDecisionRequired": true,
+      "implementationRequired": false,
+      "productionRisk": "none"
+    },
+    {
+      "id": "BLK-PRODUCTION-ISOLATION",
+      "evidence": "Production GO=NO; Production flag must remain OFF",
+      "impact": "Process risk if Production env/deploy touched",
+      "remediation": "Pre/post attestation: Production deployment id and Production env unchanged",
+      "ownerDecisionRequired": true,
+      "implementationRequired": false,
+      "productionRisk": "critical_if_violated"
+    }
+  ],
+  "nonBlockers": [
+    {
+      "id": "BLK-ROUTE-COVERAGE",
+      "status": "NOT_ACTIVE",
+      "note": "Acceptance matrix fully defined from Phase 4 inventory"
+    },
+    {
+      "id": "BLK-AUTHORIZATION",
+      "status": "NOT_ACTIVE",
+      "note": "Phase 4 OD-B03 and OD-PLURAL-AUTHZ verified on main"
+    },
+    {
+      "id": "BLK-ROLLBACK",
+      "status": "NOT_ACTIVE",
+      "note": "Flag OFF + Preview redeploy restores legacy shell"
+    }
+  ],
+  "ownerDecisionsRequired": [
+    "Set Preview-scoped VITE_CANONICAL_APP_SHELL_ENABLED=true without touching Production",
+    "Choose Preview trigger: docs PR vs Redeploy",
+    "Provision or waive PLATFORM_ADMIN and COACH Staging identities",
+    "Decide CLUB_MANAGER Staging coverage approach",
+    "Decide automated Preview probe vs manual-only evidence",
+    "Sign Production isolation attestation before and after Preview work"
+  ],
+  "proposedFiles": {
+    "implementation": [],
+    "tests": [
+      "tests/canonical-shell-phase2.test.js",
+      "tests/canonical-shell-phase3.test.js",
+      "tests/canonical-shell-phase4-b01-dual-canonical.test.js",
+      "tests/canonical-shell-phase4-b03-guard.test.js",
+      "tests/canonical-shell-phase4-tournament-authz.test.js",
+      "tests/ui/canonical-shell-phase2.ui.test.jsx",
+      "tests/ui/canonical-shell-phase3.ui.test.jsx",
+      "tests/ui/canonical-shell-phase4-a11y.ui.test.jsx",
+      "tests/ui/canonical-shell-phase4-b03-authz.ui.test.jsx",
+      "tests/ui/canonical-shell-phase4-engine-authz.ui.test.jsx"
+    ],
+    "documentation": [
+      "docs/ui-ux/canonical-navigation/phase5/PHASE5_PREVIEW_ACCEPTANCE_READINESS_AUDIT.md",
+      "docs/ui-ux/canonical-navigation/phase5/PHASE5_PREVIEW_ACCEPTANCE_READINESS_AUDIT.json",
+      "docs/ui-ux/canonical-navigation/phase5/PHASE5_PREVIEW_ROUTE_MATRIX.md",
+      "docs/ui-ux/canonical-navigation/phase5/PHASE5_PREVIEW_ROUTE_MATRIX.json",
+      "docs/ui-ux/canonical-navigation/phase5/PHASE5_ROLE_AND_IDENTITY_MATRIX.md",
+      "docs/ui-ux/canonical-navigation/phase5/PHASE5_ROLE_AND_IDENTITY_MATRIX.json",
+      "docs/ui-ux/canonical-navigation/phase5/PHASE5_PREVIEW_EXECUTION_PLAN.md",
+      "docs/ui-ux/canonical-navigation/phase5/PHASE5_PREVIEW_EXECUTION_PLAN.json",
+      "docs/ui-ux/canonical-navigation/phase5/PHASE5_PREVIEW_ACCEPTANCE_EVIDENCE.md (future, post-execution)"
+    ]
+  },
+  "safety": {
+    "productionMutations": 0,
+    "sqlExecution": 0,
+    "deployments": 0,
+    "productionFeatureFlagChanges": 0,
+    "commit": "NO",
+    "push": "NO",
+    "pr": "NO"
+  }
+}

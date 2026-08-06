@@ -1,0 +1,106 @@
+{
+  "meta": {
+    "program": "PICK_VN Canonical Navigation",
+    "phase": 5,
+    "artifact": "PHASE5_MANUAL_PREVIEW_ACCEPTANCE_MATRIX",
+    "generatedAt": "2026-08-06T08:05:00.000Z",
+    "draftPr": 385,
+    "boundSha": "7217e8fb3da06cee1ee0940fa665fe694230131f",
+    "roleDemonstrated": "SUPER_ADMIN",
+    "verdictLinked": "CANONICAL_NAVIGATION_PHASE5_MANUAL_PREVIEW_ACCEPTANCE_PASS_WITH_OBSERVATIONS"
+  },
+  "counts": {
+    "PASS": 8,
+    "PASS_WITH_OBSERVATION": 6,
+    "WAIVED": 1,
+    "FAIL": 0,
+    "NOT_TESTED_note": "remainder of planned Phase 5 matrix"
+  },
+  "demonstrated": [
+    { "id": "D-01", "routeOrSurface": "desktop_dashboard_shell", "classification": "PASS_WITH_OBSERVATION", "observations": ["OBS-UI-01"] },
+    { "id": "D-02", "routeOrSurface": "menu_tournament_expand", "classification": "PASS" },
+    { "id": "D-03", "routeOrSurface": "/tournament/daily/tournament-1786001834313", "classification": "PASS_WITH_OBSERVATION", "observations": ["OBS-DATA-01"] },
+    { "id": "D-04", "routeOrSurface": "menu_rating_expand", "classification": "PASS" },
+    { "id": "D-05", "routeOrSurface": "/player/skill-assessment", "classification": "PASS" },
+    { "id": "D-06", "routeOrSurface": "/players/skill", "classification": "PASS_WITH_OBSERVATION", "observations": ["OBS-UI-01"] },
+    { "id": "D-07", "routeOrSurface": "/messages", "classification": "PASS_WITH_OBSERVATION", "observations": ["OBS-RUNTIME-01"] },
+    { "id": "D-08", "routeOrSurface": "/crm/messages", "classification": "PASS_WITH_OBSERVATION", "observations": ["OBS-RUNTIME-02"] },
+    { "id": "D-09", "routeOrSurface": "b01_separation", "classification": "PASS" },
+    { "id": "M-01", "routeOrSurface": "mobile_dashboard", "classification": "PASS" },
+    { "id": "M-02", "routeOrSurface": "mobile_menu", "classification": "PASS" }
+  ],
+  "public": [
+    { "id": "P-01", "route": "/", "classification": "PASS_WITH_OBSERVATION" },
+    { "id": "P-02", "route": "/home", "classification": "NOT_TESTED" },
+    { "id": "P-03", "route": "/clubs", "classification": "NOT_TESTED" },
+    { "id": "P-04", "route": "/courts", "classification": "NOT_TESTED" },
+    { "id": "P-05", "route": "/tournaments", "classification": "NOT_TESTED" },
+    { "id": "P-06", "route": "/tournaments/", "classification": "NOT_TESTED" }
+  ],
+  "messaging": [
+    { "id": "MSG-01", "route": "/messages", "classification": "PASS_WITH_OBSERVATION" },
+    { "id": "MSG-02", "route": "/crm/messages", "classification": "PASS_WITH_OBSERVATION" },
+    { "id": "MSG-B01", "route": "separation", "classification": "PASS" }
+  ],
+  "tournamentEngine": [
+    { "id": "E-01", "classification": "NOT_TESTED" },
+    { "id": "E-02", "classification": "NOT_TESTED" },
+    { "id": "E-03", "classification": "NOT_TESTED" },
+    { "id": "E-04", "classification": "NOT_TESTED" },
+    { "id": "E-05", "classification": "NOT_TESTED" },
+    { "id": "E-06", "classification": "NOT_TESTED" },
+    { "id": "E-07", "classification": "NOT_TESTED" },
+    { "id": "E-08", "classification": "NOT_TESTED" },
+    { "id": "E-09", "classification": "NOT_TESTED" },
+    { "id": "E-10", "classification": "NOT_TESTED" },
+    { "id": "E-11", "classification": "NOT_TESTED" },
+    { "id": "LEG-01", "route": "legacy_daily_play_deep_link", "classification": "PASS_WITH_OBSERVATION" }
+  ],
+  "ratingV5Shadow": [
+    { "id": "R-01", "classification": "NOT_TESTED" },
+    { "id": "R-02", "classification": "NOT_TESTED" },
+    { "id": "R-03", "classification": "NOT_TESTED" },
+    { "id": "R-04", "classification": "NOT_TESTED" },
+    { "id": "R-05", "classification": "NOT_TESTED" },
+    { "id": "R-06", "classification": "NOT_TESTED" },
+    { "id": "R-07", "classification": "NOT_TESTED" },
+    { "id": "SA-01", "route": "/player/skill-assessment", "classification": "PASS" }
+  ],
+  "privatePairing": [
+    { "id": "PP-01", "classification": "NOT_TESTED" },
+    { "id": "PP-02", "classification": "NOT_TESTED" },
+    { "id": "PP-03", "classification": "NOT_TESTED" }
+  ],
+  "shellDevicesA11y": [
+    { "id": "S-01", "classification": "PASS" },
+    { "id": "S-02", "classification": "PASS" },
+    { "id": "S-03", "classification": "NOT_TESTED" },
+    { "id": "S-04", "classification": "NOT_TESTED" },
+    { "id": "S-05", "classification": "NOT_TESTED" },
+    { "id": "S-06", "classification": "NOT_TESTED" },
+    { "id": "S-07", "classification": "NOT_TESTED" },
+    { "id": "S-08", "classification": "NOT_TESTED", "note": "no_visible_red_errors_on_owner_screenshot_only" },
+    { "id": "DEV-DESK", "classification": "PASS_WITH_OBSERVATION" },
+    { "id": "DEV-MOB", "classification": "PASS" },
+    { "id": "DEV-TAB", "classification": "NOT_TESTED" },
+    { "id": "A11Y-KB", "classification": "NOT_TESTED" },
+    { "id": "A11Y-HC", "classification": "NOT_TESTED" },
+    { "id": "RB-01", "classification": "PASS", "evidence": "PHASE5_PREVIEW_ROLLBACK_REPORT.md" }
+  ],
+  "roles": [
+    { "role": "SUPER_ADMIN", "classification": "PASS" },
+    { "role": "PLATFORM_ADMIN_equivalent", "classification": "PASS" },
+    { "role": "COACH", "classification": "WAIVED", "detail": "WAIVED_WITH_KNOWN_SCHEMA_GAP" },
+    { "role": "CLUB_MANAGER", "classification": "NOT_TESTED" },
+    { "role": "REFEREE", "classification": "NOT_TESTED" },
+    { "role": "PLAYER", "classification": "NOT_TESTED" },
+    { "role": "VENUE_OWNER", "classification": "NOT_TESTED" },
+    { "role": "VENUE_MANAGER", "classification": "NOT_TESTED" },
+    { "role": "unauthenticated", "classification": "NOT_TESTED" }
+  ],
+  "followUpAutomatedCriticalCoverage": {
+    "note": "Screenshot classifications unchanged. Critical NOT_TESTED authz/registry/a11y rows covered later by existing tests — see PHASE5_REMAINING_CRITICAL_COVERAGE_AUDIT and PHASE5_FINAL_COVERAGE_MATRIX. Not Owner browser proof.",
+    "verdict": "CANONICAL_NAVIGATION_PHASE5_CRITICAL_COVERAGE_PASS_WITH_LIMITATIONS",
+    "headShaAtFollowUp": "7cc0fdee46f4cd0299b99a8b86026a04a8e45d97"
+  }
+}
