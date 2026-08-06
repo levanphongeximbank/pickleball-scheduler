@@ -1,0 +1,161 @@
+{
+  "program": "PICK_VN_CANONICAL_NAVIGATION",
+  "document": "PRODUCTION_ACTIVATION_READINESS_AUDIT",
+  "mode": "READ_ONLY",
+  "auditedAt": "2026-08-06",
+  "finalVerdict": "CANONICAL_NAVIGATION_PRODUCTION_ACTIVATION_READINESS_READY_FOR_PLANNING",
+  "baseline": {
+    "branch": "main",
+    "ownerRepositoryLocalHead": "cae5e6f7496522ea1ba33a474d2c939084ba9844",
+    "freshOriginMainSha": "d4fcb31dbd42927f9b8e02e2b63331b9233ccdc7",
+    "expectedMainBaseline": "f81b6c8f0c43af3f5b25dc09e688fe534f70d64c",
+    "expectedBaselineIsAncestorOfFreshTip": true,
+    "tipDeltaAfterExpectedBaseline": [
+      {
+        "sha": "d4fcb31dbd42927f9b8e02e2b63331b9233ccdc7",
+        "subject": "Merge pull request #386 — Operation B1B dedicated QA quarantine remediation (docs)"
+      }
+    ],
+    "canonicalNavigationPathsTouchedByTipDelta": [],
+    "baselineMatch": true,
+    "localAhead": 0,
+    "localBehindOriginMain": 115,
+    "stagedFiles": [],
+    "modifiedTrackedFiles": [],
+    "preExistingUntrackedCount": 10,
+    "preExistingUntrackedPreserved": true,
+    "stashList": [],
+    "worktreesTouched": false
+  },
+  "programState": {
+    "phase5OwnerAssertedClosed": true,
+    "phase5DocsStillSayNotClaimedClosed": true,
+    "pr385": "MERGED",
+    "pr387": "MERGED",
+    "previewFlagOnAcceptance": "PASS_WITH_OBSERVATIONS",
+    "previewRollback": "PASS",
+    "focusedCriticalTests": "99/99 PASS",
+    "productionCanonicalFlag": "OFF_OR_ABSENT",
+    "productionGo": "NO",
+    "coach": "WAIVED_WITH_KNOWN_SCHEMA_GAP",
+    "obsP5Pm01Retained": true
+  },
+  "planDiscovery": {
+    "classification": "PARTIAL_PLAN_FOUND",
+    "authoritativeNextPhaseFound": false,
+    "authoritativePlanPath": "docs/ui-ux/canonical-navigation/production-activation-readiness/",
+    "existingPhaseDirs": ["phase2", "phase3", "phase4", "phase5"],
+    "phase6DirectoryExists": false,
+    "phase7DirectoryExists": false,
+    "historicalPhase6Meaning": "QA Matrix in NAVIGATION_IMPLEMENTATION_PLAN.md — not Production activation",
+    "doNotInventPhaseNumber": true
+  },
+  "flagInventory": {
+    "name": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "constant": "CANONICAL_APP_SHELL_FLAG",
+    "evaluator": "isCanonicalAppShellEnabled",
+    "defaultWhenAbsent": "OFF",
+    "evaluationMode": "VITE_BUILD_TIME",
+    "runtimeToggleAloneSufficient": false,
+    "redeployRequiredForFlagChange": true,
+    "legacyFallback": "LegacyMainLayoutContent exclusive",
+    "dualShellAllowed": false,
+    "previewScopeProven": true,
+    "productionScopeAttested": "OFF_OR_ABSENT",
+    "productionFlagDirectlyProvenThisAudit": false,
+    "mergeToMainAutoProductionDeploy": true,
+    "observation": "OBS-P5-PM-01",
+    "codeReaders": [
+      "src/features/canonical-shell/flags.js",
+      "src/features/canonical-shell/runtime.js",
+      "src/features/canonical-shell/index.js",
+      "src/layouts/MainLayout.jsx"
+    ]
+  },
+  "dependencyBuckets": {
+    "SATISFIED": 6,
+    "SATISFIED_WITH_OBSERVATION": 7,
+    "MUST_CLOSE_BEFORE_PRODUCTION": 13,
+    "MAY_DEFER_WITH_OWNER_ACCEPTANCE": 5,
+    "OUT_OF_SCOPE": 2,
+    "TOTAL": 33
+  },
+  "identity": {
+    "stagingIdentitiesNotProductionSafeByDefault": true,
+    "rolesAssessed": [
+      "SUPER_ADMIN_PLATFORM_ADMIN_EQUIVALENT",
+      "VENUE_OWNER",
+      "VENUE_MANAGER",
+      "CLUB_OWNER_OR_CLUB_MANAGER",
+      "REFEREE",
+      "PLAYER",
+      "UNAUTHENTICATED",
+      "COACH"
+    ],
+    "coachStatus": "WAIVED_WITH_KNOWN_SCHEMA_GAP",
+    "unauthenticatedProductionSafe": true
+  },
+  "rollbackReadiness": "PATTERN_PROVEN_ON_PREVIEW_PRODUCTION_PROCEDURE_PLANNED_NOT_EXECUTED",
+  "monitoringReadiness": "PARTIAL_THRESHOLDS_AND_MERGE_FREEZE_BOUND_OWNERS_WINDOW_UNBOUND",
+  "ownerPlanningDecisions": {
+    "status": "BOUND",
+    "boundDate": "2026-08-06",
+    "boundBy": "Owner",
+    "boundAgainstPr": 388,
+    "boundAgainstHead": "1a5d54d6e3a1796a408db3334c0f7a8b0f303b86",
+    "packages": {
+      "OD-PA-01": "OPTION_A",
+      "OD-PA-02": "PLANNING_ONLY_EXECUTION_GOS_REMAIN_NO",
+      "OD-PA-03": "HYBRID",
+      "OD-PA-04": "APPROVE_RECOMMENDED_DISPOSITIONS",
+      "OD-PA-05": "APPROVE_PARTIAL_BINDING_MERGE_FREEZE_AND_DEFAULT_THRESHOLDS",
+      "OD-PA-06": "MECHANICS_ACKNOWLEDGED_LIVE_ATTESTATION_PENDING",
+      "OD-PA-07": "OPTION_A_CONTINUE_COACH_WAIVER"
+    },
+    "productionActivationAuthorized": false,
+    "isExecutionPackage": false
+  },
+  "productionBlockers": [
+    "PRODUCTION_GO_MISSING",
+    "PRODUCTION_FLAG_CHANGE_GO_MISSING",
+    "PRODUCTION_REDEPLOY_GO_MISSING",
+    "PRODUCTION_ENV_CHANGE_GO_MISSING",
+    "PRODUCTION_BROWSER_ACCEPTANCE_GO_MISSING",
+    "PRODUCTION_FLAG_STATE_NOT_LIVE_REPROVEN",
+    "PRODUCTION_IDENTITY_EXECUTION_MATRIX_INCOMPLETE",
+    "ACTIVATION_MONITORING_OWNER_UNBOUNDED",
+    "DEPLOYMENT_AND_ROLLBACK_OWNERS_UNBOUNDED",
+    "EXECUTION_WINDOW_DURATION_INTERVAL_UNBOUNDED",
+    "PHASE5_PRODUCTION_RETESTS_STILL_REQUIRED",
+    "OBS_P5_PM_01_AUTO_DEPLOY_CONTROL"
+  ],
+  "ownerDecisionsRequired": false,
+  "ownerPlanningDecisionsBound": true,
+  "safety": {
+    "note": "Audit-time facts from the original read-only audit execution only. Does not describe current PR #388 state.",
+    "runtimeChanges": 0,
+    "testChanges": 0,
+    "environmentChanges": 0,
+    "deployments": 0,
+    "sqlMutations": 0,
+    "stagingMutations": 0,
+    "authMutations": 0,
+    "productionMutations": 0,
+    "commit": false,
+    "push": false,
+    "pr": false
+  },
+  "deliverables": {
+    "note": "Created uncommitted during the original read-only audit; subsequently committed through PR #388.",
+    "paths": [
+      "docs/ui-ux/canonical-navigation/production-activation-readiness/PRODUCTION_ACTIVATION_READINESS_AUDIT.md",
+      "docs/ui-ux/canonical-navigation/production-activation-readiness/PRODUCTION_ACTIVATION_READINESS_AUDIT.json",
+      "docs/ui-ux/canonical-navigation/production-activation-readiness/PRODUCTION_CUTOVER_DEPENDENCY_MATRIX.md",
+      "docs/ui-ux/canonical-navigation/production-activation-readiness/PRODUCTION_CUTOVER_DEPENDENCY_MATRIX.json",
+      "docs/ui-ux/canonical-navigation/production-activation-readiness/PRODUCTION_BROWSER_ACCEPTANCE_PLAN.md",
+      "docs/ui-ux/canonical-navigation/production-activation-readiness/PRODUCTION_ROLLBACK_PLAN.md",
+      "docs/ui-ux/canonical-navigation/production-activation-readiness/PRODUCTION_RISK_REGISTER.md",
+      "docs/ui-ux/canonical-navigation/production-activation-readiness/OWNER_DECISION_PACKAGES.md"
+    ]
+  }
+}
