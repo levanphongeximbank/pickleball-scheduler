@@ -91,6 +91,8 @@ All tokens below are **NO**. One generic GO does not imply the others. See [`PRO
 | `PRODUCTION_OPS_BINDING_GO` | **NO** |
 | `PRODUCTION_FLAG_MECHANICS_GO` | **NO** |
 | `PRODUCTION_IDENTITY_COVERAGE_GO` | **NO** |
+| `PRODUCTION_IDENTITY_COVERAGE_PLANNING_GO` | **YES** |
+| `IDENTITY_CREATION_GO` | **NO** |
 
 ---
 
@@ -98,14 +100,15 @@ All tokens below are **NO**. One generic GO does not imply the others. See [`PRO
 
 | Identity class | Status |
 |----------------|--------|
-| SUPER_ADMIN | `EXISTING_OWNER_ACCOUNT` |
-| Public unauthenticated | `AVAILABLE` |
-| Non-admin allow | `WAIVER_PENDING` |
-| Non-admin deny | `WAIVER_PENDING` |
-| Tenant isolation | `WAIVER_PENDING` |
+| Production operating mode | `OWNER_ONLY_CONTROLLED_PILOT` |
+| SUPER_ADMIN | `EXISTING_OWNER_ACCOUNT` (test required) |
+| Public unauthenticated | `AVAILABLE` (test required) |
+| Non-admin allow | `WAIVED_BY_OWNER` |
+| Non-admin deny | `WAIVED_BY_OWNER` |
+| Tenant isolation | `WAIVED_BY_OWNER` |
 | COACH | `WAIVED_WITH_KNOWN_SCHEMA_GAP` |
 
-`WAIVER_PENDING` is **not** an accepted waiver. See [`PRODUCTION_IDENTITY_AND_WAIVER_MATRIX.md`](./PRODUCTION_IDENTITY_AND_WAIVER_MATRIX.md).
+Owner waivers apply to `CANONICAL_NAVIGATION_INITIAL_PRODUCTION_ACTIVATION_ONLY` and expire before any non-Owner user or second tenant is enabled. See [`PRODUCTION_IDENTITY_AND_WAIVER_MATRIX.md`](./PRODUCTION_IDENTITY_AND_WAIVER_MATRIX.md).
 
 ---
 
@@ -137,3 +140,5 @@ All tokens below are **NO**. One generic GO does not imply the others. See [`PRO
 ## Final readiness (authoring close)
 
 **`EXECUTION_PACKAGE_DRAFT_COMPLETE_NOT_READY_FOR_PRODUCTION_GO`**
+
+Identity planning coverage is complete for `OWNER_ONLY_CONTROLLED_PILOT` via Owner waivers. Production mutation GOs remain **NO**.

@@ -39,8 +39,8 @@ Declare rollback if any threshold is met. Decision must be made within **10** mi
 | White screen | **> 0** |
 | Auth redirect loop | **≥ 1** |
 | Public route outage | **≥ 1** |
-| Privilege bypass | **≥ 1** |
-| Wrong-tenant exposure | **≥ 1** |
+| Privilege bypass | **≥ 1** (`PRIVILEGE_BYPASS_ROLLBACK_THRESHOLD=1`; still in force under Owner-only pilot) |
+| Wrong-tenant exposure | **≥ 1** (`WRONG_TENANT_EXPOSURE_ROLLBACK_THRESHOLD=1`; still in force under Owner-only pilot) |
 | Critical navigation route failure | **≥ 1** |
 
 ---

@@ -1,11 +1,13 @@
 # Production Execution Readiness Checklist
 
-**Program:** PICK_VN Canonical Navigation  
-**Package:** Production execution package  
-**Source baseline SHA:** `1bcc4dc729dd53027de1fac1cf39001ea5d29f4b`  
-**Evidence timestamp:** 2026-08-06  
-**Timezone:** `Asia/Ho_Chi_Minh`  
+**Program:** PICK_VN Canonical Navigation
+**Package:** Production execution package
+**Source baseline SHA:** `1bcc4dc729dd53027de1fac1cf39001ea5d29f4b`
+**Pre-waiver package commit:** `910e068fcc085bed7bc7d97d17f1ee8b2086ae22`
+**Evidence timestamp:** 2026-08-06
+**Timezone:** `Asia/Ho_Chi_Minh`
 **Execution window:** `2026-08-07T21:00:00+07:00` – `2026-08-07T23:00:00+07:00`
+**Operating mode:** `OWNER_ONLY_CONTROLLED_PILOT`
 
 Gate classifications: `PASS` | `PENDING` | `BLOCKED` | `WAIVED`
 
@@ -26,6 +28,9 @@ Gate classifications: `PASS` | `PENDING` | `BLOCKED` | `WAIVED`
 | Merge freeze bound | **PASS** | YES |
 | Rollback thresholds bound | **PASS** | white screen >0; auth loop ≥1; public outage ≥1; privilege bypass ≥1; wrong-tenant ≥1; critical nav failure ≥1 |
 | Production flag audit classification ABSENT | **PASS** | `PRODUCTION_FLAG_BEFORE=ABSENT` recorded |
+| SUPER_ADMIN identity bound | **PASS** | `EXISTING_OWNER_ACCOUNT`; test required |
+| Public unauthenticated identity bound | **PASS** | `AVAILABLE`; test required |
+| `PRODUCTION_IDENTITY_COVERAGE_PLANNING_GO` | **PASS** | **YES** — Owner waivers bound for Owner-only pilot |
 
 ---
 
@@ -33,7 +38,11 @@ Gate classifications: `PASS` | `PENDING` | `BLOCKED` | `WAIVED`
 
 | Gate | Classification | Notes |
 |------|----------------|-------|
-| COACH role coverage | **WAIVED** | `WAIVED_WITH_KNOWN_SCHEMA_GAP` under explicit unavailable-role policy |
+| COACH role coverage | **WAIVED** | `WAIVED_WITH_KNOWN_SCHEMA_GAP` |
+| Non-admin allow identity | **WAIVED** | `WAIVED_BY_OWNER` — `NO_PRODUCTION_NON_ADMIN_IDENTITY_AVAILABLE_OWNER_ONLY_PILOT` |
+| Non-admin deny identity | **WAIVED** | `WAIVED_BY_OWNER` — `NO_PRODUCTION_NON_ADMIN_IDENTITY_AVAILABLE_OWNER_ONLY_PILOT` |
+| Tenant-isolation identity | **WAIVED** | `WAIVED_BY_OWNER` — `NO_SECOND_PRODUCTION_TENANT_IDENTITY_AVAILABLE_OWNER_ONLY_PILOT` |
+| Identity-dependent browser acceptance cells | **WAIVED** | Marked `WAIVED_BY_OWNER` — not PASS; must retest before broader rollout |
 
 ---
 
@@ -44,9 +53,6 @@ Gate classifications: `PASS` | `PENDING` | `BLOCKED` | `WAIVED`
 | Package digest | **PENDING** | Placeholder; do not invent |
 | Final execution SHA | **PENDING** | Placeholder; bind at GO |
 | Live flag re-attestation at execution window | **PENDING** | Required before flag change |
-| Non-admin allow identity or waiver | **PENDING** | Currently `WAIVER_PENDING` — not accepted |
-| Non-admin deny identity or waiver | **PENDING** | Currently `WAIVER_PENDING` — not accepted |
-| Tenant-isolation identity or waiver | **PENDING** | Currently `WAIVER_PENDING` — not accepted |
 | `PRODUCTION_GO` | **PENDING** | Current value **NO** |
 | `PRODUCTION_FLAG_CHANGE_GO` | **PENDING** | Current value **NO** |
 | `PRODUCTION_ENV_CHANGE_GO` | **PENDING** | Current value **NO** |
@@ -54,7 +60,7 @@ Gate classifications: `PASS` | `PENDING` | `BLOCKED` | `WAIVED`
 | `PRODUCTION_BROWSER_ACCEPTANCE_GO` | **PENDING** | Current value **NO** |
 | `PRODUCTION_OPS_BINDING_GO` | **PENDING** | Current value **NO** |
 | `PRODUCTION_FLAG_MECHANICS_GO` | **PENDING** | Current value **NO** |
-| `PRODUCTION_IDENTITY_COVERAGE_GO` | **PENDING** | Current value **NO** |
+| `PRODUCTION_IDENTITY_COVERAGE_GO` | **PENDING** | Current value **NO** (planning GO ≠ execution GO) |
 
 ---
 
@@ -62,8 +68,18 @@ Gate classifications: `PASS` | `PENDING` | `BLOCKED` | `WAIVED`
 
 | Gate | Classification | Notes |
 |------|----------------|-------|
-| Identity-dependent browser acceptance cells | **BLOCKED** | Marked `BLOCKED_PENDING_IDENTITY_OR_WAIVER` until pending identities/waivers close |
-| Production execution start | **BLOCKED** | All execution GO tokens remain NO; package draft only |
+| Production execution start | **BLOCKED** | Production mutation GOs remain NO; package draft only |
+| Identity creation | **BLOCKED** | `IDENTITY_CREATION_GO=NO` |
+
+---
+
+## Waiver constraints
+
+| Field | Value |
+|-------|--------|
+| Scope | `CANONICAL_NAVIGATION_INITIAL_PRODUCTION_ACTIVATION_ONLY` |
+| Expiry condition | `BEFORE_ANY_NON_OWNER_USER_OR_SECOND_TENANT_IS_ENABLED` |
+| Replacement requirement | `RUN_NON_ADMIN_ALLOW_DENY_AND_TENANT_ISOLATION_TESTS_BEFORE_BROADER_ROLLOUT` |
 
 ---
 
@@ -81,4 +97,4 @@ Gate classifications: `PASS` | `PENDING` | `BLOCKED` | `WAIVED`
 
 **`EXECUTION_PACKAGE_DRAFT_COMPLETE_NOT_READY_FOR_PRODUCTION_GO`**
 
-Rationale: planning bindings for project, domain, owners, window, monitoring, merge freeze, rollback thresholds, and ABSENT flag classification are recorded. Package digest, live re-attestation, pending identity/waivers, and all execution GO tokens remain open. Pending waivers are not accepted waivers.
+Rationale: identity planning coverage is complete for an Owner-only controlled pilot via explicit Owner waivers. Package digest, live re-attestation, and all Production execution GO tokens (including `PRODUCTION_IDENTITY_COVERAGE_GO`) remain open. Waived cells are not PASS.

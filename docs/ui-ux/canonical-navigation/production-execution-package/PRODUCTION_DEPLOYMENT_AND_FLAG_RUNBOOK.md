@@ -72,6 +72,8 @@ On STOP: do not proceed to the next step; escalate to Owner approval authority (
 | `PRODUCTION_OPS_BINDING_GO` | **NO** |
 | `PRODUCTION_FLAG_MECHANICS_GO` | **NO** |
 | `PRODUCTION_IDENTITY_COVERAGE_GO` | **NO** |
+| `PRODUCTION_IDENTITY_COVERAGE_PLANNING_GO` | **YES** |
+| `IDENTITY_CREATION_GO` | **NO** |
 
 **Production flag changes executed by this authoring:** **0**  
 **Environment changes executed by this authoring:** **0**  

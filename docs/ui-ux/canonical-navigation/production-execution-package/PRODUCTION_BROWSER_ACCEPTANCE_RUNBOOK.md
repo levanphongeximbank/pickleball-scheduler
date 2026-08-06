@@ -1,16 +1,19 @@
 # Production Browser Acceptance Runbook
 
-**Program:** PICK_VN Canonical Navigation  
-**Mode:** Runbook only — **do not execute** until `PRODUCTION_BROWSER_ACCEPTANCE_GO=YES` bound to this package  
-**Host:** `https://pickvn.app` (Vercel Production)  
-**Flag:** `VITE_CANONICAL_APP_SHELL_ENABLED`  
-**Source baseline SHA:** `1bcc4dc729dd53027de1fac1cf39001ea5d29f4b`  
-**Evidence recorder:** Le Phong  
+**Program:** PICK_VN Canonical Navigation
+**Mode:** Runbook only — **do not execute** until `PRODUCTION_BROWSER_ACCEPTANCE_GO=YES` bound to this package
+**Host:** `https://pickvn.app` (Vercel Production)
+**Flag:** `VITE_CANONICAL_APP_SHELL_ENABLED`
+**Source baseline SHA:** `1bcc4dc729dd53027de1fac1cf39001ea5d29f4b`
+**Evidence recorder:** Le Phong
 **Devices:** Desktop (D), Tablet (T), Mobile (M)
 
 Policy: prefer no-write / minimum-write. No SQL. No Auth provisioning. No credentials in evidence. Prefer Production URL screenshots showing host.
 
-Identity-dependent cells that lack a bound Production-safe identity or explicit Owner waiver are marked **`BLOCKED_PENDING_IDENTITY_OR_WAIVER`**. Do **not** mark them PASS.
+**Operating mode:** `OWNER_ONLY_CONTROLLED_PILOT`
+**Required identities for execution (when authorized):** SUPER_ADMIN (`SUPER_ADMIN_TEST_REQUIRED=YES`) and public unauthenticated (`PUBLIC_UNAUTHENTICATED_TEST_REQUIRED=YES`).
+
+Identity-dependent cells covered by Owner waiver are marked **`WAIVED_BY_OWNER`**. Do **not** mark them PASS. Waivers expire before any non-Owner user or second tenant is enabled.
 
 ---
 
@@ -70,20 +73,20 @@ Identity-dependent cells that lack a bound Production-safe identity or explicit 
 |----|-------|:-:|:-:|:-:|----------|---------------|
 | ACT-20 | Unauthenticated public routes reachable | ✓ | ✓ | ✓ | Public unauthenticated (`AVAILABLE`) | PENDING (at window) |
 | ACT-21 | Authenticated SUPER_ADMIN routes allow | ✓ | ✓ | ✓ | SUPER_ADMIN (`EXISTING_OWNER_ACCOUNT`) | PENDING (at window) |
-| ACT-22 | Selected non-admin allow routes | ✓ | ✓ | ✓ | Non-admin allow | **BLOCKED_PENDING_IDENTITY_OR_WAIVER** |
-| ACT-23 | Selected non-admin deny routes | ✓ | ✓ | ✓ | Non-admin deny | **BLOCKED_PENDING_IDENTITY_OR_WAIVER** |
-| ACT-24 | Tenant-isolation denial | ✓ | ✓ | ✓ | Tenant isolation | **BLOCKED_PENDING_IDENTITY_OR_WAIVER** |
+| ACT-22 | Selected non-admin allow routes | ✓ | ✓ | ✓ | Non-admin allow | **WAIVED_BY_OWNER** |
+| ACT-23 | Selected non-admin deny routes | ✓ | ✓ | ✓ | Non-admin deny | **WAIVED_BY_OWNER** |
+| ACT-24 | Tenant-isolation denial | ✓ | ✓ | ✓ | Tenant isolation | **WAIVED_BY_OWNER** |
 
 ### Critical feature checks
 
 | ID | Check | D | T | M | Identity | Result status |
 |----|-------|:-:|:-:|:-:|----------|---------------|
-| ACT-30 | Tournament Engine — authorized allow | ✓ | ✓ | ✓ | SUPER_ADMIN and/or non-admin allow | SUPER_ADMIN path PENDING (at window); non-admin path **BLOCKED_PENDING_IDENTITY_OR_WAIVER** |
-| ACT-31 | Tournament Engine — unauthorized deny | ✓ | ✓ | ✓ | Non-admin deny | **BLOCKED_PENDING_IDENTITY_OR_WAIVER** |
+| ACT-30 | Tournament Engine — authorized allow | ✓ | ✓ | ✓ | SUPER_ADMIN and/or non-admin allow | SUPER_ADMIN path PENDING (at window); non-admin path **WAIVED_BY_OWNER** |
+| ACT-31 | Tournament Engine — unauthorized deny | ✓ | ✓ | ✓ | Non-admin deny | **WAIVED_BY_OWNER** |
 | ACT-32 | Rating V5 — admin allow | ✓ | ✓ | ✓ | SUPER_ADMIN | PENDING (at window) |
-| ACT-33 | Rating V5 — non-admin deny | ✓ | ✓ | ✓ | Non-admin deny | **BLOCKED_PENDING_IDENTITY_OR_WAIVER** |
+| ACT-33 | Rating V5 — non-admin deny | ✓ | ✓ | ✓ | Non-admin deny | **WAIVED_BY_OWNER** |
 | ACT-34 | Private Pairing — admin allow | ✓ | ✓ | ✓ | SUPER_ADMIN | PENDING (at window) |
-| ACT-35 | Private Pairing — non-admin deny | ✓ | ✓ | ✓ | Non-admin deny | **BLOCKED_PENDING_IDENTITY_OR_WAIVER** |
+| ACT-35 | Private Pairing — non-admin deny | ✓ | ✓ | ✓ | Non-admin deny | **WAIVED_BY_OWNER** |
 
 ### Accessibility
 
@@ -122,16 +125,17 @@ Identity-dependent cells that lack a bound Production-safe identity or explicit 
 
 ## Pass criteria (activation window — when authorized)
 
-- Canonical shell exclusive when flag ON  
-- Dual shell absent  
-- White screens = **0**  
-- Console errors = **0** (material)  
-- Public routes reachable unauthenticated  
-- SUPER_ADMIN protected routes allow  
-- Unauthorized / tenant isolation deny proven **or** explicit Owner waiver bound  
-- Critical feature allow/deny cells complete for bound identities  
+- Canonical shell exclusive when flag ON
+- Dual shell absent
+- White screens = **0**
+- Console errors = **0** (material)
+- Public routes reachable unauthenticated
+- SUPER_ADMIN protected routes allow (**required**)
+- Public unauthenticated routes reachable (**required**)
+- Unauthorized / tenant isolation deny proven **or** explicit Owner waiver bound (`WAIVED_BY_OWNER` for this pilot)
+- Critical feature allow cells complete for SUPER_ADMIN; non-admin deny cells `WAIVED_BY_OWNER` for this pilot
 
-Identity-dependent cells remain **`BLOCKED_PENDING_IDENTITY_OR_WAIVER`** until resolved. They are not PASS.
+Identity-dependent waived cells remain **`WAIVED_BY_OWNER`**. They are not PASS. Before broader rollout: run non-admin allow/deny and tenant-isolation tests.
 
 ---
 

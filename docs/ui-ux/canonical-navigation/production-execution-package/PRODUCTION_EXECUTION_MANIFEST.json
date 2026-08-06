@@ -61,15 +61,29 @@
     "PRODUCTION_BROWSER_ACCEPTANCE_GO": "NO",
     "PRODUCTION_OPS_BINDING_GO": "NO",
     "PRODUCTION_FLAG_MECHANICS_GO": "NO",
-    "PRODUCTION_IDENTITY_COVERAGE_GO": "NO"
+    "PRODUCTION_IDENTITY_COVERAGE_GO": "NO",
+    "PRODUCTION_IDENTITY_COVERAGE_PLANNING_GO": "YES",
+    "IDENTITY_CREATION_GO": "NO"
   },
   "identitySummary": {
+    "productionOperatingMode": "OWNER_ONLY_CONTROLLED_PILOT",
     "SUPER_ADMIN": "EXISTING_OWNER_ACCOUNT",
+    "superAdminTestRequired": true,
     "publicUnauthenticated": "AVAILABLE",
-    "nonAdminAllow": "WAIVER_PENDING",
-    "nonAdminDeny": "WAIVER_PENDING",
-    "tenantIsolation": "WAIVER_PENDING",
-    "COACH": "WAIVED_WITH_KNOWN_SCHEMA_GAP"
+    "publicUnauthenticatedTestRequired": true,
+    "nonAdminAllow": "WAIVED_BY_OWNER",
+    "nonAdminAllowWaiverReason": "NO_PRODUCTION_NON_ADMIN_IDENTITY_AVAILABLE_OWNER_ONLY_PILOT",
+    "nonAdminDeny": "WAIVED_BY_OWNER",
+    "nonAdminDenyWaiverReason": "NO_PRODUCTION_NON_ADMIN_IDENTITY_AVAILABLE_OWNER_ONLY_PILOT",
+    "tenantIsolation": "WAIVED_BY_OWNER",
+    "tenantIsolationWaiverReason": "NO_SECOND_PRODUCTION_TENANT_IDENTITY_AVAILABLE_OWNER_ONLY_PILOT",
+    "COACH": "WAIVED_WITH_KNOWN_SCHEMA_GAP",
+    "waiverScope": "CANONICAL_NAVIGATION_INITIAL_PRODUCTION_ACTIVATION_ONLY",
+    "waiverExpiryCondition": "BEFORE_ANY_NON_OWNER_USER_OR_SECOND_TENANT_IS_ENABLED",
+    "waiverReplacementRequirement": "RUN_NON_ADMIN_ALLOW_DENY_AND_TENANT_ISOLATION_TESTS_BEFORE_BROADER_ROLLOUT",
+    "privilegeBypassRollbackThreshold": 1,
+    "wrongTenantExposureRollbackThreshold": 1,
+    "waiverBoundAgainstPackageCommit": "910e068fcc085bed7bc7d97d17f1ee8b2086ae22"
   },
   "packageFiles": [
     "PRODUCTION_EXECUTION_MANIFEST.md",
