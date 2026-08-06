@@ -75,17 +75,23 @@ On any STOP: freeze further flag changes; prefer rollback to legacy if flag ON a
 
 ---
 
-## Monitoring window (template — Owner fills)
+## Monitoring window (partial Owner binding via OD-PA-05)
+
+Planning decisions bound 2026-08-06 do **not** authorize execution. Owners / exact window remain unbound.
 
 | Field | Value |
 |-------|-------|
-| Duration | _TBD by Owner_ |
-| Check interval | _TBD_ |
-| Rollback if white screens | **> 0 confirmed** |
-| Rollback if auth loops | **≥ 1 confirmed** |
-| Rollback if public outage | **≥ 1 confirmed** |
-| Rollback if privilege bypass | **≥ 1 confirmed** |
-| Owner contact | _TBD_ |
+| Duration | _UNBOUND — bind at execution window_ |
+| Check interval | _UNBOUND — bind at execution window_ |
+| Deployment / rollback / monitoring owner | _UNBOUND_ |
+| Merge freeze during window | **YES** (OD-PA-05) |
+| Rollback if white screens | **> 0** (OD-PA-05) |
+| Rollback if auth redirect loops | **≥ 1** (OD-PA-05) |
+| Rollback if public route outage | **≥ 1** (OD-PA-05) |
+| Rollback if privilege bypass | **≥ 1** (OD-PA-05) |
+| Rollback if wrong-tenant exposure | **≥ 1** (OD-PA-05) |
+| Rollback if critical navigation route failure | **≥ 1** (OD-PA-05) |
+| Owner contact | _UNBOUND_ |
 
 ---
 

@@ -49,4 +49,6 @@
 
 ## Monitoring readiness
 
-**NOT_BOUND** until Owner fills monitoring owner, duration, and thresholds in the rollback plan template.
+**PARTIAL:** OD-PA-05 bound merge freeze = YES and default rollback thresholds.  
+**Still unbound for execution:** monitoring owner, deployment/rollback owners, exact window, monitoring duration, and interval.  
+Live Production flag attestation remains pending (OD-PA-06). Production execution GOs remain **NO**.

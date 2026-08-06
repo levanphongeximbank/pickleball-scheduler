@@ -39,16 +39,16 @@
 | D-16 | MISSING_IDENTITY_LINK (OBS-DATA-01) | **MAY_DEFER_WITH_OWNER_ACCEPTANCE** | Staging data; Production data Owner-scoped |
 | D-17 | Non-admin role coverage | **MUST_CLOSE_BEFORE_PRODUCTION** | Preview largely SUPER_ADMIN-only manual; need Prod matrix or waiver |
 | D-18 | COACH schema gap | **MAY_DEFER_WITH_OWNER_ACCEPTANCE** | `WAIVED_WITH_KNOWN_SCHEMA_GAP`; backlog OPEN |
-| D-19 | Monitoring plan + owner | **MUST_CLOSE_BEFORE_PRODUCTION** | Not bound for Production activation |
-| D-20 | Rollback owner + procedure | **MUST_CLOSE_BEFORE_PRODUCTION** | Preview pattern proven; Production owners/thresholds unbound |
-| D-21 | Deployment owner | **MUST_CLOSE_BEFORE_PRODUCTION** | Unbound |
+| D-19 | Monitoring plan + owner | **MUST_CLOSE_BEFORE_PRODUCTION** | OD-PA-05 partial: thresholds + merge freeze bound; monitoring owner / duration / interval still unbound |
+| D-20 | Rollback owner + procedure | **MUST_CLOSE_BEFORE_PRODUCTION** | Preview pattern proven; Production rollback owner still unbound |
+| D-21 | Deployment owner | **MUST_CLOSE_BEFORE_PRODUCTION** | Unbound (OD-PA-05) |
 | D-22 | Operator identity | **MUST_CLOSE_BEFORE_PRODUCTION** | Production-safe operator unbound |
-| D-23 | Maintenance window | **MUST_CLOSE_BEFORE_PRODUCTION** | Unbound |
-| D-24 | Acceptance window | **MUST_CLOSE_BEFORE_PRODUCTION** | Unbound |
-| D-25 | Rollback trigger thresholds | **MUST_CLOSE_BEFORE_PRODUCTION** | Unbound |
-| D-26 | Production flag OFF attestation (live) | **MUST_CLOSE_BEFORE_PRODUCTION** | Attested historically; re-prove in Vercel before change |
-| D-27 | Explicit PRODUCTION_GO + flag/redeploy GOs | **MUST_CLOSE_BEFORE_PRODUCTION** | Currently NO |
-| D-28 | OBS-P5-PM-01 auto-deploy control | **SATISFIED_WITH_OBSERVATION** | Known; activation window must avoid uncontrolled merges or accept risk |
+| D-23 | Maintenance window | **MUST_CLOSE_BEFORE_PRODUCTION** | Unbound (OD-PA-05) |
+| D-24 | Acceptance window | **MUST_CLOSE_BEFORE_PRODUCTION** | Unbound (OD-PA-05) |
+| D-25 | Rollback trigger thresholds | **MUST_CLOSE_BEFORE_PRODUCTION** | Default thresholds bound via OD-PA-05; still require execution-window ops GO |
+| D-26 | Production flag OFF attestation (live) | **MUST_CLOSE_BEFORE_PRODUCTION** | OD-PA-06 mechanics acknowledged; live Vercel attestation pending |
+| D-27 | Explicit PRODUCTION_GO + flag/redeploy GOs | **MUST_CLOSE_BEFORE_PRODUCTION** | OD-PA-02: all execution GOs remain NO |
+| D-28 | OBS-P5-PM-01 auto-deploy control | **SATISFIED_WITH_OBSERVATION** | Known; OD-PA-05 merge freeze = YES for activation window |
 | D-29 | Critical automated suites 99/99 | **SATISFIED** | Post-merge evidence |
 | D-30 | Preview flag-ON + rollback pattern | **SATISFIED** | Phase 5 PASS_WITH_OBSERVATIONS + rollback PASS |
 | D-31 | Dual shell absence | **SATISFIED** | Exclusive MainLayout branch |

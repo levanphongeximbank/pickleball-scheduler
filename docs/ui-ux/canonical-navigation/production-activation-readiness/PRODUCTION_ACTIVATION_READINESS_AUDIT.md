@@ -203,18 +203,30 @@ Highest risks: build-time flag mismatch, Vercel automatic Production deploy (OBS
 
 ---
 
-## Owner decisions still required (before activation)
+## Owner planning decisions (bound 2026-08-06)
 
 See [`OWNER_DECISION_PACKAGES.md`](./OWNER_DECISION_PACKAGES.md).
 
-1. Bind Production activation charter (name/path — **do not invent phase number here**)  
-2. `PRODUCTION_GO` / flag-change GO / redeploy GO  
-3. Production identity matrix GO (or accept Staging/Preview evidence transfer with bounds)  
-4. Accept or close Phase 5 NOT_TESTED cells for Production (refresh, back/forward, HC, non-admin roles, manual Engine/B03/PP)  
-5. Accept or remediate OBS-UI-01 / OBS-RUNTIME-* / OBS-DATA-01 for Production  
-6. Name deployment owner, rollback owner, monitoring owner, windows, rollback thresholds  
-7. Re-attest Production flag state in Vercel dashboard before and after change  
-8. Decide COACH: continue waiver vs require schema workstream before GO  
+**Planning decisions OD-PA-01 through OD-PA-07 are BOUND** against PR #388 head `1a5d54d6e3a1796a408db3334c0f7a8b0f303b86`.  
+This planning package is **not** an execution package. **Production activation remains unauthorized.**
+
+| Package | Bound code | Notes |
+|---------|------------|-------|
+| OD-PA-01 | OPTION_A | Continue under `production-activation-readiness/`; no Phase 6 |
+| OD-PA-02 | PLANNING_ONLY_EXECUTION_GOS_REMAIN_NO | All Production execution GOs remain **NO** |
+| OD-PA-03 | HYBRID | Policy bound; Production identity execution matrix incomplete |
+| OD-PA-04 | APPROVE_RECOMMENDED_DISPOSITIONS | RETEST/ACCEPT dispositions bound; retests still required before GO |
+| OD-PA-05 | APPROVE_PARTIAL_BINDING_MERGE_FREEZE_AND_DEFAULT_THRESHOLDS | Merge freeze YES + default thresholds bound; owners/window/duration/interval unbound |
+| OD-PA-06 | MECHANICS_ACKNOWLEDGED_LIVE_ATTESTATION_PENDING | Mechanics acknowledged; live Vercel flag attestation **pending** |
+| OD-PA-07 | OPTION_A_CONTINUE_COACH_WAIVER | COACH remains `WAIVED_WITH_KNOWN_SCHEMA_GAP` |
+
+### Still required before any Production execution package / GO
+
+1. Bind exact execution package, SHA, target, and time window with `PRODUCTION_GO` / flag / redeploy / env / browser GOs  
+2. Complete Production-safe identity matrix (or named role waivers); no identity creation authorized by OD-PA-03 alone  
+3. Execute OD-PA-04 Production retests (refresh, back/forward, HC, Engine, Rating V5, Private Pairing, selected non-admin roles)  
+4. Name deployment owner, rollback owner, monitoring owner; bind exact window, monitoring duration, and interval  
+5. Live-attest Production flag OFF/absent in Vercel before any flag change  
 
 ---
 

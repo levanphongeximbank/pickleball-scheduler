@@ -96,19 +96,41 @@
     "unauthenticatedProductionSafe": true
   },
   "rollbackReadiness": "PATTERN_PROVEN_ON_PREVIEW_PRODUCTION_PROCEDURE_PLANNED_NOT_EXECUTED",
-  "monitoringReadiness": "NOT_BOUND_FOR_PRODUCTION_ACTIVATION",
+  "monitoringReadiness": "PARTIAL_THRESHOLDS_AND_MERGE_FREEZE_BOUND_OWNERS_WINDOW_UNBOUND",
+  "ownerPlanningDecisions": {
+    "status": "BOUND",
+    "boundDate": "2026-08-06",
+    "boundBy": "Owner",
+    "boundAgainstPr": 388,
+    "boundAgainstHead": "1a5d54d6e3a1796a408db3334c0f7a8b0f303b86",
+    "packages": {
+      "OD-PA-01": "OPTION_A",
+      "OD-PA-02": "PLANNING_ONLY_EXECUTION_GOS_REMAIN_NO",
+      "OD-PA-03": "HYBRID",
+      "OD-PA-04": "APPROVE_RECOMMENDED_DISPOSITIONS",
+      "OD-PA-05": "APPROVE_PARTIAL_BINDING_MERGE_FREEZE_AND_DEFAULT_THRESHOLDS",
+      "OD-PA-06": "MECHANICS_ACKNOWLEDGED_LIVE_ATTESTATION_PENDING",
+      "OD-PA-07": "OPTION_A_CONTINUE_COACH_WAIVER"
+    },
+    "productionActivationAuthorized": false,
+    "isExecutionPackage": false
+  },
   "productionBlockers": [
     "PRODUCTION_GO_MISSING",
     "PRODUCTION_FLAG_CHANGE_GO_MISSING",
     "PRODUCTION_REDEPLOY_GO_MISSING",
+    "PRODUCTION_ENV_CHANGE_GO_MISSING",
+    "PRODUCTION_BROWSER_ACCEPTANCE_GO_MISSING",
     "PRODUCTION_FLAG_STATE_NOT_LIVE_REPROVEN",
-    "PRODUCTION_IDENTITY_MATRIX_UNBOUNDED",
+    "PRODUCTION_IDENTITY_EXECUTION_MATRIX_INCOMPLETE",
     "ACTIVATION_MONITORING_OWNER_UNBOUNDED",
-    "ROLLBACK_OWNER_THRESHOLDS_UNBOUNDED",
-    "PHASE5_NOT_TESTED_CELLS_NEED_PROD_DECISION",
+    "DEPLOYMENT_AND_ROLLBACK_OWNERS_UNBOUNDED",
+    "EXECUTION_WINDOW_DURATION_INTERVAL_UNBOUNDED",
+    "PHASE5_PRODUCTION_RETESTS_STILL_REQUIRED",
     "OBS_P5_PM_01_AUTO_DEPLOY_CONTROL"
   ],
-  "ownerDecisionsRequired": true,
+  "ownerDecisionsRequired": false,
+  "ownerPlanningDecisionsBound": true,
   "safety": {
     "note": "Audit-time facts from the original read-only audit execution only. Does not describe current PR #388 state.",
     "runtimeChanges": 0,

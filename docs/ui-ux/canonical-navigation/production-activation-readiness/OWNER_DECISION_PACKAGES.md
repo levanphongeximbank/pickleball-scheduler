@@ -2,61 +2,69 @@
 
 **Program:** PICK_VN Canonical Navigation  
 **Purpose:** Bind Owner decisions required before Production canonical flag enablement  
-**Status:** **UNBOUND** (planning audit only)  
+**Status:** **PLANNING DECISIONS BOUND** (2026-08-06) — not an execution package  
 **Production GO today:** **NO**  
-**Do not invent a phase number** — bind a charter name/path when Owner chooses.
+**Planning path:** `docs/ui-ux/canonical-navigation/production-activation-readiness/` (no numbered Phase 6)
 
-Related: `docs/ui-ux/canonical-navigation/production-activation-readiness/`
+**Bound against:** planning PR #388 · head `1a5d54d6e3a1796a408db3334c0f7a8b0f303b86` · Bound by: Owner · Date: 2026-08-06
+
+These bindings authorize planning continuity only. They do **not** authorize Production flag enablement, env change, redeploy, or browser acceptance execution.
 
 ---
 
 ## Package OD-PA-01 — Activation charter
 
-| Field | Required value |
-|-------|----------------|
-| Decision | Authorize creation of a Production activation execution package (docs + runbook), still without enabling the flag |
-| Options | A) Proceed under `production-activation-readiness/` only · B) Owner-named next phase directory (Owner supplies name) |
-| Default audit recommendation | **A** until Owner names a phase |
-| GO token | `PRODUCTION_ACTIVATION_PLANNING_GO` = YES/NO |
+| Field | Value |
+|-------|--------|
+| Decision code | **OPTION_A** |
+| Meaning | Continue under `production-activation-readiness/` only |
+| Numbered Phase 6 | **Not created** |
+| GO token | `PRODUCTION_ACTIVATION_PLANNING_GO` planning path authorized; execution package still separate |
 
 ---
 
 ## Package OD-PA-02 — Production GO tokens
 
-| Token | Required before flag ON |
-|-------|-------------------------|
-| `PRODUCTION_GO` | YES |
-| `PRODUCTION_FLAG_CHANGE_GO` | YES |
-| `PRODUCTION_REDEPLOY_GO` | YES |
-| `PRODUCTION_ENV_CHANGE_GO` | YES |
-| `PRODUCTION_BROWSER_ACCEPTANCE_GO` | YES |
-| `STAGING_AUTH_MUTATION_GO` | NO (default) |
-| `STAGING_DATABASE_MUTATION_GO` | NO (default) |
-| `SCHEMA_MUTATION_GO` / `MIGRATION_GO` | NO unless COACH schema chosen |
+| Field | Value |
+|-------|--------|
+| Decision code | **PLANNING_ONLY_EXECUTION_GOS_REMAIN_NO** |
+| Meaning | Planning may continue; all Production execution GO tokens remain **NO** |
+| Later requirement | Execution GO must bind exact package, SHA, target, and time window |
+
+| Token | Current value |
+|-------|---------------|
+| `PRODUCTION_GO` | **NO** |
+| `PRODUCTION_FLAG_CHANGE_GO` | **NO** |
+| `PRODUCTION_REDEPLOY_GO` | **NO** |
+| `PRODUCTION_ENV_CHANGE_GO` | **NO** |
+| `PRODUCTION_BROWSER_ACCEPTANCE_GO` | **NO** |
+| `STAGING_AUTH_MUTATION_GO` | **NO** |
+| `STAGING_DATABASE_MUTATION_GO` | **NO** |
+| `SCHEMA_MUTATION_GO` / `MIGRATION_GO` | **NO** |
 
 ---
 
 ## Package OD-PA-03 — Identity matrix
 
-| Decision | Options |
-|----------|---------|
-| Production identity source | A) Owner-bound Production QA identities · B) Accept Preview/Staging evidence transfer with named gaps · C) Hybrid (admin Production + waive others) |
-| SUPER_ADMIN / PLATFORM_ADMIN-eq | Required for B03/pairing admin cells unless waived |
-| VENUE_OWNER / VENUE_MANAGER / CLUB_* / REFEREE / PLAYER | Minimum set for GO or explicit waiver per role |
-| Unauthenticated | Required public smoke |
-| COACH | Continue `WAIVED_WITH_KNOWN_SCHEMA_GAP` **or** require `BL-P5-COACH-ROLE-SCHEMA` before GO |
-| Writes | Default no-write; list any unavoidable write cells |
-
-**GO token:** `PRODUCTION_IDENTITY_COVERAGE_GO`
+| Field | Value |
+|-------|--------|
+| Decision code | **HYBRID** |
+| Required | Production SUPER_ADMIN or equivalent; unauthenticated public smoke; minimum additional Production-safe identities; explicit waivers for unavailable roles |
+| Identity creation | **Not authorized** by this decision |
+| Execution matrix | Incomplete until Production-safe identities / waivers are named for the execution window |
+| GO token | `PRODUCTION_IDENTITY_COVERAGE_GO` remains **NO** |
 
 ---
 
 ## Package OD-PA-04 — Phase 5 limitation disposition for Production
 
-Recommended Production dispositions below are planning guidance only. They do **not** authorize Production flag enablement or execution.
+| Field | Value |
+|-------|--------|
+| Decision code | **APPROVE_RECOMMENDED_DISPOSITIONS** |
+| Authorization | Dispositions approved for planning/execution design only — **not** Production activation |
 
-| Limitation | Recommended disposition |
-|------------|-------------------------|
+| Limitation | Bound disposition |
+|------------|-------------------|
 | Browser refresh NOT_TESTED | **RETEST_ON_PRODUCTION** |
 | Browser back/forward NOT_TESTED | **RETEST_ON_PRODUCTION** |
 | High contrast NOT_TESTED | **RETEST_ON_PRODUCTION** |
@@ -72,71 +80,91 @@ Recommended Production dispositions below are planning guidance only. They do **
 
 ## Package OD-PA-05 — Operations binding
 
-| Field | Owner fills |
-|-------|-------------|
-| Deployment owner | |
-| Rollback owner | |
-| Monitoring owner | |
-| Operator identity (Production-safe) | |
-| Maintenance window (start/end TZ) | |
-| Acceptance window | |
-| Monitoring duration + interval | |
-| Rollback thresholds | white screen >0; auth loop ≥1; public outage ≥1; privilege bypass ≥1; other: |
-| Merge freeze during window | YES/NO (recommended YES due to OBS-P5-PM-01) |
+| Field | Value |
+|-------|--------|
+| Decision code | **APPROVE_PARTIAL_BINDING_MERGE_FREEZE_AND_DEFAULT_THRESHOLDS** |
+| GO token | `PRODUCTION_OPS_BINDING_GO` remains **NO** until owners/window bound |
 
-**GO token:** `PRODUCTION_OPS_BINDING_GO`
+### Bound now
+
+| Field | Bound value |
+|-------|-------------|
+| Merge freeze during window | **YES** |
+| Rollback if white screens | **> 0** |
+| Rollback if auth redirect loop | **≥ 1** |
+| Rollback if public route outage | **≥ 1** |
+| Rollback if privilege bypass | **≥ 1** |
+| Rollback if wrong-tenant exposure | **≥ 1** |
+| Rollback if critical navigation route failure | **≥ 1** |
+
+### Remain unbound until execution window
+
+| Field | Status |
+|-------|--------|
+| Deployment owner | **UNBOUND** |
+| Rollback owner | **UNBOUND** |
+| Monitoring owner | **UNBOUND** |
+| Exact maintenance / acceptance window | **UNBOUND** |
+| Monitoring duration | **UNBOUND** |
+| Monitoring interval | **UNBOUND** |
+| Operator identity (Production-safe) | **UNBOUND** |
 
 ---
 
 ## Package OD-PA-06 — Flag and deploy mechanics attestation
 
-| Check | Owner attests |
-|-------|---------------|
-| Vercel project | `pickleball-scheduler` (confirm) |
-| Production flag current state | OFF_OR_ABSENT (live screenshot/export) |
-| Evaluation mode understood | Vite build-time; redeploy required |
-| Auto Production deploy on `main` merge understood | OBS-P5-PM-01 retained |
-| Rollback = flag OFF + Production redeploy | Confirmed |
+| Field | Value |
+|-------|--------|
+| Decision code | **MECHANICS_ACKNOWLEDGED_LIVE_ATTESTATION_PENDING** |
+| GO token | `PRODUCTION_FLAG_MECHANICS_GO` remains **NO** until live attestation |
 
-**GO token:** `PRODUCTION_FLAG_MECHANICS_GO`
+| Check | Status |
+|-------|--------|
+| Vite build-time flag evaluation | **Acknowledged** |
+| Redeploy required after flag change | **Acknowledged** |
+| Auto Production deploy on `main` merge (OBS-P5-PM-01) | **Acknowledged** |
+| Rollback = flag OFF + Production redeploy | **Acknowledged** |
+| Live Production flag attestation (Vercel OFF/absent) | **PENDING** |
+| Vercel project / Production target confirmation | Confirm at execution window |
 
 ---
 
 ## Package OD-PA-07 — COACH disposition
 
-| Option | Effect |
-|--------|--------|
-| A) Continue waiver | COACH cells WAIVED for Production activation |
-| B) Block activation on COACH | Requires schema/catalog/fixture workstream + separate GOs |
-
-Audit recommendation: **A** unless coaching Production nav is in-scope for the same window.
-
----
-
-## Binding record (empty until Owner signs)
-
-| Package | Decision code | Bound by | Date | SHA/window |
-|---------|---------------|----------|------|------------|
-| OD-PA-01 | _unbound_ | | | |
-| OD-PA-02 | _unbound_ | | | |
-| OD-PA-03 | _unbound_ | | | |
-| OD-PA-04 | _unbound_ | | | |
-| OD-PA-05 | _unbound_ | | | |
-| OD-PA-06 | _unbound_ | | | |
-| OD-PA-07 | _unbound_ | | | |
+| Field | Value |
+|-------|--------|
+| Decision code | **OPTION_A_CONTINUE_COACH_WAIVER** |
+| COACH | Remains **`WAIVED_WITH_KNOWN_SCHEMA_GAP`** |
+| Backlog | `BL-P5-COACH-ROLE-SCHEMA` remains a separate workstream |
+| Schema / identity mutation in nav activation window | **Not authorized** |
 
 ---
 
-## Explicit non-actions until GOs bound
+## Binding record
+
+| Package | Decision code | Bound by | Date | SHA / reference |
+|---------|---------------|----------|------|-----------------|
+| OD-PA-01 | OPTION_A | Owner | 2026-08-06 | PR #388 @ `1a5d54d6e3a1796a408db3334c0f7a8b0f303b86` |
+| OD-PA-02 | PLANNING_ONLY_EXECUTION_GOS_REMAIN_NO | Owner | 2026-08-06 | PR #388 @ `1a5d54d6e3a1796a408db3334c0f7a8b0f303b86` |
+| OD-PA-03 | HYBRID | Owner | 2026-08-06 | PR #388 @ `1a5d54d6e3a1796a408db3334c0f7a8b0f303b86` |
+| OD-PA-04 | APPROVE_RECOMMENDED_DISPOSITIONS | Owner | 2026-08-06 | PR #388 @ `1a5d54d6e3a1796a408db3334c0f7a8b0f303b86` |
+| OD-PA-05 | APPROVE_PARTIAL_BINDING_MERGE_FREEZE_AND_DEFAULT_THRESHOLDS | Owner | 2026-08-06 | PR #388 @ `1a5d54d6e3a1796a408db3334c0f7a8b0f303b86` |
+| OD-PA-06 | MECHANICS_ACKNOWLEDGED_LIVE_ATTESTATION_PENDING | Owner | 2026-08-06 | PR #388 @ `1a5d54d6e3a1796a408db3334c0f7a8b0f303b86` |
+| OD-PA-07 | OPTION_A_CONTINUE_COACH_WAIVER | Owner | 2026-08-06 | PR #388 @ `1a5d54d6e3a1796a408db3334c0f7a8b0f303b86` |
+
+---
+
+## Explicit non-actions (still in force)
 
 - Do not set Production `VITE_CANONICAL_APP_SHELL_ENABLED=true`  
 - Do not Redeploy Production for this flag  
 - Do not promote Preview  
 - Do not mutate Staging Auth/DB/schema  
-- Do not open activation PR that changes runtime unless separately scoped  
+- Do not treat this planning package as a Production execution package  
+- Do not open an activation PR that changes runtime unless separately scoped and GO-bound  
 
 ---
 
 ## Safety
 
-This file records required decisions only. No environment or Production mutation performed by the audit that authored it.
+This file records Owner planning decisions only. No environment or Production mutation is authorized or performed by binding these packages.
