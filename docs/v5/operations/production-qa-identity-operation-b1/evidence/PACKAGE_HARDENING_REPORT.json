@@ -1,0 +1,26 @@
+{
+  "package": "production-qa-identity-operation-b1",
+  "status": "PACKAGE_NOT_EXECUTED",
+  "productionGo": "NO",
+  "productionProjectRefExpected": "expuvcohlcjzvrrauvud",
+  "certifiedQaBaseline": 11,
+  "b1SafeIdentityCount": 8,
+  "b2ExcludedIdentityCount": 3,
+  "b2ExcludedLabels": ["QA-01", "QA-02", "QA-03"],
+  "phase1bSmithExcluded": true,
+  "dryRunDefault": true,
+  "exactOwnerGoRequired": "APPROVE_OPERATION_B1_EXACT_EIGHT_ONLY",
+  "hardDeleteAvailable": false,
+  "quarantineReversible": true,
+  "externalAllowlistStoredInGit": false,
+  "productionMutations": 0,
+  "stagingMutations": 0,
+  "authMutations": 0,
+  "quarantineOrBanExecution": 0,
+  "focusedTests": { "file": "tests/production-qa-identity-operation-b1.test.js", "pass": 16, "fail": 0 },
+  "adjacentTests": { "pass": 26, "fail": 0, "note": "production-player-data-gender-remediation + account-only-athlete run separately" },
+  "notes": [
+    "Masks only in evidence — no full emails or full UUIDs.",
+    "Future live allowlist must be generated SELECT-only outside Git."
+  ]
+}
