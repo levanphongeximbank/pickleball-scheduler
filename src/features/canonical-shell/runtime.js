@@ -65,6 +65,8 @@ export {
 export { createFigure1ShellTheme } from "./theme/figure1ShellTheme.js";
 export {
   CANONICAL_TOPBAR_LAYOUT,
+  CANONICAL_TOPBAR_RUNTIME_VIEWPORTS,
+  resolveCanonicalTopbarRuntimeViewport,
   resolveCanonicalTopbarZoneStyles,
   collapseCanonicalBreadcrumbItems,
   assertCanonicalTopbarNoOverlap,

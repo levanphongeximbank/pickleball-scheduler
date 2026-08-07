@@ -28,16 +28,19 @@
 
 | Gate | Required | Evidence |
 |------|----------|----------|
-| TOPBAR_TEXT_OVERLAP | 0 | wave4 layout contracts |
-| TOPBAR_TEXT_COLLISION | 0 | wave4 layout contracts |
+| TOPBAR_TEXT_OVERLAP | 0 | wave4 layout contracts + browser QA |
+| TOPBAR_TEXT_COLLISION | 0 | wave4 layout contracts + browser QA |
 | CRITICAL_LABEL_CLIPPING | 0 | ellipsis + title affordance |
-| Desktop / tablet / mobile parity | PASS | wave4 viewport tests |
+| Desktop / tablet / mobile parity | PASS | FIGURE1: mobile≤899 (incl. 768), tablet 900–1199, desktop≥1200 |
+| Viewport 768 classification | mobile | FIGURE1 `mobileMax=899` |
+| `wide` claimed as runtime viewport | NO | helper-only preset |
+| WAVE4_EVIDENCE_RUNTIME_MISMATCH_COUNT | 0 | breakpoint evidence correction |
 | Wave1–3 preservation | 13 / 120 / 379 | wave4 preservation test |
-| OBSERVATION_CANONICAL_TOPBAR_01 | PROPOSED_CLOSED_BY_IMPLEMENTATION | local only; browser QA pending |
+| OBSERVATION_CANONICAL_TOPBAR_01 | PROPOSED_CLOSED_BY_IMPLEMENTATION | pending independent re-review |
 | Scoped ESLint / new lint | PASS / 0 | local scoped eslint |
-| Production build / lint:no-new | PASS | `npm run build` |
+| Production build / lint:no-new | PASS | when run for correction |
 | Push / PR / Production deploy | NO | local commit only |
 
-Final Wave 4 verdict target:
+Breakpoint evidence correction verdict target:
 
-`CANONICAL_NAVIGATION_FINAL_PARITY_01_WAVE4_IMPLEMENTATION_PASS_READY_FOR_INDEPENDENT_REVIEW`
+`CANONICAL_NAVIGATION_FINAL_PARITY_01_WAVE4_BREAKPOINT_CORRECTION_PASS_READY_FOR_REREVIEW`

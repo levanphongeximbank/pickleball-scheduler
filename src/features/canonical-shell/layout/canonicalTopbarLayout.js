@@ -2,7 +2,27 @@
  * Wave 4 — deterministic canonical topbar layout contracts.
  * Used by CanonicalTopBar and focused responsive tests.
  * Breakpoints align with FIGURE1_BREAKPOINTS (md=900, lg=1200).
+ *
+ * CanonicalTopBar runtime viewports (only): mobile | tablet | desktop.
+ * Zone key `wide` is HELPER_ONLY_NON_RUNTIME_PRESET — not emitted by CanonicalTopBar.
  */
+
+import { FIGURE1_BREAKPOINTS } from "../../../theme/figure1Tokens.js";
+
+/** @type {ReadonlyArray<'mobile'|'tablet'|'desktop'>} */
+export const CANONICAL_TOPBAR_RUNTIME_VIEWPORTS = Object.freeze(["mobile", "tablet", "desktop"]);
+
+/**
+ * Map CSS pixel width → CanonicalTopBar runtime viewport using FIGURE1 authority.
+ * @param {number} widthPx
+ * @returns {'mobile'|'tablet'|'desktop'}
+ */
+export function resolveCanonicalTopbarRuntimeViewport(widthPx) {
+  const width = Number(widthPx);
+  if (!Number.isFinite(width) || width <= FIGURE1_BREAKPOINTS.mobileMax) return "mobile";
+  if (width <= FIGURE1_BREAKPOINTS.tabletMax) return "tablet";
+  return "desktop";
+}
 
 export const CANONICAL_TOPBAR_LAYOUT = Object.freeze({
   height: 56,
@@ -19,6 +39,7 @@ export const CANONICAL_TOPBAR_LAYOUT = Object.freeze({
       maxWidth: Object.freeze({
         tablet: 200,
         desktop: 320,
+        // HELPER_ONLY_NON_RUNTIME_PRESET — not used by CanonicalTopBar
         wide: 420,
       }),
       visible: Object.freeze({
@@ -34,11 +55,13 @@ export const CANONICAL_TOPBAR_LAYOUT = Object.freeze({
       maxWidth: Object.freeze({
         tablet: 160,
         desktop: 220,
+        // HELPER_ONLY_NON_RUNTIME_PRESET — not used by CanonicalTopBar
         wide: 260,
       }),
       minWidthPx: Object.freeze({
         tablet: 132,
         desktop: 160,
+        // HELPER_ONLY_NON_RUNTIME_PRESET — not used by CanonicalTopBar
         wide: 180,
       }),
       visible: Object.freeze({
@@ -54,6 +77,7 @@ export const CANONICAL_TOPBAR_LAYOUT = Object.freeze({
         mobile: 160,
         tablet: 220,
         desktop: 420,
+        // HELPER_ONLY_NON_RUNTIME_PRESET — not used by CanonicalTopBar
         wide: 520,
       }),
     }),
@@ -77,6 +101,7 @@ export const CANONICAL_TOPBAR_LAYOUT = Object.freeze({
 
 /**
  * @param {'mobile'|'tablet'|'desktop'|'wide'} viewport
+ * `wide` = HELPER_ONLY_NON_RUNTIME_PRESET (not a CanonicalTopBar runtime viewport).
  */
 export function resolveCanonicalTopbarZoneStyles(viewport) {
   const vp = viewport === "wide" ? "wide" : viewport;
@@ -201,9 +226,15 @@ export function assertCanonicalTopbarNoOverlap(viewport) {
     }
   }
 
-  // Bounded zones must not claim more than a typical viewport at once.
+  // Representative CSS widths per runtime class (FIGURE1). `wide` helper uses 1440 soft budget only.
   const viewportWidth =
-    viewport === "mobile" ? 375 : viewport === "tablet" ? 768 : viewport === "desktop" ? 1280 : 1440;
+    viewport === "mobile"
+      ? 375
+      : viewport === "tablet"
+        ? FIGURE1_BREAKPOINTS.tabletMin
+        : viewport === "desktop"
+          ? FIGURE1_BREAKPOINTS.desktopMin
+          : 1440;
   const claimed = zones.reduce((sum, zone) => sum + (zone.maxWidth || 96), 0);
   // Leave room for padding/gaps (~48–72px). Soft budget, not a hard pixel paint.
   if (claimed > viewportWidth - 48) {

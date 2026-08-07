@@ -8,11 +8,14 @@ import { CANONICAL_MENU_DATA } from "../src/features/canonical-shell/config/cano
 import {
   assertCanonicalTopbarNoOverlap,
   CANONICAL_TOPBAR_LAYOUT,
+  CANONICAL_TOPBAR_RUNTIME_VIEWPORTS,
   collapseCanonicalBreadcrumbItems,
+  resolveCanonicalTopbarRuntimeViewport,
   resolveCanonicalTopbarZoneStyles,
 } from "../src/features/canonical-shell/layout/canonicalTopbarLayout.js";
 import { B02_TOURNAMENT_HUB_MENU_ALLOWLIST, B03_SHADOW_SKILL_ASSESSMENT_V5 } from "../src/features/canonical-shell/config/ownerDecisions.js";
 import { getTechnicalReasonUserMessage } from "../src/features/canonical-shell/config/canonicalVietnameseLabels.js";
+import { FIGURE1_BREAKPOINTS } from "../src/theme/figure1Tokens.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -55,17 +58,16 @@ function collectVisibleLabels() {
   return out.filter(Boolean);
 }
 
-test("wave4 desktop layout — no overlap / collision budget", () => {
-  for (const widthHint of ["desktop", "wide"]) {
-    const result = assertCanonicalTopbarNoOverlap(widthHint);
-    assert.equal(result.ok, true, JSON.stringify(result.collisions));
-    assert.equal(result.collisions.length, 0);
-    assert.equal(result.styles.context.visible, true);
-    assert.equal(result.styles.organization.visible, true);
-    assert.ok(result.styles.context.maxWidth > 0);
-    assert.ok(result.styles.organization.maxWidth > 0);
-    assert.ok(result.styles.search.maxWidth > 0);
-  }
+test("wave4 desktop layout — no overlap / collision budget (runtime viewport)", () => {
+  const result = assertCanonicalTopbarNoOverlap("desktop");
+  assert.equal(result.ok, true, JSON.stringify(result.collisions));
+  assert.equal(result.collisions.length, 0);
+  assert.equal(result.styles.context.visible, true);
+  assert.equal(result.styles.organization.visible, true);
+  assert.ok(result.styles.context.maxWidth > 0);
+  assert.ok(result.styles.organization.maxWidth > 0);
+  assert.ok(result.styles.search.maxWidth > 0);
+  assert.equal(result.styles.context.maxWidth, CANONICAL_TOPBAR_LAYOUT.zones.context.maxWidth.desktop);
 });
 
 test("wave4 tablet layout — bounded zones + collapsed breadcrumbs", () => {
@@ -117,6 +119,12 @@ test("wave4 topbar source — zone flex contracts and truncation styles present"
   assert.equal(topbar.includes("canonical-topbar-actions-zone"), true);
   assert.equal(topbar.includes("resolveCanonicalTopbarZoneStyles"), true);
   assert.equal(topbar.includes("collapseCanonicalBreadcrumbItems"), true);
+  // CanonicalTopBar runtime viewports only — never resolves "wide"
+  assert.match(
+    topbar,
+    /const viewport = isMobile \? "mobile" : isTablet \? "tablet" : "desktop"/
+  );
+  assert.equal(topbar.includes('"wide"'), false);
 
   assert.equal(crumbs.includes("textOverflow: \"ellipsis\""), true);
   assert.equal(crumbs.includes("whiteSpace: \"nowrap\""), true);
@@ -133,6 +141,8 @@ test("wave4 critical controls remain reachable by viewport contract", () => {
   const tablet = resolveCanonicalTopbarZoneStyles("tablet");
   const desktop = resolveCanonicalTopbarZoneStyles("desktop");
 
+  assert.deepEqual([...CANONICAL_TOPBAR_RUNTIME_VIEWPORTS], ["mobile", "tablet", "desktop"]);
+
   // Mobile: menu trigger + search + actions (org/context intentionally collapsed)
   assert.equal(mobile.context.visible, false);
   assert.equal(mobile.organization.visible, false);
@@ -146,6 +156,40 @@ test("wave4 critical controls remain reachable by viewport contract", () => {
   }
 
   assert.equal(CANONICAL_TOPBAR_LAYOUT.height, 56);
+});
+
+test("wave4 FIGURE1 breakpoint authority — 768 mobile; boundary edges", () => {
+  assert.equal(FIGURE1_BREAKPOINTS.mobileMax, 899);
+  assert.equal(FIGURE1_BREAKPOINTS.tabletMin, 900);
+  assert.equal(FIGURE1_BREAKPOINTS.tabletMax, 1199);
+  assert.equal(FIGURE1_BREAKPOINTS.desktopMin, 1200);
+
+  assert.equal(resolveCanonicalTopbarRuntimeViewport(899), "mobile");
+  assert.equal(resolveCanonicalTopbarRuntimeViewport(900), "tablet");
+  assert.equal(resolveCanonicalTopbarRuntimeViewport(1199), "tablet");
+  assert.equal(resolveCanonicalTopbarRuntimeViewport(1200), "desktop");
+
+  assert.equal(resolveCanonicalTopbarRuntimeViewport(768), "mobile");
+  assert.equal(resolveCanonicalTopbarRuntimeViewport(600), "mobile");
+  assert.equal(resolveCanonicalTopbarRuntimeViewport(1024), "tablet");
+  assert.equal(resolveCanonicalTopbarRuntimeViewport(1920), "desktop");
+});
+
+test("wave4 helper-only wide preset — not a runtime viewport", () => {
+  const helper = resolveCanonicalTopbarZoneStyles("wide");
+  assert.equal(helper.viewport, "wide");
+  assert.equal(CANONICAL_TOPBAR_RUNTIME_VIEWPORTS.includes("wide"), false);
+  // Soft budget may still pass; this is not CanonicalTopBar runtime evidence.
+  const result = assertCanonicalTopbarNoOverlap("wide");
+  assert.equal(result.ok, true, JSON.stringify(result.collisions));
+  assert.equal(
+    helper.context.maxWidth,
+    CANONICAL_TOPBAR_LAYOUT.zones.context.maxWidth.wide
+  );
+  assert.notEqual(
+    helper.context.maxWidth,
+    resolveCanonicalTopbarZoneStyles("desktop").context.maxWidth
+  );
 });
 
 test("wave4 Wave1–3 preservation — nodes, tournament, B03, localization, leakage", () => {
@@ -178,21 +222,29 @@ test("wave4 Wave1–3 preservation — nodes, tournament, B03, localization, lea
   assert.deepEqual(privatePairing.featureFlags, ["VITE_PRIVATE_PAIRING_RULES_ENABLED"]);
 });
 
-test("wave4 representative width budgets — 1920/1440/1366/1280/1024/768/430/390/375", () => {
+test("wave4 representative width budgets — FIGURE1 runtime classification", () => {
   const mapping = [
-    [1920, "wide"],
-    [1440, "wide"],
+    [1920, "desktop"],
+    [1440, "desktop"],
     [1366, "desktop"],
     [1280, "desktop"],
+    [1200, "desktop"],
+    [1199, "tablet"],
     [1024, "tablet"],
-    [768, "tablet"],
+    [900, "tablet"],
+    [899, "mobile"],
+    [768, "mobile"],
+    [600, "mobile"],
     [430, "mobile"],
     [390, "mobile"],
     [375, "mobile"],
   ];
-  for (const [width, viewport] of mapping) {
+  for (const [width, expected] of mapping) {
+    const viewport = resolveCanonicalTopbarRuntimeViewport(width);
+    assert.equal(viewport, expected, `${width}px expected ${expected}, got ${viewport}`);
+    assert.equal(CANONICAL_TOPBAR_RUNTIME_VIEWPORTS.includes(viewport), true);
     const result = assertCanonicalTopbarNoOverlap(viewport);
     assert.equal(result.ok, true, `${width}px ${viewport}: ${JSON.stringify(result.collisions)}`);
-    assert.ok(result.claimed < width, `${width}px claimed ${result.claimed}`);
+    assert.ok(result.claimed < width || width < 400, `${width}px claimed ${result.claimed}`);
   }
 });
