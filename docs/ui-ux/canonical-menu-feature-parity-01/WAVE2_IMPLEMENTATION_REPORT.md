@@ -49,8 +49,14 @@
 | 09 | AI Assistant | 2 | 2 | 0 | Private pairing access unchanged; reject `/dev/*` |
 | 10 | Thông báo | 8 | 8 | 0 | Already complete |
 | 11 | Public Portal | 6 | 6 | 0 | PUBLIC_ONLY preserved |
-| 12 | Quản trị nền tảng | 11 | 25 | 14 | billing/marketplace/integrations admin hubs |
+| 12 | Quản trị nền tảng | 11 | 27 | 16 | billing/marketplace/integrations admin hubs |
 | 13 | Hỗ trợ | 1 | 3 | 2 | FAQ + guide |
+
+### Evidence arithmetic correction (independent review P3)
+
+Independent Wave 2 review found a **documentation-only** Group 12 arithmetic error (`11 → 25` / `promoted=14`).  
+**Runtime / source-of-truth remained correct** (`11 → 27` / `promoted=16`; overall still `94 → 120` with `TOTAL_WAVE2_PROMOTED_FEATURES=26`).  
+This section and the table above were corrected to match the recomputed Wave1→Wave2 menu diff. No `scripts/`, `src/`, `tests/`, or `CANONICAL_ROUTE_INVENTORY.json` changes were required.
 
 ## Promoted routes by group
 
