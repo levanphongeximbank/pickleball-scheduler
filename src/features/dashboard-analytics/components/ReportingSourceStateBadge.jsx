@@ -4,6 +4,7 @@ import {
   getReportingPresentationSourceStateLabel,
   REPORTING_PRESENTATION_SOURCE_STATE,
 } from "../../reporting-analytics/index.js";
+import { getTechnicalReasonUserMessage } from "../../canonical-shell/config/canonicalVietnameseLabels.js";
 
 const COLOR_BY_STATE = Object.freeze({
   [REPORTING_PRESENTATION_SOURCE_STATE.LIVE]: "success",
@@ -27,6 +28,7 @@ export default function ReportingSourceStateBadge({ sourceState, freshnessLabel 
   const label =
     sourceState?.label || getReportingPresentationSourceStateLabel(state);
   const reason = sourceState?.reason;
+  const reasonMessage = reason ? getTechnicalReasonUserMessage(reason) : null;
   const observedAt = sourceState?.observedAt || sourceState?.lastSuccessfulRefreshAt;
 
   return (
@@ -36,7 +38,7 @@ export default function ReportingSourceStateBadge({ sourceState, freshnessLabel 
       alignItems="center"
       flexWrap="wrap"
       role="status"
-      aria-label={`Trạng thái nguồn: ${label}${reason ? `, ${reason}` : ""}`}
+      aria-label={`Trạng thái nguồn: ${label}${reasonMessage ? `, ${reasonMessage}` : ""}`}
     >
       <Chip
         size="small"
@@ -44,9 +46,9 @@ export default function ReportingSourceStateBadge({ sourceState, freshnessLabel 
         color={COLOR_BY_STATE[state] || "default"}
         variant="outlined"
       />
-      {reason && (
+      {reasonMessage && (
         <Typography variant="caption" color="text.secondary" component="span">
-          {reason}
+          {reasonMessage}
         </Typography>
       )}
       {(freshnessLabel || observedAt) && (

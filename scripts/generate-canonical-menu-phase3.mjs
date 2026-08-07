@@ -106,7 +106,8 @@ for (const route of PARTIAL_ROUTES) {
   if (windowStart < 0 || windowEnd < 0) continue;
   let chunk = menuSrc.slice(windowStart, windowEnd);
   chunk = chunk.replace(/"visibilityStatus": "live"/, '"visibilityStatus": "partial"');
-  chunk = chunk.replace(/"badge": null/, '"badge": {\n        "label": "PARTIAL",\n        "tone": "partial"\n      }');
+  chunk = chunk.replace(/"badge": null/, '"badge": {\n        "label": "Một phần",\n        "tone": "partial"\n      }');
+  chunk = chunk.replace(/"badge": \{\s*"label": "PARTIAL"/, '"badge": {\n        "label": "Một phần"');
   menuSrc = menuSrc.slice(0, windowStart) + chunk + menuSrc.slice(windowEnd);
 }
 

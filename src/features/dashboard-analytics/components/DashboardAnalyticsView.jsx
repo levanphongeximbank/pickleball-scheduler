@@ -173,8 +173,8 @@ function StackHeader({ activeClub, user, timeRange }) {
           {activeClub?.name ? ` — ${activeClub.name}` : ""}.
         </Typography>
         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
-          Phần vận hành CLB bên dưới (nếu có) là nguồn legacy riêng — không đồng nghĩa toàn bộ
-          trang là Reporting LIVE.
+          Phần vận hành CLB bên dưới (nếu có) là nguồn riêng — không đồng nghĩa toàn bộ
+          trang đang dùng báo cáo trực tiếp.
         </Typography>
       </Box>
 

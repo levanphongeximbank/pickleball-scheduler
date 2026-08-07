@@ -4,32 +4,56 @@ import { Breadcrumbs, Link, Typography } from "@mui/material";
 import { useCanonicalShell } from "../hooks/useCanonicalShell.js";
 
 /**
- * Canonical breadcrumbs foundation — registry-driven trail.
+ * Canonical breadcrumbs — registry-driven trail with Wave 4 truncation.
+ * Parent zone owns maxWidth; crumbs never expand into the organization selector.
  */
 export default function CanonicalBreadcrumbs({ items = [] }) {
   const { palette } = useCanonicalShell();
 
   if (!items.length) return null;
 
+  const crumbSx = {
+    fontSize: 13,
+    maxWidth: "100%",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    display: "inline-block",
+    verticalAlign: "bottom",
+  };
+
   return (
     <Breadcrumbs
       aria-label="Đường dẫn điều hướng"
+      data-testid="canonical-breadcrumbs"
       sx={{
         fontSize: 13,
-        "& .MuiBreadcrumbs-separator": { color: palette.textSecondary },
-        maxWidth: { xs: 160, sm: 280, md: 420 },
+        width: "100%",
+        maxWidth: "100%",
         overflow: "hidden",
+        "& .MuiBreadcrumbs-ol": {
+          flexWrap: "nowrap",
+          overflow: "hidden",
+        },
+        "& .MuiBreadcrumbs-li": {
+          minWidth: 0,
+          maxWidth: "100%",
+          overflow: "hidden",
+        },
+        "& .MuiBreadcrumbs-separator": { color: palette.textSecondary, flexShrink: 0 },
       }}
     >
       {items.map((item, index) => {
         const isLast = index === items.length - 1;
+        const title = item.truncated ? undefined : item.label;
         if (isLast || !item.href) {
           return (
             <Typography
-              key={item.id || item.label}
+              key={item.id || `${item.label}-${index}`}
               color="text.primary"
-              sx={{ fontSize: 13, fontWeight: isLast ? 600 : 400 }}
+              title={title}
               aria-current={isLast ? "page" : undefined}
+              sx={{ ...crumbSx, fontWeight: isLast ? 600 : 400 }}
             >
               {item.label}
             </Typography>
@@ -37,12 +61,13 @@ export default function CanonicalBreadcrumbs({ items = [] }) {
         }
         return (
           <Link
-            key={item.id || item.label}
+            key={item.id || `${item.label}-${index}`}
             component={RouterLink}
             to={item.href}
             underline="hover"
             color="inherit"
-            sx={{ fontSize: 13, color: palette.textSecondary }}
+            title={title}
+            sx={{ ...crumbSx, color: palette.textSecondary }}
           >
             {item.label}
           </Link>

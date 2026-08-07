@@ -6,7 +6,7 @@ import { FEATURE_STATUS, menuFolder, menuLeaf } from "./menuBuilders.js";
 export const TENANT_MENU_ROOT = menuFolder({
   key: "tenant-billing-root",
   icon: "tenants",
-  text: "Tenant",
+  text: "Tổ chức",
   children: [
     menuLeaf({
       key: "billing-current-plan",

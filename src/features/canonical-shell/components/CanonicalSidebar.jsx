@@ -91,7 +91,7 @@ export default function CanonicalSidebar({ menuGroups = [] }) {
               {APP_PRODUCT_NAME}
             </Typography>
             <Chip
-              label="Figure 1"
+              label="Chuẩn"
               size="small"
               sx={{
                 height: 18,

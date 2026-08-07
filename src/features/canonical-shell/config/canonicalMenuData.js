@@ -1,10 +1,11 @@
-/** Auto-derived from Phase 1 CANONICAL_ROUTE_INVENTORY — Phase 2 foundation. Do not hand-edit route authority. */
+/** Auto-derived from Phase 1 CANONICAL_ROUTE_INVENTORY — Phase 2 foundation. Do not hand-edit route authority. Wave 3 labels from canonicalVietnameseLabels.js. */
 export const CANONICAL_MENU_DATA = Object.freeze({
   "meta": {
     "source": "docs/ui-ux/canonical-navigation/CANONICAL_ROUTE_INVENTORY.json",
-    "generatedAt": "2026-08-05T14:37:15.750Z",
+    "generatedAt": "2026-08-07T09:40:21.297Z",
     "phase": "3-menu-completion",
-    "proposedCanonicalMenuCount": 83
+    "proposedCanonicalMenuCount": 120,
+    "localizationWave": 3
   },
   "ownerDecisions": {
     "B01": {
@@ -28,7 +29,8 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "canonicalRouteFamily": "/tournaments/:id/*",
       "legacyRouteFamily": "/tournament/*",
       "disposition": "RETAIN_ALL_42_NO_REDIRECT",
-      "rule": "Phase 4 OD-B02: retain all 42 legacy /tournament/* routes; do not invent plural redirects or tournamentId"
+      "rule": "Phase 4 OD-B02: retain all legacy /tournament/* routes; do not invent plural redirects or tournamentId. Wave 1 permits only the explicit approved standalone hub allowlist in canonical menu surfaces.",
+      "menuExposure": "SAFE_HUB_ALLOWLIST_ONLY"
     },
     "B03": {
       "id": "B03",
@@ -68,7 +70,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     {
       "id": "06",
       "key": "rating-xep-hang",
-      "label": "Rating & Xếp hạng"
+      "label": "Xếp hạng"
     },
     {
       "id": "07",
@@ -83,7 +85,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     {
       "id": "09",
       "key": "ai-assistant",
-      "label": "AI Assistant"
+      "label": "Trợ lý AI"
     },
     {
       "id": "10",
@@ -93,7 +95,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     {
       "id": "11",
       "key": "public-portal",
-      "label": "Public Portal"
+      "label": "Cổng công khai"
     },
     {
       "id": "12",
@@ -207,13 +209,13 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     {
       "id": "nav__11__portal-home__home",
       "label": "Trang chủ",
-      "description": "Public Portal",
+      "description": "Cổng công khai",
       "icon": "dashboard",
       "route": "/home",
       "level1": "11",
-      "level1Label": "Public Portal",
+      "level1Label": "Cổng công khai",
       "level2": "portal-home",
-      "level2Label": "Trang chủ portal",
+      "level2Label": "Trang chủ cổng",
       "level3": "home",
       "children": [],
       "requiredRoles": [],
@@ -237,11 +239,11 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     {
       "id": "nav__11__portal-tournaments__list",
       "label": "Danh sách",
-      "description": "Public Portal",
+      "description": "Cổng công khai",
       "icon": "dashboard",
       "route": "/tournaments",
       "level1": "11",
-      "level1Label": "Public Portal",
+      "level1Label": "Cổng công khai",
       "level2": "portal-tournaments",
       "level2Label": "Giải đấu công khai",
       "level3": "list",
@@ -267,11 +269,11 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     {
       "id": "nav__11__portal-clubs__list",
       "label": "Danh sách",
-      "description": "Public Portal",
+      "description": "Cổng công khai",
       "icon": "dashboard",
       "route": "/clubs",
       "level1": "11",
-      "level1Label": "Public Portal",
+      "level1Label": "Cổng công khai",
       "level2": "portal-clubs",
       "level2Label": "CLB công khai",
       "level3": "list",
@@ -297,11 +299,11 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     {
       "id": "nav__11__portal-courts__list",
       "label": "Danh sách",
-      "description": "Public Portal",
+      "description": "Cổng công khai",
       "icon": "dashboard",
       "route": "/courts",
       "level1": "11",
-      "level1Label": "Public Portal",
+      "level1Label": "Cổng công khai",
       "level2": "portal-courts",
       "level2Label": "Sân công khai",
       "level3": "list",
@@ -326,12 +328,12 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__11__portal-rankings__public-bxh",
-      "label": "Public Bxh",
-      "description": "Public Portal",
+      "label": "BXH công khai",
+      "description": "Cổng công khai",
       "icon": "dashboard",
       "route": "/rankings",
       "level1": "11",
-      "level1Label": "Public Portal",
+      "level1Label": "Cổng công khai",
       "level2": "portal-rankings",
       "level2Label": "BXH công khai",
       "level3": "public-bxh",
@@ -357,11 +359,11 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     {
       "id": "nav__11__portal-news__list",
       "label": "Danh sách",
-      "description": "Public Portal",
+      "description": "Cổng công khai",
       "icon": "dashboard",
       "route": "/news",
       "level1": "11",
-      "level1Label": "Public Portal",
+      "level1Label": "Cổng công khai",
       "level2": "portal-news",
       "level2Label": "Tin tức",
       "level3": "list",
@@ -423,14 +425,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__06__vpr-admin__manage-rankings",
-      "label": "Quản lý ranking",
-      "description": "Rating & Xếp hạng",
+      "label": "Quản lý xếp hạng",
+      "description": "Xếp hạng",
       "icon": "ranking",
       "route": "/dashboard/rankings",
       "level1": "06",
-      "level1Label": "Rating & Xếp hạng",
+      "level1Label": "Xếp hạng",
       "level2": "vpr-admin",
-      "level2Label": "VPR / Ranking",
+      "level2Label": "Xếp hạng VPR",
       "level3": "manage-rankings",
       "children": [],
       "requiredRoles": [],
@@ -554,7 +556,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__02__bookings__manage-bookings",
-      "label": "Manage Bookings",
+      "label": "Quản lý đặt sân",
       "description": "Vận hành sân",
       "icon": "bookings",
       "route": "/court-management/bookings",
@@ -586,7 +588,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__07__venue-revenue__view-revenue",
-      "label": "View Revenue",
+      "label": "Xem doanh thu",
       "description": "Tài chính",
       "icon": "revenue",
       "route": "/court-management/revenue",
@@ -618,7 +620,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__03__customers__list-customers",
-      "label": "List Customers",
+      "label": "Danh sách khách hàng",
       "description": "Khách hàng & VĐV",
       "icon": "customers",
       "route": "/court-management/customers",
@@ -650,7 +652,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__03__members__list-members",
-      "label": "List Members",
+      "label": "Danh sách thành viên",
       "description": "Khách hàng & VĐV",
       "icon": "players",
       "route": "/court-management/members",
@@ -682,7 +684,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__02__courts__manage-courts",
-      "label": "Manage Courts",
+      "label": "Quản lý sân",
       "description": "Vận hành sân",
       "icon": "courts",
       "route": "/court-management/courts",
@@ -714,7 +716,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__02__waiting-list__pairing-queue",
-      "label": "Pairing Queue",
+      "label": "Hàng chờ ghép cặp",
       "description": "Vận hành sân",
       "icon": "waiting",
       "route": "/select-players",
@@ -746,14 +748,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__02__director__court-director",
-      "label": "Court Director",
+      "label": "Điều hành sân",
       "description": "Vận hành sân",
       "icon": "dashboard",
       "route": "/court-engine",
       "level1": "02",
       "level1Label": "Vận hành sân",
       "level2": "director",
-      "level2Label": "Director",
+      "level2Label": "Điều hành sân",
       "level3": "court-director",
       "children": [],
       "requiredRoles": [],
@@ -779,7 +781,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__02__check-in__mobile-checkin",
-      "label": "Mobile Checkin",
+      "label": "Check-in di động",
       "description": "Vận hành sân",
       "icon": "dashboard",
       "route": "/mobile/check-in",
@@ -811,7 +813,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__02__check-in__qr-scan",
-      "label": "Qr Scan",
+      "label": "Quét mã QR",
       "description": "Vận hành sân",
       "icon": "dashboard",
       "route": "/mobile/qr-scan",
@@ -844,14 +846,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__03__player-mobile__player-home",
-      "label": "Player Home",
+      "label": "Trang VĐV",
       "description": "Khách hàng & VĐV",
       "icon": "mobile",
       "route": "/mobile/player",
       "level1": "03",
       "level1Label": "Khách hàng & VĐV",
       "level2": "player-mobile",
-      "level2Label": "Player mobile",
+      "level2Label": "VĐV di động",
       "level3": "player-home",
       "children": [],
       "requiredRoles": [],
@@ -874,14 +876,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__01__mobile-ops__ops-dashboard",
-      "label": "Ops Dashboard",
+      "label": "Tổng quan vận hành",
       "description": "Tổng quan",
       "icon": "mobile",
       "route": "/mobile/operations",
       "level1": "01",
       "level1Label": "Tổng quan",
       "level2": "mobile-ops",
-      "level2Label": "Vận hành mobile",
+      "level2Label": "Vận hành di động",
       "level3": "ops-dashboard",
       "children": [],
       "requiredRoles": [],
@@ -908,7 +910,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__10__notification-settings__mobile-settings",
-      "label": "Mobile Settings",
+      "label": "Cài đặt thông báo",
       "description": "Thông báo",
       "icon": "notifications",
       "route": "/mobile/notifications",
@@ -938,7 +940,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__03__athletes__staff-directory",
-      "label": "Staff Directory",
+      "label": "Danh sách nhân sự",
       "description": "Khách hàng & VĐV",
       "icon": "players",
       "route": "/players",
@@ -970,12 +972,12 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__06__skill-levels__staff-skill-view",
-      "label": "Staff Skill View",
-      "description": "Rating & Xếp hạng",
+      "label": "Trình độ nhân sự",
+      "description": "Xếp hạng",
       "icon": "skill",
       "route": "/players/skill",
       "level1": "06",
-      "level1Label": "Rating & Xếp hạng",
+      "level1Label": "Xếp hạng",
       "level2": "skill-levels",
       "level2Label": "Trình độ",
       "level3": "staff-skill-view",
@@ -1002,7 +1004,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__03__profile__my-profile",
-      "label": "My Profile",
+      "label": "Hồ sơ của tôi",
       "description": "Khách hàng & VĐV",
       "icon": "profile",
       "route": "/profile",
@@ -1032,7 +1034,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__03__athletes__directory",
-      "label": "Directory",
+      "label": "Danh bạ VĐV",
       "description": "Khách hàng & VĐV",
       "icon": "players",
       "route": "/athletes",
@@ -1062,12 +1064,12 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__06__skill-levels__player-skill-view",
-      "label": "Player Skill View",
-      "description": "Rating & Xếp hạng",
+      "label": "Trình độ của tôi",
+      "description": "Xếp hạng",
       "icon": "skill",
       "route": "/player/skill",
       "level1": "06",
-      "level1Label": "Rating & Xếp hạng",
+      "level1Label": "Xếp hạng",
       "level2": "skill-levels",
       "level2Label": "Trình độ",
       "level3": "player-skill-view",
@@ -1092,12 +1094,12 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__06__skill-assessment__first-assessment",
-      "label": "First Assessment",
-      "description": "Rating & Xếp hạng",
+      "label": "Đánh giá lần đầu",
+      "description": "Xếp hạng",
       "icon": "skill",
       "route": "/player/skill-assessment",
       "level1": "06",
-      "level1Label": "Rating & Xếp hạng",
+      "level1Label": "Xếp hạng",
       "level2": "skill-assessment",
       "level2Label": "Đánh giá trình độ",
       "level3": "first-assessment",
@@ -1122,7 +1124,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__04__club-ops__club-management",
-      "label": "Club Management",
+      "label": "Quản lý CLB",
       "description": "CLB & Huấn luyện",
       "icon": "club",
       "route": "/club",
@@ -1154,7 +1156,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__04__club-governance__manage-clubs",
-      "label": "Manage Clubs",
+      "label": "Quản trị CLB",
       "description": "CLB & Huấn luyện",
       "icon": "club",
       "route": "/manage/clubs",
@@ -1186,7 +1188,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__12__platform-clubs__all-clubs",
-      "label": "All Clubs",
+      "label": "Tất cả CLB",
       "description": "Quản trị nền tảng",
       "icon": "club",
       "route": "/platform/clubs",
@@ -1218,7 +1220,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__04__club-discovery__discover",
-      "label": "Discover",
+      "label": "Khám phá CLB",
       "description": "CLB & Huấn luyện",
       "icon": "club",
       "route": "/discover-clubs",
@@ -1250,7 +1252,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__04__my-club__my-club-home",
-      "label": "My Club Home",
+      "label": "CLB của tôi",
       "description": "CLB & Huấn luyện",
       "icon": "club",
       "route": "/my-club",
@@ -1280,7 +1282,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__04__my-club__membership-requests",
-      "label": "Membership Requests",
+      "label": "Yêu cầu thành viên",
       "description": "CLB & Huấn luyện",
       "icon": "club",
       "route": "/my-club/requests",
@@ -1310,14 +1312,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__05__daily-play__launcher",
-      "label": "Launcher",
+      "label": "Mở phiên",
       "description": "Giải đấu",
       "icon": "daily",
       "route": "/daily-play",
       "level1": "05",
       "level1Label": "Giải đấu",
       "level2": "daily-play",
-      "level2Label": "Daily Play",
+      "level2Label": "Chơi hằng ngày",
       "level3": "launcher",
       "children": [],
       "requiredRoles": [],
@@ -1342,8 +1344,374 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       ]
     },
     {
+      "id": "nav__05__tournament-hub__overview",
+      "label": "Tổng quan",
+      "description": "Giải đấu",
+      "icon": "dashboard",
+      "route": "/tournament",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-hub",
+      "level2Label": "Quản lý giải đấu",
+      "level3": "overview",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-hub__list",
+      "label": "Danh sách giải",
+      "description": "Giải đấu",
+      "icon": "tournament-list",
+      "route": "/tournament/list",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-hub",
+      "level2Label": "Quản lý giải đấu",
+      "level3": "list",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-hub__create",
+      "label": "Tạo giải",
+      "description": "Giải đấu",
+      "icon": "tournament-create",
+      "route": "/tournament/create",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-hub",
+      "level2Label": "Quản lý giải đấu",
+      "level3": "create",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.create"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-preparation__types",
+      "label": "Loại giải",
+      "description": "Giải đấu",
+      "icon": "groups",
+      "route": "/tournament/types",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-preparation",
+      "level2Label": "Chuẩn bị giải",
+      "level3": "types",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate",
+        "player-blocked"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-preparation__roster",
+      "label": "Danh sách VĐV",
+      "description": "Giải đấu",
+      "icon": "players",
+      "route": "/tournament/roster",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-preparation",
+      "level2Label": "Chuẩn bị giải",
+      "level3": "roster",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-preparation__register",
+      "label": "Đăng ký",
+      "description": "Giải đấu",
+      "icon": "profile",
+      "route": "/tournament/register",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-preparation",
+      "level2Label": "Chuẩn bị giải",
+      "level3": "register",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-operations__organize",
+      "label": "Tổ chức giải",
+      "description": "Giải đấu",
+      "icon": "tournament-schedule",
+      "route": "/tournament/organize",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-operations",
+      "level2Label": "Tổ chức & điều hành",
+      "level3": "organize",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-operations__operations",
+      "label": "Điều hành giải",
+      "description": "Giải đấu",
+      "icon": "referee",
+      "route": "/tournament/operations",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-operations",
+      "level2Label": "Tổ chức & điều hành",
+      "level3": "operations",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate",
+        "player-blocked"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-operations__results",
+      "label": "Kết quả",
+      "description": "Giải đấu",
+      "icon": "statistics",
+      "route": "/tournament/results",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-operations",
+      "level2Label": "Tổ chức & điều hành",
+      "level3": "results",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-operations__config",
+      "label": "Cấu hình",
+      "description": "Giải đấu",
+      "icon": "settings",
+      "route": "/tournament/config",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-operations",
+      "level2Label": "Tổ chức & điều hành",
+      "level3": "config",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate",
+        "player-blocked"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-player-portal__my-tournaments",
+      "label": "Giải của tôi",
+      "description": "Giải đấu",
+      "icon": "profile",
+      "route": "/tournament/my",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-player-portal",
+      "level2Label": "Giải của tôi",
+      "level3": "my-tournaments",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
       "id": "nav__04__coaching__coach-directory",
-      "label": "Coach Directory",
+      "label": "Danh sách HLV",
       "description": "CLB & Huấn luyện",
       "icon": "coach",
       "route": "/coaching/coaches",
@@ -1373,7 +1741,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__04__coaching__coach-list-player",
-      "label": "Coach List Player",
+      "label": "HLV cho VĐV",
       "description": "CLB & Huấn luyện",
       "icon": "coach",
       "route": "/coaching/coach-list",
@@ -1403,7 +1771,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__04__coaching__register-package",
-      "label": "Register Package",
+      "label": "Đăng ký gói",
       "description": "CLB & Huấn luyện",
       "icon": "coach",
       "route": "/coaching/register",
@@ -1433,7 +1801,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__04__coaching__students",
-      "label": "Students",
+      "label": "Học viên",
       "description": "CLB & Huấn luyện",
       "icon": "coach",
       "route": "/coaching/students",
@@ -1463,7 +1831,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__04__coaching__classes",
-      "label": "Classes",
+      "label": "Lớp học",
       "description": "CLB & Huấn luyện",
       "icon": "coach",
       "route": "/coaching/classes",
@@ -1523,7 +1891,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__04__coaching__packages",
-      "label": "Packages",
+      "label": "Gói huấn luyện",
       "description": "CLB & Huấn luyện",
       "icon": "coach",
       "route": "/coaching/packages",
@@ -1553,7 +1921,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__04__coaching__attendance",
-      "label": "Attendance",
+      "label": "Điểm danh",
       "description": "CLB & Huấn luyện",
       "icon": "coach",
       "route": "/coaching/attendance",
@@ -1583,7 +1951,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__04__coaching__evaluations",
-      "label": "Evaluations",
+      "label": "Đánh giá",
       "description": "CLB & Huấn luyện",
       "icon": "coach",
       "route": "/coaching/evaluations",
@@ -1613,14 +1981,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__05__tournament-engine__engine",
-      "label": "Engine",
+      "label": "Công cụ giải",
       "description": "Giải đấu",
       "icon": "tournament",
       "route": "/tournaments/:tournamentId/engine",
       "level1": "05",
       "level1Label": "Giải đấu",
       "level2": "tournament-engine",
-      "level2Label": "Tournament Engine",
+      "level2Label": "Công cụ giải đấu",
       "level3": "engine",
       "children": [],
       "requiredRoles": [],
@@ -1653,7 +2021,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "level1": "05",
       "level1Label": "Giải đấu",
       "level2": "tournament-engine",
-      "level2Label": "Tournament Engine",
+      "level2Label": "Công cụ giải đấu",
       "level3": "seed",
       "children": [],
       "requiredRoles": [],
@@ -1686,7 +2054,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "level1": "05",
       "level1Label": "Giải đấu",
       "level2": "tournament-engine",
-      "level2Label": "Tournament Engine",
+      "level2Label": "Công cụ giải đấu",
       "level3": "draw",
       "children": [],
       "requiredRoles": [],
@@ -1719,7 +2087,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "level1": "05",
       "level1Label": "Giải đấu",
       "level2": "tournament-engine",
-      "level2Label": "Tournament Engine",
+      "level2Label": "Công cụ giải đấu",
       "level3": "schedule",
       "children": [],
       "requiredRoles": [],
@@ -1752,7 +2120,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "level1": "05",
       "level1Label": "Giải đấu",
       "level2": "tournament-engine",
-      "level2Label": "Tournament Engine",
+      "level2Label": "Công cụ giải đấu",
       "level3": "courts",
       "children": [],
       "requiredRoles": [],
@@ -1785,7 +2153,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "level1": "05",
       "level1Label": "Giải đấu",
       "level2": "tournament-engine",
-      "level2Label": "Tournament Engine",
+      "level2Label": "Công cụ giải đấu",
       "level3": "ranking",
       "children": [],
       "requiredRoles": [],
@@ -1818,7 +2186,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "level1": "05",
       "level1Label": "Giải đấu",
       "level2": "tournament-engine",
-      "level2Label": "Tournament Engine",
+      "level2Label": "Công cụ giải đấu",
       "level3": "logs",
       "children": [],
       "requiredRoles": [],
@@ -1844,7 +2212,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__05__referee__hub",
-      "label": "Hub",
+      "label": "Trọng tài",
       "description": "Giải đấu",
       "icon": "referee",
       "route": "/referee",
@@ -1877,7 +2245,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__07__subscription__current-plan",
-      "label": "Current Plan",
+      "label": "Gói hiện tại",
       "description": "Tài chính",
       "icon": "billing",
       "route": "/billing/current-plan",
@@ -1909,7 +2277,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__07__payments__payment",
-      "label": "Payment",
+      "label": "Thanh toán",
       "description": "Tài chính",
       "icon": "payments",
       "route": "/billing/payment",
@@ -1941,7 +2309,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__07__subscription__upgrade",
-      "label": "Upgrade",
+      "label": "Nâng cấp gói",
       "description": "Tài chính",
       "icon": "billing",
       "route": "/billing/upgrade",
@@ -1973,7 +2341,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__07__finance__debt",
-      "label": "Debt",
+      "label": "Công nợ",
       "description": "Tài chính",
       "icon": "finance",
       "route": "/finance/debt",
@@ -2005,7 +2373,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__07__finance__receipts",
-      "label": "Receipts",
+      "label": "Biên lai",
       "description": "Tài chính",
       "icon": "finance",
       "route": "/finance/receipts",
@@ -2037,7 +2405,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__07__finance__refunds",
-      "label": "Refunds",
+      "label": "Hoàn tiền",
       "description": "Tài chính",
       "icon": "finance",
       "route": "/finance/refunds",
@@ -2069,14 +2437,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__07__marketplace__orders",
-      "label": "Orders",
+      "label": "Đơn hàng",
       "description": "Tài chính",
       "icon": "marketplace",
       "route": "/marketplace/orders",
       "level1": "07",
       "level1Label": "Tài chính",
       "level2": "marketplace",
-      "level2Label": "Marketplace",
+      "level2Label": "Cửa hàng",
       "level3": "orders",
       "children": [],
       "requiredRoles": [],
@@ -2103,7 +2471,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__08__reports__reports-hub",
-      "label": "Reports Hub",
+      "label": "Trung tâm báo cáo",
       "description": "Báo cáo & Phân tích",
       "icon": "reports",
       "route": "/reports",
@@ -2124,7 +2492,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "mobileVisible": true,
       "desktopVisible": true,
       "badge": {
-        "label": "PARTIAL",
+        "label": "Một phần",
         "tone": "partial"
       },
       "proposedCanonicalMenu": true,
@@ -2139,14 +2507,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__09__ai-hub__assistant",
-      "label": "Assistant",
-      "description": "AI Assistant",
+      "label": "Trợ lý AI",
+      "description": "Trợ lý AI",
       "icon": "ai",
       "route": "/ai",
       "level1": "09",
-      "level1Label": "AI Assistant",
+      "level1Label": "Trợ lý AI",
       "level2": "ai-hub",
-      "level2Label": "AI Assistant",
+      "level2Label": "Trợ lý AI",
       "level3": "assistant",
       "children": [],
       "requiredRoles": [],
@@ -2171,7 +2539,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__10__notifications__center",
-      "label": "Center",
+      "label": "Trung tâm thông báo",
       "description": "Thông báo",
       "icon": "notifications",
       "route": "/notifications",
@@ -2202,7 +2570,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     {
       "id": "nav__10__messaging__inbox",
       "label": "Tin nhắn",
-      "description": "Messaging Experience — giao tiếp trực tiếp / CLB / cộng đồng",
+      "description": "Thông báo",
       "icon": "chat",
       "route": "/messages",
       "level1": "10",
@@ -2232,8 +2600,8 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__10__crm__crm-messages",
-      "label": "CRM Messages",
-      "description": "CRM outreach — soạn tin nhắn khách hàng (local)",
+      "label": "Tin nhắn CRM",
+      "description": "Thông báo",
       "icon": "crm",
       "route": "/crm/messages",
       "level1": "10",
@@ -2253,7 +2621,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "mobileVisible": true,
       "desktopVisible": true,
       "badge": {
-        "label": "PARTIAL",
+        "label": "Một phần",
         "tone": "partial"
       },
       "proposedCanonicalMenu": true,
@@ -2269,7 +2637,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__10__crm__templates",
-      "label": "Templates",
+      "label": "Mẫu tin",
       "description": "Thông báo",
       "icon": "crm",
       "route": "/crm/templates",
@@ -2289,7 +2657,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "mobileVisible": true,
       "desktopVisible": true,
       "badge": {
-        "label": "PARTIAL",
+        "label": "Một phần",
         "tone": "partial"
       },
       "proposedCanonicalMenu": true,
@@ -2304,7 +2672,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__10__crm__campaigns",
-      "label": "Campaigns",
+      "label": "Chiến dịch",
       "description": "Thông báo",
       "icon": "crm",
       "route": "/crm/campaigns",
@@ -2324,7 +2692,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "mobileVisible": true,
       "desktopVisible": true,
       "badge": {
-        "label": "PARTIAL",
+        "label": "Một phần",
         "tone": "partial"
       },
       "proposedCanonicalMenu": true,
@@ -2339,7 +2707,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__10__crm__history",
-      "label": "History",
+      "label": "Lịch sử",
       "description": "Thông báo",
       "icon": "crm",
       "route": "/crm/history",
@@ -2359,7 +2727,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "mobileVisible": true,
       "desktopVisible": true,
       "badge": {
-        "label": "PARTIAL",
+        "label": "Một phần",
         "tone": "partial"
       },
       "proposedCanonicalMenu": true,
@@ -2374,7 +2742,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__10__crm__booking-reminders",
-      "label": "Booking Reminders",
+      "label": "Nhắc đặt sân",
       "description": "Thông báo",
       "icon": "crm",
       "route": "/crm/reminders/booking",
@@ -2395,7 +2763,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "mobileVisible": true,
       "desktopVisible": true,
       "badge": {
-        "label": "PARTIAL",
+        "label": "Một phần",
         "tone": "partial"
       },
       "proposedCanonicalMenu": true,
@@ -2410,7 +2778,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__13__support__hub",
-      "label": "Hub",
+      "label": "Trung tâm hỗ trợ",
       "description": "Hỗ trợ",
       "icon": "support",
       "route": "/support",
@@ -2443,14 +2811,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__12__identity__users",
-      "label": "Users",
+      "label": "Người dùng",
       "description": "Quản trị nền tảng",
       "icon": "admin",
       "route": "/users",
       "level1": "12",
       "level1Label": "Quản trị nền tảng",
       "level2": "identity",
-      "level2Label": "Identity / Users",
+      "level2Label": "Danh tính & Người dùng",
       "level3": "users",
       "children": [],
       "requiredRoles": [],
@@ -2476,14 +2844,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__12__identity__player-verification",
-      "label": "Player Verification",
+      "label": "Xác minh VĐV",
       "description": "Quản trị nền tảng",
       "icon": "admin",
       "route": "/users/verification",
       "level1": "12",
       "level1Label": "Quản trị nền tảng",
       "level2": "identity",
-      "level2Label": "Identity / Users",
+      "level2Label": "Danh tính & Người dùng",
       "level3": "player-verification",
       "children": [],
       "requiredRoles": [],
@@ -2508,14 +2876,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__12__identity__roles-permissions",
-      "label": "Roles Permissions",
+      "label": "Vai trò & quyền",
       "description": "Quản trị nền tảng",
       "icon": "admin",
       "route": "/admin/roles",
       "level1": "12",
       "level1Label": "Quản trị nền tảng",
       "level2": "identity",
-      "level2Label": "Identity / Users",
+      "level2Label": "Danh tính & Người dùng",
       "level3": "roles-permissions",
       "children": [],
       "requiredRoles": [],
@@ -2541,14 +2909,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__12__audit__activity-log",
-      "label": "Activity Log",
+      "label": "Nhật ký kiểm tra",
       "description": "Quản trị nền tảng",
       "icon": "audit",
       "route": "/audit",
       "level1": "12",
       "level1Label": "Quản trị nền tảng",
       "level2": "audit",
-      "level2Label": "Audit",
+      "level2Label": "Nhật ký kiểm tra",
       "level3": "activity-log",
       "children": [],
       "requiredRoles": [],
@@ -2573,14 +2941,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__12__tenants__manage-tenants",
-      "label": "Manage Tenants",
+      "label": "Quản lý tổ chức",
       "description": "Quản trị nền tảng",
       "icon": "tenant",
       "route": "/admin/tenants",
       "level1": "12",
       "level1Label": "Quản trị nền tảng",
       "level2": "tenants",
-      "level2Label": "Tenants",
+      "level2Label": "Tổ chức",
       "level3": "manage-tenants",
       "children": [],
       "requiredRoles": [],
@@ -2605,7 +2973,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__12__infrastructure__court-clusters",
-      "label": "Court Clusters",
+      "label": "Cụm sân",
       "description": "Quản trị nền tảng",
       "icon": "admin",
       "route": "/admin/court-clusters",
@@ -2639,14 +3007,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__12__venue-config__operating-hours",
-      "label": "Operating Hours",
+      "label": "Giờ hoạt động",
       "description": "Quản trị nền tảng",
       "icon": "dashboard",
       "route": "/admin/hours",
       "level1": "12",
       "level1Label": "Quản trị nền tảng",
       "level2": "venue-config",
-      "level2Label": "Venue Config",
+      "level2Label": "Cấu hình sân",
       "level3": "operating-hours",
       "children": [],
       "requiredRoles": [],
@@ -2671,12 +3039,12 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__06__skill-approval__requests-queue",
-      "label": "Requests Queue",
-      "description": "Rating & Xếp hạng",
+      "label": "Hàng chờ duyệt",
+      "description": "Xếp hạng",
       "icon": "skill",
       "route": "/admin/skill-level-requests",
       "level1": "06",
-      "level1Label": "Rating & Xếp hạng",
+      "level1Label": "Xếp hạng",
       "level2": "skill-approval",
       "level2Label": "Duyệt trình độ",
       "level3": "requests-queue",
@@ -2701,14 +3069,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__06__vpr-admin__certify-tournaments",
-      "label": "Certify Tournaments",
-      "description": "Rating & Xếp hạng",
+      "label": "Chứng nhận giải",
+      "description": "Xếp hạng",
       "icon": "ranking",
       "route": "/admin/tournament-certifications",
       "level1": "06",
-      "level1Label": "Rating & Xếp hạng",
+      "level1Label": "Xếp hạng",
       "level2": "vpr-admin",
-      "level2Label": "VPR / Ranking",
+      "level2Label": "Xếp hạng VPR",
       "level3": "certify-tournaments",
       "children": [],
       "requiredRoles": [],
@@ -2733,14 +3101,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__12__identity__staff",
-      "label": "Staff",
+      "label": "Nhân sự",
       "description": "Quản trị nền tảng",
       "icon": "admin",
       "route": "/admin/staff",
       "level1": "12",
       "level1Label": "Quản trị nền tảng",
       "level2": "identity",
-      "level2Label": "Identity / Users",
+      "level2Label": "Danh tính & Người dùng",
       "level3": "staff",
       "children": [],
       "requiredRoles": [],
@@ -2765,14 +3133,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__09__private-pairing__admin-rules",
-      "label": "Admin Rules",
-      "description": "AI Assistant",
+      "label": "Quy tắc quản trị",
+      "description": "Trợ lý AI",
       "icon": "pairing",
       "route": "/admin/ai-pairing/private-rules",
       "level1": "09",
-      "level1Label": "AI Assistant",
+      "level1Label": "Trợ lý AI",
       "level2": "private-pairing",
-      "level2Label": "Private Pairing Rules",
+      "level2Label": "Quy tắc ghép cặp riêng",
       "level3": "admin-rules",
       "children": [],
       "requiredRoles": [
@@ -2803,7 +3171,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__12__settings__venue-settings",
-      "label": "Venue Settings",
+      "label": "Cài đặt sân",
       "description": "Quản trị nền tảng",
       "icon": "dashboard",
       "route": "/settings",
@@ -2835,7 +3203,7 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__12__integrations__integration-settings",
-      "label": "Integration Settings",
+      "label": "Cài đặt tích hợp",
       "description": "Quản trị nền tảng",
       "icon": "dashboard",
       "route": "/settings/integrations",
@@ -2863,6 +3231,825 @@ export const CANONICAL_MENU_DATA = Object.freeze({
         "RBAC_SCOPED"
       ],
       "sidebar": "system-tech",
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__02__ops-log__view-log",
+      "label": "Nhật ký vận hành",
+      "description": "Vận hành sân",
+      "icon": "dashboard",
+      "route": "/court-management/ops-log",
+      "level1": "02",
+      "level1Label": "Vận hành sân",
+      "level2": "ops-log",
+      "level2Label": "Nhật ký vận hành",
+      "level3": "view-log",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "court.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__02__courts__future-courts",
+      "label": "Sân tương lai",
+      "description": "Vận hành sân",
+      "icon": "courts",
+      "route": "/court-management/future",
+      "level1": "02",
+      "level1Label": "Vận hành sân",
+      "level2": "courts",
+      "level2Label": "Danh sách sân",
+      "level3": "future-courts",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "court.update",
+        "venue.update"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__02__check-in__qr-generate",
+      "label": "Tạo mã QR",
+      "description": "Vận hành sân",
+      "icon": "dashboard",
+      "route": "/mobile/qr-generate",
+      "level1": "02",
+      "level1Label": "Vận hành sân",
+      "level2": "check-in",
+      "level2Label": "Check-in",
+      "level3": "qr-generate",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.update"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "MobileRouteGate"
+      ]
+    },
+    {
+      "id": "nav__03__customer-groups__manage-groups",
+      "label": "Nhóm khách hàng",
+      "description": "Khách hàng & VĐV",
+      "icon": "customers",
+      "route": "/court-management/customer-groups",
+      "level1": "03",
+      "level1Label": "Khách hàng & VĐV",
+      "level2": "customer-groups",
+      "level2Label": "Nhóm khách hàng",
+      "level3": "manage-groups",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "court.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__07__billing__billing-root",
+      "label": "Thanh toán gói",
+      "description": "Tài chính",
+      "icon": "billing",
+      "route": "/billing",
+      "level1": "07",
+      "level1Label": "Tài chính",
+      "level2": "billing",
+      "level2Label": "Thanh toán gói",
+      "level3": "billing-root",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__07__subscription__invoices",
+      "label": "Hóa đơn",
+      "description": "Tài chính",
+      "icon": "billing",
+      "route": "/billing/invoices",
+      "level1": "07",
+      "level1Label": "Tài chính",
+      "level2": "subscription",
+      "level2Label": "Gói đăng ký",
+      "level3": "invoices",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.invoice.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__07__subscription__usage",
+      "label": "Mức sử dụng",
+      "description": "Tài chính",
+      "icon": "billing",
+      "route": "/billing/usage",
+      "level1": "07",
+      "level1Label": "Tài chính",
+      "level2": "subscription",
+      "level2Label": "Gói đăng ký",
+      "level3": "usage",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__07__marketplace__catalog",
+      "label": "Cửa hàng",
+      "description": "Tài chính",
+      "icon": "marketplace",
+      "route": "/marketplace",
+      "level1": "07",
+      "level1Label": "Tài chính",
+      "level2": "marketplace",
+      "level2Label": "Cửa hàng",
+      "level3": "catalog",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "marketplace.view"
+      ],
+      "featureFlags": [
+        "VITE_MARKETPLACE_ENABLED"
+      ],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": "flag-gated",
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__billing-admin__admin-billing",
+      "label": "Thanh toán nền tảng",
+      "description": "Quản trị nền tảng",
+      "icon": "billing",
+      "route": "/admin/billing",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "billing-admin",
+      "level2Label": "Thanh toán nền tảng",
+      "level3": "admin-billing",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.manage"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__billing-admin__tenant-billing",
+      "label": "Thanh toán theo tổ chức",
+      "description": "Quản trị nền tảng",
+      "icon": "billing",
+      "route": "/admin/billing/tenants",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "billing-admin",
+      "level2Label": "Thanh toán nền tảng",
+      "level3": "tenant-billing",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.manage"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__billing-admin__plans",
+      "label": "Gói dịch vụ",
+      "description": "Quản trị nền tảng",
+      "icon": "billing",
+      "route": "/admin/billing/plans",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "billing-admin",
+      "level2Label": "Thanh toán nền tảng",
+      "level3": "plans",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.plan.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__billing-admin__invoices",
+      "label": "Hóa đơn quản trị",
+      "description": "Quản trị nền tảng",
+      "icon": "billing",
+      "route": "/admin/billing/invoices",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "billing-admin",
+      "level2Label": "Thanh toán nền tảng",
+      "level3": "invoices",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.invoice.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__billing-admin__payments",
+      "label": "Thanh toán quản trị",
+      "description": "Quản trị nền tảng",
+      "icon": "billing",
+      "route": "/admin/billing/payments",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "billing-admin",
+      "level2Label": "Thanh toán nền tảng",
+      "level3": "payments",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.payment.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__billing-admin__audit",
+      "label": "Nhật ký thanh toán",
+      "description": "Quản trị nền tảng",
+      "icon": "audit",
+      "route": "/admin/billing/audit",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "billing-admin",
+      "level2Label": "Thanh toán nền tảng",
+      "level3": "audit",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.audit.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__marketplace-admin__admin-root",
+      "label": "Quản trị cửa hàng",
+      "description": "Quản trị nền tảng",
+      "icon": "marketplace",
+      "route": "/admin/marketplace",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "marketplace-admin",
+      "level2Label": "Quản trị cửa hàng",
+      "level3": "admin-root",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__marketplace-admin__products",
+      "label": "Sản phẩm cửa hàng",
+      "description": "Quản trị nền tảng",
+      "icon": "marketplace",
+      "route": "/admin/marketplace/products",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "marketplace-admin",
+      "level2Label": "Quản trị cửa hàng",
+      "level3": "products",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__marketplace-admin__orders",
+      "label": "Đơn hàng cửa hàng",
+      "description": "Quản trị nền tảng",
+      "icon": "marketplace",
+      "route": "/admin/marketplace/orders",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "marketplace-admin",
+      "level2Label": "Quản trị cửa hàng",
+      "level3": "orders",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__integration-logs",
+      "label": "Nhật ký tích hợp",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/admin/integration-logs",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "integration-logs",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__payment-transactions",
+      "label": "Giao dịch thanh toán",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/admin/payment-transactions",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "payment-transactions",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__webhooks",
+      "label": "Sự kiện tích hợp",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/admin/webhook-events",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "webhooks",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__api-clients",
+      "label": "Máy khách API",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/admin/api-clients",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "api-clients",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [
+        "VITE_API_ENABLED"
+      ],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": "system-tech",
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__api-logs",
+      "label": "Nhật ký API",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/admin/api-logs",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "api-logs",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [
+        "VITE_API_ENABLED"
+      ],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": "system-tech",
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__payment-integrations",
+      "label": "Tích hợp thanh toán",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/settings/integrations/payments",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "payment-integrations",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "integration.manage"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__zalo-oa",
+      "label": "Tích hợp Zalo OA",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/settings/integrations/zalo-oa",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "zalo-oa",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "integration.manage"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__13__support__guide",
+      "label": "Hướng dẫn sử dụng",
+      "description": "Hỗ trợ",
+      "icon": "support",
+      "route": "/support/guide",
+      "level1": "13",
+      "level1Label": "Hỗ trợ",
+      "level2": "support",
+      "level2Label": "Hỗ trợ",
+      "level3": "guide",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__13__support__faq",
+      "label": "Câu hỏi thường gặp",
+      "description": "Hỗ trợ",
+      "icon": "support",
+      "route": "/support/faq",
+      "level1": "13",
+      "level1Label": "Hỗ trợ",
+      "level2": "support",
+      "level2Label": "Hỗ trợ",
+      "level3": "faq",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
       "guards": [
         "RouteAccessGate"
       ]

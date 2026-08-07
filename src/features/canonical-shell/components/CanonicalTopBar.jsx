@@ -19,34 +19,43 @@ import { buildCanonicalMenuTree } from "../config/canonicalMenuRegistry.js";
 import { useCanonicalShell } from "../hooks/useCanonicalShell.js";
 import { useTenant } from "../../../context/TenantContext.jsx";
 import { useAuth } from "../../../context/AuthContext.jsx";
+import {
+  collapseCanonicalBreadcrumbItems,
+  resolveCanonicalTopbarZoneStyles,
+} from "../layout/canonicalTopbarLayout.js";
 
 /**
  * Compact Figure 1 top navigation (56px).
+ * Wave 4: zone-based flex layout — breadcrumbs / organization / search / actions
+ * never share unconstrained width (closes OBSERVATION_CANONICAL_TOPBAR_01).
  */
 export default function CanonicalTopBar() {
   const location = useLocation();
   const params = useParams();
   const auth = useAuth();
-  const { palette, layout, isMobile, openMobileDrawer, menuTriggerRef } = useCanonicalShell();
+  const { palette, layout, isMobile, isTablet, openMobileDrawer, menuTriggerRef } =
+    useCanonicalShell();
   const { isSuperAdmin } = useTenant();
 
-  // Breadcrumbs match against the full registry so contextual parameterized
-  // routes still resolve labels; auth prevents unauthorized label leaks.
+  const viewport = isMobile ? "mobile" : isTablet ? "tablet" : "desktop";
+  const zones = useMemo(() => resolveCanonicalTopbarZoneStyles(viewport), [viewport]);
+
   const registryTree = useMemo(() => buildCanonicalMenuTree(), []);
-  const breadcrumbs = useMemo(
-    () =>
-      buildCanonicalBreadcrumbs(location.pathname, {
-        tree: registryTree,
-        auth,
-        params,
-      }),
-    [location.pathname, registryTree, auth, params]
-  );
+  const breadcrumbs = useMemo(() => {
+    const full = buildCanonicalBreadcrumbs(location.pathname, {
+      tree: registryTree,
+      auth,
+      params,
+    });
+    return collapseCanonicalBreadcrumbItems(full, zones.breadcrumb.maxItems);
+  }, [location.pathname, registryTree, auth, params, zones.breadcrumb.maxItems]);
 
   return (
     <AppBar
       position="sticky"
       elevation={0}
+      data-testid="canonical-topbar"
+      data-viewport={viewport}
       sx={{
         zIndex: (theme) => theme.zIndex.drawer + 1,
         bgcolor: palette.topbarBg,
@@ -57,12 +66,17 @@ export default function CanonicalTopBar() {
     >
       <Toolbar
         disableGutters
+        data-testid="canonical-topbar-toolbar"
         sx={{
-          px: { xs: 1.5, md: 2.5 },
-          gap: 1.5,
+          px: { xs: 1.5, md: 2, lg: 2.5 },
+          gap: `${zones.toolbar.gap}px`,
           minHeight: `${layout.topbarHeight}px !important`,
           height: layout.topbarHeight,
-          overflow: "hidden",
+          overflowX: zones.toolbar.overflowX,
+          overflowY: "hidden",
+          alignItems: "center",
+          width: "100%",
+          maxWidth: "100%",
         }}
       >
         {isMobile && (
@@ -74,6 +88,7 @@ export default function CanonicalTopBar() {
             data-testid="canonical-mobile-menu-trigger"
             sx={{
               color: "inherit",
+              flexShrink: 0,
               minWidth: layout.touchTargetMin,
               minHeight: layout.touchTargetMin,
               "&:focus-visible": {
@@ -86,8 +101,16 @@ export default function CanonicalTopBar() {
           </IconButton>
         )}
 
-        {!isMobile && (
-          <Box sx={{ flexShrink: 1, minWidth: 0, maxWidth: 360 }}>
+        {zones.context.visible && (
+          <Box
+            data-testid="canonical-topbar-context-zone"
+            sx={{
+              flex: zones.context.flex,
+              minWidth: zones.context.minWidth,
+              maxWidth: zones.context.maxWidth,
+              overflow: "hidden",
+            }}
+          >
             <CanonicalBreadcrumbs items={breadcrumbs} />
           </Box>
         )}
@@ -96,13 +119,52 @@ export default function CanonicalTopBar() {
           direction="row"
           alignItems="center"
           spacing={1}
-          sx={{ flex: 1, minWidth: 0, justifyContent: "center" }}
+          data-testid="canonical-topbar-center-zone"
+          sx={{
+            flex: "1 1 auto",
+            minWidth: 0,
+            justifyContent: "center",
+            overflow: "hidden",
+          }}
         >
-          {!isMobile && isSuperAdmin ? <CanonicalTenantSwitcher /> : null}
-          <CanonicalGlobalSearchTrigger />
+          {zones.organization.visible && isSuperAdmin ? (
+            <Box
+              data-testid="canonical-topbar-organization-zone"
+              sx={{
+                flex: zones.organization.flex,
+                minWidth: zones.organization.minWidth,
+                maxWidth: zones.organization.maxWidth,
+                width: "100%",
+                overflow: "hidden",
+              }}
+            >
+              <CanonicalTenantSwitcher
+                minWidth={zones.organization.widthMin}
+                maxWidth={zones.organization.maxWidth}
+              />
+            </Box>
+          ) : null}
+          <Box
+            data-testid="canonical-topbar-search-zone"
+            sx={{
+              flex: zones.search.flex,
+              minWidth: zones.search.minWidth,
+              maxWidth: zones.search.maxWidth,
+              width: "100%",
+              overflow: "hidden",
+            }}
+          >
+            <CanonicalGlobalSearchTrigger maxWidth={zones.search.maxWidth} />
+          </Box>
         </Stack>
 
-        <Stack direction="row" spacing={0.5} alignItems="center" sx={{ flexShrink: 0 }}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          alignItems="center"
+          data-testid="canonical-topbar-actions-zone"
+          sx={{ flexShrink: 0 }}
+        >
           <CanonicalNotificationButton />
           <CanonicalUserMenu />
         </Stack>

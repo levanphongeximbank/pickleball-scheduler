@@ -65,7 +65,7 @@ test("phase3 registry validation — complete coverage + zero duplicates", () =>
   assert.ok(result.counts.level3Actions >= 70);
   assert.equal(result.counts.duplicateActiveEntries, 0);
   assert.equal(result.counts.inventoriedRoutes, 179);
-  assert.equal(result.counts.proposedCanonicalMenu, 83);
+  assert.equal(result.counts.proposedCanonicalMenu, 120);
   assert.equal(result.counts.legacyRoutesHidden, 47);
   assert.equal(result.counts.shadowRoutesHidden, 1);
   assert.equal(result.counts.partialMenuNodes, 6);
@@ -76,7 +76,8 @@ test("phase3 registry validation — complete coverage + zero duplicates", () =>
   assert.equal(result.ownerDecisions.B01.hasCrmMessages, true);
   assert.equal(result.ownerDecisions.B03.hasShadow, false);
   assert.ok(result.ownerDecisions.B02.canonicalCount >= 1);
-  assert.equal(result.ownerDecisions.B02.legacyHubCount, 0);
+  assert.equal(result.ownerDecisions.B02.approvedHubRoutes.length, 11);
+  assert.equal(result.ownerDecisions.B02.unapprovedLegacyRoutes.length, 0);
 });
 
 test("phase3 menu — 13 Level-1, PARTIAL badges, contextual params hidden", () => {
@@ -88,7 +89,7 @@ test("phase3 menu — 13 Level-1, PARTIAL badges, contextual params hidden", () 
   const flat = flattenCanonicalMenu(tree);
   const partial = flat.filter((n) => n.visibilityStatus === "partial");
   assert.equal(partial.length, 6);
-  assert.ok(partial.every((n) => n.badge?.label === "PARTIAL"));
+  assert.ok(partial.every((n) => n.badge?.label === "Một phần"));
 
   const visibleDesktop = flattenCanonicalMenu(
     filterCanonicalMenu(authFor("SUPER_ADMIN"), { viewport: "desktop" })
@@ -232,7 +233,7 @@ test("phase3 inventory handling reconciles to 179", () => {
   assert.equal(result.ok, true);
   assert.equal(result.total, 179);
   assert.equal(result.sumStates, 179);
-  assert.equal(result.counts.ACTIVE_MENU, 76);
+  assert.equal(result.counts.ACTIVE_MENU, 102);
   assert.equal(result.counts.CONTEXTUAL_NAVIGATION, 7);
   assert.equal(result.counts.HIDDEN_SHADOW, 1);
   assert.ok(result.counts.HIDDEN_LEGACY + result.counts.REDIRECT_METADATA >= 47);
@@ -247,7 +248,8 @@ test("phase3 B01/B02/B03 owner decisions", () => {
   assert.equal(invariants.dualCanonicalMessages, true);
   assert.equal(invariants.duplicateMessagesEntries, false);
   assert.equal(invariants.hasShadowSkillV5, false);
-  assert.equal(invariants.legacyTournamentHubCount, 0);
+  assert.equal(invariants.allowedTournamentHubRoutes.length, 11);
+  assert.equal(invariants.unapprovedLegacyTournamentRoutes.length, 0);
   assert.ok(invariants.canonicalTournamentCount >= 1);
 
   const catalogShadow = CANONICAL_ROUTE_CATALOG.routes.filter((r) => r.classification === "SHADOW");

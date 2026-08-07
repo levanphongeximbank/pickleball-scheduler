@@ -39,7 +39,7 @@ export const V5_MENU_GROUPS = [
   { id: "club", label: "CLB & Huấn luyện", items: [CLUB_COACHING_MENU_ROOT] },
   { id: "tournament", label: "Giải đấu", items: [TOURNAMENT_MENU_ROOT] },
   { id: "finance", label: "Tài chính", items: [FINANCE_MENU_ROOT] },
-  { id: "tenant", label: "Tenant", items: [TENANT_MENU_ROOT] },
+  { id: "tenant", label: "Tổ chức", items: [TENANT_MENU_ROOT] },
   { id: "reports", label: "Báo cáo", items: [REPORTS_MENU_ROOT] },
   { id: "crm", label: "Chăm sóc khách hàng", items: [CRM_MENU_ROOT] },
   {

@@ -8,6 +8,7 @@ import {
   B01_CANONICAL_MESSAGES_ROUTE,
   B02_LEGACY_TOURNAMENT_PREFIX,
   B02_CANONICAL_TOURNAMENT_PREFIX,
+  B02_TOURNAMENT_HUB_MENU_ALLOWLIST,
   B03_SHADOW_SKILL_ASSESSMENT_V5,
 } from "../config/ownerDecisions.js";
 
@@ -71,8 +72,21 @@ export function validateCanonicalRegistry(options = {}) {
   if (owner.hasShadowSkillV5) {
     blockers.push({ id: "B03_SHADOW_IN_MENU" });
   }
-  if (owner.legacyTournamentHubCount > 0) {
-    blockers.push({ id: "B02_LEGACY_TOURNAMENT_IN_MENU" });
+  if (owner.unapprovedLegacyTournamentRoutes.length > 0) {
+    blockers.push({
+      id: "B02_UNAPPROVED_LEGACY_TOURNAMENT_IN_MENU",
+      routes: owner.unapprovedLegacyTournamentRoutes,
+    });
+  }
+  if (
+    owner.allowedTournamentHubRoutes.length !== B02_TOURNAMENT_HUB_MENU_ALLOWLIST.length ||
+    new Set(owner.allowedTournamentHubRoutes).size !== B02_TOURNAMENT_HUB_MENU_ALLOWLIST.length
+  ) {
+    blockers.push({
+      id: "B02_APPROVED_TOURNAMENT_HUBS_MISSING",
+      expected: B02_TOURNAMENT_HUB_MENU_ALLOWLIST,
+      actual: owner.allowedTournamentHubRoutes,
+    });
   }
   if (level1Groups.size !== 13) {
     blockers.push({ id: "LEVEL1_COUNT", actual: level1Groups.size, expected: 13 });
@@ -126,7 +140,8 @@ export function validateCanonicalRegistry(options = {}) {
         canonicalPrefix: B02_CANONICAL_TOURNAMENT_PREFIX,
         legacyPrefix: B02_LEGACY_TOURNAMENT_PREFIX,
         canonicalCount: owner.canonicalTournamentCount,
-        legacyHubCount: owner.legacyTournamentHubCount,
+        approvedHubRoutes: owner.allowedTournamentHubRoutes,
+        unapprovedLegacyRoutes: owner.unapprovedLegacyTournamentRoutes,
       },
       B03: {
         shadow: B03_SHADOW_SKILL_ASSESSMENT_V5,

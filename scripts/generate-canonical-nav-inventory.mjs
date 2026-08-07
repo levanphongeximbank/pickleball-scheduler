@@ -11,20 +11,19 @@ const OUT = "docs/ui-ux/canonical-navigation";
 const OWNER_DECISIONS = Object.freeze({
   B01: {
     id: "B01",
-    status: "RESOLVED",
-    canonicalRoute: "/crm/messages",
-    legacyRoute: "/messages",
-    disposition: "REDIRECT_LEGACY",
-    menuOwner: "CRM & Chăm sóc khách hàng",
-    rule: "/messages must not remain a separate active menu item",
+    status: "APPROVED_A_KEEP_SEPARATE",
+    messagingExperienceRoute: "/messages",
+    crmMessagesRoute: "/crm/messages",
+    disposition: "KEEP_SEPARATE_CANONICAL",
+    rule: "Phase 4 OD-B01: /messages and /crm/messages remain separate canonical business functions; no redirect",
   },
   B02: {
     id: "B02",
-    status: "RESOLVED",
-    canonicalRouteFamily: "/tournaments/:id/*",
+    status: "APPROVED_RETAIN_ALL_42_WAVE1_ALLOWLIST",
+    canonicalRouteFamily: "/tournaments/:tournamentId/*",
     legacyRouteFamily: "/tournament/*",
-    disposition: "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    rule: "New navigation points only to /tournaments/:id/*; legacy /tournament/* for compatibility redirects only; no dual active menu",
+    disposition: "RETAIN_ALL_42_NO_REDIRECT",
+    rule: "Wave 1: retain all /tournament/* routes without invented plural redirects; only the explicit standalone hub allowlist is menu-exposed",
   },
   B03: {
     id: "B03",
@@ -51,18 +50,71 @@ const ROUTE_OWNERS = Object.freeze({
   "13": "Hỗ trợ",
 });
 
+const B02_TOURNAMENT_HUB_MENU_ALLOWLIST = new Set([
+  "/tournament",
+  "/tournament/list",
+  "/tournament/create",
+  "/tournament/types",
+  "/tournament/roster",
+  "/tournament/register",
+  "/tournament/organize",
+  "/tournament/operations",
+  "/tournament/results",
+  "/tournament/config",
+  "/tournament/my",
+]);
+
+/**
+ * Wave 2 — whole-platform standalone hubs promoted into proposedCanonicalMenu.
+ * Group 05 tournament family is intentionally excluded (frozen from Wave 1).
+ * B03 shadow, public-only detail routes, auth, and contextual :param routes are excluded.
+ */
+const WAVE2_CANONICAL_HUB_MENU_ALLOWLIST = new Set([
+  // 02 Vận hành sân
+  "/court-management/ops-log",
+  "/court-management/future",
+  "/mobile/qr-generate",
+  // 03 Khách hàng & VĐV
+  "/court-management/customer-groups",
+  // 07 Tài chính
+  "/billing",
+  "/billing/invoices",
+  "/billing/usage",
+  "/marketplace",
+  // 12 Quản trị nền tảng
+  "/admin/billing",
+  "/admin/billing/tenants",
+  "/admin/billing/plans",
+  "/admin/billing/invoices",
+  "/admin/billing/payments",
+  "/admin/billing/audit",
+  "/admin/marketplace",
+  "/admin/marketplace/products",
+  "/admin/marketplace/orders",
+  "/admin/integration-logs",
+  "/admin/payment-transactions",
+  "/admin/webhook-events",
+  "/admin/api-clients",
+  "/admin/api-logs",
+  "/settings/integrations/payments",
+  "/settings/integrations/zalo-oa",
+  // 13 Hỗ trợ
+  "/support/faq",
+  "/support/guide",
+]);
+
 const LEVEL1 = [
   { id: "01", key: "tong-quan", label: "Tổng quan" },
   { id: "02", key: "van-hanh-san", label: "Vận hành sân" },
   { id: "03", key: "khach-hang-vdv", label: "Khách hàng & VĐV" },
   { id: "04", key: "clb-huan-luyen", label: "CLB & Huấn luyện" },
   { id: "05", key: "giai-dau", label: "Giải đấu" },
-  { id: "06", key: "rating-xep-hang", label: "Rating & Xếp hạng" },
+  { id: "06", key: "rating-xep-hang", label: "Xếp hạng" },
   { id: "07", key: "tai-chinh", label: "Tài chính" },
   { id: "08", key: "bao-cao-phan-tich", label: "Báo cáo & Phân tích" },
-  { id: "09", key: "ai-assistant", label: "AI Assistant" },
+  { id: "09", key: "ai-assistant", label: "Trợ lý AI" },
   { id: "10", key: "thong-bao", label: "Thông báo" },
-  { id: "11", key: "public-portal", label: "Public Portal" },
+  { id: "11", key: "public-portal", label: "Cổng công khai" },
   { id: "12", key: "quan-tri-nen-tang", label: "Quản trị nền tảng" },
   { id: "13", key: "ho-tro", label: "Hỗ trợ" },
 ];
@@ -325,14 +377,13 @@ function defaultRbacVisibility(route) {
 function applyOwnerDecisions(route) {
   const next = { ...route };
 
-  // B01 — messaging
+  // B01 — messaging: Phase 4 keeps two distinct canonical experiences.
   if (next.path === "/messages") {
-    next.classification = "LEGACY";
-    next.disposition = "REDIRECT_LEGACY";
-    next.redirectTo = "/crm/messages";
-    next.proposedMenuActive = false;
-    next.proposedCanonicalMenu = false;
-    next.routeOwner = "CRM & Chăm sóc khách hàng";
+    next.classification = "CANONICAL";
+    next.disposition = "RETAIN_CANONICAL";
+    next.proposedMenuActive = true;
+    next.proposedCanonicalMenu = true;
+    next.routeOwner = "Giao tiếp";
     next.ownerDecision = "B01";
   }
   if (next.path === "/crm/messages") {
@@ -356,16 +407,35 @@ function applyOwnerDecisions(route) {
   } else if (isTournamentLegacyFamily(next.path)) {
     const wasHidden = next.classification === "HIDDEN_ACTIVE";
     next.classification = "LEGACY";
-    next.disposition = "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION";
     next.ownerDecision = "B02";
-    next.proposedMenuActive = false;
-    next.proposedCanonicalMenu = false;
     next.legacyCompatibility = true;
-    if (!wasHidden) {
-      next.sidebar = false;
-      next.mobile = false;
+    if (B02_TOURNAMENT_HUB_MENU_ALLOWLIST.has(next.path)) {
+      next.disposition = "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU";
+      next.proposedMenuActive = true;
+      next.proposedCanonicalMenu = true;
+      next.sidebar = true;
+      next.mobile = true;
+      next.notes = [
+        next.notes,
+        "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
+      ]
+        .filter(Boolean)
+        .join("; ");
+    } else {
+      next.disposition = "RETAIN_LEGACY_ROUTE_OUT_OF_MENU";
+      next.proposedMenuActive = false;
+      next.proposedCanonicalMenu = false;
+      if (!wasHidden) {
+        next.sidebar = false;
+        next.mobile = false;
+      }
+      next.notes = [
+        next.notes,
+        "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
+      ]
+        .filter(Boolean)
+        .join("; ");
     }
-    next.notes = [next.notes, "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure"].filter(Boolean).join("; ");
   }
 
   // B03 — V5 shadow assessment
@@ -378,6 +448,24 @@ function applyOwnerDecisions(route) {
     next.sidebar = false;
     next.mobile = false;
     next.rbacVisibility = ["SUPER_ADMIN"];
+  }
+
+  // Wave 2 — promote validated standalone hubs into canonical menu exposure.
+  if (WAVE2_CANONICAL_HUB_MENU_ALLOWLIST.has(next.path)) {
+    next.classification = "CANONICAL";
+    next.disposition = "RETAIN_CANONICAL";
+    next.proposedMenuActive = true;
+    next.proposedCanonicalMenu = true;
+    next.sidebar = true;
+    if (next.mobile === false || next.mobile == null) {
+      next.mobile = false;
+    }
+    next.notes = [
+      next.notes,
+      "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+    ]
+      .filter(Boolean)
+      .join("; ");
   }
 
   return next;

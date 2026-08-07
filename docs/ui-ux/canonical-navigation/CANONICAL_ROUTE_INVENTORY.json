@@ -3,7 +3,7 @@
     "program": "PICK_VN Canonical Navigation — Phase 1 Inventory",
     "phase": "1-review",
     "branch": "feature/canonical-navigation-and-shell-redesign",
-    "generatedAt": "2026-08-05T09:26:58.360Z",
+    "generatedAt": "2026-08-07T09:39:01.716Z",
     "sourceFiles": [
       "src/router.jsx",
       "src/config/navigationConfig.js",
@@ -19,7 +19,7 @@
     "level1Groups": 13,
     "level2Modules": 81,
     "level3Actions": 179,
-    "proposedCanonicalMenuRoutes": 82,
+    "proposedCanonicalMenuRoutes": 120,
     "duplicateActiveCanonicalMenuEntries": 0,
     "verdict": "CANONICAL_NAVIGATION_PHASE1_REVIEW_PASS_READY_FOR_COMMIT",
     "reviewVerdict": "CANONICAL_NAVIGATION_PHASE1_REVIEW_PASS_READY_FOR_COMMIT",
@@ -34,20 +34,19 @@
   "ownerDecisions": {
     "B01": {
       "id": "B01",
-      "status": "RESOLVED",
-      "canonicalRoute": "/crm/messages",
-      "legacyRoute": "/messages",
-      "disposition": "REDIRECT_LEGACY",
-      "menuOwner": "CRM & Chăm sóc khách hàng",
-      "rule": "/messages must not remain a separate active menu item"
+      "status": "APPROVED_A_KEEP_SEPARATE",
+      "messagingExperienceRoute": "/messages",
+      "crmMessagesRoute": "/crm/messages",
+      "disposition": "KEEP_SEPARATE_CANONICAL",
+      "rule": "Phase 4 OD-B01: /messages and /crm/messages remain separate canonical business functions; no redirect"
     },
     "B02": {
       "id": "B02",
-      "status": "RESOLVED",
-      "canonicalRouteFamily": "/tournaments/:id/*",
+      "status": "APPROVED_RETAIN_ALL_42_WAVE1_ALLOWLIST",
+      "canonicalRouteFamily": "/tournaments/:tournamentId/*",
       "legacyRouteFamily": "/tournament/*",
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-      "rule": "New navigation points only to /tournaments/:id/*; legacy /tournament/* for compatibility redirects only; no dual active menu"
+      "disposition": "RETAIN_ALL_42_NO_REDIRECT",
+      "rule": "Wave 1: retain all /tournament/* routes without invented plural redirects; only the explicit standalone hub allowlist is menu-exposed"
     },
     "B03": {
       "id": "B03",
@@ -86,7 +85,7 @@
     {
       "id": "06",
       "key": "rating-xep-hang",
-      "label": "Rating & Xếp hạng"
+      "label": "Xếp hạng"
     },
     {
       "id": "07",
@@ -101,7 +100,7 @@
     {
       "id": "09",
       "key": "ai-assistant",
-      "label": "AI Assistant"
+      "label": "Trợ lý AI"
     },
     {
       "id": "10",
@@ -111,7 +110,7 @@
     {
       "id": "11",
       "key": "public-portal",
-      "label": "Public Portal"
+      "label": "Cổng công khai"
     },
     {
       "id": "12",
@@ -208,9 +207,9 @@
     "waiting-list"
   ],
   "classificationCounts": {
-    "CANONICAL": 89,
-    "HIDDEN_ACTIVE": 40,
-    "LEGACY": 48,
+    "CANONICAL": 116,
+    "HIDDEN_ACTIVE": 14,
+    "LEGACY": 47,
     "DUPLICATE": 1,
     "SHADOW": 1
   },
@@ -375,7 +374,7 @@
       ],
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/home",
@@ -398,7 +397,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/tournaments",
@@ -421,7 +420,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/clubs",
@@ -444,7 +443,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/clubs/:publicId",
@@ -467,7 +466,7 @@
       ],
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/courts",
@@ -490,7 +489,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/courts/:publicId",
@@ -513,7 +512,7 @@
       ],
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/rankings",
@@ -536,7 +535,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/news",
@@ -559,7 +558,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/dashboard",
@@ -617,7 +616,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/statistics",
@@ -826,8 +825,8 @@
       "level1": "03",
       "level2": "customer-groups",
       "level3": "manage-groups",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -836,14 +835,14 @@
         "court.view"
       ],
       "flags": [],
-      "notes": "Coming-soon metadata exists; route wired but no menu",
-      "routeOwner": "Khách hàng & VĐV",
+      "notes": "Coming-soon metadata exists; route wired but no menu; Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "routeOwner": "Khách hàng & VĐV",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Khách hàng & VĐV"
     },
     {
@@ -852,8 +851,8 @@
       "level1": "02",
       "level2": "ops-log",
       "level3": "view-log",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -862,13 +861,14 @@
         "court.view"
       ],
       "flags": [],
-      "routeOwner": "Vận hành sân",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Vận hành sân",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Vận hành sân"
     },
     {
@@ -902,8 +902,8 @@
       "level1": "02",
       "level2": "courts",
       "level3": "future-courts",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": "court-tabs",
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -913,13 +913,14 @@
         "venue.update"
       ],
       "flags": [],
-      "routeOwner": "Vận hành sân",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Vận hành sân",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Vận hành sân"
     },
     {
@@ -1052,8 +1053,8 @@
       "level1": "02",
       "level2": "check-in",
       "level3": "qr-generate",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "MobileRouteGate"
@@ -1062,13 +1063,14 @@
         "tournament.update"
       ],
       "flags": [],
-      "routeOwner": "Vận hành sân",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Vận hành sân",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Vận hành sân"
     },
     {
@@ -1192,7 +1194,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/players/profile/:playerId",
@@ -1333,7 +1335,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/player/skill-assessment",
@@ -1356,7 +1358,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/player/skill-assessment-v5",
@@ -1383,7 +1385,7 @@
         "SUPER_ADMIN"
       ],
       "routeOwner": "Rating & Xếp hạng",
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/onboarding/pick-vn-rating",
@@ -1405,7 +1407,7 @@
       ],
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/club",
@@ -1862,8 +1864,8 @@
       "level2": "tournament-hub",
       "level3": "overview",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -1871,12 +1873,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1890,8 +1892,8 @@
       "level2": "tournament-hub",
       "level3": "list",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -1899,12 +1901,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1918,8 +1920,8 @@
       "level2": "tournament-hub",
       "level3": "create",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -1927,12 +1929,12 @@
         "tournament.create"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1946,8 +1948,8 @@
       "level2": "tournament-types",
       "level3": "types-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate",
         "player-blocked"
@@ -1956,12 +1958,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1984,12 +1986,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2003,8 +2005,8 @@
       "level2": "roster",
       "level3": "roster-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -2012,12 +2014,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2031,8 +2033,8 @@
       "level2": "organize",
       "level3": "organize-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -2040,12 +2042,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2059,8 +2061,8 @@
       "level2": "operations",
       "level3": "ops-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate",
         "player-blocked"
@@ -2069,12 +2071,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2088,8 +2090,8 @@
       "level2": "results",
       "level3": "results-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -2097,12 +2099,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2116,8 +2118,8 @@
       "level2": "config",
       "level3": "config-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate",
         "player-blocked"
@@ -2126,12 +2128,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2145,8 +2147,8 @@
       "level2": "registration",
       "level3": "register-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -2154,12 +2156,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2173,8 +2175,8 @@
       "level2": "player-portal",
       "level3": "my-tournaments",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -2182,12 +2184,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2210,12 +2212,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2238,12 +2240,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2266,12 +2268,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2294,12 +2296,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2322,12 +2324,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2350,12 +2352,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2378,12 +2380,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2406,12 +2408,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2434,12 +2436,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2462,12 +2464,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2490,12 +2492,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2518,12 +2520,12 @@
         "tournament.update"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2546,12 +2548,12 @@
         "tournament.update"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2574,12 +2576,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2602,12 +2604,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2630,12 +2632,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2658,12 +2660,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2686,12 +2688,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2714,12 +2716,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2742,13 +2744,13 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "redirectTo": "/tournament/config/fee",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2771,12 +2773,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2799,12 +2801,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2827,12 +2829,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2855,12 +2857,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2883,12 +2885,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2911,12 +2913,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2939,12 +2941,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2967,12 +2969,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2995,12 +2997,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -3023,12 +3025,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -3051,12 +3053,12 @@
         "director.use"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -3380,8 +3382,8 @@
       "level1": "07",
       "level2": "billing",
       "level3": "billing-root",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -3390,13 +3392,14 @@
         "billing.view"
       ],
       "flags": [],
-      "routeOwner": "Tài chính",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Tài chính",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Tài chính"
     },
     {
@@ -3430,8 +3433,8 @@
       "level1": "07",
       "level2": "subscription",
       "level3": "usage",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -3440,13 +3443,14 @@
         "billing.view"
       ],
       "flags": [],
-      "routeOwner": "Tài chính",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Tài chính",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Tài chính"
     },
     {
@@ -3455,8 +3459,8 @@
       "level1": "07",
       "level2": "subscription",
       "level3": "invoices",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -3465,13 +3469,14 @@
         "billing.invoice.view"
       ],
       "flags": [],
-      "routeOwner": "Tài chính",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Tài chính",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Tài chính"
     },
     {
@@ -3630,8 +3635,8 @@
       "level1": "07",
       "level2": "marketplace",
       "level3": "catalog",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -3642,13 +3647,14 @@
       "flags": [
         "VITE_MARKETPLACE_ENABLED"
       ],
-      "routeOwner": "Tài chính",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Tài chính",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Tài chính"
     },
     {
@@ -3755,7 +3761,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "AI Assistant"
+      "level1Label": "Trợ lý AI"
     },
     {
       "path": "/notifications",
@@ -3786,7 +3792,7 @@
       "level1": "10",
       "level2": "messaging",
       "level3": "legacy-inbox",
-      "classification": "LEGACY",
+      "classification": "CANONICAL",
       "sidebar": false,
       "mobile": false,
       "guards": [
@@ -3794,13 +3800,13 @@
       ],
       "perms": [],
       "flags": [],
-      "disposition": "REDIRECT_LEGACY",
+      "disposition": "RETAIN_CANONICAL",
       "redirectTo": "/crm/messages",
       "ownerDecision": "B01",
       "notes": "Owner B01: legacy; redirect to /crm/messages; must not remain active menu item",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
-      "routeOwner": "CRM & Chăm sóc khách hàng",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "routeOwner": "Giao tiếp",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
@@ -3971,21 +3977,22 @@
       "level1": "13",
       "level2": "support",
       "level3": "guide",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": "in-page",
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Hỗ trợ",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Hỗ trợ",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Hỗ trợ"
     },
     {
@@ -3994,21 +4001,22 @@
       "level1": "13",
       "level2": "support",
       "level3": "faq",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": "in-page",
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Hỗ trợ",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Hỗ trợ",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Hỗ trợ"
     },
     {
@@ -4211,7 +4219,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/admin/tournament-certifications",
@@ -4236,7 +4244,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/admin/staff",
@@ -4269,21 +4277,22 @@
       "level1": "12",
       "level2": "marketplace-admin",
       "level3": "admin-root",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4292,21 +4301,22 @@
       "level1": "12",
       "level2": "marketplace-admin",
       "level3": "products",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4315,21 +4325,22 @@
       "level1": "12",
       "level2": "marketplace-admin",
       "level3": "orders",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4338,21 +4349,22 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "integration-logs",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4361,21 +4373,22 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "payment-transactions",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4384,8 +4397,8 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "api-clients",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4394,13 +4407,14 @@
       "flags": [
         "VITE_API_ENABLED"
       ],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4409,8 +4423,8 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "api-logs",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4419,13 +4433,14 @@
       "flags": [
         "VITE_API_ENABLED"
       ],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4434,21 +4449,22 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "webhooks",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4457,8 +4473,8 @@
       "level1": "12",
       "level2": "billing-admin",
       "level3": "admin-billing",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4467,13 +4483,14 @@
         "billing.manage"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4482,8 +4499,8 @@
       "level1": "12",
       "level2": "billing-admin",
       "level3": "tenant-billing",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4492,13 +4509,14 @@
         "billing.manage"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4507,8 +4525,8 @@
       "level1": "12",
       "level2": "billing-admin",
       "level3": "plans",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4517,13 +4535,14 @@
         "billing.plan.view"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4532,8 +4551,8 @@
       "level1": "12",
       "level2": "billing-admin",
       "level3": "invoices",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4542,13 +4561,14 @@
         "billing.invoice.view"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4557,8 +4577,8 @@
       "level1": "12",
       "level2": "billing-admin",
       "level3": "payments",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4567,13 +4587,14 @@
         "billing.payment.view"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4582,8 +4603,8 @@
       "level1": "12",
       "level2": "billing-admin",
       "level3": "audit",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4592,13 +4613,14 @@
         "billing.audit.view"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4628,7 +4650,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "AI Assistant"
+      "level1Label": "Trợ lý AI"
     },
     {
       "path": "/dev/pairing-intervention-preview",
@@ -4652,7 +4674,7 @@
       ],
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "level1Label": "AI Assistant"
+      "level1Label": "Trợ lý AI"
     },
     {
       "path": "/internal/hard-cutover/operator-acceptance",
@@ -4735,8 +4757,8 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "payment-integrations",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4745,13 +4767,14 @@
         "integration.manage"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4760,8 +4783,8 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "zalo-oa",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4770,13 +4793,14 @@
         "integration.manage"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     }
   ],
@@ -4809,7 +4833,7 @@
       {
         "path": "/home",
         "level1": "11",
-        "level1Label": "Public Portal",
+        "level1Label": "Cổng công khai",
         "level2": "portal-home",
         "level3": "home",
         "routeOwner": "Public Portal"
@@ -4817,7 +4841,7 @@
       {
         "path": "/tournaments",
         "level1": "11",
-        "level1Label": "Public Portal",
+        "level1Label": "Cổng công khai",
         "level2": "portal-tournaments",
         "level3": "list",
         "routeOwner": "Public Portal"
@@ -4825,7 +4849,7 @@
       {
         "path": "/clubs",
         "level1": "11",
-        "level1Label": "Public Portal",
+        "level1Label": "Cổng công khai",
         "level2": "portal-clubs",
         "level3": "list",
         "routeOwner": "Public Portal"
@@ -4833,7 +4857,7 @@
       {
         "path": "/courts",
         "level1": "11",
-        "level1Label": "Public Portal",
+        "level1Label": "Cổng công khai",
         "level2": "portal-courts",
         "level3": "list",
         "routeOwner": "Public Portal"
@@ -4841,7 +4865,7 @@
       {
         "path": "/rankings",
         "level1": "11",
-        "level1Label": "Public Portal",
+        "level1Label": "Cổng công khai",
         "level2": "portal-rankings",
         "level3": "public-bxh",
         "routeOwner": "Public Portal"
@@ -4849,7 +4873,7 @@
       {
         "path": "/news",
         "level1": "11",
-        "level1Label": "Public Portal",
+        "level1Label": "Cổng công khai",
         "level2": "portal-news",
         "level3": "list",
         "routeOwner": "Public Portal"
@@ -4865,7 +4889,7 @@
       {
         "path": "/dashboard/rankings",
         "level1": "06",
-        "level1Label": "Rating & Xếp hạng",
+        "level1Label": "Xếp hạng",
         "level2": "vpr-admin",
         "level3": "manage-rankings",
         "routeOwner": "Rating & Xếp hạng"
@@ -4927,11 +4951,35 @@
         "routeOwner": "Khách hàng & VĐV"
       },
       {
+        "path": "/court-management/customer-groups",
+        "level1": "03",
+        "level1Label": "Khách hàng & VĐV",
+        "level2": "customer-groups",
+        "level3": "manage-groups",
+        "routeOwner": "Khách hàng & VĐV"
+      },
+      {
+        "path": "/court-management/ops-log",
+        "level1": "02",
+        "level1Label": "Vận hành sân",
+        "level2": "ops-log",
+        "level3": "view-log",
+        "routeOwner": "Vận hành sân"
+      },
+      {
         "path": "/court-management/courts",
         "level1": "02",
         "level1Label": "Vận hành sân",
         "level2": "courts",
         "level3": "manage-courts",
+        "routeOwner": "Vận hành sân"
+      },
+      {
+        "path": "/court-management/future",
+        "level1": "02",
+        "level1Label": "Vận hành sân",
+        "level2": "courts",
+        "level3": "future-courts",
         "routeOwner": "Vận hành sân"
       },
       {
@@ -4964,6 +5012,14 @@
         "level1Label": "Vận hành sân",
         "level2": "check-in",
         "level3": "qr-scan",
+        "routeOwner": "Vận hành sân"
+      },
+      {
+        "path": "/mobile/qr-generate",
+        "level1": "02",
+        "level1Label": "Vận hành sân",
+        "level2": "check-in",
+        "level3": "qr-generate",
         "routeOwner": "Vận hành sân"
       },
       {
@@ -5001,7 +5057,7 @@
       {
         "path": "/players/skill",
         "level1": "06",
-        "level1Label": "Rating & Xếp hạng",
+        "level1Label": "Xếp hạng",
         "level2": "skill-levels",
         "level3": "staff-skill-view",
         "routeOwner": "Rating & Xếp hạng"
@@ -5025,7 +5081,7 @@
       {
         "path": "/player/skill",
         "level1": "06",
-        "level1Label": "Rating & Xếp hạng",
+        "level1Label": "Xếp hạng",
         "level2": "skill-levels",
         "level3": "player-skill-view",
         "routeOwner": "Rating & Xếp hạng"
@@ -5033,7 +5089,7 @@
       {
         "path": "/player/skill-assessment",
         "level1": "06",
-        "level1Label": "Rating & Xếp hạng",
+        "level1Label": "Xếp hạng",
         "level2": "skill-assessment",
         "level3": "first-assessment",
         "routeOwner": "Rating & Xếp hạng"
@@ -5167,6 +5223,94 @@
         "routeOwner": "CLB & Huấn luyện"
       },
       {
+        "path": "/tournament",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "tournament-hub",
+        "level3": "overview",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/list",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "tournament-hub",
+        "level3": "list",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/create",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "tournament-hub",
+        "level3": "create",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/types",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "tournament-types",
+        "level3": "types-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/roster",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "roster",
+        "level3": "roster-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/organize",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "organize",
+        "level3": "organize-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/operations",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "operations",
+        "level3": "ops-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/results",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "results",
+        "level3": "results-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/config",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "config",
+        "level3": "config-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/register",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "registration",
+        "level3": "register-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/my",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "player-portal",
+        "level3": "my-tournaments",
+        "routeOwner": "Giải đấu"
+      },
+      {
         "path": "/tournaments/:tournamentId/engine",
         "level1": "05",
         "level1Label": "Giải đấu",
@@ -5231,11 +5375,35 @@
         "routeOwner": "Giải đấu"
       },
       {
+        "path": "/billing",
+        "level1": "07",
+        "level1Label": "Tài chính",
+        "level2": "billing",
+        "level3": "billing-root",
+        "routeOwner": "Tài chính"
+      },
+      {
         "path": "/billing/current-plan",
         "level1": "07",
         "level1Label": "Tài chính",
         "level2": "subscription",
         "level3": "current-plan",
+        "routeOwner": "Tài chính"
+      },
+      {
+        "path": "/billing/usage",
+        "level1": "07",
+        "level1Label": "Tài chính",
+        "level2": "subscription",
+        "level3": "usage",
+        "routeOwner": "Tài chính"
+      },
+      {
+        "path": "/billing/invoices",
+        "level1": "07",
+        "level1Label": "Tài chính",
+        "level2": "subscription",
+        "level3": "invoices",
         "routeOwner": "Tài chính"
       },
       {
@@ -5279,6 +5447,14 @@
         "routeOwner": "Tài chính"
       },
       {
+        "path": "/marketplace",
+        "level1": "07",
+        "level1Label": "Tài chính",
+        "level2": "marketplace",
+        "level3": "catalog",
+        "routeOwner": "Tài chính"
+      },
+      {
         "path": "/marketplace/orders",
         "level1": "07",
         "level1Label": "Tài chính",
@@ -5297,7 +5473,7 @@
       {
         "path": "/ai",
         "level1": "09",
-        "level1Label": "AI Assistant",
+        "level1Label": "Trợ lý AI",
         "level2": "ai-hub",
         "level3": "assistant",
         "routeOwner": "AI Assistant"
@@ -5309,6 +5485,14 @@
         "level2": "notifications",
         "level3": "center",
         "routeOwner": "Thông báo"
+      },
+      {
+        "path": "/messages",
+        "level1": "10",
+        "level1Label": "Thông báo",
+        "level2": "messaging",
+        "level3": "legacy-inbox",
+        "routeOwner": "Giao tiếp"
       },
       {
         "path": "/crm/messages",
@@ -5356,6 +5540,22 @@
         "level1Label": "Hỗ trợ",
         "level2": "support",
         "level3": "hub",
+        "routeOwner": "Hỗ trợ"
+      },
+      {
+        "path": "/support/guide",
+        "level1": "13",
+        "level1Label": "Hỗ trợ",
+        "level2": "support",
+        "level3": "guide",
+        "routeOwner": "Hỗ trợ"
+      },
+      {
+        "path": "/support/faq",
+        "level1": "13",
+        "level1Label": "Hỗ trợ",
+        "level2": "support",
+        "level3": "faq",
         "routeOwner": "Hỗ trợ"
       },
       {
@@ -5417,7 +5617,7 @@
       {
         "path": "/admin/skill-level-requests",
         "level1": "06",
-        "level1Label": "Rating & Xếp hạng",
+        "level1Label": "Xếp hạng",
         "level2": "skill-approval",
         "level3": "requests-queue",
         "routeOwner": "Rating & Xếp hạng"
@@ -5425,7 +5625,7 @@
       {
         "path": "/admin/tournament-certifications",
         "level1": "06",
-        "level1Label": "Rating & Xếp hạng",
+        "level1Label": "Xếp hạng",
         "level2": "vpr-admin",
         "level3": "certify-tournaments",
         "routeOwner": "Rating & Xếp hạng"
@@ -5439,9 +5639,121 @@
         "routeOwner": "Quản trị nền tảng"
       },
       {
+        "path": "/admin/marketplace",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "marketplace-admin",
+        "level3": "admin-root",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/marketplace/products",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "marketplace-admin",
+        "level3": "products",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/marketplace/orders",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "marketplace-admin",
+        "level3": "orders",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/integration-logs",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "integration-logs",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/payment-transactions",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "payment-transactions",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/api-clients",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "api-clients",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/api-logs",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "api-logs",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/webhook-events",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "webhooks",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/billing",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "billing-admin",
+        "level3": "admin-billing",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/billing/tenants",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "billing-admin",
+        "level3": "tenant-billing",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/billing/plans",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "billing-admin",
+        "level3": "plans",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/billing/invoices",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "billing-admin",
+        "level3": "invoices",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/billing/payments",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "billing-admin",
+        "level3": "payments",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/billing/audit",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "billing-admin",
+        "level3": "audit",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
         "path": "/admin/ai-pairing/private-rules",
         "level1": "09",
-        "level1Label": "AI Assistant",
+        "level1Label": "Trợ lý AI",
         "level2": "private-pairing",
         "level3": "admin-rules",
         "routeOwner": "AI Assistant"
@@ -5460,6 +5772,22 @@
         "level1Label": "Quản trị nền tảng",
         "level2": "integrations",
         "level3": "integration-settings",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/settings/integrations/payments",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "payment-integrations",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/settings/integrations/zalo-oa",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "zalo-oa",
         "routeOwner": "Quản trị nền tảng"
       }
     ]
