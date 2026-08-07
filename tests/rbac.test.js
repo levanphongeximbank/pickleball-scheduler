@@ -1069,7 +1069,7 @@ const OWNER_V5_GROUPS = [
   "CLB & Huấn luyện",
   "Giải đấu",
   "Tài chính",
-  "Tenant",
+  "Tổ chức",
   "Báo cáo",
   "Chăm sóc khách hàng",
   "Quản trị",

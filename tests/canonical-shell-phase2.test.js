@@ -97,7 +97,9 @@ test("phase2 owner decisions — B01/B02/B03 menu invariants", () => {
   assert.equal(invariants.hasCrmMessages, true);
   assert.equal(invariants.dualCanonicalMessages, true);
   assert.equal(invariants.hasShadowSkillV5, false);
-  assert.equal(invariants.legacyTournamentHubCount, 0);
+  assert.equal(invariants.unapprovedLegacyTournamentRoutes.length, 0);
+  assert.ok(Array.isArray(invariants.allowedTournamentHubRoutes));
+  assert.ok(invariants.allowedTournamentHubRoutes.length >= 1);
   assert.ok(invariants.canonicalTournamentCount >= 1);
   assert.equal(invariants.duplicateMessagesEntries, false);
 
