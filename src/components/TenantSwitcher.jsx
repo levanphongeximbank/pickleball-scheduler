@@ -20,7 +20,12 @@ const VARIANT_STYLES = {
   },
 };
 
-export default function TenantSwitcher({ size = "small", minWidth = 180, variant = "dark" }) {
+export default function TenantSwitcher({
+  size = "small",
+  minWidth = 180,
+  maxWidth,
+  variant = "dark",
+}) {
   const { currentTenantId, isSuperAdmin, switchTenant, revision } = useTenant();
   const styles = VARIANT_STYLES[variant] || VARIANT_STYLES.dark;
   const tenants = useMemo(() => listTenants(), [revision]);
@@ -31,10 +36,26 @@ export default function TenantSwitcher({ size = "small", minWidth = 180, variant
 
   const hasSelection = tenants.some((tenant) => tenant.id === currentTenantId);
   const value = hasSelection ? currentTenantId : "";
+  const selectedLabel = value
+    ? tenants.find((item) => item.id === value)?.name || value
+    : "Chọn tổ chức…";
 
   return (
-    <FormControl size={size} sx={{ minWidth }}>
-      <InputLabel id="header-tenant-label" sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}>
+    <FormControl
+      size={size}
+      fullWidth={Boolean(maxWidth)}
+      data-testid="canonical-organization-switcher"
+      sx={{
+        minWidth: 0,
+        width: maxWidth ? "100%" : undefined,
+        maxWidth: maxWidth || undefined,
+        ...(maxWidth ? null : { minWidth }),
+      }}
+    >
+      <InputLabel
+        id="header-tenant-label"
+        sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}
+      >
         Đang quản trị
       </InputLabel>
       <Select
@@ -42,13 +63,22 @@ export default function TenantSwitcher({ size = "small", minWidth = 180, variant
         value={value}
         label="Đang quản trị"
         displayEmpty
-        renderValue={(selected) => {
-          if (!selected) {
-            return "Chọn tổ chức…";
-          }
-          const tenant = tenants.find((item) => item.id === selected);
-          return tenant?.name || selected;
-        }}
+        renderValue={() => (
+          <Typography
+            component="span"
+            title={selectedLabel}
+            sx={{
+              display: "block",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              fontSize: "inherit",
+              lineHeight: 1.4,
+            }}
+          >
+            {selectedLabel}
+          </Typography>
+        )}
         onChange={(event) => {
           const next = event.target.value;
           if (next) {
@@ -59,6 +89,13 @@ export default function TenantSwitcher({ size = "small", minWidth = 180, variant
           bgcolor: styles.bgcolor,
           color: styles.color,
           borderRadius: 1.5,
+          maxWidth: "100%",
+          ".MuiSelect-select": {
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            pr: "32px !important",
+          },
           ".MuiOutlinedInput-notchedOutline": { borderColor: styles.outline },
           ".MuiSvgIcon-root": { color: styles.icon },
         }}

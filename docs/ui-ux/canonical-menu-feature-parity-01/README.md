@@ -29,7 +29,7 @@ See `WAVE2_IMPLEMENTATION_REPORT.md`.
 
 ## Wave 3 — Whole-canonical Vietnamese UI normalization
 
-**Status:** Implementation complete — ready for independent review  
+**Status:** Independent review PASS  
 **Starting HEAD:** `140b9aca` (Wave 2 evidence correction)  
 **Scope:** GAP-02 localization + GAP-03 technical text leakage  
 
@@ -44,3 +44,18 @@ See `WAVE2_IMPLEMENTATION_REPORT.md`.
 | B03 preserved | YES |
 
 See `WAVE3_LOCALIZATION_IMPLEMENTATION_REPORT.md`.
+
+## Wave 4 — Canonical topbar responsive layout
+
+**Status:** Implementation complete — ready for independent review  
+**Starting HEAD:** `248cb430` (Wave 3)  
+**Scope:** GAP-04 `CANONICAL_TOPBAR_TEXT_OVERLAP` / `OBSERVATION_CANONICAL_TOPBAR_01`  
+
+| Metric | Value |
+|--------|------:|
+| Topbar text overlap / collision | 0 / 0 |
+| Desktop / tablet / mobile layout parity | PASS (contract) |
+| Wave1–3 preservation | 13 / 120 / 379 |
+| Production closure | NOT claimed (browser QA pending) |
+
+See `WAVE4_RESPONSIVE_LAYOUT_IMPLEMENTATION_REPORT.md`.

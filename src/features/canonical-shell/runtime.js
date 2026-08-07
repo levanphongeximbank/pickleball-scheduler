@@ -63,3 +63,9 @@ export {
   resolveInventoryHandlingState,
 } from "./services/reconcileInventoryHandling.js";
 export { createFigure1ShellTheme } from "./theme/figure1ShellTheme.js";
+export {
+  CANONICAL_TOPBAR_LAYOUT,
+  resolveCanonicalTopbarZoneStyles,
+  collapseCanonicalBreadcrumbItems,
+  assertCanonicalTopbarNoOverlap,
+} from "./layout/canonicalTopbarLayout.js";
