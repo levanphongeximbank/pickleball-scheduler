@@ -1,0 +1,145 @@
+{
+  "program": "PICK_VN_CANONICAL_NAVIGATION",
+  "document": "PRODUCTION_ACTIVATION_FINAL_EVIDENCE",
+  "packagePath": "docs/ui-ux/canonical-navigation/production-activation-evidence/",
+  "recordedAt": "2026-08-07T12:02:00+07:00",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "evidenceRecorder": "Le Phong",
+  "mode": "EVIDENCE_AND_CLOSURE_PREPARATION_ONLY",
+  "finalEvidenceVerdict": "CANONICAL_NAVIGATION_PRODUCTION_ACTIVATION_EVIDENCE_COMPLETE_READY_FOR_CLOSURE_REVIEW",
+  "upstreamOperationalVerdict": "CANONICAL_NAVIGATION_PRODUCTION_ACTIVATION_PASS_MONITORING_COMPLETE",
+  "bindings": {
+    "finalExecutionSha": "ed90dea944e59200b0451f1381f0d3d2fc4934c9",
+    "executionPackageDigest": "fda262a74832daf9356ca8bd6744deaaf3e82e15d17bda19cc4957dbb3fbcdce",
+    "executionPackagePath": "docs/ui-ux/canonical-navigation/production-execution-package/",
+    "vercelProjectName": "pickleball-scheduler",
+    "vercelProjectId": "prj_glU9Gr0zPaNoMlTcIJCAHVk5UowG",
+    "productionDomain": "https://pickvn.app",
+    "flagName": "VITE_CANONICAL_APP_SHELL_ENABLED",
+    "flagEvaluationMode": "vite_build_time",
+    "operatingMode": "OWNER_ONLY_CONTROLLED_PILOT"
+  },
+  "flagTransition": {
+    "before": "ABSENT",
+    "after": "true",
+    "transition": "ABSENT_TO_TRUE",
+    "redeployRequired": true,
+    "redeployCompleted": true,
+    "flagPresentInProductionEnvAfterActivation": true
+  },
+  "deployments": {
+    "preActivation": {
+      "deploymentId": "dpl_7TDZFtCMpWMc5nvvXp6zhsMDq3Ry",
+      "url": "https://pickleball-scheduler-hl103nnar-pickleball-scheduler.vercel.app",
+      "createdAt": "2026-08-07T08:15:48+07:00",
+      "status": "READY",
+      "githubProductionDeployShaChronologicalPrior": "8196fa98882b4db676ce6094311e1b37c202a11c"
+    },
+    "activated": {
+      "deploymentId": "dpl_6ii6KmpyChmSMTzdrqH3FVDBKVcy",
+      "url": "https://pickleball-scheduler-3ma0nwrdc-pickleball-scheduler.vercel.app",
+      "createdAt": "2026-08-07T10:13:00+07:00",
+      "status": "READY",
+      "sourceSha": "ed90dea944e59200b0451f1381f0d3d2fc4934c9",
+      "productionAliasBound": true,
+      "productionAlias": "https://pickvn.app"
+    }
+  },
+  "ownerBrowserAcceptance": {
+    "verdict": "PASS",
+    "rollbackRequired": false,
+    "public": {
+      "PUBLIC_ROOT_PASS": true,
+      "PUBLIC_HOME_PASS": true,
+      "PUBLIC_CLUBS_PASS": true,
+      "PUBLIC_COURTS_PASS": true,
+      "INVALID_CLUB_ROUTE_PASS": true,
+      "INVALID_COURT_ROUTE_PASS": true
+    },
+    "ownerSuperAdmin": {
+      "OWNER_LOGIN_PASS": true,
+      "OWNER_SUPER_ADMIN_PASS": true,
+      "DASHBOARD_PASS": true,
+      "TOURNAMENT_PASS": true,
+      "PRIVATE_PAIRING_PASS": true,
+      "RATING_V5_ROUTE_PASS": true
+    },
+    "shell": {
+      "CANONICAL_SHELL_VISIBLE": true,
+      "LEGACY_SHELL_PRIMARY": false
+    },
+    "devices": {
+      "DESKTOP_PASS": true,
+      "TABLET_PASS": true,
+      "MOBILE_PASS": true
+    },
+    "criticalNegatives": {
+      "BLANK_PAGE": false,
+      "REDIRECT_LOOP": false,
+      "AUTH_LOOP": false,
+      "CRITICAL_LAYOUT_FAILURE": false,
+      "CRITICAL_RUNTIME_ERROR_OBSERVED": false,
+      "UNEXPECTED_DATA_MUTATION": false
+    },
+    "waivedIdentityCells": [
+      "NON_ADMIN_ALLOW",
+      "NON_ADMIN_DENY",
+      "TENANT_ISOLATION"
+    ],
+    "waiverStatus": "WAIVED_BY_OWNER"
+  },
+  "monitoring": {
+    "result": "PASS",
+    "start": "2026-08-07T10:55:00+07:00",
+    "end": "2026-08-07T11:55:00+07:00",
+    "intervalMinutes": 5,
+    "durationMinutes": 60,
+    "checkpointsCompleted": 12,
+    "closureVerdict": "CANONICAL_NAVIGATION_PRODUCTION_ACTIVATION_PASS_MONITORING_COMPLETE",
+    "invariantsHeld": {
+      "deploymentReady": true,
+      "aliasBoundToActivatedDeployment": true,
+      "sourceShaUnchanged": true,
+      "flagPresentExpectedOn": true,
+      "originMainUnchanged": true,
+      "noUnexpectedProductionDeploy": true,
+      "noRollbackCondition": true,
+      "httpPickvnApp": 200
+    }
+  },
+  "rollback": {
+    "required": false,
+    "performed": false,
+    "triggersFired": [],
+    "rollbackDeploymentId": null
+  },
+  "observations": [
+    {
+      "id": "OBSERVATION_CANONICAL_TOPBAR_01",
+      "severity": "LOW",
+      "classification": "LOW_NON_BLOCKING",
+      "detail": "Tenant/admin selector text visually overlaps in canonical topbar"
+    },
+    {
+      "id": "OBSERVATION_PUBLIC_NETWORK_01",
+      "severity": "NON_CRITICAL",
+      "classification": "NON_CRITICAL_PUBLIC_CONTENT_BACKEND_GAP",
+      "detail": "news_public_content_query_public returns HTTP 404; public homepage safely falls back to EXPLICIT_MOCK_ONLY",
+      "publicFallbackHandled": true,
+      "explicitMockOnly": "KNOWN_OBSERVATION"
+    }
+  ],
+  "mutationAttestation": {
+    "sqlExecutions": 0,
+    "authIdentityMutations": 0,
+    "productionDataMutations": 0,
+    "runtimeCodeChangesThisAuthoring": 0,
+    "vercelEnvChangesThisAuthoring": 0,
+    "redeploysThisAuthoring": 0,
+    "postMergeCleanupGo": "NO",
+    "branchWorktreeCleanup": false
+  },
+  "closurePreparationDocument": "PRODUCTION_ACTIVATION_CLOSURE_PREPARATION.md",
+  "authorizesPostMergeCleanup": false,
+  "authorizesBroaderRolloutPastOwnerOnlyPilot": false
+}
