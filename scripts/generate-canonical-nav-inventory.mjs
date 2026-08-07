@@ -11,20 +11,19 @@ const OUT = "docs/ui-ux/canonical-navigation";
 const OWNER_DECISIONS = Object.freeze({
   B01: {
     id: "B01",
-    status: "RESOLVED",
-    canonicalRoute: "/crm/messages",
-    legacyRoute: "/messages",
-    disposition: "REDIRECT_LEGACY",
-    menuOwner: "CRM & Chăm sóc khách hàng",
-    rule: "/messages must not remain a separate active menu item",
+    status: "APPROVED_A_KEEP_SEPARATE",
+    messagingExperienceRoute: "/messages",
+    crmMessagesRoute: "/crm/messages",
+    disposition: "KEEP_SEPARATE_CANONICAL",
+    rule: "Phase 4 OD-B01: /messages and /crm/messages remain separate canonical business functions; no redirect",
   },
   B02: {
     id: "B02",
-    status: "RESOLVED",
-    canonicalRouteFamily: "/tournaments/:id/*",
+    status: "APPROVED_RETAIN_ALL_42_WAVE1_ALLOWLIST",
+    canonicalRouteFamily: "/tournaments/:tournamentId/*",
     legacyRouteFamily: "/tournament/*",
-    disposition: "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    rule: "New navigation points only to /tournaments/:id/*; legacy /tournament/* for compatibility redirects only; no dual active menu",
+    disposition: "RETAIN_ALL_42_NO_REDIRECT",
+    rule: "Wave 1: retain all /tournament/* routes without invented plural redirects; only the explicit standalone hub allowlist is menu-exposed",
   },
   B03: {
     id: "B03",
@@ -50,6 +49,20 @@ const ROUTE_OWNERS = Object.freeze({
   "12": "Quản trị nền tảng",
   "13": "Hỗ trợ",
 });
+
+const B02_TOURNAMENT_HUB_MENU_ALLOWLIST = new Set([
+  "/tournament",
+  "/tournament/list",
+  "/tournament/create",
+  "/tournament/types",
+  "/tournament/roster",
+  "/tournament/register",
+  "/tournament/organize",
+  "/tournament/operations",
+  "/tournament/results",
+  "/tournament/config",
+  "/tournament/my",
+]);
 
 const LEVEL1 = [
   { id: "01", key: "tong-quan", label: "Tổng quan" },
@@ -325,14 +338,13 @@ function defaultRbacVisibility(route) {
 function applyOwnerDecisions(route) {
   const next = { ...route };
 
-  // B01 — messaging
+  // B01 — messaging: Phase 4 keeps two distinct canonical experiences.
   if (next.path === "/messages") {
-    next.classification = "LEGACY";
-    next.disposition = "REDIRECT_LEGACY";
-    next.redirectTo = "/crm/messages";
-    next.proposedMenuActive = false;
-    next.proposedCanonicalMenu = false;
-    next.routeOwner = "CRM & Chăm sóc khách hàng";
+    next.classification = "CANONICAL";
+    next.disposition = "RETAIN_CANONICAL";
+    next.proposedMenuActive = true;
+    next.proposedCanonicalMenu = true;
+    next.routeOwner = "Giao tiếp";
     next.ownerDecision = "B01";
   }
   if (next.path === "/crm/messages") {
@@ -356,16 +368,35 @@ function applyOwnerDecisions(route) {
   } else if (isTournamentLegacyFamily(next.path)) {
     const wasHidden = next.classification === "HIDDEN_ACTIVE";
     next.classification = "LEGACY";
-    next.disposition = "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION";
     next.ownerDecision = "B02";
-    next.proposedMenuActive = false;
-    next.proposedCanonicalMenu = false;
     next.legacyCompatibility = true;
-    if (!wasHidden) {
-      next.sidebar = false;
-      next.mobile = false;
+    if (B02_TOURNAMENT_HUB_MENU_ALLOWLIST.has(next.path)) {
+      next.disposition = "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU";
+      next.proposedMenuActive = true;
+      next.proposedCanonicalMenu = true;
+      next.sidebar = true;
+      next.mobile = true;
+      next.notes = [
+        next.notes,
+        "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
+      ]
+        .filter(Boolean)
+        .join("; ");
+    } else {
+      next.disposition = "RETAIN_LEGACY_ROUTE_OUT_OF_MENU";
+      next.proposedMenuActive = false;
+      next.proposedCanonicalMenu = false;
+      if (!wasHidden) {
+        next.sidebar = false;
+        next.mobile = false;
+      }
+      next.notes = [
+        next.notes,
+        "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
+      ]
+        .filter(Boolean)
+        .join("; ");
     }
-    next.notes = [next.notes, "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure"].filter(Boolean).join("; ");
   }
 
   // B03 — V5 shadow assessment

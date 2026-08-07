@@ -2,9 +2,9 @@
 export const CANONICAL_MENU_DATA = Object.freeze({
   "meta": {
     "source": "docs/ui-ux/canonical-navigation/CANONICAL_ROUTE_INVENTORY.json",
-    "generatedAt": "2026-08-05T14:37:15.750Z",
+    "generatedAt": "2026-08-07T07:20:52.430Z",
     "phase": "3-menu-completion",
-    "proposedCanonicalMenuCount": 83
+    "proposedCanonicalMenuCount": 94
   },
   "ownerDecisions": {
     "B01": {
@@ -28,7 +28,8 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "canonicalRouteFamily": "/tournaments/:id/*",
       "legacyRouteFamily": "/tournament/*",
       "disposition": "RETAIN_ALL_42_NO_REDIRECT",
-      "rule": "Phase 4 OD-B02: retain all 42 legacy /tournament/* routes; do not invent plural redirects or tournamentId"
+      "rule": "Phase 4 OD-B02: retain all legacy /tournament/* routes; do not invent plural redirects or tournamentId. Wave 1 permits only the explicit approved standalone hub allowlist in canonical menu surfaces.",
+      "menuExposure": "SAFE_HUB_ALLOWLIST_ONLY"
     },
     "B03": {
       "id": "B03",
@@ -1310,14 +1311,14 @@ export const CANONICAL_MENU_DATA = Object.freeze({
     },
     {
       "id": "nav__05__daily-play__launcher",
-      "label": "Launcher",
+      "label": "Mở phiên",
       "description": "Giải đấu",
       "icon": "daily",
       "route": "/daily-play",
       "level1": "05",
       "level1Label": "Giải đấu",
       "level2": "daily-play",
-      "level2Label": "Daily Play",
+      "level2Label": "Chơi hằng ngày",
       "level3": "launcher",
       "children": [],
       "requiredRoles": [],
@@ -1339,6 +1340,372 @@ export const CANONICAL_MENU_DATA = Object.freeze({
       "guards": [
         "RouteAccessGate",
         "player-blocked"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-hub__overview",
+      "label": "Tổng quan",
+      "description": "Giải đấu",
+      "icon": "dashboard",
+      "route": "/tournament",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-hub",
+      "level2Label": "Quản lý giải đấu",
+      "level3": "overview",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-hub__list",
+      "label": "Danh sách giải",
+      "description": "Giải đấu",
+      "icon": "tournament-list",
+      "route": "/tournament/list",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-hub",
+      "level2Label": "Quản lý giải đấu",
+      "level3": "list",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-hub__create",
+      "label": "Tạo giải",
+      "description": "Giải đấu",
+      "icon": "tournament-create",
+      "route": "/tournament/create",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-hub",
+      "level2Label": "Quản lý giải đấu",
+      "level3": "create",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.create"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-preparation__types",
+      "label": "Loại giải",
+      "description": "Giải đấu",
+      "icon": "groups",
+      "route": "/tournament/types",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-preparation",
+      "level2Label": "Chuẩn bị giải",
+      "level3": "types",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate",
+        "player-blocked"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-preparation__roster",
+      "label": "Danh sách VĐV",
+      "description": "Giải đấu",
+      "icon": "players",
+      "route": "/tournament/roster",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-preparation",
+      "level2Label": "Chuẩn bị giải",
+      "level3": "roster",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-preparation__register",
+      "label": "Đăng ký",
+      "description": "Giải đấu",
+      "icon": "profile",
+      "route": "/tournament/register",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-preparation",
+      "level2Label": "Chuẩn bị giải",
+      "level3": "register",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-operations__organize",
+      "label": "Tổ chức giải",
+      "description": "Giải đấu",
+      "icon": "tournament-schedule",
+      "route": "/tournament/organize",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-operations",
+      "level2Label": "Tổ chức & điều hành",
+      "level3": "organize",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-operations__operations",
+      "label": "Điều hành giải",
+      "description": "Giải đấu",
+      "icon": "referee",
+      "route": "/tournament/operations",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-operations",
+      "level2Label": "Tổ chức & điều hành",
+      "level3": "operations",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate",
+        "player-blocked"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-operations__results",
+      "label": "Kết quả",
+      "description": "Giải đấu",
+      "icon": "statistics",
+      "route": "/tournament/results",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-operations",
+      "level2Label": "Tổ chức & điều hành",
+      "level3": "results",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-operations__config",
+      "label": "Cấu hình",
+      "description": "Giải đấu",
+      "icon": "settings",
+      "route": "/tournament/config",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-operations",
+      "level2Label": "Tổ chức & điều hành",
+      "level3": "config",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "exact",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate",
+        "player-blocked"
+      ]
+    },
+    {
+      "id": "nav__05__tournament-player-portal__my-tournaments",
+      "label": "Giải của tôi",
+      "description": "Giải đấu",
+      "icon": "profile",
+      "route": "/tournament/my",
+      "level1": "05",
+      "level1Label": "Giải đấu",
+      "level2": "tournament-player-portal",
+      "level2Label": "Giải của tôi",
+      "level3": "my-tournaments",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "LEGACY",
+      "b02MenuPromoted": true,
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
       ]
     },
     {

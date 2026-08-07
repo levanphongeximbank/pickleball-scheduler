@@ -2,10 +2,10 @@
 export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   meta: Object.freeze({
   "source": "docs/ui-ux/canonical-navigation/CANONICAL_ROUTE_INVENTORY.json",
-  "generatedAt": "2026-08-05T14:37:15.749Z",
+  "generatedAt": "2026-08-07T07:20:52.429Z",
   "phase": "3-menu-completion",
   "totalRoutes": 179,
-  "proposedCanonicalMenuCount": 83,
+  "proposedCanonicalMenuCount": 94,
   "classificationCounts": {
     "CANONICAL": 90,
     "HIDDEN_ACTIVE": 40,
@@ -835,55 +835,55 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    "proposedCanonicalMenu": false,
+    "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+    "proposedCanonicalMenu": true,
     "level1": "05",
     "level2": "tournament-hub",
     "level3": "overview",
     "ownerDecision": "B02",
-    "sidebar": false,
-    "mobile": false
+    "sidebar": true,
+    "mobile": true
   },
   {
     "path": "/tournament/list",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    "proposedCanonicalMenu": false,
+    "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+    "proposedCanonicalMenu": true,
     "level1": "05",
     "level2": "tournament-hub",
     "level3": "list",
     "ownerDecision": "B02",
-    "sidebar": false,
-    "mobile": false
+    "sidebar": true,
+    "mobile": true
   },
   {
     "path": "/tournament/create",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    "proposedCanonicalMenu": false,
+    "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+    "proposedCanonicalMenu": true,
     "level1": "05",
     "level2": "tournament-hub",
     "level3": "create",
     "ownerDecision": "B02",
-    "sidebar": false,
-    "mobile": false
+    "sidebar": true,
+    "mobile": true
   },
   {
     "path": "/tournament/types",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    "proposedCanonicalMenu": false,
+    "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+    "proposedCanonicalMenu": true,
     "level1": "05",
     "level2": "tournament-types",
     "level3": "types-hub",
     "ownerDecision": "B02",
-    "sidebar": false,
-    "mobile": false
+    "sidebar": true,
+    "mobile": true
   },
   {
     "path": "/tournament/types/:category",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "tournament-types",
@@ -895,91 +895,91 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/roster",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    "proposedCanonicalMenu": false,
+    "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+    "proposedCanonicalMenu": true,
     "level1": "05",
     "level2": "roster",
     "level3": "roster-hub",
     "ownerDecision": "B02",
-    "sidebar": false,
-    "mobile": false
+    "sidebar": true,
+    "mobile": true
   },
   {
     "path": "/tournament/organize",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    "proposedCanonicalMenu": false,
+    "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+    "proposedCanonicalMenu": true,
     "level1": "05",
     "level2": "organize",
     "level3": "organize-hub",
     "ownerDecision": "B02",
-    "sidebar": false,
-    "mobile": false
+    "sidebar": true,
+    "mobile": true
   },
   {
     "path": "/tournament/operations",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    "proposedCanonicalMenu": false,
+    "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+    "proposedCanonicalMenu": true,
     "level1": "05",
     "level2": "operations",
     "level3": "ops-hub",
     "ownerDecision": "B02",
-    "sidebar": false,
-    "mobile": false
+    "sidebar": true,
+    "mobile": true
   },
   {
     "path": "/tournament/results",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    "proposedCanonicalMenu": false,
+    "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+    "proposedCanonicalMenu": true,
     "level1": "05",
     "level2": "results",
     "level3": "results-hub",
     "ownerDecision": "B02",
-    "sidebar": false,
-    "mobile": false
+    "sidebar": true,
+    "mobile": true
   },
   {
     "path": "/tournament/config",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    "proposedCanonicalMenu": false,
+    "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+    "proposedCanonicalMenu": true,
     "level1": "05",
     "level2": "config",
     "level3": "config-hub",
     "ownerDecision": "B02",
-    "sidebar": false,
-    "mobile": false
+    "sidebar": true,
+    "mobile": true
   },
   {
     "path": "/tournament/register",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    "proposedCanonicalMenu": false,
+    "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+    "proposedCanonicalMenu": true,
     "level1": "05",
     "level2": "registration",
     "level3": "register-hub",
     "ownerDecision": "B02",
-    "sidebar": false,
-    "mobile": false
+    "sidebar": true,
+    "mobile": true
   },
   {
     "path": "/tournament/my",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-    "proposedCanonicalMenu": false,
+    "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+    "proposedCanonicalMenu": true,
     "level1": "05",
     "level2": "player-portal",
     "level3": "my-tournaments",
     "ownerDecision": "B02",
-    "sidebar": false,
-    "mobile": false
+    "sidebar": true,
+    "mobile": true
   },
   {
     "path": "/tournament/my/:tournamentId",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "player-portal",
@@ -991,7 +991,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/:tournamentId/public",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "public-tournament",
@@ -1003,7 +1003,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/:tournamentId/register",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "registration",
@@ -1015,7 +1015,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/bracket",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "bracket",
@@ -1027,7 +1027,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/teams",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "teams",
@@ -1039,7 +1039,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/teams/presets",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "teams",
@@ -1051,7 +1051,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/teams/build/manual",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "teams",
@@ -1063,7 +1063,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/teams/build/random",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "teams",
@@ -1075,7 +1075,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/teams/build/draft",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "teams",
@@ -1087,7 +1087,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/schedule",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "schedule",
@@ -1099,7 +1099,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/match-reports",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "operations",
@@ -1111,7 +1111,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/config/format",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "config",
@@ -1123,7 +1123,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/config/settings",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "config",
@@ -1135,7 +1135,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/config/age-rules",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "config",
@@ -1147,7 +1147,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/config/gender-rules",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "config",
@@ -1159,7 +1159,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/config/fee",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "config",
@@ -1171,7 +1171,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/config/regulations",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "config",
@@ -1183,7 +1183,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/eligibility",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "eligibility",
@@ -1195,7 +1195,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/eligibility/check",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "eligibility",
@@ -1207,7 +1207,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/entry-fee",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "config",
@@ -1219,7 +1219,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/publish-schedule",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "schedule",
@@ -1231,7 +1231,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/referee-assign",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "operations",
@@ -1243,7 +1243,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/awards",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "results",
@@ -1255,7 +1255,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/withdrawal",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "operations",
@@ -1267,7 +1267,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/daily/:tournamentId",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "daily-play",
@@ -1279,7 +1279,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/internal/:tournamentId",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "internal-tournament",
@@ -1291,7 +1291,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/internal/:tournamentId/bracket",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "internal-tournament",
@@ -1303,7 +1303,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/official/:tournamentId",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "official-tournament",
@@ -1315,7 +1315,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/official/:tournamentId/bracket",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "official-tournament",
@@ -1327,7 +1327,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/team/:tournamentId",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "team-tournament",
@@ -1339,7 +1339,7 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   {
     "path": "/tournament/director/:tournamentId",
     "classification": "LEGACY",
-    "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+    "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
     "proposedCanonicalMenu": false,
     "level1": "05",
     "level2": "director",
@@ -1691,10 +1691,10 @@ export const CANONICAL_ROUTE_CATALOG = Object.freeze({
     "proposedCanonicalMenu": true,
     "level1": "10",
     "level2": "messaging",
-    "level3": "inbox",
+    "level3": "legacy-inbox",
     "ownerDecision": "B01",
-    "sidebar": true,
-    "mobile": true
+    "sidebar": false,
+    "mobile": false
   },
   {
     "path": "/crm/messages",

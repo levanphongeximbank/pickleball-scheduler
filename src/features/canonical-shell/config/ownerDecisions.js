@@ -19,6 +19,26 @@ export const B01_LEGACY_MESSAGES_ROUTE = B01_MESSAGING_EXPERIENCE_ROUTE;
 export const B02_CANONICAL_TOURNAMENT_PREFIX = "/tournaments/";
 export const B02_LEGACY_TOURNAMENT_PREFIX = "/tournament/";
 
+/**
+ * Wave 1 Owner-approved exception to B02's generic menu hiding.
+ *
+ * The routes remain retained `/tournament/*` authority. This allowlist grants
+ * menu exposure only; it neither redirects nor changes route/RBAC ownership.
+ */
+export const B02_TOURNAMENT_HUB_MENU_ALLOWLIST = Object.freeze([
+  "/tournament",
+  "/tournament/list",
+  "/tournament/create",
+  "/tournament/types",
+  "/tournament/roster",
+  "/tournament/register",
+  "/tournament/organize",
+  "/tournament/operations",
+  "/tournament/results",
+  "/tournament/config",
+  "/tournament/my",
+]);
+
 export const B03_SHADOW_SKILL_ASSESSMENT_V5 = "/player/skill-assessment-v5";
 export const B03_CANONICAL_SKILL_ASSESSMENT = "/player/skill-assessment";
 

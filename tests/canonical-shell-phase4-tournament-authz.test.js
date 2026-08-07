@@ -28,6 +28,7 @@ import {
   filterCanonicalMenu,
   flattenCanonicalMenu,
 } from "../src/features/canonical-shell/services/filterCanonicalMenu.js";
+import { B02_TOURNAMENT_HUB_MENU_ALLOWLIST } from "../src/features/canonical-shell/config/ownerDecisions.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -320,7 +321,7 @@ test("phase4 plural — all seven engine routes detected + permission parity", (
   assert.equal(isTournamentEnginePath("/tournaments/"), false);
 });
 
-test("phase4 B02 — retain all 42 legacy /tournament/*; no invented redirects", () => {
+test("phase4 B02 — retain routes, expose only the Wave 1 approved hub allowlist, no invented redirects", () => {
   const router = readFileSync(join(root, "src/router.jsx"), "utf8");
   const legacy = CANONICAL_ROUTE_CATALOG.routes.filter(
     (r) =>
@@ -352,8 +353,16 @@ test("phase4 B02 — retain all 42 legacy /tournament/*; no invented redirects",
       { viewport: "desktop" }
     )
   );
+  const visibleLegacyTournamentRoutes = leaves
+    .map((n) => n.route)
+    .filter((route) => route === "/tournament" || route?.startsWith("/tournament/"));
+
+  assert.deepEqual(
+    [...visibleLegacyTournamentRoutes].sort(),
+    [...B02_TOURNAMENT_HUB_MENU_ALLOWLIST].sort()
+  );
   assert.equal(
-    leaves.some((n) => n.route?.startsWith("/tournament/") && !n.route.startsWith("/tournaments/")),
+    visibleLegacyTournamentRoutes.some((route) => !B02_TOURNAMENT_HUB_MENU_ALLOWLIST.includes(route)),
     false
   );
 });

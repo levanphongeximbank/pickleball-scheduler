@@ -6,6 +6,7 @@ import { isPrivatePairingRulesEnabled } from "../../private-pairing-rules/consta
 import {
   B01_MESSAGING_EXPERIENCE_ROUTE,
   B01_CRM_MESSAGES_ROUTE,
+  B02_TOURNAMENT_HUB_MENU_ALLOWLIST,
   B03_SHADOW_SKILL_ASSESSMENT_V5,
   OWNER_DECISIONS,
 } from "../config/ownerDecisions.js";
@@ -82,8 +83,12 @@ function isHiddenByOwnerDecision(node) {
   const route = node?.route || "";
   // OD-B01 Phase 4: /messages is canonical Communication — do not hide.
   if (route === B03_SHADOW_SKILL_ASSESSMENT_V5) return true;
-  if (route.startsWith("/tournament/") && !route.startsWith("/tournaments/")) {
-    // B02: legacy tournament hubs must not appear in proposed menu.
+  if (
+    (route === "/tournament" || route.startsWith("/tournament/")) &&
+    !B02_TOURNAMENT_HUB_MENU_ALLOWLIST.includes(route)
+  ) {
+    // B02 Wave 1: deny all retained legacy tournament routes except the
+    // Owner-approved standalone hub allowlist. Route retention is unchanged.
     return true;
   }
   if (node?.visibilityStatus === "shadow" || node?.visibilityStatus === "legacy") {
@@ -227,9 +232,12 @@ export function assertOwnerDecisionMenuInvariants(nodes = []) {
     hasLegacyMessages: false,
     hasCanonicalMessages: crmCount > 0,
     hasShadowSkillV5: routes.includes(B03_SHADOW_SKILL_ASSESSMENT_V5),
-    legacyTournamentHubCount: routes.filter(
-      (r) => r?.startsWith("/tournament/") && !r.startsWith("/tournaments/")
-    ).length,
+    allowedTournamentHubRoutes: routes.filter((r) => B02_TOURNAMENT_HUB_MENU_ALLOWLIST.includes(r)),
+    unapprovedLegacyTournamentRoutes: routes.filter(
+      (r) =>
+        (r === "/tournament" || r?.startsWith("/tournament/")) &&
+        !B02_TOURNAMENT_HUB_MENU_ALLOWLIST.includes(r)
+    ),
     canonicalTournamentCount: routes.filter((r) => r?.startsWith("/tournaments/")).length,
     // Duplicate = same path twice, not the intentional dual-canonical pair.
     duplicateMessagesEntries: messagingCount > 1 || crmCount > 1,

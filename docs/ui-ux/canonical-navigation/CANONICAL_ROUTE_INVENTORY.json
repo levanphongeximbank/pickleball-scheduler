@@ -3,7 +3,7 @@
     "program": "PICK_VN Canonical Navigation — Phase 1 Inventory",
     "phase": "1-review",
     "branch": "feature/canonical-navigation-and-shell-redesign",
-    "generatedAt": "2026-08-05T09:26:58.360Z",
+    "generatedAt": "2026-08-07T07:20:52.369Z",
     "sourceFiles": [
       "src/router.jsx",
       "src/config/navigationConfig.js",
@@ -19,7 +19,7 @@
     "level1Groups": 13,
     "level2Modules": 81,
     "level3Actions": 179,
-    "proposedCanonicalMenuRoutes": 82,
+    "proposedCanonicalMenuRoutes": 94,
     "duplicateActiveCanonicalMenuEntries": 0,
     "verdict": "CANONICAL_NAVIGATION_PHASE1_REVIEW_PASS_READY_FOR_COMMIT",
     "reviewVerdict": "CANONICAL_NAVIGATION_PHASE1_REVIEW_PASS_READY_FOR_COMMIT",
@@ -34,20 +34,19 @@
   "ownerDecisions": {
     "B01": {
       "id": "B01",
-      "status": "RESOLVED",
-      "canonicalRoute": "/crm/messages",
-      "legacyRoute": "/messages",
-      "disposition": "REDIRECT_LEGACY",
-      "menuOwner": "CRM & Chăm sóc khách hàng",
-      "rule": "/messages must not remain a separate active menu item"
+      "status": "APPROVED_A_KEEP_SEPARATE",
+      "messagingExperienceRoute": "/messages",
+      "crmMessagesRoute": "/crm/messages",
+      "disposition": "KEEP_SEPARATE_CANONICAL",
+      "rule": "Phase 4 OD-B01: /messages and /crm/messages remain separate canonical business functions; no redirect"
     },
     "B02": {
       "id": "B02",
-      "status": "RESOLVED",
-      "canonicalRouteFamily": "/tournaments/:id/*",
+      "status": "APPROVED_RETAIN_ALL_42_WAVE1_ALLOWLIST",
+      "canonicalRouteFamily": "/tournaments/:tournamentId/*",
       "legacyRouteFamily": "/tournament/*",
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
-      "rule": "New navigation points only to /tournaments/:id/*; legacy /tournament/* for compatibility redirects only; no dual active menu"
+      "disposition": "RETAIN_ALL_42_NO_REDIRECT",
+      "rule": "Wave 1: retain all /tournament/* routes without invented plural redirects; only the explicit standalone hub allowlist is menu-exposed"
     },
     "B03": {
       "id": "B03",
@@ -208,9 +207,9 @@
     "waiting-list"
   ],
   "classificationCounts": {
-    "CANONICAL": 89,
+    "CANONICAL": 90,
     "HIDDEN_ACTIVE": 40,
-    "LEGACY": 48,
+    "LEGACY": 47,
     "DUPLICATE": 1,
     "SHADOW": 1
   },
@@ -1862,8 +1861,8 @@
       "level2": "tournament-hub",
       "level3": "overview",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -1871,12 +1870,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1890,8 +1889,8 @@
       "level2": "tournament-hub",
       "level3": "list",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -1899,12 +1898,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1918,8 +1917,8 @@
       "level2": "tournament-hub",
       "level3": "create",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -1927,12 +1926,12 @@
         "tournament.create"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1946,8 +1945,8 @@
       "level2": "tournament-types",
       "level3": "types-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate",
         "player-blocked"
@@ -1956,12 +1955,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -1984,12 +1983,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2003,8 +2002,8 @@
       "level2": "roster",
       "level3": "roster-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -2012,12 +2011,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2031,8 +2030,8 @@
       "level2": "organize",
       "level3": "organize-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -2040,12 +2039,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2059,8 +2058,8 @@
       "level2": "operations",
       "level3": "ops-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate",
         "player-blocked"
@@ -2069,12 +2068,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2088,8 +2087,8 @@
       "level2": "results",
       "level3": "results-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -2097,12 +2096,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2116,8 +2115,8 @@
       "level2": "config",
       "level3": "config-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate",
         "player-blocked"
@@ -2126,12 +2125,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2145,8 +2144,8 @@
       "level2": "registration",
       "level3": "register-hub",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -2154,12 +2153,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2173,8 +2172,8 @@
       "level2": "player-portal",
       "level3": "my-tournaments",
       "classification": "LEGACY",
-      "sidebar": false,
-      "mobile": false,
+      "sidebar": true,
+      "mobile": true,
       "guards": [
         "RouteAccessGate"
       ],
@@ -2182,12 +2181,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "disposition": "RETAIN_LEGACY_ROUTE_ALLOWLISTED_FOR_MENU",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 1 B02: retained legacy tournament hub explicitly allowlisted for canonical menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2210,12 +2209,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2238,12 +2237,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2266,12 +2265,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2294,12 +2293,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2322,12 +2321,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2350,12 +2349,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2378,12 +2377,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2406,12 +2405,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2434,12 +2433,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2462,12 +2461,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2490,12 +2489,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2518,12 +2517,12 @@
         "tournament.update"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2546,12 +2545,12 @@
         "tournament.update"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2574,12 +2573,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2602,12 +2601,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2630,12 +2629,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2658,12 +2657,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2686,12 +2685,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2714,12 +2713,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2742,13 +2741,13 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "redirectTo": "/tournament/config/fee",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2771,12 +2770,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2799,12 +2798,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2827,12 +2826,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2855,12 +2854,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2883,12 +2882,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2911,12 +2910,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2939,12 +2938,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2967,12 +2966,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -2995,12 +2994,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -3023,12 +3022,12 @@
         "tournament.view"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -3051,12 +3050,12 @@
         "director.use"
       ],
       "flags": [],
-      "disposition": "CONTROLLED_REDIRECT_AND_INCREMENTAL_MIGRATION",
       "ownerDecision": "B02",
+      "legacyCompatibility": true,
+      "disposition": "RETAIN_LEGACY_ROUTE_OUT_OF_MENU",
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "legacyCompatibility": true,
-      "notes": "Owner B02: legacy /tournament/* family; compatibility redirect until dependency closure",
+      "notes": "B02: retained legacy /tournament/* route is not approved for generic menu exposure",
       "routeOwner": "Giải đấu",
       "rbacVisibility": [
         "RBAC_SCOPED"
@@ -3786,7 +3785,7 @@
       "level1": "10",
       "level2": "messaging",
       "level3": "legacy-inbox",
-      "classification": "LEGACY",
+      "classification": "CANONICAL",
       "sidebar": false,
       "mobile": false,
       "guards": [
@@ -3794,13 +3793,13 @@
       ],
       "perms": [],
       "flags": [],
-      "disposition": "REDIRECT_LEGACY",
+      "disposition": "RETAIN_CANONICAL",
       "redirectTo": "/crm/messages",
       "ownerDecision": "B01",
       "notes": "Owner B01: legacy; redirect to /crm/messages; must not remain active menu item",
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
-      "routeOwner": "CRM & Chăm sóc khách hàng",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "routeOwner": "Giao tiếp",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
@@ -5167,6 +5166,94 @@
         "routeOwner": "CLB & Huấn luyện"
       },
       {
+        "path": "/tournament",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "tournament-hub",
+        "level3": "overview",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/list",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "tournament-hub",
+        "level3": "list",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/create",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "tournament-hub",
+        "level3": "create",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/types",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "tournament-types",
+        "level3": "types-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/roster",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "roster",
+        "level3": "roster-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/organize",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "organize",
+        "level3": "organize-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/operations",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "operations",
+        "level3": "ops-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/results",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "results",
+        "level3": "results-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/config",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "config",
+        "level3": "config-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/register",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "registration",
+        "level3": "register-hub",
+        "routeOwner": "Giải đấu"
+      },
+      {
+        "path": "/tournament/my",
+        "level1": "05",
+        "level1Label": "Giải đấu",
+        "level2": "player-portal",
+        "level3": "my-tournaments",
+        "routeOwner": "Giải đấu"
+      },
+      {
         "path": "/tournaments/:tournamentId/engine",
         "level1": "05",
         "level1Label": "Giải đấu",
@@ -5309,6 +5396,14 @@
         "level2": "notifications",
         "level3": "center",
         "routeOwner": "Thông báo"
+      },
+      {
+        "path": "/messages",
+        "level1": "10",
+        "level1Label": "Thông báo",
+        "level2": "messaging",
+        "level3": "legacy-inbox",
+        "routeOwner": "Giao tiếp"
       },
       {
         "path": "/crm/messages",
