@@ -1,4 +1,4 @@
-# Acceptance gates — Wave 2 + Wave 3 + Wave 4
+# Acceptance gates — Wave 2 + Wave 3 + Wave 4 + Wave 5
 
 ## Wave 2 (feature exposure)
 
@@ -36,11 +36,28 @@
 | `wide` claimed as runtime viewport | NO | helper-only preset |
 | WAVE4_EVIDENCE_RUNTIME_MISMATCH_COUNT | 0 | breakpoint evidence correction |
 | Wave1–3 preservation | 13 / 120 / 379 | wave4 preservation test |
-| OBSERVATION_CANONICAL_TOPBAR_01 | PROPOSED_CLOSED_BY_IMPLEMENTATION | pending independent re-review |
+| OBSERVATION_CANONICAL_TOPBAR_01 | LOCALLY_VERIFIED_CLOSED_PENDING_PRODUCTION_ACCEPTANCE | Wave 4 re-review PASS |
 | Scoped ESLint / new lint | PASS / 0 | local scoped eslint |
 | Production build / lint:no-new | PASS | when run for correction |
 | Push / PR / Production deploy | NO | local commit only |
 
-Breakpoint evidence correction verdict target:
+## Wave 5 (authorization / tenant / flag / operational-gate verification)
 
-`CANONICAL_NAVIGATION_FINAL_PARITY_01_WAVE4_BREAKPOINT_CORRECTION_PASS_READY_FOR_REREVIEW`
+| Gate | Required | Evidence |
+|------|----------|----------|
+| RBAC / permission / tenant / flag / route / operational parity | PASS | wave5 tests + report |
+| UNAUTHORIZED_MENU_EXPOSURE_COUNT | 0 | wave5 role matrix |
+| ROLE_MENU_ROUTE_AUTH_MISMATCH_COUNT | 0 | wave5 menu vs route |
+| FEATURE_FLAG_BYPASS_COUNT | 0 | marketplace/API OFF tests |
+| TENANT_GATE_REMOVED_COUNT | 0 | CanonicalAppShell + MainLayout stack |
+| B02 allowlist / unapproved legacy | 11 / 0 | wave5 B02 invariants |
+| B03 shadow preserved | YES | wave5 + phase4 B03 |
+| Private pairing scope broadened | NO | wave5 pairing metadata |
+| Underlying auth semantics changed | NO | rbac/RouteAccessGate/TenantGate unchanged vs base |
+| Promoted route matrix complete | YES | 39 Wave1+Wave2 rows |
+| Wave1–4 preservation | 13 / 120 / 379 / topbar | wave5 preservation test |
+| Push / PR / Production deploy | NO | local verification commit only |
+
+Wave 5 verdict target:
+
+`CANONICAL_NAVIGATION_FINAL_PARITY_01_WAVE5_AUTHORIZATION_VERIFICATION_PASS_READY_FOR_RELEASE_READINESS`

@@ -47,8 +47,8 @@ See `WAVE3_LOCALIZATION_IMPLEMENTATION_REPORT.md`.
 
 ## Wave 4 — Canonical topbar responsive layout
 
-**Status:** Implementation + browser QA geometry PASS; breakpoint evidence corrected — ready for independent re-review  
-**Starting HEAD:** `248cb430` (Wave 3) → Wave4 runtime `bb2fa2f1` → evidence correction (this commit)  
+**Status:** Independent re-review PASS  
+**Starting HEAD:** `248cb430` (Wave 3) → Wave4 runtime `bb2fa2f1` → evidence correction `d8c513ae`  
 **Scope:** GAP-04 `CANONICAL_TOPBAR_TEXT_OVERLAP` / `OBSERVATION_CANONICAL_TOPBAR_01`  
 
 | Metric | Value |
@@ -59,7 +59,26 @@ See `WAVE3_LOCALIZATION_IMPLEMENTATION_REPORT.md`.
 | Runtime viewports | mobile \| tablet \| desktop (`wide` = helper-only) |
 | Wave1–3 preservation | 13 / 120 / 379 |
 | Evidence/runtime mismatch | 0 |
-| Observation status | PROPOSED_CLOSED_BY_IMPLEMENTATION (pending re-review) |
+| Observation status | LOCALLY_VERIFIED_CLOSED_PENDING_PRODUCTION_ACCEPTANCE |
 | Production closure | NOT claimed |
 
 See `WAVE4_RESPONSIVE_LAYOUT_IMPLEMENTATION_REPORT.md`.
+
+## Wave 5 — Authorization / tenant / flag / operational-gate verification
+
+**Status:** Verification PASS — ready for release readiness  
+**Starting HEAD:** `d8c513ae` (Wave 4 re-review PASS)  
+**Scope:** Authz parity of expanded 120-node menu (no new features)  
+
+| Metric | Value |
+|--------|------:|
+| Unauthorized menu exposure | 0 |
+| Role/menu/route mismatch | 0 |
+| Feature-flag bypass | 0 |
+| Tenant gate removed | 0 |
+| Underlying auth semantics changed | NO |
+| Promoted route matrix | 39 complete |
+| B02 / B03 / private pairing | preserved |
+| Wave1–4 preservation | 13 / 120 / 379 / topbar |
+
+See `WAVE5_AUTHORIZATION_VERIFICATION_REPORT.md`.

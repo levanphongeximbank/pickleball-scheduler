@@ -4,7 +4,7 @@
 **Branch:** `fix/canonical-navigation-final-parity-01`  
 **Starting HEAD:** `248cb430` (Wave 3 PASS)  
 **Observation:** `OBSERVATION_CANONICAL_TOPBAR_01`  
-**Classification:** `PROPOSED_CLOSED_BY_IMPLEMENTATION` (pending independent re-review after breakpoint evidence correction)  
+**Classification:** `LOCALLY_VERIFIED_CLOSED_PENDING_PRODUCTION_ACCEPTANCE` (Wave 4 independent re-review PASS)  
 **Production closure:** NOT claimed
 
 ## Root cause
