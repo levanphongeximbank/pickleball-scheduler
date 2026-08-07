@@ -2,9 +2,9 @@
 export const CANONICAL_MENU_DATA = Object.freeze({
   "meta": {
     "source": "docs/ui-ux/canonical-navigation/CANONICAL_ROUTE_INVENTORY.json",
-    "generatedAt": "2026-08-07T07:20:52.430Z",
+    "generatedAt": "2026-08-07T09:01:32.612Z",
     "phase": "3-menu-completion",
-    "proposedCanonicalMenuCount": 94
+    "proposedCanonicalMenuCount": 120
   },
   "ownerDecisions": {
     "B01": {
@@ -3230,6 +3230,825 @@ export const CANONICAL_MENU_DATA = Object.freeze({
         "RBAC_SCOPED"
       ],
       "sidebar": "system-tech",
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__02__ops-log__view-log",
+      "label": "Nhật ký vận hành",
+      "description": "Vận hành sân",
+      "icon": "dashboard",
+      "route": "/court-management/ops-log",
+      "level1": "02",
+      "level1Label": "Vận hành sân",
+      "level2": "ops-log",
+      "level2Label": "Nhật ký vận hành",
+      "level3": "view-log",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "court.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__02__courts__future-courts",
+      "label": "Sân tương lai",
+      "description": "Vận hành sân",
+      "icon": "courts",
+      "route": "/court-management/future",
+      "level1": "02",
+      "level1Label": "Vận hành sân",
+      "level2": "courts",
+      "level2Label": "Danh sách sân",
+      "level3": "future-courts",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "court.update",
+        "venue.update"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__02__check-in__qr-generate",
+      "label": "Tạo mã QR",
+      "description": "Vận hành sân",
+      "icon": "dashboard",
+      "route": "/mobile/qr-generate",
+      "level1": "02",
+      "level1Label": "Vận hành sân",
+      "level2": "check-in",
+      "level2Label": "Check-in",
+      "level3": "qr-generate",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "tournament.update"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "MobileRouteGate"
+      ]
+    },
+    {
+      "id": "nav__03__customer-groups__manage-groups",
+      "label": "Nhóm khách hàng",
+      "description": "Khách hàng & VĐV",
+      "icon": "customers",
+      "route": "/court-management/customer-groups",
+      "level1": "03",
+      "level1Label": "Khách hàng & VĐV",
+      "level2": "customer-groups",
+      "level2Label": "Nhóm khách hàng",
+      "level3": "manage-groups",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "court.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__07__billing__billing-root",
+      "label": "Thanh toán gói",
+      "description": "Tài chính",
+      "icon": "billing",
+      "route": "/billing",
+      "level1": "07",
+      "level1Label": "Tài chính",
+      "level2": "billing",
+      "level2Label": "Thanh toán gói",
+      "level3": "billing-root",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__07__subscription__invoices",
+      "label": "Hóa đơn",
+      "description": "Tài chính",
+      "icon": "billing",
+      "route": "/billing/invoices",
+      "level1": "07",
+      "level1Label": "Tài chính",
+      "level2": "subscription",
+      "level2Label": "Gói đăng ký",
+      "level3": "invoices",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.invoice.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__07__subscription__usage",
+      "label": "Mức sử dụng",
+      "description": "Tài chính",
+      "icon": "billing",
+      "route": "/billing/usage",
+      "level1": "07",
+      "level1Label": "Tài chính",
+      "level2": "subscription",
+      "level2Label": "Gói đăng ký",
+      "level3": "usage",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__07__marketplace__catalog",
+      "label": "Cửa hàng",
+      "description": "Tài chính",
+      "icon": "marketplace",
+      "route": "/marketplace",
+      "level1": "07",
+      "level1Label": "Tài chính",
+      "level2": "marketplace",
+      "level2Label": "Marketplace",
+      "level3": "catalog",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "marketplace.view"
+      ],
+      "featureFlags": [
+        "VITE_MARKETPLACE_ENABLED"
+      ],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": "flag-gated",
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__billing-admin__admin-billing",
+      "label": "Billing nền tảng",
+      "description": "Quản trị nền tảng",
+      "icon": "billing",
+      "route": "/admin/billing",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "billing-admin",
+      "level2Label": "Billing nền tảng",
+      "level3": "admin-billing",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.manage"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__billing-admin__tenant-billing",
+      "label": "Billing theo tenant",
+      "description": "Quản trị nền tảng",
+      "icon": "billing",
+      "route": "/admin/billing/tenants",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "billing-admin",
+      "level2Label": "Billing nền tảng",
+      "level3": "tenant-billing",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.manage"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__billing-admin__plans",
+      "label": "Gói dịch vụ",
+      "description": "Quản trị nền tảng",
+      "icon": "billing",
+      "route": "/admin/billing/plans",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "billing-admin",
+      "level2Label": "Billing nền tảng",
+      "level3": "plans",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.plan.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__billing-admin__invoices",
+      "label": "Hóa đơn admin",
+      "description": "Quản trị nền tảng",
+      "icon": "billing",
+      "route": "/admin/billing/invoices",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "billing-admin",
+      "level2Label": "Billing nền tảng",
+      "level3": "invoices",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.invoice.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__billing-admin__payments",
+      "label": "Thanh toán admin",
+      "description": "Quản trị nền tảng",
+      "icon": "billing",
+      "route": "/admin/billing/payments",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "billing-admin",
+      "level2Label": "Billing nền tảng",
+      "level3": "payments",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.payment.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__billing-admin__audit",
+      "label": "Nhật ký billing",
+      "description": "Quản trị nền tảng",
+      "icon": "audit",
+      "route": "/admin/billing/audit",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "billing-admin",
+      "level2Label": "Billing nền tảng",
+      "level3": "audit",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "billing.audit.view"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__marketplace-admin__admin-root",
+      "label": "Quản trị marketplace",
+      "description": "Quản trị nền tảng",
+      "icon": "marketplace",
+      "route": "/admin/marketplace",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "marketplace-admin",
+      "level2Label": "Quản trị marketplace",
+      "level3": "admin-root",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__marketplace-admin__products",
+      "label": "Sản phẩm marketplace",
+      "description": "Quản trị nền tảng",
+      "icon": "marketplace",
+      "route": "/admin/marketplace/products",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "marketplace-admin",
+      "level2Label": "Quản trị marketplace",
+      "level3": "products",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__marketplace-admin__orders",
+      "label": "Đơn hàng marketplace",
+      "description": "Quản trị nền tảng",
+      "icon": "marketplace",
+      "route": "/admin/marketplace/orders",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "marketplace-admin",
+      "level2Label": "Quản trị marketplace",
+      "level3": "orders",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__integration-logs",
+      "label": "Nhật ký tích hợp",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/admin/integration-logs",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "integration-logs",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__payment-transactions",
+      "label": "Giao dịch thanh toán",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/admin/payment-transactions",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "payment-transactions",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__webhooks",
+      "label": "Sự kiện webhook",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/admin/webhook-events",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "webhooks",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__api-clients",
+      "label": "Máy khách API",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/admin/api-clients",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "api-clients",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [
+        "VITE_API_ENABLED"
+      ],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": "system-tech",
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__api-logs",
+      "label": "Nhật ký API",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/admin/api-logs",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "api-logs",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [
+        "VITE_API_ENABLED"
+      ],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": "system-tech",
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__payment-integrations",
+      "label": "Tích hợp thanh toán",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/settings/integrations/payments",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "payment-integrations",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "integration.manage"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__12__integrations__zalo-oa",
+      "label": "Tích hợp Zalo OA",
+      "description": "Quản trị nền tảng",
+      "icon": "dashboard",
+      "route": "/settings/integrations/zalo-oa",
+      "level1": "12",
+      "level1Label": "Quản trị nền tảng",
+      "level2": "integrations",
+      "level2Label": "Tích hợp",
+      "level3": "zalo-oa",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [
+        "integration.manage"
+      ],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__13__support__guide",
+      "label": "Hướng dẫn sử dụng",
+      "description": "Hỗ trợ",
+      "icon": "support",
+      "route": "/support/guide",
+      "level1": "13",
+      "level1Label": "Hỗ trợ",
+      "level2": "support",
+      "level2Label": "Hỗ trợ",
+      "level3": "guide",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
+      "guards": [
+        "RouteAccessGate"
+      ]
+    },
+    {
+      "id": "nav__13__support__faq",
+      "label": "Câu hỏi thường gặp",
+      "description": "Hỗ trợ",
+      "icon": "support",
+      "route": "/support/faq",
+      "level1": "13",
+      "level1Label": "Hỗ trợ",
+      "level2": "support",
+      "level2Label": "Hỗ trợ",
+      "level3": "faq",
+      "children": [],
+      "requiredRoles": [],
+      "requiredPermissions": [],
+      "featureFlags": [],
+      "visibilityStatus": "live",
+      "activeMatch": "prefix",
+      "mobileVisible": true,
+      "desktopVisible": true,
+      "badge": null,
+      "proposedCanonicalMenu": true,
+      "classification": "CANONICAL",
+      "rbacVisibility": [
+        "RBAC_SCOPED"
+      ],
+      "sidebar": true,
       "guards": [
         "RouteAccessGate"
       ]

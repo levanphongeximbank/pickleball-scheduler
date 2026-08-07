@@ -65,7 +65,7 @@ test("phase3 registry validation — complete coverage + zero duplicates", () =>
   assert.ok(result.counts.level3Actions >= 70);
   assert.equal(result.counts.duplicateActiveEntries, 0);
   assert.equal(result.counts.inventoriedRoutes, 179);
-  assert.equal(result.counts.proposedCanonicalMenu, 94);
+  assert.equal(result.counts.proposedCanonicalMenu, 120);
   assert.equal(result.counts.legacyRoutesHidden, 47);
   assert.equal(result.counts.shadowRoutesHidden, 1);
   assert.equal(result.counts.partialMenuNodes, 6);
@@ -233,7 +233,7 @@ test("phase3 inventory handling reconciles to 179", () => {
   assert.equal(result.ok, true);
   assert.equal(result.total, 179);
   assert.equal(result.sumStates, 179);
-  assert.equal(result.counts.ACTIVE_MENU, 76);
+  assert.equal(result.counts.ACTIVE_MENU, 102);
   assert.equal(result.counts.CONTEXTUAL_NAVIGATION, 7);
   assert.equal(result.counts.HIDDEN_SHADOW, 1);
   assert.ok(result.counts.HIDDEN_LEGACY + result.counts.REDIRECT_METADATA >= 47);

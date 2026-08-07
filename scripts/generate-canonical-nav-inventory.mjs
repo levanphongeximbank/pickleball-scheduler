@@ -64,6 +64,45 @@ const B02_TOURNAMENT_HUB_MENU_ALLOWLIST = new Set([
   "/tournament/my",
 ]);
 
+/**
+ * Wave 2 — whole-platform standalone hubs promoted into proposedCanonicalMenu.
+ * Group 05 tournament family is intentionally excluded (frozen from Wave 1).
+ * B03 shadow, public-only detail routes, auth, and contextual :param routes are excluded.
+ */
+const WAVE2_CANONICAL_HUB_MENU_ALLOWLIST = new Set([
+  // 02 Vận hành sân
+  "/court-management/ops-log",
+  "/court-management/future",
+  "/mobile/qr-generate",
+  // 03 Khách hàng & VĐV
+  "/court-management/customer-groups",
+  // 07 Tài chính
+  "/billing",
+  "/billing/invoices",
+  "/billing/usage",
+  "/marketplace",
+  // 12 Quản trị nền tảng
+  "/admin/billing",
+  "/admin/billing/tenants",
+  "/admin/billing/plans",
+  "/admin/billing/invoices",
+  "/admin/billing/payments",
+  "/admin/billing/audit",
+  "/admin/marketplace",
+  "/admin/marketplace/products",
+  "/admin/marketplace/orders",
+  "/admin/integration-logs",
+  "/admin/payment-transactions",
+  "/admin/webhook-events",
+  "/admin/api-clients",
+  "/admin/api-logs",
+  "/settings/integrations/payments",
+  "/settings/integrations/zalo-oa",
+  // 13 Hỗ trợ
+  "/support/faq",
+  "/support/guide",
+]);
+
 const LEVEL1 = [
   { id: "01", key: "tong-quan", label: "Tổng quan" },
   { id: "02", key: "van-hanh-san", label: "Vận hành sân" },
@@ -409,6 +448,24 @@ function applyOwnerDecisions(route) {
     next.sidebar = false;
     next.mobile = false;
     next.rbacVisibility = ["SUPER_ADMIN"];
+  }
+
+  // Wave 2 — promote validated standalone hubs into canonical menu exposure.
+  if (WAVE2_CANONICAL_HUB_MENU_ALLOWLIST.has(next.path)) {
+    next.classification = "CANONICAL";
+    next.disposition = "RETAIN_CANONICAL";
+    next.proposedMenuActive = true;
+    next.proposedCanonicalMenu = true;
+    next.sidebar = true;
+    if (next.mobile === false || next.mobile == null) {
+      next.mobile = false;
+    }
+    next.notes = [
+      next.notes,
+      "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+    ]
+      .filter(Boolean)
+      .join("; ");
   }
 
   return next;

@@ -3,7 +3,7 @@
     "program": "PICK_VN Canonical Navigation — Phase 1 Inventory",
     "phase": "1-review",
     "branch": "feature/canonical-navigation-and-shell-redesign",
-    "generatedAt": "2026-08-07T07:20:52.369Z",
+    "generatedAt": "2026-08-07T09:01:32.487Z",
     "sourceFiles": [
       "src/router.jsx",
       "src/config/navigationConfig.js",
@@ -19,7 +19,7 @@
     "level1Groups": 13,
     "level2Modules": 81,
     "level3Actions": 179,
-    "proposedCanonicalMenuRoutes": 94,
+    "proposedCanonicalMenuRoutes": 120,
     "duplicateActiveCanonicalMenuEntries": 0,
     "verdict": "CANONICAL_NAVIGATION_PHASE1_REVIEW_PASS_READY_FOR_COMMIT",
     "reviewVerdict": "CANONICAL_NAVIGATION_PHASE1_REVIEW_PASS_READY_FOR_COMMIT",
@@ -207,8 +207,8 @@
     "waiting-list"
   ],
   "classificationCounts": {
-    "CANONICAL": 90,
-    "HIDDEN_ACTIVE": 40,
+    "CANONICAL": 116,
+    "HIDDEN_ACTIVE": 14,
     "LEGACY": 47,
     "DUPLICATE": 1,
     "SHADOW": 1
@@ -825,8 +825,8 @@
       "level1": "03",
       "level2": "customer-groups",
       "level3": "manage-groups",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -835,14 +835,14 @@
         "court.view"
       ],
       "flags": [],
-      "notes": "Coming-soon metadata exists; route wired but no menu",
-      "routeOwner": "Khách hàng & VĐV",
+      "notes": "Coming-soon metadata exists; route wired but no menu; Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "routeOwner": "Khách hàng & VĐV",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Khách hàng & VĐV"
     },
     {
@@ -851,8 +851,8 @@
       "level1": "02",
       "level2": "ops-log",
       "level3": "view-log",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -861,13 +861,14 @@
         "court.view"
       ],
       "flags": [],
-      "routeOwner": "Vận hành sân",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Vận hành sân",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Vận hành sân"
     },
     {
@@ -901,8 +902,8 @@
       "level1": "02",
       "level2": "courts",
       "level3": "future-courts",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": "court-tabs",
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -912,13 +913,14 @@
         "venue.update"
       ],
       "flags": [],
-      "routeOwner": "Vận hành sân",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Vận hành sân",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Vận hành sân"
     },
     {
@@ -1051,8 +1053,8 @@
       "level1": "02",
       "level2": "check-in",
       "level3": "qr-generate",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "MobileRouteGate"
@@ -1061,13 +1063,14 @@
         "tournament.update"
       ],
       "flags": [],
-      "routeOwner": "Vận hành sân",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Vận hành sân",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Vận hành sân"
     },
     {
@@ -3379,8 +3382,8 @@
       "level1": "07",
       "level2": "billing",
       "level3": "billing-root",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -3389,13 +3392,14 @@
         "billing.view"
       ],
       "flags": [],
-      "routeOwner": "Tài chính",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Tài chính",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Tài chính"
     },
     {
@@ -3429,8 +3433,8 @@
       "level1": "07",
       "level2": "subscription",
       "level3": "usage",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -3439,13 +3443,14 @@
         "billing.view"
       ],
       "flags": [],
-      "routeOwner": "Tài chính",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Tài chính",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Tài chính"
     },
     {
@@ -3454,8 +3459,8 @@
       "level1": "07",
       "level2": "subscription",
       "level3": "invoices",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -3464,13 +3469,14 @@
         "billing.invoice.view"
       ],
       "flags": [],
-      "routeOwner": "Tài chính",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Tài chính",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Tài chính"
     },
     {
@@ -3629,8 +3635,8 @@
       "level1": "07",
       "level2": "marketplace",
       "level3": "catalog",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -3641,13 +3647,14 @@
       "flags": [
         "VITE_MARKETPLACE_ENABLED"
       ],
-      "routeOwner": "Tài chính",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Tài chính",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Tài chính"
     },
     {
@@ -3970,21 +3977,22 @@
       "level1": "13",
       "level2": "support",
       "level3": "guide",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": "in-page",
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Hỗ trợ",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Hỗ trợ",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Hỗ trợ"
     },
     {
@@ -3993,21 +4001,22 @@
       "level1": "13",
       "level2": "support",
       "level3": "faq",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": "in-page",
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Hỗ trợ",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Hỗ trợ",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Hỗ trợ"
     },
     {
@@ -4268,21 +4277,22 @@
       "level1": "12",
       "level2": "marketplace-admin",
       "level3": "admin-root",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4291,21 +4301,22 @@
       "level1": "12",
       "level2": "marketplace-admin",
       "level3": "products",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4314,21 +4325,22 @@
       "level1": "12",
       "level2": "marketplace-admin",
       "level3": "orders",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4337,21 +4349,22 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "integration-logs",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4360,21 +4373,22 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "payment-transactions",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4383,8 +4397,8 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "api-clients",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4393,13 +4407,14 @@
       "flags": [
         "VITE_API_ENABLED"
       ],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4408,8 +4423,8 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "api-logs",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4418,13 +4433,14 @@
       "flags": [
         "VITE_API_ENABLED"
       ],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4433,21 +4449,22 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "webhooks",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
       ],
       "perms": [],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4456,8 +4473,8 @@
       "level1": "12",
       "level2": "billing-admin",
       "level3": "admin-billing",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4466,13 +4483,14 @@
         "billing.manage"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4481,8 +4499,8 @@
       "level1": "12",
       "level2": "billing-admin",
       "level3": "tenant-billing",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4491,13 +4509,14 @@
         "billing.manage"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4506,8 +4525,8 @@
       "level1": "12",
       "level2": "billing-admin",
       "level3": "plans",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4516,13 +4535,14 @@
         "billing.plan.view"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4531,8 +4551,8 @@
       "level1": "12",
       "level2": "billing-admin",
       "level3": "invoices",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4541,13 +4561,14 @@
         "billing.invoice.view"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4556,8 +4577,8 @@
       "level1": "12",
       "level2": "billing-admin",
       "level3": "payments",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4566,13 +4587,14 @@
         "billing.payment.view"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4581,8 +4603,8 @@
       "level1": "12",
       "level2": "billing-admin",
       "level3": "audit",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4591,13 +4613,14 @@
         "billing.audit.view"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4734,8 +4757,8 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "payment-integrations",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4744,13 +4767,14 @@
         "integration.manage"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     },
     {
@@ -4759,8 +4783,8 @@
       "level1": "12",
       "level2": "integrations",
       "level3": "zalo-oa",
-      "classification": "HIDDEN_ACTIVE",
-      "sidebar": false,
+      "classification": "CANONICAL",
+      "sidebar": true,
       "mobile": false,
       "guards": [
         "RouteAccessGate"
@@ -4769,13 +4793,14 @@
         "integration.manage"
       ],
       "flags": [],
-      "routeOwner": "Quản trị nền tảng",
       "disposition": "RETAIN_CANONICAL",
+      "proposedMenuActive": true,
+      "proposedCanonicalMenu": true,
+      "notes": "Wave 2: standalone hub promoted into proposedCanonicalMenu; route/RBAC/flags unchanged",
+      "routeOwner": "Quản trị nền tảng",
       "rbacVisibility": [
         "RBAC_SCOPED"
       ],
-      "proposedMenuActive": false,
-      "proposedCanonicalMenu": false,
       "level1Label": "Quản trị nền tảng"
     }
   ],
@@ -4926,11 +4951,35 @@
         "routeOwner": "Khách hàng & VĐV"
       },
       {
+        "path": "/court-management/customer-groups",
+        "level1": "03",
+        "level1Label": "Khách hàng & VĐV",
+        "level2": "customer-groups",
+        "level3": "manage-groups",
+        "routeOwner": "Khách hàng & VĐV"
+      },
+      {
+        "path": "/court-management/ops-log",
+        "level1": "02",
+        "level1Label": "Vận hành sân",
+        "level2": "ops-log",
+        "level3": "view-log",
+        "routeOwner": "Vận hành sân"
+      },
+      {
         "path": "/court-management/courts",
         "level1": "02",
         "level1Label": "Vận hành sân",
         "level2": "courts",
         "level3": "manage-courts",
+        "routeOwner": "Vận hành sân"
+      },
+      {
+        "path": "/court-management/future",
+        "level1": "02",
+        "level1Label": "Vận hành sân",
+        "level2": "courts",
+        "level3": "future-courts",
         "routeOwner": "Vận hành sân"
       },
       {
@@ -4963,6 +5012,14 @@
         "level1Label": "Vận hành sân",
         "level2": "check-in",
         "level3": "qr-scan",
+        "routeOwner": "Vận hành sân"
+      },
+      {
+        "path": "/mobile/qr-generate",
+        "level1": "02",
+        "level1Label": "Vận hành sân",
+        "level2": "check-in",
+        "level3": "qr-generate",
         "routeOwner": "Vận hành sân"
       },
       {
@@ -5318,11 +5375,35 @@
         "routeOwner": "Giải đấu"
       },
       {
+        "path": "/billing",
+        "level1": "07",
+        "level1Label": "Tài chính",
+        "level2": "billing",
+        "level3": "billing-root",
+        "routeOwner": "Tài chính"
+      },
+      {
         "path": "/billing/current-plan",
         "level1": "07",
         "level1Label": "Tài chính",
         "level2": "subscription",
         "level3": "current-plan",
+        "routeOwner": "Tài chính"
+      },
+      {
+        "path": "/billing/usage",
+        "level1": "07",
+        "level1Label": "Tài chính",
+        "level2": "subscription",
+        "level3": "usage",
+        "routeOwner": "Tài chính"
+      },
+      {
+        "path": "/billing/invoices",
+        "level1": "07",
+        "level1Label": "Tài chính",
+        "level2": "subscription",
+        "level3": "invoices",
         "routeOwner": "Tài chính"
       },
       {
@@ -5363,6 +5444,14 @@
         "level1Label": "Tài chính",
         "level2": "finance",
         "level3": "refunds",
+        "routeOwner": "Tài chính"
+      },
+      {
+        "path": "/marketplace",
+        "level1": "07",
+        "level1Label": "Tài chính",
+        "level2": "marketplace",
+        "level3": "catalog",
         "routeOwner": "Tài chính"
       },
       {
@@ -5454,6 +5543,22 @@
         "routeOwner": "Hỗ trợ"
       },
       {
+        "path": "/support/guide",
+        "level1": "13",
+        "level1Label": "Hỗ trợ",
+        "level2": "support",
+        "level3": "guide",
+        "routeOwner": "Hỗ trợ"
+      },
+      {
+        "path": "/support/faq",
+        "level1": "13",
+        "level1Label": "Hỗ trợ",
+        "level2": "support",
+        "level3": "faq",
+        "routeOwner": "Hỗ trợ"
+      },
+      {
         "path": "/users",
         "level1": "12",
         "level1Label": "Quản trị nền tảng",
@@ -5534,6 +5639,118 @@
         "routeOwner": "Quản trị nền tảng"
       },
       {
+        "path": "/admin/marketplace",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "marketplace-admin",
+        "level3": "admin-root",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/marketplace/products",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "marketplace-admin",
+        "level3": "products",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/marketplace/orders",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "marketplace-admin",
+        "level3": "orders",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/integration-logs",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "integration-logs",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/payment-transactions",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "payment-transactions",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/api-clients",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "api-clients",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/api-logs",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "api-logs",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/webhook-events",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "webhooks",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/billing",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "billing-admin",
+        "level3": "admin-billing",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/billing/tenants",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "billing-admin",
+        "level3": "tenant-billing",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/billing/plans",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "billing-admin",
+        "level3": "plans",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/billing/invoices",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "billing-admin",
+        "level3": "invoices",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/billing/payments",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "billing-admin",
+        "level3": "payments",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/admin/billing/audit",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "billing-admin",
+        "level3": "audit",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
         "path": "/admin/ai-pairing/private-rules",
         "level1": "09",
         "level1Label": "AI Assistant",
@@ -5555,6 +5772,22 @@
         "level1Label": "Quản trị nền tảng",
         "level2": "integrations",
         "level3": "integration-settings",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/settings/integrations/payments",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "payment-integrations",
+        "routeOwner": "Quản trị nền tảng"
+      },
+      {
+        "path": "/settings/integrations/zalo-oa",
+        "level1": "12",
+        "level1Label": "Quản trị nền tảng",
+        "level2": "integrations",
+        "level3": "zalo-oa",
         "routeOwner": "Quản trị nền tảng"
       }
     ]

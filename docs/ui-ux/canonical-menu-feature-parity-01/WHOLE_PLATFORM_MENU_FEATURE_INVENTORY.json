@@ -1,0 +1,69 @@
+{
+  "program": "CANONICAL-NAVIGATION-FINAL-PARITY-01",
+  "wave": 2,
+  "proposedCanonicalNodeCountBefore": 94,
+  "proposedCanonicalNodeCountAfter": 120,
+  "visibleCanonicalCountBefore": 76,
+  "visibleCanonicalCountAfter": 102,
+  "totalWave2PromotedFeatures": 26,
+  "safeImplementedAdminFeatureHiddenWithoutJustification": 0,
+  "canonicalValidFeatureWithoutExposureDecision": 0,
+  "duplicateCanonicalAuthorityCount": 0,
+  "accidentalShadowExposureCount": 0,
+  "accidentalDeadOrBrokenExposureCount": 0,
+  "wave1TournamentPromotedTargets": 13,
+  "b02FailClosedAllowlistCount": 11,
+  "b03Preserved": true,
+  "publicOnlyScopePreserved": true,
+  "group05FrozenFromWave1": true,
+  "promotedRoutes": [
+    "/court-management/ops-log",
+    "/court-management/future",
+    "/mobile/qr-generate",
+    "/court-management/customer-groups",
+    "/billing",
+    "/billing/invoices",
+    "/billing/usage",
+    "/marketplace",
+    "/admin/billing",
+    "/admin/billing/tenants",
+    "/admin/billing/plans",
+    "/admin/billing/invoices",
+    "/admin/billing/payments",
+    "/admin/billing/audit",
+    "/admin/marketplace",
+    "/admin/marketplace/products",
+    "/admin/marketplace/orders",
+    "/admin/integration-logs",
+    "/admin/payment-transactions",
+    "/admin/webhook-events",
+    "/admin/api-clients",
+    "/admin/api-logs",
+    "/settings/integrations/payments",
+    "/settings/integrations/zalo-oa",
+    "/support/faq",
+    "/support/guide"
+  ],
+  "rejectedExamples": [
+    {
+      "route": "/player/skill-assessment-v5",
+      "disposition": "SHADOW",
+      "reason": "B03"
+    },
+    {
+      "route": "/billing/support",
+      "disposition": "HIDDEN_BY_DESIGN",
+      "reason": "Duplicate authority with Support"
+    },
+    {
+      "route": "/dev/pairing-intervention-preview",
+      "disposition": "HIDDEN_BY_DESIGN",
+      "reason": "Dev preview"
+    },
+    {
+      "route": "/tournaments/:tournamentId/engine",
+      "disposition": "CONTEXTUAL_ONLY",
+      "reason": "Engine contextual"
+    }
+  ]
+}
