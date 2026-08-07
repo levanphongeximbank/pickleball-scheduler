@@ -89,7 +89,7 @@ test("phase3 menu — 13 Level-1, PARTIAL badges, contextual params hidden", () 
   const flat = flattenCanonicalMenu(tree);
   const partial = flat.filter((n) => n.visibilityStatus === "partial");
   assert.equal(partial.length, 6);
-  assert.ok(partial.every((n) => n.badge?.label === "PARTIAL"));
+  assert.ok(partial.every((n) => n.badge?.label === "Một phần"));
 
   const visibleDesktop = flattenCanonicalMenu(
     filterCanonicalMenu(authFor("SUPER_ADMIN"), { viewport: "desktop" })

@@ -50,7 +50,7 @@ export default function CanonicalMobileDrawer({ menuGroups = [] }) {
     return stack[stack.length - 1].children || [];
   }, [menuGroups, stack]);
 
-  const title = stack.length === 0 ? "Menu" : stack[stack.length - 1].label;
+  const title = stack.length === 0 ? "Điều hướng" : stack[stack.length - 1].label;
 
   const restoreTriggerFocus = useCallback(() => {
     const trigger = menuTriggerRef?.current;

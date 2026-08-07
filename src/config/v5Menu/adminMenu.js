@@ -40,7 +40,7 @@ export const ADMIN_MENU_ROOT = menuFolder({
 
       icon: "tenants",
 
-      text: "Tổ chức / Tenant",
+      text: "Quản lý tổ chức",
 
       path: "/admin/tenants",
 

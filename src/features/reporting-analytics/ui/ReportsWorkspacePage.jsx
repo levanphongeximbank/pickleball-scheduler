@@ -14,16 +14,19 @@ import {
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { useClub } from "../../../context/ClubContext.jsx";
 import {
-  REPORTING_PERMISSIONS,
   REPORTING_PRESENTATION_SOURCE_STATE,
   getReportingPresentationSourceStateLabel,
 } from "../index.js";
+import { getTechnicalReasonUserMessage } from "../../canonical-shell/config/canonicalVietnameseLabels.js";
 import { useReportsWorkspace } from "./useReportsWorkspace.js";
 
 function StateBlock({ title, sourceState, error, emptyLabel, children }) {
   const state = sourceState?.state || REPORTING_PRESENTATION_SOURCE_STATE.UNAVAILABLE;
   const label =
     sourceState?.label || getReportingPresentationSourceStateLabel(state);
+  const reasonMessage = sourceState?.reason
+    ? getTechnicalReasonUserMessage(sourceState.reason)
+    : null;
 
   return (
     <Box
@@ -36,9 +39,9 @@ function StateBlock({ title, sourceState, error, emptyLabel, children }) {
           {title}
         </Typography>
         <Chip size="small" label={label} variant="outlined" />
-        {sourceState?.reason && (
+        {reasonMessage && (
           <Typography variant="caption" color="text.secondary" component="span">
-            {sourceState.reason}
+            {reasonMessage}
           </Typography>
         )}
       </Stack>
@@ -54,8 +57,8 @@ function StateBlock({ title, sourceState, error, emptyLabel, children }) {
       )}
       {state === REPORTING_PRESENTATION_SOURCE_STATE.UNAVAILABLE && (
         <Typography variant="body2" color="text.secondary" role="status">
-          Tính năng Reporting chưa có runtime được inject an toàn. Không dùng mock hoặc
-          bộ nhớ trình duyệt để giả lập lưu trữ bền vững.
+          Tính năng báo cáo chưa có runtime được cấu hình an toàn. Không dùng dữ liệu giả
+          hoặc bộ nhớ trình duyệt để giả lập lưu trữ bền vững.
         </Typography>
       )}
       {children}
@@ -102,7 +105,7 @@ export default function ReportsWorkspacePage() {
         Báo cáo vận hành
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 2 }}>
-        Không gian Reporting trung thực — không gắn LIVE khi runtime chưa triển khai.
+        Không gian báo cáo trung thực — không gắn trạng thái trực tiếp khi runtime chưa triển khai.
       </Typography>
 
       <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
@@ -110,24 +113,26 @@ export default function ReportsWorkspacePage() {
           size="small"
           label={
             runtime.available
-              ? "Runtime AVAILABLE"
-              : `Runtime UNAVAILABLE${runtime.reason ? `: ${runtime.reason}` : ""}`
+              ? "Runtime sẵn sàng"
+              : `Runtime chưa sẵn sàng${
+                  runtime.reason ? `: ${getTechnicalReasonUserMessage(runtime.reason)}` : ""
+                }`
           }
           color={runtime.available ? "success" : "default"}
           variant="outlined"
           role="status"
           aria-label={
             runtime.available
-              ? "Reporting runtime khả dụng"
-              : "Reporting runtime chưa khả dụng"
+              ? "Runtime báo cáo khả dụng"
+              : "Runtime báo cáo chưa khả dụng"
           }
         />
         <Chip
           size="small"
           label={
             visibility.canExecuteReport
-              ? "Có quyền execute"
-              : `Thiếu ${REPORTING_PERMISSIONS.REPORT_EXECUTE}`
+              ? "Có quyền chạy báo cáo"
+              : "Thiếu quyền chạy báo cáo"
           }
           variant="outlined"
         />
@@ -135,8 +140,8 @@ export default function ReportsWorkspacePage() {
           size="small"
           label={
             visibility.canSaveReport
-              ? "Có quyền save report"
-              : `Thiếu ${REPORTING_PERMISSIONS.REPORT_SAVE}`
+              ? "Có quyền lưu báo cáo"
+              : "Thiếu quyền lưu báo cáo"
           }
           variant="outlined"
         />
@@ -144,8 +149,8 @@ export default function ReportsWorkspacePage() {
           size="small"
           label={
             visibility.canExportReport
-              ? "Có quyền export"
-              : `Thiếu ${REPORTING_PERMISSIONS.REPORT_EXPORT}`
+              ? "Có quyền xuất báo cáo"
+              : "Thiếu quyền xuất báo cáo"
           }
           variant="outlined"
         />
@@ -167,7 +172,7 @@ export default function ReportsWorkspacePage() {
         title="Định nghĩa báo cáo"
         sourceState={workspace.definitions.sourceState}
         error={workspace.definitions.error}
-        emptyLabel="Chưa có report definition nào."
+        emptyLabel="Chưa có định nghĩa báo cáo nào."
       >
         <List dense>
           {(workspace.definitions.items || []).map((item) => (
@@ -175,9 +180,8 @@ export default function ReportsWorkspacePage() {
               <ListItemText
                 primary={item.title || item.name || item.reportDefinitionId}
                 secondary={[
-                  item.scope?.kind ? `Scope: ${item.scope.kind}` : null,
-                  item.source?.kind ? `Source: ${item.source.kind}` : null,
-                  item.requiredPermission || item.permission || null,
+                  item.scope?.kind ? `Phạm vi: ${item.scope.kind}` : null,
+                  item.source?.kind ? `Nguồn: ${item.source.kind}` : null,
                 ]
                   .filter(Boolean)
                   .join(" • ")}
@@ -193,7 +197,7 @@ export default function ReportsWorkspacePage() {
         title="Báo cáo đã lưu"
         sourceState={workspace.savedReports.sourceState}
         error={workspace.savedReports.error}
-        emptyLabel="Chưa có saved report."
+        emptyLabel="Chưa có báo cáo đã lưu."
       >
         <List dense>
           {(workspace.savedReports.items || []).map((item) => (
@@ -202,9 +206,9 @@ export default function ReportsWorkspacePage() {
                 primary={item.name || item.title || item.savedReportId}
                 secondary={
                   item.expectedVersion != null
-                    ? `version ${item.expectedVersion}`
+                    ? `Phiên bản ${item.expectedVersion}`
                     : item.version != null
-                      ? `version ${item.version}`
+                      ? `Phiên bản ${item.version}`
                       : null
                 }
               />
@@ -213,7 +217,7 @@ export default function ReportsWorkspacePage() {
         </List>
         {!visibility.canSaveReport && (
           <Typography variant="body2" color="text.secondary" role="status">
-            Nút lưu bị ẩn vì thiếu quyền trình bày — authorization dịch vụ vẫn là biên giới cuối.
+            Nút lưu bị ẩn vì thiếu quyền — kiểm tra quyền vẫn là biên giới cuối.
           </Typography>
         )}
       </StateBlock>
@@ -222,7 +226,7 @@ export default function ReportsWorkspacePage() {
         title="Bộ lọc đã lưu"
         sourceState={workspace.savedFilters.sourceState}
         error={workspace.savedFilters.error}
-        emptyLabel="Chưa có saved filter."
+        emptyLabel="Chưa có bộ lọc đã lưu."
       >
         <List dense>
           {(workspace.savedFilters.items || []).map((item) => (
@@ -238,9 +242,9 @@ export default function ReportsWorkspacePage() {
 
       <Divider sx={{ my: 2 }} />
 
-      <Box sx={{ mb: 3 }} role="region" aria-label="Execution và export">
+      <Box sx={{ mb: 3 }} role="region" aria-label="Chạy và xuất báo cáo">
         <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-          Execution & Export
+          Chạy & xuất báo cáo
         </Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 1 }}>
           {visibility.canExecuteReport ? (
@@ -261,7 +265,7 @@ export default function ReportsWorkspacePage() {
             </Button>
           ) : (
             <Typography variant="body2" color="text.secondary" role="status">
-              Không hiện nút execute — thiếu {REPORTING_PERMISSIONS.REPORT_EXECUTE}.
+              Không hiện nút chạy báo cáo — thiếu quyền.
             </Typography>
           )}
           {visibility.canExportReport ? (
@@ -283,7 +287,7 @@ export default function ReportsWorkspacePage() {
             </Button>
           ) : (
             <Typography variant="body2" color="text.secondary" role="status">
-              Không hiện nút export — thiếu {REPORTING_PERMISSIONS.REPORT_EXPORT}.
+              Không hiện nút xuất báo cáo — thiếu quyền.
             </Typography>
           )}
           <Button
@@ -303,7 +307,7 @@ export default function ReportsWorkspacePage() {
             role="status"
             aria-live="polite"
           >
-            Execution: {workspace.execution.lifecycle.label}
+            Kết quả chạy: {workspace.execution.lifecycle.label}
             {workspace.execution.lifecycle.errorMessage
               ? ` — ${workspace.execution.lifecycle.errorMessage}`
               : ""}
@@ -316,7 +320,7 @@ export default function ReportsWorkspacePage() {
             role="status"
             aria-live="polite"
           >
-            Export: {workspace.exportJob.lifecycle.label}
+            Xuất: {workspace.exportJob.lifecycle.label}
             {workspace.exportJob.lifecycle.showSuccess &&
               workspace.exportJob.lifecycle.outputHref && (
                 <>

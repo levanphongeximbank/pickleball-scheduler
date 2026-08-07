@@ -8,5 +8,6 @@ Target condition after Wave 2:
 - Platform Admin (12) exposes safe standalone billing / marketplace / integration hubs to SUPER_ADMIN under existing permissions
 - Public Portal remains public-scoped
 - B03 remains shadow
+- Wave 3: user-visible canonical labels are Vietnamese (approved brands exempt); technical reason codes are not rendered raw
 
-See `CANONICAL_MENU_TARGET_STRUCTURE.json` and `WAVE2_IMPLEMENTATION_REPORT.md`.
+See `CANONICAL_MENU_TARGET_STRUCTURE.json` and `WAVE3_LOCALIZATION_IMPLEMENTATION_REPORT.md`.

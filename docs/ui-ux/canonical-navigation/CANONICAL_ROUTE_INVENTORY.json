@@ -3,7 +3,7 @@
     "program": "PICK_VN Canonical Navigation — Phase 1 Inventory",
     "phase": "1-review",
     "branch": "feature/canonical-navigation-and-shell-redesign",
-    "generatedAt": "2026-08-07T09:01:32.487Z",
+    "generatedAt": "2026-08-07T09:39:01.716Z",
     "sourceFiles": [
       "src/router.jsx",
       "src/config/navigationConfig.js",
@@ -85,7 +85,7 @@
     {
       "id": "06",
       "key": "rating-xep-hang",
-      "label": "Rating & Xếp hạng"
+      "label": "Xếp hạng"
     },
     {
       "id": "07",
@@ -100,7 +100,7 @@
     {
       "id": "09",
       "key": "ai-assistant",
-      "label": "AI Assistant"
+      "label": "Trợ lý AI"
     },
     {
       "id": "10",
@@ -110,7 +110,7 @@
     {
       "id": "11",
       "key": "public-portal",
-      "label": "Public Portal"
+      "label": "Cổng công khai"
     },
     {
       "id": "12",
@@ -374,7 +374,7 @@
       ],
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/home",
@@ -397,7 +397,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/tournaments",
@@ -420,7 +420,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/clubs",
@@ -443,7 +443,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/clubs/:publicId",
@@ -466,7 +466,7 @@
       ],
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/courts",
@@ -489,7 +489,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/courts/:publicId",
@@ -512,7 +512,7 @@
       ],
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/rankings",
@@ -535,7 +535,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/news",
@@ -558,7 +558,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Public Portal"
+      "level1Label": "Cổng công khai"
     },
     {
       "path": "/dashboard",
@@ -616,7 +616,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/statistics",
@@ -1194,7 +1194,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/players/profile/:playerId",
@@ -1335,7 +1335,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/player/skill-assessment",
@@ -1358,7 +1358,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/player/skill-assessment-v5",
@@ -1385,7 +1385,7 @@
         "SUPER_ADMIN"
       ],
       "routeOwner": "Rating & Xếp hạng",
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/onboarding/pick-vn-rating",
@@ -1407,7 +1407,7 @@
       ],
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/club",
@@ -3761,7 +3761,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "AI Assistant"
+      "level1Label": "Trợ lý AI"
     },
     {
       "path": "/notifications",
@@ -4219,7 +4219,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/admin/tournament-certifications",
@@ -4244,7 +4244,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "Rating & Xếp hạng"
+      "level1Label": "Xếp hạng"
     },
     {
       "path": "/admin/staff",
@@ -4650,7 +4650,7 @@
       ],
       "proposedMenuActive": true,
       "proposedCanonicalMenu": true,
-      "level1Label": "AI Assistant"
+      "level1Label": "Trợ lý AI"
     },
     {
       "path": "/dev/pairing-intervention-preview",
@@ -4674,7 +4674,7 @@
       ],
       "proposedMenuActive": false,
       "proposedCanonicalMenu": false,
-      "level1Label": "AI Assistant"
+      "level1Label": "Trợ lý AI"
     },
     {
       "path": "/internal/hard-cutover/operator-acceptance",
@@ -4833,7 +4833,7 @@
       {
         "path": "/home",
         "level1": "11",
-        "level1Label": "Public Portal",
+        "level1Label": "Cổng công khai",
         "level2": "portal-home",
         "level3": "home",
         "routeOwner": "Public Portal"
@@ -4841,7 +4841,7 @@
       {
         "path": "/tournaments",
         "level1": "11",
-        "level1Label": "Public Portal",
+        "level1Label": "Cổng công khai",
         "level2": "portal-tournaments",
         "level3": "list",
         "routeOwner": "Public Portal"
@@ -4849,7 +4849,7 @@
       {
         "path": "/clubs",
         "level1": "11",
-        "level1Label": "Public Portal",
+        "level1Label": "Cổng công khai",
         "level2": "portal-clubs",
         "level3": "list",
         "routeOwner": "Public Portal"
@@ -4857,7 +4857,7 @@
       {
         "path": "/courts",
         "level1": "11",
-        "level1Label": "Public Portal",
+        "level1Label": "Cổng công khai",
         "level2": "portal-courts",
         "level3": "list",
         "routeOwner": "Public Portal"
@@ -4865,7 +4865,7 @@
       {
         "path": "/rankings",
         "level1": "11",
-        "level1Label": "Public Portal",
+        "level1Label": "Cổng công khai",
         "level2": "portal-rankings",
         "level3": "public-bxh",
         "routeOwner": "Public Portal"
@@ -4873,7 +4873,7 @@
       {
         "path": "/news",
         "level1": "11",
-        "level1Label": "Public Portal",
+        "level1Label": "Cổng công khai",
         "level2": "portal-news",
         "level3": "list",
         "routeOwner": "Public Portal"
@@ -4889,7 +4889,7 @@
       {
         "path": "/dashboard/rankings",
         "level1": "06",
-        "level1Label": "Rating & Xếp hạng",
+        "level1Label": "Xếp hạng",
         "level2": "vpr-admin",
         "level3": "manage-rankings",
         "routeOwner": "Rating & Xếp hạng"
@@ -5057,7 +5057,7 @@
       {
         "path": "/players/skill",
         "level1": "06",
-        "level1Label": "Rating & Xếp hạng",
+        "level1Label": "Xếp hạng",
         "level2": "skill-levels",
         "level3": "staff-skill-view",
         "routeOwner": "Rating & Xếp hạng"
@@ -5081,7 +5081,7 @@
       {
         "path": "/player/skill",
         "level1": "06",
-        "level1Label": "Rating & Xếp hạng",
+        "level1Label": "Xếp hạng",
         "level2": "skill-levels",
         "level3": "player-skill-view",
         "routeOwner": "Rating & Xếp hạng"
@@ -5089,7 +5089,7 @@
       {
         "path": "/player/skill-assessment",
         "level1": "06",
-        "level1Label": "Rating & Xếp hạng",
+        "level1Label": "Xếp hạng",
         "level2": "skill-assessment",
         "level3": "first-assessment",
         "routeOwner": "Rating & Xếp hạng"
@@ -5473,7 +5473,7 @@
       {
         "path": "/ai",
         "level1": "09",
-        "level1Label": "AI Assistant",
+        "level1Label": "Trợ lý AI",
         "level2": "ai-hub",
         "level3": "assistant",
         "routeOwner": "AI Assistant"
@@ -5617,7 +5617,7 @@
       {
         "path": "/admin/skill-level-requests",
         "level1": "06",
-        "level1Label": "Rating & Xếp hạng",
+        "level1Label": "Xếp hạng",
         "level2": "skill-approval",
         "level3": "requests-queue",
         "routeOwner": "Rating & Xếp hạng"
@@ -5625,7 +5625,7 @@
       {
         "path": "/admin/tournament-certifications",
         "level1": "06",
-        "level1Label": "Rating & Xếp hạng",
+        "level1Label": "Xếp hạng",
         "level2": "vpr-admin",
         "level3": "certify-tournaments",
         "routeOwner": "Rating & Xếp hạng"
@@ -5753,7 +5753,7 @@
       {
         "path": "/admin/ai-pairing/private-rules",
         "level1": "09",
-        "level1Label": "AI Assistant",
+        "level1Label": "Trợ lý AI",
         "level2": "private-pairing",
         "level3": "admin-rules",
         "routeOwner": "AI Assistant"

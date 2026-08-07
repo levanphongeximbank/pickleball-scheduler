@@ -22,6 +22,8 @@ Machine-oriented companion: see also `WAVE2_IMPLEMENTATION_REPORT.md`.
 | CONTEXTUAL_NAVIGATION | 7 |
 | HIDDEN_SHADOW | 1 |
 | Wave 2 promotions | 26 |
+| Visible canonical labels (Wave 3) | 379 |
+| Vietnamese coverage (Wave 3) | 100% |
 
 ## Group 05 freeze
 

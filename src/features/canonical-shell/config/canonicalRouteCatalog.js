@@ -2,7 +2,7 @@
 export const CANONICAL_ROUTE_CATALOG = Object.freeze({
   meta: Object.freeze({
   "source": "docs/ui-ux/canonical-navigation/CANONICAL_ROUTE_INVENTORY.json",
-  "generatedAt": "2026-08-07T09:01:32.610Z",
+  "generatedAt": "2026-08-07T09:39:01.775Z",
   "phase": "3-menu-completion",
   "totalRoutes": 179,
   "proposedCanonicalMenuCount": 120,

@@ -1,5 +1,6 @@
 import { Box, Button, Stack, Typography } from "@mui/material";
 import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
+import { getTechnicalReasonUserMessage } from "../../canonical-shell/config/canonicalVietnameseLabels.js";
 
 const LEVEL_COLORS = {
   low: "#e8f5e9",
@@ -100,6 +101,7 @@ export function DashboardErrorState({ message, onRetry }) {
 }
 
 export function DashboardUnavailableState({ message, reason }) {
+  const reasonMessage = reason ? getTechnicalReasonUserMessage(reason) : null;
   return (
     <Box
       role="status"
@@ -113,14 +115,14 @@ export function DashboardUnavailableState({ message, reason }) {
       }}
     >
       <Typography fontWeight="bold" sx={{ mb: 1 }}>
-        Nguồn dashboard chưa khả dụng
+        Nguồn tổng quan chưa khả dụng
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        {message || "Reporting runtime hoặc nguồn dữ liệu chưa được cấu hình."}
+        {message || "Hệ thống báo cáo hoặc nguồn dữ liệu chưa được cấu hình."}
       </Typography>
-      {reason && (
+      {reasonMessage && (
         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-          Lý do: {reason}
+          Lý do: {reasonMessage}
         </Typography>
       )}
     </Box>

@@ -23,12 +23,12 @@ const VARIANT_STYLES = {
 export default function TenantSwitcher({ size = "small", minWidth = 180, variant = "dark" }) {
   const { currentTenantId, isSuperAdmin, switchTenant, revision } = useTenant();
   const styles = VARIANT_STYLES[variant] || VARIANT_STYLES.dark;
+  const tenants = useMemo(() => listTenants(), [revision]);
 
   if (!isSuperAdmin) {
     return null;
   }
 
-  const tenants = useMemo(() => listTenants(), [revision]);
   const hasSelection = tenants.some((tenant) => tenant.id === currentTenantId);
   const value = hasSelection ? currentTenantId : "";
 
@@ -44,7 +44,7 @@ export default function TenantSwitcher({ size = "small", minWidth = 180, variant
         displayEmpty
         renderValue={(selected) => {
           if (!selected) {
-            return "Chọn tenant…";
+            return "Chọn tổ chức…";
           }
           const tenant = tenants.find((item) => item.id === selected);
           return tenant?.name || selected;
@@ -64,7 +64,7 @@ export default function TenantSwitcher({ size = "small", minWidth = 180, variant
         }}
       >
         <MenuItem value="" disabled>
-          <em>Chọn tenant…</em>
+          <em>Chọn tổ chức…</em>
         </MenuItem>
         {tenants.map((tenant) => (
           <MenuItem key={tenant.id} value={tenant.id}>

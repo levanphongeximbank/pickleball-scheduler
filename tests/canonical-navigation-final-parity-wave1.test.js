@@ -30,7 +30,7 @@ const APPROVED_TOURNAMENT_MENU = Object.freeze([
   ["/tournament/config", "Cấu hình"],
   ["/tournament/my", "Giải của tôi"],
   ["/daily-play", "Mở phiên"],
-  ["/referee", "Hub"],
+  ["/referee", "Trọng tài"],
 ]);
 
 function superAdminAuth() {
