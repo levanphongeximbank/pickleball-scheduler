@@ -142,19 +142,28 @@ function liveAuthInput(files, overrides = {}) {
   });
 }
 
-test("1) missing credentials fail before adapter calls", async () => {
+test("1) retired forward GO blocks live execute before credentials/adapters", async () => {
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
+  let credsCalls = 0;
   const report = await runLiveOperatorExecute(liveAuthInput(files), {
     repoRoots: [root],
-    loadOperatorCredentials: () => ({
-      ok: false,
-      reasons: ["missing_supabase_secret_key"],
-    }),
+    loadOperatorCredentials: () => {
+      credsCalls += 1;
+      return {
+        ok: false,
+        reasons: ["missing_supabase_secret_key"],
+      };
+    },
   });
   assert.equal(report.ok, false);
   assert.equal(report.mutationClientConstructed, false);
-  assert.equal(report.failReason, "credentials_missing_before_adapter");
+  assert.equal(report.failReason, "authorization_or_structural_guards");
+  assert.ok(report.reasons.includes("forward_live_execution_retired"));
+  assert.ok(
+    report.reasons.includes("retired_owner_production_go_not_reusable")
+  );
   assert.equal(report.mutationCalls, 0);
+  assert.equal(credsCalls, 0);
 });
 
 test("2) credentials are not required for dry-run", async () => {
@@ -220,18 +229,33 @@ test("6) missing Owner GO gives zero calls", async () => {
   assert.equal(report.mutationClientConstructed, false);
 });
 
-test("7) previous Owner GO event / retired batch cannot be reused", async () => {
+test("7) previous Owner GO event / retired batches cannot be reused", async () => {
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
-  const retired = await runLiveOperatorExecute(
-    liveAuthInput(files, {
-      OPERATION_B1_BATCH_ID: RETIRED_OPERATION_B1_BATCH_IDS[0],
-    }),
-    { repoRoots: [root] }
+  for (const batchId of RETIRED_OPERATION_B1_BATCH_IDS) {
+    const retired = await runLiveOperatorExecute(
+      liveAuthInput(files, {
+        OPERATION_B1_BATCH_ID: batchId,
+      }),
+      { repoRoots: [root] }
+    );
+    assert.equal(retired.ok, false, batchId);
+    assert.ok(
+      retired.reasons.includes("retired_batch_id_not_reusable") ||
+        retired.reasons.includes("forward_live_execution_retired"),
+      batchId
+    );
+    assert.equal(retired.mutationCalls, 0, batchId);
+    assert.equal(retired.mutationClientConstructed, false, batchId);
+  }
+
+  const retiredGo = await runLiveOperatorExecute(liveAuthInput(files), {
+    repoRoots: [root],
+  });
+  assert.equal(retiredGo.ok, false);
+  assert.ok(
+    retiredGo.reasons.includes("retired_owner_production_go_not_reusable")
   );
-  assert.equal(retired.ok, false);
-  assert.ok(retired.reasons.includes("retired_batch_id_not_reusable"));
-  assert.equal(retired.mutationCalls, 0);
-  assert.equal(retired.mutationClientConstructed, false);
+  assert.equal(retiredGo.mutationCalls, 0);
 });
 
 test("8) invalid allowlist checksum gives zero calls", async () => {
@@ -535,15 +559,8 @@ test("18) Auth/eligibility failure before mutation → no profile mutation", asy
 
 test("19) Auth ban failure after profile → profile compensation", async () => {
   const row = makeEight()[0];
-  const auth = evaluateAuthorization({
-    DRY_RUN: "false",
-    PRODUCTION_PROJECT_REF: EXPECTED_PRODUCTION_PROJECT_REF,
-    OPERATION_B1_BATCH_ID: FRESH_BATCH,
-    ALLOWLIST_PATH: "C:\\tmp\\a.json",
-    ALLOWLIST_SHA256: "d".repeat(64),
-    OWNER_PRODUCTION_GO: REQUIRED_OWNER_PRODUCTION_GO,
-    EXPLICIT_EXECUTE_CONFIRMATION: REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
-  });
+  // Synthetic auth for historical engine unit coverage (B1 forward GO is retired).
+  const auth = { ok: true, dryRun: false, authorized: true, reasons: [] };
   let status = "active";
   const result = await quarantineOneIdentity({
     allowlistRow: row,
@@ -572,15 +589,8 @@ test("19) Auth ban failure after profile → profile compensation", async () => 
 
 test("20) compensation failure returns explicit unresolved status", async () => {
   const row = makeEight()[0];
-  const auth = evaluateAuthorization({
-    DRY_RUN: "false",
-    PRODUCTION_PROJECT_REF: EXPECTED_PRODUCTION_PROJECT_REF,
-    OPERATION_B1_BATCH_ID: FRESH_BATCH,
-    ALLOWLIST_PATH: "C:\\tmp\\a.json",
-    ALLOWLIST_SHA256: "e".repeat(64),
-    OWNER_PRODUCTION_GO: REQUIRED_OWNER_PRODUCTION_GO,
-    EXPLICIT_EXECUTE_CONFIRMATION: REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
-  });
+  // Synthetic auth for historical engine unit coverage (B1 forward GO is retired).
+  const auth = { ok: true, dryRun: false, authorized: true, reasons: [] };
   let updates = 0;
   const result = await quarantineOneIdentity({
     allowlistRow: row,
@@ -609,13 +619,8 @@ test("20) compensation failure returns explicit unresolved status", async () => 
   assert.equal(result.compensated, true);
 });
 
-test("21) postcheck failure stops completion", async () => {
+test("21) retired B1 forward GO cannot authorize live execute (inert)", async () => {
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
-  const identities = makeEight();
-  const state = new Map(
-    identities.map((r) => [r.profile_id, { status: "active", banned: false }])
-  );
-
   const report = await runLiveOperatorExecute(liveAuthInput(files), {
     repoRoots: [root],
     loadOperatorCredentials: () => ({
@@ -624,37 +629,21 @@ test("21) postcheck failure stops completion", async () => {
       secretKey: "test-secret-not-logged",
       projectRef: EXPECTED_PRODUCTION_PROJECT_REF,
     }),
-    createOperationB1AdminClient: () => ({}),
-    createOperationB1LiveAdapters: () => ({
-      emailOverrides: Object.fromEntries(
-        identities.map((r) => [r.auth_user_id, r.expected_email])
-      ),
-      fetchProfile: async (id) => {
-        const row = identities.find((r) => r.profile_id === id);
-        const st = state.get(id);
-        return {
-          id,
-          email: row.expected_email,
-          // Intentionally never reflect quarantine so postcheck fails
-          status: "active",
-          _ignored: st,
-        };
-      },
-      fetchReferenceCounts: async () => zeroRefs(),
-      fetchAuthBanState: async () => false,
-      updateProfileStatus: async ({ profileId, status }) => {
-        state.get(profileId).status = status;
-        return { ok: true };
-      },
-      banAuthUser: async ({ userId }) => {
-        state.get(userId).banned = true;
-        return { ok: true };
-      },
-    }),
+    createOperationB1AdminClient: () => {
+      throw new Error("must_not_construct_client_when_forward_retired");
+    },
+    createOperationB1LiveAdapters: () => {
+      throw new Error("must_not_build_adapters_when_forward_retired");
+    },
   });
   assert.equal(report.ok, false);
-  assert.equal(report.failReason, "postcheck_failed");
-  assert.equal(report.execute?.ok, true);
+  assert.equal(report.mutationCalls, 0);
+  assert.equal(report.mutationClientConstructed, false);
+  assert.equal(report.failReason, "authorization_or_structural_guards");
+  assert.ok(report.reasons.includes("forward_live_execution_retired"));
+  assert.ok(
+    report.reasons.includes("retired_owner_production_go_not_reusable")
+  );
 });
 
 test("22) execution remains idempotent (dry-run + already-quarantined)", async () => {
@@ -830,7 +819,7 @@ test("loadOperatorCredentials supports secret key + service-role fallback", () =
   assert.equal(fallback.usedServiceRoleFallback, true);
 });
 
-test("recovery snapshot: correct byte SHA-256 passes (dry-run + live gate)", async () => {
+test("recovery snapshot: correct byte SHA-256 passes dry-run; live forward remains inert", async () => {
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
   const dry = await runLiveOperatorExecute(baseInput(files), {
     repoRoots: [root],
@@ -853,31 +842,17 @@ test("recovery snapshot: correct byte SHA-256 passes (dry-run + live gate)", asy
     },
     createOperationB1AdminClient: () => {
       adminCalls += 1;
-      return {
-        from() {
-          throw new Error("network_forbidden_in_tests");
-        },
-        auth: {
-          admin: {
-            getUserById: async () => {
-              throw new Error("network_forbidden_in_tests");
-            },
-            updateUserById: async () => {
-              throw new Error("network_forbidden_in_tests");
-            },
-          },
-        },
-      };
+      throw new Error("must_not_construct_when_forward_retired");
     },
   });
-  // Correct hash must pass the snapshot gate and reach credential/client construction.
-  assert.equal(credsCalls >= 1, true);
-  assert.equal(adminCalls >= 1, true);
-  assert.equal(live.mutationClientConstructed, true);
-  assert.equal(
-    live.failReason === "recovery_snapshot_sha256_mismatch",
-    false
-  );
+  // B1 forward live path is permanently retired — never reaches credentials/client.
+  assert.equal(live.ok, false);
+  assert.equal(live.failReason, "authorization_or_structural_guards");
+  assert.ok(live.reasons.includes("forward_live_execution_retired"));
+  assert.equal(live.mutationClientConstructed, false);
+  assert.equal(credsCalls, 0);
+  assert.equal(adminCalls, 0);
+  assert.equal(live.mutationCalls, 0);
 });
 
 test("recovery snapshot: wrong hash blocks before credentials/client/network", async () => {
@@ -889,8 +864,9 @@ test("recovery snapshot: wrong hash blocks before credentials/client/network", a
   let authCalls = 0;
   let profileCalls = 0;
 
+  // Dry-run still exercises the snapshot byte gate (forward live GO is retired).
   const report = await runLiveOperatorExecute(
-    liveAuthInput(files, { SNAPSHOT_SHA256: "a".repeat(64) }),
+    baseInput(files, { SNAPSHOT_SHA256: "a".repeat(64) }),
     {
       repoRoots: [root],
       loadOperatorCredentials: () => {
@@ -958,7 +934,7 @@ test("recovery snapshot: modified file after hash calculation blocks", async () 
   );
   let credsCalls = 0;
   const report = await runLiveOperatorExecute(
-    liveAuthInput(files, { SNAPSHOT_SHA256: originalSha }),
+    baseInput(files, { SNAPSHOT_SHA256: originalSha }),
     {
       repoRoots: [root],
       loadOperatorCredentials: () => {

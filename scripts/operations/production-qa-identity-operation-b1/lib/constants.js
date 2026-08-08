@@ -1,6 +1,10 @@
 /**
  * Operation B1 — reversible QA identity quarantine (package constants).
- * PACKAGE ONLY. Production GO = NO until exact future Owner authorization.
+ * PACKAGE ONLY. Forward live Production mutation path is RETIRED / INERT.
+ *
+ * OLD_OWNER_GO_REUSABLE=NO
+ * OLD_BATCH_REUSABLE=NO
+ * PRODUCTION_GO=NO
  */
 
 export const OPERATION_ID = "OPERATION_B1_REVERSIBLE_QA_QUARANTINE";
@@ -9,13 +13,20 @@ export const EXPECTED_PRODUCTION_PROJECT_REF = "expuvcohlcjzvrrauvud";
 
 export const EXPECTED_B1_COUNT = 8;
 
-/** Exact future Owner GO value required for forward mutation. */
-export const REQUIRED_OWNER_PRODUCTION_GO =
+/**
+ * RETIRED forever — must never authorize a new Production mutation.
+ * Historical alias REQUIRED_OWNER_PRODUCTION_GO retained for audit/tests only.
+ */
+export const RETIRED_OWNER_PRODUCTION_GO =
   "APPROVE_OPERATION_B1_EXACT_EIGHT_ONLY";
+
+/** @deprecated Retained as audit alias of RETIRED_OWNER_PRODUCTION_GO. Never authorizes. */
+export const REQUIRED_OWNER_PRODUCTION_GO = RETIRED_OWNER_PRODUCTION_GO;
 
 /**
  * Exact Owner GO for rollback/unquarantine only.
  * Forward GO must never authorize rollback.
+ * Rollback remains historically gated; B1B is the forward successor.
  */
 export const REQUIRED_OWNER_PRODUCTION_GO_ROLLBACK =
   "APPROVE_OPERATION_B1_ROLLBACK_UNQUARANTINE_ONLY";
@@ -25,13 +36,19 @@ export const REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION =
   "I_UNDERSTAND_THIS_MUTATES_PRODUCTION_QA_ONLY";
 
 /**
- * Retired unused batch from blocked no-adapter attempt — never reuse.
+ * Retired batch IDs — never reuse for authorization.
+ * - 9c9… unused / blocked no-adapter attempt
+ * - b371… failed B1 live batch
  */
 export const RETIRED_OPERATION_B1_BATCH_IDS = Object.freeze([
   "9c9d5fc7-648e-44c6-a959-e62157f7c970",
+  "b37186cf-e620-4f27-aba3-d7e8750ae7df",
 ]);
 
-/** Canonical reversible profile status (existing; no schema change). */
+/** Forward live execution permanently retired — B1B is the successor package. */
+export const FORWARD_LIVE_EXECUTION_RETIRED = true;
+
+/** Canonical reversible profile status (historical B1 write target — retired for forward). */
 export const QUARANTINE_PROFILE_STATUS = "quarantined";
 
 /** Canonical Auth ban duration used by prod-smoke-identity-hygiene. */
