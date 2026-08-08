@@ -102,7 +102,7 @@ export default function DailyPlaySetup() {
     error: tournamentLoadError,
     update,
     setStatus,
-  } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, localRevision);
+  } = useCanonicalTournament(activeClub, tournamentId, localRevision);
 
   useEffect(() => {
     if (tournamentLoadError) {

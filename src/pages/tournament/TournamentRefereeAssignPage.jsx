@@ -43,8 +43,8 @@ export default function TournamentRefereeAssignPage() {
     TABS.some((t) => t.id === tabParam) ? tabParam : "assign"
   );
 
-  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClub || { id: activeClubId }, revision);
-  const { tournament, update } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, revision);
+  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClub, revision);
+  const { tournament, update } = useCanonicalTournament(activeClub, tournamentId, revision);
 
   const tournaments = useMemo(
     () => allTournaments.filter(isIndividualTournament),

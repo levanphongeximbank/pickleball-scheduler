@@ -35,7 +35,7 @@ export default function TournamentEligibilityPage() {
   const {
     tournament,
     loading: tournamentLoading,
-  } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, revision);
+  } = useCanonicalTournament(activeClub, tournamentId, revision);
 
   const players = useMemo(
     () => (activeClubId ? loadPlayersForClub(activeClubId) : []),

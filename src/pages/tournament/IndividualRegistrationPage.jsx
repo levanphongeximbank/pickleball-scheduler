@@ -66,7 +66,7 @@ export default function IndividualRegistrationPage() {
     tournament,
     loading: tournamentLoading,
     update,
-  } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, revision);
+  } = useCanonicalTournament(activeClub, tournamentId, revision);
 
   const {
     players,

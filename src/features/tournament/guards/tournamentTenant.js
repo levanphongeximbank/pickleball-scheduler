@@ -37,15 +37,26 @@ export function resolveExplicitTenantFromClub(club) {
 }
 
 /**
- * Build a scope object from ClubContext activeClub (+ optional activeClubId fallback for id only).
+ * Build a scope object from ClubContext activeClub only.
+ * No id-only fallback — tenant-scoped Tournament must wait for a ready
+ * canonical activeClub (id + tenantId|venueId).
  */
-export function buildTournamentClubScope(activeClub, activeClubId = null) {
-  const clubId = String(activeClub?.id || activeClub?.clubId || activeClubId || "").trim();
+export function buildTournamentClubScope(activeClub) {
+  if (!activeClub || typeof activeClub !== "object") {
+    return {
+      id: "",
+      clubId: "",
+      tenantId: null,
+      venueId: null,
+    };
+  }
+  const clubId = String(activeClub.id || activeClub.clubId || "").trim();
+  const tenantId = resolveExplicitTenantFromClub(activeClub);
   return {
     id: clubId,
     clubId,
-    tenantId: activeClub?.tenantId ?? null,
-    venueId: activeClub?.venueId ?? null,
+    tenantId,
+    venueId: activeClub.venueId ?? tenantId ?? null,
   };
 }
 

@@ -39,7 +39,7 @@ export default function TournamentBracketPage() {
   const {
     tournament,
     loading: tournamentLoading,
-  } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, revision + liveTick);
+  } = useCanonicalTournament(activeClub, tournamentId, revision + liveTick);
 
   const tournamentAccess = useMemo(() => {
     if (!rbacEnabled || !isAuthenticated) {

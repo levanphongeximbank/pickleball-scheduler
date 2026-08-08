@@ -37,7 +37,7 @@ export default function TournamentManageGate({ children, tournamentId = null }) 
   const { rbacEnabled, isAuthenticated, can } = useAuth();
   const { activeClub, activeClubId } = useClub();
   const { currentTenantId } = useTenant();
-  const { tournament, loading } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId);
+  const { tournament, loading } = useCanonicalTournament(activeClub, tournamentId);
 
   if (!rbacEnabled || !isAuthenticated) {
     return children;

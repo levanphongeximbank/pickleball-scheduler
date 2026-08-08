@@ -57,7 +57,7 @@ export default function RankingManagementPage() {
   const ledger = useMemo(() => listVprLedger({ category }), [category]);
   const auditLogs = useMemo(() => listVprAuditLogs().slice(0, 100), [tab, message]);
 
-  const { tournaments = [] } = useCanonicalTournamentList(activeClub || { id: activeClubId }, message);
+  const { tournaments = [] } = useCanonicalTournamentList(activeClub, message);
 
   if (!canView) {
     return <Alert severity="warning">Bạn không có quyền xem quản trị VPR.</Alert>;

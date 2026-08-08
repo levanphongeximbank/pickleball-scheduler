@@ -7,6 +7,9 @@
  * truth for both the context and the switcher.
  *
  * This module reads NO storage and performs NO RPC — it only transforms inputs.
+ * Tenant identity for canonical activeClub must come from the club projection
+ * itself (tenantId | venueId | tenant_id | venue_id) — never localStorage,
+ * never user.venueId masking, never default-tenant.
  */
 import { API_ERROR_CODES } from "../../api/constants/apiErrors.js";
 
@@ -18,6 +21,9 @@ export const CLUB_READ_STATE = Object.freeze({
   ERROR: "error",
 });
 
+/** Forbidden synthetic tenants — never treat as ready. */
+const FORBIDDEN_CANONICAL_TENANTS = new Set(["default-tenant", "default"]);
+
 /**
  * Canonical cloud read mode requires BOTH the feature flag AND a cloud backend.
  * When there is no Supabase config, the app runs in explicit offline/local mode
@@ -28,6 +34,64 @@ export const CLUB_READ_STATE = Object.freeze({
  */
 export function isCanonicalClubReadEnabled({ canonicalEnabled, hasSupabase } = {}) {
   return Boolean(canonicalEnabled) && Boolean(hasSupabase);
+}
+
+/**
+ * Extract explicit tenant identity from a canonical club projection.
+ * No localStorage. No user fallback. No default-tenant.
+ *
+ * @param {object|null|undefined} club
+ * @returns {string|null}
+ */
+export function resolveExplicitTenantFromCanonicalClub(club) {
+  if (!club || typeof club !== "object") {
+    return null;
+  }
+  const raw =
+    club.tenantId ?? club.venueId ?? club.tenant_id ?? club.venue_id ?? null;
+  const tenantId = String(raw || "").trim();
+  if (!tenantId || FORBIDDEN_CANONICAL_TENANTS.has(tenantId)) {
+    return null;
+  }
+  return tenantId;
+}
+
+/**
+ * Normalize a canonical club so tenantId and venueId are both present and equal
+ * when the architecture treats them as the same authority. Returns null when
+ * the club lacks id or an explicit non-forbidden tenant — not tenant-ready.
+ *
+ * @param {object|null|undefined} club
+ * @returns {object|null}
+ */
+export function normalizeCanonicalActiveClub(club) {
+  if (!club || typeof club !== "object") {
+    return null;
+  }
+  const id = String(club.id || "").trim();
+  if (!id) {
+    return null;
+  }
+  const tenantId = resolveExplicitTenantFromCanonicalClub(club);
+  if (!tenantId) {
+    return null;
+  }
+  return {
+    ...club,
+    id,
+    tenantId,
+    venueId: tenantId,
+  };
+}
+
+/**
+ * Fail-closed readiness for tenant-scoped consumers (Tournament, Daily Play, …).
+ *
+ * @param {object|null|undefined} club
+ * @returns {boolean}
+ */
+export function isCanonicalActiveClubReady(club) {
+  return Boolean(normalizeCanonicalActiveClub(club));
 }
 
 /**
@@ -90,32 +154,51 @@ export function filterAccessibleCanonicalClubs({
 
 /**
  * Deterministic active-club selection from the canonical visible set.
- * A stale/absent preferred id is rejected → first visible club (or null).
+ * A stale/absent preferred id is rejected → unique visible club (or null).
  * localStorage never creates existence: only the visible set can.
+ *
+ * When requireTenant=true (canonical ClubContext path), only clubs with an
+ * explicit tenant identity are selectable; the returned activeClub is
+ * normalized to expose both tenantId and venueId.
  *
  * @param {object} params
  * @param {string|null|undefined} params.preferredClubId
  * @param {Array<{id:string}>} params.visibleClubs
+ * @param {boolean} [params.requireTenant=false]
  * @returns {{ activeClubId: string|null, activeClub: object|null, stale: boolean }}
  */
-export function resolveActiveClubSelection({ preferredClubId, visibleClubs }) {
-  const list = Array.isArray(visibleClubs) ? visibleClubs : [];
+export function resolveActiveClubSelection({
+  preferredClubId,
+  visibleClubs,
+  requireTenant = false,
+} = {}) {
+  const rawList = Array.isArray(visibleClubs) ? visibleClubs : [];
+  const list = requireTenant
+    ? rawList.map(normalizeCanonicalActiveClub).filter(Boolean)
+    : rawList;
   const preferred = String(preferredClubId || "").trim();
 
   if (preferred) {
     const match = list.find((club) => club.id === preferred);
     if (match) {
-      return { activeClubId: preferred, activeClub: match, stale: false };
+      const activeClub = requireTenant ? normalizeCanonicalActiveClub(match) : match;
+      if (!requireTenant || activeClub) {
+        return { activeClubId: preferred, activeClub, stale: false };
+      }
     }
   }
 
   // Phase 2F: never silent first-of-many. Auto-select only when exactly one club.
   if (list.length === 1) {
-    return {
-      activeClubId: list[0].id,
-      activeClub: list[0],
-      stale: Boolean(preferred),
-    };
+    const only = list[0];
+    const activeClub = requireTenant ? normalizeCanonicalActiveClub(only) : only;
+    if (!requireTenant || activeClub) {
+      return {
+        activeClubId: only.id,
+        activeClub,
+        stale: Boolean(preferred),
+      };
+    }
   }
 
   return {

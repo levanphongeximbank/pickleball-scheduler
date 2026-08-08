@@ -44,6 +44,8 @@ import { syncLegacySubscriptionsFromBilling } from "../domain/venueService.js";
 import { isSubscriptionOperationalExemptRole } from "../features/billing/guards/operationalRoutePolicy.js";
 import { invalidateClubRegistryCache } from "../features/club/registry/clubRegistryCache.js";
 import { quarantineOfflineQueueForTenantSwitch } from "../features/mobile/services/offlineQueueQuarantine.js";
+import { isCanonicalClubRepositoryEnabled } from "../features/club/config/canonicalRepositoryFlags.js";
+import { isCanonicalClubReadEnabled } from "../features/club/context/clubCanonicalReadModel.js";
 
 const TenantContext = createContext(null);
 
@@ -51,6 +53,14 @@ export function TenantProvider({ children }) {
   const { user, rbacEnabled, isAuthenticated } = useAuth();
   const [adminTenantId, setAdminTenantId] = useState(() => loadActiveTenantId());
   const [revision, setRevision] = useState(0);
+
+  // When canonical club read is ON, ClubContext owns activeClub selection from
+  // the canonical repository. Do not let the legacy club registry drive club
+  // existence, club→tenant mapping, or active-club validation here.
+  const canonicalClubRead = isCanonicalClubReadEnabled({
+    canonicalEnabled: isCanonicalClubRepositoryEnabled(),
+    hasSupabase: hasSupabaseConfig(),
+  });
 
   const isSuperAdmin = Boolean(user && isGlobalRole(user.role));
   const isPlatformTech = Boolean(user && isPlatformScopedRole(user.role));
@@ -151,6 +161,13 @@ export function TenantProvider({ children }) {
       return;
     }
 
+    // Canonical mode: ClubContext + canonical repository are the active-club
+    // authority. Legacy getPrimaryClubIdForTenant must not overwrite a
+    // tenant-bearing canonical preference with a tenant-less registry club.
+    if (canonicalClubRead) {
+      return;
+    }
+
     const clubScoped = Boolean(user?.role && isClubScopedRole(user.role));
     const clubId = isSuperAdmin
       ? getPrimaryClubIdForTenant(currentTenantId)
@@ -161,7 +178,16 @@ export function TenantProvider({ children }) {
     if (clubId && getActiveClubId() !== clubId) {
       switchActiveClub(clubId);
     }
-  }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, user, userClubId, userId]);
+  }, [
+    canonicalClubRead,
+    currentTenantId,
+    isAuthenticated,
+    isSuperAdmin,
+    rbacEnabled,
+    user,
+    userClubId,
+    userId,
+  ]);
 
   // Phase 42K — SA must explicitly pick tenant (no listTenants()[0] fallback).
 
@@ -246,15 +272,20 @@ export function TenantProvider({ children }) {
       invalidateClubRegistryCache({ tenantId: trimmed });
       quarantineOfflineQueueForTenantSwitch(trimmed);
 
-      const clubId = getPrimaryClubIdForTenant(trimmed);
-      if (clubId && getActiveClubId() !== clubId) {
-        switchActiveClub(clubId);
+      // Canonical mode: do not remap active club via legacy registry. ClubContext
+      // will re-hydrate visibleClubs for the new tenant and select deterministically.
+      let clubId = null;
+      if (!canonicalClubRead) {
+        clubId = getPrimaryClubIdForTenant(trimmed);
+        if (clubId && getActiveClubId() !== clubId) {
+          switchActiveClub(clubId);
+        }
       }
 
       setRevision((value) => value + 1);
       return { ok: true, tenantId: trimmed, clubId };
     },
-    [isSuperAdmin]
+    [canonicalClubRead, isSuperAdmin]
   );
 
   const refreshTenant = useCallback(() => {

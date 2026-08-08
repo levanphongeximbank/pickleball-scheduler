@@ -65,7 +65,7 @@ export default function IndividualPlayerPortalPage() {
   const [message, setMessage] = useState(null);
   const [pollTick, setPollTick] = useState(0);
 
-  const { tournaments: myTournaments, loading: listLoading } = useCanonicalMyTournaments(activeClub || { id: activeClubId },
+  const { tournaments: myTournaments, loading: listLoading } = useCanonicalMyTournaments(activeClub,
     playerId,
     revision + pollTick
   );
@@ -79,7 +79,7 @@ export default function IndividualPlayerPortalPage() {
     loading: detailLoading,
     error,
     update,
-  } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, revision + pollTick);
+  } = useCanonicalTournament(activeClub, tournamentId, revision + pollTick);
 
   useEffect(() => {
     if (!tournamentId || !activeClubId) return undefined;
@@ -125,7 +125,7 @@ export default function IndividualPlayerPortalPage() {
         refreshClubs();
         return false;
       }
-      const result = await updateTournamentCommand(activeClub || { id: activeClubId }, tournamentId, {
+      const result = await updateTournamentCommand(activeClub, tournamentId, {
         settings: bumped.tournament.settings,
       });
       if (!result.ok) {
