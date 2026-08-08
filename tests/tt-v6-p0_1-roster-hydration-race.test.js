@@ -306,7 +306,7 @@ describe("P0.1 TeamRosterPanel wiring", () => {
     assert.match(src, /!rosterLoading && hydratedRoster\.unresolvedCount/);
     assert.match(src, /listAvailableAthletes/);
     assert.match(src, /hydrationStatus/);
-    assert.match(src, /Đã AI ghép đội và tải thông tin VĐV/);
+    assert.match(src, /Đã lưu cloud AI ghép đội|Đã AI ghép đội và tải thông tin VĐV/);
   });
 
   it("TeamTournamentSetup passes pool loading into TeamRosterPanel", () => {

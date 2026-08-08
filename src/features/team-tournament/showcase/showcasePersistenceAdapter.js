@@ -83,6 +83,10 @@ export async function confirmShowcasePersistence(params = {}) {
         ...session.teamData,
         groups: [],
         matchups: [],
+      },
+      {
+        tournament: params.tournament || null,
+        currentTenantId: params.currentTenantId || null,
       }
     );
     writeCount += 1;

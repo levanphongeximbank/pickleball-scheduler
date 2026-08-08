@@ -164,7 +164,8 @@ describe("TT-V6 post-AI team list persist + render", () => {
     const saved = await applyAiGeneratedTeamsToTournament(
       clubId,
       created.tournament.id,
-      paired.teamData
+      paired.teamData,
+      { tournament: created.tournament }
     );
 
     assert.equal(saved.ok, false);
@@ -176,12 +177,12 @@ describe("TT-V6 post-AI team list persist + render", () => {
     assert.equal((reloaded.teamData?.teams || []).length, 0);
   });
 
-  it("TeamRosterPanel wires applyAiGeneratedTeamsToTournament (not local-only patch)", () => {
+  it("TeamRosterPanel wires confirmAiPairingCloudPersistence (not local-only patch)", () => {
     const src = readFileSync(
       path.join(ROOT, "src/components/tournament/TeamRosterPanel.jsx"),
       "utf8"
     );
-    assert.match(src, /applyAiGeneratedTeamsToTournament/);
+    assert.match(src, /confirmAiPairingCloudPersistence/);
     assert.doesNotMatch(
       src,
       /patchTeamTournament\(clubId,\s*tournamentId,\s*\{\s*teamData:\s*nextTeamData/
