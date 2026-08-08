@@ -53,7 +53,7 @@ export default function IndividualRegistrationPage() {
   const { tournamentId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { activeClubId, revision, refreshClubs } = useClub();
+  const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { user } = useAuth();
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
@@ -66,7 +66,7 @@ export default function IndividualRegistrationPage() {
     tournament,
     loading: tournamentLoading,
     update,
-  } = useCanonicalTournament(activeClubId, tournamentId, revision);
+  } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, revision);
 
   const {
     players,

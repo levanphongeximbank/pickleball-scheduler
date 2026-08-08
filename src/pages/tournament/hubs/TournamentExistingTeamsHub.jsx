@@ -30,7 +30,7 @@ import ExistingTeamClonePanel from "../../../components/tournament/ExistingTeamC
 import { getPermissionsForRole } from "../../../features/identity/matrix/rolePermissions.js";
 
 export default function TournamentExistingTeamsHub() {
-  const { activeClubId, revision, refreshClubs } = useClub();
+  const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { user } = useAuth();
   const [targetId, setTargetId] = useState("");
   const [message, setMessage] = useState(null);
@@ -41,7 +41,7 @@ export default function TournamentExistingTeamsHub() {
     [user?.role]
   );
 
-  const { tournaments } = useCanonicalTournamentList(activeClubId, revision);
+  const { tournaments } = useCanonicalTournamentList(activeClub || { id: activeClubId }, revision);
   const teamTournaments = useMemo(
     () => tournaments.filter(isTeamTournament),
     [tournaments]

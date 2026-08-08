@@ -84,9 +84,9 @@ export function CanonicalTournamentTypePage() {
   const { category } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { activeClubId, revision } = useClub();
+  const { activeClub, activeClubId, revision } = useClub();
   const eventQuery = resolveEventTypeFromQuery(searchParams.get("event"));
-  const { tournaments } = useCanonicalTournamentList(activeClubId, revision);
+  const { tournaments } = useCanonicalTournamentList(activeClub || { id: activeClubId }, revision);
 
   const filtered = useMemo(() => {
     if (category === "team") return tournaments.filter(isTeamTournament);
