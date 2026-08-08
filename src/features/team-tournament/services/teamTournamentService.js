@@ -116,6 +116,7 @@ import {
   resolveUiTeamTournamentDataMode,
   TEAM_TOURNAMENT_DATA_MODES,
 } from "../repositories/teamTournamentRepositoryFactory.js";
+import { guardRecordTenant } from "../../tenant/guards/tenantGuard.js";
 
 function findTournament(data, tournamentId) {
   return (data.tournaments || []).find((item) => item.id === String(tournamentId)) || null;
@@ -1280,29 +1281,117 @@ export async function createTeamInTournament(clubId, tournamentId, options = {})
 }
 
 /**
- * Persist AI-generated team list (replace teams, clear groups/matchups).
- * cloud_primary: mirrors each team via save_team + members + captain, then verifies get_setup.
+ * Resolve Team tournament for AI apply without treating legacy blob as
+ * sole authority. Prefer caller-loaded tournament, then cloud get_setup,
+ * then local blob only when cloud sync is disabled.
+ *
+ * @param {string} clubId
+ * @param {string} tournamentId
+ * @param {{ tournament?: object|null, currentTenantId?: string|null }} [options]
+ */
+export async function resolveTournamentForAiApply(
+  clubId,
+  tournamentId,
+  options = {}
+) {
+  const loaded = options.tournament;
+  if (loaded && String(loaded.id || "").trim() === String(tournamentId || "").trim()) {
+    if (options.currentTenantId) {
+      const tenantCheck = guardRecordTenant(loaded, options.currentTenantId, options);
+      if (!tenantCheck.ok) {
+        return { ...tenantCheck, tournament: null, source: "loaded" };
+      }
+    }
+    return { ok: true, tournament: loaded, source: "loaded" };
+  }
+
+  if (shouldUseTeamTournamentCloud()) {
+    const cloud = await cloudGetTeamTournamentSetup(tournamentId);
+    if (!cloud.ok || !cloud.tournament) {
+      return {
+        ok: false,
+        code: cloud.code || "NOT_FOUND",
+        error: cloud.error || "Không tìm thấy giải đấu.",
+        tournament: null,
+        source: "cloud",
+      };
+    }
+    if (options.currentTenantId) {
+      const tenantCheck = guardRecordTenant(
+        cloud.tournament,
+        options.currentTenantId,
+        options
+      );
+      if (!tenantCheck.ok) {
+        return { ...tenantCheck, tournament: null, source: "cloud" };
+      }
+    }
+    return { ok: true, tournament: cloud.tournament, source: "cloud" };
+  }
+
+  const local = getTeamTournamentById(clubId, tournamentId);
+  if (!local) {
+    return {
+      ok: false,
+      code: "NOT_FOUND",
+      error: "Không tìm thấy giải đấu.",
+      tournament: null,
+      source: "local",
+    };
+  }
+  if (options.currentTenantId) {
+    const tenantCheck = guardRecordTenant(local, options.currentTenantId, options);
+    if (!tenantCheck.ok) {
+      return { ...tenantCheck, tournament: null, source: "local" };
+    }
+  }
+  return { ok: true, tournament: local, source: "local" };
+}
+
+/**
+ * Persist AI-generated team list (members + captains).
+ * Matchups stay empty at AI confirm (later workflow stage).
+ * Groups from nextTeamData are preserved on the returned teamData for the
+ * caller to persist via canonical groups.replace — they are not hard-cleared.
+ *
+ * cloud_primary/cloud_only: mirrors each team via save_team + members + captain,
+ * then verifies get_setup. Local blob write is optional, never required.
  * Never reports success when durable cloud write/verify fails.
+ *
+ * @param {string} clubId
+ * @param {string} tournamentId
+ * @param {object} nextTeamData
+ * @param {{ tournament?: object|null, currentTenantId?: string|null }} [options]
  */
 export async function applyAiGeneratedTeamsToTournament(
   clubId,
   tournamentId,
-  nextTeamData
+  nextTeamData,
+  options = {}
 ) {
   const check = guardTeamManage(clubId);
   if (!check.ok) {
     return check;
   }
 
-  const tournament = getTeamTournamentById(clubId, tournamentId);
-  if (!tournament) {
-    return { ok: false, error: "Không tìm thấy giải đấu." };
+  const resolved = await resolveTournamentForAiApply(clubId, tournamentId, options);
+  if (!resolved.ok || !resolved.tournament) {
+    return {
+      ok: false,
+      code: resolved.code || "NOT_FOUND",
+      error: resolved.error || "Không tìm thấy giải đấu.",
+    };
   }
+  const tournament = resolved.tournament;
 
+  const incoming =
+    nextTeamData && typeof nextTeamData === "object" ? nextTeamData : {};
+  const incomingGroups = Array.isArray(incoming.groups) ? incoming.groups : [];
+  // Matchups are a later workflow stage — keep empty at AI team/captain confirm.
   const teamData = normalizeTeamData({
     ...getTeamData(tournament),
-    ...(nextTeamData && typeof nextTeamData === "object" ? nextTeamData : {}),
-    groups: [],
+    ...incoming,
+    groups: incomingGroups,
     matchups: [],
   });
   const teams = teamData.teams || [];
@@ -1311,10 +1400,15 @@ export async function applyAiGeneratedTeamsToTournament(
   }
 
   const cloudRequired = shouldUseTeamTournamentCloud();
+  let verifiedTournament = null;
   if (cloudRequired) {
     for (const teamRecord of teams) {
       const mirrored = await mirrorClonedTeamToCloud(
-        { ...tournament, clubId, tenantId: tournament.tenantId },
+        {
+          ...tournament,
+          clubId: tournament.clubId || clubId,
+          tenantId: tournament.tenantId,
+        },
         teamRecord
       );
       if (!mirrored.ok && mirrored.usedCloud) {
@@ -1343,7 +1437,8 @@ export async function applyAiGeneratedTeamsToTournament(
       };
     }
 
-    const loadedTeams = verified.tournament?.teamData?.teams || [];
+    verifiedTournament = verified.tournament;
+    const loadedTeams = verifiedTournament?.teamData?.teams || [];
     const loadedById = new Map(
       loadedTeams.map((team) => [String(team.id), team])
     );
@@ -1358,7 +1453,30 @@ export async function applyAiGeneratedTeamsToTournament(
         missingTeamIds: missing.map((team) => team.id),
       };
     }
+
+    const missingCaptains = teams.filter((team) => {
+      const loaded = loadedById.get(String(team.id));
+      const expected = String(team.captainPlayerId || "").trim();
+      const actual = String(loaded?.captainPlayerId || "").trim();
+      return expected && expected !== actual;
+    });
+    if (missingCaptains.length) {
+      return {
+        ok: false,
+        error: `Cloud thiếu ${missingCaptains.length} đội trưởng sau khi lưu.`,
+        code: "CLOUD_CAPTAINS_MISSING_AFTER_SAVE",
+        cloudSynced: false,
+        cloudRequired: true,
+      };
+    }
   }
+
+  const teamDataForReturn = normalizeTeamData({
+    ...teamData,
+    teams: verifiedTournament?.teamData?.teams || teamData.teams,
+    groups: incomingGroups,
+    matchups: [],
+  });
 
   const local = updateTournament(clubId, tournamentId, (current) => {
     appendTeamAuditLog({
@@ -1373,21 +1491,56 @@ export async function applyAiGeneratedTeamsToTournament(
 
     return {
       ok: true,
-      tournament: attachTeamDataToTournament(current, teamData),
+      tournament: attachTeamDataToTournament(current, teamDataForReturn),
     };
   });
 
-  if (!local.ok) {
-    return local;
+  if (local.ok) {
+    return {
+      ...local,
+      teamData: teamDataForReturn,
+      teamCount: teams.length,
+      cloudSynced: cloudRequired,
+      cloudRequired,
+      persistedLocally: true,
+      captainsPersisted: teams.filter((team) => team.captainPlayerId).length,
+      groupsAttached: incomingGroups.length,
+    };
   }
 
-  return {
-    ...local,
-    teamData,
-    teamCount: teams.length,
-    cloudSynced: cloudRequired,
-    cloudRequired,
-  };
+  // cloud_only / loaded-tournament authority: blob write is not required.
+  if (cloudRequired && verifiedTournament) {
+    return {
+      ok: true,
+      tournament: attachTeamDataToTournament(verifiedTournament, teamDataForReturn),
+      teamData: teamDataForReturn,
+      teamCount: teams.length,
+      cloudSynced: true,
+      cloudRequired: true,
+      persistedLocally: false,
+      captainsPersisted: teams.filter((team) => team.captainPlayerId).length,
+      groupsAttached: incomingGroups.length,
+    };
+  }
+
+  if (
+    options.tournament &&
+    String(options.tournament.id || "").trim() === String(tournamentId || "").trim()
+  ) {
+    return {
+      ok: true,
+      tournament: attachTeamDataToTournament(options.tournament, teamDataForReturn),
+      teamData: teamDataForReturn,
+      teamCount: teams.length,
+      cloudSynced: false,
+      cloudRequired,
+      persistedLocally: false,
+      captainsPersisted: teams.filter((team) => team.captainPlayerId).length,
+      groupsAttached: incomingGroups.length,
+    };
+  }
+
+  return local;
 }
 
 /**

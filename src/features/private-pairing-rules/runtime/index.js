@@ -74,6 +74,8 @@ export {
   ensureRulesHaveScopeIds,
 } from "./resolveLivePairingScope.js";
 
+export { projectLivePrivatePairingPrepareInput } from "./projectLivePrivatePairingPrepareInput.js";
+
 export {
   filterRulesForTeamFormation,
   isTeamFormationConstraintType,

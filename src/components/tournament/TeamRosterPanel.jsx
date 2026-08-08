@@ -48,13 +48,13 @@ import { logTeamRosterHydrationTransition } from "../../features/team-tournament
 import { isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
 import {
   addPlayerToTeamRoster,
-  applyAiGeneratedTeamsToTournament,
   assignCaptainToTeam,
   assignDeputiesToTeam,
   createTeamInTournament,
   removePlayerFromTeamRoster,
   updateTeamDetails,
 } from "../../features/team-tournament/services/teamTournamentService.js";
+import { confirmAiPairingCloudPersistence } from "../../features/team-tournament/services/aiPairingCloudPersistence.js";
 import TeamAiPairingDialog from "../tournament/team/TeamAiPairingDialog.jsx";
 import TournamentPlayerQuickAddDialog from "./TournamentPlayerQuickAddDialog.jsx";
 import ExistingTeamClonePanel from "./ExistingTeamClonePanel.jsx";
@@ -660,6 +660,8 @@ export default function TeamRosterPanel({
   athletePoolRefreshing = false,
   athletePoolError = null,
   setupReady = true,
+  persistSetupTeamData = null,
+  setupVersionForMutations = null,
   onUpdated,
   onError,
   onMessage,
@@ -940,27 +942,52 @@ export default function TeamRosterPanel({
         onMessage={onMessage}
         onError={onError}
         onApply={async (nextTeamData) => {
-          const result = await applyAiGeneratedTeamsToTournament(
+          if (!tournament || String(tournament.id) !== String(tournamentId)) {
+            onError("Chưa tải được giải cloud — không thể xác nhận ghép đội.");
+            return { ok: false, code: "NOT_FOUND" };
+          }
+
+          const result = await confirmAiPairingCloudPersistence({
             clubId,
             tournamentId,
-            nextTeamData
-          );
+            tournament,
+            nextTeamData,
+            currentTenantId: tenantId || tournament.tenantId || null,
+            persistSetupTeamData,
+            reload:
+              typeof onUpdated === "function"
+                ? (opts) => onUpdated(opts)
+                : null,
+            rulesVersion:
+              nextTeamData?.aiDrawMeta?.rulesVersion ||
+              nextTeamData?.settings?.rulesVersion ||
+              "",
+            expectedTournamentVersion:
+              setupVersionForMutations ?? setupVersion ?? undefined,
+          });
+
           if (!result.ok) {
             onError(
               result.error ||
-                "Không áp dụng được ghép đội — cloud/local chưa ghi nhận."
+                "Không áp dụng được ghép đội — cloud chưa ghi nhận."
             );
             return { ok: false, ...result };
           }
 
-          // 1) Await cloud setup reload.
+          // Await canonical reload after durable writes.
           const reloaded =
-            typeof onUpdated === "function" ? await onUpdated() : null;
+            typeof onUpdated === "function"
+              ? await onUpdated({ silent: true, schemaVersion: 7 })
+              : null;
           const teamsAfterReload =
             reloaded?.teamData?.teams ||
             reloaded?.tournament?.teamData?.teams ||
             result.teamData?.teams ||
-            result.tournament?.teamData?.teams ||
+            [];
+          const groupsAfterReload =
+            reloaded?.teamData?.groups ||
+            reloaded?.tournament?.teamData?.groups ||
+            result.teamData?.groups ||
             [];
 
           if (!Array.isArray(teamsAfterReload) || teamsAfterReload.length === 0) {
@@ -971,7 +998,9 @@ export default function TeamRosterPanel({
           }
 
           const expectedIds = new Set(
-            (result.teamData?.teams || []).map((team) => String(team.id))
+            (result.teamData?.teams || nextTeamData?.teams || []).map((team) =>
+              String(team.id)
+            )
           );
           const visibleExpected = teamsAfterReload.filter((team) =>
             expectedIds.has(String(team.id))
@@ -983,7 +1012,18 @@ export default function TeamRosterPanel({
             return { ok: false, code: "RELOAD_MISSING_TEAMS" };
           }
 
-          // 2) Await canonical athlete pool refresh before claiming full completion.
+          const expectedGroups = (nextTeamData?.groups || []).length;
+          if (
+            expectedGroups > 0 &&
+            (!Array.isArray(groupsAfterReload) ||
+              groupsAfterReload.length < expectedGroups)
+          ) {
+            onError(
+              `Đã lưu đội nhưng chưa đọc lại đủ bảng (${groupsAfterReload.length || 0}/${expectedGroups}).`
+            );
+            return { ok: false, code: "RELOAD_MISSING_GROUPS" };
+          }
+
           const scopeMode = tenantId
             ? TEAM_TOURNAMENT_ATHLETE_SCOPE.TENANT
             : TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB;
@@ -995,16 +1035,23 @@ export default function TeamRosterPanel({
             callerName: "TeamRosterPanel.aiPairing.afterPersist",
           });
 
+          const groupNote =
+            expectedGroups > 0
+              ? `, ${groupsAfterReload.length} bảng`
+              : "";
+
           if (!poolResult.ok) {
             onMessage?.(
-              `Đã lưu ${teamsAfterReload.length} đội. ${ROSTER_LOADING_MESSAGE}`
+              `Đã lưu cloud ${teamsAfterReload.length} đội${groupNote}. ${ROSTER_LOADING_MESSAGE}`
             );
             return {
               ok: true,
               teamCount: teamsAfterReload.length,
+              groupCount: groupsAfterReload.length,
               tournament: result.tournament,
               hydrationStatus: ROSTER_HYDRATION_STATUS.LOADING,
               code: "HYDRATION_POOL_PENDING",
+              workflowStage: result.workflowStage,
             };
           }
 
@@ -1019,14 +1066,17 @@ export default function TeamRosterPanel({
           });
 
           onMessage?.(
-            `Đã AI ghép đội và tải thông tin VĐV (${teamsAfterReload.length} đội).`
+            `Đã lưu cloud AI ghép đội (${teamsAfterReload.length} đội${groupNote}) và tải thông tin VĐV.`
           );
           return {
             ok: true,
             teamCount: teamsAfterReload.length,
+            groupCount: groupsAfterReload.length,
+            captainsPersisted: result.captainsPersisted,
             tournament: result.tournament,
             hydrationStatus: hydratedSample.status,
             unresolvedCount: hydratedSample.unresolvedCount,
+            workflowStage: result.workflowStage,
           };
         }}
       />
