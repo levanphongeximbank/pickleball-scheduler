@@ -59,9 +59,10 @@ create policy tt5d_correction_no_client_write
   using (false)
   with check (false);
 
-revoke all on public.team_tournament_referee_correction_requests from anon;
-grant select on public.team_tournament_referee_correction_requests to authenticated;
-grant all on public.team_tournament_referee_correction_requests to service_role;
+revoke all on table public.team_tournament_referee_correction_requests
+  from public, anon, authenticated, service_role;
+grant select on table public.team_tournament_referee_correction_requests to authenticated;
+grant all on table public.team_tournament_referee_correction_requests to service_role;
 
 -- ═══════════════════════════════════════════════════════════════════
 -- Referee: request correction (no direct official edit)
@@ -437,17 +438,19 @@ $$;
 
 revoke all on function public.team_tournament_request_referee_correction(
   text, text, uuid, jsonb, text, text, text, integer, text
-) from public, anon;
+) from public, anon, authenticated, service_role;
 grant execute on function public.team_tournament_request_referee_correction(
   text, text, uuid, jsonb, text, text, text, integer, text
 ) to authenticated;
 
 revoke all on function public.team_tournament_review_referee_correction(
   text, uuid, text, text, integer, text
-) from public, anon;
+) from public, anon, authenticated, service_role;
 grant execute on function public.team_tournament_review_referee_correction(
   text, uuid, text, text, integer, text
 ) to authenticated;
 
-revoke all on function public.team_tournament_list_referee_corrections(text, text) from public, anon;
-grant execute on function public.team_tournament_list_referee_corrections(text, text) to authenticated;
+revoke all on function public.team_tournament_list_referee_corrections(text, text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.team_tournament_list_referee_corrections(text, text)
+  to authenticated;

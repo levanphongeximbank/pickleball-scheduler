@@ -1,0 +1,306 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO",
+  "decision": "READY_FOR_OWNER_STAGING_GO",
+  "meaning": "Package ready for Owner review of a separate explicit Staging mutation authorization (Phase 5D-B). Not authorization itself.",
+  "StagingDatabaseMutations": 0,
+  "ProductionAccess": 0,
+  "ProductionDatabaseMutations": 0,
+  "RestoreExecutions": 0,
+  "retainedBlockers": {
+    "BLOCKED_PHASE5C_TT5D_CERTIFICATION": true,
+    "BLOCKED_STAGING_TT5D_PREEXISTING_WITHOUT_CONTROLLED_MIGRATION_PROVENANCE": true,
+    "BLOCKED_PHASE5B_EXECUTION_PACKAGE": true,
+    "BLOCKED_PHASE5_READINESS": true
+  },
+  "m9": {
+    "executableApplyCount": 20,
+    "nonExecutableCandidateCount": 4,
+    "tt5dMovedToOrderedApply": false,
+    "tt5dDeclaredExecutable": false
+  },
+  "continuingPhase5": {
+    "executionRunbookAccepted": false,
+    "productionExecutionGo": false,
+    "PHASE_05_COMPLETE": "NOT_ISSUED"
+  },
+  "phase5dB": "NOT_STARTED",
+  "phase6": "NOT_STARTED",
+  "rollbackReady": true,
+  "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_GUARD_PAREN_NORMALIZATION_CORRECTED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_READY_FOR_BATCHED_SELECT_ONLY_STAGING_GO",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_SELECT_ONLY_PREFLIGHT_PARITY_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_NO_SERIALIZED_CATALOG_GUARDS_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_READY_FOR_SELECT_ONLY_STAGING_PREFLIGHT_GO",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_TEXT_ARRAY_GUARDS_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_REPRESENTATION_DRIFT_RESOLVED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_GENERATOR_IDEMPOTENCE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_READY_FOR_STAGING_GO_REISSUE",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_POLICY_GUARD_NORMALIZATION_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_PRECONDITION_REPRESENTATION_DRIFT_RESOLVED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_GENERATOR_IDEMPOTENCE_REVERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_READY_FOR_STAGING_GO_REISSUE",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_FAIL_CLOSED_GUARDS_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_CANONICAL_SOURCE_SYNCHRONIZED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_PRODUCTION_PROMOTION_CONTRACT_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_ROLLBACK_HARDENED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO_RECONFIRMED"
+  ],
+  "hardening": "PHASE5D_A5_TRANSPORT_SAFE_BATCHED_SELECT_ONLY_PREFLIGHT",
+  "nextAuth": "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY",
+  "jsonbLiteralCorrection": {
+    "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
+    "helper": "renderJsonbLiteral",
+    "supersededInvalid": {
+      "classification": "PHASE5D_JSONB_LITERAL_RENDERER_ROOT_CAUSE_CONFIRMED",
+      "rootCause": "guardRow emitted JSON.stringify(expected_json) directly as {...}::jsonb without a PostgreSQL string literal",
+      "stop": "PHASE5D_BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+      "oldInvalidBatchAttempts": 9,
+      "successfulOldBatches": 0,
+      "guardRowsReceived": 0,
+      "sql10AttemptsRemain": 1,
+      "StagingMutations": 0,
+      "ProductionAccess": 0,
+      "canonicalSql00": {
+        "path": "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
+        "gitBlob": "9989e54211a93ba79b8e6e87833e825a7419a24a",
+        "status": "INVALID_SUPERSEDED"
+      },
+      "transportManifest": {
+        "path": "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
+        "gitBlob": "9f0dc89450823f0b34434408bf16ea60cdba838f",
+        "status": "INVALID_SUPERSEDED"
+      },
+      "transportBatches": [
+        {
+          "file": "00_PREFLIGHT_BATCH_001.sql",
+          "gitBlob": "6ef005e9c275663271c560e4d5dcea24a5165f9e"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_002.sql",
+          "gitBlob": "4e30aa7f23f1648b092390cd197a7ce797359f83"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_003.sql",
+          "gitBlob": "86a7f0e346029c4fbb7b56849e7b73d71091e20e"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_004.sql",
+          "gitBlob": "e819ae1ab4dd2533717d6c43fdcc9722de94ffbd"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_005.sql",
+          "gitBlob": "d01c3cc7453cc267fdeef746cd7065744a9ce330"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_006.sql",
+          "gitBlob": "299513dc68fe2357d354d9d1bab1e80908040cd1"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_007.sql",
+          "gitBlob": "aeb62bb008b93f12b4d9cebc80a610894209e13e"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_008.sql",
+          "gitBlob": "e9bbe1b91c79b322b65654fc05d680d8d2d4f97f"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_009.sql",
+          "gitBlob": "0d5b292acf9efdca4be59b57ff1c2949e0838816"
+        }
+      ]
+    },
+    "historicalMarkerSuperseded": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_CANONICAL_SQL00_UNCHANGED_VERIFIED"
+  },
+  "priorPhase5dBAttempts": [
+    {
+      "attempt": 1,
+      "stop": "PHASE5D_B_BLOCKED_PRECONDITION_NO_MUTATION",
+      "sql10Executed": false,
+      "StagingDatabaseMutations": 0,
+      "RestoreExecutions": 0,
+      "rootCause": "pg_get_expr pretty-print whitespace vs compact expected USING for tt5d_correction_referee_select"
+    },
+    {
+      "attempt": 2,
+      "stop": "PHASE5D_B_BLOCKED_APPLY_BASELINE_MISMATCH_NO_MUTATION",
+      "sql00Pass": true,
+      "sql10ExecutionAttempts": 1,
+      "sql10Committed": false,
+      "sql20Executed": false,
+      "sql90Executed": false,
+      "StagingDatabaseMutations": 0,
+      "RestoreExecutions": 0,
+      "exactError": "P0001: PHASE5D_BASELINE_MISMATCH proconfig referee_v5_apply_admin_result_revision",
+      "rootCause": "proconfig::text representation mismatch for comma-containing search_path text[] element; semantic proconfig unchanged"
+    },
+    {
+      "attempt": 3,
+      "stop": "PHASE5D_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+      "sql00CanonicalAttempted": true,
+      "sql00CanonicalExecuted": false,
+      "cause": "agent→MCP execute_sql transport could not submit complete ~443KB sql/00 payload",
+      "databaseGuardResultsReceived": 0,
+      "StagingDatabaseMutations": 0,
+      "sql10Executed": false
+    },
+    {
+      "attempt": 4,
+      "stop": "PHASE5D_BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+      "oldInvalidBatchAttempts": 9,
+      "successfulOldBatches": 0,
+      "guardRowsReceived": 0,
+      "cause": "PostgreSQL 42601 bare {...}::jsonb AS expected_json from guardRow JSON.stringify without sqlStr",
+      "StagingDatabaseMutations": 0,
+      "ProductionAccess": 0,
+      "sql10Executed": false,
+      "supersededInvalidBlobs": {
+        "classification": "PHASE5D_JSONB_LITERAL_RENDERER_ROOT_CAUSE_CONFIRMED",
+        "rootCause": "guardRow emitted JSON.stringify(expected_json) directly as {...}::jsonb without a PostgreSQL string literal",
+        "stop": "PHASE5D_BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+        "oldInvalidBatchAttempts": 9,
+        "successfulOldBatches": 0,
+        "guardRowsReceived": 0,
+        "sql10AttemptsRemain": 1,
+        "StagingMutations": 0,
+        "ProductionAccess": 0,
+        "canonicalSql00": {
+          "path": "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
+          "gitBlob": "9989e54211a93ba79b8e6e87833e825a7419a24a",
+          "status": "INVALID_SUPERSEDED"
+        },
+        "transportManifest": {
+          "path": "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
+          "gitBlob": "9f0dc89450823f0b34434408bf16ea60cdba838f",
+          "status": "INVALID_SUPERSEDED"
+        },
+        "transportBatches": [
+          {
+            "file": "00_PREFLIGHT_BATCH_001.sql",
+            "gitBlob": "6ef005e9c275663271c560e4d5dcea24a5165f9e"
+          },
+          {
+            "file": "00_PREFLIGHT_BATCH_002.sql",
+            "gitBlob": "4e30aa7f23f1648b092390cd197a7ce797359f83"
+          },
+          {
+            "file": "00_PREFLIGHT_BATCH_003.sql",
+            "gitBlob": "86a7f0e346029c4fbb7b56849e7b73d71091e20e"
+          },
+          {
+            "file": "00_PREFLIGHT_BATCH_004.sql",
+            "gitBlob": "e819ae1ab4dd2533717d6c43fdcc9722de94ffbd"
+          },
+          {
+            "file": "00_PREFLIGHT_BATCH_005.sql",
+            "gitBlob": "d01c3cc7453cc267fdeef746cd7065744a9ce330"
+          },
+          {
+            "file": "00_PREFLIGHT_BATCH_006.sql",
+            "gitBlob": "299513dc68fe2357d354d9d1bab1e80908040cd1"
+          },
+          {
+            "file": "00_PREFLIGHT_BATCH_007.sql",
+            "gitBlob": "aeb62bb008b93f12b4d9cebc80a610894209e13e"
+          },
+          {
+            "file": "00_PREFLIGHT_BATCH_008.sql",
+            "gitBlob": "e9bbe1b91c79b322b65654fc05d680d8d2d4f97f"
+          },
+          {
+            "file": "00_PREFLIGHT_BATCH_009.sql",
+            "gitBlob": "0d5b292acf9efdca4be59b57ff1c2949e0838816"
+          }
+        ]
+      }
+    }
+  ],
+  "priorPhase5dBAttempt": {
+    "attempt": 4,
+    "stop": "PHASE5D_BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+    "oldInvalidBatchAttempts": 9,
+    "successfulOldBatches": 0,
+    "guardRowsReceived": 0,
+    "cause": "PostgreSQL 42601 bare {...}::jsonb AS expected_json from guardRow JSON.stringify without sqlStr",
+    "StagingDatabaseMutations": 0,
+    "ProductionAccess": 0,
+    "sql10Executed": false,
+    "supersededInvalidBlobs": {
+      "classification": "PHASE5D_JSONB_LITERAL_RENDERER_ROOT_CAUSE_CONFIRMED",
+      "rootCause": "guardRow emitted JSON.stringify(expected_json) directly as {...}::jsonb without a PostgreSQL string literal",
+      "stop": "PHASE5D_BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_BLOCKED_INCOMPLETE_OUTPUT",
+      "oldInvalidBatchAttempts": 9,
+      "successfulOldBatches": 0,
+      "guardRowsReceived": 0,
+      "sql10AttemptsRemain": 1,
+      "StagingMutations": 0,
+      "ProductionAccess": 0,
+      "canonicalSql00": {
+        "path": "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
+        "gitBlob": "9989e54211a93ba79b8e6e87833e825a7419a24a",
+        "status": "INVALID_SUPERSEDED"
+      },
+      "transportManifest": {
+        "path": "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
+        "gitBlob": "9f0dc89450823f0b34434408bf16ea60cdba838f",
+        "status": "INVALID_SUPERSEDED"
+      },
+      "transportBatches": [
+        {
+          "file": "00_PREFLIGHT_BATCH_001.sql",
+          "gitBlob": "6ef005e9c275663271c560e4d5dcea24a5165f9e"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_002.sql",
+          "gitBlob": "4e30aa7f23f1648b092390cd197a7ce797359f83"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_003.sql",
+          "gitBlob": "86a7f0e346029c4fbb7b56849e7b73d71091e20e"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_004.sql",
+          "gitBlob": "e819ae1ab4dd2533717d6c43fdcc9722de94ffbd"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_005.sql",
+          "gitBlob": "d01c3cc7453cc267fdeef746cd7065744a9ce330"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_006.sql",
+          "gitBlob": "299513dc68fe2357d354d9d1bab1e80908040cd1"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_007.sql",
+          "gitBlob": "aeb62bb008b93f12b4d9cebc80a610894209e13e"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_008.sql",
+          "gitBlob": "e9bbe1b91c79b322b65654fc05d680d8d2d4f97f"
+        },
+        {
+          "file": "00_PREFLIGHT_BATCH_009.sql",
+          "gitBlob": "0d5b292acf9efdca4be59b57ff1c2949e0838816"
+        }
+      ]
+    }
+  },
+  "typedCatalogGuardRegistry": {
+    "preGuardCount": 189,
+    "postGuardCount": 174,
+    "evidence": "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json"
+  },
+  "transportBatchPackage": {
+    "evidence": "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
+    "batchCount": 9,
+    "encodedPayloadLimit": 28000,
+    "canonicalSql00GitBlob": "63ddd68921466a12b1b71471792999fabe9a6a9f",
+    "jsonbLiteralRenderer": "renderJsonbLiteral"
+  },
+  "supersededRegistryFingerprint": "19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e",
+  "catalogExpressionComparison": "CATALOG_EXPR_CANON_V1"
+}

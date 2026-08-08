@@ -1,0 +1,8 @@
+{
+  "derivation": "IMMUTABLE_TOKEN_REPLACED_WITH_STABLE_IN_CAPTURED_PG_GET_FUNCTIONDEF",
+  "baselineDefMd5": "c91ffb1ec3faa1e6fa2b3ea9395c4058",
+  "baselineDefSha256": "af04174b41386c244bded827805197c123a3767d71c4a2de809deee3b201a620",
+  "postApplyDefMd5": "ed3cf88b96355d92d5483eb0f4e1a6aa",
+  "postApplyDefSha256": "49d71648e74a006bf6aa9478f44f5512927d94542b350b2db032ed2af5af21a7",
+  "mutatedDatabaseCaptureUsed": false
+}

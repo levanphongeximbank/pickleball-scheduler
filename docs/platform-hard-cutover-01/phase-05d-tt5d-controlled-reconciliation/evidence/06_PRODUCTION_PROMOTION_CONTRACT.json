@@ -1,0 +1,36 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_PRODUCTION_PROMOTION_CONTRACT_VERIFIED",
+  "StagingSQLExecutions": 0,
+  "StagingDatabaseMutations": 0,
+  "ProductionAccess": 0,
+  "ProductionDatabaseMutations": 0,
+  "RestoreExecutions": 0,
+  "stagingProjectRefAuthorized": "qyewbxjsiiyufanzcjcq",
+  "productionProjectRefForbiddenForThisSql": "expuvcohlcjzvrrauvud",
+  "paths": {
+    "PREEXISTING_OBJECT_PATH": {
+      "description": "State-specific baseline reconciliation for objects already present without controlled provenance",
+      "stagingFingerprintsValidFor": "qyewbxjsiiyufanzcjcq",
+      "productionReuseOfPr354StagingFingerprints": "FORBIDDEN",
+      "requires": [
+        "fresh Production read-only baseline capture",
+        "Production-specific fail-closed reconciliation authored from that baseline",
+        "Owner runbook acceptance",
+        "explicit productionExecutionGo"
+      ]
+    },
+    "FRESH_ABSENT_OBJECT_PATH": {
+      "description": "Apply corrected canonical TT5D source / corrected M9 copies when objects are absent",
+      "artefacts": [
+        "docs/v5/team-tournament/tt5/TT5-D_*.sql (corrected STABLE + deterministic ACL)",
+        "M9 190/200/210/220 byte-identical copies"
+      ],
+      "requires": [
+        "future Production read-only baseline proving absence or exact intended state",
+        "Owner runbook acceptance",
+        "explicit productionExecutionGo"
+      ]
+    }
+  },
+  "note": "sql/10 in this package embeds Staging-specific fingerprints and must never be executed on Production."
+}

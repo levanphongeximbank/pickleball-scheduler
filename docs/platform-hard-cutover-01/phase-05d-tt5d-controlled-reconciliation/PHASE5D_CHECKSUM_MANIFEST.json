@@ -1,0 +1,219 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_CHECKSUM_MANIFEST",
+  "algorithm": "SHA-256",
+  "checksumFieldAuthoritative": "sha256ExactGitBlobBytes",
+  "secondaryField": "sha256CanonicalLf",
+  "note": "Deterministic package checksums; no mutable timestamps in decisions",
+  "files": [
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/PHASE5D_A_READINESS_MANIFEST.json",
+      "sha256ExactGitBlobBytes": "9C925298D791561681C8AEA4644DE74F7B2FB19303F84BB05D4418E6CA138A67",
+      "sha256CanonicalLf": "9C925298D791561681C8AEA4644DE74F7B2FB19303F84BB05D4418E6CA138A67",
+      "gitBlobOid": "fe5b54e65b0087238d63c20109e31866db562f55",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/README.md",
+      "sha256ExactGitBlobBytes": "46BD70D2BA12FC71530EC504A783DEFA1E76AEABBB86267C39D88D864DD720EF",
+      "sha256CanonicalLf": "46BD70D2BA12FC71530EC504A783DEFA1E76AEABBB86267C39D88D864DD720EF",
+      "gitBlobOid": "8d1219e02a150dad04dfd8c559f22d7104f9299a",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/evidence/01_STAGING_TARGET_AND_BASELINE_GATE.json",
+      "sha256ExactGitBlobBytes": "E08509E546D3455B24565EA8CD2BA30357E9AE1FBBD441FF66CD2F1472FA4787",
+      "sha256CanonicalLf": "E08509E546D3455B24565EA8CD2BA30357E9AE1FBBD441FF66CD2F1472FA4787",
+      "gitBlobOid": "79cc2bfa8a7c2980195d31d12e3bf11a0255d228",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/evidence/02_TT5D_EXACT_CATALOG_BASELINE.json",
+      "sha256ExactGitBlobBytes": "D982AD86D26CFE1505BCEA835C9895D84D3E1D2FBB929B1700DC518E16FFFD1F",
+      "sha256CanonicalLf": "D982AD86D26CFE1505BCEA835C9895D84D3E1D2FBB929B1700DC518E16FFFD1F",
+      "gitBlobOid": "f7d456e77d6d583e4067161e147b93c7cf1f89ac",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/evidence/03_TT5D_SEMANTIC_DELTA.json",
+      "sha256ExactGitBlobBytes": "53F71EC75ED2BE2037F998750A21F766D6D14F2AD054F834BB74AA24ACAD0642",
+      "sha256CanonicalLf": "53F71EC75ED2BE2037F998750A21F766D6D14F2AD054F834BB74AA24ACAD0642",
+      "gitBlobOid": "d265ad17455a64f6056328311530ff2237be58f8",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/evidence/04_TWO_WAY_DEPENDENCY_MAP.json",
+      "sha256ExactGitBlobBytes": "DC6BA8A07974FF2F6571DD26518831BDB48F63489C5B90343D8F05E951043CB2",
+      "sha256CanonicalLf": "DC6BA8A07974FF2F6571DD26518831BDB48F63489C5B90343D8F05E951043CB2",
+      "gitBlobOid": "6e6de4131ca28c87ecd50c8eb795a5ffc8dbedcc",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/evidence/05_PHASE5D_A_DECISION.json",
+      "sha256ExactGitBlobBytes": "679FACE4D75BDBA28E38FC99743F40399BE69E2DDDABD0AE11439C9ED292A93A",
+      "sha256CanonicalLf": "679FACE4D75BDBA28E38FC99743F40399BE69E2DDDABD0AE11439C9ED292A93A",
+      "gitBlobOid": "d610e355c32d505ec4094862ac1958618696ba93",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/evidence/06_PRODUCTION_PROMOTION_CONTRACT.json",
+      "sha256ExactGitBlobBytes": "60C92F03D06CA01FFC80D21952FC414B096E8CFC802C8DF68A24EDA2F933E646",
+      "sha256CanonicalLf": "60C92F03D06CA01FFC80D21952FC414B096E8CFC802C8DF68A24EDA2F933E646",
+      "gitBlobOid": "9c014392b54939f7ea9fcce11230159871ca99bd",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
+      "sha256ExactGitBlobBytes": "815A086C0DFBBA47B44DA8AA56EEBC292D9E93BEACCA9F9F4AADAC01CF28364C",
+      "sha256CanonicalLf": "815A086C0DFBBA47B44DA8AA56EEBC292D9E93BEACCA9F9F4AADAC01CF28364C",
+      "gitBlobOid": "ab4d478aa5ca144b039a6149cbcb87eb984a0dc7",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json",
+      "sha256ExactGitBlobBytes": "0C4098BB2274480E04A023ECFCBDE24121906373E5F984F3C73F5ED914382873",
+      "sha256CanonicalLf": "0C4098BB2274480E04A023ECFCBDE24121906373E5F984F3C73F5ED914382873",
+      "gitBlobOid": "b677b00fdb718c6781d4c53698c42063defe781e",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json",
+      "sha256ExactGitBlobBytes": "2ACD16E95B79DE3A418414C5D92BCD02A28B86CB70403D7F59C3705E919155A2",
+      "sha256CanonicalLf": "2ACD16E95B79DE3A418414C5D92BCD02A28B86CB70403D7F59C3705E919155A2",
+      "gitBlobOid": "78eed6213abbf96b46b4cee603a44a0e956e1039",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
+      "sha256ExactGitBlobBytes": "E0268F2C4911A2323C725F692C8B5200FDF3AF3E4FFA3698EEE0BB99A90E1DCB",
+      "sha256CanonicalLf": "E0268F2C4911A2323C725F692C8B5200FDF3AF3E4FFA3698EEE0BB99A90E1DCB",
+      "gitBlobOid": "dc4a94b40b33cb33fe2d16210cfd5ba24c3b4585",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/scripts/generate-phase5d-a-package.mjs",
+      "sha256ExactGitBlobBytes": "FDAE991453DB2764694F283FA2F0C61C3431E68CE1A19F67466BD8B87B6BB18F",
+      "sha256CanonicalLf": "FDAE991453DB2764694F283FA2F0C61C3431E68CE1A19F67466BD8B87B6BB18F",
+      "gitBlobOid": "c751f3e4020e928bd75a3e6ced63d69fffb3d274",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/scripts/harden-phase5d-a1.mjs",
+      "sha256ExactGitBlobBytes": "55279823B58CA091A6483D2D90C03222632BB4A1FA952012E849D2EBE21052A4",
+      "sha256CanonicalLf": "55279823B58CA091A6483D2D90C03222632BB4A1FA952012E849D2EBE21052A4",
+      "gitBlobOid": "c5881a3bca97366f7ab24c149fc3124385998c1a",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/scripts/phase5d-a4-guard-contracts.mjs",
+      "sha256ExactGitBlobBytes": "16E862FF2FE0B6059FB4957FCA241D361E11A9A369D75F84E384922785C227C0",
+      "sha256CanonicalLf": "16E862FF2FE0B6059FB4957FCA241D361E11A9A369D75F84E384922785C227C0",
+      "gitBlobOid": "8526ec5fba8c2f683045a17cf9dddefb74f778e8",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/scripts/sync-phase5d-checksum-manifest.mjs",
+      "sha256ExactGitBlobBytes": "7AFDED9BC3EFE15A7E0494AEFFA53C6A86EDFBF9272E6326F59C4ED3743DFA0B",
+      "sha256CanonicalLf": "7AFDED9BC3EFE15A7E0494AEFFA53C6A86EDFBF9272E6326F59C4ED3743DFA0B",
+      "gitBlobOid": "4fdf2f16f9019d98fe7f8b1b090fe5bb8c3adf7a",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/scripts/verify-phase5d-a.mjs",
+      "sha256ExactGitBlobBytes": "C723A2437EAEE46A0C2DDBE5D69197E65DAE24AAC1FEEB9ECDACE54FD7AFEA58",
+      "sha256CanonicalLf": "C723A2437EAEE46A0C2DDBE5D69197E65DAE24AAC1FEEB9ECDACE54FD7AFEA58",
+      "gitBlobOid": "5c448136a6acd75510e966e6d936a75717046a38",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
+      "sha256ExactGitBlobBytes": "DEDD0705ACC15870D18E22C070D49189EC0A4783F9877647957BE56408AE9497",
+      "sha256CanonicalLf": "DEDD0705ACC15870D18E22C070D49189EC0A4783F9877647957BE56408AE9497",
+      "gitBlobOid": "63ddd68921466a12b1b71471792999fabe9a6a9f",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/00_transport/00_PREFLIGHT_BATCH_001.sql",
+      "sha256ExactGitBlobBytes": "1539CD55E4010780A37BDB08728820C919B729B2F5CD4B73E86FABC83357EE4E",
+      "sha256CanonicalLf": "1539CD55E4010780A37BDB08728820C919B729B2F5CD4B73E86FABC83357EE4E",
+      "gitBlobOid": "952d1cf0d3533031a3d60c3f51e9999c6f5370dc",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/00_transport/00_PREFLIGHT_BATCH_002.sql",
+      "sha256ExactGitBlobBytes": "2D3465A7A8FC336694D1F5A75EE91AF495CA5B7DA1EBBC58FF8F01D805E4CA0C",
+      "sha256CanonicalLf": "2D3465A7A8FC336694D1F5A75EE91AF495CA5B7DA1EBBC58FF8F01D805E4CA0C",
+      "gitBlobOid": "3998295a7eb17703a74cdca2c9e9c466d1d4c5cc",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/00_transport/00_PREFLIGHT_BATCH_003.sql",
+      "sha256ExactGitBlobBytes": "A3414F5FA0DE4A3ACE7F835452B2A56B5C52A7426F06F3D1DD0B114B0B52853B",
+      "sha256CanonicalLf": "A3414F5FA0DE4A3ACE7F835452B2A56B5C52A7426F06F3D1DD0B114B0B52853B",
+      "gitBlobOid": "a516d2c1d9ec8c0c271fb13f99a1ac5213096abe",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/00_transport/00_PREFLIGHT_BATCH_004.sql",
+      "sha256ExactGitBlobBytes": "DC352BB0BCC468333E375899C03215E44E92440E691C1C56215F1FBDC72D5715",
+      "sha256CanonicalLf": "DC352BB0BCC468333E375899C03215E44E92440E691C1C56215F1FBDC72D5715",
+      "gitBlobOid": "6e4138d7b25784f2b16406818a2b1ae1858e49fa",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/00_transport/00_PREFLIGHT_BATCH_005.sql",
+      "sha256ExactGitBlobBytes": "04ABA25BC54A28E7C2172902BE608FB17BB4171282F5B489146B90005C5F51BC",
+      "sha256CanonicalLf": "04ABA25BC54A28E7C2172902BE608FB17BB4171282F5B489146B90005C5F51BC",
+      "gitBlobOid": "c6cd43718b604dd22ee20b5436cf5c92ef60df6a",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/00_transport/00_PREFLIGHT_BATCH_006.sql",
+      "sha256ExactGitBlobBytes": "AA73084EE145D741F635D0D76C474A516D0BBAD36AE3340717038488232DA227",
+      "sha256CanonicalLf": "AA73084EE145D741F635D0D76C474A516D0BBAD36AE3340717038488232DA227",
+      "gitBlobOid": "87d110ad1e112ca96927adf8302b3c14ae8337d3",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/00_transport/00_PREFLIGHT_BATCH_007.sql",
+      "sha256ExactGitBlobBytes": "76549F0304F1C8786B039C23C5A9F7D314A56CDB7BBC293BCE22FAF1653AEEFA",
+      "sha256CanonicalLf": "76549F0304F1C8786B039C23C5A9F7D314A56CDB7BBC293BCE22FAF1653AEEFA",
+      "gitBlobOid": "da5009aee005a01a0a71d667441566f021b02c3d",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/00_transport/00_PREFLIGHT_BATCH_008.sql",
+      "sha256ExactGitBlobBytes": "AEF1436D1726B5A97FF93350242052AB9E640A3DBB567740BF0DFF0213FE4854",
+      "sha256CanonicalLf": "AEF1436D1726B5A97FF93350242052AB9E640A3DBB567740BF0DFF0213FE4854",
+      "gitBlobOid": "d34c15778b082fad07cf1aa999c21c42ef8950c9",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/00_transport/00_PREFLIGHT_BATCH_009.sql",
+      "sha256ExactGitBlobBytes": "B42EC16D235EDE4041077181CA5D8DE4D9C8BB39CD33DBDF04154301087A263F",
+      "sha256CanonicalLf": "B42EC16D235EDE4041077181CA5D8DE4D9C8BB39CD33DBDF04154301087A263F",
+      "gitBlobOid": "e830e1ac945ccbd1da30e2bf5f5fc12952044e12",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/10_TT5D_CONTROLLED_RECONCILIATION.sql",
+      "sha256ExactGitBlobBytes": "B07461F96483C6642DE0A9A422FF65CBAF6FABA5411F4DBE1C63CCE64AF57AA9",
+      "sha256CanonicalLf": "B07461F96483C6642DE0A9A422FF65CBAF6FABA5411F4DBE1C63CCE64AF57AA9",
+      "gitBlobOid": "0d84224220056542ba4ab72a47e538b5c857e3fb",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/20_TT5D_POST_APPLY_VERIFY.sql",
+      "sha256ExactGitBlobBytes": "38881674B583662FCB31D5B72CDB84F581248ACC28AB55C8569DE4544408081F",
+      "sha256CanonicalLf": "38881674B583662FCB31D5B72CDB84F581248ACC28AB55C8569DE4544408081F",
+      "gitBlobOid": "7dcedc65de0edd9a2b3fced53a49c0686d43f2ce",
+      "hashSource": "INDEX"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05d-tt5d-controlled-reconciliation/sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql",
+      "sha256ExactGitBlobBytes": "F5FDEDE961092CF96EE7927A75D7DBC4F5A580616ED7FA5EB33ADEFE48A51CC5",
+      "sha256CanonicalLf": "F5FDEDE961092CF96EE7927A75D7DBC4F5A580616ED7FA5EB33ADEFE48A51CC5",
+      "gitBlobOid": "67a6896fc2d5dff0fb037937e47e6e5a610e704c",
+      "hashSource": "INDEX"
+    }
+  ]
+}

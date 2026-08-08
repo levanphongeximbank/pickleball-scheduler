@@ -1,0 +1,147 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READINESS_MANIFEST",
+  "decision": "READY_FOR_OWNER_STAGING_GO",
+  "authorizedStagingRef": "qyewbxjsiiyufanzcjcq",
+  "forbiddenProductionRef": "expuvcohlcjzvrrauvud",
+  "functionCount": 13,
+  "migrationName": "phase5d_tt5d_controlled_reconciliation",
+  "migrationVersion": "20260731150000",
+  "mutationAllowlistIds": [
+    "VOLATILITY_EFFECTIVE_STATUS_IMMUTABLE_TO_STABLE",
+    "ACL_REVOKE_ANON_PUBLIC_AND_ALIGN_ALLOWLIST",
+    "TABLE_ACL_CORRECTION_REQUESTS_AUTHENTICATED_SELECT_ONLY",
+    "MIGRATION_PROVENANCE_INSERT"
+  ],
+  "historicalPhase5B5CUnchanged": true,
+  "m9ExecutableApplyCount": 20,
+  "m9NonExecutableCandidateCount": 4,
+  "StagingDatabaseMutations": 0,
+  "ProductionAccess": 0,
+  "ProductionDatabaseMutations": 0,
+  "RestoreExecutions": 0,
+  "packageFiles": [
+    "README.md",
+    "PHASE5D_A_READINESS_MANIFEST.json",
+    "PHASE5D_CHECKSUM_MANIFEST.json",
+    "evidence/01_STAGING_TARGET_AND_BASELINE_GATE.json",
+    "evidence/02_TT5D_EXACT_CATALOG_BASELINE.json",
+    "evidence/03_TT5D_SEMANTIC_DELTA.json",
+    "evidence/04_TWO_WAY_DEPENDENCY_MAP.json",
+    "evidence/05_PHASE5D_A_DECISION.json",
+    "sql/00_TT5D_PRECONDITION_SELECT_ONLY.sql",
+    "sql/10_TT5D_CONTROLLED_RECONCILIATION.sql",
+    "sql/20_TT5D_POST_APPLY_VERIFY.sql",
+    "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql",
+    "scripts/generate-phase5d-a-package.mjs",
+    "scripts/verify-phase5d-a.mjs",
+    "scripts/sync-phase5d-checksum-manifest.mjs",
+    "evidence/06_PRODUCTION_PROMOTION_CONTRACT.json",
+    "evidence/07_CANONICAL_SOURCE_M9_SUPERSESSION.json",
+    "evidence/08_EFFECTIVE_STATUS_POST_APPLY_FINGERPRINT.json",
+    "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json",
+    "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
+    "scripts/harden-phase5d-a1.mjs",
+    "scripts/phase5d-a4-guard-contracts.mjs",
+    "sql/00_transport/"
+  ],
+  "markers": [
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_GUARD_PAREN_NORMALIZATION_CORRECTED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_JSONB_LITERAL_RENDERER_CORRECTED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_TRANSPORT_BATCH_PACKAGE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_189_GUARD_BATCH_PARITY_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A5_READY_FOR_BATCHED_SELECT_ONLY_STAGING_GO",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_SELECT_ONLY_PREFLIGHT_PARITY_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_NO_SERIALIZED_CATALOG_GUARDS_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A4_READY_FOR_SELECT_ONLY_STAGING_PREFLIGHT_GO",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_TEXT_ARRAY_GUARDS_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_PROCONFIG_REPRESENTATION_DRIFT_RESOLVED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_GENERATOR_IDEMPOTENCE_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A3_READY_FOR_STAGING_GO_REISSUE",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_POLICY_GUARD_NORMALIZATION_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_PRECONDITION_REPRESENTATION_DRIFT_RESOLVED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_GENERATOR_IDEMPOTENCE_REVERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_READY_FOR_STAGING_GO_REISSUE",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_FAIL_CLOSED_GUARDS_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_CANONICAL_SOURCE_SYNCHRONIZED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_PRODUCTION_PROMOTION_CONTRACT_VERIFIED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_ROLLBACK_HARDENED",
+    "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_READY_FOR_STAGING_GO_RECONFIRMED"
+  ],
+  "hardening": "PHASE5D_A5_TRANSPORT_SAFE_BATCHED_SELECT_ONLY_PREFLIGHT",
+  "nextAuth": "BATCHED_SELECT_ONLY_STAGING_PREFLIGHT_ONLY",
+  "policyExpressionComparison": {
+    "version": "WS_COLLAPSE_V1",
+    "scope": "tt5d_correction_referee_select.polqual",
+    "pgGetExprPretty": false,
+    "normalization": "COLLAPSE_POSIX_WHITESPACE_TO_SINGLE_SPACE_AND_TRIM",
+    "comparison": "EXACT_AFTER_NORMALIZATION",
+    "semanticTokensMayDiffer": false,
+    "expectedNormalizedUsing": "(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))",
+    "note": "Compact expected string is the canonical normalized expected value, not a claim of raw byte-identical live pg_get_expr output."
+  },
+  "proconfigComparison": {
+    "version": "PROCONFIG_TEXT_ARRAY_V1",
+    "catalogType": "text[]",
+    "comparison": "EXACT_ELEMENTWISE_AFTER_NULL_TO_EMPTY_ARRAY",
+    "textSerializationCompared": false,
+    "nullHandling": "COALESCE_NULL_TO_EMPTY_TEXT_ARRAY",
+    "orderSensitive": true,
+    "multiplicitySensitive": true,
+    "caseSensitive": true,
+    "innerElementNormalization": "NONE",
+    "commaContainingElementPreserved": true,
+    "representationOnlyMismatch": {
+      "function": "referee_v5_apply_admin_result_revision",
+      "priorGuardExpectedText": "{search_path=pg_catalog, public}",
+      "liveProconfigText": "{\"search_path=pg_catalog, public\"}",
+      "semanticElements": [
+        "search_path=pg_catalog, public"
+      ],
+      "functionBodyDrift": false,
+      "policyDrift": false,
+      "aclDrift": false,
+      "schemaDrift": false,
+      "committedStagingMutations": 0
+    }
+  },
+  "typedCatalogGuardComparison": {
+    "version": "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE",
+    "forbiddenSerializedGuards": [
+      "relacl::text",
+      "proacl::text",
+      "pg_get_indexdef(...) IS DISTINCT FROM",
+      "pg_get_constraintdef(...) IS DISTINCT FROM",
+      "information_schema.column_default equality"
+    ],
+    "contracts": [
+      "ACL_EXPLODED_SET_V1",
+      "INDEX_CATALOG_V1",
+      "CONSTRAINT_CATALOG_V1",
+      "COLUMN_DEFAULT_EXPR_V1",
+      "PROCONFIG_TEXT_ARRAY_V1",
+      "WS_COLLAPSE_V1",
+      "CATALOG_EXPR_CANON_V1"
+    ],
+    "catalogExpressionComparison": {
+      "version": "CATALOG_EXPR_CANON_V1",
+      "scope": [
+        "constraint.pg_get_expr(conbin)",
+        "index.pg_get_expr(indpred)"
+      ],
+      "normalization": "COLLAPSE_POSIX_WHITESPACE_THEN_STRIP_REDUNDANT_WHOLE_EXPRESSION_PARENTHESES",
+      "comparison": "EXACT_AFTER_NORMALIZATION",
+      "preservesInternalGrouping": true,
+      "preservesQuotedLiteralsAndIdentifiers": true
+    },
+    "preMutationGuardCount": 189,
+    "sql00ShadowParity": "SELECT_ONLY_UNION_ALL_REGISTRY"
+  },
+  "transportBatchPackage": {
+    "evidence": "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
+    "batchCount": 9,
+    "encodedPayloadLimit": 28000,
+    "canonicalSql00GitBlob": "63ddd68921466a12b1b71471792999fabe9a6a9f",
+    "jsonbLiteralRenderer": "renderJsonbLiteral"
+  }
+}
