@@ -1264,6 +1264,8 @@ export default function TeamTournamentSetup() {
               canViewAll={access.canViewAll}
               viewerPlayerId={access.viewerPlayerId}
               setupVersion={version ?? 0}
+              setupVersionForMutations={version ?? 0}
+              persistSetupTeamData={persistSetupTeamData}
               athletePoolLoadingInitial={
                 clubPool.loadingInitial ||
                 (Boolean(clubPool.tenantId) && tenantPool.loadingInitial)
@@ -1274,7 +1276,7 @@ export default function TeamTournamentSetup() {
               }
               athletePoolError={clubPool.error || tenantPool.error}
               setupReady={Boolean(tournament && td)}
-              onUpdated={() => reload({ silent: true })}
+              onUpdated={(opts) => reload({ silent: true, ...opts })}
               onError={setError}
               onMessage={setMessage}
             />

@@ -485,6 +485,11 @@ export default function TeamAiPairingDialog({
       if (applyResult == null || applyResult.ok !== false) {
         onClose?.();
       }
+    } catch (error) {
+      onError?.(
+        error?.message ||
+          "Không xác nhận được ghép đội — lỗi không mong đợi khi lưu cloud."
+      );
     } finally {
       setApplying(false);
     }
@@ -764,11 +769,12 @@ export default function TeamAiPairingDialog({
 
                 {groupTeamData?.groups?.length ? (
                   <Alert severity="info" sx={{ mt: 1.5, bgcolor: "rgba(124,255,178,0.08)" }}>
-                    Đã gắn {groupTeamData.groups.length} bảng vào kết quả lưu.
+                    Xem trước: {groupTeamData.groups.length} bảng sẽ được lưu cloud khi bấm
+                    Xác nhận (chưa ghi durable).
                   </Alert>
                 ) : (
                   <Alert severity="warning" sx={{ mt: 1.5 }}>
-                    Chưa chạy chia bảng — lưu sẽ chỉ có đội.
+                    Chưa chạy chia bảng — Xác nhận sẽ chỉ lưu đội/đội trưởng lên cloud.
                   </Alert>
                 )}
               </Box>
