@@ -36,15 +36,15 @@ export default function TournamentRefereeAssignPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tournamentId = searchParams.get("tournamentId") || "";
   const tabParam = searchParams.get("tab") || "assign";
-  const { activeClubId, revision, refreshClubs } = useClub();
+  const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { user } = useAuth();
   const [message, setMessage] = useState(null);
   const [tab, setTab] = useState(
     TABS.some((t) => t.id === tabParam) ? tabParam : "assign"
   );
 
-  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClubId, revision);
-  const { tournament, update } = useCanonicalTournament(activeClubId, tournamentId, revision);
+  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClub, revision);
+  const { tournament, update } = useCanonicalTournament(activeClub, tournamentId, revision);
 
   const tournaments = useMemo(
     () => allTournaments.filter(isIndividualTournament),

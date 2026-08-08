@@ -1,12 +1,13 @@
 /**
  * Cloud Tournament repository — sole canonical organizer authority.
  * All operations are async RPC-backed. No blob/localStorage/mock fallback.
+ * Tenant must be supplied explicitly from canonical runtime club projection.
  */
 import {
   TOURNAMENT_REPO_ERROR,
   TOURNAMENT_REPOSITORY_KINDS,
 } from "./TournamentRepository.interface.js";
-import { requireExplicitTenantForClub } from "../guards/tournamentTenant.js";
+import { resolveTournamentTenantScope } from "../guards/tournamentTenant.js";
 import { CANONICAL_TOURNAMENT_RPC } from "./canonicalTournamentRpcs.js";
 import {
   canonicalRowToTournament,
@@ -19,6 +20,10 @@ export { CANONICAL_TOURNAMENT_RPC };
 function normalizeRpcPayload(data) {
   if (data && typeof data === "object" && "ok" in data) return data;
   return { ok: true, data };
+}
+
+function tenantOpts(options = {}) {
+  return { tenantId: options.tenantId };
 }
 
 /**
@@ -70,8 +75,8 @@ export function createCloudTournamentRepository(deps = {}) {
   return {
     kind: TOURNAMENT_REPOSITORY_KINDS.CLOUD,
 
-    async list(clubId, filters = {}) {
-      const tenantCheck = requireExplicitTenantForClub(clubId);
+    async list(clubIdOrScope, filters = {}, options = {}) {
+      const tenantCheck = resolveTournamentTenantScope(clubIdOrScope, tenantOpts(options));
       if (!tenantCheck.ok) {
         return { ok: false, ...tenantCheck, tournaments: [] };
       }
@@ -92,8 +97,8 @@ export function createCloudTournamentRepository(deps = {}) {
       };
     },
 
-    async get(clubId, tournamentId) {
-      const tenantCheck = requireExplicitTenantForClub(clubId);
+    async get(clubIdOrScope, tournamentId, options = {}) {
+      const tenantCheck = resolveTournamentTenantScope(clubIdOrScope, tenantOpts(options));
       if (!tenantCheck.ok) return { ok: false, ...tenantCheck, tournament: null };
       const result = await callRpc(CANONICAL_TOURNAMENT_RPC.GET, {
         p_tenant_id: tenantCheck.tenantId,
@@ -105,8 +110,8 @@ export function createCloudTournamentRepository(deps = {}) {
       return { ok: true, tournament: canonicalRowToTournament(row) };
     },
 
-    async listMine(clubId, filters = {}) {
-      const tenantCheck = requireExplicitTenantForClub(clubId);
+    async listMine(clubIdOrScope, filters = {}, options = {}) {
+      const tenantCheck = resolveTournamentTenantScope(clubIdOrScope, tenantOpts(options));
       if (!tenantCheck.ok) {
         return { ok: false, ...tenantCheck, tournaments: [] };
       }
@@ -136,8 +141,8 @@ export function createCloudTournamentRepository(deps = {}) {
       };
     },
 
-    async create(clubId, options = {}) {
-      const tenantCheck = requireExplicitTenantForClub(clubId);
+    async create(clubIdOrScope, options = {}) {
+      const tenantCheck = resolveTournamentTenantScope(clubIdOrScope, tenantOpts(options));
       if (!tenantCheck.ok) return tenantCheck;
 
       const record = createTournamentRecord(tenantCheck.clubId, {
@@ -175,11 +180,11 @@ export function createCloudTournamentRepository(deps = {}) {
       };
     },
 
-    async update(clubId, tournamentId, patch = {}, options = {}) {
-      const tenantCheck = requireExplicitTenantForClub(clubId);
+    async update(clubIdOrScope, tournamentId, patch = {}, options = {}) {
+      const tenantCheck = resolveTournamentTenantScope(clubIdOrScope, tenantOpts(options));
       if (!tenantCheck.ok) return tenantCheck;
 
-      const current = await this.get(clubId, tournamentId);
+      const current = await this.get(clubIdOrScope, tournamentId, options);
       if (!current.ok || !current.tournament) {
         return {
           ok: false,
@@ -230,8 +235,8 @@ export function createCloudTournamentRepository(deps = {}) {
       };
     },
 
-    async delete(clubId, tournamentId) {
-      const tenantCheck = requireExplicitTenantForClub(clubId);
+    async delete(clubIdOrScope, tournamentId, options = {}) {
+      const tenantCheck = resolveTournamentTenantScope(clubIdOrScope, tenantOpts(options));
       if (!tenantCheck.ok) return tenantCheck;
       const result = await callRpc(CANONICAL_TOURNAMENT_RPC.DELETE, {
         p_tenant_id: tenantCheck.tenantId,
@@ -241,8 +246,8 @@ export function createCloudTournamentRepository(deps = {}) {
       return result.ok ? { ok: true } : result;
     },
 
-    async applyEngineState(clubId, tournamentId, engineState = {}, options = {}) {
-      const tenantCheck = requireExplicitTenantForClub(clubId);
+    async applyEngineState(clubIdOrScope, tournamentId, engineState = {}, options = {}) {
+      const tenantCheck = resolveTournamentTenantScope(clubIdOrScope, tenantOpts(options));
       if (!tenantCheck.ok) return tenantCheck;
 
       const result = await callRpc(CANONICAL_TOURNAMENT_RPC.APPLY_ENGINE, {
@@ -253,10 +258,9 @@ export function createCloudTournamentRepository(deps = {}) {
       });
       if (!result.ok) return result;
 
-      // Optional events apply via update when provided in engineState
       if (Array.isArray(engineState.events)) {
         return this.update(
-          clubId,
+          clubIdOrScope,
           tournamentId,
           { events: engineState.events, settings: { engineV4: engineState } },
           { ...options, engineApply: true }

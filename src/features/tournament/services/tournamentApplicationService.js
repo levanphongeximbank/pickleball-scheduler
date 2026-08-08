@@ -21,4 +21,10 @@ export {
   TOURNAMENT_DATA_MODES,
 } from "../repositories/tournamentRepositoryFactory.js";
 
-export { requireExplicitTenantForClub } from "../guards/tournamentTenant.js";
+export {
+  requireExplicitTenantForClub,
+  requireExplicitTournamentTenant,
+  resolveExplicitTenantFromClub,
+  resolveTournamentTenantScope,
+  buildTournamentClubScope,
+} from "../guards/tournamentTenant.js";

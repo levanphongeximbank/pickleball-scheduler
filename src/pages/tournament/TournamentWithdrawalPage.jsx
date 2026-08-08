@@ -21,12 +21,12 @@ import WithdrawalManagementPanel from "../../components/tournament/WithdrawalMan
 export default function TournamentWithdrawalPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tournamentId = searchParams.get("tournamentId") || "";
-  const { activeClubId, revision, refreshClubs } = useClub();
+  const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { user } = useAuth();
   const [message, setMessage] = useState(null);
 
-  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClubId, revision);
-  const { tournament, update } = useCanonicalTournament(activeClubId, tournamentId, revision);
+  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClub, revision);
+  const { tournament, update } = useCanonicalTournament(activeClub, tournamentId, revision);
 
   const tournaments = useMemo(
     () => allTournaments.filter(isIndividualTournament),

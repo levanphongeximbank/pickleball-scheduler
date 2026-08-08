@@ -2,7 +2,6 @@ import { getSupabaseAuthClient, hasSupabaseConfig } from "../../../auth/supabase
 import { getAuthOptions } from "../../../auth/guardAction.js";
 import { isGlobalRole } from "../../../auth/roles.js";
 import { loadActiveTenantId } from "../../../data/tenantSession.js";
-import { getExplicitTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import {
   resolveBillingTenantId,
   sanitizeBillingTenantId,
@@ -132,16 +131,20 @@ async function pickSupabaseVenueTenantId({ client, user, preferredIds = [] }) {
 
 export async function resolveTeamTournamentCloudTenantId({
   tournament,
-  clubId,
+  runtimeTenantId = null,
   client = null,
   user: userOverride = null,
 } = {}) {
   const user = userOverride || getAuthOptions()?.user;
   const supabase = client || (hasSupabaseConfig() ? getSupabaseAuthClient() : null);
+  const explicitRuntime = sanitizeBillingTenantId(
+    runtimeTenantId || tournament?.tenantId || null
+  );
+
+  // Never rediscover tenant via legacy localStorage club registry.
   const preferredIds = [
-    tournament?.tenantId,
+    explicitRuntime,
     loadActiveTenantId(),
-    sanitizeBillingTenantId(getExplicitTenantIdForClub(clubId)),
     user?.venueId,
     user?.tenantId,
   ];
@@ -154,9 +157,9 @@ export async function resolveTeamTournamentCloudTenantId({
       })
     : resolveBillingTenantId({
         user,
-        tenantIdOverride: tournament?.tenantId,
+        tenantIdOverride: explicitRuntime,
         currentTenantId: loadActiveTenantId(),
-      }) || sanitizeBillingTenantId(getExplicitTenantIdForClub(clubId));
+      }) || explicitRuntime;
 
   if (!tenantId) {
     return {
@@ -185,6 +188,7 @@ export async function cloudEnsureTournamentHeader(tournament) {
   const tenantResolution = await resolveTeamTournamentCloudTenantId({
     tournament,
     clubId,
+    runtimeTenantId: tournament?.tenantId || tournament?.runtimeTenantId || null,
     client,
   });
 

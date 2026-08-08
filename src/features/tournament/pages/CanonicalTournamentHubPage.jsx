@@ -30,8 +30,7 @@ export default function CanonicalTournamentHubPage() {
     activeClub?.tenantId || activeClubId,
     { source: "tournament.canonical.hub" }
   );
-  const { tournaments, loading, error, stats } = useCanonicalTournamentList(
-    activeClubId,
+  const { tournaments, loading, error, stats } = useCanonicalTournamentList(activeClub,
     revision
   );
   const openTournaments = tournaments.filter((item) =>

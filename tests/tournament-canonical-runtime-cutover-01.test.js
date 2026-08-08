@@ -27,6 +27,9 @@ import {
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+const TENANT_ID = "tenant-cutover-01";
+const CLUB_SCOPE = { id: DEFAULT_CLUB.id, tenantId: TENANT_ID, venueId: TENANT_ID };
+
 function readSrc(relativePath) {
   return readFileSync(path.join(root, relativePath), "utf8");
 }
@@ -105,18 +108,18 @@ describe("tournament-canonical-runtime-cutover-01", () => {
     assertNotIncludes(listPage, "domain/tournamentService");
     assertNotIncludes(portal, "domain/tournamentService");
 
-    const created = await createTournamentCommand(DEFAULT_CLUB.id, {
+    const created = await createTournamentCommand(CLUB_SCOPE, {
       mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
       name: "Giải list/my parity",
       createdBy: "player-a",
     });
     assert.equal(created.ok, true);
-    const listed = await listTournamentsQuery(DEFAULT_CLUB.id);
-    const mine = await listMyTournamentsQuery(DEFAULT_CLUB.id, { playerId: "player-a" });
+    const listed = await listTournamentsQuery(CLUB_SCOPE);
+    const mine = await listMyTournamentsQuery(CLUB_SCOPE, { playerId: "player-a" });
     assert.equal(listed.ok, true);
     assert.equal(listed.tournaments.length >= 1, true);
     assert.equal(mine.tournaments.length, 1);
-    const stats = await buildTournamentHubStats(DEFAULT_CLUB.id);
+    const stats = await buildTournamentHubStats(CLUB_SCOPE);
     assert.equal(stats.total, listed.tournaments.length);
   });
 
@@ -153,15 +156,21 @@ describe("tournament-canonical-runtime-cutover-01", () => {
   });
 
   it("7. fail closed on missing tenant", async () => {
-    const clubs = loadClubs().map((club) =>
-      club.id === DEFAULT_CLUB.id ? { ...club, tenantId: null, venueId: null } : club
+    assert.equal(
+      requireExplicitTenantForClub({
+        id: DEFAULT_CLUB.id,
+        tenantId: "default-tenant",
+        venueId: "default-tenant",
+      }).ok,
+      false
     );
-    saveClubs(clubs);
-    assert.equal(requireExplicitTenantForClub(DEFAULT_CLUB.id).ok, false);
-    const created = await createTournamentCommand(DEFAULT_CLUB.id, {
-      mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
-      name: "Should fail",
-    });
+    const created = await createTournamentCommand(
+      { id: DEFAULT_CLUB.id },
+      {
+        mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+        name: "Should fail",
+      }
+    );
     assert.equal(created.ok, false);
   });
 

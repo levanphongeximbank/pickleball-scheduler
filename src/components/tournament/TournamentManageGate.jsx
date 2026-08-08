@@ -35,9 +35,9 @@ function AccessDenied({ title, message, to = "/tournament" }) {
  */
 export default function TournamentManageGate({ children, tournamentId = null }) {
   const { rbacEnabled, isAuthenticated, can } = useAuth();
-  const { activeClubId } = useClub();
+  const { activeClub, activeClubId } = useClub();
   const { currentTenantId } = useTenant();
-  const { tournament, loading } = useCanonicalTournament(activeClubId, tournamentId);
+  const { tournament, loading } = useCanonicalTournament(activeClub, tournamentId);
 
   if (!rbacEnabled || !isAuthenticated) {
     return children;

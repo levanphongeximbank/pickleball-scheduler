@@ -47,13 +47,13 @@ import { useAuth } from "../../context/AuthContext.jsx";
 export default function TournamentPublishSchedulePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tournamentId = searchParams.get("tournamentId") || "";
-  const { activeClubId, revision, refreshClubs } = useClub();
+  const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { user, can, rbacEnabled } = useAuth();
   const [message, setMessage] = useState(null);
   const [minRestMinutes, setMinRestMinutes] = useState(15);
 
-  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClubId, revision);
-  const { tournament, update } = useCanonicalTournament(activeClubId, tournamentId, revision);
+  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClub, revision);
+  const { tournament, update } = useCanonicalTournament(activeClub, tournamentId, revision);
 
   const tournaments = useMemo(
     () => allTournaments.filter(isIndividualTournament),

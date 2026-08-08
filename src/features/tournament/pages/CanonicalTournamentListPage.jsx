@@ -43,8 +43,7 @@ export default function CanonicalTournamentListPage() {
     activeClub?.tenantId || activeClubId,
     { source: "tournament.canonical.list" }
   );
-  const { tournaments, loading, error: loadError, remove } = useCanonicalTournamentList(
-    activeClubId,
+  const { tournaments, loading, error: loadError, remove } = useCanonicalTournamentList(activeClub,
     revision
   );
   const [selectedIds, setSelectedIds] = useState([]);

@@ -65,10 +65,10 @@ export default function TournamentPickerHub({
   emptyHint,
 }) {
   const navigate = useNavigate();
-  const { activeClubId, revision } = useClub();
+  const { activeClub, revision } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
 
-  const { tournaments, loading } = useCanonicalTournamentList(activeClubId, revision);
+  const { tournaments, loading } = useCanonicalTournamentList(activeClub, revision);
 
   const matches = useMemo(
     () =>

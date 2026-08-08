@@ -4,6 +4,7 @@
 import { getTournamentRepository } from "../repositories/tournamentRepositoryFactory.js";
 import { modeLabelVi, statusLabelVi } from "../constants/tournamentLabels.js";
 import { TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
+import { resolveTournamentTenantScope } from "../guards/tournamentTenant.js";
 
 function toReadModel(tournament) {
   if (!tournament) return null;
@@ -14,9 +15,26 @@ function toReadModel(tournament) {
   };
 }
 
-export async function listTournamentsQuery(clubId, filters = {}, options = {}) {
+function withTenantOptions(clubIdOrScope, options = {}) {
+  const scope = resolveTournamentTenantScope(clubIdOrScope, options);
+  if (!scope.ok) {
+    return { ok: false, scope, repoOptions: options };
+  }
+  return {
+    ok: true,
+    scope,
+    repoOptions: { ...options, tenantId: scope.tenantId },
+    clubId: scope.clubId,
+  };
+}
+
+export async function listTournamentsQuery(clubIdOrScope, filters = {}, options = {}) {
+  const prepared = withTenantOptions(clubIdOrScope, options);
+  if (!prepared.ok) {
+    return { ok: false, ...prepared.scope, tournaments: [] };
+  }
   const repo = options.repository || getTournamentRepository();
-  const result = await repo.list(clubId, filters);
+  const result = await repo.list(prepared.clubId, filters, prepared.repoOptions);
   if (!result.ok) {
     return { ok: false, ...result, tournaments: [] };
   }
@@ -26,9 +44,13 @@ export async function listTournamentsQuery(clubId, filters = {}, options = {}) {
   };
 }
 
-export async function listMyTournamentsQuery(clubId, filters = {}, options = {}) {
+export async function listMyTournamentsQuery(clubIdOrScope, filters = {}, options = {}) {
+  const prepared = withTenantOptions(clubIdOrScope, options);
+  if (!prepared.ok) {
+    return { ok: false, ...prepared.scope, tournaments: [] };
+  }
   const repo = options.repository || getTournamentRepository();
-  const result = await repo.listMine(clubId, filters);
+  const result = await repo.listMine(prepared.clubId, filters, prepared.repoOptions);
   if (!result.ok) {
     return { ok: false, ...result, tournaments: [] };
   }
@@ -38,17 +60,21 @@ export async function listMyTournamentsQuery(clubId, filters = {}, options = {})
   };
 }
 
-export async function getTournamentQuery(clubId, tournamentId, options = {}) {
+export async function getTournamentQuery(clubIdOrScope, tournamentId, options = {}) {
+  const prepared = withTenantOptions(clubIdOrScope, options);
+  if (!prepared.ok) {
+    return { ok: false, ...prepared.scope, tournament: null };
+  }
   const repo = options.repository || getTournamentRepository();
-  const result = await repo.get(clubId, tournamentId);
+  const result = await repo.get(prepared.clubId, tournamentId, prepared.repoOptions);
   if (!result.ok) {
     return { ok: false, ...result, tournament: null };
   }
   return { ok: true, tournament: toReadModel(result.tournament) };
 }
 
-export async function listOpenTournamentsQuery(clubId, options = {}) {
-  const result = await listTournamentsQuery(clubId, {}, options);
+export async function listOpenTournamentsQuery(clubIdOrScope, options = {}) {
+  const result = await listTournamentsQuery(clubIdOrScope, {}, options);
   if (!result.ok) return result;
   const open = new Set([
     TOURNAMENT_STATUS.ACTIVE,
@@ -61,8 +87,8 @@ export async function listOpenTournamentsQuery(clubId, options = {}) {
   };
 }
 
-export async function buildTournamentHubStats(clubId, options = {}) {
-  const result = await listTournamentsQuery(clubId, {}, options);
+export async function buildTournamentHubStats(clubIdOrScope, options = {}) {
+  const result = await listTournamentsQuery(clubIdOrScope, {}, options);
   if (!result.ok) {
     return { ok: false, ...result, total: 0, open: 0, draft: 0, completed: 0 };
   }
