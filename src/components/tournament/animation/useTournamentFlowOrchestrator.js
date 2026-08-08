@@ -19,7 +19,7 @@ export function useTournamentFlowOrchestrator(anim, adapters) {
     pipeline: [],
   });
 
-  const handleStepComplete = useCallback(() => {
+  const handleStepComplete = useCallback(async () => {
     const state = flowRef.current;
     const mode = state.pipeline[state.stepIndex];
 
@@ -27,12 +27,12 @@ export function useTournamentFlowOrchestrator(anim, adapters) {
       return;
     }
 
-    const persistResult = adapters.persist(mode, state.ctx);
+    const persistResult = await adapters.persist(mode, state.ctx);
     if (persistResult === false) {
       return;
     }
 
-    adapters.afterPersist?.(mode, state.ctx);
+    await adapters.afterPersist?.(mode, state.ctx);
 
     const isLast = state.stepIndex >= state.pipeline.length - 1;
     if (isLast) {

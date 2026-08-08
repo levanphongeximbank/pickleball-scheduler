@@ -90,7 +90,7 @@ export default function PlayerHomePage() {
     }
     setError("");
 
-    const home = loadPlayerMobileHome({
+    const home = await loadPlayerMobileHome({
       clubId: activeClubId,
       playerId: resolvedPlayerId,
       tenantId: currentTenantId,

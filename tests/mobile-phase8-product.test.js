@@ -166,7 +166,7 @@ describe("mobile phase 8 product — push notification dispatch", () => {
 });
 
 describe("mobile phase 8 product — player shell real data", () => {
-  it("loadPlayerMobileHome trả schedule và stats từ club blob", () => {
+  it("loadPlayerMobileHome trả schedule và stats từ club blob", async () => {
     const clubId = "club-test";
     seedClub(clubId, {
       schemaVersion: 3,
@@ -189,7 +189,7 @@ describe("mobile phase 8 product — player shell real data", () => {
       seasonStandings: {},
     });
 
-    const result = loadPlayerMobileHome({
+    const result = await loadPlayerMobileHome({
       clubId,
       playerId: "player-1",
       tenantId: "tenant-a",
@@ -200,7 +200,7 @@ describe("mobile phase 8 product — player shell real data", () => {
     assert.ok(Array.isArray(result.schedule));
   });
 
-  it("empty state khi không có player", () => {
+  it("empty state khi không có player", async () => {
     const clubId = "club-empty";
     seedClub(clubId, {
       schemaVersion: 3,
@@ -209,7 +209,7 @@ describe("mobile phase 8 product — player shell real data", () => {
       bookings: [],
       tournaments: [],
     });
-    const result = loadPlayerMobileHome({ clubId, playerId: "missing", tenantId: "t1" });
+    const result = await loadPlayerMobileHome({ clubId, playerId: "missing", tenantId: "t1" });
     assert.equal(result.ok, true);
     assert.equal(result.player, null);
     assert.equal(result.schedule.length, 0);

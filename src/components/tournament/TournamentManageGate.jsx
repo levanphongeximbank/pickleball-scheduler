@@ -1,5 +1,4 @@
-import { useMemo } from "react";
-import { Box, Button, Stack, Typography } from "@mui/material";
+import { Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import LockIcon from "@mui/icons-material/Lock";
 
@@ -7,7 +6,8 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
-import { assertTournamentAccess } from "../../domain/tournamentService.js";
+import { assertLoadedTournamentAccess } from "../../features/tournament/guards/tournamentAccess.js";
+import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
 
 function AccessDenied({ title, message, to = "/tournament" }) {
   return (
@@ -31,41 +31,41 @@ function AccessDenied({ title, message, to = "/tournament" }) {
 /**
  * Chặn trang setup giải khi RBAC bật:
  * - không có TOURNAMENT_UPDATE
- * - tournament không thuộc tenant hiện tại (Sprint 2)
+ * - tournament không thuộc tenant hiện tại (cloud authority)
  */
 export default function TournamentManageGate({ children, tournamentId = null }) {
   const { rbacEnabled, isAuthenticated, can } = useAuth();
   const { activeClubId } = useClub();
   const { currentTenantId } = useTenant();
-
-  const tournamentAccess = useMemo(() => {
-    if (!tournamentId) {
-      return { ok: true };
-    }
-
-    if (!rbacEnabled || !isAuthenticated) {
-      return { ok: true };
-    }
-
-    return assertTournamentAccess(activeClubId, tournamentId, {
-      tenantId: currentTenantId,
-    });
-  }, [activeClubId, currentTenantId, isAuthenticated, rbacEnabled, tournamentId]);
+  const { tournament, loading } = useCanonicalTournament(activeClubId, tournamentId);
 
   if (!rbacEnabled || !isAuthenticated) {
     return children;
   }
 
-  if (tournamentId && !tournamentAccess.ok) {
+  if (tournamentId && loading) {
     return (
-      <AccessDenied
-        title="Không thể truy cập giải này"
-        message={
-          tournamentAccess.error ||
-          "Giải đấu không thuộc tenant hiện tại hoặc bạn không có quyền."
-        }
-      />
+      <Box sx={{ p: 3 }}>
+        <CircularProgress size={28} />
+      </Box>
     );
+  }
+
+  if (tournamentId) {
+    const tournamentAccess = assertLoadedTournamentAccess(activeClubId, tournament, {
+      tenantId: currentTenantId,
+    });
+    if (!tournamentAccess.ok) {
+      return (
+        <AccessDenied
+          title="Không thể truy cập giải này"
+          message={
+            tournamentAccess.error ||
+            "Giải đấu không thuộc tenant hiện tại hoặc bạn không có quyền."
+          }
+        />
+      );
+    }
   }
 
   const allowed = can(PERMISSIONS.TOURNAMENT_UPDATE, {

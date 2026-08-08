@@ -6,7 +6,8 @@ import { PERMISSIONS } from "../../../../auth/permissions.js";
 import { useClub } from "../../../../context/ClubContext.jsx";
 import { useAuth } from "../../../../context/AuthContext.jsx";
 import { loadCourtsForClub, loadPlayersForClub } from "../../../../domain/clubStorage.js";
-import { getTournament, assertTournamentAccess } from "../../../../domain/tournamentService.js";
+import { assertLoadedTournamentAccess } from "../../guards/tournamentAccess.js";
+import { useCanonicalTournament } from "../../hooks/useCanonicalTournament.js";
 import { useTenant } from "../../../../context/TenantContext.jsx";
 import { TOURNAMENT_MODE } from "../../../../models/tournament/index.js";
 import { buildTournamentDirectorSnapshot } from "../../../../tournament/engines/index.js";
@@ -20,16 +21,6 @@ export function useDirectorState(tournamentId) {
   const { activeClubId, activeClub, refreshClubs } = useClub();
   const { can, rbacEnabled, isAuthenticated } = useAuth();
   const { currentTenantId } = useTenant();
-
-  const tournamentAccess = useMemo(() => {
-    if (!rbacEnabled || !isAuthenticated) {
-      return { ok: true };
-    }
-
-    return assertTournamentAccess(activeClubId, tournamentId, {
-      tenantId: currentTenantId,
-    });
-  }, [activeClubId, currentTenantId, isAuthenticated, rbacEnabled, tournamentId]);
 
   const canUseDirector =
     !rbacEnabled ||
@@ -60,10 +51,30 @@ export function useDirectorState(tournamentId) {
     hasSupabaseConfig()
   );
 
-  const tournament = useMemo(
-    () => getTournament(activeClubId, tournamentId),
-    [activeClubId, tournamentId, localRevision]
+  const { tournament, loading: tournamentLoading } = useCanonicalTournament(
+    activeClubId,
+    tournamentId,
+    localRevision
   );
+
+  const tournamentAccess = useMemo(() => {
+    if (!rbacEnabled || !isAuthenticated) {
+      return { ok: true };
+    }
+    if (tournamentLoading) {
+      return { ok: true, pending: true };
+    }
+    return assertLoadedTournamentAccess(activeClubId, tournament, {
+      tenantId: currentTenantId,
+    });
+  }, [
+    activeClubId,
+    currentTenantId,
+    isAuthenticated,
+    rbacEnabled,
+    tournament,
+    tournamentLoading,
+  ]);
 
   const players = useMemo(
     () => loadPlayersForClub(activeClubId),

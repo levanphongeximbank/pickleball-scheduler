@@ -97,7 +97,7 @@ test("EC-06 matrix classifications cover required audit surfaces", () => {
   }
 });
 
-test("EC-06 local Clubs/Courts path retains allowMockFallback true; remote path disables mock", () => {
+test("EC-06 Clubs/Courts retain local mock fallback; tournaments canonical path disables mock", () => {
   const clubs = readSrc(
     "src/features/public-portal/services/publicClubsCourtsDataSource.js"
   );
@@ -105,10 +105,10 @@ test("EC-06 local Clubs/Courts path retains allowMockFallback true; remote path 
     "src/features/public-portal/services/publicTournamentsRankingsDataSource.js"
   );
   assert.match(clubs, /allowMockFallback:\s*true/);
-  assert.match(tournaments, /allowMockFallback:\s*true/);
+  assert.match(tournaments, /allowMockFallback:\s*false/);
   assert.match(clubs, /loadPublicClubsFromRemote|listPublicClubsRemote/);
   assert.match(clubs, /productionReady:\s*false/);
-  assert.doesNotMatch(tournaments, /allowMockFallback:\s*false/);
+  assert.match(tournaments, /PUBLIC_TOURNAMENTS_RANKINGS_SOURCE\.REMOTE/);
 });
 
 test("EC-06 live failure path without mock fallback returns ERROR not empty success", () => {

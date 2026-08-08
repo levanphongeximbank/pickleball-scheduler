@@ -1,7 +1,5 @@
-import {
-  advanceTournamentStatus,
-  getTournament,
-} from "../../../domain/tournamentService.js";
+import { getTournamentQuery } from "../../../features/tournament/services/tournamentQueries.js";
+import { updateTournamentCommand } from "../../../features/tournament/services/tournamentCommands.js";
 import { TOURNAMENT_STATUS } from "../../../models/tournament/index.js";
 import {
   buildInternalTournamentPatch,
@@ -127,8 +125,14 @@ export function createInternalFlowAdapters(deps) {
     };
   }
 
-  function getFreshSavedEvent() {
-    return getTournament(tournamentClubId, tournamentId)?.events?.[0] || null;
+  function getCachedSavedEvent() {
+    return tournament?.events?.[0] || null;
+  }
+
+  async function fetchFreshSavedEvent() {
+    const result = await getTournamentQuery(tournamentClubId, tournamentId);
+    if (!result.ok) return null;
+    return result.tournament?.events?.[0] || null;
   }
 
   function resolveEntries(ctx) {
@@ -144,7 +148,7 @@ export function createInternalFlowAdapters(deps) {
       eventType,
       {
         tournamentId,
-        eventId: getFreshSavedEvent()?.id || `event-${tournamentId}`,
+        eventId: getCachedSavedEvent()?.id || `event-${tournamentId}`,
         ...(prepared.pairingOptions || {}),
       }
     );
@@ -178,8 +182,7 @@ export function createInternalFlowAdapters(deps) {
     });
   }
 
-  function refreshBracketContext(ctx) {
-    const savedEvent = getFreshSavedEvent();
+  function refreshBracketContext(ctx, savedEvent = getCachedSavedEvent()) {
     if (!savedEvent || !canGenerateBracket(savedEvent).ok) {
       ctx.includeBracket = false;
       return;
@@ -259,7 +262,7 @@ export function createInternalFlowAdapters(deps) {
       }
     },
 
-    persist(animationMode, ctx) {
+    async persist(animationMode, ctx) {
       const plan = resolvePlan(ctx);
 
       switch (animationMode) {
@@ -274,12 +277,10 @@ export function createInternalFlowAdapters(deps) {
           }
 
           const eventWithoutMatches = stripMatchesFromEvent(patch.events[0]);
-          const result = advanceTournamentStatus(
-            tournamentClubId,
-            tournamentId,
-            TOURNAMENT_STATUS.READY,
-            { events: [eventWithoutMatches] }
-          );
+          const result = await updateTournamentCommand(tournamentClubId, tournamentId, {
+            events: [eventWithoutMatches],
+            status: TOURNAMENT_STATUS.READY,
+          });
 
           if (!result.ok) {
             setError(result.error);
@@ -292,7 +293,7 @@ export function createInternalFlowAdapters(deps) {
           return true;
         }
         case ANIMATION_MODES.GROUP_MATCH_PAIRING: {
-          const savedEvent = getFreshSavedEvent();
+          const savedEvent = (await fetchFreshSavedEvent()) || getCachedSavedEvent();
           if ((savedEvent?.matches?.length || 0) > 0) {
             return true;
           }
@@ -303,12 +304,10 @@ export function createInternalFlowAdapters(deps) {
             return false;
           }
 
-          const result = advanceTournamentStatus(
-            tournamentClubId,
-            tournamentId,
-            TOURNAMENT_STATUS.READY,
-            { events: patch.events }
-          );
+          const result = await updateTournamentCommand(tournamentClubId, tournamentId, {
+            events: patch.events,
+            status: TOURNAMENT_STATUS.READY,
+          });
 
           if (!result.ok) {
             setError(result.error);
@@ -321,13 +320,14 @@ export function createInternalFlowAdapters(deps) {
           return true;
         }
         case ANIMATION_MODES.BRACKET_REVEAL: {
-          refreshBracketContext(ctx);
+          const savedEvent = (await fetchFreshSavedEvent()) || getCachedSavedEvent();
+          refreshBracketContext(ctx, savedEvent);
           if (!ctx.bracketEvent) {
             setError(ctx.bracketError || "Không tạo được sơ đồ knock-out.");
             return false;
           }
 
-          if (!persistEvent(ctx.bracketEvent)) {
+          if (!(await persistEvent(ctx.bracketEvent))) {
             return false;
           }
 
@@ -339,9 +339,10 @@ export function createInternalFlowAdapters(deps) {
       }
     },
 
-    afterPersist(animationMode, ctx) {
+    async afterPersist(animationMode, ctx) {
       if (animationMode === ANIMATION_MODES.GROUP_MATCH_PAIRING) {
-        refreshBracketContext(ctx);
+        const savedEvent = (await fetchFreshSavedEvent()) || getCachedSavedEvent();
+        refreshBracketContext(ctx, savedEvent);
       }
     },
 
@@ -522,7 +523,7 @@ export function createOfficialFlowAdapters(deps) {
       }
     },
 
-    persist(animationMode, ctx) {
+    async persist(animationMode, ctx) {
       const plan = resolvePlan(ctx);
 
       switch (animationMode) {
@@ -541,7 +542,7 @@ export function createOfficialFlowAdapters(deps) {
             String(event.id) === String(patch.event?.id) ? stripMatchesFromEvent(event) : event
           );
 
-          const saved = persistTournament({ events });
+          const saved = await persistTournament({ events });
           if (!saved) {
             return false;
           }
@@ -563,7 +564,7 @@ export function createOfficialFlowAdapters(deps) {
             return false;
           }
 
-          const saved = persistTournament({ events: patch.events });
+          const saved = await persistTournament({ events: patch.events });
           if (!saved) {
             return false;
           }
@@ -579,7 +580,7 @@ export function createOfficialFlowAdapters(deps) {
             return false;
           }
 
-          if (!persistEvent(ctx.bracketEvent)) {
+          if (!(await persistEvent(ctx.bracketEvent))) {
             return false;
           }
 

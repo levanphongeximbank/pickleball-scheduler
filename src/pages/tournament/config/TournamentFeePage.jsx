@@ -36,7 +36,7 @@ export default function TournamentFeePage() {
   const fee = getEntryFee(tournament);
   const summary = tournament ? getEntryFeeSummary(tournament) : null;
 
-  const save = (patch) => {
+  const save = async (patch) => {
     if (!tournament) {
       setMessage({ type: "error", text: "Chưa chọn giải." });
       return;
@@ -46,7 +46,7 @@ export default function TournamentFeePage() {
       setMessage({ type: "error", text: result.error || "Không lưu được." });
       return;
     }
-    if (!persistTournament(result.tournament)) return;
+    if (!(await persistTournament(result.tournament))) return;
     setMessage({ type: "success", text: "Đã lưu lệ phí." });
   };
 

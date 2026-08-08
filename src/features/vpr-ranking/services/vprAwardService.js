@@ -1,5 +1,6 @@
 import { VPR_AWARD_STATUS } from "../../../models/tournament/constants.js";
-import { getTournament, updateTournament } from "../../../domain/tournamentService.js";
+import { getTournamentQuery } from "../../tournament/services/tournamentQueries.js";
+import { updateTournamentCommand } from "../../tournament/services/tournamentCommands.js";
 import { calculateVprPoints } from "../engines/vprCalculationEngine.js";
 import { resolvePlacementsPerCategory } from "../engines/placementResolver.js";
 import { canAwardVprPoints } from "../utils/vprEligibility.js";
@@ -47,7 +48,7 @@ function buildLedgerEntry({
   };
 }
 
-function awardLocally(clubId, tournament, actorUserId = null) {
+async function awardLocally(clubId, tournament, actorUserId = null) {
   const eligibility = canAwardVprPoints(tournament);
   if (!eligibility.ok) {
     return { ok: false, reason: eligibility.reason };
@@ -116,7 +117,7 @@ function awardLocally(clubId, tournament, actorUserId = null) {
   }
 
   if (!ledgerEntries.length) {
-    updateTournament(clubId, tournament.id, {
+    await updateTournamentCommand(clubId, tournament.id, {
       vprAward: {
         status: VPR_AWARD_STATUS.SKIPPED,
         awardedAt: new Date().toISOString(),
@@ -129,7 +130,7 @@ function awardLocally(clubId, tournament, actorUserId = null) {
   appendLedgerEntries(ledgerEntries);
   rebuildLeaderboardFromLedger();
 
-  updateTournament(clubId, tournament.id, {
+  await updateTournamentCommand(clubId, tournament.id, {
     vprAward: {
       status: VPR_AWARD_STATUS.AWARDED,
       awardedAt: new Date().toISOString(),
@@ -149,9 +150,10 @@ function awardLocally(clubId, tournament, actorUserId = null) {
 }
 
 export async function tryAwardTournamentVpr(clubId, tournamentId, options = {}) {
-  const tournament = getTournament(clubId, tournamentId);
-  if (!tournament) {
-    return { ok: false, error: "Không tìm thấy giải." };
+  const loaded = await getTournamentQuery(clubId, tournamentId);
+  const tournament = loaded.tournament;
+  if (!loaded.ok || !tournament) {
+    return { ok: false, error: loaded.error || "Không tìm thấy giải." };
   }
 
   if (isVprCloudSyncEnabled()) {
@@ -161,7 +163,7 @@ export async function tryAwardTournamentVpr(clubId, tournamentId, options = {}) 
       tournamentSnapshot: tournament,
     });
     if (rpcResult.ok) {
-      updateTournament(clubId, tournamentId, {
+      await updateTournamentCommand(clubId, tournamentId, {
         vprAward: {
           status: VPR_AWARD_STATUS.AWARDED,
           awardedAt: new Date().toISOString(),
@@ -179,15 +181,16 @@ export async function tryAwardTournamentVpr(clubId, tournamentId, options = {}) 
 }
 
 export async function recalculateTournamentVpr(clubId, tournamentId, options = {}) {
-  const tournament = getTournament(clubId, tournamentId);
-  if (!tournament) {
-    return { ok: false, error: "Không tìm thấy giải." };
+  const loaded = await getTournamentQuery(clubId, tournamentId);
+  const tournament = loaded.tournament;
+  if (!loaded.ok || !tournament) {
+    return { ok: false, error: loaded.error || "Không tìm thấy giải." };
   }
 
   removeLedgerByTournament(clubId, tournamentId);
   rebuildLeaderboardFromLedger();
 
-  updateTournament(clubId, tournamentId, {
+  await updateTournamentCommand(clubId, tournamentId, {
     vprAward: {
       status: VPR_AWARD_STATUS.PENDING,
       awardedAt: null,

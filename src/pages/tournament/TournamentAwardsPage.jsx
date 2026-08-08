@@ -6,10 +6,9 @@ import { Alert, Box, Tab, Tabs, Typography } from "@mui/material";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import {
-  getTournament,
-  listTournaments,
-  updateTournament,
-} from "../../domain/tournamentService.js";
+  useCanonicalTournament,
+  useCanonicalTournamentList,
+} from "../../features/tournament/hooks/useCanonicalTournament.js";
 import { isIndividualTournament } from "../../config/tournamentRoutes.js";
 import TournamentConfigPageShell from "../../components/tournament/TournamentConfigPageShell.jsx";
 import IndividualTournamentSelector from "../../components/tournament/IndividualTournamentSelector.jsx";
@@ -40,19 +39,17 @@ export default function TournamentAwardsPage() {
     TABS.some((t) => t.id === tabParam) ? tabParam : "awards"
   );
 
+  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClubId, revision);
+  const { tournament, update } = useCanonicalTournament(activeClubId, tournamentId, revision);
+
   const tournaments = useMemo(
-    () => listTournaments(activeClubId).filter(isIndividualTournament),
-    [activeClubId, revision]
+    () => allTournaments.filter(isIndividualTournament),
+    [allTournaments]
   );
 
-  const tournament = useMemo(() => {
-    if (!tournamentId || !activeClubId) return null;
-    return getTournament(activeClubId, tournamentId);
-  }, [activeClubId, tournamentId, revision]);
-
-  const persistTournament = (nextTournament) => {
+  const persistTournament = async (nextTournament) => {
     if (!activeClubId || !tournamentId || !nextTournament) return false;
-    const result = updateTournament(activeClubId, tournamentId, {
+    const result = await update({
       settings: nextTournament.settings,
       events: nextTournament.events,
       status: nextTournament.status,

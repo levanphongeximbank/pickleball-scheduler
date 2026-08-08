@@ -1,6 +1,6 @@
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
 import { listBookingsForDate } from "../../../domain/bookingService.js";
-import { listTournaments } from "../../../domain/tournamentService.js";
+import { listTournamentsQuery } from "../../tournament/services/tournamentQueries.js";
 import { getLeagueStandingsBoard } from "../../../domain/seasonStandingsService.js";
 import { loadPlayerHistoryProfileForClub } from "../../../tournament/engines/playerHistoryEngine.js";
 import { MATCH_STATUS } from "../../../models/tournament/constants.js";
@@ -88,9 +88,9 @@ function resolveRankingRow(clubId, playerId, leagueId, seasonId) {
 }
 
 /**
- * Load player mobile home data from club blob (real local/staging data).
+ * Load player mobile home data. Tournament list from canonical cloud authority.
  */
-export function loadPlayerMobileHome({
+export async function loadPlayerMobileHome({
   clubId,
   playerId,
   tenantId,
@@ -120,7 +120,8 @@ export function loadPlayerMobileHome({
     };
   }
 
-  const tournaments = listTournaments(clubId) || [];
+  const listResult = await listTournamentsQuery(clubId);
+  const tournaments = listResult.ok ? listResult.tournaments || [] : [];
 
   const today = todayIsoDate();
   const bookings = listBookingsForDate(today, clubId)

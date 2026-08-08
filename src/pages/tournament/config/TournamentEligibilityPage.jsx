@@ -12,12 +12,11 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  Typography,
 } from "@mui/material";
 
 import { useClub } from "../../../context/ClubContext.jsx";
 import { loadPlayersForClub } from "../../../domain/clubStorage.js";
-import { getTournament } from "../../../domain/tournamentService.js";
+import { useCanonicalTournament } from "../../../features/tournament/hooks/useCanonicalTournament.js";
 import { isIndividualTournament, isTeamTournament } from "../../../config/tournamentRoutes.js";
 import { checkAllEntriesEligibility } from "../../../features/individual-tournament/engines/eligibilityEngine.js";
 import {
@@ -33,10 +32,10 @@ export default function TournamentEligibilityPage() {
   const tournamentId = searchParams.get("tournamentId");
   const { activeClubId, revision } = useClub();
 
-  const tournament = useMemo(() => {
-    if (!activeClubId || !tournamentId) return null;
-    return getTournament(activeClubId, tournamentId);
-  }, [activeClubId, tournamentId, revision]);
+  const {
+    tournament,
+    loading: tournamentLoading,
+  } = useCanonicalTournament(activeClubId, tournamentId, revision);
 
   const players = useMemo(
     () => (activeClubId ? loadPlayersForClub(activeClubId) : []),
@@ -71,6 +70,14 @@ export default function TournamentEligibilityPage() {
         <Button component={RouterLink} to="/tournament/eligibility" variant="contained">
           Chọn giải
         </Button>
+      </TournamentConfigPageShell>
+    );
+  }
+
+  if (tournamentLoading) {
+    return (
+      <TournamentConfigPageShell title="Kiểm tra điều kiện tham gia" description="Đang tải…">
+        <Alert severity="info">Đang tải giải…</Alert>
       </TournamentConfigPageShell>
     );
   }

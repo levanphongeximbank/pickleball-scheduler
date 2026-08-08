@@ -1,6 +1,7 @@
 import { CERTIFICATION_STATUS } from "../../../models/tournament/constants.js";
 import { resolveCertificationForLevel } from "../../../models/tournament/tournament.js";
-import { getTournament, updateTournament } from "../../../domain/tournamentService.js";
+import { getTournamentQuery } from "../../tournament/services/tournamentQueries.js";
+import { updateTournamentCommand } from "../../tournament/services/tournamentCommands.js";
 import { resolveTenantIdForClub } from "../../tenant/guards/tenantGuard.js";
 import { logVprAudit, VPR_AUDIT_ACTIONS } from "./vprAuditService.js";
 import {
@@ -79,12 +80,12 @@ export function listAllCertifications() {
   });
 }
 
-function patchTournamentCertification(clubId, tournamentId, patch) {
-  const tournament = getTournament(clubId, tournamentId);
-  if (!tournament) {
-    return { ok: false, error: "Không tìm thấy giải trong CLB." };
+async function patchTournamentCertification(clubId, tournamentId, patch) {
+  const loaded = await getTournamentQuery(clubId, tournamentId);
+  if (!loaded.ok || !loaded.tournament) {
+    return { ok: false, error: loaded.error || "Không tìm thấy giải trong CLB." };
   }
-  return updateTournament(clubId, tournamentId, patch);
+  return updateTournamentCommand(clubId, tournamentId, patch);
 }
 
 export async function approveCertification(certId, { actorUserId = null, notes = "" } = {}) {
@@ -105,11 +106,12 @@ export async function approveCertification(certId, { actorUserId = null, notes =
     notes,
   });
 
-  const patchResult = patchTournamentCertification(cert.clubId, cert.tournamentId, {
+  const current = await getTournamentQuery(cert.clubId, cert.tournamentId);
+  const patchResult = await patchTournamentCertification(cert.clubId, cert.tournamentId, {
     certificationStatus: CERTIFICATION_STATUS.APPROVED,
     rankingEnabled: true,
     certification: {
-      ...(getTournament(cert.clubId, cert.tournamentId)?.certification || {}),
+      ...(current.tournament?.certification || {}),
       reviewedAt,
       reviewedBy: actorUserId,
       rejectionReason: "",
@@ -149,11 +151,12 @@ export async function rejectCertification(certId, { actorUserId = null, reason =
     rejectionReason: reason,
   });
 
-  patchTournamentCertification(cert.clubId, cert.tournamentId, {
+  const current = await getTournamentQuery(cert.clubId, cert.tournamentId);
+  await patchTournamentCertification(cert.clubId, cert.tournamentId, {
     certificationStatus: CERTIFICATION_STATUS.REJECTED,
     rankingEnabled: false,
     certification: {
-      ...(getTournament(cert.clubId, cert.tournamentId)?.certification || {}),
+      ...(current.tournament?.certification || {}),
       reviewedAt,
       reviewedBy: actorUserId,
       rejectionReason: reason,
@@ -183,7 +186,7 @@ export async function toggleRankingEnabled(certId, enabled, { actorUserId = null
   }
 
   upsertCertification({ ...cert, rankingEnabled: enabled === true });
-  patchTournamentCertification(cert.clubId, cert.tournamentId, {
+  await patchTournamentCertification(cert.clubId, cert.tournamentId, {
     rankingEnabled: enabled === true,
   });
 

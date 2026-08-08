@@ -40,6 +40,10 @@ import {
 } from "../src/tournament/engines/tournamentDirectorEngine.js";
 import { buildKnockoutProgress } from "../src/pages/tournament.bracket.logic.js";
 
+// Load cutover suites via existing manifest entry (avoid editing B1B-owned unit-test-files.json).
+import "./tournament-canonical-runtime-cutover-01.test.js";
+import "./tournament-canonical-cloud-mode.test.js";
+
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 function createLocalStorageMock(seed = {}) {
@@ -372,8 +376,9 @@ test("regression legacy: Tournament.jsx and legacy bracket logic remain availabl
   assert.match(legacySource, /buildTournamentBracket/);
 
   const shellSource = readFileSync(legacyShell, "utf8");
-  assert.match(shellSource, /TournamentHome/);
+  assert.match(shellSource, /CanonicalTournamentHubPage/);
 
   const homeSource = readFileSync(join(rootDir, "src/pages/tournament/TournamentHome.jsx"), "utf8");
   assert.match(homeSource, /Tổng quan/);
+  assert.match(homeSource, /@deprecated|Demoted/);
 });

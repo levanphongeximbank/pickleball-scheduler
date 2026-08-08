@@ -1,3 +1,8 @@
+/**
+ * DEMOTED — not mounted by router. Canonical hub is CanonicalTournamentHubPage
+ * via TournamentShell. Kept only for historical/regression reference.
+ * Do not re-wire as primary Tournament lifecycle.
+ */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -57,37 +62,38 @@ const SECTION_META = {
   },
 };
 
+/** @deprecated Demoted primary UI — use CanonicalTournamentCreatePage. */
 const CREATE_TOURNAMENT_MODE_OPTIONS = [
   {
     mode: TOURNAMENT_MODE.DAILY_PLAY,
-    title: "Chơi vui / Daily Play",
-    description: "Check-in trong ngày, ghép trận công bằng và xếp sân nhanh cho buổi chơi vui.",
+    title: "Chơi hằng ngày",
+    description: "Check-in trong ngày, ghép trận công bằng và xếp sân nhanh cho buổi chơi hằng ngày.",
     icon: <SportsIcon sx={{ fontSize: 18 }} />,
-    badge: "Daily",
+    badge: "Hằng ngày",
   },
   {
     mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
-    title: "Giải nội bộ CLB",
+    title: "Giải nội bộ",
     description:
       "Chia bảng theo hạt giống, vòng bảng, bán kết/chung kết và bracket cho giải nội bộ CLB.",
     icon: <GroupsIcon sx={{ fontSize: 18 }} />,
-    badge: "Internal",
+    badge: "Nội bộ",
   },
   {
     mode: TOURNAMENT_MODE.OFFICIAL_TOURNAMENT,
     title: "Giải chính thức / mở rộng",
     description:
-      "Giải nhiều CLB, nhiều nội dung thi đấu, Open Mode hoặc AI Balance Mode.",
+      "Giải nhiều CLB, nhiều nội dung thi đấu; hỗ trợ mở rộng và cân bằng AI.",
     icon: <EmojiEventsIcon sx={{ fontSize: 18 }} />,
-    badge: "Official",
+    badge: "Chính thức",
   },
   {
     mode: TOURNAMENT_MODE.TEAM_TOURNAMENT,
-    title: "Giải đồng đội MLP",
+    title: "Giải đồng đội",
     description:
-      "MLP 4 người (2M+2F): đôi nữ → đôi nam → mixed×2, Dreambreaker khi 2-2, Rally 21 điểm.",
+      "Đội hình đồng đội, Dreambreaker khi hòa 2-2, trọng tài và bảng xếp hạng.",
     icon: <Diversity3Icon sx={{ fontSize: 18 }} />,
-    badge: "MLP",
+    badge: "Đồng đội",
   },
 ];
 

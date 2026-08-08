@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
 import {
@@ -17,7 +16,7 @@ import {
 } from "@mui/material";
 
 import { useClub } from "../../context/ClubContext.jsx";
-import { getTournament } from "../../domain/tournamentService.js";
+import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import { isDrawPublished } from "../../tournament/engines/publishDrawEngine.js";
 import { isSchedulePublished } from "../../tournament/engines/publishScheduleEngine.js";
 import { buildFinalRanking } from "../../features/individual-tournament/engines/awardsEngine.js";
@@ -26,6 +25,7 @@ import { buildIndividualAllGroupStandings } from "../../features/individual-tour
 import {
   TournamentEmptyState,
   TournamentErrorState,
+  TournamentLoadingState,
 } from "../../components/tournament/TournamentUiState.jsx";
 import { MOBILE_PAGE_GUTTER, touchButtonSx, horizontalScrollSx } from "../../components/tournament/mobileUi.js";
 import { useIsMobile } from "../../features/mobile/hooks/useIsMobile.js";
@@ -38,13 +38,21 @@ export default function IndividualTournamentPublicPage() {
   const { activeClubId, revision } = useClub();
   const isMobile = useIsMobile();
 
-  const tournament = useMemo(() => {
-    if (!tournamentId || !activeClubId) return null;
-    return getTournament(activeClubId, tournamentId);
-  }, [activeClubId, tournamentId, revision]);
+  const {
+    tournament,
+    loading: tournamentLoading,
+  } = useCanonicalTournament(activeClubId, tournamentId, revision);
 
   if (!tournamentId) {
     return <TournamentErrorState title="Thiếu mã giải" />;
+  }
+
+  if (tournamentLoading) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <TournamentLoadingState label="Đang tải trang công khai…" />
+      </Box>
+    );
   }
 
   if (!tournament) {

@@ -9,9 +9,9 @@ import {
   upsertMatchLive,
 } from "../../../../domain/matchLiveSync.js";
 import {
-  setTournamentStatus,
-  updateTournament,
-} from "../../../../domain/tournamentService.js";
+  setTournamentStatusCommand,
+  updateTournamentCommand,
+} from "../../services/tournamentCommands.js";
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../../../models/tournament/index.js";
 import {
   assignDailyDirectorMatch,
@@ -70,8 +70,8 @@ export function useDirectorActions(state) {
   } = state;
 
   const persistTournament = useCallback(
-    (patch, options = {}) => {
-      const result = updateTournament(activeClubId, tournamentId, patch, {
+    async (patch, options = {}) => {
+      const result = await updateTournamentCommand(activeClubId, tournamentId, patch, {
         ...options,
         directorMode: true,
       });
@@ -81,7 +81,7 @@ export function useDirectorActions(state) {
       }
 
       if (tournament?.status !== TOURNAMENT_STATUS.ACTIVE) {
-        setTournamentStatus(activeClubId, tournamentId, TOURNAMENT_STATUS.ACTIVE, {
+        await setTournamentStatusCommand(activeClubId, tournamentId, TOURNAMENT_STATUS.ACTIVE, {
           directorMode: true,
         });
       }
@@ -94,7 +94,7 @@ export function useDirectorActions(state) {
   );
 
   const persistEvent = useCallback(
-    (nextEvent, options = {}) => {
+    async (nextEvent, options = {}) => {
       if (tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
         return persistTournament(
           {
@@ -146,12 +146,12 @@ export function useDirectorActions(state) {
 
       let persisted;
       if (isDaily) {
-        persisted = persistTournament(patch);
+        persisted = await persistTournament(patch);
       } else {
         const nextEvent = (patch.events || []).find(
           (event) => String(event.id) === String(currentEvent?.id)
         );
-        persisted = nextEvent ? persistEvent(nextEvent) : false;
+        persisted = nextEvent ? await persistEvent(nextEvent) : false;
       }
 
       if (!persisted) {
@@ -235,7 +235,7 @@ export function useDirectorActions(state) {
           return;
         }
 
-        if (persistTournament(buildDailyPlayTournamentPatch(result.settings))) {
+        if (await persistTournament(buildDailyPlayTournamentPatch(result.settings))) {
           setMessage("Đã xếp trận vào sân trống.");
           const assignedMatch = result.settings.matches.find(
             (item) => String(item.id) === String(result.matchId)
@@ -272,7 +272,7 @@ export function useDirectorActions(state) {
         return;
       }
 
-      if (persistEvent({ ...activeEvent, matches: result.matches })) {
+      if (await persistEvent({ ...activeEvent, matches: result.matches })) {
         setMessage("Đã xếp trận và bắt đầu trận đấu.");
         const assignedMatch = result.matches.find((item) => String(item.id) === String(match.id));
         await tryAutoAssignCourtReferee(assignedMatch, result.courtId);
@@ -359,8 +359,8 @@ export function useDirectorActions(state) {
       }
 
       const persisted = isDaily
-        ? persistTournament(logPatch)
-        : persistEvent(
+        ? await persistTournament(logPatch)
+        : await persistEvent(
             (logPatch.events || []).find((event) => String(event.id) === String(activeEvent?.id)) ||
               activeEvent
           );
@@ -424,7 +424,7 @@ export function useDirectorActions(state) {
       );
 
       if (
-        persistTournament(buildDailyPlayTournamentPatch(settingsWithLog), {
+        await persistTournament(buildDailyPlayTournamentPatch(settingsWithLog), {
           processMatchId: scoreDialog.id,
         })
       ) {
@@ -459,7 +459,7 @@ export function useDirectorActions(state) {
 
     const eventWithLog = appendScoreLogAfterEventSubmit(result.event, scoreDialog.id, logEntry);
 
-    if (persistEvent(eventWithLog, { processMatchId: scoreDialog.id })) {
+    if (await persistEvent(eventWithLog, { processMatchId: scoreDialog.id })) {
       if (liveRow) {
         await markMatchLiveProcessed(liveRow.id);
       }
@@ -492,12 +492,12 @@ export function useDirectorActions(state) {
   ]);
 
   const handleCourtRefereeChange = useCallback(
-    (courtId, rosterId) => {
+    async (courtId, rosterId) => {
       const patch = buildRefereeSettingsPatch(tournament, {
         courtReferees: setCourtRefereeAssignment(refereeSettings.courtReferees, courtId, rosterId),
       });
 
-      if (persistTournament(patch)) {
+      if (await persistTournament(patch)) {
         setMessage(
           rosterId ? "Đã gán trọng tài cố định cho sân." : "Đã bỏ trọng tài cố định khỏi sân."
         );

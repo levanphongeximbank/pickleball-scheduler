@@ -23,7 +23,7 @@ import {
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
-import { listTournaments } from "../../domain/tournamentService.js";
+import { useCanonicalTournamentList } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { VPR_CATEGORY_OPTIONS } from "../../features/vpr-ranking/constants/vprCategories.js";
 import { VPR_PLACEMENT_LABELS } from "../../features/vpr-ranking/constants/vprPlacements.js";
@@ -57,7 +57,7 @@ export default function RankingManagementPage() {
   const ledger = useMemo(() => listVprLedger({ category }), [category]);
   const auditLogs = useMemo(() => listVprAuditLogs().slice(0, 100), [tab, message]);
 
-  const tournaments = useMemo(() => listTournaments(activeClubId), [activeClubId, message]);
+  const { tournaments = [] } = useCanonicalTournamentList(activeClubId, message);
 
   if (!canView) {
     return <Alert severity="warning">Bạn không có quyền xem quản trị VPR.</Alert>;

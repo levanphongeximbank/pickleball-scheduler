@@ -30,11 +30,7 @@ import {
   TEAM_TOURNAMENT_ATHLETE_SCOPE,
 } from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
 import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
-import {
-  getTournament,
-  advanceTournamentStatus,
-  updateTournament,
-} from "../../domain/tournamentService.js";
+import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import {
   EVENT_TYPE,
   TOURNAMENT_MODE,
@@ -196,10 +192,18 @@ export default function InternalTournamentSetup() {
     }
   }, [tournamentClubId]);
 
-  const tournament = useMemo(
-    () => getTournament(tournamentClubId, tournamentId),
-    [tournamentClubId, tournamentId, localRevision]
-  );
+  const {
+    tournament,
+    loading: tournamentLoading,
+    error: tournamentLoadError,
+    update,
+  } = useCanonicalTournament(tournamentClubId, tournamentId, localRevision);
+
+  useEffect(() => {
+    if (tournamentLoadError) {
+      setError(tournamentLoadError);
+    }
+  }, [tournamentLoadError]);
 
   useEffect(() => {
     if (tournament) {
@@ -392,10 +396,8 @@ export default function InternalTournamentSetup() {
     [tournamentClubId, tournamentId, savedEvent?.id]
   );
 
-  const persistEvent = (nextEvent, options = {}) => {
-    const result = updateTournament(
-      tournamentClubId,
-      tournamentId,
+  const persistEvent = async (nextEvent, options = {}) => {
+    const result = await update(
       {
         events: [{ ...savedEvent, ...nextEvent }],
       },
@@ -444,7 +446,7 @@ export default function InternalTournamentSetup() {
       ? { id: user.id, email: user.email || "", name: user.displayName || user.name || "" }
       : null;
 
-  const handleLockDraw = () => {
+  const handleLockDraw = async () => {
     setError(null);
     const groups = savedEvent?.groups || [];
     const result = lockDraw(tournament, groups, {
@@ -456,7 +458,7 @@ export default function InternalTournamentSetup() {
       setError(result.error);
       return;
     }
-    const updateResult = updateTournament(tournamentClubId, tournamentId, {
+    const updateResult = await update({
       settings: result.tournament.settings,
     });
     if (updateResult.ok) {
@@ -466,7 +468,7 @@ export default function InternalTournamentSetup() {
     }
   };
 
-  const handlePublishDraw = () => {
+  const handlePublishDraw = async () => {
     setError(null);
     const groups = savedEvent?.groups || [];
     const result = publishDraw(tournament, groups, {
@@ -483,7 +485,7 @@ export default function InternalTournamentSetup() {
         ? { ...event, groups: result.snapshot || groups }
         : event
     );
-    const updateResult = updateTournament(tournamentClubId, tournamentId, {
+    const updateResult = await update({
       settings: result.tournament.settings,
       events,
     });
@@ -494,7 +496,7 @@ export default function InternalTournamentSetup() {
     }
   };
 
-  const handleReopenDraw = () => {
+  const handleReopenDraw = async () => {
     setError(null);
     const result = reopenDraw(tournament, {
       userId: user?.id,
@@ -506,7 +508,7 @@ export default function InternalTournamentSetup() {
       setError(result.error);
       return;
     }
-    const updateResult = updateTournament(tournamentClubId, tournamentId, {
+    const updateResult = await update({
       settings: result.tournament.settings,
     });
     if (updateResult.ok) {
@@ -516,7 +518,7 @@ export default function InternalTournamentSetup() {
     }
   };
 
-  const handleForceRedraw = () => {
+  const handleForceRedraw = async () => {
     setError(null);
     const result = forceRedrawDraw(tournament, {
       userId: user?.id,
@@ -528,7 +530,7 @@ export default function InternalTournamentSetup() {
       setError(result.error);
       return;
     }
-    const updateResult = updateTournament(tournamentClubId, tournamentId, {
+    const updateResult = await update({
       settings: result.tournament.settings,
     });
     if (updateResult.ok) {
@@ -547,17 +549,17 @@ export default function InternalTournamentSetup() {
     }
     setPreviewEntries(result.entries);
     if (savedEvent?.entries?.length) {
-      persistEvent({ entries: result.entries });
+      void persistEvent({ entries: result.entries });
     }
     setMessage("Super Admin đã cập nhật ghép cặp.");
   };
 
-  const handleGroupInterventionApply = (result) => {
+  const handleGroupInterventionApply = async (result) => {
     if (!result?.ok) {
       return;
     }
     if (
-      persistEvent({
+      await persistEvent({
         entries: result.entries,
         groups: result.groups,
         matches: result.matches,
@@ -576,7 +578,7 @@ export default function InternalTournamentSetup() {
     }
 
     const before = getTournamentPairingConstraints(tournament);
-    const result = updateTournament(tournamentClubId, tournamentId, {
+    const result = await update({
       founderPairingConstraints: founderConstraints,
     });
 
@@ -665,10 +667,8 @@ export default function InternalTournamentSetup() {
     flow.exitFlow();
   }, [broadcast, broadcastFeatureEnabled, flow]);
 
-  const handleRefereeRosterChange = (nextRoster) => {
-    const result = updateTournament(
-      tournamentClubId,
-      tournamentId,
+  const handleRefereeRosterChange = async (nextRoster) => {
+    const result = await update(
       buildRefereeSettingsPatch(tournament, { roster: nextRoster })
     );
 
@@ -706,8 +706,8 @@ export default function InternalTournamentSetup() {
         animationMode: ANIMATION_MODES.BRACKET_REVEAL,
         bracket: progress,
       },
-      () => {
-        if (!persistEvent(generated.event)) {
+      async () => {
+        if (!(await persistEvent(generated.event))) {
           return;
         }
 
@@ -717,7 +717,7 @@ export default function InternalTournamentSetup() {
     );
   };
 
-  const handleSelectBracketWinner = (bracketMatchId, winnerSide) => {
+  const handleSelectBracketWinner = async (bracketMatchId, winnerSide) => {
     const result = setBracketWinner(savedEvent, bracketMatchId, winnerSide || null);
     if (!result.ok) {
       setError(result.error);
@@ -742,19 +742,19 @@ export default function InternalTournamentSetup() {
       setBracketAdvanceAnim(null);
     }
 
-    if (persistEvent(result.event)) {
+    if (await persistEvent(result.event)) {
       setMessage(winnerSide ? "Da cap nhat winner." : "Da xoa winner.");
     }
   };
 
-  const handleSubmitGroupScore = (matchId, scores) => {
+  const handleSubmitGroupScore = async (matchId, scores) => {
     const result = submitTournamentDirectorMatchScore(savedEvent, matchId, scores);
     if (!result.ok) {
       setError(result.error);
       return false;
     }
 
-    if (persistEvent(result.event, { processMatchId: matchId })) {
+    if (await persistEvent(result.event, { processMatchId: matchId })) {
       if (result.bracketAutoGenerated) {
         setMessage(
           `Đã lưu kết quả vòng bảng. Tự động tạo bracket knock-out (${result.bracketKnockoutMatchCount} trận).`
@@ -768,14 +768,14 @@ export default function InternalTournamentSetup() {
     return false;
   };
 
-  const handleSubmitKnockoutScore = (matchId, scores) => {
+  const handleSubmitKnockoutScore = async (matchId, scores) => {
     const result = submitKnockoutMatchScore(savedEvent, matchId, scores);
     if (!result.ok) {
       setError(result.error);
       return false;
     }
 
-    if (persistEvent(result.event, { processMatchId: matchId })) {
+    if (await persistEvent(result.event, { processMatchId: matchId })) {
       setMessage("Da luu ket qua knock-out.");
       return true;
     }
@@ -783,19 +783,19 @@ export default function InternalTournamentSetup() {
     return false;
   };
 
-  const handleToggleRoundLock = (roundName, unlock) => {
+  const handleToggleRoundLock = async (roundName, unlock) => {
     const result = toggleBracketRoundUnlock(savedEvent, roundName, unlock);
     if (!result.ok) {
       setError(result.error);
       return;
     }
 
-    if (persistEvent(result.event)) {
+    if (await persistEvent(result.event)) {
       setMessage(unlock ? `Da mo khoa vong ${roundName}.` : `Da khoa vong ${roundName}.`);
     }
   };
 
-  const handleResetBracket = () => {
+  const handleResetBracket = async () => {
     const confirmed = window.confirm(
       "Reset bracket? Se xoa toan bo tran knock-out va winner hien tai."
     );
@@ -804,7 +804,7 @@ export default function InternalTournamentSetup() {
     }
 
     const nextEvent = resetBracketState(savedEvent);
-    if (persistEvent(nextEvent)) {
+    if (await persistEvent(nextEvent)) {
       setMessage("Da reset bracket.");
     }
   };
@@ -1053,7 +1053,7 @@ export default function InternalTournamentSetup() {
         matchCount: plan.matchCount,
         onStartMatchPairing: openMatchPairingFromDraw,
       },
-      () => {
+      async () => {
         const patch = buildInternalTournamentPatch(tournament, plan);
         if (!patch.ok) {
           setError(patch.error || "Khong luu duoc giai.");
@@ -1061,8 +1061,9 @@ export default function InternalTournamentSetup() {
         }
 
         const eventWithoutMatches = stripMatchesFromEvent(patch.events[0]);
-        const result = advanceTournamentStatus(tournamentClubId, tournamentId, TOURNAMENT_STATUS.READY, {
+        const result = await update({
           events: [eventWithoutMatches],
+          status: TOURNAMENT_STATUS.READY,
         });
 
         if (!result.ok) {
@@ -1071,7 +1072,7 @@ export default function InternalTournamentSetup() {
         }
 
         const created = recordDrawCreated(
-          getTournament(tournamentClubId, tournamentId),
+          result.tournament,
           patch.events[0]?.groups || [],
           {
             userId: user?.id,
@@ -1081,7 +1082,7 @@ export default function InternalTournamentSetup() {
           }
         );
         if (created.ok) {
-          updateTournament(tournamentClubId, tournamentId, {
+          await update({
             settings: created.tournament.settings,
           });
         }
@@ -1094,7 +1095,7 @@ export default function InternalTournamentSetup() {
     );
   };
 
-  const persistMatchPairing = (plan) => {
+  const persistMatchPairing = async (plan) => {
     if ((savedEvent?.matches?.length || 0) > 0) {
       return true;
     }
@@ -1105,8 +1106,9 @@ export default function InternalTournamentSetup() {
       return false;
     }
 
-    const result = advanceTournamentStatus(tournamentClubId, tournamentId, TOURNAMENT_STATUS.READY, {
+    const result = await update({
       events: patch.events,
+      status: TOURNAMENT_STATUS.READY,
     });
 
     if (!result.ok) {
@@ -1152,11 +1154,19 @@ export default function InternalTournamentSetup() {
         controlMode: PAIRING_CONTROL_MODES.AUTO,
         autoNextGroup: true,
       },
-      () => {
-        persistMatchPairing(plan);
+      async () => {
+        await persistMatchPairing(plan);
       }
     );
   };
+
+  if (tournamentLoading) {
+    return (
+      <Box>
+        <Alert severity="info">Đang tải giải nội bộ...</Alert>
+      </Box>
+    );
+  }
 
   if (!tournament) {
     return (
@@ -1298,8 +1308,8 @@ export default function InternalTournamentSetup() {
                 : null
             }
             clubId={tournamentClubId}
-            onPersist={(nextTournament) => {
-              const result = updateTournament(tournamentClubId, tournamentId, {
+            onPersist={async (nextTournament) => {
+              const result = await update({
                 events: nextTournament.events,
                 settings: nextTournament.settings,
                 status: nextTournament.status,

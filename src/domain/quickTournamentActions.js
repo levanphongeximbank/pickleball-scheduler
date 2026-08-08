@@ -1,8 +1,9 @@
-import { listTournaments, createTournament } from "./tournamentService.js";
 import {
   TOURNAMENT_MODE,
   TOURNAMENT_STATUS,
 } from "../models/tournament/index.js";
+import { listTournamentsQuery } from "../features/tournament/services/tournamentQueries.js";
+import { createTournamentCommand } from "../features/tournament/services/tournamentCommands.js";
 
 const OPEN_DAILY_STATUSES = new Set([
   TOURNAMENT_STATUS.DRAFT,
@@ -13,7 +14,7 @@ const OPEN_DAILY_STATUSES = new Set([
 
 function buildDailyPlayName() {
   const date = new Date().toLocaleDateString("vi-VN");
-  return `Chơi vui ${date}`;
+  return `Chơi hằng ngày ${date}`;
 }
 
 function sortByRecent(tournaments = []) {
@@ -24,24 +25,21 @@ function sortByRecent(tournaments = []) {
   });
 }
 
-export function findOpenDailyPlayTournament(clubId, { seasonId, leagueId } = {}) {
+export async function findOpenDailyPlayTournament(clubId, { seasonId, leagueId } = {}) {
   const filters = { mode: TOURNAMENT_MODE.DAILY_PLAY };
-  if (seasonId) {
-    filters.seasonId = seasonId;
-  }
-  if (leagueId) {
-    filters.leagueId = leagueId;
-  }
+  if (seasonId) filters.seasonId = seasonId;
+  if (leagueId) filters.leagueId = leagueId;
 
-  const openTournaments = listTournaments(clubId, filters).filter((tournament) =>
+  const result = await listTournamentsQuery(clubId, filters);
+  if (!result.ok) return null;
+  const openTournaments = (result.tournaments || []).filter((tournament) =>
     OPEN_DAILY_STATUSES.has(tournament.status)
   );
-
   return sortByRecent(openTournaments)[0] || null;
 }
 
-export function startQuickDailyPlay(clubId, { seasonId, leagueId } = {}) {
-  return createTournament(clubId, {
+export async function startQuickDailyPlay(clubId, { seasonId, leagueId } = {}) {
+  return createTournamentCommand(clubId, {
     name: buildDailyPlayName(),
     mode: TOURNAMENT_MODE.DAILY_PLAY,
     seasonId,
@@ -49,24 +47,18 @@ export function startQuickDailyPlay(clubId, { seasonId, leagueId } = {}) {
   });
 }
 
-export function resolveDailyPlayEntry(
+export async function resolveDailyPlayEntry(
   clubId,
   { seasonId, leagueId, allowCreate = true } = {}
 ) {
-  const existing = findOpenDailyPlayTournament(clubId, { seasonId, leagueId });
-
+  const existing = await findOpenDailyPlayTournament(clubId, { seasonId, leagueId });
   if (existing) {
     return { ok: true, tournament: existing, created: false };
   }
-
   if (!allowCreate) {
-    return { ok: false, error: "Chưa có buổi chơi vui đang mở." };
+    return { ok: false, error: "Chưa có buổi chơi hằng ngày đang mở." };
   }
-
-  const created = startQuickDailyPlay(clubId, { seasonId, leagueId });
-  if (!created.ok) {
-    return created;
-  }
-
+  const created = await startQuickDailyPlay(clubId, { seasonId, leagueId });
+  if (!created.ok) return created;
   return { ok: true, tournament: created.tournament, created: true };
 }

@@ -23,7 +23,7 @@ import { useSeasonLeague } from "../context/SeasonContext.jsx";
 import { loadRoundsForClub } from "../domain/clubStorage.js";
 import { listLeagueRounds } from "../domain/leagueRoundService.js";
 import { getLeagueStandingsBoard } from "../domain/seasonStandingsService.js";
-import { listTournaments } from "../domain/tournamentService.js";
+import { useCanonicalTournamentList } from "../features/tournament/hooks/useCanonicalTournament.js";
 import CourtOperationsPanel from "../components/courtManagement/CourtOperationsPanel.jsx";
 import {
   DashboardAnalyticsView,
@@ -73,10 +73,7 @@ function ClubOperationsSection() {
     });
   }, [activeClubId, revision, activeSeason?.id, activeLeague?.id]);
 
-  const tournaments = useMemo(
-    () => listTournaments(activeClubId),
-    [activeClubId, revision]
-  );
+  const { tournaments = [] } = useCanonicalTournamentList(activeClubId, revision);
 
   const seasonStandings = useMemo(() => {
     if (!activeLeague?.id) {

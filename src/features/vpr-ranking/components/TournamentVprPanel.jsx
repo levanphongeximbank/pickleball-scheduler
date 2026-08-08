@@ -9,7 +9,7 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
-import { updateTournament } from "../../../domain/tournamentService.js";
+import { updateTournamentCommand } from "../../tournament/services/tournamentCommands.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import { updateTeamTournamentClassification } from "../../team-tournament/services/teamTournamentService.js";
 import TournamentLevelSelect from "./TournamentLevelSelect.jsx";
@@ -77,7 +77,7 @@ export default function TournamentVprPanel({
     }
 
     const patch = applyTournamentLevelPatch(tournament, nextLevel);
-    const result = updateTournament(clubId, tournament.id, patch);
+    const result = await updateTournamentCommand(clubId, tournament.id, patch);
     if (!result.ok) {
       setError(result.error);
       return;

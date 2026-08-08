@@ -11,16 +11,15 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
-import {
-  getTournament,
-  listTournaments,
-  updateTournament,
-} from "../../domain/tournamentService.js";
 import { isIndividualTournament, TOURNAMENT_ROUTES } from "../../config/tournamentRoutes.js";
+import { updateTournamentCommand } from "../../features/tournament/services/tournamentCommands.js";
+import {
+  useCanonicalTournament,
+  useCanonicalMyTournaments,
+} from "../../features/tournament/hooks/useCanonicalTournament.js";
 import TournamentConfigPageShell from "../../components/tournament/TournamentConfigPageShell.jsx";
 import IndividualPlayerPortalPanel from "../../components/tournament/IndividualPlayerPortalPanel.jsx";
 import {
@@ -30,7 +29,6 @@ import {
 } from "../../components/tournament/TournamentUiState.jsx";
 import {
   buildPlayerPortalDashboard,
-  listPlayerTournaments,
 } from "../../features/individual-tournament/engines/playerPortalEngine.js";
 import {
   buildPlayerNotifications,
@@ -63,47 +61,35 @@ export default function IndividualPlayerPortalPage() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const playerId = resolvePlayerId(user);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [entryId, setEntryId] = useState(searchParams.get("entryId") || "");
   const [message, setMessage] = useState(null);
+  const [pollTick, setPollTick] = useState(0);
 
-  const tournaments = useMemo(
-    () => listTournaments(activeClubId).filter(isIndividualTournament),
-    [activeClubId, revision]
+  const { tournaments: myTournaments, loading: listLoading } = useCanonicalMyTournaments(
+    activeClubId,
+    playerId,
+    revision + pollTick
+  );
+  const individualMine = useMemo(
+    () => myTournaments.filter(isIndividualTournament),
+    [myTournaments]
   );
 
-  const myTournaments = useMemo(
-    () => listPlayerTournaments(tournaments, playerId),
-    [tournaments, playerId]
-  );
+  const {
+    tournament,
+    loading: detailLoading,
+    error,
+    update,
+  } = useCanonicalTournament(activeClubId, tournamentId, revision + pollTick);
 
-  const tournament = useMemo(() => {
-    if (!tournamentId || !activeClubId) return null;
-    return getTournament(activeClubId, tournamentId);
-  }, [activeClubId, tournamentId, revision]);
-
-  // Soft polling fallback for live results / schedule updates
   useEffect(() => {
     if (!tournamentId || !activeClubId) return undefined;
     const timer = setInterval(() => {
+      setPollTick((value) => value + 1);
       refreshClubs();
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [tournamentId, activeClubId, refreshClubs]);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Sync tick — data from club blob
-      setLoading(false);
-    } catch (err) {
-      setError(err?.message || "Lỗi tải dữ liệu");
-      setLoading(false);
-    }
-  }, [tournamentId, revision, playerId]);
 
   const dashboard = useMemo(() => {
     if (!tournament) return null;
@@ -129,7 +115,7 @@ export default function IndividualPlayerPortalPage() {
   }, [tournament, dashboard]);
 
   const persist = useCallback(
-    (nextTournament) => {
+    async (nextTournament) => {
       if (!activeClubId || !tournamentId || !nextTournament) return false;
       const bumped = bumpPortalOptimisticVersion(
         nextTournament,
@@ -140,7 +126,7 @@ export default function IndividualPlayerPortalPage() {
         refreshClubs();
         return false;
       }
-      const result = updateTournament(activeClubId, tournamentId, {
+      const result = await updateTournamentCommand(activeClubId, tournamentId, {
         settings: bumped.tournament.settings,
       });
       if (!result.ok) {
@@ -154,10 +140,7 @@ export default function IndividualPlayerPortalPage() {
   );
 
   const selectTournament = (id) => {
-    if (routeTournamentId) {
-      // navigated via path
-      return;
-    }
+    if (routeTournamentId) return;
     const next = new URLSearchParams(searchParams);
     if (id) next.set("tournamentId", id);
     else next.delete("tournamentId");
@@ -172,6 +155,8 @@ export default function IndividualPlayerPortalPage() {
     );
   }
 
+  const loading = listLoading || (tournamentId ? detailLoading : false);
+
   return (
     <TournamentConfigPageShell
       title="Cổng vận động viên"
@@ -184,13 +169,15 @@ export default function IndividualPlayerPortalPage() {
             {message.text}
           </Alert>
         ) : null}
+        {error ? <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert> : null}
+        {loading ? <TournamentLoadingState /> : null}
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
           <Paper sx={{ p: 2, flex: 1 }}>
             <Typography fontWeight={700} sx={{ mb: 1 }}>
               Giải của tôi
             </Typography>
-            {myTournaments.length === 0 ? (
+            {individualMine.length === 0 ? (
               <TournamentEmptyState
                 title="Bạn chưa tham gia giải nào"
                 description="Đăng ký giải cá nhân để theo dõi lịch và kết quả tại đây."
@@ -217,9 +204,9 @@ export default function IndividualPlayerPortalPage() {
                 inputProps={{ "aria-label": "Chọn giải của tôi" }}
               >
                 <MenuItem value="">— Chọn giải —</MenuItem>
-                {myTournaments.map((t) => (
+                {individualMine.map((t) => (
                   <MenuItem key={t.id} value={t.id}>
-                    {t.name} ({t.status})
+                    {t.name} ({t.statusLabel || t.status})
                   </MenuItem>
                 ))}
               </TextField>
@@ -228,65 +215,48 @@ export default function IndividualPlayerPortalPage() {
           <Stack spacing={1} justifyContent="center">
             <Button
               component={RouterLink}
-              to={TOURNAMENT_ROUTES.list}
-              startIcon={<ArrowBackIcon />}
+              to={TOURNAMENT_ROUTES.register}
+              variant="outlined"
               sx={touchButtonSx}
             >
-              Danh sách giải
+              Đăng ký giải
             </Button>
-            {tournamentId ? (
-              <Button
-                component={RouterLink}
-                to={`/tournament/${tournamentId}/public`}
-                sx={touchButtonSx}
-              >
-                Xem trang công khai
-              </Button>
-            ) : null}
           </Stack>
         </Stack>
 
-        {!tournamentId ? (
-          loading ? (
-            <TournamentLoadingState />
-          ) : (
-            <TournamentEmptyState title="Chọn một giải để mở dashboard" />
-          )
-        ) : !tournament ? (
-          <TournamentErrorState
-            title="Không tìm thấy giải"
-            description="Giải có thể thuộc CLB khác hoặc đã bị xóa."
-            onRetry={() => refreshClubs()}
-          />
-        ) : (
+        {tournamentId && !tournament && !loading ? (
+          <TournamentErrorState message="Không tìm thấy giải." />
+        ) : null}
+
+        {tournament ? (
           <IndividualPlayerPortalPanel
-            loading={loading}
-            error={error}
-            onRetry={() => refreshClubs()}
+            tournament={tournament}
             dashboard={dashboard}
+            playerId={playerId}
             notifications={notificationFeed.notifications}
             unreadCount={notificationFeed.unreadCount}
-            tournament={tournament}
-            entryOptions={dashboard?.availableEntries || []}
-            selectedEntryId={entryId || dashboard?.entry?.id || ""}
-            onSelectEntry={(id) => {
-              setEntryId(id);
-              const next = new URLSearchParams(searchParams);
-              next.set("entryId", id);
-              setSearchParams(next);
-            }}
-            onMarkAllRead={() => {
-              const result = markAllNotificationsRead(tournament, {
-                entryId: dashboard?.entry?.id,
+            onMarkAllRead={async () => {
+              if (!tournament || !dashboard?.entry?.id) return;
+              const next = markAllNotificationsRead(tournament, {
+                entryId: dashboard.entry.id,
               });
-              if (result.ok) persist(result.tournament);
+              await persist(next);
             }}
-            onDismissNotification={(id) => {
-              const result = dismissNotification(tournament, id);
-              if (result.ok) persist(result.tournament);
+            onDismissNotification={async (notificationId) => {
+              if (!tournament || !dashboard?.entry?.id) return;
+              const next = dismissNotification(tournament, {
+                entryId: dashboard.entry.id,
+                notificationId,
+              });
+              await persist(next);
             }}
+            onRefresh={() => {
+              setPollTick((value) => value + 1);
+              refreshClubs();
+            }}
+            onUpdate={update}
           />
-        )}
+        ) : null}
       </Box>
     </TournamentConfigPageShell>
   );

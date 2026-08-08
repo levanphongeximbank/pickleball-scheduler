@@ -579,7 +579,10 @@ export default function Router() {
             <Route path="/tournament/config/regulations" element={<TournamentRegulationsPage />} />
             <Route path="/tournament/eligibility" element={<TournamentTeamEligibilityHub />} />
             <Route path="/tournament/eligibility/check" element={<TournamentEligibilityPage />} />
-            <Route path="/tournament/entry-fee" element={<TournamentFeePage />} />
+            <Route
+              path="/tournament/entry-fee"
+              element={<Navigate to="/tournament/config/fee" replace />}
+            />
             <Route path="/tournament/publish-schedule" element={<TournamentPublishSchedulePage />} />
             <Route path="/tournament/referee-assign" element={<TournamentRefereeAssignPage />} />
             <Route path="/tournament/awards" element={<TournamentAwardsPage />} />

@@ -17,7 +17,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import { useClub } from "../../../context/ClubContext.jsx";
 import { useSeasonLeague } from "../../../context/SeasonContext.jsx";
-import { listTournaments } from "../../../domain/tournamentService.js";
+import { useCanonicalTournamentList } from "../../../features/tournament/hooks/useCanonicalTournament.js";
 import { TOURNAMENT_STATUS } from "../../../models/tournament/index.js";
 import TournamentPageHeader from "../../../components/tournament/TournamentPageHeader.jsx";
 import TournamentSectionCard from "../../../components/tournament/TournamentSectionCard.jsx";
@@ -68,10 +68,7 @@ export default function TournamentPickerHub({
   const { activeClubId, revision } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
 
-  const tournaments = useMemo(
-    () => listTournaments(activeClubId),
-    [activeClubId, revision]
-  );
+  const { tournaments, loading } = useCanonicalTournamentList(activeClubId, revision);
 
   const matches = useMemo(
     () =>
@@ -83,14 +80,14 @@ export default function TournamentPickerHub({
   );
 
   useEffect(() => {
-    if (!autoNavigateSingle || matches.length !== 1) return;
+    if (loading || !autoNavigateSingle || matches.length !== 1) return;
     const path = resolvePath(matches[0]);
     if (path) {
       navigate(path, { replace: true });
     }
-  }, [autoNavigateSingle, matches, navigate, resolvePath]);
+  }, [autoNavigateSingle, loading, matches, navigate, resolvePath]);
 
-  if (autoNavigateSingle && matches.length === 1) {
+  if (!loading && autoNavigateSingle && matches.length === 1) {
     return null;
   }
 
@@ -98,7 +95,11 @@ export default function TournamentPickerHub({
     <Box>
       <TournamentPageHeader title={title} description={description} />
 
-      {matches.length === 0 ? (
+      {loading ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Đang tải danh sách giải…
+        </Alert>
+      ) : matches.length === 0 ? (
         <Alert severity="info" sx={{ mb: 2 }}>
           {emptyHint || "Chưa có giải phù hợp. Tạo giải mới từ mục Tạo giải."}
         </Alert>
