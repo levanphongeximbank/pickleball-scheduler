@@ -26,15 +26,12 @@ import SportsIcon from "@mui/icons-material/Sports";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
-import { PERMISSIONS } from "../../auth/permissions.js";
-import { assertTournamentAccess } from "../../domain/tournamentService.js";
 import {
   useTeamTournamentAthletePool,
 } from "../../features/team-tournament/ui/useTeamTournamentAthletePool.js";
 import { TEAM_TOURNAMENT_ATHLETE_SCOPE } from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
 import {
   buildRoundRobinMatchups,
-  getTeamData,
   isTeamTournament,
   updateMatchupInTournament,
 } from "../../features/team-tournament/engines/teamTournamentEngine.js";
@@ -46,7 +43,6 @@ import {
   COMPETITION_CLASS,
   prepareLivePrivatePairingOptions,
 } from "../../features/private-pairing-rules/index.js";
-import { canManageTeam } from "../../features/team-tournament/engines/teamPermissionEngine.js";
 import {
   getGroupStandingsTables,
   getStandingsTable,
@@ -69,6 +65,7 @@ import {
   generateTeamKnockoutBracket,
 } from "../../features/team-tournament/services/teamTournamentService.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
+import { resolveTeamTournamentCloudPageAccess } from "../../features/team-tournament/ui/teamTournamentCloudAccess.js";
 import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
 import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTournamentUiCommandKeys.js";
 import TeamRosterPanel from "../../components/tournament/TeamRosterPanel.jsx";
@@ -94,7 +91,6 @@ import {
 } from "../../components/tournament/team/copyPortalLink.js";
 import { computeTeamTournamentWorkflow } from "../../components/tournament/team/teamTournamentWorkflow.js";
 import { MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
-import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
 import { TEAM_TAB_QUERY } from "../../config/tournamentRoutes.js";
 import { logTeamRosterHydrationTransition } from "../../features/team-tournament/engines/teamRosterHydrationDiagnostics.js";
 import TournamentVprPanel from "../../features/vpr-ranking/components/TournamentVprPanel.jsx";
@@ -128,84 +124,31 @@ function buildVisibleTabs(canManage) {
   return tabs;
 }
 
-function useTeamTournamentAccess({ tournament, activeClubId, tournamentId }) {
+function useTeamTournamentAccess({ tournament, activeClubId }) {
   const { rbacEnabled, isAuthenticated, can, user } = useAuth();
   const { currentTenantId } = useTenant();
 
-  return useMemo(() => {
-    if (!rbacEnabled || !isAuthenticated) {
-      return {
-        allowed: true,
-        canManage: true,
-        canViewAll: true,
-        viewerPlayerId: null,
-      };
-    }
-
-    const tenantCheck = assertTournamentAccess(activeClubId, tournamentId, {
-      tenantId: currentTenantId,
-    });
-    if (!tenantCheck.ok) {
-      return { allowed: false, error: tenantCheck.error };
-    }
-
-    const rolePermissions = getPermissionsForRole(user?.role || "");
-    const canManage =
-      can(PERMISSIONS.TEAM_MANAGE, {
+  return useMemo(
+    () =>
+      resolveTeamTournamentCloudPageAccess({
+        rbacEnabled,
+        isAuthenticated,
         clubId: activeClubId,
-        venueId: currentTenantId,
-        tenantId: currentTenantId,
-      }) ||
-      can(PERMISSIONS.TOURNAMENT_UPDATE, {
-        clubId: activeClubId,
-        venueId: currentTenantId,
-        tenantId: currentTenantId,
-      }) ||
-      canManageTeam({ permissions: rolePermissions });
-
-    const canViewAll =
-      canManage ||
-      can(PERMISSIONS.TEAM_VIEW, {
-        clubId: activeClubId,
-        venueId: currentTenantId,
-        tenantId: currentTenantId,
-      }) ||
-      can(PERMISSIONS.TOURNAMENT_VIEW, {
-        clubId: activeClubId,
-        venueId: currentTenantId,
-        tenantId: currentTenantId,
-      });
-
-    const teamData = getTeamData(tournament);
-    const viewerPlayerId = user?.playerId ? String(user.playerId) : null;
-    const isCaptain =
-      viewerPlayerId &&
-      (teamData?.teams || []).some(
-        (team) =>
-          team.captainPlayerId === viewerPlayerId ||
-          (team.deputyPlayerIds || []).includes(viewerPlayerId)
-      );
-
-    const allowed = canManage || canViewAll || isCaptain;
-
-    return {
-      allowed,
-      canManage,
-      canViewAll: canViewAll && !canManage,
-      isCaptain: Boolean(isCaptain),
-      viewerPlayerId: canManage ? null : viewerPlayerId,
-      error: allowed ? null : "Bạn không có quyền xem giải đồng đội này.",
-    };
-  }, [
-    activeClubId,
-    can,
-    currentTenantId,
-    isAuthenticated,
-    rbacEnabled,
-    tournament,
-    tournamentId,
-    user,
-  ]);
+        tournament,
+        currentTenantId,
+        user,
+        can,
+      }),
+    [
+      activeClubId,
+      can,
+      currentTenantId,
+      isAuthenticated,
+      rbacEnabled,
+      tournament,
+      user,
+    ]
+  );
 }
 
 export default function TeamTournamentSetup() {
@@ -258,7 +201,6 @@ export default function TeamTournamentSetup() {
   const access = useTeamTournamentAccess({
     tournament,
     activeClubId: effectiveClubId || activeClubId,
-    tournamentId,
   });
 
   const showcaseCanSelectTenantScope = useMemo(() => {
@@ -1157,6 +1099,14 @@ export default function TeamTournamentSetup() {
             </Button>
           </Stack>
         </Stack>
+      </Box>
+    );
+  }
+
+  if (access.pending) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="info">Đang tải giải đồng đội…</Alert>
       </Box>
     );
   }
