@@ -4,12 +4,16 @@
  * No hardcoded Production GO exists in WP4.
  * Dry-run is the default.
  * Retired B1 GO / batches never authorize.
- * One-time authority: GO+batch consumed once presented to a live runner.
+ *
+ * Durable one-time authority consumption is NOT implemented in WP4.
+ * Live mutation requires an injected WP7 claimOneTimeLiveAuthority dependency.
+ * Process-local Set is defense-in-depth only — not authoritative durability.
  */
 
 import {
   EXPECTED_PRODUCTION_PROJECT_REF,
   FRESH_AUTHORIZATION_BINDING,
+  OPERATION_ID,
   REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
   RETIRED_OPERATION_B1_BATCH_IDS,
   RETIRED_OWNER_PRODUCTION_GO,
@@ -18,7 +22,7 @@ import {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-/** In-process one-time authority consumption (models WP4/WP7 contract; no Production I/O). */
+/** Process-local defense-in-depth only — NOT durable cross-process consumption. */
 const consumedAuthorityKeys = new Set();
 
 export function authorityConsumptionKey(ownerGo, batchId) {
@@ -33,7 +37,7 @@ export function markAuthorityConsumed(ownerGo, batchId) {
   consumedAuthorityKeys.add(authorityConsumptionKey(ownerGo, batchId));
 }
 
-/** Test-only reset. */
+/** Test-only reset of process-local defense-in-depth set. */
 export function resetAuthorityConsumptionForTests() {
   consumedAuthorityKeys.clear();
 }
@@ -279,6 +283,7 @@ export function evaluateAuthorization(input = {}) {
       }
     }
 
+    // Process-local defense-in-depth only (not durable).
     if (ownerGo && batchId && isAuthorityConsumed(ownerGo, batchId)) {
       reasons.push("authority_already_consumed");
     }
@@ -316,18 +321,80 @@ export function mutationAllowed(authResult) {
 }
 
 /**
- * Present live authority: mark one-time consumption when DRY_RUN=false
- * and authorization otherwise passes. Call before any durable mutation.
+ * Build immutable bind fingerprint for durable WP7 consumption.
  */
-export function presentLiveAuthority(authResult) {
+export function buildOneTimeAuthorityBind(authResult) {
+  return Object.freeze({
+    operationId: OPERATION_ID,
+    batchId: String(authResult?.batchId || "").trim(),
+    allowlistSha256: String(authResult?.allowlistSha || "")
+      .trim()
+      .toLowerCase(),
+    snapshotSha256: String(authResult?.snapshotSha || "")
+      .trim()
+      .toLowerCase(),
+    ownerProductionGo: String(authResult?.ownerProductionGo || "").trim(),
+    productionProjectRef: String(authResult?.projectRef || "").trim(),
+  });
+}
+
+/**
+ * Claim one-time live authority via required WP7 durable dependency.
+ *
+ * WP4 provides NO default success implementation.
+ * Missing dependency => fail closed, zero mutation.
+ * Process-local Set is defense-in-depth after durable claim succeeds.
+ *
+ * @param {object} authResult
+ * @param {((bind: object) => Promise<{ok:boolean, reason?:string}>| {ok:boolean, reason?:string}) | undefined} claimOneTimeLiveAuthority
+ */
+export async function presentLiveAuthority(
+  authResult,
+  claimOneTimeLiveAuthority
+) {
   if (!mutationAllowed(authResult)) {
     return { ok: false, consumed: false, reason: "mutation_not_authorized" };
   }
+
+  if (typeof claimOneTimeLiveAuthority !== "function") {
+    return {
+      ok: false,
+      consumed: false,
+      reason: "durable_one_time_authority_dependency_required",
+    };
+  }
+
   const go = authResult.ownerProductionGo;
   const batchId = authResult.batchId;
   if (isAuthorityConsumed(go, batchId)) {
     return { ok: false, consumed: true, reason: "authority_already_consumed" };
   }
+
+  const bind = buildOneTimeAuthorityBind(authResult);
+  let claim;
+  try {
+    claim = await claimOneTimeLiveAuthority(bind);
+  } catch (err) {
+    return {
+      ok: false,
+      consumed: false,
+      reason: `durable_authority_claim_threw:${String(err?.message || err)}`,
+    };
+  }
+
+  if (!claim || claim.ok !== true) {
+    return {
+      ok: false,
+      consumed: Boolean(claim?.consumed),
+      reason:
+        claim?.reason ||
+        (claim?.consumed
+          ? "authority_already_consumed"
+          : "durable_authority_claim_rejected"),
+    };
+  }
+
+  // Defense-in-depth only — not authoritative durability.
   markAuthorityConsumed(go, batchId);
-  return { ok: true, consumed: true };
+  return { ok: true, consumed: true, durable: true };
 }

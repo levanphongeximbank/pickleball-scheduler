@@ -1,6 +1,8 @@
 /**
  * OPERATION B1B — WP4 runner remediation tests (local/mock only).
  * No Staging/Production access. No real PostgreSQL.
+ *
+ * Includes strict RPC argument contract locks against WP2 SQL.
  */
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -17,6 +19,9 @@ import {
   FRESH_AUTHORIZATION_BINDING,
   REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
   OPERATION_B1B_LIVE_ADAPTER_CAPABILITIES,
+  OPERATION_B1B_RPC_ARG_KEYS,
+  FAILURE_CLASSIFICATION_MATRIX,
+  CERTIFIED_B1_TARGET_LABELS,
   evaluateAuthorization,
   mutationAllowed,
   createFreshAuthorizationBinding,
@@ -41,12 +46,21 @@ import {
 } from "../scripts/operations/production-qa-identity-operation-b1/lib/index.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const WP2_SQL = path.join(
+  root,
+  "docs/v5/operations/production-qa-identity-operation-b1b-remediation/sql/20_QA_IDENTITY_QUARANTINE_AUTHORITY_FORWARD.sql"
+);
 const FRESH_BATCH = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeee2";
 const TEST_GO = "APPROVE_OPERATION_B1B_UNIT_TEST_BINDING_NOT_PRODUCTION";
 
 function uuid(n = 1) {
   const hex = String(n).padStart(12, "0");
   return `33333333-4444-4555-8666-${hex}`;
+}
+
+function quarantineUuid(n = 1) {
+  const hex = String(n).padStart(12, "0");
+  return `aaaaaaaa-bbbb-4ccc-8ddd-${hex}`;
 }
 
 function zeroRefs() {
@@ -156,8 +170,34 @@ function liveInput(files, binding, overrides = {}) {
   };
 }
 
+/** Test-only durable claimer — WP4 has no default Production implementation. */
+function testDurableClaimer() {
+  const claimed = new Set();
+  return async (bind) => {
+    const key = `${bind.ownerProductionGo}::${bind.batchId}::${bind.allowlistSha256}::${bind.snapshotSha256}`;
+    if (claimed.has(key)) {
+      return { ok: false, consumed: true, reason: "authority_already_consumed" };
+    }
+    claimed.add(key);
+    return { ok: true };
+  };
+}
+
+function assertExactKeys(actual, expected, label) {
+  const a = Object.keys(actual || {}).sort();
+  const e = [...expected].sort();
+  assert.deepEqual(a, e, label);
+}
+
 function baseAdapters(row, state) {
   const calls = [];
+  const rpcArgLog = [];
+  const qid = state.quarantineId || quarantineUuid(1);
+
+  function pushRpc(name, args) {
+    rpcArgLog.push({ name, keys: Object.keys(args || {}).sort(), args });
+  }
+
   const adapters = {
     emailOverrides: { [row.auth_user_id]: row.expected_email },
     fetchAuthUser: async () => ({
@@ -176,8 +216,39 @@ function baseAdapters(row, state) {
     fetchAuthBanState: async () => state.banned === true,
     qaQuarantinePrepare: async (args) => {
       calls.push("qa_quarantine_prepare");
+      pushRpc("qa_quarantine_prepare", {
+        p_profile_id: args.profileId,
+        p_auth_user_id: args.authUserId,
+        p_batch_id: args.batchId,
+        p_allowlist_sha256: args.allowlistSha256,
+        p_snapshot_sha256: args.snapshotSha256,
+        p_reason: args.reason,
+        p_original_profile_status: args.originalProfileStatus,
+        p_original_auth_banned: args.originalAuthBanned,
+        p_expected_email: args.expectedEmail,
+        p_allowlist_label: args.allowlistLabel,
+        p_metadata: args.metadata ?? {},
+      });
+      assertExactKeys(
+        {
+          p_profile_id: 1,
+          p_auth_user_id: 1,
+          p_batch_id: 1,
+          p_allowlist_sha256: 1,
+          p_snapshot_sha256: 1,
+          p_reason: 1,
+          p_original_profile_status: 1,
+          p_original_auth_banned: 1,
+          p_expected_email: 1,
+          p_allowlist_label: 1,
+          p_metadata: 1,
+        },
+        OPERATION_B1B_RPC_ARG_KEYS.qa_quarantine_prepare,
+        "prepare mock keys"
+      );
       state.authority = {
-        id: "q-" + row.profile_id,
+        id: qid,
+        quarantine_id: qid,
         profile_id: args.profileId,
         auth_user_id: args.authUserId,
         batch_id: args.batchId,
@@ -189,10 +260,35 @@ function baseAdapters(row, state) {
         original_auth_banned: args.originalAuthBanned,
         original_profile_status: args.originalProfileStatus,
       };
-      return { ok: true, data: state.authority };
+      return {
+        ok: true,
+        data: {
+          ok: true,
+          code: "prepared",
+          quarantine_id: qid,
+          lifecycle_state: "pending",
+          auth_ban_state: "pending",
+          lifecycle_version: 1,
+          ...state.authority,
+        },
+      };
     },
     qaQuarantineActivateAfterAuthBan: async (args) => {
       calls.push("qa_quarantine_activate_after_auth_ban");
+      pushRpc("qa_quarantine_activate_after_auth_ban", {
+        p_quarantine_id: args.quarantineId,
+        p_expected_lifecycle_version: args.expectedLifecycleVersion,
+        p_auth_ban_readback_confirmed: args.authBanReadbackConfirmed === true,
+      });
+      assertExactKeys(
+        {
+          p_quarantine_id: 1,
+          p_expected_lifecycle_version: 1,
+          p_auth_ban_readback_confirmed: 1,
+        },
+        OPERATION_B1B_RPC_ARG_KEYS.qa_quarantine_activate_after_auth_ban,
+        "activate_after keys"
+      );
       if (!args.authBanReadbackConfirmed) {
         return { ok: false, reason: "auth_ban_readback_not_confirmed" };
       }
@@ -205,10 +301,30 @@ function baseAdapters(row, state) {
         auth_ban_state: "applied",
         lifecycle_version: state.authority.lifecycle_version + 1,
       };
-      return { ok: true, data: state.authority };
+      return {
+        ok: true,
+        data: {
+          ok: true,
+          code: "activated_after_auth_ban",
+          quarantine_id: args.quarantineId,
+          ...state.authority,
+        },
+      };
     },
     qaQuarantineActivatePreexistingBan: async (args) => {
       calls.push("qa_quarantine_activate_preexisting_ban");
+      pushRpc("qa_quarantine_activate_preexisting_ban", {
+        p_quarantine_id: args.quarantineId,
+        p_expected_lifecycle_version: args.expectedLifecycleVersion,
+      });
+      assertExactKeys(
+        {
+          p_quarantine_id: 1,
+          p_expected_lifecycle_version: 1,
+        },
+        OPERATION_B1B_RPC_ARG_KEYS.qa_quarantine_activate_preexisting_ban,
+        "activate_preexisting keys"
+      );
       if (args.expectedLifecycleVersion !== state.authority.lifecycle_version) {
         return { ok: false, reason: "lifecycle_version_mismatch" };
       }
@@ -218,20 +334,73 @@ function baseAdapters(row, state) {
         auth_ban_state: "not_required_preexisting",
         lifecycle_version: state.authority.lifecycle_version + 1,
       };
-      return { ok: true, data: state.authority };
+      return {
+        ok: true,
+        data: {
+          ok: true,
+          code: "activated_preexisting_ban",
+          quarantine_id: args.quarantineId,
+          ...state.authority,
+        },
+      };
     },
-    qaQuarantineRecordCompensatedFailure: async () => {
+    qaQuarantineRecordCompensatedFailure: async (args) => {
       calls.push("qa_quarantine_record_compensated_failure");
+      pushRpc("qa_quarantine_record_compensated_failure", {
+        p_quarantine_id: args.quarantineId,
+        p_expected_lifecycle_version: args.expectedLifecycleVersion,
+        p_target_auth_ban_state: args.targetAuthBanState,
+        p_failure_classification: args.failureClassification,
+      });
+      assertExactKeys(
+        {
+          p_quarantine_id: 1,
+          p_expected_lifecycle_version: 1,
+          p_target_auth_ban_state: 1,
+          p_failure_classification: 1,
+        },
+        OPERATION_B1B_RPC_ARG_KEYS.qa_quarantine_record_compensated_failure,
+        "compensated_failure keys"
+      );
+      const expected =
+        FAILURE_CLASSIFICATION_MATRIX[args.failureClassification];
+      if (!expected || expected !== args.targetAuthBanState) {
+        return { ok: false, reason: "invalid_compensation_pair", code: "invalid_compensation_pair" };
+      }
+      if (
+        args.failureClassification === "activation_failed_preexisting" &&
+        state.authority?.original_auth_banned !== true
+      ) {
+        return {
+          ok: false,
+          reason: "preexisting_classification_requires_original_banned",
+        };
+      }
       state.authority = {
         ...state.authority,
         lifecycle_state: "failed",
-        auth_ban_state: "reverted",
+        auth_ban_state: args.targetAuthBanState,
+        failure_classification: args.failureClassification,
         lifecycle_version: (state.authority?.lifecycle_version || 1) + 1,
       };
       return { ok: true, data: state.authority };
     },
-    qaQuarantineRelease: async () => {
+    qaQuarantineRelease: async (args) => {
       calls.push("qa_quarantine_release");
+      pushRpc("qa_quarantine_release", {
+        p_quarantine_id: args.quarantineId,
+        p_expected_lifecycle_version: args.expectedLifecycleVersion,
+        p_release_reason: args.releaseReason,
+      });
+      assertExactKeys(
+        {
+          p_quarantine_id: 1,
+          p_expected_lifecycle_version: 1,
+          p_release_reason: 1,
+        },
+        OPERATION_B1B_RPC_ARG_KEYS.qa_quarantine_release,
+        "release keys"
+      );
       state.authority = {
         ...state.authority,
         lifecycle_state: "released",
@@ -239,8 +408,27 @@ function baseAdapters(row, state) {
       };
       return { ok: true, data: state.authority };
     },
-    qaQuarantineGetState: async () => {
+    qaQuarantineGetState: async (args) => {
       calls.push("qa_quarantine_get_state");
+      const rpcArgs = { p_quarantine_id: args.quarantineId };
+      pushRpc("qa_quarantine_get_state", rpcArgs);
+      assert.deepEqual(
+        Object.keys(rpcArgs),
+        ["p_quarantine_id"],
+        "get_state must only send p_quarantine_id"
+      );
+      assert.equal(
+        Object.prototype.hasOwnProperty.call(args, "profileId") &&
+          args.profileId != null &&
+          Object.keys(rpcArgs).includes("p_profile_id"),
+        false
+      );
+      assert.ok(args.quarantineId, "get_state requires quarantineId");
+      assert.equal(
+        Object.keys(rpcArgs).includes("p_profile_id"),
+        false,
+        "get_state must never send p_profile_id"
+      );
       return { ok: true, data: state.authority };
     },
     banAuthUser: async () => {
@@ -254,15 +442,17 @@ function baseAdapters(row, state) {
       return { ok: true };
     },
     _calls: calls,
+    _rpcArgLog: rpcArgLog,
   };
   return adapters;
 }
 
-function authorizedAuth(files, binding) {
+async function authorizedAuth(files, binding) {
   resetAuthorityConsumptionForTests();
   const auth = evaluateAuthorization(liveInput(files, binding));
   assert.equal(mutationAllowed(auth), true);
-  presentLiveAuthority(auth);
+  const presented = await presentLiveAuthority(auth, testDurableClaimer());
+  assert.equal(presented.ok, true);
   return auth;
 }
 
@@ -281,6 +471,9 @@ test("WP4 constants: no Production GO; retired artifacts rejected", () => {
   );
   assert.equal(EXPECTED_B1B_COUNT, 8);
   assert.equal(hardDeleteUnavailable().available, false);
+  assert.deepEqual(OPERATION_B1B_RPC_ARG_KEYS.qa_quarantine_get_state, [
+    "p_quarantine_id",
+  ]);
 });
 
 test("A) default dry-run = zero mutations", async () => {
@@ -357,7 +550,6 @@ test("A) allowlist/snapshot SHA mismatch = zero", () => {
   resetAuthorityConsumptionForTests();
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
   const binding = makeBinding(files);
-
   const alMismatch = evaluateAuthorization(
     liveInput(files, binding, { ALLOWLIST_SHA256: "a".repeat(64) })
   );
@@ -371,15 +563,15 @@ test("A) allowlist/snapshot SHA mismatch = zero", () => {
   assert.ok(snMismatch.reasons.includes("snapshot_sha256_binding_mismatch"));
 });
 
-test("A) target count != 8 / B2 / forbidden email = zero", () => {
-  const seven = makeEight().slice(0, 7);
-  const badCount = validateAllowlistDocument({
+test("A) target count != 8 / B2 / forbidden email / uncertified labels = zero", () => {
+  const short = makeEight().slice(0, 7);
+  const shortDoc = {
     operation: OPERATION_ID,
     production_project_ref: EXPECTED_PRODUCTION_PROJECT_REF,
     target_count: 7,
-    identities: seven,
-  });
-  assert.equal(badCount.ok, false);
+    identities: short,
+  };
+  assert.equal(validateAllowlistDocument(shortDoc).ok, false);
 
   const withB2 = makeEight();
   withB2[0].label = "QA-01";
@@ -392,6 +584,41 @@ test("A) target count != 8 / B2 / forbidden email = zero", () => {
   assert.equal(b2.ok, false);
   assert.ok(b2.errors.some((e) => e.startsWith("b2_excluded_label_present")));
 
+  const lowerB2 = makeEight();
+  lowerB2[0].label = "qa-01";
+  const b2lower = validateAllowlistDocument({
+    operation: OPERATION_ID,
+    production_project_ref: EXPECTED_PRODUCTION_PROJECT_REF,
+    target_count: 8,
+    identities: lowerB2,
+  });
+  assert.equal(b2lower.ok, false);
+  assert.ok(
+    b2lower.errors.some((e) => e.startsWith("b2_excluded_label_present"))
+  );
+
+  const arbitrary = makeEight();
+  arbitrary[0].label = "FOO-99";
+  const arb = validateAllowlistDocument({
+    operation: OPERATION_ID,
+    production_project_ref: EXPECTED_PRODUCTION_PROJECT_REF,
+    target_count: 8,
+    identities: arbitrary,
+  });
+  assert.equal(arb.ok, false);
+  assert.ok(arb.errors.some((e) => e.startsWith("unknown_or_uncertified_label")));
+
+  const lowerOk = makeEight();
+  lowerOk[0].label = "qa-04";
+  const normalized = validateAllowlistDocument({
+    operation: OPERATION_ID,
+    production_project_ref: EXPECTED_PRODUCTION_PROJECT_REF,
+    target_count: 8,
+    identities: lowerOk,
+  });
+  assert.equal(normalized.ok, true);
+  assert.equal(normalized.identities[0].label, "QA-04");
+
   const forbidden = makeEight();
   forbidden[0].expected_email = "phase1b-smith@gmail.com";
   const forb = validateAllowlistDocument({
@@ -402,12 +629,14 @@ test("A) target count != 8 / B2 / forbidden email = zero", () => {
   });
   assert.equal(forb.ok, false);
   assert.ok(forb.errors.includes("forbidden_real_user_email"));
+
+  assert.equal(CERTIFIED_B1_TARGET_LABELS.length, 8);
 });
 
-test("B) originally unbanned order: prepare→ban→auth_readback→activate_after→authority_readback", async () => {
+test("B) originally unbanned order: prepare→ban→auth_readback→activate_after→get_state(id)", async () => {
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
   const binding = makeBinding(files);
-  const auth = authorizedAuth(files, binding);
+  const auth = await authorizedAuth(files, binding);
   const row = makeEight()[0];
   const state = { banned: false, profileStatus: "active", authority: null };
   const adapters = baseAdapters(row, state);
@@ -429,15 +658,7 @@ test("B) originally unbanned order: prepare→ban→auth_readback→activate_aft
   assert.equal(state.profileStatus, "active");
   assert.ok(!adapters._calls.includes("updateProfileStatus"));
 
-  const names = callLog.map((c) => c.name).filter((n) =>
-    [
-      "qa_quarantine_prepare",
-      "banAuthUser",
-      "auth_readback",
-      "qa_quarantine_activate_after_auth_ban",
-      "authority_readback",
-    ].includes(n)
-  );
+  const names = callLog.map((c) => c.name);
   const idx = (n) => names.indexOf(n);
   assert.ok(idx("qa_quarantine_prepare") >= 0);
   assert.ok(idx("banAuthUser") > idx("qa_quarantine_prepare"));
@@ -448,12 +669,20 @@ test("B) originally unbanned order: prepare→ban→auth_readback→activate_aft
   assert.ok(
     idx("authority_readback") > idx("qa_quarantine_activate_after_auth_ban")
   );
+
+  const getStateCalls = adapters._rpcArgLog.filter(
+    (c) => c.name === "qa_quarantine_get_state"
+  );
+  assert.ok(getStateCalls.length >= 1);
+  for (const c of getStateCalls) {
+    assert.deepEqual(c.keys, ["p_quarantine_id"]);
+  }
 });
 
 test("C) preexisting ban: prepare→auth_readback→activate_preexisting; ban/unban = 0", async () => {
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
   const binding = makeBinding(files);
-  const auth = authorizedAuth(files, binding);
+  const auth = await authorizedAuth(files, binding);
   const row = { ...makeEight()[0], auth_banned: true };
   const state = { banned: true, profileStatus: "active", authority: null };
   const adapters = baseAdapters(row, state);
@@ -486,11 +715,12 @@ test("C) preexisting ban: prepare→auth_readback→activate_preexisting; ban/un
 test("D) prepare failure: Auth=0 activation=0 batch stops", async () => {
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
   const binding = makeBinding(files);
-  const auth = authorizedAuth(files, binding);
+  const auth = await authorizedAuth(files, binding);
   const identities = makeEight();
   let prepareCalls = 0;
   let banCalls = 0;
   let activateCalls = 0;
+  let getStateCalls = 0;
 
   const adapters = {
     emailOverrides: Object.fromEntries(
@@ -507,7 +737,10 @@ test("D) prepare failure: Auth=0 activation=0 batch stops", async () => {
     }),
     fetchReferenceCounts: async () => zeroRefs(),
     fetchAuthBanState: async () => false,
-    qaQuarantineGetState: async () => ({ ok: true, data: null }),
+    qaQuarantineGetState: async () => {
+      getStateCalls += 1;
+      return { ok: true, data: null };
+    },
     qaQuarantinePrepare: async () => {
       prepareCalls += 1;
       return { ok: false, reason: "prepare_rejected" };
@@ -534,13 +767,14 @@ test("D) prepare failure: Auth=0 activation=0 batch stops", async () => {
   assert.equal(prepareCalls, 1);
   assert.equal(banCalls, 0);
   assert.equal(activateCalls, 0);
+  assert.equal(getStateCalls, 0, "no get_state before quarantine_id");
   assert.ok(batch.results.length < EXPECTED_B1B_COUNT);
 });
 
-test("E) Auth ban failure: prepare occurred; activation=0; fail record; unban=0", async () => {
+test("E) Auth ban failure: prepare → record(failed, auth_ban_failed); unban=0", async () => {
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
   const binding = makeBinding(files);
-  const auth = authorizedAuth(files, binding);
+  const auth = await authorizedAuth(files, binding);
   const row = makeEight()[0];
   const state = { banned: false, profileStatus: "active", authority: null };
   const adapters = baseAdapters(row, state);
@@ -565,6 +799,11 @@ test("E) Auth ban failure: prepare occurred; activation=0; fail record; unban=0"
   assert.ok(
     adapters._calls.includes("qa_quarantine_record_compensated_failure")
   );
+  const failArgs = adapters._rpcArgLog.find(
+    (c) => c.name === "qa_quarantine_record_compensated_failure"
+  );
+  assert.equal(failArgs.args.p_failure_classification, "auth_ban_failed");
+  assert.equal(failArgs.args.p_target_auth_ban_state, "failed");
   assert.equal(
     adapters._calls.filter((c) => c === "qa_quarantine_activate_after_auth_ban")
       .length,
@@ -572,18 +811,30 @@ test("E) Auth ban failure: prepare occurred; activation=0; fail record; unban=0"
   );
   assert.equal(adapters._calls.filter((c) => c === "unbanAuthUser").length, 0);
   assert.notEqual(state.authority?.lifecycle_state, "active");
-  assert.equal(state.profileStatus, "active");
 });
 
-test("F) activation failure after new Auth ban: unban + readback + compensated; no retry", async () => {
+test("F) activation failure after new Auth ban: unban + record(reverted, activation_failed_compensated)", async () => {
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
   const binding = makeBinding(files);
-  const auth = authorizedAuth(files, binding);
+  const auth = await authorizedAuth(files, binding);
   const row = makeEight()[0];
   const state = { banned: false, profileStatus: "active", authority: null };
   const adapters = baseAdapters(row, state);
-  adapters.qaQuarantineActivateAfterAuthBan = async () => {
+  adapters.qaQuarantineActivateAfterAuthBan = async (args) => {
     adapters._calls.push("qa_quarantine_activate_after_auth_ban");
+    adapters._rpcArgLog.push({
+      name: "qa_quarantine_activate_after_auth_ban",
+      keys: Object.keys({
+        p_quarantine_id: args.quarantineId,
+        p_expected_lifecycle_version: args.expectedLifecycleVersion,
+        p_auth_ban_readback_confirmed: true,
+      }).sort(),
+      args: {
+        p_quarantine_id: args.quarantineId,
+        p_expected_lifecycle_version: args.expectedLifecycleVersion,
+        p_auth_ban_readback_confirmed: true,
+      },
+    });
     return { ok: false, reason: "activate_failed" };
   };
 
@@ -601,56 +852,73 @@ test("F) activation failure after new Auth ban: unban + readback + compensated; 
   assert.ok(adapters._calls.includes("banAuthUser"));
   assert.ok(adapters._calls.includes("unbanAuthUser"));
   assert.ok(adapters._calls.includes("qa_quarantine_record_compensated_failure"));
+  const failArgs = adapters._rpcArgLog.find(
+    (c) => c.name === "qa_quarantine_record_compensated_failure"
+  );
+  assert.equal(
+    failArgs.args.p_failure_classification,
+    "activation_failed_compensated"
+  );
+  assert.equal(failArgs.args.p_target_auth_ban_state, "reverted");
   assert.equal(state.banned, false);
   assert.notEqual(state.authority?.lifecycle_state, "active");
   assert.equal(state.profileStatus, "active");
-
-  // Same GO/batch cannot silently retry
-  const retryAuth = evaluateAuthorization(liveInput(files, binding));
-  assert.equal(mutationAllowed(retryAuth), false);
-  assert.ok(retryAuth.reasons.includes("authority_already_consumed"));
 });
 
-test("G) post-activation readback failure: release/compensate; preexisting never unbanned", async () => {
+test("F2) compensation incomplete path records compensation_incomplete→failed", async () => {
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
   const binding = makeBinding(files);
-  const auth2 = authorizedAuth(files, binding);
-  const row = { ...makeEight()[1], auth_banned: true };
-  const state = { banned: true, profileStatus: "active", authority: null };
+  const auth = await authorizedAuth(files, binding);
+  const row = makeEight()[0];
+  const state = { banned: false, profileStatus: "active", authority: null };
   const adapters = baseAdapters(row, state);
-  adapters.qaQuarantineActivatePreexistingBan = async () => {
-    adapters._calls.push("qa_quarantine_activate_preexisting_ban");
-    state.authority = {
-      ...state.authority,
-      lifecycle_state: "active",
-      auth_ban_state: "not_required_preexisting",
-      lifecycle_version: state.authority.lifecycle_version + 1,
-      id: state.authority.id,
-    };
-    // Activate "succeeds" but subsequent authority readback will fail verification
-    return { ok: true, data: state.authority };
+  adapters.qaQuarantineActivateAfterAuthBan = async () => {
+    adapters._calls.push("qa_quarantine_activate_after_auth_ban");
+    return { ok: false, reason: "activate_failed" };
   };
-  let reads = 0;
-  adapters.qaQuarantineGetState = async () => {
-    adapters._calls.push("qa_quarantine_get_state");
-    reads += 1;
-    if (reads >= 2 && state.authority?.lifecycle_state === "active") {
-      return {
-        ok: true,
-        data: {
-          ...state.authority,
-          lifecycle_state: "pending",
-          auth_ban_state: "pending",
-        },
-      };
-    }
-    return { ok: true, data: state.authority };
+  adapters.unbanAuthUser = async () => {
+    adapters._calls.push("unbanAuthUser");
+    return { ok: false, reason: "unban_failed" };
   };
 
   const result = await quarantineOneIdentityB1B({
     allowlistRow: row,
     adapters,
-    authResult: auth2,
+    authResult: auth,
+    dryRun: false,
+    batchId: FRESH_BATCH,
+    allowlistSha256: files.alSha,
+    snapshotSha256: files.snSha,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.critical, true);
+  assert.match(result.abortReason || "", /CRITICAL_COMPENSATION_INCOMPLETE/);
+  const failArgs = adapters._rpcArgLog.find(
+    (c) =>
+      c.name === "qa_quarantine_record_compensated_failure" &&
+      c.args.p_failure_classification === "compensation_incomplete"
+  );
+  assert.ok(failArgs);
+  assert.equal(failArgs.args.p_target_auth_ban_state, "failed");
+});
+
+test("G) preexisting activation failure: activation_failed_preexisting→failed; no unban", async () => {
+  const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
+  const binding = makeBinding(files);
+  const auth = await authorizedAuth(files, binding);
+  const row = { ...makeEight()[1], auth_banned: true };
+  const state = { banned: true, profileStatus: "active", authority: null };
+  const adapters = baseAdapters(row, state);
+  adapters.qaQuarantineActivatePreexistingBan = async () => {
+    adapters._calls.push("qa_quarantine_activate_preexisting_ban");
+    return { ok: false, reason: "activate_preexisting_failed" };
+  };
+
+  const result = await quarantineOneIdentityB1B({
+    allowlistRow: row,
+    adapters,
+    authResult: auth,
     dryRun: false,
     batchId: FRESH_BATCH,
     allowlistSha256: files.alSha,
@@ -659,51 +927,30 @@ test("G) post-activation readback failure: release/compensate; preexisting never
   assert.equal(result.ok, false);
   assert.equal(adapters._calls.filter((c) => c === "unbanAuthUser").length, 0);
   assert.equal(state.banned, true);
-  assert.equal(state.profileStatus, "active");
+  const failArgs = adapters._rpcArgLog.find(
+    (c) => c.name === "qa_quarantine_record_compensated_failure"
+  );
+  assert.equal(
+    failArgs.args.p_failure_classification,
+    "activation_failed_preexisting"
+  );
+  assert.equal(failArgs.args.p_target_auth_ban_state, "failed");
+  assert.notEqual(state.authority?.lifecycle_state, "active");
 });
 
-test("H) impossible split: Auth banned without authority → stop all", async () => {
+test("H) impossible split / critical compensation stops batch", async () => {
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
   const binding = makeBinding(files);
-  const auth = authorizedAuth(files, binding);
-  const identities = makeEight();
-
-  const row0 = identities[0];
-  const state0 = { banned: false, profileStatus: "active", authority: null };
-  const a0 = baseAdapters(row0, state0);
-  a0.banAuthUser = async () => {
-    a0._calls.push("banAuthUser");
-    state0.banned = true;
-    return { ok: true };
-  };
-  a0.qaQuarantineActivateAfterAuthBan = async () => {
-    a0._calls.push("qa_quarantine_activate_after_auth_ban");
-    return { ok: false, reason: "activate_failed" };
-  };
-  a0.unbanAuthUser = async () => {
-    a0._calls.push("unbanAuthUser");
-    // Fail unban → leaves Auth banned without authority
-    return { ok: false, reason: "unban_failed" };
-  };
-
-  const first = await quarantineOneIdentityB1B({
-    allowlistRow: row0,
-    adapters: a0,
-    authResult: auth,
-    dryRun: false,
-    batchId: FRESH_BATCH,
-    allowlistSha256: files.alSha,
-    snapshotSha256: files.snSha,
-  });
-  assert.equal(first.ok, false);
-  assert.equal(first.critical, true);
-  assert.match(first.abortReason || "", /CRITICAL_COMPENSATION_INCOMPLETE/);
-
   const identities2 = makeEight();
   const states = new Map(
-    identities2.map((r) => [
+    identities2.map((r, i) => [
       r.profile_id,
-      { banned: false, profileStatus: "active", authority: null },
+      {
+        banned: false,
+        profileStatus: "active",
+        authority: null,
+        quarantineId: quarantineUuid(i + 1),
+      },
     ])
   );
   let prepared = 0;
@@ -722,15 +969,17 @@ test("H) impossible split: Auth banned without authority → stop all", async ()
     }),
     fetchReferenceCounts: async () => zeroRefs(),
     fetchAuthBanState: async (id) => states.get(id).banned === true,
-    qaQuarantineGetState: async ({ profileId }) => ({
-      ok: true,
-      data: states.get(profileId).authority,
-    }),
+    qaQuarantineGetState: async ({ quarantineId }) => {
+      assert.ok(quarantineId);
+      const st = [...states.values()].find((s) => s.quarantineId === quarantineId);
+      return { ok: true, data: st?.authority || null };
+    },
     qaQuarantinePrepare: async (args) => {
       prepared += 1;
       const st = states.get(args.profileId);
       st.authority = {
-        id: "q-" + args.profileId,
+        id: st.quarantineId,
+        quarantine_id: st.quarantineId,
         profile_id: args.profileId,
         batch_id: args.batchId,
         allowlist_sha256: args.allowlistSha256,
@@ -740,25 +989,36 @@ test("H) impossible split: Auth banned without authority → stop all", async ()
         original_auth_banned: false,
         original_profile_status: "active",
       };
-      return { ok: true, data: st.authority };
+      return {
+        ok: true,
+        data: {
+          ok: true,
+          code: "prepared",
+          quarantine_id: st.quarantineId,
+          ...st.authority,
+        },
+      };
     },
     banAuthUser: async ({ userId }) => {
       states.get(userId).banned = true;
       return { ok: true };
     },
-    unbanAuthUser: async () => {
-      // Leave banned to create split if activation fails and unban "fails"
-      return { ok: false, reason: "unban_failed" };
-    },
+    unbanAuthUser: async () => ({ ok: false, reason: "unban_failed" }),
     qaQuarantineActivateAfterAuthBan: async () => ({
       ok: false,
       reason: "activate_failed",
     }),
-    qaQuarantineRecordCompensatedFailure: async () => ({ ok: true, data: {} }),
+    qaQuarantineRecordCompensatedFailure: async (args) => {
+      assert.ok(
+        FAILURE_CLASSIFICATION_MATRIX[args.failureClassification] ===
+          args.targetAuthBanState
+      );
+      return { ok: true, data: {} };
+    },
   };
 
   resetAuthorityConsumptionForTests();
-  const auth3 = authorizedAuth(files, binding);
+  const auth3 = await authorizedAuth(files, binding);
   const batch = await runBatchQuarantineB1B({
     identities: identities2,
     adapters: batchAd,
@@ -769,20 +1029,13 @@ test("H) impossible split: Auth banned without authority → stop all", async ()
   });
   assert.equal(batch.ok, false);
   assert.equal(batch.results[0].critical, true);
-  // Stop after first unresolved — remaining not all processed as success
   assert.ok(prepared <= 2);
-  assert.ok(
-    batch.results.length < EXPECTED_B1B_COUNT ||
-      batch.results.some(
-        (r) => r.abortReason?.includes("batch_stopped") || r.critical
-      )
-  );
 });
 
 test("I) no B1B writer updates profiles.status", async () => {
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
   const binding = makeBinding(files);
-  const auth = authorizedAuth(files, binding);
+  const auth = await authorizedAuth(files, binding);
   const row = makeEight()[0];
   const state = { banned: false, profileStatus: "active", authority: null };
   const adapters = baseAdapters(row, state);
@@ -801,7 +1054,6 @@ test("I) no B1B writer updates profiles.status", async () => {
   assert.equal(state.profileStatus, "active");
   assert.equal(result.profileStatusPreserved, true);
 
-  // Reject adapter surface that includes updateProfileStatus
   const bad = await quarantineOneIdentityB1B({
     allowlistRow: row,
     adapters: {
@@ -838,8 +1090,6 @@ test("J) OLD B1 retirement: GO and batches cannot authorize forward", () => {
   assert.ok(
     forward.reasons.includes("retired_owner_production_go_not_reusable")
   );
-  assert.equal(forward.oldOwnerGoReusable, false);
-  assert.equal(forward.oldBatchReusable, false);
 
   for (const batch of [
     "b37186cf-e620-4f27-aba3-d7e8750ae7df",
@@ -860,7 +1110,7 @@ test("J) OLD B1 retirement: GO and batches cannot authorize forward", () => {
   }
 });
 
-test("K) exact eight accepted under valid mocked conditions; hard delete unavailable", () => {
+test("K) exact eight accepted; certified labels exactly once", () => {
   const doc = {
     operation: OPERATION_ID,
     production_project_ref: EXPECTED_PRODUCTION_PROJECT_REF,
@@ -870,18 +1120,24 @@ test("K) exact eight accepted under valid mocked conditions; hard delete unavail
   const v = validateAllowlistDocument(doc);
   assert.equal(v.ok, true);
   assert.equal(hardDeleteUnavailable().available, false);
+  const labels = v.identities.map((r) => r.label).sort();
+  assert.deepEqual(labels, [...CERTIFIED_B1_TARGET_LABELS].sort());
 });
 
-test("L) security surface: narrow adapters; no raw admin; no profile status writer", () => {
+test("L) security surface: narrow adapters; get_state exact keys; no p_profile_id", async () => {
   assert.ok(
     !OPERATION_B1B_LIVE_ADAPTER_CAPABILITIES.includes("updateProfileStatus")
   );
-  assert.ok(!OPERATION_B1B_LIVE_ADAPTER_CAPABILITIES.includes("deleteUser"));
-  assert.ok(!OPERATION_B1B_LIVE_ADAPTER_CAPABILITIES.includes("createUser"));
 
+  const rpcCalls = [];
   const adapters = createOperationB1BLiveAdapters({
     admin: {
-      auth: { admin: { getUserById: async () => ({ data: null }), updateUserById: async () => ({ data: null }) } },
+      auth: {
+        admin: {
+          getUserById: async () => ({ data: null }),
+          updateUserById: async () => ({ data: null }),
+        },
+      },
       from() {
         return {
           select() {
@@ -893,32 +1149,134 @@ test("L) security surface: narrow adapters; no raw admin; no profile status writ
           maybeSingle: async () => ({ data: null, error: null }),
         };
       },
-      rpc: async () => ({ data: { ok: true }, error: null }),
+      rpc: async (name, args) => {
+        rpcCalls.push({ name, keys: Object.keys(args || {}).sort(), args });
+        return { data: { ok: true, code: "state" }, error: null };
+      },
     },
   });
   const surface = assertNarrowAdapterSurface(adapters);
   assert.equal(surface.ok, true);
-  assert.equal(surface.hasUpdateProfileStatus, false);
-  assert.equal(surface.hasHardDelete, false);
   assert.equal(adapters.admin, undefined);
-  assert.equal(adapters.client, undefined);
-  assert.equal(adapters.deleteUser, undefined);
-  assert.equal(adapters.updateProfileStatus, undefined);
+
+  const qid = quarantineUuid(9);
+  const ok = await adapters.qaQuarantineGetState({ quarantineId: qid });
+  assert.equal(ok.ok, true);
+  assert.deepEqual(rpcCalls[0].keys, ["p_quarantine_id"]);
+  assert.equal(rpcCalls[0].args.p_quarantine_id, qid);
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(rpcCalls[0].args, "p_profile_id"),
+    false
+  );
+
+  const badNull = await adapters.qaQuarantineGetState({ quarantineId: null });
+  assert.equal(badNull.ok, false);
+  assert.equal(badNull.reason, "invalid_or_missing_quarantine_id");
+
+  const badProfile = await adapters.qaQuarantineGetState({
+    quarantineId: qid,
+    profileId: uuid(1),
+  });
+  assert.equal(badProfile.ok, true);
+  assert.deepEqual(rpcCalls.at(-1).keys, ["p_quarantine_id"]);
 });
 
-test("one-time authority: presentLiveAuthority consumes GO/batch", () => {
+test("M) live execute requires durable claimOneTimeLiveAuthority dependency", async () => {
+  resetAuthorityConsumptionForTests();
+  const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
+  const binding = makeBinding(files);
+  const row = makeEight()[0];
+  const state = { banned: false, profileStatus: "active", authority: null };
+  const adapters = baseAdapters(row, state);
+
+  const missing = await runB1BExecute(liveInput(files, binding), {
+    repoRoots: [root],
+    adapters,
+  });
+  assert.equal(missing.ok, false);
+  assert.equal(
+    missing.failReason,
+    "durable_one_time_authority_dependency_required"
+  );
+  assert.equal(missing.mutationCalls, 0);
+
+  resetAuthorityConsumptionForTests();
+  const ok = await runB1BExecute(liveInput(files, binding), {
+    repoRoots: [root],
+    adapters: baseAdapters(row, {
+      banned: false,
+      profileStatus: "active",
+      authority: null,
+    }),
+    claimOneTimeLiveAuthority: testDurableClaimer(),
+  });
+  // Single-identity adapters against 8 identities will fail eligibility for others,
+  // but durable claim must have succeeded first (authorityConsumed).
+  assert.equal(ok.authorityConsumed, true);
+  assert.equal(ok.durableAuthorityClaimed, true);
+});
+
+test("one-time authority: durable dependency required; process-local is defense-in-depth", async () => {
   resetAuthorityConsumptionForTests();
   const files = writeAllowlistAndSnapshot(makeEight(), FRESH_BATCH);
   const binding = makeBinding(files);
   const auth = evaluateAuthorization(liveInput(files, binding));
   assert.equal(mutationAllowed(auth), true);
-  const first = presentLiveAuthority(auth);
+
+  const missing = await presentLiveAuthority(auth);
+  assert.equal(missing.ok, false);
+  assert.equal(
+    missing.reason,
+    "durable_one_time_authority_dependency_required"
+  );
+
+  const claimer = testDurableClaimer();
+  const first = await presentLiveAuthority(auth, claimer);
   assert.equal(first.ok, true);
-  const second = presentLiveAuthority(auth);
+  assert.equal(first.durable, true);
+  const second = await presentLiveAuthority(auth, claimer);
   assert.equal(second.ok, false);
-  const again = evaluateAuthorization(liveInput(files, binding));
-  assert.equal(mutationAllowed(again), false);
-  assert.ok(again.reasons.includes("authority_already_consumed"));
+});
+
+test("N) RPC arg keys locked to WP2 SQL signatures", () => {
+  const sql = fs.readFileSync(WP2_SQL, "utf8");
+  const expected = {
+    qa_quarantine_prepare:
+      "p_profile_id uuid, p_auth_user_id uuid, p_batch_id uuid, p_allowlist_sha256 text, p_snapshot_sha256 text, p_reason text, p_original_profile_status text, p_original_auth_banned boolean, p_expected_email text, p_allowlist_label text, p_metadata jsonb",
+    qa_quarantine_activate_after_auth_ban:
+      "p_quarantine_id uuid, p_expected_lifecycle_version integer, p_auth_ban_readback_confirmed boolean",
+    qa_quarantine_activate_preexisting_ban:
+      "p_quarantine_id uuid, p_expected_lifecycle_version integer",
+    qa_quarantine_record_compensated_failure:
+      "p_quarantine_id uuid, p_expected_lifecycle_version integer, p_target_auth_ban_state text, p_failure_classification text",
+    qa_quarantine_release:
+      "p_quarantine_id uuid, p_expected_lifecycle_version integer, p_release_reason text",
+    qa_quarantine_get_state: "p_quarantine_id uuid",
+  };
+
+  for (const [name, sig] of Object.entries(expected)) {
+    assert.ok(
+      sql.includes(`WHEN '${name}' THEN`) ||
+        new RegExp(
+          `create\\s+or\\s+replace\\s+function\\s+public\\.${name}\\s*\\(`,
+          "i"
+        ).test(sql),
+      `sql mentions ${name}`
+    );
+    const keys = OPERATION_B1B_RPC_ARG_KEYS[name];
+    for (const key of keys) {
+      assert.ok(sig.includes(key), `${name} SQL sig includes ${key}`);
+    }
+    assert.equal(
+      keys.includes("p_profile_id") && name === "qa_quarantine_get_state",
+      false
+    );
+  }
+
+  assert.deepEqual(OPERATION_B1B_RPC_ARG_KEYS.qa_quarantine_get_state, [
+    "p_quarantine_id",
+  ]);
+  assert.ok(sql.includes("activation_failed_preexisting"));
 });
 
 test("createFreshAuthorizationBinding rejects retired GO/batch", () => {

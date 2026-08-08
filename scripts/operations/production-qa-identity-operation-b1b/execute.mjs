@@ -44,6 +44,7 @@ function envInput() {
  *   repoRoots?: string[],
  *   adapters?: object,
  *   freshAuthorizationBinding?: object|null,
+ *   claimOneTimeLiveAuthority?: Function,
  * }} [deps]
  */
 export async function runB1BExecute(input = envInput(), deps = {}) {
@@ -55,6 +56,7 @@ export async function runB1BExecute(input = envInput(), deps = {}) {
     mutationCalls: 0,
     reasons: [],
     authorityConsumed: false,
+    durableAuthorityClaimed: false,
     newProductionGoIssued: false,
     oldOwnerGoReusable: false,
     oldBatchReusable: false,
@@ -117,8 +119,13 @@ export async function runB1BExecute(input = envInput(), deps = {}) {
   }
 
   if (mutationAllowed(auth)) {
-    const presented = presentLiveAuthority(auth);
+    // WP4 requires WP7 durable one-time consumption dependency — no default success.
+    const presented = await presentLiveAuthority(
+      auth,
+      deps.claimOneTimeLiveAuthority
+    );
     report.authorityConsumed = presented.consumed === true;
+    report.durableAuthorityClaimed = presented.ok === true && presented.durable === true;
     if (!presented.ok) {
       report.reasons.push(presented.reason);
       report.failReason = presented.reason;

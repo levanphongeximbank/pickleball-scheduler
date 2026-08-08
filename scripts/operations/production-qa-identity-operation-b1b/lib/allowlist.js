@@ -9,6 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   B2_EXCLUDED_LABELS,
+  CERTIFIED_B1_TARGET_LABELS,
   EXPECTED_B1B_COUNT,
   EXPECTED_PRODUCTION_PROJECT_REF,
   FORBIDDEN_REAL_USER_EMAIL,
@@ -19,6 +20,10 @@ import { isCertifiedQaEmail } from "../../../../src/features/player/utils/qaTest
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function normalizeAllowlistLabel(label) {
+  return String(label || "").trim().toUpperCase();
+}
 
 export function sha256Hex(bufferOrString) {
   return crypto.createHash("sha256").update(bufferOrString).digest("hex");
@@ -70,11 +75,16 @@ export function validateAllowlistDocument(doc) {
   const profileIds = new Set();
   const emails = new Set();
   const labels = new Set();
+  const normalizedIdentities = [];
 
   for (const row of doc.identities) {
-    const label = String(row?.label || "").trim();
-    if (B2_EXCLUDED_LABELS.includes(label)) {
+    const label = normalizeAllowlistLabel(row?.label);
+    if (!label) {
+      errors.push("missing_label");
+    } else if (B2_EXCLUDED_LABELS.includes(label)) {
       errors.push(`b2_excluded_label_present:${label}`);
+    } else if (!CERTIFIED_B1_TARGET_LABELS.includes(label)) {
+      errors.push(`unknown_or_uncertified_label:${label}`);
     }
     if (label && labels.has(label)) errors.push(`duplicate_label:${label}`);
     if (label) labels.add(label);
@@ -113,12 +123,29 @@ export function validateAllowlistDocument(doc) {
         errors.push(`nonzero_reference:${key}`);
       }
     }
+
+    normalizedIdentities.push({
+      ...row,
+      label: label || row?.label,
+      auth_user_id: authId,
+      profile_id: profileId,
+      expected_email: email,
+    });
+  }
+
+  for (const required of CERTIFIED_B1_TARGET_LABELS) {
+    if (!labels.has(required)) {
+      errors.push(`missing_certified_label:${required}`);
+    }
+  }
+  if (labels.size !== CERTIFIED_B1_TARGET_LABELS.length) {
+    errors.push("certified_labels_not_exact_eight_unique");
   }
 
   return {
     ok: errors.length === 0,
     errors,
-    identities: doc.identities,
+    identities: errors.length === 0 ? normalizedIdentities : doc.identities,
   };
 }
 
@@ -153,6 +180,7 @@ export function loadAndValidateAllowlistFile(
   }
   let doc;
   try {
+    // Parse the already-verified bytes — do not re-read the file.
     doc = JSON.parse(bytes.toString("utf8"));
   } catch {
     return { ok: false, errors: ["allowlist_json_parse_error"], identities: [] };

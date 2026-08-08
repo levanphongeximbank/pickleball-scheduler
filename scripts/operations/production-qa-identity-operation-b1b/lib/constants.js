@@ -87,3 +87,15 @@ export const ACTIVE_AUTH_BAN_STATES = Object.freeze([
 ]);
 
 export const SOURCE_OPERATION = "OPERATION_B1B_QA_QUARANTINE_AUTHORITY";
+
+/**
+ * WP2 qa_quarantine_record_compensated_failure exact matrix.
+ * Do not invent arbitrary classification strings in the runner.
+ */
+export const FAILURE_CLASSIFICATION_MATRIX = Object.freeze({
+  auth_ban_failed: "failed",
+  activation_failed_compensated: "reverted",
+  compensation_incomplete: "failed",
+  prepare_failure_recorded: "failed",
+  activation_failed_preexisting: "failed",
+});

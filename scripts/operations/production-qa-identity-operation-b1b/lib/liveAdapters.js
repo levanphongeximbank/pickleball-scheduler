@@ -27,6 +27,47 @@ export const OPERATION_B1B_LIVE_ADAPTER_CAPABILITIES = Object.freeze([
   "unbanAuthUser",
 ]);
 
+/**
+ * Exact PostgREST/RPC argument keys locked to WP2 SQL signatures.
+ * Tests must assert these exact key sets.
+ */
+export const OPERATION_B1B_RPC_ARG_KEYS = Object.freeze({
+  qa_quarantine_prepare: Object.freeze([
+    "p_profile_id",
+    "p_auth_user_id",
+    "p_batch_id",
+    "p_allowlist_sha256",
+    "p_snapshot_sha256",
+    "p_reason",
+    "p_original_profile_status",
+    "p_original_auth_banned",
+    "p_expected_email",
+    "p_allowlist_label",
+    "p_metadata",
+  ]),
+  qa_quarantine_activate_after_auth_ban: Object.freeze([
+    "p_quarantine_id",
+    "p_expected_lifecycle_version",
+    "p_auth_ban_readback_confirmed",
+  ]),
+  qa_quarantine_activate_preexisting_ban: Object.freeze([
+    "p_quarantine_id",
+    "p_expected_lifecycle_version",
+  ]),
+  qa_quarantine_record_compensated_failure: Object.freeze([
+    "p_quarantine_id",
+    "p_expected_lifecycle_version",
+    "p_target_auth_ban_state",
+    "p_failure_classification",
+  ]),
+  qa_quarantine_release: Object.freeze([
+    "p_quarantine_id",
+    "p_expected_lifecycle_version",
+    "p_release_reason",
+  ]),
+  qa_quarantine_get_state: Object.freeze(["p_quarantine_id"]),
+});
+
 const FORBIDDEN_SURFACE_KEYS = Object.freeze([
   "admin",
   "client",
@@ -40,9 +81,31 @@ const FORBIDDEN_SURFACE_KEYS = Object.freeze([
   "updateProfileStatus",
 ]);
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function sanitizeReason(err) {
   const msg = String(err?.message || err?.reason || err || "unknown_error");
   return msg.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[REDACTED]");
+}
+
+function assertExactRpcArgs(rpcName, args) {
+  const expected = OPERATION_B1B_RPC_ARG_KEYS[rpcName];
+  if (!expected) {
+    throw new Error(`unknown_rpc_contract:${rpcName}`);
+  }
+  const keys = Object.keys(args || {}).sort();
+  const want = [...expected].sort();
+  if (keys.length !== want.length || keys.some((k, i) => k !== want[i])) {
+    return {
+      ok: false,
+      reason: `rpc_arg_keys_mismatch:${rpcName}`,
+      code: "rpc_arg_keys_mismatch",
+      expected: want,
+      actual: keys,
+    };
+  }
+  return { ok: true };
 }
 
 async function countExact(client, table, filters = []) {
@@ -56,6 +119,8 @@ async function countExact(client, table, filters = []) {
 }
 
 async function callRpc(admin, name, args) {
+  const keyCheck = assertExactRpcArgs(name, args);
+  if (!keyCheck.ok) return keyCheck;
   const { data, error } = await admin.rpc(name, args);
   if (error) {
     return { ok: false, reason: sanitizeReason(error), code: error.code || null };
@@ -223,9 +288,17 @@ export function createOperationB1BLiveAdapters({ admin }) {
   }
 
   async function qaQuarantineGetState(args) {
+    const quarantineId = String(args?.quarantineId || "").trim();
+    if (!UUID_RE.test(quarantineId)) {
+      return {
+        ok: false,
+        reason: "invalid_or_missing_quarantine_id",
+        code: "invalid_input",
+      };
+    }
+    // WP2 signature: qa_quarantine_get_state(p_quarantine_id uuid) ONLY.
     return callRpc(admin, "qa_quarantine_get_state", {
-      p_profile_id: args.profileId,
-      p_quarantine_id: args.quarantineId ?? null,
+      p_quarantine_id: quarantineId,
     });
   }
 

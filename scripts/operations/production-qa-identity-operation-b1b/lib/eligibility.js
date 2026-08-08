@@ -9,6 +9,7 @@ import {
   FORBIDDEN_REAL_USER_EMAIL,
   ZERO_REFERENCE_KEYS,
 } from "./constants.js";
+import { normalizeAllowlistLabel } from "./allowlist.js";
 
 export function hasBusinessReferences(referenceCounts = {}) {
   for (const key of ZERO_REFERENCE_KEYS) {
@@ -31,7 +32,8 @@ export async function evaluateIdentityEligibility(allowlistRow, adapters = {}) {
     references: null,
   };
 
-  if (B2_EXCLUDED_LABELS.includes(String(allowlistRow.label || ""))) {
+  const normalizedLabel = normalizeAllowlistLabel(allowlistRow.label);
+  if (B2_EXCLUDED_LABELS.includes(normalizedLabel)) {
     result.reasons.push("b2_excluded_label");
     return result;
   }

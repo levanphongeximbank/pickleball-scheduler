@@ -6,11 +6,15 @@
  * Activation via controlled writers only.
  * profiles.status is never a quarantine writer.
  *
+ * Idempotency: use prepare response codes (already_quarantined /
+ * prepare_idempotent / prepared). Do NOT call get_state before quarantine_id.
+ *
  * Canonical authority: public.qa_identity_quarantines
  */
 
 import {
   ACTIVE_AUTH_BAN_STATES,
+  FAILURE_CLASSIFICATION_MATRIX,
   QUARANTINE_BAN_DURATION,
   SOURCE_OPERATION,
 } from "./constants.js";
@@ -34,6 +38,28 @@ function extractAuthority(data) {
   return data;
 }
 
+function prepareCode(prepare) {
+  return String(prepare?.data?.code || prepare?.code || "").toLowerCase();
+}
+
+function prepareQuarantineId(prepare, authority) {
+  return (
+    prepare?.data?.quarantine_id ||
+    authority?.quarantine_id ||
+    authority?.id ||
+    null
+  );
+}
+
+function prepareLifecycleVersion(prepare, authority) {
+  const fromPrepare = prepare?.data?.lifecycle_version;
+  if (fromPrepare != null) return Number(fromPrepare);
+  if (authority?.lifecycle_version != null) {
+    return Number(authority.lifecycle_version);
+  }
+  return 1;
+}
+
 function isFullyActive(authority) {
   if (!authority) return false;
   const life = String(authority.lifecycle_state || "").toLowerCase();
@@ -49,11 +75,22 @@ function isPending(authority) {
   );
 }
 
-async function independentAuthorityReadback(adapters, { profileId, quarantineId }) {
-  if (typeof adapters.qaQuarantineGetState !== "function") {
-    return { ok: false, reason: "authority_readback_unavailable", authority: null };
+async function independentAuthorityReadback(adapters, quarantineId) {
+  if (!quarantineId) {
+    return {
+      ok: false,
+      reason: "quarantine_id_required_for_get_state",
+      authority: null,
+    };
   }
-  const res = await adapters.qaQuarantineGetState({ profileId, quarantineId });
+  if (typeof adapters.qaQuarantineGetState !== "function") {
+    return {
+      ok: false,
+      reason: "authority_readback_unavailable",
+      authority: null,
+    };
+  }
+  const res = await adapters.qaQuarantineGetState({ quarantineId });
   if (!res?.ok) {
     return {
       ok: false,
@@ -91,6 +128,39 @@ async function verifyProfileStatusUnchanged(adapters, profileId, originalStatus)
     };
   }
   return { ok: true, status: profile.status };
+}
+
+async function recordCompensatedFailure(adapters, log, args) {
+  const classification = args.failureClassification;
+  const expectedTarget = FAILURE_CLASSIFICATION_MATRIX[classification];
+  if (!expectedTarget) {
+    return {
+      ok: false,
+      reason: `unknown_failure_classification:${classification}`,
+    };
+  }
+  if (args.targetAuthBanState !== expectedTarget) {
+    return {
+      ok: false,
+      reason: `invalid_compensation_pair:${classification}:${args.targetAuthBanState}`,
+    };
+  }
+  if (typeof adapters.qaQuarantineRecordCompensatedFailure !== "function") {
+    return { ok: false, reason: "failure_recorder_unavailable" };
+  }
+  const failRec = await adapters.qaQuarantineRecordCompensatedFailure({
+    quarantineId: args.quarantineId,
+    expectedLifecycleVersion: args.expectedLifecycleVersion,
+    targetAuthBanState: args.targetAuthBanState,
+    failureClassification: classification,
+  });
+  if (failRec?.ok) {
+    log("qa_quarantine_record_compensated_failure", {
+      classification,
+      targetAuthBanState: args.targetAuthBanState,
+    });
+  }
+  return failRec;
 }
 
 /**
@@ -138,7 +208,6 @@ export async function quarantineOneIdentityB1B({
     return entry;
   }
 
-  // Fail closed if profile status writer somehow appears.
   if (typeof adapters.updateProfileStatus === "function") {
     entry.aborted = true;
     entry.abortReason = "profile_status_writer_forbidden_on_b1b_surface";
@@ -185,37 +254,8 @@ export async function quarantineOneIdentityB1B({
   const profileId = allowlistRow.profile_id;
   const authUserId = allowlistRow.auth_user_id;
 
-  // Idempotency: already fully active for same batch → success after readback.
-  const existing = await independentAuthorityReadback(adapters, {
-    profileId,
-    quarantineId: null,
-  });
-  log("authority_precheck_readback");
-  if (existing.ok && isFullyActive(existing.authority)) {
-    const authRow = existing.authority;
-    if (
-      String(authRow.batch_id || "") === String(batchId || "") &&
-      String(authRow.allowlist_sha256 || "").toLowerCase() ===
-        String(allowlistSha256 || "").toLowerCase()
-    ) {
-      const profileCheck = await verifyProfileStatusUnchanged(
-        adapters,
-        profileId,
-        original.profile_status
-      );
-      entry.profileStatusPreserved = profileCheck.ok === true;
-      entry.authority = "already_active_same_binding";
-      entry.authBan = authRow.auth_ban_state;
-      entry.ok = profileCheck.ok === true;
-      if (!entry.ok) {
-        entry.aborted = true;
-        entry.abortReason = profileCheck.reason || "postcheck_failed";
-      }
-      return entry;
-    }
-  }
-
-  // A) prepare — first durable write
+  // A) prepare — first durable write AND canonical idempotency resolver.
+  // Do NOT call get_state before quarantine_id exists.
   if (typeof adapters.qaQuarantinePrepare !== "function") {
     entry.aborted = true;
     entry.abortReason = "prepare_writer_unavailable";
@@ -235,11 +275,10 @@ export async function quarantineOneIdentityB1B({
     allowlistLabel: allowlistRow.label,
     metadata: { source_operation: SOURCE_OPERATION },
   });
-  log("qa_quarantine_prepare");
+  log("qa_quarantine_prepare", { code: prepareCode(prepare) || null });
   entry.mutations += 1;
 
   if (!prepare?.ok) {
-    // BOUNDARY 1 — prepare fails before Auth ban
     entry.aborted = true;
     entry.abortReason = prepare?.reason || "prepare_failed";
     entry.authority = "prepare_failed";
@@ -247,55 +286,96 @@ export async function quarantineOneIdentityB1B({
     return entry;
   }
 
+  const code = prepareCode(prepare);
   let authority = extractAuthority(prepare.data);
-  const prepareReadback = await independentAuthorityReadback(adapters, {
-    profileId,
-    quarantineId: authority?.id || authority?.quarantine_id,
-  });
-  log("authority_readback_after_prepare");
-  if (prepareReadback.ok && prepareReadback.authority) {
-    authority = prepareReadback.authority;
+  const quarantineId = prepareQuarantineId(prepare, authority);
+  let lifecycleVersion = prepareLifecycleVersion(prepare, authority);
+
+  if (!quarantineId) {
+    entry.aborted = true;
+    entry.abortReason = "prepare_missing_quarantine_id";
+    return entry;
   }
 
-  if (!isPending(authority) && !isFullyActive(authority)) {
-    // Unexpected state after prepare
-    if (!isPending(authority)) {
+  // already_quarantined: same bind+batch fully active — verify via get_state(id)
+  if (code === "already_quarantined" || isFullyActive(authority)) {
+    const readback = await independentAuthorityReadback(adapters, quarantineId);
+    log("authority_readback", { quarantineId });
+    if (!readback.ok || !isFullyActive(readback.authority)) {
       entry.aborted = true;
-      entry.abortReason = "prepare_did_not_yield_pending";
-      entry.authority = authority;
+      entry.abortReason =
+        readback.reason || "already_quarantined_readback_failed";
       return entry;
     }
-  }
-
-  // Already active same binding from prepare idempotent path
-  if (isFullyActive(authority)) {
+    authority = readback.authority;
     const profileCheck = await verifyProfileStatusUnchanged(
       adapters,
       profileId,
       original.profile_status
     );
     entry.profileStatusPreserved = profileCheck.ok === true;
-    entry.authority = authority;
+    entry.authority = {
+      lifecycle_state: authority.lifecycle_state,
+      auth_ban_state: authority.auth_ban_state,
+      lifecycle_version: authority.lifecycle_version,
+    };
     entry.authBan = authority.auth_ban_state;
     entry.ok = profileCheck.ok === true;
     if (!entry.ok) {
       entry.aborted = true;
-      entry.abortReason = profileCheck.reason;
+      entry.abortReason = profileCheck.reason || "postcheck_failed";
     }
     return entry;
   }
 
-  const quarantineId = authority?.id || authority?.quarantine_id;
-  let lifecycleVersion = Number(authority?.lifecycle_version ?? 1);
+  // prepare_idempotent / prepared → pending path continues
+  if (code === "prepare_idempotent" || code === "prepared" || isPending(authority)) {
+    const pendingReadback = await independentAuthorityReadback(
+      adapters,
+      quarantineId
+    );
+    log("authority_readback_after_prepare", { quarantineId });
+    if (pendingReadback.ok && pendingReadback.authority) {
+      authority = pendingReadback.authority;
+      lifecycleVersion = Number(
+        authority.lifecycle_version ?? lifecycleVersion
+      );
+    }
+    if (!isPending(authority) && !isFullyActive(authority)) {
+      entry.aborted = true;
+      entry.abortReason = "prepare_did_not_yield_pending";
+      entry.authority = authority;
+      return entry;
+    }
+    if (isFullyActive(authority)) {
+      const profileCheck = await verifyProfileStatusUnchanged(
+        adapters,
+        profileId,
+        original.profile_status
+      );
+      entry.profileStatusPreserved = profileCheck.ok === true;
+      entry.authority = authority;
+      entry.authBan = authority.auth_ban_state;
+      entry.ok = profileCheck.ok === true;
+      if (!entry.ok) {
+        entry.aborted = true;
+        entry.abortReason = profileCheck.reason;
+      }
+      return entry;
+    }
+  } else {
+    entry.aborted = true;
+    entry.abortReason = `unexpected_prepare_code:${code || "unknown"}`;
+    return entry;
+  }
+
   let b1bAppliedBan = false;
 
   // B/C) Auth ban path
   if (original.auth_banned === true) {
-    // Preexisting ban — do NOT mutate Auth
     const authRb = await independentAuthReadback(adapters, authUserId);
     log("auth_readback");
     if (!authRb.ok || authRb.banned !== true) {
-      // BOUNDARY 5-ish / integrity: expected preexisting ban not confirmed
       entry.aborted = true;
       entry.critical = true;
       entry.integrityIncident = true;
@@ -322,34 +402,30 @@ export async function quarantineOneIdentityB1B({
     entry.mutations += 1;
 
     if (!activate?.ok) {
-      // Activation failed; preexisting ban — no unban
-      const failRec =
-        typeof adapters.qaQuarantineRecordCompensatedFailure === "function"
-          ? await adapters.qaQuarantineRecordCompensatedFailure({
-              quarantineId,
-              expectedLifecycleVersion: lifecycleVersion,
-              targetAuthBanState: "not_required_preexisting",
-              failureClassification: "activation_failed_preexisting",
-            })
-          : { ok: false };
+      const failRec = await recordCompensatedFailure(adapters, log, {
+        quarantineId,
+        expectedLifecycleVersion: lifecycleVersion,
+        targetAuthBanState: "failed",
+        failureClassification: "activation_failed_preexisting",
+      });
       if (failRec?.ok) {
-        log("qa_quarantine_record_compensated_failure");
         entry.mutations += 1;
         entry.compensated = true;
       }
       entry.aborted = true;
       entry.abortReason = activate?.reason || "activate_preexisting_failed";
       entry.authority = "activation_failed";
+      entry.authBan = "preexisting_ban_left_unchanged";
+      entry.ok = false;
       return entry;
     }
 
-    const authReadbackFinal = await independentAuthorityReadback(adapters, {
-      profileId,
-      quarantineId,
-    });
-    log("authority_readback");
+    const authReadbackFinal = await independentAuthorityReadback(
+      adapters,
+      quarantineId
+    );
+    log("authority_readback", { quarantineId });
     if (!authReadbackFinal.ok || !isFullyActive(authReadbackFinal.authority)) {
-      // BOUNDARY 4
       return await compensatePostActivationFailure({
         entry,
         adapters,
@@ -383,19 +459,14 @@ export async function quarantineOneIdentityB1B({
       });
     }
   } else {
-    // Originally unbanned — apply Auth ban
     if (typeof adapters.banAuthUser !== "function") {
-      const failRec =
-        typeof adapters.qaQuarantineRecordCompensatedFailure === "function"
-          ? await adapters.qaQuarantineRecordCompensatedFailure({
-              quarantineId,
-              expectedLifecycleVersion: lifecycleVersion,
-              targetAuthBanState: "failed",
-              failureClassification: "auth_ban_writer_unavailable",
-            })
-          : { ok: false };
+      const failRec = await recordCompensatedFailure(adapters, log, {
+        quarantineId,
+        expectedLifecycleVersion: lifecycleVersion,
+        targetAuthBanState: "failed",
+        failureClassification: "auth_ban_failed",
+      });
       if (failRec?.ok) {
-        log("qa_quarantine_record_compensated_failure");
         entry.mutations += 1;
         entry.compensated = true;
       }
@@ -414,18 +485,14 @@ export async function quarantineOneIdentityB1B({
     entry.mutations += 1;
 
     if (!banWrite?.ok) {
-      // BOUNDARY 2 — prepare succeeded; Auth ban failed
-      const failRec =
-        typeof adapters.qaQuarantineRecordCompensatedFailure === "function"
-          ? await adapters.qaQuarantineRecordCompensatedFailure({
-              quarantineId,
-              expectedLifecycleVersion: lifecycleVersion,
-              targetAuthBanState: "failed",
-              failureClassification: "auth_ban_failed",
-            })
-          : { ok: false };
+      // BOUNDARY 2
+      const failRec = await recordCompensatedFailure(adapters, log, {
+        quarantineId,
+        expectedLifecycleVersion: lifecycleVersion,
+        targetAuthBanState: "failed",
+        failureClassification: "auth_ban_failed",
+      });
       if (failRec?.ok) {
-        log("qa_quarantine_record_compensated_failure");
         entry.mutations += 1;
         entry.compensated = true;
       }
@@ -439,11 +506,9 @@ export async function quarantineOneIdentityB1B({
     b1bAppliedBan = true;
     entry.authBan = "banned_mutation_returned";
 
-    // C) Independent Auth readback — never trust ban mutation alone
     const authRb = await independentAuthReadback(adapters, authUserId);
     log("auth_readback");
     if (!authRb.ok || authRb.banned !== true) {
-      // Ban claimed success but readback failed → compensate as BOUNDARY 3
       return await compensateActivationFailureAfterBan({
         entry,
         adapters,
@@ -481,7 +546,6 @@ export async function quarantineOneIdentityB1B({
     entry.mutations += 1;
 
     if (!activate?.ok) {
-      // BOUNDARY 3
       return await compensateActivationFailureAfterBan({
         entry,
         adapters,
@@ -495,11 +559,11 @@ export async function quarantineOneIdentityB1B({
       });
     }
 
-    const authReadbackFinal = await independentAuthorityReadback(adapters, {
-      profileId,
-      quarantineId,
-    });
-    log("authority_readback");
+    const authReadbackFinal = await independentAuthorityReadback(
+      adapters,
+      quarantineId
+    );
+    log("authority_readback", { quarantineId });
     if (!authReadbackFinal.ok || !isFullyActive(authReadbackFinal.authority)) {
       return await compensatePostActivationFailure({
         entry,
@@ -508,7 +572,8 @@ export async function quarantineOneIdentityB1B({
         profileId,
         authUserId,
         quarantineId,
-        authority: authReadbackFinal.authority || extractAuthority(activate.data),
+        authority:
+          authReadbackFinal.authority || extractAuthority(activate.data),
         original,
         b1bAppliedBan: true,
         reason: "post_activation_authority_verify_failed",
@@ -535,7 +600,6 @@ export async function quarantineOneIdentityB1B({
     }
   }
 
-  // Final profile status postcheck — must remain original
   const profileCheck = await verifyProfileStatusUnchanged(
     adapters,
     profileId,
@@ -557,7 +621,6 @@ export async function quarantineOneIdentityB1B({
     });
   }
 
-  // Detect impossible split: Auth banned without expected active authority
   const finalAuth = await independentAuthReadback(adapters, authUserId);
   log("auth_readback_final");
   if (finalAuth.ok && finalAuth.banned === true && !isFullyActive(authority)) {
@@ -593,59 +656,90 @@ async function compensateActivationFailureAfterBan({
   entry.abortReason = reason;
   entry.authBan = "banned_activation_failed";
 
-  // Deterministic unban because original was unbanned and B1B applied ban
+  let unbanProven = false;
   if (original.auth_banned === false) {
     if (typeof adapters.unbanAuthUser !== "function") {
-      entry.critical = true;
-      entry.abortReason = "CRITICAL_COMPENSATION_INCOMPLETE:unban_unavailable";
-      return entry;
+      return await markCompensationIncomplete({
+        entry,
+        adapters,
+        log,
+        profileId,
+        quarantineId,
+        lifecycleVersion,
+        original,
+        detail: "unban_unavailable",
+      });
     }
     const unban = await adapters.unbanAuthUser({ userId: authUserId });
     log("unbanAuthUser");
     entry.mutations += 1;
     if (!unban?.ok) {
-      entry.critical = true;
-      entry.abortReason = "CRITICAL_COMPENSATION_INCOMPLETE:unban_failed";
-      return entry;
+      return await markCompensationIncomplete({
+        entry,
+        adapters,
+        log,
+        profileId,
+        quarantineId,
+        lifecycleVersion,
+        original,
+        detail: "unban_failed",
+      });
     }
     const unbanRb = await independentAuthReadback(adapters, authUserId);
     log("auth_readback_after_unban");
     if (!unbanRb.ok || unbanRb.banned !== false) {
-      entry.critical = true;
-      entry.abortReason = "CRITICAL_COMPENSATION_INCOMPLETE:unban_readback_failed";
-      return entry;
+      return await markCompensationIncomplete({
+        entry,
+        adapters,
+        log,
+        profileId,
+        quarantineId,
+        lifecycleVersion,
+        original,
+        detail: "unban_readback_failed",
+      });
     }
     entry.authBan = "unbanned_compensated";
+    unbanProven = true;
   }
 
-  if (typeof adapters.qaQuarantineRecordCompensatedFailure !== "function") {
-    entry.critical = true;
-    entry.abortReason =
-      "CRITICAL_COMPENSATION_INCOMPLETE:failure_recorder_unavailable";
-    return entry;
+  if (!unbanProven && original.auth_banned === false) {
+    return await markCompensationIncomplete({
+      entry,
+      adapters,
+      log,
+      profileId,
+      quarantineId,
+      lifecycleVersion,
+      original,
+      detail: "unban_not_proven",
+    });
   }
 
-  const failRec = await adapters.qaQuarantineRecordCompensatedFailure({
+  const failRec = await recordCompensatedFailure(adapters, log, {
     quarantineId,
     expectedLifecycleVersion: lifecycleVersion,
     targetAuthBanState: "reverted",
-    failureClassification: reason,
+    failureClassification: "activation_failed_compensated",
   });
-  log("qa_quarantine_record_compensated_failure");
   entry.mutations += 1;
   if (!failRec?.ok) {
-    entry.critical = true;
-    entry.abortReason =
-      "CRITICAL_COMPENSATION_INCOMPLETE:failure_recording_failed";
-    return entry;
+    return await markCompensationIncomplete({
+      entry,
+      adapters,
+      log,
+      profileId,
+      quarantineId,
+      lifecycleVersion: lifecycleVersion,
+      original,
+      detail: "failure_recording_failed",
+      skipRecord: true,
+    });
   }
   entry.compensated = true;
 
-  const authCheck = await independentAuthorityReadback(adapters, {
-    profileId,
-    quarantineId,
-  });
-  log("authority_readback_after_compensation");
+  const authCheck = await independentAuthorityReadback(adapters, quarantineId);
+  log("authority_readback_after_compensation", { quarantineId });
   if (authCheck.ok && isFullyActive(authCheck.authority)) {
     entry.critical = true;
     entry.abortReason = "CRITICAL_COMPENSATION_INCOMPLETE:active_authority_remains";
@@ -659,6 +753,41 @@ async function compensateActivationFailureAfterBan({
   );
   entry.profileStatusPreserved = profileCheck.ok === true;
   entry.authority = "compensated_no_active";
+  entry.ok = false;
+  return entry;
+}
+
+async function markCompensationIncomplete({
+  entry,
+  adapters,
+  log,
+  profileId,
+  quarantineId,
+  lifecycleVersion,
+  original,
+  detail,
+  skipRecord = false,
+}) {
+  entry.critical = true;
+  entry.abortReason = `CRITICAL_COMPENSATION_INCOMPLETE:${detail}`;
+  if (!skipRecord) {
+    const failRec = await recordCompensatedFailure(adapters, log, {
+      quarantineId,
+      expectedLifecycleVersion: lifecycleVersion,
+      targetAuthBanState: "failed",
+      failureClassification: "compensation_incomplete",
+    });
+    if (failRec?.ok) {
+      entry.mutations += 1;
+      entry.compensated = true;
+    }
+  }
+  const profileCheck = await verifyProfileStatusUnchanged(
+    adapters,
+    profileId,
+    original.profile_status
+  );
+  entry.profileStatusPreserved = profileCheck.ok === true;
   entry.ok = false;
   return entry;
 }
@@ -680,7 +809,6 @@ async function compensatePostActivationFailure({
   entry.critical = true;
 
   const lifecycleVersion = Number(authority?.lifecycle_version ?? 1);
-  const authBanState = String(authority?.auth_ban_state || "");
 
   if (
     isFullyActive(authority) &&
@@ -698,14 +826,17 @@ async function compensatePostActivationFailure({
       return entry;
     }
     entry.compensated = true;
-  } else if (typeof adapters.qaQuarantineRecordCompensatedFailure === "function") {
-    const failRec = await adapters.qaQuarantineRecordCompensatedFailure({
+  } else {
+    const failRec = await recordCompensatedFailure(adapters, log, {
       quarantineId,
       expectedLifecycleVersion: lifecycleVersion,
-      targetAuthBanState: b1bAppliedBan ? "reverted" : authBanState || "failed",
-      failureClassification: reason,
+      targetAuthBanState: b1bAppliedBan ? "reverted" : "failed",
+      failureClassification: b1bAppliedBan
+        ? "activation_failed_compensated"
+        : original.auth_banned
+          ? "activation_failed_preexisting"
+          : "compensation_incomplete",
     });
-    log("qa_quarantine_record_compensated_failure");
     entry.mutations += 1;
     if (!failRec?.ok) {
       entry.abortReason = `CRITICAL_COMPENSATION_INCOMPLETE:failure_recording_failed:${reason}`;
@@ -714,7 +845,6 @@ async function compensatePostActivationFailure({
     entry.compensated = true;
   }
 
-  // Unban only if B1B applied the ban and original was unbanned
   if (b1bAppliedBan && original.auth_banned === false) {
     if (typeof adapters.unbanAuthUser !== "function") {
       entry.abortReason = "CRITICAL_COMPENSATION_INCOMPLETE:unban_unavailable";
@@ -738,11 +868,8 @@ async function compensatePostActivationFailure({
     entry.authBan = "preexisting_ban_left_unchanged";
   }
 
-  const authCheck = await independentAuthorityReadback(adapters, {
-    profileId,
-    quarantineId,
-  });
-  log("authority_readback_after_compensation");
+  const authCheck = await independentAuthorityReadback(adapters, quarantineId);
+  log("authority_readback_after_compensation", { quarantineId });
   if (authCheck.ok && isFullyActive(authCheck.authority)) {
     entry.abortReason = "CRITICAL_COMPENSATION_INCOMPLETE:active_authority_remains";
     return entry;
@@ -761,25 +888,34 @@ async function compensatePostActivationFailure({
 
 /**
  * Detect Auth banned without expected authority (BOUNDARY 5).
+ * Requires an existing quarantineId when checking authority state.
  */
-export async function detectImpossibleSplit(adapters, { profileId, authUserId }) {
+export async function detectImpossibleSplit(
+  adapters,
+  { authUserId, quarantineId }
+) {
   const authRb = await independentAuthReadback(adapters, authUserId);
-  const authState = await independentAuthorityReadback(adapters, {
-    profileId,
-    quarantineId: null,
-  });
-  if (authRb.ok && authRb.banned === true) {
-    if (!authState.ok || !isFullyActive(authState.authority)) {
-      // Pending with ban also counts as unexpected if not expected pending path mid-flight
-      const life = String(authState.authority?.lifecycle_state || "");
-      if (life !== "pending") {
-        return {
-          incident: true,
-          code: "impossible_split_auth_banned_without_authority",
-          authBanned: true,
-          authority: authState.authority,
-        };
-      }
+  if (!(authRb.ok && authRb.banned === true)) {
+    return { incident: false };
+  }
+  if (!quarantineId) {
+    return {
+      incident: true,
+      code: "impossible_split_auth_banned_without_authority",
+      authBanned: true,
+      authority: null,
+    };
+  }
+  const authState = await independentAuthorityReadback(adapters, quarantineId);
+  if (!authState.ok || !isFullyActive(authState.authority)) {
+    const life = String(authState.authority?.lifecycle_state || "");
+    if (life !== "pending") {
+      return {
+        incident: true,
+        code: "impossible_split_auth_banned_without_authority",
+        authBanned: true,
+        authority: authState.authority,
+      };
     }
   }
   return { incident: false };
@@ -831,8 +967,13 @@ export async function runBatchQuarantineB1B({
       continue;
     }
 
+    if (one.critical || one.abortReason?.includes("CRITICAL_COMPENSATION_INCOMPLETE")) {
+      integrityIncident = true;
+      stopAll = true;
+      continue;
+    }
+
     if (!one.ok && !effectiveDryRun) {
-      // Fail closed: stop after first unresolved live failure.
       break;
     }
   }

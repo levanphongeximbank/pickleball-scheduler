@@ -1341,21 +1341,24 @@ BEGIN
     'auth_ban_failed',
     'activation_failed_compensated',
     'compensation_incomplete',
-    'prepare_failure_recorded'
+    'prepare_failure_recorded',
+    'activation_failed_preexisting'
   ) THEN
     RETURN jsonb_build_object('ok', false, 'code', 'invalid_failure_classification');
   END IF;
 
   -- Exact compensation classification matrix (fail closed; never silently rewrite)
-  -- auth_ban_failed            → failed
-  -- activation_failed_compensated → reverted
-  -- compensation_incomplete    → failed  (never reverted)
-  -- prepare_failure_recorded   → failed
+  -- auth_ban_failed                 → failed
+  -- activation_failed_compensated   → reverted
+  -- compensation_incomplete         → failed  (never reverted)
+  -- prepare_failure_recorded        → failed
+  -- activation_failed_preexisting   → failed  (original_auth_banned=true only; no B1B Auth mutation)
   IF NOT (
     (v_class = 'auth_ban_failed' AND v_target_auth = 'failed')
     OR (v_class = 'activation_failed_compensated' AND v_target_auth = 'reverted')
     OR (v_class = 'compensation_incomplete' AND v_target_auth = 'failed')
     OR (v_class = 'prepare_failure_recorded' AND v_target_auth = 'failed')
+    OR (v_class = 'activation_failed_preexisting' AND v_target_auth = 'failed')
   ) THEN
     RETURN jsonb_build_object('ok', false, 'code', 'invalid_compensation_pair');
   END IF;
@@ -1379,6 +1382,14 @@ BEGIN
 
   IF v_target_auth = 'reverted' AND v_row.original_auth_banned IS NOT FALSE THEN
     RETURN jsonb_build_object('ok', false, 'code', 'reverted_requires_original_unbanned');
+  END IF;
+
+  IF v_class = 'activation_failed_preexisting'
+     AND v_row.original_auth_banned IS NOT TRUE THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'code', 'preexisting_classification_requires_original_banned'
+    );
   END IF;
 
   v_prev_lifecycle := v_row.lifecycle_state;
@@ -1421,7 +1432,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.qa_quarantine_record_compensated_failure(uuid, integer, text, text) IS
-  'OPERATION_B1B WP2: record Boundary 2/3 failure as lifecycle_state=failed. Exact matrix: auth_ban_failed→failed; activation_failed_compensated→reverted; compensation_incomplete→failed; prepare_failure_recorded→failed. No lifecycle_state=reverted.';
+  'OPERATION_B1B WP2: record Boundary 2/3 failure as lifecycle_state=failed. Exact matrix: auth_ban_failed→failed; activation_failed_compensated→reverted; compensation_incomplete→failed; prepare_failure_recorded→failed; activation_failed_preexisting→failed (original_auth_banned=true only). No lifecycle_state=reverted.';
 
 -- -----------------------------------------------------------------------------
 -- 5) qa_quarantine_release
