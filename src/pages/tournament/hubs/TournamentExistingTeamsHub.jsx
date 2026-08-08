@@ -41,7 +41,7 @@ export default function TournamentExistingTeamsHub() {
     [user?.role]
   );
 
-  const { tournaments } = useCanonicalTournamentList(activeClub || { id: activeClubId }, revision);
+  const { tournaments } = useCanonicalTournamentList(activeClub, revision);
   const teamTournaments = useMemo(
     () => tournaments.filter(isTeamTournament),
     [tournaments]

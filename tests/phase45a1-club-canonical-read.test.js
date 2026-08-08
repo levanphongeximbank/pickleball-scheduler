@@ -71,6 +71,28 @@ test("resolveActiveClubSelection keeps a valid preferred id", () => {
   assert.equal(sel.stale, false);
 });
 
+test("resolveActiveClubSelection requireTenant normalizes tenantId/venueId and rejects tenant-less", () => {
+  const ready = resolveActiveClubSelection({
+    preferredClubId: "club-b",
+    visibleClubs: [
+      { id: "club-a", tenantId: "venue-1" },
+      { id: "club-b", venueId: "venue-1" },
+    ],
+    requireTenant: true,
+  });
+  assert.equal(ready.activeClubId, "club-b");
+  assert.equal(ready.activeClub.tenantId, "venue-1");
+  assert.equal(ready.activeClub.venueId, "venue-1");
+
+  const rejected = resolveActiveClubSelection({
+    preferredClubId: "club-ghost",
+    visibleClubs: [{ id: "club-ghost", name: "No Tenant" }],
+    requireTenant: true,
+  });
+  assert.equal(rejected.activeClub, null);
+  assert.equal(rejected.activeClubId, null);
+});
+
 test("resolveActiveClubSelection rejects stale local-only id → clear (no first-of-many)", () => {
   const sel = resolveActiveClubSelection({
     preferredClubId: "club-local-only",

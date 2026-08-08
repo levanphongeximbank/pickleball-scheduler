@@ -35,13 +35,13 @@ import { useIsMobile } from "../../features/mobile/hooks/useIsMobile.js";
  */
 export default function IndividualTournamentPublicPage() {
   const { tournamentId } = useParams();
-  const { activeClub, activeClubId, revision } = useClub();
+  const { activeClub, revision } = useClub();
   const isMobile = useIsMobile();
 
   const {
     tournament,
     loading: tournamentLoading,
-  } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, revision);
+  } = useCanonicalTournament(activeClub, tournamentId, revision);
 
   if (!tournamentId) {
     return <TournamentErrorState title="Thiếu mã giải" />;

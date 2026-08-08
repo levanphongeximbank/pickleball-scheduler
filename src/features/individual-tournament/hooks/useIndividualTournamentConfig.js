@@ -17,8 +17,8 @@ export function useIndividualTournamentConfig() {
   const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const [message, setMessage] = useState(null);
 
-  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClub || { id: activeClubId }, revision);
-  const { tournament, update } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, revision);
+  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClub, revision);
+  const { tournament, update } = useCanonicalTournament(activeClub, tournamentId, revision);
 
   const tournaments = useMemo(
     () => allTournaments.filter(isIndividualTournament),

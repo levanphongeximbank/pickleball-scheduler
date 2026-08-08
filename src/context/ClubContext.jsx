@@ -42,7 +42,9 @@ import { API_ERROR_CODES } from "../features/api/constants/apiErrors.js";
 import {
   CLUB_READ_STATE,
   filterAccessibleCanonicalClubs,
+  isCanonicalActiveClubReady,
   isCanonicalClubReadEnabled,
+  normalizeCanonicalActiveClub,
   resolveActiveClubSelection,
   toClubReadSnapshot,
 } from "../features/club/context/clubCanonicalReadModel.js";
@@ -407,9 +409,11 @@ export function ClubProvider({ children }) {
   const activeClub = useMemo(() => {
     if (canonicalRead) {
       // Existence/selection comes only from the canonical visible set.
+      // Tenant-less projections are never tenant-ready activeClub.
       return resolveActiveClubSelection({
         preferredClubId: activeClubId,
         visibleClubs,
+        requireTenant: true,
       }).activeClub;
     }
 
@@ -429,9 +433,14 @@ export function ClubProvider({ children }) {
     return null;
   }, [canonicalRead, visibleClubs, activeClubId, rbacEnabled, isAuthenticated]);
 
-  // Canonical active-club validation: a stale/absent activeClubId is replaced
-  // deterministically (first visible canonical club) or cleared. Never selects a
-  // club absent from the canonical cloud registry.
+  const activeClubReady = canonicalRead
+    ? clubReadState === CLUB_READ_STATE.READY && isCanonicalActiveClubReady(activeClub)
+    : Boolean(activeClub?.id);
+
+  // Canonical active-club validation: a stale/absent/tenant-less activeClubId is
+  // replaced deterministically (unique tenant-ready visible club) or cleared.
+  // Never selects a club absent from the canonical cloud registry, and never
+  // promotes a tenant-less projection to tenant-ready activeClub.
   useEffect(() => {
     if (!canonicalRead) {
       return;
@@ -443,6 +452,7 @@ export function ClubProvider({ children }) {
     const selection = resolveActiveClubSelection({
       preferredClubId: activeClubId,
       visibleClubs,
+      requireTenant: true,
     });
 
     if (selection.activeClubId === activeClubId) {
@@ -503,10 +513,15 @@ export function ClubProvider({ children }) {
     }
   }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, user, visibleClubs]);
 
-  const summary = useMemo(
-    () => getClubSummary(activeClub?.id || activeClubId),
-    [activeClub?.id, activeClubId, revision]
-  );
+  const summary = useMemo(() => {
+    const base = getClubSummary(activeClub?.id || activeClubId);
+    // Canonical mode: never let legacy registry club overwrite tenant-bearing
+    // activeClub projection (legacy registry often lacks tenantId/venueId).
+    if (canonicalRead && activeClub) {
+      return { ...base, club: activeClub };
+    }
+    return base;
+  }, [canonicalRead, activeClub, activeClub?.id, activeClubId, revision]);
 
   const handleSwitchClub = useCallback(
     (clubId) => {
@@ -520,11 +535,18 @@ export function ClubProvider({ children }) {
       }
 
       if (canonicalRead) {
-        const allowed = visibleClubs.some((club) => club.id === trimmed);
+        const allowed = visibleClubs.find((club) => club.id === trimmed);
         if (!allowed) {
           return {
             ok: false,
             error: "CLB không nằm trong phạm vi cho phép.",
+            code: API_ERROR_CODES.CLUB_OUT_OF_SCOPE,
+          };
+        }
+        if (!normalizeCanonicalActiveClub(allowed)) {
+          return {
+            ok: false,
+            error: "CLB chưa có tenant hợp lệ — không chọn được cho tenant-scoped.",
             code: API_ERROR_CODES.CLUB_OUT_OF_SCOPE,
           };
         }
@@ -659,6 +681,7 @@ export function ClubProvider({ children }) {
       allClubs: canonicalRead ? canonicalClubs : clubs,
       activeClub,
       activeClubId,
+      activeClubReady,
       revision,
       summary,
       clubScopeStatus,
@@ -681,6 +704,7 @@ export function ClubProvider({ children }) {
       visibleClubs,
       activeClub,
       activeClubId,
+      activeClubReady,
       revision,
       summary,
       clubScopeStatus,

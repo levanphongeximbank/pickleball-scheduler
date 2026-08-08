@@ -73,7 +73,7 @@ function ClubOperationsSection() {
     });
   }, [activeClubId, revision, activeSeason?.id, activeLeague?.id]);
 
-  const { tournaments = [] } = useCanonicalTournamentList(activeClub || { id: activeClubId }, revision);
+  const { tournaments = [] } = useCanonicalTournamentList(activeClub, revision);
 
   const seasonStandings = useMemo(() => {
     if (!activeLeague?.id) {

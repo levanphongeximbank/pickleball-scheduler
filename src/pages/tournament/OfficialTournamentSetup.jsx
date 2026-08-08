@@ -108,7 +108,6 @@ import TournamentAiAssistantPanel from "../../components/tournament/ai/Tournamen
 import { useAuth } from "../../context/AuthContext.jsx";
 import { canViewPlayerSkillLevel } from "../../auth/rbac.js";
 import { useTenant } from "../../context/TenantContext.jsx";
-import { resolveTenantIdForClub } from "../../features/tenant/guards/tenantGuard.js";
 import {
   INTERVENTION_PHASE,
   TournamentEntryEditor,
@@ -205,7 +204,7 @@ export default function OfficialTournamentSetup() {
     loading: tournamentLoading,
     error: tournamentLoadError,
     update,
-  } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, localRevision);
+  } = useCanonicalTournament(activeClub, tournamentId, localRevision);
 
   useEffect(() => {
     if (tournamentLoadError) {
@@ -220,8 +219,13 @@ export default function OfficialTournamentSetup() {
   }, [tournament?.id, tournament?.founderPairingConstraints]);
 
   const tenantId = useMemo(
-    () => tournament?.tenantId || resolveTenantIdForClub(activeClubId) || currentTenantId || "",
-    [tournament?.tenantId, activeClubId, currentTenantId]
+    () =>
+      tournament?.tenantId ||
+      activeClub?.tenantId ||
+      activeClub?.venueId ||
+      currentTenantId ||
+      "",
+    [tournament?.tenantId, activeClub?.tenantId, activeClub?.venueId, currentTenantId]
   );
 
   const {
@@ -1585,7 +1589,13 @@ export default function OfficialTournamentSetup() {
         <TournamentAiAssistantPanel
           tournamentId={tournamentId}
           clubId={activeClubId}
-          tenantId={currentTenantId || tournament?.tenantId || resolveTenantIdForClub(activeClubId)}
+          tenantId={
+            currentTenantId ||
+            tournament?.tenantId ||
+            activeClub?.tenantId ||
+            activeClub?.venueId ||
+            ""
+          }
           players={players}
           courts={courts}
           userId={user?.id || ""}

@@ -301,6 +301,8 @@
   "tests/governance-canonical-elevation.test.js",
   "tests/canonical-club-repository.test.js",
   "tests/phase45a1-club-canonical-read.test.js",
+  "tests/club-context-canonical-tenant-projection-remediation-01.test.js",
+  "tests/tournament-browser-tenant-projection-remediation-01.test.js",
   "tests/canonical-membership-repository.test.js",
   "tests/phase45a2-membership-canonical-read.test.js",
   "tests/phase45a3a-club-governance-ddl-reconciliation.test.js",

@@ -65,7 +65,7 @@ export default function CanonicalTournamentCreatePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const preselectedEvent = resolveEventTypeFromQuery(searchParams.get("event"));
-  const { activeClub, activeClubId, refreshClubs } = useClub();
+  const { activeClub, activeClubId, activeClubReady, refreshClubs } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
   const { accessAllowed } = usePageRuntimeAccess(
     "tournament.manage",
@@ -79,9 +79,13 @@ export default function CanonicalTournamentCreatePage() {
       setError("Runtime platform chặn thao tác quản lý giải đấu.");
       return;
     }
+    if (!activeClubReady || !activeClub?.id) {
+      setError("CLB chưa sẵn sàng (thiếu tenant hợp lệ) — không thể tạo giải.");
+      return;
+    }
 
     setError(null);
-    const result = await createTournamentCommand(activeClub || { id: activeClubId }, {
+    const result = await createTournamentCommand(activeClub, {
       mode: option.mode,
       seasonId: activeSeason?.id,
       leagueId: activeLeague?.id,

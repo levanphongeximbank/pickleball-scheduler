@@ -52,8 +52,8 @@ export default function TournamentPublishSchedulePage() {
   const [message, setMessage] = useState(null);
   const [minRestMinutes, setMinRestMinutes] = useState(15);
 
-  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClub || { id: activeClubId }, revision);
-  const { tournament, update } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, revision);
+  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClub, revision);
+  const { tournament, update } = useCanonicalTournament(activeClub, tournamentId, revision);
 
   const tournaments = useMemo(
     () => allTournaments.filter(isIndividualTournament),

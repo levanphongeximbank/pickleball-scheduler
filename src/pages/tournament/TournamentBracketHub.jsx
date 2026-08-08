@@ -42,7 +42,7 @@ export default function TournamentBracketHub() {
   const { activeClub, activeClubId, revision } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
 
-  const { tournaments } = useCanonicalTournamentList(activeClub || { id: activeClubId }, revision);
+  const { tournaments } = useCanonicalTournamentList(activeClub, revision);
 
   const bracketTournaments = useMemo(
     () =>
