@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 
 import { Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
@@ -7,14 +7,25 @@ import { buildActionQueue } from "../../features/action-queue/services/actionQue
 
 export default function CourtOpsLogPage() {
   const { clubId } = useOutletContext();
-  const entries = useMemo(() => {
-    const queue = buildActionQueue({ clubId });
-    return queue.map((item) => ({
-      id: item.id,
-      action: item.title,
-      detail: item.subtitle,
-      at: item.createdAt,
-    }));
+  const [entries, setEntries] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const queue = await buildActionQueue({ clubId });
+      if (cancelled) return;
+      setEntries(
+        queue.map((item) => ({
+          id: item.id,
+          action: item.title,
+          detail: item.subtitle,
+          at: item.createdAt,
+        }))
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [clubId]);
 
   return (

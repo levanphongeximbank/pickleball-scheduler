@@ -1,4 +1,4 @@
-import { updateTournament } from "../../../domain/tournamentService.js";
+import { updateTournamentCommand } from "../../tournament/services/tournamentCommands.js";
 import { writeAuditLog } from "../../identity/services/auditService.js";
 import { buildEngineContext } from "../../tournament-engine/services/tournamentEngineAdapter.js";
 import { guardAiAccess } from "../guards/aiAccessGuard.js";
@@ -534,7 +534,11 @@ export async function applyAiSuggestion(suggestionId, tenantId, userId, options 
     return applyResult;
   }
 
-  const updateResult = updateTournament(clubId, guard.tournament.id, applyResult.tournament);
+  const updateResult = await updateTournamentCommand(
+    clubId,
+    guard.tournament.id,
+    applyResult.tournament
+  );
   if (!updateResult.ok) {
     return updateResult;
   }

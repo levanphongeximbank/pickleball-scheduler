@@ -1,29 +1,33 @@
-# Test Results — tournament-canonical-runtime-cutover-01
+# Test Results — Remediation
 
 ## Focused
 
-`node --test tests/tournament-canonical-runtime-cutover-01.test.js` — **PASS** (16/16)
-
-Related: daily-play-navigation-access, public-catalog-02-portal-remote, ec-06, tournament-regression — **PASS**
-
-Cutover suite is imported from `tournament-regression.test.js` so CI manifest runs it without editing B1B-owned `unit-test-files.json`.
-
-## Full unit suite
-
-`npm run test:unit` — **PASS** (exit 0)
+| Suite | Result |
+|-------|--------|
+| `tests/tournament-canonical-cloud-mode.test.js` | PASS |
+| `tests/tournament-canonical-runtime-cutover-01.test.js` | PASS |
+| `tests/tournament-regression.test.js` | PASS |
+| Daily Play focused tests | PASS |
+| Team Tournament data-mode / repository | PASS |
+| VPR tests | PASS |
+| Mobile phase 8 (async home) | PASS |
 
 ## Gates
 
 | Gate | Result |
 |------|--------|
-| foundation-lock | PASS |
-| lint:no-new | PASS |
-| build | PASS |
-| secret scan | N/A (no dedicated script found) |
-| diff check | N/A (no dedicated script found) |
+| `npm run test:unit` | PASS (6964) |
+| `npm run ci:foundation-lock` | PASS |
+| `npm run lint:no-new` | PASS |
+| `npm run build` | PASS |
 
-## Live
+## Proven contracts (mocked RPC)
 
-- PRODUCTION_MUTATIONS=0
-- STAGING_MUTATIONS=0
-- LIVE_SQL_APPLIED=NO
+- Cloud CRUD → RPC (no `[]` / `null` placeholders)
+- listMine creator vs stranger
+- Full lifecycle create→configure→roster→engine→result→reload→list/my
+- Daily Play representative lifecycle
+- SQL permission + REVOKE + no legacy migrate
+- Setup pages not importing domain Tournament CRUD
+- Transitional blob removed
+- VPR / court schedule / manage gate on cloud writers

@@ -320,11 +320,93 @@ function resolveCreateRequiresCloudHeader() {
 }
 
 /**
- * UI create entry: local persist first, then ensure cloud header when store/cloud
- * is enabled. In cloud_primary/cloud_only, cloud header failure blocks navigate
- * (no fake success). Shadow mode keeps local OK and surfaces a warning.
+ * cloud_only create: in-memory shell + cloud header only. No blob authority.
+ */
+async function createTeamTournamentCloudOnly(clubId, options = {}) {
+  const resolvedClubId = String(clubId || "").trim();
+  if (!resolvedClubId) {
+    return {
+      ok: false,
+      error: "Chưa chọn CLB — không thể tạo giải đồng đội.",
+      code: "CLUB_REQUIRED",
+    };
+  }
+
+  const check = guardClubAction(resolvedClubId, PERMISSIONS.TOURNAMENT_CREATE);
+  if (!check.ok) {
+    return check;
+  }
+
+  const tournament = createTeamTournamentShell(resolvedClubId, {
+    ...options,
+    seasonId: options.seasonId || "",
+    leagueId: options.leagueId || "",
+  });
+
+  if (!tournament?.id || !isTeamTournament(tournament)) {
+    return {
+      ok: false,
+      error: "Không tạo được bản nháp giải đồng đội (object không hợp lệ).",
+      code: "SHELL_INVALID",
+    };
+  }
+
+  const header = await cloudEnsureTournamentHeader({
+    ...tournament,
+    clubId: resolvedClubId,
+  });
+
+  if (!header.ok) {
+    return {
+      ok: false,
+      error:
+        header.error ||
+        "Chưa đồng bộ cloud — không mở trang chi tiết (cloud_only).",
+      code: header.code || "CLOUD_HEADER_FAILED",
+      tournament,
+      clubId: resolvedClubId,
+      persistedLocally: false,
+      cloudSynced: false,
+    };
+  }
+
+  appendTeamAuditLog({
+    action: TEAM_AUDIT_ACTIONS.TEAM_CREATE,
+    targetId: tournament.id,
+    metadata: {
+      name: tournament.name,
+      mode: TOURNAMENT_MODE.TEAM_TOURNAMENT,
+      cloudOnly: true,
+    },
+  });
+
+  return {
+    ok: true,
+    tournament,
+    clubId: resolvedClubId,
+    cloudSynced: true,
+    tenantId: header.tenantId || tournament.tenantId || null,
+    persistedLocally: false,
+  };
+}
+
+/**
+ * UI create entry.
+ * cloud_only: cloud header only (no blob SoT).
+ * Other modes: local persist then cloud header when enabled.
  */
 export async function createTeamTournamentForUi(clubId, options = {}) {
+  let mode;
+  try {
+    mode = resolveUiTeamTournamentDataMode();
+  } catch {
+    mode = null;
+  }
+
+  if (mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY) {
+    return createTeamTournamentCloudOnly(clubId, options);
+  }
+
   const local = createTeamTournament(clubId, options);
   if (!local.ok) {
     return local;

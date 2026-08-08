@@ -6,7 +6,8 @@ import { useClub } from "../../context/ClubContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { loadCourtsForClub } from "../../domain/clubStorage.js";
-import { assertTournamentAccess, getTournament } from "../../domain/tournamentService.js";
+import { assertLoadedTournamentAccess } from "../../features/tournament/guards/tournamentAccess.js";
+import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import { resolveBracketProgress } from "../../tournament/engines/index.js";
 import TournamentBracketScreen from "../../components/tournament/bracket/TournamentBracketScreen.jsx";
 
@@ -35,20 +36,29 @@ export default function TournamentBracketPage() {
     return () => window.clearInterval(timer);
   }, []);
 
+  const {
+    tournament,
+    loading: tournamentLoading,
+  } = useCanonicalTournament(activeClubId, tournamentId, revision + liveTick);
+
   const tournamentAccess = useMemo(() => {
     if (!rbacEnabled || !isAuthenticated) {
       return { ok: true };
     }
-
-    return assertTournamentAccess(activeClubId, tournamentId, {
+    if (tournamentLoading) {
+      return { ok: true, pending: true };
+    }
+    return assertLoadedTournamentAccess(activeClubId, tournament, {
       tenantId: currentTenantId,
     });
-  }, [activeClubId, currentTenantId, isAuthenticated, rbacEnabled, tournamentId]);
-
-  const tournament = useMemo(
-    () => getTournament(activeClubId, tournamentId),
-    [activeClubId, tournamentId, revision, liveTick]
-  );
+  }, [
+    activeClubId,
+    currentTenantId,
+    isAuthenticated,
+    rbacEnabled,
+    tournament,
+    tournamentLoading,
+  ]);
 
   const courts = useMemo(() => loadCourtsForClub(activeClubId), [activeClubId, revision]);
   const event = tournament?.events?.[0] || null;
@@ -79,6 +89,14 @@ export default function TournamentBracketPage() {
         <Alert severity="error">
           {tournamentAccess.error || "Không có quyền xem giải đấu này."}
         </Alert>
+      </Box>
+    );
+  }
+
+  if (tournamentLoading) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="info">Đang tải sơ đồ…</Alert>
       </Box>
     );
   }

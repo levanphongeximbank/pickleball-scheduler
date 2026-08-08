@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -24,8 +24,7 @@ import { TOURNAMENT_MODE } from "../../../models/tournament/index.js";
 import { getTeamData } from "../../team-tournament/engines/teamTournamentEngine.js";
 import { findTeamForCaptain } from "../../team-tournament/engines/teamPermissionEngine.js";
 import { buildCaptainPortalPath } from "../../../components/tournament/team/copyPortalLink.js";
-import { listTournamentsQuery } from "../services/tournamentQueries.js";
-import { deleteTournamentCommand } from "../services/tournamentCommands.js";
+import { useCanonicalTournamentList } from "../hooks/useCanonicalTournament.js";
 
 function canDeleteTournament(tournament) {
   return (
@@ -44,15 +43,14 @@ export default function CanonicalTournamentListPage() {
     activeClub?.tenantId || activeClubId,
     { source: "tournament.canonical.list" }
   );
+  const { tournaments, loading, error: loadError, remove } = useCanonicalTournamentList(
+    activeClubId,
+    revision
+  );
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
-
-  const tournaments = useMemo(() => {
-    void revision;
-    return listTournamentsQuery(activeClubId);
-  }, [activeClubId, revision]);
 
   const contextLine = [
     activeClub?.name ? `CLB ${activeClub.name}` : null,
@@ -62,14 +60,9 @@ export default function CanonicalTournamentListPage() {
     .filter(Boolean)
     .join(" • ");
 
-  const deletableSelectedCount = useMemo(
-    () =>
-      tournaments.filter(
-        (tournament) =>
-          selectedIds.includes(tournament.id) && canDeleteTournament(tournament)
-      ).length,
-    [tournaments, selectedIds]
-  );
+  const deletableSelectedCount = tournaments.filter(
+    (tournament) => selectedIds.includes(tournament.id) && canDeleteTournament(tournament)
+  ).length;
 
   const isCaptainForTeamTournament = (tournament) => {
     const playerId = user?.playerId;
@@ -80,7 +73,7 @@ export default function CanonicalTournamentListPage() {
     return Boolean(findTeamForCaptain(teamData, playerId));
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!accessAllowed) {
       setError("Runtime platform chặn thao tác quản lý giải đấu.");
       return;
@@ -89,24 +82,19 @@ export default function CanonicalTournamentListPage() {
     setMessage(null);
     let deletedCount = 0;
     const blocked = [];
-    selectedIds.forEach((tournamentId) => {
+    for (const tournamentId of selectedIds) {
       const tournament = tournaments.find((item) => item.id === tournamentId);
-      if (!tournament) return;
-      const result = deleteTournamentCommand(activeClubId, tournamentId);
-      if (result.ok) {
-        deletedCount += 1;
-        return;
-      }
-      blocked.push(tournament.name);
-    });
+      if (!tournament) continue;
+      const result = await remove(tournamentId);
+      if (result.ok) deletedCount += 1;
+      else blocked.push(tournament.name);
+    }
     refreshClubs();
     setSelectedIds([]);
     setDeleteDialogOpen(false);
     if (deletedCount > 0) setMessage(`Đã xóa ${deletedCount} giải.`);
     if (blocked.length > 0) {
-      setError(
-        `Không thể xóa ${blocked.length} giải (chỉ xóa được giải Nháp hoặc Đã hủy).`
-      );
+      setError(`Không thể xóa ${blocked.length} giải (chỉ xóa được giải Nháp hoặc Đã hủy).`);
     }
   };
 
@@ -114,11 +102,13 @@ export default function CanonicalTournamentListPage() {
     <Box>
       <TournamentPageHeader
         title="Danh sách giải"
-        description="Xem và quản lý tất cả giải trong phạm vi hiện tại (cùng nguồn đọc với Giải của tôi)."
+        description="Xem và quản lý tất cả giải từ canonical cloud (cùng nguồn đọc với Giải của tôi)."
         contextLine={contextLine || undefined}
       />
       <ClubAssignmentBanner />
 
+      {loading ? <Alert severity="info" sx={{ mb: 2 }}>Đang tải danh sách giải...</Alert> : null}
+      {loadError ? <Alert severity="error" sx={{ mb: 2 }}>{loadError}</Alert> : null}
       {message ? (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>
           {message}

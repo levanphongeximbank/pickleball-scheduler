@@ -1,26 +1,23 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { FormControl, InputLabel, MenuItem, Select, Stack } from "@mui/material";
 
-import { listTournaments } from "../../domain/tournamentService.js";
+import { useCanonicalTournamentList } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import { TOURNAMENT_STATUS } from "../../models/tournament/index.js";
 import TournamentCourtSchedulePanel from "./TournamentCourtSchedulePanel.jsx";
 
 export default function TournamentCourtScheduleManager({ clubId, courts = [], revision = 0, onSaved }) {
-  const tournaments = useMemo(() => {
-    return listTournaments(clubId).filter(
-      (item) =>
-        item.status !== TOURNAMENT_STATUS.CANCELLED &&
-        item.status !== TOURNAMENT_STATUS.COMPLETED
-    );
-  }, [clubId, revision]);
+  const { tournaments: allTournaments = [] } = useCanonicalTournamentList(clubId, revision);
+  const tournaments = allTournaments.filter(
+    (item) =>
+      item.status !== TOURNAMENT_STATUS.CANCELLED &&
+      item.status !== TOURNAMENT_STATUS.COMPLETED
+  );
 
   const [selectedId, setSelectedId] = useState("");
 
-  const selectedTournament = useMemo(
-    () => tournaments.find((item) => item.id === selectedId) || null,
-    [tournaments, selectedId]
-  );
+  const selectedTournament =
+    tournaments.find((item) => item.id === selectedId) || null;
 
   return (
     <Stack spacing={2}>

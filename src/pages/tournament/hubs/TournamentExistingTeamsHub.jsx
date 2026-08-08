@@ -19,7 +19,7 @@ import {
 
 import { useClub } from "../../../context/ClubContext.jsx";
 import { useAuth } from "../../../context/AuthContext.jsx";
-import { listTournaments } from "../../../domain/tournamentService.js";
+import { useCanonicalTournamentList } from "../../../features/tournament/hooks/useCanonicalTournament.js";
 import {
   isTeamTournament,
   teamTournamentPath,
@@ -41,9 +41,10 @@ export default function TournamentExistingTeamsHub() {
     [user?.role]
   );
 
+  const { tournaments } = useCanonicalTournamentList(activeClubId, revision);
   const teamTournaments = useMemo(
-    () => listTournaments(activeClubId).filter(isTeamTournament),
-    [activeClubId, revision]
+    () => tournaments.filter(isTeamTournament),
+    [tournaments]
   );
 
   return (

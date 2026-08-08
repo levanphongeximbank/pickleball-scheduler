@@ -1,6 +1,6 @@
 import { loadCourtsForClub } from "../../../domain/clubStorage.js";
 import { listBookingsForDate } from "../../../domain/bookingService.js";
-import { listTournaments } from "../../../domain/tournamentService.js";
+import { listTournamentsQuery } from "../../tournament/services/tournamentQueries.js";
 import { getCheckinDashboard } from "./checkInService.js";
 import { ROLES, normalizeRole } from "../../../auth/roles.js";
 import { PERMISSIONS } from "../../identity/constants/permissions.js";
@@ -112,7 +112,8 @@ export async function loadOperationsDashboard({
 
   const courts = loadCourtsForClub(clubId);
   const bookings = listBookingsForDate(today, clubId);
-  const tournaments = (listTournaments(clubId) || []).filter(
+  const listResult = await listTournamentsQuery(clubId);
+  const tournaments = (listResult.ok ? listResult.tournaments || [] : []).filter(
     (t) => t.status === "active" || t.status === "ready"
   );
 

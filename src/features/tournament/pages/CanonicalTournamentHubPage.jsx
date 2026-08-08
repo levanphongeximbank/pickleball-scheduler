@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -18,11 +17,9 @@ import ActiveTournamentsPanel from "../../../components/tournament/ActiveTournam
 import { TOURNAMENT_LAYOUT } from "../../../components/tournament/tournamentLayout.js";
 import { usePageRuntimeAccess } from "../../../core/platform/app/usePageRuntimeAccess.js";
 import { CANONICAL_TOURNAMENT_HUB_ITEMS } from "../constants/hubNav.js";
-import {
-  buildTournamentHubStats,
-  listOpenTournamentsQuery,
-} from "../services/tournamentQueries.js";
+import { useCanonicalTournamentList } from "../hooks/useCanonicalTournament.js";
 import { TOURNAMENT_ROUTES } from "../../../config/tournamentRoutes.js";
+import { TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
 
 export default function CanonicalTournamentHubPage() {
   const navigate = useNavigate();
@@ -33,15 +30,15 @@ export default function CanonicalTournamentHubPage() {
     activeClub?.tenantId || activeClubId,
     { source: "tournament.canonical.hub" }
   );
-
-  const stats = useMemo(() => {
-    void revision;
-    return buildTournamentHubStats(activeClubId);
-  }, [activeClubId, revision]);
-  const openTournaments = useMemo(() => {
-    void revision;
-    return listOpenTournamentsQuery(activeClubId);
-  }, [activeClubId, revision]);
+  const { tournaments, loading, error, stats } = useCanonicalTournamentList(
+    activeClubId,
+    revision
+  );
+  const openTournaments = tournaments.filter((item) =>
+    [TOURNAMENT_STATUS.ACTIVE, TOURNAMENT_STATUS.READY, TOURNAMENT_STATUS.REGISTRATION].includes(
+      item.status
+    )
+  );
 
   const contextLine = [
     activeClub?.name ? `CLB ${activeClub.name}` : null,
@@ -64,6 +61,16 @@ export default function CanonicalTournamentHubPage() {
       {!accessAllowed ? (
         <Alert severity="warning" sx={{ mb: 2 }}>
           Runtime platform hạn chế thao tác quản lý giải đấu.
+        </Alert>
+      ) : null}
+      {error ? (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      ) : null}
+      {loading ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Đang tải giải đấu từ cloud...
         </Alert>
       ) : null}
 

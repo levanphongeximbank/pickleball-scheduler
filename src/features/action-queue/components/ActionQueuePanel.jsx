@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
 import {
@@ -20,7 +20,18 @@ const PRIORITY_COLOR = {
 };
 
 export default function ActionQueuePanel({ clubId }) {
-  const items = useMemo(() => buildActionQueue({ clubId }), [clubId]);
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const next = await buildActionQueue({ clubId });
+      if (!cancelled) setItems(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clubId]);
 
   return (
     <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, height: "100%" }}>

@@ -10,12 +10,11 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import { useClub } from "../../context/ClubContext.jsx";
 import { useSeasonLeague } from "../../context/SeasonContext.jsx";
-import { listTournaments } from "../../domain/tournamentService.js";
+import { useCanonicalTournamentList } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../models/tournament/index.js";
 import { getTournamentBracketPath,
   getTournamentSetupPath,
@@ -43,10 +42,7 @@ export default function TournamentBracketHub() {
   const { activeClubId, revision } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
 
-  const tournaments = useMemo(
-    () => listTournaments(activeClubId),
-    [activeClubId, revision]
-  );
+  const { tournaments } = useCanonicalTournamentList(activeClubId, revision);
 
   const bracketTournaments = useMemo(
     () =>

@@ -1,36 +1,19 @@
 # Data Authority Cutover Map
 
-## Canonical boundary
+| Domain | Authority | Notes |
+|--------|-----------|-------|
+| Organizer Tournament CRUD | `canonical_tournaments` via cloud repo | Single SSOT |
+| Daily Play durable state | same payload | Engines compute; persist via update |
+| Internal / Official config + events | same payload | |
+| EngineV4 applied state | `engine_v4` column + payload settings | One apply writer |
+| Team Tournament (cutover) | TT cloud RPCs `cloud_only` | No active blob mirror |
+| Public catalog | remote | mock fallback off |
+| Club players / courts pool | club blob (non-Tournament SSOT) | Not Tournament authority |
+| Legacy `domain/tournamentService` blob CRUD | demoted / unused on primary routes | TournamentHome not mounted |
 
-```
-Canonical UI pages
-  → tournamentQueries / tournamentCommands
-    → TournamentRepository (factory)
-      → transitionalBlobTournamentRepository (TEMPORARY)
-      → cloudTournamentRepository (fail-closed until live SQL)
-```
+## Removed from active path
 
-## Dual writers
-
-| ID | Before | After (code) | Live status |
-|----|--------|--------------|-------------|
-| DW-01 | blob ↔ club_data_v3 full push | Single repository boundary; transitional still uses blob until cloud mode | Needs live SQL + env |
-| DW-02 | EngineV4 ↔ events[] | `applyEngineV4StateCommand` sole apply path | Code ready; cloud RPC pending apply |
-| DW-03 | team blob ↔ TT RPCs | No new local mirror; cutover flag unlocks `cloud_only` | Needs Owner env GO |
-
-## Authorities after local cutover
-
-| Concern | Classification |
-|---------|----------------|
-| Organizer list/create/my | `TRANSITIONAL_BLOB_BEHIND_CANONICAL_BOUNDARY` |
-| Daily Play | `CANONICAL_BOUNDARY_REUSES_DAILY_ENGINE` |
-| Team Tournament | `CLOUD_CAPABLE_NO_NEW_MIRROR` |
-| EngineV4 | `CANONICAL_CONTEXTUAL_ENGINE` |
-| Public tournaments | `CANONICAL_PUBLISHED_CLOUD_AUTHORITY` (remote default) |
-
-## Removal path for transitional blob
-
-1. Apply `sql/10_CANONICAL_TOURNAMENTS.sql`
-2. Migrate blob tournaments → `canonical_tournaments`
-3. `VITE_TOURNAMENT_CANONICAL_DATA_MODE=cloud`
-4. Delete `transitionalBlobTournamentRepository.js`
+- `transitionalBlobTournamentRepository`
+- Sync placeholder cloud ops (`[]` / `null` / CLOUD_UNAVAILABLE stubs)
+- Legacy Tournament data migration script
+- default-tenant invent

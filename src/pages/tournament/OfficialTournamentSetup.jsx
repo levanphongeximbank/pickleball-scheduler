@@ -28,11 +28,7 @@ import {
   useTenantPairingCandidatePool,
 } from "../../features/pairing-candidates/index.js";
 import TournamentVprPanel from "../../features/vpr-ranking/components/TournamentVprPanel.jsx";
-import {
-  getTournament,
-  advanceTournamentStatus,
-  updateTournament,
-} from "../../domain/tournamentService.js";
+import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import {
   EVENT_TYPE,
   OFFICIAL_MODE,
@@ -204,10 +200,18 @@ export default function OfficialTournamentSetup() {
     [user, activeClubId, tournamentId, rbacEnabled]
   );
 
-  const tournament = useMemo(
-    () => getTournament(activeClubId, tournamentId),
-    [activeClubId, tournamentId, localRevision]
-  );
+  const {
+    tournament,
+    loading: tournamentLoading,
+    error: tournamentLoadError,
+    update,
+  } = useCanonicalTournament(activeClubId, tournamentId, localRevision);
+
+  useEffect(() => {
+    if (tournamentLoadError) {
+      setError(tournamentLoadError);
+    }
+  }, [tournamentLoadError]);
 
   useEffect(() => {
     if (tournament) {
@@ -331,11 +335,12 @@ export default function OfficialTournamentSetup() {
     }
   }, [activeEventId, savedEvents]);
 
-  const persistTournament = (patch, options = {}) => {
+  const persistTournament = async (patch, options = {}) => {
     const { status, ...dataPatch } = patch;
-    const result = status
-      ? advanceTournamentStatus(activeClubId, tournamentId, status, dataPatch)
-      : updateTournament(activeClubId, tournamentId, patch, options);
+    const result = await update(
+      status ? { ...dataPatch, status } : patch,
+      options
+    );
 
     if (!result.ok) {
       setError(result.error);
@@ -344,10 +349,10 @@ export default function OfficialTournamentSetup() {
 
     setLocalRevision((value) => value + 1);
     refreshClubs();
-    return true;
+    return result.tournament || true;
   };
 
-  const persistEvent = (nextEvent, options = {}) => {
+  const persistEvent = async (nextEvent, options = {}) => {
     if (!savedEvent) {
       return false;
     }
@@ -395,7 +400,7 @@ export default function OfficialTournamentSetup() {
       ? { id: user.id, email: user.email || "", name: user.displayName || user.name || "" }
       : null;
 
-  const handleLockDraw = () => {
+  const handleLockDraw = async () => {
     setError(null);
     const groups = savedEvent?.groups || [];
     const result = lockDraw(tournament, groups, {
@@ -407,12 +412,12 @@ export default function OfficialTournamentSetup() {
       setError(result.error);
       return;
     }
-    if (persistTournament({ settings: result.tournament.settings })) {
+    if (await persistTournament({ settings: result.tournament.settings })) {
       setMessage("Đã khóa bốc thăm. Sẵn sàng công bố.");
     }
   };
 
-  const handlePublishDraw = () => {
+  const handlePublishDraw = async () => {
     setError(null);
     const groups = savedEvent?.groups || [];
     const result = publishDraw(tournament, groups, {
@@ -430,7 +435,7 @@ export default function OfficialTournamentSetup() {
         : event
     );
     if (
-      persistTournament({
+      await persistTournament({
         settings: result.tournament.settings,
         events,
       })
@@ -439,7 +444,7 @@ export default function OfficialTournamentSetup() {
     }
   };
 
-  const handleReopenDraw = () => {
+  const handleReopenDraw = async () => {
     setError(null);
     const result = reopenDraw(tournament, {
       userId: user?.id,
@@ -451,12 +456,12 @@ export default function OfficialTournamentSetup() {
       setError(result.error);
       return;
     }
-    if (persistTournament({ settings: result.tournament.settings })) {
+    if (await persistTournament({ settings: result.tournament.settings })) {
       setMessage("Đã mở lại bốc thăm để chỉnh sửa.");
     }
   };
 
-  const handleForceRedraw = () => {
+  const handleForceRedraw = async () => {
     setError(null);
     const result = forceRedrawDraw(tournament, {
       userId: user?.id,
@@ -468,7 +473,7 @@ export default function OfficialTournamentSetup() {
       setError(result.error);
       return;
     }
-    if (persistTournament({ settings: result.tournament.settings })) {
+    if (await persistTournament({ settings: result.tournament.settings })) {
       setMessage("Force redraw được phép. Bạn có thể random lại.");
     }
   };
@@ -479,17 +484,17 @@ export default function OfficialTournamentSetup() {
     }
     setPreviewEntries(result.entries);
     if (savedEvent?.entries?.length) {
-      persistEvent({ entries: result.entries });
+      void persistEvent({ entries: result.entries });
     }
     setMessage("Super Admin đã cập nhật ghép cặp.");
   };
 
-  const handleGroupInterventionApply = (result) => {
+  const handleGroupInterventionApply = async (result) => {
     if (!result?.ok) {
       return;
     }
     if (
-      persistEvent({
+      await persistEvent({
         entries: result.entries,
         groups: result.groups,
         matches: result.matches,
@@ -508,7 +513,7 @@ export default function OfficialTournamentSetup() {
     }
 
     const before = getTournamentPairingConstraints(tournament);
-    const result = updateTournament(activeClubId, tournamentId, {
+    const result = await update({
       founderPairingConstraints: founderConstraints,
     });
 
@@ -740,10 +745,8 @@ export default function OfficialTournamentSetup() {
     }
   };
 
-  const handleRefereeRosterChange = (nextRoster) => {
-    const result = updateTournament(
-      activeClubId,
-      tournamentId,
+  const handleRefereeRosterChange = async (nextRoster) => {
+    const result = await update(
       buildRefereeSettingsPatch(tournament, { roster: nextRoster })
     );
 
@@ -762,13 +765,13 @@ export default function OfficialTournamentSetup() {
     setPreviewEntries([]);
     setRegisteredEntries([]);
     setSelectedPlayerIds([]);
-    persistTournament({ officialMode: nextMode });
+    void persistTournament({ officialMode: nextMode });
   };
 
-  const handleAddEvent = () => {
+  const handleAddEvent = async () => {
     const newEvent = createOfficialEventRecord(tournament, { eventType });
     const events = [...savedEvents, newEvent];
-    if (persistTournament({ events })) {
+    if (await persistTournament({ events })) {
       setActiveEventId(newEvent.id);
       setMessage(`Da them noi dung "${newEvent.name}".`);
     }
@@ -994,7 +997,7 @@ export default function OfficialTournamentSetup() {
         matchCount: plan.matchCount,
         onStartMatchPairing: () => openMatchPairingAnimation(plan),
       },
-      () => {
+      async () => {
         const patch = buildOfficialAiBalancePatch(tournament, plan);
         if (!patch.ok) {
           setError(patch.error || "Khong luu duoc bang dau.");
@@ -1007,7 +1010,7 @@ export default function OfficialTournamentSetup() {
             : event
         );
 
-        const saved = persistTournament({
+        const saved = await persistTournament({
           events,
           officialMode: OFFICIAL_MODE.AI_BALANCE,
           status: TOURNAMENT_STATUS.READY,
@@ -1171,7 +1174,7 @@ export default function OfficialTournamentSetup() {
         matchCount: plan.matchCount,
         onStartMatchPairing: () => openMatchPairingAnimation(plan),
       },
-      () => {
+      async () => {
         pendingPlanRef.current = plan;
 
         const events = patch.events.map((event) =>
@@ -1180,7 +1183,7 @@ export default function OfficialTournamentSetup() {
             : event
         );
 
-        const saved = persistTournament({
+        const saved = await persistTournament({
           events,
           officialMode: OFFICIAL_MODE.OPEN,
           hostClubName: tournament.hostClubName || activeClub?.name || "",
@@ -1200,7 +1203,7 @@ export default function OfficialTournamentSetup() {
         }
 
         const created = recordDrawCreated(
-          getTournament(activeClubId, tournamentId),
+          typeof saved === "object" ? saved : tournament,
           patch.events[0]?.groups || [],
           {
             userId: user?.id,
@@ -1210,7 +1213,7 @@ export default function OfficialTournamentSetup() {
           }
         );
         if (created.ok) {
-          persistTournament({ settings: created.tournament.settings });
+          await persistTournament({ settings: created.tournament.settings });
         }
 
         setRegisteredEntries([]);
@@ -1227,7 +1230,7 @@ export default function OfficialTournamentSetup() {
     );
   };
 
-  const persistMatchPairing = (plan) => {
+  const persistMatchPairing = async (plan) => {
     if ((savedEvent?.matches?.length || 0) > 0) {
       return true;
     }
@@ -1239,7 +1242,7 @@ export default function OfficialTournamentSetup() {
         return false;
       }
 
-      const saved = persistTournament({
+      const saved = await persistTournament({
         events: patch.events,
         officialMode: OFFICIAL_MODE.AI_BALANCE,
         status: TOURNAMENT_STATUS.READY,
@@ -1255,7 +1258,7 @@ export default function OfficialTournamentSetup() {
         return false;
       }
 
-      const saved = persistTournament({
+      const saved = await persistTournament({
         events: patch.events,
         officialMode: OFFICIAL_MODE.OPEN,
         hostClubName: tournament.hostClubName || activeClub?.name || "",
@@ -1304,8 +1307,8 @@ export default function OfficialTournamentSetup() {
         controlMode: PAIRING_CONTROL_MODES.AUTO,
         autoNextGroup: true,
       },
-      () => {
-        persistMatchPairing(plan);
+      async () => {
+        await persistMatchPairing(plan);
       }
     );
   };
@@ -1331,8 +1334,8 @@ export default function OfficialTournamentSetup() {
         animationMode: ANIMATION_MODES.BRACKET_REVEAL,
         bracket: progress,
       },
-      () => {
-        if (persistEvent(generated.event)) {
+      async () => {
+        if (await persistEvent(generated.event)) {
           setWarnings(generated.warnings || []);
           setMessage(`Da tao bracket knock-out (${generated.knockoutMatchCount} tran).`);
         }
@@ -1340,7 +1343,7 @@ export default function OfficialTournamentSetup() {
     );
   };
 
-  const handleSelectBracketWinner = (bracketMatchId, winnerSide) => {
+  const handleSelectBracketWinner = async (bracketMatchId, winnerSide) => {
     const result = setBracketWinner(savedEvent, bracketMatchId, winnerSide || null);
     if (!result.ok) {
       setError(result.error);
@@ -1365,19 +1368,19 @@ export default function OfficialTournamentSetup() {
       setBracketAdvanceAnim(null);
     }
 
-    if (persistEvent(result.event)) {
+    if (await persistEvent(result.event)) {
       setMessage(winnerSide ? "Da cap nhat winner." : "Da xoa winner.");
     }
   };
 
-  const handleSubmitGroupScore = (matchId, scores) => {
+  const handleSubmitGroupScore = async (matchId, scores) => {
     const result = submitTournamentDirectorMatchScore(savedEvent, matchId, scores);
     if (!result.ok) {
       setError(result.error);
       return false;
     }
 
-    if (persistEvent(result.event, { processMatchId: matchId })) {
+    if (await persistEvent(result.event, { processMatchId: matchId })) {
       if (result.bracketAutoGenerated) {
         setMessage(
           `Đã lưu kết quả vòng bảng. Tự động tạo bracket knock-out (${result.bracketKnockoutMatchCount} trận).`
@@ -1391,14 +1394,14 @@ export default function OfficialTournamentSetup() {
     return false;
   };
 
-  const handleSubmitKnockoutScore = (matchId, scores) => {
+  const handleSubmitKnockoutScore = async (matchId, scores) => {
     const result = submitKnockoutMatchScore(savedEvent, matchId, scores);
     if (!result.ok) {
       setError(result.error);
       return false;
     }
 
-    if (persistEvent(result.event, { processMatchId: matchId })) {
+    if (await persistEvent(result.event, { processMatchId: matchId })) {
       setMessage("Da luu ket qua knock-out.");
       return true;
     }
@@ -1406,28 +1409,36 @@ export default function OfficialTournamentSetup() {
     return false;
   };
 
-  const handleToggleRoundLock = (roundName, unlock) => {
+  const handleToggleRoundLock = async (roundName, unlock) => {
     const result = toggleBracketRoundUnlock(savedEvent, roundName, unlock);
     if (!result.ok) {
       setError(result.error);
       return;
     }
 
-    if (persistEvent(result.event)) {
+    if (await persistEvent(result.event)) {
       setMessage(unlock ? `Da mo khoa vong ${roundName}.` : `Da khoa vong ${roundName}.`);
     }
   };
 
-  const handleResetBracket = () => {
+  const handleResetBracket = async () => {
     const confirmed = window.confirm("Reset bracket knock-out?");
     if (!confirmed) {
       return;
     }
 
-    if (persistEvent(resetBracketState(savedEvent))) {
+    if (await persistEvent(resetBracketState(savedEvent))) {
       setMessage("Da reset bracket.");
     }
   };
+
+  if (tournamentLoading) {
+    return (
+      <Box>
+        <Alert severity="info">Đang tải giải Official...</Alert>
+      </Box>
+    );
+  }
 
   if (!tournament) {
     return (
@@ -1611,7 +1622,7 @@ export default function OfficialTournamentSetup() {
                 : null
             }
             clubId={activeClubId}
-            onPersist={(nextTournament) =>
+            onPersist={async (nextTournament) =>
               persistTournament({
                 events: nextTournament.events,
                 settings: nextTournament.settings,

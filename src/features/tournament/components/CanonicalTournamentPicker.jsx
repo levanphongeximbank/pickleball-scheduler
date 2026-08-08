@@ -25,7 +25,7 @@ import {
   tournamentTableCellSx,
   tournamentTableHeadSx,
 } from "../../../components/tournament/tournamentLayout.js";
-import { listTournamentsQuery } from "../services/tournamentQueries.js";
+import { useCanonicalTournamentList } from "../hooks/useCanonicalTournament.js";
 
 function rankTournaments(tournaments, { seasonId, leagueId } = {}) {
   const statusWeight = {
@@ -68,10 +68,7 @@ export default function CanonicalTournamentPicker({
   const { activeClubId, revision } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
 
-  const tournaments = useMemo(() => {
-    void revision;
-    return listTournamentsQuery(activeClubId);
-  }, [activeClubId, revision]);
+  const { tournaments, loading } = useCanonicalTournamentList(activeClubId, revision);
 
   const matches = useMemo(
     () =>
@@ -83,14 +80,14 @@ export default function CanonicalTournamentPicker({
   );
 
   useEffect(() => {
-    if (!autoNavigateSingle || matches.length !== 1) return;
+    if (loading || !autoNavigateSingle || matches.length !== 1) return;
     const path = resolvePath(matches[0]);
     if (path) {
       navigate(path, { replace: true });
     }
-  }, [autoNavigateSingle, matches, navigate, resolvePath]);
+  }, [autoNavigateSingle, loading, matches, navigate, resolvePath]);
 
-  if (autoNavigateSingle && matches.length === 1) {
+  if (!loading && autoNavigateSingle && matches.length === 1) {
     return null;
   }
 
@@ -98,7 +95,9 @@ export default function CanonicalTournamentPicker({
     <Box>
       <TournamentPageHeader title={title} description={description} />
 
-      {matches.length === 0 ? (
+      {loading ? (
+        <Alert severity="info">Đang tải danh sách giải…</Alert>
+      ) : matches.length === 0 ? (
         <Alert severity="info">{emptyHint || "Chưa có giải phù hợp."}</Alert>
       ) : (
         <TournamentSectionCard title="Chọn giải">

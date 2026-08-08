@@ -1,8 +1,13 @@
 import { loadClubData, saveClubData } from "../../../domain/clubStorage.js";
 import { attachTeamDataToTournament, isTeamTournament } from "../engines/teamTournamentEngine.js";
+import {
+  resolveTeamTournamentDataMode,
+  TEAM_TOURNAMENT_DATA_MODES,
+} from "../repositories/teamTournamentDataMode.js";
 
 /**
  * Mirror cloud-authoritative aggregate to local blob (compatibility backup only).
+ * Disabled in cloud_only — blob is not an authority.
  * Failure is logged — does not rollback cloud success.
  * @param {string} clubId
  * @param {import('../repositories/teamTournamentRepositoryTypes.js').TournamentAggregate} aggregate
@@ -13,6 +18,15 @@ export function mirrorAggregateToBlob(clubId, aggregate, options = {}) {
 
   if (!clubId || !aggregate?.id) {
     return { ok: false, warning: "mirror skipped: missing clubId or tournament id" };
+  }
+
+  try {
+    const mode = resolveTeamTournamentDataMode({ allowFutureModes: true });
+    if (mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY) {
+      return { ok: true, skipped: true, reason: "cloud_only_no_blob_mirror" };
+    }
+  } catch {
+    // Mode unresolved — continue best-effort mirror for non-cutover envs.
   }
 
   try {

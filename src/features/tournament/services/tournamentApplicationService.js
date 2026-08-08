@@ -1,6 +1,3 @@
-/**
- * Application-facing Tournament service (queries + commands facade).
- */
 export {
   listTournamentsQuery,
   listMyTournamentsQuery,
@@ -14,8 +11,14 @@ export {
   updateTournamentCommand,
   deleteTournamentCommand,
   applyEngineV4StateCommand,
+  setTournamentStatusCommand,
 } from "./tournamentCommands.js";
 
-export { getTournamentRepository, createTournamentRepository } from "../repositories/tournamentRepositoryFactory.js";
-export { resolveTournamentDataMode, TOURNAMENT_DATA_MODES } from "../repositories/tournamentDataMode.js";
-export { requireExplicitTenantForClub } from "../repositories/transitionalBlobTournamentRepository.js";
+export {
+  getTournamentRepository,
+  createTournamentRepository,
+  resolveTournamentDataMode,
+  TOURNAMENT_DATA_MODES,
+} from "../repositories/tournamentRepositoryFactory.js";
+
+export { requireExplicitTenantForClub } from "../guards/tournamentTenant.js";

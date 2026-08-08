@@ -44,6 +44,15 @@ function mapLegacyFlagsToMode() {
     return TEAM_TOURNAMENT_DATA_MODES.LEGACY;
   }
 
+  // Hard cutover: prefer cloud_only when cutover + Supabase TT flags are ready.
+  if (
+    isTournamentCanonicalCutoverEnabled() &&
+    supabaseFlag &&
+    hasSupabaseConfig()
+  ) {
+    return TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY;
+  }
+
   if (supabaseFlag && hasSupabaseConfig()) {
     return TEAM_TOURNAMENT_DATA_MODES.SHADOW;
   }

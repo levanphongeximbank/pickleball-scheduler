@@ -1,25 +1,20 @@
 # Live Cutover Package (NOT APPLIED)
 
+## Owner data policy
+
+`LEGACY_TOURNAMENT_DATA_MIGRATION=SKIPPED_BY_OWNER_POLICY`
+
+- Do **not** migrate club_data_v3 / localStorage / MOCK tournaments.
+- `canonical_tournaments` starts clean after SQL apply.
+- Rollback = schema/deploy rollback, not dual-running legacy authority.
+
 ## Migration files
 
-1. `docs/v5/qa-evidence/tournament-canonical-runtime-cutover-01/sql/10_CANONICAL_TOURNAMENTS.sql`
-2. `docs/v5/qa-evidence/tournament-canonical-runtime-cutover-01/sql/90_ROLLBACK.sql`
+1. `supabase/migrations/20260808100000_canonical_tournaments_cutover.sql` (**deployable**)
+2. Evidence copy: `docs/v5/qa-evidence/.../sql/10_CANONICAL_TOURNAMENTS.sql`
+3. Rollback: `docs/v5/qa-evidence/.../sql/90_ROLLBACK.sql`
 
-## RPC changes
-
-- `canonical_tournament_list`
-- `canonical_tournament_get`
-- `canonical_tournament_create`
-- `canonical_tournament_update`
-- `canonical_tournament_delete`
-- `canonical_tournament_list_mine`
-- `canonical_tournament_apply_engine_state`
-
-## Table changes
-
-- `public.canonical_tournaments` (+ RLS)
-
-## Env flag changes (after SQL)
+## Env (after SQL)
 
 ```
 VITE_TOURNAMENT_CANONICAL_DATA_MODE=cloud
@@ -29,34 +24,17 @@ VITE_TEAM_TOURNAMENT_DATA_MODE=cloud_only
 VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE=remote
 ```
 
-## Order of application
+## Order
 
-1. Backup Production/Staging
-2. Apply `10_CANONICAL_TOURNAMENTS.sql`
-3. One-time migrate organizer tournaments from `club_data_v3` blob → `canonical_tournaments` (script TBD at live GO)
-4. Set env flags on Preview → Staging → Production
-5. Smoke test
-6. Remove transitional blob repository in follow-up PR if stable
+1. Backup
+2. Apply supabase migration
+3. Set env Preview → Staging → Production
+4. Smoke: create daily/internal/official/team; list/my; engine apply; public remote
+5. No blob dual-run
 
-## Rollback
+## Auth
 
-1. Revert env to `transitional_blob` / prior TT mode
-2. Apply `90_ROLLBACK.sql` only if no irreversible dependent data required
-3. Redeploy previous app build if needed
-
-## Expected data loss/reset
-
-- Hard cutover may drop unmigrated local-only browser blob tournaments
-- Owner is sole Production user → prefer hard cutover over long dual-run
-
-## Post-cutover smoke
-
-- `/tournament` hub stats load
-- Create each mode (daily/internal/official/team)
-- `/tournament/list` and `/tournament/my` same set
-- Public `/tournaments` remote empty/error honest (no mock)
-- Engine deep routes still open
-- Referee hub opens
-- Team cloud_only create/load
+SECURITY DEFINER RPCs require `user_has_permission` + tenant (`user_venue_id`).
+PUBLIC/anon EXECUTE revoked.
 
 **OWNER_GO_REQUIRED_FOR_LIVE_CUTOVER=YES**

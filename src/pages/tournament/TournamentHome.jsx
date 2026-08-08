@@ -1,3 +1,8 @@
+/**
+ * DEMOTED — not mounted by router. Canonical hub is CanonicalTournamentHubPage
+ * via TournamentShell. Kept only for historical/regression reference.
+ * Do not re-wire as primary Tournament lifecycle.
+ */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 

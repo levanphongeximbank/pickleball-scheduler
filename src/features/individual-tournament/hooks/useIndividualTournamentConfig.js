@@ -2,7 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useClub } from "../../../context/ClubContext.jsx";
-import { getTournament, updateTournament, listTournaments } from "../../../domain/tournamentService.js";
+import {
+  useCanonicalTournament,
+  useCanonicalTournamentList,
+} from "../../tournament/hooks/useCanonicalTournament.js";
 import { isIndividualTournament } from "../../../config/tournamentRoutes.js";
 
 /**
@@ -14,15 +17,13 @@ export function useIndividualTournamentConfig() {
   const { activeClubId, revision, refreshClubs } = useClub();
   const [message, setMessage] = useState(null);
 
-  const tournaments = useMemo(
-    () => listTournaments(activeClubId).filter(isIndividualTournament),
-    [activeClubId, revision]
-  );
+  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClubId, revision);
+  const { tournament, update } = useCanonicalTournament(activeClubId, tournamentId, revision);
 
-  const tournament = useMemo(() => {
-    if (!tournamentId || !activeClubId) return null;
-    return getTournament(activeClubId, tournamentId);
-  }, [activeClubId, tournamentId, revision]);
+  const tournaments = useMemo(
+    () => allTournaments.filter(isIndividualTournament),
+    [allTournaments]
+  );
 
   const selectTournament = useCallback(
     (id) => {
@@ -35,12 +36,12 @@ export function useIndividualTournamentConfig() {
   );
 
   const persistTournament = useCallback(
-    (nextTournament) => {
+    async (nextTournament) => {
       if (!tournamentId || !activeClubId) {
         setMessage({ type: "error", text: "Chưa chọn giải cá nhân." });
         return false;
       }
-      const result = updateTournament(activeClubId, tournamentId, {
+      const result = await update({
         settings: nextTournament.settings,
         events: nextTournament.events,
         status: nextTournament.status,
@@ -52,7 +53,7 @@ export function useIndividualTournamentConfig() {
       refreshClubs();
       return true;
     },
-    [activeClubId, tournamentId, refreshClubs]
+    [activeClubId, tournamentId, refreshClubs, update]
   );
 
   return {

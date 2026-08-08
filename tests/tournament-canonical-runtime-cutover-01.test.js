@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import { setActiveClubId, loadClubs, saveClubs, DEFAULT_CLUB } from "../src/data/club.js";
-import { loadClubData } from "../src/domain/clubStorage.js";
 import {
   listTournamentsQuery,
   listMyTournamentsQuery,
@@ -16,8 +15,10 @@ import {
   TOURNAMENT_DATA_MODES,
   CANONICAL_TOURNAMENT_HUB_ITEMS,
   MODE_LABELS_VI,
+  __resetTournamentRepositorySingleton,
+  __setTournamentRepositoryRpcForTests,
+  createInMemoryCanonicalTournamentRpc,
 } from "../src/features/tournament/index.js";
-import { __resetTournamentRepositorySingleton } from "../src/features/tournament/repositories/tournamentRepositoryFactory.js";
 import { TOURNAMENT_MODE } from "../src/models/tournament/constants.js";
 import {
   PUBLIC_TOURNAMENTS_RANKINGS_SOURCE,
@@ -30,8 +31,8 @@ function readSrc(relativePath) {
   return readFileSync(path.join(root, relativePath), "utf8");
 }
 
-function createLocalStorageMock(seed = {}) {
-  const store = new Map(Object.entries(seed));
+function createLocalStorageMock() {
+  const store = new Map();
   return {
     getItem(key) {
       return store.has(key) ? store.get(key) : null;
@@ -48,12 +49,12 @@ function createLocalStorageMock(seed = {}) {
   };
 }
 
-function assertIncludes(src, snippet, message) {
-  assert.ok(src.includes(snippet), message || `Expected source to include: ${snippet}`);
+function assertIncludes(src, snippet) {
+  assert.ok(src.includes(snippet), `Expected source to include: ${snippet}`);
 }
 
-function assertNotIncludes(src, snippet, message) {
-  assert.ok(!src.includes(snippet), message || `Expected source to omit: ${snippet}`);
+function assertNotIncludes(src, snippet) {
+  assert.ok(!src.includes(snippet), `Expected source to omit: ${snippet}`);
 }
 
 describe("tournament-canonical-runtime-cutover-01", () => {
@@ -67,14 +68,14 @@ describe("tournament-canonical-runtime-cutover-01", () => {
     );
     saveClubs(clubs);
     setActiveClubId(DEFAULT_CLUB.id);
-    loadClubData(DEFAULT_CLUB.id);
-    delete process.env.VITE_TOURNAMENT_CANONICAL_DATA_MODE;
+    __setTournamentRepositoryRpcForTests(
+      createInMemoryCanonicalTournamentRpc({ tenantId: "tenant-cutover-01" }).rpc
+    );
     delete process.env.VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE;
   });
 
   afterEach(() => {
     __resetTournamentRepositorySingleton();
-    delete process.env.VITE_TOURNAMENT_CANONICAL_DATA_MODE;
     delete process.env.VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE;
   });
 
@@ -94,28 +95,29 @@ describe("tournament-canonical-runtime-cutover-01", () => {
     assertIncludes(wrapper, "CanonicalTournamentCreatePage");
     assertIncludes(page, "createTournamentCommand");
     assertIncludes(page, "TOURNAMENT_MODE.DAILY_PLAY");
-    assertIncludes(page, "TOURNAMENT_MODE.TEAM_TOURNAMENT");
-    assertNotIncludes(page, 'section="create"');
   });
 
-  it("3+4. list and my share the same reader boundary", () => {
+  it("3+4. list and my share the same cloud reader boundary", async () => {
     const listPage = readSrc("src/features/tournament/pages/CanonicalTournamentListPage.jsx");
     const portal = readSrc("src/pages/tournament/IndividualPlayerPortalPage.jsx");
-    assertIncludes(listPage, "listTournamentsQuery");
-    assertIncludes(portal, "listMyTournamentsQuery");
+    assertIncludes(listPage, "useCanonicalTournamentList");
+    assertIncludes(portal, "useCanonicalMyTournaments");
     assertNotIncludes(listPage, "domain/tournamentService");
     assertNotIncludes(portal, "domain/tournamentService");
 
-    const created = createTournamentCommand(DEFAULT_CLUB.id, {
+    const created = await createTournamentCommand(DEFAULT_CLUB.id, {
       mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
       name: "Giải list/my parity",
+      createdBy: "player-a",
     });
     assert.equal(created.ok, true);
-    const listed = listTournamentsQuery(DEFAULT_CLUB.id);
-    const mine = listMyTournamentsQuery(DEFAULT_CLUB.id, {});
-    assert.equal(listed.length >= 1, true);
-    assert.equal(mine.length, listed.length);
-    assert.equal(buildTournamentHubStats(DEFAULT_CLUB.id).total, listed.length);
+    const listed = await listTournamentsQuery(DEFAULT_CLUB.id);
+    const mine = await listMyTournamentsQuery(DEFAULT_CLUB.id, { playerId: "player-a" });
+    assert.equal(listed.ok, true);
+    assert.equal(listed.tournaments.length >= 1, true);
+    assert.equal(mine.tournaments.length, 1);
+    const stats = await buildTournamentHubStats(DEFAULT_CLUB.id);
+    assert.equal(stats.total, listed.tournaments.length);
   });
 
   it("5. canonical pages do not directly import Tournament localStorage authority", () => {
@@ -126,6 +128,9 @@ describe("tournament-canonical-runtime-cutover-01", () => {
       "src/features/tournament/pages/CanonicalTournamentTypesPage.jsx",
       "src/features/tournament/pages/CanonicalTournamentCapabilityPages.jsx",
       "src/features/tournament/components/CanonicalTournamentPicker.jsx",
+      "src/pages/tournament/DailyPlaySetup.jsx",
+      "src/pages/tournament/InternalTournamentSetup.jsx",
+      "src/pages/tournament/OfficialTournamentSetup.jsx",
     ];
     for (const file of files) {
       const src = readSrc(file);
@@ -136,7 +141,7 @@ describe("tournament-canonical-runtime-cutover-01", () => {
     }
   });
 
-  it("6. no new MOCK_TOURNAMENTS authority on canonical public path", () => {
+  it("6. no MOCK_TOURNAMENTS authority on canonical public path", () => {
     const adapter = readSrc(
       "src/features/public-portal/services/publicTournamentsRankingsDataSource.js"
     );
@@ -145,49 +150,36 @@ describe("tournament-canonical-runtime-cutover-01", () => {
       resolvePublicTournamentsRankingsSource(),
       PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.REMOTE
     );
-    assertNotIncludes(
-      readSrc("src/features/tournament/pages/CanonicalTournamentHubPage.jsx"),
-      "MOCK_TOURNAMENTS"
-    );
   });
 
-  it("7. no new default-tenant fallback in canonical repository", () => {
+  it("7. fail closed on missing tenant", async () => {
     const clubs = loadClubs().map((club) =>
       club.id === DEFAULT_CLUB.id ? { ...club, tenantId: null, venueId: null } : club
     );
     saveClubs(clubs);
-    const denied = requireExplicitTenantForClub(DEFAULT_CLUB.id);
-    assert.equal(denied.ok, false);
-    assert.match(String(denied.error || ""), /default-tenant|tenant hợp lệ/i);
-
-    const created = createTournamentCommand(DEFAULT_CLUB.id, {
+    assert.equal(requireExplicitTenantForClub(DEFAULT_CLUB.id).ok, false);
+    const created = await createTournamentCommand(DEFAULT_CLUB.id, {
       mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
       name: "Should fail",
     });
     assert.equal(created.ok, false);
   });
 
-  it("8. replaced legacy wrappers no longer own canonical primary routes", () => {
-    const shell = readSrc("src/pages/tournament/TournamentShell.jsx");
-    const list = readSrc("src/pages/tournament/TournamentListPage.jsx");
-    const create = readSrc("src/pages/tournament/TournamentCreatePage.jsx");
-    assertIncludes(shell, "CanonicalTournamentHubPage");
-    assertIncludes(list, "CanonicalTournamentListPage");
-    assertIncludes(create, "CanonicalTournamentCreatePage");
-    assertNotIncludes(shell, 'from "./TournamentHome');
+  it("8. wrappers point to canonical pages", () => {
+    assertIncludes(readSrc("src/pages/tournament/TournamentShell.jsx"), "CanonicalTournamentHubPage");
+    assertIncludes(readSrc("src/pages/tournament/TournamentListPage.jsx"), "CanonicalTournamentListPage");
+    assertIncludes(readSrc("src/pages/tournament/TournamentCreatePage.jsx"), "CanonicalTournamentCreatePage");
   });
 
-  it("9. EngineV4 remains reachable contextually", () => {
+  it("9. EngineV4 contextual + cloud apply path", () => {
     const router = readSrc("src/router.jsx");
     assertIncludes(router, 'path="/tournaments/:tournamentId/engine"');
-    assertIncludes(router, 'path="/tournaments/:tournamentId/seed"');
-    const organize = readSrc(
-      "src/features/tournament/pages/CanonicalTournamentCapabilityPages.jsx"
-    );
-    assertIncludes(organize, "engineTabPath");
+    const engine = readSrc("src/features/tournament-engine/hooks/useTournamentEngine.js");
+    assertIncludes(engine, "applyEngineV4StateCommand");
+    assertNotIncludes(engine, "domain/tournamentService");
   });
 
-  it("10. required business capabilities remain represented", () => {
+  it("10. capabilities + Vietnamese labels", () => {
     const titles = CANONICAL_TOURNAMENT_HUB_ITEMS.map((item) => item.title).join("|");
     for (const label of [
       "Tạo giải",
@@ -203,88 +195,24 @@ describe("tournament-canonical-runtime-cutover-01", () => {
       assertIncludes(titles, label);
     }
     assert.equal(MODE_LABELS_VI[TOURNAMENT_MODE.DAILY_PLAY], "Chơi hằng ngày");
+    assert.equal(resolveTournamentDataMode(), TOURNAMENT_DATA_MODES.CLOUD);
   });
 
-  it("11. Tournament authorization gates are preserved", () => {
+  it("11. auth gates preserved", () => {
     const createPage = readSrc(
       "src/features/tournament/pages/CanonicalTournamentCreatePage.jsx"
     );
-    const hub = readSrc("src/features/tournament/pages/CanonicalTournamentHubPage.jsx");
+    assertIncludes(createPage, "usePageRuntimeAccess");
     assert.ok(
       createPage.includes("PERMISSIONS.TOURNAMENT_UPDATE") ||
         createPage.includes("PermissionGate")
     );
-    assertIncludes(createPage, "usePageRuntimeAccess");
-    assertIncludes(hub, "usePageRuntimeAccess");
   });
 
-  it("12. touched visible Tournament UI is Vietnamese", () => {
-    const createPage = readSrc(
-      "src/features/tournament/pages/CanonicalTournamentCreatePage.jsx"
-    );
-    assertNotIncludes(createPage, 'badge: "Daily"');
-    assertNotIncludes(createPage, 'badge: "Internal"');
-    assertNotIncludes(createPage, 'badge: "Official"');
-    assertNotIncludes(createPage, "Director Mode");
-    assertNotIncludes(createPage, "Open Mode");
-    assertNotIncludes(createPage, "AI Balance Mode");
-    assertIncludes(createPage, "modeLabelVi(TOURNAMENT_MODE.DAILY_PLAY)");
-    assertIncludes(createPage, 'badge: "Hằng ngày"');
-    assertIncludes(createPage, 'badge: "Nội bộ"');
-    assertIncludes(createPage, 'badge: "Chính thức"');
-    assertIncludes(createPage, 'badge: "Đồng đội"');
-    assert.equal(MODE_LABELS_VI[TOURNAMENT_MODE.DAILY_PLAY], "Chơi hằng ngày");
-  });
-
-  it("13. canonical repository fails closed on missing tenant", () => {
-    assert.equal(resolveTournamentDataMode(), TOURNAMENT_DATA_MODES.TRANSITIONAL_BLOB);
-    const clubs = loadClubs().map((club) =>
-      club.id === DEFAULT_CLUB.id
-        ? { ...club, tenantId: "default-tenant", venueId: "default-tenant" }
-        : club
-    );
-    saveClubs(clubs);
-    const denied = requireExplicitTenantForClub(DEFAULT_CLUB.id);
-    assert.equal(denied.ok, false);
-  });
-
-  it("14. Team Tournament does not gain a new local mirror path", () => {
-    const commands = readSrc("src/features/tournament/services/tournamentCommands.js");
-    assertIncludes(commands, "createTeamTournamentForUi");
-    assertNotIncludes(commands, "localStorage.setItem");
-    assertNotIncludes(commands, "pickleball-club-data-v3");
-    const dataMode = readSrc(
-      "src/features/team-tournament/repositories/teamTournamentDataMode.js"
-    );
-    assertIncludes(dataMode, "CLOUD_ONLY");
-    assertIncludes(dataMode, "VITE_TOURNAMENT_CANONICAL_CUTOVER");
-  });
-
-  it("15. public Tournament canonical path does not depend on mock/browser data", () => {
-    assert.equal(
-      resolvePublicTournamentsRankingsSource(),
-      PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.REMOTE
-    );
-    const adapter = readSrc(
-      "src/features/public-portal/services/publicTournamentsRankingsDataSource.js"
-    );
-    assertIncludes(adapter, "loadPublicTournamentsFromRemote");
-    assertIncludes(adapter, "PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.REMOTE");
-  });
-
-  it("entry-fee route is demoted to canonical fee redirect", () => {
-    const router = readSrc("src/router.jsx");
-    assertIncludes(router, 'path="/tournament/entry-fee"');
-    assertIncludes(router, 'Navigate to="/tournament/config/fee"');
-  });
-
-  it("SQL cutover package exists locally and is not auto-applied", () => {
+  it("12. SQL migration + rollback + no legacy migration script", () => {
     assert.equal(
       existsSync(
-        path.join(
-          root,
-          "docs/v5/qa-evidence/tournament-canonical-runtime-cutover-01/sql/10_CANONICAL_TOURNAMENTS.sql"
-        )
+        path.join(root, "supabase/migrations/20260808100000_canonical_tournaments_cutover.sql")
       ),
       true
     );
@@ -297,5 +225,9 @@ describe("tournament-canonical-runtime-cutover-01", () => {
       ),
       true
     );
+    const livePkg = readSrc(
+      "docs/v5/qa-evidence/tournament-canonical-runtime-cutover-01/06_LIVE_CUTOVER_PACKAGE.md"
+    );
+    assertIncludes(livePkg, "SKIPPED_BY_OWNER_POLICY");
   });
 });

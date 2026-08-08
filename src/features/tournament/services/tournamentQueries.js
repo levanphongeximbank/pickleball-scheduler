@@ -1,5 +1,5 @@
 /**
- * Canonical Tournament read model — single reader authority for list/my/hub.
+ * Canonical Tournament read model — async cloud reader authority.
  */
 import { getTournamentRepository } from "../repositories/tournamentRepositoryFactory.js";
 import { modeLabelVi, statusLabelVi } from "../constants/tournamentLabels.js";
@@ -14,48 +14,67 @@ function toReadModel(tournament) {
   };
 }
 
-/**
- * @param {string} clubId
- * @param {object} [filters]
- * @param {{ repository?: object }} [options]
- */
-export function listTournamentsQuery(clubId, filters = {}, options = {}) {
+export async function listTournamentsQuery(clubId, filters = {}, options = {}) {
   const repo = options.repository || getTournamentRepository();
-  return (repo.list(clubId, filters) || []).map(toReadModel);
+  const result = await repo.list(clubId, filters);
+  if (!result.ok) {
+    return { ok: false, ...result, tournaments: [] };
+  }
+  return {
+    ok: true,
+    tournaments: (result.tournaments || []).map(toReadModel),
+  };
 }
 
-/**
- * Same reader authority as list — filtered to "mine".
- */
-export function listMyTournamentsQuery(clubId, filters = {}, options = {}) {
+export async function listMyTournamentsQuery(clubId, filters = {}, options = {}) {
   const repo = options.repository || getTournamentRepository();
-  return (repo.listMine(clubId, filters) || []).map(toReadModel);
+  const result = await repo.listMine(clubId, filters);
+  if (!result.ok) {
+    return { ok: false, ...result, tournaments: [] };
+  }
+  return {
+    ok: true,
+    tournaments: (result.tournaments || []).map(toReadModel),
+  };
 }
 
-export function getTournamentQuery(clubId, tournamentId, options = {}) {
+export async function getTournamentQuery(clubId, tournamentId, options = {}) {
   const repo = options.repository || getTournamentRepository();
-  return toReadModel(repo.get(clubId, tournamentId));
+  const result = await repo.get(clubId, tournamentId);
+  if (!result.ok) {
+    return { ok: false, ...result, tournament: null };
+  }
+  return { ok: true, tournament: toReadModel(result.tournament) };
 }
 
-export function listOpenTournamentsQuery(clubId, options = {}) {
+export async function listOpenTournamentsQuery(clubId, options = {}) {
+  const result = await listTournamentsQuery(clubId, {}, options);
+  if (!result.ok) return result;
   const open = new Set([
     TOURNAMENT_STATUS.ACTIVE,
     TOURNAMENT_STATUS.READY,
     TOURNAMENT_STATUS.REGISTRATION,
   ]);
-  return listTournamentsQuery(clubId, {}, options).filter((item) => open.has(item.status));
+  return {
+    ok: true,
+    tournaments: result.tournaments.filter((item) => open.has(item.status)),
+  };
 }
 
-export function buildTournamentHubStats(clubId, options = {}) {
-  const all = listTournamentsQuery(clubId, {}, options);
-  const open = all.filter((item) =>
-    [TOURNAMENT_STATUS.ACTIVE, TOURNAMENT_STATUS.READY, TOURNAMENT_STATUS.REGISTRATION].includes(
-      item.status
-    )
-  );
+export async function buildTournamentHubStats(clubId, options = {}) {
+  const result = await listTournamentsQuery(clubId, {}, options);
+  if (!result.ok) {
+    return { ok: false, ...result, total: 0, open: 0, draft: 0, completed: 0 };
+  }
+  const all = result.tournaments;
   return {
+    ok: true,
     total: all.length,
-    open: open.length,
+    open: all.filter((item) =>
+      [TOURNAMENT_STATUS.ACTIVE, TOURNAMENT_STATUS.READY, TOURNAMENT_STATUS.REGISTRATION].includes(
+        item.status
+      )
+    ).length,
     draft: all.filter((item) => item.status === TOURNAMENT_STATUS.DRAFT).length,
     completed: all.filter((item) => item.status === TOURNAMENT_STATUS.COMPLETED).length,
   };

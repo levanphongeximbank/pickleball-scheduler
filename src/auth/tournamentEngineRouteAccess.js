@@ -109,7 +109,11 @@ export function evaluateTournamentEngineRouteAccess({
     return { ok: false, code: "INVALID_TOURNAMENT_ID", tournament: null };
   }
 
-  const clubId = resolveTournamentClubId(activeClubId, tournamentId);
+  // Prefer active club for cloud-only tournaments (not present in club blob).
+  let clubId = resolveTournamentClubId(activeClubId, tournamentId);
+  if (!clubId && activeClubId) {
+    clubId = String(activeClubId).trim();
+  }
   if (!clubId) {
     return { ok: false, code: "TOURNAMENT_NOT_FOUND", tournament: null };
   }
@@ -121,6 +125,19 @@ export function evaluateTournamentEngineRouteAccess({
     rbacEnabled: enforceRbac,
     tenantId: tenantId || user?.tenantId || user?.venueId || null,
   });
+
+  // Cloud cutover: tournament may exist only in canonical_tournaments.
+  // Permission is already enforced by decideTournamentEngineRouteGate; page loads via cloud get.
+  if (!access.ok && access.code === "NOT_FOUND" && activeClubId) {
+    return {
+      ok: true,
+      code: "OK_CLOUD_DEFERRED",
+      tournament: null,
+      clubId,
+      tab: parsed.tab,
+      deferredCloudOwnership: true,
+    };
+  }
 
   if (!access.ok) {
     return {

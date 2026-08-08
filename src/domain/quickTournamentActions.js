@@ -25,23 +25,20 @@ function sortByRecent(tournaments = []) {
   });
 }
 
-export function findOpenDailyPlayTournament(clubId, { seasonId, leagueId } = {}) {
+export async function findOpenDailyPlayTournament(clubId, { seasonId, leagueId } = {}) {
   const filters = { mode: TOURNAMENT_MODE.DAILY_PLAY };
-  if (seasonId) {
-    filters.seasonId = seasonId;
-  }
-  if (leagueId) {
-    filters.leagueId = leagueId;
-  }
+  if (seasonId) filters.seasonId = seasonId;
+  if (leagueId) filters.leagueId = leagueId;
 
-  const openTournaments = listTournamentsQuery(clubId, filters).filter((tournament) =>
+  const result = await listTournamentsQuery(clubId, filters);
+  if (!result.ok) return null;
+  const openTournaments = (result.tournaments || []).filter((tournament) =>
     OPEN_DAILY_STATUSES.has(tournament.status)
   );
-
   return sortByRecent(openTournaments)[0] || null;
 }
 
-export function startQuickDailyPlay(clubId, { seasonId, leagueId } = {}) {
+export async function startQuickDailyPlay(clubId, { seasonId, leagueId } = {}) {
   return createTournamentCommand(clubId, {
     name: buildDailyPlayName(),
     mode: TOURNAMENT_MODE.DAILY_PLAY,
@@ -50,31 +47,18 @@ export function startQuickDailyPlay(clubId, { seasonId, leagueId } = {}) {
   });
 }
 
-export function resolveDailyPlayEntry(
+export async function resolveDailyPlayEntry(
   clubId,
   { seasonId, leagueId, allowCreate = true } = {}
 ) {
-  const existing = findOpenDailyPlayTournament(clubId, { seasonId, leagueId });
-
+  const existing = await findOpenDailyPlayTournament(clubId, { seasonId, leagueId });
   if (existing) {
     return { ok: true, tournament: existing, created: false };
   }
-
   if (!allowCreate) {
     return { ok: false, error: "Chưa có buổi chơi hằng ngày đang mở." };
   }
-
-  const created = startQuickDailyPlay(clubId, { seasonId, leagueId });
-  if (typeof created?.then === "function") {
-    return created.then((result) => {
-      if (!result.ok) return result;
-      return { ok: true, tournament: result.tournament, created: true };
-    });
-  }
-
-  if (!created.ok) {
-    return created;
-  }
-
+  const created = await startQuickDailyPlay(clubId, { seasonId, leagueId });
+  if (!created.ok) return created;
   return { ok: true, tournament: created.tournament, created: true };
 }

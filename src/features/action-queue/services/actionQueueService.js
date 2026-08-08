@@ -1,12 +1,13 @@
 import { loadBookingsForClub, loadCustomersForClub } from "../../../domain/clubStorage.js";
-import { listTournaments } from "../../../domain/tournamentService.js";
+import { listTournamentsQuery } from "../../tournament/services/tournamentQueries.js";
 import { TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
 import { todayIsoDate } from "../../../pages/courtManagement/courtManagement.constants.js";
 
 /**
  * Hàng đợi việc cần xử lý trên Dashboard.
+ * Tournament items read from canonical cloud list (not club blob).
  */
-export function buildActionQueue({ clubId, referenceDate = new Date() } = {}) {
+export async function buildActionQueue({ clubId, referenceDate = new Date() } = {}) {
   if (!clubId) return [];
 
   const today = todayIsoDate(referenceDate);
@@ -43,7 +44,8 @@ export function buildActionQueue({ clubId, referenceDate = new Date() } = {}) {
     }
   }
 
-  const tournaments = listTournaments(clubId) || [];
+  const listResult = await listTournamentsQuery(clubId);
+  const tournaments = listResult.ok ? listResult.tournaments || [] : [];
   for (const tournament of tournaments) {
     if (
       tournament.status === TOURNAMENT_STATUS.REGISTRATION ||

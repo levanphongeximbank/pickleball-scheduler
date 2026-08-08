@@ -12,10 +12,9 @@ import {
 import { useClub } from "../../context/ClubContext.jsx";
 import { loadCourtsForClub } from "../../domain/clubStorage.js";
 import {
-  getTournament,
-  listTournaments,
-  updateTournament,
-} from "../../domain/tournamentService.js";
+  useCanonicalTournament,
+  useCanonicalTournamentList,
+} from "../../features/tournament/hooks/useCanonicalTournament.js";
 import { isIndividualTournament } from "../../config/tournamentRoutes.js";
 import TournamentConfigPageShell from "../../components/tournament/TournamentConfigPageShell.jsx";
 import IndividualTournamentSelector from "../../components/tournament/IndividualTournamentSelector.jsx";
@@ -53,15 +52,13 @@ export default function TournamentPublishSchedulePage() {
   const [message, setMessage] = useState(null);
   const [minRestMinutes, setMinRestMinutes] = useState(15);
 
-  const tournaments = useMemo(
-    () => listTournaments(activeClubId).filter(isIndividualTournament),
-    [activeClubId, revision]
-  );
+  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClubId, revision);
+  const { tournament, update } = useCanonicalTournament(activeClubId, tournamentId, revision);
 
-  const tournament = useMemo(() => {
-    if (!tournamentId || !activeClubId) return null;
-    return getTournament(activeClubId, tournamentId);
-  }, [activeClubId, tournamentId, revision]);
+  const tournaments = useMemo(
+    () => allTournaments.filter(isIndividualTournament),
+    [allTournaments]
+  );
 
   const courts = useMemo(
     () => loadCourtsForClub(activeClubId).filter((c) => c.active !== false),
@@ -89,7 +86,7 @@ export default function TournamentPublishSchedulePage() {
     return map;
   }, [tournament]);
 
-  const persistSettings = (nextTournament, alsoMatches) => {
+  const persistSettings = async (nextTournament, alsoMatches) => {
     const patch = { settings: nextTournament.settings };
     if (alsoMatches) {
       patch.settings = {
@@ -109,7 +106,7 @@ export default function TournamentPublishSchedulePage() {
         patch.events = events;
       }
     }
-    const result = updateTournament(activeClubId, tournamentId, patch);
+    const result = await update(patch);
     if (!result.ok) {
       setMessage({ type: "error", text: result.error || "Không lưu được." });
       return false;
@@ -224,7 +221,7 @@ export default function TournamentPublishSchedulePage() {
       minRestMinutes,
     });
 
-    if (!recorded.ok || !persistSettings(recorded.tournament, result.data.matches)) {
+    if (!recorded.ok || !(await persistSettings(recorded.tournament, result.data.matches))) {
       return;
     }
 
@@ -234,13 +231,13 @@ export default function TournamentPublishSchedulePage() {
     });
   };
 
-  const runLifecycle = (fn, okText) => {
+  const runLifecycle = async (fn, okText) => {
     const result = fn();
     if (!result.ok) {
       setMessage({ type: "error", text: result.error });
       return;
     }
-    if (!persistSettings(result.tournament, result.snapshot || matches)) {
+    if (!(await persistSettings(result.tournament, result.snapshot || matches))) {
       return;
     }
     setMessage({ type: "success", text: okText });
@@ -352,7 +349,7 @@ export default function TournamentPublishSchedulePage() {
               )
             }
             onMatchesChange={(nextMatches) => {
-              persistSettings(tournament, nextMatches);
+              void persistSettings(tournament, nextMatches);
             }}
             entryLabels={entryLabels}
           />

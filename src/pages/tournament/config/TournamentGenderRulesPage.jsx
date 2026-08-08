@@ -37,7 +37,7 @@ export default function TournamentGenderRulesPage() {
   const rules = getEligibilityRules(tournament).gender;
   const full = getEligibilityRules(tournament);
 
-  const save = (patch) => {
+  const save = async (patch) => {
     if (!tournament) {
       setMessage({ type: "error", text: "Chưa chọn giải." });
       return;
@@ -47,14 +47,14 @@ export default function TournamentGenderRulesPage() {
       setMessage({ type: "error", text: result.error || "Không lưu được." });
       return;
     }
-    if (!persistTournament(result.tournament)) return;
+    if (!(await persistTournament(result.tournament))) return;
     setMessage({ type: "success", text: "Đã lưu quy tắc giới tính." });
   };
 
-  const saveExtra = (section, patch) => {
+  const saveExtra = async (section, patch) => {
     if (!tournament) return;
     const result = updateEligibilityRules(tournament, { [section]: patch });
-    if (result.ok && persistTournament(result.tournament)) {
+    if (result.ok && (await persistTournament(result.tournament))) {
       setMessage({ type: "success", text: "Đã lưu quy tắc điều kiện." });
     }
   };

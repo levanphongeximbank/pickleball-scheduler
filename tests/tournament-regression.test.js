@@ -40,8 +40,9 @@ import {
 } from "../src/tournament/engines/tournamentDirectorEngine.js";
 import { buildKnockoutProgress } from "../src/pages/tournament.bracket.logic.js";
 
-// Load cutover suite via existing manifest entry (avoid editing B1B-owned unit-test-files.json).
+// Load cutover suites via existing manifest entry (avoid editing B1B-owned unit-test-files.json).
 import "./tournament-canonical-runtime-cutover-01.test.js";
+import "./tournament-canonical-cloud-mode.test.js";
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 

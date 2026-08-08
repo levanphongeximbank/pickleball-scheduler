@@ -1,23 +1,29 @@
-# Auth / Tenant Preservation
+# Auth / Tenant / RPC Authorization
 
-## Preserved
+## Frontend gates (unchanged)
 
-- `PermissionGate` + `PERMISSIONS.TOURNAMENT_UPDATE` on create
-- `usePageRuntimeAccess("tournament.manage", …)` on hub/create/list
-- Existing route guards in router unchanged
-- Team Tournament still uses existing TT service/RPC authz
+- RouteAccessGate / PermissionGate on Tournament routes
+- `usePageRuntimeAccess("tournament.manage", …)` on create
 
-## Fail-closed tenant (canonical writes)
+## SECURITY DEFINER RPCs (migration package)
 
-- `requireExplicitTenantForClub(clubId)` rejects missing / `default-tenant` / `default`
-- Canonical `createTournamentCommand` uses that check via transitional repository
-- No new invention of `default-tenant` in canonical path
+Each RPC fails closed on:
 
-## Not mutated live
+1. Tenant scope — `user_venue_id()` / `is_super_admin()` via `canonical_tournament_assert_tenant`
+2. Permission — `user_has_permission(...)` using existing keys:
+   - `tournament.view` — list / get / list_mine
+   - `tournament.create` — create
+   - `tournament.update` — update / apply_engine
+   - `tournament.delete` — delete
 
-- No RLS policy changes applied to Staging/Production
-- Local SQL package includes RLS drafts for `canonical_tournaments` only
+## EXECUTE privileges
 
-## TOPBAR
+- `REVOKE ALL … FROM PUBLIC`
+- `REVOKE ALL … FROM anon`
+- `GRANT EXECUTE … TO authenticated`
 
-- `TOPBAR_FIX_DEFERRED_TO_SEPARATE_SMALL_FIX=YES`
+## Tenant fail-closed (app)
+
+`requireExplicitTenantForClub` rejects missing / `default-tenant`.
+
+Frontend gates do **not** replace RPC authorization — both layers required before live use.

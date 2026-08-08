@@ -31,28 +31,28 @@ export default function TournamentRegulationsPage() {
   const regulations = getRegulations(tournament);
   const policy = getRegistrationPolicy(tournament);
 
-  const applyTemplate = (templateId) => {
+  const applyTemplate = async (templateId) => {
     if (!tournament) return;
     const template = REGULATION_TEMPLATES.find((item) => item.id === templateId);
     const result = setRegulations(tournament, {
       templateId,
       body: template?.body || "",
     });
-    if (persistTournament(result.tournament)) {
+    if (await persistTournament(result.tournament)) {
       setMessage({ type: "success", text: "Đã áp dụng mẫu điều lệ." });
     }
   };
 
-  const saveBody = (body) => {
+  const saveBody = async (body) => {
     if (!tournament) return;
     const result = setRegulations(tournament, { body });
-    persistTournament(result.tournament);
+    await persistTournament(result.tournament);
   };
 
-  const savePolicy = (patch) => {
+  const savePolicy = async (patch) => {
     if (!tournament) return;
     const result = setRegistrationPolicy(tournament, patch);
-    if (persistTournament(result.tournament)) {
+    if (await persistTournament(result.tournament)) {
       setMessage({ type: "success", text: "Đã lưu chính sách đăng ký." });
     }
   };
@@ -129,11 +129,11 @@ export default function TournamentRegulationsPage() {
         <Button
           variant="contained"
           disabled={!tournament}
-          onClick={() => {
+          onClick={async () => {
             if (!tournament) return;
             const reg = setRegulations(tournament, regulations);
             const pol = setRegistrationPolicy(reg.tournament, policy);
-            if (persistTournament(pol.tournament)) {
+            if (await persistTournament(pol.tournament)) {
               setMessage({ type: "success", text: "Đã lưu điều lệ & thông báo." });
             }
           }}

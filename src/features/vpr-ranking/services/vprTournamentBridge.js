@@ -1,9 +1,7 @@
 import { TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
-import {
-  advanceTournamentStatus,
-  getTournament,
-  updateTournament,
-} from "../../../domain/tournamentService.js";
+import { validateTournamentStatusChange } from "../../../domain/tournamentService.js";
+import { getTournamentQuery } from "../../tournament/services/tournamentQueries.js";
+import { updateTournamentCommand } from "../../tournament/services/tournamentCommands.js";
 import { guardClubAction } from "../../../auth/guardAction.js";
 import { PERMISSIONS } from "../../../auth/permissions.js";
 import { resolveCertificationForLevel } from "../../../models/tournament/tournament.js";
@@ -31,12 +29,22 @@ export async function confirmTournamentResults(
     return check;
   }
 
-  const tournament = getTournament(clubId, tournamentId);
-  if (!tournament) {
-    return { ok: false, error: "Không tìm thấy giải." };
+  const loaded = await getTournamentQuery(clubId, tournamentId);
+  if (!loaded.ok || !loaded.tournament) {
+    return { ok: false, error: loaded.error || "Không tìm thấy giải." };
   }
 
-  const confirmPatch = updateTournament(clubId, tournamentId, {
+  const validation = validateTournamentStatusChange(
+    loaded.tournament,
+    TOURNAMENT_STATUS.COMPLETED,
+    { force }
+  );
+  if (!validation.ok && !force) {
+    return validation;
+  }
+
+  const confirmPatch = await updateTournamentCommand(clubId, tournamentId, {
+    status: TOURNAMENT_STATUS.COMPLETED,
     resultsConfirmation: {
       confirmed: true,
       confirmedAt: new Date().toISOString(),
@@ -47,21 +55,11 @@ export async function confirmTournamentResults(
     return confirmPatch;
   }
 
-  const advance = advanceTournamentStatus(
-    clubId,
-    tournamentId,
-    TOURNAMENT_STATUS.COMPLETED,
-    {},
-    { force }
-  );
-  if (!advance.ok) {
-    return advance;
-  }
-
   const award = await tryAwardTournamentVpr(clubId, tournamentId, { actorUserId });
+  const refreshed = await getTournamentQuery(clubId, tournamentId);
   return {
     ok: true,
-    tournament: getTournament(clubId, tournamentId),
+    tournament: refreshed.tournament || confirmPatch.tournament,
     award,
   };
 }

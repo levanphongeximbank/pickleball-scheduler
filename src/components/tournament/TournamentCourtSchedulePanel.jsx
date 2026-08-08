@@ -19,7 +19,7 @@ import {
   Typography,
 } from "@mui/material";
 
-import { setTournamentCourtSchedule } from "../../domain/tournamentService.js";
+import { setTournamentCourtScheduleCommand } from "../../features/tournament/services/tournamentCommands.js";
 import { getCourtDisplayName } from "../../models/court.js";
 import { buildEndTimeOptions, buildTimeOptions, todayIsoDate } from "../../pages/courtManagement/courtManagement.constants.js";
 
@@ -63,8 +63,8 @@ export default function TournamentCourtSchedulePanel({
     );
   };
 
-  const handleSync = () => {
-    const result = setTournamentCourtSchedule(clubId, tournament.id, {
+  const handleSync = async () => {
+    const result = await setTournamentCourtScheduleCommand(clubId, tournament.id, {
       date,
       startTime,
       endTime,

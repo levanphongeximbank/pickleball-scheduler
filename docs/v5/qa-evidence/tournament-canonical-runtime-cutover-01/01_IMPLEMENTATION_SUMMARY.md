@@ -1,25 +1,33 @@
-# Tournament Canonical Runtime Cutover 01 — Implementation Summary
+# Tournament Canonical Runtime Cutover 01 — Implementation Summary (Remediation)
 
 **Branch:** `fix/tournament-canonical-runtime-cutover-01`  
 **Base:** `06e5c7058e1a8297cea2c61171198173936c10ad`  
 **Live mutations:** none
 
-## What landed locally
+## Remediation architecture (cloud-only)
 
-1. Canonical Tournament application boundary under `src/features/tournament/`:
-   - repository factory (`transitional_blob` | `cloud`)
-   - queries / commands / application facade
-   - Vietnamese labels + hub lifecycle nav
-2. Canonical primary pages for hub/create/list/types/roster/register/organize/operations/results/my.
-3. Daily Play entry rewired through canonical create/list commands (“Chơi hằng ngày”).
-4. Public tournaments default → remote catalog; mock fallback disabled for tournaments list.
-5. Team Tournament cloud_only unlockable via `VITE_TOURNAMENT_CANONICAL_CUTOVER=true` (no new local mirror).
-6. EngineV4 apply path centralized as `applyEngineV4StateCommand` (contextual engine).
-7. Local SQL package for `canonical_tournaments` + RPCs (not applied).
+```
+Canonical Tournament UI
+  → async Tournament Queries / Commands
+  → ONE Cloud Tournament Repository
+  → canonical Tournament RPCs
+  → canonical_tournaments (+ JSONB payload + engine_v4)
+```
 
-## Intentionally deferred to Owner live GO
+## What landed
 
-- Apply `sql/10_CANONICAL_TOURNAMENTS.sql`
-- Set `VITE_TOURNAMENT_CANONICAL_DATA_MODE=cloud`
-- Set `VITE_TOURNAMENT_CANONICAL_CUTOVER=true` + TT `cloud_only` in Production/Staging
-- Data migration from club blob / `club_data_v3` into `canonical_tournaments`
+1. **Cloud-only repository** — all ops async RPC: list/get/listMine/create/update/delete/applyEngineState. Transitional blob repository **removed**.
+2. **Async application boundary** — queries/commands/hooks (`useCanonicalTournament*`).
+3. **Mapper** — DB row ↔ Tournament domain (full payload for Daily/Internal/Official/EngineV4).
+4. **Setup/detail cutover** — Daily / Internal / Official + registration/awards/bracket/director/engine/VPR write through canonical commands.
+5. **listMine** — real mine semantics (createdBy / ownerPlayerId / entries / team members).
+6. **SQL** — `supabase/migrations/20260808100000_canonical_tournaments_cutover.sql` with `user_has_permission` + tenant + REVOKE PUBLIC/anon.
+7. **Team Tournament** — cutover prefers `cloud_only`; create path skips blob SoT; blob mirror disabled in cloud_only.
+8. **EngineV4** — `applyEngineV4StateCommand` → cloud `applyEngineState` only.
+9. **Data policy** — `LEGACY_TOURNAMENT_DATA_MIGRATION=SKIPPED_BY_OWNER_POLICY` (no blob→canonical copy).
+
+## Owner live GO still required
+
+- Apply migration (Staging → Production) — **not done in this PR**
+- Set Production/Staging env flags
+- Smoke on live after apply

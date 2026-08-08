@@ -17,7 +17,7 @@ import {
 } from "../../../config/tournamentRoutes.js";
 import { TOURNAMENT_MODE } from "../../../models/tournament/index.js";
 import { resolveEventTypeFromQuery } from "../../individual-tournament/index.js";
-import { listTournamentsQuery } from "../services/tournamentQueries.js";
+import { useCanonicalTournamentList } from "../hooks/useCanonicalTournament.js";
 import { modeLabelVi } from "../constants/tournamentLabels.js";
 
 const CREATE_OPTIONS = {
@@ -86,11 +86,7 @@ export function CanonicalTournamentTypePage() {
   const navigate = useNavigate();
   const { activeClubId, revision } = useClub();
   const eventQuery = resolveEventTypeFromQuery(searchParams.get("event"));
-
-  const tournaments = useMemo(() => {
-    void revision;
-    return listTournamentsQuery(activeClubId);
-  }, [activeClubId, revision]);
+  const { tournaments } = useCanonicalTournamentList(activeClubId, revision);
 
   const filtered = useMemo(() => {
     if (category === "team") return tournaments.filter(isTeamTournament);

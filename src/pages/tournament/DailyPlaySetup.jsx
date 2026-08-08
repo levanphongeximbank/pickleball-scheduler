@@ -28,11 +28,7 @@ import { useClub } from "../../context/ClubContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { canViewPlayerSkillLevel } from "../../auth/rbac.js";
 import { loadCourtsForClub } from "../../domain/clubStorage.js";
-import {
-  getTournament,
-  setTournamentStatus,
-  updateTournament,
-} from "../../domain/tournamentService.js";
+import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../models/tournament/index.js";
 import { getCourtDisplayName } from "../../models/court.js";
 import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
@@ -100,10 +96,19 @@ export default function DailyPlaySetup() {
     [user, activeClubId, tournamentId, rbacEnabled]
   );
 
-  const tournament = useMemo(
-    () => getTournament(activeClubId, tournamentId),
-    [activeClubId, tournamentId, localRevision]
-  );
+  const {
+    tournament,
+    loading: tournamentLoading,
+    error: tournamentLoadError,
+    update,
+    setStatus,
+  } = useCanonicalTournament(activeClubId, tournamentId, localRevision);
+
+  useEffect(() => {
+    if (tournamentLoadError) {
+      setError(tournamentLoadError);
+    }
+  }, [tournamentLoadError]);
 
   const {
     players,
@@ -168,10 +173,8 @@ export default function DailyPlaySetup() {
     [dailySettings.checkedInPlayerIds]
   );
 
-  const saveSettings = (nextSettings, options = {}) => {
-    const result = updateTournament(
-      activeClubId,
-      tournamentId,
+  const saveSettings = async (nextSettings, options = {}) => {
+    const result = await update(
       buildDailyPlayTournamentPatch(nextSettings),
       {
         processMatchId: options.processMatchId || null,
@@ -184,7 +187,7 @@ export default function DailyPlaySetup() {
     }
 
     if (tournament?.status === TOURNAMENT_STATUS.DRAFT) {
-      setTournamentStatus(activeClubId, tournamentId, TOURNAMENT_STATUS.ACTIVE);
+      await setStatus(TOURNAMENT_STATUS.ACTIVE);
     }
 
     setLocalRevision((value) => value + 1);
@@ -193,27 +196,25 @@ export default function DailyPlaySetup() {
   };
 
   const handleToggleCheckIn = (playerId) => {
-    saveSettings(toggleDailyCheckIn(dailySettings, playerId));
+    void saveSettings(toggleDailyCheckIn(dailySettings, playerId));
   };
 
   const handleSelectAllCheckIn = () => {
-    saveSettings({
+    void saveSettings({
       ...dailySettings,
       checkedInPlayerIds: players.map((player) => String(player.id)),
     });
   };
 
   const handleClearAllCheckIn = () => {
-    saveSettings({
+    void saveSettings({
       ...dailySettings,
       checkedInPlayerIds: [],
     });
   };
 
-  const handleRefereeRosterChange = (nextRoster) => {
-    const result = updateTournament(
-      activeClubId,
-      tournamentId,
+  const handleRefereeRosterChange = async (nextRoster) => {
+    const result = await update(
       buildRefereeSettingsPatch(tournament, { roster: nextRoster })
     );
 
@@ -276,8 +277,8 @@ export default function DailyPlaySetup() {
         autoStart: true,
         speed: "normal",
       },
-      () => {
-        if (saveSettings(result.settings)) {
+      async () => {
+        if (await saveSettings(result.settings)) {
           const waitingNote =
             result.waitingPlayers?.length > 0
               ? ` • ${result.waitingPlayers.length} VĐV chờ lượt tiếp theo`
@@ -288,7 +289,7 @@ export default function DailyPlaySetup() {
     );
   };
 
-  const handleAssignCourt = (match) => {
+  const handleAssignCourt = async (match) => {
     const result = assignDailyMatchToCourt({
       settings: dailySettings,
       courts: enabledCourts,
@@ -301,7 +302,7 @@ export default function DailyPlaySetup() {
       return;
     }
 
-    if (saveSettings(result.settings)) {
+    if (await saveSettings(result.settings)) {
       setMessage("Da xep tran vao san trong.");
     }
   };
@@ -321,7 +322,7 @@ export default function DailyPlaySetup() {
     setScoreB(match.scoreB != null ? String(match.scoreB) : "");
   };
 
-  const handleSubmitScore = () => {
+  const handleSubmitScore = async () => {
     if (!scoreDialog) {
       return;
     }
@@ -342,15 +343,23 @@ export default function DailyPlaySetup() {
       unlockCourt(result.releasedCourtId, activeClubId);
     }
 
-    if (saveSettings(result.settings, { processMatchId: scoreDialog.id })) {
+    if (await saveSettings(result.settings, { processMatchId: scoreDialog.id })) {
       setScoreDialog(null);
       setMessage("Da luu ket qua va giai phong san.");
     }
   };
 
   const updateDailyField = (patch) => {
-    saveSettings({ ...dailySettings, ...patch });
+    void saveSettings({ ...dailySettings, ...patch });
   };
+
+  if (tournamentLoading) {
+    return (
+      <Box>
+        <Alert severity="info">Đang tải buổi Daily Play...</Alert>
+      </Box>
+    );
+  }
 
   if (!tournament) {
     return (

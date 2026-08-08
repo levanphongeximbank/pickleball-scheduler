@@ -20,7 +20,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
-import { getTournament, updateTournament } from "../../domain/tournamentService.js";
+import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import {
   ENTRY_STATUS,
   ENTRY_STATUS_LABELS,
@@ -62,10 +62,11 @@ export default function IndividualRegistrationPage() {
 
   const inviteToken = searchParams.get("invite") || "";
 
-  const tournament = useMemo(
-    () => (tournamentId ? getTournament(activeClubId, tournamentId) : null),
-    [activeClubId, tournamentId, revision]
-  );
+  const {
+    tournament,
+    loading: tournamentLoading,
+    update,
+  } = useCanonicalTournament(activeClubId, tournamentId, revision);
 
   const {
     players,
@@ -115,8 +116,8 @@ export default function IndividualRegistrationPage() {
     return { row: null, explanation: groups[0]?.tieBreakExplanation || "" };
   }, [event, myEntry?.id]);
 
-  const persist = (nextTournament) => {
-    const result = updateTournament(activeClubId, tournamentId, {
+  const persist = async (nextTournament) => {
+    const result = await update({
       events: nextTournament.events,
       settings: nextTournament.settings,
       status: nextTournament.status,
@@ -127,7 +128,7 @@ export default function IndividualRegistrationPage() {
     return result.ok;
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setError(null);
     setMessage(null);
 
@@ -164,24 +165,24 @@ export default function IndividualRegistrationPage() {
       return;
     }
 
-    if (!persist(result.tournament)) {
+    if (!(await persist(result.tournament))) {
       setError("Không lưu được đăng ký.");
       return;
     }
 
-    const policy = getRegistrationPolicy(result.tournament);
+    const nextPolicy = getRegistrationPolicy(result.tournament);
     if (result.inviteToken) {
       setMessage(
-        `${policy.confirmationMessage} Mời đồng đội: ?invite=${result.inviteToken}`
+        `${nextPolicy.confirmationMessage} Mời đồng đội: ?invite=${result.inviteToken}`
       );
     } else {
       setMessage(
-        `${policy.confirmationMessage} (${ENTRY_STATUS_LABELS[result.entry.status] || result.entry.status}).`
+        `${nextPolicy.confirmationMessage} (${ENTRY_STATUS_LABELS[result.entry.status] || result.entry.status}).`
       );
     }
   };
 
-  const handleConfirmInvite = () => {
+  const handleConfirmInvite = async () => {
     setError(null);
     setMessage(null);
     if (!linkedPlayerId) {
@@ -200,14 +201,14 @@ export default function IndividualRegistrationPage() {
       setError(result.error);
       return;
     }
-    if (!persist(result.tournament)) {
+    if (!(await persist(result.tournament))) {
       setError("Không lưu được xác nhận.");
       return;
     }
     setMessage(getRegistrationPolicy(result.tournament).confirmationMessage);
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     setError(null);
     setMessage(null);
     if (!myEntry) return;
@@ -221,12 +222,20 @@ export default function IndividualRegistrationPage() {
       setError(result.error);
       return;
     }
-    if (!persist(result.tournament)) {
+    if (!(await persist(result.tournament))) {
       setError("Không hủy được đăng ký.");
       return;
     }
     setMessage("Đã hủy đăng ký.");
   };
+
+  if (tournamentLoading) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="info">Đang tải giải…</Alert>
+      </Box>
+    );
+  }
 
   if (!tournament) {
     return (

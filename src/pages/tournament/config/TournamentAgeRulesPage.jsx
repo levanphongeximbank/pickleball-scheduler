@@ -28,7 +28,7 @@ export default function TournamentAgeRulesPage() {
 
   const rules = getEligibilityRules(tournament).age;
 
-  const save = (patch) => {
+  const save = async (patch) => {
     if (!tournament) {
       setMessage({ type: "error", text: "Chưa chọn giải." });
       return;
@@ -38,7 +38,7 @@ export default function TournamentAgeRulesPage() {
       setMessage({ type: "error", text: result.error || "Không lưu được." });
       return;
     }
-    if (!persistTournament(result.tournament)) return;
+    if (!(await persistTournament(result.tournament))) return;
     setMessage({ type: "success", text: "Đã lưu quy tắc độ tuổi." });
   };
 
