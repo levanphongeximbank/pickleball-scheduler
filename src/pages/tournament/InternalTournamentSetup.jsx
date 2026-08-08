@@ -116,6 +116,7 @@ import {
 import {
   COMPETITION_CLASS,
   prepareLivePrivatePairingOptions,
+  projectLivePrivatePairingPrepareInput,
 } from "../../features/private-pairing-rules/index.js";
 import DrawPublishControls from "../../components/tournament/DrawPublishControls.jsx";
 import RegistrationOpsPanel from "../../components/tournament/RegistrationOpsPanel.jsx";
@@ -892,18 +893,35 @@ export default function InternalTournamentSetup() {
     setPreviewEntries([]);
   };
 
+  const prepareInternalPrivatePairing = async (extra = {}) => {
+    const projected = projectLivePrivatePairingPrepareInput({
+      tournament: tournament || null,
+      activeClub: clubScope.ok ? activeClub : null,
+      tournamentId,
+      clubId: tournamentClubId,
+      hostClubId: clubScope.clubId || activeClubId,
+      competitionClass: COMPETITION_CLASS.INTERNAL,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      pairingConstraints: founderConstraints,
+      ...extra,
+    });
+
+    if (!projected.ok) {
+      return {
+        ok: false,
+        error: projected.error,
+      };
+    }
+
+    return prepareLivePrivatePairingOptions(projected.prepareInput);
+  };
+
   const handleStartGuidedFlow = async () => {
     setError(null);
     setWarnings([]);
     setMessage(null);
 
-    const prepared = await prepareLivePrivatePairingOptions({
-      clubId: tournamentClubId,
-      tournamentId,
-      eventId: savedEvent?.id || `event-${tournamentId}`,
-      competitionClass: COMPETITION_CLASS.INTERNAL,
-      pairingConstraints: founderConstraints,
-    });
+    const prepared = await prepareInternalPrivatePairing();
 
     if (!prepared.ok) {
       setError(prepared.error?.message || "Không thể bắt đầu trình chiếu theo quy tắc riêng.");
@@ -938,13 +956,7 @@ export default function InternalTournamentSetup() {
     setError(null);
     setWarnings([]);
 
-    const prepared = await prepareLivePrivatePairingOptions({
-      clubId: tournamentClubId,
-      tournamentId,
-      eventId: savedEvent?.id || `event-${tournamentId}`,
-      competitionClass: COMPETITION_CLASS.INTERNAL,
-      pairingConstraints: founderConstraints,
-    });
+    const prepared = await prepareInternalPrivatePairing();
 
     if (!prepared.ok) {
       setError(prepared.error?.message || "Không thể ghép cặp theo quy tắc riêng.");
@@ -1021,13 +1033,7 @@ export default function InternalTournamentSetup() {
       return;
     }
 
-    const prepared = await prepareLivePrivatePairingOptions({
-      clubId: tournamentClubId,
-      tournamentId,
-      eventId: savedEvent?.id || `event-${tournamentId}`,
-      competitionClass: COMPETITION_CLASS.INTERNAL,
-      pairingConstraints: founderConstraints,
-    });
+    const prepared = await prepareInternalPrivatePairing();
 
     if (!prepared.ok) {
       setError(prepared.error?.message || "Không thể áp dụng quy tắc riêng.");

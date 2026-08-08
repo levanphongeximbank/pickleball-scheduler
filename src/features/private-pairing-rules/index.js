@@ -98,6 +98,7 @@ export {
   evaluatePrivatePairingMatchOption,
   loadActiveRulesForLiveScope,
   prepareLivePrivatePairingOptions,
+  projectLivePrivatePairingPrepareInput,
   buildPrivatePairingRuntimeError,
   filterRulesForTeamFormation,
   isTeamFormationConstraintType,
