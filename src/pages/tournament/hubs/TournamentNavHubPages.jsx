@@ -16,25 +16,16 @@ const TAB_CONTENT = {
   faq: SupportFaqPage,
 };
 
-export function TournamentTypesHubPage() {
-  return <InPageNavHub hub={TOURNAMENT_IN_PAGE_NAV.types} />;
-}
+export {
+  CanonicalTournamentTypesHubPage as TournamentTypesHubPage,
+} from "../../../features/tournament/pages/CanonicalTournamentTypesPage.jsx";
 
-export function TournamentRosterHubPage() {
-  return <InPageNavHub hub={TOURNAMENT_IN_PAGE_NAV.roster} />;
-}
-
-export function TournamentOrganizeHubPage() {
-  return <InPageNavHub hub={TOURNAMENT_IN_PAGE_NAV.organize} />;
-}
-
-export function TournamentOperationsHubPage() {
-  return <InPageNavHub hub={TOURNAMENT_IN_PAGE_NAV.operations} />;
-}
-
-export function TournamentResultsHubPage() {
-  return <InPageNavHub hub={TOURNAMENT_IN_PAGE_NAV.results} />;
-}
+export {
+  CanonicalTournamentRosterPage as TournamentRosterHubPage,
+  CanonicalTournamentOrganizePage as TournamentOrganizeHubPage,
+  CanonicalTournamentOperationsPage as TournamentOperationsHubPage,
+  CanonicalTournamentResultsPage as TournamentResultsHubPage,
+} from "../../../features/tournament/pages/CanonicalTournamentCapabilityPages.jsx";
 
 export function TournamentConfigHubPage() {
   return <InPageNavHub hub={TOURNAMENT_IN_PAGE_NAV.config} />;
@@ -78,7 +69,7 @@ export function AiHubPage() {
       )}
       {tab === "hub" && (
         <Alert severity="info" sx={{ mt: 2 }}>
-          Gợi ý giải đấu chi tiết nằm trong màn hình tạo giải (Internal/Official) khi bật Trợ lý thông minh.
+          Gợi ý giải đấu chi tiết nằm trong màn hình tạo giải (nội bộ / chính thức) khi bật Trợ lý thông minh.
         </Alert>
       )}
     </Box>

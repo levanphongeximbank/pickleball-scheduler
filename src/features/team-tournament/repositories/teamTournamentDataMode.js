@@ -14,6 +14,20 @@ const TT1B_ALLOWED = new Set([
   TEAM_TOURNAMENT_DATA_MODES.SHADOW,
 ]);
 
+/** Canonical cutover may unlock cloud_only (no new local mirror). */
+const CUTOVER_ALLOWED = new Set([
+  TEAM_TOURNAMENT_DATA_MODES.LEGACY,
+  TEAM_TOURNAMENT_DATA_MODES.SHADOW,
+  TEAM_TOURNAMENT_DATA_MODES.CLOUD_PRIMARY,
+  TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY,
+]);
+
+function isTournamentCanonicalCutoverEnabled() {
+  return (
+    String(readEnvFlag("VITE_TOURNAMENT_CANONICAL_CUTOVER") || "").toLowerCase() === "true"
+  );
+}
+
 function readEnvFlag(name) {
   if (typeof import.meta !== "undefined" && import.meta.env) {
     return import.meta.env[name];
@@ -54,13 +68,16 @@ export function resolveTeamTournamentDataMode(options = {}) {
     );
   }
 
-  if (
-    !options.allowFutureModes &&
-    !TT1B_ALLOWED.has(mode)
-  ) {
+  const allowed = isTournamentCanonicalCutoverEnabled()
+    ? CUTOVER_ALLOWED
+    : TT1B_ALLOWED;
+
+  if (!options.allowFutureModes && !allowed.has(mode)) {
     throw new Error(
-      `TT-1B: mode "${mode}" chưa được bật. Chỉ legacy hoặc shadow. ` +
-        `cloud_primary/cloud_only sẽ có ở TT-1C.`
+      isTournamentCanonicalCutoverEnabled()
+        ? `Tournament cutover: mode "${mode}" không hợp lệ.`
+        : `TT-1B: mode "${mode}" chưa được bật. Chỉ legacy hoặc shadow. ` +
+            `Bật VITE_TOURNAMENT_CANONICAL_CUTOVER=true để dùng cloud_primary/cloud_only.`
     );
   }
 

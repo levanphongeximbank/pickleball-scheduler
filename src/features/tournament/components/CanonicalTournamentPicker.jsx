@@ -17,7 +17,6 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 import { useClub } from "../../../context/ClubContext.jsx";
 import { useSeasonLeague } from "../../../context/SeasonContext.jsx";
-import { listTournamentsQuery } from "../../../features/tournament/services/tournamentQueries.js";
 import { TOURNAMENT_STATUS } from "../../../models/tournament/index.js";
 import TournamentPageHeader from "../../../components/tournament/TournamentPageHeader.jsx";
 import TournamentSectionCard from "../../../components/tournament/TournamentSectionCard.jsx";
@@ -26,6 +25,7 @@ import {
   tournamentTableCellSx,
   tournamentTableHeadSx,
 } from "../../../components/tournament/tournamentLayout.js";
+import { listTournamentsQuery } from "../services/tournamentQueries.js";
 
 function rankTournaments(tournaments, { seasonId, leagueId } = {}) {
   const statusWeight = {
@@ -54,9 +54,9 @@ function rankTournaments(tournaments, { seasonId, leagueId } = {}) {
 }
 
 /**
- * Hub chọn giải rồi điều hướng tới màn hình thật.
+ * Canonical picker — reads only via tournamentQueries (no direct blob/localStorage).
  */
-export default function TournamentPickerHub({
+export default function CanonicalTournamentPicker({
   title,
   description,
   filter,
@@ -68,10 +68,10 @@ export default function TournamentPickerHub({
   const { activeClubId, revision } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
 
-  const tournaments = useMemo(
-    () => listTournamentsQuery(activeClubId),
-    [activeClubId, revision]
-  );
+  const tournaments = useMemo(() => {
+    void revision;
+    return listTournamentsQuery(activeClubId);
+  }, [activeClubId, revision]);
 
   const matches = useMemo(
     () =>
@@ -99,53 +99,49 @@ export default function TournamentPickerHub({
       <TournamentPageHeader title={title} description={description} />
 
       {matches.length === 0 ? (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          {emptyHint || "Chưa có giải phù hợp. Tạo giải mới từ mục Tạo giải."}
-        </Alert>
+        <Alert severity="info">{emptyHint || "Chưa có giải phù hợp."}</Alert>
       ) : (
-        <TournamentSectionCard title="Chọn giải" badge={`${matches.length} giải`} noPadding contentSx={{ pt: 0 }}>
+        <TournamentSectionCard title="Chọn giải">
           <TableContainer>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={tournamentTableHeadSx}>Giải đấu</TableCell>
+                  <TableCell sx={tournamentTableHeadSx}>Tên giải</TableCell>
+                  <TableCell sx={tournamentTableHeadSx}>Loại</TableCell>
                   <TableCell sx={tournamentTableHeadSx}>Trạng thái</TableCell>
-                  <TableCell align="right" sx={tournamentTableHeadSx} />
+                  <TableCell sx={tournamentTableHeadSx} align="right">
+                    Thao tác
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {matches.map((tournament) => {
-                  const path = resolvePath(tournament);
-                  return (
-                    <TableRow
-                      key={tournament.id}
-                      hover={Boolean(path)}
-                      sx={{ cursor: path ? "pointer" : "default" }}
-                      onClick={() => path && navigate(path)}
-                    >
-                      <TableCell sx={tournamentTableCellSx}>
-                        <Typography variant="body2" fontWeight={600}>
-                          {tournament.name}
-                        </Typography>
-                      </TableCell>
-                      <TableCell sx={tournamentTableCellSx}>
-                        <TournamentStatusChip status={tournament.status} />
-                      </TableCell>
-                      <TableCell align="right" sx={tournamentTableCellSx}>
-                        {path ? <ChevronRightIcon fontSize="small" color="action" /> : null}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {matches.map((tournament) => (
+                  <TableRow key={tournament.id} hover>
+                    <TableCell sx={tournamentTableCellSx}>
+                      <Typography fontWeight={600}>{tournament.name}</Typography>
+                    </TableCell>
+                    <TableCell sx={tournamentTableCellSx}>
+                      {tournament.modeLabel || tournament.mode}
+                    </TableCell>
+                    <TableCell sx={tournamentTableCellSx}>
+                      <TournamentStatusChip status={tournament.status} />
+                    </TableCell>
+                    <TableCell sx={tournamentTableCellSx} align="right">
+                      <Button
+                        size="small"
+                        endIcon={<ChevronRightIcon />}
+                        onClick={() => navigate(resolvePath(tournament))}
+                      >
+                        Mở
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </TableContainer>
         </TournamentSectionCard>
       )}
-
-      <Button variant="text" sx={{ mt: 2 }} onClick={() => navigate("/tournament")}>
-        ← Về Tổng quan giải đấu
-      </Button>
     </Box>
   );
 }

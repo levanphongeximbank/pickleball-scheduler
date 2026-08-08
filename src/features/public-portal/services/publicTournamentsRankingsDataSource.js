@@ -61,7 +61,9 @@ function readTournamentsRankingsSource(value) {
 }
 
 /**
- * Explicit source selection. Default is local (Production unchanged until cutover).
+ * Explicit source selection.
+ * Canonical cutover default: REMOTE published catalog (no browser/mock SSOT).
+ * Opt-out with VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE=local for legacy diagnostics only.
  * @param {{ source?: string }} [options]
  * @returns {"local"|"remote"}
  */
@@ -80,7 +82,7 @@ export function resolvePublicTournamentsRankingsSource(options = {}) {
   const fromEnv = readTournamentsRankingsSource(env || nodeEnv);
   if (fromEnv) return fromEnv;
 
-  return PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.LOCAL;
+  return PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.REMOTE;
 }
 
 function safeLoadClubData(clubId) {
@@ -221,7 +223,8 @@ export function mapCatalogRankingDtoToPortalCard(dto) {
 }
 
 /**
- * Honest Tournaments list result (EC-04). Keeps mock fallback but never presents it as LIVE.
+ * Local tournaments list — fail closed without mock authority.
+ * Canonical production path uses remote catalog (loadPublicTournamentsPageResult).
  */
 export function getPublicTournamentsResult() {
   return resolvePublicListDataResult({
@@ -229,7 +232,7 @@ export function getPublicTournamentsResult() {
     loadLive: mapLiveTournaments,
     mockData: MOCK_TOURNAMENTS,
     minLength: 3,
-    allowMockFallback: true,
+    allowMockFallback: false,
   });
 }
 

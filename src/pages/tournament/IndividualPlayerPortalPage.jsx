@@ -15,12 +15,13 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
-import {
-  getTournament,
-  listTournaments,
-  updateTournament,
-} from "../../domain/tournamentService.js";
 import { isIndividualTournament, TOURNAMENT_ROUTES } from "../../config/tournamentRoutes.js";
+import {
+  getTournamentQuery,
+  listMyTournamentsQuery,
+  listTournamentsQuery,
+} from "../../features/tournament/services/tournamentQueries.js";
+import { updateTournamentCommand } from "../../features/tournament/services/tournamentCommands.js";
 import TournamentConfigPageShell from "../../components/tournament/TournamentConfigPageShell.jsx";
 import IndividualPlayerPortalPanel from "../../components/tournament/IndividualPlayerPortalPanel.jsx";
 import {
@@ -69,19 +70,24 @@ export default function IndividualPlayerPortalPage() {
   const [entryId, setEntryId] = useState(searchParams.get("entryId") || "");
   const [message, setMessage] = useState(null);
 
-  const tournaments = useMemo(
-    () => listTournaments(activeClubId).filter(isIndividualTournament),
-    [activeClubId, revision]
-  );
+  const tournaments = useMemo(() => {
+    void revision;
+    return listTournamentsQuery(activeClubId).filter(isIndividualTournament);
+  }, [activeClubId, revision]);
 
-  const myTournaments = useMemo(
-    () => listPlayerTournaments(tournaments, playerId),
-    [tournaments, playerId]
-  );
+  const myTournaments = useMemo(() => {
+    void revision;
+    const fromCanonical = listMyTournamentsQuery(activeClubId, { playerId }).filter(
+      isIndividualTournament
+    );
+    if (fromCanonical.length > 0) return fromCanonical;
+    return listPlayerTournaments(tournaments, playerId);
+  }, [activeClubId, revision, playerId, tournaments]);
 
   const tournament = useMemo(() => {
+    void revision;
     if (!tournamentId || !activeClubId) return null;
-    return getTournament(activeClubId, tournamentId);
+    return getTournamentQuery(activeClubId, tournamentId);
   }, [activeClubId, tournamentId, revision]);
 
   // Soft polling fallback for live results / schedule updates
@@ -140,7 +146,7 @@ export default function IndividualPlayerPortalPage() {
         refreshClubs();
         return false;
       }
-      const result = updateTournament(activeClubId, tournamentId, {
+      const result = updateTournamentCommand(activeClubId, tournamentId, {
         settings: bumped.tournament.settings,
       });
       if (!result.ok) {

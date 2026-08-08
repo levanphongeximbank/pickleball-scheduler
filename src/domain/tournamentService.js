@@ -321,7 +321,8 @@ export function createTournament(clubId, options = {}) {
     name: trimmed,
     seasonId,
     leagueId,
-    tenantId: resolveTenantIdForClub(clubId),
+    // Prefer explicit tenant from canonical boundary; never invent here.
+    tenantId: options.tenantId || resolveTenantIdForClub(clubId),
   });
 
   data.tournaments = [...(data.tournaments || []), tournament];

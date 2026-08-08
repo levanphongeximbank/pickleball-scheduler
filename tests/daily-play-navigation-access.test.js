@@ -34,11 +34,13 @@ describe("Daily Play preview access + navigation", () => {
     assert.match(menu, /Vui chơi mỗi ngày/);
   });
 
-  it("TournamentHome create card includes Daily Play mode", () => {
-    const home = readSrc("src/pages/tournament/TournamentHome.jsx");
-    assert.match(home, /TOURNAMENT_MODE\.DAILY_PLAY/);
-    assert.match(home, /Chơi vui \/ Daily Play/);
-    assert.match(home, /\/tournament\/daily\/\$\{result\.tournament\.id\}/);
+  it("canonical create page includes Chơi hằng ngày mode", () => {
+    const createPage = readSrc(
+      "src/features/tournament/pages/CanonicalTournamentCreatePage.jsx"
+    );
+    assert.match(createPage, /TOURNAMENT_MODE\.DAILY_PLAY/);
+    assert.match(createPage, /Chơi hằng ngày|modeLabelVi\(TOURNAMENT_MODE\.DAILY_PLAY\)/);
+    assert.match(createPage, /\/tournament\/daily\/\$\{result\.tournament\.id\}/);
   });
 
   it("SUPER_ADMIN without membership can see Daily Play menu item", () => {

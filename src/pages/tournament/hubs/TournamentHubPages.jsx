@@ -3,11 +3,9 @@ import {
   TOURNAMENT_ROUTES,
   directorPath,
   engineTabPath,
-  individualPlayerRegistrationPath,
   isDirectorTournament,
   isEngineTournament,
   isIndividualTournament,
-  isRegisterableTournament,
   isSchedulableTournament,
   isTeamTournament,
   teamTournamentPath,
@@ -15,19 +13,7 @@ import {
 } from "../../../config/tournamentRoutes.js";
 import { getTournamentSetupPath } from "../../../utils/tournamentNavigation.js";
 
-export function TournamentRegisterHub() {
-  return (
-    <TournamentPickerHub
-      title="Đăng ký VĐV"
-      description="Chọn giải cá nhân để VĐV tự đăng ký. BTC quản lý duyệt trên màn hình setup giải."
-      filter={(tournament) =>
-        isIndividualTournament(tournament) && isRegisterableTournament(tournament)
-      }
-      resolvePath={(tournament) => individualPlayerRegistrationPath(tournament.id)}
-      emptyHint="Chưa có giải cá nhân ở trạng thái Nháp / Đang đăng ký."
-    />
-  );
-}
+export { CanonicalTournamentRegisterPage as TournamentRegisterHub } from "../../../features/tournament/pages/CanonicalTournamentCapabilityPages.jsx";
 
 export function TournamentTeamsHub() {
   return (

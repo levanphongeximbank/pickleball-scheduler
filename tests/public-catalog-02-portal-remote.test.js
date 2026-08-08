@@ -37,7 +37,7 @@ function createFacade(tournamentsResult, rankingsResult) {
   };
 }
 
-test("PC-02 portal: default source is local; Clubs/Courts selector unchanged", () => {
+test("PC-02 portal: default tournaments source is remote; Clubs/Courts selector unchanged", () => {
   const prevTr = process.env.VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE;
   const prevCc = process.env.VITE_PUBLIC_CLUBS_COURTS_SOURCE;
   delete process.env.VITE_PUBLIC_TOURNAMENTS_RANKINGS_SOURCE;
@@ -45,7 +45,7 @@ test("PC-02 portal: default source is local; Clubs/Courts selector unchanged", (
   try {
     assert.equal(
       resolvePublicTournamentsRankingsSource(),
-      PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.LOCAL
+      PUBLIC_TOURNAMENTS_RANKINGS_SOURCE.REMOTE
     );
     assert.equal(
       resolvePublicClubsCourtsSource(),
