@@ -21,6 +21,11 @@ import { resolveEventTypeFromQuery } from "../../individual-tournament/index.js"
 import { EVENT_TYPE_LABELS } from "../../../models/tournament/index.js";
 import { createTournamentCommand } from "../services/tournamentCommands.js";
 import { modeLabelVi } from "../constants/tournamentLabels.js";
+import {
+  assertTournamentCreateStartReady,
+  formatTournamentCreateError,
+  resolveTournamentCreateNavigatePath,
+} from "./canonicalTournamentCreateStart.js";
 
 const CREATE_OPTIONS = [
   {
@@ -73,64 +78,75 @@ export default function CanonicalTournamentCreatePage() {
     { source: "tournament.canonical.create" }
   );
   const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
 
   const handleStartMode = async (option) => {
-    if (!accessAllowed) {
-      setError("Runtime platform chặn thao tác quản lý giải đấu.");
-      return;
-    }
-    if (!activeClubReady || !activeClub?.id) {
-      setError("CLB chưa sẵn sàng (thiếu tenant hợp lệ) — không thể tạo giải.");
-      return;
-    }
-
-    setError(null);
-    const result = await createTournamentCommand(activeClub, {
-      mode: option.mode,
-      seasonId: activeSeason?.id,
-      leagueId: activeLeague?.id,
-      hostClubName:
-        option.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT
-          ? activeClub?.name || ""
-          : undefined,
+    const ready = assertTournamentCreateStartReady({
+      accessAllowed,
+      activeClubReady,
+      activeClub,
+      busy,
     });
-
-    if (!result.ok || !result.tournament?.id) {
-      setError(result.error || "Không thể tạo giải.");
+    if (!ready.ok) {
+      setError(formatTournamentCreateError(ready));
       return;
     }
 
-    if (option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
-      const hostClubId = String(result.clubId || activeClubId || "").trim();
-      navigate(
-        `/tournament/team/${result.tournament.id}?club=${encodeURIComponent(hostClubId)}`
-      );
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await createTournamentCommand(activeClub, {
+        mode: option.mode,
+        seasonId: activeSeason?.id,
+        leagueId: activeLeague?.id,
+        hostClubName:
+          option.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT
+            ? activeClub?.name || ""
+            : undefined,
+      });
+
+      if (!result.ok || !result.tournament?.id) {
+        setError(formatTournamentCreateError(result));
+        return;
+      }
+
+      if (option.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
+        const hostClubId = String(result.clubId || activeClubId || "").trim();
+        const base = resolveTournamentCreateNavigatePath(
+          option.mode,
+          result.tournament.id
+        );
+        navigate(
+          `${base}?club=${encodeURIComponent(hostClubId)}`
+        );
+        refreshClubs();
+        return;
+      }
+
       refreshClubs();
-      return;
-    }
-
-    refreshClubs();
-
-    if (option.mode === TOURNAMENT_MODE.DAILY_PLAY) {
-      navigate(`/tournament/daily/${result.tournament.id}`);
-      return;
-    }
-    if (option.mode === TOURNAMENT_MODE.INTERNAL_TOURNAMENT) {
-      navigate(
+      const path = resolveTournamentCreateNavigatePath(
+        option.mode,
+        result.tournament.id,
         preselectedEvent
-          ? `/tournament/internal/${result.tournament.id}?event=${preselectedEvent}`
-          : `/tournament/internal/${result.tournament.id}`
       );
-      return;
-    }
-    if (option.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
-      navigate(
-        preselectedEvent
-          ? `/tournament/official/${result.tournament.id}?event=${preselectedEvent}`
-          : `/tournament/official/${result.tournament.id}`
+      if (!path) {
+        setError("Không xác định được trang tổ chức sau khi tạo giải.");
+        return;
+      }
+      navigate(path);
+    } catch (err) {
+      setError(
+        formatTournamentCreateError({
+          code: "CREATE_EXCEPTION",
+          error: String(err?.message || err || "Lỗi không xác định khi tạo giải."),
+        })
       );
+    } finally {
+      setBusy(false);
     }
   };
+
+  const cardsDisabled = busy || !activeClubReady || !activeClub?.id;
 
   return (
     <Box>
@@ -147,13 +163,25 @@ export default function CanonicalTournamentCreatePage() {
         </Alert>
       ) : null}
 
+      {!activeClubReady || !activeClub?.id ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          CLB chưa sẵn sàng (đang tải hoặc thiếu tenant hợp lệ). Nút &quot;Bắt đầu&quot; tạm khóa.
+        </Alert>
+      ) : null}
+
+      {busy ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Đang tạo giải trên cloud — vui lòng chờ…
+        </Alert>
+      ) : null}
+
       {error ? (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       ) : null}
 
-      <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+      <PermissionGate permission={PERMISSIONS.TOURNAMENT_CREATE}>
         <Grid container spacing={TOURNAMENT_LAYOUT.gridSpacing}>
           {CREATE_OPTIONS.map((option) => (
             <Grid key={option.mode} size={{ xs: 12, sm: 6, lg: 4 }}>
@@ -163,6 +191,7 @@ export default function CanonicalTournamentCreatePage() {
                 icon={option.icon}
                 mode={option.mode}
                 badge={option.badge}
+                disabled={cardsDisabled}
                 onStart={() => handleStartMode(option)}
               />
             </Grid>

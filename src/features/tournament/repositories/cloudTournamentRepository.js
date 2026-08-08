@@ -43,33 +43,43 @@ export function createCloudTournamentRepository(deps = {}) {
       }
     }
 
-    const { hasSupabaseConfig, getSupabaseClient } = await import(
-      "../../../auth/supabaseClient.js"
-    );
-    if (!hasSupabaseConfig()) {
+    // Must use the Auth session client. `getSupabaseClient` is NOT exported from
+    // supabaseClient.js — importing it threw TypeError and silently broke create.
+    try {
+      const { hasSupabaseConfig, getSupabaseAuthClient } = await import(
+        "../../../auth/supabaseClient.js"
+      );
+      if (!hasSupabaseConfig()) {
+        return {
+          ok: false,
+          code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
+          error: "Thiếu cấu hình Supabase cho Tournament cloud.",
+        };
+      }
+      const client = getSupabaseAuthClient();
+      if (!client?.rpc) {
+        return {
+          ok: false,
+          code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
+          error: "Supabase client không khả dụng.",
+        };
+      }
+      const { data, error } = await client.rpc(name, args);
+      if (error) {
+        return {
+          ok: false,
+          code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
+          error: String(error.message || error),
+        };
+      }
+      return normalizeRpcPayload(data);
+    } catch (error) {
       return {
         ok: false,
         code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
-        error: "Thiếu cấu hình Supabase cho Tournament cloud.",
+        error: String(error?.message || error),
       };
     }
-    const client = getSupabaseClient();
-    if (!client?.rpc) {
-      return {
-        ok: false,
-        code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
-        error: "Supabase client không khả dụng.",
-      };
-    }
-    const { data, error } = await client.rpc(name, args);
-    if (error) {
-      return {
-        ok: false,
-        code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
-        error: String(error.message || error),
-      };
-    }
-    return normalizeRpcPayload(data);
   }
 
   return {

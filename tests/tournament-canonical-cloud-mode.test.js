@@ -321,6 +321,11 @@ describe("tournament canonical cloud-mode RPC", () => {
     );
     assert.ok(createPage.includes("createTournamentCommand"));
     assert.ok(createPage.includes("TEAM_TOURNAMENT"));
-    assert.ok(createPage.includes("/tournament/team/"));
+    // Team route is resolved via helper (keeps path authority in one place).
+    assert.ok(createPage.includes("resolveTournamentCreateNavigatePath"));
+    const helper = readSrc(
+      "src/features/tournament/pages/canonicalTournamentCreateStart.js"
+    );
+    assert.ok(helper.includes("/tournament/team/"));
   });
 });
