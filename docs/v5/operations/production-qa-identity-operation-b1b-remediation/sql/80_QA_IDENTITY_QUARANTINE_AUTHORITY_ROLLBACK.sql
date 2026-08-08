@@ -67,6 +67,7 @@ DROP FUNCTION IF EXISTS public.qa_quarantine_prepare(uuid, uuid, uuid, text, tex
 -- 5) Drop WP2-only internal helpers
 DROP FUNCTION IF EXISTS public.qa_quarantine_write_audit(text, uuid, uuid, uuid, text, text, text, text, integer, text, jsonb);
 DROP FUNCTION IF EXISTS public.qa_quarantine_actor_text();
+DROP FUNCTION IF EXISTS public.qa_quarantine_is_directory_filter_reader();
 DROP FUNCTION IF EXISTS public.qa_quarantine_is_authorized_caller();
 DROP FUNCTION IF EXISTS public.qa_quarantine_is_service_role();
 

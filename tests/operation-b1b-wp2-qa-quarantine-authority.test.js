@@ -266,12 +266,28 @@ test("11-16) SECURITY DEFINER, fixed search_path, AuthZ, grants", () => {
       `${name} fixed search_path`
     );
     const body = functionBody(sql, name);
-    check(
-      /qa_quarantine_is_authorized_caller\s*\(\s*\)/i.test(body),
-      `${name} explicit AuthZ`
-    );
+    if (name === "qa_quarantine_list_active") {
+      // WP3 corrective: directory-filter reader (SUPER_ADMIN/service_role/SYSTEM_TECHNICIAN).
+      check(
+        /qa_quarantine_is_directory_filter_reader\s*\(\s*\)/i.test(body),
+        `${name} directory-filter AuthZ`
+      );
+      check(
+        !/qa_quarantine_is_authorized_caller\s*\(\s*\)/i.test(body),
+        `${name} does not use writer AuthZ helper`
+      );
+    } else {
+      check(
+        /qa_quarantine_is_authorized_caller\s*\(\s*\)/i.test(body),
+        `${name} explicit writer/privileged AuthZ`
+      );
+    }
   }
   check(/is_super_admin\s*\(\s*\)/i.test(sql), "SUPER_ADMIN via is_super_admin");
+  check(
+    /SYSTEM_TECHNICIAN/i.test(functionBody(sql, "qa_quarantine_is_directory_filter_reader")),
+    "directory-filter reader includes SYSTEM_TECHNICIAN"
+  );
   check(
     /request\.jwt\.claim\.role[\s\S]{0,80}service_role|auth\.jwt\(\)\s*->>\s*'role'[\s\S]{0,40}service_role/i.test(
       sql
@@ -471,11 +487,23 @@ test("37-40) read RPCs hide secrets; list_active is set-based anti-N+1", () => {
   const sql = stripSqlComments(read(FORWARD));
   const getState = functionBody(sql, "qa_quarantine_get_state");
   const listActive = functionBody(sql, "qa_quarantine_list_active");
+  const listActiveHeader = sql.match(
+    /create\s+or\s+replace\s+function\s+public\.qa_quarantine_list_active\s*\([\s\S]*?\)\s*returns\s+table\s*\(([\s\S]*?)\)\s*language/i
+  );
+  check(Boolean(listActiveHeader), "list_active RETURNS TABLE header");
+  const listReturnCols = listActiveHeader[1];
 
   check(!/expected_email/i.test(getState), "get_state does not expose expected_email");
   check(!/allowlist_sha256|snapshot_sha256/i.test(getState), "get_state hides hashes");
   check(!/expected_email/i.test(listActive), "list_active does not expose expected_email");
   check(!/allowlist_sha256|snapshot_sha256/i.test(listActive), "list_active hides hashes");
+
+  // WP3 corrective wire minimization: membership key only.
+  check(/^\s*profile_id\s+uuid\s*$/i.test(listReturnCols.trim()), "list_active returns profile_id only");
+  check(!/\bbatch_id\b/i.test(listReturnCols), "list_active omits batch_id");
+  check(!/\ballowlist_label\b/i.test(listReturnCols), "list_active omits allowlist_label");
+  check(!/\bauth_ban_state\b/i.test(listReturnCols), "list_active omits auth_ban_state");
+  check(!/\bvenue_id\b/i.test(listReturnCols), "list_active omits venue_id");
 
   check(/profile_id\s*=\s*any\s*\(/i.test(listActive), "set-based ANY lookup");
   check(
@@ -489,7 +517,37 @@ test("37-40) read RPCs hide secrets; list_active is set-based anti-N+1", () => {
       ),
     "list filters successful active only"
   );
-  check(/c_max_ids\s+constant\s+integer\s*:=\s*500/i.test(listActive), "bounded input size");
+  check(
+    /c_max_ids\s+constant\s+integer\s*:=\s*10000/i.test(listActive),
+    "bounded single-page input size (no client chunking)"
+  );
+});
+
+test("WP3 corrective) SYSTEM_TECHNICIAN directory read; writers remain SUPER_ADMIN/service_role", () => {
+  const sql = stripSqlComments(read(FORWARD));
+  const reader = functionBody(sql, "qa_quarantine_is_directory_filter_reader");
+  const writerAuthz = functionBody(sql, "qa_quarantine_is_authorized_caller");
+  const prepare = functionBody(sql, "qa_quarantine_prepare");
+  const listActive = functionBody(sql, "qa_quarantine_list_active");
+
+  check(/is_super_admin\s*\(\s*\)/i.test(reader), "reader allows SUPER_ADMIN");
+  check(/qa_quarantine_is_service_role\s*\(\s*\)/i.test(reader), "reader allows service_role");
+  check(/SYSTEM_TECHNICIAN/i.test(reader), "reader allows SYSTEM_TECHNICIAN");
+  check(!/SYSTEM_TECHNICIAN/i.test(writerAuthz), "writer AuthZ excludes SYSTEM_TECHNICIAN");
+  check(
+    /qa_quarantine_is_authorized_caller\s*\(\s*\)/i.test(prepare),
+    "prepare still uses writer AuthZ"
+  );
+  check(
+    /qa_quarantine_is_directory_filter_reader\s*\(\s*\)/i.test(listActive),
+    "list_active uses directory-filter reader"
+  );
+  check(
+    /drop\s+function\s+if\s+exists\s+public\.qa_quarantine_is_directory_filter_reader/i.test(
+      stripSqlComments(read(ROLLBACK))
+    ),
+    "rollback drops directory-filter reader"
+  );
 });
 
 test("41-45) rollback scope exact; no cascade; no remote refs; retired markers", () => {
@@ -514,6 +572,12 @@ test("41-45) rollback scope exact; no cascade; no remote refs; retired markers",
   check(
     /drop\s+function\s+if\s+exists\s+public\.qa_quarantine_is_service_role/i.test(rollback),
     "rollback drops helper"
+  );
+  check(
+    /drop\s+function\s+if\s+exists\s+public\.qa_quarantine_is_directory_filter_reader/i.test(
+      rollback
+    ),
+    "rollback drops directory-filter reader helper"
   );
   check(
     /disable\s+row\s+level\s+security/i.test(rollback),

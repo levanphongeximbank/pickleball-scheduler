@@ -399,6 +399,7 @@ BEGIN
       AND p.proname IN (
         'qa_quarantine_is_service_role',
         'qa_quarantine_is_authorized_caller',
+        'qa_quarantine_is_directory_filter_reader',
         'qa_quarantine_actor_text',
         'qa_quarantine_write_audit',
         'qa_quarantine_prepare',
@@ -413,6 +414,7 @@ BEGIN
     v_expected := CASE r.proname
       WHEN 'qa_quarantine_is_service_role' THEN ''
       WHEN 'qa_quarantine_is_authorized_caller' THEN ''
+      WHEN 'qa_quarantine_is_directory_filter_reader' THEN ''
       WHEN 'qa_quarantine_actor_text' THEN ''
       WHEN 'qa_quarantine_write_audit' THEN
         'p_action text, p_quarantine_id uuid, p_profile_id uuid, p_batch_id uuid, p_prev_lifecycle_state text, p_prev_auth_ban_state text, p_new_lifecycle_state text, p_new_auth_ban_state text, p_lifecycle_version integer, p_result_code text, p_extra jsonb'
@@ -578,7 +580,31 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION public.qa_quarantine_is_authorized_caller() IS
-  'OPERATION_B1B WP2: SUPER_ADMIN (is_super_admin) or service-role claim only.';
+  'OPERATION_B1B WP2: SUPER_ADMIN (is_super_admin) or service-role claim only. Lifecycle writers + privileged state readback.';
+
+-- Directory-filter read path only (WP3 corrective): least-privilege read for platform
+-- Players viewers. SYSTEM_TECHNICIAN may read active membership keys for filtering.
+-- Does NOT grant lifecycle prepare/activate/release/compensate write authority.
+CREATE OR REPLACE FUNCTION public.qa_quarantine_is_directory_filter_reader()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+  SELECT
+    public.is_super_admin()
+    OR public.qa_quarantine_is_service_role()
+    OR EXISTS (
+      SELECT 1
+      FROM public.profiles p
+      WHERE p.id = auth.uid()
+        AND upper(trim(coalesce(p.role, ''))) = 'SYSTEM_TECHNICIAN'
+    );
+$$;
+
+COMMENT ON FUNCTION public.qa_quarantine_is_directory_filter_reader() IS
+  'OPERATION_B1B WP3 corrective: read-only directory filter authz for SUPER_ADMIN/service_role/SYSTEM_TECHNICIAN. No write privileges.';
 
 CREATE OR REPLACE FUNCTION public.qa_quarantine_actor_text()
 RETURNS text
@@ -692,6 +718,10 @@ REVOKE ALL ON FUNCTION public.qa_quarantine_is_service_role() FROM authenticated
 REVOKE ALL ON FUNCTION public.qa_quarantine_is_authorized_caller() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.qa_quarantine_is_authorized_caller() FROM anon;
 REVOKE ALL ON FUNCTION public.qa_quarantine_is_authorized_caller() FROM authenticated;
+
+REVOKE ALL ON FUNCTION public.qa_quarantine_is_directory_filter_reader() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.qa_quarantine_is_directory_filter_reader() FROM anon;
+REVOKE ALL ON FUNCTION public.qa_quarantine_is_directory_filter_reader() FROM authenticated;
 
 REVOKE ALL ON FUNCTION public.qa_quarantine_actor_text() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.qa_quarantine_actor_text() FROM anon;
@@ -1555,18 +1585,18 @@ COMMENT ON FUNCTION public.qa_quarantine_get_state(uuid) IS
 -- 7) qa_quarantine_list_active — sole canonical set-based active read
 -- Canonical name resolution: qa_quarantine_list_active
 -- Forbidden alias: qa_quarantine_list_active_batched (must not exist)
+-- Wire minimization (WP3 corrective): returns profile_id only for browser/directory filter.
+-- AuthZ (WP3 corrective): directory-filter reader (SUPER_ADMIN / service_role / SYSTEM_TECHNICIAN).
+-- Input bound raised so one Players page performs exactly one set-based RPC (no client chunking).
+-- DROP first: PostgreSQL CREATE OR REPLACE cannot change RETURNS TABLE shape.
 -- -----------------------------------------------------------------------------
+DROP FUNCTION IF EXISTS public.qa_quarantine_list_active(uuid[]);
+
 CREATE OR REPLACE FUNCTION public.qa_quarantine_list_active(
   p_profile_ids uuid[]
 )
 RETURNS TABLE (
-  profile_id uuid,
-  auth_user_id uuid,
-  venue_id text,
-  batch_id uuid,
-  auth_ban_state text,
-  activated_at timestamptz,
-  allowlist_label text
+  profile_id uuid
 )
 LANGUAGE plpgsql
 STABLE
@@ -1576,12 +1606,13 @@ AS $$
 DECLARE
   v_ids uuid[];
   v_count integer;
-  c_max_ids constant integer := 500;
+  -- Single set-based page lookup; client must not chunk (MAX queries/page = 1).
+  c_max_ids constant integer := 10000;
 BEGIN
-  IF NOT public.qa_quarantine_is_authorized_caller() THEN
+  IF NOT public.qa_quarantine_is_directory_filter_reader() THEN
     RAISE EXCEPTION 'QA_QUARANTINE_FORBIDDEN'
       USING ERRCODE = 'P0001',
-            DETAIL = 'SUPER_ADMIN or service_role required';
+            DETAIL = 'SUPER_ADMIN, SYSTEM_TECHNICIAN, or service_role required for directory filter read';
   END IF;
 
   IF p_profile_ids IS NULL THEN
@@ -1604,15 +1635,10 @@ BEGIN
             DETAIL = format('profile_ids max %s', c_max_ids);
   END IF;
 
+  -- Same canonical authority table; minimized projection only.
   RETURN QUERY
   SELECT
-    q.profile_id,
-    q.auth_user_id,
-    q.venue_id,
-    q.batch_id,
-    q.auth_ban_state,
-    q.activated_at,
-    q.allowlist_label
+    q.profile_id
   FROM public.qa_identity_quarantines q
   WHERE q.lifecycle_state = 'active'
     AND q.auth_ban_state IN ('applied', 'not_required_preexisting')
@@ -1621,7 +1647,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.qa_quarantine_list_active(uuid[]) IS
-  'OPERATION_B1B WP2: sole canonical set-based active quarantine read. No qa_quarantine_list_active_batched alias. SUPER_ADMIN/service-role only.';
+  'OPERATION_B1B: sole canonical set-based active quarantine membership read (profile_id only). Directory-filter readers: SUPER_ADMIN/SYSTEM_TECHNICIAN/service_role. Writers remain SUPER_ADMIN/service_role only. No qa_quarantine_list_active_batched alias.';
 
 -- -----------------------------------------------------------------------------
 -- EXECUTE grants (revoke PUBLIC first; anon never)
