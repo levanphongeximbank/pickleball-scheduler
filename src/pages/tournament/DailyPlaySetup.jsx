@@ -45,6 +45,10 @@ import {
   toggleDailyCheckIn,
   buildDailyPlayTournamentPatch,
 } from "../../tournament/engines/dailyPlayEngine.js";
+import {
+  COMPETITION_CLASS,
+  projectLivePrivatePairingPrepareInput,
+} from "../../features/private-pairing-rules/index.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import { buildCourtRuntimeStates } from "../../tournament/engines/courtEngine.js";
@@ -234,11 +238,30 @@ export default function DailyPlaySetup() {
       (court) => court.status === "available" && !court.locked
     ).length;
 
+    const projected = projectLivePrivatePairingPrepareInput({
+      tournament: tournament || null,
+      activeClub: activeClub || null,
+      tournamentId,
+      clubId: tournament?.clubId || activeClubId,
+      hostClubId: activeClubId,
+      competitionClass: COMPETITION_CLASS.DAILY_PLAY,
+    });
+
+    if (!projected.ok) {
+      setError(
+        projected.error?.message ||
+          "Thiếu phạm vi tenant/CLB — không tạo được trận công bằng."
+      );
+      return;
+    }
+
     const result = await createFairDailyMatches({
       players,
       settings: dailySettings,
-      tournamentId,
-      clubId: activeClubId,
+      tournament: projected.prepareInput.tournament,
+      tournamentId: projected.prepareInput.tournamentId,
+      clubId: projected.prepareInput.clubId,
+      tenantId: projected.prepareInput.tenantId,
       matchCount: Math.max(1, availableCourts || 1),
       skipScore: dailySettings.skipScore,
     });

@@ -255,6 +255,8 @@ export async function createFairDailyMatches({
   settings = {},
   tournamentId = "",
   clubId = null,
+  tenantId = null,
+  tournament = null,
   competitionClass = COMPETITION_CLASS.DAILY_PLAY,
   matchCount = 1,
   skipScore = false,
@@ -283,8 +285,10 @@ export async function createFairDailyMatches({
 
   if (!skipPrivatePairingPrepare && privatePairingRules == null) {
     const prepared = await prepareLivePrivatePairingOptions({
+      tournament: tournament || null,
       clubId,
-      tournamentId: tournamentId || null,
+      tournamentId: tournamentId || tournament?.id || null,
+      tenantId: tenantId || tournament?.tenantId || null,
       competitionClass: competitionClass || COMPETITION_CLASS.DAILY_PLAY,
       envSource,
     });
