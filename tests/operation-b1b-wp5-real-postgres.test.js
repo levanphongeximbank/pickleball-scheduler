@@ -17,9 +17,15 @@ import { fileURLToPath } from "node:url";
 
 import {
   CERTIFIED_B1_TARGET_LABELS,
+  EXPECTED_PRODUCTION_PROJECT_REF,
   FAILURE_CLASSIFICATION_MATRIX,
   FORBIDDEN_REAL_USER_EMAIL,
+  REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
+  createFreshAuthorizationBinding,
+  presentLiveAuthority,
   quarantineOneIdentityB1B,
+  resetAuthorityConsumptionForTests,
+  runBatchQuarantineB1B,
 } from "../scripts/operations/production-qa-identity-operation-b1b/lib/index.js";
 import { MAX_QUARANTINE_AUTHORITY_QUERIES_PER_PAGE } from "../src/features/player/utils/qaQuarantineAuthorityRead.js";
 import {
@@ -58,6 +64,9 @@ const counters = {
   boundary3: 0,
   antiN1: 0,
   regression: 0,
+  activatePreexistingRealRpc: 0,
+  boundary3CompensationIncomplete: 0,
+  consumedAuthorityReuseExact: 0,
 };
 
 function bump(key, n = 1) {
@@ -113,6 +122,39 @@ async function activateAfterBan(client, quarantineId, version) {
   );
   await resetSessionGuc(client);
   return result;
+}
+
+async function activatePreexistingBan(client, quarantineId, version) {
+  await asRole(client, { role: "service_role" });
+  const result = await callRpcJson(
+    client,
+    "qa_quarantine_activate_preexisting_ban",
+    {
+      p_quarantine_id: quarantineId,
+      p_expected_lifecycle_version: version,
+    }
+  );
+  await resetSessionGuc(client);
+  return result;
+}
+
+async function getStateAsService(client, quarantineId) {
+  await asRole(client, { role: "service_role" });
+  const result = await callRpcJson(client, "qa_quarantine_get_state", {
+    p_quarantine_id: quarantineId,
+  });
+  await resetSessionGuc(client);
+  return result;
+}
+
+async function readAuthorityRow(client, quarantineId) {
+  const { rows } = await client.query(
+    `SELECT *
+     FROM public.qa_identity_quarantines
+     WHERE id = $1::uuid`,
+    [quarantineId]
+  );
+  return rows[0] || null;
 }
 
 async function recordFailure(client, args) {
@@ -890,6 +932,111 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     }
   });
 
+  await t.test("I0) REAL qa_quarantine_activate_preexisting_ban RPC coverage", async () => {
+    requireBootstrapped();
+    const id = uuidFromInt(95);
+    const email = "phase1c.prod.safe5@prod-qa.local";
+    const batchId = uuidFromInt(95, "dddddddd-eeee-4fff-8aaa");
+    await seedProfile(client, { id, email, status: "active" });
+    await resetSessionGuc(client);
+    await client.query(
+      `UPDATE auth.users SET banned_until = now() + interval '30 days' WHERE id = $1::uuid`,
+      [id]
+    );
+
+    const prepared = await prepareAsService(client, {
+      profile_id: id,
+      expected_email: email,
+      allowlist_label: "QA-05",
+      original_auth_banned: true,
+      batch_id: batchId,
+      reason: "OPERATION_B1B_WP5_PREEXISTING",
+    });
+    assert.equal(prepared.ok, true);
+    assert.equal(prepared.code, "prepared");
+    assert.equal(prepared.lifecycle_state, "pending");
+    assert.equal(prepared.auth_ban_state, "pending");
+    bump("activatePreexistingRealRpc", 2);
+    bump("realRpc");
+
+    const pendingState = await getStateAsService(client, prepared.quarantine_id);
+    assert.equal(pendingState.ok, true);
+    assert.equal(pendingState.lifecycle_state, "pending");
+    assert.equal(pendingState.auth_ban_state, "pending");
+    assert.equal(pendingState.original_auth_banned, true);
+    bump("activatePreexistingRealRpc");
+
+    const before = await readAuthorityRow(client, prepared.quarantine_id);
+    const activated = await activatePreexistingBan(
+      client,
+      prepared.quarantine_id,
+      prepared.lifecycle_version
+    );
+    assert.equal(activated.ok, true);
+    assert.equal(activated.code, "activated_preexisting_ban");
+    assert.equal(activated.lifecycle_state, "active");
+    assert.equal(activated.auth_ban_state, "not_required_preexisting");
+    bump("activatePreexistingRealRpc", 3);
+    bump("realRpc");
+
+    const after = await readAuthorityRow(client, prepared.quarantine_id);
+    assert.equal(after.lifecycle_state, "active");
+    assert.equal(after.auth_ban_state, "not_required_preexisting");
+    assert.equal(after.original_auth_banned, true);
+    assert.equal(await getProfileStatus(client, id), "active");
+    for (const col of [
+      "profile_id",
+      "auth_user_id",
+      "batch_id",
+      "source_operation",
+      "original_auth_banned",
+      "original_profile_status",
+      "created_by",
+      "reason",
+      "allowlist_sha256",
+      "snapshot_sha256",
+      "expected_email",
+      "allowlist_label",
+      "venue_id",
+    ]) {
+      assert.equal(after[col], before[col], `immutable ${col}`);
+    }
+    bump("activatePreexistingRealRpc", 3);
+    bump("realImmutability");
+
+    const state = await getStateAsService(client, prepared.quarantine_id);
+    assert.equal(state.ok, true);
+    assert.equal(state.code, "state");
+    assert.equal(state.lifecycle_state, "active");
+    assert.equal(state.auth_ban_state, "not_required_preexisting");
+    assert.equal(state.original_auth_banned, true);
+    assert.equal(state.lifecycle_version, activated.lifecycle_version);
+    bump("activatePreexistingRealRpc", 2);
+
+    // Invalid preexisting activation: original_auth_banned must be true
+    const idBad = uuidFromInt(96);
+    const emailBad = "phase1c.prod.safe6@prod-qa.local";
+    await seedProfile(client, { id: idBad, email: emailBad, status: "active" });
+    const prepBad = await prepareAsService(client, {
+      profile_id: idBad,
+      expected_email: emailBad,
+      allowlist_label: "QA-06",
+      original_auth_banned: false,
+      batch_id: uuidFromInt(96, "dddddddd-eeee-4fff-8aaa"),
+    });
+    assert.equal(prepBad.ok, true);
+    const rejected = await activatePreexistingBan(
+      client,
+      prepBad.quarantine_id,
+      prepBad.lifecycle_version
+    );
+    assert.equal(rejected.ok, false);
+    assert.equal(rejected.code, "original_auth_banned_must_be_true");
+    assert.equal(await getProfileStatus(client, idBad), "active");
+    bump("activatePreexistingRealRpc", 2);
+    bump("realRpc");
+  });
+
   await t.test("I) Boundary 3 real-DB fault injection + Boundaries 1/2/4/5", async () => {
     requireBootstrapped();
     const zeroRefs = () => ({
@@ -911,9 +1058,14 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
       dryRun: false,
     };
 
-    function buildRealDbAdapters({ email, forceActivateFail = false }) {
+    function buildRealDbAdapters({
+      forceActivateFail = false,
+      forceUnbanFail = false,
+    } = {}) {
       const authState = new Map();
       let activateCalls = 0;
+      let unbanCalls = 0;
+      let prepareCalls = 0;
       const adapters = {
         emailOverrides: {},
         async fetchAuthUser(userId) {
@@ -957,6 +1109,10 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
           return { ok: true };
         },
         async unbanAuthUser({ userId }) {
+          unbanCalls += 1;
+          if (forceUnbanFail) {
+            return { ok: false, reason: "forced_unban_failure" };
+          }
           authState.set(userId, false);
           await client.query(
             `UPDATE auth.users SET banned_until = NULL WHERE id = $1`,
@@ -965,6 +1121,7 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
           return { ok: true };
         },
         async qaQuarantinePrepare(args) {
+          prepareCalls += 1;
           await asRole(client, { role: "service_role" });
           try {
             const data = await callRpcJson(client, "qa_quarantine_prepare", {
@@ -1049,16 +1206,18 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
         },
         _authState: authState,
         _activateCalls: () => activateCalls,
-        _email: email,
+        _unbanCalls: () => unbanCalls,
+        _prepareCalls: () => prepareCalls,
       };
       return adapters;
     }
 
-    // Boundary 3: prepare real → auth ban success → activate forced fail → unban + reverted
+    // Boundary 3 success-compensation: activate fail → unban ok → reverted
     const id = uuidFromInt(100);
     const emailB3 = "phase1c.prod.safe1@prod-qa.local";
+    const batchB3 = uuidFromInt(100, "dddddddd-eeee-4fff-8aaa");
     await seedProfile(client, { id, email: emailB3, status: "active" });
-    const adapters = buildRealDbAdapters({ email: emailB3, forceActivateFail: true });
+    const adapters = buildRealDbAdapters({ forceActivateFail: true });
     adapters.emailOverrides[id] = emailB3;
 
     const entry = await quarantineOneIdentityB1B({
@@ -1074,7 +1233,7 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
       adapters,
       authResult: authResultLive,
       dryRun: false,
-      batchId: uuidFromInt(100, "dddddddd-eeee-4fff-8aaa"),
+      batchId: batchB3,
       allowlistSha256: HASH_A,
       snapshotSha256: HASH_S,
       reason: "OPERATION_B1B_WP5_BOUNDARY3",
@@ -1092,7 +1251,8 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     assert.equal(await getProfileStatus(client, id), "active");
 
     const { rows: failedRows } = await client.query(
-      `SELECT id, lifecycle_state, auth_ban_state, failure_classification
+      `SELECT id, lifecycle_state, auth_ban_state, failure_classification,
+              lifecycle_version, batch_id
        FROM public.qa_identity_quarantines
        WHERE profile_id = $1
        ORDER BY created_at DESC
@@ -1105,22 +1265,190 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
       failedRows[0].failure_classification,
       "activation_failed_compensated"
     );
+    const consumedQuarantineId = failedRows[0].id;
+    const consumedVersion = failedRows[0].lifecycle_version;
+    const rowCountBeforeReuse = (
+      await client.query(
+        `SELECT count(*)::int AS n FROM public.qa_identity_quarantines WHERE profile_id = $1`,
+        [id]
+      )
+    ).rows[0].n;
 
-    const reuse = await prepareAsService(client, {
-      profile_id: id,
-      expected_email: emailB3,
-      allowlist_label: "QA-10",
-      batch_id: uuidFromInt(100, "dddddddd-eeee-4fff-8aaa"),
-      reason: "OPERATION_B1B_WP5_BOUNDARY3",
+    // LOW: exact fail-closed reuse of consumed authority + consumed GO/batch
+    const retryActivate = await activateAfterBan(
+      client,
+      consumedQuarantineId,
+      consumedVersion
+    );
+    assert.equal(retryActivate.ok, false);
+    assert.equal(retryActivate.code, "state_mismatch");
+    const afterRetry = await readAuthorityRow(client, consumedQuarantineId);
+    assert.equal(afterRetry.lifecycle_state, "failed");
+    assert.equal(afterRetry.auth_ban_state, "reverted");
+    assert.equal(afterRetry.failure_classification, "activation_failed_compensated");
+    assert.equal(afterRetry.lifecycle_version, consumedVersion);
+    assert.equal(await countActiveAuthority(client, id), 0);
+    assert.equal(
+      (
+        await client.query(
+          `SELECT count(*)::int AS n FROM public.qa_identity_quarantines WHERE profile_id = $1`,
+          [id]
+        )
+      ).rows[0].n,
+      rowCountBeforeReuse,
+      "rejected authority retry must not insert rows"
+    );
+    assert.equal(
+      adapters._authState.get(id),
+      false,
+      "rejected reuse must not Auth-mutate"
+    );
+    bump("consumedAuthorityReuseExact", 6);
+
+    resetAuthorityConsumptionForTests();
+    const testGo = "APPROVE_OPERATION_B1B_WP5_UNIT_TEST_BINDING_NOT_PRODUCTION";
+    const binding = createFreshAuthorizationBinding({
+      ownerProductionGo: testGo,
+      explicitExecuteConfirmation: REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
+      expectedBatchId: batchB3,
+      allowlistSha256: HASH_A,
+      snapshotSha256: HASH_S,
+      productionProjectRef: EXPECTED_PRODUCTION_PROJECT_REF,
     });
-    assert.notEqual(reuse.code, "already_quarantined");
+    assert.equal(binding.ok, true);
+    const authLive = {
+      ok: true,
+      authorized: true,
+      dryRun: false,
+      ownerProductionGo: testGo,
+      batchId: batchB3,
+      allowlistSha: HASH_A,
+      snapshotSha: HASH_S,
+      projectRef: EXPECTED_PRODUCTION_PROJECT_REF,
+    };
+    const claimed = new Set();
+    const claimer = async (bind) => {
+      const key = `${bind.ownerProductionGo}::${bind.batchId}::${bind.allowlistSha256}::${bind.snapshotSha256}`;
+      if (claimed.has(key)) {
+        return { ok: false, consumed: true, reason: "authority_already_consumed" };
+      }
+      claimed.add(key);
+      return { ok: true };
+    };
+    const firstClaim = await presentLiveAuthority(authLive, claimer);
+    assert.equal(firstClaim.ok, true);
+    const secondClaim = await presentLiveAuthority(authLive, claimer);
+    assert.equal(secondClaim.ok, false);
+    assert.equal(secondClaim.reason, "authority_already_consumed");
+    assert.equal(secondClaim.consumed, true);
+    bump("consumedAuthorityReuseExact", 3);
     bump("boundary3", 8);
+
+    // Boundary 3 CRITICAL: activate fail → unban fail → compensation_incomplete → failed
+    const idCrit = uuidFromInt(102);
+    const idCritPeer = uuidFromInt(103);
+    const emailCrit = "phase1c.prod.safe3@prod-qa.local";
+    const emailPeer = "phase1c.prod.safe4@prod-qa.local";
+    const batchCrit = uuidFromInt(102, "dddddddd-eeee-4fff-8aaa");
+    await seedProfile(client, { id: idCrit, email: emailCrit, status: "active" });
+    await seedProfile(client, { id: idCritPeer, email: emailPeer, status: "active" });
+    const adaptersCrit = buildRealDbAdapters({
+      forceActivateFail: true,
+      forceUnbanFail: true,
+    });
+    adaptersCrit.emailOverrides[idCrit] = emailCrit;
+    adaptersCrit.emailOverrides[idCritPeer] = emailPeer;
+
+    const rowsBeforeCrit = (
+      await client.query(
+        `SELECT count(*)::int AS n FROM public.qa_identity_quarantines WHERE profile_id = $1`,
+        [idCrit]
+      )
+    ).rows[0].n;
+
+    const batch = await runBatchQuarantineB1B({
+      identities: [
+        {
+          label: "QA-08",
+          auth_user_id: idCrit,
+          profile_id: idCrit,
+          expected_email: emailCrit,
+          profile_status: "active",
+          auth_banned: false,
+          reference_counts: zeroRefs(),
+        },
+        {
+          label: "QA-09",
+          auth_user_id: idCritPeer,
+          profile_id: idCritPeer,
+          expected_email: emailPeer,
+          profile_status: "active",
+          auth_banned: false,
+          reference_counts: zeroRefs(),
+        },
+      ],
+      adapters: adaptersCrit,
+      authResult: authResultLive,
+      batchId: batchCrit,
+      allowlistSha256: HASH_A,
+      snapshotSha256: HASH_S,
+    });
+
+    assert.equal(batch.ok, false);
+    assert.equal(batch.integrityIncident, true);
+    assert.equal(batch.results[0].ok, false);
+    assert.equal(batch.results[0].critical, true);
+    assert.match(
+      batch.results[0].abortReason || "",
+      /CRITICAL_COMPENSATION_INCOMPLETE/
+    );
+    assert.equal(batch.results[1].ok, false);
+    assert.equal(
+      batch.results[1].abortReason,
+      "batch_stopped_after_integrity_incident"
+    );
+    assert.equal(
+      adaptersCrit._prepareCalls(),
+      1,
+      "peer identity must not prepare after critical stop"
+    );
+    assert.equal(adaptersCrit._unbanCalls(), 1);
+    assert.equal(await countActiveAuthority(client, idCrit), 0);
+    assert.equal(await getProfileStatus(client, idCrit), "active");
+
+    const { rows: critRows } = await client.query(
+      `SELECT id, lifecycle_state, auth_ban_state, failure_classification, lifecycle_version
+       FROM public.qa_identity_quarantines
+       WHERE profile_id = $1
+       ORDER BY created_at DESC`,
+      [idCrit]
+    );
+    assert.equal(critRows.length, rowsBeforeCrit + 1, "exactly one authority row retained");
+    assert.equal(critRows[0].lifecycle_state, "failed");
+    assert.equal(critRows[0].auth_ban_state, "failed");
+    assert.equal(critRows[0].failure_classification, "compensation_incomplete");
+    assert.notEqual(
+      critRows[0].auth_ban_state,
+      "reverted",
+      "unverified compensation must never become reverted"
+    );
+
+    // Same-authority retry of critical-failed row is fail-closed
+    const critRetry = await activateAfterBan(
+      client,
+      critRows[0].id,
+      critRows[0].lifecycle_version
+    );
+    assert.equal(critRetry.ok, false);
+    assert.equal(critRetry.code, "state_mismatch");
+    bump("boundary3CompensationIncomplete", 10);
+    bump("boundary3", 5);
 
     // Boundary 2: auth ban fails → auth_ban_failed / failed
     const id2 = uuidFromInt(101);
     const emailB2 = "phase1c.prod.safe2@prod-qa.local";
     await seedProfile(client, { id: id2, email: emailB2 });
-    const adaptersB2 = buildRealDbAdapters({ email: emailB2 });
+    const adaptersB2 = buildRealDbAdapters({});
     adaptersB2.emailOverrides[id2] = emailB2;
     adaptersB2.banAuthUser = async () => ({
       ok: false,
@@ -1247,6 +1575,12 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
             WP1_FORWARD_SQL_EXECUTED_LOCAL: forwardExecuted.wp1,
             WP2_FORWARD_SQL_EXECUTED_LOCAL: forwardExecuted.wp2,
             COUNTERS: counters,
+            ACTIVATE_PREEXISTING_REAL_RPC_TESTS:
+              counters.activatePreexistingRealRpc,
+            BOUNDARY3_COMPENSATION_INCOMPLETE_REAL_DB_TESTS:
+              counters.boundary3CompensationIncomplete,
+            CONSUMED_AUTHORITY_REUSE_EXACT_ASSERTIONS:
+              counters.consumedAuthorityReuseExact,
           },
         },
         null,
