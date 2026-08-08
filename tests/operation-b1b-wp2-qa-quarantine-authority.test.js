@@ -365,7 +365,7 @@ test("23-30) activation, compensated failure, release, should_unban", () => {
   check(/'failed'\s*,\s*'reverted'|not\s+in\s*\(\s*'failed'\s*,\s*'reverted'\s*\)/i.test(compensated), "compensated allows only failed/reverted");
   check(/lifecycle_state\s*=\s*'failed'/i.test(compensated), "compensated sets lifecycle failed");
   check(!/lifecycle_state\s*=\s*'reverted'/i.test(compensated), "no lifecycle_state reverted");
-  check(/auth_ban_failed|activation_failed_compensated|compensation_incomplete|prepare_failure_recorded/i.test(compensated), "approved classifications");
+  check(/auth_ban_failed|activation_failed_compensated|compensation_incomplete|prepare_failure_recorded|activation_failed_preexisting/i.test(compensated), "approved classifications");
   check(
     /v_class\s*=\s*'auth_ban_failed'\s+and\s+v_target_auth\s*=\s*'failed'/i.test(compensated),
     "matrix auth_ban_failed→failed"
@@ -387,6 +387,16 @@ test("23-30) activation, compensated failure, release, should_unban", () => {
       compensated
     ),
     "matrix prepare_failure_recorded→failed"
+  );
+  check(
+    /v_class\s*=\s*'activation_failed_preexisting'\s+and\s+v_target_auth\s*=\s*'failed'/i.test(
+      compensated
+    ),
+    "matrix activation_failed_preexisting→failed"
+  );
+  check(
+    /preexisting_classification_requires_original_banned/i.test(compensated),
+    "activation_failed_preexisting requires original_auth_banned=true"
   );
   check(/invalid_compensation_pair/i.test(compensated), "unknown pair fails closed");
   check(

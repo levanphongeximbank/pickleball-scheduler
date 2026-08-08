@@ -56,8 +56,18 @@ E. Independently read back active authority
 ### Boundary 2 — Prepare succeeds; Auth ban fails
 
 - Controlled transition to `failed`
+- Classification pair: `auth_ban_failed` → `auth_ban_state=failed`
 - No active quarantine
 - No unban required
+- Fail closed
+
+### Boundary 2b — Preexisting ban; activate_preexisting_ban fails
+
+- Original Auth ban confirmed by independent readback; B1B performed no Auth mutation
+- Controlled transition to `failed`
+- Classification pair: `activation_failed_preexisting` → `auth_ban_state=failed`
+- Never unban; never claim B1B applied the ban
+- No active quarantine
 - Fail closed
 
 ### Boundary 3 — Auth ban succeeds; activation fails (**explicit critical split**)

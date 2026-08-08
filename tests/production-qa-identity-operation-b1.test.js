@@ -21,7 +21,10 @@ import {
   EXPECTED_PRODUCTION_PROJECT_REF,
   FORBIDDEN_REAL_USER_EMAIL,
   REQUIRED_OWNER_PRODUCTION_GO,
+  RETIRED_OWNER_PRODUCTION_GO,
   REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
+  FORWARD_LIVE_EXECUTION_RETIRED,
+  RETIRED_OPERATION_B1_BATCH_IDS,
   B2_EXCLUDED_LABELS,
   evaluateAuthorization,
   mutationAllowed,
@@ -364,11 +367,10 @@ test("missing Owner GO / malformed batch ID block mutations", () => {
 
 test("hard delete unavailable; partial failure compensates", async () => {
   assert.equal(hardDeleteUnavailable().available, false);
+  assert.equal(FORWARD_LIVE_EXECUTION_RETIRED, true);
+  assert.equal(RETIRED_OWNER_PRODUCTION_GO, REQUIRED_OWNER_PRODUCTION_GO);
 
-  const row = makeEightIdentities()[0];
-  let profileStatus = "active";
-  let banOk = false;
-  const auth = evaluateAuthorization({
+  const retiredAuth = evaluateAuthorization({
     DRY_RUN: "false",
     PRODUCTION_PROJECT_REF: EXPECTED_PRODUCTION_PROJECT_REF,
     OPERATION_B1_BATCH_ID: "8b9fa2d4-46a2-4f82-b385-21a7628adb3b",
@@ -377,7 +379,18 @@ test("hard delete unavailable; partial failure compensates", async () => {
     OWNER_PRODUCTION_GO: REQUIRED_OWNER_PRODUCTION_GO,
     EXPLICIT_EXECUTE_CONFIRMATION: REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
   });
-  assert.equal(mutationAllowed(auth), true);
+  assert.equal(mutationAllowed(retiredAuth), false);
+  assert.ok(retiredAuth.reasons.includes("forward_live_execution_retired"));
+  assert.ok(
+    retiredAuth.reasons.includes("retired_owner_production_go_not_reusable")
+  );
+
+  const row = makeEightIdentities()[0];
+  let profileStatus = "active";
+  let banOk = false;
+  // Synthetic authResult for historical engine compensation unit coverage only.
+  // evaluateAuthorization never authorizes B1 forward mutation.
+  const auth = { ok: true, dryRun: false, authorized: true, reasons: [] };
 
   const result = await quarantineOneIdentity({
     allowlistRow: row,
@@ -410,15 +423,8 @@ test("hard delete unavailable; partial failure compensates", async () => {
 
 test("rollback refuses post-quarantine drift; idempotent execute/rollback", async () => {
   const row = makeEightIdentities()[0];
-  const auth = evaluateAuthorization({
-    DRY_RUN: "false",
-    PRODUCTION_PROJECT_REF: EXPECTED_PRODUCTION_PROJECT_REF,
-    OPERATION_B1_BATCH_ID: "8b9fa2d4-46a2-4f82-b385-21a7628adb3b",
-    ALLOWLIST_PATH: "C:\\tmp\\a.json",
-    ALLOWLIST_SHA256: "d".repeat(64),
-    OWNER_PRODUCTION_GO: REQUIRED_OWNER_PRODUCTION_GO,
-    EXPLICIT_EXECUTE_CONFIRMATION: REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
-  });
+  // Synthetic auth for historical engine unit coverage (forward GO is retired).
+  const auth = { ok: true, dryRun: false, authorized: true, reasons: [] };
 
   const drift = await unquarantineOneIdentity({
     snapshotRow: {
@@ -596,18 +602,27 @@ test("smoke hygiene adjacent — Auth rejection / dry-run zero mutations", async
   assert.equal(isCertifiedQaEmail(resolved.email), true);
 });
 
+test("retired B1 batches cannot authorize", () => {
+  for (const batchId of RETIRED_OPERATION_B1_BATCH_IDS) {
+    const auth = evaluateAuthorization({
+      DRY_RUN: "false",
+      PRODUCTION_PROJECT_REF: EXPECTED_PRODUCTION_PROJECT_REF,
+      OPERATION_B1_BATCH_ID: batchId,
+      ALLOWLIST_PATH: "C:\\tmp\\a.json",
+      ALLOWLIST_SHA256: "e".repeat(64),
+      OWNER_PRODUCTION_GO: REQUIRED_OWNER_PRODUCTION_GO,
+      EXPLICIT_EXECUTE_CONFIRMATION: REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
+    });
+    assert.equal(mutationAllowed(auth), false);
+    assert.ok(auth.reasons.includes("retired_batch_id_not_reusable"));
+  }
+});
+
 test("batch runner stops after first live failure", async () => {
   const identities = makeEightIdentities();
   let updates = 0;
-  const auth = evaluateAuthorization({
-    DRY_RUN: "false",
-    PRODUCTION_PROJECT_REF: EXPECTED_PRODUCTION_PROJECT_REF,
-    OPERATION_B1_BATCH_ID: "8b9fa2d4-46a2-4f82-b385-21a7628adb3b",
-    ALLOWLIST_PATH: "C:\\tmp\\a.json",
-    ALLOWLIST_SHA256: "e".repeat(64),
-    OWNER_PRODUCTION_GO: REQUIRED_OWNER_PRODUCTION_GO,
-    EXPLICIT_EXECUTE_CONFIRMATION: REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
-  });
+  // Synthetic auth for historical engine unit coverage (forward GO is retired).
+  const auth = { ok: true, dryRun: false, authorized: true, reasons: [] };
   const batch = await runBatchQuarantine({
     identities,
     authResult: auth,
