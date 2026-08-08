@@ -32,6 +32,12 @@ import {
 import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
 import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import {
+  INTERNAL_SETUP_CLUB_NOT_READY,
+  resolveInternalSetupCanonicalClubScope,
+  resolveInternalSetupRuntimeClubId,
+  shouldAlignActiveClubToPersistedTournament,
+} from "../../features/tournament/pages/internalTournamentSetupScope.js";
+import {
   EVENT_TYPE,
   TOURNAMENT_MODE,
   TOURNAMENT_STATUS,
@@ -84,10 +90,7 @@ import {
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
-import {
-  buildTournamentNotFoundMessage,
-  findTournamentClubId,
-} from "../../features/club/index.js";
+import { buildTournamentNotFoundMessage } from "../../features/club/index.js";
 import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
 import TournamentAiAssistantPanel from "../../components/tournament/ai/TournamentAiAssistantPanel.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -135,7 +138,15 @@ export default function InternalTournamentSetup() {
   const { tournamentId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { activeClub, activeClubId, clubs, refreshClubs, switchClub } = useClub();
+  const {
+    activeClub,
+    activeClubId,
+    activeClubReady,
+    clubReadReady,
+    clubs,
+    refreshClubs,
+    switchClub,
+  } = useClub();
   const { user, rbacEnabled, can } = useAuth();
   const { currentTenantId } = useTenant();
   const aiEnabled = isAiEngineEnabled();
@@ -171,33 +182,54 @@ export default function InternalTournamentSetup() {
     [user, activeClubId, tournamentId, rbacEnabled]
   );
 
-  const clubFromQuery = String(searchParams.get("club") || "").trim();
+  const clubScope = useMemo(
+    () =>
+      resolveInternalSetupCanonicalClubScope({
+        activeClubReady,
+        clubReadReady,
+        activeClub,
+      }),
+    [activeClubReady, clubReadReady, activeClub]
+  );
+
+  // Canonical load uses ready activeClub only — never ID-only / id-override scope.
+  const {
+    tournament,
+    loading: tournamentLoading,
+    error: tournamentLoadError,
+    update,
+  } = useCanonicalTournament(
+    clubScope.shouldQuery ? clubScope.scope : null,
+    tournamentId,
+    localRevision
+  );
+
   const tournamentClubId = useMemo(
     () =>
-      clubFromQuery ||
-      findTournamentClubId(tournamentId) ||
-      activeClubId,
-    [clubFromQuery, tournamentId, activeClubId]
+      resolveInternalSetupRuntimeClubId({
+        persistedClubId: tournament?.clubId,
+        activeClubId: activeClub?.id || activeClubId,
+      }),
+    [tournament?.clubId, activeClub?.id, activeClubId]
   );
 
   useEffect(() => {
-    if (tournamentClubId && tournamentClubId !== activeClubId) {
-      switchClub(tournamentClubId);
+    if (
+      shouldAlignActiveClubToPersistedTournament({
+        activeClubReady,
+        activeClubId,
+        persistedClubId: tournament?.clubId,
+      })
+    ) {
+      switchClub(String(tournament.clubId).trim());
     }
-  }, [tournamentClubId, activeClubId, switchClub]);
+  }, [activeClubReady, activeClubId, tournament?.clubId, switchClub]);
 
   useEffect(() => {
     if (tournamentClubId) {
       setSourceClubId(tournamentClubId);
     }
   }, [tournamentClubId]);
-
-  const {
-    tournament,
-    loading: tournamentLoading,
-    error: tournamentLoadError,
-    update,
-  } = useCanonicalTournament(activeClub ? { ...activeClub, id: tournamentClubId || activeClub.id } : { id: tournamentClubId }, tournamentId, localRevision);
 
   useEffect(() => {
     if (tournamentLoadError) {
@@ -217,22 +249,30 @@ export default function InternalTournamentSetup() {
         (club) =>
           String(club?.id || "").trim() ===
           String(sourceClubId || tournamentClubId || "").trim()
-      ) || null,
-    [clubs, sourceClubId, tournamentClubId]
+      ) ||
+      (clubScope.ok ? activeClub : null),
+    [clubs, sourceClubId, tournamentClubId, clubScope.ok, activeClub]
   );
 
   const playerTenantId = useMemo(
     () =>
-      resolveTeamTournamentAthleteTenantId({
-        tournament,
-        club: hostClubRecord,
-        clubId: sourceClubId || tournamentClubId,
-        clubs,
-        currentTenantId,
-      }),
+      clubScope.ok
+        ? resolveTeamTournamentAthleteTenantId({
+            tournament,
+            club: hostClubRecord || activeClub,
+            clubId: sourceClubId || tournamentClubId || clubScope.clubId,
+            clubs,
+            currentTenantId: clubScope.tenantId || currentTenantId,
+            tournamentTenantId: tournament?.tenantId || clubScope.tenantId,
+          })
+        : null,
     [
+      clubScope.ok,
+      clubScope.clubId,
+      clubScope.tenantId,
       tournament,
       hostClubRecord,
+      activeClub,
       sourceClubId,
       tournamentClubId,
       clubs,
@@ -248,11 +288,19 @@ export default function InternalTournamentSetup() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (!clubScope.ok || !playerTenantId) {
+        if (!cancelled) {
+          setPlayers([]);
+          setPlayersLoadError(null);
+          setPlayerDiagnostics(null);
+        }
+        return;
+      }
       const clubId = resolveTeamTournamentAthleteClubId({
-        tournamentClubId: tournament?.clubId || tournamentClubId,
-        clubFromQuery: String(searchParams.get("club") || "").trim(),
-        selectedClubId: sourceClubId,
-        activeClubId,
+        tournamentClubId: tournament?.clubId || tournamentClubId || clubScope.clubId,
+        clubFromQuery: "",
+        selectedClubId: sourceClubId || clubScope.clubId,
+        activeClubId: clubScope.clubId || activeClubId,
       });
       if (!clubId) {
         if (!cancelled) {
@@ -296,6 +344,8 @@ export default function InternalTournamentSetup() {
       cancelled = true;
     };
   }, [
+    clubScope.ok,
+    clubScope.clubId,
     sourceClubId,
     localRevision,
     playerTenantId,
@@ -303,18 +353,17 @@ export default function InternalTournamentSetup() {
     tournamentClubId,
     tournamentId,
     activeClubId,
-    searchParams,
   ]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!playerTenantId) {
+    if (!clubScope.ok || !playerTenantId) {
       setTenantPlayers([]);
       return undefined;
     }
     listAvailableAthletes({
       tournamentId,
-      clubId: sourceClubId || tournamentClubId,
+      clubId: sourceClubId || tournamentClubId || clubScope.clubId,
       tenantId: playerTenantId,
       scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.TENANT,
       callerName: "InternalTournamentSetup.tenant",
@@ -337,11 +386,19 @@ export default function InternalTournamentSetup() {
     return () => {
       cancelled = true;
     };
-  }, [playerTenantId, localRevision, tournamentId, sourceClubId, tournamentClubId]);
+  }, [
+    clubScope.ok,
+    clubScope.clubId,
+    playerTenantId,
+    localRevision,
+    tournamentId,
+    sourceClubId,
+    tournamentClubId,
+  ]);
 
   const courts = useMemo(
-    () => loadCourtsForClub(tournamentClubId),
-    [tournamentClubId, localRevision]
+    () => loadCourtsForClub(tournamentClubId || clubScope.clubId),
+    [tournamentClubId, clubScope.clubId, localRevision]
   );
 
   const refereeRoster = useMemo(
@@ -1160,6 +1217,16 @@ export default function InternalTournamentSetup() {
     );
   };
 
+  if (!clubScope.ok) {
+    return (
+      <Box>
+        <Alert severity="info">
+          {clubScope.error || INTERNAL_SETUP_CLUB_NOT_READY}
+        </Alert>
+      </Box>
+    );
+  }
+
   if (tournamentLoading) {
     return (
       <Box>
@@ -1172,7 +1239,8 @@ export default function InternalTournamentSetup() {
     return (
       <Box>
         <Alert severity="error">
-          {buildTournamentNotFoundMessage(tournamentId, { kind: "giải nội bộ" })}
+          {error ||
+            buildTournamentNotFoundMessage(tournamentId, { kind: "giải nội bộ" })}
         </Alert>
         <Stack direction="row" spacing={1} sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
           <Button component={RouterLink} to="/tournament" variant="outlined">
@@ -1264,15 +1332,17 @@ export default function InternalTournamentSetup() {
       {aiEnabled && setupTab === 1 ? (
         <TournamentAiAssistantPanel
           tournamentId={tournamentId}
-          clubId={tournamentClubId}
+          clubId={tournamentClubId || clubScope.clubId}
           tenantId={
-            currentTenantId ||
             tournament?.tenantId ||
+            clubScope.tenantId ||
             resolveTeamTournamentAthleteTenantId({
               tournament,
-              clubId: tournamentClubId,
+              club: activeClub,
+              clubId: tournamentClubId || clubScope.clubId,
               clubs,
-              currentTenantId,
+              currentTenantId: clubScope.tenantId || currentTenantId,
+              tournamentTenantId: tournament?.tenantId || clubScope.tenantId,
             })
           }
           players={players}
