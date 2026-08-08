@@ -118,8 +118,9 @@ export default function Players() {
       return;
     }
 
-    // WP3 dual-read: canonical qa_quarantine_list_active + legacy QA signals.
+    // WP3 dual-read: canonical qa_quarantine_list_active + transitional legacy signals.
     // RPC absence/error falls back to legacy only — never hides real users.
+    // Authority mode/status is observed via bounded DEV/ops logging (no UI expansion).
     const exclusion = await excludeQaTestIdentitiesWithAuthority(
       result.players || []
     );

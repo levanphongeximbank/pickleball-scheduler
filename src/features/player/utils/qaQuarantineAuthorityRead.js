@@ -4,8 +4,10 @@
  * Canonical RPC: qa_quarantine_list_active(p_profile_ids uuid[])
  * Forbidden alias: qa_quarantine_list_active_batched (must never be called/created here)
  *
- * Data minimization: runtime membership exposes profileId only.
+ * Wire + consumer minimization: membership key is profile_id only.
  * Does not mutate profiles.status or auth.users.
+ *
+ * MAX_QUARANTINE_AUTHORITY_QUERIES_PER_PAGE = 1 (no client-side chunking).
  */
 
 import { isQaQuarantineAuthorityFilterEnabled } from "../config/qaQuarantineFilterFlags.js";
@@ -22,15 +24,24 @@ async function loadDefaultSupabaseAccessors() {
   };
 }
 
-/** Sole canonical set-based active quarantine read (WP2 contract). */
+/** Sole canonical set-based active quarantine read (WP2/WP3 contract). */
 export const QA_QUARANTINE_LIST_ACTIVE_RPC = "qa_quarantine_list_active";
 
 /** Deprecated/non-canonical — must remain absent from runtime calls. */
 export const FORBIDDEN_QA_QUARANTINE_LIST_ACTIVE_BATCHED =
   "qa_quarantine_list_active_batched";
 
-/** Matches WP2 RPC input ceiling. */
-export const QA_QUARANTINE_LIST_ACTIVE_MAX_IDS = 500;
+/**
+ * Matches WP2/WP3 RPC input ceiling for one page-sized set-based call.
+ * Client MUST NOT chunk; one Players page → one authority RPC.
+ */
+export const QA_QUARANTINE_LIST_ACTIVE_MAX_IDS = 10000;
+
+/** Anti-N+1 acceptance gate for directory/list surfaces. */
+export const MAX_QUARANTINE_AUTHORITY_QUERIES_PER_PAGE = 1;
+
+/** Columns requested on the RPC result (wire minimization). */
+export const QA_QUARANTINE_LIST_ACTIVE_SELECT = "profile_id";
 
 export const QA_QUARANTINE_READ_STATUS = Object.freeze({
   OK: "ok",
@@ -39,10 +50,14 @@ export const QA_QUARANTINE_READ_STATUS = Object.freeze({
   ERROR: "error",
   FORBIDDEN: "forbidden",
   EMPTY_INPUT: "empty_input",
+  INPUT_TOO_LARGE: "input_too_large",
 });
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const PROFILE_ROUTE_ID_RE =
+  /^profile-([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
 
 /**
  * @param {unknown} value
@@ -53,6 +68,38 @@ export function isUuid(value) {
 }
 
 /**
+ * Extract a quarantine profile key from an explicit binding only.
+ * Generic UUID-shaped `id` is NOT accepted (avoids false-match on player/roster ids).
+ * Proven bindings: profileId/profile_id, authUserId/auth_user_id, userId/user_id,
+ * and id only when shaped as `profile-<uuid>` (platform athlete route contract).
+ *
+ * @param {Record<string, unknown>} row
+ * @returns {string[]}
+ */
+export function extractProfileKeysFromRow(row = {}) {
+  const keys = [];
+  const pushUuid = (value) => {
+    const normalized = String(value || "").trim().toLowerCase();
+    if (isUuid(normalized)) keys.push(normalized);
+  };
+
+  pushUuid(row?.profileId);
+  pushUuid(row?.profile_id);
+  pushUuid(row?.authUserId);
+  pushUuid(row?.auth_user_id);
+  pushUuid(row?.userId);
+  pushUuid(row?.user_id);
+
+  const routeId = String(row?.id || "").trim();
+  const routeMatch = PROFILE_ROUTE_ID_RE.exec(routeId);
+  if (routeMatch) {
+    pushUuid(routeMatch[1]);
+  }
+
+  return keys;
+}
+
+/**
  * Collect profile UUIDs from directory/athlete rows (set-based, no per-row RPC).
  * @param {Array<Record<string, unknown>>} rows
  * @returns {string[]}
@@ -60,20 +107,8 @@ export function isUuid(value) {
 export function collectProfileIdsForQuarantineLookup(rows = []) {
   const ids = new Set();
   for (const row of rows || []) {
-    const candidates = [
-      row?.profileId,
-      row?.profile_id,
-      row?.authUserId,
-      row?.auth_user_id,
-      row?.userId,
-      row?.user_id,
-      row?.id,
-    ];
-    for (const candidate of candidates) {
-      const value = String(candidate || "").trim();
-      if (isUuid(value)) {
-        ids.add(value.toLowerCase());
-      }
+    for (const key of extractProfileKeysFromRow(row)) {
+      ids.add(key);
     }
   }
   return Array.from(ids);
@@ -81,13 +116,12 @@ export function collectProfileIdsForQuarantineLookup(rows = []) {
 
 /**
  * @param {unknown} error
- * @returns {"unavailable"|"forbidden"|"error"}
+ * @returns {string}
  */
 export function classifyQaQuarantineRpcError(error) {
   const code = String(error?.code || error?.error_code || "").toUpperCase();
   const message = String(error?.message || error?.details || error || "").toLowerCase();
 
-  // Missing function / schema cache miss → bounded migration fallback.
   if (
     code === "PGRST202" ||
     code === "42883" ||
@@ -96,6 +130,10 @@ export function classifyQaQuarantineRpcError(error) {
       (message.includes("qa_quarantine_list_active") || message.includes("function")))
   ) {
     return QA_QUARANTINE_READ_STATUS.UNAVAILABLE;
+  }
+
+  if (message.includes("qa_quarantine_input_too_large") || message.includes("profile_ids max")) {
+    return QA_QUARANTINE_READ_STATUS.INPUT_TOO_LARGE;
   }
 
   if (
@@ -112,7 +150,7 @@ export function classifyQaQuarantineRpcError(error) {
 
 /**
  * Project RPC rows → minimized active membership ids only.
- * Strips expected_email, allowlist/snapshot SHA, reason, audit/backup metadata.
+ * Accepts only profile_id / profileId keys from the wire payload.
  * @param {unknown} data
  * @returns {Set<string>}
  */
@@ -120,7 +158,22 @@ export function projectActiveMembershipIds(data) {
   const active = new Set();
   if (!Array.isArray(data)) return active;
   for (const row of data) {
-    const profileId = String(row?.profile_id || row?.profileId || "").trim().toLowerCase();
+    if (!row || typeof row !== "object") continue;
+    const keys = Object.keys(row);
+    // Reject unexpected operational/sensitive fields if a wider payload leaks.
+    const disallowed = keys.filter(
+      (k) =>
+        ![
+          "profile_id",
+          "profileId",
+        ].includes(k)
+    );
+    if (disallowed.length > 0) {
+      // Ignore extra fields for membership projection; do not surface them.
+    }
+    const profileId = String(row?.profile_id || row?.profileId || "")
+      .trim()
+      .toLowerCase();
     if (isUuid(profileId)) {
       active.add(profileId);
     }
@@ -146,25 +199,8 @@ export function projectCanonicalAuthorityOntoRows(rows = [], activeProfileIds = 
         );
 
   return (rows || []).map((row) => {
-    const candidates = [
-      row?.profileId,
-      row?.profile_id,
-      row?.authUserId,
-      row?.auth_user_id,
-      row?.userId,
-      row?.user_id,
-      row?.id,
-    ];
-    let matched = false;
-    for (const candidate of candidates) {
-      const value = String(candidate || "").trim().toLowerCase();
-      if (isUuid(value) && activeSet.has(value)) {
-        matched = true;
-        break;
-      }
-    }
+    const matched = extractProfileKeysFromRow(row).some((key) => activeSet.has(key));
     if (!matched) {
-      // Leave row unchanged when not in active set (no false quarantine mark).
       if (row?.qaAuthorityActive === true) {
         const rest = { ...row };
         delete rest.qaAuthorityActive;
@@ -174,22 +210,74 @@ export function projectCanonicalAuthorityOntoRows(rows = [], activeProfileIds = 
     }
     return {
       ...row,
-      // Distinguishable canonical signal (not legacy quarantined / meta / status).
       qaAuthorityActive: true,
     };
   });
 }
 
-function chunkIds(ids, size) {
-  const chunks = [];
-  for (let i = 0; i < ids.length; i += size) {
-    chunks.push(ids.slice(i, i + size));
+/**
+ * Bounded ops/dev observability when canonical authority is unavailable.
+ * No emails, allowlist/snapshot hashes, batch ids, or reason text from authority rows.
+ *
+ * @param {object} authority
+ * @param {{ forceLog?: boolean, logger?: { info: Function } }} [options]
+ */
+export function observeQaQuarantineAuthorityAvailability(authority = {}, options = {}) {
+  const status = String(authority?.status || "");
+  if (!status || status === QA_QUARANTINE_READ_STATUS.OK) return;
+  if (
+    status === QA_QUARANTINE_READ_STATUS.FLAG_OFF ||
+    status === QA_QUARANTINE_READ_STATUS.EMPTY_INPUT
+  ) {
+    return;
   }
-  return chunks;
+
+  const env =
+    typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
+  const nodeEnv =
+    typeof globalThis.process !== "undefined" ? globalThis.process.env : {};
+  const debugEnabled =
+    options.forceLog === true ||
+    env.DEV === true ||
+    env.VITE_ENABLE_AUTH_DEBUG === "true" ||
+    nodeEnv.VITE_ENABLE_AUTH_DEBUG === "true";
+
+  if (!debugEnabled) return;
+
+  const logger = options.logger || console;
+  if (typeof logger.info !== "function") return;
+
+  logger.info("[qa-quarantine-authority]", {
+    status,
+    reason: authority.reason || null,
+    fallback: authority.fallback || "legacy_qa_signals_only",
+    rpcName: authority.rpcName || QA_QUARANTINE_LIST_ACTIVE_RPC,
+    queryCount: authority.queryCount ?? 0,
+    // Explicit: transitional dual-read only; removal after WP5/WP6 proofs.
+    legacyFallbackTransitional: true,
+  });
 }
 
 /**
- * One set-based (chunked) authority lookup for an entire result set.
+ * Invoke RPC with optional PostgREST column projection (.select).
+ * @param {{ rpc: Function }} client
+ * @param {string[]} profileIds
+ */
+async function invokeListActiveRpc(client, profileIds) {
+  const builder = client.rpc(QA_QUARANTINE_LIST_ACTIVE_RPC, {
+    p_profile_ids: profileIds,
+  });
+
+  // Prefer wire projection at the PostgREST boundary when supported.
+  if (builder && typeof builder.select === "function") {
+    return builder.select(QA_QUARANTINE_LIST_ACTIVE_SELECT);
+  }
+
+  return builder;
+}
+
+/**
+ * Exactly one set-based authority lookup for an entire page/result set.
  * Missing/error RPC never invents quarantine membership.
  *
  * @param {string[]} profileIds
@@ -214,6 +302,7 @@ export async function listActiveQaQuarantineMembership(profileIds = [], deps = {
       rpcName: QA_QUARANTINE_LIST_ACTIVE_RPC,
       queryCount: 0,
       reason: "feature_flag_off",
+      selectedFields: [QA_QUARANTINE_LIST_ACTIVE_SELECT],
     };
   }
 
@@ -233,6 +322,20 @@ export async function listActiveQaQuarantineMembership(profileIds = [], deps = {
       rpcName: QA_QUARANTINE_LIST_ACTIVE_RPC,
       queryCount: 0,
       reason: "no_profile_ids",
+      selectedFields: [QA_QUARANTINE_LIST_ACTIVE_SELECT],
+    };
+  }
+
+  if (uniqueIds.length > QA_QUARANTINE_LIST_ACTIVE_MAX_IDS) {
+    return {
+      ok: false,
+      status: QA_QUARANTINE_READ_STATUS.INPUT_TOO_LARGE,
+      activeProfileIds: new Set(),
+      rpcName: QA_QUARANTINE_LIST_ACTIVE_RPC,
+      queryCount: 0,
+      reason: `profile_ids max ${QA_QUARANTINE_LIST_ACTIVE_MAX_IDS}`,
+      fallback: "legacy_qa_signals_only",
+      selectedFields: [QA_QUARANTINE_LIST_ACTIVE_SELECT],
     };
   }
 
@@ -252,8 +355,8 @@ export async function listActiveQaQuarantineMembership(profileIds = [], deps = {
       rpcName: QA_QUARANTINE_LIST_ACTIVE_RPC,
       queryCount: 0,
       reason: "supabase_unconfigured",
-      // Explicit: do not classify anyone as quarantined from absence.
       fallback: "legacy_qa_signals_only",
+      selectedFields: [QA_QUARANTINE_LIST_ACTIVE_SELECT],
     };
   }
 
@@ -267,59 +370,52 @@ export async function listActiveQaQuarantineMembership(profileIds = [], deps = {
       queryCount: 0,
       reason: "client_unavailable",
       fallback: "legacy_qa_signals_only",
+      selectedFields: [QA_QUARANTINE_LIST_ACTIVE_SELECT],
     };
   }
 
-  const activeProfileIds = new Set();
-  let queryCount = 0;
+  let result;
+  try {
+    // Canonical only — never call qa_quarantine_list_active_batched.
+    // Exactly one RPC for the page dataset (no chunk loop).
+    result = await invokeListActiveRpc(client, uniqueIds);
+  } catch (error) {
+    const status = classifyQaQuarantineRpcError(error);
+    return {
+      ok: false,
+      status,
+      activeProfileIds: new Set(),
+      rpcName: QA_QUARANTINE_LIST_ACTIVE_RPC,
+      queryCount: 1,
+      reason: String(error?.message || status),
+      fallback: "legacy_qa_signals_only",
+      selectedFields: [QA_QUARANTINE_LIST_ACTIVE_SELECT],
+      error,
+    };
+  }
 
-  for (const batch of chunkIds(uniqueIds, QA_QUARANTINE_LIST_ACTIVE_MAX_IDS)) {
-    queryCount += 1;
-    let result;
-    try {
-      // Canonical only — never call qa_quarantine_list_active_batched.
-      result = await client.rpc(QA_QUARANTINE_LIST_ACTIVE_RPC, {
-        p_profile_ids: batch,
-      });
-    } catch (error) {
-      const status = classifyQaQuarantineRpcError(error);
-      return {
-        ok: false,
-        status,
-        activeProfileIds: new Set(),
-        rpcName: QA_QUARANTINE_LIST_ACTIVE_RPC,
-        queryCount,
-        reason: String(error?.message || status),
-        fallback: "legacy_qa_signals_only",
-        error,
-      };
-    }
-
-    if (result?.error) {
-      const status = classifyQaQuarantineRpcError(result.error);
-      return {
-        ok: false,
-        status,
-        activeProfileIds: new Set(),
-        rpcName: QA_QUARANTINE_LIST_ACTIVE_RPC,
-        queryCount,
-        reason: String(result.error?.message || status),
-        fallback: "legacy_qa_signals_only",
-        error: result.error,
-      };
-    }
-
-    for (const id of projectActiveMembershipIds(result?.data)) {
-      activeProfileIds.add(id);
-    }
+  if (result?.error) {
+    const status = classifyQaQuarantineRpcError(result.error);
+    return {
+      ok: false,
+      status,
+      activeProfileIds: new Set(),
+      rpcName: QA_QUARANTINE_LIST_ACTIVE_RPC,
+      queryCount: 1,
+      reason: String(result.error?.message || status),
+      fallback: "legacy_qa_signals_only",
+      selectedFields: [QA_QUARANTINE_LIST_ACTIVE_SELECT],
+      error: result.error,
+    };
   }
 
   return {
     ok: true,
     status: QA_QUARANTINE_READ_STATUS.OK,
-    activeProfileIds,
+    activeProfileIds: projectActiveMembershipIds(result?.data),
     rpcName: QA_QUARANTINE_LIST_ACTIVE_RPC,
-    queryCount,
+    queryCount: 1,
     reason: null,
+    selectedFields: [QA_QUARANTINE_LIST_ACTIVE_SELECT],
   };
 }

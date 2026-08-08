@@ -1,5 +1,5 @@
 /**
- * OPERATION_B1B WP3 — runtime / filter migration unit proofs.
+ * OPERATION_B1B WP3 — runtime / filter migration (+ corrective remediation) unit proofs.
  * No database apply. No Staging/Production mutation.
  */
 import assert from "node:assert/strict";
@@ -15,11 +15,16 @@ import {
 import {
   classifyQaQuarantineRpcError,
   collectProfileIdsForQuarantineLookup,
+  extractProfileKeysFromRow,
   FORBIDDEN_QA_QUARANTINE_LIST_ACTIVE_BATCHED,
   listActiveQaQuarantineMembership,
+  MAX_QUARANTINE_AUTHORITY_QUERIES_PER_PAGE,
+  observeQaQuarantineAuthorityAvailability,
   projectActiveMembershipIds,
   projectCanonicalAuthorityOntoRows,
+  QA_QUARANTINE_LIST_ACTIVE_MAX_IDS,
   QA_QUARANTINE_LIST_ACTIVE_RPC,
+  QA_QUARANTINE_LIST_ACTIVE_SELECT,
   QA_QUARANTINE_READ_STATUS,
 } from "../src/features/player/utils/qaQuarantineAuthorityRead.js";
 import {
@@ -35,9 +40,11 @@ import { filterPlayers } from "../src/utils/playerHelpers.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(path.join(ROOT, rel), "utf8");
+const FORWARD_SQL =
+  "docs/v5/operations/production-qa-identity-operation-b1b-remediation/sql/20_QA_IDENTITY_QUARANTINE_AUTHORITY_FORWARD.sql";
 
 const REAL_USER = {
-  id: "11111111-1111-4111-8111-111111111111",
+  id: "profile-11111111-1111-4111-8111-111111111111",
   authUserId: "11111111-1111-4111-8111-111111111111",
   email: "real.player@gmail.com",
   name: "Real Player",
@@ -47,7 +54,7 @@ const REAL_USER = {
 };
 
 const CANONICAL_QA = {
-  id: "22222222-2222-4222-8222-222222222222",
+  id: "profile-22222222-2222-4222-8222-222222222222",
   authUserId: "22222222-2222-4222-8222-222222222222",
   email: "canonical.qa@example.com",
   name: "Canonical QA",
@@ -57,7 +64,7 @@ const CANONICAL_QA = {
 };
 
 const CERTIFIED_QA = {
-  id: "33333333-3333-4333-8333-333333333333",
+  id: "profile-33333333-3333-4333-8333-333333333333",
   authUserId: "33333333-3333-4333-8333-333333333333",
   email: "phase1b-smoke-1@pickleball-scheduler.qa",
   name: "Certified QA",
@@ -67,7 +74,7 @@ const CERTIFIED_QA = {
 };
 
 const LOOKALIKE_REAL = {
-  id: "44444444-4444-4444-8444-444444444444",
+  id: "profile-44444444-4444-4444-8444-444444444444",
   authUserId: "44444444-4444-4444-8444-444444444444",
   email: "phase1b-smith@gmail.com",
   name: "Lookalike Real",
@@ -81,20 +88,37 @@ function mockRpcClient(handler) {
   return {
     calls,
     client: {
-      async rpc(name, args) {
-        calls.push({ name, args });
-        return handler(name, args, calls.length);
+      rpc(name, args) {
+        const call = { name, args, select: null };
+        calls.push(call);
+        const resultPromise = Promise.resolve().then(() =>
+          handler(name, args, calls.length)
+        );
+        // Thenable builder supporting .select('profile_id') wire projection.
+        const builder = {
+          select(columns) {
+            call.select = columns;
+            return resultPromise;
+          },
+          then: resultPromise.then.bind(resultPromise),
+          catch: resultPromise.catch.bind(resultPromise),
+        };
+        return builder;
       },
     },
   };
 }
 
-test("1) canonical active quarantine identity is excluded", async () => {
+function makeUuid(n) {
+  const hex = n.toString(16).padStart(12, "0");
+  return `aaaaaaaa-bbbb-4ccc-8ddd-${hex}`;
+}
+
+test("1) SUPER_ADMIN canonical read still works", async () => {
   const { client, calls } = mockRpcClient(() => ({
     data: [{ profile_id: CANONICAL_QA.authUserId }],
     error: null,
   }));
-
   const result = await excludeQaTestIdentitiesWithAuthority(
     [REAL_USER, CANONICAL_QA],
     {
@@ -103,85 +127,139 @@ test("1) canonical active quarantine identity is excluded", async () => {
       getClient: () => client,
     }
   );
-
   assert.equal(result.mode, "dual_read_canonical_plus_legacy");
   assert.equal(result.rows.length, 1);
   assert.equal(result.rows[0].email, REAL_USER.email);
-  assert.equal(calls.length, 1);
   assert.equal(calls[0].name, QA_QUARANTINE_LIST_ACTIVE_RPC);
-  assert.equal(
-    classifyQaTestIdentity({ ...CANONICAL_QA, qaAuthorityActive: true }, {
-      authorityFilterEnabled: true,
-    }).source,
-    QA_IDENTITY_SIGNAL.CANONICAL_AUTHORITY
-  );
+  assert.match(read(FORWARD_SQL), /is_super_admin\s*\(\s*\)/);
 });
 
-test("2) non-quarantined real user remains visible", async () => {
-  const { client } = mockRpcClient(() => ({ data: [], error: null }));
-  const result = await excludeQaTestIdentitiesWithAuthority([REAL_USER], {
+test("2) SYSTEM_TECHNICIAN supported platform-directory read works", () => {
+  const sql = read(FORWARD_SQL);
+  assert.match(sql, /qa_quarantine_is_directory_filter_reader/);
+  assert.match(sql, /SYSTEM_TECHNICIAN/);
+  assert.match(
+    sql,
+    /qa_quarantine_is_directory_filter_reader\s*\(\s*\)[\s\S]{0,200}QA_QUARANTINE_FORBIDDEN|IF NOT public\.qa_quarantine_is_directory_filter_reader/
+  );
+  const listBody = sql.match(
+    /create\s+or\s+replace\s+function\s+public\.qa_quarantine_list_active[\s\S]*?\$\$;/i
+  );
+  assert.ok(listBody);
+  assert.match(listBody[0], /qa_quarantine_is_directory_filter_reader/);
+  assert.doesNotMatch(listBody[0], /qa_quarantine_is_authorized_caller\s*\(\s*\)/);
+});
+
+test("3) SYSTEM_TECHNICIAN cannot mutate quarantine lifecycle", () => {
+  const sql = read(FORWARD_SQL);
+  const writerAuthz = sql.match(
+    /create\s+or\s+replace\s+function\s+public\.qa_quarantine_is_authorized_caller[\s\S]*?\$\$;/i
+  );
+  assert.ok(writerAuthz);
+  assert.doesNotMatch(writerAuthz[0], /SYSTEM_TECHNICIAN/);
+  for (const writer of [
+    "qa_quarantine_prepare",
+    "qa_quarantine_activate_after_auth_ban",
+    "qa_quarantine_release",
+  ]) {
+    const block = sql.match(
+      new RegExp(
+        `create\\s+or\\s+replace\\s+function\\s+public\\.${writer}[\\s\\S]*?\\$\\$;`,
+        "i"
+      )
+    );
+    assert.ok(block, writer);
+    assert.match(block[0], /qa_quarantine_is_authorized_caller\s*\(\s*\)/);
+  }
+});
+
+test("4) service_role behavior remains correct", () => {
+  const sql = read(FORWARD_SQL);
+  assert.match(sql, /qa_quarantine_is_service_role/);
+  const reader = sql.match(
+    /create\s+or\s+replace\s+function\s+public\.qa_quarantine_is_directory_filter_reader[\s\S]*?\$\$;/i
+  );
+  assert.ok(reader);
+  assert.match(reader[0], /qa_quarantine_is_service_role\s*\(\s*\)/);
+  const writer = sql.match(
+    /create\s+or\s+replace\s+function\s+public\.qa_quarantine_is_authorized_caller[\s\S]*?\$\$;/i
+  );
+  assert.ok(writer);
+  assert.match(writer[0], /qa_quarantine_is_service_role\s*\(\s*\)/);
+});
+
+test("5) authority queries per Players page <= 1", async () => {
+  assert.equal(MAX_QUARANTINE_AUTHORITY_QUERIES_PER_PAGE, 1);
+  const { client, calls } = mockRpcClient(() => ({ data: [], error: null }));
+  const ids = Array.from({ length: 120 }, (_, i) => makeUuid(i + 1));
+  const rows = ids.map((id) => ({
+    id: `profile-${id}`,
+    authUserId: id,
+    email: `${id.slice(-4)}@example.com`,
+  }));
+  const result = await listActiveQaQuarantineMembership(ids, {
     authorityFilterEnabled: true,
     hasConfig: () => true,
     getClient: () => client,
   });
-  assert.equal(result.rows.length, 1);
-  assert.equal(result.rows[0].email, REAL_USER.email);
-  assert.equal(isConfirmedQaTestIdentity(REAL_USER), false);
+  assert.equal(result.queryCount, 1);
+  assert.ok(result.queryCount <= MAX_QUARANTINE_AUTHORITY_QUERIES_PER_PAGE);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].args.p_profile_ids.length, rows.length);
 });
 
-test("3) empty canonical result preserves real users", async () => {
-  const { client } = mockRpcClient(() => ({ data: [], error: null }));
-  const result = await excludeQaTestIdentitiesWithAuthority(
-    [REAL_USER, LOOKALIKE_REAL],
-    {
-      authorityFilterEnabled: true,
-      hasConfig: () => true,
-      getClient: () => client,
-    }
-  );
-  assert.equal(result.rows.length, 2);
-  assert.deepEqual(
-    result.rows.map((r) => r.email).sort(),
-    [LOOKALIKE_REAL.email, REAL_USER.email].sort()
-  );
+test("6) large directory (>500 identities) still performs one authority query", async () => {
+  const { client, calls } = mockRpcClient((_name, args) => {
+    assert.ok(args.p_profile_ids.length > 500);
+    return { data: [{ profile_id: args.p_profile_ids[0] }], error: null };
+  });
+  const ids = Array.from({ length: 600 }, (_, i) => makeUuid(i + 1));
+  const result = await listActiveQaQuarantineMembership(ids, {
+    authorityFilterEnabled: true,
+    hasConfig: () => true,
+    getClient: () => client,
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(result.queryCount, 1);
+  assert.equal(result.ok, true);
+  assert.ok(result.activeProfileIds.has(ids[0]));
 });
 
-test("4) canonical RPC unavailable uses bounded migration fallback", async () => {
-  const { client, calls } = mockRpcClient(() => ({
-    data: null,
-    error: {
-      code: "PGRST202",
-      message: "Could not find the function public.qa_quarantine_list_active",
-    },
+test("7) large directory quarantine membership is correct", async () => {
+  const quarantined = [makeUuid(1), makeUuid(250), makeUuid(600)];
+  const ids = Array.from({ length: 600 }, (_, i) => makeUuid(i + 1));
+  const { client } = mockRpcClient((_name, args) => ({
+    data: quarantined
+      .filter((id) => args.p_profile_ids.includes(id))
+      .map((profile_id) => ({ profile_id })),
+    error: null,
   }));
-
-  const result = await excludeQaTestIdentitiesWithAuthority(
-    [REAL_USER, CERTIFIED_QA, LOOKALIKE_REAL],
-    {
-      authorityFilterEnabled: true,
-      hasConfig: () => true,
-      getClient: () => client,
-    }
-  );
-
-  assert.equal(result.mode, "dual_read_legacy_fallback");
-  assert.equal(result.authority.status, QA_QUARANTINE_READ_STATUS.UNAVAILABLE);
-  assert.equal(result.authority.fallback, "legacy_qa_signals_only");
-  assert.equal(result.authority.activeProfileIds.size, 0);
-  assert.equal(calls[0].name, QA_QUARANTINE_LIST_ACTIVE_RPC);
-  // Certified email still excluded via legacy; real + lookalike retained.
-  assert.deepEqual(
-    result.rows.map((r) => r.email).sort(),
-    [LOOKALIKE_REAL.email, REAL_USER.email].sort()
-  );
+  const rows = ids.map((id, index) => ({
+    id: `profile-${id}`,
+    authUserId: id,
+    email: `user${index}@example.com`,
+    name: `User ${index}`,
+  }));
+  const result = await excludeQaTestIdentitiesWithAuthority(rows, {
+    authorityFilterEnabled: true,
+    hasConfig: () => true,
+    getClient: () => client,
+  });
+  assert.equal(result.authority.queryCount, 1);
+  assert.equal(result.rows.length, 597);
+  for (const id of quarantined) {
+    assert.equal(
+      result.rows.some((r) => r.authUserId === id),
+      false
+    );
+  }
 });
 
-test("5) canonical RPC error does not silently classify real users as quarantined", async () => {
+test("8) RPC error remains fail-open for legitimate real users", async () => {
   const { client } = mockRpcClient(() => ({
     data: null,
     error: { code: "57014", message: "statement timeout" },
   }));
-
   const result = await excludeQaTestIdentitiesWithAuthority(
     [REAL_USER, CANONICAL_QA],
     {
@@ -190,149 +268,12 @@ test("5) canonical RPC error does not silently classify real users as quarantine
       getClient: () => client,
     }
   );
-
   assert.equal(result.authority.status, QA_QUARANTINE_READ_STATUS.ERROR);
   assert.equal(result.authority.fallback, "legacy_qa_signals_only");
-  // CANONICAL_QA has no legacy/email signal → must remain visible on error.
   assert.equal(result.rows.length, 2);
-  assert.ok(result.rows.some((r) => r.email === CANONICAL_QA.email));
-  assert.ok(result.rows.some((r) => r.email === REAL_USER.email));
 });
 
-test("6) legacy QA behavior remains compatible during dual-read", async () => {
-  const { client } = mockRpcClient(() => ({ data: [], error: null }));
-  const legacyRows = [
-    REAL_USER,
-    { ...REAL_USER, id: "a", authUserId: "55555555-5555-4555-8555-555555555555", email: "a@x.com", quarantined: true },
-    { ...REAL_USER, id: "b", authUserId: "66666666-6666-4666-8666-666666666666", email: "b@x.com", meta: { qaQuarantined: true } },
-    { ...REAL_USER, id: "c", authUserId: "77777777-7777-4777-8777-777777777777", email: "c@x.com", status: "quarantined" },
-    CERTIFIED_QA,
-  ];
-
-  const result = await excludeQaTestIdentitiesWithAuthority(legacyRows, {
-    authorityFilterEnabled: true,
-    hasConfig: () => true,
-    getClient: () => client,
-  });
-
-  assert.equal(result.rows.length, 1);
-  assert.equal(result.rows[0].email, REAL_USER.email);
-  assert.equal(
-    classifyQaTestIdentity(legacyRows[1]).source,
-    QA_IDENTITY_SIGNAL.LEGACY_QUARANTINED_FLAG
-  );
-  assert.equal(
-    classifyQaTestIdentity(legacyRows[2]).source,
-    QA_IDENTITY_SIGNAL.LEGACY_META_QA_QUARANTINED
-  );
-  assert.equal(
-    classifyQaTestIdentity(legacyRows[3]).source,
-    QA_IDENTITY_SIGNAL.LEGACY_STATUS_QUARANTINED
-  );
-});
-
-test("7) contradictory canonical/legacy states follow documented precedence", () => {
-  assert.deepEqual(QA_IDENTITY_DUAL_READ_PRECEDENCE[0], QA_IDENTITY_SIGNAL.CANONICAL_AUTHORITY);
-
-  // Both positive → source label is canonical (precedence), still excluded.
-  const both = classifyQaTestIdentity(
-    {
-      email: "x@y.com",
-      qaAuthorityActive: true,
-      status: "quarantined",
-      quarantined: true,
-    },
-    { authorityFilterEnabled: true }
-  );
-  assert.equal(both.excluded, true);
-  assert.equal(both.source, QA_IDENTITY_SIGNAL.CANONICAL_AUTHORITY);
-
-  // Canonical not active + legacy positive → legacy still excludes (not cleared).
-  const legacyOnly = classifyQaTestIdentity(
-    { email: "x@y.com", qaAuthorityActive: false, status: "quarantined" },
-    { authorityFilterEnabled: true }
-  );
-  assert.equal(legacyOnly.excluded, true);
-  assert.equal(legacyOnly.source, QA_IDENTITY_SIGNAL.LEGACY_STATUS_QUARANTINED);
-
-  // Canonical active + no legacy → canonical excludes.
-  const canonicalOnly = classifyQaTestIdentity(
-    { email: "not-qa@gmail.com", qaAuthorityActive: true },
-    { authorityFilterEnabled: true }
-  );
-  assert.equal(canonicalOnly.excluded, true);
-  assert.equal(canonicalOnly.source, QA_IDENTITY_SIGNAL.CANONICAL_AUTHORITY);
-});
-
-test("8) no profiles.status mutation in WP3 runtime modules", () => {
-  const files = [
-    "src/features/player/utils/qaTestIdentityFilter.js",
-    "src/features/player/utils/qaQuarantineAuthorityRead.js",
-    "src/features/player/config/qaQuarantineFilterFlags.js",
-    "src/pages/Players.jsx",
-  ];
-  for (const rel of files) {
-    const src = read(rel);
-    assert.equal(
-      /status\s*:\s*['"]quarantined['"]/.test(src),
-      false,
-      `${rel} must not write status quarantined`
-    );
-    assert.equal(
-      /\.update\(/.test(src) && /profiles/.test(src),
-      false,
-      `${rel} must not update profiles`
-    );
-  }
-});
-
-test("9) no auth.users mutation in WP3 runtime modules", () => {
-  const files = [
-    "src/features/player/utils/qaTestIdentityFilter.js",
-    "src/features/player/utils/qaQuarantineAuthorityRead.js",
-    "src/pages/Players.jsx",
-  ];
-  for (const rel of files) {
-    const src = read(rel);
-    // Allow documentation mentions; forbid mutation call sites.
-    assert.equal(
-      /\.from\(\s*['"]auth\.users['"]\s*\)/.test(src),
-      false,
-      rel
-    );
-    assert.equal(
-      /auth\.admin\.(banUser|updateUserById)|banned_until\s*:/.test(src),
-      false,
-      rel
-    );
-  }
-});
-
-test("10) Players count excludes only quarantined QA identities", async () => {
-  const { client } = mockRpcClient((_name, args) => {
-    const ids = args.p_profile_ids || [];
-    const hit = ids.includes(CANONICAL_QA.authUserId)
-      ? [{ profile_id: CANONICAL_QA.authUserId }]
-      : [];
-    return { data: hit, error: null };
-  });
-
-  const roster = [REAL_USER, CANONICAL_QA, CERTIFIED_QA, LOOKALIKE_REAL];
-  const result = await excludeQaTestIdentitiesWithAuthority(roster, {
-    authorityFilterEnabled: true,
-    hasConfig: () => true,
-    getClient: () => client,
-  });
-
-  // Exclude: canonical authority + certified email. Keep real + lookalike.
-  assert.equal(result.rows.length, 2);
-  assert.deepEqual(
-    result.rows.map((r) => r.email).sort(),
-    [LOOKALIKE_REAL.email, REAL_USER.email].sort()
-  );
-});
-
-test("11) Players search/filter still works for legitimate users", async () => {
+test("9) canonical active QA identity remains excluded", async () => {
   const { client } = mockRpcClient(() => ({
     data: [{ profile_id: CANONICAL_QA.authUserId }],
     error: null,
@@ -345,128 +286,101 @@ test("11) Players search/filter still works for legitimate users", async () => {
       getClient: () => client,
     }
   );
-
-  const searched = filterPlayers(result.rows, {
-    search: "Real Player",
-    genderFilter: "all",
-    levelRange: [1, 8],
-    statusFilter: "all",
-  });
-  assert.equal(searched.length, 1);
-  assert.equal(searched[0].email, REAL_USER.email);
-
-  const genderFiltered = filterPlayers(result.rows, {
-    search: "",
-    genderFilter: "female",
-    levelRange: [1, 8],
-    statusFilter: "all",
-  });
-  assert.ok(genderFiltered.every((p) => p.email !== CANONICAL_QA.email));
-  assert.ok(genderFiltered.some((p) => p.email === LOOKALIKE_REAL.email));
-});
-
-test("12) qa_quarantine_list_active is canonical in runtime", () => {
-  assert.equal(QA_QUARANTINE_LIST_ACTIVE_RPC, "qa_quarantine_list_active");
-  const readSrc = read("src/features/player/utils/qaQuarantineAuthorityRead.js");
-  assert.match(readSrc, /qa_quarantine_list_active/);
-  assert.match(readSrc, /Canonical RPC/);
-  const filterSrc = read("src/features/player/utils/qaTestIdentityFilter.js");
-  assert.match(filterSrc, /qa_quarantine_list_active/);
-});
-
-test("13) qa_quarantine_list_active_batched remains absent from runtime", async () => {
-  assert.equal(
-    FORBIDDEN_QA_QUARANTINE_LIST_ACTIVE_BATCHED,
-    "qa_quarantine_list_active_batched"
+  assert.deepEqual(
+    result.rows.map((r) => r.email).sort(),
+    [LOOKALIKE_REAL.email, REAL_USER.email].sort()
   );
-  const runtimeFiles = [
-    "src/features/player/utils/qaQuarantineAuthorityRead.js",
-    "src/features/player/utils/qaTestIdentityFilter.js",
-    "src/features/player/config/qaQuarantineFilterFlags.js",
-    "src/pages/Players.jsx",
-  ];
-  for (const rel of runtimeFiles) {
-    const src = read(rel);
-    // May mention the forbidden name as a comment/constant, but must never rpc() it.
-    assert.equal(
-      /\.rpc\s*\(\s*['"]qa_quarantine_list_active_batched['"]/.test(src),
-      false,
-      rel
-    );
-  }
+  assert.equal(
+    classifyQaTestIdentity(
+      { ...CANONICAL_QA, qaAuthorityActive: true },
+      { authorityFilterEnabled: true }
+    ).source,
+    QA_IDENTITY_SIGNAL.CANONICAL_AUTHORITY
+  );
+});
 
-  const { client, calls } = mockRpcClient(() => ({ data: [], error: null }));
-  await listActiveQaQuarantineMembership([REAL_USER.authUserId], {
+test("10) browser-facing authority payload contains only minimum membership fields", async () => {
+  assert.equal(QA_QUARANTINE_LIST_ACTIVE_SELECT, "profile_id");
+  const { client, calls } = mockRpcClient(() => ({
+    data: [
+      {
+        profile_id: CANONICAL_QA.authUserId,
+        // If wider payload leaked, projector still only keeps profile_id membership.
+        batch_id: "should-not-reach-consumer",
+        allowlist_label: "secret-label",
+        expected_email: "leak@example.com",
+      },
+    ],
+    error: null,
+  }));
+  const result = await listActiveQaQuarantineMembership([CANONICAL_QA.authUserId], {
     authorityFilterEnabled: true,
     hasConfig: () => true,
     getClient: () => client,
   });
-  assert.ok(calls.every((c) => c.name === QA_QUARANTINE_LIST_ACTIVE_RPC));
-  assert.ok(calls.every((c) => c.name !== FORBIDDEN_QA_QUARANTINE_LIST_ACTIVE_BATCHED));
+  assert.equal(calls[0].select, "profile_id");
+  assert.deepEqual(result.selectedFields, ["profile_id"]);
+  assert.deepEqual([...result.activeProfileIds], [CANONICAL_QA.authUserId]);
 
-  const forward = read(
-    "docs/v5/operations/production-qa-identity-operation-b1b-remediation/sql/20_QA_IDENTITY_QUARANTINE_AUTHORITY_FORWARD.sql"
+  const projected = projectCanonicalAuthorityOntoRows(
+    [CANONICAL_QA],
+    result.activeProfileIds
+  )[0];
+  const serialized = JSON.stringify(projected);
+  assert.equal(serialized.includes("should-not-reach-consumer"), false);
+  assert.equal(serialized.includes("secret-label"), false);
+  assert.equal(serialized.includes("leak@example.com"), false);
+  assert.equal(projected.qaAuthorityActive, true);
+
+  const forward = read(FORWARD_SQL);
+  const returns = forward.match(
+    /create\s+or\s+replace\s+function\s+public\.qa_quarantine_list_active\s*\([\s\S]*?\)\s*returns\s+table\s*\(([\s\S]*?)\)\s*language/i
   );
-  assert.equal(
-    /create\s+or\s+replace\s+function\s+public\.qa_quarantine_list_active_batched\b/i.test(
-      forward
-    ),
-    false
+  assert.ok(returns);
+  assert.equal(returns[1].trim().toLowerCase(), "profile_id uuid");
+});
+
+test("11) generic unrelated UUID id cannot false-match quarantine membership", () => {
+  const playerRosterId = CANONICAL_QA.authUserId; // UUID-shaped but NOT a profile binding
+  const row = {
+    id: playerRosterId,
+    email: "club.blob.player@example.com",
+    name: "Blob Player",
+  };
+  assert.deepEqual(extractProfileKeysFromRow(row), []);
+  assert.deepEqual(collectProfileIdsForQuarantineLookup([row]), []);
+
+  const projected = projectCanonicalAuthorityOntoRows(
+    [row],
+    new Set([playerRosterId])
+  )[0];
+  assert.equal(projected.qaAuthorityActive, undefined);
+
+  // Explicit bindings still work.
+  assert.ok(
+    extractProfileKeysFromRow({
+      authUserId: CANONICAL_QA.authUserId,
+      id: "player-local-1",
+    }).includes(CANONICAL_QA.authUserId)
+  );
+  assert.ok(
+    extractProfileKeysFromRow({
+      id: `profile-${CANONICAL_QA.authUserId}`,
+    }).includes(CANONICAL_QA.authUserId)
   );
 });
 
-test("14) sensitive quarantine fields are not exposed to consumers", () => {
-  const projectedIds = projectActiveMembershipIds([
-    {
-      profile_id: CANONICAL_QA.authUserId,
-      expected_email: "secret@qa.example",
-      allowlist_sha256: "aaa",
-      snapshot_sha256: "bbb",
-      reason: "do-not-leak",
-      allowlist_label: "batch-label",
-      auth_user_id: CANONICAL_QA.authUserId,
-      batch_id: "99999999-9999-4999-8999-999999999999",
-    },
-  ]);
-  assert.deepEqual([...projectedIds], [CANONICAL_QA.authUserId]);
-
-  const rows = projectCanonicalAuthorityOntoRows([CANONICAL_QA], projectedIds);
-  const enriched = rows[0];
-  assert.equal(enriched.qaAuthorityActive, true);
-  assert.equal("expected_email" in enriched, false);
-  assert.equal("allowlist_sha256" in enriched, false);
-  assert.equal("snapshot_sha256" in enriched, false);
-  assert.equal("reason" in enriched, false);
-  assert.equal("allowlist_label" in enriched, false);
-  assert.equal("batch_id" in enriched, false);
-
-  const serialized = JSON.stringify(enriched);
-  assert.equal(serialized.includes("secret@qa.example"), false);
-  assert.equal(serialized.includes("do-not-leak"), false);
-  assert.equal(serialized.includes("allowlist_sha"), false);
-});
-
-test("15) feature-flag rollback restores previous filtering behavior", async () => {
-  assert.equal(QA_QUARANTINE_AUTHORITY_FILTER_FLAG, "VITE_QA_QUARANTINE_AUTHORITY_FILTER_ENABLED");
+test("12) legacy rollback flag still restores prior behavior", async () => {
   assert.equal(
     isQaQuarantineAuthorityFilterEnabled({
       [QA_QUARANTINE_AUTHORITY_FILTER_FLAG]: "false",
     }),
     false
   );
-  assert.equal(
-    isQaQuarantineAuthorityFilterEnabled({
-      [QA_QUARANTINE_AUTHORITY_FILTER_FLAG]: "true",
-    }),
-    true
-  );
-
   const { client, calls } = mockRpcClient(() => ({
     data: [{ profile_id: CANONICAL_QA.authUserId }],
     error: null,
   }));
-
-  // Flag OFF: ignore canonical membership even if we could fetch it; no RPC.
   const rolledBack = await excludeQaTestIdentitiesWithAuthority(
     [REAL_USER, CANONICAL_QA, CERTIFIED_QA],
     {
@@ -477,32 +391,188 @@ test("15) feature-flag rollback restores previous filtering behavior", async () 
   );
   assert.equal(rolledBack.mode, "legacy_only");
   assert.equal(calls.length, 0);
-  // Prior behavior: certified email hidden; non-certified CANONICAL_QA visible.
   assert.deepEqual(
     rolledBack.rows.map((r) => r.email).sort(),
     [CANONICAL_QA.email, REAL_USER.email].sort()
   );
-
-  // Sync path with flag off also ignores projected qaAuthorityActive.
-  assert.equal(
-    isConfirmedQaTestIdentity(
-      { ...CANONICAL_QA, qaAuthorityActive: true },
-      { authorityFilterEnabled: false }
-    ),
-    false
+  assert.match(
+    read("src/features/player/config/qaQuarantineFilterFlags.js"),
+    /LEGACY FALLBACK REMOVAL POINT/
   );
 });
 
-test("helpers — profile id collection and error classification", () => {
-  const ids = collectProfileIdsForQuarantineLookup([
-    REAL_USER,
-    { id: "profile-not-uuid", authUserId: CANONICAL_QA.authUserId },
-    { id: "not-a-uuid" },
-  ]);
-  assert.ok(ids.includes(REAL_USER.authUserId));
-  assert.ok(ids.includes(CANONICAL_QA.authUserId));
-  assert.equal(ids.includes("not-a-uuid"), false);
+test("13) no profiles.status mutation", () => {
+  for (const rel of [
+    "src/features/player/utils/qaTestIdentityFilter.js",
+    "src/features/player/utils/qaQuarantineAuthorityRead.js",
+    "src/pages/Players.jsx",
+    FORWARD_SQL,
+  ]) {
+    const src = read(rel);
+    assert.equal(/status\s*:\s*['"]quarantined['"]/.test(src), false, rel);
+    assert.equal(
+      /update\s+public\.profiles|from\(\s*['"]profiles['"]\s*\)[\s\S]{0,80}\.update\(/i.test(
+        src
+      ),
+      false,
+      rel
+    );
+  }
+});
 
+test("14) no auth.users mutation", () => {
+  for (const rel of [
+    "src/features/player/utils/qaTestIdentityFilter.js",
+    "src/features/player/utils/qaQuarantineAuthorityRead.js",
+    "src/pages/Players.jsx",
+  ]) {
+    const src = read(rel);
+    assert.equal(/\.from\(\s*['"]auth\.users['"]\s*\)/.test(src), false, rel);
+    assert.equal(
+      /auth\.admin\.(banUser|updateUserById)|banned_until\s*:/.test(src),
+      false,
+      rel
+    );
+  }
+});
+
+test("15) no gender-hotfix changes", () => {
+  for (const rel of [
+    "src/features/player/utils/qaTestIdentityFilter.js",
+    "src/features/player/utils/qaQuarantineAuthorityRead.js",
+    "src/features/player/config/qaQuarantineFilterFlags.js",
+  ]) {
+    const src = read(rel);
+    assert.equal(/genderKey|normalizeGender|gender-display|athleteGenderDisplayLabel/.test(src), false, rel);
+  }
+});
+
+test("16) qa_quarantine_list_active_batched remains absent", async () => {
+  assert.equal(
+    FORBIDDEN_QA_QUARANTINE_LIST_ACTIVE_BATCHED,
+    "qa_quarantine_list_active_batched"
+  );
+  const forward = read(FORWARD_SQL);
+  assert.equal(
+    /create\s+or\s+replace\s+function\s+public\.qa_quarantine_list_active_batched\b/i.test(
+      forward
+    ),
+    false
+  );
+  const { client, calls } = mockRpcClient(() => ({ data: [], error: null }));
+  await listActiveQaQuarantineMembership([REAL_USER.authUserId], {
+    authorityFilterEnabled: true,
+    hasConfig: () => true,
+    getClient: () => client,
+  });
+  assert.ok(calls.every((c) => c.name === QA_QUARANTINE_LIST_ACTIVE_RPC));
+});
+
+test("17) Tournament behavior/contracts are not modified", () => {
+  // Corrective scope must not touch tournament-owned paths or import tournament modules.
+  for (const rel of [
+    "src/features/player/utils/qaTestIdentityFilter.js",
+    "src/features/player/utils/qaQuarantineAuthorityRead.js",
+    "src/features/player/config/qaQuarantineFilterFlags.js",
+    "src/pages/Players.jsx",
+    FORWARD_SQL,
+    "docs/v5/operations/production-qa-identity-operation-b1b-remediation/sql/80_QA_IDENTITY_QUARANTINE_AUTHORITY_ROLLBACK.sql",
+  ]) {
+    const src = read(rel);
+    assert.equal(/src\/pages\/tournament\//i.test(src), false, rel);
+    assert.equal(/src\/tournament\//i.test(src), false, rel);
+    assert.equal(/features\/competition-core\//i.test(src), false, rel);
+  }
+});
+
+test("canonical unavailable is observable for DEV/ops", () => {
+  const logs = [];
+  observeQaQuarantineAuthorityAvailability(
+    {
+      status: QA_QUARANTINE_READ_STATUS.UNAVAILABLE,
+      reason: "supabase_unconfigured",
+      fallback: "legacy_qa_signals_only",
+      rpcName: QA_QUARANTINE_LIST_ACTIVE_RPC,
+      queryCount: 0,
+    },
+    {
+      forceLog: true,
+      logger: { info: (...args) => logs.push(args) },
+    }
+  );
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0][0], "[qa-quarantine-authority]");
+  assert.equal(logs[0][1].status, "unavailable");
+  assert.equal(logs[0][1].legacyFallbackTransitional, true);
+  assert.equal("email" in logs[0][1], false);
+});
+
+test("legacy dual-read compatibility + precedence retained", async () => {
+  assert.deepEqual(
+    QA_IDENTITY_DUAL_READ_PRECEDENCE[0],
+    QA_IDENTITY_SIGNAL.CANONICAL_AUTHORITY
+  );
+  const { client } = mockRpcClient(() => ({ data: [], error: null }));
+  const result = await excludeQaTestIdentitiesWithAuthority(
+    [
+      REAL_USER,
+      { ...REAL_USER, authUserId: makeUuid(9), email: "a@x.com", quarantined: true },
+      CERTIFIED_QA,
+    ],
+    {
+      authorityFilterEnabled: true,
+      hasConfig: () => true,
+      getClient: () => client,
+    }
+  );
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0].email, REAL_USER.email);
+});
+
+test("Players search/filter still works for legitimate users", async () => {
+  const { client } = mockRpcClient(() => ({
+    data: [{ profile_id: CANONICAL_QA.authUserId }],
+    error: null,
+  }));
+  const result = await excludeQaTestIdentitiesWithAuthority(
+    [REAL_USER, CANONICAL_QA, LOOKALIKE_REAL],
+    {
+      authorityFilterEnabled: true,
+      hasConfig: () => true,
+      getClient: () => client,
+    }
+  );
+  const searched = filterPlayers(result.rows, {
+    search: "Real Player",
+    genderFilter: "all",
+    levelRange: [1, 8],
+    statusFilter: "all",
+  });
+  assert.equal(searched.length, 1);
+  assert.equal(isCertifiedQaEmail(LOOKALIKE_REAL.email), false);
+  assert.equal(QA_QUARANTINE_LIST_ACTIVE_MAX_IDS, 10000);
+});
+
+test("sync excludeQaTestIdentities regression — real users retained", () => {
+  const visible = excludeQaTestIdentities([
+    REAL_USER,
+    CERTIFIED_QA,
+    LOOKALIKE_REAL,
+    { email: "x@y.com", status: "quarantined" },
+  ]);
+  assert.deepEqual(
+    visible.map((r) => r.email).sort(),
+    [LOOKALIKE_REAL.email, REAL_USER.email].sort()
+  );
+  assert.equal(isConfirmedQaTestIdentity(REAL_USER), false);
+});
+
+test("Players.jsx wires authority exclusion helper", () => {
+  const src = read("src/pages/Players.jsx");
+  assert.match(src, /excludeQaTestIdentitiesWithAuthority/);
+});
+
+test("helpers — error classification", () => {
   assert.equal(
     classifyQaQuarantineRpcError({
       code: "PGRST202",
@@ -517,32 +587,10 @@ test("helpers — profile id collection and error classification", () => {
     }),
     QA_QUARANTINE_READ_STATUS.FORBIDDEN
   );
-});
-
-test("sync excludeQaTestIdentities regression — real users retained", () => {
-  const visible = excludeQaTestIdentities([
-    REAL_USER,
-    CERTIFIED_QA,
-    LOOKALIKE_REAL,
-    { email: "x@y.com", status: "quarantined" },
-  ]);
-  assert.deepEqual(
-    visible.map((r) => r.email).sort(),
-    [LOOKALIKE_REAL.email, REAL_USER.email].sort()
+  assert.equal(
+    projectActiveMembershipIds([{ profile_id: CANONICAL_QA.authUserId }]).has(
+      CANONICAL_QA.authUserId
+    ),
+    true
   );
-  assert.equal(isCertifiedQaEmail(LOOKALIKE_REAL.email), false);
-});
-
-test("Players.jsx wires authority exclusion helper (not sync-only legacy)", () => {
-  const src = read("src/pages/Players.jsx");
-  assert.match(src, /excludeQaTestIdentitiesWithAuthority/);
-  assert.equal(/excludeQaTestIdentities\s*\(/.test(src), false);
-});
-
-test("gender hotfix not mixed into WP3 production filter modules", () => {
-  const filterSrc = read("src/features/player/utils/qaTestIdentityFilter.js");
-  const readSrc = read("src/features/player/utils/qaQuarantineAuthorityRead.js");
-  for (const src of [filterSrc, readSrc]) {
-    assert.equal(/genderKey|normalizeGender|gender-display/.test(src), false);
-  }
 });

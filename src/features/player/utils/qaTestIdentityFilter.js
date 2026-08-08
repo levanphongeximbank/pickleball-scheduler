@@ -4,7 +4,8 @@
  *
  * OPERATION_B1B WP3 — bounded dual-read migration:
  *   Canonical authority: qa_quarantine_list_active → qaAuthorityActive
- *   Legacy signals (temporary): quarantined / meta.qaQuarantined / status==='quarantined'
+ *   Legacy signals (TEMPORARY — remove after WP5/WP6 canonical proofs):
+ *     quarantined / meta.qaQuarantined / status==='quarantined'
  *   Defense-in-depth: certified QA email domains+patterns
  *
  * Positive email classification still requires BOTH:
@@ -13,12 +14,14 @@
  * Local-part prefix alone (e.g. phase1b-smith@gmail.com) is NEVER enough.
  *
  * Never persist profiles.status='quarantined'. Never mutate auth.users here.
+ * Legacy dual-read is transitional only — not a permanent silent fallback SSOT.
  */
 
 import { isQaQuarantineAuthorityFilterEnabled } from "../config/qaQuarantineFilterFlags.js";
 import {
   collectProfileIdsForQuarantineLookup,
   listActiveQaQuarantineMembership,
+  observeQaQuarantineAuthorityAvailability,
   projectCanonicalAuthorityOntoRows,
 } from "./qaQuarantineAuthorityRead.js";
 
@@ -238,11 +241,18 @@ export async function excludeQaTestIdentitiesWithAuthority(rows = [], options = 
     authorityFilterEnabled: true,
   });
 
-  // Absence/error: do not mark anyone from canonical path; keep legacy dual-read.
-  const projected =
-    authority.ok && authority.status === "ok"
-      ? projectCanonicalAuthorityOntoRows(rows, authority.activeProfileIds)
-      : rows;
+  // Absence/error: do not mark anyone from canonical path; keep transitional legacy dual-read.
+  const canonicalOk = authority.ok && authority.status === "ok";
+  if (!canonicalOk) {
+    observeQaQuarantineAuthorityAvailability(authority, {
+      forceLog: options.forceAuthorityLog === true,
+      logger: options.logger,
+    });
+  }
+
+  const projected = canonicalOk
+    ? projectCanonicalAuthorityOntoRows(rows, authority.activeProfileIds)
+    : rows;
 
   const filtered = excludeQaTestIdentities(projected, {
     ...options,
@@ -252,9 +262,8 @@ export async function excludeQaTestIdentitiesWithAuthority(rows = [], options = 
   return {
     rows: filtered,
     authority,
-    mode:
-      authority.ok && authority.status === "ok"
-        ? "dual_read_canonical_plus_legacy"
-        : "dual_read_legacy_fallback",
+    mode: canonicalOk
+      ? "dual_read_canonical_plus_legacy"
+      : "dual_read_legacy_fallback",
   };
 }
