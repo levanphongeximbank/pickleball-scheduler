@@ -337,10 +337,15 @@ async function createTeamTournamentCloudOnly(clubId, options = {}) {
     return check;
   }
 
+  const runtimeTenantId = String(
+    options.runtimeTenantId || options.tenantId || ""
+  ).trim() || null;
+
   const tournament = createTeamTournamentShell(resolvedClubId, {
     ...options,
     seasonId: options.seasonId || "",
     leagueId: options.leagueId || "",
+    tenantId: runtimeTenantId || options.tenantId || undefined,
   });
 
   if (!tournament?.id || !isTeamTournament(tournament)) {
@@ -351,9 +356,15 @@ async function createTeamTournamentCloudOnly(clubId, options = {}) {
     };
   }
 
+  if (runtimeTenantId) {
+    tournament.tenantId = runtimeTenantId;
+  }
+
   const header = await cloudEnsureTournamentHeader({
     ...tournament,
     clubId: resolvedClubId,
+    tenantId: runtimeTenantId || tournament.tenantId || null,
+    runtimeTenantId,
   });
 
   if (!header.ok) {

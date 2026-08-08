@@ -23,7 +23,7 @@ export default function TournamentBracketPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const mode = location.pathname.includes("/official/") ? "official" : "internal";
-  const { activeClubId, revision } = useClub();
+  const { activeClub, activeClubId, revision } = useClub();
   const { rbacEnabled, isAuthenticated } = useAuth();
   const { currentTenantId } = useTenant();
   const [liveTick, setLiveTick] = useState(0);
@@ -39,7 +39,7 @@ export default function TournamentBracketPage() {
   const {
     tournament,
     loading: tournamentLoading,
-  } = useCanonicalTournament(activeClubId, tournamentId, revision + liveTick);
+  } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, revision + liveTick);
 
   const tournamentAccess = useMemo(() => {
     if (!rbacEnabled || !isAuthenticated) {

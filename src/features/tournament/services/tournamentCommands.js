@@ -5,29 +5,33 @@ import { getTournamentRepository } from "../repositories/tournamentRepositoryFac
 import { createTeamTournamentForUi } from "../../team-tournament/services/teamTournamentService.js";
 import { TOURNAMENT_MODE, OFFICIAL_MODE } from "../../../models/tournament/constants.js";
 import { modeLabelVi } from "../constants/tournamentLabels.js";
-import { TOURNAMENT_REPO_ERROR } from "../repositories/TournamentRepository.interface.js";
-import { resolveTeamTournamentDataMode, TEAM_TOURNAMENT_DATA_MODES } from "../../team-tournament/repositories/teamTournamentDataMode.js";
+import {
+  resolveTeamTournamentDataMode,
+  TEAM_TOURNAMENT_DATA_MODES,
+} from "../../team-tournament/repositories/teamTournamentDataMode.js";
+import { resolveTournamentTenantScope } from "../guards/tournamentTenant.js";
 
 function buildDefaultName(mode) {
   const date = new Date().toLocaleDateString("vi-VN");
   return `${modeLabelVi(mode)} ${date}`;
 }
 
-export async function createTournamentCommand(clubId, input = {}, options = {}) {
+function prepareScope(clubIdOrScope, options = {}) {
+  return resolveTournamentTenantScope(clubIdOrScope, options);
+}
+
+export async function createTournamentCommand(clubIdOrScope, input = {}, options = {}) {
+  const scope = prepareScope(clubIdOrScope, options);
+  if (!scope.ok) {
+    return scope;
+  }
+
   const repo = options.repository || getTournamentRepository();
   const mode = input.mode;
   const name = String(input.name || buildDefaultName(mode)).trim();
-
-  if (!String(clubId || "").trim()) {
-    return {
-      ok: false,
-      code: TOURNAMENT_REPO_ERROR.MISSING_CLUB,
-      error: "Chưa chọn CLB — hãy chọn CLB trước khi tạo giải.",
-    };
-  }
+  const repoOptions = { ...options, tenantId: scope.tenantId };
 
   if (mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
-    // Force cloud-capable TT path — no new local mirror.
     try {
       const modeNow = resolveTeamTournamentDataMode({ allowFutureModes: true });
       if (
@@ -40,15 +44,17 @@ export async function createTournamentCommand(clubId, input = {}, options = {}) 
     } catch {
       // TT mode guard may throw without supabase in unit tests — service handles errors.
     }
-    return createTeamTournamentForUi(clubId, {
+    return createTeamTournamentForUi(scope.clubId, {
       name,
       seasonId: input.seasonId,
       leagueId: input.leagueId,
       formatPreset: input.formatPreset || "mlp_4",
+      runtimeTenantId: scope.tenantId,
+      tenantId: scope.tenantId,
     });
   }
 
-  return repo.create(clubId, {
+  return repo.create(scope.clubId, {
     name,
     mode,
     officialMode:
@@ -61,36 +67,57 @@ export async function createTournamentCommand(clubId, input = {}, options = {}) 
     createdBy: input.createdBy,
     ownerPlayerId: input.ownerPlayerId,
     ...(input.extra || {}),
+    ...repoOptions,
   });
 }
 
-export async function updateTournamentCommand(clubId, tournamentId, patch = {}, options = {}) {
+export async function updateTournamentCommand(
+  clubIdOrScope,
+  tournamentId,
+  patch = {},
+  options = {}
+) {
+  const scope = prepareScope(clubIdOrScope, options);
+  if (!scope.ok) return scope;
   const repo = options.repository || getTournamentRepository();
-  return repo.update(clubId, tournamentId, patch, options);
+  return repo.update(scope.clubId, tournamentId, patch, {
+    ...options,
+    tenantId: scope.tenantId,
+  });
 }
 
-export async function deleteTournamentCommand(clubId, tournamentId, options = {}) {
+export async function deleteTournamentCommand(clubIdOrScope, tournamentId, options = {}) {
+  const scope = prepareScope(clubIdOrScope, options);
+  if (!scope.ok) return scope;
   const repo = options.repository || getTournamentRepository();
-  return repo.delete(clubId, tournamentId);
+  return repo.delete(scope.clubId, tournamentId, {
+    ...options,
+    tenantId: scope.tenantId,
+  });
 }
 
 export async function applyEngineV4StateCommand(
-  clubId,
+  clubIdOrScope,
   tournamentId,
   engineState,
   options = {}
 ) {
+  const scope = prepareScope(clubIdOrScope, options);
+  if (!scope.ok) return scope;
   const repo = options.repository || getTournamentRepository();
-  return repo.applyEngineState(clubId, tournamentId, engineState, options);
+  return repo.applyEngineState(scope.clubId, tournamentId, engineState, {
+    ...options,
+    tenantId: scope.tenantId,
+  });
 }
 
 export async function setTournamentStatusCommand(
-  clubId,
+  clubIdOrScope,
   tournamentId,
   status,
   options = {}
 ) {
-  return updateTournamentCommand(clubId, tournamentId, { status }, options);
+  return updateTournamentCommand(clubIdOrScope, tournamentId, { status }, options);
 }
 
 /**
@@ -98,11 +125,14 @@ export async function setTournamentStatusCommand(
  * Does not use club blob as Tournament SoT.
  */
 export async function setTournamentCourtScheduleCommand(
-  clubId,
+  clubIdOrScope,
   tournamentId,
   scheduleInput,
   options = {}
 ) {
+  const scope = prepareScope(clubIdOrScope, options);
+  if (!scope.ok) return scope;
+
   const { normalizeCourtSchedule } = await import(
     "../../../models/tournament/courtSchedule.js"
   );
@@ -112,7 +142,10 @@ export async function setTournamentCourtScheduleCommand(
   const { loadCourtsForClub } = await import("../../../domain/clubStorage.js");
   const { getTournamentQuery } = await import("./tournamentQueries.js");
 
-  const loaded = await getTournamentQuery(clubId, tournamentId, options);
+  const loaded = await getTournamentQuery(scope.clubId, tournamentId, {
+    ...options,
+    tenantId: scope.tenantId,
+  });
   if (!loaded.ok || !loaded.tournament) {
     return { ok: false, error: loaded.error || "Không tìm thấy giải." };
   }
@@ -132,12 +165,13 @@ export async function setTournamentCourtScheduleCommand(
       syncedAt: new Date().toISOString(),
     },
     id: tournamentId,
-    clubId,
+    clubId: scope.clubId,
+    tenantId: scope.tenantId,
     updatedAt: new Date().toISOString(),
   };
 
-  const courts = loadCourtsForClub(clubId);
-  const syncResult = syncTournamentCourtBookings(pending, clubId, courts);
+  const courts = loadCourtsForClub(scope.clubId);
+  const syncResult = syncTournamentCourtBookings(pending, scope.clubId, courts);
   if (!syncResult.ok) {
     return {
       ok: false,
@@ -149,10 +183,10 @@ export async function setTournamentCourtScheduleCommand(
   }
 
   const saved = await updateTournamentCommand(
-    clubId,
+    scope.clubId,
     tournamentId,
     { courtSchedule: pending.courtSchedule },
-    options
+    { ...options, tenantId: scope.tenantId }
   );
   if (!saved.ok) {
     return saved;

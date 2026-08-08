@@ -135,7 +135,7 @@ export default function InternalTournamentSetup() {
   const { tournamentId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { activeClubId, clubs, refreshClubs, switchClub } = useClub();
+  const { activeClub, activeClubId, clubs, refreshClubs, switchClub } = useClub();
   const { user, rbacEnabled, can } = useAuth();
   const { currentTenantId } = useTenant();
   const aiEnabled = isAiEngineEnabled();
@@ -197,7 +197,7 @@ export default function InternalTournamentSetup() {
     loading: tournamentLoading,
     error: tournamentLoadError,
     update,
-  } = useCanonicalTournament(tournamentClubId, tournamentId, localRevision);
+  } = useCanonicalTournament(activeClub ? { ...activeClub, id: tournamentClubId || activeClub.id } : { id: tournamentClubId }, tournamentId, localRevision);
 
   useEffect(() => {
     if (tournamentLoadError) {

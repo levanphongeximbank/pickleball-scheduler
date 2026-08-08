@@ -30,12 +30,12 @@ import TournamentConfigPageShell from "../../../components/tournament/Tournament
 export default function TournamentEligibilityPage() {
   const [searchParams] = useSearchParams();
   const tournamentId = searchParams.get("tournamentId");
-  const { activeClubId, revision } = useClub();
+  const { activeClub, activeClubId, revision } = useClub();
 
   const {
     tournament,
     loading: tournamentLoading,
-  } = useCanonicalTournament(activeClubId, tournamentId, revision);
+  } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, revision);
 
   const players = useMemo(
     () => (activeClubId ? loadPlayersForClub(activeClubId) : []),

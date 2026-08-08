@@ -65,10 +65,10 @@ export default function CanonicalTournamentPicker({
   emptyHint,
 }) {
   const navigate = useNavigate();
-  const { activeClubId, revision } = useClub();
+  const { activeClub, activeClubId, revision } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
 
-  const { tournaments, loading } = useCanonicalTournamentList(activeClubId, revision);
+  const { tournaments, loading } = useCanonicalTournamentList(activeClub || { id: activeClubId }, revision);
 
   const matches = useMemo(
     () =>

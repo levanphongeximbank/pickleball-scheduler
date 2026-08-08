@@ -27,7 +27,14 @@ export {
   __setTournamentRepositoryRpcForTests,
 } from "./repositories/tournamentRepositoryFactory.js";
 
-export { requireExplicitTenantForClub, requireClubId } from "./guards/tournamentTenant.js";
+export {
+  requireExplicitTenantForClub,
+  requireExplicitTournamentTenant,
+  requireClubId,
+  resolveExplicitTenantFromClub,
+  resolveTournamentTenantScope,
+  buildTournamentClubScope,
+} from "./guards/tournamentTenant.js";
 export { assertLoadedTournamentAccess } from "./guards/tournamentAccess.js";
 export { CANONICAL_TOURNAMENT_HUB_ITEMS } from "./constants/hubNav.js";
 export {

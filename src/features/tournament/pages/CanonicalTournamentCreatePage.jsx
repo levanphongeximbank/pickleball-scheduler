@@ -81,7 +81,7 @@ export default function CanonicalTournamentCreatePage() {
     }
 
     setError(null);
-    const result = await createTournamentCommand(activeClubId, {
+    const result = await createTournamentCommand(activeClub || { id: activeClubId }, {
       mode: option.mode,
       seasonId: activeSeason?.id,
       leagueId: activeLeague?.id,

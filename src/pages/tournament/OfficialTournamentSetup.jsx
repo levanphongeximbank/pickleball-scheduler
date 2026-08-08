@@ -205,7 +205,7 @@ export default function OfficialTournamentSetup() {
     loading: tournamentLoading,
     error: tournamentLoadError,
     update,
-  } = useCanonicalTournament(activeClubId, tournamentId, localRevision);
+  } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, localRevision);
 
   useEffect(() => {
     if (tournamentLoadError) {

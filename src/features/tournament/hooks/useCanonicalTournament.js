@@ -11,11 +11,30 @@ import {
   applyEngineV4StateCommand,
   setTournamentStatusCommand,
 } from "../services/tournamentCommands.js";
+import { resolveExplicitTenantFromClub } from "../guards/tournamentTenant.js";
+
+function readClubId(clubOrScope) {
+  if (clubOrScope && typeof clubOrScope === "object") {
+    return String(clubOrScope.id || clubOrScope.clubId || "").trim();
+  }
+  return String(clubOrScope || "").trim();
+}
+
+function readTenantId(clubOrScope) {
+  if (clubOrScope && typeof clubOrScope === "object") {
+    return resolveExplicitTenantFromClub(clubOrScope);
+  }
+  return null;
+}
 
 /**
  * Load one tournament from canonical cloud authority.
+ * Pass activeClub (or { id, tenantId|venueId }) — never rely on localStorage tenant lookup.
+ * @param {string|{id?:string,clubId?:string,tenantId?:string,venueId?:string}} clubOrScope
  */
-export function useCanonicalTournament(clubId, tournamentId, revision = 0) {
+export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) {
+  const clubId = readClubId(clubOrScope);
+  const tenantId = readTenantId(clubOrScope);
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(Boolean(clubId && tournamentId));
   const [error, setError] = useState(null);
@@ -28,7 +47,7 @@ export function useCanonicalTournament(clubId, tournamentId, revision = 0) {
     }
     setLoading(true);
     setError(null);
-    const result = await getTournamentQuery(clubId, tournamentId);
+    const result = await getTournamentQuery(clubId, tournamentId, { tenantId });
     if (!result.ok) {
       setTournament(null);
       setError(result.error || "Không tải được giải.");
@@ -38,7 +57,7 @@ export function useCanonicalTournament(clubId, tournamentId, revision = 0) {
     setTournament(result.tournament);
     setLoading(false);
     return result.tournament;
-  }, [clubId, tournamentId]);
+  }, [clubId, tournamentId, tenantId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,7 +70,7 @@ export function useCanonicalTournament(clubId, tournamentId, revision = 0) {
         return;
       }
       setLoading(true);
-      const result = await getTournamentQuery(clubId, tournamentId);
+      const result = await getTournamentQuery(clubId, tournamentId, { tenantId });
       if (cancelled) return;
       if (!result.ok) {
         setTournament(null);
@@ -65,49 +84,48 @@ export function useCanonicalTournament(clubId, tournamentId, revision = 0) {
     return () => {
       cancelled = true;
     };
-  }, [clubId, tournamentId, revision]);
+  }, [clubId, tournamentId, revision, tenantId]);
 
   const update = useCallback(
     async (patch, options = {}) => {
-      const result = await updateTournamentCommand(clubId, tournamentId, patch, options);
+      const result = await updateTournamentCommand(clubId, tournamentId, patch, {
+        ...options,
+        tenantId,
+      });
       if (result.ok) {
         setTournament(result.tournament);
       }
       return result;
     },
-    [clubId, tournamentId]
+    [clubId, tournamentId, tenantId]
   );
 
   const applyEngine = useCallback(
     async (engineState, options = {}) => {
-      const result = await applyEngineV4StateCommand(
-        clubId,
-        tournamentId,
-        engineState,
-        options
-      );
+      const result = await applyEngineV4StateCommand(clubId, tournamentId, engineState, {
+        ...options,
+        tenantId,
+      });
       if (result.ok) {
         setTournament(result.tournament);
       }
       return result;
     },
-    [clubId, tournamentId]
+    [clubId, tournamentId, tenantId]
   );
 
   const setStatus = useCallback(
     async (status, options = {}) => {
-      const result = await setTournamentStatusCommand(
-        clubId,
-        tournamentId,
-        status,
-        options
-      );
+      const result = await setTournamentStatusCommand(clubId, tournamentId, status, {
+        ...options,
+        tenantId,
+      });
       if (result.ok) {
         setTournament(result.tournament);
       }
       return result;
     },
-    [clubId, tournamentId]
+    [clubId, tournamentId, tenantId]
   );
 
   return {
@@ -122,7 +140,9 @@ export function useCanonicalTournament(clubId, tournamentId, revision = 0) {
   };
 }
 
-export function useCanonicalTournamentList(clubId, revision = 0) {
+export function useCanonicalTournamentList(clubOrScope, revision = 0) {
+  const clubId = readClubId(clubOrScope);
+  const tenantId = readTenantId(clubOrScope);
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(Boolean(clubId));
   const [error, setError] = useState(null);
@@ -139,9 +159,10 @@ export function useCanonicalTournamentList(clubId, revision = 0) {
         return;
       }
       setLoading(true);
+      const opts = { tenantId };
       const [listResult, statsResult] = await Promise.all([
-        listTournamentsQuery(clubId),
-        buildTournamentHubStats(clubId),
+        listTournamentsQuery(clubId, {}, opts),
+        buildTournamentHubStats(clubId, opts),
       ]);
       if (cancelled) return;
       if (!listResult.ok) {
@@ -159,17 +180,19 @@ export function useCanonicalTournamentList(clubId, revision = 0) {
     return () => {
       cancelled = true;
     };
-  }, [clubId, revision]);
+  }, [clubId, revision, tenantId]);
 
   const remove = useCallback(
-    async (tournamentId) => deleteTournamentCommand(clubId, tournamentId),
-    [clubId]
+    async (tournamentId) => deleteTournamentCommand(clubId, tournamentId, { tenantId }),
+    [clubId, tenantId]
   );
 
   return { tournaments, loading, error, stats, remove };
 }
 
-export function useCanonicalMyTournaments(clubId, playerId, revision = 0) {
+export function useCanonicalMyTournaments(clubOrScope, playerId, revision = 0) {
+  const clubId = readClubId(clubOrScope);
+  const tenantId = readTenantId(clubOrScope);
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(Boolean(clubId && playerId));
   const [error, setError] = useState(null);
@@ -185,7 +208,7 @@ export function useCanonicalMyTournaments(clubId, playerId, revision = 0) {
         return;
       }
       setLoading(true);
-      const result = await listMyTournamentsQuery(clubId, { playerId });
+      const result = await listMyTournamentsQuery(clubId, { playerId }, { tenantId });
       if (cancelled) return;
       if (!result.ok) {
         setError(result.error || "Không tải được giải của tôi.");
@@ -199,7 +222,7 @@ export function useCanonicalMyTournaments(clubId, playerId, revision = 0) {
     return () => {
       cancelled = true;
     };
-  }, [clubId, playerId, revision]);
+  }, [clubId, playerId, revision, tenantId]);
 
   return { tournaments, loading, error };
 }

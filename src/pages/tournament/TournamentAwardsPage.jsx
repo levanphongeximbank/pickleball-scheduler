@@ -32,15 +32,15 @@ export default function TournamentAwardsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tournamentId = searchParams.get("tournamentId") || "";
   const tabParam = searchParams.get("tab") || "awards";
-  const { activeClubId, revision, refreshClubs } = useClub();
+  const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { user } = useAuth();
   const [message, setMessage] = useState(null);
   const [tab, setTab] = useState(
     TABS.some((t) => t.id === tabParam) ? tabParam : "awards"
   );
 
-  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClubId, revision);
-  const { tournament, update } = useCanonicalTournament(activeClubId, tournamentId, revision);
+  const { tournaments: allTournaments } = useCanonicalTournamentList(activeClub || { id: activeClubId }, revision);
+  const { tournament, update } = useCanonicalTournament(activeClub || { id: activeClubId }, tournamentId, revision);
 
   const tournaments = useMemo(
     () => allTournaments.filter(isIndividualTournament),

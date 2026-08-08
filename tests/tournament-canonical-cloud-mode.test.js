@@ -24,6 +24,9 @@ import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../src/models/tournament/con
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+const TENANT_ID = "tenant-cutover-01";
+const CLUB_SCOPE = { id: DEFAULT_CLUB.id, tenantId: TENANT_ID, venueId: TENANT_ID };
+
 function readSrc(relativePath) {
   return readFileSync(path.join(root, relativePath), "utf8");
 }
@@ -74,7 +77,7 @@ describe("tournament canonical cloud-mode RPC", () => {
   });
 
   it("cloud CRUD goes through RPC", async () => {
-    const created = await createTournamentCommand(DEFAULT_CLUB.id, {
+    const created = await createTournamentCommand(CLUB_SCOPE, {
       mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
       name: "Cloud Internal",
       createdBy: "player-a",
@@ -82,15 +85,15 @@ describe("tournament canonical cloud-mode RPC", () => {
     assert.equal(created.ok, true);
     assert.ok(created.tournament?.id);
 
-    const listed = await listTournamentsQuery(DEFAULT_CLUB.id);
+    const listed = await listTournamentsQuery(CLUB_SCOPE);
     assert.equal(listed.ok, true);
     assert.equal(listed.tournaments.length, 1);
 
-    const got = await getTournamentQuery(DEFAULT_CLUB.id, created.tournament.id);
+    const got = await getTournamentQuery(CLUB_SCOPE, created.tournament.id);
     assert.equal(got.ok, true);
     assert.equal(got.tournament.name, "Cloud Internal");
 
-    const updated = await updateTournamentCommand(DEFAULT_CLUB.id, created.tournament.id, {
+    const updated = await updateTournamentCommand(CLUB_SCOPE, created.tournament.id, {
       name: "Cloud Internal v2",
       status: TOURNAMENT_STATUS.REGISTRATION,
     });
@@ -98,21 +101,21 @@ describe("tournament canonical cloud-mode RPC", () => {
     assert.equal(updated.tournament.name, "Cloud Internal v2");
 
     const applied = await applyEngineV4StateCommand(
-      DEFAULT_CLUB.id,
+      CLUB_SCOPE,
       created.tournament.id,
       { seedResult: { participants: [{ id: "p1" }] } }
     );
     assert.equal(applied.ok, true);
     assert.equal(applied.tournament.settings.engineV4.seedResult.participants[0].id, "p1");
 
-    const deleted = await deleteTournamentCommand(DEFAULT_CLUB.id, created.tournament.id);
+    const deleted = await deleteTournamentCommand(CLUB_SCOPE, created.tournament.id);
     assert.equal(deleted.ok, true);
-    const after = await listTournamentsQuery(DEFAULT_CLUB.id);
+    const after = await listTournamentsQuery(CLUB_SCOPE);
     assert.equal(after.tournaments.length, 0);
   });
 
   it("listMine semantics: creator sees mine; stranger does not", async () => {
-    const created = await createTournamentCommand(DEFAULT_CLUB.id, {
+    const created = await createTournamentCommand(CLUB_SCOPE, {
       mode: TOURNAMENT_MODE.OFFICIAL_TOURNAMENT,
       name: "Mine Official",
       createdBy: "player-a",
@@ -120,17 +123,17 @@ describe("tournament canonical cloud-mode RPC", () => {
     });
     assert.equal(created.ok, true);
 
-    const mineA = await listMyTournamentsQuery(DEFAULT_CLUB.id, { playerId: "player-a" });
+    const mineA = await listMyTournamentsQuery(CLUB_SCOPE, { playerId: "player-a" });
     assert.equal(mineA.ok, true);
     assert.equal(mineA.tournaments.length, 1);
 
-    const mineB = await listMyTournamentsQuery(DEFAULT_CLUB.id, { playerId: "player-b" });
+    const mineB = await listMyTournamentsQuery(CLUB_SCOPE, { playerId: "player-b" });
     assert.equal(mineB.ok, true);
     assert.equal(mineB.tournaments.length, 0);
   });
 
   it("full lifecycle: create → configure → roster → engine → result → reload → list/my", async () => {
-    const created = await createTournamentCommand(DEFAULT_CLUB.id, {
+    const created = await createTournamentCommand(CLUB_SCOPE, {
       mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
       name: "Lifecycle",
       createdBy: "player-a",
@@ -138,7 +141,7 @@ describe("tournament canonical cloud-mode RPC", () => {
     assert.equal(created.ok, true);
     const id = created.tournament.id;
 
-    const configured = await updateTournamentCommand(DEFAULT_CLUB.id, id, {
+    const configured = await updateTournamentCommand(CLUB_SCOPE, id, {
       events: [
         {
           id: "ev-1",
@@ -151,37 +154,37 @@ describe("tournament canonical cloud-mode RPC", () => {
     assert.equal(configured.ok, true);
     assert.equal(configured.tournament.events[0].entries.length, 1);
 
-    const engine = await applyEngineV4StateCommand(DEFAULT_CLUB.id, id, {
+    const engine = await applyEngineV4StateCommand(CLUB_SCOPE, id, {
       matches: [{ id: "m1", status: "completed", scoreA: 11, scoreB: 5 }],
     });
     assert.equal(engine.ok, true);
 
-    const resultPatch = await updateTournamentCommand(DEFAULT_CLUB.id, id, {
+    const resultPatch = await updateTournamentCommand(CLUB_SCOPE, id, {
       status: TOURNAMENT_STATUS.COMPLETED,
       settings: { resultsConfirmed: true },
     });
     assert.equal(resultPatch.ok, true);
 
-    const reloaded = await getTournamentQuery(DEFAULT_CLUB.id, id);
+    const reloaded = await getTournamentQuery(CLUB_SCOPE, id);
     assert.equal(reloaded.ok, true);
     assert.equal(reloaded.tournament.status, TOURNAMENT_STATUS.COMPLETED);
     assert.equal(reloaded.tournament.settings.engineV4.matches[0].id, "m1");
 
-    const listed = await listTournamentsQuery(DEFAULT_CLUB.id);
+    const listed = await listTournamentsQuery(CLUB_SCOPE);
     assert.equal(listed.tournaments.some((t) => t.id === id), true);
-    const mine = await listMyTournamentsQuery(DEFAULT_CLUB.id, { playerId: "player-a" });
+    const mine = await listMyTournamentsQuery(CLUB_SCOPE, { playerId: "player-a" });
     assert.equal(mine.tournaments.some((t) => t.id === id), true);
   });
 
   it("Daily Play representative lifecycle against cloud authority", async () => {
-    const created = await createTournamentCommand(DEFAULT_CLUB.id, {
+    const created = await createTournamentCommand(CLUB_SCOPE, {
       mode: TOURNAMENT_MODE.DAILY_PLAY,
       name: "Chơi hằng ngày test",
       createdBy: "player-a",
     });
     assert.equal(created.ok, true);
 
-    const checkIn = await updateTournamentCommand(DEFAULT_CLUB.id, created.tournament.id, {
+    const checkIn = await updateTournamentCommand(CLUB_SCOPE, created.tournament.id, {
       settings: {
         dailyPlay: {
           checkedInPlayerIds: ["player-a", "player-b"],
@@ -191,7 +194,7 @@ describe("tournament canonical cloud-mode RPC", () => {
     });
     assert.equal(checkIn.ok, true);
 
-    const reloaded = await getTournamentQuery(DEFAULT_CLUB.id, created.tournament.id);
+    const reloaded = await getTournamentQuery(CLUB_SCOPE, created.tournament.id);
     assert.equal(reloaded.tournament.mode, TOURNAMENT_MODE.DAILY_PLAY);
     assert.deepEqual(reloaded.tournament.settings.dailyPlay.checkedInPlayerIds, [
       "player-a",
@@ -200,18 +203,18 @@ describe("tournament canonical cloud-mode RPC", () => {
   });
 
   it("fails closed without tenant / default-tenant", async () => {
-    const clubs = loadClubs().map((club) =>
-      club.id === DEFAULT_CLUB.id
-        ? { ...club, tenantId: "default-tenant", venueId: "default-tenant" }
-        : club
-    );
-    saveClubs(clubs);
-    const denied = requireExplicitTenantForClub(DEFAULT_CLUB.id);
-    assert.equal(denied.ok, false);
-    const created = await createTournamentCommand(DEFAULT_CLUB.id, {
-      mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
-      name: "No tenant",
+    const deniedMissing = requireExplicitTenantForClub({ id: DEFAULT_CLUB.id });
+    assert.equal(deniedMissing.ok, false);
+    const deniedDefault = requireExplicitTenantForClub({
+      id: DEFAULT_CLUB.id,
+      tenantId: "default-tenant",
+      venueId: "default-tenant",
     });
+    assert.equal(deniedDefault.ok, false);
+    const created = await createTournamentCommand(
+      { id: DEFAULT_CLUB.id },
+      { mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT, name: "No tenant" }
+    );
     assert.equal(created.ok, false);
   });
 

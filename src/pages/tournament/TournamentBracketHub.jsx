@@ -39,10 +39,10 @@ const STATUS_LABELS = {
 
 export default function TournamentBracketHub() {
   const navigate = useNavigate();
-  const { activeClubId, revision } = useClub();
+  const { activeClub, activeClubId, revision } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
 
-  const { tournaments } = useCanonicalTournamentList(activeClubId, revision);
+  const { tournaments } = useCanonicalTournamentList(activeClub || { id: activeClubId }, revision);
 
   const bracketTournaments = useMemo(
     () =>
