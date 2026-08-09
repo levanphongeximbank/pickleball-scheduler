@@ -100,6 +100,8 @@ import {
 } from "../../features/pick-vn-rating/index.js";
 import {
   ALL_CLUBS_FILTER,
+  applyOfficialPairPlayerPick,
+  excludePlayerIdFromOptions,
   filterTournamentPickerPlayers,
   formatPlayerPickerMeta,
 } from "../../utils/tournamentPlayerPicker.js";
@@ -296,6 +298,21 @@ export default function OfficialTournamentSetup() {
         excludePlayerIds: registeredPlayerIds,
       }),
     [flowPlayers, openClubFilter, pickerGenderFilter, pickerSearch, eventType, registeredPlayerIds]
+  );
+
+  const openPairSelectAOptions = useMemo(
+    () => excludePlayerIdFromOptions(openFilteredPlayers, pairPlayerBId),
+    [openFilteredPlayers, pairPlayerBId]
+  );
+
+  const openPairSelectBOptions = useMemo(
+    () => excludePlayerIdFromOptions(openFilteredPlayers, pairPlayerAId),
+    [openFilteredPlayers, pairPlayerAId]
+  );
+
+  const pairSelectedIds = useMemo(
+    () => [pairPlayerAId, pairPlayerBId].filter(Boolean).map(String),
+    [pairPlayerAId, pairPlayerBId]
   );
 
   const groupStandings = useMemo(
@@ -1048,6 +1065,33 @@ export default function OfficialTournamentSetup() {
     }
 
     registerPlayerEntry(player);
+  };
+
+  const handlePairPlayerPick = (playerId) => {
+    const next = applyOfficialPairPlayerPick({
+      pairPlayerAId,
+      pairPlayerBId,
+      playerId,
+    });
+    setPairPlayerAId(next.pairPlayerAId);
+    setPairPlayerBId(next.pairPlayerBId);
+  };
+
+  const handlePairPlayerASelect = (value) => {
+    const nextA = String(value || "");
+    setPairPlayerAId(nextA);
+    if (nextA && nextA === String(pairPlayerBId || "")) {
+      setPairPlayerBId("");
+    }
+  };
+
+  const handlePairPlayerBSelect = (value) => {
+    const nextB = String(value || "");
+    if (nextB && nextB === String(pairPlayerAId || "")) {
+      setError("Cặp phải gồm 2 VĐV khác nhau.");
+      return;
+    }
+    setPairPlayerBId(nextB);
   };
 
   const handleRegisterPair = () => {
@@ -1886,6 +1930,9 @@ export default function OfficialTournamentSetup() {
                   <TournamentPlayerPickerPanel
                     title=""
                     players={flowPlayers}
+                    mode="pair"
+                    selectedIds={pairSelectedIds}
+                    onPairPick={handlePairPlayerPick}
                     clubFilter={openClubFilter}
                     onClubFilterChange={setOpenClubFilter}
                     clubs={clubs}
@@ -1897,17 +1944,21 @@ export default function OfficialTournamentSetup() {
                     excludePlayerIds={registeredPlayerIds}
                     onAddNew={() => setQuickAddOpen(true)}
                     showSelectActions={false}
-                    showPlayerList={false}
+                    showPlayerList
+                    showSkillLevel={canViewSkillInSetup}
                     emptyMessage="Không có VĐV phù hợp."
                   />
+                  <Typography variant="caption" color="text.secondary">
+                    Bấm VĐV trong danh sách để chọn VĐV 1 rồi VĐV 2 (hoặc dùng dropdown bên dưới).
+                  </Typography>
                   <FormControl fullWidth size="small">
                     <InputLabel>VDV 1</InputLabel>
                     <Select
                       label="VDV 1"
                       value={pairPlayerAId}
-                      onChange={(event) => setPairPlayerAId(event.target.value)}
+                      onChange={(event) => handlePairPlayerASelect(event.target.value)}
                     >
-                      {openFilteredPlayers.map((player) => (
+                      {openPairSelectAOptions.map((player) => (
                         <MenuItem key={player.id} value={String(player.id)}>
                           {player.name} — {formatPlayerPickerMeta(player)}
                         </MenuItem>
@@ -1919,16 +1970,24 @@ export default function OfficialTournamentSetup() {
                     <Select
                       label="VDV 2"
                       value={pairPlayerBId}
-                      onChange={(event) => setPairPlayerBId(event.target.value)}
+                      onChange={(event) => handlePairPlayerBSelect(event.target.value)}
                     >
-                      {openFilteredPlayers.map((player) => (
+                      {openPairSelectBOptions.map((player) => (
                         <MenuItem key={player.id} value={String(player.id)}>
                           {player.name} — {formatPlayerPickerMeta(player)}
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
-                  <Button variant="contained" onClick={handleRegisterPair}>
+                  <Button
+                    variant="contained"
+                    onClick={handleRegisterPair}
+                    disabled={
+                      !pairPlayerAId ||
+                      !pairPlayerBId ||
+                      String(pairPlayerAId) === String(pairPlayerBId)
+                    }
+                  >
                     Đăng ký cặp
                   </Button>
                 </Stack>
