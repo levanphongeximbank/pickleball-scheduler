@@ -104,7 +104,6 @@ import {
 } from "../../features/team-tournament/showcase/index.js";
 import TeamTournamentShowcase from "../../features/team-tournament/showcase/TeamTournamentShowcase.jsx";
 import { isSetupMutationFoundationEnabled } from "../../features/team-tournament/setup/setupMutationFeatureGate.js";
-import { mergeFormatVenueIntoSettings } from "../../features/team-tournament/engines/teamFormatVenueConfig.js";
 import { isGroupDivisionEditable } from "../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
 import { DEFAULT_ENGINE_VERSION } from "../../features/team-tournament/canonical/teamTournamentMutationEnvelope.js";
 import { TT_V6_TT32_FIXTURE } from "../../features/team-tournament/fixtures/ttV6Tt32StagingFixture.js";
@@ -185,6 +184,7 @@ export default function TeamTournamentSetup() {
     patchTeamData,
     persistSetupTeamData,
     saveDraft,
+    persistFormatVenueSetup,
     rosterSetupRevision,
     getLineupOverrideOps,
     connectionState,
@@ -378,32 +378,26 @@ export default function TeamTournamentSetup() {
   }
 
   async function saveFormatVenueConfig(config) {
-    if (!isSetupMutationFoundationEnabled()) {
+    if (typeof persistFormatVenueSetup !== "function") {
       setError(
-        "Không thể lưu Format & Venue: Setup mutation v7 đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7)."
+        "Không thể lưu Format & Venue: thiếu orchestrator persistFormatVenueSetup."
       );
       return false;
     }
-    const nextSettings = mergeFormatVenueIntoSettings(td?.settings || {}, config);
-    const nextTeamData = {
-      ...td,
-      settings: nextSettings,
-    };
-    if (typeof saveDraft === "function") {
-      const draftResult = await saveDraft({
-        teamData: nextTeamData,
-        setupConfig: config,
-      });
-      if (draftResult?.ok === false && draftResult?.code === "GATE_OFF") {
-        setError(draftResult.error || "Gate OFF — không ghi Format & Venue.");
-        return false;
-      }
+    const result = await persistFormatVenueSetup(config);
+    if (result?.isVersionConflict) {
+      setError(
+        result.error ||
+          "Dữ liệu đã được người khác cập nhật. Hệ thống đã tải lại — vui lòng kiểm tra trước khi lưu lại."
+      );
+      return false;
     }
-    const result = await patchTeamData({ teamData: nextTeamData, settings: nextSettings });
     if (!result?.ok) {
       setError(
         result?.error ||
-          "Không ghi được settings Format & Venue. Cần Owner apply migration tournament.update_setup_config."
+          (result?.code === "GATE_OFF"
+            ? "Không thể lưu Format & Venue: Setup mutation v7 đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7)."
+            : "Không ghi được Format & Venue qua tournament.update_setup_config.")
       );
       return false;
     }

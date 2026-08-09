@@ -340,6 +340,74 @@ export function isFormatVenueSetupComplete(teamData = {}, tournament = null) {
 }
 
 /**
+ * Validate Format & Venue config before tournament.update_setup_config RPC.
+ * Does not force groupCount=2 or silently restore mlp_4 after explicit custom.
+ * @param {object} config
+ * @returns {{ ok: true, payload: object } | { ok: false, code: string, error: string }}
+ */
+export function validateFormatVenueConfigForPersist(config = {}) {
+  const explicitPreset = config?.formatPreset;
+  if (
+    explicitPreset != null &&
+    explicitPreset !== FORMAT_PRESET.MLP_4 &&
+    explicitPreset !== FORMAT_PRESET.CUSTOM
+  ) {
+    return {
+      ok: false,
+      code: "INVALID_FORMAT_PRESET",
+      error: "formatPreset phải là mlp_4 hoặc custom.",
+    };
+  }
+
+  const payload = buildSetupConfigPayload(config);
+  if (explicitPreset === FORMAT_PRESET.CUSTOM) {
+    payload.formatPreset = FORMAT_PRESET.CUSTOM;
+  } else if (explicitPreset === FORMAT_PRESET.MLP_4) {
+    payload.formatPreset = FORMAT_PRESET.MLP_4;
+  }
+
+  if (!payload.formatPreset) {
+    return {
+      ok: false,
+      code: "MISSING_FORMAT_PRESET",
+      error: "Thiếu formatPreset — không thể lưu Format & Venue.",
+    };
+  }
+
+  const roster = validateRosterRules(payload.rosterRules);
+  if (!roster.ok) {
+    return roster;
+  }
+  payload.rosterRules = roster.rosterRules;
+
+  const groupCount = Number(payload.groupCount);
+  if (!Number.isFinite(groupCount) || groupCount < 1) {
+    return {
+      ok: false,
+      code: "INVALID_GROUP_COUNT",
+      error: "groupCount phải >= 1 khi áp dụng chia bảng.",
+    };
+  }
+  payload.groupCount = Math.floor(groupCount);
+
+  const qualificationCount = Number(payload.qualificationCount);
+  if (!Number.isFinite(qualificationCount) || qualificationCount < 1) {
+    return {
+      ok: false,
+      code: "INVALID_QUALIFICATION_COUNT",
+      error: "qualificationCount phải >= 1.",
+    };
+  }
+  payload.qualificationCount = Math.floor(qualificationCount);
+
+  payload.selectedCourtIds = Array.isArray(payload.selectedCourtIds)
+    ? [...new Set(payload.selectedCourtIds.map((id) => String(id).trim()).filter(Boolean))]
+    : [];
+
+  return { ok: true, payload };
+}
+
+/**
  * Payload whitelist for tournament.update_setup_config RPC.
  */
 export function buildSetupConfigPayload(config = {}) {
@@ -349,6 +417,15 @@ export function buildSetupConfigPayload(config = {}) {
     if (merged[key] !== undefined) {
       payload[key] = merged[key];
     }
+  }
+  // Preserve explicit custom selection — never silently restore mlp_4.
+  if (config?.formatPreset === FORMAT_PRESET.CUSTOM) {
+    payload.formatPreset = FORMAT_PRESET.CUSTOM;
+  } else if (config?.formatPreset === FORMAT_PRESET.MLP_4) {
+    payload.formatPreset = FORMAT_PRESET.MLP_4;
+  }
+  if (config?.groupCount != null && Number.isFinite(Number(config.groupCount))) {
+    payload.groupCount = Math.floor(Number(config.groupCount));
   }
   return payload;
 }

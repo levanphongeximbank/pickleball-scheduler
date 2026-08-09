@@ -573,6 +573,63 @@ export function useTeamTournamentPage({
     ]
   );
 
+  const persistFormatVenueSetup = useCallback(
+    async (config = {}, options = {}) => {
+      if (!clubId || !tournamentId) {
+        return { ok: false, error: "Thiếu clubId hoặc tournamentId." };
+      }
+      refreshControllerRef.current.beginMutationBarrier();
+      try {
+        const result = await orchestrator.persistFormatVenueSetup(
+          clubId,
+          tournamentId,
+          config,
+          {
+            teamData,
+            tournament,
+            aggregate,
+            expectedTournamentVersion: version,
+            ...options,
+          }
+        );
+        if (result.isVersionConflict) {
+          setVersionConflict(true);
+          await refreshAfterMutation({ reason: "format_venue_version_conflict" });
+          return result;
+        }
+        if (result.ok) {
+          const loaded = result.tournament
+            ? result
+            : await loadCanonicalSetup({ schemaVersion: 7 });
+          if (loaded.ok) {
+            commitCanonicalSetupLoad(
+              refreshControllerRef.current,
+              applyLoadResult,
+              loaded
+            );
+          } else {
+            await refreshAfterMutation({ reason: "format_venue_readback" });
+          }
+        }
+        return result;
+      } finally {
+        refreshControllerRef.current.endMutationBarrier();
+      }
+    },
+    [
+      aggregate,
+      applyLoadResult,
+      clubId,
+      loadCanonicalSetup,
+      orchestrator,
+      refreshAfterMutation,
+      teamData,
+      tournament,
+      tournamentId,
+      version,
+    ]
+  );
+
   const getVisibleLineups = useCallback(
     async (matchupId, readOptions = {}) => {
       if (!clubId || !tournamentId) {
@@ -670,6 +727,7 @@ export function useTeamTournamentPage({
     patchTeamData,
     persistSetupTeamData,
     saveDraft,
+    persistFormatVenueSetup,
     getVisibleLineups,
     getLineupOverrideOps: (matchupId, teamId) =>
       orchestrator.getLineupOverrideOps(clubId, tournamentId, { matchupId, teamId }),
