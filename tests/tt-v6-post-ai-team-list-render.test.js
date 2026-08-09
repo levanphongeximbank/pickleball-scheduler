@@ -177,18 +177,18 @@ describe("TT-V6 post-AI team list persist + render", () => {
     assert.equal((reloaded.teamData?.teams || []).length, 0);
   });
 
-  it("TeamRosterPanel wires confirmAiPairingCloudPersistence (not local-only patch)", () => {
+  it("TeamRosterPanel wires confirmAiPairingUiTransaction (not local-only patch)", () => {
     const src = readFileSync(
       path.join(ROOT, "src/components/tournament/TeamRosterPanel.jsx"),
       "utf8"
     );
-    assert.match(src, /confirmAiPairingCloudPersistence/);
+    assert.match(src, /confirmAiPairingUiTransaction/);
     assert.doesNotMatch(
       src,
       /patchTeamTournament\(clubId,\s*tournamentId,\s*\{\s*teamData:\s*nextTeamData/
     );
-    assert.match(src, /RELOAD_EMPTY_TEAMS|danh sách trống sau khi tải lại/);
-    assert.match(src, /await onUpdated/);
+    assert.match(src, /reactCanonicalCommitted/);
+    assert.match(src, /beginMutationBarrier/);
   });
 
   it("TeamAiPairingDialog awaits onApply and closes only after success", () => {
@@ -198,7 +198,7 @@ describe("TT-V6 post-AI team list persist + render", () => {
     );
     assert.match(src, /async function handleApply/);
     assert.match(src, /await onApply/);
-    assert.match(src, /applyResult\?\.ok === false/);
+    assert.match(src, /applyResult\?\.ok === true/);
     assert.match(src, /setApplying/);
   });
 

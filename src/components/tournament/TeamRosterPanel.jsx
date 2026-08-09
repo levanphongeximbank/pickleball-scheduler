@@ -54,7 +54,7 @@ import {
   removePlayerFromTeamRoster,
   updateTeamDetails,
 } from "../../features/team-tournament/services/teamTournamentService.js";
-import { confirmAiPairingCloudPersistence } from "../../features/team-tournament/services/aiPairingCloudPersistence.js";
+import { confirmAiPairingUiTransaction } from "../../features/team-tournament/services/confirmAiPairingUiTransaction.js";
 import TeamAiPairingDialog from "../tournament/team/TeamAiPairingDialog.jsx";
 import TournamentPlayerQuickAddDialog from "./TournamentPlayerQuickAddDialog.jsx";
 import ExistingTeamClonePanel from "./ExistingTeamClonePanel.jsx";
@@ -663,6 +663,9 @@ export default function TeamRosterPanel({
   persistSetupTeamData = null,
   setupVersionForMutations = null,
   refreshAfterMutation = null,
+  beginMutationBarrier = null,
+  endMutationBarrier = null,
+  onCaptainConfirmSuccess = null,
   onUpdated,
   onError,
   onMessage,
@@ -948,101 +951,55 @@ export default function TeamRosterPanel({
             return { ok: false, code: "NOT_FOUND" };
           }
 
-          const result = await confirmAiPairingCloudPersistence({
-            clubId,
-            tournamentId,
-            tournament,
+          if (
+            typeof beginMutationBarrier !== "function" ||
+            typeof endMutationBarrier !== "function" ||
+            typeof refreshAfterMutation !== "function"
+          ) {
+            onError(
+              "Thiếu mutation barrier / canonical refresh — không xác nhận đội trưởng (tránh F5)."
+            );
+            return { ok: false, code: "MISSING_UI_TRANSACTION" };
+          }
+
+          // Full captain-confirm UI transaction: barrier → writes → final get_setup
+          // → React commit → workflow. Never skip final refresh via intermediate group snapshots.
+          const result = await confirmAiPairingUiTransaction({
+            beginMutationBarrier,
+            endMutationBarrier,
+            refreshAfterMutation,
             nextTeamData,
-            currentTenantId: tenantId || tournament.tenantId || null,
-            persistSetupTeamData,
-            reload:
-              typeof onUpdated === "function"
-                ? (opts) => onUpdated(opts)
-                : null,
-            rulesVersion:
-              nextTeamData?.aiDrawMeta?.rulesVersion ||
-              nextTeamData?.settings?.rulesVersion ||
-              "",
-            expectedTournamentVersion:
-              setupVersionForMutations ?? setupVersion ?? undefined,
+            confirmParams: {
+              clubId,
+              tournamentId,
+              tournament,
+              nextTeamData,
+              currentTenantId: tenantId || tournament.tenantId || null,
+              persistSetupTeamData,
+              reload:
+                typeof onUpdated === "function"
+                  ? (opts) => onUpdated(opts)
+                  : null,
+              rulesVersion:
+                nextTeamData?.aiDrawMeta?.rulesVersion ||
+                nextTeamData?.settings?.rulesVersion ||
+                "",
+              expectedTournamentVersion:
+                setupVersionForMutations ?? setupVersion ?? undefined,
+            },
           });
 
           if (!result.ok) {
             onError(
               result.error ||
-                "Không áp dụng được ghép đội — cloud chưa ghi nhận."
+                "Không áp dụng được ghép đội — cloud chưa gắn vào UI canonical."
             );
             return { ok: false, ...result };
           }
 
-          // Single canonical UI refresh after durable writes (no F5).
-          // Groups path already committed via persistSetupTeamData — reuse that payload.
-          // Teams-only path still needs an explicit post-mutation get_setup apply.
-          const alreadyCommitted =
-            result.groupResult?.ok === true &&
-            Boolean(
-              result.groupResult.tournament ||
-                result.groupResult.teamData ||
-                result.groupResult.aggregate
-            );
-          const reloaded = alreadyCommitted
-            ? result.groupResult
-            : typeof refreshAfterMutation === "function"
-              ? await refreshAfterMutation({
-                  reason: "captain_confirm",
-                  diagnostic: true,
-                })
-              : typeof onUpdated === "function"
-                ? await onUpdated({
-                    silent: true,
-                    schemaVersion: 7,
-                    reason: "captain_confirm",
-                  })
-                : null;
-          const teamsAfterReload =
-            reloaded?.teamData?.teams ||
-            reloaded?.tournament?.teamData?.teams ||
-            result.teamData?.teams ||
-            [];
-          const groupsAfterReload =
-            reloaded?.teamData?.groups ||
-            reloaded?.tournament?.teamData?.groups ||
-            result.teamData?.groups ||
-            [];
-
-          if (!Array.isArray(teamsAfterReload) || teamsAfterReload.length === 0) {
-            onError(
-              "Đã lưu đội nhưng danh sách trống sau khi tải lại — không báo thành công."
-            );
-            return { ok: false, code: "RELOAD_EMPTY_TEAMS" };
-          }
-
-          const expectedIds = new Set(
-            (result.teamData?.teams || nextTeamData?.teams || []).map((team) =>
-              String(team.id)
-            )
-          );
-          const visibleExpected = teamsAfterReload.filter((team) =>
-            expectedIds.has(String(team.id))
-          );
-          if (expectedIds.size > 0 && visibleExpected.length === 0) {
-            onError(
-              "Đã lưu đội nhưng UI không đọc được đội vừa tạo sau khi tải lại."
-            );
-            return { ok: false, code: "RELOAD_MISSING_TEAMS" };
-          }
-
+          const teamsAfterReload = result.teamData?.teams || [];
+          const groupsAfterReload = result.teamData?.groups || [];
           const expectedGroups = (nextTeamData?.groups || []).length;
-          if (
-            expectedGroups > 0 &&
-            (!Array.isArray(groupsAfterReload) ||
-              groupsAfterReload.length < expectedGroups)
-          ) {
-            onError(
-              `Đã lưu đội nhưng chưa đọc lại đủ bảng (${groupsAfterReload.length || 0}/${expectedGroups}).`
-            );
-            return { ok: false, code: "RELOAD_MISSING_GROUPS" };
-          }
 
           const scopeMode = tenantId
             ? TEAM_TOURNAMENT_ATHLETE_SCOPE.TENANT
@@ -1060,18 +1017,30 @@ export default function TeamRosterPanel({
               ? `, ${groupsAfterReload.length} bảng`
               : "";
 
+          const successPayload = {
+            ok: true,
+            teamCount: teamsAfterReload.length,
+            groupCount: groupsAfterReload.length,
+            captainsPersisted: result.captainsPersisted,
+            tournament: result.tournament,
+            teamData: result.teamData,
+            workflowStage: result.workflowStage,
+            reactCanonicalCommitted: true,
+            code: result.code,
+          };
+
           if (!poolResult.ok) {
             onMessage?.(
               `Đã lưu cloud ${teamsAfterReload.length} đội${groupNote}. ${ROSTER_LOADING_MESSAGE}`
             );
+            onCaptainConfirmSuccess?.({
+              ...successPayload,
+              hydrationStatus: ROSTER_HYDRATION_STATUS.LOADING,
+            });
             return {
-              ok: true,
-              teamCount: teamsAfterReload.length,
-              groupCount: groupsAfterReload.length,
-              tournament: result.tournament,
+              ...successPayload,
               hydrationStatus: ROSTER_HYDRATION_STATUS.LOADING,
               code: "HYDRATION_POOL_PENDING",
-              workflowStage: result.workflowStage,
             };
           }
 
@@ -1088,15 +1057,15 @@ export default function TeamRosterPanel({
           onMessage?.(
             `Đã lưu cloud AI ghép đội (${teamsAfterReload.length} đội${groupNote}) và tải thông tin VĐV.`
           );
-          return {
-            ok: true,
-            teamCount: teamsAfterReload.length,
-            groupCount: groupsAfterReload.length,
-            captainsPersisted: result.captainsPersisted,
-            tournament: result.tournament,
+          onCaptainConfirmSuccess?.({
+            ...successPayload,
             hydrationStatus: hydratedSample.status,
             unresolvedCount: hydratedSample.unresolvedCount,
-            workflowStage: result.workflowStage,
+          });
+          return {
+            ...successPayload,
+            hydrationStatus: hydratedSample.status,
+            unresolvedCount: hydratedSample.unresolvedCount,
           };
         }}
       />
