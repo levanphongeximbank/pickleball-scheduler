@@ -190,6 +190,13 @@ export default function DailyPlaySetup() {
       return false;
     }
 
+    if (options.processMatchId && result.lifecycleOk === false) {
+      setError(
+        result.lifecycleError ||
+          "Đã lưu kết quả nhưng cập nhật Elo/điểm mùa thất bại."
+      );
+    }
+
     if (tournament?.status === TOURNAMENT_STATUS.DRAFT) {
       await setStatus(TOURNAMENT_STATUS.ACTIVE);
     }

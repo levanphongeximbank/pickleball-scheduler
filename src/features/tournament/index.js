@@ -19,6 +19,11 @@ export {
 } from "./services/tournamentCommands.js";
 
 export {
+  findMatchInCanonicalTournament,
+  processCanonicalCompletedMatch,
+} from "./services/tournamentMatchLifecycle.js";
+
+export {
   getTournamentRepository,
   createTournamentRepository,
   resolveTournamentDataMode,
