@@ -25,6 +25,9 @@ export const GROUP_REDRAW_DESTRUCTIVE_MESSAGE =
 /** Historical threshold used by legacy workflows (6–10 teams recommended multi-group). */
 export const MIN_TEAMS_FOR_EXPLICIT_GROUPS = 6;
 
+/** Stable id for Owner-configured one-group ("1 bảng") persistence. */
+export const EXPLICIT_SINGLE_GROUP_ID = "grp-bang-a";
+
 /** Default split sizes by team count (recommendation only — never auto-applied). */
 const DEFAULT_GROUP_SIZE_BY_TEAM_COUNT = Object.freeze({
   4: [4],
@@ -34,6 +37,90 @@ const DEFAULT_GROUP_SIZE_BY_TEAM_COUNT = Object.freeze({
   9: [4, 5],
   10: [5, 5],
 });
+
+/**
+ * True when organizer Format/Venue explicitly configured groupCount (>=1).
+ * Missing groupCount keeps legacy-compatible read paths.
+ */
+export function hasOrganizerConfiguredGroupCount(teamData = null, tournament = null) {
+  const rawSettings = {
+    ...(tournament?.settings && typeof tournament.settings === "object"
+      ? tournament.settings
+      : {}),
+    ...(teamData?.settings && typeof teamData.settings === "object" ? teamData.settings : {}),
+  };
+  if (!Object.prototype.hasOwnProperty.call(rawSettings, "groupCount")) {
+    return false;
+  }
+  const count = Number(rawSettings.groupCount);
+  return Number.isFinite(count) && count >= 1;
+}
+
+/**
+ * Materialize explicit groups when preview groups are missing at confirm.
+ * groupCount=1 → one durable "Bảng A" with all team ids.
+ * groupCount>1 with empty preview → fail closed (do not invent N-way split).
+ *
+ * @param {{
+ *   teams?: Array<{ id?: string }>,
+ *   groupCount?: number,
+ *   existingGroups?: Array|null,
+ * }} [params]
+ */
+export function materializeExplicitGroupsFromTeams({
+  teams = [],
+  groupCount = 1,
+  existingGroups = null,
+} = {}) {
+  if (Array.isArray(existingGroups) && existingGroups.length > 0) {
+    return { ok: true, groups: existingGroups, materialized: false };
+  }
+
+  const teamList = (Array.isArray(teams) ? teams : []).filter((team) => team?.id);
+  const configured = Math.floor(Number(groupCount) || 0);
+
+  if (teamList.length < 2) {
+    return {
+      ok: false,
+      code: GROUPS_REQUIRED,
+      error: "Cần ít nhất 2 đội để tạo bảng.",
+      groups: [],
+      materialized: false,
+    };
+  }
+
+  if (configured === 1) {
+    return {
+      ok: true,
+      materialized: true,
+      groups: [
+        {
+          id: EXPLICIT_SINGLE_GROUP_ID,
+          name: "Bảng A",
+          teamIds: teamList.map((team) => String(team.id)),
+        },
+      ],
+    };
+  }
+
+  if (configured > 1) {
+    return {
+      ok: false,
+      code: GROUPS_REQUIRED,
+      error: "Chưa có chia bảng để lưu. Chạy chia bảng trước khi xác nhận.",
+      groups: [],
+      materialized: false,
+    };
+  }
+
+  return {
+    ok: false,
+    code: GROUPS_REQUIRED,
+    error: GROUPS_REQUIRED_MESSAGE,
+    groups: [],
+    materialized: false,
+  };
+}
 
 /**
  * @param {number} teamCount
@@ -51,13 +138,12 @@ export function tournamentRequiresExplicitGroups(teamCount, teamData = null) {
 
   if (hasExplicitGroupMode) {
     const config = resolveFormatVenueDefaults(teamData);
-    if (
-      config.groupMode === GROUP_MODE.NONE ||
-      config.groupMode === GROUP_MODE.SINGLE_POOL
-    ) {
-      // Single pool may still persist one group; schedule can proceed without
-      // forcing multi-group division when organizer chose 1 bảng.
-      return config.groupCount > 1;
+    if (config.groupMode === GROUP_MODE.NONE) {
+      return false;
+    }
+    // single_pool = Owner "1 bảng": require exactly one durable explicit group.
+    if (config.groupMode === GROUP_MODE.SINGLE_POOL) {
+      return config.groupCount >= 1 && count >= 2;
     }
     if (config.groupMode === GROUP_MODE.AUTOMATIC || config.groupMode === GROUP_MODE.MANUAL) {
       return config.groupCount >= 1 && count >= 2;

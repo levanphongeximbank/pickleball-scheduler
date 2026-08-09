@@ -16,9 +16,31 @@
 
 import { PRIVATE_PAIRING_RUNTIME_VERSION } from "../../private-pairing-rules/runtime/runtimeCodes.js";
 import { DEFAULT_ENGINE_VERSION } from "../canonical/teamTournamentMutationEnvelope.js";
+import {
+  hasOrganizerConfiguredGroupCount,
+  materializeExplicitGroupsFromTeams,
+} from "../engines/teamGroupDivisionPolicy.js";
+import { resolveFormatVenueDefaults } from "../engines/teamFormatVenueConfig.js";
 import { deriveWorkflowStage } from "../engines/teamTournamentWorkflowStage.js";
 import { preflightSetupMutationCapability } from "../setup/setupMutationFeatureGate.js";
 import { applyAiGeneratedTeamsToTournament } from "./teamTournamentService.js";
+
+const defaultDeps = Object.freeze({
+  applyAiGeneratedTeamsToTournament,
+  preflightSetupMutationCapability,
+});
+
+let deps = { ...defaultDeps };
+
+/** @internal */
+export function __setConfirmAiPairingCloudPersistenceDepsForTests(next = {}) {
+  deps = { ...defaultDeps, ...next };
+}
+
+/** @internal */
+export function __resetConfirmAiPairingCloudPersistenceDepsForTests() {
+  deps = { ...defaultDeps };
+}
 
 /**
  * @param {object} params
@@ -48,7 +70,7 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
   } = params;
 
   const teams = Array.isArray(nextTeamData?.teams) ? nextTeamData.teams : [];
-  const groups = Array.isArray(nextTeamData?.groups) ? nextTeamData.groups : [];
+  let groups = Array.isArray(nextTeamData?.groups) ? nextTeamData.groups : [];
 
   if (!tournamentId || !teams.length) {
     return {
@@ -68,10 +90,33 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
     };
   }
 
+  // Owner "1 bảng" / configured groupCount>=1: never succeed teams-only with groups=[].
+  if (hasOrganizerConfiguredGroupCount(nextTeamData, tournament) && groups.length === 0) {
+    const formatVenue = resolveFormatVenueDefaults(nextTeamData, tournament);
+    const materialized = materializeExplicitGroupsFromTeams({
+      teams,
+      groupCount: formatVenue.groupCount,
+      existingGroups: groups,
+    });
+    if (!materialized.ok) {
+      return {
+        ok: false,
+        code: materialized.code || "GROUPS_REQUIRED",
+        error:
+          materialized.error ||
+          "Thiếu chia bảng explicit — không xác nhận đội-only khi đã cấu hình số bảng.",
+        writeAttempted: false,
+        groupsExpected: Math.max(1, Number(formatVenue.groupCount) || 1),
+        groupsPersisted: 0,
+      };
+    }
+    groups = materialized.groups;
+  }
+
   // V7 preflight BEFORE team/captain writes when groups must persist —
   // no captains-only partial success if group persistence is required.
   if (groups.length > 0) {
-    const preflight = preflightSetupMutationCapability({ envSource });
+    const preflight = deps.preflightSetupMutationCapability({ envSource });
     if (!preflight.ok) {
       return {
         ...preflight,
@@ -92,7 +137,7 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
     }
   }
 
-  const teamSave = await applyAiGeneratedTeamsToTournament(
+  const teamSave = await deps.applyAiGeneratedTeamsToTournament(
     clubId,
     tournamentId,
     {

@@ -134,15 +134,16 @@ export function deriveWorkflowStage(teamData, tournament = null) {
     return WORKFLOW_STAGE.GROUPS;
   }
 
-  // Organizer configured groupCount>=1 with manual/automatic and no groups yet
-  // for small fields (e.g. 4 teams → 1 group): stay on groups until confirmed
-  // only when settings.groupCount is set and groups empty AND groupMode wants explicit.
+  // Organizer configured groupCount>=1 (including single_pool "1 bảng") and no
+  // durable groups yet: stay on groups until explicit one-group is confirmed.
   const configuredGroupCount = Number(teamData?.settings?.groupCount) || 0;
   const groupMode = teamData?.settings?.groupMode;
   if (
     !groupsReady &&
     configuredGroupCount >= 1 &&
-    (groupMode === "manual" || groupMode === "automatic") &&
+    (groupMode === "manual" ||
+      groupMode === "automatic" ||
+      groupMode === "single_pool") &&
     teams.length >= 2
   ) {
     return WORKFLOW_STAGE.GROUPS;

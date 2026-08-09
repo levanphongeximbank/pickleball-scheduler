@@ -400,12 +400,12 @@ test("AI pairing capability is explicit for custom format", () => {
   assert.equal(assertAiPairingSupported({ settings: applyMlp4Preset() }).ok, true);
 });
 
-test("groupCount=1 is allowed (no min-2 floor)", () => {
+test("groupCount=1 is allowed (no min-2 floor) and requires explicit one-group", () => {
   const options = listGroupDivisionOptions(4);
   assert.ok(options.some((o) => o.groupCount === 1));
   assert.equal(tournamentRequiresExplicitGroups(4, {
     settings: { groupMode: GROUP_MODE.SINGLE_POOL, groupCount: 1 },
-  }), false);
+  }), true);
 });
 
 test("migration package present and RPC not auto-applied", () => {

@@ -43,6 +43,7 @@ import { prefersReducedMotion } from "../../../features/team-tournament/showcase
 import { getPlayerGenderKey } from "../../../models/player.js";
 import { reconcileSelectedAthletesForEngineInput } from "../../../features/team-tournament/showcase/reconcileSelectedAthletesForEngineInput.js";
 import { resolvePairingGroupCount } from "../../../features/team-tournament/engines/teamFormatVenueConfig.js";
+import { materializeExplicitGroupsFromTeams } from "../../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
 import TeamAiPairingConfigBoard, {
   DarkDialogHeader,
 } from "./TeamAiPairingConfigBoard.jsx";
@@ -159,10 +160,26 @@ export default function TeamAiPairingDialog({
   }, []);
 
   const closePairingReveal = useCallback(() => {
-    commitPendingPairing();
+    const pending = commitPendingPairing();
+    const teams = pending?.teams || pairingResult?.teams || [];
+    // Owner "1 bảng": materialize explicit one-group preview without waiting for schedule.
+    if (Number(groupCount) === 1 && teams.length >= 2) {
+      const materialized = materializeExplicitGroupsFromTeams({
+        teams,
+        groupCount: 1,
+        existingGroups: null,
+      });
+      if (materialized.ok) {
+        setGroupTeamData({
+          teams,
+          groups: materialized.groups,
+          matchups: [],
+        });
+      }
+    }
     setPairingEffectActive(false);
     setRevealSession(null);
-  }, [commitPendingPairing]);
+  }, [commitPendingPairing, pairingResult?.teams, groupCount]);
 
   const startGroupReveal = useCallback(
     (teamsOverride = null) => {
@@ -465,21 +482,40 @@ export default function TeamAiPairingDialog({
     );
     const randomSeed =
       pairingResult.randomSeed || createAiDrawRandomSeed(published?.randomSeed);
+    const previewGroups = groupTeamData?.groups || [];
+    const groupMaterialize = materializeExplicitGroupsFromTeams({
+      teams: teamsWithCaptains,
+      groupCount,
+      existingGroups: previewGroups,
+    });
+    if (!groupMaterialize.ok) {
+      onError?.(
+        groupMaterialize.error ||
+          "Chưa có chia bảng explicit để lưu. Chạy chia bảng trước khi xác nhận."
+      );
+      return;
+    }
+    const groupsToPersist = groupMaterialize.groups;
+    const publishedTeamData = attachAiDrawPublishMetadata(result.teamData, {
+      operation: PRIVATE_PAIRING_OPERATION.TEAM_FORMATION,
+      reason: published?.randomSeed
+        ? AI_DRAW_CHANGE_REASON.USER_REARRANGE
+        : AI_DRAW_CHANGE_REASON.INITIAL_DRAW,
+      randomSeed,
+      previousResult: snapshotTeamFormationResult(teamData?.teams || []),
+      nextResult: snapshotTeamFormationResult(teamsWithCaptains),
+      scoreBreakdown: pairingResult.scoreBreakdown || null,
+      algorithmVersion: pairingResult.algorithmVersion || AI_DRAW_ALGORITHM_VERSION,
+      rulesVersion: pairingResult.rulesVersion || "",
+    });
     const nextTeamData = {
-      ...attachAiDrawPublishMetadata(result.teamData, {
-        operation: PRIVATE_PAIRING_OPERATION.TEAM_FORMATION,
-        reason: published?.randomSeed
-          ? AI_DRAW_CHANGE_REASON.USER_REARRANGE
-          : AI_DRAW_CHANGE_REASON.INITIAL_DRAW,
-        randomSeed,
-        previousResult: snapshotTeamFormationResult(teamData?.teams || []),
-        nextResult: snapshotTeamFormationResult(teamsWithCaptains),
-        scoreBreakdown: pairingResult.scoreBreakdown || null,
-        algorithmVersion: pairingResult.algorithmVersion || AI_DRAW_ALGORITHM_VERSION,
-        rulesVersion: pairingResult.rulesVersion || "",
-      }),
-      groups: groupTeamData?.groups || [],
-      matchups: groupTeamData?.groups?.length ? [] : result.teamData.matchups || [],
+      ...publishedTeamData,
+      groups: groupsToPersist,
+      matchups: groupsToPersist.length ? [] : result.teamData.matchups || [],
+      settings: {
+        ...(publishedTeamData.settings || {}),
+        groupCount: Math.max(1, Math.floor(Number(groupCount) || 1)),
+      },
     };
 
     setApplying(true);
