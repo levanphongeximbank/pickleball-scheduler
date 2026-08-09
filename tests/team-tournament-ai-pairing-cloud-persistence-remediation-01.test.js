@@ -279,7 +279,7 @@ describe("team-tournament-ai-pairing-cloud-persistence-remediation-01", () => {
     assert.match(service, /resolveTournamentForAiApply/);
     assert.match(persist, /confirmAiPairingCloudPersistence/);
     assert.match(persist, /persistSetupTeamData/);
-    assert.match(roster, /confirmAiPairingCloudPersistence/);
+    assert.match(roster, /confirmAiPairingUiTransaction/);
     assert.match(dialog, /catch \(error\)/);
     assert.match(dialog, /Xem trước/);
     assert.equal(dialog.includes("Đã gắn"), false);

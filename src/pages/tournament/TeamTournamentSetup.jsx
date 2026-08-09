@@ -173,6 +173,8 @@ export default function TeamTournamentSetup() {
     error: loadError,
     reload,
     refreshAfterMutation,
+    beginMutationBarrier,
+    endMutationBarrier,
     runMutation,
     patchTeamData,
     persistSetupTeamData,
@@ -1278,6 +1280,8 @@ export default function TeamTournamentSetup() {
               setupVersionForMutations={version ?? 0}
               persistSetupTeamData={persistSetupTeamData}
               refreshAfterMutation={refreshAfterMutation}
+              beginMutationBarrier={beginMutationBarrier}
+              endMutationBarrier={endMutationBarrier}
               athletePoolLoadingInitial={
                 clubPool.loadingInitial ||
                 (Boolean(clubPool.tenantId) && tenantPool.loadingInitial)
@@ -1291,6 +1295,28 @@ export default function TeamTournamentSetup() {
               onUpdated={(opts) => reload({ silent: true, ...opts })}
               onError={setError}
               onMessage={setMessage}
+              onCaptainConfirmSuccess={(payload) => {
+                const stage = payload?.workflowStage;
+                if (stage === "disciplines") {
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.set("tab", TEAM_TAB_QUERY.disciplines);
+                      return next;
+                    },
+                    { replace: true }
+                  );
+                } else if (stage === "matchups" || stage === "schedule") {
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.set("tab", TEAM_TAB_QUERY.matchups);
+                      return next;
+                    },
+                    { replace: true }
+                  );
+                }
+              }}
             />
             {access.canManage && (showcaseEntryVisible || showcaseReplayVisible) ? (
               <Alert

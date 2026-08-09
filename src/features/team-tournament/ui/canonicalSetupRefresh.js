@@ -83,6 +83,17 @@ export function resolveCanonicalReloadApply(controller, generation, options = {}
       generation,
     };
   }
+  if (
+    typeof controller.isMutationBarrierActive === "function" &&
+    controller.isMutationBarrierActive()
+  ) {
+    return {
+      apply: false,
+      reason: "mutation_barrier",
+      stale: true,
+      generation,
+    };
+  }
   if (!controller.shouldApplyReload(generation)) {
     return {
       apply: false,
@@ -152,6 +163,9 @@ export async function refreshCanonicalSetupAfterMutation(params = {}) {
     };
   }
 
+  // Intentional post-mutation load: bump generation so older polls lose, then
+  // commit via commitCanonicalSetupLoad (works inside an active mutation barrier;
+  // silent poll/realtime applies remain blocked by resolveCanonicalReloadApply).
   const generation = controller.beginReload();
   const result = await loadSetup({
     silent: true,
@@ -159,17 +173,25 @@ export async function refreshCanonicalSetupAfterMutation(params = {}) {
     ...loadOptions,
   });
 
-  const decision = resolveCanonicalReloadApply(controller, generation, {
-    applyUi: loadOptions.applyUi !== false,
-  });
-
-  if (!decision.apply) {
+  if (loadOptions.applyUi === false) {
     return {
       ...result,
       ok: result?.ok === true,
       applied: false,
-      stale: decision.stale,
-      refreshReason: decision.reason,
+      stale: false,
+      refreshReason: "peek_only",
+      generation,
+    };
+  }
+
+  // Superseded by a newer intentional reload/barrier bump — do not clobber.
+  if (!controller.shouldApplyReload(generation)) {
+    return {
+      ...result,
+      ok: result?.ok === true,
+      applied: false,
+      stale: true,
+      refreshReason: "stale_generation",
       generation,
     };
   }
@@ -185,12 +207,12 @@ export async function refreshCanonicalSetupAfterMutation(params = {}) {
     };
   }
 
-  applyLoadResult(result);
+  const committed = commitCanonicalSetupLoad(controller, applyLoadResult, result);
   return {
     ...result,
-    applied: true,
+    applied: committed.applied,
     stale: false,
     refreshReason: "post_mutation",
-    generation,
+    generation: committed.generation,
   };
 }

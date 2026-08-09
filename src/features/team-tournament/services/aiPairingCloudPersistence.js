@@ -8,7 +8,8 @@
  *
  * Mid-sequence version peeks must use reload({ applyUi: false }) so intermediate
  * get_setup responses do not clobber React teamData. Final UI refresh is owned by
- * the page hook (refreshAfterMutation / commitCanonicalSetupLoad).
+ * confirmAiPairingUiTransaction (always refreshAfterMutation — never skip via
+ * intermediate group snapshots).
  *
  * No legacy blob authority. Matchups stay empty (later workflow stage).
  */
