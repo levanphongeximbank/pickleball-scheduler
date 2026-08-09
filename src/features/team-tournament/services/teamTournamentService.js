@@ -116,6 +116,15 @@ import {
   resolveUiTeamTournamentDataMode,
   TEAM_TOURNAMENT_DATA_MODES,
 } from "../repositories/teamTournamentRepositoryFactory.js";
+import {
+  cloudSubmitDreambreakerOrder,
+  cloudLockDreambreakerOrder,
+  cloudStartDreambreaker,
+  cloudRecordDreambreakerPoint,
+  cloudUndoDreambreakerPoint,
+  cloudDreambreakerInjury,
+  cloudSyncDreambreaker,
+} from "./dreambreakerCloudCommands.js";
 import { guardRecordTenant } from "../../tenant/guards/tenantGuard.js";
 
 function findTournament(data, tournamentId) {
@@ -1004,6 +1013,8 @@ function applyTeamDataPatch(clubId, tournamentId, mutator) {
 
 /**
  * S2-D — Generate group → knockout bracket (keeps RR matchups).
+ * @deprecated For cloud_primary/cloud_only use generateTeamKnockoutMatchups + persistSetupTeamData.
+ * Blob saveClubData path remains for legacy mode only.
  */
 export function generateTeamKnockoutBracket(clubId, tournamentId, options = {}) {
   const check = guardTeamManage(clubId);
@@ -1996,10 +2007,14 @@ export async function getTeamTournamentByIdCloud(clubId, tournamentId, viewerTea
   return local;
 }
 
-export function captainSubmitDreambreakerOrder(clubId, tournamentId, payload = {}) {
+export async function captainSubmitDreambreakerOrder(clubId, tournamentId, payload = {}) {
   const check = guardCaptainLineupAction(clubId, tournamentId, payload.teamId);
   if (!check.ok) {
     return check;
+  }
+
+  if (shouldUseTeamTournamentCloud()) {
+    return cloudSubmitDreambreakerOrder(tournamentId, payload);
   }
 
   return updateTournament(clubId, tournamentId, (tournament) => {
@@ -2021,10 +2036,14 @@ export function captainSubmitDreambreakerOrder(clubId, tournamentId, payload = {
   });
 }
 
-export function refereeStartDreambreaker(clubId, tournamentId, { matchupId }) {
+export async function refereeStartDreambreaker(clubId, tournamentId, { matchupId }) {
   const check = guardRefereeResultAction(clubId);
   if (!check.ok) {
     return check;
+  }
+
+  if (shouldUseTeamTournamentCloud()) {
+    return cloudStartDreambreaker(tournamentId, { matchupId });
   }
 
   return updateTournament(clubId, tournamentId, (tournament) => {
@@ -2048,38 +2067,41 @@ export async function refereeRecordDreambreakerPoint(clubId, tournamentId, paylo
     return check;
   }
 
-  return applyOrganizerMutationLocalFirst({
-    clubId,
-    tournamentId,
-    cloudCall: async () => ({ ok: true, usedCloud: false }),
-    applyLocal: (tournament) => {
-      const result = recordDreambreakerPoint(getTeamData(tournament), payload);
-      if (!result.ok) {
-        return result;
-      }
+  if (shouldUseTeamTournamentCloud()) {
+    return cloudRecordDreambreakerPoint(tournamentId, payload);
+  }
 
-      appendTeamAuditLog({
-        action: TEAM_AUDIT_ACTIONS.DREAMBREAKER_POINT,
-        targetId: tournament.id,
-        metadata: payload,
-      });
+  return updateTournament(clubId, tournamentId, (tournament) => {
+    const result = recordDreambreakerPoint(getTeamData(tournament), payload);
+    if (!result.ok) {
+      return result;
+    }
 
-      return {
-        ok: true,
-        tournament: refreshStandings(
-          attachTeamDataToTournament(tournament, result.teamData)
-        ),
-        completed: result.completed,
-        winnerTeamId: result.winnerTeamId,
-      };
-    },
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.DREAMBREAKER_POINT,
+      targetId: tournament.id,
+      metadata: payload,
+    });
+
+    return {
+      ok: true,
+      tournament: refreshStandings(
+        attachTeamDataToTournament(tournament, result.teamData)
+      ),
+      completed: result.completed,
+      winnerTeamId: result.winnerTeamId,
+    };
   });
 }
 
-export function refereeUndoDreambreakerPoint(clubId, tournamentId, { matchupId }) {
+export async function refereeUndoDreambreakerPoint(clubId, tournamentId, { matchupId }) {
   const check = guardRefereeResultAction(clubId);
   if (!check.ok) {
     return check;
+  }
+
+  if (shouldUseTeamTournamentCloud()) {
+    return cloudUndoDreambreakerPoint(tournamentId, { matchupId });
   }
 
   return updateTournament(clubId, tournamentId, (tournament) => {
@@ -2101,40 +2123,62 @@ export async function refereeForfeitSubMatch(clubId, tournamentId, payload = {})
     return check;
   }
 
-  return applyOrganizerMutationLocalFirst({
-    clubId,
-    tournamentId,
-    cloudCall: async () => ({ ok: true, usedCloud: false }),
-    applyLocal: (tournament) => {
-      let teamData = getTeamData(tournament);
-      const forfeitResult = forfeitDoublesSubMatch(teamData, payload);
-      if (!forfeitResult.ok) {
-        return forfeitResult;
-      }
+  if (shouldUseTeamTournamentCloud()) {
+    const { rpcTeamTournamentApplyForfeit } = await import("./teamTournamentRpcService.js");
+    const cloud = await rpcTeamTournamentApplyForfeit({
+      tournamentId,
+      matchupId: payload.matchupId,
+      subMatchId: payload.subMatchId || null,
+      forfeitingTeamId: payload.forfeitingTeamId || payload.teamId || null,
+      scope: payload.scope || "sub_match",
+      resultType: payload.resultType || "forfeit",
+      forfeitReason: payload.reason || payload.forfeitReason || "referee_forfeit",
+      reasonCode: payload.reasonCode || "referee_forfeit",
+      technicalScore: payload.technicalScore || {},
+      expectedVersion: payload.expectedVersion ?? null,
+      idempotencyKey: payload.idempotencyKey || undefined,
+    });
+    return {
+      ...cloud,
+      usedCloud: true,
+      ok: Boolean(cloud?.ok),
+      error: cloud?.error || cloud?.code,
+    };
+  }
 
-      teamData = forfeitResult.teamData;
-      const aggregated = computeMatchupResult(teamData, payload.matchupId);
+  return updateTournament(clubId, tournamentId, (tournament) => {
+    let teamData = getTeamData(tournament);
+    const forfeitResult = forfeitDoublesSubMatch(teamData, payload);
+    if (!forfeitResult.ok) {
+      return forfeitResult;
+    }
 
-      appendTeamAuditLog({
-        action: TEAM_AUDIT_ACTIONS.SUB_MATCH_FORFEIT,
-        targetId: tournament.id,
-        metadata: payload,
-      });
+    teamData = forfeitResult.teamData;
+    const aggregated = computeMatchupResult(teamData, payload.matchupId);
 
-      return {
-        ok: true,
-        tournament: refreshStandings(
-          attachTeamDataToTournament(tournament, aggregated.teamData)
-        ),
-      };
-    },
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.SUB_MATCH_FORFEIT,
+      targetId: tournament.id,
+      metadata: payload,
+    });
+
+    return {
+      ok: true,
+      tournament: refreshStandings(
+        attachTeamDataToTournament(tournament, aggregated.teamData)
+      ),
+    };
   });
 }
 
-export function refereeDreambreakerInjury(clubId, tournamentId, payload = {}) {
+export async function refereeDreambreakerInjury(clubId, tournamentId, payload = {}) {
   const check = guardRefereeResultAction(clubId);
   if (!check.ok) {
     return check;
+  }
+
+  if (shouldUseTeamTournamentCloud()) {
+    return cloudDreambreakerInjury(tournamentId, payload);
   }
 
   return updateTournament(clubId, tournamentId, (tournament) => {
@@ -2156,25 +2200,24 @@ export async function organizerSyncDreambreaker(clubId, tournamentId) {
     return check;
   }
 
-  return applyOrganizerMutationLocalFirst({
-    clubId,
-    tournamentId,
-    cloudCall: async () => ({ ok: true, usedCloud: false }),
-    applyLocal: (tournament) => {
-      const synced = syncDreambreakerForAllMatchups(getTeamData(tournament), {
-        now: new Date().toISOString(),
-      });
+  if (shouldUseTeamTournamentCloud()) {
+    return cloudSyncDreambreaker(tournamentId);
+  }
 
-      if (!synced.changed) {
-        return { ok: true, tournament, changed: false };
-      }
+  return updateTournament(clubId, tournamentId, (tournament) => {
+    const synced = syncDreambreakerForAllMatchups(getTeamData(tournament), {
+      now: new Date().toISOString(),
+    });
 
-      return {
-        ok: true,
-        tournament: attachTeamDataToTournament(tournament, synced.teamData),
-        changed: true,
-      };
-    },
+    if (!synced.changed) {
+      return { ok: true, tournament, changed: false };
+    }
+
+    return {
+      ok: true,
+      tournament: attachTeamDataToTournament(tournament, synced.teamData),
+      changed: true,
+    };
   });
 }
 
@@ -2184,51 +2227,54 @@ export async function organizerLockDreambreakerOrders(clubId, tournamentId, payl
     return check;
   }
 
-  return applyOrganizerMutationLocalFirst({
-    clubId,
-    tournamentId,
-    cloudCall: async () => ({ ok: true, usedCloud: false }),
-    applyLocal: (tournament) => {
-      const result = lockDreambreakerOrders(getTeamData(tournament), payload.matchupId, {
-        now: payload.now || new Date().toISOString(),
-        force: true,
-      });
+  if (shouldUseTeamTournamentCloud()) {
+    return cloudLockDreambreakerOrder(tournamentId, payload);
+  }
 
-      if (!result.teamData) {
-        return { ok: false, error: result.error || "Không khóa được thứ tự Dreambreaker." };
-      }
+  return updateTournament(clubId, tournamentId, (tournament) => {
+    const result = lockDreambreakerOrders(getTeamData(tournament), payload.matchupId, {
+      now: payload.now || new Date().toISOString(),
+      force: true,
+    });
 
-      result.logs?.forEach((message) => {
-        appendTeamAuditLog({
-          action: message.includes("Tự động")
-            ? TEAM_AUDIT_ACTIONS.LINEUP_RANDOM
-            : TEAM_AUDIT_ACTIONS.DREAMBREAKER_ORDER_LOCK,
-          targetId: tournament.id,
-          metadata: { matchupId: payload.matchupId, message },
-        });
-      });
+    if (!result.teamData) {
+      return { ok: false, error: result.error || "Không khóa được thứ tự Dreambreaker." };
+    }
 
+    result.logs?.forEach((message) => {
       appendTeamAuditLog({
-        action: TEAM_AUDIT_ACTIONS.DREAMBREAKER_ORDER_LOCK,
+        action: message.includes("Tự động")
+          ? TEAM_AUDIT_ACTIONS.LINEUP_RANDOM
+          : TEAM_AUDIT_ACTIONS.DREAMBREAKER_ORDER_LOCK,
         targetId: tournament.id,
-        metadata: { matchupId: payload.matchupId, partial: !result.ok },
+        metadata: { matchupId: payload.matchupId, message },
       });
+    });
 
-      return {
-        ok: true,
-        warning: result.ok ? undefined : result.error,
-        tournament: attachTeamDataToTournament(tournament, result.teamData),
-        logs: result.logs,
-        dreambreakerLocked: result.ok,
-      };
-    },
+    appendTeamAuditLog({
+      action: TEAM_AUDIT_ACTIONS.DREAMBREAKER_ORDER_LOCK,
+      targetId: tournament.id,
+      metadata: { matchupId: payload.matchupId, partial: !result.ok },
+    });
+
+    return {
+      ok: true,
+      warning: result.ok ? undefined : result.error,
+      tournament: attachTeamDataToTournament(tournament, result.teamData),
+      logs: result.logs,
+      dreambreakerLocked: result.ok,
+    };
   });
 }
 
-export function refereeLockDreambreakerOrders(clubId, tournamentId, { matchupId }) {
+export async function refereeLockDreambreakerOrders(clubId, tournamentId, { matchupId }) {
   const check = guardRefereeResultAction(clubId);
   if (!check.ok) {
     return check;
+  }
+
+  if (shouldUseTeamTournamentCloud()) {
+    return cloudLockDreambreakerOrder(tournamentId, { matchupId });
   }
 
   return updateTournament(clubId, tournamentId, (tournament) => {

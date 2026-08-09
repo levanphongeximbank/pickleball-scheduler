@@ -13,6 +13,13 @@ export const TT1B_COMMAND_RPCS = Object.freeze([
   "team_tournament_withdraw_team",
   "team_tournament_provision_referee_match",
   "team_tournament_revoke_referee_link",
+  "team_tournament_submit_dreambreaker_order",
+  "team_tournament_lock_dreambreaker_order",
+  "team_tournament_record_dreambreaker_point",
+  "team_tournament_sync_dreambreaker",
+  "team_tournament_start_dreambreaker",
+  "team_tournament_undo_dreambreaker_point",
+  "team_tournament_dreambreaker_injury",
 ]);
 
 /** TT-1B commands that require optimistic-lock version before RPC. */
@@ -36,6 +43,13 @@ export const TT1B_IDEMPOTENCY_PREFIX_BY_RPC = Object.freeze({
   team_tournament_revoke_referee_link: "revoke_link",
   team_tournament_resync_referee_link: "resync_link",
   team_tournament_upsert_standings: "standings",
+  team_tournament_submit_dreambreaker_order: "db-order",
+  team_tournament_lock_dreambreaker_order: "db-lock",
+  team_tournament_record_dreambreaker_point: "db-point",
+  team_tournament_sync_dreambreaker: "db-sync",
+  team_tournament_start_dreambreaker: "db-start",
+  team_tournament_undo_dreambreaker_point: "db-undo",
+  team_tournament_dreambreaker_injury: "db-injury",
 });
 
 /** Exact PostgREST argument names for TT-1B 6/7-parameter overloads (never legacy 23C-only sets). */
@@ -144,6 +158,52 @@ export const TT1B_RPC_ARG_CONTRACTS = Object.freeze({
   team_tournament_upsert_standings: [
     "p_tournament_id",
     "p_standings",
+    "p_expected_version",
+    "p_idempotency_key",
+  ],
+  team_tournament_submit_dreambreaker_order: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_team_id",
+    "p_order",
+    "p_expected_version",
+    "p_idempotency_key",
+  ],
+  team_tournament_lock_dreambreaker_order: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_expected_version",
+    "p_idempotency_key",
+  ],
+  team_tournament_record_dreambreaker_point: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_scoring_team_id",
+    "p_expected_version",
+    "p_idempotency_key",
+  ],
+  team_tournament_sync_dreambreaker: [
+    "p_tournament_id",
+    "p_expected_version",
+    "p_idempotency_key",
+  ],
+  team_tournament_start_dreambreaker: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_expected_version",
+    "p_idempotency_key",
+  ],
+  team_tournament_undo_dreambreaker_point: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_expected_version",
+    "p_idempotency_key",
+  ],
+  team_tournament_dreambreaker_injury: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_team_id",
+    "p_player_id",
     "p_expected_version",
     "p_idempotency_key",
   ],
@@ -1005,4 +1065,96 @@ export async function rpcTeamTournamentReopenRefereeMatch(params) {
     p_reason: normalized.reason || "",
     p_idempotency_key: normalized.idempotencyKey ?? createTeamTournamentIdempotencyKey("tt5d-reopen"),
   });
+}
+
+function normalizeDreambreakerParams(params = {}) {
+  return typeof params === "object" && params !== null ? params : {};
+}
+
+export async function rpcTeamTournamentSubmitDreambreakerOrder(params = {}) {
+  const normalized = normalizeDreambreakerParams(params);
+  return callTt1bCommandRpc(
+    "team_tournament_submit_dreambreaker_order",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+      p_matchup_id: String(normalized.matchupId),
+      p_team_id: String(normalized.teamId),
+      p_order: Array.isArray(normalized.order) ? normalized.order : normalized.order || [],
+    },
+    normalized
+  );
+}
+
+export async function rpcTeamTournamentLockDreambreakerOrder(params = {}) {
+  const normalized = normalizeDreambreakerParams(params);
+  return callTt1bCommandRpc(
+    "team_tournament_lock_dreambreaker_order",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+      p_matchup_id: String(normalized.matchupId),
+    },
+    normalized
+  );
+}
+
+export async function rpcTeamTournamentRecordDreambreakerPoint(params = {}) {
+  const normalized = normalizeDreambreakerParams(params);
+  return callTt1bCommandRpc(
+    "team_tournament_record_dreambreaker_point",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+      p_matchup_id: String(normalized.matchupId),
+      p_scoring_team_id: String(normalized.scoringTeamId),
+    },
+    normalized
+  );
+}
+
+export async function rpcTeamTournamentSyncDreambreaker(params = {}) {
+  const normalized = normalizeDreambreakerParams(params);
+  return callTt1bCommandRpc(
+    "team_tournament_sync_dreambreaker",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+    },
+    normalized
+  );
+}
+
+export async function rpcTeamTournamentStartDreambreaker(params = {}) {
+  const normalized = normalizeDreambreakerParams(params);
+  return callTt1bCommandRpc(
+    "team_tournament_start_dreambreaker",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+      p_matchup_id: String(normalized.matchupId),
+    },
+    normalized
+  );
+}
+
+export async function rpcTeamTournamentUndoDreambreakerPoint(params = {}) {
+  const normalized = normalizeDreambreakerParams(params);
+  return callTt1bCommandRpc(
+    "team_tournament_undo_dreambreaker_point",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+      p_matchup_id: String(normalized.matchupId),
+    },
+    normalized
+  );
+}
+
+export async function rpcTeamTournamentDreambreakerInjury(params = {}) {
+  const normalized = normalizeDreambreakerParams(params);
+  return callTt1bCommandRpc(
+    "team_tournament_dreambreaker_injury",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+      p_matchup_id: String(normalized.matchupId),
+      p_team_id: String(normalized.teamId || ""),
+      p_player_id: String(normalized.playerId || normalized.skippedPlayerId || ""),
+    },
+    normalized
+  );
 }
