@@ -479,10 +479,8 @@ export default function TeamAiPairingDialog({
         randomSeed,
         scoreBreakdown: pairingResult.scoreBreakdown || null,
       });
-      if (applyResult?.ok === false) {
-        return;
-      }
-      if (applyResult == null || applyResult.ok !== false) {
+      // UI success requires explicit ok:true from canonical React commit — not RPC/null.
+      if (applyResult?.ok === true) {
         onClose?.();
       }
     } catch (error) {

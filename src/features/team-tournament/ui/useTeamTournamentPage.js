@@ -288,6 +288,18 @@ export function useTeamTournamentPage({
         };
       }
 
+      // Silent poll/realtime must not apply (or bump generation) during an active
+      // mutation barrier — captain-confirm owns the next canonical commit.
+      if (silent && refreshControllerRef.current.isMutationBarrierActive()) {
+        return {
+          ok: true,
+          applied: false,
+          stale: true,
+          refreshReason: "mutation_barrier",
+          generation: refreshControllerRef.current.getGeneration(),
+        };
+      }
+
       if (loadingRef.current && !silent) {
         return { ok: false, error: "Đang tải...", applied: false, stale: false };
       }
@@ -374,6 +386,24 @@ export function useTeamTournamentPage({
       });
     },
     [applyLoadResult, loadCanonicalSetup]
+  );
+
+  const runWithMutationBarrier = useCallback(async (fn) => {
+    refreshControllerRef.current.beginMutationBarrier();
+    try {
+      return await fn();
+    } finally {
+      refreshControllerRef.current.endMutationBarrier();
+    }
+  }, []);
+
+  const beginMutationBarrier = useCallback(
+    () => refreshControllerRef.current.beginMutationBarrier(),
+    []
+  );
+  const endMutationBarrier = useCallback(
+    () => refreshControllerRef.current.endMutationBarrier(),
+    []
   );
 
   reloadFnRef.current = reload;
@@ -631,6 +661,9 @@ export function useTeamTournamentPage({
     setSetupMutationStatus,
     reload,
     refreshAfterMutation,
+    runWithMutationBarrier,
+    beginMutationBarrier,
+    endMutationBarrier,
     runMutation,
     saveSubMatchDraft: (payload, commandOptions) =>
       orchestrator.saveSubMatchDraft(clubId, tournamentId, payload, commandOptions),

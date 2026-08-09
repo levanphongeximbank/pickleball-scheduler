@@ -180,10 +180,12 @@ describe("team-tournament-post-mutation-refresh-remediation-01", () => {
     assert.match(page, /applyUi === false/);
 
     assert.match(roster, /refreshAfterMutation/);
-    assert.match(roster, /captain_confirm/);
-    assert.match(roster, /alreadyCommitted/);
+    assert.match(roster, /captain_confirm|confirmAiPairingUiTransaction/);
+    assert.doesNotMatch(roster, /alreadyCommitted/);
+    assert.match(roster, /confirmAiPairingUiTransaction/);
 
     assert.match(setup, /refreshAfterMutation=\{refreshAfterMutation\}/);
+    assert.match(setup, /beginMutationBarrier=\{beginMutationBarrier\}/);
     assert.match(showcase, /applyUi:\s*false/);
     assert.doesNotMatch(page, /window\.location\.reload\s*\(/);
     assert.doesNotMatch(roster, /window\.location\.reload\s*\(/);
@@ -216,7 +218,7 @@ describe("team-tournament-post-mutation-refresh-remediation-01", () => {
     assert.equal(deriveWorkflowStage(teamData), WORKFLOW_STAGE.DISCIPLINES);
 
     const roster = readSrc("src/components/tournament/TeamRosterPanel.jsx");
-    assert.match(roster, /confirmAiPairingCloudPersistence/);
+    assert.match(roster, /confirmAiPairingUiTransaction/);
     assert.match(roster, /workflowStage:\s*result\.workflowStage/);
     assert.doesNotMatch(roster, /location\.reload/);
   });
