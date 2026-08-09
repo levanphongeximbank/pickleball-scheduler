@@ -468,6 +468,7 @@
   "tests/news-public-content-news-04-public-rpc-boundary.test.js",
   "tests/operation-b1b-wp3-runtime-filter-migration.test.js",
   "tests/operation-b1b-wp4-runner-remediation.test.js",
+  "tests/operation-b1b-wp5-real-postgres.test.js",
   "tests/production-qa-identity-operation-b1.test.js",
   "tests/production-qa-identity-operation-b1a-live-runner.test.js",
   "tests/production-court-inventory-01-accc-readiness.test.js",
