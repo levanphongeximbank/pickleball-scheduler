@@ -304,6 +304,7 @@
   "tests/club-context-canonical-tenant-projection-remediation-01.test.js",
   "tests/tournament-browser-tenant-projection-remediation-01.test.js",
   "tests/tournament-shared-pairing-tenant-scope-remediation-01.test.js",
+  "tests/official-tournament-registration-selector-remediation-01.test.js",
   "tests/tournament-create-and-team-schema-remediation-01.test.js",
   "tests/canonical-membership-repository.test.js",
   "tests/phase45a2-membership-canonical-read.test.js",
