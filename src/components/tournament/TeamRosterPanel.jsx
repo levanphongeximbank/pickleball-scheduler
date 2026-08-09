@@ -662,6 +662,7 @@ export default function TeamRosterPanel({
   setupReady = true,
   persistSetupTeamData = null,
   setupVersionForMutations = null,
+  refreshAfterMutation = null,
   onUpdated,
   onError,
   onMessage,
@@ -974,11 +975,30 @@ export default function TeamRosterPanel({
             return { ok: false, ...result };
           }
 
-          // Await canonical reload after durable writes.
-          const reloaded =
-            typeof onUpdated === "function"
-              ? await onUpdated({ silent: true, schemaVersion: 7 })
-              : null;
+          // Single canonical UI refresh after durable writes (no F5).
+          // Groups path already committed via persistSetupTeamData — reuse that payload.
+          // Teams-only path still needs an explicit post-mutation get_setup apply.
+          const alreadyCommitted =
+            result.groupResult?.ok === true &&
+            Boolean(
+              result.groupResult.tournament ||
+                result.groupResult.teamData ||
+                result.groupResult.aggregate
+            );
+          const reloaded = alreadyCommitted
+            ? result.groupResult
+            : typeof refreshAfterMutation === "function"
+              ? await refreshAfterMutation({
+                  reason: "captain_confirm",
+                  diagnostic: true,
+                })
+              : typeof onUpdated === "function"
+                ? await onUpdated({
+                    silent: true,
+                    schemaVersion: 7,
+                    reason: "captain_confirm",
+                  })
+                : null;
           const teamsAfterReload =
             reloaded?.teamData?.teams ||
             reloaded?.tournament?.teamData?.teams ||

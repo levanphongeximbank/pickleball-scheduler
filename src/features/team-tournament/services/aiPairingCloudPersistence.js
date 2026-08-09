@@ -6,6 +6,10 @@
  * 2) persistSetupTeamData groups.replace when groups are present
  * 3) caller reloads get_setup and advances only on verified state
  *
+ * Mid-sequence version peeks must use reload({ applyUi: false }) so intermediate
+ * get_setup responses do not clobber React teamData. Final UI refresh is owned by
+ * the page hook (refreshAfterMutation / commitCanonicalSetupLoad).
+ *
  * No legacy blob authority. Matchups stay empty (later workflow stage).
  */
 
@@ -22,7 +26,7 @@ import { applyAiGeneratedTeamsToTournament } from "./teamTournamentService.js";
  * @param {object} params.nextTeamData — teams (+ optional groups)
  * @param {string|null} [params.currentTenantId]
  * @param {Function} [params.persistSetupTeamData]
- * @param {Function} [params.reload]
+ * @param {Function} [params.reload] — may support { applyUi: false } peek
  * @param {string} [params.rulesVersion]
  * @param {number} [params.expectedTournamentVersion]
  */
@@ -111,7 +115,13 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
 
   let versionAfterTeams = expectedTournamentVersion;
   if (typeof reload === "function") {
-    const reloaded = await reload({ silent: true, schemaVersion: 7 });
+    // Peek only — do not apply intermediate (teams without groups) into React state.
+    const reloaded = await reload({
+      silent: true,
+      schemaVersion: 7,
+      applyUi: false,
+      reason: "ai_pairing_version_peek",
+    });
     versionAfterTeams =
       reloaded?.version ??
       reloaded?.data?.version ??
@@ -212,8 +222,13 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
 
   const finalTeamData = {
     ...(teamSave.teamData || {}),
-    teams: teamSave.teamData?.teams || teams,
-    groups: groups.length ? groups : teamSave.teamData?.groups || [],
+    teams:
+      groupResult?.teamData?.teams ||
+      teamSave.teamData?.teams ||
+      teams,
+    groups:
+      groupResult?.teamData?.groups ||
+      (groups.length ? groups : teamSave.teamData?.groups || []),
     matchups: [],
   };
   const workflowStage = deriveWorkflowStage(finalTeamData, tournament);
@@ -225,7 +240,7 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
     teamSave,
     groupResult,
     teamData: finalTeamData,
-    tournament: teamSave.tournament,
+    tournament: groupResult?.tournament || teamSave.tournament,
     teamCount: teams.length,
     captainsExpected,
     captainsPersisted,
