@@ -70,7 +70,6 @@ import {
   buildPairingWaitingPlayers,
   buildRandomDrawSteps,
   buildSnakeSteps,
-  stripMatchesFromEvent,
 } from "../../components/tournament/animation/animationUtils.js";
 import {
   buildRefereeSettingsPatch,
@@ -369,9 +368,22 @@ export default function OfficialTournamentSetup() {
       return false;
     }
 
+    if (options.processMatchId && result.lifecycleOk === false) {
+      setError(
+        result.lifecycleError ||
+          "Đã lưu kết quả nhưng cập nhật Elo/điểm mùa thất bại."
+      );
+    }
+
     setLocalRevision((value) => value + 1);
     refreshClubs();
-    return result.tournament || true;
+    return {
+      ok: true,
+      tournament: result.tournament,
+      lifecycleOk: result.lifecycleOk !== false,
+      lifecycleError: result.lifecycleError || null,
+      lifecycle: result.lifecycle || null,
+    };
   };
 
   const persistEvent = async (nextEvent, options = {}) => {
@@ -391,6 +403,28 @@ export default function OfficialTournamentSetup() {
         processEventId: savedEvent?.id || null,
       }
     );
+  };
+
+  /**
+   * Persist accepted registration / AI pair entries to canonical cloud.
+   * Temporary picker/filter state is not written — only confirmed entry lists.
+   */
+  const persistAcceptedEntries = async (entries) => {
+    let event = savedEvent;
+    let events = savedEvents;
+
+    if (!event) {
+      event = createOfficialEventRecord(tournament, { eventType });
+      events = [...savedEvents, event];
+      setActiveEventId(event.id);
+    }
+
+    const nextEvents = upsertOfficialEvent(events, {
+      ...event,
+      entries,
+    });
+
+    return persistTournament({ events: nextEvents });
   };
 
   const pairingIntervention = usePairingIntervention({
@@ -775,7 +809,77 @@ export default function OfficialTournamentSetup() {
           includeBracket: savedEvent ? canGenerateBracket(savedEvent).ok : true,
         });
 
-    const result = flow.startFlow({}, { pipeline });
+    // Option A: confirm draw → persist entries/groups/matches before animation.
+    const ctx = {};
+    const validation = flowAdapters.validateStart?.(ctx);
+    if (validation && validation.ok === false) {
+      if (broadcastFeatureEnabled && broadcast.isLive) {
+        await broadcast.stopBroadcast();
+      }
+      setError(validation.error || "Không thể bắt đầu trình chiếu.");
+      return;
+    }
+
+    if (ctx.plan?.ok) {
+      const patch = isAiBalance
+        ? buildOfficialAiBalancePatch(tournament, ctx.plan)
+        : buildOfficialOpenPatch(tournament, ctx.plan);
+      if (!patch.ok) {
+        if (broadcastFeatureEnabled && broadcast.isLive) {
+          await broadcast.stopBroadcast();
+        }
+        setError(patch.error || "Không lưu được bảng đấu.");
+        return;
+      }
+
+      const saved = await persistTournament({
+        events: patch.events,
+        officialMode: isAiBalance ? OFFICIAL_MODE.AI_BALANCE : OFFICIAL_MODE.OPEN,
+        hostClubName: tournament.hostClubName || activeClub?.name || "",
+        status: TOURNAMENT_STATUS.READY,
+        settings: {
+          ...(tournament.settings || {}),
+          ...(isAiBalance
+            ? { aiBalance: { updatedAt: new Date().toISOString() } }
+            : {
+                openDraw: {
+                  splitUnits,
+                  drawScore: patch.drawScore,
+                  updatedAt: new Date().toISOString(),
+                },
+              }),
+        },
+      });
+
+      if (!saved) {
+        if (broadcastFeatureEnabled && broadcast.isLive) {
+          await broadcast.stopBroadcast();
+        }
+        return;
+      }
+
+      if (!isAiBalance) {
+        const created = recordDrawCreated(saved.tournament || tournament, patch.event?.groups || [], {
+          userId: user?.id,
+          actor: buildDrawActor(),
+          clubId: activeClubId,
+          before: summarizeGroups(savedEvent?.groups || []),
+        });
+        if (created.ok) {
+          await persistTournament({ settings: created.tournament.settings });
+        }
+      }
+
+      ctx.drawAlreadyPersisted = true;
+      if (patch.event?.id) {
+        setActiveEventId(patch.event.id);
+      }
+      setRegisteredEntries([]);
+      setPreviewEntries([]);
+      setWarnings(patch.warnings || []);
+    }
+
+    const result = flow.startFlow(ctx, { pipeline });
     if (result?.ok === false) {
       if (broadcastFeatureEnabled && broadcast.isLive) {
         await broadcast.stopBroadcast();
@@ -854,7 +958,7 @@ export default function OfficialTournamentSetup() {
     setMessage(`Đã thêm ${player.name}. Chọn VĐV trong dropdown để đăng ký cặp.`);
   };
 
-  const registerPlayerEntry = (player) => {
+  const registerPlayerEntry = async (player) => {
     const validation = validateOpenRegistrationPlayers([player], eventType);
     if (!validation.ok) {
       setError(validation.errors.join(" "));
@@ -872,7 +976,13 @@ export default function OfficialTournamentSetup() {
       return false;
     }
 
-    setRegisteredEntries([...displayEntries, entry]);
+    const nextEntries = [...displayEntries, entry];
+    setRegisteredEntries(nextEntries);
+    const saved = await persistAcceptedEntries(nextEntries);
+    if (!saved) {
+      setRegisteredEntries(displayEntries);
+      return false;
+    }
     setMessage(`Da dang ky ${player.name}.`);
     return true;
   };
@@ -936,8 +1046,12 @@ export default function OfficialTournamentSetup() {
         subtitle: "Reveal từng cặp — danh sách chờ hiển thị từng VĐV",
         revealItemLabel: "Cặp",
       },
-      () => {
+      async () => {
         setPreviewEntries(entries);
+        const saved = await persistAcceptedEntries(entries);
+        if (!saved) {
+          return;
+        }
         setMessage(`Da de xuat ${entries.length} cap/VDV theo rating.`);
       }
     );
@@ -1012,7 +1126,36 @@ export default function OfficialTournamentSetup() {
       finalGroups: plan.event.groups,
     });
 
+    const patch = buildOfficialAiBalancePatch(tournament, plan);
+    if (!patch.ok) {
+      setError(patch.error || "Khong luu duoc bang dau.");
+      return;
+    }
+
+    // Option A: durable authority before animation (presentation only).
+    const saved = await persistTournament({
+      events: patch.events,
+      officialMode: OFFICIAL_MODE.AI_BALANCE,
+      status: TOURNAMENT_STATUS.READY,
+      settings: {
+        ...(tournament.settings || {}),
+        aiBalance: {
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    if (!saved) {
+      return;
+    }
+
     pendingPlanRef.current = plan;
+    setPreviewEntries([]);
+    setWarnings(patch.warnings || []);
+    setActiveEventId(patch.event.id);
+    setMessage(
+      `Đã chia ${patch.event.groups.length} bảng và lưu ${plan.matchCount} trận. Đang trình chiếu…`
+    );
 
     anim.showAnimation(
       {
@@ -1022,39 +1165,11 @@ export default function OfficialTournamentSetup() {
         matchCount: plan.matchCount,
         onStartMatchPairing: () => openMatchPairingAnimation(plan),
       },
-      async () => {
-        const patch = buildOfficialAiBalancePatch(tournament, plan);
-        if (!patch.ok) {
-          setError(patch.error || "Khong luu duoc bang dau.");
-          return;
-        }
-
-        const events = patch.events.map((event) =>
-          String(event.id) === String(patch.event?.id)
-            ? stripMatchesFromEvent(event)
-            : event
+      () => {
+        pendingPlanRef.current = null;
+        setMessage(
+          `Đã chia ${patch.event.groups.length} bảng (${plan.matchCount} trận). Có thể bỏ qua trình chiếu ghép cặp — dữ liệu đã lưu.`
         );
-
-        const saved = await persistTournament({
-          events,
-          officialMode: OFFICIAL_MODE.AI_BALANCE,
-          status: TOURNAMENT_STATUS.READY,
-          settings: {
-            ...(tournament.settings || {}),
-            aiBalance: {
-              updatedAt: new Date().toISOString(),
-            },
-          },
-        });
-
-        if (!saved) {
-          return;
-        }
-
-        setPreviewEntries([]);
-        setWarnings(patch.warnings || []);
-        setActiveEventId(patch.event.id);
-        setMessage(`Đã chia ${patch.event.groups.length} bảng. Bấm "Ghép cặp thi đấu" trên màn hình kết quả.`);
       }
     );
   };
@@ -1098,7 +1213,7 @@ export default function OfficialTournamentSetup() {
     setPairPlayerBId(nextB);
   };
 
-  const handleRegisterPair = () => {
+  const handleRegisterPair = async () => {
     setError(null);
     const playerA = flowPlayers.find((item) => String(item.id) === String(pairPlayerAId));
     const playerB = flowPlayers.find((item) => String(item.id) === String(pairPlayerBId));
@@ -1134,14 +1249,25 @@ export default function OfficialTournamentSetup() {
       return;
     }
 
-    setRegisteredEntries([...displayEntries, entry]);
+    const nextEntries = [...displayEntries, entry];
+    setRegisteredEntries(nextEntries);
     setPairPlayerAId("");
     setPairPlayerBId("");
+    const saved = await persistAcceptedEntries(nextEntries);
+    if (!saved) {
+      setRegisteredEntries(displayEntries);
+      return;
+    }
     setMessage(`Da dang ky cap ${entry.name}.`);
   };
 
-  const handleRemoveEntry = (entryId) => {
-    setRegisteredEntries(displayEntries.filter((entry) => entry.id !== entryId));
+  const handleRemoveEntry = async (entryId) => {
+    const nextEntries = displayEntries.filter((entry) => entry.id !== entryId);
+    setRegisteredEntries(nextEntries);
+    const saved = await persistAcceptedEntries(nextEntries);
+    if (!saved) {
+      setRegisteredEntries(displayEntries);
+    }
   };
 
   const handleDrawGroups = async (isRedraw = false) => {
@@ -1209,7 +1335,47 @@ export default function OfficialTournamentSetup() {
 
     const steps = buildRandomDrawSteps(plan.event.groups);
 
+    // Option A: durable authority before animation (presentation only).
+    const saved = await persistTournament({
+      events: patch.events,
+      officialMode: OFFICIAL_MODE.OPEN,
+      hostClubName: tournament.hostClubName || activeClub?.name || "",
+      status: TOURNAMENT_STATUS.READY,
+      settings: {
+        ...(tournament.settings || {}),
+        openDraw: {
+          splitUnits,
+          drawScore: patch.drawScore,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    if (!saved) {
+      return;
+    }
+
+    const created = recordDrawCreated(saved.tournament || tournament, patch.event?.groups || [], {
+      userId: user?.id,
+      actor: buildDrawActor(),
+      clubId: activeClubId,
+      before: isRedraw ? summarizeGroups(savedEvent?.groups || []) : null,
+    });
+    if (created.ok) {
+      await persistTournament({ settings: created.tournament.settings });
+    }
+
     pendingPlanRef.current = plan;
+    setRegisteredEntries([]);
+    setWarnings(patch.warnings || []);
+    if (patch.event?.id) {
+      setActiveEventId(patch.event.id);
+    }
+    setMessage(
+      isRedraw
+        ? `Đã random lại ${patch.event.groups.length} bảng và lưu ${plan.matchCount} trận. Đang trình chiếu…`
+        : `Đã chia ${patch.event.groups.length} bảng và lưu ${plan.matchCount} trận. Đang trình chiếu…`
+    );
 
     anim.showAnimation(
       {
@@ -1219,57 +1385,12 @@ export default function OfficialTournamentSetup() {
         matchCount: plan.matchCount,
         onStartMatchPairing: () => openMatchPairingAnimation(plan),
       },
-      async () => {
-        pendingPlanRef.current = plan;
-
-        const events = patch.events.map((event) =>
-          String(event.id) === String(patch.event?.id)
-            ? stripMatchesFromEvent(event)
-            : event
-        );
-
-        const saved = await persistTournament({
-          events,
-          officialMode: OFFICIAL_MODE.OPEN,
-          hostClubName: tournament.hostClubName || activeClub?.name || "",
-          status: TOURNAMENT_STATUS.READY,
-          settings: {
-            ...(tournament.settings || {}),
-            openDraw: {
-              splitUnits,
-              drawScore: patch.drawScore,
-              updatedAt: new Date().toISOString(),
-            },
-          },
-        });
-
-        if (!saved) {
-          return;
-        }
-
-        const created = recordDrawCreated(
-          typeof saved === "object" ? saved : tournament,
-          patch.events[0]?.groups || [],
-          {
-            userId: user?.id,
-            actor: buildDrawActor(),
-            clubId: activeClubId,
-            before: isRedraw ? summarizeGroups(savedEvent?.groups || []) : null,
-          }
-        );
-        if (created.ok) {
-          await persistTournament({ settings: created.tournament.settings });
-        }
-
-        setRegisteredEntries([]);
-        setWarnings(patch.warnings || []);
-        if (patch.event?.id) {
-          setActiveEventId(patch.event.id);
-        }
+      () => {
+        pendingPlanRef.current = null;
         setMessage(
           isRedraw
-            ? `Đã random lại ${patch.events[0].groups.length} bảng. Bấm "Ghép cặp thi đấu" trên màn hình kết quả.`
-            : `Đã chia ${patch.events[0].groups.length} bảng. Bấm "Ghép cặp thi đấu" trên màn hình kết quả.`
+            ? `Đã random lại ${patch.event.groups.length} bảng (${plan.matchCount} trận). Có thể bỏ qua trình chiếu — dữ liệu đã lưu.`
+            : `Đã chia ${patch.event.groups.length} bảng (${plan.matchCount} trận). Có thể bỏ qua trình chiếu — dữ liệu đã lưu.`
         );
       }
     );
@@ -1425,18 +1546,26 @@ export default function OfficialTournamentSetup() {
       return false;
     }
 
-    if (await persistEvent(result.event, { processMatchId: matchId })) {
-      if (result.bracketAutoGenerated) {
-        setMessage(
-          `Đã lưu kết quả vòng bảng. Tự động tạo bracket knock-out (${result.bracketKnockoutMatchCount} trận).`
-        );
-      } else {
-        setMessage("Đã lưu kết quả vòng bảng.");
-      }
+    const saved = await persistEvent(result.event, { processMatchId: matchId });
+    if (!saved) {
+      return false;
+    }
+
+    if (saved.lifecycleOk === false) {
+      setMessage(
+        "Đã lưu kết quả vòng bảng. Cập nhật Elo/điểm mùa thất bại — kết quả trận vẫn còn."
+      );
       return true;
     }
 
-    return false;
+    if (result.bracketAutoGenerated) {
+      setMessage(
+        `Đã lưu kết quả vòng bảng. Tự động tạo bracket knock-out (${result.bracketKnockoutMatchCount} trận).`
+      );
+    } else {
+      setMessage("Đã lưu kết quả vòng bảng.");
+    }
+    return true;
   };
 
   const handleSubmitKnockoutScore = async (matchId, scores) => {
@@ -1446,12 +1575,20 @@ export default function OfficialTournamentSetup() {
       return false;
     }
 
-    if (await persistEvent(result.event, { processMatchId: matchId })) {
-      setMessage("Da luu ket qua knock-out.");
+    const saved = await persistEvent(result.event, { processMatchId: matchId });
+    if (!saved) {
+      return false;
+    }
+
+    if (saved.lifecycleOk === false) {
+      setMessage(
+        "Đã lưu kết quả knock-out. Cập nhật Elo/điểm mùa thất bại — kết quả trận vẫn còn."
+      );
       return true;
     }
 
-    return false;
+    setMessage("Da luu ket qua knock-out.");
+    return true;
   };
 
   const handleToggleRoundLock = async (roundName, unlock) => {

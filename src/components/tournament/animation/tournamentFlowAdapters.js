@@ -527,22 +527,49 @@ export function createOfficialFlowAdapters(deps) {
       const plan = resolvePlan(ctx);
 
       switch (animationMode) {
-        case ANIMATION_MODES.PAIRING_REVEAL:
-          setPreviewEntries(resolveEntries(ctx));
+        case ANIMATION_MODES.PAIRING_REVEAL: {
+          const entries = resolveEntries(ctx);
+          setPreviewEntries(entries);
+          // Accepted AI pairs become durable on confirm (animation complete/skip).
+          const savedEvent = getFreshSavedEvent();
+          if (savedEvent) {
+            const saved = await persistEvent({ ...savedEvent, entries });
+            if (!saved) {
+              return false;
+            }
+          } else if (persistTournament) {
+            const { createOfficialEventRecord, upsertOfficialEvent } = await import(
+              "../../../tournament/engines/officialTournamentEngine.js"
+            );
+            const event = createOfficialEventRecord(tournament, { eventType });
+            const events = upsertOfficialEvent(tournament?.events || [], {
+              ...event,
+              entries,
+            });
+            const saved = await persistTournament({ events });
+            if (!saved) {
+              return false;
+            }
+          }
           return true;
+        }
         case ANIMATION_MODES.SNAKE_GROUP:
         case ANIMATION_MODES.RANDOM_DRAW: {
+          // Option A: draw may already be persisted before animation starts.
+          const existing = getFreshSavedEvent();
+          if (ctx.drawAlreadyPersisted || (existing?.matches?.length || 0) > 0) {
+            setWarnings(plan.warnings || []);
+            return true;
+          }
+
           const patch = buildPatch(tournament, plan);
           if (!patch.ok) {
             setError(patch.error || "Không lưu được bảng đấu.");
             return false;
           }
 
-          const events = patch.events.map((event) =>
-            String(event.id) === String(patch.event?.id) ? stripMatchesFromEvent(event) : event
-          );
-
-          const saved = await persistTournament({ events });
+          // Persist full entries + groups + matches (animation is presentation only).
+          const saved = await persistTournament({ events: patch.events });
           if (!saved) {
             return false;
           }
