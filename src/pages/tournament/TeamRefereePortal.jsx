@@ -847,7 +847,7 @@ export default function TeamRefereePortal() {
 
   async function handleDreambreakerStart(matchupId) {
     setBusy(true);
-    const result = refereeStartDreambreaker(effectiveClubId, tournamentId, { matchupId });
+    const result = await refereeStartDreambreaker(effectiveClubId, tournamentId, { matchupId });
     setBusy(false);
     if (!result.ok) {
       setError(result.error);
@@ -859,7 +859,7 @@ export default function TeamRefereePortal() {
   async function handleDreambreakerLock(matchupId) {
     setBusy(true);
     setError(null);
-    const result = refereeLockDreambreakerOrders(effectiveClubId, tournamentId, { matchupId });
+    const result = await refereeLockDreambreakerOrders(effectiveClubId, tournamentId, { matchupId });
     setBusy(false);
     if (result.tournament) {
       await reload({ silent: true });
@@ -873,7 +873,7 @@ export default function TeamRefereePortal() {
 
   async function handleDreambreakerUndo(matchupId) {
     setBusy(true);
-    const result = refereeUndoDreambreakerPoint(effectiveClubId, tournamentId, { matchupId });
+    const result = await refereeUndoDreambreakerPoint(effectiveClubId, tournamentId, { matchupId });
     setBusy(false);
     if (!result.ok) {
       setError(result.error);
@@ -884,7 +884,7 @@ export default function TeamRefereePortal() {
 
   async function handleDreambreakerInjury(matchupId, payload) {
     setBusy(true);
-    const result = refereeDreambreakerInjury(effectiveClubId, tournamentId, {
+    const result = await refereeDreambreakerInjury(effectiveClubId, tournamentId, {
       matchupId,
       ...payload,
     });

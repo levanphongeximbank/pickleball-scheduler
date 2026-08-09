@@ -808,7 +808,7 @@ export default function TeamPortal() {
   async function handleDreambreakerSubmit(matchupId, order) {
     setDbBusy(true);
     setDbMessage(null);
-    const result = captainSubmitDreambreakerOrder(effectiveClubId, tournamentId, {
+    const result = await captainSubmitDreambreakerOrder(effectiveClubId, tournamentId, {
       matchupId,
       teamId: access.captainTeam.id,
       order,

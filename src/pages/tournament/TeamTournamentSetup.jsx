@@ -62,8 +62,8 @@ import { normalizeMissingLineupPolicy } from "../../features/team-tournament/eng
 import {
   organizerLockDreambreakerOrders,
   organizerSyncDreambreaker,
-  generateTeamKnockoutBracket,
 } from "../../features/team-tournament/services/teamTournamentService.js";
+import { generateTeamKnockoutMatchups } from "../../features/team-tournament/engines/teamKnockoutEngine.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
 import { resolveTeamTournamentCloudPageAccess } from "../../features/team-tournament/ui/teamTournamentCloudAccess.js";
 import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
@@ -665,26 +665,36 @@ export default function TeamTournamentSetup() {
     }
   }
 
-  function handleGenerateKnockout() {
-    const clubIdForOps = effectiveClubId || activeClubId;
-    if (!access.canManage || !clubIdForOps || !tournamentId) {
+  async function handleGenerateKnockout() {
+    if (!access.canManage || !tournamentId) {
+      return;
+    }
+    if (!td || !persistSetupTeamData) {
+      setError("Thiếu dữ liệu cloud để tạo knockout.");
       return;
     }
     setKnockoutBusy(true);
     setError("");
     try {
-      const result = generateTeamKnockoutBracket(clubIdForOps, tournamentId, {
+      const built = generateTeamKnockoutMatchups(td, {
         qualifiersPerGroup: Number(qualifiersPerGroup) || 2,
       });
-      if (!result.ok) {
-        setError(result.error || "Không tạo được nhánh knockout.");
+      if (!built.ok) {
+        setError(built.error || "Không tạo được nhánh knockout.");
+        return;
+      }
+      const result = await persistSetupTeamData(built.teamData, {
+        confirmDestructive: true,
+      });
+      if (!result?.ok) {
+        setError(result?.error || "Không lưu được nhánh knockout lên cloud.");
         return;
       }
       setKnockoutDialogOpen(false);
-      reload({ silent: true });
-      const qualifiedCount = (result.qualified || []).length;
+      await reload({ silent: true });
+      const qualifiedCount = (built.qualified || []).length;
       setMessage(
-        `Đã tạo nhánh knockout (${result.knockoutMatchCount || 0} trận) — ${qualifiedCount} đội vượt qua vòng bảng.`
+        `Đã tạo nhánh knockout (${built.knockoutMatchCount || 0} trận) — ${qualifiedCount} đội vượt qua vòng bảng.`
       );
     } finally {
       setKnockoutBusy(false);
