@@ -101,7 +101,13 @@ export async function confirmShowcasePersistence(params = {}) {
       };
     }
     if (typeof reload === "function") {
-      const reloaded = await reload({ schemaVersion: 7, diagnostic: true });
+      // Version peek only — do not apply intermediate teams-without-groups to UI.
+      const reloaded = await reload({
+        schemaVersion: 7,
+        diagnostic: true,
+        applyUi: false,
+        reason: "showcase_version_peek",
+      });
       versionAfterTeams =
         reloaded?.version ??
         reloaded?.data?.version ??

@@ -172,6 +172,7 @@ export default function TeamTournamentSetup() {
     serverTime,
     error: loadError,
     reload,
+    refreshAfterMutation,
     runMutation,
     patchTeamData,
     persistSetupTeamData,
@@ -1276,6 +1277,7 @@ export default function TeamTournamentSetup() {
               setupVersion={version ?? 0}
               setupVersionForMutations={version ?? 0}
               persistSetupTeamData={persistSetupTeamData}
+              refreshAfterMutation={refreshAfterMutation}
               athletePoolLoadingInitial={
                 clubPool.loadingInitial ||
                 (Boolean(clubPool.tenantId) && tenantPool.loadingInitial)
