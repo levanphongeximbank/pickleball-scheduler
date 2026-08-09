@@ -1,0 +1,32 @@
+{
+  "marker": "OPERATION_B1B_WP6A_STAGING_BACKUP_OWNER_CONFIRMATION",
+  "operation": "OPERATION_B1B_QA_QUARANTINE_AUTHORITY",
+  "work_package": "WP6A",
+  "project_ref": "qyewbxjsiiyufanzcjcq",
+  "production_ref_blocked": "expuvcohlcjzvrrauvud",
+  "backup_kind": null,
+  "backup_id_or_filename": null,
+  "backup_completed_at": null,
+  "pitr_enabled": null,
+  "pitr_window_note": "NOT_PROVABLE_FROM_WP6A_READ_ONLY_AUDIT",
+  "last_known_staging_mutation_at": null,
+  "backup_after_last_mutation": null,
+  "restore_entry_visible_in_dashboard": null,
+  "database_backup_excludes_storage_objects": true,
+  "alternate_recovery_layers_acknowledged": [
+    "L1_migration_rollback_sql_80_90",
+    "L3_L4_quarantine_release_conditional_unban",
+    "L6_PITR_last_resort_only_if_available"
+  ],
+  "historical_backup_refs_not_accepted_for_wp6": [
+    {
+      "path": "docs/platform-hard-cutover-01/phase-04/staging-rehearsal/evidence/05_STAGING_BACKUP_OWNER_CONFIRMATION.json",
+      "backup_completed_at": "2026-07-29T18:55:19Z",
+      "reason": "stale_other_operation_window"
+    }
+  ],
+  "status": "pending_owner",
+  "verified_by": "",
+  "verified_at": "",
+  "notes": "WP6A prepared contract only. Owner must complete Dashboard confirmation before G1 PASS / STAGING_APPLY_GO."
+}

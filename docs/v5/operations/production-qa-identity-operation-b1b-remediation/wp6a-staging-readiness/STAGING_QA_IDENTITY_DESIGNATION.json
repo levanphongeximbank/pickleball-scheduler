@@ -1,0 +1,112 @@
+{
+  "marker": "OPERATION_B1B_WP6A_STAGING_QA_IDENTITY_DESIGNATION",
+  "operation": "OPERATION_B1B_QA_QUARANTINE_AUTHORITY",
+  "operation_target_mode": "staging_rehearsal",
+  "work_package": "WP6A",
+  "staging_project_ref": "qyewbxjsiiyufanzcjcq",
+  "production_project_ref_blocked": "expuvcohlcjzvrrauvud",
+  "target_count": 8,
+  "reserved_staging_batch_id": "c13c323a-4fec-4327-90ba-56128fb126f5",
+  "retired_batches_forbidden": [
+    "b37186cf-e620-4f27-aba3-d7e8750ae7df",
+    "9c9d5fc7-648e-44c6-a959-e62157f7c970"
+  ],
+  "retired_owner_go_forbidden": "APPROVE_OPERATION_B1_EXACT_EIGHT_ONLY",
+  "production_execute_confirmation_forbidden": "I_UNDERSTAND_THIS_MUTATES_PRODUCTION_QA_ONLY_VIA_B1B_AUTHORITY",
+  "required_staging_execute_confirmation": "I_UNDERSTAND_THIS_MUTATES_STAGING_QA_ONLY_VIA_B1B_STAGING_REHEARSAL",
+  "disposable_proof": {
+    "email_domain": "staging-qa.local",
+    "email_local_pattern": "^phase1c\\.stg\\.",
+    "label_prefix": "STG-QA-",
+    "test_only": true,
+    "real_user_exclusion": "FORBIDDEN_REAL_USER_EMAIL + non-certified domains rejected",
+    "production_qa_email_domains_rejected": ["prod-qa.local"]
+  },
+  "tenant_venue_scope": {
+    "environment": "staging_only",
+    "allowed_venue_marker_class": "venue-staging-*",
+    "production_tenant_binding": "forbidden",
+    "required_zero_reference_keys": [
+      "athlete_count",
+      "membership_active",
+      "membership_removed",
+      "membership_total",
+      "tenant_members",
+      "tenants_owned",
+      "club_governance_owner",
+      "tournament_refs",
+      "rating_refs",
+      "finance_refs",
+      "other_business_refs"
+    ]
+  },
+  "provision_status": "PENDING_OWNER_PROVISION_GO",
+  "identities": [
+    {
+      "label": "STG-QA-04",
+      "expected_email": "phase1c.stg.safe1@staging-qa.local",
+      "auth_user_id": null,
+      "profile_id": null,
+      "designation_slot": 1
+    },
+    {
+      "label": "STG-QA-05",
+      "expected_email": "phase1c.stg.safe2@staging-qa.local",
+      "auth_user_id": null,
+      "profile_id": null,
+      "designation_slot": 2
+    },
+    {
+      "label": "STG-QA-06",
+      "expected_email": "phase1c.stg.safe3@staging-qa.local",
+      "auth_user_id": null,
+      "profile_id": null,
+      "designation_slot": 3
+    },
+    {
+      "label": "STG-QA-07",
+      "expected_email": "phase1c.stg.safe4@staging-qa.local",
+      "auth_user_id": null,
+      "profile_id": null,
+      "designation_slot": 4
+    },
+    {
+      "label": "STG-QA-08",
+      "expected_email": "phase1c.stg.safe5@staging-qa.local",
+      "auth_user_id": null,
+      "profile_id": null,
+      "designation_slot": 5
+    },
+    {
+      "label": "STG-QA-09",
+      "expected_email": "phase1c.stg.safe6@staging-qa.local",
+      "auth_user_id": null,
+      "profile_id": null,
+      "designation_slot": 6
+    },
+    {
+      "label": "STG-QA-10",
+      "expected_email": "phase1c.stg.safe7@staging-qa.local",
+      "auth_user_id": null,
+      "profile_id": null,
+      "designation_slot": 7
+    },
+    {
+      "label": "STG-QA-11",
+      "expected_email": "phase1c.stg.safe8@staging-qa.local",
+      "auth_user_id": null,
+      "profile_id": null,
+      "designation_slot": 8
+    }
+  ],
+  "rollback_recovery_mapping": {
+    "allowlist_bind": "outside_git_after_provision",
+    "snapshot_bind": "outside_git_after_provision",
+    "batch_id": "c13c323a-4fec-4327-90ba-56128fb126f5",
+    "auth_restore_rule": "UNBAN_ONLY_IF auth_ban_state=applied AND original_auth_banned=false",
+    "schema_rollback": [
+      "docs/v5/operations/production-qa-identity-operation-b1b-remediation/sql/80_QA_IDENTITY_QUARANTINE_AUTHORITY_ROLLBACK.sql",
+      "docs/v5/operations/production-qa-identity-operation-b1b-remediation/sql/90_QA_IDENTITY_QUARANTINES_ROLLBACK.sql"
+    ]
+  }
+}

@@ -28,6 +28,7 @@ import {
 export const APPROVED_QA_EMAIL_DOMAINS = Object.freeze([
   "pickleball-scheduler.qa",
   "prod-qa.local",
+  "staging-qa.local",
 ]);
 
 /**
@@ -75,6 +76,10 @@ const CERTIFIED_QA_EMAIL_RULES = Object.freeze([
   {
     domain: "prod-qa.local",
     localPatterns: [/^phase1c\.prod\./i],
+  },
+  {
+    domain: "staging-qa.local",
+    localPatterns: [/^phase1c\.stg\./i],
   },
 ]);
 
