@@ -63,7 +63,12 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
-      # 5. Build (exercises the real prebuild gate: Foundation Lock + lint no-new).
+      # 5. WP5 real PostgreSQL integration gate.
+      # Local/disposable PostgreSQL only; the runner fail-closes remote/Supabase endpoints.
+      - name: WP5 real PostgreSQL constraint suite
+        run: node scripts/operations/production-qa-identity-operation-b1b/wp5-run-real-postgres.mjs
+
+      # 6. Build (exercises the real prebuild gate: Foundation Lock + lint no-new).
       - name: Build
         run: npm run build
         env:
@@ -73,7 +78,7 @@ jobs:
           VITE_RBAC_ENABLED: ${{ vars.VITE_RBAC_ENABLED || 'true' }}
           VITE_PAYMENT_MODE: ${{ vars.VITE_PAYMENT_MODE || 'dev' }}
 
-      # 6. Deployment verification (authority = Vercel Git Integration; no deploy here).
+      # 7. Deployment verification (authority = Vercel Git Integration; no deploy here).
       - name: Deployment authority note
         run: |
           echo "Production deployment authority: Vercel Git Integration (push to main)."
