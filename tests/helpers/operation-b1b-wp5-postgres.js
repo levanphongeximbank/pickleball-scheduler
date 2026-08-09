@@ -439,7 +439,57 @@ export async function countActiveAuthority(client, profileId = null) {
   return rows[0].n;
 }
 
-export async function readServerEvidence(client) {
+/**
+ * Sanitize inet_server_addr() for diagnostic evidence only.
+ * Never used to decide POSTGRES_REMOTE_CONNECTIONS.
+ */
+export function sanitizeObservedServerAddr(addr) {
+  if (addr == null || addr === "") return "local/unix-or-loopback";
+  return String(addr);
+}
+
+/**
+ * Classify WP5 connection TARGET from the safety-gated database URL.
+ * Authority is the URL host (loopback disposable only) — NOT inet_server_addr().
+ * Private/RFC1918/Docker-bridge addresses are never treated as safe targets.
+ */
+export function classifyWp5ConnectionTarget(databaseUrl) {
+  const gate = assertSafeWp5DatabaseUrl(databaseUrl);
+  if (!gate.ok) {
+    return {
+      ok: false,
+      reason: gate.reason,
+      POSTGRES_HOST_CLASS: null,
+      POSTGRES_REMOTE_CONNECTIONS: 1,
+    };
+  }
+  return {
+    ok: true,
+    reason: null,
+    hostClass: gate.hostClass,
+    POSTGRES_HOST_CLASS: gate.hostClass,
+    // Validated loopback/disposable Docker publish target ⇒ not remote.
+    POSTGRES_REMOTE_CONNECTIONS: 0,
+    redacted: gate.redacted,
+  };
+}
+
+/**
+ * Read sanitized server evidence after a safety-gated connection is open.
+ * Remote/local classification uses the validated connection TARGET (databaseUrl),
+ * re-checked via assertSafeWp5DatabaseUrl(). inet_server_addr() is diagnostic only
+ * (Docker containers often report a bridge address even when the client target is
+ * 127.0.0.1:<published-port>).
+ *
+ * @param {import('pg').Client} client
+ * @param {{ databaseUrl: string }} options
+ */
+export async function readServerEvidence(client, { databaseUrl } = {}) {
+  const target = classifyWp5ConnectionTarget(databaseUrl);
+  if (!target.ok) {
+    throw new Error(`WP5_DB_SAFETY_GATE:${target.reason}`);
+  }
+
   const { rows } = await client.query(`
     SELECT
       version() AS version,
@@ -449,20 +499,15 @@ export async function readServerEvidence(client) {
       session_user AS session_user
   `);
   const row = rows[0];
-  const addr = row.addr ? String(row.addr) : "local/unix-or-loopback";
-  const remote =
-    addr &&
-    addr !== "127.0.0.1" &&
-    addr !== "::1" &&
-    addr !== "local/unix-or-loopback" &&
-    !addr.startsWith("127.");
   return {
     POSTGRES_REAL_SERVER: "YES",
     POSTGRES_VERSION: String(row.version).split(",")[0].trim(),
-    POSTGRES_HOST_CLASS: "LOCAL_LOOPBACK_OR_DISPOSABLE_DOCKER",
-    POSTGRES_REMOTE_CONNECTIONS: remote ? 1 : 0,
+    POSTGRES_HOST_CLASS: target.POSTGRES_HOST_CLASS,
+    POSTGRES_REMOTE_CONNECTIONS: target.POSTGRES_REMOTE_CONNECTIONS,
     SUPABASE_CONNECTIONS: 0,
     database: row.db,
+    // Diagnostic only — may be a Docker bridge IP; does not drive remote classification.
+    POSTGRES_OBSERVED_SERVER_ADDR: sanitizeObservedServerAddr(row.addr),
   };
 }
 

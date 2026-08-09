@@ -38,6 +38,7 @@ import {
   assertSafeWp5DatabaseUrl,
   bootstrapWp5Database,
   callRpcJson,
+  classifyWp5ConnectionTarget,
   countActiveAuthority,
   createSafeWp5Client,
   detectLocalPostgresCapability,
@@ -48,6 +49,7 @@ import {
   repoRoot,
   resetSessionGuc,
   resolveWp5Database,
+  sanitizeObservedServerAddr,
   seedProfile,
   sha256Hex,
   uuidFromInt,
@@ -250,6 +252,111 @@ test("createSafeWp5Client refuses unsafe URL before opening socket", () => {
   bump("regression");
 });
 
+test("connection target classification ignores Docker bridge inet_server_addr", () => {
+  const loopbackDockerPublish =
+    "postgresql://postgres:secret@127.0.0.1:55432/b1b_wp5_ci_disposable";
+  const target = classifyWp5ConnectionTarget(loopbackDockerPublish);
+  assert.equal(target.ok, true);
+  assert.equal(target.POSTGRES_REMOTE_CONNECTIONS, 0);
+  assert.equal(target.POSTGRES_HOST_CLASS, "LOCAL_LOOPBACK_OR_DISPOSABLE_DOCKER");
+
+  // Observed container/bridge address is diagnostic only and must not flip remote.
+  const observedBridge = sanitizeObservedServerAddr("172.17.0.2");
+  assert.equal(observedBridge, "172.17.0.2");
+  assert.equal(target.POSTGRES_REMOTE_CONNECTIONS, 0);
+
+  // Private/RFC1918 hosts remain fail-closed as CONNECTION TARGETS (not whitelisted).
+  for (const host of ["172.17.0.2", "10.0.0.5", "192.168.1.10"]) {
+    const gate = assertSafeWp5DatabaseUrl(
+      `postgresql://postgres:x@${host}:5432/b1b_wp5_test`
+    );
+    assert.equal(gate.ok, false, host);
+    assert.match(gate.reason, /non_local_host/);
+    const classified = classifyWp5ConnectionTarget(
+      `postgresql://postgres:x@${host}:5432/b1b_wp5_test`
+    );
+    assert.equal(classified.ok, false, host);
+    assert.equal(classified.POSTGRES_REMOTE_CONNECTIONS, 1, host);
+  }
+  bump("regression", 8);
+});
+
+test("readServerEvidence classifies from validated URL, not inet_server_addr", async () => {
+  let queried = false;
+  const client = {
+    async query() {
+      queried = true;
+      return {
+        rows: [
+          {
+            version: "PostgreSQL 16.4 on x86_64-pc-linux-musl",
+            addr: "172.17.0.2",
+            db: "b1b_wp5_ci",
+            current_user: "postgres",
+            session_user: "postgres",
+          },
+        ],
+      };
+    },
+  };
+
+  const evidence = await readServerEvidence(client, {
+    databaseUrl: "postgresql://postgres:x@127.0.0.1:55432/b1b_wp5_ci",
+  });
+  assert.equal(queried, true);
+  assert.equal(evidence.POSTGRES_REAL_SERVER, "YES");
+  assert.equal(evidence.POSTGRES_REMOTE_CONNECTIONS, 0);
+  assert.equal(evidence.POSTGRES_HOST_CLASS, "LOCAL_LOOPBACK_OR_DISPOSABLE_DOCKER");
+  assert.equal(evidence.SUPABASE_CONNECTIONS, 0);
+  assert.equal(evidence.POSTGRES_OBSERVED_SERVER_ADDR, "172.17.0.2");
+  assert.match(evidence.POSTGRES_VERSION, /PostgreSQL 16/);
+
+  // Missing / unsafe target fail-closed BEFORE querying.
+  let queriedUnsafe = false;
+  const unsafeClient = {
+    async query() {
+      queriedUnsafe = true;
+      return { rows: [{}] };
+    },
+  };
+  await assert.rejects(
+    () => readServerEvidence(unsafeClient, {}),
+    /WP5_DB_SAFETY_GATE:missing_database_url/
+  );
+  assert.equal(queriedUnsafe, false);
+
+  await assert.rejects(
+    () =>
+      readServerEvidence(unsafeClient, {
+        databaseUrl:
+          "postgresql://postgres:x@db.expuvcohlcjzvrrauvud.supabase.co:5432/postgres",
+      }),
+    /WP5_DB_SAFETY_GATE:forbidden_marker/
+  );
+  assert.equal(queriedUnsafe, false);
+
+  await assert.rejects(
+    () =>
+      readServerEvidence(unsafeClient, {
+        databaseUrl: "postgresql://postgres:x@10.0.0.5:5432/b1b_wp5_test",
+      }),
+    /WP5_DB_SAFETY_GATE:non_local_host/
+  );
+  assert.equal(queriedUnsafe, false);
+
+  await assert.rejects(
+    () =>
+      readServerEvidence(unsafeClient, {
+        databaseUrl:
+          "postgresql://postgres:x@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres",
+      }),
+    /WP5_DB_SAFETY_GATE:forbidden_marker/
+  );
+  assert.equal(queriedUnsafe, false);
+
+  bump("regression", 6);
+});
+
 // ---------------------------------------------------------------------------
 // Real PostgreSQL suite
 // ---------------------------------------------------------------------------
@@ -302,11 +409,15 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     client = created.client;
     await client.connect();
     await client.query("SET client_encoding TO 'UTF8'");
-    evidence = await readServerEvidence(client);
+    evidence = await readServerEvidence(client, { databaseUrl });
     assert.equal(evidence.POSTGRES_REAL_SERVER, "YES");
     assert.equal(evidence.POSTGRES_HOST_CLASS, hostClass);
     assert.equal(evidence.SUPABASE_CONNECTIONS, 0);
     assert.equal(evidence.POSTGRES_REMOTE_CONNECTIONS, 0);
+    assert.ok(
+      evidence.POSTGRES_OBSERVED_SERVER_ADDR == null ||
+        typeof evidence.POSTGRES_OBSERVED_SERVER_ADDR === "string"
+    );
     assert.match(String(provisioner), /env|docker|embedded/);
 
     await bootstrapWp5Database(client);
