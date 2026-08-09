@@ -75,6 +75,11 @@ test("SQL package files exist with required contracts", () => {
 
   const randomize = fs.readFileSync(path.join(pkgDir, "40_RANDOMIZE_LINEUP_PARITY.sql"), "utf8");
   assert.match(randomize, /team_tournament_randomize_lineup/);
+  // Disambiguate TT-3 13-arg write_lineup_revision overload (12-arg call is ambiguous).
+  assert.match(
+    randomize,
+    /team_tournament_write_lineup_revision\([\s\S]*?p_idempotency_key,\s*'btc'\s*\)/
+  );
 
   const verify = fs.readFileSync(path.join(pkgDir, "50_VERIFY.sql"), "utf8");
   assert.match(verify, /pg_get_functiondef/);

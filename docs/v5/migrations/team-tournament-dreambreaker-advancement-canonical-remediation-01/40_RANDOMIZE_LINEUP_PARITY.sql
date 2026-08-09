@@ -561,10 +561,12 @@ begin
     v_lineup.id, v_header.tenant_id, p_tournament_id, v_after
   );
 
+  -- Pass explicit p_actor_role so the TT-3 13-arg overload is chosen when both
+  -- 12-arg and 13-arg write_lineup_revision exist (avoids "is not unique").
   perform public.team_tournament_write_lineup_revision(
     v_header.tenant_id, p_tournament_id, v_lineup.id, 'randomize',
     v_lineup.status, 'submitted', v_before->'selections', v_after,
-    v_version_before, v_version_after, null, p_idempotency_key
+    v_version_before, v_version_after, null, p_idempotency_key, 'btc'
   );
 
   perform public.team_tournament_write_audit(
