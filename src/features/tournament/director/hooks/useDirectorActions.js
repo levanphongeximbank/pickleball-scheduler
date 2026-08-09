@@ -80,6 +80,13 @@ export function useDirectorActions(state) {
         return false;
       }
 
+      if (options.processMatchId && result.lifecycleOk === false) {
+        setError(
+          result.lifecycleError ||
+            "Đã lưu kết quả nhưng cập nhật Elo/điểm mùa thất bại."
+        );
+      }
+
       if (tournament?.status !== TOURNAMENT_STATUS.ACTIVE) {
         await setTournamentStatusCommand(activeClubId, tournamentId, TOURNAMENT_STATUS.ACTIVE, {
           directorMode: true,
@@ -88,7 +95,12 @@ export function useDirectorActions(state) {
 
       setLocalRevision((value) => value + 1);
       refreshClubs();
-      return true;
+      return {
+        ok: true,
+        tournament: result.tournament,
+        lifecycleOk: result.lifecycleOk !== false,
+        lifecycleError: result.lifecycleError || null,
+      };
     },
     [activeClubId, tournamentId, tournament?.status, refreshClubs, setError, setLocalRevision]
   );

@@ -470,9 +470,21 @@ export default function InternalTournamentSetup() {
       return false;
     }
 
+    if (options.processMatchId && result.lifecycleOk === false) {
+      setError(
+        result.lifecycleError ||
+          "Đã lưu kết quả nhưng cập nhật Elo/điểm mùa thất bại."
+      );
+    }
+
     setLocalRevision((value) => value + 1);
     refreshClubs();
-    return true;
+    return {
+      ok: true,
+      tournament: result.tournament,
+      lifecycleOk: result.lifecycleOk !== false,
+      lifecycleError: result.lifecycleError || null,
+    };
   };
 
   const pairingIntervention = usePairingIntervention({

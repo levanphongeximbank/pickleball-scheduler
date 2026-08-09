@@ -80,10 +80,44 @@ export async function updateTournamentCommand(
   const scope = prepareScope(clubIdOrScope, options);
   if (!scope.ok) return scope;
   const repo = options.repository || getTournamentRepository();
-  return repo.update(scope.clubId, tournamentId, patch, {
-    ...options,
+  const { processMatchId, processEventId, ...repoOptions } = options;
+  const result = await repo.update(scope.clubId, tournamentId, patch, {
+    ...repoOptions,
     tenantId: scope.tenantId,
   });
+
+  // Contract B: score/update command explicitly invokes canonical lifecycle
+  // after cloud persistence succeeds. Cloud repository never owns side-effects.
+  // Match authority is result.tournament (canonical), not legacy club blob.
+  if (!result?.ok || !processMatchId) {
+    return result;
+  }
+
+  const { processCanonicalCompletedMatch } = await import(
+    "./tournamentMatchLifecycle.js"
+  );
+  const lifecycle = processCanonicalCompletedMatch(
+    scope.clubId,
+    result.tournament,
+    processMatchId,
+    { eventId: processEventId || null }
+  );
+
+  if (lifecycle?.ok === false) {
+    return {
+      ...result,
+      lifecycleOk: false,
+      lifecycleError:
+        lifecycle.error || "Đã lưu kết quả nhưng cập nhật Elo/điểm mùa thất bại.",
+      lifecycle,
+    };
+  }
+
+  return {
+    ...result,
+    lifecycleOk: true,
+    lifecycle,
+  };
 }
 
 export async function deleteTournamentCommand(clubIdOrScope, tournamentId, options = {}) {
