@@ -52,7 +52,10 @@ const DIALOG_PAPER_SX = {
   color: "#f4f7fb",
   backgroundImage:
     "radial-gradient(ellipse at top, rgba(46, 204, 113, 0.1), transparent 55%), linear-gradient(180deg, #0a1628 0%, #07111f 50%, #050b14 100%)",
-  minHeight: "100vh",
+  height: "100%",
+  maxHeight: "100dvh",
+  minHeight: 0,
+  overflow: "hidden",
   backgroundSize: "100% 100%",
   display: "flex",
   flexDirection: "column",
@@ -545,6 +548,7 @@ export default function TeamAiPairingDialog({
       />
 
       <DialogContent
+        data-testid="team-ai-pairing-dialog-content"
         sx={{
           width: "100%",
           maxWidth: 1440,
@@ -552,8 +556,10 @@ export default function TeamAiPairingDialog({
           px: { xs: 2, md: 3 },
           pb: 2,
           pt: 1,
-          flex: 1,
-          overflow: "auto",
+          flex: "1 1 auto",
+          minHeight: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
         }}
       >
         <Stack spacing={1.75}>

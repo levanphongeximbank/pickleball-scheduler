@@ -32,7 +32,7 @@ import {
   validateRosterRules,
 } from "../../../features/team-tournament/engines/teamFormatVenueConfig.js";
 import { isSetupMutationFoundationEnabled } from "../../../features/team-tournament/setup/setupMutationFeatureGate.js";
-import { loadCourtsForClub } from "../../../domain/clubStorage.js";
+import { listCanonicalClubCourtsForFormatVenue } from "../../../features/team-tournament/services/canonicalClubCourtInventory.js";
 import { getCourtDisplayName } from "../../../pages/courts.logic.js";
 
 const GROUP_SETUP_CHOICES = [
@@ -55,11 +55,14 @@ export default function TeamFormatVenueSetupPanel({
   teamData,
   tournament = null,
   clubId = "",
+  tenantId = null,
   canManage = false,
   teamCountHint = 0,
   onSave,
   onError,
   onMessage,
+  /** @internal test override */
+  listCourtsFn = listCanonicalClubCourtsForFormatVenue,
 }) {
   const gateOn = isSetupMutationFoundationEnabled();
   const defaults = useMemo(
@@ -67,10 +70,13 @@ export default function TeamFormatVenueSetupPanel({
     [teamData, tournament]
   );
 
-  const venueCourts = useMemo(() => {
-    const courts = loadCourtsForClub(clubId || tournament?.clubId || "");
-    return (courts || []).filter((court) => court.active !== false);
-  }, [clubId, tournament?.clubId]);
+  const resolvedClubId = clubId || tournament?.clubId || "";
+  const resolvedTenantId =
+    tenantId || tournament?.tenantId || tournament?.venueId || null;
+
+  const [venueCourts, setVenueCourts] = useState([]);
+  const [courtsLoading, setCourtsLoading] = useState(Boolean(resolvedClubId));
+  const [courtsError, setCourtsError] = useState(null);
 
   const [formatPreset, setFormatPreset] = useState(defaults.formatPreset);
   const [rosterRules, setRosterRules] = useState(defaults.rosterRules);
@@ -97,6 +103,43 @@ export default function TeamFormatVenueSetupPanel({
     setKnockoutFormat(next.knockoutFormat);
     setSelectedCourtIds(next.selectedCourtIds || []);
   }, [teamData, tournament]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!resolvedClubId) {
+      setVenueCourts([]);
+      setCourtsLoading(false);
+      setCourtsError("Thiếu clubId — không tải inventory sân.");
+      return undefined;
+    }
+
+    setCourtsLoading(true);
+    setCourtsError(null);
+
+    void listCourtsFn({
+      clubId: resolvedClubId,
+      tenantId: resolvedTenantId,
+    }).then((result) => {
+      if (cancelled) return;
+      setCourtsLoading(false);
+      if (!result?.ok) {
+        setVenueCourts([]);
+        setCourtsError(result?.error || "Không tải được sân từ cloud.");
+        return;
+      }
+      setVenueCourts(Array.isArray(result.courts) ? result.courts : []);
+      setCourtsError(null);
+    }).catch((error) => {
+      if (cancelled) return;
+      setCourtsLoading(false);
+      setVenueCourts([]);
+      setCourtsError(error?.message || "Không tải được sân từ cloud.");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedClubId, resolvedTenantId, listCourtsFn]);
 
   const complete = isFormatVenueSetupComplete(
     {
@@ -352,10 +395,14 @@ export default function TeamFormatVenueSetupPanel({
               Bỏ chọn
             </Button>
           </Stack>
-          {venueCourts.length === 0 ? (
+          {courtsLoading ? (
+            <Alert severity="info">Đang tải inventory sân từ cloud…</Alert>
+          ) : courtsError ? (
+            <Alert severity="error">{courtsError}</Alert>
+          ) : venueCourts.length === 0 ? (
             <Alert severity="info">
-              CLB chưa có sân trong inventory. Có thể tiếp tục thiết lập; công bố lịch sẽ bị chặn
-              đến khi chọn sân.
+              CLB chưa có sân trong inventory cloud. Có thể tiếp tục thiết lập; công bố lịch sẽ bị
+              chặn đến khi chọn sân.
             </Alert>
           ) : (
             <FormGroup>

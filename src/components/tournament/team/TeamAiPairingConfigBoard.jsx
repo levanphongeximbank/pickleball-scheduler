@@ -638,7 +638,7 @@ export function DarkDialogHeader({ title, subtitle, onClose }) {
       direction="row"
       justifyContent="space-between"
       alignItems="flex-start"
-      sx={{ px: { xs: 2, md: 3 }, pt: 2.5, pb: 1 }}
+      sx={{ px: { xs: 2, md: 3 }, pt: 2.5, pb: 1, flexShrink: 0 }}
     >
       <Stack direction="row" spacing={1.25} alignItems="center">
         <SportsTennisRoundedIcon sx={{ color: ACCENT, fontSize: 38 }} />

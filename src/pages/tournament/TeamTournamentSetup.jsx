@@ -1296,6 +1296,12 @@ export default function TeamTournamentSetup() {
             teamData={td}
             tournament={tournament}
             clubId={effectiveClubId || activeClubId}
+            tenantId={
+              tournament?.tenantId ||
+              clubPool.tenantId ||
+              tenantPool.tenantId ||
+              currentTenantId
+            }
             canManage={access.canManage}
             teamCountHint={td?.teams?.length || 0}
             onSave={saveFormatVenueConfig}
