@@ -1,0 +1,52 @@
+{
+  "marker": "OPERATION_B1B_WP6A_REAL_USER_EXCLUSION_PROOF",
+  "staging_project_ref": "qyewbxjsiiyufanzcjcq",
+  "production_project_ref_blocked": "expuvcohlcjzvrrauvud",
+  "proofs": [
+    {
+      "id": "RX-01",
+      "rule": "FORBIDDEN_REAL_USER_EMAIL rejected",
+      "email": "phase1b-smith@gmail.com",
+      "expected": "forbidden_real_user_email"
+    },
+    {
+      "id": "RX-02",
+      "rule": "gmail / consumer domains are not certified QA",
+      "email_examples_not_certified": ["*@gmail.com"],
+      "expected": "email_not_certified_qa"
+    },
+    {
+      "id": "RX-03",
+      "rule": "Production QA emails rejected in Staging mode",
+      "email_examples": ["phase1c.prod.safe1@prod-qa.local"],
+      "expected": "production_qa_email_rejected_in_staging_mode"
+    },
+    {
+      "id": "RX-04",
+      "rule": "Staging QA emails rejected in Production mode",
+      "email_examples": ["phase1c.stg.safe1@staging-qa.local"],
+      "expected": "staging_qa_email_rejected_in_production_mode"
+    },
+    {
+      "id": "RX-05",
+      "rule": "Production allowlist document rejected in Staging mode",
+      "expected": "production_allowlist_rejected_in_staging_mode"
+    },
+    {
+      "id": "RX-06",
+      "rule": "Staging allowlist document rejected in Production mode",
+      "expected": "staging_allowlist_rejected_in_production_mode"
+    },
+    {
+      "id": "RX-07",
+      "rule": "B2 labels QA-01..QA-03 never processable",
+      "expected": "b2_excluded_label_present"
+    },
+    {
+      "id": "RX-08",
+      "rule": "Zero business reference counts required",
+      "expected": "nonzero_reference:* fail closed"
+    }
+  ],
+  "staging_inventory_note": "WP6A Staging read showed 0 @staging-qa.local and 0 @prod-qa.local profiles; designated identities require Owner provision. No real-user emails recorded in this proof file."
+}

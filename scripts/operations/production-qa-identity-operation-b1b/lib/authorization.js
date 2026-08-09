@@ -1,20 +1,25 @@
 /**
- * Operation B1B authorization — fail-closed future binding for WP7.
+ * Operation B1B authorization — fail-closed Production (WP4/WP7) + explicit Staging rehearsal (WP6A).
  *
- * No hardcoded Production GO exists in WP4.
+ * No hardcoded Production or Staging GO exists in this package.
  * Dry-run is the default.
  * Retired B1 GO / batches never authorize.
+ * Staging mode is never auto-detected from project ref / URL / env fallback.
  *
  * Durable one-time authority consumption is NOT implemented in WP4.
- * Live mutation requires an injected WP7 claimOneTimeLiveAuthority dependency.
+ * Live mutation requires an injected WP7/Owner claimOneTimeLiveAuthority dependency.
  * Process-local Set is defense-in-depth only — not authoritative durability.
  */
 
 import {
   EXPECTED_PRODUCTION_PROJECT_REF,
+  EXPECTED_STAGING_PROJECT_REF,
   FRESH_AUTHORIZATION_BINDING,
+  FRESH_STAGING_AUTHORIZATION_BINDING,
   OPERATION_ID,
+  OPERATION_TARGET_MODE,
   REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
+  REQUIRED_EXPLICIT_STAGING_EXECUTE_CONFIRMATION,
   RETIRED_OPERATION_B1_BATCH_IDS,
   RETIRED_OWNER_PRODUCTION_GO,
 } from "./constants.js";
@@ -53,18 +58,69 @@ export function parseDryRunFlag(value, { defaultDryRun = true } = {}) {
 }
 
 /**
- * Build a fail-closed fresh authorization binding for WP7 / tests.
- * Rejects retired GO/batch and empty GO. Does not issue a Production GO.
+ * Resolve explicit operation target mode.
+ * Unset/empty → production (preserves pre-WP6A semantics).
+ * Never infers mode from project ref.
+ *
+ * @param {Record<string, unknown>} input
+ * @returns {{ ok: boolean, mode?: string, reasons: string[] }}
+ */
+export function resolveOperationTargetMode(input = {}) {
+  const raw = input.OPERATION_TARGET_MODE ?? input.operationTargetMode;
+  if (raw === undefined || raw === null || String(raw).trim() === "") {
+    return {
+      ok: true,
+      mode: OPERATION_TARGET_MODE.PRODUCTION,
+      reasons: [],
+    };
+  }
+  const mode = String(raw).trim().toLowerCase();
+  if (
+    mode === OPERATION_TARGET_MODE.PRODUCTION ||
+    mode === OPERATION_TARGET_MODE.STAGING_REHEARSAL
+  ) {
+    return { ok: true, mode, reasons: [] };
+  }
+  return {
+    ok: false,
+    reasons: ["unknown_or_invalid_operation_target_mode"],
+  };
+}
+
+function isRetiredOwnerGo(ownerGo) {
+  return (
+    ownerGo === RETIRED_OWNER_PRODUCTION_GO ||
+    ownerGo === "APPROVE_OPERATION_B1_EXACT_EIGHT_ONLY"
+  );
+}
+
+/**
+ * Build a fail-closed fresh authorization binding for WP7 / WP6A / tests.
+ * Rejects retired GO/batch and empty GO. Does not issue a Production or Staging GO.
  *
  * @param {object} partial
  * @returns {{ ok: boolean, binding?: object, reasons: string[] }}
  */
 export function createFreshAuthorizationBinding(partial = {}) {
   const reasons = [];
-  const ownerProductionGo = String(partial.ownerProductionGo || "").trim();
+  const modeResolved = resolveOperationTargetMode(partial);
+  if (!modeResolved.ok) {
+    return { ok: false, reasons: modeResolved.reasons };
+  }
+  const mode = modeResolved.mode;
+  const isStaging = mode === OPERATION_TARGET_MODE.STAGING_REHEARSAL;
+
+  const ownerGo = String(
+    (isStaging
+      ? partial.ownerStagingGo || partial.ownerProductionGo
+      : partial.ownerProductionGo || partial.ownerStagingGo) || ""
+  ).trim();
+
+  const defaultConfirm = isStaging
+    ? REQUIRED_EXPLICIT_STAGING_EXECUTE_CONFIRMATION
+    : REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION;
   const explicitExecuteConfirmation = String(
-    partial.explicitExecuteConfirmation ||
-      REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION
+    partial.explicitExecuteConfirmation || defaultConfirm
   ).trim();
   const expectedBatchId = String(partial.expectedBatchId || "").trim();
   const allowlistSha256 = String(partial.allowlistSha256 || "")
@@ -73,17 +129,23 @@ export function createFreshAuthorizationBinding(partial = {}) {
   const snapshotSha256 = String(partial.snapshotSha256 || "")
     .trim()
     .toLowerCase();
-  const productionProjectRef = String(
-    partial.productionProjectRef || EXPECTED_PRODUCTION_PROJECT_REF
+
+  const projectRef = String(
+    isStaging
+      ? partial.stagingProjectRef ||
+          partial.productionProjectRef ||
+          EXPECTED_STAGING_PROJECT_REF
+      : partial.productionProjectRef || EXPECTED_PRODUCTION_PROJECT_REF
   ).trim();
 
-  if (!ownerProductionGo) {
-    reasons.push("missing_fresh_owner_production_go");
+  if (!ownerGo) {
+    reasons.push(
+      isStaging
+        ? "missing_fresh_owner_staging_go"
+        : "missing_fresh_owner_production_go"
+    );
   }
-  if (
-    ownerProductionGo === RETIRED_OWNER_PRODUCTION_GO ||
-    ownerProductionGo === "APPROVE_OPERATION_B1_EXACT_EIGHT_ONLY"
-  ) {
+  if (isRetiredOwnerGo(ownerGo)) {
     reasons.push("retired_owner_production_go_not_reusable");
   }
   if (!UUID_RE.test(expectedBatchId)) {
@@ -97,41 +159,128 @@ export function createFreshAuthorizationBinding(partial = {}) {
   if (!/^[0-9a-f]{64}$/.test(snapshotSha256)) {
     reasons.push("invalid_or_missing_snapshot_sha256");
   }
-  if (productionProjectRef !== EXPECTED_PRODUCTION_PROJECT_REF) {
-    reasons.push("wrong_or_missing_production_project_ref");
-  }
-  if (explicitExecuteConfirmation !== REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION) {
-    reasons.push("missing_or_invalid_explicit_execute_confirmation");
+
+  if (isStaging) {
+    if (projectRef !== EXPECTED_STAGING_PROJECT_REF) {
+      reasons.push("wrong_or_missing_staging_project_ref");
+    }
+    if (projectRef === EXPECTED_PRODUCTION_PROJECT_REF) {
+      reasons.push("production_project_ref_rejected_in_staging_mode");
+    }
+    if (
+      explicitExecuteConfirmation !==
+      REQUIRED_EXPLICIT_STAGING_EXECUTE_CONFIRMATION
+    ) {
+      reasons.push("missing_or_invalid_explicit_staging_execute_confirmation");
+    }
+    if (
+      explicitExecuteConfirmation === REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION
+    ) {
+      reasons.push("production_execute_confirmation_rejected_in_staging_mode");
+    }
+  } else {
+    if (projectRef !== EXPECTED_PRODUCTION_PROJECT_REF) {
+      reasons.push("wrong_or_missing_production_project_ref");
+    }
+    if (projectRef === EXPECTED_STAGING_PROJECT_REF) {
+      reasons.push("staging_project_ref_rejected_in_production_mode");
+    }
+    if (explicitExecuteConfirmation !== REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION) {
+      reasons.push("missing_or_invalid_explicit_execute_confirmation");
+    }
+    if (
+      explicitExecuteConfirmation ===
+      REQUIRED_EXPLICIT_STAGING_EXECUTE_CONFIRMATION
+    ) {
+      reasons.push("staging_execute_confirmation_rejected_in_production_mode");
+    }
   }
 
   if (reasons.length) {
     return { ok: false, reasons };
   }
 
-  return {
-    ok: true,
-    reasons: [],
-    binding: Object.freeze({
-      ownerProductionGo,
-      explicitExecuteConfirmation,
-      expectedBatchId,
-      allowlistSha256,
-      snapshotSha256,
-      productionProjectRef,
-      issuedBy: "wp7_or_test_injection_only",
-      productionGoIssued: false,
-    }),
-  };
+  const binding = isStaging
+    ? Object.freeze({
+        operationTargetMode: OPERATION_TARGET_MODE.STAGING_REHEARSAL,
+        ownerStagingGo: ownerGo,
+        ownerProductionGo: null,
+        explicitExecuteConfirmation,
+        expectedBatchId,
+        allowlistSha256,
+        snapshotSha256,
+        stagingProjectRef: projectRef,
+        productionProjectRef: null,
+        issuedBy: "wp6a_or_test_injection_only",
+        productionGoIssued: false,
+        stagingGoIssued: false,
+      })
+    : Object.freeze({
+        operationTargetMode: OPERATION_TARGET_MODE.PRODUCTION,
+        ownerProductionGo: ownerGo,
+        ownerStagingGo: null,
+        explicitExecuteConfirmation,
+        expectedBatchId,
+        allowlistSha256,
+        snapshotSha256,
+        productionProjectRef: projectRef,
+        stagingProjectRef: null,
+        issuedBy: "wp7_or_test_injection_only",
+        productionGoIssued: false,
+        stagingGoIssued: false,
+      });
+
+  return { ok: true, reasons: [], binding };
 }
 
-function resolveFreshBinding(input = {}) {
+function resolveFreshBinding(input = {}, mode) {
   if (input.freshAuthorizationBinding && typeof input.freshAuthorizationBinding === "object") {
     return input.freshAuthorizationBinding;
   }
   if (input.FRESH_AUTHORIZATION_BINDING && typeof input.FRESH_AUTHORIZATION_BINDING === "object") {
     return input.FRESH_AUTHORIZATION_BINDING;
   }
+  if (mode === OPERATION_TARGET_MODE.STAGING_REHEARSAL) {
+    if (
+      input.freshStagingAuthorizationBinding &&
+      typeof input.freshStagingAuthorizationBinding === "object"
+    ) {
+      return input.freshStagingAuthorizationBinding;
+    }
+    return FRESH_STAGING_AUTHORIZATION_BINDING;
+  }
   return FRESH_AUTHORIZATION_BINDING;
+}
+
+function readProjectRef(input = {}) {
+  return String(
+    input.TARGET_PROJECT_REF ??
+      input.targetProjectRef ??
+      input.STAGING_PROJECT_REF ??
+      input.stagingProjectRef ??
+      input.PRODUCTION_PROJECT_REF ??
+      input.productionProjectRef ??
+      ""
+  ).trim();
+}
+
+function readOwnerGo(input = {}, isStaging) {
+  if (isStaging) {
+    return String(
+      input.OWNER_STAGING_GO ??
+        input.ownerStagingGo ??
+        input.OWNER_PRODUCTION_GO ??
+        input.ownerProductionGo ??
+        ""
+    ).trim();
+  }
+  return String(
+    input.OWNER_PRODUCTION_GO ??
+      input.ownerProductionGo ??
+      input.OWNER_STAGING_GO ??
+      input.ownerStagingGo ??
+      ""
+  ).trim();
 }
 
 /**
@@ -143,11 +292,47 @@ export function evaluateAuthorization(input = {}) {
   });
   const reasons = [];
 
-  const projectRef = String(
-    input.PRODUCTION_PROJECT_REF ?? input.productionProjectRef ?? ""
-  ).trim();
+  const modeResolved = resolveOperationTargetMode(input);
+  if (!modeResolved.ok) {
+    return {
+      ok: false,
+      dryRun,
+      reasons: modeResolved.reasons,
+      authorized: false,
+      operationTargetMode: null,
+      projectRef: "",
+      batchId: "",
+      allowlistPath: "",
+      allowlistSha: "",
+      snapshotPath: "",
+      snapshotSha: "",
+      ownerProductionGo: "",
+      ownerStagingGo: "",
+      freshBindingPresent: false,
+      newProductionGoIssued: false,
+      newStagingGoIssued: false,
+      oldOwnerGoReusable: false,
+      oldBatchReusable: false,
+    };
+  }
+  const mode = modeResolved.mode;
+  const isStaging = mode === OPERATION_TARGET_MODE.STAGING_REHEARSAL;
+
+  const projectRef = readProjectRef(input);
   if (!projectRef) {
-    reasons.push("missing_production_project_ref");
+    reasons.push(
+      isStaging
+        ? "missing_staging_project_ref"
+        : "missing_production_project_ref"
+    );
+  } else if (isStaging) {
+    if (projectRef === EXPECTED_PRODUCTION_PROJECT_REF) {
+      reasons.push("production_project_ref_rejected_in_staging_mode");
+    } else if (projectRef !== EXPECTED_STAGING_PROJECT_REF) {
+      reasons.push("wrong_or_missing_staging_project_ref");
+    }
+  } else if (projectRef === EXPECTED_STAGING_PROJECT_REF) {
+    reasons.push("staging_project_ref_rejected_in_production_mode");
   } else if (projectRef !== EXPECTED_PRODUCTION_PROJECT_REF) {
     reasons.push("wrong_or_missing_production_project_ref");
   }
@@ -201,29 +386,39 @@ export function evaluateAuthorization(input = {}) {
     reasons.push("invalid_or_missing_snapshot_sha256");
   }
 
-  const ownerGo = String(
-    input.OWNER_PRODUCTION_GO ?? input.ownerProductionGo ?? ""
-  ).trim();
+  const ownerGo = readOwnerGo(input, isStaging);
   const confirm = String(
     input.EXPLICIT_EXECUTE_CONFIRMATION ??
       input.explicitExecuteConfirmation ??
       ""
   ).trim();
 
-  if (
-    ownerGo === RETIRED_OWNER_PRODUCTION_GO ||
-    ownerGo === "APPROVE_OPERATION_B1_EXACT_EIGHT_ONLY"
-  ) {
+  if (isRetiredOwnerGo(ownerGo)) {
     reasons.push("retired_owner_production_go_not_reusable");
   }
 
-  const freshBinding = resolveFreshBinding(input);
+  const freshBinding = resolveFreshBinding(input, mode);
 
   if (!dryRun) {
     if (!freshBinding || typeof freshBinding !== "object") {
-      reasons.push("missing_fresh_authorization_binding");
+      reasons.push(
+        isStaging
+          ? "missing_fresh_staging_authorization_binding"
+          : "missing_fresh_authorization_binding"
+      );
     } else {
-      const requiredGo = String(freshBinding.ownerProductionGo || "").trim();
+      const bindingMode = String(
+        freshBinding.operationTargetMode || OPERATION_TARGET_MODE.PRODUCTION
+      ).trim();
+      if (bindingMode !== mode) {
+        reasons.push("authorization_binding_mode_mismatch");
+      }
+
+      const requiredGo = String(
+        isStaging
+          ? freshBinding.ownerStagingGo || freshBinding.ownerProductionGo || ""
+          : freshBinding.ownerProductionGo || freshBinding.ownerStagingGo || ""
+      ).trim();
       const requiredConfirm = String(
         freshBinding.explicitExecuteConfirmation || ""
       ).trim();
@@ -235,24 +430,47 @@ export function evaluateAuthorization(input = {}) {
         .trim()
         .toLowerCase();
       const requiredProject = String(
-        freshBinding.productionProjectRef || ""
+        isStaging
+          ? freshBinding.stagingProjectRef ||
+              freshBinding.productionProjectRef ||
+              ""
+          : freshBinding.productionProjectRef ||
+              freshBinding.stagingProjectRef ||
+              ""
       ).trim();
 
       if (!requiredGo) {
-        reasons.push("missing_fresh_owner_production_go");
+        reasons.push(
+          isStaging
+            ? "missing_fresh_owner_staging_go"
+            : "missing_fresh_owner_production_go"
+        );
       }
-      if (
-        requiredGo === RETIRED_OWNER_PRODUCTION_GO ||
-        requiredGo === "APPROVE_OPERATION_B1_EXACT_EIGHT_ONLY"
-      ) {
+      if (isRetiredOwnerGo(requiredGo)) {
         reasons.push("retired_owner_production_go_not_reusable");
       }
-      // Exact match — not a generic non-empty GO check.
       if (!ownerGo || ownerGo !== requiredGo) {
-        reasons.push("missing_or_invalid_owner_production_go");
+        reasons.push(
+          isStaging
+            ? "missing_or_invalid_owner_staging_go"
+            : "missing_or_invalid_owner_production_go"
+        );
       }
       if (!confirm || confirm !== requiredConfirm) {
-        reasons.push("missing_or_invalid_explicit_execute_confirmation");
+        reasons.push(
+          isStaging
+            ? "missing_or_invalid_explicit_staging_execute_confirmation"
+            : "missing_or_invalid_explicit_execute_confirmation"
+        );
+      }
+      if (isStaging) {
+        if (confirm === REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION) {
+          reasons.push(
+            "production_execute_confirmation_rejected_in_staging_mode"
+          );
+        }
+      } else if (confirm === REQUIRED_EXPLICIT_STAGING_EXECUTE_CONFIRMATION) {
+        reasons.push("staging_execute_confirmation_rejected_in_production_mode");
       }
       if (batchId && requiredBatch && batchId !== requiredBatch) {
         reasons.push("batch_id_binding_mismatch");
@@ -271,19 +489,18 @@ export function evaluateAuthorization(input = {}) {
       ) {
         reasons.push("snapshot_sha256_binding_mismatch");
       }
-      if (
-        projectRef &&
-        requiredProject &&
-        projectRef !== requiredProject
-      ) {
-        reasons.push("wrong_or_missing_production_project_ref");
+      if (projectRef && requiredProject && projectRef !== requiredProject) {
+        reasons.push(
+          isStaging
+            ? "wrong_or_missing_staging_project_ref"
+            : "wrong_or_missing_production_project_ref"
+        );
       }
       if (RETIRED_OPERATION_B1_BATCH_IDS.includes(requiredBatch)) {
         reasons.push("retired_batch_id_not_reusable");
       }
     }
 
-    // Process-local defense-in-depth only (not durable).
     if (ownerGo && batchId && isAuthorityConsumed(ownerGo, batchId)) {
       reasons.push("authority_already_consumed");
     }
@@ -297,15 +514,18 @@ export function evaluateAuthorization(input = {}) {
     dryRun,
     reasons,
     authorized,
+    operationTargetMode: mode,
     projectRef,
     batchId,
     allowlistPath,
     allowlistSha,
     snapshotPath,
     snapshotSha,
-    ownerProductionGo: ownerGo,
+    ownerProductionGo: isStaging ? "" : ownerGo,
+    ownerStagingGo: isStaging ? ownerGo : "",
     freshBindingPresent: Boolean(freshBinding),
     newProductionGoIssued: false,
+    newStagingGoIssued: false,
     oldOwnerGoReusable: false,
     oldBatchReusable: false,
   };
@@ -321,11 +541,15 @@ export function mutationAllowed(authResult) {
 }
 
 /**
- * Build immutable bind fingerprint for durable WP7 consumption.
+ * Build immutable bind fingerprint for durable WP7 / Staging consumption.
  */
 export function buildOneTimeAuthorityBind(authResult) {
+  const mode =
+    authResult?.operationTargetMode || OPERATION_TARGET_MODE.PRODUCTION;
+  const isStaging = mode === OPERATION_TARGET_MODE.STAGING_REHEARSAL;
   return Object.freeze({
     operationId: OPERATION_ID,
+    operationTargetMode: mode,
     batchId: String(authResult?.batchId || "").trim(),
     allowlistSha256: String(authResult?.allowlistSha || "")
       .trim()
@@ -333,15 +557,25 @@ export function buildOneTimeAuthorityBind(authResult) {
     snapshotSha256: String(authResult?.snapshotSha || "")
       .trim()
       .toLowerCase(),
-    ownerProductionGo: String(authResult?.ownerProductionGo || "").trim(),
-    productionProjectRef: String(authResult?.projectRef || "").trim(),
+    ownerProductionGo: isStaging
+      ? ""
+      : String(authResult?.ownerProductionGo || "").trim(),
+    ownerStagingGo: isStaging
+      ? String(authResult?.ownerStagingGo || "").trim()
+      : "",
+    productionProjectRef: isStaging
+      ? ""
+      : String(authResult?.projectRef || "").trim(),
+    stagingProjectRef: isStaging
+      ? String(authResult?.projectRef || "").trim()
+      : "",
   });
 }
 
 /**
- * Claim one-time live authority via required WP7 durable dependency.
+ * Claim one-time live authority via required durable dependency.
  *
- * WP4 provides NO default success implementation.
+ * WP4/WP6A provides NO default success implementation.
  * Missing dependency => fail closed, zero mutation.
  * Process-local Set is defense-in-depth after durable claim succeeds.
  *
@@ -364,7 +598,11 @@ export async function presentLiveAuthority(
     };
   }
 
-  const go = authResult.ownerProductionGo;
+  const isStaging =
+    authResult.operationTargetMode === OPERATION_TARGET_MODE.STAGING_REHEARSAL;
+  const go = isStaging
+    ? authResult.ownerStagingGo
+    : authResult.ownerProductionGo;
   const batchId = authResult.batchId;
   if (isAuthorityConsumed(go, batchId)) {
     return { ok: false, consumed: true, reason: "authority_already_consumed" };
@@ -394,7 +632,6 @@ export async function presentLiveAuthority(
     };
   }
 
-  // Defense-in-depth only — not authoritative durability.
   markAuthorityConsumed(go, batchId);
   return { ok: true, consumed: true, durable: true };
 }

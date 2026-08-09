@@ -1,0 +1,25 @@
+{
+  "marker": "OPERATION_B1B_WP6A_STAGING_BACKUP_OWNER_CONFIRMATION_TEMPLATE",
+  "operation": "OPERATION_B1B_QA_QUARANTINE_AUTHORITY",
+  "work_package": "WP6A",
+  "project_ref": "qyewbxjsiiyufanzcjcq",
+  "production_ref_blocked": "expuvcohlcjzvrrauvud",
+  "backup_kind": "REPLACE_WITH_dashboard_physical_OR_daily_OR_logical_export",
+  "backup_id_or_filename": "REPLACE_ME",
+  "backup_completed_at": "REPLACE_ME_ISO8601",
+  "pitr_enabled": null,
+  "pitr_window_note": "REPLACE_OR_NOT_AVAILABLE",
+  "last_known_staging_mutation_at": "REPLACE_OR_UNKNOWN",
+  "backup_after_last_mutation": null,
+  "restore_entry_visible_in_dashboard": null,
+  "database_backup_excludes_storage_objects": true,
+  "alternate_recovery_layers_acknowledged": [
+    "L1_migration_rollback_sql_80_90",
+    "L3_L4_quarantine_release_conditional_unban",
+    "L6_PITR_last_resort_only_if_available"
+  ],
+  "status": "pending_owner",
+  "verified_by": "",
+  "verified_at": "",
+  "notes": "Owner fills this for G1. Do not Restore without FAIL + separate Owner GO. No secrets."
+}
