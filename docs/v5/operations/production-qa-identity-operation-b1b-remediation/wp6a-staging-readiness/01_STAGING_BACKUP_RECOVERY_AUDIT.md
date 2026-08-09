@@ -9,11 +9,17 @@
 ## Verdict
 
 ```text
-BACKUP_BLOCKER_STATUS=CONTRACT_READY_OWNER_DASHBOARD_CONFIRMATION_REQUIRED
+BACKUP_BLOCKER_STATUS=OWNER_DASHBOARD_CONFIRMED_G1_READY
 PITR_PROVABLE_VIA_SQL_OR_MCP=NO
-CURRENT_WP6_RECOVERY_POINT_PROVABLE=NO
+PITR_ENABLED=NO
+PITR_REQUIRED_FOR_WP6=NO
+CURRENT_WP6_RECOVERY_POINT_PROVABLE=YES
 HISTORICAL_OWNER_BACKUP_REUSABLE_FOR_WP6=NO
+LATEST_VISIBLE_BACKUP_UTC=2026-08-08T18:54:10Z
+BACKUP_TYPE=PHYSICAL
 ```
+
+Owner Dashboard confirmation recorded in `02_STAGING_BACKUP_OWNER_CONFIRMATION.json` (`status=completed`). PITR remains disabled; Owner waived optional add-on.
 
 ## What Staging backup capability was checked
 
@@ -58,4 +64,4 @@ HISTORICAL_OWNER_BACKUP_REUSABLE_FOR_WP6=NO
    - `status=completed`
 5. Keep secrets out of Git
 
-Until step 4 is completed, G1 remains **Owner-gated** even though WP6A readiness contract exists.
+Owner completed step 4 on 2026-08-09 (Dashboard direct). G1 backup evidence is ready. `STAGING_APPLY_GO` remains a **separate** Owner decision and is still **NO**.

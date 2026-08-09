@@ -12,7 +12,7 @@
   "PUSHED": "NO",
   "PR_OPENED": "NO",
   "blockers_remediated_at_readiness_level": {
-    "backup_g1": "CONTRACT_READY_OWNER_DASHBOARD_CONFIRMATION_REQUIRED",
+    "backup_g1": "OWNER_DASHBOARD_CONFIRMED_G1_READY",
     "staging_qa_package_g6": "DESIGNATED_CONTRACT_READY_PROVISION_PENDING_OWNER",
     "staging_safe_runner": "IMPLEMENTED"
   },

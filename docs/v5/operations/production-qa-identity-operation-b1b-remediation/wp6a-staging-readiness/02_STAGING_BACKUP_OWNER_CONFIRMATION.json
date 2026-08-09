@@ -4,19 +4,35 @@
   "work_package": "WP6A",
   "project_ref": "qyewbxjsiiyufanzcjcq",
   "production_ref_blocked": "expuvcohlcjzvrrauvud",
-  "backup_kind": null,
+  "scheduled_backup_enabled": true,
+  "backup_kind": "PHYSICAL",
   "backup_id_or_filename": null,
-  "backup_completed_at": null,
-  "pitr_enabled": null,
-  "pitr_window_note": "NOT_PROVABLE_FROM_WP6A_READ_ONLY_AUDIT",
+  "backup_id_note": "Dashboard did not expose a distinct backup id/filename; timestamp + type used as recovery-point identity. Do not fabricate ids.",
+  "backup_completed_at": "2026-08-08T18:54:10Z",
+  "latest_backup_status": "COMPLETED",
+  "additional_visible_completed_backups_utc": [
+    "2026-08-07T18:54:45Z",
+    "2026-08-06T18:54:51Z",
+    "2026-08-05T18:55:03Z",
+    "2026-08-04T18:55:06Z",
+    "2026-08-03T18:54:48Z",
+    "2026-08-02T18:55:03Z"
+  ],
+  "pitr_enabled": false,
+  "pitr_status": "DISABLED_ADDON_AVAILABLE",
+  "pitr_window_note": "PITR not enabled. Owner declines optional PITR add-on (OWNER_DECISION_ENABLE_PITR=NO).",
+  "pitr_waiver_reason": "Staging uses scheduled physical backup + WP6 rollback/recovery controls; Owner declines optional PITR add-on cost.",
+  "pitr_required_for_wp6": false,
   "last_known_staging_mutation_at": null,
   "backup_after_last_mutation": null,
-  "restore_entry_visible_in_dashboard": null,
+  "restore_entry_visible_in_dashboard": true,
+  "restore_to_new_project_visible": true,
   "database_backup_excludes_storage_objects": true,
   "alternate_recovery_layers_acknowledged": [
     "L1_migration_rollback_sql_80_90",
     "L3_L4_quarantine_release_conditional_unban",
-    "L6_PITR_last_resort_only_if_available"
+    "scheduled_physical_backup_restore_preferred",
+    "L6_PITR_unavailable_owner_waived"
   ],
   "historical_backup_refs_not_accepted_for_wp6": [
     {
@@ -25,8 +41,9 @@
       "reason": "stale_other_operation_window"
     }
   ],
-  "status": "pending_owner",
-  "verified_by": "",
-  "verified_at": "",
-  "notes": "WP6A prepared contract only. Owner must complete Dashboard confirmation before G1 PASS / STAGING_APPLY_GO."
+  "status": "completed",
+  "verified_by": "Owner",
+  "verified_at": "2026-08-09T12:20:00Z",
+  "verification_source": "Supabase_Dashboard_direct",
+  "notes": "Owner Dashboard confirmation for Staging qyewbxjsiiyufanzcjcq only. Scheduled physical backups visible; latest COMPLETED at 2026-08-08T18:54:10Z; Restore and Restore-to-new-project visible. PITR remains disabled (not enabled; not required for WP6 given physical backup + rollback controls). No restore performed. No Production access. G1 evidence complete; STAGING_APPLY_GO remains a separate Owner decision."
 }

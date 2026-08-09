@@ -29,7 +29,7 @@ Remediate the three WP6 read-only preflight blockers to readiness level so Indep
 
 ## Next after Independent Re-review
 
-1. Owner completes Staging backup confirmation (`02_*.json` → `status=completed`)
+1. ~~Owner completes Staging backup confirmation (`02_*.json` → `status=completed`)~~ ✅ Owner Dashboard confirmed 2026-08-09 (`backup_g1=OWNER_DASHBOARD_CONFIRMED_G1_READY`; PITR waived)
 2. Owner issues separate Staging QA provision GO (create disposable `@staging-qa.local` identities)
 3. Bind live allowlist + recovery snapshot **outside Git**, refresh SHA-256
 4. Owner considers `STAGING_APPLY_GO` for WP6 execution (separate decision)

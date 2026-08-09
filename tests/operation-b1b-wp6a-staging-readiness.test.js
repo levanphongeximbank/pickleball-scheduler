@@ -490,8 +490,13 @@ test("WP6A) evidence package artifacts exist with reserved staging batch", () =>
       "utf8"
     )
   );
-  assert.equal(backup.status, "pending_owner");
+  assert.equal(backup.status, "completed");
   assert.equal(backup.project_ref, EXPECTED_STAGING_PROJECT_REF);
+  assert.equal(backup.pitr_enabled, false);
+  assert.equal(backup.backup_kind, "PHYSICAL");
+  assert.equal(backup.backup_completed_at, "2026-08-08T18:54:10Z");
+  assert.equal(backup.backup_id_or_filename, null);
+  assert.equal(backup.restore_entry_visible_in_dashboard, true);
 });
 
 test("WP6A) production execute confirmation rejected in staging mode", () => {
