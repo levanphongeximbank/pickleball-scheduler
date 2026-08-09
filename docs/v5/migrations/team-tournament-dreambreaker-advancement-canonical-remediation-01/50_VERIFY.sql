@@ -67,12 +67,15 @@ declare
     'team_tournament_randomize_lineup'
   ];
 begin
+  -- Identity args may be "uuid" or "p_matchup_id uuid" depending on catalog/create style.
   select p.oid into v_recompute_oid
   from pg_proc p
   join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public'
     and p.proname = 'team_tournament_recompute_matchup_result'
-    and pg_get_function_identity_arguments(p.oid) = 'uuid';
+    and pg_get_function_identity_arguments(p.oid) in ('uuid', 'p_matchup_id uuid')
+  order by p.oid
+  limit 1;
 
   if v_recompute_oid is null then
     raise exception 'VERIFY_FAIL: team_tournament_recompute_matchup_result(uuid) missing';
