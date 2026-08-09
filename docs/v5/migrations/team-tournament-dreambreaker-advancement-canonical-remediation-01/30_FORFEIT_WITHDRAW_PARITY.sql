@@ -1,6 +1,11 @@
 ﻿-- Production parity package for apply_forfeit + withdraw_team.
 -- Source of truth: docs/v5/PHASE_TT4_FORFEIT_WITHDRAWAL.sql
 -- Idempotent on Staging (already present). DO NOT APPLY without Owner GO.
+--
+-- IMPORTANT: Do NOT redefine team_tournament_recompute_matchup_result here.
+-- Canonical Dreambreaker-aware recompute lives in
+-- 10_RECOMPUTE_AND_DREAMBREAKER_ACTIVATE.sql and must remain final after
+-- ordered apply 10 → 20 → 30 → 40.
 -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 -- Phase TT-4 â€” Forfeit, Withdrawal & Technical Result Workflow
 -- Staging only â€” idempotent, non-destructive
@@ -131,83 +136,14 @@ as $$
     and p_sub_match.result_confirmed_at is not null;
 $$;
 
--- â”€â”€â”€ 4. Matchup result recompute (includes forfeit sub-matches) â”€â”€â”€
-create or replace function public.team_tournament_recompute_matchup_result(
-  p_matchup_id uuid
-)
-returns jsonb
-language plpgsql
-set search_path = public
-as $$
-declare
-  v_matchup public.team_tournament_matchups;
-  v_team_a_wins int := 0;
-  v_team_b_wins int := 0;
-  v_team_a_points int := 0;
-  v_team_b_points int := 0;
-  v_winner text := null;
-  v_all_finalized boolean := true;
-  v_total int := 0;
-  v_finalized int := 0;
-begin
-  select * into v_matchup from public.team_tournament_matchups where id = p_matchup_id;
-  if v_matchup.id is null then
-    return jsonb_build_object('ok', false, 'code', 'NOT_FOUND');
-  end if;
+-- --- 4. Matchup result recompute — OWNED BY FILE 10 (do not redefine) ---
+-- team_tournament_recompute_matchup_result is intentionally NOT redefined
+-- here. File 10 owns the Dreambreaker-aware body (needsDreambreaker /
+-- forfeit-inclusive main-discipline counting). Forfeit/withdraw below
+-- CALL that canonical function; redefining it here previously regressed
+-- Staging after ordered apply.
 
-  select
-    count(*) filter (
-      where sm.status in ('completed', 'forfeit') and sm.winner_team_id = v_matchup.team_a_id
-    ),
-    count(*) filter (
-      where sm.status in ('completed', 'forfeit') and sm.winner_team_id = v_matchup.team_b_id
-    ),
-    coalesce(sum((sm.score->>'teamA')::int) filter (where sm.status in ('completed', 'forfeit')), 0),
-    coalesce(sum((sm.score->>'teamB')::int) filter (where sm.status in ('completed', 'forfeit')), 0),
-    count(*),
-    count(*) filter (where sm.status in ('completed', 'forfeit'))
-  into v_team_a_wins, v_team_b_wins, v_team_a_points, v_team_b_points, v_total, v_finalized
-  from public.team_tournament_sub_matches sm
-  where sm.matchup_id = p_matchup_id;
-
-  v_all_finalized := v_total > 0 and v_finalized = v_total;
-
-  if v_team_a_wins > v_team_b_wins then
-    v_winner := v_matchup.team_a_id;
-  elsif v_team_b_wins > v_team_a_wins then
-    v_winner := v_matchup.team_b_id;
-  end if;
-
-  update public.team_tournament_matchups set
-    result = jsonb_build_object(
-      'teamAWins', v_team_a_wins,
-      'teamBWins', v_team_b_wins,
-      'teamAPoints', v_team_a_points,
-      'teamBPoints', v_team_b_points,
-      'winnerTeamId', v_winner
-    ),
-    status = case
-      when v_all_finalized and v_winner is not null then 'completed'
-      when status = 'published' then 'in_progress'
-      else status
-    end,
-    standings_recalc_required = true,
-    updated_at = now()
-  where id = p_matchup_id;
-
-  return jsonb_build_object(
-    'ok', true,
-    'teamAWins', v_team_a_wins,
-    'teamBWins', v_team_b_wins,
-    'teamAPoints', v_team_a_points,
-    'teamBPoints', v_team_b_points,
-    'winnerTeamId', v_winner,
-    'matchupCompleted', v_all_finalized and v_winner is not null
-  );
-end;
-$$;
-
--- â”€â”€â”€ 5. Standings cache recompute (idempotent) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- --- 5. Standings cache recompute (idempotent) ---
 create or replace function public.team_tournament_recompute_standings_cache(
   p_team_tournament_id uuid
 )
@@ -656,8 +592,8 @@ declare
   v_cmd json;
   v_hash text;
   v_result jsonb;
-  v_matchup record;
-  v_sub record;
+  v_matchup public.team_tournament_matchups;
+  v_sub public.team_tournament_sub_matches;
   v_forfeit_count int := 0;
   v_skipped_confirmed int := 0;
   v_event_id uuid;

@@ -63,9 +63,50 @@ test("SQL package files exist with required contracts", () => {
   assert.match(forfeit, /team_tournament_withdraw_team/);
   assert.match(forfeit, /withdrawn_at/);
   assert.match(forfeit, /forfeit_count/);
+  // File 30 must NOT redefine recompute — that overwrote Dreambreaker-aware body from 10.
+  assert.equal(
+    (forfeit.match(/create or replace function public\.team_tournament_recompute_matchup_result/g) || [])
+      .length,
+    0
+  );
+  // Withdraw loop vars must be typed composites (record → cast error on confirmed guard).
+  assert.match(forfeit, /v_sub public\.team_tournament_sub_matches/);
+  assert.match(forfeit, /v_matchup public\.team_tournament_matchups/);
 
   const randomize = fs.readFileSync(path.join(pkgDir, "40_RANDOMIZE_LINEUP_PARITY.sql"), "utf8");
   assert.match(randomize, /team_tournament_randomize_lineup/);
+
+  const verify = fs.readFileSync(path.join(pkgDir, "50_VERIFY.sql"), "utf8");
+  assert.match(verify, /pg_get_functiondef/);
+  assert.match(verify, /needsDreambreaker/);
+  assert.match(verify, /VERIFY_FAIL/);
+  assert.match(verify, /recompute_has_needs_dreambreaker/);
+});
+
+test("file 10 owns Dreambreaker-aware recompute; file 30 must not redefine it", () => {
+  const activate = fs.readFileSync(path.join(pkgDir, "10_RECOMPUTE_AND_DREAMBREAKER_ACTIVATE.sql"), "utf8");
+  const forfeit = fs.readFileSync(path.join(pkgDir, "30_FORFEIT_WITHDRAW_PARITY.sql"), "utf8");
+  assert.match(activate, /create or replace function public\.team_tournament_recompute_matchup_result/);
+  assert.match(activate, /needsDreambreaker/);
+  assert.match(activate, /v_needs_db/);
+  assert.doesNotMatch(
+    forfeit,
+    /create or replace function public\.team_tournament_recompute_matchup_result/
+  );
+  assert.match(forfeit, /OWNED BY FILE 10/);
+});
+
+test("withdraw RPC avoids record→team_tournament_sub_matches cast", () => {
+  const forfeit = fs.readFileSync(path.join(pkgDir, "30_FORFEIT_WITHDRAW_PARITY.sql"), "utf8");
+  const withdrawBody =
+    forfeit.split("create or replace function public.team_tournament_withdraw_team")[1] || "";
+  assert.match(withdrawBody, /v_sub public\.team_tournament_sub_matches/);
+  assert.doesNotMatch(withdrawBody, /v_sub record;/);
+  assert.match(withdrawBody, /team_tournament_sub_match_is_confirmed_normal\(v_sub\)/);
+  assert.match(withdrawBody, /withdrawn = true/);
+  assert.match(withdrawBody, /withdrawn_at = now\(\)/);
+  assert.match(withdrawBody, /withdrawal_reason = p_reason/);
+  assert.match(withdrawBody, /team_tournament_recompute_standings_cache/);
 });
 
 test("2-2 confirm path activates dreambreaker and does not false-complete", () => {
