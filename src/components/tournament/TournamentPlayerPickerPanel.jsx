@@ -16,6 +16,7 @@ import SearchIcon from "@mui/icons-material/Search";
 
 import {
   ALL_CLUBS_FILTER,
+  buildOfficialPickerCountCaption,
   filterTournamentPickerPlayers,
   formatPlayerPickerMeta,
 } from "../../utils/tournamentPlayerPicker.js";
@@ -41,6 +42,7 @@ export default function TournamentPlayerPickerPanel({
   maxHeight = 320,
   mode = "select",
   onRegister,
+  onPairPick,
   showClubFilter = true,
   showSelectActions = true,
   showPlayerList = true,
@@ -57,6 +59,12 @@ export default function TournamentPlayerPickerPanel({
       }),
     [players, clubFilter, genderFilter, search, eventType, excludePlayerIds, showClubFilter]
   );
+
+  const countCaption = buildOfficialPickerCountCaption({
+    filteredCount: filteredPlayers.length,
+    totalCount: players.length,
+    showPlayerList,
+  });
 
   const handleSelectAll = () => {
     if (onSelectAll) {
@@ -156,44 +164,61 @@ export default function TournamentPlayerPickerPanel({
       </Stack>
 
       <Typography variant="caption" color="text.secondary">
-        {filteredPlayers.length}/{players.length} VĐV hiển thị
+        {countCaption}
       </Typography>
 
       {showPlayerList ? (
-      <Stack spacing={1} sx={{ maxHeight, overflow: "auto" }}>
-        {filteredPlayers.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            {emptyMessage}
-          </Typography>
-        ) : (
-          filteredPlayers.map((player) => {
-            const playerId = String(player.id);
-            const checked = selectedIds.includes(playerId);
-            const handleClick = () => {
-              if (mode === "register") {
-                onRegister?.(player.id);
-                return;
-              }
-              onToggle?.(player.id);
-            };
+        <Stack spacing={1} sx={{ maxHeight, overflow: "auto" }}>
+          {filteredPlayers.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              {emptyMessage}
+            </Typography>
+          ) : (
+            filteredPlayers.map((player) => {
+              const playerId = String(player.id);
+              const checked = selectedIds.includes(playerId);
+              const pairSlot =
+                mode === "pair"
+                  ? playerId === String(selectedIds[0] || "")
+                    ? "VĐV 1"
+                    : playerId === String(selectedIds[1] || "")
+                      ? "VĐV 2"
+                      : null
+                  : null;
+              const handleClick = () => {
+                if (mode === "register") {
+                  onRegister?.(player.id);
+                  return;
+                }
+                if (mode === "pair") {
+                  onPairPick?.(player.id);
+                  return;
+                }
+                onToggle?.(player.id);
+              };
 
-            return (
-              <Button
-                key={player.id}
-                fullWidth
-                variant={mode === "select" && checked ? "contained" : "outlined"}
-                onClick={handleClick}
-                sx={{ justifyContent: "space-between", minHeight: 44, textAlign: "left" }}
-              >
-                <span>{player.name}</span>
-                <span style={{ opacity: 0.85, marginLeft: 8, whiteSpace: "nowrap" }}>
-                  {formatPlayerPickerMeta(player, showSkillLevel)}
-                </span>
-              </Button>
-            );
-          })
-        )}
-      </Stack>
+              return (
+                <Button
+                  key={player.id}
+                  fullWidth
+                  variant={
+                    (mode === "select" || mode === "pair") && checked ? "contained" : "outlined"
+                  }
+                  onClick={handleClick}
+                  sx={{ justifyContent: "space-between", minHeight: 44, textAlign: "left" }}
+                >
+                  <span>
+                    {player.name}
+                    {pairSlot ? ` (${pairSlot})` : ""}
+                  </span>
+                  <span style={{ opacity: 0.85, marginLeft: 8, whiteSpace: "nowrap" }}>
+                    {formatPlayerPickerMeta(player, showSkillLevel)}
+                  </span>
+                </Button>
+              );
+            })
+          )}
+        </Stack>
       ) : null}
     </Stack>
   );
