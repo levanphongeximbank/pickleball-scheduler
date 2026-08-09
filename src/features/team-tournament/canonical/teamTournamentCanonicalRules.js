@@ -25,6 +25,7 @@ export const SETUP_COMMAND_NAMES = Object.freeze([
   "awards.assign",
   "awards.auto_assign",
   "tournament.save_draft",
+  "tournament.update_setup_config",
   "tournament.close",
   "snapshot.restore",
 ]);

@@ -81,6 +81,7 @@ create table if not exists public.team_tournament_setup_snapshots (
       'awards.assign',
       'awards.auto_assign',
       'tournament.save_draft',
+      'tournament.update_setup_config',
       'tournament.close',
       'snapshot.restore'
     )),

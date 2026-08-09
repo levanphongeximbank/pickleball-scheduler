@@ -96,6 +96,7 @@ export function createMlpSettings(overrides = {}) {
   return {
     formatPreset: FORMAT_PRESET.MLP_4,
     rosterRules: {
+      teamSize: 4,
       minPlayers: 4,
       maxPlayers: 4,
       requiredMales: 2,
@@ -105,6 +106,14 @@ export function createMlpSettings(overrides = {}) {
     allowPlayerCrossTeam: false,
     dreambreakerEnabled: true,
     lineupLockLeadMinutes: 15,
+    groupMode: overrides.groupMode || "single_pool",
+    groupCount: overrides.groupCount != null ? overrides.groupCount : 1,
+    qualificationCount:
+      overrides.qualificationCount != null ? overrides.qualificationCount : 2,
+    knockoutFormat: overrides.knockoutFormat || "top_n",
+    selectedCourtIds: Array.isArray(overrides.selectedCourtIds)
+      ? overrides.selectedCourtIds
+      : [],
     missingLineupPolicy: overrides.missingLineupPolicy || "random",
     tiebreakOrder: overrides.tiebreakOrder || [
       "wins",

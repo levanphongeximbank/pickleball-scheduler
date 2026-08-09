@@ -7,6 +7,8 @@ import {
   DREAMBREAKER_STATUS,
   FORMAT_PRESET,
   GENDER_REQUIREMENT,
+  GROUP_MODE,
+  KNOCKOUT_FORMAT,
   LINEUP_SOURCE,
   LINEUP_STATUS,
   MATCHUP_STATUS,
@@ -14,6 +16,10 @@ import {
   SUB_MATCH_STATUS,
   TEAM_GROUP_SEEDING,
 } from "../constants.js";
+import {
+  normalizeRosterRules,
+  resolveFormatVenueDefaults,
+} from "../engines/teamFormatVenueConfig.js";
 
 const VALID_CATEGORIES = new Set(Object.values(DISCIPLINE_CATEGORY));
 const VALID_GENDERS = new Set(Object.values(GENDER_REQUIREMENT));
@@ -291,6 +297,7 @@ export function normalizeMatchup(matchup) {
     scheduledAt: matchup.scheduledAt || null,
     lineupLockAt: matchup.lineupLockAt || null,
     courtLabel: matchup.courtLabel ? String(matchup.courtLabel).trim() : "",
+    courtId: matchup.courtId ? String(matchup.courtId).trim() : "",
     groupId: matchup.groupId ? String(matchup.groupId).trim() : "",
     roundNumber: Number(matchup.roundNumber) > 0 ? Number(matchup.roundNumber) : 0,
     matchNumberInRound:
@@ -364,6 +371,7 @@ export function createMatchupRecord(teamAId, teamBId, options = {}) {
     scheduledAt: options.scheduledAt || null,
     lineupLockAt: options.lineupLockAt || null,
     courtLabel: options.courtLabel || "",
+    courtId: options.courtId || "",
     roundNumber: Number(options.roundNumber) > 0 ? Number(options.roundNumber) : 0,
     matchNumberInRound:
       Number(options.matchNumberInRound) > 0 ? Number(options.matchNumberInRound) : 0,
@@ -495,19 +503,42 @@ export function normalizeTeamData(teamData = {}) {
   const rawSettings =
     teamData.settings && typeof teamData.settings === "object" ? teamData.settings : {};
 
+  const formatVenue = resolveFormatVenueDefaults({ settings: rawSettings, groups: teamData.groups });
+
   const settings = {
     ...DEFAULT_TEAM_TOURNAMENT_SETTINGS,
     ...rawSettings,
-    formatPreset: rawSettings.formatPreset || FORMAT_PRESET.CUSTOM,
+    formatPreset: formatVenue.formatPreset || FORMAT_PRESET.CUSTOM,
     groupSeeding: VALID_GROUP_SEEDING.has(rawSettings.groupSeeding)
       ? rawSettings.groupSeeding
       : DEFAULT_TEAM_TOURNAMENT_SETTINGS.groupSeeding,
-    rosterRules: {
-      ...DEFAULT_TEAM_TOURNAMENT_SETTINGS.rosterRules,
-      ...(rawSettings.rosterRules || {}),
-    },
+    rosterRules: rawSettings.rosterRules
+      ? normalizeRosterRules(rawSettings.rosterRules)
+      : formatVenue.rosterRules,
     regulations: rawSettings.regulations || null,
+    selectedCourtIds: formatVenue.selectedCourtIds,
+    dreambreakerEnabled: Object.prototype.hasOwnProperty.call(rawSettings, "dreambreakerEnabled")
+      ? Boolean(rawSettings.dreambreakerEnabled)
+      : formatVenue.dreambreakerEnabled,
   };
+
+  // Only persist organizer Format/Venue keys when present on the raw settings blob.
+  // Do not invent groupMode/groupCount for legacy tournaments (keeps 6–10 group floor).
+  if (Object.prototype.hasOwnProperty.call(rawSettings, "groupMode")) {
+    settings.groupMode = formatVenue.groupMode || GROUP_MODE.SINGLE_POOL;
+  }
+  if (Object.prototype.hasOwnProperty.call(rawSettings, "groupCount")) {
+    settings.groupCount = formatVenue.groupCount;
+  }
+  if (Object.prototype.hasOwnProperty.call(rawSettings, "qualificationCount")) {
+    settings.qualificationCount = formatVenue.qualificationCount;
+  }
+  if (Object.prototype.hasOwnProperty.call(rawSettings, "knockoutFormat")) {
+    settings.knockoutFormat = formatVenue.knockoutFormat || KNOCKOUT_FORMAT.TOP_N;
+  }
+  if (Object.prototype.hasOwnProperty.call(rawSettings, "teamsPerGroup")) {
+    settings.teamsPerGroup = formatVenue.teamsPerGroup;
+  }
 
   const substitutionLog = Array.isArray(teamData.substitutionLog)
     ? teamData.substitutionLog

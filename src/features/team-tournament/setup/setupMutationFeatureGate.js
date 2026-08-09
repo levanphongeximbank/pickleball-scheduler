@@ -61,3 +61,34 @@ export function rejectIfSetupMutationGateOff(envSource) {
       "Default Preview/Production setup writes không đổi.",
   };
 }
+
+/**
+ * Fail-closed preflight before any partial team/captain/group write sequence.
+ * Does not bypass the gate — returns explicit error when OFF.
+ *
+ * @param {{ envSource?: Record<string, string|undefined> }} [options]
+ * @returns {{ ok: true, gateEnabled: true } | { ok: false, code: string, error: string, writeAttempted: false, gateEnabled: false }}
+ */
+export function preflightSetupMutationCapability(options = {}) {
+  const gateOff = rejectIfSetupMutationGateOff(options.envSource);
+  if (gateOff) {
+    return {
+      ok: false,
+      code: gateOff.code,
+      error:
+        "Setup mutation v7 đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7). " +
+        "Không ghi đội/đội trưởng/bảng một phần. Bật gate sau Owner GO.",
+      writeAttempted: false,
+      gateEnabled: false,
+    };
+  }
+  return { ok: true, gateEnabled: true };
+}
+
+/**
+ * Hard-cutover recommendation after certification.
+ * Keep gate until setup config + groups.replace are Staging-certified and Owner GO.
+ */
+export const V7_GATE_RETIREMENT_RECOMMENDATION =
+  "KEEP_UNTIL_STAGING_CERTIFIED_THEN_OWNER_GO_DEFAULT_ON — do not silently retire; flip env only after Production apply approval.";
+

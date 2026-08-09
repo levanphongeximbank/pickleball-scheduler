@@ -1,6 +1,10 @@
 /**
  * Canonical Team Tournament V6 workflow stage + draft status.
  * Reconstructable from persisted setup data (get_setup v7) — not tab selection.
+ *
+ * Stage order:
+ * create → format → teams → groups → disciplines → matchups → schedule → lineup → results → closed
+ * ("create" is tournament existence; derived stage starts at format.)
  */
 
 import { MATCHUP_STATUS } from "../constants.js";
@@ -9,8 +13,10 @@ import {
   MIN_TEAMS_FOR_EXPLICIT_GROUPS,
   tournamentRequiresExplicitGroups,
 } from "./teamGroupDivisionPolicy.js";
+import { isFormatVenueSetupComplete } from "./teamFormatVenueConfig.js";
 
 export const WORKFLOW_STAGE = Object.freeze({
+  FORMAT: "format",
   TEAMS: "teams",
   GROUPS: "groups",
   DISCIPLINES: "disciplines",
@@ -22,6 +28,7 @@ export const WORKFLOW_STAGE = Object.freeze({
 });
 
 export const WORKFLOW_STAGE_ORDER = Object.freeze([
+  WORKFLOW_STAGE.FORMAT,
   WORKFLOW_STAGE.TEAMS,
   WORKFLOW_STAGE.GROUPS,
   WORKFLOW_STAGE.DISCIPLINES,
@@ -33,6 +40,7 @@ export const WORKFLOW_STAGE_ORDER = Object.freeze([
 ]);
 
 export const WORKFLOW_STAGE_LABELS = Object.freeze({
+  [WORKFLOW_STAGE.FORMAT]: "Format & Venue",
   [WORKFLOW_STAGE.TEAMS]: "Đội",
   [WORKFLOW_STAGE.GROUPS]: "Chia bảng",
   [WORKFLOW_STAGE.DISCIPLINES]: "Nội dung",
@@ -44,6 +52,7 @@ export const WORKFLOW_STAGE_LABELS = Object.freeze({
 });
 
 const DRAFT_STATUS = Object.freeze({
+  NO_FORMAT: "Nháp — chưa cấu hình Format & Venue",
   NO_TEAMS: "Nháp — chưa có đội",
   HAS_TEAMS: "Nháp — đã có đội",
   HAS_GROUPS: "Nháp — đã chia bảng",
@@ -58,6 +67,7 @@ function hasScheduledMatchups(matchups = []) {
     (matchup) =>
       Boolean(matchup.scheduledAt) ||
       Boolean(matchup.courtLabel) ||
+      Boolean(matchup.courtId) ||
       Boolean(matchup.scheduleMeta?.scheduledAt)
   );
 }
@@ -105,13 +115,36 @@ export function deriveWorkflowStage(teamData, tournament = null) {
   const groupsReady = hasExplicitGroups(teamData);
   const disciplines = teamData?.disciplines || [];
   const matchups = teamData?.matchups || [];
-  const needsGroups = tournamentRequiresExplicitGroups(teams.length);
+  const needsGroups = tournamentRequiresExplicitGroups(teams.length, teamData);
+  const formatReady = isFormatVenueSetupComplete(teamData, tournament);
+
+  // Legacy tournaments with teams already created are treated as format-complete
+  // via resolveFormatVenueDefaults (mlp_4 read defaults) — isFormatVenueSetupComplete
+  // returns true. Brand-new empty drafts without formatPreset still need format step
+  // only when settings explicitly mark format incomplete; otherwise allow teams.
+  if (!formatReady && teams.length === 0) {
+    return WORKFLOW_STAGE.FORMAT;
+  }
 
   if (teams.length < 2) {
     return WORKFLOW_STAGE.TEAMS;
   }
 
   if (needsGroups && !groupsReady) {
+    return WORKFLOW_STAGE.GROUPS;
+  }
+
+  // Organizer configured groupCount>=1 with manual/automatic and no groups yet
+  // for small fields (e.g. 4 teams → 1 group): stay on groups until confirmed
+  // only when settings.groupCount is set and groups empty AND groupMode wants explicit.
+  const configuredGroupCount = Number(teamData?.settings?.groupCount) || 0;
+  const groupMode = teamData?.settings?.groupMode;
+  if (
+    !groupsReady &&
+    configuredGroupCount >= 1 &&
+    (groupMode === "manual" || groupMode === "automatic") &&
+    teams.length >= 2
+  ) {
     return WORKFLOW_STAGE.GROUPS;
   }
 
@@ -172,6 +205,9 @@ export function deriveDraftStatusLabel(teamData, tournament = null) {
   if (teams.length > 0) {
     return DRAFT_STATUS.HAS_TEAMS;
   }
+  if (!isFormatVenueSetupComplete(teamData, tournament)) {
+    return DRAFT_STATUS.NO_FORMAT;
+  }
   return DRAFT_STATUS.NO_TEAMS;
 }
 
@@ -211,40 +247,41 @@ export function buildTeamTournamentDraftState(teamData, tournament = null, meta 
 export function deriveNextWorkflowAction(teamData, tournament = null) {
   const stage = deriveWorkflowStage(teamData, tournament);
   const teams = teamData?.teams || [];
-  const needsGroups = tournamentRequiresExplicitGroups(teams.length);
   const teamsInsufficient =
-    teams.length > 0 && teams.length < MIN_TEAMS_FOR_EXPLICIT_GROUPS && needsGroups === false
+    teams.length > 0 && teams.length < MIN_TEAMS_FOR_EXPLICIT_GROUPS &&
+    tournamentRequiresExplicitGroups(MIN_TEAMS_FOR_EXPLICIT_GROUPS) === true
       ? false
-      : teams.length < MIN_TEAMS_FOR_EXPLICIT_GROUPS &&
-        tournamentRequiresExplicitGroups(MIN_TEAMS_FOR_EXPLICIT_GROUPS);
+      : false;
 
   switch (stage) {
+    case WORKFLOW_STAGE.FORMAT:
+      return {
+        stage,
+        actionId: "configure_format_venue",
+        label: "Cấu hình Format & Venue",
+        hint: "Chọn format (MLP 4 / tùy chỉnh), nhóm bảng và sân trước khi thêm đội.",
+        groupActionsEnabled: false,
+        groupActionsDisabledReason: "Hoàn tất Format & Venue trước.",
+      };
     case WORKFLOW_STAGE.TEAMS:
       return {
         stage,
         actionId: "add_teams",
         label: "Thêm đội",
-        hint:
-          teams.length < MIN_TEAMS_FOR_EXPLICIT_GROUPS
-            ? `Cần ít nhất ${MIN_TEAMS_FOR_EXPLICIT_GROUPS} đội để chia bảng.`
-            : "Tiếp tục thêm / chỉnh đội.",
-        groupActionsEnabled: false,
+        hint: "Tiếp tục thêm / chỉnh đội.",
+        groupActionsEnabled: teams.length >= 2,
         groupActionsDisabledReason:
-          teams.length < MIN_TEAMS_FOR_EXPLICIT_GROUPS
-            ? `Cần ít nhất ${MIN_TEAMS_FOR_EXPLICIT_GROUPS} đội để chia bảng.`
-            : null,
+          teams.length < 2 ? "Cần ít nhất 2 đội để chia bảng." : null,
       };
     case WORKFLOW_STAGE.GROUPS:
       return {
         stage,
         actionId: "divide_groups",
         label: "Chia bảng",
-        hint: "Chia bảng đấu trước khi tạo cặp đấu / lịch.",
-        groupActionsEnabled: teams.length >= MIN_TEAMS_FOR_EXPLICIT_GROUPS,
+        hint: "Chia bảng đấu trước khi tạo cặp đấu / lịch. Hỗ trợ 1 bảng hoặc N bảng.",
+        groupActionsEnabled: teams.length >= 2,
         groupActionsDisabledReason:
-          teams.length < MIN_TEAMS_FOR_EXPLICIT_GROUPS
-            ? `Cần ít nhất ${MIN_TEAMS_FOR_EXPLICIT_GROUPS} đội để chia bảng.`
-            : null,
+          teams.length < 2 ? "Cần ít nhất 2 đội để chia bảng." : null,
       };
     case WORKFLOW_STAGE.DISCIPLINES:
       return {
@@ -273,7 +310,7 @@ export function deriveNextWorkflowAction(teamData, tournament = null) {
           : "Tạo lịch",
         hint: hasScheduledMatchups(teamData?.matchups || [])
           ? "Kiểm tra lịch nháp rồi công bố."
-          : "Gắn giờ / sân cho các cặp đấu.",
+          : "Gắn giờ / sân cho các cặp đấu (dùng selectedCourtIds).",
         groupActionsEnabled: true,
         groupActionsDisabledReason: null,
       };

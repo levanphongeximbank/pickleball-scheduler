@@ -74,6 +74,7 @@ import BuildScheduleDialog from "../../components/tournament/team/BuildScheduleD
 import TeamSchedulePreviewDialog from "../../components/tournament/team/TeamSchedulePreviewDialog.jsx";
 import TeamDisciplinesPanel from "../../components/tournament/team/TeamDisciplinesPanel.jsx";
 import TeamGroupDivisionPanel from "../../components/tournament/team/TeamGroupDivisionPanel.jsx";
+import TeamFormatVenueSetupPanel from "../../components/tournament/team/TeamFormatVenueSetupPanel.jsx";
 import TeamMatchupOperationsCard from "../../components/tournament/team/TeamMatchupOperationsCard.jsx";
 import TeamLineupOverrideDialog from "../../components/tournament/team/TeamLineupOverrideDialog.jsx";
 import TeamForfeitDialog from "../../components/tournament/team/TeamForfeitDialog.jsx";
@@ -103,6 +104,7 @@ import {
 } from "../../features/team-tournament/showcase/index.js";
 import TeamTournamentShowcase from "../../features/team-tournament/showcase/TeamTournamentShowcase.jsx";
 import { isSetupMutationFoundationEnabled } from "../../features/team-tournament/setup/setupMutationFeatureGate.js";
+import { mergeFormatVenueIntoSettings } from "../../features/team-tournament/engines/teamFormatVenueConfig.js";
 import { isGroupDivisionEditable } from "../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
 import { DEFAULT_ENGINE_VERSION } from "../../features/team-tournament/canonical/teamTournamentMutationEnvelope.js";
 import { TT_V6_TT32_FIXTURE } from "../../features/team-tournament/fixtures/ttV6Tt32StagingFixture.js";
@@ -111,7 +113,11 @@ import { isGlobalRole } from "../../features/identity/constants/roles.js";
 import { canManageClubGovernance } from "../../features/club/services/clubGovernanceService.js";
 
 function buildVisibleTabs(canManage) {
-  const tabs = [{ key: TEAM_TAB_QUERY.teams, label: "Đội" }];
+  const tabs = [];
+  if (canManage) {
+    tabs.push({ key: TEAM_TAB_QUERY.format, label: "Format & Venue" });
+  }
+  tabs.push({ key: TEAM_TAB_QUERY.teams, label: "Đội" });
   if (canManage) {
     tabs.push({ key: TEAM_TAB_QUERY.disciplines, label: "Nội dung" });
     tabs.push({ key: TEAM_TAB_QUERY.matchups, label: "Lịch đối đầu" });
@@ -371,6 +377,41 @@ export default function TeamTournamentSetup() {
     return true;
   }
 
+  async function saveFormatVenueConfig(config) {
+    if (!isSetupMutationFoundationEnabled()) {
+      setError(
+        "Không thể lưu Format & Venue: Setup mutation v7 đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7)."
+      );
+      return false;
+    }
+    const nextSettings = mergeFormatVenueIntoSettings(td?.settings || {}, config);
+    const nextTeamData = {
+      ...td,
+      settings: nextSettings,
+    };
+    if (typeof saveDraft === "function") {
+      const draftResult = await saveDraft({
+        teamData: nextTeamData,
+        setupConfig: config,
+      });
+      if (draftResult?.ok === false && draftResult?.code === "GATE_OFF") {
+        setError(draftResult.error || "Gate OFF — không ghi Format & Venue.");
+        return false;
+      }
+    }
+    const result = await patchTeamData({ teamData: nextTeamData, settings: nextSettings });
+    if (!result?.ok) {
+      setError(
+        result?.error ||
+          "Không ghi được settings Format & Venue. Cần Owner apply migration tournament.update_setup_config."
+      );
+      return false;
+    }
+    setMessage("Đã cập nhật Format & Venue.");
+    setError("");
+    return true;
+  }
+
   async function handleSaveDraft() {
     if (!access.canManage) {
       return;
@@ -619,6 +660,7 @@ export default function TeamTournamentSetup() {
       competitionClass: COMPETITION_CLASS.INTERNAL,
       clubId: effectiveClubId || activeClubId || null,
       tournamentId: tournamentId || null,
+      selectedCourtIds: td?.settings?.selectedCourtIds || options.selectedCourtIds || [],
     };
 
     const next = buildRoundRobinMatchups(
@@ -1254,6 +1296,19 @@ export default function TeamTournamentSetup() {
             <Tab key={tabItem.key} label={tabItem.label} />
           ))}
         </Tabs>
+
+        {access.canManage && activeTabKey === TEAM_TAB_QUERY.format ? (
+          <TeamFormatVenueSetupPanel
+            teamData={td}
+            tournament={tournament}
+            clubId={effectiveClubId || activeClubId}
+            canManage={access.canManage}
+            teamCountHint={td?.teams?.length || 0}
+            onSave={saveFormatVenueConfig}
+            onError={setError}
+            onMessage={setMessage}
+          />
+        ) : null}
 
         {activeTabKey === TEAM_TAB_QUERY.teams ? (
           <Stack spacing={2}>

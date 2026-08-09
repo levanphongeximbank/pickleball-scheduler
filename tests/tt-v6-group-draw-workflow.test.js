@@ -105,7 +105,7 @@ test("3. 8 teams can be divided into 2 groups", () => {
 
 test("4. 8 teams can be divided into 4 groups", () => {
   const options = listGroupDivisionOptions(8);
-  assert.ok(options.some((option) => option.groupCount === 4 && option.sizes.join("x") === "2x2"));
+  assert.ok(options.some((option) => option.groupCount === 4 && option.sizes.join("x") === "2x2x2x2"));
 
   const result = assignSeededTeamsToGroups(withEightTeams(), {
     groupCount: 4,

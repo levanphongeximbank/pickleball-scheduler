@@ -1,5 +1,6 @@
 import { MATCHUP_STATUS } from "../constants.js";
 import { normalizeTeamData } from "../models/index.js";
+import { assertCourtsReadyForPublish } from "./teamFormatVenueConfig.js";
 
 export const SCHEDULE_PUBLISH_STATUS = {
   DRAFT: "draft",
@@ -62,6 +63,11 @@ export function canPublishSchedule(teamData) {
       ok: false,
       error: `Còn ${unscheduled.length} lượt chưa có thời gian thi đấu.`,
     };
+  }
+
+  const courtsGate = assertCourtsReadyForPublish(teamData);
+  if (!courtsGate.ok) {
+    return courtsGate;
   }
 
   return { ok: true };

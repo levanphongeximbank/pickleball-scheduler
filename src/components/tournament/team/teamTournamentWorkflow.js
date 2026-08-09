@@ -29,8 +29,9 @@ export {
   WORKFLOW_STAGE_ORDER,
 };
 
-/** UI stepper — includes explicit Groups stage. */
+/** UI stepper — Format & Venue before Teams/Groups. */
 export const WORKFLOW_STEPS = [
+  { id: "format", label: "Format & Venue" },
   { id: "teams", label: "Đội" },
   { id: "groups", label: "Chia bảng" },
   { id: "disciplines", label: "Nội dung" },
@@ -82,11 +83,18 @@ export function computeTeamTournamentWorkflow(teamData, tournament = null) {
   const teams = teamData?.teams?.length || 0;
   const disciplines = teamData?.disciplines?.length || 0;
   const matchups = teamData?.matchups || [];
-  const needsGroups = tournamentRequiresExplicitGroups(teams);
+  const needsGroups = tournamentRequiresExplicitGroups(teams, teamData);
   const groupsReady = !needsGroups || hasExplicitGroups(teamData);
   const hasMatchups = matchups.length > 0;
   const hasSchedule = matchups.some(
-    (matchup) => Boolean(matchup.scheduledAt) || Boolean(matchup.courtLabel)
+    (matchup) =>
+      Boolean(matchup.scheduledAt) ||
+      Boolean(matchup.courtLabel) ||
+      Boolean(matchup.courtId)
+  );
+  const formatReady = Boolean(
+    teamData?.settings?.formatPreset ||
+      (teams > 0) // legacy tournaments already past format
   );
 
   const lineupDoneCount = matchups.filter((matchup) =>
@@ -100,6 +108,7 @@ export function computeTeamTournamentWorkflow(teamData, tournament = null) {
   const resultsStarted = matchups.some(hasResultsActivity);
 
   const stepComplete = [
+    formatReady,
     teams >= 2,
     groupsReady,
     disciplines >= 1,
@@ -115,18 +124,20 @@ export function computeTeamTournamentWorkflow(teamData, tournament = null) {
 
   const hints = [];
   if (!stepComplete[0]) {
-    hints.push("Thêm ít nhất 2 đội (MLP: 4 VĐV/đội, 2 nam + 2 nữ).");
+    hints.push("Cấu hình Format & Venue (MLP 4 / tùy chỉnh, bảng, sân) trước khi thêm đội.");
   } else if (!stepComplete[1]) {
-    hints.push("Chia bảng đấu trước khi tạo cặp đấu / lịch thi đấu.");
+    hints.push("Thêm ít nhất 2 đội (MLP: 4 VĐV/đội, 2 nam + 2 nữ).");
   } else if (!stepComplete[2]) {
-    hints.push("Cấu hình ít nhất 1 nội dung thi đấu.");
+    hints.push("Chia bảng đấu trước khi tạo cặp đấu / lịch thi đấu (hỗ trợ 1 bảng).");
   } else if (!stepComplete[3]) {
-    hints.push("Tạo cặp đấu / lịch vòng tròn theo bảng đã chia.");
+    hints.push("Cấu hình ít nhất 1 nội dung thi đấu.");
   } else if (!stepComplete[4]) {
-    hints.push("Gắn giờ và sân cho các cặp đấu, rồi kiểm tra sơ đồ.");
-  } else if (!stepComplete[5] && lineupDoneCount === 0) {
-    hints.push("Xem tab Sơ đồ để duyệt lịch trước khi khóa đội hình.");
+    hints.push("Tạo cặp đấu / lịch vòng tròn theo bảng đã chia.");
   } else if (!stepComplete[5]) {
+    hints.push("Gắn giờ và sân cho các cặp đấu, rồi kiểm tra sơ đồ.");
+  } else if (!stepComplete[6] && lineupDoneCount === 0) {
+    hints.push("Xem tab Sơ đồ để duyệt lịch trước khi khóa đội hình.");
+  } else if (!stepComplete[6]) {
     if (lineupDoneCount > 0) {
       hints.push(
         `Đã công bố đội hình ${lineupDoneCount}/${matchups.length} lượt. Khóa và công bố các lượt còn lại.`
@@ -138,7 +149,7 @@ export function computeTeamTournamentWorkflow(teamData, tournament = null) {
     hints.push(
       "Tỷ số trận con 2–2 — bước Dreambreaker (đấu đơn luân lưu): nộp thứ tự đội trưởng, trọng tài ghi điểm."
     );
-  } else if (!stepComplete[6]) {
+  } else if (!stepComplete[7]) {
     if (resultsStarted) {
       hints.push(
         `Đang nhập kết quả (${resultsDoneCount}/${matchups.length} lượt hoàn tất). Tiếp tục trên portal trọng tài.`

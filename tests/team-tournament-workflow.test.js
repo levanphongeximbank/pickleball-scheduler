@@ -12,15 +12,16 @@ import {
   WORKFLOW_STEPS,
 } from "../src/components/tournament/team/teamTournamentWorkflow.js";
 
-/** Indices after Groups + Matchups stages were added. */
+/** Indices after Format + Groups + Matchups stages were added. */
 const IDX = {
-  teams: 0,
-  groups: 1,
-  disciplines: 2,
-  matchups: 3,
-  schedule: 4,
-  lineups: 5,
-  results: 6,
+  format: 0,
+  teams: 1,
+  groups: 2,
+  disciplines: 3,
+  matchups: 4,
+  schedule: 5,
+  lineups: 6,
+  results: 7,
 };
 
 function withScheduleFields(matchup) {
@@ -31,10 +32,11 @@ function withScheduleFields(matchup) {
   };
 }
 
-test("workflow steps include explicit groups stage", () => {
+test("workflow steps include format then groups stage", () => {
+  assert.equal(WORKFLOW_STEPS[IDX.format].id, "format");
   assert.equal(WORKFLOW_STEPS[IDX.groups].id, "groups");
   assert.equal(WORKFLOW_STEPS[IDX.matchups].id, "matchups");
-  assert.equal(WORKFLOW_STEPS.length, 7);
+  assert.equal(WORKFLOW_STEPS.length, 8);
 });
 
 test("lineup phase done when matchup published", () => {

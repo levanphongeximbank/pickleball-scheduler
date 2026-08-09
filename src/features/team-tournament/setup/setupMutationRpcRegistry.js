@@ -27,6 +27,7 @@ export const SETUP_MUTATION_RPC_BY_COMMAND = Object.freeze({
   "awards.assign": "team_tournament_assign_award",
   "awards.auto_assign": "team_tournament_auto_assign_awards",
   "tournament.save_draft": "team_tournament_save_draft",
+  "tournament.update_setup_config": "team_tournament_update_setup_config",
   "tournament.close": "team_tournament_close_tournament",
   "snapshot.restore": "team_tournament_restore_setup_snapshot",
 });

@@ -114,7 +114,14 @@ test("entry fee engine tracks team payments", () => {
 });
 
 test("publish schedule engine publishes and locks schedule", () => {
-  const teamData = buildTeamData();
+  const base = buildTeamData();
+  const teamData = {
+    ...base,
+    settings: {
+      ...(base.settings || {}),
+      selectedCourtIds: ["court-1"],
+    },
+  };
   const published = publishSchedule(teamData, { userId: "btc" });
   assert.equal(published.ok, true);
   assert.equal(published.schedulePublish.status, SCHEDULE_PUBLISH_STATUS.PUBLISHED);

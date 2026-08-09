@@ -492,12 +492,19 @@ export default function ShowcaseTeamReveal({
           </Stack>
 
           <Stack direction="row" spacing={2} justifyContent="center">
-            <CeremonyButton
-              icon={player.paused ? <PlayArrowRoundedIcon /> : <PauseRoundedIcon />}
-              onClick={player.paused ? player.resume : player.pause}
-            >
-              {player.paused ? "Tiếp tục" : "Tạm dừng"}
-            </CeremonyButton>
+            {!isComplete ? (
+              <CeremonyButton
+                icon={player.paused ? <PlayArrowRoundedIcon /> : <PauseRoundedIcon />}
+                onClick={player.paused ? player.resume : player.pause}
+              >
+                {player.paused ? "Tiếp tục" : "Tạm dừng"}
+              </CeremonyButton>
+            ) : null}
+            {!isComplete ? (
+              <CeremonyButton onClick={player.skipToEnd}>
+                Bỏ qua hiệu ứng
+              </CeremonyButton>
+            ) : null}
             <CeremonyButton primary icon={<CloseRoundedIcon />} onClick={onClose}>
               Đóng
             </CeremonyButton>

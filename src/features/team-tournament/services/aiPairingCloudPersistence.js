@@ -17,6 +17,7 @@
 import { PRIVATE_PAIRING_RUNTIME_VERSION } from "../../private-pairing-rules/runtime/runtimeCodes.js";
 import { DEFAULT_ENGINE_VERSION } from "../canonical/teamTournamentMutationEnvelope.js";
 import { deriveWorkflowStage } from "../engines/teamTournamentWorkflowStage.js";
+import { preflightSetupMutationCapability } from "../setup/setupMutationFeatureGate.js";
 import { applyAiGeneratedTeamsToTournament } from "./teamTournamentService.js";
 
 /**
@@ -30,6 +31,7 @@ import { applyAiGeneratedTeamsToTournament } from "./teamTournamentService.js";
  * @param {Function} [params.reload] — may support { applyUi: false } peek
  * @param {string} [params.rulesVersion]
  * @param {number} [params.expectedTournamentVersion]
+ * @param {Record<string, string|undefined>} [params.envSource]
  */
 export async function confirmAiPairingCloudPersistence(params = {}) {
   const {
@@ -42,6 +44,7 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
     reload = null,
     rulesVersion = "",
     expectedTournamentVersion,
+    envSource,
   } = params;
 
   const teams = Array.isArray(nextTeamData?.teams) ? nextTeamData.teams : [];
@@ -63,6 +66,30 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
       error: "Không tìm thấy giải đấu.",
       writeAttempted: false,
     };
+  }
+
+  // V7 preflight BEFORE team/captain writes when groups must persist —
+  // no captains-only partial success if group persistence is required.
+  if (groups.length > 0) {
+    const preflight = preflightSetupMutationCapability({ envSource });
+    if (!preflight.ok) {
+      return {
+        ...preflight,
+        groupsExpected: groups.length,
+        groupsPersisted: 0,
+      };
+    }
+    if (typeof persistSetupTeamData !== "function") {
+      return {
+        ok: false,
+        code: "NO_GROUP_PERSIST_ADAPTER",
+        error:
+          "Thiếu adapter ghi bảng (groups.replace). Không ghi đội trước khi nhóm sẵn sàng.",
+        writeAttempted: false,
+        groupsExpected: groups.length,
+        groupsPersisted: 0,
+      };
+    }
   }
 
   const teamSave = await applyAiGeneratedTeamsToTournament(
@@ -133,22 +160,6 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
   let groupsPersisted = 0;
 
   if (groups.length > 0) {
-    if (typeof persistSetupTeamData !== "function") {
-      return {
-        ok: false,
-        code: "NO_GROUP_PERSIST_ADAPTER",
-        error:
-          "Đã lưu đội nhưng thiếu adapter ghi bảng (groups.replace). Không báo thành công.",
-        writeAttempted: true,
-        writeCount: 1,
-        teamSave,
-        captainsExpected,
-        captainsPersisted,
-        groupsExpected: groups.length,
-        groupsPersisted: 0,
-      };
-    }
-
     const resolvedRules = String(
       rulesVersion ||
         nextTeamData?.settings?.rulesVersion ||
@@ -173,6 +184,7 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
         matchups: [],
       },
       engineVersion: DEFAULT_ENGINE_VERSION,
+      envSource,
     });
 
     if (!groupResult?.ok) {
@@ -200,14 +212,14 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
       readback?.teamData?.groups ||
       groupResult.teamData?.groups ||
       groupResult.aggregate?.teamData?.groups ||
-      groups;
+      [];
     groupsPersisted = Array.isArray(persistedGroups) ? persistedGroups.length : 0;
 
-    if (groupsPersisted < groups.length) {
+    if (groupsPersisted !== groups.length) {
       return {
         ok: false,
         code: "GROUPS_READBACK_INCOMPLETE",
-        error: `Lưu bảng chưa đủ — đọc lại được ${groupsPersisted}/${groups.length} bảng.`,
+        error: `get_setup trả về ${groupsPersisted} bảng, kỳ vọng ${groups.length}. Không advance workflow / không F5.`,
         writeAttempted: true,
         writeCount: 2,
         teamSave,
@@ -217,6 +229,7 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
         groupsExpected: groups.length,
         groupsPersisted,
         partial: true,
+        requiresF5: false,
       };
     }
   }

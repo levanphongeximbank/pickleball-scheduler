@@ -362,6 +362,9 @@ export default function ShowcaseGroupReveal({
               >
                 {player.paused ? "Tiếp tục" : "Tạm dừng"}
               </CeremonyButton>
+              <CeremonyButton onClick={player.skipToEnd}>
+                Bỏ qua hiệu ứng
+              </CeremonyButton>
               <CeremonyButton primary icon={<CloseRoundedIcon />} onClick={onClose}>
                 Đóng
               </CeremonyButton>
