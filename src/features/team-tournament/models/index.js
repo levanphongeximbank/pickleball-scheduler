@@ -114,7 +114,7 @@ export function createDisciplineRecord(options = {}) {
   });
 }
 
-function normalizeDreambreakerState(dreambreaker) {
+export function normalizeDreambreakerState(dreambreaker) {
   if (!dreambreaker || typeof dreambreaker !== "object") {
     return null;
   }
@@ -450,8 +450,11 @@ export function normalizeStanding(standing, index = 0) {
     pointsScored: Number(standing.pointsScored) || 0,
     pointsConceded: Number(standing.pointsConceded) || 0,
     rankingPoints: Number(standing.rankingPoints) || 0,
+    // Local engine: wins awarded because opponent forfeited.
     forfeitWins: Number(standing.forfeitWins) || 0,
     forfeitLosses: Number(standing.forfeitLosses) || 0,
+    // Cloud standings: forfeit_count — do NOT silently alias to forfeitWins.
+    forfeitCount: Number(standing.forfeitCount) || 0,
     withdrawn: Boolean(standing.withdrawn),
   };
 }

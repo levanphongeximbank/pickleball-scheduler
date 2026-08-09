@@ -127,6 +127,27 @@ export function createShadowTeamTournamentRepository(options = {}) {
     applyForfeit(clubId, tournamentId, payload, commandOptions) {
       return delegateMutation("applyForfeit", clubId, tournamentId, payload, commandOptions);
     },
+    submitDreambreakerOrder(clubId, tournamentId, payload, commandOptions) {
+      return delegateMutation("submitDreambreakerOrder", clubId, tournamentId, payload, commandOptions);
+    },
+    lockDreambreakerOrder(clubId, tournamentId, payload, commandOptions) {
+      return delegateMutation("lockDreambreakerOrder", clubId, tournamentId, payload, commandOptions);
+    },
+    startDreambreaker(clubId, tournamentId, payload, commandOptions) {
+      return delegateMutation("startDreambreaker", clubId, tournamentId, payload, commandOptions);
+    },
+    recordDreambreakerPoint(clubId, tournamentId, payload, commandOptions) {
+      return delegateMutation("recordDreambreakerPoint", clubId, tournamentId, payload, commandOptions);
+    },
+    undoDreambreakerPoint(clubId, tournamentId, payload, commandOptions) {
+      return delegateMutation("undoDreambreakerPoint", clubId, tournamentId, payload, commandOptions);
+    },
+    dreambreakerInjury(clubId, tournamentId, payload, commandOptions) {
+      return delegateMutation("dreambreakerInjury", clubId, tournamentId, payload, commandOptions);
+    },
+    syncDreambreaker(clubId, tournamentId, payload, commandOptions) {
+      return delegateMutation("syncDreambreaker", clubId, tournamentId, payload, commandOptions);
+    },
     withdrawTeam(clubId, tournamentId, payload, commandOptions) {
       return delegateMutation("withdrawTeam", clubId, tournamentId, payload, commandOptions);
     },

@@ -17,6 +17,13 @@ import {
   rpcTeamTournamentSubmitLineup,
   rpcTeamTournamentUpsertStandings,
   rpcTeamTournamentExecuteSetupMutation,
+  rpcTeamTournamentSubmitDreambreakerOrder,
+  rpcTeamTournamentLockDreambreakerOrder,
+  rpcTeamTournamentRecordDreambreakerPoint,
+  rpcTeamTournamentSyncDreambreaker,
+  rpcTeamTournamentStartDreambreaker,
+  rpcTeamTournamentUndoDreambreakerPoint,
+  rpcTeamTournamentDreambreakerInjury,
 } from "../services/teamTournamentRpcService.js";
 import { computeTeamStandings } from "../engines/teamStandingsEngine.js";
 import {
@@ -429,6 +436,108 @@ export function createCloudTeamTournamentRepository() {
               reason: payload.reason || "",
               reasonCode: payload.reasonCode || "team_withdrawal",
               requestId: payload.requestId || null,
+            },
+            options
+          )
+        )
+      );
+    },
+
+    async submitDreambreakerOrder(_clubId, tournamentId, payload, commandOptions) {
+      return runVersionedMutation("submitDreambreakerOrder", commandOptions, async (options) =>
+        rpcTeamTournamentSubmitDreambreakerOrder(
+          withCommandParams(
+            {
+              tournamentId,
+              matchupId: payload.matchupId,
+              teamId: payload.teamId,
+              order: payload.order || [],
+            },
+            options
+          )
+        )
+      );
+    },
+
+    async lockDreambreakerOrder(_clubId, tournamentId, payload, commandOptions) {
+      return runVersionedMutation("lockDreambreakerOrder", commandOptions, async (options) =>
+        rpcTeamTournamentLockDreambreakerOrder(
+          withCommandParams(
+            {
+              tournamentId,
+              matchupId: payload.matchupId,
+            },
+            options
+          )
+        )
+      );
+    },
+
+    async startDreambreaker(_clubId, tournamentId, payload, commandOptions) {
+      return runVersionedMutation("startDreambreaker", commandOptions, async (options) =>
+        rpcTeamTournamentStartDreambreaker(
+          withCommandParams(
+            {
+              tournamentId,
+              matchupId: payload.matchupId,
+            },
+            options
+          )
+        )
+      );
+    },
+
+    async recordDreambreakerPoint(_clubId, tournamentId, payload, commandOptions) {
+      return runVersionedMutation("recordDreambreakerPoint", commandOptions, async (options) =>
+        rpcTeamTournamentRecordDreambreakerPoint(
+          withCommandParams(
+            {
+              tournamentId,
+              matchupId: payload.matchupId,
+              scoringTeamId: payload.scoringTeamId,
+            },
+            options
+          )
+        )
+      );
+    },
+
+    async undoDreambreakerPoint(_clubId, tournamentId, payload, commandOptions) {
+      return runVersionedMutation("undoDreambreakerPoint", commandOptions, async (options) =>
+        rpcTeamTournamentUndoDreambreakerPoint(
+          withCommandParams(
+            {
+              tournamentId,
+              matchupId: payload.matchupId,
+            },
+            options
+          )
+        )
+      );
+    },
+
+    async dreambreakerInjury(_clubId, tournamentId, payload, commandOptions) {
+      return runVersionedMutation("dreambreakerInjury", commandOptions, async (options) =>
+        rpcTeamTournamentDreambreakerInjury(
+          withCommandParams(
+            {
+              tournamentId,
+              matchupId: payload.matchupId,
+              teamId: payload.teamId,
+              playerId: payload.playerId || payload.skippedPlayerId,
+            },
+            options
+          )
+        )
+      );
+    },
+
+    async syncDreambreaker(_clubId, tournamentId, payload, commandOptions) {
+      return runVersionedMutation("syncDreambreaker", commandOptions, async (options) =>
+        rpcTeamTournamentSyncDreambreaker(
+          withCommandParams(
+            {
+              tournamentId,
             },
             options
           )

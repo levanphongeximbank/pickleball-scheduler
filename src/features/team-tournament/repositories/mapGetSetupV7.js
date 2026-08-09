@@ -3,6 +3,8 @@
  * Read-path only — no mutation wiring.
  */
 
+import { attachPersistedDreambreakerProjection } from "../engines/dreambreakerProjection.js";
+
 /**
  * @param {object} payload
  * @returns {boolean}
@@ -30,6 +32,19 @@ export function normalizeV7TournamentForAggregate(tournament = {}) {
         settings: tournament.settings || {},
       };
 
+  const withCollections = {
+    ...teamData,
+    groups: teamData.groups || tournament.groups || [],
+    disciplines: teamData.disciplines || tournament.disciplines || [],
+    teams: teamData.teams || tournament.teams || [],
+    matchups: teamData.matchups || tournament.matchups || [],
+    lineups: teamData.lineups || tournament.lineups || {},
+    standings: teamData.standings || tournament.standings || [],
+    dreambreaker: tournament.dreambreaker || teamData.dreambreaker || {},
+  };
+
+  const projected = attachPersistedDreambreakerProjection(withCollections);
+
   return {
     ...tournament,
     settings: {
@@ -43,16 +58,7 @@ export function normalizeV7TournamentForAggregate(tournament = {}) {
       formatPreset: tournament.formatPreset,
       rosterRules: tournament.rosterRules,
     },
-    teamData: {
-      ...teamData,
-      groups: teamData.groups || tournament.groups || [],
-      disciplines: teamData.disciplines || tournament.disciplines || [],
-      teams: teamData.teams || tournament.teams || [],
-      matchups: teamData.matchups || tournament.matchups || [],
-      lineups: teamData.lineups || tournament.lineups || {},
-      standings: teamData.standings || tournament.standings || [],
-      dreambreaker: tournament.dreambreaker || {},
-    },
+    teamData: projected,
   };
 }
 

@@ -13,6 +13,7 @@ import {
   REPOSITORY_REALTIME_FALLBACK,
 } from "../repositories/teamTournamentRepositoryTypes.js";
 import { syncDreambreakerForAllMatchups } from "../engines/dreambreakerEngine.js";
+import { attachPersistedDreambreakerProjection } from "../engines/dreambreakerProjection.js";
 import { useTeamTournamentRealtime } from "./useTeamTournamentRealtime.js";
 import {
   computeTournamentRosterSetupSignature,
@@ -135,8 +136,11 @@ export function useTeamTournamentPage({
     setLatestTournamentVersion(result.latestTournamentVersion ?? result.version ?? 1);
 
     const rawTeamData = result.teamData || result.aggregate?.teamData;
+    const mode = orchestrator.getMode?.() || orchestrator.mode;
     const synced = rawTeamData
-      ? syncDreambreakerForAllMatchups(rawTeamData).teamData
+      ? isCloudPrimaryMode(mode)
+        ? attachPersistedDreambreakerProjection(rawTeamData)
+        : syncDreambreakerForAllMatchups(rawTeamData).teamData
       : null;
 
     const nextRosterSignature = computeTournamentRosterSetupSignature(synced);
@@ -160,7 +164,7 @@ export function useTeamTournamentPage({
     setCanSubmit(result.canSubmit ?? null);
     setDeadlineStatus(result.deadlineStatus ?? null);
     return true;
-  }, []);
+  }, [orchestrator]);
 
   const reload = useCallback(
     async ({ silent = false, schemaVersion: readSchemaVersion, diagnostic: readDiagnostic } = {}) => {
@@ -313,8 +317,11 @@ export function useTeamTournamentPage({
         setVersionConflict(false);
         if (result.tournament) {
           setTournament(result.tournament);
+          const mode = orchestrator.getMode?.() || orchestrator.mode;
           const synced = result.teamData
-            ? syncDreambreakerForAllMatchups(result.teamData).teamData
+            ? isCloudPrimaryMode(mode)
+              ? attachPersistedDreambreakerProjection(result.teamData)
+              : syncDreambreakerForAllMatchups(result.teamData).teamData
             : null;
           setTeamData(synced);
           setAggregate(result.aggregate);

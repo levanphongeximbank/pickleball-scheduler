@@ -135,6 +135,27 @@ export function createBlobTeamTournamentRepository() {
     async applyForfeit(_clubId, _tournamentId, _payload, commandOptions) {
       return guardedMutation("applyForfeit", commandOptions);
     },
+    async submitDreambreakerOrder(_clubId, _tournamentId, _payload, commandOptions) {
+      return guardedMutation("submitDreambreakerOrder", commandOptions);
+    },
+    async lockDreambreakerOrder(_clubId, _tournamentId, _payload, commandOptions) {
+      return guardedMutation("lockDreambreakerOrder", commandOptions);
+    },
+    async startDreambreaker(_clubId, _tournamentId, _payload, commandOptions) {
+      return guardedMutation("startDreambreaker", commandOptions);
+    },
+    async recordDreambreakerPoint(_clubId, _tournamentId, _payload, commandOptions) {
+      return guardedMutation("recordDreambreakerPoint", commandOptions);
+    },
+    async undoDreambreakerPoint(_clubId, _tournamentId, _payload, commandOptions) {
+      return guardedMutation("undoDreambreakerPoint", commandOptions);
+    },
+    async dreambreakerInjury(_clubId, _tournamentId, _payload, commandOptions) {
+      return guardedMutation("dreambreakerInjury", commandOptions);
+    },
+    async syncDreambreaker(_clubId, _tournamentId, _payload, commandOptions) {
+      return guardedMutation("syncDreambreaker", commandOptions);
+    },
     async completeMatchup(_clubId, _tournamentId, _payload, commandOptions) {
       return guardedMutation("completeMatchup", commandOptions);
     },

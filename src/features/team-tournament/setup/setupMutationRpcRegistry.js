@@ -63,6 +63,10 @@ export function isSetupMutationRpcDeployed(rpcName) {
     SETUP_MUTATION_RPC_BY_COMMAND["schedule.publish"],
     SETUP_MUTATION_RPC_BY_COMMAND["schedule.lock"],
     SETUP_MUTATION_RPC_BY_COMMAND["tournament.save_draft"],
+    SETUP_MUTATION_RPC_BY_COMMAND["dreambreaker.order_submit"],
+    SETUP_MUTATION_RPC_BY_COMMAND["dreambreaker.order_lock"],
+    SETUP_MUTATION_RPC_BY_COMMAND["dreambreaker.point"],
+    SETUP_MUTATION_RPC_BY_COMMAND["dreambreaker.sync"],
   ]).has(String(rpcName || "").trim());
 }
 
