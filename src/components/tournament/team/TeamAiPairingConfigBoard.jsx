@@ -457,9 +457,9 @@ export default function TeamAiPairingConfigBoard({
             size="small"
             value={groupCount}
             onChange={(event) =>
-              onGroupCountChange?.(Math.max(2, Number(event.target.value) || 2))
+              onGroupCountChange?.(Math.max(1, Number(event.target.value) || 1))
             }
-            inputProps={{ min: 2, max: 8 }}
+            inputProps={{ min: 1, max: 8 }}
             sx={{
               width: "50%",
               "& .MuiInputBase-root": { color: "#f4f7fb" },

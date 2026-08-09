@@ -440,3 +440,20 @@ export function recommendAutomaticGroupCount(teamCount) {
   if (n <= 10) return 2;
   return Math.min(4, Math.floor(n / 3));
 }
+
+/**
+ * Canonical Format & Venue groupCount for AI pairing UI / group draw.
+ * Never falls back to hardcoded 2 — uses saved settings (default 1 when unset).
+ *
+ * @param {object} [teamData]
+ * @param {object|null} [tournament]
+ * @returns {number} integer >= 1
+ */
+export function resolvePairingGroupCount(teamData = {}, tournament = null) {
+  const config = resolveFormatVenueDefaults(teamData, tournament);
+  const configured = Number(config.groupCount);
+  if (Number.isFinite(configured) && configured >= 1) {
+    return Math.floor(configured);
+  }
+  return 1;
+}

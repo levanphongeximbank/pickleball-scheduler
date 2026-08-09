@@ -42,6 +42,7 @@ import { SHOWCASE_REVEAL_STEP_MS } from "../../../features/team-tournament/showc
 import { prefersReducedMotion } from "../../../features/team-tournament/showcase/showcaseStyles.js";
 import { getPlayerGenderKey } from "../../../models/player.js";
 import { reconcileSelectedAthletesForEngineInput } from "../../../features/team-tournament/showcase/reconcileSelectedAthletesForEngineInput.js";
+import { resolvePairingGroupCount } from "../../../features/team-tournament/engines/teamFormatVenueConfig.js";
 import TeamAiPairingConfigBoard, {
   DarkDialogHeader,
 } from "./TeamAiPairingConfigBoard.jsx";
@@ -53,6 +54,8 @@ const DIALOG_PAPER_SX = {
     "radial-gradient(ellipse at top, rgba(46, 204, 113, 0.1), transparent 55%), linear-gradient(180deg, #0a1628 0%, #07111f 50%, #050b14 100%)",
   minHeight: "100vh",
   backgroundSize: "100% 100%",
+  display: "flex",
+  flexDirection: "column",
 };
 
 function playerLabel(player) {
@@ -100,7 +103,9 @@ export default function TeamAiPairingDialog({
   const [teamNames, setTeamNames] = useState(
     Array.from({ length: 8 }, (_, i) => `Đội ${i + 1}`)
   );
-  const [groupCount, setGroupCount] = useState(2);
+  const [groupCount, setGroupCount] = useState(() =>
+    resolvePairingGroupCount(teamData, tournament)
+  );
   const [genderFilter, setGenderFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [pairingResult, setPairingResult] = useState(null);
@@ -209,7 +214,8 @@ export default function TeamAiPairingDialog({
     setSelectedIds([]);
     setTeamCount(8);
     setTeamNames(Array.from({ length: 8 }, (_, i) => `Đội ${i + 1}`));
-    setGroupCount(2);
+    // Canonical Format & Venue groupCount — never hard-reset to 2.
+    setGroupCount(resolvePairingGroupCount(teamData, tournament));
     setGenderFilter("all");
     setSearch("");
     setPairingResult(null);
@@ -223,6 +229,8 @@ export default function TeamAiPairingDialog({
     pendingPairingRef.current = null;
     setFocusTeamIndex(0);
     setReducedMotion(prefersReducedMotion());
+    // Intentionally only re-seed when dialog opens (not on every teamData refresh mid-flow).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open edge only
   }, [open]);
 
   useEffect(() => {
@@ -544,6 +552,8 @@ export default function TeamAiPairingDialog({
           px: { xs: 2, md: 3 },
           pb: 2,
           pt: 1,
+          flex: 1,
+          overflow: "auto",
         }}
       >
         <Stack spacing={1.75}>
@@ -740,31 +750,6 @@ export default function TeamAiPairingDialog({
                   )}
                 </Paper>
 
-                <Stack direction="row" spacing={1} mt={2}>
-                  <Button
-                    variant="outlined"
-                    onClick={() => setActiveStep(0)}
-                    disabled={applying}
-                    sx={{ color: "#f4f7fb", borderColor: "rgba(255,255,255,0.25)" }}
-                  >
-                    Quay lại
-                  </Button>
-                  <Button
-                    variant="contained"
-                    disabled={!allCaptainsSelected || applying}
-                    onClick={handleApply}
-                    sx={{
-                      bgcolor: "#7CFFB2",
-                      color: "#061018",
-                      fontWeight: 800,
-                      textTransform: "none",
-                      "&:hover": { bgcolor: "#9affc6" },
-                    }}
-                  >
-                    {applying ? "Đang lưu…" : "Xác nhận"}
-                  </Button>
-                </Stack>
-
                 {groupTeamData?.groups?.length ? (
                   <Alert severity="info" sx={{ mt: 1.5, bgcolor: "rgba(124,255,178,0.08)" }}>
                     Xem trước: {groupTeamData.groups.length} bảng sẽ được lưu cloud khi bấm
@@ -780,6 +765,63 @@ export default function TeamAiPairingDialog({
           )}
         </Stack>
       </DialogContent>
+
+      {activeStep === 1 ? (
+        <Box
+          component="footer"
+          data-testid="team-ai-pairing-captain-confirm-footer"
+          sx={{
+            flexShrink: 0,
+            px: { xs: 2, md: 3 },
+            py: 1.5,
+            bgcolor: "rgba(5, 11, 20, 0.98)",
+            borderTop: "1px solid rgba(124,255,178,0.28)",
+            boxShadow: "0 -8px 24px rgba(0,0,0,0.45)",
+          }}
+        >
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            justifyContent="flex-end"
+            sx={{ width: "100%", maxWidth: 1440, mx: "auto" }}
+          >
+            <Typography
+              variant="body2"
+              sx={{ opacity: 0.7, mr: { sm: "auto" }, display: { xs: "none", sm: "block" } }}
+            >
+              {allCaptainsSelected
+                ? "Đã chọn đủ đội trưởng — bấm Xác nhận để lưu cloud."
+                : "Chọn đội trưởng cho mọi đội, rồi bấm Xác nhận."}
+            </Typography>
+            <Button
+              variant="outlined"
+              onClick={() => setActiveStep(0)}
+              disabled={applying}
+              sx={{ color: "#f4f7fb", borderColor: "rgba(255,255,255,0.25)" }}
+            >
+              Quay lại
+            </Button>
+            <Button
+              variant="contained"
+              data-testid="team-ai-pairing-captain-confirm-cta"
+              disabled={!allCaptainsSelected || applying}
+              onClick={handleApply}
+              sx={{
+                bgcolor: "#7CFFB2",
+                color: "#061018",
+                fontWeight: 800,
+                textTransform: "none",
+                minHeight: 44,
+                px: 3,
+                "&:hover": { bgcolor: "#9affc6" },
+              }}
+            >
+              {applying ? "Đang lưu…" : "Xác nhận"}
+            </Button>
+          </Stack>
+        </Box>
+      ) : null}
 
       <TournamentPlayerQuickAddDialog
         open={quickAddOpen}
