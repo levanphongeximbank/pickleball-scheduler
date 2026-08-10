@@ -497,26 +497,26 @@ function normalizeCommandParams(params, legacyArgs) {
  * @param {string} tournamentId
  * @param {string|null} [viewerTeamId]
  * @param {{ schemaVersion?: number|null, diagnostic?: boolean }} [options]
+ *
+ * Always sends the canonical 4-arg PostgREST body so overloaded
+ * get_setup(text,text) vs get_setup(text,text,integer,boolean) cannot collide.
  */
 export async function rpcTeamTournamentGetSetup(
   tournamentId,
   viewerTeamId = null,
   options = {}
 ) {
-  const params = {
+  const schemaVersion =
+    options.schemaVersion != null && Number.isFinite(Number(options.schemaVersion))
+      ? Number(options.schemaVersion)
+      : 7;
+  const diagnostic = options.diagnostic === true;
+  return callTeamTournamentRpc("team_tournament_get_setup", {
     p_tournament_id: String(tournamentId),
     p_viewer_team_id: viewerTeamId ? String(viewerTeamId) : null,
-  };
-  if (options.schemaVersion != null) {
-    params.p_schema_version = Number(options.schemaVersion);
-  }
-  if (options.diagnostic === true) {
-    params.p_diagnostic = true;
-    if (params.p_schema_version == null) {
-      params.p_schema_version = 7;
-    }
-  }
-  return callTeamTournamentRpc("team_tournament_get_setup", params);
+    p_schema_version: schemaVersion,
+    p_diagnostic: diagnostic,
+  });
 }
 
 /**

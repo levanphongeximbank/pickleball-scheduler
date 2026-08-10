@@ -266,7 +266,11 @@ export async function cloudGetTeamTournamentSetup(tournamentId, viewerTeamId = n
     return { ok: false, code: "CLOUD_DISABLED" };
   }
 
-  const result = await rpcTeamTournamentGetSetup(tournamentId, viewerTeamId);
+  // Explicit 4-arg v7 contract — never rely on server defaults under dual overloads.
+  const result = await rpcTeamTournamentGetSetup(tournamentId, viewerTeamId, {
+    schemaVersion: 7,
+    diagnostic: false,
+  });
   if (!result.ok) {
     return result;
   }

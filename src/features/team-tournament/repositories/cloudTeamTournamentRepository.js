@@ -164,16 +164,13 @@ export function createCloudTeamTournamentRepository() {
         return viewerError;
       }
 
-      const setupOptions = {};
-      if (readOptions.schemaVersion != null) {
-        setupOptions.schemaVersion = Number(readOptions.schemaVersion);
-      }
-      if (readOptions.diagnostic === true) {
-        setupOptions.diagnostic = true;
-        if (setupOptions.schemaVersion == null) {
-          setupOptions.schemaVersion = 7;
-        }
-      }
+      const setupOptions = {
+        schemaVersion:
+          readOptions.schemaVersion != null
+            ? Number(readOptions.schemaVersion)
+            : 7,
+        diagnostic: readOptions.diagnostic === true,
+      };
 
       const result = await rpcTeamTournamentGetSetup(tournamentId, null, setupOptions);
       if (!result.ok) {
@@ -629,7 +626,10 @@ export function createCloudTeamTournamentRepository() {
         return validationError;
       }
 
-      const setup = await rpcTeamTournamentGetSetup(tournamentId, null);
+      const setup = await rpcTeamTournamentGetSetup(tournamentId, null, {
+        schemaVersion: 7,
+        diagnostic: false,
+      });
       if (!setup.ok || !setup.tournament) {
         return normalizeRepositoryResult(setup, { provider: "cloud" });
       }
