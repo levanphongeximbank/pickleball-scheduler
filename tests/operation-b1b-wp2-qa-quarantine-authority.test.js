@@ -334,7 +334,26 @@ test("17-22) prepare pending/pending, OPERATION_B1B, labels, bind, no profile/au
     /lifecycle_version[\s\S]{0,40}1/i.test(body)
   ), "prepare inserts pending/pending");
   check(/'OPERATION_B1B'/i.test(body), "source_operation fixed OPERATION_B1B");
-  check(/'QA-04'[\s\S]*'QA-05'[\s\S]*'QA-06'[\s\S]*'QA-07'[\s\S]*'QA-08'[\s\S]*'QA-09'[\s\S]*'QA-10'[\s\S]*'QA-11'/i.test(body), "exact eight labels");
+  check(
+    /operation_b1b_qa_label_email_contract_check/i.test(body),
+    "prepare uses shared Option C label/email contract"
+  );
+  check(
+    /'QA-04'[\s\S]*'QA-05'[\s\S]*'QA-06'[\s\S]*'QA-07'[\s\S]*'QA-08'[\s\S]*'QA-09'[\s\S]*'QA-10'[\s\S]*'QA-11'/i.test(
+      sql
+    ),
+    "exact Production eight labels present"
+  );
+  check(
+    /'STG-QA-04'[\s\S]*'STG-QA-05'[\s\S]*'STG-QA-06'[\s\S]*'STG-QA-07'[\s\S]*'STG-QA-08'[\s\S]*'STG-QA-09'[\s\S]*'STG-QA-10'[\s\S]*'STG-QA-11'/i.test(
+      sql
+    ),
+    "exact Staging eight labels present"
+  );
+  check(
+    /operation_b1b_validate_qa_prepare_contract/i.test(sql),
+    "read-only preclaim validator present"
+  );
   check(/profile_not_found|from\s+public\.profiles/i.test(body), "profile exists check");
   check(/auth_user_not_found|from\s+auth\.users/i.test(body), "auth user exists check");
   check(/identity_bind_mismatch|p_profile_id\s+is\s+distinct\s+from\s+p_auth_user_id/i.test(body), "identity bind");

@@ -214,6 +214,33 @@ function baseAdapters(row, state) {
     }),
     fetchReferenceCounts: async () => zeroRefs(),
     fetchAuthBanState: async () => state.banned === true,
+    validateQaPrepareContract: async (args) => {
+      calls.push("operation_b1b_validate_qa_prepare_contract");
+      pushRpc("operation_b1b_validate_qa_prepare_contract", {
+        p_bindings: args.bindings,
+      });
+      assertExactKeys(
+        { p_bindings: 1 },
+        OPERATION_B1B_RPC_ARG_KEYS.operation_b1b_validate_qa_prepare_contract,
+        "validateQaPrepareContract arg keys"
+      );
+      if (state.prepareContractOk === false) {
+        return {
+          ok: false,
+          reason: state.prepareContractReason || "prepare_contract_incompatible",
+          code: state.prepareContractReason || "prepare_contract_incompatible",
+        };
+      }
+      return {
+        ok: true,
+        data: {
+          ok: true,
+          code: "prepare_contract_compatible",
+          checked: Array.isArray(args?.bindings) ? args.bindings.length : 0,
+          environment: "production",
+        },
+      };
+    },
     qaQuarantinePrepare: async (args) => {
       calls.push("qa_quarantine_prepare");
       pushRpc("qa_quarantine_prepare", {
@@ -1241,6 +1268,7 @@ test("one-time authority: durable dependency required; process-local is defense-
 test("N) RPC arg keys locked to WP2 SQL signatures", () => {
   const sql = fs.readFileSync(WP2_SQL, "utf8");
   const expected = {
+    operation_b1b_validate_qa_prepare_contract: "p_bindings jsonb",
     qa_quarantine_prepare:
       "p_profile_id uuid, p_auth_user_id uuid, p_batch_id uuid, p_allowlist_sha256 text, p_snapshot_sha256 text, p_reason text, p_original_profile_status text, p_original_auth_banned boolean, p_expected_email text, p_allowlist_label text, p_metadata jsonb",
     qa_quarantine_activate_after_auth_ban:

@@ -21,6 +21,15 @@ Labels: `STG-QA-04` … `STG-QA-11`
 Emails: `phase1c.stg.safe1@staging-qa.local` … `phase1c.stg.safe8@staging-qa.local`  
 Domain proof: `@staging-qa.local` + local-part `phase1c.stg.*` (certified in `qaTestIdentityFilter.js`)
 
+### Label contract (Option C — fail-closed)
+
+| Environment | Exact labels | Interchangeable? |
+|-------------|--------------|------------------|
+| Production | `QA-04` … `QA-11` | **NO** — never reuse Staging labels |
+| Staging rehearsal | `STG-QA-04` … `STG-QA-11` | **NO** — never reuse Production labels |
+
+Cross-environment label reuse is **forbidden**. Package validation, SQL `qa_quarantine_prepare`, and the read-only preclaim validator share one exact-eight label/email predicate.
+
 ## One-time Staging batch UUID (reserved)
 
 ```text

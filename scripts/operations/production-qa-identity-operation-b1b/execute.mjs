@@ -26,6 +26,7 @@ import {
   RETIRED_OWNER_PRODUCTION_GO,
   RETIRED_OPERATION_B1_BATCH_IDS,
   hashExactEightUuidSet,
+  buildPrepareContractBindings,
 } from "./lib/index.js";
 
 function envInput() {
@@ -148,8 +149,29 @@ export async function runB1BExecute(input = envInput(), deps = {}) {
     }
   }
 
-  // Durable claim is the FINAL authorization barrier immediately before live mutation.
+  // READ-ONLY DB label/email compatibility gate MUST run before durable claim.
+  // Never call qa_quarantine_prepare here (that would persist rows).
   if (mutationAllowed(auth)) {
+    if (typeof adapters.validateQaPrepareContract !== "function") {
+      report.failReason = "prepare_contract_validator_unavailable";
+      report.reasons.push("prepare_contract_validator_unavailable");
+      return report;
+    }
+    const compat = await adapters.validateQaPrepareContract({
+      bindings: buildPrepareContractBindings(loaded.identities),
+    });
+    if (!compat?.ok) {
+      report.reasons.push(
+        compat?.reason || compat?.code || "prepare_contract_incompatible"
+      );
+      report.failReason = "prepare_contract_preclaim_failed";
+      report.authorityConsumed = false;
+      report.durableAuthorityClaimed = false;
+      report.mutationCalls = 0;
+      return report;
+    }
+
+    // Durable claim is the FINAL authorization barrier immediately before live mutation.
     const presented = await presentLiveAuthority(
       auth,
       deps.claimOneTimeLiveAuthority

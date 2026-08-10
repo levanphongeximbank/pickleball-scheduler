@@ -368,6 +368,7 @@ const RPC_ARG_CASTS = Object.freeze({
   p_failure_classification: "text",
   p_release_reason: "text",
   p_profile_ids: "uuid[]",
+  p_bindings: "jsonb",
 });
 
 export async function callRpcJson(client, fnName, argsObject) {

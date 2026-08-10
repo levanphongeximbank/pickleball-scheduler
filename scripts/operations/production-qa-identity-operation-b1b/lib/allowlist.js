@@ -14,8 +14,6 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   B2_EXCLUDED_LABELS,
-  CERTIFIED_B1_TARGET_LABELS,
-  CERTIFIED_STAGING_TARGET_LABELS,
   EXPECTED_B1B_COUNT,
   EXPECTED_PRODUCTION_PROJECT_REF,
   EXPECTED_STAGING_PROJECT_REF,
@@ -26,6 +24,10 @@ import {
 } from "./constants.js";
 import { resolveOperationTargetMode } from "./authorization.js";
 import { isCertifiedQaEmail } from "../../../../src/features/player/utils/qaTestIdentityFilter.js";
+import {
+  certifiedLabelsForOperationMode,
+  validateCertifiedQaLabelBinding,
+} from "./labelContract.js";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -54,12 +56,6 @@ export function assertOutsideGitRepositories(allowlistPath, repoRoots = []) {
   return { ok: true, path: full };
 }
 
-function certifiedLabelsForMode(mode) {
-  return mode === OPERATION_TARGET_MODE.STAGING_REHEARSAL
-    ? CERTIFIED_STAGING_TARGET_LABELS
-    : CERTIFIED_B1_TARGET_LABELS;
-}
-
 /**
  * Validate allowlist document structure and B1B safety invariants.
  * @param {object} doc
@@ -82,7 +78,7 @@ export function validateAllowlistDocument(doc, optionsOrMode = {}) {
   }
   const mode = modeResolved.mode;
   const isStaging = mode === OPERATION_TARGET_MODE.STAGING_REHEARSAL;
-  const certifiedLabels = certifiedLabelsForMode(mode);
+  const certifiedLabels = certifiedLabelsForOperationMode(mode);
 
   if (!doc || typeof doc !== "object") {
     return {
@@ -149,21 +145,25 @@ export function validateAllowlistDocument(doc, optionsOrMode = {}) {
 
   for (const row of doc.identities) {
     const label = normalizeAllowlistLabel(row?.label);
-    if (!label) {
-      errors.push("missing_label");
-    } else if (B2_EXCLUDED_LABELS.includes(label)) {
-      errors.push(`b2_excluded_label_present:${label}`);
-    } else if (!certifiedLabels.includes(label)) {
-      errors.push(`unknown_or_uncertified_label:${label}`);
-    }
-    if (label && labels.has(label)) errors.push(`duplicate_label:${label}`);
-    if (label) labels.add(label);
-
     const authId = String(row?.auth_user_id || "").trim();
     const profileId = String(row?.profile_id || "").trim();
     const email = String(row?.expected_email || "")
       .trim()
       .toLowerCase();
+
+    if (B2_EXCLUDED_LABELS.includes(label)) {
+      errors.push(`b2_excluded_label_present:${label}`);
+    }
+    const binding = validateCertifiedQaLabelBinding({
+      operationTargetMode: mode,
+      label,
+      expectedEmail: email,
+    });
+    if (!binding.ok) {
+      errors.push(binding.reason || "invalid_label_email_binding");
+    }
+    if (label && labels.has(label)) errors.push(`duplicate_label:${label}`);
+    if (label) labels.add(label);
 
     if (!UUID_RE.test(authId)) errors.push("invalid_auth_user_id");
     if (!UUID_RE.test(profileId)) errors.push("invalid_profile_id");
@@ -175,24 +175,17 @@ export function validateAllowlistDocument(doc, optionsOrMode = {}) {
     authIds.add(authId);
     profileIds.add(profileId);
 
-    if (!email) {
-      errors.push("missing_email");
-    } else {
+    if (email) {
+      // Defense-in-depth: keep explicit certified/forbidden checks even when
+      // validateCertifiedQaLabelBinding already covered mode binding.
       if (email === FORBIDDEN_REAL_USER_EMAIL) {
         errors.push("forbidden_real_user_email");
       }
       if (!isCertifiedQaEmail(email)) {
         errors.push("email_not_certified_qa");
       }
-      if (isStaging) {
-        if (!email.endsWith("@staging-qa.local")) {
-          errors.push("staging_email_domain_required");
-        }
-        if (email.includes("@prod-qa.local")) {
-          errors.push("production_qa_email_rejected_in_staging_mode");
-        }
-      } else if (email.endsWith("@staging-qa.local")) {
-        errors.push("staging_qa_email_rejected_in_production_mode");
+      if (isStaging && email.includes("@prod-qa.local")) {
+        errors.push("production_qa_email_rejected_in_staging_mode");
       }
       if (emails.has(email)) errors.push("duplicate_email");
       emails.add(email);

@@ -94,7 +94,7 @@ function prepareArgs(overrides = {}) {
       overrides.original_auth_banned === undefined
         ? false
         : overrides.original_auth_banned,
-    p_expected_email: overrides.expected_email || "qa04.wp5@example.local",
+    p_expected_email: overrides.expected_email || "phase1c.prod.wp5.qa04@prod-qa.local",
     p_allowlist_label: overrides.allowlist_label || "QA-04",
     p_metadata: overrides.metadata || {},
   };
@@ -538,14 +538,14 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     const id = uuidFromInt(20);
     await seedProfile(client, {
       id,
-      email: "qa04.constraint@example.local",
+      email: "phase1c.prod.wp5.constraint@prod-qa.local",
       status: "active",
     });
 
     // B1 prepare creates valid pending
     const prepared = await prepareAsService(client, {
       profile_id: id,
-      expected_email: "qa04.constraint@example.local",
+      expected_email: "phase1c.prod.wp5.constraint@prod-qa.local",
       allowlist_label: "QA-04",
     });
     assert.equal(prepared.ok, true);
@@ -585,7 +585,7 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
          $1, $1, 'venue-wp5-local', $2, 'OPERATION_B1B',
          $3, $4, 'active', 'applied',
          'dup', 'test', now(), 1,
-         'active', false, 'qa04.constraint@example.local', 'QA-05'
+         'active', false, 'phase1c.prod.wp5.constraint@prod-qa.local', 'QA-05'
        )`,
       [id, BATCH2, HASH_A, HASH_S],
       /qa_identity_quarantines_active_profile_uidx|unique/i
@@ -609,7 +609,7 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
          $1, $2, $3, 'OPERATION_B1B',
          $4, $5, 'pending', 'pending',
          'bind', 'test', 1,
-         'active', false, 'qa04.constraint@example.local', 'QA-06'
+         'active', false, 'phase1c.prod.wp5.constraint@prod-qa.local', 'QA-06'
        )`,
       [id, other, BATCH2, HASH_A, HASH_S],
       /qa_identity_quarantines_identity_bind_check|check constraint/i
@@ -671,11 +671,11 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     const id = uuidFromInt(30);
     await seedProfile(client, {
       id,
-      email: "qa05.immut@example.local",
+      email: "phase1c.prod.wp5.immut@prod-qa.local",
     });
     const prepared = await prepareAsService(client, {
       profile_id: id,
-      expected_email: "qa05.immut@example.local",
+      expected_email: "phase1c.prod.wp5.immut@prod-qa.local",
       allowlist_label: "QA-05",
     });
     assert.equal(prepared.ok, true);
@@ -761,11 +761,11 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     const id = uuidFromInt(40);
     await seedProfile(client, {
       id,
-      email: "qa06.dml@example.local",
+      email: "phase1c.prod.wp5.dml@prod-qa.local",
     });
     const prepared = await prepareAsService(client, {
       profile_id: id,
-      expected_email: "qa06.dml@example.local",
+      expected_email: "phase1c.prod.wp5.dml@prod-qa.local",
       allowlist_label: "QA-06",
     });
     const qid = prepared.quarantine_id;
@@ -780,7 +780,7 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
            profile_id, auth_user_id, batch_id, source_operation,
            allowlist_sha256, snapshot_sha256, reason, created_by,
            original_profile_status, original_auth_banned, expected_email, allowlist_label
-         ) VALUES ($1::uuid,$1::uuid,$2::uuid,'OPERATION_B1B',$3,$4,'x','y','active',false,'qa06.dml@example.local','QA-07')`,
+         ) VALUES ($1::uuid,$1::uuid,$2::uuid,'OPERATION_B1B',$3,$4,'x','y','active',false,'phase1c.prod.wp5.dml@prod-qa.local','QA-07')`,
         [id, BATCH2, HASH_A, HASH_S],
         /permission denied/i
       );
@@ -822,7 +822,7 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     });
     await seedProfile(client, {
       id: player,
-      email: "qa07.rpc@example.local",
+      email: "phase1c.prod.wp5.rpc@prod-qa.local",
       role: "PLAYER",
     });
     await seedProfile(client, {
@@ -840,7 +840,7 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
         "qa_quarantine_prepare",
         prepareArgs({
           profile_id: player,
-          expected_email: "qa07.rpc@example.local",
+          expected_email: "phase1c.prod.wp5.rpc@prod-qa.local",
           allowlist_label: "QA-07",
         })
       );
@@ -867,7 +867,7 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
         "qa_quarantine_prepare",
         prepareArgs({
           profile_id: player,
-          expected_email: "qa07.rpc@example.local",
+          expected_email: "phase1c.prod.wp5.rpc@prod-qa.local",
           allowlist_label: "QA-07",
         })
       );
@@ -924,7 +924,7 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
         "qa_quarantine_prepare",
         prepareArgs({
           profile_id: player,
-          expected_email: "qa07.rpc@example.local",
+          expected_email: "phase1c.prod.wp5.rpc@prod-qa.local",
           allowlist_label: "QA-07",
           batch_id: BATCH2,
         })
@@ -962,11 +962,11 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
       const preexisting = classification === "activation_failed_preexisting";
       await seedProfile(client, {
         id,
-        email: `qa08.fail${n}@example.local`,
+        email: `phase1c.prod.wp5.fail${n}@prod-qa.local`,
       });
       const prepared = await prepareAsService(client, {
         profile_id: id,
-        expected_email: `qa08.fail${n}@example.local`,
+        expected_email: `phase1c.prod.wp5.fail${n}@prod-qa.local`,
         allowlist_label: "QA-08",
         original_auth_banned: preexisting,
         batch_id: uuidFromInt(n, "cccccccc-dddd-4eee-8fff"),
@@ -991,11 +991,11 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     const id = uuidFromInt(70);
     await seedProfile(client, {
       id,
-      email: "qa08.preexist-bad@example.local",
+      email: "phase1c.prod.wp5.preexistbad@prod-qa.local",
     });
     const prepared = await prepareAsService(client, {
       profile_id: id,
-      expected_email: "qa08.preexist-bad@example.local",
+      expected_email: "phase1c.prod.wp5.preexistbad@prod-qa.local",
       allowlist_label: "QA-08",
       original_auth_banned: false,
       batch_id: uuidFromInt(70, "cccccccc-dddd-4eee-8fff"),
@@ -1014,11 +1014,11 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     const id2 = uuidFromInt(71);
     await seedProfile(client, {
       id: id2,
-      email: "qa08.reverted-bad@example.local",
+      email: "phase1c.prod.wp5.revertedbad@prod-qa.local",
     });
     const p2 = await prepareAsService(client, {
       profile_id: id2,
-      expected_email: "qa08.reverted-bad@example.local",
+      expected_email: "phase1c.prod.wp5.revertedbad@prod-qa.local",
       allowlist_label: "QA-09",
       original_auth_banned: true,
       batch_id: uuidFromInt(71, "cccccccc-dddd-4eee-8fff"),
@@ -1039,11 +1039,11 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     const id = uuidFromInt(80);
     await seedProfile(client, {
       id,
-      email: "qa09.idem@example.local",
+      email: "phase1c.prod.wp5.idem@prod-qa.local",
     });
     const args = {
       profile_id: id,
-      expected_email: "qa09.idem@example.local",
+      expected_email: "phase1c.prod.wp5.idem@prod-qa.local",
       allowlist_label: "QA-09",
     };
     const a = await prepareAsService(client, args);
@@ -1672,11 +1672,11 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
       quarantined.push(qid);
       await seedProfile(client, {
         id: qid,
-        email: `qa.n1.q${i}@example.local`,
+        email: `phase1c.prod.wp5.n1q${i}@prod-qa.local`,
       });
       const p = await prepareAsService(client, {
         profile_id: qid,
-        expected_email: `qa.n1.q${i}@example.local`,
+        expected_email: `phase1c.prod.wp5.n1q${i}@prod-qa.local`,
         allowlist_label: "QA-04",
         batch_id: uuidFromInt(200 + i, "eeeeeeee-ffff-4aaa-8bbb"),
       });
@@ -1730,15 +1730,173 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
       [realId],
       /profiles_status_check/i
     );
-    // prepare rejects non-certified labels
+    // prepare rejects non-certified labels (out-of-range exact-eight)
     const badLabel = await prepareAsService(client, {
       profile_id: realId,
-      expected_email: FORBIDDEN_REAL_USER_EMAIL,
+      expected_email: "not-a-certified-qa@gmail.com",
       allowlist_label: "QA-01",
     });
     assert.equal(badLabel.ok, false);
     assert.equal(badLabel.code, "invalid_allowlist_label");
-    bump("regression", 3);
+    const forbidden = await prepareAsService(client, {
+      profile_id: realId,
+      expected_email: FORBIDDEN_REAL_USER_EMAIL,
+      allowlist_label: "QA-04",
+    });
+    assert.equal(forbidden.ok, false);
+    assert.equal(forbidden.code, "forbidden_real_user_email");
+    bump("regression", 4);
+  });
+
+  await t.test("Option C) Staging STG-QA labels prepare + preclaim + cross-env reject", async () => {
+    requireBootstrapped();
+    const stgId = uuidFromInt(410);
+    const stgEmail = "phase1c.stg.wp5.safe4@staging-qa.local";
+    await seedProfile(client, { id: stgId, email: stgEmail, status: "active" });
+
+    const stgPrep = await prepareAsService(client, {
+      profile_id: stgId,
+      expected_email: stgEmail,
+      allowlist_label: "STG-QA-04",
+      batch_id: uuidFromInt(410, "cccccccc-dddd-4eee-8fff"),
+    });
+    assert.equal(stgPrep.ok, true, JSON.stringify(stgPrep));
+    assert.equal(stgPrep.code, "prepared");
+    assert.equal(await getProfileStatus(client, stgId), "active");
+
+    const stg11 = uuidFromInt(411);
+    const stg11Email = "phase1c.stg.wp5.safe11@staging-qa.local";
+    await seedProfile(client, { id: stg11, email: stg11Email, status: "active" });
+    const stg11Prep = await prepareAsService(client, {
+      profile_id: stg11,
+      expected_email: stg11Email,
+      allowlist_label: "STG-QA-11",
+      batch_id: uuidFromInt(411, "cccccccc-dddd-4eee-8fff"),
+    });
+    assert.equal(stg11Prep.ok, true, JSON.stringify(stg11Prep));
+
+    const crossA = await prepareAsService(client, {
+      profile_id: stgId,
+      expected_email: "phase1c.prod.wp5.cross@prod-qa.local",
+      allowlist_label: "STG-QA-04",
+      batch_id: uuidFromInt(412, "cccccccc-dddd-4eee-8fff"),
+    });
+    assert.equal(crossA.ok, false);
+    assert.equal(crossA.code, "invalid_label_email_contract");
+
+    const mixId = uuidFromInt(414);
+    const mixStgEmail = "phase1c.stg.wp5.mix@staging-qa.local";
+    await seedProfile(client, { id: mixId, email: mixStgEmail, status: "active" });
+    const crossB = await prepareAsService(client, {
+      profile_id: mixId,
+      expected_email: mixStgEmail,
+      allowlist_label: "QA-04",
+      batch_id: uuidFromInt(414, "cccccccc-dddd-4eee-8fff"),
+    });
+    assert.equal(crossB.ok, false);
+    assert.equal(crossB.code, "invalid_label_email_contract");
+
+    const outOfRange = await prepareAsService(client, {
+      profile_id: stgId,
+      expected_email: stgEmail,
+      allowlist_label: "STG-QA-12",
+      batch_id: uuidFromInt(415, "cccccccc-dddd-4eee-8fff"),
+    });
+    assert.equal(outOfRange.ok, false);
+    assert.equal(outOfRange.code, "invalid_allowlist_label");
+
+    const invalidRows = Number(
+      (
+        await client.query(
+          `SELECT count(*)::int AS n FROM public.qa_identity_quarantines
+           WHERE allowlist_label IN ('STG-QA-12') OR expected_email = 'phase1c.prod.wp5.cross@prod-qa.local'`
+        )
+      ).rows[0].n
+    );
+    assert.equal(invalidRows, 0);
+
+    await asRole(client, { role: "service_role" });
+    const preclaim = await callRpcJson(
+      client,
+      "operation_b1b_validate_qa_prepare_contract",
+      {
+        p_bindings: JSON.stringify([
+          { allowlist_label: "STG-QA-04", expected_email: stgEmail },
+          { allowlist_label: "STG-QA-11", expected_email: stg11Email },
+        ]),
+      }
+    );
+    await resetSessionGuc(client);
+    assert.equal(preclaim.ok, true, JSON.stringify(preclaim));
+    assert.equal(preclaim.code, "prepare_contract_compatible");
+    assert.equal(preclaim.environment, "staging");
+
+    await asRole(client, { role: "anon" });
+    await expectQueryRejects(
+      client,
+      `SELECT public.operation_b1b_validate_qa_prepare_contract($1::jsonb)`,
+      [JSON.stringify([{ allowlist_label: "STG-QA-04", expected_email: stgEmail }])]
+    );
+    await resetSessionGuc(client);
+
+    const prodId = uuidFromInt(413);
+    await seedProfile(client, {
+      id: prodId,
+      email: "phase1c.prod.wp5.crossenv@prod-qa.local",
+      status: "active",
+    });
+    await asRole(client, { role: "authenticated", sub: prodId });
+    await expectQueryRejects(
+      client,
+      `SELECT public.operation_b1b_validate_qa_prepare_contract($1::jsonb)`,
+      [
+        JSON.stringify([
+          {
+            allowlist_label: "QA-04",
+            expected_email: "phase1c.prod.wp5.crossenv@prod-qa.local",
+          },
+        ]),
+      ]
+    );
+    await resetSessionGuc(client);
+
+    // Incident regression: STG-QA-04 + certified staging email must NOT return invalid_allowlist_label
+    const incidentId = uuidFromInt(416);
+    await seedProfile(client, {
+      id: incidentId,
+      email: "phase1c.stg.safe1@staging-qa.local",
+      status: "active",
+    });
+    const incidentOk = await prepareAsService(client, {
+      profile_id: incidentId,
+      expected_email: "phase1c.stg.safe1@staging-qa.local",
+      allowlist_label: "STG-QA-04",
+      batch_id: uuidFromInt(416, "cccccccc-dddd-4eee-8fff"),
+    });
+    assert.notEqual(incidentOk.code, "invalid_allowlist_label");
+    assert.equal(incidentOk.ok, true);
+    assert.equal(incidentOk.code, "prepared");
+    bump("realRpc", 6);
+    bump("regression", 4);
+  });
+
+  await t.test("Option C) SQL20 second apply remains idempotent", async () => {
+    requireBootstrapped();
+    await resetSessionGuc(client);
+    await applyWp2Forward(client);
+    await applyWp2Forward(client);
+    await asRole(client, { role: "service_role" });
+    const v = await callRpcJson(client, "operation_b1b_validate_qa_prepare_contract", {
+      p_bindings: JSON.stringify([
+        {
+          allowlist_label: "STG-QA-04",
+          expected_email: "phase1c.stg.safe1@staging-qa.local",
+        },
+      ]),
+    });
+    await resetSessionGuc(client);
+    assert.equal(v.ok, true, JSON.stringify(v));
+    bump("regression");
   });
 
   await t.test("evidence summary printed (sanitized)", async () => {
