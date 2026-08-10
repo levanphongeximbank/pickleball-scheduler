@@ -241,7 +241,11 @@ BEGIN
     FROM pg_constraint
     WHERE conname = 'qa_identity_quarantines_reason_nonempty_check'
       AND conrelid = 'public.qa_identity_quarantines'::regclass;
-    IF v_def !~* 'length\s*\(\s*trim\s*\(\s*reason\s*\)\s*\)\s*>\s*0' THEN
+    -- Accept canonical authored form and PostgreSQL-normalized equivalent:
+    --   length(trim(reason)) > 0
+    --   length(TRIM(BOTH FROM reason)) > 0
+    -- Fail closed on definitions that omit trim (or otherwise diverge).
+    IF v_def !~* 'length\s*\(\s*trim\s*\(\s*(both\s+from\s+)?reason\s*\)\s*\)\s*>\s*0' THEN
       RAISE EXCEPTION
         'QA_IDENTITY_QUARANTINES_INCOMPATIBLE: reason_nonempty_check definition mismatch: %',
         v_def

@@ -436,6 +436,74 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     bump("realConstraint", 2);
   });
 
+  await t.test("WP1 forward idempotency: second apply passes with normalized reason CHECK", async () => {
+    requireBootstrapped();
+
+    const reasonConstraintSql = `
+      SELECT pg_get_constraintdef(oid) AS def
+      FROM pg_constraint
+      WHERE conname = 'qa_identity_quarantines_reason_nonempty_check'
+        AND conrelid = 'public.qa_identity_quarantines'::regclass
+    `;
+    const reasonSemantics =
+      /length\s*\(\s*trim\s*\(\s*(both\s+from\s+)?reason\s*\)\s*\)\s*>\s*0/i;
+
+    const first = await client.query(reasonConstraintSql);
+    assert.equal(first.rows.length, 1, "exactly one reason_nonempty constraint after first apply");
+    assert.match(String(first.rows[0].def), reasonSemantics);
+
+    // Re-apply the SAME canonical WP1 forward (must be idempotent).
+    await applyWp1Forward(client);
+
+    const second = await client.query(reasonConstraintSql);
+    assert.equal(second.rows.length, 1, "exactly one reason_nonempty constraint after second apply");
+    assert.match(String(second.rows[0].def), reasonSemantics);
+
+    const dupNames = await client.query(`
+      SELECT count(*)::int AS n
+      FROM pg_constraint
+      WHERE conname = 'qa_identity_quarantines_reason_nonempty_check'
+    `);
+    assert.equal(dupNames.rows[0].n, 1, "no duplicate reason_nonempty constraint names");
+
+    const tableCount = await client.query(`
+      SELECT count(*)::int AS n
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public'
+        AND c.relname = 'qa_identity_quarantines'
+        AND c.relkind = 'r'
+    `);
+    assert.equal(tableCount.rows[0].n, 1, "no duplicate qa_identity_quarantines tables");
+
+    // Live semantics: blank / whitespace-only reason must still fail.
+    const id = uuidFromInt(19);
+    await seedProfile(client, {
+      id,
+      email: "wp1.idempotency@example.local",
+      status: "active",
+    });
+    await expectQueryRejects(
+      client,
+      `INSERT INTO public.qa_identity_quarantines (
+         profile_id, auth_user_id, batch_id, source_operation,
+         allowlist_sha256, snapshot_sha256, lifecycle_state, auth_ban_state,
+         reason, created_by, lifecycle_version,
+         original_profile_status, original_auth_banned, expected_email, allowlist_label
+       ) VALUES (
+         $1, $1, $2, 'OPERATION_B1B_WP5_IDEMPOTENCY',
+         $3, $4, 'pending', 'pending',
+         '   ', 'wp5', 1,
+         'active', false, 'wp1.idempotency@example.local', 'QA-04'
+       )`,
+      [id, BATCH, HASH_A, HASH_S],
+      /qa_identity_quarantines_reason_nonempty_check|check constraint/i
+    );
+
+    bump("regression", 5);
+    bump("realConstraint", 2);
+  });
+
   function requireBootstrapped() {
     assert.ok(bootstrapped, "bootstrap/WP1/WP2 must succeed before real-DB cases");
   }
