@@ -53,11 +53,23 @@ import {
   filterEligiblePlayersForDiscipline,
   validateLineupSelections,
 } from "../../features/team-tournament/engines/lineupValidationEngine.js";
+import { applyCanonicalMlpDisciplineMetadata } from "../../features/team-tournament/engines/mlpDisciplineSlotContract.js";
+import {
+  buildServerLineupFingerprint,
+  decideLineupFormRehydration,
+} from "../../features/team-tournament/engines/lineupFormState.js";
 import { evaluateCaptainPortalAccess } from "../../features/team-tournament/engines/captainAccessPolicy.js";
 import {
   logTt412CaptainAccess,
   TT412_CAPTAIN_PORTAL_GATE,
 } from "../../features/team-tournament/diagnostics/tt412CaptainAccessDiagnostics.js";
+import {
+  logTt412LineupForm,
+  TT412_LINEUP_REHYDRATE_DECISION,
+  TT412_LINEUP_SAVE_RESULT,
+  TT412_LINEUP_SELECT_CHANGE,
+  TT412_LINEUP_SUBMIT_RESULT,
+} from "../../features/team-tournament/diagnostics/tt412LineupFormDiagnostics.js";
 import {
   findTeamForCaptain,
   getOpponentTeamId,
@@ -272,14 +284,47 @@ function MatchupLineupCard({
   const [selections, setSelections] = useState(() =>
     buildInitialSelections(teamData, matchup.id, team.id)
   );
+  const [dirty, setDirty] = useState(false);
+  const [serverConflict, setServerConflict] = useState(false);
+  const [serverFingerprint, setServerFingerprint] = useState(() =>
+    buildServerLineupFingerprint(ownLineup, matchup.id, team.id)
+  );
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [cloudVisible, setCloudVisible] = useState(null);
 
   useEffect(() => {
+    const nextFingerprint = buildServerLineupFingerprint(ownLineup, matchup.id, team.id);
+    const decision = decideLineupFormRehydration({
+      dirty,
+      prevFingerprint: serverFingerprint,
+      nextFingerprint,
+    });
+    logTt412LineupForm(TT412_LINEUP_REHYDRATE_DECISION, {
+      matchupId: matchup.id,
+      teamId: team.id,
+      dirty,
+      serverFingerprintBefore: serverFingerprint,
+      serverFingerprintAfter: nextFingerprint,
+      rehydrate: decision.rehydrate,
+      reason: decision.reason,
+    });
+    if (decision.conflict) {
+      setServerConflict(true);
+    }
+    if (!decision.rehydrate) {
+      if (serverFingerprint !== nextFingerprint && !dirty) {
+        setServerFingerprint(nextFingerprint);
+      }
+      return;
+    }
     setSelections(buildInitialSelections(teamData, matchup.id, team.id));
-  }, [teamData, matchup.id, team.id, ownLineup?.status, dataVersion]);
+    setServerFingerprint(nextFingerprint);
+    setDirty(false);
+    setServerConflict(false);
+    // Fingerprint/dirty gate replaces blanket dataVersion reset.
+  }, [teamData, matchup.id, team.id, ownLineup, dirty, serverFingerprint]);
 
   useEffect(() => {
     if (!useCloudVisibleLineups || !getVisibleLineups) {
@@ -326,7 +371,10 @@ function MatchupLineupCard({
       if (disciplineId === excludeDisciplineId) {
         continue;
       }
-      playerIds.forEach((playerId) => used.add(String(playerId)));
+      playerIds.forEach((playerId) => {
+        const id = String(playerId || "").trim();
+        if (id) used.add(id);
+      });
     }
     return used;
   }
@@ -337,10 +385,21 @@ function MatchupLineupCard({
       const slots = Array.from({ length: playerCount }, (_, index) =>
         current[disciplineId]?.[index] || ""
       );
-      slots[slotIndex] = playerId;
-      next[disciplineId] = slots.filter(Boolean);
+      slots[slotIndex] = playerId ? String(playerId) : "";
+      // Keep positional slots (mixed: index0=male, index1=female). Do not compact.
+      next[disciplineId] = slots;
+      logTt412LineupForm(TT412_LINEUP_SELECT_CHANGE, {
+        tournamentId,
+        matchupId: matchup.id,
+        teamId: team.id,
+        slotId: `${disciplineId}:${slotIndex}`,
+        selectedValue: playerId ? String(playerId) : "",
+        dirtyAfter: true,
+      });
       return next;
     });
+    setDirty(true);
+    setServerConflict(false);
     setError("");
   }
 
@@ -379,12 +438,23 @@ function MatchupLineupCard({
     });
 
     setBusy(false);
+    logTt412LineupForm(TT412_LINEUP_SAVE_RESULT, {
+      ok: result.ok === true,
+      matchupId: matchup.id,
+      teamId: team.id,
+      status: result.teamData
+        ? getLineup(result.teamData, matchup.id, team.id)?.status
+        : result.code || null,
+      errorCode: result.ok ? null : result.code || null,
+    });
 
     if (!result.ok) {
       setError(result.error || "Không lưu được nháp.");
       return;
     }
 
+    setDirty(false);
+    setServerConflict(false);
     setMessage("Đã lưu nháp đội hình.");
     onSaved();
   }
@@ -423,12 +493,23 @@ function MatchupLineupCard({
     });
 
     setBusy(false);
+    logTt412LineupForm(TT412_LINEUP_SUBMIT_RESULT, {
+      ok: result.ok === true,
+      matchupId: matchup.id,
+      teamId: team.id,
+      status: result.teamData
+        ? getLineup(result.teamData, matchup.id, team.id)?.status
+        : result.code || null,
+      errorCode: result.ok ? null : result.code || null,
+    });
 
     if (!result.ok) {
       setError(result.error || "Không nộp được đội hình.");
       return;
     }
 
+    setDirty(false);
+    setServerConflict(false);
     setMessage(
       "Đã nộp đội hình. BTC sẽ khóa và công bố — bạn sẽ thấy cặp đấu chính thức sau khi công bố."
     );
@@ -495,6 +576,12 @@ function MatchupLineupCard({
 
         {message ? <Alert severity="success">{message}</Alert> : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
+        {serverConflict ? (
+          <Alert severity="warning">
+            Dữ liệu đội hình trên máy chủ đã thay đổi trong khi bạn đang chỉnh. Bản chọn
+            hiện tại được giữ lại — lưu nháp hoặc tải lại khi sẵn sàng.
+          </Alert>
+        ) : null}
         {hydratedTeam.unresolvedCount > 0 ? (
           <Alert severity="warning">
             {hydratedTeam.unresolvedCount} VĐV thiếu identity
@@ -515,13 +602,6 @@ function MatchupLineupCard({
 
         {teamData.disciplines.map((discipline) => {
           const usedPlayerIds = getUsedPlayerIds(discipline.id);
-          const eligible = filterEligiblePlayersForDiscipline({
-            team,
-            discipline,
-            players,
-            usedPlayerIds,
-            allowReuse,
-          });
           const selectedIds = Array.from({ length: discipline.playerCount }, (_, index) =>
             selections[discipline.id]?.[index] || ""
           );
@@ -533,7 +613,16 @@ function MatchupLineupCard({
                 {discipline.name}
               </Typography>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap">
-                {slots.map((slotIndex) => (
+                {slots.map((slotIndex) => {
+                  const eligible = filterEligiblePlayersForDiscipline({
+                    team,
+                    discipline,
+                    players,
+                    usedPlayerIds,
+                    allowReuse,
+                    slotIndex,
+                  });
+                  return (
                   <FormControl
                     key={`${discipline.id}-${slotIndex}`}
                     size="small"
@@ -569,7 +658,8 @@ function MatchupLineupCard({
                       ) : null}
                     </Select>
                   </FormControl>
-                ))}
+                  );
+                })}
               </Stack>
             </Box>
           );
@@ -722,7 +812,7 @@ export default function TeamPortal() {
       matchups: [],
       lineups: {},
     };
-    return raw;
+    return applyCanonicalMlpDisciplineMetadata(raw) || raw;
   }, [hookTeamData]);
 
   const athletePool = useTeamTournamentAthletePool({
@@ -1036,7 +1126,7 @@ export default function TeamPortal() {
                 </Typography>
                 {matchups.pending.map((matchup) => (
                   <MatchupLineupCard
-                    key={`pending-${matchup.id}-${getLineup(teamData, matchup.id, access.captainTeam.id)?.status || "none"}`}
+                    key={`pending-${matchup.id}`}
                     matchup={matchup}
                     team={access.captainTeam}
                     teamData={teamData}
@@ -1054,7 +1144,7 @@ export default function TeamPortal() {
                 </Typography>
                 {matchups.done.map((matchup) => (
                   <MatchupLineupCard
-                    key={`done-${matchup.id}-${getLineup(teamData, matchup.id, access.captainTeam.id)?.status || "none"}`}
+                    key={`done-${matchup.id}`}
                     matchup={matchup}
                     team={access.captainTeam}
                     teamData={teamData}
@@ -1076,7 +1166,7 @@ export default function TeamPortal() {
                 </Typography>
                 {matchups.past.map((matchup) => (
                   <MatchupLineupCard
-                    key={`past-${matchup.id}-${getLineup(teamData, matchup.id, access.captainTeam.id)?.status || "none"}`}
+                    key={`past-${matchup.id}`}
                     matchup={matchup}
                     team={access.captainTeam}
                     teamData={teamData}

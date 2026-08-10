@@ -5,6 +5,7 @@
 
 import { lineupKey } from "../models/index.js";
 import { normalizeV7TournamentForAggregate } from "./mapGetSetupV7.js";
+import { applyCanonicalMlpDisciplineMetadata } from "../engines/mlpDisciplineSlotContract.js";
 
 /**
  * @param {object|null|undefined} lineups
@@ -101,6 +102,22 @@ export function mapCaptainPortalResponse(payload = {}) {
     ? rawTournament.disciplines
     : [];
 
+  const settingsWithPreset = {
+    ...settings,
+    formatPreset: settings.formatPreset || rawTournament.settings?.formatPreset || null,
+  };
+
+  const repairedTeamSlice = applyCanonicalMlpDisciplineMetadata({
+    disciplines,
+    settings: settingsWithPreset,
+  });
+  const repairedDisciplines = repairedTeamSlice?.disciplines || disciplines;
+  const repairedSettings = {
+    ...settingsWithPreset,
+    ...(repairedTeamSlice?.settings || {}),
+    captainAccessEnabled: settings.captainAccessEnabled === true,
+  };
+
   const tournamentForAggregate = normalizeV7TournamentForAggregate({
     ...rawTournament,
     id: rawTournament.id,
@@ -109,22 +126,22 @@ export function mapCaptainPortalResponse(payload = {}) {
     name: rawTournament.name,
     status: rawTournament.status || "draft",
     version: rawTournament.version || 1,
-    settings,
-    schedulePublish: settings.schedulePublish || rawTournament.schedulePublish || null,
+    settings: repairedSettings,
+    schedulePublish: repairedSettings.schedulePublish || rawTournament.schedulePublish || null,
     teams,
     matchups,
     lineups,
-    disciplines,
+    disciplines: repairedDisciplines,
     groups: rawTournament.groups || [],
     standings: rawTournament.standings || [],
     teamData: {
       teams,
       matchups,
       lineups,
-      disciplines,
+      disciplines: repairedDisciplines,
       groups: rawTournament.groups || [],
       standings: rawTournament.standings || [],
-      settings,
+      settings: repairedSettings,
     },
   });
 
