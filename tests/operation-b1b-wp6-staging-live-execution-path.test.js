@@ -494,7 +494,7 @@ test("ENV_FALLBACK_PRESENT=false — no Production env fallback", () => {
   assert.ok(creds.reasons.includes("missing_staging_supabase_url"));
 });
 
-test("SQL artifacts encode rollback evidence-preservation contract", () => {
+test("SQL artifacts encode rollback evidence-preservation + TOCTOU lock contract", () => {
   const forward = readWp6ClaimSql(WP6_CLAIM_FORWARD);
   const rollback = readWp6ClaimSql(WP6_CLAIM_ROLLBACK);
   assert.ok(forward.includes("operation_b1b_one_time_authority_claims"));
@@ -507,6 +507,17 @@ test("SQL artifacts encode rollback evidence-preservation contract", () => {
       "OPERATION_B1B_AUTHORITY_CLAIM_ROLLBACK_REFUSED_NONEMPTY_STORE"
     )
   );
+  assert.match(rollback, /\bBEGIN\s*;/);
+  assert.match(rollback, /\bCOMMIT\s*;/);
+  assert.ok(
+    rollback.includes(
+      "LOCK TABLE public.operation_b1b_one_time_authority_claims IN ACCESS EXCLUSIVE MODE"
+    )
+  );
+  const beginIdx = rollback.search(/\bBEGIN\s*;/);
+  const lockIdx = rollback.indexOf(
+    "LOCK TABLE public.operation_b1b_one_time_authority_claims IN ACCESS EXCLUSIVE MODE"
+  );
   const guardIdx = rollback.indexOf(
     "OPERATION_B1B_AUTHORITY_CLAIM_ROLLBACK_REFUSED_NONEMPTY_STORE"
   );
@@ -516,9 +527,16 @@ test("SQL artifacts encode rollback evidence-preservation contract", () => {
   const dropFnIdx = rollback.indexOf(
     "DROP FUNCTION IF EXISTS public.operation_b1b_claim_one_time_live_authority"
   );
-  assert.ok(guardIdx >= 0, "nonempty-store refusal error required");
+  const commitIdx = rollback.search(/\bCOMMIT\s*;/);
+  assert.ok(beginIdx >= 0 && lockIdx > beginIdx, "BEGIN before LOCK");
+  assert.ok(guardIdx > lockIdx, "LOCK must precede nonempty guard");
   assert.ok(dropTableIdx > guardIdx, "guard must precede DROP TABLE");
   assert.ok(dropFnIdx > guardIdx, "guard must precede DROP FUNCTION");
+  assert.ok(commitIdx > dropTableIdx, "COMMIT after teardown");
+  // Lock and guard must be separate top-level DO blocks (fresh statement snapshot).
+  const lockDoIdx = rollback.indexOf("DO $lock$");
+  const guardDoIdx = rollback.indexOf("DO $guard$");
+  assert.ok(lockDoIdx >= 0 && guardDoIdx > lockDoIdx, "separate lock/guard DO blocks");
   assert.ok(
     rollback.includes(
       "to_regclass('public.operation_b1b_one_time_authority_claims')"
@@ -678,6 +696,330 @@ test("R0) empty-store rollback PASS; absent-store rollback idempotent; reapply 3
   inv = await durablePackageInventory(client);
   assert.ok(inv.tables.includes("operation_b1b_one_time_authority_claims"));
   assert.equal(inv.funcs.length, 3);
+});
+
+async function waitForLockWait(observer, waiterPid, { timeoutMs = 8000 } = {}) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const { rows } = await observer.query(
+      `select count(*)::int as c
+         from pg_locks
+        where pid = $1::int
+          and NOT granted`,
+      [waiterPid]
+    );
+    if (Number(rows[0].c) > 0) return true;
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  return false;
+}
+
+async function resetDurablePackageEmpty(client) {
+  await resetSessionGuc(client);
+  await client.query(
+    `DROP TABLE IF EXISTS public.operation_b1b_one_time_authority_claims CASCADE`
+  );
+  await applyWp6ClaimForward(client);
+}
+
+test("T1) claim-first concurrency: claim commits → SQL70 refuses → evidence kept", async (t) => {
+  const client = await requirePg(t);
+  if (!client) return;
+  await resetDurablePackageEmpty(client);
+
+  const claimer = new pg.Client({ connectionString: pgCtx.databaseUrl });
+  const rollbacker = new pg.Client({ connectionString: pgCtx.databaseUrl });
+  const observer = new pg.Client({ connectionString: pgCtx.databaseUrl });
+  await claimer.connect();
+  await rollbacker.connect();
+  await observer.connect();
+  await claimer.query("SET lock_timeout = '8s'");
+  await rollbacker.query("SET lock_timeout = '8s'");
+
+  const batch = crypto.randomUUID();
+  const files = writeAllowlistAndSnapshot(makeStagingEight(), batch);
+  try {
+    await claimer.query("BEGIN");
+    await asServiceRole(claimer);
+    const pending = await claimer.query(
+      `SELECT public.operation_b1b_claim_one_time_live_authority(
+         $1::text, $2::text, $3::text, $4::uuid,
+         $5::text, $6::text, $7::text, $8::text, $9::text
+       ) AS result`,
+      [
+        OPERATION_ID,
+        OPERATION_TARGET_MODE.STAGING_REHEARSAL,
+        EXPECTED_STAGING_PROJECT_REF,
+        batch,
+        files.alSha,
+        files.snSha,
+        files.exactEight,
+        EXEC_VERSION,
+        fingerprintOwnerGo(STAGING_GO),
+      ]
+    );
+    assert.equal(pending.rows[0].result.ok, true);
+
+    const rollbackPid = (
+      await rollbacker.query(`select pg_backend_pid() as pid`)
+    ).rows[0].pid;
+    const rollbackPromise = applyWp6ClaimRollback(rollbacker).then(
+      () => ({ ok: true, deadlock: false }),
+      (err) => ({
+        ok: false,
+        err: String(err?.message || err),
+        deadlock: /deadlock/i.test(String(err?.message || err)),
+      })
+    );
+
+    const waiting = await waitForLockWait(observer, rollbackPid);
+    assert.equal(waiting, true, "SQL70 must wait on ACCESS EXCLUSIVE behind open claim txn");
+
+    await claimer.query("COMMIT");
+    const rb = await rollbackPromise;
+    assert.equal(rb.deadlock, false, "DEADLOCK_FOUND must be NO");
+    assert.equal(rb.ok, false);
+    assert.match(
+      rb.err || "",
+      /OPERATION_B1B_AUTHORITY_CLAIM_ROLLBACK_REFUSED_NONEMPTY_STORE/
+    );
+
+    const { rows } = await observer.query(
+      `select count(*)::int as c
+         from public.operation_b1b_one_time_authority_claims
+        where batch_id = $1::uuid`,
+      [batch]
+    );
+    assert.equal(Number(rows[0].c), 1);
+    const readback = await readPgDurableAuthorityClaim(
+      observer,
+      {
+        operationTargetMode: OPERATION_TARGET_MODE.STAGING_REHEARSAL,
+        projectRef: EXPECTED_STAGING_PROJECT_REF,
+        batchId: batch,
+      },
+      { asServiceRole: async () => asServiceRole(observer) }
+    );
+    assert.equal(readback.ok, true);
+    assert.equal(readback.found, true);
+    assert.equal(readback.consumed, true);
+  } finally {
+    try {
+      await claimer.query("ROLLBACK");
+    } catch {
+      /* ignore */
+    }
+    await claimer.end().catch(() => {});
+    await rollbacker.end().catch(() => {});
+    await observer.end().catch(() => {});
+  }
+});
+
+test("T2) rollback-first concurrency: lock held → claim blocked → empty teardown wins", async (t) => {
+  const client = await requirePg(t);
+  if (!client) return;
+  await resetDurablePackageEmpty(client);
+
+  const locker = new pg.Client({ connectionString: pgCtx.databaseUrl });
+  const claimer = new pg.Client({ connectionString: pgCtx.databaseUrl });
+  const observer = new pg.Client({ connectionString: pgCtx.databaseUrl });
+  await locker.connect();
+  await claimer.connect();
+  await observer.connect();
+  await claimer.query("SET lock_timeout = '8s'");
+
+  const batch = crypto.randomUUID();
+  const files = writeAllowlistAndSnapshot(makeStagingEight(), batch);
+  try {
+    await locker.query("BEGIN");
+    await locker.query(
+      `LOCK TABLE public.operation_b1b_one_time_authority_claims IN ACCESS EXCLUSIVE MODE`
+    );
+
+    const claimPid = (await claimer.query(`select pg_backend_pid() as pid`)).rows[0]
+      .pid;
+    const claimPromise = (async () => {
+      try {
+        await asServiceRole(claimer);
+        const { rows } = await claimer.query(
+          `SELECT public.operation_b1b_claim_one_time_live_authority(
+             $1::text, $2::text, $3::text, $4::uuid,
+             $5::text, $6::text, $7::text, $8::text, $9::text
+           ) AS result`,
+          [
+            OPERATION_ID,
+            OPERATION_TARGET_MODE.STAGING_REHEARSAL,
+            EXPECTED_STAGING_PROJECT_REF,
+            batch,
+            files.alSha,
+            files.snSha,
+            files.exactEight,
+            EXEC_VERSION,
+            fingerprintOwnerGo(STAGING_GO),
+          ]
+        );
+        return {
+          ok: rows[0]?.result?.ok === true,
+          result: rows[0]?.result,
+          err: null,
+          deadlock: false,
+        };
+      } catch (err) {
+        const msg = String(err?.message || err);
+        return {
+          ok: false,
+          result: null,
+          err: msg,
+          deadlock: /deadlock/i.test(msg),
+        };
+      }
+    })();
+
+    const waiting = await waitForLockWait(observer, claimPid);
+    assert.equal(waiting, true, "claim INSERT must wait behind ACCESS EXCLUSIVE");
+
+    // Empty-store teardown under the same lock (SQL70 equivalent after lock+guard).
+    const cnt = await locker.query(
+      `select count(*)::bigint as c from public.operation_b1b_one_time_authority_claims`
+    );
+    assert.equal(Number(cnt.rows[0].c), 0);
+    await locker.query(`
+      DROP FUNCTION IF EXISTS public.operation_b1b_get_one_time_live_authority_claim(text, text, text, uuid);
+      DROP FUNCTION IF EXISTS public.operation_b1b_claim_one_time_live_authority(text, text, text, uuid, text, text, text, text, text);
+      DROP FUNCTION IF EXISTS public.operation_b1b_authority_claim_is_service_role();
+      DROP TABLE IF EXISTS public.operation_b1b_one_time_authority_claims;
+    `);
+    await locker.query("COMMIT");
+
+    const claimRes = await claimPromise;
+    assert.equal(claimRes.deadlock, false, "DEADLOCK_FOUND must be NO");
+    assert.equal(claimRes.ok, false, "claim must not commit while teardown owned the lock");
+    assert.ok(
+      claimRes.err &&
+        (/does not exist|could not open relation|lock timeout|canceling statement|OID/i.test(
+          claimRes.err
+        ) ||
+          claimRes.result?.ok === false),
+      claimRes.err || JSON.stringify(claimRes.result)
+    );
+
+    const inv = await durablePackageInventory(observer);
+    assert.deepEqual(inv.tables, []);
+    // Must not observe a committed claim row after teardown.
+    assert.equal(inv.tables.includes("operation_b1b_one_time_authority_claims"), false);
+  } finally {
+    try {
+      await locker.query("ROLLBACK");
+    } catch {
+      /* ignore */
+    }
+    await locker.end().catch(() => {});
+    await claimer.end().catch(() => {});
+    await observer.end().catch(() => {});
+  }
+  await resetDurablePackageEmpty(client);
+});
+
+test("T3) hammer claim vs canonical SQL70: never erase committed claim", async (t) => {
+  const client = await requirePg(t);
+  if (!client) return;
+  const ITERATIONS = 24;
+  let lost = 0;
+  let deadlock = false;
+  const outcomes = { claimWins: 0, rollbackWins: 0 };
+
+  for (let i = 0; i < ITERATIONS; i += 1) {
+    await resetDurablePackageEmpty(client);
+    const c1 = new pg.Client({ connectionString: pgCtx.databaseUrl });
+    const c2 = new pg.Client({ connectionString: pgCtx.databaseUrl });
+    await c1.connect();
+    await c2.connect();
+    await c1.query("SET lock_timeout = '8s'");
+    await c2.query("SET lock_timeout = '8s'");
+    const batch = crypto.randomUUID();
+    const files = writeAllowlistAndSnapshot(makeStagingEight(), batch);
+    try {
+      const claimPromise = (async () => {
+        try {
+          await asServiceRole(c1);
+          const { rows } = await c1.query(
+            `SELECT public.operation_b1b_claim_one_time_live_authority(
+               $1::text, $2::text, $3::text, $4::uuid,
+               $5::text, $6::text, $7::text, $8::text, $9::text
+             ) AS result`,
+            [
+              OPERATION_ID,
+              OPERATION_TARGET_MODE.STAGING_REHEARSAL,
+              EXPECTED_STAGING_PROJECT_REF,
+              batch,
+              files.alSha,
+              files.snSha,
+              files.exactEight,
+              EXEC_VERSION,
+              fingerprintOwnerGo(STAGING_GO),
+            ]
+          );
+          return { ok: rows[0]?.result?.ok === true, err: null, deadlock: false };
+        } catch (err) {
+          const msg = String(err?.message || err);
+          return { ok: false, err: msg, deadlock: /deadlock/i.test(msg) };
+        }
+      })();
+      const rollbackPromise = applyWp6ClaimRollback(c2).then(
+        () => ({ ok: true, err: null, deadlock: false }),
+        (err) => {
+          const msg = String(err?.message || err);
+          return { ok: false, err: msg, deadlock: /deadlock/i.test(msg) };
+        }
+      );
+      const [claimRes, rbRes] = await Promise.all([claimPromise, rollbackPromise]);
+      deadlock = deadlock || claimRes.deadlock || rbRes.deadlock;
+
+      const inv = await durablePackageInventory(client);
+      let rowCount = 0;
+      if (inv.tables.includes("operation_b1b_one_time_authority_claims")) {
+        rowCount = Number(
+          (
+            await client.query(
+              `select count(*)::int as c
+                 from public.operation_b1b_one_time_authority_claims
+                where batch_id = $1::uuid`,
+              [batch]
+            )
+          ).rows[0].c
+        );
+      }
+
+      if (claimRes.ok === true) {
+        outcomes.claimWins += 1;
+        // Committed claim must remain; rollback must have refused or not removed it.
+        if (rowCount !== 1) {
+          lost += 1;
+          break;
+        }
+        assert.match(
+          rbRes.err || "",
+          /OPERATION_B1B_AUTHORITY_CLAIM_ROLLBACK_REFUSED_NONEMPTY_STORE/
+        );
+      } else {
+        outcomes.rollbackWins += 1;
+        // Rollback-empty win: package gone and no committed claim row.
+        assert.equal(claimRes.ok, false);
+        assert.equal(rowCount, 0);
+      }
+    } finally {
+      await c1.end().catch(() => {});
+      await c2.end().catch(() => {});
+    }
+  }
+
+  assert.equal(deadlock, false, "DEADLOCK_FOUND must be NO");
+  assert.equal(lost, 0, `COMMITTED_CLAIM_EVIDENCE_LOST must be 0 (lost=${lost})`);
+  assert.ok(
+    outcomes.claimWins + outcomes.rollbackWins === ITERATIONS,
+    JSON.stringify(outcomes)
+  );
+  await resetDurablePackageEmpty(client);
 });
 
 test("G) first durable claim succeeds", async (t) => {

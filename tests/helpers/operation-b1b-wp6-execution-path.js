@@ -37,7 +37,18 @@ export async function applyWp6ClaimForward(client) {
 }
 
 export async function applyWp6ClaimRollback(client) {
-  await execSqlFile(client, readSqlFile(WP6_CLAIM_ROLLBACK));
+  try {
+    await execSqlFile(client, readSqlFile(WP6_CLAIM_ROLLBACK));
+  } catch (err) {
+    // SQL70 uses an explicit BEGIN; a mid-transaction RAISE skips COMMIT and
+    // leaves the session in aborted-transaction state until ROLLBACK.
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      /* already idle / no transaction */
+    }
+    throw err;
+  }
 }
 
 export async function bootstrapWp6ClaimDatabase(client) {

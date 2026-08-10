@@ -6,14 +6,34 @@
 --
 -- Evidence-preservation contract:
 --   - Absent store  → idempotent teardown PASS
---   - Empty store   → destructive cleanup PASS
+--   - Empty store   → destructive cleanup PASS (serialized vs claim INSERT)
 --   - Non-empty store (any durable claim rows) → FAIL CLOSED; no DROP/REVOKE
+--
+-- TOCTOU serialization:
+--   Explicit transaction + ACCESS EXCLUSIVE table lock BEFORE the empty check.
+--   Lock conflicts with claim INSERT (ROW EXCLUSIVE) and is held through teardown.
+--   Lock and nonempty guard are SEPARATE top-level statements so a lock-wait
+--   that unblocks after a concurrent claim COMMIT sees that row via a fresh
+--   statement snapshot.
 -- =============================================================================
 
 SET search_path = public, auth, pg_temp;
 
--- Guard MUST run before any REVOKE/DROP against the durable authority package.
-DO $$
+BEGIN;
+
+-- Statement 1: acquire conflicting lock if the durable store exists.
+-- No LOCK when absent (preserve Case A idempotency; do not create a table).
+DO $lock$
+BEGIN
+  IF to_regclass('public.operation_b1b_one_time_authority_claims') IS NOT NULL THEN
+    EXECUTE
+      'LOCK TABLE public.operation_b1b_one_time_authority_claims IN ACCESS EXCLUSIVE MODE';
+  END IF;
+END
+$lock$;
+
+-- Statement 2: fresh nonempty guard AFTER lock ownership (new statement snapshot).
+DO $guard$
 DECLARE
   v_count bigint := 0;
 BEGIN
@@ -31,10 +51,10 @@ BEGIN
               );
     END IF;
   END IF;
-END;
-$$;
+END
+$guard$;
 
--- Idempotent revoke (skip when function already absent — Case A).
+-- Destructive teardown only after empty-store decision under ACCESS EXCLUSIVE.
 DO $revoke$
 DECLARE
   r text;
@@ -64,3 +84,5 @@ DROP FUNCTION IF EXISTS public.operation_b1b_claim_one_time_live_authority(
 DROP FUNCTION IF EXISTS public.operation_b1b_authority_claim_is_service_role();
 
 DROP TABLE IF EXISTS public.operation_b1b_one_time_authority_claims;
+
+COMMIT;
