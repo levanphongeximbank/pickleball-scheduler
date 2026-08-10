@@ -37,3 +37,15 @@
 ## Secrets policy
 
 Claim ledger stores `owner_go_fingerprint` (sha256) only. Never Owner GO plaintext, DB URL, tokens, or service role keys.
+
+## TOCTOU corrective binding
+
+- `SECOND_INDEPENDENT_REREVIEW_BLOCKER=ROLLBACK_CLAIM_TOCTOU_UNSAFE`
+- `TOCTOU_CORRECTIVE_IMPLEMENTATION_COMMIT=799b71048de8119d3df01732094bc803fe7b9d9f`
+- SQL30 SHA256 `39a9ec0b816d346d99f6bb196df83a4a5310cdbf46b9bcf952901ab0a02826ef` (12988 bytes) — unchanged
+- SQL70 SHA256 `a233fe134b5e347ebdf0679706825ab3c383c8a911da7594671230acf0205c33` (3429 bytes)
+- `ROLLBACK_LOCKING_MECHANISM=ACCESS EXCLUSIVE` (lock then fresh guard, held through teardown)
+- `ROLLBACK_CLAIM_TOCTOU_SAFE=YES`
+- Hammer: 24 iterations, `COMMITTED_CLAIM_EVIDENCE_LOST=0`, `DEADLOCK_FOUND=NO`
+
+Machine-readable evidence: `WP6_STAGING_LIVE_EXECUTION_PATH_REMEDIATION_RESULT.json`
