@@ -41,9 +41,12 @@ import {
   buildStagingLiveExecuteInput,
   resolveStagingLiveCredentials,
   createStagingLiveExecutionDeps,
-} from "../scripts/operations/production-qa-identity-operation-b1b/stagingLiveExecute.mjs";import {
+} from "../scripts/operations/production-qa-identity-operation-b1b/stagingLiveExecute.mjs";
+import {
   WP6_CLAIM_FORWARD,
   WP6_CLAIM_ROLLBACK,
+  applyWp6ClaimForward,
+  applyWp6ClaimRollback,
   asServiceRole,
   bootstrapWp6ClaimDatabase,
   readWp6ClaimSql,
@@ -491,7 +494,7 @@ test("ENV_FALLBACK_PRESENT=false — no Production env fallback", () => {
   assert.ok(creds.reasons.includes("missing_staging_supabase_url"));
 });
 
-test("SQL artifacts exist (forward + rollback) without Staging apply", () => {
+test("SQL artifacts encode rollback evidence-preservation contract", () => {
   const forward = readWp6ClaimSql(WP6_CLAIM_FORWARD);
   const rollback = readWp6ClaimSql(WP6_CLAIM_ROLLBACK);
   assert.ok(forward.includes("operation_b1b_one_time_authority_claims"));
@@ -499,7 +502,29 @@ test("SQL artifacts exist (forward + rollback) without Staging apply", () => {
   assert.ok(forward.includes("REJECTED_ALREADY_CLAIMED"));
   assert.ok(forward.includes("owner_go_fingerprint"));
   assert.ok(!/OWNER_STAGING_GO|service_role_key|eyJ/.test(forward));
-  assert.ok(rollback.includes("DROP TABLE IF EXISTS public.operation_b1b_one_time_authority_claims"));
+  assert.ok(
+    rollback.includes(
+      "OPERATION_B1B_AUTHORITY_CLAIM_ROLLBACK_REFUSED_NONEMPTY_STORE"
+    )
+  );
+  const guardIdx = rollback.indexOf(
+    "OPERATION_B1B_AUTHORITY_CLAIM_ROLLBACK_REFUSED_NONEMPTY_STORE"
+  );
+  const dropTableIdx = rollback.indexOf(
+    "DROP TABLE IF EXISTS public.operation_b1b_one_time_authority_claims"
+  );
+  const dropFnIdx = rollback.indexOf(
+    "DROP FUNCTION IF EXISTS public.operation_b1b_claim_one_time_live_authority"
+  );
+  assert.ok(guardIdx >= 0, "nonempty-store refusal error required");
+  assert.ok(dropTableIdx > guardIdx, "guard must precede DROP TABLE");
+  assert.ok(dropFnIdx > guardIdx, "guard must precede DROP FUNCTION");
+  assert.ok(
+    rollback.includes(
+      "to_regclass('public.operation_b1b_one_time_authority_claims')"
+    )
+  );
+  assert.ok(!/TRUNCATE|DELETE FROM\s+public\.operation_b1b_one_time_authority_claims/i.test(rollback));
 });
 
 test("fingerprintOwnerGo never equals plaintext GO", () => {
@@ -595,6 +620,65 @@ async function requirePg(t) {
   }
   return pgCtx.client;
 }
+
+async function durablePackageInventory(client) {
+  const tables = await client.query(`
+    select relname
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relkind = 'r'
+      and relname = 'operation_b1b_one_time_authority_claims'
+    order by 1
+  `);
+  const funcs = await client.query(`
+    select p.proname
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'operation_b1b_authority_claim_is_service_role',
+        'operation_b1b_claim_one_time_live_authority',
+        'operation_b1b_get_one_time_live_authority_claim'
+      )
+    order by 1
+  `);
+  return {
+    tables: tables.rows.map((r) => r.relname),
+    funcs: funcs.rows.map((r) => r.proname),
+  };
+}
+
+test("R0) empty-store rollback PASS; absent-store rollback idempotent; reapply 30", async (t) => {
+  const client = await requirePg(t);
+  if (!client) return;
+  await resetSessionGuc(client);
+
+  const beforeCount = Number(
+    (
+      await client.query(
+        `select count(*)::int as c from public.operation_b1b_one_time_authority_claims`
+      )
+    ).rows[0].c
+  );
+  assert.equal(beforeCount, 0);
+
+  await applyWp6ClaimRollback(client);
+  let inv = await durablePackageInventory(client);
+  assert.deepEqual(inv.tables, []);
+  assert.deepEqual(inv.funcs, []);
+
+  // Absent store — second rollback remains safe/idempotent.
+  await applyWp6ClaimRollback(client);
+  inv = await durablePackageInventory(client);
+  assert.deepEqual(inv.tables, []);
+  assert.deepEqual(inv.funcs, []);
+
+  await applyWp6ClaimForward(client);
+  inv = await durablePackageInventory(client);
+  assert.ok(inv.tables.includes("operation_b1b_one_time_authority_claims"));
+  assert.equal(inv.funcs.length, 3);
+});
 
 test("G) first durable claim succeeds", async (t) => {
   const client = await requirePg(t);
@@ -705,6 +789,22 @@ test("K) changed snapshot SHA cannot reuse already consumed batch", async (t) =>
   assert.equal(changed.reason, "authority_already_consumed");
 });
 
+test("K2) changed UUID-set hash cannot reuse already consumed batch", async (t) => {
+  const client = await requirePg(t);
+  if (!client) return;
+  const files = writeAllowlistAndSnapshot(makeStagingEight(), STAGING_BATCH);
+  const claimer = createPgOperationB1BDurableAuthorityClaimer({
+    client,
+    asServiceRole: async () => asServiceRole(client),
+  });
+  const changed = await claimer(
+    makeBind(files, { exactEightUuidSetHash: "f".repeat(64) })
+  );
+  assert.equal(changed.ok, false);
+  assert.equal(changed.consumed, true);
+  assert.equal(changed.reason, "authority_already_consumed");
+});
+
 test("L) batch burned after claim even if later execution fails", async (t) => {
   const client = await requirePg(t);
   if (!client) return;
@@ -758,6 +858,67 @@ test("M) no raw Owner GO/secret persisted in claim ledger", async (t) => {
     assert.notEqual(row.owner_go_fingerprint, STAGING_GO);
     assert.ok(!JSON.stringify(row).includes(STAGING_GO));
   }
+});
+
+test("R1) nonempty-store rollback FAIL CLOSED; claim evidence preserved", async (t) => {
+  const client = await requirePg(t);
+  if (!client) return;
+  await resetSessionGuc(client);
+
+  const beforeInv = await durablePackageInventory(client);
+  assert.ok(
+    beforeInv.tables.includes("operation_b1b_one_time_authority_claims")
+  );
+  assert.equal(beforeInv.funcs.length, 3);
+
+  const beforeRows = await client.query(
+    `SELECT id, batch_id, status, owner_go_fingerprint, allowlist_sha256,
+            snapshot_sha256, exact_eight_uuid_set_hash, claimed_at
+       FROM public.operation_b1b_one_time_authority_claims
+      ORDER BY claimed_at, id`
+  );
+  assert.ok(beforeRows.rows.length >= 1);
+
+  let refused = false;
+  let refuseMessage = "";
+  try {
+    await applyWp6ClaimRollback(client);
+  } catch (err) {
+    refused = true;
+    refuseMessage = String(err?.message || err);
+  }
+  assert.equal(refused, true, "canonical 70 must refuse nonempty store");
+  assert.match(
+    refuseMessage,
+    /OPERATION_B1B_AUTHORITY_CLAIM_ROLLBACK_REFUSED_NONEMPTY_STORE/
+  );
+
+  const afterInv = await durablePackageInventory(client);
+  assert.deepEqual(afterInv.tables, beforeInv.tables);
+  assert.deepEqual(afterInv.funcs, beforeInv.funcs);
+
+  const afterRows = await client.query(
+    `SELECT id, batch_id, status, owner_go_fingerprint, allowlist_sha256,
+            snapshot_sha256, exact_eight_uuid_set_hash, claimed_at
+       FROM public.operation_b1b_one_time_authority_claims
+      ORDER BY claimed_at, id`
+  );
+  assert.deepEqual(afterRows.rows, beforeRows.rows);
+
+  const readback = await readPgDurableAuthorityClaim(
+    client,
+    {
+      operationTargetMode: OPERATION_TARGET_MODE.STAGING_REHEARSAL,
+      projectRef: EXPECTED_STAGING_PROJECT_REF,
+      batchId: STAGING_BATCH,
+    },
+    { asServiceRole: async () => asServiceRole(client) }
+  );
+  assert.equal(readback.ok, true);
+  assert.equal(readback.found, true);
+  assert.equal(readback.consumed, true);
+  assert.equal(readback.status, "consumed");
+  assert.equal(readback.batch_id, STAGING_BATCH);
 });
 
 test("N) Boundary-3 through harness dependency wiring + durable claim", async (t) => {

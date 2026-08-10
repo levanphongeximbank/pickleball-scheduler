@@ -13,6 +13,7 @@
    - Table `operation_b1b_one_time_authority_claims`
    - RPC `operation_b1b_claim_one_time_live_authority` (atomic first-claim-wins)
    - RPC `operation_b1b_get_one_time_live_authority_claim` (readback)
+   - Rollback 70 is fail-closed when claim rows exist (`OPERATION_B1B_AUTHORITY_CLAIM_ROLLBACK_REFUSED_NONEMPTY_STORE`); empty/absent store teardown remains safe
 
 2. **JS durable claim adapter:**
    - `scripts/operations/production-qa-identity-operation-b1b/lib/durableAuthorityClaim.js`
