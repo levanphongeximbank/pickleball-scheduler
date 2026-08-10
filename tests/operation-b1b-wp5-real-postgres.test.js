@@ -11,6 +11,7 @@
  */
 import assert from "node:assert/strict";
 import test from "node:test";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,6 +33,8 @@ import {
   IMMUTABLE_FIELDS,
   WP1_FORWARD,
   WP2_FORWARD,
+  applyEnvironmentBindingProduction,
+  applyEnvironmentBindingStaging,
   applyWp1Forward,
   applyWp2Forward,
   asRole,
@@ -53,6 +56,8 @@ import {
   seedProfile,
   sha256Hex,
   uuidFromInt,
+  EXPECTED_PRODUCTION_PROJECT_REF as WP5_PROD_REF,
+  EXPECTED_STAGING_PROJECT_REF as WP5_STG_REF,
 } from "./helpers/operation-b1b-wp5-postgres.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -423,6 +428,8 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     await bootstrapWp5Database(client);
     await applyWp1Forward(client);
     forwardExecuted.wp1 = true;
+    // Env binding before/with SQL20: production-bound DB for default suite.
+    await applyEnvironmentBindingProduction(client);
     await applyWp2Forward(client);
     forwardExecuted.wp2 = true;
 
@@ -1748,139 +1755,255 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     bump("regression", 4);
   });
 
-  await t.test("Option C) Staging STG-QA labels prepare + preclaim + cross-env reject", async () => {
+  await t.test("Option C) Production DB env binding rejects STG labels; Staging DB accepts STG", async () => {
     requireBootstrapped();
-    const stgId = uuidFromInt(410);
-    const stgEmail = "phase1c.stg.wp5.safe4@staging-qa.local";
-    await seedProfile(client, { id: stgId, email: stgEmail, status: "active" });
 
-    const stgPrep = await prepareAsService(client, {
-      profile_id: stgId,
-      expected_email: stgEmail,
-      allowlist_label: "STG-QA-04",
-      batch_id: uuidFromInt(410, "cccccccc-dddd-4eee-8fff"),
+    // --- Production-bound DB (default suite client) ---
+    const prodOkId = uuidFromInt(420);
+    await seedProfile(client, {
+      id: prodOkId,
+      email: "phase1c.prod.wp5.envok@prod-qa.local",
+      status: "active",
     });
-    assert.equal(stgPrep.ok, true, JSON.stringify(stgPrep));
-    assert.equal(stgPrep.code, "prepared");
-    assert.equal(await getProfileStatus(client, stgId), "active");
-
-    const stg11 = uuidFromInt(411);
-    const stg11Email = "phase1c.stg.wp5.safe11@staging-qa.local";
-    await seedProfile(client, { id: stg11, email: stg11Email, status: "active" });
-    const stg11Prep = await prepareAsService(client, {
-      profile_id: stg11,
-      expected_email: stg11Email,
-      allowlist_label: "STG-QA-11",
-      batch_id: uuidFromInt(411, "cccccccc-dddd-4eee-8fff"),
-    });
-    assert.equal(stg11Prep.ok, true, JSON.stringify(stg11Prep));
-
-    const crossA = await prepareAsService(client, {
-      profile_id: stgId,
-      expected_email: "phase1c.prod.wp5.cross@prod-qa.local",
-      allowlist_label: "STG-QA-04",
-      batch_id: uuidFromInt(412, "cccccccc-dddd-4eee-8fff"),
-    });
-    assert.equal(crossA.ok, false);
-    assert.equal(crossA.code, "invalid_label_email_contract");
-
-    const mixId = uuidFromInt(414);
-    const mixStgEmail = "phase1c.stg.wp5.mix@staging-qa.local";
-    await seedProfile(client, { id: mixId, email: mixStgEmail, status: "active" });
-    const crossB = await prepareAsService(client, {
-      profile_id: mixId,
-      expected_email: mixStgEmail,
+    const prodPrep = await prepareAsService(client, {
+      profile_id: prodOkId,
+      expected_email: "phase1c.prod.wp5.envok@prod-qa.local",
       allowlist_label: "QA-04",
-      batch_id: uuidFromInt(414, "cccccccc-dddd-4eee-8fff"),
+      batch_id: uuidFromInt(420, "cccccccc-dddd-4eee-8fff"),
     });
-    assert.equal(crossB.ok, false);
-    assert.equal(crossB.code, "invalid_label_email_contract");
+    assert.equal(prodPrep.ok, true, JSON.stringify(prodPrep));
 
-    const outOfRange = await prepareAsService(client, {
-      profile_id: stgId,
-      expected_email: stgEmail,
-      allowlist_label: "STG-QA-12",
-      batch_id: uuidFromInt(415, "cccccccc-dddd-4eee-8fff"),
+    const prod11Id = uuidFromInt(421);
+    await seedProfile(client, {
+      id: prod11Id,
+      email: "phase1c.prod.wp5.envok11@prod-qa.local",
+      status: "active",
     });
-    assert.equal(outOfRange.ok, false);
-    assert.equal(outOfRange.code, "invalid_allowlist_label");
+    const prod11Prep = await prepareAsService(client, {
+      profile_id: prod11Id,
+      expected_email: "phase1c.prod.wp5.envok11@prod-qa.local",
+      allowlist_label: "QA-11",
+      batch_id: uuidFromInt(421, "cccccccc-dddd-4eee-8fff"),
+    });
+    assert.equal(prod11Prep.ok, true, JSON.stringify(prod11Prep));
 
-    const invalidRows = Number(
-      (
-        await client.query(
-          `SELECT count(*)::int AS n FROM public.qa_identity_quarantines
-           WHERE allowlist_label IN ('STG-QA-12') OR expected_email = 'phase1c.prod.wp5.cross@prod-qa.local'`
-        )
-      ).rows[0].n
-    );
-    assert.equal(invalidRows, 0);
+    const stgOnProdId = uuidFromInt(422);
+    await seedProfile(client, {
+      id: stgOnProdId,
+      email: "phase1c.stg.safe1@staging-qa.local",
+      status: "active",
+    });
+    const stgOnProd = await prepareAsService(client, {
+      profile_id: stgOnProdId,
+      expected_email: "phase1c.stg.safe1@staging-qa.local",
+      allowlist_label: "STG-QA-04",
+      batch_id: uuidFromInt(422, "cccccccc-dddd-4eee-8fff"),
+    });
+    assert.equal(stgOnProd.ok, false);
+    assert.equal(stgOnProd.code, "staging_label_rejected_on_production_db");
+
+    const stg11OnProd = await prepareAsService(client, {
+      profile_id: stgOnProdId,
+      expected_email: "phase1c.stg.safe1@staging-qa.local",
+      allowlist_label: "STG-QA-11",
+      batch_id: uuidFromInt(423, "cccccccc-dddd-4eee-8fff"),
+    });
+    assert.equal(stg11OnProd.ok, false);
+    assert.equal(stg11OnProd.code, "staging_label_rejected_on_production_db");
 
     await asRole(client, { role: "service_role" });
-    const preclaim = await callRpcJson(
+    const preclaimStgOnProd = await callRpcJson(
       client,
       "operation_b1b_validate_qa_prepare_contract",
       {
         p_bindings: JSON.stringify([
-          { allowlist_label: "STG-QA-04", expected_email: stgEmail },
-          { allowlist_label: "STG-QA-11", expected_email: stg11Email },
+          {
+            allowlist_label: "STG-QA-04",
+            expected_email: "phase1c.stg.safe1@staging-qa.local",
+          },
         ]),
       }
     );
     await resetSessionGuc(client);
-    assert.equal(preclaim.ok, true, JSON.stringify(preclaim));
-    assert.equal(preclaim.code, "prepare_contract_compatible");
-    assert.equal(preclaim.environment, "staging");
+    assert.equal(preclaimStgOnProd.ok, false);
+    assert.equal(preclaimStgOnProd.code, "prepare_contract_incompatible");
+
+    const qBefore = Number(
+      (await client.query(`SELECT count(*)::int AS n FROM public.qa_identity_quarantines`))
+        .rows[0].n
+    );
+    const aBefore = Number(
+      (await client.query(`SELECT count(*)::int AS n FROM public.audit_logs`)).rows[0].n
+    );
+
+    // Direct service_role STG pair on Production DB must FAIL (closes IR blocker).
+    const directStg = await prepareAsService(client, {
+      profile_id: stgOnProdId,
+      expected_email: "phase1c.stg.safe1@staging-qa.local",
+      allowlist_label: "STG-QA-04",
+      batch_id: uuidFromInt(424, "cccccccc-dddd-4eee-8fff"),
+    });
+    assert.equal(directStg.ok, false);
+    assert.equal(directStg.code, "staging_label_rejected_on_production_db");
+
+    const qAfter = Number(
+      (await client.query(`SELECT count(*)::int AS n FROM public.qa_identity_quarantines`))
+        .rows[0].n
+    );
+    const aAfter = Number(
+      (await client.query(`SELECT count(*)::int AS n FROM public.audit_logs`)).rows[0].n
+    );
+    assert.equal(qAfter, qBefore);
+    assert.equal(aAfter, aBefore);
+
+    // service_role cannot mutate environment binding
+    await asRole(client, { role: "service_role" });
+    await expectQueryRejects(
+      client,
+      `INSERT INTO public.operation_b1b_environment_binding
+         (singleton_key, operation_target_mode, project_ref)
+       VALUES (1, 'staging_rehearsal', $1)`,
+      [WP5_STG_REF]
+    );
+    await expectQueryRejects(
+      client,
+      `UPDATE public.operation_b1b_environment_binding
+       SET operation_target_mode = 'staging_rehearsal', project_ref = $1
+       WHERE singleton_key = 1`,
+      [WP5_STG_REF]
+    );
+    await expectQueryRejects(
+      client,
+      `DELETE FROM public.operation_b1b_environment_binding WHERE singleton_key = 1`
+    );
+    await resetSessionGuc(client);
 
     await asRole(client, { role: "anon" });
     await expectQueryRejects(
       client,
-      `SELECT public.operation_b1b_validate_qa_prepare_contract($1::jsonb)`,
-      [JSON.stringify([{ allowlist_label: "STG-QA-04", expected_email: stgEmail }])]
+      `DELETE FROM public.operation_b1b_environment_binding WHERE singleton_key = 1`
     );
     await resetSessionGuc(client);
-
-    const prodId = uuidFromInt(413);
-    await seedProfile(client, {
-      id: prodId,
-      email: "phase1c.prod.wp5.crossenv@prod-qa.local",
-      status: "active",
-    });
-    await asRole(client, { role: "authenticated", sub: prodId });
+    await asRole(client, { role: "authenticated", sub: prodOkId });
     await expectQueryRejects(
       client,
-      `SELECT public.operation_b1b_validate_qa_prepare_contract($1::jsonb)`,
-      [
-        JSON.stringify([
-          {
-            allowlist_label: "QA-04",
-            expected_email: "phase1c.prod.wp5.crossenv@prod-qa.local",
-          },
-        ]),
-      ]
+      `UPDATE public.operation_b1b_environment_binding SET project_ref = $1`,
+      [WP5_STG_REF]
     );
     await resetSessionGuc(client);
 
-    // Incident regression: STG-QA-04 + certified staging email must NOT return invalid_allowlist_label
-    const incidentId = uuidFromInt(416);
-    await seedProfile(client, {
-      id: incidentId,
-      email: "phase1c.stg.safe1@staging-qa.local",
-      status: "active",
-    });
-    const incidentOk = await prepareAsService(client, {
-      profile_id: incidentId,
-      expected_email: "phase1c.stg.safe1@staging-qa.local",
-      allowlist_label: "STG-QA-04",
-      batch_id: uuidFromInt(416, "cccccccc-dddd-4eee-8fff"),
-    });
-    assert.notEqual(incidentOk.code, "invalid_allowlist_label");
-    assert.equal(incidentOk.ok, true);
-    assert.equal(incidentOk.code, "prepared");
-    bump("realRpc", 6);
-    bump("regression", 4);
+    // Conflicting staging install on Production-bound DB must FAIL CLOSED
+    await assert.rejects(
+      () => applyEnvironmentBindingStaging(client),
+      /ENVIRONMENT_BINDING_CONFLICT|cannot be replaced/i
+    );
+    // Same production reinstall idempotent
+    await applyEnvironmentBindingProduction(client);
+    await applyEnvironmentBindingProduction(client);
+
+    // --- Separate Staging-bound disposable DB ---
+    const stgDbName = `b1b_wp5_stg_${cryptoRandomHex(4)}`;
+    await client.query(`CREATE DATABASE ${stgDbName}`);
+    const stgUrl = rewriteDatabaseName(databaseUrl, stgDbName);
+    const stgCreated = createSafeWp5Client(stgUrl);
+    const stgClient = stgCreated.client;
+    await stgClient.connect();
+    try {
+      await bootstrapWp5Database(stgClient);
+      await applyWp1Forward(stgClient);
+      await applyEnvironmentBindingStaging(stgClient);
+      await applyWp2Forward(stgClient);
+      await applyEnvironmentBindingStaging(stgClient); // idempotent reapply
+
+      const stgId = uuidFromInt(430);
+      const stgEmail = "phase1c.stg.safe1@staging-qa.local";
+      await seedProfile(stgClient, { id: stgId, email: stgEmail, status: "active" });
+      const stgPrep = await prepareAsService(stgClient, {
+        profile_id: stgId,
+        expected_email: stgEmail,
+        allowlist_label: "STG-QA-04",
+        batch_id: uuidFromInt(430, "cccccccc-dddd-4eee-8fff"),
+      });
+      assert.equal(stgPrep.ok, true, JSON.stringify(stgPrep));
+      assert.notEqual(stgPrep.code, "invalid_allowlist_label");
+
+      const stg11 = uuidFromInt(431);
+      const stg11Email = "phase1c.stg.safe8@staging-qa.local";
+      await seedProfile(stgClient, { id: stg11, email: stg11Email, status: "active" });
+      const stg11Prep = await prepareAsService(stgClient, {
+        profile_id: stg11,
+        expected_email: stg11Email,
+        allowlist_label: "STG-QA-11",
+        batch_id: uuidFromInt(431, "cccccccc-dddd-4eee-8fff"),
+      });
+      assert.equal(stg11Prep.ok, true, JSON.stringify(stg11Prep));
+
+      const qaOnStg = await prepareAsService(stgClient, {
+        profile_id: stgId,
+        expected_email: stgEmail,
+        allowlist_label: "QA-04",
+        batch_id: uuidFromInt(432, "cccccccc-dddd-4eee-8fff"),
+      });
+      assert.equal(qaOnStg.ok, false);
+      assert.equal(qaOnStg.code, "production_label_rejected_on_staging_db");
+
+      const qa11OnStgId = uuidFromInt(433);
+      await seedProfile(stgClient, {
+        id: qa11OnStgId,
+        email: "phase1c.prod.wp5.onstg@prod-qa.local",
+        status: "active",
+      });
+      const qa11OnStg = await prepareAsService(stgClient, {
+        profile_id: qa11OnStgId,
+        expected_email: "phase1c.prod.wp5.onstg@prod-qa.local",
+        allowlist_label: "QA-11",
+        batch_id: uuidFromInt(433, "cccccccc-dddd-4eee-8fff"),
+      });
+      assert.equal(qa11OnStg.ok, false);
+      assert.equal(qa11OnStg.code, "production_label_rejected_on_staging_db");
+
+      await asRole(stgClient, { role: "service_role" });
+      const preclaimStg = await callRpcJson(
+        stgClient,
+        "operation_b1b_validate_qa_prepare_contract",
+        {
+          p_bindings: JSON.stringify([
+            { allowlist_label: "STG-QA-04", expected_email: stgEmail },
+            { allowlist_label: "STG-QA-11", expected_email: stg11Email },
+          ]),
+        }
+      );
+      await resetSessionGuc(stgClient);
+      assert.equal(preclaimStg.ok, true, JSON.stringify(preclaimStg));
+      assert.equal(preclaimStg.operation_target_mode, "staging_rehearsal");
+      assert.equal(preclaimStg.project_ref, WP5_STG_REF);
+
+      // service_role cannot flip Staging binding to Production
+      await asRole(stgClient, { role: "service_role" });
+      await expectQueryRejects(
+        stgClient,
+        `UPDATE public.operation_b1b_environment_binding
+         SET operation_target_mode = 'production', project_ref = $1`,
+        [WP5_PROD_REF]
+      );
+      await resetSessionGuc(stgClient);
+
+      await assert.rejects(
+        () => applyEnvironmentBindingProduction(stgClient),
+        /ENVIRONMENT_BINDING_CONFLICT|cannot be replaced/i
+      );
+
+      // Incident pair rejected on Production DB already proven above;
+      // Staging incident pair remains accepted here.
+      bump("realRpc", 8);
+      bump("regression", 8);
+    } finally {
+      await stgClient.end().catch(() => {});
+      await client.query(`DROP DATABASE IF EXISTS ${stgDbName} WITH (FORCE)`).catch(() => {});
+    }
   });
 
-  await t.test("Option C) SQL20 second apply remains idempotent", async () => {
+  await t.test("Option C) SQL20 second apply remains idempotent on Production-bound DB", async () => {
     requireBootstrapped();
     await resetSessionGuc(client);
     await applyWp2Forward(client);
@@ -1889,14 +2012,49 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     const v = await callRpcJson(client, "operation_b1b_validate_qa_prepare_contract", {
       p_bindings: JSON.stringify([
         {
-          allowlist_label: "STG-QA-04",
-          expected_email: "phase1c.stg.safe1@staging-qa.local",
+          allowlist_label: "QA-04",
+          expected_email: "phase1c.prod.safe1@prod-qa.local",
         },
       ]),
     });
     await resetSessionGuc(client);
     assert.equal(v.ok, true, JSON.stringify(v));
+    assert.equal(v.operation_target_mode, "production");
+    assert.equal(v.project_ref, WP5_PROD_REF);
     bump("regression");
+  });
+
+  await t.test("Option C) unbound DB fails closed until environment binding installed", async () => {
+    requireBootstrapped();
+    const unboundName = `b1b_wp5_unb_${cryptoRandomHex(4)}`;
+    await client.query(`CREATE DATABASE ${unboundName}`);
+    const unboundUrl = rewriteDatabaseName(databaseUrl, unboundName);
+    const unboundCreated = createSafeWp5Client(unboundUrl);
+    const unbound = unboundCreated.client;
+    await unbound.connect();
+    try {
+      await bootstrapWp5Database(unbound);
+      await applyWp1Forward(unbound);
+      await applyWp2Forward(unbound); // schema only; no seed
+      const id = uuidFromInt(440);
+      await seedProfile(unbound, {
+        id,
+        email: "phase1c.prod.wp5.unbound@prod-qa.local",
+        status: "active",
+      });
+      const prep = await prepareAsService(unbound, {
+        profile_id: id,
+        expected_email: "phase1c.prod.wp5.unbound@prod-qa.local",
+        allowlist_label: "QA-04",
+        batch_id: uuidFromInt(440, "cccccccc-dddd-4eee-8fff"),
+      });
+      assert.equal(prep.ok, false);
+      assert.equal(prep.code, "database_environment_unbound");
+      bump("regression", 2);
+    } finally {
+      await unbound.end().catch(() => {});
+      await client.query(`DROP DATABASE IF EXISTS ${unboundName} WITH (FORCE)`).catch(() => {});
+    }
   });
 
   await t.test("evidence summary printed (sanitized)", async () => {
@@ -1926,3 +2084,13 @@ test("WP5 real PostgreSQL constraint/RLS/RPC/Boundary-3 suite", async (t) => {
     );
   });
 });
+
+function cryptoRandomHex(bytes) {
+  return crypto.randomBytes(bytes).toString("hex");
+}
+
+function rewriteDatabaseName(databaseUrl, dbName) {
+  const u = new URL(databaseUrl);
+  u.pathname = `/${dbName}`;
+  return u.toString();
+}

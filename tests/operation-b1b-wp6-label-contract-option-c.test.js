@@ -364,7 +364,9 @@ test("D3 preclaim PASS staging: claim called once then batch may proceed", async
             data: {
               ok: true,
               code: "prepare_contract_compatible",
-              environment: "staging",
+              environment: "staging_rehearsal",
+              operation_target_mode: "staging_rehearsal",
+              project_ref: EXPECTED_STAGING_PROJECT_REF,
             },
           };
         },
@@ -434,6 +436,8 @@ test("D3 production preclaim PASS under Production contract", async () => {
             ok: true,
             code: "prepare_contract_compatible",
             environment: "production",
+            operation_target_mode: "production",
+            project_ref: EXPECTED_PRODUCTION_PROJECT_REF,
           },
         }),
         fetchAuthUser: async () => null,
@@ -470,4 +474,254 @@ test("D4 incident regression: STG-QA-04 package contract PASS (JS)", () => {
   );
   assert.equal(doc.ok, true);
   assert.equal(doc.identities[0].label, "STG-QA-04");
+});
+
+test("D5 staging runner + production DB env → claim calls = 0", async () => {
+  resetAuthorityConsumptionForTests();
+  const batchId = crypto.randomUUID();
+  const identities = makeStgEight();
+  const files = writePackage(
+    identities,
+    batchId,
+    OPERATION_TARGET_MODE.STAGING_REHEARSAL
+  );
+  const created = createFreshAuthorizationBinding({
+    operationTargetMode: OPERATION_TARGET_MODE.STAGING_REHEARSAL,
+    ownerStagingGo: "OWNER_STAGING_GO_ENV_MISMATCH",
+    expectedBatchId: batchId,
+    allowlistSha256: files.alSha,
+    snapshotSha256: files.snSha,
+    stagingProjectRef: EXPECTED_STAGING_PROJECT_REF,
+    explicitExecuteConfirmation: REQUIRED_EXPLICIT_STAGING_EXECUTE_CONFIRMATION,
+  });
+  assert.equal(created.ok, true);
+  const claim = claimerSpy();
+  let prepareCalls = 0;
+  let banCalls = 0;
+  const report = await runB1BExecute(
+    {
+      DRY_RUN: "false",
+      OPERATION_TARGET_MODE: "staging_rehearsal",
+      STAGING_PROJECT_REF: EXPECTED_STAGING_PROJECT_REF,
+      OPERATION_B1B_BATCH_ID: batchId,
+      ALLOWLIST_PATH: files.alPath,
+      ALLOWLIST_SHA256: files.alSha,
+      RECOVERY_SNAPSHOT_PATH: files.snPath,
+      SNAPSHOT_SHA256: files.snSha,
+      OWNER_STAGING_GO: "OWNER_STAGING_GO_ENV_MISMATCH",
+      EXPLICIT_EXECUTE_CONFIRMATION: REQUIRED_EXPLICIT_STAGING_EXECUTE_CONFIRMATION,
+      freshAuthorizationBinding: created.binding,
+    },
+    {
+      repoRoots: [root],
+      claimOneTimeLiveAuthority: claim,
+      adapters: {
+        validateQaPrepareContract: async () => ({
+          ok: true,
+          data: {
+            ok: true,
+            code: "prepare_contract_compatible",
+            operation_target_mode: "production",
+            project_ref: EXPECTED_PRODUCTION_PROJECT_REF,
+            environment: "production",
+          },
+        }),
+        qaQuarantinePrepare: async () => {
+          prepareCalls += 1;
+          return { ok: true };
+        },
+        banAuthUser: async () => {
+          banCalls += 1;
+          return { ok: true };
+        },
+        fetchAuthUser: async () => null,
+        fetchProfile: async () => null,
+        fetchReferenceCounts: async () => zeroRefs(),
+        fetchAuthBanState: async () => false,
+      },
+    }
+  );
+  assert.equal(report.ok, false);
+  assert.equal(report.failReason, "db_env_runner_mode_mismatch");
+  assert.equal(claim.state.calls, 0);
+  assert.equal(prepareCalls, 0);
+  assert.equal(banCalls, 0);
+  assert.equal(report.mutationCalls, 0);
+});
+
+test("D5 production runner + staging DB env → claim calls = 0", async () => {
+  resetAuthorityConsumptionForTests();
+  const batchId = crypto.randomUUID();
+  const identities = makeProdEight();
+  const files = writePackage(identities, batchId, OPERATION_TARGET_MODE.PRODUCTION);
+  const created = createFreshAuthorizationBinding({
+    operationTargetMode: OPERATION_TARGET_MODE.PRODUCTION,
+    ownerProductionGo: "OWNER_PRODUCTION_GO_ENV_MISMATCH",
+    expectedBatchId: batchId,
+    allowlistSha256: files.alSha,
+    snapshotSha256: files.snSha,
+    productionProjectRef: EXPECTED_PRODUCTION_PROJECT_REF,
+    explicitExecuteConfirmation: REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
+  });
+  assert.equal(created.ok, true);
+  const claim = claimerSpy();
+  let prepareCalls = 0;
+  const report = await runB1BExecute(
+    {
+      DRY_RUN: "false",
+      OPERATION_TARGET_MODE: "production",
+      PRODUCTION_PROJECT_REF: EXPECTED_PRODUCTION_PROJECT_REF,
+      OPERATION_B1B_BATCH_ID: batchId,
+      ALLOWLIST_PATH: files.alPath,
+      ALLOWLIST_SHA256: files.alSha,
+      RECOVERY_SNAPSHOT_PATH: files.snPath,
+      SNAPSHOT_SHA256: files.snSha,
+      OWNER_PRODUCTION_GO: "OWNER_PRODUCTION_GO_ENV_MISMATCH",
+      EXPLICIT_EXECUTE_CONFIRMATION: REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
+      freshAuthorizationBinding: created.binding,
+    },
+    {
+      repoRoots: [root],
+      claimOneTimeLiveAuthority: claim,
+      adapters: {
+        validateQaPrepareContract: async () => ({
+          ok: true,
+          data: {
+            ok: true,
+            code: "prepare_contract_compatible",
+            operation_target_mode: "staging_rehearsal",
+            project_ref: EXPECTED_STAGING_PROJECT_REF,
+            environment: "staging_rehearsal",
+          },
+        }),
+        qaQuarantinePrepare: async () => {
+          prepareCalls += 1;
+          return { ok: true };
+        },
+        fetchAuthUser: async () => null,
+        fetchProfile: async () => null,
+        fetchReferenceCounts: async () => zeroRefs(),
+        fetchAuthBanState: async () => false,
+      },
+    }
+  );
+  assert.equal(report.failReason, "db_env_runner_mode_mismatch");
+  assert.equal(claim.state.calls, 0);
+  assert.equal(prepareCalls, 0);
+});
+
+test("D5 production DB STG-label compatibility fail → claim calls = 0", async () => {
+  resetAuthorityConsumptionForTests();
+  const batchId = crypto.randomUUID();
+  const identities = makeStgEight();
+  const files = writePackage(
+    identities,
+    batchId,
+    OPERATION_TARGET_MODE.STAGING_REHEARSAL
+  );
+  const created = createFreshAuthorizationBinding({
+    operationTargetMode: OPERATION_TARGET_MODE.STAGING_REHEARSAL,
+    ownerStagingGo: "OWNER_STAGING_GO_STG_ON_PROD_DB",
+    expectedBatchId: batchId,
+    allowlistSha256: files.alSha,
+    snapshotSha256: files.snSha,
+    stagingProjectRef: EXPECTED_STAGING_PROJECT_REF,
+    explicitExecuteConfirmation: REQUIRED_EXPLICIT_STAGING_EXECUTE_CONFIRMATION,
+  });
+  assert.equal(created.ok, true);
+  const claim = claimerSpy();
+  let prepareCalls = 0;
+  const report = await runB1BExecute(
+    {
+      DRY_RUN: "false",
+      OPERATION_TARGET_MODE: "staging_rehearsal",
+      STAGING_PROJECT_REF: EXPECTED_STAGING_PROJECT_REF,
+      OPERATION_B1B_BATCH_ID: batchId,
+      ALLOWLIST_PATH: files.alPath,
+      ALLOWLIST_SHA256: files.alSha,
+      RECOVERY_SNAPSHOT_PATH: files.snPath,
+      SNAPSHOT_SHA256: files.snSha,
+      OWNER_STAGING_GO: "OWNER_STAGING_GO_STG_ON_PROD_DB",
+      EXPLICIT_EXECUTE_CONFIRMATION: REQUIRED_EXPLICIT_STAGING_EXECUTE_CONFIRMATION,
+      freshAuthorizationBinding: created.binding,
+    },
+    {
+      repoRoots: [root],
+      claimOneTimeLiveAuthority: claim,
+      adapters: {
+        validateQaPrepareContract: async () => ({
+          ok: false,
+          reason: "staging_label_rejected_on_production_db",
+          code: "prepare_contract_incompatible",
+        }),
+        qaQuarantinePrepare: async () => {
+          prepareCalls += 1;
+          return { ok: true };
+        },
+        fetchAuthUser: async () => null,
+        fetchProfile: async () => null,
+        fetchReferenceCounts: async () => zeroRefs(),
+        fetchAuthBanState: async () => false,
+      },
+    }
+  );
+  assert.equal(report.failReason, "prepare_contract_preclaim_failed");
+  assert.equal(claim.state.calls, 0);
+  assert.equal(prepareCalls, 0);
+});
+
+test("D5 staging DB QA-label compatibility fail → claim calls = 0", async () => {
+  resetAuthorityConsumptionForTests();
+  const batchId = crypto.randomUUID();
+  const identities = makeProdEight();
+  const files = writePackage(identities, batchId, OPERATION_TARGET_MODE.PRODUCTION);
+  const created = createFreshAuthorizationBinding({
+    operationTargetMode: OPERATION_TARGET_MODE.PRODUCTION,
+    ownerProductionGo: "OWNER_PRODUCTION_GO_QA_ON_STG_DB",
+    expectedBatchId: batchId,
+    allowlistSha256: files.alSha,
+    snapshotSha256: files.snSha,
+    productionProjectRef: EXPECTED_PRODUCTION_PROJECT_REF,
+    explicitExecuteConfirmation: REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
+  });
+  assert.equal(created.ok, true);
+  const claim = claimerSpy();
+  let prepareCalls = 0;
+  const report = await runB1BExecute(
+    {
+      DRY_RUN: "false",
+      OPERATION_TARGET_MODE: "production",
+      PRODUCTION_PROJECT_REF: EXPECTED_PRODUCTION_PROJECT_REF,
+      OPERATION_B1B_BATCH_ID: batchId,
+      ALLOWLIST_PATH: files.alPath,
+      ALLOWLIST_SHA256: files.alSha,
+      RECOVERY_SNAPSHOT_PATH: files.snPath,
+      SNAPSHOT_SHA256: files.snSha,
+      OWNER_PRODUCTION_GO: "OWNER_PRODUCTION_GO_QA_ON_STG_DB",
+      EXPLICIT_EXECUTE_CONFIRMATION: REQUIRED_EXPLICIT_EXECUTE_CONFIRMATION,
+      freshAuthorizationBinding: created.binding,
+    },
+    {
+      repoRoots: [root],
+      claimOneTimeLiveAuthority: claim,
+      adapters: {
+        validateQaPrepareContract: async () => ({
+          ok: false,
+          reason: "production_label_rejected_on_staging_db",
+          code: "prepare_contract_incompatible",
+        }),
+        qaQuarantinePrepare: async () => {
+          prepareCalls += 1;
+          return { ok: true };
+        },
+        fetchAuthUser: async () => null,
+        fetchProfile: async () => null,
+        fetchReferenceCounts: async () => zeroRefs(),
+        fetchAuthBanState: async () => false,
+      },
+    }
+  );
+  assert.equal(report.failReason, "prepare_contract_preclaim_failed");
+  assert.equal(claim.state.calls, 0);
+  assert.equal(prepareCalls, 0);
 });

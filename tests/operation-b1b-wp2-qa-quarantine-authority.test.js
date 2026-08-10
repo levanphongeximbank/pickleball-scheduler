@@ -339,6 +339,22 @@ test("17-22) prepare pending/pending, OPERATION_B1B, labels, bind, no profile/au
     "prepare uses shared Option C label/email contract"
   );
   check(
+    /operation_b1b_database_environment/i.test(sql),
+    "trusted DB environment resolver present"
+  );
+  check(
+    /staging_label_rejected_on_production_db/i.test(sql),
+    "Production DB rejects STG labels"
+  );
+  check(
+    /production_label_rejected_on_staging_db/i.test(sql),
+    "Staging DB rejects Production labels"
+  );
+  check(
+    /operation_b1b_environment_binding/i.test(sql),
+    "environment binding table present"
+  );
+  check(
     /'QA-04'[\s\S]*'QA-05'[\s\S]*'QA-06'[\s\S]*'QA-07'[\s\S]*'QA-08'[\s\S]*'QA-09'[\s\S]*'QA-10'[\s\S]*'QA-11'/i.test(
       sql
     ),
@@ -647,8 +663,33 @@ test("41-45) rollback scope exact; no cascade; no remote refs; retired markers",
     check(!/supabase\.co\/[a-z]+\/[a-z0-9-]+/i.test(text), `${file} no project URL path`);
     check(!/postgres:\/\/[^:\s]+:[^@\s]+@/i.test(text), `${file} no postgres URL secret`);
     check(
-      !/\b(xvnrrbaysavnudgeqjerr|pickvn-prod|project_ref\s*=\s*['"][a-z]{20})/i.test(text),
-      `${file} no Staging/Production project reference`
+      !/\b(xvnrrbaysavnudgeqjerr|pickvn-prod)\b/i.test(text),
+      `${file} no non-canonical remote project markers`
+    );
+  }
+
+  // SQL20 may embed ONLY the canonical B1B environment-binding project refs.
+  {
+    const forwardText = read(FORWARD);
+    const refMatches = forwardText.match(/'[a-z]{20}'/g) || [];
+    const allowed = new Set([
+      "'expuvcohlcjzvrrauvud'",
+      "'qyewbxjsiiyufanzcjcq'",
+    ]);
+    for (const m of refMatches) {
+      check(
+        allowed.has(m),
+        `FORWARD project_ref literal must be canonical B1B binding: ${m}`
+      );
+    }
+    check(
+      forwardText.includes("expuvcohlcjzvrrauvud") &&
+        forwardText.includes("qyewbxjsiiyufanzcjcq"),
+      "FORWARD embeds exact Production + Staging binding refs for DB env gate"
+    );
+    check(
+      !/drop\s+table\s+.*operation_b1b_environment_binding/i.test(read(ROLLBACK)),
+      "SQL80 conservatively retains environment binding table"
     );
   }
 

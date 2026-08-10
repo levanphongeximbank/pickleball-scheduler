@@ -25,8 +25,17 @@ const BOOTSTRAP_SQL = path.join(
 
 export const WP1_FORWARD = "10_QA_IDENTITY_QUARANTINES_FORWARD.sql";
 export const WP2_FORWARD = "20_QA_IDENTITY_QUARANTINE_AUTHORITY_FORWARD.sql";
+export const ENV_BINDING_STAGING =
+  "21_OPERATION_B1B_ENVIRONMENT_BINDING_STAGING.sql";
+export const ENV_BINDING_PRODUCTION =
+  "22_OPERATION_B1B_ENVIRONMENT_BINDING_PRODUCTION.sql";
 export const WP2_ROLLBACK = "80_QA_IDENTITY_QUARANTINE_AUTHORITY_ROLLBACK.sql";
 export const WP1_ROLLBACK = "90_QA_IDENTITY_QUARANTINES_ROLLBACK.sql";
+
+export const EXPECTED_PRODUCTION_PROJECT_REF = "expuvcohlcjzvrrauvud";
+export const EXPECTED_STAGING_PROJECT_REF = "qyewbxjsiiyufanzcjcq";
+export const OPERATION_TARGET_MODE_PRODUCTION = "production";
+export const OPERATION_TARGET_MODE_STAGING = "staging_rehearsal";
 
 export const FORBIDDEN_HOST_MARKERS = Object.freeze([
   "supabase.co",
@@ -254,6 +263,14 @@ export async function applyWp1Forward(client) {
 
 export async function applyWp2Forward(client) {
   await execSqlFile(client, readSqlFile(WP2_FORWARD));
+}
+
+export async function applyEnvironmentBindingStaging(client) {
+  await execSqlFile(client, readSqlFile(ENV_BINDING_STAGING));
+}
+
+export async function applyEnvironmentBindingProduction(client) {
+  await execSqlFile(client, readSqlFile(ENV_BINDING_PRODUCTION));
 }
 
 export async function applyWp2Rollback(client) {

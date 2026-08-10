@@ -28,8 +28,24 @@ Domain proof: `@staging-qa.local` + local-part `phase1c.stg.*` (certified in `qa
 | Production | `QA-04` … `QA-11` | **NO** — never reuse Staging labels |
 | Staging rehearsal | `STG-QA-04` … `STG-QA-11` | **NO** — never reuse Production labels |
 
-Cross-environment label reuse is **forbidden**. Package validation, SQL `qa_quarantine_prepare`, and the read-only preclaim validator share one exact-eight label/email predicate.
+Cross-environment label reuse is **forbidden**. Package validation, SQL `qa_quarantine_prepare`, and the read-only preclaim validator share one exact-eight label/email predicate **bound to a trusted database environment singleton**.
 
+### ENVIRONMENT_SEPARATION_LAYERS
+
+1. Runner target-mode / project-ref binding  
+2. Immutable/trusted database environment binding (`21` Staging / `22` Production artifacts)  
+3. Exact label/email contract  
+
+All three must agree before durable claim.
+
+### Future Staging apply order (separate Owner GO — not now)
+
+1. `sql/21_OPERATION_B1B_ENVIRONMENT_BINDING_STAGING.sql`  
+2. `sql/20_QA_IDENTITY_QUARANTINE_AUTHORITY_FORWARD.sql`  
+3. Readback `operation_b1b_database_environment()` → `staging_rehearsal` / `qyewbxjsiiyufanzcjcq`  
+4. Validate STG-QA label contract  
+
+**STAGING_APPLY_GO=NO** in this package. Do not apply now.
 ## One-time Staging batch UUID (reserved)
 
 ```text

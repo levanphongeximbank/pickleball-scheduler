@@ -238,6 +238,8 @@ function baseAdapters(row, state) {
           code: "prepare_contract_compatible",
           checked: Array.isArray(args?.bindings) ? args.bindings.length : 0,
           environment: "production",
+          operation_target_mode: "production",
+          project_ref: EXPECTED_PRODUCTION_PROJECT_REF,
         },
       };
     },

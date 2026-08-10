@@ -12,6 +12,21 @@
 
 There is **no** auto-detect from URL, env fallback, or “accept any project ref”.
 
+## ENVIRONMENT_SEPARATION_LAYERS
+
+1. Runner target-mode / project-ref binding  
+2. Immutable/trusted database environment binding (`21_OPERATION_B1B_ENVIRONMENT_BINDING_STAGING.sql` / `22_…_PRODUCTION.sql`)  
+3. Exact label/email contract  
+
+All three must agree before durable claim. Runner/DB disagreement stops **before** durable claim.
+
+## Future Staging SQL apply order (separate Owner GO — not now)
+
+1. `docs/v5/operations/production-qa-identity-operation-b1b-remediation/sql/21_OPERATION_B1B_ENVIRONMENT_BINDING_STAGING.sql`  
+2. `docs/v5/operations/production-qa-identity-operation-b1b-remediation/sql/20_QA_IDENTITY_QUARANTINE_AUTHORITY_FORWARD.sql`  
+
+**STAGING_APPLY_GO=NO** — do not apply in this package.
+
 ## Staging rehearsal env contract (future execute — not WP6A)
 
 ```text

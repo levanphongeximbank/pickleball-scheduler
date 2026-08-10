@@ -216,7 +216,9 @@ function baseAdapters(row, state) {
           ok: true,
           code: "prepare_contract_compatible",
           checked: Array.isArray(args?.bindings) ? args.bindings.length : 0,
-          environment: "staging",
+          environment: "staging_rehearsal",
+          operation_target_mode: "staging_rehearsal",
+          project_ref: EXPECTED_STAGING_PROJECT_REF,
         },
       };
     },

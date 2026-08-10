@@ -149,8 +149,8 @@ export async function runB1BExecute(input = envInput(), deps = {}) {
     }
   }
 
-  // READ-ONLY DB label/email compatibility gate MUST run before durable claim.
-  // Never call qa_quarantine_prepare here (that would persist rows).
+  // READ-ONLY DB label/email + trusted DB environment compatibility gate
+  // MUST run before durable claim. Never call qa_quarantine_prepare here.
   if (mutationAllowed(auth)) {
     if (typeof adapters.validateQaPrepareContract !== "function") {
       report.failReason = "prepare_contract_validator_unavailable";
@@ -170,6 +170,41 @@ export async function runB1BExecute(input = envInput(), deps = {}) {
       report.mutationCalls = 0;
       return report;
     }
+
+    // Layer agreement: runner mode/ref must match trusted DB binding.
+    const compatPayload =
+      compat.data && typeof compat.data === "object" ? compat.data : compat;
+    const dbMode = String(
+      compatPayload.operation_target_mode || compatPayload.environment || ""
+    )
+      .trim()
+      .toLowerCase();
+    const dbProjectRef = String(compatPayload.project_ref || "").trim();
+    const runnerMode = String(auth.operationTargetMode || "")
+      .trim()
+      .toLowerCase();
+    const runnerProjectRef = String(auth.projectRef || "").trim();
+
+    if (!dbMode || dbMode !== runnerMode) {
+      report.reasons.push("db_env_runner_mode_mismatch");
+      report.failReason = "db_env_runner_mode_mismatch";
+      report.authorityConsumed = false;
+      report.durableAuthorityClaimed = false;
+      report.mutationCalls = 0;
+      return report;
+    }
+    if (!dbProjectRef || dbProjectRef !== runnerProjectRef) {
+      report.reasons.push("db_env_runner_project_ref_mismatch");
+      report.failReason = "db_env_runner_project_ref_mismatch";
+      report.authorityConsumed = false;
+      report.durableAuthorityClaimed = false;
+      report.mutationCalls = 0;
+      return report;
+    }
+    report.dbEnvRunnerModeMatch = true;
+    report.dbEnvRunnerProjectRefMatch = true;
+    report.databaseOperationTargetMode = dbMode;
+    report.databaseProjectRef = dbProjectRef;
 
     // Durable claim is the FINAL authorization barrier immediately before live mutation.
     const presented = await presentLiveAuthority(
