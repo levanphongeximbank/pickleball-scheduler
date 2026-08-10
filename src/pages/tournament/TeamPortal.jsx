@@ -59,6 +59,7 @@ import {
   buildServerLineupFingerprint,
   decideLineupFormRehydration,
 } from "../../features/team-tournament/engines/lineupFormState.js";
+import { resolveLineupExpectedVersion } from "../../features/team-tournament/engines/lineupRevisionContract.js";
 import { evaluateCaptainPortalAccess } from "../../features/team-tournament/engines/captainAccessPolicy.js";
 import {
   logTt412CaptainAccess,
@@ -245,7 +246,6 @@ function MatchupLineupCard({
   players,
   tournamentId,
   dataVersion,
-  tournamentVersion,
   runMutation,
   getVisibleLineups,
   useCloudVisibleLineups,
@@ -425,7 +425,8 @@ function MatchupLineupCard({
         selections,
       },
       actionScope: buildUiCommandScope("save-draft", tournamentId, `${matchup.id}:${team.id}`),
-      expectedVersion: tournamentVersion,
+      // Lineup RPC CAS uses lineup.version only — never tournament.version.
+      expectedVersion: resolveLineupExpectedVersion(ownLineup),
     });
 
     setBusy(false);
@@ -480,7 +481,8 @@ function MatchupLineupCard({
         selections,
       },
       actionScope: buildUiCommandScope("submit", tournamentId, `${matchup.id}:${team.id}`),
-      expectedVersion: tournamentVersion,
+      // Lineup RPC CAS uses lineup.version only — never tournament.version.
+      expectedVersion: resolveLineupExpectedVersion(ownLineup),
     });
 
     setBusy(false);
