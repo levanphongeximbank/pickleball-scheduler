@@ -55,6 +55,10 @@ import {
 } from "../../features/team-tournament/engines/lineupValidationEngine.js";
 import { evaluateCaptainPortalAccess } from "../../features/team-tournament/engines/captainAccessPolicy.js";
 import {
+  logTt412CaptainAccess,
+  TT412_CAPTAIN_PORTAL_GATE,
+} from "../../features/team-tournament/diagnostics/tt412CaptainAccessDiagnostics.js";
+import {
   findTeamForCaptain,
   getOpponentTeamId,
   isTeamCaptain,
@@ -667,6 +671,7 @@ export default function TeamPortal() {
     teamData: hookTeamData,
     version,
     error: loadError,
+    errorCode: loadErrorCode,
     dataVersion,
     versionConflict,
     reload,
@@ -687,6 +692,7 @@ export default function TeamPortal() {
     clubId: resolvedClubId,
     tournamentId,
     pollingEnabled: true,
+    pageMode: "captainPortal",
   });
 
   const handleDeadlineElapsed = useCallback(() => {
@@ -803,6 +809,37 @@ export default function TeamPortal() {
   }
 
   if (loadError) {
+    const isCaptainGate =
+      loadErrorCode === "captain_portal_closed" ||
+      loadErrorCode === "captain_scope_denied" ||
+      loadErrorCode === "NOT_AUTHENTICATED" ||
+      loadErrorCode === "IDENTITY_UNPROVEN";
+
+    logTt412CaptainAccess(TT412_CAPTAIN_PORTAL_GATE, {
+      source: "loadError",
+      code: loadErrorCode || null,
+      allowed: false,
+    });
+
+    if (isCaptainGate) {
+      return (
+        <Box sx={{ p: 3, maxWidth: 480 }}>
+          <Stack spacing={2}>
+            <LockIcon color="warning" fontSize="large" />
+            <Typography variant="h6" fontWeight={700}>
+              Không có quyền truy cập
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {loadError}
+            </Typography>
+            <Button component={RouterLink} to="/tournament" variant="contained">
+              Về trang Giải đấu
+            </Button>
+          </Stack>
+        </Box>
+      );
+    }
+
     return (
       <Box sx={{ p: 3 }}>
         <Stack spacing={2}>
@@ -824,6 +861,11 @@ export default function TeamPortal() {
   }
 
   if (!access.allowed) {
+    logTt412CaptainAccess(TT412_CAPTAIN_PORTAL_GATE, {
+      source: "clientGate",
+      code: access.code || null,
+      allowed: false,
+    });
     return (
       <Box sx={{ p: 3, maxWidth: 480 }}>
         <Stack spacing={2}>

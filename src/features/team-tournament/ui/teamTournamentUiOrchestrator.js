@@ -89,6 +89,10 @@ export function mapRepositoryResultToUi(result) {
   if (code === UI_MUTATION_ERROR.VERSION_CONFLICT || code === "version_conflict") {
     userMessage =
       "Dữ liệu đã được người khác cập nhật. Hệ thống đã tải lại phiên bản mới — vui lòng kiểm tra trước khi gửi lại.";
+  } else if (code === "captain_portal_closed") {
+    userMessage = "Portal đội trưởng chưa được Ban tổ chức mở.";
+  } else if (code === "captain_scope_denied") {
+    userMessage = "Bạn không có quyền truy cập đội này.";
   } else if (code === "FORBIDDEN" || code === UI_MUTATION_ERROR.ACCESS_DENIED) {
     userMessage = result?.error || "Bạn không có quyền thực hiện thao tác này.";
   } else if (code === REPOSITORY_ERROR_CODES.NOT_FOUND) {

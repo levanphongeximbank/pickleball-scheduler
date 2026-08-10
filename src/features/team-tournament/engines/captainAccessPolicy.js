@@ -76,7 +76,7 @@ export function evaluateCaptainPortalAccess({
       captainTeam: null,
       viewerPlayerId: viewerPlayerId || null,
       captainAccessEnabled: false,
-      error: "Portal đội trưởng chưa được mở.",
+      error: "Portal đội trưởng chưa được Ban tổ chức mở.",
       code: "captain_portal_closed",
     };
   }
@@ -99,7 +99,7 @@ export function evaluateCaptainPortalAccess({
       captainTeam: null,
       viewerPlayerId: normalizedPlayerId,
       captainAccessEnabled: true,
-      error: "Không xác định được đội trưởng.",
+      error: "Bạn không có quyền truy cập đội này.",
       code: "IDENTITY_UNPROVEN",
     };
   }
@@ -111,7 +111,7 @@ export function evaluateCaptainPortalAccess({
       captainTeam: null,
       viewerPlayerId: normalizedPlayerId,
       captainAccessEnabled: true,
-      error: "Chỉ đội trưởng hoặc đội phó mới truy cập được trang này.",
+      error: "Bạn không có quyền truy cập đội này.",
       code: "captain_scope_denied",
     };
   }

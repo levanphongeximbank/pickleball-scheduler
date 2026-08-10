@@ -4,7 +4,6 @@ import {
   FormControlLabel,
   Stack,
   Switch,
-  Tooltip,
   Typography,
 } from "@mui/material";
 
@@ -13,10 +12,16 @@ import {
   isCaptainAccessCloudWriterDeployed,
   setCaptainAccess,
 } from "../../../features/team-tournament/services/captainAccessService.js";
+import {
+  logTt412CaptainAccess,
+  TT412_CAPTAIN_ACCESS_TOGGLE_RESULT,
+  TT412_CAPTAIN_ACCESS_TOGGLE_START,
+} from "../../../features/team-tournament/diagnostics/tt412CaptainAccessDiagnostics.js";
 
 /**
  * Organizer control: "Mở Portal đội trưởng".
- * Pre-W2: mutation disabled / fail-closed — no client-side persistence.
+ * Writes via team_tournament_set_captain_access then canonical silent reload (no F5).
+ * Fail closed: keep prior UI state on RPC failure (Switch is controlled by teamData).
  */
 export default function CaptainAccessToggle({
   canManage = false,
@@ -37,9 +42,16 @@ export default function CaptainAccessToggle({
   async function handleToggle(next) {
     setError("");
     if (!writerReady) {
-      setError("Chưa áp dụng SQL staging (W2). Không lưu trên máy khách.");
+      setError("Portal đội trưởng chưa sẵn sàng ghi (RPC).");
       return;
     }
+
+    logTt412CaptainAccess(TT412_CAPTAIN_ACCESS_TOGGLE_START, {
+      tournamentId: String(tournamentId || ""),
+      nextEnabled: Boolean(next),
+      previousEnabled: enabled,
+    });
+
     setBusy(true);
     try {
       const result = await setCaptainAccess({
@@ -47,10 +59,20 @@ export default function CaptainAccessToggle({
         enabled: next,
         expectedVersion,
       });
+
+      logTt412CaptainAccess(TT412_CAPTAIN_ACCESS_TOGGLE_RESULT, {
+        tournamentId: String(tournamentId || ""),
+        ok: result?.ok === true,
+        code: result?.code || null,
+        captainAccessEnabled: result?.captainAccessEnabled ?? null,
+        version: result?.version ?? null,
+      });
+
       if (!result?.ok) {
         setError(result?.error || "Không thể cập nhật Portal đội trưởng.");
         return;
       }
+
       if (typeof onUpdated === "function") {
         await onUpdated(result);
       }
@@ -63,7 +85,7 @@ export default function CaptainAccessToggle({
     ? "Đội trưởng có thể xem lịch của đội và xếp đội hình"
     : "Đội trưởng chưa thể truy cập";
 
-  const control = (
+  return (
     <FormControlLabel
       control={
         <Switch
@@ -93,15 +115,5 @@ export default function CaptainAccessToggle({
       }
       sx={{ mr: 0, alignItems: "flex-start" }}
     />
-  );
-
-  if (writerReady) {
-    return control;
-  }
-
-  return (
-    <Tooltip title="Sẽ khả dụng sau Owner GO áp dụng SQL staging (W2). Không lưu trên máy khách.">
-      <span>{control}</span>
-    </Tooltip>
   );
 }

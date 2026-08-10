@@ -1,5 +1,6 @@
 import {
   rpcTeamTournamentConfirmSubMatch,
+  rpcTeamTournamentGetCaptainPortal,
   rpcTeamTournamentGetSetup,
   rpcTeamTournamentGetStandings,
   rpcTeamTournamentGetVisibleLineups,
@@ -37,6 +38,14 @@ import {
   mapGetSetupV7Meta,
   normalizeV7TournamentForAggregate,
 } from "./mapGetSetupV7.js";
+import { mapCaptainPortalResponse } from "./mapCaptainPortalResponse.js";
+import {
+  isCaptainPortalScopedReaderDeployed,
+} from "../services/captainAccessService.js";
+import {
+  logTt412CaptainAccess,
+  TT412_CAPTAIN_PORTAL_READ,
+} from "../diagnostics/tt412CaptainAccessDiagnostics.js";
 import {
   notImplemented,
   normalizeRepositoryResult,
@@ -162,6 +171,69 @@ export function createCloudTeamTournamentRepository() {
       const viewerError = rejectClientViewerTeamIdForCloud(readOptions, "cloud");
       if (viewerError) {
         return viewerError;
+      }
+
+      const pageMode = String(readOptions.pageMode || "").trim();
+      if (pageMode === "captainPortal") {
+        if (!isCaptainPortalScopedReaderDeployed()) {
+          return repositoryFailure(
+            "CAPTAIN_PORTAL_READER_UNAVAILABLE",
+            "Scoped captain portal reader chưa sẵn sàng."
+          );
+        }
+
+        logTt412CaptainAccess(TT412_CAPTAIN_PORTAL_READ, {
+          phase: "start",
+          tournamentId: String(tournamentId || ""),
+          pageMode: "captainPortal",
+        });
+
+        const portalRpc = await rpcTeamTournamentGetCaptainPortal(tournamentId, {
+          schemaVersion: readOptions.schemaVersion ?? 7,
+        });
+        const mapped = mapCaptainPortalResponse(portalRpc);
+
+        logTt412CaptainAccess(TT412_CAPTAIN_PORTAL_READ, {
+          phase: "result",
+          tournamentId: String(tournamentId || ""),
+          ok: mapped.ok === true,
+          code: mapped.code || (mapped.ok ? null : portalRpc?.code) || null,
+          viewerTeamId: mapped.meta?.viewerTeamId || null,
+          teamCount: mapped.tournament?.teamData?.teams?.length ?? null,
+          matchupCount: mapped.tournament?.teamData?.matchups?.length ?? null,
+        });
+
+        if (!mapped.ok) {
+          return normalizeRepositoryResult(
+            {
+              ok: false,
+              code: mapped.code || portalRpc?.code || "CAPTAIN_PORTAL_DENIED",
+              error: mapped.error || portalRpc?.error || "Không tải được Portal đội trưởng.",
+            },
+            { provider: "cloud" }
+          );
+        }
+
+        const aggregate = mapTournamentToAggregate(mapped.tournament, "cloud");
+        if (readOptions.includeSchedule === false) {
+          aggregate.schedule = [];
+        }
+
+        return repositorySuccess(aggregate, {
+          provider: "cloud",
+          version: aggregate.version,
+          serverTime: mapped.meta.serverTime ?? null,
+          lineupDeadline: mapped.meta.lineupDeadline ?? null,
+          canSaveDraft: mapped.meta.canSaveDraft ?? null,
+          canSubmit: mapped.meta.canSubmit ?? null,
+          deadlineStatus: mapped.meta.deadlineStatus ?? null,
+          viewerTeamId: mapped.meta.viewerTeamId ?? null,
+          schemaVersion: mapped.meta.schemaVersion,
+          viewer: mapped.meta.viewer,
+          permissions: mapped.meta.permissions,
+          captainAccessEnabled: mapped.meta.captainAccessEnabled === true,
+          pageMode: "captainPortal",
+        });
       }
 
       const setupOptions = {};
