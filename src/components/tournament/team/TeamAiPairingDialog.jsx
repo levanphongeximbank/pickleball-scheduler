@@ -44,6 +44,10 @@ import { getPlayerGenderKey } from "../../../models/player.js";
 import { reconcileSelectedAthletesForEngineInput } from "../../../features/team-tournament/showcase/reconcileSelectedAthletesForEngineInput.js";
 import { resolvePairingGroupCount } from "../../../features/team-tournament/engines/teamFormatVenueConfig.js";
 import { materializeExplicitGroupsFromTeams } from "../../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
+import {
+  TT412_CAPTAIN_CONFIRM_DIAG,
+  tt412CaptainConfirmDiag,
+} from "../../../features/team-tournament/services/tt412CaptainConfirmDiagnostics.js";
 import TeamAiPairingConfigBoard, {
   DarkDialogHeader,
 } from "./TeamAiPairingConfigBoard.jsx";
@@ -471,8 +475,31 @@ export default function TeamAiPairingDialog({
       captainPlayerId: captains[team.id],
     }));
 
+    tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.START, {
+      tournamentId: tournamentId || tournament?.id || null,
+      groupCount: Number(groupCount) || null,
+      groupMode: teamData?.settings?.groupMode || null,
+      pairedTeamCount: teamsWithCaptains.length,
+      captainCount: teamsWithCaptains.filter((team) =>
+        String(team.captainPlayerId || "").trim()
+      ).length,
+      previewGroupsLength: Array.isArray(groupTeamData?.groups)
+        ? groupTeamData.groups.length
+        : 0,
+      groupTeamDataGroupsLength: Array.isArray(groupTeamData?.groups)
+        ? groupTeamData.groups.length
+        : 0,
+      teamDataGroupsLength: Array.isArray(teamData?.groups) ? teamData.groups.length : 0,
+    });
+
     const result = applyTeamPairing(teamData, { teams: teamsWithCaptains });
     if (!result.ok) {
+      tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.RESULT, {
+        ok: false,
+        partial: false,
+        errorCode: "APPLY_TEAM_PAIRING_FAILED",
+        errorMessage: result.error || null,
+      });
       onError?.(result.error);
       return;
     }
@@ -489,6 +516,12 @@ export default function TeamAiPairingDialog({
       existingGroups: previewGroups,
     });
     if (!groupMaterialize.ok) {
+      tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.RESULT, {
+        ok: false,
+        partial: false,
+        errorCode: groupMaterialize.code || "GROUPS_REQUIRED",
+        errorMessage: groupMaterialize.error || null,
+      });
       onError?.(
         groupMaterialize.error ||
           "Chưa có chia bảng explicit để lưu. Chạy chia bảng trước khi xác nhận."
@@ -526,11 +559,23 @@ export default function TeamAiPairingDialog({
         randomSeed,
         scoreBreakdown: pairingResult.scoreBreakdown || null,
       });
+      tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.RESULT, {
+        ok: applyResult?.ok === true,
+        partial: applyResult?.partial === true,
+        errorCode: applyResult?.code || null,
+        errorMessage: applyResult?.error || null,
+      });
       // UI success requires explicit ok:true from canonical React commit — not RPC/null.
       if (applyResult?.ok === true) {
         onClose?.();
       }
     } catch (error) {
+      tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.RESULT, {
+        ok: false,
+        partial: false,
+        errorCode: "UNEXPECTED_CONFIRM_EXCEPTION",
+        errorMessage: error?.message || null,
+      });
       onError?.(
         error?.message ||
           "Không xác nhận được ghép đội — lỗi không mong đợi khi lưu cloud."
