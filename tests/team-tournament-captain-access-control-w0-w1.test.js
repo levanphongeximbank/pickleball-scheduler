@@ -126,12 +126,13 @@ test("F — toggle does not use localStorage", async () => {
   const serviceSrc = readSrc("src/features/team-tournament/services/captainAccessService.js");
   assert.equal(/\blocalStorage\b/.test(toggleSrc), false);
   assert.equal(/\blocalStorage\b/.test(serviceSrc), false);
-  assert.equal(CAPTAIN_ACCESS_RPC_DEPLOYED, false);
-  assert.equal(isCaptainAccessCloudWriterDeployed(), false);
+  assert.equal(CAPTAIN_ACCESS_RPC_DEPLOYED, true);
+  assert.equal(isCaptainAccessCloudWriterDeployed(), true);
 
-  const result = await setCaptainAccess({ tournamentId: "tt-1", enabled: true });
+  // Writer path is live; contract still rejects missing tournamentId.
+  const result = await setCaptainAccess({ tournamentId: "", enabled: true });
   assert.equal(result.ok, false);
-  assert.equal(result.code, "CAPTAIN_ACCESS_WRITER_UNAVAILABLE");
+  assert.equal(result.code, "VALIDATION_ERROR");
 });
 
 test("G — public / schedule publication logic unchanged (independent)", () => {

@@ -14,7 +14,8 @@ export const CAPTAIN_ACCESS_SET_RPC = "team_tournament_set_captain_access";
 export const CAPTAIN_PORTAL_GET_RPC = "team_tournament_get_captain_portal";
 export const CAPTAIN_ACCESS_SET_COMMAND = "captainAccess.set";
 
-export const CAPTAIN_ACCESS_RPC_DEPLOYED = false;
+/** W2 staging SQL applied — enable writer/reader without Production env mutation. */
+export const CAPTAIN_ACCESS_RPC_DEPLOYED = true;
 
 /**
  * @returns {boolean}
