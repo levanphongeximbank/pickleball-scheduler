@@ -470,6 +470,7 @@
   "tests/operation-b1b-wp4-runner-remediation.test.js",
   "tests/operation-b1b-wp5-real-postgres.test.js",
   "tests/operation-b1b-wp6a-staging-readiness.test.js",
+  "tests/operation-b1b-wp6-staging-live-execution-path.test.js",
   "tests/production-qa-identity-operation-b1.test.js",
   "tests/production-qa-identity-operation-b1a-live-runner.test.js",
   "tests/production-court-inventory-01-accc-readiness.test.js",

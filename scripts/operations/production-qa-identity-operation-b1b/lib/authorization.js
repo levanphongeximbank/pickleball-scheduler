@@ -542,11 +542,23 @@ export function mutationAllowed(authResult) {
 
 /**
  * Build immutable bind fingerprint for durable WP7 / Staging consumption.
+ * Includes exact-eight UUID set hash + optional execution version when present
+ * on authResult (attached by execute after allowlist/snapshot validation).
  */
 export function buildOneTimeAuthorityBind(authResult) {
   const mode =
     authResult?.operationTargetMode || OPERATION_TARGET_MODE.PRODUCTION;
   const isStaging = mode === OPERATION_TARGET_MODE.STAGING_REHEARSAL;
+  const exactEightUuidSetHash = String(
+    authResult?.exactEightUuidSetHash || ""
+  )
+    .trim()
+    .toLowerCase();
+  const executionVersionRaw = authResult?.executionVersion;
+  const executionVersion =
+    executionVersionRaw == null || String(executionVersionRaw).trim() === ""
+      ? null
+      : String(executionVersionRaw).trim().slice(0, 128);
   return Object.freeze({
     operationId: OPERATION_ID,
     operationTargetMode: mode,
@@ -557,6 +569,8 @@ export function buildOneTimeAuthorityBind(authResult) {
     snapshotSha256: String(authResult?.snapshotSha || "")
       .trim()
       .toLowerCase(),
+    exactEightUuidSetHash,
+    executionVersion,
     ownerProductionGo: isStaging
       ? ""
       : String(authResult?.ownerProductionGo || "").trim(),
