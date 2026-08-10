@@ -79,7 +79,7 @@ import TeamStandingsTable from "../../components/tournament/team/TeamStandingsTa
 import TeamForfeitDialog from "../../components/tournament/team/TeamForfeitDialog.jsx";
 import { buildForfeitCommandPayload } from "../../features/team-tournament/engines/forfeitWorkflowEngine.js";
 import {
-  canSaveLegacyDraft,
+  resolveLegacyScorePanelEditable,
 } from "../../features/team-tournament/engines/teamRefereeV5BridgeEngine.js";
 import {
   availableMatchupIdsKey,
@@ -176,10 +176,12 @@ function SubMatchScorePanel({
   const [dirty, setDirty] = useState(false);
   const [serverConflict, setServerConflict] = useState(false);
   const fingerprintRef = useRef(buildSubMatchScoreFingerprint(subMatch));
-  const editable =
-    canEdit &&
-    subMatch.hasOfficialLineup &&
-    canSaveLegacyDraft(subMatch.scoreOps);
+  const editable = resolveLegacyScorePanelEditable({
+    canEdit,
+    hasOfficialLineup: subMatch.hasOfficialLineup,
+    scoreOps: subMatch.scoreOps,
+    subMatch,
+  });
 
   useEffect(() => {
     const sync = resolveScorePanelServerSync({
