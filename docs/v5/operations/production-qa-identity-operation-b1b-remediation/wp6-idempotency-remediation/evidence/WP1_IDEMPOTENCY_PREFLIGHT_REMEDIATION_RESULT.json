@@ -1,0 +1,47 @@
+{
+  "marker": "OPERATION_B1B_WP6_WP1_IDEMPOTENCY_REMEDIATION",
+  "recorded_at_utc": "2026-08-10T03:45:00Z",
+  "base_origin_main": "ca72a91ddc34ed118d389cc1dd3696360e80b80f",
+  "base_sha_match": true,
+  "worktree_path": "C:\\PVN-WT\\b1b-wp6-idempotency-remediation",
+  "branch": "fix/operation-b1b-wp6-wp1-idempotency-preflight",
+  "root_cause": "NORMALIZATION_FRAGILE_PREFLIGHT_COMPARATOR_IN_10_FORWARD",
+  "fix": {
+    "file": "docs/v5/operations/production-qa-identity-operation-b1b-remediation/sql/10_QA_IDENTITY_QUARANTINES_FORWARD.sql",
+    "creation_clause_unchanged": "CHECK (length(trim(reason)) > 0)",
+    "preflight_comparator_before": "length\\s*\\(\\s*trim\\s*\\(\\s*reason\\s*\\)\\s*\\)\\s*>\\s*0",
+    "preflight_comparator_after": "length\\s*\\(\\s*trim\\s*\\(\\s*(both\\s+from\\s+)?reason\\s*\\)\\s*\\)\\s*>\\s*0",
+    "accepts_authored": "length(trim(reason)) > 0",
+    "accepts_pg_normalized": "length(TRIM(BOTH FROM reason)) > 0",
+    "fail_closed_rejects": ["length(reason) > 0", "reason IS NOT NULL", "length(btrim(reason)) > 0"]
+  },
+  "tests": {
+    "wp1_schema": "PASS",
+    "wp5_real_postgres_including_second_apply": "PASS",
+    "operation_b1b_focused_suite": "PASS",
+    "full_unit": "PASS",
+    "foundation_lock": "PASS",
+    "lint_no_new": "PASS",
+    "build": "PASS"
+  },
+  "real_postgres": {
+    "provisioner": "embedded-postgres",
+    "postgres_version": "PostgreSQL 16.4",
+    "first_apply": "PASS",
+    "second_apply": "PASS",
+    "constraint_name": "qa_identity_quarantines_reason_nonempty_check",
+    "constraint_def_semantic_match": "length(trim(...reason...)) > 0 including optional BOTH FROM",
+    "duplicate_objects": 0,
+    "whitespace_reason_rejected": true
+  },
+  "STAGING_ACCESS": 0,
+  "STAGING_MUTATIONS": 0,
+  "AUTH_MUTATIONS": 0,
+  "PRODUCTION_ACCESS": 0,
+  "PUSHED": "NO",
+  "PR_OPENED": "NO",
+  "STAGING_APPLY_GO": "NO",
+  "AUTH_BAN_GO": "NO",
+  "PRODUCTION_GO": "NO",
+  "FINAL_VERDICT": "OPERATION_B1B_WP6_WP1_IDEMPOTENCY_REMEDIATION_LOCAL_PASS_READY_FOR_INDEPENDENT_REREVIEW"
+}

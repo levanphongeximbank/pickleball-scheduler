@@ -237,6 +237,43 @@ test("FK types and fail-closed markers match repository profiles contract", () =
   assert.match(sql, /NOT runtime-ready until WP2/i);
 });
 
+test("reason_nonempty: creation clause unchanged; preflight accepts PG TRIM(BOTH FROM)", () => {
+  const sql = stripSqlComments(read(FORWARD));
+
+  // Creation semantics must stay canonical (not rewritten to BOTH FROM).
+  assert.match(
+    sql,
+    /ADD\s+CONSTRAINT\s+qa_identity_quarantines_reason_nonempty_check\s+CHECK\s*\(\s*length\s*\(\s*trim\s*\(\s*reason\s*\)\s*\)\s*>\s*0\s*\)/i
+  );
+
+  const preflightMatch = sql.match(
+    /qa_identity_quarantines_reason_nonempty_check[\s\S]*?v_def\s*!~\*\s*'([^']+)'/i
+  );
+  assert.ok(preflightMatch, "reason_nonempty preflight comparator required");
+  const comparatorSource = preflightMatch[1];
+  assert.match(
+    comparatorSource,
+    /both\\s\+from\\s\+/i,
+    "preflight must optionally accept BOTH FROM normalization"
+  );
+
+  const comparator = new RegExp(comparatorSource, "i");
+  const pgNormalized =
+    "CHECK ((length(TRIM(BOTH FROM reason)) > 0))";
+  const authored = "CHECK (length(trim(reason)) > 0)";
+  const authoredParen = "CHECK ((length(trim(reason)) > 0))";
+
+  assert.match(pgNormalized, comparator);
+  assert.match(authored, comparator);
+  assert.match(authoredParen, comparator);
+
+  // Fail-closed: trim is required; length(reason) alone is incompatible.
+  assert.doesNotMatch("CHECK (length(reason) > 0)", comparator);
+  assert.doesNotMatch("CHECK ((length(reason) > 0))", comparator);
+  assert.doesNotMatch("CHECK (reason IS NOT NULL)", comparator);
+  assert.doesNotMatch("CHECK (length(btrim(reason)) > 0)", comparator);
+});
+
 test("secret scan: WP1 SQL artifacts contain no credentials", () => {
   for (const file of [FORWARD, ROLLBACK]) {
     const text = read(file);
