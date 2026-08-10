@@ -402,6 +402,10 @@ BEGIN
         'qa_quarantine_is_directory_filter_reader',
         'qa_quarantine_actor_text',
         'qa_quarantine_write_audit',
+        'operation_b1b_database_environment',
+        'operation_b1b_qa_label_email_contract_check',
+        'operation_b1b_qa_label_email_contract_is_valid',
+        'operation_b1b_validate_qa_prepare_contract',
         'qa_quarantine_prepare',
         'qa_quarantine_activate_after_auth_ban',
         'qa_quarantine_activate_preexisting_ban',
@@ -418,6 +422,14 @@ BEGIN
       WHEN 'qa_quarantine_actor_text' THEN ''
       WHEN 'qa_quarantine_write_audit' THEN
         'p_action text, p_quarantine_id uuid, p_profile_id uuid, p_batch_id uuid, p_prev_lifecycle_state text, p_prev_auth_ban_state text, p_new_lifecycle_state text, p_new_auth_ban_state text, p_lifecycle_version integer, p_result_code text, p_extra jsonb'
+      WHEN 'operation_b1b_database_environment' THEN
+        ''
+      WHEN 'operation_b1b_qa_label_email_contract_check' THEN
+        'p_allowlist_label text, p_expected_email text'
+      WHEN 'operation_b1b_qa_label_email_contract_is_valid' THEN
+        'p_allowlist_label text, p_expected_email text'
+      WHEN 'operation_b1b_validate_qa_prepare_contract' THEN
+        'p_bindings jsonb'
       WHEN 'qa_quarantine_prepare' THEN
         'p_profile_id uuid, p_auth_user_id uuid, p_batch_id uuid, p_allowlist_sha256 text, p_snapshot_sha256 text, p_reason text, p_original_profile_status text, p_original_auth_banned boolean, p_expected_email text, p_allowlist_label text, p_metadata jsonb'
       WHEN 'qa_quarantine_activate_after_auth_ban' THEN
@@ -711,6 +723,243 @@ $$;
 COMMENT ON FUNCTION public.qa_quarantine_write_audit(text, uuid, uuid, uuid, text, text, text, text, integer, text, jsonb) IS
   'OPERATION_B1B WP2: transactional audit writer for quarantine lifecycle transitions. Fail-closed.';
 
+-- -----------------------------------------------------------------------------
+-- Option C corrective: trusted DB environment binding schema (no seed here).
+-- Environment-specific seed is ONLY via:
+--   21_OPERATION_B1B_ENVIRONMENT_BINDING_STAGING.sql
+--   22_OPERATION_B1B_ENVIRONMENT_BINDING_PRODUCTION.sql
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.operation_b1b_environment_binding (
+  singleton_key smallint PRIMARY KEY CHECK (singleton_key = 1),
+  operation_target_mode text NOT NULL,
+  project_ref text NOT NULL,
+  installed_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT operation_b1b_environment_binding_pair_check CHECK (
+    (
+      operation_target_mode = 'production'
+      AND project_ref = 'expuvcohlcjzvrrauvud'
+    )
+    OR (
+      operation_target_mode = 'staging_rehearsal'
+      AND project_ref = 'qyewbxjsiiyufanzcjcq'
+    )
+  )
+);
+
+COMMENT ON TABLE public.operation_b1b_environment_binding IS
+  'OPERATION_B1B: singleton trusted DB environment binding. Runtime-immutable; install via explicit SQL artifacts only.';
+
+REVOKE ALL ON TABLE public.operation_b1b_environment_binding FROM PUBLIC;
+REVOKE ALL ON TABLE public.operation_b1b_environment_binding FROM anon;
+REVOKE ALL ON TABLE public.operation_b1b_environment_binding FROM authenticated;
+REVOKE ALL ON TABLE public.operation_b1b_environment_binding FROM service_role;
+
+CREATE OR REPLACE FUNCTION public.operation_b1b_database_environment()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_count integer;
+  v_mode text;
+  v_ref text;
+BEGIN
+  SELECT count(*)::integer INTO v_count
+  FROM public.operation_b1b_environment_binding;
+
+  IF v_count = 0 THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'database_environment_unbound');
+  END IF;
+
+  IF v_count <> 1 THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'database_environment_ambiguous');
+  END IF;
+
+  SELECT operation_target_mode, project_ref
+    INTO v_mode, v_ref
+  FROM public.operation_b1b_environment_binding
+  WHERE singleton_key = 1;
+
+  IF v_mode IS NULL OR v_ref IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'database_environment_unbound');
+  END IF;
+
+  IF NOT (
+    (v_mode = 'production' AND v_ref = 'expuvcohlcjzvrrauvud')
+    OR (v_mode = 'staging_rehearsal' AND v_ref = 'qyewbxjsiiyufanzcjcq')
+  ) THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'database_environment_invalid_pair');
+  END IF;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'code', 'database_environment_bound',
+    'operation_target_mode', v_mode,
+    'project_ref', v_ref,
+    'environment', v_mode
+  );
+END;
+$$;
+
+COMMENT ON FUNCTION public.operation_b1b_database_environment() IS
+  'OPERATION_B1B: read trusted singleton DB environment binding. Fail-closed. No caller mode override.';
+
+REVOKE ALL ON FUNCTION public.operation_b1b_database_environment() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.operation_b1b_database_environment() FROM anon;
+REVOKE ALL ON FUNCTION public.operation_b1b_database_environment() FROM authenticated;
+REVOKE ALL ON FUNCTION public.operation_b1b_database_environment() FROM service_role;
+
+-- -----------------------------------------------------------------------------
+-- Option C: shared exact-eight label ↔ certified-email contract
+-- Bound to trusted DB environment (not caller-supplied mode).
+-- Production DB: QA-04..QA-11 only. Staging DB: STG-QA-04..STG-QA-11 only.
+-- No broad QA-*/STG-QA-* regex acceptance.
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.operation_b1b_qa_label_email_contract_check(
+  p_allowlist_label text,
+  p_expected_email text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_label text;
+  v_email text;
+  v_db jsonb;
+  v_mode text;
+  v_ref text;
+  v_prod_label boolean := false;
+  v_stg_label boolean := false;
+  v_prod_email boolean := false;
+  v_stg_email boolean := false;
+BEGIN
+  v_db := public.operation_b1b_database_environment();
+  IF coalesce((v_db->>'ok')::boolean, false) IS NOT TRUE THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'code', coalesce(nullif(v_db->>'code', ''), 'database_environment_unbound')
+    );
+  END IF;
+
+  v_mode := v_db->>'operation_target_mode';
+  v_ref := v_db->>'project_ref';
+
+  v_label := upper(trim(coalesce(p_allowlist_label, '')));
+  v_email := lower(trim(coalesce(p_expected_email, '')));
+
+  IF length(v_label) = 0 THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'invalid_allowlist_label');
+  END IF;
+
+  IF length(v_email) = 0 THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'expected_email_required');
+  END IF;
+
+  IF v_email = 'phase1b-smith@gmail.com' THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'forbidden_real_user_email');
+  END IF;
+
+  v_prod_label := v_label IN (
+    'QA-04', 'QA-05', 'QA-06', 'QA-07',
+    'QA-08', 'QA-09', 'QA-10', 'QA-11'
+  );
+  v_stg_label := v_label IN (
+    'STG-QA-04', 'STG-QA-05', 'STG-QA-06', 'STG-QA-07',
+    'STG-QA-08', 'STG-QA-09', 'STG-QA-10', 'STG-QA-11'
+  );
+
+  -- Exact Staging fixture family (mirrors JS isCertifiedQaEmail + staging allowlist).
+  v_stg_email := (v_email ~ '^phase1c\.stg\.[^@]+@staging-qa\.local$');
+
+  -- Exact Production fixture families (never @staging-qa.local).
+  v_prod_email := (
+       v_email ~ '^phase1c\.prod\.[^@]+@prod-qa\.local$'
+    OR v_email ~ '^phase1b-[^@]+@pickleball-scheduler\.qa$'
+    OR v_email ~ '^qa42l-prod[^@]*@pickleball-scheduler\.qa$'
+  );
+
+  IF v_mode = 'production' THEN
+    IF v_stg_label THEN
+      RETURN jsonb_build_object(
+        'ok', false,
+        'code', 'staging_label_rejected_on_production_db',
+        'operation_target_mode', v_mode,
+        'project_ref', v_ref
+      );
+    END IF;
+    IF NOT v_prod_label THEN
+      RETURN jsonb_build_object('ok', false, 'code', 'invalid_allowlist_label');
+    END IF;
+    IF NOT v_prod_email THEN
+      RETURN jsonb_build_object('ok', false, 'code', 'invalid_label_email_contract');
+    END IF;
+    RETURN jsonb_build_object(
+      'ok', true,
+      'code', 'valid',
+      'environment', v_mode,
+      'operation_target_mode', v_mode,
+      'project_ref', v_ref
+    );
+  END IF;
+
+  IF v_mode = 'staging_rehearsal' THEN
+    IF v_prod_label THEN
+      RETURN jsonb_build_object(
+        'ok', false,
+        'code', 'production_label_rejected_on_staging_db',
+        'operation_target_mode', v_mode,
+        'project_ref', v_ref
+      );
+    END IF;
+    IF NOT v_stg_label THEN
+      RETURN jsonb_build_object('ok', false, 'code', 'invalid_allowlist_label');
+    END IF;
+    IF NOT v_stg_email THEN
+      RETURN jsonb_build_object('ok', false, 'code', 'invalid_label_email_contract');
+    END IF;
+    RETURN jsonb_build_object(
+      'ok', true,
+      'code', 'valid',
+      'environment', v_mode,
+      'operation_target_mode', v_mode,
+      'project_ref', v_ref
+    );
+  END IF;
+
+  RETURN jsonb_build_object('ok', false, 'code', 'database_environment_invalid_pair');
+END;
+$$;
+
+COMMENT ON FUNCTION public.operation_b1b_qa_label_email_contract_check(text, text) IS
+  'OPERATION_B1B Option C: exact-eight label/email contract bound to trusted DB environment. Production DB rejects STG-QA-*; Staging DB rejects QA-*.';
+
+CREATE OR REPLACE FUNCTION public.operation_b1b_qa_label_email_contract_is_valid(
+  p_allowlist_label text,
+  p_expected_email text
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT coalesce(
+    (
+      public.operation_b1b_qa_label_email_contract_check(
+        p_allowlist_label,
+        p_expected_email
+      )->>'ok'
+    )::boolean,
+    false
+  );
+$$;
+
+COMMENT ON FUNCTION public.operation_b1b_qa_label_email_contract_is_valid(text, text) IS
+  'OPERATION_B1B Option C: boolean wrapper over shared DB-env-bound label/email contract check.';
+
 REVOKE ALL ON FUNCTION public.qa_quarantine_is_service_role() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.qa_quarantine_is_service_role() FROM anon;
 REVOKE ALL ON FUNCTION public.qa_quarantine_is_service_role() FROM authenticated;
@@ -730,6 +979,18 @@ REVOKE ALL ON FUNCTION public.qa_quarantine_actor_text() FROM authenticated;
 REVOKE ALL ON FUNCTION public.qa_quarantine_write_audit(text, uuid, uuid, uuid, text, text, text, text, integer, text, jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.qa_quarantine_write_audit(text, uuid, uuid, uuid, text, text, text, text, integer, text, jsonb) FROM anon;
 REVOKE ALL ON FUNCTION public.qa_quarantine_write_audit(text, uuid, uuid, uuid, text, text, text, text, integer, text, jsonb) FROM authenticated;
+
+REVOKE ALL ON FUNCTION public.operation_b1b_database_environment() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.operation_b1b_database_environment() FROM anon;
+REVOKE ALL ON FUNCTION public.operation_b1b_database_environment() FROM authenticated;
+
+REVOKE ALL ON FUNCTION public.operation_b1b_qa_label_email_contract_check(text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.operation_b1b_qa_label_email_contract_check(text, text) FROM anon;
+REVOKE ALL ON FUNCTION public.operation_b1b_qa_label_email_contract_check(text, text) FROM authenticated;
+
+REVOKE ALL ON FUNCTION public.operation_b1b_qa_label_email_contract_is_valid(text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.operation_b1b_qa_label_email_contract_is_valid(text, text) FROM anon;
+REVOKE ALL ON FUNCTION public.operation_b1b_qa_label_email_contract_is_valid(text, text) FROM authenticated;
 
 -- -----------------------------------------------------------------------------
 -- RLS deny-by-default (no permissive table policies)
@@ -779,6 +1040,7 @@ DECLARE
   v_conflict public.qa_identity_quarantines%ROWTYPE;
   v_constraint text;
   v_bindings_match boolean;
+  v_contract jsonb;
 BEGIN
   IF NOT public.qa_quarantine_is_authorized_caller() THEN
     RETURN jsonb_build_object('ok', false, 'code', 'forbidden');
@@ -822,16 +1084,18 @@ BEGIN
   END IF;
 
   v_label := upper(trim(coalesce(p_allowlist_label, '')));
-  IF v_label NOT IN (
-    'QA-04', 'QA-05', 'QA-06', 'QA-07',
-    'QA-08', 'QA-09', 'QA-10', 'QA-11'
-  ) THEN
-    RETURN jsonb_build_object('ok', false, 'code', 'invalid_allowlist_label');
-  END IF;
-
   v_email_norm := lower(trim(coalesce(p_expected_email, '')));
   IF length(v_email_norm) = 0 THEN
     RETURN jsonb_build_object('ok', false, 'code', 'expected_email_required');
+  END IF;
+
+  -- Option C: shared exact-eight label/email contract (Production QA-* vs Staging STG-QA-*).
+  v_contract := public.operation_b1b_qa_label_email_contract_check(v_label, v_email_norm);
+  IF coalesce((v_contract->>'ok')::boolean, false) IS NOT TRUE THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'code', coalesce(nullif(v_contract->>'code', ''), 'invalid_label_email_contract')
+    );
   END IF;
 
   IF p_metadata IS NULL OR jsonb_typeof(p_metadata) <> 'object' THEN
@@ -1119,7 +1383,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.qa_quarantine_prepare(uuid, uuid, uuid, text, text, text, text, boolean, text, text, jsonb) IS
-  'OPERATION_B1B WP2: create pending/pending quarantine authority only. No Auth ban. No profiles.status mutation. source_operation fixed to OPERATION_B1B.';
+  'OPERATION_B1B WP2/Option C: create pending/pending quarantine authority only. Accepts Production QA-04..11 or Staging STG-QA-04..11 only with matching certified email. No Auth ban. No profiles.status mutation. source_operation fixed to OPERATION_B1B.';
 
 -- -----------------------------------------------------------------------------
 -- 2) qa_quarantine_activate_after_auth_ban
@@ -1661,6 +1925,118 @@ COMMENT ON FUNCTION public.qa_quarantine_list_active(uuid[]) IS
   'OPERATION_B1B: sole canonical set-based active quarantine membership read (profile_id only). Directory-filter readers: SUPER_ADMIN/SYSTEM_TECHNICIAN/service_role. Writers remain SUPER_ADMIN/service_role only. No qa_quarantine_list_active_batched alias.';
 
 -- -----------------------------------------------------------------------------
+-- Option C: READ-ONLY preclaim label/email compatibility validator
+-- No INSERT/UPDATE/DELETE/audit/Auth/quarantine prepare/durable claim.
+-- service_role only. Uses the SAME contract predicate as qa_quarantine_prepare.
+-- Returns trusted DB operation_target_mode + project_ref for runner match gate.
+-- -----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.operation_b1b_validate_qa_prepare_contract(
+  p_bindings jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+  v_item jsonb;
+  v_idx integer := 0;
+  v_label text;
+  v_email text;
+  v_check jsonb;
+  v_failures jsonb := '[]'::jsonb;
+  v_labels text[] := ARRAY[]::text[];
+  v_db jsonb;
+  v_mode text;
+  v_ref text;
+BEGIN
+  IF NOT public.qa_quarantine_is_service_role() THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'forbidden');
+  END IF;
+
+  v_db := public.operation_b1b_database_environment();
+  IF coalesce((v_db->>'ok')::boolean, false) IS NOT TRUE THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'code', coalesce(nullif(v_db->>'code', ''), 'database_environment_unbound')
+    );
+  END IF;
+  v_mode := v_db->>'operation_target_mode';
+  v_ref := v_db->>'project_ref';
+
+  IF p_bindings IS NULL OR jsonb_typeof(p_bindings) <> 'array' THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'bindings_required');
+  END IF;
+
+  IF jsonb_array_length(p_bindings) = 0 THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'bindings_empty');
+  END IF;
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(p_bindings)
+  LOOP
+    v_idx := v_idx + 1;
+
+    IF v_item IS NULL OR jsonb_typeof(v_item) <> 'object' THEN
+      v_failures := v_failures || jsonb_build_array(
+        jsonb_build_object('index', v_idx, 'code', 'binding_not_object')
+      );
+      CONTINUE;
+    END IF;
+
+    v_label := upper(trim(coalesce(v_item->>'allowlist_label', '')));
+    v_email := lower(trim(coalesce(v_item->>'expected_email', '')));
+    v_check := public.operation_b1b_qa_label_email_contract_check(v_label, v_email);
+
+    IF coalesce((v_check->>'ok')::boolean, false) IS NOT TRUE THEN
+      v_failures := v_failures || jsonb_build_array(
+        jsonb_build_object(
+          'index', v_idx,
+          'allowlist_label', nullif(v_label, ''),
+          'code', coalesce(nullif(v_check->>'code', ''), 'invalid_label_email_contract')
+        )
+      );
+      CONTINUE;
+    END IF;
+
+    IF v_label = ANY (v_labels) THEN
+      v_failures := v_failures || jsonb_build_array(
+        jsonb_build_object(
+          'index', v_idx,
+          'allowlist_label', v_label,
+          'code', 'duplicate_allowlist_label'
+        )
+      );
+      CONTINUE;
+    END IF;
+    v_labels := array_append(v_labels, v_label);
+  END LOOP;
+
+  IF jsonb_array_length(v_failures) > 0 THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'code', 'prepare_contract_incompatible',
+      'checked', v_idx,
+      'failures', v_failures,
+      'operation_target_mode', v_mode,
+      'project_ref', v_ref
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'code', 'prepare_contract_compatible',
+    'checked', v_idx,
+    'environment', v_mode,
+    'operation_target_mode', v_mode,
+    'project_ref', v_ref
+  );
+END;
+$$;
+
+COMMENT ON FUNCTION public.operation_b1b_validate_qa_prepare_contract(jsonb) IS
+  'OPERATION_B1B Option C: read-only service_role preclaim validator against trusted DB environment + exact-eight label/email contract. No persistent mutations.';
+
+-- -----------------------------------------------------------------------------
 -- EXECUTE grants (revoke PUBLIC first; anon never)
 -- authenticated EXECUTE allowed only because bodies enforce SUPER_ADMIN/service-role
 -- -----------------------------------------------------------------------------
@@ -1699,8 +2075,30 @@ REVOKE ALL ON FUNCTION public.qa_quarantine_list_active(uuid[]) FROM anon;
 GRANT EXECUTE ON FUNCTION public.qa_quarantine_list_active(uuid[]) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.qa_quarantine_list_active(uuid[]) TO service_role;
 
+-- Option C preclaim validator: service_role ONLY (no authenticated EXECUTE).
+REVOKE ALL ON FUNCTION public.operation_b1b_validate_qa_prepare_contract(jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.operation_b1b_validate_qa_prepare_contract(jsonb) FROM anon;
+REVOKE ALL ON FUNCTION public.operation_b1b_validate_qa_prepare_contract(jsonb) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.operation_b1b_validate_qa_prepare_contract(jsonb) TO service_role;
+
+-- Internal contract helpers remain non-client-callable (no EXECUTE grants).
+REVOKE ALL ON FUNCTION public.operation_b1b_database_environment() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.operation_b1b_database_environment() FROM anon;
+REVOKE ALL ON FUNCTION public.operation_b1b_database_environment() FROM authenticated;
+REVOKE ALL ON FUNCTION public.operation_b1b_qa_label_email_contract_check(text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.operation_b1b_qa_label_email_contract_check(text, text) FROM anon;
+REVOKE ALL ON FUNCTION public.operation_b1b_qa_label_email_contract_check(text, text) FROM authenticated;
+REVOKE ALL ON FUNCTION public.operation_b1b_qa_label_email_contract_is_valid(text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.operation_b1b_qa_label_email_contract_is_valid(text, text) FROM anon;
+REVOKE ALL ON FUNCTION public.operation_b1b_qa_label_email_contract_is_valid(text, text) FROM authenticated;
+
 -- Final table posture reinforcement (no direct lifecycle DML grants)
 REVOKE ALL ON TABLE public.qa_identity_quarantines FROM PUBLIC;
 REVOKE ALL ON TABLE public.qa_identity_quarantines FROM anon;
 REVOKE ALL ON TABLE public.qa_identity_quarantines FROM authenticated;
 REVOKE ALL ON TABLE public.qa_identity_quarantines FROM service_role;
+
+REVOKE ALL ON TABLE public.operation_b1b_environment_binding FROM PUBLIC;
+REVOKE ALL ON TABLE public.operation_b1b_environment_binding FROM anon;
+REVOKE ALL ON TABLE public.operation_b1b_environment_binding FROM authenticated;
+REVOKE ALL ON TABLE public.operation_b1b_environment_binding FROM service_role;

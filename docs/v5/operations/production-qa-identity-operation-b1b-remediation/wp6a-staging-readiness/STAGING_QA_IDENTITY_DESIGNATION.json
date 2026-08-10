@@ -18,6 +18,27 @@
     "email_domain": "staging-qa.local",
     "email_local_pattern": "^phase1c\\.stg\\.",
     "label_prefix": "STG-QA-",
+    "exact_labels": [
+      "STG-QA-04",
+      "STG-QA-05",
+      "STG-QA-06",
+      "STG-QA-07",
+      "STG-QA-08",
+      "STG-QA-09",
+      "STG-QA-10",
+      "STG-QA-11"
+    ],
+    "production_labels_forbidden": [
+      "QA-04",
+      "QA-05",
+      "QA-06",
+      "QA-07",
+      "QA-08",
+      "QA-09",
+      "QA-10",
+      "QA-11"
+    ],
+    "cross_environment_label_reuse": "forbidden",
     "test_only": true,
     "real_user_exclusion": "FORBIDDEN_REAL_USER_EMAIL + non-certified domains rejected",
     "production_qa_email_domains_rejected": ["prod-qa.local"]

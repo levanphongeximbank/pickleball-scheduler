@@ -17,6 +17,7 @@ export const OPERATION_B1B_LIVE_ADAPTER_CAPABILITIES = Object.freeze([
   "fetchProfile",
   "fetchAuthBanState",
   "fetchReferenceCounts",
+  "validateQaPrepareContract",
   "qaQuarantinePrepare",
   "qaQuarantineActivateAfterAuthBan",
   "qaQuarantineActivatePreexistingBan",
@@ -32,6 +33,7 @@ export const OPERATION_B1B_LIVE_ADAPTER_CAPABILITIES = Object.freeze([
  * Tests must assert these exact key sets.
  */
 export const OPERATION_B1B_RPC_ARG_KEYS = Object.freeze({
+  operation_b1b_validate_qa_prepare_contract: Object.freeze(["p_bindings"]),
   qa_quarantine_prepare: Object.freeze([
     "p_profile_id",
     "p_auth_user_id",
@@ -239,6 +241,20 @@ export function createOperationB1BLiveAdapters({ admin }) {
     };
   }
 
+  async function validateQaPrepareContract(args) {
+    const bindings = Array.isArray(args?.bindings) ? args.bindings : null;
+    if (!bindings) {
+      return {
+        ok: false,
+        reason: "bindings_required",
+        code: "bindings_required",
+      };
+    }
+    return callRpc(admin, "operation_b1b_validate_qa_prepare_contract", {
+      p_bindings: bindings,
+    });
+  }
+
   async function qaQuarantinePrepare(args) {
     return callRpc(admin, "qa_quarantine_prepare", {
       p_profile_id: args.profileId,
@@ -347,6 +363,7 @@ export function createOperationB1BLiveAdapters({ admin }) {
     fetchProfile,
     fetchAuthBanState,
     fetchReferenceCounts,
+    validateQaPrepareContract,
     qaQuarantinePrepare,
     qaQuarantineActivateAfterAuthBan,
     qaQuarantineActivatePreexistingBan,

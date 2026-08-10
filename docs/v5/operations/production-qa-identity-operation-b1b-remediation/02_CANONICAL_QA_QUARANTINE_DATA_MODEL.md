@@ -40,7 +40,7 @@ Auth ban is a **complementary** access control. Auth ban alone is **not** canoni
 | `original_profile_status` | `text` | NO | **Immutable** | Snapshot only — profiles row must remain unchanged |
 | `original_auth_banned` | `boolean` | NO | **Immutable** | Pre-quarantine Auth ban snapshot |
 | `expected_email` | `text` | NO | **Immutable** | Allowlist email binding (minimize PII in shareable evidence) |
-| `allowlist_label` | `text` | YES | **Immutable** | e.g. QA-04…QA-11 |
+| `allowlist_label` | `text` | YES | **Immutable** | Exact-eight only: Production `QA-04…QA-11` **or** Staging `STG-QA-04…STG-QA-11`. Cross-environment reuse is **forbidden**. |
 | `metadata` | `jsonb` | NO | Restricted | Default `{}`; must not become alternate SSOT; controlled writers may append audit keys only if explicitly allowed |
 | `updated_at` | `timestamptz` | NO | Lifecycle | Row maintenance timestamp |
 

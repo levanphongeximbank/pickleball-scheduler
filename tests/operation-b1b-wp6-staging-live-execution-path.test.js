@@ -201,6 +201,27 @@ function baseAdapters(row, state) {
     }),
     fetchReferenceCounts: async () => zeroRefs(),
     fetchAuthBanState: async () => state.banned === true,
+    validateQaPrepareContract: async (args) => {
+      calls.push("operation_b1b_validate_qa_prepare_contract");
+      if (state.prepareContractOk === false) {
+        return {
+          ok: false,
+          reason: state.prepareContractReason || "prepare_contract_incompatible",
+          code: state.prepareContractReason || "prepare_contract_incompatible",
+        };
+      }
+      return {
+        ok: true,
+        data: {
+          ok: true,
+          code: "prepare_contract_compatible",
+          checked: Array.isArray(args?.bindings) ? args.bindings.length : 0,
+          environment: "staging_rehearsal",
+          operation_target_mode: "staging_rehearsal",
+          project_ref: EXPECTED_STAGING_PROJECT_REF,
+        },
+      };
+    },
     qaQuarantinePrepare: async (args) => {
       calls.push("qa_quarantine_prepare");
       state.authority = {

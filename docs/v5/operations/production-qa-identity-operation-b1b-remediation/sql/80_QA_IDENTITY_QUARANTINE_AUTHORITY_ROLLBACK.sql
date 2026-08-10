@@ -38,7 +38,8 @@ BEGIN
     'public.qa_quarantine_record_compensated_failure(uuid, integer, text, text)',
     'public.qa_quarantine_activate_preexisting_ban(uuid, integer)',
     'public.qa_quarantine_activate_after_auth_ban(uuid, integer, boolean)',
-    'public.qa_quarantine_prepare(uuid, uuid, uuid, text, text, text, text, boolean, text, text, jsonb)'
+    'public.qa_quarantine_prepare(uuid, uuid, uuid, text, text, text, text, boolean, text, text, jsonb)',
+    'public.operation_b1b_validate_qa_prepare_contract(jsonb)'
   ]
   LOOP
     IF to_regprocedure(r) IS NOT NULL THEN
@@ -63,6 +64,20 @@ DROP FUNCTION IF EXISTS public.qa_quarantine_record_compensated_failure(uuid, in
 DROP FUNCTION IF EXISTS public.qa_quarantine_activate_preexisting_ban(uuid, integer);
 DROP FUNCTION IF EXISTS public.qa_quarantine_activate_after_auth_ban(uuid, integer, boolean);
 DROP FUNCTION IF EXISTS public.qa_quarantine_prepare(uuid, uuid, uuid, text, text, text, text, boolean, text, text, jsonb);
+
+-- 4b) Drop Option C preclaim / contract helpers
+DROP FUNCTION IF EXISTS public.operation_b1b_validate_qa_prepare_contract(jsonb);
+DROP FUNCTION IF EXISTS public.operation_b1b_qa_label_email_contract_is_valid(text, text);
+DROP FUNCTION IF EXISTS public.operation_b1b_qa_label_email_contract_check(text, text);
+DROP FUNCTION IF EXISTS public.operation_b1b_database_environment();
+
+-- Environment binding table is INTENTIONALLY RETAINED by SQL80.
+-- Rationale: binding is install-authority state (21/22), not WP2 lifecycle
+-- writer state. Dropping it here would erase trusted environment identity
+-- while quarantine/audit history may still reference environment-shaped runs.
+-- A dedicated Owner-GO environment-binding rollback may drop it later if needed.
+-- Does NOT drop: public.operation_b1b_environment_binding
+-- Does NOT delete: durable claim history / quarantine history / audit history
 
 -- 5) Drop WP2-only internal helpers
 DROP FUNCTION IF EXISTS public.qa_quarantine_write_audit(text, uuid, uuid, uuid, text, text, text, text, integer, text, jsonb);

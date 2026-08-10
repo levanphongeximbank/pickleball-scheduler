@@ -19,19 +19,21 @@ If Staging Auth-ban rehearsal cannot be performed safely or cannot be proven, th
 3. Forward apply
 4. Schema verification (incl. `auth_ban_state`, immutability trigger, active-success CHECK)
 5. RLS + controlled-writer verification
-6. Exact disposable Staging QA identities preparation
+6. Exact disposable Staging QA identities preparation (`STG-QA-04`…`STG-QA-11` only; Production `QA-04`…`QA-11` labels are **forbidden** on Staging and never interchangeable)
 7. Dry-run
-8. Live reversible rehearsal (prepare→activate path)
-9. **Mandatory Auth-ban rehearsal** (disposable Staging QA only) with independent readback
-10. Explicit Boundary 3 fault-injection rehearsal **or** harness-equivalent proof on Staging-shaped environment recorded in evidence
-11. Rollback (release + conditional unban)
-12. Reapply
-13. Idempotency proof
-14. Runtime smoke (incl. anti-N+1 list read)
-15. No unrelated mutation proof
-16. Evidence package
-17. Independent review
-18. Explicit acceptance sign-off
+8. Trusted DB environment binding install (`21_OPERATION_B1B_ENVIRONMENT_BINDING_STAGING.sql`) then SQL20 (future Owner GO — not now)
+9. Read-only SQL prepare-contract preclaim (same predicate as `qa_quarantine_prepare`, bound to trusted DB env; **before** durable claim; runner mode/ref must match DB)
+10. Live reversible rehearsal (prepare→activate path)
+11. **Mandatory Auth-ban rehearsal** (disposable Staging QA only) with independent readback
+12. Explicit Boundary 3 fault-injection rehearsal **or** harness-equivalent proof on Staging-shaped environment recorded in evidence
+13. Rollback (release + conditional unban)
+14. Reapply
+15. Idempotency proof
+16. Runtime smoke (incl. anti-N+1 list read)
+17. No unrelated mutation proof
+18. Evidence package
+19. Independent review
+20. Explicit acceptance sign-off
 
 ## Gate details
 
