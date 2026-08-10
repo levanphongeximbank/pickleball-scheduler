@@ -25,6 +25,7 @@ import {
   runBatchQuarantineB1B,
   RETIRED_OWNER_PRODUCTION_GO,
   RETIRED_OPERATION_B1_BATCH_IDS,
+  hashExactEightUuidSet,
 } from "./lib/index.js";
 
 function envInput() {
@@ -55,6 +56,7 @@ function envInput() {
  *   adapters?: object,
  *   freshAuthorizationBinding?: object|null,
  *   claimOneTimeLiveAuthority?: Function,
+ *   executionVersion?: string|null,
  * }} [deps]
  */
 export async function runB1BExecute(input = envInput(), deps = {}) {
@@ -124,6 +126,15 @@ export async function runB1BExecute(input = envInput(), deps = {}) {
     return report;
   }
 
+  // Exact-eight UUID set hash is attached ONLY after allowlist validation.
+  // Durable claim must not run for invalid packages (ordering barrier).
+  auth.exactEightUuidSetHash = hashExactEightUuidSet(loaded.identities);
+  auth.executionVersion =
+    input.executionVersion ??
+    deps.executionVersion ??
+    input.OPERATION_B1B_EXECUTION_VERSION ??
+    null;
+
   let adapters = deps.adapters;
   if (!adapters) {
     if (auth.dryRun || !mutationAllowed(auth)) {
@@ -137,6 +148,7 @@ export async function runB1BExecute(input = envInput(), deps = {}) {
     }
   }
 
+  // Durable claim is the FINAL authorization barrier immediately before live mutation.
   if (mutationAllowed(auth)) {
     const presented = await presentLiveAuthority(
       auth,
