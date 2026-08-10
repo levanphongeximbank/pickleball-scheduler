@@ -1,7 +1,7 @@
 # team-tournament-write-lineup-revision-overload-01
 
-**Workstream:** `TEAM-TOURNAMENT-PR412-WRITE-LINEUP-REVISION-OVERLOAD-PACKAGE-LOCK-01`  
-**Status:** PACKAGE LOCKED — **DO NOT APPLY** without Owner GO.  
+**Workstream:** `TEAM-TOURNAMENT-PR412-WRITE-LINEUP-REVISION-PRECHECK-FALSE-POSITIVE-FIX-01`  
+**Status:** PACKAGE RELOCKED — **DO NOT APPLY** without Owner GO.  
 **Scope:** Staging overload ambiguity for `public.team_tournament_write_lineup_revision`.
 
 ## Live symptom
@@ -43,7 +43,7 @@ Does **not**: mutate lineup data, change RLS/RBAC, drop unrelated overloads (`su
 
 | File | Purpose | SHA256 |
 |------|---------|--------|
-| `01_PRECHECK.sql` | Prove both overloads + ambiguous save/submit callers + grants baseline | `fbc2f7456106350b7268d33d8a5ed46d77f23fde790f1b50456fe1ea32c00d94` |
+| `01_PRECHECK.sql` | Prove both overloads + call-site-only ambiguous save/submit + grants baseline | `8080c0497642821fa24d2873b8dd0f9f1bcedd35dedc8a456b6b33077748d845` |
 | `02_APPLY.sql` | DROP 12-arg + patch save/submit helper calls | `505caa477f7315ed8f98c4397d532ab227eb36766fa18e1e9f8a554f228e598a` |
 | `03_VERIFY.sql` | Unique 13-arg; captain actor_role; grants; unrelated overloads preserved | `a63e6bae9a468615d149079a9cd02ae74d5c286460677921267372c214d661ec` |
 | `04_ROLLBACK.sql` | Recreate 12-arg + restore ambiguous call shape (reintroduces bug) | `0b2b2982116e38803003b87d607428e726f332b11e3fe42a82ab566c79ba7615` |
