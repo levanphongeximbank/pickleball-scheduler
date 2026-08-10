@@ -61,6 +61,8 @@ export default function TeamFormatVenueSetupPanel({
   onSave,
   onError,
   onMessage,
+  /** Preview-only diagnostic: reports local Format dirty vs last loaded defaults. */
+  onFormatDirtyDiagnostic = null,
   /** @internal test override */
   listCourtsFn = listCanonicalClubCourtsForFormatVenue,
 }) {
@@ -156,6 +158,42 @@ export default function TeamFormatVenueSetupPanel({
     },
     tournament
   );
+
+  const formatDirty = useMemo(() => {
+    const choice = GROUP_SETUP_CHOICES.find((item) => item.value === groupSetup);
+    const resolvedGroupMode =
+      choice?.groupMode ||
+      (Number(groupCount) === 1 ? GROUP_MODE.SINGLE_POOL : GROUP_MODE.MANUAL);
+    const courtsEqual =
+      JSON.stringify([...(selectedCourtIds || [])].map(String).sort()) ===
+      JSON.stringify(
+        [...(defaults.selectedCourtIds || [])].map(String).sort()
+      );
+    return (
+      formatPreset !== defaults.formatPreset ||
+      Boolean(dreambreakerEnabled) !== Boolean(defaults.dreambreakerEnabled) ||
+      Number(groupCount) !== Number(defaults.groupCount || 1) ||
+      Number(qualificationCount) !== Number(defaults.qualificationCount || 2) ||
+      knockoutFormat !== defaults.knockoutFormat ||
+      resolvedGroupMode !== defaults.groupMode ||
+      JSON.stringify(rosterRules || {}) !== JSON.stringify(defaults.rosterRules || {}) ||
+      !courtsEqual
+    );
+  }, [
+    defaults,
+    dreambreakerEnabled,
+    formatPreset,
+    groupCount,
+    groupSetup,
+    knockoutFormat,
+    qualificationCount,
+    rosterRules,
+    selectedCourtIds,
+  ]);
+
+  useEffect(() => {
+    onFormatDirtyDiagnostic?.(formatDirty === true);
+  }, [formatDirty, onFormatDirtyDiagnostic]);
 
   const courtPublishGate = assertCourtsReadyForPublish({ selectedCourtIds });
 

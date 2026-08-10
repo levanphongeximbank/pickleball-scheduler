@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
@@ -104,6 +104,10 @@ import {
 } from "../../features/team-tournament/showcase/index.js";
 import TeamTournamentShowcase from "../../features/team-tournament/showcase/TeamTournamentShowcase.jsx";
 import { isSetupMutationFoundationEnabled } from "../../features/team-tournament/setup/setupMutationFeatureGate.js";
+import {
+  TT412_SAVE_DRAFT_DIAG,
+  tt412SaveDraftDiag,
+} from "../../features/team-tournament/services/tt412SaveDraftDiagnostics.js";
 import { isGroupDivisionEditable } from "../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
 import { DEFAULT_ENGINE_VERSION } from "../../features/team-tournament/canonical/teamTournamentMutationEnvelope.js";
 import { TT_V6_TT32_FIXTURE } from "../../features/team-tournament/fixtures/ttV6Tt32StagingFixture.js";
@@ -206,6 +210,9 @@ export default function TeamTournamentSetup() {
   const effectiveClubId = String(
     tournament?.clubId || loadClubId || activeClubId || ""
   ).trim();
+
+  /** Preview-only: Format & Venue panel reports local dirty for Save-draft START marker. */
+  const formatDirtyRef = useRef(false);
 
   const access = useTeamTournamentAccess({
     tournament,
@@ -412,8 +419,26 @@ export default function TeamTournamentSetup() {
     }
     setError("");
 
+    const stageBefore = workflow.stage || null;
+
     if (typeof saveDraft !== "function") {
-      setError("Chức năng Lưu giải chưa khả dụng trên môi trường này.");
+      const errorMessage = "Chức năng Lưu giải chưa khả dụng trên môi trường này.";
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.START, {
+        tournamentId: tournamentId || null,
+        workflowStage: stageBefore,
+        currentTournamentVersion: version ?? null,
+        hasUnsavedFormatState: formatDirtyRef.current === true,
+        rulesVersion: "",
+      });
+      setError(errorMessage);
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.FINAL, {
+        ok: false,
+        errorCode: "SAVE_DRAFT_UNAVAILABLE",
+        errorMessage,
+        uiAcknowledged: true,
+        workflowTransitioned: false,
+        saveNotificationShown: false,
+      });
       return;
     }
 
@@ -440,27 +465,69 @@ export default function TeamTournamentSetup() {
         ).trim();
       }
     } catch (error) {
-      setError(
+      const errorMessage =
         error?.message ||
-          "Không lấy được rulesVersion canonical — không lưu nháp giải."
-      );
+        "Không lấy được rulesVersion canonical — không lưu nháp giải.";
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.START, {
+        tournamentId: tournamentId || null,
+        workflowStage: stageBefore,
+        currentTournamentVersion: version ?? null,
+        hasUnsavedFormatState: formatDirtyRef.current === true,
+        rulesVersion: "",
+      });
+      setError(errorMessage);
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.FINAL, {
+        ok: false,
+        errorCode: "RULES_VERSION_PREPARE_FAILED",
+        errorMessage,
+        uiAcknowledged: true,
+        workflowTransitioned: false,
+        saveNotificationShown: false,
+      });
       return;
     }
 
+    tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.START, {
+      tournamentId: tournamentId || null,
+      workflowStage: stageBefore,
+      currentTournamentVersion: version ?? null,
+      hasUnsavedFormatState: formatDirtyRef.current === true,
+      rulesVersion: rulesVersion || "",
+    });
+
     const result = await saveDraft({ rulesVersion });
     if (!result.ok) {
-      setError(result.error || "Không lưu được bản nháp giải.");
+      const errorMessage = result.error || "Không lưu được bản nháp giải.";
+      setError(errorMessage);
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.FINAL, {
+        ok: false,
+        errorCode: result.code || "SAVE_DRAFT_FAILED",
+        errorMessage,
+        uiAcknowledged: true,
+        workflowTransitioned: false,
+        saveNotificationShown: false,
+      });
       return;
     }
 
     // Success only after get_setup v7 read-back verification.
     const draftLabel =
       result.draftState?.draftStatus || workflow.draftStatusLabel || "Nháp";
+    const stageAfter = result.draftState?.workflowStage || null;
     setMessage(
       result.replayed
         ? `Bản nháp giải đã ở trạng thái mới nhất (${draftLabel}).`
         : `Đã lưu nháp giải (${draftLabel}). Bạn có thể đóng tab và quay lại tiếp tục thiết lập sau — không công bố.`
     );
+    tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.FINAL, {
+      ok: true,
+      errorCode: null,
+      errorMessage: null,
+      uiAcknowledged: true,
+      workflowTransitioned:
+        stageBefore != null && stageAfter != null && stageBefore !== stageAfter,
+      saveNotificationShown: true,
+    });
   }
 
   const showcaseClubId = String(effectiveClubId || activeClubId || "");
@@ -1307,6 +1374,9 @@ export default function TeamTournamentSetup() {
             onSave={saveFormatVenueConfig}
             onError={setError}
             onMessage={setMessage}
+            onFormatDirtyDiagnostic={(dirty) => {
+              formatDirtyRef.current = dirty === true;
+            }}
           />
         ) : null}
 
