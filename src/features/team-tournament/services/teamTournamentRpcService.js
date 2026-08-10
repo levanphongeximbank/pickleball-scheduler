@@ -520,6 +520,32 @@ export async function rpcTeamTournamentGetSetup(
 }
 
 /**
+ * W1 contract stub — live after W2 SQL + W3 portal switch.
+ * Prefer captainAccessService.getCaptainPortalSetup for feature gating.
+ */
+export async function rpcTeamTournamentGetCaptainPortal(
+  tournamentId,
+  options = {}
+) {
+  return callTeamTournamentRpc("team_tournament_get_captain_portal", {
+    p_tournament_id: String(tournamentId),
+    p_schema_version: options.schemaVersion ?? 7,
+  });
+}
+
+/**
+ * W1 contract stub — live after W2 SQL. Prefer captainAccessService.setCaptainAccess.
+ */
+export async function rpcTeamTournamentSetCaptainAccess(params = {}) {
+  return callTeamTournamentRpc("team_tournament_set_captain_access", {
+    p_tournament_id: String(params.tournamentId || ""),
+    p_enabled: Boolean(params.enabled),
+    p_expected_version: params.expectedVersion ?? null,
+    p_idempotency_key: params.idempotencyKey ?? null,
+  });
+}
+
+/**
  * Execute one owner-locked P1.3 setup domain mutation.
  * @param {string} rpcName
  * @param {{ tournamentId: string, envelope: object }} params
