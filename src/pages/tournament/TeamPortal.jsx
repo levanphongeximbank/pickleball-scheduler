@@ -50,9 +50,10 @@ import {
   getVisibleLineup,
 } from "../../features/team-tournament/engines/lineupEngine.js";
 import {
-  filterEligiblePlayersForDiscipline,
   validateLineupSelections,
 } from "../../features/team-tournament/engines/lineupValidationEngine.js";
+import { filterEligiblePlayersForLineupSlot } from "../../features/team-tournament/engines/lineupOptionFilter.js";
+import { resolveCaptainLineupAthletePool } from "../../features/team-tournament/engines/captainPortalRosterProjection.js";
 import { applyCanonicalMlpDisciplineMetadata } from "../../features/team-tournament/engines/mlpDisciplineSlotContract.js";
 import {
   buildServerLineupFingerprint,
@@ -343,9 +344,13 @@ function MatchupLineupCard({
   }, [getVisibleLineups, matchup.id, useCloudVisibleLineups, dataVersion]);
 
   const allowReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
-  const hydratedTeam = useMemo(
-    () => hydratePortalTeamRoster(team, players),
+  const lineupPlayers = useMemo(
+    () => resolveCaptainLineupAthletePool({ team, clubPlayers: players }),
     [team, players]
+  );
+  const hydratedTeam = useMemo(
+    () => hydratePortalTeamRoster(team, lineupPlayers),
+    [team, lineupPlayers]
   );
   const visible =
     useCloudVisibleLineups && cloudVisible?.lineups
@@ -364,20 +369,6 @@ function MatchupLineupCard({
   const pairings = isPublished
     ? buildOfficialPairings(teamData, matchup.id)
     : null;
-
-  function getUsedPlayerIds(excludeDisciplineId = null) {
-    const used = new Set();
-    for (const [disciplineId, playerIds] of Object.entries(selections)) {
-      if (disciplineId === excludeDisciplineId) {
-        continue;
-      }
-      playerIds.forEach((playerId) => {
-        const id = String(playerId || "").trim();
-        if (id) used.add(id);
-      });
-    }
-    return used;
-  }
 
   function handlePlayerChange(disciplineId, slotIndex, playerId, playerCount) {
     setSelections((current) => {
@@ -416,7 +407,7 @@ function MatchupLineupCard({
       teamData,
       teamId: team.id,
       selections,
-      players,
+      players: lineupPlayers,
       partial: true,
     });
 
@@ -472,7 +463,7 @@ function MatchupLineupCard({
       teamData,
       teamId: team.id,
       selections,
-      players,
+      players: lineupPlayers,
     });
 
     if (!validation.ok) {
@@ -601,7 +592,6 @@ function MatchupLineupCard({
         ) : null}
 
         {teamData.disciplines.map((discipline) => {
-          const usedPlayerIds = getUsedPlayerIds(discipline.id);
           const selectedIds = Array.from({ length: discipline.playerCount }, (_, index) =>
             selections[discipline.id]?.[index] || ""
           );
@@ -614,13 +604,14 @@ function MatchupLineupCard({
               </Typography>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap">
                 {slots.map((slotIndex) => {
-                  const eligible = filterEligiblePlayersForDiscipline({
+                  const eligible = filterEligiblePlayersForLineupSlot({
                     team,
                     discipline,
-                    players,
-                    usedPlayerIds,
-                    allowReuse,
+                    players: lineupPlayers,
+                    selections,
                     slotIndex,
+                    allowReuse,
+                    teamData,
                   });
                   return (
                   <FormControl
@@ -653,7 +644,7 @@ function MatchupLineupCard({
                       {selectedIds[slotIndex] &&
                       !eligible.some((player) => player.id === selectedIds[slotIndex]) ? (
                         <MenuItem value={selectedIds[slotIndex]}>
-                          {playerName(players, selectedIds[slotIndex])}
+                          {playerName(lineupPlayers, selectedIds[slotIndex])}
                         </MenuItem>
                       ) : null}
                     </Select>

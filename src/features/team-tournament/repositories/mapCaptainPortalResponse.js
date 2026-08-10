@@ -6,6 +6,7 @@
 import { lineupKey } from "../models/index.js";
 import { normalizeV7TournamentForAggregate } from "./mapGetSetupV7.js";
 import { applyCanonicalMlpDisciplineMetadata } from "../engines/mlpDisciplineSlotContract.js";
+import { enrichTeamWithCaptainPortalRoster } from "../engines/captainPortalRosterProjection.js";
 
 /**
  * @param {object|null|undefined} lineups
@@ -41,7 +42,7 @@ export function remapCaptainPortalLineups(lineups = {}) {
  * @returns {object[]}
  */
 export function buildCaptainPortalTeams(tournament = {}) {
-  const myTeam = tournament.myTeam || null;
+  const myTeam = enrichTeamWithCaptainPortalRoster(tournament.myTeam || null);
   const opponents = Array.isArray(tournament.opponentTeams)
     ? tournament.opponentTeams
     : [];
@@ -53,7 +54,16 @@ export function buildCaptainPortalTeams(tournament = {}) {
   }
   for (const team of fromTeams) {
     if (team?.id && !byId.has(String(team.id))) {
-      byId.set(String(team.id), team);
+      const enriched =
+        String(team.id) === String(myTeam?.id || "")
+          ? enrichTeamWithCaptainPortalRoster(team)
+          : {
+              ...team,
+              // Opponent / non-viewer teams must not carry teammate PII.
+              rosterAthletes: [],
+              playerIds: Array.isArray(team.playerIds) ? [] : team.playerIds,
+            };
+      byId.set(String(team.id), enriched);
     }
   }
   for (const team of opponents) {
@@ -62,6 +72,7 @@ export function buildCaptainPortalTeams(tournament = {}) {
         id: String(team.id),
         name: team.name || String(team.id),
         playerIds: [],
+        rosterAthletes: [],
         captainPlayerId: "",
         deputyPlayerIds: [],
       });
