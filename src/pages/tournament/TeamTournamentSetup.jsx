@@ -90,6 +90,7 @@ import {
   buildRefereePortalUrl,
   copyTextToClipboard,
 } from "../../components/tournament/team/copyPortalLink.js";
+import CaptainAccessToggle from "../../components/tournament/team/CaptainAccessToggle.jsx";
 import { computeTeamTournamentWorkflow } from "../../components/tournament/team/teamTournamentWorkflow.js";
 import { MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
 import { TEAM_TAB_QUERY } from "../../config/tournamentRoutes.js";
@@ -1247,8 +1248,17 @@ export default function TeamTournamentSetup() {
       description="Giải đồng đội — quản lý đội, nội dung, lịch đối đầu và BXH"
       onBack={() => navigate("/tournament")}
       headerActions={
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
           {!access.canManage ? <Chip label="Chỉ xem" variant="outlined" size="small" /> : null}
+          {access.canManage ? (
+            <CaptainAccessToggle
+              canManage={access.canManage}
+              tournamentId={tournamentId}
+              teamData={td}
+              expectedVersion={version}
+              onUpdated={() => reload({ silent: true })}
+            />
+          ) : null}
           {access.canManage ? (
             <Button
               variant="outlined"

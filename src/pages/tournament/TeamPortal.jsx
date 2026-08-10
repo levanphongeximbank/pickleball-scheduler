@@ -53,6 +53,7 @@ import {
   filterEligiblePlayersForDiscipline,
   validateLineupSelections,
 } from "../../features/team-tournament/engines/lineupValidationEngine.js";
+import { evaluateCaptainPortalAccess } from "../../features/team-tournament/engines/captainAccessPolicy.js";
 import {
   findTeamForCaptain,
   getOpponentTeamId,
@@ -148,62 +149,33 @@ function useCaptainPortalAccess({ tournament, teamData, effectiveClubId, tournam
   const { currentTenantId } = useTenant();
 
   return useMemo(() => {
-    if (!tournament) {
-      return { allowed: false, error: "Không tìm thấy giải đấu." };
-    }
-
     const tenantForAccess =
       currentTenantId || resolveEffectiveTenantId(user) || tournament?.tenantId || null;
 
-    if (rbacEnabled && isAuthenticated) {
+    let tenantCheck = null;
+    if (rbacEnabled && isAuthenticated && tournament) {
       if (tenantForAccess && tournament?.tenantId) {
-        const tenantCheck = guardRecordTenant(tournament, tenantForAccess, {
+        tenantCheck = guardRecordTenant(tournament, tenantForAccess, {
           user,
           rbacEnabled,
         });
-        if (!tenantCheck.ok) {
-          return { allowed: false, error: tenantCheck.error };
-        }
-      } else if (!tournament) {
-        const tenantCheck = assertTournamentPortalAccess(effectiveClubId, tournamentId, {
+      } else {
+        tenantCheck = assertTournamentPortalAccess(effectiveClubId, tournamentId, {
           tenantId: tenantForAccess,
           user,
           rbacEnabled,
         });
-        if (!tenantCheck.ok) {
-          return { allowed: false, error: tenantCheck.error };
-        }
       }
     }
 
-    const resolvedTeamData = teamData || getTeamData(tournament);
-    const captainTeam = viewerPlayerId
-      ? findTeamForCaptain(resolvedTeamData, viewerPlayerId)
-      : null;
-
-    if (!captainTeam && rbacEnabled && isAuthenticated) {
-      return {
-        allowed: false,
-        error: "Chỉ đội trưởng hoặc đội phó mới truy cập được trang này.",
-      };
-    }
-
-    if (!captainTeam && (!rbacEnabled || !isAuthenticated)) {
-      const fallbackTeam = teamData?.teams?.[0] || null;
-      return {
-        allowed: Boolean(fallbackTeam),
-        captainTeam: fallbackTeam,
-        viewerPlayerId: fallbackTeam?.captainPlayerId || null,
-        error: fallbackTeam ? null : "Chưa có đội nào trong giải.",
-      };
-    }
-
-    return {
-      allowed: true,
-      captainTeam,
+    const resolvedTeamData = teamData || (tournament ? getTeamData(tournament) : null);
+    return evaluateCaptainPortalAccess({
+      tournament,
+      teamData: resolvedTeamData,
       viewerPlayerId,
-      error: null,
-    };
+      tenantCheck,
+      findTeamForCaptain,
+    });
   }, [
     effectiveClubId,
     currentTenantId,

@@ -132,6 +132,8 @@ export const DEFAULT_TEAM_TOURNAMENT_SETTINGS = {
   allowPlayerReusePerMatchup: false,
   allowPlayerCrossTeam: false,
   dreambreakerEnabled: false,
+  /** New tournaments default OFF. Missing server key must not invent true (see isCaptainAccessEnabled). */
+  captainAccessEnabled: false,
   lineupLockLeadMinutes: 15,
   rosterRules: null,
   tiebreakOrder: [...DEFAULT_TIE_BREAK_ORDER],

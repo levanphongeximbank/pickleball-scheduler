@@ -22,3 +22,4 @@ export * from "./teamRealtimeEnableGatesEngine.js";
 export * from "./existingTeamCatalogEngine.js";
 export * from "./substitutionEngine.js";
 export * from "./teamKnockoutEngine.js";
+export * from "./captainAccessPolicy.js";
