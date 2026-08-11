@@ -244,6 +244,7 @@
   "tests/team-tournament-dreambreaker-lineup-filter-01.test.js",
   "tests/team-tournament-dreambreaker-referee-start-canonical-01.test.js",
   "tests/team-tournament-dreambreaker-scoring-cas-01.test.js",
+  "tests/team-tournament-dreambreaker-rotation-reader-01.test.js",
   "tests/team-tournament-referee-canonical-cloud-access-01.test.js",
   "tests/team-tournament-dreambreaker-submit-auth-privacy-01.test.js",
   "tests/v5-menu-audit.test.js",
