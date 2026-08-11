@@ -61,11 +61,18 @@ export function normalizeDiscipline(discipline, index = 0) {
       ? { ...defaultScoring, ...discipline.scoringFormat }
       : defaultScoring;
 
+  const explicitDreambreaker =
+    String(discipline.id || "").toLowerCase() === "dreambreaker" ||
+    String(discipline.id || "").toLowerCase().includes("dreambreaker") ||
+    String(discipline.name || "").toLowerCase().includes("dreambreaker");
+
   const disciplineKind = VALID_DISCIPLINE_KINDS.has(discipline.disciplineKind)
     ? discipline.disciplineKind
-    : categoryType === DISCIPLINE_CATEGORY.SINGLES
+    : explicitDreambreaker
       ? DISCIPLINE_KIND.DREAMBREAKER
-      : DISCIPLINE_KIND.DOUBLES;
+      : categoryType === DISCIPLINE_CATEGORY.SINGLES
+        ? DISCIPLINE_KIND.SINGLES
+        : DISCIPLINE_KIND.DOUBLES;
 
   const activationRule = VALID_ACTIVATION_RULES.has(discipline.activationRule)
     ? discipline.activationRule

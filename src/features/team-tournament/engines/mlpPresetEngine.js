@@ -192,11 +192,21 @@ export function isMlpFormat(teamData) {
   return teamData?.settings?.formatPreset === FORMAT_PRESET.MLP_4;
 }
 
+/** Activation-only catalog row — not an ordinary pre-match lineup slot. */
+export function isActivationOnlyDreambreakerDiscipline(discipline) {
+  const kind = String(discipline?.disciplineKind || "").toLowerCase();
+  const rule = String(discipline?.activationRule || "").toLowerCase();
+  return (
+    kind === DISCIPLINE_KIND.DREAMBREAKER ||
+    rule === ACTIVATION_RULE.TIE_AT_2_2 ||
+    rule === "dreambreaker" ||
+    isExplicitDreambreakerDiscipline(discipline)
+  );
+}
+
 export function getActiveMatchDisciplines(disciplines = []) {
-  return disciplines.filter(
-    (discipline) =>
-      discipline.activationRule !== ACTIVATION_RULE.TIE_AT_2_2 &&
-      !isExplicitDreambreakerDiscipline(discipline)
+  return (Array.isArray(disciplines) ? disciplines : []).filter(
+    (discipline) => !isActivationOnlyDreambreakerDiscipline(discipline)
   );
 }
 

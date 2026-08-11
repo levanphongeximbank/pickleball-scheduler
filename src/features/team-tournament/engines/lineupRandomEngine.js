@@ -8,6 +8,7 @@ import {
 } from "../models/index.js";
 import { computeTeamRosterStats } from "./teamRosterEngine.js";
 import { validateDisciplineSelection } from "./lineupValidationEngine.js";
+import { getActiveMatchDisciplines } from "./mlpPresetEngine.js";
 
 function shuffle(array = []) {
   const copy = [...array];
@@ -232,7 +233,7 @@ function buildRandomSelections(team, teamData, players, allowReuse) {
     appearanceCounts.set(String(playerId), 0);
   });
 
-  for (const discipline of teamData.disciplines) {
+  for (const discipline of getActiveMatchDisciplines(teamData.disciplines)) {
     const result = pickPlayersForDiscipline({
       team,
       discipline,

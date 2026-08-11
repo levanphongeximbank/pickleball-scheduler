@@ -36,7 +36,7 @@ import { LINEUP_STATUS, MATCHUP_STATUS } from "../../features/team-tournament/co
 import { CaptainDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
 import { listDreambreakerMatchups } from "../../features/team-tournament/engines/dreambreakerEngine.js";
 import { buildCaptainDreambreakerSubmitCommand } from "../../features/team-tournament/engines/captainDreambreakerPortalContract.js";
-import { isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
+import { getActiveMatchDisciplines, isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
 import CaptainPortalSummary from "../../components/tournament/team/CaptainPortalSummary.jsx";
 import {
   formatTeamTournamentDateTime,
@@ -211,7 +211,7 @@ function buildInitialSelections(teamData, matchupId, teamId) {
   const lineup = getLineup(teamData, matchupId, teamId);
   const selections = {};
 
-  for (const discipline of teamData.disciplines) {
+  for (const discipline of getActiveMatchDisciplines(teamData.disciplines)) {
     selections[discipline.id] = [...(lineup?.selections?.[discipline.id] || [])];
   }
 
@@ -593,7 +593,7 @@ function MatchupLineupCard({
           </Alert>
         ) : null}
 
-        {teamData.disciplines.map((discipline) => {
+        {getActiveMatchDisciplines(teamData.disciplines).map((discipline) => {
           const selectedIds = Array.from({ length: discipline.playerCount }, (_, index) =>
             selections[discipline.id]?.[index] || ""
           );

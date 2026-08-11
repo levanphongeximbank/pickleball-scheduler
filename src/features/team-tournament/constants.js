@@ -82,6 +82,7 @@ export const KNOCKOUT_FORMAT = {
 
 export const DISCIPLINE_KIND = {
   DOUBLES: "doubles",
+  SINGLES: "singles",
   DREAMBREAKER: "dreambreaker",
 };
 

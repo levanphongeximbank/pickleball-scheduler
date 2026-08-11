@@ -10,7 +10,6 @@ import {
 import { findTeam } from "../models/index.js";
 import {
   getActiveMatchDisciplines,
-  isExplicitDreambreakerDiscipline,
   isMlpFormat,
 } from "./mlpPresetEngine.js";
 import {
@@ -452,9 +451,7 @@ function validateLineupSelectionsStructuredLegacy({
   const invalidPlayerIds = [];
   const invalidDisciplineIds = [];
   const warnings = [];
-  const lineupDisciplines = (effectiveTeamData.disciplines || []).filter(
-    (discipline) => !isExplicitDreambreakerDiscipline(discipline)
-  );
+  const lineupDisciplines = getActiveMatchDisciplines(effectiveTeamData.disciplines || []);
 
   for (const discipline of lineupDisciplines) {
     if (!discipline?.id) {
