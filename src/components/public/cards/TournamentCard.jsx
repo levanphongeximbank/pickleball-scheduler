@@ -86,7 +86,7 @@ export default function TournamentCard({ tournament, variant = "dark" }) {
 
         <Button
           component={RouterLink}
-          to="/tournaments"
+          to={tournament.id ? `/tournaments/${tournament.id}` : "/tournaments"}
           size="small"
           sx={{
             alignSelf: "flex-start",

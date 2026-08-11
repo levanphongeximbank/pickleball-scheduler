@@ -195,6 +195,9 @@ export function createTeamTournamentShell(clubId, options = {}) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...(options.tenantId ? { tenantId: String(options.tenantId) } : {}),
+    ...(options.createdBy ? { createdBy: String(options.createdBy) } : {}),
+    ...(options.ownerPlayerId ? { ownerPlayerId: String(options.ownerPlayerId) } : {}),
+    ...(options.canonicalId ? { canonicalId: String(options.canonicalId) } : {}),
   };
 }
 

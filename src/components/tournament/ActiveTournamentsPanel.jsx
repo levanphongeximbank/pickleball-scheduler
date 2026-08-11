@@ -18,6 +18,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
 
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../models/tournament/index.js";
+import { resolveTeamTournamentOpenPath } from "../../config/tournamentRoutes.js";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import PermissionGate from "../auth/PermissionGate.jsx";
 import TournamentEmptyState from "./TournamentEmptyState.jsx";
@@ -37,7 +38,7 @@ function resolveTournamentPath(tournament) {
     return `/tournament/official/${tournament.id}`;
   }
   if (tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
-    return `/tournament/team/${tournament.id}`;
+    return resolveTeamTournamentOpenPath(tournament);
   }
   return "/tournament";
 }

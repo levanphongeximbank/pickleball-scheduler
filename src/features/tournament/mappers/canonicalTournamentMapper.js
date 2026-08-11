@@ -61,6 +61,8 @@ export function canonicalRowToTournament(row) {
   return normalizeTournament({
     ...payload,
     id: row.id || payload.id,
+    externalKey: row.external_key || payload.externalKey || payload.teamDomainId,
+    teamDomainId: payload.teamDomainId || row.external_key || null,
     clubId: row.club_id || payload.clubId,
     tenantId: row.tenant_id || payload.tenantId,
     name: row.name || payload.name,
@@ -88,9 +90,21 @@ export function tournamentMatchesMine(tournament, playerId) {
     return true;
   }
 
-  const teamMembers =
-    tournament.teamData?.teams?.flatMap((team) => team.members || []) || [];
-  if (teamMembers.some((member) => String(member.playerId || member.id || "") === pid)) {
+  const teams = tournament.teamData?.teams || [];
+  if (
+    teams.some((team) => {
+      if (String(team.captainPlayerId || "") === pid) return true;
+      if ((team.deputyPlayerIds || []).map(String).includes(pid)) return true;
+      return (team.members || []).some(
+        (member) => String(member.playerId || member.id || "") === pid
+      );
+    })
+  ) {
+    return true;
+  }
+
+  const assignments = tournament.refereeAssignments || tournament.myRefereeAssignments || [];
+  if (assignments.some((item) => String(item.playerId || item.refereePlayerId || "") === pid)) {
     return true;
   }
 

@@ -131,7 +131,7 @@ describe("Preview blocker — create cloud sync + candidate diagnostics", () => 
     assert.match(String(created.code || ""), /CLOUD_HEADER_FAILED|NO_SUPABASE/);
   });
 
-  it("cloud repository falls back to blob when cloud setup missing", async () => {
+  it("cloud repository fails closed when cloud setup missing (no blob authority)", async () => {
     const clubId = "club-preview-cloud-fallback";
     saveClubs([{ id: clubId, name: "Fallback", tenantId: "tenant-1" }]);
     saveClubData(clubId, getDefaultClubData(clubId));
@@ -143,13 +143,13 @@ describe("Preview blocker — create cloud sync + candidate diagnostics", () => 
       allowFutureModes: true,
       forceNew: true,
     });
-    // Without supabase RPC, getSetup fails — fallback should still open local draft.
+    // Without supabase RPC, getSetup fails — blob is not authority.
     const loaded = await repo.getTournament(clubId, created.tournament.id);
-    assert.equal(loaded.ok, true);
-    assert.equal(loaded.data?.id, created.tournament.id);
-    assert.ok(
+    assert.equal(loaded.ok, false);
+    assert.match(String(loaded.code || ""), /NO_SUPABASE|NOT_FOUND|RPC_MISSING/);
+    assert.equal(
       (loaded.warnings || []).some((w) => w.code === "CLOUD_SETUP_FALLBACK_BLOB"),
-      "expected CLOUD_SETUP_FALLBACK_BLOB warning"
+      false
     );
   });
 

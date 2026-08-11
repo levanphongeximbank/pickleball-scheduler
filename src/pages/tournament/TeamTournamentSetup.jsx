@@ -93,7 +93,7 @@ import {
 import CaptainAccessToggle from "../../components/tournament/team/CaptainAccessToggle.jsx";
 import { computeTeamTournamentWorkflow } from "../../components/tournament/team/teamTournamentWorkflow.js";
 import { MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
-import { TEAM_TAB_QUERY } from "../../config/tournamentRoutes.js";
+import { TEAM_TAB_QUERY, teamTournamentDashboardPath } from "../../config/tournamentRoutes.js";
 import { logTeamRosterHydrationTransition } from "../../features/team-tournament/engines/teamRosterHydrationDiagnostics.js";
 import TournamentVprPanel from "../../features/vpr-ranking/components/TournamentVprPanel.jsx";
 import {
@@ -1269,6 +1269,14 @@ export default function TeamTournamentSetup() {
               Link đội trưởng
             </Button>
           ) : null}
+          <Button
+            component={RouterLink}
+            to={teamTournamentDashboardPath(tournamentId)}
+            variant="outlined"
+            size="small"
+          >
+            Bảng điều khiển
+          </Button>
           {access.isCaptain || access.canManage ? (
             <Button
               component={RouterLink}

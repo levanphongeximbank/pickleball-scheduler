@@ -177,6 +177,9 @@ const OfficialTournamentSetup = lazy(() => import("./pages/tournament/OfficialTo
 const TeamTournamentSetup = lazy(() => import("./pages/tournament/TeamTournamentSetup"));
 const TeamPortal = lazy(() => import("./pages/tournament/TeamPortal"));
 const TeamRefereePortal = lazy(() => import("./pages/tournament/TeamRefereePortal"));
+const TournamentDashboardPage = lazy(() =>
+  import("./pages/tournament/TournamentDashboardPage.jsx")
+);
 
 const TournamentEligibilityPage = lazy(() =>
   import("./pages/tournament/config/TournamentEligibilityPage.jsx")
@@ -660,6 +663,7 @@ export default function Router() {
 
             />
 
+            <Route path="/tournaments/:tournamentId" element={<TournamentDashboardPage />} />
             <Route path="/tournaments/:tournamentId/engine" element={<TournamentEnginePage />} />
             <Route path="/tournaments/:tournamentId/seed" element={<TournamentEnginePage />} />
             <Route path="/tournaments/:tournamentId/draw" element={<TournamentEnginePage />} />

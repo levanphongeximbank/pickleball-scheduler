@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link as RouterLink, useParams, useSearchParams } from "react-router-dom";
+import { Link as RouterLink, Navigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
   Alert,
@@ -14,7 +14,12 @@ import {
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
-import { isIndividualTournament, TOURNAMENT_ROUTES } from "../../config/tournamentRoutes.js";
+import {
+  isIndividualTournament,
+  isTeamTournament,
+  teamTournamentDashboardPath,
+  TOURNAMENT_ROUTES,
+} from "../../config/tournamentRoutes.js";
 import { updateTournamentCommand } from "../../features/tournament/services/tournamentCommands.js";
 import {
   useCanonicalTournament,
@@ -70,7 +75,7 @@ export default function IndividualPlayerPortalPage() {
     revision + pollTick
   );
   const individualMine = useMemo(
-    () => myTournaments.filter(isIndividualTournament),
+    () => myTournaments.filter((item) => isIndividualTournament(item) || isTeamTournament(item)),
     [myTournaments]
   );
 
@@ -91,7 +96,7 @@ export default function IndividualPlayerPortalPage() {
   }, [tournamentId, activeClubId, refreshClubs]);
 
   const dashboard = useMemo(() => {
-    if (!tournament) return null;
+    if (!tournament || isTeamTournament(tournament)) return null;
     return buildPlayerPortalDashboard(tournament, {
       playerId,
       entryId: entryId || undefined,
@@ -152,6 +157,10 @@ export default function IndividualPlayerPortalPage() {
         <Alert severity="warning">Vui lòng đăng nhập để mở cổng vận động viên.</Alert>
       </TournamentConfigPageShell>
     );
+  }
+
+  if (tournament && isTeamTournament(tournament)) {
+    return <Navigate to={teamTournamentDashboardPath(tournament.id)} replace />;
   }
 
   const loading = listLoading || (tournamentId ? detailLoading : false);

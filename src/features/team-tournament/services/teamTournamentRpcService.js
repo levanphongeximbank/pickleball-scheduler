@@ -487,6 +487,9 @@ async function callTeamTournamentRpc(rpcName, args = {}) {
       "NOT_FOUND",
       "FORBIDDEN",
       "NOT_AUTHENTICATED",
+      "DRAFT_NOT_VISIBLE",
+      "CROSS_TENANT_DENIED",
+      "RPC_MISSING",
     ];
     if (passthrough.includes(code)) {
       return { ...payload, provider: "rpc" };
@@ -1199,6 +1202,58 @@ export async function rpcTeamTournamentUndoDreambreakerPoint(params = {}) {
     },
     normalized
   );
+}
+
+function mapOptionalLifecycleRpc(result) {
+  if (
+    result?.code === "rpc_not_deployed" ||
+    result?.code === "rpc_signature_mismatch" ||
+    result?.legacyCode === "RPC_NOT_DEPLOYED"
+  ) {
+    return { ...result, code: "RPC_MISSING" };
+  }
+  return result;
+}
+
+export async function rpcTeamTournamentCreateCanonical(params = {}) {
+  const result = await callTeamTournamentRpc("team_tournament_create", {
+    p_tenant_id: String(params.tenantId || ""),
+    p_club_id: String(params.clubId || ""),
+    p_name: String(params.name || "Giải đồng đội"),
+    p_season_id: params.seasonId || null,
+    p_league_id: params.leagueId || null,
+    p_created_by: params.createdBy || null,
+    p_settings: params.settings || {},
+  });
+  return mapOptionalLifecycleRpc(result);
+}
+
+export async function rpcTeamTournamentEnsureCanonical(params = {}) {
+  const result = await callTeamTournamentRpc("team_tournament_ensure_canonical", {
+    p_tenant_id: String(params.tenantId || ""),
+    p_club_id: String(params.clubId || ""),
+    p_tournament_id: String(params.tournamentId || ""),
+    p_name: params.name || null,
+    p_created_by: params.createdBy || null,
+  });
+  return mapOptionalLifecycleRpc(result);
+}
+
+export async function rpcTeamTournamentGetDashboard(tournamentId) {
+  const result = await callTeamTournamentRpc("team_tournament_get_dashboard", {
+    p_tournament_id: String(tournamentId || ""),
+  });
+  return mapOptionalLifecycleRpc(result);
+}
+
+export async function rpcTeamTournamentListMyRefereeAssignments(tournamentId) {
+  const result = await callTeamTournamentRpc(
+    "team_tournament_list_my_referee_assignments",
+    {
+      p_tournament_id: String(tournamentId || ""),
+    }
+  );
+  return mapOptionalLifecycleRpc(result);
 }
 
 export async function rpcTeamTournamentDreambreakerInjury(params = {}) {

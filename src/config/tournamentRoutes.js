@@ -48,6 +48,8 @@ export const TOURNAMENT_ROUTES = Object.freeze({
   refereeAssign: "/tournament/referee-assign",
   awards: "/tournament/awards",
   withdrawal: "/tournament/withdrawal",
+  /** Authenticated athlete / multi-role tournament dashboard */
+  dashboard: "/tournaments",
   /** S1-H player portal */
   playerPortal: "/tournament/my",
   reportsHub: "/reports",
@@ -67,6 +69,20 @@ export const TEAM_TAB_QUERY = Object.freeze({
 
 export function teamTournamentPath(tournamentId, tab = TEAM_TAB_QUERY.teams) {
   return `/tournament/team/${tournamentId}?tab=${tab}`;
+}
+
+export function teamTournamentDashboardPath(tournamentId) {
+  const id = String(tournamentId || "").trim();
+  return id ? `/tournaments/${id}` : TOURNAMENT_ROUTES.list;
+}
+
+export function resolveTeamTournamentOpenPath(tournament) {
+  const id = String(tournament?.teamDomainId || tournament?.id || "").trim();
+  if (!id) return TOURNAMENT_ROUTES.list;
+  if (String(tournament?.status || "") === TOURNAMENT_STATUS.DRAFT) {
+    return teamTournamentPath(id, TEAM_TAB_QUERY.teams);
+  }
+  return teamTournamentDashboardPath(id);
 }
 
 export function engineTabPath(tournamentId, tab = "setup") {
