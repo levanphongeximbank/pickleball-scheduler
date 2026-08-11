@@ -54,13 +54,13 @@ function baseParams(overrides = {}) {
 }
 
 describe("P1.2 S1-E — feature gate", () => {
-  it("defaults OFF", () => {
+  it("defaults ON; explicit false is kill-switch", () => {
     assert.equal(isSetupMutationFoundationEnabled(GATE_OFF), false);
-    assert.equal(isSetupMutationFoundationEnabled({}), false);
-    assert.equal(SETUP_MUTATION_GATE_META.default, "OFF");
+    assert.equal(isSetupMutationFoundationEnabled({}), true);
+    assert.equal(SETUP_MUTATION_GATE_META.default, "ON");
   });
 
-  it("enables only with explicit truthy env", () => {
+  it("enables by default and with explicit truthy env", () => {
     assert.equal(isSetupMutationFoundationEnabled(GATE_ON), true);
     assert.equal(isSetupMutationFoundationEnabled({ [SETUP_MUTATION_GATE_ENV]: "on" }), true);
   });

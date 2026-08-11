@@ -281,7 +281,10 @@ test("J: V7 OFF → fail before partial destructive/partial-success sequence", a
   assert.equal(result.writeAttempted, false);
   assert.equal(teamWrite, 0);
   assert.match(String(result.error || ""), /VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7|tắt/i);
-  assert.ok(V7_GATE_RETIREMENT_RECOMMENDATION.includes("KEEP_UNTIL_STAGING"));
+  assert.match(
+    V7_GATE_RETIREMENT_RECOMMENDATION,
+    /RETIRE_DEFAULT_ON_EXPLICIT_OFF_KILLSWITCH|KEEP_UNTIL_STAGING/
+  );
 });
 
 // K — legacy-compatible open

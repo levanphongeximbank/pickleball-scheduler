@@ -24,6 +24,7 @@ import { resolveFormatVenueDefaults } from "../engines/teamFormatVenueConfig.js"
 import { deriveWorkflowStage } from "../engines/teamTournamentWorkflowStage.js";
 import { preflightSetupMutationCapability } from "../setup/setupMutationFeatureGate.js";
 import { applyAiGeneratedTeamsToTournament } from "./teamTournamentService.js";
+import { rpcTeamTournamentCommitPairing } from "./teamTournamentRpcService.js";
 import {
   TT412_CAPTAIN_CONFIRM_DIAG,
   tt412CaptainConfirmDiag,
@@ -32,6 +33,7 @@ import {
 const defaultDeps = Object.freeze({
   applyAiGeneratedTeamsToTournament,
   preflightSetupMutationCapability,
+  commitPairing: rpcTeamTournamentCommitPairing,
 });
 
 let deps = { ...defaultDeps };
@@ -182,6 +184,105 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
         writeAttempted: false,
         groupsExpected: groups.length,
         groupsPersisted: 0,
+      });
+    }
+  }
+
+  if (typeof deps.commitPairing === "function") {
+    const atomic = await deps.commitPairing({
+      tournamentId,
+      teams,
+      groups,
+      settingsPatch: {
+        groupCount: Math.max(1, Number(nextTeamData?.settings?.groupCount) || groups.length || 1),
+      },
+    });
+    if (atomic?.ok) {
+      let readback = null;
+      if (typeof reload === "function") {
+        readback = await reload({
+          silent: true,
+          schemaVersion: 7,
+          applyUi: false,
+          reason: "ai_pairing_atomic_readback",
+        });
+      }
+      const readTeamData =
+        readback?.teamData ||
+        readback?.data?.teamData ||
+        readback?.tournament?.teamData ||
+        null;
+      const persistedTeams = Array.isArray(readTeamData?.teams)
+        ? readTeamData.teams
+        : teams;
+      const persistedGroups = Array.isArray(readTeamData?.groups)
+        ? readTeamData.groups
+        : groups;
+      if (groups.length > 0 && persistedGroups.length !== groups.length) {
+        return finish({
+          ok: false,
+          code: "GROUPS_READBACK_INCOMPLETE",
+          error: `get_setup trả về ${persistedGroups.length} bảng, kỳ vọng ${groups.length}.`,
+          writeAttempted: true,
+          writeCount: 1,
+          atomic: true,
+          groupsExpected: groups.length,
+          groupsPersisted: persistedGroups.length,
+          partial: true,
+        });
+      }
+      if (!persistedTeams.length) {
+        return finish({
+          ok: false,
+          code: "RELOAD_EMPTY_TEAMS",
+          error: "RPC commit pairing thành công nhưng get_setup không có đội.",
+          writeAttempted: true,
+          writeCount: 1,
+          atomic: true,
+        });
+      }
+      const captainsPersisted = persistedTeams.filter((team) =>
+        String(team.captainPlayerId || "").trim()
+      ).length;
+      const finalTeamData = {
+        ...(nextTeamData || {}),
+        ...(readTeamData || {}),
+        teams: persistedTeams,
+        groups: persistedGroups,
+        matchups: [],
+      };
+      return finish({
+        ok: true,
+        writeAttempted: true,
+        writeCount: 1,
+        atomic: true,
+        teamSave: atomic,
+        groupResult: atomic,
+        teamData: finalTeamData,
+        tournament: readback?.tournament || tournament,
+        teamCount: persistedTeams.length,
+        captainsExpected: teams.filter((team) => String(team.captainPlayerId || "").trim()).length,
+        captainsPersisted,
+        groupsExpected: groups.length,
+        groupsPersisted: persistedGroups.length,
+        workflowStage: deriveWorkflowStage(finalTeamData, tournament),
+        matchupsExpectedAtAiConfirm: false,
+        matchupsEmptyValid: true,
+      });
+    }
+    const atomicUnavailable = new Set([
+      "RPC_MISSING",
+      "rpc_not_deployed",
+      "NO_SUPABASE",
+    ]);
+    if (atomic?.code && !atomicUnavailable.has(String(atomic.code))) {
+      return finish({
+        ok: false,
+        code: atomic.code || "PAIRING_COMMIT_FAILED",
+        error: atomic.error || "Không lưu được đội/đội trưởng/bảng trong một giao dịch.",
+        writeAttempted: true,
+        writeCount: 1,
+        atomic: true,
       });
     }
   }

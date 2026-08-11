@@ -395,7 +395,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       ) {
         const gateHint = isSetupMutationFoundationEnabled()
           ? "Dùng persistSetupTeamData để ghi bằng P1.3 domain RPC."
-          : "Bật VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7 sau khi P1.3 được Staging-certified.";
+          : "Kill-switch VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7=false đang tắt ghi setup.";
         return {
           ok: false,
           code: isSetupMutationFoundationEnabled()
@@ -563,13 +563,35 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       const uiResult = mapRepositoryResultToUi(result);
       // Success only after get_setup v7 read-back verification.
       if (uiResult.ok && result.reloadResult?.ok) {
-        return {
+        const committed = {
           ...uiResult,
           version: result.version ?? result.reloadResult.version,
           tournament: result.reloadResult.tournament,
           teamData: result.reloadResult.teamData,
           aggregate: result.reloadResult.aggregate,
         };
+        const persistDepth = Number(options._persistDepth || 0);
+        if (persistDepth < 8) {
+          const remaining = buildSetupMutationFromTeamDataDiff({
+            previous: committed.teamData || previousTeamData,
+            next: ensuredNext,
+            tournamentId,
+            expectedTournamentVersion: Number(committed.version ?? expectedTournamentVersion),
+            rulesVersion: options.rulesVersion || aggregate.rulesVersion || "",
+          });
+          if (remaining.commandName) {
+            return this.persistSetupTeamData(clubId, tournamentId, ensuredNext, {
+              ...options,
+              previousTeamData: committed.teamData || previousTeamData,
+              expectedTournamentVersion: Number(committed.version ?? expectedTournamentVersion),
+              skipDreambreakerEnsure: true,
+              aggregate: committed.aggregate || options.aggregate,
+              tournament: committed.tournament || options.tournament,
+              _persistDepth: persistDepth + 1,
+            });
+          }
+        }
+        return committed;
       }
       if (uiResult.ok && !result.reloadResult?.ok) {
         return mapRepositoryResultToUi({

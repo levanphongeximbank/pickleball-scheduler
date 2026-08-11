@@ -36,6 +36,10 @@ import {
 } from "../../../features/team-tournament/engines/teamFormatVenueConfig.js";
 import { listLockedCompetitionStages } from "../../../features/team-tournament/engines/teamStageTieBreakPolicy.js";
 import { isSetupMutationFoundationEnabled } from "../../../features/team-tournament/setup/setupMutationFeatureGate.js";
+import {
+  buildFormatVenueFingerprint,
+  decideSetupFormRehydration,
+} from "../../../features/team-tournament/setup/setupFormRehydration.js";
 import { listCanonicalClubCourtsForFormatVenue } from "../../../features/team-tournament/services/canonicalClubCourtInventory.js";
 import { getCourtDisplayName } from "../../../pages/courts.logic.js";
 
@@ -108,23 +112,82 @@ export default function TeamFormatVenueSetupPanel({
     defaults.stageTieBreakPolicy
   );
   const [busy, setBusy] = useState(false);
+  const [serverBaselineFingerprint, setServerBaselineFingerprint] = useState(null);
+  const [acceptServerBaseline, setAcceptServerBaseline] = useState(false);
   const lockedStages = useMemo(
     () => listLockedCompetitionStages(teamData),
     [teamData]
   );
+  const serverFingerprint = useMemo(
+    () => buildFormatVenueFingerprint(defaults),
+    [defaults]
+  );
+
+  const formatDirty = useMemo(() => {
+    const choice = GROUP_SETUP_CHOICES.find((item) => item.value === groupSetup);
+    const resolvedGroupMode =
+      choice?.groupMode ||
+      (Number(groupCount) === 1 ? GROUP_MODE.SINGLE_POOL : GROUP_MODE.MANUAL);
+    const courtsEqual =
+      JSON.stringify([...(selectedCourtIds || [])].map(String).sort()) ===
+      JSON.stringify(
+        [...(defaults.selectedCourtIds || [])].map(String).sort()
+      );
+    return (
+      formatPreset !== defaults.formatPreset ||
+      Boolean(dreambreakerEnabled) !== Boolean(defaults.dreambreakerEnabled) ||
+      Number(groupCount) !== Number(defaults.groupCount || 1) ||
+      Number(qualificationCount) !== Number(defaults.qualificationCount || 2) ||
+      knockoutFormat !== defaults.knockoutFormat ||
+      resolvedGroupMode !== defaults.groupMode ||
+      JSON.stringify(rosterRules || {}) !== JSON.stringify(defaults.rosterRules || {}) ||
+      JSON.stringify(stageTieBreakPolicy || {}) !==
+        JSON.stringify(defaults.stageTieBreakPolicy || {}) ||
+      !courtsEqual
+    );
+  }, [
+    defaults,
+    dreambreakerEnabled,
+    formatPreset,
+    groupCount,
+    groupSetup,
+    knockoutFormat,
+    qualificationCount,
+    rosterRules,
+    selectedCourtIds,
+    stageTieBreakPolicy,
+  ]);
 
   useEffect(() => {
-    const next = resolveFormatVenueDefaults(teamData, tournament);
-    setFormatPreset(next.formatPreset);
-    setRosterRules(next.rosterRules);
-    setDreambreakerEnabled(next.dreambreakerEnabled);
-    setGroupSetup(resolveGroupSetupValue(next));
-    setGroupCount(next.groupCount || 1);
-    setQualificationCount(next.qualificationCount || 2);
-    setKnockoutFormat(next.knockoutFormat);
-    setSelectedCourtIds(next.selectedCourtIds || []);
-    setStageTieBreakPolicy(next.stageTieBreakPolicy);
-  }, [teamData, tournament]);
+    const decision = decideSetupFormRehydration({
+      dirty: formatDirty,
+      prevFingerprint: serverBaselineFingerprint,
+      nextFingerprint: serverFingerprint,
+      afterSuccessfulMutation: acceptServerBaseline,
+    });
+    if (!decision.rehydrate) {
+      return;
+    }
+    setFormatPreset(defaults.formatPreset);
+    setRosterRules(defaults.rosterRules);
+    setDreambreakerEnabled(defaults.dreambreakerEnabled);
+    setGroupSetup(resolveGroupSetupValue(defaults));
+    setGroupCount(defaults.groupCount || 1);
+    setQualificationCount(defaults.qualificationCount || 2);
+    setKnockoutFormat(defaults.knockoutFormat);
+    setSelectedCourtIds(defaults.selectedCourtIds || []);
+    setStageTieBreakPolicy(defaults.stageTieBreakPolicy);
+    setServerBaselineFingerprint(serverFingerprint);
+    if (acceptServerBaseline) {
+      setAcceptServerBaseline(false);
+    }
+  }, [
+    acceptServerBaseline,
+    defaults,
+    formatDirty,
+    serverBaselineFingerprint,
+    serverFingerprint,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -179,41 +242,6 @@ export default function TeamFormatVenueSetupPanel({
     },
     tournament
   );
-
-  const formatDirty = useMemo(() => {
-    const choice = GROUP_SETUP_CHOICES.find((item) => item.value === groupSetup);
-    const resolvedGroupMode =
-      choice?.groupMode ||
-      (Number(groupCount) === 1 ? GROUP_MODE.SINGLE_POOL : GROUP_MODE.MANUAL);
-    const courtsEqual =
-      JSON.stringify([...(selectedCourtIds || [])].map(String).sort()) ===
-      JSON.stringify(
-        [...(defaults.selectedCourtIds || [])].map(String).sort()
-      );
-    return (
-      formatPreset !== defaults.formatPreset ||
-      Boolean(dreambreakerEnabled) !== Boolean(defaults.dreambreakerEnabled) ||
-      Number(groupCount) !== Number(defaults.groupCount || 1) ||
-      Number(qualificationCount) !== Number(defaults.qualificationCount || 2) ||
-      knockoutFormat !== defaults.knockoutFormat ||
-      resolvedGroupMode !== defaults.groupMode ||
-      JSON.stringify(rosterRules || {}) !== JSON.stringify(defaults.rosterRules || {}) ||
-      JSON.stringify(stageTieBreakPolicy || {}) !==
-        JSON.stringify(defaults.stageTieBreakPolicy || {}) ||
-      !courtsEqual
-    );
-  }, [
-    defaults,
-    dreambreakerEnabled,
-    formatPreset,
-    groupCount,
-    groupSetup,
-    knockoutFormat,
-    qualificationCount,
-    rosterRules,
-    selectedCourtIds,
-    stageTieBreakPolicy,
-  ]);
 
   useEffect(() => {
     onFormatDirtyDiagnostic?.(formatDirty === true);
@@ -303,6 +331,7 @@ export default function TeamFormatVenueSetupPanel({
       if (ok === false) {
         return;
       }
+      setAcceptServerBaseline(true);
       onMessage?.("Đã lưu Format & Venue Setup.");
     } finally {
       setBusy(false);
@@ -328,9 +357,9 @@ export default function TeamFormatVenueSetupPanel({
 
         {!gateOn ? (
           <Alert severity="warning">
-            Setup mutation v7 đang tắt. UI không hứa ghi cloud. Bật{" "}
-            <strong>VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7</strong> (Owner GO) trước khi lưu
-            Format & Venue / đội / bảng.
+            Setup mutation v7 đang tắt bởi kill-switch{" "}
+            <strong>VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7=false</strong>. Không ghi Format
+            & Venue / đội / bảng.
           </Alert>
         ) : null}
 

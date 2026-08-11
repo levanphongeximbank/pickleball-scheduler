@@ -1228,6 +1228,19 @@ export async function rpcTeamTournamentCreateCanonical(params = {}) {
   return mapOptionalLifecycleRpc(result);
 }
 
+export async function rpcTeamTournamentCommitPairing(params = {}) {
+  const result = await callTeamTournamentRpc("team_tournament_commit_pairing", {
+    p_tournament_id: String(params.tournamentId || ""),
+    p_teams: Array.isArray(params.teams) ? params.teams : [],
+    p_groups: Array.isArray(params.groups) ? params.groups : [],
+    p_settings_patch:
+      params.settingsPatch && typeof params.settingsPatch === "object"
+        ? params.settingsPatch
+        : {},
+  });
+  return mapOptionalLifecycleRpc(result);
+}
+
 export async function rpcTeamTournamentEnsureCanonical(params = {}) {
   const result = await callTeamTournamentRpc("team_tournament_ensure_canonical", {
     p_tenant_id: String(params.tenantId || ""),

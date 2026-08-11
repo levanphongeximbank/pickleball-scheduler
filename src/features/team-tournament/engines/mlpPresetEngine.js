@@ -39,6 +39,22 @@ const MLP_DREAMBREAKER_SCORING = {
 /** Deterministic catalog / synthetic Dreambreaker identity. */
 export const CANONICAL_DREAMBREAKER_DISCIPLINE_ID = "dreambreaker";
 
+/** Stable MLP_4 discipline ids — must match team_tournament_create seed. */
+export const CANONICAL_MLP_DISCIPLINE_IDS = Object.freeze({
+  WOMEN_DOUBLES: "mlp-wd",
+  MEN_DOUBLES: "mlp-md",
+  MIXED_1: "mlp-xd1",
+  MIXED_2: "mlp-xd2",
+  DREAMBREAKER: CANONICAL_DREAMBREAKER_DISCIPLINE_ID,
+});
+
+export const CANONICAL_MLP_NORMAL_DISCIPLINE_NAMES = Object.freeze([
+  "Đôi nữ",
+  "Đôi nam",
+  "Đôi nam nữ 1",
+  "Đôi nam nữ 2",
+]);
+
 export function createCanonicalDreambreakerDiscipline() {
   return createDisciplineRecord({
     id: CANONICAL_DREAMBREAKER_DISCIPLINE_ID,
@@ -99,6 +115,7 @@ export function isExplicitDreambreakerDiscipline(discipline) {
 export function createMlpDisciplines() {
   return [
     createDisciplineRecord({
+      id: CANONICAL_MLP_DISCIPLINE_IDS.WOMEN_DOUBLES,
       name: "Đôi nữ",
       categoryType: DISCIPLINE_CATEGORY.DOUBLES,
       genderRequirement: GENDER_REQUIREMENT.FEMALE,
@@ -109,6 +126,7 @@ export function createMlpDisciplines() {
       scoringFormat: { ...MLP_RALLY_SCORING },
     }),
     createDisciplineRecord({
+      id: CANONICAL_MLP_DISCIPLINE_IDS.MEN_DOUBLES,
       name: "Đôi nam",
       categoryType: DISCIPLINE_CATEGORY.DOUBLES,
       genderRequirement: GENDER_REQUIREMENT.MALE,
@@ -119,6 +137,7 @@ export function createMlpDisciplines() {
       scoringFormat: { ...MLP_RALLY_SCORING },
     }),
     createDisciplineRecord({
+      id: CANONICAL_MLP_DISCIPLINE_IDS.MIXED_1,
       name: "Đôi nam nữ 1",
       categoryType: DISCIPLINE_CATEGORY.MIXED,
       genderRequirement: GENDER_REQUIREMENT.MIXED_PAIR,
@@ -129,6 +148,7 @@ export function createMlpDisciplines() {
       scoringFormat: { ...MLP_RALLY_SCORING },
     }),
     createDisciplineRecord({
+      id: CANONICAL_MLP_DISCIPLINE_IDS.MIXED_2,
       name: "Đôi nam nữ 2",
       categoryType: DISCIPLINE_CATEGORY.MIXED,
       genderRequirement: GENDER_REQUIREMENT.MIXED_PAIR,
@@ -186,6 +206,37 @@ export function createMlpPreset(options = {}) {
     teams: options.teams || [],
     matchups: options.matchups || [],
   };
+}
+
+/** Honest empty collections matching get_setup before domain rows exist. */
+export function buildEmptyCanonicalSetupTeamData(settings = {}) {
+  return {
+    settings: settings && typeof settings === "object" ? { ...settings } : {},
+    disciplines: [],
+    teams: [],
+    groups: [],
+    matchups: [],
+  };
+}
+
+/**
+ * Adopt create RPC teamData when present. Never synthesize a richer catalog
+ * than a subsequent canonical get_setup would return.
+ */
+export function adoptCanonicalCreateTeamData(rpcTeamData, settings = {}) {
+  if (rpcTeamData && typeof rpcTeamData === "object" && Array.isArray(rpcTeamData.disciplines)) {
+    return {
+      settings:
+        rpcTeamData.settings && typeof rpcTeamData.settings === "object"
+          ? rpcTeamData.settings
+          : settings || {},
+      disciplines: rpcTeamData.disciplines,
+      teams: Array.isArray(rpcTeamData.teams) ? rpcTeamData.teams : [],
+      groups: Array.isArray(rpcTeamData.groups) ? rpcTeamData.groups : [],
+      matchups: Array.isArray(rpcTeamData.matchups) ? rpcTeamData.matchups : [],
+    };
+  }
+  return buildEmptyCanonicalSetupTeamData(settings);
 }
 
 export function isMlpFormat(teamData) {

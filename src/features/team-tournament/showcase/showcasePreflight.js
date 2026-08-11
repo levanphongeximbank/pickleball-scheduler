@@ -90,8 +90,9 @@ export function buildShowcasePreflight(input = {}) {
   }
 
   const gateOn =
-    input.setupMutationGate === true ||
-    isSetupMutationFoundationEnabled(input.envSource);
+    typeof input.setupMutationGate === "boolean"
+      ? input.setupMutationGate
+      : isSetupMutationFoundationEnabled(input.envSource);
   if (input.requireSetupMutationGate !== false && !gateOn) {
     blockers.push(
       "Setup mutation v7 đang tắt — Preview gate chưa cho phép lưu kết quả lễ bốc thăm."
