@@ -24,8 +24,8 @@ import SportsIcon from "@mui/icons-material/Sports";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
-import { assertTournamentPortalAccess } from "../../domain/tournamentService.js";
 import { findTournamentClubId } from "../../features/club/services/clubTournamentBridge.js";
+import { resolveTeamRefereeCloudPageAccess } from "../../features/team-tournament/ui/teamTournamentCloudAccess.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
 import {
   TEAM_TOURNAMENT_ATHLETE_SCOPE,
@@ -45,14 +45,10 @@ import {
 import { isRepublishPending } from "../../features/team-tournament/engines/overrideLineupWorkflowEngine.js";
 import {
   canManageTeamMatchResult,
-  canViewTeamMatchResults,
 } from "../../features/team-tournament/engines/teamPermissionEngine.js";
 import {
   getStandingsTable,
 } from "../../features/team-tournament/engines/teamStandingsEngine.js";
-import {
-  isTeamTournament,
-} from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import {
   refereeRecordDreambreakerPoint,
   refereeStartDreambreaker,
@@ -648,7 +644,7 @@ export default function TeamRefereePortal() {
   const { tournamentId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeClubId, clubs = [] } = useClub();
-  const { rbacEnabled, isAuthenticated, user } = useAuth();
+  const { rbacEnabled, isAuthenticated, user, can } = useAuth();
   const { currentTenantId } = useTenant();
 
   const resolvedClubId = useMemo(
@@ -666,10 +662,12 @@ export default function TeamRefereePortal() {
   const queryInitRef = useRef({ applied: false, queryId: null });
 
   const {
+    loading,
     tournament,
     teamData,
     dataVersion,
     reload,
+    error: loadError,
     runMutation,
     saveSubMatchDraft,
     connectionState,
@@ -697,11 +695,6 @@ export default function TeamRefereePortal() {
     [permissions]
   );
 
-  const canView = useMemo(
-    () => canViewTeamMatchResults({ permissions }),
-    [permissions]
-  );
-
   const reloadTournament = useCallback(() => {
     reload({ silent: true });
     return tournament;
@@ -711,44 +704,31 @@ export default function TeamRefereePortal() {
     reloadTournament();
   }, [reloadTournament]);
 
-  const access = useMemo(() => {
-    if (!tournament) {
-      return { allowed: false, error: "Không tìm thấy giải đấu." };
-    }
-
-    if (!isTeamTournament(tournament)) {
-      return { allowed: false, error: "Giải này không phải giải đồng đội." };
-    }
-
-    if (rbacEnabled && isAuthenticated) {
-      const tenantCheck = assertTournamentPortalAccess(effectiveClubId, tournamentId, {
-        tenantId: currentTenantId,
+  const access = useMemo(
+    () =>
+      resolveTeamRefereeCloudPageAccess({
+        loading,
+        loadError,
+        tournament,
+        clubId: effectiveClubId,
+        currentTenantId,
         user,
         rbacEnabled,
-      });
-      if (!tenantCheck.ok) {
-        return { allowed: false, error: tenantCheck.error };
-      }
-
-      if (!canView && !canManage) {
-        return {
-          allowed: false,
-          error: "Bạn không có quyền xem trang trọng tài giải đồng đội.",
-        };
-      }
-    }
-
-    return { allowed: true, error: null };
-  }, [
-    effectiveClubId,
-    canManage,
-    canView,
-    currentTenantId,
-    isAuthenticated,
-    rbacEnabled,
-    tournament,
-    tournamentId,
-  ]);
+        isAuthenticated,
+        can,
+      }),
+    [
+      can,
+      currentTenantId,
+      effectiveClubId,
+      isAuthenticated,
+      loadError,
+      loading,
+      rbacEnabled,
+      tournament,
+      user,
+    ]
+  );
 
   const athletePool = useTeamTournamentAthletePool({
     tournament,
@@ -1084,6 +1064,14 @@ export default function TeamRefereePortal() {
     }
     await reload({ silent: true });
     setMessage("Đã ghi nhận chấn thương Dreambreaker.");
+  }
+
+  if (access.pending || loading) {
+    return (
+      <Box sx={{ p: 2, maxWidth: 640, mx: "auto" }}>
+        <Alert severity="info">Đang tải trang trọng tài…</Alert>
+      </Box>
+    );
   }
 
   if (!access.allowed) {
