@@ -192,6 +192,7 @@ export function repairMlpDisciplineSlotMetadata(disciplines = []) {
         genderRequirement: spec.genderRequirement,
         categoryType: spec.categoryType,
         slotRole: spec.slotRole,
+        activationRule: discipline.activationRule || ACTIVATION_RULE.ALWAYS,
       };
     }
     return {
@@ -199,6 +200,7 @@ export function repairMlpDisciplineSlotMetadata(disciplines = []) {
       genderRequirement: spec.genderRequirement,
       categoryType: spec.categoryType,
       slotRole: spec.slotRole,
+      activationRule: discipline.activationRule || ACTIVATION_RULE.ALWAYS,
     };
   });
 }
@@ -224,6 +226,7 @@ export function applyCanonicalMlpDisciplineMetadata(teamData) {
     settings: {
       ...(teamData.settings || {}),
       formatPreset: teamData.settings?.formatPreset || FORMAT_PRESET.MLP_4,
+      dreambreakerEnabled: teamData.settings?.dreambreakerEnabled !== false,
     },
     disciplines: repairMlpDisciplineSlotMetadata(disciplines),
   };

@@ -131,7 +131,7 @@ export function normalizeDreambreakerState(dreambreaker) {
 
   const rotation = dreambreaker.rotation || {};
 
-  return {
+  const next = {
     status,
     teamAOrder: uniqueStringIds(dreambreaker.teamAOrder || []),
     teamBOrder: uniqueStringIds(dreambreaker.teamBOrder || []),
@@ -169,6 +169,36 @@ export function normalizeDreambreakerState(dreambreaker) {
       ? String(dreambreaker.orderSourceB).trim()
       : "",
   };
+
+  if (dreambreaker.version != null && dreambreaker.version !== "") {
+    const version = Number(dreambreaker.version);
+    if (Number.isFinite(version)) {
+      next.version = version;
+    }
+  }
+  if (dreambreaker.required === true || dreambreaker.required === false) {
+    next.required = dreambreaker.required === true;
+  }
+  if (
+    dreambreaker.canSubmitOwnOrder === true ||
+    dreambreaker.canSubmitOwnOrder === false
+  ) {
+    next.canSubmitOwnOrder = dreambreaker.canSubmitOwnOrder === true;
+  }
+  if (Array.isArray(dreambreaker.ownOrder)) {
+    next.ownOrder = uniqueStringIds(dreambreaker.ownOrder);
+  }
+  if (
+    dreambreaker.opponentOrderSubmitted === true ||
+    dreambreaker.opponentOrderSubmitted === false
+  ) {
+    next.opponentOrderSubmitted = dreambreaker.opponentOrderSubmitted === true;
+  }
+  if (dreambreaker.viewerTeamId) {
+    next.viewerTeamId = String(dreambreaker.viewerTeamId).trim();
+  }
+
+  return next;
 }
 
 export function normalizeTeam(team, index = 0) {

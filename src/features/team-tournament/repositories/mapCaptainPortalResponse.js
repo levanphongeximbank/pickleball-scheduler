@@ -7,6 +7,7 @@ import { lineupKey } from "../models/index.js";
 import { normalizeV7TournamentForAggregate } from "./mapGetSetupV7.js";
 import { applyCanonicalMlpDisciplineMetadata } from "../engines/mlpDisciplineSlotContract.js";
 import { enrichTeamWithCaptainPortalRoster } from "../engines/captainPortalRosterProjection.js";
+import { projectCaptainPortalMatchupsDreambreaker } from "../engines/captainDreambreakerPortalContract.js";
 
 /**
  * @param {object|null|undefined} lineups
@@ -104,10 +105,15 @@ export function mapCaptainPortalResponse(payload = {}) {
     captainAccessEnabled:
       payload.captainAccessEnabled === true ||
       rawTournament.settings?.captainAccessEnabled === true,
+    dreambreakerEnabled: rawTournament.settings?.dreambreakerEnabled !== false,
   };
 
+  const viewerTeamId = payload.viewerTeamId || payload.viewer?.viewerTeamId || null;
   const teams = buildCaptainPortalTeams(rawTournament);
-  const matchups = Array.isArray(rawTournament.matchups) ? rawTournament.matchups : [];
+  const matchups = projectCaptainPortalMatchupsDreambreaker(
+    Array.isArray(rawTournament.matchups) ? rawTournament.matchups : [],
+    viewerTeamId
+  );
   const lineups = remapCaptainPortalLineups(rawTournament.lineups);
   const disciplines = Array.isArray(rawTournament.disciplines)
     ? rawTournament.disciplines

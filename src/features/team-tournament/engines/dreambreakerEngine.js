@@ -3,7 +3,6 @@ import {
   ACTIVATION_RULE,
   DREAMBREAKER_ORDER_SOURCE,
   DREAMBREAKER_STATUS,
-  DISCIPLINE_KIND,
   MATCHUP_STATUS,
   SUB_MATCH_STATUS,
 } from "../constants.js";
@@ -18,6 +17,7 @@ import {
 } from "./mlpPresetEngine.js";
 import { computeMatchupTieProgress } from "./matchupTieEngine.js";
 import { getRallyWinner, validateRallyScore } from "./rallyScoringEngine.js";
+import { isPersistedCaptainDreambreakerActive } from "./captainDreambreakerPortalContract.js";
 
 function shufflePlayerIds(playerIds = []) {
   const copy = [...playerIds];
@@ -412,22 +412,14 @@ export function listDreambreakerMatchups(teamData, { teamId } = {}) {
       return false;
     }
 
-    const progress = computeMatchupTieProgress(teamData, matchup);
-    if (!progress.dreambreakerEnabled) {
-      return false;
-    }
-
-    if (progress.needsDreambreaker) {
+    // A: persisted viewer-safe / activated Dreambreaker wins over missing activationRule.
+    if (isPersistedCaptainDreambreakerActive(matchup.dreambreaker)) {
       return true;
     }
 
-    const status = matchup.dreambreaker?.status;
-    return [
-      DREAMBREAKER_STATUS.LINEUP_OPEN,
-      DREAMBREAKER_STATUS.READY,
-      DREAMBREAKER_STATUS.IN_PROGRESS,
-      DREAMBREAKER_STATUS.COMPLETED,
-    ].includes(status);
+    // B: derive from MLP 2–2 main-submatch state (compatibility fallback).
+    const progress = computeMatchupTieProgress(teamData, matchup);
+    return progress.dreambreakerEnabled && progress.needsDreambreaker;
   });
 }
 

@@ -94,9 +94,11 @@ export function CaptainDreambreakerPanel({
 }) {
   const dreambreaker = matchup.dreambreaker;
   const isTeamA = teamId === matchup.teamAId;
-  const currentOrder = isTeamA
-    ? dreambreaker?.teamAOrder || []
-    : dreambreaker?.teamBOrder || [];
+  const currentOrder = Array.isArray(dreambreaker?.ownOrder)
+    ? dreambreaker.ownOrder
+    : isTeamA
+      ? dreambreaker?.teamAOrder || []
+      : dreambreaker?.teamBOrder || [];
   const orderSource = isTeamA ? dreambreaker?.orderSourceA : dreambreaker?.orderSourceB;
   const [order, setOrder] = useState(
     currentOrder.length === 4 ? currentOrder : ["", "", "", ""]
@@ -109,9 +111,13 @@ export function CaptainDreambreakerPanel({
     : null;
   const ordersLocked = Boolean(dreambreaker?.ordersLockedAt);
   const canSubmitOrder =
-    !ordersLocked &&
-    dreambreaker.status === DREAMBREAKER_STATUS.LINEUP_OPEN &&
-    currentOrder.length !== 4;
+    dreambreaker?.canSubmitOwnOrder === false
+      ? false
+      : dreambreaker?.canSubmitOwnOrder === true
+        ? !ordersLocked && dreambreaker.status === DREAMBREAKER_STATUS.LINEUP_OPEN
+        : !ordersLocked &&
+          dreambreaker?.status === DREAMBREAKER_STATUS.LINEUP_OPEN &&
+          currentOrder.length !== 4;
 
   if (!team) {
     return null;

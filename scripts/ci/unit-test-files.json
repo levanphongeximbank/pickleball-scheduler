@@ -239,6 +239,7 @@
   "tests/mlp-preset.test.js",
   "tests/rally-scoring.test.js",
   "tests/dreambreaker.test.js",
+  "tests/team-tournament-captain-dreambreaker-order-01.test.js",
   "tests/v5-menu-audit.test.js",
   "tests/action-queue.test.js",
   "tests/tournament-phase25.test.js",

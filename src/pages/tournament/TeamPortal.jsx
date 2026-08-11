@@ -35,6 +35,7 @@ import { useMyClubMembership } from "../../features/club/hooks/useMyClubMembersh
 import { LINEUP_STATUS, MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
 import { CaptainDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
 import { listDreambreakerMatchups } from "../../features/team-tournament/engines/dreambreakerEngine.js";
+import { buildCaptainDreambreakerSubmitCommand } from "../../features/team-tournament/engines/captainDreambreakerPortalContract.js";
 import { isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
 import CaptainPortalSummary from "../../components/tournament/team/CaptainPortalSummary.jsx";
 import {
@@ -869,11 +870,24 @@ export default function TeamPortal() {
   async function handleDreambreakerSubmit(matchupId, order) {
     setDbBusy(true);
     setDbMessage(null);
-    const result = await captainSubmitDreambreakerOrder(effectiveClubId, tournamentId, {
-      matchupId,
+    const matchup = (teamData.matchups || []).find((item) => item.id === matchupId);
+    const command = buildCaptainDreambreakerSubmitCommand({
+      matchup,
       teamId: access.captainTeam.id,
+      viewerTeamId: access.captainTeam.id,
       order,
+      rosterIds: access.captainTeam.playerIds || [],
     });
+    if (!command.ok) {
+      setDbBusy(false);
+      setDbMessage({ type: "error", text: command.error });
+      return;
+    }
+    const result = await captainSubmitDreambreakerOrder(
+      effectiveClubId,
+      tournamentId,
+      command.payload
+    );
     setDbBusy(false);
     if (!result.ok) {
       setDbMessage({ type: "error", text: result.error });
