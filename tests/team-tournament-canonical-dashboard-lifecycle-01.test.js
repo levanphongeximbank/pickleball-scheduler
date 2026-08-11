@@ -24,6 +24,7 @@ import {
   ATHLETE_VISIBLE_STATUSES as VISIBLE,
 } from "../src/features/team-tournament/lifecycle/teamTournamentLifecycle.js";
 import { buildTeamTournamentDashboardView } from "../src/features/team-tournament/dashboard/teamTournamentDashboardModel.js";
+import { loadTeamTournamentDashboardSource } from "../src/features/team-tournament/dashboard/loadTeamTournamentDashboard.js";
 import { buildCaptainDashboardTasks } from "../src/features/team-tournament/dashboard/teamTournamentDashboardTasks.js";
 import { assertNoPrivateCaptainLeak } from "../src/features/team-tournament/dashboard/teamTournamentDashboardPrivacy.js";
 import {
@@ -238,7 +239,9 @@ test("create: first persist returns stable canonical tournamentId", async () => 
   assert.equal(created.tournament.status, "draft");
 });
 
-test("create: dual-write fallback uses canonical id as team domain id", async () => {
+test("create: missing team_tournament_create RPC fails closed with no fallback writer", async () => {
+  let createCanonicalCalls = 0;
+  let ensureHeaderCalls = 0;
   const created = await persistCanonicalTeamTournamentCreate(
     {
       clubId: "club-a",
@@ -248,18 +251,51 @@ test("create: dual-write fallback uses canonical id as team domain id", async ()
     },
     {
       createViaRpc: async () => ({ ok: false, code: "RPC_MISSING" }),
-      createCanonical: async () => ({
-        ok: true,
-        tournament: { id: "33333333-3333-4333-8333-333333333333", status: "draft" },
-      }),
-      ensureHeader: async (tournament) => {
-        assert.equal(tournament.id, "33333333-3333-4333-8333-333333333333");
-        return { ok: true, tenantId: "venue-a" };
+      createCanonical: async () => {
+        createCanonicalCalls += 1;
+        return { ok: true, tournament: { id: "should-not-run" } };
+      },
+      ensureHeader: async () => {
+        ensureHeaderCalls += 1;
+        return { ok: true };
       },
     }
   );
-  assert.equal(created.ok, true);
-  assert.equal(created.tournament.id, "33333333-3333-4333-8333-333333333333");
+  assert.equal(created.ok, false);
+  assert.equal(created.code, "RPC_MISSING");
+  assert.equal(createCanonicalCalls, 0);
+  assert.equal(ensureHeaderCalls, 0);
+});
+
+test("create: server failure does not start a client repair sequence", async () => {
+  let ensureHeaderCalls = 0;
+  const created = await persistCanonicalTeamTournamentCreate(
+    {
+      clubId: "club-a",
+      tenantId: "venue-a",
+      name: "Giải fail",
+    },
+    {
+      createViaRpc: async () => ({ ok: false, code: "FORBIDDEN" }),
+      ensureHeader: async () => {
+        ensureHeaderCalls += 1;
+        return { ok: true };
+      },
+    }
+  );
+  assert.equal(created.ok, false);
+  assert.equal(created.code, "FORBIDDEN");
+  assert.equal(ensureHeaderCalls, 0);
+});
+
+test("create: missing createViaRpc fails closed", async () => {
+  const created = await persistCanonicalTeamTournamentCreate({
+    clubId: "club-a",
+    tenantId: "venue-a",
+    name: "X",
+  });
+  assert.equal(created.ok, false);
+  assert.equal(created.code, "RPC_MISSING");
 });
 
 test("create: missing tenant fails closed", async () => {
@@ -271,13 +307,30 @@ test("create: missing tenant fails closed", async () => {
   assert.equal(created.code, "TENANT_MISSING");
 });
 
-test("ensure listing does not create a second row when canonical exists", async () => {
+test("ensure: missing RPC fails closed and does not call alternate writers", async () => {
   let createCalls = 0;
   const result = await ensureCanonicalTeamTournamentListing(
     { clubId: "club-a", tenantId: "venue-a", tournamentId: "tid-1" },
     {
-      getCanonical: async () => ({
+      createCanonical: async () => {
+        createCalls += 1;
+        return { ok: true, tournament: { id: "new" } };
+      },
+    }
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "RPC_MISSING");
+  assert.equal(createCalls, 0);
+});
+
+test("ensure: RPC already=true does not create a second row", async () => {
+  let createCalls = 0;
+  const result = await ensureCanonicalTeamTournamentListing(
+    { clubId: "club-a", tenantId: "venue-a", tournamentId: "tid-1" },
+    {
+      ensureViaRpc: async () => ({
         ok: true,
+        already: true,
         tournament: { id: "tid-1", status: "draft" },
       }),
       createCanonical: async () => {
@@ -288,6 +341,16 @@ test("ensure listing does not create a second row when canonical exists", async 
   );
   assert.equal(result.already, true);
   assert.equal(createCalls, 0);
+});
+
+test("dashboard: missing get_dashboard RPC fails closed with no get_setup compose", async () => {
+  const loaded = await loadTeamTournamentDashboardSource({
+    tournamentId: "tid-1",
+    getDashboard: async () => ({ ok: false, code: "RPC_MISSING" }),
+  });
+  assert.equal(loaded.ok, false);
+  assert.equal(loaded.code, "RPC_MISSING");
+  assert.equal(loaded.view, undefined);
 });
 
 test("organizer actions follow lifecycle", () => {
@@ -461,6 +524,9 @@ test("SQL package encodes create, visibility, and privacy contracts", () => {
   assert.match(apply, /team_tournament_create/);
   assert.match(apply, /insert into public.canonical_tournaments/);
   assert.match(apply, /insert into public.team_tournaments/);
+  assert.doesNotMatch(apply, /on conflict \(tenant_id, club_id, tournament_id\) do update/i);
+  assert.match(apply, /idempotencyKey/);
+  assert.match(apply, /myTeamId/);
   assert.match(apply, /DRAFT_NOT_VISIBLE/);
   assert.match(apply, /team_tournament_get_dashboard/);
   assert.match(apply, /team_tournament_list_my_referee_assignments/);

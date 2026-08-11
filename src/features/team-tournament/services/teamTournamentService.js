@@ -127,10 +127,12 @@ import {
 } from "./dreambreakerCloudCommands.js";
 import { guardRecordTenant } from "../../tenant/guards/tenantGuard.js";
 import { persistCanonicalTeamTournamentCreate } from "../lifecycle/ensureCanonicalTeamTournament.js";
-import { getTournamentRepository } from "../../tournament/repositories/tournamentRepositoryFactory.js";
 import {
+  createTeamTournamentIdempotencyKey,
   rpcTeamTournamentCreateCanonical,
 } from "./teamTournamentRpcService.js";
+
+const canonicalCreateInFlight = new Map();
 
 function findTournament(data, tournamentId) {
   return (data.tournaments || []).find((item) => item.id === String(tournamentId)) || null;
@@ -423,7 +425,16 @@ async function createTeamTournamentCloudOnly(clubId, options = {}) {
  */
 async function persistCanonicalTeamCreate(clubId, options = {}) {
   const tenantId = String(options.runtimeTenantId || options.tenantId || "").trim();
-  return persistCanonicalTeamTournamentCreate(
+  const idempotencyKey = String(
+    options.idempotencyKey ||
+      options.settings?.idempotencyKey ||
+      createTeamTournamentIdempotencyKey("tt-create")
+  ).trim();
+  const flightKey = `${tenantId}::${clubId}::${idempotencyKey}`;
+  const existing = canonicalCreateInFlight.get(flightKey);
+  if (existing) return existing;
+
+  const pending = persistCanonicalTeamTournamentCreate(
     {
       clubId,
       tenantId,
@@ -435,6 +446,7 @@ async function persistCanonicalTeamCreate(clubId, options = {}) {
       settings: options.settings,
       createdBy: options.createdBy,
       ownerPlayerId: options.ownerPlayerId,
+      idempotencyKey,
     },
     {
       createViaRpc: async ({ tenantId: rpcTenantId, clubId: rpcClubId, payload }) =>
@@ -447,23 +459,12 @@ async function persistCanonicalTeamCreate(clubId, options = {}) {
           createdBy: payload.createdBy,
           settings: payload.settings,
         }),
-      createCanonical: async (input) => {
-        const repo = getTournamentRepository();
-        return repo.create(input.clubId, {
-          name: input.name,
-          mode: input.mode,
-          status: input.status,
-          seasonId: input.seasonId,
-          leagueId: input.leagueId,
-          createdBy: input.createdBy,
-          ownerPlayerId: input.ownerPlayerId,
-          settings: input.settings,
-          tenantId: input.tenantId,
-        });
-      },
-      ensureHeader: cloudEnsureTournamentHeader,
     }
-  );
+  ).finally(() => {
+    canonicalCreateInFlight.delete(flightKey);
+  });
+  canonicalCreateInFlight.set(flightKey, pending);
+  return pending;
 }
 
 export async function createTeamTournamentForUi(clubId, options = {}) {
@@ -483,16 +484,7 @@ export async function createTeamTournamentForUi(clubId, options = {}) {
       mode === TEAM_TOURNAMENT_DATA_MODES.SHADOW);
 
   if (shouldWriteCanonical) {
-    const canonical = await persistCanonicalTeamCreate(clubId, options);
-    if (canonical.ok) {
-      return canonical;
-    }
-    if (
-      mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY ||
-      mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_PRIMARY
-    ) {
-      return canonical;
-    }
+    return persistCanonicalTeamCreate(clubId, options);
   }
 
   if (mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY) {

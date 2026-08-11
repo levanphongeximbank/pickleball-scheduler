@@ -26,10 +26,6 @@ import {
   resolveCanonicalReloadApply,
   refreshCanonicalSetupAfterMutation,
 } from "./canonicalSetupRefresh.js";
-import { ensureCanonicalTeamTournamentListing } from "../lifecycle/ensureCanonicalTeamTournament.js";
-import { rpcTeamTournamentEnsureCanonical } from "../services/teamTournamentRpcService.js";
-import { getTournamentRepository } from "../../tournament/repositories/tournamentRepositoryFactory.js";
-import { cloudEnsureTournamentHeader } from "../services/teamTournamentCloudSync.js";
 
 const DEFAULT_POLL_MS = REPOSITORY_REALTIME_FALLBACK.pollingIntervalMs;
 
@@ -552,27 +548,6 @@ export function useTeamTournamentPage({
           return result;
         }
         if (result.ok) {
-          await ensureCanonicalTeamTournamentListing(
-            {
-              clubId,
-              tenantId: tournament?.tenantId,
-              tournamentId,
-              name: tournament?.name,
-              createdBy: tournament?.createdBy,
-            },
-            {
-              ensureViaRpc: rpcTeamTournamentEnsureCanonical,
-              getCanonical: async (scopeClubId, id, options) => {
-                const repo = getTournamentRepository();
-                return repo.get(scopeClubId, id, options);
-              },
-              createCanonical: async (input) => {
-                const repo = getTournamentRepository();
-                return repo.create(input.clubId, input);
-              },
-              ensureHeader: cloudEnsureTournamentHeader,
-            }
-          ).catch(() => ({ ok: false }));
           const loaded = result.tournament
             ? result
             : await loadCanonicalSetup({ schemaVersion: 7 });

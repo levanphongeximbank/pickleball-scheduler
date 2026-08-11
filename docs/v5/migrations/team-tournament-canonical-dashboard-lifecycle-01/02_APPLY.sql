@@ -33,7 +33,9 @@ declare
   v_name text := coalesce(nullif(trim(p_name), ''), 'Giải đồng đội');
   v_created_by text := nullif(trim(coalesce(p_created_by, '')), '');
   v_settings jsonb := coalesce(p_settings, '{}'::jsonb);
+  v_idempotency text := nullif(trim(coalesce(p_settings->>'idempotencyKey', '')), '');
   v_row public.canonical_tournaments%rowtype;
+  v_header_exists boolean := false;
 begin
   if auth.uid() is null then
     return jsonb_build_object('ok', false, 'code', 'NOT_AUTHENTICATED');
@@ -41,6 +43,48 @@ begin
   perform public.team_tournament_assert_tenant(p_tenant_id);
   if not public.team_tournament_can_manage() then
     return jsonb_build_object('ok', false, 'code', 'FORBIDDEN');
+  end if;
+
+  if v_idempotency is not null then
+    perform pg_advisory_xact_lock(
+      hashtext(p_tenant_id || ':' || p_club_id),
+      hashtext(v_idempotency)
+    );
+    select * into v_row
+    from public.canonical_tournaments t
+    where t.tenant_id = p_tenant_id
+      and t.club_id = p_club_id
+      and t.payload->>'idempotencyKey' = v_idempotency
+    limit 1;
+    if found then
+      select exists (
+        select 1
+        from public.team_tournaments tt
+        where tt.tenant_id = p_tenant_id
+          and tt.club_id = p_club_id
+          and tt.tournament_id = v_row.id::text
+      ) into v_header_exists;
+      if not v_header_exists then
+        return jsonb_build_object('ok', false, 'code', 'CREATE_INCONSISTENT');
+      end if;
+      return jsonb_build_object(
+        'ok', true,
+        'replayed', true,
+        'tournament', jsonb_build_object(
+          'id', v_row.id::text,
+          'canonicalId', v_row.id::text,
+          'teamDomainId', coalesce(v_row.payload->>'teamDomainId', v_row.id::text),
+          'clubId', v_row.club_id,
+          'tenantId', v_row.tenant_id,
+          'name', v_row.name,
+          'mode', 'team_tournament',
+          'status', v_row.status,
+          'createdBy', v_row.payload->>'createdBy',
+          'ownerPlayerId', v_row.payload->>'ownerPlayerId',
+          'settings', coalesce(v_row.payload->'settings', v_settings)
+        )
+      );
+    end if;
   end if;
 
   insert into public.canonical_tournaments (
@@ -62,6 +106,7 @@ begin
       'createdBy', v_created_by,
       'ownerPlayerId', v_created_by,
       'teamDomainId', v_id::text,
+      'idempotencyKey', v_idempotency,
       'settings', v_settings
     ),
     '{}'::jsonb
@@ -79,11 +124,7 @@ begin
     v_settings,
     auth.uid(),
     auth.uid()
-  )
-  on conflict (tenant_id, club_id, tournament_id) do update
-    set name = excluded.name,
-        updated_at = now(),
-        updated_by = auth.uid();
+  );
 
   return jsonb_build_object(
     'ok', true,
@@ -253,6 +294,8 @@ declare
   v_can_manage boolean;
   v_is_participant boolean := false;
   v_captain_team_id text := null;
+  v_my_team_id text := null;
+  v_my_team jsonb := null;
   v_teams jsonb := '[]'::jsonb;
   v_matchups jsonb := '[]'::jsonb;
   v_standings jsonb := '[]'::jsonb;
@@ -312,15 +355,45 @@ begin
       )
     limit 1;
 
-    select exists (
-      select 1
-      from public.team_tournament_teams t
-      join public.team_tournament_team_members m on m.team_id = t.id
-      where t.team_tournament_id = v_header.id
-        and m.player_id = v_player_id
-    ) into v_is_participant;
+    select t.external_team_id into v_my_team_id
+    from public.team_tournament_teams t
+    where t.team_tournament_id = v_header.id
+      and (
+        t.captain_player_id = v_player_id
+        or coalesce(t.deputy_player_ids, '{}'::text[]) @> array[v_player_id]
+        or coalesce(t.player_ids, '{}'::text[]) @> array[v_player_id]
+        or exists (
+          select 1
+          from public.team_tournament_team_members m
+          where m.team_id = t.id
+            and m.player_id = v_player_id
+        )
+      )
+    limit 1;
+
+    v_is_participant := v_my_team_id is not null;
     if v_captain_team_id is not null then
       v_is_participant := true;
+      if v_my_team_id is null then
+        v_my_team_id := v_captain_team_id;
+      end if;
+    end if;
+
+    if v_my_team_id is not null then
+      select jsonb_build_object(
+        'id', t.external_team_id,
+        'name', t.name,
+        'roster', coalesce((
+          select jsonb_agg(jsonb_build_object('playerId', m.player_id, 'name', null))
+          from public.team_tournament_team_members m
+          where m.team_id = t.id
+        ), '[]'::jsonb)
+      )
+      into v_my_team
+      from public.team_tournament_teams t
+      where t.team_tournament_id = v_header.id
+        and t.external_team_id = v_my_team_id
+      limit 1;
     end if;
   end if;
 
@@ -346,6 +419,44 @@ begin
   into v_matchups
   from public.team_tournament_matchups m
   where m.team_tournament_id = v_header.id;
+
+  if to_regclass('public.team_tournament_lineups') is not null then
+    select coalesce(jsonb_agg(
+      elem || jsonb_build_object(
+        'lineups', coalesce((
+          select jsonb_object_agg(
+            l.team_external_id,
+            jsonb_build_object('status', l.status)
+          )
+          from public.team_tournament_lineups l
+          join public.team_tournament_matchups mu
+            on mu.id = l.matchup_id
+           and mu.team_tournament_id = v_header.id
+          where mu.external_matchup_id = elem->>'id'
+        ), '{}'::jsonb)
+      )
+    ), v_matchups)
+    into v_matchups
+    from jsonb_array_elements(coalesce(v_matchups, '[]'::jsonb)) elem;
+  end if;
+
+  if to_regclass('public.team_tournament_dreambreaker_states') is not null then
+    select coalesce(jsonb_agg(
+      elem || jsonb_build_object(
+        'dreambreaker', coalesce((
+          select jsonb_build_object('status', d.status)
+          from public.team_tournament_dreambreaker_states d
+          join public.team_tournament_matchups mu
+            on mu.id = d.matchup_id
+           and mu.team_tournament_id = v_header.id
+          where mu.external_matchup_id = elem->>'id'
+          limit 1
+        ), '{}'::jsonb)
+      )
+    ), v_matchups)
+    into v_matchups
+    from jsonb_array_elements(coalesce(v_matchups, '[]'::jsonb)) elem;
+  end if;
 
   if to_regclass('public.team_tournament_standings') is not null then
     select coalesce(jsonb_agg(jsonb_build_object(
@@ -401,9 +512,10 @@ begin
         'isParticipant', v_is_participant,
         'isCaptain', v_captain_team_id is not null,
         'isReferee', jsonb_array_length(coalesce(v_assignments, '[]'::jsonb)) > 0,
-        'myTeamId', null,
+        'myTeamId', v_my_team_id,
         'captainTeamId', v_captain_team_id
       ),
+      'myTeam', v_my_team,
       'refereeAssignments', v_assignments
     )
   );

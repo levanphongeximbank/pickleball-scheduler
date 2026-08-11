@@ -99,6 +99,8 @@ export function buildTeamTournamentDashboardView({
   isAuthenticated = false,
   refereeAssignments = [],
   clubId = null,
+  serverCapabilities = null,
+  myTeamRoster = null,
 } = {}) {
   const visibility = canViewTournamentDashboard({
     tournament,
@@ -119,14 +121,27 @@ export function buildTeamTournamentDashboardView({
     };
   }
 
-  const capabilities = resolveDashboardCapabilities({
-    tournament,
+  const derived = resolveDashboardCapabilities({
     teamData,
     playerId,
     userId,
     canOrganize,
     refereeAssignments,
   });
+  const capabilities = {
+    ...derived,
+    ...(serverCapabilities && typeof serverCapabilities === "object"
+      ? {
+          canOrganize: serverCapabilities.canOrganize === true || derived.canOrganize,
+          isParticipant:
+            serverCapabilities.isParticipant === true || derived.isParticipant,
+          isCaptain: serverCapabilities.isCaptain === true || derived.isCaptain,
+          isReferee: serverCapabilities.isReferee === true || derived.isReferee,
+          myTeamId: serverCapabilities.myTeamId || derived.myTeamId,
+          captainTeamId: serverCapabilities.captainTeamId || derived.captainTeamId,
+        }
+      : {}),
+  };
 
   const matchups = projectPublicMatchups(teamData?.matchups || []);
   const classified = classifyMatchups(matchups);
@@ -187,7 +202,7 @@ export function buildTeamTournamentDashboardView({
       ? {
           id: myTeam?.id,
           name: myTeam?.name,
-          roster: (myTeam?.members || []).map((member) => ({
+          roster: (myTeamRoster || myTeam?.members || []).map((member) => ({
             playerId: member.playerId || member.id || null,
             name: member.displayName || member.name || null,
           })),

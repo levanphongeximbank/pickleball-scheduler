@@ -43,6 +43,12 @@ begin
   if v_create_src not like '%canonical_tournaments%' then
     raise exception 'VERIFY_FAIL: team_tournament_create must write canonical_tournaments';
   end if;
+  if v_create_src ilike '%on conflict%' or v_create_src ilike '%do update%' then
+    raise exception 'VERIFY_FAIL: team_tournament_create must not merge via ON CONFLICT';
+  end if;
+  if v_create_src not like '%idempotencyKey%' then
+    raise exception 'VERIFY_FAIL: team_tournament_create must honor idempotencyKey';
+  end if;
 
   select pg_get_functiondef(p.oid) into v_dash_src
   from pg_proc p
@@ -58,6 +64,12 @@ begin
   end if;
   if v_dash_src not like '%stageTieBreakPolicy%' then
     raise exception 'VERIFY_FAIL: dashboard must display stage tie-break policy';
+  end if;
+  if v_dash_src not like '%myTeamId%' then
+    raise exception 'VERIFY_FAIL: dashboard must return server myTeamId';
+  end if;
+  if v_dash_src like '%team_a_order%' or v_dash_src like '%team_b_order%' then
+    raise exception 'VERIFY_FAIL: dashboard leaked dreambreaker order columns';
   end if;
 
   select pg_get_functiondef(p.oid) into v_mine_src

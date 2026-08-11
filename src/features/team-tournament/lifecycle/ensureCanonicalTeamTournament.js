@@ -1,7 +1,10 @@
 /**
- * Canonical Team Tournament create / heal.
- * After first persist, canonical_tournaments is the list authority and
- * team_tournaments.tournament_id is the domain id (same stable string).
+ * Canonical Team Tournament create / historical heal.
+ *
+ * NORMAL_NEW_CREATE_PATH: team_tournament_create only.
+ * HISTORICAL_HEAL_PATH: team_tournament_ensure_canonical only.
+ *
+ * Missing RPC → FAIL CLOSED. No client dual-write. No alternate writer.
  */
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
 import { createTeamTournamentShell } from "../engines/teamTournamentEngine.js";
@@ -10,10 +13,17 @@ export const CANONICAL_TEAM_CREATE_RPC = "team_tournament_create";
 export const CANONICAL_TEAM_ENSURE_RPC = "team_tournament_ensure_canonical";
 
 function buildSettings(options = {}) {
-  return {
+  const settings = {
     formatPreset: options.formatPreset || "mlp_4",
     ...(options.settings && typeof options.settings === "object" ? options.settings : {}),
   };
+  const idempotencyKey = String(
+    options.idempotencyKey || settings.idempotencyKey || ""
+  ).trim();
+  if (idempotencyKey) {
+    settings.idempotencyKey = idempotencyKey;
+  }
+  return settings;
 }
 
 export function buildCanonicalTeamCreatePayload(input = {}) {
@@ -31,101 +41,53 @@ export function buildCanonicalTeamCreatePayload(input = {}) {
   };
 }
 
+function failClosed(code, error, extra = {}) {
+  return {
+    ok: false,
+    code,
+    error,
+    ...extra,
+  };
+}
+
 /**
- * Prefer the atomic RPC. If it is not deployed yet, dual-write
- * canonical_tournament_create + team header using the same id.
+ * Sole new-create authority: team_tournament_create.
+ * RPC_MISSING / missing writer → fail closed. Never dual-write.
  */
 export async function persistCanonicalTeamTournamentCreate(input = {}, deps = {}) {
   const clubId = String(input.clubId || "").trim();
   const tenantId = String(input.tenantId || input.runtimeTenantId || "").trim();
   if (!clubId) {
-    return { ok: false, code: "CLUB_REQUIRED", error: "Thiếu CLB để tạo giải đồng đội." };
+    return failClosed("CLUB_REQUIRED", "Thiếu CLB để tạo giải đồng đội.");
   }
   if (!tenantId) {
-    return { ok: false, code: "TENANT_MISSING", error: "Thiếu tenant để tạo giải đồng đội." };
+    return failClosed("TENANT_MISSING", "Thiếu tenant để tạo giải đồng đội.");
   }
 
   const payload = buildCanonicalTeamCreatePayload(input);
 
-  if (typeof deps.createViaRpc === "function") {
-    const rpcResult = await deps.createViaRpc({
-      tenantId,
-      clubId,
-      payload,
-    });
-    if (rpcResult?.ok && rpcResult.tournament?.id) {
-      return finalizeCreated(rpcResult, clubId, tenantId, payload, input);
-    }
-    if (rpcResult && rpcResult.code && rpcResult.code !== "RPC_MISSING") {
-      return rpcResult;
-    }
+  if (typeof deps.createViaRpc !== "function") {
+    return failClosed(
+      "RPC_MISSING",
+      "Chưa có RPC team_tournament_create — không tạo giải bằng writer phụ."
+    );
   }
 
-  if (typeof deps.createCanonical !== "function" || typeof deps.ensureHeader !== "function") {
-    return {
-      ok: false,
-      code: "CANONICAL_CREATE_UNAVAILABLE",
-      error: "Chưa có writer canonical để lưu giải đồng đội.",
-    };
-  }
-
-  const created = await deps.createCanonical({
+  const rpcResult = await deps.createViaRpc({
+    tenantId,
     clubId,
-    tenantId,
-    ...payload,
+    payload,
   });
-  if (!created?.ok || !created.tournament?.id) {
-    return {
-      ok: false,
-      code: created?.code || "CANONICAL_CREATE_FAILED",
-      error: created?.error || "Không tạo được giải trên danh sách canonical.",
-    };
+
+  if (rpcResult?.ok && rpcResult.tournament?.id) {
+    return finalizeCreated(rpcResult, clubId, tenantId, payload, input);
   }
 
-  const tournamentId = String(created.tournament.id);
-  const shell = createTeamTournamentShell(clubId, {
-    ...input,
-    id: tournamentId,
-    name: payload.name,
-    seasonId: payload.seasonId,
-    leagueId: payload.leagueId,
-    tenantId,
-    status: TOURNAMENT_STATUS.DRAFT,
-    settings: payload.settings,
-    createdBy: payload.createdBy,
-    ownerPlayerId: payload.ownerPlayerId,
-  });
-  shell.canonicalId = tournamentId;
-  shell.createdBy = payload.createdBy;
-  shell.ownerPlayerId = payload.ownerPlayerId;
-
-  const header = await deps.ensureHeader({
-    ...shell,
-    clubId,
-    tenantId,
-    runtimeTenantId: tenantId,
-  });
-  if (!header?.ok) {
-    return {
-      ok: false,
-      code: header?.code || "CLOUD_HEADER_FAILED",
-      error:
-        header?.error ||
-        "Đã tạo danh sách canonical nhưng chưa ghi được header team_tournaments.",
-      tournament: shell,
-      canonicalCreated: true,
-    };
-  }
-
-  return {
-    ok: true,
-    tournament: shell,
-    clubId,
-    tenantId,
-    canonical: true,
-    cloudSynced: true,
-    tournamentId,
-  };
+  return failClosed(
+    rpcResult?.code || "CANONICAL_CREATE_FAILED",
+    rpcResult?.error || "Không tạo được giải đồng đội trên máy chủ.",
+    { tournament: rpcResult?.tournament || null }
+  );
 }
 
 function finalizeCreated(rpcResult, clubId, tenantId, payload, input) {
@@ -166,35 +128,28 @@ function finalizeCreated(rpcResult, clubId, tenantId, payload, input) {
   };
 }
 
+/**
+ * Historical heal only. Does not create new tournaments.
+ * Sole authority: team_tournament_ensure_canonical.
+ */
 export async function ensureCanonicalTeamTournamentListing(input = {}, deps = {}) {
-  if (typeof deps.ensureViaRpc === "function") {
-    const result = await deps.ensureViaRpc({
-      tenantId: input.tenantId,
-      clubId: input.clubId,
-      tournamentId: input.tournamentId,
-      name: input.name,
-      createdBy: input.createdBy,
-    });
-    if (result?.ok) return result;
-    if (result?.code && result.code !== "RPC_MISSING") return result;
+  if (typeof deps.ensureViaRpc !== "function") {
+    return failClosed(
+      "RPC_MISSING",
+      "Chưa có RPC team_tournament_ensure_canonical — không heal bằng writer phụ."
+    );
   }
-  if (typeof deps.getCanonical === "function" && input.tournamentId) {
-    const existing = await deps.getCanonical(input.clubId, input.tournamentId, {
-      tenantId: input.tenantId,
-    });
-    if (existing?.ok && existing.tournament) {
-      return { ok: true, tournament: existing.tournament, already: true };
-    }
-  }
-  if (!input.tournamentId) {
-    return persistCanonicalTeamTournamentCreate(input, deps);
-  }
-  return persistCanonicalTeamTournamentCreate(
-    {
-      ...input,
-      id: input.tournamentId,
-    },
-    deps
+  const result = await deps.ensureViaRpc({
+    tenantId: input.tenantId,
+    clubId: input.clubId,
+    tournamentId: input.tournamentId,
+    name: input.name,
+    createdBy: input.createdBy,
+  });
+  if (result?.ok) return result;
+  return failClosed(
+    result?.code || "CANONICAL_ENSURE_FAILED",
+    result?.error || "Không đồng bộ được giải vào danh sách canonical."
   );
 }
 

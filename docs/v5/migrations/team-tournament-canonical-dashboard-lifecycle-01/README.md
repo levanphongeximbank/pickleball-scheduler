@@ -6,11 +6,14 @@
 
 ## Contract
 
-- Save Draft / first persist writes **both** `canonical_tournaments` and `team_tournaments`.
+- **NORMAL_NEW_CREATE_PATH:** `team_tournament_create` only. Both tables in one server transaction. Same UUID.
+- **HISTORICAL_HEAL_PATH:** `team_tournament_ensure_canonical` only. Not used for new creates.
+- Missing RPC → **FAIL CLOSED**. No client dual-write. No `canonical_tournament_create` + header fallback.
+- Preview-before-migration may fail closed. That is acceptable.
 - Shared stable id: `canonical_tournaments.id` = `team_tournaments.tournament_id`.
 - Status `draft` is a saved canonical state. Organizer-visible. Not athlete/public discoverable.
 - Athlete dashboard visibility: `registration` | `ready` | `active` | `completed`.
-- Dashboard reader is visibility-aware and does **not** expose private captain orders.
+- Dashboard reader is `team_tournament_get_dashboard` only. No get_setup compose. No private captain orders.
 - Referee self-assignments are listed for `auth.uid()` only.
 - Stage tie-break policy is displayed only. Winner resolution stays on existing runtime/server logic.
 - Registration: foundation only. No fake team self-registration UI.
@@ -28,8 +31,8 @@ Rollback: `04_ROLLBACK.sql` (drops new RPCs; restores `canonical_tournament_list
 | File | SHA256 |
 |------|--------|
 | `01_PRECHECK.sql` | `17fe70356201190c125e3722ae7968c178c158f0e5e74c0758688645b6693c56` |
-| `02_APPLY.sql` | `28e78c8e6d09d12e9d444050efcf6efe41ea8695d82e8fb9f738d0c4b03881b5` |
-| `03_VERIFY.sql` | `8ffcd6ee1716f6ae248ce59faccf1eb338d5ef4e4c8048d8fd7fb8147e08367e` |
+| `02_APPLY.sql` | `82b6379a82fc3a42eb61ca278bd348cee600bd6e805f0da48b4faf137db0ea5d` |
+| `03_VERIFY.sql` | `99bf8a1c46dac46da28bd7592941cfb8775f8e17d61805c178bd4e07f478eb96` |
 | `04_ROLLBACK.sql` | `604bb3e7920a48484c0989b5a2f6a25110cc99902a96521cf389b3c81ad04d8e` |
 
 ## Safety
