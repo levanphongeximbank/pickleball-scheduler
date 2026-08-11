@@ -18,8 +18,13 @@ import {
 } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import SportsIcon from "@mui/icons-material/Sports";
+import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
 
 import { TOURNAMENT_MODE } from "../../models/tournament/index.js";
+import {
+  resolveTeamTournamentOpenPath,
+  teamTournamentDashboardPath,
+} from "../../config/tournamentRoutes.js";
 import PermissionGate from "../auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import TournamentActionBar from "./TournamentActionBar.jsx";
@@ -43,7 +48,7 @@ function resolveTournamentPath(tournament) {
     return `/tournament/official/${tournament.id}`;
   }
   if (tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
-    return `/tournament/team/${tournament.id}`;
+    return resolveTeamTournamentOpenPath(tournament);
   }
   return null;
 }
@@ -211,6 +216,18 @@ export default function TournamentListTable({
                             </IconButton>
                           </Tooltip>
                         </PermissionGate>
+                      ) : null}
+                      {tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT ? (
+                        <Tooltip title="Bảng điều khiển">
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              navigate(teamTournamentDashboardPath(tournament.id))
+                            }
+                          >
+                            <EmojiEventsOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       ) : null}
                       {showPortal ? (
                         <Tooltip title="Portal đội trưởng">

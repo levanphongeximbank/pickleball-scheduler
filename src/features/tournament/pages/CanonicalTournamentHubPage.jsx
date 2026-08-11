@@ -38,6 +38,9 @@ export default function CanonicalTournamentHubPage() {
       item.status
     )
   );
+  const draftTournaments = tournaments.filter(
+    (item) => item.status === TOURNAMENT_STATUS.DRAFT
+  );
 
   const contextLine = [
     activeClub?.name ? `CLB ${activeClub.name}` : null,
@@ -122,6 +125,10 @@ export default function CanonicalTournamentHubPage() {
           </Grid>
         ))}
       </Grid>
+
+      <Box sx={{ mb: TOURNAMENT_LAYOUT.sectionGap }}>
+        <ActiveTournamentsPanel tournaments={draftTournaments} title="Giải nháp — tiếp tục thiết lập" />
+      </Box>
 
       <Box sx={{ mb: TOURNAMENT_LAYOUT.sectionGap }}>
         <ActiveTournamentsPanel tournaments={openTournaments} title="Giải đang mở" />

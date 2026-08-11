@@ -51,6 +51,8 @@ export async function createTournamentCommand(clubIdOrScope, input = {}, options
       formatPreset: input.formatPreset || "mlp_4",
       runtimeTenantId: scope.tenantId,
       tenantId: scope.tenantId,
+      createdBy: input.createdBy || input.ownerPlayerId || null,
+      ownerPlayerId: input.ownerPlayerId || input.createdBy || null,
     });
   }
 

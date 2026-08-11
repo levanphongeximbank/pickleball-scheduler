@@ -19,6 +19,7 @@ import { usePageRuntimeAccess } from "../../../core/platform/app/usePageRuntimeA
 import { TOURNAMENT_MODE } from "../../../models/tournament/index.js";
 import { resolveEventTypeFromQuery } from "../../individual-tournament/index.js";
 import { EVENT_TYPE_LABELS } from "../../../models/tournament/index.js";
+import { useAuth } from "../../../context/AuthContext.jsx";
 import { createTournamentCommand } from "../services/tournamentCommands.js";
 import { modeLabelVi } from "../constants/tournamentLabels.js";
 import {
@@ -72,6 +73,7 @@ export default function CanonicalTournamentCreatePage() {
   const preselectedEvent = resolveEventTypeFromQuery(searchParams.get("event"));
   const { activeClub, activeClubId, activeClubReady, refreshClubs } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
+  const { user } = useAuth();
   const { accessAllowed } = usePageRuntimeAccess(
     "tournament.manage",
     activeClub?.tenantId || activeClubId,
@@ -95,10 +97,13 @@ export default function CanonicalTournamentCreatePage() {
     setBusy(true);
     setError(null);
     try {
+      const createdBy = user?.playerId || user?.linkedPlayerId || user?.id || null;
       const result = await createTournamentCommand(activeClub, {
         mode: option.mode,
         seasonId: activeSeason?.id,
         leagueId: activeLeague?.id,
+        createdBy,
+        ownerPlayerId: createdBy,
         hostClubName:
           option.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT
             ? activeClub?.name || ""

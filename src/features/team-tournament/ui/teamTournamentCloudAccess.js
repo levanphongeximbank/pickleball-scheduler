@@ -108,6 +108,19 @@ export function resolveTeamTournamentCloudPageAccess(input = {}) {
     );
 
   const allowed = canManage || canViewAll || isCaptain;
+  const status = String(tournament?.status || "").toLowerCase();
+  if (status === "draft" && !canManage) {
+    return {
+      allowed: false,
+      pending: false,
+      canManage: false,
+      canViewAll: false,
+      isCaptain: Boolean(isCaptain),
+      viewerPlayerId,
+      error: "Giải nháp chỉ hiển thị cho ban tổ chức.",
+      code: "DRAFT_NOT_VISIBLE",
+    };
+  }
 
   return {
     allowed,
