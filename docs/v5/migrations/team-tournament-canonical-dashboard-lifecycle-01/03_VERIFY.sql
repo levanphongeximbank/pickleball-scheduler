@@ -71,6 +71,9 @@ begin
   if v_dash_src like '%team_a_order%' or v_dash_src like '%team_b_order%' then
     raise exception 'VERIFY_FAIL: dashboard leaked dreambreaker order columns';
   end if;
+  if v_dash_src like '%t.player_ids%' then
+    raise exception 'VERIFY_FAIL: dashboard must not read non-existent team_tournament_teams.player_ids';
+  end if;
 
   select pg_get_functiondef(p.oid) into v_mine_src
   from pg_proc p
@@ -79,6 +82,21 @@ begin
   limit 1;
   if v_mine_src not like '%team_tournament_team_members%' then
     raise exception 'VERIFY_FAIL: list_mine must include team members';
+  end if;
+  if v_mine_src not like '%team_tournament_can_manage()%'
+     or v_mine_src not like '%draft%' then
+    raise exception 'VERIFY_FAIL: list_mine must hide draft from non-managers';
+  end if;
+
+  select pg_get_functiondef(p.oid) into v_create_src
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and p.proname = 'canonical_tournament_list'
+  limit 1;
+  if v_create_src is null
+     or v_create_src not like '%team_tournament_can_manage()%'
+     or v_create_src not like '%draft%' then
+    raise exception 'VERIFY_FAIL: canonical_tournament_list must hide draft from non-managers';
   end if;
 
   if not has_function_privilege('authenticated', 'public.team_tournament_create(text,text,text,text,text,text,jsonb)', 'execute') then

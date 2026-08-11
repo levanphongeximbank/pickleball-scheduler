@@ -532,7 +532,12 @@ test("SQL package encodes create, visibility, and privacy contracts", () => {
   assert.match(apply, /team_tournament_list_my_referee_assignments/);
   assert.doesNotMatch(apply, /opponentOrder/);
   assert.match(apply, /canonical_tournament_list_mine/);
+  assert.match(apply, /canonical_tournament_list\(/);
   assert.match(apply, /team_tournament_team_members/);
+  assert.doesNotMatch(apply, /t\.player_ids/);
+  assert.match(apply, /or lower\(coalesce\(t\.status, 'draft'\)\) <> 'draft'/);
+  assert.match(verify, /t\.player_ids/);
+  assert.match(verify, /hide draft from non-managers/);
   assert.match(verify, /DRAFT_NOT_VISIBLE/);
   assert.match(verify, /anon must not execute/);
   assert.match(rollback, /drop function if exists public.team_tournament_create/);

@@ -31,9 +31,9 @@ Rollback: `04_ROLLBACK.sql` (drops new RPCs; restores `canonical_tournament_list
 | File | SHA256 |
 |------|--------|
 | `01_PRECHECK.sql` | `17fe70356201190c125e3722ae7968c178c158f0e5e74c0758688645b6693c56` |
-| `02_APPLY.sql` | `82b6379a82fc3a42eb61ca278bd348cee600bd6e805f0da48b4faf137db0ea5d` |
-| `03_VERIFY.sql` | `99bf8a1c46dac46da28bd7592941cfb8775f8e17d61805c178bd4e07f478eb96` |
-| `04_ROLLBACK.sql` | `604bb3e7920a48484c0989b5a2f6a25110cc99902a96521cf389b3c81ad04d8e` |
+| `02_APPLY.sql` | `f47c657e181c6c622ab0919cae5201121b71c756f23e5af7881be86112bd24c5` |
+| `03_VERIFY.sql` | `9db28f9b8e118fbd4955cc02f4eadc6221b7dd742ff0ceb87ad623a5bffee851` |
+| `04_ROLLBACK.sql` | `c89e4a87046c3c3fcea3a72d34c6a25a1428ee7c66a975cb2ffa464d2efc14e1` |
 
 ## Safety
 

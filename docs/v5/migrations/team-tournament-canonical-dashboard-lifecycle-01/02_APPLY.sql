@@ -326,7 +326,7 @@ begin
 
   perform public.team_tournament_assert_tenant(v_header.tenant_id);
   v_can_manage := public.team_tournament_can_manage();
-  v_player_id := public.team_tournament_user_player_id();
+  v_player_id := nullif(trim(coalesce(public.team_tournament_user_player_id(), '')), '');
 
   if lower(coalesce(v_header.status, 'draft')) = 'draft' and not v_can_manage then
     return jsonb_build_object('ok', false, 'code', 'DRAFT_NOT_VISIBLE');
@@ -361,7 +361,6 @@ begin
       and (
         t.captain_player_id = v_player_id
         or coalesce(t.deputy_player_ids, '{}'::text[]) @> array[v_player_id]
-        or coalesce(t.player_ids, '{}'::text[]) @> array[v_player_id]
         or exists (
           select 1
           from public.team_tournament_team_members m
@@ -528,6 +527,44 @@ exception
 end;
 $$;
 
+create or replace function public.canonical_tournament_list(
+  p_tenant_id text,
+  p_club_id text,
+  p_filters jsonb default '{}'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  rows jsonb;
+begin
+  perform public.canonical_tournament_assert_tenant(p_tenant_id);
+  perform public.canonical_tournament_assert_permission('tournament.view');
+
+  select coalesce(jsonb_agg(to_jsonb(t) order by t.updated_at desc), '[]'::jsonb)
+    into rows
+  from public.canonical_tournaments t
+  where t.tenant_id = p_tenant_id
+    and t.club_id = p_club_id
+    and (
+      public.team_tournament_can_manage()
+      or lower(coalesce(t.status, 'draft')) <> 'draft'
+    );
+
+  return jsonb_build_object('ok', true, 'tournaments', rows);
+exception
+  when insufficient_privilege then
+    return jsonb_build_object('ok', false, 'code', sqlerrm, 'tournaments', '[]'::jsonb);
+  when others then
+    if sqlerrm in ('TOURNAMENT_MISSING_TENANT', 'TOURNAMENT_FORBIDDEN') then
+      return jsonb_build_object('ok', false, 'code', sqlerrm, 'tournaments', '[]'::jsonb);
+    end if;
+    raise;
+end;
+$$;
+
 create or replace function public.canonical_tournament_list_mine(
   p_tenant_id text,
   p_club_id text,
@@ -553,6 +590,10 @@ begin
   from public.canonical_tournaments t
   where t.tenant_id = p_tenant_id
     and t.club_id = p_club_id
+    and (
+      public.team_tournament_can_manage()
+      or lower(coalesce(t.status, 'draft')) <> 'draft'
+    )
     and (
       public.canonical_tournament_is_mine(t.payload, pid)
       or exists (
@@ -599,3 +640,9 @@ grant execute on function public.team_tournament_list_my_referee_assignments(tex
 
 revoke all on function public.team_tournament_get_dashboard(text) from public, anon;
 grant execute on function public.team_tournament_get_dashboard(text) to authenticated;
+
+revoke all on function public.canonical_tournament_list(text, text, jsonb) from public, anon;
+grant execute on function public.canonical_tournament_list(text, text, jsonb) to authenticated;
+
+revoke all on function public.canonical_tournament_list_mine(text, text, text) from public, anon;
+grant execute on function public.canonical_tournament_list_mine(text, text, text) to authenticated;
