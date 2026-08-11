@@ -23,6 +23,7 @@ import {
   resolveDreambreakerExpectedVersion,
 } from "./captainDreambreakerPortalContract.js";
 import { resolveDreambreakerScoringFormat } from "./dreambreakerScoringContract.js";
+import { isDreambreakerTieBreakPolicy } from "./teamStageTieBreakPolicy.js";
 
 function shufflePlayerIds(playerIds = []) {
   const copy = [...playerIds];
@@ -152,6 +153,9 @@ export function maybeActivateDreambreaker(teamData, matchupId, now = new Date().
   const matchup = findMatchup(teamData, matchupId);
   if (!matchup || !isMlpFormat(teamData) || teamData.settings?.dreambreakerEnabled === false) {
     return { ok: true, teamData, activated: false };
+  }
+  if (!isDreambreakerTieBreakPolicy(teamData, matchup)) {
+    return { ok: true, teamData, activated: false, code: "STAGE_POLICY_NOT_DREAMBREAKER" };
   }
 
   const mainDisciplines = teamData.disciplines.filter(

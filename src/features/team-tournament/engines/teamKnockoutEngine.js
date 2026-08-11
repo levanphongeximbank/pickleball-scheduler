@@ -10,6 +10,7 @@ import {
   normalizeTeamData,
 } from "../models/index.js";
 import { getStandingsTable } from "./teamStandingsEngine.js";
+import { competitionStageFromRemaining } from "./teamStageTieBreakPolicy.js";
 
 export const MATCHUP_STAGE = Object.freeze({
   GROUP: "group",
@@ -256,6 +257,7 @@ function buildEmptyKnockoutMatchup(teamData, options = {}) {
     matchNumberInRound: options.matchNumberInRound,
     status: options.status || MATCHUP_STATUS.LINEUP_OPEN,
     stage: MATCHUP_STAGE.KNOCKOUT,
+    competitionStage: options.competitionStage || "",
     bracketMatchId: options.bracketMatchId,
     nextMatchupId: options.nextMatchupId || "",
     nextSlot: options.nextSlot || "",
@@ -279,6 +281,7 @@ export function generateTeamKnockoutMatchups(teamData, options = {}) {
   const roundCount = Math.log2(bracketSize);
 
   const roundLabels = [];
+  const roundCompetitionStages = [];
   for (let round = 1; round <= roundCount; round += 1) {
     const remaining = bracketSize / 2 ** round;
     let label = `Vòng ${round}`;
@@ -286,6 +289,7 @@ export function generateTeamKnockoutMatchups(teamData, options = {}) {
     else if (remaining === 2) label = "Bán kết";
     else if (remaining === 4) label = "Tứ kết";
     roundLabels.push(label);
+    roundCompetitionStages.push(competitionStageFromRemaining(remaining));
   }
 
   /** @type {object[][]} */
@@ -302,6 +306,7 @@ export function generateTeamKnockoutMatchups(teamData, options = {}) {
         matchNumberInRound: m + 1,
         bracketMatchId: `KO-R${roundIndex + 1}-M${m + 1}`,
         bracketRoundLabel: roundLabels[roundIndex],
+        competitionStage: roundCompetitionStages[roundIndex],
       });
     }
   }
@@ -361,6 +366,7 @@ export function generateTeamKnockoutMatchups(teamData, options = {}) {
         nextMatchupId: slot.nextMatchupId,
         nextSlot: slot.nextSlot,
         bracketRoundLabel: slot.bracketRoundLabel,
+        competitionStage: slot.competitionStage,
         status,
       });
       matchup.id = slot.id;

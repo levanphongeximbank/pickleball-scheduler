@@ -18,9 +18,12 @@ import {
 } from "@mui/material";
 
 import {
+  COMPETITION_STAGE,
   FORMAT_PRESET,
   GROUP_MODE,
   KNOCKOUT_FORMAT,
+  STAGE_TIE_BREAK_POLICY,
+  STAGE_TIE_BREAK_POLICY_KEYS,
 } from "../../../features/team-tournament/constants.js";
 import {
   applyMlp4Preset,
@@ -31,9 +34,18 @@ import {
   resolveFormatVenueDefaults,
   validateRosterRules,
 } from "../../../features/team-tournament/engines/teamFormatVenueConfig.js";
+import { listLockedCompetitionStages } from "../../../features/team-tournament/engines/teamStageTieBreakPolicy.js";
 import { isSetupMutationFoundationEnabled } from "../../../features/team-tournament/setup/setupMutationFeatureGate.js";
 import { listCanonicalClubCourtsForFormatVenue } from "../../../features/team-tournament/services/canonicalClubCourtInventory.js";
 import { getCourtDisplayName } from "../../../pages/courts.logic.js";
+
+const STAGE_POLICY_LABELS = {
+  [COMPETITION_STAGE.GROUP]: "Vòng bảng",
+  [COMPETITION_STAGE.ROUND_OF_16]: "Vòng 16",
+  [COMPETITION_STAGE.QUARTERFINAL]: "Tứ kết",
+  [COMPETITION_STAGE.SEMIFINAL]: "Bán kết",
+  [COMPETITION_STAGE.FINAL]: "Chung kết",
+};
 
 const GROUP_SETUP_CHOICES = [
   { value: "1", label: "1 bảng", groupMode: GROUP_MODE.SINGLE_POOL, groupCount: 1 },
@@ -92,7 +104,14 @@ export default function TeamFormatVenueSetupPanel({
   );
   const [knockoutFormat, setKnockoutFormat] = useState(defaults.knockoutFormat);
   const [selectedCourtIds, setSelectedCourtIds] = useState(defaults.selectedCourtIds || []);
+  const [stageTieBreakPolicy, setStageTieBreakPolicy] = useState(
+    defaults.stageTieBreakPolicy
+  );
   const [busy, setBusy] = useState(false);
+  const lockedStages = useMemo(
+    () => listLockedCompetitionStages(teamData),
+    [teamData]
+  );
 
   useEffect(() => {
     const next = resolveFormatVenueDefaults(teamData, tournament);
@@ -104,6 +123,7 @@ export default function TeamFormatVenueSetupPanel({
     setQualificationCount(next.qualificationCount || 2);
     setKnockoutFormat(next.knockoutFormat);
     setSelectedCourtIds(next.selectedCourtIds || []);
+    setStageTieBreakPolicy(next.stageTieBreakPolicy);
   }, [teamData, tournament]);
 
   useEffect(() => {
@@ -154,6 +174,7 @@ export default function TeamFormatVenueSetupPanel({
         qualificationCount,
         knockoutFormat,
         selectedCourtIds,
+        stageTieBreakPolicy,
       }),
     },
     tournament
@@ -177,6 +198,8 @@ export default function TeamFormatVenueSetupPanel({
       knockoutFormat !== defaults.knockoutFormat ||
       resolvedGroupMode !== defaults.groupMode ||
       JSON.stringify(rosterRules || {}) !== JSON.stringify(defaults.rosterRules || {}) ||
+      JSON.stringify(stageTieBreakPolicy || {}) !==
+        JSON.stringify(defaults.stageTieBreakPolicy || {}) ||
       !courtsEqual
     );
   }, [
@@ -189,6 +212,7 @@ export default function TeamFormatVenueSetupPanel({
     qualificationCount,
     rosterRules,
     selectedCourtIds,
+    stageTieBreakPolicy,
   ]);
 
   useEffect(() => {
@@ -265,6 +289,7 @@ export default function TeamFormatVenueSetupPanel({
       groupCount: resolvedGroupCount,
       qualificationCount: Math.max(1, Number(qualificationCount) || 1),
       knockoutFormat,
+      stageTieBreakPolicy,
       selectedCourtIds,
       teamsPerGroup:
         resolvedGroupCount > 0
@@ -361,6 +386,53 @@ export default function TeamFormatVenueSetupPanel({
           }
           label="Dreambreaker"
         />
+
+        <Stack spacing={1}>
+          <Typography variant="subtitle2" fontWeight={700}>
+            Luật hòa theo vòng (stage tie-break)
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Khi tỉ số trận con hòa (ví dụ 2–2): Dreambreaker giữ lifecycle hiện tại;
+            Tổng điểm cộng toàn bộ điểm các trận con thường (không gồm Dreambreaker).
+          </Typography>
+          {STAGE_TIE_BREAK_POLICY_KEYS.map((stageKey) => {
+            const locked = lockedStages.has(stageKey);
+            return (
+              <FormControl
+                key={stageKey}
+                fullWidth
+                size="small"
+                disabled={!canManage || locked}
+              >
+                <InputLabel>{STAGE_POLICY_LABELS[stageKey]}</InputLabel>
+                <Select
+                  label={STAGE_POLICY_LABELS[stageKey]}
+                  value={
+                    stageTieBreakPolicy?.[stageKey] || STAGE_TIE_BREAK_POLICY.DREAMBREAKER
+                  }
+                  onChange={(event) =>
+                    setStageTieBreakPolicy((prev) => ({
+                      ...prev,
+                      [stageKey]: event.target.value,
+                    }))
+                  }
+                >
+                  <MenuItem value={STAGE_TIE_BREAK_POLICY.DREAMBREAKER}>
+                    Dreambreaker
+                  </MenuItem>
+                  <MenuItem value={STAGE_TIE_BREAK_POLICY.TOTAL_SUBMATCH_POINTS}>
+                    Tổng điểm các trận con
+                  </MenuItem>
+                </Select>
+                {locked ? (
+                  <Typography variant="caption" color="warning.main">
+                    Đã khóa — vòng này đã bắt đầu thi đấu.
+                  </Typography>
+                ) : null}
+              </FormControl>
+            );
+          })}
+        </Stack>
 
         <FormControl fullWidth size="small" disabled={!canManage}>
           <InputLabel>Group setup</InputLabel>

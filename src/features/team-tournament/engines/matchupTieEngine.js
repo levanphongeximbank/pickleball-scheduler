@@ -5,6 +5,10 @@ import {
   SUB_MATCH_STATUS,
 } from "../constants.js";
 import { isMlpFormat } from "./mlpPresetEngine.js";
+import {
+  isDreambreakerTieBreakPolicy,
+  isTotalSubmatchPointsPolicy,
+} from "./teamStageTieBreakPolicy.js";
 
 function isMainDiscipline(discipline) {
   if (!discipline) {
@@ -68,11 +72,25 @@ export function computeMatchupTieProgress(teamData, matchup) {
       subMatch.status === SUB_MATCH_STATUS.FORFEIT
   );
 
+  const dreambreakerPolicy = isDreambreakerTieBreakPolicy(teamData, matchup);
+  const totalPointsPolicy = isTotalSubmatchPointsPolicy(teamData, matchup);
   const dreambreakerEnabled =
-    isMlpFormat(teamData) && teamData.settings?.dreambreakerEnabled !== false;
+    dreambreakerPolicy &&
+    isMlpFormat(teamData) &&
+    teamData.settings?.dreambreakerEnabled !== false;
+
+  const resultBlocksDreambreaker =
+    matchup.result?.needsDreambreaker === false ||
+    matchup.result?.tieBreakPolicy === "TOTAL_SUBMATCH_POINTS" ||
+    (Boolean(matchup.result?.winnerTeamId) && allMainDone && teamAWins === teamBWins);
 
   const needsDreambreaker =
-    dreambreakerEnabled && allMainDone && teamAWins === 2 && teamBWins === 2;
+    !totalPointsPolicy &&
+    !resultBlocksDreambreaker &&
+    dreambreakerEnabled &&
+    allMainDone &&
+    teamAWins === 2 &&
+    teamBWins === 2;
 
   const dreambreakerStatus = matchup.dreambreaker?.status || DREAMBREAKER_STATUS.PENDING;
 
@@ -80,7 +98,8 @@ export function computeMatchupTieProgress(teamData, matchup) {
 
   const tieDecided =
     (allMainDone && !needsDreambreaker && teamAWins !== teamBWins) ||
-    dreambreakerFinished;
+    dreambreakerFinished ||
+    (allMainDone && Boolean(matchup.result?.winnerTeamId));
 
   const tieClinchedEarly = teamAWins >= 3 || teamBWins >= 3;
 
