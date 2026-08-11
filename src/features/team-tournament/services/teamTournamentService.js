@@ -2034,18 +2034,24 @@ export async function captainSubmitDreambreakerOrder(clubId, tournamentId, paylo
   });
 }
 
-export async function refereeStartDreambreaker(clubId, tournamentId, { matchupId }) {
+export async function refereeStartDreambreaker(
+  clubId,
+  tournamentId,
+  { matchupId, expectedVersion } = {}
+) {
   const check = guardRefereeResultAction(clubId);
   if (!check.ok) {
     return check;
   }
 
   if (shouldUseTeamTournamentCloud()) {
-    return cloudStartDreambreaker(tournamentId, { matchupId });
+    return cloudStartDreambreaker(tournamentId, { matchupId, expectedVersion });
   }
 
   return updateTournament(clubId, tournamentId, (tournament) => {
-    const result = startDreambreaker(getTeamData(tournament), matchupId);
+    const result = startDreambreaker(getTeamData(tournament), matchupId, {
+      expectedVersion,
+    });
     if (!result.ok) {
       return result;
     }

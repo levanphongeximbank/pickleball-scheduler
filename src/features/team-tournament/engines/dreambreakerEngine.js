@@ -14,10 +14,14 @@ import {
 import {
   getDreambreakerDiscipline,
   isMlpFormat,
+  resolveDreambreakerDisciplineForStart,
 } from "./mlpPresetEngine.js";
 import { computeMatchupTieProgress } from "./matchupTieEngine.js";
 import { getRallyWinner, validateRallyScore } from "./rallyScoringEngine.js";
-import { isPersistedCaptainDreambreakerActive } from "./captainDreambreakerPortalContract.js";
+import {
+  isPersistedCaptainDreambreakerActive,
+  resolveDreambreakerExpectedVersion,
+} from "./captainDreambreakerPortalContract.js";
 
 function shufflePlayerIds(playerIds = []) {
   const copy = [...playerIds];
@@ -116,7 +120,7 @@ function resolveEffectiveOrder(order = [], injurySkips = [], teamId, segmentInde
   return order[segmentIndex % order.length] || "";
 }
 
-export function getDreambreakerCourtPlayers(matchup, teamData) {
+export function getDreambreakerCourtPlayers(matchup, _teamData) {
   const dreambreaker = matchup.dreambreaker;
   if (!dreambreaker) {
     return { teamAPlayerId: "", teamBPlayerId: "" };
@@ -423,6 +427,24 @@ export function listDreambreakerMatchups(teamData, { teamId } = {}) {
   });
 }
 
+export function buildRefereeDreambreakerStartCommand(matchup) {
+  const matchupId = String(matchup?.id || "").trim();
+  if (!matchupId) {
+    return { ok: false, error: "Thiếu lượt đối đầu." };
+  }
+  const expectedVersion = resolveDreambreakerExpectedVersion(matchup);
+  if (expectedVersion == null) {
+    return { ok: false, error: "Thiếu dreambreaker.version để bắt đầu." };
+  }
+  return {
+    ok: true,
+    payload: {
+      matchupId,
+      expectedVersion,
+    },
+  };
+}
+
 export function startDreambreaker(teamData, matchupId, options = {}) {
   const locked = lockDreambreakerOrders(teamData, matchupId, {
     now: options.now,
@@ -441,16 +463,30 @@ export function startDreambreaker(teamData, matchupId, options = {}) {
     return { ok: false, error: "Hai đội phải nộp thứ tự 4 VĐV trước." };
   }
 
-  const dreambreakerDiscipline = getDreambreakerDiscipline(locked.teamData.disciplines);
-  if (!dreambreakerDiscipline) {
-    return { ok: false, error: "Thiếu nội dung Dreambreaker." };
+  if (options.expectedVersion != null && options.expectedVersion !== "") {
+    const currentVersion = resolveDreambreakerExpectedVersion(matchup);
+    const expected = Number(options.expectedVersion);
+    if (!Number.isFinite(expected) || currentVersion !== expected) {
+      return {
+        ok: false,
+        code: "VERSION_CONFLICT",
+        error: "Dreambreaker đã được cập nhật. Tải lại rồi thử lại.",
+      };
+    }
   }
 
-  let subMatchId = matchup.dreambreaker.subMatchId;
-  let subMatches = [...matchup.subMatches];
+  const dreambreakerDiscipline = resolveDreambreakerDisciplineForStart(
+    locked.teamData.disciplines
+  );
 
-  if (!subMatchId) {
-    subMatchId = createId("sub");
+  let subMatchId = matchup.dreambreaker.subMatchId;
+  let subMatches = [...(matchup.subMatches || [])];
+  const alreadyHasSub =
+    Boolean(subMatchId) &&
+    subMatches.some((item) => String(item?.id || "") === String(subMatchId));
+
+  if (!alreadyHasSub) {
+    subMatchId = subMatchId || createId("sub");
     subMatches = [
       ...subMatches,
       {
@@ -464,11 +500,12 @@ export function startDreambreaker(teamData, matchupId, options = {}) {
     ];
   }
 
-  const nextMatchups = teamData.matchups.map((item) => {
+  const nextMatchups = locked.teamData.matchups.map((item) => {
     if (item.id !== matchupId) {
       return item;
     }
 
+    const currentVersion = Number(item.dreambreaker?.version);
     return {
       ...item,
       subMatches,
@@ -485,6 +522,9 @@ export function startDreambreaker(teamData, matchupId, options = {}) {
           pointHistory: [],
           injurySkips: item.dreambreaker.rotation?.injurySkips || [],
         },
+        ...(Number.isFinite(currentVersion)
+          ? { version: currentVersion + 1 }
+          : {}),
       },
     };
   });

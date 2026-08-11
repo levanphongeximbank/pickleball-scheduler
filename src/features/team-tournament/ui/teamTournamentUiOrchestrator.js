@@ -37,6 +37,9 @@ import {
   validateFormatVenueConfigForPersist,
 } from "../engines/teamFormatVenueConfig.js";
 import {
+  planCanonicalMlpDreambreakerPersist,
+} from "../engines/mlpPresetEngine.js";
+import {
   TT412_SAVE_DRAFT_DIAG,
   tt412SaveDraftDiag,
 } from "../services/tt412SaveDraftDiagnostics.js";
@@ -441,12 +444,57 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       }
 
       const previousTeamData = options.previousTeamData || aggregate.teamData || {};
+      const plan = planCanonicalMlpDreambreakerPersist({
+        previous: previousTeamData,
+        next: nextTeamData,
+      });
+      const ensuredNext = plan.nextTeamData || nextTeamData;
+
+      if (plan.persistDreambreakerFirst && options.skipDreambreakerEnsure !== true && plan.dreambreaker) {
+        const previousDisciplines = Array.isArray(previousTeamData.disciplines)
+          ? previousTeamData.disciplines
+          : [];
+        const dreamOnlyNext = {
+          ...previousTeamData,
+          settings: ensuredNext.settings || previousTeamData.settings,
+          disciplines: [...previousDisciplines, plan.dreambreaker],
+        };
+        const first = await this.persistSetupTeamData(clubId, tournamentId, dreamOnlyNext, {
+          ...options,
+          previousTeamData,
+          skipDreambreakerEnsure: true,
+        });
+        if (!first.ok) {
+          return first;
+        }
+        const remaining = buildSetupMutationFromTeamDataDiff({
+          previous: first.teamData || dreamOnlyNext,
+          next: ensuredNext,
+          tournamentId,
+          expectedTournamentVersion: Number(first.version ?? aggregate.version ?? 1),
+          rulesVersion: options.rulesVersion || aggregate.rulesVersion || "",
+        });
+        if (!remaining.commandName) {
+          return first;
+        }
+        return this.persistSetupTeamData(clubId, tournamentId, ensuredNext, {
+          ...options,
+          previousTeamData: first.teamData || dreamOnlyNext,
+          expectedTournamentVersion: Number(
+            first.version ?? options.expectedTournamentVersion ?? aggregate.version ?? 1
+          ),
+          skipDreambreakerEnsure: true,
+          aggregate: first.aggregate || options.aggregate,
+          tournament: first.tournament || options.tournament,
+        });
+      }
+
       const expectedTournamentVersion = Number(
         options.expectedTournamentVersion ?? aggregate.version ?? 1
       );
       const inferred = buildSetupMutationFromTeamDataDiff({
         previous: previousTeamData,
-        next: nextTeamData,
+        next: ensuredNext,
         tournamentId,
         expectedTournamentVersion,
         rulesVersion: options.rulesVersion || aggregate.rulesVersion || "",
@@ -459,21 +507,21 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         });
       }
 
-      const matchups = nextTeamData.matchups || [];
+      const matchups = ensuredNext.matchups || [];
       let snapshot;
       try {
         snapshot = await buildSetupMutationSnapshotPackageAsync({
           tournament: options.tournament || aggregateToTournamentView(aggregate) || { id: tournamentId },
-          teams: nextTeamData.teams || aggregate.teams || [],
-          disciplines: nextTeamData.disciplines || [],
-          groups: nextTeamData.groups || [],
+          teams: ensuredNext.teams || aggregate.teams || [],
+          disciplines: ensuredNext.disciplines || [],
+          groups: ensuredNext.groups || [],
           matchups,
           subMatches: matchups.flatMap((matchup) => matchup.subMatches || []),
-          schedule: nextTeamData.schedule || matchups,
-          schedulePublish: nextTeamData.schedulePublish || aggregate.schedulePublish || {},
-          settings: nextTeamData.settings || aggregate.settings || {},
-          formatPreset: nextTeamData.settings?.formatPreset || aggregate.formatPreset,
-          rosterRules: nextTeamData.settings?.rosterRules || aggregate.rosterRules,
+          schedule: ensuredNext.schedule || matchups,
+          schedulePublish: ensuredNext.schedulePublish || aggregate.schedulePublish || {},
+          settings: ensuredNext.settings || aggregate.settings || {},
+          formatPreset: ensuredNext.settings?.formatPreset || aggregate.formatPreset,
+          rosterRules: ensuredNext.settings?.rosterRules || aggregate.rosterRules,
           engineInput: inferred.engineInput,
           engineOutput: inferred.engineOutput,
           rules: inferred.rulesVersion ? { rulesVersion: inferred.rulesVersion } : {},

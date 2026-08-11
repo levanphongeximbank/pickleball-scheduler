@@ -65,6 +65,7 @@ import RealtimeConnectionStatus from "../../features/team-tournament/ui/Realtime
 import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTournamentUiCommandKeys.js";
 import { getRallyScoringHints } from "../../features/team-tournament/engines/rallyScoringEngine.js";
 import { RefereeDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
+import { buildRefereeDreambreakerStartCommand } from "../../features/team-tournament/engines/dreambreakerEngine.js";
 import {
   computeMatchupTieProgress,
   countDreambreakerPendingMatchups,
@@ -1024,8 +1025,18 @@ export default function TeamRefereePortal() {
   }
 
   async function handleDreambreakerStart(matchupId) {
+    const matchup = (teamData?.matchups || []).find((item) => item.id === matchupId);
+    const command = buildRefereeDreambreakerStartCommand(matchup);
+    if (!command.ok) {
+      setError(command.error);
+      return;
+    }
     setBusy(true);
-    const result = await refereeStartDreambreaker(effectiveClubId, tournamentId, { matchupId });
+    setError(null);
+    const result = await refereeStartDreambreaker(effectiveClubId, tournamentId, {
+      matchupId: command.payload.matchupId,
+      expectedVersion: command.payload.expectedVersion,
+    });
     setBusy(false);
     if (!result.ok) {
       setError(result.error);

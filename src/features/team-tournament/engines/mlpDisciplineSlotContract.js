@@ -13,7 +13,11 @@ import {
   FORMAT_PRESET,
   GENDER_REQUIREMENT,
 } from "../constants.js";
-import { getActiveMatchDisciplines, isMlpFormat } from "./mlpPresetEngine.js";
+import {
+  ensureCanonicalMlpDisciplines,
+  getActiveMatchDisciplines,
+  isMlpFormat,
+} from "./mlpPresetEngine.js";
 
 /** @typedef {{ genderRequirement: string, categoryType: string, slotRole: string }} MlpSlotSpec */
 
@@ -228,7 +232,15 @@ export function applyCanonicalMlpDisciplineMetadata(teamData) {
       formatPreset: teamData.settings?.formatPreset || FORMAT_PRESET.MLP_4,
       dreambreakerEnabled: teamData.settings?.dreambreakerEnabled !== false,
     },
-    disciplines: repairMlpDisciplineSlotMetadata(disciplines),
+    disciplines: repairMlpDisciplineSlotMetadata(
+      ensureCanonicalMlpDisciplines(disciplines, {
+        ...teamData,
+        settings: {
+          ...(teamData.settings || {}),
+          formatPreset: teamData.settings?.formatPreset || FORMAT_PRESET.MLP_4,
+        },
+      })
+    ),
   };
 }
 

@@ -75,7 +75,7 @@ export async function cloudStartDreambreaker(tournamentId, payload = {}, options
       expectedVersion: options.expectedVersion ?? payload.expectedVersion ?? null,
       idempotencyKey:
         options.idempotencyKey ||
-        buildIdempotencyKey("db-start", [tournamentId, payload.matchupId]),
+        `db-start:${tournamentId}:${payload.matchupId}`,
     })
   );
 }

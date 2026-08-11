@@ -8,7 +8,11 @@ import {
   GENDER_REQUIREMENT,
 } from "../constants.js";
 import { findTeam } from "../models/index.js";
-import { isMlpFormat, getActiveMatchDisciplines } from "./mlpPresetEngine.js";
+import {
+  getActiveMatchDisciplines,
+  isExplicitDreambreakerDiscipline,
+  isMlpFormat,
+} from "./mlpPresetEngine.js";
 import {
   applyCanonicalMlpDisciplineMetadata,
   resolveMlpSlotGenderGate,
@@ -448,8 +452,11 @@ function validateLineupSelectionsStructuredLegacy({
   const invalidPlayerIds = [];
   const invalidDisciplineIds = [];
   const warnings = [];
+  const lineupDisciplines = (effectiveTeamData.disciplines || []).filter(
+    (discipline) => !isExplicitDreambreakerDiscipline(discipline)
+  );
 
-  for (const discipline of effectiveTeamData.disciplines || []) {
+  for (const discipline of lineupDisciplines) {
     if (!discipline?.id) {
       continue;
     }
@@ -508,7 +515,7 @@ function validateLineupSelectionsStructuredLegacy({
   }
 
   if (!partial) {
-    for (const discipline of effectiveTeamData.disciplines || []) {
+    for (const discipline of lineupDisciplines) {
       const ids = normalizedSelections[discipline.id] || [];
       if (ids.length !== discipline.playerCount) {
         return validationFailure(
