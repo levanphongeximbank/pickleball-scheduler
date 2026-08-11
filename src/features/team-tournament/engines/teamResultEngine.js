@@ -14,6 +14,8 @@ import { maybeAdvanceKnockoutAfterResult } from "./teamKnockoutEngine.js";
 import {
   resolveEffectiveStageTieBreakPolicy,
   resolvePointsTieWinner,
+  shouldRequireCanonicalDreambreaker,
+  TOTAL_POINTS_SECONDARY_TIE_STATUS,
 } from "./teamStageTieBreakPolicy.js";
 
 function resolveWinner(score, teamAId, teamBId) {
@@ -155,18 +157,25 @@ export function computeMatchupResult(teamData, matchupId) {
 
   const effectivePolicy = resolveEffectiveStageTieBreakPolicy(teamData, matchup);
   const winsTied = teamAWins === teamBWins;
-  const useTotalPoints =
+  const pointsDecision =
     allMainCompleted &&
     winsTied &&
-    effectivePolicy === STAGE_TIE_BREAK_POLICY.TOTAL_SUBMATCH_POINTS;
+    effectivePolicy === STAGE_TIE_BREAK_POLICY.TOTAL_SUBMATCH_POINTS
+      ? resolvePointsTieWinner(matchup, teamAPoints, teamBPoints)
+      : null;
+  const totalPointsDecides = Boolean(pointsDecision) && !pointsDecision.secondaryTie;
 
   const dreambreakerRequired =
-    !useTotalPoints &&
+    !totalPointsDecides &&
     isMlpFormat(teamData) &&
     teamData.settings?.dreambreakerEnabled !== false &&
-    allMainCompleted &&
-    teamAWins === 2 &&
-    teamBWins === 2;
+    shouldRequireCanonicalDreambreaker(teamData, matchup, {
+      teamAWins,
+      teamBWins,
+      teamAPoints,
+      teamBPoints,
+      allMainDone: allMainCompleted,
+    });
 
   const needsDreambreaker = dreambreakerRequired && !dreambreakerFinished;
 
@@ -179,10 +188,11 @@ export function computeMatchupResult(teamData, matchupId) {
     winnerTeamId = matchup.teamAId;
   } else if (teamBWins > teamAWins + remainingMain) {
     winnerTeamId = matchup.teamBId;
-  } else if (useTotalPoints) {
-    const pointsWinner = resolvePointsTieWinner(matchup, teamAPoints, teamBPoints);
-    winnerTeamId = pointsWinner.winnerTeamId;
-    tieBreakStatus = pointsWinner.tieBreakStatus;
+  } else if (totalPointsDecides) {
+    winnerTeamId = pointsDecision.winnerTeamId;
+    tieBreakStatus = pointsDecision.tieBreakStatus;
+  } else if (needsDreambreaker && pointsDecision?.secondaryTie) {
+    tieBreakStatus = TOTAL_POINTS_SECONDARY_TIE_STATUS;
   } else if (allMainCompleted && !needsDreambreaker) {
     winnerTeamId =
       teamAWins > teamBWins

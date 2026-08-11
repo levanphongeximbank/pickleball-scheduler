@@ -5,8 +5,8 @@
 --
 -- Adds settings.stageTieBreakPolicy (JSONB, no new column) and branches
 -- matchup winner resolution: DREAMBREAKER (existing) vs
--- TOTAL_SUBMATCH_POINTS (sum normal child points; Dreambreaker off).
--- Secondary total-points tie remains UNDEFINED (no winner invented).
+-- TOTAL_SUBMATCH_POINTS (sum normal child points; unequal totals win;
+-- equal totals fall back to the existing Dreambreaker lifecycle).
 -- ═══════════════════════════════════════════════════════════════════
 
 create or replace function public.team_tournament_resolve_competition_stage(
@@ -364,16 +364,22 @@ begin
   if v_policy = 'TOTAL_SUBMATCH_POINTS'
      and v_all_main_finalized
      and v_team_a_wins = v_team_b_wins then
-    v_needs_db := false;
     if v_team_a_points > v_team_b_points then
       v_winner := v_matchup.team_a_id;
       v_tie_status := 'points';
+      v_needs_db := false;
     elsif v_team_b_points > v_team_a_points then
       v_winner := v_matchup.team_b_id;
       v_tie_status := 'points';
+      v_needs_db := false;
     else
+      -- TOTAL_POINTS_SECONDARY_TIE_CONTRACT=DREAMBREAKER_FALLBACK
       v_winner := null;
-      v_tie_status := 'secondary_tie_unresolved';
+      v_tie_status := 'dreambreaker_fallback';
+      v_needs_db :=
+        v_db_enabled
+        and v_team_a_wins = 2
+        and v_team_b_wins = 2;
     end if;
   else
     v_needs_db :=
@@ -468,14 +474,6 @@ begin
   end if;
 
   v_policy := public.team_tournament_resolve_stage_tiebreak_policy(p_header, p_matchup);
-  if v_policy is distinct from 'DREAMBREAKER' then
-    return jsonb_build_object(
-      'ok', true,
-      'activated', false,
-      'code', 'STAGE_POLICY_NOT_DREAMBREAKER',
-      'policy', v_policy
-    );
-  end if;
 
   v_enabled := coalesce((p_header.settings->>'dreambreakerEnabled')::boolean, true);
   if not v_enabled then
@@ -488,7 +486,8 @@ begin
       'ok', true,
       'activated', false,
       'matchupId', p_matchup.external_matchup_id,
-      'matchupResult', v_result
+      'matchupResult', v_result,
+      'policy', v_policy
     );
   end if;
 
@@ -540,7 +539,8 @@ begin
       'teamBPoints', (v_result->>'teamBPoints')::int,
       'winnerTeamId', null,
       'needsDreambreaker', true,
-      'tieBreakPolicy', 'DREAMBREAKER'
+      'tieBreakPolicy', v_policy,
+      'tieBreakStatus', v_result->>'tieBreakStatus'
     ),
     updated_at = now(),
     updated_by = auth.uid()

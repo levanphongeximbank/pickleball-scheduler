@@ -393,7 +393,8 @@ export default function TeamFormatVenueSetupPanel({
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Khi tỉ số trận con hòa (ví dụ 2–2): Dreambreaker giữ lifecycle hiện tại;
-            Tổng điểm cộng toàn bộ điểm các trận con thường (không gồm Dreambreaker).
+            Tổng điểm cộng điểm các trận con thường (không gồm Dreambreaker).
+            Nếu tổng điểm cũng hòa, quay lại Dreambreaker hiện tại.
           </Typography>
           {STAGE_TIE_BREAK_POLICY_KEYS.map((stageKey) => {
             const locked = lockedStages.has(stageKey);

@@ -8,6 +8,8 @@ import { isMlpFormat } from "./mlpPresetEngine.js";
 import {
   isDreambreakerTieBreakPolicy,
   isTotalSubmatchPointsPolicy,
+  shouldRequireCanonicalDreambreaker,
+  sumFinalizedNormalChildPoints,
 } from "./teamStageTieBreakPolicy.js";
 
 function isMainDiscipline(discipline) {
@@ -72,22 +74,33 @@ export function computeMatchupTieProgress(teamData, matchup) {
       subMatch.status === SUB_MATCH_STATUS.FORFEIT
   );
 
+  const { teamAPoints, teamBPoints } = sumFinalizedNormalChildPoints(mainSubMatches);
   const dreambreakerPolicy = isDreambreakerTieBreakPolicy(teamData, matchup);
   const totalPointsPolicy = isTotalSubmatchPointsPolicy(teamData, matchup);
+  const requireCanonicalDreambreaker = shouldRequireCanonicalDreambreaker(teamData, matchup, {
+    teamAWins,
+    teamBWins,
+    teamAPoints,
+    teamBPoints,
+    allMainDone,
+  });
   const dreambreakerEnabled =
-    dreambreakerPolicy &&
     isMlpFormat(teamData) &&
-    teamData.settings?.dreambreakerEnabled !== false;
+    teamData.settings?.dreambreakerEnabled !== false &&
+    (dreambreakerPolicy || (totalPointsPolicy && requireCanonicalDreambreaker));
 
   const resultBlocksDreambreaker =
     matchup.result?.needsDreambreaker === false ||
-    matchup.result?.tieBreakPolicy === "TOTAL_SUBMATCH_POINTS" ||
-    (Boolean(matchup.result?.winnerTeamId) && allMainDone && teamAWins === teamBWins);
+    matchup.result?.tieBreakStatus === "points" ||
+    (Boolean(matchup.result?.winnerTeamId) &&
+      allMainDone &&
+      teamAWins === teamBWins &&
+      matchup.result?.tieBreakStatus !== "dreambreaker");
 
   const needsDreambreaker =
-    !totalPointsPolicy &&
-    !resultBlocksDreambreaker &&
     dreambreakerEnabled &&
+    requireCanonicalDreambreaker &&
+    !resultBlocksDreambreaker &&
     allMainDone &&
     teamAWins === 2 &&
     teamBWins === 2;

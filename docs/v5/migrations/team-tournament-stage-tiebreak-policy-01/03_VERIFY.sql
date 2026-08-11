@@ -43,8 +43,11 @@ begin
   if position('TOTAL_SUBMATCH_POINTS' in coalesce(v_recompute_def, '')) = 0 then
     raise exception 'VERIFY_FAIL: recompute missing TOTAL_SUBMATCH_POINTS branch';
   end if;
-  if position('secondary_tie_unresolved' in coalesce(v_recompute_def, '')) = 0 then
-    raise exception 'VERIFY_FAIL: recompute missing secondary-tie fail-closed marker';
+  if position('dreambreaker_fallback' in coalesce(v_recompute_def, '')) = 0 then
+    raise exception 'VERIFY_FAIL: recompute missing DREAMBREAKER_FALLBACK secondary-tie path';
+  end if;
+  if position('secondary_tie_unresolved' in coalesce(v_recompute_def, '')) > 0 then
+    raise exception 'VERIFY_FAIL: recompute still uses unresolved secondary-tie behavior';
   end if;
 
   select pg_get_functiondef(p.oid) into v_activate_def
@@ -52,8 +55,11 @@ begin
   join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public'
     and p.proname = 'team_tournament_maybe_activate_dreambreaker';
-  if position('STAGE_POLICY_NOT_DREAMBREAKER' in coalesce(v_activate_def, '')) = 0 then
-    raise exception 'VERIFY_FAIL: maybe_activate missing policy gate';
+  if position('needsDreambreaker' in coalesce(v_activate_def, '')) = 0 then
+    raise exception 'VERIFY_FAIL: maybe_activate must trust recompute needsDreambreaker';
+  end if;
+  if position('STAGE_POLICY_NOT_DREAMBREAKER' in coalesce(v_activate_def, '')) > 0 then
+    raise exception 'VERIFY_FAIL: maybe_activate must not hard-reject TOTAL_SUBMATCH_POINTS before fallback';
   end if;
 
   if not has_function_privilege('authenticated', 'public.team_tournament_update_setup_config(text,jsonb,integer,text)', 'execute') then

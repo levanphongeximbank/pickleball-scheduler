@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   COMPETITION_STAGE,
+  DREAMBREAKER_STATUS,
   FORMAT_PRESET,
   MATCHUP_STATUS,
   STAGE_TIE_BREAK_POLICY,
@@ -15,8 +16,16 @@ import { createMlpPreset } from "../src/features/team-tournament/engines/mlpPres
 import { computeMatchupResult } from "../src/features/team-tournament/engines/teamResultEngine.js";
 import { computeMatchupTieProgress } from "../src/features/team-tournament/engines/matchupTieEngine.js";
 import {
+  buildCaptainDreambreakerSubmitCommand,
+  projectCaptainPortalMatchupDreambreaker,
+} from "../src/features/team-tournament/engines/captainDreambreakerPortalContract.js";
+import {
+  buildRefereeDreambreakerStartCommand,
   maybeActivateDreambreaker,
   listDreambreakerMatchups,
+  recordDreambreakerPoint,
+  startDreambreaker,
+  submitDreambreakerOrder,
 } from "../src/features/team-tournament/engines/dreambreakerEngine.js";
 import {
   generateTeamKnockoutMatchups,
@@ -424,7 +433,7 @@ test("11. policy cannot change past lifecycle lock boundary", () => {
   assert.equal(writable.ok, true);
 });
 
-test("12. no Dreambreaker submatch created under TOTAL_SUBMATCH_POINTS", () => {
+test("12. no Dreambreaker submatch created under TOTAL_SUBMATCH_POINTS unequal totals", () => {
   const result = computeMatchupResult(
     buildMlpMatchup({
       settings: {
@@ -442,42 +451,195 @@ test("12. no Dreambreaker submatch created under TOTAL_SUBMATCH_POINTS", () => {
   assert.equal(computeMatchupTieProgress(result.teamData, matchup).needsDreambreaker, false);
 });
 
-test("secondary total-points tie stays UNDEFINED / unresolved", () => {
-  assert.equal(TOTAL_POINTS_SECONDARY_TIE_CONTRACT, "UNDEFINED");
-  const teamData = buildMlpMatchup({
-    scores: [
-      { teamA: 11, teamB: 5 },
-      { teamA: 5, teamB: 11 },
-      { teamA: 11, teamB: 5 },
-      { teamA: 5, teamB: 11 },
-    ],
+const EQUAL_TOTAL_POINTS_SCORES = [
+  { teamA: 11, teamB: 7 },
+  { teamA: 11, teamB: 7 },
+  { teamA: 7, teamB: 11 },
+  { teamA: 7, teamB: 11 },
+];
+
+function buildEqualTotalPointsMatchup() {
+  return buildMlpMatchup({
+    scores: EQUAL_TOTAL_POINTS_SCORES,
     settings: {
       stageTieBreakPolicy: { group: STAGE_TIE_BREAK_POLICY.TOTAL_SUBMATCH_POINTS },
     },
   });
-  const result = computeMatchupResult(teamData, "matchup-1");
-  assert.equal(result.needsDreambreaker, false);
+}
+
+function completeFallbackDreambreaker(teamData) {
+  let next = submitDreambreakerOrder(teamData, {
+    matchupId: "matchup-1",
+    teamId: "team-a",
+    order: ["m1", "m2", "f1", "f2"],
+  }).teamData;
+  next = submitDreambreakerOrder(next, {
+    matchupId: "matchup-1",
+    teamId: "team-b",
+    order: ["m3", "m4", "f3", "f4"],
+  }).teamData;
+  next = startDreambreaker(next, "matchup-1").teamData;
+  for (let index = 0; index < 21; index += 1) {
+    const scored = recordDreambreakerPoint(next, {
+      matchupId: "matchup-1",
+      scoringTeamId: "team-a",
+    });
+    next = scored.teamData;
+    if (scored.completed) {
+      break;
+    }
+  }
+  return computeMatchupResult(next, "matchup-1");
+}
+
+test("13. 2-2 + TOTAL_SUBMATCH_POINTS + 36-36 falls back to canonical Dreambreaker", () => {
+  assert.equal(TOTAL_POINTS_SECONDARY_TIE_CONTRACT, "DREAMBREAKER_FALLBACK");
+  const result = computeMatchupResult(buildEqualTotalPointsMatchup(), "matchup-1");
+  assert.equal(result.needsDreambreaker, true);
   assert.equal(result.result.winnerTeamId, "");
+  assert.equal(result.result.teamAWins, 2);
+  assert.equal(result.result.teamBWins, 2);
+  assert.equal(result.result.teamAPoints, 36);
+  assert.equal(result.result.teamBPoints, 36);
   assert.equal(result.result.tieBreakStatus, TOTAL_POINTS_SECONDARY_TIE_STATUS);
+  assert.equal(result.result.tieBreakPolicy, STAGE_TIE_BREAK_POLICY.TOTAL_SUBMATCH_POINTS);
   assert.notEqual(result.teamData.matchups[0].status, MATCHUP_STATUS.COMPLETED);
+  assert.equal(result.teamData.matchups[0].dreambreaker?.status, DREAMBREAKER_STATUS.LINEUP_OPEN);
+  const progress = computeMatchupTieProgress(result.teamData, result.teamData.matchups[0]);
+  assert.equal(progress.needsDreambreaker, true);
+  assert.equal(progress.dreambreakerEnabled, true);
+  assert.equal(listDreambreakerMatchups(result.teamData).length, 1);
 });
 
-test("SQL package is locked local-only and documents default + lock", () => {
+test("14. fallback Dreambreaker winner becomes parent winner without fabricating 3-2", () => {
+  const finished = completeFallbackDreambreaker(
+    computeMatchupResult(buildEqualTotalPointsMatchup(), "matchup-1").teamData
+  );
+  const matchup = finished.teamData.matchups[0];
+  assert.equal(finished.needsDreambreaker, false);
+  assert.equal(finished.result.winnerTeamId, "team-a");
+  assert.equal(finished.result.teamAWins, 2);
+  assert.equal(finished.result.teamBWins, 2);
+  assert.equal(finished.result.teamAPoints, 36);
+  assert.equal(finished.result.teamBPoints, 36);
+  assert.equal(finished.result.tieBreakStatus, "dreambreaker");
+  assert.notEqual(finished.result.teamAWins, 3);
+  assert.equal(matchup.status, MATCHUP_STATUS.COMPLETED);
+  assert.equal(matchup.dreambreaker?.status, DREAMBREAKER_STATUS.COMPLETED);
+});
+
+test("15. captain payload/order is required only on secondary-tie fallback", () => {
+  const fallback = computeMatchupResult(buildEqualTotalPointsMatchup(), "matchup-1");
+  const matchup = fallback.teamData.matchups[0];
+  assert.equal(listDreambreakerMatchups(fallback.teamData, { teamId: "team-a" }).length, 1);
+  const projected = projectCaptainPortalMatchupDreambreaker(matchup, "team-a");
+  assert.equal(projected.dreambreaker.status, DREAMBREAKER_STATUS.LINEUP_OPEN);
+  const command = buildCaptainDreambreakerSubmitCommand({
+    matchup,
+    teamId: "team-a",
+    viewerTeamId: "team-a",
+    rosterIds: ["m1", "m2", "f1", "f2"],
+    order: ["m1", "m2", "f1", "f2"],
+  });
+  assert.equal(command.ok, true);
+  const submitted = submitDreambreakerOrder(fallback.teamData, {
+    matchupId: "matchup-1",
+    teamId: "team-a",
+    order: ["m1", "m2", "f1", "f2"],
+  });
+  assert.equal(submitted.ok, true);
+
+  const unequal = computeMatchupResult(
+    buildMlpMatchup({
+      settings: {
+        stageTieBreakPolicy: { group: STAGE_TIE_BREAK_POLICY.TOTAL_SUBMATCH_POINTS },
+      },
+    }),
+    "matchup-1"
+  );
+  assert.equal(listDreambreakerMatchups(unequal.teamData).length, 0);
+  const blocked = submitDreambreakerOrder(unequal.teamData, {
+    matchupId: "matchup-1",
+    teamId: "team-a",
+    order: ["m1", "m2", "f1", "f2"],
+  });
+  assert.equal(blocked.ok, false);
+});
+
+test("16. referee READY/start is available only after fallback captain orders", () => {
+  const activated = computeMatchupResult(buildEqualTotalPointsMatchup(), "matchup-1");
+  const beforeOrders = startDreambreaker(activated.teamData, "matchup-1");
+  assert.equal(beforeOrders.ok, false);
+
+  let ready = submitDreambreakerOrder(activated.teamData, {
+    matchupId: "matchup-1",
+    teamId: "team-a",
+    order: ["m1", "m2", "f1", "f2"],
+  }).teamData;
+  ready = submitDreambreakerOrder(ready, {
+    matchupId: "matchup-1",
+    teamId: "team-b",
+    order: ["m3", "m4", "f3", "f4"],
+  }).teamData;
+  assert.equal(ready.matchups[0].dreambreaker?.status, DREAMBREAKER_STATUS.READY);
+  const started = startDreambreaker(ready, "matchup-1");
+  assert.equal(started.ok, true);
+  assert.equal(started.teamData.matchups[0].dreambreaker?.status, DREAMBREAKER_STATUS.IN_PROGRESS);
+  assert.ok(
+    started.teamData.matchups[0].subMatches.some((sub) =>
+      String(sub.disciplineId || "").toLowerCase().includes("dream")
+    )
+  );
+
+  const unequal = computeMatchupResult(
+    buildMlpMatchup({
+      settings: {
+        stageTieBreakPolicy: { group: STAGE_TIE_BREAK_POLICY.TOTAL_SUBMATCH_POINTS },
+      },
+    }),
+    "matchup-1"
+  );
+  assert.equal(startDreambreaker(unequal.teamData, "matchup-1").ok, false);
+  const startCommand = buildRefereeDreambreakerStartCommand(unequal.teamData.matchups[0]);
+  assert.equal(startCommand.ok, false);
+});
+
+test("17. reload persistence keeps fallback Dreambreaker required", () => {
+  const computed = computeMatchupResult(buildEqualTotalPointsMatchup(), "matchup-1");
+  const reloaded = normalizeTeamData(JSON.parse(JSON.stringify(computed.teamData)));
+  assert.equal(
+    reloaded.settings.stageTieBreakPolicy.group,
+    STAGE_TIE_BREAK_POLICY.TOTAL_SUBMATCH_POINTS
+  );
+  assert.equal(reloaded.matchups[0].result.needsDreambreaker, true);
+  assert.equal(reloaded.matchups[0].result.tieBreakStatus, TOTAL_POINTS_SECONDARY_TIE_STATUS);
+  assert.equal(reloaded.matchups[0].dreambreaker?.status, DREAMBREAKER_STATUS.LINEUP_OPEN);
+  const again = computeMatchupResult(reloaded, "matchup-1");
+  assert.equal(again.needsDreambreaker, true);
+  assert.equal(again.result.winnerTeamId, "");
+  assert.equal(again.teamData.matchups[0].dreambreaker?.status, DREAMBREAKER_STATUS.LINEUP_OPEN);
+});
+
+test("SQL package is locked local-only and documents DREAMBREAKER_FALLBACK", () => {
   const readme = readPkg("README.md");
   assert.match(readme, /DO NOT APPLY/);
   assert.match(readme, /STAGE_TIEBREAK_POLICY_IMPLEMENTED=YES/);
-  assert.match(readme, /TOTAL_POINTS_SECONDARY_TIE_CONTRACT=UNDEFINED/);
+  assert.match(readme, /TOTAL_POINTS_SECONDARY_TIE_CONTRACT=DREAMBREAKER_FALLBACK/);
   assert.match(readme, /DREAMBREAKER/);
 
   const apply = readPkg("02_APPLY.sql");
   assert.match(apply, /stageTieBreakPolicy/);
   assert.match(apply, /TOTAL_SUBMATCH_POINTS/);
   assert.match(apply, /STAGE_TIEBREAK_POLICY_LOCKED/);
-  assert.match(apply, /secondary_tie_unresolved/);
-  assert.match(apply, /STAGE_POLICY_NOT_DREAMBREAKER/);
+  assert.match(apply, /dreambreaker_fallback/);
+  assert.match(apply, /TOTAL_POINTS_SECONDARY_TIE_CONTRACT=DREAMBREAKER_FALLBACK/);
+  assert.doesNotMatch(apply, /secondary_tie_unresolved/);
+  assert.doesNotMatch(apply, /STAGE_POLICY_NOT_DREAMBREAKER/);
 
   const verify = readPkg("03_VERIFY.sql");
   assert.match(verify, /No data mutation|Read-only/i);
+  assert.match(verify, /dreambreaker_fallback/);
+  assert.match(verify, /still uses unresolved secondary-tie behavior/);
 
   const rollback = readPkg("04_ROLLBACK.sql");
   assert.match(rollback, /drop function if exists public.team_tournament_resolve_stage_tiebreak_policy/);

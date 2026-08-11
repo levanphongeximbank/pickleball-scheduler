@@ -19,8 +19,8 @@ import {
 
 export const STAGE_TIEBREAK_POLICY_LOCKED_CODE = "STAGE_TIEBREAK_POLICY_LOCKED";
 export const STAGE_TIEBREAK_POLICY_INVALID_CODE = "INVALID_STAGE_TIEBREAK_POLICY";
-export const TOTAL_POINTS_SECONDARY_TIE_STATUS = "secondary_tie_unresolved";
-export const TOTAL_POINTS_SECONDARY_TIE_CONTRACT = "UNDEFINED";
+export const TOTAL_POINTS_SECONDARY_TIE_STATUS = "dreambreaker_fallback";
+export const TOTAL_POINTS_SECONDARY_TIE_CONTRACT = "DREAMBREAKER_FALLBACK";
 
 const POLICY_VALUES = new Set(Object.values(STAGE_TIE_BREAK_POLICY));
 const STAGE_KEY_SET = new Set(STAGE_TIE_BREAK_POLICY_KEYS);
@@ -258,6 +258,49 @@ export function isTotalSubmatchPointsPolicy(teamData, matchup, tournament = null
   );
 }
 
+export function sumFinalizedNormalChildPoints(subMatches = []) {
+  let teamAPoints = 0;
+  let teamBPoints = 0;
+  for (const subMatch of subMatches || []) {
+    const finalized =
+      subMatch?.status === SUB_MATCH_STATUS.COMPLETED ||
+      subMatch?.status === SUB_MATCH_STATUS.FORFEIT;
+    if (!finalized) {
+      continue;
+    }
+    teamAPoints += Number(subMatch.score?.teamA) || 0;
+    teamBPoints += Number(subMatch.score?.teamB) || 0;
+  }
+  return { teamAPoints, teamBPoints };
+}
+
+/**
+ * Canonical Dreambreaker is required when:
+ * - policy is DREAMBREAKER and mains finish 2-2, or
+ * - policy is TOTAL_SUBMATCH_POINTS, mains finish tied, and point totals are also tied.
+ */
+export function shouldRequireCanonicalDreambreaker(
+  teamData,
+  matchup,
+  {
+    teamAWins,
+    teamBWins,
+    teamAPoints,
+    teamBPoints,
+    allMainDone,
+    tournament = null,
+  } = {}
+) {
+  if (!allMainDone || Number(teamAWins) !== 2 || Number(teamBWins) !== 2) {
+    return false;
+  }
+  const policy = resolveEffectiveStageTieBreakPolicy(teamData, matchup, tournament);
+  if (policy === STAGE_TIE_BREAK_POLICY.TOTAL_SUBMATCH_POINTS) {
+    return Number(teamAPoints) === Number(teamBPoints);
+  }
+  return policy === STAGE_TIE_BREAK_POLICY.DREAMBREAKER;
+}
+
 function hasStartedScoring(matchup) {
   const status = String(matchup?.status || "");
   if (status === MATCHUP_STATUS.IN_PROGRESS || status === MATCHUP_STATUS.COMPLETED) {
@@ -338,5 +381,6 @@ export function resolvePointsTieWinner(matchup, teamAPoints, teamBPoints) {
     winnerTeamId: "",
     tieBreakStatus: TOTAL_POINTS_SECONDARY_TIE_STATUS,
     secondaryTie: true,
+    fallback: STAGE_TIE_BREAK_POLICY.DREAMBREAKER,
   };
 }

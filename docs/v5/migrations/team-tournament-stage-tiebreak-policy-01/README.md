@@ -19,15 +19,15 @@ Allowed keys (derived from existing group / knockout remaining-teams identity):
 Allowed values:
 
 - `DREAMBREAKER` — existing 2–2 Dreambreaker lifecycle (default)
-- `TOTAL_SUBMATCH_POINTS` — if normal child wins are tied, higher sum of normal child points wins; Dreambreaker does **not** activate
+- `TOTAL_SUBMATCH_POINTS` — if normal child wins are tied, higher sum of normal child points wins; Dreambreaker does **not** activate when totals differ
 
 Missing key / missing object → **`DREAMBREAKER`**. Existing tournaments do not switch to total points.
 
 `STAGE_TIEBREAK_POLICY_IMPLEMENTED=YES`
 
-`TOTAL_POINTS_SECONDARY_TIE_CONTRACT=UNDEFINED`
+`TOTAL_POINTS_SECONDARY_TIE_CONTRACT=DREAMBREAKER_FALLBACK`
 
-If normal wins are tied **and** total points are also tied: no parent winner is invented, Dreambreaker is not activated, matchup stays unresolved. Owner must decide the final rule.
+If normal wins are tied **and** total points are also tied: fall back to the existing canonical Dreambreaker lifecycle (`needsDreambreaker=true`). Do not leave the matchup unresolved. Do not invent a second Dreambreaker.
 
 ## Storage
 
@@ -53,8 +53,8 @@ Rollback: `04_ROLLBACK.sql` (restores prior RPC bodies; leaves JSON keys).
 | File | SHA256 |
 |------|--------|
 | `01_PRECHECK.sql` | `ecb59ca5b3ea7e94ed7464e360a23ba7fdb2a6145264b8f86d7819243b9c7c75` |
-| `02_APPLY.sql` | `1d1eabf04fb6299bf5640522690af3faca04087081a1b155e1d55526d33e07a8` |
-| `03_VERIFY.sql` | `c272ee744703799fea74c13ee7954683d0935deb51921c099e5de924a3f47dd4` |
+| `02_APPLY.sql` | `b536dd994daaacf15a660030a302533ed0500fdb7bf0f3ae9fef3ff43b66818e` |
+| `03_VERIFY.sql` | `76107b9b6543c2f3a4c980146e498160713f48407afb82e7e0baa805f88f6bdc` |
 | `04_ROLLBACK.sql` | `203b0d90c2852b64fd817180fe7220cadea007177aa3615ffcaf872501c04647` |
 
 ## Safety
