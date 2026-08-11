@@ -5,6 +5,12 @@ import {
   SUB_MATCH_STATUS,
 } from "../constants.js";
 import { isMlpFormat } from "./mlpPresetEngine.js";
+import {
+  isDreambreakerTieBreakPolicy,
+  isTotalSubmatchPointsPolicy,
+  shouldRequireCanonicalDreambreaker,
+  sumFinalizedNormalChildPoints,
+} from "./teamStageTieBreakPolicy.js";
 
 function isMainDiscipline(discipline) {
   if (!discipline) {
@@ -68,11 +74,36 @@ export function computeMatchupTieProgress(teamData, matchup) {
       subMatch.status === SUB_MATCH_STATUS.FORFEIT
   );
 
+  const { teamAPoints, teamBPoints } = sumFinalizedNormalChildPoints(mainSubMatches);
+  const dreambreakerPolicy = isDreambreakerTieBreakPolicy(teamData, matchup);
+  const totalPointsPolicy = isTotalSubmatchPointsPolicy(teamData, matchup);
+  const requireCanonicalDreambreaker = shouldRequireCanonicalDreambreaker(teamData, matchup, {
+    teamAWins,
+    teamBWins,
+    teamAPoints,
+    teamBPoints,
+    allMainDone,
+  });
   const dreambreakerEnabled =
-    isMlpFormat(teamData) && teamData.settings?.dreambreakerEnabled !== false;
+    isMlpFormat(teamData) &&
+    teamData.settings?.dreambreakerEnabled !== false &&
+    (dreambreakerPolicy || (totalPointsPolicy && requireCanonicalDreambreaker));
+
+  const resultBlocksDreambreaker =
+    matchup.result?.needsDreambreaker === false ||
+    matchup.result?.tieBreakStatus === "points" ||
+    (Boolean(matchup.result?.winnerTeamId) &&
+      allMainDone &&
+      teamAWins === teamBWins &&
+      matchup.result?.tieBreakStatus !== "dreambreaker");
 
   const needsDreambreaker =
-    dreambreakerEnabled && allMainDone && teamAWins === 2 && teamBWins === 2;
+    dreambreakerEnabled &&
+    requireCanonicalDreambreaker &&
+    !resultBlocksDreambreaker &&
+    allMainDone &&
+    teamAWins === 2 &&
+    teamBWins === 2;
 
   const dreambreakerStatus = matchup.dreambreaker?.status || DREAMBREAKER_STATUS.PENDING;
 
@@ -80,7 +111,8 @@ export function computeMatchupTieProgress(teamData, matchup) {
 
   const tieDecided =
     (allMainDone && !needsDreambreaker && teamAWins !== teamBWins) ||
-    dreambreakerFinished;
+    dreambreakerFinished ||
+    (allMainDone && Boolean(matchup.result?.winnerTeamId));
 
   const tieClinchedEarly = teamAWins >= 3 || teamBWins >= 3;
 

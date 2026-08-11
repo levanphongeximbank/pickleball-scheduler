@@ -23,6 +23,10 @@ import {
   resolveDreambreakerExpectedVersion,
 } from "./captainDreambreakerPortalContract.js";
 import { resolveDreambreakerScoringFormat } from "./dreambreakerScoringContract.js";
+import {
+  isTotalSubmatchPointsPolicy,
+  sumFinalizedNormalChildPoints,
+} from "./teamStageTieBreakPolicy.js";
 
 function shufflePlayerIds(playerIds = []) {
   const copy = [...playerIds];
@@ -182,6 +186,14 @@ export function maybeActivateDreambreaker(teamData, matchupId, now = new Date().
   });
 
   if (teamAWins === teamBWins && teamAWins === 2) {
+    const { teamAPoints, teamBPoints } = sumFinalizedNormalChildPoints(mainSubMatches);
+    if (
+      isTotalSubmatchPointsPolicy(teamData, matchup) &&
+      Number(teamAPoints) !== Number(teamBPoints)
+    ) {
+      return { ok: true, teamData, activated: false, code: "STAGE_POLICY_TOTAL_POINTS_DECIDES" };
+    }
+
     const dreambreakerDiscipline = getDreambreakerDiscipline(teamData.disciplines);
     const existing = matchup.dreambreaker || emptyDreambreaker();
 

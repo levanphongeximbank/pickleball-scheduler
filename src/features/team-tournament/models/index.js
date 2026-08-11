@@ -20,6 +20,10 @@ import {
   normalizeRosterRules,
   resolveFormatVenueDefaults,
 } from "../engines/teamFormatVenueConfig.js";
+import {
+  normalizeStageTieBreakPolicy,
+  readStoredCompetitionStage,
+} from "../engines/teamStageTieBreakPolicy.js";
 
 const VALID_CATEGORIES = new Set(Object.values(DISCIPLINE_CATEGORY));
 const VALID_GENDERS = new Set(Object.values(GENDER_REQUIREMENT));
@@ -344,7 +348,23 @@ export function normalizeMatchup(matchup) {
       Number(matchup.matchNumberInRound) > 0 ? Number(matchup.matchNumberInRound) : 0,
     status,
     /** S2-D — `group` (default) or `knockout` */
-    stage: matchup.stage ? String(matchup.stage).trim() : "",
+    stage: matchup.stage
+      ? String(matchup.stage).trim()
+      : matchup.scheduleMeta?.stage
+        ? String(matchup.scheduleMeta.stage).trim()
+        : "",
+    competitionStage: readStoredCompetitionStage(matchup),
+    scheduleMeta:
+      matchup.scheduleMeta && typeof matchup.scheduleMeta === "object"
+        ? {
+            ...matchup.scheduleMeta,
+            ...(readStoredCompetitionStage(matchup)
+              ? { competitionStage: readStoredCompetitionStage(matchup) }
+              : {}),
+          }
+        : readStoredCompetitionStage(matchup)
+          ? { competitionStage: readStoredCompetitionStage(matchup) }
+          : matchup.scheduleMeta,
     bracketMatchId: matchup.bracketMatchId
       ? String(matchup.bracketMatchId).trim()
       : "",
@@ -374,6 +394,17 @@ export function normalizeMatchup(matchup) {
             forfeitReason: matchup.result.forfeitReason
               ? String(matchup.result.forfeitReason).trim()
               : "",
+            ...(matchup.result.tieBreakPolicy
+              ? { tieBreakPolicy: String(matchup.result.tieBreakPolicy).trim() }
+              : {}),
+            ...(matchup.result.tieBreakStatus
+              ? { tieBreakStatus: String(matchup.result.tieBreakStatus).trim() }
+              : {}),
+            ...(matchup.result.needsDreambreaker === true
+              ? { needsDreambreaker: true }
+              : matchup.result.needsDreambreaker === false
+                ? { needsDreambreaker: false }
+                : {}),
           }
         : null,
     dreambreaker: normalizeDreambreakerState(matchup.dreambreaker),
@@ -417,6 +448,15 @@ export function createMatchupRecord(teamAId, teamBId, options = {}) {
       Number(options.matchNumberInRound) > 0 ? Number(options.matchNumberInRound) : 0,
     status: options.status || MATCHUP_STATUS.LINEUP_OPEN,
     stage: options.stage || "",
+    competitionStage: options.competitionStage || "",
+    scheduleMeta: {
+      ...(options.scheduleMeta && typeof options.scheduleMeta === "object"
+        ? options.scheduleMeta
+        : {}),
+      ...(options.stage ? { stage: options.stage } : {}),
+      ...(options.competitionStage ? { competitionStage: options.competitionStage } : {}),
+      ...(options.nextMatchupId ? { nextMatchupId: options.nextMatchupId } : {}),
+    },
     bracketMatchId: options.bracketMatchId || "",
     nextMatchupId: options.nextMatchupId || "",
     nextSlot: options.nextSlot || "",
@@ -578,6 +618,9 @@ export function normalizeTeamData(teamData = {}) {
   }
   if (Object.prototype.hasOwnProperty.call(rawSettings, "teamsPerGroup")) {
     settings.teamsPerGroup = formatVenue.teamsPerGroup;
+  }
+  if (Object.prototype.hasOwnProperty.call(rawSettings, "stageTieBreakPolicy")) {
+    settings.stageTieBreakPolicy = normalizeStageTieBreakPolicy(rawSettings.stageTieBreakPolicy);
   }
 
   const substitutionLog = Array.isArray(teamData.substitutionLog)

@@ -36,6 +36,7 @@ import {
   SETUP_CONFIG_GATE_OFF_MESSAGE,
   validateFormatVenueConfigForPersist,
 } from "../engines/teamFormatVenueConfig.js";
+import { assertStageTieBreakPolicyWritable } from "../engines/teamStageTieBreakPolicy.js";
 import {
   planCanonicalMlpDreambreakerPersist,
 } from "../engines/mlpPresetEngine.js";
@@ -794,11 +795,33 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           error: validated.error || "Format & Venue config không hợp lệ.",
         });
       }
-      const setupConfigPayload = validated.payload;
 
-      const current =
+      const currentForLock =
         options.aggregate ||
         (await repo.getTournament(clubId, tournamentId, { schemaVersion: 7 }));
+      const lockTeamData =
+        options.teamData ||
+        currentForLock?.data?.teamData ||
+        currentForLock?.aggregate?.teamData ||
+        currentForLock?.teamData ||
+        {};
+      if (validated.payload.stageTieBreakPolicy) {
+        const lockCheck = assertStageTieBreakPolicyWritable(
+          lockTeamData,
+          validated.payload.stageTieBreakPolicy,
+          options.tournament || currentForLock?.data || currentForLock?.aggregate || currentForLock
+        );
+        if (!lockCheck.ok) {
+          return mapRepositoryResultToUi({
+            ok: false,
+            code: lockCheck.code || SETUP_MUTATION_CODES.VALIDATION_ERROR,
+            error: lockCheck.error || "Không thể đổi luật hòa của vòng đã khóa.",
+          });
+        }
+      }
+      const setupConfigPayload = validated.payload;
+
+      const current = currentForLock;
       const aggregate = current?.data || current?.aggregate || current;
       if (!aggregate?.id && !aggregate?.teamData) {
         return mapRepositoryResultToUi(current);

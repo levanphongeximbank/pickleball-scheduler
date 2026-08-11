@@ -80,6 +80,41 @@ export const KNOCKOUT_FORMAT = {
   SEMIFINALS: "semifinals",
 };
 
+/**
+ * Derived competition stage for matchup tie-break policy.
+ * Group vs knockout remains MATCHUP_STAGE; these keys name the KO round
+ * using remaining-teams / next-pointer identity already produced by the
+ * knockout engine (not a parallel taxonomy).
+ */
+export const COMPETITION_STAGE = {
+  GROUP: "group",
+  ROUND_OF_16: "round_of_16",
+  QUARTERFINAL: "quarterfinal",
+  SEMIFINAL: "semifinal",
+  FINAL: "final",
+};
+
+export const STAGE_TIE_BREAK_POLICY = {
+  DREAMBREAKER: "DREAMBREAKER",
+  TOTAL_SUBMATCH_POINTS: "TOTAL_SUBMATCH_POINTS",
+};
+
+export const STAGE_TIE_BREAK_POLICY_KEYS = [
+  COMPETITION_STAGE.GROUP,
+  COMPETITION_STAGE.ROUND_OF_16,
+  COMPETITION_STAGE.QUARTERFINAL,
+  COMPETITION_STAGE.SEMIFINAL,
+  COMPETITION_STAGE.FINAL,
+];
+
+export const DEFAULT_STAGE_TIE_BREAK_POLICY = Object.freeze({
+  [COMPETITION_STAGE.GROUP]: STAGE_TIE_BREAK_POLICY.DREAMBREAKER,
+  [COMPETITION_STAGE.ROUND_OF_16]: STAGE_TIE_BREAK_POLICY.DREAMBREAKER,
+  [COMPETITION_STAGE.QUARTERFINAL]: STAGE_TIE_BREAK_POLICY.DREAMBREAKER,
+  [COMPETITION_STAGE.SEMIFINAL]: STAGE_TIE_BREAK_POLICY.DREAMBREAKER,
+  [COMPETITION_STAGE.FINAL]: STAGE_TIE_BREAK_POLICY.DREAMBREAKER,
+});
+
 export const DISCIPLINE_KIND = {
   DOUBLES: "doubles",
   SINGLES: "singles",

@@ -106,6 +106,9 @@ export function mapCaptainPortalResponse(payload = {}) {
       payload.captainAccessEnabled === true ||
       rawTournament.settings?.captainAccessEnabled === true,
     dreambreakerEnabled: rawTournament.settings?.dreambreakerEnabled !== false,
+    ...(rawTournament.settings?.stageTieBreakPolicy
+      ? { stageTieBreakPolicy: rawTournament.settings.stageTieBreakPolicy }
+      : {}),
   };
 
   const viewerTeamId = payload.viewerTeamId || payload.viewer?.viewerTeamId || null;

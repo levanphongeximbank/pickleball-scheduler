@@ -11,6 +11,10 @@ import {
   GROUP_MODE,
   KNOCKOUT_FORMAT,
 } from "../constants.js";
+import {
+  normalizeStageTieBreakPolicy,
+  validateStageTieBreakPolicyShape,
+} from "./teamStageTieBreakPolicy.js";
 
 export const FORMAT_VENUE_SETTINGS_KEYS = Object.freeze([
   "formatPreset",
@@ -22,6 +26,7 @@ export const FORMAT_VENUE_SETTINGS_KEYS = Object.freeze([
   "knockoutFormat",
   "selectedCourtIds",
   "teamsPerGroup",
+  "stageTieBreakPolicy",
 ]);
 
 export const NO_COURTS_PUBLISH_CODE = "NO_SELECTED_COURTS";
@@ -203,6 +208,7 @@ export function resolveFormatVenueDefaults(teamData = {}, tournament = null) {
     knockoutFormat,
     selectedCourtIds,
     teamsPerGroup,
+    stageTieBreakPolicy: normalizeStageTieBreakPolicy(rawSettings.stageTieBreakPolicy),
   };
 }
 
@@ -217,6 +223,9 @@ export function mergeFormatVenueIntoSettings(settings = {}, config = {}) {
   if (config.rosterRules) {
     resolved.rosterRules = normalizeRosterRules(config.rosterRules);
   }
+  if (config.stageTieBreakPolicy != null) {
+    resolved.stageTieBreakPolicy = normalizeStageTieBreakPolicy(config.stageTieBreakPolicy);
+  }
   if (Array.isArray(config.selectedCourtIds)) {
     resolved.selectedCourtIds = [
       ...new Set(config.selectedCourtIds.map((id) => String(id).trim()).filter(Boolean)),
@@ -225,6 +234,12 @@ export function mergeFormatVenueIntoSettings(settings = {}, config = {}) {
 
   const next = { ...settings };
   for (const key of FORMAT_VENUE_SETTINGS_KEYS) {
+    if (key === "stageTieBreakPolicy") {
+      if (config.stageTieBreakPolicy != null) {
+        next.stageTieBreakPolicy = normalizeStageTieBreakPolicy(config.stageTieBreakPolicy);
+      }
+      continue;
+    }
     if (resolved[key] !== undefined) {
       next[key] = resolved[key];
     }
@@ -403,6 +418,16 @@ export function validateFormatVenueConfigForPersist(config = {}) {
   payload.selectedCourtIds = Array.isArray(payload.selectedCourtIds)
     ? [...new Set(payload.selectedCourtIds.map((id) => String(id).trim()).filter(Boolean))]
     : [];
+
+  if (config.stageTieBreakPolicy != null) {
+    const policy = validateStageTieBreakPolicyShape(config.stageTieBreakPolicy);
+    if (!policy.ok) {
+      return policy;
+    }
+    payload.stageTieBreakPolicy = policy.policy;
+  } else {
+    delete payload.stageTieBreakPolicy;
+  }
 
   return { ok: true, payload };
 }
