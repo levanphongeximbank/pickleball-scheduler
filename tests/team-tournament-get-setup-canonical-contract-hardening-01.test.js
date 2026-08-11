@@ -139,22 +139,18 @@ describe("team-tournament-get-setup-canonical-contract-hardening-01", () => {
     assert.match(cloud, /diagnostic:\s*false/);
   });
 
-  it("D 1-group flow still materializes + replace_groups once + no F5", async () => {
+  it("D 1-group flow still materializes + commit_pairing once + no F5", async () => {
     const teams = buildTeams(4);
-    let replaceCalls = 0;
+    let commitCalls = 0;
+    let persistCalls = 0;
+    let applyCalls = 0;
+    let persistedGroups = null;
     __setConfirmAiPairingCloudPersistenceDepsForTests({
       preflightSetupMutationCapability: () => ({ ok: true, gateEnabled: true }),
-      applyAiGeneratedTeamsToTournament: async (_c, _t, payload) => ({
-        ok: true,
-        captainsPersisted: 4,
-        teamData: {
-          teams: payload.teams,
-          groups: [],
-          matchups: [],
-          settings: payload.settings,
-        },
-        tournament: { id: "tt-1" },
-      }),
+      applyAiGeneratedTeamsToTournament: async () => {
+        applyCalls += 1;
+        return { ok: false, code: "MUST_NOT_CALL" };
+      },
     });
 
     const result = await confirmAiPairingCloudPersistence({
@@ -177,20 +173,31 @@ describe("team-tournament-get-setup-canonical-contract-hardening-01", () => {
           groupCount: 1,
         },
       },
-      persistSetupTeamData: async (teamData) => {
-        replaceCalls += 1;
-        assert.equal(teamData.groups.length, 1);
-        assert.equal(teamData.groups[0].id, EXPLICIT_SINGLE_GROUP_ID);
+      persistSetupTeamData: async () => {
+        persistCalls += 1;
+        return { ok: false, code: "MUST_NOT_CALL" };
+      },
+      commitPairing: async ({ groups }) => {
+        commitCalls += 1;
+        persistedGroups = groups || [];
+        assert.equal(persistedGroups.length, 1);
+        assert.equal(persistedGroups[0].id, EXPLICIT_SINGLE_GROUP_ID);
         return {
           ok: true,
-          teamData: { teams, groups: teamData.groups, matchups: [] },
-          readback: { teamData: { teams, groups: teamData.groups, matchups: [] } },
+          version: 2,
+          teamData: { teams, groups: persistedGroups, matchups: [] },
         };
       },
-      reload: async () => ({ ok: true, version: 2 }),
+      reload: async () => ({
+        ok: true,
+        version: 2,
+        teamData: { teams, groups: persistedGroups, matchups: [] },
+      }),
     });
     assert.equal(result.ok, true, result.error);
-    assert.equal(replaceCalls, 1);
+    assert.equal(commitCalls, 1);
+    assert.equal(persistCalls, 0);
+    assert.equal(applyCalls, 0);
 
     const groups = [
       {

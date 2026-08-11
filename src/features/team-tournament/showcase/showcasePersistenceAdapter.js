@@ -1,11 +1,13 @@
 /**
  * P1.5A Showcase — persistence adapter.
- * Uses existing team mirror + groups.replace / get_setup v7 only.
- * No blob authority; no fake success; idempotent confirm.
+ * Teams+groups confirm uses team_tournament_commit_pairing only.
+ * Missing RPC / NO_SUPABASE → fail closed. No save_team / legacy group writer.
  */
 
-import { applyAiGeneratedTeamsToTournament } from "../services/teamTournamentService.js";
-import { DEFAULT_ENGINE_VERSION } from "../canonical/teamTournamentMutationEnvelope.js";
+import {
+  isPairingAuthorityUnavailable,
+} from "../services/aiPairingCloudPersistence.js";
+import { rpcTeamTournamentCommitPairing } from "../services/teamTournamentRpcService.js";
 import { SHOWCASE_MODE } from "./showcaseConstants.js";
 
 /**
@@ -24,15 +26,10 @@ import { SHOWCASE_MODE } from "./showcaseConstants.js";
 export async function confirmShowcasePersistence(params = {}) {
   const {
     session,
-    clubId,
     tournamentId,
-    persistSetupTeamData,
     reload,
     rulesVersion,
-    teamsAlreadyPersisted = false,
-    previousTeamData = null,
     expectedTournamentVersion,
-    confirmDestructive = true,
   } = params;
 
   if (session?.mode === SHOWCASE_MODE.REPLAY) {
@@ -63,112 +60,85 @@ export async function confirmShowcasePersistence(params = {}) {
     };
   }
 
-  if (typeof persistSetupTeamData !== "function") {
+  const commitPairing = params.commitPairing || rpcTeamTournamentCommitPairing;
+  if (typeof commitPairing !== "function") {
     return {
       ok: false,
-      code: "NO_PERSIST_ADAPTER",
-      error: "Thiếu adapter persistence canonical.",
+      code: "RPC_MISSING",
+      error:
+        "Thiếu RPC team_tournament_commit_pairing — không ghi đội/bảng bằng writer phụ.",
       writeAttempted: false,
-    };
-  }
-
-  let writeCount = 0;
-  let versionAfterTeams = expectedTournamentVersion;
-
-  if (!teamsAlreadyPersisted) {
-    const teamSave = await applyAiGeneratedTeamsToTournament(
-      clubId,
-      tournamentId,
-      {
-        ...session.teamData,
-        groups: [],
-        matchups: [],
-      },
-      {
-        tournament: params.tournament || null,
-        currentTenantId: params.currentTenantId || null,
-      }
-    );
-    writeCount += 1;
-    if (!teamSave?.ok) {
-      return {
-        ok: false,
-        code: teamSave?.code || "TEAM_SAVE_FAILED",
-        error: teamSave?.error || "Không lưu được danh sách đội.",
-        writeAttempted: true,
-        writeCount,
-        previewRetained: true,
-      };
-    }
-    if (typeof reload === "function") {
-      // Version peek only — do not apply intermediate teams-without-groups to UI.
-      const reloaded = await reload({
-        schemaVersion: 7,
-        diagnostic: true,
-        applyUi: false,
-        reason: "showcase_version_peek",
-      });
-      versionAfterTeams =
-        reloaded?.version ??
-        reloaded?.data?.version ??
-        versionAfterTeams;
-    }
-  }
-
-  const groupResult = await persistSetupTeamData(session.teamData, {
-    rulesVersion: resolvedRules,
-    confirmDestructive,
-    expectedTournamentVersion: versionAfterTeams,
-    previousTeamData: previousTeamData || undefined,
-    engineVersion: session.engineVersion || DEFAULT_ENGINE_VERSION,
-  });
-  writeCount += 1;
-
-  if (!groupResult?.ok) {
-    return {
-      ok: false,
-      code: groupResult?.code || "GROUP_SAVE_FAILED",
-      error: groupResult?.error || "Không lưu được chia bảng.",
-      writeAttempted: true,
-      writeCount,
       previewRetained: true,
     };
   }
 
-  const readback = groupResult.readback || groupResult.reloadResult || groupResult.data;
-  const persistedTeams =
-    readback?.teamData?.teams ||
-    groupResult.teamData?.teams ||
-    groupResult.aggregate?.teamData?.teams ||
-    [];
-  const persistedGroups =
-    readback?.teamData?.groups ||
-    groupResult.teamData?.groups ||
-    groupResult.aggregate?.teamData?.groups ||
-    [];
+  const atomic = await commitPairing({
+    tournamentId,
+    teams: session.teamData.teams,
+    groups: session.teamData.groups,
+    settingsPatch: {
+      groupCount: Math.max(1, Number(session.teamData.settings?.groupCount) || session.teamData.groups.length || 1),
+    },
+    expectedVersion: expectedTournamentVersion,
+  });
 
-  if (!persistedTeams.length || !persistedGroups.length) {
-    // Success path requires read-back verification from orchestrator;
-    // if adapter already set ok + reload, trust orchestrator result.
-    if (!groupResult.reloadResult?.ok && !groupResult.readbackVerified) {
+  if (!atomic?.ok) {
+    const rawCode = String(atomic?.code || "PAIRING_COMMIT_FAILED");
+    if (isPairingAuthorityUnavailable(rawCode)) {
       return {
         ok: false,
-        code: "READBACK_FAILED",
-        error: "Lưu xong nhưng không đọc lại được đội/bảng từ get_setup v7.",
-        writeAttempted: true,
-        writeCount,
+        code: rawCode === "NO_SUPABASE" ? "NO_SUPABASE" : rawCode === "rpc_not_deployed" || rawCode === "RPC_NOT_DEPLOYED" ? "rpc_not_deployed" : "RPC_MISSING",
+        error:
+          "team_tournament_commit_pairing không khả dụng. Không ghi đội/bảng bằng writer phụ.",
+        writeAttempted: false,
         previewRetained: true,
       };
     }
+    return {
+      ok: false,
+      code: rawCode,
+      error: atomic?.error || "Không lưu được đội/bảng trong một giao dịch.",
+      writeAttempted: true,
+      writeCount: 1,
+      previewRetained: true,
+    };
+  }
+
+  let readTeamData = atomic.teamData || null;
+  if (typeof reload === "function") {
+    const readback = await reload({
+      schemaVersion: 7,
+      diagnostic: true,
+      applyUi: false,
+      reason: "showcase_atomic_readback",
+    });
+    readTeamData =
+      readback?.teamData ||
+      readback?.data?.teamData ||
+      readback?.tournament?.teamData ||
+      readTeamData;
+  }
+
+  const persistedTeams = Array.isArray(readTeamData?.teams) ? readTeamData.teams : [];
+  const persistedGroups = Array.isArray(readTeamData?.groups) ? readTeamData.groups : [];
+  if (!persistedTeams.length || !persistedGroups.length) {
+    return {
+      ok: false,
+      code: "READBACK_FAILED",
+      error: "Lưu xong nhưng không đọc lại được đội/bảng từ get_setup v7.",
+      writeAttempted: true,
+      writeCount: 1,
+      previewRetained: true,
+    };
   }
 
   return {
     ok: true,
     writeAttempted: true,
-    writeCount,
+    writeCount: 1,
     rulesVersion: resolvedRules,
     savedAt: new Date().toISOString(),
-    result: groupResult,
+    result: atomic,
     persistedTeams,
     persistedGroups,
     usedBlob: false,

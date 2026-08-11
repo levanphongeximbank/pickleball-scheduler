@@ -1229,6 +1229,7 @@ export async function rpcTeamTournamentCreateCanonical(params = {}) {
 }
 
 export async function rpcTeamTournamentCommitPairing(params = {}) {
+  const expectedVersion = Number(params.expectedVersion);
   const result = await callTeamTournamentRpc("team_tournament_commit_pairing", {
     p_tournament_id: String(params.tournamentId || ""),
     p_teams: Array.isArray(params.teams) ? params.teams : [],
@@ -1237,6 +1238,7 @@ export async function rpcTeamTournamentCommitPairing(params = {}) {
       params.settingsPatch && typeof params.settingsPatch === "object"
         ? params.settingsPatch
         : {},
+    p_expected_version: Number.isFinite(expectedVersion) ? expectedVersion : null,
   });
   return mapOptionalLifecycleRpc(result);
 }

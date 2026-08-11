@@ -432,7 +432,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           ok: false,
           code: "GATE_OFF",
           error:
-            "Setup mutation v7 đang tắt. Bật VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7 sau khi P1.3 được Staging-certified.",
+            "Setup mutation v7 đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7=false). Không ghi setup bằng writer phụ.",
         });
       }
 
@@ -478,7 +478,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         if (!remaining.commandName) {
           return first;
         }
-        return this.persistSetupTeamData(clubId, tournamentId, ensuredNext, {
+        const nextResult = await this.persistSetupTeamData(clubId, tournamentId, ensuredNext, {
           ...options,
           previousTeamData: first.teamData || dreamOnlyNext,
           expectedTournamentVersion: Number(
@@ -488,6 +488,15 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           aggregate: first.aggregate || options.aggregate,
           tournament: first.tournament || options.tournament,
         });
+        if (!nextResult?.ok) {
+          return {
+            ...nextResult,
+            partial: true,
+            completedCommand: "discipline.dreambreaker_ensure",
+            remainingCommand: remaining.commandName,
+          };
+        }
+        return nextResult;
       }
 
       const expectedTournamentVersion = Number(
@@ -562,36 +571,16 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       });
       const uiResult = mapRepositoryResultToUi(result);
       // Success only after get_setup v7 read-back verification.
+      // One inferred command per call — not a multi-RPC transaction.
       if (uiResult.ok && result.reloadResult?.ok) {
-        const committed = {
+        return {
           ...uiResult,
           version: result.version ?? result.reloadResult.version,
           tournament: result.reloadResult.tournament,
           teamData: result.reloadResult.teamData,
           aggregate: result.reloadResult.aggregate,
+          completedCommand: inferred.commandName,
         };
-        const persistDepth = Number(options._persistDepth || 0);
-        if (persistDepth < 8) {
-          const remaining = buildSetupMutationFromTeamDataDiff({
-            previous: committed.teamData || previousTeamData,
-            next: ensuredNext,
-            tournamentId,
-            expectedTournamentVersion: Number(committed.version ?? expectedTournamentVersion),
-            rulesVersion: options.rulesVersion || aggregate.rulesVersion || "",
-          });
-          if (remaining.commandName) {
-            return this.persistSetupTeamData(clubId, tournamentId, ensuredNext, {
-              ...options,
-              previousTeamData: committed.teamData || previousTeamData,
-              expectedTournamentVersion: Number(committed.version ?? expectedTournamentVersion),
-              skipDreambreakerEnsure: true,
-              aggregate: committed.aggregate || options.aggregate,
-              tournament: committed.tournament || options.tournament,
-              _persistDepth: persistDepth + 1,
-            });
-          }
-        }
-        return committed;
       }
       if (uiResult.ok && !result.reloadResult?.ok) {
         return mapRepositoryResultToUi({
@@ -626,7 +615,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           ok: false,
           code: "GATE_OFF",
           error:
-            "Setup mutation v7 đang tắt. Bật VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7 sau khi được Staging-certified.",
+            "Setup mutation v7 đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7=false). Không ghi setup bằng writer phụ.",
         });
       }
 

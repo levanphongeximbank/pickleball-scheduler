@@ -254,6 +254,8 @@
   "tests/team-tournament-format-venue-client-wiring-remediation-01.test.js",
   "tests/team-tournament-format-venue-group-configuration-remediation-01.test.js",
   "tests/team-tournament-ai-pairing-cloud-persistence-remediation-01.test.js",
+  "tests/team-tournament-pr412-one-group-explicit-persistence-remediation-01.test.js",
+  "tests/team-tournament-get-setup-canonical-contract-hardening-01.test.js",
   "tests/v5-menu-audit.test.js",
   "tests/action-queue.test.js",
   "tests/tournament-phase25.test.js",

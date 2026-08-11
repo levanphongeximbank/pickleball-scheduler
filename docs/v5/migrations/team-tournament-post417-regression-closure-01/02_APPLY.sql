@@ -300,11 +300,15 @@ exception
 end;
 $$;
 
+drop function if exists public.team_tournament_commit_pairing(text, jsonb, jsonb, jsonb);
+drop function if exists public.team_tournament_commit_pairing(text, jsonb, jsonb, jsonb, integer);
+
 create or replace function public.team_tournament_commit_pairing(
   p_tournament_id text,
   p_teams jsonb default '[]'::jsonb,
   p_groups jsonb default '[]'::jsonb,
-  p_settings_patch jsonb default '{}'::jsonb
+  p_settings_patch jsonb default '{}'::jsonb,
+  p_expected_version integer default null
 )
 returns jsonb
 language plpgsql
@@ -334,6 +338,14 @@ begin
   end if;
   perform public.team_tournament_assert_tenant(v_header.tenant_id);
 
+  if p_expected_version is not null and coalesce(v_header.version, 1) is distinct from p_expected_version then
+    return jsonb_build_object(
+      'ok', false,
+      'code', 'VERSION_CONFLICT',
+      'version', v_header.version
+    );
+  end if;
+
   if jsonb_typeof(coalesce(p_teams, '[]'::jsonb)) <> 'array' or jsonb_array_length(coalesce(p_teams, '[]'::jsonb)) = 0 then
     return jsonb_build_object('ok', false, 'code', 'EMPTY_TEAMS');
   end if;
@@ -341,7 +353,7 @@ begin
   for v_team in select value from jsonb_array_elements(p_teams) loop
     v_external_id := coalesce(nullif(v_team->>'id', ''), nullif(v_team->>'externalTeamId', ''));
     if v_external_id is null then
-      return jsonb_build_object('ok', false, 'code', 'VALIDATION', 'error', 'Thiếu team id.');
+      raise exception using errcode = 'P0001', message = 'VALIDATION';
     end if;
 
     select t.id into v_team_id
@@ -399,7 +411,7 @@ begin
       from jsonb_array_elements(p_groups) g,
            jsonb_array_elements_text(coalesce(g.value->'teamIds', '[]'::jsonb))
     ) <> v_team_count then
-      return jsonb_build_object('ok', false, 'code', 'DUPLICATE_GROUP_TEAM');
+      raise exception using errcode = 'P0001', message = 'DUPLICATE_GROUP_TEAM';
     end if;
     if exists (
       select 1
@@ -411,7 +423,7 @@ begin
         where t.team_tournament_id = v_header.id and t.external_team_id = x.value
       )
     ) then
-      return jsonb_build_object('ok', false, 'code', 'UNKNOWN_TEAM');
+      raise exception using errcode = 'P0001', message = 'UNKNOWN_TEAM';
     end if;
 
     delete from public.team_tournament_groups where team_tournament_id = v_header.id;
@@ -458,6 +470,9 @@ exception
     if sqlerrm in ('access_denied: cross-tenant', 'TOURNAMENT_MISSING_TENANT', 'TOURNAMENT_FORBIDDEN') then
       return jsonb_build_object('ok', false, 'code', 'CROSS_TENANT_DENIED', 'error', sqlerrm);
     end if;
+    if sqlstate = 'P0001' then
+      return jsonb_build_object('ok', false, 'code', sqlerrm);
+    end if;
     raise;
 end;
 $$;
@@ -474,5 +489,5 @@ grant execute on function public.team_tournament_initial_setup_team_data(public.
 revoke all on function public.team_tournament_create(text, text, text, text, text, text, jsonb) from public, anon;
 grant execute on function public.team_tournament_create(text, text, text, text, text, text, jsonb) to authenticated;
 
-revoke all on function public.team_tournament_commit_pairing(text, jsonb, jsonb, jsonb) from public, anon;
-grant execute on function public.team_tournament_commit_pairing(text, jsonb, jsonb, jsonb) to authenticated;
+revoke all on function public.team_tournament_commit_pairing(text, jsonb, jsonb, jsonb, integer) from public, anon;
+grant execute on function public.team_tournament_commit_pairing(text, jsonb, jsonb, jsonb, integer) to authenticated;

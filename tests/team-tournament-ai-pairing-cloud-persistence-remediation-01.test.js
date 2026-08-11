@@ -18,7 +18,11 @@ import {
   __resetTeamTournamentStoreModeForTests,
   __setTeamTournamentStoreModeForTests,
 } from "../src/features/team-tournament/services/teamTournamentCloudSync.js";
-import { confirmAiPairingCloudPersistence } from "../src/features/team-tournament/services/aiPairingCloudPersistence.js";
+import {
+  __resetConfirmAiPairingCloudPersistenceDepsForTests,
+  __setConfirmAiPairingCloudPersistenceDepsForTests,
+  confirmAiPairingCloudPersistence,
+} from "../src/features/team-tournament/services/aiPairingCloudPersistence.js";
 import {
   applyAiGeneratedTeamsToTournament,
   getTeamTournamentById,
@@ -106,6 +110,7 @@ describe("team-tournament-ai-pairing-cloud-persistence-remediation-01", () => {
   });
 
   afterEach(() => {
+    __resetConfirmAiPairingCloudPersistenceDepsForTests();
     __resetTeamTournamentStoreModeForTests();
     enableRbac(false);
     signOut();
@@ -144,7 +149,16 @@ describe("team-tournament-ai-pairing-cloud-persistence-remediation-01", () => {
       teamData: normalizeTeamData({ teams: [], groups: [], matchups: [] }),
     };
 
-    let persistedGroups = null;
+    let commitCalled = 0;
+    let persistCalled = 0;
+    let applyCalled = 0;
+    const teamData = normalizeTeamData({ teams, groups, matchups: [] });
+    __setConfirmAiPairingCloudPersistenceDepsForTests({
+      applyAiGeneratedTeamsToTournament: async () => {
+        applyCalled += 1;
+        return { ok: false, code: "MUST_NOT_CALL" };
+      },
+    });
     const result = await confirmAiPairingCloudPersistence({
       clubId: PROD_CLUB_ID,
       tournamentId: PROD_SHELL_ID,
@@ -157,37 +171,30 @@ describe("team-tournament-ai-pairing-cloud-persistence-remediation-01", () => {
       }),
       rulesVersion: "ppr-runtime-v1",
       expectedTournamentVersion: 1,
-      persistSetupTeamData: async (teamData) => {
-        persistedGroups = teamData.groups || [];
-        return {
-          ok: true,
-          teamData: {
-            ...teamData,
-            groups: persistedGroups,
-            matchups: [],
-          },
-          readback: {
-            teamData: {
-              teams,
-              groups: persistedGroups,
-              matchups: [],
-            },
-          },
-        };
+      persistSetupTeamData: async () => {
+        persistCalled += 1;
+        return { ok: false, code: "MUST_NOT_CALL" };
       },
-      reload: async () => ({ ok: true, version: 2 }),
+      commitPairing: async () => {
+        commitCalled += 1;
+        return { ok: true, version: 2, teamData };
+      },
+      reload: async () => ({ ok: true, version: 2, teamData }),
     });
 
     assert.equal(result.ok, true, result.error);
+    assert.equal(commitCalled, 1);
+    assert.equal(persistCalled, 0);
+    assert.equal(applyCalled, 0);
     assert.equal(result.teamCount, 8);
     assert.equal(result.captainsExpected, 8);
     assert.equal(result.captainsPersisted, 8);
     assert.equal(result.groupsExpected, 2);
     assert.equal(result.groupsPersisted, 2);
+    assert.equal(result.partial, false);
     assert.equal(result.persistedLocally, false);
     assert.equal(result.matchupsEmptyValid, true);
     assert.equal(result.matchupsExpectedAtAiConfirm, false);
-    assert.equal((persistedGroups || []).length, 2);
     assert.equal(result.workflowStage, WORKFLOW_STAGE.DISCIPLINES);
     assert.equal(getTeamTournamentById(PROD_CLUB_ID, PROD_SHELL_ID), null);
   });
@@ -264,6 +271,124 @@ describe("team-tournament-ai-pairing-cloud-persistence-remediation-01", () => {
     assert.equal(saved.persistedLocally, false);
   });
 
+  it("RPC_MISSING / NO_SUPABASE / rpc_not_deployed fail closed — no fallback writers", async () => {
+    const teams = buildEightTeamsWithCaptains();
+    const groups = buildTwoGroups(teams);
+    const loaded = {
+      id: PROD_SHELL_ID,
+      clubId: PROD_CLUB_ID,
+      tenantId: PROD_TENANT_ID,
+      status: "draft",
+      teamData: normalizeTeamData({ teams: [], groups: [], matchups: [] }),
+    };
+
+    for (const commitCode of ["RPC_MISSING", "NO_SUPABASE", "rpc_not_deployed"]) {
+      let applyCalled = 0;
+      let persistCalled = 0;
+      __setConfirmAiPairingCloudPersistenceDepsForTests({
+        applyAiGeneratedTeamsToTournament: async () => {
+          applyCalled += 1;
+          return { ok: true };
+        },
+      });
+      const result = await confirmAiPairingCloudPersistence({
+        clubId: PROD_CLUB_ID,
+        tournamentId: PROD_SHELL_ID,
+        tournament: loaded,
+        nextTeamData: normalizeTeamData({ teams, groups }),
+        persistSetupTeamData: async () => {
+          persistCalled += 1;
+          return { ok: true };
+        },
+        commitPairing: async () => ({ ok: false, code: commitCode }),
+        reload: async () => ({ ok: true, teamData: { teams, groups } }),
+      });
+      assert.equal(result.ok, false, commitCode);
+      assert.equal(result.code, commitCode, commitCode);
+      assert.equal(result.writeAttempted, false, commitCode);
+      assert.equal(result.partial, false, commitCode);
+      assert.equal(applyCalled, 0, commitCode);
+      assert.equal(persistCalled, 0, commitCode);
+    }
+  });
+
+  it("server transaction failure is fail-closed with zero fallback writers", async () => {
+    const teams = buildEightTeamsWithCaptains();
+    const groups = buildTwoGroups(teams);
+    let applyCalled = 0;
+    let persistCalled = 0;
+    __setConfirmAiPairingCloudPersistenceDepsForTests({
+      applyAiGeneratedTeamsToTournament: async () => {
+        applyCalled += 1;
+        return { ok: true };
+      },
+    });
+    const result = await confirmAiPairingCloudPersistence({
+      clubId: PROD_CLUB_ID,
+      tournamentId: PROD_SHELL_ID,
+      tournament: {
+        id: PROD_SHELL_ID,
+        clubId: PROD_CLUB_ID,
+        tenantId: PROD_TENANT_ID,
+        status: "draft",
+      },
+      nextTeamData: normalizeTeamData({ teams, groups }),
+      persistSetupTeamData: async () => {
+        persistCalled += 1;
+        return { ok: true };
+      },
+      commitPairing: async () => ({
+        ok: false,
+        code: "VALIDATION",
+        error: "server rolled back",
+      }),
+      reload: async () => ({ ok: true, teamData: { teams, groups } }),
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, "VALIDATION");
+    assert.equal(result.writeAttempted, true);
+    assert.equal(result.partial, false);
+    assert.equal(result.atomic, true);
+    assert.equal(applyCalled, 0);
+    assert.equal(persistCalled, 0);
+  });
+
+  it("incomplete canonical readback does not claim success and does not repair-write", async () => {
+    const teams = buildEightTeamsWithCaptains();
+    const groups = buildTwoGroups(teams);
+    let persistCalled = 0;
+    let applyCalled = 0;
+    __setConfirmAiPairingCloudPersistenceDepsForTests({
+      applyAiGeneratedTeamsToTournament: async () => {
+        applyCalled += 1;
+        return { ok: true };
+      },
+    });
+    const result = await confirmAiPairingCloudPersistence({
+      clubId: PROD_CLUB_ID,
+      tournamentId: PROD_SHELL_ID,
+      tournament: {
+        id: PROD_SHELL_ID,
+        clubId: PROD_CLUB_ID,
+        tenantId: PROD_TENANT_ID,
+        status: "draft",
+      },
+      nextTeamData: normalizeTeamData({ teams, groups }),
+      persistSetupTeamData: async () => {
+        persistCalled += 1;
+        return { ok: true };
+      },
+      commitPairing: async () => ({ ok: true, version: 2 }),
+      reload: async () => ({ ok: true, version: 2 }),
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, "READBACK_FAILED");
+    assert.equal(result.partial, false);
+    assert.equal(result.writeAttempted, true);
+    assert.equal(applyCalled, 0);
+    assert.equal(persistCalled, 0);
+  });
+
   it("static: no legacy blob-only apply authority; preview copy not claiming save", () => {
     const service = readSrc(
       "src/features/team-tournament/services/teamTournamentService.js"
@@ -278,7 +403,11 @@ describe("team-tournament-ai-pairing-cloud-persistence-remediation-01", () => {
 
     assert.match(service, /resolveTournamentForAiApply/);
     assert.match(persist, /confirmAiPairingCloudPersistence/);
-    assert.match(persist, /persistSetupTeamData/);
+    assert.match(persist, /commitPairing/);
+    assert.match(persist, /team_tournament_commit_pairing/);
+    assert.equal(persist.includes("applyAiGeneratedTeamsToTournament"), false);
+    assert.equal(persist.includes("persistSetupTeamData"), false);
+    assert.equal(persist.includes("groups.replace"), false);
     assert.match(roster, /confirmAiPairingUiTransaction/);
     assert.match(dialog, /catch \(error\)/);
     assert.match(dialog, /Xem trước/);

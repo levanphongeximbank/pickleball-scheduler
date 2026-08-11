@@ -238,8 +238,9 @@ test("I: group confirm readback requires exact group count (no F5)", () => {
     "utf8"
   );
   assert.match(persistSource, /preflightSetupMutationCapability/);
-  assert.match(persistSource, /GROUPS_READBACK_INCOMPLETE|groupsPersisted !== groups\.length/);
-  assert.match(persistSource, /requiresF5: false/);
+  assert.match(persistSource, /READBACK_FAILED/);
+  assert.match(persistSource, /persistedGroups\.length !== groups\.length/);
+  assert.doesNotMatch(persistSource, /location\.reload/);
 });
 
 test("I2: 1-group and 2-group expected lengths are canonical", () => {

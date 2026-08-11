@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, it } from "node:test";
+import { afterEach, describe, it } from "node:test";
 
 import { FORMAT_PRESET } from "../src/features/team-tournament/constants.js";
 import {
@@ -30,6 +30,10 @@ import {
   decideSetupFormRehydration,
   isSetupMutationFoundationEnabled,
 } from "../src/features/team-tournament/setup/index.js";
+import {
+  __resetConfirmAiPairingCloudPersistenceDepsForTests,
+  confirmAiPairingCloudPersistence,
+} from "../src/features/team-tournament/services/aiPairingCloudPersistence.js";
 import { confirmAiPairingUiTransaction } from "../src/features/team-tournament/services/confirmAiPairingUiTransaction.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -117,6 +121,10 @@ describe("post-#417 dirty / polling contract", () => {
     );
     assert.deepEqual(defaults.selectedCourtIds, ["court-7", "court-9"]);
   });
+});
+
+afterEach(() => {
+  __resetConfirmAiPairingCloudPersistenceDepsForTests();
 });
 
 describe("post-#417 captain / team / group commit", () => {
@@ -291,6 +299,49 @@ describe("post-#417 SQL + source locks", () => {
     assert.match(sql, /team_tournament_commit_pairing/);
     assert.match(sql, /teamData/);
     assert.match(sql, /team_tournament_seed_mlp_disciplines/);
+    assert.match(sql, /p_expected_version/);
+    assert.match(sql, /errcode = 'P0001'/);
+    assert.match(sql, /sqlstate = 'P0001'/);
+  });
+
+  it("pairing cloud runtime has no two-step fallback writer", () => {
+    const persist = readSrc(
+      "src/features/team-tournament/services/aiPairingCloudPersistence.js"
+    );
+    assert.match(persist, /team_tournament_commit_pairing/);
+    assert.doesNotMatch(persist, /applyAiGeneratedTeamsToTournament/);
+    assert.doesNotMatch(persist, /persistSetupTeamData/);
+    assert.doesNotMatch(persist, /commandName:\s*["']groups\.replace["']/);
+    assert.match(persist, /READBACK_FAILED/);
+    assert.match(persist, /PAIRING_UNAVAILABLE_CODES/);
+  });
+
+  it("RPC_MISSING / NO_SUPABASE / rpc_not_deployed do not call fallback writers", async () => {
+    const nextTeamData = {
+      teams: [{ id: "t1", name: "A", captainPlayerId: "p1", playerIds: ["p1", "p2", "p3", "p4"] }],
+      groups: [{ id: "g1", name: "Bảng A", teamIds: ["t1"], sortOrder: 1 }],
+      settings: { groupCount: 1 },
+    };
+    for (const code of ["RPC_MISSING", "NO_SUPABASE", "rpc_not_deployed"]) {
+      let persistCalled = 0;
+      const result = await confirmAiPairingCloudPersistence({
+        clubId: "club-1",
+        tournamentId: "tt-1",
+        tournament: { id: "tt-1" },
+        nextTeamData,
+        persistSetupTeamData: async () => {
+          persistCalled += 1;
+          return { ok: true };
+        },
+        commitPairing: async () => ({ ok: false, code }),
+        reload: async () => ({ ok: true, teamData: nextTeamData }),
+      });
+      assert.equal(result.ok, false, code);
+      assert.equal(result.code, code, code);
+      assert.equal(result.writeAttempted, false, code);
+      assert.equal(result.partial, false, code);
+      assert.equal(persistCalled, 0, code);
+    }
   });
 
   it("17. #417 canonical create / no dual-write preserved", () => {

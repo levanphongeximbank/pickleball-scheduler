@@ -6,6 +6,7 @@
 -- ═══════════════════════════════════════════════════════════════════
 
 drop function if exists public.team_tournament_commit_pairing(text, jsonb, jsonb, jsonb);
+drop function if exists public.team_tournament_commit_pairing(text, jsonb, jsonb, jsonb, integer);
 drop function if exists public.team_tournament_seed_mlp_disciplines(public.team_tournaments);
 drop function if exists public.team_tournament_initial_setup_team_data(public.team_tournaments);
 drop function if exists public.team_tournament_merge_mlp_initial_settings(jsonb);

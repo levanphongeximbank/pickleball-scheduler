@@ -32,9 +32,10 @@ describe("team-tournament-pr412-captain-confirm-live-instrumentation-01", () => 
       "src/features/team-tournament/services/aiPairingCloudPersistence.js"
     );
     assert.match(persist, /TT412_GROUP_PERSIST_DECISION|GROUP_PERSIST_DECISION/);
-    assert.match(persist, /REPLACE_GROUPS_CALL/);
+    assert.match(persist, /commitPairing|team_tournament_commit_pairing/);
     assert.match(persist, /REPLACE_GROUPS_SKIPPED/);
     assert.match(persist, /TT412_CAPTAIN_CONFIRM_DIAG\.RESULT/);
+    assert.doesNotMatch(persist, /TT412_REPLACE_GROUPS_CALL/);
 
     const roster = readSrc("src/components/tournament/TeamRosterPanel.jsx");
     assert.match(roster, /confirmAiPairingUiTransaction/);
