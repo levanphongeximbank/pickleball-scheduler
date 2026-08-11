@@ -32,6 +32,17 @@ import {
   runSetupMutation,
   SETUP_MUTATION_CODES,
 } from "../setup/index.js";
+import {
+  SETUP_CONFIG_GATE_OFF_MESSAGE,
+  validateFormatVenueConfigForPersist,
+} from "../engines/teamFormatVenueConfig.js";
+import {
+  planCanonicalMlpDreambreakerPersist,
+} from "../engines/mlpPresetEngine.js";
+import {
+  TT412_SAVE_DRAFT_DIAG,
+  tt412SaveDraftDiag,
+} from "../services/tt412SaveDraftDiagnostics.js";
 
 export const UI_MUTATION_ERROR = Object.freeze({
   VERSION_CONFLICT: "version_conflict",
@@ -86,9 +97,18 @@ export function mapRepositoryResultToUi(result) {
   const code = result?.code || "unknown";
   let userMessage = result?.error || "Không thực hiện được thao tác.";
 
-  if (code === UI_MUTATION_ERROR.VERSION_CONFLICT || code === "version_conflict") {
+  if (
+    code === UI_MUTATION_ERROR.VERSION_CONFLICT ||
+    code === "version_conflict" ||
+    code === "VERSION_CONFLICT" ||
+    code === SETUP_MUTATION_CODES.VERSION_CONFLICT
+  ) {
     userMessage =
       "Dữ liệu đã được người khác cập nhật. Hệ thống đã tải lại phiên bản mới — vui lòng kiểm tra trước khi gửi lại.";
+  } else if (code === "captain_portal_closed") {
+    userMessage = "Portal đội trưởng chưa được Ban tổ chức mở.";
+  } else if (code === "captain_scope_denied") {
+    userMessage = "Bạn không có quyền truy cập đội này.";
   } else if (code === "FORBIDDEN" || code === UI_MUTATION_ERROR.ACCESS_DENIED) {
     userMessage = result?.error || "Bạn không có quyền thực hiện thao tác này.";
   } else if (code === REPOSITORY_ERROR_CODES.NOT_FOUND) {
@@ -102,7 +122,11 @@ export function mapRepositoryResultToUi(result) {
     code,
     error: userMessage,
     raw: result,
-    isVersionConflict: code === UI_MUTATION_ERROR.VERSION_CONFLICT || code === "version_conflict",
+    isVersionConflict:
+      code === UI_MUTATION_ERROR.VERSION_CONFLICT ||
+      code === "version_conflict" ||
+      code === "VERSION_CONFLICT" ||
+      code === SETUP_MUTATION_CODES.VERSION_CONFLICT,
   };
 }
 
@@ -420,12 +444,57 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       }
 
       const previousTeamData = options.previousTeamData || aggregate.teamData || {};
+      const plan = planCanonicalMlpDreambreakerPersist({
+        previous: previousTeamData,
+        next: nextTeamData,
+      });
+      const ensuredNext = plan.nextTeamData || nextTeamData;
+
+      if (plan.persistDreambreakerFirst && options.skipDreambreakerEnsure !== true && plan.dreambreaker) {
+        const previousDisciplines = Array.isArray(previousTeamData.disciplines)
+          ? previousTeamData.disciplines
+          : [];
+        const dreamOnlyNext = {
+          ...previousTeamData,
+          settings: ensuredNext.settings || previousTeamData.settings,
+          disciplines: [...previousDisciplines, plan.dreambreaker],
+        };
+        const first = await this.persistSetupTeamData(clubId, tournamentId, dreamOnlyNext, {
+          ...options,
+          previousTeamData,
+          skipDreambreakerEnsure: true,
+        });
+        if (!first.ok) {
+          return first;
+        }
+        const remaining = buildSetupMutationFromTeamDataDiff({
+          previous: first.teamData || dreamOnlyNext,
+          next: ensuredNext,
+          tournamentId,
+          expectedTournamentVersion: Number(first.version ?? aggregate.version ?? 1),
+          rulesVersion: options.rulesVersion || aggregate.rulesVersion || "",
+        });
+        if (!remaining.commandName) {
+          return first;
+        }
+        return this.persistSetupTeamData(clubId, tournamentId, ensuredNext, {
+          ...options,
+          previousTeamData: first.teamData || dreamOnlyNext,
+          expectedTournamentVersion: Number(
+            first.version ?? options.expectedTournamentVersion ?? aggregate.version ?? 1
+          ),
+          skipDreambreakerEnsure: true,
+          aggregate: first.aggregate || options.aggregate,
+          tournament: first.tournament || options.tournament,
+        });
+      }
+
       const expectedTournamentVersion = Number(
         options.expectedTournamentVersion ?? aggregate.version ?? 1
       );
       const inferred = buildSetupMutationFromTeamDataDiff({
         previous: previousTeamData,
-        next: nextTeamData,
+        next: ensuredNext,
         tournamentId,
         expectedTournamentVersion,
         rulesVersion: options.rulesVersion || aggregate.rulesVersion || "",
@@ -438,21 +507,21 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         });
       }
 
-      const matchups = nextTeamData.matchups || [];
+      const matchups = ensuredNext.matchups || [];
       let snapshot;
       try {
         snapshot = await buildSetupMutationSnapshotPackageAsync({
           tournament: options.tournament || aggregateToTournamentView(aggregate) || { id: tournamentId },
-          teams: nextTeamData.teams || aggregate.teams || [],
-          disciplines: nextTeamData.disciplines || [],
-          groups: nextTeamData.groups || [],
+          teams: ensuredNext.teams || aggregate.teams || [],
+          disciplines: ensuredNext.disciplines || [],
+          groups: ensuredNext.groups || [],
           matchups,
           subMatches: matchups.flatMap((matchup) => matchup.subMatches || []),
-          schedule: nextTeamData.schedule || matchups,
-          schedulePublish: nextTeamData.schedulePublish || aggregate.schedulePublish || {},
-          settings: nextTeamData.settings || aggregate.settings || {},
-          formatPreset: nextTeamData.settings?.formatPreset || aggregate.formatPreset,
-          rosterRules: nextTeamData.settings?.rosterRules || aggregate.rosterRules,
+          schedule: ensuredNext.schedule || matchups,
+          schedulePublish: ensuredNext.schedulePublish || aggregate.schedulePublish || {},
+          settings: ensuredNext.settings || aggregate.settings || {},
+          formatPreset: ensuredNext.settings?.formatPreset || aggregate.formatPreset,
+          rosterRules: ensuredNext.settings?.rosterRules || aggregate.rosterRules,
           engineInput: inferred.engineInput,
           engineOutput: inferred.engineOutput,
           rules: inferred.rulesVersion ? { rulesVersion: inferred.rulesVersion } : {},
@@ -590,6 +659,15 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         });
       }
 
+      // Preview-only: confirmed path always assigns an idempotency key inside runSetupMutation.
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.RPC_CALL, {
+        rpcName: "team_tournament_save_draft",
+        commandName: "tournament.save_draft",
+        expectedTournamentVersion,
+        hasDraftState: Boolean(draftState && typeof draftState === "object"),
+        idempotencyKeyPresent: true,
+      });
+
       const result = await runSetupMutation({
         method: "tournament.save_draft",
         commandName: "tournament.save_draft",
@@ -609,6 +687,55 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         diagnostic: options.diagnostic,
         reloadAcknowledged: options.reloadAcknowledged,
         idempotencyKey: options.idempotencyKey,
+      });
+
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.RPC_RESULT, {
+        ok: result?.ok === true,
+        partial: result?.partial === true,
+        errorCode: result?.ok === true ? null : result?.code || null,
+        errorMessage: result?.ok === true ? null : result?.error || null,
+        newTournamentVersion:
+          result?.version != null ? Number(result.version) : null,
+        rpcCalled: result?.rpcCalled === true,
+      });
+
+      const reloadResult = result?.reloadResult || null;
+      const readbackTeamData = reloadResult?.teamData || null;
+      const readbackSettings =
+        readbackTeamData?.settings ||
+        reloadResult?.tournament?.settings ||
+        reloadResult?.aggregate?.settings ||
+        {};
+      const readbackDraft =
+        readbackSettings?.draftState && typeof readbackSettings.draftState === "object"
+          ? readbackSettings.draftState
+          : {};
+      const selectedCourtIds = Array.isArray(readbackSettings?.selectedCourtIds)
+        ? readbackSettings.selectedCourtIds
+        : [];
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.READBACK, {
+        readbackOk: reloadResult?.ok === true,
+        tournamentVersion:
+          reloadResult?.version != null ? Number(reloadResult.version) : null,
+        draftStatus: readbackDraft.draftStatus ?? null,
+        workflowStage: readbackDraft.workflowStage ?? null,
+        nextAction:
+          readbackDraft.nextActionLabel ?? readbackDraft.nextActionId ?? null,
+        savedAt: readbackDraft.savedAt ?? null,
+        groupCount:
+          readbackSettings?.groupCount != null
+            ? Number(readbackSettings.groupCount)
+            : null,
+        selectedCourtIdsCount: selectedCourtIds.length,
+        teamsCount: Array.isArray(readbackTeamData?.teams)
+          ? readbackTeamData.teams.length
+          : null,
+        groupsCount: Array.isArray(readbackTeamData?.groups)
+          ? readbackTeamData.groups.length
+          : null,
+        matchupsCount: Array.isArray(readbackTeamData?.matchups)
+          ? readbackTeamData.matchups.length
+          : null,
       });
 
       const uiResult = mapRepositoryResultToUi(result);
@@ -636,7 +763,144 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       return uiResult;
     },
 
-    /** Referee draft score — legacy adapter until cloud RPC exists. */
+    /**
+     * Persist Format & Venue + group/court config via tournament.update_setup_config.
+     * Cloud authority only — V7 OFF / undeployed RPC / version conflict fail closed.
+     */
+    async persistFormatVenueSetup(clubId, tournamentId, config = {}, options = {}) {
+      const isCloud =
+        mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_PRIMARY ||
+        mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY;
+      if (!isCloud) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED,
+          error: "Lưu Format & Venue cloud chỉ khả dụng trên cloud repository.",
+        });
+      }
+      if (!isSetupMutationFoundationEnabled(options.envSource)) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: "GATE_OFF",
+          error: SETUP_CONFIG_GATE_OFF_MESSAGE,
+        });
+      }
+
+      const validated = validateFormatVenueConfigForPersist(config);
+      if (!validated.ok) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: validated.code || SETUP_MUTATION_CODES.VALIDATION_ERROR,
+          error: validated.error || "Format & Venue config không hợp lệ.",
+        });
+      }
+      const setupConfigPayload = validated.payload;
+
+      const current =
+        options.aggregate ||
+        (await repo.getTournament(clubId, tournamentId, { schemaVersion: 7 }));
+      const aggregate = current?.data || current?.aggregate || current;
+      if (!aggregate?.id && !aggregate?.teamData) {
+        return mapRepositoryResultToUi(current);
+      }
+
+      const teamData = options.teamData || aggregate.teamData || {};
+      const nextSettings = {
+        ...(teamData.settings || aggregate.settings || {}),
+        ...setupConfigPayload,
+      };
+      const nextTeamData = {
+        ...teamData,
+        settings: nextSettings,
+      };
+      const tournamentView =
+        options.tournament || aggregateToTournamentView(aggregate) || { id: tournamentId };
+      const expectedTournamentVersion = Number(
+        options.expectedTournamentVersion ?? aggregate.version ?? 1
+      );
+      const rulesVersion = options.rulesVersion || aggregate.rulesVersion || "";
+      const engineInput = {
+        command: "tournament.update_setup_config",
+        formatPreset: setupConfigPayload.formatPreset,
+        groupCount: setupConfigPayload.groupCount,
+      };
+      const engineOutput = { setupConfig: setupConfigPayload };
+
+      const matchups = nextTeamData.matchups || [];
+      let snapshot;
+      try {
+        snapshot = await buildSetupMutationSnapshotPackageAsync({
+          tournament: tournamentView,
+          teams: nextTeamData.teams || aggregate.teams || [],
+          disciplines: nextTeamData.disciplines || [],
+          groups: nextTeamData.groups || [],
+          matchups,
+          subMatches: matchups.flatMap((matchup) => matchup.subMatches || []),
+          schedule: nextTeamData.schedule || matchups,
+          schedulePublish: nextTeamData.schedulePublish || aggregate.schedulePublish || {},
+          settings: nextSettings,
+          formatPreset: setupConfigPayload.formatPreset,
+          rosterRules: setupConfigPayload.rosterRules,
+          engineInput,
+          engineOutput,
+          rules: rulesVersion ? { rulesVersion } : {},
+          expectedTournamentVersion,
+          generatedAt: options.generatedAt,
+        });
+      } catch (error) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: SETUP_MUTATION_CODES.HASH_RUNTIME_ERROR,
+          error: error?.message || "Không tính được hash snapshot Format & Venue.",
+        });
+      }
+
+      const result = await runSetupMutation({
+        method: "tournament.update_setup_config",
+        commandName: "tournament.update_setup_config",
+        tournamentId,
+        expectedTournamentVersion,
+        latestTournamentVersion: expectedTournamentVersion,
+        payload: attachSnapshotPackageToPayload(setupConfigPayload, snapshot),
+        engineInput,
+        engineOutput,
+        rulesVersion,
+        confirmed: true,
+        repository: repo,
+        dataMode: mode,
+        envSource: options.envSource,
+        reload: (reloadOptions) => this.loadTournament(clubId, tournamentId, reloadOptions),
+        driftDetected: options.driftDetected,
+        diagnostic: options.diagnostic,
+        reloadAcknowledged: options.reloadAcknowledged,
+        idempotencyKey: options.idempotencyKey,
+      });
+
+      const uiResult = mapRepositoryResultToUi(result);
+      if (uiResult.ok && result.reloadResult?.ok) {
+        return {
+          ...uiResult,
+          replayed: result.replayed === true,
+          setupConfig: setupConfigPayload,
+          version: result.version ?? result.reloadResult.version,
+          tournament: result.reloadResult.tournament,
+          teamData: result.reloadResult.teamData,
+          aggregate: result.reloadResult.aggregate,
+        };
+      }
+      if (uiResult.ok && !result.reloadResult?.ok) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: "READBACK_FAILED",
+          error:
+            result.reloadResult?.error ||
+            "RPC Format & Venue thành công nhưng get_setup v7 không đọc lại được. Không coi là đã lưu.",
+        });
+      }
+      return uiResult;
+    },
+
+    /** Referee draft score — versioned subMatch CAS (subMatch.version only). */
     async saveSubMatchDraft(clubId, tournamentId, payload, commandOptions) {
       const scope = buildUiCommandScope("ref-draft", tournamentId, payload.subMatchId || "");
       const opts = {
@@ -645,10 +909,11 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           commandOptions?.idempotencyKey || beginUiCommandKey(scope),
       };
 
-      if (opts.expectedVersion == null || !opts.idempotencyKey) {
+      if (!Number.isFinite(opts.expectedVersion) || !opts.idempotencyKey) {
         return {
           ok: false,
-          error: "Thiếu expectedVersion hoặc idempotencyKey.",
+          code: REPOSITORY_ERROR_CODES.MISSING_EXPECTED_VERSION,
+          error: "Thiếu expectedVersion (subMatch.version) hoặc idempotencyKey.",
         };
       }
 
@@ -662,7 +927,12 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           return mapRepositoryResultToUi(result);
         }
         const reload = await this.loadTournament(clubId, tournamentId);
-        return { ok: true, tournament: reload.tournament, teamData: reload.teamData };
+        return {
+          ok: true,
+          tournament: reload.tournament,
+          teamData: reload.teamData,
+          version: result.version ?? reload.version,
+        };
       } catch (error) {
         endUiCommandKey(scope);
         return { ok: false, error: error?.message || "Lỗi lưu nháp." };

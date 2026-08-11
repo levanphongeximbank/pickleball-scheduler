@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useParams, useSearchParams } from "react-router-dom";
 import {
   Alert,
@@ -24,8 +24,8 @@ import SportsIcon from "@mui/icons-material/Sports";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
-import { assertTournamentPortalAccess } from "../../domain/tournamentService.js";
 import { findTournamentClubId } from "../../features/club/services/clubTournamentBridge.js";
+import { resolveTeamRefereeCloudPageAccess } from "../../features/team-tournament/ui/teamTournamentCloudAccess.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
 import {
   TEAM_TOURNAMENT_ATHLETE_SCOPE,
@@ -45,19 +45,14 @@ import {
 import { isRepublishPending } from "../../features/team-tournament/engines/overrideLineupWorkflowEngine.js";
 import {
   canManageTeamMatchResult,
-  canViewTeamMatchResults,
 } from "../../features/team-tournament/engines/teamPermissionEngine.js";
 import {
   getStandingsTable,
 } from "../../features/team-tournament/engines/teamStandingsEngine.js";
 import {
-  isTeamTournament,
-} from "../../features/team-tournament/engines/teamTournamentEngine.js";
-import {
   refereeRecordDreambreakerPoint,
   refereeStartDreambreaker,
   refereeUndoDreambreakerPoint,
-  refereeDreambreakerInjury,
   refereeLockDreambreakerOrders,
 } from "../../features/team-tournament/services/teamTournamentService.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
@@ -65,6 +60,12 @@ import RealtimeConnectionStatus from "../../features/team-tournament/ui/Realtime
 import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTournamentUiCommandKeys.js";
 import { getRallyScoringHints } from "../../features/team-tournament/engines/rallyScoringEngine.js";
 import { RefereeDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
+import {
+  buildRefereeDreambreakerPointCommand,
+  buildRefereeDreambreakerStartCommand,
+  buildRefereeDreambreakerUndoCommand,
+} from "../../features/team-tournament/engines/dreambreakerEngine.js";
+import { isDreambreakerSubMatch } from "../../features/team-tournament/engines/forfeitEngine.js";
 import {
   computeMatchupTieProgress,
   countDreambreakerPendingMatchups,
@@ -79,8 +80,22 @@ import TeamStandingsTable from "../../components/tournament/team/TeamStandingsTa
 import TeamForfeitDialog from "../../components/tournament/team/TeamForfeitDialog.jsx";
 import { buildForfeitCommandPayload } from "../../features/team-tournament/engines/forfeitWorkflowEngine.js";
 import {
-  canSaveLegacyDraft,
+  resolveLegacyScorePanelEditable,
 } from "../../features/team-tournament/engines/teamRefereeV5BridgeEngine.js";
+import {
+  availableMatchupIdsKey,
+  bindScoreActionIds,
+  buildMatchupQuerySearchParams,
+  buildSubMatchScoreFingerprint,
+  collectAvailableMatchupIds,
+  freezeBaseVersionOnFirstEdit,
+  normalizeScoreStateFromSubMatch,
+  rebaseScorePanelAfterSuccessfulWrite,
+  reconcileExpandedMatchupId,
+  resolveInitialExpandedMatchupId,
+  resolveScorePanelServerSync,
+} from "../../features/team-tournament/engines/teamRefereePortalUiState.js";
+import { resolveSubMatchRevision } from "../../features/team-tournament/engines/subMatchRevisionContract.js";
 import { countMatchupsWithSubResults } from "../../components/tournament/team/teamStandingsLabels.js";
 
 const REFEREE_FILTER = {
@@ -144,6 +159,7 @@ function ScoreStepper({ label, value, disabled, onChange }) {
 }
 
 function SubMatchScorePanel({
+  matchupId,
   subMatch,
   teamAName,
   teamBName,
@@ -155,30 +171,60 @@ function SubMatchScorePanel({
   busy,
 }) {
   const isBestOf3 = subMatch.format === MATCH_FORMAT.BEST_OF_3;
-  const [scoreA, setScoreA] = useState(subMatch.score?.teamA || 0);
-  const [scoreB, setScoreB] = useState(subMatch.score?.teamB || 0);
-  const [games, setGames] = useState(
-    subMatch.score?.games?.length
-      ? subMatch.score.games
-      : [{ teamA: 0, teamB: 0 }]
-  );
+  const initial = normalizeScoreStateFromSubMatch(subMatch);
+  const [scoreA, setScoreA] = useState(initial.scoreA);
+  const [scoreB, setScoreB] = useState(initial.scoreB);
+  const [games, setGames] = useState(initial.games);
   const [activeGameIndex, setActiveGameIndex] = useState(0);
-  const editable =
-    canEdit &&
-    subMatch.hasOfficialLineup &&
-    canSaveLegacyDraft(subMatch.scoreOps);
+  const [dirty, setDirty] = useState(false);
+  const [serverConflict, setServerConflict] = useState(false);
+  const [baseSubMatchVersion, setBaseSubMatchVersion] = useState(() =>
+    resolveSubMatchRevision(subMatch)
+  );
+  const fingerprintRef = useRef(buildSubMatchScoreFingerprint(subMatch));
+  const editable = resolveLegacyScorePanelEditable({
+    canEdit,
+    hasOfficialLineup: subMatch.hasOfficialLineup,
+    scoreOps: subMatch.scoreOps,
+    subMatch,
+  });
 
   useEffect(() => {
-    setScoreA(subMatch.score?.teamA || 0);
-    setScoreB(subMatch.score?.teamB || 0);
-    setGames(
-      subMatch.score?.games?.length
-        ? subMatch.score.games
-        : [{ teamA: 0, teamB: 0 }]
+    const sync = resolveScorePanelServerSync({
+      dirty,
+      previousFingerprint: fingerprintRef.current,
+      subMatch,
+    });
+    fingerprintRef.current = sync.nextFingerprint;
+    if (sync.action === "rehydrate" && sync.nextState) {
+      setScoreA(sync.nextState.scoreA);
+      setScoreB(sync.nextState.scoreB);
+      setGames(sync.nextState.games);
+      setDirty(false);
+      setServerConflict(false);
+      setBaseSubMatchVersion(resolveSubMatchRevision(subMatch));
+      return;
+    }
+    if (sync.action === "conflict") {
+      setServerConflict(true);
+    }
+    // Dirty: keep local score + frozen baseSubMatchVersion (do not rebase).
+  }, [subMatch, dirty]);
+
+  function markDirty() {
+    setBaseSubMatchVersion((prev) =>
+      freezeBaseVersionOnFirstEdit({
+        wasDirty: dirty,
+        previousBaseVersion: prev,
+        serverVersion: resolveSubMatchRevision(subMatch),
+      })
     );
-  }, [subMatch]);
+    setDirty(true);
+    setServerConflict(false);
+  }
 
   function updateGame(index, side, value) {
+    markDirty();
     setGames((current) =>
       current.map((game, gameIndex) =>
         gameIndex === index
@@ -192,8 +238,19 @@ function SubMatchScorePanel({
     if (games.length >= 3) {
       return;
     }
+    markDirty();
     setGames((current) => [...current, { teamA: 0, teamB: 0 }]);
     setActiveGameIndex(games.length);
+  }
+
+  function setScoreADirty(value) {
+    markDirty();
+    setScoreA(value);
+  }
+
+  function setScoreBDirty(value) {
+    markDirty();
+    setScoreB(value);
   }
 
   const payload = isBestOf3
@@ -201,6 +258,46 @@ function SubMatchScorePanel({
     : { score: { teamA: scoreA, teamB: scoreB }, games: [] };
 
   const rallyHints = discipline ? getRallyScoringHints(discipline) : "";
+
+  async function runBoundWrite(action) {
+    const binding = bindScoreActionIds({
+      panelMatchupId: matchupId,
+      panelSubMatchId: subMatch.subMatchId,
+      requestedMatchupId: matchupId,
+      requestedSubMatchId: subMatch.subMatchId,
+    });
+    if (!binding.ok) {
+      return { ok: false, error: binding.error };
+    }
+    const expectedVersion = dirty
+      ? baseSubMatchVersion
+      : resolveSubMatchRevision(subMatch);
+    const result = await action(binding.matchupId, binding.subMatchId, {
+      ...payload,
+      expectedVersion,
+    });
+    if (result?.ok) {
+      const nextVersion =
+        result.version != null && Number.isFinite(Number(result.version))
+          ? Number(result.version)
+          : Number(expectedVersion) + 1;
+      const rebased = rebaseScorePanelAfterSuccessfulWrite({
+        ...subMatch,
+        score: payload.score?.games?.length
+          ? { teamA: 0, teamB: 0, games: payload.games }
+          : { teamA: payload.score?.teamA || 0, teamB: payload.score?.teamB || 0, games: [] },
+        version: nextVersion,
+      });
+      setScoreA(rebased.scoreA);
+      setScoreB(rebased.scoreB);
+      setGames(rebased.games);
+      fingerprintRef.current = rebased.fingerprint;
+      setBaseSubMatchVersion(rebased.baseSubMatchVersion);
+      setDirty(false);
+      setServerConflict(false);
+    }
+    return result;
+  }
 
   return (
     <Box sx={{ mt: 1.5, p: 1.5, bgcolor: "action.hover", borderRadius: 2 }}>
@@ -225,6 +322,13 @@ function SubMatchScorePanel({
               Mở Referee V5
             </Button>
           ) : null}
+        </Alert>
+      ) : null}
+
+      {serverConflict ? (
+        <Alert severity="warning" sx={{ mb: 1.5 }}>
+          Máy chủ đã cập nhật tỷ số trong khi bạn đang nhập. Giữ nguyên bản nhập hiện tại — lưu nháp
+          hoặc tải lại trang nếu muốn dùng bản máy chủ.
         </Alert>
       ) : null}
 
@@ -276,13 +380,13 @@ function SubMatchScorePanel({
             label={teamAName}
             value={scoreA}
             disabled={!editable || !subMatch.hasOfficialLineup}
-            onChange={setScoreA}
+            onChange={setScoreADirty}
           />
           <ScoreStepper
             label={teamBName}
             value={scoreB}
             disabled={!editable || !subMatch.hasOfficialLineup}
-            onChange={setScoreB}
+            onChange={setScoreBDirty}
           />
         </Stack>
       )}
@@ -294,7 +398,7 @@ function SubMatchScorePanel({
             variant="outlined"
             startIcon={<SaveIcon />}
             disabled={busy}
-            onClick={() => onSaveDraft(subMatch.subMatchId, payload)}
+            onClick={() => runBoundWrite(onSaveDraft)}
             sx={{ minHeight: 48 }}
           >
             Lưu nháp
@@ -305,7 +409,7 @@ function SubMatchScorePanel({
             color="success"
             startIcon={<CheckCircleIcon />}
             disabled={busy}
-            onClick={() => onConfirm(subMatch.subMatchId, payload)}
+            onClick={() => runBoundWrite(onConfirm)}
             sx={{ minHeight: 48 }}
           >
             Xác nhận KQ
@@ -316,7 +420,9 @@ function SubMatchScorePanel({
               variant="outlined"
               color="warning"
               disabled={busy}
-              onClick={() => onForfeit(subMatch.subMatchId, payload)}
+              onClick={() =>
+                onForfeit(matchupId, subMatch.subMatchId, payload)
+              }
               sx={{ minHeight: 48 }}
             >
               Forfeit / Chấn thương
@@ -379,7 +485,6 @@ function MatchupCard({
   onDreambreakerLock,
   onDreambreakerPoint,
   onDreambreakerUndo,
-  onDreambreakerInjury,
 }) {
   const statusChip = getMatchupStatusMeta(matchup.status);
   const rawMatchup = teamData?.matchups?.find((item) => item.id === matchup.id);
@@ -427,7 +532,9 @@ function MatchupCard({
       <Collapse in={expanded}>
         <Divider />
         <Box sx={{ p: 2 }}>
-          {matchup.subMatches.map((subMatch) => {
+          {matchup.subMatches
+            .filter((subMatch) => !isDreambreakerSubMatch(teamData, subMatch, rawMatchup))
+            .map((subMatch) => {
             const statusMeta = getSubMatchStatusMeta(subMatch.status);
             const isOpen = selectedSubMatchId === subMatch.subMatchId;
 
@@ -470,6 +577,8 @@ function MatchupCard({
 
                   {isOpen && (
                     <SubMatchScorePanel
+                      key={`${matchup.id}:${subMatch.subMatchId}`}
+                      matchupId={matchup.id}
                       subMatch={{
                         ...subMatch,
                         teamAId: matchup.teamAId,
@@ -523,11 +632,6 @@ function MatchupCard({
                   ? () => onDreambreakerLock(rawMatchup.id)
                   : undefined
               }
-              onInjury={
-                canManageDreambreaker && onDreambreakerInjury
-                  ? (payload) => onDreambreakerInjury(rawMatchup.id, payload)
-                  : undefined
-              }
             />
           ) : null}
         </Box>
@@ -538,9 +642,9 @@ function MatchupCard({
 
 export default function TeamRefereePortal() {
   const { tournamentId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { activeClubId, clubs = [] } = useClub();
-  const { rbacEnabled, isAuthenticated, user } = useAuth();
+  const { rbacEnabled, isAuthenticated, user, can } = useAuth();
   const { currentTenantId } = useTenant();
 
   const resolvedClubId = useMemo(
@@ -555,13 +659,15 @@ export default function TeamRefereePortal() {
   const [selectedSubMatchId, setSelectedSubMatchId] = useState("");
   const [statusFilter, setStatusFilter] = useState(REFEREE_FILTER.ALL);
   const [forfeitDialog, setForfeitDialog] = useState(null);
+  const queryInitRef = useRef({ applied: false, queryId: null });
 
   const {
+    loading,
     tournament,
     teamData,
-    version,
     dataVersion,
     reload,
+    error: loadError,
     runMutation,
     saveSubMatchDraft,
     connectionState,
@@ -589,11 +695,6 @@ export default function TeamRefereePortal() {
     [permissions]
   );
 
-  const canView = useMemo(
-    () => canViewTeamMatchResults({ permissions }),
-    [permissions]
-  );
-
   const reloadTournament = useCallback(() => {
     reload({ silent: true });
     return tournament;
@@ -603,44 +704,31 @@ export default function TeamRefereePortal() {
     reloadTournament();
   }, [reloadTournament]);
 
-  const access = useMemo(() => {
-    if (!tournament) {
-      return { allowed: false, error: "Không tìm thấy giải đấu." };
-    }
-
-    if (!isTeamTournament(tournament)) {
-      return { allowed: false, error: "Giải này không phải giải đồng đội." };
-    }
-
-    if (rbacEnabled && isAuthenticated) {
-      const tenantCheck = assertTournamentPortalAccess(effectiveClubId, tournamentId, {
-        tenantId: currentTenantId,
+  const access = useMemo(
+    () =>
+      resolveTeamRefereeCloudPageAccess({
+        loading,
+        loadError,
+        tournament,
+        clubId: effectiveClubId,
+        currentTenantId,
         user,
         rbacEnabled,
-      });
-      if (!tenantCheck.ok) {
-        return { allowed: false, error: tenantCheck.error };
-      }
-
-      if (!canView && !canManage) {
-        return {
-          allowed: false,
-          error: "Bạn không có quyền xem trang trọng tài giải đồng đội.",
-        };
-      }
-    }
-
-    return { allowed: true, error: null };
-  }, [
-    effectiveClubId,
-    canManage,
-    canView,
-    currentTenantId,
-    isAuthenticated,
-    rbacEnabled,
-    tournament,
-    tournamentId,
-  ]);
+        isAuthenticated,
+        can,
+      }),
+    [
+      can,
+      currentTenantId,
+      effectiveClubId,
+      isAuthenticated,
+      loadError,
+      loading,
+      rbacEnabled,
+      tournament,
+      user,
+    ]
+  );
 
   const athletePool = useTeamTournamentAthletePool({
     tournament,
@@ -687,6 +775,15 @@ export default function TeamRefereePortal() {
       }));
   }, [teamData]);
 
+  const availableIds = useMemo(
+    () => collectAvailableMatchupIds(scoredMatchups, waitingMatchups),
+    [scoredMatchups, waitingMatchups]
+  );
+  const availableIdsStableKey = useMemo(
+    () => availableMatchupIdsKey(availableIds),
+    [availableIds]
+  );
+
   const filteredItems = useMemo(() => {
     const scored = scoredMatchups.map((matchup) => ({
       type: "scored",
@@ -706,21 +803,52 @@ export default function TeamRefereePortal() {
     return all.filter((item) => item.bucket === statusFilter);
   }, [scoredMatchups, waitingMatchups, statusFilter]);
 
+  const queryMatchupId = searchParams.get("matchup");
+
   useEffect(() => {
-    const matchupId = searchParams.get("matchup");
-    if (!matchupId) {
+    if (!availableIdsStableKey) {
       return;
     }
-    const exists =
-      scoredMatchups.some((item) => item.id === matchupId) ||
-      waitingMatchups.some((item) => item.id === matchupId);
-    if (exists) {
-      setExpandedMatchupId(matchupId);
-      if (scoredMatchups.some((item) => item.id === matchupId)) {
+    const ids = availableIdsStableKey.split("|").filter(Boolean);
+    const queryChanged = queryMatchupId !== queryInitRef.current.queryId;
+
+    if (queryChanged) {
+      queryInitRef.current = { applied: false, queryId: queryMatchupId };
+    }
+
+    if (!queryInitRef.current.applied) {
+      const initial = resolveInitialExpandedMatchupId({
+        queryMatchupId,
+        availableIds: ids,
+      });
+      if (initial) {
+        setExpandedMatchupId(initial);
         setStatusFilter(REFEREE_FILTER.ALL);
       }
+      queryInitRef.current.applied = true;
+      return;
     }
-  }, [searchParams, scoredMatchups, waitingMatchups]);
+
+    setExpandedMatchupId((current) =>
+      reconcileExpandedMatchupId({
+        expandedMatchupId: current,
+        availableIds: ids,
+      })
+    );
+  }, [availableIdsStableKey, queryMatchupId]);
+
+  const handleToggleMatchup = useCallback(
+    (matchupId) => {
+      const next = expandedMatchupId === matchupId ? "" : matchupId;
+      setExpandedMatchupId(next);
+      setSelectedSubMatchId("");
+      queryInitRef.current = { applied: true, queryId: next || null };
+      setSearchParams(buildMatchupQuerySearchParams(searchParams, next), {
+        replace: true,
+      });
+    },
+    [expandedMatchupId, searchParams, setSearchParams]
+  );
 
   const standings = useMemo(
     () => (teamData ? getStandingsTable(teamData) : []),
@@ -743,26 +871,49 @@ export default function TeamRefereePortal() {
     setError(null);
     setMessage(null);
 
+    const expectedVersion = Number(payload?.expectedVersion);
+    if (!Number.isFinite(expectedVersion)) {
+      setBusy(false);
+      const fail = {
+        ok: false,
+        error: "Thiếu subMatch.version (expectedVersion) để lưu nháp.",
+      };
+      setError(fail.error);
+      return fail;
+    }
+
     const result = await saveSubMatchDraft(
       { matchupId, subMatchId, ...payload },
-      { expectedVersion: version }
+      { expectedVersion }
     );
 
     setBusy(false);
 
     if (!result.ok) {
       setError(result.error);
-      return;
+      return result;
     }
 
     await reload({ silent: true });
     setMessage("Đã lưu nháp tỷ số.");
+    return result;
   }
 
   async function handleConfirm(matchupId, subMatchId, payload) {
     setBusy(true);
     setError(null);
     setMessage(null);
+
+    const expectedVersion = Number(payload?.expectedVersion);
+    if (!Number.isFinite(expectedVersion)) {
+      setBusy(false);
+      const fail = {
+        ok: false,
+        error: "Thiếu subMatch.version (expectedVersion) để xác nhận.",
+      };
+      setError(fail.error);
+      return fail;
+    }
 
     const result = await runMutation({
       method: "confirmSubMatchResult",
@@ -773,14 +924,14 @@ export default function TeamRefereePortal() {
         winnerTeamId: payload.winnerTeamId,
       },
       actionScope: buildUiCommandScope("confirm", tournamentId, subMatchId),
-      expectedVersion: version,
+      expectedVersion,
     });
 
     setBusy(false);
 
     if (!result.ok) {
       setError(result.error);
-      return;
+      return result;
     }
 
     let nextMessage = "Đã xác nhận kết quả trận con.";
@@ -788,6 +939,7 @@ export default function TeamRefereePortal() {
       nextMessage = `${nextMessage} (${result.mirrorWarning})`;
     }
     setMessage(nextMessage);
+    return result;
   }
 
   async function handleForfeitConfirm({
@@ -801,6 +953,13 @@ export default function TeamRefereePortal() {
     if (!forfeitDialog?.matchup) {
       return;
     }
+    const expectedVersion = Number(
+      subMatchVersion ?? resolveSubMatchRevision(forfeitDialog.subMatch)
+    );
+    if (!Number.isFinite(expectedVersion)) {
+      setError("Thiếu subMatch.version (expectedVersion) để forfeit.");
+      return;
+    }
     const payload = buildForfeitCommandPayload({
       matchupId: forfeitDialog.matchup.id,
       subMatchId,
@@ -808,7 +967,7 @@ export default function TeamRefereePortal() {
       resultType,
       reasonCode,
       reasonText,
-      subMatchVersion,
+      subMatchVersion: expectedVersion,
     });
 
     setBusy(true);
@@ -817,7 +976,7 @@ export default function TeamRefereePortal() {
       method: "applyForfeit",
       payload,
       actionScope: buildUiCommandScope("forfeit", tournamentId, subMatchId),
-      expectedVersion: subMatchVersion ?? version,
+      expectedVersion,
     });
     setBusy(false);
     if (!result.ok) {
@@ -829,31 +988,54 @@ export default function TeamRefereePortal() {
   }
 
   async function handleDreambreakerPoint(matchupId, scoringTeamId) {
-    setBusy(true);
-    const result = await refereeRecordDreambreakerPoint(effectiveClubId, tournamentId, {
-      matchupId,
-      scoringTeamId,
-    });
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
+    const matchup = (teamData?.matchups || []).find((item) => item.id === matchupId);
+    const command = buildRefereeDreambreakerPointCommand(matchup, scoringTeamId);
+    if (!command.ok) {
+      setError(command.error);
       return;
     }
-    await reload({ silent: true });
-    if (result.completed) {
-      setMessage("Dreambreaker kết thúc.");
+    setBusy(true);
+    try {
+      const result = await refereeRecordDreambreakerPoint(effectiveClubId, tournamentId, {
+        matchupId: command.payload.matchupId,
+        scoringTeamId: command.payload.scoringTeamId,
+        expectedVersion: command.payload.expectedVersion,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      await reload({ silent: true });
+      if (result.completed) {
+        setMessage("Dreambreaker kết thúc.");
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
   async function handleDreambreakerStart(matchupId) {
-    setBusy(true);
-    const result = await refereeStartDreambreaker(effectiveClubId, tournamentId, { matchupId });
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
+    const matchup = (teamData?.matchups || []).find((item) => item.id === matchupId);
+    const command = buildRefereeDreambreakerStartCommand(matchup);
+    if (!command.ok) {
+      setError(command.error);
       return;
     }
-    await reload({ silent: true });
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await refereeStartDreambreaker(effectiveClubId, tournamentId, {
+        matchupId: command.payload.matchupId,
+        expectedVersion: command.payload.expectedVersion,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      await reload({ silent: true });
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleDreambreakerLock(matchupId) {
@@ -872,29 +1054,34 @@ export default function TeamRefereePortal() {
   }
 
   async function handleDreambreakerUndo(matchupId) {
-    setBusy(true);
-    const result = await refereeUndoDreambreakerPoint(effectiveClubId, tournamentId, { matchupId });
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
+    const matchup = (teamData?.matchups || []).find((item) => item.id === matchupId);
+    const command = buildRefereeDreambreakerUndoCommand(matchup);
+    if (!command.ok) {
+      setError(command.error);
       return;
     }
-    await reload({ silent: true });
+    setBusy(true);
+    try {
+      const result = await refereeUndoDreambreakerPoint(effectiveClubId, tournamentId, {
+        matchupId: command.payload.matchupId,
+        expectedVersion: command.payload.expectedVersion,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      await reload({ silent: true });
+    } finally {
+      setBusy(false);
+    }
   }
 
-  async function handleDreambreakerInjury(matchupId, payload) {
-    setBusy(true);
-    const result = await refereeDreambreakerInjury(effectiveClubId, tournamentId, {
-      matchupId,
-      ...payload,
-    });
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    await reload({ silent: true });
-    setMessage("Đã ghi nhận chấn thương Dreambreaker.");
+  if (access.pending || loading) {
+    return (
+      <Box sx={{ p: 2, maxWidth: 640, mx: "auto" }}>
+        <Alert severity="info">Đang tải trang trọng tài…</Alert>
+      </Box>
+    );
   }
 
   if (!access.allowed) {
@@ -1031,30 +1218,47 @@ export default function TeamRefereePortal() {
                     : item.matchup
                 }
                 expanded={expandedMatchupId === item.matchup.id}
-                onToggle={() => {
-                  setExpandedMatchupId((current) =>
-                    current === item.matchup.id ? "" : item.matchup.id
-                  );
-                  setSelectedSubMatchId("");
-                }}
+                onToggle={() => handleToggleMatchup(item.matchup.id)}
                 selectedSubMatchId={selectedSubMatchId}
                 onSelectSubMatch={setSelectedSubMatchId}
                 permissions={permissions}
-                onSaveDraft={(subMatchId, payload) =>
-                  handleSaveDraft(item.matchup.id, subMatchId, payload)
-                }
-                onConfirm={(subMatchId, payload) =>
-                  handleConfirm(item.matchup.id, subMatchId, payload)
-                }
+                onSaveDraft={handleSaveDraft}
+                onConfirm={handleConfirm}
                 onForfeit={
                   canManage
-                    ? (subMatchId) => {
-                        const subMatch = item.matchup.subMatches?.find((sm) => sm.id === subMatchId);
+                    ? (panelMatchupId, subMatchId) => {
+                        const sourceMatchup =
+                          (teamData?.matchups || []).find((m) => m.id === panelMatchupId) ||
+                          item.matchup;
+                        const subMatch = sourceMatchup.subMatches?.find(
+                          (sm) => sm.id === subMatchId || sm.subMatchId === subMatchId
+                        );
+                        const viewSub =
+                          (expandedMatchupId === item.matchup.id && activeMatchup
+                            ? activeMatchup.subMatches
+                            : null
+                          )?.find(
+                            (sm) => sm.subMatchId === subMatchId || sm.id === subMatchId
+                          ) || null;
                         setForfeitDialog({
-                          matchup: item.matchup,
-                          subMatch,
-                          teamA: { id: item.matchup.teamAId, name: item.matchup.teamAName },
-                          teamB: { id: item.matchup.teamBId, name: item.matchup.teamBName },
+                          matchup: {
+                            ...sourceMatchup,
+                            teamAName: item.matchup.teamAName,
+                            teamBName: item.matchup.teamBName,
+                          },
+                          subMatch: {
+                            ...(subMatch || {}),
+                            ...(viewSub || {}),
+                            version: resolveSubMatchRevision(viewSub || subMatch),
+                          },
+                          teamA: {
+                            id: sourceMatchup.teamAId,
+                            name: item.matchup.teamAName,
+                          },
+                          teamB: {
+                            id: sourceMatchup.teamBId,
+                            name: item.matchup.teamBName,
+                          },
                           forfeitOps: subMatch?.forfeitOps || null,
                         });
                       }
@@ -1067,7 +1271,6 @@ export default function TeamRefereePortal() {
                 onDreambreakerLock={handleDreambreakerLock}
                 onDreambreakerPoint={handleDreambreakerPoint}
                 onDreambreakerUndo={handleDreambreakerUndo}
-                onDreambreakerInjury={handleDreambreakerInjury}
                 busy={busy}
               />
               </Stack>

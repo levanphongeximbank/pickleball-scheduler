@@ -1,14 +1,32 @@
 import {
   ACTIVATION_RULE,
+  DISCIPLINE_KIND,
   DREAMBREAKER_STATUS,
   SUB_MATCH_STATUS,
 } from "../constants.js";
 import { isMlpFormat } from "./mlpPresetEngine.js";
 
+function isMainDiscipline(discipline) {
+  if (!discipline) {
+    return false;
+  }
+  if (
+    discipline.disciplineKind === DISCIPLINE_KIND.DREAMBREAKER ||
+    discipline.activationRule === ACTIVATION_RULE.TIE_AT_2_2
+  ) {
+    return false;
+  }
+  if (discipline.activationRule === ACTIVATION_RULE.ALWAYS) {
+    return true;
+  }
+  // Captain scoped payloads historically omit activationRule on MLP mains.
+  return !discipline.activationRule;
+}
+
 function getMainSubMatches(teamData, matchup) {
   const mainDisciplineIds = new Set(
     (teamData.disciplines || [])
-      .filter((discipline) => discipline.activationRule === ACTIVATION_RULE.ALWAYS)
+      .filter((discipline) => isMainDiscipline(discipline))
       .map((discipline) => discipline.id)
   );
 

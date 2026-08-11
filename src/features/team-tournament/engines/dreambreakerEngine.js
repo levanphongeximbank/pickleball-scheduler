@@ -3,7 +3,6 @@ import {
   ACTIVATION_RULE,
   DREAMBREAKER_ORDER_SOURCE,
   DREAMBREAKER_STATUS,
-  DISCIPLINE_KIND,
   MATCHUP_STATUS,
   SUB_MATCH_STATUS,
 } from "../constants.js";
@@ -15,9 +14,15 @@ import {
 import {
   getDreambreakerDiscipline,
   isMlpFormat,
+  resolveDreambreakerDisciplineForStart,
 } from "./mlpPresetEngine.js";
 import { computeMatchupTieProgress } from "./matchupTieEngine.js";
 import { getRallyWinner, validateRallyScore } from "./rallyScoringEngine.js";
+import {
+  isPersistedCaptainDreambreakerActive,
+  resolveDreambreakerExpectedVersion,
+} from "./captainDreambreakerPortalContract.js";
+import { resolveDreambreakerScoringFormat } from "./dreambreakerScoringContract.js";
 
 function shufflePlayerIds(playerIds = []) {
   const copy = [...playerIds];
@@ -116,7 +121,7 @@ function resolveEffectiveOrder(order = [], injurySkips = [], teamId, segmentInde
   return order[segmentIndex % order.length] || "";
 }
 
-export function getDreambreakerCourtPlayers(matchup, teamData) {
+export function getDreambreakerCourtPlayers(matchup, _teamData) {
   const dreambreaker = matchup.dreambreaker;
   if (!dreambreaker) {
     return { teamAPlayerId: "", teamBPlayerId: "" };
@@ -412,23 +417,84 @@ export function listDreambreakerMatchups(teamData, { teamId } = {}) {
       return false;
     }
 
-    const progress = computeMatchupTieProgress(teamData, matchup);
-    if (!progress.dreambreakerEnabled) {
-      return false;
-    }
-
-    if (progress.needsDreambreaker) {
+    // A: persisted viewer-safe / activated Dreambreaker wins over missing activationRule.
+    if (isPersistedCaptainDreambreakerActive(matchup.dreambreaker)) {
       return true;
     }
 
-    const status = matchup.dreambreaker?.status;
-    return [
-      DREAMBREAKER_STATUS.LINEUP_OPEN,
-      DREAMBREAKER_STATUS.READY,
-      DREAMBREAKER_STATUS.IN_PROGRESS,
-      DREAMBREAKER_STATUS.COMPLETED,
-    ].includes(status);
+    // B: derive from MLP 2–2 main-submatch state (compatibility fallback).
+    const progress = computeMatchupTieProgress(teamData, matchup);
+    return progress.dreambreakerEnabled && progress.needsDreambreaker;
   });
+}
+
+export function buildRefereeDreambreakerStartCommand(matchup) {
+  const matchupId = String(matchup?.id || "").trim();
+  if (!matchupId) {
+    return { ok: false, error: "Thiếu lượt đối đầu." };
+  }
+  const expectedVersion = resolveDreambreakerExpectedVersion(matchup);
+  if (expectedVersion == null) {
+    return { ok: false, error: "Thiếu dreambreaker.version để bắt đầu." };
+  }
+  return {
+    ok: true,
+    payload: {
+      matchupId,
+      expectedVersion,
+    },
+  };
+}
+
+export function buildRefereeDreambreakerUndoCommand(matchup) {
+  const matchupId = String(matchup?.id || "").trim();
+  if (!matchupId) {
+    return { ok: false, error: "Thiếu lượt đối đầu." };
+  }
+  const history = matchup?.dreambreaker?.rotation?.pointHistory || [];
+  const hasScore =
+    Number(matchup?.dreambreaker?.teamAScore) > 0 ||
+    Number(matchup?.dreambreaker?.teamBScore) > 0;
+  if (history.length === 0 && !hasScore) {
+    return { ok: false, error: "Không có điểm để hoàn tác." };
+  }
+  const expectedVersion = resolveDreambreakerExpectedVersion(matchup);
+  if (expectedVersion == null) {
+    return { ok: false, error: "Thiếu dreambreaker.version để hoàn tác." };
+  }
+  return {
+    ok: true,
+    payload: {
+      matchupId,
+      expectedVersion,
+    },
+  };
+}
+
+export function buildRefereeDreambreakerPointCommand(matchup, scoringTeamId) {
+  const matchupId = String(matchup?.id || "").trim();
+  const teamId = String(scoringTeamId || "").trim();
+  if (!matchupId) {
+    return { ok: false, error: "Thiếu lượt đối đầu." };
+  }
+  if (!teamId) {
+    return { ok: false, error: "Thiếu đội ghi điểm." };
+  }
+  if (teamId !== matchup?.teamAId && teamId !== matchup?.teamBId) {
+    return { ok: false, error: "Đội ghi điểm không hợp lệ." };
+  }
+  const expectedVersion = resolveDreambreakerExpectedVersion(matchup);
+  if (expectedVersion == null) {
+    return { ok: false, error: "Thiếu dreambreaker.version để ghi điểm." };
+  }
+  return {
+    ok: true,
+    payload: {
+      matchupId,
+      scoringTeamId: teamId,
+      expectedVersion,
+    },
+  };
 }
 
 export function startDreambreaker(teamData, matchupId, options = {}) {
@@ -449,16 +515,30 @@ export function startDreambreaker(teamData, matchupId, options = {}) {
     return { ok: false, error: "Hai đội phải nộp thứ tự 4 VĐV trước." };
   }
 
-  const dreambreakerDiscipline = getDreambreakerDiscipline(locked.teamData.disciplines);
-  if (!dreambreakerDiscipline) {
-    return { ok: false, error: "Thiếu nội dung Dreambreaker." };
+  if (options.expectedVersion != null && options.expectedVersion !== "") {
+    const currentVersion = resolveDreambreakerExpectedVersion(matchup);
+    const expected = Number(options.expectedVersion);
+    if (!Number.isFinite(expected) || currentVersion !== expected) {
+      return {
+        ok: false,
+        code: "VERSION_CONFLICT",
+        error: "Dreambreaker đã được cập nhật. Tải lại rồi thử lại.",
+      };
+    }
   }
 
-  let subMatchId = matchup.dreambreaker.subMatchId;
-  let subMatches = [...matchup.subMatches];
+  const dreambreakerDiscipline = resolveDreambreakerDisciplineForStart(
+    locked.teamData.disciplines
+  );
 
-  if (!subMatchId) {
-    subMatchId = createId("sub");
+  let subMatchId = matchup.dreambreaker.subMatchId;
+  let subMatches = [...(matchup.subMatches || [])];
+  const alreadyHasSub =
+    Boolean(subMatchId) &&
+    subMatches.some((item) => String(item?.id || "") === String(subMatchId));
+
+  if (!alreadyHasSub) {
+    subMatchId = subMatchId || createId("sub");
     subMatches = [
       ...subMatches,
       {
@@ -472,11 +552,12 @@ export function startDreambreaker(teamData, matchupId, options = {}) {
     ];
   }
 
-  const nextMatchups = teamData.matchups.map((item) => {
+  const nextMatchups = locked.teamData.matchups.map((item) => {
     if (item.id !== matchupId) {
       return item;
     }
 
+    const currentVersion = Number(item.dreambreaker?.version);
     return {
       ...item,
       subMatches,
@@ -493,6 +574,7 @@ export function startDreambreaker(teamData, matchupId, options = {}) {
           pointHistory: [],
           injurySkips: item.dreambreaker.rotation?.injurySkips || [],
         },
+        version: Number.isFinite(currentVersion) ? currentVersion + 1 : 1,
       },
     };
   });
@@ -503,14 +585,29 @@ export function startDreambreaker(teamData, matchupId, options = {}) {
   };
 }
 
-export function recordDreambreakerPoint(teamData, { matchupId, scoringTeamId }) {
+export function recordDreambreakerPoint(teamData, { matchupId, scoringTeamId, expectedVersion } = {}) {
   const matchup = findMatchup(teamData, matchupId);
   if (!matchup?.dreambreaker || matchup.dreambreaker.status !== DREAMBREAKER_STATUS.IN_PROGRESS) {
     return { ok: false, error: "Dreambreaker chưa bắt đầu." };
   }
 
-  const dreambreakerDiscipline = getDreambreakerDiscipline(teamData.disciplines);
-  const rotationPoints = dreambreakerDiscipline?.scoringFormat?.rotationPoints || 4;
+  const currentVersion = resolveDreambreakerExpectedVersion(matchup);
+  if (expectedVersion != null && expectedVersion !== "") {
+    const expected = Number(expectedVersion);
+    if (!Number.isFinite(expected) || currentVersion !== expected) {
+      return {
+        ok: false,
+        code: "VERSION_CONFLICT",
+        error: "Dreambreaker đã được cập nhật. Tải lại rồi thử lại.",
+      };
+    }
+  }
+
+  const scoring = resolveDreambreakerScoringFormat({
+    matchup,
+    disciplines: teamData.disciplines,
+  });
+  const rotationPoints = scoring.rotationPoints;
 
   if (scoringTeamId !== matchup.teamAId && scoringTeamId !== matchup.teamBId) {
     return { ok: false, error: "Đội ghi điểm không hợp lệ." };
@@ -537,8 +634,7 @@ export function recordDreambreakerPoint(teamData, { matchupId, scoringTeamId }) 
     pointsInSegment = 0;
   }
 
-  const rules = dreambreakerDiscipline?.scoringFormat || {};
-  const winnerSide = getRallyWinner(teamAScore, teamBScore, rules);
+  const winnerSide = getRallyWinner(teamAScore, teamBScore, scoring);
   const winnerTeamId =
     winnerSide === "teamA"
       ? matchup.teamAId
@@ -558,6 +654,7 @@ export function recordDreambreakerPoint(teamData, { matchupId, scoringTeamId }) 
       pointsInSegment,
       pointHistory,
     },
+    ...(Number.isFinite(currentVersion) ? { version: currentVersion + 1 } : {}),
   };
 
   const nextSubMatches = matchup.subMatches.map((subMatch) => {
@@ -565,12 +662,14 @@ export function recordDreambreakerPoint(teamData, { matchupId, scoringTeamId }) 
       return subMatch;
     }
 
+    const subVersion = Number(subMatch.version);
     return {
       ...subMatch,
       status: winnerTeamId ? SUB_MATCH_STATUS.COMPLETED : SUB_MATCH_STATUS.PLAYING,
       score: { teamA: teamAScore, teamB: teamBScore, games: [] },
       winnerTeamId,
       resultConfirmedAt: winnerTeamId ? new Date().toISOString() : null,
+      ...(Number.isFinite(subVersion) ? { version: subVersion + 1 } : {}),
     };
   });
 
@@ -583,10 +682,10 @@ export function recordDreambreakerPoint(teamData, { matchupId, scoringTeamId }) 
           status: winnerTeamId ? MATCHUP_STATUS.COMPLETED : item.status,
           result: winnerTeamId
             ? {
-                teamAWins: 2 + (winnerTeamId === matchup.teamAId ? 1 : 0),
-                teamBWins: 2 + (winnerTeamId === matchup.teamBId ? 1 : 0),
-                teamAPoints: teamAScore,
-                teamBPoints: teamBScore,
+                teamAWins: Number(item.result?.teamAWins) || 2,
+                teamBWins: Number(item.result?.teamBWins) || 2,
+                teamAPoints: Number(item.result?.teamAPoints) || 0,
+                teamBPoints: Number(item.result?.teamBPoints) || 0,
                 winnerTeamId,
               }
             : item.result,
@@ -602,11 +701,23 @@ export function recordDreambreakerPoint(teamData, { matchupId, scoringTeamId }) 
   };
 }
 
-export function undoDreambreakerPoint(teamData, matchupId) {
+export function undoDreambreakerPoint(teamData, matchupId, { expectedVersion } = {}) {
   const matchup = findMatchup(teamData, matchupId);
   const history = matchup?.dreambreaker?.rotation?.pointHistory || [];
   if (!matchup?.dreambreaker || history.length === 0) {
     return { ok: false, error: "Không có điểm để hoàn tác." };
+  }
+
+  const currentVersion = resolveDreambreakerExpectedVersion(matchup);
+  if (expectedVersion != null && expectedVersion !== "") {
+    const expected = Number(expectedVersion);
+    if (!Number.isFinite(expected) || currentVersion !== expected) {
+      return {
+        ok: false,
+        code: "VERSION_CONFLICT",
+        error: "Dreambreaker đã được cập nhật. Tải lại rồi thử lại.",
+      };
+    }
   }
 
   const remaining = history.slice(0, -1);
@@ -620,8 +731,10 @@ export function undoDreambreakerPoint(teamData, matchupId) {
     const tail = remaining[remaining.length - 1];
     segmentIndex = tail.segmentIndex;
     pointsInSegment = remaining.filter((entry) => entry.segmentIndex === segmentIndex).length;
-    const rotationPoints =
-      getDreambreakerDiscipline(teamData.disciplines)?.scoringFormat?.rotationPoints || 4;
+    const rotationPoints = resolveDreambreakerScoringFormat({
+      matchup,
+      disciplines: teamData.disciplines,
+    }).rotationPoints;
     if (pointsInSegment >= rotationPoints) {
       segmentIndex += 1;
       pointsInSegment = 0;
@@ -640,16 +753,44 @@ export function undoDreambreakerPoint(teamData, matchupId) {
       pointsInSegment,
       pointHistory: remaining,
     },
+    ...(Number.isFinite(currentVersion) ? { version: currentVersion + 1 } : {}),
   };
+
+  const nextSubMatches = matchup.subMatches.map((subMatch) => {
+    if (
+      matchup.dreambreaker.subMatchId &&
+      subMatch.id !== matchup.dreambreaker.subMatchId
+    ) {
+      return subMatch;
+    }
+    if (!matchup.dreambreaker.subMatchId && !String(subMatch.id || "").startsWith("db-")) {
+      return subMatch;
+    }
+    const subVersion = Number(subMatch.version);
+    return {
+      ...subMatch,
+      status: SUB_MATCH_STATUS.PLAYING,
+      score: { teamA: teamAScore, teamB: teamBScore, games: [] },
+      winnerTeamId: "",
+      resultConfirmedAt: null,
+      ...(Number.isFinite(subVersion) ? { version: subVersion + 1 } : {}),
+    };
+  });
 
   const nextMatchups = teamData.matchups.map((item) =>
     item.id === matchupId
       ? {
           ...item,
+          subMatches: nextSubMatches,
           dreambreaker: nextDreambreaker,
           status: MATCHUP_STATUS.IN_PROGRESS,
           result: item.result
-            ? { ...item.result, winnerTeamId: "" }
+            ? {
+                ...item.result,
+                teamAWins: Number(item.result.teamAWins) || 2,
+                teamBWins: Number(item.result.teamBWins) || 2,
+                winnerTeamId: "",
+              }
             : item.result,
         }
       : item
@@ -668,10 +809,13 @@ export function validateDreambreakerFinalScore(teamData, matchupId) {
     return { ok: false, error: "Không có Dreambreaker." };
   }
 
-  const discipline = getDreambreakerDiscipline(teamData.disciplines);
+  const scoring = resolveDreambreakerScoringFormat({
+    matchup,
+    disciplines: teamData.disciplines,
+  });
   return validateRallyScore({
     scoreA: dreambreaker.teamAScore,
     scoreB: dreambreaker.teamBScore,
-    rules: discipline?.scoringFormat,
+    rules: scoring,
   });
 }

@@ -93,8 +93,11 @@ export function shuffleTeamsForOpenDraw(teams = [], randomFn = Math.random) {
 
 export function buildSnakeGroupsFromSortedTeams(teams = [], groupCount = 2) {
   const count = Math.max(1, Math.min(Number(groupCount) || 1, teams.length));
+  // Lazy import avoids circular init with teamGroupDivisionPolicy.
+  const singleGroupId = "grp-bang-a";
   const groups = Array.from({ length: count }, (_, index) => ({
-    id: createId("grp"),
+    // One-group Owner contract: stable deterministic id (not random createId).
+    id: count === 1 ? singleGroupId : createId("grp"),
     name: `Bảng ${String.fromCharCode(65 + index)}`,
     teamIds: [],
   }));

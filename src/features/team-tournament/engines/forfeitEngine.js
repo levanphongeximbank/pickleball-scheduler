@@ -2,11 +2,30 @@ import { DISCIPLINE_KIND, SUB_MATCH_STATUS } from "../constants.js";
 import { findMatchup, normalizeTeamData } from "../models/index.js";
 import { getDreambreakerDiscipline } from "./mlpPresetEngine.js";
 
-export function isDreambreakerSubMatch(teamData, subMatch) {
-  const discipline = teamData.disciplines.find(
-    (item) => item.id === subMatch.disciplineId
+export function isDreambreakerSubMatch(teamData, subMatch, matchup = null) {
+  const id = String(subMatch?.id || subMatch?.subMatchId || "");
+  if (id.startsWith("db-")) {
+    return true;
+  }
+  if (
+    matchup?.dreambreaker?.subMatchId &&
+    id === String(matchup.dreambreaker.subMatchId)
+  ) {
+    return true;
+  }
+  const disciplineId = String(subMatch?.disciplineId || "").toLowerCase();
+  const disciplineName = String(subMatch?.disciplineName || "").toLowerCase();
+  if (disciplineId.includes("dreambreaker") || disciplineName.includes("dreambreaker")) {
+    return true;
+  }
+  const discipline = (teamData?.disciplines || []).find(
+    (item) => item.id === subMatch?.disciplineId
   );
-  return discipline?.disciplineKind === DISCIPLINE_KIND.DREAMBREAKER;
+  return (
+    discipline?.disciplineKind === DISCIPLINE_KIND.DREAMBREAKER ||
+    String(discipline?.name || "").toLowerCase().includes("dreambreaker") ||
+    String(discipline?.activationRule || "").toLowerCase() === "tie_at_2_2"
+  );
 }
 
 export function forfeitDoublesSubMatch(teamData, {

@@ -266,7 +266,11 @@ export async function cloudGetTeamTournamentSetup(tournamentId, viewerTeamId = n
     return { ok: false, code: "CLOUD_DISABLED" };
   }
 
-  const result = await rpcTeamTournamentGetSetup(tournamentId, viewerTeamId);
+  // Explicit 4-arg v7 contract — never rely on server defaults under dual overloads.
+  const result = await rpcTeamTournamentGetSetup(tournamentId, viewerTeamId, {
+    schemaVersion: 7,
+    diagnostic: false,
+  });
   if (!result.ok) {
     return result;
   }
@@ -368,16 +372,19 @@ export async function cloudOrganizerPublishLineups(tournamentId, payload) {
 
 export async function cloudRefereeSaveSubMatchDraft(tournamentId, payload) {
   return tryCloudMutation(() =>
-    rpcTeamTournamentSaveSubMatchDraft(
+    rpcTeamTournamentSaveSubMatchDraft({
       tournamentId,
-      payload.matchupId,
-      payload.subMatchId,
-      {
+      matchupId: payload.matchupId,
+      subMatchId: payload.subMatchId,
+      score: {
         teamA: payload.score?.teamA ?? payload.teamA ?? 0,
         teamB: payload.score?.teamB ?? payload.teamB ?? 0,
         games: payload.games || payload.score?.games || [],
-      }
-    )
+      },
+      expectedVersion: payload.expectedVersion,
+      idempotencyKey:
+        payload.idempotencyKey || createTeamTournamentIdempotencyKey("ref-draft"),
+    })
   );
 }
 

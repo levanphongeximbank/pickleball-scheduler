@@ -295,12 +295,14 @@ test("trọng tài nhập KQ sau công bố — RPC publish required", async () 
     matchupId: MATCHUP_ID,
     subMatchId: "sub-1",
     score: { teamA: 11, teamB: 5 },
+    expectedVersion: 1,
+    idempotencyKey: "test-ref-draft-blocked",
   });
   assert.equal(blocked.ok, false);
   assert.equal(blocked.code, "VALIDATION");
 
   rpcHandlers.team_tournament_save_sub_match_draft = () => ({
-    data: { ok: true },
+    data: { ok: true, version: 2 },
     error: null,
   });
 
@@ -308,6 +310,8 @@ test("trọng tài nhập KQ sau công bố — RPC publish required", async () 
     matchupId: MATCHUP_ID,
     subMatchId: "sub-1",
     score: { teamA: 11, teamB: 5 },
+    expectedVersion: 1,
+    idempotencyKey: "test-ref-draft-ok",
   });
   assert.equal(allowed.ok, true);
   assert.equal(allowed.usedCloud, true);

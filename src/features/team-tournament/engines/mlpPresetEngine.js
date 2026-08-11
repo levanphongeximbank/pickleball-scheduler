@@ -36,6 +36,66 @@ const MLP_DREAMBREAKER_SCORING = {
   rotationPoints: 4,
 };
 
+/** Deterministic catalog / synthetic Dreambreaker identity. */
+export const CANONICAL_DREAMBREAKER_DISCIPLINE_ID = "dreambreaker";
+
+export function createCanonicalDreambreakerDiscipline() {
+  return createDisciplineRecord({
+    id: CANONICAL_DREAMBREAKER_DISCIPLINE_ID,
+    name: "Dreambreaker",
+    categoryType: DISCIPLINE_CATEGORY.SINGLES,
+    genderRequirement: GENDER_REQUIREMENT.ANY,
+    playerCount: 1,
+    sortOrder: 5,
+    disciplineKind: DISCIPLINE_KIND.DREAMBREAKER,
+    activationRule: ACTIVATION_RULE.TIE_AT_2_2,
+    scoringFormat: { ...MLP_DREAMBREAKER_SCORING },
+    countsTowardResult: true,
+  });
+}
+
+export function dreambreakerDisciplineMatchRank(discipline) {
+  if (!discipline) {
+    return 99;
+  }
+  const kind = String(discipline.disciplineKind || "").toLowerCase();
+  const rule = String(discipline.activationRule || "").toLowerCase();
+  const name = String(discipline.name || "").toLowerCase();
+  const id = String(discipline.id || "").toLowerCase();
+  if (kind === DISCIPLINE_KIND.DREAMBREAKER) {
+    return 1;
+  }
+  if (rule === ACTIVATION_RULE.TIE_AT_2_2) {
+    return 2;
+  }
+  if (rule === "dreambreaker") {
+    return 3;
+  }
+  if (
+    name.includes("dreambreaker") ||
+    id.includes("dreambreaker") ||
+    kind.includes("dreambreaker")
+  ) {
+    return 4;
+  }
+  return 99;
+}
+
+export function isDreambreakerCatalogDiscipline(discipline) {
+  return dreambreakerDisciplineMatchRank(discipline) < 99;
+}
+
+/** Lineup / main-tie only. Do not treat generic singles as Dreambreaker. */
+export function isExplicitDreambreakerDiscipline(discipline) {
+  const name = String(discipline?.name || "").toLowerCase();
+  const id = String(discipline?.id || "").toLowerCase();
+  return (
+    id === CANONICAL_DREAMBREAKER_DISCIPLINE_ID ||
+    id.includes("dreambreaker") ||
+    name.includes("dreambreaker")
+  );
+}
+
 export function createMlpDisciplines() {
   return [
     createDisciplineRecord({
@@ -78,17 +138,7 @@ export function createMlpDisciplines() {
       activationRule: ACTIVATION_RULE.ALWAYS,
       scoringFormat: { ...MLP_RALLY_SCORING },
     }),
-    createDisciplineRecord({
-      name: "Dreambreaker",
-      categoryType: DISCIPLINE_CATEGORY.SINGLES,
-      genderRequirement: GENDER_REQUIREMENT.ANY,
-      playerCount: 1,
-      sortOrder: 5,
-      disciplineKind: DISCIPLINE_KIND.DREAMBREAKER,
-      activationRule: ACTIVATION_RULE.TIE_AT_2_2,
-      scoringFormat: { ...MLP_DREAMBREAKER_SCORING },
-      countsTowardResult: true,
-    }),
+    createCanonicalDreambreakerDiscipline(),
   ];
 }
 
@@ -96,6 +146,7 @@ export function createMlpSettings(overrides = {}) {
   return {
     formatPreset: FORMAT_PRESET.MLP_4,
     rosterRules: {
+      teamSize: 4,
       minPlayers: 4,
       maxPlayers: 4,
       requiredMales: 2,
@@ -105,6 +156,14 @@ export function createMlpSettings(overrides = {}) {
     allowPlayerCrossTeam: false,
     dreambreakerEnabled: true,
     lineupLockLeadMinutes: 15,
+    groupMode: overrides.groupMode || "single_pool",
+    groupCount: overrides.groupCount != null ? overrides.groupCount : 1,
+    qualificationCount:
+      overrides.qualificationCount != null ? overrides.qualificationCount : 2,
+    knockoutFormat: overrides.knockoutFormat || "top_n",
+    selectedCourtIds: Array.isArray(overrides.selectedCourtIds)
+      ? overrides.selectedCourtIds
+      : [],
     missingLineupPolicy: overrides.missingLineupPolicy || "random",
     tiebreakOrder: overrides.tiebreakOrder || [
       "wins",
@@ -133,20 +192,92 @@ export function isMlpFormat(teamData) {
   return teamData?.settings?.formatPreset === FORMAT_PRESET.MLP_4;
 }
 
+/** Activation-only catalog row — not an ordinary pre-match lineup slot. */
+export function isActivationOnlyDreambreakerDiscipline(discipline) {
+  const kind = String(discipline?.disciplineKind || "").toLowerCase();
+  const rule = String(discipline?.activationRule || "").toLowerCase();
+  return (
+    kind === DISCIPLINE_KIND.DREAMBREAKER ||
+    rule === ACTIVATION_RULE.TIE_AT_2_2 ||
+    rule === "dreambreaker" ||
+    isExplicitDreambreakerDiscipline(discipline)
+  );
+}
+
 export function getActiveMatchDisciplines(disciplines = []) {
-  return disciplines.filter(
-    (discipline) => discipline.activationRule !== ACTIVATION_RULE.TIE_AT_2_2
+  return (Array.isArray(disciplines) ? disciplines : []).filter(
+    (discipline) => !isActivationOnlyDreambreakerDiscipline(discipline)
   );
 }
 
 export function getDreambreakerDiscipline(disciplines = []) {
-  return (
-    disciplines.find(
-      (discipline) =>
-        discipline.disciplineKind === DISCIPLINE_KIND.DREAMBREAKER ||
-        discipline.activationRule === ACTIVATION_RULE.TIE_AT_2_2
-    ) || null
-  );
+  const list = Array.isArray(disciplines) ? disciplines : [];
+  const ranked = list
+    .map((discipline) => ({
+      discipline,
+      rank: dreambreakerDisciplineMatchRank(discipline),
+    }))
+    .filter((row) => row.rank < 99)
+    .sort(
+      (left, right) =>
+        left.rank - right.rank ||
+        Number(left.discipline?.sortOrder || 0) - Number(right.discipline?.sortOrder || 0)
+    );
+  return ranked[0]?.discipline || null;
+}
+
+export function resolveDreambreakerDisciplineForStart(disciplines = []) {
+  return getDreambreakerDiscipline(disciplines) || createCanonicalDreambreakerDiscipline();
+}
+
+/**
+ * MLP teamData must expose exactly one Dreambreaker catalog row.
+ * Does not invent doubles rows. Custom presets are left unchanged.
+ */
+export function ensureCanonicalMlpDisciplines(disciplines = [], teamData = null) {
+  const list = Array.isArray(disciplines) ? [...disciplines] : [];
+  const mlp =
+    isMlpFormat(teamData) ||
+    teamData?.settings?.formatPreset === FORMAT_PRESET.MLP_4;
+  if (!mlp) {
+    return list;
+  }
+
+  const dreambreakers = list.filter((item) => isDreambreakerCatalogDiscipline(item));
+  const others = list.filter((item) => !isDreambreakerCatalogDiscipline(item));
+  if (dreambreakers.length === 0) {
+    return [...others, createCanonicalDreambreakerDiscipline()];
+  }
+  return [...others, dreambreakers[0]];
+}
+
+export function ensureCanonicalMlpTeamData(teamData) {
+  if (!teamData || typeof teamData !== "object") {
+    return teamData;
+  }
+  if (!isMlpFormat(teamData) && teamData.settings?.formatPreset !== FORMAT_PRESET.MLP_4) {
+    return teamData;
+  }
+  return {
+    ...teamData,
+    settings: {
+      ...(teamData.settings || {}),
+      formatPreset: FORMAT_PRESET.MLP_4,
+      dreambreakerEnabled: teamData.settings?.dreambreakerEnabled !== false,
+    },
+    disciplines: ensureCanonicalMlpDisciplines(teamData.disciplines, teamData),
+  };
+}
+
+export function planCanonicalMlpDreambreakerPersist({ previous = {}, next = {} } = {}) {
+  const ensuredNext = ensureCanonicalMlpTeamData(next);
+  const dreambreaker = getDreambreakerDiscipline(ensuredNext?.disciplines);
+  const previousDreambreaker = getDreambreakerDiscipline(previous?.disciplines);
+  return {
+    nextTeamData: ensuredNext,
+    persistDreambreakerFirst: Boolean(dreambreaker && !previousDreambreaker),
+    dreambreaker,
+  };
 }
 
 export function computeLineupLockAt(scheduledAt, leadMinutes = 15) {

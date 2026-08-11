@@ -16,8 +16,35 @@
 
 import { PRIVATE_PAIRING_RUNTIME_VERSION } from "../../private-pairing-rules/runtime/runtimeCodes.js";
 import { DEFAULT_ENGINE_VERSION } from "../canonical/teamTournamentMutationEnvelope.js";
+import {
+  hasOrganizerConfiguredGroupCount,
+  materializeExplicitGroupsFromTeams,
+} from "../engines/teamGroupDivisionPolicy.js";
+import { resolveFormatVenueDefaults } from "../engines/teamFormatVenueConfig.js";
 import { deriveWorkflowStage } from "../engines/teamTournamentWorkflowStage.js";
+import { preflightSetupMutationCapability } from "../setup/setupMutationFeatureGate.js";
 import { applyAiGeneratedTeamsToTournament } from "./teamTournamentService.js";
+import {
+  TT412_CAPTAIN_CONFIRM_DIAG,
+  tt412CaptainConfirmDiag,
+} from "./tt412CaptainConfirmDiagnostics.js";
+
+const defaultDeps = Object.freeze({
+  applyAiGeneratedTeamsToTournament,
+  preflightSetupMutationCapability,
+});
+
+let deps = { ...defaultDeps };
+
+/** @internal */
+export function __setConfirmAiPairingCloudPersistenceDepsForTests(next = {}) {
+  deps = { ...defaultDeps, ...next };
+}
+
+/** @internal */
+export function __resetConfirmAiPairingCloudPersistenceDepsForTests() {
+  deps = { ...defaultDeps };
+}
 
 /**
  * @param {object} params
@@ -30,6 +57,7 @@ import { applyAiGeneratedTeamsToTournament } from "./teamTournamentService.js";
  * @param {Function} [params.reload] — may support { applyUi: false } peek
  * @param {string} [params.rulesVersion]
  * @param {number} [params.expectedTournamentVersion]
+ * @param {Record<string, string|undefined>} [params.envSource]
  */
 export async function confirmAiPairingCloudPersistence(params = {}) {
   const {
@@ -42,30 +70,123 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
     reload = null,
     rulesVersion = "",
     expectedTournamentVersion,
+    envSource,
   } = params;
 
   const teams = Array.isArray(nextTeamData?.teams) ? nextTeamData.teams : [];
-  const groups = Array.isArray(nextTeamData?.groups) ? nextTeamData.groups : [];
+  let groups = Array.isArray(nextTeamData?.groups) ? nextTeamData.groups : [];
+  const incomingGroupsLength = groups.length;
+  let materializedGroupsLength = 0;
+
+  const finish = (result) => {
+    tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.RESULT, {
+      ok: result?.ok === true,
+      partial: result?.partial === true,
+      errorCode: result?.code || null,
+      errorMessage: result?.error || null,
+    });
+    return result;
+  };
 
   if (!tournamentId || !teams.length) {
-    return {
+    return finish({
       ok: false,
       code: "EMPTY_TEAMS",
       error: "Không có đội để lưu.",
       writeAttempted: false,
-    };
+    });
   }
 
   if (!tournament || String(tournament.id || "").trim() !== String(tournamentId).trim()) {
-    return {
+    return finish({
       ok: false,
       code: "NOT_FOUND",
       error: "Không tìm thấy giải đấu.",
       writeAttempted: false,
-    };
+    });
   }
 
-  const teamSave = await applyAiGeneratedTeamsToTournament(
+  // Owner "1 bảng" / configured groupCount>=1: never succeed teams-only with groups=[].
+  if (hasOrganizerConfiguredGroupCount(nextTeamData, tournament) && groups.length === 0) {
+    const formatVenue = resolveFormatVenueDefaults(nextTeamData, tournament);
+    const materialized = materializeExplicitGroupsFromTeams({
+      teams,
+      groupCount: formatVenue.groupCount,
+      existingGroups: groups,
+    });
+    if (!materialized.ok) {
+      tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.REPLACE_GROUPS_SKIPPED, {
+        reason: "materialize_failed",
+        errorCode: materialized.code || "GROUPS_REQUIRED",
+        configuredGroupCount: Number(formatVenue.groupCount) || null,
+        incomingGroupsLength,
+      });
+      return finish({
+        ok: false,
+        code: materialized.code || "GROUPS_REQUIRED",
+        error:
+          materialized.error ||
+          "Thiếu chia bảng explicit — không xác nhận đội-only khi đã cấu hình số bảng.",
+        writeAttempted: false,
+        groupsExpected: Math.max(1, Number(formatVenue.groupCount) || 1),
+        groupsPersisted: 0,
+      });
+    }
+    groups = materialized.groups;
+    materializedGroupsLength = groups.length;
+  }
+
+  const formatVenueForDiag = resolveFormatVenueDefaults(nextTeamData, tournament);
+  const configuredGroupCount = Number(formatVenueForDiag.groupCount) || null;
+  const shouldPersistGroups = groups.length > 0;
+  tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.GROUP_PERSIST_DECISION, {
+    configuredGroupCount,
+    effectiveGroupsLength: groups.length,
+    materializedGroupsLength,
+    incomingGroupsLength,
+    shouldPersistGroups,
+    groupIds: groups.map((group) => group?.id || null),
+    teamIdsPerGroup: groups.map((group) =>
+      Array.isArray(group?.teamIds) ? group.teamIds.map(String) : []
+    ),
+  });
+
+  // V7 preflight BEFORE team/captain writes when groups must persist —
+  // no captains-only partial success if group persistence is required.
+  if (groups.length > 0) {
+    const preflight = deps.preflightSetupMutationCapability({ envSource });
+    if (!preflight.ok) {
+      tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.REPLACE_GROUPS_SKIPPED, {
+        reason: "preflight_failed",
+        errorCode: preflight.code || null,
+        configuredGroupCount,
+        effectiveGroupsLength: groups.length,
+      });
+      return finish({
+        ...preflight,
+        groupsExpected: groups.length,
+        groupsPersisted: 0,
+      });
+    }
+    if (typeof persistSetupTeamData !== "function") {
+      tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.REPLACE_GROUPS_SKIPPED, {
+        reason: "no_persist_adapter",
+        configuredGroupCount,
+        effectiveGroupsLength: groups.length,
+      });
+      return finish({
+        ok: false,
+        code: "NO_GROUP_PERSIST_ADAPTER",
+        error:
+          "Thiếu adapter ghi bảng (groups.replace). Không ghi đội trước khi nhóm sẵn sàng.",
+        writeAttempted: false,
+        groupsExpected: groups.length,
+        groupsPersisted: 0,
+      });
+    }
+  }
+
+  const teamSave = await deps.applyAiGeneratedTeamsToTournament(
     clubId,
     tournamentId,
     {
@@ -82,14 +203,14 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
   );
 
   if (!teamSave?.ok) {
-    return {
+    return finish({
       ok: false,
       code: teamSave?.code || "TEAM_SAVE_FAILED",
       error: teamSave?.error || "Không lưu được danh sách đội.",
       writeAttempted: true,
       writeCount: 1,
       teamSave,
-    };
+    });
   }
 
   const captainsExpected = teams.filter((team) =>
@@ -102,7 +223,7 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
     ).length;
 
   if (captainsExpected > 0 && captainsPersisted < captainsExpected) {
-    return {
+    return finish({
       ok: false,
       code: "CAPTAINS_INCOMPLETE",
       error: `Chỉ lưu được ${captainsPersisted}/${captainsExpected} đội trưởng.`,
@@ -111,7 +232,7 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
       teamSave,
       captainsExpected,
       captainsPersisted,
-    };
+    });
   }
 
   let versionAfterTeams = expectedTournamentVersion;
@@ -133,22 +254,6 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
   let groupsPersisted = 0;
 
   if (groups.length > 0) {
-    if (typeof persistSetupTeamData !== "function") {
-      return {
-        ok: false,
-        code: "NO_GROUP_PERSIST_ADAPTER",
-        error:
-          "Đã lưu đội nhưng thiếu adapter ghi bảng (groups.replace). Không báo thành công.",
-        writeAttempted: true,
-        writeCount: 1,
-        teamSave,
-        captainsExpected,
-        captainsPersisted,
-        groupsExpected: groups.length,
-        groupsPersisted: 0,
-      };
-    }
-
     const resolvedRules = String(
       rulesVersion ||
         nextTeamData?.settings?.rulesVersion ||
@@ -162,6 +267,14 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
       matchups: [],
     };
 
+    tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.REPLACE_GROUPS_CALL, {
+      tournamentId,
+      configuredGroupCount,
+      groupsLength: groups.length,
+      groupIds: groups.map((group) => group?.id || null),
+      expectedTournamentVersion: versionAfterTeams ?? null,
+    });
+
     groupResult = await persistSetupTeamData(teamDataForGroups, {
       rulesVersion: resolvedRules,
       confirmDestructive: true,
@@ -173,10 +286,11 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
         matchups: [],
       },
       engineVersion: DEFAULT_ENGINE_VERSION,
+      envSource,
     });
 
     if (!groupResult?.ok) {
-      return {
+      return finish({
         ok: false,
         code: groupResult?.code || "GROUP_SAVE_FAILED",
         error:
@@ -191,7 +305,7 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
         groupsExpected: groups.length,
         groupsPersisted: 0,
         partial: true,
-      };
+      });
     }
 
     const readback =
@@ -200,14 +314,14 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
       readback?.teamData?.groups ||
       groupResult.teamData?.groups ||
       groupResult.aggregate?.teamData?.groups ||
-      groups;
+      [];
     groupsPersisted = Array.isArray(persistedGroups) ? persistedGroups.length : 0;
 
-    if (groupsPersisted < groups.length) {
-      return {
+    if (groupsPersisted !== groups.length) {
+      return finish({
         ok: false,
         code: "GROUPS_READBACK_INCOMPLETE",
-        error: `Lưu bảng chưa đủ — đọc lại được ${groupsPersisted}/${groups.length} bảng.`,
+        error: `get_setup trả về ${groupsPersisted} bảng, kỳ vọng ${groups.length}. Không advance workflow / không F5.`,
         writeAttempted: true,
         writeCount: 2,
         teamSave,
@@ -217,8 +331,18 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
         groupsExpected: groups.length,
         groupsPersisted,
         partial: true,
-      };
+        requiresF5: false,
+      });
     }
+  } else {
+    tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.REPLACE_GROUPS_SKIPPED, {
+      reason: "effective_groups_empty_after_materialize_gate",
+      configuredGroupCount,
+      incomingGroupsLength,
+      materializedGroupsLength,
+      effectiveGroupsLength: 0,
+      shouldPersistGroups: false,
+    });
   }
 
   const finalTeamData = {
@@ -234,7 +358,7 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
   };
   const workflowStage = deriveWorkflowStage(finalTeamData, tournament);
 
-  return {
+  return finish({
     ok: true,
     writeAttempted: true,
     writeCount: groups.length > 0 ? 2 : 1,
@@ -251,5 +375,5 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
     workflowStage,
     matchupsExpectedAtAiConfirm: false,
     matchupsEmptyValid: true,
-  };
+  });
 }

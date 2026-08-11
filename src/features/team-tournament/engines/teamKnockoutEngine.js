@@ -66,23 +66,97 @@ export function computeGroupStandings(teamData, groupId) {
   }));
 }
 
+/**
+ * Resolve qualification count from options or settings.
+ * Supports single-group knockout: groupCount=1 + qualificationCount=N.
+ */
+function resolveQualifiersPerGroup(teamData, options = {}) {
+  if (options.qualifiersPerGroup != null) {
+    return Math.max(1, Number(options.qualifiersPerGroup) || 1);
+  }
+  if (options.qualificationCount != null) {
+    return Math.max(1, Number(options.qualificationCount) || 1);
+  }
+  const settings = teamData?.settings || {};
+  if (settings.qualificationCount != null) {
+    return Math.max(1, Number(settings.qualificationCount) || 1);
+  }
+  return 2;
+}
+
+function resolveKnockoutFormat(teamData, options = {}) {
+  return (
+    options.knockoutFormat ||
+    teamData?.settings?.knockoutFormat ||
+    "top_n"
+  );
+}
+
+/**
+ * Cap qualification by knockout format for a single pool / group.
+ * final_only → top 2; semifinals → top 4; top_n → organizer qualificationCount.
+ */
+function applyKnockoutFormatCap(qualificationCount, knockoutFormat, poolSize) {
+  const pool = Math.max(0, Number(poolSize) || 0);
+  let count = Math.max(1, Number(qualificationCount) || 1);
+  if (knockoutFormat === "final_only") {
+    count = Math.min(2, pool);
+  } else if (knockoutFormat === "semifinals") {
+    count = Math.min(4, pool);
+  }
+  return Math.min(count, pool);
+}
+
 export function qualifyTeamsFromGroups(teamData, options = {}) {
-  const qualifiersPerGroup = Math.max(1, Number(options.qualifiersPerGroup) || 2);
+  const knockoutFormat = resolveKnockoutFormat(teamData, options);
+  let qualifiersPerGroup = resolveQualifiersPerGroup(teamData, options);
   const groups = (teamData?.groups || []).filter(
     (group) => (group.teamIds || []).length >= 2
   );
 
-  if (groups.length === 0) {
+  // Single-pool fallback: treat all teams as one group when no explicit groups.
+  const effectiveGroups =
+    groups.length > 0
+      ? groups
+      : (teamData?.teams || []).length >= 2
+        ? [
+            {
+              id: "single_pool",
+              name: "Bảng duy nhất",
+              teamIds: (teamData.teams || []).map((team) => team.id),
+            },
+          ]
+        : [];
+
+  if (effectiveGroups.length === 0) {
     return {
       ok: false,
-      error: "Cần chia bảng trước khi tạo knockout (group → KO).",
+      error: "Cần chia bảng (hoặc ít nhất 2 đội trong một pool) trước khi tạo knockout.",
       code: "GROUPS_REQUIRED",
       qualified: [],
     };
   }
 
-  const perGroup = groups.map((group) => {
-    const standing = computeGroupStandings(teamData, group.id);
+  // Single group: apply knockout format cap against pool size.
+  if (effectiveGroups.length === 1) {
+    const poolSize = (effectiveGroups[0].teamIds || []).length;
+    qualifiersPerGroup = applyKnockoutFormatCap(
+      qualifiersPerGroup,
+      knockoutFormat,
+      poolSize
+    );
+  }
+
+  const perGroup = effectiveGroups.map((group) => {
+    const standing =
+      group.id === "single_pool" && groups.length === 0
+        ? getStandingsTable(teamData).map((row, index) => ({
+            ...row,
+            rank: index + 1,
+            groupId: group.id,
+            groupName: group.name,
+          }))
+        : computeGroupStandings(teamData, group.id);
     const qualified = standing.slice(0, qualifiersPerGroup).map((row, index) => ({
       teamId: row.teamId,
       teamName: row.teamName,
@@ -95,6 +169,7 @@ export function qualifyTeamsFromGroups(teamData, options = {}) {
   });
 
   // Seed order: all #1s then #2s … (A1,B1,C1,… then A2,B2,…)
+  // Single group: rank order 1..N (semifinals pairs via pairSeedsForFirstRound → 1v4, 2v3).
   const qualified = [];
   for (let rank = 1; rank <= qualifiersPerGroup; rank += 1) {
     perGroup.forEach((row) => {
@@ -113,7 +188,14 @@ export function qualifyTeamsFromGroups(teamData, options = {}) {
     };
   }
 
-  return { ok: true, qualifiersPerGroup, perGroup, qualified };
+  return {
+    ok: true,
+    qualifiersPerGroup,
+    qualificationCount: qualifiersPerGroup,
+    knockoutFormat,
+    perGroup,
+    qualified,
+  };
 }
 
 export function canGenerateTeamKnockout(teamData, options = {}) {

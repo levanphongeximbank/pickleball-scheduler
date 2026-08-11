@@ -85,5 +85,6 @@ test("TT-5B permission: only BTC/Director can provision", () => {
 test("TT-5B RPC registry includes provision + revoke", () => {
   assert.ok(TT1B_COMMAND_RPCS.includes("team_tournament_provision_referee_match"));
   assert.ok(TT1B_COMMAND_RPCS.includes("team_tournament_revoke_referee_link"));
-  assert.equal(TT1B_COMMAND_RPCS.length, 9);
+  assert.ok(TT1B_COMMAND_RPCS.includes("team_tournament_save_sub_match_draft"));
+  assert.equal(TT1B_COMMAND_RPCS.length, 17);
 });

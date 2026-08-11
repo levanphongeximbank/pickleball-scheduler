@@ -81,7 +81,7 @@ describe("P1.2 S1-B — snapshot schema SQL contract", () => {
     for (const commandName of SETUP_COMMAND_NAMES) {
       assert.match(sql, new RegExp(`'${commandName.replace(/\./g, "\\.")}'`));
     }
-    assert.equal(SETUP_COMMAND_NAMES.length, 21);
+    assert.equal(SETUP_COMMAND_NAMES.length, 22);
   });
 
   it("authors non-redundant indexes", () => {

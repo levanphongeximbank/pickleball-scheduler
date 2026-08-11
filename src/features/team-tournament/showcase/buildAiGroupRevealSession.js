@@ -31,14 +31,16 @@ export function buildAiGroupRevealSession({
   }
 
   const options = listGroupDivisionOptions(teams.length);
+  const configured = Number(groupCount);
   const resolvedCount =
-    Number(groupCount) ||
-    options.find((option) => Number(option.groupCount) === 2)?.groupCount ||
-    options[0]?.groupCount ||
-    2;
+    Number.isFinite(configured) && configured >= 1
+      ? Math.floor(configured)
+      : options.find((option) => Number(option.groupCount) === 1)?.groupCount ||
+        options[0]?.groupCount ||
+        1;
 
-  if (resolvedCount < 2) {
-    return { ok: false, error: "Cần ít nhất 2 bảng để chia." };
+  if (resolvedCount < 1) {
+    return { ok: false, error: "Cần ít nhất 1 bảng." };
   }
 
   const baseSession = {

@@ -27,6 +27,7 @@ export const SETUP_MUTATION_RPC_BY_COMMAND = Object.freeze({
   "awards.assign": "team_tournament_assign_award",
   "awards.auto_assign": "team_tournament_auto_assign_awards",
   "tournament.save_draft": "team_tournament_save_draft",
+  "tournament.update_setup_config": "team_tournament_update_setup_config",
   "tournament.close": "team_tournament_close_tournament",
   "snapshot.restore": "team_tournament_restore_setup_snapshot",
 });
@@ -63,6 +64,7 @@ export function isSetupMutationRpcDeployed(rpcName) {
     SETUP_MUTATION_RPC_BY_COMMAND["schedule.publish"],
     SETUP_MUTATION_RPC_BY_COMMAND["schedule.lock"],
     SETUP_MUTATION_RPC_BY_COMMAND["tournament.save_draft"],
+    SETUP_MUTATION_RPC_BY_COMMAND["tournament.update_setup_config"],
     SETUP_MUTATION_RPC_BY_COMMAND["dreambreaker.order_submit"],
     SETUP_MUTATION_RPC_BY_COMMAND["dreambreaker.order_lock"],
     SETUP_MUTATION_RPC_BY_COMMAND["dreambreaker.point"],

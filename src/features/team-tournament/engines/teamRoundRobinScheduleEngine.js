@@ -14,6 +14,9 @@ import {
   recommendGroupSizes as recommendGroupSizesFromPolicy,
 } from "./teamGroupDivisionPolicy.js";
 import {
+  buildCourtSlotsFromSelectedIds,
+} from "./teamFormatVenueConfig.js";
+import {
   computeLineupLockAt,
   isMlpFormat,
 } from "./mlpPresetEngine.js";
@@ -124,9 +127,20 @@ function addMinutes(isoString, minutes) {
 }
 
 function courtLabelForSlot(slotIndex, courtCount, options = {}) {
+  const slots = Array.isArray(options.courtSlots) ? options.courtSlots : [];
+  if (slots.length > 0) {
+    const slot = slots[slotIndex % slots.length];
+    return {
+      courtId: slot.courtId || "",
+      courtLabel: slot.courtLabel || `Sân ${slotIndex + 1}`,
+    };
+  }
   const prefix = options.courtLabelPrefix?.trim() || "";
   const label = `Sân ${slotIndex + 1}`;
-  return prefix ? `${prefix} ${label}` : label;
+  return {
+    courtId: "",
+    courtLabel: prefix ? `${prefix} ${label}` : label,
+  };
 }
 
 function resolveGroupsForSchedule(teamData) {
@@ -272,16 +286,29 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
   const baseLineupLockAt = options.lineupLockAt || null;
   const roundIntervalMinutes = Number(options.roundIntervalMinutes) || 90;
   const courtLabelPrefix = options.courtLabel || "";
+  const selectedCourtIds =
+    Array.isArray(options.selectedCourtIds) && options.selectedCourtIds.length > 0
+      ? options.selectedCourtIds
+      : Array.isArray(prepared.settings?.selectedCourtIds)
+        ? prepared.settings.selectedCourtIds
+        : [];
+  const courtSlots =
+    Array.isArray(options.courtSlots) && options.courtSlots.length > 0
+      ? options.courtSlots
+      : buildCourtSlotsFromSelectedIds(selectedCourtIds, options.venueCourts || []);
 
   const matchups = [];
 
   groups.forEach((group) => {
     const teamRecords = group.teamRecords;
     const rounds = buildRoundRobinRoundsForTeamCount(teamRecords.length);
-    const courtCount = Math.min(
-      Math.max(1, Number(options.courtCount) || defaultCourtCountForPool(teamRecords.length)),
-      2
-    );
+    const selectedCount = courtSlots.length;
+    const courtCount = selectedCount > 0
+      ? selectedCount
+      : Math.min(
+          Math.max(1, Number(options.courtCount) || defaultCourtCountForPool(teamRecords.length)),
+          2
+        );
 
     rounds.forEach((round) => {
       const roundScheduledAt = addMinutes(
@@ -303,6 +330,10 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
         }
 
         const courtSlot = matchIndex % courtCount;
+        const court = courtLabelForSlot(courtSlot, courtCount, {
+          courtLabelPrefix,
+          courtSlots,
+        });
 
         matchups.push(
           createMatchupRecord(homeTeam.id, awayTeam.id, {
@@ -312,7 +343,8 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
             matchNumberInRound: matchIndex + 1,
             scheduledAt: roundScheduledAt,
             lineupLockAt: roundLineupLockAt,
-            courtLabel: courtLabelForSlot(courtSlot, courtCount, { courtLabelPrefix }),
+            courtLabel: court.courtLabel,
+            courtId: court.courtId || undefined,
             status: MATCHUP_STATUS.LINEUP_OPEN,
           })
         );

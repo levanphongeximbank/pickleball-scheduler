@@ -42,6 +42,13 @@ export function createBlobTeamTournamentRepository() {
     getProvider: () => "blob",
 
     async getTournament(clubId, tournamentId, readOptions = {}) {
+      if (String(readOptions.pageMode || "").trim() === "captainPortal") {
+        return repositoryFailure(
+          "CAPTAIN_PORTAL_READER_UNAVAILABLE",
+          "Portal đội trưởng yêu cầu cloud scoped reader (team_tournament_get_captain_portal)."
+        );
+      }
+
       const tournament = findBlobTournament(clubId, tournamentId);
       if (!tournament) {
         return repositoryFailure(

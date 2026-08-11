@@ -77,6 +77,7 @@ export function useTeamTournamentPage({
   pollingEnabled = true,
   pollIntervalMs = DEFAULT_POLL_MS,
   realtimeEnabled = true,
+  pageMode = null,
 } = {}) {
   const orchestrator = getTeamTournamentUiOrchestrator();
   const [loading, setLoading] = useState(true);
@@ -86,6 +87,7 @@ export function useTeamTournamentPage({
   const [version, setVersion] = useState(1);
   const [provider, setProvider] = useState(null);
   const [error, setError] = useState(null);
+  const [errorCode, setErrorCode] = useState(null);
   const [dataVersion, setDataVersion] = useState(0);
   const [rosterSetupRevision, setRosterSetupRevision] = useState(0);
   const [versionConflict, setVersionConflict] = useState(false);
@@ -111,6 +113,7 @@ export function useTeamTournamentPage({
   const applyLoadResult = useCallback((result) => {
     if (!result.ok) {
       setError(result.error || "Không tải được giải.");
+      setErrorCode(result.code || null);
       setTournament(null);
       setTeamData(null);
       setAggregate(null);
@@ -129,6 +132,7 @@ export function useTeamTournamentPage({
     }
 
     setError(null);
+    setErrorCode(null);
     setVersionConflict(false);
     setTournament(result.tournament);
     setAggregate(result.aggregate);
@@ -201,6 +205,9 @@ export function useTeamTournamentPage({
       const effectiveLoadClubId = loadClubId || "";
 
       const readOptions = {};
+      if (pageMode) {
+        readOptions.pageMode = String(pageMode);
+      }
       if (readSchemaVersion != null) {
         readOptions.schemaVersion = Number(readSchemaVersion);
       } else if (
@@ -255,7 +262,7 @@ export function useTeamTournamentPage({
 
       return result;
     },
-    [clubId, orchestrator, tournamentId]
+    [clubId, orchestrator, pageMode, tournamentId]
   );
 
   const reload = useCallback(
@@ -573,6 +580,63 @@ export function useTeamTournamentPage({
     ]
   );
 
+  const persistFormatVenueSetup = useCallback(
+    async (config = {}, options = {}) => {
+      if (!clubId || !tournamentId) {
+        return { ok: false, error: "Thiếu clubId hoặc tournamentId." };
+      }
+      refreshControllerRef.current.beginMutationBarrier();
+      try {
+        const result = await orchestrator.persistFormatVenueSetup(
+          clubId,
+          tournamentId,
+          config,
+          {
+            teamData,
+            tournament,
+            aggregate,
+            expectedTournamentVersion: version,
+            ...options,
+          }
+        );
+        if (result.isVersionConflict) {
+          setVersionConflict(true);
+          await refreshAfterMutation({ reason: "format_venue_version_conflict" });
+          return result;
+        }
+        if (result.ok) {
+          const loaded = result.tournament
+            ? result
+            : await loadCanonicalSetup({ schemaVersion: 7 });
+          if (loaded.ok) {
+            commitCanonicalSetupLoad(
+              refreshControllerRef.current,
+              applyLoadResult,
+              loaded
+            );
+          } else {
+            await refreshAfterMutation({ reason: "format_venue_readback" });
+          }
+        }
+        return result;
+      } finally {
+        refreshControllerRef.current.endMutationBarrier();
+      }
+    },
+    [
+      aggregate,
+      applyLoadResult,
+      clubId,
+      loadCanonicalSetup,
+      orchestrator,
+      refreshAfterMutation,
+      teamData,
+      tournament,
+      tournamentId,
+      version,
+    ]
+  );
+
   const getVisibleLineups = useCallback(
     async (matchupId, readOptions = {}) => {
       if (!clubId || !tournamentId) {
@@ -642,6 +706,7 @@ export function useTeamTournamentPage({
     mode: orchestrator.getMode(),
     isCloudPrimary: orchestrator.getMode() === "cloud_primary",
     error,
+    errorCode,
     dataVersion,
     rosterSetupRevision,
     versionConflict,
@@ -670,6 +735,7 @@ export function useTeamTournamentPage({
     patchTeamData,
     persistSetupTeamData,
     saveDraft,
+    persistFormatVenueSetup,
     getVisibleLineups,
     getLineupOverrideOps: (matchupId, teamId) =>
       orchestrator.getLineupOverrideOps(clubId, tournamentId, { matchupId, teamId }),

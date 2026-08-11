@@ -20,6 +20,13 @@ export const LEGACY_SCORE_BLOCK_CODES = Object.freeze([
   "referee_v5_result_finalized",
 ]);
 
+/** Explicit hard blocks — missing/null scoreOps is NOT among these. */
+export const LEGACY_SCORE_HARD_BLOCK_CODES = Object.freeze([
+  ...LEGACY_SCORE_BLOCK_CODES,
+  "reprovision_required",
+  "result_already_confirmed",
+]);
+
 /** V5 match_id = external_sub_match_id per TT-5A contract. */
 export function resolveRefereeMatchId(externalSubMatchId) {
   return String(externalSubMatchId || "").trim();
@@ -41,15 +48,100 @@ export function isLegacyScoreBlocked(scoreOps) {
   if (!scoreOps?.blockCode) {
     return false;
   }
-  return LEGACY_SCORE_BLOCK_CODES.includes(scoreOps.blockCode);
+  return LEGACY_SCORE_HARD_BLOCK_CODES.includes(String(scoreOps.blockCode));
 }
 
+/**
+ * Legacy draft eligibility from scoreOps only.
+ *
+ * NULL/undefined scoreOps → allow (outer canEdit + lineup gates decide).
+ * Explicit V5/immutable hard blockCodes → deny.
+ * Explicit canSaveDraft === true → allow (if not hard-blocked).
+ * Explicit canSaveDraft === false → deny.
+ * Malformed objects without a clear allow signal → deny (fail closed).
+ */
 export function canSaveLegacyDraft(scoreOps) {
-  return scoreOps?.canSaveDraft === true && !isLegacyScoreBlocked(scoreOps);
+  if (scoreOps == null) {
+    return true;
+  }
+  if (typeof scoreOps !== "object") {
+    return false;
+  }
+  if (isLegacyScoreBlocked(scoreOps)) {
+    return false;
+  }
+  if (scoreOps.canSaveDraft === true) {
+    return true;
+  }
+  if (scoreOps.canSaveDraft === false) {
+    return false;
+  }
+  return false;
 }
 
+/**
+ * Legacy confirm eligibility — same null-fallback / hard-block contract as draft.
+ */
 export function canConfirmLegacyResult(scoreOps) {
-  return scoreOps?.canConfirm === true && !isLegacyScoreBlocked(scoreOps);
+  if (scoreOps == null) {
+    return true;
+  }
+  if (typeof scoreOps !== "object") {
+    return false;
+  }
+  if (isLegacyScoreBlocked(scoreOps)) {
+    return false;
+  }
+  if (scoreOps.canConfirm === true) {
+    return true;
+  }
+  if (scoreOps.canConfirm === false) {
+    return false;
+  }
+  return false;
+}
+
+/**
+ * Confirmed / completed / V5-finalized submatches are immutable on the legacy portal.
+ */
+export function isSubMatchImmutableForLegacyScore(subMatch) {
+  if (!subMatch || typeof subMatch !== "object") {
+    return true;
+  }
+  if (subMatch.resultConfirmedAt) {
+    return true;
+  }
+  const status = String(subMatch.status || "").trim().toLowerCase();
+  if (status === "completed" || status === "finalized") {
+    return true;
+  }
+  if (isLegacyScoreBlocked(subMatch.scoreOps)) {
+    const code = String(subMatch.scoreOps?.blockCode || "");
+    if (
+      code === "result_already_confirmed" ||
+      code === "referee_v5_result_finalized"
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Full Team Referee Portal +/- enablement contract.
+ */
+export function resolveLegacyScorePanelEditable({
+  canEdit = false,
+  hasOfficialLineup = false,
+  scoreOps = null,
+  subMatch = null,
+} = {}) {
+  return (
+    canEdit === true &&
+    hasOfficialLineup === true &&
+    canSaveLegacyDraft(scoreOps) &&
+    !isSubMatchImmutableForLegacyScore(subMatch || { scoreOps })
+  );
 }
 
 export function canProvisionRefereeLink(refereeLinkOps) {

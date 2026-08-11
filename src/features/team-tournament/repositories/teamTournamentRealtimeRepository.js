@@ -34,7 +34,10 @@ export function resolveTenantIdFromSetup(setupResult, clubId) {
  * @param {import('./teamTournamentRepositoryTypes.js').TournamentSubscriptionHandlers} handlers
  */
 export async function subscribeCloudTournament(repo, clubId, tournamentId, handlers = {}) {
-  const setup = await rpcTeamTournamentGetSetup(tournamentId, null);
+  const setup = await rpcTeamTournamentGetSetup(tournamentId, null, {
+    schemaVersion: 7,
+    diagnostic: false,
+  });
   if (!setup.ok) {
     return repositoryFailure(
       setup.code || REPOSITORY_ERROR_CODES.NOT_FOUND,

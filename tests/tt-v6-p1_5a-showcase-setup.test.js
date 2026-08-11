@@ -48,7 +48,7 @@ test("setup: TT32 valid state is 32/16/16, 8 teams, 0 waiting", () => {
   assert.equal(result.summary.expectedWaitingListCount, 0);
   assert.deepEqual(
     result.summary.groupOptions.map((option) => option.label),
-    ["2 bảng × 4 đội", "4 bảng × 2 đội"]
+    ["1 bảng × 8 đội", "2 bảng × 4 đội", "4 bảng × 2 đội"]
   );
 });
 

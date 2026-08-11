@@ -23,7 +23,6 @@ import {
   hasDependentMatchupsOrSchedule,
   isGroupDivisionEditable,
   listGroupDivisionOptions,
-  MIN_TEAMS_FOR_EXPLICIT_GROUPS,
   recommendGroupSizes,
 } from "../../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
 import { describeGroupSplit } from "../../../features/team-tournament/engines/teamRoundRobinScheduleEngine.js";
@@ -51,7 +50,7 @@ import { prefersReducedMotion } from "../../../features/team-tournament/showcase
 import { createId } from "../../../utils/id.js";
 
 function buildEmptyManualGroups(count) {
-  const groupCount = Math.max(2, Number(count) || 2);
+  const groupCount = Math.max(1, Number(count) || 1);
   return Array.from({ length: groupCount }, (_, index) => ({
     id: createId("grp"),
     name: `Bảng ${String.fromCharCode(65 + index)}`,
@@ -131,8 +130,11 @@ export default function TeamGroupDivisionPanel({
   const seedingEnabled = seedingMode !== TEAM_GROUP_SEEDING.OFF;
   const useTopPlayerMode = seedingMode === TEAM_GROUP_SEEDING.TOP_PLAYER_THEN_TOTAL;
   const divisionOptions = useMemo(() => listGroupDivisionOptions(teams.length), [teams.length]);
+  const settingsGroupCount = Number(teamData?.settings?.groupCount) || 0;
   const defaultGroupCount =
-    divisionOptions[0]?.groupCount || Math.max(2, groups.length || 2);
+    (settingsGroupCount >= 1 ? settingsGroupCount : null) ||
+    divisionOptions[0]?.groupCount ||
+    Math.max(1, groups.length || 1);
   const [groupCount, setGroupCount] = useState(defaultGroupCount);
   const [preview, setPreview] = useState(null);
   const [previewBusy, setPreviewBusy] = useState(false);
@@ -156,7 +158,8 @@ export default function TeamGroupDivisionPanel({
     GROUP_SEEDING_OPTIONS.find((option) => option.value === seedingMode) ||
     GROUP_SEEDING_OPTIONS[2];
   const editable = isGroupDivisionEditable(teamData, { canManage });
-  const teamsInsufficient = teams.length < MIN_TEAMS_FOR_EXPLICIT_GROUPS;
+  // Allow group division from 2 teams (including 1-group / single-pool).
+  const teamsInsufficient = teams.length < 2;
 
   if (teamsInsufficient && !canManage) {
     return null;
@@ -300,8 +303,8 @@ export default function TeamGroupDivisionPanel({
       return;
     }
     const resolvedCount = Number(options.groupCount) || groupCount;
-    if (resolvedCount < 2) {
-      onError?.("Cần ít nhất 2 bảng.");
+    if (resolvedCount < 1) {
+      onError?.("Cần ít nhất 1 bảng.");
       return;
     }
     if (resolvedCount > teams.length) {
@@ -358,8 +361,8 @@ export default function TeamGroupDivisionPanel({
       return;
     }
     const count = Number(resolvedCount) || groupCount;
-    if (count < 2) {
-      onError?.("Cần ít nhất 2 bảng.");
+    if (count < 1) {
+      onError?.("Cần ít nhất 1 bảng.");
       return;
     }
     if (count > teams.length) {
@@ -636,14 +639,12 @@ export default function TeamGroupDivisionPanel({
 
         {teamsInsufficient ? (
           <Alert severity="warning">
-            Cần ít nhất {MIN_TEAMS_FOR_EXPLICIT_GROUPS} đội để chia bảng. Hiện có {teams.length} đội.
+            Cần ít nhất 2 đội để chia bảng. Hiện có {teams.length} đội.
           </Alert>
         ) : (
           <Alert severity="info">
-            Chia bảng là bước bắt buộc trước khi tạo lịch (không tự chia khi tạo lịch).
-            {recommendedLabel ? ` Gợi ý mặc định: ${recommendedLabel}.` : ""}
-            {" "}
-            Với 8 đội có thể chọn 2 bảng × 4 hoặc 4 bảng × 2.
+            Hỗ trợ 1 bảng (tất cả đội trong một pool) hoặc N bảng. Organizer quyết định số bảng.
+            {recommendedLabel ? ` Gợi ý: ${recommendedLabel}.` : ""}
             {" "}
             {selectedSeedingOption.description}
           </Alert>
@@ -681,7 +682,7 @@ export default function TeamGroupDivisionPanel({
             >
               {(divisionOptions.length
                 ? divisionOptions
-                : [{ groupCount: 2, label: "2 bảng" }, { groupCount: 4, label: "4 bảng" }]
+                : [{ groupCount: 1, label: "1 bảng" }, { groupCount: 2, label: "2 bảng" }]
               ).map((option) => (
                 <MenuItem key={option.groupCount} value={option.groupCount}>
                   {option.label}

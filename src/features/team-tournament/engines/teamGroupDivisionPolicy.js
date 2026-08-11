@@ -1,7 +1,15 @@
 /**
  * Explicit group-division policy for Team Tournament V6.
  * Schedule / matchup / publish flows must never silently create groups.
+ * groupCount may be 1..N — no UI/policy floor of 2.
  */
+
+import { GROUP_MODE } from "../constants.js";
+import {
+  deriveGroupSizes,
+  recommendAutomaticGroupCount,
+  resolveFormatVenueDefaults,
+} from "./teamFormatVenueConfig.js";
 
 export const GROUPS_REQUIRED = "GROUPS_REQUIRED";
 
@@ -14,10 +22,15 @@ export const GROUPS_REQUIRED_SCHEDULE_DIALOG_MESSAGE =
 export const GROUP_REDRAW_DESTRUCTIVE_MESSAGE =
   "Chia lại bảng sẽ xóa các cặp đấu và lịch thi đấu hiện tại. Bạn có chắc chắn tiếp tục?";
 
+/** Historical threshold used by legacy workflows (6–10 teams recommended multi-group). */
 export const MIN_TEAMS_FOR_EXPLICIT_GROUPS = 6;
+
+/** Stable id for Owner-configured one-group ("1 bảng") persistence. */
+export const EXPLICIT_SINGLE_GROUP_ID = "grp-bang-a";
 
 /** Default split sizes by team count (recommendation only — never auto-applied). */
 const DEFAULT_GROUP_SIZE_BY_TEAM_COUNT = Object.freeze({
+  4: [4],
   6: [3, 3],
   7: [3, 4],
   8: [4, 4],
@@ -26,11 +39,118 @@ const DEFAULT_GROUP_SIZE_BY_TEAM_COUNT = Object.freeze({
 });
 
 /**
+ * True when organizer Format/Venue explicitly configured groupCount (>=1).
+ * Missing groupCount keeps legacy-compatible read paths.
+ */
+export function hasOrganizerConfiguredGroupCount(teamData = null, tournament = null) {
+  const rawSettings = {
+    ...(tournament?.settings && typeof tournament.settings === "object"
+      ? tournament.settings
+      : {}),
+    ...(teamData?.settings && typeof teamData.settings === "object" ? teamData.settings : {}),
+  };
+  if (!Object.prototype.hasOwnProperty.call(rawSettings, "groupCount")) {
+    return false;
+  }
+  const count = Number(rawSettings.groupCount);
+  return Number.isFinite(count) && count >= 1;
+}
+
+/**
+ * Materialize explicit groups when preview groups are missing at confirm.
+ * groupCount=1 → one durable "Bảng A" with all team ids.
+ * groupCount>1 with empty preview → fail closed (do not invent N-way split).
+ *
+ * @param {{
+ *   teams?: Array<{ id?: string }>,
+ *   groupCount?: number,
+ *   existingGroups?: Array|null,
+ * }} [params]
+ */
+export function materializeExplicitGroupsFromTeams({
+  teams = [],
+  groupCount = 1,
+  existingGroups = null,
+} = {}) {
+  if (Array.isArray(existingGroups) && existingGroups.length > 0) {
+    return { ok: true, groups: existingGroups, materialized: false };
+  }
+
+  const teamList = (Array.isArray(teams) ? teams : []).filter((team) => team?.id);
+  const configured = Math.floor(Number(groupCount) || 0);
+
+  if (teamList.length < 2) {
+    return {
+      ok: false,
+      code: GROUPS_REQUIRED,
+      error: "Cần ít nhất 2 đội để tạo bảng.",
+      groups: [],
+      materialized: false,
+    };
+  }
+
+  if (configured === 1) {
+    return {
+      ok: true,
+      materialized: true,
+      groups: [
+        {
+          id: EXPLICIT_SINGLE_GROUP_ID,
+          name: "Bảng A",
+          teamIds: teamList.map((team) => String(team.id)),
+        },
+      ],
+    };
+  }
+
+  if (configured > 1) {
+    return {
+      ok: false,
+      code: GROUPS_REQUIRED,
+      error: "Chưa có chia bảng để lưu. Chạy chia bảng trước khi xác nhận.",
+      groups: [],
+      materialized: false,
+    };
+  }
+
+  return {
+    ok: false,
+    code: GROUPS_REQUIRED,
+    error: GROUPS_REQUIRED_MESSAGE,
+    groups: [],
+    materialized: false,
+  };
+}
+
+/**
  * @param {number} teamCount
+ * @param {object} [teamData] — when provided with explicit groupMode, organizer config is authoritative
  * @returns {boolean}
  */
-export function tournamentRequiresExplicitGroups(teamCount) {
+export function tournamentRequiresExplicitGroups(teamCount, teamData = null) {
   const count = Number(teamCount) || 0;
+  const rawSettings =
+    teamData?.settings && typeof teamData.settings === "object" ? teamData.settings : null;
+  const hasExplicitGroupMode =
+    rawSettings &&
+    Object.prototype.hasOwnProperty.call(rawSettings, "groupMode") &&
+    Boolean(rawSettings.groupMode);
+
+  if (hasExplicitGroupMode) {
+    const config = resolveFormatVenueDefaults(teamData);
+    if (config.groupMode === GROUP_MODE.NONE) {
+      return false;
+    }
+    // single_pool = Owner "1 bảng": require exactly one durable explicit group.
+    if (config.groupMode === GROUP_MODE.SINGLE_POOL) {
+      return config.groupCount >= 1 && count >= 2;
+    }
+    if (config.groupMode === GROUP_MODE.AUTOMATIC || config.groupMode === GROUP_MODE.MANUAL) {
+      return config.groupCount >= 1 && count >= 2;
+    }
+  }
+
+  // Legacy-compatible: 6–10 teams without explicit groupMode still require groups.
   return count >= MIN_TEAMS_FOR_EXPLICIT_GROUPS && count <= 10;
 }
 
@@ -40,67 +160,73 @@ export function tournamentRequiresExplicitGroups(teamCount) {
  */
 export function recommendGroupSizes(teamCount) {
   const count = Number(teamCount) || 0;
-  if (!tournamentRequiresExplicitGroups(count)) {
+  // Recommendation only for the legacy multi-group band (6–10).
+  // Smaller fields use listGroupDivisionOptions (includes 1 bảng).
+  if (count < MIN_TEAMS_FOR_EXPLICIT_GROUPS || count > 10) {
     return null;
   }
-  return DEFAULT_GROUP_SIZE_BY_TEAM_COUNT[count] || null;
+  if (DEFAULT_GROUP_SIZE_BY_TEAM_COUNT[count]) {
+    return [...DEFAULT_GROUP_SIZE_BY_TEAM_COUNT[count]];
+  }
+  const groupCount = recommendAutomaticGroupCount(count);
+  return deriveGroupSizes(count, groupCount);
 }
 
 /**
- * Supported explicit division options. For 8 teams: 2×4 and 4×2.
+ * Supported explicit division options. Supports 1 group (single pool) through N.
  * @param {number} teamCount
  * @returns {Array<{ groupCount: number, sizes: number[], label: string }>}
  */
 export function listGroupDivisionOptions(teamCount) {
   const count = Number(teamCount) || 0;
-  if (count < MIN_TEAMS_FOR_EXPLICIT_GROUPS) {
+  if (count < 2) {
     return [];
   }
 
+  const options = [];
+
+  // Always offer single-group (all teams in one pool).
+  options.push({
+    groupCount: 1,
+    sizes: [count],
+    label: `1 bảng × ${count} đội`,
+  });
+
+  if (count >= 4) {
+    options.push({
+      groupCount: 2,
+      sizes: deriveGroupSizes(count, 2),
+      label:
+        count === 8
+          ? "2 bảng × 4 đội"
+          : `2 bảng (${deriveGroupSizes(count, 2).join(" + ")})`,
+    });
+  }
+
   if (count === 8) {
-    return [
-      {
-        groupCount: 2,
-        sizes: [4, 4],
-        label: "2 bảng × 4 đội",
-      },
-      {
-        groupCount: 4,
-        sizes: [2, 2],
-        label: "4 bảng × 2 đội",
-      },
-    ];
-  }
-
-  const defaultSizes = recommendGroupSizes(count);
-  if (!defaultSizes) {
-    const groupCount = Math.min(2, Math.floor(count / 2));
-    if (groupCount < 2) {
-      return [];
+    options.push({
+      groupCount: 4,
+      sizes: [2, 2, 2, 2],
+      label: "4 bảng × 2 đội",
+    });
+  } else if (count >= 6 && count !== 8) {
+    const auto = recommendAutomaticGroupCount(count);
+    if (auto > 2) {
+      options.push({
+        groupCount: auto,
+        sizes: deriveGroupSizes(count, auto),
+        label: `${auto} bảng (tự động gợi ý)`,
+      });
     }
-    const base = Math.floor(count / groupCount);
-    const remainder = count % groupCount;
-    const sizes = Array.from({ length: groupCount }, (_, index) =>
-      index < remainder ? base + 1 : base
-    );
-    return [
-      {
-        groupCount,
-        sizes,
-        label: `${groupCount} bảng`,
-      },
-    ];
   }
 
-  return [
-    {
-      groupCount: defaultSizes.length,
-      sizes: [...defaultSizes],
-      label: defaultSizes
-        .map((size, index) => `Bảng ${String.fromCharCode(65 + index)} (${size})`)
-        .join(" + "),
-    },
-  ];
+  // Deduplicate by groupCount
+  const seen = new Set();
+  return options.filter((option) => {
+    if (seen.has(option.groupCount)) return false;
+    seen.add(option.groupCount);
+    return true;
+  });
 }
 
 /**
@@ -127,7 +253,7 @@ export function hasExplicitGroups(teamData) {
  */
 export function assertGroupsReadyForSchedule(teamData) {
   const teamCount = teamData?.teams?.length || 0;
-  if (!tournamentRequiresExplicitGroups(teamCount)) {
+  if (!tournamentRequiresExplicitGroups(teamCount, teamData)) {
     return { ok: true };
   }
   if (hasExplicitGroups(teamData)) {

@@ -56,6 +56,7 @@ export const TOURNAMENT_ROUTES = Object.freeze({
 });
 
 export const TEAM_TAB_QUERY = Object.freeze({
+  format: "format",
   teams: "teams",
   disciplines: "disciplines",
   matchups: "matchups",

@@ -62,8 +62,27 @@ export const FORMAT_PRESET = {
   CUSTOM: "custom",
 };
 
+/** Organizer group configuration mode (settings.groupMode). */
+export const GROUP_MODE = {
+  NONE: "none",
+  SINGLE_POOL: "single_pool",
+  AUTOMATIC: "automatic",
+  MANUAL: "manual",
+};
+
+/** Knockout bracket shape after group stage (settings.knockoutFormat). */
+export const KNOCKOUT_FORMAT = {
+  /** Top N from each group / pool — classic seed pairing. */
+  TOP_N: "top_n",
+  /** Single final from top 2 (typical 4-team single group). */
+  FINAL_ONLY: "final_only",
+  /** Semifinals then final (e.g. top 4 → 1v4, 2v3). */
+  SEMIFINALS: "semifinals",
+};
+
 export const DISCIPLINE_KIND = {
   DOUBLES: "doubles",
+  SINGLES: "singles",
   DREAMBREAKER: "dreambreaker",
 };
 
@@ -86,6 +105,7 @@ export const DREAMBREAKER_STATUS = {
 };
 
 export const DEFAULT_MLP_ROSTER_RULES = {
+  teamSize: 4,
   minPlayers: 4,
   maxPlayers: 4,
   requiredMales: 2,
@@ -113,10 +133,15 @@ export const DEFAULT_TEAM_TOURNAMENT_SETTINGS = {
   allowPlayerReusePerMatchup: false,
   allowPlayerCrossTeam: false,
   dreambreakerEnabled: false,
+  /** New tournaments default OFF. Missing server key must not invent true (see isCaptainAccessEnabled). */
+  captainAccessEnabled: false,
   lineupLockLeadMinutes: 15,
   rosterRules: null,
   tiebreakOrder: [...DEFAULT_TIE_BREAK_ORDER],
   regulations: null,
+  // Format/Venue keys are optional on legacy rows — omit from defaults so
+  // normalize does not invent explicit organizer groupMode/groupCount.
+  selectedCourtIds: [],
 };
 
 export const TEAM_AUDIT_ACTIONS = {

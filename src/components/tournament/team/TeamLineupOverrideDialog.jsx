@@ -18,6 +18,7 @@ import EditIcon from "@mui/icons-material/Edit";
 
 import { validateOverrideReason } from "../../../features/team-tournament/engines/overrideLineupWorkflowEngine.js";
 import { validateLineupSelectionsStructured } from "../../../features/team-tournament/engines/lineupValidationEngine.js";
+import { getActiveMatchDisciplines } from "../../../features/team-tournament/engines/mlpPresetEngine.js";
 
 function playerName(players, playerId) {
   return players.find((p) => p.id === playerId)?.name || playerId || "—";
@@ -56,13 +57,17 @@ export default function TeamLineupOverrideDialog({
 
   const elevatedReasonRequired = overrideOps?.elevatedReasonRequired === true;
   const operationalWarning = overrideOps?.operationalWarning || null;
+  const lineupDisciplines = useMemo(
+    () => getActiveMatchDisciplines(teamData?.disciplines || []),
+    [teamData?.disciplines]
+  );
   const beforeSummary = useMemo(
-    () => summarizeSelections(lineup?.selections, teamData?.disciplines || [], players),
-    [lineup?.selections, teamData?.disciplines, players]
+    () => summarizeSelections(lineup?.selections, lineupDisciplines, players),
+    [lineup?.selections, lineupDisciplines, players]
   );
   const afterSummary = useMemo(
-    () => summarizeSelections(selections, teamData?.disciplines || [], players),
-    [selections, teamData?.disciplines, players]
+    () => summarizeSelections(selections, lineupDisciplines, players),
+    [selections, lineupDisciplines, players]
   );
 
   const handlePlayerChange = (disciplineId, slotIndex, playerId, playerCount) => {
@@ -117,7 +122,7 @@ export default function TeamLineupOverrideDialog({
           <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
             {afterSummary}
           </Typography>
-          {(teamData?.disciplines || []).map((discipline) => {
+          {lineupDisciplines.map((discipline) => {
             const slots = Array.from({ length: discipline.playerCount }, (_, index) => index);
             const selectedIds = Array.from({ length: discipline.playerCount }, (_, index) =>
               selections[discipline.id]?.[index] || ""

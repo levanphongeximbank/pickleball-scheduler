@@ -35,7 +35,8 @@ import { useMyClubMembership } from "../../features/club/hooks/useMyClubMembersh
 import { LINEUP_STATUS, MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
 import { CaptainDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
 import { listDreambreakerMatchups } from "../../features/team-tournament/engines/dreambreakerEngine.js";
-import { isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
+import { buildCaptainDreambreakerSubmitCommand } from "../../features/team-tournament/engines/captainDreambreakerPortalContract.js";
+import { getActiveMatchDisciplines, isMlpFormat } from "../../features/team-tournament/engines/mlpPresetEngine.js";
 import CaptainPortalSummary from "../../components/tournament/team/CaptainPortalSummary.jsx";
 import {
   formatTeamTournamentDateTime,
@@ -50,9 +51,28 @@ import {
   getVisibleLineup,
 } from "../../features/team-tournament/engines/lineupEngine.js";
 import {
-  filterEligiblePlayersForDiscipline,
   validateLineupSelections,
 } from "../../features/team-tournament/engines/lineupValidationEngine.js";
+import { filterEligiblePlayersForLineupSlot } from "../../features/team-tournament/engines/lineupOptionFilter.js";
+import { resolveCaptainLineupAthletePool } from "../../features/team-tournament/engines/captainPortalRosterProjection.js";
+import { applyCanonicalMlpDisciplineMetadata } from "../../features/team-tournament/engines/mlpDisciplineSlotContract.js";
+import {
+  buildServerLineupFingerprint,
+  decideLineupFormRehydration,
+} from "../../features/team-tournament/engines/lineupFormState.js";
+import { resolveLineupExpectedVersion } from "../../features/team-tournament/engines/lineupRevisionContract.js";
+import { evaluateCaptainPortalAccess } from "../../features/team-tournament/engines/captainAccessPolicy.js";
+import {
+  logTt412CaptainAccess,
+  TT412_CAPTAIN_PORTAL_GATE,
+} from "../../features/team-tournament/diagnostics/tt412CaptainAccessDiagnostics.js";
+import {
+  logTt412LineupForm,
+  TT412_LINEUP_REHYDRATE_DECISION,
+  TT412_LINEUP_SAVE_RESULT,
+  TT412_LINEUP_SELECT_CHANGE,
+  TT412_LINEUP_SUBMIT_RESULT,
+} from "../../features/team-tournament/diagnostics/tt412LineupFormDiagnostics.js";
 import {
   findTeamForCaptain,
   getOpponentTeamId,
@@ -68,7 +88,6 @@ import {
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import TeamSubstitutionPanel from "../../components/tournament/TeamSubstitutionPanel.jsx";
 import { findTeam, getLineup } from "../../features/team-tournament/models/index.js";
-import { captainSubmitDreambreakerOrder } from "../../features/team-tournament/services/teamTournamentService.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
 import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
 import { useLineupDeadlineClock } from "../../features/team-tournament/ui/useLineupDeadlineClock.js";
@@ -148,62 +167,33 @@ function useCaptainPortalAccess({ tournament, teamData, effectiveClubId, tournam
   const { currentTenantId } = useTenant();
 
   return useMemo(() => {
-    if (!tournament) {
-      return { allowed: false, error: "Không tìm thấy giải đấu." };
-    }
-
     const tenantForAccess =
       currentTenantId || resolveEffectiveTenantId(user) || tournament?.tenantId || null;
 
-    if (rbacEnabled && isAuthenticated) {
+    let tenantCheck = null;
+    if (rbacEnabled && isAuthenticated && tournament) {
       if (tenantForAccess && tournament?.tenantId) {
-        const tenantCheck = guardRecordTenant(tournament, tenantForAccess, {
+        tenantCheck = guardRecordTenant(tournament, tenantForAccess, {
           user,
           rbacEnabled,
         });
-        if (!tenantCheck.ok) {
-          return { allowed: false, error: tenantCheck.error };
-        }
-      } else if (!tournament) {
-        const tenantCheck = assertTournamentPortalAccess(effectiveClubId, tournamentId, {
+      } else {
+        tenantCheck = assertTournamentPortalAccess(effectiveClubId, tournamentId, {
           tenantId: tenantForAccess,
           user,
           rbacEnabled,
         });
-        if (!tenantCheck.ok) {
-          return { allowed: false, error: tenantCheck.error };
-        }
       }
     }
 
-    const resolvedTeamData = teamData || getTeamData(tournament);
-    const captainTeam = viewerPlayerId
-      ? findTeamForCaptain(resolvedTeamData, viewerPlayerId)
-      : null;
-
-    if (!captainTeam && rbacEnabled && isAuthenticated) {
-      return {
-        allowed: false,
-        error: "Chỉ đội trưởng hoặc đội phó mới truy cập được trang này.",
-      };
-    }
-
-    if (!captainTeam && (!rbacEnabled || !isAuthenticated)) {
-      const fallbackTeam = teamData?.teams?.[0] || null;
-      return {
-        allowed: Boolean(fallbackTeam),
-        captainTeam: fallbackTeam,
-        viewerPlayerId: fallbackTeam?.captainPlayerId || null,
-        error: fallbackTeam ? null : "Chưa có đội nào trong giải.",
-      };
-    }
-
-    return {
-      allowed: true,
-      captainTeam,
+    const resolvedTeamData = teamData || (tournament ? getTeamData(tournament) : null);
+    return evaluateCaptainPortalAccess({
+      tournament,
+      teamData: resolvedTeamData,
       viewerPlayerId,
-      error: null,
-    };
+      tenantCheck,
+      findTeamForCaptain,
+    });
   }, [
     effectiveClubId,
     currentTenantId,
@@ -221,7 +211,7 @@ function buildInitialSelections(teamData, matchupId, teamId) {
   const lineup = getLineup(teamData, matchupId, teamId);
   const selections = {};
 
-  for (const discipline of teamData.disciplines) {
+  for (const discipline of getActiveMatchDisciplines(teamData.disciplines)) {
     selections[discipline.id] = [...(lineup?.selections?.[discipline.id] || [])];
   }
 
@@ -256,7 +246,6 @@ function MatchupLineupCard({
   players,
   tournamentId,
   dataVersion,
-  tournamentVersion,
   runMutation,
   getVisibleLineups,
   useCloudVisibleLineups,
@@ -296,14 +285,47 @@ function MatchupLineupCard({
   const [selections, setSelections] = useState(() =>
     buildInitialSelections(teamData, matchup.id, team.id)
   );
+  const [dirty, setDirty] = useState(false);
+  const [serverConflict, setServerConflict] = useState(false);
+  const [serverFingerprint, setServerFingerprint] = useState(() =>
+    buildServerLineupFingerprint(ownLineup, matchup.id, team.id)
+  );
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [cloudVisible, setCloudVisible] = useState(null);
 
   useEffect(() => {
+    const nextFingerprint = buildServerLineupFingerprint(ownLineup, matchup.id, team.id);
+    const decision = decideLineupFormRehydration({
+      dirty,
+      prevFingerprint: serverFingerprint,
+      nextFingerprint,
+    });
+    logTt412LineupForm(TT412_LINEUP_REHYDRATE_DECISION, {
+      matchupId: matchup.id,
+      teamId: team.id,
+      dirty,
+      serverFingerprintBefore: serverFingerprint,
+      serverFingerprintAfter: nextFingerprint,
+      rehydrate: decision.rehydrate,
+      reason: decision.reason,
+    });
+    if (decision.conflict) {
+      setServerConflict(true);
+    }
+    if (!decision.rehydrate) {
+      if (serverFingerprint !== nextFingerprint && !dirty) {
+        setServerFingerprint(nextFingerprint);
+      }
+      return;
+    }
     setSelections(buildInitialSelections(teamData, matchup.id, team.id));
-  }, [teamData, matchup.id, team.id, ownLineup?.status, dataVersion]);
+    setServerFingerprint(nextFingerprint);
+    setDirty(false);
+    setServerConflict(false);
+    // Fingerprint/dirty gate replaces blanket dataVersion reset.
+  }, [teamData, matchup.id, team.id, ownLineup, dirty, serverFingerprint]);
 
   useEffect(() => {
     if (!useCloudVisibleLineups || !getVisibleLineups) {
@@ -322,9 +344,13 @@ function MatchupLineupCard({
   }, [getVisibleLineups, matchup.id, useCloudVisibleLineups, dataVersion]);
 
   const allowReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
-  const hydratedTeam = useMemo(
-    () => hydratePortalTeamRoster(team, players),
+  const lineupPlayers = useMemo(
+    () => resolveCaptainLineupAthletePool({ team, clubPlayers: players }),
     [team, players]
+  );
+  const hydratedTeam = useMemo(
+    () => hydratePortalTeamRoster(team, lineupPlayers),
+    [team, lineupPlayers]
   );
   const visible =
     useCloudVisibleLineups && cloudVisible?.lineups
@@ -344,27 +370,27 @@ function MatchupLineupCard({
     ? buildOfficialPairings(teamData, matchup.id)
     : null;
 
-  function getUsedPlayerIds(excludeDisciplineId = null) {
-    const used = new Set();
-    for (const [disciplineId, playerIds] of Object.entries(selections)) {
-      if (disciplineId === excludeDisciplineId) {
-        continue;
-      }
-      playerIds.forEach((playerId) => used.add(String(playerId)));
-    }
-    return used;
-  }
-
   function handlePlayerChange(disciplineId, slotIndex, playerId, playerCount) {
     setSelections((current) => {
       const next = { ...current };
       const slots = Array.from({ length: playerCount }, (_, index) =>
         current[disciplineId]?.[index] || ""
       );
-      slots[slotIndex] = playerId;
-      next[disciplineId] = slots.filter(Boolean);
+      slots[slotIndex] = playerId ? String(playerId) : "";
+      // Keep positional slots (mixed: index0=male, index1=female). Do not compact.
+      next[disciplineId] = slots;
+      logTt412LineupForm(TT412_LINEUP_SELECT_CHANGE, {
+        tournamentId,
+        matchupId: matchup.id,
+        teamId: team.id,
+        slotId: `${disciplineId}:${slotIndex}`,
+        selectedValue: playerId ? String(playerId) : "",
+        dirtyAfter: true,
+      });
       return next;
     });
+    setDirty(true);
+    setServerConflict(false);
     setError("");
   }
 
@@ -381,7 +407,7 @@ function MatchupLineupCard({
       teamData,
       teamId: team.id,
       selections,
-      players,
+      players: lineupPlayers,
       partial: true,
     });
 
@@ -399,16 +425,28 @@ function MatchupLineupCard({
         selections,
       },
       actionScope: buildUiCommandScope("save-draft", tournamentId, `${matchup.id}:${team.id}`),
-      expectedVersion: tournamentVersion,
+      // Lineup RPC CAS uses lineup.version only — never tournament.version.
+      expectedVersion: resolveLineupExpectedVersion(ownLineup),
     });
 
     setBusy(false);
+    logTt412LineupForm(TT412_LINEUP_SAVE_RESULT, {
+      ok: result.ok === true,
+      matchupId: matchup.id,
+      teamId: team.id,
+      status: result.teamData
+        ? getLineup(result.teamData, matchup.id, team.id)?.status
+        : result.code || null,
+      errorCode: result.ok ? null : result.code || null,
+    });
 
     if (!result.ok) {
       setError(result.error || "Không lưu được nháp.");
       return;
     }
 
+    setDirty(false);
+    setServerConflict(false);
     setMessage("Đã lưu nháp đội hình.");
     onSaved();
   }
@@ -426,7 +464,7 @@ function MatchupLineupCard({
       teamData,
       teamId: team.id,
       selections,
-      players,
+      players: lineupPlayers,
     });
 
     if (!validation.ok) {
@@ -443,16 +481,28 @@ function MatchupLineupCard({
         selections,
       },
       actionScope: buildUiCommandScope("submit", tournamentId, `${matchup.id}:${team.id}`),
-      expectedVersion: tournamentVersion,
+      // Lineup RPC CAS uses lineup.version only — never tournament.version.
+      expectedVersion: resolveLineupExpectedVersion(ownLineup),
     });
 
     setBusy(false);
+    logTt412LineupForm(TT412_LINEUP_SUBMIT_RESULT, {
+      ok: result.ok === true,
+      matchupId: matchup.id,
+      teamId: team.id,
+      status: result.teamData
+        ? getLineup(result.teamData, matchup.id, team.id)?.status
+        : result.code || null,
+      errorCode: result.ok ? null : result.code || null,
+    });
 
     if (!result.ok) {
       setError(result.error || "Không nộp được đội hình.");
       return;
     }
 
+    setDirty(false);
+    setServerConflict(false);
     setMessage(
       "Đã nộp đội hình. BTC sẽ khóa và công bố — bạn sẽ thấy cặp đấu chính thức sau khi công bố."
     );
@@ -519,6 +569,12 @@ function MatchupLineupCard({
 
         {message ? <Alert severity="success">{message}</Alert> : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
+        {serverConflict ? (
+          <Alert severity="warning">
+            Dữ liệu đội hình trên máy chủ đã thay đổi trong khi bạn đang chỉnh. Bản chọn
+            hiện tại được giữ lại — lưu nháp hoặc tải lại khi sẵn sàng.
+          </Alert>
+        ) : null}
         {hydratedTeam.unresolvedCount > 0 ? (
           <Alert severity="warning">
             {hydratedTeam.unresolvedCount} VĐV thiếu identity
@@ -537,15 +593,7 @@ function MatchupLineupCard({
           </Alert>
         ) : null}
 
-        {teamData.disciplines.map((discipline) => {
-          const usedPlayerIds = getUsedPlayerIds(discipline.id);
-          const eligible = filterEligiblePlayersForDiscipline({
-            team,
-            discipline,
-            players,
-            usedPlayerIds,
-            allowReuse,
-          });
+        {getActiveMatchDisciplines(teamData.disciplines).map((discipline) => {
           const selectedIds = Array.from({ length: discipline.playerCount }, (_, index) =>
             selections[discipline.id]?.[index] || ""
           );
@@ -557,7 +605,17 @@ function MatchupLineupCard({
                 {discipline.name}
               </Typography>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap">
-                {slots.map((slotIndex) => (
+                {slots.map((slotIndex) => {
+                  const eligible = filterEligiblePlayersForLineupSlot({
+                    team,
+                    discipline,
+                    players: lineupPlayers,
+                    selections,
+                    slotIndex,
+                    allowReuse,
+                    teamData,
+                  });
+                  return (
                   <FormControl
                     key={`${discipline.id}-${slotIndex}`}
                     size="small"
@@ -588,12 +646,13 @@ function MatchupLineupCard({
                       {selectedIds[slotIndex] &&
                       !eligible.some((player) => player.id === selectedIds[slotIndex]) ? (
                         <MenuItem value={selectedIds[slotIndex]}>
-                          {playerName(players, selectedIds[slotIndex])}
+                          {playerName(lineupPlayers, selectedIds[slotIndex])}
                         </MenuItem>
                       ) : null}
                     </Select>
                   </FormControl>
-                ))}
+                  );
+                })}
               </Stack>
             </Box>
           );
@@ -695,6 +754,7 @@ export default function TeamPortal() {
     teamData: hookTeamData,
     version,
     error: loadError,
+    errorCode: loadErrorCode,
     dataVersion,
     versionConflict,
     reload,
@@ -715,6 +775,7 @@ export default function TeamPortal() {
     clubId: resolvedClubId,
     tournamentId,
     pollingEnabled: true,
+    pageMode: "captainPortal",
   });
 
   const handleDeadlineElapsed = useCallback(() => {
@@ -744,7 +805,7 @@ export default function TeamPortal() {
       matchups: [],
       lineups: {},
     };
-    return raw;
+    return applyCanonicalMlpDisciplineMetadata(raw) || raw;
   }, [hookTeamData]);
 
   const athletePool = useTeamTournamentAthletePool({
@@ -808,10 +869,39 @@ export default function TeamPortal() {
   async function handleDreambreakerSubmit(matchupId, order) {
     setDbBusy(true);
     setDbMessage(null);
-    const result = await captainSubmitDreambreakerOrder(effectiveClubId, tournamentId, {
-      matchupId,
+    const matchup = (teamData.matchups || []).find((item) => item.id === matchupId);
+    const command = buildCaptainDreambreakerSubmitCommand({
+      matchup,
       teamId: access.captainTeam.id,
+      viewerTeamId: access.captainTeam.id,
       order,
+      rosterIds: access.captainTeam.playerIds || [],
+    });
+    if (!command.ok) {
+      setDbBusy(false);
+      setDbMessage({ type: "error", text: command.error });
+      return;
+    }
+    // Canonical captain write path — same orchestrator as lineup Save/Submit.
+    // No profile-club RBAC. Server is captain/deputy authority.
+    // CAS expectedVersion is matchup.dreambreaker.version only.
+    const result = await runMutation({
+      method: "submitDreambreakerOrder",
+      payload: {
+        matchupId: command.payload.matchupId,
+        teamId: command.payload.teamId,
+        order: command.payload.order,
+      },
+      actionScope: buildUiCommandScope(
+        "db-order",
+        tournamentId,
+        `${command.payload.matchupId}:${command.payload.teamId}`
+      ),
+      expectedVersion: command.payload.expectedVersion,
+      commandOptions: {
+        expectedVersion: command.payload.expectedVersion,
+        idempotencyKey: command.payload.idempotencyKey,
+      },
     });
     setDbBusy(false);
     if (!result.ok) {
@@ -831,6 +921,37 @@ export default function TeamPortal() {
   }
 
   if (loadError) {
+    const isCaptainGate =
+      loadErrorCode === "captain_portal_closed" ||
+      loadErrorCode === "captain_scope_denied" ||
+      loadErrorCode === "NOT_AUTHENTICATED" ||
+      loadErrorCode === "IDENTITY_UNPROVEN";
+
+    logTt412CaptainAccess(TT412_CAPTAIN_PORTAL_GATE, {
+      source: "loadError",
+      code: loadErrorCode || null,
+      allowed: false,
+    });
+
+    if (isCaptainGate) {
+      return (
+        <Box sx={{ p: 3, maxWidth: 480 }}>
+          <Stack spacing={2}>
+            <LockIcon color="warning" fontSize="large" />
+            <Typography variant="h6" fontWeight={700}>
+              Không có quyền truy cập
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {loadError}
+            </Typography>
+            <Button component={RouterLink} to="/tournament" variant="contained">
+              Về trang Giải đấu
+            </Button>
+          </Stack>
+        </Box>
+      );
+    }
+
     return (
       <Box sx={{ p: 3 }}>
         <Stack spacing={2}>
@@ -852,6 +973,11 @@ export default function TeamPortal() {
   }
 
   if (!access.allowed) {
+    logTt412CaptainAccess(TT412_CAPTAIN_PORTAL_GATE, {
+      source: "clientGate",
+      code: access.code || null,
+      allowed: false,
+    });
     return (
       <Box sx={{ p: 3, maxWidth: 480 }}>
         <Stack spacing={2}>
@@ -1022,7 +1148,7 @@ export default function TeamPortal() {
                 </Typography>
                 {matchups.pending.map((matchup) => (
                   <MatchupLineupCard
-                    key={`pending-${matchup.id}-${getLineup(teamData, matchup.id, access.captainTeam.id)?.status || "none"}`}
+                    key={`pending-${matchup.id}`}
                     matchup={matchup}
                     team={access.captainTeam}
                     teamData={teamData}
@@ -1040,7 +1166,7 @@ export default function TeamPortal() {
                 </Typography>
                 {matchups.done.map((matchup) => (
                   <MatchupLineupCard
-                    key={`done-${matchup.id}-${getLineup(teamData, matchup.id, access.captainTeam.id)?.status || "none"}`}
+                    key={`done-${matchup.id}`}
                     matchup={matchup}
                     team={access.captainTeam}
                     teamData={teamData}
@@ -1062,7 +1188,7 @@ export default function TeamPortal() {
                 </Typography>
                 {matchups.past.map((matchup) => (
                   <MatchupLineupCard
-                    key={`past-${matchup.id}-${getLineup(teamData, matchup.id, access.captainTeam.id)?.status || "none"}`}
+                    key={`past-${matchup.id}`}
                     matchup={matchup}
                     team={access.captainTeam}
                     teamData={teamData}

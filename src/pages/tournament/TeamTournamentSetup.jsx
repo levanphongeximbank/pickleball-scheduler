@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
@@ -74,6 +74,7 @@ import BuildScheduleDialog from "../../components/tournament/team/BuildScheduleD
 import TeamSchedulePreviewDialog from "../../components/tournament/team/TeamSchedulePreviewDialog.jsx";
 import TeamDisciplinesPanel from "../../components/tournament/team/TeamDisciplinesPanel.jsx";
 import TeamGroupDivisionPanel from "../../components/tournament/team/TeamGroupDivisionPanel.jsx";
+import TeamFormatVenueSetupPanel from "../../components/tournament/team/TeamFormatVenueSetupPanel.jsx";
 import TeamMatchupOperationsCard from "../../components/tournament/team/TeamMatchupOperationsCard.jsx";
 import TeamLineupOverrideDialog from "../../components/tournament/team/TeamLineupOverrideDialog.jsx";
 import TeamForfeitDialog from "../../components/tournament/team/TeamForfeitDialog.jsx";
@@ -89,6 +90,7 @@ import {
   buildRefereePortalUrl,
   copyTextToClipboard,
 } from "../../components/tournament/team/copyPortalLink.js";
+import CaptainAccessToggle from "../../components/tournament/team/CaptainAccessToggle.jsx";
 import { computeTeamTournamentWorkflow } from "../../components/tournament/team/teamTournamentWorkflow.js";
 import { MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
 import { TEAM_TAB_QUERY } from "../../config/tournamentRoutes.js";
@@ -103,6 +105,10 @@ import {
 } from "../../features/team-tournament/showcase/index.js";
 import TeamTournamentShowcase from "../../features/team-tournament/showcase/TeamTournamentShowcase.jsx";
 import { isSetupMutationFoundationEnabled } from "../../features/team-tournament/setup/setupMutationFeatureGate.js";
+import {
+  TT412_SAVE_DRAFT_DIAG,
+  tt412SaveDraftDiag,
+} from "../../features/team-tournament/services/tt412SaveDraftDiagnostics.js";
 import { isGroupDivisionEditable } from "../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
 import { DEFAULT_ENGINE_VERSION } from "../../features/team-tournament/canonical/teamTournamentMutationEnvelope.js";
 import { TT_V6_TT32_FIXTURE } from "../../features/team-tournament/fixtures/ttV6Tt32StagingFixture.js";
@@ -111,7 +117,11 @@ import { isGlobalRole } from "../../features/identity/constants/roles.js";
 import { canManageClubGovernance } from "../../features/club/services/clubGovernanceService.js";
 
 function buildVisibleTabs(canManage) {
-  const tabs = [{ key: TEAM_TAB_QUERY.teams, label: "Đội" }];
+  const tabs = [];
+  if (canManage) {
+    tabs.push({ key: TEAM_TAB_QUERY.format, label: "Format & Venue" });
+  }
+  tabs.push({ key: TEAM_TAB_QUERY.teams, label: "Đội" });
   if (canManage) {
     tabs.push({ key: TEAM_TAB_QUERY.disciplines, label: "Nội dung" });
     tabs.push({ key: TEAM_TAB_QUERY.matchups, label: "Lịch đối đầu" });
@@ -179,6 +189,7 @@ export default function TeamTournamentSetup() {
     patchTeamData,
     persistSetupTeamData,
     saveDraft,
+    persistFormatVenueSetup,
     rosterSetupRevision,
     getLineupOverrideOps,
     connectionState,
@@ -200,6 +211,9 @@ export default function TeamTournamentSetup() {
   const effectiveClubId = String(
     tournament?.clubId || loadClubId || activeClubId || ""
   ).trim();
+
+  /** Preview-only: Format & Venue panel reports local dirty for Save-draft START marker. */
+  const formatDirtyRef = useRef(false);
 
   const access = useTeamTournamentAccess({
     tournament,
@@ -371,14 +385,61 @@ export default function TeamTournamentSetup() {
     return true;
   }
 
+  async function saveFormatVenueConfig(config) {
+    if (typeof persistFormatVenueSetup !== "function") {
+      setError(
+        "Không thể lưu Format & Venue: thiếu orchestrator persistFormatVenueSetup."
+      );
+      return false;
+    }
+    const result = await persistFormatVenueSetup(config);
+    if (result?.isVersionConflict) {
+      setError(
+        result.error ||
+          "Dữ liệu đã được người khác cập nhật. Hệ thống đã tải lại — vui lòng kiểm tra trước khi lưu lại."
+      );
+      return false;
+    }
+    if (!result?.ok) {
+      setError(
+        result?.error ||
+          (result?.code === "GATE_OFF"
+            ? "Không thể lưu Format & Venue: Setup mutation v7 đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7)."
+            : "Không ghi được Format & Venue qua tournament.update_setup_config.")
+      );
+      return false;
+    }
+    setMessage("Đã cập nhật Format & Venue.");
+    setError("");
+    return true;
+  }
+
   async function handleSaveDraft() {
     if (!access.canManage) {
       return;
     }
     setError("");
 
+    const stageBefore = workflow.stage || null;
+
     if (typeof saveDraft !== "function") {
-      setError("Chức năng Lưu giải chưa khả dụng trên môi trường này.");
+      const errorMessage = "Chức năng Lưu giải chưa khả dụng trên môi trường này.";
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.START, {
+        tournamentId: tournamentId || null,
+        workflowStage: stageBefore,
+        currentTournamentVersion: version ?? null,
+        hasUnsavedFormatState: formatDirtyRef.current === true,
+        rulesVersion: "",
+      });
+      setError(errorMessage);
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.FINAL, {
+        ok: false,
+        errorCode: "SAVE_DRAFT_UNAVAILABLE",
+        errorMessage,
+        uiAcknowledged: true,
+        workflowTransitioned: false,
+        saveNotificationShown: false,
+      });
       return;
     }
 
@@ -405,27 +466,69 @@ export default function TeamTournamentSetup() {
         ).trim();
       }
     } catch (error) {
-      setError(
+      const errorMessage =
         error?.message ||
-          "Không lấy được rulesVersion canonical — không lưu nháp giải."
-      );
+        "Không lấy được rulesVersion canonical — không lưu nháp giải.";
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.START, {
+        tournamentId: tournamentId || null,
+        workflowStage: stageBefore,
+        currentTournamentVersion: version ?? null,
+        hasUnsavedFormatState: formatDirtyRef.current === true,
+        rulesVersion: "",
+      });
+      setError(errorMessage);
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.FINAL, {
+        ok: false,
+        errorCode: "RULES_VERSION_PREPARE_FAILED",
+        errorMessage,
+        uiAcknowledged: true,
+        workflowTransitioned: false,
+        saveNotificationShown: false,
+      });
       return;
     }
 
+    tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.START, {
+      tournamentId: tournamentId || null,
+      workflowStage: stageBefore,
+      currentTournamentVersion: version ?? null,
+      hasUnsavedFormatState: formatDirtyRef.current === true,
+      rulesVersion: rulesVersion || "",
+    });
+
     const result = await saveDraft({ rulesVersion });
     if (!result.ok) {
-      setError(result.error || "Không lưu được bản nháp giải.");
+      const errorMessage = result.error || "Không lưu được bản nháp giải.";
+      setError(errorMessage);
+      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.FINAL, {
+        ok: false,
+        errorCode: result.code || "SAVE_DRAFT_FAILED",
+        errorMessage,
+        uiAcknowledged: true,
+        workflowTransitioned: false,
+        saveNotificationShown: false,
+      });
       return;
     }
 
     // Success only after get_setup v7 read-back verification.
     const draftLabel =
       result.draftState?.draftStatus || workflow.draftStatusLabel || "Nháp";
+    const stageAfter = result.draftState?.workflowStage || null;
     setMessage(
       result.replayed
         ? `Bản nháp giải đã ở trạng thái mới nhất (${draftLabel}).`
         : `Đã lưu nháp giải (${draftLabel}). Bạn có thể đóng tab và quay lại tiếp tục thiết lập sau — không công bố.`
     );
+    tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.FINAL, {
+      ok: true,
+      errorCode: null,
+      errorMessage: null,
+      uiAcknowledged: true,
+      workflowTransitioned:
+        stageBefore != null && stageAfter != null && stageBefore !== stageAfter,
+      saveNotificationShown: true,
+    });
   }
 
   const showcaseClubId = String(effectiveClubId || activeClubId || "");
@@ -619,6 +722,7 @@ export default function TeamTournamentSetup() {
       competitionClass: COMPETITION_CLASS.INTERNAL,
       clubId: effectiveClubId || activeClubId || null,
       tournamentId: tournamentId || null,
+      selectedCourtIds: td?.settings?.selectedCourtIds || options.selectedCourtIds || [],
     };
 
     const next = buildRoundRobinMatchups(
@@ -1144,8 +1248,17 @@ export default function TeamTournamentSetup() {
       description="Giải đồng đội — quản lý đội, nội dung, lịch đối đầu và BXH"
       onBack={() => navigate("/tournament")}
       headerActions={
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
           {!access.canManage ? <Chip label="Chỉ xem" variant="outlined" size="small" /> : null}
+          {access.canManage ? (
+            <CaptainAccessToggle
+              canManage={access.canManage}
+              tournamentId={tournamentId}
+              teamData={td}
+              expectedVersion={version}
+              onUpdated={() => reload({ silent: true })}
+            />
+          ) : null}
           {access.canManage ? (
             <Button
               variant="outlined"
@@ -1254,6 +1367,28 @@ export default function TeamTournamentSetup() {
             <Tab key={tabItem.key} label={tabItem.label} />
           ))}
         </Tabs>
+
+        {access.canManage && activeTabKey === TEAM_TAB_QUERY.format ? (
+          <TeamFormatVenueSetupPanel
+            teamData={td}
+            tournament={tournament}
+            clubId={effectiveClubId || activeClubId}
+            tenantId={
+              tournament?.tenantId ||
+              clubPool.tenantId ||
+              tenantPool.tenantId ||
+              currentTenantId
+            }
+            canManage={access.canManage}
+            teamCountHint={td?.teams?.length || 0}
+            onSave={saveFormatVenueConfig}
+            onError={setError}
+            onMessage={setMessage}
+            onFormatDirtyDiagnostic={(dirty) => {
+              formatDirtyRef.current = dirty === true;
+            }}
+          />
+        ) : null}
 
         {activeTabKey === TEAM_TAB_QUERY.teams ? (
           <Stack spacing={2}>

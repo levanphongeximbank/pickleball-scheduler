@@ -16,6 +16,7 @@ import LockIcon from "@mui/icons-material/Lock";
 
 import { DREAMBREAKER_ORDER_SOURCE, DREAMBREAKER_STATUS } from "../../../features/team-tournament/constants.js";
 import { getDreambreakerCourtPlayers } from "../../../features/team-tournament/engines/dreambreakerEngine.js";
+import { getDreambreakerScoringHints } from "../../../features/team-tournament/engines/dreambreakerScoringContract.js";
 import { findTeam } from "../../../features/team-tournament/models/index.js";
 import { formatTeamTournamentDateTime, formatCountdownTo } from "./teamTournamentLabels.js";
 
@@ -94,9 +95,11 @@ export function CaptainDreambreakerPanel({
 }) {
   const dreambreaker = matchup.dreambreaker;
   const isTeamA = teamId === matchup.teamAId;
-  const currentOrder = isTeamA
-    ? dreambreaker?.teamAOrder || []
-    : dreambreaker?.teamBOrder || [];
+  const currentOrder = Array.isArray(dreambreaker?.ownOrder)
+    ? dreambreaker.ownOrder
+    : isTeamA
+      ? dreambreaker?.teamAOrder || []
+      : dreambreaker?.teamBOrder || [];
   const orderSource = isTeamA ? dreambreaker?.orderSourceA : dreambreaker?.orderSourceB;
   const [order, setOrder] = useState(
     currentOrder.length === 4 ? currentOrder : ["", "", "", ""]
@@ -109,9 +112,13 @@ export function CaptainDreambreakerPanel({
     : null;
   const ordersLocked = Boolean(dreambreaker?.ordersLockedAt);
   const canSubmitOrder =
-    !ordersLocked &&
-    dreambreaker.status === DREAMBREAKER_STATUS.LINEUP_OPEN &&
-    currentOrder.length !== 4;
+    dreambreaker?.canSubmitOwnOrder === false
+      ? false
+      : dreambreaker?.canSubmitOwnOrder === true
+        ? !ordersLocked && dreambreaker.status === DREAMBREAKER_STATUS.LINEUP_OPEN
+        : !ordersLocked &&
+          dreambreaker?.status === DREAMBREAKER_STATUS.LINEUP_OPEN &&
+          currentOrder.length !== 4;
 
   if (!team) {
     return null;
@@ -215,7 +222,6 @@ export function RefereeDreambreakerPanel({
   onUndo,
   onStart,
   onLock,
-  onInjury,
   busy,
 }) {
   const dreambreaker = matchup.dreambreaker;
@@ -281,10 +287,22 @@ export function RefereeDreambreakerPanel({
 
   if (dreambreaker.status === DREAMBREAKER_STATUS.COMPLETED) {
     return (
-      <Alert severity="success" sx={{ mt: 2 }}>
-        Dreambreaker kết thúc: {teamA?.name} {dreambreaker.teamAScore}–
-        {dreambreaker.teamBScore} {teamB?.name}
-      </Alert>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, mt: 2 }}>
+        <Alert severity="success" sx={{ mb: onUndo ? 1.5 : 0 }}>
+          Dreambreaker kết thúc: {teamA?.name} {dreambreaker.teamAScore}–
+          {dreambreaker.teamBScore} {teamB?.name}
+        </Alert>
+        {onUndo ? (
+          <Button
+            startIcon={<UndoIcon />}
+            variant="outlined"
+            disabled={busy || !onUndo}
+            onClick={onUndo}
+          >
+            Hoàn tác điểm cuối
+          </Button>
+        ) : null}
+      </Paper>
     );
   }
 
@@ -325,25 +343,9 @@ export function RefereeDreambreakerPanel({
           <Button startIcon={<UndoIcon />} variant="outlined" disabled={busy || !onUndo} onClick={onUndo}>
             Hoàn tác
           </Button>
-          <Button
-            variant="outlined"
-            color="warning"
-            disabled={busy || !onInjury}
-            onClick={() => {
-              const injuredId = window.prompt("ID VĐV bị chấn thương:");
-              if (injuredId) {
-                const teamId = window.prompt("ID đội (teamA/teamB id):");
-                if (teamId) {
-                  onInjury({ teamId, injuredPlayerId: injuredId.trim() });
-                }
-              }
-            }}
-          >
-            Chấn thương
-          </Button>
         </Stack>
         <Typography variant="caption" color="text.secondary">
-          Rally đến 21, cách 2, Freeze @20 · Đổi sân khi tổng điểm = 20 · Xoay 4 điểm/lượt
+          {getDreambreakerScoringHints(matchup, teamData?.disciplines)}
         </Typography>
       </Stack>
     </Paper>

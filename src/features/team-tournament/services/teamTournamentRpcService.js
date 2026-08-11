@@ -1,4 +1,5 @@
 import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
+import { sanitizeCaptainDreambreakerSubmitResponse } from "../engines/captainDreambreakerPortalContract.js";
 
 let testRpcClientOverride = null;
 
@@ -8,6 +9,7 @@ export const TT1B_COMMAND_RPCS = Object.freeze([
   "team_tournament_randomize_lineup",
   "team_tournament_lock_matchup",
   "team_tournament_publish_matchup",
+  "team_tournament_save_sub_match_draft",
   "team_tournament_confirm_sub_match",
   "team_tournament_apply_forfeit",
   "team_tournament_withdraw_team",
@@ -25,7 +27,10 @@ export const TT1B_COMMAND_RPCS = Object.freeze([
 /** TT-1B commands that require optimistic-lock version before RPC. */
 export const TT1B_REQUIRES_EXPECTED_VERSION = Object.freeze([
   "team_tournament_submit_lineup",
+  "team_tournament_save_sub_match_draft",
   "team_tournament_confirm_sub_match",
+  "team_tournament_record_dreambreaker_point",
+  "team_tournament_undo_dreambreaker_point",
 ]);
 
 /** Auto idempotency key prefix when caller omits idempotencyKey (same rule as cloudSync). */
@@ -36,6 +41,7 @@ export const TT1B_IDEMPOTENCY_PREFIX_BY_RPC = Object.freeze({
   team_tournament_lock_matchup: "lock",
   team_tournament_publish_matchup: "publish",
   team_tournament_override_lineup: "override",
+  team_tournament_save_sub_match_draft: "ref-draft",
   team_tournament_confirm_sub_match: "confirm",
   team_tournament_apply_forfeit: "forfeit",
   team_tournament_withdraw_team: "withdraw",
@@ -107,6 +113,14 @@ export const TT1B_RPC_ARG_CONTRACTS = Object.freeze({
     "p_sub_match_id",
     "p_score",
     "p_winner_team_id",
+    "p_expected_version",
+    "p_idempotency_key",
+  ],
+  team_tournament_save_sub_match_draft: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_sub_match_id",
+    "p_score",
     "p_expected_version",
     "p_idempotency_key",
   ],
@@ -231,6 +245,12 @@ export const TT1B_LEGACY_RPC_ARG_CONTRACTS = Object.freeze({
     "p_sub_match_id",
     "p_score",
     "p_winner_team_id",
+  ],
+  team_tournament_save_sub_match_draft: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_sub_match_id",
+    "p_score",
   ],
   team_tournament_upsert_standings: ["p_tournament_id", "p_standings"],
 });
@@ -377,8 +397,11 @@ export function prepareTt1bCommandRpcCall(rpcName, baseArgs, normalized = {}) {
   if (contract) {
     const argNames = Object.keys(args).sort();
     const expected = [...contract].sort();
-    const isLegacyOnly =
-      JSON.stringify(argNames) === JSON.stringify([...TT1B_LEGACY_RPC_ARG_CONTRACTS[rpcName]].sort());
+    const legacyContract = TT1B_LEGACY_RPC_ARG_CONTRACTS[rpcName];
+    const isLegacyOnly = Boolean(
+      legacyContract &&
+        JSON.stringify(argNames) === JSON.stringify([...legacyContract].sort())
+    );
     if (isLegacyOnly || argNames.join(",") !== expected.join(",")) {
       return {
         ok: false,
@@ -497,26 +520,52 @@ function normalizeCommandParams(params, legacyArgs) {
  * @param {string} tournamentId
  * @param {string|null} [viewerTeamId]
  * @param {{ schemaVersion?: number|null, diagnostic?: boolean }} [options]
+ *
+ * Always sends the canonical 4-arg PostgREST body so overloaded
+ * get_setup(text,text) vs get_setup(text,text,integer,boolean) cannot collide.
  */
 export async function rpcTeamTournamentGetSetup(
   tournamentId,
   viewerTeamId = null,
   options = {}
 ) {
-  const params = {
+  const schemaVersion =
+    options.schemaVersion != null && Number.isFinite(Number(options.schemaVersion))
+      ? Number(options.schemaVersion)
+      : 7;
+  const diagnostic = options.diagnostic === true;
+  return callTeamTournamentRpc("team_tournament_get_setup", {
     p_tournament_id: String(tournamentId),
     p_viewer_team_id: viewerTeamId ? String(viewerTeamId) : null,
-  };
-  if (options.schemaVersion != null) {
-    params.p_schema_version = Number(options.schemaVersion);
-  }
-  if (options.diagnostic === true) {
-    params.p_diagnostic = true;
-    if (params.p_schema_version == null) {
-      params.p_schema_version = 7;
-    }
-  }
-  return callTeamTournamentRpc("team_tournament_get_setup", params);
+    p_schema_version: schemaVersion,
+    p_diagnostic: diagnostic,
+  });
+}
+
+/**
+ * W1 contract stub — live after W2 SQL + W3 portal switch.
+ * Prefer captainAccessService.getCaptainPortalSetup for feature gating.
+ */
+export async function rpcTeamTournamentGetCaptainPortal(
+  tournamentId,
+  options = {}
+) {
+  return callTeamTournamentRpc("team_tournament_get_captain_portal", {
+    p_tournament_id: String(tournamentId),
+    p_schema_version: options.schemaVersion ?? 7,
+  });
+}
+
+/**
+ * W1 contract stub — live after W2 SQL. Prefer captainAccessService.setCaptainAccess.
+ */
+export async function rpcTeamTournamentSetCaptainAccess(params = {}) {
+  return callTeamTournamentRpc("team_tournament_set_captain_access", {
+    p_tournament_id: String(params.tournamentId || ""),
+    p_enabled: Boolean(params.enabled),
+    p_expected_version: params.expectedVersion ?? null,
+    p_idempotency_key: params.idempotencyKey ?? null,
+  });
 }
 
 /**
@@ -771,18 +820,24 @@ export async function rpcTeamTournamentPublishMatchup(params, matchupId) {
   return callTeamTournamentRpc("team_tournament_publish_matchup", prepared.args);
 }
 
-export async function rpcTeamTournamentSaveSubMatchDraft(
-  tournamentId,
-  matchupId,
-  subMatchId,
-  score
-) {
-  return callTeamTournamentRpc("team_tournament_save_sub_match_draft", {
-    p_tournament_id: String(tournamentId),
-    p_matchup_id: String(matchupId),
-    p_sub_match_id: String(subMatchId),
-    p_score: score,
+export async function rpcTeamTournamentSaveSubMatchDraft(params, matchupId, subMatchId, score) {
+  const normalized = normalizeCommandParams(params, {
+    tournamentId: params,
+    matchupId,
+    subMatchId,
+    score,
   });
+
+  return callTt1bCommandRpc(
+    "team_tournament_save_sub_match_draft",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+      p_matchup_id: String(normalized.matchupId),
+      p_sub_match_id: String(normalized.subMatchId),
+      p_score: normalized.score,
+    },
+    normalized
+  );
 }
 
 export async function rpcTeamTournamentConfirmSubMatch(
@@ -1073,7 +1128,7 @@ function normalizeDreambreakerParams(params = {}) {
 
 export async function rpcTeamTournamentSubmitDreambreakerOrder(params = {}) {
   const normalized = normalizeDreambreakerParams(params);
-  return callTt1bCommandRpc(
+  const raw = await callTt1bCommandRpc(
     "team_tournament_submit_dreambreaker_order",
     {
       p_tournament_id: String(normalized.tournamentId),
@@ -1083,6 +1138,7 @@ export async function rpcTeamTournamentSubmitDreambreakerOrder(params = {}) {
     },
     normalized
   );
+  return sanitizeCaptainDreambreakerSubmitResponse(raw);
 }
 
 export async function rpcTeamTournamentLockDreambreakerOrder(params = {}) {

@@ -8,7 +8,14 @@ import {
   GENDER_REQUIREMENT,
 } from "../constants.js";
 import { findTeam } from "../models/index.js";
-import { isMlpFormat, getActiveMatchDisciplines } from "./mlpPresetEngine.js";
+import {
+  getActiveMatchDisciplines,
+  isMlpFormat,
+} from "./mlpPresetEngine.js";
+import {
+  applyCanonicalMlpDisciplineMetadata,
+  resolveMlpSlotGenderGate,
+} from "./mlpDisciplineSlotContract.js";
 import {
   LINEUP_VALIDATION_CODE,
   createLineupValidationResult,
@@ -430,12 +437,13 @@ function validateLineupSelectionsStructuredLegacy({
   serverTime = null,
   lineupVersion = null,
 }) {
-  const team = findTeam(teamData, teamId);
+  const effectiveTeamData = applyCanonicalMlpDisciplineMetadata(teamData) || teamData;
+  const team = findTeam(effectiveTeamData, teamId);
   if (!team) {
     return validationFailure(LINEUP_VALIDATION_CODE.VALIDATION, "Không tìm thấy đội.");
   }
 
-  const allowReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
+  const allowReuse = effectiveTeamData.settings?.allowPlayerReusePerMatchup === true;
   const usedPlayerIds = new Set();
   const normalizedSelections = {};
   const fieldErrors = {};
@@ -443,8 +451,9 @@ function validateLineupSelectionsStructuredLegacy({
   const invalidPlayerIds = [];
   const invalidDisciplineIds = [];
   const warnings = [];
+  const lineupDisciplines = getActiveMatchDisciplines(effectiveTeamData.disciplines || []);
 
-  for (const discipline of teamData.disciplines || []) {
+  for (const discipline of lineupDisciplines) {
     if (!discipline?.id) {
       continue;
     }
@@ -503,7 +512,7 @@ function validateLineupSelectionsStructuredLegacy({
   }
 
   if (!partial) {
-    for (const discipline of teamData.disciplines || []) {
+    for (const discipline of lineupDisciplines) {
       const ids = normalizedSelections[discipline.id] || [];
       if (ids.length !== discipline.playerCount) {
         return validationFailure(
@@ -515,7 +524,7 @@ function validateLineupSelectionsStructuredLegacy({
     }
 
     const mlpCheck = validateMlpLineupParticipationStructured(
-      teamData,
+      effectiveTeamData,
       teamId,
       normalizedSelections
     );
@@ -556,6 +565,7 @@ export function filterEligiblePlayersForDiscipline({
   players = [],
   usedPlayerIds = new Set(),
   allowReuse = false,
+  slotIndex = null,
 }) {
   if (!team || !discipline) {
     return [];
@@ -565,6 +575,7 @@ export function filterEligiblePlayersForDiscipline({
   const rosterPlayers = hydratedMembersAsPlayers(hydrated);
   const absent = new Set((team.absentPlayerIds || []).map(String));
   const locked = new Set((team.lockedPlayerIds || []).map(String));
+  const slotGate = resolveMlpSlotGenderGate(discipline, slotIndex);
 
   return rosterPlayers
     .filter((player) => !absent.has(String(player.id)) && !locked.has(String(player.id)))
@@ -576,6 +587,9 @@ export function filterEligiblePlayersForDiscipline({
     })
     .filter((player) => {
       const genderKey = getPlayerGenderKey(player.gender);
+      if (slotGate) {
+        return genderKey === slotGate;
+      }
       if (discipline.genderRequirement === GENDER_REQUIREMENT.MALE) {
         return genderKey === "male";
       }
