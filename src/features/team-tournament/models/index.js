@@ -204,6 +204,9 @@ export function normalizeDreambreakerState(dreambreaker) {
   if (dreambreaker.viewerTeamId) {
     next.viewerTeamId = String(dreambreaker.viewerTeamId).trim();
   }
+  if (dreambreaker.scoringFormat && typeof dreambreaker.scoringFormat === "object") {
+    next.scoringFormat = dreambreaker.scoringFormat;
+  }
 
   return next;
 }

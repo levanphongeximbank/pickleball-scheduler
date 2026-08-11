@@ -29,6 +29,7 @@ export const TT1B_REQUIRES_EXPECTED_VERSION = Object.freeze([
   "team_tournament_submit_lineup",
   "team_tournament_save_sub_match_draft",
   "team_tournament_confirm_sub_match",
+  "team_tournament_record_dreambreaker_point",
 ]);
 
 /** Auto idempotency key prefix when caller omits idempotencyKey (same rule as cloudSync). */

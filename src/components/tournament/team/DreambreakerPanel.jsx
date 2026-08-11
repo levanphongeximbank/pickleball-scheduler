@@ -16,6 +16,7 @@ import LockIcon from "@mui/icons-material/Lock";
 
 import { DREAMBREAKER_ORDER_SOURCE, DREAMBREAKER_STATUS } from "../../../features/team-tournament/constants.js";
 import { getDreambreakerCourtPlayers } from "../../../features/team-tournament/engines/dreambreakerEngine.js";
+import { getDreambreakerScoringHints } from "../../../features/team-tournament/engines/dreambreakerScoringContract.js";
 import { findTeam } from "../../../features/team-tournament/models/index.js";
 import { formatTeamTournamentDateTime, formatCountdownTo } from "./teamTournamentLabels.js";
 
@@ -349,7 +350,7 @@ export function RefereeDreambreakerPanel({
           </Button>
         </Stack>
         <Typography variant="caption" color="text.secondary">
-          Rally đến 21, cách 2, Freeze @20 · Đổi sân khi tổng điểm = 20 · Xoay 4 điểm/lượt
+          {getDreambreakerScoringHints(matchup, teamData?.disciplines)}
         </Typography>
       </Stack>
     </Paper>
