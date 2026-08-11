@@ -441,6 +441,15 @@ export function buildRefereeMatchupView(teamData, matchupId, players = []) {
     const teamAPlayerIds = lineupA?.selections?.[subMatch.disciplineId] || [];
     const teamBPlayerIds = lineupB?.selections?.[subMatch.disciplineId] || [];
 
+    const scoreOps = subMatch.scoreOps || null;
+    const version =
+      subMatch.version != null && Number.isFinite(Number(subMatch.version))
+        ? Number(subMatch.version)
+        : scoreOps?.subMatchVersion != null &&
+            Number.isFinite(Number(scoreOps.subMatchVersion))
+          ? Number(scoreOps.subMatchVersion)
+          : 1;
+
     return {
       subMatchId: subMatch.id,
       disciplineId: subMatch.disciplineId,
@@ -454,7 +463,9 @@ export function buildRefereeMatchupView(teamData, matchupId, players = []) {
       score: subMatch.score,
       winnerTeamId: subMatch.winnerTeamId,
       resultConfirmedAt: subMatch.resultConfirmedAt || null,
-      scoreOps: subMatch.scoreOps || null,
+      /** Canonical CAS revision — team_tournament_sub_matches.version */
+      version,
+      scoreOps,
       refereeLinkOps: subMatch.refereeLinkOps || null,
       hasOfficialLineup: hasLineupPlayersForDiscipline(
         teamData,

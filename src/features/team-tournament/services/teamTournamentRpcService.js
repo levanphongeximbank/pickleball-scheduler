@@ -8,6 +8,7 @@ export const TT1B_COMMAND_RPCS = Object.freeze([
   "team_tournament_randomize_lineup",
   "team_tournament_lock_matchup",
   "team_tournament_publish_matchup",
+  "team_tournament_save_sub_match_draft",
   "team_tournament_confirm_sub_match",
   "team_tournament_apply_forfeit",
   "team_tournament_withdraw_team",
@@ -25,6 +26,7 @@ export const TT1B_COMMAND_RPCS = Object.freeze([
 /** TT-1B commands that require optimistic-lock version before RPC. */
 export const TT1B_REQUIRES_EXPECTED_VERSION = Object.freeze([
   "team_tournament_submit_lineup",
+  "team_tournament_save_sub_match_draft",
   "team_tournament_confirm_sub_match",
 ]);
 
@@ -36,6 +38,7 @@ export const TT1B_IDEMPOTENCY_PREFIX_BY_RPC = Object.freeze({
   team_tournament_lock_matchup: "lock",
   team_tournament_publish_matchup: "publish",
   team_tournament_override_lineup: "override",
+  team_tournament_save_sub_match_draft: "ref-draft",
   team_tournament_confirm_sub_match: "confirm",
   team_tournament_apply_forfeit: "forfeit",
   team_tournament_withdraw_team: "withdraw",
@@ -107,6 +110,14 @@ export const TT1B_RPC_ARG_CONTRACTS = Object.freeze({
     "p_sub_match_id",
     "p_score",
     "p_winner_team_id",
+    "p_expected_version",
+    "p_idempotency_key",
+  ],
+  team_tournament_save_sub_match_draft: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_sub_match_id",
+    "p_score",
     "p_expected_version",
     "p_idempotency_key",
   ],
@@ -231,6 +242,12 @@ export const TT1B_LEGACY_RPC_ARG_CONTRACTS = Object.freeze({
     "p_sub_match_id",
     "p_score",
     "p_winner_team_id",
+  ],
+  team_tournament_save_sub_match_draft: [
+    "p_tournament_id",
+    "p_matchup_id",
+    "p_sub_match_id",
+    "p_score",
   ],
   team_tournament_upsert_standings: ["p_tournament_id", "p_standings"],
 });
@@ -377,8 +394,11 @@ export function prepareTt1bCommandRpcCall(rpcName, baseArgs, normalized = {}) {
   if (contract) {
     const argNames = Object.keys(args).sort();
     const expected = [...contract].sort();
-    const isLegacyOnly =
-      JSON.stringify(argNames) === JSON.stringify([...TT1B_LEGACY_RPC_ARG_CONTRACTS[rpcName]].sort());
+    const legacyContract = TT1B_LEGACY_RPC_ARG_CONTRACTS[rpcName];
+    const isLegacyOnly = Boolean(
+      legacyContract &&
+        JSON.stringify(argNames) === JSON.stringify([...legacyContract].sort())
+    );
     if (isLegacyOnly || argNames.join(",") !== expected.join(",")) {
       return {
         ok: false,
@@ -797,18 +817,24 @@ export async function rpcTeamTournamentPublishMatchup(params, matchupId) {
   return callTeamTournamentRpc("team_tournament_publish_matchup", prepared.args);
 }
 
-export async function rpcTeamTournamentSaveSubMatchDraft(
-  tournamentId,
-  matchupId,
-  subMatchId,
-  score
-) {
-  return callTeamTournamentRpc("team_tournament_save_sub_match_draft", {
-    p_tournament_id: String(tournamentId),
-    p_matchup_id: String(matchupId),
-    p_sub_match_id: String(subMatchId),
-    p_score: score,
+export async function rpcTeamTournamentSaveSubMatchDraft(params, matchupId, subMatchId, score) {
+  const normalized = normalizeCommandParams(params, {
+    tournamentId: params,
+    matchupId,
+    subMatchId,
+    score,
   });
+
+  return callTt1bCommandRpc(
+    "team_tournament_save_sub_match_draft",
+    {
+      p_tournament_id: String(normalized.tournamentId),
+      p_matchup_id: String(normalized.matchupId),
+      p_sub_match_id: String(normalized.subMatchId),
+      p_score: normalized.score,
+    },
+    normalized
+  );
 }
 
 export async function rpcTeamTournamentConfirmSubMatch(

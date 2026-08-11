@@ -3,6 +3,8 @@
  * Keeps expansion/query and local score edits stable across polling/realtime refresh.
  */
 
+import { resolveSubMatchRevision } from "./subMatchRevisionContract.js";
+
 export function collectAvailableMatchupIds(scoredMatchups = [], waitingMatchups = []) {
   const ids = [];
   const seen = new Set();
@@ -126,12 +128,68 @@ export function resolveScorePanelServerSync({
 
 export function rebaseScorePanelAfterSuccessfulWrite(subMatch) {
   const nextState = normalizeScoreStateFromSubMatch(subMatch);
+  const baseSubMatchVersion = resolveSubMatchRevision(subMatch);
   return {
     ...nextState,
     fingerprint: buildSubMatchScoreFingerprint(subMatch),
     dirty: false,
     conflict: false,
+    baseSubMatchVersion,
   };
+}
+
+/**
+ * Pristine: follow server revision. Dirty: freeze edit-base revision.
+ *
+ * @returns {{
+ *   baseSubMatchVersion: number,
+ *   frozen: boolean,
+ *   serverVersion: number,
+ * }}
+ */
+export function resolveDirtyBaseSubMatchVersion({
+  dirty,
+  previousBaseVersion = null,
+  subMatch,
+} = {}) {
+  const serverVersion = resolveSubMatchRevision(subMatch);
+  if (!dirty) {
+    return {
+      baseSubMatchVersion: serverVersion,
+      frozen: false,
+      serverVersion,
+    };
+  }
+  if (
+    previousBaseVersion != null &&
+    previousBaseVersion !== "" &&
+    Number.isFinite(Number(previousBaseVersion))
+  ) {
+    return {
+      baseSubMatchVersion: Number(previousBaseVersion),
+      frozen: true,
+      serverVersion,
+    };
+  }
+  return {
+    baseSubMatchVersion: serverVersion,
+    frozen: true,
+    serverVersion,
+  };
+}
+
+/**
+ * First local edit freezes the server revision at that moment.
+ */
+export function freezeBaseVersionOnFirstEdit({
+  wasDirty,
+  previousBaseVersion,
+  serverVersion,
+} = {}) {
+  if (wasDirty && previousBaseVersion != null && Number.isFinite(Number(previousBaseVersion))) {
+    return Number(previousBaseVersion);
+  }
+  return Number(serverVersion);
 }
 
 /**

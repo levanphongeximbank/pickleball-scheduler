@@ -852,7 +852,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       return uiResult;
     },
 
-    /** Referee draft score — legacy adapter until cloud RPC exists. */
+    /** Referee draft score — versioned subMatch CAS (subMatch.version only). */
     async saveSubMatchDraft(clubId, tournamentId, payload, commandOptions) {
       const scope = buildUiCommandScope("ref-draft", tournamentId, payload.subMatchId || "");
       const opts = {
@@ -861,10 +861,11 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           commandOptions?.idempotencyKey || beginUiCommandKey(scope),
       };
 
-      if (opts.expectedVersion == null || !opts.idempotencyKey) {
+      if (!Number.isFinite(opts.expectedVersion) || !opts.idempotencyKey) {
         return {
           ok: false,
-          error: "Thiếu expectedVersion hoặc idempotencyKey.",
+          code: REPOSITORY_ERROR_CODES.MISSING_EXPECTED_VERSION,
+          error: "Thiếu expectedVersion (subMatch.version) hoặc idempotencyKey.",
         };
       }
 
@@ -878,7 +879,12 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           return mapRepositoryResultToUi(result);
         }
         const reload = await this.loadTournament(clubId, tournamentId);
-        return { ok: true, tournament: reload.tournament, teamData: reload.teamData };
+        return {
+          ok: true,
+          tournament: reload.tournament,
+          teamData: reload.teamData,
+          version: result.version ?? reload.version,
+        };
       } catch (error) {
         endUiCommandKey(scope);
         return { ok: false, error: error?.message || "Lỗi lưu nháp." };

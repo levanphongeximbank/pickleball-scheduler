@@ -87,12 +87,14 @@ import {
   buildMatchupQuerySearchParams,
   buildSubMatchScoreFingerprint,
   collectAvailableMatchupIds,
+  freezeBaseVersionOnFirstEdit,
   normalizeScoreStateFromSubMatch,
   rebaseScorePanelAfterSuccessfulWrite,
   reconcileExpandedMatchupId,
   resolveInitialExpandedMatchupId,
   resolveScorePanelServerSync,
 } from "../../features/team-tournament/engines/teamRefereePortalUiState.js";
+import { resolveSubMatchRevision } from "../../features/team-tournament/engines/subMatchRevisionContract.js";
 import { countMatchupsWithSubResults } from "../../components/tournament/team/teamStandingsLabels.js";
 
 const REFEREE_FILTER = {
@@ -175,6 +177,9 @@ function SubMatchScorePanel({
   const [activeGameIndex, setActiveGameIndex] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [serverConflict, setServerConflict] = useState(false);
+  const [baseSubMatchVersion, setBaseSubMatchVersion] = useState(() =>
+    resolveSubMatchRevision(subMatch)
+  );
   const fingerprintRef = useRef(buildSubMatchScoreFingerprint(subMatch));
   const editable = resolveLegacyScorePanelEditable({
     canEdit,
@@ -196,14 +201,23 @@ function SubMatchScorePanel({
       setGames(sync.nextState.games);
       setDirty(false);
       setServerConflict(false);
+      setBaseSubMatchVersion(resolveSubMatchRevision(subMatch));
       return;
     }
     if (sync.action === "conflict") {
       setServerConflict(true);
     }
+    // Dirty: keep local score + frozen baseSubMatchVersion (do not rebase).
   }, [subMatch, dirty]);
 
   function markDirty() {
+    setBaseSubMatchVersion((prev) =>
+      freezeBaseVersionOnFirstEdit({
+        wasDirty: dirty,
+        previousBaseVersion: prev,
+        serverVersion: resolveSubMatchRevision(subMatch),
+      })
+    );
     setDirty(true);
     setServerConflict(false);
   }
@@ -254,19 +268,30 @@ function SubMatchScorePanel({
     if (!binding.ok) {
       return { ok: false, error: binding.error };
     }
-    const result = await action(binding.matchupId, binding.subMatchId, payload);
+    const expectedVersion = dirty
+      ? baseSubMatchVersion
+      : resolveSubMatchRevision(subMatch);
+    const result = await action(binding.matchupId, binding.subMatchId, {
+      ...payload,
+      expectedVersion,
+    });
     if (result?.ok) {
+      const nextVersion =
+        result.version != null && Number.isFinite(Number(result.version))
+          ? Number(result.version)
+          : Number(expectedVersion) + 1;
       const rebased = rebaseScorePanelAfterSuccessfulWrite({
         ...subMatch,
         score: payload.score?.games?.length
           ? { teamA: 0, teamB: 0, games: payload.games }
           : { teamA: payload.score?.teamA || 0, teamB: payload.score?.teamB || 0, games: [] },
-        version: (subMatch.version || 0) + 1,
+        version: nextVersion,
       });
       setScoreA(rebased.scoreA);
       setScoreB(rebased.scoreB);
       setGames(rebased.games);
       fingerprintRef.current = rebased.fingerprint;
+      setBaseSubMatchVersion(rebased.baseSubMatchVersion);
       setDirty(false);
       setServerConflict(false);
     }
@@ -642,7 +667,6 @@ export default function TeamRefereePortal() {
   const {
     tournament,
     teamData,
-    version,
     dataVersion,
     reload,
     runMutation,
@@ -866,9 +890,20 @@ export default function TeamRefereePortal() {
     setError(null);
     setMessage(null);
 
+    const expectedVersion = Number(payload?.expectedVersion);
+    if (!Number.isFinite(expectedVersion)) {
+      setBusy(false);
+      const fail = {
+        ok: false,
+        error: "Thiếu subMatch.version (expectedVersion) để lưu nháp.",
+      };
+      setError(fail.error);
+      return fail;
+    }
+
     const result = await saveSubMatchDraft(
       { matchupId, subMatchId, ...payload },
-      { expectedVersion: version }
+      { expectedVersion }
     );
 
     setBusy(false);
@@ -888,6 +923,17 @@ export default function TeamRefereePortal() {
     setError(null);
     setMessage(null);
 
+    const expectedVersion = Number(payload?.expectedVersion);
+    if (!Number.isFinite(expectedVersion)) {
+      setBusy(false);
+      const fail = {
+        ok: false,
+        error: "Thiếu subMatch.version (expectedVersion) để xác nhận.",
+      };
+      setError(fail.error);
+      return fail;
+    }
+
     const result = await runMutation({
       method: "confirmSubMatchResult",
       payload: {
@@ -897,7 +943,7 @@ export default function TeamRefereePortal() {
         winnerTeamId: payload.winnerTeamId,
       },
       actionScope: buildUiCommandScope("confirm", tournamentId, subMatchId),
-      expectedVersion: version,
+      expectedVersion,
     });
 
     setBusy(false);
@@ -926,6 +972,13 @@ export default function TeamRefereePortal() {
     if (!forfeitDialog?.matchup) {
       return;
     }
+    const expectedVersion = Number(
+      subMatchVersion ?? resolveSubMatchRevision(forfeitDialog.subMatch)
+    );
+    if (!Number.isFinite(expectedVersion)) {
+      setError("Thiếu subMatch.version (expectedVersion) để forfeit.");
+      return;
+    }
     const payload = buildForfeitCommandPayload({
       matchupId: forfeitDialog.matchup.id,
       subMatchId,
@@ -933,7 +986,7 @@ export default function TeamRefereePortal() {
       resultType,
       reasonCode,
       reasonText,
-      subMatchVersion,
+      subMatchVersion: expectedVersion,
     });
 
     setBusy(true);
@@ -942,7 +995,7 @@ export default function TeamRefereePortal() {
       method: "applyForfeit",
       payload,
       actionScope: buildUiCommandScope("forfeit", tournamentId, subMatchId),
-      expectedVersion: subMatchVersion ?? version,
+      expectedVersion,
     });
     setBusy(false);
     if (!result.ok) {
@@ -1171,13 +1224,24 @@ export default function TeamRefereePortal() {
                         const subMatch = sourceMatchup.subMatches?.find(
                           (sm) => sm.id === subMatchId || sm.subMatchId === subMatchId
                         );
+                        const viewSub =
+                          (expandedMatchupId === item.matchup.id && activeMatchup
+                            ? activeMatchup.subMatches
+                            : null
+                          )?.find(
+                            (sm) => sm.subMatchId === subMatchId || sm.id === subMatchId
+                          ) || null;
                         setForfeitDialog({
                           matchup: {
                             ...sourceMatchup,
                             teamAName: item.matchup.teamAName,
                             teamBName: item.matchup.teamBName,
                           },
-                          subMatch,
+                          subMatch: {
+                            ...(subMatch || {}),
+                            ...(viewSub || {}),
+                            version: resolveSubMatchRevision(viewSub || subMatch),
+                          },
                           teamA: {
                             id: sourceMatchup.teamAId,
                             name: item.matchup.teamAName,
