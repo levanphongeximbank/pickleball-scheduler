@@ -53,7 +53,6 @@ import {
   refereeRecordDreambreakerPoint,
   refereeStartDreambreaker,
   refereeUndoDreambreakerPoint,
-  refereeDreambreakerInjury,
   refereeLockDreambreakerOrders,
 } from "../../features/team-tournament/services/teamTournamentService.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
@@ -64,7 +63,9 @@ import { RefereeDreambreakerPanel } from "../../components/tournament/team/Dream
 import {
   buildRefereeDreambreakerPointCommand,
   buildRefereeDreambreakerStartCommand,
+  buildRefereeDreambreakerUndoCommand,
 } from "../../features/team-tournament/engines/dreambreakerEngine.js";
+import { isDreambreakerSubMatch } from "../../features/team-tournament/engines/forfeitEngine.js";
 import {
   computeMatchupTieProgress,
   countDreambreakerPendingMatchups,
@@ -484,7 +485,6 @@ function MatchupCard({
   onDreambreakerLock,
   onDreambreakerPoint,
   onDreambreakerUndo,
-  onDreambreakerInjury,
 }) {
   const statusChip = getMatchupStatusMeta(matchup.status);
   const rawMatchup = teamData?.matchups?.find((item) => item.id === matchup.id);
@@ -532,7 +532,9 @@ function MatchupCard({
       <Collapse in={expanded}>
         <Divider />
         <Box sx={{ p: 2 }}>
-          {matchup.subMatches.map((subMatch) => {
+          {matchup.subMatches
+            .filter((subMatch) => !isDreambreakerSubMatch(teamData, subMatch, rawMatchup))
+            .map((subMatch) => {
             const statusMeta = getSubMatchStatusMeta(subMatch.status);
             const isOpen = selectedSubMatchId === subMatch.subMatchId;
 
@@ -628,11 +630,6 @@ function MatchupCard({
               onLock={
                 canManageDreambreaker && onDreambreakerLock
                   ? () => onDreambreakerLock(rawMatchup.id)
-                  : undefined
-              }
-              onInjury={
-                canManageDreambreaker && onDreambreakerInjury
-                  ? (payload) => onDreambreakerInjury(rawMatchup.id, payload)
                   : undefined
               }
             />
@@ -998,19 +995,22 @@ export default function TeamRefereePortal() {
       return;
     }
     setBusy(true);
-    const result = await refereeRecordDreambreakerPoint(effectiveClubId, tournamentId, {
-      matchupId: command.payload.matchupId,
-      scoringTeamId: command.payload.scoringTeamId,
-      expectedVersion: command.payload.expectedVersion,
-    });
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    await reload({ silent: true });
-    if (result.completed) {
-      setMessage("Dreambreaker kết thúc.");
+    try {
+      const result = await refereeRecordDreambreakerPoint(effectiveClubId, tournamentId, {
+        matchupId: command.payload.matchupId,
+        scoringTeamId: command.payload.scoringTeamId,
+        expectedVersion: command.payload.expectedVersion,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      await reload({ silent: true });
+      if (result.completed) {
+        setMessage("Dreambreaker kết thúc.");
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -1023,16 +1023,19 @@ export default function TeamRefereePortal() {
     }
     setBusy(true);
     setError(null);
-    const result = await refereeStartDreambreaker(effectiveClubId, tournamentId, {
-      matchupId: command.payload.matchupId,
-      expectedVersion: command.payload.expectedVersion,
-    });
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    try {
+      const result = await refereeStartDreambreaker(effectiveClubId, tournamentId, {
+        matchupId: command.payload.matchupId,
+        expectedVersion: command.payload.expectedVersion,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      await reload({ silent: true });
+    } finally {
+      setBusy(false);
     }
-    await reload({ silent: true });
   }
 
   async function handleDreambreakerLock(matchupId) {
@@ -1051,29 +1054,26 @@ export default function TeamRefereePortal() {
   }
 
   async function handleDreambreakerUndo(matchupId) {
-    setBusy(true);
-    const result = await refereeUndoDreambreakerPoint(effectiveClubId, tournamentId, { matchupId });
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
+    const matchup = (teamData?.matchups || []).find((item) => item.id === matchupId);
+    const command = buildRefereeDreambreakerUndoCommand(matchup);
+    if (!command.ok) {
+      setError(command.error);
       return;
     }
-    await reload({ silent: true });
-  }
-
-  async function handleDreambreakerInjury(matchupId, payload) {
     setBusy(true);
-    const result = await refereeDreambreakerInjury(effectiveClubId, tournamentId, {
-      matchupId,
-      ...payload,
-    });
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    try {
+      const result = await refereeUndoDreambreakerPoint(effectiveClubId, tournamentId, {
+        matchupId: command.payload.matchupId,
+        expectedVersion: command.payload.expectedVersion,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      await reload({ silent: true });
+    } finally {
+      setBusy(false);
     }
-    await reload({ silent: true });
-    setMessage("Đã ghi nhận chấn thương Dreambreaker.");
   }
 
   if (access.pending || loading) {
@@ -1271,7 +1271,6 @@ export default function TeamRefereePortal() {
                 onDreambreakerLock={handleDreambreakerLock}
                 onDreambreakerPoint={handleDreambreakerPoint}
                 onDreambreakerUndo={handleDreambreakerUndo}
-                onDreambreakerInjury={handleDreambreakerInjury}
                 busy={busy}
               />
               </Stack>

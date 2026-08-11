@@ -123,22 +123,14 @@ export function computeMatchupResult(teamData, matchupId) {
     }
   });
 
-  if (dreambreakerSubMatch) {
-    const isFinalized =
-      dreambreakerSubMatch.status === SUB_MATCH_STATUS.COMPLETED ||
-      dreambreakerSubMatch.status === SUB_MATCH_STATUS.FORFEIT;
-
-    if (isFinalized) {
-      teamAPoints += Number(dreambreakerSubMatch.score?.teamA) || 0;
-      teamBPoints += Number(dreambreakerSubMatch.score?.teamB) || 0;
-
-      if (dreambreakerSubMatch.winnerTeamId === matchup.teamAId) {
-        teamAWins += 1;
-      } else if (dreambreakerSubMatch.winnerTeamId === matchup.teamBId) {
-        teamBWins += 1;
-      }
-    }
-  }
+  const dreambreakerFinished =
+    dreambreakerSubMatch?.status === SUB_MATCH_STATUS.COMPLETED ||
+    dreambreakerSubMatch?.status === SUB_MATCH_STATUS.FORFEIT ||
+    matchup.dreambreaker?.status === "completed";
+  const dreambreakerWinner =
+    matchup.dreambreaker?.winnerTeamId ||
+    (dreambreakerFinished ? dreambreakerSubMatch?.winnerTeamId : "") ||
+    "";
 
   const allMainCompleted = mainSubMatches.every(
     (subMatch) =>
@@ -159,16 +151,11 @@ export function computeMatchupResult(teamData, matchupId) {
     teamAWins === 2 &&
     teamBWins === 2;
 
-  const dreambreakerFinished =
-    dreambreakerSubMatch?.status === SUB_MATCH_STATUS.COMPLETED ||
-    dreambreakerSubMatch?.status === SUB_MATCH_STATUS.FORFEIT ||
-    matchup.dreambreaker?.status === "completed";
-
   const needsDreambreaker = dreambreakerRequired && !dreambreakerFinished;
 
   let winnerTeamId = "";
-  if (dreambreakerFinished && dreambreakerSubMatch?.winnerTeamId) {
-    winnerTeamId = dreambreakerSubMatch.winnerTeamId;
+  if (dreambreakerFinished && dreambreakerWinner) {
+    winnerTeamId = dreambreakerWinner;
   } else if (teamAWins > teamBWins + remainingMain) {
     winnerTeamId = matchup.teamAId;
   } else if (teamBWins > teamAWins + remainingMain) {

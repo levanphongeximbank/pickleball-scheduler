@@ -446,6 +446,31 @@ export function buildRefereeDreambreakerStartCommand(matchup) {
   };
 }
 
+export function buildRefereeDreambreakerUndoCommand(matchup) {
+  const matchupId = String(matchup?.id || "").trim();
+  if (!matchupId) {
+    return { ok: false, error: "Thiếu lượt đối đầu." };
+  }
+  const history = matchup?.dreambreaker?.rotation?.pointHistory || [];
+  const hasScore =
+    Number(matchup?.dreambreaker?.teamAScore) > 0 ||
+    Number(matchup?.dreambreaker?.teamBScore) > 0;
+  if (history.length === 0 && !hasScore) {
+    return { ok: false, error: "Không có điểm để hoàn tác." };
+  }
+  const expectedVersion = resolveDreambreakerExpectedVersion(matchup);
+  if (expectedVersion == null) {
+    return { ok: false, error: "Thiếu dreambreaker.version để hoàn tác." };
+  }
+  return {
+    ok: true,
+    payload: {
+      matchupId,
+      expectedVersion,
+    },
+  };
+}
+
 export function buildRefereeDreambreakerPointCommand(matchup, scoringTeamId) {
   const matchupId = String(matchup?.id || "").trim();
   const teamId = String(scoringTeamId || "").trim();
@@ -549,9 +574,7 @@ export function startDreambreaker(teamData, matchupId, options = {}) {
           pointHistory: [],
           injurySkips: item.dreambreaker.rotation?.injurySkips || [],
         },
-        ...(Number.isFinite(currentVersion)
-          ? { version: currentVersion + 1 }
-          : {}),
+        version: Number.isFinite(currentVersion) ? currentVersion + 1 : 1,
       },
     };
   });
@@ -659,10 +682,10 @@ export function recordDreambreakerPoint(teamData, { matchupId, scoringTeamId, ex
           status: winnerTeamId ? MATCHUP_STATUS.COMPLETED : item.status,
           result: winnerTeamId
             ? {
-                teamAWins: 2 + (winnerTeamId === matchup.teamAId ? 1 : 0),
-                teamBWins: 2 + (winnerTeamId === matchup.teamBId ? 1 : 0),
-                teamAPoints: teamAScore,
-                teamBPoints: teamBScore,
+                teamAWins: Number(item.result?.teamAWins) || 2,
+                teamBWins: Number(item.result?.teamBWins) || 2,
+                teamAPoints: Number(item.result?.teamAPoints) || 0,
+                teamBPoints: Number(item.result?.teamBPoints) || 0,
                 winnerTeamId,
               }
             : item.result,
@@ -678,11 +701,23 @@ export function recordDreambreakerPoint(teamData, { matchupId, scoringTeamId, ex
   };
 }
 
-export function undoDreambreakerPoint(teamData, matchupId) {
+export function undoDreambreakerPoint(teamData, matchupId, { expectedVersion } = {}) {
   const matchup = findMatchup(teamData, matchupId);
   const history = matchup?.dreambreaker?.rotation?.pointHistory || [];
   if (!matchup?.dreambreaker || history.length === 0) {
     return { ok: false, error: "Không có điểm để hoàn tác." };
+  }
+
+  const currentVersion = resolveDreambreakerExpectedVersion(matchup);
+  if (expectedVersion != null && expectedVersion !== "") {
+    const expected = Number(expectedVersion);
+    if (!Number.isFinite(expected) || currentVersion !== expected) {
+      return {
+        ok: false,
+        code: "VERSION_CONFLICT",
+        error: "Dreambreaker đã được cập nhật. Tải lại rồi thử lại.",
+      };
+    }
   }
 
   const remaining = history.slice(0, -1);
@@ -718,16 +753,44 @@ export function undoDreambreakerPoint(teamData, matchupId) {
       pointsInSegment,
       pointHistory: remaining,
     },
+    ...(Number.isFinite(currentVersion) ? { version: currentVersion + 1 } : {}),
   };
+
+  const nextSubMatches = matchup.subMatches.map((subMatch) => {
+    if (
+      matchup.dreambreaker.subMatchId &&
+      subMatch.id !== matchup.dreambreaker.subMatchId
+    ) {
+      return subMatch;
+    }
+    if (!matchup.dreambreaker.subMatchId && !String(subMatch.id || "").startsWith("db-")) {
+      return subMatch;
+    }
+    const subVersion = Number(subMatch.version);
+    return {
+      ...subMatch,
+      status: SUB_MATCH_STATUS.PLAYING,
+      score: { teamA: teamAScore, teamB: teamBScore, games: [] },
+      winnerTeamId: "",
+      resultConfirmedAt: null,
+      ...(Number.isFinite(subVersion) ? { version: subVersion + 1 } : {}),
+    };
+  });
 
   const nextMatchups = teamData.matchups.map((item) =>
     item.id === matchupId
       ? {
           ...item,
+          subMatches: nextSubMatches,
           dreambreaker: nextDreambreaker,
           status: MATCHUP_STATUS.IN_PROGRESS,
           result: item.result
-            ? { ...item.result, winnerTeamId: "" }
+            ? {
+                ...item.result,
+                teamAWins: Number(item.result.teamAWins) || 2,
+                teamBWins: Number(item.result.teamBWins) || 2,
+                winnerTeamId: "",
+              }
             : item.result,
         }
       : item

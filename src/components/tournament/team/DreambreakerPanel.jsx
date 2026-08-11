@@ -222,7 +222,6 @@ export function RefereeDreambreakerPanel({
   onUndo,
   onStart,
   onLock,
-  onInjury,
   busy,
 }) {
   const dreambreaker = matchup.dreambreaker;
@@ -288,10 +287,22 @@ export function RefereeDreambreakerPanel({
 
   if (dreambreaker.status === DREAMBREAKER_STATUS.COMPLETED) {
     return (
-      <Alert severity="success" sx={{ mt: 2 }}>
-        Dreambreaker kết thúc: {teamA?.name} {dreambreaker.teamAScore}–
-        {dreambreaker.teamBScore} {teamB?.name}
-      </Alert>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, mt: 2 }}>
+        <Alert severity="success" sx={{ mb: onUndo ? 1.5 : 0 }}>
+          Dreambreaker kết thúc: {teamA?.name} {dreambreaker.teamAScore}–
+          {dreambreaker.teamBScore} {teamB?.name}
+        </Alert>
+        {onUndo ? (
+          <Button
+            startIcon={<UndoIcon />}
+            variant="outlined"
+            disabled={busy || !onUndo}
+            onClick={onUndo}
+          >
+            Hoàn tác điểm cuối
+          </Button>
+        ) : null}
+      </Paper>
     );
   }
 
@@ -331,22 +342,6 @@ export function RefereeDreambreakerPanel({
         <Stack direction="row" spacing={1}>
           <Button startIcon={<UndoIcon />} variant="outlined" disabled={busy || !onUndo} onClick={onUndo}>
             Hoàn tác
-          </Button>
-          <Button
-            variant="outlined"
-            color="warning"
-            disabled={busy || !onInjury}
-            onClick={() => {
-              const injuredId = window.prompt("ID VĐV bị chấn thương:");
-              if (injuredId) {
-                const teamId = window.prompt("ID đội (teamA/teamB id):");
-                if (teamId) {
-                  onInjury({ teamId, injuredPlayerId: injuredId.trim() });
-                }
-              }
-            }}
-          >
-            Chấn thương
           </Button>
         </Stack>
         <Typography variant="caption" color="text.secondary">

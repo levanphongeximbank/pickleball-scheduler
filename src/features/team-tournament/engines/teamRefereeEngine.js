@@ -13,6 +13,7 @@ import {
 import { canManageTeam } from "./teamPermissionEngine.js";
 import { computeMatchupResult } from "./teamResultEngine.js";
 import { isRallyScoring, validateRallyScore } from "./rallyScoringEngine.js";
+import { isDreambreakerSubMatch } from "./forfeitEngine.js";
 import {
   buildRosterAthleteIndex,
   resolveRosterMemberIdentity,
@@ -433,7 +434,9 @@ export function buildRefereeMatchupView(teamData, matchupId, players = []) {
   const lineupA = getLineup(teamData, matchupId, matchup.teamAId);
   const lineupB = getLineup(teamData, matchupId, matchup.teamBId);
 
-  const subMatches = matchup.subMatches.map((subMatch) => {
+  const subMatches = matchup.subMatches
+    .filter((subMatch) => !isDreambreakerSubMatch(teamData, subMatch, matchup))
+    .map((subMatch) => {
     const discipline = teamData.disciplines.find(
       (item) => item.id === subMatch.disciplineId
     );

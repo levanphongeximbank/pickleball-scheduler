@@ -89,7 +89,7 @@ export async function cloudRecordDreambreakerPoint(tournamentId, payload = {}, o
       expectedVersion: options.expectedVersion ?? payload.expectedVersion ?? null,
       idempotencyKey:
         options.idempotencyKey ||
-        buildIdempotencyKey("db-point", [tournamentId, payload.matchupId, payload.scoringTeamId]),
+        `db-point:${tournamentId}:${payload.matchupId}:${options.expectedVersion ?? payload.expectedVersion}:${payload.scoringTeamId}`,
     })
   );
 }
@@ -102,7 +102,7 @@ export async function cloudUndoDreambreakerPoint(tournamentId, payload = {}, opt
       expectedVersion: options.expectedVersion ?? payload.expectedVersion ?? null,
       idempotencyKey:
         options.idempotencyKey ||
-        buildIdempotencyKey("db-undo", [tournamentId, payload.matchupId]),
+        `db-undo:${tournamentId}:${payload.matchupId}:${options.expectedVersion ?? payload.expectedVersion}`,
     })
   );
 }
