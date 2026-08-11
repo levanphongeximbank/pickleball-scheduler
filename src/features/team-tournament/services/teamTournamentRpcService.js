@@ -1,4 +1,5 @@
 import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
+import { sanitizeCaptainDreambreakerSubmitResponse } from "../engines/captainDreambreakerPortalContract.js";
 
 let testRpcClientOverride = null;
 
@@ -1125,7 +1126,7 @@ function normalizeDreambreakerParams(params = {}) {
 
 export async function rpcTeamTournamentSubmitDreambreakerOrder(params = {}) {
   const normalized = normalizeDreambreakerParams(params);
-  return callTt1bCommandRpc(
+  const raw = await callTt1bCommandRpc(
     "team_tournament_submit_dreambreaker_order",
     {
       p_tournament_id: String(normalized.tournamentId),
@@ -1135,6 +1136,7 @@ export async function rpcTeamTournamentSubmitDreambreakerOrder(params = {}) {
     },
     normalized
   );
+  return sanitizeCaptainDreambreakerSubmitResponse(raw);
 }
 
 export async function rpcTeamTournamentLockDreambreakerOrder(params = {}) {

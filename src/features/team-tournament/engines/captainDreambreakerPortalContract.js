@@ -144,10 +144,15 @@ export function validateCaptainDreambreakerOrder({
   if (!viewer || !submit) {
     return { ok: false, error: "Thiếu đội xem / đội nộp." };
   }
+  // CLIENT_VIEWER_TEAM_ASSERTION — submit team must be the viewer team.
   if (viewer !== submit) {
     return { ok: false, error: "Đội trưởng chỉ được nộp thứ tự đội mình." };
   }
+  // CLIENT_MATCHUP_TEAM_ASSERTION — viewer team must participate in this matchup.
   if (matchup) {
+    if (!asId(matchup.id)) {
+      return { ok: false, error: "Thiếu lượt đối đầu." };
+    }
     const teamAId = asId(matchup.teamAId);
     const teamBId = asId(matchup.teamBId);
     if (submit !== teamAId && submit !== teamBId) {
@@ -196,6 +201,10 @@ export function buildCaptainDreambreakerSubmitCommand({
   void tournamentVersion;
   void matchupVersion;
 
+  if (!matchup || !asId(matchup.id)) {
+    return { ok: false, error: "Thiếu lượt đối đầu." };
+  }
+
   const validation = validateCaptainDreambreakerOrder({
     order,
     rosterIds,
@@ -218,4 +227,34 @@ export function buildCaptainDreambreakerSubmitCommand({
         asId(idempotencyKey) || createDreambreakerOrderIdempotencyKey(matchup?.id, teamId),
     },
   };
+}
+
+/**
+ * Viewer-safe captain submit acknowledgement.
+ * Drops teamAOrder / teamBOrder even if a pre-remediation RPC leaked them.
+ */
+export function sanitizeCaptainDreambreakerSubmitResponse(result) {
+  if (!result || typeof result !== "object") {
+    return result;
+  }
+
+  if (result.ok === false) {
+    const next = { ...result };
+    delete next.teamAOrder;
+    delete next.teamBOrder;
+    return next;
+  }
+
+  const next = {
+    ...result,
+    ok: true,
+    status: result.status ?? null,
+    version: result.version ?? null,
+    canSubmitOwnOrder: result.canSubmitOwnOrder === true,
+    ownOrder: Array.isArray(result.ownOrder) ? uniqueStringIds(result.ownOrder) : [],
+    opponentOrderSubmitted: result.opponentOrderSubmitted === true,
+  };
+  delete next.teamAOrder;
+  delete next.teamBOrder;
+  return next;
 }

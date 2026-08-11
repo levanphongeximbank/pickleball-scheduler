@@ -88,7 +88,6 @@ import {
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import TeamSubstitutionPanel from "../../components/tournament/TeamSubstitutionPanel.jsx";
 import { findTeam, getLineup } from "../../features/team-tournament/models/index.js";
-import { captainSubmitDreambreakerOrder } from "../../features/team-tournament/services/teamTournamentService.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
 import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
 import { useLineupDeadlineClock } from "../../features/team-tournament/ui/useLineupDeadlineClock.js";
@@ -883,11 +882,27 @@ export default function TeamPortal() {
       setDbMessage({ type: "error", text: command.error });
       return;
     }
-    const result = await captainSubmitDreambreakerOrder(
-      effectiveClubId,
-      tournamentId,
-      command.payload
-    );
+    // Canonical captain write path — same orchestrator as lineup Save/Submit.
+    // No profile-club RBAC. Server is captain/deputy authority.
+    // CAS expectedVersion is matchup.dreambreaker.version only.
+    const result = await runMutation({
+      method: "submitDreambreakerOrder",
+      payload: {
+        matchupId: command.payload.matchupId,
+        teamId: command.payload.teamId,
+        order: command.payload.order,
+      },
+      actionScope: buildUiCommandScope(
+        "db-order",
+        tournamentId,
+        `${command.payload.matchupId}:${command.payload.teamId}`
+      ),
+      expectedVersion: command.payload.expectedVersion,
+      commandOptions: {
+        expectedVersion: command.payload.expectedVersion,
+        idempotencyKey: command.payload.idempotencyKey,
+      },
+    });
     setDbBusy(false);
     if (!result.ok) {
       setDbMessage({ type: "error", text: result.error });

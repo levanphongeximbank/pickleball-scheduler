@@ -2008,11 +2008,9 @@ export async function getTeamTournamentByIdCloud(clubId, tournamentId, viewerTea
 }
 
 export async function captainSubmitDreambreakerOrder(clubId, tournamentId, payload = {}) {
-  const check = guardCaptainLineupAction(clubId, tournamentId, payload.teamId);
-  if (!check.ok) {
-    return check;
-  }
-
+  // Captain Portal uses runMutation("submitDreambreakerOrder"). This helper is
+  // legacy/local only. Do not gate on profile club / guardClubAccess — Identity V2
+  // strips session.clubId and server already proves captain/deputy + matchup scope.
   if (shouldUseTeamTournamentCloud()) {
     return cloudSubmitDreambreakerOrder(tournamentId, payload);
   }
