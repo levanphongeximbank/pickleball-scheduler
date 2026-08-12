@@ -63,15 +63,15 @@ function MatchupList({ items }) {
 export default function TournamentDashboardPage() {
   const { tournamentId } = useParams();
   const { user, isAuthenticated, can } = useAuth();
-  const { activeClub, activeClubId } = useClub();
-  const tenantId = activeClub?.tenantId || null;
+  const { activeClubId } = useClub();
+  // Visibility authority is team_tournament_get_dashboard only.
+  // Do not derive sameTenant from activeClub.tenantId (PLAYER captains often null).
   const canOrganize = Boolean(
     can?.(PERMISSIONS.TOURNAMENT_UPDATE) || can?.(PERMISSIONS.TEAM_MANAGE)
   );
   const { loading, error, view } = useTeamTournamentDashboard({
     tournamentId,
     clubId: activeClubId,
-    tenantId,
     playerId: user?.playerId || user?.linkedPlayerId || null,
     userId: user?.id || null,
     canOrganize,

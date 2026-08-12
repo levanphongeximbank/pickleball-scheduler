@@ -96,6 +96,7 @@ export function buildTeamTournamentDashboardView({
   userId = null,
   canOrganize = false,
   sameTenant = false,
+  serverVisibilityAuthorized = false,
   isAuthenticated = false,
   refereeAssignments = [],
   clubId = null,
@@ -129,6 +130,7 @@ export function buildTeamTournamentDashboardView({
     isAuthenticated,
     canOrganize: capabilities.canOrganize,
     sameTenant,
+    serverVisibilityAuthorized,
     hasDraftOperationalRole: capabilities.isCaptain || capabilities.isReferee,
   });
   if (!visibility.ok) {

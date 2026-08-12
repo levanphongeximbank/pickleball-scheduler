@@ -67,7 +67,9 @@ export function isOrganizerVisibleStatus(status) {
  * Visibility is not mutation authority.
  * Draft: organizer OR draft operational role (captain/deputy/assigned referee).
  * Visible statuses: authenticated same-tenant viewers.
- * Cross-tenant: denied by caller (tenant assert).
+ * Cross-tenant: denied by caller (tenant assert) UNLESS the payload was already
+ * authorized by team_tournament_get_dashboard (serverVisibilityAuthorized).
+ * Local activeClub/selected-tenant guesses must never override that RPC.
  * hasDraftOperationalRole must come from server capabilities (or local derive
  * after role resolution) — never grant tournament.update to athletes.
  */
@@ -76,6 +78,7 @@ export function canViewTournamentDashboard({
   isAuthenticated = false,
   canOrganize = false,
   sameTenant = false,
+  serverVisibilityAuthorized = false,
   hasDraftOperationalRole = false,
 } = {}) {
   if (!tournament) {
@@ -84,7 +87,7 @@ export function canViewTournamentDashboard({
   if (!isAuthenticated) {
     return { ok: false, code: "NOT_AUTHENTICATED" };
   }
-  if (!sameTenant) {
+  if (!serverVisibilityAuthorized && !sameTenant) {
     return { ok: false, code: "CROSS_TENANT_DENIED" };
   }
   if (canOrganize) {

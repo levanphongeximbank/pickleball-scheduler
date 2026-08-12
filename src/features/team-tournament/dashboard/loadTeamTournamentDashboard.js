@@ -1,6 +1,10 @@
 /**
  * Dashboard reader: team_tournament_get_dashboard only.
  * Missing RPC / failed get → FAIL CLOSED. No get_setup compose. No blob.
+ *
+ * Composition contract: once the RPC returns ok=true + view, the server is the
+ * sole visibility authority. Client projects that authorized view; it must not
+ * re-deny via activeClub/local tenant guesses.
  */
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 import { buildTeamTournamentDashboardView } from "./teamTournamentDashboardModel.js";
@@ -28,7 +32,7 @@ export async function loadTeamTournamentDashboardSource({
   }
   const result = await getDashboard(id);
   if (result?.ok && result.view) {
-    return { ok: true, view: result.view };
+    return { ok: true, view: result.view, serverVisibilityAuthorized: true };
   }
   const code = result?.code || "DASHBOARD_UNAVAILABLE";
   const visibilityDenied =
@@ -53,12 +57,16 @@ export async function loadTeamTournamentDashboardSource({
   };
 }
 
+/**
+ * Project an already-authorized get_dashboard view.
+ * Always sets serverVisibilityAuthorized — callers must only pass RPC ok=true
+ * payloads. Local sameTenant / activeClub tenant must not gate this path.
+ */
 export function composeDashboardViewFromRpc({
   view,
   playerId = null,
   userId = null,
   canOrganize = false,
-  sameTenant = false,
   isAuthenticated = false,
   clubId = null,
 } = {}) {
@@ -93,7 +101,8 @@ export function composeDashboardViewFromRpc({
     playerId,
     userId,
     canOrganize: view.capabilities?.canOrganize === true || canOrganize === true,
-    sameTenant,
+    sameTenant: false,
+    serverVisibilityAuthorized: true,
     isAuthenticated,
     refereeAssignments: view.refereeAssignments || [],
     clubId,

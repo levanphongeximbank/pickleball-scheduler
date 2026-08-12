@@ -24,7 +24,10 @@ import {
   ATHLETE_VISIBLE_STATUSES as VISIBLE,
 } from "../src/features/team-tournament/lifecycle/teamTournamentLifecycle.js";
 import { buildTeamTournamentDashboardView } from "../src/features/team-tournament/dashboard/teamTournamentDashboardModel.js";
-import { loadTeamTournamentDashboardSource } from "../src/features/team-tournament/dashboard/loadTeamTournamentDashboard.js";
+import {
+  composeDashboardViewFromRpc,
+  loadTeamTournamentDashboardSource,
+} from "../src/features/team-tournament/dashboard/loadTeamTournamentDashboard.js";
 import { buildCaptainDashboardTasks } from "../src/features/team-tournament/dashboard/teamTournamentDashboardTasks.js";
 import { assertNoPrivateCaptainLeak } from "../src/features/team-tournament/dashboard/teamTournamentDashboardPrivacy.js";
 import {
@@ -673,4 +676,161 @@ test("registration foundation is ready; full UI stays future", () => {
   });
   assert.equal(view.overview.registrationFoundationReady, true);
   assert.equal(view.overview.registrationFullUiImplemented, false);
+});
+
+test("visibility: serverVisibilityAuthorized skips local sameTenant gate", () => {
+  const tournament = sampleTournament({ status: TOURNAMENT_STATUS.DRAFT });
+  assert.equal(
+    canViewDashboard({
+      tournament,
+      isAuthenticated: true,
+      canOrganize: false,
+      sameTenant: false,
+      serverVisibilityAuthorized: true,
+      hasDraftOperationalRole: true,
+    }).ok,
+    true
+  );
+  assert.equal(
+    canViewDashboard({
+      tournament,
+      isAuthenticated: true,
+      canOrganize: false,
+      sameTenant: false,
+      serverVisibilityAuthorized: false,
+      hasDraftOperationalRole: true,
+    }).code,
+    "CROSS_TENANT_DENIED"
+  );
+});
+
+test("dashboard compose: authorized RPC captain passes with null activeClub tenant", () => {
+  const view = composeDashboardViewFromRpc({
+    view: {
+      overview: {
+        id: "7d1fe5a0-f312-4e4e-9869-53eff9383c54",
+        name: "Owner draft",
+        status: TOURNAMENT_STATUS.DRAFT,
+        clubId: "club-a",
+        tenantId: "venue-canonical",
+        formatPreset: "mlp",
+      },
+      stageTieBreakPolicy: {},
+      teams: sampleTeamData().teams,
+      matchups: [],
+      standings: [],
+      capabilities: {
+        canOrganize: false,
+        isParticipant: true,
+        isCaptain: true,
+        isReferee: false,
+        myTeamId: "team-a",
+        captainTeamId: "team-a",
+      },
+      myTeam: {
+        roster: [{ playerId: "player-cap", displayName: "Cap" }],
+      },
+    },
+    playerId: "player-cap",
+    userId: "user-cap",
+    canOrganize: false,
+    isAuthenticated: true,
+    clubId: null,
+  });
+  assert.equal(view.ok, true);
+  assert.notEqual(view.code, "CROSS_TENANT_DENIED");
+  assert.equal(view.sections.captain, true);
+  assert.equal(view.overview.tenantId, "venue-canonical");
+});
+
+test("dashboard compose: authorized RPC referee/organizer pass without local tenant", () => {
+  const referee = composeDashboardViewFromRpc({
+    view: {
+      overview: {
+        id: "tid-ref",
+        name: "Ref draft",
+        status: TOURNAMENT_STATUS.DRAFT,
+        clubId: "club-a",
+        tenantId: "venue-canonical",
+      },
+      teams: [],
+      matchups: [],
+      standings: [],
+      capabilities: {
+        canOrganize: false,
+        isParticipant: false,
+        isCaptain: false,
+        isReferee: true,
+      },
+      refereeAssignments: [{ refereeUserId: "user-ref", matchupId: "mu-1" }],
+    },
+    playerId: null,
+    userId: "user-ref",
+    isAuthenticated: true,
+    clubId: null,
+  });
+  assert.equal(referee.ok, true);
+  assert.equal(referee.sections.referee, true);
+
+  const organizer = composeDashboardViewFromRpc({
+    view: {
+      overview: {
+        id: "tid-org",
+        name: "Org draft",
+        status: TOURNAMENT_STATUS.DRAFT,
+        clubId: "club-a",
+        tenantId: "venue-canonical",
+      },
+      teams: [],
+      matchups: [],
+      standings: [],
+      capabilities: {
+        canOrganize: true,
+        isParticipant: false,
+        isCaptain: false,
+        isReferee: false,
+      },
+    },
+    canOrganize: true,
+    isAuthenticated: true,
+    clubId: null,
+  });
+  assert.equal(organizer.ok, true);
+  assert.equal(organizer.sections.organizer, true);
+});
+
+test("dashboard load: server denials stay denied; local tenant cannot upgrade", async () => {
+  const cross = await loadTeamTournamentDashboardSource({
+    tournamentId: "tid-1",
+    getDashboard: async () => ({ ok: false, code: "CROSS_TENANT_DENIED" }),
+  });
+  assert.equal(cross.ok, false);
+  assert.equal(cross.code, "CROSS_TENANT_DENIED");
+  assert.match(cross.error, /tenant khác/i);
+
+  const draft = await loadTeamTournamentDashboardSource({
+    tournamentId: "tid-1",
+    getDashboard: async () => ({ ok: false, code: "DRAFT_NOT_VISIBLE" }),
+  });
+  assert.equal(draft.ok, false);
+  assert.equal(draft.code, "DRAFT_NOT_VISIBLE");
+
+  const authorized = await loadTeamTournamentDashboardSource({
+    tournamentId: "tid-1",
+    getDashboard: async () => ({
+      ok: true,
+      view: {
+        overview: {
+          id: "tid-1",
+          name: "Authorized",
+          status: TOURNAMENT_STATUS.DRAFT,
+          tenantId: "venue-canonical",
+        },
+        capabilities: { isCaptain: true, isParticipant: true, captainTeamId: "team-a" },
+        teams: sampleTeamData().teams,
+      },
+    }),
+  });
+  assert.equal(authorized.ok, true);
+  assert.equal(authorized.serverVisibilityAuthorized, true);
 });
