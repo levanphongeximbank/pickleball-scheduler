@@ -1240,3 +1240,170 @@ describe("Daily Play SQL response-contract adapter (DP-03/DP-04)", () => {
     );
   });
 });
+
+describe("Daily Play Owner browser UX remediation (DP-05..DP-09)", () => {
+  test("setup does not reload tournament/clubs after Daily session mutations (DP-05)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.equal(source.includes("afterMutation"), false);
+    assert.equal(source.includes("setLocalRevision"), false);
+    assert.equal(source.includes("refreshClubs"), false);
+    assert.match(source, /useCanonicalTournament\([^,]+,\s*tournamentId,\s*0\)/);
+    assert.match(source, /revision:\s*0/);
+    assert.equal(/revision:\s*localRevision\s*\+\s*\(session\.revision/.test(source), false);
+    assert.equal(/revision:\s*.*session\.revision/.test(source), false);
+  });
+
+  test("candidate pool is not invalidated by Daily session.revision (DP-05/G)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(source, /useClubPairingCandidatePool\(activeClubId,\s*\{\s*revision:\s*0,\s*\}\)/);
+  });
+
+  test("session hook keeps live revisionRef and bulk CAS chain (DP-06/E/F)", () => {
+    const hookPath = path.resolve(
+      "src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"
+    );
+    const source = fs.readFileSync(hookPath, "utf8");
+    assert.match(source, /revisionRef/);
+    assert.match(source, /revisionRef\.current\s*=\s*Number\(normalized\.revision/);
+    assert.match(source, /expectedVersion:\s*revisionRef\.current/);
+    assert.match(source, /checkInMany/);
+    assert.match(source, /checkOutMany/);
+    assert.match(source, /runBulkPresence/);
+    assert.equal(source.includes("Promise.all"), false);
+    assert.match(source, /for \(const playerId of ids\)/);
+    assert.match(source, /expected = Number\(result\.revision\)/);
+    assert.match(source, /refresh\(\{\s*background:\s*true\s*\}\)/);
+  });
+
+  test("Select All / Clear All use bulk helpers with pending labels (DP-06)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(source, /checkInMany/);
+    assert.match(source, /checkOutMany/);
+    assert.match(source, /Đang chọn\.\.\./);
+    assert.match(source, /Đang bỏ chọn\.\.\./);
+    assert.equal(
+      /for \(const player of players\)[\s\S]*session\.checkIn\(player\.id\)/.test(source),
+      false
+    );
+  });
+
+  test("sequential check-in of 8 athletes chains revision without stale conflict (DP-06)", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: [],
+        revision: 0,
+      },
+    });
+    const scope = { tenantId: TENANT, clubId: CLUB, tournamentId: TID };
+    let expected = (await service.getState(scope)).revision;
+    const targets = canonicalPlayers.map((player) => player.id);
+    assert.equal(targets.length, 8);
+
+    const expectedVersions = [];
+    for (const playerId of targets) {
+      expectedVersions.push(expected);
+      const result = await service.checkIn(scope, {
+        playerId,
+        expectedVersion: expected,
+        idempotencyKey: `bulk-${playerId}-${expected}`,
+      });
+      assert.equal(result.ok, true, `check-in ${playerId} failed: ${result.error || result.code}`);
+      expected = Number(result.revision);
+    }
+
+    assert.deepEqual(expectedVersions, [0, 1, 2, 3, 4, 5, 6, 7]);
+    const finalState = await service.getState(scope);
+    assert.equal(finalState.dailyPlay.checkedInPlayerIds.length, 8);
+    assert.equal(finalState.revision, 8);
+  });
+
+  test("stale expectedVersion still VERSION_CONFLICT (CAS preserved)", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: [],
+        revision: 0,
+      },
+    });
+    const scope = { tenantId: TENANT, clubId: CLUB, tournamentId: TID };
+    const first = await service.checkIn(scope, {
+      playerId: "1",
+      expectedVersion: 0,
+      idempotencyKey: "ci-1",
+    });
+    assert.equal(first.ok, true);
+    const stale = await service.checkIn(scope, {
+      playerId: "2",
+      expectedVersion: 0,
+      idempotencyKey: "ci-2-stale",
+    });
+    assert.equal(stale.ok, false);
+    assert.equal(stale.code, DAILY_PLAY_CODE.VERSION_CONFLICT);
+  });
+
+  test("initial loading gate keeps shell once snapshot exists (DP-05/D)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(
+      source,
+      /\(tournamentLoading && !tournament\) \|\| \(session\.loading && !session\.state\)/
+    );
+    assert.equal(
+      /if \(tournamentLoading \|\| session\.loading\) \{/.test(source),
+      false
+    );
+  });
+
+  test("error banner ownership does not sticky-mirror session.error (DP-08)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(source, /displayError/);
+    assert.match(source, /actionError/);
+    assert.equal(
+      /useEffect\(\(\) => \{\s*if \(session\.error\) \{\s*setError\(session\.error\)/.test(
+        source
+      ),
+      false
+    );
+    assert.equal(
+      /useEffect\(\(\) => \{\s*if \(tournamentLoadError\) \{\s*setError\(tournamentLoadError\)/.test(
+        source
+      ),
+      false
+    );
+  });
+
+  test("referee roster uses async persist + free-text contract (DP-07/I)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const panelPath = path.resolve("src/components/tournament/RefereeRosterPanel.jsx");
+    const setup = fs.readFileSync(setupPath, "utf8");
+    const panel = fs.readFileSync(panelPath, "utf8");
+    assert.match(setup, /handleRefereeRosterChange/);
+    assert.match(setup, /return \{ ok: true/);
+    assert.match(setup, /roster trọng tài của buổi chơi/i);
+    assert.match(panel, /Promise\.resolve\(onChange/);
+    assert.match(panel, /Đang lưu\.\.\./);
+    assert.match(panel, /không tự lấy từ tài khoản đăng nhập REFEREE/i);
+    assert.match(panel, /if \(ok\) \{\s*setName\(""\);\s*setPhone\(""\);/);
+  });
+
+  test("manual referee roster entries still normalize (DP-07 backward compat)", async () => {
+    const { getRefereeSettings } = await import(
+      "../src/tournament/engines/refereeEngine.js"
+    );
+    const tournament = {
+      settings: {
+        refereeRoster: [{ id: "r-manual", name: "Lan Manual", phone: "090" }],
+      },
+    };
+    const roster = getRefereeSettings(tournament).roster;
+    assert.equal(roster.length, 1);
+    assert.equal(roster[0].name, "Lan Manual");
+  });
+});

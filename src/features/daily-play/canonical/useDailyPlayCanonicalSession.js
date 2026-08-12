@@ -35,12 +35,15 @@ export function useDailyPlayCanonicalSession({
   const [mutating, setMutating] = useState(false);
   const mountedRef = useRef(true);
   const hasSnapshotRef = useRef(false);
+  const revisionRef = useRef(0);
+  const mutatingRef = useRef(false);
 
   const applySnapshot = useCallback((snapshot) => {
     if (!mountedRef.current || !snapshot?.ok) return;
     const normalized = normalizeDailyPlayServerSnapshot(snapshot);
     if (!normalized.ok) return;
     hasSnapshotRef.current = true;
+    revisionRef.current = Number(normalized.revision || 0);
     setState(normalized);
     setError(null);
   }, []);
@@ -51,6 +54,7 @@ export function useDailyPlayCanonicalSession({
       if (!enabled || !tenantId || !clubId || !tournamentId) {
         setState(null);
         hasSnapshotRef.current = false;
+        revisionRef.current = 0;
         setLoading(false);
         setRefreshing(false);
         return {
@@ -60,7 +64,7 @@ export function useDailyPlayCanonicalSession({
         };
       }
 
-      // DP-03: never flash full-page loading on poll / mutation readback.
+      // DP-03/DP-05: never flash full-page loading on poll / mutation readback.
       if (background && hasSnapshotRef.current) {
         setRefreshing(true);
       } else if (!background) {
@@ -77,7 +81,6 @@ export function useDailyPlayCanonicalSession({
       }
 
       if (!result.ok) {
-        // Keep existing tables visible during background failure.
         if (!background || !hasSnapshotRef.current) {
           setError(
             result.error ||
@@ -97,6 +100,7 @@ export function useDailyPlayCanonicalSession({
   useEffect(() => {
     mountedRef.current = true;
     hasSnapshotRef.current = false;
+    revisionRef.current = 0;
     void refresh({ background: false });
     return () => {
       mountedRef.current = false;
@@ -111,23 +115,39 @@ export function useDailyPlayCanonicalSession({
     return () => clearInterval(timer);
   }, [enabled, pollMs, refresh]);
 
+  const beginMutationGate = useCallback(() => {
+    if (mutatingRef.current) {
+      return {
+        ok: false,
+        code: DAILY_PLAY_CODE.VALIDATION,
+        error: "Đang xử lý thao tác trước đó.",
+      };
+    }
+    mutatingRef.current = true;
+    setMutating(true);
+    setError(null);
+    return null;
+  }, []);
+
+  const endMutationGate = useCallback(() => {
+    mutatingRef.current = false;
+    if (mountedRef.current) {
+      setMutating(false);
+    }
+  }, []);
+
   const runMutation = useCallback(
     async (executor) => {
-      if (mutating) {
-        return {
-          ok: false,
-          code: DAILY_PLAY_CODE.VALIDATION,
-          error: "Đang xử lý thao tác trước đó.",
-        };
-      }
-      setMutating(true);
-      setError(null);
+      const gate = beginMutationGate();
+      if (gate) return gate;
       try {
         const result = mapConflict(await executor());
         if (!mountedRef.current) return result;
 
         if (result?.ok) {
-          // DP-04: never treat compact mutation payloads as session snapshots.
+          if (result.revision != null) {
+            revisionRef.current = Number(result.revision);
+          }
           const readback = await refresh({ background: true });
           if (!mountedRef.current) return result;
           if (!readback?.ok) {
@@ -164,12 +184,96 @@ export function useDailyPlayCanonicalSession({
         }
         return result;
       } finally {
-        if (mountedRef.current) {
-          setMutating(false);
-        }
+        endMutationGate();
       }
     },
-    [mutating, refresh]
+    [beginMutationGate, endMutationGate, refresh]
+  );
+
+  const runBulkPresence = useCallback(
+    async (playerIds, mode) => {
+      const gate = beginMutationGate();
+      if (gate) return gate;
+
+      const ids = [...new Set((playerIds || []).map(String).filter(Boolean))];
+      const succeeded = [];
+      let expected = Number(revisionRef.current || 0);
+
+      try {
+        for (const playerId of ids) {
+          const result = mapConflict(
+            await (mode === "checkOut"
+              ? service.checkOut(
+                  { tenantId, clubId, tournamentId },
+                  {
+                    playerId,
+                    expectedVersion: expected,
+                    idempotencyKey: `${mode}-${playerId}-${expected}`,
+                  }
+                )
+              : service.checkIn(
+                  { tenantId, clubId, tournamentId },
+                  {
+                    playerId,
+                    expectedVersion: expected,
+                    idempotencyKey: `${mode}-${playerId}-${expected}`,
+                  }
+                ))
+          );
+
+          if (!result?.ok) {
+            await refresh({ background: true });
+            const failure = {
+              ok: false,
+              code: result?.code || DAILY_PLAY_CODE.VALIDATION,
+              error:
+                result?.error ||
+                DAILY_PLAY_MESSAGES[result?.code] ||
+                (mode === "checkOut"
+                  ? "Không bỏ chọn được toàn bộ VĐV."
+                  : "Không chọn được toàn bộ VĐV."),
+              partial: true,
+              succeeded,
+              failedPlayerId: playerId,
+            };
+            if (mountedRef.current) {
+              setError(failure.error);
+            }
+            return failure;
+          }
+
+          expected = Number(result.revision);
+          revisionRef.current = expected;
+          succeeded.push(playerId);
+        }
+
+        const readback = await refresh({ background: true });
+        if (!readback?.ok) {
+          const failure = {
+            ok: false,
+            code: DAILY_PLAY_CODE.READBACK_FAILED,
+            error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.READBACK_FAILED],
+            mutationCommitted: true,
+            partial: true,
+            succeeded,
+            readback,
+          };
+          if (mountedRef.current) setError(failure.error);
+          return failure;
+        }
+
+        return {
+          ok: true,
+          revision: readback.revision,
+          dailyPlay: readback.dailyPlay,
+          succeeded,
+          readback,
+        };
+      } finally {
+        endMutationGate();
+      }
+    },
+    [beginMutationGate, endMutationGate, refresh, service, tenantId, clubId, tournamentId]
   );
 
   const revision = state?.revision ?? state?.dailyPlay?.revision ?? 0;
@@ -185,6 +289,7 @@ export function useDailyPlayCanonicalSession({
     state,
     dailyPlay,
     revision,
+    revisionRef,
     courts: state?.courts || [],
     courtStates: state?.courtStates || [],
     availableCourts: state?.availableCourts || [],
@@ -193,17 +298,25 @@ export function useDailyPlayCanonicalSession({
     refresh,
     checkIn: (playerId) =>
       runMutation(() =>
-        service.checkIn(scope, { playerId, expectedVersion: revision })
+        service.checkIn(scope, {
+          playerId,
+          expectedVersion: revisionRef.current,
+        })
       ),
     checkOut: (playerId) =>
       runMutation(() =>
-        service.checkOut(scope, { playerId, expectedVersion: revision })
+        service.checkOut(scope, {
+          playerId,
+          expectedVersion: revisionRef.current,
+        })
       ),
+    checkInMany: (playerIds) => runBulkPresence(playerIds, "checkIn"),
+    checkOutMany: (playerIds) => runBulkPresence(playerIds, "checkOut"),
     createMatches: (matches, options = {}) =>
       runMutation(() =>
         service.createMatches(scope, {
           matches,
-          expectedVersion: revision,
+          expectedVersion: revisionRef.current,
           eligiblePlayerCount: options.eligiblePlayerCount,
           idempotencyKey: options.idempotencyKey,
         })
@@ -213,12 +326,15 @@ export function useDailyPlayCanonicalSession({
         service.assignCourt(scope, {
           matchId,
           courtId,
-          expectedVersion: revision,
+          expectedVersion: revisionRef.current,
         })
       ),
     startMatch: (matchId) =>
       runMutation(() =>
-        service.startMatch(scope, { matchId, expectedVersion: revision })
+        service.startMatch(scope, {
+          matchId,
+          expectedVersion: revisionRef.current,
+        })
       ),
     submitScore: (matchId, scoreA, scoreB) =>
       runMutation(() =>
@@ -226,19 +342,22 @@ export function useDailyPlayCanonicalSession({
           matchId,
           scoreA,
           scoreB,
-          expectedVersion: revision,
+          expectedVersion: revisionRef.current,
         })
       ),
     cancelMatch: (matchId) =>
       runMutation(() =>
-        service.cancelMatch(scope, { matchId, expectedVersion: revision })
+        service.cancelMatch(scope, {
+          matchId,
+          expectedVersion: revisionRef.current,
+        })
       ),
     changeCourt: (matchId, courtId) =>
       runMutation(() =>
         service.changeCourt(scope, {
           matchId,
           courtId,
-          expectedVersion: revision,
+          expectedVersion: revisionRef.current,
         })
       ),
   };

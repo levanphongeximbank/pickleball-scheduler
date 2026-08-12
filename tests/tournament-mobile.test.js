@@ -48,6 +48,44 @@ test("buildDailyMatchCardProps formats title, subtitle, and action", () => {
   assert.equal(clicked, "m1");
 });
 
+test("buildDailyMatchCardProps never renders undefined team labels (DP-09)", () => {
+  const match = {
+    id: "m-done",
+    status: "completed",
+    teamALabel: undefined,
+    teamBLabel: undefined,
+    teamAPlayerIds: ["p1", "p2"],
+    teamBPlayerIds: ["p3", "p4"],
+    courtId: "c1",
+    scoreA: 11,
+    scoreB: 5,
+  };
+  const players = [
+    { id: "p1", name: "An" },
+    { id: "p2", name: "Binh" },
+    { id: "p3", name: "Chi" },
+    { id: "p4", name: "Dung" },
+  ];
+
+  const resolved = buildDailyMatchCardProps(match, { players });
+  assert.equal(resolved.title, "An / Binh vs Chi / Dung");
+  assert.equal(resolved.title.includes("undefined"), false);
+
+  const missingPlayers = buildDailyMatchCardProps(
+    {
+      id: "m2",
+      teamALabel: null,
+      teamBLabel: "null",
+      teamAPlayerIds: [],
+      teamBPlayerIds: [],
+    },
+    { players: [] }
+  );
+  assert.equal(missingPlayers.title, "TBD vs TBD");
+  assert.equal(missingPlayers.title.includes("undefined"), false);
+  assert.equal(missingPlayers.title.includes("null"), false);
+});
+
 test("buildDirectorMatchCardProps prefers entry labels and badge", () => {
   const match = {
     id: "m2",
