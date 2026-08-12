@@ -42,6 +42,10 @@ import {
   closeTeamTournamentForClub,
   updateTeamAwardsConfig,
 } from "../../../features/team-tournament/services/teamTournamentService.js";
+import {
+  CLOSE_DEFAULT_REASON,
+  resolveCloseMutationOutcome,
+} from "../../../features/team-tournament/setup/closeTournamentMutation.js";
 
 function downloadText(filename, content, mimeType) {
   if (typeof document === "undefined") return;
@@ -84,12 +88,18 @@ export default function TeamAwardsClosePanel({
     return null;
   }
 
-  async function run(action, successText) {
+  async function run(action, successText, { assertPersisted = null } = {}) {
     setBusy(true);
     try {
       const result = await Promise.resolve(action());
       if (!result?.ok) {
         onError?.(result?.error || "Thao tác thất bại.");
+        return;
+      }
+      // ok:true from a preview-only setup mutation is not a persisted write.
+      const persisted = assertPersisted ? assertPersisted(result) : { ok: true };
+      if (!persisted.ok) {
+        onError?.(persisted.error || "Thao tác chưa được server ghi nhận.");
         return;
       }
       onMessage?.(successText);
@@ -263,11 +273,12 @@ export default function TeamAwardsClosePanel({
             run(
               () =>
                 typeof onCloseTournament === "function"
-                  ? onCloseTournament({ reason: "tournament.close" })
+                  ? onCloseTournament({ reason: CLOSE_DEFAULT_REASON })
                   : closeTeamTournamentForClub(clubId, tournamentId, {
                       autoAwards: true,
                     }),
-              "Giải đã được đóng (completed)."
+              "Giải đã được đóng (completed).",
+              { assertPersisted: resolveCloseMutationOutcome }
             )
           }
         >

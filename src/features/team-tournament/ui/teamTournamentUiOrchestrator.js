@@ -39,6 +39,11 @@ import {
 } from "../engines/teamFormatVenueConfig.js";
 import { assertStageTieBreakPolicyWritable } from "../engines/teamStageTieBreakPolicy.js";
 import {
+  buildCloseTournamentPayload,
+  CLOSE_TOURNAMENT_COMMAND,
+  resolveCloseMutationOutcome,
+} from "../setup/closeTournamentMutation.js";
+import {
   planCanonicalMlpDreambreakerPersist,
 } from "../engines/mlpPresetEngine.js";
 import {
@@ -1015,27 +1020,76 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       );
       const rulesVersion = options.rulesVersion || aggregate?.rulesVersion || "team-tournament-v1";
       const teamData = options.teamData || aggregate?.teamData || {};
+      const tournamentView =
+        options.tournament || aggregateToTournamentView(aggregate) || { id: tournamentId };
+      const matchups = teamData.matchups || [];
+      const engineInput = { command: CLOSE_TOURNAMENT_COMMAND, tournamentId };
+      const engineOutput = { reason: payload.reason || CLOSE_TOURNAMENT_COMMAND };
+
+      let snapshot;
+      try {
+        snapshot = await buildSetupMutationSnapshotPackageAsync({
+          tournament: tournamentView,
+          teams: teamData.teams || aggregate?.teams || [],
+          disciplines: teamData.disciplines || [],
+          groups: teamData.groups || [],
+          matchups,
+          subMatches: matchups.flatMap((matchup) => matchup.subMatches || []),
+          schedule: teamData.schedule || matchups,
+          schedulePublish: teamData.schedulePublish || aggregate?.schedulePublish || {},
+          settings: teamData.settings || aggregate?.settings || {},
+          formatPreset: teamData.settings?.formatPreset,
+          rosterRules: teamData.settings?.rosterRules,
+          engineInput,
+          engineOutput,
+          rules: rulesVersion ? { rulesVersion } : {},
+          expectedTournamentVersion,
+          generatedAt: options.generatedAt,
+        });
+      } catch (error) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: SETUP_MUTATION_CODES.HASH_RUNTIME_ERROR,
+          error: error?.message || "Không tính được hash snapshot đóng giải.",
+        });
+      }
+
       // B02: do not send client awards/standings/summary as close authority.
       // Server derives champion from canonical matchups after readiness gate.
-      const closePayload = {
-        reason: payload.reason || "tournament.close",
-      };
+      const closePayload = buildCloseTournamentPayload(payload, snapshot);
 
       const result = await runSetupMutation({
-        method: "tournament.close",
-        commandName: "tournament.close",
+        method: CLOSE_TOURNAMENT_COMMAND,
+        commandName: CLOSE_TOURNAMENT_COMMAND,
         clubId,
         tournamentId,
         expectedTournamentVersion,
+        latestTournamentVersion: expectedTournamentVersion,
         rulesVersion,
         payload: closePayload,
+        engineInput,
+        engineOutput,
         teamData,
-        tournament: options.tournament || aggregateToTournamentView(aggregate),
+        tournament: tournamentView,
+        confirmed: true,
         repository: repo,
+        dataMode: mode,
         envSource: options.envSource,
+        reload: (reloadOptions) => this.loadTournament(clubId, tournamentId, reloadOptions),
+        driftDetected: options.driftDetected,
+        diagnostic: options.diagnostic,
+        reloadAcknowledged: options.reloadAcknowledged,
+        idempotencyKey: options.idempotencyKey,
       });
-      if (!result.ok) {
-        return mapRepositoryResultToUi(result);
+
+      const outcome = resolveCloseMutationOutcome(result);
+      if (!outcome.ok) {
+        return mapRepositoryResultToUi({
+          ...result,
+          ok: false,
+          code: outcome.code,
+          error: outcome.error,
+        });
       }
       const reload = await this.loadTournament(clubId, tournamentId);
       return {

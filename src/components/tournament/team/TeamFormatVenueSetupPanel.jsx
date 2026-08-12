@@ -38,7 +38,10 @@ import { listLockedCompetitionStages } from "../../../features/team-tournament/e
 import {
   DEFAULT_STAGE_SCORING_ENTRY,
   DEFAULT_STAGE_SCORING_POLICY,
+  normalizeStageScoringMode,
   normalizeStageScoringPolicy,
+  STAGE_SCORING_MODE,
+  STAGE_SCORING_MODE_LABELS,
 } from "../../../features/team-tournament/engines/teamStageScoringPolicy.js";
 import { isSetupMutationFoundationEnabled } from "../../../features/team-tournament/setup/setupMutationFeatureGate.js";
 import {
@@ -508,6 +511,29 @@ export default function TeamFormatVenueSetupPanel({
                 >
                   {STAGE_POLICY_LABELS[stageKey]}
                 </Typography>
+                <FormControl fullWidth size="small" disabled={!canManage}>
+                  <InputLabel>Chế độ tính điểm</InputLabel>
+                  <Select
+                    label="Chế độ tính điểm"
+                    value={normalizeStageScoringMode(entry?.scoringMode)}
+                    onChange={(event) =>
+                      setStageScoringPolicy((prev) => ({
+                        ...prev,
+                        [stageKey]: {
+                          ...(prev?.[stageKey] || DEFAULT_STAGE_SCORING_ENTRY),
+                          scoringMode: normalizeStageScoringMode(event.target.value),
+                        },
+                      }))
+                    }
+                  >
+                    <MenuItem value={STAGE_SCORING_MODE.TRADITIONAL}>
+                      {STAGE_SCORING_MODE_LABELS[STAGE_SCORING_MODE.TRADITIONAL]}
+                    </MenuItem>
+                    <MenuItem value={STAGE_SCORING_MODE.RALLY}>
+                      {STAGE_SCORING_MODE_LABELS[STAGE_SCORING_MODE.RALLY]}
+                    </MenuItem>
+                  </Select>
+                </FormControl>
                 <TextField
                   size="small"
                   type="number"

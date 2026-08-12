@@ -12,7 +12,7 @@ import {
 } from "../models/index.js";
 import { canManageTeam } from "./teamPermissionEngine.js";
 import { computeMatchupResult } from "./teamResultEngine.js";
-import { isRallyScoring, validateRallyScore } from "./rallyScoringEngine.js";
+import { isRallyScoring, validateStageScore } from "./rallyScoringEngine.js";
 import { isDreambreakerSubMatch } from "./forfeitEngine.js";
 import {
   buildRosterAthleteIndex,
@@ -238,23 +238,31 @@ export function validateSubMatchScoreInput({
     };
   }
 
-  if (confirm && discipline && isRallyScoring(discipline)) {
+  if (confirm && discipline) {
     const resolvedRound = resolveMatchupCompetitionStage(teamData, matchup);
     const effective = resolveEffectiveStageScoringPolicy({
       teamData,
       resolvedRound,
       defaultScoring: discipline.scoringFormat,
     });
-    const rallyCheck = validateRallyScore({
-      scoreA: normalizedScore.teamA,
-      scoreB: normalizedScore.teamB,
-      rules: {
-        ...(discipline.scoringFormat || {}),
-        ...stageScoringToFormat(effective),
-      },
-    });
-    if (!rallyCheck.ok) {
-      return rallyCheck;
+    // Enforce target/winBy where a scoring authority is explicit: rally
+    // disciplines (legacy behaviour) or a stage that configures its own policy
+    // (traditional stages included). Unconfigured stages stay permissive.
+    const hasScoringAuthority =
+      isRallyScoring(discipline) || effective.source === "stageScoringPolicy";
+    if (hasScoringAuthority) {
+      const scoreCheck = validateStageScore({
+        scoreA: normalizedScore.teamA,
+        scoreB: normalizedScore.teamB,
+        rules: {
+          ...(discipline.scoringFormat || {}),
+          ...stageScoringToFormat(effective),
+        },
+        scoringMode: effective.scoringMode,
+      });
+      if (!scoreCheck.ok) {
+        return scoreCheck;
+      }
     }
   }
 

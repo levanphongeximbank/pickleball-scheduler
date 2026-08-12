@@ -210,7 +210,6 @@ describe("P0.3 shared repository integration", () => {
   it("Portal and Referee use shared pool service (no separate rating query)", () => {
     for (const file of [
       "src/pages/tournament/TeamPortal.jsx",
-      "src/pages/tournament/TeamRefereePortal.jsx",
       "src/components/tournament/TeamRosterPanel.jsx",
     ]) {
       const src = readFileSync(path.join(ROOT, file), "utf8");
@@ -218,6 +217,16 @@ describe("P0.3 shared repository integration", () => {
       assert.doesNotMatch(src, /pick_vn_player_ratings/);
       assert.doesNotMatch(src, /fetchPickVnRatings/);
     }
+
+    // Referee is competition-scoped (no club membership enumeration) but still
+    // must not run its own rating query.
+    const referee = readFileSync(
+      path.join(ROOT, "src/pages/tournament/TeamRefereePortal.jsx"),
+      "utf8"
+    );
+    assert.match(referee, /getRefereeCompetitionAthleteDirectory/);
+    assert.doesNotMatch(referee, /pick_vn_player_ratings/);
+    assert.doesNotMatch(referee, /fetchPickVnRatings/);
   });
 
   it("toLegacySelectPlayersPlayer projects canonical rating fields once", () => {

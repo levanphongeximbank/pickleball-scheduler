@@ -27,11 +27,12 @@ import { useTenant } from "../../context/TenantContext.jsx";
 import { findTournamentClubId } from "../../features/club/services/clubTournamentBridge.js";
 import { resolveTeamRefereeCloudPageAccess } from "../../features/team-tournament/ui/teamTournamentCloudAccess.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
-import {
-  TEAM_TOURNAMENT_ATHLETE_SCOPE,
-} from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
 import { hydrateTeamRoster } from "../../features/team-tournament/engines/teamRosterHydration.js";
-import { useTeamTournamentAthletePool } from "../../features/team-tournament/ui/useTeamTournamentAthletePool.js";
+import {
+  collectRefereeCompetitionAthletesFromTeamData,
+  projectRefereeCompetitionAthletePlayers,
+} from "../../features/team-tournament/engines/refereeCompetitionAthleteProjection.js";
+import { getRefereeCompetitionAthleteDirectory } from "../../features/team-tournament/services/refereeCompetitionAthleteDirectoryService.js";
 import {
   MATCHUP_STATUS,
   SUB_MATCH_STATUS,
@@ -58,7 +59,11 @@ import {
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
 import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
 import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTournamentUiCommandKeys.js";
-import { getRallyScoringHints } from "../../features/team-tournament/engines/rallyScoringEngine.js";
+import {
+  getStageScoringHints,
+  resolveStageScoringMode,
+} from "../../features/team-tournament/engines/rallyScoringEngine.js";
+import { STAGE_SCORING_MODE } from "../../features/team-tournament/engines/teamStageScoringPolicy.js";
 import { RefereeDreambreakerPanel } from "../../components/tournament/team/DreambreakerPanel.jsx";
 import {
   buildRefereeDreambreakerPointCommand,
@@ -164,6 +169,8 @@ function SubMatchScorePanel({
   teamAName,
   teamBName,
   discipline,
+  teamData = null,
+  matchup = null,
   canEdit,
   onSaveDraft,
   onConfirm,
@@ -257,7 +264,10 @@ function SubMatchScorePanel({
     ? { score: { teamA: 0, teamB: 0 }, games }
     : { score: { teamA: scoreA, teamB: scoreB }, games: [] };
 
-  const rallyHints = discipline ? getRallyScoringHints(discipline) : "";
+  const scoringHints = getStageScoringHints({ discipline, teamData, matchup });
+  const isTraditionalScoring =
+    resolveStageScoringMode({ discipline, teamData, matchup }) ===
+    STAGE_SCORING_MODE.TRADITIONAL;
 
   async function runBoundWrite(action) {
     const binding = bindScoreActionIds({
@@ -301,8 +311,17 @@ function SubMatchScorePanel({
 
   return (
     <Box sx={{ mt: 1.5, p: 1.5, bgcolor: "action.hover", borderRadius: 2 }}>
-      {rallyHints ? (
-        <Chip size="small" label={rallyHints} sx={{ mb: 1.5 }} />
+      {scoringHints ? (
+        <Chip size="small" label={scoringHints} sx={{ mb: 1.5 }} />
+      ) : null}
+      {isTraditionalScoring ? (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: "block", mb: 1.5 }}
+        >
+          Chế độ Truyền thống: quyền giao bóng được enforce trên Referee V5 / CORE-16.
+        </Typography>
       ) : null}
       {!subMatch.hasOfficialLineup && (
         <Alert severity="warning" sx={{ mb: 1.5 }}>
@@ -589,6 +608,8 @@ function MatchupCard({
                       discipline={teamData?.disciplines?.find(
                         (item) => item.id === subMatch.disciplineId
                       )}
+                      teamData={teamData}
+                      matchup={rawMatchup || matchup}
                       canEdit={
                         canManageTeamMatchResult({ permissions }) &&
                         canEditSubMatchResult(
@@ -643,7 +664,7 @@ function MatchupCard({
 export default function TeamRefereePortal() {
   const { tournamentId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { activeClubId, clubs = [] } = useClub();
+  const { activeClubId } = useClub();
   const { rbacEnabled, isAuthenticated, user, can } = useAuth();
   const { currentTenantId } = useTenant();
 
@@ -665,7 +686,6 @@ export default function TeamRefereePortal() {
     loading,
     tournament,
     teamData,
-    dataVersion,
     reload,
     error: loadError,
     runMutation,
@@ -681,6 +701,7 @@ export default function TeamRefereePortal() {
     clubId: resolvedClubId,
     tournamentId,
     pollingEnabled: true,
+    pageMode: "refereePortal",
   });
 
   const effectiveClubId = tournament?.clubId || resolvedClubId;
@@ -694,15 +715,6 @@ export default function TeamRefereePortal() {
     () => canManageTeamMatchResult({ permissions }),
     [permissions]
   );
-
-  const reloadTournament = useCallback(() => {
-    reload({ silent: true });
-    return tournament;
-  }, [reload, tournament]);
-
-  useEffect(() => {
-    reloadTournament();
-  }, [reloadTournament]);
 
   const access = useMemo(
     () =>
@@ -730,17 +742,52 @@ export default function TeamRefereePortal() {
     ]
   );
 
-  const athletePool = useTeamTournamentAthletePool({
-    tournament,
-    activeClubId: effectiveClubId,
-    clubs,
-    currentTenantId,
-    scopeMode: TEAM_TOURNAMENT_ATHLETE_SCOPE.CLUB,
-    callerName: "TeamRefereePortal",
-    revision: dataVersion,
-    enabled: Boolean(effectiveClubId && tournament),
-  });
-  const players = athletePool.players;
+  // Competition-scoped athlete directory: keyed by tournament id, fetched once
+  // per tournament (not per poll). Referee accounts must never enumerate club
+  // members — a soft failure falls back to canonical rosterAthletes.
+  const [competitionAthletes, setCompetitionAthletes] = useState([]);
+  const [directoryUnavailable, setDirectoryUnavailable] = useState(false);
+  const directoryTournamentId = String(tournament?.id || tournamentId || "").trim();
+
+  useEffect(() => {
+    if (!directoryTournamentId) {
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      const result = await getRefereeCompetitionAthleteDirectory({
+        tournamentId: directoryTournamentId,
+      });
+      if (cancelled) {
+        return;
+      }
+      if (result.ok) {
+        setDirectoryUnavailable(false);
+        if (result.athletes.length > 0) {
+          setCompetitionAthletes(result.athletes);
+        }
+        return;
+      }
+      // Soft error: keep last-good athletes and fall back to canonical roster.
+      setDirectoryUnavailable(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [directoryTournamentId]);
+
+  const players = useMemo(() => {
+    const merged = new Map(
+      collectRefereeCompetitionAthletesFromTeamData(teamData).map((row) => [
+        row.athleteId,
+        row,
+      ])
+    );
+    for (const row of competitionAthletes) {
+      merged.set(row.athleteId, row);
+    }
+    return projectRefereeCompetitionAthletePlayers([...merged.values()]);
+  }, [competitionAthletes, teamData]);
 
   const hydratedTeams = useMemo(() => {
     if (!teamData?.teams) return [];
@@ -1076,7 +1123,9 @@ export default function TeamRefereePortal() {
     }
   }
 
-  if (access.pending || loading) {
+  // First paint only — after hydrate, background reloads must never blank the
+  // scored UI.
+  if (access.pending || (loading && !tournament)) {
     return (
       <Box sx={{ p: 2, maxWidth: 640, mx: "auto" }}>
         <Alert severity="info">Đang tải trang trọng tài…</Alert>
@@ -1148,15 +1197,13 @@ export default function TeamRefereePortal() {
           {message}
         </Alert>
       )}
-      {athletePool.error ? (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {athletePool.error.message ||
-            "Không tải được pool VĐV canonical. Tên VĐV thiếu identity sẽ được đánh dấu rõ."}
-        </Alert>
-      ) : null}
       {hydratedTeams.some((team) => team.unresolvedCount > 0) ? (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          Một số VĐV trên đội thiếu identity canonical — tên hiển thị kèm diagnostic, không fallback blob.
+          Một số VĐV chưa resolve được từ danh bạ VĐV của giải — tên hiển thị kèm
+          diagnostic, không fallback blob.
+          {directoryUnavailable
+            ? " (Danh bạ VĐV theo giải chưa khả dụng — đang dùng roster canonical.)"
+            : ""}
         </Alert>
       ) : null}
 

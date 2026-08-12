@@ -19,6 +19,7 @@ import {
   computeTournamentRosterSetupSignature,
 } from "../engines/teamRosterHydrationCache.js";
 import { preserveCaptainPortalRosterAthletes } from "../engines/captainPortalRosterProjection.js";
+import { preserveRefereeCompetitionAthletes } from "../engines/refereeCompetitionAthleteProjection.js";
 import { logTeamRosterHydrationTransition } from "../engines/teamRosterHydrationDiagnostics.js";
 import { isSetupMutationFoundationEnabled } from "../setup/setupMutationFeatureGate.js";
 import {
@@ -68,6 +69,27 @@ export function canLoadTeamTournamentWithoutLocalClub(mode) {
 }
 
 /**
+ * How a failed canonical load may touch UI state.
+ *
+ * A silent poll/realtime/readback failure on an already hydrated page must not
+ * blank the scored UI — it only surfaces the error. Only a non-silent first
+ * load (nothing hydrated yet) may hard-clear.
+ *
+ * @param {{ silent?: boolean, hasTournament?: boolean, hasTeamData?: boolean }} input
+ * @returns {"soft"|"hard"}
+ */
+export function resolveLoadFailureApplyMode({
+  silent = false,
+  hasTournament = false,
+  hasTeamData = false,
+} = {}) {
+  if (silent && (hasTournament || hasTeamData)) {
+    return "soft";
+  }
+  return "hard";
+}
+
+/**
  * TT-1C page hook — repository read path + polling + mutation helpers.
  * TT-6C: realtime subscription via useTeamTournamentRealtime (repository boundary).
  * @param {{ clubId?: string, tournamentId?: string, pollingEnabled?: boolean, pollIntervalMs?: number, realtimeEnabled?: boolean }} params
@@ -107,6 +129,7 @@ export function useTeamTournamentPage({
   const [latestTournamentVersion, setLatestTournamentVersion] = useState(1);
   const rosterSignatureRef = useRef("");
   const teamDataRef = useRef(null);
+  const tournamentRef = useRef(null);
   const pageModeRef = useRef(pageMode);
   pageModeRef.current = pageMode;
   const pollRef = useRef(null);
@@ -114,10 +137,23 @@ export function useTeamTournamentPage({
   const reloadFnRef = useRef(null);
   const refreshControllerRef = useRef(createCanonicalSetupRefreshController());
 
-  const applyLoadResult = useCallback((result) => {
+  const applyLoadResult = useCallback((result, { silent = false } = {}) => {
     if (!result.ok) {
       setError(result.error || "Không tải được giải.");
       setErrorCode(result.code || null);
+
+      const applyMode = resolveLoadFailureApplyMode({
+        silent,
+        hasTournament: Boolean(tournamentRef.current),
+        hasTeamData: Boolean(teamDataRef.current),
+      });
+      if (applyMode === "soft") {
+        // Keep last-good canonical state: background failures must not blank a
+        // hydrated page (referee scored UI flicker).
+        return false;
+      }
+
+      tournamentRef.current = null;
       setTournament(null);
       teamDataRef.current = null;
       setTeamData(null);
@@ -139,6 +175,7 @@ export function useTeamTournamentPage({
     setError(null);
     setErrorCode(null);
     setVersionConflict(false);
+    tournamentRef.current = result.tournament ?? null;
     setTournament(result.tournament);
     setAggregate(result.aggregate);
     setVersion(result.version ?? 1);
@@ -158,8 +195,12 @@ export function useTeamTournamentPage({
         ? attachPersistedDreambreakerProjection(rawTeamData)
         : syncDreambreakerForAllMatchups(rawTeamData).teamData
       : null;
-    if (String(pageModeRef.current || "") === "captainPortal" && synced) {
+    const activePageMode = String(pageModeRef.current || "");
+    if (activePageMode === "captainPortal" && synced) {
       synced = preserveCaptainPortalRosterAthletes(teamDataRef.current, synced);
+    }
+    if (activePageMode === "refereePortal" && synced) {
+      synced = preserveRefereeCompetitionAthletes(teamDataRef.current, synced);
     }
     teamDataRef.current = synced;
 
@@ -353,7 +394,7 @@ export function useTeamTournamentPage({
       );
 
       if (decision.apply) {
-        applyLoadResult(result);
+        applyLoadResult(result, { silent });
         setLoading(false);
         loadingRef.current = false;
       } else if (!refreshControllerRef.current.isMutationBarrierActive()) {
@@ -391,7 +432,7 @@ export function useTeamTournamentPage({
         controller: refreshControllerRef.current,
         loadSetup: loadCanonicalSetup,
         applyLoadResult: (result) => {
-          applyLoadResult(result);
+          applyLoadResult(result, { silent: true });
           setLoading(false);
           loadingRef.current = false;
         },

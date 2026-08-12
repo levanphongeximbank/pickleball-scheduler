@@ -6,13 +6,70 @@
 
 import {
   COMPETITION_STAGE,
+  SCORING_SYSTEM,
   STAGE_TIE_BREAK_POLICY_KEYS,
 } from "../constants.js";
 
 export const STAGE_SCORING_POLICY_INVALID_CODE = "INVALID_STAGE_SCORING_POLICY";
 
+/** UI-level scoring mode per stage. Engines consume SCORING_SYSTEM. */
+export const STAGE_SCORING_MODE = Object.freeze({
+  RALLY: "rally",
+  TRADITIONAL: "traditional",
+});
+
+export const STAGE_SCORING_MODE_LABELS = Object.freeze({
+  [STAGE_SCORING_MODE.RALLY]: "Trực tiếp (Rally)",
+  [STAGE_SCORING_MODE.TRADITIONAL]: "Truyền thống",
+});
+
+/**
+ * Accepts scoringMode (rally|traditional) and scoringSystem aliases
+ * (rally|side_out, any case). Unknown → rally (default).
+ * @param {unknown} raw
+ * @returns {"rally"|"traditional"}
+ */
+export function normalizeStageScoringMode(raw) {
+  const value = String(raw ?? "").trim().toLowerCase();
+  if (
+    value === STAGE_SCORING_MODE.TRADITIONAL ||
+    value === SCORING_SYSTEM.SIDE_OUT ||
+    value === "sideout"
+  ) {
+    return STAGE_SCORING_MODE.TRADITIONAL;
+  }
+  return STAGE_SCORING_MODE.RALLY;
+}
+
+/**
+ * @param {unknown} mode
+ * @returns {string} SCORING_SYSTEM value
+ */
+export function mapStageScoringModeToScoringSystem(mode) {
+  return normalizeStageScoringMode(mode) === STAGE_SCORING_MODE.TRADITIONAL
+    ? SCORING_SYSTEM.SIDE_OUT
+    : SCORING_SYSTEM.RALLY;
+}
+
+/**
+ * @param {unknown} scoringSystem
+ * @returns {"rally"|"traditional"}
+ */
+export function mapScoringSystemToStageScoringMode(scoringSystem) {
+  return normalizeStageScoringMode(scoringSystem);
+}
+
+/**
+ * @param {unknown} mode
+ * @returns {string}
+ */
+export function getStageScoringModeLabel(mode) {
+  return STAGE_SCORING_MODE_LABELS[normalizeStageScoringMode(mode)];
+}
+
 /** Default scoring shape — matches existing MLP rally defaults (not authority). */
 export const DEFAULT_STAGE_SCORING_ENTRY = Object.freeze({
+  scoringMode: STAGE_SCORING_MODE.RALLY,
   targetPoints: 21,
   winBy: 2,
   changeEndsAt: null,
@@ -43,7 +100,14 @@ function normalizeEntry(raw) {
   const freezeAt =
     source.freezeAt == null || source.freezeAt === "" ? null : Number(source.freezeAt);
 
+  const scoringMode = normalizeStageScoringMode(
+    source.scoringMode != null && String(source.scoringMode).trim()
+      ? source.scoringMode
+      : source.scoringSystem
+  );
+
   return {
+    scoringMode,
     targetPoints:
       Number.isFinite(targetPoints) && targetPoints > 0
         ? Math.floor(targetPoints)
@@ -143,6 +207,8 @@ export function resolveEffectiveStageScoringPolicy({
 export function stageScoringToFormat(entry) {
   const normalized = normalizeEntry(entry);
   return {
+    scoringMode: normalized.scoringMode,
+    scoringSystem: mapStageScoringModeToScoringSystem(normalized.scoringMode),
     targetScore: normalized.targetPoints,
     targetPoints: normalized.targetPoints,
     winBy: normalized.winBy,

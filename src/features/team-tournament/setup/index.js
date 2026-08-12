@@ -52,6 +52,15 @@ export {
 } from "./inferSetupMutationCommand.js";
 
 export {
+  CLOSE_DEFAULT_REASON,
+  CLOSE_NOT_PERSISTED_CODE,
+  CLOSE_TOURNAMENT_COMMAND,
+  buildCloseTournamentPayload,
+  isCloseMutationPersisted,
+  resolveCloseMutationOutcome,
+} from "./closeTournamentMutation.js";
+
+export {
   buildSetupMutationPayload,
   buildSetupMutationPayloadAsync,
   previewSetupMutation,
