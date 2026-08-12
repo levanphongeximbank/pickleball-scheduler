@@ -110,6 +110,7 @@ export function buildFormatVenueFingerprint(defaults = {}) {
     knockoutFormat: defaults.knockoutFormat || "",
     selectedCourtIds: [...(defaults.selectedCourtIds || [])].map(String).sort(),
     stageTieBreakPolicy: defaults.stageTieBreakPolicy || {},
+    stageScoringPolicy: defaults.stageScoringPolicy || {},
   });
 }
 

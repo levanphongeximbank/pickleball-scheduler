@@ -4,6 +4,7 @@ import {
   TEAM_TOURNAMENT_DATA_MODES,
 } from "../repositories/teamTournamentRepositoryFactory.js";
 import { REPOSITORY_ERROR_CODES, REPOSITORY_REALTIME_FALLBACK } from "../repositories/teamTournamentRepositoryTypes.js";
+import { describeRepositoryFailureCode } from "../repositories/teamTournamentRepositoryValidation.js";
 import { attachTeamDataToTournament, getTeamData } from "../engines/teamTournamentEngine.js";
 import { buildTeamTournamentDraftState } from "../engines/teamTournamentWorkflowStage.js";
 import { DEFAULT_ENGINE_VERSION } from "../canonical/teamTournamentMutationEnvelope.js";
@@ -37,6 +38,7 @@ import {
   validateFormatVenueConfigForPersist,
 } from "../engines/teamFormatVenueConfig.js";
 import { assertStageTieBreakPolicyWritable } from "../engines/teamStageTieBreakPolicy.js";
+import { closeTeamTournament } from "../engines/teamClosingEngine.js";
 import {
   planCanonicalMlpDreambreakerPersist,
 } from "../engines/mlpPresetEngine.js";
@@ -116,6 +118,15 @@ export function mapRepositoryResultToUi(result) {
     userMessage = "Không tìm thấy giải đấu.";
   } else if (code === REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED) {
     userMessage = "Chức năng chưa được triển khai trên môi trường này.";
+  } else {
+    const described = describeRepositoryFailureCode(code);
+    const generic =
+      !result?.error ||
+      result.error === "Repository operation failed." ||
+      result.error === "Không thực hiện được thao tác.";
+    if (described && generic) {
+      userMessage = described;
+    }
   }
 
   return {
@@ -972,6 +983,80 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         endUiCommandKey(scope);
         return { ok: false, error: error?.message || "Lỗi lưu nháp." };
       }
+    },
+
+    /**
+     * Close tournament → server status=completed (dual-write). Cloud only.
+     */
+    async persistCloseTournament(clubId, tournamentId, payload = {}, options = {}) {
+      const isCloud =
+        mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_PRIMARY ||
+        mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY;
+      if (!isCloud) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED,
+          error: "Đóng giải cloud chỉ khả dụng trên cloud repository.",
+        });
+      }
+      if (!isSetupMutationFoundationEnabled(options.envSource)) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: "GATE_OFF",
+          error: SETUP_CONFIG_GATE_OFF_MESSAGE,
+        });
+      }
+
+      const current =
+        options.aggregate ||
+        (await repo.getTournament(clubId, tournamentId, { schemaVersion: 7 }));
+      const aggregate = current?.data || current?.aggregate || current;
+      const expectedTournamentVersion = Number(
+        options.expectedTournamentVersion ?? aggregate?.version ?? 1
+      );
+      const rulesVersion = options.rulesVersion || aggregate?.rulesVersion || "team-tournament-v1";
+      const teamData = options.teamData || aggregate?.teamData || {};
+      const closedPreview = closeTeamTournament(teamData, {
+        autoAwards: payload.autoAwards !== false,
+        tournamentId,
+        tournamentName: options.tournamentName || "",
+        tournament: options.tournament || aggregateToTournamentView(aggregate),
+      });
+      const closePayload = {
+        ...(closedPreview.ok
+          ? {
+              summary: closedPreview.summary || null,
+              awardsSheet: closedPreview.teamData?.settings?.awardsSheet || null,
+              frozenStandings: closedPreview.teamData?.settings?.frozenStandings || null,
+            }
+          : {}),
+        ...payload,
+      };
+
+      const result = await runSetupMutation({
+        method: "tournament.close",
+        commandName: "tournament.close",
+        clubId,
+        tournamentId,
+        expectedTournamentVersion,
+        rulesVersion,
+        payload: closePayload,
+        teamData,
+        tournament: options.tournament || aggregateToTournamentView(aggregate),
+        repository: repo,
+        envSource: options.envSource,
+      });
+      if (!result.ok) {
+        return mapRepositoryResultToUi(result);
+      }
+      const reload = await this.loadTournament(clubId, tournamentId);
+      return {
+        ok: true,
+        tournament: reload.tournament,
+        teamData: reload.teamData,
+        version: result.version ?? reload.version,
+        summary: closePayload.summary || null,
+      };
     },
   };
 }

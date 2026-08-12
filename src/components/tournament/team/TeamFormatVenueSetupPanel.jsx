@@ -35,6 +35,11 @@ import {
   validateRosterRules,
 } from "../../../features/team-tournament/engines/teamFormatVenueConfig.js";
 import { listLockedCompetitionStages } from "../../../features/team-tournament/engines/teamStageTieBreakPolicy.js";
+import {
+  DEFAULT_STAGE_SCORING_ENTRY,
+  DEFAULT_STAGE_SCORING_POLICY,
+  normalizeStageScoringPolicy,
+} from "../../../features/team-tournament/engines/teamStageScoringPolicy.js";
 import { isSetupMutationFoundationEnabled } from "../../../features/team-tournament/setup/setupMutationFeatureGate.js";
 import {
   buildFormatVenueFingerprint,
@@ -111,6 +116,9 @@ export default function TeamFormatVenueSetupPanel({
   const [stageTieBreakPolicy, setStageTieBreakPolicy] = useState(
     defaults.stageTieBreakPolicy
   );
+  const [stageScoringPolicy, setStageScoringPolicy] = useState(
+    normalizeStageScoringPolicy(defaults.stageScoringPolicy || DEFAULT_STAGE_SCORING_POLICY)
+  );
   const [busy, setBusy] = useState(false);
   const [serverBaselineFingerprint, setServerBaselineFingerprint] = useState(null);
   const [acceptServerBaseline, setAcceptServerBaseline] = useState(false);
@@ -143,6 +151,12 @@ export default function TeamFormatVenueSetupPanel({
       JSON.stringify(rosterRules || {}) !== JSON.stringify(defaults.rosterRules || {}) ||
       JSON.stringify(stageTieBreakPolicy || {}) !==
         JSON.stringify(defaults.stageTieBreakPolicy || {}) ||
+      JSON.stringify(stageScoringPolicy || {}) !==
+        JSON.stringify(
+          normalizeStageScoringPolicy(
+            defaults.stageScoringPolicy || DEFAULT_STAGE_SCORING_POLICY
+          )
+        ) ||
       !courtsEqual
     );
   }, [
@@ -155,6 +169,7 @@ export default function TeamFormatVenueSetupPanel({
     qualificationCount,
     rosterRules,
     selectedCourtIds,
+    stageScoringPolicy,
     stageTieBreakPolicy,
   ]);
 
@@ -177,6 +192,9 @@ export default function TeamFormatVenueSetupPanel({
     setKnockoutFormat(defaults.knockoutFormat);
     setSelectedCourtIds(defaults.selectedCourtIds || []);
     setStageTieBreakPolicy(defaults.stageTieBreakPolicy);
+    setStageScoringPolicy(
+      normalizeStageScoringPolicy(defaults.stageScoringPolicy || DEFAULT_STAGE_SCORING_POLICY)
+    );
     setServerBaselineFingerprint(serverFingerprint);
     if (acceptServerBaseline) {
       setAcceptServerBaseline(false);
@@ -316,8 +334,10 @@ export default function TeamFormatVenueSetupPanel({
       groupMode: resolvedGroupMode,
       groupCount: resolvedGroupCount,
       qualificationCount: Math.max(1, Number(qualificationCount) || 1),
+      qualifiersPerGroup: Math.max(1, Number(qualificationCount) || 1),
       knockoutFormat,
       stageTieBreakPolicy,
+      stageScoringPolicy: normalizeStageScoringPolicy(stageScoringPolicy),
       selectedCourtIds,
       teamsPerGroup:
         resolvedGroupCount > 0
@@ -464,6 +484,71 @@ export default function TeamFormatVenueSetupPanel({
           })}
         </Stack>
 
+        <Stack spacing={1}>
+          <Typography variant="subtitle2" fontWeight={700}>
+            Điểm theo vòng (stage scoring)
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Áp dụng theo vòng đã resolve (#416), không đổi matchup.stage thô (group|knockout).
+            21 chỉ là mặc định khi chưa cấu hình.
+          </Typography>
+          {STAGE_TIE_BREAK_POLICY_KEYS.map((stageKey) => {
+            const entry =
+              stageScoringPolicy?.[stageKey] || DEFAULT_STAGE_SCORING_POLICY[stageKey];
+            return (
+              <Stack
+                key={`scoring-${stageKey}`}
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{ minWidth: 96, pt: 1 }}
+                  fontWeight={600}
+                >
+                  {STAGE_POLICY_LABELS[stageKey]}
+                </Typography>
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Điểm mục tiêu"
+                  value={entry?.targetPoints ?? 21}
+                  disabled={!canManage}
+                  onChange={(event) =>
+                    setStageScoringPolicy((prev) => ({
+                      ...prev,
+                      [stageKey]: {
+                        ...(prev?.[stageKey] || DEFAULT_STAGE_SCORING_ENTRY),
+                        targetPoints: Math.max(1, Number(event.target.value) || 1),
+                      },
+                    }))
+                  }
+                  inputProps={{ min: 1 }}
+                  fullWidth
+                />
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Cách biệt (winBy)"
+                  value={entry?.winBy ?? 2}
+                  disabled={!canManage}
+                  onChange={(event) =>
+                    setStageScoringPolicy((prev) => ({
+                      ...prev,
+                      [stageKey]: {
+                        ...(prev?.[stageKey] || DEFAULT_STAGE_SCORING_ENTRY),
+                        winBy: Math.max(1, Number(event.target.value) || 1),
+                      },
+                    }))
+                  }
+                  inputProps={{ min: 1 }}
+                  fullWidth
+                />
+              </Stack>
+            );
+          })}
+        </Stack>
+
         <FormControl fullWidth size="small" disabled={!canManage}>
           <InputLabel>Group setup</InputLabel>
           <Select
@@ -500,25 +585,30 @@ export default function TeamFormatVenueSetupPanel({
           <TextField
             size="small"
             type="number"
-            label="Số đội vượt bảng / pool (qualificationCount)"
+            label="Số đội vượt bảng mỗi bảng (qualifiersPerGroup)"
             value={qualificationCount}
-            disabled={!canManage}
+            disabled={!canManage || Number(groupCount) <= 1}
             onChange={(event) =>
               setQualificationCount(Math.max(1, Number(event.target.value) || 1))
             }
             inputProps={{ min: 1 }}
             fullWidth
+            helperText={
+              Number(groupCount) <= 1
+                ? "1 bảng: kết thúc sau vòng tròn — không tạo knockout."
+                : `Tổng vượt bảng = ${Math.max(1, Number(groupCount) || 1)} × ${Math.max(1, Number(qualificationCount) || 1)} (phải thuộc 2/4/8/16).`
+            }
           />
-          <FormControl fullWidth size="small" disabled={!canManage}>
-            <InputLabel>Knockout</InputLabel>
+          <FormControl fullWidth size="small" disabled={!canManage || Number(groupCount) <= 1}>
+            <InputLabel>Knockout (multi-bảng)</InputLabel>
             <Select
-              label="Knockout"
+              label="Knockout (multi-bảng)"
               value={knockoutFormat}
               onChange={(event) => setKnockoutFormat(event.target.value)}
             >
-              <MenuItem value={KNOCKOUT_FORMAT.TOP_N}>Top N (seed)</MenuItem>
+              <MenuItem value={KNOCKOUT_FORMAT.TOP_N}>Top N theo seed</MenuItem>
               <MenuItem value={KNOCKOUT_FORMAT.FINAL_ONLY}>Chung kết (top 2)</MenuItem>
-              <MenuItem value={KNOCKOUT_FORMAT.SEMIFINALS}>Bán kết (top 4 → 1v4, 2v3)</MenuItem>
+              <MenuItem value={KNOCKOUT_FORMAT.SEMIFINALS}>Bán kết (top 4)</MenuItem>
             </Select>
           </FormControl>
         </Stack>

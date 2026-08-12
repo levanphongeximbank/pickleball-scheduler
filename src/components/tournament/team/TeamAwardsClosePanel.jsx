@@ -58,23 +58,25 @@ export default function TeamAwardsClosePanel({
   clubId,
   tournamentId,
   teamData,
+  tournament = null,
   tournamentName = "",
   canManage = false,
+  onCloseTournament = null,
   onUpdated,
   onError,
   onMessage,
 }) {
   const [busy, setBusy] = useState(false);
-  const closed = isTeamTournamentClosed(teamData);
+  const closed = isTeamTournamentClosed(teamData, tournament);
   const preview = useMemo(
     () => (teamData ? getAwardsPreview(teamData) : { awards: [], ranking: [] }),
     [teamData]
   );
   const readiness = useMemo(
-    () => (teamData ? previewCloseReadiness(teamData) : null),
-    [teamData]
+    () => (teamData ? previewCloseReadiness(teamData, tournament) : null),
+    [teamData, tournament]
   );
-  const summary = teamData ? getTeamTournamentSummary(teamData) : null;
+  const summary = teamData ? getTeamTournamentSummary(teamData, tournament) : null;
   const config = teamData ? getAwardsConfig(teamData) : {};
   const teams = teamData?.teams || [];
 
@@ -82,10 +84,10 @@ export default function TeamAwardsClosePanel({
     return null;
   }
 
-  function run(action, successText) {
+  async function run(action, successText) {
     setBusy(true);
     try {
-      const result = action();
+      const result = await Promise.resolve(action());
       if (!result?.ok) {
         onError?.(result?.error || "Thao tác thất bại.");
         return;
@@ -257,10 +259,12 @@ export default function TeamAwardsClosePanel({
           onClick={() =>
             run(
               () =>
-                closeTeamTournamentForClub(clubId, tournamentId, {
-                  autoAwards: true,
-                }),
-              "Đã đóng giải đồng đội."
+                typeof onCloseTournament === "function"
+                  ? onCloseTournament({ autoAwards: true })
+                  : closeTeamTournamentForClub(clubId, tournamentId, {
+                      autoAwards: true,
+                    }),
+              "Giải đã được đóng (completed)."
             )
           }
         >

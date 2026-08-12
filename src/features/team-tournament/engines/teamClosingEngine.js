@@ -12,15 +12,17 @@ import {
 } from "./awardsEngine.js";
 import { listGroupStageMatchups, listKnockoutMatchups } from "./teamKnockoutEngine.js";
 
-export function isTeamTournamentClosed(teamData) {
-  return teamData?.settings?.closed === true;
+export function isTeamTournamentClosed(teamData, tournament = null) {
+  if (teamData?.settings?.closed === true) return true;
+  const status = String(tournament?.status || teamData?.tournamentStatus || "").trim();
+  return status === "completed" || status === "cancelled";
 }
 
-export function canCloseTeamTournament(teamData) {
+export function canCloseTeamTournament(teamData, tournament = null) {
   if (!teamData) {
     return { ok: false, error: "Thiếu dữ liệu giải đồng đội.", code: "MISSING" };
   }
-  if (isTeamTournamentClosed(teamData)) {
+  if (isTeamTournamentClosed(teamData, tournament)) {
     return { ok: false, error: "Giải đã được đóng.", code: "ALREADY_CLOSED" };
   }
   return { ok: true };
@@ -82,7 +84,7 @@ export function buildTeamTournamentSummary(teamData, options = {}) {
  * Close: optional auto awards, lock matchups, freeze standings, mark closed.
  */
 export function closeTeamTournament(teamData, options = {}) {
-  const check = canCloseTeamTournament(teamData);
+  const check = canCloseTeamTournament(teamData, options.tournament || null);
   if (!check.ok) return check;
 
   let next = normalizeTeamData(teamData);
@@ -139,17 +141,17 @@ export function closeTeamTournament(teamData, options = {}) {
   };
 }
 
-export function getTeamTournamentSummary(teamData) {
+export function getTeamTournamentSummary(teamData, tournament = null) {
   if (!teamData) return null;
   if (teamData.settings?.summary && typeof teamData.settings.summary === "object") {
     return teamData.settings.summary;
   }
-  if (!isTeamTournamentClosed(teamData)) return null;
+  if (!isTeamTournamentClosed(teamData, tournament)) return null;
   return buildTeamTournamentSummary(teamData);
 }
 
-export function assertTeamTournamentOpen(teamData, actionLabel = "thao tác này") {
-  if (isTeamTournamentClosed(teamData)) {
+export function assertTeamTournamentOpen(teamData, actionLabel = "thao tác này", tournament = null) {
+  if (isTeamTournamentClosed(teamData, tournament)) {
     return {
       ok: false,
       error: `Giải đã đóng — không thể ${actionLabel}.`,
@@ -159,7 +161,7 @@ export function assertTeamTournamentOpen(teamData, actionLabel = "thao tác này
   return { ok: true };
 }
 
-export function previewCloseReadiness(teamData) {
+export function previewCloseReadiness(teamData, tournament = null) {
   const sheet = buildAwardsSheet(teamData);
   const matchups = teamData?.matchups || [];
   const pending = matchups.filter(
@@ -170,7 +172,7 @@ export function previewCloseReadiness(teamData) {
     ok: true,
     pendingMatchupCount: pending.length,
     awardPreviewCount: sheet.awards.length,
-    canClose: !isTeamTournamentClosed(teamData),
+    canClose: !isTeamTournamentClosed(teamData, tournament),
     awardsSource: sheet.source,
   };
 }

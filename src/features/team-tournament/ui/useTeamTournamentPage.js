@@ -664,6 +664,51 @@ export function useTeamTournamentPage({
     ]
   );
 
+  const persistCloseTournament = useCallback(
+    async (payload = {}, options = {}) => {
+      if (!clubId || !tournamentId) {
+        return { ok: false, error: "Thiếu clubId hoặc tournamentId." };
+      }
+      refreshControllerRef.current.beginMutationBarrier();
+      try {
+        const result = await orchestrator.persistCloseTournament(
+          clubId,
+          tournamentId,
+          payload,
+          {
+            teamData,
+            tournament,
+            aggregate,
+            expectedTournamentVersion: version,
+            tournamentName: tournament?.name || "",
+            ...options,
+          }
+        );
+        if (result.isVersionConflict) {
+          setVersionConflict(true);
+          await refreshAfterMutation({ reason: "close_version_conflict" });
+          return result;
+        }
+        if (result.ok) {
+          await refreshAfterMutation({ reason: "tournament_closed" });
+        }
+        return result;
+      } finally {
+        refreshControllerRef.current.endMutationBarrier();
+      }
+    },
+    [
+      aggregate,
+      clubId,
+      orchestrator,
+      refreshAfterMutation,
+      teamData,
+      tournament,
+      tournamentId,
+      version,
+    ]
+  );
+
   const getVisibleLineups = useCallback(
     async (matchupId, readOptions = {}) => {
       if (!clubId || !tournamentId) {
@@ -763,6 +808,7 @@ export function useTeamTournamentPage({
     persistSetupTeamData,
     saveDraft,
     persistFormatVenueSetup,
+    persistCloseTournament,
     getVisibleLineups,
     getLineupOverrideOps: (matchupId, teamId) =>
       orchestrator.getLineupOverrideOps(clubId, tournamentId, { matchupId, teamId }),

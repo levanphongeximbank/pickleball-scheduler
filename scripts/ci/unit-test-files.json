@@ -245,6 +245,7 @@
   "tests/team-tournament-dashboard-draft-operational-role-visibility-01.test.js",
   "tests/team-tournament-list-my-dashboards-01.test.js",
   "tests/team-tournament-user-player-id-athletes-canonical-01.test.js",
+  "tests/team-tournament-post-lineup-complete-lifecycle-01.test.js",
   "tests/team-tournament-dreambreaker-lineup-filter-01.test.js",
   "tests/team-tournament-dreambreaker-referee-start-canonical-01.test.js",
   "tests/team-tournament-dreambreaker-scoring-cas-01.test.js",

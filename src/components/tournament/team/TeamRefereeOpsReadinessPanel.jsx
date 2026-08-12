@@ -1,5 +1,6 @@
 /**
  * S2-F — BTC-facing TT-5 ops readiness summary (no Production SQL apply).
+ * Soft cleanup: Staging-first; Production chip is informational only (untouched).
  */
 
 import { useMemo } from "react";
@@ -29,8 +30,8 @@ import {
 function verdictTone(verdict) {
   if (verdict === "READY") return "success";
   if (verdict === "READY_SQL_PENDING_E2E") return "info";
-  if (verdict === "PRODUCTION_NOT_APPLIED") return "warning";
-  return "error";
+  if (verdict === "PRODUCTION_NOT_APPLIED") return "default";
+  return "warning";
 }
 
 export default function TeamRefereeOpsReadinessPanel({
@@ -80,19 +81,20 @@ export default function TeamRefereeOpsReadinessPanel({
           </Typography>
           <Chip
             size="small"
-            color={verdictTone(focus.verdict)}
+            color={verdictTone(focus.verdict === "PRODUCTION_NOT_APPLIED" ? staging.verdict : focus.verdict)}
             label={`Staging: ${staging.verdict}`}
           />
           <Chip
             size="small"
-            color={verdictTone(production.verdict)}
-            label={`Production: ${production.verdict}`}
+            variant="outlined"
+            color="default"
+            label="Production: untouched (Owner GO)"
           />
         </Stack>
 
         <Alert severity="info" sx={{ mb: 2 }}>
-          Batch S2-F chỉ kiểm tra sẵn sàng ops — <strong>không</strong> apply SQL Production.
-          Production cần Owner GO riêng.
+          Batch này kiểm tra ops Staging — <strong>không</strong> apply SQL Production.
+          Chip Production cố ý không báo lỗi vì Production chưa được Owner GO.
         </Alert>
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -139,7 +141,7 @@ export default function TeamRefereeOpsReadinessPanel({
           {softGaps.map((gap) => (
             <Alert
               key={gap.id}
-              severity={gap.disposition.startsWith("CLOSED") ? "success" : "warning"}
+              severity={gap.disposition.startsWith("CLOSED") ? "success" : "info"}
             >
               <strong>{gap.id}</strong> — {gap.disposition}: {gap.detail}
             </Alert>

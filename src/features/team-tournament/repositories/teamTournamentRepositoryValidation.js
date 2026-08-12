@@ -47,6 +47,32 @@ export function isPresentString(value) {
 }
 
 /**
+ * Map bare SQL/setup codes to structured operator-facing messages.
+ * Prevents silent "Repository operation failed." for known fail-closed codes.
+ */
+export function describeRepositoryFailureCode(code) {
+  const key = String(code || "").trim();
+  const map = {
+    UNKNOWN_DISCIPLINE: "Nội dung (discipline) không khớp dữ liệu giải — kiểm tra Format MLP trước khi tạo lịch.",
+    UNKNOWN_TEAM: "Đội trong lịch không tồn tại trên server — lưu đội/bảng rồi tạo lại lịch.",
+    VALIDATION_ERROR: "Envelope lịch không hợp lệ (thiếu rulesVersion / version / payload).",
+    VERSION_CONFLICT: "Xung đột phiên bản giải — tải lại rồi thử lại.",
+    EMPTY_SETUP_CONFIG: "Không có khóa cấu hình hợp lệ để lưu.",
+    RULES_VERSION_REQUIRED: "Thiếu rulesVersion cho lệnh setup/lịch.",
+    FORBIDDEN: "Không đủ quyền thực hiện thao tác này.",
+    NOT_FOUND: "Không tìm thấy giải hoặc tài nguyên liên quan.",
+    CROSS_TENANT_DENIED: "Từ chối truy cập ngoài tenant.",
+    ALREADY_CLOSED: "Giải đã được đóng (completed).",
+    CLOSE_PRECONDITION_FAILED: "Chưa đủ điều kiện đóng giải theo lifecycle hiện tại.",
+    INVALID_QUALIFICATION_TOTAL:
+      "Tổng đội vượt bảng phải thuộc {2,4,8,16} — cloud bye chưa hỗ trợ.",
+    INVALID_STAGE_SCORING_POLICY: "stageScoringPolicy không hợp lệ.",
+    REFEREE_NOT_FOUND: "Không tìm thấy hồ sơ trọng tài (profiles id).",
+  };
+  return map[key] || "";
+}
+
+/**
  * @param {unknown} value
  * @returns {boolean}
  */
@@ -193,7 +219,10 @@ export function normalizeRepositoryResult(raw, extras = {}) {
       code,
       error: validation
         ? formatLineupValidationError(raw, raw.error || "Repository operation failed.")
-        : raw.error || raw.message || "Repository operation failed.",
+        : raw.error ||
+          raw.message ||
+          describeRepositoryFailureCode(code) ||
+          "Repository operation failed.",
       version: raw.version ?? raw.expected_version ?? raw.actual_version,
       replayed: raw.replayed === true,
       validation,

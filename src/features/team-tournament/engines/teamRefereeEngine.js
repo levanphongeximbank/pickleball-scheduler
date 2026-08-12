@@ -18,6 +18,11 @@ import {
   buildRosterAthleteIndex,
   resolveRosterMemberIdentity,
 } from "./teamRosterHydration.js";
+import { resolveMatchupCompetitionStage } from "./teamStageTieBreakPolicy.js";
+import {
+  resolveEffectiveStageScoringPolicy,
+  stageScoringToFormat,
+} from "./teamStageScoringPolicy.js";
 
 export const MATCH_FORMAT = {
   BEST_OF_1: "best_of_1",
@@ -234,10 +239,19 @@ export function validateSubMatchScoreInput({
   }
 
   if (confirm && discipline && isRallyScoring(discipline)) {
+    const resolvedRound = resolveMatchupCompetitionStage(teamData, matchup);
+    const effective = resolveEffectiveStageScoringPolicy({
+      teamData,
+      resolvedRound,
+      defaultScoring: discipline.scoringFormat,
+    });
     const rallyCheck = validateRallyScore({
       scoreA: normalizedScore.teamA,
       scoreB: normalizedScore.teamB,
-      rules: discipline.scoringFormat,
+      rules: {
+        ...(discipline.scoringFormat || {}),
+        ...stageScoringToFormat(effective),
+      },
     });
     if (!rallyCheck.ok) {
       return rallyCheck;

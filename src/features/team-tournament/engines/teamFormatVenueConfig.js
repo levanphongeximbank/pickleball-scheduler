@@ -15,6 +15,14 @@ import {
   normalizeStageTieBreakPolicy,
   validateStageTieBreakPolicyShape,
 } from "./teamStageTieBreakPolicy.js";
+import {
+  normalizeStageScoringPolicy,
+  validateStageScoringPolicyShape,
+} from "./teamStageScoringPolicy.js";
+import {
+  readQualifiersPerGroup,
+  resolveQualificationProgression,
+} from "./teamQualificationProgression.js";
 
 export const FORMAT_VENUE_SETTINGS_KEYS = Object.freeze([
   "formatPreset",
@@ -23,10 +31,12 @@ export const FORMAT_VENUE_SETTINGS_KEYS = Object.freeze([
   "groupMode",
   "groupCount",
   "qualificationCount",
+  "qualifiersPerGroup",
   "knockoutFormat",
   "selectedCourtIds",
   "teamsPerGroup",
   "stageTieBreakPolicy",
+  "stageScoringPolicy",
 ]);
 
 export const NO_COURTS_PUBLISH_CODE = "NO_SELECTED_COURTS";
@@ -175,10 +185,13 @@ export function resolveFormatVenueDefaults(teamData = {}, tournament = null) {
         ? teamData.groups.length
         : 1;
 
-  const qualificationCount = Math.max(
-    1,
-    Number(settings.qualificationCount) || Number(settings.qualifiersPerGroup) || 2
-  );
+  const qualifiersPerGroup = readQualifiersPerGroup(settings);
+  const qualificationCount = qualifiersPerGroup;
+  const qualificationProgression = resolveQualificationProgression({
+    ...settings,
+    groupCount,
+    qualifiersPerGroup,
+  });
 
   const knockoutFormat =
     settings.knockoutFormat === KNOCKOUT_FORMAT.FINAL_ONLY ||
@@ -205,10 +218,13 @@ export function resolveFormatVenueDefaults(teamData = {}, tournament = null) {
     groupMode: hasExplicitGroupMode ? groupMode : hasGroups ? GROUP_MODE.MANUAL : GROUP_MODE.SINGLE_POOL,
     groupCount,
     qualificationCount,
+    qualifiersPerGroup,
+    qualificationProgression,
     knockoutFormat,
     selectedCourtIds,
     teamsPerGroup,
     stageTieBreakPolicy: normalizeStageTieBreakPolicy(rawSettings.stageTieBreakPolicy),
+    stageScoringPolicy: normalizeStageScoringPolicy(rawSettings.stageScoringPolicy),
   };
 }
 
@@ -226,6 +242,17 @@ export function mergeFormatVenueIntoSettings(settings = {}, config = {}) {
   if (config.stageTieBreakPolicy != null) {
     resolved.stageTieBreakPolicy = normalizeStageTieBreakPolicy(config.stageTieBreakPolicy);
   }
+  if (config.stageScoringPolicy != null) {
+    resolved.stageScoringPolicy = normalizeStageScoringPolicy(config.stageScoringPolicy);
+  }
+  if (config.qualifiersPerGroup != null || config.qualificationCount != null) {
+    const q =
+      config.qualifiersPerGroup != null
+        ? Math.max(1, Number(config.qualifiersPerGroup) || 1)
+        : Math.max(1, Number(config.qualificationCount) || 1);
+    resolved.qualifiersPerGroup = q;
+    resolved.qualificationCount = q;
+  }
   if (Array.isArray(config.selectedCourtIds)) {
     resolved.selectedCourtIds = [
       ...new Set(config.selectedCourtIds.map((id) => String(id).trim()).filter(Boolean)),
@@ -240,9 +267,21 @@ export function mergeFormatVenueIntoSettings(settings = {}, config = {}) {
       }
       continue;
     }
+    if (key === "stageScoringPolicy") {
+      if (config.stageScoringPolicy != null) {
+        next.stageScoringPolicy = normalizeStageScoringPolicy(config.stageScoringPolicy);
+      }
+      continue;
+    }
     if (resolved[key] !== undefined) {
       next[key] = resolved[key];
     }
+  }
+  // Keep legacy + Owner keys aligned when either is written.
+  if (next.qualifiersPerGroup != null) {
+    next.qualificationCount = next.qualifiersPerGroup;
+  } else if (next.qualificationCount != null) {
+    next.qualifiersPerGroup = next.qualificationCount;
   }
   return next;
 }
@@ -405,15 +444,32 @@ export function validateFormatVenueConfigForPersist(config = {}) {
   }
   payload.groupCount = Math.floor(groupCount);
 
-  const qualificationCount = Number(payload.qualificationCount);
+  const qualificationCount = Number(
+    payload.qualifiersPerGroup != null
+      ? payload.qualifiersPerGroup
+      : payload.qualificationCount
+  );
   if (!Number.isFinite(qualificationCount) || qualificationCount < 1) {
     return {
       ok: false,
       code: "INVALID_QUALIFICATION_COUNT",
-      error: "qualificationCount phải >= 1.",
+      error: "qualifiersPerGroup phải >= 1.",
     };
   }
-  payload.qualificationCount = Math.floor(qualificationCount);
+  payload.qualifiersPerGroup = Math.floor(qualificationCount);
+  payload.qualificationCount = payload.qualifiersPerGroup;
+
+  const progression = resolveQualificationProgression({
+    groupCount: payload.groupCount,
+    qualifiersPerGroup: payload.qualifiersPerGroup,
+  });
+  if (!progression.ok) {
+    return {
+      ok: false,
+      code: progression.code,
+      error: progression.error,
+    };
+  }
 
   payload.selectedCourtIds = Array.isArray(payload.selectedCourtIds)
     ? [...new Set(payload.selectedCourtIds.map((id) => String(id).trim()).filter(Boolean))]
@@ -429,7 +485,17 @@ export function validateFormatVenueConfigForPersist(config = {}) {
     delete payload.stageTieBreakPolicy;
   }
 
-  return { ok: true, payload };
+  if (config.stageScoringPolicy != null) {
+    const scoring = validateStageScoringPolicyShape(config.stageScoringPolicy);
+    if (!scoring.ok) {
+      return scoring;
+    }
+    payload.stageScoringPolicy = scoring.policy;
+  } else {
+    delete payload.stageScoringPolicy;
+  }
+
+  return { ok: true, payload, qualificationProgression: progression };
 }
 
 /**

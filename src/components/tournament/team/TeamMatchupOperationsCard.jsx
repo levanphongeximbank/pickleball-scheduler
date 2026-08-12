@@ -24,7 +24,9 @@ import {
   LINEUP_STATUS,
   DREAMBREAKER_STATUS,
   MATCHUP_STATUS,
+  COMPETITION_STAGE,
 } from "../../../features/team-tournament/constants.js";
+import { resolveMatchupCompetitionStage } from "../../../features/team-tournament/engines/teamStageTieBreakPolicy.js";
 import {
   NORMALIZED_MISSING_LINEUP_POLICY,
   resolveMatchupMissingLineupState,
@@ -129,6 +131,17 @@ export default function TeamMatchupOperationsCard({
   const statusMeta = getMatchupStatusMeta(matchup.status);
   const tieProgress = computeMatchupTieProgress(teamData, matchup);
   const dreambreakerMeta = getDreambreakerStatusMeta(tieProgress.dreambreakerStatus);
+  const resolvedRound = useMemo(
+    () => resolveMatchupCompetitionStage(teamData, matchup),
+    [teamData, matchup]
+  );
+  const resolvedRoundLabel = {
+    [COMPETITION_STAGE.GROUP]: "Vòng bảng",
+    [COMPETITION_STAGE.ROUND_OF_16]: "Vòng 16",
+    [COMPETITION_STAGE.QUARTERFINAL]: "Tứ kết",
+    [COMPETITION_STAGE.SEMIFINAL]: "Bán kết",
+    [COMPETITION_STAGE.FINAL]: "Chung kết",
+  }[resolvedRound] || matchup.bracketRoundLabel || (matchup.stage === "knockout" ? "Knockout" : "Vòng bảng");
 
   const serverTimeMs = serverTime ? new Date(serverTime).getTime() : clientNowMs;
   const lineupState = useMemo(
@@ -224,7 +237,12 @@ export default function TeamMatchupOperationsCard({
   return (
     <TournamentSectionCard
       title={`${teamA?.name || matchup.teamAId} vs ${teamB?.name || matchup.teamBId}`}
-      badge={<Chip size="small" label={statusMeta.label} color={statusMeta.color} />}
+      badge={
+        <Stack direction="row" spacing={0.5} alignItems="center">
+          <Chip size="small" variant="outlined" label={resolvedRoundLabel} />
+          <Chip size="small" label={statusMeta.label} color={statusMeta.color} />
+        </Stack>
+      }
       headerAction={
         isPublished ? (
           <Button
@@ -452,6 +470,8 @@ export default function TeamMatchupOperationsCard({
             ))}
             <TeamRefereeSafetyPanel
               tournamentId={tournamentId}
+              matchupId={matchup.id}
+              subMatches={matchup.subMatches || []}
               onNotice={(msg) => onMessage?.(msg)}
             />
           </Stack>
