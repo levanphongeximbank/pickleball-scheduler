@@ -376,6 +376,8 @@ describe("captain-to-results runtime authority", () => {
     );
     assert.match(src, /buildCaptainLineupRuntime/);
     assert.match(src, /ttLineupDebug/);
+    assert.match(src, /saveBoundary/);
+    assert.match(src, /beginLineupValidationProbe/);
     assert.match(src, /players=\{lineupPlayers\}/);
     assert.match(src, /pageMode:\s*"captainPortal"/);
     assert.match(src, /CAPTAIN_ROSTER_UNAVAILABLE/);

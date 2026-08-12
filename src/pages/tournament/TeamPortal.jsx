@@ -79,6 +79,14 @@ import {
   TT412_LINEUP_SUBMIT_RESULT,
 } from "../../features/team-tournament/diagnostics/tt412LineupFormDiagnostics.js";
 import {
+  TT412_F04_ATHLETE_ID,
+  beginLineupValidationProbe,
+  buildPreValidationSnapshot,
+  endLineupValidationProbe,
+  getCaptainLineupSaveBoundary,
+  recordCaptainLineupSaveBoundary,
+} from "../../features/team-tournament/diagnostics/captainLineupSaveBoundaryDiagnostics.js";
+import {
   findTeamForCaptain,
   getOpponentTeamId,
   isTeamCaptain,
@@ -257,6 +265,7 @@ function MatchupLineupCard({
   isCloudPrimary,
   serverClock,
   onSaved,
+  onSaveBoundaryDebug = null,
 }) {
   const opponentId = getOpponentTeamId(matchup, team.id);
   const opponent = findTeam(teamData, opponentId);
@@ -420,6 +429,28 @@ function MatchupLineupCard({
     setError("");
     setMessage("");
 
+    const debugOn = typeof window !== "undefined"
+      && new URLSearchParams(window.location.search).get("ttLineupDebug") === "1";
+    if (debugOn) {
+      beginLineupValidationProbe({ focusAthleteId: TT412_F04_ATHLETE_ID });
+      recordCaptainLineupSaveBoundary({
+        ...buildPreValidationSnapshot({
+          action: "saveDraft",
+          team,
+          teamId: team.id,
+          selections,
+          validationPlayers: lineupPlayers,
+          focusAthleteId: TT412_F04_ATHLETE_ID,
+        }),
+        CLIENT_VALIDATION_CALLED: true,
+        MUTATION_CALLED: false,
+        MUTATION_METHOD: null,
+        MUTATION_OK: null,
+        MUTATION_CODE: null,
+        MUTATION_ERROR: null,
+      });
+    }
+
     const draftCheck = validateLineupSelections({
       teamData,
       team,
@@ -429,6 +460,22 @@ function MatchupLineupCard({
       partial: true,
       requireCaptainPortalRoster: true,
     });
+
+    if (debugOn) {
+      const probe = endLineupValidationProbe();
+      recordCaptainLineupSaveBoundary({
+        CLIENT_VALIDATION_CALLED: true,
+        CLIENT_VALIDATION_OK: draftCheck.ok === true,
+        CLIENT_VALIDATION_CODE: draftCheck.validation?.code || draftCheck.code || null,
+        CLIENT_VALIDATION_ERROR: draftCheck.ok
+          ? null
+          : draftCheck.errors?.join(" ") || draftCheck.error || null,
+        ...(probe?.focus || {}),
+        MUTATION_CALLED: draftCheck.ok === true,
+        MUTATION_METHOD: draftCheck.ok === true ? "saveDraftLineup" : null,
+      });
+      if (typeof onSaveBoundaryDebug === "function") onSaveBoundaryDebug();
+    }
 
     if (!draftCheck.ok) {
       setError(draftCheck.errors.join(" "));
@@ -447,6 +494,17 @@ function MatchupLineupCard({
       // Lineup RPC CAS uses lineup.version only — never tournament.version.
       expectedVersion: resolveLineupExpectedVersion(ownLineup),
     });
+
+    if (debugOn) {
+      recordCaptainLineupSaveBoundary({
+        MUTATION_CALLED: true,
+        MUTATION_METHOD: "saveDraftLineup",
+        MUTATION_OK: result.ok === true,
+        MUTATION_CODE: result.ok ? null : result.code || null,
+        MUTATION_ERROR: result.ok ? null : result.error || null,
+      });
+      if (typeof onSaveBoundaryDebug === "function") onSaveBoundaryDebug();
+    }
 
     setBusy(false);
     logTt412LineupForm(TT412_LINEUP_SAVE_RESULT, {
@@ -479,6 +537,28 @@ function MatchupLineupCard({
     setError("");
     setMessage("");
 
+    const debugOn = typeof window !== "undefined"
+      && new URLSearchParams(window.location.search).get("ttLineupDebug") === "1";
+    if (debugOn) {
+      beginLineupValidationProbe({ focusAthleteId: TT412_F04_ATHLETE_ID });
+      recordCaptainLineupSaveBoundary({
+        ...buildPreValidationSnapshot({
+          action: "submit",
+          team,
+          teamId: team.id,
+          selections,
+          validationPlayers: lineupPlayers,
+          focusAthleteId: TT412_F04_ATHLETE_ID,
+        }),
+        CLIENT_VALIDATION_CALLED: true,
+        MUTATION_CALLED: false,
+        MUTATION_METHOD: null,
+        MUTATION_OK: null,
+        MUTATION_CODE: null,
+        MUTATION_ERROR: null,
+      });
+    }
+
     const validation = validateLineupSelections({
       teamData,
       team,
@@ -487,6 +567,22 @@ function MatchupLineupCard({
       players: lineupPlayers,
       requireCaptainPortalRoster: true,
     });
+
+    if (debugOn) {
+      const probe = endLineupValidationProbe();
+      recordCaptainLineupSaveBoundary({
+        CLIENT_VALIDATION_CALLED: true,
+        CLIENT_VALIDATION_OK: validation.ok === true,
+        CLIENT_VALIDATION_CODE: validation.validation?.code || validation.code || null,
+        CLIENT_VALIDATION_ERROR: validation.ok
+          ? null
+          : validation.errors?.join(" ") || validation.error || null,
+        ...(probe?.focus || {}),
+        MUTATION_CALLED: validation.ok === true,
+        MUTATION_METHOD: validation.ok === true ? "submitLineup" : null,
+      });
+      if (typeof onSaveBoundaryDebug === "function") onSaveBoundaryDebug();
+    }
 
     if (!validation.ok) {
       setError(validation.errors.join(" "));
@@ -505,6 +601,17 @@ function MatchupLineupCard({
       // Lineup RPC CAS uses lineup.version only — never tournament.version.
       expectedVersion: resolveLineupExpectedVersion(ownLineup),
     });
+
+    if (debugOn) {
+      recordCaptainLineupSaveBoundary({
+        MUTATION_CALLED: true,
+        MUTATION_METHOD: "submitLineup",
+        MUTATION_OK: result.ok === true,
+        MUTATION_CODE: result.ok ? null : result.code || null,
+        MUTATION_ERROR: result.ok ? null : result.error || null,
+      });
+      if (typeof onSaveBoundaryDebug === "function") onSaveBoundaryDebug();
+    }
 
     setBusy(false);
     logTt412LineupForm(TT412_LINEUP_SUBMIT_RESULT, {
@@ -868,6 +975,8 @@ export default function TeamPortal() {
 
   const [subMessage, setSubMessage] = useState(null);
   const [subError, setSubError] = useState(null);
+  const [saveBoundaryTick, setSaveBoundaryTick] = useState(0);
+  const saveBoundary = saveBoundaryTick >= 0 ? getCaptainLineupSaveBoundary() : null;
 
   const matchups = useMemo(() => {
     if (!access.captainTeam) {
@@ -1053,6 +1162,7 @@ export default function TeamPortal() {
     isCloudPrimary,
     serverClock,
     onSaved: handleDeadlineElapsed,
+    onSaveBoundaryDebug: () => setSaveBoundaryTick((n) => n + 1),
   };
 
   return (
@@ -1123,6 +1233,38 @@ export default function TeamPortal() {
                     genderSource: row.genderSource || null,
                     eligible: Boolean(row.gender === "male" || row.gender === "female"),
                   })),
+                  saveBoundary: saveBoundary
+                    ? {
+                        LAST_ACTION: saveBoundary.LAST_ACTION || null,
+                        CLIENT_VALIDATION_CALLED: saveBoundary.CLIENT_VALIDATION_CALLED ?? null,
+                        CLIENT_VALIDATION_OK: saveBoundary.CLIENT_VALIDATION_OK ?? null,
+                        CLIENT_VALIDATION_CODE: saveBoundary.CLIENT_VALIDATION_CODE || null,
+                        CLIENT_VALIDATION_ERROR: saveBoundary.CLIENT_VALIDATION_ERROR || null,
+                        MUTATION_CALLED: saveBoundary.MUTATION_CALLED ?? null,
+                        MUTATION_METHOD: saveBoundary.MUTATION_METHOD || null,
+                        MUTATION_OK: saveBoundary.MUTATION_OK ?? null,
+                        MUTATION_CODE: saveBoundary.MUTATION_CODE || null,
+                        MUTATION_ERROR: saveBoundary.MUTATION_ERROR || null,
+                        TEAM_ID: saveBoundary.TEAM_ID || null,
+                        TEAM_PLAYER_IDS: saveBoundary.TEAM_PLAYER_IDS || [],
+                        SELECTIONS: saveBoundary.SELECTIONS || {},
+                        VALIDATION_PLAYERS: saveBoundary.VALIDATION_PLAYERS || [],
+                        F04_SELECTED_ID: saveBoundary.F04_SELECTED_ID || null,
+                        F04_VALIDATION_PLAYER_FOUND:
+                          saveBoundary.F04_VALIDATION_PLAYER_FOUND ?? null,
+                        F04_VALIDATION_PLAYER_GENDER:
+                          saveBoundary.F04_VALIDATION_PLAYER_GENDER ?? null,
+                        F04_VALIDATION_GENDER_SOURCE:
+                          saveBoundary.F04_VALIDATION_GENDER_SOURCE || null,
+                        F04_PLAYERMAP_FOUND: saveBoundary.F04_PLAYERMAP_FOUND ?? null,
+                        F04_PLAYERMAP_ID: saveBoundary.F04_PLAYERMAP_ID || null,
+                        F04_PLAYERMAP_ATHLETE_ID: saveBoundary.F04_PLAYERMAP_ATHLETE_ID || null,
+                        F04_PLAYERMAP_GENDER: saveBoundary.F04_PLAYERMAP_GENDER ?? null,
+                        F04_PLAYERMAP_DISPLAY_NAME:
+                          saveBoundary.F04_PLAYERMAP_DISPLAY_NAME || null,
+                        F04_FINAL_GENDER_KEY: saveBoundary.F04_FINAL_GENDER_KEY ?? null,
+                      }
+                    : null,
                 },
                 null,
                 2

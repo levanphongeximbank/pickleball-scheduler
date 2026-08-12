@@ -241,6 +241,7 @@
   "tests/dreambreaker.test.js",
   "tests/team-tournament-captain-dreambreaker-order-01.test.js",
   "tests/team-tournament-captain-lineup-form-mlp4-remediation-01.test.js",
+  "tests/team-tournament-captain-lineup-save-boundary-diagnostic-01.test.js",
   "tests/team-tournament-dreambreaker-lineup-filter-01.test.js",
   "tests/team-tournament-dreambreaker-referee-start-canonical-01.test.js",
   "tests/team-tournament-dreambreaker-scoring-cas-01.test.js",
