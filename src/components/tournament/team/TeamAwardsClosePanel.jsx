@@ -243,24 +243,27 @@ export default function TeamAwardsClosePanel({
           Đóng giải đấu
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Khóa kết quả, đóng băng BXH, gán giải tự động (nếu chưa), tạo tóm tắt.
+          Đóng giải = lifecycle status completed (server dual-write). Champion/BXH lấy từ
+          kết quả trận đã lưu — không tin awards/standings do client gửi.
         </Typography>
-        {readiness && readiness.pendingMatchupCount > 0 && !closed ? (
+        {readiness && !closed && readiness.canClose === false ? (
           <Alert severity="warning" sx={{ mb: 2 }}>
-            Còn {readiness.pendingMatchupCount} trận chưa có đội thắng — vẫn có thể đóng nếu BTC
-            xác nhận.
+            {readiness.error || readiness.code || "Chưa đủ điều kiện đóng giải."}
+            {readiness.pendingMatchupCount > 0
+              ? ` (Còn ${readiness.pendingMatchupCount} trận chưa hoàn tất.)`
+              : ""}
           </Alert>
         ) : null}
         <Button
           variant="contained"
           color="error"
           startIcon={<LockIcon />}
-          disabled={busy || closed}
+          disabled={busy || closed || readiness?.canClose === false}
           onClick={() =>
             run(
               () =>
                 typeof onCloseTournament === "function"
-                  ? onCloseTournament({ autoAwards: true })
+                  ? onCloseTournament({ reason: "tournament.close" })
                   : closeTeamTournamentForClub(clubId, tournamentId, {
                       autoAwards: true,
                     }),

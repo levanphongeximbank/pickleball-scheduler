@@ -38,7 +38,6 @@ import {
   validateFormatVenueConfigForPersist,
 } from "../engines/teamFormatVenueConfig.js";
 import { assertStageTieBreakPolicyWritable } from "../engines/teamStageTieBreakPolicy.js";
-import { closeTeamTournament } from "../engines/teamClosingEngine.js";
 import {
   planCanonicalMlpDreambreakerPersist,
 } from "../engines/mlpPresetEngine.js";
@@ -1016,21 +1015,10 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       );
       const rulesVersion = options.rulesVersion || aggregate?.rulesVersion || "team-tournament-v1";
       const teamData = options.teamData || aggregate?.teamData || {};
-      const closedPreview = closeTeamTournament(teamData, {
-        autoAwards: payload.autoAwards !== false,
-        tournamentId,
-        tournamentName: options.tournamentName || "",
-        tournament: options.tournament || aggregateToTournamentView(aggregate),
-      });
+      // B02: do not send client awards/standings/summary as close authority.
+      // Server derives champion from canonical matchups after readiness gate.
       const closePayload = {
-        ...(closedPreview.ok
-          ? {
-              summary: closedPreview.summary || null,
-              awardsSheet: closedPreview.teamData?.settings?.awardsSheet || null,
-              frozenStandings: closedPreview.teamData?.settings?.frozenStandings || null,
-            }
-          : {}),
-        ...payload,
+        reason: payload.reason || "tournament.close",
       };
 
       const result = await runSetupMutation({
@@ -1055,7 +1043,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         tournament: reload.tournament,
         teamData: reload.teamData,
         version: result.version ?? reload.version,
-        summary: closePayload.summary || null,
+        championTeamId: result?.data?.championTeamId || result?.championTeamId || null,
       };
     },
   };

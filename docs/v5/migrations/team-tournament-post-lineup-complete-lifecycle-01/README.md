@@ -4,33 +4,36 @@
 
 ## Scope
 
-Post-lineup complete lifecycle closure for PR #418:
+Post-lineup complete lifecycle closure for PR #418 (B01–B04 hardened):
 
-1. `team_tournament_close_tournament` — dual-write `status=completed` on `team_tournaments` + `canonical_tournaments`; reuses existing closing settings keys only.
-2. `team_tournament_update_setup_config` — whitelist `qualifiersPerGroup` (+ legacy `qualificationCount` sync) and `stageScoringPolicy`; fail-closed when `groupCount≥2` and `groupCount×qualifiersPerGroup ∉ {2,4,8,16}`.
+1. `team_tournament_assert_close_readiness` — server fail-closed from canonical matchups/results.
+2. `team_tournament_close_tournament` — readiness gate → dual-write `status=completed`; **never** trusts client `summary` / `awardsSheet` / `frozenStandings` as result authority.
+3. `team_tournament_update_setup_config` — whitelist `qualifiersPerGroup` + hardened `stageScoringPolicy` field/range validation; PoT fail-closed for multi-group totals.
+4. `team_tournament_search_referee_candidates` — organizer searchable people directory (profiles identity; **no** `profiles.role` filter). Assign eligibility remains `create_referee_assignment` (profile exists).
 
 ## Architecture locks (Owner corrections)
 
 - Coarse `matchup.stage` remains `group|knockout` (#416). No second stage taxonomy.
-- Knockout round identity resolved via existing `resolveMatchupCompetitionStage` / SQL hop resolver.
-- Close authority is lifecycle `status=completed` (server dual-write). No client dual-write.
-- No inventing new settings keys beyond existing closing domain keys.
-- Referee create uses `team_tournament_can_manage` + `referee_assignments`; `profiles` is identity/display only (`REFEREE_NOT_FOUND`), not role authority.
+- Knockout round identity via `team_tournament_resolve_competition_stage` / client `resolveMatchupCompetitionStage`.
+- Close authority is lifecycle `status=completed` after readiness; champion derived from completed results.
+- `closingSnapshot` (if present) is presentation/audit only (`authoritative=false`).
+- CLIENT_RESULT_PAYLOAD_TRUSTED_AS_AUTHORITY=NO
+- MANUAL_REFEREE_UUID_REQUIRED=NO
 
 ## Apply order
 
 1. PRECHECK
 2. APPLY once
-3. VERIFY
+3. VERIFY (includes disposable readiness matrix; cleans up)
 
 ## Locked SHA256 (LF)
 
 | File | SHA256 |
 |------|--------|
-| `01_PRECHECK.sql` | `29556e2eb385ef977097d8285f237fd610ffe18492337a907d13d9fa418ac2ea` |
-| `02_APPLY.sql` | `5de1731db27e0bdd067699099d45c6561cca1542d891271cf125209a75ef9308` |
-| `03_VERIFY.sql` | `116a500abb4ab3a2c77d36fafcf2e552d23f1191c37ec5e1503840069a4b0d32` |
-| `04_ROLLBACK.sql` | `fa7d7fa1f66167b03df0e4ef1368b468e3a41fa671c95e124a13bb3d5441c7be` |
+| `01_PRECHECK.sql` | `a3b8fa006681e0c3cdc66cb6b6ade80b536885f134c3be76d2c5bf7615232134` |
+| `02_APPLY.sql` | `dfbaa6e318cc7c9e86bc6255661fa14eb535030827f7cc0245cf78095357f394` |
+| `03_VERIFY.sql` | `bd5abbc8848dd8e852fc8bd679fcd206285acee3ca40d8b6e7092cdd55808747` |
+| `04_ROLLBACK.sql` | `e4c714c1e6e2781586ffabe4a45a071d437acde43d05d3bd82594b0b80e91f03` |
 
 ## Safety
 

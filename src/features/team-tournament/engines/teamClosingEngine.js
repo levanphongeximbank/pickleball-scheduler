@@ -11,6 +11,7 @@ import {
   getAwardsPreview,
 } from "./awardsEngine.js";
 import { listGroupStageMatchups, listKnockoutMatchups } from "./teamKnockoutEngine.js";
+import { assertCloseReadinessFromCanonical } from "./teamCloseReadiness.js";
 
 export function isTeamTournamentClosed(teamData, tournament = null) {
   if (teamData?.settings?.closed === true) return true;
@@ -25,7 +26,16 @@ export function canCloseTeamTournament(teamData, tournament = null) {
   if (isTeamTournamentClosed(teamData, tournament)) {
     return { ok: false, error: "Giải đã được đóng.", code: "ALREADY_CLOSED" };
   }
-  return { ok: true };
+  const readiness = assertCloseReadinessFromCanonical({ teamData, tournament });
+  if (!readiness.ok) {
+    return {
+      ok: false,
+      error: readiness.error || "Chưa đủ điều kiện đóng giải.",
+      code: readiness.code || "CLOSE_PRECONDITION_FAILED",
+      readiness,
+    };
+  }
+  return { ok: true, readiness };
 }
 
 function freezeStandingsSnapshot(teamData) {
@@ -168,11 +178,16 @@ export function previewCloseReadiness(teamData, tournament = null) {
     (matchup) =>
       matchup.status !== MATCHUP_STATUS.COMPLETED && !matchup.result?.winnerTeamId
   );
+  const readiness = assertCloseReadinessFromCanonical({ teamData, tournament });
   return {
-    ok: true,
+    ok: readiness.ok,
+    code: readiness.code || null,
+    error: readiness.error || null,
     pendingMatchupCount: pending.length,
     awardPreviewCount: sheet.awards.length,
-    canClose: !isTeamTournamentClosed(teamData, tournament),
+    canClose: readiness.ok && !isTeamTournamentClosed(teamData, tournament),
     awardsSource: sheet.source,
+    championTeamId: readiness.championTeamId || null,
+    readiness,
   };
 }

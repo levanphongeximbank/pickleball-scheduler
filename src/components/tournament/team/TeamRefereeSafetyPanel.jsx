@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Autocomplete,
   Button,
   Chip,
   FormControl,
@@ -28,13 +29,14 @@ import {
   rpcTeamTournamentListRefereeCorrections,
   rpcTeamTournamentReviewRefereeCorrection,
   rpcTeamTournamentRevokeRefereeAssignment,
+  rpcTeamTournamentSearchRefereeCandidates,
 } from "../../../features/team-tournament/services/teamTournamentRpcService.js";
 
 /**
- * TT-5D BTC panel: create/list/revoke assignments + correction review.
- * Eligibility: server `team_tournament_can_manage` + `referee_assignments`.
- * Identity: `profiles` row for display only (RPC REFEREE_NOT_FOUND if missing).
- * Does NOT treat profiles.role as eligibility authority.
+ * TT-5D BTC panel: searchable assign / change / revoke + correction review.
+ * Candidate source: team_tournament_search_referee_candidates (profiles identity).
+ * Eligibility server check: create_referee_assignment (profiles row exists; no role).
+ * MANUAL_REFEREE_UUID_REQUIRED=NO
  */
 export default function TeamRefereeSafetyPanel({
   tournamentId,
@@ -45,13 +47,16 @@ export default function TeamRefereeSafetyPanel({
 }) {
   const [assignments, setAssignments] = useState([]);
   const [corrections, setCorrections] = useState([]);
-  const [revokeReason, setRevokeReason] = useState("");
+  const [revokeReason, setRevokeReason] = useState("BTC đổi/thu hồi trọng tài");
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
   const [assignSubMatchId, setAssignSubMatchId] = useState(
     () => String(subMatchId || subMatches?.[0]?.id || "")
   );
-  const [refereeUserId, setRefereeUserId] = useState("");
+  const [candidateQuery, setCandidateQuery] = useState("");
+  const [candidates, setCandidates] = useState([]);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [searchBusy, setSearchBusy] = useState(false);
 
   const subMatchOptions = useMemo(() => {
     if (Array.isArray(subMatches) && subMatches.length > 0) {
@@ -65,6 +70,17 @@ export default function TeamRefereeSafetyPanel({
     }
     return [];
   }, [subMatchId, subMatches]);
+
+  const activeForSelectedSub = useMemo(
+    () =>
+      assignments.filter(
+        (row) =>
+          (row.status === "active" || row.status === "pending") &&
+          String(row.externalSubMatchId || row.subMatchId || "") ===
+            String(assignSubMatchId || "")
+      ),
+    [assignments, assignSubMatchId]
+  );
 
   const reload = useCallback(async () => {
     if (!tournamentId) return;
@@ -90,7 +106,55 @@ export default function TeamRefereeSafetyPanel({
     }
   }, [assignSubMatchId, subMatchOptions]);
 
-  async function handleAssign() {
+  useEffect(() => {
+    if (!tournamentId) return undefined;
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      setSearchBusy(true);
+      const result = await rpcTeamTournamentSearchRefereeCandidates({
+        tournamentId,
+        search: candidateQuery,
+        limit: 20,
+      });
+      if (cancelled) return;
+      setSearchBusy(false);
+      if (result.ok) {
+        setCandidates(result.candidates || result.data?.candidates || []);
+        setError("");
+      } else if (result.code === "RPC_NOT_DEPLOYED" || /could not find the function/i.test(result.error || "")) {
+        setCandidates([]);
+        setError(
+          "RPC tìm trọng tài chưa apply trên Staging — chờ Owner GO package lifecycle."
+        );
+      } else {
+        setCandidates([]);
+        setError(result.error || result.code || "Không tải được danh sách trọng tài.");
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [candidateQuery, tournamentId]);
+
+  async function revokeRows(rows, reason) {
+    for (const row of rows) {
+      const result = await rpcTeamTournamentRevokeRefereeAssignment(
+        buildRevokeAssignmentPayload({
+          tournamentId,
+          assignmentId: row.assignmentId,
+          expectedVersion: row.version,
+          reason,
+        })
+      );
+      if (!result.ok) {
+        return result;
+      }
+    }
+    return { ok: true };
+  }
+
+  async function handleAssignOrChange() {
     if (!matchupId) {
       setError("Thiếu matchupId để gán trọng tài.");
       return;
@@ -99,13 +163,26 @@ export default function TeamRefereeSafetyPanel({
       setError("Chọn trận con để gán trọng tài.");
       return;
     }
-    const uid = String(refereeUserId || "").trim();
+    const uid = String(selectedCandidate?.userId || selectedCandidate?.id || "").trim();
     if (!uid) {
-      setError("Nhập referee user id (auth/profiles id).");
+      setError("Chọn trọng tài từ danh sách tìm kiếm.");
       return;
     }
     setBusyId("assign");
     setError("");
+
+    if (activeForSelectedSub.length > 0) {
+      const revoke = await revokeRows(
+        activeForSelectedSub,
+        revokeReason.trim() || "BTC đổi trọng tài"
+      );
+      if (!revoke.ok) {
+        setBusyId(null);
+        setError(revoke.error || revoke.code || "Revoke trước khi đổi thất bại.");
+        return;
+      }
+    }
+
     const result = await rpcTeamTournamentCreateRefereeAssignment(
       buildCreateAssignmentPayload({
         tournamentId,
@@ -113,13 +190,20 @@ export default function TeamRefereeSafetyPanel({
         subMatchId: assignSubMatchId,
         refereeUserId: uid,
         activate: true,
-        reason: "TT-5D BTC assign",
+        reason: activeForSelectedSub.length > 0 ? "TT-5D BTC change" : "TT-5D BTC assign",
       })
     );
     setBusyId(null);
     if (result.ok) {
-      onNotice?.(result.replayed ? "Assignment đã tồn tại (replay)." : "Đã gán trọng tài.");
-      setRefereeUserId("");
+      onNotice?.(
+        activeForSelectedSub.length > 0
+          ? "Đã đổi trọng tài."
+          : result.replayed
+            ? "Assignment đã tồn tại (replay)."
+            : "Đã gán trọng tài."
+      );
+      setSelectedCandidate(null);
+      setCandidateQuery("");
       reload();
     } else {
       setError(result.error || result.code || "Gán trọng tài thất bại.");
@@ -133,14 +217,7 @@ export default function TeamRefereeSafetyPanel({
     }
     setBusyId(row.assignmentId);
     setError("");
-    const result = await rpcTeamTournamentRevokeRefereeAssignment(
-      buildRevokeAssignmentPayload({
-        tournamentId,
-        assignmentId: row.assignmentId,
-        expectedVersion: row.version,
-        reason: revokeReason.trim(),
-      })
-    );
+    const result = await revokeRows([row], revokeReason.trim());
     setBusyId(null);
     if (result.ok) {
       onNotice?.("Đã revoke assignment.");
@@ -181,8 +258,7 @@ export default function TeamRefereeSafetyPanel({
 
       <Stack spacing={1} data-testid="referee-assign-form">
         <Typography variant="body2" color="text.secondary">
-          Gán qua RPC server (`referee_assignments`). Hồ sơ chỉ xác nhận identity/display —
-          không dùng profiles.role làm authority.
+          Chọn trận con → tìm trọng tài theo tên/email → Gán hoặc Đổi. Không nhập UUID.
         </Typography>
         {subMatchOptions.length > 0 ? (
           <FormControl size="small" fullWidth>
@@ -200,37 +276,52 @@ export default function TeamRefereeSafetyPanel({
               ))}
             </Select>
           </FormControl>
-        ) : (
-          <TextField
-            size="small"
-            label="Sub-match id"
-            value={assignSubMatchId}
-            onChange={(event) => setAssignSubMatchId(event.target.value)}
-            data-testid="assign-submatch-input"
-          />
-        )}
-        <TextField
+        ) : null}
+
+        <Autocomplete
           size="small"
-          label="Referee user id (UUID)"
-          value={refereeUserId}
-          onChange={(event) => setRefereeUserId(event.target.value)}
-          data-testid="assign-referee-user-id"
-          helperText="profiles.id tồn tại trên Staging — không kiểm role từ client."
+          options={candidates}
+          loading={searchBusy}
+          value={selectedCandidate}
+          onChange={(_event, value) => setSelectedCandidate(value)}
+          inputValue={candidateQuery}
+          onInputChange={(_event, value) => setCandidateQuery(value)}
+          getOptionLabel={(option) =>
+            option
+              ? `${option.displayName || option.email || "Referee"}${
+                  option.email ? ` (${option.email})` : ""
+                }`
+              : ""
+          }
+          isOptionEqualToValue={(a, b) =>
+            String(a?.userId || a?.id || "") === String(b?.userId || b?.id || "")
+          }
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Tìm trọng tài (tên / email)"
+              data-testid="assign-referee-search"
+            />
+          )}
+          data-testid="assign-referee-autocomplete"
         />
-        <Button
-          size="small"
-          variant="contained"
-          disabled={busyId === "assign" || !matchupId}
-          onClick={handleAssign}
-          data-testid="assign-referee-button"
-        >
-          Gán trọng tài
-        </Button>
+
+        <Stack direction="row" spacing={1}>
+          <Button
+            size="small"
+            variant="contained"
+            disabled={busyId === "assign" || !matchupId || !selectedCandidate}
+            onClick={handleAssignOrChange}
+            data-testid="assign-referee-button"
+          >
+            {activeForSelectedSub.length > 0 ? "Đổi trọng tài" : "Gán trọng tài"}
+          </Button>
+        </Stack>
       </Stack>
 
       <TextField
         size="small"
-        label="Lý do revoke assignment"
+        label="Lý do revoke / đổi assignment"
         value={revokeReason}
         onChange={(e) => setRevokeReason(e.target.value)}
         data-testid="revoke-reason-input"

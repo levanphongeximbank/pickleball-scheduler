@@ -64,6 +64,10 @@ export function describeRepositoryFailureCode(code) {
     CROSS_TENANT_DENIED: "Từ chối truy cập ngoài tenant.",
     ALREADY_CLOSED: "Giải đã được đóng (completed).",
     CLOSE_PRECONDITION_FAILED: "Chưa đủ điều kiện đóng giải theo lifecycle hiện tại.",
+    GROUP_STAGE_INCOMPLETE: "Vòng bảng chưa hoàn tất — chưa thể đóng giải.",
+    ELIMINATION_INCOMPLETE: "Nhánh loại trực tiếp chưa hoàn tất — chưa thể đóng giải.",
+    FINAL_NOT_COMPLETED: "Trận chung kết chưa hoàn tất — chưa thể đóng giải.",
+    CHAMPION_UNRESOLVED: "Chưa xác định được nhà vô địch từ kết quả canonical.",
     INVALID_QUALIFICATION_TOTAL:
       "Tổng đội vượt bảng phải thuộc {2,4,8,16} — cloud bye chưa hỗ trợ.",
     INVALID_STAGE_SCORING_POLICY: "stageScoringPolicy không hợp lệ.",

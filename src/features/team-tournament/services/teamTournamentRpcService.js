@@ -1045,6 +1045,18 @@ export async function rpcTeamTournamentRefereeMatchAccessOps({ tournamentId, mat
   });
 }
 
+export async function rpcTeamTournamentSearchRefereeCandidates({
+  tournamentId,
+  search = "",
+  limit = 20,
+} = {}) {
+  return callTeamTournamentRpc("team_tournament_search_referee_candidates", {
+    p_tournament_id: String(tournamentId || ""),
+    p_search: String(search || ""),
+    p_limit: Math.max(1, Math.min(50, Number(limit) || 20)),
+  });
+}
+
 export async function rpcTeamTournamentCreateRefereeAssignment(params) {
   const normalized =
     typeof params === "object" && params !== null && "tournamentId" in params ? params : {};
