@@ -31,6 +31,30 @@ import {
 } from "./teamRosterHydration.js";
 import { resolveCaptainLineupAthletePool } from "./captainPortalRosterProjection.js";
 
+function resolvePortalScopedLineupPlayers(args = {}) {
+  return resolveCaptainLineupAthletePool({
+    team: args.team,
+    teamData: args.teamData,
+    teamId: args.teamId,
+  });
+}
+
+function captainRosterUnavailableResult() {
+  return validationFailure(
+    LINEUP_VALIDATION_CODE.CAPTAIN_ROSTER_UNAVAILABLE,
+    "Danh sách VĐV đội trưởng (portal) chưa sẵn sàng. Không dùng pool CLB để xếp đội hình.",
+    {
+      ruleViolations: [
+        {
+          code: LINEUP_VALIDATION_CODE.CAPTAIN_ROSTER_UNAVAILABLE,
+          message:
+            "Danh sách VĐV đội trưởng (portal) chưa sẵn sàng. Không dùng pool CLB để xếp đội hình.",
+        },
+      ],
+    }
+  );
+}
+
 function asLineupPlayerRow(player, key) {
   if (!player || typeof player !== "object") return undefined;
   return {
@@ -453,36 +477,58 @@ export function validateMlpLineupParticipation(teamData, teamId, selections = {}
 }
 
 export function validateLineupSelectionsStructured(args) {
-  const scopedPlayers = resolveCaptainLineupAthletePool({
-    team: args.team,
-    teamData: args.teamData,
-    teamId: args.teamId,
-    clubPlayers: args.players,
-  });
+  const portalPlayers = resolvePortalScopedLineupPlayers(args);
+  let scopedPlayers = portalPlayers;
+  if (!Array.isArray(scopedPlayers) || scopedPlayers.length === 0) {
+    if (args.requireCaptainPortalRoster === true) {
+      return captainRosterUnavailableResult();
+    }
+    // Non-captain engine/blob paths may still pass an explicit player list when
+    // portal rosterAthletes were never part of the fixture. Captain Portal must
+    // set requireCaptainPortalRoster and never fall back to club/profile pool.
+    scopedPlayers = Array.isArray(args.players) ? args.players : [];
+    if (scopedPlayers.length === 0) {
+      return captainRosterUnavailableResult();
+    }
+  }
   const nextArgs = { ...args, players: scopedPlayers };
   const mlp =
     isMlpFormat(args.teamData) ||
     args.teamData?.settings?.allowPlayerReusePerMatchup === true;
-  // MLP slot/reuse/participation is TT format authority. V2 mixed_double pairing
-  // must not consume MLP disciplines as mixed teams (CORE-08: do not retarget V2).
+  // MLP slot/reuse/participation is CANONICAL_TEAM_TOURNAMENT_MLP authority.
+  // Rules V2 mixed_double mapping is incompatible with MLP (CORE-08: do not retarget V2).
   if (mlp) {
-    return validateLineupSelectionsStructuredLegacy(nextArgs);
+    return validateCanonicalMlpLineupSelectionsStructured(nextArgs);
   }
   if (isRulesV2Enabled(args.envSource)) {
     const bridge = evaluateLegacyTeamLineupValidation(
       {
         ...nextArgs,
         team: args.team || findTeam(args.teamData, args.teamId),
-        legacyEvaluate: () => validateLineupSelectionsStructuredLegacy(nextArgs),
+        legacyEvaluate: () =>
+          validateCanonicalTeamTournamentLineupSelectionsStructured(nextArgs),
       },
       { envSource: args.envSource }
     );
     return bridge.result;
   }
-  return validateLineupSelectionsStructuredLegacy(nextArgs);
+  return validateCanonicalTeamTournamentLineupSelectionsStructured(nextArgs);
 }
 
-function validateLineupSelectionsStructuredLegacy({
+/**
+ * Canonical Team Tournament MLP lineup rules (slot/gender/reuse/participation).
+ * Same semantics as the former validateLineupSelectionsStructuredLegacy path —
+ * not a Competition Core / Rules V2 authority.
+ */
+export function validateCanonicalMlpLineupSelectionsStructured(args) {
+  return validateCanonicalTeamTournamentLineupSelectionsStructured(args);
+}
+
+/**
+ * Canonical Team Tournament lineup validator (format-aware, including MLP).
+ * Historical name was validateLineupSelectionsStructuredLegacy.
+ */
+export function validateCanonicalTeamTournamentLineupSelectionsStructured({
   teamData,
   teamId,
   team: teamHint = null,
@@ -507,12 +553,20 @@ function validateLineupSelectionsStructuredLegacy({
   const invalidDisciplineIds = [];
   const warnings = [];
   const lineupDisciplines = getActiveMatchDisciplines(effectiveTeamData.disciplines || []);
-  const scopedPlayers = resolveCaptainLineupAthletePool({
+  const portalPlayers = resolvePortalScopedLineupPlayers({
     team: teamHint || team,
     teamData: effectiveTeamData,
     teamId,
-    clubPlayers: players,
   });
+  const playersForValidation =
+    portalPlayers.length > 0
+      ? portalPlayers
+      : Array.isArray(players) && players.length > 0
+        ? players
+        : [];
+  if (playersForValidation.length === 0) {
+    return captainRosterUnavailableResult();
+  }
 
   for (const discipline of lineupDisciplines) {
     if (!discipline?.id) {
@@ -523,7 +577,7 @@ function validateLineupSelectionsStructuredLegacy({
       team,
       discipline,
       playerIds,
-      players: scopedPlayers,
+      players: playersForValidation,
       usedPlayerIds,
       allowReuse,
       partial,

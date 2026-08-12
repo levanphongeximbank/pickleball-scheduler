@@ -384,7 +384,9 @@ describe("captain lineup gender pipeline — real browser shape", () => {
     assert.match(portalSrc, /resolveCaptainLineupAthletePool/);
     assert.match(portalSrc, /players:\s*lineupPlayers/);
     assert.match(portalSrc, /team,\s*\n\s*teamId:\s*team\.id/);
+    assert.match(portalSrc, /CAPTAIN_ROSTER_UNAVAILABLE/);
     assert.match(validationSrc, /resolveCaptainLineupAthletePool/);
+    assert.match(validationSrc, /validateCanonicalMlpLineupSelectionsStructured/);
     assert.match(validationSrc, /resolveRosterMemberIdentity/);
     assert.match(hookSrc, /preserveCaptainPortalRosterAthletes/);
     assert.match(hookSrc, /pageModeRef/);

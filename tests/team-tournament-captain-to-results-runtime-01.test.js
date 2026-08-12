@@ -15,13 +15,17 @@ import {
 } from "../src/features/team-tournament/constants.js";
 import {
   CAPTAIN_PORTAL_SCOPED_ROSTER,
+  CAPTAIN_ROSTER_UNAVAILABLE,
   buildCaptainLineupRuntime,
   preserveCaptainPortalRosterAthletes,
   resolveCaptainLineupAthletePool,
 } from "../src/features/team-tournament/engines/captainPortalRosterProjection.js";
 import { filterEligiblePlayersForLineupSlot } from "../src/features/team-tournament/engines/lineupOptionFilter.js";
 import { applyCanonicalMlpDisciplineMetadata } from "../src/features/team-tournament/engines/mlpDisciplineSlotContract.js";
-import { validateLineupSelections } from "../src/features/team-tournament/engines/lineupValidationEngine.js";
+import {
+  LINEUP_VALIDATION_CODE,
+  validateLineupSelections,
+} from "../src/features/team-tournament/engines/lineupValidationEngine.js";
 import { mapCaptainPortalResponse } from "../src/features/team-tournament/repositories/mapCaptainPortalResponse.js";
 import { mapTournamentToAggregate } from "../src/features/team-tournament/repositories/teamTournamentRepositoryAggregate.js";
 import { aggregateToTournamentView } from "../src/features/team-tournament/ui/teamTournamentUiOrchestrator.js";
@@ -160,7 +164,6 @@ function loadCaptainRuntime(team) {
     teamData,
     captainTeam,
     teamId: team.id,
-    clubPlayers: clubNullPool(team.roster),
   });
   return { teamData, captainTeam, runtime };
 }
@@ -293,7 +296,6 @@ describe("captain-to-results runtime authority", () => {
         teamData: preserved,
         captainTeam: preserved.teams.find((row) => row.id === team.id),
         teamId: team.id,
-        clubPlayers: clubPool,
       });
       assert.equal(preservedRuntime.authority, CAPTAIN_PORTAL_SCOPED_ROSTER, `${team.name} readback`);
       const afterReadback = validateLineupSelections({
@@ -307,17 +309,83 @@ describe("captain-to-results runtime authority", () => {
     }
   });
 
+  it("missing scoped roster FAIL CLOSED — club lineup pool NOT used", () => {
+    const team = TEAMS[0];
+    const clubPool = clubNullPool(team.roster).map((row) => ({
+      ...row,
+      gender: row.gender || "male",
+    }));
+    const emptyTeam = {
+      id: team.id,
+      name: team.name,
+      captainPlayerId: team.captain,
+      playerIds: team.roster.map((r) => r.athleteId),
+    };
+    const teamData = {
+      settings: {
+        formatPreset: FORMAT_PRESET.MLP_4,
+        allowPlayerReusePerMatchup: true,
+      },
+      disciplines: [
+        { id: "disc-female", name: "Đôi nữ", playerCount: 2, genderRequirement: GENDER_REQUIREMENT.FEMALE },
+        { id: "disc-male", name: "Đôi nam", playerCount: 2, genderRequirement: GENDER_REQUIREMENT.MALE },
+        { id: "disc-mx1", name: "Đôi nam nữ 1", playerCount: 2, genderRequirement: GENDER_REQUIREMENT.MIXED_PAIR },
+        { id: "disc-mx2", name: "Đôi nam nữ 2", playerCount: 2, genderRequirement: GENDER_REQUIREMENT.MIXED_PAIR },
+      ],
+      teams: [emptyTeam],
+      matchups: [],
+      lineups: {},
+    };
+    const runtime = buildCaptainLineupRuntime({
+      teamData,
+      captainTeam: emptyTeam,
+      teamId: team.id,
+    });
+    assert.equal(runtime.authority, CAPTAIN_ROSTER_UNAVAILABLE);
+    assert.deepEqual(runtime.athletePool, []);
+    const resolved = resolveCaptainLineupAthletePool({
+      team: emptyTeam,
+      teamData,
+      teamId: team.id,
+      clubPlayers: clubPool,
+    });
+    assert.deepEqual(resolved, []);
+    const females = team.roster.filter((r) => r.gender === "female").map((r) => r.athleteId);
+    const result = validateLineupSelections({
+      teamData,
+      team: emptyTeam,
+      teamId: team.id,
+      selections: { "disc-female": females },
+      players: clubPool,
+      partial: true,
+      requireCaptainPortalRoster: true,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.validation?.code, LINEUP_VALIDATION_CODE.CAPTAIN_ROSTER_UNAVAILABLE);
+  });
+
   it("source contracts: one lineup runtime + debug flag + no club pool on lineup cards", () => {
     const src = readFileSync(join(root, "src/pages/tournament/TeamPortal.jsx"), "utf8");
     const validatorSrc = readFileSync(
       join(root, "src/features/team-tournament/engines/lineupValidationEngine.js"),
       "utf8"
     );
+    const projectionSrc = readFileSync(
+      join(root, "src/features/team-tournament/engines/captainPortalRosterProjection.js"),
+      "utf8"
+    );
     assert.match(src, /buildCaptainLineupRuntime/);
     assert.match(src, /ttLineupDebug/);
     assert.match(src, /players=\{lineupPlayers\}/);
     assert.match(src, /pageMode:\s*"captainPortal"/);
-    assert.match(validatorSrc, /MLP slot\/reuse\/participation is TT format authority/);
+    assert.match(src, /CAPTAIN_ROSTER_UNAVAILABLE/);
+    assert.match(src, /requireCaptainPortalRoster:\s*true/);
+    assert.match(validatorSrc, /validateCanonicalMlpLineupSelectionsStructured/);
+    assert.match(validatorSrc, /CANONICAL_TEAM_TOURNAMENT_MLP/);
+    assert.match(validatorSrc, /requireCaptainPortalRoster/);
+    assert.doesNotMatch(validatorSrc, /function validateLineupSelectionsStructuredLegacy/);
+    assert.match(projectionSrc, /Never club\/profile RLS/);
+    assert.doesNotMatch(projectionSrc, /return Array\.isArray\(clubPlayers\)/);
     assert.doesNotMatch(
       readFileSync(
         join(root, "src/features/competition-core/constraints/adapters/teamTournamentRulesBridge.js"),

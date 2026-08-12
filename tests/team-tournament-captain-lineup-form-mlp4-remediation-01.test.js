@@ -67,6 +67,12 @@ function buildMlpTeamData(disciplineOverride) {
         name: "Đội 1",
         captainPlayerId: M1,
         playerIds: [M1, M2, F1, F2],
+        rosterAthletes: [
+          { athleteId: M1, displayName: "M1", gender: "male" },
+          { athleteId: M2, displayName: "M2", gender: "male" },
+          { athleteId: F1, displayName: "F1", gender: "female" },
+          { athleteId: F2, displayName: "F2", gender: "female" },
+        ],
       },
     ],
     matchups: [],

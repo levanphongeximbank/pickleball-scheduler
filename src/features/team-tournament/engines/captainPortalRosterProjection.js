@@ -7,6 +7,8 @@
 import { getPlayerGenderKey } from "../../../models/player.js";
 
 export const CAPTAIN_PORTAL_SCOPED_ROSTER = "CAPTAIN_PORTAL_SCOPED_ROSTER";
+/** Fail-closed authority when captain portal scoped roster is missing. */
+export const CAPTAIN_ROSTER_UNAVAILABLE = "CAPTAIN_ROSTER_UNAVAILABLE";
 
 function hasCanonicalBinaryGender(value) {
   const key = getPlayerGenderKey(value);
@@ -100,9 +102,11 @@ function pickRosterTeam(team, dataTeam) {
 }
 
 /**
- * Prefer portal scoped roster when present; never call profiles to repair gender.
+ * Captain lineup athlete pool: CAPTAIN_PORTAL_SCOPED_ROSTER only.
  * Looks at card `team` AND `teamData.teams[teamId]` so options and validator
  * cannot diverge after poll/get_setup/applyCanonical copies.
+ * Missing/incomplete portal roster → [] (FAIL CLOSED). Never club/profile RLS.
+ * Extra args (e.g. clubPlayers) are intentionally ignored.
  * @param {{
  *   team?: object|null,
  *   teamData?: object|null,
@@ -115,7 +119,6 @@ export function resolveCaptainLineupAthletePool({
   team = null,
   teamData = null,
   teamId = null,
-  clubPlayers = [],
 } = {}) {
   const id = String(teamId || team?.id || "").trim();
   const dataTeam =
@@ -123,23 +126,18 @@ export function resolveCaptainLineupAthletePool({
       ? (teamData.teams || []).find((row) => String(row?.id || "") === id) || null
       : null;
   const rosterTeam = pickRosterTeam(team, dataTeam);
-  const portal = projectCaptainPortalRosterPlayers(
+  return projectCaptainPortalRosterPlayers(
     rosterTeam?.rosterAthletes || rosterTeam?.roster_athletes
   );
-  if (portal.length > 0) {
-    // Own-team lineup eligibility/validation must not ingest club/profile RLS rows.
-    return portal;
-  }
-  return Array.isArray(clubPlayers) ? clubPlayers : [];
 }
 
 /**
  * Single captain-lineup runtime: one team + one scoped athlete pool.
+ * Missing portal roster → authority CAPTAIN_ROSTER_UNAVAILABLE (fail closed).
  * @param {{
  *   teamData?: object|null,
  *   captainTeam?: object|null,
  *   teamId?: string|null,
- *   clubPlayers?: object[],
  * }} args
  * @returns {{
  *   team: object|null,
@@ -152,7 +150,6 @@ export function buildCaptainLineupRuntime({
   teamData = null,
   captainTeam = null,
   teamId = null,
-  clubPlayers = [],
 } = {}) {
   const id = String(teamId || captainTeam?.id || "").trim();
   const dataTeam =
@@ -164,17 +161,16 @@ export function buildCaptainLineupRuntime({
     team,
     teamData,
     teamId: id || team?.id,
-    clubPlayers,
   });
-  const authority = athletePool.some(
-    (row) => row?.genderSource === CAPTAIN_PORTAL_SCOPED_ROSTER
-  )
-    ? CAPTAIN_PORTAL_SCOPED_ROSTER
-    : "CLUB_ATHLETE_POOL";
+  const authority =
+    athletePool.length > 0 &&
+    athletePool.every((row) => row?.genderSource === CAPTAIN_PORTAL_SCOPED_ROSTER)
+      ? CAPTAIN_PORTAL_SCOPED_ROSTER
+      : CAPTAIN_ROSTER_UNAVAILABLE;
   return {
     team,
     teamData,
-    athletePool,
+    athletePool: authority === CAPTAIN_PORTAL_SCOPED_ROSTER ? athletePool : [],
     authority,
   };
 }

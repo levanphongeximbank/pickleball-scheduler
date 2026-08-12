@@ -56,6 +56,7 @@ import {
 import { filterEligiblePlayersForLineupSlot } from "../../features/team-tournament/engines/lineupOptionFilter.js";
 import {
   CAPTAIN_PORTAL_SCOPED_ROSTER,
+  CAPTAIN_ROSTER_UNAVAILABLE,
   buildCaptainLineupRuntime,
   resolveCaptainLineupAthletePool,
 } from "../../features/team-tournament/engines/captainPortalRosterProjection.js";
@@ -281,9 +282,26 @@ function MatchupLineupCard({
     onDeadlineElapsed: onSaved,
   });
 
-  const canSaveDraft = permissions.canSaveDraft === true;
-  const canSubmitLineup = permissions.canSubmit === true;
-  const editable = (canSaveDraft || canSubmitLineup) && canEditLineup(ownLineup);
+  const allowReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
+  const rosterSignature = (team?.rosterAthletes || [])
+    .map((row) => `${row?.athleteId || ""}:${row?.gender || ""}`)
+    .join("|");
+  const lineupPlayers = useMemo(
+    () =>
+      resolveCaptainLineupAthletePool({
+        team,
+        teamData,
+        teamId: team?.id,
+      }),
+    [team, teamData, team?.id, rosterSignature]
+  );
+  const portalRosterReady = lineupPlayers.length > 0;
+  const canSaveDraft = permissions.canSaveDraft === true && portalRosterReady;
+  const canSubmitLineup = permissions.canSubmit === true && portalRosterReady;
+  const editable =
+    (permissions.canSaveDraft === true || permissions.canSubmit === true) &&
+    canEditLineup(ownLineup) &&
+    portalRosterReady;
   const isPublished = matchup.status === MATCHUP_STATUS.PUBLISHED;
 
   const [selections, setSelections] = useState(() =>
@@ -347,20 +365,6 @@ function MatchupLineupCard({
     };
   }, [getVisibleLineups, matchup.id, useCloudVisibleLineups, dataVersion]);
 
-  const allowReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
-  const rosterSignature = (team?.rosterAthletes || [])
-    .map((row) => `${row?.athleteId || ""}:${row?.gender || ""}`)
-    .join("|");
-  const lineupPlayers = useMemo(
-    () =>
-      resolveCaptainLineupAthletePool({
-        team,
-        teamData,
-        teamId: team?.id,
-        clubPlayers: players,
-      }),
-    [team, teamData, team?.id, players, rosterSignature]
-  );
   const hydratedTeam = useMemo(
     () => hydratePortalTeamRoster(team, lineupPlayers),
     [team, lineupPlayers]
@@ -423,6 +427,7 @@ function MatchupLineupCard({
       selections,
       players: lineupPlayers,
       partial: true,
+      requireCaptainPortalRoster: true,
     });
 
     if (!draftCheck.ok) {
@@ -480,6 +485,7 @@ function MatchupLineupCard({
       teamId: team.id,
       selections,
       players: lineupPlayers,
+      requireCaptainPortalRoster: true,
     });
 
     if (!validation.ok) {
@@ -584,6 +590,12 @@ function MatchupLineupCard({
 
         {message ? <Alert severity="success">{message}</Alert> : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
+        {!portalRosterReady ? (
+          <Alert severity="error">
+            {CAPTAIN_ROSTER_UNAVAILABLE}: Danh sách VĐV đội trưởng (portal) chưa sẵn sàng.
+            Không dùng pool CLB để xếp đội hình.
+          </Alert>
+        ) : null}
         {serverConflict ? (
           <Alert severity="warning">
             Dữ liệu đội hình trên máy chủ đã thay đổi trong khi bạn đang chỉnh. Bản chọn
@@ -1102,6 +1114,7 @@ export default function TeamPortal() {
               {JSON.stringify(
                 {
                   teamId: lineupTeam?.id || null,
+                  authority: lineupRuntime.authority,
                   rulesV2: String(searchParams.get("rulesV2") || "env"),
                   athletes: (lineupPlayers || []).map((row) => ({
                     athleteId: row.athleteId || row.id || null,
@@ -1124,6 +1137,11 @@ export default function TeamPortal() {
               <Alert severity="warning">
                 {athletePool.error.message ||
                   "Không tải được pool VĐV canonical. Tên VĐV có thể hiện thiếu identity."}
+              </Alert>
+            ) : null}
+            {!portalRosterReady ? (
+              <Alert severity="error">
+                {CAPTAIN_ROSTER_UNAVAILABLE}: chưa có CAPTAIN_PORTAL_SCOPED_ROSTER — Save/Submit khóa.
               </Alert>
             ) : null}
             {subMessage ? (

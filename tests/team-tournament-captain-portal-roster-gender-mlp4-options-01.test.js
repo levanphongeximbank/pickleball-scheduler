@@ -545,23 +545,31 @@ describe("TT412 captain portal roster gender + MLP4 options", () => {
     assert.equal(result.ok, true, result.errors?.join(" "));
   });
 
-  it("validator still fail-closed without scoped roster gender", () => {
+  it("validator still fail-closed without scoped roster — club pool NOT used", () => {
     const teamData = buildMlpTeamData();
     delete teamData.teams[0].rosterAthletes;
     const brokenClubPool = [
-      { id: M02, name: "M02", gender: null },
-      { id: M08, name: "M08", gender: null },
-      { id: F04, name: "F04", gender: null },
-      { id: F08, name: "F08", gender: null },
+      { id: M02, name: "M02", gender: "male" },
+      { id: M08, name: "M08", gender: "male" },
+      { id: F04, name: "F04", gender: "female" },
+      { id: F08, name: "F08", gender: "female" },
     ];
+    const resolved = resolveCaptainLineupAthletePool({
+      team: teamData.teams[0],
+      teamData,
+      teamId: "team-fe58m3kc",
+      clubPlayers: brokenClubPool,
+    });
+    assert.deepEqual(resolved, []);
     const result = validateLineupSelections({
       teamData,
       teamId: "team-fe58m3kc",
       selections: validSelections(teamData),
       players: brokenClubPool,
+      requireCaptainPortalRoster: true,
     });
     assert.equal(result.ok, false);
-    assert.match(String(result.errors?.join(" ") || result.error || ""), /giới tính/i);
+    assert.equal(result.validation?.code, "captain_roster_unavailable");
   });
 
   it("Đội 1 TT412 owner fixture: female/male/mixed options + complete lineup PASS", () => {
