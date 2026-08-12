@@ -208,6 +208,7 @@ test("menuAccess — PLAYER thấy menu CLB và Giải đấu", () => {
   assert.equal(labels.includes("Danh sách câu lạc bộ"), false);
   assert.ok(labels.includes("Giải đấu"));
   assert.ok(labels.includes("Tổng quan"));
+  assert.ok(labels.includes("Giải của tôi"));
   assert.ok(labels.includes("Danh sách giải"));
   assert.ok(labels.includes("Vận động viên / Đội"));
   assert.ok(labels.includes("Kết quả"));
@@ -251,6 +252,7 @@ test("menuAccess — PLAYER chưa CLB vẫn thấy menu Giải đấu", () => {
   const labels = collectMenuItemLabels(visible);
   assert.ok(labels.includes("Giải đấu"));
   assert.ok(labels.includes("Tổng quan"));
+  assert.ok(labels.includes("Giải của tôi"));
   assert.ok(labels.includes("Danh sách giải"));
   assert.ok(labels.includes("Vận động viên / Đội"));
   assert.ok(labels.includes("Kết quả"));

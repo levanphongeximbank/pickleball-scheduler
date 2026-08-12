@@ -1262,6 +1262,11 @@ export async function rpcTeamTournamentGetDashboard(tournamentId) {
   return mapOptionalLifecycleRpc(result);
 }
 
+export async function rpcTeamTournamentListMyDashboards() {
+  const result = await callTeamTournamentRpc("team_tournament_list_my_dashboards", {});
+  return mapOptionalLifecycleRpc(result);
+}
+
 export async function rpcTeamTournamentListMyRefereeAssignments(tournamentId) {
   const result = await callTeamTournamentRpc(
     "team_tournament_list_my_referee_assignments",

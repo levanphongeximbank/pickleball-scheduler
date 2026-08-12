@@ -14,6 +14,7 @@ import { getRouteAccessPermissions, canAccessRoute } from "../src/auth/menuAcces
 import {
   decideTournamentEngineRouteGate,
   evaluateTournamentEngineRouteAccess,
+  isMyTournamentsHubPath,
   isPublicTournamentsCatalogPath,
   isTournamentDashboardPath,
   isTournamentEnginePath,
@@ -145,24 +146,29 @@ afterEach(() => {
   delete globalThis.localStorage;
 });
 
-test("phase4 plural — public catalog /tournaments and /tournaments/ remain public", () => {
-  assert.equal(isPublicTournamentsCatalogPath("/tournaments"), true);
-  assert.equal(isPublicTournamentsCatalogPath("/tournaments/"), true);
+test("phase4 plural — /tournaments is authenticated My Tournaments hub (not public catalog)", () => {
+  assert.equal(isPublicTournamentsCatalogPath("/tournaments"), false);
+  assert.equal(isPublicTournamentsCatalogPath("/tournaments/"), false);
   assert.equal(isPublicTournamentsCatalogPath("/tournaments/t1/engine"), false);
+  assert.equal(isMyTournamentsHubPath("/tournaments"), true);
+  assert.equal(isMyTournamentsHubPath("/tournaments/"), true);
+  assert.equal(isMyTournamentsHubPath("/tournaments/t1"), false);
 
   const opts = { authProductionEnabled: true, rbacEnabled: true };
-  assert.equal(isPublicAuthPath("/tournaments", opts), true);
-  assert.equal(isPublicAuthPath("/tournaments/", opts), true);
+  assert.equal(isPublicAuthPath("/tournaments", opts), false);
+  assert.equal(isPublicAuthPath("/tournaments/", opts), false);
   assert.equal(
     shouldRedirectToLogin("/tournaments", { ...opts, isAuthenticated: false }),
-    false
+    true
   );
   assert.equal(
     shouldRedirectToLogin("/tournaments/", { ...opts, isAuthenticated: false }),
-    false
+    true
   );
+  assert.equal(isAuthenticatedOnlyRoute("/tournaments"), true);
+  assert.equal(isAuthenticatedOnlyRoute("/tournaments/"), true);
 
-  // Catalog must not inherit Engine permission mapping.
+  // Hub must not inherit Engine permission mapping.
   assert.deepEqual(getRouteAccessPermissions("/tournaments"), []);
   assert.deepEqual(getRouteAccessPermissions("/tournaments/"), []);
 });

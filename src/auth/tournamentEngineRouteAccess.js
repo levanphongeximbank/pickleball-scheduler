@@ -1,10 +1,12 @@
 /**
  * Tournament Engine plural-route authorization helpers (Phase 4 OD-PLURAL-AUTHZ).
- * Public catalog `/tournaments` (and `/tournaments/`) stays public.
+ * Exact `/tournaments` is the authenticated My Tournaments hub (Giải của tôi).
  * Exact `/tournaments/:id` is the authenticated Tournament Dashboard shell
  * (visibility authority = Dashboard RPC / canonical tournament visibility).
  * Engine descendants `/tournaments/:id/{engine|seed|draw|schedule|courts|ranking|logs}`
  * remain protected by tournament.update + ownership.
+ *
+ * Public/general catalog stays on `/tournament/list` (and legacy public portal pages).
  *
  * Engine authorization uses the canonical permission (`tournament.update`) and
  * ownership/tenant authorities (`assertTournamentAccess` / `guardClubAccess`) with
@@ -75,14 +77,25 @@ export function isTournamentDashboardPath(pathname) {
 }
 
 /**
- * Exact public catalog only — not Engine descendants.
- * Treats `/tournaments` and `/tournaments/` as equivalent.
+ * Exact My Tournaments hub — `/tournaments` (optional trailing slash).
+ * Authenticated shell; list authority = team_tournament_list_my_dashboards.
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+export function isMyTournamentsHubPath(pathname) {
+  if (!pathname) return false;
+  return normalizeTournamentsPathname(pathname) === "/tournaments";
+}
+
+/**
+ * @deprecated Public catalog no longer owns `/tournaments`.
+ * Kept for test/migration callers — always false.
  * @param {string} pathname
  * @returns {boolean}
  */
 export function isPublicTournamentsCatalogPath(pathname) {
-  if (!pathname) return false;
-  return normalizeTournamentsPathname(pathname) === "/tournaments";
+  void pathname;
+  return false;
 }
 
 /**

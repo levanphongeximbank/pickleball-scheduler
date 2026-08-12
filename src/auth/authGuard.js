@@ -3,7 +3,7 @@
  */
 import { canAccessRoute } from "./menuAccess.js";
 import {
-  isPublicTournamentsCatalogPath,
+  isMyTournamentsHubPath,
   isTournamentDashboardPath,
 } from "./tournamentEngineRouteAccess.js";
 
@@ -16,7 +16,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/forgot-password",
   "/reset-password",
   "/home",
-  // `/tournaments` catalog is exact-match only (see isPublicAuthPath).
+  // `/tournaments` is authenticated My Tournaments hub (not public catalog).
   // Engine routes `/tournaments/:id/*` are protected (Phase 4 OD-PLURAL-AUTHZ).
   "/clubs",
   "/courts",
@@ -30,9 +30,9 @@ export function isPublicAuthPath(pathname, { authProductionEnabled, rbacEnabled 
     return false;
   }
 
-  // Public catalog only — not Tournament Engine descendants.
-  if (isPublicTournamentsCatalogPath(pathname)) {
-    return true;
+  // Exact `/tournaments` hub is authenticated — never public.
+  if (isMyTournamentsHubPath(pathname)) {
+    return false;
   }
 
   if (PUBLIC_PATH_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
@@ -78,7 +78,8 @@ export function isAuthenticatedOnlyRoute(pathname) {
     pathname.startsWith("/referee/match/") ||
     pathname.startsWith("/team-portal/") ||
     pathname.startsWith("/team-referee/") ||
-    // Exact `/tournaments/:id` Dashboard — auth shell; visibility via Dashboard RPC.
+    // Exact `/tournaments` My Tournaments hub + `/tournaments/:id` Dashboard.
+    isMyTournamentsHubPath(pathname) ||
     isTournamentDashboardPath(pathname)
   );
 }
