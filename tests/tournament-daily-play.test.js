@@ -25,6 +25,8 @@ import {
   createDailyPlayCanonicalService,
   createInMemoryDailyPlayAuthority,
   createSeededDailyPlayTournament,
+  normalizeDailyPlayServerSnapshot,
+  isFullDailyPlaySnapshot,
   resolveCreateMatchCount,
   validateScoreInput,
   __setDailyPlayCanonicalServiceForTests,
@@ -1059,5 +1061,182 @@ describe("Daily Play SQL package contract parity", () => {
     assert.match(source, /waitingQueue/);
     assert.match(source, /match\.status === "assigned"/);
     assert.match(source, /matches=\{playing\}/);
+  });
+});
+
+describe("Daily Play SQL response-contract adapter (DP-03/DP-04)", () => {
+  test("SQL-like get_state normalizes state/activeLeases into client contract", () => {
+    const normalized = normalizeDailyPlayServerSnapshot({
+      ok: true,
+      tournamentId: TID,
+      state: {
+        revision: 7,
+        checkedInPlayerIds: ["athlete-1"],
+        matches: [],
+      },
+      courts: [{ id: "court-1", name: "Sân 1", active: true }],
+      activeLeases: [],
+    });
+
+    assert.equal(normalized.ok, true);
+    assert.equal(normalized.revision, 7);
+    assert.deepEqual(normalized.dailyPlay.checkedInPlayerIds, ["athlete-1"]);
+    assert.equal(normalized.courts.length, 1);
+    assert.equal(normalized.hasCourtCapability, true);
+    assert.equal(normalized.availableCourts.length, 1);
+    assert.equal(normalized.leases.length, 0);
+    assert.equal(normalized.courtStates.length, 1);
+  });
+
+  test("service getState maps SQL shape and expectedVersion follows revision", async () => {
+    let lastExpected = null;
+    const sqlState = {
+      ok: true,
+      tournamentId: TID,
+      state: {
+        revision: 7,
+        checkedInPlayerIds: ["athlete-1"],
+        matches: [],
+      },
+      courts: [{ id: "court-1", name: "Sân 1", active: true }],
+      activeLeases: [],
+    };
+    const service = createDailyPlayCanonicalService({
+      async rpc(name, args) {
+        if (name === DAILY_PLAY_RPC.GET_STATE) return sqlState;
+        if (name === DAILY_PLAY_RPC.CHECK_IN) {
+          lastExpected = args.p_expected_version;
+          return {
+            ok: true,
+            revision: 8,
+            state: {
+              revision: 8,
+              checkedInPlayerIds: ["athlete-1", "athlete-2"],
+              matches: [],
+            },
+          };
+        }
+        return { ok: false, code: "UNEXPECTED" };
+      },
+    });
+
+    const state = await service.getState({
+      tenantId: TENANT,
+      clubId: CLUB,
+      tournamentId: TID,
+    });
+    assert.equal(state.revision, 7);
+    assert.equal(state.hasCourtCapability, true);
+    assert.equal(isFullDailyPlaySnapshot(state), true);
+
+    const compact = await service.checkIn(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { playerId: "athlete-2", expectedVersion: state.revision, idempotencyKey: "ci-sql" }
+    );
+    assert.equal(lastExpected, 7);
+    assert.equal(compact.ok, true);
+    assert.equal(isFullDailyPlaySnapshot(compact), false);
+    assert.equal(Array.isArray(compact.courts), false);
+  });
+
+  test("activeLeases mark court unavailable", () => {
+    const normalized = normalizeDailyPlayServerSnapshot({
+      ok: true,
+      tournamentId: TID,
+      state: {
+        revision: 2,
+        checkedInPlayerIds: [],
+        matches: [
+          {
+            id: "m1",
+            status: "assigned",
+            courtId: "court-1",
+            teamAPlayerIds: ["1", "2"],
+            teamBPlayerIds: ["3", "4"],
+          },
+        ],
+      },
+      courts: [
+        { id: "court-1", name: "S1", active: true },
+        { id: "court-2", name: "S2", active: true },
+      ],
+      activeLeases: [{ matchId: "m1", courtId: "court-1", leasedAt: "2026-08-12T00:00:00Z" }],
+    });
+
+    assert.equal(normalized.leases[0].status, "active");
+    assert.equal(normalized.availableCourts.map((c) => c.id).join(","), "court-2");
+    assert.equal(normalized.hasCourtCapability, true);
+  });
+
+  test("empty courts => hasCourtCapability false", () => {
+    const normalized = normalizeDailyPlayServerSnapshot({
+      ok: true,
+      tournamentId: TID,
+      state: { revision: 1, checkedInPlayerIds: [], matches: [] },
+      courts: [],
+      activeLeases: [],
+    });
+    assert.equal(normalized.hasCourtCapability, false);
+    assert.equal(normalized.availableCourts.length, 0);
+  });
+
+  test("in-memory rich snapshot remains compatible after normalize", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+    });
+    const state = await service.getState({
+      tenantId: TENANT,
+      clubId: CLUB,
+      tournamentId: TID,
+    });
+    assert.equal(state.ok, true);
+    assert.equal(state.hasCourtCapability, true);
+    assert.ok(state.dailyPlay);
+    assert.equal(typeof state.revision, "number");
+    assert.equal(Array.isArray(state.courtStates), true);
+  });
+
+  test("SQL package get_state returns state + activeLeases keys", () => {
+    const applyPath = path.resolve(
+      "docs/v5/migrations/daily-play-end-to-end-canonical-01/02_APPLY.sql"
+    );
+    const applySql = fs.readFileSync(applyPath, "utf8");
+    const snapFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_snapshot"),
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_get_state")
+    );
+    assert.match(snapFn, /'state'/);
+    assert.match(snapFn, /'activeLeases'/);
+    assert.match(snapFn, /'courts'/);
+    assert.equal(snapFn.includes("'dailyPlay'"), false);
+    assert.equal(snapFn.includes("'hasCourtCapability'"), false);
+  });
+
+  test("session hook uses background poll + mutation get_state readback", () => {
+    const hookPath = path.resolve(
+      "src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"
+    );
+    const source = fs.readFileSync(hookPath, "utf8");
+    assert.match(source, /normalizeDailyPlayServerSnapshot/);
+    assert.match(source, /refresh\(\{\s*background:\s*true\s*\}\)/);
+    assert.match(source, /setRefreshing/);
+    assert.match(source, /READBACK_FAILED/);
+    assert.match(source, /mutationCommitted:\s*true/);
+    // Must not apply compact mutation payloads as session snapshots.
+    assert.equal(/if \(result\?\.ok\) \{\s*applySnapshot\(result\)/.test(source), false);
+    assert.match(source, /pollMs/);
+    assert.match(source, /background && hasSnapshotRef/);
+  });
+
+  test("VERSION_CONFLICT triggers background refresh path", () => {
+    const hookPath = path.resolve(
+      "src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"
+    );
+    const source = fs.readFileSync(hookPath, "utf8");
+    assert.match(source, /VERSION_CONFLICT/);
+    assert.match(
+      source,
+      /VERSION_CONFLICT[\s\S]*refresh\(\{\s*background:\s*true\s*\}\)/
+    );
   });
 });

@@ -33,5 +33,10 @@ export {
   __resetDailyPlayCanonicalServiceForTests,
 } from "./dailyPlayCanonicalService.js";
 
+export {
+  normalizeDailyPlayServerSnapshot,
+  isFullDailyPlaySnapshot,
+} from "./normalizeDailyPlayServerSnapshot.js";
+
 // Hook lives in useDailyPlayCanonicalSession.js — import directly from UI
 // to keep non-React unit tests free of the react package graph.

@@ -5,6 +5,7 @@
 
 import { DAILY_PLAY_CODE, DAILY_PLAY_MESSAGES, DAILY_PLAY_RPC } from "./dailyPlayCodes.js";
 import { resolveCreateMatchCount } from "./dailyPlayCanonicalDomain.js";
+import { normalizeDailyPlayServerSnapshot } from "./normalizeDailyPlayServerSnapshot.js";
 
 function normalizeRpcPayload(data) {
   if (data && typeof data === "object" && "ok" in data) return data;
@@ -79,7 +80,9 @@ export function createDailyPlayCanonicalService(deps = {}) {
 
   return {
     async getState(scope) {
-      return callRpc(DAILY_PLAY_RPC.GET_STATE, scopeArgs(scope));
+      const raw = await callRpc(DAILY_PLAY_RPC.GET_STATE, scopeArgs(scope));
+      if (!raw?.ok) return raw;
+      return normalizeDailyPlayServerSnapshot(raw);
     },
 
     async checkIn(scope, { playerId, expectedVersion, idempotencyKey }) {

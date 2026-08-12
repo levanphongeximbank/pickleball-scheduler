@@ -41,6 +41,7 @@ export const DAILY_PLAY_CODE = Object.freeze({
   NOT_ENOUGH_PLAYERS: "NOT_ENOUGH_PLAYERS",
   VALIDATION: "VALIDATION",
   CLOUD_UNAVAILABLE: "CLOUD_UNAVAILABLE",
+  READBACK_FAILED: "READBACK_FAILED",
   SUBSTITUTION_UNSUPPORTED: "SUBSTITUTION_UNSUPPORTED",
 });
 
@@ -73,6 +74,8 @@ export const DAILY_PLAY_MESSAGES = Object.freeze({
     "Không đủ VĐV check-in rảnh để tạo trận.",
   [DAILY_PLAY_CODE.CLOUD_UNAVAILABLE]:
     "Canonical Daily Play chưa sẵn sàng trên máy chủ. Không dùng dữ liệu trình duyệt.",
+  [DAILY_PLAY_CODE.READBACK_FAILED]:
+    "Thao tác đã gửi lên máy chủ nhưng không tải lại được trạng thái mới. Hãy làm mới trang.",
   COURTS_BUSY_WAITING:
     "Hiện chưa có sân trống. Trận sẽ chờ sân.",
 });
