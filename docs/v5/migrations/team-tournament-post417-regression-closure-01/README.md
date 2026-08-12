@@ -15,10 +15,12 @@ PR #417 shipped canonical `team_tournament_create` as header+settings only.
 
 ## This package
 
-1. `team_tournament_create` merges MLP settings and seeds four normal
+1. `team_tournament_create` merges MLP settings and **calls**
+   `team_tournament_seed_mlp_disciplines`, which seeds four normal
    disciplines plus Dreambreaker catalog (`mlp-wd`, `mlp-md`, `mlp-xd1`,
-   `mlp-xd2`, `dreambreaker`). Returns `tournament.teamData` matching
-   subsequent get_setup domain collections.
+   `mlp-xd2`, `dreambreaker`). Create returns `tournament.teamData`
+   matching subsequent get_setup domain collections. VERIFY inspects the
+   seed helper for catalog literals — not the create caller.
 2. `team_tournament_commit_pairing` writes teams + captains + members +
    groups in one transaction. Post-DML validation failures RAISE so the
    transaction rolls back (no partial teams). Optional `p_expected_version`
@@ -40,7 +42,7 @@ delete already-seeded discipline rows).
 |------|--------|
 | `01_PRECHECK.sql` | `23c246bf94cd9f2d52685ad73d127f3ae0ee594edb4c5e7cfa0468ead3e6cb02` |
 | `02_APPLY.sql` | `ff4ee2ca92f99db5eadf0eb842f310578865ea9b7e7595f1c0bec5b79790ed9c` |
-| `03_VERIFY.sql` | `1b8117813b9fd3730753c68c77cb437595e833ff9c4db91e22c20dcadbcb610c` |
+| `03_VERIFY.sql` | `d475427d7ffaced2662a2698801fe69e6d0a391d6335ee728641db6f615169c2` |
 | `04_ROLLBACK.sql` | `0a2084f2054934450424b9a9cf57f5c0ebb7b1d23dcd055311fd4d20fdcf5f81` |
 
 ## Safety

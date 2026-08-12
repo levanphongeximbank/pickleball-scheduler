@@ -251,6 +251,7 @@
   "tests/team-tournament-stage-tiebreak-policy-01.test.js",
   "tests/team-tournament-canonical-dashboard-lifecycle-01.test.js",
   "tests/team-tournament-post417-regression-closure-01.test.js",
+  "tests/team-tournament-post-mutation-refresh-remediation-01.test.js",
   "tests/team-tournament-format-venue-client-wiring-remediation-01.test.js",
   "tests/team-tournament-format-venue-group-configuration-remediation-01.test.js",
   "tests/team-tournament-ai-pairing-cloud-persistence-remediation-01.test.js",
