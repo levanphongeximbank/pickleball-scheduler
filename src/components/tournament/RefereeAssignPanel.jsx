@@ -39,6 +39,7 @@ export default function RefereeAssignPanel({
   eventId = "",
   actor = null,
   onTournamentChange,
+  onAssignResult = null,
   compact = false,
 }) {
   const [message, setMessage] = useState(null);
@@ -59,7 +60,8 @@ export default function RefereeAssignPanel({
       setMessage({ type: "error", text: result.error });
       return;
     }
-    onTournamentChange?.(result.tournament);
+    onTournamentChange?.(result.tournament, { assignResult: result });
+    onAssignResult?.(result, result.tournament);
     setMessage({ type: "success", text: successText });
   };
 
@@ -89,7 +91,8 @@ export default function RefereeAssignPanel({
       setMessage({ type: "error", text: result.error });
       return;
     }
-    onTournamentChange?.(result.tournament);
+    onTournamentChange?.(result.tournament, { assignResult: result });
+    onAssignResult?.(result, result.tournament);
     setMessage({
       type: "success",
       text: `Tự động gán ${result.assigned.length} trận` +

@@ -59,7 +59,6 @@ import {
   validateOpenRegistrationPlayers,
 } from "../../tournament/engines/index.js";
 import BracketView from "../../components/tournament/BracketView.jsx";
-import RefereeRosterPanel from "../../components/tournament/RefereeRosterPanel.jsx";
 import GroupStagePanel from "../../components/tournament/GroupStagePanel.jsx";
 import TournamentAnimationDialog from "../../components/tournament/animation/TournamentAnimationDialog.jsx";
 import BracketRevealAnimation from "../../components/tournament/animation/BracketRevealAnimation.jsx";
@@ -140,6 +139,19 @@ import {
   summarizeGroups,
 } from "../../tournament/engines/publishDrawEngine.js";
 import { resolveEventTypeFromQuery } from "../../features/individual-tournament/index.js";
+import {
+  OFFICIAL_STAGE_ID,
+  deriveOfficialOrganizerStages,
+  deriveOfficialNextAction,
+  buildOfficialDrawBlockMessage,
+} from "../../features/individual-tournament/engines/officialOrganizerWorkflowEngine.js";
+import OfficialTournamentControlCenter, {
+  OfficialTournamentStageCard,
+} from "../../components/tournament/official/OfficialTournamentControlCenter.jsx";
+import OfficialTournamentRefereeOps from "../../components/tournament/official/OfficialTournamentRefereeOps.jsx";
+import OfficialTournamentLiveScoringOps from "../../components/tournament/official/OfficialTournamentLiveScoringOps.jsx";
+import OfficialTournamentCloseOps from "../../components/tournament/official/OfficialTournamentCloseOps.jsx";
+import { lockRegistration } from "../../features/individual-tournament/engines/registrationEngine.js";
 
 const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
@@ -157,6 +169,8 @@ export default function OfficialTournamentSetup() {
   const { currentTenantId } = useTenant();
   const aiEnabled = isAiEngineEnabled();
   const [setupTab, setSetupTab] = useState(0);
+  const [activeStageId, setActiveStageId] = useState(OFFICIAL_STAGE_ID.INFO);
+  const [stageTouched, setStageTouched] = useState(false);
   const [localRevision, setLocalRevision] = useState(0);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
@@ -272,13 +286,98 @@ export default function OfficialTournamentSetup() {
     savedEvents[0] ||
     null;
 
-  const displayEntries = isAiBalance
-    ? previewEntries.length > 0
-      ? previewEntries
-      : savedEvent?.entries || []
-    : registeredEntries.length > 0
-      ? registeredEntries
-      : savedEvent?.entries || [];
+  const displayEntries = useMemo(() => {
+    if (isAiBalance) {
+      return previewEntries.length > 0 ? previewEntries : savedEvent?.entries || [];
+    }
+    return registeredEntries.length > 0 ? registeredEntries : savedEvent?.entries || [];
+  }, [
+    isAiBalance,
+    previewEntries,
+    registeredEntries,
+    savedEvent?.entries,
+  ]);
+
+  const workflow = useMemo(
+    () =>
+      deriveOfficialOrganizerStages(tournament, {
+        eventId: savedEvent?.id || activeEventId,
+        courts,
+      }),
+    [tournament, savedEvent?.id, activeEventId, courts]
+  );
+
+  const nextAction = useMemo(
+    () =>
+      deriveOfficialNextAction(tournament, {
+        eventId: savedEvent?.id || activeEventId,
+        courts,
+      }),
+    [tournament, savedEvent?.id, activeEventId, courts]
+  );
+
+  useEffect(() => {
+    if (!stageTouched && workflow?.currentStageId) {
+      setActiveStageId(workflow.currentStageId);
+    }
+  }, [workflow?.currentStageId, stageTouched]);
+
+  const activeStage =
+    workflow.stages.find((stage) => stage.id === activeStageId) || workflow.stages[0];
+
+  const selectStage = (stageId) => {
+    setStageTouched(true);
+    setActiveStageId(stageId);
+  };
+
+  const handlePrimaryNextAction = (action) => {
+    const actionId = action?.actionId || "";
+    const map = {
+      edit_info: OFFICIAL_STAGE_ID.INFO,
+      open_registration: OFFICIAL_STAGE_ID.REGISTRATION,
+      approve_entries: OFFICIAL_STAGE_ID.REGISTRATION,
+      view_registration: OFFICIAL_STAGE_ID.REGISTRATION,
+      lock_registration: OFFICIAL_STAGE_ID.LOCK_ENTRIES,
+      view_lock: OFFICIAL_STAGE_ID.LOCK_ENTRIES,
+      run_draw: OFFICIAL_STAGE_ID.DRAW,
+      view_draw: OFFICIAL_STAGE_ID.DRAW,
+      open_schedule: OFFICIAL_STAGE_ID.SCHEDULE,
+      assign_referees: OFFICIAL_STAGE_ID.REFEREE,
+      enter_scores: OFFICIAL_STAGE_ID.SCORING,
+      view_scoring: OFFICIAL_STAGE_ID.SCORING,
+      view_standings: OFFICIAL_STAGE_ID.RESULTS,
+      generate_knockout: OFFICIAL_STAGE_ID.KNOCKOUT,
+      view_knockout: OFFICIAL_STAGE_ID.KNOCKOUT,
+      close_tournament: OFFICIAL_STAGE_ID.CLOSE,
+      view_close: OFFICIAL_STAGE_ID.CLOSE,
+    };
+    const stageId = map[actionId] || action?.stageId || OFFICIAL_STAGE_ID.INFO;
+    selectStage(stageId);
+    if (actionId === "lock_registration") {
+      handleLockRegistrationFromStage();
+    }
+  };
+
+  const handleLockRegistrationFromStage = async () => {
+    const result = lockRegistration(tournament, {
+      actor: user
+        ? { id: user.id, email: user.email || "", name: user.displayName || user.name || "" }
+        : null,
+    });
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    const saved = await persistTournament({
+      settings: result.tournament.settings,
+      status: result.tournament.status,
+      events: result.tournament.events,
+    });
+    if (saved) {
+      setMessage("Đã chốt đăng ký.");
+      selectStage(OFFICIAL_STAGE_ID.DRAW);
+    }
+  };
 
   const registeredPlayerIds = useMemo(() => {
     const ids = new Set();
@@ -1283,7 +1382,14 @@ export default function OfficialTournamentSetup() {
       }
     }
 
-    if (displayEntries.length < 2) {
+    const drawGate = buildOfficialDrawBlockMessage(displayEntries, tournament, 2);
+    if (!drawGate.ok) {
+      setError(drawGate.error);
+      return;
+    }
+    const eligibleEntries = drawGate.eligible;
+
+    if (eligibleEntries.length < 2) {
       setError("Can it nhat 2 doi/VDV da dang ky.");
       return;
     }
@@ -1305,7 +1411,7 @@ export default function OfficialTournamentSetup() {
         ...tournament,
         hostClubName: tournament.hostClubName || activeClub?.name || "",
       },
-      entries: displayEntries,
+      entries: eligibleEntries,
       eventType,
       eventId: savedEvent?.id,
       groupCount,
@@ -1711,6 +1817,104 @@ export default function OfficialTournamentSetup() {
       onSetupTabChange={(_, value) => setSetupTab(value)}
       showAiTab={aiEnabled}
     >
+      <OfficialTournamentControlCenter
+        tournament={tournament}
+        stages={workflow.stages}
+        facts={workflow.facts}
+        nextAction={nextAction}
+        activeStageId={activeStageId}
+        onSelectStage={selectStage}
+        onPrimaryAction={handlePrimaryNextAction}
+        canManage
+      />
+
+      <OfficialTournamentStageCard stage={activeStage}>
+        {activeStageId === OFFICIAL_STAGE_ID.REFEREE ? (
+          <OfficialTournamentRefereeOps
+            tournament={tournament}
+            eventId={savedEvent?.id || ""}
+            roster={refereeRoster}
+            onRosterChange={handleRefereeRosterChange}
+            actor={
+              user
+                ? { id: user.id, email: user.email || "", name: user.displayName || user.name || "" }
+                : null
+            }
+            clubId={activeClubId}
+            courts={courts}
+            players={flowPlayers}
+            canManage
+            tournamentId={tournamentId}
+            onPersistTournament={async (nextTournament) =>
+              persistTournament({
+                events: nextTournament.events,
+                settings: nextTournament.settings,
+              })
+            }
+          />
+        ) : null}
+
+        {activeStageId === OFFICIAL_STAGE_ID.SCORING ? (
+          <OfficialTournamentLiveScoringOps
+            event={savedEvent}
+            tournament={tournament}
+            players={flowPlayers}
+            onSubmitGroupScore={handleSubmitGroupScore}
+            onSubmitKnockoutScore={handleSubmitKnockoutScore}
+            onSelectWinner={handleSelectBracketWinner}
+            onToggleRoundLock={handleToggleRoundLock}
+            canManage
+            tournamentId={tournamentId}
+            draftScope={scoreDraftScope}
+          />
+        ) : null}
+
+        {activeStageId === OFFICIAL_STAGE_ID.CLOSE ? (
+          <OfficialTournamentCloseOps
+            tournament={tournament}
+            eventId={savedEvent?.id || ""}
+            canManage
+            onPersistTournament={async (nextTournament) =>
+              persistTournament({
+                events: nextTournament.events,
+                settings: nextTournament.settings,
+                status: nextTournament.status,
+              })
+            }
+            onMessage={setMessage}
+            onError={setError}
+          />
+        ) : null}
+
+        {activeStageId === OFFICIAL_STAGE_ID.SCHEDULE ? (
+          <Stack spacing={2}>
+            <Alert severity="info">
+              Xếp lịch / công bố lịch và khóa sân cho ngày thi đấu. Định danh giải đã được gắn sẵn.
+            </Alert>
+            <Button
+              component={RouterLink}
+              to={`/tournament/publish-schedule?tournamentId=${encodeURIComponent(tournamentId)}`}
+              variant="contained"
+            >
+              Mở xếp lịch & công bố
+            </Button>
+            <Alert severity="warning" icon={false}>
+              COURT_CANONICAL_SOURCE_BLOCKED — danh sách sân vẫn đọc từ clubStorage (
+              loadCourtsForClub). Chưa có adapter venue canonical an toàn để thay trong batch này.
+            </Alert>
+            <TournamentCourtSchedulePanel
+              clubId={activeClubId}
+              tournament={tournament}
+              courts={courts}
+              onSaved={() => {
+                setLocalRevision((value) => value + 1);
+                refreshClubs();
+              }}
+            />
+          </Stack>
+        ) : null}
+      </OfficialTournamentStageCard>
+
       <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid size={{ xs: 12, md: 4 }}>
@@ -1754,6 +1958,13 @@ export default function OfficialTournamentSetup() {
         </Grid>
       </Paper>
 
+      {(activeStageId === OFFICIAL_STAGE_ID.INFO ||
+        activeStageId === OFFICIAL_STAGE_ID.REGISTRATION ||
+        activeStageId === OFFICIAL_STAGE_ID.LOCK_ENTRIES ||
+        activeStageId === OFFICIAL_STAGE_ID.DRAW ||
+        activeStageId === OFFICIAL_STAGE_ID.RESULTS ||
+        activeStageId === OFFICIAL_STAGE_ID.KNOCKOUT) && (
+      <>
       <TournamentVprPanel
         clubId={activeClubId}
         tournament={tournament}
@@ -1786,9 +1997,6 @@ export default function OfficialTournamentSetup() {
       ) : (
       <>
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid size={{ xs: 12 }}>
-          <RefereeRosterPanel roster={refereeRoster} onChange={handleRefereeRosterChange} />
-        </Grid>
         {isAiBalance ? (
           <Grid size={{ xs: 12 }}>
             <FounderPairingConstraintsPanel
@@ -2402,6 +2610,32 @@ export default function OfficialTournamentSetup() {
         </Stack>
       )}
 
+      {bracketAdvanceAnim && (
+        <Box
+          sx={{
+            position: "fixed",
+            bottom: 16,
+            left: 16,
+            right: 16,
+            zIndex: 1300,
+            maxWidth: 360,
+            mx: "auto",
+          }}
+        >
+          <BracketRevealAnimation
+            animationMode={ANIMATION_MODES.BRACKET_ADVANCE}
+            advanceHint={bracketAdvanceAnim}
+            bracket={bracketAdvanceAnim.bracket}
+            onAnimationComplete={() => setBracketAdvanceAnim(null)}
+            onSkip={() => setBracketAdvanceAnim(null)}
+          />
+        </Box>
+      )}
+      </>
+      )}
+      </>
+      )}
+
       <TournamentAnimationDialog
         {...flow.dialogProps}
         onFlowExit={handleFlowExit}
@@ -2426,44 +2660,6 @@ export default function OfficialTournamentSetup() {
         defaultClubName={entryClubName || activeClub?.name || ""}
         onSaved={handleQuickAddSaved}
       />
-
-      {bracketAdvanceAnim && (
-        <Box
-          sx={{
-            position: "fixed",
-            bottom: 16,
-            left: 16,
-            right: 16,
-            zIndex: 1300,
-            maxWidth: 360,
-            mx: "auto",
-          }}
-        >
-          <BracketRevealAnimation
-            animationMode={ANIMATION_MODES.BRACKET_ADVANCE}
-            advanceHint={bracketAdvanceAnim}
-            bracket={bracketAdvanceAnim.bracket}
-            onAnimationComplete={() => setBracketAdvanceAnim(null)}
-            onSkip={() => setBracketAdvanceAnim(null)}
-          />
-        </Box>
-      )}
-
-      {tournament && (
-        <Box sx={{ mt: 3 }}>
-          <TournamentCourtSchedulePanel
-            clubId={activeClubId}
-            tournament={tournament}
-            courts={courts}
-            onSaved={() => {
-              refreshClubs();
-              setLocalRevision((value) => value + 1);
-            }}
-          />
-        </Box>
-      )}
-      </>
-      )}
     </TournamentSetupShell>
     </TournamentManageGate>
   );

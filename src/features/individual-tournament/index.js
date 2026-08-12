@@ -210,6 +210,27 @@ export {
 } from "./engines/tournamentClosingEngine.js";
 
 export {
+  OFFICIAL_STAGE_ID,
+  OFFICIAL_STAGE_STATE,
+  OFFICIAL_STAGE_DEFS,
+  summarizeOfficialEntries,
+  summarizeOfficialMatches,
+  summarizeOfficialRefereeOps,
+  buildOfficialCompetitionFacts,
+  deriveOfficialOrganizerStages,
+  deriveOfficialNextAction,
+  evaluateOfficialCloseGate,
+  filterOfficialDrawEntries,
+  buildOfficialDrawBlockMessage,
+} from "./engines/officialOrganizerWorkflowEngine.js";
+
+export {
+  REFEREE_IDENTITY_BINDING_BLOCKED,
+  syncOfficialAssignedMatchToLive,
+  syncOfficialRefereeAssignResultToLive,
+} from "./engines/officialRefereeLiveBridge.js";
+
+export {
   findPlayerEntries,
   listUpcomingMatchesForEntry,
   listMatchHistoryForEntry,
