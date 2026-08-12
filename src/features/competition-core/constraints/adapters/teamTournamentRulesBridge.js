@@ -46,6 +46,10 @@ export function evaluateLegacyTeamLineupValidation(payload = {}, options = {}) {
   }
 
   const team = payload.team || payload.teamData?.teams?.find((item) => String(item.id) === String(payload.teamId));
+  const mlp =
+    payload.mlp === true ||
+    String(payload.teamData?.settings?.formatPreset || "").toLowerCase() === "mlp_4" ||
+    payload.teamData?.settings?.allowPlayerReusePerMatchup === true;
   const context = mapTeamLineupValidationToContext({
     team,
     players: payload.players,
@@ -53,12 +57,21 @@ export function evaluateLegacyTeamLineupValidation(payload = {}, options = {}) {
   });
   const ruleSet = mapTeamLineupValidationToRuleSet({
     requireComplete: payload.partial !== true,
-    validateMixed: true,
+    validateMixed: mlp ? false : true,
+    allowPlayerReuse: mlp === true,
+    genderOnlyOverlay: mlp === true,
   });
 
   const bridge = evaluateCanonicalRulesRuntime({
     consumer: "team_lineup_validation",
-    candidate: { teams: Object.values(payload.selections || {}).map((ids) => (ids || []).map(String)) },
+    candidate: mlp
+      ? {
+          playerIds: Object.values(payload.selections || {})
+            .flat()
+            .map((id) => String(id || "").trim())
+            .filter(Boolean),
+        }
+      : { teams: Object.values(payload.selections || {}).map((ids) => (ids || []).map(String)) },
     context,
     ruleSet,
     envSource: options.envSource || payload.envSource,

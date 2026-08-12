@@ -54,7 +54,11 @@ import {
   validateLineupSelections,
 } from "../../features/team-tournament/engines/lineupValidationEngine.js";
 import { filterEligiblePlayersForLineupSlot } from "../../features/team-tournament/engines/lineupOptionFilter.js";
-import { resolveCaptainLineupAthletePool } from "../../features/team-tournament/engines/captainPortalRosterProjection.js";
+import {
+  CAPTAIN_PORTAL_SCOPED_ROSTER,
+  buildCaptainLineupRuntime,
+  resolveCaptainLineupAthletePool,
+} from "../../features/team-tournament/engines/captainPortalRosterProjection.js";
 import { applyCanonicalMlpDisciplineMetadata } from "../../features/team-tournament/engines/mlpDisciplineSlotContract.js";
 import {
   buildServerLineupFingerprint,
@@ -819,6 +823,20 @@ export default function TeamPortal() {
     return applyCanonicalMlpDisciplineMetadata(raw) || raw;
   }, [hookTeamData]);
 
+  const lineupRuntime = useMemo(
+    () =>
+      buildCaptainLineupRuntime({
+        teamData,
+        captainTeam: access.captainTeam,
+        teamId: access.captainTeam?.id,
+      }),
+    [access.captainTeam, teamData]
+  );
+  const lineupTeam = lineupRuntime.team || access.captainTeam;
+  const lineupPlayers = lineupRuntime.athletePool;
+  const portalRosterReady = lineupRuntime.authority === CAPTAIN_PORTAL_SCOPED_ROSTER;
+  const lineupDebug = searchParams.get("ttLineupDebug") === "1";
+
   const athletePool = useTeamTournamentAthletePool({
     tournament,
     activeClubId: effectiveClubId,
@@ -1075,9 +1093,34 @@ export default function TeamPortal() {
           isCloudPrimary={isCloudPrimary}
         />
 
+        {lineupDebug ? (
+          <Alert severity="info">
+            <Typography variant="subtitle2" fontWeight={700}>
+              ttLineupDebug authority={lineupRuntime.authority}
+            </Typography>
+            <Typography variant="body2" component="pre" sx={{ whiteSpace: "pre-wrap", m: 0 }}>
+              {JSON.stringify(
+                {
+                  teamId: lineupTeam?.id || null,
+                  rulesV2: String(searchParams.get("rulesV2") || "env"),
+                  athletes: (lineupPlayers || []).map((row) => ({
+                    athleteId: row.athleteId || row.id || null,
+                    displayName: row.displayName || row.name || null,
+                    gender: row.gender || null,
+                    genderSource: row.genderSource || null,
+                    eligible: Boolean(row.gender === "male" || row.gender === "female"),
+                  })),
+                },
+                null,
+                2
+              )}
+            </Typography>
+          </Alert>
+        ) : null}
+
         {access.captainTeam ? (
           <>
-            {athletePool.error ? (
+            {athletePool.error && !portalRosterReady ? (
               <Alert severity="warning">
                 {athletePool.error.message ||
                   "Không tải được pool VĐV canonical. Tên VĐV có thể hiện thiếu identity."}
@@ -1132,7 +1175,7 @@ export default function TeamPortal() {
                   matchup={matchup}
                   teamData={teamData}
                   teamId={access.captainTeam.id}
-                  players={players}
+                  players={lineupPlayers.length > 0 ? lineupPlayers : players}
                   opponentName={opponentName}
                   onSubmit={(order) => handleDreambreakerSubmit(matchup.id, order)}
                   busy={dbBusy}
@@ -1161,9 +1204,9 @@ export default function TeamPortal() {
                   <MatchupLineupCard
                     key={`pending-${matchup.id}`}
                     matchup={matchup}
-                    team={access.captainTeam}
+                    team={lineupTeam || access.captainTeam}
                     teamData={teamData}
-                    players={players}
+                    players={lineupPlayers}
                     {...lineupCardProps}
                   />
                 ))}
@@ -1179,9 +1222,9 @@ export default function TeamPortal() {
                   <MatchupLineupCard
                     key={`done-${matchup.id}`}
                     matchup={matchup}
-                    team={access.captainTeam}
+                    team={lineupTeam || access.captainTeam}
                     teamData={teamData}
-                    players={players}
+                    players={lineupPlayers}
                     {...lineupCardProps}
                   />
                 ))}
@@ -1201,9 +1244,9 @@ export default function TeamPortal() {
                   <MatchupLineupCard
                     key={`past-${matchup.id}`}
                     matchup={matchup}
-                    team={access.captainTeam}
+                    team={lineupTeam || access.captainTeam}
                     teamData={teamData}
-                    players={players}
+                    players={lineupPlayers}
                     {...lineupCardProps}
                   />
                 ))}

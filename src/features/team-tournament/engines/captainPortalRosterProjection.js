@@ -127,12 +127,56 @@ export function resolveCaptainLineupAthletePool({
     rosterTeam?.rosterAthletes || rosterTeam?.roster_athletes
   );
   if (portal.length > 0) {
-    return overlayCaptainPortalRosterOnPool(
-      rosterTeam,
-      Array.isArray(clubPlayers) && clubPlayers.length > 0 ? clubPlayers : portal
-    );
+    // Own-team lineup eligibility/validation must not ingest club/profile RLS rows.
+    return portal;
   }
   return Array.isArray(clubPlayers) ? clubPlayers : [];
+}
+
+/**
+ * Single captain-lineup runtime: one team + one scoped athlete pool.
+ * @param {{
+ *   teamData?: object|null,
+ *   captainTeam?: object|null,
+ *   teamId?: string|null,
+ *   clubPlayers?: object[],
+ * }} args
+ * @returns {{
+ *   team: object|null,
+ *   teamData: object|null,
+ *   athletePool: object[],
+ *   authority: string,
+ * }}
+ */
+export function buildCaptainLineupRuntime({
+  teamData = null,
+  captainTeam = null,
+  teamId = null,
+  clubPlayers = [],
+} = {}) {
+  const id = String(teamId || captainTeam?.id || "").trim();
+  const dataTeam =
+    teamData && id
+      ? (teamData.teams || []).find((row) => String(row?.id || "") === id) || null
+      : null;
+  const team = pickRosterTeam(captainTeam, dataTeam) || captainTeam || dataTeam || null;
+  const athletePool = resolveCaptainLineupAthletePool({
+    team,
+    teamData,
+    teamId: id || team?.id,
+    clubPlayers,
+  });
+  const authority = athletePool.some(
+    (row) => row?.genderSource === CAPTAIN_PORTAL_SCOPED_ROSTER
+  )
+    ? CAPTAIN_PORTAL_SCOPED_ROSTER
+    : "CLUB_ATHLETE_POOL";
+  return {
+    team,
+    teamData,
+    athletePool,
+    authority,
+  };
 }
 
 /**

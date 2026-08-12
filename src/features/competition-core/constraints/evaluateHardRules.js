@@ -428,6 +428,32 @@ function evaluateMinRestHardRule(constraint, context, teams) {
 function evaluateGenderEligibility(constraint, context) {
   const params = constraint.params || {};
   const eventType = String(params.eventType || "mixed_double").toLowerCase();
+  if (eventType === "known_binary" || eventType === "binary") {
+    const ids = [
+      ...((context.lineupSlots || []).map((slot) => slot?.playerId)),
+      ...((context.teams || []).flat()),
+    ]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+    const unique = [...new Set(ids)];
+    /** @type {EngineExplanation[]} */
+    const knownViolations = [];
+    for (const playerId of unique) {
+      const gender = normalizeGender(
+        getPlayerSnapshot(context.playersById, playerId).gender
+      );
+      if (gender !== "male" && gender !== "female") {
+        knownViolations.push(
+          createEngineExplanation({
+            code: RULE_ERROR_CODE.GENDER_ELIGIBILITY_VIOLATED,
+            message: `Player ${playerId} has unknown or invalid gender.`,
+            details: { constraintId: constraint.id, playerId, gender },
+          })
+        );
+      }
+    }
+    return knownViolations;
+  }
   if (eventType !== "mixed_double") {
     return [];
   }

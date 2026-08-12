@@ -453,18 +453,29 @@ export function validateMlpLineupParticipation(teamData, teamId, selections = {}
 }
 
 export function validateLineupSelectionsStructured(args) {
+  const scopedPlayers = resolveCaptainLineupAthletePool({
+    team: args.team,
+    teamData: args.teamData,
+    teamId: args.teamId,
+    clubPlayers: args.players,
+  });
+  const nextArgs = { ...args, players: scopedPlayers };
   if (isRulesV2Enabled(args.envSource)) {
+    const mlp =
+      isMlpFormat(args.teamData) ||
+      args.teamData?.settings?.allowPlayerReusePerMatchup === true;
     const bridge = evaluateLegacyTeamLineupValidation(
       {
-        ...args,
+        ...nextArgs,
+        mlp,
         team: args.team || findTeam(args.teamData, args.teamId),
-        legacyEvaluate: () => validateLineupSelectionsStructuredLegacy(args),
+        legacyEvaluate: () => validateLineupSelectionsStructuredLegacy(nextArgs),
       },
       { envSource: args.envSource }
     );
     return bridge.result;
   }
-  return validateLineupSelectionsStructuredLegacy(args);
+  return validateLineupSelectionsStructuredLegacy(nextArgs);
 }
 
 function validateLineupSelectionsStructuredLegacy({
