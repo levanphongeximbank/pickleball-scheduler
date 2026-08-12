@@ -68,25 +68,6 @@ import {
 import { resolveLineupExpectedVersion } from "../../features/team-tournament/engines/lineupRevisionContract.js";
 import { evaluateCaptainPortalAccess } from "../../features/team-tournament/engines/captainAccessPolicy.js";
 import {
-  logTt412CaptainAccess,
-  TT412_CAPTAIN_PORTAL_GATE,
-} from "../../features/team-tournament/diagnostics/tt412CaptainAccessDiagnostics.js";
-import {
-  logTt412LineupForm,
-  TT412_LINEUP_REHYDRATE_DECISION,
-  TT412_LINEUP_SAVE_RESULT,
-  TT412_LINEUP_SELECT_CHANGE,
-  TT412_LINEUP_SUBMIT_RESULT,
-} from "../../features/team-tournament/diagnostics/tt412LineupFormDiagnostics.js";
-import {
-  TT412_F04_ATHLETE_ID,
-  beginLineupValidationProbe,
-  buildPreValidationSnapshot,
-  endLineupValidationProbe,
-  getCaptainLineupSaveBoundary,
-  recordCaptainLineupSaveBoundary,
-} from "../../features/team-tournament/diagnostics/captainLineupSaveBoundaryDiagnostics.js";
-import {
   findTeamForCaptain,
   getOpponentTeamId,
   isTeamCaptain,
@@ -265,7 +246,6 @@ function MatchupLineupCard({
   isCloudPrimary,
   serverClock,
   onSaved,
-  onSaveBoundaryDebug = null,
 }) {
   const opponentId = getOpponentTeamId(matchup, team.id);
   const opponent = findTeam(teamData, opponentId);
@@ -333,15 +313,6 @@ function MatchupLineupCard({
       prevFingerprint: serverFingerprint,
       nextFingerprint,
     });
-    logTt412LineupForm(TT412_LINEUP_REHYDRATE_DECISION, {
-      matchupId: matchup.id,
-      teamId: team.id,
-      dirty,
-      serverFingerprintBefore: serverFingerprint,
-      serverFingerprintAfter: nextFingerprint,
-      rehydrate: decision.rehydrate,
-      reason: decision.reason,
-    });
     if (decision.conflict) {
       setServerConflict(true);
     }
@@ -405,14 +376,6 @@ function MatchupLineupCard({
       slots[slotIndex] = playerId ? String(playerId) : "";
       // Keep positional slots (mixed: index0=male, index1=female). Do not compact.
       next[disciplineId] = slots;
-      logTt412LineupForm(TT412_LINEUP_SELECT_CHANGE, {
-        tournamentId,
-        matchupId: matchup.id,
-        teamId: team.id,
-        slotId: `${disciplineId}:${slotIndex}`,
-        selectedValue: playerId ? String(playerId) : "",
-        dirtyAfter: true,
-      });
       return next;
     });
     setDirty(true);
@@ -429,27 +392,6 @@ function MatchupLineupCard({
     setError("");
     setMessage("");
 
-    const debugOn = typeof window !== "undefined"
-      && new URLSearchParams(window.location.search).get("ttLineupDebug") === "1";
-    if (debugOn) {
-      beginLineupValidationProbe({ focusAthleteId: TT412_F04_ATHLETE_ID });
-      recordCaptainLineupSaveBoundary({
-        ...buildPreValidationSnapshot({
-          action: "saveDraft",
-          team,
-          teamId: team.id,
-          selections,
-          validationPlayers: lineupPlayers,
-          focusAthleteId: TT412_F04_ATHLETE_ID,
-        }),
-        CLIENT_VALIDATION_CALLED: true,
-        MUTATION_CALLED: false,
-        MUTATION_METHOD: null,
-        MUTATION_OK: null,
-        MUTATION_CODE: null,
-        MUTATION_ERROR: null,
-      });
-    }
 
     const draftCheck = validateLineupSelections({
       teamData,
@@ -461,21 +403,6 @@ function MatchupLineupCard({
       requireCaptainPortalRoster: true,
     });
 
-    if (debugOn) {
-      const probe = endLineupValidationProbe();
-      recordCaptainLineupSaveBoundary({
-        CLIENT_VALIDATION_CALLED: true,
-        CLIENT_VALIDATION_OK: draftCheck.ok === true,
-        CLIENT_VALIDATION_CODE: draftCheck.validation?.code || draftCheck.code || null,
-        CLIENT_VALIDATION_ERROR: draftCheck.ok
-          ? null
-          : draftCheck.errors?.join(" ") || draftCheck.error || null,
-        ...(probe?.focus || {}),
-        MUTATION_CALLED: draftCheck.ok === true,
-        MUTATION_METHOD: draftCheck.ok === true ? "saveDraftLineup" : null,
-      });
-      if (typeof onSaveBoundaryDebug === "function") onSaveBoundaryDebug();
-    }
 
     if (!draftCheck.ok) {
       setError(draftCheck.errors.join(" "));
@@ -495,27 +422,8 @@ function MatchupLineupCard({
       expectedVersion: resolveLineupExpectedVersion(ownLineup),
     });
 
-    if (debugOn) {
-      recordCaptainLineupSaveBoundary({
-        MUTATION_CALLED: true,
-        MUTATION_METHOD: "saveDraftLineup",
-        MUTATION_OK: result.ok === true,
-        MUTATION_CODE: result.ok ? null : result.code || null,
-        MUTATION_ERROR: result.ok ? null : result.error || null,
-      });
-      if (typeof onSaveBoundaryDebug === "function") onSaveBoundaryDebug();
-    }
 
     setBusy(false);
-    logTt412LineupForm(TT412_LINEUP_SAVE_RESULT, {
-      ok: result.ok === true,
-      matchupId: matchup.id,
-      teamId: team.id,
-      status: result.teamData
-        ? getLineup(result.teamData, matchup.id, team.id)?.status
-        : result.code || null,
-      errorCode: result.ok ? null : result.code || null,
-    });
 
     if (!result.ok) {
       setError(result.error || "Không lưu được nháp.");
@@ -537,27 +445,6 @@ function MatchupLineupCard({
     setError("");
     setMessage("");
 
-    const debugOn = typeof window !== "undefined"
-      && new URLSearchParams(window.location.search).get("ttLineupDebug") === "1";
-    if (debugOn) {
-      beginLineupValidationProbe({ focusAthleteId: TT412_F04_ATHLETE_ID });
-      recordCaptainLineupSaveBoundary({
-        ...buildPreValidationSnapshot({
-          action: "submit",
-          team,
-          teamId: team.id,
-          selections,
-          validationPlayers: lineupPlayers,
-          focusAthleteId: TT412_F04_ATHLETE_ID,
-        }),
-        CLIENT_VALIDATION_CALLED: true,
-        MUTATION_CALLED: false,
-        MUTATION_METHOD: null,
-        MUTATION_OK: null,
-        MUTATION_CODE: null,
-        MUTATION_ERROR: null,
-      });
-    }
 
     const validation = validateLineupSelections({
       teamData,
@@ -568,21 +455,6 @@ function MatchupLineupCard({
       requireCaptainPortalRoster: true,
     });
 
-    if (debugOn) {
-      const probe = endLineupValidationProbe();
-      recordCaptainLineupSaveBoundary({
-        CLIENT_VALIDATION_CALLED: true,
-        CLIENT_VALIDATION_OK: validation.ok === true,
-        CLIENT_VALIDATION_CODE: validation.validation?.code || validation.code || null,
-        CLIENT_VALIDATION_ERROR: validation.ok
-          ? null
-          : validation.errors?.join(" ") || validation.error || null,
-        ...(probe?.focus || {}),
-        MUTATION_CALLED: validation.ok === true,
-        MUTATION_METHOD: validation.ok === true ? "submitLineup" : null,
-      });
-      if (typeof onSaveBoundaryDebug === "function") onSaveBoundaryDebug();
-    }
 
     if (!validation.ok) {
       setError(validation.errors.join(" "));
@@ -602,27 +474,8 @@ function MatchupLineupCard({
       expectedVersion: resolveLineupExpectedVersion(ownLineup),
     });
 
-    if (debugOn) {
-      recordCaptainLineupSaveBoundary({
-        MUTATION_CALLED: true,
-        MUTATION_METHOD: "submitLineup",
-        MUTATION_OK: result.ok === true,
-        MUTATION_CODE: result.ok ? null : result.code || null,
-        MUTATION_ERROR: result.ok ? null : result.error || null,
-      });
-      if (typeof onSaveBoundaryDebug === "function") onSaveBoundaryDebug();
-    }
 
     setBusy(false);
-    logTt412LineupForm(TT412_LINEUP_SUBMIT_RESULT, {
-      ok: result.ok === true,
-      matchupId: matchup.id,
-      teamId: team.id,
-      status: result.teamData
-        ? getLineup(result.teamData, matchup.id, team.id)?.status
-        : result.code || null,
-      errorCode: result.ok ? null : result.code || null,
-    });
 
     if (!result.ok) {
       setError(result.error || "Không nộp được đội hình.");
@@ -954,7 +807,6 @@ export default function TeamPortal() {
   const lineupTeam = lineupRuntime.team || access.captainTeam;
   const lineupPlayers = lineupRuntime.athletePool;
   const portalRosterReady = lineupRuntime.authority === CAPTAIN_PORTAL_SCOPED_ROSTER;
-  const lineupDebug = searchParams.get("ttLineupDebug") === "1";
 
   const athletePool = useTeamTournamentAthletePool({
     tournament,
@@ -975,8 +827,6 @@ export default function TeamPortal() {
 
   const [subMessage, setSubMessage] = useState(null);
   const [subError, setSubError] = useState(null);
-  const [saveBoundaryTick, setSaveBoundaryTick] = useState(0);
-  const saveBoundary = saveBoundaryTick >= 0 ? getCaptainLineupSaveBoundary() : null;
 
   const matchups = useMemo(() => {
     if (!access.captainTeam) {
@@ -1077,11 +927,6 @@ export default function TeamPortal() {
       loadErrorCode === "NOT_AUTHENTICATED" ||
       loadErrorCode === "IDENTITY_UNPROVEN";
 
-    logTt412CaptainAccess(TT412_CAPTAIN_PORTAL_GATE, {
-      source: "loadError",
-      code: loadErrorCode || null,
-      allowed: false,
-    });
 
     if (isCaptainGate) {
       return (
@@ -1123,11 +968,6 @@ export default function TeamPortal() {
   }
 
   if (!access.allowed) {
-    logTt412CaptainAccess(TT412_CAPTAIN_PORTAL_GATE, {
-      source: "clientGate",
-      code: access.code || null,
-      allowed: false,
-    });
     return (
       <Box sx={{ p: 3, maxWidth: 480 }}>
         <Stack spacing={2}>
@@ -1162,7 +1002,6 @@ export default function TeamPortal() {
     isCloudPrimary,
     serverClock,
     onSaved: handleDeadlineElapsed,
-    onSaveBoundaryDebug: () => setSaveBoundaryTick((n) => n + 1),
   };
 
   return (
@@ -1215,63 +1054,6 @@ export default function TeamPortal() {
           isCloudPrimary={isCloudPrimary}
         />
 
-        {lineupDebug ? (
-          <Alert severity="info">
-            <Typography variant="subtitle2" fontWeight={700}>
-              ttLineupDebug authority={lineupRuntime.authority}
-            </Typography>
-            <Typography variant="body2" component="pre" sx={{ whiteSpace: "pre-wrap", m: 0 }}>
-              {JSON.stringify(
-                {
-                  teamId: lineupTeam?.id || null,
-                  authority: lineupRuntime.authority,
-                  rulesV2: String(searchParams.get("rulesV2") || "env"),
-                  athletes: (lineupPlayers || []).map((row) => ({
-                    athleteId: row.athleteId || row.id || null,
-                    displayName: row.displayName || row.name || null,
-                    gender: row.gender || null,
-                    genderSource: row.genderSource || null,
-                    eligible: Boolean(row.gender === "male" || row.gender === "female"),
-                  })),
-                  saveBoundary: saveBoundary
-                    ? {
-                        LAST_ACTION: saveBoundary.LAST_ACTION || null,
-                        CLIENT_VALIDATION_CALLED: saveBoundary.CLIENT_VALIDATION_CALLED ?? null,
-                        CLIENT_VALIDATION_OK: saveBoundary.CLIENT_VALIDATION_OK ?? null,
-                        CLIENT_VALIDATION_CODE: saveBoundary.CLIENT_VALIDATION_CODE || null,
-                        CLIENT_VALIDATION_ERROR: saveBoundary.CLIENT_VALIDATION_ERROR || null,
-                        MUTATION_CALLED: saveBoundary.MUTATION_CALLED ?? null,
-                        MUTATION_METHOD: saveBoundary.MUTATION_METHOD || null,
-                        MUTATION_OK: saveBoundary.MUTATION_OK ?? null,
-                        MUTATION_CODE: saveBoundary.MUTATION_CODE || null,
-                        MUTATION_ERROR: saveBoundary.MUTATION_ERROR || null,
-                        TEAM_ID: saveBoundary.TEAM_ID || null,
-                        TEAM_PLAYER_IDS: saveBoundary.TEAM_PLAYER_IDS || [],
-                        SELECTIONS: saveBoundary.SELECTIONS || {},
-                        VALIDATION_PLAYERS: saveBoundary.VALIDATION_PLAYERS || [],
-                        F04_SELECTED_ID: saveBoundary.F04_SELECTED_ID || null,
-                        F04_VALIDATION_PLAYER_FOUND:
-                          saveBoundary.F04_VALIDATION_PLAYER_FOUND ?? null,
-                        F04_VALIDATION_PLAYER_GENDER:
-                          saveBoundary.F04_VALIDATION_PLAYER_GENDER ?? null,
-                        F04_VALIDATION_GENDER_SOURCE:
-                          saveBoundary.F04_VALIDATION_GENDER_SOURCE || null,
-                        F04_PLAYERMAP_FOUND: saveBoundary.F04_PLAYERMAP_FOUND ?? null,
-                        F04_PLAYERMAP_ID: saveBoundary.F04_PLAYERMAP_ID || null,
-                        F04_PLAYERMAP_ATHLETE_ID: saveBoundary.F04_PLAYERMAP_ATHLETE_ID || null,
-                        F04_PLAYERMAP_GENDER: saveBoundary.F04_PLAYERMAP_GENDER ?? null,
-                        F04_PLAYERMAP_DISPLAY_NAME:
-                          saveBoundary.F04_PLAYERMAP_DISPLAY_NAME || null,
-                        F04_FINAL_GENDER_KEY: saveBoundary.F04_FINAL_GENDER_KEY ?? null,
-                      }
-                    : null,
-                },
-                null,
-                2
-              )}
-            </Typography>
-          </Alert>
-        ) : null}
 
         {access.captainTeam ? (
           <>

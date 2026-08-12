@@ -160,8 +160,9 @@ describe("TT412 captain lineup form dirty state", () => {
       src,
       /setSelections\(buildInitialSelections\([\s\S]*?\),\s*\[teamData,\s*matchup\.id,\s*team\.id,\s*ownLineup\?\.status,\s*dataVersion\]/
     );
-    assert.match(src, /TT412_LINEUP_SELECT_CHANGE/);
-    assert.match(src, /TT412_LINEUP_REHYDRATE_DECISION/);
+    assert.doesNotMatch(src, /TT412_LINEUP_SELECT_CHANGE/);
+    assert.doesNotMatch(src, /TT412_LINEUP_REHYDRATE_DECISION/);
+    assert.doesNotMatch(src, /ttLineupDebug/);
     assert.doesNotMatch(src, /localStorage/);
   });
 

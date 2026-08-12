@@ -30,7 +30,6 @@ import {
   resolveRosterMemberIdentity,
 } from "./teamRosterHydration.js";
 import { resolveCaptainLineupAthletePool } from "./captainPortalRosterProjection.js";
-import { notePlayerMapLookup } from "../diagnostics/captainLineupSaveBoundaryDiagnostics.js";
 
 function resolvePortalScopedLineupPlayers(args = {}) {
   return resolveCaptainLineupAthletePool({
@@ -104,7 +103,6 @@ function playerMap(players = []) {
         exactHit
       );
       if (!athlete) {
-        notePlayerMapLookup(key, undefined);
         return undefined;
       }
       const row = asLineupPlayerRow(
@@ -120,7 +118,6 @@ function playerMap(players = []) {
         },
         key
       );
-      notePlayerMapLookup(key, row);
       return row;
     },
   };

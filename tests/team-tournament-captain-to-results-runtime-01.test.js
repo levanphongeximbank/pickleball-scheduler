@@ -364,7 +364,7 @@ describe("captain-to-results runtime authority", () => {
     assert.equal(result.validation?.code, LINEUP_VALIDATION_CODE.CAPTAIN_ROSTER_UNAVAILABLE);
   });
 
-  it("source contracts: one lineup runtime + debug flag + no club pool on lineup cards", () => {
+  it("source contracts: one lineup runtime + no temp debug + no club pool on lineup cards", () => {
     const src = readFileSync(join(root, "src/pages/tournament/TeamPortal.jsx"), "utf8");
     const validatorSrc = readFileSync(
       join(root, "src/features/team-tournament/engines/lineupValidationEngine.js"),
@@ -375,9 +375,10 @@ describe("captain-to-results runtime authority", () => {
       "utf8"
     );
     assert.match(src, /buildCaptainLineupRuntime/);
-    assert.match(src, /ttLineupDebug/);
-    assert.match(src, /saveBoundary/);
-    assert.match(src, /beginLineupValidationProbe/);
+    assert.doesNotMatch(src, /ttLineupDebug/);
+    assert.doesNotMatch(src, /saveBoundary/);
+    assert.doesNotMatch(src, /beginLineupValidationProbe/);
+    assert.doesNotMatch(src, /captainLineupSaveBoundaryDiagnostics/);
     assert.match(src, /players=\{lineupPlayers\}/);
     assert.match(src, /pageMode:\s*"captainPortal"/);
     assert.match(src, /CAPTAIN_ROSTER_UNAVAILABLE/);

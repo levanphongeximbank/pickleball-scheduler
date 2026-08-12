@@ -220,7 +220,8 @@ describe("team-tournament-lineup-server-gender-canonical-01", () => {
     assert.match(cloud, /saveDraftLineup/);
     assert.match(cloud, /submitLineup/);
     const portal = readFileSync(join(root, "src/pages/tournament/TeamPortal.jsx"), "utf8");
-    assert.match(portal, /ttLineupDebug/);
-    assert.match(portal, /saveBoundary/);
+    assert.doesNotMatch(portal, /ttLineupDebug/);
+    assert.doesNotMatch(portal, /saveBoundary/);
+    assert.doesNotMatch(portal, /captainLineupSaveBoundaryDiagnostics/);
   });
 });

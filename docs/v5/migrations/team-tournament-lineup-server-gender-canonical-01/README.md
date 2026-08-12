@@ -4,7 +4,7 @@ LOCAL PACKAGE ONLY. Do **not** apply to Staging or Production without Owner GO.
 
 ## Why
 
-Owner real-browser `?ttLineupDebug=1` Save Draft proved:
+Owner real-browser Save Draft proved:
 
 | Boundary | Result |
 |----------|--------|
@@ -57,4 +57,4 @@ Rollback: `04_ROLLBACK.sql` restores exact pre-apply bodies.
 - No fixture mutation in APPLY
 - No Production apply
 - No captain portal / client roster changes
-- Temp `ttLineupDebug` retained until Owner PASS
+- Temporary `?ttLineupDebug=1` Save/Submit boundary panel removed pre-merge (PR #418 hygiene)
