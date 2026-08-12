@@ -330,6 +330,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       commandOptions,
       actionScope,
       expectedVersion,
+      readOptions = {},
     }) {
       const scope = actionScope || buildUiCommandScope(method, tournamentId, payload.matchupId || "");
       const idempotencyKey =
@@ -368,7 +369,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         const mirrorMeta = await maybeMirrorAfterCloudSuccess(clubId, mode, repo, tournamentId);
         endUiCommandKey(scope);
 
-        const reload = await this.loadTournament(clubId, tournamentId);
+        const reload = await this.loadTournament(clubId, tournamentId, readOptions || {});
         return {
           ok: true,
           version: result.version ?? reload.version,

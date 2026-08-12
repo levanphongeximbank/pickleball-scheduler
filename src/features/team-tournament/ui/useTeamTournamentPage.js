@@ -440,6 +440,7 @@ export function useTeamTournamentPage({
           commandOptions,
           actionScope,
           expectedVersion: expectedVersion ?? version,
+          readOptions: pageMode ? { pageMode: String(pageMode) } : {},
         });
 
         if (result.isVersionConflict) {
@@ -450,7 +451,9 @@ export function useTeamTournamentPage({
 
         if (result.ok) {
           setVersionConflict(false);
-          if (result.tournament) {
+          if (pageMode) {
+            await refreshAfterMutation({ reason: `mutation:${method}` });
+          } else if (result.tournament) {
             commitCanonicalSetupLoad(
               refreshControllerRef.current,
               applyLoadResult,
@@ -466,7 +469,7 @@ export function useTeamTournamentPage({
         refreshControllerRef.current.endMutationBarrier();
       }
     },
-    [applyLoadResult, clubId, orchestrator, refreshAfterMutation, tournamentId, version]
+    [applyLoadResult, clubId, orchestrator, pageMode, refreshAfterMutation, tournamentId, version]
   );
 
   const patchTeamData = useCallback(
@@ -497,17 +500,21 @@ export function useTeamTournamentPage({
           ...options,
         });
         if (result.ok) {
-          const loaded = result.tournament
-            ? result
-            : await loadCanonicalSetup({ schemaVersion: 7 });
-          if (loaded.ok) {
-            commitCanonicalSetupLoad(
-              refreshControllerRef.current,
-              applyLoadResult,
-              loaded
-            );
-          } else {
+          if (pageMode) {
             await refreshAfterMutation({ reason: "persist_setup_readback" });
+          } else {
+            const loaded = result.tournament
+              ? result
+              : await loadCanonicalSetup({ schemaVersion: 7 });
+            if (loaded.ok) {
+              commitCanonicalSetupLoad(
+                refreshControllerRef.current,
+                applyLoadResult,
+                loaded
+              );
+            } else {
+              await refreshAfterMutation({ reason: "persist_setup_readback" });
+            }
           }
         }
         return result;
@@ -520,6 +527,7 @@ export function useTeamTournamentPage({
       clubId,
       loadCanonicalSetup,
       orchestrator,
+      pageMode,
       refreshAfterMutation,
       teamData,
       tournament,
@@ -548,17 +556,21 @@ export function useTeamTournamentPage({
           return result;
         }
         if (result.ok) {
-          const loaded = result.tournament
-            ? result
-            : await loadCanonicalSetup({ schemaVersion: 7 });
-          if (loaded.ok) {
-            commitCanonicalSetupLoad(
-              refreshControllerRef.current,
-              applyLoadResult,
-              loaded
-            );
-          } else {
+          if (pageMode) {
             await refreshAfterMutation({ reason: "save_draft_readback" });
+          } else {
+            const loaded = result.tournament
+              ? result
+              : await loadCanonicalSetup({ schemaVersion: 7 });
+            if (loaded.ok) {
+              commitCanonicalSetupLoad(
+                refreshControllerRef.current,
+                applyLoadResult,
+                loaded
+              );
+            } else {
+              await refreshAfterMutation({ reason: "save_draft_readback" });
+            }
           }
         }
         return result;
@@ -572,6 +584,7 @@ export function useTeamTournamentPage({
       clubId,
       loadCanonicalSetup,
       orchestrator,
+      pageMode,
       refreshAfterMutation,
       teamData,
       tournament,
@@ -605,17 +618,21 @@ export function useTeamTournamentPage({
           return result;
         }
         if (result.ok) {
-          const loaded = result.tournament
-            ? result
-            : await loadCanonicalSetup({ schemaVersion: 7 });
-          if (loaded.ok) {
-            commitCanonicalSetupLoad(
-              refreshControllerRef.current,
-              applyLoadResult,
-              loaded
-            );
-          } else {
+          if (pageMode) {
             await refreshAfterMutation({ reason: "format_venue_readback" });
+          } else {
+            const loaded = result.tournament
+              ? result
+              : await loadCanonicalSetup({ schemaVersion: 7 });
+            if (loaded.ok) {
+              commitCanonicalSetupLoad(
+                refreshControllerRef.current,
+                applyLoadResult,
+                loaded
+              );
+            } else {
+              await refreshAfterMutation({ reason: "format_venue_readback" });
+            }
           }
         }
         return result;
@@ -629,6 +646,7 @@ export function useTeamTournamentPage({
       clubId,
       loadCanonicalSetup,
       orchestrator,
+      pageMode,
       refreshAfterMutation,
       teamData,
       tournament,

@@ -7,16 +7,37 @@
 export const CAPTAIN_PORTAL_SCOPED_ROSTER = "CAPTAIN_PORTAL_SCOPED_ROSTER";
 
 /**
+ * Accept array or JSON-string rosterAthletes (PostgREST/json nesting).
+ * @param {unknown} raw
+ * @returns {object[]}
+ */
+export function parseCaptainPortalRosterAthletes(raw) {
+  if (Array.isArray(raw)) {
+    return raw;
+  }
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/**
  * @param {unknown} raw
  * @returns {{ athleteId: string, displayName: string, gender: string|null }[]}
  */
 export function normalizeCaptainPortalRosterAthletes(raw = []) {
-  if (!Array.isArray(raw)) {
+  const rows = parseCaptainPortalRosterAthletes(raw);
+  if (!Array.isArray(rows) || rows.length === 0) {
     return [];
   }
 
   const out = [];
-  for (const row of raw) {
+  for (const row of rows) {
     if (!row || typeof row !== "object") continue;
     const athleteId = String(
       row.athleteId || row.athlete_id || row.id || ""
@@ -65,11 +86,55 @@ export function projectCaptainPortalRosterPlayers(rosterAthletes = []) {
  * @returns {object[]}
  */
 export function resolveCaptainLineupAthletePool({ team = null, clubPlayers = [] } = {}) {
-  const portal = projectCaptainPortalRosterPlayers(team?.rosterAthletes);
+  const portal = projectCaptainPortalRosterPlayers(
+    team?.rosterAthletes || team?.roster_athletes
+  );
   if (portal.length > 0) {
     return portal;
   }
   return Array.isArray(clubPlayers) ? clubPlayers : [];
+}
+
+/**
+ * Overlay scoped portal gender/name onto a club athlete pool.
+ * Portal fields win. Used by hydrateTeamRoster so options/validation
+ * stay fail-closed on unknown gender without profiles RLS repair.
+ * @param {object|null|undefined} team
+ * @param {object[]} athletePool
+ * @returns {object[]}
+ */
+export function overlayCaptainPortalRosterOnPool(team = null, athletePool = []) {
+  const portal = projectCaptainPortalRosterPlayers(
+    team?.rosterAthletes || team?.roster_athletes
+  );
+  if (portal.length === 0) {
+    return Array.isArray(athletePool) ? athletePool : [];
+  }
+
+  const byId = new Map();
+  for (const row of athletePool || []) {
+    if (!row || typeof row !== "object") continue;
+    const id = String(
+      row.athleteId || row.pairingIdentityId || row.id || ""
+    ).trim();
+    if (!id) continue;
+    byId.set(id, row);
+  }
+  for (const row of portal) {
+    const existing = byId.get(row.athleteId) || {};
+    byId.set(row.athleteId, {
+      ...existing,
+      ...row,
+      id: existing.id || row.id,
+      athleteId: row.athleteId,
+      name: row.name || existing.name || existing.displayName || row.displayName,
+      displayName:
+        row.displayName || existing.displayName || existing.name || row.name,
+      gender: row.gender ?? existing.gender ?? null,
+      genderSource: row.genderSource || existing.genderSource || CAPTAIN_PORTAL_SCOPED_ROSTER,
+    });
+  }
+  return [...byId.values()];
 }
 
 /**

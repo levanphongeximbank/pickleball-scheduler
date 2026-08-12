@@ -29,6 +29,7 @@ import {
   buildRosterAthleteIndex,
   resolveRosterMemberIdentity,
 } from "./teamRosterHydration.js";
+import { resolveCaptainLineupAthletePool } from "./captainPortalRosterProjection.js";
 
 function playerMap(players = []) {
   const exact = new Map(
@@ -452,6 +453,10 @@ function validateLineupSelectionsStructuredLegacy({
   const invalidDisciplineIds = [];
   const warnings = [];
   const lineupDisciplines = getActiveMatchDisciplines(effectiveTeamData.disciplines || []);
+  const scopedPlayers = resolveCaptainLineupAthletePool({
+    team,
+    clubPlayers: players,
+  });
 
   for (const discipline of lineupDisciplines) {
     if (!discipline?.id) {
@@ -462,7 +467,7 @@ function validateLineupSelectionsStructuredLegacy({
       team,
       discipline,
       playerIds,
-      players,
+      players: scopedPlayers,
       usedPlayerIds,
       allowReuse,
       partial,
