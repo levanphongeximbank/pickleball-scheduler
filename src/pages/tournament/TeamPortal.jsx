@@ -344,9 +344,18 @@ function MatchupLineupCard({
   }, [getVisibleLineups, matchup.id, useCloudVisibleLineups, dataVersion]);
 
   const allowReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
+  const rosterSignature = (team?.rosterAthletes || [])
+    .map((row) => `${row?.athleteId || ""}:${row?.gender || ""}`)
+    .join("|");
   const lineupPlayers = useMemo(
-    () => resolveCaptainLineupAthletePool({ team, clubPlayers: players }),
-    [team, players]
+    () =>
+      resolveCaptainLineupAthletePool({
+        team,
+        teamData,
+        teamId: team?.id,
+        clubPlayers: players,
+      }),
+    [team, teamData, team?.id, players, rosterSignature]
   );
   const hydratedTeam = useMemo(
     () => hydratePortalTeamRoster(team, lineupPlayers),
@@ -405,6 +414,7 @@ function MatchupLineupCard({
 
     const draftCheck = validateLineupSelections({
       teamData,
+      team,
       teamId: team.id,
       selections,
       players: lineupPlayers,
@@ -462,6 +472,7 @@ function MatchupLineupCard({
 
     const validation = validateLineupSelections({
       teamData,
+      team,
       teamId: team.id,
       selections,
       players: lineupPlayers,

@@ -31,29 +31,67 @@ import {
 } from "./teamRosterHydration.js";
 import { resolveCaptainLineupAthletePool } from "./captainPortalRosterProjection.js";
 
+function asLineupPlayerRow(player, key) {
+  if (!player || typeof player !== "object") return undefined;
+  return {
+    ...player,
+    id: key || player.id || player.athleteId,
+    athleteId: player.athleteId || player.pairingIdentityId || player.id || key || null,
+    name: player.name || player.displayName || player.athleteId || key || "",
+    displayName: player.displayName || player.name || "",
+    gender: player.gender ?? player.sex ?? player.gioiTinh ?? player.gioi_tinh ?? null,
+  };
+}
+
+function preferGenderedAthlete(primary, secondary) {
+  if (primary && (getPlayerGenderKey(primary) === "male" || getPlayerGenderKey(primary) === "female")) {
+    return primary;
+  }
+  if (
+    secondary &&
+    (getPlayerGenderKey(secondary) === "male" || getPlayerGenderKey(secondary) === "female")
+  ) {
+    return secondary;
+  }
+  return primary || secondary || null;
+}
+
 function playerMap(players = []) {
-  const exact = new Map(
-    (players || []).map((player) => [String(player.id), player])
-  );
+  const exact = new Map();
+  for (const player of players || []) {
+    if (!player || typeof player !== "object") continue;
+    const id = String(player.id || "").trim();
+    const athleteId = String(player.athleteId || player.pairingIdentityId || "").trim();
+    if (id) exact.set(id, preferGenderedAthlete(exact.get(id), player) || player);
+    if (athleteId) {
+      exact.set(athleteId, preferGenderedAthlete(exact.get(athleteId), player) || player);
+    }
+  }
   const index = buildRosterAthleteIndex(players);
   return {
     get(id) {
       const key = String(id || "").trim();
       if (!key) return undefined;
-      if (exact.has(key)) return exact.get(key);
       const resolved = resolveRosterMemberIdentity(key, index);
-      if (resolved.ok && resolved.athlete) {
-        return {
-          ...resolved.athlete,
+      const exactHit = exact.get(key);
+      const athlete = preferGenderedAthlete(
+        resolved.ok ? resolved.athlete : null,
+        exactHit
+      );
+      if (!athlete) return undefined;
+      return asLineupPlayerRow(
+        {
+          ...(exactHit || {}),
+          ...athlete,
           id: key,
-          athleteId: resolved.athleteId,
-          name:
-            resolved.athlete.name ||
-            resolved.athlete.displayName ||
-            resolved.athleteId,
-        };
-      }
-      return undefined;
+          athleteId:
+            resolved.athleteId ||
+            athlete.athleteId ||
+            athlete.pairingIdentityId ||
+            key,
+        },
+        key
+      );
     },
   };
 }
@@ -84,18 +122,18 @@ function validateGenderRequirement(playerIds, playersById, requirement) {
   }
 
   for (const player of members) {
-    const genderKey = getPlayerGenderKey(player.gender);
+    const genderKey = getPlayerGenderKey(player);
     if (genderKey !== "male" && genderKey !== "female") {
       return {
         code: LINEUP_VALIDATION_CODE.INVALID_GENDER,
-        message: `VĐV ${player.name || player.id} thiếu hoặc có giới tính không hợp lệ.`,
+        message: `VĐV ${player.name || player.displayName || player.id} thiếu hoặc có giới tính không hợp lệ.`,
         invalidPlayerIds: [String(player.id)],
       };
     }
   }
 
   if (requirement === GENDER_REQUIREMENT.MALE) {
-    const invalid = members.filter((player) => getPlayerGenderKey(player.gender) !== "male");
+    const invalid = members.filter((player) => getPlayerGenderKey(player) !== "male");
     return invalid.length === 0
       ? null
       : {
@@ -106,7 +144,7 @@ function validateGenderRequirement(playerIds, playersById, requirement) {
   }
 
   if (requirement === GENDER_REQUIREMENT.FEMALE) {
-    const invalid = members.filter((player) => getPlayerGenderKey(player.gender) !== "female");
+    const invalid = members.filter((player) => getPlayerGenderKey(player) !== "female");
     return invalid.length === 0
       ? null
       : {
@@ -117,8 +155,8 @@ function validateGenderRequirement(playerIds, playersById, requirement) {
   }
 
   if (requirement === GENDER_REQUIREMENT.MIXED_PAIR) {
-    const males = members.filter((player) => getPlayerGenderKey(player.gender) === "male");
-    const females = members.filter((player) => getPlayerGenderKey(player.gender) === "female");
+    const males = members.filter((player) => getPlayerGenderKey(player) === "male");
+    const females = members.filter((player) => getPlayerGenderKey(player) === "female");
     return members.length === 2 && males.length === 1 && females.length === 1
       ? null
       : {
@@ -419,7 +457,7 @@ export function validateLineupSelectionsStructured(args) {
     const bridge = evaluateLegacyTeamLineupValidation(
       {
         ...args,
-        team: findTeam(args.teamData, args.teamId),
+        team: args.team || findTeam(args.teamData, args.teamId),
         legacyEvaluate: () => validateLineupSelectionsStructuredLegacy(args),
       },
       { envSource: args.envSource }
@@ -432,6 +470,7 @@ export function validateLineupSelectionsStructured(args) {
 function validateLineupSelectionsStructuredLegacy({
   teamData,
   teamId,
+  team: teamHint = null,
   selections = {},
   players = [],
   partial = false,
@@ -439,7 +478,7 @@ function validateLineupSelectionsStructuredLegacy({
   lineupVersion = null,
 }) {
   const effectiveTeamData = applyCanonicalMlpDisciplineMetadata(teamData) || teamData;
-  const team = findTeam(effectiveTeamData, teamId);
+  const team = findTeam(effectiveTeamData, teamId) || teamHint;
   if (!team) {
     return validationFailure(LINEUP_VALIDATION_CODE.VALIDATION, "Không tìm thấy đội.");
   }
@@ -454,7 +493,9 @@ function validateLineupSelectionsStructuredLegacy({
   const warnings = [];
   const lineupDisciplines = getActiveMatchDisciplines(effectiveTeamData.disciplines || []);
   const scopedPlayers = resolveCaptainLineupAthletePool({
-    team,
+    team: teamHint || team,
+    teamData: effectiveTeamData,
+    teamId,
     clubPlayers: players,
   });
 
@@ -591,7 +632,7 @@ export function filterEligiblePlayersForDiscipline({
       return false;
     })
     .filter((player) => {
-      const genderKey = getPlayerGenderKey(player.gender);
+      const genderKey = getPlayerGenderKey(player);
       if (slotGate) {
         return genderKey === slotGate;
       }

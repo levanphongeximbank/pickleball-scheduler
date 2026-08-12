@@ -18,6 +18,7 @@ import { useTeamTournamentRealtime } from "./useTeamTournamentRealtime.js";
 import {
   computeTournamentRosterSetupSignature,
 } from "../engines/teamRosterHydrationCache.js";
+import { preserveCaptainPortalRosterAthletes } from "../engines/captainPortalRosterProjection.js";
 import { logTeamRosterHydrationTransition } from "../engines/teamRosterHydrationDiagnostics.js";
 import { isSetupMutationFoundationEnabled } from "../setup/setupMutationFeatureGate.js";
 import {
@@ -105,6 +106,9 @@ export function useTeamTournamentPage({
   const [setupMutationStatus, setSetupMutationStatus] = useState("idle");
   const [latestTournamentVersion, setLatestTournamentVersion] = useState(1);
   const rosterSignatureRef = useRef("");
+  const teamDataRef = useRef(null);
+  const pageModeRef = useRef(pageMode);
+  pageModeRef.current = pageMode;
   const pollRef = useRef(null);
   const loadingRef = useRef(false);
   const reloadFnRef = useRef(null);
@@ -115,6 +119,7 @@ export function useTeamTournamentPage({
       setError(result.error || "Không tải được giải.");
       setErrorCode(result.code || null);
       setTournament(null);
+      teamDataRef.current = null;
       setTeamData(null);
       setAggregate(null);
       setServerTime(null);
@@ -148,11 +153,15 @@ export function useTeamTournamentPage({
 
     const rawTeamData = result.teamData || result.aggregate?.teamData;
     const mode = orchestrator.getMode?.() || orchestrator.mode;
-    const synced = rawTeamData
+    let synced = rawTeamData
       ? isCloudPrimaryMode(mode)
         ? attachPersistedDreambreakerProjection(rawTeamData)
         : syncDreambreakerForAllMatchups(rawTeamData).teamData
       : null;
+    if (String(pageModeRef.current || "") === "captainPortal" && synced) {
+      synced = preserveCaptainPortalRosterAthletes(teamDataRef.current, synced);
+    }
+    teamDataRef.current = synced;
 
     const nextRosterSignature = computeTournamentRosterSetupSignature(synced);
     const rosterChanged = nextRosterSignature !== rosterSignatureRef.current;

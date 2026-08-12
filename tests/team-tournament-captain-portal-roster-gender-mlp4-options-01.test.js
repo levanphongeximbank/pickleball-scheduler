@@ -314,6 +314,8 @@ describe("TT412 captain portal roster gender + MLP4 options", () => {
     assert.match(src, /decideLineupFormRehydration/);
     assert.match(src, /resolveCaptainLineupAthletePool/);
     assert.match(src, /filterEligiblePlayersForLineupSlot/);
+    assert.match(src, /players:\s*lineupPlayers/);
+    assert.match(src, /team,\s*\n\s*teamId:\s*team\.id/);
     assert.doesNotMatch(src, /localStorage/);
   });
 

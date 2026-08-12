@@ -4,7 +4,14 @@
  * not from profiles RLS (PLAYER self-only).
  */
 
+import { getPlayerGenderKey } from "../../../models/player.js";
+
 export const CAPTAIN_PORTAL_SCOPED_ROSTER = "CAPTAIN_PORTAL_SCOPED_ROSTER";
+
+function hasCanonicalBinaryGender(value) {
+  const key = getPlayerGenderKey(value);
+  return key === "male" || key === "female";
+}
 
 /**
  * Accept array or JSON-string rosterAthletes (PostgREST/json nesting).
@@ -80,19 +87,103 @@ export function projectCaptainPortalRosterPlayers(rosterAthletes = []) {
   }));
 }
 
-/**
- * Prefer portal scoped roster when present; never call profiles to repair gender.
- * @param {{ team?: object|null, clubPlayers?: object[] }} args
- * @returns {object[]}
- */
-export function resolveCaptainLineupAthletePool({ team = null, clubPlayers = [] } = {}) {
-  const portal = projectCaptainPortalRosterPlayers(
+function rosterRowsOf(team) {
+  return normalizeCaptainPortalRosterAthletes(
     team?.rosterAthletes || team?.roster_athletes
   );
+}
+
+function pickRosterTeam(team, dataTeam) {
+  if (rosterRowsOf(team).length > 0) return team;
+  if (rosterRowsOf(dataTeam).length > 0) return dataTeam;
+  return team || dataTeam || null;
+}
+
+/**
+ * Prefer portal scoped roster when present; never call profiles to repair gender.
+ * Looks at card `team` AND `teamData.teams[teamId]` so options and validator
+ * cannot diverge after poll/get_setup/applyCanonical copies.
+ * @param {{
+ *   team?: object|null,
+ *   teamData?: object|null,
+ *   teamId?: string|null,
+ *   clubPlayers?: object[],
+ * }} args
+ * @returns {object[]}
+ */
+export function resolveCaptainLineupAthletePool({
+  team = null,
+  teamData = null,
+  teamId = null,
+  clubPlayers = [],
+} = {}) {
+  const id = String(teamId || team?.id || "").trim();
+  const dataTeam =
+    teamData && id
+      ? (teamData.teams || []).find((row) => String(row?.id || "") === id) || null
+      : null;
+  const rosterTeam = pickRosterTeam(team, dataTeam);
+  const portal = projectCaptainPortalRosterPlayers(
+    rosterTeam?.rosterAthletes || rosterTeam?.roster_athletes
+  );
   if (portal.length > 0) {
-    return portal;
+    return overlayCaptainPortalRosterOnPool(
+      rosterTeam,
+      Array.isArray(clubPlayers) && clubPlayers.length > 0 ? clubPlayers : portal
+    );
   }
   return Array.isArray(clubPlayers) ? clubPlayers : [];
+}
+
+/**
+ * Keep previously loaded captain-scoped rosterAthletes when a later get_setup /
+ * poll / mutation readback returns the same teams without that field.
+ * @param {object|null|undefined} previousTeamData
+ * @param {object|null|undefined} nextTeamData
+ * @returns {object|null|undefined}
+ */
+export function preserveCaptainPortalRosterAthletes(previousTeamData, nextTeamData) {
+  if (!nextTeamData || typeof nextTeamData !== "object") {
+    return nextTeamData;
+  }
+  const nextTeams = Array.isArray(nextTeamData.teams) ? nextTeamData.teams : [];
+  if (nextTeams.length === 0) {
+    return nextTeamData;
+  }
+  const prevById = new Map(
+    (previousTeamData?.teams || []).map((row) => [String(row?.id || ""), row])
+  );
+  let changed = false;
+  const teams = nextTeams.map((team) => {
+    const incoming = rosterRowsOf(team);
+    if (incoming.length > 0) {
+      return team.rosterAthletes === incoming ? team : { ...team, rosterAthletes: incoming };
+    }
+    const prev = prevById.get(String(team?.id || ""));
+    const preserved = rosterRowsOf(prev);
+    if (preserved.length === 0) {
+      return team;
+    }
+    changed = true;
+    const playerIds =
+      Array.isArray(team.playerIds) && team.playerIds.length > 0
+        ? team.playerIds
+        : Array.isArray(prev?.playerIds)
+          ? prev.playerIds
+          : preserved.map((row) => row.athleteId);
+    return {
+      ...team,
+      playerIds,
+      rosterAthletes: preserved,
+    };
+  });
+  if (!changed) {
+    return nextTeamData;
+  }
+  return {
+    ...nextTeamData,
+    teams,
+  };
 }
 
 /**
@@ -111,30 +202,40 @@ export function overlayCaptainPortalRosterOnPool(team = null, athletePool = []) 
     return Array.isArray(athletePool) ? athletePool : [];
   }
 
-  const byId = new Map();
-  for (const row of athletePool || []) {
-    if (!row || typeof row !== "object") continue;
-    const id = String(
+  const byAthleteId = new Map();
+  const rememberClubRow = (row) => {
+    if (!row || typeof row !== "object") return;
+    const athleteId = String(
       row.athleteId || row.pairingIdentityId || row.id || ""
     ).trim();
-    if (!id) continue;
-    byId.set(id, row);
-  }
+    if (!athleteId) return;
+    const existing = byAthleteId.get(athleteId);
+    if (!existing) {
+      byAthleteId.set(athleteId, row);
+      return;
+    }
+    if (hasCanonicalBinaryGender(row) && !hasCanonicalBinaryGender(existing)) {
+      byAthleteId.set(athleteId, row);
+    }
+  };
+
+  for (const row of athletePool || []) rememberClubRow(row);
+
   for (const row of portal) {
-    const existing = byId.get(row.athleteId) || {};
-    byId.set(row.athleteId, {
+    const existing = byAthleteId.get(row.athleteId) || {};
+    byAthleteId.set(row.athleteId, {
       ...existing,
       ...row,
-      id: existing.id || row.id,
+      id: row.athleteId,
       athleteId: row.athleteId,
       name: row.name || existing.name || existing.displayName || row.displayName,
       displayName:
         row.displayName || existing.displayName || existing.name || row.name,
-      gender: row.gender ?? existing.gender ?? null,
-      genderSource: row.genderSource || existing.genderSource || CAPTAIN_PORTAL_SCOPED_ROSTER,
+      gender: row.gender,
+      genderSource: row.genderSource || CAPTAIN_PORTAL_SCOPED_ROSTER,
     });
   }
-  return [...byId.values()];
+  return [...byAthleteId.values()];
 }
 
 /**
