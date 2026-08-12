@@ -30,7 +30,17 @@ function buildMatchSubtitle(match, { liveRow, courts = [] } = {}) {
     .join(" • ");
 }
 
-export function buildDailyMatchCardProps(match, { actionLabel, onAction, liveRow, courts = [] } = {}) {
+export function buildDailyMatchCardProps(
+  match,
+  {
+    actionLabel,
+    onAction,
+    secondaryActionLabel,
+    onSecondaryAction,
+    liveRow,
+    courts = [],
+  } = {}
+) {
   const subtitle = buildMatchSubtitle(match, { liveRow, courts });
 
   return {
@@ -38,6 +48,10 @@ export function buildDailyMatchCardProps(match, { actionLabel, onAction, liveRow
     subtitle,
     actionLabel,
     onAction: onAction ? () => onAction(match) : undefined,
+    secondaryActionLabel,
+    onSecondaryAction: onSecondaryAction
+      ? () => onSecondaryAction(match)
+      : undefined,
   };
 }
 

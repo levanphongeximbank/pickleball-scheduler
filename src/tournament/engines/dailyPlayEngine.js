@@ -307,7 +307,14 @@ export async function createFairDailyMatches({
   }
 
   const playersPerCourt = 4;
-  const maxMatches = Math.max(1, Number(matchCount) || 1);
+  const maxMatches = Math.max(0, Number(matchCount) || 0);
+  if (maxMatches < 1) {
+    return {
+      ok: false,
+      error: "Khong du so tran de tao.",
+      competitionType,
+    };
+  }
   const createdMatches = [];
   let remaining = [...eligible];
 
@@ -402,7 +409,11 @@ export function partitionDailyMatches(matches = []) {
   const completed = [];
 
   matches.forEach((match) => {
-    if (match.status === MATCH_STATUS.COMPLETED || match.status === MATCH_STATUS.FORFEIT) {
+    if (
+      match.status === MATCH_STATUS.COMPLETED ||
+      match.status === MATCH_STATUS.FORFEIT ||
+      match.status === "cancelled"
+    ) {
       completed.push(match);
       return;
     }

@@ -297,4 +297,14 @@ describe("daily fair match animation modes", () => {
     assert.notEqual(replayed[0].replay, undefined);
     assert.equal(JSON.stringify(result.matches), engineSnapshot);
   });
+
+  it("Daily Fair Match has no EffectPrelude (single presentation path)", async () => {
+    const { hasEffectPrelude } = await import(
+      "../src/components/tournament/animation/shared/effectPreludeConfig.js"
+    );
+    const { ANIMATION_MODES } = await import(
+      "../src/components/tournament/animation/animationUtils.js"
+    );
+    assert.equal(hasEffectPrelude(ANIMATION_MODES.DAILY_FAIR_MATCH), false);
+  });
 });
