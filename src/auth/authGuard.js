@@ -2,7 +2,10 @@
  * Route guard helpers — auth production (Supabase env) tách khỏi RBAC.
  */
 import { canAccessRoute } from "./menuAccess.js";
-import { isPublicTournamentsCatalogPath } from "./tournamentEngineRouteAccess.js";
+import {
+  isPublicTournamentsCatalogPath,
+  isTournamentDashboardPath,
+} from "./tournamentEngineRouteAccess.js";
 
 export function isAuthRequired({ authProductionEnabled, rbacEnabled }) {
   return Boolean(authProductionEnabled || rbacEnabled);
@@ -74,7 +77,9 @@ export function isAuthenticatedOnlyRoute(pathname) {
     pathname === "/referee" ||
     pathname.startsWith("/referee/match/") ||
     pathname.startsWith("/team-portal/") ||
-    pathname.startsWith("/team-referee/")
+    pathname.startsWith("/team-referee/") ||
+    // Exact `/tournaments/:id` Dashboard — auth shell; visibility via Dashboard RPC.
+    isTournamentDashboardPath(pathname)
   );
 }
 

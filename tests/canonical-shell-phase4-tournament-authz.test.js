@@ -6,19 +6,23 @@ import { dirname, join } from "node:path";
 
 import {
   isPublicAuthPath,
+  isAuthenticatedOnlyRoute,
   shouldRedirectToLogin,
+  shouldRedirectToForbidden,
 } from "../src/auth/authGuard.js";
-import { getRouteAccessPermissions } from "../src/auth/menuAccess.js";
+import { getRouteAccessPermissions, canAccessRoute } from "../src/auth/menuAccess.js";
 import {
   decideTournamentEngineRouteGate,
   evaluateTournamentEngineRouteAccess,
   isPublicTournamentsCatalogPath,
+  isTournamentDashboardPath,
   isTournamentEnginePath,
   parseTournamentEnginePath,
   TOURNAMENT_ENGINE_ROUTE_PERMISSIONS,
 } from "../src/auth/tournamentEngineRouteAccess.js";
 import { PERMISSIONS } from "../src/auth/permissions.js";
 import { ROLES } from "../src/auth/roles.js";
+import { can } from "../src/auth/rbac.js";
 import { createUserRecord } from "../src/models/user.js";
 import { saveClubs } from "../src/data/club.js";
 import { saveClubData } from "../src/domain/clubStorage.js";
@@ -319,6 +323,92 @@ test("phase4 plural — all seven engine routes detected + permission parity", (
   assert.equal(isTournamentEnginePath("/tournament/list"), false);
   assert.equal(isTournamentEnginePath("/tournaments"), false);
   assert.equal(isTournamentEnginePath("/tournaments/"), false);
+});
+
+test("phase4 plural — exact dashboard is authenticated shell, not TOURNAMENT_UPDATE Engine", () => {
+  const dashboardId = "7d1fe5a0-f312-4e4e-9869-53eff9383c54";
+  const dashboard = `/tournaments/${dashboardId}`;
+  const dashboardSlash = `${dashboard}/`;
+
+  assert.equal(isPublicTournamentsCatalogPath(dashboard), false);
+  assert.equal(isTournamentDashboardPath(dashboard), true);
+  assert.equal(isTournamentDashboardPath(dashboardSlash), true);
+  assert.equal(isTournamentEnginePath(dashboard), false);
+  assert.equal(isTournamentEnginePath(dashboardSlash), false);
+
+  assert.deepEqual(getRouteAccessPermissions(dashboard), []);
+  assert.deepEqual(getRouteAccessPermissions(dashboardSlash), []);
+  assert.equal(isAuthenticatedOnlyRoute(dashboard), true);
+  assert.equal(isAuthenticatedOnlyRoute(dashboardSlash), true);
+
+  // Catalog stays public; dashboard is not public anonymous.
+  assert.equal(isPublicAuthPath(dashboard, { authProductionEnabled: true, rbacEnabled: true }), false);
+  assert.equal(
+    shouldRedirectToLogin(dashboard, {
+      authProductionEnabled: true,
+      rbacEnabled: true,
+      isAuthenticated: false,
+    }),
+    true
+  );
+
+  // PLAYER may open Dashboard (no TOURNAMENT_UPDATE) — must NOT redirect to /discover-clubs.
+  const athlete = player();
+  const athleteScope = scopeFor(CLUB_A, TENANT_A);
+  const athleteCan = (permission, scope) =>
+    can(athlete, permission, scope, { rbacEnabled: true });
+  assert.equal(
+    canAccessRoute(athleteCan, dashboard, athleteScope, athlete),
+    true
+  );
+  assert.equal(
+    shouldRedirectToForbidden(dashboard, {
+      rbacEnabled: true,
+      isAuthenticated: true,
+      can: athleteCan,
+      scope: athleteScope,
+      user: athlete,
+    }),
+    false
+  );
+
+  // PLAYER Engine remains denied (permission + hard gate).
+  const engine = `/tournaments/${dashboardId}/engine`;
+  assert.deepEqual(getRouteAccessPermissions(engine), [PERMISSIONS.TOURNAMENT_UPDATE]);
+  assert.equal(isAuthenticatedOnlyRoute(engine), false);
+  assert.equal(
+    canAccessRoute(athleteCan, engine, athleteScope, athlete),
+    false
+  );
+  assert.equal(
+    shouldRedirectToForbidden(engine, {
+      rbacEnabled: true,
+      isAuthenticated: true,
+      can: athleteCan,
+      scope: athleteScope,
+      user: athlete,
+    }),
+    true
+  );
+
+  const engineGate = decideTournamentEngineRouteGate({
+    pathname: engine,
+    user: athlete,
+    isAuthenticated: true,
+    scope: athleteScope,
+    activeClubId: CLUB_A,
+    authProductionEnabled: true,
+    rbacEnabled: true,
+  });
+  assert.equal(engineGate.apply, true);
+  assert.equal(engineGate.ok, false);
+  assert.equal(engineGate.redirect, "forbidden");
+
+  // Unknown descendant stays fail-closed organizer (not dashboard).
+  assert.deepEqual(
+    getRouteAccessPermissions(`/tournaments/${dashboardId}/unknown-tab`),
+    [PERMISSIONS.TOURNAMENT_UPDATE]
+  );
 });
 
 test("phase4 B02 — retain routes, expose only the Wave 1 approved hub allowlist, no invented redirects", () => {

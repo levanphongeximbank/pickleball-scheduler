@@ -22,6 +22,10 @@ import {
   applyClubNavMenuOverride,
   CLUB_NAV_GATED_KEYS,
 } from "../features/club/navigation/clubNavMatrix.js";
+import {
+  isTournamentDashboardPath,
+  isTournamentEnginePath,
+} from "./tournamentEngineRouteAccess.js";
 
 const FEATURE_FLAG_CHECKERS = Object.freeze({
   marketplace: isMarketplaceEnabled,
@@ -84,12 +88,21 @@ export function getRouteAccessPermissions(pathname) {
   }
 
   // Phase 4 OD-PLURAL-AUTHZ — Engine family requires tournament.update (parity with page gate).
-  // Public catalog `/tournaments` and `/tournaments/` are not Engine routes.
+  // Plural tournament routes:
+  // - exact `/tournaments/:id` = authenticated Dashboard shell (no TOURNAMENT_UPDATE)
+  // - Engine tabs = TOURNAMENT_UPDATE
+  // - any other `/tournaments/:id/...` = fail-closed organizer UPDATE
   {
-    const catalogPath = String(pathname).split("?")[0];
+    const pathOnly = String(pathname).split("?")[0];
+    if (isTournamentDashboardPath(pathOnly)) {
+      return [];
+    }
+    if (isTournamentEnginePath(pathOnly)) {
+      return [PERMISSIONS.TOURNAMENT_UPDATE];
+    }
     const isCatalog =
-      catalogPath === "/tournaments" || catalogPath === "/tournaments/";
-    if (pathname.startsWith("/tournaments/") && !isCatalog) {
+      pathOnly === "/tournaments" || pathOnly === "/tournaments/";
+    if (pathOnly.startsWith("/tournaments/") && !isCatalog) {
       return [PERMISSIONS.TOURNAMENT_UPDATE];
     }
   }

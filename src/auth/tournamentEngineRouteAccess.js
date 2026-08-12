@@ -1,6 +1,10 @@
 /**
  * Tournament Engine plural-route authorization helpers (Phase 4 OD-PLURAL-AUTHZ).
- * Public catalog `/tournaments` (and `/tournaments/`) stays public; `/tournaments/:id/*` is protected.
+ * Public catalog `/tournaments` (and `/tournaments/`) stays public.
+ * Exact `/tournaments/:id` is the authenticated Tournament Dashboard shell
+ * (visibility authority = Dashboard RPC / canonical tournament visibility).
+ * Engine descendants `/tournaments/:id/{engine|seed|draw|schedule|courts|ranking|logs}`
+ * remain protected by tournament.update + ownership.
  *
  * Engine authorization uses the canonical permission (`tournament.update`) and
  * ownership/tenant authorities (`assertTournamentAccess` / `guardClubAccess`) with
@@ -52,6 +56,22 @@ export function isTournamentEnginePath(pathname) {
   const match = path.match(/^\/tournaments\/([^/]+)\/([^/]+)\/?$/);
   if (!match) return false;
   return ENGINE_TABS.has(match[2]);
+}
+
+/**
+ * Exact Tournament Dashboard root — `/tournaments/:tournamentId` (optional trailing slash).
+ * Not the public catalog and not Engine descendants.
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+export function isTournamentDashboardPath(pathname) {
+  if (!pathname) return false;
+  const path = normalizeTournamentsPathname(pathname);
+  if (path === "/tournaments") return false;
+  const match = path.match(/^\/tournaments\/([^/]+)\/?$/);
+  if (!match) return false;
+  const tournamentId = match[1];
+  return Boolean(tournamentId) && !ENGINE_TABS.has(tournamentId);
 }
 
 /**
