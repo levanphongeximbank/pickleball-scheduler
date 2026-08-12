@@ -109,28 +109,67 @@ AS $$
     SELECT DISTINCT nullif(trim(x.player_id), '') AS player_id
     FROM (
       SELECT value #>> '{}' AS player_id
-      FROM jsonb_array_elements(coalesce(p_match->'playerIds', '[]'::jsonb))
+      FROM jsonb_array_elements(CASE WHEN jsonb_typeof(p_match->'playerIds') = 'array'
+        THEN p_match->'playerIds' ELSE '[]'::jsonb END)
       WHERE jsonb_typeof(value) IN ('string', 'number')
       UNION ALL
       SELECT value #>> '{}'
-      FROM jsonb_array_elements(coalesce(p_match->'teamAPlayerIds', '[]'::jsonb))
+      FROM jsonb_array_elements(CASE WHEN jsonb_typeof(p_match->'teamAPlayerIds') = 'array'
+        THEN p_match->'teamAPlayerIds' ELSE '[]'::jsonb END)
       WHERE jsonb_typeof(value) IN ('string', 'number')
       UNION ALL
       SELECT value #>> '{}'
-      FROM jsonb_array_elements(coalesce(p_match->'teamBPlayerIds', '[]'::jsonb))
+      FROM jsonb_array_elements(CASE WHEN jsonb_typeof(p_match->'teamBPlayerIds') = 'array'
+        THEN p_match->'teamBPlayerIds' ELSE '[]'::jsonb END)
       WHERE jsonb_typeof(value) IN ('string', 'number')
       UNION ALL
       SELECT coalesce(value->>'playerId', value->>'id', value #>> '{}')
-      FROM jsonb_array_elements(coalesce(p_match->'players', '[]'::jsonb))
+      FROM jsonb_array_elements(CASE WHEN jsonb_typeof(p_match->'players') = 'array'
+        THEN p_match->'players' ELSE '[]'::jsonb END)
       UNION ALL
       SELECT coalesce(value->>'playerId', value->>'id', value #>> '{}')
-      FROM jsonb_array_elements(coalesce(p_match->'teamA', '[]'::jsonb))
+      FROM jsonb_array_elements(CASE WHEN jsonb_typeof(p_match->'teamA') = 'array'
+        THEN p_match->'teamA' ELSE '[]'::jsonb END)
       UNION ALL
       SELECT coalesce(value->>'playerId', value->>'id', value #>> '{}')
-      FROM jsonb_array_elements(coalesce(p_match->'teamB', '[]'::jsonb))
+      FROM jsonb_array_elements(CASE WHEN jsonb_typeof(p_match->'teamB') = 'array'
+        THEN p_match->'teamB' ELSE '[]'::jsonb END)
     ) x
   ) s
   WHERE s.player_id IS NOT NULL
+$$;
+
+CREATE OR REPLACE FUNCTION public.daily_play_athlete_eligible_for_club(
+  p_tenant_id text, p_club_id text, p_player_id text
+) RETURNS boolean
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_player_id uuid;
+BEGIN
+  BEGIN
+    v_player_id := p_player_id::uuid;
+  EXCEPTION WHEN invalid_text_representation THEN
+    RETURN false;
+  END;
+
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.athletes a
+    JOIN public.club_members cm
+      ON cm.athlete_id = a.id
+      OR (a.user_id IS NOT NULL AND cm.user_id = a.user_id)
+    JOIN public.clubs c
+      ON c.id = cm.club_id
+     AND c.deleted_at IS NULL
+    WHERE a.id = v_player_id
+      AND a.tenant_id = p_tenant_id
+      AND a.status = 'active'
+      AND cm.status = 'active'
+      AND cm.club_id = p_club_id
+      AND cm.tenant_id = p_tenant_id
+  );
+END
 $$;
 
 CREATE OR REPLACE FUNCTION public.daily_play_read_courts(
@@ -277,6 +316,9 @@ BEGIN
   FOR UPDATE;
   IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'code','TOURNAMENT_NOT_FOUND'); END IF;
   IF v_pid IS NULL THEN RETURN jsonb_build_object('ok',false,'code','PLAYER_ID_REQUIRED'); END IF;
+  IF NOT public.daily_play_athlete_eligible_for_club(p_tenant_id,p_club_id,v_pid) THEN
+    RETURN jsonb_build_object('ok',false,'code','PLAYER_NOT_ELIGIBLE');
+  END IF;
   v_cmd := public.daily_play_begin_command(p_tenant_id,p_tournament_id,'check_in',p_idempotency_key);
   IF NOT coalesce((v_cmd->>'ok')::boolean,false) THEN RETURN v_cmd; END IF;
   IF (v_cmd->>'replay')::boolean THEN RETURN v_cmd->'result'; END IF;
@@ -348,7 +390,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE v_t public.canonical_tournaments%ROWTYPE; v_s jsonb; v_cmd jsonb; v_result jsonb;
   v_actual integer; v_eligible_actual integer; v_existing jsonb; v_courts jsonb; v_new jsonb := '[]'::jsonb;
-  v_m jsonb; v_nm jsonb; v_mid text; v_players jsonb; v_court jsonb; v_cid text;
+  v_m jsonb; v_nm jsonb; v_mid text; v_players jsonb;
 BEGIN
   PERFORM public.canonical_tournament_assert_tenant(p_tenant_id);
   PERFORM public.canonical_tournament_assert_permission('tournament.update');
@@ -359,7 +401,10 @@ BEGIN
   v_cmd := public.daily_play_begin_command(p_tenant_id,p_tournament_id,'create_matches',p_idempotency_key);
   IF NOT coalesce((v_cmd->>'ok')::boolean,false) THEN RETURN v_cmd; END IF;
   IF (v_cmd->>'replay')::boolean THEN RETURN v_cmd->'result'; END IF;
-  IF jsonb_typeof(p_matches) IS DISTINCT FROM 'array' OR jsonb_array_length(p_matches)=0 THEN
+  IF jsonb_typeof(p_matches) IS DISTINCT FROM 'array' THEN
+    RETURN jsonb_build_object('ok',false,'code','MATCHES_REQUIRED');
+  END IF;
+  IF jsonb_array_length(p_matches)=0 THEN
     RETURN jsonb_build_object('ok',false,'code','MATCHES_REQUIRED');
   END IF;
   v_s := coalesce(v_t.payload#>'{settings,dailyPlay}','{}'::jsonb);
@@ -372,7 +417,8 @@ BEGIN
   FROM jsonb_array_elements(CASE
     WHEN jsonb_typeof(v_s->'checkedInPlayerIds')='array' THEN v_s->'checkedInPlayerIds'
     ELSE '[]'::jsonb END) p
-  WHERE NOT EXISTS (
+  WHERE public.daily_play_athlete_eligible_for_club(p_tenant_id,p_club_id,p #>> '{}')
+    AND NOT EXISTS (
     SELECT 1 FROM jsonb_array_elements(v_existing) m
     WHERE coalesce(m->>'status','waiting') IN ('waiting','assigned','playing')
       AND public.daily_play_match_player_ids(m) @> jsonb_build_array(p)
@@ -390,13 +436,39 @@ BEGIN
     RETURN jsonb_build_object('ok',false,'code','NO_COURT_CAPABILITY');
   END IF;
 
-  -- Validate the whole batch before acquiring any lease. A later invalid match
-  -- therefore cannot leave leases created for an earlier match in the batch.
+  -- Creation is queue-only: validate the complete batch and append waiting
+  -- matches without acquiring court leases.
   FOR v_m IN SELECT value FROM jsonb_array_elements(p_matches) LOOP
     v_mid := nullif(trim(coalesce(v_m->>'id',v_m->>'matchId','')),'');
     v_players := public.daily_play_match_player_ids(v_m);
-    IF v_mid IS NULL OR jsonb_array_length(v_players)<2 THEN
-      RETURN jsonb_build_object('ok',false,'code','INVALID_MATCH');
+    IF v_mid IS NULL OR jsonb_array_length(v_players)<>4
+      OR (SELECT count(DISTINCT value #>> '{}') FROM jsonb_array_elements(v_players))<>4 THEN
+      RETURN jsonb_build_object('ok',false,'code','INVALID_MATCH_SHAPE');
+    END IF;
+    IF v_m ? 'playerIds' THEN
+      IF jsonb_typeof(v_m->'playerIds') IS DISTINCT FROM 'array' THEN
+        RETURN jsonb_build_object('ok',false,'code','INVALID_MATCH_SHAPE','matchId',v_mid);
+      END IF;
+      IF jsonb_array_length(v_m->'playerIds') <> 4
+        OR (SELECT count(DISTINCT value #>> '{}') FROM jsonb_array_elements(v_m->'playerIds')) <> 4 THEN
+        RETURN jsonb_build_object('ok',false,'code','INVALID_MATCH_SHAPE','matchId',v_mid);
+      END IF;
+    END IF;
+    IF v_m ? 'teamAPlayerIds' THEN
+      IF jsonb_typeof(v_m->'teamAPlayerIds') IS DISTINCT FROM 'array' THEN
+        RETURN jsonb_build_object('ok',false,'code','INVALID_MATCH_SHAPE','matchId',v_mid);
+      END IF;
+      IF jsonb_array_length(v_m->'teamAPlayerIds') <> 2 THEN
+        RETURN jsonb_build_object('ok',false,'code','INVALID_MATCH_SHAPE','matchId',v_mid);
+      END IF;
+    END IF;
+    IF v_m ? 'teamBPlayerIds' THEN
+      IF jsonb_typeof(v_m->'teamBPlayerIds') IS DISTINCT FROM 'array' THEN
+        RETURN jsonb_build_object('ok',false,'code','INVALID_MATCH_SHAPE','matchId',v_mid);
+      END IF;
+      IF jsonb_array_length(v_m->'teamBPlayerIds') <> 2 THEN
+        RETURN jsonb_build_object('ok',false,'code','INVALID_MATCH_SHAPE','matchId',v_mid);
+      END IF;
     END IF;
     IF EXISTS (SELECT 1 FROM jsonb_array_elements(v_existing||v_new) x
       WHERE coalesce(x->>'id',x->>'matchId')=v_mid) THEN
@@ -408,56 +480,21 @@ BEGIN
         THEN v_s->'checkedInPlayerIds' ELSE '[]'::jsonb END) @> jsonb_build_array(p)
     ) THEN RETURN jsonb_build_object('ok',false,'code','PLAYER_NOT_CHECKED_IN','matchId',v_mid); END IF;
     IF EXISTS (
-      SELECT 1 FROM jsonb_array_elements(v_existing||v_new) x
-      WHERE coalesce(x->>'status','waiting') IN ('waiting','assigned','playing')
-        AND EXISTS (SELECT 1 FROM jsonb_array_elements(v_players) p
-          WHERE public.daily_play_match_player_ids(x) @> jsonb_build_array(p))
-    ) THEN RETURN jsonb_build_object('ok',false,'code','PLAYER_ALREADY_ACTIVE','matchId',v_mid); END IF;
-    v_new := v_new || jsonb_build_array(
-      jsonb_build_object('id',v_mid,'playerIds',v_players,'status','waiting')
-    );
-  END LOOP;
-  v_new := '[]'::jsonb;
-
-  FOR v_m IN SELECT value FROM jsonb_array_elements(p_matches) LOOP
-    v_mid := nullif(trim(coalesce(v_m->>'id',v_m->>'matchId','')),'');
-    v_players := public.daily_play_match_player_ids(v_m);
-    IF v_mid IS NULL OR jsonb_array_length(v_players)<2 THEN
-      RETURN jsonb_build_object('ok',false,'code','INVALID_MATCH');
-    END IF;
-    IF EXISTS (SELECT 1 FROM jsonb_array_elements(v_existing||v_new) x
-      WHERE coalesce(x->>'id',x->>'matchId')=v_mid) THEN
-      RETURN jsonb_build_object('ok',false,'code','MATCH_ALREADY_EXISTS','matchId',v_mid);
-    END IF;
-    IF EXISTS (
       SELECT 1 FROM jsonb_array_elements(v_players) p
-      WHERE NOT (CASE WHEN jsonb_typeof(v_s->'checkedInPlayerIds')='array'
-        THEN v_s->'checkedInPlayerIds' ELSE '[]'::jsonb END) @> jsonb_build_array(p)
-    ) THEN RETURN jsonb_build_object('ok',false,'code','PLAYER_NOT_CHECKED_IN','matchId',v_mid); END IF;
+      WHERE NOT public.daily_play_athlete_eligible_for_club(
+        p_tenant_id,p_club_id,p #>> '{}'
+      )
+    ) THEN RETURN jsonb_build_object('ok',false,'code','PLAYER_NOT_ELIGIBLE','matchId',v_mid); END IF;
     IF EXISTS (
       SELECT 1 FROM jsonb_array_elements(v_existing||v_new) x
       WHERE coalesce(x->>'status','waiting') IN ('waiting','assigned','playing')
         AND EXISTS (SELECT 1 FROM jsonb_array_elements(v_players) p
           WHERE public.daily_play_match_player_ids(x) @> jsonb_build_array(p))
     ) THEN RETURN jsonb_build_object('ok',false,'code','PLAYER_ALREADY_ACTIVE','matchId',v_mid); END IF;
-
     v_nm := jsonb_set(v_m,'{id}',to_jsonb(v_mid),true);
     v_nm := jsonb_set(v_nm,'{playerIds}',v_players,true);
     v_nm := jsonb_set(v_nm,'{status}','"waiting"'::jsonb,true);
     v_nm := jsonb_set(v_nm,'{courtId}','null'::jsonb,true);
-    v_cid := NULL;
-    FOR v_court IN SELECT value FROM jsonb_array_elements(v_courts) LOOP
-      v_cid := coalesce(v_court->>'id',v_court->>'courtId');
-      BEGIN
-        INSERT INTO public.daily_play_court_leases(
-          tenant_id,club_id,tournament_id,match_id,court_id
-        ) VALUES (p_tenant_id,p_club_id,p_tournament_id,v_mid,v_cid);
-        v_nm := jsonb_set(v_nm,'{status}','"assigned"'::jsonb,true);
-        v_nm := jsonb_set(v_nm,'{courtId}',to_jsonb(v_cid),true);
-        EXIT;
-      EXCEPTION WHEN unique_violation THEN v_cid := NULL;
-      END;
-    END LOOP;
     v_new := v_new || jsonb_build_array(v_nm);
   END LOOP;
 
@@ -478,7 +515,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE v_t public.canonical_tournaments%ROWTYPE; v_s jsonb; v_cmd jsonb; v_result jsonb;
   v_actual int; v_matches jsonb; v_m jsonb; v_mid text:=nullif(trim(coalesce(p_match_id,'')),'');
-  v_cid text:=nullif(trim(coalesce(p_court_id,'')),''); v_courts jsonb;
+  v_cid text:=nullif(trim(coalesce(p_court_id,'')),''); v_candidate text; v_courts jsonb;
 BEGIN
   PERFORM public.canonical_tournament_assert_tenant(p_tenant_id);
   PERFORM public.canonical_tournament_assert_permission('tournament.update');
@@ -494,34 +531,120 @@ BEGIN
   v_matches:=CASE WHEN jsonb_typeof(v_s->'matches')='array' THEN v_s->'matches' ELSE '[]' END;
   SELECT value INTO v_m FROM jsonb_array_elements(v_matches) WHERE coalesce(value->>'id',value->>'matchId')=v_mid;
   IF v_m IS NULL THEN RETURN jsonb_build_object('ok',false,'code','MATCH_NOT_FOUND'); END IF;
-  IF coalesce(v_m->>'status','waiting') IN ('completed','cancelled') THEN RETURN jsonb_build_object('ok',false,'code','MATCH_IMMUTABLE'); END IF;
+  IF v_m->>'status' IS DISTINCT FROM 'waiting' THEN
+    RETURN jsonb_build_object('ok',false,'code','MATCH_NOT_WAITING');
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(public.daily_play_match_player_ids(v_m)) p
+    WHERE NOT (CASE WHEN jsonb_typeof(v_s->'checkedInPlayerIds')='array'
+      THEN v_s->'checkedInPlayerIds' ELSE '[]'::jsonb END) @> jsonb_build_array(p)
+  ) THEN RETURN jsonb_build_object('ok',false,'code','PLAYER_NOT_CHECKED_IN','matchId',v_mid); END IF;
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(public.daily_play_match_player_ids(v_m)) p
+    WHERE NOT public.daily_play_athlete_eligible_for_club(
+      p_tenant_id,p_club_id,p #>> '{}'
+    )
+  ) THEN RETURN jsonb_build_object('ok',false,'code','PLAYER_NOT_ELIGIBLE','matchId',v_mid); END IF;
+  v_courts:=public.daily_play_read_courts(
+    p_club_id,CASE WHEN v_s?'enabledCourtIds' THEN v_s->'enabledCourtIds' ELSE NULL END);
+  IF jsonb_array_length(v_courts)=0 THEN
+    RETURN jsonb_build_object('ok',false,'code','NO_COURT_CAPABILITY');
+  END IF;
   IF v_cid IS NOT NULL THEN
-    v_courts:=public.daily_play_read_courts(p_club_id,CASE WHEN v_s?'enabledCourtIds' THEN v_s->'enabledCourtIds' ELSE NULL END);
     IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_courts) c WHERE coalesce(c->>'id',c->>'courtId')=v_cid)
       THEN RETURN jsonb_build_object('ok',false,'code','COURT_NOT_AVAILABLE'); END IF;
-    IF coalesce(v_m->>'courtId','')<>v_cid THEN
+    BEGIN
+      INSERT INTO public.daily_play_court_leases(tenant_id,club_id,tournament_id,match_id,court_id)
+      VALUES(p_tenant_id,p_club_id,p_tournament_id,v_mid,v_cid);
+    EXCEPTION WHEN unique_violation THEN
+      RETURN jsonb_build_object('ok',false,'code','COURT_ALREADY_LEASED','courtId',v_cid);
+    END;
+  ELSE
+    FOR v_candidate IN
+      SELECT coalesce(c->>'id',c->>'courtId') FROM jsonb_array_elements(v_courts) c
+    LOOP
       BEGIN
         INSERT INTO public.daily_play_court_leases(tenant_id,club_id,tournament_id,match_id,court_id)
-        VALUES(p_tenant_id,p_club_id,p_tournament_id,v_mid,v_cid);
-      EXCEPTION WHEN unique_violation THEN RETURN jsonb_build_object('ok',false,'code','COURT_BUSY','courtId',v_cid);
+        VALUES(p_tenant_id,p_club_id,p_tournament_id,v_mid,v_candidate);
+        v_cid:=v_candidate;
+        EXIT;
+      EXCEPTION WHEN unique_violation THEN
+        v_cid:=NULL;
       END;
-      UPDATE public.daily_play_court_leases SET status='released',released_at=now()
-      WHERE tenant_id=p_tenant_id AND club_id=p_club_id AND tournament_id=p_tournament_id
-        AND match_id=v_mid AND status='active' AND court_id<>v_cid;
+    END LOOP;
+    IF v_cid IS NULL THEN
+      RETURN jsonb_build_object('ok',false,'code','NO_COURT_AVAILABLE');
     END IF;
-    v_m:=jsonb_set(v_m,'{courtId}',to_jsonb(v_cid),true);
-    v_m:=jsonb_set(v_m,'{status}','"assigned"',true);
-  ELSE
-    UPDATE public.daily_play_court_leases SET status='released',released_at=now()
-    WHERE tenant_id=p_tenant_id AND club_id=p_club_id AND tournament_id=p_tournament_id
-      AND match_id=v_mid AND status='active';
-    v_m:=jsonb_set(v_m,'{courtId}','null',true); v_m:=jsonb_set(v_m,'{status}','"waiting"',true);
   END IF;
+  v_m:=jsonb_set(v_m,'{courtId}',to_jsonb(v_cid),true);
+  v_m:=jsonb_set(v_m,'{status}','"assigned"',true);
   v_s:=jsonb_set(v_s,'{matches}',public.daily_play_replace_match(v_matches,v_mid,v_m),true);
   v_s:=jsonb_set(v_s,'{revision}',to_jsonb(v_actual+1),true);
   PERFORM public.daily_play_write_state(p_tournament_id,v_actual,v_s);
   v_result:=jsonb_build_object('ok',true,'revision',v_actual+1,'match',v_m);
   PERFORM public.daily_play_finish_command(p_tenant_id,p_tournament_id,'assign_court',p_idempotency_key,v_result);
+  RETURN v_result;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION public.daily_play_start_match(
+  p_tenant_id text, p_club_id text, p_tournament_id uuid, p_match_id text,
+  p_expected_version integer, p_idempotency_key text
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE v_t public.canonical_tournaments%ROWTYPE; v_s jsonb; v_cmd jsonb; v_result jsonb;
+  v_actual int; v_matches jsonb; v_m jsonb; v_cid text;
+  v_mid text:=nullif(trim(coalesce(p_match_id,'')),'');
+BEGIN
+  PERFORM public.canonical_tournament_assert_tenant(p_tenant_id);
+  PERFORM public.canonical_tournament_assert_permission('tournament.update');
+  SELECT * INTO v_t FROM public.canonical_tournaments WHERE id=p_tournament_id
+    AND tenant_id=p_tenant_id AND club_id=p_club_id AND mode='daily_play' FOR UPDATE;
+  IF NOT FOUND THEN RETURN jsonb_build_object('ok',false,'code','TOURNAMENT_NOT_FOUND'); END IF;
+  v_cmd:=public.daily_play_begin_command(p_tenant_id,p_tournament_id,'start_match',p_idempotency_key);
+  IF NOT coalesce((v_cmd->>'ok')::boolean,false) THEN RETURN v_cmd; END IF;
+  IF (v_cmd->>'replay')::boolean THEN RETURN v_cmd->'result'; END IF;
+  v_s:=coalesce(v_t.payload#>'{settings,dailyPlay}','{}'); v_actual:=coalesce(
+    CASE WHEN (v_s->>'revision')~'^[0-9]+$' THEN (v_s->>'revision')::int END,0);
+  IF p_expected_version IS DISTINCT FROM v_actual THEN
+    RETURN public.daily_play_version_conflict(p_expected_version,v_actual);
+  END IF;
+  v_matches:=CASE WHEN jsonb_typeof(v_s->'matches')='array' THEN v_s->'matches' ELSE '[]' END;
+  SELECT value INTO v_m FROM jsonb_array_elements(v_matches)
+  WHERE coalesce(value->>'id',value->>'matchId')=v_mid;
+  IF v_m IS NULL THEN RETURN jsonb_build_object('ok',false,'code','MATCH_NOT_FOUND'); END IF;
+  IF coalesce(v_m->>'status','waiting') <> 'assigned' THEN
+    RETURN jsonb_build_object('ok',false,'code','MATCH_NOT_ASSIGNED');
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(public.daily_play_match_player_ids(v_m)) p
+    WHERE NOT (CASE WHEN jsonb_typeof(v_s->'checkedInPlayerIds')='array'
+      THEN v_s->'checkedInPlayerIds' ELSE '[]'::jsonb END) @> jsonb_build_array(p)
+  ) THEN RETURN jsonb_build_object('ok',false,'code','PLAYER_NOT_CHECKED_IN','matchId',v_mid); END IF;
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(public.daily_play_match_player_ids(v_m)) p
+    WHERE NOT public.daily_play_athlete_eligible_for_club(
+      p_tenant_id,p_club_id,p #>> '{}'
+    )
+  ) THEN RETURN jsonb_build_object('ok',false,'code','PLAYER_NOT_ELIGIBLE','matchId',v_mid); END IF;
+  v_cid:=nullif(trim(coalesce(v_m->>'courtId','')),'');
+  IF v_cid IS NULL THEN RETURN jsonb_build_object('ok',false,'code','COURT_ID_REQUIRED'); END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.daily_play_court_leases l
+    WHERE l.tenant_id=p_tenant_id AND l.club_id=p_club_id
+      AND l.tournament_id=p_tournament_id AND l.match_id=v_mid
+      AND l.court_id=v_cid AND l.status='active'
+  ) THEN
+    RETURN jsonb_build_object('ok',false,'code','COURT_LEASE_NOT_ACTIVE');
+  END IF;
+  v_m:=jsonb_set(v_m,'{status}','"playing"',true);
+  v_m:=jsonb_set(v_m,'{startedAt}',to_jsonb(now()),true);
+  v_s:=jsonb_set(v_s,'{matches}',public.daily_play_replace_match(v_matches,v_mid,v_m),true);
+  v_s:=jsonb_set(v_s,'{revision}',to_jsonb(v_actual+1),true);
+  PERFORM public.daily_play_write_state(p_tournament_id,v_actual,v_s);
+  v_result:=jsonb_build_object('ok',true,'revision',v_actual+1,'match',v_m);
+  PERFORM public.daily_play_finish_command(p_tenant_id,p_tournament_id,'start_match',p_idempotency_key,v_result);
   RETURN v_result;
 END
 $$;
@@ -558,7 +681,9 @@ BEGIN
     END IF;
     RETURN jsonb_build_object('ok',false,'code','SCORE_CONFLICT');
   END IF;
-  IF v_m->>'status'='cancelled' THEN RETURN jsonb_build_object('ok',false,'code','MATCH_IMMUTABLE'); END IF;
+  IF v_m->>'status' IS DISTINCT FROM 'playing' THEN
+    RETURN jsonb_build_object('ok',false,'code','MATCH_NOT_PLAYING');
+  END IF;
   IF p_expected_version IS DISTINCT FROM v_actual THEN RETURN public.daily_play_version_conflict(p_expected_version,v_actual); END IF;
   v_m:=jsonb_set(v_m,'{scoreA}',to_jsonb(p_score_a),true);
   v_m:=jsonb_set(v_m,'{scoreB}',to_jsonb(p_score_b),true);
@@ -639,7 +764,9 @@ BEGIN
   v_matches:=CASE WHEN jsonb_typeof(v_s->'matches')='array' THEN v_s->'matches' ELSE '[]' END;
   SELECT value INTO v_m FROM jsonb_array_elements(v_matches) WHERE coalesce(value->>'id',value->>'matchId')=v_mid;
   IF v_m IS NULL THEN RETURN jsonb_build_object('ok',false,'code','MATCH_NOT_FOUND'); END IF;
-  IF coalesce(v_m->>'status','waiting') IN ('completed','cancelled') THEN RETURN jsonb_build_object('ok',false,'code','MATCH_IMMUTABLE'); END IF;
+  IF coalesce(v_m->>'status','waiting') NOT IN ('assigned','playing') THEN
+    RETURN jsonb_build_object('ok',false,'code','MATCH_NOT_ACTIVE');
+  END IF;
   v_courts:=public.daily_play_read_courts(p_club_id,CASE WHEN v_s?'enabledCourtIds' THEN v_s->'enabledCourtIds' ELSE NULL END);
   IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v_courts)c WHERE coalesce(c->>'id',c->>'courtId')=v_cid)
     THEN RETURN jsonb_build_object('ok',false,'code','COURT_NOT_AVAILABLE'); END IF;
@@ -648,14 +775,13 @@ BEGIN
       INSERT INTO public.daily_play_court_leases(tenant_id,club_id,tournament_id,match_id,court_id)
       VALUES(p_tenant_id,p_club_id,p_tournament_id,v_mid,v_cid);
     EXCEPTION WHEN unique_violation THEN
-      RETURN jsonb_build_object('ok',false,'code','COURT_BUSY','courtId',v_cid);
+      RETURN jsonb_build_object('ok',false,'code','COURT_ALREADY_LEASED','courtId',v_cid);
     END;
     UPDATE public.daily_play_court_leases SET status='released',released_at=now()
     WHERE tenant_id=p_tenant_id AND club_id=p_club_id AND tournament_id=p_tournament_id
       AND match_id=v_mid AND status='active' AND court_id<>v_cid;
   END IF;
   v_m:=jsonb_set(v_m,'{courtId}',to_jsonb(v_cid),true);
-  v_m:=jsonb_set(v_m,'{status}','"assigned"',true);
   v_s:=jsonb_set(v_s,'{matches}',public.daily_play_replace_match(v_matches,v_mid,v_m),true);
   v_s:=jsonb_set(v_s,'{revision}',to_jsonb(v_actual+1),true);
   PERFORM public.daily_play_write_state(p_tournament_id,v_actual,v_s);
@@ -670,6 +796,7 @@ REVOKE ALL ON FUNCTION public.daily_play_version_conflict(integer,integer) FROM 
 REVOKE ALL ON FUNCTION public.daily_play_begin_command(text,uuid,text,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.daily_play_finish_command(text,uuid,text,text,jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.daily_play_match_player_ids(jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.daily_play_athlete_eligible_for_club(text,text,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.daily_play_read_courts(text,jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.daily_play_replace_match(jsonb,text,jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.daily_play_write_state(uuid,integer,jsonb) FROM PUBLIC, anon, authenticated;
@@ -680,6 +807,7 @@ REVOKE ALL ON FUNCTION public.daily_play_check_in(text,text,uuid,text,integer,te
 REVOKE ALL ON FUNCTION public.daily_play_check_out(text,text,uuid,text,integer,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.daily_play_create_matches(text,text,uuid,jsonb,integer,integer,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.daily_play_assign_court(text,text,uuid,text,text,integer,text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.daily_play_start_match(text,text,uuid,text,integer,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.daily_play_submit_score(text,text,uuid,text,integer,integer,integer,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.daily_play_cancel_match(text,text,uuid,text,integer,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.daily_play_change_court(text,text,uuid,text,text,integer,text) FROM PUBLIC, anon;
@@ -689,6 +817,7 @@ GRANT EXECUTE ON FUNCTION public.daily_play_check_in(text,text,uuid,text,integer
 GRANT EXECUTE ON FUNCTION public.daily_play_check_out(text,text,uuid,text,integer,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.daily_play_create_matches(text,text,uuid,jsonb,integer,integer,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.daily_play_assign_court(text,text,uuid,text,text,integer,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.daily_play_start_match(text,text,uuid,text,integer,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.daily_play_submit_score(text,text,uuid,text,integer,integer,integer,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.daily_play_cancel_match(text,text,uuid,text,integer,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.daily_play_change_court(text,text,uuid,text,text,integer,text) TO authenticated;

@@ -77,11 +77,25 @@ const canonicalPlayers = [
   { id: "8", name: "Nu 4", gender: "Nữ", level: 2.5 },
 ];
 
-function seedAuthority({ courts = [], dailyPlay = null, permissions } = {}) {
+function seedAuthority({
+  courts = [],
+  dailyPlay = null,
+  permissions,
+  eligibleIds = null,
+} = {}) {
   const authority = createInMemoryDailyPlayAuthority({
     tenantId: TENANT,
     permissions,
   });
+  const eligible =
+    eligibleIds ||
+    [
+      ...canonicalPlayers.map((p) => p.id),
+      "99",
+      "100",
+      ...(dailyPlay?.checkedInPlayerIds || []),
+    ];
+  authority.__setEligibleAthletes(TENANT, CLUB, eligible);
   authority.__seedTournament(
     createSeededDailyPlayTournament({
       id: TID,
@@ -229,7 +243,7 @@ test("assignDailyMatchToCourt puts waiting match on available court", () => {
   assert.equal(result.ok, true);
   const assigned = result.settings.matches.find((item) => item.id === "m1");
   assert.equal(assigned.courtId, "10");
-  assert.equal(assigned.status, MATCH_STATUS.PLAYING);
+  assert.equal(assigned.status, MATCH_STATUS.ASSIGNED);
 });
 
 test("submitDailyPlayMatchScore completes match", () => {
@@ -252,17 +266,20 @@ test("submitDailyPlayMatchScore completes match", () => {
   assert.equal(result.match.winnerSide, "A");
 });
 
-test("partitionDailyMatches splits lists", () => {
+test("partitionDailyMatches splits waiting/assigned/playing", () => {
   const grouped = partitionDailyMatches([
     { id: "1", status: MATCH_STATUS.WAITING },
-    { id: "2", status: MATCH_STATUS.PLAYING },
-    { id: "3", status: MATCH_STATUS.COMPLETED },
-    { id: "4", status: "cancelled" },
+    { id: "2", status: MATCH_STATUS.ASSIGNED },
+    { id: "3", status: MATCH_STATUS.PLAYING },
+    { id: "4", status: MATCH_STATUS.COMPLETED },
+    { id: "5", status: "cancelled" },
   ]);
 
   assert.equal(grouped.waiting.length, 1);
+  assert.equal(grouped.assigned.length, 1);
   assert.equal(grouped.playing.length, 1);
   assert.equal(grouped.completed.length, 2);
+  assert.equal(grouped.playing[0].id, "3");
 });
 
 describe("Daily Play canonical — court capability + create", () => {
@@ -571,6 +588,20 @@ describe("Daily Play canonical — idempotency + score + cancel + change court",
       }
     );
     assert.equal(changeOk.ok, true);
+    const afterChange = await service.getState({
+      tenantId: TENANT,
+      clubId: CLUB,
+      tournamentId: TID,
+    });
+    assert.equal(afterChange.ok, true);
+    assert.equal(
+      afterChange.dailyPlay.matches.find((m) => m.id === "m1").status,
+      "playing"
+    );
+    assert.equal(
+      afterChange.dailyPlay.matches.find((m) => m.id === "m1").courtId,
+      "c2"
+    );
   });
 
   test("check-out active player rejected", async () => {
@@ -665,8 +696,368 @@ describe("Daily Play RPC name contract", () => {
     assert.equal(DAILY_PLAY_RPC.GET_STATE, "daily_play_get_state");
     assert.equal(DAILY_PLAY_RPC.CREATE_MATCHES, "daily_play_create_matches");
     assert.equal(DAILY_PLAY_RPC.ASSIGN_COURT, "daily_play_assign_court");
+    assert.equal(DAILY_PLAY_RPC.START_MATCH, "daily_play_start_match");
     assert.equal(DAILY_PLAY_RPC.SUBMIT_SCORE, "daily_play_submit_score");
     assert.equal(DAILY_PLAY_RPC.CANCEL_MATCH, "daily_play_cancel_match");
     assert.equal(DAILY_PLAY_RPC.CHANGE_COURT, "daily_play_change_court");
+  });
+});
+
+describe("Daily Play lifecycle hardening — waiting→assigned→playing→completed", () => {
+  test("create stays waiting without lease; assign then start then score", async () => {
+    const { service } = seedAuthority({
+      courts: [
+        { id: "c1", name: "S1", active: true },
+        { id: "c2", name: "S2", active: true },
+      ],
+    });
+
+    const created = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          {
+            id: "m-life",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2", "6"],
+            status: "waiting",
+          },
+        ],
+        expectedVersion: 0,
+        idempotencyKey: "life-create",
+      }
+    );
+    assert.equal(created.ok, true);
+    assert.equal(created.matches[0].status, "waiting");
+    assert.equal(created.matches[0].courtId, null);
+
+    const assigned = await service.assignCourt(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-life",
+        courtId: "c1",
+        expectedVersion: created.revision,
+        idempotencyKey: "life-assign",
+      }
+    );
+    assert.equal(assigned.ok, true);
+    assert.equal(assigned.dailyPlay.matches.find((m) => m.id === "m-life").status, "assigned");
+    const partAfterAssign = partitionDailyMatches(assigned.dailyPlay.matches);
+    assert.equal(partAfterAssign.assigned.length, 1);
+    assert.equal(partAfterAssign.playing.length, 0);
+
+    const started = await service.startMatch(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-life",
+        expectedVersion: assigned.revision,
+        idempotencyKey: "life-start",
+      }
+    );
+    assert.equal(started.ok, true);
+    assert.equal(started.dailyPlay.matches.find((m) => m.id === "m-life").status, "playing");
+    const partAfterStart = partitionDailyMatches(started.dailyPlay.matches);
+    assert.equal(partAfterStart.playing.length, 1);
+    assert.equal(partAfterStart.assigned.length, 0);
+
+    const scored = await service.submitScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-life",
+        scoreA: 11,
+        scoreB: 4,
+        expectedVersion: started.revision,
+        idempotencyKey: "life-score",
+      }
+    );
+    assert.equal(scored.ok, true);
+    assert.equal(scored.match.status, "completed");
+  });
+
+  test("score waiting and assigned rejected with MATCH_NOT_PLAYING", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: ["1", "2", "3", "4"],
+        revision: 0,
+        matches: [
+          {
+            id: "m-wait",
+            status: "waiting",
+            teamAPlayerIds: ["1", "2"],
+            teamBPlayerIds: ["3", "4"],
+          },
+        ],
+      },
+    });
+
+    const waitingScore = await service.submitScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-wait",
+        scoreA: 11,
+        scoreB: 5,
+        expectedVersion: 0,
+        idempotencyKey: "score-wait",
+      }
+    );
+    assert.equal(waitingScore.ok, false);
+    assert.equal(waitingScore.code, DAILY_PLAY_CODE.MATCH_NOT_PLAYING);
+
+    const assigned = await service.assignCourt(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-wait",
+        courtId: "c1",
+        expectedVersion: 0,
+        idempotencyKey: "assign-for-score-reject",
+      }
+    );
+    assert.equal(assigned.ok, true);
+    assert.equal(assigned.dailyPlay.matches[0].status, "assigned");
+
+    const assignedScore = await service.submitScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-wait",
+        scoreA: 11,
+        scoreB: 5,
+        expectedVersion: assigned.revision,
+        idempotencyKey: "score-assigned",
+      }
+    );
+    assert.equal(assignedScore.ok, false);
+    assert.equal(assignedScore.code, DAILY_PLAY_CODE.MATCH_NOT_PLAYING);
+  });
+
+  test("random / non-canonical check-in rejected", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      eligibleIds: ["1", "2", "3", "4"],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: [],
+        revision: 0,
+      },
+    });
+
+    const rejected = await service.checkIn(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        playerId: "random-athlete-xyz",
+        expectedVersion: 0,
+        idempotencyKey: "ci-random",
+      }
+    );
+    assert.equal(rejected.ok, false);
+    assert.equal(rejected.code, DAILY_PLAY_CODE.PLAYER_NOT_ELIGIBLE);
+  });
+
+  test("malformed 2/3-player doubles rejected; valid 4 accepted", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+    });
+
+    const two = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          {
+            id: "m-2p",
+            teamAPlayerIds: ["1"],
+            teamBPlayerIds: ["2"],
+            status: "waiting",
+          },
+        ],
+        expectedVersion: 0,
+        idempotencyKey: "shape-2",
+      }
+    );
+    assert.equal(two.ok, false);
+    assert.equal(two.code, DAILY_PLAY_CODE.INVALID_MATCH_SHAPE);
+
+    const three = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          {
+            id: "m-3p",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2"],
+            status: "waiting",
+          },
+        ],
+        expectedVersion: 0,
+        idempotencyKey: "shape-3",
+      }
+    );
+    assert.equal(three.ok, false);
+    assert.equal(three.code, DAILY_PLAY_CODE.INVALID_MATCH_SHAPE);
+
+    const four = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          {
+            id: "m-4p",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2", "6"],
+            status: "waiting",
+          },
+        ],
+        expectedVersion: 0,
+        idempotencyKey: "shape-4",
+      }
+    );
+    assert.equal(four.ok, true);
+    assert.equal(four.matches[0].status, "waiting");
+  });
+
+  test("cross-club athlete rejected on check-in", async () => {
+    const { authority, service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      eligibleIds: ["1", "2", "3", "4"],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: [],
+        revision: 0,
+      },
+    });
+    authority.__setEligibleAthletes(TENANT, "other-club", ["99"]);
+
+    const rejected = await service.checkIn(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { playerId: "99", expectedVersion: 0, idempotencyKey: "ci-xclub" }
+    );
+    assert.equal(rejected.ok, false);
+    assert.equal(rejected.code, DAILY_PLAY_CODE.PLAYER_NOT_ELIGIBLE);
+  });
+
+  test("cancel waiting/assigned/playing releases reservation", async () => {
+    const { service } = seedAuthority({
+      courts: [
+        { id: "c1", name: "S1", active: true },
+        { id: "c2", name: "S2", active: true },
+      ],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: canonicalPlayers.map((p) => p.id),
+        revision: 0,
+        matches: [
+          {
+            id: "m-w",
+            status: "waiting",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2", "6"],
+          },
+        ],
+      },
+    });
+
+    const cancelWaiting = await service.cancelMatch(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { matchId: "m-w", expectedVersion: 0, idempotencyKey: "cancel-w" }
+    );
+    assert.equal(cancelWaiting.ok, true);
+
+    const createAfter = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          {
+            id: "m-reuse",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2", "6"],
+            status: "waiting",
+          },
+        ],
+        expectedVersion: cancelWaiting.revision,
+        idempotencyKey: "reuse-after-cancel",
+      }
+    );
+    assert.equal(createAfter.ok, true);
+  });
+});
+
+describe("Daily Play SQL package contract parity", () => {
+  const applyPath = path.resolve(
+    "docs/v5/migrations/daily-play-end-to-end-canonical-01/02_APPLY.sql"
+  );
+  const verifyPath = path.resolve(
+    "docs/v5/migrations/daily-play-end-to-end-canonical-01/03_VERIFY.sql"
+  );
+  const applySql = fs.readFileSync(applyPath, "utf8");
+  const verifySql = fs.readFileSync(verifyPath, "utf8");
+
+  test("create_matches forces waiting and does not insert leases", () => {
+    const createFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_create_matches"),
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_assign_court")
+    );
+    assert.match(createFn, /\{status\}','"waiting"'/);
+    assert.match(createFn, /\{courtId\}','null'/);
+    assert.equal(createFn.includes("INSERT INTO public.daily_play_court_leases"), false);
+    assert.match(createFn, /jsonb_array_length\(v_players\)<>4/);
+    assert.match(createFn, /PLAYER_NOT_ELIGIBLE/);
+    assert.match(createFn, /INVALID_MATCH_SHAPE/);
+  });
+
+  test("assign_court is waiting→assigned with lease insert", () => {
+    const assignFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_assign_court"),
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_start_match")
+    );
+    assert.match(assignFn, /MATCH_NOT_WAITING/);
+    assert.match(assignFn, /\{status\}','"assigned"'/);
+    assert.match(assignFn, /INSERT INTO public\.daily_play_court_leases/);
+  });
+
+  test("start_match is assigned→playing and requires active lease", () => {
+    assert.match(applySql, /CREATE OR REPLACE FUNCTION public\.daily_play_start_match/);
+    const startFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_start_match"),
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_submit_score")
+    );
+    assert.match(startFn, /MATCH_NOT_ASSIGNED/);
+    assert.match(startFn, /COURT_LEASE_NOT_ACTIVE/);
+    assert.match(startFn, /\{status\}','"playing"'/);
+    assert.match(verifySql, /daily_play_start_match/);
+  });
+
+  test("submit_score requires playing (MATCH_NOT_PLAYING)", () => {
+    const scoreFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_submit_score"),
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_cancel_match")
+    );
+    assert.match(scoreFn, /MATCH_NOT_PLAYING/);
+    assert.match(scoreFn, /IS DISTINCT FROM 'playing'/);
+  });
+
+  test("change_court preserves status (no forced assigned)", () => {
+    const changeFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_change_court"),
+      applySql.indexOf("-- Helpers are internal")
+    );
+    assert.match(changeFn, /NOT IN \('assigned','playing'\)/);
+    assert.equal(changeFn.includes("jsonb_set(v_m,'{status}','\"assigned\"'"), false);
+    assert.match(changeFn, /INSERT INTO public\.daily_play_court_leases/);
+  });
+
+  test("athlete eligibility helper reuses athletes + club_members", () => {
+    assert.match(applySql, /daily_play_athlete_eligible_for_club/);
+    assert.match(applySql, /FROM public\.athletes a/);
+    assert.match(applySql, /JOIN public\.club_members cm/);
+    assert.match(applySql, /REVOKE ALL ON FUNCTION public\.daily_play_athlete_eligible_for_club/);
+  });
+
+  test("setup UI wires startMatch and does not treat assigned as playing bucket", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(source, /startMatch/);
+    assert.match(source, /Bắt đầu trận/);
+    assert.match(source, /waitingQueue/);
+    assert.match(source, /match\.status === "assigned"/);
+    assert.match(source, /matches=\{playing\}/);
   });
 });

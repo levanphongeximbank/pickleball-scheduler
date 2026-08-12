@@ -171,9 +171,13 @@ export default function DailyPlaySetup() {
 
   const courts = session.courts || [];
   const courtStates = session.courtStates || [];
-  const { waiting, playing, completed } = useMemo(
+  const { waiting, assigned, playing, completed } = useMemo(
     () => partitionDailyMatches(dailySettings.matches),
     [dailySettings.matches]
+  );
+  const waitingQueue = useMemo(
+    () => [...waiting, ...assigned],
+    [waiting, assigned]
   );
 
   const checkedInSet = useMemo(
@@ -371,7 +375,16 @@ export default function DailyPlaySetup() {
     const result = await session.assignCourt(match.id);
     if (result?.ok) {
       afterMutation();
-      setMessage("Đã xếp trận vào sân trống.");
+      setMessage("Đã xếp trận vào sân (assigned). Bấm Bắt đầu trận để chơi.");
+    }
+  };
+
+  const handleStartMatch = async (match) => {
+    setError(null);
+    const result = await session.startMatch(match.id);
+    if (result?.ok) {
+      afterMutation();
+      setMessage("Đã bắt đầu trận.");
     }
   };
 
@@ -656,16 +669,24 @@ export default function DailyPlaySetup() {
           <Grid size={{ xs: 12, md: 4 }}>
             <MatchListPanel
               title="Trận chờ"
-              matches={waiting}
+              matches={waitingQueue}
               emptyText="Chưa có trận chờ."
-              getCardProps={(match) =>
-                buildDailyMatchCardProps(match, {
+              getCardProps={(match) => {
+                if (match.status === "assigned") {
+                  return buildDailyMatchCardProps(match, {
+                    actionLabel: "Bắt đầu trận",
+                    onAction: handleStartMatch,
+                    secondaryActionLabel: "Hủy trận",
+                    onSecondaryAction: handleCancelMatch,
+                  });
+                }
+                return buildDailyMatchCardProps(match, {
                   actionLabel: "Xếp vào sân trống",
                   onAction: handleAssignCourt,
                   secondaryActionLabel: "Hủy trận",
                   onSecondaryAction: handleCancelMatch,
-                })
-              }
+                });
+              }}
             />
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>

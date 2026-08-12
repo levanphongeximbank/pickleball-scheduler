@@ -125,6 +125,41 @@ export function getOccupiedCourtIdsFromMatches(matches = []) {
   return occupied;
 }
 
+export function validateDoublesMatchShape(match = {}) {
+  const teamA = Array.isArray(match.teamAPlayerIds)
+    ? match.teamAPlayerIds.map(String)
+    : [];
+  const teamB = Array.isArray(match.teamBPlayerIds)
+    ? match.teamBPlayerIds.map(String)
+    : [];
+  const players = [
+    ...(match.playerIds || []),
+    ...teamA,
+    ...teamB,
+  ].map(String);
+  const distinct = [...new Set(players)];
+
+  if (teamA.length || teamB.length) {
+    if (teamA.length !== 2 || teamB.length !== 2) {
+      return {
+        ok: false,
+        code: DAILY_PLAY_CODE.INVALID_MATCH_SHAPE,
+        error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_SHAPE],
+      };
+    }
+  }
+
+  if (distinct.length !== 4) {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.INVALID_MATCH_SHAPE,
+      error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_SHAPE],
+    };
+  }
+
+  return { ok: true, playerIds: distinct };
+}
+
 export function listAvailableCourts({ courts = [], matches = [], leases = [] } = {}) {
   const leased = getActiveLeaseCourtIds(leases);
   const occupied = getOccupiedCourtIdsFromMatches(matches);
@@ -162,20 +197,12 @@ export function bumpRevision(state) {
 }
 
 export function validateProposedMatchPlayers(match, { checkedInPlayerIds, matches }) {
+  const shape = validateDoublesMatchShape(match);
+  if (!shape.ok) return shape;
+
   const checked = new Set((checkedInPlayerIds || []).map(String));
   const busy = getBusyPlayerIds(matches);
-  const players = [
-    ...(match.teamAPlayerIds || []),
-    ...(match.teamBPlayerIds || []),
-  ].map(String);
-
-  if (players.length !== 4 || new Set(players).size !== 4) {
-    return {
-      ok: false,
-      code: DAILY_PLAY_CODE.VALIDATION,
-      error: "Mỗi trận phải có đúng 4 VĐV khác nhau.",
-    };
-  }
+  const players = shape.playerIds;
 
   for (const playerId of players) {
     if (!checked.has(playerId)) {
@@ -196,6 +223,33 @@ export function validateProposedMatchPlayers(match, { checkedInPlayerIds, matche
   }
 
   return { ok: true, playerIds: players };
+}
+
+export function assertMatchParticipantsReady(
+  match,
+  { checkedInPlayerIds = [], isEligible = () => true } = {}
+) {
+  const shape = validateDoublesMatchShape(match);
+  if (!shape.ok) return shape;
+  const checked = new Set((checkedInPlayerIds || []).map(String));
+  for (const playerId of shape.playerIds) {
+    if (!checked.has(playerId)) {
+      return {
+        ok: false,
+        code: DAILY_PLAY_CODE.VALIDATION,
+        error: `VĐV ${playerId} chưa check-in.`,
+      };
+    }
+    if (!isEligible(playerId)) {
+      return {
+        ok: false,
+        code: DAILY_PLAY_CODE.PLAYER_NOT_ELIGIBLE,
+        error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.PLAYER_NOT_ELIGIBLE],
+        playerId,
+      };
+    }
+  }
+  return { ok: true, playerIds: shape.playerIds };
 }
 
 export function resolveCreateMatchCount({
@@ -332,7 +386,7 @@ export function applyAssignCourt(state, { matchId, courtId, leases = [] }) {
     return {
       ok: false,
       code: DAILY_PLAY_CODE.MATCH_NOT_WAITING,
-      error: "Chỉ xếp sân cho trận đang chờ.",
+      error: "Chỉ xếp sân cho trận đang chờ (waiting).",
     };
   }
 
@@ -352,8 +406,8 @@ export function applyAssignCourt(state, { matchId, courtId, leases = [] }) {
       ? {
           ...item,
           courtId: courtKey,
-          status: "playing",
-          startedAt: new Date().toISOString(),
+          status: "assigned",
+          assignedAt: new Date().toISOString(),
         }
       : item
   );
@@ -373,6 +427,59 @@ export function applyAssignCourt(state, { matchId, courtId, leases = [] }) {
     lease,
     matchId: match.id,
     courtId: courtKey,
+  };
+}
+
+export function applyStartMatch(state, { matchId, leases = [] }) {
+  const next = normalizeDailyPlayCanonicalState(state);
+  const match = next.matches.find((item) => item.id === String(matchId));
+  if (!match) {
+    return { ok: false, code: DAILY_PLAY_CODE.NOT_FOUND, error: "Không tìm thấy trận." };
+  }
+  if (match.status !== "assigned") {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.MATCH_NOT_ASSIGNED,
+      error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.MATCH_NOT_ASSIGNED],
+    };
+  }
+  if (!match.courtId) {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.VALIDATION,
+      error: "Trận assigned phải có sân trước khi bắt đầu.",
+    };
+  }
+
+  const hasLease = (leases || []).some(
+    (lease) =>
+      String(lease.matchId) === String(matchId) &&
+      String(lease.courtId) === String(match.courtId) &&
+      String(lease.status) === DAILY_PLAY_LEASE_ACTIVE
+  );
+  if (!hasLease) {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.VALIDATION,
+      error: "Thiếu lease sân active cho trận assigned.",
+    };
+  }
+
+  const matches = next.matches.map((item) =>
+    item.id === match.id
+      ? {
+          ...item,
+          status: "playing",
+          startedAt: new Date().toISOString(),
+        }
+      : item
+  );
+
+  return {
+    ok: true,
+    state: bumpRevision({ ...next, matches }),
+    matchId: match.id,
+    courtId: match.courtId,
   };
 }
 
@@ -408,11 +515,11 @@ export function applySubmitScore(state, { matchId, scoreA, scoreB, leases = [] }
     };
   }
 
-  if (current.status !== "playing" && current.status !== "assigned") {
+  if (current.status !== "playing") {
     return {
       ok: false,
-      code: DAILY_PLAY_CODE.MATCH_NOT_ACTIVE,
-      error: "Chỉ nhập điểm cho trận đang diễn ra.",
+      code: DAILY_PLAY_CODE.MATCH_NOT_PLAYING,
+      error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.MATCH_NOT_PLAYING],
     };
   }
 
@@ -517,7 +624,7 @@ export function applyChangeCourt(state, { matchId, newCourtId, leases = [] }) {
     return {
       ok: false,
       code: DAILY_PLAY_CODE.MATCH_NOT_ACTIVE,
-      error: "Chỉ đổi sân cho trận đang diễn ra.",
+      error: "Chỉ đổi sân cho trận assigned hoặc playing.",
     };
   }
 
@@ -526,7 +633,9 @@ export function applyChangeCourt(state, { matchId, newCourtId, leases = [] }) {
     return { ok: true, replay: true, state: next, leases, courtId: target };
   }
 
-  const leased = getActiveLeaseCourtIds(leases);
+  const leased = getActiveLeaseCourtIds(
+    (leases || []).filter((lease) => String(lease.matchId) !== String(matchId))
+  );
   const occupied = getOccupiedCourtIdsFromMatches(
     next.matches.filter((item) => item.id !== match.id)
   );
@@ -538,8 +647,9 @@ export function applyChangeCourt(state, { matchId, newCourtId, leases = [] }) {
     };
   }
 
+  const preservedStatus = match.status;
   const matches = next.matches.map((item) =>
-    item.id === match.id ? { ...item, courtId: target } : item
+    item.id === match.id ? { ...item, courtId: target, status: preservedStatus } : item
   );
 
   let foundActive = false;

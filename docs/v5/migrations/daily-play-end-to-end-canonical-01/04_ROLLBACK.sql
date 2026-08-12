@@ -14,6 +14,9 @@ DROP FUNCTION IF EXISTS public.daily_play_cancel_match(
 DROP FUNCTION IF EXISTS public.daily_play_submit_score(
   text,text,uuid,text,integer,integer,integer,text
 );
+DROP FUNCTION IF EXISTS public.daily_play_start_match(
+  text,text,uuid,text,integer,text
+);
 DROP FUNCTION IF EXISTS public.daily_play_assign_court(
   text,text,uuid,text,text,integer,text
 );
@@ -32,6 +35,7 @@ DROP FUNCTION IF EXISTS public.daily_play_snapshot(text,text,uuid);
 DROP FUNCTION IF EXISTS public.daily_play_write_state(uuid,integer,jsonb);
 DROP FUNCTION IF EXISTS public.daily_play_replace_match(jsonb,text,jsonb);
 DROP FUNCTION IF EXISTS public.daily_play_read_courts(text,jsonb);
+DROP FUNCTION IF EXISTS public.daily_play_athlete_eligible_for_club(text,text,text);
 DROP FUNCTION IF EXISTS public.daily_play_match_player_ids(jsonb);
 DROP FUNCTION IF EXISTS public.daily_play_finish_command(text,uuid,text,text,jsonb);
 DROP FUNCTION IF EXISTS public.daily_play_begin_command(text,uuid,text,text);

@@ -11,7 +11,7 @@ import {
   releaseCourt,
   setCourtLocked,
 } from "./courtEngine.js";
-import { startMatch, submitMatchScore } from "./matchEngine.js";
+import { submitMatchScore } from "./matchEngine.js";
 import { isRulesV2Enabled } from "../../features/competition-core/config/featureFlags.js";
 import { evaluateLegacyDailyPlayPlayer } from "../../features/competition-core/constraints/adapters/constraintsEvaluationBridge.js";
 import {
@@ -405,6 +405,7 @@ export async function createFairDailyMatches({
 
 export function partitionDailyMatches(matches = []) {
   const waiting = [];
+  const assigned = [];
   const playing = [];
   const completed = [];
 
@@ -418,18 +419,20 @@ export function partitionDailyMatches(matches = []) {
       return;
     }
 
-    if (
-      match.status === MATCH_STATUS.PLAYING ||
-      match.status === MATCH_STATUS.ASSIGNED
-    ) {
+    if (match.status === MATCH_STATUS.PLAYING) {
       playing.push(match);
+      return;
+    }
+
+    if (match.status === MATCH_STATUS.ASSIGNED) {
+      assigned.push(match);
       return;
     }
 
     waiting.push(match);
   });
 
-  return { waiting, playing, completed };
+  return { waiting, assigned, playing, completed };
 }
 
 export function assignDailyMatchToCourt({
@@ -440,10 +443,18 @@ export function assignDailyMatchToCourt({
 } = {}) {
   const normalized = normalizeDailyPlaySettings(settings);
   const { waiting } = partitionDailyMatches(normalized.matches);
-  const match = waiting.find((item) => item.id === matchId) || waiting[0];
+  // Only pure waiting (no court) are assignable; assigned stays in assigned bucket.
+  const match =
+    waiting.find((item) => item.id === matchId) ||
+    waiting.find((item) => !item.courtId) ||
+    waiting[0];
 
   if (!match) {
     return { ok: false, error: "Khong co tran cho de xep san." };
+  }
+
+  if (match.status === MATCH_STATUS.ASSIGNED || match.status === MATCH_STATUS.PLAYING) {
+    return { ok: false, error: "Tran da co san — dung doi san / bat dau." };
   }
 
   const enabledCourts = normalized.enabledCourtIds.length
@@ -483,20 +494,12 @@ export function assignDailyMatchToCourt({
       return item;
     }
 
-    const started = startMatch({
+    return {
       ...item,
       courtId: targetCourt.id,
       status: MATCH_STATUS.ASSIGNED,
-    });
-
-    return started.ok
-      ? {
-          ...item,
-          ...started.match,
-          courtId: targetCourt.id,
-          status: MATCH_STATUS.PLAYING,
-        }
-      : item;
+      assignedAt: new Date().toISOString(),
+    };
   });
 
   return {
@@ -507,6 +510,35 @@ export function assignDailyMatchToCourt({
     },
     courtId: targetCourt.id,
     matchId: match.id,
+  };
+}
+
+export function startDailyPlayMatch(settings, matchId) {
+  const normalized = normalizeDailyPlaySettings(settings);
+  const index = normalized.matches.findIndex((item) => item.id === matchId);
+  if (index < 0) {
+    return { ok: false, error: "Khong tim thay tran." };
+  }
+  const current = normalized.matches[index];
+  if (current.status !== MATCH_STATUS.ASSIGNED) {
+    return { ok: false, error: "Chi bat dau tran da assigned." };
+  }
+  if (current.courtId == null || current.courtId === "") {
+    return { ok: false, error: "Tran assigned thieu san." };
+  }
+  const nextMatches = [...normalized.matches];
+  nextMatches[index] = {
+    ...current,
+    status: MATCH_STATUS.PLAYING,
+    startedAt: new Date().toISOString(),
+  };
+  return {
+    ok: true,
+    settings: {
+      ...normalized,
+      matches: nextMatches,
+    },
+    match: nextMatches[index],
   };
 }
 

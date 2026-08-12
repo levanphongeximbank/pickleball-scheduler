@@ -20,6 +20,7 @@ import {
   createFairDailyMatches,
   getBusyPlayerIdsFromDailyMatches,
   getDefaultDailyPlaySettings,
+  startDailyPlayMatch,
   submitDailyPlayMatchScore,
 } from "../src/tournament/engines/dailyPlayEngine.js";
 import { buildCourtRuntimeStates } from "../src/tournament/engines/courtEngine.js";
@@ -163,9 +164,21 @@ test("regression Test 1: daily play mixed doubles with 12 men, 8 women, 4 courts
   }
 
   assert.equal(new Set(assignedCourtIds).size, 4);
+  assert.equal(
+    nextSettings.matches.every((match) => match.status === MATCH_STATUS.ASSIGNED),
+    true
+  );
 
   const busy = getBusyPlayerIdsFromDailyMatches(nextSettings.matches);
   assert.equal(busy.size, 16);
+
+  const assignedMatch = nextSettings.matches.find(
+    (match) => match.status === MATCH_STATUS.ASSIGNED
+  );
+  const started = startDailyPlayMatch(nextSettings, assignedMatch.id);
+  assert.equal(started.ok, true);
+  assert.equal(started.match.status, MATCH_STATUS.PLAYING);
+  nextSettings = started.settings;
 
   const playingMatch = nextSettings.matches.find((match) => match.status === MATCH_STATUS.PLAYING);
   const scoreResult = submitDailyPlayMatchScore(nextSettings, playingMatch.id, {

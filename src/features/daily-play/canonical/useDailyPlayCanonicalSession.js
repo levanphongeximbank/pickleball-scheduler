@@ -158,6 +158,10 @@ export function useDailyPlayCanonicalSession({
           expectedVersion: revision,
         })
       ),
+    startMatch: (matchId) =>
+      runMutation(() =>
+        service.startMatch(scope, { matchId, expectedVersion: revision })
+      ),
     submitScore: (matchId, scoreA, scoreB) =>
       runMutation(() =>
         service.submitScore(scope, {

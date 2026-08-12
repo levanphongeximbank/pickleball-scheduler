@@ -12,6 +12,15 @@ BEGIN
   IF to_regclass('public.club_data_v3') IS NULL THEN
     v_missing := array_append(v_missing, 'public.club_data_v3');
   END IF;
+  IF to_regclass('public.athletes') IS NULL THEN
+    v_missing := array_append(v_missing, 'public.athletes');
+  END IF;
+  IF to_regclass('public.club_members') IS NULL THEN
+    v_missing := array_append(v_missing, 'public.club_members');
+  END IF;
+  IF to_regclass('public.clubs') IS NULL THEN
+    v_missing := array_append(v_missing, 'public.clubs');
+  END IF;
   IF to_regprocedure('public.canonical_tournament_assert_tenant(text)') IS NULL THEN
     v_missing := array_append(v_missing, 'public.canonical_tournament_assert_tenant(text)');
   END IF;
@@ -47,7 +56,16 @@ BEGIN
     RAISE EXCEPTION 'PRECHECK_FAIL: club_data_v3.data jsonb missing';
   END IF;
 
-  RAISE NOTICE 'PRECHECK_OK: canonical tournament, club court SSOT, and auth helpers exist';
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'clubs'
+      AND column_name = 'deleted_at'
+  ) THEN
+    RAISE EXCEPTION 'PRECHECK_FAIL: clubs.deleted_at missing';
+  END IF;
+
+  RAISE NOTICE 'PRECHECK_OK: canonical tournament, athlete membership, court SSOT, and auth dependencies exist';
 END
 $$;
 

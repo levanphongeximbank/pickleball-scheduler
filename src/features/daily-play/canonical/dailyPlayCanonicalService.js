@@ -123,6 +123,15 @@ export function createDailyPlayCanonicalService(deps = {}) {
       });
     },
 
+    async startMatch(scope, { matchId, expectedVersion, idempotencyKey }) {
+      return callRpc(DAILY_PLAY_RPC.START_MATCH, {
+        ...scopeArgs(scope),
+        p_match_id: String(matchId),
+        p_expected_version: expectedVersion,
+        p_idempotency_key: idempotencyKey || newIdempotencyKey("start"),
+      });
+    },
+
     async submitScore(
       scope,
       { matchId, scoreA, scoreB, expectedVersion, idempotencyKey }

@@ -15,8 +15,10 @@ import {
   applyCheckIn,
   applyCheckOut,
   applyCreateMatches,
+  applyStartMatch,
   applySubmitScore,
   assertExpectedVersion,
+  assertMatchParticipantsReady,
   buildCourtRuntimeView,
   emptyDailyPlayState,
   listAvailableCourts,
@@ -24,6 +26,7 @@ import {
   normalizeDailyPlayCanonicalState,
   resolveCreateMatchCount,
   selectEnabledCourts,
+  validateDoublesMatchShape,
 } from "./dailyPlayCanonicalDomain.js";
 
 function deny(code, error, extra = {}) {
@@ -43,6 +46,12 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
   const leasesByTournament = new Map(Object.entries(seed.leases || {}));
   /** @type {Map<string, object>} idempotencyKey -> result */
   const ledger = new Map(Object.entries(seed.ledger || {}));
+
+  /** @type {Map<string, Set<string>>} `${tenantId}::${clubId}` -> eligible athlete ids */
+  const eligibleAthletes = new Map();
+  for (const [key, ids] of Object.entries(seed.eligibleAthletes || {})) {
+    eligibleAthletes.set(String(key), new Set((ids || []).map(String)));
+  }
 
   const actor = {
     tenantId: seed.tenantId || "tenant-daily-01",
@@ -120,6 +129,16 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
 
   function setLeases(tournamentId, leases) {
     leasesByTournament.set(String(tournamentId), leases);
+  }
+
+  function isAthleteEligible(tenantId, clubId, playerId) {
+    const key = `${tenantId}::${clubId}`;
+    const set = eligibleAthletes.get(key);
+    if (!set) {
+      // Fail closed unless tests seed eligibility (mirrors server helper).
+      return false;
+    }
+    return set.has(String(playerId));
   }
 
   function snapshot(row) {
@@ -217,6 +236,12 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
     }
 
     if (name === DAILY_PLAY_RPC.CHECK_IN) {
+      if (!isAthleteEligible(args.p_tenant_id, args.p_club_id, args.p_player_id)) {
+        return deny(
+          DAILY_PLAY_CODE.PLAYER_NOT_ELIGIBLE,
+          DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.PLAYER_NOT_ELIGIBLE]
+        );
+      }
       writeDaily(row, applyCheckIn(daily, args.p_player_id));
       if (row.status === "draft") row.status = "active";
       return finishIdempotent(earlyIdempotent.ledgerKey, snapshot(row));
@@ -238,6 +263,18 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
         leases,
       });
       const proposed = Array.isArray(args.p_matches) ? args.p_matches : [];
+      for (const match of proposed) {
+        const shape = validateDoublesMatchShape(match);
+        if (!shape.ok) return shape;
+        for (const playerId of shape.playerIds) {
+          if (!isAthleteEligible(args.p_tenant_id, args.p_club_id, playerId)) {
+            return deny(
+              DAILY_PLAY_CODE.PLAYER_NOT_ELIGIBLE,
+              DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.PLAYER_NOT_ELIGIBLE]
+            );
+          }
+        }
+      }
       const countPlan = resolveCreateMatchCount({
         enabledCourts: courts,
         availableCourts: available,
@@ -258,6 +295,7 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
 
       const created = applyCreateMatches(daily, proposed.slice(0, countPlan.matchCount));
       if (!created.ok) return created;
+      // Create must remain waiting with no leases.
       writeDaily(row, created.state);
       if (row.status === "draft") row.status = "active";
       const snap = snapshot(row);
@@ -298,6 +336,18 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
         return deny(DAILY_PLAY_CODE.COURT_NOT_ELIGIBLE, "Sân không thuộc buổi chơi.");
       }
 
+      const matchToAssign = daily.matches.find(
+        (item) => String(item.id) === String(args.p_match_id)
+      );
+      if (matchToAssign) {
+        const ready = assertMatchParticipantsReady(matchToAssign, {
+          checkedInPlayerIds: daily.checkedInPlayerIds,
+          isEligible: (playerId) =>
+            isAthleteEligible(args.p_tenant_id, args.p_club_id, playerId),
+        });
+        if (!ready.ok) return ready;
+      }
+
       const assigned = applyAssignCourt(daily, {
         matchId: args.p_match_id,
         courtId,
@@ -315,6 +365,28 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
         ),
         assigned.lease,
       ]);
+      return finishIdempotent(earlyIdempotent.ledgerKey, snapshot(row));
+    }
+
+    if (name === DAILY_PLAY_RPC.START_MATCH) {
+      const leases = leasesFor(row.id);
+      const matchToStart = daily.matches.find(
+        (item) => String(item.id) === String(args.p_match_id)
+      );
+      if (matchToStart) {
+        const ready = assertMatchParticipantsReady(matchToStart, {
+          checkedInPlayerIds: daily.checkedInPlayerIds,
+          isEligible: (playerId) =>
+            isAthleteEligible(args.p_tenant_id, args.p_club_id, playerId),
+        });
+        if (!ready.ok) return ready;
+      }
+      const started = applyStartMatch(daily, {
+        matchId: args.p_match_id,
+        leases,
+      });
+      if (!started.ok) return started;
+      writeDaily(row, started.state);
       return finishIdempotent(earlyIdempotent.ledgerKey, snapshot(row));
     }
 
@@ -378,6 +450,12 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
     rpc,
     __setClubCourts(clubId, courts) {
       clubCourts.set(String(clubId), courts || []);
+    },
+    __setEligibleAthletes(tenantId, clubId, playerIds = []) {
+      eligibleAthletes.set(
+        `${tenantId}::${clubId}`,
+        new Set((playerIds || []).map(String))
+      );
     },
     __seedTournament(row) {
       const id = String(row.id);

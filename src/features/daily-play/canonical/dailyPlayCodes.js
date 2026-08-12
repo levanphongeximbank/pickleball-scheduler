@@ -9,6 +9,7 @@ export const DAILY_PLAY_RPC = Object.freeze({
   CHECK_OUT: "daily_play_check_out",
   CREATE_MATCHES: "daily_play_create_matches",
   ASSIGN_COURT: "daily_play_assign_court",
+  START_MATCH: "daily_play_start_match",
   SUBMIT_SCORE: "daily_play_submit_score",
   CANCEL_MATCH: "daily_play_cancel_match",
   CHANGE_COURT: "daily_play_change_court",
@@ -27,10 +28,14 @@ export const DAILY_PLAY_CODE = Object.freeze({
   COURT_ALREADY_LEASED: "COURT_ALREADY_LEASED",
   COURT_NOT_ELIGIBLE: "COURT_NOT_ELIGIBLE",
   PLAYER_ALREADY_ACTIVE: "PLAYER_ALREADY_ACTIVE",
+  PLAYER_NOT_ELIGIBLE: "PLAYER_NOT_ELIGIBLE",
   CHECKOUT_PLAYER_ACTIVE: "CHECKOUT_PLAYER_ACTIVE",
   MATCH_NOT_WAITING: "MATCH_NOT_WAITING",
+  MATCH_NOT_ASSIGNED: "MATCH_NOT_ASSIGNED",
+  MATCH_NOT_PLAYING: "MATCH_NOT_PLAYING",
   MATCH_NOT_ACTIVE: "MATCH_NOT_ACTIVE",
   MATCH_COMPLETED_IMMUTABLE: "MATCH_COMPLETED_IMMUTABLE",
+  INVALID_MATCH_SHAPE: "INVALID_MATCH_SHAPE",
   INVALID_SCORE: "INVALID_SCORE",
   SCORE_CONFLICT: "SCORE_CONFLICT",
   NOT_ENOUGH_PLAYERS: "NOT_ENOUGH_PLAYERS",
@@ -48,10 +53,18 @@ export const DAILY_PLAY_MESSAGES = Object.freeze({
     "Dữ liệu vừa được cập nhật ở phiên khác. Hệ thống đã tải trạng thái mới nhất.",
   [DAILY_PLAY_CODE.PLAYER_ALREADY_ACTIVE]:
     "VĐV đang có trận chưa kết thúc — không thể thêm vào trận mới.",
+  [DAILY_PLAY_CODE.PLAYER_NOT_ELIGIBLE]:
+    "VĐV không thuộc danh sách hợp lệ của CLB/tenant.",
   [DAILY_PLAY_CODE.CHECKOUT_PLAYER_ACTIVE]:
     "Không thể bỏ check-in VĐV đang trong trận. Hủy trận hoặc hoàn thành trước.",
   [DAILY_PLAY_CODE.MATCH_COMPLETED_IMMUTABLE]:
     "Trận đã hoàn thành — không thể sửa điểm hoặc hủy thường.",
+  [DAILY_PLAY_CODE.MATCH_NOT_ASSIGNED]:
+    "Chỉ bắt đầu trận đã được xếp sân (assigned).",
+  [DAILY_PLAY_CODE.MATCH_NOT_PLAYING]:
+    "Chỉ nhập điểm khi trận đang chơi (playing).",
+  [DAILY_PLAY_CODE.INVALID_MATCH_SHAPE]:
+    "Trận đôi phải có đúng 4 VĐV khác nhau (2 vs 2).",
   [DAILY_PLAY_CODE.INVALID_SCORE]:
     "Điểm không hợp lệ. Điểm phải là số nguyên không âm và không hòa.",
   [DAILY_PLAY_CODE.SCORE_CONFLICT]:

@@ -16,11 +16,13 @@ BEGIN
   END IF;
 
   FOREACH v_sig IN ARRAY ARRAY[
+    'public.daily_play_athlete_eligible_for_club(text,text,text)',
     'public.daily_play_get_state(text,text,uuid)',
     'public.daily_play_check_in(text,text,uuid,text,integer,text)',
     'public.daily_play_check_out(text,text,uuid,text,integer,text)',
     'public.daily_play_create_matches(text,text,uuid,jsonb,integer,integer,text)',
     'public.daily_play_assign_court(text,text,uuid,text,text,integer,text)',
+    'public.daily_play_start_match(text,text,uuid,text,integer,text)',
     'public.daily_play_submit_score(text,text,uuid,text,integer,integer,integer,text)',
     'public.daily_play_cancel_match(text,text,uuid,text,integer,text)',
     'public.daily_play_change_court(text,text,uuid,text,text,integer,text)'
@@ -51,8 +53,10 @@ BEGIN
   END IF;
 
   FOREACH v_rpc IN ARRAY ARRAY[
-    'daily_play_get_state','daily_play_check_in','daily_play_check_out',
-    'daily_play_create_matches','daily_play_assign_court','daily_play_submit_score',
+    'daily_play_athlete_eligible_for_club','daily_play_get_state',
+    'daily_play_check_in','daily_play_check_out',
+    'daily_play_create_matches','daily_play_assign_court','daily_play_start_match',
+    'daily_play_submit_score',
     'daily_play_cancel_match','daily_play_change_court'
   ] LOOP
     IF NOT EXISTS (
@@ -70,6 +74,7 @@ BEGIN
     'public.daily_play_check_out(text,text,uuid,text,integer,text)',
     'public.daily_play_create_matches(text,text,uuid,jsonb,integer,integer,text)',
     'public.daily_play_assign_court(text,text,uuid,text,text,integer,text)',
+    'public.daily_play_start_match(text,text,uuid,text,integer,text)',
     'public.daily_play_submit_score(text,text,uuid,text,integer,integer,integer,text)',
     'public.daily_play_cancel_match(text,text,uuid,text,integer,text)',
     'public.daily_play_change_court(text,text,uuid,text,text,integer,text)'
@@ -83,6 +88,18 @@ BEGIN
       RAISE EXCEPTION 'VERIFY_FAIL: anon/PUBLIC can execute %', v_sig;
     END IF;
   END LOOP;
+
+  IF has_function_privilege(
+    'authenticated',
+    'public.daily_play_athlete_eligible_for_club(text,text,text)',
+    'EXECUTE'
+  ) OR has_function_privilege(
+    'anon',
+    'public.daily_play_athlete_eligible_for_club(text,text,text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: athlete eligibility helper is executable by a client role';
+  END IF;
 
   IF has_table_privilege('anon','public.daily_play_court_leases','SELECT')
      OR has_table_privilege('authenticated','public.daily_play_court_leases','SELECT')
@@ -124,7 +141,8 @@ JOIN pg_namespace n ON n.oid=p.pronamespace
 WHERE n.nspname='public'
   AND p.proname IN (
     'daily_play_get_state','daily_play_check_in','daily_play_check_out',
-    'daily_play_create_matches','daily_play_assign_court','daily_play_submit_score',
+    'daily_play_create_matches','daily_play_assign_court','daily_play_start_match',
+    'daily_play_submit_score',
     'daily_play_cancel_match','daily_play_change_court'
   )
 ORDER BY p.proname;

@@ -16,6 +16,9 @@ export {
   validateScoreInput,
   buildCourtRuntimeView,
   assertExpectedVersion,
+  validateDoublesMatchShape,
+  assertMatchParticipantsReady,
+  applyStartMatch,
 } from "./dailyPlayCanonicalDomain.js";
 
 export {
