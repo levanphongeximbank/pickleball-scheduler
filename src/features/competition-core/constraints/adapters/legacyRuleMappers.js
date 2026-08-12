@@ -1,7 +1,6 @@
 import { COMPETITION_CONSTRAINT_TYPE } from "../../constants/constraintType.js";
 import { CONSTRAINT_SEVERITY } from "../../constants/constraintSeverity.js";
 import { EVENT_TYPE } from "../../../../models/tournament/constants.js";
-import { getPlayerGenderKey } from "../../../../models/player.js";
 import { createRuleSet, normalizeRuleDefinition } from "../normalizeRule.js";
 import {
   buildFounderPolicySourceId,
@@ -194,24 +193,16 @@ export function mapPlayersToSnapshots(players = []) {
   /** @type {Record<string, import('../evaluateHardRules.js').RulePlayerSnapshot>} */
   const playersById = {};
   players.forEach((player) => {
-    if (!player) return;
-    const snapshot = {
-      gender: getPlayerGenderKey(player),
+    if (!player?.id) {
+      return;
+    }
+    playersById[String(player.id)] = {
+      gender: player.gender,
       skillLevel: Number(player.level ?? player.skillLevel ?? 0),
       checkedIn: player.checkedIn,
       busy: player.busy,
       available: player.available,
     };
-    const keys = [player.id, player.athleteId, player.pairingIdentityId]
-      .map((value) => String(value || "").trim())
-      .filter(Boolean);
-    if (keys.length === 0) return;
-    for (const key of keys) {
-      const existing = playersById[key];
-      if (!existing || (!existing.gender && snapshot.gender)) {
-        playersById[key] = snapshot;
-      }
-    }
   });
   return playersById;
 }
@@ -655,31 +646,6 @@ export function mapTeamLineupValidationToContext(payload = {}) {
  * @param {Object} [meta]
  */
 export function mapTeamLineupValidationToRuleSet(meta = {}) {
-  const genderAndEntry = [
-    {
-      id: "gender-eligibility",
-      type: COMPETITION_CONSTRAINT_TYPE.GENDER_ELIGIBILITY,
-      severity: CONSTRAINT_SEVERITY.HARD,
-      enabled: true,
-      params: {
-        eventType: meta.genderOnlyOverlay === true ? "known_binary" : "mixed_double",
-      },
-    },
-    {
-      id: "entry-eligibility",
-      type: COMPETITION_CONSTRAINT_TYPE.ENTRY_ELIGIBILITY,
-      severity: CONSTRAINT_SEVERITY.HARD,
-      enabled: true,
-      params: {},
-    },
-  ];
-  if (meta.genderOnlyOverlay === true) {
-    return createRuleSet({
-      id: meta.id || "legacy-team-lineup-validation",
-      version: meta.version || "1",
-      constraints: genderAndEntry,
-    });
-  }
   return createRuleSet({
     id: meta.id || "legacy-team-lineup-validation",
     version: meta.version || "1",
@@ -689,10 +655,7 @@ export function mapTeamLineupValidationToRuleSet(meta = {}) {
         type: COMPETITION_CONSTRAINT_TYPE.LINEUP_VALIDITY,
         severity: CONSTRAINT_SEVERITY.HARD,
         enabled: true,
-        params: {
-          requireComplete: meta.requireComplete !== false,
-          allowPlayerReuse: meta.allowPlayerReuse === true,
-        },
+        params: { requireComplete: meta.requireComplete !== false },
       },
       {
         id: "mixed-composition",
@@ -701,7 +664,20 @@ export function mapTeamLineupValidationToRuleSet(meta = {}) {
         enabled: meta.validateMixed !== false,
         params: { composition: "mixed_double" },
       },
-      ...genderAndEntry,
+      {
+        id: "gender-eligibility",
+        type: COMPETITION_CONSTRAINT_TYPE.GENDER_ELIGIBILITY,
+        severity: CONSTRAINT_SEVERITY.HARD,
+        enabled: true,
+        params: {},
+      },
+      {
+        id: "entry-eligibility",
+        type: COMPETITION_CONSTRAINT_TYPE.ENTRY_ELIGIBILITY,
+        severity: CONSTRAINT_SEVERITY.HARD,
+        enabled: true,
+        params: {},
+      },
     ],
   });
 }

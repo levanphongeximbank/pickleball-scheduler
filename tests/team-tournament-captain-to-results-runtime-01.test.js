@@ -309,10 +309,22 @@ describe("captain-to-results runtime authority", () => {
 
   it("source contracts: one lineup runtime + debug flag + no club pool on lineup cards", () => {
     const src = readFileSync(join(root, "src/pages/tournament/TeamPortal.jsx"), "utf8");
+    const validatorSrc = readFileSync(
+      join(root, "src/features/team-tournament/engines/lineupValidationEngine.js"),
+      "utf8"
+    );
     assert.match(src, /buildCaptainLineupRuntime/);
     assert.match(src, /ttLineupDebug/);
     assert.match(src, /players=\{lineupPlayers\}/);
     assert.match(src, /pageMode:\s*"captainPortal"/);
+    assert.match(validatorSrc, /MLP slot\/reuse\/participation is TT format authority/);
+    assert.doesNotMatch(
+      readFileSync(
+        join(root, "src/features/competition-core/constraints/adapters/teamTournamentRulesBridge.js"),
+        "utf8"
+      ),
+      /genderOnlyOverlay/
+    );
     const active = getActiveMatchDisciplines([
       { id: "a", name: "Đôi nam", playerCount: 2, genderRequirement: GENDER_REQUIREMENT.MALE },
       { id: "b", name: "Đôi nữ", playerCount: 2, genderRequirement: GENDER_REQUIREMENT.FEMALE },

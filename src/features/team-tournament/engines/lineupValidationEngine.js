@@ -460,14 +460,18 @@ export function validateLineupSelectionsStructured(args) {
     clubPlayers: args.players,
   });
   const nextArgs = { ...args, players: scopedPlayers };
+  const mlp =
+    isMlpFormat(args.teamData) ||
+    args.teamData?.settings?.allowPlayerReusePerMatchup === true;
+  // MLP slot/reuse/participation is TT format authority. V2 mixed_double pairing
+  // must not consume MLP disciplines as mixed teams (CORE-08: do not retarget V2).
+  if (mlp) {
+    return validateLineupSelectionsStructuredLegacy(nextArgs);
+  }
   if (isRulesV2Enabled(args.envSource)) {
-    const mlp =
-      isMlpFormat(args.teamData) ||
-      args.teamData?.settings?.allowPlayerReusePerMatchup === true;
     const bridge = evaluateLegacyTeamLineupValidation(
       {
         ...nextArgs,
-        mlp,
         team: args.team || findTeam(args.teamData, args.teamId),
         legacyEvaluate: () => validateLineupSelectionsStructuredLegacy(nextArgs),
       },
