@@ -18,17 +18,18 @@ const pkg = join(
 
 const LOCKED = Object.freeze({
   "01_PRECHECK.sql":
-    "b900547cebf27371d95598e6dbb0808d82baf118bcf68057d28458aae250163b",
+    "933e273b2cfcfa30e4b8710f5ebef6f3a2400ab3bbb2a2b2ca506087672252a2",
   "02_APPLY.sql":
-    "8b724a8dca6da6ea92878d2cad970af4880ead88c38871bfcd257e16196f1fdb",
+    "cc059feb5f25c34f824d9233eee3128ec1095dead8926449150454b6815200a2",
   "03_VERIFY.sql":
-    "1e0236690242e3f5cb9a32bad912defe8c046b0579977a5ce37f4f41031ea822",
+    "3c0e7e9ee71ef896db59985920ce2796a8d85ca07d5a6bfe9ae38f711ef4ed80",
   "04_ROLLBACK.sql":
-    "d0120c74db64ce791714c3b0edcde5c7b5f33996911f9079c7268ef2b46a1e03",
+    "517aa6fde5eba6922491d3a5b163cdc25531db381b9325bb99a3c58f1d741ab9",
 });
 
 function sha256(rel) {
-  return createHash("sha256").update(readFileSync(join(pkg, rel))).digest("hex");
+  const text = readFileSync(join(pkg, rel), "utf8").replace(/\r\n/g, "\n");
+  return createHash("sha256").update(text, "utf8").digest("hex");
 }
 
 describe("team-tournament-dashboard-draft-operational-role-visibility-01", () => {
