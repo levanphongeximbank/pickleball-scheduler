@@ -47,7 +47,7 @@ describe("team-tournament-user-player-id-athletes-canonical-01", () => {
     assert.match(rollback, /from public\.profiles p/);
     assert.match(rollback, /p\.player_id/);
     assert.match(rollback, /c168c14f87ad03a2a246150cd47afcf3/);
-    assert.match(rollback, /E'\\r\\n  select coalesce/);
+    assert.match(rollback, /E'\\r\\n\s+select coalesce/);
   });
 
   it("package files are present and non-empty", () => {
