@@ -31,14 +31,25 @@ export async function loadTeamTournamentDashboardSource({
     return { ok: true, view: result.view };
   }
   const code = result?.code || "DASHBOARD_UNAVAILABLE";
+  const visibilityDenied =
+    code === "DRAFT_NOT_VISIBLE" ||
+    code === "NOT_VISIBLE" ||
+    code === "CROSS_TENANT_DENIED" ||
+    code === "NOT_AUTHENTICATED";
   return {
     ok: false,
     code,
     error:
       result?.error ||
-      (isLifecycleRpcMissing(code)
-        ? "Bảng điều khiển giải chưa sẵn sàng trên máy chủ."
-        : "Không tải được bảng điều khiển giải."),
+      (visibilityDenied
+        ? code === "NOT_AUTHENTICATED"
+          ? "Phiên đăng nhập hết hạn — đăng nhập lại."
+          : code === "CROSS_TENANT_DENIED"
+            ? "Không xem được giải của tenant khác."
+            : "Bạn không có quyền xem bảng điều khiển giải này."
+        : isLifecycleRpcMissing(code)
+          ? "Bảng điều khiển giải chưa sẵn sàng trên máy chủ."
+          : "Không tải được bảng điều khiển giải."),
   };
 }
 

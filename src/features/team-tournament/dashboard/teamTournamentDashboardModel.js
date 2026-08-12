@@ -102,25 +102,6 @@ export function buildTeamTournamentDashboardView({
   serverCapabilities = null,
   myTeamRoster = null,
 } = {}) {
-  const visibility = canViewTournamentDashboard({
-    tournament,
-    isAuthenticated,
-    canOrganize,
-    sameTenant,
-  });
-  if (!visibility.ok) {
-    return {
-      ok: false,
-      code: visibility.code,
-      error:
-        visibility.code === "DRAFT_NOT_VISIBLE"
-          ? "Giải nháp chỉ hiển thị cho ban tổ chức."
-          : visibility.code === "CROSS_TENANT_DENIED"
-            ? "Không xem được giải của tenant khác."
-            : "Không xem được bảng điều khiển giải.",
-    };
-  }
-
   const derived = resolveDashboardCapabilities({
     teamData,
     playerId,
@@ -142,6 +123,26 @@ export function buildTeamTournamentDashboardView({
         }
       : {}),
   };
+
+  const visibility = canViewTournamentDashboard({
+    tournament,
+    isAuthenticated,
+    canOrganize: capabilities.canOrganize,
+    sameTenant,
+    hasDraftOperationalRole: capabilities.isCaptain || capabilities.isReferee,
+  });
+  if (!visibility.ok) {
+    return {
+      ok: false,
+      code: visibility.code,
+      error:
+        visibility.code === "DRAFT_NOT_VISIBLE" || visibility.code === "NOT_VISIBLE"
+          ? "Bạn không có quyền xem bảng điều khiển giải này."
+          : visibility.code === "CROSS_TENANT_DENIED"
+            ? "Không xem được giải của tenant khác."
+            : "Không xem được bảng điều khiển giải.",
+    };
+  }
 
   const matchups = projectPublicMatchups(teamData?.matchups || []);
   const classified = classifyMatchups(matchups);

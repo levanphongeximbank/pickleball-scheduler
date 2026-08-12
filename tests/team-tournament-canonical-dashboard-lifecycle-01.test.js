@@ -160,7 +160,7 @@ test("lifecycle: draft is saved status and not athlete-visible", () => {
   assert.equal(isRegReady({ status: "ready" }), false);
 });
 
-test("visibility: organizer sees draft; athlete does not", () => {
+test("visibility: organizer sees draft; ordinary athlete does not", () => {
   const tournament = sampleTournament();
   assert.equal(
     canViewDashboard({
@@ -177,6 +177,30 @@ test("visibility: organizer sees draft; athlete does not", () => {
       isAuthenticated: true,
       canOrganize: false,
       sameTenant: true,
+    }).code,
+    "DRAFT_NOT_VISIBLE"
+  );
+});
+
+test("visibility: draft captain/deputy/referee operational role may view", () => {
+  const tournament = sampleTournament({ status: TOURNAMENT_STATUS.DRAFT });
+  assert.equal(
+    canViewDashboard({
+      tournament,
+      isAuthenticated: true,
+      canOrganize: false,
+      sameTenant: true,
+      hasDraftOperationalRole: true,
+    }).reason,
+    "draft_operational_role"
+  );
+  assert.equal(
+    canViewDashboard({
+      tournament,
+      isAuthenticated: true,
+      canOrganize: false,
+      sameTenant: true,
+      hasDraftOperationalRole: false,
     }).code,
     "DRAFT_NOT_VISIBLE"
   );
@@ -371,6 +395,102 @@ test("routes: draft opens setup; visible opens dashboard", () => {
     "/tournaments/abc"
   );
   assert.equal(teamTournamentDashboardPath("abc"), "/tournaments/abc");
+});
+
+test("dashboard: draft captain sees myTeam + captain; ordinary draft member denied", () => {
+  const captainView = buildTeamTournamentDashboardView({
+    tournament: sampleTournament({ status: TOURNAMENT_STATUS.DRAFT }),
+    teamData: sampleTeamData(),
+    playerId: "player-cap",
+    canOrganize: false,
+    sameTenant: true,
+    isAuthenticated: true,
+  });
+  assert.equal(captainView.ok, true);
+  assert.equal(captainView.sections.viewer, true);
+  assert.equal(captainView.sections.myTeam, true);
+  assert.equal(captainView.sections.captain, true);
+  assert.equal(captainView.sections.organizer, false);
+  assert.ok(captainView.captain.href.includes("/team-portal/"));
+
+  const ordinary = buildTeamTournamentDashboardView({
+    tournament: sampleTournament({ status: TOURNAMENT_STATUS.DRAFT }),
+    teamData: sampleTeamData(),
+    playerId: "player-p1",
+    canOrganize: false,
+    sameTenant: true,
+    isAuthenticated: true,
+  });
+  assert.equal(ordinary.ok, false);
+  assert.equal(ordinary.code, "DRAFT_NOT_VISIBLE");
+});
+
+test("dashboard: draft referee assignment opens referee section without organizer", () => {
+  const view = buildTeamTournamentDashboardView({
+    tournament: sampleTournament({ status: TOURNAMENT_STATUS.DRAFT }),
+    teamData: sampleTeamData(),
+    playerId: "player-other",
+    userId: "user-ref",
+    canOrganize: false,
+    sameTenant: true,
+    isAuthenticated: true,
+    refereeAssignments: [{ refereeUserId: "user-ref", matchupId: "mu-equal", matchId: "m-1" }],
+  });
+  assert.equal(view.ok, true);
+  assert.equal(view.sections.viewer, true);
+  assert.equal(view.sections.referee, true);
+  assert.equal(view.sections.captain, false);
+  assert.equal(view.sections.organizer, false);
+});
+
+test("dashboard load: visibility codes map to not-visible message (not generic load failure)", async () => {
+  const draft = await loadTeamTournamentDashboardSource({
+    tournamentId: "tid-1",
+    getDashboard: async () => ({ ok: false, code: "DRAFT_NOT_VISIBLE" }),
+  });
+  assert.equal(draft.code, "DRAFT_NOT_VISIBLE");
+  assert.match(draft.error, /không có quyền xem/i);
+  assert.doesNotMatch(draft.error, /Không tải được/);
+
+  const unavailable = await loadTeamTournamentDashboardSource({
+    tournamentId: "tid-1",
+    getDashboard: async () => ({ ok: false, code: "DASHBOARD_UNAVAILABLE" }),
+  });
+  assert.match(unavailable.error, /Không tải được/);
+});
+
+test("captain tasks: submitted lineup is not an open lineup task", () => {
+  const teamData = sampleTeamData();
+  teamData.matchups = [
+    {
+      id: "mu-submitted",
+      teamAId: "team-a",
+      teamBId: "team-b",
+      status: "lineup_open",
+      lineups: {
+        "team-a": { status: LINEUP_STATUS.SUBMITTED },
+      },
+    },
+    {
+      id: "mu-pending",
+      teamAId: "team-a",
+      teamBId: "team-b",
+      status: "lineup_open",
+      lineups: {
+        "team-a": { status: LINEUP_STATUS.DRAFT },
+      },
+    },
+  ];
+  const tasks = buildCaptainDashboardTasks({
+    tournament: sampleTournament({ status: TOURNAMENT_STATUS.DRAFT }),
+    teamData,
+    captainTeamId: "team-a",
+    clubId: "club-a",
+  });
+  assert.equal(tasks.some((task) => task.matchupId === "mu-submitted"), false);
+  assert.equal(tasks.some((task) => task.matchupId === "mu-pending"), true);
+  assert.ok(tasks[0].href.includes("/team-portal/"));
+  assert.ok(tasks[0].href.includes("club=club-a"));
 });
 
 test("dashboard: non-participant sees viewer sections only", () => {

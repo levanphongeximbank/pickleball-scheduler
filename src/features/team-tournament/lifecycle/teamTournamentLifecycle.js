@@ -2,8 +2,11 @@
  * Canonical Team Tournament lifecycle + visibility.
  * Reuses existing TOURNAMENT_STATUS. Does not invent a second status taxonomy.
  *
- * DRAFT = saved canonically, organizer-visible, not athlete/public discoverable.
- * Athlete/public visibility starts at registration|ready|active|completed.
+ * DRAFT = saved canonically; not broadly athlete-visible.
+ * Draft Dashboard access is ROLE-SCOPED (organizer OR assigned captain/deputy
+ * OR assigned referee). Ordinary participants / nonparticipants stay denied.
+ * Athlete/public visibility for non-draft starts at registration|ready|active|completed.
+ * Server authority: team_tournament_get_dashboard / team_tournament_can_view_dashboard.
  */
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
 
@@ -62,15 +65,18 @@ export function isOrganizerVisibleStatus(status) {
 
 /**
  * Visibility is not mutation authority.
- * Draft: organizer only.
+ * Draft: organizer OR draft operational role (captain/deputy/assigned referee).
  * Visible statuses: authenticated same-tenant viewers.
  * Cross-tenant: denied by caller (tenant assert).
+ * hasDraftOperationalRole must come from server capabilities (or local derive
+ * after role resolution) — never grant tournament.update to athletes.
  */
 export function canViewTournamentDashboard({
   tournament,
   isAuthenticated = false,
   canOrganize = false,
   sameTenant = false,
+  hasDraftOperationalRole = false,
 } = {}) {
   if (!tournament) {
     return { ok: false, code: "NOT_FOUND" };
@@ -85,6 +91,9 @@ export function canViewTournamentDashboard({
     return { ok: true, reason: "organizer" };
   }
   if (isDraftTournament(tournament)) {
+    if (hasDraftOperationalRole) {
+      return { ok: true, reason: "draft_operational_role" };
+    }
     return { ok: false, code: "DRAFT_NOT_VISIBLE" };
   }
   if (!isAthleteVisibleStatus(tournament.status)) {

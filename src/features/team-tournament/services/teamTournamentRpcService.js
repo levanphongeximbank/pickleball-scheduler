@@ -488,6 +488,7 @@ async function callTeamTournamentRpc(rpcName, args = {}) {
       "FORBIDDEN",
       "NOT_AUTHENTICATED",
       "DRAFT_NOT_VISIBLE",
+      "NOT_VISIBLE",
       "CROSS_TENANT_DENIED",
       "RPC_MISSING",
     ];
