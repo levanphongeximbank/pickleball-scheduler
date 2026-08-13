@@ -322,6 +322,7 @@ describe("Daily Fair Match responsive polish (DP-11 / DP-11B)", () => {
   it("desktop uses container CSS grid 3/6/3 — not viewport Grid lg sizes", () => {
     assert.deepEqual(DAILY_FAIR_DESKTOP_GRID, { pool: 3, reveal: 6, matches: 3 });
     assert.match(DAILY_FAIR_DESKTOP_GRID_TEMPLATE, /minmax\(240px,\s*3fr\)/);
+    assert.match(DAILY_FAIR_DESKTOP_GRID_TEMPLATE, /minmax\(0,\s*6fr\)/);
     assert.equal(DAILY_FAIR_MATCH_PANEL_MIN_PX >= 240, true);
     assert.equal(DAILY_FAIR_COMPACT_BREAKPOINT_PX >= 900, true);
 
@@ -362,7 +363,8 @@ describe("Daily Fair Match responsive polish (DP-11 / DP-11B)", () => {
       "utf8"
     );
     assert.match(card, /wordBreak:\s*"normal"/);
-    assert.match(card, /overflowWrap:\s*"anywhere"/);
+    assert.match(card, /overflowWrap:\s*"break-word"/);
+    assert.equal(card.includes("anywhere"), false);
     assert.equal(card.includes("break-all"), false);
     assert.match(card, />\s*\{\s*teamA\s*\}\s*</);
     assert.match(card, />\s*VS\s*</);

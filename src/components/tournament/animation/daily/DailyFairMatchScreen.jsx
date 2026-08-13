@@ -23,6 +23,7 @@ import {
   DAILY_FAIR_COMPACT_BREAKPOINT_PX,
   DAILY_FAIR_DESKTOP_GRID,
   DAILY_FAIR_DESKTOP_GRID_TEMPLATE,
+  DAILY_FAIR_MATCH_PANEL_MIN_PX,
   FAIR_MATCH_PHASES,
   getPhaseStatusText,
 } from "./dailyFairMatchUtils.js";
@@ -409,8 +410,9 @@ export default function DailyFairMatchScreen({
           data-testid="daily-fair-result-panel"
           sx={{
             display: showMatches ? "block" : "none",
-            minWidth: 0,
+            minWidth: showTabs ? 0 : DAILY_FAIR_MATCH_PANEL_MIN_PX,
             width: "100%",
+            maxWidth: "100%",
             order: showTabs ? 3 : 0,
           }}
         >

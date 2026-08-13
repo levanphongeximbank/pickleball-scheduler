@@ -678,7 +678,10 @@ export default function DailyPlaySetup() {
   }
 
   return (
-    <TournamentManageGate tournamentId={tournamentId}>
+    <TournamentManageGate
+      tournamentId={tournamentId}
+      loadedTournament={tournament}
+    >
       <TournamentSetupShell
         tournament={tournament}
         description="Daily Play canonical — check-in, ghép trận, xếp sân, nhập điểm"
