@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Chip,
+  Grid,
   Paper,
   Stack,
   Typography,
@@ -15,6 +16,7 @@ import {
   OFFICIAL_REGISTRATION_MODE_LABELS,
 } from "../../../features/individual-tournament/engines/officialTournamentSettingsEngine.js";
 import { projectOfficialDrawSubsteps } from "../../../features/individual-tournament/engines/officialDrawOrchestrationEngine.js";
+import { projectOfficialGroupDrawReview } from "../../../features/individual-tournament/engines/officialGroupDrawReviewProjection.js";
 import { OFFICIAL_MODE } from "../../../models/tournament/constants.js";
 
 function SubstepChip({ label, state }) {
@@ -68,6 +70,62 @@ function PairList({ pairs = [], playersById }) {
   );
 }
 
+function OfficialGroupDrawReview({ review }) {
+  if (!review?.present) return null;
+  return (
+    <Stack spacing={1.5}>
+      <Typography variant="h6" fontWeight={800}>
+        KẾT QUẢ CHIA BẢNG
+      </Typography>
+      {review.ok ? null : (
+        <Alert severity="error">
+          Kết quả chia bảng không hợp lệ — không thể tin tưởng danh sách dưới đây.
+          {(review.issues || []).map((issue) => (
+            <Typography key={`${issue.code}-${issue.entryId || issue.groupId}`} variant="body2">
+              {issue.message}
+            </Typography>
+          ))}
+        </Alert>
+      )}
+      <Grid container spacing={1.5}>
+        {(review.groups || []).map((group) => (
+          <Grid key={group.groupId} size={{ xs: 12, md: 6, lg: 3 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, height: "100%" }}>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                <Typography variant="subtitle1" fontWeight={800}>
+                  {group.label}
+                </Typography>
+                <Chip size="small" label={`${group.entryCount} cặp`} />
+              </Stack>
+              <Stack spacing={1}>
+                {(group.entries || []).map((entry) => (
+                  <Paper
+                    key={entry.entryId}
+                    variant="outlined"
+                    sx={{ p: 1, bgcolor: entry.resolved ? "background.paper" : "action.selected" }}
+                  >
+                    <Typography variant="body2" fontWeight={700}>
+                      {entry.displayTitle}
+                    </Typography>
+                    <Typography variant="body2">
+                      {entry.resolved ? entry.playersLine : "Không xác định — không đọc được tên VĐV"}
+                    </Typography>
+                    {entry.resolved && entry.ratingSummary ? (
+                      <Typography variant="caption" color="text.secondary">
+                        Trình độ {entry.ratingSummary}
+                      </Typography>
+                    ) : null}
+                  </Paper>
+                ))}
+              </Stack>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+    </Stack>
+  );
+}
+
 /**
  * Draw stage: individual = explicit pairing then group draw; pair = group draw only.
  */
@@ -81,11 +139,16 @@ export default function OfficialTournamentDrawScreen({
   groupBusy = false,
   onFormPairs,
   onGroupDraw,
+  onContinueToGroupStage,
 }) {
   const competition = useMemo(() => getOfficialCompetitionSettings(tournament), [tournament]);
   const sub = useMemo(
     () => projectOfficialDrawSubsteps(tournament, eventId),
     [tournament, eventId]
+  );
+  const groupReview = useMemo(
+    () => projectOfficialGroupDrawReview(tournament, eventId, players),
+    [tournament, eventId, players]
   );
   const entries =
     tournament?.events?.find((e) => String(e.id) === String(eventId))?.entries ||
@@ -207,7 +270,17 @@ export default function OfficialTournamentDrawScreen({
       ) : null}
 
       {sub.groupsCreated ? (
-        <Alert severity="success">Đã chia {sub.groupCount} bảng.</Alert>
+        <OfficialGroupDrawReview review={groupReview} />
+      ) : null}
+
+      {sub.groupsCreated && groupReview.ok ? (
+        <Button
+          variant="outlined"
+          size="large"
+          onClick={() => onContinueToGroupStage?.()}
+        >
+          Tiếp tục: Lịch thi đấu vòng bảng
+        </Button>
       ) : null}
     </Stack>
   );

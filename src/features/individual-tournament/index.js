@@ -251,6 +251,14 @@ export {
 } from "./engines/officialDrawOrchestrationEngine.js";
 
 export {
+  projectOfficialGroupDrawReview,
+  presentOfficialGroupLabel,
+  isRawTechnicalId,
+  GROUP_MATCH_COUNT_SOURCE,
+  GROUP_REVIEW_ISSUE,
+} from "./engines/officialGroupDrawReviewProjection.js";
+
+export {
   REFEREE_IDENTITY_BINDING_BLOCKED,
   REFEREE_SCORING_RULE_TRANSPORT_BLOCKED,
   syncOfficialAssignedMatchToLive,

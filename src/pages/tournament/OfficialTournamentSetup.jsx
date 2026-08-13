@@ -1853,6 +1853,7 @@ export default function OfficialTournamentSetup() {
               groupBusy={groupBusy || drawBusy}
               onFormPairs={handleFormOfficialPairs}
               onGroupDraw={handleRunGroupDraw}
+              onContinueToGroupStage={() => selectStage(OFFICIAL_STAGE_ID.GROUP_STAGE)}
             />
           </Stack>
         ) : null}
