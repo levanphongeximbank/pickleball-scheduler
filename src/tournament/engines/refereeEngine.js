@@ -205,9 +205,13 @@ export function assignCourtRefereeToMatch(match, rosterEntry) {
 }
 
 export {
+  REFEREE_ROSTER_SOURCE,
+  addCanonicalRefereeToRoster,
   buildRefereeSettingsPatch,
+  createCanonicalRefereeRosterEntry,
   createRefereeRosterEntry,
   findRefereeRosterEntry,
+  findRosterEntryByCanonicalUserId,
   getRefereeSettings,
   normalizeCourtReferees,
   normalizeRefereeRoster,

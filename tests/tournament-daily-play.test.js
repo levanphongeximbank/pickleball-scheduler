@@ -1386,11 +1386,14 @@ describe("Daily Play Owner browser UX remediation (DP-05..DP-09)", () => {
     const panel = fs.readFileSync(panelPath, "utf8");
     assert.match(setup, /handleRefereeRosterChange/);
     assert.match(setup, /return \{ ok: true/);
-    assert.match(setup, /roster trọng tài của buổi chơi/i);
+    assert.match(setup, /listEligibleCanonicalReferees/);
+    assert.match(setup, /enableCanonicalDirectory/);
     assert.match(panel, /Promise\.resolve\(onChange/);
     assert.match(panel, /Đang lưu\.\.\./);
-    assert.match(panel, /không tự lấy từ tài khoản đăng nhập REFEREE/i);
+    assert.match(panel, /Tài khoản trọng tài/);
+    assert.match(panel, /Trọng tài khách \/ nhập tay/);
     assert.match(panel, /if \(ok\) \{\s*setName\(""\);\s*setPhone\(""\);/);
+    assert.match(panel, /addCanonicalRefereeToRoster/);
   });
 
   test("manual referee roster entries still normalize (DP-07 backward compat)", async () => {
@@ -1405,6 +1408,229 @@ describe("Daily Play Owner browser UX remediation (DP-05..DP-09)", () => {
     const roster = getRefereeSettings(tournament).roster;
     assert.equal(roster.length, 1);
     assert.equal(roster[0].name, "Lan Manual");
+    assert.equal(roster[0].source, "manual");
+  });
+
+  test("canonical referee candidate filtering (DP-07 directory)", async () => {
+    const {
+      filterCanonicalRefereeCandidates,
+      normalizeCanonicalRefereeCandidate,
+      annotateRosterEligibility,
+    } = await import("../src/features/daily-play/services/refereeDirectoryService.js");
+    const {
+      addCanonicalRefereeToRoster,
+      createRefereeRosterEntry,
+      findRosterEntryByCanonicalUserId,
+      normalizeRefereeRoster,
+    } = await import("../src/models/tournament/refereeRoster.js");
+
+    const rows = [
+      {
+        id: "u-ref-1",
+        display_name: "TT Lan",
+        email: "lan@venue.local",
+        phone: "0901",
+        role: "REFEREE",
+        venue_id: "tenant-a",
+        club_id: "club-a",
+        status: "active",
+      },
+      {
+        id: "u-player",
+        display_name: "Player",
+        role: "PLAYER",
+        venue_id: "tenant-a",
+        status: "active",
+      },
+      {
+        id: "u-ref-other-tenant",
+        display_name: "Other TT",
+        role: "REFEREE",
+        venue_id: "tenant-b",
+        status: "active",
+      },
+      {
+        id: "u-ref-inactive",
+        display_name: "Inactive TT",
+        role: "REFEREE",
+        venue_id: "tenant-a",
+        status: "suspended",
+      },
+      {
+        id: "u-ref-other-club",
+        display_name: "Other Club TT",
+        role: "REFEREE",
+        venue_id: "tenant-a",
+        club_id: "club-b",
+        status: "active",
+      },
+      {
+        id: "u-ref-venue-wide",
+        display_name: "Venue Wide TT",
+        email: "wide@venue.local",
+        role: "REFEREE",
+        venue_id: "tenant-a",
+        club_id: null,
+        status: "active",
+      },
+    ];
+
+    const filtered = filterCanonicalRefereeCandidates(rows, {
+      tenantId: "tenant-a",
+      clubId: "club-a",
+    });
+    assert.equal(filtered.some((r) => r.userId === "u-ref-1"), true);
+    assert.equal(filtered.some((r) => r.userId === "u-ref-venue-wide"), true);
+    assert.equal(filtered.some((r) => r.userId === "u-player"), false);
+    assert.equal(filtered.some((r) => r.userId === "u-ref-other-tenant"), false);
+    assert.equal(filtered.some((r) => r.userId === "u-ref-inactive"), false);
+    assert.equal(filtered.some((r) => r.userId === "u-ref-other-club"), false);
+
+    const candidate = normalizeCanonicalRefereeCandidate(rows[0], "tenant-a");
+    assert.equal(candidate.role, "REFEREE");
+    assert.equal(candidate.hasAccount, true);
+    assert.equal("password" in candidate, false);
+    assert.equal("token" in candidate, false);
+
+    let roster = [];
+    const add1 = addCanonicalRefereeToRoster(roster, candidate);
+    assert.equal(add1.ok, true);
+    roster = add1.roster;
+    assert.equal(roster[0].canonicalUserId, "u-ref-1");
+    assert.equal(roster[0].source, "canonical_account");
+
+    const dup = addCanonicalRefereeToRoster(roster, candidate);
+    assert.equal(dup.ok, false);
+    assert.equal(dup.code, "DUPLICATE");
+
+    const manual = createRefereeRosterEntry({ name: "Khách TT", phone: "091" });
+    roster = normalizeRefereeRoster([...roster, manual]);
+    assert.equal(roster.length, 2);
+    assert.ok(findRosterEntryByCanonicalUserId(roster, "u-ref-1"));
+
+    const annotated = annotateRosterEligibility(roster, [
+      { userId: "someone-else" },
+    ]);
+    assert.equal(
+      annotated.find((e) => e.canonicalUserId === "u-ref-1").eligibility,
+      "unavailable"
+    );
+  });
+
+  test("listEligibleCanonicalReferees auth + tenant guards (DP-07)", async () => {
+    const { listEligibleCanonicalReferees } =
+      await import("../src/features/daily-play/services/refereeDirectoryService.js");
+
+    const anon = await listEligibleCanonicalReferees({
+      tenantId: "tenant-a",
+      actor: null,
+    });
+    assert.equal(anon.ok, false);
+    assert.equal(anon.code, "NOT_AUTHENTICATED");
+
+    const cross = await listEligibleCanonicalReferees({
+      tenantId: "tenant-b",
+      actor: {
+        id: "owner-1",
+        role: "COURT_OWNER",
+        venueId: "tenant-a",
+        tenantId: "tenant-a",
+      },
+      client: {
+        from() {
+          throw new Error("should not query cross-tenant");
+        },
+      },
+    });
+    assert.equal(cross.ok, false);
+    assert.equal(cross.code, "CROSS_TENANT_DENIED");
+
+    const rows = [
+      {
+        id: "u-ref-1",
+        email: "lan@venue.local",
+        display_name: "TT Lan",
+        phone: "0901",
+        role: "REFEREE",
+        venue_id: "tenant-a",
+        club_id: null,
+        status: "active",
+      },
+      {
+        id: "u-player",
+        email: "p@venue.local",
+        display_name: "Player",
+        role: "PLAYER",
+        venue_id: "tenant-a",
+        status: "active",
+      },
+    ];
+
+    const chain = {
+      select() {
+        return this;
+      },
+      eq() {
+        return this;
+      },
+      then(resolve, reject) {
+        return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+      },
+    };
+    const mockClient = {
+      from() {
+        return chain;
+      },
+    };
+
+    const listed = await listEligibleCanonicalReferees({
+      tenantId: "tenant-a",
+      clubId: "club-a",
+      actor: {
+        id: "owner-1",
+        role: "COURT_OWNER",
+        venueId: "tenant-a",
+        tenantId: "tenant-a",
+      },
+      client: mockClient,
+    });
+    assert.equal(listed.ok, true);
+    assert.equal(listed.referees.length, 1);
+    assert.equal(listed.referees[0].userId, "u-ref-1");
+    assert.equal(listed.referees[0].displayName, "TT Lan");
+  });
+
+  test("Director Mode still consumes roster name/id shape (DP-07 compat)", async () => {
+    const { getRefereeSettings, assignRefereeToMatch } = await import(
+      "../src/tournament/engines/refereeEngine.js"
+    );
+    const tournament = {
+      settings: {
+        refereeRoster: [
+          {
+            id: "ref-canon-u-ref",
+            name: "TT Lan",
+            phone: "0901",
+            email: "lan@venue.local",
+            source: "canonical_account",
+            canonicalUserId: "u-ref-1",
+          },
+          { id: "r-manual", name: "Khách", phone: "091" },
+        ],
+      },
+    };
+    const roster = getRefereeSettings(tournament).roster;
+    assert.equal(roster.length, 2);
+    assert.ok(roster.every((entry) => entry.id && entry.name));
+
+    const match = assignRefereeToMatch(
+      { id: "m1", status: "ready" },
+      roster[0].name,
+      { rosterId: roster[0].id }
+    );
+    assert.equal(match.referee.rosterId, roster[0].id);
+    assert.equal(match.referee.name, "TT Lan");
+    assert.ok(match.referee.token);
   });
 });
 

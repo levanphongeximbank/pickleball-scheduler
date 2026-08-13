@@ -62,6 +62,10 @@ import {
   buildRefereeSettingsPatch,
   getRefereeSettings,
 } from "../../tournament/engines/refereeEngine.js";
+import {
+  annotateRosterEligibility,
+  listEligibleCanonicalReferees,
+} from "../../features/daily-play/services/refereeDirectoryService.js";
 
 const MATCH_TYPE_OPTIONS = [
   { value: DAILY_MATCH_TYPE.MEN_DOUBLE, label: "Đôi nam" },
@@ -92,6 +96,10 @@ export default function DailyPlaySetup() {
   const [bulkPending, setBulkPending] = useState(null);
   const [pendingPlayerId, setPendingPlayerId] = useState(null);
   const [refereePending, setRefereePending] = useState(false);
+  const [canonicalReferees, setCanonicalReferees] = useState([]);
+  const [canonicalRefereesLoading, setCanonicalRefereesLoading] = useState(false);
+  const [canonicalRefereesError, setCanonicalRefereesError] = useState(null);
+  const [canonicalRefereesWarning, setCanonicalRefereesWarning] = useState(null);
   const playerMutationLockRef = useRef(false);
   const anim = useTournamentAnimation();
 
@@ -151,10 +159,45 @@ export default function DailyPlaySetup() {
     });
   }, [session.dailyPlay, matchType, genderFilter]);
 
-  const refereeRoster = useMemo(
-    () => getRefereeSettings(tournament).roster,
-    [tournament]
-  );
+  const refereeRoster = useMemo(() => {
+    const base = getRefereeSettings(tournament).roster;
+    return annotateRosterEligibility(base, canonicalReferees);
+  }, [tournament, canonicalReferees]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!tenantId) {
+      setCanonicalReferees([]);
+      setCanonicalRefereesError(null);
+      setCanonicalRefereesWarning(null);
+      return undefined;
+    }
+
+    setCanonicalRefereesLoading(true);
+    setCanonicalRefereesError(null);
+    void listEligibleCanonicalReferees({
+      tenantId,
+      clubId: activeClubId,
+    }).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setCanonicalReferees([]);
+        setCanonicalRefereesError(result.error || "Không tải được danh bạ trọng tài.");
+        setCanonicalRefereesWarning(null);
+        return;
+      }
+      setCanonicalReferees(result.referees || []);
+      setCanonicalRefereesWarning(result.warning || null);
+    }).finally(() => {
+      if (!cancelled) {
+        setCanonicalRefereesLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantId, activeClubId, user?.id]);
 
   // DP-08: do not sticky-mirror transient load errors after successful snapshot.
   const displayError =
@@ -604,7 +647,12 @@ export default function DailyPlaySetup() {
               roster={refereeRoster}
               onChange={handleRefereeRosterChange}
               pending={refereePending}
-              description="Roster trọng tài của buổi chơi (tên/SĐT vận hành). Không tự đồng bộ từ tài khoản đăng nhập REFEREE — thêm thủ công nếu cần gán trên trận."
+              enableCanonicalDirectory
+              canonicalCandidates={canonicalReferees}
+              canonicalLoading={canonicalRefereesLoading}
+              canonicalError={canonicalRefereesError}
+              canonicalWarning={canonicalRefereesWarning}
+              description="Chọn tài khoản REFEREE trong tenant/CLB, hoặc thêm trọng tài khách khi chưa có tài khoản. Roster này dùng để gán trận / sân trong Director Mode."
             />
           </Grid>
         </Grid>
