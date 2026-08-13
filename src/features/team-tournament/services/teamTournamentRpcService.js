@@ -504,6 +504,11 @@ async function callTeamTournamentRpc(rpcName, args = {}) {
       "MATCHUP_TEAMS_UNRESOLVED",
       "REFEREE_NOT_FOUND",
       "REVOKE_REASON_REQUIRED",
+      "NOT_ACTIVATED",
+      "ALREADY_STARTED",
+      "REFEREE_NOT_ASSIGNED",
+      "MISSING_EXPECTED_VERSION",
+      "MISSING_IDEMPOTENCY_KEY",
     ];
     if (passthrough.includes(code)) {
       const mapped = mapTeamTournamentDomainFailure(payload);
@@ -1088,7 +1093,7 @@ export async function rpcTeamTournamentCreateRefereeAssignment(params) {
   return callTeamTournamentRpc("team_tournament_create_referee_assignment", {
     p_tournament_id: String(normalized.tournamentId),
     p_matchup_id: String(normalized.matchupId),
-    p_sub_match_id: String(normalized.subMatchId),
+    p_sub_match_id: normalized.subMatchId ? String(normalized.subMatchId) : null,
     p_referee_user_id: normalized.refereeUserId,
     p_expires_at: normalized.expiresAt ?? null,
     p_activate: normalized.activate !== false,

@@ -473,7 +473,7 @@ export default function TeamMatchupOperationsCard({
         matchup.subMatches.length > 0 ? (
           <Stack spacing={0.5} sx={{ mt: 1, p: 1, bgcolor: "action.hover", borderRadius: 2 }}>
             <Typography variant="caption" color="text.secondary" fontWeight={600}>
-              Referee V5 — trận con
+              Trọng tài — gán một lần cho cả trận (phiên V5 tự tạo)
             </Typography>
             {matchup.subMatches.map((subMatch) => (
               <TeamSubMatchRefereeProvisionRow

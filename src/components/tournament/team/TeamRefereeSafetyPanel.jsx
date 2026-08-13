@@ -36,6 +36,10 @@ import {
   REFEREE_ASSIGN_ACTION,
 } from "../../../features/team-tournament/engines/teamRefereeAssignmentLifecycle.js";
 import { mapTeamTournamentDomainFailure } from "../../../features/team-tournament/engines/teamTournamentDomainErrors.js";
+import {
+  PARENT_ASSIGNMENT_SELECT_VALUE,
+  isParentRefereeAssignment,
+} from "../../../features/team-tournament/engines/teamRefereeCanonicalLifecycle.js";
 
 /**
  * TT-5D BTC panel: searchable assign / change / revoke + correction review.
@@ -56,7 +60,10 @@ export default function TeamRefereeSafetyPanel({
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
   const [assignSubMatchId, setAssignSubMatchId] = useState(
-    () => String(subMatchId || subMatches?.[0]?.id || "")
+    () =>
+      subMatchId
+        ? String(subMatchId)
+        : PARENT_ASSIGNMENT_SELECT_VALUE
   );
   const [candidateQuery, setCandidateQuery] = useState("");
   const [candidates, setCandidates] = useState([]);
@@ -78,13 +85,17 @@ export default function TeamRefereeSafetyPanel({
 
   const activeForSelectedSub = useMemo(
     () =>
-      assignments.filter(
-        (row) =>
-          (row.status === "active" || row.status === "pending") &&
+      assignments.filter((row) => {
+        if (!(row.status === "active" || row.status === "pending")) return false;
+        if (!assignSubMatchId) {
+          return isParentRefereeAssignment(row) || String(row.matchId || "") === String(matchupId || "");
+        }
+        return (
           String(row.externalSubMatchId || row.subMatchId || "") ===
-            String(assignSubMatchId || "")
-      ),
-    [assignments, assignSubMatchId]
+          String(assignSubMatchId)
+        );
+      }),
+    [assignSubMatchId, assignments, matchupId]
   );
 
   const reload = useCallback(async () => {
@@ -104,12 +115,6 @@ export default function TeamRefereeSafetyPanel({
   useEffect(() => {
     reload();
   }, [reload]);
-
-  useEffect(() => {
-    if (!assignSubMatchId && subMatchOptions[0]?.id) {
-      setAssignSubMatchId(subMatchOptions[0].id);
-    }
-  }, [assignSubMatchId, subMatchOptions]);
 
   useEffect(() => {
     if (!tournamentId) return undefined;
@@ -164,10 +169,7 @@ export default function TeamRefereeSafetyPanel({
       setError("Thiếu matchupId để gán trọng tài.");
       return;
     }
-    if (!assignSubMatchId) {
-      setError("Chọn trận con để gán trọng tài.");
-      return;
-    }
+    // Empty assignSubMatchId = canonical parent matchup assignment.
     const uid = String(selectedCandidate?.userId || selectedCandidate?.id || "").trim();
     if (!uid) {
       setError("Chọn trọng tài từ danh sách tìm kiếm.");
@@ -176,15 +178,16 @@ export default function TeamRefereeSafetyPanel({
     setBusyId("assign");
     setError("");
 
+    const canonicalMatchId = assignSubMatchId || matchupId;
     const plan = planRefereeAssignment({
       matchup: { id: matchupId, teamAId: "resolved", teamBId: "resolved" },
       existingAssignments: activeForSelectedSub.map((row) => ({
         ...row,
-        matchId: assignSubMatchId,
+        matchId: canonicalMatchId,
         role: "REFEREE",
       })),
       refereeUserId: uid,
-      matchId: assignSubMatchId,
+      matchId: canonicalMatchId,
     });
     if (plan.action === REFEREE_ASSIGN_ACTION.IDEMPOTENT_NOOP) {
       setBusyId(null);
@@ -210,7 +213,7 @@ export default function TeamRefereeSafetyPanel({
       buildCreateAssignmentPayload({
         tournamentId,
         matchupId,
-        subMatchId: assignSubMatchId,
+        subMatchId: assignSubMatchId || null,
         refereeUserId: uid,
         activate: true,
         reason: activeForSelectedSub.length > 0 ? "TT-5D BTC change" : "TT-5D BTC assign",
@@ -282,25 +285,27 @@ export default function TeamRefereeSafetyPanel({
 
       <Stack spacing={1} data-testid="referee-assign-form">
         <Typography variant="body2" color="text.secondary">
-          Chọn trận con → tìm trọng tài theo tên/email → Gán hoặc Đổi. Không nhập UUID.
+          Gán trọng tài một lần cho cả trận. WD / MD / XD / Dreambreaker kế thừa.
+          Không nhập UUID. Không cần tạo phiên trọng tài.
         </Typography>
-        {subMatchOptions.length > 0 ? (
-          <FormControl size="small" fullWidth>
-            <InputLabel>Trận con</InputLabel>
-            <Select
-              label="Trận con"
-              value={assignSubMatchId}
-              onChange={(event) => setAssignSubMatchId(event.target.value)}
-              data-testid="assign-submatch-select"
-            >
-              {subMatchOptions.map((option) => (
-                <MenuItem key={option.id} value={option.id}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        ) : null}
+        <FormControl size="small" fullWidth>
+          <InputLabel>Phạm vi</InputLabel>
+          <Select
+            label="Phạm vi"
+            value={assignSubMatchId}
+            onChange={(event) => setAssignSubMatchId(event.target.value)}
+            data-testid="assign-submatch-select"
+          >
+            <MenuItem value={PARENT_ASSIGNMENT_SELECT_VALUE}>
+              Cả trận (canonical)
+            </MenuItem>
+            {subMatchOptions.map((option) => (
+              <MenuItem key={option.id} value={option.id}>
+                {option.label} (override)
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
         <Autocomplete
           size="small"

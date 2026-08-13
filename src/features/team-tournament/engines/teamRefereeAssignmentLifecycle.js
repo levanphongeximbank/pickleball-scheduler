@@ -28,7 +28,13 @@ function sameCanonicalKey(row, { tenantId, tournamentId, matchId, role }) {
   }
   if (
     matchId &&
-    String(row.matchId || row.externalSubMatchId || "") !== String(matchId)
+    String(
+      row.matchId ||
+        row.assignmentMatchId ||
+        row.externalSubMatchId ||
+        row.matchupId ||
+        ""
+    ) !== String(matchId)
   ) {
     return false;
   }

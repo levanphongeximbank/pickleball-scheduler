@@ -45,6 +45,13 @@ const MESSAGE_BY_CODE = Object.freeze({
   COURT_CONFLICT: "Trùng sân / giờ thi đấu — chọn khung giờ hoặc sân khác.",
   NOT_AUTHENTICATED: "Phiên đăng nhập hết hạn — đăng nhập lại.",
   REVOKE_REASON_REQUIRED: "Cần lý do khi thu hồi trọng tài.",
+  NOT_ACTIVATED:
+    "Dreambreaker chưa sẵn sàng — cần tỉ số 2–2, chính sách DREAMBREAKER, rồi tải lại trang.",
+  ALREADY_STARTED: "Dreambreaker đã được bắt đầu.",
+  REFEREE_NOT_ASSIGNED: "Bạn chưa được phân công trận này.",
+  VALIDATION: "Dữ liệu chưa đủ điều kiện — tải lại rồi thử lại.",
+  MISSING_EXPECTED_VERSION: "Thiếu phiên bản (version) — tải lại trang rồi thử lại.",
+  MISSING_IDEMPOTENCY_KEY: "Thiếu khóa thao tác — tải lại rồi thử lại.",
 });
 
 export function isRawSqlInternalMessage(message) {

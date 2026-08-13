@@ -3,6 +3,8 @@
  * No blob/localStorage writes — callers reload via get_setup.
  */
 
+import { mapTeamTournamentDomainFailure } from "../engines/teamTournamentDomainErrors.js";
+import { describeDreambreakerStartFailure } from "../engines/teamRefereeCanonicalLifecycle.js";
 import {
   rpcTeamTournamentSubmitDreambreakerOrder,
   rpcTeamTournamentLockDreambreakerOrder,
@@ -20,11 +22,12 @@ function buildIdempotencyKey(prefix, parts = []) {
 
 function mapRpc(result, extra = {}) {
   if (!result?.ok) {
+    const mapped = mapTeamTournamentDomainFailure(result || {});
     return {
       ok: false,
       usedCloud: true,
-      error: result?.error || result?.code || "Dreambreaker cloud command failed.",
-      code: result?.code,
+      error: mapped.error || result?.error || result?.code || "Dreambreaker cloud command failed.",
+      code: mapped.code || result?.code,
       ...result,
     };
   }
@@ -68,16 +71,19 @@ export async function cloudLockDreambreakerOrder(tournamentId, payload = {}, opt
 }
 
 export async function cloudStartDreambreaker(tournamentId, payload = {}, options = {}) {
-  return mapRpc(
-    await rpcTeamTournamentStartDreambreaker({
-      tournamentId,
-      matchupId: payload.matchupId,
-      expectedVersion: options.expectedVersion ?? payload.expectedVersion ?? null,
-      idempotencyKey:
-        options.idempotencyKey ||
-        `db-start:${tournamentId}:${payload.matchupId}`,
-    })
-  );
+  const raw = await rpcTeamTournamentStartDreambreaker({
+    tournamentId,
+    matchupId: payload.matchupId,
+    expectedVersion: options.expectedVersion ?? payload.expectedVersion ?? null,
+    idempotencyKey:
+      options.idempotencyKey ||
+      `db-start:${tournamentId}:${payload.matchupId}`,
+  });
+  const started = describeDreambreakerStartFailure(raw);
+  if (started.ok) {
+    return mapRpc({ ...raw, ok: true, replayed: Boolean(raw.replayed || started.replayed) });
+  }
+  return mapRpc(raw);
 }
 
 export async function cloudRecordDreambreakerPoint(tournamentId, payload = {}, options = {}) {

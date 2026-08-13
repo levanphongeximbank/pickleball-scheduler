@@ -808,6 +808,19 @@ function guardRefereeResultAction(clubId) {
     lastFailure = result;
   }
 
+  // Assigned referee write is matchup-scoped on the server. Do not block the
+  // RPC with broad tournament.update — FORBIDDEN for Match B is server-side.
+  if (shouldUseTeamTournamentCloud()) {
+    const { user } = getAuthOptions();
+    if (user?.id) {
+      return {
+        ok: true,
+        deferredToServer: true,
+        permissions: getPermissionsForRole(user?.role || ""),
+      };
+    }
+  }
+
   return lastFailure;
 }
 

@@ -307,7 +307,7 @@ describe("team-tournament-referee-canonical-cloud-access-01", () => {
     const portal = readSrc("src/pages/tournament/TeamRefereePortal.jsx");
     const panel = readSrc("src/components/tournament/team/DreambreakerPanel.jsx");
     assert.match(portal, /RefereeDreambreakerPanel/);
-    assert.match(portal, /canManageDreambreaker=\{canManage\}/);
+    assert.match(portal, /canManageDreambreaker=\{canWriteMatchup\(item\.matchup\.id\)\}/);
     assert.match(panel, /DREAMBREAKER_STATUS\.READY/);
     assert.match(panel, /Dreambreaker sẵn sàng/);
     assert.match(panel, /Bắt đầu Dreambreaker/);

@@ -47,6 +47,9 @@ import { isRepublishPending } from "../../features/team-tournament/engines/overr
 import {
   canManageTeamMatchResult,
 } from "../../features/team-tournament/engines/teamPermissionEngine.js";
+import { canAssignedRefereeWriteMatchup } from "../../features/team-tournament/engines/teamRefereeCanonicalLifecycle.js";
+import { rpcTeamTournamentListMyRefereeAssignments } from "../../features/team-tournament/services/teamTournamentRpcService.js";
+import { mapTeamTournamentDomainFailure } from "../../features/team-tournament/engines/teamTournamentDomainErrors.js";
 import {
   getStandingsTable,
 } from "../../features/team-tournament/engines/teamStandingsEngine.js";
@@ -493,6 +496,7 @@ function MatchupCard({
   selectedSubMatchId,
   onSelectSubMatch,
   permissions,
+  canWriteResults = false,
   onSaveDraft,
   onConfirm,
   onForfeit,
@@ -611,7 +615,7 @@ function MatchupCard({
                       teamData={teamData}
                       matchup={rawMatchup || matchup}
                       canEdit={
-                        canManageTeamMatchResult({ permissions }) &&
+                        canWriteResults &&
                         canEditSubMatchResult(
                           { status: subMatch.status },
                           { permissions }
@@ -711,10 +715,38 @@ export default function TeamRefereePortal() {
     [user?.role]
   );
 
-  const canManage = useMemo(
+  const isOrganizer = useMemo(
     () => canManageTeamMatchResult({ permissions }),
     [permissions]
   );
+  const [myAssignments, setMyAssignments] = useState([]);
+
+  useEffect(() => {
+    if (!tournamentId || !isAuthenticated) return undefined;
+    let cancelled = false;
+    (async () => {
+      const result = await rpcTeamTournamentListMyRefereeAssignments(tournamentId);
+      if (cancelled) return;
+      if (result?.ok) {
+        setMyAssignments(result.assignments || []);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, tournamentId, lastSnapshotAt]);
+
+  function canWriteMatchup(matchupId, subMatchId = null) {
+    return canAssignedRefereeWriteMatchup({
+      assignments: myAssignments,
+      matchupId,
+      subMatchId,
+      refereeUserId: user?.id,
+      isOrganizer,
+    });
+  }
+
+  const canManage = isOrganizer || myAssignments.length > 0;
 
   const access = useMemo(
     () =>
@@ -1080,7 +1112,8 @@ export default function TeamRefereePortal() {
         expectedVersion: command.payload.expectedVersion,
       });
       if (!result.ok) {
-        setError(result.error);
+        const mapped = mapTeamTournamentDomainFailure(result);
+        setError(mapped.error || result.error || result.code);
         return;
       }
       await reload({ silent: true });
@@ -1273,10 +1306,11 @@ export default function TeamRefereePortal() {
                 selectedSubMatchId={selectedSubMatchId}
                 onSelectSubMatch={setSelectedSubMatchId}
                 permissions={permissions}
+                canWriteResults={canWriteMatchup(item.matchup.id)}
                 onSaveDraft={handleSaveDraft}
                 onConfirm={handleConfirm}
                 onForfeit={
-                  canManage
+                  canWriteMatchup(item.matchup.id)
                     ? (panelMatchupId, subMatchId) => {
                         const sourceMatchup =
                           (teamData?.matchups || []).find((m) => m.id === panelMatchupId) ||
@@ -1317,7 +1351,7 @@ export default function TeamRefereePortal() {
                 }
                 teamData={teamData}
                 players={players}
-                canManageDreambreaker={canManage}
+                canManageDreambreaker={canWriteMatchup(item.matchup.id)}
                 onDreambreakerStart={handleDreambreakerStart}
                 onDreambreakerLock={handleDreambreakerLock}
                 onDreambreakerPoint={handleDreambreakerPoint}

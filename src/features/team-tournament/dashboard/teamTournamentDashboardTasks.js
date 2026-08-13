@@ -133,7 +133,13 @@ export function buildRefereeDashboardAssignments({
     if (isUnresolvedBracketPlaceholder(matchup)) {
       return [];
     }
-    const matchId = assignment.matchId || assignment.v5MatchId;
+    const explicitParent = String(assignment.scope || "").toLowerCase() === "parent";
+    const hasChildKey = Boolean(
+      String(assignment.externalSubMatchId || assignment.subMatchId || "").trim()
+    );
+    const v5MatchId = String(assignment.matchId || assignment.v5MatchId || "").trim();
+    const parentScope = explicitParent || (!hasChildKey && !v5MatchId);
+    const matchId = parentScope ? null : v5MatchId || null;
     const href = matchId
       ? `/referee/match/${matchId}?tournamentId=${encodeURIComponent(tournamentId)}`
       : `/team-referee/${tournamentId}?matchup=${encodeURIComponent(matchupId || "")}`;

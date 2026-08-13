@@ -125,7 +125,7 @@ export function buildCreateAssignmentPayload({
   return {
     tournamentId: String(tournamentId),
     matchupId: String(matchupId),
-    subMatchId: String(subMatchId),
+    subMatchId: subMatchId ? String(subMatchId) : null,
     refereeUserId,
     expiresAt,
     activate,
