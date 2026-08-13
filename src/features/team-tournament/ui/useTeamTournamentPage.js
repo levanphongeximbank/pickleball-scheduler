@@ -126,6 +126,8 @@ export function useTeamTournamentPage({
   const [setupBlocked, setSetupBlocked] = useState(false);
   const [setupBlockCode, setSetupBlockCode] = useState(null);
   const [setupMutationStatus, setSetupMutationStatus] = useState("idle");
+  const [viewerTeamId, setViewerTeamId] = useState(null);
+  const [viewer, setViewer] = useState(null);
   const [latestTournamentVersion, setLatestTournamentVersion] = useState(1);
   const rosterSignatureRef = useRef("");
   const teamDataRef = useRef(null);
@@ -169,6 +171,8 @@ export function useTeamTournamentPage({
       setDriftDetected(false);
       setSetupBlocked(false);
       setSetupBlockCode(null);
+      setViewerTeamId(null);
+      setViewer(null);
       return false;
     }
 
@@ -187,6 +191,8 @@ export function useTeamTournamentPage({
     setSetupBlocked(result.setupBlocked === true);
     setSetupBlockCode(result.setupBlockCode ?? null);
     setLatestTournamentVersion(result.latestTournamentVersion ?? result.version ?? 1);
+    setViewerTeamId(result.viewerTeamId ?? result.viewer?.viewerTeamId ?? null);
+    setViewer(result.viewer ?? null);
 
     const rawTeamData = result.teamData || result.aggregate?.teamData;
     const mode = orchestrator.getMode?.() || orchestrator.mode;
@@ -836,6 +842,8 @@ export function useTeamTournamentPage({
     setupBlockCode,
     setupMutationStatus,
     latestTournamentVersion,
+    viewerTeamId,
+    viewer,
     setSetupMutationStatus,
     reload,
     refreshAfterMutation,

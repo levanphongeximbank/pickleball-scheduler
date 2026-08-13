@@ -56,6 +56,7 @@ import {
   canManageTeam,
   canRequestSubstitution,
 } from "../engines/teamPermissionEngine.js";
+import { resolveCanonicalCaptainAthleteIdFromUser } from "../engines/captainIdentityResolver.js";
 import {
   generateTeamKnockoutMatchups,
   canGenerateTeamKnockout,
@@ -240,7 +241,7 @@ function guardCaptainLineupAction(clubId, tournamentId, teamId) {
   }
 
   const { user } = getAuthOptions();
-  const playerId = user?.playerId ? String(user.playerId) : "";
+  const playerId = resolveCanonicalCaptainAthleteIdFromUser(user) || "";
   const permissions = getPermissionsForRole(user?.role || "");
 
   return assertTeamScope(getTeamData(tournament), teamId, playerId, permissions);
@@ -1828,7 +1829,7 @@ export async function substituteTeamPlayer(clubId, tournamentId, payload = {}) {
 
   const { user } = getAuthOptions();
   const permissions = getPermissionsForRole(user?.role || "");
-  const actorPlayerId = user?.playerId ? String(user.playerId) : "";
+  const actorPlayerId = resolveCanonicalCaptainAthleteIdFromUser(user) || "";
   const teamId = payload.teamId ? String(payload.teamId) : "";
   const isBtc =
     canApproveSubstitution({ permissions }) || canManageTeam({ permissions });

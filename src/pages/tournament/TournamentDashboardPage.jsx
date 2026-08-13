@@ -13,6 +13,7 @@ import {
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
+import { useCanonicalCaptainAthleteId } from "../../features/team-tournament/ui/useCanonicalCaptainAthleteId.js";
 import {
   individualPublicTournamentPath,
   teamTournamentPath,
@@ -71,6 +72,7 @@ export default function TournamentDashboardPage() {
   const { tournamentId } = useParams();
   const { user, isAuthenticated, can } = useAuth();
   const { activeClubId } = useClub();
+  const captainIdentity = useCanonicalCaptainAthleteId(user);
   // Visibility authority is team_tournament_get_dashboard only.
   // Do not derive sameTenant from activeClub.tenantId (PLAYER captains often null).
   const canOrganize = Boolean(
@@ -79,7 +81,7 @@ export default function TournamentDashboardPage() {
   const { loading, error, view } = useTeamTournamentDashboard({
     tournamentId,
     clubId: activeClubId,
-    playerId: user?.playerId || user?.linkedPlayerId || null,
+    playerId: captainIdentity.athleteId || null,
     userId: user?.id || null,
     canOrganize,
     isAuthenticated,

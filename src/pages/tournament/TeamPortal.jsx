@@ -73,7 +73,6 @@ import {
   isTeamCaptain,
   listMatchupsForTeam,
   partitionMatchupsForPortal,
-  resolveCaptainViewerPlayerId,
 } from "../../features/team-tournament/engines/teamPermissionEngine.js";
 import {
   getTeamData,
@@ -83,6 +82,10 @@ import TournamentSetupShell from "../../components/tournament/TournamentSetupShe
 import TeamSubstitutionPanel from "../../components/tournament/TeamSubstitutionPanel.jsx";
 import { findTeam, getLineup } from "../../features/team-tournament/models/index.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
+import { useCanonicalCaptainAthleteId } from "../../features/team-tournament/ui/useCanonicalCaptainAthleteId.js";
+import {
+  extractServerCaptainViewerPlayerId,
+} from "../../features/team-tournament/engines/captainIdentityResolver.js";
 import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
 import { useLineupDeadlineClock } from "../../features/team-tournament/ui/useLineupDeadlineClock.js";
 import {
@@ -92,7 +95,6 @@ import {
 } from "../../features/team-tournament/services/lineupDeadlineService.js";
 import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTournamentUiCommandKeys.js";
 import { resolveEffectiveTenantId } from "../../features/tenant/services/tenantService.js";
-import { fetchProfileByUserId } from "../../auth/profileService.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
 
 
@@ -110,53 +112,14 @@ function canEditLineup(lineup) {
   );
 }
 
-function useResolvedCaptainPlayerId(user) {
-  const direct = resolveCaptainViewerPlayerId(user);
-  const [profileState, setProfileState] = useState({ playerId: null, resolving: false });
-
-  useEffect(() => {
-    if (direct) {
-      setProfileState({ playerId: null, resolving: false });
-      return undefined;
-    }
-
-    const userId = String(user?.id || "").trim();
-    if (!userId) {
-      setProfileState({ playerId: null, resolving: false });
-      return undefined;
-    }
-
-    let cancelled = false;
-    setProfileState({ playerId: null, resolving: true });
-    fetchProfileByUserId(userId).then((result) => {
-      if (cancelled) {
-        return;
-      }
-      const playerId = result.ok
-        ? result.user?.playerId || result.profile?.player_id || null
-        : null;
-      setProfileState({
-        playerId: playerId ? String(playerId).trim() : null,
-        resolving: false,
-      });
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [direct, user?.id, user?.playerId, user?.player_id]);
-
-  if (direct) {
-    return { playerId: direct, resolving: false };
-  }
-
-  return {
-    playerId: profileState.playerId,
-    resolving: profileState.resolving,
-  };
-}
-
-function useCaptainPortalAccess({ tournament, teamData, effectiveClubId, tournamentId, viewerPlayerId }) {
+function useCaptainPortalAccess({
+  tournament,
+  teamData,
+  effectiveClubId,
+  tournamentId,
+  viewerPlayerId,
+  serverViewerTeamId = null,
+}) {
   const { rbacEnabled, isAuthenticated, user } = useAuth();
   const { currentTenantId } = useTenant();
 
@@ -187,6 +150,7 @@ function useCaptainPortalAccess({ tournament, teamData, effectiveClubId, tournam
       viewerPlayerId,
       tenantCheck,
       findTeamForCaptain,
+      serverViewerTeamId,
     });
   }, [
     effectiveClubId,
@@ -198,6 +162,7 @@ function useCaptainPortalAccess({ tournament, teamData, effectiveClubId, tournam
     tournamentId,
     user,
     viewerPlayerId,
+    serverViewerTeamId,
   ]);
 }
 
@@ -718,8 +683,7 @@ export default function TeamPortal() {
   const { user } = useAuth();
   const { currentTenantId } = useTenant();
   const membership = useMyClubMembership();
-  const captainIdentity = useResolvedCaptainPlayerId(user);
-  const viewerPlayerId = captainIdentity.playerId;
+  const captainIdentity = useCanonicalCaptainAthleteId(user);
   const clubFromQuery = String(searchParams.get("club") || "").trim();
 
   // Query club (from BTC link) → local blob host → V2 membership → active club.
@@ -758,12 +722,17 @@ export default function TeamPortal() {
     reconnectRealtime,
     subscriptionError,
     pollingFallbackActive,
+    viewerTeamId: serverViewerTeamId,
+    viewer: serverViewer,
   } = useTeamTournamentPage({
     clubId: resolvedClubId,
     tournamentId,
     pollingEnabled: true,
     pageMode: "captainPortal",
   });
+
+  const serverViewerPlayerId = extractServerCaptainViewerPlayerId(serverViewer);
+  const viewerPlayerId = captainIdentity.athleteId || serverViewerPlayerId;
 
   const handleDeadlineElapsed = useCallback(() => {
     reload({ silent: true });
@@ -783,6 +752,7 @@ export default function TeamPortal() {
     effectiveClubId,
     tournamentId,
     viewerPlayerId,
+    serverViewerTeamId,
   });
 
   const teamData = useMemo(() => {
@@ -912,7 +882,11 @@ export default function TeamPortal() {
     setDbMessage({ type: "success", text: "Đã nộp thứ tự Dreambreaker." });
   }
 
-  if (membershipPending || loading || (tournament && captainIdentity.resolving)) {
+  if (
+    membershipPending ||
+    loading ||
+    (tournament && captainIdentity.resolving && !serverViewerPlayerId)
+  ) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="info">Đang tải giải đồng đội…</Alert>
@@ -924,6 +898,8 @@ export default function TeamPortal() {
     const isCaptainGate =
       loadErrorCode === "captain_portal_closed" ||
       loadErrorCode === "captain_scope_denied" ||
+      loadErrorCode === "NOT_CAPTAIN" ||
+      loadErrorCode === "CAPTAIN_TEAM_AMBIGUOUS" ||
       loadErrorCode === "NOT_AUTHENTICATED" ||
       loadErrorCode === "IDENTITY_UNPROVEN";
 

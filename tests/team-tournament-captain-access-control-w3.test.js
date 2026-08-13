@@ -129,7 +129,7 @@ test("C — Non-captain denied", () => {
     findTeamForCaptain,
   });
   assert.equal(denied.allowed, false);
-  assert.equal(denied.code, "captain_scope_denied");
+  assert.equal(denied.code, "NOT_CAPTAIN");
   assert.match(denied.error, /không có quyền truy cập đội này/i);
 });
 
