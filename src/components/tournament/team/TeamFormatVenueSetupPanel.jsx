@@ -570,6 +570,31 @@ export default function TeamFormatVenueSetupPanel({
                   inputProps={{ min: 1 }}
                   fullWidth
                 />
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Đổi sân tại"
+                  value={entry?.changeEndsAt ?? ""}
+                  disabled={!canManage}
+                  placeholder="vd. 6"
+                  helperText="Để trống nếu không đổi sân theo điểm"
+                  onChange={(event) => {
+                    const raw = event.target.value;
+                    const nextValue =
+                      raw === "" || raw == null
+                        ? null
+                        : Math.max(1, Number(raw) || 1);
+                    setStageScoringPolicy((prev) => ({
+                      ...prev,
+                      [stageKey]: {
+                        ...(prev?.[stageKey] || DEFAULT_STAGE_SCORING_ENTRY),
+                        changeEndsAt: nextValue,
+                      },
+                    }));
+                  }}
+                  inputProps={{ min: 1 }}
+                  fullWidth
+                />
               </Stack>
             );
           })}

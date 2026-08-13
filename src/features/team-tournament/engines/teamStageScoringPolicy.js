@@ -163,7 +163,21 @@ export function validateStageScoringPolicyShape(raw) {
       };
     }
   }
-  return { ok: true, policy: normalizeStageScoringPolicy(raw) };
+  const policy = normalizeStageScoringPolicy(raw);
+  for (const key of STAGE_TIE_BREAK_POLICY_KEYS) {
+    const entry = policy[key];
+    if (
+      entry?.changeEndsAt != null &&
+      Number(entry.changeEndsAt) >= Number(entry.targetPoints)
+    ) {
+      return {
+        ok: false,
+        code: STAGE_SCORING_POLICY_INVALID_CODE,
+        error: `Đổi sân tại (${entry.changeEndsAt}) phải nhỏ hơn điểm mục tiêu (${entry.targetPoints}) — ${key}.`,
+      };
+    }
+  }
+  return { ok: true, policy };
 }
 
 /**
@@ -206,6 +220,8 @@ export function resolveEffectiveStageScoringPolicy({
 /** Map to existing scoringFormat-like object used by engines. */
 export function stageScoringToFormat(entry) {
   const normalized = normalizeEntry(entry);
+  // Runtime engines (Rally / Referee V5 / CORE-16) consume sideSwitchAt.
+  // Canonical stage policy stores changeEndsAt — alias both ways.
   return {
     scoringMode: normalized.scoringMode,
     scoringSystem: mapStageScoringModeToScoringSystem(normalized.scoringMode),
@@ -213,6 +229,7 @@ export function stageScoringToFormat(entry) {
     targetPoints: normalized.targetPoints,
     winBy: normalized.winBy,
     changeEndsAt: normalized.changeEndsAt,
+    sideSwitchAt: normalized.changeEndsAt,
     freezeAt: normalized.freezeAt,
   };
 }

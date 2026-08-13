@@ -518,12 +518,36 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       const expectedTournamentVersion = Number(
         options.expectedTournamentVersion ?? aggregate.version ?? 1
       );
+      const PAIRING_SETUP_COMMANDS = new Set([
+        "groups.replace",
+        "groups.clear",
+        "matchups.replace",
+        "schedule.batch",
+        "schedule.publish",
+      ]);
+      const resolveRulesVersion = (commandName, explicit = "") => {
+        const fromOptions = String(
+          explicit ||
+            options.rulesVersion ||
+            aggregate.rulesVersion ||
+            aggregate.settings?.rulesVersion ||
+            ""
+        ).trim();
+        if (fromOptions) return fromOptions;
+        // Knockout / schedule writes are pairing-family commands: fail-closed
+        // without inventing a second authority, but use the established default
+        // when the tournament already exists and aggregate snapshot omits it.
+        if (PAIRING_SETUP_COMMANDS.has(commandName)) {
+          return "team-tournament-v1";
+        }
+        return "";
+      };
       const inferred = buildSetupMutationFromTeamDataDiff({
         previous: previousTeamData,
         next: ensuredNext,
         tournamentId,
         expectedTournamentVersion,
-        rulesVersion: options.rulesVersion || aggregate.rulesVersion || "",
+        rulesVersion: resolveRulesVersion(null, options.rulesVersion || ""),
       });
       if (!inferred.commandName) {
         return mapRepositoryResultToUi({
@@ -532,6 +556,10 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           error: "Không tìm thấy thay đổi setup domain có thể ghi bằng P1.3.",
         });
       }
+      inferred.rulesVersion = resolveRulesVersion(
+        inferred.commandName,
+        inferred.rulesVersion || options.rulesVersion || ""
+      );
 
       const matchups = ensuredNext.matchups || [];
       let snapshot;

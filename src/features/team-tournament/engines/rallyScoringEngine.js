@@ -16,11 +16,15 @@ const DEFAULT_RULES = {
 };
 
 export function normalizeRallyRules(scoringFormat = {}) {
+  const sideSwitchRaw =
+    scoringFormat.sideSwitchAt != null && scoringFormat.sideSwitchAt !== ""
+      ? scoringFormat.sideSwitchAt
+      : scoringFormat.changeEndsAt;
   return {
     targetScore: Number(scoringFormat.targetScore) || DEFAULT_RULES.targetScore,
     winBy: Number(scoringFormat.winBy) || DEFAULT_RULES.winBy,
     freezeAt: Number(scoringFormat.freezeAt) || DEFAULT_RULES.freezeAt,
-    sideSwitchAt: Number(scoringFormat.sideSwitchAt) || DEFAULT_RULES.sideSwitchAt,
+    sideSwitchAt: Number(sideSwitchRaw) || DEFAULT_RULES.sideSwitchAt,
   };
 }
 
@@ -214,8 +218,18 @@ export function getStageScoringHints({
     `${getStageScoringModeLabel(effective.scoringMode)} đến ${rules.targetScore}, thắng cách ${rules.winBy}`,
   ];
 
-  if (normalizeStageScoringMode(effective.scoringMode) === STAGE_SCORING_MODE.RALLY) {
-    parts.push(`Đổi sân @${rules.sideSwitchAt}`, `Freeze @${rules.freezeAt}`);
+  const mode = normalizeStageScoringMode(effective.scoringMode);
+  const changeEnds =
+    effective.changeEndsAt != null && Number(effective.changeEndsAt) > 0
+      ? Number(effective.changeEndsAt)
+      : Number(format.sideSwitchAt) > 0
+        ? Number(format.sideSwitchAt)
+        : null;
+  if (changeEnds != null && changeEnds > 0) {
+    parts.push(`Đổi sân @${changeEnds}`);
+  }
+  if (mode === STAGE_SCORING_MODE.RALLY) {
+    parts.push(`Freeze @${rules.freezeAt}`);
   }
 
   if (discipline?.scoringFormat?.rotationPoints) {

@@ -8,6 +8,7 @@ import {
   STAGE_TIE_BREAK_POLICY,
 } from "../constants.js";
 import { resolveEffectiveStageTieBreakPolicy } from "../engines/teamStageTieBreakPolicy.js";
+import { getLineup } from "../models/index.js";
 import { buildCaptainPortalPath } from "../../../components/tournament/team/copyPortalLink.js";
 import { teamTournamentDashboardPath, teamTournamentPath, TEAM_TAB_QUERY } from "../../../config/tournamentRoutes.js";
 
@@ -25,14 +26,27 @@ function matchupLabel(matchup, teamsById) {
   return [when, `${teamA} vs ${teamB}`, court].filter(Boolean).join(" · ");
 }
 
-function isLineupTaskOpen(lineup) {
+/**
+ * Missing lineup row = fresh matchup lifecycle (group → SF / SF → Final).
+ * Prior-round submitted/locked/published lineups never satisfy a new matchupId.
+ */
+export function isLineupTaskOpen(lineup) {
+  if (!lineup) return true;
   const status = String(lineup?.status || "").toLowerCase();
   return (
+    status === LINEUP_STATUS.NOT_SUBMITTED ||
     status === LINEUP_STATUS.DRAFT ||
     status === "lineup_open" ||
     status === "waiting" ||
     status === ""
   );
+}
+
+function resolveOwnLineup(teamData, matchup, captainTeamId) {
+  const fromMap = getLineup(teamData, matchup?.id, captainTeamId);
+  if (fromMap) return fromMap;
+  const embedded = matchup?.lineups?.[captainTeamId] || matchup?.ownLineup;
+  return embedded || null;
 }
 
 export function buildCaptainDashboardTasks({
@@ -52,9 +66,16 @@ export function buildCaptainDashboardTasks({
     if (matchup.teamAId !== captainTeamId && matchup.teamBId !== captainTeamId) {
       continue;
     }
-    const lineups = matchup.lineups || {};
-    const ownLineup = lineups[captainTeamId] || matchup.ownLineup;
-    if (isLineupTaskOpen(ownLineup) && matchup.status !== "completed") {
+    // Empty KO placeholders (e.g. Final before SF winners) are not yet actionable.
+    if (!matchup.teamAId || !matchup.teamBId) {
+      continue;
+    }
+    if (matchup.status === "completed") {
+      continue;
+    }
+
+    const ownLineup = resolveOwnLineup(teamData, matchup, captainTeamId);
+    if (isLineupTaskOpen(ownLineup)) {
       tasks.push({
         type: DASHBOARD_TASK.CAPTAIN_LINEUP,
         matchupId: matchup.id,

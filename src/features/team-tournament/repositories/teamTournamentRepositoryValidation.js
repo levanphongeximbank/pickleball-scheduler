@@ -54,7 +54,8 @@ export function describeRepositoryFailureCode(code) {
   const key = String(code || "").trim();
   const map = {
     UNKNOWN_DISCIPLINE: "Nội dung (discipline) không khớp dữ liệu giải — kiểm tra Format MLP trước khi tạo lịch.",
-    UNKNOWN_TEAM: "Đội trong lịch không tồn tại trên server — lưu đội/bảng rồi tạo lại lịch.",
+    UNKNOWN_TEAM:
+      "Đội trong lịch không tồn tại trên server — hoặc trận knockout còn slot trống chưa được SQL cho phép. Lưu đội rồi tạo lại; nếu tạo Bán kết thất bại, cần Staging package matchups.replace cho placeholder.",
     VALIDATION_ERROR: "Envelope lịch không hợp lệ (thiếu rulesVersion / version / payload).",
     VERSION_CONFLICT: "Xung đột phiên bản giải — tải lại rồi thử lại.",
     EMPTY_SETUP_CONFIG: "Không có khóa cấu hình hợp lệ để lưu.",

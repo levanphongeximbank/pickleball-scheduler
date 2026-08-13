@@ -806,6 +806,31 @@ export default function TeamTournamentSetup() {
     setKnockoutBusy(true);
     setError("");
     try {
+      const prepared = await prepareLivePrivatePairingOptions({
+        tournament: tournament || null,
+        clubId: effectiveClubId || activeClubId || null,
+        clubFromQuery,
+        activeClubId,
+        tournamentId: tournamentId || null,
+        tenantId:
+          tournament?.tenantId ||
+          clubPool.tenantId ||
+          tenantPool.tenantId ||
+          currentTenantId ||
+          null,
+        eventId: tournamentId ? `event-${tournamentId}` : null,
+        competitionClass: COMPETITION_CLASS.INTERNAL,
+      });
+      const rulesVersion = prepared?.ok
+        ? String(prepared.rulesVersion || prepared.pairingOptions?.rulesVersion || "").trim()
+        : "";
+      if (!rulesVersion) {
+        setError(
+          prepared?.error?.message ||
+            "Thiếu rulesVersion canonical — không tạo được vòng loại trực tiếp."
+        );
+        return;
+      }
       const built = generateTeamKnockoutMatchups(td, {
         qualifiersPerGroup: progression.qualifiersPerGroup,
       });
@@ -816,12 +841,14 @@ export default function TeamTournamentSetup() {
       // Coarse stage remains knockout; competitionStage/bracketRoundLabel feed #416 resolver.
       const result = await persistSetupTeamData(built.teamData, {
         confirmDestructive: true,
+        rulesVersion,
       });
       if (!result?.ok) {
         setError(result?.error || "Không lưu được vòng loại trực tiếp lên cloud.");
         return;
       }
       setKnockoutDialogOpen(false);
+      setError("");
       await reload({ silent: true });
       const qualifiedCount = (built.qualified || []).length;
       setMessage(

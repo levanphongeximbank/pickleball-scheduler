@@ -31,6 +31,7 @@ function verdictTone(verdict) {
   if (verdict === "READY") return "success";
   if (verdict === "READY_SQL_PENDING_E2E") return "info";
   if (verdict === "PRODUCTION_NOT_APPLIED") return "default";
+  if (verdict === "FLAGS_MISMATCH") return "info";
   return "warning";
 }
 
@@ -46,15 +47,21 @@ export default function TeamRefereeOpsReadinessPanel({
       typeof import.meta !== "undefined" && import.meta.env
         ? buildClientFlagInventoryFromEnv(import.meta.env)
         : {};
+    const evidence = buildStagingInventoryFromTt5Final({
+      refereeEnabled: flags.VITE_REFEREE_V5_ENABLED || "true",
+      dataMode: flags.VITE_REFEREE_V5_DATA_MODE || "remote",
+      realtime: flags.VITE_REFEREE_V5_REALTIME_ENABLED || "false",
+    });
+    // Only override evidence defaults when env keys are explicitly set.
+    // Spreading unset `undefined` was falsely yielding Staging: MISSING_OBJECTS.
+    const explicitFlags = Object.fromEntries(
+      Object.entries(flags).filter(([, value]) => value != null && String(value).trim() !== "")
+    );
     return evaluateTt5OpsReadiness({
-      ...buildStagingInventoryFromTt5Final({
-        refereeEnabled: flags.VITE_REFEREE_V5_ENABLED || "true",
-        dataMode: flags.VITE_REFEREE_V5_DATA_MODE || "remote",
-        realtime: flags.VITE_REFEREE_V5_REALTIME_ENABLED || "false",
-      }),
+      ...evidence,
       flags: {
-        ...buildStagingInventoryFromTt5Final().flags,
-        ...flags,
+        ...evidence.flags,
+        ...explicitFlags,
       },
     });
   }, []);
@@ -68,6 +75,32 @@ export default function TeamRefereeOpsReadinessPanel({
 
   if (!canManage) {
     return null;
+  }
+
+  // After referee lifecycle is live, TT-5 inventory chip is operational noise —
+  // collapse to a compact note. Keep Production informational chip untouched.
+  const refereeLifecycleActive = liveOps.linked > 0 || liveOps.finalized > 0;
+  if (refereeLifecycleActive && staging.verdict !== "MISSING_OBJECTS") {
+    return (
+      <Paper sx={{ p: 2 }}>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Typography variant="subtitle2" fontWeight={700}>
+            Trọng tài đang vận hành
+          </Typography>
+          <Chip size="small" color="success" label={`linked ${liveOps.linked}`} />
+          <Chip size="small" color="default" label={`finalized ${liveOps.finalized}`} />
+          <Chip
+            size="small"
+            variant="outlined"
+            color="default"
+            label="Production: untouched (Owner GO)"
+          />
+        </Stack>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+          Checklist TT-5 / S2-F đã ẩn vì vòng đời trọng tài đang hoạt động (không còn báo MISSING_OBJECTS giả).
+        </Typography>
+      </Paper>
+    );
   }
 
   const focus = environmentHint === "production" ? production : staging;
