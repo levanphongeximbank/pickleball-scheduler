@@ -14,6 +14,7 @@ import {
   signUpWithPassword,
   signOut,
   subscribeToSupabaseAuth,
+  shouldRefreshUiOnAuthEvent,
 } from "../auth/authService.js";
 import { getSupabaseConfigError, hasSupabaseConfig } from "../auth/supabaseClient.js";
 import { clearClubScope } from "../auth/clubScopeResolver.js";
@@ -121,8 +122,8 @@ export function AuthProvider({ children }) {
     const start = async () => {
       await bootstrap();
       if (!cancelled) {
-        unsubscribe = subscribeToSupabaseAuth(() => {
-          if (!cancelled) {
+        unsubscribe = subscribeToSupabaseAuth((payload) => {
+          if (!cancelled && shouldRefreshUiOnAuthEvent(payload?.event)) {
             refresh();
           }
         });

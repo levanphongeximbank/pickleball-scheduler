@@ -541,6 +541,15 @@ export async function signOut() {
   return { ok: true };
 }
 
+/**
+ * Token refresh must not rebuild Auth/Club React trees — it is not a session change.
+ * Returning to a browser tab commonly fires TOKEN_REFRESHED and would otherwise
+ * flash operator workspaces.
+ */
+export function shouldRefreshUiOnAuthEvent(event) {
+  return String(event || "") !== "TOKEN_REFRESHED";
+}
+
 export function subscribeToSupabaseAuth(onChange) {
   const client = getSupabaseAuthClient();
   if (!client || typeof onChange !== "function") {

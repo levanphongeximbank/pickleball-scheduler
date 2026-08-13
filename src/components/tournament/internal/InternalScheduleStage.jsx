@@ -26,6 +26,7 @@ import {
 import { generateSchedule } from "../../../features/tournament-engine/engines/scheduleEngine.js";
 import { listGroupStageMatches } from "../../../features/tournament/internal/internalTournamentOneGroupCompletion.js";
 import { resolveInternalSchedulePrerequisite } from "../../../features/tournament/internal/internalSchedulePrerequisite.js";
+import { formatInternalMatchRefereeLabel } from "../../../features/tournament/internal/internalMatchRefereeAssignment.js";
 
 function formatTime(iso) {
   if (!iso) return "—";
@@ -300,6 +301,7 @@ export default function InternalScheduleStage({
                 <TableCell>Đội/VĐV B</TableCell>
                 <TableCell>Sân</TableCell>
                 <TableCell>Giờ</TableCell>
+                <TableCell>Trọng tài</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -310,6 +312,7 @@ export default function InternalScheduleStage({
                   <TableCell>{entryLabels[match.entryBId] || match.entryBId || "—"}</TableCell>
                   <TableCell>{courtLabel(match.courtId, courts)}</TableCell>
                   <TableCell>{formatTime(match.scheduledStart)}</TableCell>
+                  <TableCell>{formatInternalMatchRefereeLabel(match)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

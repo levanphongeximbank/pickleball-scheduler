@@ -16,7 +16,10 @@ import {
   assertInternalTournamentReadyForMutation,
   resolveCanonicalExpectedVersion,
 } from "../internal/canonicalTournamentCas.js";
-import { resolveCanonicalLoadPresentation } from "../internal/internalWorkspaceSections.js";
+import {
+  resolveCanonicalLoadPresentation,
+  resolveCanonicalScopeGapPolicy,
+} from "../internal/internalWorkspaceSections.js";
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 
 function readClubId(clubOrScope) {
@@ -49,14 +52,20 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
 
   useEffect(() => {
     hasLoadedRef.current = false;
-  }, [clubId, tournamentId]);
+  }, [tournamentId]);
 
   const reload = useCallback(async () => {
     if (!clubId || !tournamentId) {
-      setTournament(null);
+      const gap = resolveCanonicalScopeGapPolicy({
+        hasTournament: hasLoadedRef.current,
+        tournamentId,
+      });
+      if (!gap.keepRenderedTournament) {
+        setTournament(null);
+        hasLoadedRef.current = false;
+      }
       setLoading(false);
       setRefreshing(false);
-      hasLoadedRef.current = false;
       return null;
     }
     const presentation = resolveCanonicalLoadPresentation({
@@ -87,10 +96,16 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
     (async () => {
       if (!clubId || !tournamentId) {
         if (!cancelled) {
-          setTournament(null);
+          const gap = resolveCanonicalScopeGapPolicy({
+            hasTournament: hasLoadedRef.current,
+            tournamentId,
+          });
+          if (!gap.keepRenderedTournament) {
+            setTournament(null);
+            hasLoadedRef.current = false;
+          }
           setLoading(false);
           setRefreshing(false);
-          hasLoadedRef.current = false;
         }
         return;
       }

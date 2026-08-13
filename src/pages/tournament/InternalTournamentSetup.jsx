@@ -68,6 +68,7 @@ import {
   INTERNAL_VERSION_SYNCING_USER_MESSAGE,
   ONE_GROUP_COMPLETION_MESSAGE,
   assignInternalMatchReferee,
+  classifyCanonicalMatchLifecycleResult,
   listEligibleInternalReferees,
   mapLifecycleStepToWorkspaceSection,
   resolveInternalKnockoutEligibility,
@@ -84,10 +85,10 @@ import {
 import InternalTournamentLifecycleStepper from "../../components/tournament/InternalTournamentLifecycleStepper.jsx";
 import InternalScheduleStage from "../../components/tournament/internal/InternalScheduleStage.jsx";
 import InternalMatchRefereeSelect from "../../components/tournament/internal/InternalMatchRefereeSelect.jsx";
+import InternalRefereeStage from "../../components/tournament/internal/InternalRefereeStage.jsx";
 import { buildIndividualAllGroupStandings } from "../../features/individual-tournament/adapters/individualStandingsAdapter.js";
 import BracketView from "../../components/tournament/BracketView.jsx";
 import GroupStagePanel from "../../components/tournament/GroupStagePanel.jsx";
-import RefereeRosterPanel from "../../components/tournament/RefereeRosterPanel.jsx";
 import TournamentAnimationDialog from "../../components/tournament/animation/TournamentAnimationDialog.jsx";
 import {
   ANIMATION_MODES,
@@ -105,10 +106,7 @@ import {
   useTournamentBroadcast,
   BroadcastVodResultAlert,
 } from "../../features/tournament-broadcast/index.js";
-import {
-  buildRefereeSettingsPatch,
-  getRefereeSettings,
-} from "../../tournament/engines/refereeEngine.js";
+import { buildRefereeSettingsPatch } from "../../tournament/engines/refereeEngine.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
@@ -192,6 +190,7 @@ export default function InternalTournamentSetup() {
   );
   const [winnerDrafts, setWinnerDrafts] = useState({});
   const [pendingMatchId, setPendingMatchId] = useState(null);
+  const [lifecycleNotice, setLifecycleNotice] = useState(null);
   const workspaceTouchedRef = useRef(false);
   const [staleHydrationNotice, setStaleHydrationNotice] = useState(null);
   const [reopenBusy, setReopenBusy] = useState(false);
@@ -464,11 +463,6 @@ export default function InternalTournamentSetup() {
     [tournamentClubId, clubScope.clubId, localRevision]
   );
 
-  const refereeRoster = useMemo(
-    () => getRefereeSettings(tournament).roster,
-    [tournament, localRevision]
-  );
-
   const isSingleEvent = isSingleEventType(eventType);
 
   const eligiblePlayers = useMemo(
@@ -609,10 +603,10 @@ export default function InternalTournamentSetup() {
     }
 
     if (options.processMatchId && result.lifecycleOk === false) {
-      setError(
-        result.lifecycleError ||
-          "Đã lưu kết quả nhưng cập nhật Elo/điểm mùa thất bại."
-      );
+      const classified = classifyCanonicalMatchLifecycleResult(result);
+      if (classified.class === "OPTIONAL_ENRICHMENT") {
+        setLifecycleNotice(classified.message);
+      }
     }
 
     return {
@@ -1505,7 +1499,7 @@ export default function InternalTournamentSetup() {
     }
   };
 
-  if (!clubScope.ok) {
+  if (!clubScope.ok && !tournament) {
     return (
       <Box>
         <Alert severity="info">
@@ -1660,6 +1654,15 @@ export default function InternalTournamentSetup() {
               {error}
             </Alert>
           )}
+          {lifecycleNotice ? (
+            <Alert
+              severity="warning"
+              sx={{ mb: 2 }}
+              onClose={() => setLifecycleNotice(null)}
+            >
+              {lifecycleNotice}
+            </Alert>
+          ) : null}
           {tournament && !durableMutationReady.ok ? (
             <Alert severity="info" sx={{ mb: 2 }}>
               {INTERNAL_VERSION_SYNCING_USER_MESSAGE}
@@ -1673,7 +1676,7 @@ export default function InternalTournamentSetup() {
               {playersLoadError.message}
             </Alert>
           )}
-          {playerDiagnostics ? (
+          {import.meta.env?.DEV && searchParams.get("debug") === "1" && playerDiagnostics ? (
             <Alert severity="info" sx={{ mb: 2 }}>
               Candidate diagnostics: sourceCount={playerDiagnostics.sourceCount},
               membershipCount={playerDiagnostics.membershipCount},
@@ -1698,6 +1701,7 @@ export default function InternalTournamentSetup() {
       {aiEnabled && setupTab === 1 ? (
         <TournamentAiAssistantPanel
           tournamentId={tournamentId}
+          tournament={tournament}
           clubId={tournamentClubId || clubScope.clubId}
           tenantId={
             tournament?.tenantId ||
@@ -1726,9 +1730,6 @@ export default function InternalTournamentSetup() {
         workspaceSection === INTERNAL_WORKSPACE_SECTIONS.DRAW) && (
       <>
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid size={{ xs: 12 }}>
-          <RefereeRosterPanel roster={refereeRoster} onChange={handleRefereeRosterChange} />
-        </Grid>
         <Grid size={{ xs: 12 }}>
           <FounderPairingConstraintsPanel
             constraints={founderConstraints}
@@ -2098,6 +2099,19 @@ export default function InternalTournamentSetup() {
             }}
           />
         </Box>
+      ) : null}
+
+      {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.REFEREE ? (
+        <InternalRefereeStage
+          tournament={tournament}
+          event={savedEvent}
+          entryLabels={Object.fromEntries(
+            (savedEvent?.entries || []).map((entry) => [entry.id, entry.name || entry.id])
+          )}
+          pendingMatchId={pendingMatchId}
+          onRosterChange={handleRefereeRosterChange}
+          onAssign={handleAssignMatchReferee}
+        />
       ) : null}
 
       {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.RESULTS &&

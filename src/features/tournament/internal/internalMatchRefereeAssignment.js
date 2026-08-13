@@ -9,7 +9,28 @@ import {
 } from "../../../tournament/engines/refereeEngine.js";
 
 export const INTERNAL_NO_REFEREE_ROSTER_MESSAGE =
-  "Chưa có trọng tài. Thêm trọng tài ở phần Thiết lập trước khi phân công trận.";
+  "Chưa có trọng tài. Thêm trọng tài ở phần Trọng tài trước khi phân công trận.";
+
+export function summarizeInternalRefereeCoverage(event) {
+  const matches = Array.isArray(event?.matches) ? event.matches : [];
+  const assigned = matches.filter((match) => String(match?.referee?.name || "").trim());
+  return {
+    total: matches.length,
+    assigned: assigned.length,
+    unassigned: matches.length - assigned.length,
+  };
+}
+
+export function listInternalMatchesForRefereeBoard(event, { unassignedOnly = false } = {}) {
+  const matches = Array.isArray(event?.matches) ? event.matches : [];
+  if (!unassignedOnly) return matches;
+  return matches.filter((match) => !String(match?.referee?.name || "").trim());
+}
+
+export function formatInternalMatchRefereeLabel(match) {
+  const name = String(match?.referee?.name || "").trim();
+  return name || "Chưa phân công";
+}
 
 export function listEligibleInternalReferees(tournament) {
   return (getRefereeSettings(tournament).roster || []).filter(

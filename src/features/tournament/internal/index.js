@@ -73,12 +73,21 @@ export {
   mapLifecycleStepToWorkspaceSection,
   resolveInternalWorkspaceKey,
   resolveCanonicalLoadPresentation,
+  resolveCanonicalScopeGapPolicy,
 } from "./internalWorkspaceSections.js";
 
 export {
   INTERNAL_NO_REFEREE_ROSTER_MESSAGE,
   listEligibleInternalReferees,
   assignInternalMatchReferee,
+  summarizeInternalRefereeCoverage,
+  listInternalMatchesForRefereeBoard,
+  formatInternalMatchRefereeLabel,
 } from "./internalMatchRefereeAssignment.js";
+
+export {
+  INTERNAL_OPTIONAL_ELO_SEASON_NOTICE,
+  classifyCanonicalMatchLifecycleResult,
+} from "./internalMatchLifecyclePresentation.js";
 
 export { resolveInternalSchedulePrerequisite } from "./internalSchedulePrerequisite.js";
