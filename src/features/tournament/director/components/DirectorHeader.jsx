@@ -94,16 +94,21 @@ export default function DirectorHeader({
       )}
 
       <Grid container spacing={1.5} sx={{ mb: 2 }}>
-        <Grid size={{ xs: 6, sm: 3 }}>
+        <Grid size={{ xs: 6, sm: isDaily ? 4 : 3, md: isDaily ? 2 : 3 }}>
           <DirectorKpiChip label="Chờ" value={snapshot.summary.waiting} />
         </Grid>
-        <Grid size={{ xs: 6, sm: 3 }}>
+        {isDaily ? (
+          <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+            <DirectorKpiChip label="Sẵn sàng" value={snapshot.summary.assigned || 0} />
+          </Grid>
+        ) : null}
+        <Grid size={{ xs: 6, sm: isDaily ? 4 : 3, md: isDaily ? 3 : 3 }}>
           <DirectorKpiChip label="Đang đánh" value={snapshot.summary.onCourt} />
         </Grid>
-        <Grid size={{ xs: 6, sm: 3 }}>
+        <Grid size={{ xs: 6, sm: isDaily ? 4 : 3, md: isDaily ? 3 : 3 }}>
           <DirectorKpiChip label="Xong" value={snapshot.summary.completed} />
         </Grid>
-        <Grid size={{ xs: 6, sm: 3 }}>
+        <Grid size={{ xs: 6, sm: isDaily ? 4 : 3, md: isDaily ? 2 : 3 }}>
           <DirectorKpiChip label="Sân bận" value={snapshot.summary.courtsBusy} />
         </Grid>
       </Grid>
@@ -115,7 +120,7 @@ export function DirectorAccessDenied({ reason = "default", message }) {
   if (reason === "not-found") {
     return (
       <Box>
-        <Alert severity="error">Không tìm thấy giải.</Alert>
+        <Alert severity="error">{message || "Không tìm thấy giải."}</Alert>
         <Button component={RouterLink} to="/tournament" sx={{ mt: 2 }}>
           Quay lại
         </Button>

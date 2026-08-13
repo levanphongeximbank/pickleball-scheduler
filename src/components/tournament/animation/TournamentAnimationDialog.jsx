@@ -118,6 +118,12 @@ export default function TournamentAnimationDialog({
   const useGuidedFullscreen = guided;
   const preludeContext = buildEffectPreludeContext(payload);
   const preludeParticipants = buildEffectPreludeParticipants(payload);
+  const dialogMaxWidth =
+    useGuidedFullscreen
+      ? false
+      : animationMode === ANIMATION_MODES.DAILY_FAIR_MATCH
+        ? "xl"
+        : "lg";
 
   if (open && preludeActive && animationMode) {
     return (
@@ -127,7 +133,7 @@ export default function TournamentAnimationDialog({
         disableEscapeKeyDown
         fullScreen={useGuidedFullscreen}
         fullWidth
-        maxWidth={useGuidedFullscreen ? false : "lg"}
+        maxWidth={dialogMaxWidth}
         scroll="paper"
         PaperProps={{
           sx: { bgcolor: "#f8fafc" },
@@ -157,10 +163,12 @@ export default function TournamentAnimationDialog({
       disableEscapeKeyDown={guidedBracketReview}
       fullScreen={useGuidedFullscreen}
       fullWidth
-      maxWidth={useGuidedFullscreen ? false : "lg"}
+      maxWidth={dialogMaxWidth}
       scroll="paper"
       PaperProps={{
-        sx: { bgcolor: "#f8fafc" },
+        sx: {
+          bgcolor: "#f8fafc",
+        },
       }}
     >
       <DialogContent

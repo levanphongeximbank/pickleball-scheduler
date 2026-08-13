@@ -18,11 +18,23 @@ export function normalizeReferee(referee) {
     return null;
   }
 
-  return {
+  const canonicalUserId = String(
+    referee.canonicalUserId || referee.refereeUserId || ""
+  ).trim();
+  const source = referee.source || (canonicalUserId ? "canonical_account" : "manual");
+
+  const normalized = {
     id: referee.id ? String(referee.id) : createRefereeToken(),
     rosterId: referee.rosterId ? String(referee.rosterId) : "",
     name: name || "Trọng tài",
     token: token || createRefereeToken(),
     assignedAt: referee.assignedAt || new Date().toISOString(),
+    source,
   };
+
+  if (canonicalUserId) {
+    normalized.canonicalUserId = canonicalUserId;
+  }
+
+  return normalized;
 }

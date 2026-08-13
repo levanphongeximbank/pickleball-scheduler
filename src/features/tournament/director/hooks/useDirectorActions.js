@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { lockCourt, unlockCourt } from "../../../../ai/director.js";
 import { buildDirectorMatchCardProps } from "../../../../components/tournament/matchCardProps.js";
@@ -14,10 +14,7 @@ import {
 } from "../../services/tournamentCommands.js";
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../../../models/tournament/index.js";
 import {
-  assignDailyDirectorMatch,
   assignTournamentMatchToAvailableCourt,
-  buildDailyPlayTournamentPatch,
-  submitDailyDirectorMatchScore,
   submitTournamentDirectorMatchScore,
   upsertOfficialEvent,
 } from "../../../../tournament/engines/index.js";
@@ -31,21 +28,36 @@ import {
   setCourtRefereeAssignment,
 } from "../../../../tournament/engines/refereeEngine.js";
 import {
-  appendScoreLogAfterDailySubmit,
   appendScoreLogAfterEventSubmit,
   buildDirectorScoreLogEntry,
   buildDisputeResetLogEntry,
   patchScoreLogInTournament,
   resolveDirectorScoreLogSource,
 } from "../../../../tournament/engines/scoreHistoryEngine.js";
+import {
+  buildDailyMatchRefereeAssignmentPatch,
+  persistDailyRefereeMetadata,
+} from "../services/dailyRefereeMetadataPatch.js";
+import {
+  DAILY_PLAY_CODE,
+  DAILY_PLAY_MESSAGES,
+  validateScoreInput,
+} from "../../../daily-play/canonical/index.js";
+
+const DAILY_LOCK_UNSUPPORTED =
+  "Khóa sân thủ công chưa hỗ trợ trong Daily canonical.";
 
 export function useDirectorActions(state) {
   const {
     activeClubId,
+    activeClub,
+    tenantId,
     refreshClubs,
     tournament,
+    applyDailyTournamentOverlay,
     courts,
     isDaily,
+    dailySession,
     savedEvents,
     activeEvent,
     lockedCourtIds,
@@ -56,6 +68,8 @@ export function useDirectorActions(state) {
     setError,
     scoreDialog,
     setScoreDialog,
+    scoreCorrectionMode,
+    setScoreCorrectionMode,
     scoreA,
     setScoreA,
     scoreB,
@@ -69,10 +83,27 @@ export function useDirectorActions(state) {
     tournamentId,
   } = state;
 
+  const clubScope = useMemo(
+    () =>
+      activeClub || {
+        id: activeClubId,
+        clubId: activeClubId,
+        tenantId,
+        venueId: tenantId,
+      },
+    [activeClub, activeClubId, tenantId]
+  );
+
   const persistTournament = useCallback(
     async (patch, options = {}) => {
-      const result = await updateTournamentCommand(activeClubId, tournamentId, patch, {
+      if (isDaily && options.allowDailyCriticalPayload !== true) {
+        setError("Daily Director không ghi payload giải cho thao tác vòng đời trận.");
+        return false;
+      }
+
+      const result = await updateTournamentCommand(clubScope, tournamentId, patch, {
         ...options,
+        tenantId,
         directorMode: true,
       });
       if (!result.ok) {
@@ -88,13 +119,16 @@ export function useDirectorActions(state) {
       }
 
       if (tournament?.status !== TOURNAMENT_STATUS.ACTIVE) {
-        await setTournamentStatusCommand(activeClubId, tournamentId, TOURNAMENT_STATUS.ACTIVE, {
+        await setTournamentStatusCommand(clubScope, tournamentId, TOURNAMENT_STATUS.ACTIVE, {
           directorMode: true,
+          tenantId,
         });
       }
 
-      setLocalRevision((value) => value + 1);
-      refreshClubs();
+      if (!isDaily) {
+        setLocalRevision((value) => value + 1);
+        refreshClubs();
+      }
       return {
         ok: true,
         tournament: result.tournament,
@@ -102,7 +136,16 @@ export function useDirectorActions(state) {
         lifecycleError: result.lifecycleError || null,
       };
     },
-    [activeClubId, tournamentId, tournament?.status, refreshClubs, setError, setLocalRevision]
+    [
+      clubScope,
+      isDaily,
+      refreshClubs,
+      setError,
+      setLocalRevision,
+      tenantId,
+      tournament?.status,
+      tournamentId,
+    ]
   );
 
   const persistEvent = useCallback(
@@ -130,6 +173,26 @@ export function useDirectorActions(state) {
     [tournament, savedEvents, activeEvent?.id, persistTournament]
   );
 
+  const persistDailyReferee = useCallback(
+    async (metadataPatch) => {
+      const result = await persistDailyRefereeMetadata({
+        clubOrScope: clubScope,
+        tournamentId,
+        metadataPatch,
+        tenantId,
+      });
+      if (!result.ok) {
+        setError(result.error || "Không lưu được thông tin trọng tài.");
+        return false;
+      }
+      if (result.tournament) {
+        applyDailyTournamentOverlay?.(result.tournament);
+      }
+      return result;
+    },
+    [applyDailyTournamentOverlay, clubScope, setError, tenantId, tournamentId]
+  );
+
   const handleRefereeAssign = useCallback(
     async ({ match: assignedMatch, referee }) => {
       const currentTournament = tournamentRef.current;
@@ -145,21 +208,23 @@ export function useDirectorActions(state) {
         };
       }
 
-      const patch = patchRefereeInTournament(currentTournament, {
-        eventId: currentEvent?.id,
-        matchId: assignedMatch.id,
-        referee,
-        isDaily,
-      });
-
-      if (!patch) {
-        return { ok: false, error: "Không cập nhật được trận." };
-      }
-
       let persisted;
       if (isDaily) {
-        persisted = await persistTournament(patch);
+        const metadataPatch = buildDailyMatchRefereeAssignmentPatch(
+          assignedMatch.id,
+          referee
+        );
+        persisted = await persistDailyReferee(metadataPatch);
       } else {
+        const patch = patchRefereeInTournament(currentTournament, {
+          eventId: currentEvent?.id,
+          matchId: assignedMatch.id,
+          referee,
+          isDaily: false,
+        });
+        if (!patch) {
+          return { ok: false, error: "Không cập nhật được trận." };
+        }
         const nextEvent = (patch.events || []).find(
           (event) => String(event.id) === String(currentEvent?.id)
         );
@@ -180,7 +245,7 @@ export function useDirectorActions(state) {
         clubId: activeClubId,
         tournamentId,
         eventId: currentEvent?.id,
-        match: assignedMatch,
+        match: { ...assignedMatch, referee },
         labels,
         isDaily,
         tournamentName: currentTournament.name,
@@ -197,8 +262,8 @@ export function useDirectorActions(state) {
       activeClubId,
       courts,
       isDaily,
+      persistDailyReferee,
       persistEvent,
-      persistTournament,
       state.players,
       tournamentId,
       tournamentRef,
@@ -235,25 +300,16 @@ export function useDirectorActions(state) {
       setError(null);
 
       if (isDaily) {
-        const result = assignDailyDirectorMatch({
-          tournament,
-          courts,
-          matchId: match.id,
-          lockedCourtIds,
-        });
-
-        if (!result.ok) {
-          setError(result.error);
+        const result = await dailySession.assignCourt(match.id);
+        if (!result?.ok) {
+          if (result?.error) setError(result.error);
           return;
         }
-
-        if (await persistTournament(buildDailyPlayTournamentPatch(result.settings))) {
-          setMessage("Đã xếp trận vào sân trống.");
-          const assignedMatch = result.settings.matches.find(
-            (item) => String(item.id) === String(result.matchId)
-          );
-          await tryAutoAssignCourtReferee(assignedMatch, result.courtId);
-        }
+        setMessage("Đã xếp trận vào sân (assigned). Bấm Bắt đầu trận để chơi.");
+        const assignedMatch = (result.dailyPlay?.matches || dailySession.dailyPlay?.matches || []).find(
+          (item) => String(item.id) === String(match.id)
+        );
+        await tryAutoAssignCourtReferee(assignedMatch || match, assignedMatch?.courtId);
         return;
       }
 
@@ -294,10 +350,10 @@ export function useDirectorActions(state) {
       activeClubId,
       activeEvent,
       courts,
+      dailySession,
       isDaily,
       lockedCourtIds,
       persistEvent,
-      persistTournament,
       setError,
       setMessage,
       tournament,
@@ -305,8 +361,54 @@ export function useDirectorActions(state) {
     ]
   );
 
+  const handleStartMatch = useCallback(
+    async (match) => {
+      if (!isDaily) return;
+      setError(null);
+      const result = await dailySession.startMatch(match.id);
+      if (result?.ok) {
+        setMessage("Đã bắt đầu trận.");
+        return;
+      }
+      if (result?.error) setError(result.error);
+    },
+    [dailySession, isDaily, setError, setMessage]
+  );
+
+  const handleCancelMatch = useCallback(
+    async (match) => {
+      if (!isDaily) return;
+      setError(null);
+      const result = await dailySession.cancelMatch(match.id);
+      if (result?.ok) {
+        setMessage("Đã hủy trận và giải phóng sân/VĐV.");
+        return;
+      }
+      if (result?.error) setError(result.error);
+    },
+    [dailySession, isDaily, setError, setMessage]
+  );
+
+  const handleChangeCourt = useCallback(
+    async (match, courtId) => {
+      if (!isDaily) return;
+      setError(null);
+      const result = await dailySession.changeCourt(match.id, courtId);
+      if (result?.ok) {
+        setMessage("Đã đổi sân.");
+        return;
+      }
+      if (result?.error) setError(result.error);
+    },
+    [dailySession, isDaily, setError, setMessage]
+  );
+
   const handleToggleCourt = useCallback(
     (courtId, locked) => {
+      if (isDaily) {
+        setError(DAILY_LOCK_UNSUPPORTED);
+        return;
+      }
       if (locked) {
         unlockCourt(courtId, activeClubId);
       } else {
@@ -314,7 +416,7 @@ export function useDirectorActions(state) {
       }
       setLocalRevision((value) => value + 1);
     },
-    [activeClubId, setLocalRevision]
+    [activeClubId, isDaily, setError, setLocalRevision]
   );
 
   const handleOpenScore = useCallback(
@@ -323,6 +425,7 @@ export function useDirectorActions(state) {
       const useLiveScore =
         liveRow && (liveRow.status === "playing" || liveRow.status === "finalize_requested");
 
+      setScoreCorrectionMode(false);
       setScoreDialog(match);
       setScoreA(
         useLiveScore ? String(liveRow.scoreA) : match.scoreA != null ? String(match.scoreA) : ""
@@ -332,7 +435,18 @@ export function useDirectorActions(state) {
       );
       setScoreNote("");
     },
-    [liveByMatchId, setScoreA, setScoreB, setScoreDialog, setScoreNote]
+    [liveByMatchId, setScoreA, setScoreB, setScoreCorrectionMode, setScoreDialog, setScoreNote]
+  );
+
+  const handleOpenCorrectScore = useCallback(
+    (match) => {
+      setScoreCorrectionMode(true);
+      setScoreDialog(match);
+      setScoreA(match.scoreA != null ? String(match.scoreA) : "");
+      setScoreB(match.scoreB != null ? String(match.scoreB) : "");
+      setScoreNote("");
+    },
+    [setScoreA, setScoreB, setScoreCorrectionMode, setScoreDialog, setScoreNote]
   );
 
   const handleDisputeResetLive = useCallback(
@@ -351,6 +465,11 @@ export function useDirectorActions(state) {
         return;
       }
 
+      if (isDaily) {
+        setMessage("Đã reset điểm live — trọng tài có thể nhập lại.");
+        return;
+      }
+
       const logPatch = patchScoreLogInTournament(tournament, {
         eventId: activeEvent?.id,
         matchId: match.id,
@@ -362,7 +481,7 @@ export function useDirectorActions(state) {
             oldScoreA: liveRow.scoreA,
             oldScoreB: liveRow.scoreB,
           }),
-        isDaily,
+        isDaily: false,
       });
 
       if (!logPatch) {
@@ -370,12 +489,10 @@ export function useDirectorActions(state) {
         return;
       }
 
-      const persisted = isDaily
-        ? await persistTournament(logPatch)
-        : await persistEvent(
-            (logPatch.events || []).find((event) => String(event.id) === String(activeEvent?.id)) ||
-              activeEvent
-          );
+      const persisted = await persistEvent(
+        (logPatch.events || []).find((event) => String(event.id) === String(activeEvent?.id)) ||
+          activeEvent
+      );
 
       if (persisted) {
         setMessage("Đã reset điểm live — trọng tài có thể nhập lại.");
@@ -386,7 +503,6 @@ export function useDirectorActions(state) {
       isDaily,
       liveByMatchId,
       persistEvent,
-      persistTournament,
       setError,
       setMessage,
       tournament,
@@ -413,43 +529,46 @@ export function useDirectorActions(state) {
     });
 
     if (isDaily) {
-      const result = submitDailyDirectorMatchScore(
-        tournament,
-        scoreDialog.id,
-        { scoreA, scoreB },
-        { allowDraw: false }
-      );
-
-      if (!result.ok) {
-        setError(result.error);
+      const parsed = validateScoreInput(scoreA, scoreB);
+      if (!parsed.ok) {
+        setError(parsed.error);
         return;
       }
-
-      if (result.releasedCourtId) {
-        unlockCourt(result.releasedCourtId, activeClubId);
-      }
-
-      const settingsWithLog = appendScoreLogAfterDailySubmit(
-        result.settings,
-        scoreDialog.id,
-        logEntry
-      );
-
-      if (
-        await persistTournament(buildDailyPlayTournamentPatch(settingsWithLog), {
-          processMatchId: scoreDialog.id,
-        })
-      ) {
-        if (liveRow) {
-          await markMatchLiveProcessed(liveRow.id);
+      if (scoreCorrectionMode) {
+        if (String(scoreDialog.status) !== "completed") {
+          setError(DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.MATCH_NOT_COMPLETED]);
+          return;
+        }
+        const result = await dailySession.correctScore(
+          scoreDialog.id,
+          scoreA,
+          scoreB,
+          scoreNote
+        );
+        if (!result?.ok) {
+          if (result?.error) setError(result.error);
+          return;
         }
         setScoreDialog(null);
-        setMessage(
-          logEntry.action === "admin_override" || logEntry.source === "director_override"
-            ? "BTC đã ghi đè kết quả trọng tài."
-            : "Đã lưu kết quả Daily Play."
-        );
+        setScoreCorrectionMode(false);
+        setMessage("Đã sửa điểm trận hoàn tất.");
+        return;
       }
+      const result = await dailySession.submitScore(scoreDialog.id, scoreA, scoreB);
+      if (!result?.ok) {
+        if (result?.error) setError(result.error);
+        return;
+      }
+      if (liveRow) {
+        await markMatchLiveProcessed(liveRow.id);
+      }
+      setScoreDialog(null);
+      setScoreCorrectionMode(false);
+      setMessage(
+        logEntry.action === "admin_override" || logEntry.source === "director_override"
+          ? "BTC đã ghi đè kết quả trọng tài."
+          : "Đã lưu kết quả Daily Play."
+      );
       return;
     }
 
@@ -489,24 +608,40 @@ export function useDirectorActions(state) {
   }, [
     activeClubId,
     activeEvent,
+    dailySession,
     isDaily,
     liveByMatchId,
     persistEvent,
-    persistTournament,
     scoreA,
     scoreB,
+    scoreCorrectionMode,
     scoreDialog,
     scoreNote,
     setError,
+    setScoreCorrectionMode,
     setMessage,
     setScoreDialog,
-    tournament,
   ]);
 
   const handleCourtRefereeChange = useCallback(
     async (courtId, rosterId) => {
+      const nextCourtReferees = setCourtRefereeAssignment(
+        refereeSettings.courtReferees,
+        courtId,
+        rosterId
+      );
+      if (isDaily) {
+        const persisted = await persistDailyReferee({ courtReferees: nextCourtReferees });
+        if (persisted) {
+          setMessage(
+            rosterId ? "Đã gán trọng tài cố định cho sân." : "Đã bỏ trọng tài cố định khỏi sân."
+          );
+        }
+        return;
+      }
+
       const patch = buildRefereeSettingsPatch(tournament, {
-        courtReferees: setCourtRefereeAssignment(refereeSettings.courtReferees, courtId, rosterId),
+        courtReferees: nextCourtReferees,
       });
 
       if (await persistTournament(patch)) {
@@ -515,7 +650,14 @@ export function useDirectorActions(state) {
         );
       }
     },
-    [persistTournament, refereeSettings.courtReferees, setMessage, tournament]
+    [
+      isDaily,
+      persistDailyReferee,
+      persistTournament,
+      refereeSettings.courtReferees,
+      setMessage,
+      tournament,
+    ]
   );
 
   const buildRefereeCardProps = useCallback(
@@ -540,8 +682,12 @@ export function useDirectorActions(state) {
     persistEvent,
     handleRefereeAssign,
     handleAssignCourt,
+    handleStartMatch,
+    handleCancelMatch,
+    handleChangeCourt,
     handleToggleCourt,
     handleOpenScore,
+    handleOpenCorrectScore,
     handleDisputeResetLive,
     handleSubmitScore,
     handleCourtRefereeChange,

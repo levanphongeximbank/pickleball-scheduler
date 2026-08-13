@@ -44,6 +44,31 @@ export const FAIR_MATCH_PHASES = {
   COMPLETE: "complete",
 };
 
+/** Desktop column shares (conceptual 12-grid). Avoided legacy unsafe 2/8/2 (DP-11). */
+export const DAILY_FAIR_DESKTOP_GRID = Object.freeze({
+  pool: 3,
+  reveal: 6,
+  matches: 3,
+});
+
+/**
+ * Compact/tab mode when Fair Match container is narrower than this.
+ * Dialog maxWidth lg content is often ~1100–1200px — prefer tabs below
+ * a width that cannot host three usable columns.
+ */
+export const DAILY_FAIR_COMPACT_BREAKPOINT_PX = 960;
+
+/** Minimum usable width target for the result panel in desktop CSS grid. */
+export const DAILY_FAIR_MATCH_PANEL_MIN_PX = 240;
+
+/**
+ * Desktop CSS grid template — driven by container layout mode, NOT viewport
+ * media queries (DP-11B). Prevents Dialog-clipped third column.
+ */
+export const DAILY_FAIR_DESKTOP_GRID_TEMPLATE =
+  "minmax(200px, 3fr) minmax(280px, 6fr) minmax(240px, 3fr)";
+
+
 export const CREATION_FLOW_PHASES = [
   FAIR_MATCH_PHASES.ANALYZE,
   FAIR_MATCH_PHASES.TEAM_A,

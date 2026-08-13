@@ -14,13 +14,19 @@ import { buildTournamentDirectorSnapshot } from "../../../../tournament/engines/
 import { hasSupabaseConfig } from "../../../../domain/matchLiveSync.js";
 import { getRefereeSettings } from "../../../../tournament/engines/refereeEngine.js";
 import { useMatchLiveScores } from "../../../../tournament/useMatchLiveScores.js";
+import { useDailyPlayCanonicalSession } from "../../../daily-play/canonical/useDailyPlayCanonicalSession.js";
+import { useClubPairingCandidatePool } from "../../../pairing-candidates/index.js";
+import { shouldShowDirectorBlockingLoad } from "../directorLoadingGate.js";
 import { buildDirectorBackPath } from "../services/directorService.js";
+import { buildCanonicalDailyDirectorSnapshot } from "../services/dailyDirectorProjection.js";
 
 export function useDirectorState(tournamentId) {
   const [searchParams] = useSearchParams();
   const { activeClubId, activeClub, refreshClubs } = useClub();
   const { can, rbacEnabled, isAuthenticated } = useAuth();
   const { currentTenantId } = useTenant();
+
+  const tenantId = activeClub?.tenantId || activeClub?.venueId || null;
 
   const canUseDirector =
     !rbacEnabled ||
@@ -38,6 +44,7 @@ export function useDirectorState(tournamentId) {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [scoreDialog, setScoreDialog] = useState(null);
+  const [scoreCorrectionMode, setScoreCorrectionMode] = useState(false);
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
   const [scoreNote, setScoreNote] = useState("");
@@ -51,11 +58,32 @@ export function useDirectorState(tournamentId) {
     hasSupabaseConfig()
   );
 
-  const { tournament, loading: tournamentLoading } = useCanonicalTournament(
-    activeClubId,
+  // DP-12: explicit tenant from activeClub object — never a clubId string.
+  const {
+    tournament: loadedTournament,
+    loading: tournamentLoading,
+    error: tournamentLoadError,
+  } = useCanonicalTournament(activeClub, tournamentId, localRevision);
+
+  const [dailyTournamentOverlay, setDailyTournamentOverlay] = useState(null);
+  const tournament = dailyTournamentOverlay || loadedTournament;
+  const isDaily = tournament?.mode === TOURNAMENT_MODE.DAILY_PLAY;
+
+  useEffect(() => {
+    setDailyTournamentOverlay(null);
+  }, [loadedTournament]);
+
+  const dailySession = useDailyPlayCanonicalSession({
+    tenantId,
+    clubId: activeClubId,
     tournamentId,
-    localRevision
-  );
+    enabled: Boolean(isDaily && tenantId && activeClubId && tournamentId),
+    pollMs: 15000,
+  });
+
+  const pairingPool = useClubPairingCandidatePool(isDaily ? activeClubId : null, {
+    revision: 0,
+  });
 
   const tournamentAccess = useMemo(() => {
     if (!rbacEnabled || !isAuthenticated) {
@@ -65,28 +93,40 @@ export function useDirectorState(tournamentId) {
       return { ok: true, pending: true };
     }
     return assertLoadedTournamentAccess(activeClubId, tournament, {
-      tenantId: currentTenantId,
+      tenantId: currentTenantId || tenantId,
     });
   }, [
     activeClubId,
     currentTenantId,
     isAuthenticated,
     rbacEnabled,
+    tenantId,
     tournament,
     tournamentLoading,
   ]);
 
+  const legacyPlayers = useMemo(
+    () => (isDaily ? [] : loadPlayersForClub(activeClubId)),
+    [activeClubId, isDaily, localRevision]
+  );
+
+  const legacyCourts = useMemo(
+    () =>
+      isDaily
+        ? []
+        : loadCourtsForClub(activeClubId).filter((court) => court.active !== false),
+    [activeClubId, isDaily, localRevision]
+  );
+
   const players = useMemo(
-    () => loadPlayersForClub(activeClubId),
-    [activeClubId, localRevision]
+    () => (isDaily ? pairingPool.players || [] : legacyPlayers),
+    [isDaily, pairingPool.players, legacyPlayers]
   );
-
   const courts = useMemo(
-    () => loadCourtsForClub(activeClubId).filter((court) => court.active !== false),
-    [activeClubId, localRevision]
+    () => (isDaily ? dailySession.courts || [] : legacyCourts),
+    [isDaily, dailySession.courts, legacyCourts]
   );
 
-  const isDaily = tournament?.mode === TOURNAMENT_MODE.DAILY_PLAY;
   const savedEvents = tournament?.events || [];
   const activeEvent =
     savedEvents.find((event) => String(event.id) === String(activeEventId)) ||
@@ -95,21 +135,42 @@ export function useDirectorState(tournamentId) {
     null;
 
   const lockedCourtIds = useMemo(
-    () => getDirectorState(activeClubId).lockedCourts || [],
-    [activeClubId, localRevision]
+    () => (isDaily ? [] : getDirectorState(activeClubId).lockedCourts || []),
+    [activeClubId, isDaily, localRevision]
   );
 
-  const snapshot = useMemo(
-    () =>
-      buildTournamentDirectorSnapshot({
+  const snapshot = useMemo(() => {
+    if (isDaily) {
+      return buildCanonicalDailyDirectorSnapshot({
         tournament,
-        event: activeEvent,
-        courts,
+        session: {
+          dailyPlay: dailySession.dailyPlay,
+          courts: dailySession.courts,
+          courtStates: dailySession.courtStates,
+          leases: dailySession.leases,
+        },
         players,
-        lockedCourtIds,
-      }),
-    [tournament, activeEvent, courts, players, lockedCourtIds]
-  );
+      });
+    }
+    return buildTournamentDirectorSnapshot({
+      tournament,
+      event: activeEvent,
+      courts,
+      players,
+      lockedCourtIds,
+    });
+  }, [
+    activeEvent,
+    courts,
+    dailySession.courtStates,
+    dailySession.courts,
+    dailySession.dailyPlay,
+    dailySession.leases,
+    isDaily,
+    lockedCourtIds,
+    players,
+    tournament,
+  ]);
 
   const refereeSettings = useMemo(() => getRefereeSettings(tournament), [tournament]);
 
@@ -121,26 +182,46 @@ export function useDirectorState(tournamentId) {
 
   const tournamentRef = useRef(tournament);
   const activeEventRef = useRef(activeEvent);
+  const dailySessionRef = useRef(dailySession);
 
   useEffect(() => {
     tournamentRef.current = tournament;
     activeEventRef.current = activeEvent;
-  }, [tournament, activeEvent]);
+    dailySessionRef.current = dailySession;
+  }, [tournament, activeEvent, dailySession]);
 
   const backPath = buildDirectorBackPath(tournament, tournamentId);
   const waitingMatches = snapshot.matches?.waiting || [];
-  const onCourtMatches = snapshot.matches?.onCourt || [];
+  const assignedMatches = snapshot.matches?.assigned || [];
+  const onCourtMatches = snapshot.matches?.onCourt || snapshot.matches?.playing || [];
   const completedMatches = snapshot.matches?.completed || [];
+
+  const initialLoading = shouldShowDirectorBlockingLoad({
+    tournament,
+    tournamentLoading,
+    accessPending: false,
+    isDaily,
+    dailyState: dailySession.state,
+    dailyLoading: dailySession.loading,
+  });
 
   return {
     activeClubId,
+    activeClub,
+    tenantId,
     refreshClubs,
     canUseDirector,
     tournamentAccess,
     tournament,
+    applyDailyTournamentOverlay: setDailyTournamentOverlay,
+    tournamentLoading,
+    tournamentLoadError,
+    initialLoading,
     players,
     courts,
     isDaily,
+    dailySession,
+    dailySessionRef,
     savedEvents,
     activeEvent,
     lockedCourtIds,
@@ -152,10 +233,12 @@ export function useDirectorState(tournamentId) {
     setLocalRevision,
     message,
     setMessage,
-    error,
+    error: error || (isDaily ? dailySession.error : null),
     setError,
     scoreDialog,
     setScoreDialog,
+    scoreCorrectionMode,
+    setScoreCorrectionMode,
     scoreA,
     setScoreA,
     scoreB,
@@ -172,6 +255,7 @@ export function useDirectorState(tournamentId) {
     activeEventRef,
     backPath,
     waitingMatches,
+    assignedMatches,
     onCourtMatches,
     completedMatches,
     tournamentId,

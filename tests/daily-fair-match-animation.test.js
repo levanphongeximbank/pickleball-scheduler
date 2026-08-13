@@ -8,6 +8,10 @@ import {
   buildDailyFairMatchPlayerPool,
   buildDailyFairMatchSteps,
   computeDailyFairBalancePercent,
+  DAILY_FAIR_COMPACT_BREAKPOINT_PX,
+  DAILY_FAIR_DESKTOP_GRID,
+  DAILY_FAIR_DESKTOP_GRID_TEMPLATE,
+  DAILY_FAIR_MATCH_PANEL_MIN_PX,
   DAILY_PLAYER_STATUS,
   FAIR_MATCH_PHASES,
   getFairnessTier,
@@ -17,6 +21,9 @@ import {
   resolveDailyPlayerStatus,
   resolveMatchCourtLabel,
 } from "../src/components/tournament/animation/daily/dailyFairMatchUtils.js";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   createFairDailyMatches,
   DAILY_GENDER_FILTER,
@@ -296,5 +303,113 @@ describe("daily fair match animation modes", () => {
 
     assert.notEqual(replayed[0].replay, undefined);
     assert.equal(JSON.stringify(result.matches), engineSnapshot);
+  });
+
+  it("Daily Fair Match has no EffectPrelude (single presentation path)", async () => {
+    const { hasEffectPrelude } = await import(
+      "../src/components/tournament/animation/shared/effectPreludeConfig.js"
+    );
+    const { ANIMATION_MODES } = await import(
+      "../src/components/tournament/animation/animationUtils.js"
+    );
+    assert.equal(hasEffectPrelude(ANIMATION_MODES.DAILY_FAIR_MATCH), false);
+  });
+});
+
+describe("Daily Fair Match responsive polish (DP-11 / DP-11B)", () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+  it("desktop uses container CSS grid 3/6/3 — not viewport Grid lg sizes", () => {
+    assert.deepEqual(DAILY_FAIR_DESKTOP_GRID, { pool: 3, reveal: 6, matches: 3 });
+    assert.match(DAILY_FAIR_DESKTOP_GRID_TEMPLATE, /minmax\(240px,\s*3fr\)/);
+    assert.equal(DAILY_FAIR_MATCH_PANEL_MIN_PX >= 240, true);
+    assert.equal(DAILY_FAIR_COMPACT_BREAKPOINT_PX >= 900, true);
+
+    const screen = fs.readFileSync(
+      path.join(root, "src/components/tournament/animation/daily/DailyFairMatchScreen.jsx"),
+      "utf8"
+    );
+    assert.match(screen, /DAILY_FAIR_DESKTOP_GRID_TEMPLATE/);
+    assert.match(screen, /gridTemplateColumns:\s*DAILY_FAIR_DESKTOP_GRID_TEMPLATE/);
+    assert.match(screen, /ResizeObserver/);
+    assert.equal(screen.includes("from \"@mui/material\""), true);
+    // Must not size columns with viewport `lg` Grid breakpoints (DP-11B root cause).
+    assert.equal(/\blg:\s*DAILY_FAIR_DESKTOP_GRID/.test(screen), false);
+    assert.equal(/\bsize=\{\{/.test(screen), false);
+    assert.match(screen, /data-testid="daily-fair-result-panel"/);
+    assert.match(screen, /data-result-panel=\{showMatches \? "visible" : "hidden"\}/);
+    assert.match(screen, /data-desktop-grid=\{`\$\{DAILY_FAIR_DESKTOP_GRID\.pool\}/);
+  });
+
+  it("result panel stays mounted; compact only toggles display", () => {
+    const screen = fs.readFileSync(
+      path.join(root, "src/components/tournament/animation/daily/DailyFairMatchScreen.jsx"),
+      "utf8"
+    );
+    assert.match(screen, /data-panel="matches"/);
+    assert.match(screen, /display:\s*showMatches\s*\?\s*"block"\s*:\s*"none"/);
+    assert.match(screen, /DailyMatchListPanel/);
+    // Never conditional-unmount the list based on revealedCount alone.
+    assert.equal(
+      /\{sequence\.revealedCount\s*>\s*0\s*&&\s*\([\s\S]*DailyMatchListPanel/.test(screen),
+      false
+    );
+  });
+
+  it("DailyMatchCard keeps status chip off the team title row", () => {
+    const card = fs.readFileSync(
+      path.join(root, "src/components/tournament/animation/daily/DailyMatchCard.jsx"),
+      "utf8"
+    );
+    assert.match(card, /wordBreak:\s*"normal"/);
+    assert.match(card, /overflowWrap:\s*"anywhere"/);
+    assert.equal(card.includes("break-all"), false);
+    assert.match(card, />\s*\{\s*teamA\s*\}\s*</);
+    assert.match(card, />\s*VS\s*</);
+    assert.match(card, />\s*\{\s*teamB\s*\}\s*</);
+    assert.match(card, /\{step\.matchLabel\}[\s\S]*<Chip/);
+  });
+
+  it("tab changes are presentation-only and keep sequence mounted", () => {
+    const screen = fs.readFileSync(
+      path.join(root, "src/components/tournament/animation/daily/DailyFairMatchScreen.jsx"),
+      "utf8"
+    );
+    assert.match(screen, /handleTabChange/);
+    assert.match(screen, /setMobileTab\(value\)/);
+    assert.equal(/handleTabChange[\s\S]{0,200}sequence\.(replay|skip|startAuto)/.test(screen), false);
+    assert.match(screen, /fullWidth=\{showTabs\}/);
+    assert.match(screen, /useFairMatchSequence/);
+    assert.match(screen, /daily-fair-compact-tabs/);
+    assert.match(screen, /daily-fair-tab-matches/);
+  });
+
+  it("match list panel supports full-width tab mode", () => {
+    const panel = fs.readFileSync(
+      path.join(root, "src/components/tournament/animation/daily/DailyMatchListPanel.jsx"),
+      "utf8"
+    );
+    assert.match(panel, /fullWidth\s*=\s*false/);
+    assert.match(panel, /daily-fair-panel--matches-full/);
+    assert.match(panel, /overflowY:\s*"auto"/);
+    assert.match(panel, /overflowX:\s*"hidden"/);
+  });
+
+  it("control bar is not sticky over the result panel", () => {
+    const css = fs.readFileSync(
+      path.join(root, "src/components/tournament/animation/daily/dailyFairMatch.css"),
+      "utf8"
+    );
+    const control = css.slice(css.indexOf(".daily-fair-control-bar"));
+    assert.match(control, /position:\s*relative/);
+    assert.equal(/\.daily-fair-control-bar\s*\{[^}]*position:\s*sticky/.test(css), false);
+  });
+
+  it("Daily Fair Match dialog uses wider maxWidth xl", () => {
+    const dialog = fs.readFileSync(
+      path.join(root, "src/components/tournament/animation/TournamentAnimationDialog.jsx"),
+      "utf8"
+    );
+    assert.match(dialog, /DAILY_FAIR_MATCH[\s\S]*\? "xl"/);
   });
 });
