@@ -222,13 +222,49 @@ export {
   evaluateOfficialCloseGate,
   filterOfficialDrawEntries,
   buildOfficialDrawBlockMessage,
+  deriveOfficialKnockoutStages,
 } from "./engines/officialOrganizerWorkflowEngine.js";
 
 export {
   REFEREE_IDENTITY_BINDING_BLOCKED,
+  REFEREE_SCORING_RULE_TRANSPORT_BLOCKED,
   syncOfficialAssignedMatchToLive,
   syncOfficialRefereeAssignResultToLive,
 } from "./engines/officialRefereeLiveBridge.js";
+
+export {
+  OFFICIAL_REGISTRATION_MODE,
+  OFFICIAL_REGISTRATION_MODE_RESOLUTION,
+  OFFICIAL_SCORING_METHOD,
+  OFFICIAL_ROUND_SCORE_KEY,
+  DEFAULT_OFFICIAL_ROUND_TARGETS,
+  CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT,
+  SIDEOUT_OPERATIONAL,
+  SIDEOUT_SELECTION_FAIL_CLOSED,
+  SIDEOUT_BACKEND_REQUIREMENT,
+  WIN_BY_POLICY_DEFERRED,
+  OFFICIAL_WIN_BY_DUPLICATE_AUTHORITY,
+  getOfficialCompetitionSettings,
+  patchOfficialCompetitionSettings,
+  resolveOfficialRegistrationMode,
+  deriveLegacyOfficialRegistrationMode,
+  normalizeOfficialRegistrationMode,
+  normalizeOfficialScoringMethod,
+  normalizeOfficialRoundTargets,
+  isOfficialRegistrationModeResolved,
+  isOfficialPairRegistrationMode,
+  isOfficialIndividualRegistrationMode,
+  OFFICIAL_REGISTRATION_MODE_LABELS,
+  OFFICIAL_SCORING_METHOD_LABELS,
+  OFFICIAL_ROUND_SCORE_LABELS,
+} from "./engines/officialTournamentSettingsEngine.js";
+
+export {
+  SIDEOUT_POINT_BY_POINT_RUNTIME_BLOCKED,
+  mapMatchToOfficialRoundKey,
+  resolveOfficialMatchScoringRules,
+  validateOfficialFinishedScore,
+} from "./engines/officialScoringRulesResolver.js";
 
 export {
   findPlayerEntries,

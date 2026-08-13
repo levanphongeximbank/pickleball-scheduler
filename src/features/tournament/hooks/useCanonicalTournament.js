@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getTournamentQuery,
   listTournamentsQuery,
@@ -38,18 +38,33 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(Boolean(clubId && tournamentId));
   const [error, setError] = useState(null);
+  const tournamentRef = useRef(null);
+  const identityRef = useRef({ clubId, tournamentId });
 
-  const reload = useCallback(async () => {
+  useEffect(() => {
+    tournamentRef.current = tournament;
+  }, [tournament]);
+
+  const reload = useCallback(async ({ soft = false } = {}) => {
     if (!clubId || !tournamentId) {
       setTournament(null);
       setLoading(false);
       return null;
     }
-    setLoading(true);
+    const sameIdentity =
+      identityRef.current.clubId === clubId &&
+      String(identityRef.current.tournamentId) === String(tournamentId);
+    const canSoft = soft && sameIdentity && Boolean(tournamentRef.current);
+    if (!canSoft) {
+      setLoading(true);
+    }
     setError(null);
     const result = await getTournamentQuery(clubId, tournamentId, { tenantId });
     if (!result.ok) {
-      setTournament(null);
+      // Fail closed: do not keep a stale tournament as if it were a successful read.
+      if (!canSoft) {
+        setTournament(null);
+      }
       setError(result.error || "Không tải được giải.");
       setLoading(false);
       return null;
@@ -66,14 +81,35 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
         if (!cancelled) {
           setTournament(null);
           setLoading(false);
+          identityRef.current = { clubId, tournamentId };
         }
         return;
       }
-      setLoading(true);
+
+      const prev = identityRef.current;
+      const identityChanged =
+        prev.clubId !== clubId || String(prev.tournamentId) !== String(tournamentId);
+      identityRef.current = { clubId, tournamentId };
+
+      // Tournament/club switch must never flash the previous tournament as the new one.
+      if (identityChanged) {
+        setTournament(null);
+        tournamentRef.current = null;
+        setLoading(true);
+        setError(null);
+      }
+
+      const soft = !identityChanged && Boolean(tournamentRef.current);
+      if (!soft) {
+        setLoading(true);
+      }
+
       const result = await getTournamentQuery(clubId, tournamentId, { tenantId });
       if (cancelled) return;
       if (!result.ok) {
-        setTournament(null);
+        if (!soft) {
+          setTournament(null);
+        }
         setError(result.error || "Không tải được giải.");
       } else {
         setTournament(result.tournament);

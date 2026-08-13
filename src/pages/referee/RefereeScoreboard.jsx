@@ -293,9 +293,7 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
       {!sessionMode && (
         <Container maxWidth="sm" sx={{ pt: 2 }}>
           <Alert severity="info" sx={{ mb: 1 }}>
-            Link token legacy. Khuyến nghị{" "}
-            <a href="/login">đăng nhập REFEREE</a> và dùng{" "}
-            <a href="/referee">phiên chấm mới</a>.
+            Bảng điểm trọng tài · chỉ vận hành trận được phân công.
           </Alert>
         </Container>
       )}
@@ -303,11 +301,16 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
         <Stack direction="row" spacing={1.25} alignItems="flex-start">
           <SportsIcon sx={{ mt: 0.25 }} />
           <Box sx={{ flex: 1 }}>
+            <Typography variant="overline" sx={{ opacity: 0.9 }}>
+              Console trọng tài
+            </Typography>
             <Typography variant="h6" fontWeight="bold" sx={{ lineHeight: 1.3 }}>
               {row?.tournamentName || "Giải đấu"}
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.92 }}>
               Trọng tài: {row?.refereeName || "—"}
+              {row?.stageLabel ? ` · ${row.stageLabel}` : ""}
+              {row?.courtLabel ? ` · ${row.courtLabel}` : ""}
             </Typography>
           </Box>
         </Stack>
@@ -337,6 +340,9 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
             {row?.courtLabel && <Chip label={row.courtLabel} size="small" variant="outlined" />}
             <Chip label={displayStatus} size="small" color={statusChipColor} />
           </Stack>
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+            Luật điểm theo cấu hình giải (Rally). Chi tiết điểm đích vòng do BTC cấu hình.
+          </Typography>
           <Typography variant="h4" fontWeight="bold" sx={{ mt: 2 }}>
             {scoreA} — {scoreB}
           </Typography>
@@ -386,6 +392,18 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
             Trận đã khóa: {scoreA} — {scoreB}. Liên hệ BTC nếu cần điều chỉnh.
           </Alert>
         )}
+
+        <Button
+          fullWidth
+          variant="text"
+          color="inherit"
+          sx={{ mt: 3, minHeight: 48 }}
+          onClick={() => {
+            window.location.assign("/referee");
+          }}
+        >
+          Thoát trận
+        </Button>
       </Container>
 
       <Dialog open={confirmFinalizeOpen} onClose={() => setConfirmFinalizeOpen(false)}>

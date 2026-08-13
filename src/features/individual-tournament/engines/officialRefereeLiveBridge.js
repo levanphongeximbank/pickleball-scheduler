@@ -12,6 +12,8 @@ import {
 import { collectEventMatches } from "./refereeAssignEngine.js";
 
 export const REFEREE_IDENTITY_BINDING_BLOCKED = true;
+/** Live table has no structured scoring-rules columns; stageLabel must not carry them. */
+export const REFEREE_SCORING_RULE_TRANSPORT_BLOCKED = true;
 
 async function loadMatchLiveApi() {
   const mod = await import("../../../domain/matchLiveSync.js");
@@ -69,6 +71,9 @@ export async function syncOfficialAssignedMatchToLive({
     courts,
   });
 
+  // stageLabel is display-only. Do not encode scoring method/target into it.
+  // Structured scoring transport requires future live-table columns or authorized
+  // tournament read for the referee token session (see REFEREE_SCORING_RULE_TRANSPORT_BLOCKED).
   const liveRecord = buildMatchLiveRecord({
     clubId,
     tournamentId: tournament.id,
