@@ -6,7 +6,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -44,9 +43,12 @@ import {
 } from "../../features/private-pairing-rules/index.js";
 import {
   acceptDailyScoreFieldInput,
+  beginPresenceOverride,
   DAILY_PLAY_CODE,
   DAILY_PLAY_MESSAGES,
   resolveCreateMatchCount,
+  resolvePresentedCheckedSet,
+  shouldIgnoreConcurrentPresenceClick,
   validateScoreInput,
 } from "../../features/daily-play/canonical/index.js";
 import { useDailyPlayCanonicalSession } from "../../features/daily-play/canonical/useDailyPlayCanonicalSession.js";
@@ -82,6 +84,25 @@ const GENDER_FILTER_OPTIONS = [
   { value: DAILY_GENDER_FILTER.FEMALE, label: "Nữ" },
 ];
 
+function PlayerPresenceRow({ player, checked, busy, canViewSkill, onToggle }) {
+  return (
+    <Button
+      fullWidth
+      variant={checked ? "contained" : "outlined"}
+      onClick={() => onToggle(player.id)}
+      aria-pressed={checked}
+      aria-busy={busy || undefined}
+      sx={{
+        justifyContent: "space-between",
+        minHeight: 44,
+      }}
+    >
+      <span>{player.name}</span>
+      <span>{formatOrganizerPlayerMeta(player, canViewSkill)}</span>
+    </Button>
+  );
+}
+
 export default function DailyPlaySetup() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
@@ -98,7 +119,7 @@ export default function DailyPlaySetup() {
   const [genderFilter, setGenderFilter] = useState(DAILY_GENDER_FILTER.ALL);
   const [createPending, setCreatePending] = useState(false);
   const [bulkPending, setBulkPending] = useState(null);
-  const [pendingPlayerId, setPendingPlayerId] = useState(null);
+  const [presenceOverride, setPresenceOverride] = useState(null);
   const [refereePending, setRefereePending] = useState(false);
   const [canonicalReferees, setCanonicalReferees] = useState([]);
   const [canonicalRefereesLoading, setCanonicalRefereesLoading] = useState(false);
@@ -226,33 +247,50 @@ export default function DailyPlaySetup() {
     () => new Set(dailySettings.checkedInPlayerIds),
     [dailySettings.checkedInPlayerIds]
   );
+  const presentedCheckedSet = useMemo(
+    () =>
+      resolvePresentedCheckedSet(
+        dailySettings.checkedInPlayerIds,
+        presenceOverride
+      ),
+    [dailySettings.checkedInPlayerIds, presenceOverride]
+  );
 
-  const mutationBusy =
-    Boolean(pendingPlayerId) ||
-    Boolean(bulkPending) ||
-    Boolean(session.mutating);
+  const mutationBusy = shouldIgnoreConcurrentPresenceClick({
+    lockHeld: playerMutationLockRef.current,
+    bulkPending,
+    mutating: session.mutating,
+    override: presenceOverride,
+  });
 
   const handleToggleCheckIn = async (playerId) => {
-    // DP-10: serialize mutations without visually disabling every roster row.
     if (
-      playerMutationLockRef.current ||
-      pendingPlayerId ||
-      bulkPending ||
-      session.mutating
+      shouldIgnoreConcurrentPresenceClick({
+        lockHeld: playerMutationLockRef.current,
+        bulkPending,
+        mutating: session.mutating,
+        override: presenceOverride,
+      })
     ) {
+      return;
+    }
+    const override = beginPresenceOverride(
+      dailySettings.checkedInPlayerIds,
+      playerId
+    );
+    if (!override) {
       return;
     }
     playerMutationLockRef.current = true;
     setActionError(null);
-    setPendingPlayerId(String(playerId));
+    setPresenceOverride(override);
     try {
-      const checked = checkedInSet.has(String(playerId));
-      const result = checked
-        ? await session.checkOut(playerId)
-        : await session.checkIn(playerId);
+      const result = override.checked
+        ? await session.checkIn(playerId)
+        : await session.checkOut(playerId);
       if (result?.ok) {
         if (tournament?.status === TOURNAMENT_STATUS.DRAFT) {
-          await setStatus(TOURNAMENT_STATUS.ACTIVE);
+          void setStatus(TOURNAMENT_STATUS.ACTIVE);
         }
         return;
       }
@@ -261,7 +299,7 @@ export default function DailyPlaySetup() {
       }
     } finally {
       playerMutationLockRef.current = false;
-      setPendingPlayerId(null);
+      setPresenceOverride(null);
     }
   };
 
@@ -357,7 +395,14 @@ export default function DailyPlaySetup() {
   };
 
   const handleCreateMatches = async () => {
-    if (createPending || session.mutating || anim.open) {
+    if (
+      createPending ||
+      session.mutating ||
+      playerMutationLockRef.current ||
+      presenceOverride ||
+      bulkPending ||
+      anim.open
+    ) {
       return;
     }
 
@@ -739,7 +784,6 @@ export default function DailyPlaySetup() {
               onClick={handleCreateMatches}
               disabled={
                 createPending ||
-                session.mutating ||
                 anim.open ||
                 !session.hasCourtCapability
               }
@@ -754,7 +798,7 @@ export default function DailyPlaySetup() {
           <Grid size={{ xs: 12, lg: 5 }}>
             <Paper variant="outlined" sx={{ p: 1.5 }}>
               <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-                Check-in hôm nay ({dailySettings.checkedInPlayerIds.length}/
+                Check-in hôm nay ({presentedCheckedSet.size}/
                 {players.length})
               </Typography>
               <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
@@ -762,11 +806,7 @@ export default function DailyPlaySetup() {
                   size="small"
                   variant="contained"
                   onClick={() => void handleSelectAllCheckIn()}
-                  disabled={
-                    players.length === 0 ||
-                    session.mutating ||
-                    Boolean(bulkPending)
-                  }
+                  disabled={players.length === 0 || Boolean(bulkPending)}
                 >
                   {bulkPending === "checkIn" ? "Đang chọn..." : "Chọn tất cả"}
                 </Button>
@@ -776,7 +816,6 @@ export default function DailyPlaySetup() {
                   onClick={() => void handleClearAllCheckIn()}
                   disabled={
                     dailySettings.checkedInPlayerIds.length === 0 ||
-                    session.mutating ||
                     Boolean(bulkPending)
                   }
                 >
@@ -786,35 +825,18 @@ export default function DailyPlaySetup() {
                 </Button>
               </Stack>
               <Stack spacing={1} sx={{ maxHeight: 320, overflow: "auto" }}>
-                {players.map((player) => {
-                  const checked = checkedInSet.has(String(player.id));
-                  const isPending =
-                    String(pendingPlayerId) === String(player.id);
-                  return (
-                    <Button
-                      key={player.id}
-                      fullWidth
-                      variant={checked ? "contained" : "outlined"}
-                      onClick={() => void handleToggleCheckIn(player.id)}
-                      disabled={isPending}
-                      sx={{
-                        justifyContent: "space-between",
-                        minHeight: 44,
-                        opacity: bulkPending ? 1 : undefined,
-                      }}
-                    >
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        {isPending ? (
-                          <CircularProgress size={16} color="inherit" />
-                        ) : null}
-                        <span>{player.name}</span>
-                      </Stack>
-                      <span>
-                        {formatOrganizerPlayerMeta(player, canViewSkillInSetup)}
-                      </span>
-                    </Button>
-                  );
-                })}
+                {players.map((player) => (
+                  <PlayerPresenceRow
+                    key={player.id}
+                    player={player}
+                    checked={presentedCheckedSet.has(String(player.id))}
+                    busy={
+                      String(presenceOverride?.playerId) === String(player.id)
+                    }
+                    canViewSkill={canViewSkillInSetup}
+                    onToggle={(id) => void handleToggleCheckIn(id)}
+                  />
+                ))}
               </Stack>
             </Paper>
           </Grid>

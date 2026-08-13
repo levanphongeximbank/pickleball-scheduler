@@ -37,6 +37,12 @@ import {
   isSilentRefreshReason,
   shouldReplaceCanonicalSnapshot,
   shouldSkipRoutinePoll,
+  resolvePresentedCheckedSet,
+  beginPresenceOverride,
+  shouldIgnoreConcurrentPresenceClick,
+  reconcilePresenceOverride,
+  rollbackPresenceOverride,
+  isPresenceOverrideAuthoritative,
   __setDailyPlayCanonicalServiceForTests,
   __resetDailyPlayCanonicalServiceForTests,
 } from "../src/features/daily-play/canonical/index.js";
@@ -1704,26 +1710,23 @@ describe("Daily Director canonical cutover (DP-12)", () => {
 });
 
 describe("Daily Play interaction polish (DP-10)", () => {
-  test("athlete rows disable only the pending player, not session.mutating globally", () => {
+  test("athlete rows serialize mutations without globally disabling the roster", () => {
     const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
     const source = fs.readFileSync(setupPath, "utf8");
-    assert.match(source, /pendingPlayerId/);
     assert.match(source, /playerMutationLockRef/);
-    assert.match(source, /setPendingPlayerId\(String\(playerId\)\)/);
-    assert.match(source, /disabled=\{isPending\}/);
+    assert.match(source, /presenceOverride/);
     const rosterBlock = source.slice(
       source.indexOf("Check-in hôm nay"),
       source.indexOf("Sân đang dùng")
     );
-    assert.match(rosterBlock, /disabled=\{isPending\}/);
     assert.equal(
       /disabled=\{session\.mutating\}/.test(rosterBlock),
       false,
       "roster must not disable every row via session.mutating"
     );
-    assert.match(rosterBlock, /CircularProgress/);
+    assert.equal(rosterBlock.includes("CircularProgress"), false);
+    assert.equal(rosterBlock.includes("disabled={isPending}"), false);
     assert.match(source, /playerMutationLockRef\.current/);
-    // Candidate pool still revision:0 — no check-in invalidation.
     assert.match(source, /useClubPairingCandidatePool\(activeClubId,\s*\{\s*revision:\s*0,\s*\}\)/);
   });
 
@@ -2128,6 +2131,143 @@ describe("Daily Play tab resume no-flash (DP-13B)", () => {
     assert.match(verify, /pre-existing/);
     assert.equal(apply.includes("GRANT UPDATE ON TABLE public.canonical_tournaments"), false);
     assert.match(apply, /GRANT EXECUTE ON FUNCTION public.daily_play_correct_score/);
+  });
+});
+
+describe("Daily Play instant presence (DP-15)", () => {
+  test("single athlete click immediately changes presentation state", () => {
+    const override = beginPresenceOverride(["a"], "b");
+    const presented = resolvePresentedCheckedSet(["a"], override);
+    assert.equal(presented.has("a"), true);
+    assert.equal(presented.has("b"), true);
+    assert.equal(override.checked, true);
+  });
+
+  test("individual check-in and checkout render no CircularProgress or faded row", () => {
+    const source = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    const row = source.slice(
+      source.indexOf("function PlayerPresenceRow"),
+      source.indexOf("export default function DailyPlaySetup")
+    );
+    assert.equal(row.includes("CircularProgress"), false);
+    assert.equal(row.includes("disabled"), false);
+    assert.match(row, /variant=\{checked \? "contained" : "outlined"\}/);
+    assert.equal(source.includes("CircularProgress"), false);
+  });
+
+  test("unrelated athlete rows remain visually unchanged", () => {
+    const presented = resolvePresentedCheckedSet(["a", "c"], beginPresenceOverride(["a", "c"], "a"));
+    assert.equal(presented.has("a"), false);
+    assert.equal(presented.has("c"), true);
+    assert.equal(presented.has("b"), false);
+  });
+
+  test("Select All, Clear All, and Create Match do not visually flash from a single check-in", () => {
+    const source = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    const createBlock = source.slice(
+      source.indexOf("Tạo trận công bằng") - 400,
+      source.indexOf("Tạo trận công bằng")
+    );
+    assert.equal(createBlock.includes("session.mutating"), false);
+    const selectAll = source.slice(
+      source.indexOf("Chọn tất cả") - 280,
+      source.indexOf("Chọn tất cả")
+    );
+    assert.equal(selectAll.includes("session.mutating"), false);
+    const clearAll = source.slice(
+      source.indexOf("Bỏ chọn tất cả") - 280,
+      source.indexOf("Bỏ chọn tất cả")
+    );
+    assert.equal(clearAll.includes("session.mutating"), false);
+  });
+
+  test("second concurrent athlete mutation is blocked logically", () => {
+    assert.equal(
+      shouldIgnoreConcurrentPresenceClick({
+        lockHeld: true,
+        mutating: false,
+      }),
+      true
+    );
+    assert.equal(
+      shouldIgnoreConcurrentPresenceClick({
+        mutating: true,
+      }),
+      true
+    );
+    assert.equal(
+      shouldIgnoreConcurrentPresenceClick({
+        override: { playerId: "a", checked: true },
+      }),
+      true
+    );
+    assert.equal(shouldIgnoreConcurrentPresenceClick({}), false);
+  });
+
+  test("optimistic check-in/checkout success reconciles to canonical snapshot", () => {
+    const checkIn = beginPresenceOverride([], "p1");
+    assert.equal(reconcilePresenceOverride(checkIn, ["p1"]), null);
+    const checkOut = beginPresenceOverride(["p1"], "p1");
+    assert.equal(reconcilePresenceOverride(checkOut, []), null);
+  });
+
+  test("failed check-in and checkout roll UI back to canonical truth", () => {
+    const checkIn = beginPresenceOverride([], "p1");
+    assert.deepEqual(resolvePresentedCheckedSet([], checkIn), new Set(["p1"]));
+    assert.equal(rollbackPresenceOverride(), null);
+    assert.deepEqual(resolvePresentedCheckedSet([], null), new Set());
+    const checkOut = beginPresenceOverride(["p1"], "p1");
+    assert.deepEqual(resolvePresentedCheckedSet(["p1"], checkOut), new Set());
+    assert.deepEqual(
+      resolvePresentedCheckedSet(["p1"], rollbackPresenceOverride()),
+      new Set(["p1"])
+    );
+  });
+
+  test("optimistic override is not match-creation or CAS authority", () => {
+    assert.equal(isPresenceOverrideAuthoritative(), false);
+    const source = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    const createBlock = source.slice(
+      source.indexOf("handleCreateMatches"),
+      source.indexOf("handleAssignCourt")
+    );
+    assert.match(createBlock, /settings: dailySettings/);
+    assert.match(createBlock, /eligiblePlayerCount: dailySettings\.checkedInPlayerIds/);
+    assert.equal(createBlock.includes("presentedCheckedSet"), false);
+    assert.equal(createBlock.includes("presenceOverride"), true);
+    const session = fs.readFileSync(
+      path.resolve("src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"),
+      "utf8"
+    );
+    assert.match(session, /expectedVersion: revisionRef\.current/);
+  });
+
+  test("candidate directory does not reload and roster scroll stays in overflow container", () => {
+    const source = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    assert.match(
+      source,
+      /useClubPairingCandidatePool\(activeClubId,\s*\{\s*revision:\s*0,\s*\}\)/
+    );
+    assert.match(source, /maxHeight: 320, overflow: "auto"/);
+    assert.equal(source.includes("setCanonicalRefereesLoading(true)"), true);
+    const refereeEffect = source.slice(
+      source.indexOf("setCanonicalRefereesLoading(true)"),
+      source.indexOf("const displayError")
+    );
+    assert.match(refereeEffect, /\[tenantId, activeClubId, user\?\.id\]/);
+    assert.equal(refereeEffect.includes("presenceOverride"), false);
   });
 });
 

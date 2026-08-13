@@ -51,5 +51,14 @@ export {
   shouldSkipRoutinePoll,
 } from "./dailyPlaySessionRefresh.js";
 
+export {
+  resolvePresentedCheckedSet,
+  beginPresenceOverride,
+  shouldIgnoreConcurrentPresenceClick,
+  reconcilePresenceOverride,
+  rollbackPresenceOverride,
+  isPresenceOverrideAuthoritative,
+} from "./presencePresentation.js";
+
 // Hook lives in useDailyPlayCanonicalSession.js — import directly from UI
 // to keep non-React unit tests free of the react package graph.
