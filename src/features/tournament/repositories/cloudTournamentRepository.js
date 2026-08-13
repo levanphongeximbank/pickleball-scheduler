@@ -34,6 +34,25 @@ function normalizeRpcPayload(data) {
   return { ok: true, data };
 }
 
+function classifyCanonicalRpcFailure(error) {
+  const message = String(error?.message || error || "");
+  if (/expected_version is required/i.test(message) || /VERSION_REQUIRED/i.test(message)) {
+    return {
+      ok: false,
+      code: TOURNAMENT_REPO_ERROR.VERSION_REQUIRED,
+      error: message,
+    };
+  }
+  if (/VERSION_CONFLICT/i.test(message)) {
+    return {
+      ok: false,
+      code: TOURNAMENT_REPO_ERROR.VERSION_CONFLICT,
+      error: message,
+    };
+  }
+  return undefined;
+}
+
 function tenantOpts(options = {}) {
   return { tenantId: options.tenantId };
 }
@@ -47,11 +66,13 @@ export function createCloudTournamentRepository(deps = {}) {
       try {
         return normalizeRpcPayload(await deps.rpc(name, args));
       } catch (error) {
-        return {
-          ok: false,
-          code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
-          error: String(error?.message || error),
-        };
+        return (
+          classifyCanonicalRpcFailure(error) || {
+            ok: false,
+            code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
+            error: String(error?.message || error),
+          }
+        );
       }
     }
 
@@ -78,19 +99,23 @@ export function createCloudTournamentRepository(deps = {}) {
       }
       const { data, error } = await client.rpc(name, args);
       if (error) {
-        return {
-          ok: false,
-          code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
-          error: String(error.message || error),
-        };
+        return (
+          classifyCanonicalRpcFailure(error) || {
+            ok: false,
+            code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
+            error: String(error.message || error),
+          }
+        );
       }
       return normalizeRpcPayload(data);
     } catch (error) {
-      return {
-        ok: false,
-        code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
-        error: String(error?.message || error),
-      };
+      return (
+        classifyCanonicalRpcFailure(error) || {
+          ok: false,
+          code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
+          error: String(error?.message || error),
+        }
+      );
     }
   }
 

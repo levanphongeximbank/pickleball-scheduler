@@ -12,6 +12,11 @@ import {
   setTournamentStatusCommand,
 } from "../services/tournamentCommands.js";
 import { resolveExplicitTenantFromClub } from "../guards/tournamentTenant.js";
+import {
+  assertInternalTournamentReadyForMutation,
+  resolveCanonicalExpectedVersion,
+} from "../internal/canonicalTournamentCas.js";
+import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 
 function readClubId(clubOrScope) {
   if (clubOrScope && typeof clubOrScope === "object") {
@@ -88,14 +93,25 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
 
   const update = useCallback(
     async (patch, options = {}) => {
+      const current = options.currentTournament || tournament;
+      const expectedVersion =
+        options.expectedVersion != null
+          ? resolveCanonicalExpectedVersion(options.expectedVersion)
+          : resolveCanonicalExpectedVersion(current);
+      if (String(current?.mode || "") === TOURNAMENT_MODE.INTERNAL_TOURNAMENT) {
+        const ready = assertInternalTournamentReadyForMutation(current, {
+          mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+        });
+        if (!ready.ok) {
+          return ready;
+        }
+      }
       const result = await updateTournamentCommand(clubId, tournamentId, patch, {
         ...options,
         tenantId,
-        currentTournament: options.currentTournament || tournament,
+        currentTournament: current,
         expectedVersion:
-          options.expectedVersion != null
-            ? options.expectedVersion
-            : tournament?.version,
+          expectedVersion != null ? expectedVersion : current?.version,
       });
       if (result.ok) {
         setTournament(result.tournament);
@@ -107,13 +123,21 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
 
   const applyEngine = useCallback(
     async (engineState, options = {}) => {
+      const current = options.currentTournament || tournament;
+      if (String(current?.mode || "") === TOURNAMENT_MODE.INTERNAL_TOURNAMENT) {
+        const ready = assertInternalTournamentReadyForMutation(current, {
+          mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+        });
+        if (!ready.ok) return ready;
+      }
       const result = await applyEngineV4StateCommand(clubId, tournamentId, engineState, {
         ...options,
         tenantId,
+        currentTournament: current,
         expectedVersion:
           options.expectedVersion != null
             ? options.expectedVersion
-            : tournament?.version,
+            : resolveCanonicalExpectedVersion(current),
       });
       if (result.ok) {
         setTournament(result.tournament);
@@ -125,14 +149,21 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
 
   const setStatus = useCallback(
     async (status, options = {}) => {
+      const current = options.currentTournament || tournament;
+      if (String(current?.mode || "") === TOURNAMENT_MODE.INTERNAL_TOURNAMENT) {
+        const ready = assertInternalTournamentReadyForMutation(current, {
+          mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+        });
+        if (!ready.ok) return ready;
+      }
       const result = await setTournamentStatusCommand(clubId, tournamentId, status, {
         ...options,
         tenantId,
-        currentTournament: options.currentTournament || tournament,
+        currentTournament: current,
         expectedVersion:
           options.expectedVersion != null
             ? options.expectedVersion
-            : tournament?.version,
+            : resolveCanonicalExpectedVersion(current),
       });
       if (result.ok) {
         setTournament(result.tournament);

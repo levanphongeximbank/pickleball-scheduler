@@ -12,6 +12,7 @@ import {
   setTournamentStatusCommand,
   updateTournamentCommand,
 } from "../../services/tournamentCommands.js";
+import { formatCanonicalVersionConflictError } from "../../internal/canonicalTournamentCas.js";
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../../../models/tournament/index.js";
 import {
   assignDailyDirectorMatch,
@@ -74,9 +75,14 @@ export function useDirectorActions(state) {
       const result = await updateTournamentCommand(activeClubId, tournamentId, patch, {
         ...options,
         directorMode: true,
+        currentTournament: options.currentTournament || tournament,
+        expectedVersion:
+          options.expectedVersion != null
+            ? options.expectedVersion
+            : tournament?.version,
       });
       if (!result.ok) {
-        setError(result.error);
+        setError(formatCanonicalVersionConflictError(result) || result.error);
         return false;
       }
 
@@ -102,7 +108,7 @@ export function useDirectorActions(state) {
         lifecycleError: result.lifecycleError || null,
       };
     },
-    [activeClubId, tournamentId, tournament?.status, refreshClubs, setError, setLocalRevision]
+    [activeClubId, tournamentId, tournament, refreshClubs, setError, setLocalRevision]
   );
 
   const persistEvent = useCallback(

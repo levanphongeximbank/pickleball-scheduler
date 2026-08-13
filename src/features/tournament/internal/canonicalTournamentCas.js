@@ -8,10 +8,13 @@ export const CANONICAL_TOURNAMENT_VERSION_CONFLICT = "VERSION_CONFLICT";
 export const CANONICAL_TOURNAMENT_VERSION_REQUIRED = "VERSION_REQUIRED";
 
 export const CANONICAL_VERSION_CONFLICT_USER_MESSAGE =
-  "Dữ liệu giải đã thay đổi ở phiên khác. Hệ thống đã không ghi đè. Vui lòng tải trạng thái mới nhất và thực hiện lại.";
+  "Dữ liệu giải đã thay đổi ở phiên khác. Hệ thống không ghi đè. Vui lòng tải trạng thái mới nhất rồi thực hiện lại.";
 
 export const CANONICAL_VERSION_REQUIRED_USER_MESSAGE =
-  "Thiếu phiên bản dữ liệu giải (expectedVersion). Hệ thống đã từ chối ghi để tránh ghi đè.";
+  "Không lưu được vì phiên bản dữ liệu giải chưa sẵn sàng. Vui lòng tải lại rồi thử lại.";
+
+export const INTERNAL_VERSION_SYNCING_USER_MESSAGE =
+  "Đang đồng bộ trạng thái giải. Vui lòng thử lại sau giây lát.";
 
 export function resolveCanonicalExpectedVersion(tournamentOrVersion) {
   if (tournamentOrVersion == null) return null;
@@ -59,15 +62,56 @@ export function isCanonicalVersionConflict(result) {
 export function isCanonicalVersionRequired(result) {
   if (!result || result.ok) return false;
   const code = String(result.code || "").toUpperCase();
+  const error = String(result.error || "");
   return (
     code === CANONICAL_TOURNAMENT_VERSION_REQUIRED ||
     code === "VERSION_REQUIRED" ||
-    /VERSION_REQUIRED/i.test(String(result.error || ""))
+    /VERSION_REQUIRED/i.test(error) ||
+    /expected_version is required/i.test(error)
   );
+}
+
+/**
+ * Internal durable actions must not run until id + positive server version exist.
+ */
+export function assertInternalTournamentReadyForMutation(tournament, options = {}) {
+  const mode = String(options.mode || tournament?.mode || "").trim();
+  if (mode && mode !== "internal_tournament") {
+    return {
+      ok: true,
+      skipped: true,
+      expectedVersion: resolveCanonicalExpectedVersion(tournament),
+    };
+  }
+  if (!tournament?.id) {
+    return {
+      ok: false,
+      code: CANONICAL_TOURNAMENT_VERSION_REQUIRED,
+      error: INTERNAL_VERSION_SYNCING_USER_MESSAGE,
+      reason: "missing_tournament",
+    };
+  }
+  const expectedVersion = resolveCanonicalExpectedVersion(tournament);
+  if (expectedVersion == null || expectedVersion < 1) {
+    return {
+      ok: false,
+      code: CANONICAL_TOURNAMENT_VERSION_REQUIRED,
+      error: INTERNAL_VERSION_SYNCING_USER_MESSAGE,
+      reason: "missing_version",
+    };
+  }
+  return { ok: true, expectedVersion };
 }
 
 export function formatCanonicalVersionConflictError(result) {
   if (isCanonicalVersionRequired(result)) {
+    if (
+      result?.error === INTERNAL_VERSION_SYNCING_USER_MESSAGE ||
+      result?.reason === "missing_version" ||
+      result?.reason === "missing_tournament"
+    ) {
+      return INTERNAL_VERSION_SYNCING_USER_MESSAGE;
+    }
     return CANONICAL_VERSION_REQUIRED_USER_MESSAGE;
   }
   if (!isCanonicalVersionConflict(result)) {

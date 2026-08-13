@@ -2,6 +2,12 @@ import { getTournamentQuery } from "../../../features/tournament/services/tourna
 import { updateTournamentCommand } from "../../../features/tournament/services/tournamentCommands.js";
 import { TOURNAMENT_STATUS } from "../../../models/tournament/index.js";
 import {
+  assertInternalTournamentReadyForMutation,
+  chainExpectedVersionFromResult,
+  formatCanonicalVersionConflictError,
+  resolveCanonicalExpectedVersion,
+} from "../../../features/tournament/internal/canonicalTournamentCas.js";
+import {
   buildInternalDrawEventWithoutMatches,
   buildInternalScheduleFromPersistedGroups,
   buildInternalTournamentPlan,
@@ -110,6 +116,7 @@ export function createInternalFlowAdapters(deps) {
     refreshClubs,
     persistEvent,
     getPrivatePairingOptions,
+    tournamentTenantId,
   } = deps;
 
   function resolvePrivatePairingOptions() {
@@ -130,10 +137,18 @@ export function createInternalFlowAdapters(deps) {
     return tournament?.events?.[0] || null;
   }
 
+  function resolveTenantId(current) {
+    return String(
+      current?.tenantId || tournament?.tenantId || tournamentTenantId || ""
+    ).trim();
+  }
+
   async function fetchFreshTournament() {
-    const result = await getTournamentQuery(tournamentClubId, tournamentId, {
-      // tenant resolved inside query when available on club scope
-    });
+    const tenantId = resolveTenantId(tournament);
+    const scope = tenantId
+      ? { id: tournamentClubId, clubId: tournamentClubId, tenantId }
+      : tournamentClubId;
+    const result = await getTournamentQuery(scope, tournamentId, tenantId ? { tenantId } : {});
     if (!result.ok) return null;
     return result.tournament || null;
   }
@@ -162,6 +177,8 @@ export function createInternalFlowAdapters(deps) {
     if ((current?.events?.[0]?.groups || []).length > 0) {
       // Already durable — do not rewrite on presentation replay.
       ctx.persistedDraw = true;
+      ctx.lastTournament = current;
+      ctx.expectedVersion = resolveCanonicalExpectedVersion(current);
       return true;
     }
 
@@ -194,8 +211,19 @@ export function createInternalFlowAdapters(deps) {
       // Draw-created metadata is best-effort; groups still persist in one write.
     }
 
+    const ready = assertInternalTournamentReadyForMutation(current);
+    if (!ready.ok) {
+      setError(formatCanonicalVersionConflictError(ready));
+      return false;
+    }
+
+    const casScope = {
+      id: tournamentClubId,
+      clubId: tournamentClubId,
+      tenantId: resolveTenantId(current),
+    };
     const result = await updateTournamentCommand(
-      tournamentClubId,
+      casScope.tenantId ? casScope : tournamentClubId,
       tournamentId,
       {
         events: [draw.event],
@@ -203,17 +231,20 @@ export function createInternalFlowAdapters(deps) {
         settings,
       },
       {
+        tenantId: casScope.tenantId || undefined,
         currentTournament: current,
-        expectedVersion: current?.version,
+        expectedVersion: ready.expectedVersion,
       }
     );
 
     if (!result.ok) {
-      setError(result.error);
+      setError(formatCanonicalVersionConflictError(result) || result.error);
       return false;
     }
 
     ctx.persistedDraw = true;
+    ctx.lastTournament = result.tournament;
+    ctx.expectedVersion = chainExpectedVersionFromResult(result);
     setWarnings(draw.warnings || []);
     setLocalRevision((value) => value + 1);
     refreshClubs();
@@ -222,11 +253,14 @@ export function createInternalFlowAdapters(deps) {
 
   async function persistScheduleBeforeAnimation(ctx) {
     const freshTournament = await fetchFreshTournament();
-    const current = freshTournament || tournament;
+    const current = freshTournament || ctx.lastTournament || tournament;
     const savedEvent = current?.events?.[0];
     if ((savedEvent?.matches || []).some((match) => !match?.bracketMatchId)) {
       ctx.persistedSchedule = true;
       ctx.scheduleEvent = savedEvent;
+      ctx.lastTournament = current;
+      ctx.expectedVersion =
+        ctx.expectedVersion ?? resolveCanonicalExpectedVersion(current);
       return true;
     }
 
@@ -249,23 +283,45 @@ export function createInternalFlowAdapters(deps) {
       return false;
     }
 
+    const chainedVersion =
+      ctx.expectedVersion != null
+        ? ctx.expectedVersion
+        : assertInternalTournamentReadyForMutation(current).expectedVersion;
+    if (chainedVersion == null) {
+      setError(formatCanonicalVersionConflictError({
+        ok: false,
+        code: "VERSION_REQUIRED",
+        reason: "missing_version",
+      }));
+      return false;
+    }
+
+    const casScope = {
+      id: tournamentClubId,
+      clubId: tournamentClubId,
+      tenantId: resolveTenantId(current),
+    };
     const result = await updateTournamentCommand(
-      tournamentClubId,
+      casScope.tenantId ? casScope : tournamentClubId,
       tournamentId,
       {
         events: [schedule.event],
         status: TOURNAMENT_STATUS.READY,
       },
       {
+        tenantId: casScope.tenantId || undefined,
         currentTournament: current,
-        expectedVersion: current?.version,
+        expectedVersion: chainedVersion,
       }
     );
 
     if (!result.ok) {
-      setError(result.error);
+      setError(formatCanonicalVersionConflictError(result) || result.error);
       return false;
     }
+
+    ctx.lastTournament = result.tournament;
+    ctx.expectedVersion = chainExpectedVersionFromResult(result);
 
     ctx.persistedSchedule = true;
     ctx.scheduleEvent = schedule.event;

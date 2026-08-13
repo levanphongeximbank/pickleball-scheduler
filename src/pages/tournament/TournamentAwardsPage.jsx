@@ -17,6 +17,7 @@ import WithdrawalManagementPanel from "../../components/tournament/WithdrawalMan
 import ThirdPlaceSettingsPanel from "../../components/tournament/ThirdPlaceSettingsPanel.jsx";
 import AwardManagerPanel from "../../components/tournament/AwardManagerPanel.jsx";
 import CloseTournamentPanel from "../../components/tournament/CloseTournamentPanel.jsx";
+import { formatCanonicalVersionConflictError } from "../../features/tournament/internal/index.js";
 import PlayerFinalResultsPanel from "../../components/tournament/PlayerFinalResultsPanel.jsx";
 
 const TABS = [
@@ -66,7 +67,13 @@ export default function TournamentAwardsPage() {
       }
     );
     if (!result.ok) {
-      setMessage({ type: "error", text: result.error || "Không lưu được." });
+      setMessage({
+        type: "error",
+        text:
+          formatCanonicalVersionConflictError(result) ||
+          result.error ||
+          "Không lưu được.",
+      });
       return false;
     }
     refreshClubs();

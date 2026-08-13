@@ -61,10 +61,12 @@ import {
 } from "../../tournament/engines/index.js";
 import {
   advanceHydrationBaselineAfterOwnWrite,
+  assertInternalTournamentReadyForMutation,
   decideInternalSetupHydration,
   formatCanonicalVersionConflictError,
   hydrateInternalSetupFromTournament,
   isCanonicalVersionConflict,
+  INTERNAL_VERSION_SYNCING_USER_MESSAGE,
   ONE_GROUP_COMPLETION_MESSAGE,
   resolveInternalKnockoutEligibility,
   resolveInternalTournamentLifecycle,
@@ -231,6 +233,29 @@ export default function InternalTournamentSetup() {
     tournamentId,
     localRevision
   );
+
+  const durableMutationReady = assertInternalTournamentReadyForMutation(tournament);
+
+  const writeCanonical = async (patch, options = {}) => {
+    const current = options.currentTournament || tournament;
+    const ready = assertInternalTournamentReadyForMutation(current);
+    if (!ready.ok) {
+      setError(formatCanonicalVersionConflictError(ready));
+      return ready;
+    }
+    const result = await update(patch, {
+      ...options,
+      currentTournament: current,
+      expectedVersion:
+        options.expectedVersion != null
+          ? options.expectedVersion
+          : ready.expectedVersion,
+    });
+    if (!result.ok) {
+      setError(formatCanonicalVersionConflictError(result) || result.error);
+    }
+    return result;
+  };
 
   const tournamentClubId = useMemo(
     () =>
@@ -541,7 +566,7 @@ export default function InternalTournamentSetup() {
   );
 
   const persistEvent = async (nextEvent, options = {}) => {
-    const result = await update(
+    const result = await writeCanonical(
       {
         events: [{ ...savedEvent, ...nextEvent }],
       },
@@ -618,7 +643,7 @@ export default function InternalTournamentSetup() {
       setError(result.error);
       return;
     }
-    const updateResult = await update({
+    const updateResult = await writeCanonical({
       settings: result.tournament.settings,
     });
     if (updateResult.ok) {
@@ -645,7 +670,7 @@ export default function InternalTournamentSetup() {
         ? { ...event, groups: result.snapshot || groups }
         : event
     );
-    const updateResult = await update({
+    const updateResult = await writeCanonical({
       settings: result.tournament.settings,
       events,
     });
@@ -668,7 +693,7 @@ export default function InternalTournamentSetup() {
       setError(result.error);
       return;
     }
-    const updateResult = await update({
+    const updateResult = await writeCanonical({
       settings: result.tournament.settings,
     });
     if (updateResult.ok) {
@@ -690,7 +715,7 @@ export default function InternalTournamentSetup() {
       setError(result.error);
       return;
     }
-    const updateResult = await update({
+    const updateResult = await writeCanonical({
       settings: result.tournament.settings,
     });
     if (updateResult.ok) {
@@ -718,22 +743,18 @@ export default function InternalTournamentSetup() {
     }
     setReopenBusy(true);
     try {
-      const updateResult = await update(
+      const updateResult = await writeCanonical(
         {
           settings: reopened.tournament.settings,
           events: reopened.tournament.events,
           status: TOURNAMENT_STATUS.ACTIVE,
         },
         {
-          expectedVersion: tournament?.version,
           forceStatusReopen: true,
           currentTournament: tournament,
         }
       );
       if (!updateResult.ok) {
-        setError(
-          formatCanonicalVersionConflictError(updateResult) || updateResult.error
-        );
         return;
       }
       setLocalRevision((value) => value + 1);
@@ -782,12 +803,11 @@ export default function InternalTournamentSetup() {
     }
 
     const before = getTournamentPairingConstraints(tournament);
-    const result = await update({
+    const result = await writeCanonical({
       founderPairingConstraints: founderConstraints,
     });
 
     if (!result.ok) {
-      setError(result.error);
       return;
     }
 
@@ -836,6 +856,7 @@ export default function InternalTournamentSetup() {
         refreshClubs,
         persistEvent,
         getPrivatePairingOptions: () => guidedPairingRef.current,
+        tournamentTenantId: tournament?.tenantId || clubScope.tenantId,
       }),
     [
       tournament,
@@ -848,6 +869,7 @@ export default function InternalTournamentSetup() {
       groupCount,
       isSingleEvent,
       refreshClubs,
+      clubScope.tenantId,
     ]
   );
 
@@ -872,12 +894,11 @@ export default function InternalTournamentSetup() {
   }, [broadcast, broadcastFeatureEnabled, flow]);
 
   const handleRefereeRosterChange = async (nextRoster) => {
-    const result = await update(
+    const result = await writeCanonical(
       buildRefereeSettingsPatch(tournament, { roster: nextRoster })
     );
 
     if (!result.ok) {
-      setError(result.error);
       return;
     }
 
@@ -1074,6 +1095,11 @@ export default function InternalTournamentSetup() {
     setWarnings([]);
     setMessage(null);
 
+    if (!durableMutationReady.ok) {
+      setError(formatCanonicalVersionConflictError(durableMutationReady));
+      return;
+    }
+
     const prepared = await prepareInternalPrivatePairing();
 
     if (!prepared.ok) {
@@ -1248,6 +1274,12 @@ export default function InternalTournamentSetup() {
       selectedPlayerIds.includes(String(player.id))
     );
 
+    const mutationReady = assertInternalTournamentReadyForMutation(tournament);
+    if (!mutationReady.ok) {
+      setError(formatCanonicalVersionConflictError(mutationReady));
+      return;
+    }
+
     if (drawMutationGuardRef.current) {
       return;
     }
@@ -1285,14 +1317,19 @@ export default function InternalTournamentSetup() {
         return;
       }
 
-      const result = await update({
-        events: created.tournament.events,
-        status: TOURNAMENT_STATUS.READY,
-        settings: created.tournament.settings,
-      });
+      const result = await writeCanonical(
+        {
+          events: created.tournament.events,
+          status: TOURNAMENT_STATUS.READY,
+          settings: created.tournament.settings,
+        },
+        {
+          currentTournament: tournament,
+          expectedVersion: mutationReady.expectedVersion,
+        }
+      );
 
       if (!result.ok) {
-        setError(formatCanonicalVersionConflictError(result) || result.error);
         return;
       }
 
@@ -1337,6 +1374,12 @@ export default function InternalTournamentSetup() {
     setWarnings([]);
     setMessage(null);
 
+    const mutationReady = assertInternalTournamentReadyForMutation(tournament);
+    if (!mutationReady.ok) {
+      setError(formatCanonicalVersionConflictError(mutationReady));
+      return;
+    }
+
     if (scheduleMutationGuardRef.current || scheduleBusy) {
       return;
     }
@@ -1376,13 +1419,18 @@ export default function InternalTournamentSetup() {
         return;
       }
 
-      const result = await update({
-        events: [schedule.event],
-        status: TOURNAMENT_STATUS.READY,
-      });
+      const result = await writeCanonical(
+        {
+          events: [schedule.event],
+          status: TOURNAMENT_STATUS.READY,
+        },
+        {
+          currentTournament: tournament,
+          expectedVersion: mutationReady.expectedVersion,
+        }
+      );
 
       if (!result.ok) {
-        setError(formatCanonicalVersionConflictError(result) || result.error);
         return;
       }
 
@@ -1555,6 +1603,11 @@ export default function InternalTournamentSetup() {
               {error}
             </Alert>
           )}
+          {tournament && !durableMutationReady.ok ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {INTERNAL_VERSION_SYNCING_USER_MESSAGE}
+            </Alert>
+          ) : null}
           {playersLoadError && (
             <Alert
               severity={playersLoadError.severity === "warning" ? "warning" : "error"}
@@ -1635,7 +1688,7 @@ export default function InternalTournamentSetup() {
             }
             clubId={tournamentClubId}
             onPersist={async (nextTournament) => {
-              const result = await update({
+              const result = await writeCanonical({
                 events: nextTournament.events,
                 settings: nextTournament.settings,
                 status: nextTournament.status,
@@ -1645,7 +1698,6 @@ export default function InternalTournamentSetup() {
                 refreshClubs();
                 return true;
               }
-              setError(result.error);
               return false;
             }}
           />
@@ -1687,7 +1739,7 @@ export default function InternalTournamentSetup() {
               variant="contained"
               color="secondary"
               onClick={handleStartGuidedFlow}
-              disabled={selectedPlayerIds.length === 0}
+              disabled={!durableMutationReady.ok || selectedPlayerIds.length === 0}
             >
               Bắt đầu trình chiếu
             </Button>
@@ -1704,10 +1756,20 @@ export default function InternalTournamentSetup() {
               <BroadcastLiveIndicator status={broadcast.status} error={broadcast.error} />
             ) : null}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Button fullWidth variant="outlined" onClick={handleSuggestPairs}>
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={handleSuggestPairs}
+                disabled={!durableMutationReady.ok}
+              >
                 {isSingleEvent ? "Đề xuất danh sách" : "Đề xuất ghép cặp"}
               </Button>
-              <Button fullWidth variant="contained" onClick={handleBuildGroups}>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={handleBuildGroups}
+                disabled={!durableMutationReady.ok}
+              >
                 Chia bảng
               </Button>
             </Stack>
@@ -1717,6 +1779,7 @@ export default function InternalTournamentSetup() {
               color="primary"
               onClick={handleGenerateSchedule}
               disabled={
+                !durableMutationReady.ok ||
                 scheduleBusy ||
                 !(savedEvent?.groups || []).length ||
                 (savedEvent?.matches || []).some((match) => !match?.bracketMatchId)
