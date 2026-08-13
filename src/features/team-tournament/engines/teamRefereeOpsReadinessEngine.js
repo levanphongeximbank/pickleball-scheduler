@@ -128,12 +128,11 @@ export function evaluateTt5OpsReadiness(inventory = {}) {
     };
   });
 
-  const requiredChecks = [
-    ...tableChecks,
-    ...rpcChecks,
-    ...flagChecks.filter((row) => !row.optional),
-  ];
-  const missing = requiredChecks.filter((row) => !row.ok);
+  const requiredObjectChecks = [...tableChecks, ...rpcChecks];
+  const requiredFlagChecks = flagChecks.filter((row) => !row.optional);
+  const missingObjects = requiredObjectChecks.filter((row) => !row.ok);
+  const missingFlags = requiredFlagChecks.filter((row) => !row.ok);
+  const missing = [...missingObjects, ...missingFlags];
   const sqlApplied = inventory.sqlApplied === true;
   const e2ePassed = inventory.e2ePassed === true;
 
@@ -142,10 +141,13 @@ export function evaluateTt5OpsReadiness(inventory = {}) {
     verdict = "READY";
   } else if (missing.length === 0 && sqlApplied) {
     verdict = "READY_SQL_PENDING_E2E";
-  } else if (environment === "production" && missing.length > 0) {
+  } else if (environment === "production" && missingObjects.length > 0) {
     verdict = "PRODUCTION_NOT_APPLIED";
-  } else if (missing.length > 0) {
+  } else if (missingObjects.length > 0) {
     verdict = "MISSING_OBJECTS";
+  } else if (missingFlags.length > 0) {
+    // Client flag mismatch is not "missing SQL objects" — avoid stale red chip.
+    verdict = "FLAGS_MISMATCH";
   }
 
   const allowProvisionOps =

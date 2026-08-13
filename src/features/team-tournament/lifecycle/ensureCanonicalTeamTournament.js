@@ -7,7 +7,7 @@
  * Missing RPC → FAIL CLOSED. No client dual-write. No alternate writer.
  */
 import { TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
-import { createTeamTournamentShell } from "../engines/teamTournamentEngine.js";
+import { adoptCanonicalCreateTeamData } from "../engines/mlpPresetEngine.js";
 
 export const CANONICAL_TEAM_CREATE_RPC = "team_tournament_create";
 export const CANONICAL_TEAM_ENSURE_RPC = "team_tournament_ensure_canonical";
@@ -92,33 +92,30 @@ export async function persistCanonicalTeamTournamentCreate(input = {}, deps = {}
 
 function finalizeCreated(rpcResult, clubId, tenantId, payload, input) {
   const tournamentId = String(rpcResult.tournament.id);
-  const shell =
-    rpcResult.tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT &&
-    rpcResult.tournament.teamData
-      ? {
-          ...rpcResult.tournament,
-          clubId,
-          tenantId,
-          canonicalId: tournamentId,
-        }
-      : createTeamTournamentShell(clubId, {
-          ...input,
-          id: tournamentId,
-          name: payload.name,
-          seasonId: payload.seasonId,
-          leagueId: payload.leagueId,
-          tenantId,
-          status: TOURNAMENT_STATUS.DRAFT,
-          settings: payload.settings,
-          createdBy: payload.createdBy,
-          ownerPlayerId: payload.ownerPlayerId,
-        });
-  shell.canonicalId = tournamentId;
-  shell.createdBy = payload.createdBy;
-  shell.ownerPlayerId = payload.ownerPlayerId;
+  const rpcTournament = rpcResult.tournament;
+  const teamData = adoptCanonicalCreateTeamData(
+    rpcTournament.teamData,
+    rpcTournament.settings || payload.settings
+  );
+  const tournament = {
+    ...rpcTournament,
+    id: tournamentId,
+    clubId,
+    tenantId,
+    canonicalId: tournamentId,
+    mode: TOURNAMENT_MODE.TEAM_TOURNAMENT,
+    status: rpcTournament.status || TOURNAMENT_STATUS.DRAFT,
+    name: rpcTournament.name || payload.name,
+    seasonId: rpcTournament.seasonId || payload.seasonId || input.seasonId || "",
+    leagueId: rpcTournament.leagueId || payload.leagueId || input.leagueId || "",
+    settings: rpcTournament.settings || payload.settings,
+    teamData,
+    createdBy: payload.createdBy,
+    ownerPlayerId: payload.ownerPlayerId,
+  };
   return {
     ok: true,
-    tournament: shell,
+    tournament,
     clubId,
     tenantId,
     canonical: true,

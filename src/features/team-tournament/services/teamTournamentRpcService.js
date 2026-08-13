@@ -1,5 +1,6 @@
 import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
 import { sanitizeCaptainDreambreakerSubmitResponse } from "../engines/captainDreambreakerPortalContract.js";
+import { mapTeamTournamentDomainFailure } from "../engines/teamTournamentDomainErrors.js";
 
 let testRpcClientOverride = null;
 
@@ -320,11 +321,19 @@ export function mapTeamTournamentRpcTransportError(error) {
     };
   }
 
+  const mapped = mapTeamTournamentDomainFailure({
+    code: error.code || "RPC_FAILED",
+    error: error.message,
+  });
   return {
     ok: false,
-    code: "RPC_FAILED",
-    error: error.message,
+    code: mapped.code,
+    error: mapped.error,
     provider: "rpc",
+    details: {
+      diagnosticCode: mapped.diagnosticCode,
+      originalServerError: mapped.originalServerError || undefined,
+    },
   };
 }
 
@@ -488,24 +497,46 @@ async function callTeamTournamentRpc(rpcName, args = {}) {
       "FORBIDDEN",
       "NOT_AUTHENTICATED",
       "DRAFT_NOT_VISIBLE",
+      "NOT_VISIBLE",
       "CROSS_TENANT_DENIED",
       "RPC_MISSING",
+      "REFEREE_ASSIGNMENT_CONFLICT",
+      "MATCHUP_TEAMS_UNRESOLVED",
+      "REFEREE_NOT_FOUND",
+      "REVOKE_REASON_REQUIRED",
+      "NOT_ACTIVATED",
+      "ALREADY_STARTED",
+      "REFEREE_NOT_ASSIGNED",
+      "MISSING_EXPECTED_VERSION",
+      "MISSING_IDEMPOTENCY_KEY",
     ];
     if (passthrough.includes(code)) {
-      return { ...payload, provider: "rpc" };
+      const mapped = mapTeamTournamentDomainFailure(payload);
+      return {
+        ...payload,
+        code: mapped.code,
+        error: payload.error && !/duplicate key|violates unique/i.test(payload.error)
+          ? payload.error
+          : mapped.error,
+        provider: "rpc",
+        details: {
+          ...(payload.details && typeof payload.details === "object" ? payload.details : {}),
+          diagnosticCode: mapped.diagnosticCode,
+          originalServerError: mapped.originalServerError || undefined,
+        },
+      };
     }
-    const errorByCode = {
-      NOT_FOUND: "Giải chưa có trên cloud. Kiểm tra venue ở header rồi thử lại.",
-      FORBIDDEN: "Không có quyền quản lý giải đồng đội.",
-      NOT_AUTHENTICATED: "Phiên đăng nhập hết hạn — đăng nhập lại.",
-      VALIDATION: payload.error || "Dữ liệu đội không hợp lệ.",
-    };
+    const mapped = mapTeamTournamentDomainFailure({ ...payload, code });
     return {
       ok: false,
-      code,
-      error: payload.error || errorByCode[code] || "Không có quyền.",
+      code: mapped.code,
+      error: mapped.error,
       ...payload,
       provider: "rpc",
+      details: {
+        diagnosticCode: mapped.diagnosticCode,
+        originalServerError: mapped.originalServerError || undefined,
+      },
     };
   }
 
@@ -1044,13 +1075,25 @@ export async function rpcTeamTournamentRefereeMatchAccessOps({ tournamentId, mat
   });
 }
 
+export async function rpcTeamTournamentSearchRefereeCandidates({
+  tournamentId,
+  search = "",
+  limit = 20,
+} = {}) {
+  return callTeamTournamentRpc("team_tournament_search_referee_candidates", {
+    p_tournament_id: String(tournamentId || ""),
+    p_search: String(search || ""),
+    p_limit: Math.max(1, Math.min(50, Number(limit) || 20)),
+  });
+}
+
 export async function rpcTeamTournamentCreateRefereeAssignment(params) {
   const normalized =
     typeof params === "object" && params !== null && "tournamentId" in params ? params : {};
   return callTeamTournamentRpc("team_tournament_create_referee_assignment", {
     p_tournament_id: String(normalized.tournamentId),
     p_matchup_id: String(normalized.matchupId),
-    p_sub_match_id: String(normalized.subMatchId),
+    p_sub_match_id: normalized.subMatchId ? String(normalized.subMatchId) : null,
     p_referee_user_id: normalized.refereeUserId,
     p_expires_at: normalized.expiresAt ?? null,
     p_activate: normalized.activate !== false,
@@ -1228,6 +1271,21 @@ export async function rpcTeamTournamentCreateCanonical(params = {}) {
   return mapOptionalLifecycleRpc(result);
 }
 
+export async function rpcTeamTournamentCommitPairing(params = {}) {
+  const expectedVersion = Number(params.expectedVersion);
+  const result = await callTeamTournamentRpc("team_tournament_commit_pairing", {
+    p_tournament_id: String(params.tournamentId || ""),
+    p_teams: Array.isArray(params.teams) ? params.teams : [],
+    p_groups: Array.isArray(params.groups) ? params.groups : [],
+    p_settings_patch:
+      params.settingsPatch && typeof params.settingsPatch === "object"
+        ? params.settingsPatch
+        : {},
+    p_expected_version: Number.isFinite(expectedVersion) ? expectedVersion : null,
+  });
+  return mapOptionalLifecycleRpc(result);
+}
+
 export async function rpcTeamTournamentEnsureCanonical(params = {}) {
   const result = await callTeamTournamentRpc("team_tournament_ensure_canonical", {
     p_tenant_id: String(params.tenantId || ""),
@@ -1243,6 +1301,11 @@ export async function rpcTeamTournamentGetDashboard(tournamentId) {
   const result = await callTeamTournamentRpc("team_tournament_get_dashboard", {
     p_tournament_id: String(tournamentId || ""),
   });
+  return mapOptionalLifecycleRpc(result);
+}
+
+export async function rpcTeamTournamentListMyDashboards() {
+  const result = await callTeamTournamentRpc("team_tournament_list_my_dashboards", {});
   return mapOptionalLifecycleRpc(result);
 }
 

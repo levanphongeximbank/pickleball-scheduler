@@ -173,7 +173,18 @@ test("9. same-organization separation via group bridge soft score", () => {
 test("10. team lineup duplicate player reject (legacy path flag off)", () => {
   const teamData = {
     disciplines: [{ id: "d1", name: "MD", playerCount: 2, genderRequirement: "mixed_pair" }],
-    teams: [{ id: "t1", playerIds: ["p1", "p2", "p3"], name: "Team 1" }],
+    teams: [
+      {
+        id: "t1",
+        playerIds: ["p1", "p2", "p3"],
+        name: "Team 1",
+        rosterAthletes: [
+          { athleteId: "p1", displayName: "A", gender: "male" },
+          { athleteId: "p2", displayName: "B", gender: "female" },
+          { athleteId: "p3", displayName: "C", gender: "male" },
+        ],
+      },
+    ],
     settings: {},
   };
   const players = [
@@ -195,7 +206,14 @@ test("10. team lineup duplicate player reject (legacy path flag off)", () => {
 test("11. team roster membership reject", () => {
   const teamData = {
     disciplines: [{ id: "d1", name: "MD", playerCount: 2 }],
-    teams: [{ id: "t1", playerIds: ["p1"], name: "Team 1" }],
+    teams: [
+      {
+        id: "t1",
+        playerIds: ["p1"],
+        name: "Team 1",
+        rosterAthletes: [{ athleteId: "p1", displayName: "A", gender: "male" }],
+      },
+    ],
     settings: {},
   };
   const result = validateLineupSelectionsStructured({
@@ -219,7 +237,17 @@ test("12. mixed lineup invalid reject", () => {
         categoryType: "mixed",
       },
     ],
-    teams: [{ id: "t1", playerIds: ["p1", "p2"], name: "Team 1" }],
+    teams: [
+      {
+        id: "t1",
+        playerIds: ["p1", "p2"],
+        name: "Team 1",
+        rosterAthletes: [
+          { athleteId: "p1", displayName: "A", gender: "male" },
+          { athleteId: "p2", displayName: "B", gender: "male" },
+        ],
+      },
+    ],
     settings: {},
   };
   const result = validateLineupSelectionsStructured({

@@ -8,8 +8,10 @@ import {
   STAGE_TIE_BREAK_POLICY,
 } from "../constants.js";
 import { resolveEffectiveStageTieBreakPolicy } from "../engines/teamStageTieBreakPolicy.js";
+import { getLineup } from "../models/index.js";
 import { buildCaptainPortalPath } from "../../../components/tournament/team/copyPortalLink.js";
 import { teamTournamentDashboardPath, teamTournamentPath, TEAM_TAB_QUERY } from "../../../config/tournamentRoutes.js";
+import { isUnresolvedBracketPlaceholder } from "../engines/teamKnockoutEngine.js";
 
 export const DASHBOARD_TASK = Object.freeze({
   CAPTAIN_LINEUP: "captain_lineup",
@@ -25,14 +27,27 @@ function matchupLabel(matchup, teamsById) {
   return [when, `${teamA} vs ${teamB}`, court].filter(Boolean).join(" · ");
 }
 
-function isLineupTaskOpen(lineup) {
+/**
+ * Missing lineup row = fresh matchup lifecycle (group → SF / SF → Final).
+ * Prior-round submitted/locked/published lineups never satisfy a new matchupId.
+ */
+export function isLineupTaskOpen(lineup) {
+  if (!lineup) return true;
   const status = String(lineup?.status || "").toLowerCase();
   return (
+    status === LINEUP_STATUS.NOT_SUBMITTED ||
     status === LINEUP_STATUS.DRAFT ||
     status === "lineup_open" ||
     status === "waiting" ||
     status === ""
   );
+}
+
+function resolveOwnLineup(teamData, matchup, captainTeamId) {
+  const fromMap = getLineup(teamData, matchup?.id, captainTeamId);
+  if (fromMap) return fromMap;
+  const embedded = matchup?.lineups?.[captainTeamId] || matchup?.ownLineup;
+  return embedded || null;
 }
 
 export function buildCaptainDashboardTasks({
@@ -52,9 +67,15 @@ export function buildCaptainDashboardTasks({
     if (matchup.teamAId !== captainTeamId && matchup.teamBId !== captainTeamId) {
       continue;
     }
-    const lineups = matchup.lineups || {};
-    const ownLineup = lineups[captainTeamId] || matchup.ownLineup;
-    if (isLineupTaskOpen(ownLineup) && matchup.status !== "completed") {
+    if (isUnresolvedBracketPlaceholder(matchup)) {
+      continue;
+    }
+    if (matchup.status === "completed") {
+      continue;
+    }
+
+    const ownLineup = resolveOwnLineup(teamData, matchup, captainTeamId);
+    if (isLineupTaskOpen(ownLineup)) {
       tasks.push({
         type: DASHBOARD_TASK.CAPTAIN_LINEUP,
         matchupId: matchup.id,
@@ -106,10 +127,19 @@ export function buildRefereeDashboardAssignments({
 } = {}) {
   const teamsById = new Map((teamData?.teams || []).map((team) => [team.id, team]));
   const tournamentId = tournament?.id || tournament?.teamDomainId;
-  return (assignments || []).map((assignment) => {
+  return (assignments || []).flatMap((assignment) => {
     const matchupId = assignment.matchupId || assignment.externalMatchupId;
     const matchup = (teamData?.matchups || []).find((item) => item.id === matchupId) || {};
-    const matchId = assignment.matchId || assignment.v5MatchId;
+    if (isUnresolvedBracketPlaceholder(matchup)) {
+      return [];
+    }
+    const explicitParent = String(assignment.scope || "").toLowerCase() === "parent";
+    const hasChildKey = Boolean(
+      String(assignment.externalSubMatchId || assignment.subMatchId || "").trim()
+    );
+    const v5MatchId = String(assignment.matchId || assignment.v5MatchId || "").trim();
+    const parentScope = explicitParent || (!hasChildKey && !v5MatchId);
+    const matchId = parentScope ? null : v5MatchId || null;
     const href = matchId
       ? `/referee/match/${matchId}?tournamentId=${encodeURIComponent(tournamentId)}`
       : `/team-referee/${tournamentId}?matchup=${encodeURIComponent(matchupId || "")}`;

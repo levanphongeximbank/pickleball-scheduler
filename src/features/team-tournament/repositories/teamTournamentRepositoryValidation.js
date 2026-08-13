@@ -7,6 +7,10 @@ import {
   isLineupValidationErrorCode,
   mapRpcLineupValidationPayload,
 } from "../engines/lineupValidationContract.js";
+import {
+  describeTeamTournamentDomainCode,
+  mapTeamTournamentDomainFailure,
+} from "../engines/teamTournamentDomainErrors.js";
 
 /**
  * @template T
@@ -44,6 +48,14 @@ export function repositorySuccess(data, extras = {}) {
  */
 export function isPresentString(value) {
   return value != null && String(value).trim() !== "";
+}
+
+/**
+ * Map bare SQL/setup codes to structured operator-facing messages.
+ * Prevents silent "Repository operation failed." for known fail-closed codes.
+ */
+export function describeRepositoryFailureCode(code) {
+  return describeTeamTournamentDomainCode(code);
 }
 
 /**
@@ -187,13 +199,14 @@ export function normalizeRepositoryResult(raw, extras = {}) {
     const validation = isLineupValidationErrorCode(code)
       ? mapRpcLineupValidationPayload(raw)
       : null;
+    const mapped = mapTeamTournamentDomainFailure(raw);
 
     return {
       ok: false,
-      code,
+      code: validation ? code : mapped.code,
       error: validation
-        ? formatLineupValidationError(raw, raw.error || "Repository operation failed.")
-        : raw.error || raw.message || "Repository operation failed.",
+        ? formatLineupValidationError(raw, raw.error || mapped.error)
+        : mapped.error,
       version: raw.version ?? raw.expected_version ?? raw.actual_version,
       replayed: raw.replayed === true,
       validation,
@@ -206,6 +219,8 @@ export function normalizeRepositoryResult(raw, extras = {}) {
         invalidDisciplineIds: raw.invalidDisciplineIds,
         serverTime: raw.serverTime,
         lineupVersion: raw.lineupVersion,
+        diagnosticCode: mapped.diagnosticCode,
+        originalServerError: mapped.originalServerError || undefined,
         ...(raw.details && typeof raw.details === "object" ? raw.details : {}),
       },
       provider: raw.provider,

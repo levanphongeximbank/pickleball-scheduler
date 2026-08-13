@@ -2,7 +2,10 @@
  * Captain portal access policy — independent of public/schedule publication.
  *
  * Server enforcement lands in W2 SQL. Client gate is fail-closed defense-in-depth.
+ * Ownership (persisted captain) is separate from lineup/matchup lifecycle.
  */
+
+import { resolveUniqueCaptainTeam } from "./captainIdentityResolver.js";
 
 /**
  * Explicit true only. Missing/null/undefined/false → disabled.
@@ -30,7 +33,7 @@ export function isCaptainAccessEnabled(settingsOrTeamData) {
  * @param {object|null} [input.teamData]
  * @param {string|null} [input.viewerPlayerId]
  * @param {{ ok: boolean, error?: string }|null} [input.tenantCheck]
- * @param {(teamData: object, playerId: string) => object|null} input.findTeamForCaptain
+ * @param {(teamData: object, playerId: string) => object|null} [input.findTeamForCaptain]
  * @returns {{
  *   allowed: boolean,
  *   captainTeam: object|null,
@@ -46,6 +49,7 @@ export function evaluateCaptainPortalAccess({
   viewerPlayerId = null,
   tenantCheck = null,
   findTeamForCaptain,
+  serverViewerTeamId = null,
 } = {}) {
   if (!tournament) {
     return {
@@ -93,18 +97,24 @@ export function evaluateCaptainPortalAccess({
     };
   }
 
-  if (typeof findTeamForCaptain !== "function") {
+  const unique = resolveUniqueCaptainTeam(teamData || {}, normalizedPlayerId);
+  if (unique.code === "CAPTAIN_TEAM_AMBIGUOUS") {
     return {
       allowed: false,
       captainTeam: null,
       viewerPlayerId: normalizedPlayerId,
       captainAccessEnabled: true,
-      error: "Bạn không có quyền truy cập đội này.",
-      code: "IDENTITY_UNPROVEN",
+      error: unique.error,
+      code: unique.code,
     };
   }
 
-  const captainTeam = findTeamForCaptain(teamData || {}, normalizedPlayerId);
+  const captainTeam =
+    unique.ok && unique.team
+      ? unique.team
+      : typeof findTeamForCaptain === "function"
+        ? findTeamForCaptain(teamData || {}, normalizedPlayerId)
+        : null;
   if (!captainTeam) {
     return {
       allowed: false,
@@ -112,7 +122,19 @@ export function evaluateCaptainPortalAccess({
       viewerPlayerId: normalizedPlayerId,
       captainAccessEnabled: true,
       error: "Bạn không có quyền truy cập đội này.",
-      code: "captain_scope_denied",
+      code: "NOT_CAPTAIN",
+    };
+  }
+
+  const pinnedTeamId = serverViewerTeamId ? String(serverViewerTeamId).trim() : "";
+  if (pinnedTeamId && String(captainTeam.id) !== pinnedTeamId) {
+    return {
+      allowed: false,
+      captainTeam: null,
+      viewerPlayerId: normalizedPlayerId,
+      captainAccessEnabled: true,
+      error: "Không xác định được đội đội trưởng — liên hệ ban tổ chức.",
+      code: "CAPTAIN_TEAM_AMBIGUOUS",
     };
   }
 

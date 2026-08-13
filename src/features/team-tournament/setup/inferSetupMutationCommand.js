@@ -10,6 +10,7 @@ const SCHEDULE_MATCHUP_FIELDS = new Set([
   "matchNumberInRound",
   "stage",
   "nextMatchupId",
+  "nextSlot",
 ]);
 
 function list(value) {

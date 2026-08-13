@@ -23,6 +23,7 @@ import { TOURNAMENT_STATUS } from "../../../models/tournament/index.js";
 import { TOURNAMENT_MODE } from "../../../models/tournament/index.js";
 import { getTeamData } from "../../team-tournament/engines/teamTournamentEngine.js";
 import { findTeamForCaptain } from "../../team-tournament/engines/teamPermissionEngine.js";
+import { useCanonicalCaptainAthleteId } from "../../team-tournament/ui/useCanonicalCaptainAthleteId.js";
 import { buildCaptainPortalPath } from "../../../components/tournament/team/copyPortalLink.js";
 import { useCanonicalTournamentList } from "../hooks/useCanonicalTournament.js";
 
@@ -36,6 +37,7 @@ function canDeleteTournament(tournament) {
 export default function CanonicalTournamentListPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const captainIdentity = useCanonicalCaptainAthleteId(user);
   const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
   const { accessAllowed } = usePageRuntimeAccess(
@@ -64,7 +66,7 @@ export default function CanonicalTournamentListPage() {
   ).length;
 
   const isCaptainForTeamTournament = (tournament) => {
-    const playerId = user?.playerId;
+    const playerId = captainIdentity.athleteId;
     if (!playerId || tournament?.mode !== TOURNAMENT_MODE.TEAM_TOURNAMENT) {
       return false;
     }

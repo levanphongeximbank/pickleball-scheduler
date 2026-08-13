@@ -16,6 +16,7 @@ import {
   canViewTeamMatchResults,
 } from "../engines/teamPermissionEngine.js";
 import { getTeamData, isTeamTournament } from "../engines/teamTournamentEngine.js";
+import { resolveCanonicalCaptainAthleteIdFromUser } from "../engines/captainIdentityResolver.js";
 
 /**
  * @param {object} input
@@ -98,7 +99,10 @@ export function resolveTeamTournamentCloudPageAccess(input = {}) {
     can(PERMISSIONS.TOURNAMENT_VIEW, scope);
 
   const teamData = getTeamData(tournament);
-  const viewerPlayerId = user?.playerId ? String(user.playerId) : null;
+  const viewerPlayerId =
+    resolveCanonicalCaptainAthleteIdFromUser(user) ||
+    String(input.viewerAthleteId || "").trim() ||
+    null;
   const isCaptain =
     Boolean(viewerPlayerId) &&
     (teamData?.teams || []).some(

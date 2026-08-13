@@ -1,17 +1,12 @@
 /**
  * TEAM-TOURNAMENT-PR412-SAVE-DRAFT-LIVE-INSTRUMENTATION-01
- * Diagnostic markers only — no save_draft behavior assertions.
+ * Hygiene lock: TT412 preview diagnostics removed; save_draft contract unchanged.
  */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
-
-import {
-  TT412_SAVE_DRAFT_DIAG,
-  tt412SaveDraftDiag,
-} from "../src/features/team-tournament/services/tt412SaveDraftDiagnostics.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -21,48 +16,26 @@ function readSrc(rel) {
 }
 
 describe("team-tournament-pr412-save-draft-live-instrumentation-01", () => {
-  it("diagnostic markers are wired into Lưu giải click path (no behavior gates)", () => {
+  it("TT412 save-draft preview diagnostics are removed", () => {
+    assert.equal(
+      existsSync(
+        path.join(
+          ROOT,
+          "src/features/team-tournament/services/tt412SaveDraftDiagnostics.js"
+        )
+      ),
+      false
+    );
     const page = readSrc("src/pages/tournament/TeamTournamentSetup.jsx");
-    assert.match(page, /handleSaveDraft/);
-    assert.match(page, /TT412_SAVE_DRAFT_DIAG\.START/);
-    assert.match(page, /TT412_SAVE_DRAFT_DIAG\.FINAL/);
-    assert.match(page, /onFormatDirtyDiagnostic/);
-    assert.doesNotMatch(page, /location\.reload/);
-
     const orchestrator = readSrc(
       "src/features/team-tournament/ui/teamTournamentUiOrchestrator.js"
     );
-    assert.match(orchestrator, /TT412_SAVE_DRAFT_DIAG\.RPC_CALL/);
-    assert.match(orchestrator, /TT412_SAVE_DRAFT_DIAG\.RPC_RESULT/);
-    assert.match(orchestrator, /TT412_SAVE_DRAFT_DIAG\.READBACK/);
-    assert.match(orchestrator, /team_tournament_save_draft/);
-    assert.match(orchestrator, /tournament\.save_draft/);
-
-    const formatPanel = readSrc(
-      "src/components/tournament/team/TeamFormatVenueSetupPanel.jsx"
-    );
-    assert.match(formatPanel, /onFormatDirtyDiagnostic/);
-  });
-
-  it("marker constants match Owner-locked Preview strings", () => {
-    assert.equal(TT412_SAVE_DRAFT_DIAG.START, "[TT412_SAVE_START]");
-    assert.equal(TT412_SAVE_DRAFT_DIAG.RPC_CALL, "[TT412_SAVE_RPC_CALL]");
-    assert.equal(TT412_SAVE_DRAFT_DIAG.RPC_RESULT, "[TT412_SAVE_RPC_RESULT]");
-    assert.equal(TT412_SAVE_DRAFT_DIAG.READBACK, "[TT412_SAVE_READBACK]");
-    assert.equal(TT412_SAVE_DRAFT_DIAG.FINAL, "[TT412_SAVE_FINAL]");
-  });
-
-  it("diag helper strips secret-ish keys and never throws", () => {
-    assert.doesNotThrow(() =>
-      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.START, {
-        tournamentId: "tt-1",
-        token: "should-be-stripped",
-        accessToken: "nope",
-        email: "a@b.c",
-        idempotencyKey: "full-key-must-not-log",
-        rulesVersion: "1",
-      })
-    );
+    assert.doesNotMatch(page, /tt412SaveDraftDiag/);
+    assert.doesNotMatch(page, /TT412_SAVE_DRAFT_DIAG/);
+    assert.doesNotMatch(orchestrator, /tt412SaveDraftDiag/);
+    assert.doesNotMatch(orchestrator, /TT412_SAVE_DRAFT_DIAG/);
+    assert.match(page, /handleSaveDraft/);
+    assert.doesNotMatch(page, /location\.reload/);
   });
 
   it("does not rewrite save_draft payload / update_setup_config semantics", () => {

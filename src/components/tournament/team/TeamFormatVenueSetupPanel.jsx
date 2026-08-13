@@ -35,7 +35,19 @@ import {
   validateRosterRules,
 } from "../../../features/team-tournament/engines/teamFormatVenueConfig.js";
 import { listLockedCompetitionStages } from "../../../features/team-tournament/engines/teamStageTieBreakPolicy.js";
+import {
+  DEFAULT_STAGE_SCORING_ENTRY,
+  DEFAULT_STAGE_SCORING_POLICY,
+  normalizeStageScoringMode,
+  normalizeStageScoringPolicy,
+  STAGE_SCORING_MODE,
+  STAGE_SCORING_MODE_LABELS,
+} from "../../../features/team-tournament/engines/teamStageScoringPolicy.js";
 import { isSetupMutationFoundationEnabled } from "../../../features/team-tournament/setup/setupMutationFeatureGate.js";
+import {
+  buildFormatVenueFingerprint,
+  decideSetupFormRehydration,
+} from "../../../features/team-tournament/setup/setupFormRehydration.js";
 import { listCanonicalClubCourtsForFormatVenue } from "../../../features/team-tournament/services/canonicalClubCourtInventory.js";
 import { getCourtDisplayName } from "../../../pages/courts.logic.js";
 
@@ -107,24 +119,96 @@ export default function TeamFormatVenueSetupPanel({
   const [stageTieBreakPolicy, setStageTieBreakPolicy] = useState(
     defaults.stageTieBreakPolicy
   );
+  const [stageScoringPolicy, setStageScoringPolicy] = useState(
+    normalizeStageScoringPolicy(defaults.stageScoringPolicy || DEFAULT_STAGE_SCORING_POLICY)
+  );
   const [busy, setBusy] = useState(false);
+  const [serverBaselineFingerprint, setServerBaselineFingerprint] = useState(null);
+  const [acceptServerBaseline, setAcceptServerBaseline] = useState(false);
   const lockedStages = useMemo(
     () => listLockedCompetitionStages(teamData),
     [teamData]
   );
+  const serverFingerprint = useMemo(
+    () => buildFormatVenueFingerprint(defaults),
+    [defaults]
+  );
+
+  const formatDirty = useMemo(() => {
+    const choice = GROUP_SETUP_CHOICES.find((item) => item.value === groupSetup);
+    const resolvedGroupMode =
+      choice?.groupMode ||
+      (Number(groupCount) === 1 ? GROUP_MODE.SINGLE_POOL : GROUP_MODE.MANUAL);
+    const courtsEqual =
+      JSON.stringify([...(selectedCourtIds || [])].map(String).sort()) ===
+      JSON.stringify(
+        [...(defaults.selectedCourtIds || [])].map(String).sort()
+      );
+    return (
+      formatPreset !== defaults.formatPreset ||
+      Boolean(dreambreakerEnabled) !== Boolean(defaults.dreambreakerEnabled) ||
+      Number(groupCount) !== Number(defaults.groupCount || 1) ||
+      Number(qualificationCount) !== Number(defaults.qualificationCount || 2) ||
+      knockoutFormat !== defaults.knockoutFormat ||
+      resolvedGroupMode !== defaults.groupMode ||
+      JSON.stringify(rosterRules || {}) !== JSON.stringify(defaults.rosterRules || {}) ||
+      JSON.stringify(stageTieBreakPolicy || {}) !==
+        JSON.stringify(defaults.stageTieBreakPolicy || {}) ||
+      JSON.stringify(stageScoringPolicy || {}) !==
+        JSON.stringify(
+          normalizeStageScoringPolicy(
+            defaults.stageScoringPolicy || DEFAULT_STAGE_SCORING_POLICY
+          )
+        ) ||
+      !courtsEqual
+    );
+  }, [
+    defaults,
+    dreambreakerEnabled,
+    formatPreset,
+    groupCount,
+    groupSetup,
+    knockoutFormat,
+    qualificationCount,
+    rosterRules,
+    selectedCourtIds,
+    stageScoringPolicy,
+    stageTieBreakPolicy,
+  ]);
 
   useEffect(() => {
-    const next = resolveFormatVenueDefaults(teamData, tournament);
-    setFormatPreset(next.formatPreset);
-    setRosterRules(next.rosterRules);
-    setDreambreakerEnabled(next.dreambreakerEnabled);
-    setGroupSetup(resolveGroupSetupValue(next));
-    setGroupCount(next.groupCount || 1);
-    setQualificationCount(next.qualificationCount || 2);
-    setKnockoutFormat(next.knockoutFormat);
-    setSelectedCourtIds(next.selectedCourtIds || []);
-    setStageTieBreakPolicy(next.stageTieBreakPolicy);
-  }, [teamData, tournament]);
+    const decision = decideSetupFormRehydration({
+      dirty: formatDirty,
+      prevFingerprint: serverBaselineFingerprint,
+      nextFingerprint: serverFingerprint,
+      afterSuccessfulMutation: acceptServerBaseline,
+    });
+    if (!decision.rehydrate) {
+      return;
+    }
+    setFormatPreset(defaults.formatPreset);
+    setRosterRules(defaults.rosterRules);
+    setDreambreakerEnabled(defaults.dreambreakerEnabled);
+    setGroupSetup(resolveGroupSetupValue(defaults));
+    setGroupCount(defaults.groupCount || 1);
+    setQualificationCount(defaults.qualificationCount || 2);
+    setKnockoutFormat(defaults.knockoutFormat);
+    setSelectedCourtIds(defaults.selectedCourtIds || []);
+    setStageTieBreakPolicy(defaults.stageTieBreakPolicy);
+    setStageScoringPolicy(
+      normalizeStageScoringPolicy(defaults.stageScoringPolicy || DEFAULT_STAGE_SCORING_POLICY)
+    );
+    setServerBaselineFingerprint(serverFingerprint);
+    if (acceptServerBaseline) {
+      setAcceptServerBaseline(false);
+    }
+  }, [
+    acceptServerBaseline,
+    defaults,
+    formatDirty,
+    serverBaselineFingerprint,
+    serverFingerprint,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -179,41 +263,6 @@ export default function TeamFormatVenueSetupPanel({
     },
     tournament
   );
-
-  const formatDirty = useMemo(() => {
-    const choice = GROUP_SETUP_CHOICES.find((item) => item.value === groupSetup);
-    const resolvedGroupMode =
-      choice?.groupMode ||
-      (Number(groupCount) === 1 ? GROUP_MODE.SINGLE_POOL : GROUP_MODE.MANUAL);
-    const courtsEqual =
-      JSON.stringify([...(selectedCourtIds || [])].map(String).sort()) ===
-      JSON.stringify(
-        [...(defaults.selectedCourtIds || [])].map(String).sort()
-      );
-    return (
-      formatPreset !== defaults.formatPreset ||
-      Boolean(dreambreakerEnabled) !== Boolean(defaults.dreambreakerEnabled) ||
-      Number(groupCount) !== Number(defaults.groupCount || 1) ||
-      Number(qualificationCount) !== Number(defaults.qualificationCount || 2) ||
-      knockoutFormat !== defaults.knockoutFormat ||
-      resolvedGroupMode !== defaults.groupMode ||
-      JSON.stringify(rosterRules || {}) !== JSON.stringify(defaults.rosterRules || {}) ||
-      JSON.stringify(stageTieBreakPolicy || {}) !==
-        JSON.stringify(defaults.stageTieBreakPolicy || {}) ||
-      !courtsEqual
-    );
-  }, [
-    defaults,
-    dreambreakerEnabled,
-    formatPreset,
-    groupCount,
-    groupSetup,
-    knockoutFormat,
-    qualificationCount,
-    rosterRules,
-    selectedCourtIds,
-    stageTieBreakPolicy,
-  ]);
 
   useEffect(() => {
     onFormatDirtyDiagnostic?.(formatDirty === true);
@@ -288,8 +337,10 @@ export default function TeamFormatVenueSetupPanel({
       groupMode: resolvedGroupMode,
       groupCount: resolvedGroupCount,
       qualificationCount: Math.max(1, Number(qualificationCount) || 1),
+      qualifiersPerGroup: Math.max(1, Number(qualificationCount) || 1),
       knockoutFormat,
       stageTieBreakPolicy,
+      stageScoringPolicy: normalizeStageScoringPolicy(stageScoringPolicy),
       selectedCourtIds,
       teamsPerGroup:
         resolvedGroupCount > 0
@@ -303,6 +354,7 @@ export default function TeamFormatVenueSetupPanel({
       if (ok === false) {
         return;
       }
+      setAcceptServerBaseline(true);
       onMessage?.("Đã lưu Format & Venue Setup.");
     } finally {
       setBusy(false);
@@ -328,9 +380,9 @@ export default function TeamFormatVenueSetupPanel({
 
         {!gateOn ? (
           <Alert severity="warning">
-            Setup mutation v7 đang tắt. UI không hứa ghi cloud. Bật{" "}
-            <strong>VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7</strong> (Owner GO) trước khi lưu
-            Format & Venue / đội / bảng.
+            Setup mutation v7 đang tắt bởi kill-switch{" "}
+            <strong>VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7=false</strong>. Không ghi Format
+            & Venue / đội / bảng.
           </Alert>
         ) : null}
 
@@ -435,6 +487,119 @@ export default function TeamFormatVenueSetupPanel({
           })}
         </Stack>
 
+        <Stack spacing={1}>
+          <Typography variant="subtitle2" fontWeight={700}>
+            Điểm theo vòng (stage scoring)
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Áp dụng theo vòng đã resolve (#416), không đổi matchup.stage thô (group|knockout).
+            21 chỉ là mặc định khi chưa cấu hình.
+          </Typography>
+          {STAGE_TIE_BREAK_POLICY_KEYS.map((stageKey) => {
+            const entry =
+              stageScoringPolicy?.[stageKey] || DEFAULT_STAGE_SCORING_POLICY[stageKey];
+            return (
+              <Stack
+                key={`scoring-${stageKey}`}
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{ minWidth: 96, pt: 1 }}
+                  fontWeight={600}
+                >
+                  {STAGE_POLICY_LABELS[stageKey]}
+                </Typography>
+                <FormControl fullWidth size="small" disabled={!canManage}>
+                  <InputLabel>Chế độ tính điểm</InputLabel>
+                  <Select
+                    label="Chế độ tính điểm"
+                    value={normalizeStageScoringMode(entry?.scoringMode)}
+                    onChange={(event) =>
+                      setStageScoringPolicy((prev) => ({
+                        ...prev,
+                        [stageKey]: {
+                          ...(prev?.[stageKey] || DEFAULT_STAGE_SCORING_ENTRY),
+                          scoringMode: normalizeStageScoringMode(event.target.value),
+                        },
+                      }))
+                    }
+                  >
+                    <MenuItem value={STAGE_SCORING_MODE.TRADITIONAL}>
+                      {STAGE_SCORING_MODE_LABELS[STAGE_SCORING_MODE.TRADITIONAL]}
+                    </MenuItem>
+                    <MenuItem value={STAGE_SCORING_MODE.RALLY}>
+                      {STAGE_SCORING_MODE_LABELS[STAGE_SCORING_MODE.RALLY]}
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Điểm mục tiêu"
+                  value={entry?.targetPoints ?? 21}
+                  disabled={!canManage}
+                  onChange={(event) =>
+                    setStageScoringPolicy((prev) => ({
+                      ...prev,
+                      [stageKey]: {
+                        ...(prev?.[stageKey] || DEFAULT_STAGE_SCORING_ENTRY),
+                        targetPoints: Math.max(1, Number(event.target.value) || 1),
+                      },
+                    }))
+                  }
+                  inputProps={{ min: 1 }}
+                  fullWidth
+                />
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Cách biệt (winBy)"
+                  value={entry?.winBy ?? 2}
+                  disabled={!canManage}
+                  onChange={(event) =>
+                    setStageScoringPolicy((prev) => ({
+                      ...prev,
+                      [stageKey]: {
+                        ...(prev?.[stageKey] || DEFAULT_STAGE_SCORING_ENTRY),
+                        winBy: Math.max(1, Number(event.target.value) || 1),
+                      },
+                    }))
+                  }
+                  inputProps={{ min: 1 }}
+                  fullWidth
+                />
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Đổi sân tại"
+                  value={entry?.changeEndsAt ?? ""}
+                  disabled={!canManage}
+                  placeholder="vd. 6"
+                  helperText="Để trống nếu không đổi sân theo điểm"
+                  onChange={(event) => {
+                    const raw = event.target.value;
+                    const nextValue =
+                      raw === "" || raw == null
+                        ? null
+                        : Math.max(1, Number(raw) || 1);
+                    setStageScoringPolicy((prev) => ({
+                      ...prev,
+                      [stageKey]: {
+                        ...(prev?.[stageKey] || DEFAULT_STAGE_SCORING_ENTRY),
+                        changeEndsAt: nextValue,
+                      },
+                    }));
+                  }}
+                  inputProps={{ min: 1 }}
+                  fullWidth
+                />
+              </Stack>
+            );
+          })}
+        </Stack>
+
         <FormControl fullWidth size="small" disabled={!canManage}>
           <InputLabel>Group setup</InputLabel>
           <Select
@@ -471,25 +636,30 @@ export default function TeamFormatVenueSetupPanel({
           <TextField
             size="small"
             type="number"
-            label="Số đội vượt bảng / pool (qualificationCount)"
+            label="Số đội vượt bảng mỗi bảng (qualifiersPerGroup)"
             value={qualificationCount}
-            disabled={!canManage}
+            disabled={!canManage || Number(groupCount) <= 1}
             onChange={(event) =>
               setQualificationCount(Math.max(1, Number(event.target.value) || 1))
             }
             inputProps={{ min: 1 }}
             fullWidth
+            helperText={
+              Number(groupCount) <= 1
+                ? "1 bảng: kết thúc sau vòng tròn — không tạo knockout."
+                : `Tổng vượt bảng = ${Math.max(1, Number(groupCount) || 1)} × ${Math.max(1, Number(qualificationCount) || 1)} (phải thuộc 2/4/8/16).`
+            }
           />
-          <FormControl fullWidth size="small" disabled={!canManage}>
-            <InputLabel>Knockout</InputLabel>
+          <FormControl fullWidth size="small" disabled={!canManage || Number(groupCount) <= 1}>
+            <InputLabel>Knockout (multi-bảng)</InputLabel>
             <Select
-              label="Knockout"
+              label="Knockout (multi-bảng)"
               value={knockoutFormat}
               onChange={(event) => setKnockoutFormat(event.target.value)}
             >
-              <MenuItem value={KNOCKOUT_FORMAT.TOP_N}>Top N (seed)</MenuItem>
+              <MenuItem value={KNOCKOUT_FORMAT.TOP_N}>Top N theo seed</MenuItem>
               <MenuItem value={KNOCKOUT_FORMAT.FINAL_ONLY}>Chung kết (top 2)</MenuItem>
-              <MenuItem value={KNOCKOUT_FORMAT.SEMIFINALS}>Bán kết (top 4 → 1v4, 2v3)</MenuItem>
+              <MenuItem value={KNOCKOUT_FORMAT.SEMIFINALS}>Bán kết (top 4)</MenuItem>
             </Select>
           </FormControl>
         </Stack>

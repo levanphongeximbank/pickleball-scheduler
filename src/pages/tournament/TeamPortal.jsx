@@ -54,7 +54,12 @@ import {
   validateLineupSelections,
 } from "../../features/team-tournament/engines/lineupValidationEngine.js";
 import { filterEligiblePlayersForLineupSlot } from "../../features/team-tournament/engines/lineupOptionFilter.js";
-import { resolveCaptainLineupAthletePool } from "../../features/team-tournament/engines/captainPortalRosterProjection.js";
+import {
+  CAPTAIN_PORTAL_SCOPED_ROSTER,
+  CAPTAIN_ROSTER_UNAVAILABLE,
+  buildCaptainLineupRuntime,
+  resolveCaptainLineupAthletePool,
+} from "../../features/team-tournament/engines/captainPortalRosterProjection.js";
 import { applyCanonicalMlpDisciplineMetadata } from "../../features/team-tournament/engines/mlpDisciplineSlotContract.js";
 import {
   buildServerLineupFingerprint,
@@ -63,23 +68,11 @@ import {
 import { resolveLineupExpectedVersion } from "../../features/team-tournament/engines/lineupRevisionContract.js";
 import { evaluateCaptainPortalAccess } from "../../features/team-tournament/engines/captainAccessPolicy.js";
 import {
-  logTt412CaptainAccess,
-  TT412_CAPTAIN_PORTAL_GATE,
-} from "../../features/team-tournament/diagnostics/tt412CaptainAccessDiagnostics.js";
-import {
-  logTt412LineupForm,
-  TT412_LINEUP_REHYDRATE_DECISION,
-  TT412_LINEUP_SAVE_RESULT,
-  TT412_LINEUP_SELECT_CHANGE,
-  TT412_LINEUP_SUBMIT_RESULT,
-} from "../../features/team-tournament/diagnostics/tt412LineupFormDiagnostics.js";
-import {
   findTeamForCaptain,
   getOpponentTeamId,
   isTeamCaptain,
   listMatchupsForTeam,
   partitionMatchupsForPortal,
-  resolveCaptainViewerPlayerId,
 } from "../../features/team-tournament/engines/teamPermissionEngine.js";
 import {
   getTeamData,
@@ -89,6 +82,10 @@ import TournamentSetupShell from "../../components/tournament/TournamentSetupShe
 import TeamSubstitutionPanel from "../../components/tournament/TeamSubstitutionPanel.jsx";
 import { findTeam, getLineup } from "../../features/team-tournament/models/index.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
+import { useCanonicalCaptainAthleteId } from "../../features/team-tournament/ui/useCanonicalCaptainAthleteId.js";
+import {
+  extractServerCaptainViewerPlayerId,
+} from "../../features/team-tournament/engines/captainIdentityResolver.js";
 import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
 import { useLineupDeadlineClock } from "../../features/team-tournament/ui/useLineupDeadlineClock.js";
 import {
@@ -98,7 +95,6 @@ import {
 } from "../../features/team-tournament/services/lineupDeadlineService.js";
 import { buildUiCommandScope } from "../../features/team-tournament/ui/teamTournamentUiCommandKeys.js";
 import { resolveEffectiveTenantId } from "../../features/tenant/services/tenantService.js";
-import { fetchProfileByUserId } from "../../auth/profileService.js";
 import { getPermissionsForRole } from "../../features/identity/matrix/rolePermissions.js";
 
 
@@ -116,53 +112,14 @@ function canEditLineup(lineup) {
   );
 }
 
-function useResolvedCaptainPlayerId(user) {
-  const direct = resolveCaptainViewerPlayerId(user);
-  const [profileState, setProfileState] = useState({ playerId: null, resolving: false });
-
-  useEffect(() => {
-    if (direct) {
-      setProfileState({ playerId: null, resolving: false });
-      return undefined;
-    }
-
-    const userId = String(user?.id || "").trim();
-    if (!userId) {
-      setProfileState({ playerId: null, resolving: false });
-      return undefined;
-    }
-
-    let cancelled = false;
-    setProfileState({ playerId: null, resolving: true });
-    fetchProfileByUserId(userId).then((result) => {
-      if (cancelled) {
-        return;
-      }
-      const playerId = result.ok
-        ? result.user?.playerId || result.profile?.player_id || null
-        : null;
-      setProfileState({
-        playerId: playerId ? String(playerId).trim() : null,
-        resolving: false,
-      });
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [direct, user?.id, user?.playerId, user?.player_id]);
-
-  if (direct) {
-    return { playerId: direct, resolving: false };
-  }
-
-  return {
-    playerId: profileState.playerId,
-    resolving: profileState.resolving,
-  };
-}
-
-function useCaptainPortalAccess({ tournament, teamData, effectiveClubId, tournamentId, viewerPlayerId }) {
+function useCaptainPortalAccess({
+  tournament,
+  teamData,
+  effectiveClubId,
+  tournamentId,
+  viewerPlayerId,
+  serverViewerTeamId = null,
+}) {
   const { rbacEnabled, isAuthenticated, user } = useAuth();
   const { currentTenantId } = useTenant();
 
@@ -193,6 +150,7 @@ function useCaptainPortalAccess({ tournament, teamData, effectiveClubId, tournam
       viewerPlayerId,
       tenantCheck,
       findTeamForCaptain,
+      serverViewerTeamId,
     });
   }, [
     effectiveClubId,
@@ -204,6 +162,7 @@ function useCaptainPortalAccess({ tournament, teamData, effectiveClubId, tournam
     tournamentId,
     user,
     viewerPlayerId,
+    serverViewerTeamId,
   ]);
 }
 
@@ -277,9 +236,26 @@ function MatchupLineupCard({
     onDeadlineElapsed: onSaved,
   });
 
-  const canSaveDraft = permissions.canSaveDraft === true;
-  const canSubmitLineup = permissions.canSubmit === true;
-  const editable = (canSaveDraft || canSubmitLineup) && canEditLineup(ownLineup);
+  const allowReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
+  const rosterSignature = (team?.rosterAthletes || [])
+    .map((row) => `${row?.athleteId || ""}:${row?.gender || ""}`)
+    .join("|");
+  const lineupPlayers = useMemo(
+    () =>
+      resolveCaptainLineupAthletePool({
+        team,
+        teamData,
+        teamId: team?.id,
+      }),
+    [team, teamData, team?.id, rosterSignature]
+  );
+  const portalRosterReady = lineupPlayers.length > 0;
+  const canSaveDraft = permissions.canSaveDraft === true && portalRosterReady;
+  const canSubmitLineup = permissions.canSubmit === true && portalRosterReady;
+  const editable =
+    (permissions.canSaveDraft === true || permissions.canSubmit === true) &&
+    canEditLineup(ownLineup) &&
+    portalRosterReady;
   const isPublished = matchup.status === MATCHUP_STATUS.PUBLISHED;
 
   const [selections, setSelections] = useState(() =>
@@ -301,15 +277,6 @@ function MatchupLineupCard({
       dirty,
       prevFingerprint: serverFingerprint,
       nextFingerprint,
-    });
-    logTt412LineupForm(TT412_LINEUP_REHYDRATE_DECISION, {
-      matchupId: matchup.id,
-      teamId: team.id,
-      dirty,
-      serverFingerprintBefore: serverFingerprint,
-      serverFingerprintAfter: nextFingerprint,
-      rehydrate: decision.rehydrate,
-      reason: decision.reason,
     });
     if (decision.conflict) {
       setServerConflict(true);
@@ -343,11 +310,6 @@ function MatchupLineupCard({
     };
   }, [getVisibleLineups, matchup.id, useCloudVisibleLineups, dataVersion]);
 
-  const allowReuse = teamData.settings?.allowPlayerReusePerMatchup === true;
-  const lineupPlayers = useMemo(
-    () => resolveCaptainLineupAthletePool({ team, clubPlayers: players }),
-    [team, players]
-  );
   const hydratedTeam = useMemo(
     () => hydratePortalTeamRoster(team, lineupPlayers),
     [team, lineupPlayers]
@@ -379,14 +341,6 @@ function MatchupLineupCard({
       slots[slotIndex] = playerId ? String(playerId) : "";
       // Keep positional slots (mixed: index0=male, index1=female). Do not compact.
       next[disciplineId] = slots;
-      logTt412LineupForm(TT412_LINEUP_SELECT_CHANGE, {
-        tournamentId,
-        matchupId: matchup.id,
-        teamId: team.id,
-        slotId: `${disciplineId}:${slotIndex}`,
-        selectedValue: playerId ? String(playerId) : "",
-        dirtyAfter: true,
-      });
       return next;
     });
     setDirty(true);
@@ -403,13 +357,17 @@ function MatchupLineupCard({
     setError("");
     setMessage("");
 
+
     const draftCheck = validateLineupSelections({
       teamData,
+      team,
       teamId: team.id,
       selections,
       players: lineupPlayers,
       partial: true,
+      requireCaptainPortalRoster: true,
     });
+
 
     if (!draftCheck.ok) {
       setError(draftCheck.errors.join(" "));
@@ -429,16 +387,8 @@ function MatchupLineupCard({
       expectedVersion: resolveLineupExpectedVersion(ownLineup),
     });
 
+
     setBusy(false);
-    logTt412LineupForm(TT412_LINEUP_SAVE_RESULT, {
-      ok: result.ok === true,
-      matchupId: matchup.id,
-      teamId: team.id,
-      status: result.teamData
-        ? getLineup(result.teamData, matchup.id, team.id)?.status
-        : result.code || null,
-      errorCode: result.ok ? null : result.code || null,
-    });
 
     if (!result.ok) {
       setError(result.error || "Không lưu được nháp.");
@@ -460,12 +410,16 @@ function MatchupLineupCard({
     setError("");
     setMessage("");
 
+
     const validation = validateLineupSelections({
       teamData,
+      team,
       teamId: team.id,
       selections,
       players: lineupPlayers,
+      requireCaptainPortalRoster: true,
     });
+
 
     if (!validation.ok) {
       setError(validation.errors.join(" "));
@@ -485,16 +439,8 @@ function MatchupLineupCard({
       expectedVersion: resolveLineupExpectedVersion(ownLineup),
     });
 
+
     setBusy(false);
-    logTt412LineupForm(TT412_LINEUP_SUBMIT_RESULT, {
-      ok: result.ok === true,
-      matchupId: matchup.id,
-      teamId: team.id,
-      status: result.teamData
-        ? getLineup(result.teamData, matchup.id, team.id)?.status
-        : result.code || null,
-      errorCode: result.ok ? null : result.code || null,
-    });
 
     if (!result.ok) {
       setError(result.error || "Không nộp được đội hình.");
@@ -569,6 +515,12 @@ function MatchupLineupCard({
 
         {message ? <Alert severity="success">{message}</Alert> : null}
         {error ? <Alert severity="error">{error}</Alert> : null}
+        {!portalRosterReady ? (
+          <Alert severity="error">
+            {CAPTAIN_ROSTER_UNAVAILABLE}: Danh sách VĐV đội trưởng (portal) chưa sẵn sàng.
+            Không dùng pool CLB để xếp đội hình.
+          </Alert>
+        ) : null}
         {serverConflict ? (
           <Alert severity="warning">
             Dữ liệu đội hình trên máy chủ đã thay đổi trong khi bạn đang chỉnh. Bản chọn
@@ -731,8 +683,7 @@ export default function TeamPortal() {
   const { user } = useAuth();
   const { currentTenantId } = useTenant();
   const membership = useMyClubMembership();
-  const captainIdentity = useResolvedCaptainPlayerId(user);
-  const viewerPlayerId = captainIdentity.playerId;
+  const captainIdentity = useCanonicalCaptainAthleteId(user);
   const clubFromQuery = String(searchParams.get("club") || "").trim();
 
   // Query club (from BTC link) → local blob host → V2 membership → active club.
@@ -771,12 +722,17 @@ export default function TeamPortal() {
     reconnectRealtime,
     subscriptionError,
     pollingFallbackActive,
+    viewerTeamId: serverViewerTeamId,
+    viewer: serverViewer,
   } = useTeamTournamentPage({
     clubId: resolvedClubId,
     tournamentId,
     pollingEnabled: true,
     pageMode: "captainPortal",
   });
+
+  const serverViewerPlayerId = extractServerCaptainViewerPlayerId(serverViewer);
+  const viewerPlayerId = captainIdentity.athleteId || serverViewerPlayerId;
 
   const handleDeadlineElapsed = useCallback(() => {
     reload({ silent: true });
@@ -796,6 +752,7 @@ export default function TeamPortal() {
     effectiveClubId,
     tournamentId,
     viewerPlayerId,
+    serverViewerTeamId,
   });
 
   const teamData = useMemo(() => {
@@ -807,6 +764,19 @@ export default function TeamPortal() {
     };
     return applyCanonicalMlpDisciplineMetadata(raw) || raw;
   }, [hookTeamData]);
+
+  const lineupRuntime = useMemo(
+    () =>
+      buildCaptainLineupRuntime({
+        teamData,
+        captainTeam: access.captainTeam,
+        teamId: access.captainTeam?.id,
+      }),
+    [access.captainTeam, teamData]
+  );
+  const lineupTeam = lineupRuntime.team || access.captainTeam;
+  const lineupPlayers = lineupRuntime.athletePool;
+  const portalRosterReady = lineupRuntime.authority === CAPTAIN_PORTAL_SCOPED_ROSTER;
 
   const athletePool = useTeamTournamentAthletePool({
     tournament,
@@ -912,7 +882,11 @@ export default function TeamPortal() {
     setDbMessage({ type: "success", text: "Đã nộp thứ tự Dreambreaker." });
   }
 
-  if (membershipPending || loading || (tournament && captainIdentity.resolving)) {
+  if (
+    membershipPending ||
+    loading ||
+    (tournament && captainIdentity.resolving && !serverViewerPlayerId)
+  ) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="info">Đang tải giải đồng đội…</Alert>
@@ -924,14 +898,11 @@ export default function TeamPortal() {
     const isCaptainGate =
       loadErrorCode === "captain_portal_closed" ||
       loadErrorCode === "captain_scope_denied" ||
+      loadErrorCode === "NOT_CAPTAIN" ||
+      loadErrorCode === "CAPTAIN_TEAM_AMBIGUOUS" ||
       loadErrorCode === "NOT_AUTHENTICATED" ||
       loadErrorCode === "IDENTITY_UNPROVEN";
 
-    logTt412CaptainAccess(TT412_CAPTAIN_PORTAL_GATE, {
-      source: "loadError",
-      code: loadErrorCode || null,
-      allowed: false,
-    });
 
     if (isCaptainGate) {
       return (
@@ -973,11 +944,6 @@ export default function TeamPortal() {
   }
 
   if (!access.allowed) {
-    logTt412CaptainAccess(TT412_CAPTAIN_PORTAL_GATE, {
-      source: "clientGate",
-      code: access.code || null,
-      allowed: false,
-    });
     return (
       <Box sx={{ p: 3, maxWidth: 480 }}>
         <Stack spacing={2}>
@@ -1064,12 +1030,18 @@ export default function TeamPortal() {
           isCloudPrimary={isCloudPrimary}
         />
 
+
         {access.captainTeam ? (
           <>
-            {athletePool.error ? (
+            {athletePool.error && !portalRosterReady ? (
               <Alert severity="warning">
                 {athletePool.error.message ||
                   "Không tải được pool VĐV canonical. Tên VĐV có thể hiện thiếu identity."}
+              </Alert>
+            ) : null}
+            {!portalRosterReady ? (
+              <Alert severity="error">
+                {CAPTAIN_ROSTER_UNAVAILABLE}: chưa có CAPTAIN_PORTAL_SCOPED_ROSTER — Save/Submit khóa.
               </Alert>
             ) : null}
             {subMessage ? (
@@ -1121,7 +1093,7 @@ export default function TeamPortal() {
                   matchup={matchup}
                   teamData={teamData}
                   teamId={access.captainTeam.id}
-                  players={players}
+                  players={lineupPlayers.length > 0 ? lineupPlayers : players}
                   opponentName={opponentName}
                   onSubmit={(order) => handleDreambreakerSubmit(matchup.id, order)}
                   busy={dbBusy}
@@ -1150,9 +1122,9 @@ export default function TeamPortal() {
                   <MatchupLineupCard
                     key={`pending-${matchup.id}`}
                     matchup={matchup}
-                    team={access.captainTeam}
+                    team={lineupTeam || access.captainTeam}
                     teamData={teamData}
-                    players={players}
+                    players={lineupPlayers}
                     {...lineupCardProps}
                   />
                 ))}
@@ -1168,9 +1140,9 @@ export default function TeamPortal() {
                   <MatchupLineupCard
                     key={`done-${matchup.id}`}
                     matchup={matchup}
-                    team={access.captainTeam}
+                    team={lineupTeam || access.captainTeam}
                     teamData={teamData}
-                    players={players}
+                    players={lineupPlayers}
                     {...lineupCardProps}
                   />
                 ))}
@@ -1190,9 +1162,9 @@ export default function TeamPortal() {
                   <MatchupLineupCard
                     key={`past-${matchup.id}`}
                     matchup={matchup}
-                    team={access.captainTeam}
+                    team={lineupTeam || access.captainTeam}
                     teamData={teamData}
-                    players={players}
+                    players={lineupPlayers}
                     {...lineupCardProps}
                   />
                 ))}
