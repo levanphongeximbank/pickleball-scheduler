@@ -47,10 +47,6 @@ import {
 import {
   planCanonicalMlpDreambreakerPersist,
 } from "../engines/mlpPresetEngine.js";
-import {
-  TT412_SAVE_DRAFT_DIAG,
-  tt412SaveDraftDiag,
-} from "../services/tt412SaveDraftDiagnostics.js";
 
 export const UI_MUTATION_ERROR = Object.freeze({
   VERSION_CONFLICT: "version_conflict",
@@ -719,15 +715,6 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         });
       }
 
-      // Preview-only: confirmed path always assigns an idempotency key inside runSetupMutation.
-      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.RPC_CALL, {
-        rpcName: "team_tournament_save_draft",
-        commandName: "tournament.save_draft",
-        expectedTournamentVersion,
-        hasDraftState: Boolean(draftState && typeof draftState === "object"),
-        idempotencyKeyPresent: true,
-      });
-
       const result = await runSetupMutation({
         method: "tournament.save_draft",
         commandName: "tournament.save_draft",
@@ -747,55 +734,6 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         diagnostic: options.diagnostic,
         reloadAcknowledged: options.reloadAcknowledged,
         idempotencyKey: options.idempotencyKey,
-      });
-
-      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.RPC_RESULT, {
-        ok: result?.ok === true,
-        partial: result?.partial === true,
-        errorCode: result?.ok === true ? null : result?.code || null,
-        errorMessage: result?.ok === true ? null : result?.error || null,
-        newTournamentVersion:
-          result?.version != null ? Number(result.version) : null,
-        rpcCalled: result?.rpcCalled === true,
-      });
-
-      const reloadResult = result?.reloadResult || null;
-      const readbackTeamData = reloadResult?.teamData || null;
-      const readbackSettings =
-        readbackTeamData?.settings ||
-        reloadResult?.tournament?.settings ||
-        reloadResult?.aggregate?.settings ||
-        {};
-      const readbackDraft =
-        readbackSettings?.draftState && typeof readbackSettings.draftState === "object"
-          ? readbackSettings.draftState
-          : {};
-      const selectedCourtIds = Array.isArray(readbackSettings?.selectedCourtIds)
-        ? readbackSettings.selectedCourtIds
-        : [];
-      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.READBACK, {
-        readbackOk: reloadResult?.ok === true,
-        tournamentVersion:
-          reloadResult?.version != null ? Number(reloadResult.version) : null,
-        draftStatus: readbackDraft.draftStatus ?? null,
-        workflowStage: readbackDraft.workflowStage ?? null,
-        nextAction:
-          readbackDraft.nextActionLabel ?? readbackDraft.nextActionId ?? null,
-        savedAt: readbackDraft.savedAt ?? null,
-        groupCount:
-          readbackSettings?.groupCount != null
-            ? Number(readbackSettings.groupCount)
-            : null,
-        selectedCourtIdsCount: selectedCourtIds.length,
-        teamsCount: Array.isArray(readbackTeamData?.teams)
-          ? readbackTeamData.teams.length
-          : null,
-        groupsCount: Array.isArray(readbackTeamData?.groups)
-          ? readbackTeamData.groups.length
-          : null,
-        matchupsCount: Array.isArray(readbackTeamData?.matchups)
-          ? readbackTeamData.matchups.length
-          : null,
       });
 
       const uiResult = mapRepositoryResultToUi(result);

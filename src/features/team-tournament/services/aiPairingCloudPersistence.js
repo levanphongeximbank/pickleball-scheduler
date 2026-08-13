@@ -18,10 +18,6 @@ import { resolveFormatVenueDefaults } from "../engines/teamFormatVenueConfig.js"
 import { deriveWorkflowStage } from "../engines/teamTournamentWorkflowStage.js";
 import { preflightSetupMutationCapability } from "../setup/setupMutationFeatureGate.js";
 import { rpcTeamTournamentCommitPairing } from "./teamTournamentRpcService.js";
-import {
-  TT412_CAPTAIN_CONFIRM_DIAG,
-  tt412CaptainConfirmDiag,
-} from "./tt412CaptainConfirmDiagnostics.js";
 
 export const PAIRING_UNAVAILABLE_CODES = Object.freeze([
   "RPC_MISSING",
@@ -101,18 +97,8 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
 
   const teams = Array.isArray(nextTeamData?.teams) ? nextTeamData.teams : [];
   let groups = Array.isArray(nextTeamData?.groups) ? nextTeamData.groups : [];
-  const incomingGroupsLength = groups.length;
-  let materializedGroupsLength = 0;
 
-  const finish = (result) => {
-    tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.RESULT, {
-      ok: result?.ok === true,
-      partial: result?.partial === true,
-      errorCode: result?.code || null,
-      errorMessage: result?.error || null,
-    });
-    return result;
-  };
+  const finish = (result) => result;
 
   if (!tournamentId || !teams.length) {
     return finish({
@@ -142,12 +128,6 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
       existingGroups: groups,
     });
     if (!materialized.ok) {
-      tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.REPLACE_GROUPS_SKIPPED, {
-        reason: "materialize_failed",
-        errorCode: materialized.code || "GROUPS_REQUIRED",
-        configuredGroupCount: Number(formatVenue.groupCount) || null,
-        incomingGroupsLength,
-      });
       return finish({
         ok: false,
         code: materialized.code || "GROUPS_REQUIRED",
@@ -161,22 +141,7 @@ export async function confirmAiPairingCloudPersistence(params = {}) {
       });
     }
     groups = materialized.groups;
-    materializedGroupsLength = groups.length;
   }
-
-  const formatVenueForDiag = resolveFormatVenueDefaults(nextTeamData, tournament);
-  const configuredGroupCount = Number(formatVenueForDiag.groupCount) || null;
-  tt412CaptainConfirmDiag(TT412_CAPTAIN_CONFIRM_DIAG.GROUP_PERSIST_DECISION, {
-    configuredGroupCount,
-    effectiveGroupsLength: groups.length,
-    materializedGroupsLength,
-    incomingGroupsLength,
-    shouldPersistGroups: groups.length > 0,
-    groupIds: groups.map((group) => group?.id || null),
-    teamIdsPerGroup: groups.map((group) =>
-      Array.isArray(group?.teamIds) ? group.teamIds.map(String) : []
-    ),
-  });
 
   const preflight = deps.preflightSetupMutationCapability({ envSource });
   if (!preflight.ok) {
