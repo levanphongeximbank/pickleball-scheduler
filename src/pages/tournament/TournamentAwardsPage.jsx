@@ -113,7 +113,7 @@ export default function TournamentAwardsPage() {
       ) : null}
 
       {!tournamentId ? (
-        <Alert severity="info">Chọn giải cá nhân (không dùng dữ liệu demo đồng đội).</Alert>
+        <Alert severity="info">Chọn giải cá nhân để cấu hình.</Alert>
       ) : (
         <>
           <Tabs value={tab} onChange={handleTab} variant="scrollable" scrollButtons="auto" sx={{ mb: 2 }}>

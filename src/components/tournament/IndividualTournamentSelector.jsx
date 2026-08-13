@@ -35,7 +35,7 @@ export default function IndividualTournamentSelector({
       </FormControl>
       {!tournamentId && (
         <Alert severity="info">
-          Chọn giải cá nhân để cấu hình (lưu vào club blob, không dùng dữ liệu demo đồng đội).
+          Chọn giải cá nhân để cấu hình.
         </Alert>
       )}
       {tournaments.length === 0 && (

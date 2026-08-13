@@ -29,7 +29,6 @@ import {
   resolveTeamTournamentAthleteTenantId,
   TEAM_TOURNAMENT_ATHLETE_SCOPE,
 } from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
-import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
 import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import {
   INTERNAL_SETUP_CLUB_NOT_READY,
@@ -68,24 +67,30 @@ import {
   isCanonicalVersionConflict,
   INTERNAL_VERSION_SYNCING_USER_MESSAGE,
   ONE_GROUP_COMPLETION_MESSAGE,
+  assignInternalMatchReferee,
+  listEligibleInternalReferees,
+  mapLifecycleStepToWorkspaceSection,
   resolveInternalKnockoutEligibility,
   resolveInternalTournamentLifecycle,
+  resolveInternalWorkspaceKey,
   shouldSkipKnockoutForInternal,
+  INTERNAL_WORKSPACE_SECTIONS,
+  INTERNAL_WORKSPACE_SECTION_LABELS,
 } from "../../features/tournament/internal/index.js";
 import {
   reopenClosedTournament,
   isTournamentClosed,
 } from "../../features/individual-tournament/engines/tournamentClosingEngine.js";
 import InternalTournamentLifecycleStepper from "../../components/tournament/InternalTournamentLifecycleStepper.jsx";
+import InternalScheduleStage from "../../components/tournament/internal/InternalScheduleStage.jsx";
+import InternalMatchRefereeSelect from "../../components/tournament/internal/InternalMatchRefereeSelect.jsx";
 import { buildIndividualAllGroupStandings } from "../../features/individual-tournament/adapters/individualStandingsAdapter.js";
 import BracketView from "../../components/tournament/BracketView.jsx";
 import GroupStagePanel from "../../components/tournament/GroupStagePanel.jsx";
 import RefereeRosterPanel from "../../components/tournament/RefereeRosterPanel.jsx";
 import TournamentAnimationDialog from "../../components/tournament/animation/TournamentAnimationDialog.jsx";
-import BracketRevealAnimation from "../../components/tournament/animation/BracketRevealAnimation.jsx";
 import {
   ANIMATION_MODES,
-  buildGroupMatchPairingSteps,
   buildPairingSteps,
   buildPairingWaitingPlayers,
   buildSnakeSteps,
@@ -100,7 +105,6 @@ import {
   useTournamentBroadcast,
   BroadcastVodResultAlert,
 } from "../../features/tournament-broadcast/index.js";
-import { PAIRING_CONTROL_MODES } from "../../components/tournament/animation/pairing/usePairingSequence.js";
 import {
   buildRefereeSettingsPatch,
   getRefereeSettings,
@@ -182,8 +186,13 @@ export default function InternalTournamentSetup() {
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
   const [previewEntries, setPreviewEntries] = useState([]);
   const [founderConstraints, setFounderConstraints] = useState([]);
-  const [bracketAdvanceAnim, setBracketAdvanceAnim] = useState(null);
   const [scheduleBusy, setScheduleBusy] = useState(false);
+  const [workspaceSection, setWorkspaceSection] = useState(
+    INTERNAL_WORKSPACE_SECTIONS.SETUP
+  );
+  const [winnerDrafts, setWinnerDrafts] = useState({});
+  const [pendingMatchId, setPendingMatchId] = useState(null);
+  const workspaceTouchedRef = useRef(false);
   const [staleHydrationNotice, setStaleHydrationNotice] = useState(null);
   const [reopenBusy, setReopenBusy] = useState(false);
   const hydrationMetaRef = useRef({
@@ -226,6 +235,7 @@ export default function InternalTournamentSetup() {
   const {
     tournament,
     loading: tournamentLoading,
+    refreshing: tournamentRefreshing,
     error: tournamentLoadError,
     update,
   } = useCanonicalTournament(
@@ -536,6 +546,19 @@ export default function InternalTournamentSetup() {
     [tournament]
   );
 
+  useEffect(() => {
+    if (workspaceTouchedRef.current || !lifecycle?.CURRENT_STEP) return;
+    setWorkspaceSection(mapLifecycleStepToWorkspaceSection(lifecycle.CURRENT_STEP));
+  }, [lifecycle?.CURRENT_STEP]);
+
+  const selectWorkspaceSection = (stepIdOrSection) => {
+    workspaceTouchedRef.current = true;
+    const section = Object.values(INTERNAL_WORKSPACE_SECTIONS).includes(stepIdOrSection)
+      ? stepIdOrSection
+      : mapLifecycleStepToWorkspaceSection(stepIdOrSection);
+    setWorkspaceSection(section);
+  };
+
   const groupStandings = useMemo(
     () => (savedEvent ? buildIndividualAllGroupStandings(savedEvent) : []),
     [savedEvent]
@@ -592,8 +615,6 @@ export default function InternalTournamentSetup() {
       );
     }
 
-    setLocalRevision((value) => value + 1);
-    refreshClubs();
     return {
       ok: true,
       tournament: result.tournament,
@@ -949,44 +970,68 @@ export default function InternalTournamentSetup() {
     );
   };
 
-  const handleSelectBracketWinner = async (bracketMatchId, winnerSide) => {
-    const result = setBracketWinner(savedEvent, bracketMatchId, winnerSide || null);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+  const handleDraftBracketWinner = (bracketMatchId, winnerSide) => {
+    setWinnerDrafts((current) => ({
+      ...current,
+      [bracketMatchId]: winnerSide,
+    }));
+  };
+
+  const handleConfirmBracketWinner = async (bracketMatchId, winnerSide) => {
+    setPendingMatchId(bracketMatchId);
+    try {
+      const result = setBracketWinner(savedEvent, bracketMatchId, winnerSide || null);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      if (await persistEvent(result.event)) {
+        setWinnerDrafts((current) => {
+          const next = { ...current };
+          delete next[bracketMatchId];
+          return next;
+        });
+        setMessage(winnerSide ? "Đã lưu đội thắng." : "Đã xóa đội thắng.");
+      }
+    } finally {
+      setPendingMatchId(null);
     }
+  };
 
-    if (winnerSide) {
-      const progress = resolveBracketProgress(result.event);
-      const match = progress.rounds
-        .flatMap((round) => round.matches)
-        .find((item) => item.id === bracketMatchId);
-      const winnerName =
-        winnerSide === "home"
-          ? match?.home?.name || match?.homeSeed
-          : match?.away?.name || match?.awaySeed;
-
-      setBracketAdvanceAnim({
-        winnerName,
-        bracket: progress,
+  const handleAssignMatchReferee = async (matchId, rosterId) => {
+    setPendingMatchId(matchId);
+    try {
+      const assigned = assignInternalMatchReferee({
+        tournament,
+        event: savedEvent,
+        matchId,
+        rosterId,
       });
-    } else {
-      setBracketAdvanceAnim(null);
-    }
-
-    if (await persistEvent(result.event)) {
-      setMessage(winnerSide ? "Da cap nhat winner." : "Da xoa winner.");
+      if (!assigned.ok) {
+        setError(assigned.error);
+        return;
+      }
+      if (await persistEvent(assigned.event)) {
+        setMessage(
+          assigned.referee ? `Đã phân công ${assigned.referee.name}.` : "Đã bỏ phân công trọng tài."
+        );
+      }
+    } finally {
+      setPendingMatchId(null);
     }
   };
 
   const handleSubmitGroupScore = async (matchId, scores) => {
+    setPendingMatchId(matchId);
     const result = submitTournamentDirectorMatchScore(savedEvent, matchId, scores);
     if (!result.ok) {
+      setPendingMatchId(null);
       setError(result.error);
       return false;
     }
 
     if (await persistEvent(result.event, { processMatchId: matchId })) {
+      setPendingMatchId(null);
       if (result.bracketAutoGenerated) {
         setMessage(
           `Đã lưu kết quả vòng bảng. Tự động tạo bracket knock-out (${result.bracketKnockoutMatchCount} trận).`
@@ -997,21 +1042,38 @@ export default function InternalTournamentSetup() {
       return true;
     }
 
+    setPendingMatchId(null);
     return false;
   };
 
   const handleSubmitKnockoutScore = async (matchId, scores) => {
-    const result = submitKnockoutMatchScore(savedEvent, matchId, scores);
+    setPendingMatchId(matchId);
+    let workingEvent = savedEvent;
+    const linked = (savedEvent?.matches || []).find((item) => String(item.id) === String(matchId));
+    const draftSide = linked?.bracketMatchId ? winnerDrafts[linked.bracketMatchId] : null;
+    if (draftSide) {
+      const winnerResult = setBracketWinner(workingEvent, linked.bracketMatchId, draftSide);
+      if (!winnerResult.ok) {
+        setPendingMatchId(null);
+        setError(winnerResult.error);
+        return false;
+      }
+      workingEvent = winnerResult.event;
+    }
+    const result = submitKnockoutMatchScore(workingEvent, matchId, scores);
     if (!result.ok) {
+      setPendingMatchId(null);
       setError(result.error);
       return false;
     }
 
     if (await persistEvent(result.event, { processMatchId: matchId })) {
-      setMessage("Da luu ket qua knock-out.");
+      setPendingMatchId(null);
+      setMessage("Đã lưu kết quả knock-out.");
       return true;
     }
 
+    setPendingMatchId(null);
     return false;
   };
 
@@ -1377,21 +1439,21 @@ export default function InternalTournamentSetup() {
     const mutationReady = assertInternalTournamentReadyForMutation(tournament);
     if (!mutationReady.ok) {
       setError(formatCanonicalVersionConflictError(mutationReady));
-      return;
+      return { ok: false };
     }
 
     if (scheduleMutationGuardRef.current || scheduleBusy) {
-      return;
+      return { ok: false };
     }
 
     if ((savedEvent?.matches || []).some((match) => !match?.bracketMatchId)) {
       setMessage("Lịch vòng bảng đã tồn tại.");
-      return;
+      return { ok: true, tournament, alreadyExists: true };
     }
 
     if (!(savedEvent?.groups || []).length) {
       setError("Chưa có bảng đấu để tạo lịch.");
-      return;
+      return { ok: false };
     }
 
     scheduleMutationGuardRef.current = true;
@@ -1416,7 +1478,7 @@ export default function InternalTournamentSetup() {
 
       if (!schedule.ok) {
         setError(schedule.errors?.join(" ") || "Không tạo được lịch.");
-        return;
+        return { ok: false };
       }
 
       const result = await writeCanonical(
@@ -1431,37 +1493,12 @@ export default function InternalTournamentSetup() {
       );
 
       if (!result.ok) {
-        return;
+        return { ok: false };
       }
 
       setWarnings(schedule.warnings || []);
-      setLocalRevision((value) => value + 1);
-      refreshClubs();
       setMessage(`Đã lưu ${schedule.matchCount} trận vòng bảng lên máy chủ.`);
-
-      const steps = buildGroupMatchPairingSteps({
-        groups: schedule.event.groups,
-        matches: schedule.event.matches,
-        entries: schedule.event.entries,
-        courts,
-      });
-
-      if (steps.length) {
-        anim.showAnimation(
-          {
-            animationMode: ANIMATION_MODES.GROUP_MATCH_PAIRING,
-            tournamentName: tournament.name,
-            groups: schedule.event.groups,
-            entries: schedule.event.entries,
-            steps,
-            courts,
-            autoStart: true,
-            controlMode: PAIRING_CONTROL_MODES.AUTO,
-            autoNextGroup: true,
-          },
-          null
-        );
-      }
+      return { ok: true, tournament: result.tournament };
     } finally {
       scheduleMutationGuardRef.current = false;
       setScheduleBusy(false);
@@ -1478,7 +1515,7 @@ export default function InternalTournamentSetup() {
     );
   }
 
-  if (tournamentLoading) {
+  if (tournamentLoading && !tournament) {
     return (
       <Box>
         <Alert severity="info">Đang tải giải nội bộ...</Alert>
@@ -1518,6 +1555,7 @@ export default function InternalTournamentSetup() {
 
   return (
     <TournamentManageGate tournamentId={tournamentId}>
+    <Box key={resolveInternalWorkspaceKey(tournament)}>
     <TournamentSetupShell
       tournament={tournament}
       description="Giải nội bộ — đơn/đôi, chia bảng snake seeding, tạo lịch vòng bảng"
@@ -1534,7 +1572,26 @@ export default function InternalTournamentSetup() {
       }
       alerts={
         <>
-          <InternalTournamentLifecycleStepper lifecycle={lifecycle} />
+          <InternalTournamentLifecycleStepper
+            lifecycle={lifecycle}
+            selectedStepId={lifecycle?.CURRENT_STEP}
+            onSelectStep={selectWorkspaceSection}
+          />
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+            {Object.values(INTERNAL_WORKSPACE_SECTIONS).map((section) => (
+              <Button
+                key={section}
+                size="small"
+                variant={workspaceSection === section ? "contained" : "outlined"}
+                onClick={() => selectWorkspaceSection(section)}
+              >
+                {INTERNAL_WORKSPACE_SECTION_LABELS[section]}
+              </Button>
+            ))}
+            {tournamentRefreshing ? (
+              <Chip size="small" label="Đang đồng bộ..." variant="outlined" />
+            ) : null}
+          </Stack>
           {staleHydrationNotice ? (
             <Alert
               severity="warning"
@@ -1664,6 +1721,9 @@ export default function InternalTournamentSetup() {
           }}
         />
       ) : (
+      <>
+      {(workspaceSection === INTERNAL_WORKSPACE_SECTIONS.SETUP ||
+        workspaceSection === INTERNAL_WORKSPACE_SECTIONS.DRAW) && (
       <>
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid size={{ xs: 12 }}>
@@ -1970,13 +2030,12 @@ export default function InternalTournamentSetup() {
                   compact
                 />
                 <Button
-                  component={RouterLink}
-                  to={`/tournament/publish-schedule?tournamentId=${encodeURIComponent(tournamentId)}`}
                   variant="outlined"
                   size="small"
                   fullWidth
+                  onClick={() => selectWorkspaceSection(INTERNAL_WORKSPACE_SECTIONS.SCHEDULE)}
                 >
-                  Lịch thi đấu & công bố (S1-E)
+                  Mở lịch thi đấu
                 </Button>
               </Stack>
             )}
@@ -1994,14 +2053,70 @@ export default function InternalTournamentSetup() {
           />
         </Grid>
       </Grid>
+      </>
+      )}
 
-      {savedEvent?.groups?.length > 0 && (
+      {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.SCHEDULE ? (
+        <Box sx={{ mt: 2 }}>
+          <InternalScheduleStage
+            tournament={tournament}
+            event={savedEvent}
+            courts={courts}
+            entryLabels={Object.fromEntries(
+              (savedEvent?.entries || []).map((entry) => [entry.id, entry.name || entry.id])
+            )}
+            busy={scheduleBusy}
+            actor={
+              user
+                ? { id: user.id, email: user.email || "", name: user.displayName || user.name || "" }
+                : null
+            }
+            clubId={tournamentClubId}
+            onCreateMatches={handleGenerateSchedule}
+            onSaveCourtSchedule={async (nextSchedule) =>
+              writeCanonical(
+                { courtSchedule: nextSchedule },
+                { currentTournament: tournament, expectedVersion: tournament?.version }
+              )
+            }
+            onPersistSettings={async (nextTournament, nextMatches) => {
+              const result = await writeCanonical(
+                {
+                  settings: nextTournament.settings,
+                  events: nextTournament.events?.[0]
+                    ? [
+                        {
+                          ...nextTournament.events[0],
+                          matches: nextMatches || nextTournament.events[0].matches,
+                        },
+                      ]
+                    : nextTournament.events,
+                },
+                { currentTournament: tournament, expectedVersion: tournament?.version }
+              );
+              return result.ok;
+            }}
+          />
+        </Box>
+      ) : null}
+
+      {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.RESULTS &&
+        savedEvent?.groups?.length > 0 && (
         <Stack spacing={2} sx={{ mt: 2 }}>
           <GroupStagePanel
             event={savedEvent}
             players={players}
             onSubmitScore={handleSubmitGroupScore}
             draftScope={scoreDraftScope}
+            pendingMatchId={pendingMatchId}
+            renderMatchExtras={(match) => (
+              <InternalMatchRefereeSelect
+                match={match}
+                roster={listEligibleInternalReferees(tournament)}
+                pending={String(pendingMatchId || "") === String(match.id)}
+                onAssign={handleAssignMatchReferee}
+              />
+            )}
           />
 
           <Paper variant="outlined" sx={{ p: 1.5 }}>
@@ -2044,7 +2159,11 @@ export default function InternalTournamentSetup() {
               </Grid>
             )}
           </Paper>
+        </Stack>
+      )}
 
+      {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.BRACKET && (
+        <Stack spacing={2} sx={{ mt: 2 }}>
           <Paper variant="outlined" sx={{ p: 1.5 }}>
             <Stack
               direction={{ xs: "column", sm: "row" }}
@@ -2094,12 +2213,23 @@ export default function InternalTournamentSetup() {
               progress={bracketProgress}
               unlockedRounds={savedEvent?.bracket?.unlockedRounds || {}}
               knockoutMatchesByBracketId={knockoutMatchesByBracketId}
-              onSelectWinner={handleSelectBracketWinner}
+              onSelectWinner={handleDraftBracketWinner}
+              onConfirmWinner={handleConfirmBracketWinner}
+              winnerDrafts={winnerDrafts}
               onToggleRoundLock={handleToggleRoundLock}
               onSubmitScore={handleSubmitKnockoutScore}
               onReset={handleResetBracket}
               canReset={Boolean(savedEvent?.bracket?.rounds?.length)}
               draftScope={scoreDraftScope}
+              pendingMatchId={pendingMatchId}
+              renderMatchExtras={(match) => (
+                <InternalMatchRefereeSelect
+                  match={match}
+                  roster={listEligibleInternalReferees(tournament)}
+                  pending={String(pendingMatchId || "") === String(match.id)}
+                  onAssign={handleAssignMatchReferee}
+                />
+              )}
             />
             ) : null}
           </Paper>
@@ -2123,44 +2253,10 @@ export default function InternalTournamentSetup() {
         />
       ) : null}
 
-      {bracketAdvanceAnim && (
-        <Box
-          sx={{
-            position: "fixed",
-            bottom: 16,
-            left: 16,
-            right: 16,
-            zIndex: 1300,
-            maxWidth: 360,
-            mx: "auto",
-          }}
-        >
-          <BracketRevealAnimation
-            animationMode={ANIMATION_MODES.BRACKET_ADVANCE}
-            advanceHint={bracketAdvanceAnim}
-            bracket={bracketAdvanceAnim.bracket}
-            onAnimationComplete={() => setBracketAdvanceAnim(null)}
-            onSkip={() => setBracketAdvanceAnim(null)}
-          />
-        </Box>
-      )}
-
-      {tournament && (
-        <Box sx={{ mt: 3 }}>
-          <TournamentCourtSchedulePanel
-            clubId={tournamentClubId}
-            tournament={tournament}
-            courts={courts}
-            onSaved={() => {
-              refreshClubs();
-              setLocalRevision((value) => value + 1);
-            }}
-          />
-        </Box>
-      )}
       </>
       )}
     </TournamentSetupShell>
+    </Box>
     </TournamentManageGate>
   );
 }

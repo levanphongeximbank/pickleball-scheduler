@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getTournamentQuery,
   listTournamentsQuery,
@@ -16,6 +16,7 @@ import {
   assertInternalTournamentReadyForMutation,
   resolveCanonicalExpectedVersion,
 } from "../internal/canonicalTournamentCas.js";
+import { resolveCanonicalLoadPresentation } from "../internal/internalWorkspaceSections.js";
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 
 function readClubId(clubOrScope) {
@@ -42,25 +43,42 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
   const tenantId = readTenantId(clubOrScope);
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(Boolean(clubId && tournamentId));
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const hasLoadedRef = useRef(false);
+
+  useEffect(() => {
+    hasLoadedRef.current = false;
+  }, [clubId, tournamentId]);
 
   const reload = useCallback(async () => {
     if (!clubId || !tournamentId) {
       setTournament(null);
       setLoading(false);
+      setRefreshing(false);
+      hasLoadedRef.current = false;
       return null;
     }
-    setLoading(true);
+    const presentation = resolveCanonicalLoadPresentation({
+      hasTournament: hasLoadedRef.current,
+    });
+    if (presentation.initialLoading) setLoading(true);
+    else setRefreshing(true);
     setError(null);
     const result = await getTournamentQuery(clubId, tournamentId, { tenantId });
     if (!result.ok) {
-      setTournament(null);
+      if (presentation.initialLoading) {
+        setTournament(null);
+      }
       setError(result.error || "Không tải được giải.");
       setLoading(false);
+      setRefreshing(false);
       return null;
     }
     setTournament(result.tournament);
+    hasLoadedRef.current = true;
     setLoading(false);
+    setRefreshing(false);
     return result.tournament;
   }, [clubId, tournamentId, tenantId]);
 
@@ -71,20 +89,30 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
         if (!cancelled) {
           setTournament(null);
           setLoading(false);
+          setRefreshing(false);
+          hasLoadedRef.current = false;
         }
         return;
       }
-      setLoading(true);
+      const presentation = resolveCanonicalLoadPresentation({
+        hasTournament: hasLoadedRef.current,
+      });
+      if (presentation.initialLoading) setLoading(true);
+      else setRefreshing(true);
       const result = await getTournamentQuery(clubId, tournamentId, { tenantId });
       if (cancelled) return;
       if (!result.ok) {
-        setTournament(null);
+        if (presentation.initialLoading) {
+          setTournament(null);
+        }
         setError(result.error || "Không tải được giải.");
       } else {
         setTournament(result.tournament);
+        hasLoadedRef.current = true;
         setError(null);
       }
       setLoading(false);
+      setRefreshing(false);
     })();
     return () => {
       cancelled = true;
@@ -176,6 +204,7 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
   return {
     tournament,
     loading,
+    refreshing,
     error,
     reload,
     update,

@@ -66,3 +66,19 @@ export {
   INTERNAL_LIFECYCLE_LABELS,
   resolveInternalTournamentLifecycle,
 } from "./internalTournamentLifecycleResolver.js";
+
+export {
+  INTERNAL_WORKSPACE_SECTIONS,
+  INTERNAL_WORKSPACE_SECTION_LABELS,
+  mapLifecycleStepToWorkspaceSection,
+  resolveInternalWorkspaceKey,
+  resolveCanonicalLoadPresentation,
+} from "./internalWorkspaceSections.js";
+
+export {
+  INTERNAL_NO_REFEREE_ROSTER_MESSAGE,
+  listEligibleInternalReferees,
+  assignInternalMatchReferee,
+} from "./internalMatchRefereeAssignment.js";
+
+export { resolveInternalSchedulePrerequisite } from "./internalSchedulePrerequisite.js";

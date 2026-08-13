@@ -98,7 +98,7 @@ export default function TournamentRefereeAssignPage() {
 
       {!tournamentId ? (
         <Alert severity="info">
-          Chọn giải cá nhân (không dùng dữ liệu demo đồng đội).
+          Chọn giải cá nhân để cấu hình.
         </Alert>
       ) : (
         <>

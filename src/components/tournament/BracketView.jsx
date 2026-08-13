@@ -113,9 +113,13 @@ function BracketRoundColumn({
   roundLocked,
   knockoutMatchesByBracketId,
   onSelectWinner,
+  onConfirmWinner,
+  winnerDrafts = {},
   onToggleRoundLock,
   onSubmitScore,
   draft,
+  renderMatchExtras,
+  pendingMatchId = null,
 }) {
   return (
     <Paper
@@ -161,6 +165,10 @@ function BracketRoundColumn({
           {round.matches.map((match) => {
             const linkedMatch = knockoutMatchesByBracketId[match.id] || null;
             const winnerDisabled = !match.canPickWinner || roundLocked;
+            const draftSide =
+              winnerDrafts[match.id] != null ? winnerDrafts[match.id] : match.winnerSide || "";
+            const pending =
+              String(pendingMatchId || "") === String(linkedMatch?.id || match.id);
 
             return (
               <Stack
@@ -175,32 +183,53 @@ function BracketRoundColumn({
                 }}
               >
                 <Typography variant="body2" color="text.secondary" sx={{ wordBreak: "break-word" }}>
-                  {match.id}: {formatBracketTeamName(match.home, match.homeSeed)} vs{" "}
+                  Trận {match.id}: {formatBracketTeamName(match.home, match.homeSeed)} vs{" "}
                   {formatBracketTeamName(match.away, match.awaySeed)}
                 </Typography>
+                {linkedMatch?.referee?.name ? (
+                  <Typography variant="caption" color="text.secondary">
+                    Trọng tài: {linkedMatch.referee.name}
+                  </Typography>
+                ) : null}
 
                 <Stack spacing={1}>
                   {onSelectWinner && (
-                    <FormControl fullWidth size="small">
-                      <InputLabel>Winner</InputLabel>
-                      <Select
-                        label="Winner"
-                        value={match.winnerSide || ""}
-                        disabled={winnerDisabled}
-                        onChange={(event) => onSelectWinner(match.id, event.target.value)}
-                      >
-                        <MenuItem value="">
-                          <em>Chưa chọn</em>
-                        </MenuItem>
-                        <MenuItem value="home">
-                          {formatBracketTeamName(match.home, match.homeSeed)}
-                        </MenuItem>
-                        <MenuItem value="away">
-                          {formatBracketTeamName(match.away, match.awaySeed)}
-                        </MenuItem>
-                      </Select>
-                    </FormControl>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Winner</InputLabel>
+                        <Select
+                          label="Winner"
+                          value={draftSide}
+                          disabled={winnerDisabled || pending}
+                          onChange={(event) => onSelectWinner(match.id, event.target.value)}
+                        >
+                          <MenuItem value="">
+                            <em>Chưa chọn</em>
+                          </MenuItem>
+                          <MenuItem value="home">
+                            {formatBracketTeamName(match.home, match.homeSeed)}
+                          </MenuItem>
+                          <MenuItem value="away">
+                            {formatBracketTeamName(match.away, match.awaySeed)}
+                          </MenuItem>
+                        </Select>
+                      </FormControl>
+                      {onConfirmWinner ? (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          disabled={winnerDisabled || pending || draftSide === (match.winnerSide || "")}
+                          onClick={() => onConfirmWinner(match.id, draftSide)}
+                        >
+                          {pending ? "Đang lưu..." : "Lưu"}
+                        </Button>
+                      ) : null}
+                    </Stack>
                   )}
+
+                  {typeof renderMatchExtras === "function" && linkedMatch
+                    ? renderMatchExtras(linkedMatch)
+                    : null}
 
                   {onSubmitScore && linkedMatch && (
                     <KnockoutScoreForm
@@ -224,11 +253,15 @@ export default function BracketView({
   unlockedRounds = {},
   knockoutMatchesByBracketId = {},
   onSelectWinner,
+  onConfirmWinner,
+  winnerDrafts = {},
   onToggleRoundLock,
   onSubmitScore,
   onReset,
   canReset = false,
   draftScope,
+  renderMatchExtras,
+  pendingMatchId = null,
 }) {
   const draft = useScoreDrafts(draftScope);
 
@@ -301,9 +334,13 @@ export default function BracketView({
               roundLocked={isKnockoutRoundLocked(round, unlockedRounds)}
               knockoutMatchesByBracketId={knockoutMatchesByBracketId}
               onSelectWinner={onSelectWinner}
+              onConfirmWinner={onConfirmWinner}
+              winnerDrafts={winnerDrafts}
               onToggleRoundLock={onToggleRoundLock}
               onSubmitScore={onSubmitScore}
               draft={draft}
+              renderMatchExtras={renderMatchExtras}
+              pendingMatchId={pendingMatchId}
             />
           ))}
         </Stack>

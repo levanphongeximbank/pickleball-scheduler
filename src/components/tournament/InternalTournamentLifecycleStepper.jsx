@@ -4,7 +4,11 @@ import { Alert, Box, Chip, Stack, Typography } from "@mui/material";
  * Module-local Internal lifecycle stepper (IT-E2E-007).
  * Projection-only — authority is resolveInternalTournamentLifecycle(tournament).
  */
-export default function InternalTournamentLifecycleStepper({ lifecycle }) {
+export default function InternalTournamentLifecycleStepper({
+  lifecycle,
+  onSelectStep,
+  selectedStepId = null,
+}) {
   if (!lifecycle) return null;
 
   return (
@@ -22,14 +26,18 @@ export default function InternalTournamentLifecycleStepper({ lifecycle }) {
             key={step.id}
             size="small"
             label={step.label}
+            clickable={typeof onSelectStep === "function"}
+            onClick={
+              typeof onSelectStep === "function" ? () => onSelectStep(step.id) : undefined
+            }
             color={
-              step.status === "current"
+              step.status === "current" || step.id === selectedStepId
                 ? "primary"
                 : step.status === "done"
                   ? "success"
                   : "default"
             }
-            variant={step.status === "pending" ? "outlined" : "filled"}
+            variant={step.status === "pending" && step.id !== selectedStepId ? "outlined" : "filled"}
           />
         ))}
       </Stack>

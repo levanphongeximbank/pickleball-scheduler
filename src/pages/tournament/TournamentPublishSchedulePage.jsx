@@ -136,7 +136,7 @@ export default function TournamentPublishSchedulePage() {
     if (!tournament.courtSchedule?.date) {
       setMessage({
         type: "error",
-        text: "Cần chọn ngày khóa sân (courtSchedule.date) trước khi tạo lịch.",
+        text: "Chọn ngày thi đấu trước khi tạo lịch.",
       });
       return;
     }
@@ -245,8 +245,8 @@ export default function TournamentPublishSchedulePage() {
 
   return (
     <TournamentConfigPageShell
-      title="Công bố lịch (cá nhân)"
-      description="Tạo lịch, khóa, công bố snapshot bất biến. Không dùng dữ liệu demo đồng đội."
+      title="Lịch thi đấu"
+      description="Chọn ngày thi đấu, tạo lịch, khóa rồi công bố."
     >
       <IndividualTournamentSelector
         tournaments={tournaments}
