@@ -33,6 +33,9 @@ import {
   buildCourtRuntimeView,
   DAILY_PLAY_REFRESH_REASON,
   isSilentRefreshReason,
+  DAILY_PLAY_GENERIC_ACTION_ERROR,
+  normalizeDailyPlayMutationResult,
+  shouldClearSessionErrorAfterSnapshot,
 } from "../src/features/daily-play/canonical/index.js";
 import { shouldShowDirectorBlockingLoad } from "../src/features/tournament/director/directorLoadingGate.js";
 
@@ -408,6 +411,67 @@ describe("PROD-DP-04 court projection — no false zero", () => {
     assert.equal(plan.ok, true);
     assert.equal(plan.waitingForCourt, true);
     assert.equal(PRODUCTION_LIKE_COURTS.length, 4);
+  });
+});
+
+describe("TEST 4 generic/stale Daily mutation error", () => {
+  test("successful create does not keep the generic fallback", () => {
+    const success = normalizeDailyPlayMutationResult({
+      ok: true,
+      revision: 4,
+      matches: [
+        { id: "m1", status: "waiting", courtId: null },
+        { id: "m2", status: "waiting", courtId: null },
+      ],
+    });
+    assert.equal(success.ok, true);
+    assert.notEqual(success.error, DAILY_PLAY_GENERIC_ACTION_ERROR);
+    assert.equal(
+      shouldClearSessionErrorAfterSnapshot({
+        snapshotOk: true,
+        replaced: false,
+        reason: DAILY_PLAY_REFRESH_REASON.MUTATION,
+      }),
+      true
+    );
+  });
+
+  test("waiting matches with available courts are not a NO_COURT failure", () => {
+    const snapshot = normalizeDailyPlayServerSnapshot({
+      ok: true,
+      tournamentId: "3bea23cf-f3b8-4a1f-8154-34b258e8b799",
+      state: {
+        revision: 4,
+        checkedInPlayerIds: ["a", "b", "c", "d", "e", "f", "g", "h"],
+        matches: [
+          {
+            id: "m1",
+            status: "waiting",
+            courtId: null,
+            teamAPlayerIds: ["a", "b"],
+            teamBPlayerIds: ["c", "d"],
+          },
+          {
+            id: "m2",
+            status: "waiting",
+            courtId: null,
+            teamAPlayerIds: ["e", "f"],
+            teamBPlayerIds: ["g", "h"],
+          },
+        ],
+      },
+      courts: PRODUCTION_LIKE_COURTS,
+      activeLeases: [],
+    });
+    assert.equal(snapshot.hasCourtCapability, true);
+    assert.equal(snapshot.availableCourts.length, 4);
+    const plan = resolveCreateMatchCount({
+      enabledCourts: snapshot.courts,
+      availableCourts: snapshot.availableCourts,
+      eligiblePlayerCount: 8,
+    });
+    assert.equal(plan.waitingForCourt, false);
+    assert.notEqual(plan.code, "NO_COURT_CAPABILITY");
   });
 });
 

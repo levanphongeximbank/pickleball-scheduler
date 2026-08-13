@@ -125,6 +125,7 @@
   "tests/venue-court/courts-api-handler.test.js",
   "tests/tournament-daily-play.test.js",
   "tests/daily-play-production-postmerge-regression-closure-01.test.js",
+  "tests/daily-play-canonical-mutation-error-lifecycle.test.js",
   "tests/tournament-internal.test.js",
   "tests/tournament-bracket.test.js",
   "tests/tournament-open-random.test.js",

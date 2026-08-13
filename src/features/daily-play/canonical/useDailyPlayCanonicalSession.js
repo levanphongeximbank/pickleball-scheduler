@@ -8,6 +8,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DAILY_PLAY_CODE, DAILY_PLAY_MESSAGES } from "./dailyPlayCodes.js";
 import { getDailyPlayCanonicalService } from "./dailyPlayCanonicalService.js";
 import { emptyDailyPlayState } from "./dailyPlayCanonicalDomain.js";
+import {
+  DAILY_PLAY_GENERIC_ACTION_ERROR,
+  normalizeDailyPlayMutationResult,
+  shouldClearSessionErrorAfterSnapshot,
+} from "./dailyPlayMutationError.js";
 import { normalizeDailyPlayServerSnapshot } from "./normalizeDailyPlayServerSnapshot.js";
 import {
   createDailyPlayRefreshFence,
@@ -58,17 +63,25 @@ export function useDailyPlayCanonicalSession({
     fenceRef.current = createDailyPlayRefreshFence();
   }
 
-  const applySnapshot = useCallback((snapshot) => {
+  const applySnapshot = useCallback((snapshot, options = {}) => {
     if (!mountedRef.current || !snapshot?.ok) return false;
     const normalized = normalizeDailyPlayServerSnapshot(snapshot);
     if (!normalized.ok) return false;
     const decision = shouldReplaceCanonicalSnapshot(signatureRef.current, normalized);
     hasSnapshotRef.current = true;
     revisionRef.current = Number(normalized.revision || 0);
+    if (
+      shouldClearSessionErrorAfterSnapshot({
+        snapshotOk: true,
+        replaced: decision.replace,
+        reason: options.reason || null,
+      })
+    ) {
+      setError(null);
+    }
     if (!decision.replace) return false;
     signatureRef.current = decision.signature;
     setState(normalized);
-    setError(null);
     return true;
   }, []);
 
@@ -116,7 +129,7 @@ export function useDailyPlayCanonicalSession({
           return snapshot;
         }
         if (snapshot?.ok) {
-          applySnapshot(snapshot);
+          applySnapshot(snapshot, { reason });
         } else if (!silent && !hasSnapshotRef.current) {
           setError(
             snapshot?.error ||
@@ -210,7 +223,9 @@ export function useDailyPlayCanonicalSession({
       const gate = beginMutationGate();
       if (gate) return gate;
       try {
-        const result = mapConflict(await executor());
+        const result = normalizeDailyPlayMutationResult(
+          mapConflict(await executor())
+        );
         if (!mountedRef.current) return result;
 
         if (result?.ok) {
@@ -224,17 +239,18 @@ export function useDailyPlayCanonicalSession({
           });
           if (!mountedRef.current) return result;
           if (!readback?.ok) {
-            const failure = {
+            const failure = normalizeDailyPlayMutationResult({
               ok: false,
               code: DAILY_PLAY_CODE.READBACK_FAILED,
               error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.READBACK_FAILED],
               mutationCommitted: true,
               mutation: result,
               readback,
-            };
+            });
             setError(failure.error);
             return failure;
           }
+          setError(null);
           return {
             ...result,
             revision: readback.revision,
@@ -252,11 +268,7 @@ export function useDailyPlayCanonicalSession({
             result.error || DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.VERSION_CONFLICT]
           );
         } else {
-          setError(
-            result?.error ||
-              DAILY_PLAY_MESSAGES[result?.code] ||
-              "Thao tác Daily Play thất bại."
-          );
+          setError(result.error || DAILY_PLAY_GENERIC_ACTION_ERROR);
         }
         return result;
       } finally {
@@ -302,12 +314,13 @@ export function useDailyPlayCanonicalSession({
               background: true,
               reason: DAILY_PLAY_REFRESH_REASON.MUTATION,
             });
+            const normalized = normalizeDailyPlayMutationResult(result);
             const failure = {
+              ...normalized,
               ok: false,
-              code: result?.code || DAILY_PLAY_CODE.VALIDATION,
+              code: normalized.code || DAILY_PLAY_CODE.VALIDATION,
               error:
-                result?.error ||
-                DAILY_PLAY_MESSAGES[result?.code] ||
+                normalized.error ||
                 (mode === "checkOut"
                   ? "Không bỏ chọn được toàn bộ VĐV."
                   : "Không chọn được toàn bộ VĐV."),

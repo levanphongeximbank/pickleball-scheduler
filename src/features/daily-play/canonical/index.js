@@ -6,6 +6,13 @@ export {
 } from "./dailyPlayCodes.js";
 
 export {
+  DAILY_PLAY_GENERIC_ACTION_ERROR,
+  normalizeDailyPlayMutationResult,
+  resolveSessionErrorAfterSnapshot,
+  shouldClearSessionErrorAfterSnapshot,
+} from "./dailyPlayMutationError.js";
+
+export {
   emptyDailyPlayState,
   normalizeDailyPlayCanonicalState,
   normalizeCanonicalCourt,

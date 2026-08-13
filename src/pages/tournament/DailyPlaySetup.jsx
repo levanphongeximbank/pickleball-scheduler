@@ -486,6 +486,9 @@ export default function DailyPlaySetup() {
         return;
       }
 
+      setActionError(null);
+      session.setError?.(null);
+
       const animationPayload = buildDailyFairMatchAnimationPayload({
         result: {
           ...proposal,
@@ -537,10 +540,16 @@ export default function DailyPlaySetup() {
     setActionError(null);
     const result = await session.assignCourt(match.id);
     if (result?.ok) {
+      setActionError(null);
+      session.setError?.(null);
       setMessage("Đã xếp trận vào sân (assigned). Bấm Bắt đầu trận để chơi.");
       return;
     }
-    if (result?.error) setActionError(result.error);
+    setActionError(
+      result?.error ||
+        DAILY_PLAY_MESSAGES[result?.code] ||
+        "Không xếp được sân cho trận này."
+    );
   };
 
   const handleStartMatch = async (match) => {
