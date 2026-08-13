@@ -2101,3 +2101,33 @@ describe("Daily Play canonical score correction (DP-14)", () => {
   });
 });
 
+describe("Daily Play tab resume no-flash (DP-13B)", () => {
+  test("DailyPlaySetup keeps shell mounted during same-scope background reload", () => {
+    const setup = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    assert.match(
+      setup,
+      /\(tournamentLoading && !tournament\) \|\| \(session\.loading && !session\.state\)/
+    );
+  });
+
+  test("VERIFY script does not blame pre-existing canonical_tournaments ACL", () => {
+    const verify = fs.readFileSync(
+      path.resolve("docs/v5/migrations/daily-play-score-correction-01/03_VERIFY.sql"),
+      "utf8"
+    );
+    const apply = fs.readFileSync(
+      path.resolve("docs/v5/migrations/daily-play-score-correction-01/02_APPLY.sql"),
+      "utf8"
+    );
+    assert.equal(verify.includes("canonical_tournaments', 'UPDATE'"), false);
+    assert.match(verify, /daily_play_court_leases/);
+    assert.match(verify, /daily_play_command_ledger/);
+    assert.match(verify, /pre-existing/);
+    assert.equal(apply.includes("GRANT UPDATE ON TABLE public.canonical_tournaments"), false);
+    assert.match(apply, /GRANT EXECUTE ON FUNCTION public.daily_play_correct_score/);
+  });
+});
+

@@ -49,6 +49,7 @@ import {
   toClubReadSnapshot,
 } from "../features/club/context/clubCanonicalReadModel.js";
 import { ensureMonthlySkillLevelProposals } from "../domain/skillLevelService.js";
+import { buildUserSecurityScopeKey } from "../auth/authSemanticScope.js";
 import { useAuth } from "./AuthContext.jsx";
 import { useTenant } from "./TenantContext.jsx";
 import { canAccessClub } from "../auth/rbac.js";
@@ -62,6 +63,7 @@ const ClubContext = createContext(null);
 export function ClubProvider({ children }) {
   const { user, rbacEnabled, isAuthenticated } = useAuth();
   const { currentTenantId } = useTenant();
+  const userSecurityScopeKey = buildUserSecurityScopeKey(user);
 
   // Phase 45A.1 — canonical Club READ cutover. When ON (flag + cloud backend),
   // canonicalClubRepository is the single Club-entity read gateway. When OFF
@@ -89,8 +91,9 @@ export function ClubProvider({ children }) {
   const [canonicalReloadNonce, setCanonicalReloadNonce] = useState(0);
 
   // Phase 44C.1 — hydrate the canonical allowed-club scope once per authenticated
-  // user/tenant context. Cleared first so a tenant/user switch cannot temporarily
-  // grant access from a previous context; protected guards deny until ready.
+  // security fingerprint (id/role/tenant/venue/club/status), not raw user object
+  // identity. TOKEN_REFRESHED must not clear clubs. Real user/tenant/role change
+  // still clears first so a previous context cannot leak; guards deny until ready.
   useEffect(() => {
     if (!isAuthenticated || !user?.id) {
       clearClubScope();
@@ -121,7 +124,9 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, user, currentTenantId, rbacEnabled]);
+    // user is read from the current render; the fingerprint is the security key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
+  }, [isAuthenticated, userSecurityScopeKey, currentTenantId, rbacEnabled]);
 
   // Phase 45A.1 — hydrate the Club-entity list from the canonical repository.
   // Snapshot is cleared on logout / user switch / tenant switch so a previous
@@ -169,7 +174,8 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [canonicalRead, isAuthenticated, user, currentTenantId, rbacEnabled, canonicalReloadNonce]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
+  }, [canonicalRead, isAuthenticated, userSecurityScopeKey, currentTenantId, rbacEnabled, canonicalReloadNonce]);
 
   const visibleClubs = useMemo(() => {
     if (canonicalRead) {
@@ -242,7 +248,8 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [canonicalRead, isAuthenticated, user, currentTenantId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
+  }, [canonicalRead, isAuthenticated, userSecurityScopeKey, currentTenantId]);
 
   useEffect(() => {
     // Legacy blob-registry auto-provisioning/selection. In canonical read mode
@@ -303,7 +310,8 @@ export function ClubProvider({ children }) {
       setActiveClubId(null);
       setRevision((value) => value + 1);
     }
-  }, [canonicalRead, activeClubId, currentTenantId, isAuthenticated, rbacEnabled, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
+  }, [canonicalRead, activeClubId, currentTenantId, isAuthenticated, rbacEnabled, userSecurityScopeKey]);
 
   useEffect(() => {
     // Legacy profiles.club_id-driven active switch. Not authoritative in
@@ -333,7 +341,8 @@ export function ClubProvider({ children }) {
       setActiveClubId(user.clubId);
       setRevision((value) => value + 1);
     }
-  }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, user, visibleClubs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
+  }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, userSecurityScopeKey, visibleClubs]);
 
   useEffect(() => {
     if (!activeClubId || !isAuthenticated || !isAiAutoCloudSyncEnabled()) {
@@ -511,7 +520,8 @@ export function ClubProvider({ children }) {
       setActiveClubId(targetId);
       setRevision((value) => value + 1);
     }
-  }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, user, visibleClubs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
+  }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, userSecurityScopeKey, visibleClubs]);
 
   const summary = useMemo(() => {
     const base = getClubSummary(activeClub?.id || activeClubId);

@@ -16,6 +16,7 @@ import { getRefereeSettings } from "../../../../tournament/engines/refereeEngine
 import { useMatchLiveScores } from "../../../../tournament/useMatchLiveScores.js";
 import { useDailyPlayCanonicalSession } from "../../../daily-play/canonical/useDailyPlayCanonicalSession.js";
 import { useClubPairingCandidatePool } from "../../../pairing-candidates/index.js";
+import { shouldShowDirectorBlockingLoad } from "../directorLoadingGate.js";
 import { buildDirectorBackPath } from "../services/directorService.js";
 import { buildCanonicalDailyDirectorSnapshot } from "../services/dailyDirectorProjection.js";
 
@@ -195,9 +196,14 @@ export function useDirectorState(tournamentId) {
   const onCourtMatches = snapshot.matches?.onCourt || snapshot.matches?.playing || [];
   const completedMatches = snapshot.matches?.completed || [];
 
-  const initialLoading =
-    tournamentLoading ||
-    (isDaily && dailySession.loading && !dailySession.state);
+  const initialLoading = shouldShowDirectorBlockingLoad({
+    tournament,
+    tournamentLoading,
+    accessPending: false,
+    isDaily,
+    dailyState: dailySession.state,
+    dailyLoading: dailySession.loading,
+  });
 
   return {
     activeClubId,

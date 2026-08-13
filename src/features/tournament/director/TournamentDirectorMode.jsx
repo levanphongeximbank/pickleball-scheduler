@@ -10,6 +10,7 @@ import DirectorHeader, { DirectorAccessDenied } from "./components/DirectorHeade
 import DirectorMatchBoard from "./components/DirectorMatchCard.jsx";
 import DirectorScorePanel from "./components/DirectorScorePanel.jsx";
 import { useDirectorActions } from "./hooks/useDirectorActions.js";
+import { shouldShowDirectorBlockingLoad } from "./directorLoadingGate.js";
 import { useDirectorState } from "./hooks/useDirectorState.js";
 import { useDirectorSync } from "./hooks/useDirectorSync.js";
 
@@ -30,6 +31,7 @@ export default function TournamentDirectorMode() {
     isDaily,
     dailySession,
     initialLoading,
+    tournamentLoading,
     tournamentLoadError,
     savedEvents,
     activeEvent,
@@ -93,7 +95,16 @@ export default function TournamentDirectorMode() {
     return <DirectorAccessDenied />;
   }
 
-  if (initialLoading || tournamentAccess.pending) {
+  if (
+    shouldShowDirectorBlockingLoad({
+      tournament,
+      tournamentLoading: tournamentLoading || initialLoading,
+      accessPending: Boolean(tournamentAccess.pending),
+      isDaily,
+      dailyState: dailySession?.state,
+      dailyLoading: Boolean(dailySession?.loading),
+    })
+  ) {
     return (
       <Box>
         <Alert severity="info">Đang tải Director Mode...</Alert>

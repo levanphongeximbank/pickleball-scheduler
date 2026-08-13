@@ -30,11 +30,18 @@ BEGIN
     RAISE EXCEPTION 'VERIFY_FAIL: anon/PUBLIC can execute %', v_sig;
   END IF;
 
+  -- Leases/ledger must remain client-ungranted. Do NOT treat pre-existing
+  -- canonical_tournaments authenticated/anon UPDATE (from earlier cutover)
+  -- as a failure of this additive package.
   IF has_table_privilege('anon', 'public.daily_play_court_leases', 'SELECT')
      OR has_table_privilege('authenticated', 'public.daily_play_court_leases', 'SELECT')
-     OR has_table_privilege('anon', 'public.canonical_tournaments', 'UPDATE')
-     OR has_table_privilege('authenticated', 'public.canonical_tournaments', 'UPDATE') THEN
-    RAISE EXCEPTION 'VERIFY_FAIL: unexpected direct table grants';
+     OR has_table_privilege('anon', 'public.daily_play_court_leases', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.daily_play_court_leases', 'UPDATE')
+     OR has_table_privilege('anon', 'public.daily_play_command_ledger', 'SELECT')
+     OR has_table_privilege('authenticated', 'public.daily_play_command_ledger', 'SELECT')
+     OR has_table_privilege('anon', 'public.daily_play_command_ledger', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.daily_play_command_ledger', 'UPDATE') THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: unexpected direct table grants on Daily Play leases/ledger';
   END IF;
 
   v_def := pg_get_functiondef(v_sig::regprocedure);

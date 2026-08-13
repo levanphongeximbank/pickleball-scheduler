@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { createMatchRecord, EVENT_TYPE, MATCH_STATUS } from "../src/models/tournament/index.js";
+import { shouldShowDirectorBlockingLoad } from "../src/features/tournament/director/directorLoadingGate.js";
 import {
   assignTournamentMatchToAvailableCourt,
   buildEventDirectorSnapshot,
@@ -311,4 +312,35 @@ test("non-Daily Director snapshot still treats assigned as onCourt", () => {
   });
   assert.equal(snapshot.matches.waiting.length, 1);
   assert.equal(snapshot.matches.onCourt.length, 2);
+});
+
+test("DP-13B — Director keeps board visible during same-scope background revalidation", () => {
+  assert.equal(
+    shouldShowDirectorBlockingLoad({
+      tournament: { id: "t1" },
+      tournamentLoading: true,
+      accessPending: true,
+      isDaily: true,
+      dailyState: { revision: 3 },
+      dailyLoading: true,
+    }),
+    false
+  );
+  assert.equal(
+    shouldShowDirectorBlockingLoad({
+      tournament: null,
+      tournamentLoading: true,
+      accessPending: true,
+      isDaily: true,
+      dailyState: null,
+      dailyLoading: true,
+    }),
+    true
+  );
+  const mode = fs.readFileSync(
+    path.resolve("src/features/tournament/director/TournamentDirectorMode.jsx"),
+    "utf8"
+  );
+  assert.match(mode, /shouldShowDirectorBlockingLoad/);
+  assert.equal(mode.includes("if (initialLoading || tournamentAccess.pending)"), false);
 });
