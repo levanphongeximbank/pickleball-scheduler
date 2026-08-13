@@ -303,6 +303,18 @@ export default function OfficialTournamentSetup() {
     savedEvent?.entries,
   ]);
 
+  const competition = useMemo(
+    () => getOfficialCompetitionSettings(tournament),
+    [tournament]
+  );
+  const registrationModeResolved = Boolean(
+    competition.registrationMode && !competition.registrationModeUnresolved
+  );
+  const isIndividualRegistration =
+    competition.registrationMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL;
+  const isPairRegistration =
+    competition.registrationMode === OFFICIAL_REGISTRATION_MODE.PAIR;
+
   const workflow = useMemo(
     () =>
       deriveOfficialOrganizerStages(tournament, {
@@ -1932,6 +1944,7 @@ export default function OfficialTournamentSetup() {
           <OfficialTournamentFinalizeScreen
             tournament={tournament}
             eventId={savedEvent?.id || ""}
+            players={flowPlayers}
             canManage
             onLockRegistration={handleLockRegistrationFromStage}
           />
@@ -2142,11 +2155,15 @@ export default function OfficialTournamentSetup() {
       </Grid>
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid size={{ xs: 12, md: 3 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <FormControl fullWidth size="small">
-            <InputLabel>Nội dung</InputLabel>
+            <InputLabel id="official-reg-event-type-label" shrink>
+              Nội dung
+            </InputLabel>
             <Select
+              labelId="official-reg-event-type-label"
               label="Nội dung"
+              notched
               value={eventType}
               onChange={(event) => setEventType(event.target.value)}
             >
@@ -2158,30 +2175,20 @@ export default function OfficialTournamentSetup() {
             </Select>
           </FormControl>
         </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <TextField
-            fullWidth
-            size="small"
-            type="number"
-            label="Số bảng"
-            value={groupCount}
-            inputProps={{ min: 1, max: 16 }}
-            onChange={(event) => setGroupCount(Number(event.target.value) || 1)}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
           {!isAiBalance && (
             <TextField
               fullWidth
               size="small"
               label="CLB đại diện (mặc định)"
               value={entryClubName}
+              InputLabelProps={{ shrink: true }}
               onChange={(event) => setEntryClubName(event.target.value)}
               placeholder={activeClub?.name || "CLB chủ nhà"}
             />
           )}
         </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
           {!isAiBalance ? (
             <FormControlLabel
               control={
@@ -2197,6 +2204,12 @@ export default function OfficialTournamentSetup() {
           )}
         </Grid>
       </Grid>
+
+      {!registrationModeResolved ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Hãy chọn và lưu <strong>Chế độ đăng ký</strong> ở bước Cài đặt trước khi thêm VĐV.
+        </Alert>
+      ) : null}
 
       {isAiBalance ? (
         <Grid container spacing={2}>
@@ -2351,7 +2364,9 @@ export default function OfficialTournamentSetup() {
         <Grid size={{ xs: 12, lg: 5 }}>
           <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-              Đăng ký VĐV / cặp ({displayEntries.length})
+              {isPairRegistration
+                ? `Đăng ký theo cặp (${displayEntries.length})`
+                : `Đăng ký vận động viên (${displayEntries.length})`}
             </Typography>
 
             <Tabs
@@ -2364,7 +2379,11 @@ export default function OfficialTournamentSetup() {
             </Tabs>
 
             {openRegistrationTab === 0 ? (
-              isSingleEventType(eventType) ? (
+              !registrationModeResolved ? (
+                <Alert severity="warning">
+                  Chế độ đăng ký chưa xác định — không mở form đăng ký.
+                </Alert>
+              ) : isIndividualRegistration ? (
                 <TournamentPlayerPickerPanel
                   title=""
                   players={flowPlayers}
@@ -2411,9 +2430,13 @@ export default function OfficialTournamentSetup() {
                     Bấm VĐV trong danh sách để chọn VĐV 1 rồi VĐV 2 (hoặc dùng dropdown bên dưới).
                   </Typography>
                   <FormControl fullWidth size="small">
-                    <InputLabel>VDV 1</InputLabel>
+                    <InputLabel id="official-pair-a-label" shrink>
+                      VĐV 1
+                    </InputLabel>
                     <Select
-                      label="VDV 1"
+                      labelId="official-pair-a-label"
+                      label="VĐV 1"
+                      notched
                       value={pairPlayerAId}
                       onChange={(event) => handlePairPlayerASelect(event.target.value)}
                     >
@@ -2425,9 +2448,13 @@ export default function OfficialTournamentSetup() {
                     </Select>
                   </FormControl>
                   <FormControl fullWidth size="small">
-                    <InputLabel>VDV 2</InputLabel>
+                    <InputLabel id="official-pair-b-label" shrink>
+                      VĐV 2
+                    </InputLabel>
                     <Select
-                      label="VDV 2"
+                      labelId="official-pair-b-label"
+                      label="VĐV 2"
+                      notched
                       value={pairPlayerBId}
                       onChange={(event) => handlePairPlayerBSelect(event.target.value)}
                     >
@@ -2457,7 +2484,11 @@ export default function OfficialTournamentSetup() {
                   Thêm VĐV chưa có trong hệ thống. VĐV sẽ được lưu vào CLB chủ nhà giải dưới dạng
                   khách (guest) và có thể đăng ký ngay sau khi tạo.
                 </Typography>
-                <Button variant="contained" onClick={() => setQuickAddOpen(true)}>
+                <Button
+                  variant="contained"
+                  disabled={!registrationModeResolved}
+                  onClick={() => setQuickAddOpen(true)}
+                >
                   Thêm VĐV mới
                 </Button>
               </Stack>
@@ -2543,45 +2574,6 @@ export default function OfficialTournamentSetup() {
               </Stack>
             )}
           </Paper>
-
-          <Paper variant="outlined" sx={{ p: 1.5 }}>
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-              Bảng đấu ({savedEvent?.groups?.length || 0})
-            </Typography>
-            {!savedEvent?.groups?.length ? (
-              <Typography variant="body2" color="text.secondary">
-                Chưa chia bảng. Đăng ký đủ đội rồi bấm &quot;Chia bảng random&quot;.
-              </Typography>
-            ) : (
-              <Stack spacing={1}>
-                {savedEvent.groups.map((group) => (
-                  <Paper key={group.id} variant="outlined" sx={{ p: 1.25 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Typography fontWeight="bold">{group.name}</Typography>
-                      <Chip
-                        size="small"
-                        label={`${group.entryIds?.length || 0} doi • ${group.matches?.length || 0} tran`}
-                      />
-                    </Stack>
-                    <Typography variant="caption" color="text.secondary">
-                      {(group.entries || []).map((entry) => entry.name).join(" | ")}
-                    </Typography>
-                  </Paper>
-                ))}
-              </Stack>
-            )}
-          </Paper>
-
-          <TournamentGroupEditor
-            groups={savedEvent?.groups || []}
-            entries={savedEvent?.entries || displayEntries}
-            players={flowPlayers}
-            canIntervene={canInterveneSetup && (savedEvent?.groups?.length || 0) > 0}
-            tournamentId={tournamentId}
-            eventId={savedEvent?.id || ""}
-            onApply={handleGroupInterventionApply}
-            onAudit={pairingIntervention.auditGroupChange}
-          />
         </Grid>
       </Grid>
       )}

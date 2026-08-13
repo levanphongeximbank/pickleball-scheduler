@@ -116,6 +116,47 @@ export function summarizeOfficialEntries(tournament, eventId = "") {
   };
 }
 
+/**
+ * Participant finalization projection — same entry store, no duplicate table.
+ * Buckets are derived from canonical statuses + draw eligibility.
+ */
+export function projectOfficialFinalizationBuckets(tournament, eventId = "") {
+  const event = primaryEvent(tournament, eventId);
+  const entries = Array.isArray(event?.entries) ? event.entries : [];
+  const eligibleIds = new Set(
+    filterDrawEligibleEntries(entries, tournament).map((entry) => String(entry.id))
+  );
+
+  const eligible = [];
+  const pending = [];
+  const ineligible = [];
+
+  entries.forEach((entry) => {
+    const status = String(entry?.status || "").toLowerCase();
+    if (eligibleIds.has(String(entry.id))) {
+      eligible.push(entry);
+      return;
+    }
+    if (status === ENTRY_STATUS.PENDING || status === ENTRY_STATUS.WAITLISTED) {
+      pending.push(entry);
+      return;
+    }
+    ineligible.push(entry);
+  });
+
+  return {
+    eligible,
+    pending,
+    ineligible,
+    counts: {
+      eligible: eligible.length,
+      pending: pending.length,
+      ineligible: ineligible.length,
+      total: entries.length,
+    },
+  };
+}
+
 export function summarizeOfficialMatches(tournament, eventId = "") {
   const matches = collectEventMatches(tournament, eventId);
   const groupMatches = matches.filter((match) => !match.bracketMatchId && !match.bracketRound);

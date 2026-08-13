@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   FormControl,
+  FormHelperText,
   Grid,
   InputLabel,
   MenuItem,
@@ -15,6 +16,7 @@ import {
 import {
   getOfficialCompetitionSettings,
   patchOfficialCompetitionSettings,
+  parseOfficialDecimalLevelInput,
   OFFICIAL_REGISTRATION_MODE,
   OFFICIAL_REGISTRATION_MODE_LABELS,
   OFFICIAL_SCORING_METHOD,
@@ -22,12 +24,16 @@ import {
   OFFICIAL_ROUND_SCORE_KEY,
   OFFICIAL_ROUND_SCORE_LABELS,
   SIDEOUT_OPERATIONAL,
+  SIDEOUT_SELECTION_FAIL_CLOSED,
+  INTENDED_NEW_TOURNAMENT_SCORING_METHOD,
 } from "../../../features/individual-tournament/engines/officialTournamentSettingsEngine.js";
 import { OFFICIAL_MODE } from "../../../models/tournament/constants.js";
 import {
   getEligibilityRules,
   updateEligibilityRules,
 } from "../../../features/individual-tournament/engines/eligibilityEngine.js";
+
+const fieldLabelProps = { shrink: true };
 
 /**
  * Tournament Settings screen — configuration only (no match-day ops).
@@ -47,10 +53,12 @@ export default function OfficialTournamentSettingsScreen({
   const eligibility = useMemo(() => getEligibilityRules(tournament), [tournament]);
   const [draft, setDraft] = useState(() => ({
     registrationMode: current.registrationMode || "",
-    scoringMethod: OFFICIAL_SCORING_METHOD.RALLY,
+    scoringMethod: current.scoringMethod || OFFICIAL_SCORING_METHOD.RALLY,
     roundTargets: { ...current.roundTargets },
-    maxSkillLevel: eligibility.skill?.maxLevel ?? "",
-    maxRating: eligibility.rating?.maxRating ?? "",
+    maxSkillLevel:
+      eligibility.skill?.maxLevel != null ? String(eligibility.skill.maxLevel) : "",
+    maxRating:
+      eligibility.rating?.maxRating != null ? String(eligibility.rating.maxRating) : "",
   }));
   const [message, setMessage] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -60,10 +68,16 @@ export default function OfficialTournamentSettingsScreen({
     const nextEligibility = getEligibilityRules(tournament);
     setDraft({
       registrationMode: next.registrationMode || "",
-      scoringMethod: OFFICIAL_SCORING_METHOD.RALLY,
+      scoringMethod: next.scoringMethod || OFFICIAL_SCORING_METHOD.RALLY,
       roundTargets: { ...next.roundTargets },
-      maxSkillLevel: nextEligibility.skill?.maxLevel ?? "",
-      maxRating: nextEligibility.rating?.maxRating ?? "",
+      maxSkillLevel:
+        nextEligibility.skill?.maxLevel != null
+          ? String(nextEligibility.skill.maxLevel)
+          : "",
+      maxRating:
+        nextEligibility.rating?.maxRating != null
+          ? String(nextEligibility.rating.maxRating)
+          : "",
     });
   }, [tournament]);
 
@@ -79,31 +93,48 @@ export default function OfficialTournamentSettingsScreen({
       });
       return;
     }
+
+    const skillParsed = parseOfficialDecimalLevelInput(draft.maxSkillLevel);
+    if (!skillParsed.ok) {
+      setMessage({ type: "error", text: `Trần trình độ: ${skillParsed.error}` });
+      return;
+    }
+    const ratingParsed = parseOfficialDecimalLevelInput(draft.maxRating);
+    if (!ratingParsed.ok) {
+      setMessage({ type: "error", text: `Trần rating: ${ratingParsed.error}` });
+      return;
+    }
+
+    const selectedMethod = String(draft.scoringMethod || "").trim().toLowerCase();
+    if (
+      selectedMethod === OFFICIAL_SCORING_METHOD.SIDE_OUT &&
+      (!SIDEOUT_OPERATIONAL || SIDEOUT_SELECTION_FAIL_CLOSED)
+    ) {
+      setMessage({
+        type: "error",
+        text: "Truyền thống (Side-out) chưa sẵn sàng trên môi trường hiện tại. Chọn Rally để lưu.",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       let next = patchOfficialCompetitionSettings(tournament, {
         registrationMode: draft.registrationMode,
-        scoringMethod: OFFICIAL_SCORING_METHOD.RALLY,
+        scoringMethod: selectedMethod,
         roundTargets: draft.roundTargets,
         groupCount,
       });
 
-      const skillMax =
-        draft.maxSkillLevel === "" || draft.maxSkillLevel == null
-          ? null
-          : Number(draft.maxSkillLevel);
-      const ratingMax =
-        draft.maxRating === "" || draft.maxRating == null ? null : Number(draft.maxRating);
-
       const eligibilityPatch = updateEligibilityRules(next, {
         skill: {
-          enabled: skillMax != null,
-          maxLevel: skillMax,
+          enabled: skillParsed.value != null,
+          maxLevel: skillParsed.value,
           minLevel: eligibility.skill?.minLevel ?? null,
         },
         rating: {
-          enabled: ratingMax != null || eligibility.rating?.enabled === true,
-          maxRating: ratingMax,
+          enabled: ratingParsed.value != null || eligibility.rating?.enabled === true,
+          maxRating: ratingParsed.value,
           minRating: eligibility.rating?.minRating ?? null,
         },
       });
@@ -121,6 +152,11 @@ export default function OfficialTournamentSettingsScreen({
       setSaving(false);
     }
   };
+
+  const scoringValue =
+    draft.scoringMethod === OFFICIAL_SCORING_METHOD.SIDE_OUT && SIDEOUT_OPERATIONAL
+      ? OFFICIAL_SCORING_METHOD.SIDE_OUT
+      : OFFICIAL_SCORING_METHOD.RALLY;
 
   return (
     <Stack spacing={2.5}>
@@ -153,15 +189,21 @@ export default function OfficialTournamentSettingsScreen({
             size="small"
             label="Tên giải"
             value={tournament?.name || ""}
+            InputLabelProps={fieldLabelProps}
             InputProps={{ readOnly: true }}
             helperText="Đổi tên qua luồng tạo/sửa giải hiện có nếu cần."
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <FormControl fullWidth size="small">
-            <InputLabel>Chiến lược ghép/bốc</InputLabel>
+            <InputLabel id="official-settings-mode-label" shrink>
+              Chiến lược ghép/bốc
+            </InputLabel>
             <Select
+              labelId="official-settings-mode-label"
+              id="official-settings-mode"
               label="Chiến lược ghép/bốc"
+              notched
               value={officialMode}
               disabled={!canManage}
               onChange={(e) => onOfficialModeChange?.(e.target.value)}
@@ -173,9 +215,14 @@ export default function OfficialTournamentSettingsScreen({
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <FormControl fullWidth size="small" required>
-            <InputLabel>Chế độ đăng ký</InputLabel>
+            <InputLabel id="official-settings-reg-mode-label" shrink>
+              Chế độ đăng ký
+            </InputLabel>
             <Select
+              labelId="official-settings-reg-mode-label"
+              id="official-settings-reg-mode"
               label="Chế độ đăng ký"
+              notched
               value={draft.registrationMode || ""}
               displayEmpty
               disabled={!canManage}
@@ -193,6 +240,9 @@ export default function OfficialTournamentSettingsScreen({
                 {OFFICIAL_REGISTRATION_MODE_LABELS[OFFICIAL_REGISTRATION_MODE.INDIVIDUAL]}
               </MenuItem>
             </Select>
+            <FormHelperText>
+              Nội dung đôi vẫn có thể đăng ký cá nhân rồi ghép cặp khi bốc thăm.
+            </FormHelperText>
           </FormControl>
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
@@ -203,6 +253,7 @@ export default function OfficialTournamentSettingsScreen({
             label="Số bảng"
             value={groupCount}
             disabled={!canManage}
+            InputLabelProps={fieldLabelProps}
             inputProps={{ min: 1, max: 16 }}
             onChange={(e) => onGroupCountChange?.(Number(e.target.value) || 1)}
             helperText="Cấu hình số bảng dùng khi bốc thăm (một nguồn)."
@@ -218,26 +269,28 @@ export default function OfficialTournamentSettingsScreen({
           <TextField
             fullWidth
             size="small"
-            type="number"
-            label="Trần trình độ (skill maxLevel)"
+            label="Trần trình độ"
             value={draft.maxSkillLevel}
             disabled={!canManage}
+            InputLabelProps={fieldLabelProps}
+            placeholder="VD: 4.5 hoặc 4,4"
             onChange={(e) =>
               setDraft((prev) => ({ ...prev, maxSkillLevel: e.target.value }))
             }
-            helperText="Lưu vào settings.eligibilityRules.skill (eligibilityEngine)."
+            helperText="Chấp nhận thập phân (dấu . hoặc ,). Lưu số vào eligibilityRules.skill."
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <TextField
             fullWidth
             size="small"
-            type="number"
-            label="Trần rating (maxRating)"
+            label="Trần rating"
             value={draft.maxRating}
             disabled={!canManage}
+            InputLabelProps={fieldLabelProps}
+            placeholder="VD: 4.5 hoặc 4,4"
             onChange={(e) => setDraft((prev) => ({ ...prev, maxRating: e.target.value }))}
-            helperText="Lưu vào settings.eligibilityRules.rating (eligibilityEngine)."
+            helperText="Chấp nhận thập phân (dấu . hoặc ,). Lưu số vào eligibilityRules.rating."
           />
         </Grid>
       </Grid>
@@ -246,27 +299,43 @@ export default function OfficialTournamentSettingsScreen({
         Cách tính điểm
       </Typography>
       <FormControl fullWidth size="small">
-        <InputLabel>Phương thức ghi điểm</InputLabel>
+        <InputLabel id="official-settings-scoring-label" shrink>
+          Cách tính điểm
+        </InputLabel>
         <Select
-          label="Phương thức ghi điểm"
-          value={OFFICIAL_SCORING_METHOD.RALLY}
+          labelId="official-settings-scoring-label"
+          id="official-settings-scoring"
+          label="Cách tính điểm"
+          notched
+          value={scoringValue}
           disabled={!canManage}
-          onChange={() => {
-            /* only Rally is operable */
-          }}
+          onChange={(e) =>
+            setDraft((prev) => ({ ...prev, scoringMethod: e.target.value }))
+          }
         >
+          <MenuItem
+            value={OFFICIAL_SCORING_METHOD.SIDE_OUT}
+            disabled={!SIDEOUT_OPERATIONAL}
+          >
+            {OFFICIAL_SCORING_METHOD_LABELS[OFFICIAL_SCORING_METHOD.SIDE_OUT]}
+            {!SIDEOUT_OPERATIONAL ? " — chưa sẵn sàng" : ""}
+          </MenuItem>
           <MenuItem value={OFFICIAL_SCORING_METHOD.RALLY}>
             {OFFICIAL_SCORING_METHOD_LABELS[OFFICIAL_SCORING_METHOD.RALLY]}
           </MenuItem>
-          <MenuItem value={OFFICIAL_SCORING_METHOD.SIDE_OUT} disabled>
-            {OFFICIAL_SCORING_METHOD_LABELS[OFFICIAL_SCORING_METHOD.SIDE_OUT]} — chưa vận hành
-          </MenuItem>
         </Select>
+        <FormHelperText>
+          {!SIDEOUT_OPERATIONAL
+            ? "Truyền thống (Side-out) chưa sẵn sàng trên môi trường hiện tại. Hiện chỉ Rally vận hành."
+            : INTENDED_NEW_TOURNAMENT_SCORING_METHOD === OFFICIAL_SCORING_METHOD.SIDE_OUT
+              ? "Giải mới mặc định Truyền thống (Side-out); Rally vẫn tùy chọn."
+              : "Chọn phương thức ghi điểm cho giải."}
+        </FormHelperText>
       </FormControl>
       {!SIDEOUT_OPERATIONAL ? (
         <Alert severity="info">
-          Side-out (chỉ bên giao bóng ghi điểm) chưa được hỗ trợ trên bảng điểm trọng tài Official
-          hiện tại. Chỉ dùng Rally cho đến khi backend có trạng thái giao bóng chuẩn.
+          Side-out cần trạng thái giao bóng trên live match (gói SQL riêng). Không lưu được Side-out
+          như chế độ vận hành cho đến khi gói đó được Owner duyệt/apply.
         </Alert>
       ) : null}
 
@@ -283,6 +352,7 @@ export default function OfficialTournamentSettingsScreen({
               label={OFFICIAL_ROUND_SCORE_LABELS[key]}
               value={draft.roundTargets[key]}
               disabled={!canManage}
+              InputLabelProps={fieldLabelProps}
               inputProps={{ min: 1, max: 99 }}
               onChange={(e) =>
                 setDraft((prev) => ({

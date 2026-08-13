@@ -64,19 +64,117 @@ export const DEFAULT_OFFICIAL_ROUND_TARGETS = Object.freeze({
   [OFFICIAL_ROUND_SCORE_KEY.FINAL]: CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT,
 });
 
+/**
+ * Product intent: NEW Official/Open defaults to Side-out once runtime is operational.
+ * Until SIDEOUT_OPERATIONAL=true, operable default remains Rally (fail-closed).
+ */
+export const INTENDED_NEW_TOURNAMENT_SCORING_METHOD = OFFICIAL_SCORING_METHOD.SIDE_OUT;
 export const DEFAULT_OFFICIAL_SCORING_METHOD = OFFICIAL_SCORING_METHOD.RALLY;
+export const SIDEOUT_DEFAULT_FOR_NEW_TOURNAMENT = false;
+export const SIDEOUT_BACKEND_PACKAGE_REQUIRED = true;
+export const SIDEOUT_SHARED_EXTRACTION_RECONCILE_AFTER_PR418 = false;
+export const SIDEOUT_BACKEND_PACKAGE_PATH =
+  "docs/v5/migrations/official-open-sideout-runtime-01/";
 
 /**
  * Classic Official matchLiveSync / RefereeScoreboard has no serving-side state.
- * referee-v5 side-out engines are Team Tournament scope — not wired as Official SSOT.
+ * competition-core has pure SIDE_OUT progression, but Official live RPC only
+ * stores score_a/score_b — structured service state requires SQL package.
+ * Do not fake client-only Side-out against tournament_match_live.
  */
 export const SIDEOUT_OPERATIONAL = false;
 export const SIDEOUT_SELECTION_FAIL_CLOSED = true;
 export const SIDEOUT_BACKEND_REQUIREMENT =
   "Classic Official live path (matchLiveSync.adjustMatchLiveScore / referee_update_match_score) " +
-  "must gain canonical servingSide + serverNumber + side-out transition authority " +
-  "(or a sanctioned reuse of referee-v5 sideOutScoringEngine for individual Official matches) " +
-  "before Side-out can be an operable tournament setting.";
+  "must gain canonical servingSide + serverNumber + scoringMethod + side-out transition authority " +
+  "via docs/v5/migrations/official-open-sideout-runtime-01/ before Side-out can be operable " +
+  "or the default for NEW Official tournaments.";
+
+/**
+ * Normalize Organizer decimal level/rating input.
+ * Accepts "4.5" and "4,4" → 4.5 / 4.4. Rejects integers-only coercion via parseInt.
+ * Empty → null. Invalid → { ok:false }.
+ */
+export function parseOfficialDecimalLevelInput(raw) {
+  if (raw == null) {
+    return { ok: true, value: null, empty: true };
+  }
+  const text = String(raw).trim();
+  if (text === "") {
+    return { ok: true, value: null, empty: true };
+  }
+  if (/[^\d.,\s+-]/.test(text) || (text.match(/[.,]/g) || []).length > 1) {
+    return { ok: false, value: null, error: "Giá trị thập phân không hợp lệ." };
+  }
+  const normalized = text.replace(/\s+/g, "").replace(",", ".");
+  if (!/^[+-]?\d+(\.\d+)?$/.test(normalized)) {
+    return { ok: false, value: null, error: "Giá trị thập phân không hợp lệ." };
+  }
+  const value = Number(normalized);
+  if (!Number.isFinite(value)) {
+    return { ok: false, value: null, error: "Giá trị thập phân không hợp lệ." };
+  }
+  return { ok: true, value, empty: false };
+}
+
+/**
+ * Mode switch safety: never silently reinterpret entry shapes.
+ * Empty registrations → change allowed. Conflicting shapes → block (no auto-delete).
+ */
+export function assessOfficialRegistrationModeChange(tournament, nextModeRaw) {
+  const nextMode = String(nextModeRaw || "").trim().toLowerCase();
+  if (
+    nextMode !== OFFICIAL_REGISTRATION_MODE.INDIVIDUAL &&
+    nextMode !== OFFICIAL_REGISTRATION_MODE.PAIR
+  ) {
+    return {
+      ok: false,
+      allowed: false,
+      error: "registrationMode must be individual or pair.",
+      code: "INVALID_MODE",
+    };
+  }
+
+  const current = resolveOfficialRegistrationMode(tournament);
+  if (
+    current.registrationModeResolution === OFFICIAL_REGISTRATION_MODE_RESOLUTION.EXPLICIT &&
+    current.registrationMode === nextMode
+  ) {
+    return { ok: true, allowed: true, reason: "unchanged" };
+  }
+
+  const entries = (tournament?.events || []).flatMap((event) =>
+    Array.isArray(event?.entries) ? event.entries : []
+  );
+  if (entries.length === 0) {
+    return { ok: true, allowed: true, reason: "no_entries" };
+  }
+
+  const counts = entries.map(entryPlayerCount);
+  const hasIndividuals = counts.some((n) => n === 1);
+  const hasPairs = counts.some((n) => n >= 2);
+
+  if (nextMode === OFFICIAL_REGISTRATION_MODE.PAIR && hasIndividuals) {
+    return {
+      ok: false,
+      allowed: false,
+      code: "MODE_SWITCH_BLOCKED_ENTRY_SHAPE",
+      error:
+        "Đã có đăng ký cá nhân. Không thể đổi sang đăng ký theo cặp mà không làm lệch dữ liệu. Xóa/rút hết hồ sơ trước hoặc giữ chế độ cá nhân.",
+    };
+  }
+  if (nextMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL && hasPairs) {
+    return {
+      ok: false,
+      allowed: false,
+      code: "MODE_SWITCH_BLOCKED_ENTRY_SHAPE",
+      error:
+        "Đã có đăng ký cặp. Không thể đổi sang đăng ký cá nhân mà không làm lệch dữ liệu. Xóa/rút hết hồ sơ trước hoặc giữ chế độ theo cặp.",
+    };
+  }
+
+  return { ok: true, allowed: true, reason: "compatible_entry_shapes" };
+}
 
 function toPositiveInt(value, fallback) {
   const n = Number(value);
@@ -256,6 +354,7 @@ export function getOfficialCompetitionSettings(tournament) {
  * Patch tournament.settings.officialCompetition.
  * Does NOT write eligibilityRules (use eligibilityEngine.updateEligibilityRules).
  * Does NOT persist side_out as active operable mode (fail-closed).
+ * Blocks unsafe registrationMode switches when entry shapes conflict.
  */
 export function patchOfficialCompetitionSettings(tournament, patch = {}) {
   const current = getOfficialCompetitionSettings(tournament);
@@ -272,15 +371,39 @@ export function patchOfficialCompetitionSettings(tournament, patch = {}) {
     throw new Error("registrationMode must be individual or pair.");
   }
 
+  if (
+    patch.registrationMode != null &&
+    (nextMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL ||
+      nextMode === OFFICIAL_REGISTRATION_MODE.PAIR)
+  ) {
+    const modeGate = assessOfficialRegistrationModeChange(tournament, nextMode);
+    if (!modeGate.allowed) {
+      const err = new Error(modeGate.error || "Không thể đổi chế độ đăng ký.");
+      err.code = modeGate.code || "MODE_SWITCH_BLOCKED";
+      throw err;
+    }
+  }
+
+  const requestedMethod =
+    patch.scoringMethod != null ? patch.scoringMethod : current.scoringMethod;
+  const requestedRaw = String(requestedMethod || "").trim().toLowerCase();
+  const requestedSideOut =
+    requestedRaw === OFFICIAL_SCORING_METHOD.SIDE_OUT ||
+    requestedRaw === "side-out" ||
+    requestedRaw === "SIDE_OUT";
+
+  if (requestedSideOut && SIDEOUT_SELECTION_FAIL_CLOSED && !SIDEOUT_OPERATIONAL) {
+    // Recognized but not operable — do not pretend Side-out was saved as active.
+    // Persist Rally as effective method; callers should surface unavailable messaging.
+  }
+
   const nextBlob = {
     registrationMode:
       nextMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL ||
       nextMode === OFFICIAL_REGISTRATION_MODE.PAIR
         ? nextMode
         : current.registrationMode,
-    scoringMethod: normalizeOfficialScoringMethod(
-      patch.scoringMethod != null ? patch.scoringMethod : current.scoringMethod
-    ),
+    scoringMethod: normalizeOfficialScoringMethod(requestedMethod),
     roundTargets: normalizeOfficialRoundTargets({
       ...current.roundTargets,
       ...(patch.roundTargets || {}),
@@ -300,6 +423,14 @@ export function patchOfficialCompetitionSettings(tournament, patch = {}) {
       officialCompetition: nextBlob,
     },
   };
+}
+
+/** Effective scoring method for NEW tournaments once Side-out runtime exists. */
+export function resolveNewOfficialTournamentScoringDefault() {
+  if (SIDEOUT_OPERATIONAL && SIDEOUT_DEFAULT_FOR_NEW_TOURNAMENT) {
+    return INTENDED_NEW_TOURNAMENT_SCORING_METHOD;
+  }
+  return DEFAULT_OFFICIAL_SCORING_METHOD;
 }
 
 export function isOfficialRegistrationModeResolved(tournament, event = null) {

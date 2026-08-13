@@ -55,18 +55,36 @@ export default function OfficialTournamentRegistrationScreen({
 
   return (
     <Stack spacing={2}>
+      <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: 0.3 }}>
+        ĐĂNG KÝ VẬN ĐỘNG VIÊN
+      </Typography>
+
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <Chip
           size="small"
           color="primary"
-          label={OFFICIAL_REGISTRATION_MODE_LABELS[competition.registrationMode]}
+          label={
+            competition.registrationModeUnresolved
+              ? "Chế độ đăng ký chưa xác định"
+              : OFFICIAL_REGISTRATION_MODE_LABELS[competition.registrationMode]
+          }
         />
         <Chip size="small" variant="outlined" label={`${entries.length} hồ sơ`} />
       </Stack>
 
-      <Alert severity="info">
-        Màn hình này chỉ quản lý đăng ký. Bốc thăm nằm ở bước riêng sau khi chốt VĐV.
-      </Alert>
+      {competition.registrationModeUnresolved ? (
+        <Alert severity="warning">
+          Chưa chọn chế độ đăng ký ở bước Cài đặt. Không thể đăng ký / bốc thăm cho đến khi Organizer
+          chọn Cá nhân hoặc Theo cặp rồi Lưu.
+        </Alert>
+      ) : (
+        <Alert severity="info">
+          {isPair
+            ? "Chế độ theo cặp: chọn VĐV 1 + VĐV 2 rồi đăng ký một cặp cố định."
+            : "Chế độ cá nhân: đăng ký từng VĐV. Nội dung đôi sẽ ghép cặp ở bước Bốc thăm."}{" "}
+          Bốc thăm nằm ở bước riêng sau khi chốt VĐV.
+        </Alert>
+      )}
 
       <RegistrationOpsPanel
         tournament={tournament}

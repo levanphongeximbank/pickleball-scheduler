@@ -15,6 +15,7 @@ import {
 } from "../../../models/tournament/entry.js";
 import { isDrawPublished } from "../../../tournament/engines/publishDrawEngine.js";
 import { writeAuditLog } from "../../identity/services/auditService.js";
+import { isOfficialIndividualRegistrationMode } from "./officialTournamentSettingsEngine.js";
 
 export const REGISTRATION_AUDIT_ACTIONS = Object.freeze({
   WINDOW_UPDATED: "registration_window_updated",
@@ -453,7 +454,14 @@ export function approveEntry(tournament, entryId, options = {}) {
     return { ok: false, error: `Không thể duyệt từ trạng thái ${entry.status}.` };
   }
 
-  if (!SINGLE_EVENT_TYPES.has(event.eventType) && (entry.playerIds || []).length < 2) {
+  // Doubles competition format ≠ pair registration mode.
+  // Individual registration on doubles content may finalize 1-player entries;
+  // pairing happens later at draw.
+  if (
+    !SINGLE_EVENT_TYPES.has(event.eventType) &&
+    (entry.playerIds || []).length < 2 &&
+    !isOfficialIndividualRegistrationMode(tournament, event)
+  ) {
     return { ok: false, error: "Cặp đôi chưa đủ 2 VĐV." };
   }
 

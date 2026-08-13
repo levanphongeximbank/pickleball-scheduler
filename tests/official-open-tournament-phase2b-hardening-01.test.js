@@ -161,11 +161,25 @@ describe("official-open-tournament-phase2b-hardening-01", () => {
     assert.equal(facts.draw.canDraw, false);
     assert.equal(facts.registrationModeUnresolved, true);
 
-    const resolved = patchOfficialCompetitionSettings(ambiguous, {
+    // Organizer may explicitly resolve mode only when entry shapes are compatible.
+    const emptyUnresolved = baseTournament({
+      events: [{ id: "ev1", eventType: "", entries: [], groups: [], matches: [] }],
+    });
+    assert.equal(isOfficialRegistrationModeResolved(emptyUnresolved), false);
+    const resolved = patchOfficialCompetitionSettings(emptyUnresolved, {
       registrationMode: OFFICIAL_REGISTRATION_MODE.PAIR,
     });
     assert.equal(isOfficialRegistrationModeResolved(resolved), true);
     assert.equal(getOfficialCompetitionSettings(resolved).registrationMode, "pair");
+
+    // Mixed shapes must not be silently reinterpreted as pair.
+    assert.throws(
+      () =>
+        patchOfficialCompetitionSettings(ambiguous, {
+          registrationMode: OFFICIAL_REGISTRATION_MODE.PAIR,
+        }),
+      /đăng ký/
+    );
   });
 
   it("E/F. stageLabel transport removed; referee scoring transport blocked", () => {
