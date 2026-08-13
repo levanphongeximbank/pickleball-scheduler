@@ -21,6 +21,129 @@ export function isKnockoutMatchup(matchup) {
   return String(matchup?.stage || "") === MATCHUP_STAGE.KNOCKOUT;
 }
 
+/**
+ * Future-round KO placeholder (e.g. Final before both SF winners).
+ * May persist in the bracket; must not be an operational assignment.
+ */
+export function isUnresolvedBracketPlaceholder(matchup) {
+  const teamA = String(matchup?.teamAId || "").trim();
+  const teamB = String(matchup?.teamBId || "").trim();
+  return !teamA || !teamB;
+}
+
+/**
+ * Canonical KO next-slot resolver (client SSOT; SQL must match).
+ * Valid explicit A/B wins. NULL / blank / invalid → matchNumberInRound
+ * (1 → A, 2 → B). Never treat SQL NULL as "already decided".
+ */
+export function normalizeKnockoutNextSlot(raw) {
+  const slot = String(raw ?? "").trim().toUpperCase();
+  return slot === "A" || slot === "B" ? slot : "";
+}
+
+export function resolveKnockoutNextSlot(matchup) {
+  const explicit =
+    normalizeKnockoutNextSlot(matchup?.nextSlot) ||
+    normalizeKnockoutNextSlot(matchup?.scheduleMeta?.nextSlot);
+  if (explicit) return explicit;
+  const n = Number(
+    matchup?.matchNumberInRound ?? matchup?.scheduleMeta?.matchNumberInRound
+  );
+  if (n === 2) return "B";
+  return "A";
+}
+
+function predecessorMatchNumber(matchup) {
+  return Number(
+    matchup?.matchNumberInRound ?? matchup?.scheduleMeta?.matchNumberInRound
+  );
+}
+
+/**
+ * Re-derive next-round teams from all completed KO predecessors.
+ * Overwrites a partially/wrongly filled placeholder from canonical winners.
+ */
+export function reconcileKnockoutProgression(teamData) {
+  const matchups = teamData?.matchups || [];
+  const byNext = new Map();
+  for (const matchup of matchups) {
+    if (!isKnockoutMatchup(matchup)) continue;
+    const winnerId = String(matchup.result?.winnerTeamId || "").trim();
+    const nextId = String(
+      matchup.nextMatchupId || matchup.scheduleMeta?.nextMatchupId || ""
+    ).trim();
+    if (!winnerId || !nextId) continue;
+    if (
+      matchup.status !== MATCHUP_STATUS.COMPLETED &&
+      !matchup.result?.winnerTeamId
+    ) {
+      continue;
+    }
+    const list = byNext.get(nextId) || [];
+    list.push(matchup);
+    byNext.set(nextId, list);
+  }
+
+  const assignedByNext = new Map();
+  const predSlotById = new Map();
+  for (const [nextId, preds] of byNext) {
+    const resolved = preds.map((pred) => ({
+      pred,
+      slot: resolveKnockoutNextSlot(pred),
+      winnerId: String(pred.result?.winnerTeamId || "").trim(),
+    }));
+    const uniqueSlots = new Set(resolved.map((row) => row.slot));
+    const assigned = {};
+    if (resolved.length >= 2 && uniqueSlots.size === 1) {
+      const sorted = [...resolved].sort((left, right) => {
+        const delta =
+          predecessorMatchNumber(left.pred) - predecessorMatchNumber(right.pred);
+        if (Number.isFinite(delta) && delta !== 0) return delta;
+        return String(left.pred.id || "").localeCompare(String(right.pred.id || ""));
+      });
+      assigned.A = sorted[0].winnerId;
+      assigned.B = sorted[1].winnerId;
+      predSlotById.set(String(sorted[0].pred.id), "A");
+      predSlotById.set(String(sorted[1].pred.id), "B");
+    } else {
+      for (const row of resolved) {
+        assigned[row.slot] = row.winnerId;
+        predSlotById.set(String(row.pred.id), row.slot);
+      }
+    }
+    assignedByNext.set(nextId, assigned);
+  }
+
+  const nextMatchups = matchups.map((row) => {
+    let next = row;
+    const stamped = predSlotById.get(String(row.id));
+    if (stamped && normalizeKnockoutNextSlot(row.nextSlot) !== stamped) {
+      next = {
+        ...next,
+        nextSlot: stamped,
+        scheduleMeta: {
+          ...(next.scheduleMeta && typeof next.scheduleMeta === "object"
+            ? next.scheduleMeta
+            : {}),
+          nextSlot: stamped,
+        },
+      };
+    }
+    const assigned = assignedByNext.get(String(row.id));
+    if (!assigned) return next;
+    return {
+      ...next,
+      teamAId: assigned.A != null && assigned.A !== "" ? assigned.A : next.teamAId,
+      teamBId: assigned.B != null && assigned.B !== "" ? assigned.B : next.teamBId,
+    };
+  });
+
+  return {
+    ok: true,
+    teamData: normalizeTeamData({ ...teamData, matchups: nextMatchups }),
+  };
+}
+
 export function isGroupStageMatchup(matchup) {
   return !isKnockoutMatchup(matchup);
 }
@@ -431,7 +554,9 @@ export function advanceTeamKnockoutWinner(teamData, matchupId) {
     return { ok: false, error: "Trận chưa có đội thắng.", code: "NO_WINNER" };
   }
 
-  const nextId = matchup.nextMatchupId ? String(matchup.nextMatchupId) : "";
+  const nextId = String(
+    matchup.nextMatchupId || matchup.scheduleMeta?.nextMatchupId || ""
+  ).trim();
   if (!nextId) {
     return {
       ok: true,
@@ -442,7 +567,7 @@ export function advanceTeamKnockoutWinner(teamData, matchupId) {
     };
   }
 
-  const slot = matchup.nextSlot === "B" ? "B" : "A";
+  const slot = resolveKnockoutNextSlot(matchup);
   const matchups = (teamData.matchups || []).map((row) => {
     if (String(row.id) !== nextId) return row;
     if (slot === "A") {
@@ -475,5 +600,11 @@ export function maybeAdvanceKnockoutAfterResult(teamData, matchupId) {
   if (!matchup.result?.winnerTeamId) {
     return { ok: true, teamData, advanced: false };
   }
-  return advanceTeamKnockoutWinner(teamData, matchupId);
+  const advanced = advanceTeamKnockoutWinner(teamData, matchupId);
+  if (!advanced.ok) return advanced;
+  const reconciled = reconcileKnockoutProgression(advanced.teamData);
+  return {
+    ...advanced,
+    teamData: reconciled.teamData,
+  };
 }

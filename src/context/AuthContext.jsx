@@ -14,9 +14,9 @@ import {
   signUpWithPassword,
   signOut,
   subscribeToSupabaseAuth,
-  shouldRefreshUiOnAuthEvent,
 } from "../auth/authService.js";
 import { getSupabaseConfigError, hasSupabaseConfig } from "../auth/supabaseClient.js";
+import { selectStableAuthState } from "../auth/authSemanticScope.js";
 import { clearClubScope } from "../auth/clubScopeResolver.js";
 import { clearGovernanceScope } from "../auth/governanceScopeResolver.js";
 
@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
   const [authError, setAuthError] = useState(() => getSupabaseConfigError());
 
   const refresh = useCallback(() => {
-    setState(getAuthState());
+    setState((previous) => selectStableAuthState(previous, getAuthState()));
   }, []);
 
   useEffect(() => {
@@ -122,23 +122,12 @@ export function AuthProvider({ children }) {
     const start = async () => {
       await bootstrap();
       if (!cancelled) {
-        unsubscribe = subscribeToSupabaseAuth((payload) => {
-          if (cancelled) {
-            return;
+        // Keep profile sync for TOKEN_REFRESHED / repeated SIGNED_IN / USER_UPDATED.
+        // refresh() returns the previous React state when semantic identity is unchanged.
+        unsubscribe = subscribeToSupabaseAuth(() => {
+          if (!cancelled) {
+            refresh();
           }
-          setState((current) => {
-            const next = getAuthState();
-            if (
-              !shouldRefreshUiOnAuthEvent(
-                payload?.event,
-                current.user,
-                payload?.user || next.user
-              )
-            ) {
-              return current;
-            }
-            return next;
-          });
         });
       }
     };

@@ -13,6 +13,7 @@ import {
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
+import { useCanonicalCaptainAthleteId } from "../../features/team-tournament/ui/useCanonicalCaptainAthleteId.js";
 import {
   individualPublicTournamentPath,
   teamTournamentPath,
@@ -44,18 +45,25 @@ function MatchupList({ items }) {
   }
   return (
     <Stack spacing={1}>
-      {items.map((item) => (
-        <Stack key={item.id} direction="row" spacing={1} alignItems="center">
-          <Chip size="small" label={item.status || "scheduled"} />
-          <Typography variant="body2">
-            {item.teamAId} vs {item.teamBId}
-            {item.courtLabel ? ` · Sân ${item.courtLabel}` : ""}
-            {item.result?.winnerTeamId
-              ? ` · ${item.result.teamAWins}-${item.result.teamBWins}`
-              : ""}
-          </Typography>
-        </Stack>
-      ))}
+      {items.map((item) => {
+        const teamA = String(item.teamAId || "").trim();
+        const teamB = String(item.teamBId || "").trim();
+        const unresolved = !teamA || !teamB;
+        return (
+          <Stack key={item.id} direction="row" spacing={1} alignItems="center">
+            <Chip size="small" label={item.status || "scheduled"} />
+            <Typography variant="body2">
+              {unresolved
+                ? "Chung kết — chờ kết quả Bán kết"
+                : `${teamA} vs ${teamB}`}
+              {!unresolved && item.courtLabel ? ` · Sân ${item.courtLabel}` : ""}
+              {!unresolved && item.result?.winnerTeamId
+                ? ` · ${item.result.teamAWins}-${item.result.teamBWins}`
+                : ""}
+            </Typography>
+          </Stack>
+        );
+      })}
     </Stack>
   );
 }
@@ -63,16 +71,17 @@ function MatchupList({ items }) {
 export default function TournamentDashboardPage() {
   const { tournamentId } = useParams();
   const { user, isAuthenticated, can } = useAuth();
-  const { activeClub, activeClubId } = useClub();
-  const tenantId = activeClub?.tenantId || null;
+  const { activeClubId } = useClub();
+  const captainIdentity = useCanonicalCaptainAthleteId(user);
+  // Visibility authority is team_tournament_get_dashboard only.
+  // Do not derive sameTenant from activeClub.tenantId (PLAYER captains often null).
   const canOrganize = Boolean(
     can?.(PERMISSIONS.TOURNAMENT_UPDATE) || can?.(PERMISSIONS.TEAM_MANAGE)
   );
   const { loading, error, view } = useTeamTournamentDashboard({
     tournamentId,
     clubId: activeClubId,
-    tenantId,
-    playerId: user?.playerId || user?.linkedPlayerId || null,
+    playerId: captainIdentity.athleteId || null,
     userId: user?.id || null,
     canOrganize,
     isAuthenticated,
@@ -132,6 +141,12 @@ export default function TournamentDashboardPage() {
         ) : null}
 
         <Section title="Lịch / đang đấu / đã xong">
+          {(view.schedule?.bracketPending || []).length > 0 ? (
+            <>
+              <Typography variant="subtitle2">Nhánh chờ kết quả</Typography>
+              <MatchupList items={view.schedule?.bracketPending} />
+            </>
+          ) : null}
           <Typography variant="subtitle2">Sắp diễn ra</Typography>
           <MatchupList items={view.schedule?.upcoming} />
           <Typography variant="subtitle2" sx={{ mt: 1.5 }}>

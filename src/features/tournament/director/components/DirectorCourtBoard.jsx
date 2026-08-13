@@ -25,11 +25,18 @@ export default function DirectorCourtBoard({
   refereeSettings,
   onToggleCourt,
   onCourtRefereeChange,
+  disableManualLock = false,
+  lockDisabledReason = "",
 }) {
   return (
     <Grid size={{ xs: 12, lg: 5 }}>
       <TournamentSectionCard title="Sân" noPadding contentSx={{ pt: 1.5 }}>
         <Stack spacing={1}>
+          {disableManualLock && lockDisabledReason ? (
+            <Typography variant="caption" color="text.secondary">
+              {lockDisabledReason}
+            </Typography>
+          ) : null}
           {snapshot.courtStates.map((court, index) => {
             const locked = court.locked || lockedCourtIds.includes(String(court.id));
             const courtRefereeName = resolveCourtRefereeName(
@@ -64,7 +71,11 @@ export default function DirectorCourtBoard({
                       size="small"
                       startIcon={locked ? <LockOpenIcon /> : <LockIcon />}
                       onClick={() => onToggleCourt(court.id, locked)}
-                      disabled={Boolean(court.currentMatchId) && !locked}
+                      disabled={
+                        disableManualLock ||
+                        (Boolean(court.currentMatchId) && !locked)
+                      }
+                      title={disableManualLock ? lockDisabledReason : undefined}
                     >
                       {locked ? "Mở sân" : "Khóa sân"}
                     </Button>

@@ -196,7 +196,7 @@ export default function HomePage() {
             eyebrow="GIẢI ĐẤU"
             title="Giải đấu nổi bật"
             actionLabel="Xem tất cả giải đấu"
-            actionTo="/tournaments"
+            actionTo="/public/tournaments"
           />
           <PublicDataSourceNotice
             source={sections.tournaments.source}

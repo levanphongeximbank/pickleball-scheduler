@@ -172,7 +172,7 @@ test("T-S2-D01 qualify from 2 groups", () => {
   );
 });
 
-test("T-S2-D02 require groups before knockout", () => {
+test("T-S2-D02 single-pool fallback when groups absent; empty roster still fails", () => {
   let teamData = initializeTeamTournamentData({
     disciplines: [
       createDisciplineRecord({ id: "d1", name: "Đôi", playerCount: 2 }),
@@ -189,9 +189,19 @@ test("T-S2-D02 require groups before knockout", () => {
     playerIds: ["p3", "p4"],
   });
 
-  const result = generateTeamKnockoutMatchups(teamData, { qualifiersPerGroup: 2 });
-  assert.equal(result.ok, false);
-  assert.equal(result.code, "GROUPS_REQUIRED");
+  // #412 / one-group: missing groups uses single_pool fallback (not GROUPS_REQUIRED).
+  const singlePool = generateTeamKnockoutMatchups(teamData, { qualifiersPerGroup: 2 });
+  assert.equal(singlePool.ok, true);
+  assert.ok(listKnockoutMatchups(singlePool.teamData).length >= 1);
+
+  const empty = generateTeamKnockoutMatchups(
+    initializeTeamTournamentData({
+      disciplines: [createDisciplineRecord({ id: "d1", name: "Đôi", playerCount: 2 })],
+    }),
+    { qualifiersPerGroup: 2 }
+  );
+  assert.equal(empty.ok, false);
+  assert.equal(empty.code, "GROUPS_REQUIRED");
 });
 
 test("T-S2-D03 generate preserves RR matchups", () => {

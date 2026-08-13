@@ -12,6 +12,13 @@ function refereeMatchesUser(refereeEntry, user) {
     return false;
   }
 
+  const canonicalUserId = String(
+    refereeEntry.canonicalUserId || refereeEntry.refereeUserId || ""
+  ).trim();
+  if (canonicalUserId && String(user.id) === canonicalUserId) {
+    return true;
+  }
+
   const name = String(refereeEntry.name || "").trim().toLowerCase();
   const displayName = String(user.displayName || "").trim().toLowerCase();
   const emailPrefix = String(user.email || "").split("@")[0].toLowerCase();

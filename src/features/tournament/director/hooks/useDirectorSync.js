@@ -3,21 +3,22 @@ import { useCallback } from "react";
 import { unlockCourt } from "../../../../ai/director.js";
 import { hasSupabaseConfig, markMatchLiveProcessed } from "../../../../domain/matchLiveSync.js";
 import { TOURNAMENT_MODE } from "../../../../models/tournament/index.js";
-import {
-  buildDailyPlayTournamentPatch,
-  submitDailyDirectorMatchScore,
-  submitTournamentDirectorMatchScore,
-} from "../../../../tournament/engines/index.js";
-import {
-  mergeLiveAuditIntoDailySettings,
-  mergeLiveAuditIntoEvent,
-} from "../../../../tournament/engines/scoreHistoryEngine.js";
+import { submitTournamentDirectorMatchScore } from "../../../../tournament/engines/index.js";
+import { mergeLiveAuditIntoEvent } from "../../../../tournament/engines/scoreHistoryEngine.js";
 import { useRefereeFinalizeQueue } from "../../../../tournament/useMatchLiveScores.js";
 
 export function useDirectorSync({ state, actions }) {
-  const { activeClubId, liveByMatchId, tournamentRef, activeEventRef, setError, setMessage } =
-    state;
-  const { persistTournament, persistEvent } = actions;
+  const {
+    activeClubId,
+    isDaily,
+    dailySession,
+    liveByMatchId,
+    tournamentRef,
+    activeEventRef,
+    setError,
+    setMessage,
+  } = state;
+  const { persistEvent } = actions;
 
   const handleRefereeFinalize = useCallback(
     async (row) => {
@@ -28,36 +29,17 @@ export function useDirectorSync({ state, actions }) {
       }
 
       const scores = { scoreA: row.scoreA, scoreB: row.scoreB };
-      const isDailyMode = currentTournament.mode === TOURNAMENT_MODE.DAILY_PLAY;
+      const isDailyMode =
+        isDaily || currentTournament.mode === TOURNAMENT_MODE.DAILY_PLAY;
 
       if (isDailyMode) {
-        const result = submitDailyDirectorMatchScore(currentTournament, row.matchId, scores, {
-          allowDraw: false,
-        });
-
-        if (!result.ok) {
-          setError(result.error);
+        const result = await dailySession.submitScore(row.matchId, scores.scoreA, scores.scoreB);
+        if (!result?.ok) {
+          if (result?.error) setError(result.error);
           return;
         }
-
-        if (result.releasedCourtId) {
-          unlockCourt(result.releasedCourtId, activeClubId);
-        }
-
-        const settingsWithAudit = mergeLiveAuditIntoDailySettings(
-          result.settings,
-          row.matchId,
-          row.auditLog || []
-        );
-
-        if (
-          persistTournament(buildDailyPlayTournamentPatch(settingsWithAudit), {
-            processMatchId: row.matchId,
-          })
-        ) {
-          await markMatchLiveProcessed(row.id);
-          setMessage(`Trọng tài ${row.refereeName} đã chốt: ${row.scoreA}-${row.scoreB}.`);
-        }
+        await markMatchLiveProcessed(row.id);
+        setMessage(`Trọng tài ${row.refereeName} đã chốt: ${row.scoreA}-${row.scoreB}.`);
         return;
       }
 
@@ -89,7 +71,16 @@ export function useDirectorSync({ state, actions }) {
         setMessage(`Trọng tài ${row.refereeName} đã chốt: ${row.scoreA}-${row.scoreB}.`);
       }
     },
-    [activeClubId, activeEventRef, persistEvent, persistTournament, setError, setMessage, tournamentRef]
+    [
+      activeClubId,
+      activeEventRef,
+      dailySession,
+      isDaily,
+      persistEvent,
+      setError,
+      setMessage,
+      tournamentRef,
+    ]
   );
 
   useRefereeFinalizeQueue({

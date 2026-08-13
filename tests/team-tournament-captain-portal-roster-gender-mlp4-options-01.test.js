@@ -13,9 +13,15 @@ import {
 import {
   CAPTAIN_PORTAL_SCOPED_ROSTER,
   enrichTeamWithCaptainPortalRoster,
+  parseCaptainPortalRosterAthletes,
   projectCaptainPortalRosterPlayers,
   resolveCaptainLineupAthletePool,
 } from "../src/features/team-tournament/engines/captainPortalRosterProjection.js";
+import { getActiveMatchDisciplines } from "../src/features/team-tournament/engines/mlpPresetEngine.js";
+import { findTeamForCaptain } from "../src/features/team-tournament/engines/teamPermissionEngine.js";
+import { getTeamData } from "../src/features/team-tournament/engines/teamTournamentEngine.js";
+import { mapTournamentToAggregate } from "../src/features/team-tournament/repositories/teamTournamentRepositoryAggregate.js";
+import { aggregateToTournamentView } from "../src/features/team-tournament/ui/teamTournamentUiOrchestrator.js";
 import {
   buildServerLineupFingerprint,
   decideLineupFormRehydration,
@@ -308,6 +314,8 @@ describe("TT412 captain portal roster gender + MLP4 options", () => {
     assert.match(src, /decideLineupFormRehydration/);
     assert.match(src, /resolveCaptainLineupAthletePool/);
     assert.match(src, /filterEligiblePlayersForLineupSlot/);
+    assert.match(src, /players:\s*lineupPlayers/);
+    assert.match(src, /team,\s*\n\s*teamId:\s*team\.id/);
     assert.doesNotMatch(src, /localStorage/);
   });
 
@@ -468,12 +476,20 @@ describe("TT412 captain portal roster gender + MLP4 options", () => {
       { id: F08, name: "F08", gender: null },
     ];
     const viaProfiles = filterEligiblePlayersForDiscipline({
-      team: teamData.teams[0],
+      team: { ...teamData.teams[0], rosterAthletes: [] },
       discipline: male,
       players: brokenClubPool,
       slotIndex: 0,
     });
     assert.deepEqual(idsOf(viaProfiles), [M02]);
+
+    const viaHydrateOverlay = filterEligiblePlayersForDiscipline({
+      team: teamData.teams[0],
+      discipline: male,
+      players: brokenClubPool,
+      slotIndex: 0,
+    });
+    assert.deepEqual(idsOf(viaHydrateOverlay), [M02, M08].sort());
 
     const viaPortal = filterEligiblePlayersForLineupSlot({
       team: teamData.teams[0],
@@ -502,5 +518,289 @@ describe("TT412 captain portal roster gender + MLP4 options", () => {
       players: PORTAL_PLAYERS,
     });
     assert.equal(result.ok, true, result.errors?.join(" "));
+  });
+
+  it("JSON-string rosterAthletes still project gender", () => {
+    const parsed = parseCaptainPortalRosterAthletes(JSON.stringify(ROSTER_ATHLETES));
+    assert.equal(parsed.length, 4);
+    const pool = projectCaptainPortalRosterPlayers(JSON.stringify(ROSTER_ATHLETES));
+    assert.equal(pool.length, 4);
+    assert.ok(pool.every((p) => p.gender === "male" || p.gender === "female"));
+  });
+
+  it("validateLineupSelections uses scoped roster even when clubPlayers lack gender", () => {
+    const teamData = buildMlpTeamData();
+    const brokenClubPool = [
+      { id: M02, displayName: "M02", gender: null },
+      { id: M08, displayName: "M08", gender: null },
+      { id: F04, displayName: "F04", gender: null },
+      { id: F08, displayName: "F08", gender: null },
+    ];
+    const result = validateLineupSelections({
+      teamData,
+      teamId: "team-fe58m3kc",
+      selections: validSelections(teamData),
+      players: brokenClubPool,
+    });
+    assert.equal(result.ok, true, result.errors?.join(" "));
+  });
+
+  it("validator still fail-closed without scoped roster — club pool NOT used", () => {
+    const teamData = buildMlpTeamData();
+    delete teamData.teams[0].rosterAthletes;
+    const brokenClubPool = [
+      { id: M02, name: "M02", gender: "male" },
+      { id: M08, name: "M08", gender: "male" },
+      { id: F04, name: "F04", gender: "female" },
+      { id: F08, name: "F08", gender: "female" },
+    ];
+    const resolved = resolveCaptainLineupAthletePool({
+      team: teamData.teams[0],
+      teamData,
+      teamId: "team-fe58m3kc",
+      clubPlayers: brokenClubPool,
+    });
+    assert.deepEqual(resolved, []);
+    const result = validateLineupSelections({
+      teamData,
+      teamId: "team-fe58m3kc",
+      selections: validSelections(teamData),
+      players: brokenClubPool,
+      requireCaptainPortalRoster: true,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.validation?.code, "captain_roster_unavailable");
+  });
+
+  it("Đội 1 TT412 owner fixture: female/male/mixed options + complete lineup PASS", () => {
+    const M04 = "c412a101-7e57-4000-8000-000000000004";
+    const M05 = "c412a101-7e57-4000-8000-000000000005";
+    const F01 = "c412a101-7e57-4000-8000-000000000009";
+    const F05 = "c412a101-7e57-4000-8000-00000000000d";
+    const rosterAthletes = [
+      { athleteId: M04, displayName: "TT412-SEED-M04", gender: "male" },
+      { athleteId: M05, displayName: "TT412-SEED-M05", gender: "male" },
+      { athleteId: F01, displayName: "TT412-SEED-F01", gender: "female" },
+      { athleteId: F05, displayName: "TT412-SEED-F05", gender: "female" },
+    ];
+    const disciplines = repairMlpDisciplineSlotMetadata([
+      { id: "disc-t6d3zebc", name: "Đôi nam", playerCount: 2, sortOrder: 1, genderRequirement: "any", categoryType: "doubles" },
+      { id: "disc-0ot1sc1m", name: "Đôi nữ", playerCount: 2, sortOrder: 2, genderRequirement: "any", categoryType: "doubles" },
+      { id: "disc-05t8iukv", name: "Đôi nam nữ", playerCount: 2, sortOrder: 3, genderRequirement: "any", categoryType: "doubles" },
+      { id: "disc-cphujcgs", name: "Đôi nam nữ", playerCount: 2, sortOrder: 4, genderRequirement: "any", categoryType: "doubles" },
+      { id: "disc-dreambreaker", name: "Dreambreaker", playerCount: 4, sortOrder: 99, genderRequirement: "any", categoryType: "dreambreaker", disciplineKind: "dreambreaker", activationRule: "dreambreaker" },
+    ]);
+    const teamData = applyCanonicalMlpDisciplineMetadata({
+      settings: {
+        formatPreset: FORMAT_PRESET.MLP_4,
+        allowPlayerReusePerMatchup: true,
+        dreambreakerEnabled: true,
+        rosterRules: { minPlayers: 4, maxPlayers: 4, requiredMales: 2, requiredFemales: 2 },
+      },
+      disciplines,
+      teams: [
+        enrichTeamWithCaptainPortalRoster({
+          id: "team-hfpuyf7a",
+          name: "Đội 1",
+          captainPlayerId: M04,
+          playerIds: [M04, M05, F01, F05],
+          rosterAthletes,
+        }),
+      ],
+      matchups: [],
+      lineups: {},
+    });
+
+    const active = getActiveMatchDisciplines(teamData.disciplines);
+    assert.equal(active.length, 4);
+    assert.ok(!active.some((d) => /dreambreaker/i.test(String(d.name || d.id || ""))));
+
+    const female = active.find((d) => d.genderRequirement === GENDER_REQUIREMENT.FEMALE);
+    const male = active.find((d) => d.genderRequirement === GENDER_REQUIREMENT.MALE);
+    const mixed = active.filter((d) => d.genderRequirement === GENDER_REQUIREMENT.MIXED_PAIR);
+    const clubPlayers = rosterAthletes.map((r) => ({
+      id: r.athleteId,
+      displayName: r.displayName,
+      gender: null,
+    }));
+    const pool = resolveCaptainLineupAthletePool({
+      team: teamData.teams[0],
+      clubPlayers,
+    });
+
+    assert.deepEqual(
+      idsOf(
+        filterEligiblePlayersForLineupSlot({
+          team: teamData.teams[0],
+          discipline: female,
+          players: pool,
+          selections: {},
+          slotIndex: 0,
+          allowReuse: true,
+          teamData,
+        })
+      ),
+      [F01, F05].sort()
+    );
+    assert.deepEqual(
+      idsOf(
+        filterEligiblePlayersForLineupSlot({
+          team: teamData.teams[0],
+          discipline: male,
+          players: pool,
+          selections: {},
+          slotIndex: 0,
+          allowReuse: true,
+          teamData,
+        })
+      ),
+      [M04, M05].sort()
+    );
+    assert.deepEqual(
+      idsOf(
+        filterEligiblePlayersForLineupSlot({
+          team: teamData.teams[0],
+          discipline: mixed[0],
+          players: pool,
+          selections: {},
+          slotIndex: 0,
+          allowReuse: true,
+          teamData,
+        })
+      ),
+      [M04, M05].sort()
+    );
+    assert.deepEqual(
+      idsOf(
+        filterEligiblePlayersForLineupSlot({
+          team: teamData.teams[0],
+          discipline: mixed[0],
+          players: pool,
+          selections: {},
+          slotIndex: 1,
+          allowReuse: true,
+          teamData,
+        })
+      ),
+      [F01, F05].sort()
+    );
+
+    const result = validateLineupSelections({
+      teamData,
+      teamId: "team-hfpuyf7a",
+      selections: {
+        [female.id]: [F01, F05],
+        [male.id]: [M04, M05],
+        [mixed[0].id]: [M04, F01],
+        [mixed[1].id]: [M05, F05],
+      },
+      players: clubPlayers,
+    });
+    assert.equal(result.ok, true, result.errors?.join(" "));
+    const participation = summarizeMlpParticipation(teamData, result.selections || {
+      [female.id]: [F01, F05],
+      [male.id]: [M04, M05],
+      [mixed[0].id]: [M04, F01],
+      [mixed[1].id]: [M05, F05],
+    });
+    for (const id of [M04, M05, F01, F05]) {
+      const row = participation.get(id);
+      assert.equal(row.sameGender, 1, id);
+      assert.equal(row.mixed, 1, id);
+    }
+  });
+
+  it("live captain-portal RPC envelope survives aggregate → findTeam → validate", () => {
+    const M04 = "c412a101-7e57-4000-8000-000000000004";
+    const M05 = "c412a101-7e57-4000-8000-000000000005";
+    const F01 = "c412a101-7e57-4000-8000-000000000009";
+    const F05 = "c412a101-7e57-4000-8000-00000000000d";
+    const mapped = mapCaptainPortalResponse({
+      ok: true,
+      schemaVersion: 7,
+      captainAccessEnabled: true,
+      viewerTeamId: "team-hfpuyf7a",
+      viewer: { captain: true, viewerTeamId: "team-hfpuyf7a" },
+      tournament: {
+        id: "team-tournament-4zllu71z",
+        clubId: "club-ecebf64c78f948ccb2b59842441eb26c",
+        tenantId: "venue-staging-a",
+        name: "Giải đồng đội",
+        status: "draft",
+        version: 9,
+        settings: {
+          captainAccessEnabled: true,
+          formatPreset: FORMAT_PRESET.MLP_4,
+          dreambreakerEnabled: true,
+          allowPlayerReusePerMatchup: true,
+        },
+        myTeam: {
+          id: "team-hfpuyf7a",
+          name: "Đội 1",
+          captainPlayerId: M04,
+          playerIds: [M04, M05, F01, F05],
+          rosterAthletes: [
+            { athleteId: M04, displayName: "TT412-SEED-M04", gender: "male" },
+            { athleteId: M05, displayName: "TT412-SEED-M05", gender: "male" },
+            { athleteId: F01, displayName: "TT412-SEED-F01", gender: "female" },
+            { athleteId: F05, displayName: "TT412-SEED-F05", gender: "female" },
+          ],
+        },
+        opponentTeams: [{ id: "team-4zql081i", name: "Đội 2" }],
+        disciplines: [
+          { id: "disc-t6d3zebc", name: "Đôi nam", playerCount: 2, sortOrder: 1, genderRequirement: "any", categoryType: "doubles" },
+          { id: "disc-0ot1sc1m", name: "Đôi nữ", playerCount: 2, sortOrder: 2, genderRequirement: "any", categoryType: "doubles" },
+          { id: "disc-05t8iukv", name: "Đôi nam nữ", playerCount: 2, sortOrder: 3, genderRequirement: "any", categoryType: "doubles" },
+          { id: "disc-cphujcgs", name: "Đôi nam nữ", playerCount: 2, sortOrder: 4, genderRequirement: "any", categoryType: "doubles" },
+        ],
+        matchups: [
+          {
+            id: "matchup-69c68xxv",
+            teamAId: "team-4zql081i",
+            teamBId: "team-hfpuyf7a",
+            status: "lineup_open",
+          },
+        ],
+        lineups: {},
+      },
+    });
+    assert.equal(mapped.ok, true);
+    const aggregate = mapTournamentToAggregate(mapped.tournament, "cloud");
+    const tournament = aggregateToTournamentView(aggregate);
+    const teamData = applyCanonicalMlpDisciplineMetadata(getTeamData(tournament));
+    const captainTeam = findTeamForCaptain(teamData, M04);
+    assert.ok(captainTeam);
+    assert.equal(captainTeam.rosterAthletes?.length, 4);
+    assert.ok(captainTeam.rosterAthletes.every((r) => r.gender === "male" || r.gender === "female"));
+
+    const female = teamData.disciplines.find((d) => d.genderRequirement === GENDER_REQUIREMENT.FEMALE);
+    const male = teamData.disciplines.find((d) => d.genderRequirement === GENDER_REQUIREMENT.MALE);
+    const mixed = teamData.disciplines.filter((d) => d.genderRequirement === GENDER_REQUIREMENT.MIXED_PAIR);
+    const result = validateLineupSelections({
+      teamData,
+      teamId: captainTeam.id,
+      selections: {
+        [female.id]: [F01, F05],
+        [male.id]: [M04, M05],
+        [mixed[0].id]: [M04, F01],
+        [mixed[1].id]: [M05, F05],
+      },
+      players: [
+        { id: M04, displayName: "TT412-SEED-M04", gender: null },
+        { id: M05, displayName: "TT412-SEED-M05", gender: null },
+        { id: F01, displayName: "TT412-SEED-F01", gender: null },
+        { id: F05, displayName: "TT412-SEED-F05", gender: null },
+      ],
+    });
+    assert.equal(result.ok, true, result.errors?.join(" "));
+  });
+
+  it("post-mutation captain portal reload keeps pageMode (no get_setup wipe)", () => {
+    const page = readSrc("src/features/team-tournament/ui/useTeamTournamentPage.js");
+    const orch = readSrc("src/features/team-tournament/ui/teamTournamentUiOrchestrator.js");
+    assert.match(page, /readOptions:\s*pageMode\s*\?\s*\{\s*pageMode:\s*String\(pageMode\)\s*\}/);
+    assert.match(page, /if\s*\(pageMode\)\s*\{[\s\S]*refreshAfterMutation/);
+    assert.match(orch, /this\.loadTournament\(clubId,\s*tournamentId,\s*readOptions/);
+    assert.match(orch, /readOptions\s*=\s*\{\}/);
   });
 });

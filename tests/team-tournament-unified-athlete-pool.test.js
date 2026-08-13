@@ -56,6 +56,9 @@ const PASSIVE_POOL_CONSUMERS = new Set([
   "src/components/tournament/team/TeamAiPairingDialog.jsx",
   "src/components/tournament/TeamSubstitutionPanel.jsx",
   "src/components/tournament/TournamentPlayerQuickAddDialog.jsx",
+  // Referee resolves athlete identity from the competition-scoped directory —
+  // referee accounts must never enumerate club membership.
+  "src/pages/tournament/TeamRefereePortal.jsx",
 ]);
 
 function makeGatewayPlayers(clubId, count, offset = 0) {

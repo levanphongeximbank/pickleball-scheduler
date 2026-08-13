@@ -22,6 +22,7 @@ import {
   buildOrganizerDashboardActions,
   buildRefereeDashboardAssignments,
 } from "./teamTournamentDashboardTasks.js";
+import { isUnresolvedBracketPlaceholder } from "../engines/teamKnockoutEngine.js";
 
 function findParticipatingTeam(teams = [], playerId) {
   if (!playerId) return null;
@@ -53,13 +54,18 @@ function classifyMatchups(matchups = []) {
   const upcoming = [];
   const live = [];
   const completed = [];
+  const bracketPending = [];
   for (const matchup of matchups) {
+    if (isUnresolvedBracketPlaceholder(matchup)) {
+      bracketPending.push(matchup);
+      continue;
+    }
     const status = String(matchup.status || "");
     if (status === "completed") completed.push(matchup);
     else if (status === "in_progress" || status === "playing") live.push(matchup);
     else upcoming.push(matchup);
   }
-  return { upcoming, live, completed };
+  return { upcoming, live, completed, bracketPending };
 }
 
 export function resolveDashboardCapabilities({
@@ -96,31 +102,13 @@ export function buildTeamTournamentDashboardView({
   userId = null,
   canOrganize = false,
   sameTenant = false,
+  serverVisibilityAuthorized = false,
   isAuthenticated = false,
   refereeAssignments = [],
   clubId = null,
   serverCapabilities = null,
   myTeamRoster = null,
 } = {}) {
-  const visibility = canViewTournamentDashboard({
-    tournament,
-    isAuthenticated,
-    canOrganize,
-    sameTenant,
-  });
-  if (!visibility.ok) {
-    return {
-      ok: false,
-      code: visibility.code,
-      error:
-        visibility.code === "DRAFT_NOT_VISIBLE"
-          ? "Giải nháp chỉ hiển thị cho ban tổ chức."
-          : visibility.code === "CROSS_TENANT_DENIED"
-            ? "Không xem được giải của tenant khác."
-            : "Không xem được bảng điều khiển giải.",
-    };
-  }
-
   const derived = resolveDashboardCapabilities({
     teamData,
     playerId,
@@ -143,6 +131,27 @@ export function buildTeamTournamentDashboardView({
       : {}),
   };
 
+  const visibility = canViewTournamentDashboard({
+    tournament,
+    isAuthenticated,
+    canOrganize: capabilities.canOrganize,
+    sameTenant,
+    serverVisibilityAuthorized,
+    hasDraftOperationalRole: capabilities.isCaptain || capabilities.isReferee,
+  });
+  if (!visibility.ok) {
+    return {
+      ok: false,
+      code: visibility.code,
+      error:
+        visibility.code === "DRAFT_NOT_VISIBLE" || visibility.code === "NOT_VISIBLE"
+          ? "Bạn không có quyền xem bảng điều khiển giải này."
+          : visibility.code === "CROSS_TENANT_DENIED"
+            ? "Không xem được giải của tenant khác."
+            : "Không xem được bảng điều khiển giải.",
+    };
+  }
+
   const matchups = projectPublicMatchups(teamData?.matchups || []);
   const classified = classifyMatchups(matchups);
   const myTeam = capabilities.myTeamId
@@ -150,7 +159,8 @@ export function buildTeamTournamentDashboardView({
     : null;
   const mySchedule = matchups.filter(
     (matchup) =>
-      matchup.teamAId === capabilities.myTeamId || matchup.teamBId === capabilities.myTeamId
+      !isUnresolvedBracketPlaceholder(matchup) &&
+      (matchup.teamAId === capabilities.myTeamId || matchup.teamBId === capabilities.myTeamId)
   );
 
   const captainTasks = capabilities.isCaptain

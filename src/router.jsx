@@ -180,6 +180,9 @@ const TeamRefereePortal = lazy(() => import("./pages/tournament/TeamRefereePorta
 const TournamentDashboardPage = lazy(() =>
   import("./pages/tournament/TournamentDashboardPage.jsx")
 );
+const MyTournamentsHubPage = lazy(() =>
+  import("./pages/tournament/MyTournamentsHubPage.jsx")
+);
 
 const TournamentEligibilityPage = lazy(() =>
   import("./pages/tournament/config/TournamentEligibilityPage.jsx")
@@ -442,7 +445,8 @@ export default function Router() {
             <Route element={<PublicLayout />}>
               <Route path="/" element={<PublicRootPage />} />
               <Route path="/home" element={<HomePage />} />
-              <Route path="/tournaments" element={<PublicTournamentsPage />} />
+              {/* Public catalog browse — not the authenticated My Tournaments hub. */}
+              <Route path="/public/tournaments" element={<PublicTournamentsPage />} />
               <Route path="/clubs" element={<PublicClubsPage />} />
               <Route path="/clubs/:publicId" element={<PublicCatalogNotFoundPage kind="club" />} />
               <Route path="/courts" element={<PublicCourtsPage />} />
@@ -663,6 +667,7 @@ export default function Router() {
 
             />
 
+            <Route path="/tournaments" element={<MyTournamentsHubPage />} />
             <Route path="/tournaments/:tournamentId" element={<TournamentDashboardPage />} />
             <Route path="/tournaments/:tournamentId/engine" element={<TournamentEnginePage />} />
             <Route path="/tournaments/:tournamentId/seed" element={<TournamentEnginePage />} />

@@ -95,24 +95,19 @@ describe("team-tournament-pr412-one-group-explicit-persistence-remediation-01", 
     assert.equal(snake[0].id, EXPLICIT_SINGLE_GROUP_ID);
   });
 
-  it("B/C/D/H ONE_GROUP_CONFIRM: empty preview materializes → replace_groups once → readback=1 + all team ids", async () => {
+  it("B/C/D/H ONE_GROUP_CONFIRM: empty preview materializes → commit_pairing once → readback=1 + all team ids", async () => {
     const teams = buildTeams(4);
-    let replaceCalls = 0;
+    let commitCalls = 0;
+    let persistCalls = 0;
+    let applyCalls = 0;
     let persistedGroups = null;
 
     __setConfirmAiPairingCloudPersistenceDepsForTests({
       preflightSetupMutationCapability: () => ({ ok: true, gateEnabled: true }),
-      applyAiGeneratedTeamsToTournament: async (_clubId, _tournamentId, payload) => ({
-        ok: true,
-        captainsPersisted: 4,
-        teamData: {
-          teams: payload.teams,
-          groups: [],
-          matchups: [],
-          settings: payload.settings,
-        },
-        tournament: { id: "tt-one-group" },
-      }),
+      applyAiGeneratedTeamsToTournament: async () => {
+        applyCalls += 1;
+        return { ok: false, code: "MUST_NOT_CALL" };
+      },
     });
 
     const result = await confirmAiPairingCloudPersistence({
@@ -141,32 +136,40 @@ describe("team-tournament-pr412-one-group-explicit-persistence-remediation-01", 
       },
       rulesVersion: "ppr-runtime-v1",
       expectedTournamentVersion: 1,
-      persistSetupTeamData: async (teamData) => {
-        replaceCalls += 1;
-        persistedGroups = teamData.groups || [];
+      persistSetupTeamData: async () => {
+        persistCalls += 1;
+        return { ok: false, code: "MUST_NOT_CALL" };
+      },
+      commitPairing: async ({ groups }) => {
+        commitCalls += 1;
+        persistedGroups = groups || [];
         assert.equal(persistedGroups.length, 1);
         assert.equal(persistedGroups[0].id, EXPLICIT_SINGLE_GROUP_ID);
         return {
           ok: true,
+          version: 2,
           teamData: {
             teams,
             groups: persistedGroups,
             matchups: [],
           },
-          readback: {
-            teamData: {
-              teams,
-              groups: persistedGroups,
-              matchups: [],
-            },
-          },
         };
       },
-      reload: async () => ({ ok: true, version: 2 }),
+      reload: async () => ({
+        ok: true,
+        version: 2,
+        teamData: {
+          teams,
+          groups: persistedGroups,
+          matchups: [],
+        },
+      }),
     });
 
     assert.equal(result.ok, true, result.error);
-    assert.equal(replaceCalls, 1);
+    assert.equal(commitCalls, 1);
+    assert.equal(persistCalls, 0);
+    assert.equal(applyCalls, 0);
     assert.equal(result.groupsExpected, 1);
     assert.equal(result.groupsPersisted, 1);
     assert.equal(persistedGroups?.length, 1);

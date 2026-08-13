@@ -145,13 +145,20 @@ describe("team-tournament-post-mutation-refresh-remediation-01", () => {
     assert.equal(applied[0][1].version, 2);
   });
 
-  it("captain confirm mid-reload uses applyUi:false (no intermediate UI clobber)", () => {
+  it("captain confirm uses atomic commit_pairing + get_setup readback (no version peek, no F5)", () => {
     const persistSrc = readSrc(
       "src/features/team-tournament/services/aiPairingCloudPersistence.js"
     );
+    assert.match(persistSrc, /team_tournament_commit_pairing/);
+    assert.match(persistSrc, /rpcTeamTournamentCommitPairing/);
     assert.match(persistSrc, /applyUi:\s*false/);
-    assert.match(persistSrc, /ai_pairing_version_peek/);
+    assert.match(persistSrc, /ai_pairing_atomic_readback/);
+    assert.match(persistSrc, /READBACK_FAILED/);
     assert.match(persistSrc, /deriveWorkflowStage/);
+    assert.doesNotMatch(persistSrc, /ai_pairing_version_peek/);
+    assert.doesNotMatch(persistSrc, /applyAiGeneratedTeamsToTournament/);
+    assert.doesNotMatch(persistSrc, /persistSetupTeamData/);
+    assert.doesNotMatch(persistSrc, /commandName:\s*["']groups\.replace["']/);
     assert.doesNotMatch(persistSrc, /location\.reload/);
   });
 

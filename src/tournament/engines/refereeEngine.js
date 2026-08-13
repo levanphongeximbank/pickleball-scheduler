@@ -12,12 +12,15 @@ export { createRefereeToken, normalizeReferee };
 export function assignRefereeToMatch(match, refereeName, options = {}) {
   const token = createRefereeToken();
   const rosterId = options.rosterId ? String(options.rosterId) : "";
+  const rosterEntry = options.rosterEntry || null;
   const referee = normalizeReferee({
     id: rosterId || undefined,
     rosterId,
-    name: String(refereeName || "").trim() || "Trọng tài",
+    name: String(refereeName || rosterEntry?.name || "").trim() || "Trọng tài",
     token,
     assignedAt: new Date().toISOString(),
+    canonicalUserId: options.canonicalUserId || rosterEntry?.canonicalUserId || "",
+    source: options.source || rosterEntry?.source || "",
   });
 
   return {
@@ -201,13 +204,18 @@ export function assignCourtRefereeToMatch(match, rosterEntry) {
 
   return assignRefereeToMatch(match, rosterEntry.name, {
     rosterId: rosterEntry.id,
+    rosterEntry,
   });
 }
 
 export {
+  REFEREE_ROSTER_SOURCE,
+  addCanonicalRefereeToRoster,
   buildRefereeSettingsPatch,
+  createCanonicalRefereeRosterEntry,
   createRefereeRosterEntry,
   findRefereeRosterEntry,
+  findRosterEntryByCanonicalUserId,
   getRefereeSettings,
   normalizeCourtReferees,
   normalizeRefereeRoster,

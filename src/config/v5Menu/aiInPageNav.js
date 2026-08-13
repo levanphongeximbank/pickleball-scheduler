@@ -65,6 +65,7 @@ export const AI_IN_PAGE_NAV = Object.freeze({
           text: "Gợi ý xếp hạt giống",
 
           path: "/tournaments",
+          // AI suggestion deep-link now opens authenticated My Tournaments hub.
 
           featureStatus: FEATURE_STATUS.LIVE,
 

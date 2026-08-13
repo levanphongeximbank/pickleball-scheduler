@@ -11,10 +11,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
   Stack,
   Tab,
   Tabs,
@@ -64,6 +60,10 @@ import {
   organizerSyncDreambreaker,
 } from "../../features/team-tournament/services/teamTournamentService.js";
 import { generateTeamKnockoutMatchups } from "../../features/team-tournament/engines/teamKnockoutEngine.js";
+import {
+  resolveQualificationProgression,
+} from "../../features/team-tournament/engines/teamQualificationProgression.js";
+import { resolveFormatVenueDefaults } from "../../features/team-tournament/engines/teamFormatVenueConfig.js";
 import { useTeamTournamentPage } from "../../features/team-tournament/ui/useTeamTournamentPage.js";
 import { resolveTeamTournamentCloudPageAccess } from "../../features/team-tournament/ui/teamTournamentCloudAccess.js";
 import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
@@ -105,10 +105,6 @@ import {
 } from "../../features/team-tournament/showcase/index.js";
 import TeamTournamentShowcase from "../../features/team-tournament/showcase/TeamTournamentShowcase.jsx";
 import { isSetupMutationFoundationEnabled } from "../../features/team-tournament/setup/setupMutationFeatureGate.js";
-import {
-  TT412_SAVE_DRAFT_DIAG,
-  tt412SaveDraftDiag,
-} from "../../features/team-tournament/services/tt412SaveDraftDiagnostics.js";
 import { isGroupDivisionEditable } from "../../features/team-tournament/engines/teamGroupDivisionPolicy.js";
 import { DEFAULT_ENGINE_VERSION } from "../../features/team-tournament/canonical/teamTournamentMutationEnvelope.js";
 import { TT_V6_TT32_FIXTURE } from "../../features/team-tournament/fixtures/ttV6Tt32StagingFixture.js";
@@ -190,6 +186,7 @@ export default function TeamTournamentSetup() {
     persistSetupTeamData,
     saveDraft,
     persistFormatVenueSetup,
+    persistCloseTournament,
     rosterSetupRevision,
     getLineupOverrideOps,
     connectionState,
@@ -234,7 +231,6 @@ export default function TeamTournamentSetup() {
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [schedulePreviewOpen, setSchedulePreviewOpen] = useState(false);
   const [knockoutDialogOpen, setKnockoutDialogOpen] = useState(false);
-  const [qualifiersPerGroup, setQualifiersPerGroup] = useState(2);
   const [knockoutBusy, setKnockoutBusy] = useState(false);
   const [hubBanner, setHubBanner] = useState("");
   const [mutationBusy, setMutationBusy] = useState(false);
@@ -306,6 +302,19 @@ export default function TeamTournamentSetup() {
     return [...pool.values()];
   }, [allTenantPlayers, players]);
   const td = teamData || teamDataView;
+
+  const formatVenueDefaults = useMemo(
+    () => resolveFormatVenueDefaults(td, tournament),
+    [td, tournament]
+  );
+  const qualificationProgression = useMemo(
+    () =>
+      resolveQualificationProgression({
+        groupCount: formatVenueDefaults.groupCount,
+        qualifiersPerGroup: formatVenueDefaults.qualifiersPerGroup,
+      }),
+    [formatVenueDefaults.groupCount, formatVenueDefaults.qualifiersPerGroup]
+  );
 
   const standings = useMemo(() => getStandingsTable(td), [td]);
   const groupStandings = useMemo(() => getGroupStandingsTables(td), [td]);
@@ -420,26 +429,9 @@ export default function TeamTournamentSetup() {
     }
     setError("");
 
-    const stageBefore = workflow.stage || null;
-
     if (typeof saveDraft !== "function") {
       const errorMessage = "Chức năng Lưu giải chưa khả dụng trên môi trường này.";
-      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.START, {
-        tournamentId: tournamentId || null,
-        workflowStage: stageBefore,
-        currentTournamentVersion: version ?? null,
-        hasUnsavedFormatState: formatDirtyRef.current === true,
-        rulesVersion: "",
-      });
       setError(errorMessage);
-      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.FINAL, {
-        ok: false,
-        errorCode: "SAVE_DRAFT_UNAVAILABLE",
-        errorMessage,
-        uiAcknowledged: true,
-        workflowTransitioned: false,
-        saveNotificationShown: false,
-      });
       return;
     }
 
@@ -469,66 +461,25 @@ export default function TeamTournamentSetup() {
       const errorMessage =
         error?.message ||
         "Không lấy được rulesVersion canonical — không lưu nháp giải.";
-      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.START, {
-        tournamentId: tournamentId || null,
-        workflowStage: stageBefore,
-        currentTournamentVersion: version ?? null,
-        hasUnsavedFormatState: formatDirtyRef.current === true,
-        rulesVersion: "",
-      });
       setError(errorMessage);
-      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.FINAL, {
-        ok: false,
-        errorCode: "RULES_VERSION_PREPARE_FAILED",
-        errorMessage,
-        uiAcknowledged: true,
-        workflowTransitioned: false,
-        saveNotificationShown: false,
-      });
       return;
     }
-
-    tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.START, {
-      tournamentId: tournamentId || null,
-      workflowStage: stageBefore,
-      currentTournamentVersion: version ?? null,
-      hasUnsavedFormatState: formatDirtyRef.current === true,
-      rulesVersion: rulesVersion || "",
-    });
 
     const result = await saveDraft({ rulesVersion });
     if (!result.ok) {
       const errorMessage = result.error || "Không lưu được bản nháp giải.";
       setError(errorMessage);
-      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.FINAL, {
-        ok: false,
-        errorCode: result.code || "SAVE_DRAFT_FAILED",
-        errorMessage,
-        uiAcknowledged: true,
-        workflowTransitioned: false,
-        saveNotificationShown: false,
-      });
       return;
     }
 
     // Success only after get_setup v7 read-back verification.
     const draftLabel =
       result.draftState?.draftStatus || workflow.draftStatusLabel || "Nháp";
-    const stageAfter = result.draftState?.workflowStage || null;
     setMessage(
       result.replayed
         ? `Bản nháp giải đã ở trạng thái mới nhất (${draftLabel}).`
         : `Đã lưu nháp giải (${draftLabel}). Bạn có thể đóng tab và quay lại tiếp tục thiết lập sau — không công bố.`
     );
-    tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.FINAL, {
-      ok: true,
-      errorCode: null,
-      errorMessage: null,
-      uiAcknowledged: true,
-      workflowTransitioned:
-        stageBefore != null && stageAfter != null && stageBefore !== stageAfter,
-      saveNotificationShown: true,
-    });
   }
 
   const showcaseClubId = String(effectiveClubId || activeClubId || "");
@@ -777,31 +728,69 @@ export default function TeamTournamentSetup() {
       return;
     }
     if (!td || !persistSetupTeamData) {
-      setError("Thiếu dữ liệu cloud để tạo knockout.");
+      setError("Thiếu dữ liệu cloud để tạo vòng loại trực tiếp.");
+      return;
+    }
+    const progression = resolveQualificationProgression(td.settings || {});
+    if (!progression.allowsKnockout) {
+      setError(
+        progression.error ||
+          (progression.oneGroup
+            ? "Giải 1 bảng kết thúc sau vòng tròn — không tạo knockout."
+            : "Cấu hình vượt bảng không hợp lệ.")
+      );
       return;
     }
     setKnockoutBusy(true);
     setError("");
     try {
-      const built = generateTeamKnockoutMatchups(td, {
-        qualifiersPerGroup: Number(qualifiersPerGroup) || 2,
+      const prepared = await prepareLivePrivatePairingOptions({
+        tournament: tournament || null,
+        clubId: effectiveClubId || activeClubId || null,
+        clubFromQuery,
+        activeClubId,
+        tournamentId: tournamentId || null,
+        tenantId:
+          tournament?.tenantId ||
+          clubPool.tenantId ||
+          tenantPool.tenantId ||
+          currentTenantId ||
+          null,
+        eventId: tournamentId ? `event-${tournamentId}` : null,
+        competitionClass: COMPETITION_CLASS.INTERNAL,
       });
-      if (!built.ok) {
-        setError(built.error || "Không tạo được nhánh knockout.");
+      const rulesVersion = prepared?.ok
+        ? String(prepared.rulesVersion || prepared.pairingOptions?.rulesVersion || "").trim()
+        : "";
+      if (!rulesVersion) {
+        setError(
+          prepared?.error?.message ||
+            "Thiếu rulesVersion canonical — không tạo được vòng loại trực tiếp."
+        );
         return;
       }
+      const built = generateTeamKnockoutMatchups(td, {
+        qualifiersPerGroup: progression.qualifiersPerGroup,
+      });
+      if (!built.ok) {
+        setError(built.error || "Không tạo được vòng loại trực tiếp.");
+        return;
+      }
+      // Coarse stage remains knockout; competitionStage/bracketRoundLabel feed #416 resolver.
       const result = await persistSetupTeamData(built.teamData, {
         confirmDestructive: true,
+        rulesVersion,
       });
       if (!result?.ok) {
-        setError(result?.error || "Không lưu được nhánh knockout lên cloud.");
+        setError(result?.error || "Không lưu được vòng loại trực tiếp lên cloud.");
         return;
       }
       setKnockoutDialogOpen(false);
+      setError("");
       await reload({ silent: true });
       const qualifiedCount = (built.qualified || []).length;
       setMessage(
-        `Đã tạo nhánh knockout (${built.knockoutMatchCount || 0} trận) — ${qualifiedCount} đội vượt qua vòng bảng.`
+        `Đã ${progression.ctaLabelVi || "tạo vòng loại trực tiếp"} (${built.knockoutMatchCount || 0} trận) — ${qualifiedCount} đội vượt bảng.`
       );
     } finally {
       setKnockoutBusy(false);
@@ -1703,13 +1692,18 @@ export default function TeamTournamentSetup() {
               >
                 {td.matchups.length > 0 ? "Tạo lại lịch vòng tròn" : "Tạo lịch vòng tròn"}
               </Button>
-              {(td.groups?.length > 0) ? (
+              {(td.groups?.length > 0) && qualificationProgression.allowsKnockout ? (
                 <Button
                   variant="outlined"
                   onClick={() => setKnockoutDialogOpen(true)}
                 >
-                  Tạo nhánh knockout
+                  {qualificationProgression.ctaLabelVi || "Tạo vòng loại trực tiếp"}
                 </Button>
+              ) : null}
+              {(td.groups?.length > 0) && qualificationProgression.oneGroup ? (
+                <Alert severity="info">
+                  Giải 1 bảng: sau vòng tròn → BXH → giải thưởng → Đóng giải (completed). Không tạo knockout.
+                </Alert>
               ) : null}
             </TournamentActionBar>
             {workflow.hints[0] && !allMatchupsPublished ? (
@@ -1765,8 +1759,14 @@ export default function TeamTournamentSetup() {
             clubId={effectiveClubId || activeClubId}
             tournamentId={tournamentId}
             teamData={td}
+            tournament={tournament}
             tournamentName={tournament?.name || ""}
             canManage={access.canManage}
+            onCloseTournament={
+              typeof persistCloseTournament === "function"
+                ? (payload) => persistCloseTournament(payload)
+                : null
+            }
             onUpdated={() => reload({ silent: true })}
             onError={setError}
             onMessage={setMessage}
@@ -1800,24 +1800,16 @@ export default function TeamTournamentSetup() {
         fullWidth
         maxWidth="xs"
       >
-        <DialogTitle>Tạo nhánh knockout</DialogTitle>
+        <DialogTitle>{qualificationProgression.ctaLabelVi || "Tạo vòng loại trực tiếp"}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <Alert severity="info">
-              Chỉ áp dụng nhóm → knockout. Giữ nguyên lịch vòng tròn bảng.
+              Dùng cấu hình Format & Venue: {qualificationProgression.groupCount} bảng ×{" "}
+              {qualificationProgression.qualifiersPerGroup} đội ={" "}
+              {qualificationProgression.totalQualifiedTeams} đội →{" "}
+              {qualificationProgression.ctaLabelVi}. Coarse stage vẫn là knockout; vòng cụ thể do
+              resolver #416 (bracketRoundLabel / nextMatchupId).
             </Alert>
-            <FormControl fullWidth size="small">
-              <InputLabel id="s2d-qualifiers">Số đội vượt qua mỗi bảng</InputLabel>
-              <Select
-                labelId="s2d-qualifiers"
-                label="Số đội vượt qua mỗi bảng"
-                value={qualifiersPerGroup}
-                onChange={(e) => setQualifiersPerGroup(Number(e.target.value))}
-              >
-                <MenuItem value={1}>1 đội / bảng</MenuItem>
-                <MenuItem value={2}>2 đội / bảng</MenuItem>
-              </Select>
-            </FormControl>
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -1827,9 +1819,9 @@ export default function TeamTournamentSetup() {
           <Button
             variant="contained"
             onClick={handleGenerateKnockout}
-            disabled={knockoutBusy}
+            disabled={knockoutBusy || !qualificationProgression.ok}
           >
-            Tạo knockout
+            {qualificationProgression.ctaLabelVi || "Tạo"}
           </Button>
         </DialogActions>
       </Dialog>

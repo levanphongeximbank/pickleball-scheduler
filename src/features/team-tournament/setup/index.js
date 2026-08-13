@@ -10,9 +10,17 @@ export {
 export {
   SETUP_MUTATION_GATE_ENV,
   SETUP_MUTATION_GATE_META,
+  V7_GATE_RETIREMENT_RECOMMENDATION,
   isSetupMutationFoundationEnabled,
   rejectIfSetupMutationGateOff,
 } from "./setupMutationFeatureGate.js";
+
+export {
+  SETUP_FORM_REHYDRATE_REASON,
+  decideSetupFormRehydration,
+  buildFormatVenueFingerprint,
+  buildTiebreakOrderFingerprint,
+} from "./setupFormRehydration.js";
 
 export {
   SETUP_MUTATION_RPC_BY_COMMAND,
@@ -42,6 +50,15 @@ export {
 export {
   buildSetupMutationFromTeamDataDiff,
 } from "./inferSetupMutationCommand.js";
+
+export {
+  CLOSE_DEFAULT_REASON,
+  CLOSE_NOT_PERSISTED_CODE,
+  CLOSE_TOURNAMENT_COMMAND,
+  buildCloseTournamentPayload,
+  isCloseMutationPersisted,
+  resolveCloseMutationOutcome,
+} from "./closeTournamentMutation.js";
 
 export {
   buildSetupMutationPayload,

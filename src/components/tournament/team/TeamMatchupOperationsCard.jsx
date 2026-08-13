@@ -24,7 +24,10 @@ import {
   LINEUP_STATUS,
   DREAMBREAKER_STATUS,
   MATCHUP_STATUS,
+  COMPETITION_STAGE,
 } from "../../../features/team-tournament/constants.js";
+import { resolveMatchupCompetitionStage } from "../../../features/team-tournament/engines/teamStageTieBreakPolicy.js";
+import { isUnresolvedBracketPlaceholder } from "../../../features/team-tournament/engines/teamKnockoutEngine.js";
 import {
   NORMALIZED_MISSING_LINEUP_POLICY,
   resolveMatchupMissingLineupState,
@@ -129,6 +132,17 @@ export default function TeamMatchupOperationsCard({
   const statusMeta = getMatchupStatusMeta(matchup.status);
   const tieProgress = computeMatchupTieProgress(teamData, matchup);
   const dreambreakerMeta = getDreambreakerStatusMeta(tieProgress.dreambreakerStatus);
+  const resolvedRound = useMemo(
+    () => resolveMatchupCompetitionStage(teamData, matchup),
+    [teamData, matchup]
+  );
+  const resolvedRoundLabel = {
+    [COMPETITION_STAGE.GROUP]: "Vòng bảng",
+    [COMPETITION_STAGE.ROUND_OF_16]: "Vòng 16",
+    [COMPETITION_STAGE.QUARTERFINAL]: "Tứ kết",
+    [COMPETITION_STAGE.SEMIFINAL]: "Bán kết",
+    [COMPETITION_STAGE.FINAL]: "Chung kết",
+  }[resolvedRound] || matchup.bracketRoundLabel || (matchup.stage === "knockout" ? "Knockout" : "Vòng bảng");
 
   const serverTimeMs = serverTime ? new Date(serverTime).getTime() : clientNowMs;
   const lineupState = useMemo(
@@ -142,9 +156,11 @@ export default function TeamMatchupOperationsCard({
     [teamData, matchup, missingLineupPolicy, serverTimeMs]
   );
 
+  const unresolvedPlaceholder = isUnresolvedBracketPlaceholder(matchup);
   const canLockFromServer = matchup.canLock;
-  const canLock =
-    typeof canLockFromServer === "boolean"
+  const canLock = unresolvedPlaceholder
+    ? false
+    : typeof canLockFromServer === "boolean"
       ? canLockFromServer
       : lineupState.canLock;
   const canRandomizeTeamIds = Array.isArray(matchup.canRandomizeTeamIds)
@@ -162,8 +178,9 @@ export default function TeamMatchupOperationsCard({
   );
 
   const canPublishFromServer = matchup.canPublish;
-  const canPublish =
-    typeof canPublishFromServer === "boolean"
+  const canPublish = unresolvedPlaceholder
+    ? false
+    : typeof canPublishFromServer === "boolean"
       ? canPublishFromServer
       : publishReadiness.canPublish;
   const publishBlockMessage =
@@ -223,8 +240,17 @@ export default function TeamMatchupOperationsCard({
 
   return (
     <TournamentSectionCard
-      title={`${teamA?.name || matchup.teamAId} vs ${teamB?.name || matchup.teamBId}`}
-      badge={<Chip size="small" label={statusMeta.label} color={statusMeta.color} />}
+      title={
+        unresolvedPlaceholder
+          ? `${resolvedRoundLabel} — chờ kết quả Bán kết`
+          : `${teamA?.name || matchup.teamAId} vs ${teamB?.name || matchup.teamBId}`
+      }
+      badge={
+        <Stack direction="row" spacing={0.5} alignItems="center">
+          <Chip size="small" variant="outlined" label={resolvedRoundLabel} />
+          <Chip size="small" label={statusMeta.label} color={statusMeta.color} />
+        </Stack>
+      }
       headerAction={
         isPublished ? (
           <Button
@@ -241,7 +267,12 @@ export default function TeamMatchupOperationsCard({
       }
     >
       <Stack spacing={2}>
-        {canManage ? (
+        {unresolvedPlaceholder ? (
+          <Alert severity="info">
+            {resolvedRoundLabel} — chờ kết quả Bán kết. Chưa mở lineup, khóa, công bố hay gán trọng tài.
+          </Alert>
+        ) : null}
+        {canManage && !unresolvedPlaceholder ? (
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap">
             <TextField
               size="small"
@@ -312,7 +343,7 @@ export default function TeamMatchupOperationsCard({
           </Typography>
         ) : null}
 
-        {canManage ? (
+        {canManage && !unresolvedPlaceholder ? (
           <Alert severity={lineupState.deadlinePassed ? "warning" : "info"}>
             <Typography variant="body2">
               Chính sách thiếu lineup: <strong>{policyLabel(lineupState.policy)}</strong>
@@ -418,6 +449,7 @@ export default function TeamMatchupOperationsCard({
           </Typography>
         ) : null}
 
+        {unresolvedPlaceholder ? null : (
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <LineupProgressChip
             teamData={teamData}
@@ -432,11 +464,16 @@ export default function TeamMatchupOperationsCard({
             teamName={teamB?.name || "Đội B"}
           />
         </Stack>
+        )}
 
-        {canManage && isPublished && Array.isArray(matchup.subMatches) && matchup.subMatches.length > 0 ? (
+        {canManage &&
+        !unresolvedPlaceholder &&
+        isPublished &&
+        Array.isArray(matchup.subMatches) &&
+        matchup.subMatches.length > 0 ? (
           <Stack spacing={0.5} sx={{ mt: 1, p: 1, bgcolor: "action.hover", borderRadius: 2 }}>
             <Typography variant="caption" color="text.secondary" fontWeight={600}>
-              Referee V5 — trận con
+              Trọng tài — gán một lần cho cả trận (phiên V5 tự tạo)
             </Typography>
             {matchup.subMatches.map((subMatch) => (
               <TeamSubMatchRefereeProvisionRow
@@ -452,12 +489,14 @@ export default function TeamMatchupOperationsCard({
             ))}
             <TeamRefereeSafetyPanel
               tournamentId={tournamentId}
+              matchupId={matchup.id}
+              subMatches={matchup.subMatches || []}
               onNotice={(msg) => onMessage?.(msg)}
             />
           </Stack>
         ) : null}
 
-        {canManage ? (
+        {canManage && !unresolvedPlaceholder ? (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
             <Button
               size="small"

@@ -368,8 +368,17 @@ export function normalizeMatchup(matchup) {
     bracketMatchId: matchup.bracketMatchId
       ? String(matchup.bracketMatchId).trim()
       : "",
-    nextMatchupId: matchup.nextMatchupId ? String(matchup.nextMatchupId).trim() : "",
-    nextSlot: matchup.nextSlot === "B" ? "B" : matchup.nextSlot === "A" ? "A" : "",
+    nextMatchupId: matchup.nextMatchupId
+      ? String(matchup.nextMatchupId).trim()
+      : matchup.scheduleMeta?.nextMatchupId
+        ? String(matchup.scheduleMeta.nextMatchupId).trim()
+        : "",
+    nextSlot:
+      matchup.nextSlot === "B" || matchup.nextSlot === "A"
+        ? matchup.nextSlot
+        : matchup.scheduleMeta?.nextSlot === "B" || matchup.scheduleMeta?.nextSlot === "A"
+          ? matchup.scheduleMeta.nextSlot
+          : "",
     bracketRoundLabel: matchup.bracketRoundLabel
       ? String(matchup.bracketRoundLabel).trim()
       : "",
@@ -456,6 +465,7 @@ export function createMatchupRecord(teamAId, teamBId, options = {}) {
       ...(options.stage ? { stage: options.stage } : {}),
       ...(options.competitionStage ? { competitionStage: options.competitionStage } : {}),
       ...(options.nextMatchupId ? { nextMatchupId: options.nextMatchupId } : {}),
+      ...(options.nextSlot ? { nextSlot: options.nextSlot } : {}),
     },
     bracketMatchId: options.bracketMatchId || "",
     nextMatchupId: options.nextMatchupId || "",

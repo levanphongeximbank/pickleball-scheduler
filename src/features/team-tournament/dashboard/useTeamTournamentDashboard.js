@@ -6,10 +6,14 @@ import {
   loadTeamTournamentDashboardSource,
 } from "./loadTeamTournamentDashboard.js";
 
+/**
+ * Dashboard hook — server RPC is sole visibility authority.
+ * clubId is projection-only (captain task hrefs). Local tenantId / activeClub
+ * must never re-authorize or re-deny an ok=true get_dashboard payload.
+ */
 export function useTeamTournamentDashboard({
   tournamentId,
   clubId,
-  tenantId,
   playerId,
   userId,
   canOrganize = false,
@@ -52,23 +56,19 @@ export function useTeamTournamentDashboard({
     return () => {
       cancelled = true;
     };
-  }, [tournamentId, clubId, tenantId]);
+  }, [tournamentId]);
 
   const view = useMemo(() => {
     if (!source?.view) return null;
-    const sameTenant =
-      Boolean(tenantId) &&
-      String(source.view.overview?.tenantId || tenantId) === String(tenantId);
     return composeDashboardViewFromRpc({
       view: source.view,
       playerId,
       userId,
       canOrganize,
-      sameTenant,
       isAuthenticated,
       clubId,
     });
-  }, [source, playerId, userId, canOrganize, tenantId, isAuthenticated, clubId]);
+  }, [source, playerId, userId, canOrganize, isAuthenticated, clubId]);
 
   return { loading, error, view, sourceKind: source?.ok ? "dashboard_rpc" : null };
 }

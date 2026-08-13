@@ -473,6 +473,13 @@ export const MENU_GROUPS = [
         roles: [ROLES.REFEREE],
       },
       {
+        key: "referee-my-tournaments",
+        icon: NAV_ICON_KEYS["tournament-list"],
+        text: "Giải của tôi",
+        path: "/tournaments",
+        roles: [ROLES.REFEREE],
+      },
+      {
         key: "referee-qr",
         icon: NAV_ICON_KEYS["venue-checkin"],
         text: "Quét QR",

@@ -221,7 +221,7 @@ describe("team-tournament-pr412-live-cert-blocker-remediation-01", () => {
     assert.equal(selected[1].id, "tt412-court-02");
 
     const panelSrc = readSrc("src/components/tournament/team/TeamFormatVenueSetupPanel.jsx");
-    assert.match(panelSrc, /loadCourtsForClub/);
+    assert.match(panelSrc, /listCanonicalClubCourtsForFormatVenue|listCourtsFn/);
     assert.doesNotMatch(panelSrc, /fakeCourt|dummyCourt|Hardcoded Court/i);
   });
 });

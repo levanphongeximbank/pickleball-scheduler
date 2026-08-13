@@ -4,7 +4,6 @@ import {
   Button,
   Dialog,
   DialogContent,
-  Grid,
   LinearProgress,
   Paper,
   Stack,
@@ -21,6 +20,9 @@ import FairMatchControlBar from "./FairMatchControlBar.jsx";
 import FairMatchRevealStage from "./FairMatchRevealStage.jsx";
 import {
   buildDailyFairMatchPlayerPool,
+  DAILY_FAIR_COMPACT_BREAKPOINT_PX,
+  DAILY_FAIR_DESKTOP_GRID,
+  DAILY_FAIR_DESKTOP_GRID_TEMPLATE,
   FAIR_MATCH_PHASES,
   getPhaseStatusText,
 } from "./dailyFairMatchUtils.js";
@@ -65,6 +67,40 @@ function formatCurrentTime() {
   return new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
 }
 
+/**
+ * Prefer container width (Dialog/content) over viewport — Fair Match often
+ * runs inside a constrained dialog even on wide browsers (DP-11 / DP-11B).
+ */
+function useFairMatchCompactLayout(rootRef) {
+  const [compact, setCompact] = useState(true);
+
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return undefined;
+
+    const update = (width) => {
+      setCompact(Number(width) < DAILY_FAIR_COMPACT_BREAKPOINT_PX);
+    };
+
+    update(node.getBoundingClientRect().width);
+
+    if (typeof ResizeObserver === "undefined") {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        update(entry.contentRect.width);
+      }
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [rootRef]);
+
+  return compact;
+}
+
 export default function DailyFairMatchScreen({
   clubName = "CLB",
   fairMatches = [],
@@ -85,10 +121,14 @@ export default function DailyFairMatchScreen({
 }) {
   const [speed, setSpeed] = useState(initialSpeed);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [mobileTab, setMobileTab] = useState(1);
+  const [mobileTab, setMobileTab] = useState(0);
   const [currentTime, setCurrentTime] = useState(formatCurrentTime);
   const autoStartedRef = useRef(false);
+  const rootRef = useRef(null);
+  const compactLayout = useFairMatchCompactLayout(rootRef);
 
+  // Sequence stays mounted for the life of this screen — tab changes are
+  // presentation-only (display toggles), never remount/reset the sequence.
   const sequence = useFairMatchSequence({
     steps,
     speed,
@@ -214,9 +254,34 @@ export default function DailyFairMatchScreen({
 
   const insufficientPlayers = steps.length === 0;
   const shuffling = sequence.phase === FAIR_MATCH_PHASES.ANALYZE;
+  const showTabs = compactLayout;
+
+  const handleTabChange = (_event, value) => {
+    // Presentation-only — do not touch sequence / revealedCount / timers.
+    setMobileTab(value);
+  };
+
+  const showPlayers = !showTabs || mobileTab === 1;
+  const showReveal = !showTabs || mobileTab === 0;
+  const showMatches = !showTabs || mobileTab === 2;
 
   return (
-    <Box className="daily-fair-match-screen" sx={{ p: { xs: 1.5, sm: 2 } }}>
+    <Box
+      ref={rootRef}
+      className="daily-fair-match-screen"
+      data-layout={showTabs ? "compact" : "desktop"}
+      data-desktop-grid={`${DAILY_FAIR_DESKTOP_GRID.pool}-${DAILY_FAIR_DESKTOP_GRID.reveal}-${DAILY_FAIR_DESKTOP_GRID.matches}`}
+      data-result-panel={showMatches ? "visible" : "hidden"}
+      sx={{
+        p: { xs: 1.5, sm: 2 },
+        minWidth: 0,
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        gap: 0,
+        pb: 1,
+      }}
+    >
       <Paper variant="outlined" className="daily-fair-header" sx={{ p: 1.5, mb: 1.5 }}>
         <Stack
           direction={{ xs: "column", md: "row" }}
@@ -273,18 +338,46 @@ export default function DailyFairMatchScreen({
         </Paper>
       )}
 
-      <Box sx={{ display: { xs: "block", lg: "none" }, mb: 1 }}>
-        <Tabs value={mobileTab} onChange={(_, value) => setMobileTab(value)} variant="fullWidth">
-          <Tab label="Reveal" />
-          <Tab label="Người chơi" />
-          <Tab label="Trận" />
-        </Tabs>
-      </Box>
+      {showTabs ? (
+        <Box sx={{ mb: 1 }} data-testid="daily-fair-compact-tabs">
+          <Tabs value={mobileTab} onChange={handleTabChange} variant="fullWidth">
+            <Tab label="Reveal" />
+            <Tab label="Người chơi" />
+            <Tab label="Trận" data-testid="daily-fair-tab-matches" />
+          </Tabs>
+        </Box>
+      ) : null}
 
-      <Grid container spacing={1.5} className="daily-fair-layout">
-        <Grid
-          size={{ xs: 12, lg: 2 }}
-          sx={{ display: { xs: mobileTab === 1 ? "block" : "none", lg: "block" }, order: { xs: 2, lg: 1 } }}
+      {/*
+        DP-11B: desktop columns use CSS grid from container mode — never MUI
+        viewport `lg` sizes (those hid/clipped the result panel inside Dialog).
+        All three panels stay mounted; compact only toggles display.
+      */}
+      <Box
+        className="daily-fair-layout"
+        data-testid="daily-fair-layout"
+        sx={
+          showTabs
+            ? { display: "block", width: "100%", minWidth: 0 }
+            : {
+                display: "grid",
+                gridTemplateColumns: DAILY_FAIR_DESKTOP_GRID_TEMPLATE,
+                gap: 1.5,
+                alignItems: "stretch",
+                width: "100%",
+                minWidth: 0,
+                mb: 1.5,
+              }
+        }
+      >
+        <Box
+          data-panel="players"
+          sx={{
+            display: showPlayers ? "block" : "none",
+            minWidth: 0,
+            width: "100%",
+            order: showTabs ? 2 : 0,
+          }}
         >
           <DailyPlayerPoolPanel
             players={playerPool}
@@ -292,11 +385,16 @@ export default function DailyFairMatchScreen({
             highlightTeamAIds={highlightTeamAIds}
             highlightTeamBIds={highlightTeamBIds}
           />
-        </Grid>
+        </Box>
 
-        <Grid
-          size={{ xs: 12, lg: 8 }}
-          sx={{ display: { xs: mobileTab === 0 ? "block" : "none", lg: "block" }, order: { xs: 1, lg: 2 } }}
+        <Box
+          data-panel="reveal"
+          sx={{
+            display: showReveal ? "block" : "none",
+            minWidth: 0,
+            width: "100%",
+            order: showTabs ? 1 : 0,
+          }}
         >
           <FairMatchRevealStage
             step={sequence.currentStep}
@@ -304,34 +402,55 @@ export default function DailyFairMatchScreen({
             revealedCount={sequence.revealedCount}
             totalCount={sequence.totalCount}
           />
-        </Grid>
+        </Box>
 
-        <Grid
-          size={{ xs: 12, lg: 2 }}
-          sx={{ display: { xs: mobileTab === 2 ? "block" : "none", lg: "block" }, order: { xs: 3, lg: 3 } }}
+        <Box
+          data-panel="matches"
+          data-testid="daily-fair-result-panel"
+          sx={{
+            display: showMatches ? "block" : "none",
+            minWidth: 0,
+            width: "100%",
+            order: showTabs ? 3 : 0,
+          }}
         >
-          <DailyMatchListPanel steps={steps} revealedCount={sequence.revealedCount} />
-        </Grid>
-      </Grid>
+          <DailyMatchListPanel
+            steps={steps}
+            revealedCount={sequence.revealedCount}
+            fullWidth={showTabs}
+          />
+        </Box>
+      </Box>
 
-      <FairMatchControlBar
-        playing={sequence.playing}
-        paused={sequence.paused}
-        controlMode={sequence.controlMode}
-        speed={speed}
-        isComplete={sequence.isComplete}
-        canReveal={sequence.revealedCount < sequence.totalCount}
-        onPause={sequence.pause}
-        onResume={sequence.resume}
-        onRevealNext={sequence.revealNext}
-        onStartAuto={sequence.startAuto}
-        onSkip={handleSkip}
-        onReplay={handleReplay}
-        onViewResults={handleViewResults}
-        onSpeedChange={setSpeed}
-        onControlModeChange={sequence.setControlMode}
-        showDismissHint={sequence.isComplete}
-      />
+      <Box
+        className="daily-fair-control-footer"
+        sx={{
+          flexShrink: 0,
+          mt: "auto",
+          pt: 0.5,
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        <FairMatchControlBar
+          playing={sequence.playing}
+          paused={sequence.paused}
+          controlMode={sequence.controlMode}
+          speed={speed}
+          isComplete={sequence.isComplete}
+          canReveal={sequence.revealedCount < sequence.totalCount}
+          onPause={sequence.pause}
+          onResume={sequence.resume}
+          onRevealNext={sequence.revealNext}
+          onStartAuto={sequence.startAuto}
+          onSkip={handleSkip}
+          onReplay={handleReplay}
+          onViewResults={handleViewResults}
+          onSpeedChange={setSpeed}
+          onControlModeChange={sequence.setControlMode}
+          showDismissHint={sequence.isComplete}
+        />
+      </Box>
 
       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
     </Box>

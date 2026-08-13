@@ -18,6 +18,8 @@ import { useTeamTournamentRealtime } from "./useTeamTournamentRealtime.js";
 import {
   computeTournamentRosterSetupSignature,
 } from "../engines/teamRosterHydrationCache.js";
+import { preserveCaptainPortalRosterAthletes } from "../engines/captainPortalRosterProjection.js";
+import { preserveRefereeCompetitionAthletes } from "../engines/refereeCompetitionAthleteProjection.js";
 import { logTeamRosterHydrationTransition } from "../engines/teamRosterHydrationDiagnostics.js";
 import { isSetupMutationFoundationEnabled } from "../setup/setupMutationFeatureGate.js";
 import {
@@ -67,6 +69,27 @@ export function canLoadTeamTournamentWithoutLocalClub(mode) {
 }
 
 /**
+ * How a failed canonical load may touch UI state.
+ *
+ * A silent poll/realtime/readback failure on an already hydrated page must not
+ * blank the scored UI — it only surfaces the error. Only a non-silent first
+ * load (nothing hydrated yet) may hard-clear.
+ *
+ * @param {{ silent?: boolean, hasTournament?: boolean, hasTeamData?: boolean }} input
+ * @returns {"soft"|"hard"}
+ */
+export function resolveLoadFailureApplyMode({
+  silent = false,
+  hasTournament = false,
+  hasTeamData = false,
+} = {}) {
+  if (silent && (hasTournament || hasTeamData)) {
+    return "soft";
+  }
+  return "hard";
+}
+
+/**
  * TT-1C page hook — repository read path + polling + mutation helpers.
  * TT-6C: realtime subscription via useTeamTournamentRealtime (repository boundary).
  * @param {{ clubId?: string, tournamentId?: string, pollingEnabled?: boolean, pollIntervalMs?: number, realtimeEnabled?: boolean }} params
@@ -103,18 +126,38 @@ export function useTeamTournamentPage({
   const [setupBlocked, setSetupBlocked] = useState(false);
   const [setupBlockCode, setSetupBlockCode] = useState(null);
   const [setupMutationStatus, setSetupMutationStatus] = useState("idle");
+  const [viewerTeamId, setViewerTeamId] = useState(null);
+  const [viewer, setViewer] = useState(null);
   const [latestTournamentVersion, setLatestTournamentVersion] = useState(1);
   const rosterSignatureRef = useRef("");
+  const teamDataRef = useRef(null);
+  const tournamentRef = useRef(null);
+  const pageModeRef = useRef(pageMode);
+  pageModeRef.current = pageMode;
   const pollRef = useRef(null);
   const loadingRef = useRef(false);
   const reloadFnRef = useRef(null);
   const refreshControllerRef = useRef(createCanonicalSetupRefreshController());
 
-  const applyLoadResult = useCallback((result) => {
+  const applyLoadResult = useCallback((result, { silent = false } = {}) => {
     if (!result.ok) {
       setError(result.error || "Không tải được giải.");
       setErrorCode(result.code || null);
+
+      const applyMode = resolveLoadFailureApplyMode({
+        silent,
+        hasTournament: Boolean(tournamentRef.current),
+        hasTeamData: Boolean(teamDataRef.current),
+      });
+      if (applyMode === "soft") {
+        // Keep last-good canonical state: background failures must not blank a
+        // hydrated page (referee scored UI flicker).
+        return false;
+      }
+
+      tournamentRef.current = null;
       setTournament(null);
+      teamDataRef.current = null;
       setTeamData(null);
       setAggregate(null);
       setServerTime(null);
@@ -128,12 +171,15 @@ export function useTeamTournamentPage({
       setDriftDetected(false);
       setSetupBlocked(false);
       setSetupBlockCode(null);
+      setViewerTeamId(null);
+      setViewer(null);
       return false;
     }
 
     setError(null);
     setErrorCode(null);
     setVersionConflict(false);
+    tournamentRef.current = result.tournament ?? null;
     setTournament(result.tournament);
     setAggregate(result.aggregate);
     setVersion(result.version ?? 1);
@@ -145,14 +191,24 @@ export function useTeamTournamentPage({
     setSetupBlocked(result.setupBlocked === true);
     setSetupBlockCode(result.setupBlockCode ?? null);
     setLatestTournamentVersion(result.latestTournamentVersion ?? result.version ?? 1);
+    setViewerTeamId(result.viewerTeamId ?? result.viewer?.viewerTeamId ?? null);
+    setViewer(result.viewer ?? null);
 
     const rawTeamData = result.teamData || result.aggregate?.teamData;
     const mode = orchestrator.getMode?.() || orchestrator.mode;
-    const synced = rawTeamData
+    let synced = rawTeamData
       ? isCloudPrimaryMode(mode)
         ? attachPersistedDreambreakerProjection(rawTeamData)
         : syncDreambreakerForAllMatchups(rawTeamData).teamData
       : null;
+    const activePageMode = String(pageModeRef.current || "");
+    if (activePageMode === "captainPortal" && synced) {
+      synced = preserveCaptainPortalRosterAthletes(teamDataRef.current, synced);
+    }
+    if (activePageMode === "refereePortal" && synced) {
+      synced = preserveRefereeCompetitionAthletes(teamDataRef.current, synced);
+    }
+    teamDataRef.current = synced;
 
     const nextRosterSignature = computeTournamentRosterSetupSignature(synced);
     const rosterChanged = nextRosterSignature !== rosterSignatureRef.current;
@@ -344,7 +400,7 @@ export function useTeamTournamentPage({
       );
 
       if (decision.apply) {
-        applyLoadResult(result);
+        applyLoadResult(result, { silent });
         setLoading(false);
         loadingRef.current = false;
       } else if (!refreshControllerRef.current.isMutationBarrierActive()) {
@@ -382,7 +438,7 @@ export function useTeamTournamentPage({
         controller: refreshControllerRef.current,
         loadSetup: loadCanonicalSetup,
         applyLoadResult: (result) => {
-          applyLoadResult(result);
+          applyLoadResult(result, { silent: true });
           setLoading(false);
           loadingRef.current = false;
         },
@@ -440,6 +496,7 @@ export function useTeamTournamentPage({
           commandOptions,
           actionScope,
           expectedVersion: expectedVersion ?? version,
+          readOptions: pageMode ? { pageMode: String(pageMode) } : {},
         });
 
         if (result.isVersionConflict) {
@@ -450,7 +507,9 @@ export function useTeamTournamentPage({
 
         if (result.ok) {
           setVersionConflict(false);
-          if (result.tournament) {
+          if (pageMode) {
+            await refreshAfterMutation({ reason: `mutation:${method}` });
+          } else if (result.tournament) {
             commitCanonicalSetupLoad(
               refreshControllerRef.current,
               applyLoadResult,
@@ -466,7 +525,7 @@ export function useTeamTournamentPage({
         refreshControllerRef.current.endMutationBarrier();
       }
     },
-    [applyLoadResult, clubId, orchestrator, refreshAfterMutation, tournamentId, version]
+    [applyLoadResult, clubId, orchestrator, pageMode, refreshAfterMutation, tournamentId, version]
   );
 
   const patchTeamData = useCallback(
@@ -497,17 +556,21 @@ export function useTeamTournamentPage({
           ...options,
         });
         if (result.ok) {
-          const loaded = result.tournament
-            ? result
-            : await loadCanonicalSetup({ schemaVersion: 7 });
-          if (loaded.ok) {
-            commitCanonicalSetupLoad(
-              refreshControllerRef.current,
-              applyLoadResult,
-              loaded
-            );
-          } else {
+          if (pageMode) {
             await refreshAfterMutation({ reason: "persist_setup_readback" });
+          } else {
+            const loaded = result.tournament
+              ? result
+              : await loadCanonicalSetup({ schemaVersion: 7 });
+            if (loaded.ok) {
+              commitCanonicalSetupLoad(
+                refreshControllerRef.current,
+                applyLoadResult,
+                loaded
+              );
+            } else {
+              await refreshAfterMutation({ reason: "persist_setup_readback" });
+            }
           }
         }
         return result;
@@ -520,6 +583,7 @@ export function useTeamTournamentPage({
       clubId,
       loadCanonicalSetup,
       orchestrator,
+      pageMode,
       refreshAfterMutation,
       teamData,
       tournament,
@@ -548,17 +612,21 @@ export function useTeamTournamentPage({
           return result;
         }
         if (result.ok) {
-          const loaded = result.tournament
-            ? result
-            : await loadCanonicalSetup({ schemaVersion: 7 });
-          if (loaded.ok) {
-            commitCanonicalSetupLoad(
-              refreshControllerRef.current,
-              applyLoadResult,
-              loaded
-            );
-          } else {
+          if (pageMode) {
             await refreshAfterMutation({ reason: "save_draft_readback" });
+          } else {
+            const loaded = result.tournament
+              ? result
+              : await loadCanonicalSetup({ schemaVersion: 7 });
+            if (loaded.ok) {
+              commitCanonicalSetupLoad(
+                refreshControllerRef.current,
+                applyLoadResult,
+                loaded
+              );
+            } else {
+              await refreshAfterMutation({ reason: "save_draft_readback" });
+            }
           }
         }
         return result;
@@ -572,6 +640,7 @@ export function useTeamTournamentPage({
       clubId,
       loadCanonicalSetup,
       orchestrator,
+      pageMode,
       refreshAfterMutation,
       teamData,
       tournament,
@@ -605,17 +674,21 @@ export function useTeamTournamentPage({
           return result;
         }
         if (result.ok) {
-          const loaded = result.tournament
-            ? result
-            : await loadCanonicalSetup({ schemaVersion: 7 });
-          if (loaded.ok) {
-            commitCanonicalSetupLoad(
-              refreshControllerRef.current,
-              applyLoadResult,
-              loaded
-            );
-          } else {
+          if (pageMode) {
             await refreshAfterMutation({ reason: "format_venue_readback" });
+          } else {
+            const loaded = result.tournament
+              ? result
+              : await loadCanonicalSetup({ schemaVersion: 7 });
+            if (loaded.ok) {
+              commitCanonicalSetupLoad(
+                refreshControllerRef.current,
+                applyLoadResult,
+                loaded
+              );
+            } else {
+              await refreshAfterMutation({ reason: "format_venue_readback" });
+            }
           }
         }
         return result;
@@ -628,6 +701,52 @@ export function useTeamTournamentPage({
       applyLoadResult,
       clubId,
       loadCanonicalSetup,
+      orchestrator,
+      pageMode,
+      refreshAfterMutation,
+      teamData,
+      tournament,
+      tournamentId,
+      version,
+    ]
+  );
+
+  const persistCloseTournament = useCallback(
+    async (payload = {}, options = {}) => {
+      if (!clubId || !tournamentId) {
+        return { ok: false, error: "Thiếu clubId hoặc tournamentId." };
+      }
+      refreshControllerRef.current.beginMutationBarrier();
+      try {
+        const result = await orchestrator.persistCloseTournament(
+          clubId,
+          tournamentId,
+          payload,
+          {
+            teamData,
+            tournament,
+            aggregate,
+            expectedTournamentVersion: version,
+            tournamentName: tournament?.name || "",
+            ...options,
+          }
+        );
+        if (result.isVersionConflict) {
+          setVersionConflict(true);
+          await refreshAfterMutation({ reason: "close_version_conflict" });
+          return result;
+        }
+        if (result.ok) {
+          await refreshAfterMutation({ reason: "tournament_closed" });
+        }
+        return result;
+      } finally {
+        refreshControllerRef.current.endMutationBarrier();
+      }
+    },
+    [
+      aggregate,
+      clubId,
       orchestrator,
       refreshAfterMutation,
       teamData,
@@ -723,6 +842,8 @@ export function useTeamTournamentPage({
     setupBlockCode,
     setupMutationStatus,
     latestTournamentVersion,
+    viewerTeamId,
+    viewer,
     setSetupMutationStatus,
     reload,
     refreshAfterMutation,
@@ -736,6 +857,7 @@ export function useTeamTournamentPage({
     persistSetupTeamData,
     saveDraft,
     persistFormatVenueSetup,
+    persistCloseTournament,
     getVisibleLineups,
     getLineupOverrideOps: (matchupId, teamId) =>
       orchestrator.getLineupOverrideOps(clubId, tournamentId, { matchupId, teamId }),

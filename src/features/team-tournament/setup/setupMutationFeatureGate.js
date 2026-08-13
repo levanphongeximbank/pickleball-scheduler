@@ -1,15 +1,13 @@
 /**
  * P1.2 S1-E — setup mutation v7 foundation feature gate.
  *
- * Default: OFF
- * Ownership: Team Tournament V6 / P1.2 foundation
- * Retirement: after P1.3 domain setup RPCs are Staging-certified
- *             and Production apply is explicitly approved — then remove this
- *             gate or flip default ON only for Production-approved surfaces.
+ * Disposition after post-#417 regression closure: RETIRE default ON.
+ * Canonical setup writers (update_setup_config, groups.replace, save_draft,
+ * discipline.*) are Staging-certified. An OFF-by-default switch left Preview
+ * unable to persist Format/Venue, captain confirm, or Save Draft.
  *
- * Enabling the gate unlocks foundation orchestration + fail-closed transport.
- * It does NOT deploy undeployed domain RPCs and does NOT change default
- * Preview/Production setup write paths (those stay v6 / legacy).
+ * Explicit env false/0/off remains an emergency kill-switch.
+ * Missing RPC still fails closed — this gate does not invent writers.
  */
 
 import { SETUP_MUTATION_CODES } from "./setupMutationCodes.js";
@@ -18,10 +16,11 @@ export const SETUP_MUTATION_GATE_ENV = "VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7";
 
 export const SETUP_MUTATION_GATE_META = Object.freeze({
   env: SETUP_MUTATION_GATE_ENV,
-  default: "OFF",
+  default: "ON",
+  killSwitch: true,
   ownership: "Team Tournament V6 — P1.2 S1-D/S1-E foundation",
   retirementPoint:
-    "Retire after P1.3 Discipline/Groups/Matchups/Schedule domain RPCs pass Staging QA and Production apply is owner-approved.",
+    "Retired to default ON after P1.3 Discipline/Groups/Matchups/Schedule RPCs + #417 create/read were Staging-certified. Explicit OFF remains a kill-switch.",
 });
 
 function readEnvFlag(name, envSource) {
@@ -34,15 +33,18 @@ function readEnvFlag(name, envSource) {
   return globalThis.process?.env?.[name];
 }
 
+const EXPLICIT_OFF = new Set(["0", "false", "off", "no", "disabled"]);
+
 /**
  * @param {Record<string, string|undefined>} [envSource]
  * @returns {boolean}
  */
 export function isSetupMutationFoundationEnabled(envSource) {
-  const raw = String(readEnvFlag(SETUP_MUTATION_GATE_ENV, envSource) || "")
-    .trim()
-    .toLowerCase();
-  return raw === "true" || raw === "1" || raw === "on" || raw === "enabled";
+  const raw = readEnvFlag(SETUP_MUTATION_GATE_ENV, envSource);
+  if (raw == null || String(raw).trim() === "") {
+    return true;
+  }
+  return !EXPLICIT_OFF.has(String(raw).trim().toLowerCase());
 }
 
 /**
@@ -57,8 +59,8 @@ export function rejectIfSetupMutationGateOff(envSource) {
     ok: false,
     code: SETUP_MUTATION_CODES.GATE_OFF,
     error:
-      "Setup mutation v7 foundation đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7). " +
-      "Default Preview/Production setup writes không đổi.",
+      "Setup mutation v7 đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7=false). " +
+      "Kill-switch khẩn cấp — không ghi setup domain.",
   };
 }
 
@@ -76,8 +78,8 @@ export function preflightSetupMutationCapability(options = {}) {
       ok: false,
       code: gateOff.code,
       error:
-        "Setup mutation v7 đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7). " +
-        "Không ghi đội/đội trưởng/bảng một phần. Bật gate sau Owner GO.",
+        "Setup mutation v7 đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7=false). " +
+        "Không ghi đội/đội trưởng/bảng một phần.",
       writeAttempted: false,
       gateEnabled: false,
     };
@@ -86,9 +88,7 @@ export function preflightSetupMutationCapability(options = {}) {
 }
 
 /**
- * Hard-cutover recommendation after certification.
- * Keep gate until setup config + groups.replace are Staging-certified and Owner GO.
+ * Hard-cutover: default ON. Do not restore OFF-by-default.
  */
 export const V7_GATE_RETIREMENT_RECOMMENDATION =
-  "KEEP_UNTIL_STAGING_CERTIFIED_THEN_OWNER_GO_DEFAULT_ON — do not silently retire; flip env only after Production apply approval.";
-
+  "RETIRE_DEFAULT_ON_EXPLICIT_OFF_KILLSWITCH";

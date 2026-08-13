@@ -17,6 +17,7 @@ export const LINEUP_VALIDATION_CODE = Object.freeze({
   LINEUP_LOCKED: "lineup_locked",
   DEADLINE_PASSED: "deadline_passed",
   CAPTAIN_SCOPE_DENIED: "captain_scope_denied",
+  CAPTAIN_ROSTER_UNAVAILABLE: "captain_roster_unavailable",
   CROSS_TENANT_DENIED: "cross_tenant_denied",
   VERSION_CONFLICT: "version_conflict",
   VALIDATION: "validation",

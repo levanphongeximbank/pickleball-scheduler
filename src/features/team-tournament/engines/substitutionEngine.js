@@ -5,7 +5,7 @@
 
 import { createId } from "../../../utils/id.js";
 import { LINEUP_STATUS } from "../constants.js";
-import { findTeam, lineupKey, normalizeTeamData } from "../models/index.js";
+import { findMatchup, findTeam, lineupKey, normalizeTeamData } from "../models/index.js";
 import { findPlayerTeam, validateAddPlayerToTeam } from "./teamRosterEngine.js";
 import { updateTeamInTournament } from "./teamTournamentEngine.js";
 import {
@@ -36,7 +36,9 @@ export function listTeamLineups(teamData, teamId) {
 }
 
 /**
- * Substitution allowed only while no lineup for this team is locked/published/immutable.
+ * Substitution allowed only while no lineup for this team is locked/published
+ * on an *active* (non-completed) matchup. Historical group/SF completed lineups
+ * must not block roster edits for a fresh elimination matchup.
  */
 export function getSubstitutionGate(teamData, teamId) {
   const team = findTeam(teamData, teamId);
@@ -50,9 +52,16 @@ export function getSubstitutionGate(teamData, teamId) {
     };
   }
 
-  const blockingLineups = listTeamLineups(teamData, teamId).filter((lineup) =>
-    LINEUP_IMMUTABLE_STATUSES.has(lineup.status)
-  );
+  const blockingLineups = listTeamLineups(teamData, teamId).filter((lineup) => {
+    if (!LINEUP_IMMUTABLE_STATUSES.has(lineup.status)) {
+      return false;
+    }
+    const matchup = findMatchup(teamData, lineup.matchupId);
+    if (!matchup || String(matchup.status || "") === "completed") {
+      return false;
+    }
+    return true;
+  });
 
   if (blockingLineups.length > 0) {
     return {

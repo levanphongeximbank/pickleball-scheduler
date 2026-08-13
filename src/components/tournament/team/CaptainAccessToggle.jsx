@@ -12,11 +12,6 @@ import {
   isCaptainAccessCloudWriterDeployed,
   setCaptainAccess,
 } from "../../../features/team-tournament/services/captainAccessService.js";
-import {
-  logTt412CaptainAccess,
-  TT412_CAPTAIN_ACCESS_TOGGLE_RESULT,
-  TT412_CAPTAIN_ACCESS_TOGGLE_START,
-} from "../../../features/team-tournament/diagnostics/tt412CaptainAccessDiagnostics.js";
 
 /**
  * Organizer control: "Mở Portal đội trưởng".
@@ -46,26 +41,12 @@ export default function CaptainAccessToggle({
       return;
     }
 
-    logTt412CaptainAccess(TT412_CAPTAIN_ACCESS_TOGGLE_START, {
-      tournamentId: String(tournamentId || ""),
-      nextEnabled: Boolean(next),
-      previousEnabled: enabled,
-    });
-
     setBusy(true);
     try {
       const result = await setCaptainAccess({
         tournamentId,
         enabled: next,
         expectedVersion,
-      });
-
-      logTt412CaptainAccess(TT412_CAPTAIN_ACCESS_TOGGLE_RESULT, {
-        tournamentId: String(tournamentId || ""),
-        ok: result?.ok === true,
-        code: result?.code || null,
-        captainAccessEnabled: result?.captainAccessEnabled ?? null,
-        version: result?.version ?? null,
       });
 
       if (!result?.ok) {

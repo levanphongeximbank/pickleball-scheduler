@@ -1,25 +1,18 @@
 import { PERMISSIONS } from "../../identity/constants/permissions.js";
 import { MATCHUP_STATUS } from "../constants.js";
 import { findTeam } from "../models/index.js";
-import { loadAthleteClubLink } from "../../club/storage/athleteClubLinkStore.js";
+import { resolveCanonicalCaptainAthleteIdFromUser } from "./captainIdentityResolver.js";
 
 function normalizePlayerId(value) {
   return value ? String(value).trim() : "";
 }
 
-/** Resolve linked athlete player id for captain portal (session, profile snake_case, athlete link). */
+/**
+ * Team Tournament captain viewer id = athletes.id only.
+ * profiles.player_id / localStorage are not authority.
+ */
 export function resolveCaptainViewerPlayerId(user) {
-  if (!user) {
-    return null;
-  }
-
-  const direct = user.playerId || user.player_id;
-  if (direct) {
-    return normalizePlayerId(direct);
-  }
-
-  const link = user.id ? loadAthleteClubLink(user.id) : null;
-  return link?.playerId ? normalizePlayerId(link.playerId) : null;
+  return resolveCanonicalCaptainAthleteIdFromUser(user);
 }
 
 export function isTeamCaptain(team, playerId) {

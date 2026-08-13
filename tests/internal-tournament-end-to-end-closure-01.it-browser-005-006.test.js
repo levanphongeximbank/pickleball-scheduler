@@ -161,8 +161,8 @@ describe("IT-BROWSER-005 — tab return does not reset initial loading", () => {
     assert.equal(shouldRefreshUiOnAuthEvent("SIGNED_OUT", sameUser, null), true);
     assert.equal(isSameAuthIdentity(sameUser, otherUser), false);
     const auth = readSrc("src/context/AuthContext.jsx");
-    assert.match(auth, /shouldRefreshUiOnAuthEvent/);
-    assert.match(auth, /current\.user/);
+    assert.match(auth, /selectStableAuthState/);
+    assert.match(auth, /subscribeToSupabaseAuth\(\(\) => \{/);
   });
 
   it("ClubContext retains last clubs on same-identity refresh and clears on user change", () => {
@@ -198,7 +198,7 @@ describe("IT-BROWSER-005 — tab return does not reset initial loading", () => {
 
     const club = readSrc("src/context/ClubContext.jsx");
     assert.match(club, /resolveCanonicalClubRefreshPolicy/);
-    assert.match(club, /readClubAuthIdentityKey/);
+    assert.match(club, /userSecurityScopeKey/);
     assert.match(club, /staleWhileRevalidate/);
   });
 

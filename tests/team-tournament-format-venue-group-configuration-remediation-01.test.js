@@ -238,8 +238,9 @@ test("I: group confirm readback requires exact group count (no F5)", () => {
     "utf8"
   );
   assert.match(persistSource, /preflightSetupMutationCapability/);
-  assert.match(persistSource, /GROUPS_READBACK_INCOMPLETE|groupsPersisted !== groups\.length/);
-  assert.match(persistSource, /requiresF5: false/);
+  assert.match(persistSource, /READBACK_FAILED/);
+  assert.match(persistSource, /persistedGroups\.length !== groups\.length/);
+  assert.doesNotMatch(persistSource, /location\.reload/);
 });
 
 test("I2: 1-group and 2-group expected lengths are canonical", () => {
@@ -281,7 +282,10 @@ test("J: V7 OFF → fail before partial destructive/partial-success sequence", a
   assert.equal(result.writeAttempted, false);
   assert.equal(teamWrite, 0);
   assert.match(String(result.error || ""), /VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7|tắt/i);
-  assert.ok(V7_GATE_RETIREMENT_RECOMMENDATION.includes("KEEP_UNTIL_STAGING"));
+  assert.match(
+    V7_GATE_RETIREMENT_RECOMMENDATION,
+    /RETIRE_DEFAULT_ON_EXPLICIT_OFF_KILLSWITCH|KEEP_UNTIL_STAGING/
+  );
 });
 
 // K — legacy-compatible open

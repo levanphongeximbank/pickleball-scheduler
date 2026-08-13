@@ -77,7 +77,10 @@ export default function BuildScheduleDialog({
     if (open) {
       setCourtCount(resolveDefaultCourtCount(teamData));
     }
-  }, [open, teamData]);
+    // Hydrate only when the dialog opens. teamData polling must not reset
+    // an in-progress schedule form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open-only hydrate
+  }, [open]);
 
   const previewOptions = useMemo(
     () => ({

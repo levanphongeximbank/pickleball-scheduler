@@ -67,18 +67,7 @@ export const EFFECT_PRELUDE_PRESETS = Object.freeze({
     playTick: true,
     skippable: true,
   },
-  [ANIMATION_MODES.DAILY_FAIR_MATCH]: {
-    durationSec: 5,
-    headline: "AI đang tạo trận công bằng",
-    flowStepKey: null,
-    messages: [
-      { at: 0, text: "Đang phân tích người chơi...", badge: "Đang phân tích" },
-      { at: 50, text: "Đánh giá độ cân bằng...", badge: "Đánh giá độ cân bằng" },
-    ],
-    playTick: true,
-    skippable: true,
-    skipDailyAnalyzePhase: true,
-  },
+  // DP-02: Daily Fair Match uses DailyFairMatchScreen only — no EffectPrelude.
   [EFFECT_PRELUDE_SCOPE.COURT_SCHEDULING]: {
     durationSec: 8,
     headline: "AI đang xếp sân",

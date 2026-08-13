@@ -79,7 +79,7 @@ test("C/D — first-team fallback removed; unproven identity fails closed", () =
     findTeamForCaptain,
   });
   assert.equal(nonCaptain.allowed, false);
-  assert.equal(nonCaptain.code, "captain_scope_denied");
+  assert.equal(nonCaptain.code, "NOT_CAPTAIN");
 });
 
 test("portal closed when captainAccessEnabled is not explicit true", () => {

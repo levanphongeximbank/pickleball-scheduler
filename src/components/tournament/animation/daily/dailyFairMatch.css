@@ -460,7 +460,27 @@
 .daily-match-card {
   padding: 10px;
   border-radius: 12px;
+  min-width: 0;
+  width: 100%;
   transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+
+.daily-match-card .daily-match-team {
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.daily-match-card .daily-match-vs {
+  color: #78909c;
+  letter-spacing: 0.04em;
+}
+
+.daily-fair-panel--matches {
+  min-width: 0;
+}
+
+.daily-fair-panel--matches-full {
+  max-width: none;
 }
 
 .daily-match-card--latest {
@@ -536,12 +556,21 @@
 }
 
 .daily-fair-control-bar {
-  position: sticky;
-  bottom: 0;
-  margin-top: 16px;
+  position: relative;
+  bottom: auto;
+  margin-top: 8px;
   padding: 12px 0 4px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0), #ffffff 30%);
-  z-index: 2;
+  z-index: 1;
+}
+
+.daily-fair-layout {
+  min-width: 0;
+  width: 100%;
+}
+
+.daily-fair-layout [data-panel="matches"] {
+  min-width: 0;
 }
 
 @media (max-width: 1200px) {

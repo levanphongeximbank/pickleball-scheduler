@@ -42,6 +42,10 @@ import {
   closeTeamTournamentForClub,
   updateTeamAwardsConfig,
 } from "../../../features/team-tournament/services/teamTournamentService.js";
+import {
+  CLOSE_DEFAULT_REASON,
+  resolveCloseMutationOutcome,
+} from "../../../features/team-tournament/setup/closeTournamentMutation.js";
 
 function downloadText(filename, content, mimeType) {
   if (typeof document === "undefined") return;
@@ -58,23 +62,25 @@ export default function TeamAwardsClosePanel({
   clubId,
   tournamentId,
   teamData,
+  tournament = null,
   tournamentName = "",
   canManage = false,
+  onCloseTournament = null,
   onUpdated,
   onError,
   onMessage,
 }) {
   const [busy, setBusy] = useState(false);
-  const closed = isTeamTournamentClosed(teamData);
+  const closed = isTeamTournamentClosed(teamData, tournament);
   const preview = useMemo(
     () => (teamData ? getAwardsPreview(teamData) : { awards: [], ranking: [] }),
     [teamData]
   );
   const readiness = useMemo(
-    () => (teamData ? previewCloseReadiness(teamData) : null),
-    [teamData]
+    () => (teamData ? previewCloseReadiness(teamData, tournament) : null),
+    [teamData, tournament]
   );
-  const summary = teamData ? getTeamTournamentSummary(teamData) : null;
+  const summary = teamData ? getTeamTournamentSummary(teamData, tournament) : null;
   const config = teamData ? getAwardsConfig(teamData) : {};
   const teams = teamData?.teams || [];
 
@@ -82,12 +88,18 @@ export default function TeamAwardsClosePanel({
     return null;
   }
 
-  function run(action, successText) {
+  async function run(action, successText, { assertPersisted = null } = {}) {
     setBusy(true);
     try {
-      const result = action();
+      const result = await Promise.resolve(action());
       if (!result?.ok) {
         onError?.(result?.error || "Thao tác thất bại.");
+        return;
+      }
+      // ok:true from a preview-only setup mutation is not a persisted write.
+      const persisted = assertPersisted ? assertPersisted(result) : { ok: true };
+      if (!persisted.ok) {
+        onError?.(persisted.error || "Thao tác chưa được server ghi nhận.");
         return;
       }
       onMessage?.(successText);
@@ -241,26 +253,32 @@ export default function TeamAwardsClosePanel({
           Đóng giải đấu
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Khóa kết quả, đóng băng BXH, gán giải tự động (nếu chưa), tạo tóm tắt.
+          Đóng giải = lifecycle status completed (server dual-write). Champion/BXH lấy từ
+          kết quả trận đã lưu — không tin awards/standings do client gửi.
         </Typography>
-        {readiness && readiness.pendingMatchupCount > 0 && !closed ? (
+        {readiness && !closed && readiness.canClose === false ? (
           <Alert severity="warning" sx={{ mb: 2 }}>
-            Còn {readiness.pendingMatchupCount} trận chưa có đội thắng — vẫn có thể đóng nếu BTC
-            xác nhận.
+            {readiness.error || readiness.code || "Chưa đủ điều kiện đóng giải."}
+            {readiness.pendingMatchupCount > 0
+              ? ` (Còn ${readiness.pendingMatchupCount} trận chưa hoàn tất.)`
+              : ""}
           </Alert>
         ) : null}
         <Button
           variant="contained"
           color="error"
           startIcon={<LockIcon />}
-          disabled={busy || closed}
+          disabled={busy || closed || readiness?.canClose === false}
           onClick={() =>
             run(
               () =>
-                closeTeamTournamentForClub(clubId, tournamentId, {
-                  autoAwards: true,
-                }),
-              "Đã đóng giải đồng đội."
+                typeof onCloseTournament === "function"
+                  ? onCloseTournament({ reason: CLOSE_DEFAULT_REASON })
+                  : closeTeamTournamentForClub(clubId, tournamentId, {
+                      autoAwards: true,
+                    }),
+              "Giải đã được đóng (completed).",
+              { assertPersisted: resolveCloseMutationOutcome }
             )
           }
         >
