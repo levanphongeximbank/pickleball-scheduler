@@ -114,6 +114,24 @@ export function shouldRedirectToLogin(
   return !isPublicAuthPath(pathname, { authProductionEnabled, rbacEnabled });
 }
 
+/**
+ * AUTH_UNKNOWN_INITIAL → full-page auth spinner.
+ * AUTH_REFRESHING_KNOWN_USER → keep the protected route mounted.
+ */
+export function shouldRenderRouteAuthLoading({
+  authLoading = false,
+  isAuthenticated = false,
+  pathname = "",
+} = {}) {
+  if (!authLoading || pathname === "/login") {
+    return false;
+  }
+  if (isAuthenticated) {
+    return false;
+  }
+  return true;
+}
+
 export function shouldRedirectToForbidden(
   pathname,
   { rbacEnabled, isAuthenticated, can, scope, user }

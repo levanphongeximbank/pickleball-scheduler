@@ -74,6 +74,7 @@ import {
   resolveInternalKnockoutEligibility,
   resolveInternalTournamentLifecycle,
   resolveInternalWorkspaceKey,
+  resolveInternalPageLoadingGate,
   shouldSkipKnockoutForInternal,
   INTERNAL_WORKSPACE_SECTIONS,
   INTERNAL_WORKSPACE_SECTION_LABELS,
@@ -1499,7 +1500,13 @@ export default function InternalTournamentSetup() {
     }
   };
 
-  if (!clubScope.ok && !tournament) {
+  const pageLoadingGate = resolveInternalPageLoadingGate({
+    clubScopeOk: clubScope.ok,
+    tournamentLoading,
+    tournament,
+  });
+
+  if (pageLoadingGate.showFullPageLoading && pageLoadingGate.reason === "club-not-ready") {
     return (
       <Box>
         <Alert severity="info">
@@ -1509,7 +1516,7 @@ export default function InternalTournamentSetup() {
     );
   }
 
-  if (tournamentLoading && !tournament) {
+  if (pageLoadingGate.showFullPageLoading && pageLoadingGate.reason === "initial-load") {
     return (
       <Box>
         <Alert severity="info">Đang tải giải nội bộ...</Alert>
@@ -1548,7 +1555,7 @@ export default function InternalTournamentSetup() {
   }
 
   return (
-    <TournamentManageGate tournamentId={tournamentId}>
+    <TournamentManageGate tournamentId={tournamentId} tournament={tournament}>
     <Box key={resolveInternalWorkspaceKey(tournament)}>
     <TournamentSetupShell
       tournament={tournament}

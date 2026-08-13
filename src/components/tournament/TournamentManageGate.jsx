@@ -8,6 +8,7 @@ import { useTenant } from "../../context/TenantContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { assertLoadedTournamentAccess } from "../../features/tournament/guards/tournamentAccess.js";
 import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
+import { resolveTournamentManageGatePresentation } from "../../features/tournament/internal/internalWorkspaceSections.js";
 
 function AccessDenied({ title, message, to = "/tournament" }) {
   return (
@@ -33,17 +34,31 @@ function AccessDenied({ title, message, to = "/tournament" }) {
  * - không có TOURNAMENT_UPDATE
  * - tournament không thuộc tenant hiện tại (cloud authority)
  */
-export default function TournamentManageGate({ children, tournamentId = null }) {
+export default function TournamentManageGate({
+  children,
+  tournamentId = null,
+  tournament: loadedTournament = null,
+}) {
   const { rbacEnabled, isAuthenticated, can } = useAuth();
   const { activeClub, activeClubId } = useClub();
   const { currentTenantId } = useTenant();
-  const { tournament, loading } = useCanonicalTournament(activeClub, tournamentId);
+  const { tournament: fetchedTournament, loading } = useCanonicalTournament(
+    activeClub,
+    tournamentId
+  );
+  const tournament = loadedTournament || fetchedTournament;
+  const presentation = resolveTournamentManageGatePresentation({
+    tournamentId,
+    loading,
+    tournament,
+    activeClubId,
+  });
 
   if (!rbacEnabled || !isAuthenticated) {
     return children;
   }
 
-  if (tournamentId && loading) {
+  if (presentation.showFullPageLoading) {
     return (
       <Box sx={{ p: 3 }}>
         <CircularProgress size={28} />
@@ -51,7 +66,11 @@ export default function TournamentManageGate({ children, tournamentId = null }) 
     );
   }
 
-  if (tournamentId) {
+  if (presentation.keepChildren) {
+    return children;
+  }
+
+  if (presentation.assertAccess && tournamentId) {
     const tournamentAccess = assertLoadedTournamentAccess(activeClubId, tournament, {
       tenantId: currentTenantId,
     });

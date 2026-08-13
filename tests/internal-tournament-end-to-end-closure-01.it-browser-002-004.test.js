@@ -198,10 +198,7 @@ describe("IT-BROWSER-002 — Internal section/select does not remount or blank",
     assert.equal(/window\.location\s*=/.test(setup), false);
     assert.match(setup, /resolveInternalWorkspaceKey\(tournament\)/);
     assert.equal(/key=\{[^}]*version/.test(setup), false);
-    assert.match(
-      setup,
-      /if \(tournamentLoading && !tournament\)/
-    );
+    assert.match(setup, /resolveInternalPageLoadingGate/);
     assert.equal(/if \(tournamentLoading\) \{/.test(setup), false);
     assert.match(setup, /tournamentRefreshing/);
     assert.equal(

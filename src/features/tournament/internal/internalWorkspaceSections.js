@@ -74,3 +74,78 @@ export function resolveCanonicalScopeGapPolicy({
     backgroundRefresh: false,
   };
 }
+
+/**
+ * Hard identity change (different tournament / club / tenant) must drop the
+ * last row. A transient empty club/tenant during tab-return refresh must not.
+ */
+export function resolveCanonicalIdentityChangePolicy({
+  previousClubId = "",
+  nextClubId = "",
+  previousTenantId = "",
+  nextTenantId = "",
+  previousTournamentId = "",
+  nextTournamentId = "",
+} = {}) {
+  const prevTournament = String(previousTournamentId || "").trim();
+  const nextTournament = String(nextTournamentId || "").trim();
+  if (prevTournament && nextTournament && prevTournament !== nextTournament) {
+    return { clearTournament: true, reason: "tournament-id" };
+  }
+
+  const prevClub = String(previousClubId || "").trim();
+  const nextClub = String(nextClubId || "").trim();
+  const prevTenant = String(previousTenantId || "").trim();
+  const nextTenant = String(nextTenantId || "").trim();
+
+  if (prevClub && !nextClub) {
+    return { clearTournament: false, reason: "club-scope-gap" };
+  }
+  if (prevClub && nextClub && prevClub !== nextClub) {
+    return { clearTournament: true, reason: "club-id" };
+  }
+  if (prevTenant && nextTenant && prevTenant !== nextTenant) {
+    return { clearTournament: true, reason: "tenant-id" };
+  }
+  return { clearTournament: false, reason: "stable" };
+}
+
+export function resolveInternalPageLoadingGate({
+  clubScopeOk = false,
+  tournamentLoading = false,
+  tournament = null,
+} = {}) {
+  if (tournament) {
+    return { showFullPageLoading: false, keepWorkspace: true, reason: "has-tournament" };
+  }
+  if (!clubScopeOk) {
+    return { showFullPageLoading: true, keepWorkspace: false, reason: "club-not-ready" };
+  }
+  if (tournamentLoading) {
+    return { showFullPageLoading: true, keepWorkspace: false, reason: "initial-load" };
+  }
+  return { showFullPageLoading: false, keepWorkspace: false, reason: "not-found" };
+}
+
+export function resolveTournamentManageGatePresentation({
+  tournamentId = "",
+  loading = false,
+  tournament = null,
+  activeClubId = "",
+} = {}) {
+  if (!String(tournamentId || "").trim()) {
+    return { showFullPageLoading: false, keepChildren: true, assertAccess: false };
+  }
+  if (tournament) {
+    const clubId = String(activeClubId || "").trim();
+    return {
+      showFullPageLoading: false,
+      keepChildren: !clubId,
+      assertAccess: Boolean(clubId),
+    };
+  }
+  if (loading) {
+    return { showFullPageLoading: true, keepChildren: false, assertAccess: false };
+  }
+  return { showFullPageLoading: false, keepChildren: false, assertAccess: true };
+}

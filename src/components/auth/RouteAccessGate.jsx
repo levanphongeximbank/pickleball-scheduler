@@ -10,6 +10,7 @@ import {
   shouldRedirectToForcePasswordChange,
   shouldRedirectToLogin,
   shouldRedirectToForbidden,
+  shouldRenderRouteAuthLoading,
   userMustChangePassword,
 } from "../../auth/authGuard.js";
 import { getDefaultHomePath, resolveRouteAccessScope } from "../../auth/menuAccess.js";
@@ -44,7 +45,13 @@ export default function RouteAccessGate({ children }) {
   const { activeClubId, activeClub } = useClub();
   const { activeClusterId } = useCluster();
 
-  if (authLoading && location.pathname !== "/login") {
+  if (
+    shouldRenderRouteAuthLoading({
+      authLoading,
+      isAuthenticated,
+      pathname: location.pathname,
+    })
+  ) {
     return <AuthLoading />;
   }
 

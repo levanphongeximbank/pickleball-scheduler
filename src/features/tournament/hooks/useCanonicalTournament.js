@@ -17,6 +17,7 @@ import {
   resolveCanonicalExpectedVersion,
 } from "../internal/canonicalTournamentCas.js";
 import {
+  resolveCanonicalIdentityChangePolicy,
   resolveCanonicalLoadPresentation,
   resolveCanonicalScopeGapPolicy,
 } from "../internal/internalWorkspaceSections.js";
@@ -49,27 +50,29 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const hasLoadedRef = useRef(false);
-
-  useEffect(() => {
-    hasLoadedRef.current = false;
-  }, [tournamentId]);
+  const lastAuthoritativeRef = useRef(null);
+  const lastScopeRef = useRef({ clubId: "", tenantId: "", tournamentId: "" });
+  const lastRevisionRef = useRef(revision);
 
   const reload = useCallback(async () => {
     if (!clubId || !tournamentId) {
       const gap = resolveCanonicalScopeGapPolicy({
-        hasTournament: hasLoadedRef.current,
+        hasTournament: hasLoadedRef.current || Boolean(lastAuthoritativeRef.current),
         tournamentId,
       });
       if (!gap.keepRenderedTournament) {
         setTournament(null);
         hasLoadedRef.current = false;
+        lastAuthoritativeRef.current = null;
+      } else if (lastAuthoritativeRef.current) {
+        setTournament(lastAuthoritativeRef.current);
       }
       setLoading(false);
       setRefreshing(false);
-      return null;
+      return lastAuthoritativeRef.current;
     }
     const presentation = resolveCanonicalLoadPresentation({
-      hasTournament: hasLoadedRef.current,
+      hasTournament: hasLoadedRef.current || Boolean(lastAuthoritativeRef.current),
     });
     if (presentation.initialLoading) setLoading(true);
     else setRefreshing(true);
@@ -78,6 +81,8 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
     if (!result.ok) {
       if (presentation.initialLoading) {
         setTournament(null);
+        lastAuthoritativeRef.current = null;
+        hasLoadedRef.current = false;
       }
       setError(result.error || "Không tải được giải.");
       setLoading(false);
@@ -86,31 +91,75 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
     }
     setTournament(result.tournament);
     hasLoadedRef.current = true;
+    lastAuthoritativeRef.current = result.tournament;
+    lastScopeRef.current = { clubId, tenantId, tournamentId };
+    lastRevisionRef.current = revision;
     setLoading(false);
     setRefreshing(false);
     return result.tournament;
-  }, [clubId, tournamentId, tenantId]);
+  }, [clubId, tournamentId, tenantId, revision]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const previous = lastScopeRef.current;
+      const identity = resolveCanonicalIdentityChangePolicy({
+        previousClubId: previous.clubId,
+        nextClubId: clubId,
+        previousTenantId: previous.tenantId,
+        nextTenantId: tenantId,
+        previousTournamentId: previous.tournamentId,
+        nextTournamentId: tournamentId,
+      });
+
+      if (identity.clearTournament) {
+        hasLoadedRef.current = false;
+        lastAuthoritativeRef.current = null;
+        if (!cancelled) setTournament(null);
+        lastScopeRef.current = { clubId, tenantId, tournamentId };
+      }
+
       if (!clubId || !tournamentId) {
         if (!cancelled) {
           const gap = resolveCanonicalScopeGapPolicy({
-            hasTournament: hasLoadedRef.current,
+            hasTournament: hasLoadedRef.current || Boolean(lastAuthoritativeRef.current),
             tournamentId,
           });
           if (!gap.keepRenderedTournament) {
             setTournament(null);
             hasLoadedRef.current = false;
+            lastAuthoritativeRef.current = null;
+          } else if (lastAuthoritativeRef.current) {
+            setTournament(lastAuthoritativeRef.current);
           }
           setLoading(false);
           setRefreshing(false);
         }
         return;
       }
+
+      const sameScopeRestored =
+        !identity.clearTournament &&
+        hasLoadedRef.current &&
+        lastAuthoritativeRef.current &&
+        String(lastAuthoritativeRef.current.id || "") === String(tournamentId) &&
+        previous.clubId === clubId &&
+        String(previous.tenantId || "") === String(tenantId || "") &&
+        lastRevisionRef.current === revision;
+      if (sameScopeRestored) {
+        if (!cancelled) {
+          setTournament(lastAuthoritativeRef.current);
+          setLoading(false);
+          setRefreshing(false);
+        }
+        return;
+      }
+
+      lastScopeRef.current = { clubId, tenantId, tournamentId };
+      lastRevisionRef.current = revision;
+
       const presentation = resolveCanonicalLoadPresentation({
-        hasTournament: hasLoadedRef.current,
+        hasTournament: hasLoadedRef.current || Boolean(lastAuthoritativeRef.current),
       });
       if (presentation.initialLoading) setLoading(true);
       else setRefreshing(true);
@@ -119,11 +168,16 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
       if (!result.ok) {
         if (presentation.initialLoading) {
           setTournament(null);
+          lastAuthoritativeRef.current = null;
+          hasLoadedRef.current = false;
+        } else if (lastAuthoritativeRef.current) {
+          setTournament(lastAuthoritativeRef.current);
         }
         setError(result.error || "Không tải được giải.");
       } else {
         setTournament(result.tournament);
         hasLoadedRef.current = true;
+        lastAuthoritativeRef.current = result.tournament;
         setError(null);
       }
       setLoading(false);

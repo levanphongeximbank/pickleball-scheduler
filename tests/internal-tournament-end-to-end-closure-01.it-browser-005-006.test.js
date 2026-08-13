@@ -27,11 +27,22 @@ import {
   formatInternalMatchRefereeLabel,
   listEligibleInternalReferees,
   mapLifecycleStepToWorkspaceSection,
+  resolveCanonicalIdentityChangePolicy,
   resolveCanonicalScopeGapPolicy,
+  resolveInternalPageLoadingGate,
+  resolveTournamentManageGatePresentation,
   summarizeInternalRefereeCoverage,
 } from "../src/features/tournament/internal/index.js";
 import { INTERNAL_LIFECYCLE_STEPS } from "../src/features/tournament/internal/internalTournamentLifecycleResolver.js";
-import { shouldRefreshUiOnAuthEvent } from "../src/auth/authService.js";
+import {
+  isSameAuthIdentity,
+  shouldRefreshUiOnAuthEvent,
+} from "../src/auth/authService.js";
+import { shouldRenderRouteAuthLoading } from "../src/auth/authGuard.js";
+import {
+  CLUB_READ_STATE,
+  resolveCanonicalClubRefreshPolicy,
+} from "../src/features/club/context/clubCanonicalReadModel.js";
 import { guardAiAccess } from "../src/features/ai-assistant/guards/aiAccessGuard.js";
 import { getAiTournamentSummary } from "../src/features/ai-assistant/services/aiEngineService.js";
 import { createRefereeRosterEntry } from "../src/models/tournament/refereeRoster.js";
@@ -134,12 +145,90 @@ function createBrowserCasStore(initialRow) {
 }
 
 describe("IT-BROWSER-005 — tab return does not reset initial loading", () => {
-  it("TOKEN_REFRESHED does not rebuild Auth/Club UI", () => {
-    assert.equal(shouldRefreshUiOnAuthEvent("TOKEN_REFRESHED"), false);
+  const sameUser = { id: "user-1", role: "CLUB_OWNER" };
+  const sameUserNewToken = { id: "user-1", role: "CLUB_OWNER", accessToken: "next" };
+  const otherUser = { id: "user-2", role: "CLUB_OWNER" };
+
+  it("TOKEN_REFRESHED and same-user SIGNED_IN do not rebuild Auth UI", () => {
+    assert.equal(shouldRefreshUiOnAuthEvent("TOKEN_REFRESHED", sameUser, sameUserNewToken), false);
+    assert.equal(shouldRefreshUiOnAuthEvent("SIGNED_IN", sameUser, sameUserNewToken), false);
+    assert.equal(shouldRefreshUiOnAuthEvent("INITIAL_SESSION", sameUser, sameUserNewToken), false);
+    assert.equal(shouldRefreshUiOnAuthEvent("USER_UPDATED", sameUser, sameUserNewToken), false);
+    assert.equal(isSameAuthIdentity(sameUser, sameUserNewToken), true);
     assert.equal(shouldRefreshUiOnAuthEvent("SIGNED_IN"), true);
-    assert.equal(shouldRefreshUiOnAuthEvent("SIGNED_OUT"), true);
+    assert.equal(shouldRefreshUiOnAuthEvent("SIGNED_IN", null, sameUser), true);
+    assert.equal(shouldRefreshUiOnAuthEvent("SIGNED_IN", sameUser, otherUser), true);
+    assert.equal(shouldRefreshUiOnAuthEvent("SIGNED_OUT", sameUser, null), true);
+    assert.equal(isSameAuthIdentity(sameUser, otherUser), false);
     const auth = readSrc("src/context/AuthContext.jsx");
     assert.match(auth, /shouldRefreshUiOnAuthEvent/);
+    assert.match(auth, /current\.user/);
+  });
+
+  it("ClubContext retains last clubs on same-identity refresh and clears on user change", () => {
+    const identity = "1::user-1::CLUB_OWNER::tenant-a::1";
+    const same = resolveCanonicalClubRefreshPolicy({
+      previousIdentityKey: identity,
+      nextIdentityKey: identity,
+      clubReadState: CLUB_READ_STATE.READY,
+      clubCount: 2,
+    });
+    assert.equal(same.clearClubs, false);
+    assert.equal(same.emitLoading, false);
+    assert.equal(same.staleWhileRevalidate, true);
+
+    const switched = resolveCanonicalClubRefreshPolicy({
+      previousIdentityKey: identity,
+      nextIdentityKey: "1::user-2::CLUB_OWNER::tenant-a::1",
+      clubReadState: CLUB_READ_STATE.READY,
+      clubCount: 2,
+    });
+    assert.equal(switched.clearClubs, true);
+    assert.equal(switched.emitLoading, true);
+    assert.equal(switched.staleWhileRevalidate, false);
+
+    const signedOut = resolveCanonicalClubRefreshPolicy({
+      previousIdentityKey: identity,
+      nextIdentityKey: "0::::0",
+      clubReadState: CLUB_READ_STATE.READY,
+      clubCount: 2,
+    });
+    assert.equal(signedOut.clearClubs, true);
+    assert.equal(signedOut.idle, true);
+
+    const club = readSrc("src/context/ClubContext.jsx");
+    assert.match(club, /resolveCanonicalClubRefreshPolicy/);
+    assert.match(club, /readClubAuthIdentityKey/);
+    assert.match(club, /staleWhileRevalidate/);
+  });
+
+  it("known authenticated user does not get a route-guard full-page spinner", () => {
+    assert.equal(
+      shouldRenderRouteAuthLoading({
+        authLoading: true,
+        isAuthenticated: true,
+        pathname: "/tournament/internal/abc",
+      }),
+      false
+    );
+    assert.equal(
+      shouldRenderRouteAuthLoading({
+        authLoading: true,
+        isAuthenticated: false,
+        pathname: "/tournament/internal/abc",
+      }),
+      true
+    );
+    assert.equal(
+      shouldRenderRouteAuthLoading({
+        authLoading: true,
+        isAuthenticated: false,
+        pathname: "/login",
+      }),
+      false
+    );
+    const gate = readSrc("src/components/auth/RouteAccessGate.jsx");
+    assert.match(gate, /shouldRenderRouteAuthLoading/);
   });
 
   it("scope gap after load keeps tournament and does not toggle initial loading", () => {
@@ -158,13 +247,75 @@ describe("IT-BROWSER-005 — tab return does not reset initial loading", () => {
     assert.equal(first.clearTournament, true);
     assert.equal(first.initialLoading, true);
 
+    const gap = resolveCanonicalIdentityChangePolicy({
+      previousClubId: "club-a",
+      nextClubId: "",
+      previousTenantId: "tenant-a",
+      nextTenantId: "",
+      previousTournamentId: TOURNAMENT_ID,
+      nextTournamentId: TOURNAMENT_ID,
+    });
+    assert.equal(gap.clearTournament, false);
+    assert.equal(gap.reason, "club-scope-gap");
+
+    const otherClub = resolveCanonicalIdentityChangePolicy({
+      previousClubId: "club-a",
+      nextClubId: "club-b",
+      previousTenantId: "tenant-a",
+      nextTenantId: "tenant-a",
+      previousTournamentId: TOURNAMENT_ID,
+      nextTournamentId: TOURNAMENT_ID,
+    });
+    assert.equal(otherClub.clearTournament, true);
+
+    const pageKeep = resolveInternalPageLoadingGate({
+      clubScopeOk: false,
+      tournamentLoading: true,
+      tournament: { id: TOURNAMENT_ID },
+    });
+    assert.equal(pageKeep.showFullPageLoading, false);
+    assert.equal(pageKeep.keepWorkspace, true);
+
+    const pageInitial = resolveInternalPageLoadingGate({
+      clubScopeOk: true,
+      tournamentLoading: true,
+      tournament: null,
+    });
+    assert.equal(pageInitial.showFullPageLoading, true);
+    assert.equal(pageInitial.reason, "initial-load");
+
+    const manageKeep = resolveTournamentManageGatePresentation({
+      tournamentId: TOURNAMENT_ID,
+      loading: true,
+      tournament: { id: TOURNAMENT_ID },
+      activeClubId: "",
+    });
+    assert.equal(manageKeep.showFullPageLoading, false);
+    assert.equal(manageKeep.keepChildren, true);
+    assert.equal(manageKeep.assertAccess, false);
+
+    const manageSpin = resolveTournamentManageGatePresentation({
+      tournamentId: TOURNAMENT_ID,
+      loading: true,
+      tournament: null,
+      activeClubId: "club-a",
+    });
+    assert.equal(manageSpin.showFullPageLoading, true);
+
     const hook = readSrc("src/features/tournament/hooks/useCanonicalTournament.js");
     assert.match(hook, /resolveCanonicalScopeGapPolicy/);
-    assert.match(hook, /hasLoadedRef\.current = false;\s*\}, \[tournamentId\]/);
+    assert.match(hook, /resolveCanonicalIdentityChangePolicy/);
+    assert.match(hook, /lastAuthoritativeRef/);
+    assert.match(hook, /sameScopeRestored/);
 
     const setup = readSrc("src/pages/tournament/InternalTournamentSetup.jsx");
-    assert.match(setup, /!clubScope\.ok && !tournament/);
+    assert.match(setup, /resolveInternalPageLoadingGate/);
+    assert.match(setup, /tournament=\{tournament\}/);
     assert.equal(/if \(!clubScope\.ok\) \{/.test(setup), false);
+
+    const manage = readSrc("src/components/tournament/TournamentManageGate.jsx");
+    assert.match(manage, /resolveTournamentManageGatePresentation/);
+    assert.match(manage, /loadedTournament/);
   });
 });
 

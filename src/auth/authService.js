@@ -541,13 +541,43 @@ export async function signOut() {
   return { ok: true };
 }
 
+export function readAuthIdentityKey(user) {
+  const id = String(user?.id || "").trim();
+  if (!id) return "";
+  return `${id}::${String(user?.role || "").trim()}`;
+}
+
+export function isSameAuthIdentity(previousUser, nextUser) {
+  const previous = readAuthIdentityKey(previousUser);
+  const next = readAuthIdentityKey(nextUser);
+  return Boolean(previous) && previous === next;
+}
+
+const CREDENTIAL_RECOVERY_AUTH_EVENTS = new Set([
+  "TOKEN_REFRESHED",
+  "SIGNED_IN",
+  "INITIAL_SESSION",
+  "USER_UPDATED",
+]);
+
 /**
- * Token refresh must not rebuild Auth/Club React trees — it is not a session change.
- * Returning to a browser tab commonly fires TOKEN_REFRESHED and would otherwise
- * flash operator workspaces.
+ * Separate AUTH_IDENTITY_CHANGE from TOKEN_REFRESH / tab-recovery SIGNED_IN.
+ * Returning to a browser tab commonly fires TOKEN_REFRESHED then SIGNED_IN for
+ * the same user. Rebuilding Auth UI from those events remounts ClubContext
+ * and flashes Internal Tournament.
  */
-export function shouldRefreshUiOnAuthEvent(event) {
-  return String(event || "") !== "TOKEN_REFRESHED";
+export function shouldRefreshUiOnAuthEvent(event, previousUser, nextUser) {
+  const name = String(event || "").trim();
+  if (name === "SIGNED_OUT" || name === "PASSWORD_RECOVERY") {
+    return true;
+  }
+  if (name === "TOKEN_REFRESHED") {
+    return false;
+  }
+  if (CREDENTIAL_RECOVERY_AUTH_EVENTS.has(name) && isSameAuthIdentity(previousUser, nextUser)) {
+    return false;
+  }
+  return true;
 }
 
 export function subscribeToSupabaseAuth(onChange) {

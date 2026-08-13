@@ -74,6 +74,9 @@ export {
   resolveInternalWorkspaceKey,
   resolveCanonicalLoadPresentation,
   resolveCanonicalScopeGapPolicy,
+  resolveCanonicalIdentityChangePolicy,
+  resolveInternalPageLoadingGate,
+  resolveTournamentManageGatePresentation,
 } from "./internalWorkspaceSections.js";
 
 export {

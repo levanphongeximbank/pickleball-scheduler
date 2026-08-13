@@ -123,9 +123,22 @@ export function AuthProvider({ children }) {
       await bootstrap();
       if (!cancelled) {
         unsubscribe = subscribeToSupabaseAuth((payload) => {
-          if (!cancelled && shouldRefreshUiOnAuthEvent(payload?.event)) {
-            refresh();
+          if (cancelled) {
+            return;
           }
+          setState((current) => {
+            const next = getAuthState();
+            if (
+              !shouldRefreshUiOnAuthEvent(
+                payload?.event,
+                current.user,
+                payload?.user || next.user
+              )
+            ) {
+              return current;
+            }
+            return next;
+          });
         });
       }
     };
