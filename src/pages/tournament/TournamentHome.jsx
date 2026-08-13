@@ -43,6 +43,7 @@ import { usePageRuntimeAccess } from "../../core/platform/app/usePageRuntimeAcce
 import { createTeamTournamentForUi } from "../../features/team-tournament/services/teamTournamentService.js";
 import { getTeamData } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import { findTeamForCaptain } from "../../features/team-tournament/engines/teamPermissionEngine.js";
+import { useCanonicalCaptainAthleteId } from "../../features/team-tournament/ui/useCanonicalCaptainAthleteId.js";
 import { buildCaptainPortalPath } from "../../components/tournament/team/copyPortalLink.js";
 import { TOURNAMENT_LAYOUT } from "../../components/tournament/tournamentLayout.js";
 import { resolveEventTypeFromQuery } from "../../features/individual-tournament/index.js";
@@ -115,6 +116,7 @@ export default function TournamentHome({ section = "overview" }) {
   const createRef = useRef(null);
   const listRef = useRef(null);
   const { user } = useAuth();
+  const captainIdentity = useCanonicalCaptainAthleteId(user);
   const preselectedEvent = resolveEventTypeFromQuery(searchParams.get("event"));
   const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
@@ -298,7 +300,7 @@ export default function TournamentHome({ section = "overview" }) {
   };
 
   const isCaptainForTeamTournament = (tournament) => {
-    const playerId = user?.playerId;
+    const playerId = captainIdentity.athleteId;
     if (!playerId || tournament?.mode !== TOURNAMENT_MODE.TEAM_TOURNAMENT) {
       return false;
     }

@@ -1,7 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import { ROLES } from "../src/auth/roles.js";
+import {
+  buildUserSecurityScopeKey,
+  areAuthStatesSemanticallyEqual,
+  selectStableAuthState,
+  shouldRehydrateClubScope,
+} from "../src/auth/authSemanticScope.js";
 import { formatAuthError } from "../src/auth/authErrors.js";
 import {
   isAuthRequired,
@@ -250,4 +258,79 @@ test("signInAs — lưu session qua localStorage", () => {
   const result = signInAs(user, { provider: "test" });
   assert.equal(result.ok, true);
   assert.equal(getAuthState().authProvider, "test");
+});
+
+test("DP-13B — same logical user new object does not publish a new auth state", () => {
+  const baseUser = {
+    id: "user-1",
+    email: "owner@club.local",
+    role: "TENANT_OWNER",
+    tenantId: "tenant-a",
+    venueId: "venue-a",
+    clubId: "club-a",
+    tournamentId: null,
+    teamId: null,
+    playerId: null,
+    assignedClusterIds: ["c2", "c1"],
+    status: "active",
+    mustChangePassword: false,
+    displayName: "Owner",
+    loggedInAt: "2026-08-13T10:00:00.000Z",
+  };
+  const refreshedUser = {
+    ...baseUser,
+    displayName: "Owner Updated",
+    avatarUrl: "https://cdn.example/a.png",
+    loggedInAt: "2026-08-13T10:00:30.000Z",
+    updatedAt: "2026-08-13T10:00:30.000Z",
+  };
+  const previous = {
+    user: baseUser,
+    isAuthenticated: true,
+    rbacEnabled: true,
+    authProductionEnabled: true,
+    authProvider: "supabase",
+  };
+  const next = {
+    user: refreshedUser,
+    isAuthenticated: true,
+    rbacEnabled: true,
+    authProductionEnabled: true,
+    authProvider: "supabase",
+  };
+
+  assert.equal(buildUserSecurityScopeKey(baseUser), buildUserSecurityScopeKey(refreshedUser));
+  assert.equal(areAuthStatesSemanticallyEqual(previous, next), true);
+  assert.equal(selectStableAuthState(previous, next), previous);
+  assert.equal(shouldRehydrateClubScope(
+    buildUserSecurityScopeKey(baseUser),
+    buildUserSecurityScopeKey(refreshedUser)
+  ), false);
+
+  const switched = selectStableAuthState(previous, {
+    ...next,
+    user: { ...refreshedUser, id: "user-2" },
+  });
+  assert.notEqual(switched, previous);
+  assert.equal(shouldRehydrateClubScope(
+    buildUserSecurityScopeKey(baseUser),
+    buildUserSecurityScopeKey({ ...baseUser, id: "user-2" })
+  ), true);
+
+  assert.equal(shouldRehydrateClubScope(
+    buildUserSecurityScopeKey(baseUser),
+    buildUserSecurityScopeKey({ ...baseUser, tenantId: "tenant-b" })
+  ), true);
+  assert.equal(shouldRehydrateClubScope(
+    buildUserSecurityScopeKey(baseUser),
+    buildUserSecurityScopeKey({ ...baseUser, role: "CLUB_MANAGER" })
+  ), true);
+  assert.equal(shouldRehydrateClubScope(
+    buildUserSecurityScopeKey(baseUser),
+    buildUserSecurityScopeKey(null)
+  ), true);
+
+  const authSource = fs.readFileSync(path.resolve("src/context/AuthContext.jsx"), "utf8");
+  assert.match(authSource, /selectStableAuthState\(previous, getAuthState\(\)\)/);
+  assert.match(authSource, /TOKEN_REFRESHED/);
 });

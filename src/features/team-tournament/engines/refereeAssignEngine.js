@@ -133,13 +133,24 @@ export function unassignReferee(teamData, matchId) {
 
 export function listMatchesWithoutReferee(teamData) {
   const assignments = getAssignments(teamData);
-  return (teamData?.matchups || []).filter((matchup) => !assignments[matchup.id]);
+  return (teamData?.matchups || []).filter((matchup) => {
+    const teamA = String(matchup?.teamAId || "").trim();
+    const teamB = String(matchup?.teamBId || "").trim();
+    if (!teamA || !teamB) return false;
+    return !assignments[matchup.id];
+  });
 }
 
 export function buildRefereeAssignmentTable(teamData) {
   const referees = listReferees(teamData);
 
-  return (teamData?.matchups || []).map((matchup) => {
+  return (teamData?.matchups || [])
+    .filter((matchup) => {
+      const teamA = String(matchup?.teamAId || "").trim();
+      const teamB = String(matchup?.teamBId || "").trim();
+      return Boolean(teamA && teamB);
+    })
+    .map((matchup) => {
     const teamA = findTeam(teamData, matchup.teamAId);
     const teamB = findTeam(teamData, matchup.teamBId);
     const referee = getRefereeForMatch(teamData, matchup.id);

@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 
-import { Box, Grid } from "@mui/material";
+import { Alert, Box, Grid } from "@mui/material";
 
 import { hasSupabaseConfig } from "../../../domain/matchLiveSync.js";
 import DirectorActions from "./components/DirectorActions.jsx";
@@ -10,6 +10,7 @@ import DirectorHeader, { DirectorAccessDenied } from "./components/DirectorHeade
 import DirectorMatchBoard from "./components/DirectorMatchCard.jsx";
 import DirectorScorePanel from "./components/DirectorScorePanel.jsx";
 import { useDirectorActions } from "./hooks/useDirectorActions.js";
+import { shouldShowDirectorBlockingLoad } from "./directorLoadingGate.js";
 import { useDirectorState } from "./hooks/useDirectorState.js";
 import { useDirectorSync } from "./hooks/useDirectorSync.js";
 
@@ -28,6 +29,10 @@ export default function TournamentDirectorMode() {
     players,
     courts,
     isDaily,
+    dailySession,
+    initialLoading,
+    tournamentLoading,
+    tournamentLoadError,
     savedEvents,
     activeEvent,
     lockedCourtIds,
@@ -35,12 +40,18 @@ export default function TournamentDirectorMode() {
     refereeSettings,
     liveByMatchId,
     liveError,
+    waitingMatches,
+    assignedMatches,
+    onCourtMatches,
+    completedMatches,
     message,
     setMessage,
     error,
     setError,
     scoreDialog,
     setScoreDialog,
+    setScoreCorrectionMode,
+    scoreCorrectionMode,
     scoreA,
     setScoreA,
     scoreB,
@@ -53,16 +64,16 @@ export default function TournamentDirectorMode() {
     auditHistoryMatch,
     setAuditHistoryMatch,
     backPath,
-    waitingMatches,
-    onCourtMatches,
-    completedMatches,
   } = state;
 
   const {
     handleRefereeAssign,
     handleAssignCourt,
+    handleStartMatch,
+    handleCancelMatch,
     handleToggleCourt,
     handleOpenScore,
+    handleOpenCorrectScore,
     handleDisputeResetLive,
     handleSubmitScore,
     handleCourtRefereeChange,
@@ -84,8 +95,35 @@ export default function TournamentDirectorMode() {
     return <DirectorAccessDenied />;
   }
 
+  if (
+    shouldShowDirectorBlockingLoad({
+      tournament,
+      tournamentLoading: tournamentLoading || initialLoading,
+      accessPending: Boolean(tournamentAccess.pending),
+      isDaily,
+      dailyState: dailySession?.state,
+      dailyLoading: Boolean(dailySession?.loading),
+    })
+  ) {
+    return (
+      <Box>
+        <Alert severity="info">Đang tải Director Mode...</Alert>
+      </Box>
+    );
+  }
+
   if (!tournament) {
-    return <DirectorAccessDenied reason="not-found" />;
+    return (
+      <DirectorAccessDenied
+        reason="not-found"
+        message={
+          tournamentLoadError ||
+          (!state.tenantId
+            ? "CLB chưa có tenant hợp lệ — không thể tải Director."
+            : "Không tìm thấy giải.")
+        }
+      />
+    );
   }
 
   return (
@@ -114,16 +152,23 @@ export default function TournamentDirectorMode() {
           refereeSettings={refereeSettings}
           onToggleCourt={handleToggleCourt}
           onCourtRefereeChange={handleCourtRefereeChange}
+          disableManualLock={isDaily}
+          lockDisabledReason="Khóa sân thủ công chưa hỗ trợ trong Daily canonical."
         />
       </Grid>
 
       <DirectorMatchBoard
+        isDaily={isDaily}
         waitingMatches={waitingMatches}
+        assignedMatches={assignedMatches}
         onCourtMatches={onCourtMatches}
         completedMatches={completedMatches}
         buildRefereeCardProps={buildRefereeCardProps}
         onAssignCourt={handleAssignCourt}
+        onStartMatch={handleStartMatch}
+        onCancelMatch={handleCancelMatch}
         onOpenScore={handleOpenScore}
+        onCorrectScore={handleOpenCorrectScore}
         onOpenRefereeDialog={handleOpenRefereeDialog}
         onOpenAuditHistory={handleOpenAuditHistory}
         hasSupabaseConfig={hasSupabaseConfig()}
@@ -150,10 +195,16 @@ export default function TournamentDirectorMode() {
         scoreA={scoreA}
         scoreB={scoreB}
         scoreNote={scoreNote}
+        isCorrection={Boolean(isDaily && scoreCorrectionMode)}
+        mutating={Boolean(isDaily && dailySession?.mutating)}
+        scoreError={isDaily ? error : null}
         onScoreAChange={setScoreA}
         onScoreBChange={setScoreB}
         onScoreNoteChange={setScoreNote}
-        onClose={() => setScoreDialog(null)}
+        onClose={() => {
+          setScoreDialog(null);
+          setScoreCorrectionMode(false);
+        }}
         onSubmit={handleSubmitScore}
         onDisputeReset={handleDisputeResetLive}
       />

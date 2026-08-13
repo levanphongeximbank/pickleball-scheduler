@@ -143,7 +143,8 @@ describe("official-open-tournament-phase2e-focus-visibility", () => {
     assert.match(fingerprint, /TOKEN_REFRESHED/);
 
     const club = read("src/context/ClubContext.jsx");
-    assert.match(club, /authzFingerprint/);
+    assert.match(club, /userSecurityScopeKey/);
+    assert.match(club, /buildUserSecurityScopeKey\(user\)/);
     assert.doesNotMatch(
       club,
       /hydrateClubScope[\s\S]{0,400}\}, \[isAuthenticated, user, currentTenantId/

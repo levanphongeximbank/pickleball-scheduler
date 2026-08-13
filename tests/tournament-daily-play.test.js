@@ -1,5 +1,7 @@
-import test, { afterEach, beforeEach } from "node:test";
+import test, { afterEach, beforeEach, describe } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import {
   DAILY_MATCH_TYPE,
@@ -16,6 +18,36 @@ import {
 import { MATCH_STATUS } from "../src/models/tournament/index.js";
 import { setActiveClubId, DEFAULT_CLUB } from "../src/data/club.js";
 import { loadClubData } from "../src/domain/clubStorage.js";
+import {
+  DAILY_PLAY_CODE,
+  DAILY_PLAY_MESSAGES,
+  DAILY_PLAY_RPC,
+  createDailyPlayCanonicalService,
+  createInMemoryDailyPlayAuthority,
+  createSeededDailyPlayTournament,
+  normalizeDailyPlayServerSnapshot,
+  isFullDailyPlaySnapshot,
+  resolveCreateMatchCount,
+  validateScoreInput,
+  acceptDailyScoreFieldInput,
+  applyCorrectScore,
+  buildCanonicalSnapshotSignature,
+  createDailyPlayRefreshFence,
+  DAILY_PLAY_REFRESH_REASON,
+  isSilentRefreshReason,
+  shouldReplaceCanonicalSnapshot,
+  shouldSkipRoutinePoll,
+  resolvePresentedCheckedSet,
+  beginPresenceOverride,
+  shouldIgnoreConcurrentPresenceClick,
+  reconcilePresenceOverride,
+  rollbackPresenceOverride,
+  isPresenceOverrideAuthoritative,
+  __setDailyPlayCanonicalServiceForTests,
+  __resetDailyPlayCanonicalServiceForTests,
+} from "../src/features/daily-play/canonical/index.js";
+import { hasEffectPrelude } from "../src/components/tournament/animation/shared/effectPreludeConfig.js";
+import { ANIMATION_MODES } from "../src/components/tournament/animation/animationUtils.js";
 
 function createLocalStorageMock(seed = {}) {
   const store = new Map(Object.entries(seed));
@@ -46,13 +78,68 @@ const players = [
   { id: 8, name: "Nu 4", gender: "Nữ", level: 2.5 },
 ];
 
+const TENANT = "tenant-daily-01";
+const CLUB = "club-1";
+const TID = "11111111-1111-4111-8111-111111111111";
+
+const canonicalPlayers = [
+  { id: "1", name: "Nam 1", gender: "Nam", level: 4 },
+  { id: "2", name: "Nam 2", gender: "Nam", level: 3.5 },
+  { id: "3", name: "Nam 3", gender: "Nam", level: 3 },
+  { id: "4", name: "Nam 4", gender: "Nam", level: 2.5 },
+  { id: "5", name: "Nu 1", gender: "Nữ", level: 4 },
+  { id: "6", name: "Nu 2", gender: "Nữ", level: 3.5 },
+  { id: "7", name: "Nu 3", gender: "Nữ", level: 3 },
+  { id: "8", name: "Nu 4", gender: "Nữ", level: 2.5 },
+];
+
+function seedAuthority({
+  courts = [],
+  dailyPlay = null,
+  permissions,
+  eligibleIds = null,
+} = {}) {
+  const authority = createInMemoryDailyPlayAuthority({
+    tenantId: TENANT,
+    permissions,
+  });
+  const eligible =
+    eligibleIds ||
+    [
+      ...canonicalPlayers.map((p) => p.id),
+      "99",
+      "100",
+      ...(dailyPlay?.checkedInPlayerIds || []),
+    ];
+  authority.__setEligibleAthletes(TENANT, CLUB, eligible);
+  authority.__seedTournament(
+    createSeededDailyPlayTournament({
+      id: TID,
+      tenantId: TENANT,
+      clubId: CLUB,
+      dailyPlay: dailyPlay || {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: canonicalPlayers.map((p) => p.id),
+        revision: 0,
+      },
+    })
+  );
+  authority.__setClubCourts(CLUB, courts);
+  const service = createDailyPlayCanonicalService({ rpc: authority.rpc });
+  __setDailyPlayCanonicalServiceForTests(service);
+  return { authority, service };
+}
+
 beforeEach(() => {
   globalThis.localStorage = createLocalStorageMock();
   setActiveClubId(DEFAULT_CLUB.id);
   loadClubData(DEFAULT_CLUB.id);
+  __resetDailyPlayCanonicalServiceForTests();
 });
 
-afterEach(() => {});
+afterEach(() => {
+  __resetDailyPlayCanonicalServiceForTests();
+});
 
 test("toggleDailyCheckIn adds and removes player", () => {
   let settings = getDefaultDailyPlaySettings();
@@ -98,6 +185,7 @@ test("createFairDailyMatches builds waiting matches for mixed doubles", async ()
     settings,
     tournamentId: "t1",
     matchCount: 1,
+    skipPrivatePairingPrepare: true,
   });
 
   assert.equal(result.ok, true);
@@ -127,8 +215,22 @@ test("createFairDailyMatches does not reuse busy players", async () => {
     settings,
     tournamentId: "t1",
     matchCount: 1,
+    skipPrivatePairingPrepare: true,
   });
 
+  assert.equal(result.ok, false);
+});
+
+test("createFairDailyMatches refuses matchCount 0", async () => {
+  const result = await createFairDailyMatches({
+    players,
+    settings: {
+      ...getDefaultDailyPlaySettings(),
+      checkedInPlayerIds: players.map((player) => String(player.id)),
+    },
+    matchCount: 0,
+    skipPrivatePairingPrepare: true,
+  });
   assert.equal(result.ok, false);
 });
 
@@ -157,7 +259,7 @@ test("assignDailyMatchToCourt puts waiting match on available court", () => {
   assert.equal(result.ok, true);
   const assigned = result.settings.matches.find((item) => item.id === "m1");
   assert.equal(assigned.courtId, "10");
-  assert.equal(assigned.status, MATCH_STATUS.PLAYING);
+  assert.equal(assigned.status, MATCH_STATUS.ASSIGNED);
 });
 
 test("submitDailyPlayMatchScore completes match", () => {
@@ -180,14 +282,1992 @@ test("submitDailyPlayMatchScore completes match", () => {
   assert.equal(result.match.winnerSide, "A");
 });
 
-test("partitionDailyMatches splits lists", () => {
+test("partitionDailyMatches splits waiting/assigned/playing", () => {
   const grouped = partitionDailyMatches([
     { id: "1", status: MATCH_STATUS.WAITING },
-    { id: "2", status: MATCH_STATUS.PLAYING },
-    { id: "3", status: MATCH_STATUS.COMPLETED },
+    { id: "2", status: MATCH_STATUS.ASSIGNED },
+    { id: "3", status: MATCH_STATUS.PLAYING },
+    { id: "4", status: MATCH_STATUS.COMPLETED },
+    { id: "5", status: "cancelled" },
   ]);
 
   assert.equal(grouped.waiting.length, 1);
+  assert.equal(grouped.assigned.length, 1);
   assert.equal(grouped.playing.length, 1);
-  assert.equal(grouped.completed.length, 1);
+  assert.equal(grouped.completed.length, 2);
+  assert.equal(grouped.playing[0].id, "3");
 });
+
+describe("Daily Play canonical — court capability + create", () => {
+  test("no canonical courts → no match created (DP-01)", async () => {
+    const { service } = seedAuthority({ courts: [] });
+    const plan = resolveCreateMatchCount({
+      enabledCourts: [],
+      availableCourts: [],
+      eligiblePlayerCount: 16,
+    });
+    assert.equal(plan.ok, false);
+    assert.equal(plan.code, DAILY_PLAY_CODE.NO_COURT_CAPABILITY);
+
+    const create = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          {
+            id: "m1",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2", "6"],
+            status: "waiting",
+          },
+        ],
+        expectedVersion: 0,
+        eligiblePlayerCount: 8,
+        idempotencyKey: "create-no-court",
+      }
+    );
+    assert.equal(create.ok, false);
+    assert.equal(create.code, DAILY_PLAY_CODE.NO_COURT_CAPABILITY);
+  });
+
+  test("courts exist but busy → waiting create allowed", () => {
+    const courts = [
+      { id: "c1", name: "S1", active: true },
+      { id: "c2", name: "S2", active: true },
+    ];
+    const plan = resolveCreateMatchCount({
+      enabledCourts: courts,
+      availableCourts: [],
+      eligiblePlayerCount: 8,
+    });
+    assert.equal(plan.ok, true);
+    assert.equal(plan.waitingForCourt, true);
+    assert.match(plan.message, /chờ sân/i);
+  });
+
+  test("canonical court load returns server courts (F5 semantics)", async () => {
+    const { service } = seedAuthority({
+      courts: [
+        { id: "court-a", name: "Sân A", active: true },
+        { id: "court-b", name: "Sân B", active: true, status: "maintenance" },
+      ],
+    });
+    const state = await service.getState({
+      tenantId: TENANT,
+      clubId: CLUB,
+      tournamentId: TID,
+    });
+    assert.equal(state.ok, true);
+    assert.equal(state.courts.length, 1);
+    assert.equal(state.courts[0].id, "court-a");
+    assert.equal(state.hasCourtCapability, true);
+  });
+});
+
+describe("Daily Play canonical — concurrency invariants", () => {
+  test("same court concurrent assignment → one succeeds one rejects", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: ["1", "2", "3", "4", "5", "6", "7", "8"],
+        revision: 0,
+        matches: [
+          {
+            id: "m1",
+            status: "waiting",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2", "6"],
+          },
+          {
+            id: "m2",
+            status: "waiting",
+            teamAPlayerIds: ["3", "7"],
+            teamBPlayerIds: ["4", "8"],
+          },
+        ],
+      },
+    });
+
+    const first = await service.assignCourt(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { matchId: "m1", courtId: "c1", expectedVersion: 0, idempotencyKey: "a1" }
+    );
+    assert.equal(first.ok, true);
+    const second = await service.assignCourt(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m2",
+        courtId: "c1",
+        expectedVersion: first.revision,
+        idempotencyKey: "a2",
+      }
+    );
+    assert.equal(second.ok, false);
+    assert.equal(second.code, DAILY_PLAY_CODE.COURT_ALREADY_LEASED);
+  });
+
+  test("same player double-active rejected on create", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: ["1", "2", "3", "4", "5", "6", "7", "8"],
+        revision: 0,
+        matches: [
+          {
+            id: "m-active",
+            status: "playing",
+            courtId: "c1",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2", "6"],
+          },
+        ],
+      },
+    });
+    const create = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          {
+            id: "m-dup",
+            teamAPlayerIds: ["1", "7"],
+            teamBPlayerIds: ["3", "8"],
+            status: "waiting",
+          },
+        ],
+        expectedVersion: 0,
+        idempotencyKey: "dup-player",
+      }
+    );
+    assert.equal(create.ok, false);
+    assert.equal(create.code, DAILY_PLAY_CODE.PLAYER_ALREADY_ACTIVE);
+  });
+
+  test("stale expectedVersion → VERSION_CONFLICT", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+    });
+    await service.checkIn(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { playerId: "99", expectedVersion: 0, idempotencyKey: "ci-1" }
+    );
+    const stale = await service.checkIn(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { playerId: "100", expectedVersion: 0, idempotencyKey: "ci-2" }
+    );
+    assert.equal(stale.ok, false);
+    assert.equal(stale.code, DAILY_PLAY_CODE.VERSION_CONFLICT);
+  });
+});
+
+describe("Daily Play canonical — idempotency + score + cancel + change court", () => {
+  test("duplicate create idempotency replays", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+    });
+    const args = {
+      matches: [
+        {
+          id: "m-idem",
+          teamAPlayerIds: ["1", "5"],
+          teamBPlayerIds: ["2", "6"],
+          status: "waiting",
+        },
+      ],
+      expectedVersion: 0,
+      idempotencyKey: "create-once",
+    };
+    const first = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      args
+    );
+    assert.equal(first.ok, true);
+    const second = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { ...args, expectedVersion: 0 }
+    );
+    assert.equal(second.ok, true);
+  });
+
+  test("score finalize identical retry + conflicting reject", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: ["1", "2", "3", "4"],
+        revision: 0,
+        matches: [
+          {
+            id: "m-score",
+            status: "playing",
+            courtId: "c1",
+            teamAPlayerIds: ["1", "2"],
+            teamBPlayerIds: ["3", "4"],
+          },
+        ],
+      },
+    });
+    const first = await service.submitScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-score",
+        scoreA: 11,
+        scoreB: 5,
+        expectedVersion: 0,
+        idempotencyKey: "score-1",
+      }
+    );
+    assert.equal(first.ok, true);
+    assert.equal(first.ratingVprApplied, false);
+
+    const replay = await service.submitScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-score",
+        scoreA: 11,
+        scoreB: 5,
+        expectedVersion: first.revision,
+        idempotencyKey: "score-1b",
+      }
+    );
+    assert.equal(replay.ok, true);
+    assert.equal(replay.replay, true);
+
+    const conflict = await service.submitScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-score",
+        scoreA: 11,
+        scoreB: 7,
+        expectedVersion: first.revision,
+        idempotencyKey: "score-2",
+      }
+    );
+    assert.equal(conflict.ok, false);
+    assert.equal(conflict.code, DAILY_PLAY_CODE.SCORE_CONFLICT);
+  });
+
+  test("cancel releases court/player; change court atomic", async () => {
+    const { service } = seedAuthority({
+      courts: [
+        { id: "c1", name: "S1", active: true },
+        { id: "c2", name: "S2", active: true },
+      ],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: canonicalPlayers.map((p) => p.id),
+        revision: 0,
+        matches: [
+          {
+            id: "m1",
+            status: "playing",
+            courtId: "c1",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2", "6"],
+          },
+          {
+            id: "m2",
+            status: "playing",
+            courtId: "c2",
+            teamAPlayerIds: ["3", "7"],
+            teamBPlayerIds: ["4", "8"],
+          },
+        ],
+      },
+    });
+
+    const changeFail = await service.changeCourt(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m1",
+        courtId: "c2",
+        expectedVersion: 0,
+        idempotencyKey: "chg-fail",
+      }
+    );
+    assert.equal(changeFail.ok, false);
+    assert.equal(changeFail.code, DAILY_PLAY_CODE.COURT_ALREADY_LEASED);
+
+    const cancelled = await service.cancelMatch(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { matchId: "m2", expectedVersion: 0, idempotencyKey: "cancel-m2" }
+    );
+    assert.equal(cancelled.ok, true);
+
+    const changeOk = await service.changeCourt(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m1",
+        courtId: "c2",
+        expectedVersion: cancelled.revision,
+        idempotencyKey: "chg-ok",
+      }
+    );
+    assert.equal(changeOk.ok, true);
+    const afterChange = await service.getState({
+      tenantId: TENANT,
+      clubId: CLUB,
+      tournamentId: TID,
+    });
+    assert.equal(afterChange.ok, true);
+    assert.equal(
+      afterChange.dailyPlay.matches.find((m) => m.id === "m1").status,
+      "playing"
+    );
+    assert.equal(
+      afterChange.dailyPlay.matches.find((m) => m.id === "m1").courtId,
+      "c2"
+    );
+  });
+
+  test("check-out active player rejected", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: ["1", "2", "3", "4"],
+        revision: 0,
+        matches: [
+          {
+            id: "m1",
+            status: "playing",
+            courtId: "c1",
+            teamAPlayerIds: ["1", "2"],
+            teamBPlayerIds: ["3", "4"],
+          },
+        ],
+      },
+    });
+    const result = await service.checkOut(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { playerId: "1", expectedVersion: 0, idempotencyKey: "out-1" }
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.code, DAILY_PLAY_CODE.CHECKOUT_PLAYER_ACTIVE);
+  });
+});
+
+describe("Daily Play canonical — auth/tenant + static guards", () => {
+  test("tenant isolation + unauthorized mutation rejected", async () => {
+    const authority = createInMemoryDailyPlayAuthority({
+      tenantId: TENANT,
+      permissions: ["tournament.view"],
+    });
+    authority.__seedTournament(
+      createSeededDailyPlayTournament({
+        id: TID,
+        tenantId: TENANT,
+        clubId: CLUB,
+      })
+    );
+    authority.__setClubCourts(CLUB, [{ id: "c1", active: true }]);
+    const service = createDailyPlayCanonicalService({ rpc: authority.rpc });
+
+    const forbidden = await service.checkIn(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { playerId: "1", expectedVersion: 0, idempotencyKey: "f1" }
+    );
+    assert.equal(forbidden.ok, false);
+    assert.equal(forbidden.code, DAILY_PLAY_CODE.FORBIDDEN);
+
+    const crossTenant = await service.getState({
+      tenantId: "other-tenant",
+      clubId: CLUB,
+      tournamentId: TID,
+    });
+    assert.equal(crossTenant.ok, false);
+    assert.equal(crossTenant.code, DAILY_PLAY_CODE.TENANT_FORBIDDEN);
+  });
+
+  test("fair animation has one presentation path (no prelude)", () => {
+    assert.equal(hasEffectPrelude(ANIMATION_MODES.DAILY_FAIR_MATCH), false);
+  });
+
+  test("score validation rejects draws", () => {
+    assert.equal(validateScoreInput(11, 11).ok, false);
+    assert.equal(validateScoreInput(11, 5).ok, true);
+  });
+
+  test("DailyPlaySetup does not use blob court authority", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.equal(source.includes("loadCourtsForClub"), false);
+    assert.equal(source.includes("getDirectorState"), false);
+    assert.equal(source.includes("lockCourt"), false);
+    assert.equal(source.includes("localStorage"), false);
+    assert.match(source, /useDailyPlayCanonicalSession/);
+    assert.match(source, /createMatches/);
+  });
+
+  test("NO_COURT_CAPABILITY message is Vietnamese domain copy", () => {
+    assert.match(
+      DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.NO_COURT_CAPABILITY],
+      /Chưa có sân/
+    );
+  });
+});
+
+describe("Daily Play RPC name contract", () => {
+  test("exports stable RPC names matching SQL package", () => {
+    assert.equal(DAILY_PLAY_RPC.GET_STATE, "daily_play_get_state");
+    assert.equal(DAILY_PLAY_RPC.CREATE_MATCHES, "daily_play_create_matches");
+    assert.equal(DAILY_PLAY_RPC.ASSIGN_COURT, "daily_play_assign_court");
+    assert.equal(DAILY_PLAY_RPC.START_MATCH, "daily_play_start_match");
+    assert.equal(DAILY_PLAY_RPC.SUBMIT_SCORE, "daily_play_submit_score");
+    assert.equal(DAILY_PLAY_RPC.CORRECT_SCORE, "daily_play_correct_score");
+    assert.equal(DAILY_PLAY_RPC.CANCEL_MATCH, "daily_play_cancel_match");
+    assert.equal(DAILY_PLAY_RPC.CHANGE_COURT, "daily_play_change_court");
+  });
+});
+
+describe("Daily Play lifecycle hardening — waiting→assigned→playing→completed", () => {
+  test("create stays waiting without lease; assign then start then score", async () => {
+    const { service } = seedAuthority({
+      courts: [
+        { id: "c1", name: "S1", active: true },
+        { id: "c2", name: "S2", active: true },
+      ],
+    });
+
+    const created = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          {
+            id: "m-life",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2", "6"],
+            status: "waiting",
+          },
+        ],
+        expectedVersion: 0,
+        idempotencyKey: "life-create",
+      }
+    );
+    assert.equal(created.ok, true);
+    assert.equal(created.matches[0].status, "waiting");
+    assert.equal(created.matches[0].courtId, null);
+
+    const assigned = await service.assignCourt(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-life",
+        courtId: "c1",
+        expectedVersion: created.revision,
+        idempotencyKey: "life-assign",
+      }
+    );
+    assert.equal(assigned.ok, true);
+    assert.equal(assigned.dailyPlay.matches.find((m) => m.id === "m-life").status, "assigned");
+    const partAfterAssign = partitionDailyMatches(assigned.dailyPlay.matches);
+    assert.equal(partAfterAssign.assigned.length, 1);
+    assert.equal(partAfterAssign.playing.length, 0);
+
+    const started = await service.startMatch(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-life",
+        expectedVersion: assigned.revision,
+        idempotencyKey: "life-start",
+      }
+    );
+    assert.equal(started.ok, true);
+    assert.equal(started.dailyPlay.matches.find((m) => m.id === "m-life").status, "playing");
+    const partAfterStart = partitionDailyMatches(started.dailyPlay.matches);
+    assert.equal(partAfterStart.playing.length, 1);
+    assert.equal(partAfterStart.assigned.length, 0);
+
+    const scored = await service.submitScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-life",
+        scoreA: 11,
+        scoreB: 4,
+        expectedVersion: started.revision,
+        idempotencyKey: "life-score",
+      }
+    );
+    assert.equal(scored.ok, true);
+    assert.equal(scored.match.status, "completed");
+  });
+
+  test("score waiting and assigned rejected with MATCH_NOT_PLAYING", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: ["1", "2", "3", "4"],
+        revision: 0,
+        matches: [
+          {
+            id: "m-wait",
+            status: "waiting",
+            teamAPlayerIds: ["1", "2"],
+            teamBPlayerIds: ["3", "4"],
+          },
+        ],
+      },
+    });
+
+    const waitingScore = await service.submitScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-wait",
+        scoreA: 11,
+        scoreB: 5,
+        expectedVersion: 0,
+        idempotencyKey: "score-wait",
+      }
+    );
+    assert.equal(waitingScore.ok, false);
+    assert.equal(waitingScore.code, DAILY_PLAY_CODE.MATCH_NOT_PLAYING);
+
+    const assigned = await service.assignCourt(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-wait",
+        courtId: "c1",
+        expectedVersion: 0,
+        idempotencyKey: "assign-for-score-reject",
+      }
+    );
+    assert.equal(assigned.ok, true);
+    assert.equal(assigned.dailyPlay.matches[0].status, "assigned");
+
+    const assignedScore = await service.submitScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-wait",
+        scoreA: 11,
+        scoreB: 5,
+        expectedVersion: assigned.revision,
+        idempotencyKey: "score-assigned",
+      }
+    );
+    assert.equal(assignedScore.ok, false);
+    assert.equal(assignedScore.code, DAILY_PLAY_CODE.MATCH_NOT_PLAYING);
+  });
+
+  test("random / non-canonical check-in rejected", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      eligibleIds: ["1", "2", "3", "4"],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: [],
+        revision: 0,
+      },
+    });
+
+    const rejected = await service.checkIn(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        playerId: "random-athlete-xyz",
+        expectedVersion: 0,
+        idempotencyKey: "ci-random",
+      }
+    );
+    assert.equal(rejected.ok, false);
+    assert.equal(rejected.code, DAILY_PLAY_CODE.PLAYER_NOT_ELIGIBLE);
+  });
+
+  test("malformed 2/3-player doubles rejected; valid 4 accepted", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+    });
+
+    const two = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          {
+            id: "m-2p",
+            teamAPlayerIds: ["1"],
+            teamBPlayerIds: ["2"],
+            status: "waiting",
+          },
+        ],
+        expectedVersion: 0,
+        idempotencyKey: "shape-2",
+      }
+    );
+    assert.equal(two.ok, false);
+    assert.equal(two.code, DAILY_PLAY_CODE.INVALID_MATCH_SHAPE);
+
+    const three = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          {
+            id: "m-3p",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2"],
+            status: "waiting",
+          },
+        ],
+        expectedVersion: 0,
+        idempotencyKey: "shape-3",
+      }
+    );
+    assert.equal(three.ok, false);
+    assert.equal(three.code, DAILY_PLAY_CODE.INVALID_MATCH_SHAPE);
+
+    const four = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          {
+            id: "m-4p",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2", "6"],
+            status: "waiting",
+          },
+        ],
+        expectedVersion: 0,
+        idempotencyKey: "shape-4",
+      }
+    );
+    assert.equal(four.ok, true);
+    assert.equal(four.matches[0].status, "waiting");
+  });
+
+  test("cross-club athlete rejected on check-in", async () => {
+    const { authority, service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      eligibleIds: ["1", "2", "3", "4"],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: [],
+        revision: 0,
+      },
+    });
+    authority.__setEligibleAthletes(TENANT, "other-club", ["99"]);
+
+    const rejected = await service.checkIn(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { playerId: "99", expectedVersion: 0, idempotencyKey: "ci-xclub" }
+    );
+    assert.equal(rejected.ok, false);
+    assert.equal(rejected.code, DAILY_PLAY_CODE.PLAYER_NOT_ELIGIBLE);
+  });
+
+  test("cancel waiting/assigned/playing releases reservation", async () => {
+    const { service } = seedAuthority({
+      courts: [
+        { id: "c1", name: "S1", active: true },
+        { id: "c2", name: "S2", active: true },
+      ],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: canonicalPlayers.map((p) => p.id),
+        revision: 0,
+        matches: [
+          {
+            id: "m-w",
+            status: "waiting",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2", "6"],
+          },
+        ],
+      },
+    });
+
+    const cancelWaiting = await service.cancelMatch(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { matchId: "m-w", expectedVersion: 0, idempotencyKey: "cancel-w" }
+    );
+    assert.equal(cancelWaiting.ok, true);
+
+    const createAfter = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          {
+            id: "m-reuse",
+            teamAPlayerIds: ["1", "5"],
+            teamBPlayerIds: ["2", "6"],
+            status: "waiting",
+          },
+        ],
+        expectedVersion: cancelWaiting.revision,
+        idempotencyKey: "reuse-after-cancel",
+      }
+    );
+    assert.equal(createAfter.ok, true);
+  });
+});
+
+describe("Daily Play SQL package contract parity", () => {
+  const applyPath = path.resolve(
+    "docs/v5/migrations/daily-play-end-to-end-canonical-01/02_APPLY.sql"
+  );
+  const verifyPath = path.resolve(
+    "docs/v5/migrations/daily-play-end-to-end-canonical-01/03_VERIFY.sql"
+  );
+  const applySql = fs.readFileSync(applyPath, "utf8");
+  const verifySql = fs.readFileSync(verifyPath, "utf8");
+
+  test("create_matches forces waiting and does not insert leases", () => {
+    const createFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_create_matches"),
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_assign_court")
+    );
+    assert.match(createFn, /\{status\}','"waiting"'/);
+    assert.match(createFn, /\{courtId\}','null'/);
+    assert.equal(createFn.includes("INSERT INTO public.daily_play_court_leases"), false);
+    assert.match(createFn, /jsonb_array_length\(v_players\)<>4/);
+    assert.match(createFn, /PLAYER_NOT_ELIGIBLE/);
+    assert.match(createFn, /INVALID_MATCH_SHAPE/);
+  });
+
+  test("assign_court is waiting→assigned with lease insert", () => {
+    const assignFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_assign_court"),
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_start_match")
+    );
+    assert.match(assignFn, /MATCH_NOT_WAITING/);
+    assert.match(assignFn, /\{status\}','"assigned"'/);
+    assert.match(assignFn, /INSERT INTO public\.daily_play_court_leases/);
+  });
+
+  test("start_match is assigned→playing and requires active lease", () => {
+    assert.match(applySql, /CREATE OR REPLACE FUNCTION public\.daily_play_start_match/);
+    const startFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_start_match"),
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_submit_score")
+    );
+    assert.match(startFn, /MATCH_NOT_ASSIGNED/);
+    assert.match(startFn, /COURT_LEASE_NOT_ACTIVE/);
+    assert.match(startFn, /\{status\}','"playing"'/);
+    assert.match(verifySql, /daily_play_start_match/);
+  });
+
+  test("submit_score requires playing (MATCH_NOT_PLAYING)", () => {
+    const scoreFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_submit_score"),
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_cancel_match")
+    );
+    assert.match(scoreFn, /MATCH_NOT_PLAYING/);
+    assert.match(scoreFn, /IS DISTINCT FROM 'playing'/);
+  });
+
+  test("change_court preserves status (no forced assigned)", () => {
+    const changeFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_change_court"),
+      applySql.indexOf("-- Helpers are internal")
+    );
+    assert.match(changeFn, /NOT IN \('assigned','playing'\)/);
+    assert.equal(changeFn.includes("jsonb_set(v_m,'{status}','\"assigned\"'"), false);
+    assert.match(changeFn, /INSERT INTO public\.daily_play_court_leases/);
+  });
+
+  test("athlete eligibility helper reuses athletes + club_members", () => {
+    assert.match(applySql, /daily_play_athlete_eligible_for_club/);
+    assert.match(applySql, /FROM public\.athletes a/);
+    assert.match(applySql, /JOIN public\.club_members cm/);
+    assert.match(applySql, /REVOKE ALL ON FUNCTION public\.daily_play_athlete_eligible_for_club/);
+  });
+
+  test("setup UI wires startMatch and does not treat assigned as playing bucket", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(source, /startMatch/);
+    assert.match(source, /Bắt đầu trận/);
+    assert.match(source, /waitingQueue/);
+    assert.match(source, /match\.status === "assigned"/);
+    assert.match(source, /matches=\{playing\}/);
+  });
+});
+
+describe("Daily Play SQL response-contract adapter (DP-03/DP-04)", () => {
+  test("SQL-like get_state normalizes state/activeLeases into client contract", () => {
+    const normalized = normalizeDailyPlayServerSnapshot({
+      ok: true,
+      tournamentId: TID,
+      state: {
+        revision: 7,
+        checkedInPlayerIds: ["athlete-1"],
+        matches: [],
+      },
+      courts: [{ id: "court-1", name: "Sân 1", active: true }],
+      activeLeases: [],
+    });
+
+    assert.equal(normalized.ok, true);
+    assert.equal(normalized.revision, 7);
+    assert.deepEqual(normalized.dailyPlay.checkedInPlayerIds, ["athlete-1"]);
+    assert.equal(normalized.courts.length, 1);
+    assert.equal(normalized.hasCourtCapability, true);
+    assert.equal(normalized.availableCourts.length, 1);
+    assert.equal(normalized.leases.length, 0);
+    assert.equal(normalized.courtStates.length, 1);
+  });
+
+  test("service getState maps SQL shape and expectedVersion follows revision", async () => {
+    let lastExpected = null;
+    const sqlState = {
+      ok: true,
+      tournamentId: TID,
+      state: {
+        revision: 7,
+        checkedInPlayerIds: ["athlete-1"],
+        matches: [],
+      },
+      courts: [{ id: "court-1", name: "Sân 1", active: true }],
+      activeLeases: [],
+    };
+    const service = createDailyPlayCanonicalService({
+      async rpc(name, args) {
+        if (name === DAILY_PLAY_RPC.GET_STATE) return sqlState;
+        if (name === DAILY_PLAY_RPC.CHECK_IN) {
+          lastExpected = args.p_expected_version;
+          return {
+            ok: true,
+            revision: 8,
+            state: {
+              revision: 8,
+              checkedInPlayerIds: ["athlete-1", "athlete-2"],
+              matches: [],
+            },
+          };
+        }
+        return { ok: false, code: "UNEXPECTED" };
+      },
+    });
+
+    const state = await service.getState({
+      tenantId: TENANT,
+      clubId: CLUB,
+      tournamentId: TID,
+    });
+    assert.equal(state.revision, 7);
+    assert.equal(state.hasCourtCapability, true);
+    assert.equal(isFullDailyPlaySnapshot(state), true);
+
+    const compact = await service.checkIn(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      { playerId: "athlete-2", expectedVersion: state.revision, idempotencyKey: "ci-sql" }
+    );
+    assert.equal(lastExpected, 7);
+    assert.equal(compact.ok, true);
+    assert.equal(isFullDailyPlaySnapshot(compact), false);
+    assert.equal(Array.isArray(compact.courts), false);
+  });
+
+  test("activeLeases mark court unavailable", () => {
+    const normalized = normalizeDailyPlayServerSnapshot({
+      ok: true,
+      tournamentId: TID,
+      state: {
+        revision: 2,
+        checkedInPlayerIds: [],
+        matches: [
+          {
+            id: "m1",
+            status: "assigned",
+            courtId: "court-1",
+            teamAPlayerIds: ["1", "2"],
+            teamBPlayerIds: ["3", "4"],
+          },
+        ],
+      },
+      courts: [
+        { id: "court-1", name: "S1", active: true },
+        { id: "court-2", name: "S2", active: true },
+      ],
+      activeLeases: [{ matchId: "m1", courtId: "court-1", leasedAt: "2026-08-12T00:00:00Z" }],
+    });
+
+    assert.equal(normalized.leases[0].status, "active");
+    assert.equal(normalized.availableCourts.map((c) => c.id).join(","), "court-2");
+    assert.equal(normalized.hasCourtCapability, true);
+  });
+
+  test("empty courts => hasCourtCapability false", () => {
+    const normalized = normalizeDailyPlayServerSnapshot({
+      ok: true,
+      tournamentId: TID,
+      state: { revision: 1, checkedInPlayerIds: [], matches: [] },
+      courts: [],
+      activeLeases: [],
+    });
+    assert.equal(normalized.hasCourtCapability, false);
+    assert.equal(normalized.availableCourts.length, 0);
+  });
+
+  test("in-memory rich snapshot remains compatible after normalize", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+    });
+    const state = await service.getState({
+      tenantId: TENANT,
+      clubId: CLUB,
+      tournamentId: TID,
+    });
+    assert.equal(state.ok, true);
+    assert.equal(state.hasCourtCapability, true);
+    assert.ok(state.dailyPlay);
+    assert.equal(typeof state.revision, "number");
+    assert.equal(Array.isArray(state.courtStates), true);
+  });
+
+  test("SQL package get_state returns state + activeLeases keys", () => {
+    const applyPath = path.resolve(
+      "docs/v5/migrations/daily-play-end-to-end-canonical-01/02_APPLY.sql"
+    );
+    const applySql = fs.readFileSync(applyPath, "utf8");
+    const snapFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_snapshot"),
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_get_state")
+    );
+    assert.match(snapFn, /'state'/);
+    assert.match(snapFn, /'activeLeases'/);
+    assert.match(snapFn, /'courts'/);
+    assert.equal(snapFn.includes("'dailyPlay'"), false);
+    assert.equal(snapFn.includes("'hasCourtCapability'"), false);
+  });
+
+  test("session hook uses background poll + mutation get_state readback", () => {
+    const hookPath = path.resolve(
+      "src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"
+    );
+    const source = fs.readFileSync(hookPath, "utf8");
+    assert.match(source, /normalizeDailyPlayServerSnapshot/);
+    assert.match(source, /DAILY_PLAY_REFRESH_REASON\.POLL/);
+    assert.match(source, /DAILY_PLAY_REFRESH_REASON\.MUTATION/);
+    assert.match(source, /READBACK_FAILED/);
+    assert.match(source, /mutationCommitted:\s*true/);
+    assert.equal(/if \(result\?\.ok\) \{\s*applySnapshot\(result\)/.test(source), false);
+    assert.match(source, /pollMs/);
+    assert.match(source, /shouldReplaceCanonicalSnapshot/);
+  });
+
+  test("VERSION_CONFLICT triggers background refresh path", () => {
+    const hookPath = path.resolve(
+      "src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"
+    );
+    const source = fs.readFileSync(hookPath, "utf8");
+    assert.match(source, /VERSION_CONFLICT/);
+    assert.match(
+      source,
+      /VERSION_CONFLICT[\s\S]*DAILY_PLAY_REFRESH_REASON\.MUTATION/
+    );
+  });
+});
+
+describe("Daily Play Owner browser UX remediation (DP-05..DP-09)", () => {
+  test("setup does not reload tournament/clubs after Daily session mutations (DP-05)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.equal(source.includes("afterMutation"), false);
+    assert.equal(source.includes("setLocalRevision"), false);
+    assert.equal(source.includes("refreshClubs"), false);
+    assert.match(source, /useCanonicalTournament\([^,]+,\s*tournamentId,\s*0\)/);
+    assert.match(source, /revision:\s*0/);
+    assert.equal(/revision:\s*localRevision\s*\+\s*\(session\.revision/.test(source), false);
+    assert.equal(/revision:\s*.*session\.revision/.test(source), false);
+  });
+
+  test("candidate pool is not invalidated by Daily session.revision (DP-05/G)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(source, /useClubPairingCandidatePool\(activeClubId,\s*\{\s*revision:\s*0,\s*\}\)/);
+  });
+
+  test("session hook keeps live revisionRef and bulk CAS chain (DP-06/E/F)", () => {
+    const hookPath = path.resolve(
+      "src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"
+    );
+    const source = fs.readFileSync(hookPath, "utf8");
+    assert.match(source, /revisionRef/);
+    assert.match(source, /revisionRef\.current\s*=\s*Number\(normalized\.revision/);
+    assert.match(source, /expectedVersion:\s*revisionRef\.current/);
+    assert.match(source, /checkInMany/);
+    assert.match(source, /checkOutMany/);
+    assert.match(source, /runBulkPresence/);
+    assert.equal(source.includes("Promise.all"), false);
+    assert.match(source, /for \(const playerId of ids\)/);
+    assert.match(source, /expected = Number\(result\.revision\)/);
+    assert.match(source, /DAILY_PLAY_REFRESH_REASON\.MUTATION/);
+  });
+
+  test("Select All / Clear All use bulk helpers with pending labels (DP-06)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(source, /checkInMany/);
+    assert.match(source, /checkOutMany/);
+    assert.match(source, /Đang chọn\.\.\./);
+    assert.match(source, /Đang bỏ chọn\.\.\./);
+    assert.equal(
+      /for \(const player of players\)[\s\S]*session\.checkIn\(player\.id\)/.test(source),
+      false
+    );
+  });
+
+  test("sequential check-in of 8 athletes chains revision without stale conflict (DP-06)", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: [],
+        revision: 0,
+      },
+    });
+    const scope = { tenantId: TENANT, clubId: CLUB, tournamentId: TID };
+    let expected = (await service.getState(scope)).revision;
+    const targets = canonicalPlayers.map((player) => player.id);
+    assert.equal(targets.length, 8);
+
+    const expectedVersions = [];
+    for (const playerId of targets) {
+      expectedVersions.push(expected);
+      const result = await service.checkIn(scope, {
+        playerId,
+        expectedVersion: expected,
+        idempotencyKey: `bulk-${playerId}-${expected}`,
+      });
+      assert.equal(result.ok, true, `check-in ${playerId} failed: ${result.error || result.code}`);
+      expected = Number(result.revision);
+    }
+
+    assert.deepEqual(expectedVersions, [0, 1, 2, 3, 4, 5, 6, 7]);
+    const finalState = await service.getState(scope);
+    assert.equal(finalState.dailyPlay.checkedInPlayerIds.length, 8);
+    assert.equal(finalState.revision, 8);
+  });
+
+  test("stale expectedVersion still VERSION_CONFLICT (CAS preserved)", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: [],
+        revision: 0,
+      },
+    });
+    const scope = { tenantId: TENANT, clubId: CLUB, tournamentId: TID };
+    const first = await service.checkIn(scope, {
+      playerId: "1",
+      expectedVersion: 0,
+      idempotencyKey: "ci-1",
+    });
+    assert.equal(first.ok, true);
+    const stale = await service.checkIn(scope, {
+      playerId: "2",
+      expectedVersion: 0,
+      idempotencyKey: "ci-2-stale",
+    });
+    assert.equal(stale.ok, false);
+    assert.equal(stale.code, DAILY_PLAY_CODE.VERSION_CONFLICT);
+  });
+
+  test("initial loading gate keeps shell once snapshot exists (DP-05/D)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(
+      source,
+      /\(tournamentLoading && !tournament\) \|\| \(session\.loading && !session\.state\)/
+    );
+    assert.equal(
+      /if \(tournamentLoading \|\| session\.loading\) \{/.test(source),
+      false
+    );
+  });
+
+  test("error banner ownership does not sticky-mirror session.error (DP-08)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(source, /displayError/);
+    assert.match(source, /actionError/);
+    assert.equal(
+      /useEffect\(\(\) => \{\s*if \(session\.error\) \{\s*setError\(session\.error\)/.test(
+        source
+      ),
+      false
+    );
+    assert.equal(
+      /useEffect\(\(\) => \{\s*if \(tournamentLoadError\) \{\s*setError\(tournamentLoadError\)/.test(
+        source
+      ),
+      false
+    );
+  });
+
+  test("referee roster uses async persist + free-text contract (DP-07/I)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const panelPath = path.resolve("src/components/tournament/RefereeRosterPanel.jsx");
+    const setup = fs.readFileSync(setupPath, "utf8");
+    const panel = fs.readFileSync(panelPath, "utf8");
+    assert.match(setup, /handleRefereeRosterChange/);
+    assert.match(setup, /return \{ ok: true/);
+    assert.match(setup, /listEligibleCanonicalReferees/);
+    assert.match(setup, /enableCanonicalDirectory/);
+    assert.match(panel, /Promise\.resolve\(onChange/);
+    assert.match(panel, /Đang lưu\.\.\./);
+    assert.match(panel, /Tài khoản trọng tài/);
+    assert.match(panel, /Trọng tài khách \/ nhập tay/);
+    assert.match(panel, /if \(ok\) \{\s*setName\(""\);\s*setPhone\(""\);/);
+    assert.match(panel, /addCanonicalRefereeToRoster/);
+  });
+
+  test("manual referee roster entries still normalize (DP-07 backward compat)", async () => {
+    const { getRefereeSettings } = await import(
+      "../src/tournament/engines/refereeEngine.js"
+    );
+    const tournament = {
+      settings: {
+        refereeRoster: [{ id: "r-manual", name: "Lan Manual", phone: "090" }],
+      },
+    };
+    const roster = getRefereeSettings(tournament).roster;
+    assert.equal(roster.length, 1);
+    assert.equal(roster[0].name, "Lan Manual");
+    assert.equal(roster[0].source, "manual");
+  });
+
+  test("canonical referee candidate filtering (DP-07 directory)", async () => {
+    const {
+      filterCanonicalRefereeCandidates,
+      normalizeCanonicalRefereeCandidate,
+      annotateRosterEligibility,
+    } = await import("../src/features/daily-play/services/refereeDirectoryService.js");
+    const {
+      addCanonicalRefereeToRoster,
+      createRefereeRosterEntry,
+      findRosterEntryByCanonicalUserId,
+      normalizeRefereeRoster,
+    } = await import("../src/models/tournament/refereeRoster.js");
+
+    const rows = [
+      {
+        id: "u-ref-1",
+        display_name: "TT Lan",
+        email: "lan@venue.local",
+        phone: "0901",
+        role: "REFEREE",
+        venue_id: "tenant-a",
+        club_id: "club-a",
+        status: "active",
+      },
+      {
+        id: "u-player",
+        display_name: "Player",
+        role: "PLAYER",
+        venue_id: "tenant-a",
+        status: "active",
+      },
+      {
+        id: "u-ref-other-tenant",
+        display_name: "Other TT",
+        role: "REFEREE",
+        venue_id: "tenant-b",
+        status: "active",
+      },
+      {
+        id: "u-ref-inactive",
+        display_name: "Inactive TT",
+        role: "REFEREE",
+        venue_id: "tenant-a",
+        status: "suspended",
+      },
+      {
+        id: "u-ref-other-club",
+        display_name: "Other Club TT",
+        role: "REFEREE",
+        venue_id: "tenant-a",
+        club_id: "club-b",
+        status: "active",
+      },
+      {
+        id: "u-ref-venue-wide",
+        display_name: "Venue Wide TT",
+        email: "wide@venue.local",
+        role: "REFEREE",
+        venue_id: "tenant-a",
+        club_id: null,
+        status: "active",
+      },
+    ];
+
+    const filtered = filterCanonicalRefereeCandidates(rows, {
+      tenantId: "tenant-a",
+      clubId: "club-a",
+    });
+    assert.equal(filtered.some((r) => r.userId === "u-ref-1"), true);
+    assert.equal(filtered.some((r) => r.userId === "u-ref-venue-wide"), true);
+    assert.equal(filtered.some((r) => r.userId === "u-player"), false);
+    assert.equal(filtered.some((r) => r.userId === "u-ref-other-tenant"), false);
+    assert.equal(filtered.some((r) => r.userId === "u-ref-inactive"), false);
+    assert.equal(filtered.some((r) => r.userId === "u-ref-other-club"), false);
+
+    const candidate = normalizeCanonicalRefereeCandidate(rows[0], "tenant-a");
+    assert.equal(candidate.role, "REFEREE");
+    assert.equal(candidate.hasAccount, true);
+    assert.equal("password" in candidate, false);
+    assert.equal("token" in candidate, false);
+
+    let roster = [];
+    const add1 = addCanonicalRefereeToRoster(roster, candidate);
+    assert.equal(add1.ok, true);
+    roster = add1.roster;
+    assert.equal(roster[0].canonicalUserId, "u-ref-1");
+    assert.equal(roster[0].source, "canonical_account");
+
+    const dup = addCanonicalRefereeToRoster(roster, candidate);
+    assert.equal(dup.ok, false);
+    assert.equal(dup.code, "DUPLICATE");
+
+    const manual = createRefereeRosterEntry({ name: "Khách TT", phone: "091" });
+    roster = normalizeRefereeRoster([...roster, manual]);
+    assert.equal(roster.length, 2);
+    assert.ok(findRosterEntryByCanonicalUserId(roster, "u-ref-1"));
+
+    const annotated = annotateRosterEligibility(roster, [
+      { userId: "someone-else" },
+    ]);
+    assert.equal(
+      annotated.find((e) => e.canonicalUserId === "u-ref-1").eligibility,
+      "unavailable"
+    );
+  });
+
+  test("listEligibleCanonicalReferees auth + tenant guards (DP-07)", async () => {
+    const { listEligibleCanonicalReferees } =
+      await import("../src/features/daily-play/services/refereeDirectoryService.js");
+
+    const anon = await listEligibleCanonicalReferees({
+      tenantId: "tenant-a",
+      actor: null,
+    });
+    assert.equal(anon.ok, false);
+    assert.equal(anon.code, "NOT_AUTHENTICATED");
+
+    const cross = await listEligibleCanonicalReferees({
+      tenantId: "tenant-b",
+      actor: {
+        id: "owner-1",
+        role: "COURT_OWNER",
+        venueId: "tenant-a",
+        tenantId: "tenant-a",
+      },
+      client: {
+        from() {
+          throw new Error("should not query cross-tenant");
+        },
+      },
+    });
+    assert.equal(cross.ok, false);
+    assert.equal(cross.code, "CROSS_TENANT_DENIED");
+
+    const rows = [
+      {
+        id: "u-ref-1",
+        email: "lan@venue.local",
+        display_name: "TT Lan",
+        phone: "0901",
+        role: "REFEREE",
+        venue_id: "tenant-a",
+        club_id: null,
+        status: "active",
+      },
+      {
+        id: "u-player",
+        email: "p@venue.local",
+        display_name: "Player",
+        role: "PLAYER",
+        venue_id: "tenant-a",
+        status: "active",
+      },
+    ];
+
+    const chain = {
+      select() {
+        return this;
+      },
+      eq() {
+        return this;
+      },
+      then(resolve, reject) {
+        return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+      },
+    };
+    const mockClient = {
+      from() {
+        return chain;
+      },
+    };
+
+    const listed = await listEligibleCanonicalReferees({
+      tenantId: "tenant-a",
+      clubId: "club-a",
+      actor: {
+        id: "owner-1",
+        role: "COURT_OWNER",
+        venueId: "tenant-a",
+        tenantId: "tenant-a",
+      },
+      client: mockClient,
+    });
+    assert.equal(listed.ok, true);
+    assert.equal(listed.referees.length, 1);
+    assert.equal(listed.referees[0].userId, "u-ref-1");
+    assert.equal(listed.referees[0].displayName, "TT Lan");
+  });
+
+  test("Director Mode still consumes roster name/id shape (DP-07 compat)", async () => {
+    const { getRefereeSettings, assignRefereeToMatch } = await import(
+      "../src/tournament/engines/refereeEngine.js"
+    );
+    const tournament = {
+      settings: {
+        refereeRoster: [
+          {
+            id: "ref-canon-u-ref",
+            name: "TT Lan",
+            phone: "0901",
+            email: "lan@venue.local",
+            source: "canonical_account",
+            canonicalUserId: "u-ref-1",
+          },
+          { id: "r-manual", name: "Khách", phone: "091" },
+        ],
+      },
+    };
+    const roster = getRefereeSettings(tournament).roster;
+    assert.equal(roster.length, 2);
+    assert.ok(roster.every((entry) => entry.id && entry.name));
+
+    const match = assignRefereeToMatch(
+      { id: "m1", status: "ready" },
+      roster[0].name,
+      { rosterId: roster[0].id, rosterEntry: roster[0] }
+    );
+    assert.equal(match.referee.rosterId, roster[0].id);
+    assert.equal(match.referee.name, "TT Lan");
+    assert.equal(match.referee.canonicalUserId, "u-ref-1");
+    assert.ok(match.referee.token);
+  });
+});
+
+describe("Daily Director canonical cutover (DP-12)", () => {
+  test("Director loads canonical tournament from activeClub, not clubId string", () => {
+    const statePath = path.resolve("src/features/tournament/director/hooks/useDirectorState.js");
+    const source = fs.readFileSync(statePath, "utf8");
+    assert.match(source, /useCanonicalTournament\(\s*activeClub,\s*tournamentId/);
+    assert.equal(/useCanonicalTournament\(\s*activeClubId,/.test(source), false);
+    assert.match(source, /useDailyPlayCanonicalSession/);
+    assert.match(source, /useClubPairingCandidatePool\(isDaily \? activeClubId : null/);
+    assert.match(source, /buildCanonicalDailyDirectorSnapshot/);
+    assert.match(source, /isDaily \? \[\] : loadPlayersForClub/);
+    assert.match(source, /isDaily\s*\?\s*\[\]\s*:\s*loadCourtsForClub/);
+    assert.match(source, /isDaily \? \[\] : getDirectorState/);
+    assert.match(source, /revision:\s*0/);
+  });
+
+  test("Daily Director mutations use canonical session RPCs, not blob writers", () => {
+    const actionsPath = path.resolve(
+      "src/features/tournament/director/hooks/useDirectorActions.js"
+    );
+    const syncPath = path.resolve("src/features/tournament/director/hooks/useDirectorSync.js");
+    const actions = fs.readFileSync(actionsPath, "utf8");
+    const sync = fs.readFileSync(syncPath, "utf8");
+    assert.match(actions, /dailySession\.assignCourt/);
+    assert.match(actions, /dailySession\.startMatch/);
+    assert.match(actions, /dailySession\.submitScore/);
+    assert.match(actions, /dailySession\.cancelMatch/);
+    assert.match(actions, /dailySession\.changeCourt/);
+    assert.equal(actions.includes("assignDailyDirectorMatch("), false);
+    assert.equal(actions.includes("submitDailyDirectorMatchScore("), false);
+    assert.equal(actions.includes("buildDailyPlayTournamentPatch("), false);
+    assert.match(actions, /Khóa sân thủ công chưa hỗ trợ trong Daily canonical/);
+    assert.match(actions, /if \(isDaily\) \{\s*setError\(DAILY_LOCK_UNSUPPORTED\);\s*return;/);
+    assert.match(actions, /persistDailyRefereeMetadata/);
+    assert.match(sync, /dailySession\.submitScore/);
+    assert.equal(sync.includes("submitDailyDirectorMatchScore("), false);
+    assert.equal(sync.includes("buildDailyPlayTournamentPatch("), false);
+  });
+
+  test("Daily Director UI exposes assigned start action and hides manual lock", () => {
+    const modePath = path.resolve(
+      "src/features/tournament/director/TournamentDirectorMode.jsx"
+    );
+    const boardPath = path.resolve(
+      "src/features/tournament/director/components/DirectorMatchCard.jsx"
+    );
+    const courtPath = path.resolve(
+      "src/features/tournament/director/components/DirectorCourtBoard.jsx"
+    );
+    const mode = fs.readFileSync(modePath, "utf8");
+    const board = fs.readFileSync(boardPath, "utf8");
+    const court = fs.readFileSync(courtPath, "utf8");
+    assert.match(mode, /disableManualLock=\{isDaily\}/);
+    assert.match(mode, /handleStartMatch/);
+    assert.match(mode, /initialLoading/);
+    assert.match(board, /Đã xếp sân \/ Sẵn sàng/);
+    assert.match(board, /Bắt đầu trận/);
+    assert.match(court, /disableManualLock/);
+  });
+});
+
+describe("Daily Play interaction polish (DP-10)", () => {
+  test("athlete rows serialize mutations without globally disabling the roster", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(source, /playerMutationLockRef/);
+    assert.match(source, /presenceOverride/);
+    const rosterBlock = source.slice(
+      source.indexOf("Check-in hôm nay"),
+      source.indexOf("Sân đang dùng")
+    );
+    assert.equal(
+      /disabled=\{session\.mutating\}/.test(rosterBlock),
+      false,
+      "roster must not disable every row via session.mutating"
+    );
+    assert.equal(rosterBlock.includes("CircularProgress"), false);
+    assert.equal(rosterBlock.includes("disabled={isPending}"), false);
+    assert.match(source, /playerMutationLockRef\.current/);
+    assert.match(source, /useClubPairingCandidatePool\(activeClubId,\s*\{\s*revision:\s*0,\s*\}\)/);
+  });
+
+  test("bulk check-in helpers remain for Select All (DP-06 regression)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(source, /checkInMany/);
+    assert.match(source, /checkOutMany/);
+    assert.match(source, /bulkPending/);
+    assert.match(source, /Đang chọn\.\.\./);
+  });
+});
+
+describe("Daily Play visibility resume stability (DP-13)", () => {
+  const completedSnap = {
+    ok: true,
+    revision: 3,
+    dailyPlay: {
+      revision: 3,
+      checkedInPlayerIds: ["1"],
+      matches: [
+        {
+          id: "m1",
+          status: "completed",
+          courtId: "c1",
+          scoreA: 11,
+          scoreB: 0,
+        },
+      ],
+    },
+    courts: [{ id: "c1", status: "active", available: true }],
+    activeLeases: [],
+  };
+
+  test("hidden document skips routine poll", () => {
+    assert.equal(
+      shouldSkipRoutinePoll(DAILY_PLAY_REFRESH_REASON.POLL, true),
+      true
+    );
+    assert.equal(
+      shouldSkipRoutinePoll(DAILY_PLAY_REFRESH_REASON.POLL, false),
+      false
+    );
+    assert.equal(
+      shouldSkipRoutinePoll(DAILY_PLAY_REFRESH_REASON.VISIBILITY_RESUME, true),
+      false
+    );
+  });
+
+  test("visible resume is silent and does not set initial loading", () => {
+    assert.equal(
+      isSilentRefreshReason(DAILY_PLAY_REFRESH_REASON.VISIBILITY_RESUME),
+      true
+    );
+    assert.equal(
+      isSilentRefreshReason(DAILY_PLAY_REFRESH_REASON.POLL),
+      true
+    );
+    assert.equal(
+      isSilentRefreshReason(DAILY_PLAY_REFRESH_REASON.INITIAL),
+      false
+    );
+    const hook = fs.readFileSync(
+      path.resolve("src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"),
+      "utf8"
+    );
+    assert.match(hook, /VISIBILITY_RESUME/);
+    assert.match(hook, /visibilitychange/);
+    assert.equal(hook.includes("addEventListener(\"focus\""), false);
+    assert.equal(hook.includes("setRefreshing"), false);
+    assert.match(hook, /refreshing:\s*false/);
+    assert.match(hook, /isInitial = !hasSnapshotRef\.current && !silent/);
+  });
+
+  test("resume does not clear existing state", () => {
+    const hook = fs.readFileSync(
+      path.resolve("src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"),
+      "utf8"
+    );
+    const resumeBlock = hook.slice(
+      hook.indexOf("VISIBILITY_RESUME"),
+      hook.indexOf("const mutate")
+    );
+    assert.equal(resumeBlock.includes("setState(null)"), false);
+    assert.equal(resumeBlock.includes("setLoading(true)"), false);
+  });
+
+  test("identical snapshot does not replace React state", () => {
+    const signature = buildCanonicalSnapshotSignature(completedSnap);
+    const decision = shouldReplaceCanonicalSnapshot(signature, {
+      ...completedSnap,
+      dailyPlay: { ...completedSnap.dailyPlay, matches: [...completedSnap.dailyPlay.matches] },
+    });
+    assert.equal(decision.replace, false);
+  });
+
+  test("changed snapshot does replace state", () => {
+    const signature = buildCanonicalSnapshotSignature(completedSnap);
+    const revisionChanged = shouldReplaceCanonicalSnapshot(signature, {
+      ...completedSnap,
+      revision: 4,
+      dailyPlay: { ...completedSnap.dailyPlay, revision: 4 },
+    });
+    assert.equal(revisionChanged.replace, true);
+    const leaseChanged = shouldReplaceCanonicalSnapshot(signature, {
+      ...completedSnap,
+      activeLeases: [{ courtId: "c1", matchId: "m1", status: "active" }],
+    });
+    assert.equal(leaseChanged.replace, true);
+  });
+
+  test("simultaneous poll/resume does not produce duplicate reads", () => {
+    const fence = createDailyPlayRefreshFence();
+    const poll = fence.begin(DAILY_PLAY_REFRESH_REASON.POLL);
+    const resume = fence.begin(DAILY_PLAY_REFRESH_REASON.VISIBILITY_RESUME);
+    assert.equal(poll.kind, "start");
+    assert.equal(resume.kind, "join");
+    assert.equal(resume.promise, poll.promise);
+  });
+
+  test("stale older response cannot overwrite newer mutation readback", () => {
+    const fence = createDailyPlayRefreshFence();
+    const poll = fence.begin(DAILY_PLAY_REFRESH_REASON.POLL);
+    const mutation = fence.begin(DAILY_PLAY_REFRESH_REASON.MUTATION);
+    assert.equal(mutation.kind, "start");
+    assert.equal(fence.isCurrent(poll.generation), false);
+    assert.equal(fence.isCurrent(mutation.generation), true);
+  });
+
+  test("scroll/layout state remains mounted", () => {
+    const setup = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    const director = fs.readFileSync(
+      path.resolve("src/features/tournament/director/TournamentDirectorMode.jsx"),
+      "utf8"
+    );
+    const hook = fs.readFileSync(
+      path.resolve("src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"),
+      "utf8"
+    );
+    assert.equal(setup.includes("scrollTo"), false);
+    assert.equal(director.includes("scrollTo"), false);
+    assert.equal(setup.includes("key={session.revision}"), false);
+    assert.equal(director.includes("key={dailySession"), false);
+    assert.equal(hook.includes("setRefreshing(true)"), false);
+  });
+});
+
+describe("Daily Play canonical score correction (DP-14)", () => {
+  test("score input is integer-only, min 0, no draw/decimal/scientific", () => {
+    assert.equal(acceptDailyScoreFieldInput(""), "");
+    assert.equal(acceptDailyScoreFieldInput("11"), "11");
+    assert.equal(acceptDailyScoreFieldInput("0"), "0");
+    assert.equal(acceptDailyScoreFieldInput("-1"), null);
+    assert.equal(acceptDailyScoreFieldInput("1.5"), null);
+    assert.equal(acceptDailyScoreFieldInput("1e2"), null);
+    assert.equal(acceptDailyScoreFieldInput("1E2"), null);
+    assert.equal(acceptDailyScoreFieldInput("+3"), null);
+    assert.equal(validateScoreInput("", "11").ok, false);
+    assert.equal(validateScoreInput("-1", "11").ok, false);
+    assert.equal(validateScoreInput("1.5", "0").ok, false);
+    assert.equal(validateScoreInput("1e2", "0").ok, false);
+    assert.equal(validateScoreInput(11, 11).ok, false);
+    assert.equal(validateScoreInput(11, 0).ok, true);
+    assert.equal(validateScoreInput(0, 11).ok, true);
+  });
+
+  test("submit_score still rejects completed overwrite", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: ["1", "2", "3", "4"],
+        revision: 4,
+        matches: [
+          {
+            id: "m-done",
+            status: "completed",
+            courtId: "c1",
+            scoreA: 11,
+            scoreB: 5,
+            teamAPlayerIds: ["1", "2"],
+            teamBPlayerIds: ["3", "4"],
+          },
+        ],
+      },
+    });
+    const overwrite = await service.submitScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-done",
+        scoreA: 11,
+        scoreB: 7,
+        expectedVersion: 4,
+        idempotencyKey: "submit-overwrite",
+      }
+    );
+    assert.equal(overwrite.ok, false);
+    assert.equal(overwrite.code, DAILY_PLAY_CODE.SCORE_CONFLICT);
+  });
+
+  test("correct_score updates completed score without lease or player reservation", async () => {
+    const { service, authority } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: ["1", "2", "3", "4"],
+        revision: 4,
+        matches: [
+          {
+            id: "m-done",
+            status: "completed",
+            courtId: "c1",
+            scoreA: 11,
+            scoreB: 5,
+            teamAPlayerIds: ["1", "2"],
+            teamBPlayerIds: ["3", "4"],
+          },
+        ],
+      },
+    });
+
+    const corrected = await service.correctScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-done",
+        scoreA: 11,
+        scoreB: 7,
+        note: "Nhầm điểm",
+        expectedVersion: 4,
+        idempotencyKey: "correct-1",
+      }
+    );
+    assert.equal(corrected.ok, true);
+    assert.equal(corrected.match.status, "completed");
+    assert.equal(corrected.match.scoreA, 11);
+    assert.equal(corrected.match.scoreB, 7);
+    assert.equal(corrected.ratingVprApplied, false);
+    assert.equal(
+      (corrected.leases || []).some((lease) => lease.status === "active"),
+      false
+    );
+    const log = corrected.match.scoreLog || [];
+    assert.ok(log.some((entry) => entry.oldScoreA === 11 && entry.scoreB === 7));
+    assert.ok(log.some((entry) => String(entry.note || "").includes("Nhầm điểm")));
+
+    const same = await service.correctScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-done",
+        scoreA: 11,
+        scoreB: 7,
+        expectedVersion: 4,
+        idempotencyKey: "correct-same",
+      }
+    );
+    assert.equal(same.ok, true);
+    assert.equal(same.replay, true);
+
+    const stale = await service.correctScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-done",
+        scoreA: 11,
+        scoreB: 8,
+        expectedVersion: 4,
+        idempotencyKey: "correct-stale",
+      }
+    );
+    assert.equal(stale.ok, false);
+    assert.equal(stale.code, DAILY_PLAY_CODE.VERSION_CONFLICT);
+
+    const playing = await service.correctScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "missing",
+        scoreA: 11,
+        scoreB: 8,
+        expectedVersion: corrected.revision,
+        idempotencyKey: "correct-missing",
+      }
+    );
+    assert.equal(playing.ok, false);
+    assert.ok(authority.__getLedger().size >= 1);
+  });
+
+  test("correct_score requires completed and never uses submit_score", () => {
+    const domain = applyCorrectScore(
+      {
+        revision: 1,
+        matches: [
+          {
+            id: "m-play",
+            status: "playing",
+            scoreA: null,
+            scoreB: null,
+            teamAPlayerIds: ["1", "2"],
+            teamBPlayerIds: ["3", "4"],
+          },
+        ],
+      },
+      { matchId: "m-play", scoreA: 11, scoreB: 5 }
+    );
+    assert.equal(domain.ok, false);
+    assert.equal(domain.code, DAILY_PLAY_CODE.MATCH_NOT_COMPLETED);
+
+    const actions = fs.readFileSync(
+      path.resolve("src/features/tournament/director/hooks/useDirectorActions.js"),
+      "utf8"
+    );
+    assert.match(actions, /dailySession\.correctScore/);
+    assert.match(actions, /scoreCorrectionMode/);
+    assert.match(actions, /submitScore\(scoreDialog\.id/);
+    const correctBlock = actions.slice(
+      actions.indexOf("if (scoreCorrectionMode)"),
+      actions.indexOf("const result = await dailySession.submitScore")
+    );
+    assert.equal(correctBlock.includes("submitScore"), false);
+  });
+
+  test("additive SQL package is local-only and does not weaken submit_score", () => {
+    const apply = fs.readFileSync(
+      path.resolve("docs/v5/migrations/daily-play-score-correction-01/02_APPLY.sql"),
+      "utf8"
+    );
+    const readme = fs.readFileSync(
+      path.resolve("docs/v5/migrations/daily-play-score-correction-01/README.md"),
+      "utf8"
+    );
+    const rollback = fs.readFileSync(
+      path.resolve("docs/v5/migrations/daily-play-score-correction-01/04_ROLLBACK.sql"),
+      "utf8"
+    );
+    const submit = fs.readFileSync(
+      path.resolve("docs/v5/migrations/daily-play-end-to-end-canonical-01/02_APPLY.sql"),
+      "utf8"
+    );
+    assert.match(apply, /daily_play_correct_score/);
+    assert.match(apply, /SECURITY DEFINER SET search_path = public/);
+    assert.match(apply, /MATCH_NOT_COMPLETED/);
+    assert.match(apply, /VERSION_CONFLICT/);
+    assert.match(apply, /scoreLog/);
+    assert.match(apply, /ratingVprApplied/);
+    assert.equal(apply.includes("INSERT INTO public.daily_play_court_leases"), false);
+    assert.match(readme, /DO NOT APPLY WITHOUT OWNER GO STAGING/);
+    assert.match(rollback, /DROP FUNCTION IF EXISTS public.daily_play_correct_score/);
+    assert.equal(rollback.includes("daily_play_submit_score"), false);
+    assert.match(submit, /MATCH_COMPLETED|SCORE_CONFLICT/);
+  });
+
+  test("Director and Setup expose Sửa điểm with digits-only input", () => {
+    const board = fs.readFileSync(
+      path.resolve("src/features/tournament/director/components/DirectorMatchCard.jsx"),
+      "utf8"
+    );
+    const panel = fs.readFileSync(
+      path.resolve("src/features/tournament/director/components/DirectorScorePanel.jsx"),
+      "utf8"
+    );
+    const setup = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    assert.match(board, /Sửa điểm/);
+    assert.match(board, /Lịch sử trận/);
+    assert.match(panel, /Sửa điểm trận đã hoàn tất/);
+    assert.match(panel, /inputMode="numeric"/);
+    assert.equal(panel.includes('type="number"'), false);
+    assert.match(panel, /acceptDailyScoreFieldInput/);
+    assert.match(setup, /Sửa điểm trận đã hoàn tất/);
+    assert.match(setup, /session\.correctScore/);
+    assert.equal(setup.includes('type="number"'), false);
+  });
+});
+
+describe("Daily Play tab resume no-flash (DP-13B)", () => {
+  test("DailyPlaySetup keeps shell mounted during same-scope background reload", () => {
+    const setup = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    assert.match(
+      setup,
+      /\(tournamentLoading && !tournament\) \|\| \(session\.loading && !session\.state\)/
+    );
+  });
+
+  test("VERIFY script does not blame pre-existing canonical_tournaments ACL", () => {
+    const verify = fs.readFileSync(
+      path.resolve("docs/v5/migrations/daily-play-score-correction-01/03_VERIFY.sql"),
+      "utf8"
+    );
+    const apply = fs.readFileSync(
+      path.resolve("docs/v5/migrations/daily-play-score-correction-01/02_APPLY.sql"),
+      "utf8"
+    );
+    assert.equal(verify.includes("canonical_tournaments', 'UPDATE'"), false);
+    assert.match(verify, /daily_play_court_leases/);
+    assert.match(verify, /daily_play_command_ledger/);
+    assert.match(verify, /pre-existing/);
+    assert.equal(apply.includes("GRANT UPDATE ON TABLE public.canonical_tournaments"), false);
+    assert.match(apply, /GRANT EXECUTE ON FUNCTION public.daily_play_correct_score/);
+  });
+});
+
+describe("Daily Play instant presence (DP-15)", () => {
+  test("single athlete click immediately changes presentation state", () => {
+    const override = beginPresenceOverride(["a"], "b");
+    const presented = resolvePresentedCheckedSet(["a"], override);
+    assert.equal(presented.has("a"), true);
+    assert.equal(presented.has("b"), true);
+    assert.equal(override.checked, true);
+  });
+
+  test("individual check-in and checkout render no CircularProgress or faded row", () => {
+    const source = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    const row = source.slice(
+      source.indexOf("function PlayerPresenceRow"),
+      source.indexOf("export default function DailyPlaySetup")
+    );
+    assert.equal(row.includes("CircularProgress"), false);
+    assert.equal(row.includes("disabled"), false);
+    assert.match(row, /variant=\{checked \? "contained" : "outlined"\}/);
+    assert.equal(source.includes("CircularProgress"), false);
+  });
+
+  test("unrelated athlete rows remain visually unchanged", () => {
+    const presented = resolvePresentedCheckedSet(["a", "c"], beginPresenceOverride(["a", "c"], "a"));
+    assert.equal(presented.has("a"), false);
+    assert.equal(presented.has("c"), true);
+    assert.equal(presented.has("b"), false);
+  });
+
+  test("Select All, Clear All, and Create Match do not visually flash from a single check-in", () => {
+    const source = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    const createBlock = source.slice(
+      source.indexOf("Tạo trận công bằng") - 400,
+      source.indexOf("Tạo trận công bằng")
+    );
+    assert.equal(createBlock.includes("session.mutating"), false);
+    const selectAll = source.slice(
+      source.indexOf("Chọn tất cả") - 280,
+      source.indexOf("Chọn tất cả")
+    );
+    assert.equal(selectAll.includes("session.mutating"), false);
+    const clearAll = source.slice(
+      source.indexOf("Bỏ chọn tất cả") - 280,
+      source.indexOf("Bỏ chọn tất cả")
+    );
+    assert.equal(clearAll.includes("session.mutating"), false);
+  });
+
+  test("second concurrent athlete mutation is blocked logically", () => {
+    assert.equal(
+      shouldIgnoreConcurrentPresenceClick({
+        lockHeld: true,
+        mutating: false,
+      }),
+      true
+    );
+    assert.equal(
+      shouldIgnoreConcurrentPresenceClick({
+        mutating: true,
+      }),
+      true
+    );
+    assert.equal(
+      shouldIgnoreConcurrentPresenceClick({
+        override: { playerId: "a", checked: true },
+      }),
+      true
+    );
+    assert.equal(shouldIgnoreConcurrentPresenceClick({}), false);
+  });
+
+  test("optimistic check-in/checkout success reconciles to canonical snapshot", () => {
+    const checkIn = beginPresenceOverride([], "p1");
+    assert.equal(reconcilePresenceOverride(checkIn, ["p1"]), null);
+    const checkOut = beginPresenceOverride(["p1"], "p1");
+    assert.equal(reconcilePresenceOverride(checkOut, []), null);
+  });
+
+  test("failed check-in and checkout roll UI back to canonical truth", () => {
+    const checkIn = beginPresenceOverride([], "p1");
+    assert.deepEqual(resolvePresentedCheckedSet([], checkIn), new Set(["p1"]));
+    assert.equal(rollbackPresenceOverride(), null);
+    assert.deepEqual(resolvePresentedCheckedSet([], null), new Set());
+    const checkOut = beginPresenceOverride(["p1"], "p1");
+    assert.deepEqual(resolvePresentedCheckedSet(["p1"], checkOut), new Set());
+    assert.deepEqual(
+      resolvePresentedCheckedSet(["p1"], rollbackPresenceOverride()),
+      new Set(["p1"])
+    );
+  });
+
+  test("optimistic override is not match-creation or CAS authority", () => {
+    assert.equal(isPresenceOverrideAuthoritative(), false);
+    const source = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    const createBlock = source.slice(
+      source.indexOf("handleCreateMatches"),
+      source.indexOf("handleAssignCourt")
+    );
+    assert.match(createBlock, /settings: dailySettings/);
+    assert.match(createBlock, /eligiblePlayerCount: dailySettings\.checkedInPlayerIds/);
+    assert.equal(createBlock.includes("presentedCheckedSet"), false);
+    assert.equal(createBlock.includes("presenceOverride"), true);
+    const session = fs.readFileSync(
+      path.resolve("src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"),
+      "utf8"
+    );
+    assert.match(session, /expectedVersion: revisionRef\.current/);
+  });
+
+  test("candidate directory does not reload and roster scroll stays in overflow container", () => {
+    const source = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    assert.match(
+      source,
+      /useClubPairingCandidatePool\(activeClubId,\s*\{\s*revision:\s*0,\s*\}\)/
+    );
+    assert.match(source, /maxHeight: 320, overflow: "auto"/);
+    assert.equal(source.includes("setCanonicalRefereesLoading(true)"), true);
+    const refereeEffect = source.slice(
+      source.indexOf("setCanonicalRefereesLoading(true)"),
+      source.indexOf("const displayError")
+    );
+    assert.match(refereeEffect, /\[tenantId, activeClubId, user\?\.id\]/);
+    assert.equal(refereeEffect.includes("presenceOverride"), false);
+  });
+});
+

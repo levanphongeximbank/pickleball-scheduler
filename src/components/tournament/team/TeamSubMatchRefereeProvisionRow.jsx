@@ -106,12 +106,14 @@ export default function TeamSubMatchRefereeProvisionRow({
         {canProvisionRefereeLink(linkOps) ? (
           <Button
             size="small"
-            variant="contained"
+            variant="text"
+            color="inherit"
             startIcon={<SportsIcon />}
             disabled={busy || !assignmentId}
             onClick={handleProvision}
+            data-testid="referee-provision-recovery"
           >
-            Tạo phiên trọng tài
+            Khôi phục phiên V5 (admin)
           </Button>
         ) : null}
         {linkOps.canOpenWorkspace && linkOps.route ? (

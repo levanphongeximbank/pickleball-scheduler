@@ -5,6 +5,11 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  buildTiebreakOrderFingerprint,
+  decideSetupFormRehydration,
+} from "../../../features/team-tournament/setup/setupFormRehydration.js";
+
+import {
   Alert,
   Button,
   Chip,
@@ -45,10 +50,28 @@ export default function TeamTiebreakConfigPanel({
   }, [teamData]);
 
   const [order, setOrder] = useState(initial);
+  const [baselineFingerprint, setBaselineFingerprint] = useState(null);
+  const serverFingerprint = useMemo(
+    () => buildTiebreakOrderFingerprint(initial),
+    [initial]
+  );
+  const dirty = useMemo(
+    () => buildTiebreakOrderFingerprint(order) !== serverFingerprint,
+    [order, serverFingerprint]
+  );
 
   useEffect(() => {
+    const decision = decideSetupFormRehydration({
+      dirty,
+      prevFingerprint: baselineFingerprint,
+      nextFingerprint: serverFingerprint,
+    });
+    if (!decision.rehydrate) {
+      return;
+    }
     setOrder(initial);
-  }, [initial]);
+    setBaselineFingerprint(serverFingerprint);
+  }, [baselineFingerprint, dirty, initial, serverFingerprint]);
 
   if (!canManage) {
     return null;

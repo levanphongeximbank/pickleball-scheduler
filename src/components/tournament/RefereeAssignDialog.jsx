@@ -84,6 +84,7 @@ export default function RefereeAssignDialog({
 
     const assigned = assignRefereeToMatch(match, resolvedName, {
       rosterId: selectedRosterEntry?.id || "",
+      rosterEntry: selectedRosterEntry || null,
     });
     const result = await onAssign(assigned);
 
@@ -147,7 +148,11 @@ export default function RefereeAssignDialog({
                       setName(value.name);
                     }
                   }}
-                  getOptionLabel={(option) => option.name || ""}
+                  getOptionLabel={(option) =>
+                    option.canonicalUserId
+                      ? `${option.name || ""} (tài khoản)`
+                      : option.name || ""
+                  }
                   isOptionEqualToValue={(option, value) => String(option.id) === String(value?.id)}
                   renderInput={(params) => (
                     <TextField {...params} label="Chọn từ danh sách" placeholder="Chọn trọng tài" />

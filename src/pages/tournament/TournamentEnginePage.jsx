@@ -260,7 +260,7 @@ export default function TournamentEnginePage() {
         />
         <Breadcrumbs sx={{ mb: 1 }}>
           <Link component="button" underline="hover" color="inherit" onClick={() => navigate("/tournaments")}>
-            Giải đấu
+            Giải của tôi
           </Link>
           <Typography color="text.primary">{engine.tournament.name}</Typography>
           <Typography color="text.secondary">Engine 4.0</Typography>

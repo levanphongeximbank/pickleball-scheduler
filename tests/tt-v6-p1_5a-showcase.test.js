@@ -325,45 +325,49 @@ test("14+15. Confirm persists once and duplicate confirm reuses idempotency key"
     randomFn: fixedRandom(),
   }).session;
 
+  let commitCalls = 0;
   let persistCalls = 0;
   const key = createShowcaseIdempotencyKey("tour-1");
-  const persistSetupTeamData = async (teamData, options) => {
-    persistCalls += 1;
-    assert.equal(options.rulesVersion, "rv-test-1");
-    assert.equal((teamData.groups || []).length, 2);
+  const commitPairing = async ({ teams, groups }) => {
+    commitCalls += 1;
+    assert.equal((groups || []).length, 2);
     return {
       ok: true,
-      readbackVerified: true,
-      reloadResult: { ok: true },
-      teamData,
+      version: 2,
+      teamData: { teams, groups, matchups: [] },
     };
   };
+  const persistSetupTeamData = async () => {
+    persistCalls += 1;
+    return { ok: false, code: "MUST_NOT_CALL" };
+  };
 
-  // teamsAlreadyPersisted avoids applyAiGeneratedTeamsToTournament (needs club blob)
   const first = await confirmShowcasePersistence({
     session: grouped,
     clubId: "club-test-tt32-qa",
     tournamentId: "tour-1",
     rulesVersion: "rv-test-1",
-    teamsAlreadyPersisted: true,
+    commitPairing,
     persistSetupTeamData,
     idempotencyKey: key,
   });
-  assert.equal(first.ok, true);
+  assert.equal(first.ok, true, first.error);
   assert.equal(first.usedBlob, false);
-  assert.equal(persistCalls, 1);
+  assert.equal(commitCalls, 1);
+  assert.equal(persistCalls, 0);
 
   const second = await confirmShowcasePersistence({
     session: grouped,
     clubId: "club-test-tt32-qa",
     tournamentId: "tour-1",
     rulesVersion: "rv-test-1",
-    teamsAlreadyPersisted: true,
+    commitPairing,
     persistSetupTeamData,
     idempotencyKey: key,
   });
-  assert.equal(second.ok, true);
-  assert.equal(persistCalls, 2);
+  assert.equal(second.ok, true, second.error);
+  assert.equal(commitCalls, 2);
+  assert.equal(persistCalls, 0);
   // Adapter itself is callable twice; UI disables while saving and reuses key.
   assert.equal(key.startsWith("showcase-tour-1-"), true);
 });
@@ -386,8 +390,8 @@ test("16. Failed save retains preview (adapter returns previewRetained)", async 
     clubId: "club-x",
     tournamentId: "t-x",
     rulesVersion: "rv-test-1",
-    teamsAlreadyPersisted: true,
-    persistSetupTeamData: async () => ({ ok: false, error: "network down" }),
+    persistSetupTeamData: async () => ({ ok: false, code: "MUST_NOT_CALL" }),
+    commitPairing: async () => ({ ok: false, code: "PAIRING_COMMIT_FAILED", error: "network down" }),
   });
   assert.equal(result.ok, false);
   assert.equal(result.previewRetained, true);
@@ -470,14 +474,14 @@ test("21. No blob authority on successful confirm path", async () => {
     clubId: "club-x",
     tournamentId: "t-x",
     rulesVersion: "rv-test-1",
-    teamsAlreadyPersisted: true,
-    persistSetupTeamData: async () => ({
+    persistSetupTeamData: async () => ({ ok: false, code: "MUST_NOT_CALL" }),
+    commitPairing: async ({ teams, groups }) => ({
       ok: true,
-      readbackVerified: true,
-      reloadResult: { ok: true },
+      version: 2,
+      teamData: { teams, groups, matchups: [] },
     }),
   });
-  assert.equal(result.ok, true);
+  assert.equal(result.ok, true, result.error);
   assert.equal(result.usedBlob, false);
 });
 

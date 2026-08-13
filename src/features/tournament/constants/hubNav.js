@@ -55,7 +55,7 @@ export const CANONICAL_TOURNAMENT_HUB_ITEMS = Object.freeze([
   {
     key: "my",
     title: "Giải của tôi",
-    description: "Các giải bạn đang tham gia hoặc theo dõi.",
-    path: TOURNAMENT_ROUTES.playerPortal,
+    description: "Các giải bạn được phép mở bảng điều khiển.",
+    path: TOURNAMENT_ROUTES.dashboard,
   },
 ]);

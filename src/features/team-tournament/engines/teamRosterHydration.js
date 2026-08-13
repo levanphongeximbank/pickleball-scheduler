@@ -12,6 +12,10 @@
 
 import { getPlayerGenderKey } from "../../../models/player.js";
 import { projectCanonicalRatingFields } from "../../pairing-candidates/canonicalAthleteRating.js";
+import {
+  overlayCaptainPortalRosterOnPool,
+  projectCaptainPortalRosterPlayers,
+} from "./captainPortalRosterProjection.js";
 
 export const ROSTER_HYDRATION_STATUS = Object.freeze({
   LOADING: "loading",
@@ -441,11 +445,16 @@ export function hydrateTeamRoster({
   athletePoolError = null,
 } = {}) {
   const sourceRows = extractMemberSourceRows(team, teamMemberRows);
+  const portalPlayers = projectCaptainPortalRosterPlayers(
+    team?.rosterAthletes || team?.roster_athletes
+  );
+  const portalReady = portalPlayers.length > 0;
+  const mergedPool = overlayCaptainPortalRosterOnPool(team, athletePool);
   const effectivePoolStatus =
     poolStatus ||
-    (athletePoolError
+    (athletePoolError && !portalReady
       ? "error"
-      : athletePoolLoading || !setupReady
+      : (athletePoolLoading || !setupReady) && !portalReady
         ? "loading"
         : "ready");
 
@@ -483,7 +492,7 @@ export function hydrateTeamRoster({
     };
   }
 
-  const index = buildRosterAthleteIndex(athletePool);
+  const index = buildRosterAthleteIndex(mergedPool);
   const captain = resolveCaptainAthleteId(team, index);
   const deputies = resolveDeputyAthleteIds(team, index);
   const diagnostics = [];

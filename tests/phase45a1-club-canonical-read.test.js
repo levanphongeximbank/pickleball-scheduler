@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import {
   CLUB_READ_STATE,
@@ -273,4 +275,24 @@ test("ownership lock detects a NEW loadClubs()/registry RPC read but not loadClu
 test("ownership lock baseline records ClubContext legacy read as debt (not a new violation)", () => {
   const found = collectViolations();
   assert.ok(found.has("club-entity-registry-read-in-ui::src/context/ClubContext.jsx"));
+});
+
+test("DP-13B — ClubContext hydrates from security fingerprint, not raw user identity", () => {
+  const source = fs.readFileSync(path.resolve("src/context/ClubContext.jsx"), "utf8");
+  assert.match(source, /buildUserSecurityScopeKey\(user\)/);
+  assert.match(source, /userSecurityScopeKey/);
+  assert.match(
+    source,
+    /\[isAuthenticated, userSecurityScopeKey, currentTenantId, rbacEnabled\]/
+  );
+  assert.match(
+    source,
+    /\[canonicalRead, isAuthenticated, userSecurityScopeKey, currentTenantId, rbacEnabled, canonicalReloadNonce\]/
+  );
+  assert.equal(source.includes("[isAuthenticated, user, currentTenantId, rbacEnabled]"), false);
+  assert.equal(
+    source.includes("[canonicalRead, isAuthenticated, user, currentTenantId, rbacEnabled, canonicalReloadNonce]"),
+    false
+  );
+  assert.match(source, /TOKEN_REFRESHED must not clear clubs/);
 });

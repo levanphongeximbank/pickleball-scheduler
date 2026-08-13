@@ -29,6 +29,12 @@ const team = {
   playerIds: ["p1", "p2", "p3", "p4"],
   absentPlayerIds: [],
   lockedPlayerIds: [],
+  rosterAthletes: [
+    { athleteId: "p1", displayName: "Nam A", gender: "male" },
+    { athleteId: "p2", displayName: "Nam B", gender: "male" },
+    { athleteId: "p3", displayName: "Nu A", gender: "female" },
+    { athleteId: "p4", displayName: "Nu B", gender: "female" },
+  ],
 };
 
 const menDiscipline = createDisciplineRecord({

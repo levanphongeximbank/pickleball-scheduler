@@ -43,10 +43,6 @@ import {
   isCaptainPortalScopedReaderDeployed,
 } from "../services/captainAccessService.js";
 import {
-  logTt412CaptainAccess,
-  TT412_CAPTAIN_PORTAL_READ,
-} from "../diagnostics/tt412CaptainAccessDiagnostics.js";
-import {
   notImplemented,
   normalizeRepositoryResult,
   rejectClientViewerTeamIdForCloud,
@@ -165,26 +161,10 @@ export function createCloudTeamTournamentRepository() {
           );
         }
 
-        logTt412CaptainAccess(TT412_CAPTAIN_PORTAL_READ, {
-          phase: "start",
-          tournamentId: String(tournamentId || ""),
-          pageMode: "captainPortal",
-        });
-
         const portalRpc = await rpcTeamTournamentGetCaptainPortal(tournamentId, {
           schemaVersion: readOptions.schemaVersion ?? 7,
         });
         const mapped = mapCaptainPortalResponse(portalRpc);
-
-        logTt412CaptainAccess(TT412_CAPTAIN_PORTAL_READ, {
-          phase: "result",
-          tournamentId: String(tournamentId || ""),
-          ok: mapped.ok === true,
-          code: mapped.code || (mapped.ok ? null : portalRpc?.code) || null,
-          viewerTeamId: mapped.meta?.viewerTeamId || null,
-          teamCount: mapped.tournament?.teamData?.teams?.length ?? null,
-          matchupCount: mapped.tournament?.teamData?.matchups?.length ?? null,
-        });
 
         if (!mapped.ok) {
           return normalizeRepositoryResult(

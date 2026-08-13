@@ -4,6 +4,8 @@ import {
   TEAM_TOURNAMENT_DATA_MODES,
 } from "../repositories/teamTournamentRepositoryFactory.js";
 import { REPOSITORY_ERROR_CODES, REPOSITORY_REALTIME_FALLBACK } from "../repositories/teamTournamentRepositoryTypes.js";
+import { describeRepositoryFailureCode } from "../repositories/teamTournamentRepositoryValidation.js";
+import { mapTeamTournamentDomainFailure } from "../engines/teamTournamentDomainErrors.js";
 import { attachTeamDataToTournament, getTeamData } from "../engines/teamTournamentEngine.js";
 import { buildTeamTournamentDraftState } from "../engines/teamTournamentWorkflowStage.js";
 import { DEFAULT_ENGINE_VERSION } from "../canonical/teamTournamentMutationEnvelope.js";
@@ -38,12 +40,13 @@ import {
 } from "../engines/teamFormatVenueConfig.js";
 import { assertStageTieBreakPolicyWritable } from "../engines/teamStageTieBreakPolicy.js";
 import {
+  buildCloseTournamentPayload,
+  CLOSE_TOURNAMENT_COMMAND,
+  resolveCloseMutationOutcome,
+} from "../setup/closeTournamentMutation.js";
+import {
   planCanonicalMlpDreambreakerPersist,
 } from "../engines/mlpPresetEngine.js";
-import {
-  TT412_SAVE_DRAFT_DIAG,
-  tt412SaveDraftDiag,
-} from "../services/tt412SaveDraftDiagnostics.js";
 
 export const UI_MUTATION_ERROR = Object.freeze({
   VERSION_CONFLICT: "version_conflict",
@@ -108,14 +111,26 @@ export function mapRepositoryResultToUi(result) {
       "Dữ liệu đã được người khác cập nhật. Hệ thống đã tải lại phiên bản mới — vui lòng kiểm tra trước khi gửi lại.";
   } else if (code === "captain_portal_closed") {
     userMessage = "Portal đội trưởng chưa được Ban tổ chức mở.";
-  } else if (code === "captain_scope_denied") {
+  } else if (code === "captain_scope_denied" || code === "NOT_CAPTAIN") {
     userMessage = "Bạn không có quyền truy cập đội này.";
+  } else if (code === "CAPTAIN_TEAM_AMBIGUOUS") {
+    userMessage = "Không xác định được đội đội trưởng — liên hệ ban tổ chức.";
   } else if (code === "FORBIDDEN" || code === UI_MUTATION_ERROR.ACCESS_DENIED) {
     userMessage = result?.error || "Bạn không có quyền thực hiện thao tác này.";
   } else if (code === REPOSITORY_ERROR_CODES.NOT_FOUND) {
     userMessage = "Không tìm thấy giải đấu.";
   } else if (code === REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED) {
     userMessage = "Chức năng chưa được triển khai trên môi trường này.";
+  } else {
+    const mapped = mapTeamTournamentDomainFailure(result || {});
+    const described = describeRepositoryFailureCode(code) || mapped.error;
+    const generic =
+      !result?.error ||
+      result.error === "Repository operation failed." ||
+      result.error === "Không thực hiện được thao tác.";
+    if (generic) {
+      userMessage = described;
+    }
   }
 
   return {
@@ -330,6 +345,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       commandOptions,
       actionScope,
       expectedVersion,
+      readOptions = {},
     }) {
       const scope = actionScope || buildUiCommandScope(method, tournamentId, payload.matchupId || "");
       const idempotencyKey =
@@ -368,7 +384,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         const mirrorMeta = await maybeMirrorAfterCloudSuccess(clubId, mode, repo, tournamentId);
         endUiCommandKey(scope);
 
-        const reload = await this.loadTournament(clubId, tournamentId);
+        const reload = await this.loadTournament(clubId, tournamentId, readOptions || {});
         return {
           ok: true,
           version: result.version ?? reload.version,
@@ -395,7 +411,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       ) {
         const gateHint = isSetupMutationFoundationEnabled()
           ? "Dùng persistSetupTeamData để ghi bằng P1.3 domain RPC."
-          : "Bật VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7 sau khi P1.3 được Staging-certified.";
+          : "Kill-switch VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7=false đang tắt ghi setup.";
         return {
           ok: false,
           code: isSetupMutationFoundationEnabled()
@@ -432,7 +448,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           ok: false,
           code: "GATE_OFF",
           error:
-            "Setup mutation v7 đang tắt. Bật VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7 sau khi P1.3 được Staging-certified.",
+            "Setup mutation v7 đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7=false). Không ghi setup bằng writer phụ.",
         });
       }
 
@@ -478,7 +494,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         if (!remaining.commandName) {
           return first;
         }
-        return this.persistSetupTeamData(clubId, tournamentId, ensuredNext, {
+        const nextResult = await this.persistSetupTeamData(clubId, tournamentId, ensuredNext, {
           ...options,
           previousTeamData: first.teamData || dreamOnlyNext,
           expectedTournamentVersion: Number(
@@ -488,17 +504,50 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           aggregate: first.aggregate || options.aggregate,
           tournament: first.tournament || options.tournament,
         });
+        if (!nextResult?.ok) {
+          return {
+            ...nextResult,
+            partial: true,
+            completedCommand: "discipline.dreambreaker_ensure",
+            remainingCommand: remaining.commandName,
+          };
+        }
+        return nextResult;
       }
 
       const expectedTournamentVersion = Number(
         options.expectedTournamentVersion ?? aggregate.version ?? 1
       );
+      const PAIRING_SETUP_COMMANDS = new Set([
+        "groups.replace",
+        "groups.clear",
+        "matchups.replace",
+        "schedule.batch",
+        "schedule.publish",
+      ]);
+      const resolveRulesVersion = (commandName, explicit = "") => {
+        const fromOptions = String(
+          explicit ||
+            options.rulesVersion ||
+            aggregate.rulesVersion ||
+            aggregate.settings?.rulesVersion ||
+            ""
+        ).trim();
+        if (fromOptions) return fromOptions;
+        // Knockout / schedule writes are pairing-family commands: fail-closed
+        // without inventing a second authority, but use the established default
+        // when the tournament already exists and aggregate snapshot omits it.
+        if (PAIRING_SETUP_COMMANDS.has(commandName)) {
+          return "team-tournament-v1";
+        }
+        return "";
+      };
       const inferred = buildSetupMutationFromTeamDataDiff({
         previous: previousTeamData,
         next: ensuredNext,
         tournamentId,
         expectedTournamentVersion,
-        rulesVersion: options.rulesVersion || aggregate.rulesVersion || "",
+        rulesVersion: resolveRulesVersion(null, options.rulesVersion || ""),
       });
       if (!inferred.commandName) {
         return mapRepositoryResultToUi({
@@ -507,6 +556,10 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           error: "Không tìm thấy thay đổi setup domain có thể ghi bằng P1.3.",
         });
       }
+      inferred.rulesVersion = resolveRulesVersion(
+        inferred.commandName,
+        inferred.rulesVersion || options.rulesVersion || ""
+      );
 
       const matchups = ensuredNext.matchups || [];
       let snapshot;
@@ -562,6 +615,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
       });
       const uiResult = mapRepositoryResultToUi(result);
       // Success only after get_setup v7 read-back verification.
+      // One inferred command per call — not a multi-RPC transaction.
       if (uiResult.ok && result.reloadResult?.ok) {
         return {
           ...uiResult,
@@ -569,6 +623,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           tournament: result.reloadResult.tournament,
           teamData: result.reloadResult.teamData,
           aggregate: result.reloadResult.aggregate,
+          completedCommand: inferred.commandName,
         };
       }
       if (uiResult.ok && !result.reloadResult?.ok) {
@@ -604,7 +659,7 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
           ok: false,
           code: "GATE_OFF",
           error:
-            "Setup mutation v7 đang tắt. Bật VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7 sau khi được Staging-certified.",
+            "Setup mutation v7 đang tắt (VITE_TEAM_TOURNAMENT_SETUP_MUTATION_V7=false). Không ghi setup bằng writer phụ.",
         });
       }
 
@@ -660,15 +715,6 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         });
       }
 
-      // Preview-only: confirmed path always assigns an idempotency key inside runSetupMutation.
-      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.RPC_CALL, {
-        rpcName: "team_tournament_save_draft",
-        commandName: "tournament.save_draft",
-        expectedTournamentVersion,
-        hasDraftState: Boolean(draftState && typeof draftState === "object"),
-        idempotencyKeyPresent: true,
-      });
-
       const result = await runSetupMutation({
         method: "tournament.save_draft",
         commandName: "tournament.save_draft",
@@ -688,55 +734,6 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         diagnostic: options.diagnostic,
         reloadAcknowledged: options.reloadAcknowledged,
         idempotencyKey: options.idempotencyKey,
-      });
-
-      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.RPC_RESULT, {
-        ok: result?.ok === true,
-        partial: result?.partial === true,
-        errorCode: result?.ok === true ? null : result?.code || null,
-        errorMessage: result?.ok === true ? null : result?.error || null,
-        newTournamentVersion:
-          result?.version != null ? Number(result.version) : null,
-        rpcCalled: result?.rpcCalled === true,
-      });
-
-      const reloadResult = result?.reloadResult || null;
-      const readbackTeamData = reloadResult?.teamData || null;
-      const readbackSettings =
-        readbackTeamData?.settings ||
-        reloadResult?.tournament?.settings ||
-        reloadResult?.aggregate?.settings ||
-        {};
-      const readbackDraft =
-        readbackSettings?.draftState && typeof readbackSettings.draftState === "object"
-          ? readbackSettings.draftState
-          : {};
-      const selectedCourtIds = Array.isArray(readbackSettings?.selectedCourtIds)
-        ? readbackSettings.selectedCourtIds
-        : [];
-      tt412SaveDraftDiag(TT412_SAVE_DRAFT_DIAG.READBACK, {
-        readbackOk: reloadResult?.ok === true,
-        tournamentVersion:
-          reloadResult?.version != null ? Number(reloadResult.version) : null,
-        draftStatus: readbackDraft.draftStatus ?? null,
-        workflowStage: readbackDraft.workflowStage ?? null,
-        nextAction:
-          readbackDraft.nextActionLabel ?? readbackDraft.nextActionId ?? null,
-        savedAt: readbackDraft.savedAt ?? null,
-        groupCount:
-          readbackSettings?.groupCount != null
-            ? Number(readbackSettings.groupCount)
-            : null,
-        selectedCourtIdsCount: selectedCourtIds.length,
-        teamsCount: Array.isArray(readbackTeamData?.teams)
-          ? readbackTeamData.teams.length
-          : null,
-        groupsCount: Array.isArray(readbackTeamData?.groups)
-          ? readbackTeamData.groups.length
-          : null,
-        matchupsCount: Array.isArray(readbackTeamData?.matchups)
-          ? readbackTeamData.matchups.length
-          : null,
       });
 
       const uiResult = mapRepositoryResultToUi(result);
@@ -960,6 +957,118 @@ export function createTeamTournamentUiOrchestrator(options = {}) {
         endUiCommandKey(scope);
         return { ok: false, error: error?.message || "Lỗi lưu nháp." };
       }
+    },
+
+    /**
+     * Close tournament → server status=completed (dual-write). Cloud only.
+     */
+    async persistCloseTournament(clubId, tournamentId, payload = {}, options = {}) {
+      const isCloud =
+        mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_PRIMARY ||
+        mode === TEAM_TOURNAMENT_DATA_MODES.CLOUD_ONLY;
+      if (!isCloud) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED,
+          error: "Đóng giải cloud chỉ khả dụng trên cloud repository.",
+        });
+      }
+      if (!isSetupMutationFoundationEnabled(options.envSource)) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: "GATE_OFF",
+          error: SETUP_CONFIG_GATE_OFF_MESSAGE,
+        });
+      }
+
+      const current =
+        options.aggregate ||
+        (await repo.getTournament(clubId, tournamentId, { schemaVersion: 7 }));
+      const aggregate = current?.data || current?.aggregate || current;
+      const expectedTournamentVersion = Number(
+        options.expectedTournamentVersion ?? aggregate?.version ?? 1
+      );
+      const rulesVersion = options.rulesVersion || aggregate?.rulesVersion || "team-tournament-v1";
+      const teamData = options.teamData || aggregate?.teamData || {};
+      const tournamentView =
+        options.tournament || aggregateToTournamentView(aggregate) || { id: tournamentId };
+      const matchups = teamData.matchups || [];
+      const engineInput = { command: CLOSE_TOURNAMENT_COMMAND, tournamentId };
+      const engineOutput = { reason: payload.reason || CLOSE_TOURNAMENT_COMMAND };
+
+      let snapshot;
+      try {
+        snapshot = await buildSetupMutationSnapshotPackageAsync({
+          tournament: tournamentView,
+          teams: teamData.teams || aggregate?.teams || [],
+          disciplines: teamData.disciplines || [],
+          groups: teamData.groups || [],
+          matchups,
+          subMatches: matchups.flatMap((matchup) => matchup.subMatches || []),
+          schedule: teamData.schedule || matchups,
+          schedulePublish: teamData.schedulePublish || aggregate?.schedulePublish || {},
+          settings: teamData.settings || aggregate?.settings || {},
+          formatPreset: teamData.settings?.formatPreset,
+          rosterRules: teamData.settings?.rosterRules,
+          engineInput,
+          engineOutput,
+          rules: rulesVersion ? { rulesVersion } : {},
+          expectedTournamentVersion,
+          generatedAt: options.generatedAt,
+        });
+      } catch (error) {
+        return mapRepositoryResultToUi({
+          ok: false,
+          code: SETUP_MUTATION_CODES.HASH_RUNTIME_ERROR,
+          error: error?.message || "Không tính được hash snapshot đóng giải.",
+        });
+      }
+
+      // B02: do not send client awards/standings/summary as close authority.
+      // Server derives champion from canonical matchups after readiness gate.
+      const closePayload = buildCloseTournamentPayload(payload, snapshot);
+
+      const result = await runSetupMutation({
+        method: CLOSE_TOURNAMENT_COMMAND,
+        commandName: CLOSE_TOURNAMENT_COMMAND,
+        clubId,
+        tournamentId,
+        expectedTournamentVersion,
+        latestTournamentVersion: expectedTournamentVersion,
+        rulesVersion,
+        payload: closePayload,
+        engineInput,
+        engineOutput,
+        teamData,
+        tournament: tournamentView,
+        confirmed: true,
+        repository: repo,
+        dataMode: mode,
+        envSource: options.envSource,
+        reload: (reloadOptions) => this.loadTournament(clubId, tournamentId, reloadOptions),
+        driftDetected: options.driftDetected,
+        diagnostic: options.diagnostic,
+        reloadAcknowledged: options.reloadAcknowledged,
+        idempotencyKey: options.idempotencyKey,
+      });
+
+      const outcome = resolveCloseMutationOutcome(result);
+      if (!outcome.ok) {
+        return mapRepositoryResultToUi({
+          ...result,
+          ok: false,
+          code: outcome.code,
+          error: outcome.error,
+        });
+      }
+      const reload = await this.loadTournament(clubId, tournamentId);
+      return {
+        ok: true,
+        tournament: reload.tournament,
+        teamData: reload.teamData,
+        version: result.version ?? reload.version,
+        championTeamId: result?.data?.championTeamId || result?.championTeamId || null,
+      };
     },
   };
 }

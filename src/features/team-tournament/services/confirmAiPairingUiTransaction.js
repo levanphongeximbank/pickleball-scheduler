@@ -62,7 +62,7 @@ export async function confirmAiPairingUiTransaction(params = {}) {
     }
 
     // Final canonical refresh MUST run once at the end — never skip because
-    // groups.replace already returned a snapshot.
+    // commit_pairing already returned a snapshot.
     const reloaded = await refreshAfterMutation({
       reason: "captain_confirm",
       diagnostic: true,

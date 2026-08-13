@@ -56,6 +56,7 @@ import {
   canManageTeam,
   canRequestSubstitution,
 } from "../engines/teamPermissionEngine.js";
+import { resolveCanonicalCaptainAthleteIdFromUser } from "../engines/captainIdentityResolver.js";
 import {
   generateTeamKnockoutMatchups,
   canGenerateTeamKnockout,
@@ -240,7 +241,7 @@ function guardCaptainLineupAction(clubId, tournamentId, teamId) {
   }
 
   const { user } = getAuthOptions();
-  const playerId = user?.playerId ? String(user.playerId) : "";
+  const playerId = resolveCanonicalCaptainAthleteIdFromUser(user) || "";
   const permissions = getPermissionsForRole(user?.role || "");
 
   return assertTeamScope(getTeamData(tournament), teamId, playerId, permissions);
@@ -805,6 +806,19 @@ function guardRefereeResultAction(clubId) {
       };
     }
     lastFailure = result;
+  }
+
+  // Assigned referee write is matchup-scoped on the server. Do not block the
+  // RPC with broad tournament.update — FORBIDDEN for Match B is server-side.
+  if (shouldUseTeamTournamentCloud()) {
+    const { user } = getAuthOptions();
+    if (user?.id) {
+      return {
+        ok: true,
+        deferredToServer: true,
+        permissions: getPermissionsForRole(user?.role || ""),
+      };
+    }
   }
 
   return lastFailure;
@@ -1828,7 +1842,7 @@ export async function substituteTeamPlayer(clubId, tournamentId, payload = {}) {
 
   const { user } = getAuthOptions();
   const permissions = getPermissionsForRole(user?.role || "");
-  const actorPlayerId = user?.playerId ? String(user.playerId) : "";
+  const actorPlayerId = resolveCanonicalCaptainAthleteIdFromUser(user) || "";
   const teamId = payload.teamId ? String(payload.teamId) : "";
   const isBtc =
     canApproveSubstitution({ permissions }) || canManageTeam({ permissions });

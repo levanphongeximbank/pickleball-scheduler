@@ -30,6 +30,23 @@ test("assignRefereeToMatch attaches referee to match", () => {
   assert.equal(result.match.referee.token, result.token);
 });
 
+test("assignRefereeToMatch preserves canonicalUserId from roster entry (DP-12)", () => {
+  const match = createMatchRecord({ id: "m1" });
+  const result = assignRefereeToMatch(match, "TT Lan", {
+    rosterId: "ref-canon-1",
+    rosterEntry: {
+      id: "ref-canon-1",
+      name: "TT Lan",
+      canonicalUserId: "u-ref-1",
+      source: "canonical_account",
+    },
+  });
+  assert.equal(result.referee.canonicalUserId, "u-ref-1");
+  assert.equal(result.referee.source, "canonical_account");
+  assert.equal(result.referee.name, "TT Lan");
+  assert.ok(result.referee.token);
+});
+
 test("buildMatchLiveRecord builds sync payload", () => {
   const match = createMatchRecord({
     id: "m1",

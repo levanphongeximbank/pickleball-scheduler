@@ -22,7 +22,9 @@ describe("effect prelude config", () => {
     assert.ok(EFFECT_PRELUDE_PRESETS[ANIMATION_MODES.RANDOM_DRAW]);
     assert.ok(EFFECT_PRELUDE_PRESETS[ANIMATION_MODES.GROUP_MATCH_PAIRING]);
     assert.ok(EFFECT_PRELUDE_PRESETS[ANIMATION_MODES.BRACKET_REVEAL]);
-    assert.ok(EFFECT_PRELUDE_PRESETS[ANIMATION_MODES.DAILY_FAIR_MATCH]);
+    // DP-02: Daily Fair Match uses DailyFairMatchScreen only — no EffectPrelude.
+    assert.equal(EFFECT_PRELUDE_PRESETS[ANIMATION_MODES.DAILY_FAIR_MATCH], undefined);
+    assert.equal(hasEffectPrelude(ANIMATION_MODES.DAILY_FAIR_MATCH), false);
     assert.ok(EFFECT_PRELUDE_PRESETS[EFFECT_PRELUDE_SCOPE.COURT_SCHEDULING]);
   });
 
@@ -86,9 +88,8 @@ describe("effect prelude config", () => {
     assert.equal(preset.activeFlowStepKey, "match_pairing");
   });
 
-  it("marks daily fair match preset to skip analyze phase after prelude", () => {
-    const preset = resolveEffectPreludePreset(ANIMATION_MODES.DAILY_FAIR_MATCH, {});
-    assert.equal(preset.skipDailyAnalyzePhase, true);
-    assert.equal(preset.durationSec, 5);
+  it("does not run EffectPrelude for daily fair match (DP-02 single presentation)", () => {
+    assert.equal(hasEffectPrelude(ANIMATION_MODES.DAILY_FAIR_MATCH), false);
+    assert.equal(resolveEffectPreludePreset(ANIMATION_MODES.DAILY_FAIR_MATCH, {}), null);
   });
 });

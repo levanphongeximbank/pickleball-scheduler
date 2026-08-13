@@ -42,8 +42,9 @@ export function remapCaptainPortalLineups(lineups = {}) {
  * @param {object} tournament
  * @returns {object[]}
  */
-export function buildCaptainPortalTeams(tournament = {}) {
+export function buildCaptainPortalTeams(tournament = {}, viewerTeamId = null) {
   const myTeam = enrichTeamWithCaptainPortalRoster(tournament.myTeam || null);
+  const viewer = String(viewerTeamId || myTeam?.id || "").trim();
   const opponents = Array.isArray(tournament.opponentTeams)
     ? tournament.opponentTeams
     : [];
@@ -55,8 +56,8 @@ export function buildCaptainPortalTeams(tournament = {}) {
   }
   for (const team of fromTeams) {
     if (team?.id && !byId.has(String(team.id))) {
-      const enriched =
-        String(team.id) === String(myTeam?.id || "")
+      const isViewer = viewer && String(team.id) === viewer;
+      const enriched = isViewer
           ? enrichTeamWithCaptainPortalRoster(team)
           : {
               ...team,
@@ -112,7 +113,7 @@ export function mapCaptainPortalResponse(payload = {}) {
   };
 
   const viewerTeamId = payload.viewerTeamId || payload.viewer?.viewerTeamId || null;
-  const teams = buildCaptainPortalTeams(rawTournament);
+  const teams = buildCaptainPortalTeams(rawTournament, viewerTeamId);
   const matchups = projectCaptainPortalMatchupsDreambreaker(
     Array.isArray(rawTournament.matchups) ? rawTournament.matchups : [],
     viewerTeamId
