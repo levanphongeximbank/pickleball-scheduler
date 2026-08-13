@@ -1407,3 +1407,37 @@ describe("Daily Play Owner browser UX remediation (DP-05..DP-09)", () => {
     assert.equal(roster[0].name, "Lan Manual");
   });
 });
+
+describe("Daily Play interaction polish (DP-10)", () => {
+  test("athlete rows disable only the pending player, not session.mutating globally", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(source, /pendingPlayerId/);
+    assert.match(source, /playerMutationLockRef/);
+    assert.match(source, /setPendingPlayerId\(String\(playerId\)\)/);
+    assert.match(source, /disabled=\{isPending\}/);
+    const rosterBlock = source.slice(
+      source.indexOf("Check-in hôm nay"),
+      source.indexOf("Sân đang dùng")
+    );
+    assert.match(rosterBlock, /disabled=\{isPending\}/);
+    assert.equal(
+      /disabled=\{session\.mutating\}/.test(rosterBlock),
+      false,
+      "roster must not disable every row via session.mutating"
+    );
+    assert.match(rosterBlock, /CircularProgress/);
+    assert.match(source, /playerMutationLockRef\.current/);
+    // Candidate pool still revision:0 — no check-in invalidation.
+    assert.match(source, /useClubPairingCandidatePool\(activeClubId,\s*\{\s*revision:\s*0,\s*\}\)/);
+  });
+
+  test("bulk check-in helpers remain for Select All (DP-06 regression)", () => {
+    const setupPath = path.resolve("src/pages/tournament/DailyPlaySetup.jsx");
+    const source = fs.readFileSync(setupPath, "utf8");
+    assert.match(source, /checkInMany/);
+    assert.match(source, /checkOutMany/);
+    assert.match(source, /bulkPending/);
+    assert.match(source, /Đang chọn\.\.\./);
+  });
+});

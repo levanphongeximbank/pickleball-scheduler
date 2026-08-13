@@ -7,6 +7,10 @@ import {
   resolveDailyMatchDisplayStatus,
 } from "./dailyFairMatchUtils.js";
 
+/**
+ * Fair-match revealed card — status chip never competes with team labels
+ * in the same narrow horizontal flex row (DP-11).
+ */
 export default function DailyMatchCard({
   step,
   index = 0,
@@ -17,6 +21,8 @@ export default function DailyMatchCard({
   const displayStatus = resolveDailyMatchDisplayStatus(step.match, index, revealedCount);
   const hasScore = hasFairnessScore(step.match);
   const tier = hasScore ? getFairnessTier(step.balancePercent) : null;
+  const teamA = step.teamA?.label || step.left?.name || "TBD";
+  const teamB = step.teamB?.label || step.right?.name || "TBD";
 
   return (
     <Paper
@@ -24,49 +30,86 @@ export default function DailyMatchCard({
       className={`daily-match-card${isLatest ? " daily-match-card--latest" : ""}${
         isNew ? " daily-match-card--new" : ""
       }`}
+      sx={{ minWidth: 0, width: "100%" }}
     >
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography variant="caption" color="text.secondary" fontWeight={700}>
+      <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          spacing={1}
+          sx={{ minWidth: 0 }}
+        >
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight={700}
+            sx={{ minWidth: 0, overflowWrap: "anywhere", wordBreak: "normal" }}
+          >
             {step.matchLabel}
           </Typography>
-          <Typography variant="body2" fontWeight={800} sx={{ wordBreak: "break-word", mt: 0.25 }}>
-            <span className="daily-match-team daily-match-team--a">
-              {step.teamA?.label || step.left?.name}
-            </span>
-            <span className="daily-match-vs"> VS </span>
-            <span className="daily-match-team daily-match-team--b">
-              {step.teamB?.label || step.right?.name}
-            </span>
+          <Chip
+            size="small"
+            label={DAILY_MATCH_DISPLAY_LABELS[displayStatus] || displayStatus}
+            variant="outlined"
+            className={`daily-match-status daily-match-status--${displayStatus}`}
+            sx={{ flexShrink: 0 }}
+          />
+        </Stack>
+
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            variant="body2"
+            fontWeight={800}
+            className="daily-match-team daily-match-team--a"
+            sx={{
+              wordBreak: "normal",
+              overflowWrap: "anywhere",
+              lineHeight: 1.35,
+            }}
+          >
+            {teamA}
           </Typography>
-
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.75 }}>
-            <Typography variant="caption" color="text.secondary">
-              {step.courtLabel || "Chưa xếp sân"}
-            </Typography>
-            {step.estimatedStartTime ? (
-              <Typography variant="caption" color="text.secondary">
-                • {step.estimatedStartTime}
-              </Typography>
-            ) : null}
-          </Stack>
-
-          {tier && step.balancePercent != null ? (
-            <Typography
-              variant="caption"
-              className={`daily-match-balance daily-match-balance--${tier.tone}`}
-            >
-              Cân bằng {step.balancePercent}% • {tier.label}
-            </Typography>
-          ) : null}
+          <Typography
+            variant="caption"
+            className="daily-match-vs"
+            sx={{ display: "block", textAlign: "center", my: 0.25, fontWeight: 700 }}
+          >
+            VS
+          </Typography>
+          <Typography
+            variant="body2"
+            fontWeight={800}
+            className="daily-match-team daily-match-team--b"
+            sx={{
+              wordBreak: "normal",
+              overflowWrap: "anywhere",
+              lineHeight: 1.35,
+            }}
+          >
+            {teamB}
+          </Typography>
         </Box>
 
-        <Chip
-          size="small"
-          label={DAILY_MATCH_DISPLAY_LABELS[displayStatus] || displayStatus}
-          variant="outlined"
-          className={`daily-match-status daily-match-status--${displayStatus}`}
-        />
+        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+          <Typography variant="caption" color="text.secondary">
+            {step.courtLabel || "Chưa xếp sân"}
+          </Typography>
+          {step.estimatedStartTime ? (
+            <Typography variant="caption" color="text.secondary">
+              • {step.estimatedStartTime}
+            </Typography>
+          ) : null}
+        </Stack>
+
+        {tier && step.balancePercent != null ? (
+          <Typography
+            variant="caption"
+            className={`daily-match-balance daily-match-balance--${tier.tone}`}
+          >
+            Cân bằng {step.balancePercent}% • {tier.label}
+          </Typography>
+        ) : null}
       </Stack>
     </Paper>
   );

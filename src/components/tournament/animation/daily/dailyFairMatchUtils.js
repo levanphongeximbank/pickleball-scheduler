@@ -44,6 +44,18 @@ export const FAIR_MATCH_PHASES = {
   COMPLETE: "complete",
 };
 
+/** Desktop column shares (12-grid). Avoided legacy unsafe 2/8/2 (DP-11). */
+export const DAILY_FAIR_DESKTOP_GRID = Object.freeze({
+  pool: 3,
+  reveal: 6,
+  matches: 3,
+});
+
+/** Switch to tabbed layout when animation container itself is narrow. */
+export const DAILY_FAIR_COMPACT_BREAKPOINT_PX = 1100;
+
+export const DAILY_FAIR_MATCH_PANEL_MIN_PX = 280;
+
 export const CREATION_FLOW_PHASES = [
   FAIR_MATCH_PHASES.ANALYZE,
   FAIR_MATCH_PHASES.TEAM_A,

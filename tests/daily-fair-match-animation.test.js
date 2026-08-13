@@ -8,6 +8,9 @@ import {
   buildDailyFairMatchPlayerPool,
   buildDailyFairMatchSteps,
   computeDailyFairBalancePercent,
+  DAILY_FAIR_COMPACT_BREAKPOINT_PX,
+  DAILY_FAIR_DESKTOP_GRID,
+  DAILY_FAIR_MATCH_PANEL_MIN_PX,
   DAILY_PLAYER_STATUS,
   FAIR_MATCH_PHASES,
   getFairnessTier,
@@ -17,6 +20,9 @@ import {
   resolveDailyPlayerStatus,
   resolveMatchCourtLabel,
 } from "../src/components/tournament/animation/daily/dailyFairMatchUtils.js";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   createFairDailyMatches,
   DAILY_GENDER_FILTER,
@@ -306,5 +312,69 @@ describe("daily fair match animation modes", () => {
       "../src/components/tournament/animation/animationUtils.js"
     );
     assert.equal(hasEffectPrelude(ANIMATION_MODES.DAILY_FAIR_MATCH), false);
+  });
+});
+
+describe("Daily Fair Match responsive polish (DP-11)", () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+  it("desktop grid is 3/6/3 not unsafe 2/8/2", () => {
+    assert.deepEqual(DAILY_FAIR_DESKTOP_GRID, { pool: 3, reveal: 6, matches: 3 });
+    assert.equal(DAILY_FAIR_MATCH_PANEL_MIN_PX >= 280, true);
+    assert.equal(DAILY_FAIR_COMPACT_BREAKPOINT_PX >= 1000, true);
+
+    const screen = fs.readFileSync(
+      path.join(root, "src/components/tournament/animation/daily/DailyFairMatchScreen.jsx"),
+      "utf8"
+    );
+    assert.match(screen, /DAILY_FAIR_DESKTOP_GRID/);
+    assert.match(screen, /DAILY_FAIR_COMPACT_BREAKPOINT_PX/);
+    assert.match(screen, /ResizeObserver/);
+    assert.match(screen, /lg:\s*showTabs\s*\?\s*12\s*:\s*DAILY_FAIR_DESKTOP_GRID\.pool/);
+    assert.match(screen, /lg:\s*showTabs\s*\?\s*12\s*:\s*DAILY_FAIR_DESKTOP_GRID\.reveal/);
+    assert.match(screen, /lg:\s*showTabs\s*\?\s*12\s*:\s*DAILY_FAIR_DESKTOP_GRID\.matches/);
+    assert.equal(screen.includes("DAILY_FAIR_DESKTOP_GRID.pool"), true);
+    assert.equal(/lg:\s*8\b/.test(screen), false);
+    assert.match(screen, /data-desktop-grid=\{`\$\{DAILY_FAIR_DESKTOP_GRID\.pool\}/);
+  });
+
+  it("DailyMatchCard keeps status chip off the team title row", () => {
+    const card = fs.readFileSync(
+      path.join(root, "src/components/tournament/animation/daily/DailyMatchCard.jsx"),
+      "utf8"
+    );
+    assert.match(card, /wordBreak:\s*"normal"/);
+    assert.match(card, /overflowWrap:\s*"anywhere"/);
+    assert.equal(card.includes("break-all"), false);
+    assert.match(card, />\s*\{\s*teamA\s*\}\s*</);
+    assert.match(card, />\s*VS\s*</);
+    assert.match(card, />\s*\{\s*teamB\s*\}\s*</);
+    // Chip sits with matchLabel, not beside team labels.
+    assert.match(card, /\{step\.matchLabel\}[\s\S]*<Chip/);
+  });
+
+  it("tab changes are presentation-only and keep sequence mounted", () => {
+    const screen = fs.readFileSync(
+      path.join(root, "src/components/tournament/animation/daily/DailyFairMatchScreen.jsx"),
+      "utf8"
+    );
+    assert.match(screen, /handleTabChange/);
+    assert.match(screen, /setMobileTab\(value\)/);
+    assert.equal(/handleTabChange[\s\S]{0,200}sequence\.(replay|skip|startAuto)/.test(screen), false);
+    // Panels stay mounted via display toggles — no conditional unmount of sequence host.
+    assert.match(screen, /display:\s*showTabs/);
+    assert.match(screen, /fullWidth=\{showTabs\}/);
+    assert.match(screen, /useFairMatchSequence/);
+  });
+
+  it("match list panel supports full-width tab mode", () => {
+    const panel = fs.readFileSync(
+      path.join(root, "src/components/tournament/animation/daily/DailyMatchListPanel.jsx"),
+      "utf8"
+    );
+    assert.match(panel, /fullWidth\s*=\s*false/);
+    assert.match(panel, /daily-fair-panel--matches-full/);
+    assert.match(panel, /overflowY:\s*"auto"/);
+    assert.match(panel, /overflowX:\s*"hidden"/);
   });
 });

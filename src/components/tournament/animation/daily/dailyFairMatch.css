@@ -460,7 +460,27 @@
 .daily-match-card {
   padding: 10px;
   border-radius: 12px;
+  min-width: 0;
+  width: 100%;
   transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+
+.daily-match-card .daily-match-team {
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.daily-match-card .daily-match-vs {
+  color: #78909c;
+  letter-spacing: 0.04em;
+}
+
+.daily-fair-panel--matches {
+  min-width: 0;
+}
+
+.daily-fair-panel--matches-full {
+  max-width: none;
 }
 
 .daily-match-card--latest {

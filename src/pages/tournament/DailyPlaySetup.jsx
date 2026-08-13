@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { useClubPairingCandidatePool } from "../../features/pairing-candidates/index.js";
 
@@ -6,6 +6,7 @@ import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -89,7 +90,9 @@ export default function DailyPlaySetup() {
   const [genderFilter, setGenderFilter] = useState(DAILY_GENDER_FILTER.ALL);
   const [createPending, setCreatePending] = useState(false);
   const [bulkPending, setBulkPending] = useState(null);
+  const [pendingPlayerId, setPendingPlayerId] = useState(null);
   const [refereePending, setRefereePending] = useState(false);
+  const playerMutationLockRef = useRef(false);
   const anim = useTournamentAnimation();
 
   const tenantId = activeClub?.tenantId || activeClub?.venueId || null;
@@ -177,29 +180,55 @@ export default function DailyPlaySetup() {
     [dailySettings.checkedInPlayerIds]
   );
 
+  const mutationBusy =
+    Boolean(pendingPlayerId) ||
+    Boolean(bulkPending) ||
+    Boolean(session.mutating);
+
   const handleToggleCheckIn = async (playerId) => {
-    setActionError(null);
-    const checked = checkedInSet.has(String(playerId));
-    const result = checked
-      ? await session.checkOut(playerId)
-      : await session.checkIn(playerId);
-    if (result?.ok) {
-      if (tournament?.status === TOURNAMENT_STATUS.DRAFT) {
-        await setStatus(TOURNAMENT_STATUS.ACTIVE);
-      }
+    // DP-10: serialize mutations without visually disabling every roster row.
+    if (
+      playerMutationLockRef.current ||
+      pendingPlayerId ||
+      bulkPending ||
+      session.mutating
+    ) {
       return;
     }
-    if (result?.error) {
-      setActionError(result.error);
+    playerMutationLockRef.current = true;
+    setActionError(null);
+    setPendingPlayerId(String(playerId));
+    try {
+      const checked = checkedInSet.has(String(playerId));
+      const result = checked
+        ? await session.checkOut(playerId)
+        : await session.checkIn(playerId);
+      if (result?.ok) {
+        if (tournament?.status === TOURNAMENT_STATUS.DRAFT) {
+          await setStatus(TOURNAMENT_STATUS.ACTIVE);
+        }
+        return;
+      }
+      if (result?.error) {
+        setActionError(result.error);
+      }
+    } finally {
+      playerMutationLockRef.current = false;
+      setPendingPlayerId(null);
     }
   };
 
   const handleSelectAllCheckIn = async () => {
+    if (playerMutationLockRef.current || mutationBusy) return;
+    playerMutationLockRef.current = true;
     setActionError(null);
     const targets = players
       .map((player) => player.id)
       .filter((id) => !checkedInSet.has(String(id)));
-    if (targets.length === 0) return;
+    if (targets.length === 0) {
+      playerMutationLockRef.current = false;
+      return;
+    }
 
     setBulkPending("checkIn");
     try {
@@ -221,14 +250,20 @@ export default function DailyPlaySetup() {
             : "Không chọn hết được VĐV.")
       );
     } finally {
+      playerMutationLockRef.current = false;
       setBulkPending(null);
     }
   };
 
   const handleClearAllCheckIn = async () => {
+    if (playerMutationLockRef.current || mutationBusy) return;
+    playerMutationLockRef.current = true;
     setActionError(null);
     const targets = [...dailySettings.checkedInPlayerIds];
-    if (targets.length === 0) return;
+    if (targets.length === 0) {
+      playerMutationLockRef.current = false;
+      return;
+    }
 
     setBulkPending("checkOut");
     try {
@@ -247,6 +282,7 @@ export default function DailyPlaySetup() {
             : "Không bỏ chọn hết được VĐV.")
       );
     } finally {
+      playerMutationLockRef.current = false;
       setBulkPending(null);
     }
   };
@@ -663,16 +699,27 @@ export default function DailyPlaySetup() {
               <Stack spacing={1} sx={{ maxHeight: 320, overflow: "auto" }}>
                 {players.map((player) => {
                   const checked = checkedInSet.has(String(player.id));
+                  const isPending =
+                    String(pendingPlayerId) === String(player.id);
                   return (
                     <Button
                       key={player.id}
                       fullWidth
                       variant={checked ? "contained" : "outlined"}
                       onClick={() => void handleToggleCheckIn(player.id)}
-                      disabled={session.mutating}
-                      sx={{ justifyContent: "space-between", minHeight: 44 }}
+                      disabled={isPending}
+                      sx={{
+                        justifyContent: "space-between",
+                        minHeight: 44,
+                        opacity: bulkPending ? 1 : undefined,
+                      }}
                     >
-                      <span>{player.name}</span>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        {isPending ? (
+                          <CircularProgress size={16} color="inherit" />
+                        ) : null}
+                        <span>{player.name}</span>
+                      </Stack>
                       <span>
                         {formatOrganizerPlayerMeta(player, canViewSkillInSetup)}
                       </span>
