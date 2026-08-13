@@ -127,23 +127,21 @@ describe("official-tournament-durability-and-lifecycle-remediation-01", () => {
     const setup = readSrc("src/pages/tournament/OfficialTournamentSetup.jsx");
     assert.equal(setup.includes("stripMatchesFromEvent"), false);
 
-    // AI + Open draw: persistTournament before showAnimation
-    const aiIdx = setup.indexOf("handleBuildAiGroups");
+    // Shared Open/AI Balance group draw: persistTournament before showAnimation
     const openIdx = setup.indexOf("handleDrawGroups");
-    assert.ok(aiIdx > 0 && openIdx > 0);
-
-    const aiBlock = setup.slice(aiIdx, openIdx);
-    assert.ok(aiBlock.includes("persistTournament({"));
-    assert.ok(aiBlock.indexOf("persistTournament({") < aiBlock.indexOf("anim.showAnimation"));
+    assert.ok(openIdx > 0);
+    assert.equal(setup.includes("handleBuildAiGroups"), false);
+    assert.match(setup, /handleRunGroupDraw[\s\S]{0,250}handleDrawGroups\(false\)/);
 
     const openEnd = setup.indexOf("persistMatchPairing");
     const openBlock = setup.slice(openIdx, openEnd);
     assert.ok(openBlock.includes("persistTournament({"));
     assert.ok(openBlock.indexOf("persistTournament({") < openBlock.indexOf("anim.showAnimation"));
 
-    // Guided flow also persists before startFlow
-    assert.ok(setup.includes("drawAlreadyPersisted"));
-    assert.ok(setup.includes("flowAdapters.validateStart"));
+    const adapters = readSrc(
+      "src/components/tournament/animation/tournamentFlowAdapters.js"
+    );
+    assert.ok(adapters.includes("drawAlreadyPersisted"));
   });
 
   it("static: Official adapter no longer strips matches on draw persist", () => {
@@ -163,7 +161,6 @@ describe("official-tournament-durability-and-lifecycle-remediation-01", () => {
     const setup = readSrc("src/pages/tournament/OfficialTournamentSetup.jsx");
     assert.ok(setup.includes("persistAcceptedEntries"));
     assert.ok(setup.includes("await persistAcceptedEntries(nextEntries)"));
-    assert.ok(setup.includes("await persistAcceptedEntries(entries)"));
   });
 
   it("static: processMatchId contract B — command invokes canonical lifecycle, not blob ById", () => {

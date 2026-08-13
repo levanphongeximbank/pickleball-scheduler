@@ -28,6 +28,7 @@ import {
   INTENDED_NEW_TOURNAMENT_SCORING_METHOD,
 } from "../../../features/individual-tournament/engines/officialTournamentSettingsEngine.js";
 import { OFFICIAL_MODE } from "../../../models/tournament/constants.js";
+import { allowedOfficialRegistrationModes } from "../../../features/individual-tournament/engines/officialCompetitionStrategyEngine.js";
 import {
   getEligibilityRules,
   updateEligibilityRules,
@@ -83,13 +84,17 @@ export default function OfficialTournamentSettingsScreen({
 
   const handleSave = async () => {
     if (!canManage) return;
-    if (
-      draft.registrationMode !== OFFICIAL_REGISTRATION_MODE.INDIVIDUAL &&
-      draft.registrationMode !== OFFICIAL_REGISTRATION_MODE.PAIR
-    ) {
+    const aiBalance = officialMode === OFFICIAL_MODE.AI_BALANCE;
+    const allowedModes = allowedOfficialRegistrationModes(officialMode);
+    const registrationMode = aiBalance
+      ? OFFICIAL_REGISTRATION_MODE.INDIVIDUAL
+      : draft.registrationMode;
+    if (!allowedModes.includes(registrationMode)) {
       setMessage({
         type: "error",
-        text: "Phải chọn rõ chế độ đăng ký: Cá nhân hoặc Theo cặp.",
+        text: aiBalance
+          ? "AI Balance chỉ nhận đăng ký cá nhân."
+          : "Phải chọn rõ chế độ đăng ký: Cá nhân hoặc Theo cặp.",
       });
       return;
     }
@@ -120,7 +125,7 @@ export default function OfficialTournamentSettingsScreen({
     setSaving(true);
     try {
       let next = patchOfficialCompetitionSettings(tournament, {
-        registrationMode: draft.registrationMode,
+        registrationMode,
         scoringMethod: selectedMethod,
         roundTargets: draft.roundTargets,
         groupCount,
@@ -208,8 +213,8 @@ export default function OfficialTournamentSettingsScreen({
               disabled={!canManage}
               onChange={(e) => onOfficialModeChange?.(e.target.value)}
             >
-              <MenuItem value={OFFICIAL_MODE.OPEN}>Open (random có điều kiện)</MenuItem>
-              <MenuItem value={OFFICIAL_MODE.AI_BALANCE}>AI Balance (seed/rating)</MenuItem>
+              <MenuItem value={OFFICIAL_MODE.OPEN}>Open (ghép cặp / chia bảng ngẫu nhiên)</MenuItem>
+              <MenuItem value={OFFICIAL_MODE.AI_BALANCE}>AI Balance (ghép cặp AI, chia bảng ngẫu nhiên)</MenuItem>
             </Select>
           </FormControl>
         </Grid>
@@ -223,25 +228,35 @@ export default function OfficialTournamentSettingsScreen({
               id="official-settings-reg-mode"
               label="Chế độ đăng ký"
               notched
-              value={draft.registrationMode || ""}
+              value={
+                officialMode === OFFICIAL_MODE.AI_BALANCE
+                  ? OFFICIAL_REGISTRATION_MODE.INDIVIDUAL
+                  : draft.registrationMode || ""
+              }
               displayEmpty
-              disabled={!canManage}
+              disabled={!canManage || officialMode === OFFICIAL_MODE.AI_BALANCE}
               onChange={(e) =>
                 setDraft((prev) => ({ ...prev, registrationMode: e.target.value }))
               }
             >
-              <MenuItem value="" disabled>
-                — Chọn chế độ —
-              </MenuItem>
-              <MenuItem value={OFFICIAL_REGISTRATION_MODE.PAIR}>
-                {OFFICIAL_REGISTRATION_MODE_LABELS[OFFICIAL_REGISTRATION_MODE.PAIR]}
-              </MenuItem>
+              {officialMode === OFFICIAL_MODE.AI_BALANCE ? null : (
+                <MenuItem value="" disabled>
+                  — Chọn chế độ —
+                </MenuItem>
+              )}
               <MenuItem value={OFFICIAL_REGISTRATION_MODE.INDIVIDUAL}>
                 {OFFICIAL_REGISTRATION_MODE_LABELS[OFFICIAL_REGISTRATION_MODE.INDIVIDUAL]}
               </MenuItem>
+              {officialMode === OFFICIAL_MODE.OPEN ? (
+                <MenuItem value={OFFICIAL_REGISTRATION_MODE.PAIR}>
+                  {OFFICIAL_REGISTRATION_MODE_LABELS[OFFICIAL_REGISTRATION_MODE.PAIR]}
+                </MenuItem>
+              ) : null}
             </Select>
             <FormHelperText>
-              Nội dung đôi vẫn có thể đăng ký cá nhân rồi ghép cặp khi bốc thăm.
+              {officialMode === OFFICIAL_MODE.AI_BALANCE
+                ? "AI Balance chỉ đăng ký cá nhân. Ghép cặp do hệ thống AI — không đăng ký theo cặp."
+                : "Open: cá nhân (ghép cặp ngẫu nhiên) hoặc theo cặp (không ghép lại)."}
             </FormHelperText>
           </FormControl>
         </Grid>

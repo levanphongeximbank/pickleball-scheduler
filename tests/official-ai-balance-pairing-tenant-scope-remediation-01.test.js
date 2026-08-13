@@ -178,8 +178,8 @@ describe("official-ai-balance-pairing-tenant-scope-remediation-01", () => {
     assert.doesNotMatch(src, /handleStartGuidedFlow/);
     assert.doesNotMatch(src, /handleSuggestAiPairs/);
     assert.match(src, /handleFormOfficialPairs[\s\S]*prepareOfficialPrivatePairing\(\)/);
-    assert.match(src, /handleBuildAiGroups[\s\S]*prepareOfficialPrivatePairing\(\)/);
     assert.match(src, /handleDrawGroups[\s\S]*prepareOfficialPrivatePairing\(\)/);
+    assert.doesNotMatch(src, /handleBuildAiGroups/);
     assert.equal(
       (src.match(/prepareLivePrivatePairingOptions\(/g) || []).length,
       1,

@@ -151,7 +151,9 @@ describe("official-open-tournament-phase2e-focus-visibility", () => {
     );
 
     const setup = read("src/pages/tournament/OfficialTournamentSetup.jsx");
-    assert.match(setup, /const \[activeStageId, setActiveStageId\]/);
+    assert.match(setup, /resolveOfficialOrganizerStageSelection/);
+    assert.match(setup, /readOfficialStageQuery\(searchParams\)/);
+    assert.doesNotMatch(setup, /TOKEN_REFRESHED[\s\S]{0,120}setSearchParams/);
     assert.doesNotMatch(setup, /TOKEN_REFRESHED[\s\S]{0,80}setActiveStageId/);
   });
 

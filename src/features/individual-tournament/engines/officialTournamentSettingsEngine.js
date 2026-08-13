@@ -10,7 +10,7 @@
  * - Side-out enum preserved but NOT operational on classic Official live path
  */
 
-import { EVENT_TYPE } from "../../../models/tournament/constants.js";
+import { EVENT_TYPE, OFFICIAL_MODE } from "../../../models/tournament/constants.js";
 import { isDoubleEventType, isSingleEventType } from "../../../tournament/engines/officialTournamentEngine.js";
 import { DEFAULT_TIME_PREDICTION } from "../../tournament-engine/constants/defaults.js";
 
@@ -376,6 +376,16 @@ export function patchOfficialCompetitionSettings(tournament, patch = {}) {
     (nextMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL ||
       nextMode === OFFICIAL_REGISTRATION_MODE.PAIR)
   ) {
+    if (
+      String(tournament?.officialMode || "") === OFFICIAL_MODE.AI_BALANCE &&
+      nextMode === OFFICIAL_REGISTRATION_MODE.PAIR
+    ) {
+      const err = new Error(
+        "AI Balance chỉ nhận đăng ký cá nhân. Không chọn đăng ký theo cặp."
+      );
+      err.code = "AI_BALANCE_PAIR_REGISTRATION_BLOCKED";
+      throw err;
+    }
     const modeGate = assessOfficialRegistrationModeChange(tournament, nextMode);
     if (!modeGate.allowed) {
       const err = new Error(modeGate.error || "Không thể đổi chế độ đăng ký.");

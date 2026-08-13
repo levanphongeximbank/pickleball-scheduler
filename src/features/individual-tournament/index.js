@@ -301,6 +301,24 @@ export {
 } from "./engines/officialTournamentSettingsEngine.js";
 
 export {
+  OFFICIAL_PAIRING_AUTHORITY,
+  OFFICIAL_GROUP_DRAW_AUTHORITY,
+  isOfficialAiBalanceMode,
+  isOfficialOpenMode,
+  resolveOfficialPairingDispatch,
+  resolveOfficialGroupDrawDispatch,
+  allowedOfficialRegistrationModes,
+  assessOfficialCompetitionStrategyChange,
+} from "./engines/officialCompetitionStrategyEngine.js";
+
+export {
+  OFFICIAL_STAGE_QUERY_KEY,
+  readOfficialStageQuery,
+  applyOfficialStageSearchParams,
+  resolveOfficialOrganizerStageSelection,
+} from "./engines/officialOrganizerStageNavigation.js";
+
+export {
   SIDEOUT_POINT_BY_POINT_RUNTIME_BLOCKED,
   mapMatchToOfficialRoundKey,
   resolveOfficialMatchScoringRules,

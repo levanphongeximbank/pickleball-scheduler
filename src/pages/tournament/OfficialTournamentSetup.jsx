@@ -38,7 +38,6 @@ import {
 import { buildIndividualAllGroupStandings } from "../../features/individual-tournament/adapters/individualStandingsAdapter.js";
 import {
   buildOfficialAiBalancePatch,
-  buildOfficialAiBalancePlan,
   buildOfficialOpenPatch,
   buildOfficialOpenPlan,
   canGenerateBracket,
@@ -50,7 +49,7 @@ import {
   submitKnockoutMatchScore,
   submitTournamentDirectorMatchScore,
   suggestBalancedEntriesFromIndividuals,
-  suggestEntriesFromPlayers,
+  suggestOpenRandomEntriesFromPlayers,
   toggleBracketRoundUnlock,
   upsertOfficialEvent,
   validateOpenRegistrationPlayers,
@@ -61,7 +60,6 @@ import {
   ANIMATION_MODES,
   buildGroupMatchPairingSteps,
   buildRandomDrawSteps,
-  buildSnakeSteps,
 } from "../../components/tournament/animation/animationUtils.js";
 import {
   buildRefereeSettingsPatch,
@@ -132,8 +130,19 @@ import {
 } from "../../features/individual-tournament/engines/officialOrganizerWorkflowEngine.js";
 import {
   getOfficialCompetitionSettings,
+  patchOfficialCompetitionSettings,
   OFFICIAL_REGISTRATION_MODE,
 } from "../../features/individual-tournament/engines/officialTournamentSettingsEngine.js";
+import {
+  OFFICIAL_PAIRING_AUTHORITY,
+  assessOfficialCompetitionStrategyChange,
+  resolveOfficialPairingDispatch,
+} from "../../features/individual-tournament/engines/officialCompetitionStrategyEngine.js";
+import {
+  OFFICIAL_STAGE_QUERY_KEY,
+  readOfficialStageQuery,
+  resolveOfficialOrganizerStageSelection,
+} from "../../features/individual-tournament/engines/officialOrganizerStageNavigation.js";
 import {
   formOfficialIndividualPairs,
   assertOfficialGroupDrawAllowed,
@@ -168,15 +177,13 @@ const OFFICIAL_MODE_OPTIONS = [
 
 export default function OfficialTournamentSetup() {
   const { tournamentId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { activeClub, activeClubId, clubs, refreshClubs } = useClub();
   const { user, rbacEnabled, can } = useAuth();
   const { currentTenantId } = useTenant();
   const aiEnabled = isAiEngineEnabled();
   const [setupTab, setSetupTab] = useState(0);
-  const [activeStageId, setActiveStageId] = useState(OFFICIAL_STAGE_ID.SETTINGS);
-  const [stageTouched, setStageTouched] = useState(false);
   const [drawBusy, setDrawBusy] = useState(false);
   const [pairBusy, setPairBusy] = useState(false);
   const [groupBusy, setGroupBusy] = useState(false);
@@ -291,13 +298,6 @@ export default function OfficialTournamentSetup() {
 
   const flowPlayers = allTenantPlayers;
 
-  const selectedPlayers = useMemo(() => {
-    const pool = new Map(flowPlayers.map((player) => [String(player.id), player]));
-    return selectedPlayerIds
-      .map((id) => pool.get(String(id)))
-      .filter(Boolean);
-  }, [selectedPlayerIds, flowPlayers]);
-
   const courts = useMemo(
     () => loadCourtsForClub(activeClubId),
     [activeClubId, localRevision]
@@ -356,18 +356,58 @@ export default function OfficialTournamentSetup() {
     [tournament, savedEvent?.id, activeEventId, courts]
   );
 
-  useEffect(() => {
-    if (!stageTouched && workflow?.currentStageId) {
-      setActiveStageId(workflow.currentStageId);
-    }
-  }, [workflow?.currentStageId, stageTouched]);
-
+  const requestedStageId = readOfficialStageQuery(searchParams);
+  const stageSelection = useMemo(
+    () =>
+      resolveOfficialOrganizerStageSelection({
+        requestedStageId,
+        stages: workflow.stages,
+        lifecycleCurrentStageId: workflow.currentStageId,
+      }),
+    [requestedStageId, workflow.stages, workflow.currentStageId]
+  );
+  const activeStageId = stageSelection.stageId || OFFICIAL_STAGE_ID.SETTINGS;
   const activeStage =
     workflow.stages.find((stage) => stage.id === activeStageId) || workflow.stages[0];
 
+  useEffect(() => {
+    if (!tournament?.id) return;
+    if (!stageSelection.stageId) return;
+    if (requestedStageId === stageSelection.stageId) return;
+    if (requestedStageId && !stageSelection.normalized) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (next.get(OFFICIAL_STAGE_QUERY_KEY) === stageSelection.stageId) {
+          return prev;
+        }
+        next.set(OFFICIAL_STAGE_QUERY_KEY, stageSelection.stageId);
+        return next;
+      },
+      { replace: true }
+    );
+  }, [
+    tournament?.id,
+    requestedStageId,
+    stageSelection.stageId,
+    stageSelection.normalized,
+    setSearchParams,
+  ]);
+
   const selectStage = (stageId) => {
-    setStageTouched(true);
-    setActiveStageId(stageId);
+    const nextId = String(stageId || "").trim();
+    if (!nextId) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (next.get(OFFICIAL_STAGE_QUERY_KEY) === nextId) {
+          return prev;
+        }
+        next.set(OFFICIAL_STAGE_QUERY_KEY, nextId);
+        return next;
+      },
+      { replace: false }
+    );
   };
 
   const handlePrimaryNextAction = (action) => {
@@ -786,15 +826,17 @@ export default function OfficialTournamentSetup() {
               privatePairingError: prepared.error || null,
             };
           }
-          return buildOfficialAiBalancePlan({
-            tournament,
-            eventId: savedEvent?.id,
-            players: flowPlayers,
-            selectedPlayerIds,
+          return buildOfficialOpenPlan({
+            tournament: {
+              ...tournament,
+              hostClubName: tournament.hostClubName || activeClub?.name || "",
+            },
+            entries: manualEntries || displayEntries,
             eventType,
+            eventId: savedEvent?.id,
             groupCount,
-            manualEntries,
-            individualRegistration: true,
+            players: flowPlayers,
+            splitUnits,
             privatePairingRules: prepared?.pairingOptions?.privatePairingRules || [],
             pairingConstraints: founderConstraints,
             competitionClass: COMPETITION_CLASS.OFFICIAL,
@@ -926,11 +968,23 @@ export default function OfficialTournamentSetup() {
   };
 
   const handleOfficialModeChange = (nextMode) => {
+    const gate = assessOfficialCompetitionStrategyChange(tournament, nextMode);
+    if (!gate.allowed) {
+      setError(gate.error);
+      return;
+    }
     setOfficialMode(nextMode);
     setPreviewEntries([]);
     setRegisteredEntries([]);
     setSelectedPlayerIds([]);
-    void persistTournament({ officialMode: nextMode });
+    const patch = { officialMode: nextMode };
+    if (gate.normalizeRegistrationMode) {
+      const next = patchOfficialCompetitionSettings(tournament, {
+        registrationMode: gate.normalizeRegistrationMode,
+      });
+      patch.settings = next.settings;
+    }
+    void persistTournament(patch);
   };
 
   const handleAddEvent = async () => {
@@ -1011,122 +1065,6 @@ export default function OfficialTournamentSetup() {
     setRegisteredEntries(result.event?.entries || []);
     const n = result.registeredCount || registeredIds.size;
     setMessage(n === 1 ? "Đã đăng ký 1 VĐV." : `Đã đăng ký ${n} VĐV.`);
-    return true;
-  };
-
-  const handleBuildAiGroups = async () => {
-    setError(null);
-    setWarnings([]);
-    setMessage(null);
-
-    const prepared = await prepareOfficialPrivatePairing();
-
-    if (!prepared.ok) {
-      setError(prepared.error?.message || "Không thể áp dụng quy tắc riêng.");
-      setWarnings(
-        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
-          (item) => item.code || item.message || String(item)
-        )
-      );
-      return false;
-    }
-
-    const groupGate = assertOfficialGroupDrawAllowed(tournament, savedEvent?.id || "");
-    if (!groupGate.ok) {
-      setError(groupGate.error);
-      return false;
-    }
-
-    const drawUnits = getOfficialGroupDrawUnits(tournament, savedEvent?.id || "");
-    if (!drawUnits.ok || (drawUnits.units || []).length < 2) {
-      setError(drawUnits.error || "Chưa có cặp để chia bảng.");
-      return false;
-    }
-    const entries = drawUnits.units;
-
-    const plan = buildOfficialAiBalancePlan({
-      tournament,
-      eventId: savedEvent?.id,
-      players: flowPlayers,
-      selectedPlayerIds,
-      eventType,
-      groupCount,
-      manualEntries: entries,
-      individualRegistration: true,
-      pairingConstraints: founderConstraints,
-      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
-      clubId: activeClubId,
-      competitionClass: COMPETITION_CLASS.OFFICIAL,
-      envSource: prepared.pairingOptions?.envSource,
-      seed: prepared.pairingOptions?.seed,
-      allowedByPublishedRules: prepared.pairingOptions?.allowedByPublishedRules,
-      contextTime: prepared.pairingOptions?.contextTime,
-    });
-
-    if (!plan.ok) {
-      setError(plan.privatePairingError?.message || plan.errors?.join(" "));
-      setWarnings(plan.warnings || []);
-      return false;
-    }
-
-    const steps = buildSnakeSteps({
-      entries: plan.event.entries,
-      players: selectedPlayers,
-      groupCount,
-      finalGroups: plan.event.groups,
-    });
-
-    const patch = buildOfficialAiBalancePatch(tournament, plan);
-    if (!patch.ok) {
-      setError(patch.error || "Khong luu duoc bang dau.");
-      return false;
-    }
-    const preservedAiEvent = preserveOfficialRegistrationOnGroupDrawEvent(
-      savedEvent,
-      patch.event
-    );
-    const preservedAiEvents = upsertOfficialEvent(patch.events, preservedAiEvent);
-
-    // Option A: durable authority before animation (presentation only).
-    const saved = await persistTournament({
-      events: preservedAiEvents,
-      officialMode: OFFICIAL_MODE.AI_BALANCE,
-      status: TOURNAMENT_STATUS.READY,
-      settings: {
-        ...(tournament.settings || {}),
-        aiBalance: {
-          updatedAt: new Date().toISOString(),
-        },
-      },
-    });
-
-    if (!saved) {
-      return false;
-    }
-
-    pendingPlanRef.current = plan;
-    setPreviewEntries([]);
-    setWarnings(patch.warnings || []);
-    setActiveEventId(patch.event.id);
-    setMessage(
-      `Đã chia ${patch.event.groups.length} bảng và lưu ${plan.matchCount} trận. Đang trình chiếu…`
-    );
-
-    anim.showAnimation(
-      {
-        animationMode: ANIMATION_MODES.SNAKE_GROUP,
-        groups: plan.event.groups,
-        steps,
-        matchCount: plan.matchCount,
-        onStartMatchPairing: () => openMatchPairingAnimation(plan),
-      },
-      () => {
-        pendingPlanRef.current = null;
-        setMessage(
-          `Đã chia ${patch.event.groups.length} bảng (${plan.matchCount} trận). Có thể bỏ qua trình chiếu ghép cặp — dữ liệu đã lưu.`
-        );
-      }
-    );
     return true;
   };
 
@@ -1261,9 +1199,29 @@ export default function OfficialTournamentSetup() {
         pairingConstraints: founderConstraints,
         competitionClass: COMPETITION_CLASS.OFFICIAL,
       };
-      const pairingFn = isAiBalance
-        ? suggestBalancedEntriesFromIndividuals
-        : suggestEntriesFromPlayers;
+      const pairingDispatch = resolveOfficialPairingDispatch({
+        officialMode,
+        registrationMode: competition.registrationMode,
+      });
+      if (
+        !pairingDispatch.ok ||
+        pairingDispatch.pairingAuthority === OFFICIAL_PAIRING_AUTHORITY.INVALID
+      ) {
+        const msg =
+          pairingDispatch.error || "Không ghép được cặp với chế độ giải hiện tại.";
+        setError(msg);
+        return { ok: false, error: msg };
+      }
+      if (pairingDispatch.pairingAuthority === OFFICIAL_PAIRING_AUTHORITY.NONE) {
+        const msg =
+          "Chế độ đăng ký theo cặp không ghép cặp — dùng cặp đã đăng ký để chia bảng.";
+        setError(msg);
+        return { ok: false, error: msg };
+      }
+      const pairingFn =
+        pairingDispatch.pairingAuthority === OFFICIAL_PAIRING_AUTHORITY.AI_BALANCE
+          ? suggestBalancedEntriesFromIndividuals
+          : suggestOpenRandomEntriesFromPlayers;
       const result = formOfficialIndividualPairs({
         tournament,
         eventId: savedEvent?.id || "",
@@ -1302,7 +1260,7 @@ export default function OfficialTournamentSetup() {
     setGroupBusy(true);
     setDrawBusy(true);
     try {
-      const ok = isAiBalance ? await handleBuildAiGroups() : await handleDrawGroups(false);
+      const ok = await handleDrawGroups(false);
       if (!ok) {
         return { ok: false, error: "Chia bảng thất bại — chưa công bố bảng." };
       }
@@ -1396,7 +1354,7 @@ export default function OfficialTournamentSetup() {
     // Option A: durable authority before animation (presentation only).
     const saved = await persistTournament({
       events: preservedOpenEvents,
-      officialMode: OFFICIAL_MODE.OPEN,
+      officialMode: tournament.officialMode || officialMode,
       hostClubName: tournament.hostClubName || activeClub?.name || "",
       status: TOURNAMENT_STATUS.READY,
       settings: {
@@ -1459,39 +1417,21 @@ export default function OfficialTournamentSetup() {
       return true;
     }
 
-    if (isAiBalance) {
-      const patch = buildOfficialAiBalancePatch(tournament, plan);
-      if (!patch.ok) {
-        setError(patch.error || "Không lưu được lịch thi đấu.");
-        return false;
-      }
+    const patch = buildOfficialOpenPatch(tournament, plan);
+    if (!patch.ok) {
+      setError(patch.error || "Không lưu được lịch thi đấu.");
+      return false;
+    }
 
-      const saved = await persistTournament({
-        events: patch.events,
-        officialMode: OFFICIAL_MODE.AI_BALANCE,
-        status: TOURNAMENT_STATUS.READY,
-      });
+    const saved = await persistTournament({
+      events: patch.events,
+      officialMode: tournament.officialMode || officialMode,
+      hostClubName: tournament.hostClubName || activeClub?.name || "",
+      status: TOURNAMENT_STATUS.READY,
+    });
 
-      if (!saved) {
-        return false;
-      }
-    } else {
-      const patch = buildOfficialOpenPatch(tournament, plan);
-      if (!patch.ok) {
-        setError(patch.error || "Không lưu được lịch thi đấu.");
-        return false;
-      }
-
-      const saved = await persistTournament({
-        events: patch.events,
-        officialMode: OFFICIAL_MODE.OPEN,
-        hostClubName: tournament.hostClubName || activeClub?.name || "",
-        status: TOURNAMENT_STATUS.READY,
-      });
-
-      if (!saved) {
-        return false;
-      }
+    if (!saved) {
+      return false;
     }
 
     pendingPlanRef.current = null;
@@ -1701,8 +1641,8 @@ export default function OfficialTournamentSetup() {
 
   const modeLabel = isAiBalance ? "AI Balance Mode" : "Open Mode";
   const modeDescription = isAiBalance
-    ? "Ghép cặp theo rating, hạt giống snake seeding, hỗ trợ nhiều nội dung thi đấu"
-    : "Random có điều kiện, không dùng rating/seed";
+    ? "Ghép cặp AI theo rating; chia bảng ngẫu nhiên (không tối ưu rating)"
+    : "Ghép cặp ngẫu nhiên; chia bảng ngẫu nhiên — không dùng rating/seed";
 
   return (
     <TournamentManageGate tournamentId={tournamentId}>
