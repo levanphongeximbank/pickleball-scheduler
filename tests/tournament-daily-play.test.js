@@ -1626,11 +1626,72 @@ describe("Daily Play Owner browser UX remediation (DP-05..DP-09)", () => {
     const match = assignRefereeToMatch(
       { id: "m1", status: "ready" },
       roster[0].name,
-      { rosterId: roster[0].id }
+      { rosterId: roster[0].id, rosterEntry: roster[0] }
     );
     assert.equal(match.referee.rosterId, roster[0].id);
     assert.equal(match.referee.name, "TT Lan");
+    assert.equal(match.referee.canonicalUserId, "u-ref-1");
     assert.ok(match.referee.token);
+  });
+});
+
+describe("Daily Director canonical cutover (DP-12)", () => {
+  test("Director loads canonical tournament from activeClub, not clubId string", () => {
+    const statePath = path.resolve("src/features/tournament/director/hooks/useDirectorState.js");
+    const source = fs.readFileSync(statePath, "utf8");
+    assert.match(source, /useCanonicalTournament\(\s*activeClub,\s*tournamentId/);
+    assert.equal(/useCanonicalTournament\(\s*activeClubId,/.test(source), false);
+    assert.match(source, /useDailyPlayCanonicalSession/);
+    assert.match(source, /useClubPairingCandidatePool\(isDaily \? activeClubId : null/);
+    assert.match(source, /buildCanonicalDailyDirectorSnapshot/);
+    assert.match(source, /isDaily \? \[\] : loadPlayersForClub/);
+    assert.match(source, /isDaily\s*\?\s*\[\]\s*:\s*loadCourtsForClub/);
+    assert.match(source, /isDaily \? \[\] : getDirectorState/);
+    assert.match(source, /revision:\s*0/);
+  });
+
+  test("Daily Director mutations use canonical session RPCs, not blob writers", () => {
+    const actionsPath = path.resolve(
+      "src/features/tournament/director/hooks/useDirectorActions.js"
+    );
+    const syncPath = path.resolve("src/features/tournament/director/hooks/useDirectorSync.js");
+    const actions = fs.readFileSync(actionsPath, "utf8");
+    const sync = fs.readFileSync(syncPath, "utf8");
+    assert.match(actions, /dailySession\.assignCourt/);
+    assert.match(actions, /dailySession\.startMatch/);
+    assert.match(actions, /dailySession\.submitScore/);
+    assert.match(actions, /dailySession\.cancelMatch/);
+    assert.match(actions, /dailySession\.changeCourt/);
+    assert.equal(actions.includes("assignDailyDirectorMatch("), false);
+    assert.equal(actions.includes("submitDailyDirectorMatchScore("), false);
+    assert.equal(actions.includes("buildDailyPlayTournamentPatch("), false);
+    assert.match(actions, /Khóa sân thủ công chưa hỗ trợ trong Daily canonical/);
+    assert.match(actions, /if \(isDaily\) \{\s*setError\(DAILY_LOCK_UNSUPPORTED\);\s*return;/);
+    assert.match(actions, /persistDailyRefereeMetadata/);
+    assert.match(sync, /dailySession\.submitScore/);
+    assert.equal(sync.includes("submitDailyDirectorMatchScore("), false);
+    assert.equal(sync.includes("buildDailyPlayTournamentPatch("), false);
+  });
+
+  test("Daily Director UI exposes assigned start action and hides manual lock", () => {
+    const modePath = path.resolve(
+      "src/features/tournament/director/TournamentDirectorMode.jsx"
+    );
+    const boardPath = path.resolve(
+      "src/features/tournament/director/components/DirectorMatchCard.jsx"
+    );
+    const courtPath = path.resolve(
+      "src/features/tournament/director/components/DirectorCourtBoard.jsx"
+    );
+    const mode = fs.readFileSync(modePath, "utf8");
+    const board = fs.readFileSync(boardPath, "utf8");
+    const court = fs.readFileSync(courtPath, "utf8");
+    assert.match(mode, /disableManualLock=\{isDaily\}/);
+    assert.match(mode, /handleStartMatch/);
+    assert.match(mode, /initialLoading/);
+    assert.match(board, /Đã xếp sân \/ Sẵn sàng/);
+    assert.match(board, /Bắt đầu trận/);
+    assert.match(court, /disableManualLock/);
   });
 });
 

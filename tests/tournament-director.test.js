@@ -194,3 +194,98 @@ test("resolveEntryLabel falls back to player names", () => {
   );
   assert.equal(label, "Le Phong");
 });
+
+test("canonical Daily Director snapshot does not treat assigned as playing (DP-12)", async () => {
+  const { buildCanonicalDailyDirectorSnapshot } = await import(
+    "../src/features/tournament/director/services/dailyDirectorProjection.js"
+  );
+  const snapshot = buildCanonicalDailyDirectorSnapshot({
+    tournament: {
+      mode: "daily_play",
+      settings: {
+        refereeRoster: [
+          {
+            id: "ref-canon-1",
+            name: "TT Lan",
+            source: "canonical_account",
+            canonicalUserId: "u-ref-1",
+          },
+          { id: "r-manual", name: "Khách" },
+        ],
+        dailyRefereeAssignments: {
+          d2: {
+            name: "TT Lan",
+            token: "tok-lan",
+            rosterId: "ref-canon-1",
+            canonicalUserId: "u-ref-1",
+            source: "canonical_account",
+          },
+        },
+      },
+    },
+    session: {
+      dailyPlay: {
+        matches: [
+          { id: "d1", status: MATCH_STATUS.WAITING, teamALabel: "A", teamBLabel: "B" },
+          { id: "d2", status: MATCH_STATUS.ASSIGNED, teamALabel: "C", teamBLabel: "D" },
+          { id: "d3", status: MATCH_STATUS.PLAYING, teamALabel: "E", teamBLabel: "F" },
+          { id: "d4", status: MATCH_STATUS.COMPLETED, teamALabel: "G", teamBLabel: "H" },
+        ],
+      },
+      courts: [{ id: "c1", name: "Sân 1" }],
+      courtStates: [{ id: "c1", currentMatchId: "d3", status: "playing" }],
+      leases: [{ id: "l1", matchId: "d3", courtId: "c1", status: "active" }],
+    },
+    players: [{ id: "p1", name: "Lan" }],
+  });
+
+  assert.equal(snapshot.matches.waiting.length, 1);
+  assert.equal(snapshot.matches.assigned.length, 1);
+  assert.equal(snapshot.matches.playing.length, 1);
+  assert.equal(snapshot.matches.onCourt.length, 1);
+  assert.equal(snapshot.matches.completed.length, 1);
+  assert.equal(snapshot.matches.onCourt[0].id, "d3");
+  assert.equal(snapshot.matches.assigned[0].referee.canonicalUserId, "u-ref-1");
+  assert.equal(snapshot.refereeSettings.roster.length, 2);
+  assert.ok(snapshot.refereeSettings.roster.some((e) => e.canonicalUserId === "u-ref-1"));
+  assert.ok(snapshot.refereeSettings.roster.some((e) => e.source === "manual" || !e.canonicalUserId));
+});
+
+test("Daily referee metadata merge never overwrites newer dailyPlay (DP-12)", async () => {
+  const { mergeDailyRefereeMetadata } = await import(
+    "../src/features/tournament/director/services/dailyRefereeMetadataPatch.js"
+  );
+  const latest = {
+    dailyPlay: { revision: 9, matches: [{ id: "m1", status: "playing" }] },
+    refereeRoster: [{ id: "r1", name: "Old" }],
+  };
+  const merged = mergeDailyRefereeMetadata(latest, {
+    dailyPlay: { revision: 1, matches: [] },
+    dailyRefereeAssignments: {
+      m1: { name: "TT Lan", canonicalUserId: "u-ref-1", token: "t1" },
+    },
+  });
+  assert.equal(merged.dailyPlay.revision, 9);
+  assert.equal(merged.dailyPlay.matches[0].status, "playing");
+  assert.equal(merged.dailyRefereeAssignments.m1.canonicalUserId, "u-ref-1");
+});
+
+test("non-Daily Director snapshot still treats assigned as onCourt", () => {
+  const snapshot = buildTournamentDirectorSnapshot({
+    tournament: { mode: "official_tournament" },
+    event: {
+      id: "e1",
+      entries: [],
+      matches: [
+        createMatchRecord({ id: "m1", status: MATCH_STATUS.WAITING }),
+        createMatchRecord({ id: "m2", status: MATCH_STATUS.ASSIGNED }),
+        createMatchRecord({ id: "m3", status: MATCH_STATUS.PLAYING }),
+      ],
+    },
+    courts: [],
+    players: [],
+    lockedCourtIds: [],
+  });
+  assert.equal(snapshot.matches.waiting.length, 1);
+  assert.equal(snapshot.matches.onCourt.length, 2);
+});

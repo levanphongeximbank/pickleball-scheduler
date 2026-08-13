@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 
-import { Box, Grid } from "@mui/material";
+import { Alert, Box, Grid } from "@mui/material";
 
 import { hasSupabaseConfig } from "../../../domain/matchLiveSync.js";
 import DirectorActions from "./components/DirectorActions.jsx";
@@ -28,6 +28,8 @@ export default function TournamentDirectorMode() {
     players,
     courts,
     isDaily,
+    initialLoading,
+    tournamentLoadError,
     savedEvents,
     activeEvent,
     lockedCourtIds,
@@ -35,6 +37,10 @@ export default function TournamentDirectorMode() {
     refereeSettings,
     liveByMatchId,
     liveError,
+    waitingMatches,
+    assignedMatches,
+    onCourtMatches,
+    completedMatches,
     message,
     setMessage,
     error,
@@ -53,14 +59,13 @@ export default function TournamentDirectorMode() {
     auditHistoryMatch,
     setAuditHistoryMatch,
     backPath,
-    waitingMatches,
-    onCourtMatches,
-    completedMatches,
   } = state;
 
   const {
     handleRefereeAssign,
     handleAssignCourt,
+    handleStartMatch,
+    handleCancelMatch,
     handleToggleCourt,
     handleOpenScore,
     handleDisputeResetLive,
@@ -84,8 +89,26 @@ export default function TournamentDirectorMode() {
     return <DirectorAccessDenied />;
   }
 
+  if (initialLoading || tournamentAccess.pending) {
+    return (
+      <Box>
+        <Alert severity="info">Đang tải Director Mode...</Alert>
+      </Box>
+    );
+  }
+
   if (!tournament) {
-    return <DirectorAccessDenied reason="not-found" />;
+    return (
+      <DirectorAccessDenied
+        reason="not-found"
+        message={
+          tournamentLoadError ||
+          (!state.tenantId
+            ? "CLB chưa có tenant hợp lệ — không thể tải Director."
+            : "Không tìm thấy giải.")
+        }
+      />
+    );
   }
 
   return (
@@ -114,15 +137,21 @@ export default function TournamentDirectorMode() {
           refereeSettings={refereeSettings}
           onToggleCourt={handleToggleCourt}
           onCourtRefereeChange={handleCourtRefereeChange}
+          disableManualLock={isDaily}
+          lockDisabledReason="Khóa sân thủ công chưa hỗ trợ trong Daily canonical."
         />
       </Grid>
 
       <DirectorMatchBoard
+        isDaily={isDaily}
         waitingMatches={waitingMatches}
+        assignedMatches={assignedMatches}
         onCourtMatches={onCourtMatches}
         completedMatches={completedMatches}
         buildRefereeCardProps={buildRefereeCardProps}
         onAssignCourt={handleAssignCourt}
+        onStartMatch={handleStartMatch}
+        onCancelMatch={handleCancelMatch}
         onOpenScore={handleOpenScore}
         onOpenRefereeDialog={handleOpenRefereeDialog}
         onOpenAuditHistory={handleOpenAuditHistory}
