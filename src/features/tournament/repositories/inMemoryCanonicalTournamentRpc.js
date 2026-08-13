@@ -117,6 +117,7 @@ export function createInMemoryCanonicalTournamentRpc(seed = {}) {
         league_id: payload.league_id || null,
         payload: { ...(payload.payload || {}), id },
         engine_v4: payload.engine_v4 || {},
+        version: 1,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -133,6 +134,36 @@ export function createInMemoryCanonicalTournamentRpc(seed = {}) {
         return deny("TOURNAMENT_NOT_FOUND", "not found");
       }
       const patch = args.p_patch || {};
+      const currentVersion = Number(current.version ?? 1);
+      const isInternal = String(current.mode || "") === "internal_tournament";
+      const rawExpected = patch.expected_version;
+      const hasExpected =
+        rawExpected != null && String(rawExpected).trim() !== "";
+
+      if (isInternal && !hasExpected) {
+        return {
+          ok: false,
+          code: "VERSION_REQUIRED",
+          error: "expected_version is required for internal_tournament updates.",
+          currentVersion,
+          tournament: current,
+        };
+      }
+
+      if (hasExpected) {
+        const expected = Number(rawExpected);
+        if (!Number.isFinite(expected) || expected !== currentVersion) {
+          return {
+            ok: false,
+            code: "VERSION_CONFLICT",
+            error: "VERSION_CONFLICT",
+            expectedVersion: rawExpected,
+            currentVersion,
+            tournament: current,
+          };
+        }
+      }
+
       const next = {
         ...current,
         name: patch.name ?? current.name,
@@ -141,6 +172,7 @@ export function createInMemoryCanonicalTournamentRpc(seed = {}) {
         league_id: patch.league_id ?? current.league_id,
         payload: patch.payload ?? current.payload,
         engine_v4: patch.engine_v4 ?? current.engine_v4,
+        version: currentVersion + 1,
         updated_at: new Date().toISOString(),
       };
       rows.set(id, next);

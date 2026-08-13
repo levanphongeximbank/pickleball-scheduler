@@ -75,6 +75,8 @@ export {
   buildInternalTournamentPlan,
   applyInternalTournamentPlan,
   buildInternalTournamentPatch,
+  buildInternalDrawEventWithoutMatches,
+  buildInternalScheduleFromPersistedGroups,
   getDefaultInternalEventType,
 } from "./internalTournamentEngine.js";
 

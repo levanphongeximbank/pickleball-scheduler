@@ -12,12 +12,25 @@ import {
   resolveGuidedPipeline,
 } from "./shared/tournamentFlowConfig.js";
 
+import { shouldSkipKnockoutForInternal } from "../../../features/tournament/internal/internalTournamentOneGroupCompletion.js";
+
 export function useTournamentFlowOrchestrator(anim, adapters) {
   const flowRef = useRef({
     ctx: null,
     stepIndex: 0,
     pipeline: [],
   });
+
+  const runPersistBeforeAnimation = useCallback(
+    async (mode, ctx) => {
+      if (typeof adapters.persistBeforeAnimation !== "function") {
+        return true;
+      }
+      const result = await adapters.persistBeforeAnimation(mode, ctx);
+      return result !== false;
+    },
+    [adapters]
+  );
 
   const handleStepComplete = useCallback(async () => {
     const state = flowRef.current;
@@ -27,6 +40,8 @@ export function useTournamentFlowOrchestrator(anim, adapters) {
       return;
     }
 
+    // Business mutation already ran in persistBeforeAnimation when provided.
+    // persist() remains for idempotent verification / pairing-reveal ephemeral state.
     const persistResult = await adapters.persist(mode, state.ctx);
     if (persistResult === false) {
       return;
@@ -55,7 +70,7 @@ export function useTournamentFlowOrchestrator(anim, adapters) {
     });
   }, [adapters, anim]);
 
-  const advanceToNextStep = useCallback(() => {
+  const advanceToNextStep = useCallback(async () => {
     const state = flowRef.current;
     if (!state.ctx || state.stepIndex >= state.pipeline.length - 1) {
       return;
@@ -65,6 +80,12 @@ export function useTournamentFlowOrchestrator(anim, adapters) {
     anim.clearHandoff();
 
     const mode = state.pipeline[state.stepIndex];
+    const beforeOk = await runPersistBeforeAnimation(mode, state.ctx);
+    if (!beforeOk) {
+      state.stepIndex -= 1;
+      return;
+    }
+
     const payload = adapters.buildPayload(mode, state.ctx);
 
     anim.transitionAnimation({
@@ -72,10 +93,10 @@ export function useTournamentFlowOrchestrator(anim, adapters) {
       flowMode: FLOW_MODES.GUIDED,
       onStepComplete: handleStepComplete,
     });
-  }, [adapters, anim, handleStepComplete]);
+  }, [adapters, anim, handleStepComplete, runPersistBeforeAnimation]);
 
   const startFlow = useCallback(
-    (ctx, options = {}) => {
+    async (ctx, options = {}) => {
       const validation = adapters.validateStart?.(ctx);
       if (validation && validation.ok === false) {
         return validation;
@@ -96,6 +117,12 @@ export function useTournamentFlowOrchestrator(anim, adapters) {
       };
 
       const firstMode = pipeline[0];
+      const beforeOk = await runPersistBeforeAnimation(firstMode, ctx);
+      if (!beforeOk) {
+        flowRef.current = { ctx: null, stepIndex: 0, pipeline: [] };
+        return { ok: false, error: "Không lưu được trạng thái trước trình chiếu." };
+      }
+
       const payload = adapters.buildPayload(firstMode, ctx);
 
       requestAppFullscreen();
@@ -111,7 +138,7 @@ export function useTournamentFlowOrchestrator(anim, adapters) {
 
       return { ok: true };
     },
-    [adapters, anim, handleStepComplete]
+    [adapters, anim, handleStepComplete, runPersistBeforeAnimation]
   );
 
   const exitFlow = useCallback(() => {
@@ -135,6 +162,10 @@ export function useTournamentFlowOrchestrator(anim, adapters) {
 
 export function shouldIncludeBracketStep(event) {
   if (!event?.groups?.length) {
+    return false;
+  }
+
+  if (shouldSkipKnockoutForInternal(event)) {
     return false;
   }
 

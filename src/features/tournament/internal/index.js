@@ -1,0 +1,66 @@
+/**
+ * Internal Tournament module barrel — lifecycle / CAS / hydration / one-group.
+ */
+export {
+  CANONICAL_TOURNAMENT_VERSION_CONFLICT,
+  CANONICAL_TOURNAMENT_VERSION_REQUIRED,
+  CANONICAL_VERSION_CONFLICT_USER_MESSAGE,
+  CANONICAL_VERSION_REQUIRED_USER_MESSAGE,
+  resolveCanonicalExpectedVersion,
+  assertInternalExpectedVersion,
+  isCanonicalVersionConflict,
+  isCanonicalVersionRequired,
+  formatCanonicalVersionConflictError,
+  chainExpectedVersionFromResult,
+} from "./canonicalTournamentCas.js";
+
+export {
+  INTERNAL_STATUS_TRANSITION_ERROR,
+  INTERNAL_TOURNAMENT_STATUS_TRANSITIONS,
+  normalizeInternalStatus,
+  validateInternalTournamentStatusTransition,
+  resolveStatusAfterMatchActivity,
+} from "./internalTournamentStatusTransitions.js";
+
+export {
+  INTERNAL_TOURNAMENT_NOT_COMPLETION_ELIGIBLE,
+  isInternalMatchGenuinelyTerminal,
+  isInternalFinalMatch,
+  assertInternalCompetitionComplete,
+  assertInternalCloseSnapshot,
+  assertInternalTournamentCompletionEligibility,
+  assertInternalStatusCompletionGate,
+  classifyInternalMatchCompletionShape,
+} from "./internalTournamentCompletionEligibility.js";
+
+export {
+  hydrateInternalSetupFromTournament,
+  nextHydrationGeneration,
+} from "./internalTournamentSetupHydration.js";
+
+export {
+  INTERNAL_HYDRATION_ACTION,
+  computeInternalSetupDirtyFlags,
+  isInternalSetupFormDirty,
+  decideInternalSetupHydration,
+  advanceHydrationBaselineAfterOwnWrite,
+} from "./internalTournamentDirtyHydration.js";
+
+export {
+  ONE_GROUP_COMPLETION_MESSAGE,
+  getInternalEventGroupCount,
+  isOneGroupInternalEvent,
+  shouldSkipKnockoutForInternal,
+  resolveInternalKnockoutEligibility,
+  listGroupStageMatches,
+  canFinishOneGroupInternal,
+  resolveOneGroupChampionProjection,
+  canCloseOneGroupInternal,
+  assertNoKnockoutMatchesForOneGroup,
+} from "./internalTournamentOneGroupCompletion.js";
+
+export {
+  INTERNAL_LIFECYCLE_STEPS,
+  INTERNAL_LIFECYCLE_LABELS,
+  resolveInternalTournamentLifecycle,
+} from "./internalTournamentLifecycleResolver.js";

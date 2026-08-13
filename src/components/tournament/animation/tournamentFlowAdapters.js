@@ -2,20 +2,21 @@ import { getTournamentQuery } from "../../../features/tournament/services/tourna
 import { updateTournamentCommand } from "../../../features/tournament/services/tournamentCommands.js";
 import { TOURNAMENT_STATUS } from "../../../models/tournament/index.js";
 import {
-  buildInternalTournamentPatch,
+  buildInternalDrawEventWithoutMatches,
+  buildInternalScheduleFromPersistedGroups,
   buildInternalTournamentPlan,
   canGenerateBracket,
   generateKnockoutBracket,
   resolveBracketProgress,
   suggestEntriesFromPlayers,
 } from "../../../tournament/engines/index.js";
+import { shouldSkipKnockoutForInternal } from "../../../features/tournament/internal/index.js";
 import {
   ANIMATION_MODES,
   buildGroupMatchPairingSteps,
   buildPairingSteps,
   buildPairingWaitingPlayers,
   buildSnakeSteps,
-  stripMatchesFromEvent,
   buildRandomDrawSteps,
 } from "./animationUtils.js";
 import { PAIRING_CONTROL_MODES } from "./pairing/usePairingSequence.js";
@@ -129,10 +130,154 @@ export function createInternalFlowAdapters(deps) {
     return tournament?.events?.[0] || null;
   }
 
-  async function fetchFreshSavedEvent() {
-    const result = await getTournamentQuery(tournamentClubId, tournamentId);
+  async function fetchFreshTournament() {
+    const result = await getTournamentQuery(tournamentClubId, tournamentId, {
+      // tenant resolved inside query when available on club scope
+    });
     if (!result.ok) return null;
-    return result.tournament?.events?.[0] || null;
+    return result.tournament || null;
+  }
+
+  async function fetchFreshSavedEvent() {
+    const fresh = await fetchFreshTournament();
+    return fresh?.events?.[0] || null;
+  }
+
+  async function persistDrawBeforeAnimation(ctx) {
+    const plan = resolvePlan(ctx);
+    if (!plan?.ok) {
+      setError(plan?.errors?.[0] || "Không lập được kế hoạch chia bảng.");
+      return false;
+    }
+    ctx.plan = plan;
+
+    const draw = buildInternalDrawEventWithoutMatches(plan);
+    if (!draw.ok) {
+      setError(draw.error || "Không lưu được bảng đấu.");
+      return false;
+    }
+
+    const fresh = await fetchFreshTournament();
+    const current = fresh || tournament;
+    if ((current?.events?.[0]?.groups || []).length > 0) {
+      // Already durable — do not rewrite on presentation replay.
+      ctx.persistedDraw = true;
+      return true;
+    }
+
+    const drafted = {
+      ...current,
+      events: [draw.event],
+      status: TOURNAMENT_STATUS.READY,
+      settings: {
+        ...(current?.settings || {}),
+        internal: {
+          ...(current?.settings?.internal || {}),
+          groupCount: (draw.event.groups || []).length,
+          eventType: draw.event.eventType,
+        },
+      },
+    };
+
+    let settings = drafted.settings;
+    try {
+      const { recordDrawCreated } = await import(
+        "../../../tournament/engines/publishDrawEngine.js"
+      );
+      const created = recordDrawCreated(drafted, draw.event.groups || [], {
+        reason: "guided_draw_generated",
+      });
+      if (created?.ok) {
+        settings = created.tournament.settings;
+      }
+    } catch {
+      // Draw-created metadata is best-effort; groups still persist in one write.
+    }
+
+    const result = await updateTournamentCommand(
+      tournamentClubId,
+      tournamentId,
+      {
+        events: [draw.event],
+        status: TOURNAMENT_STATUS.READY,
+        settings,
+      },
+      {
+        currentTournament: current,
+        expectedVersion: current?.version,
+      }
+    );
+
+    if (!result.ok) {
+      setError(result.error);
+      return false;
+    }
+
+    ctx.persistedDraw = true;
+    setWarnings(draw.warnings || []);
+    setLocalRevision((value) => value + 1);
+    refreshClubs();
+    return true;
+  }
+
+  async function persistScheduleBeforeAnimation(ctx) {
+    const freshTournament = await fetchFreshTournament();
+    const current = freshTournament || tournament;
+    const savedEvent = current?.events?.[0];
+    if ((savedEvent?.matches || []).some((match) => !match?.bracketMatchId)) {
+      ctx.persistedSchedule = true;
+      ctx.scheduleEvent = savedEvent;
+      return true;
+    }
+
+    const prepared = resolvePrivatePairingOptions();
+    const schedule = buildInternalScheduleFromPersistedGroups({
+      tournament: current,
+      players,
+      pairingConstraints: [],
+      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
+      clubId: tournamentClubId,
+      competitionClass: prepared.pairingOptions?.competitionClass,
+      envSource: prepared.pairingOptions?.envSource,
+      seed: prepared.pairingOptions?.seed,
+      allowedByPublishedRules: prepared.pairingOptions?.allowedByPublishedRules,
+      contextTime: prepared.pairingOptions?.contextTime,
+    });
+
+    if (!schedule.ok) {
+      setError(schedule.errors?.join(" ") || "Không tạo được lịch.");
+      return false;
+    }
+
+    const result = await updateTournamentCommand(
+      tournamentClubId,
+      tournamentId,
+      {
+        events: [schedule.event],
+        status: TOURNAMENT_STATUS.READY,
+      },
+      {
+        currentTournament: current,
+        expectedVersion: current?.version,
+      }
+    );
+
+    if (!result.ok) {
+      setError(result.error);
+      return false;
+    }
+
+    ctx.persistedSchedule = true;
+    ctx.scheduleEvent = schedule.event;
+    ctx.plan = {
+      ok: true,
+      event: schedule.event,
+      matchCount: schedule.matchCount,
+    };
+    setWarnings(schedule.warnings || []);
+    setLocalRevision((value) => value + 1);
+    refreshClubs();
+    return true;
   }
 
   function resolveEntries(ctx) {
@@ -229,10 +374,42 @@ export function createInternalFlowAdapters(deps) {
       ctx.selectedPlayers = players.filter((player) =>
         selectedPlayerIds.includes(String(player.id))
       );
-      ctx.includeBracket = canGenerateBracket(plan.event).ok;
+      ctx.includeBracket =
+        !shouldSkipKnockoutForInternal(plan.event) && canGenerateBracket(plan.event).ok;
       ctx.courts = courts;
 
       return { ok: true };
+    },
+
+    async persistBeforeAnimation(animationMode, ctx) {
+      switch (animationMode) {
+        case ANIMATION_MODES.SNAKE_GROUP:
+          return persistDrawBeforeAnimation(ctx);
+        case ANIMATION_MODES.GROUP_MATCH_PAIRING:
+          return persistScheduleBeforeAnimation(ctx);
+        case ANIMATION_MODES.BRACKET_REVEAL: {
+          const savedEvent = (await fetchFreshSavedEvent()) || getCachedSavedEvent();
+          if (shouldSkipKnockoutForInternal(savedEvent)) {
+            setError(
+              "Giải có 1 bảng — kết thúc sau vòng bảng (không có vòng knock-out)."
+            );
+            return false;
+          }
+          refreshBracketContext(ctx, savedEvent);
+          if (!ctx.bracketEvent) {
+            // Nothing to persist — mark so animation completion cannot fall back to a write.
+            ctx.persistedBracket = true;
+            return true;
+          }
+          if (!(await persistEvent(ctx.bracketEvent))) {
+            return false;
+          }
+          ctx.persistedBracket = true;
+          return true;
+        }
+        default:
+          return true;
+      }
     },
 
     buildPayload(animationMode, ctx) {
@@ -248,12 +425,14 @@ export function createInternalFlowAdapters(deps) {
           });
         case ANIMATION_MODES.SNAKE_GROUP:
           return buildDrawPayload({ plan, selectedPlayers, groupCount });
-        case ANIMATION_MODES.GROUP_MATCH_PAIRING:
+        case ANIMATION_MODES.GROUP_MATCH_PAIRING: {
+          const event = ctx.scheduleEvent || plan?.event;
           return buildMatchPairingPayload({
-            plan,
+            plan: { ok: true, event, matchCount: (event?.matches || []).length },
             courts,
             tournamentName: tournament?.name || "Giải đấu",
           });
+        }
         case ANIMATION_MODES.BRACKET_REVEAL:
           refreshBracketContext(ctx);
           return buildBracketRevealPayload(ctx, courts);
@@ -263,76 +442,23 @@ export function createInternalFlowAdapters(deps) {
     },
 
     async persist(animationMode, ctx) {
-      const plan = resolvePlan(ctx);
-
       switch (animationMode) {
         case ANIMATION_MODES.PAIRING_REVEAL:
           setPreviewEntries(resolveEntries(ctx));
           return true;
-        case ANIMATION_MODES.SNAKE_GROUP: {
-          const patch = buildInternalTournamentPatch(tournament, plan);
-          if (!patch.ok) {
-            setError(patch.error || "Không lưu được bảng đấu.");
-            return false;
-          }
-
-          const eventWithoutMatches = stripMatchesFromEvent(patch.events[0]);
-          const result = await updateTournamentCommand(tournamentClubId, tournamentId, {
-            events: [eventWithoutMatches],
-            status: TOURNAMENT_STATUS.READY,
-          });
-
-          if (!result.ok) {
-            setError(result.error);
-            return false;
-          }
-
-          setWarnings(patch.warnings || []);
-          setLocalRevision((value) => value + 1);
-          refreshClubs();
+        case ANIMATION_MODES.SNAKE_GROUP:
+        case ANIMATION_MODES.GROUP_MATCH_PAIRING:
           return true;
-        }
-        case ANIMATION_MODES.GROUP_MATCH_PAIRING: {
-          const savedEvent = (await fetchFreshSavedEvent()) || getCachedSavedEvent();
-          if ((savedEvent?.matches?.length || 0) > 0) {
+        case ANIMATION_MODES.BRACKET_REVEAL: {
+          // IT-REV-007: no post-animation durable write fallback.
+          if (ctx.persistedBracket) return true;
+          if (shouldSkipKnockoutForInternal(getCachedSavedEvent())) {
             return true;
           }
-
-          const patch = buildInternalTournamentPatch(tournament, plan);
-          if (!patch.ok) {
-            setError(patch.error || "Không lưu được lịch thi đấu.");
-            return false;
-          }
-
-          const result = await updateTournamentCommand(tournamentClubId, tournamentId, {
-            events: patch.events,
-            status: TOURNAMENT_STATUS.READY,
-          });
-
-          if (!result.ok) {
-            setError(result.error);
-            return false;
-          }
-
-          setWarnings(patch.warnings || []);
-          setLocalRevision((value) => value + 1);
-          refreshClubs();
-          return true;
-        }
-        case ANIMATION_MODES.BRACKET_REVEAL: {
-          const savedEvent = (await fetchFreshSavedEvent()) || getCachedSavedEvent();
-          refreshBracketContext(ctx, savedEvent);
-          if (!ctx.bracketEvent) {
-            setError(ctx.bracketError || "Không tạo được sơ đồ knock-out.");
-            return false;
-          }
-
-          if (!(await persistEvent(ctx.bracketEvent))) {
-            return false;
-          }
-
-          setWarnings(ctx.bracketWarnings || []);
-          return true;
+          setError(
+            "Nhánh đấu chưa được lưu trước trình chiếu. Không ghi thêm sau animation."
+          );
+          return false;
         }
         default:
           return true;
@@ -355,9 +481,9 @@ export function createInternalFlowAdapters(deps) {
             ? `Đã đề xuất ${resolveEntries(ctx).length} VĐV.`
             : `Đã đề xuất ${resolveEntries(ctx).length} cặp/đội.`;
         case ANIMATION_MODES.SNAKE_GROUP:
-          return `Đã chia ${plan.event.groups.length} bảng với ${plan.matchCount} trận vòng bảng.`;
+          return `Đã chia ${plan.event?.groups?.length || 0} bảng (đã lưu). Tiếp theo: tạo lịch thi đấu.`;
         case ANIMATION_MODES.GROUP_MATCH_PAIRING:
-          return `Đã ghép ${plan.matchCount} trận vòng bảng.`;
+          return `Đã lưu ${(ctx.scheduleEvent?.matches || plan?.event?.matches || []).filter((m) => !m.bracketMatchId).length} trận vòng bảng.`;
         case ANIMATION_MODES.BRACKET_REVEAL:
           return "Đã tạo sơ đồ knock-out.";
         default:

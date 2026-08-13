@@ -2,7 +2,7 @@
  * S1-G — Tournament closing: lock results, freeze standings/brackets, summary.
  */
 
-import { TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
+import { TOURNAMENT_MODE, TOURNAMENT_STATUS, MATCH_STATUS } from "../../../models/tournament/constants.js";
 import {
   RESULTS_OPS_AUDIT,
   appendResultsOpsAudit,
@@ -16,6 +16,77 @@ import { buildIndividualAllGroupStandings } from "../adapters/individualStanding
 import { listWalkovers } from "./walkoverEngine.js";
 import { listWithdrawalHistory } from "./withdrawalEngine.js";
 
+function isGenuineTerminalMatchStatus(status) {
+  const value = String(status || "").toLowerCase();
+  return (
+    value === MATCH_STATUS.COMPLETED ||
+    value === MATCH_STATUS.FORFEIT ||
+    value === "completed" ||
+    value === "forfeit"
+  );
+}
+
+/**
+ * Internal competition gate without importing Internal completion module
+ * (avoids circular dependency with oneGroupCompletion → canCloseTournament).
+ * Semantics must match assertInternalCompetitionComplete / isGroupStageComplete.
+ */
+function assertInternalCompetitionForClose(tournament) {
+  const event = tournament?.events?.[0];
+  if (!event) {
+    return { ok: false, error: "Thiếu nội dung thi đấu.", reason: "missing_event" };
+  }
+  const matches = Array.isArray(event.matches) ? event.matches : [];
+  if (!matches.length) {
+    return { ok: false, error: "Chưa có trận để đóng giải.", reason: "no_matches" };
+  }
+  const incomplete = matches.filter((match) => !isGenuineTerminalMatchStatus(match?.status));
+  if (incomplete.length > 0) {
+    return {
+      ok: false,
+      error: `Còn ${incomplete.length} trận chưa hoàn tất (locked không được tính là đã đấu).`,
+      reason: "incomplete_matches",
+    };
+  }
+  const groups = Array.isArray(event.groups) ? event.groups : [];
+  const groupMatches = matches.filter((match) => !match?.bracketMatchId);
+  if (groups.length < 1 || groupMatches.length < 1) {
+    return { ok: false, error: "Thiếu vòng bảng hoàn tất.", reason: "missing_group_stage" };
+  }
+  if (groups.length === 1) {
+    const ko = matches.filter((match) => match?.bracketMatchId);
+    if (ko.length > 0) {
+      return {
+        ok: false,
+        error: "Giải 1 bảng không được đóng khi còn trận knock-out.",
+        reason: "one_group_has_knockout",
+      };
+    }
+    return { ok: true };
+  }
+  const finalDone = matches.some((match) => {
+    const stage = String(match?.stage || match?.round || "").toLowerCase();
+    const isFinal =
+      stage === "final" ||
+      stage === "chung ket" ||
+      stage === "chung_ket" ||
+      stage.includes("final");
+    return (
+      isFinal &&
+      isGenuineTerminalMatchStatus(match?.status) &&
+      Boolean(match?.winnerId)
+    );
+  });
+  if (!finalDone) {
+    return {
+      ok: false,
+      error: "Vòng knock-out / chung kết chưa hoàn tất.",
+      reason: "knockout_incomplete",
+    };
+  }
+  return { ok: true };
+}
+
 export function canCloseTournament(tournament) {
   if (!tournament) {
     return { ok: false, error: "Thiếu giải." };
@@ -23,6 +94,17 @@ export function canCloseTournament(tournament) {
   const ops = getResultsOps(tournament);
   if (ops.closed) {
     return { ok: false, error: "Giải đã được đóng." };
+  }
+  if (String(tournament.mode || "") === TOURNAMENT_MODE.INTERNAL_TOURNAMENT) {
+    const competition = assertInternalCompetitionForClose(tournament);
+    if (!competition.ok) {
+      return {
+        ok: false,
+        error: competition.error,
+        code: "INTERNAL_TOURNAMENT_NOT_COMPLETION_ELIGIBLE",
+        reason: competition.reason,
+      };
+    }
   }
   return { ok: true };
 }
@@ -62,10 +144,9 @@ export function buildTournamentSummary(tournament) {
   const event = tournament.events?.[0];
   const final = buildFinalRanking(tournament, event?.id);
   const awards = buildAwardsPreview(tournament, { eventId: event?.id });
-  const matches = (event?.matches || []);
-  const completed = matches.filter(
-    (m) => m.status === "completed" || m.status === "forfeit" || m.locked
-  );
+  const matches = event?.matches || [];
+  // IT-P27-001: locked alone is mutability, not a terminal result.
+  const completed = matches.filter((m) => isGenuineTerminalMatchStatus(m.status));
 
   return {
     tournamentId: tournament.id,
@@ -86,7 +167,8 @@ export function buildTournamentSummary(tournament) {
 }
 
 /**
- * Close tournament: lock results, freeze standings/brackets, optional auto awards, summary.
+ * Close tournament: validate genuine completion → freeze → lock → summary.
+ * lockAllMatches is post-eligibility finalization only (IT-P27-001).
  */
 export function closeTournament(tournament, options = {}) {
   const check = canCloseTournament(tournament);
@@ -99,8 +181,11 @@ export function closeTournament(tournament, options = {}) {
     if (assigned.ok) next = assigned.tournament;
   }
 
-  next = lockAllMatches(next);
+  // Freeze from pre-lock competition state (standings already terminal).
   const { frozenStandings, frozenBrackets } = freezeEventSnapshots(next);
+
+  // Lock only after eligibility — locked ≠ proof of completion.
+  next = lockAllMatches(next);
 
   next = {
     ...next,

@@ -47,13 +47,24 @@ export default function TournamentAwardsPage() {
     [allTournaments]
   );
 
-  const persistTournament = async (nextTournament) => {
+  const persistTournament = async (nextTournament, options = {}) => {
     if (!activeClubId || !tournamentId || !nextTournament) return false;
-    const result = await update({
-      settings: nextTournament.settings,
-      events: nextTournament.events,
-      status: nextTournament.status,
-    });
+    const forceStatusReopen =
+      options.forceStatusReopen === true ||
+      (String(tournament?.status) === "completed" &&
+        String(nextTournament.status) === "active");
+    const result = await update(
+      {
+        settings: nextTournament.settings,
+        events: nextTournament.events,
+        status: nextTournament.status,
+      },
+      {
+        expectedVersion: tournament?.version,
+        forceStatusReopen,
+        currentTournament: tournament,
+      }
+    );
     if (!result.ok) {
       setMessage({ type: "error", text: result.error || "Không lưu được." });
       return false;

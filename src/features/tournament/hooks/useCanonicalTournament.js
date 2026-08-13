@@ -91,13 +91,18 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
       const result = await updateTournamentCommand(clubId, tournamentId, patch, {
         ...options,
         tenantId,
+        currentTournament: options.currentTournament || tournament,
+        expectedVersion:
+          options.expectedVersion != null
+            ? options.expectedVersion
+            : tournament?.version,
       });
       if (result.ok) {
         setTournament(result.tournament);
       }
       return result;
     },
-    [clubId, tournamentId, tenantId]
+    [clubId, tournamentId, tenantId, tournament]
   );
 
   const applyEngine = useCallback(
@@ -105,13 +110,17 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
       const result = await applyEngineV4StateCommand(clubId, tournamentId, engineState, {
         ...options,
         tenantId,
+        expectedVersion:
+          options.expectedVersion != null
+            ? options.expectedVersion
+            : tournament?.version,
       });
       if (result.ok) {
         setTournament(result.tournament);
       }
       return result;
     },
-    [clubId, tournamentId, tenantId]
+    [clubId, tournamentId, tenantId, tournament]
   );
 
   const setStatus = useCallback(
@@ -119,13 +128,18 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
       const result = await setTournamentStatusCommand(clubId, tournamentId, status, {
         ...options,
         tenantId,
+        currentTournament: options.currentTournament || tournament,
+        expectedVersion:
+          options.expectedVersion != null
+            ? options.expectedVersion
+            : tournament?.version,
       });
       if (result.ok) {
         setTournament(result.tournament);
       }
       return result;
     },
-    [clubId, tournamentId, tenantId]
+    [clubId, tournamentId, tenantId, tournament]
   );
 
   return {
