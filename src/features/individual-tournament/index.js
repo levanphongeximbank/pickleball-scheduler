@@ -227,6 +227,22 @@ export {
 } from "./engines/officialOrganizerWorkflowEngine.js";
 
 export {
+  projectOfficialDrawSubsteps,
+  formOfficialIndividualPairs,
+  assertOfficialGroupDrawAllowed,
+  getOfficialGroupDrawUnits,
+  preserveOfficialRegistrationOnGroupDrawEvent,
+  applyOfficialGroupDrawPreservingRegistration,
+  listOfficialRegistrationEntries,
+  listOfficialDrawEntries,
+  isOfficialPairShapedEntry,
+  isOfficialIndividualShapedEntry,
+  OFFICIAL_DRAW_PAIR_ORIGIN,
+  OFFICIAL_REGISTRATION_LOCAL_SELECTION,
+  OFFICIAL_REGISTRATION_FORBIDDEN_LABELS,
+} from "./engines/officialDrawOrchestrationEngine.js";
+
+export {
   REFEREE_IDENTITY_BINDING_BLOCKED,
   REFEREE_SCORING_RULE_TRANSPORT_BLOCKED,
   syncOfficialAssignedMatchToLive,

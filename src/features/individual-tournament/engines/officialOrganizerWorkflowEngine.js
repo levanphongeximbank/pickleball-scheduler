@@ -18,6 +18,7 @@ import {
   OFFICIAL_REGISTRATION_MODE_LABELS,
   isOfficialRegistrationModeResolved,
 } from "./officialTournamentSettingsEngine.js";
+import { projectOfficialDrawSubsteps } from "./officialDrawOrchestrationEngine.js";
 
 export const OFFICIAL_STAGE_ID = Object.freeze({
   SETTINGS: "settings",
@@ -287,6 +288,7 @@ export function buildOfficialCompetitionFacts(tournament, options = {}) {
   const hasBracket = Boolean(event?.bracket?.rounds?.length);
   const incompleteMatchCount = Math.max(0, matches.total - matches.completed);
   const minDrawEntries = 2;
+  const drawSubsteps = projectOfficialDrawSubsteps(tournament, event?.id || eventId);
 
   return {
     tournamentId: tournament?.id || "",
@@ -315,8 +317,10 @@ export function buildOfficialCompetitionFacts(tournament, options = {}) {
       eligibleCount: entries.drawEligibleCount,
       minDrawEntries,
       modeUnresolved: Boolean(competition.registrationModeUnresolved),
-      needsPairing:
-        competition.registrationMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL && !hasDraw,
+      needsPairing: Boolean(drawSubsteps.pairingRequired),
+      pairingComplete: Boolean(drawSubsteps.pairingComplete),
+      groupDrawReady: Boolean(drawSubsteps.groupDrawReady),
+      substeps: drawSubsteps,
       canDraw:
         !competition.registrationModeUnresolved &&
         entries.drawEligibleCount >= minDrawEntries &&
@@ -468,14 +472,23 @@ export function deriveOfficialOrganizerStages(tournament, options = {}) {
       ? `${draw.groupCount} bảng · ${draw.status}`
       : competition.registrationModeUnresolved
         ? "Chưa xác định chế độ đăng ký"
-        : competition.registrationMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL
-          ? `${entries.drawEligibleCount} VĐV → ghép cặp → chia bảng`
-          : `${entries.drawEligibleCount} cặp → chia bảng`,
+        : draw.substeps?.summary ||
+          (competition.registrationMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL
+            ? `${entries.drawEligibleCount} VĐV → cần ghép cặp`
+            : `${entries.drawEligibleCount} cặp → sẵn sàng chia bảng`),
     blocker: draw.hasDraw ? null : draw.blockedReason,
     counts: { eligible: entries.drawEligibleCount, groups: draw.groupCount },
     primaryAction: {
-      id: draw.hasDraw ? "view_draw" : "run_draw",
-      label: draw.hasDraw ? "Xem kết quả bốc thăm" : "Bắt đầu bốc thăm",
+      id: draw.hasDraw
+        ? "view_draw"
+        : draw.needsPairing
+          ? "form_pairs"
+          : "run_group_draw",
+      label: draw.hasDraw
+        ? "Xem kết quả bốc thăm"
+        : draw.needsPairing
+          ? "Bắt đầu ghép cặp"
+          : "Chia bảng",
     },
   });
 

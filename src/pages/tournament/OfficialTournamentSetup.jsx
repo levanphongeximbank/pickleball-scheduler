@@ -5,7 +5,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   FormControl,
   FormControlLabel,
   Grid,
@@ -47,7 +46,6 @@ import {
   createOpenEntryFromPair,
   createOpenEntryFromPlayer,
   generateKnockoutBracket,
-  isSingleEventType,
   resolveBracketProgress,
   setBracketWinner,
   submitKnockoutMatchScore,
@@ -63,8 +61,6 @@ import BracketRevealAnimation from "../../components/tournament/animation/Bracke
 import {
   ANIMATION_MODES,
   buildGroupMatchPairingSteps,
-  buildPairingSteps,
-  buildPairingWaitingPlayers,
   buildRandomDrawSteps,
   buildSnakeSteps,
 } from "../../components/tournament/animation/animationUtils.js";
@@ -76,17 +72,14 @@ import { useTournamentAnimation } from "../../components/tournament/animation/us
 import { useTournamentFlowOrchestrator } from "../../components/tournament/animation/useTournamentFlowOrchestrator.js";
 import { createOfficialFlowAdapters } from "../../components/tournament/animation/tournamentFlowAdapters.js";
 import {
-  BroadcastLiveIndicator,
   BroadcastSetupDialog,
   BroadcastVodResultAlert,
   isTournamentBroadcastEnabled,
   useTournamentBroadcast,
 } from "../../features/tournament-broadcast/index.js";
-import { resolveOfficialOpenPipeline } from "../../components/tournament/animation/shared/tournamentFlowConfig.js";
 import { PAIRING_CONTROL_MODES } from "../../components/tournament/animation/pairing/usePairingSequence.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
-import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
 import TournamentPlayerPickerPanel from "../../components/tournament/TournamentPlayerPickerPanel.jsx";
 import TournamentPlayerQuickAddDialog from "../../components/tournament/TournamentPlayerQuickAddDialog.jsx";
 import {
@@ -107,8 +100,6 @@ import { canViewPlayerSkillLevel } from "../../auth/rbac.js";
 import { useTenant } from "../../context/TenantContext.jsx";
 import {
   INTERVENTION_PHASE,
-  TournamentEntryEditor,
-  TournamentGroupEditor,
   usePairingIntervention,
 } from "../../features/pairing-intervention/index.js";
 import {
@@ -138,12 +129,18 @@ import {
   OFFICIAL_STAGE_ID,
   deriveOfficialOrganizerStages,
   deriveOfficialNextAction,
-  buildOfficialDrawBlockMessage,
 } from "../../features/individual-tournament/engines/officialOrganizerWorkflowEngine.js";
 import {
   getOfficialCompetitionSettings,
   OFFICIAL_REGISTRATION_MODE,
 } from "../../features/individual-tournament/engines/officialTournamentSettingsEngine.js";
+import {
+  formOfficialIndividualPairs,
+  assertOfficialGroupDrawAllowed,
+  projectOfficialDrawSubsteps,
+  getOfficialGroupDrawUnits,
+  preserveOfficialRegistrationOnGroupDrawEvent,
+} from "../../features/individual-tournament/engines/officialDrawOrchestrationEngine.js";
 import OfficialTournamentControlCenter, {
   OfficialTournamentStageCard,
 } from "../../components/tournament/official/OfficialTournamentControlCenter.jsx";
@@ -176,6 +173,10 @@ export default function OfficialTournamentSetup() {
   const [activeStageId, setActiveStageId] = useState(OFFICIAL_STAGE_ID.SETTINGS);
   const [stageTouched, setStageTouched] = useState(false);
   const [drawBusy, setDrawBusy] = useState(false);
+  const [pairBusy, setPairBusy] = useState(false);
+  const [groupBusy, setGroupBusy] = useState(false);
+  const [registerBusy, setRegisterBusy] = useState(false);
+  const [selectedIndividualPlayerId, setSelectedIndividualPlayerId] = useState("");
   const [localRevision, setLocalRevision] = useState(0);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
@@ -189,7 +190,6 @@ export default function OfficialTournamentSetup() {
   const [splitUnits, setSplitUnits] = useState(true);
   const [registeredEntries, setRegisteredEntries] = useState([]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
-  const [sourceClubFilter, setSourceClubFilter] = useState(ALL_CLUBS_FILTER);
   const [previewEntries, setPreviewEntries] = useState([]);
   const [founderConstraints, setFounderConstraints] = useState([]);
   const [pairPlayerAId, setPairPlayerAId] = useState("");
@@ -542,6 +542,18 @@ export default function OfficialTournamentSetup() {
     return persistTournament({ events: nextEvents });
   };
 
+  const persistDrawMaterialization = async (drawEntries) => {
+    if (!savedEvent) {
+      return false;
+    }
+    const nextEvents = upsertOfficialEvent(savedEvents, {
+      ...savedEvent,
+      entries: savedEvent.entries || [],
+      drawEntries,
+    });
+    return persistTournament({ events: nextEvents });
+  };
+
   const pairingIntervention = usePairingIntervention({
     phase: INTERVENTION_PHASE.TOURNAMENT,
     tournamentStatus: tournament?.status,
@@ -646,32 +658,6 @@ export default function OfficialTournamentSetup() {
     }
     if (await persistTournament({ settings: result.tournament.settings })) {
       setMessage("Force redraw được phép. Bạn có thể random lại.");
-    }
-  };
-
-  const handleEntryInterventionApply = (result) => {
-    if (!result?.ok) {
-      return;
-    }
-    setPreviewEntries(result.entries);
-    if (savedEvent?.entries?.length) {
-      void persistEvent({ entries: result.entries });
-    }
-    setMessage("Super Admin đã cập nhật ghép cặp.");
-  };
-
-  const handleGroupInterventionApply = async (result) => {
-    if (!result?.ok) {
-      return;
-    }
-    if (
-      await persistEvent({
-        entries: result.entries,
-        groups: result.groups,
-        matches: result.matches,
-      })
-    ) {
-      setMessage("Super Admin đã cập nhật chia bảng và tạo lại lịch vòng bảng.");
     }
   };
 
@@ -891,118 +877,6 @@ export default function OfficialTournamentSetup() {
     return prepareLivePrivatePairingOptions(projected.prepareInput);
   };
 
-  const handleStartGuidedFlow = async () => {
-    setError(null);
-    setWarnings([]);
-    setMessage(null);
-
-    const prepared = await prepareOfficialPrivatePairing();
-
-    if (!prepared.ok) {
-      setError(prepared.error?.message || "Không thể bắt đầu trình chiếu theo quy tắc riêng.");
-      setWarnings(
-        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
-          (item) => item.code || item.message || String(item)
-        )
-      );
-      return;
-    }
-
-    guidedPairingRef.current = prepared;
-
-    if (broadcastFeatureEnabled && broadcast.shouldBroadcastWithFlow) {
-      const broadcastResult = await broadcast.startBroadcast();
-      if (broadcastResult?.ok === false) {
-        setError(broadcastResult.error || "Không thể bắt đầu phát live.");
-        return;
-      }
-    }
-
-    const pipeline = isAiBalance
-      ? undefined
-      : resolveOfficialOpenPipeline({
-          includeBracket: savedEvent ? canGenerateBracket(savedEvent).ok : true,
-        });
-
-    // Option A: confirm draw → persist entries/groups/matches before animation.
-    const ctx = {};
-    const validation = flowAdapters.validateStart?.(ctx);
-    if (validation && validation.ok === false) {
-      if (broadcastFeatureEnabled && broadcast.isLive) {
-        await broadcast.stopBroadcast();
-      }
-      setError(validation.error || "Không thể bắt đầu trình chiếu.");
-      return;
-    }
-
-    if (ctx.plan?.ok) {
-      const patch = isAiBalance
-        ? buildOfficialAiBalancePatch(tournament, ctx.plan)
-        : buildOfficialOpenPatch(tournament, ctx.plan);
-      if (!patch.ok) {
-        if (broadcastFeatureEnabled && broadcast.isLive) {
-          await broadcast.stopBroadcast();
-        }
-        setError(patch.error || "Không lưu được bảng đấu.");
-        return;
-      }
-
-      const saved = await persistTournament({
-        events: patch.events,
-        officialMode: isAiBalance ? OFFICIAL_MODE.AI_BALANCE : OFFICIAL_MODE.OPEN,
-        hostClubName: tournament.hostClubName || activeClub?.name || "",
-        status: TOURNAMENT_STATUS.READY,
-        settings: {
-          ...(tournament.settings || {}),
-          ...(isAiBalance
-            ? { aiBalance: { updatedAt: new Date().toISOString() } }
-            : {
-                openDraw: {
-                  splitUnits,
-                  drawScore: patch.drawScore,
-                  updatedAt: new Date().toISOString(),
-                },
-              }),
-        },
-      });
-
-      if (!saved) {
-        if (broadcastFeatureEnabled && broadcast.isLive) {
-          await broadcast.stopBroadcast();
-        }
-        return;
-      }
-
-      if (!isAiBalance) {
-        const created = recordDrawCreated(saved.tournament || tournament, patch.event?.groups || [], {
-          userId: user?.id,
-          actor: buildDrawActor(),
-          clubId: activeClubId,
-          before: summarizeGroups(savedEvent?.groups || []),
-        });
-        if (created.ok) {
-          await persistTournament({ settings: created.tournament.settings });
-        }
-      }
-
-      ctx.drawAlreadyPersisted = true;
-      if (patch.event?.id) {
-        setActiveEventId(patch.event.id);
-      }
-      setRegisteredEntries([]);
-      setPreviewEntries([]);
-      setWarnings(patch.warnings || []);
-    }
-
-    const result = flow.startFlow(ctx, { pipeline });
-    if (result?.ok === false) {
-      if (broadcastFeatureEnabled && broadcast.isLive) {
-        await broadcast.stopBroadcast();
-      }
-      setError(result.error || "Không thể bắt đầu trình chiếu.");
-    }
-  };
-
   const handleRefereeRosterChange = async (nextRoster) => {
     const result = await update(
       buildRefereeSettingsPatch(tournament, { roster: nextRoster })
@@ -1035,45 +909,21 @@ export default function OfficialTournamentSetup() {
     }
   };
 
-  const toggleAiPlayer = (playerId) => {
-    const key = String(playerId);
-    setSelectedPlayerIds((current) =>
-      current.includes(key) ? current.filter((id) => id !== key) : [...current, key]
-    );
-  };
-
-  const handleSelectAllAiPlayers = (playerIds = []) => {
-    setSelectedPlayerIds((current) => {
-      const merged = new Set([...current, ...playerIds.map(String)]);
-      return Array.from(merged);
-    });
-  };
-
-  const handleClearAllAiPlayers = () => {
-    setSelectedPlayerIds([]);
-  };
-
-  const handleQuickAddSaved = (player) => {
+  const handleQuickAddSaved = async (player) => {
     refreshClubs();
     setLocalRevision((value) => value + 1);
 
-    if (isAiBalance) {
-      setSelectedPlayerIds((current) =>
-        current.includes(String(player.id)) ? current : [...current, String(player.id)]
-      );
-      setMessage(`Đã thêm và chọn ${player.name}.`);
+    if (isIndividualRegistration) {
+      await registerPlayerEntry(player);
       return;
     }
 
-    if (!isAiBalance && isSingleEventType(eventType)) {
-      registerPlayerEntry(player);
-      return;
-    }
-
-    setMessage(`Đã thêm ${player.name}. Chọn VĐV trong dropdown để đăng ký cặp.`);
+    setSelectedIndividualPlayerId(String(player.id));
+    setMessage(`Đã thêm ${player.name}. Chọn VĐV rồi bấm Đăng ký.`);
   };
 
   const registerPlayerEntry = async (player) => {
+    if (registerBusy) return false;
     const validation = validateOpenRegistrationPlayers([player], eventType);
     if (!validation.ok) {
       setError(validation.errors.join(" "));
@@ -1091,85 +941,18 @@ export default function OfficialTournamentSetup() {
       return false;
     }
 
+    setRegisterBusy(true);
     const nextEntries = [...displayEntries, entry];
     setRegisteredEntries(nextEntries);
     const saved = await persistAcceptedEntries(nextEntries);
+    setRegisterBusy(false);
     if (!saved) {
       setRegisteredEntries(displayEntries);
       return false;
     }
+    setSelectedIndividualPlayerId("");
     setMessage(`Da dang ky ${player.name}.`);
     return true;
-  };
-
-  const handleRemoveSelectedAiPlayer = (playerId) => {
-    const key = String(playerId);
-    setSelectedPlayerIds((current) => current.filter((id) => id !== key));
-  };
-
-  const handleSourceClubFilterChange = (value) => {
-    setSourceClubFilter(value);
-    setSelectedPlayerIds([]);
-    setPreviewEntries([]);
-  };
-
-  const handleSuggestAiPairs = async () => {
-    setError(null);
-    setWarnings([]);
-
-    const prepared = await prepareOfficialPrivatePairing();
-
-    if (!prepared.ok) {
-      setError(prepared.error?.message || "Không thể ghép cặp theo quy tắc riêng.");
-      setWarnings(
-        (prepared.error?.fatalConflicts || prepared.error?.blockedByPolicy || []).map(
-          (item) => item.code || item.message || String(item)
-        )
-      );
-      return;
-    }
-
-    const pairingOptions = {
-      ...prepared.pairingOptions,
-      tournamentId,
-      eventId: savedEvent?.id || `event-${tournamentId}`,
-      pairingConstraints: founderConstraints,
-      competitionClass: COMPETITION_CLASS.OFFICIAL,
-    };
-
-    const entries = suggestBalancedEntriesFromIndividuals(selectedPlayers, eventType, pairingOptions);
-
-    applyConstraintWarnings(pairingOptions);
-
-    if (pairingOptions.privatePairingError) {
-      setError(pairingOptions.privatePairingError.message);
-      return;
-    }
-
-    if (entries.length === 0) {
-      setError("Khong tao duoc cap/VDV nao. Kiem tra gioi tinh va so luong da chon.");
-      return;
-    }
-
-    anim.showAnimation(
-      {
-        animationMode: ANIMATION_MODES.PAIRING_REVEAL,
-        pairings: entries,
-        steps: buildPairingSteps(entries),
-        waitingPlayers: buildPairingWaitingPlayers(entries, selectedPlayers),
-        title: "Ghép cặp AI Balance",
-        subtitle: "Reveal từng cặp — danh sách chờ hiển thị từng VĐV",
-        revealItemLabel: "Cặp",
-      },
-      async () => {
-        setPreviewEntries(entries);
-        const saved = await persistAcceptedEntries(entries);
-        if (!saved) {
-          return;
-        }
-        setMessage(`Da de xuat ${entries.length} cap/VDV theo rating.`);
-      }
-    );
   };
 
   const handleBuildAiGroups = async () => {
@@ -1189,47 +972,18 @@ export default function OfficialTournamentSetup() {
       return false;
     }
 
-    let entries = previewEntries;
-    if (previewEntries.length === 0) {
-      const pairingOptions = {
-        ...prepared.pairingOptions,
-        tournamentId,
-        eventId: savedEvent?.id || `event-${tournamentId}`,
-        pairingConstraints: founderConstraints,
-        competitionClass: COMPETITION_CLASS.OFFICIAL,
-      };
-
-      const competition = getOfficialCompetitionSettings(tournament);
-      const eligibleForPairing =
-        competition.registrationMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL
-          ? (() => {
-              const gate = buildOfficialDrawBlockMessage(
-                savedEvent?.entries || displayEntries,
-                tournament,
-                2
-              );
-              const playerIds = new Set();
-              (gate.eligible || []).forEach((entry) => {
-                (entry.playerIds || []).forEach((id) => playerIds.add(String(id)));
-              });
-              const fromEntries = flowPlayers.filter((p) => playerIds.has(String(p.id)));
-              return fromEntries.length > 0 ? fromEntries : selectedPlayers;
-            })()
-          : selectedPlayers;
-
-      entries = suggestBalancedEntriesFromIndividuals(
-        eligibleForPairing,
-        eventType,
-        pairingOptions
-      );
-
-      applyConstraintWarnings(pairingOptions);
-
-      if (pairingOptions.privatePairingError) {
-        setError(pairingOptions.privatePairingError.message);
-        return false;
-      }
+    const groupGate = assertOfficialGroupDrawAllowed(tournament, savedEvent?.id || "");
+    if (!groupGate.ok) {
+      setError(groupGate.error);
+      return false;
     }
+
+    const drawUnits = getOfficialGroupDrawUnits(tournament, savedEvent?.id || "");
+    if (!drawUnits.ok || (drawUnits.units || []).length < 2) {
+      setError(drawUnits.error || "Chưa có cặp để chia bảng.");
+      return false;
+    }
+    const entries = drawUnits.units;
 
     const plan = buildOfficialAiBalancePlan({
       tournament,
@@ -1268,10 +1022,15 @@ export default function OfficialTournamentSetup() {
       setError(patch.error || "Khong luu duoc bang dau.");
       return false;
     }
+    const preservedAiEvent = preserveOfficialRegistrationOnGroupDrawEvent(
+      savedEvent,
+      patch.event
+    );
+    const preservedAiEvents = upsertOfficialEvent(patch.events, preservedAiEvent);
 
     // Option A: durable authority before animation (presentation only).
     const saved = await persistTournament({
-      events: patch.events,
+      events: preservedAiEvents,
       officialMode: OFFICIAL_MODE.AI_BALANCE,
       status: TOURNAMENT_STATUS.READY,
       settings: {
@@ -1317,11 +1076,16 @@ export default function OfficialTournamentSetup() {
     const player =
       playerOverride ||
       flowPlayers.find((item) => String(item.id) === String(playerId));
-    if (!player) {
+    if (!player || registerBusy) {
       return;
     }
 
-    registerPlayerEntry(player);
+    return registerPlayerEntry(player);
+  };
+
+  const handleSelectIndividualCandidate = (playerId) => {
+    const key = String(playerId || "");
+    setSelectedIndividualPlayerId((current) => (current === key ? "" : key));
   };
 
   const handlePairPlayerPick = (playerId) => {
@@ -1352,6 +1116,7 @@ export default function OfficialTournamentSetup() {
   };
 
   const handleRegisterPair = async () => {
+    if (registerBusy) return;
     setError(null);
     const playerA = flowPlayers.find((item) => String(item.id) === String(pairPlayerAId));
     const playerB = flowPlayers.find((item) => String(item.id) === String(pairPlayerBId));
@@ -1388,10 +1153,12 @@ export default function OfficialTournamentSetup() {
     }
 
     const nextEntries = [...displayEntries, entry];
+    setRegisterBusy(true);
     setRegisteredEntries(nextEntries);
     setPairPlayerAId("");
     setPairPlayerBId("");
     const saved = await persistAcceptedEntries(nextEntries);
+    setRegisterBusy(false);
     if (!saved) {
       setRegisteredEntries(displayEntries);
       return;
@@ -1408,6 +1175,79 @@ export default function OfficialTournamentSetup() {
     }
   };
 
+  const handleFormOfficialPairs = async () => {
+    setError(null);
+    setWarnings([]);
+    setMessage(null);
+    setPairBusy(true);
+    try {
+      const prepared = await prepareOfficialPrivatePairing();
+      if (!prepared.ok) {
+        const msg = prepared.error?.message || "Không ghép được cặp.";
+        setError(msg);
+        return { ok: false, error: msg };
+      }
+      const pairingOptions = {
+        ...prepared.pairingOptions,
+        tournamentId,
+        eventId: savedEvent?.id || `event-${tournamentId}`,
+        pairingConstraints: founderConstraints,
+        competitionClass: COMPETITION_CLASS.OFFICIAL,
+      };
+      const pairingFn = isAiBalance
+        ? suggestBalancedEntriesFromIndividuals
+        : suggestEntriesFromPlayers;
+      const result = formOfficialIndividualPairs({
+        tournament,
+        eventId: savedEvent?.id || "",
+        players: flowPlayers,
+        eventType,
+        pairingFn,
+        pairingOptions,
+      });
+      applyConstraintWarnings(pairingOptions);
+      if (!result.ok) {
+        setError(result.error);
+        return { ok: false, error: result.error };
+      }
+      const saved = await persistDrawMaterialization(result.drawEntries || result.pairs);
+      if (!saved) {
+        return { ok: false, error: "Không lưu được cặp." };
+      }
+      const readback = projectOfficialDrawSubsteps(
+        saved.tournament || tournament,
+        result.event?.id || savedEvent?.id || ""
+      );
+      if (!readback.pairingComplete || readback.groupsCreated) {
+        return {
+          ok: false,
+          error: "Lưu cặp xong nhưng đọc lại chưa thấy danh sách cặp dùng được.",
+        };
+      }
+      setMessage(`Đã ghép ${result.pairs.length} cặp. Kiểm tra danh sách trước khi chia bảng.`);
+      return { ok: true, pairs: result.pairs };
+    } finally {
+      setPairBusy(false);
+    }
+  };
+
+  const handleRunGroupDraw = async () => {
+    setGroupBusy(true);
+    setDrawBusy(true);
+    try {
+      const ok = isAiBalance ? await handleBuildAiGroups() : await handleDrawGroups(false);
+      if (!ok) {
+        return { ok: false, error: "Chia bảng thất bại — chưa công bố bảng." };
+      }
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err?.message || "Chia bảng thất bại." };
+    } finally {
+      setGroupBusy(false);
+      setDrawBusy(false);
+    }
+  };
+
   const handleDrawGroups = async (isRedraw = false) => {
     setError(null);
     setWarnings([]);
@@ -1421,56 +1261,18 @@ export default function OfficialTournamentSetup() {
       }
     }
 
-    const drawGate = buildOfficialDrawBlockMessage(displayEntries, tournament, 2);
-    if (!drawGate.ok) {
-      setError(drawGate.error);
+    const groupGate = assertOfficialGroupDrawAllowed(tournament, savedEvent?.id || "");
+    if (!groupGate.ok) {
+      setError(groupGate.error);
       return false;
     }
-    let eligibleEntries = drawGate.eligible;
 
-    const competition = getOfficialCompetitionSettings(tournament);
-    const needsIndividualPairFormation =
-      competition.registrationMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL &&
-      !isSingleEventType(eventType) &&
-      eligibleEntries.every((entry) => (entry.playerIds || []).length <= 1);
-
-    if (needsIndividualPairFormation) {
-      const preparedPairing = await prepareOfficialPrivatePairing();
-      if (!preparedPairing.ok) {
-        setError(preparedPairing.error?.message || "Không ghép được cặp.");
-        return false;
-      }
-      const playerIds = new Set();
-      eligibleEntries.forEach((entry) => {
-        (entry.playerIds || []).forEach((id) => playerIds.add(String(id)));
-      });
-      const individuals = flowPlayers.filter((p) => playerIds.has(String(p.id)));
-      if (individuals.length < 2) {
-        setError("Cần ít nhất 2 VĐV đủ điều kiện để ghép cặp.");
-        return false;
-      }
-      const pairingOptions = {
-        ...preparedPairing.pairingOptions,
-        tournamentId,
-        eventId: savedEvent?.id || `event-${tournamentId}`,
-        pairingConstraints: founderConstraints,
-        competitionClass: COMPETITION_CLASS.OFFICIAL,
-      };
-      eligibleEntries = suggestEntriesFromPlayers(individuals, eventType, pairingOptions);
-      if (pairingOptions.privatePairingError) {
-        setError(pairingOptions.privatePairingError.message);
-        return false;
-      }
-      if (!eligibleEntries.length) {
-        setError("Ghép cặp thất bại — không tạo được cặp hợp lệ.");
-        return false;
-      }
-    }
-
-    if (eligibleEntries.length < 2) {
-      setError("Can it nhat 2 doi/VDV da dang ky.");
+    const drawUnits = getOfficialGroupDrawUnits(tournament, savedEvent?.id || "");
+    if (!drawUnits.ok || (drawUnits.units || []).length < 2) {
+      setError(drawUnits.error || "Chưa có cặp để chia bảng.");
       return false;
     }
+    const eligibleEntries = drawUnits.units;
 
     const prepared = await prepareOfficialPrivatePairing();
 
@@ -1516,12 +1318,17 @@ export default function OfficialTournamentSetup() {
       setError(patch.error || "Khong luu duoc bang dau.");
       return false;
     }
+    const preservedOpenEvent = preserveOfficialRegistrationOnGroupDrawEvent(
+      savedEvent,
+      patch.event
+    );
+    const preservedOpenEvents = upsertOfficialEvent(patch.events, preservedOpenEvent);
 
     const steps = buildRandomDrawSteps(plan.event.groups);
 
     // Option A: durable authority before animation (presentation only).
     const saved = await persistTournament({
-      events: patch.events,
+      events: preservedOpenEvents,
       officialMode: OFFICIAL_MODE.OPEN,
       hostClubName: tournament.hostClubName || activeClub?.name || "",
       status: TOURNAMENT_STATUS.READY,
@@ -1550,7 +1357,6 @@ export default function OfficialTournamentSetup() {
     }
 
     pendingPlanRef.current = plan;
-    setRegisteredEntries([]);
     setWarnings(patch.warnings || []);
     if (patch.event?.id) {
       setActiveEventId(patch.event.id);
@@ -1951,39 +1757,37 @@ export default function OfficialTournamentSetup() {
         ) : null}
 
         {activeStageId === OFFICIAL_STAGE_ID.DRAW ? (
-          <OfficialTournamentDrawScreen
-            tournament={tournament}
-            eventId={savedEvent?.id || ""}
-            groupCount={groupCount}
-            canManage
-            drawBusy={drawBusy}
-            onStartDraw={async () => {
-              setDrawBusy(true);
-              try {
-                const competition = getOfficialCompetitionSettings(tournament);
-                let ok = false;
-                if (competition.registrationMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL) {
-                  if (isAiBalance) {
-                    ok = await handleBuildAiGroups();
-                  } else {
-                    ok = await handleDrawGroups(false);
-                  }
-                } else if (isAiBalance) {
-                  ok = await handleBuildAiGroups();
-                } else {
-                  ok = await handleDrawGroups(false);
+          <Stack spacing={2}>
+            {isAiBalance ? (
+              <FounderPairingConstraintsPanel
+                constraints={founderConstraints}
+                players={flowPlayers}
+                onChange={setFounderConstraints}
+                onSave={handleSaveFounderConstraints}
+              />
+            ) : (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={splitUnits}
+                    onChange={(event) => setSplitUnits(event.target.checked)}
+                  />
                 }
-                if (!ok) {
-                  return { ok: false, error: "Bốc thăm thất bại — chưa công bố bảng." };
-                }
-                return { ok: true };
-              } catch (err) {
-                return { ok: false, error: err?.message || "Bốc thăm thất bại." };
-              } finally {
-                setDrawBusy(false);
-              }
-            }}
-          />
+                label="Tách đơn vị/công ty khi chia bảng"
+              />
+            )}
+            <OfficialTournamentDrawScreen
+              tournament={tournament}
+              eventId={savedEvent?.id || ""}
+              groupCount={groupCount}
+              players={flowPlayers}
+              canManage
+              pairBusy={pairBusy}
+              groupBusy={groupBusy || drawBusy}
+              onFormPairs={handleFormOfficialPairs}
+              onGroupDraw={handleRunGroupDraw}
+            />
+          </Stack>
         ) : null}
 
         {activeStageId === OFFICIAL_STAGE_ID.GROUP_STAGE ? (
@@ -2142,20 +1946,7 @@ export default function OfficialTournamentSetup() {
       ) : (
       <>
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        {isAiBalance ? (
-          <Grid size={{ xs: 12 }}>
-            <FounderPairingConstraintsPanel
-              constraints={founderConstraints}
-              players={flowPlayers}
-              onChange={setFounderConstraints}
-              onSave={handleSaveFounderConstraints}
-            />
-          </Grid>
-        ) : null}
-      </Grid>
-
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <FormControl fullWidth size="small">
             <InputLabel id="official-reg-event-type-label" shrink>
               Nội dung
@@ -2175,33 +1966,16 @@ export default function OfficialTournamentSetup() {
             </Select>
           </FormControl>
         </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
-          {!isAiBalance && (
-            <TextField
-              fullWidth
-              size="small"
-              label="CLB đại diện (mặc định)"
-              value={entryClubName}
-              InputLabelProps={{ shrink: true }}
-              onChange={(event) => setEntryClubName(event.target.value)}
-              placeholder={activeClub?.name || "CLB chủ nhà"}
-            />
-          )}
-        </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
-          {!isAiBalance ? (
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={splitUnits}
-                  onChange={(event) => setSplitUnits(event.target.checked)}
-                />
-              }
-              label="Tách đơn vị/công ty"
-            />
-          ) : (
-            <Chip label="Snake seeding theo hạt giống" color="info" />
-          )}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            fullWidth
+            size="small"
+            label="CLB đại diện (mặc định)"
+            value={entryClubName}
+            InputLabelProps={{ shrink: true }}
+            onChange={(event) => setEntryClubName(event.target.value)}
+            placeholder={activeClub?.name || "CLB chủ nhà"}
+          />
         </Grid>
       </Grid>
 
@@ -2211,155 +1985,6 @@ export default function OfficialTournamentSetup() {
         </Alert>
       ) : null}
 
-      {isAiBalance ? (
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, lg: 4 }}>
-            <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
-              <TournamentPlayerPickerPanel
-                title="Chọn VĐV đăng ký cá nhân"
-                players={flowPlayers}
-                selectedIds={selectedPlayerIds}
-                onToggle={toggleAiPlayer}
-                onSelectAll={handleSelectAllAiPlayers}
-                onClearAll={handleClearAllAiPlayers}
-                clubFilter={sourceClubFilter}
-                onClubFilterChange={handleSourceClubFilterChange}
-                clubs={clubs}
-                genderFilter={pickerGenderFilter}
-                onGenderFilterChange={setPickerGenderFilter}
-                search={pickerSearch}
-                onSearchChange={setPickerSearch}
-                eventType={eventType}
-                onAddNew={() => setQuickAddOpen(true)}
-                showSkillLevel={canViewSkillInSetup}
-                emptyMessage={
-                  sourceClubFilter === ALL_CLUBS_FILTER
-                    ? "Chưa có VĐV trong tenant."
-                    : "CLB này chưa có VĐV."
-                }
-              />
-            </Paper>
-            <Stack spacing={1}>
-              <Button
-                fullWidth
-                variant="contained"
-                color="secondary"
-                onClick={handleStartGuidedFlow}
-                disabled={selectedPlayerIds.length === 0}
-              >
-                Bắt đầu trình chiếu
-              </Button>
-              {broadcastFeatureEnabled ? (
-                <>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    onClick={() => setBroadcastDialogOpen(true)}
-                  >
-                    Cài đặt phát live
-                  </Button>
-                  {broadcast.isLive ? (
-                    <BroadcastLiveIndicator status={broadcast.status} error={broadcast.error} />
-                  ) : null}
-                </>
-              ) : null}
-              <Stack direction="row" spacing={1}>
-                <Button fullWidth variant="outlined" onClick={handleSuggestAiPairs}>
-                  Đề xuất ghép cặp
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  disabled
-                  title="Dùng bước Bốc thăm"
-                >
-                  Chia bảng → bước Bốc thăm
-                </Button>
-              </Stack>
-            </Stack>
-          </Grid>
-          <Grid size={{ xs: 12, lg: 3 }}>
-            <TournamentSelectedPlayersPanel
-              title="VĐV đã chọn"
-              players={selectedPlayers}
-              onRemove={handleRemoveSelectedAiPlayer}
-              showClubName
-              emptyMessage="Chưa chọn VĐV nào. Bấm tên VĐV bên trái để thêm."
-            />
-          </Grid>
-          <Grid size={{ xs: 12, lg: 5 }}>
-            <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-                Cặp / VĐV theo rating ({displayEntries.length})
-              </Typography>
-              <Stack spacing={1} sx={{ maxHeight: 360, overflow: "auto" }}>
-                {displayEntries.map((entry) => (
-                  <Paper key={entry.id} variant="outlined" sx={{ p: 1 }}>
-                    <Stack direction="row" justifyContent="space-between" spacing={1}>
-                      <Typography variant="body2" fontWeight="bold">
-                        {entry.name}
-                      </Typography>
-                      <Chip size="small" label={`Seed ${entry.seed || "-"}`} />
-                    </Stack>
-                    <Typography variant="caption" color="text.secondary">
-                      Rating đội: {entry.rating}
-                    </Typography>
-                  </Paper>
-                ))}
-              </Stack>
-            </Paper>
-            {isAiBalance ? (
-              <TournamentEntryEditor
-                entries={displayEntries}
-                players={flowPlayers}
-                eventType={eventType}
-                canIntervene={canInterveneSetup && displayEntries.length > 0}
-                tournamentId={tournamentId}
-                eventId={savedEvent?.id || ""}
-                onApply={handleEntryInterventionApply}
-                onAudit={pairingIntervention.auditEntryChange}
-              />
-            ) : null}
-            <Paper variant="outlined" sx={{ p: 1.5 }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-                Bảng đấu ({savedEvent?.groups?.length || 0})
-              </Typography>
-              {!savedEvent?.groups?.length ? (
-                <Typography variant="body2" color="text.secondary">
-                  Chọn VĐV, đề xuất ghép cặp rồi bấm &quot;Chia bảng seed&quot;.
-                </Typography>
-              ) : (
-                <Stack spacing={1}>
-                  {savedEvent.groups.map((group) => (
-                    <Paper key={group.id} variant="outlined" sx={{ p: 1.25 }}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Typography fontWeight="bold">{group.name}</Typography>
-                        <Chip
-                          size="small"
-                          label={`${group.entryIds?.length || 0} doi • ${group.matches?.length || 0} tran`}
-                        />
-                      </Stack>
-                      <Typography variant="caption" color="text.secondary">
-                        {(group.entries || []).map((entry) => entry.name).join(" | ")}
-                      </Typography>
-                    </Paper>
-                  ))}
-                </Stack>
-              )}
-            </Paper>
-            <TournamentGroupEditor
-              groups={savedEvent?.groups || []}
-              entries={savedEvent?.entries || displayEntries}
-              players={flowPlayers}
-              canIntervene={canInterveneSetup && (savedEvent?.groups?.length || 0) > 0}
-              tournamentId={tournamentId}
-              eventId={savedEvent?.id || ""}
-              onApply={handleGroupInterventionApply}
-              onAudit={pairingIntervention.auditGroupChange}
-            />
-          </Grid>
-        </Grid>
-      ) : (
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, lg: 5 }}>
           <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
@@ -2384,25 +2009,49 @@ export default function OfficialTournamentSetup() {
                   Chế độ đăng ký chưa xác định — không mở form đăng ký.
                 </Alert>
               ) : isIndividualRegistration ? (
-                <TournamentPlayerPickerPanel
-                  title=""
-                  players={flowPlayers}
-                  mode="register"
-                  onRegister={handleRegisterSingle}
-                  clubFilter={openClubFilter}
-                  onClubFilterChange={setOpenClubFilter}
-                  clubs={clubs}
-                  genderFilter={pickerGenderFilter}
-                  onGenderFilterChange={setPickerGenderFilter}
-                  search={pickerSearch}
-                  onSearchChange={setPickerSearch}
-                  eventType={eventType}
-                  excludePlayerIds={registeredPlayerIds}
-                  onAddNew={() => setQuickAddOpen(true)}
-                  showSkillLevel={canViewSkillInSetup}
-                  showSelectActions={false}
-                  emptyMessage="Không có VĐV phù hợp hoặc tất cả đã đăng ký."
-                />
+                <Stack spacing={1.5}>
+                  <TournamentPlayerPickerPanel
+                    title=""
+                    players={flowPlayers}
+                    mode="select"
+                    selectedIds={
+                      selectedIndividualPlayerId ? [selectedIndividualPlayerId] : []
+                    }
+                    onToggle={handleSelectIndividualCandidate}
+                    clubFilter={openClubFilter}
+                    onClubFilterChange={setOpenClubFilter}
+                    clubs={clubs}
+                    genderFilter={pickerGenderFilter}
+                    onGenderFilterChange={setPickerGenderFilter}
+                    search={pickerSearch}
+                    onSearchChange={setPickerSearch}
+                    eventType={eventType}
+                    excludePlayerIds={registeredPlayerIds}
+                    onAddNew={() => setQuickAddOpen(true)}
+                    showSkillLevel={canViewSkillInSetup}
+                    showSelectActions={false}
+                    emptyMessage="Không có VĐV phù hợp hoặc tất cả đã đăng ký."
+                  />
+                  {selectedIndividualPlayerId ? (
+                    <Typography variant="body2">
+                      Đã chọn:{" "}
+                      {flowPlayers.find(
+                        (p) => String(p.id) === String(selectedIndividualPlayerId)
+                      )?.name || selectedIndividualPlayerId}
+                    </Typography>
+                  ) : (
+                    <Typography variant="caption" color="text.secondary">
+                      Bấm một VĐV để chọn, rồi Đăng ký. Chọn không lưu giải.
+                    </Typography>
+                  )}
+                  <Button
+                    variant="contained"
+                    disabled={!selectedIndividualPlayerId || registerBusy}
+                    onClick={() => handleRegisterSingle(selectedIndividualPlayerId)}
+                  >
+                    {registerBusy ? "Đang đăng ký…" : "Đăng ký VĐV"}
+                  </Button>
+                </Stack>
               ) : (
                 <Stack spacing={1.5}>
                   <TournamentPlayerPickerPanel
@@ -2469,6 +2118,7 @@ export default function OfficialTournamentSetup() {
                     variant="contained"
                     onClick={handleRegisterPair}
                     disabled={
+                      registerBusy ||
                       !pairPlayerAId ||
                       !pairPlayerBId ||
                       String(pairPlayerAId) === String(pairPlayerBId)
@@ -2495,36 +2145,6 @@ export default function OfficialTournamentSetup() {
             )}
           </Paper>
 
-          <Stack spacing={1}>
-            <Button
-              fullWidth
-              variant="contained"
-              color="secondary"
-              onClick={handleStartGuidedFlow}
-              disabled={displayEntries.length < 2}
-            >
-              Bắt đầu trình chiếu
-            </Button>
-            {broadcastFeatureEnabled ? (
-              <>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={() => setBroadcastDialogOpen(true)}
-                >
-                  Cài đặt phát live
-                </Button>
-                {broadcast.isLive ? (
-                  <BroadcastLiveIndicator status={broadcast.status} error={broadcast.error} />
-                ) : null}
-              </>
-            ) : null}
-            <Stack direction="row" spacing={1}>
-              <Button fullWidth variant="outlined" disabled title="Dùng bước Bốc thăm">
-                Chia bảng → bước Bốc thăm
-              </Button>
-            </Stack>
-          </Stack>
         </Grid>
 
         <Grid size={{ xs: 12, lg: 7 }}>
@@ -2576,7 +2196,6 @@ export default function OfficialTournamentSetup() {
           </Paper>
         </Grid>
       </Grid>
-      )}
 
       {bracketAdvanceAnim && (
         <Box
