@@ -4,6 +4,12 @@
  */
 
 import {
+  appendScoreLogToMatch,
+  createScoreLogEntry,
+  SCORE_LOG_ACTION,
+  SCORE_LOG_SOURCE,
+} from "../../../models/tournament/scoreLog.js";
+import {
   DAILY_PLAY_ACTIVE_MATCH_STATUSES,
   DAILY_PLAY_CODE,
   DAILY_PLAY_LEASE_ACTIVE,
@@ -296,16 +302,40 @@ export function resolveCreateMatchCount({
   };
 }
 
+export function acceptDailyScoreFieldInput(raw) {
+  if (raw == null || raw === "") return "";
+  const text = String(raw);
+  if (!/^\d*$/.test(text)) return null;
+  return text;
+}
+
+export function parseNonNegativeIntegerScore(value) {
+  if (typeof value === "number") {
+    if (!Number.isInteger(value) || value < 0 || !Number.isFinite(value)) {
+      return { ok: false };
+    }
+    return { ok: true, value };
+  }
+  if (value == null) return { ok: false };
+  const text = String(value).trim();
+  if (text === "" || !/^\d+$/.test(text)) return { ok: false };
+  const parsed = Number(text);
+  if (!Number.isInteger(parsed) || parsed < 0) return { ok: false };
+  return { ok: true, value: parsed };
+}
+
 export function validateScoreInput(scoreA, scoreB) {
-  const a = Number(scoreA);
-  const b = Number(scoreB);
-  if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0) {
+  const parsedA = parseNonNegativeIntegerScore(scoreA);
+  const parsedB = parseNonNegativeIntegerScore(scoreB);
+  if (!parsedA.ok || !parsedB.ok) {
     return {
       ok: false,
       code: DAILY_PLAY_CODE.INVALID_SCORE,
       error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_SCORE],
     };
   }
+  const a = parsedA.value;
+  const b = parsedB.value;
   if (a === b) {
     return {
       ok: false,
@@ -556,6 +586,101 @@ export function applySubmitScore(state, { matchId, scoreA, scoreB, leases = [] }
     match: completed,
     releasedCourtId,
     leases: nextLeases,
+  };
+}
+
+function appendCorrectionScoreLog(match, { oldScoreA, oldScoreB, scoreA, scoreB, note }) {
+  let next = match;
+  if (!Array.isArray(next.scoreLog) || next.scoreLog.length === 0) {
+    next = appendScoreLogToMatch(
+      next,
+      createScoreLogEntry({
+        source: SCORE_LOG_SOURCE.DIRECTOR,
+        action: SCORE_LOG_ACTION.FINALIZED,
+        actorName: "Hệ thống",
+        matchId: next.id,
+        oldScoreA: 0,
+        oldScoreB: 0,
+        scoreA: oldScoreA,
+        scoreB: oldScoreB,
+        note: "Điểm gốc khi hoàn tất",
+      })
+    );
+  }
+  return appendScoreLogToMatch(
+    next,
+    createScoreLogEntry({
+      source: SCORE_LOG_SOURCE.DIRECTOR,
+      action: SCORE_LOG_ACTION.ADMIN_OVERRIDE,
+      actorName: "BTC",
+      matchId: next.id,
+      oldScoreA,
+      oldScoreB,
+      scoreA,
+      scoreB,
+      note: note || "Sửa điểm trận đã hoàn tất",
+    })
+  );
+}
+
+export function applyCorrectScore(state, { matchId, scoreA, scoreB, note = "", leases = [] }) {
+  const next = normalizeDailyPlayCanonicalState(state);
+  const index = next.matches.findIndex((item) => item.id === String(matchId));
+  if (index < 0) {
+    return { ok: false, code: DAILY_PLAY_CODE.NOT_FOUND, error: "Không tìm thấy trận." };
+  }
+
+  const current = next.matches[index];
+  const score = validateScoreInput(scoreA, scoreB);
+  if (!score.ok) return score;
+
+  if (current.status !== "completed") {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.MATCH_NOT_COMPLETED,
+      error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.MATCH_NOT_COMPLETED],
+    };
+  }
+
+  if (Number(current.scoreA) === score.scoreA && Number(current.scoreB) === score.scoreB) {
+    return {
+      ok: true,
+      replay: true,
+      state: next,
+      match: current,
+      leases,
+      ratingVprApplied: false,
+    };
+  }
+
+  const corrected = appendCorrectionScoreLog(
+    {
+      ...current,
+      scoreA: score.scoreA,
+      scoreB: score.scoreB,
+      winner: score.winnerSide,
+      winnerSide: score.winnerSide,
+      status: "completed",
+      correctedAt: new Date().toISOString(),
+    },
+    {
+      oldScoreA: Number(current.scoreA),
+      oldScoreB: Number(current.scoreB),
+      scoreA: score.scoreA,
+      scoreB: score.scoreB,
+      note,
+    }
+  );
+
+  const matches = [...next.matches];
+  matches[index] = corrected;
+
+  return {
+    ok: true,
+    state: bumpRevision({ ...next, matches }),
+    match: corrected,
+    leases,
+    ratingVprApplied: false,
   };
 }
 

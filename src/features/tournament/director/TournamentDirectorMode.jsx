@@ -28,6 +28,7 @@ export default function TournamentDirectorMode() {
     players,
     courts,
     isDaily,
+    dailySession,
     initialLoading,
     tournamentLoadError,
     savedEvents,
@@ -47,6 +48,8 @@ export default function TournamentDirectorMode() {
     setError,
     scoreDialog,
     setScoreDialog,
+    setScoreCorrectionMode,
+    scoreCorrectionMode,
     scoreA,
     setScoreA,
     scoreB,
@@ -68,6 +71,7 @@ export default function TournamentDirectorMode() {
     handleCancelMatch,
     handleToggleCourt,
     handleOpenScore,
+    handleOpenCorrectScore,
     handleDisputeResetLive,
     handleSubmitScore,
     handleCourtRefereeChange,
@@ -153,6 +157,7 @@ export default function TournamentDirectorMode() {
         onStartMatch={handleStartMatch}
         onCancelMatch={handleCancelMatch}
         onOpenScore={handleOpenScore}
+        onCorrectScore={handleOpenCorrectScore}
         onOpenRefereeDialog={handleOpenRefereeDialog}
         onOpenAuditHistory={handleOpenAuditHistory}
         hasSupabaseConfig={hasSupabaseConfig()}
@@ -179,10 +184,16 @@ export default function TournamentDirectorMode() {
         scoreA={scoreA}
         scoreB={scoreB}
         scoreNote={scoreNote}
+        isCorrection={Boolean(isDaily && scoreCorrectionMode)}
+        mutating={Boolean(isDaily && dailySession?.mutating)}
+        scoreError={isDaily ? error : null}
         onScoreAChange={setScoreA}
         onScoreBChange={setScoreB}
         onScoreNoteChange={setScoreNote}
-        onClose={() => setScoreDialog(null)}
+        onClose={() => {
+          setScoreDialog(null);
+          setScoreCorrectionMode(false);
+        }}
         onSubmit={handleSubmitScore}
         onDisputeReset={handleDisputeResetLive}
       />

@@ -1,5 +1,6 @@
 /**
  * useDailyPlayCanonicalSession — authoritative readback + mutation orchestration.
+ * DP-13: hidden tabs skip routine poll; visibility resume is one silent get_state.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -8,6 +9,14 @@ import { DAILY_PLAY_CODE, DAILY_PLAY_MESSAGES } from "./dailyPlayCodes.js";
 import { getDailyPlayCanonicalService } from "./dailyPlayCanonicalService.js";
 import { emptyDailyPlayState } from "./dailyPlayCanonicalDomain.js";
 import { normalizeDailyPlayServerSnapshot } from "./normalizeDailyPlayServerSnapshot.js";
+import {
+  createDailyPlayRefreshFence,
+  DAILY_PLAY_REFRESH_REASON,
+  isDocumentHidden,
+  isSilentRefreshReason,
+  shouldReplaceCanonicalSnapshot,
+  shouldSkipRoutinePoll,
+} from "./dailyPlaySessionRefresh.js";
 
 function mapConflict(result) {
   if (result?.code === DAILY_PLAY_CODE.VERSION_CONFLICT) {
@@ -20,6 +29,13 @@ function mapConflict(result) {
   return result;
 }
 
+function resolveRefreshReason({ background, mutationCommitted, reason } = {}) {
+  if (reason) return reason;
+  if (mutationCommitted) return DAILY_PLAY_REFRESH_REASON.MUTATION;
+  if (background) return DAILY_PLAY_REFRESH_REASON.BACKGROUND;
+  return DAILY_PLAY_REFRESH_REASON.INITIAL;
+}
+
 export function useDailyPlayCanonicalSession({
   tenantId,
   clubId,
@@ -30,33 +46,42 @@ export function useDailyPlayCanonicalSession({
   const service = getDailyPlayCanonicalService();
   const [state, setState] = useState(null);
   const [loading, setLoading] = useState(Boolean(enabled && tournamentId));
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [mutating, setMutating] = useState(false);
   const mountedRef = useRef(true);
   const hasSnapshotRef = useRef(false);
   const revisionRef = useRef(0);
   const mutatingRef = useRef(false);
+  const signatureRef = useRef("");
+  const fenceRef = useRef(null);
+  if (!fenceRef.current) {
+    fenceRef.current = createDailyPlayRefreshFence();
+  }
 
   const applySnapshot = useCallback((snapshot) => {
-    if (!mountedRef.current || !snapshot?.ok) return;
+    if (!mountedRef.current || !snapshot?.ok) return false;
     const normalized = normalizeDailyPlayServerSnapshot(snapshot);
-    if (!normalized.ok) return;
+    if (!normalized.ok) return false;
+    const decision = shouldReplaceCanonicalSnapshot(signatureRef.current, normalized);
     hasSnapshotRef.current = true;
     revisionRef.current = Number(normalized.revision || 0);
+    if (!decision.replace) return false;
+    signatureRef.current = decision.signature;
     setState(normalized);
     setError(null);
+    return true;
   }, []);
 
   const refresh = useCallback(
     async (options = {}) => {
-      const background = options.background === true;
+      const reason = resolveRefreshReason(options);
+      const silent = isSilentRefreshReason(reason) || options.background === true;
       if (!enabled || !tenantId || !clubId || !tournamentId) {
-        setState(null);
         hasSnapshotRef.current = false;
+        signatureRef.current = "";
         revisionRef.current = 0;
+        setState(null);
         setLoading(false);
-        setRefreshing(false);
         return {
           ok: false,
           code: DAILY_PLAY_CODE.VALIDATION,
@@ -64,56 +89,100 @@ export function useDailyPlayCanonicalSession({
         };
       }
 
-      // DP-03/DP-05: never flash full-page loading on poll / mutation readback.
-      if (background && hasSnapshotRef.current) {
-        setRefreshing(true);
-      } else if (!background) {
-        setLoading(true);
+      if (shouldSkipRoutinePoll(reason, isDocumentHidden())) {
+        return { ok: true, skipped: true, reason };
       }
 
-      const result = await service.getState({ tenantId, clubId, tournamentId });
-      if (!mountedRef.current) return result;
-
-      if (background && hasSnapshotRef.current) {
-        setRefreshing(false);
-      } else {
-        setLoading(false);
+      const fence = fenceRef.current;
+      const token = fence.begin(reason);
+      if (token.kind === "join") {
+        return token.promise;
+      }
+      if (token.waitFor) {
+        await token.waitFor;
       }
 
-      if (!result.ok) {
-        if (!background || !hasSnapshotRef.current) {
+      const isInitial = !hasSnapshotRef.current && !silent;
+      if (isInitial) setLoading(true);
+
+      try {
+        const snapshot = await service.getState({ tenantId, clubId, tournamentId });
+        if (!mountedRef.current) {
+          fence.finish(token, snapshot);
+          return snapshot;
+        }
+        if (!fence.isCurrent(token.generation)) {
+          fence.finish(token, snapshot);
+          return snapshot;
+        }
+        if (snapshot?.ok) {
+          applySnapshot(snapshot);
+        } else if (!silent && !hasSnapshotRef.current) {
           setError(
-            result.error ||
-              DAILY_PLAY_MESSAGES[result.code] ||
+            snapshot?.error ||
+              DAILY_PLAY_MESSAGES[snapshot?.code] ||
               "Lỗi tải Daily Play."
           );
         }
-        return result;
+        fence.finish(token, snapshot);
+        return snapshot;
+      } catch (caught) {
+        const failure = {
+          ok: false,
+          code: DAILY_PLAY_CODE.CLOUD_UNAVAILABLE,
+          error: String(caught?.message || caught),
+        };
+        if (mountedRef.current && !silent && !hasSnapshotRef.current) {
+          setError(failure.error);
+        }
+        fence.finish(token, failure);
+        return failure;
+      } finally {
+        if (mountedRef.current && isInitial) {
+          setLoading(false);
+        }
       }
-
-      applySnapshot(result);
-      return result;
     },
-    [enabled, tenantId, clubId, tournamentId, service, applySnapshot]
+    [applySnapshot, clubId, enabled, service, tenantId, tournamentId]
   );
 
   useEffect(() => {
     mountedRef.current = true;
     hasSnapshotRef.current = false;
     revisionRef.current = 0;
-    void refresh({ background: false });
+    signatureRef.current = "";
+    fenceRef.current = createDailyPlayRefreshFence();
+    void refresh({ background: false, reason: DAILY_PLAY_REFRESH_REASON.INITIAL });
     return () => {
       mountedRef.current = false;
     };
   }, [refresh]);
 
   useEffect(() => {
-    if (!enabled || !pollMs || pollMs < 3000) return undefined;
+    if (!enabled || !tournamentId || !pollMs || pollMs < 3000) return undefined;
     const timer = setInterval(() => {
-      void refresh({ background: true });
+      if (isDocumentHidden()) return;
+      void refresh({
+        background: true,
+        reason: DAILY_PLAY_REFRESH_REASON.POLL,
+      });
     }, pollMs);
     return () => clearInterval(timer);
-  }, [enabled, pollMs, refresh]);
+  }, [enabled, pollMs, refresh, tournamentId]);
+
+  useEffect(() => {
+    if (!enabled || !tournamentId) return undefined;
+    const onVisibility = () => {
+      if (typeof document === "undefined") return;
+      if (document.visibilityState !== "visible") return;
+      void refresh({
+        background: true,
+        reason: DAILY_PLAY_REFRESH_REASON.VISIBILITY_RESUME,
+      });
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [enabled, refresh, tournamentId]);
 
   const beginMutationGate = useCallback(() => {
     if (mutatingRef.current) {
@@ -148,7 +217,11 @@ export function useDailyPlayCanonicalSession({
           if (result.revision != null) {
             revisionRef.current = Number(result.revision);
           }
-          const readback = await refresh({ background: true });
+          const readback = await refresh({
+            background: true,
+            mutationCommitted: true,
+            reason: DAILY_PLAY_REFRESH_REASON.MUTATION,
+          });
           if (!mountedRef.current) return result;
           if (!readback?.ok) {
             const failure = {
@@ -171,7 +244,10 @@ export function useDailyPlayCanonicalSession({
         }
 
         if (result?.code === DAILY_PLAY_CODE.VERSION_CONFLICT) {
-          await refresh({ background: true });
+          await refresh({
+            background: true,
+            reason: DAILY_PLAY_REFRESH_REASON.MUTATION,
+          });
           setError(
             result.error || DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.VERSION_CONFLICT]
           );
@@ -222,7 +298,10 @@ export function useDailyPlayCanonicalSession({
           );
 
           if (!result?.ok) {
-            await refresh({ background: true });
+            await refresh({
+              background: true,
+              reason: DAILY_PLAY_REFRESH_REASON.MUTATION,
+            });
             const failure = {
               ok: false,
               code: result?.code || DAILY_PLAY_CODE.VALIDATION,
@@ -247,7 +326,11 @@ export function useDailyPlayCanonicalSession({
           succeeded.push(playerId);
         }
 
-        const readback = await refresh({ background: true });
+        const readback = await refresh({
+          background: true,
+          mutationCommitted: true,
+          reason: DAILY_PLAY_REFRESH_REASON.MUTATION,
+        });
         if (!readback?.ok) {
           const failure = {
             ok: false,
@@ -282,7 +365,7 @@ export function useDailyPlayCanonicalSession({
 
   return {
     loading,
-    refreshing,
+    refreshing: false,
     mutating,
     error,
     setError,
@@ -294,7 +377,7 @@ export function useDailyPlayCanonicalSession({
     courtStates: state?.courtStates || [],
     availableCourts: state?.availableCourts || [],
     hasCourtCapability: Boolean(state?.hasCourtCapability),
-    leases: state?.leases || [],
+    leases: state?.leases || state?.activeLeases || [],
     refresh,
     checkIn: (playerId) =>
       runMutation(() =>
@@ -342,6 +425,16 @@ export function useDailyPlayCanonicalSession({
           matchId,
           scoreA,
           scoreB,
+          expectedVersion: revisionRef.current,
+        })
+      ),
+    correctScore: (matchId, scoreA, scoreB, note = "") =>
+      runMutation(() =>
+        service.correctScore(scope, {
+          matchId,
+          scoreA,
+          scoreB,
+          note,
           expectedVersion: revisionRef.current,
         })
       ),

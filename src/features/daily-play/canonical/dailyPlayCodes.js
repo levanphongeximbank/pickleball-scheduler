@@ -11,6 +11,7 @@ export const DAILY_PLAY_RPC = Object.freeze({
   ASSIGN_COURT: "daily_play_assign_court",
   START_MATCH: "daily_play_start_match",
   SUBMIT_SCORE: "daily_play_submit_score",
+  CORRECT_SCORE: "daily_play_correct_score",
   CANCEL_MATCH: "daily_play_cancel_match",
   CHANGE_COURT: "daily_play_change_court",
 });
@@ -35,6 +36,7 @@ export const DAILY_PLAY_CODE = Object.freeze({
   MATCH_NOT_PLAYING: "MATCH_NOT_PLAYING",
   MATCH_NOT_ACTIVE: "MATCH_NOT_ACTIVE",
   MATCH_COMPLETED_IMMUTABLE: "MATCH_COMPLETED_IMMUTABLE",
+  MATCH_NOT_COMPLETED: "MATCH_NOT_COMPLETED",
   INVALID_MATCH_SHAPE: "INVALID_MATCH_SHAPE",
   INVALID_SCORE: "INVALID_SCORE",
   SCORE_CONFLICT: "SCORE_CONFLICT",
@@ -64,6 +66,8 @@ export const DAILY_PLAY_MESSAGES = Object.freeze({
     "Chỉ bắt đầu trận đã được xếp sân (assigned).",
   [DAILY_PLAY_CODE.MATCH_NOT_PLAYING]:
     "Chỉ nhập điểm khi trận đang chơi (playing).",
+  [DAILY_PLAY_CODE.MATCH_NOT_COMPLETED]:
+    "Chỉ sửa điểm khi trận đã hoàn tất (completed).",
   [DAILY_PLAY_CODE.INVALID_MATCH_SHAPE]:
     "Trận đôi phải có đúng 4 VĐV khác nhau (2 vs 2).",
   [DAILY_PLAY_CODE.INVALID_SCORE]:

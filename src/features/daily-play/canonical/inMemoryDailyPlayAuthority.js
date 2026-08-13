@@ -15,6 +15,7 @@ import {
   applyCheckIn,
   applyCheckOut,
   applyCreateMatches,
+  applyCorrectScore,
   applyStartMatch,
   applySubmitScore,
   assertExpectedVersion,
@@ -226,6 +227,39 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
     if (earlyIdempotent.replay) return earlyIdempotent.result;
 
     const daily = readDaily(row);
+
+    if (name === DAILY_PLAY_RPC.CORRECT_SCORE) {
+      const leases = leasesFor(row.id);
+      const corrected = applyCorrectScore(daily, {
+        matchId: args.p_match_id,
+        scoreA: args.p_score_a,
+        scoreB: args.p_score_b,
+        note: args.p_note,
+        leases,
+      });
+      if (!corrected.ok) return corrected;
+      if (corrected.replay) {
+        return finishIdempotent(earlyIdempotent.ledgerKey, {
+          ...snapshot(row),
+          match: corrected.match,
+          replay: true,
+          ratingVprApplied: false,
+          ratingExcludedReason: "daily-play-excluded",
+        });
+      }
+      const versionCheck = assertExpectedVersion(daily, args.p_expected_version);
+      if (!versionCheck.ok) {
+        return { ...versionCheck, state: snapshot(row) };
+      }
+      writeDaily(row, corrected.state);
+      return finishIdempotent(earlyIdempotent.ledgerKey, {
+        ...snapshot(row),
+        match: corrected.match,
+        ratingVprApplied: false,
+        ratingExcludedReason: "daily-play-excluded",
+      });
+    }
+
     const versionCheck = assertExpectedVersion(daily, args.p_expected_version);
     if (!versionCheck.ok) {
       const fresh = snapshot(row);

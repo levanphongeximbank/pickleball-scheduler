@@ -29,6 +29,14 @@ import {
   isFullDailyPlaySnapshot,
   resolveCreateMatchCount,
   validateScoreInput,
+  acceptDailyScoreFieldInput,
+  applyCorrectScore,
+  buildCanonicalSnapshotSignature,
+  createDailyPlayRefreshFence,
+  DAILY_PLAY_REFRESH_REASON,
+  isSilentRefreshReason,
+  shouldReplaceCanonicalSnapshot,
+  shouldSkipRoutinePoll,
   __setDailyPlayCanonicalServiceForTests,
   __resetDailyPlayCanonicalServiceForTests,
 } from "../src/features/daily-play/canonical/index.js";
@@ -700,6 +708,7 @@ describe("Daily Play RPC name contract", () => {
     assert.equal(DAILY_PLAY_RPC.ASSIGN_COURT, "daily_play_assign_court");
     assert.equal(DAILY_PLAY_RPC.START_MATCH, "daily_play_start_match");
     assert.equal(DAILY_PLAY_RPC.SUBMIT_SCORE, "daily_play_submit_score");
+    assert.equal(DAILY_PLAY_RPC.CORRECT_SCORE, "daily_play_correct_score");
     assert.equal(DAILY_PLAY_RPC.CANCEL_MATCH, "daily_play_cancel_match");
     assert.equal(DAILY_PLAY_RPC.CHANGE_COURT, "daily_play_change_court");
   });
@@ -1218,14 +1227,13 @@ describe("Daily Play SQL response-contract adapter (DP-03/DP-04)", () => {
     );
     const source = fs.readFileSync(hookPath, "utf8");
     assert.match(source, /normalizeDailyPlayServerSnapshot/);
-    assert.match(source, /refresh\(\{\s*background:\s*true\s*\}\)/);
-    assert.match(source, /setRefreshing/);
+    assert.match(source, /DAILY_PLAY_REFRESH_REASON\.POLL/);
+    assert.match(source, /DAILY_PLAY_REFRESH_REASON\.MUTATION/);
     assert.match(source, /READBACK_FAILED/);
     assert.match(source, /mutationCommitted:\s*true/);
-    // Must not apply compact mutation payloads as session snapshots.
     assert.equal(/if \(result\?\.ok\) \{\s*applySnapshot\(result\)/.test(source), false);
     assert.match(source, /pollMs/);
-    assert.match(source, /background && hasSnapshotRef/);
+    assert.match(source, /shouldReplaceCanonicalSnapshot/);
   });
 
   test("VERSION_CONFLICT triggers background refresh path", () => {
@@ -1236,7 +1244,7 @@ describe("Daily Play SQL response-contract adapter (DP-03/DP-04)", () => {
     assert.match(source, /VERSION_CONFLICT/);
     assert.match(
       source,
-      /VERSION_CONFLICT[\s\S]*refresh\(\{\s*background:\s*true\s*\}\)/
+      /VERSION_CONFLICT[\s\S]*DAILY_PLAY_REFRESH_REASON\.MUTATION/
     );
   });
 });
@@ -1274,7 +1282,7 @@ describe("Daily Play Owner browser UX remediation (DP-05..DP-09)", () => {
     assert.equal(source.includes("Promise.all"), false);
     assert.match(source, /for \(const playerId of ids\)/);
     assert.match(source, /expected = Number\(result\.revision\)/);
-    assert.match(source, /refresh\(\{\s*background:\s*true\s*\}\)/);
+    assert.match(source, /DAILY_PLAY_REFRESH_REASON\.MUTATION/);
   });
 
   test("Select All / Clear All use bulk helpers with pending labels (DP-06)", () => {
@@ -1728,3 +1736,368 @@ describe("Daily Play interaction polish (DP-10)", () => {
     assert.match(source, /Đang chọn\.\.\./);
   });
 });
+
+describe("Daily Play visibility resume stability (DP-13)", () => {
+  const completedSnap = {
+    ok: true,
+    revision: 3,
+    dailyPlay: {
+      revision: 3,
+      checkedInPlayerIds: ["1"],
+      matches: [
+        {
+          id: "m1",
+          status: "completed",
+          courtId: "c1",
+          scoreA: 11,
+          scoreB: 0,
+        },
+      ],
+    },
+    courts: [{ id: "c1", status: "active", available: true }],
+    activeLeases: [],
+  };
+
+  test("hidden document skips routine poll", () => {
+    assert.equal(
+      shouldSkipRoutinePoll(DAILY_PLAY_REFRESH_REASON.POLL, true),
+      true
+    );
+    assert.equal(
+      shouldSkipRoutinePoll(DAILY_PLAY_REFRESH_REASON.POLL, false),
+      false
+    );
+    assert.equal(
+      shouldSkipRoutinePoll(DAILY_PLAY_REFRESH_REASON.VISIBILITY_RESUME, true),
+      false
+    );
+  });
+
+  test("visible resume is silent and does not set initial loading", () => {
+    assert.equal(
+      isSilentRefreshReason(DAILY_PLAY_REFRESH_REASON.VISIBILITY_RESUME),
+      true
+    );
+    assert.equal(
+      isSilentRefreshReason(DAILY_PLAY_REFRESH_REASON.POLL),
+      true
+    );
+    assert.equal(
+      isSilentRefreshReason(DAILY_PLAY_REFRESH_REASON.INITIAL),
+      false
+    );
+    const hook = fs.readFileSync(
+      path.resolve("src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"),
+      "utf8"
+    );
+    assert.match(hook, /VISIBILITY_RESUME/);
+    assert.match(hook, /visibilitychange/);
+    assert.equal(hook.includes("addEventListener(\"focus\""), false);
+    assert.equal(hook.includes("setRefreshing"), false);
+    assert.match(hook, /refreshing:\s*false/);
+    assert.match(hook, /isInitial = !hasSnapshotRef\.current && !silent/);
+  });
+
+  test("resume does not clear existing state", () => {
+    const hook = fs.readFileSync(
+      path.resolve("src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"),
+      "utf8"
+    );
+    const resumeBlock = hook.slice(
+      hook.indexOf("VISIBILITY_RESUME"),
+      hook.indexOf("const mutate")
+    );
+    assert.equal(resumeBlock.includes("setState(null)"), false);
+    assert.equal(resumeBlock.includes("setLoading(true)"), false);
+  });
+
+  test("identical snapshot does not replace React state", () => {
+    const signature = buildCanonicalSnapshotSignature(completedSnap);
+    const decision = shouldReplaceCanonicalSnapshot(signature, {
+      ...completedSnap,
+      dailyPlay: { ...completedSnap.dailyPlay, matches: [...completedSnap.dailyPlay.matches] },
+    });
+    assert.equal(decision.replace, false);
+  });
+
+  test("changed snapshot does replace state", () => {
+    const signature = buildCanonicalSnapshotSignature(completedSnap);
+    const revisionChanged = shouldReplaceCanonicalSnapshot(signature, {
+      ...completedSnap,
+      revision: 4,
+      dailyPlay: { ...completedSnap.dailyPlay, revision: 4 },
+    });
+    assert.equal(revisionChanged.replace, true);
+    const leaseChanged = shouldReplaceCanonicalSnapshot(signature, {
+      ...completedSnap,
+      activeLeases: [{ courtId: "c1", matchId: "m1", status: "active" }],
+    });
+    assert.equal(leaseChanged.replace, true);
+  });
+
+  test("simultaneous poll/resume does not produce duplicate reads", () => {
+    const fence = createDailyPlayRefreshFence();
+    const poll = fence.begin(DAILY_PLAY_REFRESH_REASON.POLL);
+    const resume = fence.begin(DAILY_PLAY_REFRESH_REASON.VISIBILITY_RESUME);
+    assert.equal(poll.kind, "start");
+    assert.equal(resume.kind, "join");
+    assert.equal(resume.promise, poll.promise);
+  });
+
+  test("stale older response cannot overwrite newer mutation readback", () => {
+    const fence = createDailyPlayRefreshFence();
+    const poll = fence.begin(DAILY_PLAY_REFRESH_REASON.POLL);
+    const mutation = fence.begin(DAILY_PLAY_REFRESH_REASON.MUTATION);
+    assert.equal(mutation.kind, "start");
+    assert.equal(fence.isCurrent(poll.generation), false);
+    assert.equal(fence.isCurrent(mutation.generation), true);
+  });
+
+  test("scroll/layout state remains mounted", () => {
+    const setup = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    const director = fs.readFileSync(
+      path.resolve("src/features/tournament/director/TournamentDirectorMode.jsx"),
+      "utf8"
+    );
+    const hook = fs.readFileSync(
+      path.resolve("src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"),
+      "utf8"
+    );
+    assert.equal(setup.includes("scrollTo"), false);
+    assert.equal(director.includes("scrollTo"), false);
+    assert.equal(setup.includes("key={session.revision}"), false);
+    assert.equal(director.includes("key={dailySession"), false);
+    assert.equal(hook.includes("setRefreshing(true)"), false);
+  });
+});
+
+describe("Daily Play canonical score correction (DP-14)", () => {
+  test("score input is integer-only, min 0, no draw/decimal/scientific", () => {
+    assert.equal(acceptDailyScoreFieldInput(""), "");
+    assert.equal(acceptDailyScoreFieldInput("11"), "11");
+    assert.equal(acceptDailyScoreFieldInput("0"), "0");
+    assert.equal(acceptDailyScoreFieldInput("-1"), null);
+    assert.equal(acceptDailyScoreFieldInput("1.5"), null);
+    assert.equal(acceptDailyScoreFieldInput("1e2"), null);
+    assert.equal(acceptDailyScoreFieldInput("1E2"), null);
+    assert.equal(acceptDailyScoreFieldInput("+3"), null);
+    assert.equal(validateScoreInput("", "11").ok, false);
+    assert.equal(validateScoreInput("-1", "11").ok, false);
+    assert.equal(validateScoreInput("1.5", "0").ok, false);
+    assert.equal(validateScoreInput("1e2", "0").ok, false);
+    assert.equal(validateScoreInput(11, 11).ok, false);
+    assert.equal(validateScoreInput(11, 0).ok, true);
+    assert.equal(validateScoreInput(0, 11).ok, true);
+  });
+
+  test("submit_score still rejects completed overwrite", async () => {
+    const { service } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: ["1", "2", "3", "4"],
+        revision: 4,
+        matches: [
+          {
+            id: "m-done",
+            status: "completed",
+            courtId: "c1",
+            scoreA: 11,
+            scoreB: 5,
+            teamAPlayerIds: ["1", "2"],
+            teamBPlayerIds: ["3", "4"],
+          },
+        ],
+      },
+    });
+    const overwrite = await service.submitScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-done",
+        scoreA: 11,
+        scoreB: 7,
+        expectedVersion: 4,
+        idempotencyKey: "submit-overwrite",
+      }
+    );
+    assert.equal(overwrite.ok, false);
+    assert.equal(overwrite.code, DAILY_PLAY_CODE.SCORE_CONFLICT);
+  });
+
+  test("correct_score updates completed score without lease or player reservation", async () => {
+    const { service, authority } = seedAuthority({
+      courts: [{ id: "c1", name: "S1", active: true }],
+      dailyPlay: {
+        ...getDefaultDailyPlaySettings(),
+        checkedInPlayerIds: ["1", "2", "3", "4"],
+        revision: 4,
+        matches: [
+          {
+            id: "m-done",
+            status: "completed",
+            courtId: "c1",
+            scoreA: 11,
+            scoreB: 5,
+            teamAPlayerIds: ["1", "2"],
+            teamBPlayerIds: ["3", "4"],
+          },
+        ],
+      },
+    });
+
+    const corrected = await service.correctScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-done",
+        scoreA: 11,
+        scoreB: 7,
+        note: "Nhầm điểm",
+        expectedVersion: 4,
+        idempotencyKey: "correct-1",
+      }
+    );
+    assert.equal(corrected.ok, true);
+    assert.equal(corrected.match.status, "completed");
+    assert.equal(corrected.match.scoreA, 11);
+    assert.equal(corrected.match.scoreB, 7);
+    assert.equal(corrected.ratingVprApplied, false);
+    assert.equal(
+      (corrected.leases || []).some((lease) => lease.status === "active"),
+      false
+    );
+    const log = corrected.match.scoreLog || [];
+    assert.ok(log.some((entry) => entry.oldScoreA === 11 && entry.scoreB === 7));
+    assert.ok(log.some((entry) => String(entry.note || "").includes("Nhầm điểm")));
+
+    const same = await service.correctScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-done",
+        scoreA: 11,
+        scoreB: 7,
+        expectedVersion: 4,
+        idempotencyKey: "correct-same",
+      }
+    );
+    assert.equal(same.ok, true);
+    assert.equal(same.replay, true);
+
+    const stale = await service.correctScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-done",
+        scoreA: 11,
+        scoreB: 8,
+        expectedVersion: 4,
+        idempotencyKey: "correct-stale",
+      }
+    );
+    assert.equal(stale.ok, false);
+    assert.equal(stale.code, DAILY_PLAY_CODE.VERSION_CONFLICT);
+
+    const playing = await service.correctScore(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "missing",
+        scoreA: 11,
+        scoreB: 8,
+        expectedVersion: corrected.revision,
+        idempotencyKey: "correct-missing",
+      }
+    );
+    assert.equal(playing.ok, false);
+    assert.ok(authority.__getLedger().size >= 1);
+  });
+
+  test("correct_score requires completed and never uses submit_score", () => {
+    const domain = applyCorrectScore(
+      {
+        revision: 1,
+        matches: [
+          {
+            id: "m-play",
+            status: "playing",
+            scoreA: null,
+            scoreB: null,
+            teamAPlayerIds: ["1", "2"],
+            teamBPlayerIds: ["3", "4"],
+          },
+        ],
+      },
+      { matchId: "m-play", scoreA: 11, scoreB: 5 }
+    );
+    assert.equal(domain.ok, false);
+    assert.equal(domain.code, DAILY_PLAY_CODE.MATCH_NOT_COMPLETED);
+
+    const actions = fs.readFileSync(
+      path.resolve("src/features/tournament/director/hooks/useDirectorActions.js"),
+      "utf8"
+    );
+    assert.match(actions, /dailySession\.correctScore/);
+    assert.match(actions, /scoreCorrectionMode/);
+    assert.match(actions, /submitScore\(scoreDialog\.id/);
+    const correctBlock = actions.slice(
+      actions.indexOf("if (scoreCorrectionMode)"),
+      actions.indexOf("const result = await dailySession.submitScore")
+    );
+    assert.equal(correctBlock.includes("submitScore"), false);
+  });
+
+  test("additive SQL package is local-only and does not weaken submit_score", () => {
+    const apply = fs.readFileSync(
+      path.resolve("docs/v5/migrations/daily-play-score-correction-01/02_APPLY.sql"),
+      "utf8"
+    );
+    const readme = fs.readFileSync(
+      path.resolve("docs/v5/migrations/daily-play-score-correction-01/README.md"),
+      "utf8"
+    );
+    const rollback = fs.readFileSync(
+      path.resolve("docs/v5/migrations/daily-play-score-correction-01/04_ROLLBACK.sql"),
+      "utf8"
+    );
+    const submit = fs.readFileSync(
+      path.resolve("docs/v5/migrations/daily-play-end-to-end-canonical-01/02_APPLY.sql"),
+      "utf8"
+    );
+    assert.match(apply, /daily_play_correct_score/);
+    assert.match(apply, /SECURITY DEFINER SET search_path = public/);
+    assert.match(apply, /MATCH_NOT_COMPLETED/);
+    assert.match(apply, /VERSION_CONFLICT/);
+    assert.match(apply, /scoreLog/);
+    assert.match(apply, /ratingVprApplied/);
+    assert.equal(apply.includes("INSERT INTO public.daily_play_court_leases"), false);
+    assert.match(readme, /DO NOT APPLY WITHOUT OWNER GO STAGING/);
+    assert.match(rollback, /DROP FUNCTION IF EXISTS public.daily_play_correct_score/);
+    assert.equal(rollback.includes("daily_play_submit_score"), false);
+    assert.match(submit, /MATCH_COMPLETED|SCORE_CONFLICT/);
+  });
+
+  test("Director and Setup expose Sửa điểm with digits-only input", () => {
+    const board = fs.readFileSync(
+      path.resolve("src/features/tournament/director/components/DirectorMatchCard.jsx"),
+      "utf8"
+    );
+    const panel = fs.readFileSync(
+      path.resolve("src/features/tournament/director/components/DirectorScorePanel.jsx"),
+      "utf8"
+    );
+    const setup = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    assert.match(board, /Sửa điểm/);
+    assert.match(board, /Lịch sử trận/);
+    assert.match(panel, /Sửa điểm trận đã hoàn tất/);
+    assert.match(panel, /inputMode="numeric"/);
+    assert.equal(panel.includes('type="number"'), false);
+    assert.match(panel, /acceptDailyScoreFieldInput/);
+    assert.match(setup, /Sửa điểm trận đã hoàn tất/);
+    assert.match(setup, /session\.correctScore/);
+    assert.equal(setup.includes('type="number"'), false);
+  });
+});
+

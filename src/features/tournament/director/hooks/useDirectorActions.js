@@ -38,6 +38,11 @@ import {
   buildDailyMatchRefereeAssignmentPatch,
   persistDailyRefereeMetadata,
 } from "../services/dailyRefereeMetadataPatch.js";
+import {
+  DAILY_PLAY_CODE,
+  DAILY_PLAY_MESSAGES,
+  validateScoreInput,
+} from "../../../daily-play/canonical/index.js";
 
 const DAILY_LOCK_UNSUPPORTED =
   "Khóa sân thủ công chưa hỗ trợ trong Daily canonical.";
@@ -63,6 +68,8 @@ export function useDirectorActions(state) {
     setError,
     scoreDialog,
     setScoreDialog,
+    scoreCorrectionMode,
+    setScoreCorrectionMode,
     scoreA,
     setScoreA,
     scoreB,
@@ -418,6 +425,7 @@ export function useDirectorActions(state) {
       const useLiveScore =
         liveRow && (liveRow.status === "playing" || liveRow.status === "finalize_requested");
 
+      setScoreCorrectionMode(false);
       setScoreDialog(match);
       setScoreA(
         useLiveScore ? String(liveRow.scoreA) : match.scoreA != null ? String(match.scoreA) : ""
@@ -427,7 +435,18 @@ export function useDirectorActions(state) {
       );
       setScoreNote("");
     },
-    [liveByMatchId, setScoreA, setScoreB, setScoreDialog, setScoreNote]
+    [liveByMatchId, setScoreA, setScoreB, setScoreCorrectionMode, setScoreDialog, setScoreNote]
+  );
+
+  const handleOpenCorrectScore = useCallback(
+    (match) => {
+      setScoreCorrectionMode(true);
+      setScoreDialog(match);
+      setScoreA(match.scoreA != null ? String(match.scoreA) : "");
+      setScoreB(match.scoreB != null ? String(match.scoreB) : "");
+      setScoreNote("");
+    },
+    [setScoreA, setScoreB, setScoreCorrectionMode, setScoreDialog, setScoreNote]
   );
 
   const handleDisputeResetLive = useCallback(
@@ -510,6 +529,31 @@ export function useDirectorActions(state) {
     });
 
     if (isDaily) {
+      const parsed = validateScoreInput(scoreA, scoreB);
+      if (!parsed.ok) {
+        setError(parsed.error);
+        return;
+      }
+      if (scoreCorrectionMode) {
+        if (String(scoreDialog.status) !== "completed") {
+          setError(DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.MATCH_NOT_COMPLETED]);
+          return;
+        }
+        const result = await dailySession.correctScore(
+          scoreDialog.id,
+          scoreA,
+          scoreB,
+          scoreNote
+        );
+        if (!result?.ok) {
+          if (result?.error) setError(result.error);
+          return;
+        }
+        setScoreDialog(null);
+        setScoreCorrectionMode(false);
+        setMessage("Đã sửa điểm trận hoàn tất.");
+        return;
+      }
       const result = await dailySession.submitScore(scoreDialog.id, scoreA, scoreB);
       if (!result?.ok) {
         if (result?.error) setError(result.error);
@@ -519,6 +563,7 @@ export function useDirectorActions(state) {
         await markMatchLiveProcessed(liveRow.id);
       }
       setScoreDialog(null);
+      setScoreCorrectionMode(false);
       setMessage(
         logEntry.action === "admin_override" || logEntry.source === "director_override"
           ? "BTC đã ghi đè kết quả trọng tài."
@@ -569,9 +614,11 @@ export function useDirectorActions(state) {
     persistEvent,
     scoreA,
     scoreB,
+    scoreCorrectionMode,
     scoreDialog,
     scoreNote,
     setError,
+    setScoreCorrectionMode,
     setMessage,
     setScoreDialog,
   ]);
@@ -640,6 +687,7 @@ export function useDirectorActions(state) {
     handleChangeCourt,
     handleToggleCourt,
     handleOpenScore,
+    handleOpenCorrectScore,
     handleDisputeResetLive,
     handleSubmitScore,
     handleCourtRefereeChange,

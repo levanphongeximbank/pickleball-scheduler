@@ -43,6 +43,7 @@ export function useDirectorState(tournamentId) {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [scoreDialog, setScoreDialog] = useState(null);
+  const [scoreCorrectionMode, setScoreCorrectionMode] = useState(false);
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
   const [scoreNote, setScoreNote] = useState("");
@@ -230,6 +231,8 @@ export function useDirectorState(tournamentId) {
     setError,
     scoreDialog,
     setScoreDialog,
+    scoreCorrectionMode,
+    setScoreCorrectionMode,
     scoreA,
     setScoreA,
     scoreB,

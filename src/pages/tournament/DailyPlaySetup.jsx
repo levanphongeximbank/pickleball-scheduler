@@ -43,9 +43,11 @@ import {
   projectLivePrivatePairingPrepareInput,
 } from "../../features/private-pairing-rules/index.js";
 import {
+  acceptDailyScoreFieldInput,
   DAILY_PLAY_CODE,
   DAILY_PLAY_MESSAGES,
   resolveCreateMatchCount,
+  validateScoreInput,
 } from "../../features/daily-play/canonical/index.js";
 import { useDailyPlayCanonicalSession } from "../../features/daily-play/canonical/useDailyPlayCanonicalSession.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
@@ -88,8 +90,10 @@ export default function DailyPlaySetup() {
   const [message, setMessage] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [scoreDialog, setScoreDialog] = useState(null);
+  const [scoreCorrectionMode, setScoreCorrectionMode] = useState(false);
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
+  const [scoreNote, setScoreNote] = useState("");
   const [matchType, setMatchType] = useState(DAILY_MATCH_TYPE.MIXED_DOUBLE);
   const [genderFilter, setGenderFilter] = useState(DAILY_GENDER_FILTER.ALL);
   const [createPending, setCreatePending] = useState(false);
@@ -515,14 +519,51 @@ export default function DailyPlaySetup() {
   };
 
   const handleOpenScore = (match) => {
+    setScoreCorrectionMode(false);
     setScoreDialog(match);
     setScoreA(match.scoreA != null ? String(match.scoreA) : "");
     setScoreB(match.scoreB != null ? String(match.scoreB) : "");
+    setScoreNote("");
+  };
+
+  const handleOpenCorrectScore = (match) => {
+    setScoreCorrectionMode(true);
+    setScoreDialog(match);
+    setScoreA(match.scoreA != null ? String(match.scoreA) : "");
+    setScoreB(match.scoreB != null ? String(match.scoreB) : "");
+    setScoreNote("");
+  };
+
+  const handleScoreFieldChange = (setter) => (event) => {
+    const next = acceptDailyScoreFieldInput(event.target.value);
+    if (next == null) return;
+    setter(next);
   };
 
   const handleSubmitScore = async () => {
     if (!scoreDialog) return;
     setActionError(null);
+    const parsed = validateScoreInput(scoreA, scoreB);
+    if (!parsed.ok) {
+      setActionError(parsed.error);
+      return;
+    }
+    if (scoreCorrectionMode) {
+      const result = await session.correctScore(
+        scoreDialog.id,
+        scoreA,
+        scoreB,
+        scoreNote
+      );
+      if (result?.ok) {
+        setScoreDialog(null);
+        setScoreCorrectionMode(false);
+        setMessage("Đã sửa điểm trận hoàn tất.");
+        return;
+      }
+      if (result?.error) setActionError(result.error);
+      return;
+    }
     const result = await session.submitScore(scoreDialog.id, scoreA, scoreB);
     if (result?.ok) {
       setScoreDialog(null);
@@ -864,7 +905,12 @@ export default function DailyPlaySetup() {
               matches={completed}
               emptyText="Chưa có trận hoàn thành."
               getCardProps={(match) =>
-                buildDailyMatchCardProps(match, { courts, players })
+                buildDailyMatchCardProps(match, {
+                  actionLabel: "Sửa điểm",
+                  onAction: handleOpenCorrectScore,
+                  courts,
+                  players,
+                })
               }
             />
           </Grid>
@@ -872,36 +918,66 @@ export default function DailyPlaySetup() {
 
         <Dialog
           open={Boolean(scoreDialog)}
-          onClose={() => setScoreDialog(null)}
+          onClose={() => {
+            setScoreDialog(null);
+            setScoreCorrectionMode(false);
+          }}
           fullWidth
         >
-          <DialogTitle>Nhập điểm</DialogTitle>
+          <DialogTitle>
+            {scoreCorrectionMode ? "Sửa điểm trận đã hoàn tất" : "Nhập điểm"}
+          </DialogTitle>
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
               <TextField
                 label="Điểm A"
-                type="number"
                 value={scoreA}
-                onChange={(event) => setScoreA(event.target.value)}
+                onChange={handleScoreFieldChange(setScoreA)}
+                inputMode="numeric"
+                autoComplete="off"
+                inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
                 fullWidth
               />
               <TextField
                 label="Điểm B"
-                type="number"
                 value={scoreB}
-                onChange={(event) => setScoreB(event.target.value)}
+                onChange={handleScoreFieldChange(setScoreB)}
+                inputMode="numeric"
+                autoComplete="off"
+                inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
                 fullWidth
               />
+              {scoreCorrectionMode ? (
+                <TextField
+                  label="Lý do sửa điểm (tuỳ chọn)"
+                  value={scoreNote}
+                  onChange={(event) => setScoreNote(event.target.value)}
+                  fullWidth
+                  size="small"
+                />
+              ) : null}
             </Stack>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setScoreDialog(null)}>Bỏ qua</Button>
+            <Button
+              onClick={() => {
+                setScoreDialog(null);
+                setScoreCorrectionMode(false);
+              }}
+              disabled={session.mutating}
+            >
+              Bỏ qua
+            </Button>
             <Button
               variant="contained"
               onClick={handleSubmitScore}
               disabled={session.mutating}
             >
-              Lưu điểm
+              {session.mutating
+                ? "Đang lưu..."
+                : scoreCorrectionMode
+                  ? "Lưu điểm sửa"
+                  : "Lưu điểm"}
             </Button>
           </DialogActions>
         </Dialog>

@@ -149,6 +149,21 @@ export function createDailyPlayCanonicalService(deps = {}) {
       });
     },
 
+    async correctScore(
+      scope,
+      { matchId, scoreA, scoreB, note = "", expectedVersion, idempotencyKey }
+    ) {
+      return callRpc(DAILY_PLAY_RPC.CORRECT_SCORE, {
+        ...scopeArgs(scope),
+        p_match_id: String(matchId),
+        p_score_a: Number(scoreA),
+        p_score_b: Number(scoreB),
+        p_expected_version: expectedVersion,
+        p_idempotency_key: idempotencyKey || newIdempotencyKey("correct-score"),
+        p_note: note == null ? "" : String(note),
+      });
+    },
+
     async cancelMatch(scope, { matchId, expectedVersion, idempotencyKey }) {
       return callRpc(DAILY_PLAY_RPC.CANCEL_MATCH, {
         ...scopeArgs(scope),

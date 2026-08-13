@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import { createMatchRecord, EVENT_TYPE, MATCH_STATUS } from "../src/models/tournament/index.js";
 import {
@@ -268,6 +270,27 @@ test("Daily referee metadata merge never overwrites newer dailyPlay (DP-12)", as
   assert.equal(merged.dailyPlay.revision, 9);
   assert.equal(merged.dailyPlay.matches[0].status, "playing");
   assert.equal(merged.dailyRefereeAssignments.m1.canonicalUserId, "u-ref-1");
+});
+
+test("Daily Director completed cards expose Sửa điểm without using submit_score (DP-14)", () => {
+  const board = fs.readFileSync(
+    path.resolve("src/features/tournament/director/components/DirectorMatchCard.jsx"),
+    "utf8"
+  );
+  const actions = fs.readFileSync(
+    path.resolve("src/features/tournament/director/hooks/useDirectorActions.js"),
+    "utf8"
+  );
+  const mode = fs.readFileSync(
+    path.resolve("src/features/tournament/director/TournamentDirectorMode.jsx"),
+    "utf8"
+  );
+  assert.match(board, /actionLabel: isDaily \? "Sửa điểm"/);
+  assert.match(board, /onCorrectScore/);
+  assert.match(actions, /handleOpenCorrectScore/);
+  assert.match(actions, /dailySession\.correctScore/);
+  assert.match(mode, /onCorrectScore=\{handleOpenCorrectScore\}/);
+  assert.match(mode, /isCorrection=\{Boolean\(isDaily && scoreCorrectionMode\)\}/);
 });
 
 test("non-Daily Director snapshot still treats assigned as onCourt", () => {

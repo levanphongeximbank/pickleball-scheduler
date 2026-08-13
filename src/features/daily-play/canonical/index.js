@@ -14,6 +14,9 @@ export {
   listAvailableCourts,
   resolveCreateMatchCount,
   validateScoreInput,
+  acceptDailyScoreFieldInput,
+  parseNonNegativeIntegerScore,
+  applyCorrectScore,
   buildCourtRuntimeView,
   assertExpectedVersion,
   validateDoublesMatchShape,
@@ -37,6 +40,16 @@ export {
   normalizeDailyPlayServerSnapshot,
   isFullDailyPlaySnapshot,
 } from "./normalizeDailyPlayServerSnapshot.js";
+
+export {
+  DAILY_PLAY_REFRESH_REASON,
+  buildCanonicalSnapshotSignature,
+  createDailyPlayRefreshFence,
+  isDocumentHidden,
+  isSilentRefreshReason,
+  shouldReplaceCanonicalSnapshot,
+  shouldSkipRoutinePoll,
+} from "./dailyPlaySessionRefresh.js";
 
 // Hook lives in useDailyPlayCanonicalSession.js — import directly from UI
 // to keep non-React unit tests free of the react package graph.

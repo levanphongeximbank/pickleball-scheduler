@@ -13,6 +13,7 @@ export default function DirectorMatchBoard({
   onStartMatch,
   onCancelMatch,
   onOpenScore,
+  onCorrectScore,
   onOpenRefereeDialog,
   onOpenAuditHistory,
   hasSupabaseConfig = false,
@@ -97,6 +98,8 @@ export default function DirectorMatchBoard({
           emptyText="Chưa có trận hoàn tất."
           getCardProps={(match) =>
             buildRefereeCardProps(match, {
+              actionLabel: isDaily ? "Sửa điểm" : undefined,
+              onAction: isDaily ? onCorrectScore : undefined,
               tertiaryActionLabel: "Lịch sử trận",
               onTertiaryAction: onOpenAuditHistory,
               showRefereeStatus: false,
