@@ -31,6 +31,11 @@ import {
   rpcTeamTournamentRevokeRefereeAssignment,
   rpcTeamTournamentSearchRefereeCandidates,
 } from "../../../features/team-tournament/services/teamTournamentRpcService.js";
+import {
+  planRefereeAssignment,
+  REFEREE_ASSIGN_ACTION,
+} from "../../../features/team-tournament/engines/teamRefereeAssignmentLifecycle.js";
+import { mapTeamTournamentDomainFailure } from "../../../features/team-tournament/engines/teamTournamentDomainErrors.js";
 
 /**
  * TT-5D BTC panel: searchable assign / change / revoke + correction review.
@@ -171,14 +176,32 @@ export default function TeamRefereeSafetyPanel({
     setBusyId("assign");
     setError("");
 
-    if (activeForSelectedSub.length > 0) {
+    const plan = planRefereeAssignment({
+      matchup: { id: matchupId, teamAId: "resolved", teamBId: "resolved" },
+      existingAssignments: activeForSelectedSub.map((row) => ({
+        ...row,
+        matchId: assignSubMatchId,
+        role: "REFEREE",
+      })),
+      refereeUserId: uid,
+      matchId: assignSubMatchId,
+    });
+    if (plan.action === REFEREE_ASSIGN_ACTION.IDEMPOTENT_NOOP) {
+      setBusyId(null);
+      onNotice?.("Trọng tài này đã được gán cho trận (không tạo trùng).");
+      reload();
+      return;
+    }
+
+    if (activeForSelectedSub.length > 0 && plan.action === REFEREE_ASSIGN_ACTION.SUPERSEDE) {
       const revoke = await revokeRows(
         activeForSelectedSub,
         revokeReason.trim() || "BTC đổi trọng tài"
       );
       if (!revoke.ok) {
         setBusyId(null);
-        setError(revoke.error || revoke.code || "Revoke trước khi đổi thất bại.");
+        const mapped = mapTeamTournamentDomainFailure(revoke);
+        setError(mapped.error || revoke.error || revoke.code || "Revoke trước khi đổi thất bại.");
         return;
       }
     }
@@ -206,7 +229,8 @@ export default function TeamRefereeSafetyPanel({
       setCandidateQuery("");
       reload();
     } else {
-      setError(result.error || result.code || "Gán trọng tài thất bại.");
+      const mapped = mapTeamTournamentDomainFailure(result);
+      setError(mapped.error || result.error || result.code || "Gán trọng tài thất bại.");
     }
   }
 

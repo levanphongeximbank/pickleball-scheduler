@@ -5,6 +5,7 @@ import {
 } from "../repositories/teamTournamentRepositoryFactory.js";
 import { REPOSITORY_ERROR_CODES, REPOSITORY_REALTIME_FALLBACK } from "../repositories/teamTournamentRepositoryTypes.js";
 import { describeRepositoryFailureCode } from "../repositories/teamTournamentRepositoryValidation.js";
+import { mapTeamTournamentDomainFailure } from "../engines/teamTournamentDomainErrors.js";
 import { attachTeamDataToTournament, getTeamData } from "../engines/teamTournamentEngine.js";
 import { buildTeamTournamentDraftState } from "../engines/teamTournamentWorkflowStage.js";
 import { DEFAULT_ENGINE_VERSION } from "../canonical/teamTournamentMutationEnvelope.js";
@@ -123,12 +124,13 @@ export function mapRepositoryResultToUi(result) {
   } else if (code === REPOSITORY_ERROR_CODES.NOT_IMPLEMENTED) {
     userMessage = "Chức năng chưa được triển khai trên môi trường này.";
   } else {
-    const described = describeRepositoryFailureCode(code);
+    const mapped = mapTeamTournamentDomainFailure(result || {});
+    const described = describeRepositoryFailureCode(code) || mapped.error;
     const generic =
       !result?.error ||
       result.error === "Repository operation failed." ||
       result.error === "Không thực hiện được thao tác.";
-    if (described && generic) {
+    if (generic) {
       userMessage = described;
     }
   }

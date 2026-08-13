@@ -44,18 +44,25 @@ function MatchupList({ items }) {
   }
   return (
     <Stack spacing={1}>
-      {items.map((item) => (
-        <Stack key={item.id} direction="row" spacing={1} alignItems="center">
-          <Chip size="small" label={item.status || "scheduled"} />
-          <Typography variant="body2">
-            {item.teamAId} vs {item.teamBId}
-            {item.courtLabel ? ` · Sân ${item.courtLabel}` : ""}
-            {item.result?.winnerTeamId
-              ? ` · ${item.result.teamAWins}-${item.result.teamBWins}`
-              : ""}
-          </Typography>
-        </Stack>
-      ))}
+      {items.map((item) => {
+        const teamA = String(item.teamAId || "").trim();
+        const teamB = String(item.teamBId || "").trim();
+        const unresolved = !teamA || !teamB;
+        return (
+          <Stack key={item.id} direction="row" spacing={1} alignItems="center">
+            <Chip size="small" label={item.status || "scheduled"} />
+            <Typography variant="body2">
+              {unresolved
+                ? "Chung kết — chờ kết quả Bán kết"
+                : `${teamA} vs ${teamB}`}
+              {!unresolved && item.courtLabel ? ` · Sân ${item.courtLabel}` : ""}
+              {!unresolved && item.result?.winnerTeamId
+                ? ` · ${item.result.teamAWins}-${item.result.teamBWins}`
+                : ""}
+            </Typography>
+          </Stack>
+        );
+      })}
     </Stack>
   );
 }
@@ -132,6 +139,12 @@ export default function TournamentDashboardPage() {
         ) : null}
 
         <Section title="Lịch / đang đấu / đã xong">
+          {(view.schedule?.bracketPending || []).length > 0 ? (
+            <>
+              <Typography variant="subtitle2">Nhánh chờ kết quả</Typography>
+              <MatchupList items={view.schedule?.bracketPending} />
+            </>
+          ) : null}
           <Typography variant="subtitle2">Sắp diễn ra</Typography>
           <MatchupList items={view.schedule?.upcoming} />
           <Typography variant="subtitle2" sx={{ mt: 1.5 }}>

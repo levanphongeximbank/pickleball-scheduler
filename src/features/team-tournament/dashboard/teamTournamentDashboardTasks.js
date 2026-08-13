@@ -11,6 +11,7 @@ import { resolveEffectiveStageTieBreakPolicy } from "../engines/teamStageTieBrea
 import { getLineup } from "../models/index.js";
 import { buildCaptainPortalPath } from "../../../components/tournament/team/copyPortalLink.js";
 import { teamTournamentDashboardPath, teamTournamentPath, TEAM_TAB_QUERY } from "../../../config/tournamentRoutes.js";
+import { isUnresolvedBracketPlaceholder } from "../engines/teamKnockoutEngine.js";
 
 export const DASHBOARD_TASK = Object.freeze({
   CAPTAIN_LINEUP: "captain_lineup",
@@ -66,8 +67,7 @@ export function buildCaptainDashboardTasks({
     if (matchup.teamAId !== captainTeamId && matchup.teamBId !== captainTeamId) {
       continue;
     }
-    // Empty KO placeholders (e.g. Final before SF winners) are not yet actionable.
-    if (!matchup.teamAId || !matchup.teamBId) {
+    if (isUnresolvedBracketPlaceholder(matchup)) {
       continue;
     }
     if (matchup.status === "completed") {
@@ -127,9 +127,12 @@ export function buildRefereeDashboardAssignments({
 } = {}) {
   const teamsById = new Map((teamData?.teams || []).map((team) => [team.id, team]));
   const tournamentId = tournament?.id || tournament?.teamDomainId;
-  return (assignments || []).map((assignment) => {
+  return (assignments || []).flatMap((assignment) => {
     const matchupId = assignment.matchupId || assignment.externalMatchupId;
     const matchup = (teamData?.matchups || []).find((item) => item.id === matchupId) || {};
+    if (isUnresolvedBracketPlaceholder(matchup)) {
+      return [];
+    }
     const matchId = assignment.matchId || assignment.v5MatchId;
     const href = matchId
       ? `/referee/match/${matchId}?tournamentId=${encodeURIComponent(tournamentId)}`

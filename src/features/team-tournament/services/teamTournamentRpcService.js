@@ -1,5 +1,6 @@
 import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
 import { sanitizeCaptainDreambreakerSubmitResponse } from "../engines/captainDreambreakerPortalContract.js";
+import { mapTeamTournamentDomainFailure } from "../engines/teamTournamentDomainErrors.js";
 
 let testRpcClientOverride = null;
 
@@ -320,11 +321,19 @@ export function mapTeamTournamentRpcTransportError(error) {
     };
   }
 
+  const mapped = mapTeamTournamentDomainFailure({
+    code: error.code || "RPC_FAILED",
+    error: error.message,
+  });
   return {
     ok: false,
-    code: "RPC_FAILED",
-    error: error.message,
+    code: mapped.code,
+    error: mapped.error,
     provider: "rpc",
+    details: {
+      diagnosticCode: mapped.diagnosticCode,
+      originalServerError: mapped.originalServerError || undefined,
+    },
   };
 }
 
@@ -491,22 +500,38 @@ async function callTeamTournamentRpc(rpcName, args = {}) {
       "NOT_VISIBLE",
       "CROSS_TENANT_DENIED",
       "RPC_MISSING",
+      "REFEREE_ASSIGNMENT_CONFLICT",
+      "MATCHUP_TEAMS_UNRESOLVED",
+      "REFEREE_NOT_FOUND",
+      "REVOKE_REASON_REQUIRED",
     ];
     if (passthrough.includes(code)) {
-      return { ...payload, provider: "rpc" };
+      const mapped = mapTeamTournamentDomainFailure(payload);
+      return {
+        ...payload,
+        code: mapped.code,
+        error: payload.error && !/duplicate key|violates unique/i.test(payload.error)
+          ? payload.error
+          : mapped.error,
+        provider: "rpc",
+        details: {
+          ...(payload.details && typeof payload.details === "object" ? payload.details : {}),
+          diagnosticCode: mapped.diagnosticCode,
+          originalServerError: mapped.originalServerError || undefined,
+        },
+      };
     }
-    const errorByCode = {
-      NOT_FOUND: "Giải chưa có trên cloud. Kiểm tra venue ở header rồi thử lại.",
-      FORBIDDEN: "Không có quyền quản lý giải đồng đội.",
-      NOT_AUTHENTICATED: "Phiên đăng nhập hết hạn — đăng nhập lại.",
-      VALIDATION: payload.error || "Dữ liệu đội không hợp lệ.",
-    };
+    const mapped = mapTeamTournamentDomainFailure({ ...payload, code });
     return {
       ok: false,
-      code,
-      error: payload.error || errorByCode[code] || "Không có quyền.",
+      code: mapped.code,
+      error: mapped.error,
       ...payload,
       provider: "rpc",
+      details: {
+        diagnosticCode: mapped.diagnosticCode,
+        originalServerError: mapped.originalServerError || undefined,
+      },
     };
   }
 

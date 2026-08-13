@@ -21,6 +21,30 @@ export function isKnockoutMatchup(matchup) {
   return String(matchup?.stage || "") === MATCHUP_STAGE.KNOCKOUT;
 }
 
+/**
+ * Future-round KO placeholder (e.g. Final before both SF winners).
+ * May persist in the bracket; must not be an operational assignment.
+ */
+export function isUnresolvedBracketPlaceholder(matchup) {
+  const teamA = String(matchup?.teamAId || "").trim();
+  const teamB = String(matchup?.teamBId || "").trim();
+  return !teamA || !teamB;
+}
+
+/**
+ * Slot into next KO matchup. Prefer persisted nextSlot; else SF matchNumberInRound
+ * (1 → A, 2 → B) so live brackets that dropped nextSlot still advance correctly.
+ */
+export function resolveKnockoutNextSlot(matchup) {
+  const raw = matchup?.nextSlot || matchup?.scheduleMeta?.nextSlot;
+  if (raw === "A" || raw === "B") return raw;
+  const n = Number(
+    matchup?.matchNumberInRound ?? matchup?.scheduleMeta?.matchNumberInRound
+  );
+  if (n === 2) return "B";
+  return "A";
+}
+
 export function isGroupStageMatchup(matchup) {
   return !isKnockoutMatchup(matchup);
 }
@@ -431,7 +455,9 @@ export function advanceTeamKnockoutWinner(teamData, matchupId) {
     return { ok: false, error: "Trận chưa có đội thắng.", code: "NO_WINNER" };
   }
 
-  const nextId = matchup.nextMatchupId ? String(matchup.nextMatchupId) : "";
+  const nextId = String(
+    matchup.nextMatchupId || matchup.scheduleMeta?.nextMatchupId || ""
+  ).trim();
   if (!nextId) {
     return {
       ok: true,
@@ -442,7 +468,7 @@ export function advanceTeamKnockoutWinner(teamData, matchupId) {
     };
   }
 
-  const slot = matchup.nextSlot === "B" ? "B" : "A";
+  const slot = resolveKnockoutNextSlot(matchup);
   const matchups = (teamData.matchups || []).map((row) => {
     if (String(row.id) !== nextId) return row;
     if (slot === "A") {

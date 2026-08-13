@@ -22,6 +22,7 @@ import {
   buildOrganizerDashboardActions,
   buildRefereeDashboardAssignments,
 } from "./teamTournamentDashboardTasks.js";
+import { isUnresolvedBracketPlaceholder } from "../engines/teamKnockoutEngine.js";
 
 function findParticipatingTeam(teams = [], playerId) {
   if (!playerId) return null;
@@ -53,13 +54,18 @@ function classifyMatchups(matchups = []) {
   const upcoming = [];
   const live = [];
   const completed = [];
+  const bracketPending = [];
   for (const matchup of matchups) {
+    if (isUnresolvedBracketPlaceholder(matchup)) {
+      bracketPending.push(matchup);
+      continue;
+    }
     const status = String(matchup.status || "");
     if (status === "completed") completed.push(matchup);
     else if (status === "in_progress" || status === "playing") live.push(matchup);
     else upcoming.push(matchup);
   }
-  return { upcoming, live, completed };
+  return { upcoming, live, completed, bracketPending };
 }
 
 export function resolveDashboardCapabilities({
@@ -153,7 +159,8 @@ export function buildTeamTournamentDashboardView({
     : null;
   const mySchedule = matchups.filter(
     (matchup) =>
-      matchup.teamAId === capabilities.myTeamId || matchup.teamBId === capabilities.myTeamId
+      !isUnresolvedBracketPlaceholder(matchup) &&
+      (matchup.teamAId === capabilities.myTeamId || matchup.teamBId === capabilities.myTeamId)
   );
 
   const captainTasks = capabilities.isCaptain

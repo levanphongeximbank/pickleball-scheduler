@@ -7,6 +7,10 @@ import {
   isLineupValidationErrorCode,
   mapRpcLineupValidationPayload,
 } from "../engines/lineupValidationContract.js";
+import {
+  describeTeamTournamentDomainCode,
+  mapTeamTournamentDomainFailure,
+} from "../engines/teamTournamentDomainErrors.js";
 
 /**
  * @template T
@@ -51,30 +55,7 @@ export function isPresentString(value) {
  * Prevents silent "Repository operation failed." for known fail-closed codes.
  */
 export function describeRepositoryFailureCode(code) {
-  const key = String(code || "").trim();
-  const map = {
-    UNKNOWN_DISCIPLINE: "Nội dung (discipline) không khớp dữ liệu giải — kiểm tra Format MLP trước khi tạo lịch.",
-    UNKNOWN_TEAM:
-      "Đội trong lịch không tồn tại trên server — hoặc trận knockout còn slot trống chưa được SQL cho phép. Lưu đội rồi tạo lại; nếu tạo Bán kết thất bại, cần Staging package matchups.replace cho placeholder.",
-    VALIDATION_ERROR: "Envelope lịch không hợp lệ (thiếu rulesVersion / version / payload).",
-    VERSION_CONFLICT: "Xung đột phiên bản giải — tải lại rồi thử lại.",
-    EMPTY_SETUP_CONFIG: "Không có khóa cấu hình hợp lệ để lưu.",
-    RULES_VERSION_REQUIRED: "Thiếu rulesVersion cho lệnh setup/lịch.",
-    FORBIDDEN: "Không đủ quyền thực hiện thao tác này.",
-    NOT_FOUND: "Không tìm thấy giải hoặc tài nguyên liên quan.",
-    CROSS_TENANT_DENIED: "Từ chối truy cập ngoài tenant.",
-    ALREADY_CLOSED: "Giải đã được đóng (completed).",
-    CLOSE_PRECONDITION_FAILED: "Chưa đủ điều kiện đóng giải theo lifecycle hiện tại.",
-    GROUP_STAGE_INCOMPLETE: "Vòng bảng chưa hoàn tất — chưa thể đóng giải.",
-    ELIMINATION_INCOMPLETE: "Nhánh loại trực tiếp chưa hoàn tất — chưa thể đóng giải.",
-    FINAL_NOT_COMPLETED: "Trận chung kết chưa hoàn tất — chưa thể đóng giải.",
-    CHAMPION_UNRESOLVED: "Chưa xác định được nhà vô địch từ kết quả canonical.",
-    INVALID_QUALIFICATION_TOTAL:
-      "Tổng đội vượt bảng phải thuộc {2,4,8,16} — cloud bye chưa hỗ trợ.",
-    INVALID_STAGE_SCORING_POLICY: "stageScoringPolicy không hợp lệ.",
-    REFEREE_NOT_FOUND: "Không tìm thấy hồ sơ trọng tài (profiles id).",
-  };
-  return map[key] || "";
+  return describeTeamTournamentDomainCode(code);
 }
 
 /**
@@ -218,16 +199,14 @@ export function normalizeRepositoryResult(raw, extras = {}) {
     const validation = isLineupValidationErrorCode(code)
       ? mapRpcLineupValidationPayload(raw)
       : null;
+    const mapped = mapTeamTournamentDomainFailure(raw);
 
     return {
       ok: false,
-      code,
+      code: validation ? code : mapped.code,
       error: validation
-        ? formatLineupValidationError(raw, raw.error || "Repository operation failed.")
-        : raw.error ||
-          raw.message ||
-          describeRepositoryFailureCode(code) ||
-          "Repository operation failed.",
+        ? formatLineupValidationError(raw, raw.error || mapped.error)
+        : mapped.error,
       version: raw.version ?? raw.expected_version ?? raw.actual_version,
       replayed: raw.replayed === true,
       validation,
@@ -240,6 +219,8 @@ export function normalizeRepositoryResult(raw, extras = {}) {
         invalidDisciplineIds: raw.invalidDisciplineIds,
         serverTime: raw.serverTime,
         lineupVersion: raw.lineupVersion,
+        diagnosticCode: mapped.diagnosticCode,
+        originalServerError: mapped.originalServerError || undefined,
         ...(raw.details && typeof raw.details === "object" ? raw.details : {}),
       },
       provider: raw.provider,

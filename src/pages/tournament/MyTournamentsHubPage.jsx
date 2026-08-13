@@ -40,7 +40,9 @@ function TournamentCard({ item }) {
           </Typography>
         ) : null}
 
-        {item.nextMatchup ? (
+        {item.nextMatchup &&
+        String(item.nextMatchup.teamAId || "").trim() &&
+        String(item.nextMatchup.teamBId || "").trim() ? (
           <Typography variant="body2" color="text.secondary">
             Trận tiếp theo: {item.nextMatchup.teamAId} vs {item.nextMatchup.teamBId}
             {item.nextMatchup.scheduledAt

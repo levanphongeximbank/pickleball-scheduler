@@ -812,6 +812,10 @@ export default function TeamRefereePortal() {
     }
     return (teamData.matchups || [])
       .filter((matchup) => WAITING_MATCHUP_STATUSES.has(matchup.status))
+      .filter(
+        (matchup) =>
+          String(matchup.teamAId || "").trim() && String(matchup.teamBId || "").trim()
+      )
       .map((matchup) => ({
         id: matchup.id,
         status: matchup.status,

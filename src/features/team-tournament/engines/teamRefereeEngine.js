@@ -99,7 +99,11 @@ export function resolveSubMatchWinner({
 }
 
 export function isMatchupPublishedForReferee(matchup) {
-  return REFEREE_VISIBLE_MATCHUP_STATUSES.has(matchup?.status);
+  if (!matchup) return false;
+  const teamA = String(matchup.teamAId || "").trim();
+  const teamB = String(matchup.teamBId || "").trim();
+  if (!teamA || !teamB) return false;
+  return REFEREE_VISIBLE_MATCHUP_STATUSES.has(matchup.status);
 }
 
 export function hasOfficialLineups(teamData, matchup) {

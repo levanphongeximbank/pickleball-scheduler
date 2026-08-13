@@ -2,6 +2,8 @@
  * My Tournaments hub projection — server list_my_dashboards is sole authority.
  * Client does not filter by activeClub / local tenant.
  */
+import { isUnresolvedBracketPlaceholder } from "../engines/teamKnockoutEngine.js";
+
 
 export function normalizeMyDashboardListResult(payload = {}) {
   if (!payload || payload.ok === false) {
@@ -60,7 +62,10 @@ export function projectMyDashboardCard(raw = {}) {
         }
       : null,
     openTaskCount: Number(raw.openTaskCount || 0) || 0,
-    nextMatchup: raw.nextMatchup || null,
+    nextMatchup:
+      raw.nextMatchup && !isUnresolvedBracketPlaceholder(raw.nextMatchup)
+        ? raw.nextMatchup
+        : null,
     href,
     captainPortalHref,
     refereeHref,
