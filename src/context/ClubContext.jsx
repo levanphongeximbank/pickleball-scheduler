@@ -137,8 +137,7 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-    // user is read from the current render; the fingerprint is the security key.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
+    // user is read from userRef; the fingerprint is the security key.
   }, [isAuthenticated, userSecurityScopeKey, currentTenantId, rbacEnabled]);
 
   // Phase 45A.1 — hydrate the Club-entity list from the canonical repository.
@@ -212,7 +211,6 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
   }, [canonicalRead, isAuthenticated, userSecurityScopeKey, currentTenantId, rbacEnabled, canonicalReloadNonce]);
 
   const visibleClubs = useMemo(() => {
@@ -287,7 +285,6 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
   }, [canonicalRead, isAuthenticated, userSecurityScopeKey, currentTenantId]);
 
   useEffect(() => {
