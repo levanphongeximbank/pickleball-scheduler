@@ -260,6 +260,8 @@
   "tests/team-tournament-scenario-b-late-stage-lifecycle-01.test.js",
   "tests/team-tournament-final-nextslot-null-remediation-01.test.js",
   "tests/team-tournament-canonical-referee-lifecycle-01.test.js",
+  "tests/team-tournament-production-referee-foundation-01.test.js",
+  "tests/team-tournament-production-referee-foundation-01-real-postgres.test.js",
   "tests/team-tournament-post-mutation-refresh-remediation-01.test.js",
   "tests/team-tournament-format-venue-client-wiring-remediation-01.test.js",
   "tests/team-tournament-format-venue-group-configuration-remediation-01.test.js",
