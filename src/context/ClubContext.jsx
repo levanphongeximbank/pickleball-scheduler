@@ -50,6 +50,7 @@ import {
 } from "../features/club/context/clubCanonicalReadModel.js";
 import { ensureMonthlySkillLevelProposals } from "../domain/skillLevelService.js";
 import { useAuth } from "./AuthContext.jsx";
+import { buildAuthorizationPrincipalFingerprint } from "../auth/authorizationPrincipalFingerprint.js";
 import { useTenant } from "./TenantContext.jsx";
 import { canAccessClub } from "../auth/rbac.js";
 import {
@@ -62,6 +63,28 @@ const ClubContext = createContext(null);
 export function ClubProvider({ children }) {
   const { user, rbacEnabled, isAuthenticated } = useAuth();
   const { currentTenantId } = useTenant();
+  const authzFingerprint = useMemo(
+    () =>
+      buildAuthorizationPrincipalFingerprint(user, {
+        rbacEnabled,
+        currentTenantId,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Phase 2E: fingerprint fields only; user object identity is not an authz signal
+    [
+      user?.id,
+      user?.role,
+      user?.status,
+      user?.tenantId,
+      user?.venueId,
+      user?.clubId,
+      user?.tournamentId,
+      user?.teamId,
+      user?.playerId,
+      user?.assignedClusterIds,
+      rbacEnabled,
+      currentTenantId,
+    ]
+  );
 
   // Phase 45A.1 — canonical Club READ cutover. When ON (flag + cloud backend),
   // canonicalClubRepository is the single Club-entity read gateway. When OFF
@@ -121,7 +144,8 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, user, currentTenantId, rbacEnabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Phase 2E: rehydrate on authz fingerprint, not user object identity
+  }, [isAuthenticated, authzFingerprint, currentTenantId, rbacEnabled]);
 
   // Phase 45A.1 — hydrate the Club-entity list from the canonical repository.
   // Snapshot is cleared on logout / user switch / tenant switch so a previous
@@ -169,7 +193,8 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [canonicalRead, isAuthenticated, user, currentTenantId, rbacEnabled, canonicalReloadNonce]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Phase 2E: rehydrate canonical clubs on authz fingerprint, not user object
+  }, [canonicalRead, isAuthenticated, authzFingerprint, currentTenantId, rbacEnabled, canonicalReloadNonce]);
 
   const visibleClubs = useMemo(() => {
     if (canonicalRead) {
@@ -242,7 +267,8 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [canonicalRead, isAuthenticated, user, currentTenantId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Phase 2E: rehydrate registry on authz fingerprint, not user object
+  }, [canonicalRead, isAuthenticated, authzFingerprint, currentTenantId]);
 
   useEffect(() => {
     // Legacy blob-registry auto-provisioning/selection. In canonical read mode
@@ -303,7 +329,8 @@ export function ClubProvider({ children }) {
       setActiveClubId(null);
       setRevision((value) => value + 1);
     }
-  }, [canonicalRead, activeClubId, currentTenantId, isAuthenticated, rbacEnabled, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Phase 2E: same-actor token refresh must not re-run club selection
+  }, [canonicalRead, activeClubId, currentTenantId, isAuthenticated, rbacEnabled, user?.id, user?.role]);
 
   useEffect(() => {
     // Legacy profiles.club_id-driven active switch. Not authoritative in
@@ -333,7 +360,7 @@ export function ClubProvider({ children }) {
       setActiveClubId(user.clubId);
       setRevision((value) => value + 1);
     }
-  }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, user, visibleClubs]);
+  }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, user?.id, user?.clubId, user?.role, visibleClubs]);
 
   useEffect(() => {
     if (!activeClubId || !isAuthenticated || !isAiAutoCloudSyncEnabled()) {
@@ -511,7 +538,7 @@ export function ClubProvider({ children }) {
       setActiveClubId(targetId);
       setRevision((value) => value + 1);
     }
-  }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, user, visibleClubs]);
+  }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, user?.id, user?.clubId, user?.role, visibleClubs]);
 
   const summary = useMemo(() => {
     const base = getClubSummary(activeClub?.id || activeClubId);

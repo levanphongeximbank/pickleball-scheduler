@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { can, canAccessClub, canAccessVenue, canAll, canAny } from "../auth/rbac.js";
 import { clearAuthSession, loadAuthSession } from "../auth/authStorage.js";
@@ -18,6 +18,10 @@ import {
 import { getSupabaseConfigError, hasSupabaseConfig } from "../auth/supabaseClient.js";
 import { clearClubScope } from "../auth/clubScopeResolver.js";
 import { clearGovernanceScope } from "../auth/governanceScopeResolver.js";
+import {
+  buildAuthorizationPrincipalFingerprint,
+  shouldSkipAuthUiRefreshOnTokenEvent,
+} from "../auth/authorizationPrincipalFingerprint.js";
 
 const AuthContext = createContext(null);
 
@@ -29,6 +33,17 @@ export function AuthProvider({ children }) {
   const refresh = useCallback(() => {
     setState(getAuthState());
   }, []);
+  const principalFingerprintRef = useRef(
+    buildAuthorizationPrincipalFingerprint(state.user, {
+      rbacEnabled: state.rbacEnabled,
+    })
+  );
+
+  useEffect(() => {
+    principalFingerprintRef.current = buildAuthorizationPrincipalFingerprint(state.user, {
+      rbacEnabled: state.rbacEnabled,
+    });
+  }, [state.user, state.rbacEnabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,10 +136,23 @@ export function AuthProvider({ children }) {
     const start = async () => {
       await bootstrap();
       if (!cancelled) {
-        unsubscribe = subscribeToSupabaseAuth(() => {
-          if (!cancelled) {
-            refresh();
+        unsubscribe = subscribeToSupabaseAuth(({ event, user: nextUser } = {}) => {
+          if (cancelled) {
+            return;
           }
+          // Supabase client already holds the rotated access token.
+          // Skip React user/profile rehydration only when authz fingerprint is unchanged.
+          if (
+            shouldSkipAuthUiRefreshOnTokenEvent({
+              event,
+              previousFingerprint: principalFingerprintRef.current,
+              nextUser,
+              rbacEnabled: getAuthState().rbacEnabled,
+            })
+          ) {
+            return;
+          }
+          refresh();
         });
       }
     };

@@ -12,6 +12,9 @@ import {
   setTournamentStatusCommand,
 } from "../services/tournamentCommands.js";
 import { resolveExplicitTenantFromClub } from "../guards/tournamentTenant.js";
+import { resolveCanonicalTournamentLoadPolicy } from "./canonicalTournamentLoadPolicy.js";
+
+export { resolveCanonicalTournamentLoadPolicy };
 
 function readClubId(clubOrScope) {
   if (clubOrScope && typeof clubOrScope === "object") {
@@ -27,6 +30,13 @@ function readTenantId(clubOrScope) {
   return null;
 }
 
+function readAuthzFingerprint(clubOrScope) {
+  if (clubOrScope && typeof clubOrScope === "object") {
+    return String(clubOrScope.authzFingerprint || "").trim();
+  }
+  return "";
+}
+
 /**
  * Load one tournament from canonical cloud authority.
  * Pass activeClub (or { id, tenantId|venueId }) — never rely on localStorage tenant lookup.
@@ -35,11 +45,12 @@ function readTenantId(clubOrScope) {
 export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) {
   const clubId = readClubId(clubOrScope);
   const tenantId = readTenantId(clubOrScope);
+  const authzFingerprint = readAuthzFingerprint(clubOrScope);
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(Boolean(clubId && tournamentId));
   const [error, setError] = useState(null);
   const tournamentRef = useRef(null);
-  const identityRef = useRef({ clubId, tournamentId });
+  const identityRef = useRef({ clubId, tournamentId, tenantId, authzFingerprint });
 
   useEffect(() => {
     tournamentRef.current = tournament;
@@ -47,13 +58,34 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
 
   const reload = useCallback(async ({ soft = false } = {}) => {
     if (!clubId || !tournamentId) {
+      const policy = resolveCanonicalTournamentLoadPolicy({
+        clubId,
+        tournamentId,
+        tenantId,
+        prevClubId: identityRef.current.clubId,
+        prevTournamentId: identityRef.current.tournamentId,
+        prevTenantId: identityRef.current.tenantId,
+        hasUsableTournament: Boolean(tournamentRef.current),
+        usableTournamentId: tournamentRef.current?.id,
+        authzFingerprint,
+        prevAuthzFingerprint: identityRef.current.authzFingerprint,
+      });
+      if (policy.mode === "keep-transient") {
+        return tournamentRef.current;
+      }
       setTournament(null);
       setLoading(false);
       return null;
     }
     const sameIdentity =
       identityRef.current.clubId === clubId &&
-      String(identityRef.current.tournamentId) === String(tournamentId);
+      String(identityRef.current.tournamentId) === String(tournamentId) &&
+      (!identityRef.current.tenantId ||
+        !tenantId ||
+        identityRef.current.tenantId === tenantId) &&
+      (!identityRef.current.authzFingerprint ||
+        !authzFingerprint ||
+        identityRef.current.authzFingerprint === authzFingerprint);
     const canSoft = soft && sameIdentity && Boolean(tournamentRef.current);
     if (!canSoft) {
       setLoading(true);
@@ -72,34 +104,53 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
     setTournament(result.tournament);
     setLoading(false);
     return result.tournament;
-  }, [clubId, tournamentId, tenantId]);
+  }, [clubId, tournamentId, tenantId, authzFingerprint]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const prev = identityRef.current;
+      const policy = resolveCanonicalTournamentLoadPolicy({
+        clubId,
+        tournamentId,
+        tenantId,
+        prevClubId: prev.clubId,
+        prevTournamentId: prev.tournamentId,
+        prevTenantId: prev.tenantId,
+        hasUsableTournament: Boolean(tournamentRef.current),
+        usableTournamentId: tournamentRef.current?.id,
+        authzFingerprint,
+        prevAuthzFingerprint: prev.authzFingerprint,
+      });
+
+      if (policy.mode === "keep-transient") {
+        return;
+      }
+
+      if (policy.updateIdentity) {
+        identityRef.current = { clubId, tournamentId, tenantId, authzFingerprint };
+      }
+
       if (!clubId || !tournamentId) {
         if (!cancelled) {
-          setTournament(null);
+          if (policy.clearTournament) {
+            setTournament(null);
+            tournamentRef.current = null;
+          }
           setLoading(false);
-          identityRef.current = { clubId, tournamentId };
         }
         return;
       }
 
-      const prev = identityRef.current;
-      const identityChanged =
-        prev.clubId !== clubId || String(prev.tournamentId) !== String(tournamentId);
-      identityRef.current = { clubId, tournamentId };
-
-      // Tournament/club switch must never flash the previous tournament as the new one.
-      if (identityChanged) {
+      // Tournament/club/tenant switch must never flash the previous tournament as the new one.
+      if (policy.clearTournament) {
         setTournament(null);
         tournamentRef.current = null;
         setLoading(true);
         setError(null);
       }
 
-      const soft = !identityChanged && Boolean(tournamentRef.current);
+      const soft = policy.soft && Boolean(tournamentRef.current);
       if (!soft) {
         setLoading(true);
       }
@@ -120,7 +171,7 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
     return () => {
       cancelled = true;
     };
-  }, [clubId, tournamentId, revision, tenantId]);
+  }, [clubId, tournamentId, revision, tenantId, authzFingerprint]);
 
   const update = useCallback(
     async (patch, options = {}) => {

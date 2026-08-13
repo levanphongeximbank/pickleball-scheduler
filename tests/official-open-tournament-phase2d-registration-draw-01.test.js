@@ -97,7 +97,7 @@ describe("official-open-tournament-phase2d-registration-draw-01", () => {
     assert.equal(reg.includes("Bắt đầu trình chiếu"), false);
     assert.equal(fin.includes("Chia bảng"), false);
     assert.match(setup, /mode="select"/);
-    assert.match(setup, /Đăng ký VĐV/);
+    assert.match(setup, /Đăng ký \$\{selectedIndividualPlayerIds\.length\} VĐV/);
     assert.doesNotMatch(setup, /mode="register"/);
   });
 
@@ -112,7 +112,7 @@ describe("official-open-tournament-phase2d-registration-draw-01", () => {
     assert.match(setup, /handleSelectIndividualCandidate/);
     assert.match(
       setup,
-      /const handleSelectIndividualCandidate = \(playerId\) => \{[\s\S]*setSelectedIndividualPlayerId/
+      /const handleSelectIndividualCandidate = \(playerId\) => \{[\s\S]*setSelectedIndividualPlayerIds/
     );
     assert.doesNotMatch(
       setup,

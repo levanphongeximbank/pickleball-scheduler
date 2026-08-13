@@ -28,6 +28,14 @@ export {
 } from "./engines/registrationEngine.js";
 
 export {
+  uniqueOfficialIndividualSelection,
+  toggleOfficialIndividualSelection,
+  mergeVisibleOfficialIndividualSelection,
+  formatOfficialBulkRegistrationError,
+  registerOfficialIndividualsBatch,
+} from "./engines/officialRegistrationBatchEngine.js";
+
+export {
   ELIGIBILITY_VIOLATION,
   DEFAULT_ELIGIBILITY_RULES,
   normalizeEligibilityRules,

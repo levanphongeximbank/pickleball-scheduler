@@ -44,7 +44,6 @@ import {
   canGenerateBracket,
   createOfficialEventRecord,
   createOpenEntryFromPair,
-  createOpenEntryFromPlayer,
   generateKnockoutBracket,
   resolveBracketProgress,
   setBracketWinner,
@@ -96,6 +95,7 @@ import {
 import { isAiEngineEnabled } from "../../features/ai-assistant/index.js";
 import TournamentAiAssistantPanel from "../../components/tournament/ai/TournamentAiAssistantPanel.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { buildAuthorizationPrincipalFingerprint } from "../../auth/authorizationPrincipalFingerprint.js";
 import { canViewPlayerSkillLevel } from "../../auth/rbac.js";
 import { useTenant } from "../../context/TenantContext.jsx";
 import {
@@ -153,6 +153,11 @@ import OfficialTournamentResultsScreen, {
   OfficialTournamentKnockoutRoundScreen,
 } from "../../components/tournament/official/OfficialTournamentResultsScreen.jsx";
 import { lockRegistration } from "../../features/individual-tournament/engines/registrationEngine.js";
+import {
+  mergeVisibleOfficialIndividualSelection,
+  registerOfficialIndividualsBatch,
+  toggleOfficialIndividualSelection,
+} from "../../features/individual-tournament/engines/officialRegistrationBatchEngine.js";
 
 const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
@@ -176,8 +181,10 @@ export default function OfficialTournamentSetup() {
   const [pairBusy, setPairBusy] = useState(false);
   const [groupBusy, setGroupBusy] = useState(false);
   const [registerBusy, setRegisterBusy] = useState(false);
-  const [selectedIndividualPlayerId, setSelectedIndividualPlayerId] = useState("");
+  const [selectedIndividualPlayerIds, setSelectedIndividualPlayerIds] = useState([]);
   const [localRevision, setLocalRevision] = useState(0);
+  const [playerDirectoryRevision, setPlayerDirectoryRevision] = useState(0);
+  const registerBusyRef = useRef(false);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [warnings, setWarnings] = useState([]);
@@ -210,6 +217,21 @@ export default function OfficialTournamentSetup() {
     pairingOptions: { privatePairingRules: [] },
   });
 
+  const authzFingerprint = useMemo(
+    () =>
+      buildAuthorizationPrincipalFingerprint(user, {
+        rbacEnabled,
+        currentTenantId,
+      }),
+    [user, rbacEnabled, currentTenantId]
+  );
+  const canonicalClubScope = useMemo(() => {
+    if (activeClub && typeof activeClub === "object") {
+      return { ...activeClub, authzFingerprint };
+    }
+    return authzFingerprint ? { authzFingerprint } : null;
+  }, [activeClub, authzFingerprint]);
+
   const canViewSkillInSetup = useMemo(
     () =>
       canViewPlayerSkillLevel(
@@ -225,7 +247,8 @@ export default function OfficialTournamentSetup() {
     loading: tournamentLoading,
     error: tournamentLoadError,
     update,
-  } = useCanonicalTournament(activeClub, tournamentId, localRevision);
+    reload,
+  } = useCanonicalTournament(canonicalClubScope, tournamentId, localRevision);
 
   useEffect(() => {
     if (tournamentLoadError) {
@@ -253,14 +276,14 @@ export default function OfficialTournamentSetup() {
     players: allTenantPlayers,
     error: tenantPlayersError,
   } = useTenantPairingCandidatePool(tenantId, {
-    revision: localRevision,
+    revision: playerDirectoryRevision,
   });
   const {
     players,
     error: clubPlayersError,
   } = useClubPairingCandidatePool(activeClubId, {
     tenantId,
-    revision: localRevision,
+    revision: playerDirectoryRevision,
   });
   const playersLoadError = clubPlayersError || tenantPlayersError;
 
@@ -473,9 +496,14 @@ export default function OfficialTournamentSetup() {
 
   const persistTournament = async (patch, options = {}) => {
     const { status, ...dataPatch } = patch;
+    const {
+      skipLocalRevision,
+      refreshPlayerDirectory,
+      ...updateOptions
+    } = options;
     const result = await update(
       status ? { ...dataPatch, status } : patch,
-      options
+      updateOptions
     );
 
     if (!result.ok) {
@@ -490,7 +518,12 @@ export default function OfficialTournamentSetup() {
       );
     }
 
-    setLocalRevision((value) => value + 1);
+    if (!skipLocalRevision) {
+      setLocalRevision((value) => value + 1);
+    }
+    if (refreshPlayerDirectory) {
+      setPlayerDirectoryRevision((value) => value + 1);
+    }
     refreshClubs();
     return {
       ok: true,
@@ -911,47 +944,73 @@ export default function OfficialTournamentSetup() {
 
   const handleQuickAddSaved = async (player) => {
     refreshClubs();
-    setLocalRevision((value) => value + 1);
+    setPlayerDirectoryRevision((value) => value + 1);
 
     if (isIndividualRegistration) {
       await registerPlayerEntry(player);
       return;
     }
 
-    setSelectedIndividualPlayerId(String(player.id));
     setMessage(`Đã thêm ${player.name}. Chọn VĐV rồi bấm Đăng ký.`);
   };
 
+  const persistOfficialIndividualBatch = async (nextTournament) => {
+    const saved = await persistTournament(
+      {
+        events: nextTournament.events,
+        settings: nextTournament.settings,
+      },
+      { skipLocalRevision: true }
+    );
+    if (!saved) {
+      return false;
+    }
+    await reload({ soft: true });
+    return true;
+  };
+
   const registerPlayerEntry = async (player) => {
-    if (registerBusy) return false;
-    const validation = validateOpenRegistrationPlayers([player], eventType);
-    if (!validation.ok) {
-      setError(validation.errors.join(" "));
+    if (!player) return false;
+    return registerOfficialIndividuals([String(player.id)], [player]);
+  };
+
+  const registerOfficialIndividuals = async (playerIds, playerPool = flowPlayers) => {
+    if (registerBusy || registerBusyRef.current) {
+      return false;
+    }
+    setError(null);
+    const result = registerOfficialIndividualsBatch(
+      tournament,
+      {
+        playerIds,
+        players: playerPool,
+        eventId: savedEvent?.id,
+        eventType,
+        clubName: entryClubName || activeClub?.name || "",
+      },
+      { actor: user || null, clubId: activeClubId }
+    );
+    if (!result.ok) {
+      setError(result.error);
       return false;
     }
 
-    const entry = createOpenEntryFromPlayer(player, {
-      tournamentId,
-      eventId: savedEvent?.id || `event-${tournamentId}`,
-      clubName: entryClubName || player.clubName || activeClub?.name || "",
-    });
-
-    if (displayEntries.some((item) => item.id === entry.id)) {
-      setError("VDV da dang ky.");
-      return false;
-    }
-
+    registerBusyRef.current = true;
     setRegisterBusy(true);
-    const nextEntries = [...displayEntries, entry];
-    setRegisteredEntries(nextEntries);
-    const saved = await persistAcceptedEntries(nextEntries);
+    const saved = await persistOfficialIndividualBatch(result.tournament);
+    registerBusyRef.current = false;
     setRegisterBusy(false);
     if (!saved) {
-      setRegisteredEntries(displayEntries);
       return false;
     }
-    setSelectedIndividualPlayerId("");
-    setMessage(`Da dang ky ${player.name}.`);
+
+    const registeredIds = new Set((result.entries || []).flatMap((entry) => entry.playerIds || []));
+    setSelectedIndividualPlayerIds((current) =>
+      current.filter((id) => !registeredIds.has(String(id)))
+    );
+    setRegisteredEntries(result.event?.entries || []);
+    const n = result.registeredCount || registeredIds.size;
+    setMessage(n === 1 ? "Đã đăng ký 1 VĐV." : `Đã đăng ký ${n} VĐV.`);
     return true;
   };
 
@@ -1071,21 +1130,29 @@ export default function OfficialTournamentSetup() {
     return true;
   };
 
-  const handleRegisterSingle = (playerId, playerOverride = null) => {
-    setError(null);
-    const player =
-      playerOverride ||
-      flowPlayers.find((item) => String(item.id) === String(playerId));
-    if (!player || registerBusy) {
+  const handleRegisterSelectedIndividuals = () => {
+    if (registerBusy || registerBusyRef.current) {
       return;
     }
-
-    return registerPlayerEntry(player);
+    return registerOfficialIndividuals(selectedIndividualPlayerIds);
   };
 
   const handleSelectIndividualCandidate = (playerId) => {
-    const key = String(playerId || "");
-    setSelectedIndividualPlayerId((current) => (current === key ? "" : key));
+    setSelectedIndividualPlayerIds((current) =>
+      toggleOfficialIndividualSelection(current, playerId, {
+        excludePlayerIds: registeredPlayerIds,
+      })
+    );
+  };
+
+  const handleClearIndividualSelection = () => {
+    setSelectedIndividualPlayerIds([]);
+  };
+
+  const handleSelectVisibleIndividuals = (visibleIds) => {
+    setSelectedIndividualPlayerIds((current) =>
+      mergeVisibleOfficialIndividualSelection(current, visibleIds)
+    );
   };
 
   const handlePairPlayerPick = (playerId) => {
@@ -2014,10 +2081,10 @@ export default function OfficialTournamentSetup() {
                     title=""
                     players={flowPlayers}
                     mode="select"
-                    selectedIds={
-                      selectedIndividualPlayerId ? [selectedIndividualPlayerId] : []
-                    }
+                    selectedIds={selectedIndividualPlayerIds}
                     onToggle={handleSelectIndividualCandidate}
+                    onSelectAll={handleSelectVisibleIndividuals}
+                    onClearAll={handleClearIndividualSelection}
                     clubFilter={openClubFilter}
                     onClubFilterChange={setOpenClubFilter}
                     clubs={clubs}
@@ -2029,27 +2096,25 @@ export default function OfficialTournamentSetup() {
                     excludePlayerIds={registeredPlayerIds}
                     onAddNew={() => setQuickAddOpen(true)}
                     showSkillLevel={canViewSkillInSetup}
-                    showSelectActions={false}
+                    showSelectActions={true}
+                    selectAllLabel="Chọn tất cả đang hiển thị"
+                    clearAllLabel="Bỏ chọn tất cả"
+                    disabled={registerBusy}
                     emptyMessage="Không có VĐV phù hợp hoặc tất cả đã đăng ký."
                   />
-                  {selectedIndividualPlayerId ? (
-                    <Typography variant="body2">
-                      Đã chọn:{" "}
-                      {flowPlayers.find(
-                        (p) => String(p.id) === String(selectedIndividualPlayerId)
-                      )?.name || selectedIndividualPlayerId}
-                    </Typography>
-                  ) : (
-                    <Typography variant="caption" color="text.secondary">
-                      Bấm một VĐV để chọn, rồi Đăng ký. Chọn không lưu giải.
-                    </Typography>
-                  )}
+                  <Typography variant="body2">
+                    Đã chọn: {selectedIndividualPlayerIds.length} VĐV
+                  </Typography>
                   <Button
                     variant="contained"
-                    disabled={!selectedIndividualPlayerId || registerBusy}
-                    onClick={() => handleRegisterSingle(selectedIndividualPlayerId)}
+                    disabled={
+                      selectedIndividualPlayerIds.length === 0 || registerBusy
+                    }
+                    onClick={handleRegisterSelectedIndividuals}
                   >
-                    {registerBusy ? "Đang đăng ký…" : "Đăng ký VĐV"}
+                    {registerBusy
+                      ? `Đang đăng ký ${selectedIndividualPlayerIds.length} VĐV...`
+                      : `Đăng ký ${selectedIndividualPlayerIds.length} VĐV`}
                   </Button>
                 </Stack>
               ) : (

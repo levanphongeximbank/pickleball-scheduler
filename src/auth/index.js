@@ -31,6 +31,11 @@ export {
 } from "./authService.js";
 export { formatAuthError } from "./authErrors.js";
 export {
+  buildAuthorizationPrincipalFingerprint,
+  authorizationPrincipalChanged,
+  shouldSkipAuthUiRefreshOnTokenEvent,
+} from "./authorizationPrincipalFingerprint.js";
+export {
   isAuthRequired,
   isPublicAuthPath,
   shouldRedirectToLogin,

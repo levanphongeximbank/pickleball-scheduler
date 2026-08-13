@@ -92,3 +92,5 @@ export {
   useClubPairingCandidatePool,
   useTenantPairingCandidatePool,
 } from "./usePairingCandidatePools.js";
+
+export { resolvePairingCandidatePoolScopePolicy } from "./pairingCandidatePoolScopePolicy.js";

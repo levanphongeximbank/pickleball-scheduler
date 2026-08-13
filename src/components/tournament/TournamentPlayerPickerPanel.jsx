@@ -47,6 +47,9 @@ export default function TournamentPlayerPickerPanel({
   showSelectActions = true,
   showPlayerList = true,
   showSkillLevel = false,
+  disabled = false,
+  selectAllLabel = "Chọn tất cả",
+  clearAllLabel = "Bỏ chọn tất cả",
 }) {
   const filteredPlayers = useMemo(
     () =>
@@ -142,17 +145,17 @@ export default function TournamentPlayerPickerPanel({
               size="small"
               variant="contained"
               onClick={handleSelectAll}
-              disabled={filteredPlayers.length === 0}
+              disabled={disabled || filteredPlayers.length === 0}
             >
-              Chọn tất cả
+              {selectAllLabel}
             </Button>
             <Button
               size="small"
               variant="outlined"
               onClick={onClearAll}
-              disabled={selectedIds.length === 0}
+              disabled={disabled || selectedIds.length === 0}
             >
-              Bỏ chọn tất cả
+              {clearAllLabel}
             </Button>
           </>
         ) : null}
@@ -205,6 +208,7 @@ export default function TournamentPlayerPickerPanel({
                     (mode === "select" || mode === "pair") && checked ? "contained" : "outlined"
                   }
                   onClick={handleClick}
+                  disabled={disabled}
                   sx={{ justifyContent: "space-between", minHeight: 44, textAlign: "left" }}
                 >
                   <span>

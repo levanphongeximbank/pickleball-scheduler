@@ -364,6 +364,13 @@ export function submitRegistration(tournament, payload = {}, options = {}) {
   const playerIds = (payload.playerIds || []).map(String).filter(Boolean);
   const isSingle = SINGLE_EVENT_TYPES.has(event.eventType);
   const expectedCount = isSingle ? 1 : 2;
+  const organizerIndividual =
+    options.organizerIndividual === true ||
+    isOfficialIndividualRegistrationMode(tournament, event);
+
+  if (organizerIndividual && playerIds.length !== 1) {
+    return { ok: false, error: "Đăng ký cá nhân cần đúng 1 VĐV." };
+  }
 
   if (playerIds.length < 1 || (isSingle && playerIds.length !== 1)) {
     return { ok: false, error: isSingle ? "Cần 1 VĐV cho nội dung đơn." : "Cần ít nhất 1 VĐV." };
@@ -377,8 +384,10 @@ export function submitRegistration(tournament, payload = {}, options = {}) {
     return { ok: false, error: "VĐV đã đăng ký nội dung này.", code: "DUPLICATE_PLAYER" };
   }
 
-  const needsPartnerInvite = !isSingle && playerIds.length === 1;
-  if (!isSingle && playerIds.length === 2 && expectedCount === 2) {
+  const needsPartnerInvite = !organizerIndividual && !isSingle && playerIds.length === 1;
+  if (organizerIndividual) {
+    // Official individual registration writes 1-player entries even on doubles.
+  } else if (!isSingle && playerIds.length === 2 && expectedCount === 2) {
     // complete pair
   } else if (!isSingle && !needsPartnerInvite && playerIds.length !== 2) {
     return { ok: false, error: "Cặp đôi cần đủ 2 VĐV hoặc 1 VĐV + lời mời." };

@@ -53,6 +53,7 @@ export {
   useCanonicalTournament,
   useCanonicalTournamentList,
   useCanonicalMyTournaments,
+  resolveCanonicalTournamentLoadPolicy,
 } from "./hooks/useCanonicalTournament.js";
 export { createInMemoryCanonicalTournamentRpc } from "./repositories/inMemoryCanonicalTournamentRpc.js";
 export {
