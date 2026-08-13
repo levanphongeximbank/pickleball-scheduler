@@ -71,6 +71,8 @@ import {
   classifyCanonicalMatchLifecycleResult,
   listEligibleInternalReferees,
   mapLifecycleStepToWorkspaceSection,
+  INTERNAL_WORKSPACE_SECTION_QUERY,
+  resolveInternalWorkspaceSection,
   resolveInternalKnockoutEligibility,
   resolveInternalTournamentLifecycle,
   resolveInternalWorkspaceKey,
@@ -158,7 +160,7 @@ const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
 export default function InternalTournamentSetup() {
   const { tournamentId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const {
     activeClub,
@@ -186,9 +188,7 @@ export default function InternalTournamentSetup() {
   const [previewEntries, setPreviewEntries] = useState([]);
   const [founderConstraints, setFounderConstraints] = useState([]);
   const [scheduleBusy, setScheduleBusy] = useState(false);
-  const [workspaceSection, setWorkspaceSection] = useState(
-    INTERNAL_WORKSPACE_SECTIONS.SETUP
-  );
+  const [sessionSection, setSessionSection] = useState(null);
   const [winnerDrafts, setWinnerDrafts] = useState({});
   const [pendingMatchId, setPendingMatchId] = useState(null);
   const [lifecycleNotice, setLifecycleNotice] = useState(null);
@@ -541,17 +541,31 @@ export default function InternalTournamentSetup() {
     [tournament]
   );
 
-  useEffect(() => {
-    if (workspaceTouchedRef.current || !lifecycle?.CURRENT_STEP) return;
-    setWorkspaceSection(mapLifecycleStepToWorkspaceSection(lifecycle.CURRENT_STEP));
-  }, [lifecycle?.CURRENT_STEP]);
+  const sectionResolution = useMemo(
+    () =>
+      resolveInternalWorkspaceSection({
+        requestedSection: searchParams.get(INTERNAL_WORKSPACE_SECTION_QUERY),
+        lifecycle,
+        event: savedEvent,
+      }),
+    [searchParams, lifecycle, savedEvent]
+  );
+  const workspaceSection = sessionSection || sectionResolution.section;
 
   const selectWorkspaceSection = (stepIdOrSection) => {
     workspaceTouchedRef.current = true;
     const section = Object.values(INTERNAL_WORKSPACE_SECTIONS).includes(stepIdOrSection)
       ? stepIdOrSection
       : mapLifecycleStepToWorkspaceSection(stepIdOrSection);
-    setWorkspaceSection(section);
+    setSessionSection(section);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set(INTERNAL_WORKSPACE_SECTION_QUERY, section);
+        return next;
+      },
+      { replace: true }
+    );
   };
 
   const groupStandings = useMemo(

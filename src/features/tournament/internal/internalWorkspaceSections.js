@@ -4,6 +4,10 @@
  */
 
 import { INTERNAL_LIFECYCLE_STEPS } from "./internalTournamentLifecycleResolver.js";
+import {
+  hasBracketGenerated,
+  isGroupStageComplete,
+} from "../../../tournament/engines/bracketEngine.js";
 
 export const INTERNAL_WORKSPACE_SECTIONS = Object.freeze({
   SETUP: "setup",
@@ -23,6 +27,13 @@ export const INTERNAL_WORKSPACE_SECTION_LABELS = Object.freeze({
   [INTERNAL_WORKSPACE_SECTIONS.BRACKET]: "Bracket",
 });
 
+export const INTERNAL_WORKSPACE_SECTION_QUERY = "section";
+
+export function parseInternalWorkspaceSection(raw) {
+  const value = String(raw || "").trim().toLowerCase();
+  return Object.values(INTERNAL_WORKSPACE_SECTIONS).includes(value) ? value : "";
+}
+
 export function mapLifecycleStepToWorkspaceSection(stepId) {
   switch (String(stepId || "")) {
     case INTERNAL_LIFECYCLE_STEPS.SETUP:
@@ -35,10 +46,71 @@ export function mapLifecycleStepToWorkspaceSection(stepId) {
     case INTERNAL_LIFECYCLE_STEPS.REFEREE:
       return INTERNAL_WORKSPACE_SECTIONS.REFEREE;
     case INTERNAL_LIFECYCLE_STEPS.RESULTS:
+    case INTERNAL_LIFECYCLE_STEPS.STANDINGS_OR_KNOCKOUT:
+    case INTERNAL_LIFECYCLE_STEPS.AWARDS:
+    case INTERNAL_LIFECYCLE_STEPS.COMPLETED:
       return INTERNAL_WORKSPACE_SECTIONS.RESULTS;
-    default:
+    case INTERNAL_LIFECYCLE_STEPS.CHAMPION:
       return INTERNAL_WORKSPACE_SECTIONS.BRACKET;
+    default:
+      return INTERNAL_WORKSPACE_SECTIONS.SETUP;
   }
+}
+
+export function isInternalBracketDefaultAllowed({ lifecycle, event } = {}) {
+  if (lifecycle?.oneGroup || lifecycle?.skipKnockout) {
+    return false;
+  }
+  if (hasBracketGenerated(event)) {
+    return true;
+  }
+  return Boolean(event && isGroupStageComplete(event));
+}
+
+export function resolveLifecycleDefaultWorkspaceSection({ lifecycle, event } = {}) {
+  const step = String(lifecycle?.CURRENT_STEP || "");
+  if (
+    step === INTERNAL_LIFECYCLE_STEPS.STANDINGS_OR_KNOCKOUT &&
+    isInternalBracketDefaultAllowed({ lifecycle, event })
+  ) {
+    return INTERNAL_WORKSPACE_SECTIONS.BRACKET;
+  }
+  if (step === INTERNAL_LIFECYCLE_STEPS.CHAMPION) {
+    return isInternalBracketDefaultAllowed({ lifecycle, event })
+      ? INTERNAL_WORKSPACE_SECTIONS.BRACKET
+      : INTERNAL_WORKSPACE_SECTIONS.RESULTS;
+  }
+  return mapLifecycleStepToWorkspaceSection(step);
+}
+
+export function isInternalWorkspaceSectionAvailable(section, { lifecycle, event } = {}) {
+  const parsed = parseInternalWorkspaceSection(section);
+  if (!parsed) return false;
+  if (parsed !== INTERNAL_WORKSPACE_SECTIONS.BRACKET) return true;
+  return isInternalBracketDefaultAllowed({ lifecycle, event });
+}
+
+/**
+ * F5 / fresh mount: URL section if valid and available, else lifecycle-safe default.
+ * Never defaults to an unavailable downstream section (e.g. Bracket during group results).
+ */
+export function resolveInternalWorkspaceSection({
+  requestedSection = "",
+  lifecycle = null,
+  event = null,
+} = {}) {
+  const fallback = resolveLifecycleDefaultWorkspaceSection({ lifecycle, event });
+  const requested = parseInternalWorkspaceSection(requestedSection);
+  if (!requested) {
+    return {
+      section: fallback,
+      source: String(requestedSection || "").trim() ? "invalid-url" : "lifecycle",
+    };
+  }
+  if (!isInternalWorkspaceSectionAvailable(requested, { lifecycle, event })) {
+    return { section: fallback, source: "unavailable-fallback" };
+  }
+  return { section: requested, source: "url" };
 }
 
 export function resolveInternalWorkspaceKey(tournament) {
