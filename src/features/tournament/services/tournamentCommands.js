@@ -10,7 +10,6 @@ import {
   TEAM_TOURNAMENT_DATA_MODES,
 } from "../../team-tournament/repositories/teamTournamentDataMode.js";
 import { resolveTournamentTenantScope } from "../guards/tournamentTenant.js";
-import { isClubDataDirty } from "../../../domain/clubSyncMetadata.js";
 import { cancelRedundantClubCloudPush } from "../../../ai/clubCloudPush.js";
 
 function buildDefaultName(mode) {
@@ -146,6 +145,92 @@ function officialSnapshotMatchesScope(snapshot, scope) {
     return false;
   }
   return true;
+}
+
+async function ensureOfficialClubSyncReadyForCourtLock({
+  clubId,
+  tournamentId,
+  snapshot,
+  readSnapshot,
+  scope,
+  syncClubToCloud,
+}) {
+  const { isClubDataDirty, getClubDirtyProvenance, recordClubSyncFailure } =
+    await import("../../../domain/clubSyncMetadata.js");
+  if (!isClubDataDirty(clubId)) {
+    return { ok: true, snapshot };
+  }
+
+  const { abandonUnpushedOfficialTournamentBookings } = await import(
+    "../../../domain/tournamentBookingService.js"
+  );
+  abandonUnpushedOfficialTournamentBookings(
+    clubId,
+    tournamentId,
+    snapshot.bookings || []
+  );
+
+  const { reconcileStaleClubDirtyWithSnapshot } = await import(
+    "../../../domain/clubDirtyReconcile.js"
+  );
+  const stale = reconcileStaleClubDirtyWithSnapshot(clubId, snapshot.clubData);
+  if (stale.ok) {
+    return { ok: true, snapshot, staleDirtyReconciled: stale.stale === true };
+  }
+
+  const { getClubCloudVersion, loadClubData } = await import(
+    "../../../domain/clubStorage.js"
+  );
+  const { diffClubBlobSemantic } = await import(
+    "../../../domain/clubBlobSemanticDiff.js"
+  );
+  const paths =
+    stale.paths && stale.paths.length
+      ? stale.paths
+      : diffClubBlobSemantic(loadClubData(clubId), snapshot.clubData);
+  const provenance = getClubDirtyProvenance(clubId);
+  const localVersion = Number(getClubCloudVersion(clubId) || 0);
+  const snapshotVersion = Number(snapshot.version);
+  const canFlush =
+    Number.isFinite(snapshotVersion) && localVersion >= snapshotVersion;
+
+  if (canFlush && typeof syncClubToCloud === "function") {
+    const flushed = await syncClubToCloud({
+      clubId,
+      expectedVersion: localVersion,
+    });
+    if (flushed?.ok) {
+      const fresh = await readSnapshot({
+        clubId,
+        tenantId: scope.tenantId,
+        includeInactive: true,
+      });
+      if (!fresh?.ok || !fresh.clubData) {
+        return {
+          ok: false,
+          code: COURT_LOCK_CODE.LOCAL_DIRTY_PENDING_SYNC,
+          error: "Đồng bộ CLB xong nhưng không đọc lại được lịch sân.",
+        };
+      }
+      return { ok: true, snapshot: fresh, flushed: true };
+    }
+    recordClubSyncFailure(clubId, flushed?.code || "PRELOCK_FLUSH_FAILED");
+    return {
+      ok: false,
+      code: COURT_LOCK_CODE.LOCAL_DIRTY_PENDING_SYNC,
+      error: `Không đồng bộ được thay đổi CLB (${paths.join(", ") || "unknown"}). Không khóa sân.`,
+      dirtyPaths: paths,
+      provenance,
+    };
+  }
+
+  return {
+    ok: false,
+    code: COURT_LOCK_CODE.LOCAL_DIRTY_PENDING_SYNC,
+    error: `Dữ liệu CLB local khác cloud (${paths.join(", ") || "unknown"}). Không khóa sân để tránh ghi đè.`,
+    dirtyPaths: paths,
+    provenance,
+  };
 }
 
 async function rewindUnpushedOfficialStaging({
@@ -393,18 +478,6 @@ export async function setTournamentCourtScheduleCommand(
   const courtsProvided = Object.prototype.hasOwnProperty.call(options, "courts");
   let courts;
   if (courtsProvided) {
-    if (isClubDataDirty(scope.clubId)) {
-      return {
-        ok: false,
-        error:
-          "Dữ liệu CLB đang có thay đổi chưa đồng bộ. Vui lòng chờ đồng bộ hoàn tất rồi khóa sân lại.",
-        code: COURT_LOCK_CODE.LOCAL_DIRTY_PENDING_SYNC,
-        tournament: loaded.tournament,
-        tournamentPatchAttempted: false,
-      };
-    }
-    cancelRedundantClubCloudPush(scope.clubId);
-
     const { readCanonicalClubCourtBookingSnapshot } = await import(
       "../../team-tournament/services/canonicalClubCourtInventory.js"
     );
@@ -438,7 +511,28 @@ export async function setTournamentCourtScheduleCommand(
       };
     }
 
-    if (!officialSnapshotMatchesScope(snapshot, scope)) {
+    const syncClubToCloud = await resolveSyncClubToCloud(options);
+    const ready = await ensureOfficialClubSyncReadyForCourtLock({
+      clubId: scope.clubId,
+      tournamentId,
+      snapshot,
+      readSnapshot,
+      scope,
+      syncClubToCloud,
+    });
+    if (!ready.ok) {
+      return {
+        ok: false,
+        error: ready.error,
+        code: ready.code || COURT_LOCK_CODE.LOCAL_DIRTY_PENDING_SYNC,
+        tournament: loaded.tournament,
+        tournamentPatchAttempted: false,
+        dirtyPaths: ready.dirtyPaths || null,
+      };
+    }
+    cancelRedundantClubCloudPush(scope.clubId);
+
+    if (!officialSnapshotMatchesScope(ready.snapshot || snapshot, scope)) {
       return {
         ok: false,
         error: "Dữ liệu lịch sân vừa thay đổi. Vui lòng thử khóa sân lại.",
@@ -448,13 +542,12 @@ export async function setTournamentCourtScheduleCommand(
       };
     }
 
-    let working = snapshot;
+    let working = ready.snapshot || snapshot;
     let retryCount = 0;
     let syncResult;
     let priorOccupancyBookings;
     let pushed;
     let firstPushExpectedVersion = null;
-    const syncClubToCloud = await resolveSyncClubToCloud(options);
 
     while (true) {
       const selectedIds = (courtSchedule.courtIds || []).map(String);

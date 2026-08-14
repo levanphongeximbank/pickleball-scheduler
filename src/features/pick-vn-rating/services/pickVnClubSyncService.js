@@ -5,17 +5,10 @@
  * push: frozen as independent canonical write from club blob.
  */
 
-import { loadClubData, saveClubData } from "../../../domain/clubStorage.js";
-import { normalizePlayers } from "../../../models/player.js";
-import {
-  buildClubPlayerRatingMirror,
-  normalizePickVnRatingRecord,
-} from "../models/pickVnRating.js";
+import { loadClubData } from "../../../domain/clubStorage.js";
+import { normalizePickVnRatingRecord } from "../models/pickVnRating.js";
 import { upsertPickVnRating } from "../storage/pickVnRatingLocalStore.js";
-import {
-  getPickVnRatingByAuthUserId,
-  syncRatingToClubPlayer,
-} from "./pickVnRatingService.js";
+import { syncRatingToClubPlayer } from "./pickVnRatingService.js";
 import { rpcPickVnGetRatingByAuthUser } from "./pickVnRatingRpcService.js";
 import { frozenWriterResult } from "./playerRatingCanonicalBridge.js";
 
@@ -86,15 +79,10 @@ export async function hydrateClubPlayersPickVnRatings(clubId) {
     nextPlayers.push(synced);
   }
 
-  if (changed) {
-    data.players = normalizePlayers(nextPlayers);
-    data.updatedAt = new Date().toISOString();
-    saveClubData(clubId, data);
-  }
-
   return {
     ok: true,
     changed,
+    persistedClubBlob: false,
     count: nextPlayers.length,
     mirrorOnly: true,
     canonicalAuthority: false,
@@ -109,9 +97,6 @@ export async function pushClubPlayersPickVnRatings(clubId) {
   if (!clubId) {
     return { ok: false, error: "Thiếu clubId." };
   }
-
-  void buildClubPlayerRatingMirror;
-  void getPickVnRatingByAuthUserId;
 
   return frozenWriterResult("pushClubPlayersPickVnRatings", {
     clubId,

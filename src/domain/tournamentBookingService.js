@@ -218,6 +218,8 @@ export function restoreCanonicalTournamentBookingSnapshot({
   priorOccupancyBookings,
   persistSnapshot,
   suppressCloudPush = false,
+  source,
+  operation,
 } = {}) {
   if (!clubId || !persistSnapshot) {
     return {
@@ -230,9 +232,67 @@ export function restoreCanonicalTournamentBookingSnapshot({
     clubId,
     Array.isArray(priorOccupancyBookings) ? priorOccupancyBookings : [],
     persistSnapshot,
-    { suppressCloudPush: suppressCloudPush === true }
+    {
+      suppressCloudPush: suppressCloudPush === true,
+      source,
+      operation: operation || "restore-canonical-bookings",
+    }
   );
   return { ok: true };
+}
+
+function ownedBookingIdentity(booking) {
+  return JSON.stringify({
+    id: String(booking?.id || ""),
+    courtId: String(booking?.courtId || ""),
+    date: String(booking?.date || "").slice(0, 10),
+    startTime: String(booking?.startTime || "").slice(0, 5),
+    endTime: String(booking?.endTime || "").slice(0, 5),
+    bookingStatus: String(booking?.bookingStatus || ""),
+  });
+}
+
+/**
+ * Undo unpushed Official tournament-owned bookings without replacing other local fields.
+ */
+export function abandonUnpushedOfficialTournamentBookings(
+  clubId,
+  tournamentId,
+  occupancyBookings = []
+) {
+  if (!clubId || !tournamentId) {
+    return { ok: false, restored: false };
+  }
+  const local = loadClubData(clubId);
+  const localBookings = Array.isArray(local.bookings) ? local.bookings : [];
+  const snapshotBookings = Array.isArray(occupancyBookings) ? occupancyBookings : [];
+  const localOwned = localBookings.filter((booking) =>
+    isTournamentBridgeBooking(booking, tournamentId)
+  );
+  const snapshotOwned = snapshotBookings.filter((booking) =>
+    isTournamentBridgeBooking(booking, tournamentId)
+  );
+  const localKeys = localOwned.map(ownedBookingIdentity).sort().join("|");
+  const snapshotKeys = snapshotOwned.map(ownedBookingIdentity).sort().join("|");
+  if (localKeys === snapshotKeys) {
+    return { ok: true, restored: false };
+  }
+  const others = localBookings.filter(
+    (booking) => !isTournamentBridgeBooking(booking, tournamentId)
+  );
+  saveClubData(
+    clubId,
+    {
+      ...local,
+      bookings: [...others, ...snapshotOwned],
+    },
+    {
+      source: "cloud",
+      suppressCloudPush: true,
+      operation: "abandon-unpushed-official-bookings",
+    }
+  );
+  return { ok: true, restored: true };
 }
 
 export function tournamentOwnedBookingsMatchCourtSchedule(bookings, tournament) {
@@ -290,6 +350,8 @@ function persistCanonicalClubBookings(clubId, nextBookings, snapshotClubData, op
     },
     {
       suppressCloudPush: options.suppressCloudPush === true,
+      source: options.source,
+      operation: options.operation || "canonical-booking-persist",
     }
   );
 }

@@ -17,6 +17,7 @@ import {
   validateClubPayloadForSync,
 } from "../domain/clubStorage.js";
 import { isClubDataDirty, markClubDataSynced } from "../domain/clubSyncMetadata.js";
+import { reconcileStaleClubDirtyWithSnapshot } from "../domain/clubDirtyReconcile.js";
 import { loadAIData, saveAIData } from "./storage.js";
 import {
   hydrateClubPlayersPickVnRatings,
@@ -30,9 +31,15 @@ import { isPlatformHardCutoverEnabled } from "../features/platform-hard-cutover/
  * Abort applying a remote club snapshot when local blob has unsynced writes
  * (e.g. MLP draft just created). Prevents in-flight pull from wiping drafts.
  */
-function abortPullIfLocalDirty(clubId, provider) {
+function abortPullIfLocalDirty(clubId, provider, incomingClubData = null) {
   if (!isClubDataDirty(clubId)) {
     return null;
+  }
+  if (incomingClubData && typeof incomingClubData === "object") {
+    const stale = reconcileStaleClubDirtyWithSnapshot(clubId, incomingClubData);
+    if (stale.ok) {
+      return null;
+    }
   }
   return {
     ok: false,
@@ -209,7 +216,7 @@ async function syncToSupabase(clubId, options = {}) {
   }
 
   setClubCloudVersion(clubId, nextVersion);
-  markClubDataSynced(clubId, { push: true });
+  markClubDataSynced(clubId, { push: true, version: nextVersion });
 
   let pickVnWarning = null;
   try {
@@ -280,15 +287,10 @@ async function pullFromSupabase(clubId) {
   const clubPayload = row.data?.data || row.data;
 
   if (clubPayload?.data) {
-    const dirtyAbort = abortPullIfLocalDirty(clubId, "supabase");
+    const validated = validateClubPayloadForSync(clubPayload.data, clubId);
+    const dirtyAbort = abortPullIfLocalDirty(clubId, "supabase", validated.data);
     if (dirtyAbort) {
       return dirtyAbort;
-    }
-    const validated = validateClubPayloadForSync(clubPayload.data, clubId);
-    // Re-check immediately before overwrite (create may mark dirty mid-fetch).
-    const dirtyAbortImmediate = abortPullIfLocalDirty(clubId, "supabase");
-    if (dirtyAbortImmediate) {
-      return dirtyAbortImmediate;
     }
     saveClubData(clubId, validated.data, { source: "cloud" });
   }
@@ -298,7 +300,10 @@ async function pullFromSupabase(clubId) {
     if (dirtyAbortAi) {
       return dirtyAbortAi;
     }
-    saveAIData(clubPayload.aiData, clubId);
+    saveAIData(clubPayload.aiData, clubId, {
+      source: "cloud",
+      operation: "cloud-pull-ai",
+    });
   }
 
   if (row.version != null) {
@@ -308,7 +313,7 @@ async function pullFromSupabase(clubId) {
   if (isClubDataDirty(clubId)) {
     return abortPullIfLocalDirty(clubId, "supabase");
   }
-  markClubDataSynced(clubId, { pull: true });
+  markClubDataSynced(clubId, { pull: true, version: Number(row.version ?? 0) });
 
   let pickVnWarning = null;
   try {
@@ -459,20 +464,17 @@ export async function pullClubFromCloud(options = {}) {
     };
   }
 
-  const dirtyAbort = abortPullIfLocalDirty(clubId, "local");
+  const validated = validateClubPayloadForSync(payload.data, clubId);
+  const dirtyAbort = abortPullIfLocalDirty(clubId, "local", validated.data);
   if (dirtyAbort) {
     return dirtyAbort;
   }
-
-  const validated = validateClubPayloadForSync(payload.data, clubId);
-  // Re-check immediately before overwrite (MLP create may mark dirty mid-pull).
-  const dirtyAbortImmediate = abortPullIfLocalDirty(clubId, "local");
-  if (dirtyAbortImmediate) {
-    return dirtyAbortImmediate;
-  }
   saveClubData(clubId, validated.data, { source: "cloud" });
   if (payload.aiData) {
-    saveAIData(payload.aiData, clubId);
+    saveAIData(payload.aiData, clubId, {
+      source: "cloud",
+      operation: "cloud-pull-ai",
+    });
   }
 
   return {

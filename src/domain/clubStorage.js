@@ -299,7 +299,13 @@ export function saveClubData(clubId, data, options = {}) {
 
   localStorage.setItem(getClubDataKey(clubId), JSON.stringify(normalized));
   if (options.source !== "cloud") {
-    markClubDataDirty(clubId);
+    markClubDataDirty(clubId, {
+      source: "local",
+      operation: options.operation || "saveClubData",
+      reason: options.dirtyReason || "club-blob-write",
+      pendingPushScheduled:
+        options.suppressCloudPush !== true,
+    });
     recordBlobWriteTelemetry(clubId);
   }
   const shouldScheduleCloudPush =

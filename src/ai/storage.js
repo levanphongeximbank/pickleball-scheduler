@@ -107,10 +107,10 @@ export function loadAIData(clubId = getActiveClubId()) {
   return clubDataToAiView(clubData);
 }
 
-export function saveAIData(data, clubId = getActiveClubId()) {
+export function saveAIData(data, clubId = getActiveClubId(), options = {}) {
   const clubData = loadClubData(clubId);
   const next = applyAiViewToClubData(clubData, data);
-  saveClubData(clubId, next);
+  saveClubData(clubId, next, options);
   purgeLegacyAiScopedKeys(clubId);
 }
 

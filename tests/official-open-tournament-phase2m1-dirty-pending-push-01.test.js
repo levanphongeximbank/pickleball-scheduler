@@ -243,7 +243,7 @@ describe("official-open-tournament-phase2m1-dirty-pending-push-01", () => {
     const { result, pushes } = await lockOwnerDraft(tournament, { remote });
     assert.equal(result.ok, false);
     assert.equal(result.code, COURT_LOCK_CODE.LOCAL_DIRTY_PENDING_SYNC);
-    assert.match(result.error, /chưa đồng bộ/);
+    assert.match(result.error, /Không khóa sân/);
     assert.equal(result.tournamentPatchAttempted, false);
     assert.equal(pushes.length, 0);
     assert.equal(hasPendingClubCloudPush(CLUB_ID), true);
@@ -344,11 +344,12 @@ describe("official-open-tournament-phase2m1-dirty-pending-push-01", () => {
     assert.match(storage, /options\.source !== "cloud"/);
     assert.match(storage, /shouldScheduleCloudPush/);
     const providedStart = command.indexOf("if (courtsProvided)");
-    const snapshotRead = command.indexOf("readCanonicalClubCourtBookingSnapshot", providedStart);
-    const dirtyIdx = command.indexOf("isClubDataDirty", providedStart);
+    const providedEnd = command.indexOf("} else {", providedStart);
+    const providedBranch = command.slice(providedStart, providedEnd);
     const stageIdx = command.indexOf("syncTournamentCourtBookings", providedStart);
-    assert.ok(dirtyIdx > providedStart && dirtyIdx < snapshotRead);
-    assert.ok(dirtyIdx < stageIdx);
+    const ensureIdx = command.indexOf("ensureOfficialClubSyncReadyForCourtLock", providedStart);
+    assert.ok(ensureIdx > providedStart && ensureIdx < stageIdx);
+    assert.match(providedBranch, /ensureOfficialClubSyncReadyForCourtLock/);
     assert.match(command, /CLUB_LOCAL_DIRTY_PENDING_SYNC/);
     assert.match(command, /cancelRedundantClubCloudPush/);
     assert.doesNotMatch(command, /flushClubCloudPushForTests/);
