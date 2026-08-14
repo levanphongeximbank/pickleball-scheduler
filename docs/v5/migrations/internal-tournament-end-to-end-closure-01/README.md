@@ -2,7 +2,7 @@
 
 **Workstream:** `INTERNAL-TOURNAMENT-END-TO-END-CLOSURE-01`
 **Status:** 01–04 live on Staging. Additive IT-E2E-BROWSER-016 referee runtime package: 05–08 live on Staging. Additive IT-E2E-BROWSER-017 referee canonical commit package: 09–12 **source only until Owner GO**. **STAGING ONLY.**
-**SQL_APPLIED for 09–12:** NO
+**SQL_APPLIED for 09–12:** YES on Staging (`qyewbxjsiiyufanzcjcq`) after Owner GO 2026-08-14. Production apply: NO.
 
 ## Contract (Pass 2.6 corrective)
 
@@ -51,4 +51,4 @@ Team Tournament modes are **not** constrained by this graph and may omit CAS.
 - Anon execute revoked
 - Tenant assert unchanged
 - 05–08: STAGING ONLY (`qyewbxjsiiyufanzcjcq`). No Production apply.
-- 09–12: STAGING ONLY. **Do not apply without explicit Owner GO.** Reuses 016 ensure for live runtime; commit is the Internal adapter into canonical result (not Team MLP).
+- 09–12: STAGING ONLY. Applied on Staging after Owner GO (`internal_tournament_end_to_end_closure_01_referee_canonical_commit`). **Do not apply to Production.** Reuses 016 ensure for live runtime; commit is the Internal adapter into canonical result.
