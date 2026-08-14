@@ -11,19 +11,23 @@
 
 import { getCourtDisplayName } from "../models/court.js";
 import { createBookingRecord, isActiveBookingStatus } from "../models/booking.js";
-import { loadBookingsForClub } from "./clubStorage.js";
-import { checkBookingConflict } from "./courtBookingEngine.js";
+import { loadBookingsForClub, loadClubData, saveClubData } from "./clubStorage.js";
+import { checkBookingConflict, enrichBookingWithCourt } from "./courtBookingEngine.js";
 import {
   createBooking,
   saveBooking,
   updateBookingStatus,
 } from "./bookingService.js";
+import { guardBookingSave } from "../auth/guardAction.js";
 
 export const TOURNAMENT_BOOKING_BRIDGE_CODE = Object.freeze({
   SCHEDULE_MISSING: "SCHEDULE_MISSING",
   BOOKING_CONFLICT: "BOOKING_CONFLICT",
   PARTIAL_FAILURE: "PARTIAL_FAILURE",
   DATA_UNAVAILABLE: "DATA_UNAVAILABLE",
+  CANONICAL_OCCUPANCY_UNAVAILABLE: "CANONICAL_OCCUPANCY_UNAVAILABLE",
+  COURT_NOT_IN_AUTHORIZED_SET: "COURT_NOT_IN_AUTHORIZED_SET",
+  COURT_INACTIVE: "COURT_INACTIVE",
 });
 
 /**
@@ -182,7 +186,132 @@ function validateDesiredAgainstForeign(bookings, tournamentId, payloads) {
   return failed;
 }
 
-function upsertTournamentBooking(payload, clubId, existingBookings) {
+function resolveAuthorizedCourt(courts, courtId) {
+  return (courts || []).find((item) => String(item.id) === String(courtId)) || null;
+}
+
+function validatePayloadsAgainstAuthorizedCourts(payloads, courts) {
+  const failed = [];
+  for (const payload of payloads) {
+    const court = resolveAuthorizedCourt(courts, payload.courtId);
+    if (!court) {
+      failed.push({
+        courtId: payload.courtId,
+        message: "Sân không còn thuộc đơn vị hiện tại.",
+        code: TOURNAMENT_BOOKING_BRIDGE_CODE.COURT_NOT_IN_AUTHORIZED_SET,
+      });
+      continue;
+    }
+    if (court.active === false) {
+      failed.push({
+        courtId: payload.courtId,
+        message: "Sân đã bị vô hiệu hóa.",
+        code: TOURNAMENT_BOOKING_BRIDGE_CODE.COURT_INACTIVE,
+      });
+    }
+  }
+  return failed;
+}
+
+function persistCanonicalClubBookings(clubId, nextBookings, snapshotClubData) {
+  const local = loadClubData(clubId);
+  const cloudCourts = Array.isArray(snapshotClubData?.courts)
+    ? snapshotClubData.courts
+    : [];
+  // Preserve canonical court inventory in the club blob so cloud push cannot
+  // wipe club_data_v3.courts. Official validation never uses loadCourtsForClub.
+  return saveClubData(clubId, {
+    ...local,
+    courts: cloudCourts.length > 0 ? cloudCourts : local.courts,
+    bookings: nextBookings,
+  });
+}
+
+function applyCanonicalTournamentOccupancy({
+  clubId,
+  tournamentId,
+  payloads,
+  occupancyBookings,
+  persistSnapshot,
+  courts,
+}) {
+  const occupancy = Array.isArray(occupancyBookings) ? occupancyBookings : [];
+  const hasNew = payloads.some(
+    (payload) =>
+      !occupancy.some((booking) => String(booking.id) === String(payload.id))
+  );
+  const access = guardBookingSave(clubId, { isNew: hasNew });
+  if (!access.ok) {
+    return {
+      ok: false,
+      code: TOURNAMENT_BOOKING_BRIDGE_CODE.DATA_UNAVAILABLE,
+      message: access.error || "Không thể tạo booking canonical.",
+      created: [],
+      updated: [],
+      cancelled: [],
+      failed: [],
+    };
+  }
+
+  const nextById = new Map(
+    occupancy.map((booking) => [String(booking.id), { ...booking }])
+  );
+  const created = [];
+  const updated = [];
+
+  for (const payload of payloads) {
+    const existing = nextById.get(String(payload.id));
+    const record = existing
+      ? {
+          ...existing,
+          ...payload,
+          id: existing.id,
+          bookingCode: existing.bookingCode,
+          createdAt: existing.createdAt,
+          bookingStatus: "confirmed",
+          updatedAt: new Date().toISOString(),
+        }
+      : payload;
+    const enriched = enrichBookingWithCourt(record, courts);
+    nextById.set(String(enriched.id), enriched);
+    if (existing) {
+      updated.push(enriched);
+    } else {
+      created.push(enriched);
+    }
+  }
+
+  const desiredIds = new Set(payloads.map((item) => String(item.id)));
+  const cancelled = [];
+  occupancy.forEach((booking) => {
+    if (
+      isOwnedActiveBridgeBooking(booking, tournamentId) &&
+      !desiredIds.has(String(booking.id))
+    ) {
+      const cancelledBooking = {
+        ...nextById.get(String(booking.id)),
+        bookingStatus: "cancelled",
+        updatedAt: new Date().toISOString(),
+      };
+      nextById.set(String(booking.id), cancelledBooking);
+      cancelled.push(cancelledBooking);
+    }
+  });
+
+  persistCanonicalClubBookings(clubId, [...nextById.values()], persistSnapshot);
+
+  return {
+    ok: true,
+    code: null,
+    message: `Đã khóa ${payloads.length} sân trên lịch booking (tạo ${created.length}, cập nhật ${updated.length}, hủy cũ ${cancelled.length}).`,
+    created,
+    updated,
+    cancelled,
+    failed: [],
+  };
+}
+
+function upsertTournamentBooking(payload, clubId, existingBookings, writeOptions = {}) {
   const existing = existingBookings.find((item) => String(item.id) === String(payload.id));
   if (existing) {
     return saveBooking(
@@ -196,10 +325,10 @@ function upsertTournamentBooking(payload, clubId, existingBookings) {
         updatedAt: new Date().toISOString(),
       },
       clubId,
-      { excludeId: existing.id }
+      { excludeId: existing.id, ...writeOptions }
     );
   }
-  return createBooking(payload, clubId);
+  return createBooking(payload, clubId, writeOptions);
 }
 
 /**
@@ -211,7 +340,7 @@ function upsertTournamentBooking(payload, clubId, existingBookings) {
  * 3. Upsert desired rows via bookingService
  * 4. Cancel obsolete owned active rows
  */
-export function syncTournamentCourtBookings(tournament, clubId, courts = []) {
+export function syncTournamentCourtBookings(tournament, clubId, courts = [], options = {}) {
   const payloads = buildTournamentCourtBookings(tournament, courts);
 
   if (payloads.length === 0) {
@@ -226,19 +355,56 @@ export function syncTournamentCourtBookings(tournament, clubId, courts = []) {
     };
   }
 
-  let bookings;
-  try {
-    bookings = loadBookingsForClub(clubId);
-  } catch (error) {
+  const useCanonicalOccupancy = options.canonicalOccupancy === true;
+  if (useCanonicalOccupancy) {
+    if (
+      !Object.prototype.hasOwnProperty.call(options, "occupancyBookings") ||
+      !options.persistSnapshot
+    ) {
+      return {
+        ok: false,
+        code: TOURNAMENT_BOOKING_BRIDGE_CODE.CANONICAL_OCCUPANCY_UNAVAILABLE,
+        message: "Chưa thể xác minh xung đột lịch sân từ nguồn canonical.",
+        created: [],
+        updated: [],
+        cancelled: [],
+        failed: [],
+      };
+    }
+  }
+
+  const courtFailures = validatePayloadsAgainstAuthorizedCourts(payloads, courts);
+  if (courtFailures.length > 0) {
     return {
       ok: false,
-      code: TOURNAMENT_BOOKING_BRIDGE_CODE.DATA_UNAVAILABLE,
-      message: error?.message || "Không tải được bookings.",
+      code: courtFailures[0].code || TOURNAMENT_BOOKING_BRIDGE_CODE.COURT_NOT_IN_AUTHORIZED_SET,
+      message: courtFailures[0].message,
       created: [],
       updated: [],
       cancelled: [],
-      failed: [],
+      failed: courtFailures,
     };
+  }
+
+  let bookings;
+  if (useCanonicalOccupancy) {
+    bookings = Array.isArray(options.occupancyBookings)
+      ? options.occupancyBookings
+      : [];
+  } else {
+    try {
+      bookings = loadBookingsForClub(clubId);
+    } catch (error) {
+      return {
+        ok: false,
+        code: TOURNAMENT_BOOKING_BRIDGE_CODE.DATA_UNAVAILABLE,
+        message: error?.message || "Không tải được bookings.",
+        created: [],
+        updated: [],
+        cancelled: [],
+        failed: [],
+      };
+    }
   }
 
   const conflictFailures = validateDesiredAgainstForeign(
@@ -247,17 +413,31 @@ export function syncTournamentCourtBookings(tournament, clubId, courts = []) {
     payloads
   );
   if (conflictFailures.length > 0) {
+    const detail =
+      conflictFailures[0]?.message ||
+      "Xung đột lịch booking — không đồng bộ (fail-closed).";
     return {
       ok: false,
       code: TOURNAMENT_BOOKING_BRIDGE_CODE.BOOKING_CONFLICT,
-      message:
-        conflictFailures[0]?.message ||
-        "Xung đột lịch booking — không đồng bộ (fail-closed).",
+      message: detail.includes("trùng")
+        ? detail
+        : `Sân đã có lịch trùng. ${detail}`,
       created: [],
       updated: [],
       cancelled: [],
       failed: conflictFailures,
     };
+  }
+
+  if (useCanonicalOccupancy) {
+    return applyCanonicalTournamentOccupancy({
+      clubId,
+      tournamentId: tournament.id,
+      payloads,
+      occupancyBookings: bookings,
+      persistSnapshot: options.persistSnapshot,
+      courts,
+    });
   }
 
   const desiredIds = new Set(payloads.map((item) => String(item.id)));
@@ -268,12 +448,15 @@ export function syncTournamentCourtBookings(tournament, clubId, courts = []) {
   const created = [];
   const updated = [];
   const failed = [];
+  const writeOptions = Array.isArray(options.authorizedCourts)
+    ? { authorizedCourts: options.authorizedCourts }
+    : {};
 
   for (const payload of payloads) {
     const existingAny = bookings.find(
       (booking) => String(booking.id) === String(payload.id)
     );
-    const result = upsertTournamentBooking(payload, clubId, bookings);
+    const result = upsertTournamentBooking(payload, clubId, bookings, writeOptions);
     if (!result.ok) {
       failed.push({
         courtId: payload.courtId,

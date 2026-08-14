@@ -92,7 +92,7 @@ export function checkBookingConflict(bookings, newBooking, excludeBookingId = nu
   }
 
   const conflicts = (bookings || []).filter((booking) => {
-    if (excludeBookingId && booking.id === excludeBookingId) {
+    if (excludeBookingId && String(booking.id) === String(excludeBookingId)) {
       return false;
     }
 
@@ -100,7 +100,7 @@ export function checkBookingConflict(bookings, newBooking, excludeBookingId = nu
       return false;
     }
 
-    if (booking.courtId !== newBooking.courtId) {
+    if (String(booking.courtId) !== String(newBooking.courtId)) {
       return false;
     }
 
@@ -406,7 +406,9 @@ export function validateBookingAmounts(booking) {
 }
 
 export function enrichBookingWithCourt(booking, courts) {
-  const court = (courts || []).find((item) => item.id === booking.courtId);
+  const court = (courts || []).find(
+    (item) => String(item.id) === String(booking.courtId)
+  );
 
   return normalizeBooking({
     ...booking,

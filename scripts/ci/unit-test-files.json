@@ -337,6 +337,7 @@
   "tests/official-ai-balance-pairing-tenant-scope-remediation-01.test.js",
   "tests/official-open-tournament-phase2j-group-schedule-01.test.js",
   "tests/official-open-tournament-phase2j-shared-booking-guard-01.test.js",
+  "tests/official-open-tournament-phase2k-canonical-court-booking-01.test.js",
   "tests/tournament-create-and-team-schema-remediation-01.test.js",
   "tests/canonical-membership-repository.test.js",
   "tests/phase45a2-membership-canonical-read.test.js",

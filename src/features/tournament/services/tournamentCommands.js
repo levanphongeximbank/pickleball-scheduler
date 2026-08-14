@@ -24,6 +24,7 @@ export const PROVIDED_COURT_AUTH_CODE = Object.freeze({
   ZERO_COURTS_SELECTED: "ZERO_COURTS_SELECTED",
   COURT_TENANT_FORBIDDEN: "COURT_TENANT_FORBIDDEN",
   COURT_NOT_IN_AUTHORIZED_SET: "COURT_NOT_IN_AUTHORIZED_SET",
+  COURT_INACTIVE: "COURT_INACTIVE",
 });
 
 /**
@@ -270,8 +271,61 @@ export async function setTournamentCourtScheduleCommand(
   const courtsProvided = Object.prototype.hasOwnProperty.call(options, "courts");
   let courts;
   if (courtsProvided) {
+    const { readCanonicalClubCourtBookingSnapshot } = await import(
+      "../../team-tournament/services/canonicalClubCourtInventory.js"
+    );
+    const snapshot = await readCanonicalClubCourtBookingSnapshot({
+      clubId: scope.clubId,
+      tenantId: scope.tenantId,
+      includeInactive: true,
+    });
+    if (!snapshot.ok) {
+      return {
+        ok: false,
+        error:
+          snapshot.error ||
+          "Chưa thể xác minh xung đột lịch sân từ nguồn canonical.",
+        code: snapshot.code || "CANONICAL_OCCUPANCY_UNAVAILABLE",
+        tournament: loaded.tournament,
+      };
+    }
+    if (!snapshot.clubData) {
+      return {
+        ok: false,
+        error: "Không thể tạo booking canonical.",
+        code: snapshot.code || "CLUB_BLOB_MISSING",
+        tournament: loaded.tournament,
+      };
+    }
+
+    const selectedIds = (courtSchedule.courtIds || []).map(String);
+    for (const courtId of selectedIds) {
+      const live = (snapshot.courts || []).find(
+        (court) => String(court.id) === courtId
+      );
+      if (!live) {
+        return {
+          ok: false,
+          error: "Sân không còn thuộc đơn vị hiện tại.",
+          code: PROVIDED_COURT_AUTH_CODE.COURT_NOT_IN_AUTHORIZED_SET,
+          tournament: loaded.tournament,
+        };
+      }
+      if (live.active === false) {
+        return {
+          ok: false,
+          error: "Sân đã bị vô hiệu hóa.",
+          code: PROVIDED_COURT_AUTH_CODE.COURT_INACTIVE,
+          tournament: loaded.tournament,
+        };
+      }
+    }
+
+    const activeCourts = (snapshot.courts || []).filter(
+      (court) => court.active !== false
+    );
     const authorized = authorizeProvidedTournamentCourts(
-      options.courts,
+      activeCourts,
       scope,
       courtSchedule.courtIds
     );
@@ -282,6 +336,59 @@ export async function setTournamentCourtScheduleCommand(
       };
     }
     courts = authorized.courts;
+    const syncResult = syncTournamentCourtBookings(pending, scope.clubId, courts, {
+      canonicalOccupancy: true,
+      occupancyBookings: snapshot.bookings,
+      persistSnapshot: snapshot.clubData,
+      authorizedCourts: courts,
+    });
+    if (!syncResult.ok) {
+      return {
+        ok: false,
+        error: syncResult.message,
+        code: syncResult.code || null,
+        tournament: loaded.tournament,
+        ...syncResult,
+      };
+    }
+
+    try {
+      const { syncClubToCloud } = await import("../../../ai/cloudSync.js");
+      const pushed = await syncClubToCloud({ clubId: scope.clubId });
+      if (!pushed?.ok) {
+        return {
+          ok: false,
+          error: pushed?.error || "Không thể tạo booking canonical.",
+          code: pushed?.code || "CANONICAL_BOOKING_PUSH_FAILED",
+          tournament: loaded.tournament,
+          ...syncResult,
+        };
+      }
+    } catch {
+      return {
+        ok: false,
+        error: "Không thể tạo booking canonical.",
+        code: "CANONICAL_BOOKING_PUSH_FAILED",
+        tournament: loaded.tournament,
+        ...syncResult,
+      };
+    }
+
+    const saved = await updateTournamentCommand(
+      scope.clubId,
+      tournamentId,
+      { courtSchedule: pending.courtSchedule },
+      { ...options, tenantId: scope.tenantId }
+    );
+    if (!saved.ok) {
+      return saved;
+    }
+
+    return {
+      ok: true,
+      tournament: saved.tournament,
+      ...syncResult,
+    };
   } else {
     courts = loadCourtsForClub(scope.clubId);
   }

@@ -54,7 +54,8 @@ export function loadCourtManagementData(clubId) {
   };
 }
 
-export function saveBooking(booking, clubId, { excludeId = null } = {}) {
+export function saveBooking(booking, clubId, options = {}) {
+  const { excludeId = null } = options;
   const bookings = loadBookingsForClub(clubId);
   const isNew = !bookings.some((item) => item.id === booking.id);
   const access = guardBookingSave(clubId, { isNew });
@@ -62,13 +63,39 @@ export function saveBooking(booking, clubId, { excludeId = null } = {}) {
     return { ok: false, message: access.error };
   }
 
-  const courts = loadCourtsForClub(clubId);
-  const court = courts.find((item) => item.id === booking.courtId);
+  const authorizedCourts = Array.isArray(options.authorizedCourts)
+    ? options.authorizedCourts
+    : null;
+  const courts = authorizedCourts || loadCourtsForClub(clubId);
+  const court = (courts || []).find(
+    (item) => String(item.id) === String(booking.courtId)
+  );
 
   const skipCourtCheck =
     booking.bookingType === "tournament" || booking.bookingType === "maintenance";
 
-  if (!skipCourtCheck) {
+  if (authorizedCourts) {
+    if (!court) {
+      return {
+        ok: false,
+        message: "Sân không còn thuộc đơn vị hiện tại.",
+        code: "COURT_NOT_IN_AUTHORIZED_SET",
+      };
+    }
+    if (court.active === false) {
+      return {
+        ok: false,
+        message: "Sân đã bị vô hiệu hóa.",
+        code: "COURT_INACTIVE",
+      };
+    }
+    if (!skipCourtCheck) {
+      const courtCheck = validateCourtForBooking(court);
+      if (!courtCheck.ok) {
+        return { ok: false, message: courtCheck.message };
+      }
+    }
+  } else if (!skipCourtCheck) {
     const courtCheck = validateCourtForBooking(court);
     if (!courtCheck.ok) {
       return { ok: false, message: courtCheck.message };
@@ -131,9 +158,9 @@ export function saveBooking(booking, clubId, { excludeId = null } = {}) {
   return { ok: true, booking: enriched, bookings: nextBookings };
 }
 
-export function createBooking(input, clubId) {
+export function createBooking(input, clubId, options = {}) {
   const record = createBookingRecord(input);
-  return saveBooking(record, clubId);
+  return saveBooking(record, clubId, options);
 }
 
 export function updateBookingStatus(bookingId, nextStatus, clubId) {
