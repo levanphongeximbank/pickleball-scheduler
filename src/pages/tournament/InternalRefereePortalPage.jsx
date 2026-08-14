@@ -23,6 +23,8 @@ import {
   projectInternalRefereePortalAfterCommit,
   resolveInternalRefereePortalLoadPresentation,
 } from "../../features/tournament/internal/internalRefereePortal.js";
+import { projectInternalLiveGroupStandings } from "../../features/tournament/internal/internalGroupStandings.js";
+import InternalGroupStandingsTable from "../../components/tournament/internal/InternalGroupStandingsTable.jsx";
 import RefereeScoreboard from "../referee/RefereeScoreboard.jsx";
 
 function formatWhen(value) {
@@ -167,6 +169,10 @@ export default function InternalRefereePortalPage() {
     () => matches.find((item) => String(item.matchId) === String(selectedMatchId)) || null,
     [matches, selectedMatchId]
   );
+  const standingsProjection = useMemo(
+    () => projectInternalLiveGroupStandings(tournament?.events?.[0]),
+    [tournament]
+  );
 
   const selectMatch = (matchId) => {
     const id = String(matchId || "").trim();
@@ -269,6 +275,16 @@ export default function InternalRefereePortalPage() {
           </Typography>
         </Box>
       </Stack>
+
+      {standingsProjection.visible ? (
+        <Box sx={{ mb: 2 }} data-testid="internal-referee-portal-standings">
+          <InternalGroupStandingsTable
+            projection={standingsProjection}
+            compact
+            title="BXH vòng bảng"
+          />
+        </Box>
+      ) : null}
 
       {!matches.length ? (
         <Alert severity="info">Bạn không được phân công trận nào trong giải này.</Alert>

@@ -73,7 +73,6 @@ import {
   mapLifecycleStepToWorkspaceSection,
   INTERNAL_WORKSPACE_SECTION_QUERY,
   resolveInternalWorkspaceSection,
-  resolveInternalKnockoutEligibility,
   resolveInternalTournamentLifecycle,
   resolveInternalWorkspaceKey,
   resolveInternalPageLoadingGate,
@@ -88,6 +87,9 @@ import {
   projectInternalGroupDrawCard,
   COMPETITION_UNIT,
   loadInternalScheduleCourts,
+  projectInternalLiveGroupStandings,
+  resolveInternalKnockoutAction,
+  INTERNAL_KNOCKOUT_INCOMPLETE_MESSAGE,
 } from "../../features/tournament/internal/index.js";
 import {
   reopenClosedTournament,
@@ -97,7 +99,7 @@ import InternalTournamentLifecycleStepper from "../../components/tournament/Inte
 import InternalScheduleStage from "../../components/tournament/internal/InternalScheduleStage.jsx";
 import InternalMatchRefereeSelect from "../../components/tournament/internal/InternalMatchRefereeSelect.jsx";
 import InternalRefereeStage from "../../components/tournament/internal/InternalRefereeStage.jsx";
-import { buildIndividualAllGroupStandings } from "../../features/individual-tournament/adapters/individualStandingsAdapter.js";
+import InternalGroupStandingsTable from "../../components/tournament/internal/InternalGroupStandingsTable.jsx";
 import BracketView from "../../components/tournament/BracketView.jsx";
 import GroupStagePanel from "../../components/tournament/GroupStagePanel.jsx";
 import TournamentAnimationDialog from "../../components/tournament/animation/TournamentAnimationDialog.jsx";
@@ -659,10 +661,11 @@ export default function InternalTournamentSetup() {
     );
   };
 
-  const groupStandings = useMemo(
-    () => (savedEvent ? buildIndividualAllGroupStandings(savedEvent) : []),
+  const groupStandingsProjection = useMemo(
+    () => projectInternalLiveGroupStandings(savedEvent),
     [savedEvent]
   );
+  const knockoutAction = groupStandingsProjection.knockout || resolveInternalKnockoutAction(savedEvent);
 
   const bracketProgress = useMemo(
     () => (savedEvent ? resolveBracketProgress(savedEvent) : null),
@@ -1035,9 +1038,14 @@ export default function InternalTournamentSetup() {
     setError(null);
     setMessage(null);
 
-    const eligibility = resolveInternalKnockoutEligibility(savedEvent);
-    if (eligibility.skipKnockout) {
-      setMessage(ONE_GROUP_COMPLETION_MESSAGE);
+    const knockout = resolveInternalKnockoutAction(savedEvent);
+    if (knockout.skipKnockout) {
+      setMessage(knockout.reason);
+      setWarnings([]);
+      return;
+    }
+    if (!knockout.enabled) {
+      setError(knockout.reason || INTERNAL_KNOCKOUT_INCOMPLETE_MESSAGE);
       setWarnings([]);
       return;
     }
@@ -2279,6 +2287,8 @@ export default function InternalTournamentSetup() {
       {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.RESULTS &&
         savedEvent?.groups?.length > 0 && (
         <Stack spacing={2} sx={{ mt: 2 }}>
+          <InternalGroupStandingsTable projection={groupStandingsProjection} />
+
           <GroupStagePanel
             event={savedEvent}
             players={players}
@@ -2294,52 +2304,14 @@ export default function InternalTournamentSetup() {
               />
             )}
           />
-
-          <Paper variant="outlined" sx={{ p: 1.5 }}>
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-              Bảng xếp hạng vòng bảng
-            </Typography>
-            {groupStandings[0]?.tieBreakExplanation ? (
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                Tie-break: {groupStandings[0].tieBreakExplanation}
-                {groupStandings[0].source === "standings_v2" ? " · STANDINGS_V2" : " · Legacy"}
-              </Typography>
-            ) : null}
-            {groupStandings.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                Chưa có kết quả trận vòng bảng. Nhập kết quả để tính BXH trước khi tạo bracket.
-              </Typography>
-            ) : (
-              <Grid container spacing={1.5}>
-                {groupStandings.map((groupStanding) => (
-                  <Grid key={groupStanding.group} size={{ xs: 12, md: 6, lg: 3 }}>
-                    <Paper variant="outlined" sx={{ p: 1.25 }}>
-                      <Typography fontWeight="bold" sx={{ mb: 0.75 }}>
-                        Bảng {groupStanding.group}
-                      </Typography>
-                      <Stack spacing={0.5}>
-                        {groupStanding.standing.map((team, index) => (
-                          <Typography
-                            key={team.id}
-                            variant="body2"
-                            fontWeight={index < 2 ? "bold" : "regular"}
-                          >
-                            {index + 1}. {team.name} — {team.matchPoints} điểm
-                            {team.qualificationStatus?.startsWith("qualified") ? " ✓ KO" : ""}
-                          </Typography>
-                        ))}
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </Paper>
         </Stack>
       )}
 
       {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.BRACKET && (
         <Stack spacing={2} sx={{ mt: 2 }}>
+          {savedEvent?.groups?.length > 0 ? (
+            <InternalGroupStandingsTable projection={groupStandingsProjection} />
+          ) : null}
           <Paper variant="outlined" sx={{ p: 1.5 }}>
             <Stack
               direction={{ xs: "column", sm: "row" }}
@@ -2366,7 +2338,11 @@ export default function InternalTournamentSetup() {
                 )}
                 {!shouldSkipKnockoutForInternal(savedEvent) &&
                   !savedEvent?.bracket?.rounds?.length && (
-                  <Button variant="contained" onClick={handleGenerateBracket}>
+                  <Button
+                    variant="contained"
+                    onClick={handleGenerateBracket}
+                    disabled={!knockoutAction.enabled}
+                  >
                     Tạo bracket từ BXH
                   </Button>
                 )}
@@ -2379,7 +2355,9 @@ export default function InternalTournamentSetup() {
               </Alert>
             ) : !savedEvent?.bracket?.rounds?.length ? (
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Chưa có sơ đồ. Nhập điểm vòng bảng xong rồi bấm &quot;Tạo bracket từ BXH&quot;.
+                {knockoutAction.enabled
+                  ? "BXH vòng bảng đã chốt. Bấm \"Tạo bracket từ BXH\" để tạo knock-out."
+                  : knockoutAction.reason || INTERNAL_KNOCKOUT_INCOMPLETE_MESSAGE}{" "}
                 Cần số bảng chẵn (2, 4, 8...).
               </Typography>
             ) : null}
