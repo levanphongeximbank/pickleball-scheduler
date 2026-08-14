@@ -209,7 +209,7 @@ export async function cloudEnsureTournamentHeader(tournament) {
   const teamData = tournament?.teamData || {};
   const { data: existingHeader } = await client
     .from("team_tournaments")
-    .select("settings")
+    .select("id, settings")
     .eq("tenant_id", tenantId)
     .eq("club_id", clubId)
     .eq("tournament_id", tournamentId)
@@ -234,19 +234,22 @@ export async function cloudEnsureTournamentHeader(tournament) {
     baseSettings.rankingEnabled = tournament.rankingEnabled;
   }
 
+  // Name is not header-upsert authority. Rename uses team_tournament_rename
+  // (canonical + header in one server transaction). Existing rows keep name.
+  const headerRow = {
+    tenant_id: tenantId,
+    club_id: clubId,
+    tournament_id: tournamentId,
+    status: String(tournament?.status || "draft").trim(),
+    settings: baseSettings,
+  };
+  if (!existingHeader?.id) {
+    headerRow.name = String(tournament?.name || "Giải đồng đội").trim();
+  }
+
   const { data, error } = await client
     .from("team_tournaments")
-    .upsert(
-      {
-        tenant_id: tenantId,
-        club_id: clubId,
-        tournament_id: tournamentId,
-        name: String(tournament?.name || "Giải đồng đội").trim(),
-        status: String(tournament?.status || "draft").trim(),
-        settings: baseSettings,
-      },
-      { onConflict: "tenant_id,club_id,tournament_id" }
-    )
+    .upsert(headerRow, { onConflict: "tenant_id,club_id,tournament_id" })
     .select("id")
     .maybeSingle();
 

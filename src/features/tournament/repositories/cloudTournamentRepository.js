@@ -14,6 +14,7 @@ import {
   tournamentToCanonicalRow,
 } from "../mappers/canonicalTournamentMapper.js";
 import { createTournamentRecord } from "../../../models/tournament/index.js";
+import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 
 export { CANONICAL_TOURNAMENT_RPC };
 
@@ -224,19 +225,41 @@ export function createCloudTournamentRepository(deps = {}) {
         clubId: tenantCheck.clubId,
       });
 
+      const patchPayload = {
+        name: row.name,
+        status: row.status,
+        season_id: row.season_id,
+        league_id: row.league_id,
+        payload: row.payload,
+        engine_v4: row.engine_v4,
+        ...(options.engineApply ? { engine_apply: true } : {}),
+      };
+
+      const nameInPatch = Object.prototype.hasOwnProperty.call(patch, "name");
+      if (
+        current.tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT &&
+        nameInPatch
+      ) {
+        const renamed = await callRpc("team_tournament_rename", {
+          p_tournament_id: String(tournamentId),
+          p_name: row.name,
+        });
+        if (renamed.ok) {
+          delete patchPayload.name;
+        } else if (
+          renamed.code !== "RPC_MISSING" &&
+          renamed.code !== "rpc_not_deployed" &&
+          renamed.code !== "rpc_signature_mismatch"
+        ) {
+          return renamed;
+        }
+      }
+
       const result = await callRpc(CANONICAL_TOURNAMENT_RPC.UPDATE, {
         p_tenant_id: tenantCheck.tenantId,
         p_club_id: tenantCheck.clubId,
         p_tournament_id: tournamentId,
-        p_patch: {
-          name: row.name,
-          status: row.status,
-          season_id: row.season_id,
-          league_id: row.league_id,
-          payload: row.payload,
-          engine_v4: row.engine_v4,
-          ...(options.engineApply ? { engine_apply: true } : {}),
-        },
+        p_patch: patchPayload,
       });
       if (!result.ok) return result;
       return {
