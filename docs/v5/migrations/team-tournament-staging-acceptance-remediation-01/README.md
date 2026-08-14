@@ -81,11 +81,14 @@ SUPER_ADMIN `private_pairing_get_active_rules_for_scope` remains permission-gate
 Rollback: `04_ROLLBACK.sql` drops package-owned functions/triggers only.
 Does not drop `team_tournament_commit_pairing` or PR #423 referee RPCs.
 
+PRECHECK does **not** require `canonical_tournament_update`. APPLY writes
+`canonical_tournaments.name` directly and must not couple to 4-arg vs 5-arg CAS.
+
 ## Locked SHA256 (LF)
 
 | File | SHA256 |
 |------|--------|
-| `01_PRECHECK.sql` | `b56de7e2cad2e9d9e52080263611b5f73f09154525665f1556b1c9e06c4d46b1` |
+| `01_PRECHECK.sql` | `d5dd6cd52251e4e489e3e6742db9208ec04799dd0f403d03dceb21c0ff92a10a` |
 | `02_APPLY.sql` | `b6f50955565d2512554d06e2f39261a3f3bbda3abe375ca6d865b6d243469555` |
 | `03_VERIFY.sql` | `34bf83354e59ed550c7d3b1b13aa9059b095f654c2917666a6dd5856b649e805` |
 | `04_ROLLBACK.sql` | `46980f70046fdd7b1d4ca0121574566740db399f26807841372b2bb8acac67e0` |

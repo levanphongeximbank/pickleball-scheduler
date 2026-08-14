@@ -29,7 +29,7 @@ const pkg = join(
 );
 
 const LOCKED = Object.freeze({
-  "01_PRECHECK.sql": "b56de7e2cad2e9d9e52080263611b5f73f09154525665f1556b1c9e06c4d46b1",
+  "01_PRECHECK.sql": "d5dd6cd52251e4e489e3e6742db9208ec04799dd0f403d03dceb21c0ff92a10a",
   "02_APPLY.sql": "b6f50955565d2512554d06e2f39261a3f3bbda3abe375ca6d865b6d243469555",
   "03_VERIFY.sql": "34bf83354e59ed550c7d3b1b13aa9059b095f654c2917666a6dd5856b649e805",
   "04_ROLLBACK.sql": "46980f70046fdd7b1d4ca0121574566740db399f26807841372b2bb8acac67e0",
@@ -145,6 +145,29 @@ describe("team-tournament-staging-acceptance-remediation-01 package", () => {
     );
     assert.match(verify, /team_tournament_commit_pairing/);
     assert.match(verify, /team_tournament_create_referee_assignment/);
+  });
+
+  it("PRECHECK does not couple to canonical_tournament_update signature history", () => {
+    const precheck = readSrc(
+      "docs/v5/migrations/team-tournament-staging-acceptance-remediation-01/01_PRECHECK.sql"
+    );
+    const apply = readSrc(
+      "docs/v5/migrations/team-tournament-staging-acceptance-remediation-01/02_APPLY.sql"
+    );
+    const verify = readSrc(
+      "docs/v5/migrations/team-tournament-staging-acceptance-remediation-01/03_VERIFY.sql"
+    );
+    const rollback = readSrc(
+      "docs/v5/migrations/team-tournament-staging-acceptance-remediation-01/04_ROLLBACK.sql"
+    );
+    assert.doesNotMatch(precheck, /canonical_tournament_update/);
+    assert.doesNotMatch(apply, /canonical_tournament_update/);
+    assert.doesNotMatch(verify, /canonical_tournament_update/);
+    assert.doesNotMatch(rollback, /canonical_tournament_update/);
+    assert.match(precheck, /team_tournament_commit_pairing/);
+    assert.match(precheck, /private_pairing_get_active_rules_for_scope/);
+    assert.match(precheck, /team_tournament_rename already exists/);
+    assert.match(precheck, /team_tournament_form_pairing_opaque already exists/);
   });
 });
 

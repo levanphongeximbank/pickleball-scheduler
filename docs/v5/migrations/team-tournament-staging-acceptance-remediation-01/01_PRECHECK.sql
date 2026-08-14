@@ -27,9 +27,6 @@ begin
   if to_regprocedure('public.team_tournament_commit_pairing(text,jsonb,jsonb,jsonb,integer)') is null then
     v_missing := array_append(v_missing, 'team_tournament_commit_pairing');
   end if;
-  if to_regprocedure('public.canonical_tournament_update(text,text,uuid,jsonb)') is null then
-    v_missing := array_append(v_missing, 'canonical_tournament_update');
-  end if;
   if to_regprocedure('public.private_pairing_get_active_rules_for_scope(text,text,text)') is null then
     v_missing := array_append(v_missing, 'private_pairing_get_active_rules_for_scope');
   end if;
