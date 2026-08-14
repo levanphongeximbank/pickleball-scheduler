@@ -34,8 +34,12 @@ import {
   DAILY_PLAY_REFRESH_REASON,
   isSilentRefreshReason,
   DAILY_PLAY_GENERIC_ACTION_ERROR,
+  DAILY_PLAY_MESSAGES,
   normalizeDailyPlayMutationResult,
   shouldClearSessionErrorAfterSnapshot,
+  isObsoleteNoCourtAvailabilityError,
+  resolveCreateCourtWaitingNote,
+  selectEnabledCourts,
 } from "../src/features/daily-play/canonical/index.js";
 import { shouldShowDirectorBlockingLoad } from "../src/features/tournament/director/directorLoadingGate.js";
 
@@ -472,6 +476,18 @@ describe("TEST 4 generic/stale Daily mutation error", () => {
     });
     assert.equal(plan.waitingForCourt, false);
     assert.notEqual(plan.code, "NO_COURT_CAPABILITY");
+    assert.equal(
+      resolveCreateCourtWaitingNote({
+        availableCourtCount: snapshot.availableCourts.length,
+        waitingForCourt: true,
+      }),
+      ""
+    );
+    assert.equal(
+      isObsoleteNoCourtAvailabilityError(DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING, 4),
+      true
+    );
+    assert.equal(selectEnabledCourts(PRODUCTION_LIKE_COURTS, []).length, 4);
   });
 });
 

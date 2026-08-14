@@ -302,6 +302,44 @@ export function resolveCreateMatchCount({
   };
 }
 
+export function isNoCourtWaitingCopy(text) {
+  if (text == null || text === "") return false;
+  const value = String(text);
+  return (
+    value === DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING ||
+    value === DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.NO_COURT_AVAILABLE]
+  );
+}
+
+export function shouldShowNoCourtWaitingWarning(availableCourtCount) {
+  return Number(availableCourtCount) === 0;
+}
+
+export function isObsoleteNoCourtAvailabilityError(error, availableCourtCount) {
+  return isNoCourtWaitingCopy(error) && Number(availableCourtCount) > 0;
+}
+
+export function resolveCreateCourtWaitingNote({
+  availableCourtCount,
+  waitingForCourt = false,
+} = {}) {
+  if (Number(availableCourtCount) > 0) return "";
+  if (waitingForCourt === true || Number(availableCourtCount) === 0) {
+    return DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING;
+  }
+  return "";
+}
+
+export function resolveAssignCourtId(courtId, availableCourts = []) {
+  if (courtId != null && String(courtId).trim() !== "") {
+    return String(courtId);
+  }
+  const first = Array.isArray(availableCourts) ? availableCourts[0] : null;
+  const id = first?.id ?? first?.courtId ?? null;
+  if (id == null || String(id).trim() === "") return null;
+  return String(id);
+}
+
 export function acceptDailyScoreFieldInput(raw) {
   if (raw == null || raw === "") return "";
   const text = String(raw);

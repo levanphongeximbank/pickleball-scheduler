@@ -46,6 +46,9 @@ import {
   beginPresenceOverride,
   DAILY_PLAY_CODE,
   DAILY_PLAY_MESSAGES,
+  isNoCourtWaitingCopy,
+  isObsoleteNoCourtAvailabilityError,
+  resolveCreateCourtWaitingNote,
   resolveCreateMatchCount,
   resolvePresentedCheckedSet,
   shouldIgnoreConcurrentPresenceClick,
@@ -225,12 +228,26 @@ export default function DailyPlaySetup() {
   }, [tenantId, activeClubId, user?.id]);
 
   // DP-08: do not sticky-mirror transient load errors after successful snapshot.
-  const displayError =
+  // Waiting matches are not "no free court." Suppress that copy while courts are free.
+  const rawDisplayError =
     actionError ||
     session.error ||
     (!tournament && tournamentLoadError) ||
     playersLoadError?.message ||
     null;
+  const availableCourtCount = (session.availableCourts || []).length;
+  const noCourtWaitingNotice =
+    isNoCourtWaitingCopy(rawDisplayError) &&
+    availableCourtCount === 0 &&
+    session.hasCourtCapability;
+  const displayError = isObsoleteNoCourtAvailabilityError(
+    rawDisplayError,
+    availableCourtCount
+  )
+    ? null
+    : noCourtWaitingNotice
+      ? null
+      : rawDisplayError;
 
   const courts = session.courts || [];
   const courtStates = session.courtStates || [];
@@ -511,9 +528,17 @@ export default function DailyPlaySetup() {
         proposal.waitingPlayers?.length > 0
           ? ` • ${proposal.waitingPlayers.length} VĐV chờ lượt tiếp theo`
           : "";
-      const courtNote = persist.waitingForCourt || countPlan.waitingForCourt
-        ? ` • ${DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING}`
-        : "";
+      const availableAfter = Number(
+        persist.readback?.availableCourts?.length ??
+          persist.availableCourts?.length ??
+          session.availableCourts?.length ??
+          0
+      );
+      const waitingCopy = resolveCreateCourtWaitingNote({
+        availableCourtCount: availableAfter,
+        waitingForCourt: persist.waitingForCourt || countPlan.waitingForCourt,
+      });
+      const courtNote = waitingCopy ? ` • ${waitingCopy}` : "";
 
       anim.showAnimation(
         {
@@ -724,6 +749,18 @@ export default function DailyPlaySetup() {
                 }}
               >
                 {displayError}
+              </Alert>
+            )}
+            {noCourtWaitingNotice && (
+              <Alert
+                severity="warning"
+                sx={{ mb: 2 }}
+                onClose={() => {
+                  setActionError(null);
+                  session.setError?.(null);
+                }}
+              >
+                {DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING}
               </Alert>
             )}
             {!displayError && playersEmptyMessage && (

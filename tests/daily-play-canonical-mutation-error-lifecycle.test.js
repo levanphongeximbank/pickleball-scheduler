@@ -16,11 +16,16 @@ import {
   createDailyPlayCanonicalService,
   createInMemoryDailyPlayAuthority,
   createSeededDailyPlayTournament,
+  isObsoleteNoCourtAvailabilityError,
   normalizeDailyPlayMutationResult,
   normalizeDailyPlayServerSnapshot,
+  resolveAssignCourtId,
+  resolveCreateCourtWaitingNote,
   resolveCreateMatchCount,
   resolveSessionErrorAfterSnapshot,
+  selectEnabledCourts,
   shouldClearSessionErrorAfterSnapshot,
+  shouldShowNoCourtWaitingWarning,
 } from "../src/features/daily-play/canonical/index.js";
 import { getDefaultDailyPlaySettings as defaultDailySettings } from "../src/tournament/engines/dailyPlayEngine.js";
 
@@ -356,9 +361,11 @@ describe("Hook and setup error lifecycle source contracts", () => {
     assert.match(hook, /shouldClearSessionErrorAfterSnapshot/);
     assert.match(hook, /normalizeDailyPlayMutationResult/);
     assert.match(hook, /DAILY_PLAY_GENERIC_ACTION_ERROR/);
+    assert.match(hook, /isObsoleteNoCourtAvailabilityError/);
+    assert.match(hook, /resolveAssignCourtId/);
     assert.match(
       hook,
-      /if \(!readback\?\.ok\) \{[\s\S]*setError\(failure\.error\)[\s\S]*setError\(null\)/
+      /if \(!readback\?\.ok\) \{[\s\S]*setErrorState\(failure\.error\)[\s\S]*setErrorState\(null\)/
     );
   });
 
@@ -373,6 +380,7 @@ describe("Hook and setup error lifecycle source contracts", () => {
     );
     assert.match(createFn, /setActionError\(null\)/);
     assert.match(createFn, /session\.setError\?\.\(null\)/);
+    assert.match(createFn, /resolveCreateCourtWaitingNote/);
     assert.match(createFn, /Đã tạo/);
     assert.equal(createFn.includes("session.assignCourt"), false);
   });
@@ -389,5 +397,148 @@ describe("Hook and setup error lifecycle source contracts", () => {
     assert.match(assignFn, /session\.assignCourt\(match\.id\)/);
     assert.equal(assignFn.includes("courtId:"), false);
     assert.match(assignFn, /DAILY_PLAY_MESSAGES\[result\?\.code\]/);
+    const hook = fs.readFileSync(
+      path.resolve("src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"),
+      "utf8"
+    );
+    assert.match(hook, /resolveAssignCourtId\(courtId, availableCourtsRef\.current\)/);
+  });
+});
+
+describe("Waiting vs available-court semantics", () => {
+  test("enabledCourtIds=[] means all usable canonical courts", () => {
+    const selected = selectEnabledCourts(COURTS, []);
+    assert.equal(selected.length, 2);
+    assert.equal(selected.map((court) => court.id).join(","), "tt412-1,tt412-2");
+  });
+
+  test("2 available courts + 0 leases → countPlan.waitingForCourt=false", () => {
+    const plan = resolveCreateMatchCount({
+      enabledCourts: COURTS,
+      availableCourts: COURTS,
+      eligiblePlayerCount: 8,
+    });
+    assert.equal(plan.ok, true);
+    assert.equal(plan.waitingForCourt, false);
+    assert.equal(shouldShowNoCourtWaitingWarning(2), false);
+    assert.equal(resolveCreateCourtWaitingNote({ availableCourtCount: 2, waitingForCourt: true }), "");
+  });
+
+  test("queue-first create with available courts → no no-court warning and no lease", async () => {
+    const { service } = seedService();
+    const created = await service.createMatches(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matches: [
+          waitingMatch("m-q1", ["1", "2", "3", "4"]),
+          waitingMatch("m-q2", ["5", "6", "7", "8"]),
+        ],
+        expectedVersion: 0,
+      }
+    );
+    assert.equal(created.ok, true);
+    assert.equal(created.waitingForCourt, false);
+    assert.equal(created.matches[0].status, "waiting");
+    const after = await service.getState({
+      tenantId: TENANT,
+      clubId: CLUB,
+      tournamentId: TID,
+    });
+    assert.equal(after.availableCourts.length, 2);
+    assert.equal((after.leases || []).filter((lease) => lease.status === "active").length, 0);
+    assert.equal(isObsoleteNoCourtAvailabilityError(DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING, 2), true);
+    assert.equal(
+      resolveCreateCourtWaitingNote({
+        availableCourtCount: after.availableCourts.length,
+        waitingForCourt: created.waitingForCourt,
+      }),
+      ""
+    );
+  });
+
+  test("all courts busy → waiting warning allowed", () => {
+    const plan = resolveCreateMatchCount({
+      enabledCourts: COURTS,
+      availableCourts: [],
+      eligiblePlayerCount: 8,
+    });
+    assert.equal(plan.ok, true);
+    assert.equal(plan.waitingForCourt, true);
+    assert.equal(shouldShowNoCourtWaitingWarning(0), true);
+    assert.equal(
+      resolveCreateCourtWaitingNote({ availableCourtCount: 0, waitingForCourt: true }),
+      DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING
+    );
+  });
+
+  test("assign auto-select respects empty enabledCourtIds = all courts", async () => {
+    const { service } = seedService({
+      dailyPlay: {
+        ...defaultDailySettings(),
+        checkedInPlayerIds: CHECKED_IN,
+        enabledCourtIds: [],
+        revision: 1,
+        matches: [waitingMatch("m-wait", ["1", "2", "3", "4"])],
+      },
+    });
+    const assigned = await service.assignCourt(
+      { tenantId: TENANT, clubId: CLUB, tournamentId: TID },
+      {
+        matchId: "m-wait",
+        courtId: resolveAssignCourtId(null, COURTS),
+        expectedVersion: 1,
+        idempotencyKey: "assign-empty-enabled",
+      }
+    );
+    assert.equal(assigned.ok, true);
+    const match = assigned.dailyPlay.matches.find((item) => item.id === "m-wait");
+    assert.equal(match.status, "assigned");
+    assert.equal(match.courtId, "tt412-1");
+    const after = await service.getState({
+      tenantId: TENANT,
+      clubId: CLUB,
+      tournamentId: TID,
+    });
+    assert.equal(
+      (after.leases || []).filter((lease) => lease.status === "active").length,
+      1
+    );
+  });
+
+  test("false NO_COURT_AVAILABLE cannot occur while canonical availableCourtCount>0", () => {
+    assert.equal(
+      isObsoleteNoCourtAvailabilityError(
+        DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.NO_COURT_AVAILABLE],
+        2
+      ),
+      true
+    );
+    const setup = fs.readFileSync(
+      path.resolve("src/pages/tournament/DailyPlaySetup.jsx"),
+      "utf8"
+    );
+    assert.match(setup, /isObsoleteNoCourtAvailabilityError/);
+    assert.match(setup, /noCourtWaitingNotice/);
+    assert.match(setup, /severity="warning"/);
+  });
+
+  test("stale no-court error clears after successful canonical readback", () => {
+    assert.equal(
+      isObsoleteNoCourtAvailabilityError(DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING, 2),
+      true
+    );
+    assert.equal(
+      shouldClearSessionErrorAfterSnapshot({
+        snapshotOk: true,
+        replaced: false,
+        reason: DAILY_PLAY_REFRESH_REASON.MUTATION,
+      }),
+      true
+    );
+    const hook = fs.readFileSync(
+      path.resolve("src/features/daily-play/canonical/useDailyPlayCanonicalSession.js"),
+      "utf8"
+    );
+    assert.match(hook, /isObsoleteNoCourtAvailabilityError/);
   });
 });

@@ -362,8 +362,8 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
           : null;
       if (!courtId) {
         return deny(
-          DAILY_PLAY_CODE.COURT_ALREADY_LEASED,
-          DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING
+          DAILY_PLAY_CODE.NO_COURT_AVAILABLE,
+          DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.NO_COURT_AVAILABLE]
         );
       }
       if (!courts.some((court) => String(court.id) === courtId)) {
