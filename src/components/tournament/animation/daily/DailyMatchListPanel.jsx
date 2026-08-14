@@ -38,7 +38,7 @@ export default function DailyMatchListPanel({
       sx={{
         p: 1.25,
         height: "100%",
-        minWidth: 0,
+        minWidth: fullWidth ? 0 : 240,
         width: "100%",
         display: "flex",
         flexDirection: "column",

@@ -7,6 +7,7 @@ import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { assertLoadedTournamentAccess } from "../../features/tournament/guards/tournamentAccess.js";
+import { shouldBlockTournamentManageGate } from "../../features/tournament/guards/tournamentManageGatePolicy.js";
 import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
 
 function AccessDenied({ title, message, to = "/tournament" }) {
@@ -33,17 +34,33 @@ function AccessDenied({ title, message, to = "/tournament" }) {
  * - không có TOURNAMENT_UPDATE
  * - tournament không thuộc tenant hiện tại (cloud authority)
  */
-export default function TournamentManageGate({ children, tournamentId = null }) {
+export default function TournamentManageGate({
+  children,
+  tournamentId = null,
+  loadedTournament = null,
+}) {
   const { rbacEnabled, isAuthenticated, can } = useAuth();
   const { activeClub, activeClubId } = useClub();
   const { currentTenantId } = useTenant();
-  const { tournament, loading } = useCanonicalTournament(activeClub, tournamentId);
+  const { tournament: fetchedTournament, loading } = useCanonicalTournament(
+    activeClub,
+    tournamentId
+  );
+  const tournament = fetchedTournament || loadedTournament;
 
   if (!rbacEnabled || !isAuthenticated) {
     return children;
   }
 
-  if (tournamentId && loading) {
+  if (
+    shouldBlockTournamentManageGate({
+      rbacEnabled,
+      isAuthenticated,
+      tournamentId,
+      loading,
+      tournament,
+    })
+  ) {
     return (
       <Box sx={{ p: 3 }}>
         <CircularProgress size={28} />

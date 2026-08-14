@@ -7,7 +7,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DAILY_PLAY_CODE, DAILY_PLAY_MESSAGES } from "./dailyPlayCodes.js";
 import { getDailyPlayCanonicalService } from "./dailyPlayCanonicalService.js";
-import { emptyDailyPlayState } from "./dailyPlayCanonicalDomain.js";
+import {
+  emptyDailyPlayState,
+  isObsoleteNoCourtAvailabilityError,
+  resolveAssignCourtId,
+} from "./dailyPlayCanonicalDomain.js";
+import {
+  DAILY_PLAY_GENERIC_ACTION_ERROR,
+  normalizeDailyPlayMutationResult,
+  shouldClearSessionErrorAfterSnapshot,
+} from "./dailyPlayMutationError.js";
 import { normalizeDailyPlayServerSnapshot } from "./normalizeDailyPlayServerSnapshot.js";
 import {
   createDailyPlayRefreshFence,
@@ -46,29 +55,50 @@ export function useDailyPlayCanonicalSession({
   const service = getDailyPlayCanonicalService();
   const [state, setState] = useState(null);
   const [loading, setLoading] = useState(Boolean(enabled && tournamentId));
-  const [error, setError] = useState(null);
+  const [error, setErrorState] = useState(null);
   const [mutating, setMutating] = useState(false);
   const mountedRef = useRef(true);
   const hasSnapshotRef = useRef(false);
   const revisionRef = useRef(0);
   const mutatingRef = useRef(false);
   const signatureRef = useRef("");
+  const availableCourtsRef = useRef([]);
+  const errorRef = useRef(null);
   const fenceRef = useRef(null);
   if (!fenceRef.current) {
     fenceRef.current = createDailyPlayRefreshFence();
   }
 
-  const applySnapshot = useCallback((snapshot) => {
+  const publishError = useCallback((value) => {
+    errorRef.current = value;
+    setErrorState(value);
+  }, []);
+
+  const applySnapshot = useCallback((snapshot, options = {}) => {
     if (!mountedRef.current || !snapshot?.ok) return false;
     const normalized = normalizeDailyPlayServerSnapshot(snapshot);
     if (!normalized.ok) return false;
     const decision = shouldReplaceCanonicalSnapshot(signatureRef.current, normalized);
     hasSnapshotRef.current = true;
     revisionRef.current = Number(normalized.revision || 0);
+    availableCourtsRef.current = normalized.availableCourts || [];
+    if (
+      shouldClearSessionErrorAfterSnapshot({
+        snapshotOk: true,
+        replaced: decision.replace,
+        reason: options.reason || null,
+      }) ||
+      isObsoleteNoCourtAvailabilityError(
+        errorRef.current,
+        (normalized.availableCourts || []).length
+      )
+    ) {
+      errorRef.current = null;
+      setErrorState(null);
+    }
     if (!decision.replace) return false;
     signatureRef.current = decision.signature;
     setState(normalized);
-    setError(null);
     return true;
   }, []);
 
@@ -80,6 +110,7 @@ export function useDailyPlayCanonicalSession({
         hasSnapshotRef.current = false;
         signatureRef.current = "";
         revisionRef.current = 0;
+        availableCourtsRef.current = [];
         setState(null);
         setLoading(false);
         return {
@@ -116,13 +147,13 @@ export function useDailyPlayCanonicalSession({
           return snapshot;
         }
         if (snapshot?.ok) {
-          applySnapshot(snapshot);
+          applySnapshot(snapshot, { reason });
         } else if (!silent && !hasSnapshotRef.current) {
-          setError(
+          errorRef.current =
             snapshot?.error ||
-              DAILY_PLAY_MESSAGES[snapshot?.code] ||
-              "Lỗi tải Daily Play."
-          );
+            DAILY_PLAY_MESSAGES[snapshot?.code] ||
+            "Lỗi tải Daily Play.";
+          setErrorState(errorRef.current);
         }
         fence.finish(token, snapshot);
         return snapshot;
@@ -133,7 +164,8 @@ export function useDailyPlayCanonicalSession({
           error: String(caught?.message || caught),
         };
         if (mountedRef.current && !silent && !hasSnapshotRef.current) {
-          setError(failure.error);
+          errorRef.current = failure.error;
+          setErrorState(failure.error);
         }
         fence.finish(token, failure);
         return failure;
@@ -151,6 +183,7 @@ export function useDailyPlayCanonicalSession({
     hasSnapshotRef.current = false;
     revisionRef.current = 0;
     signatureRef.current = "";
+    availableCourtsRef.current = [];
     fenceRef.current = createDailyPlayRefreshFence();
     void refresh({ background: false, reason: DAILY_PLAY_REFRESH_REASON.INITIAL });
     return () => {
@@ -194,7 +227,8 @@ export function useDailyPlayCanonicalSession({
     }
     mutatingRef.current = true;
     setMutating(true);
-    setError(null);
+    errorRef.current = null;
+    setErrorState(null);
     return null;
   }, []);
 
@@ -210,7 +244,9 @@ export function useDailyPlayCanonicalSession({
       const gate = beginMutationGate();
       if (gate) return gate;
       try {
-        const result = mapConflict(await executor());
+        const result = normalizeDailyPlayMutationResult(
+          mapConflict(await executor())
+        );
         if (!mountedRef.current) return result;
 
         if (result?.ok) {
@@ -224,17 +260,20 @@ export function useDailyPlayCanonicalSession({
           });
           if (!mountedRef.current) return result;
           if (!readback?.ok) {
-            const failure = {
+            const failure = normalizeDailyPlayMutationResult({
               ok: false,
               code: DAILY_PLAY_CODE.READBACK_FAILED,
               error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.READBACK_FAILED],
               mutationCommitted: true,
               mutation: result,
               readback,
-            };
-            setError(failure.error);
+            });
+            errorRef.current = failure.error;
+            setErrorState(failure.error);
             return failure;
           }
+          errorRef.current = null;
+          setErrorState(null);
           return {
             ...result,
             revision: readback.revision,
@@ -248,15 +287,12 @@ export function useDailyPlayCanonicalSession({
             background: true,
             reason: DAILY_PLAY_REFRESH_REASON.MUTATION,
           });
-          setError(
-            result.error || DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.VERSION_CONFLICT]
-          );
+          errorRef.current =
+            result.error || DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.VERSION_CONFLICT];
+          setErrorState(errorRef.current);
         } else {
-          setError(
-            result?.error ||
-              DAILY_PLAY_MESSAGES[result?.code] ||
-              "Thao tác Daily Play thất bại."
-          );
+          errorRef.current = result.error || DAILY_PLAY_GENERIC_ACTION_ERROR;
+          setErrorState(errorRef.current);
         }
         return result;
       } finally {
@@ -302,12 +338,13 @@ export function useDailyPlayCanonicalSession({
               background: true,
               reason: DAILY_PLAY_REFRESH_REASON.MUTATION,
             });
+            const normalized = normalizeDailyPlayMutationResult(result);
             const failure = {
+              ...normalized,
               ok: false,
-              code: result?.code || DAILY_PLAY_CODE.VALIDATION,
+              code: normalized.code || DAILY_PLAY_CODE.VALIDATION,
               error:
-                result?.error ||
-                DAILY_PLAY_MESSAGES[result?.code] ||
+                normalized.error ||
                 (mode === "checkOut"
                   ? "Không bỏ chọn được toàn bộ VĐV."
                   : "Không chọn được toàn bộ VĐV."),
@@ -316,7 +353,8 @@ export function useDailyPlayCanonicalSession({
               failedPlayerId: playerId,
             };
             if (mountedRef.current) {
-              setError(failure.error);
+              errorRef.current = failure.error;
+              setErrorState(failure.error);
             }
             return failure;
           }
@@ -341,7 +379,10 @@ export function useDailyPlayCanonicalSession({
             succeeded,
             readback,
           };
-          if (mountedRef.current) setError(failure.error);
+          if (mountedRef.current) {
+            errorRef.current = failure.error;
+            setErrorState(failure.error);
+          }
           return failure;
         }
 
@@ -368,7 +409,7 @@ export function useDailyPlayCanonicalSession({
     refreshing: false,
     mutating,
     error,
-    setError,
+    setError: publishError,
     state,
     dailyPlay,
     revision,
@@ -408,7 +449,7 @@ export function useDailyPlayCanonicalSession({
       runMutation(() =>
         service.assignCourt(scope, {
           matchId,
-          courtId,
+          courtId: resolveAssignCourtId(courtId, availableCourtsRef.current),
           expectedVersion: revisionRef.current,
         })
       ),

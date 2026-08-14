@@ -14,7 +14,28 @@ function clusterKey(user) {
   return user.assignedClusterIds.map((id) => String(id).trim()).filter(Boolean).sort().join(",");
 }
 
+/**
+ * Full semantic auth fingerprint — used to keep React auth state stable across
+ * TOKEN_REFRESHED / repeated SIGNED_IN object identity churn.
+ */
 export function buildUserSecurityScopeKey(user) {
+  if (!user?.id) return "";
+  return [
+    buildClubRehydrateScopeKey(user),
+    norm(user.tournamentId),
+    norm(user.teamId),
+    norm(user.playerId),
+    clusterKey(user),
+  ].join("|");
+}
+
+/**
+ * Club/tenant rehydrate key — id/role/tenant/venue/club/status/email only.
+ * Async profile enrichment (clusters, playerId, tournamentId, teamId) after
+ * TOKEN_REFRESHED must not clear clubs or remount a loaded Daily Play shell.
+ * Real user/tenant/role/club/status change still fail-closed.
+ */
+export function buildClubRehydrateScopeKey(user) {
   if (!user?.id) return "";
   return [
     norm(user.id),
@@ -22,10 +43,6 @@ export function buildUserSecurityScopeKey(user) {
     norm(user.tenantId),
     norm(user.venueId),
     norm(user.clubId),
-    norm(user.tournamentId),
-    norm(user.teamId),
-    norm(user.playerId),
-    clusterKey(user),
     norm(user.status || "active"),
     user.mustChangePassword ? "1" : "0",
     String(user.email || "").trim().toLowerCase(),

@@ -30,7 +30,6 @@ import { getCourtDisplayName } from "../../models/court.js";
 import { formatOrganizerPlayerMeta } from "../../utils/skillLevelVisibility.js";
 import {
   createFairDailyMatches,
-  DAILY_GENDER_FILTER,
   DAILY_MATCH_TYPE,
   getBusyPlayerIdsFromDailyMatches,
   getDefaultDailyPlaySettings,
@@ -46,8 +45,16 @@ import {
   beginPresenceOverride,
   DAILY_PLAY_CODE,
   DAILY_PLAY_MESSAGES,
+  isNoCourtWaitingCopy,
+  isObsoleteNoCourtAvailabilityError,
+  resolveCreateCourtWaitingNote,
   resolveCreateMatchCount,
   resolvePresentedCheckedSet,
+  dailyPlayCourtRuntimeLabel,
+  projectDailyPlayerFilterView,
+  countVisiblePresentedChecked,
+  listVisibleBulkCheckInTargets,
+  listVisibleBulkCheckOutTargets,
   shouldIgnoreConcurrentPresenceClick,
   validateScoreInput,
 } from "../../features/daily-play/canonical/index.js";
@@ -76,12 +83,6 @@ const MATCH_TYPE_OPTIONS = [
   { value: DAILY_MATCH_TYPE.WOMEN_DOUBLE, label: "Đôi nữ" },
   { value: DAILY_MATCH_TYPE.MIXED_DOUBLE, label: "Đôi nam nữ" },
   { value: DAILY_MATCH_TYPE.AUTO, label: "Tự động nhiều loại" },
-];
-
-const GENDER_FILTER_OPTIONS = [
-  { value: DAILY_GENDER_FILTER.ALL, label: "Tất cả" },
-  { value: DAILY_GENDER_FILTER.MALE, label: "Nam" },
-  { value: DAILY_GENDER_FILTER.FEMALE, label: "Nữ" },
 ];
 
 function PlayerPresenceRow({ player, checked, busy, canViewSkill, onToggle }) {
@@ -116,7 +117,6 @@ export default function DailyPlaySetup() {
   const [scoreB, setScoreB] = useState("");
   const [scoreNote, setScoreNote] = useState("");
   const [matchType, setMatchType] = useState(DAILY_MATCH_TYPE.MIXED_DOUBLE);
-  const [genderFilter, setGenderFilter] = useState(DAILY_GENDER_FILTER.ALL);
   const [createPending, setCreatePending] = useState(false);
   const [bulkPending, setBulkPending] = useState(null);
   const [presenceOverride, setPresenceOverride] = useState(null);
@@ -161,10 +161,7 @@ export default function DailyPlaySetup() {
     if (session.dailyPlay.matchType) {
       setMatchType(session.dailyPlay.matchType);
     }
-    if (session.dailyPlay.genderFilter) {
-      setGenderFilter(session.dailyPlay.genderFilter);
-    }
-  }, [session.dailyPlay?.matchType, session.dailyPlay?.genderFilter]);
+  }, [session.dailyPlay?.matchType]);
 
   // Candidate directory: club membership identity — not Daily session presence.
   const {
@@ -180,9 +177,8 @@ export default function DailyPlaySetup() {
     return normalizeDailyPlaySettings({
       ...fromServer,
       matchType,
-      genderFilter,
     });
-  }, [session.dailyPlay, matchType, genderFilter]);
+  }, [session.dailyPlay, matchType]);
 
   const refereeRoster = useMemo(() => {
     const base = getRefereeSettings(tournament).roster;
@@ -225,12 +221,26 @@ export default function DailyPlaySetup() {
   }, [tenantId, activeClubId, user?.id]);
 
   // DP-08: do not sticky-mirror transient load errors after successful snapshot.
-  const displayError =
+  // Waiting matches are not "no free court." Suppress that copy while courts are free.
+  const rawDisplayError =
     actionError ||
     session.error ||
     (!tournament && tournamentLoadError) ||
     playersLoadError?.message ||
     null;
+  const availableCourtCount = (session.availableCourts || []).length;
+  const noCourtWaitingNotice =
+    isNoCourtWaitingCopy(rawDisplayError) &&
+    availableCourtCount === 0 &&
+    session.hasCourtCapability;
+  const displayError = isObsoleteNoCourtAvailabilityError(
+    rawDisplayError,
+    availableCourtCount
+  )
+    ? null
+    : noCourtWaitingNotice
+      ? null
+      : rawDisplayError;
 
   const courts = session.courts || [];
   const courtStates = session.courtStates || [];
@@ -243,10 +253,6 @@ export default function DailyPlaySetup() {
     [waiting, assigned]
   );
 
-  const checkedInSet = useMemo(
-    () => new Set(dailySettings.checkedInPlayerIds),
-    [dailySettings.checkedInPlayerIds]
-  );
   const presentedCheckedSet = useMemo(
     () =>
       resolvePresentedCheckedSet(
@@ -254,6 +260,20 @@ export default function DailyPlaySetup() {
         presenceOverride
       ),
     [dailySettings.checkedInPlayerIds, presenceOverride]
+  );
+
+  const playerFilterView = useMemo(
+    () =>
+      projectDailyPlayerFilterView({
+        players,
+        checkedInPlayerIds: dailySettings.checkedInPlayerIds,
+        matchType,
+      }),
+    [players, dailySettings.checkedInPlayerIds, matchType]
+  );
+  const visiblePresentedCheckedCount = countVisiblePresentedChecked(
+    playerFilterView,
+    presentedCheckedSet
   );
 
   const mutationBusy = shouldIgnoreConcurrentPresenceClick({
@@ -307,9 +327,10 @@ export default function DailyPlaySetup() {
     if (playerMutationLockRef.current || mutationBusy) return;
     playerMutationLockRef.current = true;
     setActionError(null);
-    const targets = players
-      .map((player) => player.id)
-      .filter((id) => !checkedInSet.has(String(id)));
+    const targets = listVisibleBulkCheckInTargets(
+      playerFilterView,
+      dailySettings.checkedInPlayerIds
+    );
     if (targets.length === 0) {
       playerMutationLockRef.current = false;
       return;
@@ -344,7 +365,7 @@ export default function DailyPlaySetup() {
     if (playerMutationLockRef.current || mutationBusy) return;
     playerMutationLockRef.current = true;
     setActionError(null);
-    const targets = [...dailySettings.checkedInPlayerIds];
+    const targets = listVisibleBulkCheckOutTargets(playerFilterView);
     if (targets.length === 0) {
       playerMutationLockRef.current = false;
       return;
@@ -486,6 +507,9 @@ export default function DailyPlaySetup() {
         return;
       }
 
+      setActionError(null);
+      session.setError?.(null);
+
       const animationPayload = buildDailyFairMatchAnimationPayload({
         result: {
           ...proposal,
@@ -508,9 +532,17 @@ export default function DailyPlaySetup() {
         proposal.waitingPlayers?.length > 0
           ? ` • ${proposal.waitingPlayers.length} VĐV chờ lượt tiếp theo`
           : "";
-      const courtNote = persist.waitingForCourt || countPlan.waitingForCourt
-        ? ` • ${DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING}`
-        : "";
+      const availableAfter = Number(
+        persist.readback?.availableCourts?.length ??
+          persist.availableCourts?.length ??
+          session.availableCourts?.length ??
+          0
+      );
+      const waitingCopy = resolveCreateCourtWaitingNote({
+        availableCourtCount: availableAfter,
+        waitingForCourt: persist.waitingForCourt || countPlan.waitingForCourt,
+      });
+      const courtNote = waitingCopy ? ` • ${waitingCopy}` : "";
 
       anim.showAnimation(
         {
@@ -537,10 +569,16 @@ export default function DailyPlaySetup() {
     setActionError(null);
     const result = await session.assignCourt(match.id);
     if (result?.ok) {
+      setActionError(null);
+      session.setError?.(null);
       setMessage("Đã xếp trận vào sân (assigned). Bấm Bắt đầu trận để chơi.");
       return;
     }
-    if (result?.error) setActionError(result.error);
+    setActionError(
+      result?.error ||
+        DAILY_PLAY_MESSAGES[result?.code] ||
+        "Không xếp được sân cho trận này."
+    );
   };
 
   const handleStartMatch = async (match) => {
@@ -678,7 +716,10 @@ export default function DailyPlaySetup() {
   }
 
   return (
-    <TournamentManageGate tournamentId={tournamentId}>
+    <TournamentManageGate
+      tournamentId={tournamentId}
+      loadedTournament={tournament}
+    >
       <TournamentSetupShell
         tournament={tournament}
         description="Daily Play canonical — check-in, ghép trận, xếp sân, nhập điểm"
@@ -714,6 +755,18 @@ export default function DailyPlaySetup() {
                 {displayError}
               </Alert>
             )}
+            {noCourtWaitingNotice && (
+              <Alert
+                severity="warning"
+                sx={{ mb: 2 }}
+                onClose={() => {
+                  setActionError(null);
+                  session.setError?.(null);
+                }}
+              >
+                {DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING}
+              </Alert>
+            )}
             {!displayError && playersEmptyMessage && (
               <Alert severity="warning" sx={{ mb: 2 }}>
                 {playersEmptyMessage}
@@ -744,7 +797,7 @@ export default function DailyPlaySetup() {
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <FormControl fullWidth size="small">
               <InputLabel>Loại trận</InputLabel>
               <Select
@@ -760,23 +813,7 @@ export default function DailyPlaySetup() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Lọc VĐV</InputLabel>
-              <Select
-                label="Lọc VĐV"
-                value={genderFilter}
-                onChange={(event) => setGenderFilter(event.target.value)}
-              >
-                {GENDER_FILTER_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Button
               fullWidth
               variant="contained"
@@ -798,15 +835,18 @@ export default function DailyPlaySetup() {
           <Grid size={{ xs: 12, lg: 5 }}>
             <Paper variant="outlined" sx={{ p: 1.5 }}>
               <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-                Check-in hôm nay ({presentedCheckedSet.size}/
-                {players.length})
+                Check-in hôm nay ({visiblePresentedCheckedCount}/
+                {playerFilterView.visiblePlayerCount})
               </Typography>
               <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
                 <Button
                   size="small"
                   variant="contained"
                   onClick={() => void handleSelectAllCheckIn()}
-                  disabled={players.length === 0 || Boolean(bulkPending)}
+                  disabled={
+                    playerFilterView.visiblePlayerCount === 0 ||
+                    Boolean(bulkPending)
+                  }
                 >
                   {bulkPending === "checkIn" ? "Đang chọn..." : "Chọn tất cả"}
                 </Button>
@@ -815,7 +855,7 @@ export default function DailyPlaySetup() {
                   variant="outlined"
                   onClick={() => void handleClearAllCheckIn()}
                   disabled={
-                    dailySettings.checkedInPlayerIds.length === 0 ||
+                    playerFilterView.visibleCheckedCount === 0 ||
                     Boolean(bulkPending)
                   }
                 >
@@ -825,7 +865,7 @@ export default function DailyPlaySetup() {
                 </Button>
               </Stack>
               <Stack spacing={1} sx={{ maxHeight: 320, overflow: "auto" }}>
-                {players.map((player) => (
+                {playerFilterView.visiblePlayers.map((player) => (
                   <PlayerPresenceRow
                     key={player.id}
                     player={player}
@@ -863,7 +903,7 @@ export default function DailyPlaySetup() {
                       )}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {court.status}
+                      {dailyPlayCourtRuntimeLabel(court.status)}
                       {court.currentMatchId
                         ? ` • Trận ${court.currentMatchId}`
                         : ""}

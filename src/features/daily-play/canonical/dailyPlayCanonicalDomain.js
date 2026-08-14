@@ -109,11 +109,37 @@ export function getBusyPlayerIds(matches = []) {
   return busy;
 }
 
+export function sanitizeOccupiedCourtIds(rawIds = []) {
+  if (!Array.isArray(rawIds)) return [];
+  const ids = [];
+  for (const item of rawIds) {
+    if (item == null || item === "") continue;
+    if (typeof item === "string" || typeof item === "number") {
+      const id = String(item).trim();
+      if (id) ids.push(id);
+      continue;
+    }
+    if (typeof item === "object") {
+      const id = String(item.courtId ?? item.court_id ?? "").trim();
+      if (id) ids.push(id);
+    }
+  }
+  return [...new Set(ids)];
+}
+
+export function resolveOccupiedCourtIds({ occupiedCourtIds, leases = [] } = {}) {
+  if (Array.isArray(occupiedCourtIds)) {
+    return sanitizeOccupiedCourtIds(occupiedCourtIds);
+  }
+  return [...getActiveLeaseCourtIds(leases)];
+}
+
 export function getActiveLeaseCourtIds(leases = []) {
   return new Set(
     (leases || [])
       .filter((lease) => String(lease.status) === DAILY_PLAY_LEASE_ACTIVE)
-      .map((lease) => String(lease.courtId))
+      .map((lease) => String(lease.courtId ?? lease.court_id ?? ""))
+      .filter(Boolean)
   );
 }
 
@@ -166,12 +192,20 @@ export function validateDoublesMatchShape(match = {}) {
   return { ok: true, playerIds: distinct };
 }
 
-export function listAvailableCourts({ courts = [], matches = [], leases = [] } = {}) {
+export function listAvailableCourts({
+  courts = [],
+  matches = [],
+  leases = [],
+  occupiedCourtIds,
+} = {}) {
   const leased = getActiveLeaseCourtIds(leases);
   const occupied = getOccupiedCourtIdsFromMatches(matches);
+  const globalOccupied = new Set(
+    resolveOccupiedCourtIds({ occupiedCourtIds, leases })
+  );
   return (courts || []).filter((court) => {
     const id = String(court.id);
-    return !leased.has(id) && !occupied.has(id);
+    return !leased.has(id) && !occupied.has(id) && !globalOccupied.has(id);
   });
 }
 
@@ -300,6 +334,44 @@ export function resolveCreateMatchCount({
     waitingForCourt: true,
     message: DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING,
   };
+}
+
+export function isNoCourtWaitingCopy(text) {
+  if (text == null || text === "") return false;
+  const value = String(text);
+  return (
+    value === DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING ||
+    value === DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.NO_COURT_AVAILABLE]
+  );
+}
+
+export function shouldShowNoCourtWaitingWarning(availableCourtCount) {
+  return Number(availableCourtCount) === 0;
+}
+
+export function isObsoleteNoCourtAvailabilityError(error, availableCourtCount) {
+  return isNoCourtWaitingCopy(error) && Number(availableCourtCount) > 0;
+}
+
+export function resolveCreateCourtWaitingNote({
+  availableCourtCount,
+  waitingForCourt = false,
+} = {}) {
+  if (Number(availableCourtCount) > 0) return "";
+  if (waitingForCourt === true || Number(availableCourtCount) === 0) {
+    return DAILY_PLAY_MESSAGES.COURTS_BUSY_WAITING;
+  }
+  return "";
+}
+
+export function resolveAssignCourtId(courtId, availableCourts = []) {
+  if (courtId != null && String(courtId).trim() !== "") {
+    return String(courtId);
+  }
+  const first = Array.isArray(availableCourts) ? availableCourts[0] : null;
+  const id = first?.id ?? first?.courtId ?? null;
+  if (id == null || String(id).trim() === "") return null;
+  return String(id);
 }
 
 export function acceptDailyScoreFieldInput(raw) {
@@ -813,8 +885,32 @@ export function applyChangeCourt(state, { matchId, newCourtId, leases = [] }) {
   };
 }
 
-export function buildCourtRuntimeView({ courts = [], matches = [], leases = [] } = {}) {
+export function dailyPlayCourtRuntimeLabel(status) {
+  switch (String(status || "")) {
+    case "available":
+      return "trống";
+    case "playing":
+    case "occupied":
+      return "đang dùng";
+    case "locked":
+      return "khóa";
+    case "maintenance":
+      return "bảo trì";
+    default:
+      return String(status || "");
+  }
+}
+
+export function buildCourtRuntimeView({
+  courts = [],
+  matches = [],
+  leases = [],
+  occupiedCourtIds,
+} = {}) {
   const leased = getActiveLeaseCourtIds(leases);
+  const globalOccupied = new Set(
+    resolveOccupiedCourtIds({ occupiedCourtIds, leases })
+  );
   const byCourt = new Map();
   for (const match of matches || []) {
     if (
@@ -828,12 +924,14 @@ export function buildCourtRuntimeView({ courts = [], matches = [], leases = [] }
   return (courts || []).map((court) => {
     const id = String(court.id);
     const current = byCourt.get(id);
-    const isLeased = leased.has(id);
+    const isGloballyOccupied = leased.has(id) || globalOccupied.has(id);
     let status = "available";
     if (court.status === "locked" || court.status === "maintenance") {
       status = court.status;
-    } else if (current || isLeased) {
+    } else if (current) {
       status = "playing";
+    } else if (isGloballyOccupied) {
+      status = "occupied";
     }
     return {
       id,
