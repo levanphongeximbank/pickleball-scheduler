@@ -347,6 +347,7 @@
   "tests/official-open-tournament-phase2m-club-version-cas-retry-01.test.js",
   "tests/official-open-tournament-phase2m1-dirty-pending-push-01.test.js",
   "tests/official-open-tournament-phase2m2-dirty-root-cause-01.test.js",
+  "tests/official-open-tournament-phase2m3-semantic-diff-01.test.js",
   "tests/tournament-create-and-team-schema-remediation-01.test.js",
   "tests/canonical-membership-repository.test.js",
   "tests/phase45a2-membership-canonical-read.test.js",
