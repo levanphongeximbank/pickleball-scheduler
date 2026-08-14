@@ -23,7 +23,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useClub } from "../../context/ClubContext.jsx";
 import { listEligibleCanonicalReferees } from "../../features/daily-play/services/refereeDirectoryService.js";
-import { upsertMatchLive } from "../../domain/matchLiveSync.js";
+import { ensureInternalRefereeMatchLive } from "../../features/tournament/internal/internalRefereeRuntimeEnsure.js";
 import {
   listAvailableAthletes,
   resolveTeamTournamentAthleteClubId,
@@ -88,7 +88,6 @@ import {
   projectInternalGroupDrawCard,
   COMPETITION_UNIT,
   loadInternalScheduleCourts,
-  buildInternalRefereeMatchLiveRecord,
 } from "../../features/tournament/internal/index.js";
 import {
   reopenClosedTournament,
@@ -118,7 +117,7 @@ import {
   useTournamentBroadcast,
   BroadcastVodResultAlert,
 } from "../../features/tournament-broadcast/index.js";
-import { buildRefereeSettingsPatch, buildMatchLiveRecord, resolveMatchLabels } from "../../tournament/engines/refereeEngine.js";
+import { buildRefereeSettingsPatch } from "../../tournament/engines/refereeEngine.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
@@ -1116,27 +1115,13 @@ export default function InternalTournamentSetup() {
         return;
       }
       if (await persistEvent(assigned.event)) {
-        if (assigned.referee) {
-          const match = (assigned.event.matches || []).find(
-            (item) => String(item.id) === String(matchId)
-          );
-          const liveRecord = buildInternalRefereeMatchLiveRecord({
-            clubId: tournamentClubId,
-            tournament,
-            event: assigned.event,
-            match,
-            courts,
-            buildMatchLiveRecordFn: buildMatchLiveRecord,
-            resolveMatchLabelsFn: resolveMatchLabels,
-          });
-          if (liveRecord) {
-            const live = await upsertMatchLive(liveRecord);
-            if (!live.ok) {
-              setMessage(
-                `Đã phân công ${assigned.referee.name}. Phiên chấm điểm sẽ sẵn sàng khi đồng bộ được.`
-              );
-              return;
-            }
+        if (assigned.referee?.token) {
+          const live = await ensureInternalRefereeMatchLive(assigned.referee.token);
+          if (!live.ok) {
+            setMessage(
+              `Đã phân công ${assigned.referee.name}. Phiên chấm điểm sẽ sẵn sàng khi đồng bộ được.`
+            );
+            return;
           }
         }
         setMessage(

@@ -141,6 +141,12 @@ export {
 } from "./internalRefereeTokenScoreboard.js";
 
 export {
+  CANONICAL_ENSURE_INTERNAL_REFEREE_MATCH_LIVE,
+  isInternalRefereeEnsureToken,
+  ensureInternalRefereeMatchLive,
+} from "./internalRefereeRuntimeEnsure.js";
+
+export {
   INTERNAL_PERSISTED_GROUP_FIELD,
   getInternalCanonicalEvent,
   listInternalPersistedGroups,

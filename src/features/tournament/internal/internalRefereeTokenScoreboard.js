@@ -1,14 +1,15 @@
 /**
- * Token-scoped Internal scoreboard loader (IT-E2E-BROWSER-015).
- * Live RPC remains scoring authority. Canonical assignment is display fallback
- * when the token exists on Internal matches but tournament_match_live is empty.
- * Does not use ClubProvider / activeClub.
+ * Token-scoped Internal scoreboard loader (IT-E2E-BROWSER-015 / 016).
+ * Authenticated Internal flow: canonical token → ensure RPC → referee_get_match_by_token.
+ * Live RPC remains scoring authority. Canonical assignment is display fallback only.
+ * Does not use ClubProvider / activeClub. Does not write tournament_match_live from the client.
  */
 import { fetchMatchLiveByToken, MATCH_LIVE_STATUS } from "../../../domain/matchLiveSync.js";
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 import { canonicalClubRepository } from "../../club/repositories/index.js";
 import { listTournamentsQuery } from "../services/tournamentQueries.js";
 import { isInternalRefereeAssignedToMatch } from "./internalRefereeDiscovery.js";
+import { ensureInternalRefereeMatchLive } from "./internalRefereeRuntimeEnsure.js";
 
 export function resolveRefereeTokenScoreboardScope(matchRow, user) {
   return {
@@ -151,10 +152,18 @@ export async function loadInternalCanonicalTokenScoreboard({
 export async function loadRefereeTokenScoreboard({
   token,
   user,
+  ensureRuntime = ensureInternalRefereeMatchLive,
   fetchLiveByToken = fetchMatchLiveByToken,
   listCanonicalTournaments = listTournamentsQuery,
   listClubScopes,
 } = {}) {
+  if (user?.id && typeof ensureRuntime === "function") {
+    try {
+      await ensureRuntime(token);
+    } catch {
+      // Live get-by-token remains scoring authority if ensure is unavailable.
+    }
+  }
   const live =
     typeof fetchLiveByToken === "function" ? await fetchLiveByToken(token) : { ok: false };
   if (live?.ok && live.row) {
