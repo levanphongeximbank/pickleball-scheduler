@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { useAuth } from "./AuthContext.jsx";
+import { buildClubRehydrateScopeKey } from "../auth/authSemanticScope.js";
 import { isGlobalRole, isClubScopedRole, isPlatformScopedRole } from "../auth/roles.js";
 import { loadActiveTenantId, saveActiveTenantId } from "../data/tenantSession.js";
 import { getActiveClubId } from "../data/club.js";
@@ -51,6 +52,7 @@ const TenantContext = createContext(null);
 
 export function TenantProvider({ children }) {
   const { user, rbacEnabled, isAuthenticated } = useAuth();
+  const clubRehydrateScopeKey = buildClubRehydrateScopeKey(user);
   const [adminTenantId, setAdminTenantId] = useState(() => loadActiveTenantId());
   const [revision, setRevision] = useState(0);
 
@@ -76,7 +78,9 @@ export function TenantProvider({ children }) {
     }
 
     return resolveEffectiveTenantId(user);
-  }, [adminTenantId, canPickTenant, isAuthenticated, rbacEnabled, user]);
+    // user is read from the current render; identity key avoids TOKEN_REFRESHED churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
+  }, [adminTenantId, canPickTenant, isAuthenticated, rbacEnabled, clubRehydrateScopeKey]);
 
   const currentTenant = useMemo(() => {
     if (!currentTenantId) {

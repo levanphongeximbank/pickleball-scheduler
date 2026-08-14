@@ -42,6 +42,7 @@ export {
   isAuthenticatedOnlyRoute,
   isPermissionExemptPath,
   shouldRedirectToForbidden,
+  shouldBlockRouteForAuthLoading,
 } from "./authGuard.js";
 export { hasSupabaseConfig, getSupabaseAuthClient } from "./supabaseClient.js";
 export {

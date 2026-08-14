@@ -45,6 +45,17 @@ export const DAILY_PLAY_CODE = Object.freeze({
   CLOUD_UNAVAILABLE: "CLOUD_UNAVAILABLE",
   READBACK_FAILED: "READBACK_FAILED",
   SUBSTITUTION_UNSUPPORTED: "SUBSTITUTION_UNSUPPORTED",
+  TOURNAMENT_NOT_FOUND: "TOURNAMENT_NOT_FOUND",
+  MATCHES_REQUIRED: "MATCHES_REQUIRED",
+  MATCH_ALREADY_EXISTS: "MATCH_ALREADY_EXISTS",
+  PLAYER_NOT_CHECKED_IN: "PLAYER_NOT_CHECKED_IN",
+  PLAYER_ID_REQUIRED: "PLAYER_ID_REQUIRED",
+  MATCH_NOT_FOUND: "MATCH_NOT_FOUND",
+  COURT_NOT_AVAILABLE: "COURT_NOT_AVAILABLE",
+  NO_COURT_AVAILABLE: "NO_COURT_AVAILABLE",
+  COURT_ID_REQUIRED: "COURT_ID_REQUIRED",
+  COURT_LEASE_NOT_ACTIVE: "COURT_LEASE_NOT_ACTIVE",
+  IDEMPOTENCY_KEY_REQUIRED: "IDEMPOTENCY_KEY_REQUIRED",
 });
 
 export const DAILY_PLAY_MESSAGES = Object.freeze({
@@ -80,6 +91,39 @@ export const DAILY_PLAY_MESSAGES = Object.freeze({
     "Canonical Daily Play chưa sẵn sàng trên máy chủ. Không dùng dữ liệu trình duyệt.",
   [DAILY_PLAY_CODE.READBACK_FAILED]:
     "Thao tác đã gửi lên máy chủ nhưng không tải lại được trạng thái mới. Hãy làm mới trang.",
+  [DAILY_PLAY_CODE.NOT_AUTHENTICATED]:
+    "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.",
+  [DAILY_PLAY_CODE.FORBIDDEN]:
+    "Bạn không có quyền thực hiện thao tác Daily Play này.",
+  [DAILY_PLAY_CODE.TENANT_FORBIDDEN]:
+    "Thao tác không thuộc phạm vi tenant hiện tại.",
+  [DAILY_PLAY_CODE.NOT_FOUND]: "Không tìm thấy trận hoặc buổi chơi.",
+  [DAILY_PLAY_CODE.MISSING_EXPECTED_VERSION]:
+    "Thiếu phiên bản dữ liệu — hãy tải lại trang rồi thử lại.",
+  [DAILY_PLAY_CODE.MISSING_IDEMPOTENCY_KEY]: "Thiếu khóa idempotency.",
+  [DAILY_PLAY_CODE.COURT_NOT_ELIGIBLE]: "Sân không thuộc buổi chơi.",
+  [DAILY_PLAY_CODE.MATCH_NOT_WAITING]:
+    "Chỉ xếp sân cho trận đang chờ (waiting).",
+  [DAILY_PLAY_CODE.MATCH_NOT_ACTIVE]:
+    "Chỉ đổi sân khi trận đang assigned hoặc playing.",
+  [DAILY_PLAY_CODE.VALIDATION]: "Dữ liệu Daily Play không hợp lệ.",
+  [DAILY_PLAY_CODE.SUBSTITUTION_UNSUPPORTED]:
+    "Daily Play chưa hỗ trợ thay người trong trận.",
+  [DAILY_PLAY_CODE.TOURNAMENT_NOT_FOUND]:
+    "Không tìm thấy buổi chơi hằng ngày.",
+  [DAILY_PLAY_CODE.MATCHES_REQUIRED]: "Thiếu danh sách trận đề xuất.",
+  [DAILY_PLAY_CODE.MATCH_ALREADY_EXISTS]: "Trận này đã tồn tại.",
+  [DAILY_PLAY_CODE.PLAYER_NOT_CHECKED_IN]: "VĐV chưa check-in.",
+  [DAILY_PLAY_CODE.PLAYER_ID_REQUIRED]: "Thiếu mã VĐV.",
+  [DAILY_PLAY_CODE.MATCH_NOT_FOUND]: "Không tìm thấy trận.",
+  [DAILY_PLAY_CODE.COURT_NOT_AVAILABLE]:
+    "Sân không khả dụng hoặc không thuộc buổi chơi.",
+  [DAILY_PLAY_CODE.NO_COURT_AVAILABLE]:
+    "Hiện chưa có sân trống. Trận sẽ chờ sân.",
+  [DAILY_PLAY_CODE.COURT_ID_REQUIRED]: "Thiếu mã sân.",
+  [DAILY_PLAY_CODE.COURT_LEASE_NOT_ACTIVE]:
+    "Sân chưa được giữ cho trận này.",
+  [DAILY_PLAY_CODE.IDEMPOTENCY_KEY_REQUIRED]: "Thiếu khóa idempotency.",
   COURTS_BUSY_WAITING:
     "Hiện chưa có sân trống. Trận sẽ chờ sân.",
 });

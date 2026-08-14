@@ -11,6 +11,7 @@ import {
   shouldRedirectToLogin,
   shouldRedirectToForbidden,
   userMustChangePassword,
+  shouldBlockRouteForAuthLoading,
 } from "../../auth/authGuard.js";
 import { getDefaultHomePath, resolveRouteAccessScope } from "../../auth/menuAccess.js";
 import { decideTournamentEngineRouteGate } from "../../auth/tournamentEngineRouteAccess.js";
@@ -44,7 +45,14 @@ export default function RouteAccessGate({ children }) {
   const { activeClubId, activeClub } = useClub();
   const { activeClusterId } = useCluster();
 
-  if (authLoading && location.pathname !== "/login") {
+  if (
+    shouldBlockRouteForAuthLoading({
+      authLoading,
+      isAuthenticated,
+      user,
+      pathname: location.pathname,
+    })
+  ) {
     return <AuthLoading />;
   }
 
