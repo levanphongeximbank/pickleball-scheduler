@@ -60,12 +60,22 @@ function toNullableNumber(value) {
 }
 
 /**
- * Official max skill/rating 0 is the proven empty-input sentinel
- * (Number(null)===0), not a product ceiling. Min 0 stays legitimate.
+ * Official/individual skill and rating 0 is the proven empty-input sentinel
+ * (Number(null)===0 / Number("")===0), not a product floor or ceiling.
+ * Hidden min=0 must not activate missing-data fail-closed.
+ * Age bounds are not rewritten here.
  */
-function toNullableMaxBound(value) {
+function toNullableSkillRatingBound(value) {
   const parsed = toNullableNumber(value);
   return parsed === 0 ? null : parsed;
+}
+
+function toNullableMaxBound(value) {
+  return toNullableSkillRatingBound(value);
+}
+
+function toNullableMinBound(value) {
+  return toNullableSkillRatingBound(value);
 }
 
 export function normalizeEligibilityRules(rules = {}) {
@@ -96,7 +106,7 @@ export function normalizeEligibilityRules(rules = {}) {
         : [...DEFAULT_ELIGIBILITY_RULES.gender.allowedGenders],
     },
     skill: (() => {
-      const minLevel = toNullableNumber(skill.minLevel);
+      const minLevel = toNullableMinBound(skill.minLevel);
       const maxLevel = toNullableMaxBound(skill.maxLevel);
       return {
         enabled: skill.enabled === true && (minLevel != null || maxLevel != null),
@@ -105,7 +115,7 @@ export function normalizeEligibilityRules(rules = {}) {
       };
     })(),
     rating: (() => {
-      const minRating = toNullableNumber(rating.minRating);
+      const minRating = toNullableMinBound(rating.minRating);
       const maxRating = toNullableMaxBound(rating.maxRating);
       return {
         enabled: rating.enabled === true && (minRating != null || maxRating != null),
@@ -138,6 +148,31 @@ export function normalizeEligibilityRules(rules = {}) {
 
 export function getEligibilityRules(tournament) {
   return normalizeEligibilityRules(tournament?.settings?.eligibilityRules || {});
+}
+
+/**
+ * Official Settings exposes only max skill/rating ceilings.
+ * Hidden min bounds must not survive an Official save.
+ */
+export function patchOfficialVisibleEligibilityLimits(tournament, input = {}) {
+  const maxLevel = Object.prototype.hasOwnProperty.call(input, "maxLevel")
+    ? toNullableMaxBound(input.maxLevel)
+    : null;
+  const maxRating = Object.prototype.hasOwnProperty.call(input, "maxRating")
+    ? toNullableMaxBound(input.maxRating)
+    : null;
+  return updateEligibilityRules(tournament, {
+    skill: {
+      enabled: maxLevel != null,
+      minLevel: null,
+      maxLevel,
+    },
+    rating: {
+      enabled: maxRating != null,
+      minRating: null,
+      maxRating,
+    },
+  });
 }
 
 export function updateEligibilityRules(tournament, patch = {}) {

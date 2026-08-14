@@ -31,7 +31,7 @@ import { OFFICIAL_MODE } from "../../../models/tournament/constants.js";
 import { allowedOfficialRegistrationModes } from "../../../features/individual-tournament/engines/officialCompetitionStrategyEngine.js";
 import {
   getEligibilityRules,
-  updateEligibilityRules,
+  patchOfficialVisibleEligibilityLimits,
 } from "../../../features/individual-tournament/engines/eligibilityEngine.js";
 
 const fieldLabelProps = { shrink: true };
@@ -131,17 +131,9 @@ export default function OfficialTournamentSettingsScreen({
         groupCount,
       });
 
-      const eligibilityPatch = updateEligibilityRules(next, {
-        skill: {
-          enabled: skillParsed.value != null,
-          maxLevel: skillParsed.value,
-          minLevel: eligibility.skill?.minLevel ?? null,
-        },
-        rating: {
-          enabled: ratingParsed.value != null || eligibility.rating?.minRating != null,
-          maxRating: ratingParsed.value,
-          minRating: eligibility.rating?.minRating ?? null,
-        },
+      const eligibilityPatch = patchOfficialVisibleEligibilityLimits(next, {
+        maxLevel: skillParsed.value,
+        maxRating: ratingParsed.value,
       });
       next = eligibilityPatch.tournament;
 

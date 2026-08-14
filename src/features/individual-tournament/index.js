@@ -41,6 +41,7 @@ export {
   normalizeEligibilityRules,
   getEligibilityRules,
   updateEligibilityRules,
+  patchOfficialVisibleEligibilityLimits,
   getPlayerAge,
   getPlayerDisplayRating,
   checkPlayerEligibility,
