@@ -200,11 +200,16 @@ describe("IT-E2E-BROWSER-014 referee Giải của tôi includes Internal", () =>
     assert.equal(card.assignedMatches.length, 1);
     assert.equal(card.assignedMatches[0].matchId, "GA-R1-M1");
     assert.equal(card.nextMatchup.matchId, "GA-R1-M1");
-    assert.match(card.refereeHref, /^\/referee\/match\/GA-R1-M1\?/);
-    assert.match(card.refereeHref, /mode=internal/);
+    assert.match(
+      card.refereeHref,
+      /^\/tournament\/internal\/d3a35fd1-5caf-4d18-86b4-5df0881c9dc3\/referee/
+    );
+    assert.match(card.assignedMatches[0].scoringAction, /^\/referee\/match\/GA-R1-M1\?/);
+    assert.match(card.assignedMatches[0].scoringAction, /mode=internal/);
+    assert.match(card.assignedMatches[0].accessPath, /mode=internal/);
     assert.doesNotMatch(card.refereeHref, /^\/referee\/[^/]+$/);
-    assert.equal(card.assignedMatches[0].accessPath, card.refereeHref);
-    assert.equal(card.assignedMatches[0].scoringAction, card.refereeHref);
+    assert.notEqual(card.assignedMatches[0].accessPath, card.refereeHref);
+    assert.equal(card.assignedMatches[0].scoringAction, card.assignedMatches[0].accessPath);
     assert.match(card.assignedMatches[0].legacyTokenPath, /^\/referee\//);
     assert.notEqual(card.assignedMatches[0].legacyTokenPath, card.refereeHref);
     assert.equal(card.assignedMatches[0].team1Name.includes("IT421 Nam 01"), true);

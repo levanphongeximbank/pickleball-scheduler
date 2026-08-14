@@ -100,6 +100,8 @@ export default function RefereeScoreboard({
   sessionToken = null,
   sessionMode = false,
   canonicalCommit = null,
+  embedded = false,
+  onCanonicalCommitted = null,
 } = {}) {
   const { token: rawToken } = useParams();
   const token = sessionToken || decodeURIComponent(rawToken || "");
@@ -253,6 +255,9 @@ export default function RefereeScoreboard({
       scoreB,
       status: MATCH_LIVE_STATUS.LOCKED,
     });
+    if (typeof onCanonicalCommitted === "function") {
+      onCanonicalCommitted(result);
+    }
     return result;
   };
 
@@ -306,7 +311,7 @@ export default function RefereeScoreboard({
 
   if (loading) {
     return (
-      <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}>
+      <Box sx={{ minHeight: embedded ? "auto" : "100dvh", display: "grid", placeItems: "center", py: embedded ? 4 : 0 }}>
         <Typography color="text.secondary">Đang tải trận đấu...</Typography>
       </Box>
     );
@@ -331,7 +336,7 @@ export default function RefereeScoreboard({
 
   return (
     <Box
-      sx={{ minHeight: "100dvh", bgcolor: "background.default", pb: 4 }}
+      sx={{ minHeight: embedded ? "auto" : "100dvh", bgcolor: "background.default", pb: 4 }}
       data-testid="referee-token-scoreboard"
     >
       {!sessionMode && !usesCanonicalCommit && (

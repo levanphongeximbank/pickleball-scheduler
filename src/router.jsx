@@ -172,6 +172,7 @@ const DailyPlayLauncher = lazy(() => import("./pages/tournament/DailyPlayLaunche
 const DailyPlaySetup = lazy(() => import("./pages/tournament/DailyPlaySetup"));
 
 const InternalTournamentSetup = lazy(() => import("./pages/tournament/InternalTournamentSetup"));
+const InternalRefereePortalPage = lazy(() => import("./pages/tournament/InternalRefereePortalPage"));
 
 const OfficialTournamentSetup = lazy(() => import("./pages/tournament/OfficialTournamentSetup"));
 
@@ -610,6 +611,14 @@ export default function Router() {
             <Route path="/daily-play" element={<DailyPlayLauncher />} />
 
             <Route path="/tournament/daily/:tournamentId" element={<DailyPlaySetup />} />
+
+            <Route
+
+              path="/tournament/internal/:tournamentId/referee"
+
+              element={<InternalRefereePortalPage />}
+
+            />
 
             <Route
 

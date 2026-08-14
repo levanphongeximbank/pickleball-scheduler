@@ -6,6 +6,8 @@
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 import { normalizeMyDashboardListResult } from "../../team-tournament/my-dashboards/myDashboardsModel.js";
 import { listInternalRefereeHubAssignments } from "../internal/internalRefereeDiscovery.js";
+import { buildInternalRefereePortalHref } from "../internal/internalRefereeCanonicalPath.js";
+import { resolveNextInternalRefereeMatch } from "../internal/internalRefereePortal.js";
 
 export const MY_TOURNAMENTS_SHARED_AGGREGATOR =
   "team_tournament_list_my_dashboards+listInternalRefereeHubAssignments";
@@ -41,8 +43,11 @@ export function collectMyTournamentClubScopes({
 export function projectInternalRefereeDashboardCard({ tournament, matches = [] } = {}) {
   const id = String(tournament?.id || "").trim();
   if (!id || !matches.length) return null;
-  const next = matches[0];
-  const scoringPath = String(next?.accessPath || next?.scoringAction || "").trim();
+  const next = resolveNextInternalRefereeMatch(matches) || matches[0];
+  const portalHref = buildInternalRefereePortalHref({
+    tournamentId: id,
+    clubId: tournament.clubId,
+  });
   return {
     id,
     teamDomainId: null,
@@ -63,9 +68,9 @@ export function projectInternalRefereeDashboardCard({ tournament, matches = [] }
       matchId: next.matchId || null,
       status: next.status || null,
     },
-    href: scoringPath || "/referee",
+    href: portalHref,
     captainPortalHref: null,
-    refereeHref: scoringPath || null,
+    refereeHref: portalHref,
     assignedMatches: matches,
     source: "internal_canonical",
   };

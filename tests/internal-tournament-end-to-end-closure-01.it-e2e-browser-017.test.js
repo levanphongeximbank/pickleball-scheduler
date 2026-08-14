@@ -22,6 +22,7 @@ import {
   assignInternalMatchReferee,
   buildInternalRefereeCanonicalHref,
   buildInternalRefereeLegacyTokenHref,
+  buildInternalRefereePortalHref,
   CANONICAL_COMMIT_INTERNAL_REFEREE_MATCH_RESULT,
   CANONICAL_ENSURE_INTERNAL_REFEREE_MATCH_LIVE,
   commitInternalRefereeMatchResult,
@@ -133,16 +134,21 @@ function roundTrip(tournament) {
 }
 
 describe("IT-E2E-BROWSER-017 Internal referee canonical cutover", () => {
-  it("A. authenticated hub Chấm trận opens canonical session, not token warning route", async () => {
+  it("A. authenticated hub Chấm trận opens tournament portal; session remains deep-link", async () => {
     const assigned = makeAssignedInternal();
-    const href = buildInternalRefereeCanonicalHref({
+    const sessionHref = buildInternalRefereeCanonicalHref({
       tournamentId: INTERNAL_ID,
       matchId: "GA-R1-M1",
       clubId: CLUB_ID,
     });
-    assert.equal(href.includes("/referee/match/GA-R1-M1"), true);
-    assert.equal(href.includes(`mode=${INTERNAL_REFEREE_CANONICAL_MODE}`), true);
-    assert.equal(href.includes(TOKEN), false);
+    const portalHref = buildInternalRefereePortalHref({
+      tournamentId: INTERNAL_ID,
+      clubId: CLUB_ID,
+    });
+    assert.equal(sessionHref.includes("/referee/match/GA-R1-M1"), true);
+    assert.equal(sessionHref.includes(`mode=${INTERNAL_REFEREE_CANONICAL_MODE}`), true);
+    assert.equal(sessionHref.includes(TOKEN), false);
+    assert.match(portalHref, /\/tournament\/internal\/.+\/referee/);
 
     const result = await aggregateMyTournamentDashboards({
       user: refereeUser,
@@ -151,7 +157,9 @@ describe("IT-E2E-BROWSER-017 Internal referee canonical cutover", () => {
       listCanonicalTournaments: async () => ({ ok: true, tournaments: [assigned] }),
     });
     const card = result.tournaments[0];
-    assert.equal(card.refereeHref, href);
+    assert.equal(card.refereeHref, portalHref);
+    assert.equal(card.href, portalHref);
+    assert.equal(card.assignedMatches[0].scoringAction, sessionHref);
     assert.doesNotMatch(card.refereeHref, /^\/referee\/[^/?]+$/);
 
     const page = readSrc("src/pages/referee/InternalRefereeMatchPage.jsx");

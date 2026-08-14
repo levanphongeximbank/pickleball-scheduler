@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
-import { Alert, Box, Typography } from "@mui/material";
+import { Link as RouterLink, Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
+import { Alert, Box, Button, Typography } from "@mui/material";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { listTournamentsQuery } from "../../features/tournament/services/tournamentQueries.js";
@@ -11,6 +11,7 @@ import {
 import { commitInternalRefereeMatchResult } from "../../features/tournament/internal/internalRefereeCanonicalCommit.js";
 import { resolveCanonicalExpectedVersion } from "../../features/tournament/internal/canonicalTournamentCas.js";
 import { listInternalRefereeTokenClubScopes } from "../../features/tournament/internal/internalRefereeTokenScoreboard.js";
+import { buildInternalRefereePortalHref } from "../../features/tournament/internal/internalRefereeCanonicalPath.js";
 import RefereeScoreboard from "./RefereeScoreboard.jsx";
 
 /**
@@ -156,6 +157,18 @@ export default function InternalRefereeMatchPage() {
 
   return (
     <Box data-testid="internal-referee-canonical-session">
+      <Box sx={{ px: 2, pt: 1.5 }}>
+        <Button
+          component={RouterLink}
+          to={buildInternalRefereePortalHref({
+            tournamentId,
+            clubId: tournament.clubId,
+          })}
+          size="small"
+        >
+          Danh sách trận giải
+        </Button>
+      </Box>
       <RefereeScoreboard
         sessionToken={assignment.refereeToken}
         sessionMode

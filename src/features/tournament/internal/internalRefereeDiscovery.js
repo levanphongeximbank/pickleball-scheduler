@@ -10,6 +10,7 @@ import {
 import {
   buildInternalRefereeCanonicalHref,
   buildInternalRefereeLegacyTokenHref,
+  buildInternalRefereePortalHref,
 } from "./internalRefereeCanonicalPath.js";
 
 export const INTERNAL_REFEREE_IDENTITY_MATCH_METHOD = Object.freeze({
@@ -95,16 +96,27 @@ export function projectInternalRefereeHubMatch({
   const label = (id) =>
     entries.find((entry) => String(entry.id) === String(id))?.name || id || "—";
   const referee = match.referee || {};
-  const canonicalHref = buildInternalRefereeCanonicalHref({
+  const sessionHref = buildInternalRefereeCanonicalHref({
     tournamentId: tournament.id,
     matchId: match.id,
     clubId: tournament.clubId,
   });
+  const courtLabel =
+    match.courtName || match.courtLabel || match.courtId || null;
+  const stageLabel = [
+    match.stage === "group" ? "Vòng bảng" : match.stage || null,
+    match.round != null && String(match.round).trim()
+      ? `Vòng ${match.round}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return {
     matchId: match.id,
     tournamentId: tournament.id,
     tournamentName: tournament.name || tournament.id,
     courtId: match.courtId || null,
+    courtLabel,
     scheduledStart: match.scheduledStart || null,
     refereeToken: referee.token || "",
     refereeName: referee.name || "",
@@ -115,9 +127,15 @@ export function projectInternalRefereeHubMatch({
     status: match.status || "assigned",
     round: match.round || null,
     stage: match.stage || "group",
+    stageLabel,
     source: "internal_canonical",
-    scoringAction: canonicalHref,
-    accessPath: canonicalHref,
+    scoringAction: sessionHref,
+    accessPath: sessionHref,
+    sessionHref,
+    portalHref: buildInternalRefereePortalHref({
+      tournamentId: tournament.id,
+      clubId: tournament.clubId,
+    }),
     legacyTokenPath: buildInternalRefereeLegacyTokenHref(referee.token),
   };
 }

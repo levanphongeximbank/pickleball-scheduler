@@ -6,6 +6,7 @@ import {
   isMyTournamentsHubPath,
   isTournamentDashboardPath,
 } from "./tournamentEngineRouteAccess.js";
+import { isInternalRefereePortalPath } from "../features/tournament/internal/internalRefereeCanonicalPath.js";
 
 export function isAuthRequired({ authProductionEnabled, rbacEnabled }) {
   return Boolean(authProductionEnabled || rbacEnabled);
@@ -78,6 +79,7 @@ export function isAuthenticatedOnlyRoute(pathname) {
     pathname.startsWith("/referee/match/") ||
     pathname.startsWith("/team-portal/") ||
     pathname.startsWith("/team-referee/") ||
+    isInternalRefereePortalPath(pathname) ||
     // Exact `/tournaments` My Tournaments hub + `/tournaments/:id` Dashboard.
     isMyTournamentsHubPath(pathname) ||
     isTournamentDashboardPath(pathname)
