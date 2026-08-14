@@ -73,6 +73,23 @@ export {
 } from "./internalGroupStandings.js";
 
 export {
+  INTERNAL_SNAPSHOT_POLL_MS,
+  INTERNAL_KNOCKOUT_REFRESH_MECHANISM,
+  INTERNAL_WINNER_PROGRESSION_ENGINE,
+  knockoutMatchFingerprint,
+  detectKnockoutProgressionDrift,
+  findInternalFinalMatch,
+  projectInternalLiveKnockout,
+  applyInternalLiveKnockoutToTournament,
+  shouldPersistKnockoutProgression,
+  shouldApplySilentCanonicalSnapshot,
+  shouldReplaceCanonicalSnapshot,
+  resolveSilentReloadPresentation,
+  planInternalOrganizerSnapshotRefresh,
+  knockoutProgressionIsIdempotent,
+} from "./internalKnockoutLiveRefresh.js";
+
+export {
   INTERNAL_LIFECYCLE_STEPS,
   INTERNAL_LIFECYCLE_LABELS,
   resolveInternalTournamentLifecycle,

@@ -88,9 +88,12 @@ import {
   COMPETITION_UNIT,
   loadInternalScheduleCourts,
   projectInternalLiveGroupStandings,
+  projectInternalLiveKnockout,
   resolveInternalKnockoutAction,
+  shouldPersistKnockoutProgression,
   INTERNAL_KNOCKOUT_INCOMPLETE_MESSAGE,
 } from "../../features/tournament/internal/index.js";
+import { useInternalCanonicalSnapshotRefresh } from "../../features/tournament/internal/useInternalCanonicalSnapshotRefresh.js";
 import {
   reopenClosedTournament,
   isTournamentClosed,
@@ -231,6 +234,8 @@ export default function InternalTournamentSetup() {
   });
   const drawMutationGuardRef = useRef(false);
   const scheduleMutationGuardRef = useRef(false);
+  const canonicalWriteInFlightRef = useRef(false);
+  const knockoutProgressionPersistKeyRef = useRef("");
 
   const canViewSkillInSetup = useMemo(
     () =>
@@ -258,6 +263,7 @@ export default function InternalTournamentSetup() {
     loading: tournamentLoading,
     refreshing: tournamentRefreshing,
     error: tournamentLoadError,
+    reload: reloadCanonicalTournament,
     update,
   } = useCanonicalTournament(
     clubScope.shouldQuery ? clubScope.scope : null,
@@ -274,19 +280,30 @@ export default function InternalTournamentSetup() {
       setError(formatCanonicalVersionConflictError(ready));
       return ready;
     }
-    const result = await update(patch, {
-      ...options,
-      currentTournament: current,
-      expectedVersion:
-        options.expectedVersion != null
-          ? options.expectedVersion
-          : ready.expectedVersion,
-    });
-    if (!result.ok) {
-      setError(formatCanonicalVersionConflictError(result) || result.error);
+    canonicalWriteInFlightRef.current = true;
+    try {
+      const result = await update(patch, {
+        ...options,
+        currentTournament: current,
+        expectedVersion:
+          options.expectedVersion != null
+            ? options.expectedVersion
+            : ready.expectedVersion,
+      });
+      if (!result.ok) {
+        setError(formatCanonicalVersionConflictError(result) || result.error);
+      }
+      return result;
+    } finally {
+      canonicalWriteInFlightRef.current = false;
     }
-    return result;
   };
+
+  useInternalCanonicalSnapshotRefresh({
+    enabled: Boolean(clubScope.shouldQuery && tournamentId),
+    reload: reloadCanonicalTournament,
+    mutationInFlightRef: canonicalWriteInFlightRef,
+  });
 
   const tournamentClubId = useMemo(
     () =>
@@ -667,20 +684,23 @@ export default function InternalTournamentSetup() {
   );
   const knockoutAction = groupStandingsProjection.knockout || resolveInternalKnockoutAction(savedEvent);
 
-  const bracketProgress = useMemo(
-    () => (savedEvent ? resolveBracketProgress(savedEvent) : null),
+  const liveKnockoutProjection = useMemo(
+    () => projectInternalLiveKnockout(savedEvent),
     [savedEvent]
   );
+  const liveKnockoutEvent = liveKnockoutProjection.event || savedEvent;
+
+  const bracketProgress = liveKnockoutProjection.progress;
 
   const knockoutMatchesByBracketId = useMemo(() => {
     const map = {};
-    (savedEvent?.matches || []).forEach((match) => {
+    (liveKnockoutEvent?.matches || []).forEach((match) => {
       if (match.bracketMatchId) {
         map[match.bracketMatchId] = match;
       }
     });
     return map;
-  }, [savedEvent]);
+  }, [liveKnockoutEvent]);
 
   const scoreDraftScope = useMemo(
     () => ({
@@ -725,6 +745,38 @@ export default function InternalTournamentSetup() {
       lifecycleError: result.lifecycleError || null,
     };
   };
+
+  useEffect(() => {
+    if (!savedEvent || !tournament) return undefined;
+    if (
+      !shouldPersistKnockoutProgression({
+        drifted: liveKnockoutProjection.drifted,
+        mutationActive: canonicalWriteInFlightRef.current,
+        persistInFlight: canonicalWriteInFlightRef.current,
+      })
+    ) {
+      return undefined;
+    }
+    const key = `${tournament.version}:${liveKnockoutProjection.fingerprint}`;
+    if (knockoutProgressionPersistKeyRef.current === key) return undefined;
+    knockoutProgressionPersistKeyRef.current = key;
+    let cancelled = false;
+    (async () => {
+      const ok = await persistEvent(liveKnockoutProjection.event);
+      if (cancelled || !ok) {
+        knockoutProgressionPersistKeyRef.current = "";
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    liveKnockoutProjection.drifted,
+    liveKnockoutProjection.event,
+    liveKnockoutProjection.fingerprint,
+    savedEvent,
+    tournament,
+  ]);
 
   const pairingIntervention = usePairingIntervention({
     phase: INTERVENTION_PHASE.TOURNAMENT,
@@ -1168,7 +1220,7 @@ export default function InternalTournamentSetup() {
 
   const handleSubmitKnockoutScore = async (matchId, scores) => {
     setPendingMatchId(matchId);
-    let workingEvent = savedEvent;
+    let workingEvent = liveKnockoutEvent || savedEvent;
     const linked = (savedEvent?.matches || []).find((item) => String(item.id) === String(matchId));
     const draftSide = linked?.bracketMatchId ? winnerDrafts[linked.bracketMatchId] : null;
     if (draftSide) {
@@ -2365,7 +2417,7 @@ export default function InternalTournamentSetup() {
             {!shouldSkipKnockoutForInternal(savedEvent) ? (
             <BracketView
               progress={bracketProgress}
-              unlockedRounds={savedEvent?.bracket?.unlockedRounds || {}}
+              unlockedRounds={liveKnockoutEvent?.bracket?.unlockedRounds || {}}
               knockoutMatchesByBracketId={knockoutMatchesByBracketId}
               onSelectWinner={handleDraftBracketWinner}
               onConfirmWinner={handleConfirmBracketWinner}

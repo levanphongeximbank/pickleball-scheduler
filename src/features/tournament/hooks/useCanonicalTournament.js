@@ -22,6 +22,7 @@ import {
   resolveCanonicalScopeGapPolicy,
 } from "../internal/internalWorkspaceSections.js";
 import { selectAuthoritativeCanonicalTournament } from "../internal/internalPersistedDrawGroups.js";
+import { shouldReplaceCanonicalSnapshot } from "../internal/internalKnockoutLiveRefresh.js";
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 
 function readClubId(clubOrScope) {
@@ -56,10 +57,13 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
   const lastRevisionRef = useRef(revision);
 
   const applyAuthoritativeTournament = useCallback((incoming) => {
-    const selected = selectAuthoritativeCanonicalTournament(
-      lastAuthoritativeRef.current,
-      incoming
-    );
+    const current = lastAuthoritativeRef.current;
+    const selected = selectAuthoritativeCanonicalTournament(current, incoming);
+    if (current && selected && !shouldReplaceCanonicalSnapshot(current, selected)) {
+      setTournament(current);
+      hasLoadedRef.current = true;
+      return current;
+    }
     lastAuthoritativeRef.current = selected;
     setTournament(selected);
     if (selected) {
@@ -68,7 +72,7 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
     return selected;
   }, []);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async ({ silent = false } = {}) => {
     if (!clubId || !tournamentId) {
       const gap = resolveCanonicalScopeGapPolicy({
         hasTournament: hasLoadedRef.current || Boolean(lastAuthoritativeRef.current),
@@ -88,20 +92,22 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
     const presentation = resolveCanonicalLoadPresentation({
       hasTournament: hasLoadedRef.current || Boolean(lastAuthoritativeRef.current),
     });
-    if (presentation.initialLoading) setLoading(true);
-    else setRefreshing(true);
-    setError(null);
+    if (!silent) {
+      if (presentation.initialLoading) setLoading(true);
+      else setRefreshing(true);
+    }
+    if (!silent) setError(null);
     const result = await getTournamentQuery(clubId, tournamentId, { tenantId });
     if (!result.ok) {
-      if (presentation.initialLoading) {
+      if (presentation.initialLoading && !silent) {
         setTournament(null);
         lastAuthoritativeRef.current = null;
         hasLoadedRef.current = false;
       }
-      setError(result.error || "Không tải được giải.");
+      if (!silent) setError(result.error || "Không tải được giải.");
       setLoading(false);
       setRefreshing(false);
-      return null;
+      return silent ? lastAuthoritativeRef.current : null;
     }
     applyAuthoritativeTournament(result.tournament);
     lastScopeRef.current = { clubId, tenantId, tournamentId };

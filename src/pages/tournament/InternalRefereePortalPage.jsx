@@ -24,6 +24,11 @@ import {
   resolveInternalRefereePortalLoadPresentation,
 } from "../../features/tournament/internal/internalRefereePortal.js";
 import { projectInternalLiveGroupStandings } from "../../features/tournament/internal/internalGroupStandings.js";
+import {
+  applyInternalLiveKnockoutToTournament,
+  projectInternalLiveKnockout,
+} from "../../features/tournament/internal/internalKnockoutLiveRefresh.js";
+import { useInternalCanonicalSnapshotRefresh } from "../../features/tournament/internal/useInternalCanonicalSnapshotRefresh.js";
 import InternalGroupStandingsTable from "../../components/tournament/internal/InternalGroupStandingsTable.jsx";
 import RefereeScoreboard from "../referee/RefereeScoreboard.jsx";
 
@@ -61,6 +66,7 @@ export default function InternalRefereePortalPage() {
   const [portal, setPortal] = useState(null);
   const hasPortalRef = useRef(false);
   const selectedMatchIdRef = useRef(matchFromQuery);
+  const portalWriteRef = useRef(false);
 
   const selectedMatchId = matchFromQuery || selectedMatchIdRef.current || "";
 
@@ -114,11 +120,12 @@ export default function InternalRefereePortalPage() {
         (item) => String(item.id) === wantedTournament
       );
       if (!candidate) continue;
+      const liveWrapped = applyInternalLiveKnockoutToTournament(candidate);
       const projected = listInternalRefereePortalAssignments({
-        tournament: candidate,
+        tournament: liveWrapped.tournament,
         user,
       });
-      foundTournament = candidate;
+      foundTournament = liveWrapped.tournament;
       foundPortal = projected;
       foundCode = projected.code || null;
       break;
@@ -160,6 +167,12 @@ export default function InternalRefereePortalPage() {
     loadPortal();
   }, [loadPortal]);
 
+  useInternalCanonicalSnapshotRefresh({
+    enabled: Boolean(user?.id && tournamentId && portal),
+    reload: loadPortal,
+    mutationInFlightRef: portalWriteRef,
+  });
+
   useEffect(() => {
     if (matchFromQuery) selectedMatchIdRef.current = matchFromQuery;
   }, [matchFromQuery]);
@@ -171,6 +184,10 @@ export default function InternalRefereePortalPage() {
   );
   const standingsProjection = useMemo(
     () => projectInternalLiveGroupStandings(tournament?.events?.[0]),
+    [tournament]
+  );
+  const knockoutProjection = useMemo(
+    () => projectInternalLiveKnockout(tournament?.events?.[0]),
     [tournament]
   );
 
@@ -284,6 +301,25 @@ export default function InternalRefereePortalPage() {
             title="BXH vòng bảng"
           />
         </Box>
+      ) : null}
+
+      {knockoutProjection.progress?.rounds?.length ? (
+        <Stack
+          direction="row"
+          spacing={1}
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ mb: 2 }}
+          data-testid="internal-referee-portal-knockout"
+        >
+          <Chip
+            size="small"
+            label={`Vòng hoàn tất: ${knockoutProjection.progress.completedRounds}/${knockoutProjection.progress.totalRounds}`}
+          />
+          {knockoutProjection.finalMatch?.entryAId && knockoutProjection.finalMatch?.entryBId ? (
+            <Chip size="small" variant="outlined" label="Chung kết đã có 2 đội" />
+          ) : null}
+        </Stack>
       ) : null}
 
       {!matches.length ? (
