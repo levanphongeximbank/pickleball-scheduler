@@ -1,0 +1,96 @@
+{
+  "package": "team-tournament-production-alignment-01",
+  "classification": "C",
+  "purpose": "Bring Production Team Tournament DB contracts to the exact current-main frontend contract for a fresh Owner browser lifecycle. Preserve PR #423 referee foundation. Do not apply canonical referee continuation.",
+  "staging_history_replayed": false,
+  "staging_rows_copied": 0,
+  "permission_catalog_dml": false,
+  "anon_execute_required": false,
+  "anon_privileged_execute": "DENY",
+  "existing_tournament_backfill_required": false,
+  "existing_business_data_mutation": false,
+  "captain_global_role_created": false,
+  "athlete_identity": "auth.uid()→athletes.user_id→athletes.id",
+  "required_lifecycle_objects_audited": 74,
+  "production_prestate": {
+    "PRESENT": 41,
+    "MISSING": 33,
+    "DRIFTED": 7
+  },
+  "create_objects": [
+    "team_tournament_merge_mlp_initial_settings",
+    "team_tournament_seed_mlp_disciplines",
+    "team_tournament_initial_setup_team_data",
+    "team_tournament_create",
+    "team_tournament_ensure_canonical"
+  ],
+  "dashboard_objects": [
+    "team_tournament_status_is_athlete_visible",
+    "team_tournament_can_view_dashboard",
+    "team_tournament_get_dashboard",
+    "team_tournament_list_my_dashboards"
+  ],
+  "pairing_setup_objects": [
+    "team_tournament_commit_pairing",
+    "team_tournament_update_setup_config",
+    "team_tournament_get_setup (4-arg only; drop 2-arg)"
+  ],
+  "captain_objects": [
+    "team_tournament_captain_access_enabled",
+    "team_tournament_assert_captain_portal_access",
+    "team_tournament_guard_captain_portal_write",
+    "team_tournament_set_captain_access",
+    "team_tournament_get_captain_portal",
+    "team_tournament_get_visible_lineups",
+    "team_tournament_user_player_id (athletes canonical replace)"
+  ],
+  "cas_objects": [
+    "team_tournament_write_lineup_revision 13-arg",
+    "team_tournament_save_lineup_draft 6-arg",
+    "team_tournament_submit_lineup 6-arg",
+    "team_tournament_publish_matchup 6-arg",
+    "team_tournament_save_sub_match_draft 6-arg",
+    "team_tournament_upsert_standings 4-arg"
+  ],
+  "lineup_override_objects": [
+    "team_tournament_lineup_override_ops",
+    "team_tournament_override_lineup",
+    "team_tournament_get_lineup_override_ops"
+  ],
+  "close_objects": [
+    "team_tournament_assert_close_readiness",
+    "team_tournament_close_tournament",
+    "team_tournament_resolve_competition_stage",
+    "team_tournament_resolve_stage_tiebreak_policy",
+    "team_tournament_stage_tiebreak_locked_stages"
+  ],
+  "referee_organizer_objects": [
+    "team_tournament_search_referee_candidates",
+    "team_tournament_revoke_referee_assignment",
+    "team_tournament_list_referee_assignments",
+    "team_tournament_referee_competition_athlete_directory"
+  ],
+  "excluded_canonical_referee_continuation_objects": [
+    "team_tournament_resolve_effective_referee_assignment",
+    "team_tournament_result_write_guard",
+    "team_tournament_ensure_referee_runtime_for_matchup",
+    "trg_tt_matchup_ensure_referee_runtime",
+    "trg_tt_sub_match_ensure_referee_runtime",
+    "team_tournament_create_referee_assignment replacement (parent scope + auto-ensure)",
+    "team_tournament_provision_eligibility replacement (parent inheritance)",
+    "team_tournament_start_dreambreaker replacement (scoped write guard)",
+    "team_tournament_confirm_sub_match replacement (scoped write guard)",
+    "team_tournament_save_sub_match_draft replacement (scoped write guard)",
+    "team_tournament_record_dreambreaker_point replacement (scoped write guard)",
+    "team_tournament_list_my_referee_assignments"
+  ],
+  "drifted_replaced": [
+    "team_tournament_user_player_id (profiles.player_id → athletes.id)",
+    "team_tournament_save_lineup_draft 4-arg → 6-arg CAS",
+    "team_tournament_submit_lineup 4-arg → 6-arg CAS",
+    "team_tournament_publish_matchup 2-arg → 6-arg CAS",
+    "team_tournament_save_sub_match_draft 4-arg → 6-arg CAS",
+    "team_tournament_write_lineup_revision 12-arg → 13-arg",
+    "team_tournament_get_setup 2-arg overload (drop)"
+  ]
+}
