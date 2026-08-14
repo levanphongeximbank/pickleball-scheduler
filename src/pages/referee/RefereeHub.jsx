@@ -20,7 +20,7 @@ import { touchButtonSx, MOBILE_PAGE_GUTTER } from "../../components/tournament/m
 import { useIsMobile } from "../../features/mobile/hooks/useIsMobile.js";
 
 export default function RefereeHub() {
-  const { activeClubId } = useClub();
+  const { activeClubId, activeClub } = useClub();
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [matches, setMatches] = useState([]);
@@ -29,7 +29,10 @@ export default function RefereeHub() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const result = await listRefereeAssignments({ clubId: activeClubId });
+    const result = await listRefereeAssignments({
+      clubId: activeClubId,
+      tenantId: activeClub?.tenantId || activeClub?.venueId || user?.venueId,
+    });
     setLoading(false);
 
     if (!result.ok) {
@@ -39,7 +42,7 @@ export default function RefereeHub() {
     }
 
     setMatches(result.matches);
-  }, [activeClubId]);
+  }, [activeClubId, activeClub?.tenantId, activeClub?.venueId, user?.venueId]);
 
   useEffect(() => {
     load();
@@ -98,6 +101,11 @@ export default function RefereeHub() {
                   <Typography variant="body2" color="text.secondary">
                     {match.tournamentName} — Sân {match.courtId || "?"}
                   </Typography>
+                  {match.scheduledStart ? (
+                    <Typography variant="body2" color="text.secondary">
+                      {new Date(match.scheduledStart).toLocaleString("vi-VN")}
+                    </Typography>
+                  ) : null}
                   <Typography variant="body2">
                     Tỷ số: {match.score1} - {match.score2}
                   </Typography>
@@ -106,8 +114,18 @@ export default function RefereeHub() {
                   <Chip size="small" label={match.status || "playing"} />
                   <Button
                     component={RouterLink}
-                    to={`/referee/match/${match.matchId}`}
-                    state={{ refereeToken: match.refereeToken, tournamentId: match.tournamentId }}
+                    to={
+                      match.accessPath ||
+                      `/referee/match/${encodeURIComponent(match.matchId)}`
+                    }
+                    state={
+                      match.source === "internal_canonical"
+                        ? { refereeToken: match.refereeToken }
+                        : {
+                            refereeToken: match.refereeToken,
+                            tournamentId: match.tournamentId,
+                          }
+                    }
                     variant="contained"
                     fullWidth={isMobile}
                     sx={isMobile ? touchButtonSx : undefined}
@@ -122,7 +140,7 @@ export default function RefereeHub() {
 
         {!loading && matches.length === 0 && (
           <Typography color="text.secondary">
-            Chưa có trận live được phân công cho {user?.displayName || "bạn"}.
+            Chưa có trận được phân công cho {user?.displayName || "bạn"}.
           </Typography>
         )}
       </Stack>

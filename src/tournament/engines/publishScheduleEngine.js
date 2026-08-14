@@ -183,7 +183,7 @@ function matchesHaveSlots(matches = []) {
   return list.every((match) => match.scheduledStart);
 }
 
-export function canLockSchedule(tournament, matches = []) {
+export function canLockSchedule(tournament, matches = [], options = {}) {
   const editCheck = canEditSchedule(tournament);
   if (!editCheck.ok) {
     return editCheck;
@@ -194,7 +194,7 @@ export function canLockSchedule(tournament, matches = []) {
     return { ok: false, error: "Lịch đã được khóa." };
   }
 
-  if (!isDrawPublished(tournament)) {
+  if (options.requireDrawPublished !== false && !isDrawPublished(tournament)) {
     return { ok: false, error: "Cần công bố bốc thăm trước khi khóa lịch." };
   }
 
@@ -210,7 +210,7 @@ export function canLockSchedule(tournament, matches = []) {
 }
 
 export function lockSchedule(tournament, matches = [], options = {}) {
-  const validation = canLockSchedule(tournament, matches);
+  const validation = canLockSchedule(tournament, matches, options);
   if (!validation.ok) {
     return validation;
   }
@@ -246,7 +246,7 @@ export function lockSchedule(tournament, matches = [], options = {}) {
   };
 }
 
-export function canPublishSchedule(tournament, matches = []) {
+export function canPublishSchedule(tournament, matches = [], options = {}) {
   const publish = getSchedulePublishStatus(tournament);
 
   if (publish.status === SCHEDULE_PUBLISH_STATUS.PUBLISHED) {
@@ -257,7 +257,7 @@ export function canPublishSchedule(tournament, matches = []) {
     return { ok: false, error: "Cần khóa lịch trước khi công bố." };
   }
 
-  if (!isDrawPublished(tournament)) {
+  if (options.requireDrawPublished !== false && !isDrawPublished(tournament)) {
     return { ok: false, error: "Cần công bố bốc thăm trước khi công bố lịch." };
   }
 
@@ -273,7 +273,7 @@ export function canPublishSchedule(tournament, matches = []) {
 }
 
 export function publishSchedule(tournament, matches = [], options = {}) {
-  const validation = canPublishSchedule(tournament, matches);
+  const validation = canPublishSchedule(tournament, matches, options);
   if (!validation.ok) {
     return validation;
   }

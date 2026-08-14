@@ -85,7 +85,11 @@ export function assignInternalMatchReferee({
     };
   }
 
-  const assigned = assignRefereeToMatch(match, entry.name, { rosterId: entry.id });
+  const assigned = assignRefereeToMatch(match, entry.name, {
+    rosterId: entry.id,
+    rosterEntry: entry,
+    canonicalUserId: entry.canonicalUserId || "",
+  });
   const nextMatches = matches.map((item, index) =>
     index === matchIndex ? assigned.match : item
   );

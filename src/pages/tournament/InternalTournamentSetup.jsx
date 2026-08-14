@@ -22,7 +22,8 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useClub } from "../../context/ClubContext.jsx";
-import { loadCourtsForClub } from "../../domain/clubStorage.js";
+import { listEligibleCanonicalReferees } from "../../features/daily-play/services/refereeDirectoryService.js";
+import { upsertMatchLive } from "../../domain/matchLiveSync.js";
 import {
   listAvailableAthletes,
   resolveTeamTournamentAthleteClubId,
@@ -83,6 +84,8 @@ import {
   listInternalPersistedGroups,
   countInternalPersistedGroups,
   resolveInternalGroupMemberLabels,
+  loadInternalScheduleCourts,
+  buildInternalRefereeMatchLiveRecord,
 } from "../../features/tournament/internal/index.js";
 import {
   reopenClosedTournament,
@@ -112,7 +115,7 @@ import {
   useTournamentBroadcast,
   BroadcastVodResultAlert,
 } from "../../features/tournament-broadcast/index.js";
-import { buildRefereeSettingsPatch } from "../../tournament/engines/refereeEngine.js";
+import { buildRefereeSettingsPatch, buildMatchLiveRecord, resolveMatchLabels } from "../../tournament/engines/refereeEngine.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
@@ -191,6 +194,11 @@ export default function InternalTournamentSetup() {
   const [previewEntries, setPreviewEntries] = useState([]);
   const [founderConstraints, setFounderConstraints] = useState([]);
   const [scheduleBusy, setScheduleBusy] = useState(false);
+  const [courts, setCourts] = useState([]);
+  const [canonicalReferees, setCanonicalReferees] = useState([]);
+  const [canonicalRefereesLoading, setCanonicalRefereesLoading] = useState(false);
+  const [canonicalRefereesError, setCanonicalRefereesError] = useState(null);
+  const [canonicalRefereesWarning, setCanonicalRefereesWarning] = useState(null);
   const [sessionSection, setSessionSection] = useState(null);
   const [winnerDrafts, setWinnerDrafts] = useState({});
   const [pendingMatchId, setPendingMatchId] = useState(null);
@@ -462,10 +470,72 @@ export default function InternalTournamentSetup() {
     tournamentClubId,
   ]);
 
-  const courts = useMemo(
-    () => loadCourtsForClub(tournamentClubId || clubScope.clubId),
-    [tournamentClubId, clubScope.clubId, localRevision]
-  );
+  useEffect(() => {
+    let cancelled = false;
+    const clubId = tournamentClubId || clubScope.clubId;
+    const tenantId =
+      tournament?.tenantId || clubScope.tenantId || playerTenantId || currentTenantId;
+    if (!clubId) {
+      setCourts([]);
+      return undefined;
+    }
+    void loadInternalScheduleCourts({ clubId, tenantId }).then((result) => {
+      if (cancelled) return;
+      setCourts(result.courts || []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    tournamentClubId,
+    clubScope.clubId,
+    tournament?.tenantId,
+    clubScope.tenantId,
+    playerTenantId,
+    currentTenantId,
+    localRevision,
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tenantId =
+      tournament?.tenantId || clubScope.tenantId || playerTenantId || currentTenantId;
+    if (!tenantId) {
+      setCanonicalReferees([]);
+      setCanonicalRefereesError(null);
+      setCanonicalRefereesWarning(null);
+      return undefined;
+    }
+    setCanonicalRefereesLoading(true);
+    setCanonicalRefereesError(null);
+    void listEligibleCanonicalReferees({
+      tenantId,
+      clubId: tournamentClubId || clubScope.clubId,
+    }).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setCanonicalReferees([]);
+        setCanonicalRefereesError(result.error || "Không tải được danh bạ trọng tài.");
+        setCanonicalRefereesWarning(null);
+        return;
+      }
+      setCanonicalReferees(result.referees || []);
+      setCanonicalRefereesWarning(result.warning || null);
+    }).finally(() => {
+      if (!cancelled) setCanonicalRefereesLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    tournament?.tenantId,
+    clubScope.tenantId,
+    playerTenantId,
+    currentTenantId,
+    tournamentClubId,
+    clubScope.clubId,
+    user?.id,
+  ]);
 
   const isSingleEvent = isSingleEventType(eventType);
 
@@ -936,12 +1006,13 @@ export default function InternalTournamentSetup() {
     );
 
     if (!result.ok) {
-      return;
+      return result;
     }
 
     setLocalRevision((value) => value + 1);
     refreshClubs();
     setMessage("Đã cập nhật danh sách trọng tài.");
+    return { ok: true };
   };
 
   const handleGenerateBracket = async () => {
@@ -1028,6 +1099,29 @@ export default function InternalTournamentSetup() {
         return;
       }
       if (await persistEvent(assigned.event)) {
+        if (assigned.referee) {
+          const match = (assigned.event.matches || []).find(
+            (item) => String(item.id) === String(matchId)
+          );
+          const liveRecord = buildInternalRefereeMatchLiveRecord({
+            clubId: tournamentClubId,
+            tournament,
+            event: assigned.event,
+            match,
+            courts,
+            buildMatchLiveRecordFn: buildMatchLiveRecord,
+            resolveMatchLabelsFn: resolveMatchLabels,
+          });
+          if (liveRecord) {
+            const live = await upsertMatchLive(liveRecord);
+            if (!live.ok) {
+              setMessage(
+                `Đã phân công ${assigned.referee.name}. Phiên chấm điểm sẽ sẵn sàng khi đồng bộ được.`
+              );
+              return;
+            }
+          }
+        }
         setMessage(
           assigned.referee ? `Đã phân công ${assigned.referee.name}.` : "Đã bỏ phân công trọng tài."
         );
@@ -2113,6 +2207,7 @@ export default function InternalTournamentSetup() {
               const result = await writeCanonical(
                 {
                   settings: nextTournament.settings,
+                  courtSchedule: nextTournament.courtSchedule,
                   events: nextTournament.events?.[0]
                     ? [
                         {
@@ -2140,6 +2235,11 @@ export default function InternalTournamentSetup() {
           pendingMatchId={pendingMatchId}
           onRosterChange={handleRefereeRosterChange}
           onAssign={handleAssignMatchReferee}
+          enableCanonicalDirectory
+          canonicalCandidates={canonicalReferees}
+          canonicalLoading={canonicalRefereesLoading}
+          canonicalError={canonicalRefereesError}
+          canonicalWarning={canonicalRefereesWarning}
         />
       ) : null}
 

@@ -16,17 +16,20 @@ import {
 } from "@mui/material";
 
 import { todayIsoDate } from "../../../pages/courtManagement/courtManagement.constants.js";
-import {
-  canEditSchedule,
-  getSchedulePublishStatus,
-  lockSchedule,
-  publishSchedule,
-  recordScheduleCreated,
-} from "../../../tournament/engines/publishScheduleEngine.js";
-import { generateSchedule } from "../../../features/tournament-engine/engines/scheduleEngine.js";
-import { listGroupStageMatches } from "../../../features/tournament/internal/internalTournamentOneGroupCompletion.js";
+import { getSchedulePublishStatus } from "../../../tournament/engines/publishScheduleEngine.js";
 import { resolveInternalSchedulePrerequisite } from "../../../features/tournament/internal/internalSchedulePrerequisite.js";
 import { formatInternalMatchRefereeLabel } from "../../../features/tournament/internal/internalMatchRefereeAssignment.js";
+import {
+  INTERNAL_COURT_AVAILABILITY,
+  assignCourtsAndTimesToExistingInternalMatches,
+  classifyInternalCourtAvailability,
+} from "../../../features/tournament/internal/internalScheduleCourts.js";
+import {
+  INTERNAL_SCHEDULE_ACTIONS,
+  lockInternalSchedule,
+  publishInternalSchedule,
+  resolveInternalScheduleLifecycle,
+} from "../../../features/tournament/internal/internalScheduleLifecycle.js";
 
 function formatTime(iso) {
   if (!iso) return "—";
@@ -36,10 +39,13 @@ function formatTime(iso) {
   });
 }
 
-function courtLabel(courtId, courts = []) {
-  const court = courts.find((item) => String(item.id) === String(courtId));
-  return court?.name || courtId || "—";
+function courtLabel(match, courts = []) {
+  if (match?.courtName) return match.courtName;
+  const court = courts.find((item) => String(item.id) === String(match?.courtId));
+  return court?.name || match?.courtId || "—";
 }
+
+const EMPTY_MATCHES = [];
 
 export default function InternalScheduleStage({
   tournament,
@@ -55,7 +61,7 @@ export default function InternalScheduleStage({
 }) {
   const schedule = tournament?.courtSchedule || {};
   const publish = getSchedulePublishStatus(tournament);
-  const matches = listGroupStageMatches(event);
+  const matches = Array.isArray(event?.matches) ? event.matches : EMPTY_MATCHES;
   const [date, setDate] = useState(schedule.date || todayIsoDate());
   const [startTime, setStartTime] = useState(schedule.startTime || "08:00");
   const [minRestMinutes, setMinRestMinutes] = useState(
@@ -64,8 +70,24 @@ export default function InternalScheduleStage({
   const [message, setMessage] = useState(null);
   const [pendingAction, setPendingAction] = useState("");
 
+  const courtAvailability = useMemo(
+    () => classifyInternalCourtAvailability(courts),
+    [courts]
+  );
+
+  const lifecycle = useMemo(
+    () =>
+      resolveInternalScheduleLifecycle({
+        tournament,
+        event,
+        matches,
+        courtAvailability,
+      }),
+    [tournament, event, matches, courtAvailability]
+  );
+
   const prerequisite = resolveInternalSchedulePrerequisite({
-    hasGroups: (event?.groups || []).length > 0,
+    hasGroups: lifecycle.drawConfirmed,
     hasDate: Boolean(date),
     hasMatches: matches.length > 0,
   });
@@ -76,6 +98,25 @@ export default function InternalScheduleStage({
       : publish.status === "locked"
         ? "Locked"
         : "Draft";
+
+  const createAction = lifecycle.actions[INTERNAL_SCHEDULE_ACTIONS.CREATE];
+  const assignAction = lifecycle.actions[INTERNAL_SCHEDULE_ACTIONS.ASSIGN_COURTS];
+  const lockAction = lifecycle.actions[INTERNAL_SCHEDULE_ACTIONS.LOCK];
+  const publishAction = lifecycle.actions[INTERNAL_SCHEDULE_ACTIONS.PUBLISH];
+
+  const persistMatches = async (nextTournament, nextMatches) => {
+    const withSchedule = {
+      ...nextTournament,
+      courtSchedule: {
+        ...(nextTournament.courtSchedule || schedule),
+        date,
+        startTime,
+        endTime: schedule.endTime || "22:00",
+        courtIds: (courts || []).map((court) => court.id),
+      },
+    };
+    return onPersistSettings?.(withSchedule, nextMatches);
+  };
 
   const handleSaveMeta = async () => {
     setPendingAction("meta");
@@ -93,9 +134,31 @@ export default function InternalScheduleStage({
     setMessage({ type: "success", text: "Đã lưu ngày và giờ thi đấu." });
   };
 
+  const assignOntoExisting = async (currentTournament, currentMatches) => {
+    const allocated = assignCourtsAndTimesToExistingInternalMatches({
+      matches: currentMatches,
+      courts,
+      date,
+      startTime,
+      matchMinutes: 25,
+      bufferMinutes: 5,
+    });
+    if (!allocated.ok) {
+      setMessage({ type: "error", text: allocated.error });
+      return false;
+    }
+    const persisted = await persistMatches(currentTournament, allocated.matches);
+    if (persisted === false) return false;
+    setMessage({
+      type: "success",
+      text: `Đã xếp sân/giờ cho ${allocated.matchCount} trận (không tạo trận mới).`,
+    });
+    return true;
+  };
+
   const handleCreate = async () => {
-    if (!prerequisite.ok) {
-      setMessage({ type: "error", text: prerequisite.message });
+    if (!createAction.enabled) {
+      setMessage({ type: "error", text: createAction.reason || prerequisite.message });
       return;
     }
     setPendingAction("create");
@@ -104,68 +167,32 @@ export default function InternalScheduleStage({
       setPendingAction("");
       return;
     }
-
     const currentTournament = created?.tournament || tournament;
     const currentEvent = currentTournament?.events?.[0] || event;
-    const existingMatches =
-      currentTournament?.settings?.engineV4?.matches ||
-      currentEvent?.matches ||
-      matches;
-    const editCheck = canEditSchedule(currentTournament);
-    if (!editCheck.ok) {
-      setPendingAction("");
-      setMessage({ type: "error", text: editCheck.error });
-      return;
-    }
-
-    const allocated = generateSchedule(
-      {
-        tournamentId: currentTournament.id,
-        eventId: currentEvent?.id || `event-${currentTournament.id}`,
-        matches: existingMatches,
-        groups: currentEvent?.groups || [],
-        courts: (courts || []).map((court, index) => ({
-          id: String(court.id),
-          name: court.name || `Sân ${index + 1}`,
-          locked: Boolean(court.locked),
-          priority: court.priority ?? courts.length - index,
-        })),
-        scheduleConfig: {
-          startTime,
-          endTime: currentTournament.courtSchedule?.endTime || "22:00",
-          date,
-          averageMatchMinutes: 25,
-          bufferMinutes: 5,
-          minRestMinutes,
-        },
-      },
-      { regenerate: existingMatches.length > 0, strictRest: true }
-    );
-
-    if (!allocated.ok) {
-      setPendingAction("");
-      setMessage({
-        type: "error",
-        text: (allocated.errors || ["Không tạo được lịch."]).join(" "),
-      });
-      return;
-    }
-
-    const recorded = recordScheduleCreated(currentTournament, allocated.data.matches, {
-      actor,
-      clubId,
-      minRestMinutes,
-    });
-    const persisted = await onPersistSettings?.(
-      recorded.tournament,
-      allocated.data.matches
-    );
+    const existingMatches = currentEvent?.matches || matches;
+    await assignOntoExisting(currentTournament, existingMatches);
     setPendingAction("");
-    if (persisted === false) return;
-    setMessage({
-      type: "success",
-      text: `Đã tạo lịch ${allocated.data.matches.length} trận.`,
-    });
+  };
+
+  const handleAssignCourts = async () => {
+    if (!assignAction.enabled) {
+      setMessage({ type: "error", text: assignAction.reason });
+      return;
+    }
+    setPendingAction("assign");
+    let currentTournament = tournament;
+    let currentMatches = matches;
+    if (!currentMatches.length && onCreateMatches) {
+      const created = await onCreateMatches();
+      if (created && created.ok === false) {
+        setPendingAction("");
+        return;
+      }
+      currentTournament = created?.tournament || tournament;
+      currentMatches = currentTournament?.events?.[0]?.matches || matches;
+    }
+    await assignOntoExisting(currentTournament, currentMatches);
+    setPendingAction("");
   };
 
   const runLifecycle = async (fn, okText, actionKey) => {
@@ -176,7 +203,7 @@ export default function InternalScheduleStage({
       setMessage({ type: "error", text: result.error });
       return;
     }
-    const persisted = await onPersistSettings?.(
+    const persisted = await persistMatches(
       result.tournament,
       result.snapshot || matches
     );
@@ -185,10 +212,18 @@ export default function InternalScheduleStage({
     setMessage({ type: "success", text: okText });
   };
 
-  const courtNames = useMemo(
-    () => (courts || []).map((court) => court.name || court.id).join(", "),
-    [courts]
-  );
+  const courtCaption =
+    courtAvailability.state === INTERNAL_COURT_AVAILABILITY.AVAILABLE
+      ? (courts || []).map((court) => court.name || court.id).join(", ")
+      : courtAvailability.message;
+
+  const nextHint = !lifecycle.schedulePublished
+    ? !lifecycle.courtsAssigned
+      ? assignAction.reason || "Phân sân và giờ cho tất cả trận trước khi khóa lịch."
+      : !lifecycle.scheduleLocked
+        ? lockAction.reason || "Khóa lịch trước khi công bố."
+        : publishAction.reason || ""
+    : "";
 
   return (
     <Stack spacing={2}>
@@ -197,9 +232,20 @@ export default function InternalScheduleStage({
         <Chip size="small" label={`Ngày: ${date || "—"}`} />
         <Chip size="small" label={`Giờ bắt đầu: ${startTime || "—"}`} />
         <Chip size="small" label={`Nghỉ tối thiểu: ${minRestMinutes} phút`} />
-        <Chip size="small" label={`Số sân: ${(courts || []).length}`} />
+        <Chip size="small" label={`Số sân: ${courtAvailability.availableCount}`} />
         <Chip size="small" label={`Số trận: ${matches.length}`} />
-        <Chip size="small" label={statusLabel} color="primary" variant="outlined" />
+        <Chip
+          size="small"
+          label={`Bốc thăm: ${
+            lifecycle.drawPublished
+              ? "Đã công bố"
+              : lifecycle.drawConfirmed
+                ? "Đã chia bảng"
+                : "Nháp"
+          }`}
+          variant="outlined"
+        />
+        <Chip size="small" label={`Lịch: ${statusLabel}`} color="primary" variant="outlined" />
       </Stack>
 
       {message ? (
@@ -208,8 +254,12 @@ export default function InternalScheduleStage({
         </Alert>
       ) : null}
 
-      {prerequisite.message ? (
-        <Alert severity="info">{prerequisite.message}</Alert>
+      {courtAvailability.message ? (
+        <Alert severity="warning">{courtAvailability.message}</Alert>
+      ) : null}
+
+      {nextHint && !courtAvailability.message ? (
+        <Alert severity="info">{nextHint}</Alert>
       ) : null}
 
       <Paper variant="outlined" sx={{ p: 1.5 }}>
@@ -219,7 +269,7 @@ export default function InternalScheduleStage({
             type="date"
             label="Ngày thi đấu"
             value={date}
-            onChange={(event) => setDate(event.target.value)}
+            onChange={(eventChange) => setDate(eventChange.target.value)}
             InputLabelProps={{ shrink: true }}
           />
           <TextField
@@ -227,7 +277,7 @@ export default function InternalScheduleStage({
             type="time"
             label="Giờ bắt đầu"
             value={startTime}
-            onChange={(event) => setStartTime(event.target.value)}
+            onChange={(eventChange) => setStartTime(eventChange.target.value)}
             InputLabelProps={{ shrink: true }}
           />
           <TextField
@@ -235,8 +285,8 @@ export default function InternalScheduleStage({
             type="number"
             label="Nghỉ tối thiểu (phút)"
             value={minRestMinutes}
-            onChange={(event) =>
-              setMinRestMinutes(Math.max(0, Number(event.target.value) || 0))
+            onChange={(eventChange) =>
+              setMinRestMinutes(Math.max(0, Number(eventChange.target.value) || 0))
             }
             inputProps={{ min: 0 }}
             sx={{ width: 180 }}
@@ -250,24 +300,34 @@ export default function InternalScheduleStage({
           </Button>
         </Stack>
         <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-          Sân khả dụng: {courtNames || "Chưa có sân"}
+          Sân khả dụng: {courtCaption || "—"}
         </Typography>
       </Paper>
 
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <Button
           variant="contained"
-          disabled={busy || !prerequisite.ok || pendingAction === "create"}
+          disabled={busy || !createAction.enabled || pendingAction === "create"}
+          title={createAction.reason || ""}
           onClick={() => void handleCreate()}
         >
           {pendingAction === "create" ? "Đang tạo lịch..." : "Tạo lịch"}
         </Button>
         <Button
+          variant="contained"
+          disabled={busy || !assignAction.enabled || pendingAction === "assign"}
+          title={assignAction.reason || ""}
+          onClick={() => void handleAssignCourts()}
+        >
+          {pendingAction === "assign" ? "Đang xếp sân..." : "Xếp sân/giờ"}
+        </Button>
+        <Button
           variant="outlined"
-          disabled={busy || matches.length === 0 || pendingAction === "lock"}
+          disabled={busy || !lockAction.enabled || pendingAction === "lock"}
+          title={lockAction.reason || ""}
           onClick={() =>
             void runLifecycle(
-              () => lockSchedule(tournament, matches, { actor, clubId }),
+              () => lockInternalSchedule(tournament, matches, { actor, clubId }),
               "Đã khóa lịch.",
               "lock"
             )
@@ -278,10 +338,11 @@ export default function InternalScheduleStage({
         <Button
           variant="contained"
           color="success"
-          disabled={busy || matches.length === 0 || pendingAction === "publish"}
+          disabled={busy || !publishAction.enabled || pendingAction === "publish"}
+          title={publishAction.reason || ""}
           onClick={() =>
             void runLifecycle(
-              () => publishSchedule(tournament, matches, { actor, clubId }),
+              () => publishInternalSchedule(tournament, matches, { actor, clubId }),
               "Đã công bố lịch.",
               "publish"
             )
@@ -310,7 +371,7 @@ export default function InternalScheduleStage({
                   <TableCell>{match.id}</TableCell>
                   <TableCell>{entryLabels[match.entryAId] || match.entryAId || "—"}</TableCell>
                   <TableCell>{entryLabels[match.entryBId] || match.entryBId || "—"}</TableCell>
-                  <TableCell>{courtLabel(match.courtId, courts)}</TableCell>
+                  <TableCell>{courtLabel(match, courts)}</TableCell>
                   <TableCell>{formatTime(match.scheduledStart)}</TableCell>
                   <TableCell>{formatInternalMatchRefereeLabel(match)}</TableCell>
                 </TableRow>

@@ -102,6 +102,35 @@ export {
 export { resolveInternalSchedulePrerequisite } from "./internalSchedulePrerequisite.js";
 
 export {
+  INTERNAL_COURT_AUTHORITY,
+  INTERNAL_COURT_READER,
+  INTERNAL_COURT_AVAILABILITY,
+  INTERNAL_COURT_COPY,
+  projectInternalScheduleCourts,
+  listInternalAvailableScheduleCourts,
+  classifyInternalCourtAvailability,
+  assignCourtsAndTimesToExistingInternalMatches,
+  loadInternalScheduleCourts,
+  matchesHaveCourtAndTime,
+} from "./internalScheduleCourts.js";
+
+export {
+  INTERNAL_SCHEDULE_ACTIONS,
+  resolveInternalScheduleLifecycle,
+  lockInternalSchedule,
+  publishInternalSchedule,
+} from "./internalScheduleLifecycle.js";
+
+export {
+  INTERNAL_REFEREE_DISCOVERY_READER,
+  matchInternalRefereeIdentity,
+  isInternalRefereeAssignedToMatch,
+  projectInternalRefereeHubMatch,
+  listInternalRefereeHubAssignments,
+  buildInternalRefereeMatchLiveRecord,
+} from "./internalRefereeDiscovery.js";
+
+export {
   INTERNAL_PERSISTED_GROUP_FIELD,
   getInternalCanonicalEvent,
   listInternalPersistedGroups,

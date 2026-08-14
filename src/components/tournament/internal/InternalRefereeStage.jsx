@@ -34,6 +34,11 @@ export default function InternalRefereeStage({
   pendingMatchId = null,
   onRosterChange,
   onAssign,
+  canonicalCandidates = [],
+  canonicalLoading = false,
+  canonicalError = null,
+  canonicalWarning = null,
+  enableCanonicalDirectory = false,
 }) {
   const [unassignedOnly, setUnassignedOnly] = useState(false);
   const roster = listEligibleInternalReferees(tournament);
@@ -65,7 +70,12 @@ export default function InternalRefereeStage({
         roster={getRefereeSettings(tournament).roster}
         onChange={onRosterChange}
         title="Danh sách trọng tài của giải"
-        description="Thêm trọng tài cho giải nội bộ — phân công từng trận bên dưới. Danh sách lưu trên giải, không dùng VĐV làm trọng tài."
+        description="Chọn tài khoản trọng tài của CLB để trọng tài đăng nhập thấy trận được phân công. Có thể thêm trọng tài khách nếu chưa có tài khoản."
+        enableCanonicalDirectory={enableCanonicalDirectory}
+        canonicalCandidates={canonicalCandidates}
+        canonicalLoading={canonicalLoading}
+        canonicalError={canonicalError}
+        canonicalWarning={canonicalWarning}
       />
 
       {!roster.length ? (
