@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Alert,
@@ -22,6 +22,12 @@ import {
 import { setTournamentCourtScheduleCommand } from "../../features/tournament/services/tournamentCommands.js";
 import { getCourtDisplayName } from "../../models/court.js";
 import { buildEndTimeOptions, buildTimeOptions, todayIsoDate } from "../../pages/courtManagement/courtManagement.constants.js";
+import {
+  applyCourtInventoryToDraftCourtIds,
+  courtIdIsSelected,
+  hydrateCourtScheduleDraft,
+  shouldResetCourtScheduleDraftOnTournamentChange,
+} from "./tournamentCourtScheduleDraft.js";
 
 const START_TIME_OPTIONS = buildTimeOptions();
 const END_TIME_OPTIONS = buildEndTimeOptions();
@@ -36,43 +42,38 @@ export default function TournamentCourtSchedulePanel({
   onDraftChange,
 }) {
   const schedule = tournament?.courtSchedule;
-  const [date, setDate] = useState(schedule?.date || todayIsoDate());
-  const [startTime, setStartTime] = useState(schedule?.startTime || "07:00");
-  const [endTime, setEndTime] = useState(schedule?.endTime || "12:00");
-  const [courtIds, setCourtIds] = useState(schedule?.courtIds || []);
+  const initialDraft = hydrateCourtScheduleDraft(schedule, todayIsoDate());
+  const [date, setDate] = useState(initialDraft.date);
+  const [startTime, setStartTime] = useState(initialDraft.startTime);
+  const [endTime, setEndTime] = useState(initialDraft.endTime);
+  const [courtIds, setCourtIds] = useState(initialDraft.courtIds);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const tournamentIdRef = useRef(tournament?.id);
 
   useEffect(() => {
     if (!tournament) {
       return;
     }
-
-    setDate(schedule?.date || todayIsoDate());
-    setStartTime(schedule?.startTime || "07:00");
-    setEndTime(schedule?.endTime || "12:00");
-    setCourtIds(schedule?.courtIds || []);
-    setMessage(null);
-    setError(null);
-  }, [tournament?.id, schedule?.syncedAt]);
-
-  useEffect(() => {
-    const persisted = Array.isArray(schedule?.courtIds) ? schedule.courtIds : [];
-    if (!courts.length) {
-      setCourtIds([]);
+    const prevId = tournamentIdRef.current;
+    tournamentIdRef.current = tournament.id;
+    if (!shouldResetCourtScheduleDraftOnTournamentChange(prevId, tournament.id)) {
       return;
     }
-    setCourtIds((current) => {
-      const stillValid = (current || []).filter((id) =>
-        courts.some((court) => String(court.id) === String(id))
-      );
-      if (stillValid.length) {
-        return stillValid;
-      }
-      return persisted.filter((id) =>
-        courts.some((court) => String(court.id) === String(id))
-      );
-    });
+    const next = hydrateCourtScheduleDraft(tournament.courtSchedule, todayIsoDate());
+    setDate(next.date);
+    setStartTime(next.startTime);
+    setEndTime(next.endTime);
+    setCourtIds(next.courtIds);
+    setMessage(null);
+    setError(null);
+  }, [tournament]);
+
+  useEffect(() => {
+    setCourtIds((current) =>
+      applyCourtInventoryToDraftCourtIds(current, courts, schedule?.courtIds)
+    );
   }, [courts, schedule?.courtIds]);
 
   useEffect(() => {
@@ -83,47 +84,73 @@ export default function TournamentCourtSchedulePanel({
     return null;
   }
 
+  const markDraftDirty = () => {
+    setError(null);
+    setMessage(null);
+  };
+
   const toggleCourt = (id) => {
+    if (busy) {
+      return;
+    }
+    markDraftDirty();
     setCourtIds((current) =>
-      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+      courtIdIsSelected(current, id)
+        ? current.filter((item) => String(item) !== String(id))
+        : [...current, id]
     );
   };
 
   const handleSync = async () => {
-    if (!courts.length || !courtIds.length) {
-      setError("Chưa có sân khả dụng cho đơn vị hiện tại.");
-      setMessage(null);
+    if (busy || !courts.length || !courtIds.length) {
+      if (!busy && (!courts.length || !courtIds.length)) {
+        setError("Chưa có sân khả dụng cho đơn vị hiện tại.");
+        setMessage(null);
+      }
       return;
     }
 
-    const commandOptions = { courts };
-    if (tenantId) {
-      commandOptions.tenantId = tenantId;
-    }
-    const result = await setTournamentCourtScheduleCommand(
-      clubId,
-      tournament.id,
-      {
-        date,
-        startTime,
-        endTime,
-        courtIds,
-      },
-      commandOptions
-    );
+    setBusy(true);
+    setMessage(null);
+    try {
+      const commandOptions = { courts };
+      if (tenantId) {
+        commandOptions.tenantId = tenantId;
+      }
+      const result = await setTournamentCourtScheduleCommand(
+        clubId,
+        tournament.id,
+        {
+          date,
+          startTime,
+          endTime,
+          courtIds,
+        },
+        commandOptions
+      );
 
-    if (!result.ok) {
-      setError(result.error || result.message);
-      setMessage(null);
-      return;
-    }
+      if (!result.ok) {
+        setError(result.error || result.message);
+        setMessage(null);
+        return;
+      }
 
-    setError(null);
-    setMessage(
-      result.message || "Đã khóa sân cho giải."
-    );
-    onSaved?.(result);
+      const saved = result.tournament?.courtSchedule;
+      if (saved) {
+        setDate(saved.date);
+        setStartTime(saved.startTime);
+        setEndTime(saved.endTime);
+        setCourtIds(Array.isArray(saved.courtIds) ? [...saved.courtIds] : courtIds);
+      }
+      setError(null);
+      setMessage("Đã khóa sân cho giải.");
+      onSaved?.(result);
+    } finally {
+      setBusy(false);
+    }
   };
+
+  const fieldsDisabled = busy;
 
   return (
     <Card variant="outlined">
@@ -148,16 +175,27 @@ export default function TournamentCourtSchedulePanel({
             label="Ngày giải"
             type="date"
             value={date}
-            onChange={(event) => setDate(event.target.value)}
+            onChange={(event) => {
+              markDraftDirty();
+              setDate(event.target.value);
+            }}
             fullWidth
+            disabled={fieldsDisabled}
             InputLabelProps={{ shrink: true }}
           />
 
           <Grid container spacing={2}>
             <Grid size={{ xs: 6 }}>
-              <FormControl fullWidth>
+              <FormControl fullWidth disabled={fieldsDisabled}>
                 <InputLabel>Giờ bắt đầu</InputLabel>
-                <Select label="Giờ bắt đầu" value={startTime} onChange={(event) => setStartTime(event.target.value)}>
+                <Select
+                  label="Giờ bắt đầu"
+                  value={startTime}
+                  onChange={(event) => {
+                    markDraftDirty();
+                    setStartTime(event.target.value);
+                  }}
+                >
                   {START_TIME_OPTIONS.map((time) => (
                     <MenuItem key={time} value={time}>
                       {time}
@@ -167,9 +205,16 @@ export default function TournamentCourtSchedulePanel({
               </FormControl>
             </Grid>
             <Grid size={{ xs: 6 }}>
-              <FormControl fullWidth>
+              <FormControl fullWidth disabled={fieldsDisabled}>
                 <InputLabel>Giờ kết thúc</InputLabel>
-                <Select label="Giờ kết thúc" value={endTime} onChange={(event) => setEndTime(event.target.value)}>
+                <Select
+                  label="Giờ kết thúc"
+                  value={endTime}
+                  onChange={(event) => {
+                    markDraftDirty();
+                    setEndTime(event.target.value);
+                  }}
+                >
                   {END_TIME_OPTIONS.map((time) => (
                     <MenuItem key={time} value={time}>
                       {time}
@@ -193,7 +238,8 @@ export default function TournamentCourtSchedulePanel({
                     key={court.id}
                     control={
                       <Checkbox
-                        checked={courtIds.includes(court.id)}
+                        checked={courtIdIsSelected(courtIds, court.id)}
+                        disabled={fieldsDisabled}
                         onChange={() => toggleCourt(court.id)}
                       />
                     }
@@ -207,9 +253,9 @@ export default function TournamentCourtSchedulePanel({
           <Button
             variant="contained"
             onClick={handleSync}
-            disabled={!courts.length || !courtIds.length}
+            disabled={busy || !courts.length || !courtIds.length}
           >
-            Khóa sân trên lịch booking
+            {busy ? "Đang khóa sân…" : "Khóa sân trên lịch booking"}
           </Button>
         </Stack>
       </CardContent>

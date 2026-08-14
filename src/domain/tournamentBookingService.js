@@ -213,6 +213,64 @@ function validatePayloadsAgainstAuthorizedCourts(payloads, courts) {
   return failed;
 }
 
+export function restoreCanonicalTournamentBookingSnapshot({
+  clubId,
+  priorOccupancyBookings,
+  persistSnapshot,
+} = {}) {
+  if (!clubId || !persistSnapshot) {
+    return {
+      ok: false,
+      code: "COURT_LOCK_COMPENSATION_FAILED",
+      message: "Không hoàn tác được booking sau khi lưu giải thất bại.",
+    };
+  }
+  persistCanonicalClubBookings(
+    clubId,
+    Array.isArray(priorOccupancyBookings) ? priorOccupancyBookings : [],
+    persistSnapshot
+  );
+  return { ok: true };
+}
+
+export function tournamentOwnedBookingsMatchCourtSchedule(bookings, tournament) {
+  const schedule = tournament?.courtSchedule;
+  if (!tournament?.id || !schedule?.date || !schedule?.startTime || !schedule?.endTime) {
+    return false;
+  }
+  const expectedIds = new Set((schedule.courtIds || []).map(String).filter(Boolean));
+  if (expectedIds.size === 0) {
+    return false;
+  }
+  const owned = (bookings || []).filter((booking) =>
+    isOwnedActiveBridgeBooking(booking, tournament.id)
+  );
+  if (owned.length !== expectedIds.size) {
+    return false;
+  }
+  const seen = new Set();
+  for (const booking of owned) {
+    const courtId = String(booking.courtId);
+    if (!expectedIds.has(courtId) || seen.has(courtId)) {
+      return false;
+    }
+    if (String(booking.tournamentId) !== String(tournament.id)) {
+      return false;
+    }
+    if (String(booking.date || "").slice(0, 10) !== String(schedule.date).slice(0, 10)) {
+      return false;
+    }
+    if (String(booking.startTime || "").slice(0, 5) !== String(schedule.startTime).slice(0, 5)) {
+      return false;
+    }
+    if (String(booking.endTime || "").slice(0, 5) !== String(schedule.endTime).slice(0, 5)) {
+      return false;
+    }
+    seen.add(courtId);
+  }
+  return seen.size === expectedIds.size;
+}
+
 function persistCanonicalClubBookings(clubId, nextBookings, snapshotClubData) {
   const local = loadClubData(clubId);
   const cloudCourts = Array.isArray(snapshotClubData?.courts)

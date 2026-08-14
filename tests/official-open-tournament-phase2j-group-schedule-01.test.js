@@ -308,7 +308,7 @@ describe("official-open-tournament-phase2j-group-schedule-01", () => {
 
     const panelSrc = src("src/components/tournament/TournamentCourtSchedulePanel.jsx");
     assert.match(panelSrc, /Chưa có sân khả dụng cho đơn vị hiện tại\./);
-    assert.match(panelSrc, /disabled=\{!courts\.length \|\| !courtIds\.length\}/);
+    assert.match(panelSrc, /disabled=\{busy \|\| !courts\.length \|\| !courtIds\.length\}/);
   });
 
   it("canonical courts are tenant-scoped; other-tenant courts are dropped", async () => {

@@ -82,6 +82,76 @@ export function authorizeProvidedTournamentCourts(
   return { ok: true, courts };
 }
 
+export const COURT_LOCK_CODE = Object.freeze({
+  BOOKING_PUSH_FAILED: "CANONICAL_BOOKING_PUSH_FAILED",
+  READBACK_MISMATCH: "COURT_SCHEDULE_READBACK_MISMATCH",
+  COMPENSATION_FAILED: "COURT_LOCK_COMPENSATION_FAILED",
+  BOOKING_TOURNAMENT_INCONSISTENT: "BOOKING_TOURNAMENT_SCHEDULE_INCONSISTENT",
+  TOURNAMENT_PATCH_FAILED: "COURT_LOCK_TOURNAMENT_PATCH_FAILED",
+});
+
+async function resolveSyncClubToCloud(options = {}) {
+  if (typeof options.syncClubToCloud === "function") {
+    return options.syncClubToCloud;
+  }
+  const { syncClubToCloud } = await import("../../../ai/cloudSync.js");
+  return syncClubToCloud;
+}
+
+async function pushOfficialClubBookings(clubId, syncClubToCloud) {
+  try {
+    const pushed = await syncClubToCloud({ clubId });
+    if (!pushed?.ok) {
+      return {
+        ok: false,
+        error: pushed?.error || "Không thể tạo booking canonical.",
+        code: pushed?.code || COURT_LOCK_CODE.BOOKING_PUSH_FAILED,
+      };
+    }
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      error: "Không thể tạo booking canonical.",
+      code: COURT_LOCK_CODE.BOOKING_PUSH_FAILED,
+    };
+  }
+}
+
+async function compensateOfficialCourtLock({
+  clubId,
+  priorOccupancyBookings,
+  persistSnapshot,
+  syncClubToCloud,
+}) {
+  const { restoreCanonicalTournamentBookingSnapshot } = await import(
+    "../../../domain/tournamentBookingService.js"
+  );
+  const restored = restoreCanonicalTournamentBookingSnapshot({
+    clubId,
+    priorOccupancyBookings,
+    persistSnapshot,
+  });
+  if (!restored.ok) {
+    return {
+      ok: false,
+      code: COURT_LOCK_CODE.COMPENSATION_FAILED,
+      error:
+        restored.message ||
+        "Không hoàn tác được booking sau khi lưu giải thất bại.",
+    };
+  }
+  const pushed = await pushOfficialClubBookings(clubId, syncClubToCloud);
+  if (!pushed.ok) {
+    return {
+      ok: false,
+      code: COURT_LOCK_CODE.COMPENSATION_FAILED,
+      error: "Không hoàn tác được booking sau khi lưu giải thất bại.",
+    };
+  }
+  return { ok: true };
+}
+
 export async function createTournamentCommand(clubIdOrScope, input = {}, options = {}) {
   const scope = prepareScope(clubIdOrScope, options);
   if (!scope.ok) {
@@ -231,12 +301,11 @@ export async function setTournamentCourtScheduleCommand(
   const scope = prepareScope(clubIdOrScope, options);
   if (!scope.ok) return scope;
 
-  const { normalizeCourtSchedule } = await import(
+  const { normalizeCourtSchedule, courtScheduleFieldsMatch } = await import(
     "../../../models/tournament/courtSchedule.js"
   );
-  const { syncTournamentCourtBookings } = await import(
-    "../../../domain/tournamentBookingService.js"
-  );
+  const { syncTournamentCourtBookings, tournamentOwnedBookingsMatchCourtSchedule } =
+    await import("../../../domain/tournamentBookingService.js");
   const { loadCourtsForClub } = await import("../../../domain/clubStorage.js");
   const { getTournamentQuery } = await import("./tournamentQueries.js");
 
@@ -274,7 +343,11 @@ export async function setTournamentCourtScheduleCommand(
     const { readCanonicalClubCourtBookingSnapshot } = await import(
       "../../team-tournament/services/canonicalClubCourtInventory.js"
     );
-    const snapshot = await readCanonicalClubCourtBookingSnapshot({
+    const readSnapshot =
+      typeof options.readCanonicalClubCourtBookingSnapshot === "function"
+        ? options.readCanonicalClubCourtBookingSnapshot
+        : readCanonicalClubCourtBookingSnapshot;
+    const snapshot = await readSnapshot({
       clubId: scope.clubId,
       tenantId: scope.tenantId,
       includeInactive: true,
@@ -287,6 +360,7 @@ export async function setTournamentCourtScheduleCommand(
           "Chưa thể xác minh xung đột lịch sân từ nguồn canonical.",
         code: snapshot.code || "CANONICAL_OCCUPANCY_UNAVAILABLE",
         tournament: loaded.tournament,
+        tournamentPatchAttempted: false,
       };
     }
     if (!snapshot.clubData) {
@@ -295,6 +369,7 @@ export async function setTournamentCourtScheduleCommand(
         error: "Không thể tạo booking canonical.",
         code: snapshot.code || "CLUB_BLOB_MISSING",
         tournament: loaded.tournament,
+        tournamentPatchAttempted: false,
       };
     }
 
@@ -309,6 +384,7 @@ export async function setTournamentCourtScheduleCommand(
           error: "Sân không còn thuộc đơn vị hiện tại.",
           code: PROVIDED_COURT_AUTH_CODE.COURT_NOT_IN_AUTHORIZED_SET,
           tournament: loaded.tournament,
+          tournamentPatchAttempted: false,
         };
       }
       if (live.active === false) {
@@ -317,6 +393,7 @@ export async function setTournamentCourtScheduleCommand(
           error: "Sân đã bị vô hiệu hóa.",
           code: PROVIDED_COURT_AUTH_CODE.COURT_INACTIVE,
           tournament: loaded.tournament,
+          tournamentPatchAttempted: false,
         };
       }
     }
@@ -333,9 +410,13 @@ export async function setTournamentCourtScheduleCommand(
       return {
         ...authorized,
         tournament: loaded.tournament,
+        tournamentPatchAttempted: false,
       };
     }
     courts = authorized.courts;
+    const priorOccupancyBookings = JSON.parse(
+      JSON.stringify(snapshot.bookings || [])
+    );
     const syncResult = syncTournamentCourtBookings(pending, scope.clubId, courts, {
       canonicalOccupancy: true,
       occupancyBookings: snapshot.bookings,
@@ -344,33 +425,26 @@ export async function setTournamentCourtScheduleCommand(
     });
     if (!syncResult.ok) {
       return {
+        ...syncResult,
         ok: false,
         error: syncResult.message,
         code: syncResult.code || null,
         tournament: loaded.tournament,
-        ...syncResult,
+        tournamentPatchAttempted: false,
       };
     }
 
-    try {
-      const { syncClubToCloud } = await import("../../../ai/cloudSync.js");
-      const pushed = await syncClubToCloud({ clubId: scope.clubId });
-      if (!pushed?.ok) {
-        return {
-          ok: false,
-          error: pushed?.error || "Không thể tạo booking canonical.",
-          code: pushed?.code || "CANONICAL_BOOKING_PUSH_FAILED",
-          tournament: loaded.tournament,
-          ...syncResult,
-        };
-      }
-    } catch {
+    const syncClubToCloud = await resolveSyncClubToCloud(options);
+    const pushed = await pushOfficialClubBookings(scope.clubId, syncClubToCloud);
+    if (!pushed.ok) {
       return {
-        ok: false,
-        error: "Không thể tạo booking canonical.",
-        code: "CANONICAL_BOOKING_PUSH_FAILED",
-        tournament: loaded.tournament,
         ...syncResult,
+        ok: false,
+        error: pushed.error,
+        code: pushed.code || COURT_LOCK_CODE.BOOKING_PUSH_FAILED,
+        tournament: loaded.tournament,
+        tournamentPatchAttempted: false,
+        compensationAttempted: false,
       };
     }
 
@@ -380,14 +454,83 @@ export async function setTournamentCourtScheduleCommand(
       { courtSchedule: pending.courtSchedule },
       { ...options, tenantId: scope.tenantId }
     );
+    const failAfterBookingPush = async (error, code) => {
+      const compensation = await compensateOfficialCourtLock({
+        clubId: scope.clubId,
+        priorOccupancyBookings,
+        persistSnapshot: snapshot.clubData,
+        syncClubToCloud,
+      });
+      return {
+        ...syncResult,
+        ok: false,
+        error: compensation.ok
+          ? error
+          : compensation.error || error,
+        code: compensation.ok ? code : COURT_LOCK_CODE.COMPENSATION_FAILED,
+        tournament: loaded.tournament,
+        tournamentPatchAttempted: true,
+        courtScheduleReadbackVerified: false,
+        compensationAttempted: true,
+        compensationOk: compensation.ok,
+      };
+    };
     if (!saved.ok) {
-      return saved;
+      return failAfterBookingPush(
+        saved.error || "Không lưu được lịch sân của giải.",
+        saved.code || COURT_LOCK_CODE.TOURNAMENT_PATCH_FAILED
+      );
+    }
+
+    const readback = await getTournamentQuery(scope.clubId, tournamentId, {
+      ...options,
+      tenantId: scope.tenantId,
+    });
+    if (
+      !readback.ok ||
+      !courtScheduleFieldsMatch(
+        readback.tournament?.courtSchedule,
+        pending.courtSchedule
+      )
+    ) {
+      return failAfterBookingPush(
+        "Không xác minh được lịch sân đã lưu. Không khóa sân.",
+        COURT_LOCK_CODE.READBACK_MISMATCH
+      );
+    }
+
+    const proof = await readSnapshot({
+      clubId: scope.clubId,
+      tenantId: scope.tenantId,
+      includeInactive: true,
+    });
+    if (
+      !proof.ok ||
+      !tournamentOwnedBookingsMatchCourtSchedule(proof.bookings, {
+        id: tournamentId,
+        courtSchedule: pending.courtSchedule,
+      })
+    ) {
+      return {
+        ...syncResult,
+        ok: false,
+        error: "Lịch sân giải và booking canonical không khớp. Hãy khóa lại sân.",
+        code: COURT_LOCK_CODE.BOOKING_TOURNAMENT_INCONSISTENT,
+        tournament: readback.tournament,
+        tournamentPatchAttempted: true,
+        courtScheduleReadbackVerified: true,
+        compensationAttempted: false,
+      };
     }
 
     return {
-      ok: true,
-      tournament: saved.tournament,
       ...syncResult,
+      ok: true,
+      tournament: readback.tournament,
+      tournamentPatchAttempted: true,
+      courtScheduleReadbackVerified: true,
+      bookingTournamentScheduleConsistent: true,
+      compensationAttempted: false,
     };
   } else {
     courts = loadCourtsForClub(scope.clubId);
@@ -395,11 +538,11 @@ export async function setTournamentCourtScheduleCommand(
   const syncResult = syncTournamentCourtBookings(pending, scope.clubId, courts);
   if (!syncResult.ok) {
     return {
+      ...syncResult,
       ok: false,
       error: syncResult.message,
       code: syncResult.code || null,
       tournament: loaded.tournament,
-      ...syncResult,
     };
   }
 
@@ -414,8 +557,8 @@ export async function setTournamentCourtScheduleCommand(
   }
 
   return {
+    ...syncResult,
     ok: true,
     tournament: saved.tournament,
-    ...syncResult,
   };
 }

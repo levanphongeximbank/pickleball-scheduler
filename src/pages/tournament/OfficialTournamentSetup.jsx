@@ -267,6 +267,7 @@ export default function OfficialTournamentSetup() {
     error: tournamentLoadError,
     update,
     reload,
+    setTournament,
   } = useCanonicalTournament(canonicalClubScope, tournamentId, localRevision);
 
   useEffect(() => {
@@ -312,8 +313,8 @@ export default function OfficialTournamentSetup() {
 
   useEffect(() => {
     let cancelled = false;
-    setCourts([]);
     if (!activeClubId) {
+      setCourts([]);
       return undefined;
     }
     void listCanonicalClubCourtsForFormatVenue({
@@ -329,7 +330,7 @@ export default function OfficialTournamentSetup() {
     return () => {
       cancelled = true;
     };
-  }, [activeClubId, tenantId, localRevision]);
+  }, [activeClubId, tenantId]);
 
   const refereeRoster = useMemo(
     () => getRefereeSettings(tournament).roster,
@@ -1538,9 +1539,23 @@ export default function OfficialTournamentSetup() {
     );
   };
 
-  const handleGenerateGroupSchedule = async (draft = {}) => {
+  const handleGenerateGroupSchedule = async () => {
     if (!tournament || !savedEvent) {
       return { ok: false, error: "Không tìm thấy giải.", mutationCount: 0 };
+    }
+    const persisted = tournament.courtSchedule;
+    if (
+      !persisted?.date ||
+      !persisted?.startTime ||
+      !persisted?.endTime ||
+      !Array.isArray(persisted.courtIds) ||
+      persisted.courtIds.length === 0
+    ) {
+      return {
+        ok: false,
+        error: "Hãy khóa sân trên lịch booking trước khi xếp lịch vòng bảng.",
+        mutationCount: 0,
+      };
     }
     setScheduleBusy(true);
     setError(null);
@@ -1550,10 +1565,10 @@ export default function OfficialTournamentSetup() {
         eventId: savedEvent.id,
         clubId: activeClubId,
         courts,
-        courtIds: draft.courtIds || tournament.courtSchedule?.courtIds || [],
-        date: draft.date || tournament.courtSchedule?.date || "",
-        startTime: draft.startTime || tournament.courtSchedule?.startTime || "",
-        endTime: draft.endTime || tournament.courtSchedule?.endTime || "",
+        courtIds: persisted.courtIds,
+        date: persisted.date,
+        startTime: persisted.startTime,
+        endTime: persisted.endTime,
         players: flowPlayers,
         timezone: tz.ok ? tz.timezone : "",
       });
@@ -1931,9 +1946,10 @@ export default function OfficialTournamentSetup() {
               })
             }
             canManage
-            onSavedCourts={() => {
-              setLocalRevision((value) => value + 1);
-              refreshClubs();
+            onSavedCourts={(result) => {
+              if (result?.ok && result.tournament) {
+                setTournament(result.tournament);
+              }
             }}
             onGenerateSchedule={handleGenerateGroupSchedule}
             scheduleBusy={scheduleBusy}

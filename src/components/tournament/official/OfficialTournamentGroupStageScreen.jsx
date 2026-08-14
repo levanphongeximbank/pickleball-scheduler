@@ -104,9 +104,24 @@ export default function OfficialTournamentGroupStageScreen({
     return <Alert severity="info">Chưa có vòng bảng. Hãy bốc thăm trước.</Alert>;
   }
 
+  const persistedCourtLock = Boolean(
+    tournament?.courtSchedule?.date &&
+      tournament?.courtSchedule?.startTime &&
+      tournament?.courtSchedule?.endTime &&
+      Array.isArray(tournament?.courtSchedule?.courtIds) &&
+      tournament.courtSchedule.courtIds.length > 0
+  );
+
   const handleSchedule = async () => {
     setScheduleMessage(null);
-    const result = await onGenerateSchedule?.(draftRef.current);
+    if (!persistedCourtLock) {
+      setScheduleMessage({
+        type: "error",
+        text: "Hãy khóa sân trên lịch booking trước khi xếp lịch vòng bảng.",
+      });
+      return;
+    }
+    const result = await onGenerateSchedule?.(tournament.courtSchedule);
     if (!result?.ok) {
       setScheduleMessage({
         type: "error",
@@ -183,7 +198,9 @@ export default function OfficialTournamentGroupStageScreen({
         <Button
           sx={{ mt: 1.5 }}
           variant="contained"
-          disabled={scheduleBusy || !canManage || !groupMatches.length}
+          disabled={
+            scheduleBusy || !canManage || !groupMatches.length || !persistedCourtLock
+          }
           onClick={handleSchedule}
         >
           {scheduleBusy ? "Đang xếp lịch…" : "Xếp lịch vòng bảng"}
