@@ -135,6 +135,7 @@
   "tests/internal-tournament-end-to-end-closure-01.it-e2e-browser-008.test.js",
   "tests/internal-tournament-end-to-end-closure-01.it-e2e-browser-009-011.test.js",
   "tests/internal-tournament-end-to-end-closure-01.it-e2e-browser-013.test.js",
+  "tests/internal-tournament-end-to-end-closure-01.it-e2e-browser-014.test.js",
   "tests/tournament-bracket.test.js",
   "tests/tournament-open-random.test.js",
   "tests/tournament-ai-balance.test.js",

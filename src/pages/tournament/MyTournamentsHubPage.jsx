@@ -29,6 +29,9 @@ function TournamentCard({ item }) {
         </Stack>
 
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {item.modeLabel ? (
+            <Chip size="small" label={item.modeLabel} variant="outlined" />
+          ) : null}
           {roles.map((label) => (
             <Chip key={label} size="small" label={label} />
           ))}
@@ -45,6 +48,7 @@ function TournamentCard({ item }) {
         String(item.nextMatchup.teamBId || "").trim() ? (
           <Typography variant="body2" color="text.secondary">
             Trận tiếp theo: {item.nextMatchup.teamAId} vs {item.nextMatchup.teamBId}
+            {item.nextMatchup.courtId ? ` · Sân ${item.nextMatchup.courtId}` : ""}
             {item.nextMatchup.scheduledAt
               ? ` · ${String(item.nextMatchup.scheduledAt)}`
               : ""}

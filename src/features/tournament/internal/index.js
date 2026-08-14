@@ -127,6 +127,8 @@ export {
   isInternalRefereeAssignedToMatch,
   projectInternalRefereeHubMatch,
   listInternalRefereeHubAssignments,
+  resolveAuthoritativeInternalRefereeRosterEntry,
+  INTERNAL_REFEREE_IDENTITY_MATCH_METHOD,
   buildInternalRefereeMatchLiveRecord,
 } from "./internalRefereeDiscovery.js";
 

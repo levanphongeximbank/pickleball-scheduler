@@ -3,9 +3,41 @@
  * Fail-closed: only matches linked to auth.uid() / exact email / roster canonicalUserId.
  */
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
-import { getRefereeSettings } from "../../../models/tournament/refereeRoster.js";
+import {
+  REFEREE_ROSTER_SOURCE,
+  getRefereeSettings,
+} from "../../../models/tournament/refereeRoster.js";
 
-export function matchInternalRefereeIdentity(user, referee, rosterEntry) {
+export const INTERNAL_REFEREE_IDENTITY_MATCH_METHOD = Object.freeze({
+  CANONICAL_USER_ID: "canonicalUserId",
+  EXACT_EMAIL: "exactEmail",
+  EMAIL_NAME_FALLBACK: "emailNameFallback",
+});
+
+function entryCanonicalUserId(entry) {
+  return String(entry?.canonicalUserId || entry?.refereeUserId || "").trim();
+}
+
+export function resolveAuthoritativeInternalRefereeRosterEntry(roster = [], user) {
+  if (!user?.id) return null;
+  const uid = String(user.id).trim();
+  const email = String(user.email || "").trim().toLowerCase();
+  const list = Array.isArray(roster) ? roster : [];
+  const byUid = list.find((entry) => entryCanonicalUserId(entry) === uid);
+  if (byUid) return byUid;
+  if (!email) return null;
+  return (
+    list.find(
+      (entry) =>
+        String(entry?.source || "") === REFEREE_ROSTER_SOURCE.CANONICAL_ACCOUNT &&
+        String(entry?.email || "").trim().toLowerCase() === email
+    ) ||
+    list.find((entry) => String(entry?.email || "").trim().toLowerCase() === email) ||
+    null
+  );
+}
+
+export function matchInternalRefereeIdentity(user, referee, rosterEntry, roster = []) {
   if (!user?.id || !referee) return false;
   const uid = String(user.id).trim();
   const email = String(user.email || "").trim().toLowerCase();
@@ -17,6 +49,18 @@ export function matchInternalRefereeIdentity(user, referee, rosterEntry) {
       ""
   ).trim();
   if (canonical && canonical === uid) return true;
+
+  const authoritative = resolveAuthoritativeInternalRefereeRosterEntry(roster, user);
+  if (authoritative && entryCanonicalUserId(authoritative) === uid) {
+    const assignedId = String(referee.rosterId || referee.id || "").trim();
+    if (assignedId && assignedId === String(authoritative.id)) return true;
+    const assigned = (roster || []).find((entry) => String(entry?.id || "") === assignedId);
+    const assignedEmail = String(assigned?.email || assigned?.name || "")
+      .trim()
+      .toLowerCase();
+    if (email && assignedEmail && assignedEmail === email) return true;
+  }
+
   const refereeEmail = String(referee.email || rosterEntry?.email || "")
     .trim()
     .toLowerCase();
@@ -31,7 +75,7 @@ export function isInternalRefereeAssignedToMatch(user, match, roster = []) {
   const rosterId = String(referee.rosterId || referee.id || "").trim();
   const rosterEntry =
     (roster || []).find((entry) => String(entry?.id || "") === rosterId) || null;
-  return matchInternalRefereeIdentity(user, referee, rosterEntry);
+  return matchInternalRefereeIdentity(user, referee, rosterEntry, roster);
 }
 
 export function projectInternalRefereeHubMatch({
@@ -60,7 +104,10 @@ export function projectInternalRefereeHubMatch({
     score1: Number(match.scoreA) || 0,
     score2: Number(match.scoreB) || 0,
     status: match.status || "assigned",
+    round: match.round || null,
+    stage: match.stage || "group",
     source: "internal_canonical",
+    scoringAction: referee.token ? `/referee/${encodeURIComponent(referee.token)}` : "",
     accessPath: referee.token ? `/referee/${encodeURIComponent(referee.token)}` : "",
   };
 }
