@@ -21,6 +21,17 @@ function samePlayerIds(a = [], b = []) {
   return left.every((id, index) => id === right[index]);
 }
 
+function samePreviewEntries(a = [], b = []) {
+  const left = Array.isArray(a) ? a : [];
+  const right = Array.isArray(b) ? b : [];
+  if (left.length !== right.length) return false;
+  const byId = (entry) =>
+    `${String(entry?.id || "")}:${[...(entry?.playerIds || [])].map(String).sort().join(",")}`;
+  const leftKeys = left.map(byId).sort();
+  const rightKeys = right.map(byId).sort();
+  return leftKeys.every((key, index) => key === rightKeys[index]);
+}
+
 /**
  * Compare form fields against last hydrated baseline projection.
  */
@@ -33,12 +44,19 @@ export function computeInternalSetupDirtyFlags(form, baselineHydration) {
       form?.selectedPlayerIds || [],
       base.selectedPlayerIds || []
     ),
+    previewEntries: !samePreviewEntries(
+      form?.previewEntries || [],
+      base.previewEntries || []
+    ),
   };
 }
 
 export function isInternalSetupFormDirty(dirtyFlags) {
   return Boolean(
-    dirtyFlags?.eventType || dirtyFlags?.groupCount || dirtyFlags?.selectedPlayerIds
+    dirtyFlags?.eventType ||
+      dirtyFlags?.groupCount ||
+      dirtyFlags?.selectedPlayerIds ||
+      dirtyFlags?.previewEntries
   );
 }
 
@@ -46,7 +64,7 @@ export function isInternalSetupFormDirty(dirtyFlags) {
  * @param {object} input
  * @returns {{
  *   action: string,
- *   apply: { eventType?: boolean, groupCount?: boolean, selectedPlayerIds?: boolean },
+ *   apply: { eventType?: boolean, groupCount?: boolean, selectedPlayerIds?: boolean, previewEntries?: boolean },
  *   hydration: object|null,
  *   nextBaselineVersion: number|null,
  *   nextTournamentId: string,
@@ -74,7 +92,7 @@ export function decideInternalSetupHydration(input = {}) {
   ) {
     return {
       action: INTERNAL_HYDRATION_ACTION.IGNORE_STALE,
-      apply: { eventType: false, groupCount: false, selectedPlayerIds: false },
+      apply: { eventType: false, groupCount: false, selectedPlayerIds: false, previewEntries: false },
       hydration: null,
       nextBaselineVersion: baselineVersion,
       nextTournamentId: hydratedTournamentId,
@@ -86,7 +104,7 @@ export function decideInternalSetupHydration(input = {}) {
   if (!tournament?.id) {
     return {
       action: INTERNAL_HYDRATION_ACTION.KEEP_DIRTY,
-      apply: { eventType: false, groupCount: false, selectedPlayerIds: false },
+      apply: { eventType: false, groupCount: false, selectedPlayerIds: false, previewEntries: false },
       hydration: null,
       nextBaselineVersion: baselineVersion,
       nextTournamentId: hydratedTournamentId,
@@ -110,7 +128,7 @@ export function decideInternalSetupHydration(input = {}) {
   if (identityChanged) {
     return {
       action: INTERNAL_HYDRATION_ACTION.HYDRATE_FULL,
-      apply: { eventType: true, groupCount: true, selectedPlayerIds: true },
+      apply: { eventType: true, groupCount: true, selectedPlayerIds: true, previewEntries: true },
       hydration,
       nextBaselineVersion: serverVersion,
       nextTournamentId: tournamentId,
@@ -129,7 +147,7 @@ export function decideInternalSetupHydration(input = {}) {
   if (!dirty) {
     return {
       action: INTERNAL_HYDRATION_ACTION.HYDRATE_FULL,
-      apply: { eventType: true, groupCount: true, selectedPlayerIds: true },
+      apply: { eventType: true, groupCount: true, selectedPlayerIds: true, previewEntries: true },
       hydration,
       nextBaselineVersion: serverVersion,
       nextTournamentId: tournamentId,
@@ -141,7 +159,7 @@ export function decideInternalSetupHydration(input = {}) {
   // Dirty form: never clobber local edits on unrelated server revision.
   return {
     action: INTERNAL_HYDRATION_ACTION.KEEP_DIRTY,
-    apply: { eventType: false, groupCount: false, selectedPlayerIds: false },
+    apply: { eventType: false, groupCount: false, selectedPlayerIds: false, previewEntries: false },
     hydration,
     nextBaselineVersion: baselineVersion,
     nextTournamentId: tournamentId,
@@ -169,6 +187,7 @@ export function advanceHydrationBaselineAfterOwnWrite({
       eventType: hydration.eventType,
       groupCount: hydration.groupCount,
       selectedPlayerIds: hydration.selectedPlayerIds,
+      previewEntries: hydration.previewEntries || [],
     });
   }
   return {
@@ -178,6 +197,7 @@ export function advanceHydrationBaselineAfterOwnWrite({
       eventType: nextBaseline.eventType ?? hydration.eventType,
       groupCount: nextBaseline.groupCount ?? hydration.groupCount,
       selectedPlayerIds: nextBaseline.selectedPlayerIds ?? hydration.selectedPlayerIds,
+      previewEntries: nextBaseline.previewEntries ?? hydration.previewEntries ?? [],
     },
     hydration,
   };

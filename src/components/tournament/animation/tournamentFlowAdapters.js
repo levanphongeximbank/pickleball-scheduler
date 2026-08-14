@@ -14,9 +14,11 @@ import {
   canGenerateBracket,
   generateKnockoutBracket,
   resolveBracketProgress,
-  suggestEntriesFromPlayers,
 } from "../../../tournament/engines/index.js";
-import { shouldSkipKnockoutForInternal } from "../../../features/tournament/internal/index.js";
+import {
+  resolveInternalGroupingEntries,
+  shouldSkipKnockoutForInternal,
+} from "../../../features/tournament/internal/index.js";
 import {
   ANIMATION_MODES,
   buildGroupMatchPairingSteps,
@@ -108,6 +110,7 @@ export function createInternalFlowAdapters(deps) {
     eventType,
     groupCount,
     isSingleEvent,
+    previewEntries = [],
     setPreviewEntries,
     setWarnings,
     setMessage,
@@ -337,22 +340,27 @@ export function createInternalFlowAdapters(deps) {
   }
 
   function resolveEntries(ctx) {
-    if (ctx.entries) {
-      return ctx.entries;
-    }
     const prepared = resolvePrivatePairingOptions();
     if (prepared.ok === false) {
       return [];
     }
-    return suggestEntriesFromPlayers(
-      players.filter((player) => selectedPlayerIds.includes(String(player.id))),
+    const selected = players.filter((player) =>
+      selectedPlayerIds.includes(String(player.id))
+    );
+    const grouping = resolveInternalGroupingEntries({
       eventType,
-      {
+      previewEntries:
+        Array.isArray(ctx.entries) && ctx.entries.length
+          ? ctx.entries
+          : previewEntries,
+      selectedPlayers: selected,
+      pairingOptions: {
         tournamentId,
         eventId: getCachedSavedEvent()?.id || `event-${tournamentId}`,
         ...(prepared.pairingOptions || {}),
-      }
-    );
+      },
+    });
+    return grouping.ok ? grouping.entries : [];
   }
 
   function resolvePlan(ctx) {

@@ -6,9 +6,9 @@ import {
   assignGroupsWithPrivatePairingRules,
 } from "../../features/private-pairing-rules/index.js";
 import { validateGroupDrawInput } from "./validationEngine.js";
-import { suggestEntriesFromPlayers } from "./teamPairingEngine.js";
 import { summarizeGroupBalance } from "./seededGroupEngine.js";
 import { buildGroupStageSchedule, countGroupStageMatches } from "./scheduleEngine.js";
+import { resolveInternalGroupingEntries } from "../../features/tournament/internal/internalTournamentCompetitionUnit.js";
 
 export function getDefaultInternalEventType() {
   return EVENT_TYPE.MIXED_DOUBLE;
@@ -70,11 +70,23 @@ export function buildInternalTournamentPlan({
     contextTime,
   };
 
-  const entries =
-    Array.isArray(manualEntries) && manualEntries.length > 0
-      ? manualEntries
-      : suggestEntriesFromPlayers(selectedPlayers, eventType, pairingOptions);
+  const grouping = resolveInternalGroupingEntries({
+    eventType,
+    previewEntries: Array.isArray(manualEntries) ? manualEntries : [],
+    selectedPlayers,
+    pairingOptions,
+  });
 
+  if (!grouping.ok) {
+    return {
+      ok: false,
+      errors: [grouping.error || "Không chia được bảng theo đơn vị thi đấu."],
+      warnings: pairingOptions.constraintWarnings || [],
+      privatePairingError: pairingOptions.privatePairingError || null,
+    };
+  }
+
+  const entries = grouping.entries;
   const constraintWarnings = pairingOptions.constraintWarnings || [];
 
   if (pairingOptions.privatePairingError) {

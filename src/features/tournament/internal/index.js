@@ -138,3 +138,22 @@ export {
   resolveInternalGroupMemberLabels,
   selectAuthoritativeCanonicalTournament,
 } from "./internalPersistedDrawGroups.js";
+
+export {
+  COMPETITION_UNIT,
+  INTERNAL_TEAM_ID_FIELD,
+  INTERNAL_TEAM_MEMBER_IDS_FIELD,
+  INTERNAL_TEAM_DISPLAY_NAME_RULE,
+  INTERNAL_TEAM_RATING_OR_SEED_FIELD,
+  resolveInternalCompetitionUnit,
+  listEntryPlayerIds,
+  isTeamCompetitionEntry,
+  isPlayerCompetitionEntry,
+  entriesMatchCompetitionUnit,
+  resolveInternalGroupingEntries,
+  resolveGroupCompetitionEntries,
+  inspectInternalGroupCompetitionUnit,
+  inspectInternalGroupedCompetitionUnits,
+  formatInternalGroupUnitChip,
+  projectInternalGroupDrawCard,
+} from "./internalTournamentCompetitionUnit.js";

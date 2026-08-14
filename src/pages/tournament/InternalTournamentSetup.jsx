@@ -49,7 +49,6 @@ import {
   buildInternalTournamentPlan,
   suggestEntriesFromPlayers,
   filterPlayersForEventType,
-  isSingleEventType,
   canGenerateBracket,
   generateKnockoutBracket,
   resolveBracketProgress,
@@ -84,6 +83,10 @@ import {
   listInternalPersistedGroups,
   countInternalPersistedGroups,
   resolveInternalGroupMemberLabels,
+  resolveInternalCompetitionUnit,
+  resolveInternalGroupingEntries,
+  projectInternalGroupDrawCard,
+  COMPETITION_UNIT,
   loadInternalScheduleCourts,
   buildInternalRefereeMatchLiveRecord,
 } from "../../features/tournament/internal/index.js";
@@ -212,6 +215,12 @@ export default function InternalTournamentSetup() {
     baselineVersion: null,
     baselineHydration: null,
     generation: 0,
+  });
+  const setupFormRef = useRef({
+    eventType: preselectedEvent || EVENT_TYPE.MIXED_DOUBLE,
+    groupCount: 4,
+    selectedPlayerIds: [],
+    previewEntries: [],
   });
   const anim = useTournamentAnimation();
   const guidedPairingRef = useRef({
@@ -537,7 +546,14 @@ export default function InternalTournamentSetup() {
     user?.id,
   ]);
 
-  const isSingleEvent = isSingleEventType(eventType);
+  const competitionUnit = resolveInternalCompetitionUnit(eventType);
+  const isSingleEvent = competitionUnit === COMPETITION_UNIT.PLAYER;
+  setupFormRef.current = {
+    eventType,
+    groupCount,
+    selectedPlayerIds,
+    previewEntries,
+  };
 
   const eligiblePlayers = useMemo(
     () => filterPlayersForEventType(players, eventType),
@@ -568,9 +584,7 @@ export default function InternalTournamentSetup() {
       hydratedEventId: meta.eventId,
       baselineVersion: meta.baselineVersion,
       form: {
-        eventType,
-        groupCount,
-        selectedPlayerIds,
+        ...setupFormRef.current,
         queryEventType: preselectedEvent || null,
       },
       baselineHydration: meta.baselineHydration,
@@ -601,6 +615,7 @@ export default function InternalTournamentSetup() {
         eventType: decision.hydration.eventType,
         groupCount: decision.hydration.groupCount,
         selectedPlayerIds: decision.hydration.selectedPlayerIds,
+        previewEntries: decision.hydration.previewEntries || [],
       };
       setStaleHydrationNotice(null);
       return;
@@ -955,6 +970,7 @@ export default function InternalTournamentSetup() {
         eventType,
         groupCount,
         isSingleEvent,
+        previewEntries,
         setPreviewEntries,
         setWarnings,
         setMessage,
@@ -975,6 +991,7 @@ export default function InternalTournamentSetup() {
       eventType,
       groupCount,
       isSingleEvent,
+      previewEntries,
       refreshClubs,
       clubScope.tenantId,
     ]
@@ -1396,28 +1413,35 @@ export default function InternalTournamentSetup() {
       return;
     }
 
-    let entries = previewEntries;
-    if (previewEntries.length === 0) {
-      const pairingOptions = {
-        ...prepared.pairingOptions,
-        tournamentId,
-        eventId: savedEvent?.id || `event-${tournamentId}`,
-        pairingConstraints: founderConstraints,
-      };
+    const pairingOptions = {
+      ...prepared.pairingOptions,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      pairingConstraints: founderConstraints,
+    };
 
-      entries = suggestEntriesFromPlayers(
-        players.filter((player) => selectedPlayerIds.includes(String(player.id))),
-        eventType,
-        pairingOptions
-      );
+    const grouping = resolveInternalGroupingEntries({
+      eventType,
+      previewEntries,
+      selectedPlayers: players.filter((player) =>
+        selectedPlayerIds.includes(String(player.id))
+      ),
+      pairingOptions,
+    });
 
-      applyConstraintWarnings(pairingOptions);
+    applyConstraintWarnings(pairingOptions);
 
-      if (pairingOptions.privatePairingError) {
-        setError(pairingOptions.privatePairingError.message);
-        return;
-      }
+    if (pairingOptions.privatePairingError) {
+      setError(pairingOptions.privatePairingError.message);
+      return;
     }
+
+    if (!grouping.ok) {
+      setError(grouping.error);
+      return;
+    }
+
+    const entries = grouping.entries;
 
     const plan = buildInternalTournamentPlan({
       tournament,
@@ -1508,11 +1532,12 @@ export default function InternalTournamentSetup() {
 
       const advanced = advanceHydrationBaselineAfterOwnWrite({
         tournament: result.tournament,
-        committedKeys: ["eventType", "groupCount", "selectedPlayerIds"],
+        committedKeys: ["eventType", "groupCount", "selectedPlayerIds", "previewEntries"],
         previousBaselineHydration: hydrationMetaRef.current.baselineHydration,
       });
       hydrationMetaRef.current.baselineVersion = advanced.baselineVersion;
       hydrationMetaRef.current.baselineHydration = advanced.baselineHydration;
+      setPreviewEntries([]);
 
       setWarnings(draw.warnings || []);
       setLocalRevision((value) => value + 1);
@@ -1730,6 +1755,7 @@ export default function InternalTournamentSetup() {
                       eventType: hydrated.eventType,
                       groupCount: hydrated.groupCount,
                       selectedPlayerIds: hydrated.selectedPlayerIds,
+                      previewEntries: hydrated.previewEntries || [],
                     };
                     setStaleHydrationNotice(null);
                     setLocalRevision((value) => value + 1);
@@ -2128,20 +2154,42 @@ export default function InternalTournamentSetup() {
               </Typography>
             ) : (
               <Stack spacing={1}>
-                {persistedGroups.map((group) => (
+                {persistedGroups.map((group) => {
+                  const card = projectInternalGroupDrawCard(
+                    group,
+                    savedEvent?.eventType || eventType,
+                    savedEvent
+                  );
+                  return (
                   <Paper key={group.id} variant="outlined" sx={{ p: 1.25 }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                       <Typography fontWeight="bold">{group.name || group.label || group.id}</Typography>
                       <Chip
                         size="small"
-                        label={`${group.entryIds?.length || group.entries?.length || 0} đội`}
+                        label={card.chipLabel}
                       />
                     </Stack>
-                    <Typography variant="caption" color="text.secondary">
-                      {resolveInternalGroupMemberLabels(group, savedEvent).join(" | ") || "Chưa có thành viên"}
-                    </Typography>
+                    {card.athleteCountLabel ? (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {card.athleteCountLabel}
+                      </Typography>
+                    ) : null}
+                    {card.teamLabels.length ? (
+                      <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                        {card.teamLabels.map((label, index) => (
+                          <Typography key={`${group.id}-${index}`} variant="body2">
+                            {index + 1}. {label}
+                          </Typography>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">
+                        {resolveInternalGroupMemberLabels(group, savedEvent).join(" | ") || "Chưa có thành viên"}
+                      </Typography>
+                    )}
                   </Paper>
-                ))}
+                  );
+                })}
                 <DrawPublishControls
                   tournament={tournament}
                   groups={persistedGroups}
