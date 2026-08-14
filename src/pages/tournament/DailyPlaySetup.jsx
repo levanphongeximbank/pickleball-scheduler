@@ -43,8 +43,14 @@ import {
 import {
   acceptDailyScoreFieldInput,
   beginPresenceOverride,
+  DAILY_MATCH_TYPE_OPTIONS,
   DAILY_PLAY_CODE,
   DAILY_PLAY_MESSAGES,
+  formatSessionCloseBlockedMessage,
+  formatSessionCloseConfirmMessage,
+  classifyDailyCloseReadiness,
+  getDailyMatchShape,
+  isDailySessionCompleted,
   isNoCourtWaitingCopy,
   isObsoleteNoCourtAvailabilityError,
   resolveCreateCourtWaitingNote,
@@ -78,19 +84,15 @@ import {
   listEligibleCanonicalReferees,
 } from "../../features/daily-play/services/refereeDirectoryService.js";
 
-const MATCH_TYPE_OPTIONS = [
-  { value: DAILY_MATCH_TYPE.MEN_DOUBLE, label: "Đôi nam" },
-  { value: DAILY_MATCH_TYPE.WOMEN_DOUBLE, label: "Đôi nữ" },
-  { value: DAILY_MATCH_TYPE.MIXED_DOUBLE, label: "Đôi nam nữ" },
-  { value: DAILY_MATCH_TYPE.AUTO, label: "Tự động nhiều loại" },
-];
+const MATCH_TYPE_OPTIONS = DAILY_MATCH_TYPE_OPTIONS;
 
 function PlayerPresenceRow({ player, checked, busy, canViewSkill, onToggle }) {
   return (
     <Button
       fullWidth
       variant={checked ? "contained" : "outlined"}
-      onClick={() => onToggle(player.id)}
+      onClick={() => onToggle?.(player.id)}
+      disabled={!onToggle}
       aria-pressed={checked}
       aria-busy={busy || undefined}
       sx={{
@@ -118,6 +120,9 @@ export default function DailyPlaySetup() {
   const [scoreNote, setScoreNote] = useState("");
   const [matchType, setMatchType] = useState(DAILY_MATCH_TYPE.MIXED_DOUBLE);
   const [createPending, setCreatePending] = useState(false);
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [changeCourtMatch, setChangeCourtMatch] = useState(null);
+  const [changeCourtId, setChangeCourtId] = useState("");
   const [bulkPending, setBulkPending] = useState(null);
   const [presenceOverride, setPresenceOverride] = useState(null);
   const [refereePending, setRefereePending] = useState(false);
@@ -146,6 +151,8 @@ export default function DailyPlaySetup() {
     error: tournamentLoadError,
     update,
     setStatus,
+    reload: reloadTournament,
+    setTournament,
   } = useCanonicalTournament(activeClub, tournamentId, 0);
 
   const session = useDailyPlayCanonicalSession({
@@ -156,11 +163,11 @@ export default function DailyPlaySetup() {
     pollMs: 15000,
   });
 
+  const matchTypeInitializedRef = useRef(false);
   useEffect(() => {
-    if (!session.dailyPlay) return;
-    if (session.dailyPlay.matchType) {
-      setMatchType(session.dailyPlay.matchType);
-    }
+    if (matchTypeInitializedRef.current || !session.dailyPlay?.matchType) return;
+    setMatchType(session.dailyPlay.matchType);
+    matchTypeInitializedRef.current = true;
   }, [session.dailyPlay?.matchType]);
 
   // Candidate directory: club membership identity — not Daily session presence.
@@ -248,6 +255,14 @@ export default function DailyPlaySetup() {
     () => partitionDailyMatches(dailySettings.matches),
     [dailySettings.matches]
   );
+  const sessionCompleted = isDailySessionCompleted(
+    session.tournamentStatus || tournament?.status,
+    dailySettings
+  );
+  const closeReadiness = useMemo(
+    () => classifyDailyCloseReadiness(dailySettings.matches),
+    [dailySettings.matches]
+  );
   const waitingQueue = useMemo(
     () => [...waiting, ...assigned],
     [waiting, assigned]
@@ -284,6 +299,7 @@ export default function DailyPlaySetup() {
   });
 
   const handleToggleCheckIn = async (playerId) => {
+    if (sessionCompleted) return;
     if (
       shouldIgnoreConcurrentPresenceClick({
         lockHeld: playerMutationLockRef.current,
@@ -324,6 +340,7 @@ export default function DailyPlaySetup() {
   };
 
   const handleSelectAllCheckIn = async () => {
+    if (sessionCompleted) return;
     if (playerMutationLockRef.current || mutationBusy) return;
     playerMutationLockRef.current = true;
     setActionError(null);
@@ -362,6 +379,7 @@ export default function DailyPlaySetup() {
   };
 
   const handleClearAllCheckIn = async () => {
+    if (sessionCompleted) return;
     if (playerMutationLockRef.current || mutationBusy) return;
     playerMutationLockRef.current = true;
     setActionError(null);
@@ -417,6 +435,7 @@ export default function DailyPlaySetup() {
 
   const handleCreateMatches = async () => {
     if (
+      sessionCompleted ||
       createPending ||
       session.mutating ||
       playerMutationLockRef.current ||
@@ -437,15 +456,17 @@ export default function DailyPlaySetup() {
         return;
       }
 
+      const busy = getBusyPlayerIdsFromDailyMatches(dailySettings.matches);
+      const eligiblePlayerCount = playerFilterView.visibleCheckedPlayerIds.filter(
+        (playerId) => !busy.has(String(playerId))
+      ).length;
+      const matchShape = getDailyMatchShape(matchType);
       const countPlan = resolveCreateMatchCount({
         enabledCourts: courts,
         availableCourts: session.availableCourts || [],
-        eligiblePlayerCount: dailySettings.checkedInPlayerIds.filter(
-          (playerId) =>
-            !getBusyPlayerIdsFromDailyMatches(dailySettings.matches).has(
-              String(playerId)
-            )
-        ).length,
+        eligiblePlayerCount,
+        matchType,
+        playersPerMatch: matchShape.playersPerMatch,
       });
 
       if (!countPlan.ok) {
@@ -492,7 +513,7 @@ export default function DailyPlaySetup() {
       }
 
       const persist = await session.createMatches(proposal.matches, {
-        eligiblePlayerCount: countPlan.matchCount * 4,
+        eligiblePlayerCount: eligiblePlayerCount,
         idempotencyKey: `create-${tournamentId}-${session.revision}-${proposal.matches
           .map((match) => match.id)
           .join(".")}`,
@@ -566,6 +587,7 @@ export default function DailyPlaySetup() {
   };
 
   const handleAssignCourt = async (match) => {
+    if (sessionCompleted) return;
     setActionError(null);
     const result = await session.assignCourt(match.id);
     if (result?.ok) {
@@ -582,6 +604,7 @@ export default function DailyPlaySetup() {
   };
 
   const handleStartMatch = async (match) => {
+    if (sessionCompleted) return;
     setActionError(null);
     const result = await session.startMatch(match.id);
     if (result?.ok) {
@@ -592,10 +615,65 @@ export default function DailyPlaySetup() {
   };
 
   const handleCancelMatch = async (match) => {
+    if (sessionCompleted) return;
     setActionError(null);
     const result = await session.cancelMatch(match.id);
     if (result?.ok) {
       setMessage("Đã hủy trận và giải phóng sân/VĐV.");
+      return;
+    }
+    if (result?.error) setActionError(result.error);
+  };
+
+  const handleOpenChangeCourt = (match) => {
+    if (sessionCompleted) return;
+    setChangeCourtMatch(match);
+    setChangeCourtId("");
+  };
+
+  const handleSubmitChangeCourt = async () => {
+    if (!changeCourtMatch || !changeCourtId) return;
+    setActionError(null);
+    const result = await session.changeCourt(changeCourtMatch.id, changeCourtId);
+    if (result?.ok) {
+      setChangeCourtMatch(null);
+      setChangeCourtId("");
+      setMessage("Đã đổi sân.");
+      return;
+    }
+    if (result?.error) setActionError(result.error);
+  };
+
+  const handleCloseSession = async () => {
+    if (sessionCompleted) return;
+    setActionError(null);
+    const result = await session.closeSession();
+    if (result?.ok) {
+      setCloseDialogOpen(false);
+      setMessage("Buổi chơi đã kết thúc");
+      if (typeof reloadTournament === "function") {
+        const reloaded = await reloadTournament();
+        if (reloaded) setTournament(reloaded);
+        else {
+          setTournament((current) =>
+            current ? { ...current, status: TOURNAMENT_STATUS.COMPLETED } : current
+          );
+        }
+      } else {
+        setTournament((current) =>
+          current ? { ...current, status: TOURNAMENT_STATUS.COMPLETED } : current
+        );
+      }
+      return;
+    }
+    if (result?.code === DAILY_PLAY_CODE.SESSION_CLOSE_BLOCKED) {
+      setCloseDialogOpen(false);
+      setActionError(
+        formatSessionCloseBlockedMessage({
+          assignedCount: result.assignedCount,
+          playingCount: result.playingCount,
+        })
+      );
       return;
     }
     if (result?.error) setActionError(result.error);
@@ -725,12 +803,31 @@ export default function DailyPlaySetup() {
         description="Daily Play canonical — check-in, ghép trận, xếp sân, nhập điểm"
         onBack={() => navigate("/tournament")}
         headerActions={
-          <Button
-            variant="outlined"
-            onClick={() => navigate(`/tournament/director/${tournamentId}`)}
+          <Stack
+            direction="row"
+            spacing={1}
+            flexWrap="wrap"
+            useFlexGap
+            sx={{ width: { xs: "100%", sm: "auto" } }}
           >
-            Mở Director Mode
-          </Button>
+            {!sessionCompleted ? (
+              <Button
+                variant="outlined"
+                color="inherit"
+                onClick={() => setCloseDialogOpen(true)}
+                sx={{ minHeight: 40 }}
+              >
+                Kết thúc buổi chơi
+              </Button>
+            ) : null}
+            <Button
+              variant="outlined"
+              onClick={() => navigate(`/tournament/director/${tournamentId}`)}
+              sx={{ minHeight: 40 }}
+            >
+              Mở Director Mode
+            </Button>
+          </Stack>
         }
         alerts={
           <>
@@ -772,6 +869,14 @@ export default function DailyPlaySetup() {
                 {playersEmptyMessage}
               </Alert>
             )}
+            {sessionCompleted && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Buổi chơi đã kết thúc
+                {dailySettings.closeSummary
+                  ? ` • ${dailySettings.closeSummary.completedMatchCount || 0} trận hoàn tất, ${dailySettings.closeSummary.cancelledWaitingCount || 0} trận chờ đã hủy.`
+                  : ""}
+              </Alert>
+            )}
             {!session.hasCourtCapability && (
               <Alert severity="warning" sx={{ mb: 2 }}>
                 {DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.NO_COURT_CAPABILITY]}
@@ -784,9 +889,9 @@ export default function DailyPlaySetup() {
           <Grid size={{ xs: 12 }}>
             <RefereeRosterPanel
               roster={refereeRoster}
-              onChange={handleRefereeRosterChange}
-              pending={refereePending}
-              enableCanonicalDirectory
+              onChange={sessionCompleted ? undefined : handleRefereeRosterChange}
+              pending={refereePending || sessionCompleted}
+              enableCanonicalDirectory={!sessionCompleted}
               canonicalCandidates={canonicalReferees}
               canonicalLoading={canonicalRefereesLoading}
               canonicalError={canonicalRefereesError}
@@ -804,6 +909,7 @@ export default function DailyPlaySetup() {
                 label="Loại trận"
                 value={matchType}
                 onChange={(event) => setMatchType(event.target.value)}
+                disabled={sessionCompleted}
               >
                 {MATCH_TYPE_OPTIONS.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
@@ -820,6 +926,7 @@ export default function DailyPlaySetup() {
               size="large"
               onClick={handleCreateMatches}
               disabled={
+                sessionCompleted ||
                 createPending ||
                 anim.open ||
                 !session.hasCourtCapability
@@ -844,6 +951,7 @@ export default function DailyPlaySetup() {
                   variant="contained"
                   onClick={() => void handleSelectAllCheckIn()}
                   disabled={
+                    sessionCompleted ||
                     playerFilterView.visiblePlayerCount === 0 ||
                     Boolean(bulkPending)
                   }
@@ -855,6 +963,7 @@ export default function DailyPlaySetup() {
                   variant="outlined"
                   onClick={() => void handleClearAllCheckIn()}
                   disabled={
+                    sessionCompleted ||
                     playerFilterView.visibleCheckedCount === 0 ||
                     Boolean(bulkPending)
                   }
@@ -874,7 +983,11 @@ export default function DailyPlaySetup() {
                       String(presenceOverride?.playerId) === String(player.id)
                     }
                     canViewSkill={canViewSkillInSetup}
-                    onToggle={(id) => void handleToggleCheckIn(id)}
+                    onToggle={
+                      sessionCompleted
+                        ? undefined
+                        : (id) => void handleToggleCheckIn(id)
+                    }
                   />
                 ))}
               </Stack>
@@ -922,12 +1035,17 @@ export default function DailyPlaySetup() {
               matches={waitingQueue}
               emptyText="Chưa có trận chờ."
               getCardProps={(match) => {
+                if (sessionCompleted) {
+                  return buildDailyMatchCardProps(match, { courts, players });
+                }
                 if (match.status === "assigned") {
                   return buildDailyMatchCardProps(match, {
                     actionLabel: "Bắt đầu trận",
                     onAction: handleStartMatch,
                     secondaryActionLabel: "Hủy trận",
                     onSecondaryAction: handleCancelMatch,
+                    tertiaryActionLabel: "Đổi sân",
+                    onTertiaryAction: handleOpenChangeCourt,
                     courts,
                     players,
                   });
@@ -950,14 +1068,18 @@ export default function DailyPlaySetup() {
               emptyText="Chưa có trận trên sân."
               chipColor="success"
               getCardProps={(match) =>
-                buildDailyMatchCardProps(match, {
-                  actionLabel: "Nhập điểm",
-                  onAction: handleOpenScore,
-                  secondaryActionLabel: "Hủy trận",
-                  onSecondaryAction: handleCancelMatch,
-                  courts,
-                  players,
-                })
+                sessionCompleted
+                  ? buildDailyMatchCardProps(match, { courts, players })
+                  : buildDailyMatchCardProps(match, {
+                      actionLabel: "Nhập điểm",
+                      onAction: handleOpenScore,
+                      secondaryActionLabel: "Hủy trận",
+                      onSecondaryAction: handleCancelMatch,
+                      tertiaryActionLabel: "Đổi sân",
+                      onTertiaryAction: handleOpenChangeCourt,
+                      courts,
+                      players,
+                    })
               }
             />
           </Grid>
@@ -1040,6 +1162,88 @@ export default function DailyPlaySetup() {
                 : scoreCorrectionMode
                   ? "Lưu điểm sửa"
                   : "Lưu điểm"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={closeDialogOpen}
+          onClose={() => setCloseDialogOpen(false)}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>Kết thúc buổi chơi</DialogTitle>
+          <DialogContent>
+            <Typography sx={{ whiteSpace: "pre-line", mt: 1 }}>
+              {closeReadiness.ok
+                ? formatSessionCloseConfirmMessage({
+                    waitingCount: closeReadiness.waitingCount,
+                    checkedInCount: dailySettings.checkedInPlayerIds.length,
+                  })
+                : formatSessionCloseBlockedMessage(closeReadiness)}
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 2, pb: 2, flexWrap: "wrap", gap: 1 }}>
+            <Button onClick={() => setCloseDialogOpen(false)}>Hủy</Button>
+            {closeReadiness.ok ? (
+              <Button
+                variant="contained"
+                color="warning"
+                onClick={() => void handleCloseSession()}
+                disabled={session.mutating}
+              >
+                {session.mutating ? "Đang kết thúc..." : "Kết thúc buổi chơi"}
+              </Button>
+            ) : null}
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={Boolean(changeCourtMatch)}
+          onClose={() => {
+            setChangeCourtMatch(null);
+            setChangeCourtId("");
+          }}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>Đổi sân</DialogTitle>
+          <DialogContent>
+            <FormControl fullWidth size="small" sx={{ mt: 1 }}>
+              <InputLabel>Sân trống</InputLabel>
+              <Select
+                label="Sân trống"
+                value={changeCourtId}
+                onChange={(event) => setChangeCourtId(event.target.value)}
+              >
+                {(session.availableCourts || []).map((court) => (
+                  <MenuItem key={court.id} value={String(court.id)}>
+                    {getCourtDisplayName(court)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {(session.availableCourts || []).length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.NO_COURT_AVAILABLE]}
+              </Typography>
+            ) : null}
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setChangeCourtMatch(null);
+                setChangeCourtId("");
+              }}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => void handleSubmitChangeCourt()}
+              disabled={!changeCourtId || session.mutating}
+            >
+              Đổi sân
             </Button>
           </DialogActions>
         </Dialog>

@@ -13,7 +13,6 @@ import {
   getDefaultDailyPlaySettings,
 } from "../src/tournament/engines/dailyPlayEngine.js";
 import {
-  DAILY_PLAY_DEFERRED_MATCH_TYPES,
   countVisiblePresentedChecked,
   filterPlayersForDailyMatchType,
   listVisibleBulkCheckInTargets,
@@ -106,6 +105,31 @@ describe("DP-17 match-type visible check-in pool", () => {
     assert.deepEqual(idsOf(autoView.visiblePlayers), binaryIds);
     assert.equal(mixedView.visiblePlayers.some((player) => player.id === "u1"), false);
     assert.equal(autoView.visiblePlayers.some((player) => player.id === "o1"), false);
+  });
+
+  test("men_single and men_double show male only; women_single female only", () => {
+    const menSingle = projectDailyPlayerFilterView({
+      players,
+      checkedInPlayerIds: [],
+      matchType: DAILY_MATCH_TYPE.MEN_SINGLE,
+    });
+    const womenSingle = projectDailyPlayerFilterView({
+      players,
+      checkedInPlayerIds: [],
+      matchType: DAILY_MATCH_TYPE.WOMEN_SINGLE,
+    });
+    assert.deepEqual(idsOf(menSingle.visiblePlayers), maleIds);
+    assert.deepEqual(idsOf(womenSingle.visiblePlayers), femaleIds);
+  });
+
+  test("open_double shows male + female + other, not unknown", () => {
+    const view = projectDailyPlayerFilterView({
+      players,
+      checkedInPlayerIds: [],
+      matchType: DAILY_MATCH_TYPE.OPEN_DOUBLE,
+    });
+    assert.deepEqual(idsOf(view.visiblePlayers), [...binaryIds, "o1"]);
+    assert.equal(view.visiblePlayers.some((player) => player.id === "u1"), false);
   });
 
   test("normalization covers canonical, legacy VN/EN, and unknown/null/other", () => {
@@ -358,16 +382,23 @@ describe("DP-17 DailyPlaySetup wiring", () => {
     assert.doesNotMatch(source, /GENDER_FILTER_OPTIONS/);
     assert.doesNotMatch(source, /setGenderFilter/);
     assert.doesNotMatch(source, /DAILY_GENDER_FILTER/);
-    assert.doesNotMatch(source, /men_single|women_single|open_double/);
+    assert.match(source, /DAILY_MATCH_TYPE_OPTIONS/);
+    const shapeSource = fs.readFileSync(
+      path.join("src", "features", "daily-play", "canonical", "dailyPlayMatchShape.js"),
+      "utf8"
+    );
+    assert.match(shapeSource, /men_single/);
+    assert.match(shapeSource, /women_single/);
+    assert.match(shapeSource, /open_double/);
+    assert.match(shapeSource, /Đơn nam/);
+    assert.match(shapeSource, /Đôi tự do/);
+    assert.match(shapeSource, /Tự động/);
   });
 
-  test("singles and open doubles stay deferred to final Daily Play closure", () => {
-    assert.equal(DAILY_PLAY_DEFERRED_MATCH_TYPES.MEN_SINGLE, "men_single");
-    assert.equal(DAILY_PLAY_DEFERRED_MATCH_TYPES.WOMEN_SINGLE, "women_single");
-    assert.equal(DAILY_PLAY_DEFERRED_MATCH_TYPES.OPEN_DOUBLE, "open_double");
-    assert.equal(
-      Object.values(DAILY_MATCH_TYPE).includes("men_single"),
-      false
-    );
+  test("singles and open doubles are first-class Daily match types", () => {
+    assert.equal(DAILY_MATCH_TYPE.MEN_SINGLE, "men_single");
+    assert.equal(DAILY_MATCH_TYPE.WOMEN_SINGLE, "women_single");
+    assert.equal(DAILY_MATCH_TYPE.OPEN_DOUBLE, "open_double");
+    assert.equal(Object.values(DAILY_MATCH_TYPE).includes("auto"), true);
   });
 });

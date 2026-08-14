@@ -56,6 +56,7 @@ export function useDirectorActions(state) {
     tournament,
     applyDailyTournamentOverlay,
     courts,
+    players,
     isDaily,
     dailySession,
     savedEvents,
@@ -82,6 +83,15 @@ export function useDirectorActions(state) {
     activeEventRef,
     tournamentId,
   } = state;
+
+  const sessionCompleted =
+    isDaily && String(tournament?.status) === "completed";
+
+  const denyCompleted = useCallback(() => {
+    if (!sessionCompleted) return false;
+    setError(DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED]);
+    return true;
+  }, [sessionCompleted, setError]);
 
   const clubScope = useMemo(
     () =>
@@ -300,6 +310,7 @@ export function useDirectorActions(state) {
       setError(null);
 
       if (isDaily) {
+        if (denyCompleted()) return;
         const result = await dailySession.assignCourt(match.id);
         if (!result?.ok) {
           if (result?.error) setError(result.error);
@@ -351,6 +362,7 @@ export function useDirectorActions(state) {
       activeEvent,
       courts,
       dailySession,
+      denyCompleted,
       isDaily,
       lockedCourtIds,
       persistEvent,
@@ -364,6 +376,7 @@ export function useDirectorActions(state) {
   const handleStartMatch = useCallback(
     async (match) => {
       if (!isDaily) return;
+      if (denyCompleted()) return;
       setError(null);
       const result = await dailySession.startMatch(match.id);
       if (result?.ok) {
@@ -372,12 +385,13 @@ export function useDirectorActions(state) {
       }
       if (result?.error) setError(result.error);
     },
-    [dailySession, isDaily, setError, setMessage]
+    [dailySession, denyCompleted, isDaily, setError, setMessage]
   );
 
   const handleCancelMatch = useCallback(
     async (match) => {
       if (!isDaily) return;
+      if (denyCompleted()) return;
       setError(null);
       const result = await dailySession.cancelMatch(match.id);
       if (result?.ok) {
@@ -386,12 +400,13 @@ export function useDirectorActions(state) {
       }
       if (result?.error) setError(result.error);
     },
-    [dailySession, isDaily, setError, setMessage]
+    [dailySession, denyCompleted, isDaily, setError, setMessage]
   );
 
   const handleChangeCourt = useCallback(
     async (match, courtId) => {
       if (!isDaily) return;
+      if (denyCompleted()) return;
       setError(null);
       const result = await dailySession.changeCourt(match.id, courtId);
       if (result?.ok) {
@@ -400,7 +415,7 @@ export function useDirectorActions(state) {
       }
       if (result?.error) setError(result.error);
     },
-    [dailySession, isDaily, setError, setMessage]
+    [dailySession, denyCompleted, isDaily, setError, setMessage]
   );
 
   const handleToggleCourt = useCallback(
@@ -554,6 +569,7 @@ export function useDirectorActions(state) {
         setMessage("Đã sửa điểm trận hoàn tất.");
         return;
       }
+      if (denyCompleted()) return;
       const result = await dailySession.submitScore(scoreDialog.id, scoreA, scoreB);
       if (!result?.ok) {
         if (result?.error) setError(result.error);
@@ -609,6 +625,7 @@ export function useDirectorActions(state) {
     activeClubId,
     activeEvent,
     dailySession,
+    denyCompleted,
     isDaily,
     liveByMatchId,
     persistEvent,
@@ -668,13 +685,14 @@ export function useDirectorActions(state) {
       return buildDirectorMatchCardProps(match, {
         ...cardOptions,
         courts,
+        players,
         liveRow,
         showRefereeStatus,
         refereeStatus:
           showRefereeStatus && hasSupabaseConfig() ? { match, liveRow } : null,
       });
     },
-    [courts, liveByMatchId]
+    [courts, liveByMatchId, players]
   );
 
   return {

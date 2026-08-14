@@ -33,6 +33,7 @@ export {
   toggleDailyCourtLock,
   releaseDailyCourt,
   buildDailyPlayTournamentPatch,
+  getDailyMatchShape,
 } from "./dailyPlayEngine.js";
 
 export {

@@ -16,6 +16,10 @@ import {
   DAILY_PLAY_LEASE_RELEASED,
   DAILY_PLAY_MESSAGES,
 } from "./dailyPlayCodes.js";
+import {
+  getDailyMatchShape,
+  getDailyMatchShapeForMatch,
+} from "./dailyPlayMatchShape.js";
 
 export function emptyDailyPlayState() {
   return {
@@ -26,6 +30,9 @@ export function emptyDailyPlayState() {
     enabledCourtIds: [],
     matches: [],
     skipScore: false,
+    closedAt: null,
+    closedBy: null,
+    closeSummary: null,
   };
 }
 
@@ -43,6 +50,16 @@ export function normalizeDailyPlayCanonicalState(raw = {}) {
       : [],
     matches: Array.isArray(raw.matches) ? raw.matches.map(normalizeMatch) : [],
     skipScore: raw.skipScore === true,
+    closedAt: raw.closedAt || raw.closed_at || null,
+    closedBy: raw.closedBy || raw.closed_by || null,
+    closeSummary:
+      raw.closeSummary && typeof raw.closeSummary === "object"
+        ? {
+            completedMatchCount: Number(raw.closeSummary.completedMatchCount || 0),
+            cancelledWaitingCount: Number(raw.closeSummary.cancelledWaitingCount || 0),
+            checkedInCountAtClose: Number(raw.closeSummary.checkedInCountAtClose || 0),
+          }
+        : null,
   };
 }
 
@@ -58,6 +75,7 @@ function normalizeMatch(match = {}) {
     teamBPlayerIds: Array.isArray(match.teamBPlayerIds)
       ? match.teamBPlayerIds.map(String)
       : [],
+    matchType: match.matchType || match.competitionType || null,
     scoreA: match.scoreA == null ? null : Number(match.scoreA),
     scoreB: match.scoreB == null ? null : Number(match.scoreB),
   };
@@ -157,39 +175,48 @@ export function getOccupiedCourtIdsFromMatches(matches = []) {
   return occupied;
 }
 
-export function validateDoublesMatchShape(match = {}) {
+export function validateDailyMatchShape(match = {}, fallbackMatchType) {
+  const shape = getDailyMatchShapeForMatch(match, fallbackMatchType);
+  const teamSize = shape.teamSize;
+  const playersPerMatch = shape.playersPerMatch;
   const teamA = Array.isArray(match.teamAPlayerIds)
-    ? match.teamAPlayerIds.map(String)
+    ? match.teamAPlayerIds.map(String).filter(Boolean)
     : [];
   const teamB = Array.isArray(match.teamBPlayerIds)
-    ? match.teamBPlayerIds.map(String)
+    ? match.teamBPlayerIds.map(String).filter(Boolean)
     : [];
   const players = [
     ...(match.playerIds || []),
     ...teamA,
     ...teamB,
-  ].map(String);
+  ].map(String).filter(Boolean);
   const distinct = [...new Set(players)];
 
   if (teamA.length || teamB.length) {
-    if (teamA.length !== 2 || teamB.length !== 2) {
+    if (teamA.length !== teamSize || teamB.length !== teamSize) {
       return {
         ok: false,
         code: DAILY_PLAY_CODE.INVALID_MATCH_SHAPE,
         error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_SHAPE],
+        shape,
       };
     }
   }
 
-  if (distinct.length !== 4) {
+  if (distinct.length !== playersPerMatch) {
     return {
       ok: false,
       code: DAILY_PLAY_CODE.INVALID_MATCH_SHAPE,
       error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_SHAPE],
+      shape,
     };
   }
 
-  return { ok: true, playerIds: distinct };
+  return { ok: true, playerIds: distinct, shape };
+}
+
+export function validateDoublesMatchShape(match = {}) {
+  return validateDailyMatchShape(match, match.matchType || match.competitionType || "mixed_double");
 }
 
 export function listAvailableCourts({
@@ -236,8 +263,8 @@ export function bumpRevision(state) {
   };
 }
 
-export function validateProposedMatchPlayers(match, { checkedInPlayerIds, matches }) {
-  const shape = validateDoublesMatchShape(match);
+export function validateProposedMatchPlayers(match, { checkedInPlayerIds, matches, matchType }) {
+  const shape = validateDailyMatchShape(match, matchType);
   if (!shape.ok) return shape;
 
   const checked = new Set((checkedInPlayerIds || []).map(String));
@@ -267,9 +294,9 @@ export function validateProposedMatchPlayers(match, { checkedInPlayerIds, matche
 
 export function assertMatchParticipantsReady(
   match,
-  { checkedInPlayerIds = [], isEligible = () => true } = {}
+  { checkedInPlayerIds = [], isEligible = () => true, matchType } = {}
 ) {
-  const shape = validateDoublesMatchShape(match);
+  const shape = validateDailyMatchShape(match, matchType);
   if (!shape.ok) return shape;
   const checked = new Set((checkedInPlayerIds || []).map(String));
   for (const playerId of shape.playerIds) {
@@ -296,6 +323,8 @@ export function resolveCreateMatchCount({
   enabledCourts = [],
   availableCourts = [],
   eligiblePlayerCount = 0,
+  matchType,
+  playersPerMatch,
 } = {}) {
   if (!enabledCourts.length) {
     return {
@@ -307,7 +336,10 @@ export function resolveCreateMatchCount({
     };
   }
 
-  const capacity = Math.floor(Number(eligiblePlayerCount) / 4);
+  const perMatch = Number(
+    playersPerMatch || getDailyMatchShape(matchType).playersPerMatch || 4
+  );
+  const capacity = Math.floor(Number(eligiblePlayerCount) / perMatch);
   if (capacity < 1) {
     return {
       ok: false,
@@ -447,7 +479,10 @@ export function applyCreateMatches(state, proposedMatches = []) {
   const created = [];
 
   for (const proposed of proposedMatches) {
-    const validation = validateProposedMatchPlayers(proposed, next);
+    const validation = validateProposedMatchPlayers(proposed, {
+      ...next,
+      matchType: proposed.matchType || proposed.competitionType || next.matchType,
+    });
     if (!validation.ok) {
       return validation;
     }
@@ -942,4 +977,97 @@ export function buildCourtRuntimeView({
       active: court.active !== false,
     };
   });
+}
+
+export function isDailySessionCompleted(status, dailyPlay = {}) {
+  return (
+    String(status || "") === "completed" ||
+    Boolean(dailyPlay?.closedAt)
+  );
+}
+
+export function classifyDailyCloseReadiness(matches = []) {
+  let assignedCount = 0;
+  let playingCount = 0;
+  let waitingCount = 0;
+  let completedMatchCount = 0;
+  let cancelledCount = 0;
+
+  for (const match of matches || []) {
+    const status = String(match.status || "waiting");
+    if (status === "assigned") assignedCount += 1;
+    else if (status === "playing") playingCount += 1;
+    else if (status === "waiting") waitingCount += 1;
+    else if (status === "completed" || status === "forfeit") completedMatchCount += 1;
+    else if (status === "cancelled") cancelledCount += 1;
+  }
+
+  const blocked = assignedCount > 0 || playingCount > 0;
+  return {
+    ok: !blocked,
+    assignedCount,
+    playingCount,
+    waitingCount,
+    completedMatchCount,
+    cancelledCount,
+    code: blocked ? DAILY_PLAY_CODE.SESSION_CLOSE_BLOCKED : DAILY_PLAY_CODE.OK,
+  };
+}
+
+export function formatSessionCloseBlockedMessage({ assignedCount = 0, playingCount = 0 } = {}) {
+  return `Chưa thể kết thúc buổi chơi.\nCòn ${Number(playingCount) || 0} trận đang thi đấu và ${Number(assignedCount) || 0} trận đã xếp sân.`;
+}
+
+export function formatSessionCloseConfirmMessage({ waitingCount = 0, checkedInCount = 0 } = {}) {
+  return `Kết thúc buổi chơi?\n${Number(waitingCount) || 0} trận chưa thi đấu sẽ được hủy.\n${Number(checkedInCount) || 0} VĐV đang check-in sẽ được kết thúc phiên.`;
+}
+
+export function applyCloseSession(state, { actorId = "", now = new Date().toISOString() } = {}) {
+  const next = normalizeDailyPlayCanonicalState(state);
+  const readiness = classifyDailyCloseReadiness(next.matches);
+  if (!readiness.ok) {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.SESSION_CLOSE_BLOCKED,
+      error: formatSessionCloseBlockedMessage(readiness),
+      assignedCount: readiness.assignedCount,
+      playingCount: readiness.playingCount,
+    };
+  }
+
+  const checkedInCountAtClose = (next.checkedInPlayerIds || []).length;
+  let cancelledWaitingCount = 0;
+  const matches = next.matches.map((match) => {
+    if (String(match.status) !== "waiting") {
+      return match;
+    }
+    cancelledWaitingCount += 1;
+    return {
+      ...match,
+      status: "cancelled",
+      reason: "session_closed",
+      cancelledAt: now,
+    };
+  });
+
+  const closeSummary = {
+    completedMatchCount: readiness.completedMatchCount,
+    cancelledWaitingCount,
+    checkedInCountAtClose,
+  };
+
+  return {
+    ok: true,
+    state: bumpRevision({
+      ...next,
+      matches,
+      checkedInPlayerIds: [],
+      closedAt: now,
+      closedBy: actorId ? String(actorId) : null,
+      closeSummary,
+    }),
+    closeSummary,
+    cancelledWaitingCount,
+    releasedOwnLeases: true,
+  };
 }

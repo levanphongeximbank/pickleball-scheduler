@@ -419,6 +419,7 @@ export function useDailyPlayCanonicalSession({
     availableCourts: state?.availableCourts || [],
     hasCourtCapability: Boolean(state?.hasCourtCapability),
     leases: state?.leases || state?.activeLeases || [],
+    tournamentStatus: state?.tournamentStatus || null,
     refresh,
     checkIn: (playerId) =>
       runMutation(() =>
@@ -491,6 +492,12 @@ export function useDailyPlayCanonicalSession({
         service.changeCourt(scope, {
           matchId,
           courtId,
+          expectedVersion: revisionRef.current,
+        })
+      ),
+    closeSession: () =>
+      runMutation(() =>
+        service.closeSession(scope, {
           expectedVersion: revisionRef.current,
         })
       ),

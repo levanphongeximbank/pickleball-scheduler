@@ -16,6 +16,7 @@ import {
   applyCheckOut,
   applyCreateMatches,
   applyCorrectScore,
+  applyCloseSession,
   applyStartMatch,
   applySubmitScore,
   assertExpectedVersion,
@@ -27,8 +28,9 @@ import {
   normalizeDailyPlayCanonicalState,
   resolveCreateMatchCount,
   selectEnabledCourts,
-  validateDoublesMatchShape,
+  validateDailyMatchShape,
 } from "./dailyPlayCanonicalDomain.js";
+import { getDailyMatchShapeForMatch } from "./dailyPlayMatchShape.js";
 
 function deny(code, error, extra = {}) {
   return { ok: false, code, error: error || DAILY_PLAY_MESSAGES[code] || code, ...extra };
@@ -56,6 +58,7 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
 
   const actor = {
     tenantId: seed.tenantId || "tenant-daily-01",
+    userId: seed.userId || "user-daily-01",
     permissions: new Set(
       seed.permissions || [
         "tournament.view",
@@ -183,6 +186,7 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
       tournamentId: String(row.id),
       tenantId: row.tenant_id,
       clubId: row.club_id,
+      tournamentStatus: row.status,
       revision: daily.revision,
       dailyPlay: daily,
       courts: courts.map((court, index) => normalizeCanonicalCourt(court, index)),
@@ -246,12 +250,46 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
     );
     if (!row) return deny(DAILY_PLAY_CODE.NOT_FOUND, "Không tìm thấy buổi Daily Play.");
 
+    const sessionCompleted = String(row.status) === "completed";
+
     // Idempotent replay must win before CAS (retry with stale version still replays).
     const earlyIdempotent = beginIdempotent(args.p_idempotency_key, name);
     if (earlyIdempotent.error) return earlyIdempotent.error;
     if (earlyIdempotent.replay) return earlyIdempotent.result;
 
     const daily = readDaily(row);
+
+    if (name === DAILY_PLAY_RPC.CLOSE_SESSION) {
+      if (sessionCompleted) {
+        return deny(
+          DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED,
+          DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED]
+        );
+      }
+      const versionCheck = assertExpectedVersion(daily, args.p_expected_version);
+      if (!versionCheck.ok) {
+        return { ...versionCheck, state: snapshot(row) };
+      }
+      const closed = applyCloseSession(daily, {
+        actorId: actor.userId || actor.tenantId || "director",
+      });
+      if (!closed.ok) return closed;
+      const ownLeases = leasesFor(row.id).map((lease) => {
+        if (String(lease.status) !== "active") return lease;
+        return {
+          ...lease,
+          status: "released",
+          releasedAt: new Date().toISOString(),
+        };
+      });
+      writeDaily(row, closed.state);
+      row.status = "completed";
+      setLeases(row.id, ownLeases);
+      return finishIdempotent(earlyIdempotent.ledgerKey, {
+        ...snapshot(row),
+        closeSummary: closed.closeSummary,
+      });
+    }
 
     if (name === DAILY_PLAY_RPC.CORRECT_SCORE) {
       const leases = leasesFor(row.id);
@@ -283,6 +321,13 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
         ratingVprApplied: false,
         ratingExcludedReason: "daily-play-excluded",
       });
+    }
+
+    if (sessionCompleted) {
+      return deny(
+        DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED,
+        DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED]
+      );
     }
 
     const versionCheck = assertExpectedVersion(daily, args.p_expected_version);
@@ -324,9 +369,14 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
         occupiedCourtIds,
       });
       const proposed = Array.isArray(args.p_matches) ? args.p_matches : [];
+      let proposedPlayerCount = 0;
       for (const match of proposed) {
-        const shape = validateDoublesMatchShape(match);
+        const shape = validateDailyMatchShape(
+          match,
+          match.matchType || match.competitionType || daily.matchType
+        );
         if (!shape.ok) return shape;
+        proposedPlayerCount += shape.shape.playersPerMatch;
         for (const playerId of shape.playerIds) {
           if (!isAthleteEligible(args.p_tenant_id, args.p_club_id, playerId)) {
             return deny(
@@ -336,12 +386,20 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
           }
         }
       }
+      const firstShape = proposed[0]
+        ? getDailyMatchShapeForMatch(
+            proposed[0],
+            proposed[0].matchType || proposed[0].competitionType || daily.matchType
+          )
+        : getDailyMatchShapeForMatch({}, daily.matchType);
       const countPlan = resolveCreateMatchCount({
         enabledCourts: courts,
         availableCourts: available,
         eligiblePlayerCount: proposed.length
-          ? proposed.length * 4
+          ? proposedPlayerCount
           : Number(args.p_eligible_player_count || 0),
+        matchType: firstShape.matchType,
+        playersPerMatch: firstShape.playersPerMatch,
       });
       if (!countPlan.ok) return countPlan;
       if (!proposed.length) {
@@ -551,6 +609,12 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
     __setLeases(tournamentId, leases = []) {
       setLeases(tournamentId, leases || []);
     },
+    __getLeases(tournamentId) {
+      return leasesFor(tournamentId);
+    },
+    __getTournament(tournamentId) {
+      return tournaments.get(String(tournamentId)) || null;
+    },
     __getLedger() {
       return ledger;
     },
@@ -561,6 +625,7 @@ export function createSeededDailyPlayTournament({
   id = "daily-t1",
   tenantId = "tenant-daily-01",
   clubId = "club-1",
+  status = "active",
   dailyPlay = null,
 } = {}) {
   return {
@@ -568,7 +633,7 @@ export function createSeededDailyPlayTournament({
     tenant_id: tenantId,
     club_id: clubId,
     mode: "daily_play",
-    status: "active",
+    status,
     payload: {
       settings: {
         dailyPlay: normalizeDailyPlayCanonicalState(

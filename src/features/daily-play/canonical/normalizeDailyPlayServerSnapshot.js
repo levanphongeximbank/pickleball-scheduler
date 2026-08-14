@@ -102,6 +102,7 @@ export function normalizeDailyPlayServerSnapshot(raw) {
       raw.tournamentId == null && raw.tournament_id == null
         ? null
         : String(raw.tournamentId ?? raw.tournament_id),
+    tournamentStatus: raw.tournamentStatus || raw.tournament_status || null,
     revision: Number(dailyPlay.revision || 0),
     dailyPlay,
     courts,

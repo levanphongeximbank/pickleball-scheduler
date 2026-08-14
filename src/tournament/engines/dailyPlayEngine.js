@@ -18,12 +18,20 @@ import {
   COMPETITION_CLASS,
   prepareLivePrivatePairingOptions,
 } from "../../features/private-pairing-rules/index.js";
+import {
+  DAILY_MATCH_TYPE as CANONICAL_DAILY_MATCH_TYPE,
+  getDailyMatchShape,
+  dailyMatchTypeToCompetitionType,
+} from "../../features/daily-play/canonical/dailyPlayMatchShape.js";
 
 export const DAILY_MATCH_TYPE = {
-  MEN_DOUBLE: "men_double",
-  WOMEN_DOUBLE: "women_double",
-  MIXED_DOUBLE: "mixed_double",
-  AUTO: "auto",
+  MEN_SINGLE: CANONICAL_DAILY_MATCH_TYPE.MEN_SINGLE,
+  WOMEN_SINGLE: CANONICAL_DAILY_MATCH_TYPE.WOMEN_SINGLE,
+  MEN_DOUBLE: CANONICAL_DAILY_MATCH_TYPE.MEN_DOUBLE,
+  WOMEN_DOUBLE: CANONICAL_DAILY_MATCH_TYPE.WOMEN_DOUBLE,
+  MIXED_DOUBLE: CANONICAL_DAILY_MATCH_TYPE.MIXED_DOUBLE,
+  OPEN_DOUBLE: CANONICAL_DAILY_MATCH_TYPE.OPEN_DOUBLE,
+  AUTO: CANONICAL_DAILY_MATCH_TYPE.AUTO,
 };
 
 export const DAILY_GENDER_FILTER = {
@@ -39,9 +47,12 @@ const ACTIVE_MATCH_STATUSES = new Set([
 ]);
 
 const MATCH_TYPE_TO_COMPETITION = {
+  [DAILY_MATCH_TYPE.MEN_SINGLE]: "singles_men",
+  [DAILY_MATCH_TYPE.WOMEN_SINGLE]: "singles_women",
   [DAILY_MATCH_TYPE.MEN_DOUBLE]: "doubles_men",
   [DAILY_MATCH_TYPE.WOMEN_DOUBLE]: "doubles_women",
   [DAILY_MATCH_TYPE.MIXED_DOUBLE]: "doubles_mixed",
+  [DAILY_MATCH_TYPE.OPEN_DOUBLE]: "open",
 };
 
 function playerRating(player) {
@@ -125,8 +136,9 @@ export function filterPlayersByGender(players = [], genderFilter = DAILY_GENDER_
 }
 
 export function resolveDailyCompetitionType(matchType, players = []) {
-  if (MATCH_TYPE_TO_COMPETITION[matchType]) {
-    return MATCH_TYPE_TO_COMPETITION[matchType];
+  const mapped = dailyMatchTypeToCompetitionType(matchType) || MATCH_TYPE_TO_COMPETITION[matchType];
+  if (mapped) {
+    return mapped;
   }
 
   const counts = getGenderCounts(players);
@@ -193,7 +205,25 @@ export function getEligibleDailyPlayers({
   return eligible;
 }
 
+function isMixedPair(players = []) {
+  if (!Array.isArray(players) || players.length !== 2) return false;
+  const genders = players.map((player) => getPlayerGenderKey(player.gender));
+  return genders.includes("male") && genders.includes("female");
+}
+
 function pickPlayersForSingleMatch(available = [], competitionType) {
+  if (competitionType === "singles_men") {
+    return available
+      .filter((player) => getPlayerGenderKey(player.gender) === "male")
+      .slice(0, 2);
+  }
+
+  if (competitionType === "singles_women") {
+    return available
+      .filter((player) => getPlayerGenderKey(player.gender) === "female")
+      .slice(0, 2);
+  }
+
   if (competitionType === "doubles_mixed") {
     const males = available.filter(
       (player) => getPlayerGenderKey(player.gender) === "male"
@@ -223,12 +253,18 @@ function pickPlayersForSingleMatch(available = [], competitionType) {
     return females.slice(0, 4);
   }
 
+  if (competitionType === "open") {
+    return available.slice(0, 4);
+  }
+
   return available.slice(0, 4);
 }
 
 function courtResultToDailyMatch(courtResult, options = {}) {
   const teamA = courtResult.teamA || [];
   const teamB = courtResult.teamB || [];
+  const competitionType = options.competitionType || "doubles_mixed";
+  const shape = getDailyMatchShape(options.matchType || competitionType);
 
   return {
     id: options.id || `daily-match-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -242,7 +278,8 @@ function courtResultToDailyMatch(courtResult, options = {}) {
     teamATotal: courtResult.teamATotal ?? teamA.reduce((sum, p) => sum + playerRating(p), 0),
     teamBTotal: courtResult.teamBTotal ?? teamB.reduce((sum, p) => sum + playerRating(p), 0),
     diff: courtResult.diff ?? 0,
-    competitionType: options.competitionType || "doubles_mixed",
+    matchType: shape.matchType,
+    competitionType,
     scoreA: null,
     scoreB: null,
     skipScore: options.skipScore === true,
@@ -270,8 +307,15 @@ export async function createFairDailyMatches({
     normalized.matchType,
     eligible
   );
+  const shape = getDailyMatchShape(
+    normalized.matchType === DAILY_MATCH_TYPE.AUTO
+      ? competitionType
+      : normalized.matchType
+  );
+  const playersPerMatch = shape.playersPerMatch;
+  const teamSize = shape.teamSize;
 
-  if (eligible.length < 4) {
+  if (eligible.length < playersPerMatch) {
     return {
       ok: false,
       error: "Khong du VDV check-in de tao tran.",
@@ -306,7 +350,6 @@ export async function createFairDailyMatches({
     loadedPrivatePairingRules = prepared.pairingOptions?.privatePairingRules || [];
   }
 
-  const playersPerCourt = 4;
   const maxMatches = Math.max(0, Number(matchCount) || 0);
   if (maxMatches < 1) {
     return {
@@ -321,7 +364,7 @@ export async function createFairDailyMatches({
   for (let index = 0; index < maxMatches; index += 1) {
     const selectedPlayers = pickPlayersForSingleMatch(remaining, competitionType);
 
-    if (selectedPlayers.length < playersPerCourt) {
+    if (selectedPlayers.length < playersPerMatch) {
       break;
     }
 
@@ -361,16 +404,26 @@ export async function createFairDailyMatches({
     }
 
     const court = (aiResult.courts || []).find(
-      (item) => (item.teamA?.length || 0) >= 2 && (item.teamB?.length || 0) >= 2
+      (item) =>
+        (item.teamA?.length || 0) >= teamSize &&
+        (item.teamB?.length || 0) >= teamSize
     );
 
     if (!court) {
       break;
     }
 
+    if (
+      competitionType === "doubles_mixed" &&
+      (!isMixedPair(court.teamA) || !isMixedPair(court.teamB))
+    ) {
+      break;
+    }
+
     createdMatches.push(
       courtResultToDailyMatch(court, {
         tournamentId,
+        matchType: shape.matchType,
         competitionType,
         skipScore,
       })
@@ -635,3 +688,5 @@ export function buildDailyPlayTournamentPatch(settings) {
     },
   };
 }
+
+export { getDailyMatchShape };
