@@ -98,7 +98,8 @@ export default function TeamFormatVenueSetupPanel({
 
   const resolvedClubId = clubId || tournament?.clubId || "";
   const resolvedTenantId =
-    tenantId || tournament?.tenantId || tournament?.venueId || null;
+    tenantId || tournament?.tenantId || null;
+  const resolvedVenueId = tournament?.venueId || null;
 
   const [venueCourts, setVenueCourts] = useState([]);
   const [courtsLoading, setCourtsLoading] = useState(Boolean(resolvedClubId));
@@ -225,6 +226,7 @@ export default function TeamFormatVenueSetupPanel({
     void listCourtsFn({
       clubId: resolvedClubId,
       tenantId: resolvedTenantId,
+      venueId: resolvedVenueId,
     }).then((result) => {
       if (cancelled) return;
       setCourtsLoading(false);
@@ -245,7 +247,7 @@ export default function TeamFormatVenueSetupPanel({
     return () => {
       cancelled = true;
     };
-  }, [resolvedClubId, resolvedTenantId, listCourtsFn]);
+  }, [resolvedClubId, resolvedTenantId, resolvedVenueId, listCourtsFn]);
 
   const complete = isFormatVenueSetupComplete(
     {

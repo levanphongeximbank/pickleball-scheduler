@@ -49,6 +49,7 @@ export default function OfficialTournamentGroupStageScreen({
   courts = [],
   clubId,
   tenantId = null,
+  venueId = null,
   drawPublish,
   hasDrawReopenPermission,
   onLockDraw,
@@ -215,6 +216,7 @@ export default function OfficialTournamentGroupStageScreen({
       <TournamentCourtSchedulePanel
         clubId={clubId}
         tenantId={tenantId}
+        venueId={venueId}
         tournament={tournament}
         courts={courts}
         onSaved={onSavedCourts}

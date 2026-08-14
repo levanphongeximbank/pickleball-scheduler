@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { Alert, Box, Grid, Typography } from "@mui/material";
+import { Alert, Box, Grid, TextField, Typography } from "@mui/material";
 import GroupsIcon from "@mui/icons-material/Groups";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import Diversity3Icon from "@mui/icons-material/Diversity3";
@@ -81,6 +81,9 @@ export default function CanonicalTournamentCreatePage() {
   );
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [tournamentName, setTournamentName] = useState(
+    () => `Giải đấu ${new Date().toLocaleDateString("vi-VN")}`
+  );
 
   const handleStartMode = async (option) => {
     const ready = assertTournamentCreateStartReady({
@@ -100,6 +103,7 @@ export default function CanonicalTournamentCreatePage() {
       const createdBy = user?.playerId || user?.linkedPlayerId || user?.id || null;
       const result = await createTournamentCommand(activeClub, {
         mode: option.mode,
+        name: String(tournamentName || "").trim() || undefined,
         seasonId: activeSeason?.id,
         leagueId: activeLeague?.id,
         createdBy,
@@ -160,6 +164,16 @@ export default function CanonicalTournamentCreatePage() {
         description="Chọn loại hình giải. Khả năng hỗ trợ: đăng ký, roster, AI, Dreambreaker, trọng tài, bracket, lịch và kết quả."
       />
       <ClubAssignmentBanner />
+
+      <TextField
+        label="Tên giải"
+        value={tournamentName}
+        onChange={(event) => setTournamentName(event.target.value)}
+        fullWidth
+        sx={{ mb: 2 }}
+        disabled={busy}
+        helperText="Có thể sửa trước khi tạo. Nếu để trống, hệ thống dùng tên mặc định theo loại giải."
+      />
 
       {preselectedEvent ? (
         <Alert severity="info" sx={{ mb: 2 }}>

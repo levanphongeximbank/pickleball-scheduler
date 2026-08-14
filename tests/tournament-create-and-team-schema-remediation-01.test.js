@@ -161,6 +161,8 @@ describe("tournament-create-and-team-schema-remediation-01", () => {
     assert.match(page, /try \{/);
     assert.match(page, /catch \(err\)/);
     assert.match(page, /formatTournamentCreateError/);
+    assert.match(page, /Tên giải/);
+    assert.match(page, /name: String\(tournamentName/);
     assert.equal(PERMISSIONS.TOURNAMENT_CREATE, "tournament.create");
   });
 

@@ -40,6 +40,7 @@ export {
   resolveTournamentTenantScope,
   buildTournamentClubScope,
 } from "./guards/tournamentTenant.js";
+export { resolveTournamentCourtInventoryScope } from "./guards/tournamentCourtInventoryScope.js";
 export { assertLoadedTournamentAccess } from "./guards/tournamentAccess.js";
 export { CANONICAL_TOURNAMENT_HUB_ITEMS } from "./constants/hubNav.js";
 export {

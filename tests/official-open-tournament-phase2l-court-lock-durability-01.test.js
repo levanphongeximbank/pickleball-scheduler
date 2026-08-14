@@ -460,7 +460,10 @@ describe("official-open-tournament-phase2l-court-lock-durability-01", () => {
     assert.match(setup, /Hãy khóa sân trên lịch booking trước khi xếp lịch vòng bảng/);
     assert.match(setup, /courtIds: persisted\.courtIds/);
     assert.doesNotMatch(setup, /courtIds: draft\.courtIds/);
-    assert.match(setup, /\[activeClubId, tenantId\]/);
+    assert.match(setup, /resolveTournamentCourtInventoryScope/);
+    assert.match(setup, /courtInventoryScope\.venueId/);
+    assert.match(setup, /courtInventoryScope\.clubId/);
+    assert.match(setup, /courtInventoryScope\.tenantId/);
     assert.doesNotMatch(
       setup,
       /setCourts\(\[\]\);\s*if \(!activeClubId\)/

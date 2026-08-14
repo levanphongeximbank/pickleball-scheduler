@@ -27,6 +27,7 @@ import {
 
 import { useClub } from "../../context/ClubContext.jsx";
 import { listCanonicalClubCourtsForFormatVenue } from "../../features/team-tournament/services/canonicalClubCourtInventory.js";
+import { resolveTournamentCourtInventoryScope } from "../../features/tournament/guards/tournamentCourtInventoryScope.js";
 import { resolveVenueTimezoneForClub } from "../../domain/civilTime.js";
 import {
   useClubPairingCandidatePool,
@@ -292,6 +293,22 @@ export default function OfficialTournamentSetup() {
     [tournament?.tenantId, activeClub?.tenantId, activeClub?.venueId, currentTenantId]
   );
 
+  const courtInventoryScope = useMemo(
+    () =>
+      resolveTournamentCourtInventoryScope({
+        tournament,
+        activeClub,
+        currentTenantId,
+      }),
+    [
+      tournament?.id,
+      tournament?.clubId,
+      tournament?.tenantId,
+      activeClub,
+      currentTenantId,
+    ]
+  );
+
   const {
     players: allTenantPlayers,
     error: tenantPlayersError,
@@ -313,13 +330,14 @@ export default function OfficialTournamentSetup() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!activeClubId) {
+    if (!courtInventoryScope.ok) {
       setCourts([]);
       return undefined;
     }
     void listCanonicalClubCourtsForFormatVenue({
-      clubId: activeClubId,
-      tenantId,
+      clubId: courtInventoryScope.clubId,
+      tenantId: courtInventoryScope.tenantId,
+      venueId: courtInventoryScope.venueId,
     }).then((result) => {
       if (cancelled) return;
       setCourts(result?.ok && Array.isArray(result.courts) ? result.courts : []);
@@ -330,7 +348,12 @@ export default function OfficialTournamentSetup() {
     return () => {
       cancelled = true;
     };
-  }, [activeClubId, tenantId]);
+  }, [
+    courtInventoryScope.ok,
+    courtInventoryScope.clubId,
+    courtInventoryScope.tenantId,
+    courtInventoryScope.venueId,
+  ]);
 
   const refereeRoster = useMemo(
     () => getRefereeSettings(tournament).roster,
@@ -1922,8 +1945,9 @@ export default function OfficialTournamentSetup() {
             tournamentId={tournamentId}
             players={flowPlayers}
             courts={courts}
-            clubId={activeClubId}
-            tenantId={tenantId}
+            clubId={courtInventoryScope.ok ? courtInventoryScope.clubId : activeClubId}
+            tenantId={courtInventoryScope.ok ? courtInventoryScope.tenantId : tenantId}
+            venueId={courtInventoryScope.ok ? courtInventoryScope.venueId : null}
             drawPublish={drawPublish}
             hasDrawReopenPermission={hasDrawReopenPermission}
             onLockDraw={handleLockDraw}

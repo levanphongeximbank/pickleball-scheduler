@@ -48,16 +48,20 @@ export function authorizeProvidedTournamentCourts(
 
   const clubId = String(scope.clubId || "").trim();
   const tenantId = String(scope.tenantId || "").trim();
+  const venueId = String(scope.venueId || "").trim();
   const foreign = courts.filter((court) => {
     if (!court || court.id == null || String(court.id).trim() === "") {
       return true;
     }
-    const courtTenant = String(court.tenantId || court.venueId || "").trim();
     const courtClub = String(court.clubId || "").trim();
-    if (tenantId && courtTenant && courtTenant !== tenantId) {
+    const stamp = String(court.venueId || court.tenantId || "").trim();
+    if (clubId && courtClub && courtClub !== clubId) {
       return true;
     }
-    if (clubId && courtClub && courtClub !== clubId) {
+    if (venueId && stamp && stamp !== venueId) {
+      return true;
+    }
+    if (!venueId && tenantId && stamp && stamp !== tenantId) {
       return true;
     }
     return false;
@@ -488,6 +492,7 @@ export async function setTournamentCourtScheduleCommand(
     const snapshot = await readSnapshot({
       clubId: scope.clubId,
       tenantId: scope.tenantId,
+      venueId: options.venueId || scope.venueId || null,
       includeInactive: true,
     });
     if (!snapshot.ok) {
@@ -580,7 +585,11 @@ export async function setTournamentCourtScheduleCommand(
       );
       const authorized = authorizeProvidedTournamentCourts(
         activeCourts,
-        scope,
+        {
+          clubId: scope.clubId,
+          tenantId: scope.tenantId,
+          venueId: options.venueId || scope.venueId || null,
+        },
         courtSchedule.courtIds
       );
       if (!authorized.ok) {

@@ -35,6 +35,7 @@ const END_TIME_OPTIONS = buildEndTimeOptions();
 export default function TournamentCourtSchedulePanel({
   clubId,
   tenantId = null,
+  venueId = null,
   tournament,
   courts = [],
   onSaved,
@@ -116,6 +117,9 @@ export default function TournamentCourtSchedulePanel({
       const commandOptions = { courts };
       if (tenantId) {
         commandOptions.tenantId = tenantId;
+      }
+      if (venueId) {
+        commandOptions.venueId = venueId;
       }
       const result = await setTournamentCourtScheduleCommand(
         clubId,

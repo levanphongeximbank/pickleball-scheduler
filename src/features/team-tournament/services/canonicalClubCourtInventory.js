@@ -66,13 +66,42 @@ export function extractBookingsFromClubDataV3Payload(rowData) {
   return [];
 }
 
+function trimId(value) {
+  return value != null ? String(value).trim() : "";
+}
+
+const FORBIDDEN_SCOPE_IDS = new Set(["default-tenant", "default"]);
+
+/**
+ * Court blob stamps use venue identity (venueId or legacy tenantId-as-venue).
+ * Authorization tenantId is not the club_data_v3.venue_id filter.
+ */
+export function courtStampMatchesInventoryScope(court, scope = {}) {
+  if (!court || court.id == null || trimId(court.id) === "") {
+    return false;
+  }
+  const clubId = trimId(scope.clubId);
+  const venueId = trimId(scope.venueId);
+  const tenantId = trimId(scope.tenantId);
+  const courtClub = trimId(court.clubId);
+  const stamp = trimId(court.venueId || court.tenantId);
+  if (clubId && courtClub && courtClub !== clubId) {
+    return false;
+  }
+  if (venueId && stamp && stamp !== venueId) {
+    return false;
+  }
+  if (!venueId && tenantId && stamp && stamp !== tenantId) {
+    return false;
+  }
+  return true;
+}
+
 /**
  * @param {Array} courts
- * @param {{ clubId?: string, tenantId?: string, includeInactive?: boolean }} [options]
+ * @param {{ clubId?: string, tenantId?: string, venueId?: string, includeInactive?: boolean }} [options]
  */
 export function normalizeCanonicalClubCourts(courts = [], options = {}) {
-  const clubId = options.clubId ? String(options.clubId) : "";
-  const tenantId = options.tenantId ? String(options.tenantId) : "";
   const includeInactive = options.includeInactive === true;
 
   return normalizeCourts(courts || [])
@@ -80,13 +109,7 @@ export function normalizeCanonicalClubCourts(courts = [], options = {}) {
       if (!includeInactive && court.active === false) {
         return false;
       }
-      if (clubId && court.clubId && String(court.clubId) !== clubId) {
-        return false;
-      }
-      if (tenantId && court.tenantId && String(court.tenantId) !== tenantId) {
-        return false;
-      }
-      return true;
+      return courtStampMatchesInventoryScope(court, options);
     })
     .map((court) => ({ ...court }));
 }
@@ -124,19 +147,32 @@ function unavailableSnapshot(code, error) {
  * Read courts + bookings from the same club_data_v3 row.
  * Does not read or write localStorage. Does not include Daily Play leases.
  *
- * @param {{ clubId: string, tenantId?: string|null, includeInactive?: boolean }} params
+ * tenantId = authorization tenant (not club_data_v3.venue_id).
+ * venueId  = Club venue projection for the venue_id column.
+ *
+ * @param {{
+ *   clubId: string,
+ *   tenantId?: string|null,
+ *   venueId?: string|null,
+ *   includeInactive?: boolean
+ * }} params
  */
 export async function readCanonicalClubCourtBookingSnapshot(params = {}) {
-  const clubId = params.clubId != null ? String(params.clubId).trim() : "";
-  const tenantId =
-    params.tenantId != null && String(params.tenantId).trim() !== ""
-      ? String(params.tenantId).trim()
-      : null;
+  const clubId = trimId(params.clubId);
+  const tenantId = trimId(params.tenantId);
+  const venueId = trimId(params.venueId);
 
   if (!clubId) {
     return unavailableSnapshot(
       "MISSING_CLUB_ID",
       "Thiếu clubId — không tải được inventory sân."
+    );
+  }
+
+  if (!tenantId || FORBIDDEN_SCOPE_IDS.has(tenantId)) {
+    return unavailableSnapshot(
+      "MISSING_TENANT",
+      "Thiếu tenant được phép — không tải inventory sân."
     );
   }
 
@@ -155,14 +191,10 @@ export async function readCanonicalClubCourtBookingSnapshot(params = {}) {
     );
   }
 
-  let query = client
+  const query = client
     .from(CLUB_DATA_TABLE)
     .select("data,venue_id,version")
     .eq("club_id", clubId);
-
-  if (tenantId) {
-    query = query.eq("venue_id", tenantId);
-  }
 
   const { data: rows, error } = await query.limit(1);
 
@@ -186,10 +218,11 @@ export async function readCanonicalClubCourtBookingSnapshot(params = {}) {
     };
   }
 
-  if (tenantId && row.venue_id && String(row.venue_id) !== tenantId) {
+  const rowVenueId = trimId(row.venue_id);
+  if (venueId && rowVenueId && rowVenueId !== venueId) {
     return unavailableSnapshot(
-      "TENANT_FORBIDDEN",
-      "Blob sân thuộc tenant khác — từ chối đọc."
+      "VENUE_FORBIDDEN",
+      "Blob sân thuộc venue khác — từ chối đọc."
     );
   }
 
@@ -197,7 +230,8 @@ export async function readCanonicalClubCourtBookingSnapshot(params = {}) {
   const rawCourts = extractCourtsFromClubDataV3Payload(row.data);
   const courts = normalizeCanonicalClubCourts(rawCourts, {
     clubId,
-    tenantId: tenantId || undefined,
+    tenantId,
+    venueId: venueId || undefined,
     includeInactive: params.includeInactive === true,
   });
 
@@ -215,7 +249,7 @@ export async function readCanonicalClubCourtBookingSnapshot(params = {}) {
  * Load Format & Venue court inventory from canonical club_data_v3.
  * Does not read or write localStorage.
  *
- * @param {{ clubId: string, tenantId?: string|null, includeInactive?: boolean }} params
+ * @param {{ clubId: string, tenantId?: string|null, venueId?: string|null, includeInactive?: boolean }} params
  * @returns {Promise<{
  *   ok: boolean,
  *   courts: Array,
