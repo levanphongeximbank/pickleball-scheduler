@@ -53,8 +53,8 @@ describe("official-open-tournament-phase2e-authz-integrity", () => {
     assert.match(service, /syncSupabaseUser\(session\.user/);
 
     const club = read("src/context/ClubContext.jsx");
-    assert.match(club, /userSecurityScopeKey/);
-    assert.match(club, /buildUserSecurityScopeKey\(user\)/);
+    assert.match(club, /clubRehydrateScopeKey/);
+    assert.match(club, /buildClubRehydrateScopeKey\(user\)/);
     assert.doesNotMatch(
       club,
       /hydrateClubScope[\s\S]{0,500}\}, \[isAuthenticated, user, currentTenantId/

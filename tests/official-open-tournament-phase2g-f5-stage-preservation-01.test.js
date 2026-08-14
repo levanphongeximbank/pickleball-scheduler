@@ -298,7 +298,7 @@ describe("official-open-tournament-phase2g-f5-stage-preservation-01", () => {
     const auth = src("src/context/AuthContext.jsx");
     assert.match(auth, /shouldSkipAuthUiRefreshOnTokenEvent/);
     const club = src("src/context/ClubContext.jsx");
-    assert.match(club, /userSecurityScopeKey/);
+    assert.match(club, /clubRehydrateScopeKey/);
     const canonical = src("src/features/tournament/hooks/useCanonicalTournament.js");
     assert.match(canonical, /resolveCanonicalTournamentLoadPolicy|authzFingerprint|scopeKey/);
   });
