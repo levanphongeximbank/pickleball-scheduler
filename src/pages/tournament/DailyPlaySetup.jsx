@@ -52,6 +52,10 @@ import {
   resolveCreateMatchCount,
   resolvePresentedCheckedSet,
   dailyPlayCourtRuntimeLabel,
+  projectDailyPlayerFilterView,
+  countVisiblePresentedChecked,
+  listVisibleBulkCheckInTargets,
+  listVisibleBulkCheckOutTargets,
   shouldIgnoreConcurrentPresenceClick,
   validateScoreInput,
 } from "../../features/daily-play/canonical/index.js";
@@ -165,10 +169,7 @@ export default function DailyPlaySetup() {
     if (session.dailyPlay.matchType) {
       setMatchType(session.dailyPlay.matchType);
     }
-    if (session.dailyPlay.genderFilter) {
-      setGenderFilter(session.dailyPlay.genderFilter);
-    }
-  }, [session.dailyPlay?.matchType, session.dailyPlay?.genderFilter]);
+  }, [session.dailyPlay?.matchType]);
 
   // Candidate directory: club membership identity — not Daily session presence.
   const {
@@ -184,9 +185,8 @@ export default function DailyPlaySetup() {
     return normalizeDailyPlaySettings({
       ...fromServer,
       matchType,
-      genderFilter,
     });
-  }, [session.dailyPlay, matchType, genderFilter]);
+  }, [session.dailyPlay, matchType]);
 
   const refereeRoster = useMemo(() => {
     const base = getRefereeSettings(tournament).roster;
@@ -261,10 +261,6 @@ export default function DailyPlaySetup() {
     [waiting, assigned]
   );
 
-  const checkedInSet = useMemo(
-    () => new Set(dailySettings.checkedInPlayerIds),
-    [dailySettings.checkedInPlayerIds]
-  );
   const presentedCheckedSet = useMemo(
     () =>
       resolvePresentedCheckedSet(
@@ -272,6 +268,20 @@ export default function DailyPlaySetup() {
         presenceOverride
       ),
     [dailySettings.checkedInPlayerIds, presenceOverride]
+  );
+
+  const playerFilterView = useMemo(
+    () =>
+      projectDailyPlayerFilterView({
+        players,
+        checkedInPlayerIds: dailySettings.checkedInPlayerIds,
+        genderFilter,
+      }),
+    [players, dailySettings.checkedInPlayerIds, genderFilter]
+  );
+  const visiblePresentedCheckedCount = countVisiblePresentedChecked(
+    playerFilterView,
+    presentedCheckedSet
   );
 
   const mutationBusy = shouldIgnoreConcurrentPresenceClick({
@@ -325,9 +335,10 @@ export default function DailyPlaySetup() {
     if (playerMutationLockRef.current || mutationBusy) return;
     playerMutationLockRef.current = true;
     setActionError(null);
-    const targets = players
-      .map((player) => player.id)
-      .filter((id) => !checkedInSet.has(String(id)));
+    const targets = listVisibleBulkCheckInTargets(
+      playerFilterView,
+      dailySettings.checkedInPlayerIds
+    );
     if (targets.length === 0) {
       playerMutationLockRef.current = false;
       return;
@@ -362,7 +373,7 @@ export default function DailyPlaySetup() {
     if (playerMutationLockRef.current || mutationBusy) return;
     playerMutationLockRef.current = true;
     setActionError(null);
-    const targets = [...dailySettings.checkedInPlayerIds];
+    const targets = listVisibleBulkCheckOutTargets(playerFilterView);
     if (targets.length === 0) {
       playerMutationLockRef.current = false;
       return;
@@ -848,15 +859,18 @@ export default function DailyPlaySetup() {
           <Grid size={{ xs: 12, lg: 5 }}>
             <Paper variant="outlined" sx={{ p: 1.5 }}>
               <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-                Check-in hôm nay ({presentedCheckedSet.size}/
-                {players.length})
+                Check-in hôm nay ({visiblePresentedCheckedCount}/
+                {playerFilterView.visiblePlayerCount})
               </Typography>
               <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
                 <Button
                   size="small"
                   variant="contained"
                   onClick={() => void handleSelectAllCheckIn()}
-                  disabled={players.length === 0 || Boolean(bulkPending)}
+                  disabled={
+                    playerFilterView.visiblePlayerCount === 0 ||
+                    Boolean(bulkPending)
+                  }
                 >
                   {bulkPending === "checkIn" ? "Đang chọn..." : "Chọn tất cả"}
                 </Button>
@@ -865,7 +879,7 @@ export default function DailyPlaySetup() {
                   variant="outlined"
                   onClick={() => void handleClearAllCheckIn()}
                   disabled={
-                    dailySettings.checkedInPlayerIds.length === 0 ||
+                    playerFilterView.visibleCheckedCount === 0 ||
                     Boolean(bulkPending)
                   }
                 >
@@ -875,7 +889,7 @@ export default function DailyPlaySetup() {
                 </Button>
               </Stack>
               <Stack spacing={1} sx={{ maxHeight: 320, overflow: "auto" }}>
-                {players.map((player) => (
+                {playerFilterView.visiblePlayers.map((player) => (
                   <PlayerPresenceRow
                     key={player.id}
                     player={player}
