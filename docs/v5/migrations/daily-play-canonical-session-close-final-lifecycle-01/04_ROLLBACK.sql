@@ -3,6 +3,18 @@
 -- Restores occupancy snapshot (no tournamentStatus) and prior e2e write RPCs.
 -- Drops only objects owned by this additive package.
 -- Does not drop ledger/leases tables. Does not rewrite business rows.
+--
+-- ROLLBACK PRECONDITION: run ONLY after confirmed APPLY of this exact package.
+-- Accidental rollback-before-apply is refused and does not rewrite RPC bodies.
+
+DO $$
+BEGIN
+  IF to_regprocedure('public.daily_play_close_session(text,text,uuid,integer,text)') IS NULL
+     OR to_regprocedure('public.daily_play_session_write_denied(text)') IS NULL THEN
+    RAISE EXCEPTION 'ROLLBACK_REFUSED: this package is not applied. Do not run 04_ROLLBACK.sql before 02_APPLY.sql.';
+  END IF;
+END
+$$;
 
 BEGIN;
 CREATE OR REPLACE FUNCTION public.daily_play_check_in(
@@ -584,8 +596,11 @@ GRANT EXECUTE ON FUNCTION public.daily_play_cancel_match(text,text,uuid,text,int
 GRANT EXECUTE ON FUNCTION public.daily_play_change_court(text,text,uuid,text,text,integer,text) TO authenticated;
 
 DROP FUNCTION IF EXISTS public.daily_play_close_session(text, text, uuid, integer, text);
+DROP FUNCTION IF EXISTS public.daily_play_validate_match_gender(text, text, jsonb, text);
+DROP FUNCTION IF EXISTS public.daily_play_athlete_gender_key(text, text, text);
 DROP FUNCTION IF EXISTS public.daily_play_validate_match_shape(jsonb);
 DROP FUNCTION IF EXISTS public.daily_play_match_shape(text);
+DROP FUNCTION IF EXISTS public.daily_play_canonical_match_type(text);
 DROP FUNCTION IF EXISTS public.daily_play_session_write_denied(text);
 
 COMMIT;

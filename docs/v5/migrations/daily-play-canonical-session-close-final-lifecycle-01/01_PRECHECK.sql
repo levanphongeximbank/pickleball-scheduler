@@ -44,6 +44,30 @@ BEGIN
   IF to_regprocedure('public.daily_play_change_court(text,text,uuid,text,text,integer,text)') IS NULL THEN
     v_missing := array_append(v_missing, 'public.daily_play_change_court');
   END IF;
+  IF to_regprocedure('public.daily_play_athlete_eligible_for_club(text,text,text)') IS NULL THEN
+    v_missing := array_append(v_missing, 'public.daily_play_athlete_eligible_for_club(text,text,text)');
+  END IF;
+  IF to_regprocedure('public.team_tournament_normalize_gender_key(text)') IS NULL THEN
+    v_missing := array_append(v_missing, 'public.team_tournament_normalize_gender_key(text)');
+  END IF;
+  IF to_regclass('public.athletes') IS NULL THEN
+    v_missing := array_append(v_missing, 'public.athletes');
+  END IF;
+  IF to_regclass('public.profiles') IS NULL THEN
+    v_missing := array_append(v_missing, 'public.profiles');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'athletes' AND column_name = 'user_id'
+  ) THEN
+    v_missing := array_append(v_missing, 'public.athletes.user_id');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'gender'
+  ) THEN
+    v_missing := array_append(v_missing, 'public.profiles.gender');
+  END IF;
 
   IF cardinality(v_missing) > 0 THEN
     RAISE EXCEPTION 'PRECHECK_FAIL: missing dependencies: %', array_to_string(v_missing, ', ');

@@ -17,9 +17,12 @@ export {
   DAILY_MATCH_TYPE as CANONICAL_DAILY_MATCH_TYPE,
   DAILY_MATCH_TYPE_LABELS,
   DAILY_MATCH_TYPE_OPTIONS,
+  CANONICAL_PERSISTED_DAILY_MATCH_TYPES,
   getDailyMatchShape,
   getDailyMatchShapeForMatch,
   normalizeDailyMatchType,
+  resolveCanonicalPersistedMatchType,
+  resolveCanonicalPersistedMatchTypeFromMatch,
 } from "./dailyPlayMatchShape.js";
 
 export {
@@ -41,9 +44,11 @@ export {
   applyCorrectScore,
   applyCloseSession,
   classifyDailyCloseReadiness,
+  assertDailyTournamentClosable,
   formatSessionCloseBlockedMessage,
   formatSessionCloseConfirmMessage,
   isDailySessionCompleted,
+  validateDailyMatchGenderComposition,
   buildCourtRuntimeView,
   dailyPlayCourtRuntimeLabel,
   sanitizeOccupiedCourtIds,

@@ -112,6 +112,9 @@ function seedAuthority({
       ...(dailyPlay?.checkedInPlayerIds || []),
     ];
   authority.__setEligibleAthletes(TENANT, CLUB, eligible);
+  authority.__setAthleteGenders(
+    Object.fromEntries(canonicalPlayers.map((player) => [player.id, player.gender]))
+  );
   authority.__seedTournament(
     createSeededDailyPlayTournament({
       id: TID,

@@ -6,7 +6,10 @@ DO $$
 DECLARE
   v_close text := 'public.daily_play_close_session(text,text,uuid,integer,text)';
   v_shape text := 'public.daily_play_match_shape(text)';
+  v_canonical text := 'public.daily_play_canonical_match_type(text)';
   v_validate text := 'public.daily_play_validate_match_shape(jsonb)';
+  v_gender_key text := 'public.daily_play_athlete_gender_key(text,text,text)';
+  v_gender_val text := 'public.daily_play_validate_match_gender(text,text,jsonb,text)';
   v_denied text := 'public.daily_play_session_write_denied(text)';
   v_def text;
   v_create_def text;
@@ -30,8 +33,17 @@ BEGIN
   IF to_regprocedure(v_shape) IS NULL THEN
     RAISE EXCEPTION 'VERIFY_FAIL: missing %', v_shape;
   END IF;
+  IF to_regprocedure(v_canonical) IS NULL THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: missing %', v_canonical;
+  END IF;
   IF to_regprocedure(v_validate) IS NULL THEN
     RAISE EXCEPTION 'VERIFY_FAIL: missing %', v_validate;
+  END IF;
+  IF to_regprocedure(v_gender_key) IS NULL THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: missing %', v_gender_key;
+  END IF;
+  IF to_regprocedure(v_gender_val) IS NULL THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: missing %', v_gender_val;
   END IF;
   IF to_regprocedure(v_denied) IS NULL THEN
     RAISE EXCEPTION 'VERIFY_FAIL: missing %', v_denied;
@@ -58,8 +70,14 @@ BEGIN
 
   IF has_function_privilege('anon', v_shape, 'EXECUTE')
      OR has_function_privilege('authenticated', v_shape, 'EXECUTE')
+     OR has_function_privilege('anon', v_canonical, 'EXECUTE')
+     OR has_function_privilege('authenticated', v_canonical, 'EXECUTE')
      OR has_function_privilege('anon', v_validate, 'EXECUTE')
      OR has_function_privilege('authenticated', v_validate, 'EXECUTE')
+     OR has_function_privilege('anon', v_gender_key, 'EXECUTE')
+     OR has_function_privilege('authenticated', v_gender_key, 'EXECUTE')
+     OR has_function_privilege('anon', v_gender_val, 'EXECUTE')
+     OR has_function_privilege('authenticated', v_gender_val, 'EXECUTE')
      OR has_function_privilege('anon', v_denied, 'EXECUTE')
      OR has_function_privilege('authenticated', v_denied, 'EXECUTE') THEN
     RAISE EXCEPTION 'VERIFY_FAIL: match-shape/session helpers must not be client-executable';
@@ -85,6 +103,29 @@ BEGIN
   IF v_def NOT ILIKE '%SESSION_ALREADY_COMPLETED%' THEN
     RAISE EXCEPTION 'VERIFY_FAIL: SESSION_ALREADY_COMPLETED missing from close_session';
   END IF;
+  IF v_def NOT ILIKE '%SESSION_NOT_ACTIVE%' THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: SESSION_NOT_ACTIVE missing from close_session';
+  END IF;
+  IF v_def NOT ILIKE '%draft%' OR v_def NOT ILIKE '%registration%'
+     OR v_def NOT ILIKE '%ready%' OR v_def NOT ILIKE '%active%' THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: closable tournament status whitelist missing';
+  END IF;
+  IF v_def NOT ILIKE '%unknownCount%' THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: unknown match-status fail-closed metadata missing';
+  END IF;
+  IF v_def ILIKE '%BTC%' THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: close_session must not persist placeholder closedBy';
+  END IF;
+  IF v_def NOT ILIKE '%auth.uid()%' THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: closedBy must use authenticated actor';
+  END IF;
+  IF v_def NOT ILIKE '%DAILY_PLAY_CLOSE_CAS%' THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: close CAS must RAISE to roll back partial mutations';
+  END IF;
+  IF position('daily_play_write_state' in v_def)
+     > position('UPDATE public.daily_play_court_leases' in v_def) THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: write_state must happen before lease release';
+  END IF;
   IF v_def NOT ILIKE '%VERSION_CONFLICT%' AND v_def NOT ILIKE '%daily_play_version_conflict%' THEN
     RAISE EXCEPTION 'VERIFY_FAIL: CAS missing from close_session';
   END IF;
@@ -109,8 +150,29 @@ BEGIN
   IF v_create_def NOT ILIKE '%daily_play_validate_match_shape%' THEN
     RAISE EXCEPTION 'VERIFY_FAIL: create_matches must use canonical match-shape helper';
   END IF;
+  IF v_create_def NOT ILIKE '%daily_play_canonical_match_type%' THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: create_matches must enforce canonical match types';
+  END IF;
+  IF v_create_def NOT ILIKE '%INVALID_MATCH_TYPE%' THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: create_matches must fail closed on unknown match type';
+  END IF;
+  IF v_create_def NOT ILIKE '%daily_play_validate_match_gender%' THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: create_matches must enforce gender composition';
+  END IF;
+  IF position('PLAYER_NOT_ELIGIBLE' in v_create_def)
+     > position('daily_play_validate_match_gender' in v_create_def) THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: gender must run after club eligibility';
+  END IF;
   IF v_create_def ILIKE '%playersPerMatch%,4%' AND v_create_def NOT ILIKE '%daily_play_match_shape%' THEN
     RAISE EXCEPTION 'VERIFY_FAIL: create_matches still hardcodes doubles-only player count';
+  END IF;
+
+  v_def := pg_get_functiondef(v_gender_key::regprocedure);
+  IF v_def NOT ILIKE '%athletes%' OR v_def NOT ILIKE '%profiles%' THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: gender authority must resolve athletes → profiles.gender';
+  END IF;
+  IF v_def ILIKE '%display_name%' OR v_def ILIKE '%p_match%gender%' THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: gender helper must not trust names or client gender';
   END IF;
 
   v_correct_def := pg_get_functiondef(

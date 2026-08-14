@@ -105,10 +105,45 @@ const COMPETITION_TO_DAILY = Object.freeze({
 
 const DEFAULT_SHAPE = SHAPES[DAILY_MATCH_TYPE.MIXED_DOUBLE];
 
-export function normalizeDailyMatchType(value) {
+export const CANONICAL_PERSISTED_DAILY_MATCH_TYPES = Object.freeze([
+  DAILY_MATCH_TYPE.MEN_SINGLE,
+  DAILY_MATCH_TYPE.WOMEN_SINGLE,
+  DAILY_MATCH_TYPE.MEN_DOUBLE,
+  DAILY_MATCH_TYPE.WOMEN_DOUBLE,
+  DAILY_MATCH_TYPE.MIXED_DOUBLE,
+  DAILY_MATCH_TYPE.OPEN_DOUBLE,
+]);
+
+const PERSISTED_TYPE_SET = new Set(CANONICAL_PERSISTED_DAILY_MATCH_TYPES);
+
+/**
+ * Server persist authority. Aliases normalize; auto/unknown return null.
+ * Does not fall back to mixed_double.
+ */
+export function resolveCanonicalPersistedMatchType(value) {
   const raw = String(value || "").trim().toLowerCase();
-  if (SHAPES[raw]) return raw;
+  if (!raw || raw === DAILY_MATCH_TYPE.AUTO) return null;
+  if (PERSISTED_TYPE_SET.has(raw)) return raw;
   if (COMPETITION_TO_DAILY[raw]) return COMPETITION_TO_DAILY[raw];
+  return null;
+}
+
+export function resolveCanonicalPersistedMatchTypeFromMatch(match = {}, fallbackMatchType) {
+  const explicit = String(match.matchType || match.dailyMatchType || "").trim();
+  if (explicit) return resolveCanonicalPersistedMatchType(explicit);
+  const competition = String(match.competitionType || "").trim();
+  if (competition) return resolveCanonicalPersistedMatchType(competition);
+  if (fallbackMatchType != null && String(fallbackMatchType).trim() !== "") {
+    return resolveCanonicalPersistedMatchType(fallbackMatchType);
+  }
+  return null;
+}
+
+export function normalizeDailyMatchType(value) {
+  const persisted = resolveCanonicalPersistedMatchType(value);
+  if (persisted) return persisted;
+  const raw = String(value || "").trim().toLowerCase();
+  if (raw === DAILY_MATCH_TYPE.AUTO) return DAILY_MATCH_TYPE.AUTO;
   return DAILY_MATCH_TYPE.MIXED_DOUBLE;
 }
 

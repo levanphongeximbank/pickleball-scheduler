@@ -19,6 +19,7 @@ import {
   applyCloseSession,
   applyStartMatch,
   applySubmitScore,
+  assertDailyTournamentClosable,
   assertExpectedVersion,
   assertMatchParticipantsReady,
   buildCourtRuntimeView,
@@ -30,7 +31,10 @@ import {
   selectEnabledCourts,
   validateDailyMatchShape,
 } from "./dailyPlayCanonicalDomain.js";
-import { getDailyMatchShapeForMatch } from "./dailyPlayMatchShape.js";
+import {
+  getDailyMatchShapeForMatch,
+  resolveCanonicalPersistedMatchTypeFromMatch,
+} from "./dailyPlayMatchShape.js";
 
 function deny(code, error, extra = {}) {
   return { ok: false, code, error: error || DAILY_PLAY_MESSAGES[code] || code, ...extra };
@@ -55,6 +59,11 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
   for (const [key, ids] of Object.entries(seed.eligibleAthletes || {})) {
     eligibleAthletes.set(String(key), new Set((ids || []).map(String)));
   }
+
+  /** @type {Map<string, unknown>} playerId -> persisted canonical gender */
+  const athleteGenders = new Map(
+    Object.entries(seed.athleteGenders || {}).map(([id, gender]) => [String(id), gender])
+  );
 
   const actor = {
     tenantId: seed.tenantId || "tenant-daily-01",
@@ -260,19 +269,20 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
     const daily = readDaily(row);
 
     if (name === DAILY_PLAY_RPC.CLOSE_SESSION) {
-      if (sessionCompleted) {
+      const closable = assertDailyTournamentClosable(row.status);
+      if (!closable.ok) return closable;
+      const actorId = String(actor.userId || "").trim();
+      if (!actorId) {
         return deny(
-          DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED,
-          DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED]
+          DAILY_PLAY_CODE.NOT_AUTHENTICATED,
+          DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.NOT_AUTHENTICATED]
         );
       }
       const versionCheck = assertExpectedVersion(daily, args.p_expected_version);
       if (!versionCheck.ok) {
         return { ...versionCheck, state: snapshot(row) };
       }
-      const closed = applyCloseSession(daily, {
-        actorId: actor.userId || actor.tenantId || "director",
-      });
+      const closed = applyCloseSession(daily, { actorId });
       if (!closed.ok) return closed;
       const ownLeases = leasesFor(row.id).map((lease) => {
         if (String(lease.status) !== "active") return lease;
@@ -329,6 +339,12 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
         DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED]
       );
     }
+    if (String(row.status) === "cancelled") {
+      return deny(
+        DAILY_PLAY_CODE.SESSION_NOT_ACTIVE,
+        DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.SESSION_NOT_ACTIVE]
+      );
+    }
 
     const versionCheck = assertExpectedVersion(daily, args.p_expected_version);
     if (!versionCheck.ok) {
@@ -370,11 +386,19 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
       });
       const proposed = Array.isArray(args.p_matches) ? args.p_matches : [];
       let proposedPlayerCount = 0;
+      const normalizedProposed = [];
       for (const match of proposed) {
-        const shape = validateDailyMatchShape(
+        const canonicalType = resolveCanonicalPersistedMatchTypeFromMatch(
           match,
           match.matchType || match.competitionType || daily.matchType
         );
+        if (!canonicalType) {
+          return deny(
+            DAILY_PLAY_CODE.INVALID_MATCH_TYPE,
+            DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_TYPE]
+          );
+        }
+        const shape = validateDailyMatchShape(match, canonicalType);
         if (!shape.ok) return shape;
         proposedPlayerCount += shape.shape.playersPerMatch;
         for (const playerId of shape.playerIds) {
@@ -385,11 +409,12 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
             );
           }
         }
+        normalizedProposed.push({ ...match, matchType: canonicalType });
       }
-      const firstShape = proposed[0]
+      const firstShape = normalizedProposed[0]
         ? getDailyMatchShapeForMatch(
-            proposed[0],
-            proposed[0].matchType || proposed[0].competitionType || daily.matchType
+            normalizedProposed[0],
+            normalizedProposed[0].matchType
           )
         : getDailyMatchShapeForMatch({}, daily.matchType);
       const countPlan = resolveCreateMatchCount({
@@ -405,14 +430,18 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
       if (!proposed.length) {
         return deny(DAILY_PLAY_CODE.VALIDATION, "Thiếu danh sách trận đề xuất.");
       }
-      if (proposed.length > countPlan.matchCount) {
+      if (normalizedProposed.length > countPlan.matchCount) {
         return deny(
           DAILY_PLAY_CODE.VALIDATION,
           "Số trận đề xuất vượt quá năng lực sân/VĐV."
         );
       }
 
-      const created = applyCreateMatches(daily, proposed.slice(0, countPlan.matchCount));
+      const created = applyCreateMatches(
+        daily,
+        normalizedProposed.slice(0, countPlan.matchCount),
+        { genderByPlayerId: Object.fromEntries(athleteGenders) }
+      );
       if (!created.ok) return created;
       // Create must remain waiting with no leases.
       writeDaily(row, created.state);
@@ -465,6 +494,7 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
           checkedInPlayerIds: daily.checkedInPlayerIds,
           isEligible: (playerId) =>
             isAthleteEligible(args.p_tenant_id, args.p_club_id, playerId),
+          matchType: daily.matchType,
         });
         if (!ready.ok) return ready;
       }
@@ -499,6 +529,7 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
           checkedInPlayerIds: daily.checkedInPlayerIds,
           isEligible: (playerId) =>
             isAthleteEligible(args.p_tenant_id, args.p_club_id, playerId),
+          matchType: daily.matchType,
         });
         if (!ready.ok) return ready;
       }
@@ -591,6 +622,12 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
         `${tenantId}::${clubId}`,
         new Set((playerIds || []).map(String))
       );
+    },
+    __setAthleteGenders(genderByPlayerId = {}) {
+      athleteGenders.clear();
+      for (const [id, gender] of Object.entries(genderByPlayerId || {})) {
+        athleteGenders.set(String(id), gender);
+      }
     },
     __seedTournament(row) {
       const id = String(row.id);

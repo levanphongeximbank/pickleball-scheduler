@@ -50,6 +50,8 @@ export const DAILY_PLAY_CODE = Object.freeze({
   MATCH_COMPLETED_IMMUTABLE: "MATCH_COMPLETED_IMMUTABLE",
   MATCH_NOT_COMPLETED: "MATCH_NOT_COMPLETED",
   INVALID_MATCH_SHAPE: "INVALID_MATCH_SHAPE",
+  INVALID_MATCH_TYPE: "INVALID_MATCH_TYPE",
+  INVALID_MATCH_GENDER_COMPOSITION: "INVALID_MATCH_GENDER_COMPOSITION",
   INVALID_SCORE: "INVALID_SCORE",
   SCORE_CONFLICT: "SCORE_CONFLICT",
   NOT_ENOUGH_PLAYERS: "NOT_ENOUGH_PLAYERS",
@@ -96,6 +98,10 @@ export const DAILY_PLAY_MESSAGES = Object.freeze({
     "Chỉ sửa điểm khi trận đã hoàn tất (completed).",
   [DAILY_PLAY_CODE.INVALID_MATCH_SHAPE]:
     "Hình dạng trận không hợp lệ. Đơn: 1 vs 1. Đôi: 2 vs 2. Không trùng VĐV.",
+  [DAILY_PLAY_CODE.INVALID_MATCH_TYPE]:
+    "Loại trận không hợp lệ. Chỉ chấp nhận đơn nam/nữ, đôi nam/nữ, đôi nam nữ hoặc đôi tự do.",
+  [DAILY_PLAY_CODE.INVALID_MATCH_GENDER_COMPOSITION]:
+    "Thành phần giới tính không đúng loại trận. Đơn/đôi nam-nữ phải đúng nam hoặc nữ; đôi nam nữ phải 1 nam 1 nữ mỗi bên.",
   [DAILY_PLAY_CODE.INVALID_SCORE]:
     "Điểm không hợp lệ. Điểm phải là số nguyên không âm và không hòa.",
   [DAILY_PLAY_CODE.SCORE_CONFLICT]:

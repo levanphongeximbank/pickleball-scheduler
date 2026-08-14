@@ -11,6 +11,7 @@ import {
   DAILY_MATCH_TYPE_LABELS,
   DAILY_MATCH_TYPE_OPTIONS,
   applyCloseSession,
+  assertDailyTournamentClosable,
   classifyDailyCloseReadiness,
   createDailyPlayCanonicalService,
   createInMemoryDailyPlayAuthority,
@@ -23,6 +24,7 @@ import {
   normalizeDailyPlayMutationResult,
   projectDailyPlayerFilterView,
   resolveCreateMatchCount,
+  resolveCanonicalPersistedMatchType,
   validateDailyMatchShape,
   __resetDailyPlayCanonicalServiceForTests,
   __setDailyPlayCanonicalServiceForTests,
@@ -111,6 +113,9 @@ function seedSession({
   const authority = createInMemoryDailyPlayAuthority({ tenantId });
   authority.__setClubCourts(clubId, COURTS);
   authority.__setEligibleAthletes(tenantId, clubId, ALL_IDS);
+  authority.__setAthleteGenders(
+    Object.fromEntries(poolPlayers.map((player) => [player.id, player.gender]))
+  );
   authority.__seedTournament(
     createSeededDailyPlayTournament({
       id,
@@ -173,7 +178,11 @@ describe("SQL package local contract", () => {
     assert.equal(fs.existsSync(path.resolve(PACKAGE_DIR, "_apply_part2.sql")), false);
     assert.match(precheckSql, /read-only/i);
     assert.match(applySql, /CREATE OR REPLACE FUNCTION public\.daily_play_close_session/);
-    assert.match(applySql, /CREATE OR REPLACE FUNCTION public\.daily_play_match_shape/);
+    assert.match(applySql, /CREATE OR REPLACE FUNCTION public\.daily_play_canonical_match_type/);
+    assert.match(applySql, /INVALID_MATCH_TYPE/);
+    assert.match(applySql, /INVALID_MATCH_GENDER_COMPOSITION/);
+    assert.match(precheckSql, /profiles\.gender/);
+    assert.match(rollbackSql, /ROLLBACK_REFUSED/);
     assert.match(applySql, /daily_play_session_write_denied/);
     assert.match(applySql, /tournamentStatus/);
     assert.match(applySql, /occupiedCourtIds/);
@@ -201,6 +210,16 @@ describe("SQL package local contract", () => {
     assert.match(closeFn, /tournament\.update/);
     assert.match(closeFn, /'close_session'/);
     assert.match(closeFn, /SESSION_CLOSE_BLOCKED/);
+    assert.match(closeFn, /SESSION_NOT_ACTIVE/);
+    assert.match(closeFn, /unknownCount/);
+    assert.match(closeFn, /auth\.uid\(\)/);
+    assert.doesNotMatch(closeFn, /'BTC'/);
+    assert.match(closeFn, /DAILY_PLAY_CLOSE_CAS/);
+    assert.equal(
+      closeFn.indexOf("daily_play_write_state") <
+        closeFn.indexOf("UPDATE public.daily_play_court_leases"),
+      true
+    );
     assert.match(closeFn, /assignedCount/);
     assert.match(closeFn, /playingCount/);
     assert.match(closeFn, /session_closed/);
@@ -238,6 +257,34 @@ describe("SQL package local contract", () => {
     assert.match(shapeFn, /open_double.*playersPerMatch',4/);
     assert.match(shapeFn, /WHEN 'auto' THEN/);
     assert.doesNotMatch(shapeFn, /auto.*open_double/);
+    const canonicalFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_canonical_match_type"),
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_match_shape")
+    );
+    assert.match(canonicalFn, /WHEN 'singles_men' THEN 'men_single'/);
+    assert.match(canonicalFn, /ELSE NULL/);
+    assert.doesNotMatch(canonicalFn, /ELSE 'mixed_double'/);
+  });
+
+  test("create_matches enforces type/gender after eligibility and before persist", () => {
+    const createFn = applySql.slice(
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_create_matches"),
+      applySql.indexOf("CREATE OR REPLACE FUNCTION public.daily_play_assign_court")
+    );
+    assert.match(createFn, /daily_play_canonical_match_type/);
+    assert.match(createFn, /INVALID_MATCH_TYPE/);
+    assert.match(createFn, /daily_play_validate_match_gender/);
+    assert.match(createFn, /NO_COURT_CAPABILITY/);
+    assert.equal(
+      createFn.indexOf("PLAYER_NOT_ELIGIBLE") <
+        createFn.indexOf("daily_play_validate_match_gender"),
+      true
+    );
+    assert.equal(
+      createFn.indexOf("NO_COURT_CAPABILITY") <
+        createFn.indexOf("daily_play_validate_match_gender"),
+      true
+    );
   });
 });
 
@@ -290,7 +337,15 @@ describe("match type authority", () => {
       "men_double"
     );
     assert.equal(doubles.ok, true);
+    const badUntyped = validateDailyMatchShape({
+      teamAPlayerIds: ["m1"],
+      teamBPlayerIds: ["m2"],
+      playerIds: ["m1", "m2"],
+    });
+    assert.equal(badUntyped.ok, false);
+    assert.equal(badUntyped.code, DAILY_PLAY_CODE.INVALID_MATCH_TYPE);
     const badSinglesAsDoubles = validateDailyMatchShape({
+      matchType: "mixed_double",
       teamAPlayerIds: ["m1"],
       teamBPlayerIds: ["m2"],
       playerIds: ["m1", "m2"],
@@ -862,12 +917,306 @@ describe("post-close guards", () => {
   });
 });
 
+describe("server match-type and gender authority", () => {
+  async function createProposed(match, options = {}) {
+    const { service, scope, authority } = seedSession({
+      matches: [],
+      checkedInPlayerIds: options.checkedInPlayerIds || ALL_IDS,
+    });
+    if (options.genders) {
+      authority.__setAthleteGenders(options.genders);
+    }
+    if (options.eligible) {
+      authority.__setEligibleAthletes(TENANT, CLUB, options.eligible);
+    }
+    const result = await service.createMatches(scope, {
+      matches: [match],
+      expectedVersion: 1,
+      eligiblePlayerCount: options.eligiblePlayerCount || 8,
+      idempotencyKey: options.key || `create-${match.id || "x"}`,
+    });
+    return { result, service, scope };
+  }
+
+  test("men_single with female player is rejected", async () => {
+    const { result } = await createProposed({
+      ...singlesMatch("bad-ms", "f1", "f2"),
+      matchType: "men_single",
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, DAILY_PLAY_CODE.INVALID_MATCH_GENDER_COMPOSITION);
+  });
+
+  test("women_single with male player is rejected", async () => {
+    const { result } = await createProposed({
+      id: "bad-ws",
+      matchType: "women_single",
+      teamAPlayerIds: ["m1"],
+      teamBPlayerIds: ["m2"],
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, DAILY_PLAY_CODE.INVALID_MATCH_GENDER_COMPOSITION);
+  });
+
+  test("men_double containing female is rejected", async () => {
+    const { result } = await createProposed(
+      doublesMatch("bad-md", ["m1", "m2", "m3", "f1"], "waiting", null, "men_double")
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.code, DAILY_PLAY_CODE.INVALID_MATCH_GENDER_COMPOSITION);
+  });
+
+  test("women_double containing male is rejected", async () => {
+    const { result } = await createProposed(
+      doublesMatch("bad-wd", ["f1", "f2", "f3", "m1"], "waiting", null, "women_double")
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.code, DAILY_PLAY_CODE.INVALID_MATCH_GENDER_COMPOSITION);
+  });
+
+  test("mixed 2 men vs 2 women is rejected", async () => {
+    const { result } = await createProposed({
+      id: "bad-mx-sides",
+      matchType: "mixed_double",
+      teamAPlayerIds: ["m1", "m2"],
+      teamBPlayerIds: ["f1", "f2"],
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, DAILY_PLAY_CODE.INVALID_MATCH_GENDER_COMPOSITION);
+  });
+
+  test("mixed team A 2 men / team B 2 women is rejected", async () => {
+    const { result } = await createProposed({
+      id: "bad-mx-2v2",
+      matchType: "mixed_double",
+      teamAPlayerIds: ["m1", "m3"],
+      teamBPlayerIds: ["f3", "f4"],
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, DAILY_PLAY_CODE.INVALID_MATCH_GENDER_COMPOSITION);
+  });
+
+  test("mixed valid 1M1F per side is accepted", async () => {
+    const { result, service, scope } = await createProposed({
+      id: "ok-mx",
+      matchType: "mixed_double",
+      teamAPlayerIds: ["m1", "f1"],
+      teamBPlayerIds: ["m2", "f2"],
+    });
+    assert.equal(result.ok, true);
+    const state = await service.getState(scope);
+    assert.equal(state.dailyPlay.matches[0].matchType, "mixed_double");
+  });
+
+  test("open all men, all women, mixed, and other gender are accepted", async () => {
+    const men = await createProposed(
+      doublesMatch("open-m", males, "waiting", null, "open_double"),
+      { key: "open-m" }
+    );
+    assert.equal(men.result.ok, true);
+    const women = await createProposed(
+      doublesMatch("open-w", females, "waiting", null, "open_double"),
+      { key: "open-w" }
+    );
+    assert.equal(women.result.ok, true);
+    const mixed = await createProposed({
+      id: "open-x",
+      matchType: "open_double",
+      teamAPlayerIds: ["m1", "m2"],
+      teamBPlayerIds: ["f1", "f2"],
+    }, { key: "open-x" });
+    assert.equal(mixed.result.ok, true);
+    const other = await createProposed({
+      id: "open-o",
+      matchType: "open_double",
+      teamAPlayerIds: ["m1", "o1"],
+      teamBPlayerIds: ["f1", "m2"],
+    }, { key: "open-o" });
+    assert.equal(other.result.ok, true);
+  });
+
+  test("open eligible unknown/null gender is accepted", async () => {
+    const { result } = await createProposed(
+      {
+        id: "open-u",
+        matchType: "open_double",
+        teamAPlayerIds: ["m1", "u1"],
+        teamBPlayerIds: ["f1", "m2"],
+      },
+      {
+        key: "open-u",
+        checkedInPlayerIds: [...ALL_IDS, "u1"],
+        eligible: [...ALL_IDS, "u1"],
+      }
+    );
+    assert.equal(result.ok, true);
+  });
+
+  test("unknown matchType is rejected and not coerced to mixed_double", async () => {
+    assert.equal(resolveCanonicalPersistedMatchType("triples"), null);
+    assert.equal(resolveCanonicalPersistedMatchType("auto"), null);
+    const { result } = await createProposed({
+      id: "bad-type",
+      matchType: "triples",
+      teamAPlayerIds: ["m1", "m2"],
+      teamBPlayerIds: ["m3", "m4"],
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, DAILY_PLAY_CODE.INVALID_MATCH_TYPE);
+  });
+
+  test("legacy alias is normalized before persistence", async () => {
+    const { result, service, scope } = await createProposed({
+      id: "alias-ms",
+      matchType: "singles_men",
+      teamAPlayerIds: ["m1"],
+      teamBPlayerIds: ["m2"],
+    });
+    assert.equal(result.ok, true);
+    const state = await service.getState(scope);
+    assert.equal(state.dailyPlay.matches[0].matchType, "men_single");
+  });
+
+  test("auto reaching create_matches is rejected", async () => {
+    const { result } = await createProposed({
+      id: "auto-persist",
+      matchType: "auto",
+      teamAPlayerIds: ["m1", "m2"],
+      teamBPlayerIds: ["m3", "m4"],
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, DAILY_PLAY_CODE.INVALID_MATCH_TYPE);
+  });
+
+  test("duplicate athlete is rejected", async () => {
+    const { result } = await createProposed({
+      id: "dup",
+      matchType: "men_single",
+      teamAPlayerIds: ["m1"],
+      teamBPlayerIds: ["m1"],
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, DAILY_PLAY_CODE.INVALID_MATCH_SHAPE);
+  });
+});
+
+describe("close tournament and match-status fail-closed", () => {
+  test("draft, registration, ready, and active can close when otherwise ready", async () => {
+    for (const status of ["draft", "registration", "ready", "active"]) {
+      const { service, scope, authority } = seedSession({
+        status,
+        matches: [singlesMatch("w1", "m1", "m2", "waiting")],
+      });
+      const closed = await service.closeSession(scope, {
+        expectedVersion: 1,
+        idempotencyKey: `close-${status}`,
+      });
+      assert.equal(closed.ok, true, status);
+      assert.equal(authority.__getTournament(SESSION_A).status, "completed");
+      assert.equal(authority.__getTournament(SESSION_A).payload.settings.dailyPlay.closedBy, "user-daily-01");
+    }
+  });
+
+  test("completed returns SESSION_ALREADY_COMPLETED", async () => {
+    const { service, scope } = seedSession({ status: "completed", matches: [] });
+    const closed = await service.closeSession(scope, {
+      expectedVersion: 1,
+      idempotencyKey: "close-completed",
+    });
+    assert.equal(closed.ok, false);
+    assert.equal(closed.code, DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED);
+  });
+
+  test("cancelled returns SESSION_NOT_ACTIVE and is not converted to completed", async () => {
+    const { service, scope, authority } = seedSession({
+      status: "cancelled",
+      matches: [],
+    });
+    const closed = await service.closeSession(scope, {
+      expectedVersion: 1,
+      idempotencyKey: "close-cancelled",
+    });
+    assert.equal(closed.ok, false);
+    assert.equal(closed.code, DAILY_PLAY_CODE.SESSION_NOT_ACTIVE);
+    assert.equal(authority.__getTournament(SESSION_A).status, "cancelled");
+  });
+
+  test("unknown tournament status fail-closed", async () => {
+    assert.equal(assertDailyTournamentClosable("paused").ok, false);
+    assert.equal(assertDailyTournamentClosable("paused").code, DAILY_PLAY_CODE.SESSION_NOT_ACTIVE);
+    const { service, scope, authority } = seedSession({
+      status: "archived",
+      matches: [],
+    });
+    const closed = await service.closeSession(scope, {
+      expectedVersion: 1,
+      idempotencyKey: "close-archived",
+    });
+    assert.equal(closed.ok, false);
+    assert.equal(closed.code, DAILY_PLAY_CODE.SESSION_NOT_ACTIVE);
+    assert.equal(authority.__getTournament(SESSION_A).status, "archived");
+  });
+
+  test("waiting cancels, completed/cancelled/forfeit preserve, assigned/playing/unknown block", async () => {
+    const waiting = classifyDailyCloseReadiness([{ status: "waiting" }]);
+    assert.equal(waiting.ok, true);
+    const preserved = classifyDailyCloseReadiness([
+      { status: "completed" },
+      { status: "cancelled" },
+      { status: "forfeit" },
+    ]);
+    assert.equal(preserved.ok, true);
+    assert.equal(preserved.completedMatchCount, 2);
+    assert.equal(classifyDailyCloseReadiness([{ status: "assigned" }]).ok, false);
+    assert.equal(classifyDailyCloseReadiness([{ status: "playing" }]).ok, false);
+    assert.equal(classifyDailyCloseReadiness([{ status: "paused" }]).ok, false);
+    assert.equal(classifyDailyCloseReadiness([{ status: "locked" }]).ok, false);
+    assert.equal(classifyDailyCloseReadiness([{ status: "mystery" }]).unknownCount, 1);
+
+    const { service, scope, authority } = seedSession({
+      matches: [
+        singlesMatch("w", "m1", "m2", "waiting"),
+        { ...singlesMatch("c", "m3", "m4", "completed"), scoreA: 11, scoreB: 7 },
+        { ...doublesMatch("f", females, "forfeit"), matchType: "women_double" },
+      ],
+    });
+    const closed = await service.closeSession(scope, {
+      expectedVersion: 1,
+      idempotencyKey: "close-preserve",
+    });
+    assert.equal(closed.ok, true);
+    const matches = authority.__getTournament(SESSION_A).payload.settings.dailyPlay.matches;
+    assert.equal(matches.find((item) => item.id === "w").status, "cancelled");
+    assert.equal(matches.find((item) => item.id === "c").status, "completed");
+    assert.equal(matches.find((item) => item.id === "f").status, "forfeit");
+
+    const blockedUnknown = seedSession({
+      matches: [{ ...singlesMatch("p", "m1", "m2"), status: "paused" }],
+    });
+    const unknownClose = await blockedUnknown.service.closeSession(blockedUnknown.scope, {
+      expectedVersion: 1,
+      idempotencyKey: "close-paused",
+    });
+    assert.equal(unknownClose.ok, false);
+    assert.equal(unknownClose.code, DAILY_PLAY_CODE.SESSION_CLOSE_BLOCKED);
+    assert.equal(blockedUnknown.authority.__getTournament(SESSION_A).status, "active");
+  });
+
+  test("close without authenticated actor fails closed", () => {
+    const missing = applyCloseSession({ revision: 1, matches: [] }, { actorId: "" });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.code, DAILY_PLAY_CODE.NOT_AUTHENTICATED);
+  });
+});
+
 describe("error contract", () => {
   test("specific Vietnamese mappings exist and are preferred over generic fallback", () => {
     for (const code of [
       DAILY_PLAY_CODE.SESSION_CLOSE_BLOCKED,
       DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED,
       DAILY_PLAY_CODE.SESSION_NOT_ACTIVE,
+      DAILY_PLAY_CODE.INVALID_MATCH_TYPE,
+      DAILY_PLAY_CODE.INVALID_MATCH_GENDER_COMPOSITION,
     ]) {
       const mapped = normalizeDailyPlayMutationResult({ ok: false, code });
       assert.equal(mapped.error, DAILY_PLAY_MESSAGES[code]);
@@ -880,12 +1229,16 @@ describe("error contract", () => {
       { status: "assigned" },
     ]);
     assert.equal(readiness.ok, false);
-    const applied = applyCloseSession({
-      revision: 1,
-      matches: [{ id: "w", status: "assigned", teamAPlayerIds: ["m1"], teamBPlayerIds: ["m2"] }],
-      checkedInPlayerIds: ["m1"],
-    });
+    const applied = applyCloseSession(
+      {
+        revision: 1,
+        matches: [{ id: "w", status: "assigned", teamAPlayerIds: ["m1"], teamBPlayerIds: ["m2"] }],
+        checkedInPlayerIds: ["m1"],
+      },
+      { actorId: "user-daily-01" }
+    );
     assert.equal(applied.ok, false);
+    assert.equal(applied.code, DAILY_PLAY_CODE.SESSION_CLOSE_BLOCKED);
   });
 });
 

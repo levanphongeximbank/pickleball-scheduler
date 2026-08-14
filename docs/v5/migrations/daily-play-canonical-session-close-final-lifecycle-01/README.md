@@ -5,7 +5,10 @@
 This additive package installs:
 
 - `public.daily_play_close_session`
+- match-type authority (`daily_play_canonical_match_type`) — no unknown→mixed fallback
 - match-shape helpers (`daily_play_match_shape`, `daily_play_validate_match_shape`)
+- gender authority (`daily_play_athlete_gender_key`, `daily_play_validate_match_gender`)
+  from `athletes` → `profiles.gender` (not names, not client payload)
 - post-close write guards (`daily_play_session_write_denied`)
 - snapshot `tournamentStatus` (occupancy `occupiedCourtIds` preserved)
 
@@ -27,14 +30,15 @@ Daily Play needed one consolidated final-lifecycle authority:
 
 ## Run order after Owner GO
 
-1. `01_PRECHECK.sql` — prove e2e + occupancy + score-correction dependencies exist.
+1. `01_PRECHECK.sql` — prove e2e + occupancy + score-correction + athlete/profile gender dependencies exist.
 2. `02_APPLY.sql` — replace write RPCs/snapshot and install close/match-shape helpers.
    Second APPLY is `CREATE OR REPLACE` (idempotent function replace).
 3. `03_VERIFY.sql` — signatures, SECURITY DEFINER/search_path, grants, close/post-close
    contract, occupancy unique index still present.
 4. Browser/staging QA only after a later Owner GO.
-5. `04_ROLLBACK.sql` only if rollback is approved. It restores occupancy snapshot + e2e
-   write RPC bodies, then drops this package's exclusive objects.
+5. `04_ROLLBACK.sql` **only after confirmed APPLY of this exact package** and when
+   rollback preconditions match. Accidental rollback-before-apply is refused
+   (`ROLLBACK_REFUSED`) and does not rewrite RPC bodies.
 
 ## Security
 
@@ -45,11 +49,18 @@ grants.
 
 Close under row lock:
 
-- BLOCK if any match is `assigned` or `playing` → `SESSION_CLOSE_BLOCKED`
+- Closable tournament statuses: `draft` / `registration` / `ready` / `active`
+- `completed` → `SESSION_ALREADY_COMPLETED`
+- `cancelled` or any other tournament status → `SESSION_NOT_ACTIVE` (never cancelled→completed)
+- BLOCK if any match is `assigned`, `playing`, or an unrecognized status → `SESSION_CLOSE_BLOCKED`
 - ALLOW when remaining matches are `waiting` / `completed` / `cancelled` / `forfeit`
 - waiting → cancelled with `reason=session_closed`
 - own active leases only (`tenant_id` + `club_id` + `tournament_id`)
+- `closedBy` is `auth.uid()` only — no placeholder actor
+- write_state runs before lease release; CAS failure RAISES so the close block rolls back
 - `correct_score` is intentionally **not** guarded by session-completed denial
+- `auto` is a pairing strategy and is **rejected** at `create_matches` (fail closed; no persisted auto matches in Staging/Production at authoring time)
+- create_matches normalizes legacy AI aliases to canonical Daily types and enforces gender from `profiles` via `athletes.user_id`
 
 ## Acceptance matrix (local)
 

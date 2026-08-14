@@ -4,25 +4,42 @@
 
 BEGIN;
 
+CREATE OR REPLACE FUNCTION public.daily_play_canonical_match_type(p_match_type text)
+RETURNS text
+LANGUAGE sql IMMUTABLE
+AS $$
+  SELECT CASE lower(trim(coalesce(p_match_type, '')))
+    WHEN 'men_single' THEN 'men_single'
+    WHEN 'women_single' THEN 'women_single'
+    WHEN 'men_double' THEN 'men_double'
+    WHEN 'women_double' THEN 'women_double'
+    WHEN 'mixed_double' THEN 'mixed_double'
+    WHEN 'open_double' THEN 'open_double'
+    WHEN 'singles_men' THEN 'men_single'
+    WHEN 'singles_women' THEN 'women_single'
+    WHEN 'doubles_men' THEN 'men_double'
+    WHEN 'doubles_women' THEN 'women_double'
+    WHEN 'doubles_mixed' THEN 'mixed_double'
+    WHEN 'open' THEN 'open_double'
+    ELSE NULL
+  END
+$$;
+
 CREATE OR REPLACE FUNCTION public.daily_play_match_shape(p_match_type text)
 RETURNS jsonb
 LANGUAGE sql IMMUTABLE
 AS $$
-  SELECT CASE lower(coalesce(nullif(trim(p_match_type), ''), 'mixed_double'))
-    WHEN 'men_single' THEN jsonb_build_object('playersPerMatch',2,'teamSize',1,'genderComposition','male','kind','singles')
-    WHEN 'women_single' THEN jsonb_build_object('playersPerMatch',2,'teamSize',1,'genderComposition','female','kind','singles')
-    WHEN 'singles_men' THEN jsonb_build_object('playersPerMatch',2,'teamSize',1,'genderComposition','male','kind','singles')
-    WHEN 'singles_women' THEN jsonb_build_object('playersPerMatch',2,'teamSize',1,'genderComposition','female','kind','singles')
-    WHEN 'men_double' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','male','kind','doubles')
-    WHEN 'women_double' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','female','kind','doubles')
-    WHEN 'doubles_men' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','male','kind','doubles')
-    WHEN 'doubles_women' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','female','kind','doubles')
-    WHEN 'mixed_double' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','mixed','kind','doubles')
-    WHEN 'doubles_mixed' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','mixed','kind','doubles')
-    WHEN 'open_double' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','open','kind','doubles')
-    WHEN 'open' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','open','kind','doubles')
-    WHEN 'auto' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','auto','kind','auto')
-    ELSE jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','mixed','kind','doubles')
+  SELECT CASE public.daily_play_canonical_match_type(p_match_type)
+    WHEN 'men_single' THEN jsonb_build_object('playersPerMatch',2,'teamSize',1,'genderComposition','male','kind','singles','matchType','men_single')
+    WHEN 'women_single' THEN jsonb_build_object('playersPerMatch',2,'teamSize',1,'genderComposition','female','kind','singles','matchType','women_single')
+    WHEN 'men_double' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','male','kind','doubles','matchType','men_double')
+    WHEN 'women_double' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','female','kind','doubles','matchType','women_double')
+    WHEN 'mixed_double' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','mixed','kind','doubles','matchType','mixed_double')
+    WHEN 'open_double' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','open','kind','doubles','matchType','open_double')
+    ELSE CASE lower(trim(coalesce(p_match_type, '')))
+      WHEN 'auto' THEN jsonb_build_object('playersPerMatch',4,'teamSize',2,'genderComposition','auto','kind','auto','matchType','auto')
+      ELSE NULL
+    END
   END
 $$;
 
@@ -35,16 +52,16 @@ DECLARE
   v_shape jsonb;
   v_team_size int;
   v_need int;
-  v_team_a jsonb;
-  v_team_b jsonb;
   v_players jsonb;
   v_distinct int;
 BEGIN
-  v_type := coalesce(
+  v_type := public.daily_play_canonical_match_type(coalesce(
     nullif(trim(coalesce(p_match->>'matchType','')), ''),
-    nullif(trim(coalesce(p_match->>'competitionType','')), ''),
-    'mixed_double'
-  );
+    nullif(trim(coalesce(p_match->>'competitionType','')), '')
+  ));
+  IF v_type IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'INVALID_MATCH_TYPE');
+  END IF;
   v_shape := public.daily_play_match_shape(v_type);
   v_team_size := coalesce((v_shape->>'teamSize')::int, 2);
   v_need := coalesce((v_shape->>'playersPerMatch')::int, 4);
@@ -70,8 +87,140 @@ BEGIN
     'ok', true,
     'playersPerMatch', v_need,
     'teamSize', v_team_size,
+    'matchType', v_type,
     'playerIds', v_players
   );
+END
+$$;
+
+CREATE OR REPLACE FUNCTION public.daily_play_athlete_gender_key(
+  p_tenant_id text, p_club_id text, p_player_id text
+) RETURNS text
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_id uuid;
+  v_gender text;
+BEGIN
+  BEGIN
+    v_id := p_player_id::uuid;
+  EXCEPTION WHEN invalid_text_representation THEN
+    RETURN 'unknown';
+  END;
+  IF NOT public.daily_play_athlete_eligible_for_club(p_tenant_id, p_club_id, p_player_id) THEN
+    RETURN NULL;
+  END IF;
+  SELECT public.team_tournament_normalize_gender_key(p.gender)
+  INTO v_gender
+  FROM public.athletes a
+  LEFT JOIN public.profiles p ON p.id = a.user_id
+  WHERE a.id = v_id AND a.tenant_id = p_tenant_id
+  LIMIT 1;
+  RETURN coalesce(v_gender, 'unknown');
+END
+$$;
+
+CREATE OR REPLACE FUNCTION public.daily_play_validate_match_gender(
+  p_tenant_id text, p_club_id text, p_match jsonb, p_match_type text
+) RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_type text := public.daily_play_canonical_match_type(p_match_type);
+  v_team_a jsonb;
+  v_team_b jsonb;
+  v_all jsonb;
+  v_pid text;
+  v_key text;
+  v_male int := 0;
+  v_female int := 0;
+  v_other int := 0;
+  v_unknown int := 0;
+  v_a_male int := 0;
+  v_a_female int := 0;
+  v_b_male int := 0;
+  v_b_female int := 0;
+BEGIN
+  IF v_type IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'code', 'INVALID_MATCH_TYPE');
+  END IF;
+  v_team_a := CASE WHEN jsonb_typeof(p_match->'teamAPlayerIds') = 'array'
+    THEN p_match->'teamAPlayerIds' ELSE '[]'::jsonb END;
+  v_team_b := CASE WHEN jsonb_typeof(p_match->'teamBPlayerIds') = 'array'
+    THEN p_match->'teamBPlayerIds' ELSE '[]'::jsonb END;
+  v_all := v_team_a || v_team_b;
+
+  FOR v_pid IN SELECT value #>> '{}' FROM jsonb_array_elements(v_all) LOOP
+    v_key := public.daily_play_athlete_gender_key(p_tenant_id, p_club_id, v_pid);
+    IF v_key IS NULL THEN
+      RETURN jsonb_build_object('ok', false, 'code', 'PLAYER_NOT_ELIGIBLE');
+    END IF;
+    IF v_key = 'male' THEN v_male := v_male + 1;
+    ELSIF v_key = 'female' THEN v_female := v_female + 1;
+    ELSIF v_key = 'other' THEN v_other := v_other + 1;
+    ELSE v_unknown := v_unknown + 1;
+    END IF;
+  END LOOP;
+
+  FOR v_pid IN SELECT value #>> '{}' FROM jsonb_array_elements(v_team_a) LOOP
+    v_key := public.daily_play_athlete_gender_key(p_tenant_id, p_club_id, v_pid);
+    IF v_key = 'male' THEN v_a_male := v_a_male + 1;
+    ELSIF v_key = 'female' THEN v_a_female := v_a_female + 1;
+    END IF;
+  END LOOP;
+  FOR v_pid IN SELECT value #>> '{}' FROM jsonb_array_elements(v_team_b) LOOP
+    v_key := public.daily_play_athlete_gender_key(p_tenant_id, p_club_id, v_pid);
+    IF v_key = 'male' THEN v_b_male := v_b_male + 1;
+    ELSIF v_key = 'female' THEN v_b_female := v_b_female + 1;
+    END IF;
+  END LOOP;
+
+  IF v_type = 'open_double' THEN
+    RETURN jsonb_build_object('ok', true, 'matchType', v_type);
+  END IF;
+
+  IF v_type = 'men_single' THEN
+    IF jsonb_array_length(v_team_a) IS DISTINCT FROM 1
+       OR jsonb_array_length(v_team_b) IS DISTINCT FROM 1
+       OR v_male IS DISTINCT FROM 2 OR v_female <> 0 OR v_other <> 0 OR v_unknown <> 0 THEN
+      RETURN jsonb_build_object('ok', false, 'code', 'INVALID_MATCH_GENDER_COMPOSITION');
+    END IF;
+    RETURN jsonb_build_object('ok', true, 'matchType', v_type);
+  END IF;
+
+  IF v_type = 'women_single' THEN
+    IF jsonb_array_length(v_team_a) IS DISTINCT FROM 1
+       OR jsonb_array_length(v_team_b) IS DISTINCT FROM 1
+       OR v_female IS DISTINCT FROM 2 OR v_male <> 0 OR v_other <> 0 OR v_unknown <> 0 THEN
+      RETURN jsonb_build_object('ok', false, 'code', 'INVALID_MATCH_GENDER_COMPOSITION');
+    END IF;
+    RETURN jsonb_build_object('ok', true, 'matchType', v_type);
+  END IF;
+
+  IF v_type = 'men_double' THEN
+    IF v_male IS DISTINCT FROM 4 OR v_female <> 0 OR v_other <> 0 OR v_unknown <> 0 THEN
+      RETURN jsonb_build_object('ok', false, 'code', 'INVALID_MATCH_GENDER_COMPOSITION');
+    END IF;
+    RETURN jsonb_build_object('ok', true, 'matchType', v_type);
+  END IF;
+
+  IF v_type = 'women_double' THEN
+    IF v_female IS DISTINCT FROM 4 OR v_male <> 0 OR v_other <> 0 OR v_unknown <> 0 THEN
+      RETURN jsonb_build_object('ok', false, 'code', 'INVALID_MATCH_GENDER_COMPOSITION');
+    END IF;
+    RETURN jsonb_build_object('ok', true, 'matchType', v_type);
+  END IF;
+
+  IF v_type = 'mixed_double' THEN
+    IF v_a_male IS DISTINCT FROM 1 OR v_a_female IS DISTINCT FROM 1
+       OR v_b_male IS DISTINCT FROM 1 OR v_b_female IS DISTINCT FROM 1
+       OR v_other <> 0 OR v_unknown <> 0 THEN
+      RETURN jsonb_build_object('ok', false, 'code', 'INVALID_MATCH_GENDER_COMPOSITION');
+    END IF;
+    RETURN jsonb_build_object('ok', true, 'matchType', v_type);
+  END IF;
+
+  RETURN jsonb_build_object('ok', false, 'code', 'INVALID_MATCH_TYPE');
 END
 $$;
 
@@ -245,6 +394,7 @@ AS $$
 DECLARE v_t public.canonical_tournaments%ROWTYPE; v_s jsonb; v_cmd jsonb; v_result jsonb;
   v_actual integer; v_eligible_actual integer; v_existing jsonb; v_courts jsonb; v_new jsonb := '[]'::jsonb;
   v_m jsonb; v_nm jsonb; v_mid text; v_players jsonb; v_shape jsonb; v_need int := 0; v_denied jsonb;
+  v_canonical text; v_gender jsonb;
 BEGIN
   PERFORM public.canonical_tournament_assert_tenant(p_tenant_id);
   PERFORM public.canonical_tournament_assert_permission('tournament.update');
@@ -280,8 +430,12 @@ BEGIN
       AND public.daily_play_match_player_ids(m) @> jsonb_build_array(p)
   );
   FOR v_m IN SELECT value FROM jsonb_array_elements(p_matches) LOOP
-    v_shape := public.daily_play_match_shape(coalesce(v_m->>'matchType', v_m->>'competitionType', v_s->>'matchType', 'mixed_double'));
-    v_need := v_need + coalesce((v_shape->>'playersPerMatch')::int, 4);
+    v_canonical := public.daily_play_canonical_match_type(coalesce(v_m->>'matchType', v_m->>'competitionType', v_s->>'matchType'));
+    IF v_canonical IS NULL THEN
+      RETURN jsonb_build_object('ok',false,'code','INVALID_MATCH_TYPE');
+    END IF;
+    v_shape := public.daily_play_match_shape(v_canonical);
+    v_need := v_need + coalesce((v_shape->>'playersPerMatch')::int, 0);
   END LOOP;
   IF v_eligible_actual < v_need THEN
     RETURN jsonb_build_object('ok',false,'code','NOT_ENOUGH_PLAYERS');
@@ -297,9 +451,13 @@ BEGIN
 
   FOR v_m IN SELECT value FROM jsonb_array_elements(p_matches) LOOP
     v_mid := nullif(trim(coalesce(v_m->>'id',v_m->>'matchId','')),'');
-    v_shape := public.daily_play_validate_match_shape(v_m);
+    v_canonical := public.daily_play_canonical_match_type(coalesce(v_m->>'matchType', v_m->>'competitionType', v_s->>'matchType'));
+    IF v_canonical IS NULL THEN
+      RETURN jsonb_build_object('ok',false,'code','INVALID_MATCH_TYPE');
+    END IF;
+    v_shape := public.daily_play_validate_match_shape(jsonb_set(v_m,'{matchType}',to_jsonb(v_canonical),true));
     IF v_mid IS NULL OR NOT coalesce((v_shape->>'ok')::boolean, false) THEN
-      RETURN jsonb_build_object('ok',false,'code','INVALID_MATCH_SHAPE');
+      RETURN jsonb_build_object('ok',false,'code',coalesce(v_shape->>'code','INVALID_MATCH_SHAPE'));
     END IF;
     v_players := public.daily_play_match_player_ids(v_m);
     IF EXISTS (SELECT 1 FROM jsonb_array_elements(v_existing||v_new) x
@@ -323,7 +481,12 @@ BEGIN
         AND EXISTS (SELECT 1 FROM jsonb_array_elements(v_players) p
           WHERE public.daily_play_match_player_ids(x) @> jsonb_build_array(p))
     ) THEN RETURN jsonb_build_object('ok',false,'code','PLAYER_ALREADY_ACTIVE','matchId',v_mid); END IF;
+    v_gender := public.daily_play_validate_match_gender(p_tenant_id,p_club_id,v_m,v_canonical);
+    IF NOT coalesce((v_gender->>'ok')::boolean, false) THEN
+      RETURN v_gender;
+    END IF;
     v_nm := jsonb_set(v_m,'{id}',to_jsonb(v_mid),true);
+    v_nm := jsonb_set(v_nm,'{matchType}',to_jsonb(v_canonical),true);
     v_nm := jsonb_set(v_nm,'{playerIds}',v_players,true);
     v_nm := jsonb_set(v_nm,'{status}','"waiting"'::jsonb,true);
     v_nm := jsonb_set(v_nm,'{courtId}','null'::jsonb,true);
@@ -642,9 +805,11 @@ DECLARE
   v_playing int := 0;
   v_waiting int := 0;
   v_completed int := 0;
+  v_unknown int := 0;
   v_checked int := 0;
   v_cancelled_waiting int := 0;
   v_actor text;
+  v_status text;
   v_now timestamptz := now();
   v_next jsonb;
 BEGIN
@@ -660,8 +825,17 @@ BEGIN
   IF NOT coalesce((v_cmd->>'ok')::boolean,false) THEN RETURN v_cmd; END IF;
   IF (v_cmd->>'replay')::boolean THEN RETURN v_cmd->'result'; END IF;
 
-  IF lower(coalesce(v_t.status,'')) = 'completed' THEN
+  v_status := lower(trim(coalesce(v_t.status,'')));
+  IF v_status = 'completed' THEN
     RETURN jsonb_build_object('ok',false,'code','SESSION_ALREADY_COMPLETED');
+  END IF;
+  IF v_status NOT IN ('draft','registration','ready','active') THEN
+    RETURN jsonb_build_object('ok',false,'code','SESSION_NOT_ACTIVE');
+  END IF;
+
+  v_actor := nullif(auth.uid()::text, '');
+  IF v_actor IS NULL THEN
+    RETURN jsonb_build_object('ok',false,'code','NOT_AUTHENTICATED');
   END IF;
 
   v_s := coalesce(v_t.payload#>'{settings,dailyPlay}','{}'::jsonb);
@@ -672,19 +846,24 @@ BEGIN
 
   v_matches := CASE WHEN jsonb_typeof(v_s->'matches')='array' THEN v_s->'matches' ELSE '[]'::jsonb END;
   SELECT
-    count(*) FILTER (WHERE coalesce(m->>'status','waiting')='assigned'),
-    count(*) FILTER (WHERE coalesce(m->>'status','waiting')='playing'),
-    count(*) FILTER (WHERE coalesce(m->>'status','waiting')='waiting'),
-    count(*) FILTER (WHERE coalesce(m->>'status','waiting') IN ('completed','forfeit'))
-  INTO v_assigned, v_playing, v_waiting, v_completed
+    count(*) FILTER (WHERE lower(coalesce(nullif(trim(m->>'status'),''),'waiting'))='assigned'),
+    count(*) FILTER (WHERE lower(coalesce(nullif(trim(m->>'status'),''),'waiting'))='playing'),
+    count(*) FILTER (WHERE lower(coalesce(nullif(trim(m->>'status'),''),'waiting'))='waiting'),
+    count(*) FILTER (WHERE lower(coalesce(nullif(trim(m->>'status'),''),'waiting')) IN ('completed','forfeit')),
+    count(*) FILTER (
+      WHERE lower(coalesce(nullif(trim(m->>'status'),''),'waiting'))
+        NOT IN ('waiting','completed','cancelled','forfeit','assigned','playing')
+    )
+  INTO v_assigned, v_playing, v_waiting, v_completed, v_unknown
   FROM jsonb_array_elements(v_matches) m;
 
-  IF v_assigned > 0 OR v_playing > 0 THEN
+  IF v_assigned > 0 OR v_playing > 0 OR v_unknown > 0 THEN
     RETURN jsonb_build_object(
       'ok', false,
       'code', 'SESSION_CLOSE_BLOCKED',
       'assignedCount', v_assigned,
-      'playingCount', v_playing
+      'playingCount', v_playing,
+      'unknownCount', v_unknown
     );
   END IF;
 
@@ -694,7 +873,7 @@ BEGIN
   ), 0) INTO v_checked;
 
   SELECT coalesce(jsonb_agg(
-    CASE WHEN coalesce(m.match->>'status','waiting') = 'waiting' THEN
+    CASE WHEN lower(coalesce(nullif(trim(m.match->>'status'),''),'waiting')) = 'waiting' THEN
       jsonb_set(
         jsonb_set(
           jsonb_set(m.match, '{status}', '"cancelled"'),
@@ -709,7 +888,6 @@ BEGIN
   FROM jsonb_array_elements(v_matches) WITH ORDINALITY AS m(match, ord);
 
   v_cancelled_waiting := v_waiting;
-  v_actor := coalesce(nullif(auth.uid()::text, ''), 'BTC');
 
   v_s := jsonb_set(v_s, '{matches}', v_next, true);
   v_s := jsonb_set(v_s, '{checkedInPlayerIds}', '[]'::jsonb, true);
@@ -722,39 +900,48 @@ BEGIN
   ), true);
   v_s := jsonb_set(v_s, '{revision}', to_jsonb(v_actual + 1), true);
 
-  UPDATE public.daily_play_court_leases
-  SET status = 'released', released_at = v_now
-  WHERE tenant_id = p_tenant_id
-    AND club_id = p_club_id
-    AND tournament_id = p_tournament_id
-    AND status = 'active';
+  BEGIN
+    IF NOT public.daily_play_write_state(p_tournament_id, v_actual, v_s) THEN
+      RAISE EXCEPTION 'DAILY_PLAY_CLOSE_CAS' USING ERRCODE = 'P0001';
+    END IF;
 
-  IF NOT public.daily_play_write_state(p_tournament_id, v_actual, v_s) THEN
-    RETURN public.daily_play_version_conflict(p_expected_version, v_actual);
-  END IF;
+    UPDATE public.daily_play_court_leases
+    SET status = 'released', released_at = v_now
+    WHERE tenant_id = p_tenant_id
+      AND club_id = p_club_id
+      AND tournament_id = p_tournament_id
+      AND status = 'active';
 
-  UPDATE public.canonical_tournaments
-  SET status = 'completed', updated_at = v_now
-  WHERE id = p_tournament_id
-    AND tenant_id = p_tenant_id
-    AND club_id = p_club_id;
+    UPDATE public.canonical_tournaments
+    SET status = 'completed', updated_at = v_now
+    WHERE id = p_tournament_id
+      AND tenant_id = p_tenant_id
+      AND club_id = p_club_id;
 
-  v_result := jsonb_build_object(
-    'ok', true,
-    'revision', v_actual + 1,
-    'tournamentStatus', 'completed',
-    'closeSummary', v_s->'closeSummary',
-    'state', v_s
-  );
-  PERFORM public.daily_play_finish_command(
-    p_tenant_id, p_tournament_id, 'close_session', p_idempotency_key, v_result
-  );
+    v_result := jsonb_build_object(
+      'ok', true,
+      'revision', v_actual + 1,
+      'tournamentStatus', 'completed',
+      'closeSummary', v_s->'closeSummary',
+      'state', v_s
+    );
+    PERFORM public.daily_play_finish_command(
+      p_tenant_id, p_tournament_id, 'close_session', p_idempotency_key, v_result
+    );
+  EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN
+      RETURN public.daily_play_version_conflict(p_expected_version, v_actual);
+  END;
+
   RETURN v_result;
 END
 $$;
 
+REVOKE ALL ON FUNCTION public.daily_play_canonical_match_type(text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.daily_play_match_shape(text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.daily_play_validate_match_shape(jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.daily_play_athlete_gender_key(text,text,text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.daily_play_validate_match_gender(text,text,jsonb,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.daily_play_session_write_denied(text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.daily_play_snapshot(text,text,uuid) FROM PUBLIC, anon, authenticated;
 
