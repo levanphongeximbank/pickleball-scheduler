@@ -196,23 +196,27 @@ describe("official-open-tournament-phase2l-court-lock-durability-01", () => {
     assert.notEqual(f5.endTime, COURT_SCHEDULE_DEFAULT_END);
   });
 
-  it("B. reservation RPC failure does not write Club bookings", async () => {
+  it("B. canonical update failure does not write Club bookings", async () => {
     const tournament = await createOfficialTournament();
-    const { result } = await lockOwnerDraft(tournament, {
-      idempotencyKey: "2l-b",
-      rpc: async () => ({ ok: false, code: "CLOUD_UNAVAILABLE", error: "rpc down" }),
+    __setTournamentRepositoryRpcForTests(async (name, args) => {
+      if (name === "canonical_tournament_update") {
+        return { ok: false, code: "CLOUD_UNAVAILABLE", error: "rpc down" };
+      }
+      return memory.rpc(name, args);
     });
+    const { result } = await lockOwnerDraft(tournament);
     assert.equal(result.ok, false);
     assert.equal(getActiveTournamentCourtBookings(CLUB_ID, tournament.id).length, 0);
-    assert.equal(result.tournamentPatchAttempted, false);
+    assert.equal(result.tournamentPatchAttempted, true);
   });
 
   it("C. Official lock is one server command — no client compensation path", () => {
     const command = src("src/features/tournament/services/tournamentCommands.js");
     const officialStart = command.indexOf("loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT");
     assert.ok(officialStart >= 0);
-    const officialBranch = command.slice(officialStart, officialStart + 800);
-    assert.match(officialBranch, /reserveOfficialTournamentCourtsCommand/);
+    const officialBranch = command.slice(officialStart, officialStart + 1200);
+    assert.match(officialBranch, /updateTournamentCommand/);
+    assert.doesNotMatch(officialBranch, /reserveOfficialTournamentCourtsCommand/);
     assert.doesNotMatch(officialBranch, /compensateOfficialCourtLock/);
     assert.doesNotMatch(officialBranch, /syncClubToCloud/);
   });
@@ -242,17 +246,14 @@ describe("official-open-tournament-phase2l-court-lock-durability-01", () => {
     assert.equal(first.result.ok, true, first.result.error);
     const second = await lockOwnerDraft(tournament, {
       expectedVersion: first.result.version,
-      idempotencyKey: "2l-f1",
     });
     assert.equal(second.result.ok, true, second.result.error);
-    assert.equal(second.result.replay || second.result.ok, true);
 
     const moved = await lockOwnerDraft(
-      { ...tournament, version: first.result.version },
+      { ...tournament, version: second.result.version },
       {
         schedule: { ...OWNER_DRAFT, startTime: "14:00", endTime: "18:00" },
-        expectedVersion: first.result.version,
-        idempotencyKey: "2l-f2",
+        expectedVersion: second.result.version,
       }
     );
     assert.equal(moved.result.ok, true, moved.result.error);
@@ -365,7 +366,7 @@ describe("official-open-tournament-phase2l-court-lock-durability-01", () => {
     assert.doesNotMatch(savedBlock, /refreshClubs/);
     assert.doesNotMatch(savedBlock, /setLocalRevision/);
 
-    assert.match(setup, /Hãy khóa sân trên lịch booking trước khi xếp lịch vòng bảng/);
+    assert.match(setup, /Hãy lưu sân & thời gian trước khi xếp lịch vòng bảng/);
     assert.match(setup, /courtIds: persisted\.courtIds/);
     assert.doesNotMatch(setup, /courtIds: draft\.courtIds/);
     assert.match(setup, /resolveTournamentCourtInventoryScope/);
@@ -377,8 +378,8 @@ describe("official-open-tournament-phase2l-court-lock-durability-01", () => {
       /setCourts\(\[\]\);\s*if \(!activeClubId\)/
     );
 
-    assert.match(panel, /Đang khóa sân/);
-    assert.match(panel, /Đã khóa sân cho giải/);
+    assert.match(panel, /Lưu sân & thời gian/);
+    assert.match(panel, /Đã ghi nhận sân & thời gian cho giải/);
     assert.match(panel, /disabled=\{busy \|\| !courts\.length \|\| !courtIds\.length\}/);
     assert.doesNotMatch(panel, /\[tournament\?\.id, schedule\?\.syncedAt\]/);
     assert.match(panel, /shouldResetCourtScheduleDraftOnTournamentChange/);
@@ -388,11 +389,12 @@ describe("official-open-tournament-phase2l-court-lock-durability-01", () => {
     assert.match(group, /persistedCourtLock/);
     assert.match(
       group,
-      /Hãy khóa sân trên lịch booking trước khi xếp lịch vòng bảng/
+      /Hãy lưu sân & thời gian trước khi xếp lịch vòng bảng/
     );
 
-    assert.match(setup, /commitOfficialGroupScheduleCommand/);
-    assert.match(command, /reserveOfficialTournamentCourtsCommand/);
+    assert.doesNotMatch(setup, /commitOfficialGroupScheduleCommand/);
+    assert.match(command, /updateTournamentCommand/);
+    assert.doesNotMatch(command, /reserveOfficialTournamentCourtsCommand/);
     assert.doesNotMatch(command, /from ["'].*daily-play/);
 
     const club = src("src/context/ClubContext.jsx");

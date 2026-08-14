@@ -431,8 +431,9 @@ export async function setTournamentStatusCommand(
 }
 
 /**
- * Lock courts for a tournament: booking bridge (club calendar) + cloud Tournament patch.
- * Does not use club blob as Tournament SoT.
+ * Persist Tournament court/date/time.
+ * Official/Open: canonical record only (deferred real venue reservation).
+ * Internal: booking bridge (club calendar) + cloud Tournament patch.
  */
 export async function setTournamentCourtScheduleCommand(
   clubIdOrScope,
@@ -468,20 +469,65 @@ export async function setTournamentCourtScheduleCommand(
   }
 
   if (loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
-    const { reserveOfficialTournamentCourtsCommand } = await import(
-      "../court-reservation/officialCourtReservationCommands.js"
-    );
-    return reserveOfficialTournamentCourtsCommand({
-      clubId: scope.clubId,
-      tenantId: scope.tenantId,
+    const pendingSchedule = {
+      ...courtSchedule,
+      syncedAt: new Date().toISOString(),
+    };
+    const expectedVersion =
+      options.expectedVersion ?? loaded.tournament.version ?? 1;
+    const saved = await updateTournamentCommand(
+      scope.clubId,
       tournamentId,
-      tournament: loaded.tournament,
-      schedule: courtSchedule,
-      expectedVersion: options.expectedVersion ?? loaded.tournament.version ?? 1,
-      idempotencyKey: options.idempotencyKey,
-      timezone: options.timezone,
-      rpc: options.rpc,
+      { courtSchedule: pendingSchedule },
+      {
+        ...options,
+        tenantId: scope.tenantId,
+        expectedVersion,
+      }
+    );
+    if (!saved.ok) {
+      return {
+        ...saved,
+        mutationCount: 0,
+        tournamentPatchAttempted: true,
+        courtScheduleReadbackVerified: false,
+        cloudWriteCount: 0,
+        tournament: loaded.tournament,
+      };
+    }
+    const readback = await getTournamentQuery(scope.clubId, tournamentId, {
+      ...options,
+      tenantId: scope.tenantId,
     });
+    if (
+      !readback.ok ||
+      !courtScheduleFieldsMatch(
+        readback.tournament?.courtSchedule,
+        pendingSchedule
+      )
+    ) {
+      return {
+        ok: false,
+        error: "Không xác minh được lịch sân đã lưu.",
+        code: COURT_LOCK_CODE.READBACK_MISMATCH,
+        tournament: loaded.tournament,
+        mutationCount: 0,
+        tournamentPatchAttempted: true,
+        courtScheduleReadbackVerified: false,
+        cloudWriteCount: 0,
+      };
+    }
+    return {
+      ok: true,
+      tournament: readback.tournament,
+      version: readback.tournament?.version,
+      courtSchedule: readback.tournament?.courtSchedule,
+      mutationCount: 1,
+      readbackCount: 1,
+      tournamentPatchAttempted: true,
+      courtScheduleReadbackVerified: true,
+      cloudWriteCount: 1,
+    };
   }
 
   const pending = {

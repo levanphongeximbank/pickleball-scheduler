@@ -345,6 +345,7 @@
   "tests/official-tournament-registration-selector-remediation-01.test.js",
   "tests/official-ai-balance-pairing-tenant-scope-remediation-01.test.js",
   "tests/official-open-canonical-court-reservation-01.test.js",
+  "tests/official-open-canonical-court-assignment-fallback-01.test.js",
   "tests/official-open-tournament-phase2j-group-schedule-01.test.js",
   "tests/official-open-tournament-phase2j-shared-booking-guard-01.test.js",
   "tests/official-open-tournament-phase2k-canonical-court-booking-01.test.js",

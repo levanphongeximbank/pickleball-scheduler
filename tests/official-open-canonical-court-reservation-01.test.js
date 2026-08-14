@@ -366,8 +366,10 @@ describe("official-open-canonical-court-reservation-01", () => {
     const officialStart = command.indexOf(
       "loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT"
     );
-    const officialBranch = command.slice(officialStart, officialStart + 900);
-    assert.match(officialBranch, /reserveOfficialTournamentCourtsCommand/);
+    const officialBranch = command.slice(officialStart, officialStart + 1200);
+    assert.match(officialBranch, /updateTournamentCommand/);
+    assert.match(officialBranch, /expectedVersion/);
+    assert.doesNotMatch(officialBranch, /reserveOfficialTournamentCourtsCommand/);
     assert.doesNotMatch(officialBranch, /syncClubToCloud/);
     assert.doesNotMatch(officialBranch, /compensateOfficialCourtLock/);
   });
@@ -558,15 +560,18 @@ describe("official-open-canonical-court-reservation-01", () => {
     assert.equal(crossClub.code, OFFICIAL_COURT_CODE.TOURNAMENT_NOT_FOUND);
   });
 
-  it("Official client hard-cutover source contracts", () => {
+  it("Official active path is canonical assignment; reservation RPCs are deferred", () => {
     const command = src("src/features/tournament/services/tournamentCommands.js");
     const setup = src("src/pages/tournament/OfficialTournamentSetup.jsx");
-    const inventory = src(
-      "src/features/tournament/court-reservation/../services/tournamentCommands.js"
+    const officialStart = command.indexOf(
+      "loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT"
     );
-    assert.match(command, /reserveOfficialTournamentCourtsCommand/);
-    assert.match(setup, /commitOfficialGroupScheduleCommand/);
-    assert.match(setup, /Hãy khóa sân trên lịch booking trước khi xếp lịch vòng bảng/);
+    const officialBranch = command.slice(officialStart, officialStart + 1200);
+    assert.match(officialBranch, /updateTournamentCommand/);
+    assert.doesNotMatch(officialBranch, /reserveOfficialTournamentCourtsCommand/);
+    assert.doesNotMatch(setup, /commitOfficialGroupScheduleCommand/);
+    assert.doesNotMatch(setup, /resolveVenueTimezoneForClub/);
+    assert.match(setup, /Hãy lưu sân & thời gian trước khi xếp lịch vòng bảng/);
     assert.doesNotMatch(
       src("src/features/tournament/guards/tournamentCourtInventoryScope.js"),
       /\.eq\(["']venue_id["'],\s*tenantId\)/
@@ -574,7 +579,6 @@ describe("official-open-canonical-court-reservation-01", () => {
     const apply = sql("02_APPLY_SCHEMA.sql");
     assert.doesNotMatch(apply, /\.eq\("venue_id"/);
     assert.match(apply, /official_tournament_inventory_courts/);
-    void inventory;
   });
 
   it("shared availability is the single conflict authority", () => {

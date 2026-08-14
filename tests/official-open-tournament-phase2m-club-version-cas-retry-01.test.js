@@ -294,9 +294,10 @@ describe("official-open-tournament-phase2m-club-version-cas-retry-01", () => {
     const officialStart = command.indexOf(
       "loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT"
     );
-    const officialBranch = command.slice(officialStart, officialStart + 900);
-    assert.match(officialBranch, /reserveOfficialTournamentCourtsCommand/);
+    const officialBranch = command.slice(officialStart, officialStart + 1200);
+    assert.match(officialBranch, /updateTournamentCommand/);
     assert.match(officialBranch, /expectedVersion/);
+    assert.doesNotMatch(officialBranch, /reserveOfficialTournamentCourtsCommand/);
     assert.doesNotMatch(officialBranch, /syncClubToCloud/);
     assert.doesNotMatch(officialBranch, /compensateOfficialCourtLock/);
     assert.doesNotMatch(command, /from ["'].*daily-play/);

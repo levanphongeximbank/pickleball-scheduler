@@ -41,6 +41,7 @@ export default function TournamentCourtSchedulePanel({
   onSaved,
   emptyMessage = "Chưa có sân khả dụng cho đơn vị hiện tại.",
   onDraftChange,
+  recordOnly = false,
 }) {
   const schedule = tournament?.courtSchedule;
   const initialDraft = hydrateCourtScheduleDraft(schedule, todayIsoDate());
@@ -121,6 +122,9 @@ export default function TournamentCourtSchedulePanel({
       if (venueId) {
         commandOptions.venueId = venueId;
       }
+      if (tournament?.version != null) {
+        commandOptions.expectedVersion = tournament.version;
+      }
       const result = await setTournamentCourtScheduleCommand(
         clubId,
         tournament.id,
@@ -147,7 +151,11 @@ export default function TournamentCourtSchedulePanel({
         setCourtIds(Array.isArray(saved.courtIds) ? [...saved.courtIds] : courtIds);
       }
       setError(null);
-      setMessage("Đã khóa sân cho giải.");
+      setMessage(
+        recordOnly
+          ? "Đã ghi nhận sân & thời gian cho giải"
+          : "Đã khóa sân cho giải."
+      );
       onSaved?.(result);
     } finally {
       setBusy(false);
@@ -161,11 +169,15 @@ export default function TournamentCourtSchedulePanel({
       <CardContent>
         <Stack spacing={2}>
           <Box>
-            <Typography variant="h6">Khóa sân cho giải đấu</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {tournament.name} · Tạo booking loại <strong>tournament</strong> trên lịch Quản lý sân
+            <Typography variant="h6">
+              {recordOnly ? "Sân & thời gian thi đấu" : "Khóa sân cho giải đấu"}
             </Typography>
-            {schedule?.syncedAt && (
+            <Typography variant="body2" color="text.secondary">
+              {recordOnly
+                ? "Ghi nhận sân và khung giờ sử dụng cho giải. Việc giữ chỗ trên lịch vận hành sân sẽ được hoàn thiện ở module Vận hành sân."
+                : `${tournament.name} · Tạo booking loại tournament trên lịch Quản lý sân`}
+            </Typography>
+            {!recordOnly && schedule?.syncedAt && (
               <Typography variant="caption" color="text.secondary">
                 Lần đồng bộ gần nhất: {new Date(schedule.syncedAt).toLocaleString("vi-VN")}
               </Typography>
@@ -259,7 +271,13 @@ export default function TournamentCourtSchedulePanel({
             onClick={handleSync}
             disabled={busy || !courts.length || !courtIds.length}
           >
-            {busy ? "Đang khóa sân…" : "Khóa sân trên lịch booking"}
+            {busy
+              ? recordOnly
+                ? "Đang lưu…"
+                : "Đang khóa sân…"
+              : recordOnly
+                ? "Lưu sân & thời gian"
+                : "Khóa sân trên lịch booking"}
           </Button>
         </Stack>
       </CardContent>

@@ -18,6 +18,7 @@ export {
   setTournamentStatusCommand,
   setTournamentCourtScheduleCommand,
 } from "./services/tournamentCommands.js";
+/** DEFERRED_VENUE_OPERATIONS — not invoked by the active Official/Open browser path. */
 export {
   reserveOfficialTournamentCourtsCommand,
   commitOfficialGroupScheduleCommand,

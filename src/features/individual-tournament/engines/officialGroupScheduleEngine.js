@@ -7,6 +7,7 @@
  * Scheduler: features/tournament-engine/engines/scheduleEngine.generateSchedule
  */
 
+import { DEFAULT_TIMEZONE } from "../../../ai/config.js";
 import { DEFAULT_SCHEDULE_CONFIG, DEFAULT_TIME_PREDICTION } from "../../tournament-engine/constants/defaults.js";
 import { AVAILABILITY_MODE } from "../../tournament-engine/services/competitionAvailabilityGuard.js";
 import { generateSchedule as generateScheduleDefault } from "../../tournament-engine/engines/scheduleEngine.js";
@@ -145,15 +146,9 @@ export function scheduleOfficialGroupMatches(tournament, input = {}, deps = {}) 
     };
   }
 
-  const timezone = String(input.timezone || "").trim();
-  if (!timezone) {
-    return {
-      ok: false,
-      error: "Thiếu múi giờ sân (IANA) để xếp lịch vòng bảng.",
-      code: "TIMEZONE_REQUIRED",
-      mutationCount: 0,
-    };
-  }
+  // Civil ISO conversion for Tournament-owned date/start/end only.
+  // Do not resolve venue.timezone — real reservation is deferred.
+  const timezone = String(input.timezone || "").trim() || DEFAULT_TIMEZONE;
 
   const before = fingerprintDraw(event);
   // Court list is already tenant-scoped from club_data_v3. Do not re-query

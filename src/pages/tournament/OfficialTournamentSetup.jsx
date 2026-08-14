@@ -28,7 +28,6 @@ import {
 import { useClub } from "../../context/ClubContext.jsx";
 import { listCanonicalClubCourtsForFormatVenue } from "../../features/team-tournament/services/canonicalClubCourtInventory.js";
 import { resolveTournamentCourtInventoryScope } from "../../features/tournament/guards/tournamentCourtInventoryScope.js";
-import { resolveVenueTimezoneForClub } from "../../domain/civilTime.js";
 import {
   useClubPairingCandidatePool,
   useTenantPairingCandidatePool,
@@ -1576,14 +1575,13 @@ export default function OfficialTournamentSetup() {
     ) {
       return {
         ok: false,
-        error: "Hãy khóa sân trên lịch booking trước khi xếp lịch vòng bảng.",
+        error: "Hãy lưu sân & thời gian trước khi xếp lịch vòng bảng.",
         mutationCount: 0,
       };
     }
     setScheduleBusy(true);
     setError(null);
     try {
-      const tz = resolveVenueTimezoneForClub(activeClubId);
       const result = scheduleOfficialGroupMatches(tournament, {
         eventId: savedEvent.id,
         clubId: activeClubId,
@@ -1593,24 +1591,14 @@ export default function OfficialTournamentSetup() {
         startTime: persisted.startTime,
         endTime: persisted.endTime,
         players: flowPlayers,
-        timezone: tz.ok ? tz.timezone : "",
       });
       if (!result.ok) {
         return result;
       }
-      const { commitOfficialGroupScheduleCommand } = await import(
-        "../../features/tournament/court-reservation/officialCourtReservationCommands.js"
+      const saved = await persistTournament(
+        { events: result.events },
+        { expectedVersion: tournament.version }
       );
-      const saved = await commitOfficialGroupScheduleCommand({
-        clubId: activeClubId,
-        tenantId:
-          (courtInventoryScope.ok && courtInventoryScope.tenantId) || tenantId,
-        tournamentId: tournament.id,
-        tournament,
-        eventId: savedEvent.id,
-        matches: result.matches,
-        expectedVersion: tournament.version ?? 1,
-      });
       if (!saved || saved.ok === false) {
         return {
           ok: false,
@@ -1618,9 +1606,6 @@ export default function OfficialTournamentSetup() {
           code: saved?.code,
           mutationCount: 0,
         };
-      }
-      if (saved.tournament) {
-        setTournament(saved.tournament);
       }
       return {
         ok: true,

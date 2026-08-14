@@ -118,7 +118,7 @@ export default function OfficialTournamentGroupStageScreen({
     if (!persistedCourtLock) {
       setScheduleMessage({
         type: "error",
-        text: "Hãy khóa sân trên lịch booking trước khi xếp lịch vòng bảng.",
+        text: "Hãy lưu sân & thời gian trước khi xếp lịch vòng bảng.",
       });
       return;
     }
@@ -221,6 +221,7 @@ export default function OfficialTournamentGroupStageScreen({
         courts={courts}
         onSaved={onSavedCourts}
         onDraftChange={handleDraftChange}
+        recordOnly
       />
 
       <Typography variant="subtitle2" fontWeight={700}>

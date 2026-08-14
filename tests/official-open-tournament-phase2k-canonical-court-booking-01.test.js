@@ -401,7 +401,13 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
   it("L. Official provided-courts command revalidates canonical snapshot and never loadCourtsForClub", () => {
     const commandSrc = src("src/features/tournament/services/tournamentCommands.js");
     assert.match(commandSrc, /TOURNAMENT_MODE.OFFICIAL_TOURNAMENT/);
-    assert.match(commandSrc, /reserveOfficialTournamentCourtsCommand/);
+    assert.doesNotMatch(
+      commandSrc.slice(
+        commandSrc.indexOf("loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT"),
+        commandSrc.indexOf("loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT") + 1200
+      ),
+      /reserveOfficialTournamentCourtsCommand/
+    );
     const officialStart = commandSrc.indexOf(
       "loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT"
     );

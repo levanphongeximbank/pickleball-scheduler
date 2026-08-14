@@ -258,8 +258,9 @@ describe("official-open-tournament-phase2m1-dirty-pending-push-01", () => {
     const officialStart = command.indexOf(
       "loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT"
     );
-    const officialBranch = command.slice(officialStart, officialStart + 900);
-    assert.match(officialBranch, /reserveOfficialTournamentCourtsCommand/);
+    const officialBranch = command.slice(officialStart, officialStart + 1200);
+    assert.doesNotMatch(officialBranch, /reserveOfficialTournamentCourtsCommand/);
+    assert.match(officialBranch, /updateTournamentCommand/);
     assert.doesNotMatch(officialBranch, /ensureOfficialClubSyncReadyForCourtLock/);
     assert.doesNotMatch(officialBranch, /syncClubToCloud/);
     assert.match(push, /cancelRedundantClubCloudPush/);

@@ -1,5 +1,7 @@
 /**
- * Official client commands — one RPC each. No club blob / compensation.
+ * Deferred Venue Operations — Official reservation RPCs.
+ * Not invoked by the active Official/Open browser lifecycle.
+ * Real court reservation is deferred to VENUE_COURT_OPERATIONS_END_TO_END_CANONICAL_CLOSURE.
  */
 
 import { resolveVenueTimezoneForClub } from "../../../domain/civilTime.js";

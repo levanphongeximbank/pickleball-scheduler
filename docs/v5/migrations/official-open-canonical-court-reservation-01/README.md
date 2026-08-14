@@ -1,5 +1,13 @@
 # Official / Open — canonical court reservation cutover 01
 
+**OFFICIAL RUNTIME STATUS (2026-08-14): DEFERRED_VENUE_OPERATIONS.**
+
+Staging objects from this package remain in place and must not be rolled back.
+The active Official/Open browser path no longer calls
+`official_tournament_reserve_courts` or `official_tournament_commit_group_schedule`.
+
+See `docs/v5/official-open-canonical-court-assignment-deferred-venue.md`.
+
 **LOCAL PACKAGE ONLY. DO NOT APPLY WITHOUT OWNER GO STAGING.**
 
 This package does **not** replay Daily Play `#424`.

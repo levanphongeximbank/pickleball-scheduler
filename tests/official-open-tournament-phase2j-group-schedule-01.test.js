@@ -544,8 +544,10 @@ describe("official-open-tournament-phase2j-group-schedule-01", () => {
     assert.match(groupSrc, /Hoàn tất lịch thi đấu trước khi nhập điểm\./);
     assert.match(groupSrc, /isOfficialGroupScheduleReady/);
     assert.match(setupSrc, /scheduleOfficialGroupMatches/);
-    assert.match(setupSrc, /commitOfficialGroupScheduleCommand/);
-    assert.match(setupSrc, /persistTournament\(\{ events: result\.events \}\)/);
+    assert.doesNotMatch(setupSrc, /commitOfficialGroupScheduleCommand/);
+    assert.doesNotMatch(setupSrc, /resolveVenueTimezoneForClub/);
+    assert.match(setupSrc, /persistTournament\(/);
+    assert.match(setupSrc, /expectedVersion: tournament\.version/);
     assert.match(setupSrc, /selectStage = \(stageId\) => \{/);
     assert.doesNotMatch(setupSrc, /visibilitychange|window\.addEventListener\(['"]focus/);
   });
