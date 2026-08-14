@@ -127,6 +127,8 @@ export {
   createOfficialEventRecord,
   upsertOfficialEvent,
   removeOfficialEvent,
+  assessOfficialEventDeleteAllowed,
+  deleteOfficialEventIfEmpty,
   buildOfficialAiBalancePlan,
   applyOfficialAiBalancePlan,
   buildOfficialAiBalancePatch,

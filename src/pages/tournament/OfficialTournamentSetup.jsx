@@ -5,6 +5,11 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   FormControl,
   FormControlLabel,
   Grid,
@@ -52,6 +57,8 @@ import {
   suggestOpenRandomEntriesFromPlayers,
   toggleBracketRoundUnlock,
   upsertOfficialEvent,
+  assessOfficialEventDeleteAllowed,
+  deleteOfficialEventIfEmpty,
   validateOpenRegistrationPlayers,
 } from "../../tournament/engines/index.js";
 import TournamentAnimationDialog from "../../components/tournament/animation/TournamentAnimationDialog.jsx";
@@ -188,6 +195,8 @@ export default function OfficialTournamentSetup() {
   const [pairBusy, setPairBusy] = useState(false);
   const [groupBusy, setGroupBusy] = useState(false);
   const [registerBusy, setRegisterBusy] = useState(false);
+  const [eventDeleteBusy, setEventDeleteBusy] = useState(false);
+  const [eventDeleteOpen, setEventDeleteOpen] = useState(false);
   const [selectedIndividualPlayerIds, setSelectedIndividualPlayerIds] = useState([]);
   const [localRevision, setLocalRevision] = useState(0);
   const [playerDirectoryRevision, setPlayerDirectoryRevision] = useState(0);
@@ -993,6 +1002,39 @@ export default function OfficialTournamentSetup() {
     if (await persistTournament({ events })) {
       setActiveEventId(newEvent.id);
       setMessage(`Da them noi dung "${newEvent.name}".`);
+    }
+  };
+
+  const handleAskDeleteEvent = () => {
+    setError(null);
+    const gate = assessOfficialEventDeleteAllowed(tournament, savedEvent?.id || "");
+    if (!gate.allowed) {
+      setError(gate.error);
+      return;
+    }
+    setEventDeleteOpen(true);
+  };
+
+  const handleConfirmDeleteEvent = async () => {
+    if (eventDeleteBusy) return;
+    setEventDeleteBusy(true);
+    setError(null);
+    try {
+      const result = deleteOfficialEventIfEmpty(tournament, savedEvent?.id || "");
+      if (!result.ok) {
+        setError(result.error);
+        setEventDeleteOpen(false);
+        return;
+      }
+      const saved = await persistTournament({ events: result.events });
+      if (!saved) {
+        return;
+      }
+      setActiveEventId(result.nextEventId || "");
+      setEventDeleteOpen(false);
+      setMessage(`Đã xóa nội dung "${savedEvent?.name || ""}".`);
+    } finally {
+      setEventDeleteBusy(false);
     }
   };
 
@@ -1912,6 +1954,15 @@ export default function OfficialTournamentSetup() {
                   />
                 ))}
               </Tabs>
+              <Button
+                size="small"
+                variant="outlined"
+                color="error"
+                disabled={eventDeleteBusy || !savedEvent?.id}
+                onClick={handleAskDeleteEvent}
+              >
+                {eventDeleteBusy ? "Đang xóa…" : "Xóa nội dung"}
+              </Button>
               <Button size="small" variant="outlined" onClick={handleAddEvent}>
                 Thêm nội dung
               </Button>
@@ -2228,6 +2279,36 @@ export default function OfficialTournamentSetup() {
       )}
       </>
       )}
+
+      <Dialog
+        open={eventDeleteOpen}
+        onClose={() => {
+          if (!eventDeleteBusy) setEventDeleteOpen(false);
+        }}
+      >
+        <DialogTitle>Xóa nội dung thi đấu?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Bạn có chắc muốn xóa nội dung “{savedEvent?.name || ""}” khỏi giải này?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setEventDeleteOpen(false)}
+            disabled={eventDeleteBusy}
+          >
+            Hủy
+          </Button>
+          <Button
+            color="error"
+            variant="outlined"
+            disabled={eventDeleteBusy}
+            onClick={handleConfirmDeleteEvent}
+          >
+            {eventDeleteBusy ? "Đang xóa…" : "Xóa nội dung"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <TournamentAnimationDialog
         {...flow.dialogProps}

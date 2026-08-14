@@ -176,6 +176,89 @@ export function removeOfficialEvent(events = [], eventId) {
   return (events || []).filter((event) => String(event.id) !== String(eventId));
 }
 
+function eventHasDownstreamCompetitionData(event) {
+  if (!event) return false;
+  if ((event.entries || []).length > 0) return "entries";
+  if ((event.drawEntries || []).length > 0) return "drawEntries";
+  if ((event.groups || []).length > 0) return "groups";
+  if ((event.matches || []).length > 0) return "matches";
+  if ((event.standings || []).length > 0) return "standings";
+  const bracket = event.bracket;
+  if (bracket && typeof bracket === "object") {
+    const rounds = Array.isArray(bracket.rounds) ? bracket.rounds : [];
+    if (rounds.length > 0) return "bracket";
+    if (Object.keys(bracket).length > 0 && (bracket.matches || bracket.winner || bracket.status)) {
+      return "bracket";
+    }
+  }
+  return null;
+}
+
+/**
+ * Empty Official content may be deleted. Downstream competition data fails closed.
+ * No cascade. Does not invent event fields.
+ */
+export function assessOfficialEventDeleteAllowed(tournament, eventId) {
+  const id = String(eventId || "").trim();
+  if (!id) {
+    return {
+      ok: false,
+      allowed: false,
+      code: "EVENT_NOT_FOUND",
+      error: "Chưa chọn nội dung để xóa.",
+    };
+  }
+  const events = Array.isArray(tournament?.events) ? tournament.events : [];
+  const event = events.find((item) => String(item.id) === id);
+  if (!event) {
+    return {
+      ok: false,
+      allowed: false,
+      code: "EVENT_NOT_FOUND",
+      error: "Không tìm thấy nội dung thi đấu.",
+    };
+  }
+
+  const blocker = eventHasDownstreamCompetitionData(event);
+  if (blocker) {
+    return {
+      ok: false,
+      allowed: false,
+      code: "EVENT_DELETE_BLOCKED_DOWNSTREAM",
+      blocker,
+      error:
+        "Không xóa được nội dung này vì đã có dữ liệu thi đấu (đăng ký, cặp, bảng, trận hoặc kết quả). Không xóa dây chuyền.",
+    };
+  }
+
+  return { ok: true, allowed: true, event };
+}
+
+export function deleteOfficialEventIfEmpty(tournament, eventId) {
+  const gate = assessOfficialEventDeleteAllowed(tournament, eventId);
+  if (!gate.allowed) {
+    return { ...gate, mutationCount: 0, events: tournament?.events || [] };
+  }
+
+  const events = Array.isArray(tournament?.events) ? tournament.events : [];
+  const index = events.findIndex((item) => String(item.id) === String(eventId));
+  const nextEvents = removeOfficialEvent(events, eventId);
+  const fallbackIndex = index > 0 ? index - 1 : 0;
+  const nextEventId = nextEvents[Math.min(fallbackIndex, Math.max(0, nextEvents.length - 1))]?.id || "";
+
+  return {
+    ok: true,
+    allowed: true,
+    mutationCount: 1,
+    events: nextEvents,
+    nextEventId,
+    tournament: {
+      ...tournament,
+      events: nextEvents,
+    },
+  };
+}
+
 export function isSingleEventType(eventType) {
   return SINGLE_EVENT_TYPES.has(eventType);
 }

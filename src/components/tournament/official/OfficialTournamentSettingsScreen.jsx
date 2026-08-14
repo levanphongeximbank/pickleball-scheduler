@@ -138,7 +138,7 @@ export default function OfficialTournamentSettingsScreen({
           minLevel: eligibility.skill?.minLevel ?? null,
         },
         rating: {
-          enabled: ratingParsed.value != null || eligibility.rating?.enabled === true,
+          enabled: ratingParsed.value != null || eligibility.rating?.minRating != null,
           maxRating: ratingParsed.value,
           minRating: eligibility.rating?.minRating ?? null,
         },
@@ -292,7 +292,7 @@ export default function OfficialTournamentSettingsScreen({
             onChange={(e) =>
               setDraft((prev) => ({ ...prev, maxSkillLevel: e.target.value }))
             }
-            helperText="Chấp nhận thập phân (dấu . hoặc ,). Lưu số vào eligibilityRules.skill."
+            helperText="Để trống nếu không giới hạn. Thập phân: 4.5 hoặc 4,5."
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
@@ -305,7 +305,7 @@ export default function OfficialTournamentSettingsScreen({
             InputLabelProps={fieldLabelProps}
             placeholder="VD: 4.5 hoặc 4,4"
             onChange={(e) => setDraft((prev) => ({ ...prev, maxRating: e.target.value }))}
-            helperText="Chấp nhận thập phân (dấu . hoặc ,). Lưu số vào eligibilityRules.rating."
+            helperText="Để trống nếu không giới hạn. Thập phân: 4.5 hoặc 4,5."
           />
         </Grid>
       </Grid>
