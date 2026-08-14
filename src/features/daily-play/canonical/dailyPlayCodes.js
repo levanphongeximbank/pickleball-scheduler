@@ -14,7 +14,19 @@ export const DAILY_PLAY_RPC = Object.freeze({
   CORRECT_SCORE: "daily_play_correct_score",
   CANCEL_MATCH: "daily_play_cancel_match",
   CHANGE_COURT: "daily_play_change_court",
+  CLOSE_SESSION: "daily_play_close_session",
 });
+
+export const DAILY_PLAY_OPERATIONAL_WRITE_RPCS = Object.freeze([
+  "daily_play_check_in",
+  "daily_play_check_out",
+  "daily_play_create_matches",
+  "daily_play_assign_court",
+  "daily_play_start_match",
+  "daily_play_submit_score",
+  "daily_play_cancel_match",
+  "daily_play_change_court",
+]);
 
 export const DAILY_PLAY_CODE = Object.freeze({
   OK: "OK",
@@ -38,6 +50,8 @@ export const DAILY_PLAY_CODE = Object.freeze({
   MATCH_COMPLETED_IMMUTABLE: "MATCH_COMPLETED_IMMUTABLE",
   MATCH_NOT_COMPLETED: "MATCH_NOT_COMPLETED",
   INVALID_MATCH_SHAPE: "INVALID_MATCH_SHAPE",
+  INVALID_MATCH_TYPE: "INVALID_MATCH_TYPE",
+  INVALID_MATCH_GENDER_COMPOSITION: "INVALID_MATCH_GENDER_COMPOSITION",
   INVALID_SCORE: "INVALID_SCORE",
   SCORE_CONFLICT: "SCORE_CONFLICT",
   NOT_ENOUGH_PLAYERS: "NOT_ENOUGH_PLAYERS",
@@ -56,6 +70,9 @@ export const DAILY_PLAY_CODE = Object.freeze({
   COURT_ID_REQUIRED: "COURT_ID_REQUIRED",
   COURT_LEASE_NOT_ACTIVE: "COURT_LEASE_NOT_ACTIVE",
   IDEMPOTENCY_KEY_REQUIRED: "IDEMPOTENCY_KEY_REQUIRED",
+  SESSION_CLOSE_BLOCKED: "SESSION_CLOSE_BLOCKED",
+  SESSION_ALREADY_COMPLETED: "SESSION_ALREADY_COMPLETED",
+  SESSION_NOT_ACTIVE: "SESSION_NOT_ACTIVE",
 });
 
 export const DAILY_PLAY_MESSAGES = Object.freeze({
@@ -80,7 +97,11 @@ export const DAILY_PLAY_MESSAGES = Object.freeze({
   [DAILY_PLAY_CODE.MATCH_NOT_COMPLETED]:
     "Chỉ sửa điểm khi trận đã hoàn tất (completed).",
   [DAILY_PLAY_CODE.INVALID_MATCH_SHAPE]:
-    "Trận đôi phải có đúng 4 VĐV khác nhau (2 vs 2).",
+    "Hình dạng trận không hợp lệ. Đơn: 1 vs 1. Đôi: 2 vs 2. Không trùng VĐV.",
+  [DAILY_PLAY_CODE.INVALID_MATCH_TYPE]:
+    "Loại trận không hợp lệ. Chỉ chấp nhận đơn nam/nữ, đôi nam/nữ, đôi nam nữ hoặc đôi tự do.",
+  [DAILY_PLAY_CODE.INVALID_MATCH_GENDER_COMPOSITION]:
+    "Thành phần giới tính không đúng loại trận. Đơn/đôi nam-nữ phải đúng nam hoặc nữ; đôi nam nữ phải 1 nam 1 nữ mỗi bên.",
   [DAILY_PLAY_CODE.INVALID_SCORE]:
     "Điểm không hợp lệ. Điểm phải là số nguyên không âm và không hòa.",
   [DAILY_PLAY_CODE.SCORE_CONFLICT]:
@@ -124,6 +145,12 @@ export const DAILY_PLAY_MESSAGES = Object.freeze({
   [DAILY_PLAY_CODE.COURT_LEASE_NOT_ACTIVE]:
     "Sân chưa được giữ cho trận này.",
   [DAILY_PLAY_CODE.IDEMPOTENCY_KEY_REQUIRED]: "Thiếu khóa idempotency.",
+  [DAILY_PLAY_CODE.SESSION_CLOSE_BLOCKED]:
+    "Chưa thể kết thúc buổi chơi. Còn trận đang thi đấu hoặc đã xếp sân.",
+  [DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED]:
+    "Buổi chơi đã kết thúc. Không thể thay đổi thao tác trực tiếp.",
+  [DAILY_PLAY_CODE.SESSION_NOT_ACTIVE]:
+    "Buổi chơi không còn đang hoạt động.",
   COURTS_BUSY_WAITING:
     "Hiện chưa có sân trống. Trận sẽ chờ sân.",
 });

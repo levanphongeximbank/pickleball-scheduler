@@ -20,6 +20,7 @@ export default function MatchCard({
   onSecondaryAction,
   tertiaryActionLabel,
   onTertiaryAction,
+  extraActions = [],
 }) {
   const borderAccent = matchStatus ? matchStatusBorderColor(matchStatus) : undefined;
 
@@ -101,6 +102,22 @@ export default function MatchCard({
             {tertiaryActionLabel}
           </Button>
         </Box>
+      )}
+      {(extraActions || []).map((action) =>
+        action?.label && action?.onClick ? (
+          <Box key={action.label} sx={{ mt: 1 }}>
+            <Button
+              fullWidth
+              size="small"
+              color={action.color || "inherit"}
+              variant={action.variant || "outlined"}
+              onClick={action.onClick}
+              sx={touchButtonSx}
+            >
+              {action.label}
+            </Button>
+          </Box>
+        ) : null
       )}
     </Paper>
   );

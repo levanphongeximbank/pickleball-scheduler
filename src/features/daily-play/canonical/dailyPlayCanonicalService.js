@@ -189,6 +189,14 @@ export function createDailyPlayCanonicalService(deps = {}) {
       });
     },
 
+    async closeSession(scope, { expectedVersion, idempotencyKey }) {
+      return callRpc(DAILY_PLAY_RPC.CLOSE_SESSION, {
+        ...scopeArgs(scope),
+        p_expected_version: expectedVersion,
+        p_idempotency_key: idempotencyKey || newIdempotencyKey("close-session"),
+      });
+    },
+
     resolveCreateMatchCount,
   };
 }

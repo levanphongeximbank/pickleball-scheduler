@@ -41,6 +41,16 @@ const CHECKED_IN = ["1", "2", "3", "4", "5", "6", "7", "8"];
 function seedService({ courts = COURTS, dailyPlay = null } = {}) {
   const authority = createInMemoryDailyPlayAuthority({ tenantId: TENANT });
   authority.__setEligibleAthletes(TENANT, CLUB, CHECKED_IN);
+  authority.__setAthleteGenders({
+    1: "male",
+    2: "female",
+    3: "male",
+    4: "female",
+    5: "male",
+    6: "female",
+    7: "male",
+    8: "female",
+  });
   authority.__seedTournament(
     createSeededDailyPlayTournament({
       id: TID,
