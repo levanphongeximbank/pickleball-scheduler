@@ -76,6 +76,9 @@ export {
 } from "./presencePresentation.js";
 
 export {
+  DAILY_PLAY_DEFERRED_MATCH_TYPES,
+  resolveDailyVisibleGenderScope,
+  filterPlayersForDailyMatchType,
   projectDailyPlayerFilterView,
   countVisiblePresentedChecked,
   listVisibleBulkCheckInTargets,

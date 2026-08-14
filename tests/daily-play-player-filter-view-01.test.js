@@ -10,12 +10,12 @@ import {
   DAILY_GENDER_FILTER,
   DAILY_MATCH_TYPE,
   createFairDailyMatches,
-  filterPlayersByGender,
   getDefaultDailyPlaySettings,
-  getEligibleDailyPlayers,
 } from "../src/tournament/engines/dailyPlayEngine.js";
 import {
+  DAILY_PLAY_DEFERRED_MATCH_TYPES,
   countVisiblePresentedChecked,
+  filterPlayersForDailyMatchType,
   listVisibleBulkCheckInTargets,
   listVisibleBulkCheckOutTargets,
   projectDailyPlayerFilterView,
@@ -52,27 +52,18 @@ const players = [
 
 const maleIds = ["m1", "m2", "m3"];
 const femaleIds = ["f1", "f2", "f3"];
+const binaryIds = [...maleIds, ...femaleIds];
 
 function idsOf(list) {
   return list.map((player) => String(player.id));
 }
 
-describe("DP-17 Daily player filter view", () => {
-  test("all shows every candidate including unknown/other", () => {
+describe("DP-17 match-type visible check-in pool", () => {
+  test("men_double shows only canonical males, not name tokens", () => {
     const view = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds: [],
-      genderFilter: DAILY_GENDER_FILTER.ALL,
-    });
-    assert.deepEqual(idsOf(view.visiblePlayers), idsOf(players));
-    assert.equal(view.visiblePlayerCount, players.length);
-  });
-
-  test("male filter shows only canonical males, not name tokens", () => {
-    const view = projectDailyPlayerFilterView({
-      players,
-      checkedInPlayerIds: [],
-      genderFilter: DAILY_GENDER_FILTER.MALE,
+      matchType: DAILY_MATCH_TYPE.MEN_DOUBLE,
     });
     assert.deepEqual(idsOf(view.visiblePlayers), maleIds);
     view.visiblePlayers.forEach((player) => {
@@ -84,11 +75,11 @@ describe("DP-17 Daily player filter view", () => {
     );
   });
 
-  test("female filter shows only canonical females, not name tokens", () => {
+  test("women_double shows only canonical females, not name tokens", () => {
     const view = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds: [],
-      genderFilter: DAILY_GENDER_FILTER.FEMALE,
+      matchType: DAILY_MATCH_TYPE.WOMEN_DOUBLE,
     });
     assert.deepEqual(idsOf(view.visiblePlayers), femaleIds);
     view.visiblePlayers.forEach((player) => {
@@ -100,6 +91,23 @@ describe("DP-17 Daily player filter view", () => {
     );
   });
 
+  test("mixed_double and auto show male + female only", () => {
+    const mixedView = projectDailyPlayerFilterView({
+      players,
+      checkedInPlayerIds: [],
+      matchType: DAILY_MATCH_TYPE.MIXED_DOUBLE,
+    });
+    const autoView = projectDailyPlayerFilterView({
+      players,
+      checkedInPlayerIds: [],
+      matchType: DAILY_MATCH_TYPE.AUTO,
+    });
+    assert.deepEqual(idsOf(mixedView.visiblePlayers), binaryIds);
+    assert.deepEqual(idsOf(autoView.visiblePlayers), binaryIds);
+    assert.equal(mixedView.visiblePlayers.some((player) => player.id === "u1"), false);
+    assert.equal(autoView.visiblePlayers.some((player) => player.id === "o1"), false);
+  });
+
   test("normalization covers canonical, legacy VN/EN, and unknown/null/other", () => {
     assert.equal(getPlayerGenderKey("male"), "male");
     assert.equal(getPlayerGenderKey("Nam"), "male");
@@ -109,52 +117,50 @@ describe("DP-17 Daily player filter view", () => {
     assert.equal(getPlayerGenderKey("F"), "female");
     assert.equal(getPlayerGenderKey(null), null);
     assert.equal(getPlayerGenderKey("other"), "other");
-    const unknownOnly = filterPlayersByGender(
-      [{ id: "u1", gender: null }, { id: "o1", gender: "other" }],
-      DAILY_GENDER_FILTER.FEMALE
+    assert.deepEqual(
+      idsOf(
+        filterPlayersForDailyMatchType(
+          [{ id: "u1", gender: null }, { id: "o1", gender: "other" }],
+          DAILY_MATCH_TYPE.MIXED_DOUBLE
+        )
+      ),
+      []
     );
-    assert.deepEqual(unknownOnly, []);
-    const allUnknown = filterPlayersByGender(
-      [{ id: "u1", gender: null }, { id: "o1", gender: "other" }],
-      DAILY_GENDER_FILTER.ALL
-    );
-    assert.equal(allUnknown.length, 2);
   });
 
-  test("visible checked counts stay inside the filtered roster", () => {
+  test("visible checked counts stay inside the match-type pool", () => {
     const checkedInPlayerIds = ["m1", "m2", "f1", "u1"];
-    const femaleView = projectDailyPlayerFilterView({
+    const womenView = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.FEMALE,
+      matchType: DAILY_MATCH_TYPE.WOMEN_DOUBLE,
     });
-    assert.equal(femaleView.visiblePlayerCount, 3);
-    assert.deepEqual(femaleView.visibleCheckedPlayerIds, ["f1"]);
-    assert.equal(femaleView.visibleCheckedCount, 1);
-    assert.ok(femaleView.visibleCheckedCount <= femaleView.visiblePlayerCount);
+    assert.equal(womenView.visiblePlayerCount, 3);
+    assert.deepEqual(womenView.visibleCheckedPlayerIds, ["f1"]);
+    assert.ok(womenView.visibleCheckedCount <= womenView.visiblePlayerCount);
 
-    const maleView = projectDailyPlayerFilterView({
+    const menView = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.MALE,
+      matchType: DAILY_MATCH_TYPE.MEN_DOUBLE,
     });
-    assert.equal(maleView.visibleCheckedCount, 2);
-    assert.deepEqual(maleView.visibleCheckedPlayerIds, ["m1", "m2"]);
+    assert.equal(menView.visibleCheckedCount, 2);
+    assert.deepEqual(menView.visibleCheckedPlayerIds, ["m1", "m2"]);
 
-    const allView = projectDailyPlayerFilterView({
+    const mixedView = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.ALL,
+      matchType: DAILY_MATCH_TYPE.MIXED_DOUBLE,
     });
-    assert.equal(allView.visibleCheckedCount, 4);
-    assert.equal(allView.visiblePlayerCount, players.length);
+    assert.equal(mixedView.visibleCheckedCount, 3);
+    assert.equal(mixedView.visiblePlayerCount, 6);
   });
 
   test("presented override count only includes visible rows", () => {
     const view = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds: ["f1"],
-      genderFilter: DAILY_GENDER_FILTER.FEMALE,
+      matchType: DAILY_MATCH_TYPE.WOMEN_DOUBLE,
     });
     const presented = new Set(["f1", "m1", "m2"]);
     assert.equal(countVisiblePresentedChecked(view, presented), 1);
@@ -162,91 +168,91 @@ describe("DP-17 Daily player filter view", () => {
 
   test("bulk check-in targets only visible unchecked players", () => {
     const checkedInPlayerIds = ["m1", "f1"];
-    const femaleView = projectDailyPlayerFilterView({
+    const womenView = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.FEMALE,
+      matchType: DAILY_MATCH_TYPE.WOMEN_DOUBLE,
     });
     assert.deepEqual(
-      listVisibleBulkCheckInTargets(femaleView, checkedInPlayerIds),
+      listVisibleBulkCheckInTargets(womenView, checkedInPlayerIds),
       ["f2", "f3"]
     );
 
-    const maleView = projectDailyPlayerFilterView({
+    const menView = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.MALE,
+      matchType: DAILY_MATCH_TYPE.MEN_DOUBLE,
     });
     assert.deepEqual(
-      listVisibleBulkCheckInTargets(maleView, checkedInPlayerIds),
+      listVisibleBulkCheckInTargets(menView, checkedInPlayerIds),
       ["m2", "m3"]
     );
 
-    const allView = projectDailyPlayerFilterView({
+    const mixedView = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.ALL,
+      matchType: DAILY_MATCH_TYPE.MIXED_DOUBLE,
     });
-    assert.deepEqual(listVisibleBulkCheckInTargets(allView, checkedInPlayerIds), [
+    assert.deepEqual(listVisibleBulkCheckInTargets(mixedView, checkedInPlayerIds), [
       "m2",
       "m3",
       "f2",
       "f3",
-      "u1",
-      "o1",
     ]);
   });
 
   test("bulk check-out targets only visible checked players", () => {
     const checkedInPlayerIds = ["m1", "m2", "f1", "f2"];
-    const femaleView = projectDailyPlayerFilterView({
+    const womenView = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.FEMALE,
+      matchType: DAILY_MATCH_TYPE.WOMEN_DOUBLE,
     });
-    assert.deepEqual(listVisibleBulkCheckOutTargets(femaleView), ["f1", "f2"]);
+    assert.deepEqual(listVisibleBulkCheckOutTargets(womenView), ["f1", "f2"]);
 
-    const maleView = projectDailyPlayerFilterView({
+    const menView = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.MALE,
+      matchType: DAILY_MATCH_TYPE.MEN_DOUBLE,
     });
-    assert.deepEqual(listVisibleBulkCheckOutTargets(maleView), ["m1", "m2"]);
+    assert.deepEqual(listVisibleBulkCheckOutTargets(menView), ["m1", "m2"]);
   });
 
-  test("filter switching is presentation-only and preserves checked ids", () => {
+  test("match-type switching is presentation-only and preserves checked ids", () => {
     const checkedInPlayerIds = ["m1", "f1", "f2"];
     const snapshot = [...checkedInPlayerIds];
-    const allView = projectDailyPlayerFilterView({
+    const mixedView = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.ALL,
+      matchType: DAILY_MATCH_TYPE.MIXED_DOUBLE,
     });
-    const femaleView = projectDailyPlayerFilterView({
+    const womenView = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.FEMALE,
+      matchType: DAILY_MATCH_TYPE.WOMEN_DOUBLE,
     });
-    const maleView = projectDailyPlayerFilterView({
+    const menView = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.MALE,
+      matchType: DAILY_MATCH_TYPE.MEN_DOUBLE,
     });
-    const backToAll = projectDailyPlayerFilterView({
+    const backToMixed = projectDailyPlayerFilterView({
       players,
       checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.ALL,
+      matchType: DAILY_MATCH_TYPE.MIXED_DOUBLE,
     });
 
     assert.deepEqual(checkedInPlayerIds, snapshot);
-    assert.deepEqual(femaleView.visibleCheckedPlayerIds, ["f1", "f2"]);
-    assert.deepEqual(maleView.visibleCheckedPlayerIds, ["m1"]);
-    assert.deepEqual(backToAll.visibleCheckedPlayerIds, allView.visibleCheckedPlayerIds);
-    assert.equal(allView.visiblePlayerCount, players.length);
+    assert.deepEqual(womenView.visibleCheckedPlayerIds, ["f1", "f2"]);
+    assert.deepEqual(menView.visibleCheckedPlayerIds, ["m1"]);
+    assert.deepEqual(
+      backToMixed.visibleCheckedPlayerIds,
+      mixedView.visibleCheckedPlayerIds
+    );
   });
 });
 
-describe("DP-17 match type remains pairing authority", () => {
+describe("DP-17 Fair Match follows Loại trận", () => {
   beforeEach(() => {
     globalThis.localStorage = createLocalStorageMock();
     setActiveClubId(DEFAULT_CLUB.id);
@@ -277,15 +283,7 @@ describe("DP-17 match type remains pairing authority", () => {
     };
   }
 
-  test("mixed doubles still uses both genders when UI filter is female", async () => {
-    const uiView = projectDailyPlayerFilterView({
-      players: mixedPool,
-      checkedInPlayerIds: pairingSettings(DAILY_MATCH_TYPE.MIXED_DOUBLE)
-        .checkedInPlayerIds,
-      genderFilter: DAILY_GENDER_FILTER.FEMALE,
-    });
-    assert.equal(uiView.visiblePlayerCount, 4);
-
+  test("mixed doubles uses both genders from checked-in pool", async () => {
     const result = await createFairDailyMatches({
       players: mixedPool,
       settings: pairingSettings(DAILY_MATCH_TYPE.MIXED_DOUBLE),
@@ -314,7 +312,7 @@ describe("DP-17 match type remains pairing authority", () => {
     );
   });
 
-  test("men / women / auto still follow matchType, not UI filter", async () => {
+  test("men / women / auto follow matchType", async () => {
     const men = await createFairDailyMatches({
       players: mixedPool,
       settings: pairingSettings(DAILY_MATCH_TYPE.MEN_DOUBLE),
@@ -345,35 +343,31 @@ describe("DP-17 match type remains pairing authority", () => {
     assert.equal(auto.ok, true);
     assert.equal(auto.competitionType, "doubles_mixed");
   });
-
-  test("legacy engine genderFilter still applies only when explicitly set", () => {
-    const eligible = getEligibleDailyPlayers({
-      players: mixedPool,
-      settings: {
-        ...pairingSettings(DAILY_MATCH_TYPE.MIXED_DOUBLE),
-        genderFilter: DAILY_GENDER_FILTER.FEMALE,
-      },
-    });
-    eligible.forEach((player) => {
-      assert.equal(getPlayerGenderKey(player.gender), "female");
-    });
-  });
 });
 
 describe("DP-17 DailyPlaySetup wiring", () => {
-  test("setup projects visible players and does not overlay UI filter onto pairing settings", () => {
+  test("independent Lọc VĐV is removed and visible pool follows matchType", () => {
     const setupPath = path.join("src", "pages", "tournament", "DailyPlaySetup.jsx");
     const source = fs.readFileSync(setupPath, "utf8");
     assert.match(source, /projectDailyPlayerFilterView/);
+    assert.match(source, /matchType,/);
     assert.match(source, /visiblePlayers\.map/);
     assert.match(source, /listVisibleBulkCheckInTargets/);
     assert.match(source, /listVisibleBulkCheckOutTargets/);
-    assert.match(source, /visiblePresentedCheckedCount/);
-    const pairingBlock = source.match(
-      /const dailySettings = useMemo\([\s\S]*?\}, \[session\.dailyPlay, matchType\]\);/
+    assert.doesNotMatch(source, /Lọc VĐV/);
+    assert.doesNotMatch(source, /GENDER_FILTER_OPTIONS/);
+    assert.doesNotMatch(source, /setGenderFilter/);
+    assert.doesNotMatch(source, /DAILY_GENDER_FILTER/);
+    assert.doesNotMatch(source, /men_single|women_single|open_double/);
+  });
+
+  test("singles and open doubles stay deferred to final Daily Play closure", () => {
+    assert.equal(DAILY_PLAY_DEFERRED_MATCH_TYPES.MEN_SINGLE, "men_single");
+    assert.equal(DAILY_PLAY_DEFERRED_MATCH_TYPES.WOMEN_SINGLE, "women_single");
+    assert.equal(DAILY_PLAY_DEFERRED_MATCH_TYPES.OPEN_DOUBLE, "open_double");
+    assert.equal(
+      Object.values(DAILY_MATCH_TYPE).includes("men_single"),
+      false
     );
-    assert.ok(pairingBlock, "pairing settings must not depend on UI genderFilter");
-    assert.doesNotMatch(pairingBlock[0], /genderFilter/);
-    assert.doesNotMatch(source, /setGenderFilter\(session\.dailyPlay\.genderFilter\)/);
   });
 });

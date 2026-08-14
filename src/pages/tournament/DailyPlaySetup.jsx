@@ -30,7 +30,6 @@ import { getCourtDisplayName } from "../../models/court.js";
 import { formatOrganizerPlayerMeta } from "../../utils/skillLevelVisibility.js";
 import {
   createFairDailyMatches,
-  DAILY_GENDER_FILTER,
   DAILY_MATCH_TYPE,
   getBusyPlayerIdsFromDailyMatches,
   getDefaultDailyPlaySettings,
@@ -86,12 +85,6 @@ const MATCH_TYPE_OPTIONS = [
   { value: DAILY_MATCH_TYPE.AUTO, label: "Tự động nhiều loại" },
 ];
 
-const GENDER_FILTER_OPTIONS = [
-  { value: DAILY_GENDER_FILTER.ALL, label: "Tất cả" },
-  { value: DAILY_GENDER_FILTER.MALE, label: "Nam" },
-  { value: DAILY_GENDER_FILTER.FEMALE, label: "Nữ" },
-];
-
 function PlayerPresenceRow({ player, checked, busy, canViewSkill, onToggle }) {
   return (
     <Button
@@ -124,7 +117,6 @@ export default function DailyPlaySetup() {
   const [scoreB, setScoreB] = useState("");
   const [scoreNote, setScoreNote] = useState("");
   const [matchType, setMatchType] = useState(DAILY_MATCH_TYPE.MIXED_DOUBLE);
-  const [genderFilter, setGenderFilter] = useState(DAILY_GENDER_FILTER.ALL);
   const [createPending, setCreatePending] = useState(false);
   const [bulkPending, setBulkPending] = useState(null);
   const [presenceOverride, setPresenceOverride] = useState(null);
@@ -275,9 +267,9 @@ export default function DailyPlaySetup() {
       projectDailyPlayerFilterView({
         players,
         checkedInPlayerIds: dailySettings.checkedInPlayerIds,
-        genderFilter,
+        matchType,
       }),
-    [players, dailySettings.checkedInPlayerIds, genderFilter]
+    [players, dailySettings.checkedInPlayerIds, matchType]
   );
   const visiblePresentedCheckedCount = countVisiblePresentedChecked(
     playerFilterView,
@@ -805,7 +797,7 @@ export default function DailyPlaySetup() {
         </Grid>
 
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <FormControl fullWidth size="small">
               <InputLabel>Loại trận</InputLabel>
               <Select
@@ -821,23 +813,7 @@ export default function DailyPlaySetup() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Lọc VĐV</InputLabel>
-              <Select
-                label="Lọc VĐV"
-                value={genderFilter}
-                onChange={(event) => setGenderFilter(event.target.value)}
-              >
-                {GENDER_FILTER_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Button
               fullWidth
               variant="contained"
