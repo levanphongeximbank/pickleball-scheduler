@@ -28,9 +28,12 @@ const END_TIME_OPTIONS = buildEndTimeOptions();
 
 export default function TournamentCourtSchedulePanel({
   clubId,
+  tenantId = null,
   tournament,
   courts = [],
   onSaved,
+  emptyMessage = "Chưa có sân khả dụng cho đơn vị hiện tại.",
+  onDraftChange,
 }) {
   const schedule = tournament?.courtSchedule;
   const [date, setDate] = useState(schedule?.date || todayIsoDate());
@@ -53,6 +56,29 @@ export default function TournamentCourtSchedulePanel({
     setError(null);
   }, [tournament?.id, schedule?.syncedAt]);
 
+  useEffect(() => {
+    const persisted = Array.isArray(schedule?.courtIds) ? schedule.courtIds : [];
+    if (!courts.length) {
+      setCourtIds([]);
+      return;
+    }
+    setCourtIds((current) => {
+      const stillValid = (current || []).filter((id) =>
+        courts.some((court) => String(court.id) === String(id))
+      );
+      if (stillValid.length) {
+        return stillValid;
+      }
+      return persisted.filter((id) =>
+        courts.some((court) => String(court.id) === String(id))
+      );
+    });
+  }, [courts, schedule?.courtIds]);
+
+  useEffect(() => {
+    onDraftChange?.({ date, startTime, endTime, courtIds });
+  }, [date, startTime, endTime, courtIds, onDraftChange]);
+
   if (!tournament) {
     return null;
   }
@@ -64,12 +90,27 @@ export default function TournamentCourtSchedulePanel({
   };
 
   const handleSync = async () => {
-    const result = await setTournamentCourtScheduleCommand(clubId, tournament.id, {
-      date,
-      startTime,
-      endTime,
-      courtIds,
-    });
+    if (!courts.length || !courtIds.length) {
+      setError("Chưa có sân khả dụng cho đơn vị hiện tại.");
+      setMessage(null);
+      return;
+    }
+
+    const commandOptions = { courts };
+    if (tenantId) {
+      commandOptions.tenantId = tenantId;
+    }
+    const result = await setTournamentCourtScheduleCommand(
+      clubId,
+      tournament.id,
+      {
+        date,
+        startTime,
+        endTime,
+        courtIds,
+      },
+      commandOptions
+    );
 
     if (!result.ok) {
       setError(result.error || result.message);
@@ -143,23 +184,31 @@ export default function TournamentCourtSchedulePanel({
             <Typography variant="subtitle2" gutterBottom>
               Sân sử dụng
             </Typography>
-            <FormGroup>
-              {courts.map((court, index) => (
-                <FormControlLabel
-                  key={court.id}
-                  control={
-                    <Checkbox
-                      checked={courtIds.includes(court.id)}
-                      onChange={() => toggleCourt(court.id)}
-                    />
-                  }
-                  label={getCourtDisplayName(court, index)}
-                />
-              ))}
-            </FormGroup>
+            {courts.length === 0 ? (
+              <Alert severity="info">{emptyMessage}</Alert>
+            ) : (
+              <FormGroup>
+                {courts.map((court, index) => (
+                  <FormControlLabel
+                    key={court.id}
+                    control={
+                      <Checkbox
+                        checked={courtIds.includes(court.id)}
+                        onChange={() => toggleCourt(court.id)}
+                      />
+                    }
+                    label={getCourtDisplayName(court, index)}
+                  />
+                ))}
+              </FormGroup>
+            )}
           </Box>
 
-          <Button variant="contained" onClick={handleSync}>
+          <Button
+            variant="contained"
+            onClick={handleSync}
+            disabled={!courts.length || !courtIds.length}
+          >
             Khóa sân trên lịch booking
           </Button>
         </Stack>

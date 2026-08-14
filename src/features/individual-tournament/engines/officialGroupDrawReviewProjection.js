@@ -61,6 +61,130 @@ export function presentOfficialGroupLabel(group, index = 0) {
   return `Bảng ${extractGroupLetter(group, index)}`;
 }
 
+export const UNRESOLVED_COMPETITION_SIDE_LABEL = "Không xác định cặp thi đấu";
+
+function presentSide(entryId, unit, playersById) {
+  const member = projectMember(entryId, unit, playersById, 1);
+  if (!entryId) {
+    return {
+      competitionEntryId: "",
+      label: UNRESOLVED_COMPETITION_SIDE_LABEL,
+      memberNames: [],
+      resolved: false,
+    };
+  }
+  if (!member.resolved) {
+    return {
+      competitionEntryId: String(entryId),
+      label: UNRESOLVED_COMPETITION_SIDE_LABEL,
+      memberNames: [member.playerA, member.playerB].filter(Boolean),
+      resolved: false,
+      integrityError: true,
+    };
+  }
+  return {
+    competitionEntryId: String(entryId),
+    label: member.playersLine,
+    memberNames: member.playerB ? [member.playerA, member.playerB] : [member.playerA],
+    resolved: true,
+  };
+}
+
+function formatCourtLabel(match, courts = []) {
+  if (!match?.courtId) return "";
+  const court = (courts || []).find((item) => String(item.id) === String(match.courtId));
+  if (court?.name && !isRawTechnicalId(court.name)) {
+    return String(court.name).trim();
+  }
+  if (court?.number != null && court.number !== "") {
+    return `Sân ${court.number}`;
+  }
+  return court ? `Sân ${court.id}` : "";
+}
+
+/**
+ * Read-only human-readable match identity.
+ * Resolves competition units from drawEntries → group.entries → entries → players.
+ * Does not mutate tournament data and does not invent TBD when references exist.
+ */
+export function projectOfficialMatchPresentation(
+  tournament,
+  match,
+  { eventId = "", players = [], courts = [] } = {}
+) {
+  const event = primaryEvent(tournament, eventId || match?.eventId || "");
+  const groups = Array.isArray(event?.groups) ? event.groups : [];
+  const groupIndex = groups.findIndex((group) => String(group?.id) === String(match?.groupId));
+  const group = groupIndex >= 0 ? groups[groupIndex] : null;
+  const unitsById = buildUnitMap(event);
+  const playersById = playerMap(players);
+  const sideA = presentSide(
+    match?.entryAId,
+    unitsById.get(String(match?.entryAId || "")) || null,
+    playersById
+  );
+  const sideB = presentSide(
+    match?.entryBId,
+    unitsById.get(String(match?.entryBId || "")) || null,
+    playersById
+  );
+  const groupMatches = (event?.matches || []).filter(
+    (item) => !item.bracketMatchId && String(item.groupId) === String(match?.groupId || "")
+  );
+  const matchIndex = Math.max(
+    0,
+    groupMatches.findIndex((item) => String(item.id) === String(match?.id))
+  );
+  const groupLabel = group ? presentOfficialGroupLabel(group, groupIndex) : "";
+  const heading = groupLabel ? `${groupLabel} · Trận ${matchIndex + 1}` : `Trận ${matchIndex + 1}`;
+  const integrityError = !sideA.resolved || !sideB.resolved;
+
+  return {
+    matchId: String(match?.id || ""),
+    groupId: String(match?.groupId || ""),
+    groupLabel,
+    heading,
+    matchIndex: matchIndex + 1,
+    sideA,
+    sideB,
+    vsLine: `${sideA.label} vs ${sideB.label}`,
+    scheduledAt: match?.scheduledStart || match?.scheduledAt || null,
+    scheduledEnd: match?.scheduledEnd || null,
+    courtId: match?.courtId || null,
+    courtLabel: formatCourtLabel(match, courts),
+    status: match?.status || "",
+    referee: match?.referee || null,
+    resolved: !integrityError,
+    integrityError,
+    integrityMessage: integrityError ? UNRESOLVED_COMPETITION_SIDE_LABEL : "",
+  };
+}
+
+export function projectOfficialGroupStageMatches(
+  tournament,
+  eventId = "",
+  { players = [], courts = [] } = {}
+) {
+  const event = primaryEvent(tournament, eventId);
+  const matches = (event?.matches || []).filter((match) => !match.bracketMatchId);
+  const byMatchId = {};
+  const rows = matches.map((match) => {
+    const presentation = projectOfficialMatchPresentation(tournament, match, {
+      eventId: event?.id || eventId,
+      players,
+      courts,
+    });
+    byMatchId[presentation.matchId] = presentation;
+    return presentation;
+  });
+  return {
+    rows,
+    byMatchId,
+    matchCount: rows.length,
+    matchCountSource: GROUP_MATCH_COUNT_SOURCE,
+  };
+}
+
 function playerMap(players = []) {
   return new Map((players || []).map((player) => [String(player.id), player]));
 }

@@ -41,15 +41,26 @@ export default function RefereeAssignPanel({
   onTournamentChange,
   onAssignResult = null,
   compact = false,
+  matchPresentationById = null,
 }) {
   const [message, setMessage] = useState(null);
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
 
-  const rows = useMemo(
-    () => (tournament ? buildIndividualRefereeAssignmentTable(tournament, { eventId }) : []),
-    [tournament, eventId]
-  );
+  const rows = useMemo(() => {
+    const raw = tournament ? buildIndividualRefereeAssignmentTable(tournament, { eventId }) : [];
+    if (!matchPresentationById) return raw;
+    return raw.map((row) => {
+      const presentation = matchPresentationById[String(row.matchId)];
+      if (!presentation) return row;
+      return {
+        ...row,
+        entryALabel: presentation.sideA?.label || row.entryALabel,
+        entryBLabel: presentation.sideB?.label || row.entryBLabel,
+        stageLabel: presentation.heading || presentation.groupLabel || row.stageLabel,
+      };
+    });
+  }, [tournament, eventId, matchPresentationById]);
   const referees = useMemo(
     () => (tournament ? listIndividualReferees(tournament) : []),
     [tournament]

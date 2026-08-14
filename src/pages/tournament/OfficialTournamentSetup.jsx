@@ -26,7 +26,8 @@ import {
 } from "@mui/material";
 
 import { useClub } from "../../context/ClubContext.jsx";
-import { loadCourtsForClub } from "../../domain/clubStorage.js";
+import { listCanonicalClubCourtsForFormatVenue } from "../../features/team-tournament/services/canonicalClubCourtInventory.js";
+import { resolveVenueTimezoneForClub } from "../../domain/civilTime.js";
 import {
   useClubPairingCandidatePool,
   useTenantPairingCandidatePool,
@@ -129,7 +130,7 @@ import {
   resolveDrawReopenPermission,
   summarizeGroups,
 } from "../../tournament/engines/publishDrawEngine.js";
-import { resolveEventTypeFromQuery } from "../../features/individual-tournament/index.js";
+import { resolveEventTypeFromQuery, scheduleOfficialGroupMatches } from "../../features/individual-tournament/index.js";
 import {
   OFFICIAL_STAGE_ID,
   deriveOfficialOrganizerStages,
@@ -197,6 +198,8 @@ export default function OfficialTournamentSetup() {
   const [registerBusy, setRegisterBusy] = useState(false);
   const [eventDeleteBusy, setEventDeleteBusy] = useState(false);
   const [eventDeleteOpen, setEventDeleteOpen] = useState(false);
+  const [scheduleBusy, setScheduleBusy] = useState(false);
+  const [courts, setCourts] = useState([]);
   const [selectedIndividualPlayerIds, setSelectedIndividualPlayerIds] = useState([]);
   const [localRevision, setLocalRevision] = useState(0);
   const [playerDirectoryRevision, setPlayerDirectoryRevision] = useState(0);
@@ -307,10 +310,26 @@ export default function OfficialTournamentSetup() {
 
   const flowPlayers = allTenantPlayers;
 
-  const courts = useMemo(
-    () => loadCourtsForClub(activeClubId),
-    [activeClubId, localRevision]
-  );
+  useEffect(() => {
+    let cancelled = false;
+    setCourts([]);
+    if (!activeClubId) {
+      return undefined;
+    }
+    void listCanonicalClubCourtsForFormatVenue({
+      clubId: activeClubId,
+      tenantId,
+    }).then((result) => {
+      if (cancelled) return;
+      setCourts(result?.ok && Array.isArray(result.courts) ? result.courts : []);
+    }).catch(() => {
+      if (cancelled) return;
+      setCourts([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeClubId, tenantId, localRevision]);
 
   const refereeRoster = useMemo(
     () => getRefereeSettings(tournament).roster,
@@ -1519,6 +1538,47 @@ export default function OfficialTournamentSetup() {
     );
   };
 
+  const handleGenerateGroupSchedule = async (draft = {}) => {
+    if (!tournament || !savedEvent) {
+      return { ok: false, error: "Không tìm thấy giải.", mutationCount: 0 };
+    }
+    setScheduleBusy(true);
+    setError(null);
+    try {
+      const tz = resolveVenueTimezoneForClub(activeClubId);
+      const result = scheduleOfficialGroupMatches(tournament, {
+        eventId: savedEvent.id,
+        clubId: activeClubId,
+        courts,
+        courtIds: draft.courtIds || tournament.courtSchedule?.courtIds || [],
+        date: draft.date || tournament.courtSchedule?.date || "",
+        startTime: draft.startTime || tournament.courtSchedule?.startTime || "",
+        endTime: draft.endTime || tournament.courtSchedule?.endTime || "",
+        players: flowPlayers,
+        timezone: tz.ok ? tz.timezone : "",
+      });
+      if (!result.ok) {
+        return result;
+      }
+      const saved = await persistTournament({ events: result.events });
+      if (!saved || saved.ok === false) {
+        return {
+          ok: false,
+          error: "Không lưu được lịch vòng bảng.",
+          mutationCount: 0,
+        };
+      }
+      return {
+        ok: true,
+        mutationCount: 1,
+        readbackCount: 1,
+        tournament: saved.tournament,
+      };
+    } finally {
+      setScheduleBusy(false);
+    }
+  };
+
   const handleGenerateBracket = () => {
     setError(null);
     const check = canGenerateBracket(savedEvent);
@@ -1848,6 +1908,7 @@ export default function OfficialTournamentSetup() {
             players={flowPlayers}
             courts={courts}
             clubId={activeClubId}
+            tenantId={tenantId}
             drawPublish={drawPublish}
             hasDrawReopenPermission={hasDrawReopenPermission}
             onLockDraw={handleLockDraw}
@@ -1874,6 +1935,8 @@ export default function OfficialTournamentSetup() {
               setLocalRevision((value) => value + 1);
               refreshClubs();
             }}
+            onGenerateSchedule={handleGenerateGroupSchedule}
+            scheduleBusy={scheduleBusy}
           />
         ) : null}
 

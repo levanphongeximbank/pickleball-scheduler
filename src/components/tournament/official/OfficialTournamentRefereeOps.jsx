@@ -33,6 +33,7 @@ export default function OfficialTournamentRefereeOps({
   canManage = true,
   onPersistTournament,
   tournamentId,
+  matchPresentationById = null,
 }) {
   const [bridgeMessage, setBridgeMessage] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -134,6 +135,7 @@ export default function OfficialTournamentRefereeOps({
           actor={actor}
           compact
           onTournamentChange={handleAssignPersist}
+          matchPresentationById={matchPresentationById}
         />
       )}
 

@@ -14,7 +14,7 @@ import { resolveEntryLabel } from "../../tournament/engines/tournamentDirectorEn
 import { useScoreDrafts } from "../../tournament/useScoreDrafts.js";
 import { touchButtonSx } from "./mobileUi.js";
 
-function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft }) {
+function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft, presentation }) {
   const [localScoreA, setLocalScoreA] = useState(match.scoreA ?? "");
   const [localScoreB, setLocalScoreB] = useState(match.scoreB ?? "");
 
@@ -24,8 +24,10 @@ function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft }) {
 
   const completed =
     match.status === MATCH_STATUS.COMPLETED || match.status === MATCH_STATUS.FORFEIT;
-  const labelA = resolveEntryLabel(match.entryAId, entries, players);
-  const labelB = resolveEntryLabel(match.entryBId, entries, players);
+  const labelA =
+    presentation?.sideA?.label || resolveEntryLabel(match.entryAId, entries, players);
+  const labelB =
+    presentation?.sideB?.label || resolveEntryLabel(match.entryBId, entries, players);
 
   const handleScoreChange = (field, value) => {
     if (draft) {
@@ -100,7 +102,14 @@ function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft }) {
   );
 }
 
-export default function GroupStagePanel({ event, players = [], onSubmitScore, draftScope }) {
+export default function GroupStagePanel({
+  event,
+  players = [],
+  onSubmitScore,
+  draftScope,
+  matchPresentationById = null,
+  presentGroupLabel = null,
+}) {
   const draft = useScoreDrafts(draftScope);
   const groups = event?.groups || [];
   const entries = event?.entries || [];
@@ -149,7 +158,9 @@ export default function GroupStagePanel({ event, players = [], onSubmitScore, dr
           return (
             <Box key={group.id}>
               <Typography fontWeight="bold" sx={{ mb: 1 }}>
-                {group.name || `Bảng ${group.label}`}
+                {presentGroupLabel
+                  ? presentGroupLabel(group)
+                  : group.name || `Bảng ${group.label}`}
               </Typography>
               <Stack spacing={1}>
                 {matches.map((match) => (
@@ -160,6 +171,7 @@ export default function GroupStagePanel({ event, players = [], onSubmitScore, dr
                     players={players}
                     onSubmitScore={onSubmitScore}
                     draft={draft}
+                    presentation={matchPresentationById?.[String(match.id)] || null}
                   />
                 ))}
               </Stack>

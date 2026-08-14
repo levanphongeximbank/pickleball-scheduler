@@ -253,11 +253,21 @@ export {
 
 export {
   projectOfficialGroupDrawReview,
+  projectOfficialMatchPresentation,
+  projectOfficialGroupStageMatches,
   presentOfficialGroupLabel,
   isRawTechnicalId,
   GROUP_MATCH_COUNT_SOURCE,
   GROUP_REVIEW_ISSUE,
+  UNRESOLVED_COMPETITION_SIDE_LABEL,
 } from "./engines/officialGroupDrawReviewProjection.js";
+
+export {
+  scheduleOfficialGroupMatches,
+  isOfficialGroupScheduleReady,
+  countOfficialRoundRobinMatches,
+  OFFICIAL_GROUP_MATCH_DURATION_MINUTES,
+} from "./engines/officialGroupScheduleEngine.js";
 
 export {
   REFEREE_IDENTITY_BINDING_BLOCKED,

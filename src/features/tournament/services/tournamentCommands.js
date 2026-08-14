@@ -20,6 +20,67 @@ function prepareScope(clubIdOrScope, options = {}) {
   return resolveTournamentTenantScope(clubIdOrScope, options);
 }
 
+export const PROVIDED_COURT_AUTH_CODE = Object.freeze({
+  ZERO_COURTS_SELECTED: "ZERO_COURTS_SELECTED",
+  COURT_TENANT_FORBIDDEN: "COURT_TENANT_FORBIDDEN",
+  COURT_NOT_IN_AUTHORIZED_SET: "COURT_NOT_IN_AUTHORIZED_SET",
+});
+
+/**
+ * Authorize an explicitly provided court list for tournament booking.
+ * Does not discover courts. Does not fall back to localStorage.
+ * Fail-closed on empty, wrong-tenant/club stamp, or selected id outside the set.
+ */
+export function authorizeProvidedTournamentCourts(
+  courts,
+  scope = {},
+  selectedCourtIds = []
+) {
+  if (!Array.isArray(courts) || courts.length === 0) {
+    return {
+      ok: false,
+      error: "Chưa có sân khả dụng cho đơn vị hiện tại.",
+      code: PROVIDED_COURT_AUTH_CODE.ZERO_COURTS_SELECTED,
+    };
+  }
+
+  const clubId = String(scope.clubId || "").trim();
+  const tenantId = String(scope.tenantId || "").trim();
+  const foreign = courts.filter((court) => {
+    if (!court || court.id == null || String(court.id).trim() === "") {
+      return true;
+    }
+    const courtTenant = String(court.tenantId || court.venueId || "").trim();
+    const courtClub = String(court.clubId || "").trim();
+    if (tenantId && courtTenant && courtTenant !== tenantId) {
+      return true;
+    }
+    if (clubId && courtClub && courtClub !== clubId) {
+      return true;
+    }
+    return false;
+  });
+  if (foreign.length) {
+    return {
+      ok: false,
+      error: "Sân không thuộc đơn vị hiện tại.",
+      code: PROVIDED_COURT_AUTH_CODE.COURT_TENANT_FORBIDDEN,
+    };
+  }
+
+  const allowedIds = new Set(courts.map((court) => String(court.id)));
+  const selected = (selectedCourtIds || []).map(String).filter(Boolean);
+  if (selected.some((id) => !allowedIds.has(id))) {
+    return {
+      ok: false,
+      error: "Sân chọn không nằm trong danh sách đã được phép.",
+      code: PROVIDED_COURT_AUTH_CODE.COURT_NOT_IN_AUTHORIZED_SET,
+    };
+  }
+
+  return { ok: true, courts };
+}
+
 export async function createTournamentCommand(clubIdOrScope, input = {}, options = {}) {
   const scope = prepareScope(clubIdOrScope, options);
   if (!scope.ok) {
@@ -206,7 +267,24 @@ export async function setTournamentCourtScheduleCommand(
     updatedAt: new Date().toISOString(),
   };
 
-  const courts = loadCourtsForClub(scope.clubId);
+  const courtsProvided = Object.prototype.hasOwnProperty.call(options, "courts");
+  let courts;
+  if (courtsProvided) {
+    const authorized = authorizeProvidedTournamentCourts(
+      options.courts,
+      scope,
+      courtSchedule.courtIds
+    );
+    if (!authorized.ok) {
+      return {
+        ...authorized,
+        tournament: loaded.tournament,
+      };
+    }
+    courts = authorized.courts;
+  } else {
+    courts = loadCourtsForClub(scope.clubId);
+  }
   const syncResult = syncTournamentCourtBookings(pending, scope.clubId, courts);
   if (!syncResult.ok) {
     return {
