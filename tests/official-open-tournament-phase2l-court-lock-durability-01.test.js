@@ -24,6 +24,7 @@ import {
   loadBookingsForClub,
   saveClubData,
 } from "../src/domain/clubStorage.js";
+import { markClubDataSynced } from "../src/domain/clubSyncMetadata.js";
 import { setActiveClubId, DEFAULT_CLUB, loadClubs, saveClubs } from "../src/data/club.js";
 import {
   COURT_LOCK_CODE,
@@ -114,6 +115,7 @@ function liveSnapshot() {
       bookings,
     },
     source: "canonical",
+    version: 1,
   };
 }
 
@@ -153,7 +155,13 @@ async function lockOwnerDraft(tournament, extras = {}) {
         if (typeof extras.syncClubToCloud === "function") {
           return extras.syncClubToCloud(payload, pushes.length);
         }
-        return { ok: true };
+        const expected = Number(payload?.expectedVersion);
+        const version = Number.isFinite(expected) ? expected + 1 : 1;
+        markClubDataSynced(CLUB_ID, { push: true });
+        return {
+          ok: true,
+          version,
+        };
       },
       ...extras.commandOptions,
     }
@@ -175,6 +183,7 @@ describe("official-open-tournament-phase2l-court-lock-durability-01", () => {
     saveClubs(clubs);
     setActiveClubId(CLUB_ID);
     seedEmptyLocalCourts();
+    markClubDataSynced(CLUB_ID, { pull: true });
     memory = createInMemoryCanonicalTournamentRpc({ tenantId: TENANT_ID });
     __setTournamentRepositoryRpcForTests(memory.rpc);
   });
@@ -299,7 +308,7 @@ describe("official-open-tournament-phase2l-court-lock-durability-01", () => {
     );
     const { result } = await lockOwnerDraft(tournament, {
       syncClubToCloud: async (_payload, n) => {
-        if (n === 1) return { ok: true };
+        if (n === 1) return { ok: true, version: 2 };
         return { ok: false, error: "compensate push failed" };
       },
     });

@@ -217,6 +217,7 @@ export function restoreCanonicalTournamentBookingSnapshot({
   clubId,
   priorOccupancyBookings,
   persistSnapshot,
+  suppressCloudPush = false,
 } = {}) {
   if (!clubId || !persistSnapshot) {
     return {
@@ -228,7 +229,8 @@ export function restoreCanonicalTournamentBookingSnapshot({
   persistCanonicalClubBookings(
     clubId,
     Array.isArray(priorOccupancyBookings) ? priorOccupancyBookings : [],
-    persistSnapshot
+    persistSnapshot,
+    { suppressCloudPush: suppressCloudPush === true }
   );
   return { ok: true };
 }
@@ -271,18 +273,25 @@ export function tournamentOwnedBookingsMatchCourtSchedule(bookings, tournament) 
   return seen.size === expectedIds.size;
 }
 
-function persistCanonicalClubBookings(clubId, nextBookings, snapshotClubData) {
-  const local = loadClubData(clubId);
+function persistCanonicalClubBookings(clubId, nextBookings, snapshotClubData, options = {}) {
+  const useFreshSnapshot = snapshotClubData && typeof snapshotClubData === "object";
+  const base = useFreshSnapshot ? { ...snapshotClubData } : loadClubData(clubId);
   const cloudCourts = Array.isArray(snapshotClubData?.courts)
     ? snapshotClubData.courts
-    : [];
-  // Preserve canonical court inventory in the club blob so cloud push cannot
-  // wipe club_data_v3.courts. Official validation never uses loadCourtsForClub.
-  return saveClubData(clubId, {
-    ...local,
-    courts: cloudCourts.length > 0 ? cloudCourts : local.courts,
-    bookings: nextBookings,
-  });
+    : Array.isArray(base.courts)
+      ? base.courts
+      : [];
+  return saveClubData(
+    clubId,
+    {
+      ...base,
+      courts: cloudCourts.length > 0 ? cloudCourts : base.courts,
+      bookings: nextBookings,
+    },
+    {
+      suppressCloudPush: options.suppressCloudPush === true,
+    }
+  );
 }
 
 function applyCanonicalTournamentOccupancy({
@@ -292,6 +301,7 @@ function applyCanonicalTournamentOccupancy({
   occupancyBookings,
   persistSnapshot,
   courts,
+  suppressCloudPush = false,
 }) {
   const occupancy = Array.isArray(occupancyBookings) ? occupancyBookings : [];
   const hasNew = payloads.some(
@@ -356,7 +366,9 @@ function applyCanonicalTournamentOccupancy({
     }
   });
 
-  persistCanonicalClubBookings(clubId, [...nextById.values()], persistSnapshot);
+  persistCanonicalClubBookings(clubId, [...nextById.values()], persistSnapshot, {
+    suppressCloudPush: suppressCloudPush === true,
+  });
 
   return {
     ok: true,
@@ -495,6 +507,7 @@ export function syncTournamentCourtBookings(tournament, clubId, courts = [], opt
       occupancyBookings: bookings,
       persistSnapshot: options.persistSnapshot,
       courts,
+      suppressCloudPush: options.suppressCloudPush === true,
     });
   }
 

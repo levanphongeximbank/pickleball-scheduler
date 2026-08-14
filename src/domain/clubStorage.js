@@ -302,7 +302,11 @@ export function saveClubData(clubId, data, options = {}) {
     markClubDataDirty(clubId);
     recordBlobWriteTelemetry(clubId);
   }
-  scheduleClubCloudPush(clubId);
+  const shouldScheduleCloudPush =
+    options.suppressCloudPush !== true && options.source !== "cloud";
+  if (shouldScheduleCloudPush) {
+    scheduleClubCloudPush(clubId);
+  }
   return normalized;
 }
 

@@ -10,6 +10,8 @@ import {
   TEAM_TOURNAMENT_DATA_MODES,
 } from "../../team-tournament/repositories/teamTournamentDataMode.js";
 import { resolveTournamentTenantScope } from "../guards/tournamentTenant.js";
+import { isClubDataDirty } from "../../../domain/clubSyncMetadata.js";
+import { cancelRedundantClubCloudPush } from "../../../ai/clubCloudPush.js";
 
 function buildDefaultName(mode) {
   const date = new Date().toLocaleDateString("vi-VN");
@@ -88,7 +90,14 @@ export const COURT_LOCK_CODE = Object.freeze({
   COMPENSATION_FAILED: "COURT_LOCK_COMPENSATION_FAILED",
   BOOKING_TOURNAMENT_INCONSISTENT: "BOOKING_TOURNAMENT_SCHEDULE_INCONSISTENT",
   TOURNAMENT_PATCH_FAILED: "COURT_LOCK_TOURNAMENT_PATCH_FAILED",
+  VERSION_CONFLICT_RETRY_EXHAUSTED: "COURT_LOCK_VERSION_CONFLICT_RETRY_EXHAUSTED",
+  SNAPSHOT_VERSION_MISSING: "COURT_LOCK_SNAPSHOT_VERSION_MISSING",
+  LOCAL_DIRTY_PENDING_SYNC: "CLUB_LOCAL_DIRTY_PENDING_SYNC",
 });
+
+const VERSION_CONFLICT_MAX_RETRY_COUNT = 1;
+const VERSION_CONFLICT_RETRY_MESSAGE =
+  "Dữ liệu lịch sân vừa thay đổi. Vui lòng thử khóa sân lại.";
 
 async function resolveSyncClubToCloud(options = {}) {
   if (typeof options.syncClubToCloud === "function") {
@@ -98,17 +107,22 @@ async function resolveSyncClubToCloud(options = {}) {
   return syncClubToCloud;
 }
 
-async function pushOfficialClubBookings(clubId, syncClubToCloud) {
+async function pushOfficialClubBookings(clubId, syncClubToCloud, pushOptions = {}) {
   try {
-    const pushed = await syncClubToCloud({ clubId });
+    const payload = { clubId };
+    if (pushOptions.expectedVersion != null && pushOptions.expectedVersion !== "") {
+      payload.expectedVersion = Number(pushOptions.expectedVersion);
+    }
+    const pushed = await syncClubToCloud(payload);
     if (!pushed?.ok) {
       return {
         ok: false,
         error: pushed?.error || "Không thể tạo booking canonical.",
         code: pushed?.code || COURT_LOCK_CODE.BOOKING_PUSH_FAILED,
+        expectedVersion: payload.expectedVersion,
       };
     }
-    return { ok: true };
+    return { ok: true, version: pushed.version };
   } catch {
     return {
       ok: false,
@@ -118,16 +132,53 @@ async function pushOfficialClubBookings(clubId, syncClubToCloud) {
   }
 }
 
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value ?? null));
+}
+
+function officialSnapshotMatchesScope(snapshot, scope) {
+  const blob = snapshot?.clubData;
+  if (!blob || typeof blob !== "object") {
+    return false;
+  }
+  const blobClub = String(blob.clubId || "").trim();
+  if (blobClub && blobClub !== String(scope.clubId || "").trim()) {
+    return false;
+  }
+  return true;
+}
+
+async function rewindUnpushedOfficialStaging({
+  clubId,
+  priorOccupancyBookings,
+  persistSnapshot,
+}) {
+  const { restoreCanonicalTournamentBookingSnapshot } = await import(
+    "../../../domain/tournamentBookingService.js"
+  );
+  return restoreCanonicalTournamentBookingSnapshot({
+    clubId,
+    priorOccupancyBookings,
+    persistSnapshot,
+    suppressCloudPush: true,
+  });
+}
+
 async function compensateOfficialCourtLock({
   clubId,
   priorOccupancyBookings,
   persistSnapshot,
   syncClubToCloud,
+  expectedVersion,
 }) {
-  const { restoreCanonicalTournamentBookingSnapshot } = await import(
-    "../../../domain/tournamentBookingService.js"
-  );
-  const restored = restoreCanonicalTournamentBookingSnapshot({
+  if (!Number.isFinite(Number(expectedVersion))) {
+    return {
+      ok: false,
+      code: COURT_LOCK_CODE.COMPENSATION_FAILED,
+      error: "Không hoàn tác được booking sau khi lưu giải thất bại.",
+    };
+  }
+  const restored = await rewindUnpushedOfficialStaging({
     clubId,
     priorOccupancyBookings,
     persistSnapshot,
@@ -141,7 +192,9 @@ async function compensateOfficialCourtLock({
         "Không hoàn tác được booking sau khi lưu giải thất bại.",
     };
   }
-  const pushed = await pushOfficialClubBookings(clubId, syncClubToCloud);
+  const pushed = await pushOfficialClubBookings(clubId, syncClubToCloud, {
+    expectedVersion,
+  });
   if (!pushed.ok) {
     return {
       ok: false,
@@ -340,6 +393,18 @@ export async function setTournamentCourtScheduleCommand(
   const courtsProvided = Object.prototype.hasOwnProperty.call(options, "courts");
   let courts;
   if (courtsProvided) {
+    if (isClubDataDirty(scope.clubId)) {
+      return {
+        ok: false,
+        error:
+          "Dữ liệu CLB đang có thay đổi chưa đồng bộ. Vui lòng chờ đồng bộ hoàn tất rồi khóa sân lại.",
+        code: COURT_LOCK_CODE.LOCAL_DIRTY_PENDING_SYNC,
+        tournament: loaded.tournament,
+        tournamentPatchAttempted: false,
+      };
+    }
+    cancelRedundantClubCloudPush(scope.clubId);
+
     const { readCanonicalClubCourtBookingSnapshot } = await import(
       "../../team-tournament/services/canonicalClubCourtInventory.js"
     );
@@ -373,79 +438,172 @@ export async function setTournamentCourtScheduleCommand(
       };
     }
 
-    const selectedIds = (courtSchedule.courtIds || []).map(String);
-    for (const courtId of selectedIds) {
-      const live = (snapshot.courts || []).find(
-        (court) => String(court.id) === courtId
-      );
-      if (!live) {
-        return {
-          ok: false,
-          error: "Sân không còn thuộc đơn vị hiện tại.",
-          code: PROVIDED_COURT_AUTH_CODE.COURT_NOT_IN_AUTHORIZED_SET,
-          tournament: loaded.tournament,
-          tournamentPatchAttempted: false,
-        };
-      }
-      if (live.active === false) {
-        return {
-          ok: false,
-          error: "Sân đã bị vô hiệu hóa.",
-          code: PROVIDED_COURT_AUTH_CODE.COURT_INACTIVE,
-          tournament: loaded.tournament,
-          tournamentPatchAttempted: false,
-        };
-      }
-    }
-
-    const activeCourts = (snapshot.courts || []).filter(
-      (court) => court.active !== false
-    );
-    const authorized = authorizeProvidedTournamentCourts(
-      activeCourts,
-      scope,
-      courtSchedule.courtIds
-    );
-    if (!authorized.ok) {
+    if (!officialSnapshotMatchesScope(snapshot, scope)) {
       return {
-        ...authorized,
-        tournament: loaded.tournament,
-        tournamentPatchAttempted: false,
-      };
-    }
-    courts = authorized.courts;
-    const priorOccupancyBookings = JSON.parse(
-      JSON.stringify(snapshot.bookings || [])
-    );
-    const syncResult = syncTournamentCourtBookings(pending, scope.clubId, courts, {
-      canonicalOccupancy: true,
-      occupancyBookings: snapshot.bookings,
-      persistSnapshot: snapshot.clubData,
-      authorizedCourts: courts,
-    });
-    if (!syncResult.ok) {
-      return {
-        ...syncResult,
         ok: false,
-        error: syncResult.message,
-        code: syncResult.code || null,
+        error: "Dữ liệu lịch sân vừa thay đổi. Vui lòng thử khóa sân lại.",
+        code: COURT_LOCK_CODE.VERSION_CONFLICT_RETRY_EXHAUSTED,
         tournament: loaded.tournament,
         tournamentPatchAttempted: false,
       };
     }
 
+    let working = snapshot;
+    let retryCount = 0;
+    let syncResult;
+    let priorOccupancyBookings;
+    let pushed;
+    let firstPushExpectedVersion = null;
     const syncClubToCloud = await resolveSyncClubToCloud(options);
-    const pushed = await pushOfficialClubBookings(scope.clubId, syncClubToCloud);
-    if (!pushed.ok) {
-      return {
-        ...syncResult,
-        ok: false,
-        error: pushed.error,
-        code: pushed.code || COURT_LOCK_CODE.BOOKING_PUSH_FAILED,
-        tournament: loaded.tournament,
-        tournamentPatchAttempted: false,
-        compensationAttempted: false,
-      };
+
+    while (true) {
+      const selectedIds = (courtSchedule.courtIds || []).map(String);
+      for (const courtId of selectedIds) {
+        const live = (working.courts || []).find(
+          (court) => String(court.id) === courtId
+        );
+        if (!live) {
+          return {
+            ok: false,
+            error: "Sân không còn thuộc đơn vị hiện tại.",
+            code: PROVIDED_COURT_AUTH_CODE.COURT_NOT_IN_AUTHORIZED_SET,
+            tournament: loaded.tournament,
+            tournamentPatchAttempted: false,
+          };
+        }
+        if (live.active === false) {
+          return {
+            ok: false,
+            error: "Sân đã bị vô hiệu hóa.",
+            code: PROVIDED_COURT_AUTH_CODE.COURT_INACTIVE,
+            tournament: loaded.tournament,
+            tournamentPatchAttempted: false,
+          };
+        }
+      }
+
+      const activeCourts = (working.courts || []).filter(
+        (court) => court.active !== false
+      );
+      const authorized = authorizeProvidedTournamentCourts(
+        activeCourts,
+        scope,
+        courtSchedule.courtIds
+      );
+      if (!authorized.ok) {
+        return {
+          ...authorized,
+          tournament: loaded.tournament,
+          tournamentPatchAttempted: false,
+        };
+      }
+      courts = authorized.courts;
+      priorOccupancyBookings = cloneJson(working.bookings || []);
+      syncResult = syncTournamentCourtBookings(pending, scope.clubId, courts, {
+        canonicalOccupancy: true,
+        occupancyBookings: working.bookings,
+        persistSnapshot: working.clubData,
+        authorizedCourts: courts,
+        suppressCloudPush: true,
+      });
+      if (!syncResult.ok) {
+        if (retryCount > 0) {
+          await rewindUnpushedOfficialStaging({
+            clubId: scope.clubId,
+            priorOccupancyBookings,
+            persistSnapshot: working.clubData,
+          });
+        }
+        return {
+          ...syncResult,
+          ok: false,
+          error: syncResult.message,
+          code: syncResult.code || null,
+          tournament: loaded.tournament,
+          tournamentPatchAttempted: false,
+        };
+      }
+
+      const expectedVersion = Number(working.version);
+      if (!Number.isFinite(expectedVersion)) {
+        await rewindUnpushedOfficialStaging({
+          clubId: scope.clubId,
+          priorOccupancyBookings,
+          persistSnapshot: working.clubData,
+        });
+        return {
+          ok: false,
+          error: "Không xác định được phiên bản dữ liệu sân.",
+          code: COURT_LOCK_CODE.SNAPSHOT_VERSION_MISSING,
+          tournament: loaded.tournament,
+          tournamentPatchAttempted: false,
+        };
+      }
+      if (firstPushExpectedVersion == null) {
+        firstPushExpectedVersion = expectedVersion;
+      }
+
+      pushed = await pushOfficialClubBookings(scope.clubId, syncClubToCloud, {
+        expectedVersion,
+      });
+      if (pushed.ok) {
+        break;
+      }
+      if (pushed.code !== "VERSION_CONFLICT") {
+        return {
+          ...syncResult,
+          ok: false,
+          error: pushed.error,
+          code: pushed.code || COURT_LOCK_CODE.BOOKING_PUSH_FAILED,
+          tournament: loaded.tournament,
+          tournamentPatchAttempted: false,
+          compensationAttempted: false,
+          firstPushExpectedVersion,
+        };
+      }
+      if (retryCount >= VERSION_CONFLICT_MAX_RETRY_COUNT) {
+        await rewindUnpushedOfficialStaging({
+          clubId: scope.clubId,
+          priorOccupancyBookings,
+          persistSnapshot: working.clubData,
+        });
+        return {
+          ...syncResult,
+          ok: false,
+          error: VERSION_CONFLICT_RETRY_MESSAGE,
+          code: COURT_LOCK_CODE.VERSION_CONFLICT_RETRY_EXHAUSTED,
+          tournament: loaded.tournament,
+          tournamentPatchAttempted: false,
+          compensationAttempted: false,
+          firstPushExpectedVersion,
+        };
+      }
+      retryCount += 1;
+      working = await readSnapshot({
+        clubId: scope.clubId,
+        tenantId: scope.tenantId,
+        includeInactive: true,
+      });
+      if (
+        !working.ok ||
+        !working.clubData ||
+        !officialSnapshotMatchesScope(working, scope)
+      ) {
+        await rewindUnpushedOfficialStaging({
+          clubId: scope.clubId,
+          priorOccupancyBookings,
+          persistSnapshot: snapshot.clubData,
+        });
+        return {
+          ok: false,
+          error:
+            working.error ||
+            "Dữ liệu lịch sân vừa thay đổi. Vui lòng thử khóa sân lại.",
+          code: working.code || COURT_LOCK_CODE.VERSION_CONFLICT_RETRY_EXHAUSTED,
+          tournament: loaded.tournament,
+          tournamentPatchAttempted: false,
+        };
+      }
     }
 
     const saved = await updateTournamentCommand(
@@ -458,8 +616,9 @@ export async function setTournamentCourtScheduleCommand(
       const compensation = await compensateOfficialCourtLock({
         clubId: scope.clubId,
         priorOccupancyBookings,
-        persistSnapshot: snapshot.clubData,
+        persistSnapshot: working.clubData,
         syncClubToCloud,
+        expectedVersion: pushed?.version,
       });
       return {
         ...syncResult,
@@ -531,6 +690,7 @@ export async function setTournamentCourtScheduleCommand(
       courtScheduleReadbackVerified: true,
       bookingTournamentScheduleConsistent: true,
       compensationAttempted: false,
+      firstPushExpectedVersion,
     };
   } else {
     courts = loadCourtsForClub(scope.clubId);
