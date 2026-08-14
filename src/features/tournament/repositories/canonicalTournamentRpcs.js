@@ -6,4 +6,6 @@ export const CANONICAL_TOURNAMENT_RPC = Object.freeze({
   DELETE: "canonical_tournament_delete",
   LIST_MINE: "canonical_tournament_list_mine",
   APPLY_ENGINE: "canonical_tournament_apply_engine_state",
+  OFFICIAL_RESERVE_COURTS: "official_tournament_reserve_courts",
+  OFFICIAL_COMMIT_GROUP_SCHEDULE: "official_tournament_commit_group_schedule",
 });

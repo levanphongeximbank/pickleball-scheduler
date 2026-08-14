@@ -237,6 +237,9 @@ export function createCloudTournamentRepository(deps = {}) {
           engine_v4: row.engine_v4,
           ...(options.engineApply ? { engine_apply: true } : {}),
         },
+        ...(options.expectedVersion != null
+          ? { p_expected_version: options.expectedVersion }
+          : {}),
       });
       if (!result.ok) return result;
       return {

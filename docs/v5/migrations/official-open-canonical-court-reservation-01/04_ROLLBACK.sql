@@ -1,0 +1,7 @@
+-- Moved to 07_ROLLBACK.sql.
+
+DO $$
+BEGIN
+  RAISE EXCEPTION 'Use 07_ROLLBACK.sql';
+END
+$$;

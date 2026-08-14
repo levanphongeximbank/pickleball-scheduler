@@ -16,7 +16,21 @@ export {
   deleteTournamentCommand,
   applyEngineV4StateCommand,
   setTournamentStatusCommand,
+  setTournamentCourtScheduleCommand,
 } from "./services/tournamentCommands.js";
+export {
+  reserveOfficialTournamentCourtsCommand,
+  commitOfficialGroupScheduleCommand,
+} from "./court-reservation/officialCourtReservationCommands.js";
+export { createInMemoryOfficialCourtAuthority } from "./court-reservation/inMemoryOfficialCourtAuthority.js";
+export {
+  __setOfficialCourtReservationRpcForTests,
+  __resetOfficialCourtReservationRpcForTests,
+} from "./court-reservation/officialCourtReservationService.js";
+export {
+  OFFICIAL_COURT_RPC,
+  OFFICIAL_COURT_CODE,
+} from "./court-reservation/officialCourtReservationCodes.js";
 
 export {
   findMatchInCanonicalTournament,

@@ -1598,19 +1598,36 @@ export default function OfficialTournamentSetup() {
       if (!result.ok) {
         return result;
       }
-      const saved = await persistTournament({ events: result.events });
+      const { commitOfficialGroupScheduleCommand } = await import(
+        "../../features/tournament/court-reservation/officialCourtReservationCommands.js"
+      );
+      const saved = await commitOfficialGroupScheduleCommand({
+        clubId: activeClubId,
+        tenantId:
+          (courtInventoryScope.ok && courtInventoryScope.tenantId) || tenantId,
+        tournamentId: tournament.id,
+        tournament,
+        eventId: savedEvent.id,
+        matches: result.matches,
+        expectedVersion: tournament.version ?? 1,
+      });
       if (!saved || saved.ok === false) {
         return {
           ok: false,
-          error: "Không lưu được lịch vòng bảng.",
+          error: saved?.error || "Không lưu được lịch vòng bảng.",
+          code: saved?.code,
           mutationCount: 0,
         };
+      }
+      if (saved.tournament) {
+        setTournament(saved.tournament);
       }
       return {
         ok: true,
         mutationCount: 1,
         readbackCount: 1,
         tournament: saved.tournament,
+        cloudWriteCount: 1,
       };
     } finally {
       setScheduleBusy(false);

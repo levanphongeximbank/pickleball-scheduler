@@ -400,17 +400,20 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
 
   it("L. Official provided-courts command revalidates canonical snapshot and never loadCourtsForClub", () => {
     const commandSrc = src("src/features/tournament/services/tournamentCommands.js");
+    assert.match(commandSrc, /TOURNAMENT_MODE.OFFICIAL_TOURNAMENT/);
+    assert.match(commandSrc, /reserveOfficialTournamentCourtsCommand/);
+    const officialStart = commandSrc.indexOf(
+      "loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT"
+    );
+    const officialBranch = commandSrc.slice(officialStart, officialStart + 900);
+    assert.doesNotMatch(officialBranch, /loadCourtsForClub/);
+    assert.doesNotMatch(officialBranch, /syncClubToCloud/);
     const providedStart = commandSrc.indexOf("if (courtsProvided)");
     const providedEnd = commandSrc.indexOf("} else {", providedStart);
     const providedBranch = commandSrc.slice(providedStart, providedEnd);
     assert.match(providedBranch, /readCanonicalClubCourtBookingSnapshot/);
     assert.match(providedBranch, /authorizeProvidedTournamentCourts/);
-    assert.match(providedBranch, /canonicalOccupancy:\s*true/);
-    assert.match(providedBranch, /syncClubToCloud/);
     assert.doesNotMatch(providedBranch, /loadCourtsForClub/);
-    assert.match(providedBranch, /Sân không còn thuộc đơn vị hiện tại/);
-    assert.match(providedBranch, /Sân đã bị vô hiệu hóa/);
-    assert.equal(commandSrc.includes("courts = loadCourtsForClub(scope.clubId);"), true);
   });
 
   it("M. Official booking writer does not look up legacy localStorage courts", () => {

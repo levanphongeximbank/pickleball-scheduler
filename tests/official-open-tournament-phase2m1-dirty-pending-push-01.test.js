@@ -4,11 +4,8 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { readFileSync } from "node:fs";
-import { setTimeout as delay } from "node:timers/promises";
 
-import { hydrateCourtScheduleDraft } from "../src/components/tournament/tournamentCourtScheduleDraft.js";
 import {
-  getClubCloudVersion,
   getDefaultClubData,
   loadClubData,
   saveClubData,
@@ -16,13 +13,10 @@ import {
 } from "../src/domain/clubStorage.js";
 import { isClubDataDirty, markClubDataSynced } from "../src/domain/clubSyncMetadata.js";
 import {
-  __armPendingClubCloudPushForTests,
   __getClubCloudPushScheduleCountForTests,
   __resetClubCloudPushScheduleCountForTests,
-  hasPendingClubCloudPush,
 } from "../src/ai/clubCloudPush.js";
 import {
-  COURT_LOCK_CODE,
   setTournamentCourtScheduleCommand,
 } from "../src/features/tournament/services/tournamentCommands.js";
 import {
@@ -30,6 +24,9 @@ import {
   __resetTournamentRepositorySingleton,
   __setTournamentRepositoryRpcForTests,
   createInMemoryCanonicalTournamentRpc,
+  createInMemoryOfficialCourtAuthority,
+  __setOfficialCourtReservationRpcForTests,
+  __resetOfficialCourtReservationRpcForTests,
 } from "../src/features/tournament/index.js";
 import { TOURNAMENT_MODE, OFFICIAL_MODE } from "../src/models/tournament/index.js";
 import { setActiveClubId, DEFAULT_CLUB, loadClubs, saveClubs } from "../src/data/club.js";
@@ -59,7 +56,6 @@ function createLocalStorageMock(seed = {}) {
 const CLUB_ID = DEFAULT_CLUB.id;
 const TENANT_ID = "tenant-a";
 const CLUB_SCOPE = { id: CLUB_ID, tenantId: TENANT_ID, venueId: TENANT_ID };
-const LOCAL_CUSTOMER = { id: "local-unsynced-customer", name: "LOCAL_NEW_VALUE" };
 
 const CANONICAL_COURTS = [
   {
@@ -148,6 +144,7 @@ async function lockOwnerDraft(tournament, extras = {}) {
     OWNER_DRAFT,
     {
       tenantId: TENANT_ID,
+      timezone: "Asia/Ho_Chi_Minh",
       courts: CANONICAL_COURTS,
       readCanonicalClubCourtBookingSnapshot:
         extras.readCanonicalClubCourtBookingSnapshot ||
@@ -196,12 +193,24 @@ describe("official-open-tournament-phase2m1-dirty-pending-push-01", () => {
     setClubCloudVersion(CLUB_ID, 3);
     __resetClubCloudPushScheduleCountForTests();
     memory = createInMemoryCanonicalTournamentRpc({ tenantId: TENANT_ID });
-    __setTournamentRepositoryRpcForTests(memory.rpc);
+    const courtAuth = createInMemoryOfficialCourtAuthority({
+      rows: memory.rows,
+      tenantId: TENANT_ID,
+      now: "2026-08-14T00:00:00.000Z",
+      clubCourts: { [CLUB_ID]: CANONICAL_COURTS },
+    });
+    const rpc = async (name, args) => {
+      if (String(name).startsWith("official_tournament_")) return courtAuth.rpc(name, args);
+      return memory.rpc(name, args);
+    };
+    __setTournamentRepositoryRpcForTests(rpc);
+    __setOfficialCourtReservationRpcForTests(rpc);
   });
 
   afterEach(() => {
     __resetClubCloudPushScheduleCountForTests();
     __resetTournamentRepositorySingleton();
+    __resetOfficialCourtReservationRpcForTests();
   });
 
   it("A. source:cloud save does not schedule a redundant push-back", () => {
@@ -218,141 +227,41 @@ describe("official-open-tournament-phase2m1-dirty-pending-push-01", () => {
     assert.equal(isClubDataDirty(CLUB_ID), true);
   });
 
-  it("C. pre-existing dirty local state fail-closes and preserves unsynced fields", async () => {
+  it("C–J replaced: Official lock does not flush club dirty or push club blob", async () => {
     const tournament = await createOfficialTournament();
     saveClubData(CLUB_ID, {
       ...loadClubData(CLUB_ID),
-      customers: [LOCAL_CUSTOMER],
+      customers: [{ id: "local-unsynced", name: "Local" }],
     });
-    assert.equal(isClubDataDirty(CLUB_ID), true);
-    let timerFired = 0;
-    __armPendingClubCloudPushForTests(CLUB_ID, {
-      delayMs: 400,
-      onFire: () => {
-        timerFired += 1;
-      },
+    const { result, pushes } = await lockOwnerDraft(tournament, {
+      remote: { version: 7, courts: CANONICAL_COURTS, bookings: [], clubData: freshRemoteClubData() },
     });
-    assert.equal(hasPendingClubCloudPush(CLUB_ID), true);
-
-    const remote = {
-      version: 7,
-      courts: CANONICAL_COURTS,
-      bookings: [],
-      clubData: freshRemoteClubData(),
-    };
-    const { result, pushes } = await lockOwnerDraft(tournament, { remote });
-    assert.equal(result.ok, false);
-    assert.equal(result.code, COURT_LOCK_CODE.LOCAL_DIRTY_PENDING_SYNC);
-    assert.match(result.error, /Không khóa sân/);
-    assert.equal(result.tournamentPatchAttempted, false);
+    assert.equal(result.ok, true, result.error);
     assert.equal(pushes.length, 0);
-    assert.equal(hasPendingClubCloudPush(CLUB_ID), true);
-    assert.equal(
-      loadClubData(CLUB_ID).customers.some((customer) => customer.id === LOCAL_CUSTOMER.id),
-      true
-    );
-    assert.equal(OWNER_DRAFT.startTime, "13:00");
-    assert.equal(OWNER_DRAFT.endTime, "17:00");
-    assert.deepEqual(OWNER_DRAFT.courtIds, ["tt412-court-01", "tt412-court-02"]);
-    const hydrated = hydrateCourtScheduleDraft(null, "2026-08-14");
-    assert.equal(hydrated.date, "2026-08-14");
-    await delay(500);
-    assert.equal(timerFired, 1);
-  });
-
-  it("D. clean local + historical redundant timer is cancelled; no extra version bump", async () => {
-    const tournament = await createOfficialTournament();
-    assert.equal(isClubDataDirty(CLUB_ID), false);
-    let timerFired = 0;
-    __armPendingClubCloudPushForTests(CLUB_ID, {
-      delayMs: 400,
-      onFire: () => {
-        timerFired += 1;
-      },
-    });
-    const remote = {
-      version: 7,
-      courts: CANONICAL_COURTS,
-      bookings: [],
-      clubData: freshRemoteClubData(),
-    };
-    const { result, pushes } = await lockOwnerDraft(tournament, { remote });
-    assert.equal(result.ok, true, result.error);
-    assert.equal(pushes.length, 1);
-    assert.equal(pushes[0].expectedVersion, 7);
-    assert.equal(hasPendingClubCloudPush(CLUB_ID), false);
-    await delay(1600);
-    assert.equal(timerFired, 0);
-    assert.equal(pushes.length, 1);
-    assert.equal(getClubCloudVersion(CLUB_ID), 8);
-    assert.equal(isClubDataDirty(CLUB_ID), false);
-    assert.equal(
-      loadClubData(CLUB_ID).players.some((player) => player.id === "cloud-player-v7"),
-      true
-    );
-  });
-
-  it("E. remote V7 / local V3 clean state uses snapshot expectedVersion=7", async () => {
-    const tournament = await createOfficialTournament();
-    const remote = {
-      version: 7,
-      courts: CANONICAL_COURTS,
-      bookings: [],
-      clubData: freshRemoteClubData(),
-    };
-    assert.equal(getClubCloudVersion(CLUB_ID), 3);
-    assert.equal(isClubDataDirty(CLUB_ID), false);
-    const { result, pushes } = await lockOwnerDraft(tournament, { remote });
-    assert.equal(result.ok, true, result.error);
-    assert.equal(pushes[0].expectedVersion, 7);
-    assert.notEqual(pushes[0].expectedVersion, 3);
-  });
-
-  it("J. success clears dirty; K. failed push does not mark synced", async () => {
-    const tournament = await createOfficialTournament();
-    const remote = {
-      version: 7,
-      courts: CANONICAL_COURTS,
-      bookings: [],
-      clubData: freshRemoteClubData(),
-    };
-    const success = await lockOwnerDraft(tournament, { remote });
-    assert.equal(success.result.ok, true, success.result.error);
-    assert.equal(isClubDataDirty(CLUB_ID), false);
-
-    const second = await createOfficialTournament();
-    const failRemote = {
-      version: 7,
-      courts: CANONICAL_COURTS,
-      bookings: [],
-      clubData: freshRemoteClubData(),
-    };
-    markClubDataSynced(CLUB_ID, { pull: true });
-    const failed = await lockOwnerDraft(second, {
-      remote: failRemote,
-      syncClubToCloud: async () => ({ ok: false, error: "cloud push failed" }),
-    });
-    assert.equal(failed.result.ok, false);
-    assert.equal(failed.result.code, COURT_LOCK_CODE.BOOKING_PUSH_FAILED);
     assert.equal(isClubDataDirty(CLUB_ID), true);
   });
 
-  it("L. source contract: cloud-source skip, dirty check before staging, no data-loss flush", () => {
+
+
+
+
+
+
+
+
+  it("L. source contract: cloud-source skip, Official lock uses reserve RPC not club dirty flush", () => {
     const storage = src("src/domain/clubStorage.js");
     const command = src("src/features/tournament/services/tournamentCommands.js");
     const push = src("src/ai/clubCloudPush.js");
     assert.match(storage, /options\.source !== "cloud"/);
     assert.match(storage, /shouldScheduleCloudPush/);
-    const providedStart = command.indexOf("if (courtsProvided)");
-    const providedEnd = command.indexOf("} else {", providedStart);
-    const providedBranch = command.slice(providedStart, providedEnd);
-    const stageIdx = command.indexOf("syncTournamentCourtBookings", providedStart);
-    const ensureIdx = command.indexOf("ensureOfficialClubSyncReadyForCourtLock", providedStart);
-    assert.ok(ensureIdx > providedStart && ensureIdx < stageIdx);
-    assert.match(providedBranch, /ensureOfficialClubSyncReadyForCourtLock/);
-    assert.match(command, /CLUB_LOCAL_DIRTY_PENDING_SYNC/);
-    assert.match(command, /cancelRedundantClubCloudPush/);
-    assert.doesNotMatch(command, /flushClubCloudPushForTests/);
+    const officialStart = command.indexOf(
+      "loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT"
+    );
+    const officialBranch = command.slice(officialStart, officialStart + 900);
+    assert.match(officialBranch, /reserveOfficialTournamentCourtsCommand/);
+    assert.doesNotMatch(officialBranch, /ensureOfficialClubSyncReadyForCourtLock/);
+    assert.doesNotMatch(officialBranch, /syncClubToCloud/);
     assert.match(push, /cancelRedundantClubCloudPush/);
     assert.doesNotMatch(command, /from ["'].*daily-play/);
   });

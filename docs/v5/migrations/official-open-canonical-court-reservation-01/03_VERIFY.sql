@@ -1,0 +1,7 @@
+-- Moved to 03_VERIFY_SCHEMA.sql and 06_VERIFY.sql.
+
+DO $$
+BEGIN
+  RAISE EXCEPTION 'Use 03_VERIFY_SCHEMA.sql then 06_VERIFY.sql';
+END
+$$;

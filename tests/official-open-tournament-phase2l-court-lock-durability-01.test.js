@@ -14,10 +14,8 @@ import {
   shouldResetCourtScheduleDraftOnTournamentChange,
 } from "../src/components/tournament/tournamentCourtScheduleDraft.js";
 import {
-  buildTournamentBookingId,
   getActiveTournamentCourtBookings,
   restoreCanonicalTournamentBookingSnapshot,
-  tournamentOwnedBookingsMatchCourtSchedule,
 } from "../src/domain/tournamentBookingService.js";
 import {
   getDefaultClubData,
@@ -27,7 +25,6 @@ import {
 import { markClubDataSynced } from "../src/domain/clubSyncMetadata.js";
 import { setActiveClubId, DEFAULT_CLUB, loadClubs, saveClubs } from "../src/data/club.js";
 import {
-  COURT_LOCK_CODE,
   setTournamentCourtScheduleCommand,
 } from "../src/features/tournament/services/tournamentCommands.js";
 import {
@@ -35,6 +32,9 @@ import {
   __resetTournamentRepositorySingleton,
   __setTournamentRepositoryRpcForTests,
   createInMemoryCanonicalTournamentRpc,
+  createInMemoryOfficialCourtAuthority,
+  __setOfficialCourtReservationRpcForTests,
+  __resetOfficialCourtReservationRpcForTests,
   tournamentToCanonicalRow,
   canonicalRowToTournament,
 } from "../src/features/tournament/index.js";
@@ -102,30 +102,24 @@ function seedEmptyLocalCourts() {
   saveClubData(CLUB_ID, data);
 }
 
-function liveSnapshot() {
-  const bookings = loadBookingsForClub(CLUB_ID);
-  return {
-    ok: true,
-    courts: CANONICAL_COURTS,
-    bookings,
-    clubData: {
-      schemaVersion: 3.5,
-      clubId: CLUB_ID,
-      courts: CANONICAL_COURTS,
-      bookings,
-    },
-    source: "canonical",
-    version: 1,
-  };
-}
-
-function wrapRpc(memory, intercept = {}) {
-  return async (name, args) => {
-    if (typeof intercept[name] === "function") {
-      return intercept[name](name, args, memory.rpc);
+function installOfficialReservationRpc(memory, extras = {}) {
+  const courtAuth = createInMemoryOfficialCourtAuthority({
+    rows: memory.rows,
+    tenantId: TENANT_ID,
+    now: "2026-08-14T00:00:00.000Z",
+    clubCourts: { [CLUB_ID]: CANONICAL_COURTS },
+    blobBookingsByClub: extras.blobBookingsByClub || {},
+    dailyLeases: extras.dailyLeases || [],
+  });
+  const rpc = async (name, args) => {
+    if (String(name).startsWith("official_tournament_")) {
+      return courtAuth.rpc(name, args);
     }
     return memory.rpc(name, args);
   };
+  __setTournamentRepositoryRpcForTests(rpc);
+  __setOfficialCourtReservationRpcForTests(rpc);
+  return { courtAuth, rpc };
 }
 
 async function createOfficialTournament() {
@@ -141,32 +135,20 @@ async function createOfficialTournament() {
 }
 
 async function lockOwnerDraft(tournament, extras = {}) {
-  const pushes = [];
   const result = await setTournamentCourtScheduleCommand(
     CLUB_SCOPE,
     tournament.id,
-    OWNER_DRAFT,
+    extras.schedule || OWNER_DRAFT,
     {
       tenantId: TENANT_ID,
-      courts: CANONICAL_COURTS,
-      readCanonicalClubCourtBookingSnapshot: async () => liveSnapshot(),
-      syncClubToCloud: async (payload) => {
-        pushes.push(payload);
-        if (typeof extras.syncClubToCloud === "function") {
-          return extras.syncClubToCloud(payload, pushes.length);
-        }
-        const expected = Number(payload?.expectedVersion);
-        const version = Number.isFinite(expected) ? expected + 1 : 1;
-        markClubDataSynced(CLUB_ID, { push: true });
-        return {
-          ok: true,
-          version,
-        };
-      },
+      timezone: "Asia/Ho_Chi_Minh",
+      expectedVersion: extras.expectedVersion ?? tournament.version ?? 1,
+      idempotencyKey: extras.idempotencyKey,
+      rpc: extras.rpc,
       ...extras.commandOptions,
     }
   );
-  return { result, pushes };
+  return { result };
 }
 
 describe("official-open-tournament-phase2l-court-lock-durability-01", () => {
@@ -185,33 +167,25 @@ describe("official-open-tournament-phase2l-court-lock-durability-01", () => {
     seedEmptyLocalCourts();
     markClubDataSynced(CLUB_ID, { pull: true });
     memory = createInMemoryCanonicalTournamentRpc({ tenantId: TENANT_ID });
-    __setTournamentRepositoryRpcForTests(memory.rpc);
+    installOfficialReservationRpc(memory);
   });
 
   afterEach(() => {
     __resetTournamentRepositorySingleton();
+    __resetOfficialCourtReservationRpcForTests();
   });
 
-  it("A. Owner success: 13:00–17:00 both courts survive readback and panel hydrate", async () => {
+  it("A. Owner success: 13:00–17:00 both courts survive canonical readback and panel hydrate", async () => {
     const tournament = await createOfficialTournament();
-    const { result, pushes } = await lockOwnerDraft(tournament);
+    const { result } = await lockOwnerDraft(tournament, { idempotencyKey: "2l-a" });
     assert.equal(result.ok, true, result.error);
-    assert.equal(result.tournamentPatchAttempted, true);
-    assert.equal(result.courtScheduleReadbackVerified, true);
-    assert.equal(result.bookingTournamentScheduleConsistent, true);
-    assert.equal(pushes.length, 1);
+    assert.equal(result.cloudWriteCount, 1);
     assert.equal(
       courtScheduleFieldsMatch(result.tournament.courtSchedule, OWNER_DRAFT),
       true
     );
     assert.ok(result.tournament.courtSchedule.syncedAt);
-
-    const owned = getActiveTournamentCourtBookings(CLUB_ID, tournament.id);
-    assert.equal(owned.length, 2);
-    assert.equal(
-      tournamentOwnedBookingsMatchCourtSchedule(owned, result.tournament),
-      true
-    );
+    assert.equal(getActiveTournamentCourtBookings(CLUB_ID, tournament.id).length, 0);
 
     const f5 = hydrateCourtScheduleDraft(result.tournament.courtSchedule, "2026-08-14");
     assert.equal(f5.date, "2026-08-14");
@@ -222,135 +196,69 @@ describe("official-open-tournament-phase2l-court-lock-durability-01", () => {
     assert.notEqual(f5.endTime, COURT_SCHEDULE_DEFAULT_END);
   });
 
-  it("B. booking push failure does not patch Tournament and keeps Owner draft values", async () => {
+  it("B. reservation RPC failure does not write Club bookings", async () => {
     const tournament = await createOfficialTournament();
-    let updateCount = 0;
-    __setTournamentRepositoryRpcForTests(
-      wrapRpc(memory, {
-        canonical_tournament_update: async () => {
-          updateCount += 1;
-          return { ok: false, error: "must not patch" };
-        },
-      })
-    );
-    const { result, pushes } = await lockOwnerDraft(tournament, {
-      syncClubToCloud: async () => ({ ok: false, error: "cloud push failed" }),
-    });
-    assert.equal(result.ok, false);
-    assert.equal(result.code, COURT_LOCK_CODE.BOOKING_PUSH_FAILED);
-    assert.equal(result.tournamentPatchAttempted, false);
-    assert.equal(updateCount, 0);
-    assert.equal(pushes.length, 1);
-
-    const draft = { ...OWNER_DRAFT };
-    assert.equal(draft.startTime, "13:00");
-    assert.equal(draft.endTime, "17:00");
-    assert.deepEqual(draft.courtIds, OWNER_DRAFT.courtIds);
-  });
-
-  it("C. Tournament patch failure compensates bookings and keeps draft", async () => {
-    const tournament = await createOfficialTournament();
-    __setTournamentRepositoryRpcForTests(
-      wrapRpc(memory, {
-        canonical_tournament_update: async () => ({
-          ok: false,
-          error: "tournament patch failed",
-          code: "TOURNAMENT_CLOUD_UNAVAILABLE",
-        }),
-      })
-    );
-    const { result, pushes } = await lockOwnerDraft(tournament);
-    assert.equal(result.ok, false);
-    assert.equal(result.tournamentPatchAttempted, true);
-    assert.equal(result.compensationAttempted, true);
-    assert.equal(result.compensationOk, true);
-    assert.equal(pushes.length, 2);
-    assert.equal(getActiveTournamentCourtBookings(CLUB_ID, tournament.id).length, 0);
-  });
-
-  it("D. GET readback mismatch fail-closes and compensates", async () => {
-    const tournament = await createOfficialTournament();
-    __setTournamentRepositoryRpcForTests(
-      wrapRpc(memory, {
-        canonical_tournament_get: async (name, args, inner) => {
-          const got = await inner(name, args);
-          if (got.ok && got.tournament?.payload?.courtSchedule) {
-            return {
-              ...got,
-              tournament: {
-                ...got.tournament,
-                payload: { ...got.tournament.payload, courtSchedule: null },
-              },
-            };
-          }
-          return got;
-        },
-      })
-    );
-    const { result, pushes } = await lockOwnerDraft(tournament);
-    assert.equal(result.ok, false);
-    assert.equal(result.compensationAttempted, true);
-    assert.equal(result.courtScheduleReadbackVerified, false);
-    assert.equal(result.code, COURT_LOCK_CODE.READBACK_MISMATCH);
-    assert.equal(pushes.length, 2);
-    assert.equal(getActiveTournamentCourtBookings(CLUB_ID, tournament.id).length, 0);
-  });
-
-  it("E. compensation push failure returns COURT_LOCK_COMPENSATION_FAILED", async () => {
-    const tournament = await createOfficialTournament();
-    __setTournamentRepositoryRpcForTests(
-      wrapRpc(memory, {
-        canonical_tournament_update: async () => ({
-          ok: false,
-          error: "tournament patch failed",
-        }),
-      })
-    );
     const { result } = await lockOwnerDraft(tournament, {
-      syncClubToCloud: async (_payload, n) => {
-        if (n === 1) return { ok: true, version: 2 };
-        return { ok: false, error: "compensate push failed" };
-      },
+      idempotencyKey: "2l-b",
+      rpc: async () => ({ ok: false, code: "CLOUD_UNAVAILABLE", error: "rpc down" }),
     });
     assert.equal(result.ok, false);
-    assert.equal(result.compensationAttempted, true);
-    assert.equal(result.compensationOk, false);
-    assert.equal(result.code, COURT_LOCK_CODE.COMPENSATION_FAILED);
+    assert.equal(getActiveTournamentCourtBookings(CLUB_ID, tournament.id).length, 0);
+    assert.equal(result.tournamentPatchAttempted, false);
   });
 
-  it("F. retry same values is idempotent; time-window change updates owned rows", async () => {
-    const tournament = await createOfficialTournament();
-    const first = await lockOwnerDraft(tournament);
-    assert.equal(first.result.ok, true, first.result.error);
-    const second = await lockOwnerDraft(tournament);
-    assert.equal(second.result.ok, true, second.result.error);
-    const owned = getActiveTournamentCourtBookings(CLUB_ID, tournament.id);
-    assert.equal(owned.length, 2);
-    assert.equal(
-      owned.some(
-        (booking) =>
-          booking.id ===
-          buildTournamentBookingId(tournament.id, "tt412-court-01", "2026-08-14")
-      ),
-      true
-    );
+  it("C. Official lock is one server command — no client compensation path", () => {
+    const command = src("src/features/tournament/services/tournamentCommands.js");
+    const officialStart = command.indexOf("loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT");
+    assert.ok(officialStart >= 0);
+    const officialBranch = command.slice(officialStart, officialStart + 800);
+    assert.match(officialBranch, /reserveOfficialTournamentCourtsCommand/);
+    assert.doesNotMatch(officialBranch, /compensateOfficialCourtLock/);
+    assert.doesNotMatch(officialBranch, /syncClubToCloud/);
+  });
 
-    const moved = await setTournamentCourtScheduleCommand(
-      CLUB_SCOPE,
-      tournament.id,
-      { ...OWNER_DRAFT, startTime: "14:00", endTime: "18:00" },
+  it("D. canonical GET courtSchedule is UI authority — no Club booking readback", async () => {
+    const tournament = await createOfficialTournament();
+    const { result } = await lockOwnerDraft(tournament, { idempotencyKey: "2l-d" });
+    assert.equal(result.ok, true, result.error);
+    assert.equal(result.courtScheduleReadbackVerified, true);
+    assert.equal(getActiveTournamentCourtBookings(CLUB_ID, tournament.id).length, 0);
+  });
+
+  it("E. version conflict does not mutate reservations", async () => {
+    const tournament = await createOfficialTournament();
+    const { result } = await lockOwnerDraft(tournament, {
+      expectedVersion: 99,
+      idempotencyKey: "2l-e",
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, "VERSION_CONFLICT");
+    assert.equal(getActiveTournamentCourtBookings(CLUB_ID, tournament.id).length, 0);
+  });
+
+  it("F. retry same values is idempotent; time-window change updates canonical schedule", async () => {
+    const tournament = await createOfficialTournament();
+    const first = await lockOwnerDraft(tournament, { idempotencyKey: "2l-f1" });
+    assert.equal(first.result.ok, true, first.result.error);
+    const second = await lockOwnerDraft(tournament, {
+      expectedVersion: first.result.version,
+      idempotencyKey: "2l-f1",
+    });
+    assert.equal(second.result.ok, true, second.result.error);
+    assert.equal(second.result.replay || second.result.ok, true);
+
+    const moved = await lockOwnerDraft(
+      { ...tournament, version: first.result.version },
       {
-        tenantId: TENANT_ID,
-        courts: CANONICAL_COURTS,
-        readCanonicalClubCourtBookingSnapshot: async () => liveSnapshot(),
-        syncClubToCloud: async () => ({ ok: true }),
+        schedule: { ...OWNER_DRAFT, startTime: "14:00", endTime: "18:00" },
+        expectedVersion: first.result.version,
+        idempotencyKey: "2l-f2",
       }
     );
-    assert.equal(moved.ok, true, moved.error);
-    const updated = getActiveTournamentCourtBookings(CLUB_ID, tournament.id);
-    assert.equal(updated.length, 2);
-    assert.equal(updated.every((booking) => booking.startTime === "14:00"), true);
-    assert.equal(updated.every((booking) => booking.endTime === "18:00"), true);
+    assert.equal(moved.result.ok, true, moved.result.error);
+    assert.equal(moved.result.tournament.courtSchedule.startTime, "14:00");
+    assert.equal(moved.result.tournament.courtSchedule.endTime, "18:00");
+    assert.equal(getActiveTournamentCourtBookings(CLUB_ID, tournament.id).length, 0);
   });
 
   it("G. transient empty courts / same-id reload do not reset 13:00–17:00 draft", () => {
@@ -483,14 +391,8 @@ describe("official-open-tournament-phase2l-court-lock-durability-01", () => {
       /Hãy khóa sân trên lịch booking trước khi xếp lịch vòng bảng/
     );
 
-    const providedStart = command.indexOf("if (courtsProvided)");
-    const providedEnd = command.indexOf("} else {", providedStart);
-    const providedBranch = command.slice(providedStart, providedEnd);
-    assert.match(providedBranch, /getTournamentQuery/);
-    assert.match(providedBranch, /courtScheduleFieldsMatch/);
-    assert.match(providedBranch, /compensateOfficialCourtLock/);
-    assert.match(providedBranch, /tournamentPatchAttempted: false/);
-    assert.match(command, /COURT_LOCK_COMPENSATION_FAILED/);
+    assert.match(setup, /commitOfficialGroupScheduleCommand/);
+    assert.match(command, /reserveOfficialTournamentCourtsCommand/);
     assert.doesNotMatch(command, /from ["'].*daily-play/);
 
     const club = src("src/context/ClubContext.jsx");

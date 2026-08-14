@@ -117,6 +117,7 @@ export function createInMemoryCanonicalTournamentRpc(seed = {}) {
         league_id: payload.league_id || null,
         payload: { ...(payload.payload || {}), id },
         engine_v4: payload.engine_v4 || {},
+        version: 1,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -132,6 +133,19 @@ export function createInMemoryCanonicalTournamentRpc(seed = {}) {
       if (!current || current.club_id !== args.p_club_id) {
         return deny("TOURNAMENT_NOT_FOUND", "not found");
       }
+      const actualVersion = Number.isFinite(Number(current.version)) ? Number(current.version) : 1;
+      if (
+        args.p_expected_version != null &&
+        Number(args.p_expected_version) !== actualVersion
+      ) {
+        return {
+          ok: false,
+          code: "VERSION_CONFLICT",
+          expectedVersion: Number(args.p_expected_version),
+          actualVersion,
+          error: "Dữ liệu giải vừa thay đổi. Vui lòng tải lại.",
+        };
+      }
       const patch = args.p_patch || {};
       const next = {
         ...current,
@@ -141,10 +155,11 @@ export function createInMemoryCanonicalTournamentRpc(seed = {}) {
         league_id: patch.league_id ?? current.league_id,
         payload: patch.payload ?? current.payload,
         engine_v4: patch.engine_v4 ?? current.engine_v4,
+        version: actualVersion + 1,
         updated_at: new Date().toISOString(),
       };
       rows.set(id, next);
-      return { ok: true, tournament: next };
+      return { ok: true, tournament: next, version: next.version };
     }
 
     if (name === "canonical_tournament_delete") {
@@ -167,9 +182,11 @@ export function createInMemoryCanonicalTournamentRpc(seed = {}) {
       if (!current || current.club_id !== args.p_club_id) {
         return deny("TOURNAMENT_NOT_FOUND", "not found");
       }
+      const actualVersion = Number.isFinite(Number(current.version)) ? Number(current.version) : 1;
       const next = {
         ...current,
         engine_v4: args.p_engine_state || {},
+        version: actualVersion + 1,
         updated_at: new Date().toISOString(),
       };
       rows.set(id, next);

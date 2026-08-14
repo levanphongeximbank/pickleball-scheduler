@@ -467,6 +467,23 @@ export async function setTournamentCourtScheduleCommand(
     };
   }
 
+  if (loaded.tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
+    const { reserveOfficialTournamentCourtsCommand } = await import(
+      "../court-reservation/officialCourtReservationCommands.js"
+    );
+    return reserveOfficialTournamentCourtsCommand({
+      clubId: scope.clubId,
+      tenantId: scope.tenantId,
+      tournamentId,
+      tournament: loaded.tournament,
+      schedule: courtSchedule,
+      expectedVersion: options.expectedVersion ?? loaded.tournament.version ?? 1,
+      idempotencyKey: options.idempotencyKey,
+      timezone: options.timezone,
+      rpc: options.rpc,
+    });
+  }
+
   const pending = {
     ...loaded.tournament,
     courtSchedule: {

@@ -23,7 +23,6 @@ import {
   __getClubCloudPushScheduleCountForTests,
 } from "../src/ai/clubCloudPush.js";
 import {
-  COURT_LOCK_CODE,
   setTournamentCourtScheduleCommand,
 } from "../src/features/tournament/services/tournamentCommands.js";
 import {
@@ -31,6 +30,9 @@ import {
   __resetTournamentRepositorySingleton,
   __setTournamentRepositoryRpcForTests,
   createInMemoryCanonicalTournamentRpc,
+  createInMemoryOfficialCourtAuthority,
+  __setOfficialCourtReservationRpcForTests,
+  __resetOfficialCourtReservationRpcForTests,
 } from "../src/features/tournament/index.js";
 import { TOURNAMENT_MODE, OFFICIAL_MODE } from "../src/models/tournament/index.js";
 import { setActiveClubId, DEFAULT_CLUB, loadClubs, saveClubs } from "../src/data/club.js";
@@ -131,6 +133,7 @@ async function lockOwnerDraft(tournament, extras = {}) {
     OWNER_DRAFT,
     {
       tenantId: TENANT_ID,
+      timezone: "Asia/Ho_Chi_Minh",
       courts: CANONICAL_COURTS,
       readCanonicalClubCourtBookingSnapshot:
         extras.readCanonicalClubCourtBookingSnapshot ||
@@ -173,14 +176,25 @@ describe("official-open-tournament-phase2m3-semantic-diff-01", () => {
     saveClubs(clubs);
     setActiveClubId(CLUB_ID);
     __resetClubCloudPushScheduleCountForTests();
-    __setTournamentRepositoryRpcForTests(
-      createInMemoryCanonicalTournamentRpc({ tenantId: TENANT_ID }).rpc
-    );
+    const memory = createInMemoryCanonicalTournamentRpc({ tenantId: TENANT_ID });
+    const courtAuth = createInMemoryOfficialCourtAuthority({
+      rows: memory.rows,
+      tenantId: TENANT_ID,
+      now: "2026-08-14T00:00:00.000Z",
+      clubCourts: { [CLUB_ID]: CANONICAL_COURTS },
+    });
+    const rpc = async (name, args) => {
+      if (String(name).startsWith("official_tournament_")) return courtAuth.rpc(name, args);
+      return memory.rpc(name, args);
+    };
+    __setTournamentRepositoryRpcForTests(rpc);
+    __setOfficialCourtReservationRpcForTests(rpc);
   });
 
   afterEach(() => {
     __resetClubCloudPushScheduleCountForTests();
     __resetTournamentRepositorySingleton();
+    __resetOfficialCourtReservationRpcForTests();
   });
 
   it("A. undefined vs [] where domain equivalent → no pending diff", () => {
@@ -312,7 +326,7 @@ describe("official-open-tournament-phase2m3-semantic-diff-01", () => {
     };
     const { result, pushes } = await lockOwnerDraft(tournament, { remote });
     assert.equal(result.ok, true, result.error);
-    assert.equal(pushes.length, 1);
+    assert.equal(pushes.length, 0);
     assert.equal(
       loadClubData(CLUB_ID).bookings.some((booking) => booking.id === "maintenance-keep"),
       true
@@ -327,60 +341,16 @@ describe("official-open-tournament-phase2m3-semantic-diff-01", () => {
     assert.equal(__getClubCloudPushScheduleCountForTests(CLUB_ID), 0);
   });
 
-  it("H2. screenshot lock: representation fields do not fail-close when local version is behind", async () => {
+  it("H2/G2 replaced: Official lock does not fail-close on club semantic dirty", async () => {
     const tournament = await createOfficialTournament();
-    saveClubData(CLUB_ID, rawCloudBlob(), { source: "cloud" });
-    const leftover = {
-      id: buildTournamentBookingId(tournament.id, "tt412-court-01", "2026-08-14"),
-      bookingType: "tournament",
-      tournamentId: tournament.id,
-      courtId: "tt412-court-01",
-      date: "2026-08-14",
-      startTime: "13:00",
-      endTime: "17:00",
-      bookingStatus: "confirmed",
-    };
-    saveClubData(CLUB_ID, { ...loadClubData(CLUB_ID), bookings: [leftover] });
-    setClubCloudVersion(CLUB_ID, 3);
-    const inspected = inspectClubBlobSemanticDiff(loadClubData(CLUB_ID), rawCloudBlob());
-    assert.deepEqual(inspected.realPendingPaths, ["bookings"]);
-    const remote = {
-      version: 7,
-      courts: CANONICAL_COURTS,
-      bookings: [],
-      clubData: rawCloudBlob(),
-    };
-    const { result, pushes } = await lockOwnerDraft(tournament, { remote });
-    assert.equal(result.ok, true, result.error);
-    assert.equal(pushes.length, 1);
-    assert.equal(pushes[0].expectedVersion, 7);
-    assert.equal(isClubDataDirty(CLUB_ID), false);
-  });
-
-  it("G2. real unsynced behind cloud still fail-closes and preserves the field", async () => {
-    const tournament = await createOfficialTournament();
-    saveClubData(CLUB_ID, rawCloudBlob(), { source: "cloud" });
-    setClubCloudVersion(CLUB_ID, 3);
     saveClubData(CLUB_ID, {
       ...loadClubData(CLUB_ID),
-      customers: [{ id: "local-unsynced-customer", name: "LOCAL_NEW_VALUE" }],
+      customers: [{ id: "unsynced", name: "Keep" }],
     });
-    const remote = {
-      version: 7,
-      courts: CANONICAL_COURTS,
-      bookings: [],
-      clubData: rawCloudBlob(),
-    };
-    const { result, pushes } = await lockOwnerDraft(tournament, { remote });
-    assert.equal(result.ok, false);
-    assert.equal(result.code, COURT_LOCK_CODE.LOCAL_DIRTY_PENDING_SYNC);
-    assert.match(result.error, /customers/);
-    assert.doesNotMatch(result.error, /skillLevelProposals/);
-    assert.equal(pushes.length, 0);
-    assert.equal(
-      loadClubData(CLUB_ID).customers.some((customer) => customer.id === "local-unsynced-customer"),
-      true
-    );
+    markClubDataDirty(CLUB_ID, { source: "test", operation: "customers" });
+    const { result } = await lockOwnerDraft(tournament);
+    assert.equal(result.ok, true, result.error);
+    assert.equal(loadClubData(CLUB_ID).customers[0].name, "Keep");
   });
 
   it("stale representation reconcile clears dirty without pushing", () => {
