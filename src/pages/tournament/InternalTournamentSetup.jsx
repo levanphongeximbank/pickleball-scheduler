@@ -80,6 +80,9 @@ import {
   shouldSkipKnockoutForInternal,
   INTERNAL_WORKSPACE_SECTIONS,
   INTERNAL_WORKSPACE_SECTION_LABELS,
+  listInternalPersistedGroups,
+  countInternalPersistedGroups,
+  resolveInternalGroupMemberLabels,
 } from "../../features/tournament/internal/index.js";
 import {
   reopenClosedTournament,
@@ -481,6 +484,10 @@ export default function InternalTournamentSetup() {
   }, [selectedPlayerIds, tenantPlayers, players]);
 
   const savedEvent = tournament?.events?.[0] || null;
+  const persistedGroups = useMemo(
+    () => listInternalPersistedGroups(savedEvent),
+    [savedEvent]
+  );
 
   useEffect(() => {
     if (!tournament?.id) return;
@@ -1355,6 +1362,7 @@ export default function InternalTournamentSetup() {
       return;
     }
     drawMutationGuardRef.current = true;
+    selectWorkspaceSection(INTERNAL_WORKSPACE_SECTIONS.DRAW);
 
     try {
       const draw = buildInternalDrawEventWithoutMatches(plan);
@@ -1416,7 +1424,7 @@ export default function InternalTournamentSetup() {
       setLocalRevision((value) => value + 1);
       refreshClubs();
       setMessage(
-        `Đã chia ${draw.groupCount} bảng và lưu lên máy chủ. Bước tiếp theo: Tạo lịch thi đấu.`
+        `Đã chia ${countInternalPersistedGroups(result.tournament) || draw.groupCount} bảng và lưu lên máy chủ. Bước tiếp theo: Tạo lịch thi đấu.`
       );
 
       const steps = buildSnakeSteps({
@@ -2018,31 +2026,31 @@ export default function InternalTournamentSetup() {
 
           <Paper variant="outlined" sx={{ p: 1.5 }}>
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-              Bảng đấu ({savedEvent?.groups?.length || 0})
+              Bảng đấu ({persistedGroups.length})
             </Typography>
-            {!savedEvent?.groups?.length ? (
+            {!persistedGroups.length ? (
               <Typography variant="body2" color="text.secondary">
                 Chưa chia bảng. Chọn VĐV, đề xuất cặp rồi bấm &quot;Chia bảng&quot;.
               </Typography>
             ) : (
               <Stack spacing={1}>
-                {savedEvent.groups.map((group) => (
+                {persistedGroups.map((group) => (
                   <Paper key={group.id} variant="outlined" sx={{ p: 1.25 }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Typography fontWeight="bold">{group.name}</Typography>
+                      <Typography fontWeight="bold">{group.name || group.label || group.id}</Typography>
                       <Chip
                         size="small"
-                        label={`${group.entryIds?.length || 0} đội • ${group.matches?.length || 0} trận`}
+                        label={`${group.entryIds?.length || group.entries?.length || 0} đội`}
                       />
                     </Stack>
                     <Typography variant="caption" color="text.secondary">
-                      {(group.entries || []).map((entry) => entry.name).join(" | ")}
+                      {resolveInternalGroupMemberLabels(group, savedEvent).join(" | ") || "Chưa có thành viên"}
                     </Typography>
                   </Paper>
                 ))}
                 <DrawPublishControls
                   tournament={tournament}
-                  groups={savedEvent.groups}
+                  groups={persistedGroups}
                   drawPublish={drawPublish}
                   hasReopenPermission={hasDrawReopenPermission}
                   onLock={handleLockDraw}
@@ -2064,10 +2072,10 @@ export default function InternalTournamentSetup() {
           </Paper>
 
           <TournamentGroupEditor
-            groups={savedEvent?.groups || []}
+            groups={persistedGroups}
             entries={savedEvent?.entries || editorEntries}
             players={players}
-            canIntervene={canInterveneSetup && (savedEvent?.groups?.length || 0) > 0}
+            canIntervene={canInterveneSetup && persistedGroups.length > 0}
             tournamentId={tournamentId}
             eventId={savedEvent?.id || ""}
             onApply={handleGroupInterventionApply}

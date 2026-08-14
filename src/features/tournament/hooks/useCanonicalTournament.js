@@ -21,6 +21,7 @@ import {
   resolveCanonicalLoadPresentation,
   resolveCanonicalScopeGapPolicy,
 } from "../internal/internalWorkspaceSections.js";
+import { selectAuthoritativeCanonicalTournament } from "../internal/internalPersistedDrawGroups.js";
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 
 function readClubId(clubOrScope) {
@@ -53,6 +54,19 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
   const lastAuthoritativeRef = useRef(null);
   const lastScopeRef = useRef({ clubId: "", tenantId: "", tournamentId: "" });
   const lastRevisionRef = useRef(revision);
+
+  const applyAuthoritativeTournament = useCallback((incoming) => {
+    const selected = selectAuthoritativeCanonicalTournament(
+      lastAuthoritativeRef.current,
+      incoming
+    );
+    lastAuthoritativeRef.current = selected;
+    setTournament(selected);
+    if (selected) {
+      hasLoadedRef.current = true;
+    }
+    return selected;
+  }, []);
 
   const reload = useCallback(async () => {
     if (!clubId || !tournamentId) {
@@ -89,15 +103,13 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
       setRefreshing(false);
       return null;
     }
-    setTournament(result.tournament);
-    hasLoadedRef.current = true;
-    lastAuthoritativeRef.current = result.tournament;
+    applyAuthoritativeTournament(result.tournament);
     lastScopeRef.current = { clubId, tenantId, tournamentId };
     lastRevisionRef.current = revision;
     setLoading(false);
     setRefreshing(false);
-    return result.tournament;
-  }, [clubId, tournamentId, tenantId, revision]);
+    return lastAuthoritativeRef.current;
+  }, [applyAuthoritativeTournament, clubId, tournamentId, tenantId, revision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -175,9 +187,7 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
         }
         setError(result.error || "Không tải được giải.");
       } else {
-        setTournament(result.tournament);
-        hasLoadedRef.current = true;
-        lastAuthoritativeRef.current = result.tournament;
+        applyAuthoritativeTournament(result.tournament);
         setError(null);
       }
       setLoading(false);
@@ -186,7 +196,7 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
     return () => {
       cancelled = true;
     };
-  }, [clubId, tournamentId, revision, tenantId]);
+  }, [applyAuthoritativeTournament, clubId, tournamentId, revision, tenantId]);
 
   const update = useCallback(
     async (patch, options = {}) => {
@@ -211,11 +221,11 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
           expectedVersion != null ? expectedVersion : current?.version,
       });
       if (result.ok) {
-        setTournament(result.tournament);
+        applyAuthoritativeTournament(result.tournament);
       }
       return result;
     },
-    [clubId, tournamentId, tenantId, tournament]
+    [applyAuthoritativeTournament, clubId, tournamentId, tenantId, tournament]
   );
 
   const applyEngine = useCallback(
@@ -237,11 +247,11 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
             : resolveCanonicalExpectedVersion(current),
       });
       if (result.ok) {
-        setTournament(result.tournament);
+        applyAuthoritativeTournament(result.tournament);
       }
       return result;
     },
-    [clubId, tournamentId, tenantId, tournament]
+    [applyAuthoritativeTournament, clubId, tournamentId, tenantId, tournament]
   );
 
   const setStatus = useCallback(
@@ -263,11 +273,11 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
             : resolveCanonicalExpectedVersion(current),
       });
       if (result.ok) {
-        setTournament(result.tournament);
+        applyAuthoritativeTournament(result.tournament);
       }
       return result;
     },
-    [clubId, tournamentId, tenantId, tournament]
+    [applyAuthoritativeTournament, clubId, tournamentId, tenantId, tournament]
   );
 
   return {

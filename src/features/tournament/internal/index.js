@@ -100,3 +100,12 @@ export {
 } from "./internalMatchLifecyclePresentation.js";
 
 export { resolveInternalSchedulePrerequisite } from "./internalSchedulePrerequisite.js";
+
+export {
+  INTERNAL_PERSISTED_GROUP_FIELD,
+  getInternalCanonicalEvent,
+  listInternalPersistedGroups,
+  countInternalPersistedGroups,
+  resolveInternalGroupMemberLabels,
+  selectAuthoritativeCanonicalTournament,
+} from "./internalPersistedDrawGroups.js";
