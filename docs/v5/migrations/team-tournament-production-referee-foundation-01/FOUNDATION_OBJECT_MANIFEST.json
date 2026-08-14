@@ -1,0 +1,315 @@
+{
+  "package": "team-tournament-production-referee-foundation-01",
+  "classification": "C",
+  "purpose": "Minimal safe Production foundation so team-tournament-canonical-referee-lifecycle-01 PRECHECK sees the supported pre-migration shape.",
+  "staging_history_replayed": false,
+  "staging_rows_copied": 0,
+  "permission_catalog_dml": false,
+  "anon_execute_required": false,
+  "anon_table_write": "DENY",
+  "anon_referee_rpc_execute": "DENY",
+  "existing_tournament_backfill_required": false,
+  "existing_business_data_mutation": false,
+  "future_writes_only": true,
+  "tenant_model": "organizer_tenancy=user_venue_id()+team_tournament_assert_tenant; player_identity=auth.uid()→athletes.user_id→athletes.id; referee_identity=auth.uid()=referee_assignments.referee_user_id; captain=temporary tournament/team captain_player_id",
+  "boundary": {
+    "FOUNDATION_OWNS": [
+      "referee_assignments",
+      "match_live_states",
+      "team_sub_match_referee_links",
+      "referee_v5_assignment_effective_status",
+      "referee_v5_match_state_id",
+      "referee_v5_current_user_has_assignment",
+      "team_tournament_sub_match_is_dreambreaker",
+      "team_tournament_build_v5_state_shell",
+      "team_tournament_provision_eligibility (pre-canonical child-scope body)",
+      "team_tournament_create_referee_assignment (pre-canonical child-scope body)"
+    ],
+    "FINAL_CONTINUATION_OWNS": [
+      "team_tournament_resolve_effective_referee_assignment",
+      "team_tournament_result_write_guard",
+      "team_tournament_ensure_referee_runtime_for_matchup",
+      "team_tournament_trg_matchup_ensure_runtime",
+      "team_tournament_trg_sub_match_ensure_runtime",
+      "trg_tt_matchup_ensure_referee_runtime",
+      "trg_tt_sub_match_ensure_referee_runtime",
+      "team_tournament_create_referee_assignment replacement (parent scope + auto-ensure)",
+      "team_tournament_provision_eligibility replacement (parent inheritance, no dreambreaker_out_of_scope)",
+      "team_tournament_start_dreambreaker replacement (scoped write guard)",
+      "team_tournament_confirm_sub_match replacement (scoped write guard)",
+      "team_tournament_save_sub_match_draft replacement (6-arg scoped)",
+      "team_tournament_record_dreambreaker_point replacement (scoped write guard)",
+      "team_tournament_list_my_referee_assignments"
+    ]
+  },
+  "objects": [
+    {
+      "OBJECT": "public.referee_assignments",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "REQUIRED",
+      "WHY_REQUIRED": "Canonical assignment store. Final PRECHECK requires to_regclass. Final APPLY reads/writes parent and child rows.",
+      "SOURCE_SEMANTICS_FROM": "PHASE_V5A_REFEREE_FOUNDATION.sql + TT5-D_ASSIGNMENT_SAFETY.sql + PHASE_V5D1 expires_at (baked, not replayed as ALTER chain)",
+      "CANONICAL_FINAL_CONSUMER": "team-tournament-canonical-referee-lifecycle-01/02_APPLY.sql",
+      "PRODUCTION_PRESTATE": "ABSENT",
+      "CREATION_MODE": "CREATE TABLE IF NOT EXISTS (full canonical columns)",
+      "ROLLBACK_MODE": "DROP TABLE if empty; REFUSE if live rows"
+    },
+    {
+      "OBJECT": "public.match_live_states",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "REQUIRED",
+      "WHY_REQUIRED": "Referee V5 runtime snapshot. Final PRECHECK requires to_regclass. Final ensure_runtime INSERTs state_payload/state_version/version/status/participants/scoring columns.",
+      "SOURCE_SEMANTICS_FROM": "PHASE_V5A_REFEREE_FOUNDATION.sql + PHASE_V5D_REFEREE_PERSISTENCE.sql state_payload/state_version (baked)",
+      "CANONICAL_FINAL_CONSUMER": "team_tournament_ensure_referee_runtime_for_matchup",
+      "PRODUCTION_PRESTATE": "ABSENT",
+      "CREATION_MODE": "CREATE TABLE IF NOT EXISTS (full canonical columns)",
+      "ROLLBACK_MODE": "DROP TABLE if empty; REFUSE if live rows"
+    },
+    {
+      "OBJECT": "public.team_sub_match_referee_links",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "REQUIRED",
+      "WHY_REQUIRED": "Bridge sub-match ↔ V5 match. Final PRECHECK requires to_regclass. Final ensure_runtime INSERTs/UPDATEs provisioned links.",
+      "SOURCE_SEMANTICS_FROM": "TT5-B_BRIDGE_SCHEMA.sql",
+      "CANONICAL_FINAL_CONSUMER": "team_tournament_ensure_referee_runtime_for_matchup + provision_eligibility",
+      "PRODUCTION_PRESTATE": "ABSENT",
+      "CREATION_MODE": "CREATE TABLE IF NOT EXISTS",
+      "ROLLBACK_MODE": "DROP TABLE if empty; REFUSE if live rows"
+    },
+    {
+      "OBJECT": "public.referee_v5_assignment_effective_status(text,timestamptz,timestamptz)",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "REQUIRED",
+      "WHY_REQUIRED": "Final APPLY bodies call this for pending/active/expired/revoked. create_referee_assignment foundation body also calls it.",
+      "SOURCE_SEMANTICS_FROM": "TT5-D_ASSIGNMENT_SAFETY.sql (STABLE not IMMUTABLE: uses now())",
+      "CANONICAL_FINAL_CONSUMER": "resolve_effective / create / eligibility / list_my",
+      "PRODUCTION_PRESTATE": "ABSENT",
+      "CREATION_MODE": "CREATE OR REPLACE",
+      "ROLLBACK_MODE": "DROP FUNCTION"
+    },
+    {
+      "OBJECT": "public.referee_v5_match_state_id(text,text,text)",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "REQUIRED",
+      "WHY_REQUIRED": "Final ensure_runtime builds match_live_states.id as tenant::tournament::match.",
+      "SOURCE_SEMANTICS_FROM": "PHASE_V5D_REFEREE_PERSISTENCE.sql",
+      "CANONICAL_FINAL_CONSUMER": "team_tournament_ensure_referee_runtime_for_matchup",
+      "PRODUCTION_PRESTATE": "ABSENT",
+      "CREATION_MODE": "CREATE OR REPLACE",
+      "ROLLBACK_MODE": "DROP FUNCTION"
+    },
+    {
+      "OBJECT": "public.referee_v5_current_user_has_assignment(text,text,text,text[])",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "REQUIRED",
+      "WHY_REQUIRED": "RLS SELECT for assigned referee on assignments/runtime/links. Not browser write authority.",
+      "SOURCE_SEMANTICS_FROM": "PHASE_V5D_REFEREE_PERSISTENCE.sql semantics, canonicalized to effective_status + expires_at (not token_expires_at, not profiles.venue_id)",
+      "CANONICAL_FINAL_CONSUMER": "RLS policies on foundation tables",
+      "PRODUCTION_PRESTATE": "ABSENT",
+      "CREATION_MODE": "CREATE OR REPLACE",
+      "ROLLBACK_MODE": "DROP FUNCTION"
+    },
+    {
+      "OBJECT": "public.team_tournament_sub_match_is_dreambreaker(team_tournament_sub_matches,team_tournament_matchups)",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "REQUIRED",
+      "WHY_REQUIRED": "Pre-canonical provision_eligibility body blocks dreambreaker_out_of_scope. Final continuation replaces eligibility and removes that block.",
+      "SOURCE_SEMANTICS_FROM": "TT5-B_BRIDGE_SCHEMA.sql",
+      "CANONICAL_FINAL_CONSUMER": "foundation provision_eligibility only (superseded by final eligibility)",
+      "PRODUCTION_PRESTATE": "ABSENT",
+      "CREATION_MODE": "CREATE OR REPLACE",
+      "ROLLBACK_MODE": "DROP FUNCTION"
+    },
+    {
+      "OBJECT": "public.team_tournament_build_v5_state_shell(text,text,text,text[],text[],text,jsonb)",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "REQUIRED",
+      "WHY_REQUIRED": "Final PRECHECK to_regprocedure. Final ensure_runtime builds state JSON.",
+      "SOURCE_SEMANTICS_FROM": "TT5-B_PROVISION_RPC.sql",
+      "CANONICAL_FINAL_CONSUMER": "team_tournament_ensure_referee_runtime_for_matchup",
+      "PRODUCTION_PRESTATE": "ABSENT",
+      "CREATION_MODE": "CREATE OR REPLACE; REVOKE from PUBLIC/anon/authenticated",
+      "ROLLBACK_MODE": "DROP FUNCTION"
+    },
+    {
+      "OBJECT": "public.team_tournament_provision_eligibility(team_tournaments,team_tournament_matchups,team_tournament_sub_matches,uuid)",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "REQUIRED",
+      "WHY_REQUIRED": "Final PRECHECK to_regprocedure. Foundation ships pre-canonical child-only body (dreambreaker_out_of_scope present). Final APPLY replaces with parent inheritance.",
+      "SOURCE_SEMANTICS_FROM": "TT5-B_PROVISION_RPC.sql",
+      "CANONICAL_FINAL_CONSUMER": "canonical-referee-lifecycle-01 PRECHECK then CREATE OR REPLACE",
+      "PRODUCTION_PRESTATE": "ABSENT",
+      "CREATION_MODE": "CREATE OR REPLACE; REVOKE from PUBLIC/anon/authenticated",
+      "ROLLBACK_MODE": "DROP FUNCTION"
+    },
+    {
+      "OBJECT": "public.team_tournament_create_referee_assignment(text,text,text,uuid,timestamptz,boolean,text,text)",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "REQUIRED",
+      "WHY_REQUIRED": "Final PRECHECK to_regprocedure. Foundation ships pre-canonical child-only body (no v_parent). Final APPLY replaces with parent matchup authority + auto-ensure.",
+      "SOURCE_SEMANTICS_FROM": "team-tournament-scenario-b-final-progression-referee-01/02_APPLY.sql (unique_violation + child match_id)",
+      "CANONICAL_FINAL_CONSUMER": "canonical-referee-lifecycle-01 PRECHECK then CREATE OR REPLACE",
+      "PRODUCTION_PRESTATE": "ABSENT",
+      "CREATION_MODE": "CREATE OR REPLACE; GRANT authenticated; REVOKE anon/PUBLIC",
+      "ROLLBACK_MODE": "DROP FUNCTION; REFUSE if final continuation present"
+    }
+  ],
+  "excluded": [
+    {
+      "OBJECT": "public.referee_device_sessions",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "NOT_REQUIRED",
+      "WHY_EXCLUDED": "Final canonical APPLY/PRECHECK never reference this table."
+    },
+    {
+      "OBJECT": "public.team_tournament_referee_correction_requests",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "NOT_REQUIRED",
+      "WHY_EXCLUDED": "Correction authority is organizer can_manage() inside final result_write_guard. No inbox table in #418."
+    },
+    {
+      "OBJECT": "public.team_tournament_referee_event_inbox",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "NOT_REQUIRED",
+      "WHY_EXCLUDED": "Not referenced by canonical-referee-lifecycle-01."
+    },
+    {
+      "OBJECT": "public.match_events",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "UNRELATED",
+      "WHY_EXCLUDED": "Historical Referee V5 event log. Final continuation does not insert events."
+    },
+    {
+      "OBJECT": "public.match_participant_positions",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "UNRELATED",
+      "WHY_EXCLUDED": "Optional V5-A normalized positions. Not in final dependency closure."
+    },
+    {
+      "OBJECT": "public.match_game_states",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "UNRELATED",
+      "WHY_EXCLUDED": "Historical V5-A. Not in final dependency closure."
+    },
+    {
+      "OBJECT": "public.match_result_revisions",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "UNRELATED",
+      "WHY_EXCLUDED": "Historical V5-A. Not in final dependency closure."
+    },
+    {
+      "OBJECT": "public.match_incidents",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "UNRELATED",
+      "WHY_EXCLUDED": "Historical V5-A. Not in final dependency closure."
+    },
+    {
+      "OBJECT": "public.match_disputes",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "UNRELATED",
+      "WHY_EXCLUDED": "Historical V5-A. Not in final dependency closure."
+    },
+    {
+      "OBJECT": "public.match_sync_mutations",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "UNRELATED",
+      "WHY_EXCLUDED": "Historical V5-A/D idempotency ledger. Not in final dependency closure."
+    },
+    {
+      "OBJECT": "public.match_integration_outbox",
+      "OBJECT_TYPE": "table",
+      "CLASSIFICATION": "UNRELATED",
+      "WHY_EXCLUDED": "V5-D1 extra. Not in final dependency closure."
+    },
+    {
+      "OBJECT": "public.team_tournament_provision_referee_match",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "SUPERSEDED",
+      "WHY_EXCLUDED": "Manual 'Tạo phiên trọng tài' path. Final ensure_runtime provisions idempotently."
+    },
+    {
+      "OBJECT": "public.team_tournament_revoke_referee_assignment",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "NOT_REQUIRED",
+      "WHY_EXCLUDED": "Not in final PRECHECK. Final create_referee_assignment supersedes live assignments inline. Follow-up if Owner wants BTC revoke RPC on Production."
+    },
+    {
+      "OBJECT": "public.team_tournament_list_referee_assignments",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "NOT_REQUIRED",
+      "WHY_EXCLUDED": "Not in final PRECHECK. Final package creates list_my for assigned referees."
+    },
+    {
+      "OBJECT": "public.team_tournament_search_referee_candidates",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "NOT_REQUIRED",
+      "WHY_EXCLUDED": "Not in final PRECHECK. Already authored by team-tournament-post-lineup-complete-lifecycle-01. Do not duplicate ownership."
+    },
+    {
+      "OBJECT": "public.team_tournament_list_my_referee_assignments",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "NOT_REQUIRED",
+      "WHY_EXCLUDED": "FINAL_CONTINUATION_OWNS. CREATE OR REPLACE in canonical-referee-lifecycle-01."
+    },
+    {
+      "OBJECT": "public.team_tournament_resolve_effective_referee_assignment",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "NOT_REQUIRED",
+      "WHY_EXCLUDED": "FINAL_CONTINUATION_OWNS. Do not duplicate."
+    },
+    {
+      "OBJECT": "public.team_tournament_result_write_guard",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "NOT_REQUIRED",
+      "WHY_EXCLUDED": "FINAL_CONTINUATION_OWNS. Do not duplicate."
+    },
+    {
+      "OBJECT": "public.team_tournament_ensure_referee_runtime_for_matchup",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "NOT_REQUIRED",
+      "WHY_EXCLUDED": "FINAL_CONTINUATION_OWNS. Do not duplicate."
+    },
+    {
+      "OBJECT": "public.referee_v5_is_super_admin",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "SUPERSEDED",
+      "WHY_EXCLUDED": "Platform public.is_super_admin() is the current helper."
+    },
+    {
+      "OBJECT": "public.team_tournament_tenant_allowed",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "STAGING_ONLY",
+      "WHY_EXCLUDED": "Historical Staging RLS helper. Canonical organizer tenancy is team_tournament_assert_tenant + user_venue_id()."
+    },
+    {
+      "OBJECT": "public.referee_v5_mark_assignment_expired_if_needed",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "NOT_REQUIRED",
+      "WHY_EXCLUDED": "Not called by canonical-referee-lifecycle-01. Effective status is computed, not persisted, by the helper."
+    },
+    {
+      "OBJECT": "phase_v5d3_staging_fault_injection",
+      "OBJECT_TYPE": "function/trigger",
+      "CLASSIFICATION": "FAULT_INJECTION",
+      "WHY_EXCLUDED": "Explicitly forbidden."
+    },
+    {
+      "OBJECT": "phase5d_tt5d_controlled_reconciliation",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "STAGING_ONLY",
+      "WHY_EXCLUDED": "Sourceless Staging reconciliation. Forbidden."
+    },
+    {
+      "OBJECT": "permissions INSERT referee_v5.*",
+      "OBJECT_TYPE": "dml",
+      "CLASSIFICATION": "STAGING_ONLY",
+      "WHY_EXCLUDED": "PERMISSION_CATALOG_DML=NO. Not independently proven as required by current RBAC for this foundation."
+    },
+    {
+      "OBJECT": "confirm_sub_match / save_sub_match_draft / start_dreambreaker bodies",
+      "OBJECT_TYPE": "function",
+      "CLASSIFICATION": "LEGACY",
+      "WHY_EXCLUDED": "Production already has these signatures. Foundation is additive. Final continuation replaces authorization behavior. Do not replace twice."
+    }
+  ]
+}
