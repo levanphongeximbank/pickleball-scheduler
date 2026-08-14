@@ -34,7 +34,10 @@ Daily Play needed one consolidated final-lifecycle authority:
 2. `02_APPLY.sql` — replace write RPCs/snapshot and install close/match-shape helpers.
    Second APPLY is `CREATE OR REPLACE` (idempotent function replace).
 3. `03_VERIFY.sql` — signatures, SECURITY DEFINER/search_path, grants, close/post-close
-   contract, occupancy unique index still present.
+   contract, occupancy unique index still present. `closeSummary` is verified from the
+   bounded `jsonb_build_object` construction only (keys `completedMatchCount`,
+   `cancelledWaitingCount`, `checkedInCountAtClose`); it does not scan unrelated
+   `playerIds` / `jsonb_agg` text elsewhere in `close_session`.
 4. Browser/staging QA only after a later Owner GO.
 5. `04_ROLLBACK.sql` **only after confirmed APPLY of this exact package** and when
    rollback preconditions match. Accidental rollback-before-apply is refused

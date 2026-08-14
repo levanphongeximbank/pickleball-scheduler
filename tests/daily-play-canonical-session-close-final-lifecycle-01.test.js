@@ -193,6 +193,17 @@ describe("SQL package local contract", () => {
     assert.match(applySql, /GRANT EXECUTE ON FUNCTION public\.daily_play_close_session/);
     assert.match(verifySql, /SESSION_CLOSE_BLOCKED/);
     assert.match(verifySql, /correct_score must remain allowed after session close/);
+    assert.equal(
+      verifySql.includes(String.raw`jsonb_set\(\s*v_s\s*,\s*'[{]closeSummary[}]'`),
+      true
+    );
+    assert.match(verifySql, /bounded closeSummary jsonb_build_object construction missing/);
+    assert.match(verifySql, /checkedInCountAtClose/);
+    assert.equal(verifySql.includes("STAGING_APPLIED_BY_THIS_RUN"), false);
+    assert.equal(
+      verifySql.includes("ILIKE '%playerIds%' AND v_def ILIKE '%closeSummary%' AND v_def ILIKE '%jsonb_agg%player%'"),
+      false
+    );
     assert.match(rollbackSql, /DROP FUNCTION IF EXISTS public\.daily_play_close_session/);
     assert.match(rollbackSql, /occupiedCourtIds/);
     assert.equal(rollbackSql.includes("'tournamentStatus'"), false);

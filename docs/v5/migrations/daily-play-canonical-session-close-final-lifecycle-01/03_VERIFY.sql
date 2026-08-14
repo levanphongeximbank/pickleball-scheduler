@@ -1,6 +1,6 @@
 -- Daily Play canonical session close + match-shape: post-apply verification.
 -- LOCAL PACKAGE ONLY. DO NOT APPLY WITHOUT OWNER GO STAGING.
--- Read-only. This implementation run did not apply Staging.
+-- Read-only. Verifies applied contract/state. Does not record a specific apply-run history.
 
 DO $$
 DECLARE
@@ -16,6 +16,8 @@ DECLARE
   v_correct_def text;
   v_snap_def text;
   v_rpc text;
+  v_close_summary_frag text;
+  v_close_summary_keys text[];
   v_rpcs text[] := ARRAY[
     'public.daily_play_check_in(text,text,uuid,text,integer,text)',
     'public.daily_play_check_out(text,text,uuid,text,integer,text)',
@@ -140,8 +142,37 @@ BEGIN
   IF v_def NOT ILIKE '%status = ''completed''%' AND v_def NOT ILIKE '%status=''completed''%' THEN
     RAISE EXCEPTION 'VERIFY_FAIL: tournament status completed missing from close_session';
   END IF;
-  IF v_def ILIKE '%playerIds%' AND v_def ILIKE '%closeSummary%' AND v_def ILIKE '%jsonb_agg%player%' THEN
+
+  -- Inspect only the jsonb_set(..., '{closeSummary}', jsonb_build_object(...)) fragment.
+  -- Do not scan unrelated playerIds / jsonb_agg / checkedInPlayerIds text elsewhere in close_session.
+  v_close_summary_frag := (regexp_match(
+    regexp_replace(v_def, E'[\\n\\r\\t]+', ' ', 'g'),
+    $re$jsonb_set\(\s*v_s\s*,\s*'[{]closeSummary[}]'\s*,\s*jsonb_build_object\s*\((.*?)\)\s*,\s*true\s*\)$re$
+  ))[1];
+  IF v_close_summary_frag IS NULL OR length(trim(v_close_summary_frag)) = 0 THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: bounded closeSummary jsonb_build_object construction missing';
+  END IF;
+  v_close_summary_keys := ARRAY(
+    SELECT m[1] FROM regexp_matches(v_close_summary_frag, '''([A-Za-z]+)''', 'g') AS m
+  );
+  IF v_close_summary_keys IS DISTINCT FROM ARRAY[
+    'completedMatchCount',
+    'cancelledWaitingCount',
+    'checkedInCountAtClose'
+  ] THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: closeSummary keys must be exactly completedMatchCount, cancelledWaitingCount, checkedInCountAtClose (got %)',
+      coalesce(array_to_string(v_close_summary_keys, ','), '<none>');
+  END IF;
+  IF v_close_summary_frag !~ $k$'completedMatchCount'\s*,\s*v_completed\s*,$k$
+     OR v_close_summary_frag !~ $k$'cancelledWaitingCount'\s*,\s*v_cancelled_waiting\s*,$k$
+     OR v_close_summary_frag !~ $k$'checkedInCountAtClose'\s*,\s*v_checked$k$ THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: closeSummary must be constructed from scalar counts v_completed, v_cancelled_waiting, v_checked';
+  END IF;
+  IF v_close_summary_frag ~* '''(playerIds|players|checkedInPlayerIds|athleteIds|userIds)''' THEN
     RAISE EXCEPTION 'VERIFY_FAIL: closeSummary must not snapshot player lists';
+  END IF;
+  IF v_close_summary_frag ~* 'jsonb_agg|json_agg|jsonb_array_elements' THEN
+    RAISE EXCEPTION 'VERIFY_FAIL: closeSummary must not aggregate player or match lists';
   END IF;
 
   v_create_def := pg_get_functiondef(
@@ -231,6 +262,6 @@ SELECT
     'EXECUTE'
   ) AS ok;
 
-SELECT 'STAGING_APPLIED_BY_THIS_RUN' AS check_item, 'NO' AS value, true AS ok;
+SELECT 'VERIFY_MODE' AS check_item, 'READ_ONLY_CONTRACT' AS value, true AS ok;
 SELECT 'COURT_TIME_ALLOCATION' AS check_item, 'NOT_IN_SCOPE' AS value, true AS ok;
 SELECT 'CORRECT_SCORE_AFTER_CLOSE' AS check_item, 'ALLOWED_COMPLETED_MATCH_ONLY' AS value, true AS ok;
