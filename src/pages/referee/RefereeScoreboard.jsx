@@ -96,7 +96,11 @@ function TeamScoreControls({
   );
 }
 
-export default function RefereeScoreboard({ sessionToken = null, sessionMode = false } = {}) {
+export default function RefereeScoreboard({
+  sessionToken = null,
+  sessionMode = false,
+  canonicalCommit = null,
+} = {}) {
   const { token: rawToken } = useParams();
   const token = sessionToken || decodeURIComponent(rawToken || "");
   const { user } = useAuth();
@@ -111,6 +115,8 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
   const [locked, setLocked] = useState(false);
   const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
   const [confirmDecrement, setConfirmDecrement] = useState(null);
+  const [canonicalCommitted, setCanonicalCommitted] = useState(false);
+  const usesCanonicalCommit = typeof canonicalCommit === "function";
 
   const displayStatus = useMemo(
     () => resolveRefereeStatusLabel(resolveRefereeMatchStatus({ referee: { token } }, row)),
@@ -223,8 +229,40 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
     setConfirmDecrement(team);
   };
 
+  const runCanonicalCommit = async () => {
+    if (!usesCanonicalCommit) {
+      return { ok: false, error: "Phiên chấm nội bộ chưa gắn ghi kết quả canonical." };
+    }
+    setSubmitting(true);
+    setError(null);
+    const result = await canonicalCommit({ token, scoreA, scoreB });
+    setSubmitting(false);
+    if (!result?.ok) {
+      setError(
+        result?.error ||
+          "Không ghi được kết quả vào bảng điểm giải. Cần Owner GO SQL nếu máy chủ chưa bật."
+      );
+      return result;
+    }
+    setCanonicalCommitted(true);
+    setLocked(true);
+    setMessage("Đã ghi kết quả vào bảng điểm giải.");
+    applyRow({
+      ...(row || {}),
+      scoreA,
+      scoreB,
+      status: MATCH_LIVE_STATUS.LOCKED,
+    });
+    return result;
+  };
+
   const handleConfirmFinalize = async () => {
     setConfirmFinalizeOpen(false);
+
+    if (usesCanonicalCommit) {
+      await runCanonicalCommit();
+      return;
+    }
 
     const refereeScope = resolveRefereeTokenScoreboardScope(row, user);
     const guard = guardRefereeMatchAction({
@@ -296,7 +334,7 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
       sx={{ minHeight: "100dvh", bgcolor: "background.default", pb: 4 }}
       data-testid="referee-token-scoreboard"
     >
-      {!sessionMode && (
+      {!sessionMode && !usesCanonicalCommit && (
         <Container maxWidth="sm" sx={{ pt: 2 }}>
           <Alert severity="info" sx={{ mb: 1 }}>
             Link token legacy. Khuyến nghị{" "}
@@ -384,15 +422,46 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
           </Button>
         )}
 
-        {locked && row?.status === MATCH_LIVE_STATUS.FINALIZE_REQUESTED && (
+        {locked &&
+          row?.status === MATCH_LIVE_STATUS.FINALIZE_REQUESTED &&
+          !usesCanonicalCommit && (
           <Alert severity="info">
             Kết quả {scoreA} — {scoreB} đang chờ BTC xác nhận và cập nhật bảng điểm.
           </Alert>
         )}
 
-        {locked && (row?.status === MATCH_LIVE_STATUS.LOCKED || row?.status === MATCH_LIVE_STATUS.PROCESSED) && (
+        {usesCanonicalCommit &&
+          !canonicalCommitted &&
+          row?.status === MATCH_LIVE_STATUS.FINALIZE_REQUESTED && (
+          <Stack spacing={1.5} sx={{ mb: 2 }}>
+            <Alert severity="info">
+              Điểm {scoreA} — {scoreB} đã có trên phiên chấm. Ghi vào bảng điểm giải để
+              cập nhật xếp hạng.
+            </Alert>
+            <Button
+              fullWidth
+              size="large"
+              variant="contained"
+              color="success"
+              disabled={submitting}
+              onClick={() => {
+                runCanonicalCommit();
+              }}
+              sx={{ minHeight: 56, fontSize: "1.05rem", fontWeight: 700 }}
+            >
+              Ghi vào bảng điểm giải
+            </Button>
+          </Stack>
+        )}
+
+        {(canonicalCommitted ||
+          (locked &&
+            (row?.status === MATCH_LIVE_STATUS.LOCKED ||
+              row?.status === MATCH_LIVE_STATUS.PROCESSED))) && (
           <Alert severity="success">
-            Trận đã khóa: {scoreA} — {scoreB}. Liên hệ BTC nếu cần điều chỉnh.
+            {usesCanonicalCommit
+              ? `Đã ghi kết quả ${scoreA} — ${scoreB} vào bảng điểm giải.`
+              : `Trận đã khóa: ${scoreA} — ${scoreB}. Liên hệ BTC nếu cần điều chỉnh.`}
           </Alert>
         )}
       </Container>

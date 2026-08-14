@@ -127,15 +127,18 @@ describe("IT-E2E-BROWSER-015 referee token scoring without ClubProvider", () => 
     assert.match(scoreboard, /data-testid="referee-token-scoreboard"/);
   });
 
-  it("014 Chấm trận still targets /referee/:token", () => {
+  it("legacy /referee/:token remains compatibility-only; hub Chấm trận is canonical", () => {
     const aggregator = readSrc(
       "src/features/tournament/my-tournaments/aggregateMyTournamentDashboards.js"
     );
     const discovery = readSrc(
       "src/features/tournament/internal/internalRefereeDiscovery.js"
     );
-    assert.match(discovery, /\/referee\/\$\{encodeURIComponent\(referee\.token\)\}/);
+    const router = readSrc("src/router.jsx");
+    assert.match(discovery, /buildInternalRefereeCanonicalHref/);
+    assert.match(discovery, /buildInternalRefereeLegacyTokenHref/);
     assert.match(aggregator, /listInternalRefereeHubAssignments/);
+    assert.match(router, /path="\/referee\/:token"/);
   });
 
   it("token scope comes from authorized match, not activeClub", () => {

@@ -200,9 +200,13 @@ describe("IT-E2E-BROWSER-014 referee Giải của tôi includes Internal", () =>
     assert.equal(card.assignedMatches.length, 1);
     assert.equal(card.assignedMatches[0].matchId, "GA-R1-M1");
     assert.equal(card.nextMatchup.matchId, "GA-R1-M1");
-    assert.match(card.refereeHref, /^\/referee\//);
+    assert.match(card.refereeHref, /^\/referee\/match\/GA-R1-M1\?/);
+    assert.match(card.refereeHref, /mode=internal/);
+    assert.doesNotMatch(card.refereeHref, /^\/referee\/[^/]+$/);
     assert.equal(card.assignedMatches[0].accessPath, card.refereeHref);
     assert.equal(card.assignedMatches[0].scoringAction, card.refereeHref);
+    assert.match(card.assignedMatches[0].legacyTokenPath, /^\/referee\//);
+    assert.notEqual(card.assignedMatches[0].legacyTokenPath, card.refereeHref);
     assert.equal(card.assignedMatches[0].team1Name.includes("IT421 Nam 01"), true);
   });
 

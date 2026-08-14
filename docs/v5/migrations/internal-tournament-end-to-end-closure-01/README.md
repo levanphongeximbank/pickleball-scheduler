@@ -1,7 +1,8 @@
 # internal-tournament-end-to-end-closure-01
 
 **Workstream:** `INTERNAL-TOURNAMENT-END-TO-END-CLOSURE-01`
-**Status:** 01–04 live on Staging. Additive IT-E2E-BROWSER-016 referee runtime package: 05–08. **STAGING ONLY.**
+**Status:** 01–04 live on Staging. Additive IT-E2E-BROWSER-016 referee runtime package: 05–08 live on Staging. Additive IT-E2E-BROWSER-017 referee canonical commit package: 09–12 **source only until Owner GO**. **STAGING ONLY.**
+**SQL_APPLIED for 09–12:** NO
 
 ## Contract (Pass 2.6 corrective)
 
@@ -39,6 +40,10 @@ Team Tournament modes are **not** constrained by this graph and may omit CAS.
 | `06_REFEREE_RUNTIME_APPLY.sql` | `canonical_ensure_internal_referee_match_live(text)` + match uniqueness |
 | `07_REFEREE_RUNTIME_VERIFY.sql` | Invalid/unassigned/cross-tenant denied; Owner ensure idempotent; score preserve |
 | `08_REFEREE_RUNTIME_ROLLBACK.sql` | Drop Internal ensure RPC + match uniqueness index |
+| `09_REFEREE_COMMIT_PRECHECK.sql` | IT-E2E-BROWSER-017: 016 ensure + CAS update present; commit RPC absent |
+| `10_REFEREE_COMMIT_APPLY.sql` | `canonical_commit_internal_referee_match_result(text,int,int,bigint)` CAS commit |
+| `11_REFEREE_COMMIT_VERIFY.sql` | Dummy commit/CAS/idempotent; Owner 11–5 fixture not mutated |
+| `12_REFEREE_COMMIT_ROLLBACK.sql` | Drop Internal commit RPC only |
 
 ## Safety
 
@@ -46,3 +51,4 @@ Team Tournament modes are **not** constrained by this graph and may omit CAS.
 - Anon execute revoked
 - Tenant assert unchanged
 - 05–08: STAGING ONLY (`qyewbxjsiiyufanzcjcq`). No Production apply.
+- 09–12: STAGING ONLY. **Do not apply without explicit Owner GO.** Reuses 016 ensure for live runtime; commit is the Internal adapter into canonical result (not Team MLP).

@@ -7,6 +7,10 @@ import {
   REFEREE_ROSTER_SOURCE,
   getRefereeSettings,
 } from "../../../models/tournament/refereeRoster.js";
+import {
+  buildInternalRefereeCanonicalHref,
+  buildInternalRefereeLegacyTokenHref,
+} from "./internalRefereeCanonicalPath.js";
 
 export const INTERNAL_REFEREE_IDENTITY_MATCH_METHOD = Object.freeze({
   CANONICAL_USER_ID: "canonicalUserId",
@@ -91,6 +95,11 @@ export function projectInternalRefereeHubMatch({
   const label = (id) =>
     entries.find((entry) => String(entry.id) === String(id))?.name || id || "—";
   const referee = match.referee || {};
+  const canonicalHref = buildInternalRefereeCanonicalHref({
+    tournamentId: tournament.id,
+    matchId: match.id,
+    clubId: tournament.clubId,
+  });
   return {
     matchId: match.id,
     tournamentId: tournament.id,
@@ -107,8 +116,9 @@ export function projectInternalRefereeHubMatch({
     round: match.round || null,
     stage: match.stage || "group",
     source: "internal_canonical",
-    scoringAction: referee.token ? `/referee/${encodeURIComponent(referee.token)}` : "",
-    accessPath: referee.token ? `/referee/${encodeURIComponent(referee.token)}` : "",
+    scoringAction: canonicalHref,
+    accessPath: canonicalHref,
+    legacyTokenPath: buildInternalRefereeLegacyTokenHref(referee.token),
   };
 }
 

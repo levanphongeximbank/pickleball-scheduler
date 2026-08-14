@@ -147,6 +147,22 @@ export {
 } from "./internalRefereeRuntimeEnsure.js";
 
 export {
+  INTERNAL_REFEREE_CANONICAL_MODE,
+  buildInternalRefereeCanonicalHref,
+  buildInternalRefereeLegacyTokenHref,
+  isInternalRefereeCanonicalRequest,
+} from "./internalRefereeCanonicalPath.js";
+
+export {
+  CANONICAL_COMMIT_INTERNAL_REFEREE_MATCH_RESULT,
+  INTERNAL_REFEREE_COMMIT_SQL_REQUIRED,
+  projectInternalRefereeCanonicalMatchResult,
+  projectInternalRefereeCanonicalEventResult,
+  standingsFromInternalEvent,
+  commitInternalRefereeMatchResult,
+} from "./internalRefereeCanonicalCommit.js";
+
+export {
   INTERNAL_PERSISTED_GROUP_FIELD,
   getInternalCanonicalEvent,
   listInternalPersistedGroups,
