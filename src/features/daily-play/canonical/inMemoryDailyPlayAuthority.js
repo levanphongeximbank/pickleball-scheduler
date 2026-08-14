@@ -132,6 +132,31 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
     leasesByTournament.set(String(tournamentId), leases);
   }
 
+  function clubWideActiveLeases(tenantId, clubId) {
+    const all = [];
+    for (const [tournamentId, leases] of leasesByTournament.entries()) {
+      const owner = tournaments.get(String(tournamentId));
+      if (!owner) continue;
+      if (owner.tenant_id !== tenantId || owner.club_id !== clubId) continue;
+      for (const lease of leases || []) {
+        if (String(lease.status || "active") === "active") {
+          all.push(lease);
+        }
+      }
+    }
+    return all;
+  }
+
+  function clubWideOccupiedCourtIds(tenantId, clubId) {
+    return [
+      ...new Set(
+        clubWideActiveLeases(tenantId, clubId)
+          .map((lease) => String(lease.courtId ?? lease.court_id ?? ""))
+          .filter(Boolean)
+      ),
+    ].sort();
+  }
+
   function isAthleteEligible(tenantId, clubId, playerId) {
     const key = `${tenantId}::${clubId}`;
     const set = eligibleAthletes.get(key);
@@ -146,11 +171,14 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
     const daily = readDaily(row);
     const courts = courtsForClub(row.club_id, daily.enabledCourtIds);
     const leases = leasesFor(row.id);
-    const available = listAvailableCourts({
+    const occupiedCourtIds = clubWideOccupiedCourtIds(row.tenant_id, row.club_id);
+    const occupancy = {
       courts,
       matches: daily.matches,
       leases,
-    });
+      occupiedCourtIds,
+    };
+    const available = listAvailableCourts(occupancy);
     return ok({
       tournamentId: String(row.id),
       tenantId: row.tenant_id,
@@ -158,13 +186,10 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
       revision: daily.revision,
       dailyPlay: daily,
       courts: courts.map((court, index) => normalizeCanonicalCourt(court, index)),
-      courtStates: buildCourtRuntimeView({
-        courts,
-        matches: daily.matches,
-        leases,
-      }),
+      courtStates: buildCourtRuntimeView(occupancy),
       availableCourts: available,
       leases,
+      occupiedCourtIds,
       hasCourtCapability: courts.length > 0,
     });
   }
@@ -291,10 +316,12 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
     if (name === DAILY_PLAY_RPC.CREATE_MATCHES) {
       const courts = courtsForClub(row.club_id, daily.enabledCourtIds);
       const leases = leasesFor(row.id);
+      const occupiedCourtIds = clubWideOccupiedCourtIds(row.tenant_id, row.club_id);
       const available = listAvailableCourts({
         courts,
         matches: daily.matches,
         leases,
+        occupiedCourtIds,
       });
       const proposed = Array.isArray(args.p_matches) ? args.p_matches : [];
       for (const match of proposed) {
@@ -344,10 +371,12 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
     if (name === DAILY_PLAY_RPC.ASSIGN_COURT) {
       const courts = courtsForClub(row.club_id, daily.enabledCourtIds);
       const leases = leasesFor(row.id);
+      const occupiedCourtIds = clubWideOccupiedCourtIds(row.tenant_id, row.club_id);
       const available = listAvailableCourts({
         courts,
         matches: daily.matches,
         leases,
+        occupiedCourtIds,
       });
       if (!courts.length) {
         return deny(
@@ -385,7 +414,7 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
       const assigned = applyAssignCourt(daily, {
         matchId: args.p_match_id,
         courtId,
-        leases,
+        leases: clubWideActiveLeases(row.tenant_id, row.club_id),
       });
       if (!assigned.ok) return assigned;
       writeDaily(row, assigned.state);
@@ -464,6 +493,20 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
         return deny(DAILY_PLAY_CODE.COURT_NOT_ELIGIBLE, "Sân không thuộc buổi chơi.");
       }
       const leases = leasesFor(row.id);
+      const target = String(args.p_court_id);
+      const occupiedElsewhere = clubWideActiveLeases(row.tenant_id, row.club_id).some(
+        (lease) =>
+          String(lease.courtId ?? lease.court_id) === target &&
+          String(lease.status || "active") === "active" &&
+          String(lease.matchId) !== String(args.p_match_id)
+      );
+      if (occupiedElsewhere) {
+        return deny(
+          DAILY_PLAY_CODE.COURT_ALREADY_LEASED,
+          DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.COURT_ALREADY_LEASED],
+          { courtId: target }
+        );
+      }
       const changed = applyChangeCourt(daily, {
         matchId: args.p_match_id,
         newCourtId: args.p_court_id,
@@ -504,6 +547,9 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
         },
         updated_at: new Date().toISOString(),
       });
+    },
+    __setLeases(tournamentId, leases = []) {
+      setLeases(tournamentId, leases || []);
     },
     __getLedger() {
       return ledger;

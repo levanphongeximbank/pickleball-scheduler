@@ -51,6 +51,7 @@ import {
   resolveCreateCourtWaitingNote,
   resolveCreateMatchCount,
   resolvePresentedCheckedSet,
+  dailyPlayCourtRuntimeLabel,
   shouldIgnoreConcurrentPresenceClick,
   validateScoreInput,
 } from "../../features/daily-play/canonical/index.js";
@@ -912,7 +913,7 @@ export default function DailyPlaySetup() {
                       )}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {court.status}
+                      {dailyPlayCourtRuntimeLabel(court.status)}
                       {court.currentMatchId
                         ? ` • Trận ${court.currentMatchId}`
                         : ""}

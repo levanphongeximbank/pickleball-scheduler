@@ -2,7 +2,7 @@
  * Normalize Daily Play RPC payloads into the stable client session contract.
  *
  * Real SQL `daily_play_get_state` returns:
- *   { ok, tournamentId, state, courts, activeLeases }
+ *   { ok, tournamentId, state, courts, activeLeases, occupiedCourtIds }
  *
  * In-memory authority may already return a richer client-ready shape.
  * Mutation RPCs return compact { ok, revision, state?, match?, matches? }
@@ -15,6 +15,7 @@ import {
   listAvailableCourts,
   normalizeCanonicalCourt,
   normalizeDailyPlayCanonicalState,
+  resolveOccupiedCourtIds,
 } from "./dailyPlayCanonicalDomain.js";
 
 function normalizeLease(lease = {}, index = 0) {
@@ -42,6 +43,12 @@ function pickDailyPlayRaw(raw = {}) {
   return {};
 }
 
+function pickOccupiedCourtIdsRaw(raw = {}) {
+  if (Array.isArray(raw.occupiedCourtIds)) return raw.occupiedCourtIds;
+  if (Array.isArray(raw.occupied_court_ids)) return raw.occupied_court_ids;
+  return null;
+}
+
 function pickLeasesRaw(raw = {}) {
   if (Array.isArray(raw.leases)) return raw.leases;
   if (Array.isArray(raw.activeLeases)) return raw.activeLeases;
@@ -57,6 +64,7 @@ function pickLeasesRaw(raw = {}) {
  *   dailyPlay: object,
  *   courts: object[],
  *   leases: object[],
+ *   occupiedCourtIds: string[],
  *   courtStates: object[],
  *   availableCourts: object[],
  *   hasCourtCapability: boolean,
@@ -80,16 +88,13 @@ export function normalizeDailyPlayServerSnapshot(raw) {
     normalizeCanonicalCourt(court, index)
   );
   const leases = pickLeasesRaw(raw).map((lease, index) => normalizeLease(lease, index));
-  const courtStates = buildCourtRuntimeView({
-    courts,
-    matches: dailyPlay.matches,
+  const occupiedCourtIds = resolveOccupiedCourtIds({
+    occupiedCourtIds: pickOccupiedCourtIdsRaw(raw),
     leases,
   });
-  const availableCourts = listAvailableCourts({
-    courts,
-    matches: dailyPlay.matches,
-    leases,
-  });
+  const occupancy = { courts, matches: dailyPlay.matches, leases, occupiedCourtIds };
+  const courtStates = buildCourtRuntimeView(occupancy);
+  const availableCourts = listAvailableCourts(occupancy);
 
   return {
     ok: true,
@@ -101,6 +106,7 @@ export function normalizeDailyPlayServerSnapshot(raw) {
     dailyPlay,
     courts,
     leases,
+    occupiedCourtIds,
     courtStates,
     availableCourts,
     hasCourtCapability: courts.length > 0,

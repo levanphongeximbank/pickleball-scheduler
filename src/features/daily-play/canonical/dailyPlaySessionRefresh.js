@@ -59,8 +59,9 @@ export function buildCanonicalSnapshotSignature(snapshot) {
     String(lease?.matchId || ""),
     String(lease?.status || ""),
   ]);
+  const occupied = [...(snapshot.occupiedCourtIds || [])].map(String).sort();
   const checkedIn = [...(daily.checkedInPlayerIds || [])].map(String).sort();
-  return JSON.stringify({ revision, matches, courts, leases, checkedIn });
+  return JSON.stringify({ revision, matches, courts, leases, checkedIn, occupied });
 }
 
 export function shouldReplaceCanonicalSnapshot(currentSignature, nextSnapshot) {
