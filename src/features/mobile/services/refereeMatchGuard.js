@@ -54,8 +54,11 @@ export function guardRefereeMatchAction({
   action = REFEREE_MATCH_ACTIONS.VIEW,
   scope = {},
   sessionToken = null,
+  accessMode = "session",
 } = {}) {
-  if (!user) {
+  const tokenAccess = accessMode === "token";
+
+  if (!user && !tokenAccess) {
     return { ok: false, code: "UNAUTHORIZED", error: "Chưa đăng nhập." };
   }
 
@@ -64,10 +67,15 @@ export function guardRefereeMatchAction({
   }
 
   const rbacOn = { rbacEnabled: isRbacEnabled() };
-  const canUpdate = can(user, PERMISSIONS.MATCH_UPDATE, scope, rbacOn);
-  const canCorrect = hasMatchCorrectionPermission(user, scope);
+  const canUpdate = user ? can(user, PERMISSIONS.MATCH_UPDATE, scope, rbacOn) : false;
+  const canCorrect = user ? hasMatchCorrectionPermission(user, scope) : false;
 
-  if (isRbacEnabled() && !canUpdate && normalizeRole(user.role) !== ROLES.REFEREE) {
+  if (
+    !tokenAccess &&
+    isRbacEnabled() &&
+    !canUpdate &&
+    normalizeRole(user.role) !== ROLES.REFEREE
+  ) {
     return { ok: false, code: "FORBIDDEN", error: "Không có quyền chấm trận." };
   }
 
@@ -84,6 +92,7 @@ export function guardRefereeMatchAction({
   }
 
   if (
+    !tokenAccess &&
     isRbacEnabled() &&
     normalizeRole(user.role) === ROLES.REFEREE &&
     !isMatchAssignedToUser(matchRow, user) &&

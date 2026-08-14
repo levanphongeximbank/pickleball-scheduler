@@ -133,6 +133,14 @@ export {
 } from "./internalRefereeDiscovery.js";
 
 export {
+  resolveRefereeTokenScoreboardScope,
+  findInternalMatchByRefereeToken,
+  projectInternalRefereeTokenScoreboardRow,
+  loadInternalCanonicalTokenScoreboard,
+  loadRefereeTokenScoreboard,
+} from "./internalRefereeTokenScoreboard.js";
+
+export {
   INTERNAL_PERSISTED_GROUP_FIELD,
   getInternalCanonicalEvent,
   listInternalPersistedGroups,

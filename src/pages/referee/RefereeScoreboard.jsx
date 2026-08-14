@@ -20,7 +20,6 @@ import SportsIcon from "@mui/icons-material/Sports";
 
 import {
   adjustMatchLiveScore,
-  fetchMatchLiveByToken,
   hasSupabaseConfig,
   MATCH_LIVE_STATUS,
   REFEREE_LINK_LOCKED_MESSAGE,
@@ -38,7 +37,10 @@ import {
   REFEREE_MATCH_ACTIONS,
 } from "../../features/mobile/services/refereeMatchGuard.js";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { useClub } from "../../context/ClubContext.jsx";
+import {
+  loadRefereeTokenScoreboard,
+  resolveRefereeTokenScoreboardScope,
+} from "../../features/tournament/internal/internalRefereeTokenScoreboard.js";
 
 function TeamScoreControls({
   label,
@@ -98,12 +100,6 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
   const { token: rawToken } = useParams();
   const token = sessionToken || decodeURIComponent(rawToken || "");
   const { user } = useAuth();
-  const { activeClubId, activeClub } = useClub();
-
-  const refereeScope = {
-    clubId: activeClubId,
-    venueId: activeClub?.venueId,
-  };
 
   const [row, setRow] = useState(null);
   const [scoreA, setScoreA] = useState(0);
@@ -141,7 +137,10 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
       return;
     }
 
-    const result = await fetchMatchLiveByToken(token);
+    const result = await loadRefereeTokenScoreboard({
+      token,
+      user,
+    });
     if (!result.ok) {
       setError(result.error || REFEREE_LINK_LOCKED_MESSAGE);
       setLoading(false);
@@ -150,7 +149,7 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
 
     applyRow(result.row);
     setLoading(false);
-  }, [token, applyRow]);
+  }, [token, applyRow, user]);
 
   useEffect(() => {
     loadMatch();
@@ -175,12 +174,14 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
       delta > 0
         ? REFEREE_MATCH_ACTIONS.SCORE_INCREMENT
         : REFEREE_MATCH_ACTIONS.SCORE_DECREMENT;
+    const refereeScope = resolveRefereeTokenScoreboardScope(row, user);
     const guard = guardRefereeMatchAction({
       user,
       matchRow: row,
       action,
       scope: refereeScope,
       sessionToken: sessionMode ? token : null,
+      accessMode: sessionMode ? "session" : "token",
     });
 
     if (!guard.ok) {
@@ -225,12 +226,14 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
   const handleConfirmFinalize = async () => {
     setConfirmFinalizeOpen(false);
 
+    const refereeScope = resolveRefereeTokenScoreboardScope(row, user);
     const guard = guardRefereeMatchAction({
       user,
       matchRow: row,
       action: REFEREE_MATCH_ACTIONS.FINALIZE,
       scope: refereeScope,
       sessionToken: sessionMode ? token : null,
+      accessMode: sessionMode ? "session" : "token",
     });
 
     if (!guard.ok) {
@@ -289,7 +292,10 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
           : "info";
 
   return (
-    <Box sx={{ minHeight: "100dvh", bgcolor: "background.default", pb: 4 }}>
+    <Box
+      sx={{ minHeight: "100dvh", bgcolor: "background.default", pb: 4 }}
+      data-testid="referee-token-scoreboard"
+    >
       {!sessionMode && (
         <Container maxWidth="sm" sx={{ pt: 2 }}>
           <Alert severity="info" sx={{ mb: 1 }}>
@@ -335,6 +341,9 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {row?.stageLabel && <Chip label={row.stageLabel} size="small" />}
             {row?.courtLabel && <Chip label={row.courtLabel} size="small" variant="outlined" />}
+            {row?.scheduledStart ? (
+              <Chip label={String(row.scheduledStart)} size="small" variant="outlined" />
+            ) : null}
             <Chip label={displayStatus} size="small" color={statusChipColor} />
           </Stack>
           <Typography variant="h4" fontWeight="bold" sx={{ mt: 2 }}>
