@@ -16,6 +16,19 @@ import {
   DAILY_PLAY_LEASE_RELEASED,
   DAILY_PLAY_MESSAGES,
 } from "./dailyPlayCodes.js";
+import { getPlayerGenderKey } from "../../../models/player.js";
+import {
+  DAILY_MATCH_TYPE,
+  getDailyMatchShape,
+  resolveCanonicalPersistedMatchTypeFromMatch,
+} from "./dailyPlayMatchShape.js";
+
+const CLOSABLE_TOURNAMENT_STATUSES = new Set([
+  "draft",
+  "registration",
+  "ready",
+  "active",
+]);
 
 export function emptyDailyPlayState() {
   return {
@@ -26,6 +39,9 @@ export function emptyDailyPlayState() {
     enabledCourtIds: [],
     matches: [],
     skipScore: false,
+    closedAt: null,
+    closedBy: null,
+    closeSummary: null,
   };
 }
 
@@ -43,6 +59,16 @@ export function normalizeDailyPlayCanonicalState(raw = {}) {
       : [],
     matches: Array.isArray(raw.matches) ? raw.matches.map(normalizeMatch) : [],
     skipScore: raw.skipScore === true,
+    closedAt: raw.closedAt || raw.closed_at || null,
+    closedBy: raw.closedBy || raw.closed_by || null,
+    closeSummary:
+      raw.closeSummary && typeof raw.closeSummary === "object"
+        ? {
+            completedMatchCount: Number(raw.closeSummary.completedMatchCount || 0),
+            cancelledWaitingCount: Number(raw.closeSummary.cancelledWaitingCount || 0),
+            checkedInCountAtClose: Number(raw.closeSummary.checkedInCountAtClose || 0),
+          }
+        : null,
   };
 }
 
@@ -58,6 +84,7 @@ function normalizeMatch(match = {}) {
     teamBPlayerIds: Array.isArray(match.teamBPlayerIds)
       ? match.teamBPlayerIds.map(String)
       : [],
+    matchType: match.matchType || match.competitionType || null,
     scoreA: match.scoreA == null ? null : Number(match.scoreA),
     scoreB: match.scoreB == null ? null : Number(match.scoreB),
   };
@@ -157,39 +184,186 @@ export function getOccupiedCourtIdsFromMatches(matches = []) {
   return occupied;
 }
 
-export function validateDoublesMatchShape(match = {}) {
+export function validateDailyMatchShape(match = {}, fallbackMatchType) {
+  const canonicalType = resolveCanonicalPersistedMatchTypeFromMatch(
+    match,
+    fallbackMatchType
+  );
+  if (!canonicalType) {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.INVALID_MATCH_TYPE,
+      error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_TYPE],
+    };
+  }
+  const shape = getDailyMatchShape(canonicalType);
+  const teamSize = shape.teamSize;
+  const playersPerMatch = shape.playersPerMatch;
   const teamA = Array.isArray(match.teamAPlayerIds)
-    ? match.teamAPlayerIds.map(String)
+    ? match.teamAPlayerIds.map(String).filter(Boolean)
     : [];
   const teamB = Array.isArray(match.teamBPlayerIds)
-    ? match.teamBPlayerIds.map(String)
+    ? match.teamBPlayerIds.map(String).filter(Boolean)
     : [];
   const players = [
     ...(match.playerIds || []),
     ...teamA,
     ...teamB,
-  ].map(String);
+  ].map(String).filter(Boolean);
   const distinct = [...new Set(players)];
 
   if (teamA.length || teamB.length) {
-    if (teamA.length !== 2 || teamB.length !== 2) {
+    if (teamA.length !== teamSize || teamB.length !== teamSize) {
+      return {
+        ok: false,
+        code: DAILY_PLAY_CODE.INVALID_MATCH_SHAPE,
+        error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_SHAPE],
+        shape,
+      };
+    }
+  }
+
+  if (distinct.length !== playersPerMatch) {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.INVALID_MATCH_SHAPE,
+      error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_SHAPE],
+      shape,
+    };
+  }
+
+  return { ok: true, playerIds: distinct, shape, matchType: canonicalType };
+}
+
+function readTeamIds(match, side) {
+  const raw =
+    side === "B" ? match?.teamBPlayerIds || [] : match?.teamAPlayerIds || [];
+  return Array.isArray(raw) ? raw.map(String).filter(Boolean) : [];
+}
+
+function genderKeyForPlayer(genderByPlayerId, playerId) {
+  const raw =
+    genderByPlayerId instanceof Map
+      ? genderByPlayerId.get(String(playerId))
+      : genderByPlayerId?.[String(playerId)];
+  return getPlayerGenderKey(raw);
+}
+
+function countGenders(ids, genderByPlayerId) {
+  let male = 0;
+  let female = 0;
+  let other = 0;
+  let unknown = 0;
+  for (const id of ids) {
+    const key = genderKeyForPlayer(genderByPlayerId, id);
+    if (key === "male") male += 1;
+    else if (key === "female") female += 1;
+    else if (key === "other") other += 1;
+    else unknown += 1;
+  }
+  return { male, female, other, unknown };
+}
+
+function genderCompositionFailure() {
+  return {
+    ok: false,
+    code: DAILY_PLAY_CODE.INVALID_MATCH_GENDER_COMPOSITION,
+    error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_GENDER_COMPOSITION],
+  };
+}
+
+export function validateDailyMatchGenderComposition(
+  match = {},
+  genderByPlayerId = {},
+  canonicalType
+) {
+  const matchType =
+    canonicalType || resolveCanonicalPersistedMatchTypeFromMatch(match);
+  if (!matchType) {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.INVALID_MATCH_TYPE,
+      error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_TYPE],
+    };
+  }
+  const teamA = readTeamIds(match, "A");
+  const teamB = readTeamIds(match, "B");
+  const all = [...teamA, ...teamB];
+  const allCounts = countGenders(all, genderByPlayerId);
+  const teamACounts = countGenders(teamA, genderByPlayerId);
+  const teamBCounts = countGenders(teamB, genderByPlayerId);
+
+  if (matchType === DAILY_MATCH_TYPE.MEN_SINGLE) {
+    if (teamA.length !== 1 || teamB.length !== 1) {
       return {
         ok: false,
         code: DAILY_PLAY_CODE.INVALID_MATCH_SHAPE,
         error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_SHAPE],
       };
     }
+    if (allCounts.male !== 2 || allCounts.female || allCounts.other || allCounts.unknown) {
+      return genderCompositionFailure();
+    }
+    return { ok: true, matchType };
   }
 
-  if (distinct.length !== 4) {
-    return {
-      ok: false,
-      code: DAILY_PLAY_CODE.INVALID_MATCH_SHAPE,
-      error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_SHAPE],
-    };
+  if (matchType === DAILY_MATCH_TYPE.WOMEN_SINGLE) {
+    if (teamA.length !== 1 || teamB.length !== 1) {
+      return {
+        ok: false,
+        code: DAILY_PLAY_CODE.INVALID_MATCH_SHAPE,
+        error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_SHAPE],
+      };
+    }
+    if (allCounts.female !== 2 || allCounts.male || allCounts.other || allCounts.unknown) {
+      return genderCompositionFailure();
+    }
+    return { ok: true, matchType };
   }
 
-  return { ok: true, playerIds: distinct };
+  if (matchType === DAILY_MATCH_TYPE.MEN_DOUBLE) {
+    if (allCounts.male !== 4 || allCounts.female || allCounts.other || allCounts.unknown) {
+      return genderCompositionFailure();
+    }
+    return { ok: true, matchType };
+  }
+
+  if (matchType === DAILY_MATCH_TYPE.WOMEN_DOUBLE) {
+    if (allCounts.female !== 4 || allCounts.male || allCounts.other || allCounts.unknown) {
+      return genderCompositionFailure();
+    }
+    return { ok: true, matchType };
+  }
+
+  if (matchType === DAILY_MATCH_TYPE.MIXED_DOUBLE) {
+    if (
+      teamACounts.male !== 1 ||
+      teamACounts.female !== 1 ||
+      teamBCounts.male !== 1 ||
+      teamBCounts.female !== 1 ||
+      teamACounts.other ||
+      teamACounts.unknown ||
+      teamBCounts.other ||
+      teamBCounts.unknown
+    ) {
+      return genderCompositionFailure();
+    }
+    return { ok: true, matchType };
+  }
+
+  if (matchType === DAILY_MATCH_TYPE.OPEN_DOUBLE) {
+    return { ok: true, matchType };
+  }
+
+  return {
+    ok: false,
+    code: DAILY_PLAY_CODE.INVALID_MATCH_TYPE,
+    error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_TYPE],
+  };
+}
+
+export function validateDoublesMatchShape(match = {}) {
+  return validateDailyMatchShape(match, match.matchType || match.competitionType || "mixed_double");
 }
 
 export function listAvailableCourts({
@@ -236,8 +410,8 @@ export function bumpRevision(state) {
   };
 }
 
-export function validateProposedMatchPlayers(match, { checkedInPlayerIds, matches }) {
-  const shape = validateDoublesMatchShape(match);
+export function validateProposedMatchPlayers(match, { checkedInPlayerIds, matches, matchType }) {
+  const shape = validateDailyMatchShape(match, matchType);
   if (!shape.ok) return shape;
 
   const checked = new Set((checkedInPlayerIds || []).map(String));
@@ -267,9 +441,9 @@ export function validateProposedMatchPlayers(match, { checkedInPlayerIds, matche
 
 export function assertMatchParticipantsReady(
   match,
-  { checkedInPlayerIds = [], isEligible = () => true } = {}
+  { checkedInPlayerIds = [], isEligible = () => true, matchType } = {}
 ) {
-  const shape = validateDoublesMatchShape(match);
+  const shape = validateDailyMatchShape(match, matchType);
   if (!shape.ok) return shape;
   const checked = new Set((checkedInPlayerIds || []).map(String));
   for (const playerId of shape.playerIds) {
@@ -296,6 +470,8 @@ export function resolveCreateMatchCount({
   enabledCourts = [],
   availableCourts = [],
   eligiblePlayerCount = 0,
+  matchType,
+  playersPerMatch,
 } = {}) {
   if (!enabledCourts.length) {
     return {
@@ -307,7 +483,10 @@ export function resolveCreateMatchCount({
     };
   }
 
-  const capacity = Math.floor(Number(eligiblePlayerCount) / 4);
+  const perMatch = Number(
+    playersPerMatch || getDailyMatchShape(matchType).playersPerMatch || 4
+  );
+  const capacity = Math.floor(Number(eligiblePlayerCount) / perMatch);
   if (capacity < 1) {
     return {
       ok: false,
@@ -442,18 +621,42 @@ export function applyCheckOut(state, playerId) {
   return { ok: true, state: bumpRevision(next) };
 }
 
-export function applyCreateMatches(state, proposedMatches = []) {
+export function applyCreateMatches(state, proposedMatches = [], options = {}) {
   let next = normalizeDailyPlayCanonicalState(state);
   const created = [];
+  const genderByPlayerId = options.genderByPlayerId || {};
 
   for (const proposed of proposedMatches) {
-    const validation = validateProposedMatchPlayers(proposed, next);
+    const canonicalType = resolveCanonicalPersistedMatchTypeFromMatch(
+      proposed,
+      proposed.matchType || proposed.competitionType || next.matchType
+    );
+    if (!canonicalType) {
+      return {
+        ok: false,
+        code: DAILY_PLAY_CODE.INVALID_MATCH_TYPE,
+        error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.INVALID_MATCH_TYPE],
+      };
+    }
+    const validation = validateProposedMatchPlayers(proposed, {
+      ...next,
+      matchType: canonicalType,
+    });
     if (!validation.ok) {
       return validation;
+    }
+    const gender = validateDailyMatchGenderComposition(
+      proposed,
+      genderByPlayerId,
+      canonicalType
+    );
+    if (!gender.ok) {
+      return gender;
     }
     const match = normalizeMatch({
       ...proposed,
       id: String(proposed.id || `daily-match-${Date.now()}-${created.length + 1}`),
+      matchType: canonicalType,
       status: "waiting",
       courtId: null,
       scoreA: null,
@@ -942,4 +1145,135 @@ export function buildCourtRuntimeView({
       active: court.active !== false,
     };
   });
+}
+
+export function isDailySessionCompleted(status, dailyPlay = {}) {
+  return (
+    String(status || "") === "completed" ||
+    Boolean(dailyPlay?.closedAt)
+  );
+}
+
+export function assertDailyTournamentClosable(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "completed") {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED,
+      error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.SESSION_ALREADY_COMPLETED],
+    };
+  }
+  if (!CLOSABLE_TOURNAMENT_STATUSES.has(normalized)) {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.SESSION_NOT_ACTIVE,
+      error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.SESSION_NOT_ACTIVE],
+    };
+  }
+  return { ok: true, status: normalized };
+}
+
+export function classifyDailyCloseReadiness(matches = []) {
+  let assignedCount = 0;
+  let playingCount = 0;
+  let waitingCount = 0;
+  let completedMatchCount = 0;
+  let cancelledCount = 0;
+  let unknownCount = 0;
+
+  for (const match of matches || []) {
+    const status = String(match.status || "waiting").trim().toLowerCase() || "waiting";
+    if (status === "assigned") assignedCount += 1;
+    else if (status === "playing") playingCount += 1;
+    else if (status === "waiting") waitingCount += 1;
+    else if (status === "completed" || status === "forfeit") completedMatchCount += 1;
+    else if (status === "cancelled") cancelledCount += 1;
+    else unknownCount += 1;
+  }
+
+  const blocked = assignedCount > 0 || playingCount > 0 || unknownCount > 0;
+  return {
+    ok: !blocked,
+    assignedCount,
+    playingCount,
+    waitingCount,
+    completedMatchCount,
+    cancelledCount,
+    unknownCount,
+    code: blocked ? DAILY_PLAY_CODE.SESSION_CLOSE_BLOCKED : DAILY_PLAY_CODE.OK,
+  };
+}
+
+export function formatSessionCloseBlockedMessage({
+  assignedCount = 0,
+  playingCount = 0,
+  unknownCount = 0,
+} = {}) {
+  if (Number(unknownCount) > 0) {
+    return `Chưa thể kết thúc buổi chơi.\nCòn trận ở trạng thái không hợp lệ để đóng buổi.`;
+  }
+  return `Chưa thể kết thúc buổi chơi.\nCòn ${Number(playingCount) || 0} trận đang thi đấu và ${Number(assignedCount) || 0} trận đã xếp sân.`;
+}
+
+export function formatSessionCloseConfirmMessage({ waitingCount = 0, checkedInCount = 0 } = {}) {
+  return `Kết thúc buổi chơi?\n${Number(waitingCount) || 0} trận chưa thi đấu sẽ được hủy.\n${Number(checkedInCount) || 0} VĐV đang check-in sẽ được kết thúc phiên.`;
+}
+
+export function applyCloseSession(state, { actorId = "", now = new Date().toISOString() } = {}) {
+  const actor = String(actorId || "").trim();
+  if (!actor) {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.NOT_AUTHENTICATED,
+      error: DAILY_PLAY_MESSAGES[DAILY_PLAY_CODE.NOT_AUTHENTICATED],
+    };
+  }
+  const next = normalizeDailyPlayCanonicalState(state);
+  const readiness = classifyDailyCloseReadiness(next.matches);
+  if (!readiness.ok) {
+    return {
+      ok: false,
+      code: DAILY_PLAY_CODE.SESSION_CLOSE_BLOCKED,
+      error: formatSessionCloseBlockedMessage(readiness),
+      assignedCount: readiness.assignedCount,
+      playingCount: readiness.playingCount,
+      unknownCount: readiness.unknownCount,
+    };
+  }
+
+  const checkedInCountAtClose = (next.checkedInPlayerIds || []).length;
+  let cancelledWaitingCount = 0;
+  const matches = next.matches.map((match) => {
+    if (String(match.status) !== "waiting") {
+      return match;
+    }
+    cancelledWaitingCount += 1;
+    return {
+      ...match,
+      status: "cancelled",
+      reason: "session_closed",
+      cancelledAt: now,
+    };
+  });
+
+  const closeSummary = {
+    completedMatchCount: readiness.completedMatchCount,
+    cancelledWaitingCount,
+    checkedInCountAtClose,
+  };
+
+  return {
+    ok: true,
+    state: bumpRevision({
+      ...next,
+      matches,
+      checkedInPlayerIds: [],
+      closedAt: now,
+      closedBy: actor,
+      closeSummary,
+    }),
+    closeSummary,
+    cancelledWaitingCount,
+    releasedOwnLeases: true,
+  };
 }

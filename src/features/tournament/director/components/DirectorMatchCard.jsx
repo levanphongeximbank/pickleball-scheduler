@@ -2,8 +2,19 @@ import { Grid } from "@mui/material";
 
 import MatchListPanel from "../../../../components/tournament/MatchListPanel.jsx";
 
+function changeCourtAction(isDaily, readOnly, onChangeCourt, match) {
+  if (!isDaily || readOnly || !onChangeCourt) return undefined;
+  return [
+    {
+      label: "Đổi sân",
+      onClick: () => onChangeCourt(match),
+    },
+  ];
+}
+
 export default function DirectorMatchBoard({
   isDaily = false,
+  readOnly = false,
   waitingMatches,
   assignedMatches = [],
   onCourtMatches,
@@ -12,6 +23,7 @@ export default function DirectorMatchBoard({
   onAssignCourt,
   onStartMatch,
   onCancelMatch,
+  onChangeCourt,
   onOpenScore,
   onCorrectScore,
   onOpenRefereeDialog,
@@ -19,6 +31,7 @@ export default function DirectorMatchBoard({
   hasSupabaseConfig = false,
 }) {
   const columnSize = isDaily ? { xs: 12, md: 3 } : { xs: 12, md: 4 };
+  const live = isDaily && !readOnly;
 
   return (
     <Grid container spacing={2}>
@@ -29,10 +42,10 @@ export default function DirectorMatchBoard({
           emptyText="Không có trận chờ."
           getCardProps={(match) =>
             buildRefereeCardProps(match, {
-              actionLabel: isDaily ? "Xếp sân" : "Xếp sân",
-              onAction: onAssignCourt,
-              secondaryActionLabel: isDaily ? "Hủy trận" : undefined,
-              onSecondaryAction: isDaily ? onCancelMatch : undefined,
+              actionLabel: live ? "Xếp sân" : undefined,
+              onAction: live ? onAssignCourt : undefined,
+              secondaryActionLabel: live ? "Hủy trận" : undefined,
+              onSecondaryAction: live ? onCancelMatch : undefined,
               showRefereeStatus: false,
             })
           }
@@ -47,17 +60,20 @@ export default function DirectorMatchBoard({
             chipColor="info"
             getCardProps={(match) =>
               buildRefereeCardProps(match, {
-                actionLabel: "Bắt đầu trận",
-                onAction: onStartMatch,
-                secondaryActionLabel: "Hủy trận",
-                onSecondaryAction: onCancelMatch,
-                tertiaryActionLabel: hasSupabaseConfig
-                  ? match.referee?.token
-                    ? "Link trọng tài"
-                    : "Gán trọng tài"
-                  : undefined,
-                onTertiaryAction: hasSupabaseConfig ? onOpenRefereeDialog : undefined,
-                showRefereeStatus: hasSupabaseConfig,
+                actionLabel: live ? "Bắt đầu trận" : undefined,
+                onAction: live ? onStartMatch : undefined,
+                secondaryActionLabel: live ? "Hủy trận" : undefined,
+                onSecondaryAction: live ? onCancelMatch : undefined,
+                tertiaryActionLabel:
+                  live && hasSupabaseConfig
+                    ? match.referee?.token
+                      ? "Link trọng tài"
+                      : "Gán trọng tài"
+                    : undefined,
+                onTertiaryAction:
+                  live && hasSupabaseConfig ? onOpenRefereeDialog : undefined,
+                extraActions: changeCourtAction(isDaily, readOnly, onChangeCourt, match),
+                showRefereeStatus: live && hasSupabaseConfig,
               })
             }
           />
@@ -71,22 +87,27 @@ export default function DirectorMatchBoard({
           chipColor="success"
           getCardProps={(match) =>
             buildRefereeCardProps(match, {
-              actionLabel: "Nhập điểm",
-              onAction: onOpenScore,
-              secondaryActionLabel: hasSupabaseConfig
-                ? match.referee?.token
-                  ? "Link trọng tài"
-                  : "Gán trọng tài"
-                : isDaily
-                  ? "Hủy trận"
-                  : undefined,
-              onSecondaryAction: hasSupabaseConfig
-                ? onOpenRefereeDialog
-                : isDaily
-                  ? onCancelMatch
-                  : undefined,
+              actionLabel: live ? "Nhập điểm" : undefined,
+              onAction: live ? onOpenScore : undefined,
+              secondaryActionLabel: live
+                ? hasSupabaseConfig
+                  ? match.referee?.token
+                    ? "Link trọng tài"
+                    : "Gán trọng tài"
+                  : isDaily
+                    ? "Hủy trận"
+                    : undefined
+                : undefined,
+              onSecondaryAction: live
+                ? hasSupabaseConfig
+                  ? onOpenRefereeDialog
+                  : isDaily
+                    ? onCancelMatch
+                    : undefined
+                : undefined,
               tertiaryActionLabel: "Lịch sử trận",
               onTertiaryAction: onOpenAuditHistory,
+              extraActions: changeCourtAction(isDaily, readOnly, onChangeCourt, match),
             })
           }
         />

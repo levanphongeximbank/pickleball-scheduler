@@ -2,9 +2,6 @@
  * Daily Play visible check-in pool follows Loại trận only.
  * Switching match type is presentation/selection context — it must not
  * mutate check-in, matches, leases, or revision.
- *
- * Deferred to final Daily Play closure (not in PR #422):
- * men_single, women_single, open_double.
  */
 
 import { getPlayerGenderKey } from "../../../models/player.js";
@@ -14,18 +11,21 @@ import {
   filterPlayersByGender,
 } from "../../../tournament/engines/dailyPlayEngine.js";
 
-export const DAILY_PLAY_DEFERRED_MATCH_TYPES = Object.freeze({
-  MEN_SINGLE: "men_single",
-  WOMEN_SINGLE: "women_single",
-  OPEN_DOUBLE: "open_double",
-});
-
 export function resolveDailyVisibleGenderScope(matchType) {
-  if (matchType === DAILY_MATCH_TYPE.MEN_DOUBLE) {
+  if (
+    matchType === DAILY_MATCH_TYPE.MEN_DOUBLE ||
+    matchType === DAILY_MATCH_TYPE.MEN_SINGLE
+  ) {
     return DAILY_GENDER_FILTER.MALE;
   }
-  if (matchType === DAILY_MATCH_TYPE.WOMEN_DOUBLE) {
+  if (
+    matchType === DAILY_MATCH_TYPE.WOMEN_DOUBLE ||
+    matchType === DAILY_MATCH_TYPE.WOMEN_SINGLE
+  ) {
     return DAILY_GENDER_FILTER.FEMALE;
+  }
+  if (matchType === DAILY_MATCH_TYPE.OPEN_DOUBLE) {
+    return "open";
   }
   return "binary";
 }
@@ -34,6 +34,12 @@ export function filterPlayersForDailyMatchType(players = [], matchType) {
   const scope = resolveDailyVisibleGenderScope(matchType);
   if (scope === DAILY_GENDER_FILTER.MALE || scope === DAILY_GENDER_FILTER.FEMALE) {
     return filterPlayersByGender(players, scope);
+  }
+  if (scope === "open") {
+    return players.filter((player) => {
+      const key = getPlayerGenderKey(player.gender);
+      return key === "male" || key === "female" || key === "other";
+    });
   }
   return players.filter((player) => {
     const key = getPlayerGenderKey(player.gender);

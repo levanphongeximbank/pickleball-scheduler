@@ -42,6 +42,7 @@ export default function DirectorHeader({
   onClearError,
   hasSupabaseConfig,
   liveError,
+  sessionCompleted = false,
 }) {
   return (
     <Box>
@@ -67,6 +68,11 @@ export default function DirectorHeader({
         </Alert>
       )}
 
+      {sessionCompleted && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Buổi chơi đã kết thúc
+        </Alert>
+      )}
       {message && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={onClearMessage}>
           {message}

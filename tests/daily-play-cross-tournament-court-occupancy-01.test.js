@@ -42,6 +42,17 @@ function players(prefix) {
   return [`${prefix}-1`, `${prefix}-2`, `${prefix}-3`, `${prefix}-4`];
 }
 
+function mixedGenders(prefixes) {
+  const genders = {};
+  for (const prefix of prefixes) {
+    genders[`${prefix}-1`] = "male";
+    genders[`${prefix}-2`] = "female";
+    genders[`${prefix}-3`] = "male";
+    genders[`${prefix}-4`] = "female";
+  }
+  return genders;
+}
+
 function doublesMatch(id, status, courtId, prefix) {
   const ids = players(prefix);
   return {
@@ -69,6 +80,7 @@ function seedPair({
   });
   authority.__setClubCourts(clubId, COURTS);
   authority.__setEligibleAthletes(tenantId, clubId, [...aPlayers, ...bPlayers]);
+  authority.__setAthleteGenders(mixedGenders(["a", "b", "c"]));
   authority.__seedTournament(
     createSeededDailyPlayTournament({
       id: TOURNAMENT_A,

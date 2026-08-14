@@ -79,6 +79,8 @@ export function buildDailyMatchCardProps(
     onAction,
     secondaryActionLabel,
     onSecondaryAction,
+    tertiaryActionLabel,
+    onTertiaryAction,
     liveRow,
     courts = [],
     players = [],
@@ -97,6 +99,10 @@ export function buildDailyMatchCardProps(
     onSecondaryAction: onSecondaryAction
       ? () => onSecondaryAction(match)
       : undefined,
+    tertiaryActionLabel,
+    onTertiaryAction: onTertiaryAction
+      ? () => onTertiaryAction(match)
+      : undefined,
   };
 }
 
@@ -109,6 +115,7 @@ export function buildDirectorMatchCardProps(
     onSecondaryAction,
     tertiaryActionLabel,
     onTertiaryAction,
+    extraActions,
     liveRow,
     refereeStatus,
     courts = [],
@@ -131,5 +138,6 @@ export function buildDirectorMatchCardProps(
     onSecondaryAction: onSecondaryAction ? () => onSecondaryAction(match) : undefined,
     tertiaryActionLabel,
     onTertiaryAction: onTertiaryAction ? () => onTertiaryAction(match) : undefined,
+    extraActions,
   };
 }

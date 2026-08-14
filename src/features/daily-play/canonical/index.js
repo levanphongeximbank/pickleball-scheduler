@@ -3,6 +3,7 @@ export {
   DAILY_PLAY_CODE,
   DAILY_PLAY_MESSAGES,
   DAILY_PLAY_ACTIVE_MATCH_STATUSES,
+  DAILY_PLAY_OPERATIONAL_WRITE_RPCS,
 } from "./dailyPlayCodes.js";
 
 export {
@@ -11,6 +12,18 @@ export {
   resolveSessionErrorAfterSnapshot,
   shouldClearSessionErrorAfterSnapshot,
 } from "./dailyPlayMutationError.js";
+
+export {
+  DAILY_MATCH_TYPE as CANONICAL_DAILY_MATCH_TYPE,
+  DAILY_MATCH_TYPE_LABELS,
+  DAILY_MATCH_TYPE_OPTIONS,
+  CANONICAL_PERSISTED_DAILY_MATCH_TYPES,
+  getDailyMatchShape,
+  getDailyMatchShapeForMatch,
+  normalizeDailyMatchType,
+  resolveCanonicalPersistedMatchType,
+  resolveCanonicalPersistedMatchTypeFromMatch,
+} from "./dailyPlayMatchShape.js";
 
 export {
   emptyDailyPlayState,
@@ -29,12 +42,20 @@ export {
   acceptDailyScoreFieldInput,
   parseNonNegativeIntegerScore,
   applyCorrectScore,
+  applyCloseSession,
+  classifyDailyCloseReadiness,
+  assertDailyTournamentClosable,
+  formatSessionCloseBlockedMessage,
+  formatSessionCloseConfirmMessage,
+  isDailySessionCompleted,
+  validateDailyMatchGenderComposition,
   buildCourtRuntimeView,
   dailyPlayCourtRuntimeLabel,
   sanitizeOccupiedCourtIds,
   resolveOccupiedCourtIds,
   assertExpectedVersion,
   validateDoublesMatchShape,
+  validateDailyMatchShape,
   assertMatchParticipantsReady,
   applyStartMatch,
 } from "./dailyPlayCanonicalDomain.js";
@@ -76,7 +97,6 @@ export {
 } from "./presencePresentation.js";
 
 export {
-  DAILY_PLAY_DEFERRED_MATCH_TYPES,
   resolveDailyVisibleGenderScope,
   filterPlayersForDailyMatchType,
   projectDailyPlayerFilterView,
