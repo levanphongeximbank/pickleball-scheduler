@@ -8,8 +8,10 @@ export default function InternalTournamentLifecycleStepper({
   lifecycle,
   onSelectStep,
   selectedStepId = null,
+  disabledStepIds = [],
 }) {
   if (!lifecycle) return null;
+  const disabled = new Set(disabledStepIds);
 
   return (
     <Box sx={{ mb: 2 }}>
@@ -26,9 +28,12 @@ export default function InternalTournamentLifecycleStepper({
             key={step.id}
             size="small"
             label={step.label}
-            clickable={typeof onSelectStep === "function"}
+            clickable={typeof onSelectStep === "function" && !disabled.has(step.id)}
+            disabled={disabled.has(step.id)}
             onClick={
-              typeof onSelectStep === "function" ? () => onSelectStep(step.id) : undefined
+              typeof onSelectStep === "function" && !disabled.has(step.id)
+                ? () => onSelectStep(step.id)
+                : undefined
             }
             color={
               step.status === "current" || step.id === selectedStepId

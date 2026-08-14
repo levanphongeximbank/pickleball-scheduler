@@ -203,7 +203,7 @@ describe("IT-BROWSER-002 — Internal section/select does not remount or blank",
     assert.match(setup, /tournamentRefreshing/);
     assert.equal(
       Object.values(INTERNAL_WORKSPACE_SECTIONS).join(","),
-      "setup,draw,schedule,referee,results,bracket"
+      "setup,draw,schedule,referee,results,bracket,awards"
     );
   });
 

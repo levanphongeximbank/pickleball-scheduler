@@ -60,9 +60,20 @@ function hasAnyCompletedMatch(event) {
 }
 
 function hasAwardsAssigned(tournament) {
-  const awards = tournament?.settings?.awards?.items || tournament?.settings?.awards?.assigned;
-  if (Array.isArray(awards) && awards.length > 0) return true;
-  const assigned = tournament?.settings?.awards?.byKey;
+  const awards = tournament?.settings?.awards || {};
+  const assignments =
+    awards.assignments && typeof awards.assignments === "object"
+      ? awards.assignments
+      : {};
+  if (
+    String(assignments.champion || "").trim() &&
+    String(assignments.runnerUp || "").trim()
+  ) {
+    return true;
+  }
+  const items = awards.items || awards.assigned;
+  if (Array.isArray(items) && items.length > 0) return true;
+  const assigned = awards.byKey;
   return Boolean(assigned && Object.keys(assigned).length > 0);
 }
 

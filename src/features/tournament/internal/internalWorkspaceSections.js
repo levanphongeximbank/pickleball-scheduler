@@ -16,6 +16,7 @@ export const INTERNAL_WORKSPACE_SECTIONS = Object.freeze({
   REFEREE: "referee",
   RESULTS: "results",
   BRACKET: "bracket",
+  AWARDS: "awards",
 });
 
 export const INTERNAL_WORKSPACE_SECTION_LABELS = Object.freeze({
@@ -25,6 +26,7 @@ export const INTERNAL_WORKSPACE_SECTION_LABELS = Object.freeze({
   [INTERNAL_WORKSPACE_SECTIONS.REFEREE]: "Trọng tài",
   [INTERNAL_WORKSPACE_SECTIONS.RESULTS]: "Kết quả",
   [INTERNAL_WORKSPACE_SECTIONS.BRACKET]: "Bracket",
+  [INTERNAL_WORKSPACE_SECTIONS.AWARDS]: "Trao giải",
 });
 
 export const INTERNAL_WORKSPACE_SECTION_QUERY = "section";
@@ -47,11 +49,12 @@ export function mapLifecycleStepToWorkspaceSection(stepId) {
       return INTERNAL_WORKSPACE_SECTIONS.REFEREE;
     case INTERNAL_LIFECYCLE_STEPS.RESULTS:
     case INTERNAL_LIFECYCLE_STEPS.STANDINGS_OR_KNOCKOUT:
-    case INTERNAL_LIFECYCLE_STEPS.AWARDS:
-    case INTERNAL_LIFECYCLE_STEPS.COMPLETED:
       return INTERNAL_WORKSPACE_SECTIONS.RESULTS;
     case INTERNAL_LIFECYCLE_STEPS.CHAMPION:
       return INTERNAL_WORKSPACE_SECTIONS.BRACKET;
+    case INTERNAL_LIFECYCLE_STEPS.AWARDS:
+    case INTERNAL_LIFECYCLE_STEPS.COMPLETED:
+      return INTERNAL_WORKSPACE_SECTIONS.AWARDS;
     default:
       return INTERNAL_WORKSPACE_SECTIONS.SETUP;
   }
@@ -79,6 +82,12 @@ export function resolveLifecycleDefaultWorkspaceSection({ lifecycle, event } = {
     return isInternalBracketDefaultAllowed({ lifecycle, event })
       ? INTERNAL_WORKSPACE_SECTIONS.BRACKET
       : INTERNAL_WORKSPACE_SECTIONS.RESULTS;
+  }
+  if (
+    step === INTERNAL_LIFECYCLE_STEPS.AWARDS ||
+    step === INTERNAL_LIFECYCLE_STEPS.COMPLETED
+  ) {
+    return INTERNAL_WORKSPACE_SECTIONS.AWARDS;
   }
   return mapLifecycleStepToWorkspaceSection(step);
 }

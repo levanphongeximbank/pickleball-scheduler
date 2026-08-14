@@ -89,12 +89,16 @@ import {
   loadInternalScheduleCourts,
   projectInternalLiveGroupStandings,
   projectInternalLiveKnockout,
+  projectInternalAwardsWorkspace,
+  confirmInternalAwards,
   resolveInternalKnockoutAction,
   shouldPersistKnockoutProgression,
   INTERNAL_KNOCKOUT_INCOMPLETE_MESSAGE,
+  INTERNAL_LIFECYCLE_STEPS,
 } from "../../features/tournament/internal/index.js";
 import { useInternalCanonicalSnapshotRefresh } from "../../features/tournament/internal/useInternalCanonicalSnapshotRefresh.js";
 import {
+  closeTournament,
   reopenClosedTournament,
   isTournamentClosed,
 } from "../../features/individual-tournament/engines/tournamentClosingEngine.js";
@@ -103,6 +107,7 @@ import InternalScheduleStage from "../../components/tournament/internal/Internal
 import InternalMatchRefereeSelect from "../../components/tournament/internal/InternalMatchRefereeSelect.jsx";
 import InternalRefereeStage from "../../components/tournament/internal/InternalRefereeStage.jsx";
 import InternalGroupStandingsTable from "../../components/tournament/internal/InternalGroupStandingsTable.jsx";
+import InternalAwardsWorkspace from "../../components/tournament/internal/InternalAwardsWorkspace.jsx";
 import BracketView from "../../components/tournament/BracketView.jsx";
 import GroupStagePanel from "../../components/tournament/GroupStagePanel.jsx";
 import TournamentAnimationDialog from "../../components/tournament/animation/TournamentAnimationDialog.jsx";
@@ -213,6 +218,7 @@ export default function InternalTournamentSetup() {
   const workspaceTouchedRef = useRef(false);
   const [staleHydrationNotice, setStaleHydrationNotice] = useState(null);
   const [reopenBusy, setReopenBusy] = useState(false);
+  const [awardsBusy, setAwardsBusy] = useState(false);
   const hydrationMetaRef = useRef({
     tournamentId: "",
     eventId: "",
@@ -689,6 +695,10 @@ export default function InternalTournamentSetup() {
     [savedEvent]
   );
   const liveKnockoutEvent = liveKnockoutProjection.event || savedEvent;
+  const awardsProjection = useMemo(
+    () => projectInternalAwardsWorkspace(tournament),
+    [tournament]
+  );
 
   const bracketProgress = liveKnockoutProjection.progress;
 
@@ -938,6 +948,58 @@ export default function InternalTournamentSetup() {
       setMessage("Đã mở lại giải (completed → active).");
     } finally {
       setReopenBusy(false);
+    }
+  };
+
+  const handleConfirmInternalAwards = async () => {
+    setError(null);
+    setMessage(null);
+    if (awardsBusy) return;
+    const confirmed = confirmInternalAwards(tournament, { actor: user });
+    if (!confirmed.ok) {
+      setError(confirmed.error);
+      return;
+    }
+    setAwardsBusy(true);
+    try {
+      const result = await writeCanonical({
+        settings: confirmed.tournament.settings,
+      });
+      if (!result.ok) return;
+      setMessage("Đã xác nhận trao giải.");
+    } finally {
+      setAwardsBusy(false);
+    }
+  };
+
+  const handleCompleteInternalTournament = async () => {
+    setError(null);
+    setMessage(null);
+    if (awardsBusy) return;
+    const projection = projectInternalAwardsWorkspace(tournament);
+    if (!projection.completionReady) {
+      setError("Xác nhận trao giải trước khi hoàn tất.");
+      return;
+    }
+    const closed = closeTournament(tournament, {
+      actor: user,
+      autoAwards: false,
+    });
+    if (!closed.ok) {
+      setError(closed.error);
+      return;
+    }
+    setAwardsBusy(true);
+    try {
+      const result = await writeCanonical({
+        settings: closed.tournament.settings,
+        events: closed.tournament.events,
+        status: TOURNAMENT_STATUS.COMPLETED,
+      });
+      if (!result.ok) return;
+      setMessage("Đã hoàn tất giải.");
+    } finally {
+      setAwardsBusy(false);
     }
   };
 
@@ -1761,7 +1823,16 @@ export default function InternalTournamentSetup() {
         <>
           <InternalTournamentLifecycleStepper
             lifecycle={lifecycle}
-            selectedStepId={lifecycle?.CURRENT_STEP}
+            selectedStepId={
+              workspaceSection === INTERNAL_WORKSPACE_SECTIONS.AWARDS
+                ? INTERNAL_LIFECYCLE_STEPS.AWARDS
+                : lifecycle?.CURRENT_STEP
+            }
+            disabledStepIds={
+              awardsProjection.awardsReady || isTournamentClosed(tournament)
+                ? []
+                : [INTERNAL_LIFECYCLE_STEPS.COMPLETED]
+            }
             onSelectStep={selectWorkspaceSection}
           />
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
@@ -2441,6 +2512,16 @@ export default function InternalTournamentSetup() {
           </Paper>
         </Stack>
       )}
+
+      {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.AWARDS ? (
+        <InternalAwardsWorkspace
+          tournament={tournament}
+          confirming={awardsBusy}
+          completing={awardsBusy}
+          onConfirmAwards={() => void handleConfirmInternalAwards()}
+          onCompleteTournament={() => void handleCompleteInternalTournament()}
+        />
+      ) : null}
 
       <TournamentAnimationDialog
         {...flow.dialogProps}

@@ -62,6 +62,15 @@ export {
 } from "./internalTournamentOneGroupCompletion.js";
 
 export {
+  INTERNAL_AWARDS_PERSISTENCE_PATH,
+  INTERNAL_AWARDS_CONFIRMATION_REQUIRED,
+  isInternalAwardsConfirmed,
+  projectInternalAwardsWorkspace,
+  confirmInternalAwards,
+  resolveInternalCompletionAction,
+} from "./internalAwardsWorkspace.js";
+
+export {
   INTERNAL_GROUP_STANDINGS_ENGINE,
   INTERNAL_GROUP_TIE_BREAK_RULE,
   INTERNAL_KNOCKOUT_INCOMPLETE_MESSAGE,
