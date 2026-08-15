@@ -18,7 +18,7 @@ function listJavaScriptFiles(directory) {
 test("court-resource has one gateway implementation and no reverse business dependency", () => {
   const files = listJavaScriptFiles(courtResourceRoot);
   const prohibited =
-    /(?:tournamentBookingService|features[\\/]team-tournament|features[\\/]court-engine|features[\\/]ai-director|features[\\/]ai-assistant|tournament[\\/]engines)/;
+    /(?:tournamentBookingService|features[\\/]competition-core|features[\\/]team-tournament|features[\\/]individual-tournament|features[\\/]court-engine|features[\\/]ai-director|features[\\/]ai-assistant|tournament[\\/]engines)/;
 
   for (const file of files) {
     const source = readFileSync(file, "utf8");

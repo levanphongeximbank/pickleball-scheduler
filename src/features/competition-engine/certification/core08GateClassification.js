@@ -44,10 +44,15 @@ export function detectClassificationExecutionMode(context) {
   return EXECUTION_MODE.FEATURE_BRANCH_DELTA_MODE;
 }
 
+/**
+ * CORE-08 owned paths. Not the entire Competition Core tree:
+ * later cores and shared ĐẦU A contracts live under competition-core/
+ * without being CORE-08 draw-runtime ownership.
+ */
 export function filterCore08OwnershipTouches(deltaNames) {
   return (deltaNames || []).filter(
     (name) =>
-      name.startsWith("src/features/competition-core/") ||
+      name.startsWith("src/features/competition-core/draw-runtime/") ||
       name.startsWith("docs/competition-engine/core-08/") ||
       /^tests\/competition-core-draw-runtime-core08/.test(name) ||
       name.startsWith("scripts/ci/unit-test-files.phase-core08")

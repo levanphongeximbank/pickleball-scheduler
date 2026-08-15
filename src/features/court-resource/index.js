@@ -9,6 +9,7 @@ export {
 
 export {
   getCourtAvailability,
+  listEligibleCourts,
   reserveCourts,
   releaseCourts,
   validateCourtAssignment,

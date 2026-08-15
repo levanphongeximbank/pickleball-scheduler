@@ -178,6 +178,81 @@ export function getCourtAvailability(rawOptions = {}) {
   });
 }
 
+/**
+ * Inventory listing for a club operational scope.
+ * Cluster is a filter only. Does not reserve courts.
+ */
+export function listEligibleCourts(rawOptions = {}) {
+  const options = normalizeOptions(rawOptions);
+  const clubId = trimId(options.clubId);
+  const tenantId = trimId(options.tenantId) || trimId(options.venueId);
+  const clusterId = trimId(options.clusterId);
+  const requestedIds = selectedCourtIds(options);
+
+  if (!clubId) {
+    return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required — no first-club fallback.", {
+      courts: [],
+    });
+  }
+  if (trimId(options.courtLabel) && requestedIds.length === 0) {
+    return fail(
+      COURT_RESOURCE_CODE.SYNTHETIC_COURT_DENIED,
+      "courtLabel is display-only — eligibility identity is courtId.",
+      { courts: [] }
+    );
+  }
+
+  let courts;
+  try {
+    courts = deps.listCourts({
+      clubId,
+      tenantId,
+      clusterId,
+      includeInactive: false,
+    });
+  } catch (error) {
+    return fail(COURT_RESOURCE_CODE.DATA_UNAVAILABLE, error?.message || "Failed to load court inventory.", {
+      courts: [],
+    });
+  }
+
+  const inventory = Array.isArray(courts) ? courts : [];
+  if (requestedIds.length === 0) {
+    return {
+      ok: true,
+      code: COURT_RESOURCE_CODE.OK,
+      courts: inventory.map((court) => ({ ...court })),
+    };
+  }
+
+  const matched = [];
+  const failed = [];
+  for (const courtId of requestedIds) {
+    const membership = deps.assertCourtClusterMembership({
+      clubId,
+      tenantId,
+      venueId: trimId(options.venueId),
+      clusterId,
+      courtId,
+      courts: inventory,
+      includeInactive: false,
+    });
+    if (!membership.ok) {
+      failed.push({ courtId, code: membership.code, error: membership.error });
+      continue;
+    }
+    matched.push(membership.court ? { ...membership.court } : { id: courtId });
+  }
+  if (failed.length) {
+    return fail(failed[0].code, failed[0].error, { courts: [], failed });
+  }
+  return {
+    ok: true,
+    code: COURT_RESOURCE_CODE.OK,
+    courts: matched,
+  };
+}
+
 export function reserveCourts(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
   const clubId = trimId(options.clubId);
