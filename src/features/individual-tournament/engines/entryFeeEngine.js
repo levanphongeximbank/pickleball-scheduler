@@ -303,7 +303,8 @@ export function getCanonicalEntryPaymentEvidence(tournament, entryId, adapterRes
   if (adapterResult?.code === "SHARED_CONTRACT_CAPABILITY_GAP") {
     return {
       ok: true,
-      source: "legacy-entry-payments",
+      source: "TEMPORARY_COMPATIBILITY_NONCANONICAL",
+      canonical: false,
       gap: true,
       payment: getEntryPayment(tournament, entryId),
     };

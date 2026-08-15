@@ -7,6 +7,7 @@
 import { validateOpenRegistrationPlayers } from "../../../tournament/engines/officialTournamentEngine.js";
 import { checkPlayerEligibility, getEligibilityRules } from "./eligibilityEngine.js";
 import { isOfficialIndividualRegistrationMode } from "./officialTournamentSettingsEngine.js";
+import { shouldActivateOfficialOpenRating } from "../../tournament/official-open-adapter-b/activation.js";
 import {
   canSubmitRegistration,
   countApprovedEntries,
@@ -89,9 +90,7 @@ function prevalidateOnePlayer(tournament, event, player, eventType, options = {}
   const eligibility = checkPlayerEligibility(player, rules, {
     clubId: options.clubId || tournament?.clubId,
     requireCanonicalMembershipEvidence: rules.clubMembership.enabled === true,
-    requireCanonicalRatingEvidence: Boolean(
-      options.ratingEvidenceByPlayerId?.[String(player.id)]
-    ),
+    requireCanonicalRatingEvidence: shouldActivateOfficialOpenRating(tournament),
     membershipEvidence: options.membershipEvidenceByPlayerId?.[String(player.id)],
     ratingEvidence: options.ratingEvidenceByPlayerId?.[String(player.id)],
   });

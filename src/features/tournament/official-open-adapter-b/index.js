@@ -2,6 +2,10 @@ export {
   OFFICIAL_OPEN_ADAPTER_B_ID,
   OFFICIAL_OPEN_ADAPTER_B_VERSION,
   SHARED_CONTRACT_CAPABILITY_GAP,
+  SHARED_REFEREE_CONTRACT_CAPABILITY_GAP,
+  COURT_SHARED_RUNTIME_GAP,
+  EXTERNAL_DEPENDENCY,
+  TEMPORARY_COMPATIBILITY_NONCANONICAL,
   ADAPTER_B_STATUS,
   BYPASS_CLASSIFICATION,
 } from "./constants.js";
@@ -26,6 +30,8 @@ export {
 
 export { createOfficialTournamentRefereeAdapter } from "./officialTournamentRefereeAdapter.js";
 
+export { listOfficialOpenEligibleCourts } from "./court.js";
+
 export {
   createOfficialOpenAdapterB,
   getOfficialOpenAdapterB,
@@ -34,6 +40,7 @@ export {
 
 export {
   evaluateOfficialOpenManageAccess,
+  evaluateOfficialOpenReopenAccess,
   isOfficialOpenManageTarget,
   buildOfficialOpenEligibilityOptions,
 } from "./consume.js";

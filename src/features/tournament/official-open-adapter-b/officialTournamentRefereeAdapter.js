@@ -5,7 +5,6 @@
  * assignment persistence, or referee identity.
  */
 
-import { createScoringFormat } from "../../competition-core/scoring/index.js";
 import { MATCH_STATUS } from "../../competition-core/matches/index.js";
 import {
   COMPETITION_REFEREE_ADAPTER_CONTRACT_ID,
@@ -20,11 +19,12 @@ import {
 } from "../../competition-engine/integration/referee/contract.js";
 import { failRefereeAdapter } from "../../competition-engine/integration/referee/errors.js";
 import { freezeClone } from "../../competition-engine/integration/referee/helpers.js";
-import { getOfficialCompetitionSettings } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
+import { resolveOfficialMatchScoringRules } from "../../individual-tournament/engines/officialScoringRulesResolver.js";
 import {
   listMyOfficialRefereeAssignmentsCommand,
   officialRefereeGetMatchCommand,
 } from "../official-lifecycle/officialOpenLifecycleCommands.js";
+import { SHARED_REFEREE_CONTRACT_CAPABILITY_GAP } from "./constants.js";
 
 function trimId(value) {
   return value != null ? String(value).trim() : "";
@@ -76,15 +76,32 @@ function sidesFromMatch(match) {
   ];
 }
 
-function scoringRulesFromTournament(tournament) {
-  const competition = getOfficialCompetitionSettings(tournament);
-  const method = String(competition.scoringMethodOperational || competition.scoringMethod || "rally");
-  return createScoringFormat({
-    scoringSystem: method === "side_out" ? "SIDE_OUT" : "RALLY",
-    pointsToWin: Number(competition.pointsToWin) || 11,
-    winBy: 2,
-    bestOfGames: Number(competition.bestOf) || 1,
-  });
+function isCore16ScoringRules(rules) {
+  if (!rules || typeof rules !== "object") return false;
+  const winBy = Number(rules.winBy);
+  return (
+    (Boolean(rules.formatId) || Boolean(rules.schemaVersion)) &&
+    Number.isInteger(winBy) &&
+    winBy >= 1
+  );
+}
+
+function officialScoringRulesOrGap(tournament, match) {
+  const official = resolveOfficialMatchScoringRules(tournament, match);
+  if (official.winByPolicyDeferred === true || official.winBy == null) {
+    failRefereeAdapter(
+      SHARED_REFEREE_CONTRACT_CAPABILITY_GAP,
+      "CORE-16 cannot represent Official WIN_BY_POLICY_DEFERRED without fabricating winBy. Adapter B will not invent winBy=2.",
+      {
+        winBy: official.winBy,
+        winByPolicyDeferred: official.winByPolicyDeferred,
+        scoringMethod: official.scoringMethod,
+        targetPoints: official.targetPoints,
+        contractId: COMPETITION_REFEREE_ADAPTER_CONTRACT_ID,
+      }
+    );
+  }
+  return official;
 }
 
 /**
@@ -156,14 +173,41 @@ export function createOfficialTournamentRefereeAdapter(options = {}) {
       listMyRefereeAssignments: listMyOfficialRefereeAssignmentsCommand,
       refereeGetMatch: officialRefereeGetMatchCommand,
     }),
+    sharedContractCapabilityGaps: Object.freeze([
+      {
+        code: SHARED_REFEREE_CONTRACT_CAPABILITY_GAP,
+        reason:
+          "CORE-16 createScoringFormat requires a positive integer winBy and cannot represent Official WIN_BY_POLICY_DEFERRED.",
+        officialPolicy: Object.freeze({
+          scoringMethod: "rally",
+          winBy: null,
+          winByPolicyDeferred: true,
+        }),
+      },
+    ]),
     getCompetitionContext(request) {
       const req = requireAdapterRequest(request);
+      if (boundTenantId && req.tenantId !== boundTenantId) {
+        failRefereeAdapter(
+          REFEREE_ADAPTER_ERROR_CODE.CROSS_TENANT_CONTEXT,
+          "Official/Open referee request tenant does not match bound tenant",
+          { tenantId: req.tenantId, expectedTenantId: boundTenantId }
+        );
+      }
       const tournament = resolveTournament(req);
       if (!tournament) {
         failRefereeAdapter(
           REFEREE_ADAPTER_ERROR_CODE.MALFORMED_CONTEXT,
           "Official/Open tournament context is unavailable",
           { competitionId: req.competitionId }
+        );
+      }
+      const tournamentTenant = trimId(tournament.tenantId);
+      if (tournamentTenant && tournamentTenant !== req.tenantId) {
+        failRefereeAdapter(
+          REFEREE_ADAPTER_ERROR_CODE.CROSS_TENANT_CONTEXT,
+          "Official/Open tournament tenant does not match request tenant",
+          { tenantId: req.tenantId, tournamentTenantId: tournamentTenant }
         );
       }
       return freezeClone({
@@ -199,15 +243,10 @@ export function createOfficialTournamentRefereeAdapter(options = {}) {
     },
     getScoringRules(request) {
       const { tournament, match } = loadMatch(request);
-      const rules = match.scoringRules || scoringRulesFromTournament(tournament);
-      if (!rules) {
-        failRefereeAdapter(
-          REFEREE_ADAPTER_ERROR_CODE.MISSING_SCORING_RULES,
-          "Official/Open match has no scoring rules",
-          { matchId: trimId(match.id || match.matchId) }
-        );
+      if (isCore16ScoringRules(match.scoringRules)) {
+        return assertScoringRulesPayload(match.scoringRules);
       }
-      return assertScoringRulesPayload(rules);
+      return officialScoringRulesOrGap(tournament, match);
     },
     getLifecyclePolicy(request) {
       loadMatch(request);

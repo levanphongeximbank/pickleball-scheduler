@@ -8,6 +8,7 @@
  */
 
 import { courtResourceCompetitionAdapter } from "../../competition-core/adapters/courtResourceCompetitionAdapter.js";
+import { COMPETITION_TYPE } from "../../competition-core/contracts/competitionCourtAdapterContract.js";
 import {
   createAnalyticsReportingBinding,
   createAuditBinding,
@@ -32,9 +33,13 @@ import { isCompetitionAdapterContractError } from "../../competition-engine/inte
 import { SHARED_ADAPTER_ERROR_CODE } from "../../competition-engine/integration/contracts/kernel/constants.js";
 import {
   ADAPTER_B_STATUS,
+  COURT_SHARED_RUNTIME_GAP,
+  EXTERNAL_DEPENDENCY,
   OFFICIAL_OPEN_ADAPTER_B_ID,
   OFFICIAL_OPEN_ADAPTER_B_VERSION,
   SHARED_CONTRACT_CAPABILITY_GAP,
+  SHARED_REFEREE_CONTRACT_CAPABILITY_GAP,
+  TEMPORARY_COMPATIBILITY_NONCANONICAL,
 } from "./constants.js";
 import {
   shouldActivateOfficialOpenFederation,
@@ -258,33 +263,55 @@ export function createOfficialOpenAdapterB(deps = {}) {
           ? ADAPTER_B_STATUS.NOT_CONFIGURED
           : ADAPTER_B_STATUS.CANONICAL_BOUND
         : ADAPTER_B_STATUS.CONDITIONAL_INACTIVE,
-      court: ADAPTER_B_STATUS.EXISTING_ADOPTION_REUSED,
-      referee: ADAPTER_B_STATUS.EXISTING_ADOPTION_REUSED,
+      court: ADAPTER_B_STATUS.CANONICAL_BOUND,
+      referee: ADAPTER_B_STATUS.CANONICAL_BOUND,
       finance: financeGap
         ? ADAPTER_B_STATUS.SHARED_CONTRACT_CAPABILITY_GAP
         : ADAPTER_B_STATUS.CANONICAL_BOUND,
       notification: ADAPTER_B_STATUS.CANONICAL_BOUND,
-      fileMedia: ADAPTER_B_STATUS.NOT_CONFIGURED,
-      streaming: ADAPTER_B_STATUS.NOT_CONFIGURED,
+      fileMedia: ADAPTER_B_STATUS.NOT_REQUIRED,
+      streaming: ADAPTER_B_STATUS.NOT_REQUIRED,
       federation: federationActivated
         ? ADAPTER_B_STATUS.NOT_CONFIGURED
-        : ADAPTER_B_STATUS.CONDITIONAL_INACTIVE,
-      crm: ADAPTER_B_STATUS.NOT_CONFIGURED,
-      analytics: ADAPTER_B_STATUS.NOT_CONFIGURED,
+        : ADAPTER_B_STATUS.NOT_REQUIRED,
+      crm: ADAPTER_B_STATUS.NOT_REQUIRED,
+      analytics: ADAPTER_B_STATUS.NOT_REQUIRED,
       audit: ADAPTER_B_STATUS.ADAPTER_BOUND_COMPATIBILITY_SINK,
     }),
-    gaps: Object.freeze(
-      financeGap
+    gaps: Object.freeze([
+      {
+        code: COURT_SHARED_RUNTIME_GAP,
+        adapter: "07_COURT",
+        kind: EXTERNAL_DEPENDENCY,
+        reason:
+          "Competition Court Contract A / gateway does not provide Official/Open cloud CAS occupancy equivalence.",
+      },
+      {
+        code: SHARED_REFEREE_CONTRACT_CAPABILITY_GAP,
+        adapter: "08_REFEREE",
+        kind: SHARED_CONTRACT_CAPABILITY_GAP,
+        reason:
+          "CORE-16 cannot represent Official WIN_BY_POLICY_DEFERRED without fabricating winBy.",
+      },
+      {
+        code: SHARED_CONTRACT_CAPABILITY_GAP,
+        adapter: "08_REFEREE",
+        kind: EXTERNAL_DEPENDENCY,
+        reason: "Shared Referee production runtime remains behind Contract A.",
+      },
+      ...(financeGap
         ? [
             {
               code: SHARED_CONTRACT_CAPABILITY_GAP,
               adapter: "09_FINANCE_PAYMENT",
+              kind: EXTERNAL_DEPENDENCY,
               reason:
-                "Finance runtime is not wired to Tournament (Phase 1I default disabled, production unauthorized). entryFee.entryPayments remains legacy until Finance getPaymentStatus is injected.",
+                "Finance getPaymentStatus is not wired. tournament.settings.entryFee.entryPayments is TEMPORARY_COMPATIBILITY_NONCANONICAL — not canonical Finance authority.",
+              compatibility: TEMPORARY_COMPATIBILITY_NONCANONICAL,
             },
           ]
-        : []
-    ),
+        : []),
+    ]),
 
     async getManageAuthorizationEvidence(extra = {}) {
       if (!tenantId || !actorId) {
@@ -403,8 +430,9 @@ export function createOfficialOpenAdapterB(deps = {}) {
           ok: false,
           code: SHARED_CONTRACT_CAPABILITY_GAP,
           error:
-            "Finance payment evidence is not safely available. Legacy entryPayments remains until Finance runtime is bound.",
+            "Finance payment evidence is not safely available. Legacy entryPayments is TEMPORARY_COMPATIBILITY_NONCANONICAL — not canonical Finance authority.",
           status: ADAPTER_B_STATUS.SHARED_CONTRACT_CAPABILITY_GAP,
+          compatibility: TEMPORARY_COMPATIBILITY_NONCANONICAL,
         };
       }
       return safeCall(() =>
@@ -447,12 +475,52 @@ export function createOfficialOpenAdapterB(deps = {}) {
       }
     },
 
+    async getStreamingCapability(extra = {}) {
+      return {
+        ok: true,
+        required: false,
+        scoringAuthority: false,
+        status: ADAPTER_B_STATUS.NOT_REQUIRED,
+        code: SHARED_ADAPTER_ERROR_CODE.NOT_CONFIGURED,
+        error: "Official/Open broadcast is optional. Streaming runtime is NOT_CONFIGURED.",
+        contractId: streaming.contractId,
+        ...extra,
+      };
+    },
+
     listEligibleCourts(input = {}) {
-      return court.listEligibleCourts({
+      const contractResult = court.listEligibleCourts({
         ...input,
         clubId: input.clubId || clubId,
+        tenantId: input.tenantId || tenantId,
+        venueId: input.venueId || venueId,
+        competitionId: input.competitionId || competitionId,
+        competitionType: input.competitionType || COMPETITION_TYPE.OFFICIAL_OPEN,
         clusterId: input.clusterId || null,
+        selectedCourtIds: input.physicalCourtIds || input.selectedCourtIds,
+        physicalCourtIds: input.physicalCourtIds || input.selectedCourtIds,
       });
+      const courts = (contractResult.courts || []).map((row) => {
+        const physicalCourtId =
+          row.physicalCourtId || row.id || row.courtId || null;
+        return {
+          ...row,
+          physicalCourtId,
+          id: physicalCourtId,
+          name: row.displayName || row.name || row.courtLabel || physicalCourtId,
+          active: row.active !== false,
+        };
+      });
+      return {
+        ...contractResult,
+        courts,
+        source: "competition-court-adapter-contract-v1",
+        physicalCourtIdAuthority: true,
+        sharedRuntimeGap: COURT_SHARED_RUNTIME_GAP,
+        sharedRuntimeGapKind: EXTERNAL_DEPENDENCY,
+        sharedRuntimeGapReason:
+          "Competition Court Contract A / gateway does not provide Official/Open cloud CAS occupancy equivalence.",
+      };
     },
   });
 }

@@ -531,7 +531,7 @@ export function auditEligibilityDecision(tournament, decision, options = {}) {
     eligibilityAuditLog: [...log, entry].slice(-100),
   });
 
-  void writeAuditLog({
+  const auditPayload = {
     action: entry.action,
     resourceType: "tournament",
     resourceId: tournament?.id || "",
@@ -542,7 +542,13 @@ export function auditEligibilityDecision(tournament, decision, options = {}) {
       violations: entry.violations,
       reason: options.reason || "",
     },
-  }).catch(() => {});
+  };
+
+  if (typeof options.appendAudit === "function") {
+    void Promise.resolve(options.appendAudit(auditPayload)).catch(() => {});
+  } else {
+    void writeAuditLog(auditPayload).catch(() => {});
+  }
 
   return { tournament: nextTournament, auditEntry: entry };
 }

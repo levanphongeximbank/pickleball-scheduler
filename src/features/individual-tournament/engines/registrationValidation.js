@@ -15,6 +15,32 @@ import {
   promoteFromWaitlist,
   submitRegistration,
 } from "./registrationEngine.js";
+import { createOfficialOpenAdapterB } from "../../tournament/official-open-adapter-b/createOfficialOpenAdapterB.js";
+import { shouldActivateOfficialOpenRating } from "../../tournament/official-open-adapter-b/activation.js";
+
+function isOfficialTournament(tournament) {
+  return String(tournament?.mode || "") === "official_tournament";
+}
+
+function withOfficialOpenAuditSink(tournament, options = {}) {
+  if (!isOfficialTournament(tournament) || typeof options.appendAudit === "function") {
+    return options;
+  }
+  const adapter = createOfficialOpenAdapterB({
+    tournament,
+    currentTenantId: options.tenantId || tournament?.tenantId,
+    actor: options.actor,
+  });
+  return {
+    ...options,
+    appendAudit: (payload) =>
+      adapter.appendAudit(payload.action, {
+        actorId: payload.actor?.id,
+        clubId: payload.clubId,
+        entityRef: payload.resourceId,
+      }),
+  };
+}
 
 export function validateRegistrationEligibility(tournament, playerIds, players = [], options = {}) {
   const report = checkEntryPlayersEligibility(tournament, playerIds, players, options);
@@ -61,11 +87,10 @@ export function gatedSubmitRegistration(tournament, payload = {}, options = {}) 
     hasInvite: Boolean(options.hasInvite),
     excludeEntryId: options.excludeEntryId,
     requireCanonicalMembershipEvidence:
-      String(tournament?.mode || "") === "official_tournament" &&
+      isOfficialTournament(tournament) &&
       Boolean(tournament?.settings?.eligibilityRules?.clubMembership?.enabled),
     requireCanonicalRatingEvidence:
-      String(tournament?.mode || "") === "official_tournament" &&
-      Boolean(options.ratingEvidence),
+      isOfficialTournament(tournament) && shouldActivateOfficialOpenRating(tournament),
     membershipEvidence: options.membershipEvidence,
     ratingEvidence: options.ratingEvidence,
   });
@@ -78,7 +103,7 @@ export function gatedSubmitRegistration(tournament, payload = {}, options = {}) 
       playerIds,
       violations: eligibility.violations,
     },
-    options
+    withOfficialOpenAuditSink(tournament, options)
   );
   working = audited.tournament;
 
@@ -124,7 +149,7 @@ export function gatedConfirmPartnerInvite(tournament, token, partnerPlayerId, op
   let working = auditEligibilityDecision(
     tournament,
     { ok: eligibility.ok, playerIds: [partnerPlayerId], violations: eligibility.violations },
-    options
+    withOfficialOpenAuditSink(tournament, options)
   ).tournament;
 
   if (!eligibility.ok) {

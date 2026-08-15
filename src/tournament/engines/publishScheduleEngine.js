@@ -345,14 +345,46 @@ export function publishSchedule(tournament, matches = [], options = {}) {
  * Safe tournament-layer boundary — does not modify Competition Engine.
  */
 export function notifyMatchScheduledAfterPublish(tournament, matches = [], options = {}) {
-  const tenantId = isOfficialOpenTournament(tournament)
-    ? options.tenantId || tournament?.tenantId || null
-    : options.tenantId || tournament?.tenantId || tournament?.venueId || null;
+  if (isOfficialOpenTournament(tournament)) {
+    const adapter = createOfficialOpenAdapterB({
+      tournament,
+      currentTenantId: options.tenantId || tournament?.tenantId || null,
+      actor: options.actor || { id: options.userId },
+    });
+    const list = Array.isArray(matches) ? matches : [];
+    return Promise.all(
+      list.map((match) => {
+        const matchId = match?.id || match?.matchId;
+        if (!matchId) {
+          return Promise.resolve({ ok: false, skipped: true });
+        }
+        return adapter.publishMatchScheduled(String(matchId), {
+          tenantId: options.tenantId || tournament?.tenantId || null,
+          idempotencyKey: `${tournament?.id || "tournament"}:${matchId}:${
+            options.now || scheduleVersionOf(tournament, options)
+          }`,
+        });
+      })
+    )
+      .then((results) => ({
+        ok: true,
+        emitted: results.filter((row) => row?.ok).length,
+        skipped: results.filter((row) => !row?.ok).length,
+        results,
+      }))
+      .catch((error) => ({
+        ok: false,
+        error: error?.message || String(error),
+        emitted: 0,
+        skipped: 0,
+        results: [],
+      }));
+  }
+
+  const tenantId =
+    options.tenantId || tournament?.tenantId || tournament?.venueId || null;
   const actorUserId = options.userId || options.actor?.id || null;
-  const scheduleVersion =
-    getSchedulePublishStatus(tournament)?.publishedAt ||
-    options.now ||
-    new Date().toISOString();
+  const scheduleVersion = scheduleVersionOf(tournament, options);
 
   return import("../../features/notifications/adapters/tournamentSchedulePublishBridge.js")
     .then(({ emitMatchScheduledAfterSchedulePublish }) =>
@@ -371,6 +403,14 @@ export function notifyMatchScheduledAfterPublish(tournament, matches = [], optio
       skipped: 0,
       results: [],
     }));
+}
+
+function scheduleVersionOf(tournament, options = {}) {
+  return (
+    getSchedulePublishStatus(tournament)?.publishedAt ||
+    options.now ||
+    new Date().toISOString()
+  );
 }
 
 export function canReopenSchedule(tournament, options = {}) {

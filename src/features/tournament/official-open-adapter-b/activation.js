@@ -53,7 +53,8 @@ export function aiBalanceIndividualPairingRequiresRating(tournament) {
  * Seeding-by-rating is not currently a separate Official/Open config surface.
  */
 export function hasExplicitRatingCompetitionRule(tournament) {
-  return false && tournament;
+  void tournament;
+  return false;
 }
 
 /**

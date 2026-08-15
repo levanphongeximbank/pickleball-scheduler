@@ -26,7 +26,6 @@ import {
 } from "@mui/material";
 
 import { useClub } from "../../context/ClubContext.jsx";
-import { listCanonicalClubCourtsForFormatVenue } from "../../features/team-tournament/services/canonicalClubCourtInventory.js";
 import { resolveTournamentCourtInventoryScope } from "../../features/tournament/guards/tournamentCourtInventoryScope.js";
 import {
   useClubPairingCandidatePool,
@@ -121,7 +120,6 @@ import {
   publishDraw,
   recordDrawCreated,
   reopenDraw,
-  resolveDrawReopenPermission,
   summarizeGroups,
 } from "../../tournament/engines/publishDrawEngine.js";
 import { resolveEventTypeFromQuery, scheduleOfficialGroupMatches } from "../../features/individual-tournament/index.js";
@@ -135,6 +133,8 @@ import {
 } from "../../features/tournament/official-lifecycle/officialOpenLifecycleCommands.js";
 import {
   evaluateOfficialOpenManageAccess,
+  evaluateOfficialOpenReopenAccess,
+  listOfficialOpenEligibleCourts,
   resolveOfficialOpenTenantIdOrEmpty,
 } from "../../features/tournament/official-open-adapter-b/index.js";
 import {
@@ -339,17 +339,23 @@ export default function OfficialTournamentSetup() {
       setCourts([]);
       return undefined;
     }
-    void listCanonicalClubCourtsForFormatVenue({
-      clubId: courtInventoryScope.clubId,
-      tenantId: courtInventoryScope.tenantId,
-      venueId: courtInventoryScope.venueId,
-    }).then((result) => {
-      if (cancelled) return;
-      setCourts(result?.ok && Array.isArray(result.courts) ? result.courts : []);
-    }).catch(() => {
-      if (cancelled) return;
-      setCourts([]);
-    });
+    void Promise.resolve(
+      listOfficialOpenEligibleCourts({
+        clubId: courtInventoryScope.clubId,
+        tenantId: courtInventoryScope.tenantId,
+        venueId: courtInventoryScope.venueId,
+        tournament,
+        activeClub,
+      })
+    )
+      .then((result) => {
+        if (cancelled) return;
+        setCourts(result?.ok && Array.isArray(result.courts) ? result.courts : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCourts([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -358,6 +364,8 @@ export default function OfficialTournamentSetup() {
     courtInventoryScope.clubId,
     courtInventoryScope.tenantId,
     courtInventoryScope.venueId,
+    tournament,
+    activeClub,
   ]);
 
   const refereeRoster = useMemo(
@@ -734,12 +742,16 @@ export default function OfficialTournamentSetup() {
 
   const hasDrawReopenPermission = useMemo(
     () =>
-      resolveDrawReopenPermission({
-        canPermission: can,
+      evaluateOfficialOpenReopenAccess({
+        actor: user,
+        tenantId,
+        clubId: activeClubId,
+        venueId: courtInventoryScope.ok ? courtInventoryScope.venueId : null,
+        competitionId: tournamentId,
         rbacEnabled,
         canIntervene: canInterveneSetup,
-      }),
-    [can, rbacEnabled, canInterveneSetup]
+      }).allowed,
+    [user, tenantId, activeClubId, courtInventoryScope.ok, courtInventoryScope.venueId, tournamentId, rbacEnabled, canInterveneSetup]
   );
 
   const buildDrawActor = () =>
