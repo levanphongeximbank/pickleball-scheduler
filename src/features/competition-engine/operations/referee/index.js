@@ -55,10 +55,12 @@ export const COMPETITION_ENGINE_REFEREE_OPERATIONS = Object.freeze({
   id: "competition-engine-referee-operations",
   phase: "E2E-04",
   version: "e2e-04-referee-operations-v1",
-  wiredToProductionRuntime: false,
+  wiredToProductionRuntime: true,
   inMemoryRuntimeClassification: "TEST_DOUBLE_ONLY",
+  inMemoryProductionFallback: false,
   productionRuntimePortsDefined: true,
   productionRuntimeImplemented: true,
+  defaultRuntimeWiringImplemented: true,
   stagingBackendCertified: false,
   ownsEngines: false,
 });

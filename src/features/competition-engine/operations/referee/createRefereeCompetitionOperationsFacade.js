@@ -3,6 +3,9 @@
  *
  * Orchestrates assignment enforcement, CORE-15 lifecycle, CORE-16 scoring,
  * and CORE-17 result validation handoff — no parallel engines.
+ *
+ * Store/runtime is mandatory. In-memory is TEST_DOUBLE_ONLY and must be
+ * injected explicitly. Production default is createDefaultCompetitionRefereeRuntime.
  */
 
 import { createCompetitionRuntimePorts } from "../../integration/composition/createCompetitionRuntimePorts.js";
@@ -48,7 +51,6 @@ import {
 import { authorizeRefereeCommand } from "./context/authorizeRefereeCommand.js";
 import { assertRefereeAssignmentScope } from "./context/assertRefereeAssignment.js";
 import { buildRefereeOperationsProjection } from "./projections/buildRefereeOperationsProjection.js";
-import { createInMemoryRefereeOperationsStore } from "./store/createInMemoryRefereeOperationsStore.js";
 import {
   computeOrganizerFingerprint,
   deepFreeze,
@@ -64,10 +66,14 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     ? String(deps.clockIso).trim()
     : "2026-07-24T00:00:00.000Z";
 
-  const store =
-    deps.store ||
-    deps.runtime?.opsStore ||
-    createInMemoryRefereeOperationsStore({ clockIso });
+  const store = deps.store || deps.runtime?.opsStore || null;
+  if (!store) {
+    failReferee(
+      REFEREE_ERROR_CODE.PRECONDITION_FAILED,
+      "Referee operations store/runtime is required. In-memory is TEST_DOUBLE_ONLY and must be injected explicitly.",
+      {}
+    );
+  }
 
   const runtimePorts =
     deps.runtimePorts ||
@@ -820,7 +826,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
       deps.runtime?.classification ||
       store.classification ||
       "TEST_DOUBLE_ONLY",
-    wiredToProductionRuntime: false,
+    wiredToProductionRuntime: deps.runtime?.wiredToProductionRuntime === true,
     seedAssignments,
     getRefereeAssignmentQueue,
     getAssignedMatch,

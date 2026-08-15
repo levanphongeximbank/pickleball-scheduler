@@ -15,6 +15,7 @@ import {
 } from "./constants.js";
 import { failRefereeAdapter } from "./errors.js";
 import { freezeClone, isNonEmptyString, matchStateId } from "./helpers.js";
+import { assertServerOnlyPrivilegedRefereeComposition } from "./privilegedCompositionBoundary.js";
 import { requireCanonicalRefereeActor } from "./requireCanonicalRefereeActor.js";
 
 function mapRpcFailure(data) {
@@ -51,6 +52,7 @@ function mapRpcFailure(data) {
  * @param {{ rpcClient?: { rpc: Function, from?: Function }, clockIso?: string }} [options]
  */
 export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
+  assertServerOnlyPrivilegedRefereeComposition();
   const rpcClient = options.rpcClient;
   if (!rpcClient || typeof rpcClient.rpc !== "function") {
     failRefereeAdapter(

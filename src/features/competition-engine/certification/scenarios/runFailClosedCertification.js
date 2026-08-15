@@ -15,6 +15,7 @@ import {
   createCompetitionGovernanceReliabilityFacade,
   createInMemoryOrganizerOperationsStore,
   createInMemoryPublicExperienceStore,
+  createInMemoryRefereeOperationsStore,
   createOrganizerOperationsFacade,
   createPlayerCompetitionOperationsFacade,
   createPublicCompetitionExperienceFacade,
@@ -71,6 +72,7 @@ export async function runFailClosedCertification(input = {}) {
   const referee = createRefereeCompetitionOperationsFacade({
     runtimePorts: ports,
     clockIso: fixture.clockIso,
+    store: createInMemoryRefereeOperationsStore({ clockIso: fixture.clockIso }),
   });
   const publicFacade = createPublicCompetitionExperienceFacade({
     store: createInMemoryPublicExperienceStore({ clockIso: fixture.clockIso }),
