@@ -17,7 +17,7 @@ export {
   releaseCourts,
   validateCourtAssignment,
   getReservationOwner,
-} from "./services/courtResourceGateway.js";
+} from "../court-resource/services/courtResourceGateway.js";
 export {
   extractCourtsFromClubDataV3Payload,
   normalizeCanonicalClubCourts,
@@ -38,7 +38,7 @@ export {
   OWNERSHIP_STATUS,
   RESERVATION_OWNER_TYPE,
   CANONICAL_INVENTORY_SOURCE,
-} from "./constants/courtResourceContract.js";
+} from "../court-resource/constants/courtResourceContract.js";
 export { listCanonicalCourtDescriptors } from "./adapters/competitionCourtDescriptorAdapter.js";
 export {
   DESCRIPTOR_AUTHORITY,

@@ -122,6 +122,8 @@
   "tests/venue-court/court-availability-service.test.js",
   "tests/venue-court/court-inventory-service.test.js",
   "tests/venue-court/shared-court-resource-foundation.test.js",
+  "tests/court-resource-architecture-reconciliation.test.js",
+  "tests/court-resource-phase3a-identity.test.js",
   "tests/venue-court/operating-hours-service.test.js",
   "tests/venue-court/courts-api-handler.test.js",
   "tests/tournament-daily-play.test.js",

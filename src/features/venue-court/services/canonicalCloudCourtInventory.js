@@ -1,8 +1,10 @@
 /**
- * Shared canonical cloud court inventory.
+ * Transitional club operational court inventory.
  *
- * Authority: public.club_data_v3 by club_id. Venue & Court owns storage-shape
- * parsing (flat data.courts and nested data.data.courts).
+ * Source: public.club_data_v3 by club_id. Venue & Court owns storage-shape
+ * parsing (flat data.courts and nested data.data.courts). This is the current
+ * compatibility source for legacy consumers, not the system-wide canonical
+ * Physical Court master.
  *
  * Does not read localStorage. Does not invent missing courts.
  * Does not require blob.venue_id = tenantId when venue_id is NULL.
@@ -155,8 +157,8 @@ function pickCanonicalClubRow(rows, tenantId) {
 }
 
 /**
- * Load physical courts from canonical club_data_v3.
- * Query is by club_id. NULL blob venue_id is accepted for the canonical club row.
+ * Load the transitional operational court projection from club_data_v3.
+ * Query is by club_id. NULL blob venue_id is accepted for the selected club row.
  *
  * @param {{ clubId: string, tenantId?: string|null, venueId?: string|null, clusterId?: string|null, includeInactive?: boolean }} params
  */
