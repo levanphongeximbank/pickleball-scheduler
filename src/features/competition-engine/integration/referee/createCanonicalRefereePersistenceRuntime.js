@@ -15,7 +15,7 @@ import {
   REFEREE_ADAPTER_ERROR_CODE,
 } from "./constants.js";
 import { failRefereeAdapter } from "./errors.js";
-import { freezeClone, isNonEmptyString } from "./helpers.js";
+import { freezeClone, hashCanonical, isNonEmptyString, matchStateId } from "./helpers.js";
 import { matchesRefereeOperationsStorePort } from "./runtimePorts.js";
 
 function requireCanonicalActor(actor) {
@@ -45,10 +45,6 @@ function requireCanonicalActor(actor) {
     );
   }
   return actorId;
-}
-
-function matchStateId(tenantId, competitionId, matchId) {
-  return `${tenantId}::${competitionId}::${matchId}`;
 }
 
 /**
@@ -205,6 +201,11 @@ export function createCanonicalRefereePersistenceRuntime(options = {}) {
       const tenantId = String(input.tenantId || "").trim();
       const competitionId = String(input.competitionId || "").trim();
       const matchId = String(input.matchId || "").trim();
+      const requestHash = hashCanonical({
+        eventType: input.eventType || "CORE16_COMMAND",
+        payload: input.payload || {},
+        commandId: input.commandId || idempotencyKey,
+      });
       const existing = scoringEventLedger.findIdempotent({
         tenantId,
         competitionId,
@@ -212,6 +213,13 @@ export function createCanonicalRefereePersistenceRuntime(options = {}) {
         idempotencyKey,
       });
       if (existing) {
+        if (existing.requestHash && existing.requestHash !== requestHash) {
+          failRefereeAdapter(
+            REFEREE_ADAPTER_ERROR_CODE.IDEMPOTENCY_CONFLICT,
+            "Same idempotencyKey with a conflicting request is fail-closed",
+            { idempotencyKey }
+          );
+        }
         return freezeClone({ ...existing, duplicate: true });
       }
       const id = matchStateId(tenantId, competitionId, matchId);
@@ -227,6 +235,7 @@ export function createCanonicalRefereePersistenceRuntime(options = {}) {
         actorId: actor.actorId,
         idempotencyKey,
         commandId: input.commandId || idempotencyKey,
+        requestHash,
         occurredAt: clockIso,
         appendOnly: true,
       });
@@ -236,6 +245,7 @@ export function createCanonicalRefereePersistenceRuntime(options = {}) {
         table: CANONICAL_REFEREE_PERSISTENCE_TABLES.SYNC_MUTATIONS,
         matchStateId: id,
         idempotencyKey,
+        requestHash,
         responsePayload: event,
         status: "applied",
       });
@@ -253,6 +263,14 @@ export function createCanonicalRefereePersistenceRuntime(options = {}) {
     },
     appendRevision(input, actor) {
       requireCanonicalActor(actor);
+      const acceptanceStatus = String(input.acceptanceStatus || "").trim();
+      if (acceptanceStatus && acceptanceStatus !== "ACCEPTED") {
+        failRefereeAdapter(
+          REFEREE_ADAPTER_ERROR_CODE.UNOFFICIAL_RESULT_FORBIDDEN,
+          "Unaccepted results cannot persist as official revisions",
+          { acceptanceStatus }
+        );
+      }
       const tenantId = String(input.tenantId || "").trim();
       const competitionId = String(input.competitionId || "").trim();
       const matchId = String(input.matchId || "").trim();
