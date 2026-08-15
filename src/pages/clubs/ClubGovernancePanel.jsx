@@ -16,12 +16,18 @@ import {
   ListItemText,
   MenuItem,
   Select,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import GovernanceMemberSelect from "../../components/club/GovernanceMemberSelect.jsx";
 import { listClustersForVenue } from "../../features/court-cluster/services/courtClusterService.js";
+import { bindClubCourtsToCluster } from "../../features/venue-court/services/bindClubCourtsToClusterService.js";
+import { loadUnstampedCourts } from "../courts.logic.js";
+import { getCourtDisplayName } from "../../models/court.js";
 import {
   canAssignClubOwner,
   canChangeClubPresident,
@@ -42,7 +48,7 @@ import {
 } from "../../features/club/context/governanceCanonicalReadModel.js";
 
 function mapGovernanceError(result) {
-  const serverCode = String(result?.serverCode || "").trim();
+  const serverCode = String(result?.serverCode || result?.code || "").trim();
   if (serverCode === "VERSION_CONFLICT") {
     return "Dữ liệu CLB đã thay đổi trên máy chủ. Vui lòng tải lại rồi thử lại.";
   }
@@ -63,6 +69,7 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
     vicePresidentIds: ["", ""],
     ownerUserId: "",
     registeredClusterId: "",
+    selectedCourtIds: [],
   });
   const [localRevision, setLocalRevision] = useState(0);
 
@@ -109,6 +116,11 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
     [tenantId]
   );
 
+  const unstampedCourts = useMemo(
+    () => (club?.id ? loadUnstampedCourts(club.id) : []),
+    [club?.id, localRevision]
+  );
+
   const canEdit = canManageClubGovernance(user, club);
   const canAssignOwner = canAssignClubOwner(user);
   const canChangePresident = canChangeClubPresident(user, club);
@@ -121,6 +133,7 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
       vicePresidentIds: [viceIds[0] || "", viceIds[1] || ""],
       ownerUserId: club.governance?.ownerUserId || "",
       registeredClusterId: club.governance?.registeredClusterId || "",
+      selectedCourtIds: [],
     });
     setError(null);
     setEditOpen(true);
@@ -175,16 +188,35 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
       }
     }
 
-    if (nextCluster !== currentCluster) {
-      const govResult = updateClubGovernance(
-        club.id,
-        { registeredClusterId: nextCluster || null },
-        tenantId
-      );
-      if (!govResult.ok) {
-        setBusy(false);
-        setError(govResult.error);
-        return;
+    if (nextCluster !== currentCluster || form.selectedCourtIds.length > 0) {
+      if (!nextCluster) {
+        const govResult = updateClubGovernance(
+          club.id,
+          { registeredClusterId: null },
+          tenantId
+        );
+        if (!govResult.ok) {
+          setBusy(false);
+          setError(govResult.error);
+          return;
+        }
+      } else {
+        const bindResult = await bindClubCourtsToCluster({
+          clubId: club.id,
+          venueId: tenantId,
+          clusterId: nextCluster,
+          courtIds: form.selectedCourtIds,
+          expectedClubVersion: club.version ?? governanceRead.version ?? 1,
+          user,
+        });
+        if (!bindResult.ok) {
+          setBusy(false);
+          setError(mapGovernanceError(bindResult));
+          if (String(bindResult.code || "").trim() === "VERSION_CONFLICT") {
+            refreshAll();
+          }
+          return;
+        }
       }
     }
 
@@ -364,6 +396,41 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
                 ))}
               </Select>
             </FormControl>
+            {form.registeredClusterId && unstampedCourts.length > 0 && (
+              <Box>
+                <Typography variant="body2" fontWeight={600}>
+                  Gán sân vật lý chưa có cụm
+                </Typography>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                  Chỉ sân được tick mới được gán. Không gán tự động toàn bộ sân.
+                </Typography>
+                <FormGroup>
+                  {unstampedCourts.map((court) => {
+                    const courtId = String(court.id);
+                    const checked = form.selectedCourtIds.includes(courtId);
+                    return (
+                      <FormControlLabel
+                        key={courtId}
+                        control={
+                          <Checkbox
+                            checked={checked}
+                            onChange={(event) =>
+                              setForm((f) => ({
+                                ...f,
+                                selectedCourtIds: event.target.checked
+                                  ? [...f.selectedCourtIds, courtId]
+                                  : f.selectedCourtIds.filter((id) => id !== courtId),
+                              }))
+                            }
+                          />
+                        }
+                        label={getCourtDisplayName(court)}
+                      />
+                    );
+                  })}
+                </FormGroup>
+              </Box>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

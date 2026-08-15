@@ -5,6 +5,7 @@
  * parsing (flat data.courts and nested data.data.courts).
  *
  * Does not read localStorage. Does not invent missing courts.
+ * Does not fabricate clusterId from venueId.
  * Does not require blob.venue_id = tenantId when venue_id is NULL.
  */
 
