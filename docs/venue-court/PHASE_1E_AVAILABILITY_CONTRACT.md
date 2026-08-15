@@ -24,6 +24,7 @@ getCourtAvailability({
   context: {
     type: "booking" | "court-engine" | "competition",
     excludeBookingId: null,
+    owner: { type, id } | null, // same-owner capacity reuse; not "all tournaments"
   },
   includeUnavailable: true, // default true
 })

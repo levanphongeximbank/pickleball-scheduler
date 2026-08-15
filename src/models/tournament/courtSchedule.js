@@ -10,6 +10,10 @@ export function normalizeCourtSchedule(schedule) {
   const date = schedule.date ? String(schedule.date).slice(0, 10) : "";
   const startTime = schedule.startTime ? String(schedule.startTime).slice(0, 5) : "";
   const endTime = schedule.endTime ? String(schedule.endTime).slice(0, 5) : "";
+  const clusterId =
+    schedule.clusterId == null || String(schedule.clusterId).trim() === ""
+      ? null
+      : String(schedule.clusterId).trim();
 
   if (!date || !startTime || !endTime || courtIds.length === 0) {
     return null;
@@ -20,6 +24,7 @@ export function normalizeCourtSchedule(schedule) {
     startTime,
     endTime,
     courtIds,
+    clusterId,
     syncedAt: schedule.syncedAt || null,
   };
 }

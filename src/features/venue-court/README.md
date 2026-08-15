@@ -71,8 +71,16 @@ Venue & Court must not import Court Engine. Phase 2D wires CE confirm/transfer/p
 * `getVenueOperatingHours` / `updateVenueOperatingHours`
 * `shouldWarnLegacyImport` / `legacyImportUserMessage` / `LEGACY_IMPORT_REASON`
 * `getCourtAvailability({ clubId, venueId?, date, startTime, endTime, courtId?, courtIds?, clusterId?, context?, includeUnavailable? })`
-* `AVAILABILITY_REASON`
+* `AVAILABILITY_REASON` (includes `OWN_RESERVATION`)
 * `getCompetitionCourtAvailability({ clubId, venueId?, date, startTime, endTime, courtIds?, clusterId?, context?, includeUnavailable? })`
+* Shared Court Resource Gateway: `reserveCourts` / `releaseCourts` / `validateCourtAssignment` / `getReservationOwner`
+  (canonical implementation lives in Court Resource; this module re-exports it)
+* Canonical cloud inventory: `listCanonicalCloudCourts` / `extractCourtsFromClubDataV3Payload`
+  (`club_data_v3` is transitional Club operational inventory, not Physical Court master)
+* Cluster membership: `assertCourtClusterMembership` (cluster is a filter, not a reservable unit)
+* Transitional operational cluster bind: `bindClubCourtsToCluster({ clubId, venueId, clusterId, courtIds, expectedVersion })`
+  (atomic club `registeredClusterId` + selected transitional inventory court `clusterId`;
+  no silent `{venueId}-main` stamp; not Physical Court UUID master; not reservation)
 * `listCanonicalCourtDescriptors({ tenantId, clubId, venueId, courtIds?, clusterId?, includeInactive?, includeLocked? })` (Phase 3B)
 * `DESCRIPTOR_AUTHORITY` / `SOURCE_CONTRACT_VERSION` / `DESCRIPTOR_DIAGNOSTIC_REASON` / `DESCRIPTOR_ERROR`
 * Civil time helpers (Phase 2E): `getLocalCivilDate`, `normalizeCivilWindow`, `isoToCivilHhmmOnDate`, `CIVIL_TIME_ERROR`, …
@@ -116,7 +124,9 @@ Phase 2C booking bridge docs remain in `docs/venue-court/PHASE_2C_BOOKING_BRIDGE
 
 `includeUnavailable` (boolean, default `true`): when omitted/true, returns available and unavailable courts; when `false`, omits unavailable results from `courts` (may be `[]`). Filtering does not mutate source data and does not bypass scope/time validation or load failures.
 
-`getCompetitionCourtAvailability` is a thin Competition-facing adapter over that contract. It returns `availableCourtIds` (deterministic inventory/`courtIds` order) plus optional `unavailableCourts` reasons. It does not assign, reserve, or persist courts.
+`getCompetitionCourtAvailability` is a thin Competition-facing adapter over the shared Court Resource contract (`courtResourceGateway` → `getCourtAvailability`). It returns `availableCourtIds` (deterministic inventory/`courtIds` order) plus optional `unavailableCourts` reasons. It does not assign, reserve, or persist courts. Pass `context.owner = { type, id }` for own-reservation reuse; do not ignore all tournament bookings.
+
+Shared resource foundation: `docs/v5/SHARED_COURT_RESOURCE_FOUNDATION.md`.
 
 Phase 2B consumers (Tournament Engine `generateSchedule` / `assignCourts`, Director `assignTournamentMatchToAvailableCourt`) call the adapter as a **pre-assign gate** when `clubId` + civil window are present. Algorithms are unchanged.
 

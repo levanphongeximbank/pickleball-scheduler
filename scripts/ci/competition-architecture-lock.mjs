@@ -86,6 +86,33 @@ const RULES = [
       /domain\/clubStorage/.test(spec) ? spec : null,
   },
   {
+    id: "cr-no-competition-or-tournament-business",
+    description:
+      "court-resource must not import Competition Core, Tournament business modules, or Court Engine.",
+    onlyIn: ["src/features/court-resource/"],
+    matchImport: (_file, spec) =>
+      /competition-core|team-tournament|individual-tournament|tournament-engine|tournamentBookingService|features\/court-engine/.test(
+        spec
+      )
+        ? spec
+        : null,
+  },
+  {
+    id: "cc-court-adapter-no-storage-bypass",
+    description:
+      "Competition Court Adapter Contract binding must not bypass CourtResourceGateway via storage or booking primitives.",
+    onlyIn: [
+      "src/features/competition-core/adapters/courtResourceCompetitionAdapter.js",
+      "src/features/competition-core/contracts/competitionCourtAdapterContract.js",
+    ],
+    matchImport: (_file, spec) =>
+      /clubStorage|bookingService|courtBookingEngine|tournamentBookingService|club_data_v3|team-tournament|individual-tournament|tournament-engine/.test(
+        spec
+      )
+        ? spec
+        : null,
+  },
+  {
     id: "engine-no-page-logic",
     description:
       "Domain engines must not import page logic (pages/*.logic.js).",

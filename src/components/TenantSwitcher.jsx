@@ -1,8 +1,7 @@
 import { FormControl, InputLabel, MenuItem, Select, Typography } from "@mui/material";
-import { useMemo } from "react";
 
 import { useTenant } from "../context/TenantContext.jsx";
-import { listTenants } from "../features/tenant/index.js";
+import { resolveTenantSwitcherView } from "../features/tenant/services/tenantSelectionModel.js";
 import { SHELL_COLORS } from "./shell/shellTokens.js";
 
 const VARIANT_STYLES = {
@@ -26,19 +25,18 @@ export default function TenantSwitcher({
   maxWidth,
   variant = "dark",
 }) {
-  const { currentTenantId, isSuperAdmin, switchTenant, revision } = useTenant();
+  const { currentTenantId, isSuperAdmin, switchTenant, tenants: contextTenants } = useTenant();
   const styles = VARIANT_STYLES[variant] || VARIANT_STYLES.dark;
-  const tenants = useMemo(() => listTenants(), [revision]);
+  const tenants = contextTenants || [];
 
   if (!isSuperAdmin) {
     return null;
   }
 
-  const hasSelection = tenants.some((tenant) => tenant.id === currentTenantId);
-  const value = hasSelection ? currentTenantId : "";
-  const selectedLabel = value
-    ? tenants.find((item) => item.id === value)?.name || value
-    : "Chọn tổ chức…";
+  const { value, selectedLabel } = resolveTenantSwitcherView({
+    currentTenantId,
+    tenants,
+  });
 
   return (
     <FormControl

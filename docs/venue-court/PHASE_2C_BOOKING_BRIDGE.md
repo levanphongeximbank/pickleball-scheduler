@@ -14,8 +14,9 @@
 | Canonical booking writes | Venue & Court substrate via `bookingService` |
 | Bridge orchestration | `domain/tournamentBookingService.js` |
 
-Competition/Tournament **must not** write `club_data_v3.bookings[]` directly.
-The bridge cancels/upserts only through `bookingService` (`createBooking` / `saveBooking` / `updateBookingStatus`).
+**Capacity vs match:** this bridge creates **one booking row per selected physical court × capacity window**. It does not reserve a whole cluster and does not create one booking per match. Shared consumers should call `reserveCourts` / `validateCourtAssignment` (`docs/v5/SHARED_COURT_RESOURCE_FOUNDATION.md`).
+
+---
 
 ---
 

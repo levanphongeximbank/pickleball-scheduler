@@ -936,3 +936,33 @@ export {
   classifyPartialOperation,
   buildRecoveryPlan,
 } from "./recovery-resume/index.js";
+
+/** Competition Court Adapter Contract (ĐẦU A) — Tournament modules must not modify. */
+export {
+  COMPETITION_COURT_ADAPTER_CONTRACT_NAME,
+  COMPETITION_COURT_ADAPTER_CONTRACT_VERSION,
+  COMPETITION_COURT_ADAPTER_AUTHORITATIVE_IMPORT_PATH,
+  COMPETITION_COURT_RESOURCE_BINDING_PATH,
+  COMPETITION_COURT_ADAPTER_VERSIONING_POLICY,
+  COMPETITION_COURT_ADAPTER_CAPABILITY,
+  COMPETITION_TYPE,
+  COMPETITION_RESERVATION_OWNER_TYPE,
+  COMPETITION_COURT_RESULT_CODE,
+  COMPETITION_COURT_ERROR_CODE,
+  COMPETITION_COURT_FORBIDDEN_BYPASS,
+  COMPETITION_COURT_IDENTITY_RULES,
+  isSupportedCompetitionCourtCapability,
+  createSharedContractCapabilityGap,
+  normalizeCompetitionCourtContext,
+  createCompetitionReservationOwner,
+  listPhysicalCourtIds,
+  hasCourtCountWithoutPhysicalIds,
+  hasDisplayIdentityWithoutPhysicalIds,
+  isWholeClusterReservationAttempt,
+  mapGatewayCodeToCompetitionCode,
+} from "./contracts/competitionCourtAdapterContract.js";
+
+export {
+  createCourtResourceCompetitionAdapter,
+  courtResourceCompetitionAdapter,
+} from "./adapters/courtResourceCompetitionAdapter.js";

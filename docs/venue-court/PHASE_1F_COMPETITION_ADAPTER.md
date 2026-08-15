@@ -38,13 +38,13 @@ Competition must ask Venue & Court “which courts are free in this window?” w
 ## 3. Dependency direction
 
 ```text
-Competition consumer (future)
+Competition consumer
     ↓
 getCompetitionCourtAvailability  (this adapter)
     ↓
-getCourtAvailability             (Phase 1E public facade)
+CourtResourceGateway / getCourtAvailability
     ↓
-inventory + bookings + operating hours
+canonical availability + booking/inventory substrate
 ```
 
 **Forbidden reverse dependency:** Venue & Court must not import Competition / Tournament Engine / Court Engine / AI.

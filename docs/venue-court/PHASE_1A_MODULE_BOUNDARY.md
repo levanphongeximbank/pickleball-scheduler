@@ -19,14 +19,18 @@ Define who owns what so Phase 1B+ can introduce a Venue & Court facade without r
 | ------- | --------------------------- |
 | Venue metadata liên quan vận hành sân | `venues` / `venueService` / `data/venue` |
 | Court Cluster | `court_clusters` / `features/court-cluster` / `data/courtCluster` |
-| Court master data | `club_data_v3.data.courts[]` via `clubStorage` / `courtService` |
-| Court inventory | Same Club V3 courts array — **no second inventory** |
+| Transitional Club court data | `club_data_v3.data.courts[]` via `clubStorage` / `courtService` |
+| Legacy operational inventory | Same Club V3 courts array — compatibility projection, not final Physical Court identity |
 | Booking | `club_data_v3.data.bookings[]` via `bookingService` |
 | Venue operating hours (target SSOT) | Prefer `courtManagement.openHour/closeHour` for ops; consolidate orphan `pickleball-venue-hours-v1` in Phase 1C |
 | Court availability | Derived; owned as contract by Venue & Court |
 | Maintenance block | `bookingType: maintenance` + master `status: maintenance` |
 | Pricing và slot settings | `courtManagement` + court rate fields |
 | Master status | `active` / `locked` / `maintenance` on court record (`models/court.js`) |
+
+Canonical Physical Court identity is owned by `src/features/court-resource/`
+and anchored to durable `court_clusters`; Club access does not create another
+physical court.
 
 **Does not own:**
 

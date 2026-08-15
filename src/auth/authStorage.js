@@ -10,6 +10,7 @@ import { syncGovernanceAuthRoleFromClub } from "../features/club/services/govern
 import { isClubStorageV2Enabled } from "../features/club/config/clubRegistryFlags.js";
 import { stripLegacyProfileClubFields } from "../features/club/services/clubActiveMembershipService.js";
 import { quarantineOfflineQueueOnLogout } from "../features/mobile/services/offlineQueueQuarantine.js";
+import { clearActiveTenantId } from "../data/tenantSession.js";
 
 function readJson(key, fallback) {
   try {
@@ -106,5 +107,6 @@ export function saveAuthSessionFromCloudProfile(user, meta = {}) {
 
 export function clearAuthSession() {
   quarantineOfflineQueueOnLogout();
+  clearActiveTenantId();
   localStorage.removeItem(AUTH_SESSION_KEY);
 }
