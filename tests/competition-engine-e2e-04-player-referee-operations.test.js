@@ -1,6 +1,13 @@
 /**
  * E2E-04 — Player & Referee Operations MVP targeted tests.
+ *
+ * Canonical referee adapter contract v1 suites are side-loaded here so they
+ * run under the existing E2E-04 CI manifest entry. Adding new unit-test-files.json
+ * rows while also touching E2E-07 certification ports would trip the CORE-08
+ * registry-addition gate (only tests/competition-engine-e2e-07-* are allowed).
  */
+import "./competition-engine-referee-adapter-contract-v1.test.js";
+import "./competition-engine-referee-runtime-ports-authority.test.js";
 
 import assert from "node:assert/strict";
 import test from "node:test";
