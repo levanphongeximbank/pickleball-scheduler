@@ -75,6 +75,7 @@ import TeamSchedulePreviewDialog from "../../components/tournament/team/TeamSche
 import TeamDisciplinesPanel from "../../components/tournament/team/TeamDisciplinesPanel.jsx";
 import TeamGroupDivisionPanel from "../../components/tournament/team/TeamGroupDivisionPanel.jsx";
 import TeamFormatVenueSetupPanel from "../../components/tournament/team/TeamFormatVenueSetupPanel.jsx";
+import { renameTeamTournamentDisplayName } from "../../features/team-tournament/services/teamTournamentRenameService.js";
 import TeamMatchupOperationsCard from "../../components/tournament/team/TeamMatchupOperationsCard.jsx";
 import TeamLineupOverrideDialog from "../../components/tournament/team/TeamLineupOverrideDialog.jsx";
 import TeamForfeitDialog from "../../components/tournament/team/TeamForfeitDialog.jsx";
@@ -421,6 +422,25 @@ export default function TeamTournamentSetup() {
     setMessage("Đã cập nhật Format & Venue.");
     setError("");
     return true;
+  }
+
+  async function saveTournamentDisplayName(params) {
+    const result = await renameTeamTournamentDisplayName({
+      ...params,
+      canManage: access.canManage,
+      clubId: params?.clubId || effectiveClubId || activeClubId,
+      tenantId:
+        params?.tenantId ||
+        tournament?.tenantId ||
+        clubPool.tenantId ||
+        tenantPool.tenantId ||
+        currentTenantId,
+      tournamentId: params?.tournamentId || tournamentId,
+    });
+    if (result?.ok) {
+      await reload({ silent: true });
+    }
+    return result;
   }
 
   async function handleSaveDraft() {
@@ -1379,6 +1399,7 @@ export default function TeamTournamentSetup() {
             canManage={access.canManage}
             teamCountHint={td?.teams?.length || 0}
             onSave={saveFormatVenueConfig}
+            renameTournamentFn={saveTournamentDisplayName}
             onError={setError}
             onMessage={setMessage}
             onFormatDirtyDiagnostic={(dirty) => {

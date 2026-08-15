@@ -1,8 +1,17 @@
 /**
  * Canonical Format & Venue court inventory reader.
  *
- * Authority: public.club_data_v3 (Supabase), NOT localStorage.
- * Accepts both:
+ * Authority: public.club_data_v3 keyed by club_id — same as Platform Core
+ * `pullFromSupabase` in src/ai/cloudSync.js (`club_id=eq.&limit=1`).
+ * club_id is the unique row key (PRIMARY KEY in docs/supabase-club-v3.sql;
+ * upsert uses on_conflict=club_id). Do not require blob.venue_id = tenantId:
+ * a valid current blob may have venue_id NULL while courts carry tenantId.
+ *
+ * Tenant isolation is enforced after the club row is read:
+ * 1) fail closed if the blob row itself has a different non-null venue_id
+ * 2) normalizeCanonicalClubCourts filters inactive / other clubId / other tenantId
+ *
+ * Does not read browser storage. Accepts both:
  * - flat club blob: data.courts
  * - app sync wrapper: data.data.courts (buildClubPayload)
  */
@@ -129,16 +138,11 @@ export async function listCanonicalClubCourtsForFormatVenue(params = {}) {
     };
   }
 
-  let query = client
+  const { data: rows, error } = await client
     .from(CLUB_DATA_TABLE)
     .select("data,venue_id,version")
-    .eq("club_id", clubId);
-
-  if (tenantId) {
-    query = query.eq("venue_id", tenantId);
-  }
-
-  const { data: rows, error } = await query.limit(1);
+    .eq("club_id", clubId)
+    .limit(1);
 
   if (error) {
     return {

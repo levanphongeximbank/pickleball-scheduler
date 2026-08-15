@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Button,
@@ -49,6 +49,10 @@ import {
   decideSetupFormRehydration,
 } from "../../../features/team-tournament/setup/setupFormRehydration.js";
 import { listCanonicalClubCourtsForFormatVenue } from "../../../features/team-tournament/services/canonicalClubCourtInventory.js";
+import {
+  hydrateTeamTournamentNameDraft,
+  renameTeamTournamentDisplayName,
+} from "../../../features/team-tournament/services/teamTournamentRenameService.js";
 import { getCourtDisplayName } from "../../../pages/courts.logic.js";
 
 const STAGE_POLICY_LABELS = {
@@ -89,6 +93,8 @@ export default function TeamFormatVenueSetupPanel({
   onFormatDirtyDiagnostic = null,
   /** @internal test override */
   listCourtsFn = listCanonicalClubCourtsForFormatVenue,
+  /** @internal test override — canonical rename only (not Format & Venue blob). */
+  renameTournamentFn = renameTeamTournamentDisplayName,
 }) {
   const gateOn = isSetupMutationFoundationEnabled();
   const defaults = useMemo(
@@ -103,6 +109,12 @@ export default function TeamFormatVenueSetupPanel({
   const [venueCourts, setVenueCourts] = useState([]);
   const [courtsLoading, setCourtsLoading] = useState(Boolean(resolvedClubId));
   const [courtsError, setCourtsError] = useState(null);
+  const [nameDraft, setNameDraft] = useState(() =>
+    hydrateTeamTournamentNameDraft(tournament)
+  );
+  const [nameBusy, setNameBusy] = useState(false);
+  const [nameError, setNameError] = useState("");
+  const nameDirtyRef = useRef(false);
 
   const [formatPreset, setFormatPreset] = useState(defaults.formatPreset);
   const [rosterRules, setRosterRules] = useState(defaults.rosterRules);
@@ -268,6 +280,11 @@ export default function TeamFormatVenueSetupPanel({
     onFormatDirtyDiagnostic?.(formatDirty === true);
   }, [formatDirty, onFormatDirtyDiagnostic]);
 
+  useEffect(() => {
+    if (nameDirtyRef.current) return;
+    setNameDraft(hydrateTeamTournamentNameDraft(tournament));
+  }, [tournament]);
+
   const courtPublishGate = assertCourtsReadyForPublish({ selectedCourtIds });
 
   function handleFormatChange(nextPreset) {
@@ -306,6 +323,42 @@ export default function TeamFormatVenueSetupPanel({
 
   function clearCourts() {
     setSelectedCourtIds([]);
+  }
+
+  async function handleSaveName() {
+    if (!canManage) return;
+
+    const nextName = String(nameDraft || "").trim();
+    if (!nextName) {
+      const error = "Tên giải không được để trống.";
+      setNameError(error);
+      onError?.(error);
+      return;
+    }
+
+    setNameBusy(true);
+    setNameError("");
+    try {
+      const result = await renameTournamentFn({
+        canManage: true,
+        clubId: resolvedClubId,
+        tenantId: resolvedTenantId,
+        tournamentId: tournament?.id,
+        name: nextName,
+      });
+      if (!result?.ok) {
+        const error = result?.error || "Không thể lưu tên giải. Vui lòng thử lại.";
+        setNameError(error);
+        onError?.(error);
+        return;
+      }
+      const savedName = String(result.tournament?.name || nextName).trim();
+      nameDirtyRef.current = false;
+      setNameDraft(savedName);
+      onMessage?.("Đã lưu tên giải.");
+    } finally {
+      setNameBusy(false);
+    }
   }
 
   async function handleSave() {
@@ -385,6 +438,37 @@ export default function TeamFormatVenueSetupPanel({
             & Venue / đội / bảng.
           </Alert>
         ) : null}
+
+        <Stack spacing={1}>
+          <TextField
+            size="small"
+            fullWidth
+            label="Tên giải"
+            value={nameDraft}
+            disabled={!canManage || nameBusy}
+            onChange={(event) => {
+              nameDirtyRef.current = true;
+              setNameDraft(event.target.value);
+            }}
+            inputProps={{ "data-testid": "team-tournament-name-input" }}
+          />
+          {nameError ? <Alert severity="error">{nameError}</Alert> : null}
+          {canManage ? (
+            <Button
+              variant="outlined"
+              disabled={
+                nameBusy ||
+                !String(nameDraft || "").trim() ||
+                String(nameDraft || "").trim() ===
+                  String(tournament?.name || "").trim()
+              }
+              onClick={handleSaveName}
+              data-testid="team-tournament-name-save"
+            >
+              {nameBusy ? "Đang lưu…" : "Lưu tên giải"}
+            </Button>
+          ) : null}
+        </Stack>
 
         <FormControl fullWidth size="small" disabled={!canManage}>
           <InputLabel>Format</InputLabel>

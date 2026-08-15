@@ -419,3 +419,38 @@ describe("PR412/416/417/418/423 regression locks", () => {
     assert.match(referee, /team_tournament_create_referee_assignment/);
   });
 });
+
+describe("team-tournament-staging-acceptance-remediation-01 name UI + court reader", () => {
+  it("Owner name field is on Format & Venue and writes through canonical rename only", () => {
+    const panel = readSrc("src/components/tournament/team/TeamFormatVenueSetupPanel.jsx");
+    const setup = readSrc("src/pages/tournament/TeamTournamentSetup.jsx");
+    const repo = readSrc(
+      "src/features/tournament/repositories/cloudTournamentRepository.js"
+    );
+    const service = readSrc(
+      "src/features/team-tournament/services/teamTournamentRenameService.js"
+    );
+    assert.match(panel, /label="Tên giải"/);
+    assert.match(panel, /Lưu tên giải/);
+    assert.match(panel, /renameTournamentFn/);
+    assert.match(setup, /renameTournamentFn=\{saveTournamentDisplayName\}/);
+    assert.match(service, /updateTournamentCommand/);
+    assert.match(repo, /team_tournament_rename/);
+    assert.doesNotMatch(panel, /canonical_tournaments|team_tournaments/);
+    assert.doesNotMatch(service, /\.from\(/);
+  });
+
+  it("court inventory looks up club_data_v3 by club_id only", () => {
+    const inventory = readSrc(
+      "src/features/team-tournament/services/canonicalClubCourtInventory.js"
+    );
+    const core = readSrc("docs/supabase-club-v3.sql");
+    const cloudSync = readSrc("src/ai/cloudSync.js");
+    assert.match(core, /club_id text primary key/);
+    assert.match(cloudSync, /club_id=eq\.\$\{encodeURIComponent\(clubId\)\}&limit=1/);
+    assert.match(inventory, /\.eq\("club_id", clubId\)/);
+    assert.doesNotMatch(inventory, /\.eq\("venue_id"/);
+    assert.match(inventory, /normalizeCanonicalClubCourts/);
+    assert.doesNotMatch(inventory, /localStorage\.getItem|loadCourtsForClub|loadClubData/);
+  });
+});
