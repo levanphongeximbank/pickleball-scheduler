@@ -133,7 +133,10 @@ import {
   officialCompleteTournamentCommand,
   officialGenerateKnockoutCommand,
 } from "../../features/tournament/official-lifecycle/officialOpenLifecycleCommands.js";
-import { PERMISSIONS } from "../../features/identity/constants/permissions.js";
+import {
+  evaluateOfficialOpenManageAccess,
+  resolveOfficialOpenTenantIdOrEmpty,
+} from "../../features/tournament/official-open-adapter-b/index.js";
 import {
   OFFICIAL_STAGE_ID,
   deriveOfficialOrganizerStages,
@@ -191,7 +194,7 @@ export default function OfficialTournamentSetup() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { activeClub, activeClubId, clubs, refreshClubs } = useClub();
-  const { user, rbacEnabled, can } = useAuth();
+  const { user, rbacEnabled } = useAuth();
   const { currentTenantId } = useTenant();
   const aiEnabled = isAiEngineEnabled();
   const [setupTab, setSetupTab] = useState(0);
@@ -287,12 +290,12 @@ export default function OfficialTournamentSetup() {
 
   const tenantId = useMemo(
     () =>
-      tournament?.tenantId ||
-      activeClub?.tenantId ||
-      activeClub?.venueId ||
-      currentTenantId ||
-      "",
-    [tournament?.tenantId, activeClub?.tenantId, activeClub?.venueId, currentTenantId]
+      resolveOfficialOpenTenantIdOrEmpty({
+        tournament,
+        activeClub,
+        currentTenantId,
+      }),
+    [tournament, activeClub, currentTenantId]
   );
 
   const courtInventoryScope = useMemo(
@@ -567,8 +570,14 @@ export default function OfficialTournamentSetup() {
 
   const officialClosed = isTournamentClosed(tournament);
   const canManageOfficial =
-    (typeof can !== "function" || can(PERMISSIONS.TOURNAMENT_UPDATE) !== false) &&
-    !officialClosed;
+    evaluateOfficialOpenManageAccess({
+      actor: user,
+      tenantId: currentTenantId || tenantId,
+      clubId: activeClubId,
+      venueId: activeClub?.venueId || null,
+      competitionId: tournamentId,
+      rbacEnabled,
+    }).allowed !== false && !officialClosed;
 
   const scoreDraftScope = useMemo(
     () => ({
@@ -2101,7 +2110,6 @@ export default function OfficialTournamentSetup() {
             currentTenantId ||
             tournament?.tenantId ||
             activeClub?.tenantId ||
-            activeClub?.venueId ||
             ""
           }
           players={players}

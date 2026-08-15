@@ -1,6 +1,8 @@
 import { writeAuditLog } from "../../features/identity/services/auditService.js";
 import { PERMISSIONS } from "../../features/identity/constants/permissions.js";
 import { isDrawPublished } from "./publishDrawEngine.js";
+import { isOfficialOpenTournament } from "../../features/tournament/official-open-adapter-b/activation.js";
+import { createOfficialOpenAdapterB } from "../../features/tournament/official-open-adapter-b/createOfficialOpenAdapterB.js";
 
 export const SCHEDULE_PUBLISH_STATUS = {
   DRAFT: "draft",
@@ -17,6 +19,23 @@ export const SCHEDULE_AUDIT_ACTIONS = Object.freeze({
 });
 
 const AUDIT_LOG_CAP = 50;
+
+function appendScheduleIdentityAudit(tournament, payload) {
+  if (isOfficialOpenTournament(tournament)) {
+    const adapter = createOfficialOpenAdapterB({
+      tournament,
+      currentTenantId: payload.tenantId || tournament.tenantId,
+      actor: payload.actor,
+    });
+    void adapter.appendAudit(payload.action, {
+      actorId: payload.actor?.id,
+      clubId: payload.clubId,
+      entityRef: payload.resourceId,
+    });
+    return;
+  }
+  void writeAuditLog(payload).catch(() => {});
+}
 
 function patchScheduleSettings(tournament, schedulePatch) {
   return {
@@ -117,19 +136,20 @@ function appendScheduleAuditEntry(tournament, entry, options = {}) {
     auditLog,
   });
 
-  void writeAuditLog({
+  appendScheduleIdentityAudit(tournament, {
     action: entry.action,
     resourceType: "tournament",
     resourceId: tournament?.id || "",
     clubId: options.clubId || tournament?.clubId || null,
     actor: entry.actor || null,
+    tenantId: options.tenantId || tournament?.tenantId || null,
     metadata: {
       scheduleAction: entry.action,
       before: entry.before,
       after: entry.after,
       reason: entry.reason || "",
     },
-  }).catch(() => {});
+  });
 
   return { tournament: next, auditEntry };
 }
@@ -325,11 +345,9 @@ export function publishSchedule(tournament, matches = [], options = {}) {
  * Safe tournament-layer boundary — does not modify Competition Engine.
  */
 export function notifyMatchScheduledAfterPublish(tournament, matches = [], options = {}) {
-  const tenantId =
-    options.tenantId ||
-    tournament?.tenantId ||
-    tournament?.venueId ||
-    null;
+  const tenantId = isOfficialOpenTournament(tournament)
+    ? options.tenantId || tournament?.tenantId || null
+    : options.tenantId || tournament?.tenantId || tournament?.venueId || null;
   const actorUserId = options.userId || options.actor?.id || null;
   const scheduleVersion =
     getSchedulePublishStatus(tournament)?.publishedAt ||

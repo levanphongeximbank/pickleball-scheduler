@@ -85,8 +85,15 @@ function prevalidateOnePlayer(tournament, event, player, eventType, options = {}
     return { ok: false, error: genderCheck.errors.join(" ") };
   }
 
-  const eligibility = checkPlayerEligibility(player, getEligibilityRules(tournament), {
+  const rules = getEligibilityRules(tournament);
+  const eligibility = checkPlayerEligibility(player, rules, {
     clubId: options.clubId || tournament?.clubId,
+    requireCanonicalMembershipEvidence: rules.clubMembership.enabled === true,
+    requireCanonicalRatingEvidence: Boolean(
+      options.ratingEvidenceByPlayerId?.[String(player.id)]
+    ),
+    membershipEvidence: options.membershipEvidenceByPlayerId?.[String(player.id)],
+    ratingEvidence: options.ratingEvidenceByPlayerId?.[String(player.id)],
   });
   if (!eligibility.ok) {
     const reason = eligibility.violations?.[0]?.message || "không đủ điều kiện đăng ký";

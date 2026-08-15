@@ -332,7 +332,13 @@ export function checkPlayerEligibility(player, rules, options = {}) {
   const ratingMin = normalized.rating.minRating;
   const ratingMax = normalized.rating.maxRating;
   if (ratingMin != null || ratingMax != null) {
-    const display = getPlayerDisplayRating(player);
+    const canonicalRating = options.ratingEvidence?.data?.ratingValue;
+    const display =
+      options.requireCanonicalRatingEvidence === true
+        ? canonicalRating != null && Number.isFinite(Number(canonicalRating))
+          ? Number(canonicalRating)
+          : null
+        : getPlayerDisplayRating(player);
     if (display == null) {
       violations.push({
         code: ELIGIBILITY_VIOLATION.RATING_UNKNOWN,
@@ -355,22 +361,45 @@ export function checkPlayerEligibility(player, rules, options = {}) {
   }
 
   if (normalized.clubMembership.enabled) {
-    const clubId = String(player.clubId || player.homeClubId || options.clubId || "");
-    if (normalized.clubMembership.requireActiveClub && !clubId) {
-      violations.push({
-        code: ELIGIBILITY_VIOLATION.CLUB_REQUIRED,
-        message: "Yêu cầu thành viên CLB để đăng ký.",
-      });
-    }
-    if (
-      normalized.clubMembership.allowedClubIds.length > 0 &&
-      clubId &&
-      !normalized.clubMembership.allowedClubIds.includes(clubId)
-    ) {
-      violations.push({
-        code: ELIGIBILITY_VIOLATION.CLUB_REQUIRED,
-        message: "CLB của VĐV không nằm trong danh sách được phép.",
-      });
+    if (options.requireCanonicalMembershipEvidence === true) {
+      const evidence = options.membershipEvidence;
+      const member = evidence?.data?.isMember === true || evidence?.isMember === true;
+      const evidenceClubId = String(
+        evidence?.data?.clubId || evidence?.clubId || ""
+      );
+      if (!member) {
+        violations.push({
+          code: ELIGIBILITY_VIOLATION.CLUB_REQUIRED,
+          message: "Thiếu bằng chứng thành viên CLB canonical — không suy từ player.clubId.",
+        });
+      } else if (
+        normalized.clubMembership.allowedClubIds.length > 0 &&
+        evidenceClubId &&
+        !normalized.clubMembership.allowedClubIds.includes(evidenceClubId)
+      ) {
+        violations.push({
+          code: ELIGIBILITY_VIOLATION.CLUB_REQUIRED,
+          message: "CLB của VĐV không nằm trong danh sách được phép.",
+        });
+      }
+    } else {
+      const clubId = String(player.clubId || player.homeClubId || options.clubId || "");
+      if (normalized.clubMembership.requireActiveClub && !clubId) {
+        violations.push({
+          code: ELIGIBILITY_VIOLATION.CLUB_REQUIRED,
+          message: "Yêu cầu thành viên CLB để đăng ký.",
+        });
+      }
+      if (
+        normalized.clubMembership.allowedClubIds.length > 0 &&
+        clubId &&
+        !normalized.clubMembership.allowedClubIds.includes(clubId)
+      ) {
+        violations.push({
+          code: ELIGIBILITY_VIOLATION.CLUB_REQUIRED,
+          message: "CLB của VĐV không nằm trong danh sách được phép.",
+        });
+      }
     }
   }
 
@@ -429,6 +458,9 @@ export function checkEntryPlayersEligibility(tournament, playerIds = [], players
     const result = checkPlayerEligibility(player, rules, {
       ...options,
       clubId: options.clubId || tournament?.clubId,
+      membershipEvidence:
+        options.membershipEvidenceByPlayerId?.[playerId] || options.membershipEvidence,
+      ratingEvidence: options.ratingEvidenceByPlayerId?.[playerId] || options.ratingEvidence,
     });
     results.push(result);
     for (const violation of result.violations) {

@@ -65,6 +65,7 @@ export {
   recordEntryPayment,
   organizerOverridePayment,
   getEntryFeeSummary,
+  getCanonicalEntryPaymentEvidence,
 } from "./engines/entryFeeEngine.js";
 
 export {

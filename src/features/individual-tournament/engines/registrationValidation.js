@@ -60,6 +60,14 @@ export function gatedSubmitRegistration(tournament, payload = {}, options = {}) 
     clubId: options.clubId || tournament.clubId,
     hasInvite: Boolean(options.hasInvite),
     excludeEntryId: options.excludeEntryId,
+    requireCanonicalMembershipEvidence:
+      String(tournament?.mode || "") === "official_tournament" &&
+      Boolean(tournament?.settings?.eligibilityRules?.clubMembership?.enabled),
+    requireCanonicalRatingEvidence:
+      String(tournament?.mode || "") === "official_tournament" &&
+      Boolean(options.ratingEvidence),
+    membershipEvidence: options.membershipEvidence,
+    ratingEvidence: options.ratingEvidence,
   });
 
   let working = tournament;

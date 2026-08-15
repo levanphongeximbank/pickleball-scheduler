@@ -88,6 +88,15 @@ export {
 } from "./hooks/useCanonicalTournament.js";
 export { createInMemoryCanonicalTournamentRpc } from "./repositories/inMemoryCanonicalTournamentRpc.js";
 export {
+  evaluateOfficialOpenManageAccess,
+  isOfficialOpenManageTarget,
+  createOfficialOpenAdapterB,
+  getOfficialOpenAdapterB,
+  resolveOfficialOpenTenantScope,
+  resolveOfficialOpenTenantIdOrEmpty,
+  createOfficialTournamentRefereeAdapter,
+} from "./official-open-adapter-b/index.js";
+export {
   canonicalRowToTournament,
   tournamentToCanonicalRow,
   tournamentMatchesMine,
