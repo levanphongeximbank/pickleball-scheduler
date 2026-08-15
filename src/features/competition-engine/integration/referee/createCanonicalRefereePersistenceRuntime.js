@@ -5,8 +5,9 @@
  * state_payload / event payload / revision records. Does NOT call Referee V5
  * scoring/lifecycle/result engines.
  *
- * Default E2E-04 facade remains on the in-memory TEST_DOUBLE store.
- * This composition is production-capable and injectable; it is not the default.
+ * Map-backed production-capable injectable runtime. TEST_DOUBLE_ONLY for
+ * live default composition. Default application path is
+ * createDefaultCompetitionRefereeRuntime → createCompetitionRefereeProductionRuntime.
  */
 
 import {

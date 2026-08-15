@@ -373,8 +373,11 @@ test("19-20. no Adapter B dependency and no Team-specific generic permission", a
     "competition.referee.adapter.v1"
   );
   assert.equal(COMPETITION_REFEREE_ADAPTER_CONTRACT_VERSION, "1.0.0");
-  assert.equal(COMPETITION_REFEREE_ADAPTER_INTEGRATION.wiredToProductionRuntime, false);
-  assert.equal(COMPETITION_ENGINE_REFEREE_OPERATIONS.wiredToProductionRuntime, false);
+  assert.equal(COMPETITION_REFEREE_ADAPTER_INTEGRATION.wiredToProductionRuntime, true);
+  assert.equal(COMPETITION_ENGINE_REFEREE_OPERATIONS.wiredToProductionRuntime, true);
+  assert.equal(runtime.wiredToProductionRuntime, true);
+  assert.equal(runtime.facade.wiredToProductionRuntime, true);
+  assert.equal(runtime.inMemoryProductionFallback, false);
   assert.equal(matchesCanonicalRefereeRuntimePorts(runtime), true);
 
   runtime.assignmentRepository.upsert(

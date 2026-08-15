@@ -171,7 +171,6 @@ export const REFEREE_CONTRACT_PROTECTED_PATHS = Object.freeze([
   "src/features/competition-engine/integration/referee/referenceAdapter.js",
   "src/features/competition-engine/integration/referee/runtimePorts.js",
   "tests/competition-engine-referee-adapter-contract-v1.test.js",
-  "tests/competition-engine-referee-runtime-ports-authority.test.js",
 ]);
 
 export const PRIVATE_PERSISTENCE_IMPORT_PATTERNS = Object.freeze([

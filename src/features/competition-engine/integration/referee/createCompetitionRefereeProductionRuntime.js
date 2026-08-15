@@ -103,6 +103,7 @@ export function createCompetitionRefereeProductionRuntime(options = {}) {
     store: opsStore,
     runtime: {
       classification: DURABLE_PRODUCTION_RUNTIME_CLASSIFICATION,
+      wiredToProductionRuntime: true,
       opsStore,
     },
     runtimePorts: options.runtimePorts,
@@ -113,7 +114,8 @@ export function createCompetitionRefereeProductionRuntime(options = {}) {
     kind: "competition-referee-production-runtime",
     classification: DURABLE_PRODUCTION_RUNTIME_CLASSIFICATION,
     productionRuntimeImplemented: true,
-    wiredToProductionRuntime: false,
+    defaultRuntimeWiringImplemented: true,
+    wiredToProductionRuntime: true,
     stagingBackendCertified: false,
     durable: true,
     inMemoryProductionFallback: false,
