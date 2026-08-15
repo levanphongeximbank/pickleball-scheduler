@@ -1,9 +1,11 @@
 /**
- * Pure canonical cluster-membership rules shared by the SQL RPC contract
+ * Pure transitional cluster-membership rules shared by the SQL RPC contract
  * and the local/legacy application path.
  *
- * This is not a Team Tournament helper. It does not create courts, delete
- * courts, or mutate bookings.
+ * Stamps Club operational inventory clusterId values. This is not Physical
+ * Court UUID identity, not Club operational-access authorization, and not
+ * reservation. This is not a Team Tournament helper. It does not create
+ * courts, delete courts, or mutate bookings.
  */
 
 import {

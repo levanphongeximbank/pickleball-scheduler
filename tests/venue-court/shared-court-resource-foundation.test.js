@@ -38,6 +38,10 @@ import {
 import {
   __resetCourtResourceGatewayDepsForTests,
 } from "../../src/features/venue-court/services/courtResourceGateway.js";
+import * as canonicalGateway from "../../src/features/court-resource/services/courtResourceGateway.js";
+import * as legacyGatewayPath from "../../src/features/venue-court/services/courtResourceGateway.js";
+import * as canonicalContract from "../../src/features/court-resource/constants/courtResourceContract.js";
+import * as legacyContractPath from "../../src/features/venue-court/constants/courtResourceContract.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -667,16 +671,38 @@ describe("18-19 determinism and isolation", () => {
 });
 
 describe("architecture boundaries", () => {
-  test("shared gateway is not Team Tournament specific", () => {
+  test("one canonical gateway implementation and identity-preserving compatibility exports", () => {
     const gateway = readFileSync(
+      path.join(root, "src/features/court-resource/services/courtResourceGateway.js"),
+      "utf8"
+    );
+    const compatibilityGateway = readFileSync(
       path.join(root, "src/features/venue-court/services/courtResourceGateway.js"),
+      "utf8"
+    );
+    const adapter = readFileSync(
+      path.join(root, "src/features/court-resource/adapters/legacyReservationAdapter.js"),
+      "utf8"
+    );
+    const facade = readFileSync(
+      path.join(root, "src/domain/tournamentBookingService.js"),
       "utf8"
     );
     const inventory = readFileSync(
       path.join(root, "src/features/venue-court/services/canonicalCloudCourtInventory.js"),
       "utf8"
     );
-    assert.doesNotMatch(gateway, /team-tournament|TEAM_TOURNAMENT|FormatVenue/);
+    assert.match(compatibilityGateway, /^\s*\/\/[^\n]*\nexport \* from /);
+    assert.equal(legacyGatewayPath.reserveCourts, canonicalGateway.reserveCourts);
+    assert.equal(legacyGatewayPath.releaseCourts, canonicalGateway.releaseCourts);
+    assert.equal(legacyGatewayPath.validateCourtAssignment, canonicalGateway.validateCourtAssignment);
+    assert.equal(legacyGatewayPath.__setCourtResourceGatewayDepsForTests, canonicalGateway.__setCourtResourceGatewayDepsForTests);
+    assert.equal(legacyContractPath.COURT_RESOURCE_CODE, canonicalContract.COURT_RESOURCE_CODE);
+    assert.doesNotMatch(gateway, /tournamentBookingService|team-tournament|TEAM_TOURNAMENT|FormatVenue/);
+    assert.doesNotMatch(adapter, /tournamentBookingService|team-tournament|features[\\/]court-engine|features[\\/]ai/);
+    assert.doesNotMatch(adapter, /courtResourceGateway|court-resource[\\/]index/);
+    assert.match(facade, /features\/court-resource/);
+    assert.doesNotMatch(facade, /from ["'].*bookingService|from ["'].*clubStorage|from ["'].*courtBookingEngine/);
     assert.doesNotMatch(inventory, /team-tournament|localStorage\.getItem|loadCourtsForClub/);
     assert.match(inventory, /club_data_v3/);
   });

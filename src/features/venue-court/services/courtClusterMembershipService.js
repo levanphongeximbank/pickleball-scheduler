@@ -2,7 +2,7 @@
  * Shared cluster membership — Court Cluster is a FILTER/SCOPE, not a reservable unit.
  *
  * clusterId = location/facility scope
- * courtId   = canonical physical resource
+ * courtId   = current resource identity (legacy ID until canonical mapping cutover)
  *
  * Do not treat selecting a cluster as reserving every physical court in it.
  */
