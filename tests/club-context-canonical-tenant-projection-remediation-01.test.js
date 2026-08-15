@@ -278,9 +278,9 @@ describe("club-context canonical tenant projection remediation 01", () => {
     const src = readSrc("src/context/TenantContext.jsx");
     assert.match(src, /canonicalClubRead/);
     assert.match(src, /isCanonicalClubReadEnabled/);
-    // Legacy primary-club switch must be gated.
+    // Legacy primary-club switch must be gated (effect early-return + shared switch).
     assert.match(src, /if \(canonicalClubRead\) \{/);
-    assert.match(src, /if \(!canonicalClubRead\) \{/);
+    assert.match(src, /remapLegacyClub:\s*!canonicalClubRead/);
     assert.ok(src.includes("getPrimaryClubIdForTenant"));
   });
 

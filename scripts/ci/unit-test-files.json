@@ -79,6 +79,7 @@
   "tests/club-phase-1c-integration-ui.test.js",
   "tests/phase42l-navigation-matrix.test.js",
   "tests/phase42l-tenant-hydrate.test.js",
+  "tests/platform-tenant-switcher-persistence-01.test.js",
   "tests/phase42m-club-ui.test.js",
   "tests/competition-core-rating-mapping.test.js",
   "tests/competition-core-rating-eligibility.test.js",

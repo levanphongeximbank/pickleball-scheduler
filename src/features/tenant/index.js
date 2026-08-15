@@ -28,6 +28,25 @@ export {
 } from "./services/profileVenueService.js";
 
 export {
+  canSwitchTenant,
+  canRenderTenantSwitcher,
+  canOperateUnassignedTenant,
+  buildTenantCatalog,
+  findCatalogTenant,
+  resolvePickerCurrentTenantId,
+  resolveTenantSwitcherView,
+  resolveClubDetailTenantGate,
+  reconcileSessionWithCatalog,
+  CLUB_DETAIL_MISSING_TENANT_WARNING,
+} from "./services/tenantSelectionModel.js";
+
+export {
+  commitTenantSwitch,
+  createTenantSelectionRuntime,
+  readSelectableTenantCatalog,
+} from "./services/tenantSelectionService.js";
+
+export {
   resolveTenantIdFromUser,
   getExplicitTenantIdForClub,
   resolveTenantIdForClub,
