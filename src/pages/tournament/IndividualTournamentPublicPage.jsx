@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
 import {
@@ -7,47 +8,65 @@ import {
   Chip,
   Paper,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   Typography,
 } from "@mui/material";
 
 import { useClub } from "../../context/ClubContext.jsx";
-import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
-import { isDrawPublished } from "../../tournament/engines/publishDrawEngine.js";
-import { isSchedulePublished } from "../../tournament/engines/publishScheduleEngine.js";
-import { buildFinalRanking } from "../../features/individual-tournament/engines/awardsEngine.js";
-import { getLiveStandings } from "../../features/individual-tournament/engines/resultPropagationEngine.js";
-import { buildIndividualAllGroupStandings } from "../../features/individual-tournament/adapters/individualStandingsAdapter.js";
+import { officialGetPublicResultsCommand } from "../../features/tournament/official-lifecycle/officialOpenLifecycleCommands.js";
 import {
   TournamentEmptyState,
   TournamentErrorState,
   TournamentLoadingState,
 } from "../../components/tournament/TournamentUiState.jsx";
-import { MOBILE_PAGE_GUTTER, touchButtonSx, horizontalScrollSx } from "../../components/tournament/mobileUi.js";
+import { MOBILE_PAGE_GUTTER, touchButtonSx } from "../../components/tournament/mobileUi.js";
 import { useIsMobile } from "../../features/mobile/hooks/useIsMobile.js";
 
 /**
- * S1-H — Public read-only spectator view (post draw/schedule publish).
+ * Authenticated public results — sanitized DTO only. No full canonical blob in UI.
  */
 export default function IndividualTournamentPublicPage() {
   const { tournamentId } = useParams();
-  const { activeClub, revision } = useClub();
+  const { activeClub } = useClub();
   const isMobile = useIsMobile();
+  const [dto, setDto] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const {
-    tournament,
-    loading: tournamentLoading,
-  } = useCanonicalTournament(activeClub, tournamentId, revision);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!tournamentId || !activeClub?.id) {
+        setLoading(false);
+        setError("Thiếu giải hoặc CLB.");
+        return;
+      }
+      setLoading(true);
+      const result = await officialGetPublicResultsCommand({
+        tenantId: activeClub.tenantId || activeClub.venueId || "",
+        clubId: activeClub.id,
+        tournamentId,
+      });
+      if (cancelled) return;
+      if (!result.ok) {
+        setError(result.error || "Không tải được kết quả công khai.");
+        setDto(null);
+        setLoading(false);
+        return;
+      }
+      setDto(result.data && result.data.ok !== false ? result.data : result);
+      setError(null);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tournamentId, activeClub]);
 
   if (!tournamentId) {
     return <TournamentErrorState title="Thiếu mã giải" />;
   }
 
-  if (tournamentLoading) {
+  if (loading) {
     return (
       <Box sx={{ p: 3 }}>
         <TournamentLoadingState label="Đang tải trang công khai…" />
@@ -55,22 +74,22 @@ export default function IndividualTournamentPublicPage() {
     );
   }
 
-  if (!tournament) {
+  const publicDto = dto && dto.ok !== false ? dto : null;
+
+  if (error || !publicDto) {
     return (
       <Box sx={{ p: 3 }}>
-        <TournamentErrorState title="Không tìm thấy giải công khai" />
+        <TournamentErrorState title={error || "Không tìm thấy giải công khai"} />
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Trang này chỉ nhận DTO kết quả đã lọc. Truy cập ẩn danh chưa mở.
+        </Alert>
       </Box>
     );
   }
 
-  const drawOk = isDrawPublished(tournament);
-  const scheduleOk = isSchedulePublished(tournament);
-  const event = tournament.events?.[0];
-  const live = getLiveStandings(tournament, event?.id);
-  const groups =
-    live?.groups ||
-    (event ? buildIndividualAllGroupStandings(event, { forceCanonical: false }) : []);
-  const ranking = buildFinalRanking(tournament, event?.id).ranking || [];
+  const groups = publicDto.groups || [];
+  const champion = publicDto.champion;
+  const runnerUp = publicDto.runnerUp;
 
   return (
     <Box sx={{ px: isMobile ? MOBILE_PAGE_GUTTER : 3, py: 3, pb: 8, maxWidth: 960, mx: "auto" }}>
@@ -78,21 +97,13 @@ export default function IndividualTournamentPublicPage() {
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
           <Box>
             <Typography variant="h4" fontWeight={800}>
-              {tournament.name}
+              {publicDto.name}
             </Typography>
-            <Typography color="text.secondary">Trang công khai (chỉ xem)</Typography>
+            <Typography color="text.secondary">Kết quả công khai (DTO đã lọc)</Typography>
             <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
-              <Chip size="small" label={tournament.status} />
-              <Chip
-                size="small"
-                color={drawOk ? "success" : "default"}
-                label={drawOk ? "Đã công bố bốc thăm" : "Chưa công bố bốc thăm"}
-              />
-              <Chip
-                size="small"
-                color={scheduleOk ? "success" : "default"}
-                label={scheduleOk ? "Đã công bố lịch" : "Chưa công bố lịch"}
-              />
+              <Chip size="small" label={publicDto.publicStatus || publicDto.status} />
+              {publicDto.completed ? <Chip size="small" color="success" label="Đã hoàn tất" /> : null}
+              <Chip size="small" label="Rally" />
             </Stack>
           </Box>
           <Button
@@ -105,9 +116,10 @@ export default function IndividualTournamentPublicPage() {
           </Button>
         </Stack>
 
-        {!drawOk ? (
-          <Alert severity="info">
-            BTC chưa công bố bốc thăm — BXH/nhánh công khai còn hạn chế.
+        {champion ? (
+          <Alert severity="success">
+            Vô địch: <strong>{champion.name}</strong>
+            {runnerUp?.name ? <> · Á quân: <strong>{runnerUp.name}</strong></> : null}
           </Alert>
         ) : null}
 
@@ -115,60 +127,21 @@ export default function IndividualTournamentPublicPage() {
           <Typography fontWeight={700} sx={{ mb: 1 }}>
             Bảng xếp hạng
           </Typography>
-          {(groups || []).length === 0 ? (
+          {groups.length === 0 ? (
             <TournamentEmptyState title="Chưa có BXH" />
           ) : (
-            (groups || []).map((group) => (
-              <Box key={group.groupId || group.group} sx={{ mb: 2, ...horizontalScrollSx }}>
-                <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-                  Bảng {group.groupId || group.group}
-                </Typography>
-                <Table size="small" aria-label={`Bảng xếp hạng ${group.groupId || group.group}`}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>#</TableCell>
-                      <TableCell>VĐV / Cặp</TableCell>
-                      <TableCell align="center">W</TableCell>
-                      <TableCell align="center">L</TableCell>
-                      <TableCell align="center">Điểm</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {(group.standing || []).map((row, index) => (
-                      <TableRow key={row.id || row.entryId || index}>
-                        <TableCell>{row.rank ?? index + 1}</TableCell>
-                        <TableCell>{row.name || row.id}</TableCell>
-                        <TableCell align="center">{row.won ?? "—"}</TableCell>
-                        <TableCell align="center">{row.lost ?? "—"}</TableCell>
-                        <TableCell align="center">{row.matchPoints ?? "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+            groups.map((group) => (
+              <Box key={group.groupId || group.group} sx={{ mb: 1.5 }}>
+                <Typography fontWeight={700}>Bảng {group.group}</Typography>
+                {(group.standing || []).map((row, index) => (
+                  <Typography key={`${group.group}-${index}`} variant="body2">
+                    {index + 1}. {row.name} — {row.matchPoints} điểm
+                  </Typography>
+                ))}
               </Box>
             ))
           )}
         </Paper>
-
-        {ranking.length > 0 ? (
-          <Paper sx={{ p: 2 }}>
-            <Typography fontWeight={700} sx={{ mb: 1 }}>
-              Podium
-            </Typography>
-            {ranking.map((row) => (
-              <Typography key={row.entryId} variant="body2">
-                #{row.rank} {row.name} {row.medal ? `(${row.medal})` : ""}
-              </Typography>
-            ))}
-          </Paper>
-        ) : null}
-
-        {event?.bracket?.rounds?.length ? (
-          <Alert severity="success">
-            Nhánh knockout đã sẵn sàng ({event.bracket.rounds.length} vòng). Mở trang bracket nội bộ
-            để xem cây đầy đủ.
-          </Alert>
-        ) : null}
       </Stack>
     </Box>
   );

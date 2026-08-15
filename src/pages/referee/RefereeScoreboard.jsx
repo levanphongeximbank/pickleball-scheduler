@@ -19,26 +19,21 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import SportsIcon from "@mui/icons-material/Sports";
 
 import {
-  adjustMatchLiveScore,
-  fetchMatchLiveByToken,
   hasSupabaseConfig,
   MATCH_LIVE_STATUS,
   REFEREE_LINK_LOCKED_MESSAGE,
-  requestMatchLiveFinalize,
-  subscribeMatchLiveByToken,
 } from "../../domain/matchLiveSync.js";
-import { getClientUserAgent } from "../../models/tournament/scoreLog.js";
 import {
   isRefereeMatchLocked,
   resolveRefereeMatchStatus,
   resolveRefereeStatusLabel,
 } from "../../tournament/engines/refereeStatusEngine.js";
 import {
-  guardRefereeMatchAction,
-  REFEREE_MATCH_ACTIONS,
-} from "../../features/mobile/services/refereeMatchGuard.js";
-import { useAuth } from "../../context/AuthContext.jsx";
-import { useClub } from "../../context/ClubContext.jsx";
+  officialAdjustLiveScoreCommand,
+  officialCommitMatchResultCommand,
+  officialRefereeGetMatchCommand,
+} from "../../features/tournament/official-lifecycle/officialOpenLifecycleCommands.js";
+import { newOfficialLifecycleIdempotencyKey } from "../../features/tournament/official-lifecycle/officialOpenLifecycleService.js";
 
 function TeamScoreControls({
   label,
@@ -94,16 +89,35 @@ function TeamScoreControls({
   );
 }
 
+function mapOfficialLiveRow(data) {
+  if (!data || data.ok === false) return null;
+  const status = data.finalized
+    ? MATCH_LIVE_STATUS.PROCESSED
+    : data.status || MATCH_LIVE_STATUS.PLAYING;
+  return {
+    matchId: data.matchId,
+    tournamentName: data.tournamentName,
+    stageLabel: data.stageLabel,
+    entryALabel: data.entryALabel,
+    entryBLabel: data.entryBLabel,
+    courtLabel: data.courtLabel,
+    scheduledStart: data.scheduledStart,
+    scoringMethod: data.scoringMethod || "rally",
+    scoringMethodLabel: data.scoringMethodLabel || "Rally",
+    targetScore: data.targetScore,
+    scoreA: Number(data.scoreA || 0),
+    scoreB: Number(data.scoreB || 0),
+    status,
+    liveRevision: data.liveRevision,
+    canonicalResult: data.canonicalResult || null,
+    refereeName: "",
+  };
+}
+
 export default function RefereeScoreboard({ sessionToken = null, sessionMode = false } = {}) {
   const { token: rawToken } = useParams();
   const token = sessionToken || decodeURIComponent(rawToken || "");
-  const { user } = useAuth();
-  const { activeClubId, activeClub } = useClub();
-
-  const refereeScope = {
-    clubId: activeClubId,
-    venueId: activeClub?.venueId,
-  };
+  void sessionMode;
 
   const [row, setRow] = useState(null);
   const [scoreA, setScoreA] = useState(0);
@@ -115,6 +129,7 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
   const [locked, setLocked] = useState(false);
   const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
   const [confirmDecrement, setConfirmDecrement] = useState(null);
+  const [done, setDone] = useState(false);
 
   const displayStatus = useMemo(
     () => resolveRefereeStatusLabel(resolveRefereeMatchStatus({ referee: { token } }, row)),
@@ -122,10 +137,11 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
   );
 
   const applyRow = useCallback((nextRow) => {
+    if (!nextRow) return;
     setRow(nextRow);
-    setScoreA(nextRow.scoreA);
-    setScoreB(nextRow.scoreB);
-    setLocked(isRefereeMatchLocked(nextRow));
+    setScoreA(Number(nextRow.scoreA || 0));
+    setScoreB(Number(nextRow.scoreB || 0));
+    setLocked(Boolean(nextRow.canonicalResult) || isRefereeMatchLocked(nextRow));
   }, []);
 
   const loadMatch = useCallback(async () => {
@@ -141,14 +157,14 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
       return;
     }
 
-    const result = await fetchMatchLiveByToken(token);
+    const result = await officialRefereeGetMatchCommand(token);
     if (!result.ok) {
       setError(result.error || REFEREE_LINK_LOCKED_MESSAGE);
       setLoading(false);
       return;
     }
 
-    applyRow(result.row);
+    applyRow(mapOfficialLiveRow(result));
     setLoading(false);
   }, [token, applyRow]);
 
@@ -156,61 +172,45 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
     loadMatch();
   }, [loadMatch]);
 
-  useEffect(() => {
-    if (!token) {
-      return undefined;
-    }
-
-    return subscribeMatchLiveByToken(token, (nextRow) => {
-      applyRow(nextRow);
-    });
-  }, [token, applyRow]);
-
   const handleAdjust = async (team, delta) => {
     if (locked || submitting) {
-      return;
-    }
-
-    const action =
-      delta > 0
-        ? REFEREE_MATCH_ACTIONS.SCORE_INCREMENT
-        : REFEREE_MATCH_ACTIONS.SCORE_DECREMENT;
-    const guard = guardRefereeMatchAction({
-      user,
-      matchRow: row,
-      action,
-      scope: refereeScope,
-      sessionToken: sessionMode ? token : null,
-    });
-
-    if (!guard.ok) {
-      setError(guard.error || REFEREE_LINK_LOCKED_MESSAGE);
-      if (guard.locked) {
-        setLocked(true);
-      }
       return;
     }
 
     setSubmitting(true);
     setError(null);
 
-    const result = await adjustMatchLiveScore(token, {
+    const result = await officialAdjustLiveScoreCommand({
+      token,
       team,
       delta,
-      userAgent: getClientUserAgent(),
+      expectedScoreA: scoreA,
+      expectedScoreB: scoreB,
     });
 
     setSubmitting(false);
 
     if (!result.ok) {
       setError(result.error || REFEREE_LINK_LOCKED_MESSAGE);
-      if (result.locked) {
-        setLocked(true);
+      if (result.scoreA != null && result.scoreB != null) {
+        applyRow({
+          ...row,
+          scoreA: result.scoreA,
+          scoreB: result.scoreB,
+          liveRevision: result.liveRevision,
+          status: result.status || row?.status,
+        });
       }
       return;
     }
 
-    applyRow(result.row);
+    applyRow({
+      ...row,
+      scoreA: result.scoreA,
+      scoreB: result.scoreB,
+      liveRevision: result.liveRevision,
+      status: result.status || MATCH_LIVE_STATUS.PLAYING,
+    });
     setMessage(null);
   };
 
@@ -224,43 +224,42 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
 
   const handleConfirmFinalize = async () => {
     setConfirmFinalizeOpen(false);
-
-    const guard = guardRefereeMatchAction({
-      user,
-      matchRow: row,
-      action: REFEREE_MATCH_ACTIONS.FINALIZE,
-      scope: refereeScope,
-      sessionToken: sessionMode ? token : null,
-    });
-
-    if (!guard.ok) {
-      setError(guard.error || REFEREE_LINK_LOCKED_MESSAGE);
-      if (guard.locked) {
-        setLocked(true);
-      }
-      return;
-    }
-
     setSubmitting(true);
     setError(null);
 
-    const result = await requestMatchLiveFinalize(token, scoreA, scoreB, {
-      userAgent: getClientUserAgent(),
+    const result = await officialCommitMatchResultCommand({
+      token,
+      scoreA,
+      scoreB,
+      idempotencyKey: newOfficialLifecycleIdempotencyKey(`ref-${token.slice(-8)}`),
     });
 
     setSubmitting(false);
 
     if (!result.ok) {
       setError(result.error || REFEREE_LINK_LOCKED_MESSAGE);
-      if (result.locked) {
-        setLocked(true);
-      }
       return;
     }
 
-    applyRow(result.row);
+    applyRow({
+      ...row,
+      scoreA: result.scoreA ?? scoreA,
+      scoreB: result.scoreB ?? scoreB,
+      status: MATCH_LIVE_STATUS.PROCESSED,
+      canonicalResult: {
+        scoreA: result.scoreA ?? scoreA,
+        scoreB: result.scoreB ?? scoreB,
+        winnerName: result.winnerName || "",
+        status: "completed",
+      },
+    });
     setLocked(true);
-    setMessage("Đã chốt kết quả. Trận đã khóa — chỉ BTC có thể điều chỉnh.");
+    setDone(true);
+    setMessage(
+      result.winnerName
+        ? `Đã chốt kết quả ${result.scoreA} — ${result.scoreB}. Thắng: ${result.winnerName}.`
+        : `Đã chốt kết quả ${result.scoreA} — ${result.scoreB} vào giải.`
+    );
   };
 
   if (loading) {
@@ -308,8 +307,7 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
               {row?.tournamentName || "Giải đấu"}
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.92 }}>
-              Trọng tài: {row?.refereeName || "—"}
-              {row?.stageLabel ? ` · ${row.stageLabel}` : ""}
+              {row?.stageLabel ? `${row.stageLabel}` : "Trận Official"}
               {row?.courtLabel ? ` · ${row.courtLabel}` : ""}
             </Typography>
           </Box>
@@ -338,10 +336,21 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {row?.stageLabel && <Chip label={row.stageLabel} size="small" />}
             {row?.courtLabel && <Chip label={row.courtLabel} size="small" variant="outlined" />}
+            {row?.scheduledStart ? (
+              <Chip
+                label={new Date(row.scheduledStart).toLocaleString("vi-VN")}
+                size="small"
+                variant="outlined"
+              />
+            ) : null}
+            <Chip label={row?.scoringMethodLabel || "Rally"} size="small" />
+            {row?.targetScore ? (
+              <Chip label={`Điểm đích ${row.targetScore}`} size="small" color="info" />
+            ) : null}
             <Chip label={displayStatus} size="small" color={statusChipColor} />
           </Stack>
           <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-            Luật điểm theo cấu hình giải (Rally). Chi tiết điểm đích vòng do BTC cấu hình.
+            Rally · điểm đích {row?.targetScore || "—"} · kết quả chốt ghi vào giải (không qua Director).
           </Typography>
           <Typography variant="h4" fontWeight="bold" sx={{ mt: 2 }}>
             {scoreA} — {scoreB}
@@ -373,7 +382,11 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
             size="large"
             variant="contained"
             color="success"
-            disabled={submitting || (scoreA === 0 && scoreB === 0)}
+            disabled={
+              submitting ||
+              scoreA === scoreB ||
+              (Number(row?.targetScore) > 0 && Math.max(scoreA, scoreB) < Number(row.targetScore))
+            }
             onClick={() => setConfirmFinalizeOpen(true)}
             sx={{ minHeight: 56, fontSize: "1.05rem", fontWeight: 700 }}
           >
@@ -381,15 +394,24 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
           </Button>
         )}
 
-        {locked && row?.status === MATCH_LIVE_STATUS.FINALIZE_REQUESTED && (
-          <Alert severity="info">
-            Kết quả {scoreA} — {scoreB} đang chờ BTC xác nhận và cập nhật bảng điểm.
+        {locked && row?.canonicalResult && (
+          <Alert severity="success">
+            Kết quả chính thức: {row.canonicalResult.scoreA} — {row.canonicalResult.scoreB}
+            {row.canonicalResult.winnerName ? ` · Thắng: ${row.canonicalResult.winnerName}` : ""}.
           </Alert>
         )}
 
-        {locked && (row?.status === MATCH_LIVE_STATUS.LOCKED || row?.status === MATCH_LIVE_STATUS.PROCESSED) && (
+        {locked && row?.status === MATCH_LIVE_STATUS.FINALIZE_REQUESTED && (
+          <Alert severity="info">
+            Kết quả {scoreA} — {scoreB} đang chờ ghi vào giải.
+          </Alert>
+        )}
+
+        {locked &&
+          !row?.canonicalResult &&
+          (row?.status === MATCH_LIVE_STATUS.LOCKED || row?.status === MATCH_LIVE_STATUS.PROCESSED) && (
           <Alert severity="success">
-            Trận đã khóa: {scoreA} — {scoreB}. Liên hệ BTC nếu cần điều chỉnh.
+            Trận đã khóa: {scoreA} — {scoreB}.
           </Alert>
         )}
 
@@ -399,10 +421,11 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
           color="inherit"
           sx={{ mt: 3, minHeight: 48 }}
           onClick={() => {
-            window.location.assign("/referee");
+            setDone(true);
+            setMessage("Có thể đóng trang này.");
           }}
         >
-          Thoát trận
+          {done ? "Có thể đóng trang này" : "Kết thúc / đóng trang"}
         </Button>
       </Container>
 

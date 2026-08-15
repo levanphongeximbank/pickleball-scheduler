@@ -3,7 +3,7 @@ import { Alert, Button, Chip, Grid, Paper, Stack, Typography } from "@mui/materi
 import { Link as RouterLink } from "react-router-dom";
 
 import BracketView from "../BracketView.jsx";
-import { buildIndividualAllGroupStandings } from "../../../features/individual-tournament/adapters/individualStandingsAdapter.js";
+import { buildOfficialAllGroupStandings } from "../../../features/individual-tournament/engines/officialStandingsEngine.js";
 import { resolveBracketProgress } from "../../../tournament/engines/index.js";
 import OfficialTournamentCloseOps from "./OfficialTournamentCloseOps.jsx";
 import { resolveOfficialMatchScoringRules } from "../../../features/individual-tournament/engines/officialScoringRulesResolver.js";
@@ -17,7 +17,6 @@ export function OfficialTournamentKnockoutRoundScreen({
   roundName,
   canManage = true,
   onSubmitKnockoutScore,
-  onSelectWinner,
   onToggleRoundLock,
   draftScope,
   tournamentId,
@@ -39,7 +38,6 @@ export function OfficialTournamentKnockoutRoundScreen({
         progress={progress}
         unlockedRounds={event?.bracket?.unlockedRounds || {}}
         onSubmitScore={canManage ? onSubmitKnockoutScore : undefined}
-        onSelectWinner={canManage ? onSelectWinner : undefined}
         onToggleRoundLock={canManage ? onToggleRoundLock : undefined}
         draftScope={draftScope}
       />
@@ -68,13 +66,14 @@ export default function OfficialTournamentResultsScreen({
   onError,
   onGenerateBracket,
   onSubmitKnockoutScore,
-  onSelectWinner,
   onToggleRoundLock,
   draftScope,
   groupStandings: groupStandingsProp,
 }) {
   const standings = useMemo(
-    () => groupStandingsProp || (event ? buildIndividualAllGroupStandings(event) : []),
+    () =>
+      groupStandingsProp ||
+      (event ? buildOfficialAllGroupStandings(event) : []),
     [groupStandingsProp, event]
   );
   const progress = useMemo(() => (event ? resolveBracketProgress(event) : null), [event]);
@@ -106,6 +105,11 @@ export default function OfficialTournamentResultsScreen({
                       </Typography>
                     ))}
                 </Stack>
+                {groupStanding.qualificationTieUnresolved ? (
+                  <Alert severity="warning" sx={{ mt: 1 }}>
+                    Hòa chỉ số thể thao tại ranh giới suất — QUALIFICATION_TIE_UNRESOLVED.
+                  </Alert>
+                ) : null}
               </Paper>
             </Grid>
           ))}
@@ -125,7 +129,6 @@ export default function OfficialTournamentResultsScreen({
             progress={progress}
             unlockedRounds={event?.bracket?.unlockedRounds || {}}
             onSubmitScore={canManage ? onSubmitKnockoutScore : undefined}
-            onSelectWinner={canManage ? onSelectWinner : undefined}
             onToggleRoundLock={canManage ? onToggleRoundLock : undefined}
             draftScope={draftScope}
           />

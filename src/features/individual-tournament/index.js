@@ -274,6 +274,7 @@ export {
   REFEREE_SCORING_RULE_TRANSPORT_BLOCKED,
   syncOfficialAssignedMatchToLive,
   syncOfficialRefereeAssignResultToLive,
+  revokeOfficialAssignedMatchLive,
 } from "./engines/officialRefereeLiveBridge.js";
 
 export {
@@ -282,6 +283,7 @@ export {
   OFFICIAL_SCORING_METHOD,
   OFFICIAL_ROUND_SCORE_KEY,
   DEFAULT_OFFICIAL_ROUND_TARGETS,
+  DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP,
   CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT,
   SIDEOUT_OPERATIONAL,
   SIDEOUT_SELECTION_FAIL_CLOSED,
@@ -335,6 +337,26 @@ export {
   resolveOfficialMatchScoringRules,
   validateOfficialFinishedScore,
 } from "./engines/officialScoringRulesResolver.js";
+
+export {
+  QUALIFICATION_TIE_UNRESOLVED,
+  buildOfficialAllGroupStandings,
+  officialQualificationReady,
+  resolveOfficialQualifiersPerGroup,
+} from "./engines/officialStandingsEngine.js";
+
+export {
+  canGenerateOfficialKnockout,
+  generateOfficialKnockout,
+  officialKnockoutHasStarted,
+} from "./engines/officialKnockoutEngine.js";
+
+export {
+  evaluateOfficialCompletionPredicate,
+  resolveOfficialChampion,
+} from "./engines/officialCompletionEngine.js";
+
+export { buildOfficialPublicResultsDto } from "./engines/officialPublicResultsDto.js";
 
 export {
   findPlayerEntries,

@@ -5,13 +5,15 @@
 
 import { ENTRY_STATUS, TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
 import { filterDrawEligibleEntries } from "./withdrawalEngine.js";
-import { getRefereeAssignments, collectEventMatches } from "./refereeAssignEngine.js";
+import { getRefereeAssignments, collectEventMatches, listIndividualReferees } from "./refereeAssignEngine.js";
 import { getDrawPublishStatus, DRAW_PUBLISH_STATUS } from "../../../tournament/engines/publishDrawEngine.js";
 import { isRegistrationLocked } from "./registrationEngine.js";
-import { isTournamentClosed, canCloseTournament } from "./tournamentClosingEngine.js";
+import { isTournamentClosed } from "./tournamentClosingEngine.js";
+import { evaluateOfficialCompletionPredicate, resolveOfficialChampion } from "./officialCompletionEngine.js";
+import { canGenerateOfficialKnockout } from "./officialKnockoutEngine.js";
 import { getResultsOps } from "./walkoverEngine.js";
-import { buildFinalRanking, buildAwardsPreview, AWARD_KEY } from "./awardsEngine.js";
-import { canGenerateBracket, resolveBracketProgress } from "../../../tournament/engines/bracketEngine.js";
+import { buildAwardsPreview, AWARD_KEY } from "./awardsEngine.js";
+import { resolveBracketProgress } from "../../../tournament/engines/bracketEngine.js";
 import {
   getOfficialCompetitionSettings,
   OFFICIAL_REGISTRATION_MODE,
@@ -192,7 +194,7 @@ export function summarizeOfficialRefereeOps(tournament, eventId = "") {
     if ((fromMap && fromMap.status !== "revoked") || match?.referee?.token) assigned += 1;
   });
   return {
-    rosterCount: (tournament?.settings?.referee?.roster || []).length,
+    rosterCount: listIndividualReferees(tournament).length,
     matchCount: matches.length,
     assignedCount: assigned,
     unassignedCount: Math.max(0, matches.length - assigned),
@@ -276,15 +278,16 @@ export function buildOfficialCompetitionFacts(tournament, options = {}) {
     draw.status === DRAW_PUBLISH_STATUS.LOCKED ||
     draw.status === DRAW_PUBLISH_STATUS.PUBLISHED;
   const closed = isTournamentClosed(tournament) || tournament?.status === TOURNAMENT_STATUS.COMPLETED;
-  const ranking = event ? buildFinalRanking(tournament, event.id) : { ranking: [] };
   const awardsPreview = event ? buildAwardsPreview(tournament, { eventId: event.id }) : { awards: [] };
   const awards = Array.isArray(awardsPreview) ? awardsPreview : awardsPreview?.awards || [];
-  const rankingRows = Array.isArray(ranking) ? ranking : ranking?.ranking || [];
+  const officialChampion = resolveOfficialChampion(tournament, event);
   const champion =
+    officialChampion.championName ||
     awards.find((item) => item.key === AWARD_KEY.CHAMPION)?.entryName ||
-    rankingRows?.[0]?.name ||
     null;
-  const bracketReady = event ? canGenerateBracket(event).ok === true || Boolean(event?.bracket) : false;
+  const bracketReady = event
+    ? canGenerateOfficialKnockout(tournament, event).ok === true || Boolean(event?.bracket)
+    : false;
   const hasBracket = Boolean(event?.bracket?.rounds?.length);
   const incompleteMatchCount = Math.max(0, matches.total - matches.completed);
   const minDrawEntries = 2;
@@ -345,22 +348,7 @@ export function buildOfficialCompetitionFacts(tournament, options = {}) {
 }
 
 export function evaluateOfficialCloseGate(tournament, options = {}) {
-  const base = canCloseTournament(tournament);
-  if (!base.ok) return base;
-  const facts = options.facts || buildOfficialCompetitionFacts(tournament, options);
-  if (!facts.draw.hasDraw) {
-    return { ok: false, error: "Chưa thể đóng giải — chưa bốc thăm." };
-  }
-  if (facts.matches.total === 0) {
-    return { ok: false, error: "Chưa thể đóng giải — chưa có trận." };
-  }
-  if (facts.incompleteMatchCount > 0) {
-    return {
-      ok: false,
-      error: `Chưa thể đóng giải — còn ${facts.incompleteMatchCount} trận chưa hoàn tất`,
-    };
-  }
-  return { ok: true };
+  return evaluateOfficialCompletionPredicate(tournament, options);
 }
 
 export function deriveOfficialOrganizerStages(tournament, options = {}) {

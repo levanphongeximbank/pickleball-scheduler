@@ -18,6 +18,21 @@ export {
   setTournamentStatusCommand,
   setTournamentCourtScheduleCommand,
 } from "./services/tournamentCommands.js";
+export {
+  ensureOfficialMatchLiveCommand,
+  revokeOfficialMatchLiveCommand,
+  officialRefereeGetMatchCommand,
+  officialAdjustLiveScoreCommand,
+  officialCommitMatchResultCommand,
+  officialAdminCommitMatchResultCommand,
+  officialCompleteTournamentCommand,
+  officialGenerateKnockoutCommand,
+  officialGetPublicResultsCommand,
+} from "./official-lifecycle/officialOpenLifecycleCommands.js";
+export {
+  OFFICIAL_OPEN_LIFECYCLE_RPC,
+  OFFICIAL_OPEN_LIFECYCLE_CODE,
+} from "./official-lifecycle/officialOpenLifecycleCodes.js";
 /** DEFERRED_VENUE_OPERATIONS — not invoked by the active Official/Open browser path. */
 export {
   reserveOfficialTournamentCourtsCommand,

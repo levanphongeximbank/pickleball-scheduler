@@ -41,19 +41,13 @@ import {
   TOURNAMENT_STATUS,
   EVENT_TYPE_OPTIONS,
 } from "../../models/tournament/index.js";
-import { buildIndividualAllGroupStandings } from "../../features/individual-tournament/adapters/individualStandingsAdapter.js";
 import {
   buildOfficialAiBalancePatch,
   buildOfficialOpenPatch,
   buildOfficialOpenPlan,
-  canGenerateBracket,
   createOfficialEventRecord,
   createOpenEntryFromPair,
-  generateKnockoutBracket,
   resolveBracketProgress,
-  setBracketWinner,
-  submitKnockoutMatchScore,
-  submitTournamentDirectorMatchScore,
   suggestBalancedEntriesFromIndividuals,
   suggestOpenRandomEntriesFromPlayers,
   toggleBracketRoundUnlock,
@@ -131,6 +125,15 @@ import {
   summarizeGroups,
 } from "../../tournament/engines/publishDrawEngine.js";
 import { resolveEventTypeFromQuery, scheduleOfficialGroupMatches } from "../../features/individual-tournament/index.js";
+import { isTournamentClosed } from "../../features/individual-tournament/engines/tournamentClosingEngine.js";
+import { canGenerateOfficialKnockout } from "../../features/individual-tournament/engines/officialKnockoutEngine.js";
+import { buildOfficialAllGroupStandings } from "../../features/individual-tournament/engines/officialStandingsEngine.js";
+import {
+  officialAdminCommitMatchResultCommand,
+  officialCompleteTournamentCommand,
+  officialGenerateKnockoutCommand,
+} from "../../features/tournament/official-lifecycle/officialOpenLifecycleCommands.js";
+import { PERMISSIONS } from "../../features/identity/constants/permissions.js";
 import {
   OFFICIAL_STAGE_ID,
   deriveOfficialOrganizerStages,
@@ -553,9 +556,19 @@ export default function OfficialTournamentSetup() {
   );
 
   const groupStandings = useMemo(
-    () => (savedEvent ? buildIndividualAllGroupStandings(savedEvent) : []),
-    [savedEvent]
+    () =>
+      savedEvent
+        ? buildOfficialAllGroupStandings(savedEvent, {
+            qualifiersPerGroup: getOfficialCompetitionSettings(tournament).qualifiersPerGroup,
+          })
+        : [],
+    [savedEvent, tournament]
   );
+
+  const officialClosed = isTournamentClosed(tournament);
+  const canManageOfficial =
+    (typeof can !== "function" || can(PERMISSIONS.TOURNAMENT_UPDATE) !== false) &&
+    !officialClosed;
 
   const scoreDraftScope = useMemo(
     () => ({
@@ -580,12 +593,26 @@ export default function OfficialTournamentSetup() {
   }, [tournament?.id, tournament?.settings?.officialCompetition?.groupCount]);
 
   useEffect(() => {
+    if (!tournament?.id || officialClosed) {
+      return undefined;
+    }
+    const timer = setInterval(() => {
+      reload({ soft: true });
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [tournament?.id, officialClosed, reload]);
+
+  useEffect(() => {
     if (!activeEventId && savedEvents[0]?.id) {
       setActiveEventId(savedEvents[0].id);
     }
   }, [activeEventId, savedEvents]);
 
   const persistTournament = async (patch, options = {}) => {
+    if (isTournamentClosed(tournament) && !options.allowClosed) {
+      setError("Giải đã đóng — không thể sửa.");
+      return false;
+    }
     const { status, ...dataPatch } = patch;
     const {
       skipLocalRevision,
@@ -594,7 +621,10 @@ export default function OfficialTournamentSetup() {
     } = options;
     const result = await update(
       status ? { ...dataPatch, status } : patch,
-      updateOptions
+      {
+        ...updateOptions,
+        expectedVersion: updateOptions.expectedVersion ?? tournament?.version,
+      }
     );
 
     if (!result.ok) {
@@ -630,7 +660,7 @@ export default function OfficialTournamentSetup() {
       return false;
     }
 
-    const { processMatchId, ...extraPatch } = options;
+    const { processMatchId, expectedVersion, ...extraPatch } = options;
     const events = upsertOfficialEvent(savedEvents, { ...savedEvent, ...nextEvent });
     return persistTournament(
       {
@@ -640,6 +670,7 @@ export default function OfficialTournamentSetup() {
       {
         processMatchId: processMatchId || null,
         processEventId: savedEvent?.id || null,
+        expectedVersion: expectedVersion ?? tournament?.version,
       }
     );
   };
@@ -1619,116 +1650,76 @@ export default function OfficialTournamentSetup() {
     }
   };
 
-  const handleGenerateBracket = () => {
+  const handleGenerateBracket = async () => {
     setError(null);
-    const check = canGenerateBracket(savedEvent);
-    if (!check.ok) {
-      setError(check.errors.join(" "));
+    const preview = canGenerateOfficialKnockout(tournament, savedEvent);
+    if (!preview.ok) {
+      setError(preview.errors?.join(" ") || "Không tạo được bracket.");
       return;
     }
 
-    const generated = generateKnockoutBracket(savedEvent);
-    if (!generated.ok) {
-      setError(generated.errors?.join(" ") || "Khong tao duoc bracket.");
+    const result = await officialGenerateKnockoutCommand({
+      tenantId: tenantId || tournament?.tenantId,
+      clubId: courtInventoryScope.ok ? courtInventoryScope.clubId : activeClubId,
+      tournamentId,
+      eventId: savedEvent?.id || "",
+      expectedVersion: tournament.version,
+    });
+    if (!result.ok) {
+      setError(result.error || "Không tạo được bracket.");
       return;
     }
 
-    const progress = resolveBracketProgress(generated.event);
-
-    anim.showAnimation(
-      {
-        animationMode: ANIMATION_MODES.BRACKET_REVEAL,
-        bracket: progress,
-      },
-      async () => {
-        if (await persistEvent(generated.event)) {
-          setWarnings(generated.warnings || []);
-          setMessage(`Da tao bracket knock-out (${generated.knockoutMatchCount} tran).`);
-        }
-      }
+    const nextTournament = await reload({ soft: true });
+    const event =
+      (nextTournament?.events || []).find((item) => String(item.id) === String(savedEvent?.id)) ||
+      nextTournament?.events?.[0] ||
+      null;
+    setWarnings(preview.warnings || []);
+    setMessage(
+      `Đã tạo bracket knock-out (${result.knockoutMatchCount ?? preview.preview?.knockoutMatchCount ?? 0} trận).`
     );
+    if (event) {
+      anim.showAnimation({
+        animationMode: ANIMATION_MODES.BRACKET_REVEAL,
+        bracket: resolveBracketProgress(event),
+      });
+    }
   };
 
-  const handleSelectBracketWinner = async (bracketMatchId, winnerSide) => {
-    const result = setBracketWinner(savedEvent, bracketMatchId, winnerSide || null);
+  const commitOfficialMatchScore = async (matchId, scores) => {
+    const result = await officialAdminCommitMatchResultCommand({
+      tenantId: tenantId || tournament?.tenantId,
+      clubId: courtInventoryScope.ok ? courtInventoryScope.clubId : activeClubId,
+      tournamentId,
+      matchId,
+      scoreA: Number(scores.scoreA),
+      scoreB: Number(scores.scoreB),
+      expectedVersion: tournament.version,
+    });
     if (!result.ok) {
-      setError(result.error);
-      return;
+      setError(result.error || "Không chốt được kết quả.");
+      return false;
     }
-
-    if (winnerSide) {
-      const progress = resolveBracketProgress(result.event);
-      const match = progress.rounds
-        .flatMap((round) => round.matches)
-        .find((item) => item.id === bracketMatchId);
-      const winnerName =
-        winnerSide === "home"
-          ? match?.home?.name || match?.homeSeed
-          : match?.away?.name || match?.awaySeed;
-
-      setBracketAdvanceAnim({
-        winnerName,
-        bracket: progress,
-      });
+    if (result.tournament) {
+      setTournament(result.tournament);
     } else {
-      setBracketAdvanceAnim(null);
+      await reload({ soft: true });
     }
-
-    if (await persistEvent(result.event)) {
-      setMessage(winnerSide ? "Da cap nhat winner." : "Da xoa winner.");
-    }
+    setMessage(
+      result.winnerName
+        ? `Đã chốt ${result.scoreA} — ${result.scoreB}. Thắng: ${result.winnerName}.`
+        : "Đã chốt kết quả canonical."
+    );
+    return true;
   };
 
   const handleSubmitGroupScore = async (matchId, scores) => {
-    const result = submitTournamentDirectorMatchScore(savedEvent, matchId, scores);
-    if (!result.ok) {
-      setError(result.error);
-      return false;
-    }
-
-    const saved = await persistEvent(result.event, { processMatchId: matchId });
-    if (!saved) {
-      return false;
-    }
-
-    if (saved.lifecycleOk === false) {
-      setMessage(
-        "Đã lưu kết quả vòng bảng. Cập nhật Elo/điểm mùa thất bại — kết quả trận vẫn còn."
-      );
-      return true;
-    }
-
-    if (result.bracketAutoGenerated) {
-      setMessage(
-        `Đã lưu kết quả vòng bảng. Tự động tạo bracket knock-out (${result.bracketKnockoutMatchCount} trận).`
-      );
-    } else {
-      setMessage("Đã lưu kết quả vòng bảng.");
-    }
-    return true;
+    return commitOfficialMatchScore(matchId, scores);
   };
 
   const handleSubmitKnockoutScore = async (matchId, scores) => {
-    const result = submitKnockoutMatchScore(savedEvent, matchId, scores);
-    if (!result.ok) {
-      setError(result.error);
-      return false;
-    }
-
-    const saved = await persistEvent(result.event, { processMatchId: matchId });
-    if (!saved) {
-      return false;
-    }
-
-    if (saved.lifecycleOk === false) {
-      setMessage(
-        "Đã lưu kết quả knock-out. Cập nhật Elo/điểm mùa thất bại — kết quả trận vẫn còn."
-      );
-      return true;
-    }
-
-    setMessage("Da luu ket qua knock-out.");
-    return true;
+    return commitOfficialMatchScore(matchId, scores);
   };
 
   const handleToggleRoundLock = async (roundName, unlock) => {
@@ -1848,7 +1839,7 @@ export default function OfficialTournamentSetup() {
         activeStageId={activeStageId}
         onSelectStage={selectStage}
         onPrimaryAction={handlePrimaryNextAction}
-        canManage
+        canManage={canManageOfficial}
       />
 
       <OfficialTournamentStageCard stage={activeStage}>
@@ -1859,12 +1850,15 @@ export default function OfficialTournamentSetup() {
             onOfficialModeChange={handleOfficialModeChange}
             groupCount={groupCount}
             onGroupCountChange={setGroupCount}
-            canManage
+            canManage={canManageOfficial}
             onPersistSettings={async (nextTournament) =>
-              persistTournament({
-                settings: nextTournament.settings,
-                officialMode,
-              })
+              persistTournament(
+                {
+                  settings: nextTournament.settings,
+                  officialMode,
+                },
+                { expectedVersion: tournament.version }
+              )
             }
           />
         ) : null}
@@ -1900,7 +1894,7 @@ export default function OfficialTournamentSetup() {
             tournament={tournament}
             eventId={savedEvent?.id || ""}
             players={flowPlayers}
-            canManage
+            canManage={canManageOfficial}
             onLockRegistration={handleLockRegistrationFromStage}
           />
         ) : null}
@@ -1930,7 +1924,7 @@ export default function OfficialTournamentSetup() {
               eventId={savedEvent?.id || ""}
               groupCount={groupCount}
               players={flowPlayers}
-              canManage
+              canManage={canManageOfficial}
               pairBusy={pairBusy}
               groupBusy={groupBusy || drawBusy}
               onFormPairs={handleFormOfficialPairs}
@@ -1966,12 +1960,15 @@ export default function OfficialTournamentSetup() {
                 : null
             }
             onPersistRefereeTournament={async (nextTournament) =>
-              persistTournament({
-                events: nextTournament.events,
-                settings: nextTournament.settings,
-              })
+              persistTournament(
+                {
+                  events: nextTournament.events,
+                  settings: nextTournament.settings,
+                },
+                { expectedVersion: tournament.version }
+              )
             }
-            canManage
+            canManage={canManageOfficial}
             onSavedCourts={(result) => {
               if (result?.ok && result.tournament) {
                 setTournament(result.tournament);
@@ -1988,9 +1985,8 @@ export default function OfficialTournamentSetup() {
             tournament={tournament}
             event={savedEvent}
             roundName={activeStage?.roundName || activeStage?.label}
-            canManage
+            canManage={canManageOfficial}
             onSubmitKnockoutScore={handleSubmitKnockoutScore}
-            onSelectWinner={handleSelectBracketWinner}
             onToggleRoundLock={handleToggleRoundLock}
             draftScope={scoreDraftScope}
             tournamentId={tournamentId}
@@ -2003,20 +1999,30 @@ export default function OfficialTournamentSetup() {
             tournament={tournament}
             event={savedEvent}
             tournamentId={tournamentId}
-            canManage
+            canManage={canManageOfficial}
             onGenerateBracket={handleGenerateBracket}
             onSubmitKnockoutScore={handleSubmitKnockoutScore}
-            onSelectWinner={handleSelectBracketWinner}
             onToggleRoundLock={handleToggleRoundLock}
             draftScope={scoreDraftScope}
             groupStandings={groupStandings}
-            onPersistClose={async (nextTournament) =>
-              persistTournament({
-                events: nextTournament.events,
-                settings: nextTournament.settings,
-                status: nextTournament.status,
-              })
-            }
+            onPersistClose={async () => {
+              const result = await officialCompleteTournamentCommand({
+                tenantId: tenantId || tournament?.tenantId,
+                clubId: courtInventoryScope.ok ? courtInventoryScope.clubId : activeClubId,
+                tournamentId,
+                expectedVersion: tournament.version,
+              });
+              if (!result.ok) {
+                setError(result.error || "Không đóng được giải.");
+                return false;
+              }
+              if (result.tournament) {
+                setTournament(result.tournament);
+              } else {
+                await reload({ soft: true });
+              }
+              return { ok: true, tournament: result.tournament, ...result };
+            }}
             onMessage={setMessage}
             onError={setError}
           />

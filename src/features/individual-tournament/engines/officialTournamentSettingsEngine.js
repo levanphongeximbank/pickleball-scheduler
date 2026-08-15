@@ -64,6 +64,8 @@ export const DEFAULT_OFFICIAL_ROUND_TARGETS = Object.freeze({
   [OFFICIAL_ROUND_SCORE_KEY.FINAL]: CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT,
 });
 
+export const DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP = 2;
+
 /**
  * Product intent: NEW Official/Open defaults to Side-out once runtime is operational.
  * Until SIDEOUT_OPERATIONAL=true, operable default remains Rally (fail-closed).
@@ -347,6 +349,10 @@ export function getOfficialCompetitionSettings(tournament) {
         : event?.groups?.length
           ? toPositiveInt(event.groups.length, 4)
           : 4,
+    qualifiersPerGroup: toPositiveInt(
+      blob.qualifiersPerGroup,
+      DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP
+    ),
   };
 }
 
@@ -422,6 +428,10 @@ export function patchOfficialCompetitionSettings(tournament, patch = {}) {
       patch.groupCount != null
         ? toPositiveInt(patch.groupCount, current.groupCount)
         : current.groupCount,
+    qualifiersPerGroup:
+      patch.qualifiersPerGroup != null
+        ? toPositiveInt(patch.qualifiersPerGroup, current.qualifiersPerGroup)
+        : current.qualifiersPerGroup,
     updatedAt: new Date().toISOString(),
   };
 

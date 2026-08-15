@@ -75,7 +75,6 @@ export default function OfficialTournamentLiveScoringOps({
   players = [],
   onSubmitGroupScore,
   onSubmitKnockoutScore,
-  onSelectWinner,
   onToggleRoundLock,
   canManage = true,
   tournamentId,
@@ -177,7 +176,6 @@ export default function OfficialTournamentLiveScoringOps({
             progress={resolveBracketProgress(event)}
             unlockedRounds={event?.bracket?.unlockedRounds || {}}
             onSubmitScore={canManage ? onSubmitKnockoutScore : undefined}
-            onSelectWinner={canManage ? onSelectWinner : undefined}
             onToggleRoundLock={canManage ? onToggleRoundLock : undefined}
             draftScope={draftScope}
           />

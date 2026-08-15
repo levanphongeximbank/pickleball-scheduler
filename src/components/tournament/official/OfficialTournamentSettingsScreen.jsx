@@ -56,6 +56,7 @@ export default function OfficialTournamentSettingsScreen({
     registrationMode: current.registrationMode || "",
     scoringMethod: current.scoringMethod || OFFICIAL_SCORING_METHOD.RALLY,
     roundTargets: { ...current.roundTargets },
+    qualifiersPerGroup: current.qualifiersPerGroup || 2,
     maxSkillLevel:
       eligibility.skill?.maxLevel != null ? String(eligibility.skill.maxLevel) : "",
     maxRating:
@@ -71,6 +72,7 @@ export default function OfficialTournamentSettingsScreen({
       registrationMode: next.registrationMode || "",
       scoringMethod: next.scoringMethod || OFFICIAL_SCORING_METHOD.RALLY,
       roundTargets: { ...next.roundTargets },
+      qualifiersPerGroup: next.qualifiersPerGroup || 2,
       maxSkillLevel:
         nextEligibility.skill?.maxLevel != null
           ? String(nextEligibility.skill.maxLevel)
@@ -129,6 +131,7 @@ export default function OfficialTournamentSettingsScreen({
         scoringMethod: selectedMethod,
         roundTargets: draft.roundTargets,
         groupCount,
+        qualifiersPerGroup: Number(draft.qualifiersPerGroup) || 2,
       });
 
       const eligibilityPatch = patchOfficialVisibleEligibilityLimits(next, {
@@ -264,6 +267,25 @@ export default function OfficialTournamentSettingsScreen({
             inputProps={{ min: 1, max: 16 }}
             onChange={(e) => onGroupCountChange?.(Number(e.target.value) || 1)}
             helperText="Cấu hình số bảng dùng khi bốc thăm (một nguồn)."
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            fullWidth
+            size="small"
+            type="number"
+            label="Suất vào knockout mỗi bảng"
+            value={draft.qualifiersPerGroup ?? 2}
+            disabled={!canManage}
+            InputLabelProps={fieldLabelProps}
+            inputProps={{ min: 1, max: 8 }}
+            onChange={(e) =>
+              setDraft((prev) => ({
+                ...prev,
+                qualifiersPerGroup: Number(e.target.value) || 2,
+              }))
+            }
+            helperText="Mặc định 2. Không dùng best runners-up. Hòa chỉ số thể thao tại ranh giới → không tạo KO."
           />
         </Grid>
       </Grid>

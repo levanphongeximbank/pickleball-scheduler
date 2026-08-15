@@ -1,30 +1,31 @@
 /**
- * Bridge individual referee assignment (payload) → tournament_match_live (live read model).
- * Payload match remains competition result authority; live row is execution only.
- *
- * Lazy-imports matchLiveSync so unit tests can exercise assignment without loading Supabase.
+ * Bridge individual referee assignment (payload) → tournament_match_live (execution only).
+ * Official mint/revoke goes through server commands. Direct client upsert is not used.
  */
 
 import {
-  buildMatchLiveRecord,
   resolveMatchLabels,
 } from "../../../tournament/engines/refereeEngine.js";
 import { collectEventMatches } from "./refereeAssignEngine.js";
+import {
+  ensureOfficialMatchLiveCommand,
+  revokeOfficialMatchLiveCommand,
+} from "../../tournament/official-lifecycle/officialOpenLifecycleCommands.js";
 
 export const REFEREE_IDENTITY_BINDING_BLOCKED = true;
 /** Live table has no structured scoring-rules columns; stageLabel must not carry them. */
 export const REFEREE_SCORING_RULE_TRANSPORT_BLOCKED = true;
 
-async function loadMatchLiveApi() {
-  const mod = await import("../../../domain/matchLiveSync.js");
+function resolveScope(tournament, clubId) {
   return {
-    hasSupabaseConfig: mod.hasSupabaseConfig,
-    upsertMatchLive: mod.upsertMatchLive,
+    tenantId: tournament?.tenantId || "",
+    clubId: clubId || tournament?.clubId || "",
+    tournamentId: tournament?.id,
   };
 }
 
 /**
- * Sync one assigned match to live table if referee token exists.
+ * Mint or refresh the live execution row for an assigned Official match.
  */
 export async function syncOfficialAssignedMatchToLive({
   tournament,
@@ -44,59 +45,44 @@ export async function syncOfficialAssignedMatchToLive({
     };
   }
 
-  let liveApi;
-  try {
-    liveApi = await loadMatchLiveApi();
-  } catch (error) {
-    return {
-      ok: false,
-      error: error?.message || "Không tải được matchLiveSync.",
-      skipped: true,
-      needsSupabase: true,
-    };
-  }
-
-  if (!liveApi.hasSupabaseConfig()) {
-    return {
-      ok: false,
-      error: "Cần cấu hình Supabase để đồng bộ live trọng tài.",
-      skipped: true,
-      needsSupabase: true,
-    };
-  }
-
   const labels = resolveMatchLabels(match, {
     entries: (tournament.events || []).flatMap((event) => event.entries || []),
     players,
     courts,
   });
-
-  // stageLabel is display-only. Do not encode scoring method/target into it.
-  // Structured scoring transport requires future live-table columns or authorized
-  // tournament read for the referee token session (see REFEREE_SCORING_RULE_TRANSPORT_BLOCKED).
-  const liveRecord = buildMatchLiveRecord({
-    clubId,
-    tournamentId: tournament.id,
-    eventId: match.eventId || "",
-    match,
-    labels,
-    isDaily: false,
-    tournamentName: tournament.name || "",
+  const scope = resolveScope(tournament, clubId);
+  const result = await ensureOfficialMatchLiveCommand({
+    ...scope,
+    matchId: match.id,
+    labels: {
+      tournamentName: tournament.name || "",
+      refereeName: match.referee?.name || "",
+      entryALabel: labels?.entryALabel || labels?.sideA || "",
+      entryBLabel: labels?.entryBLabel || labels?.sideB || "",
+      courtLabel: labels?.courtLabel || "",
+      stageLabel: labels?.stageLabel || "",
+      scheduledStart: match.scheduledStart || "",
+    },
   });
-
-  if (!liveRecord) {
-    return { ok: false, error: "Không tạo được live record.", skipped: true };
+  if (!result.ok) {
+    return { ok: false, error: result.error || "Không đồng bộ live.", code: result.code };
   }
+  return { ok: true, row: result };
+}
 
-  const syncResult = await liveApi.upsertMatchLive(liveRecord);
-  if (!syncResult.ok) {
-    return { ok: false, error: syncResult.error || "Không đồng bộ live.", liveRecord };
+export async function revokeOfficialAssignedMatchLive({ tournament, matchId, clubId }) {
+  if (!tournament || !matchId) {
+    return { ok: false, error: "Thiếu giải hoặc trận.", skipped: true };
   }
-  return { ok: true, row: syncResult.row, liveRecord };
+  const scope = resolveScope(tournament, clubId);
+  return revokeOfficialMatchLiveCommand({
+    ...scope,
+    matchId,
+  });
 }
 
 /**
- * After assign/reassign/auto-assign, sync affected matches to live.
+ * After assign/reassign/auto-assign/unassign, sync affected matches to live.
  */
 export async function syncOfficialRefereeAssignResultToLive({
   tournament,
@@ -107,6 +93,20 @@ export async function syncOfficialRefereeAssignResultToLive({
 }) {
   if (!assignResult?.ok || !tournament) {
     return { ok: false, error: "Không có kết quả phân công hợp lệ.", synced: [] };
+  }
+
+  if (assignResult.matchId && !assignResult.match && !assignResult.assigned) {
+    const revoked = await revokeOfficialAssignedMatchLive({
+      tournament,
+      matchId: assignResult.matchId,
+      clubId,
+    });
+    return {
+      ok: revoked.ok !== false,
+      synced: [],
+      revoked: [assignResult.matchId],
+      error: revoked.ok === false ? revoked.error : null,
+    };
   }
 
   const matches = [];
@@ -150,19 +150,9 @@ export async function syncOfficialRefereeAssignResultToLive({
       failures.push({
         matchId: match.id,
         error: result.error,
-        needsSupabase: Boolean(result.needsSupabase),
+        code: result.code,
       });
     }
-  }
-
-  if (failures.some((item) => item.needsSupabase)) {
-    return {
-      ok: false,
-      error: failures.find((item) => item.needsSupabase)?.error,
-      synced,
-      failures,
-      needsSupabase: true,
-    };
   }
 
   if (failures.length && synced.length === 0) {

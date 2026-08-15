@@ -3,7 +3,7 @@
  */
 
 import { createId } from "../../../utils/id.js";
-import { MATCH_STAGE, MATCH_STATUS } from "../../../models/tournament/constants.js";
+import { MATCH_STAGE, MATCH_STATUS, TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 import {
   RESULTS_OPS_AUDIT,
   appendResultsOpsAudit,
@@ -122,7 +122,8 @@ function resolveFourth(event, thirdPlaceWinnerId) {
 }
 
 /**
- * Build final ranking podium from KO results, else group standings fallback.
+ * Build final ranking podium from KO results.
+ * Official/Open: completed Final winner only — no standings_fallback champion.
  */
 export function buildFinalRanking(tournament, eventId = "") {
   const event =
@@ -160,7 +161,7 @@ export function buildFinalRanking(tournament, eventId = "") {
     });
   }
 
-  if (ranking.length === 0) {
+  if (ranking.length === 0 && tournament?.mode !== TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
     const live = getLiveStandings(tournament, event.id);
     const groups =
       live?.groups ||

@@ -14,7 +14,15 @@ import { resolveEntryLabel } from "../../tournament/engines/tournamentDirectorEn
 import { useScoreDrafts } from "../../tournament/useScoreDrafts.js";
 import { touchButtonSx } from "./mobileUi.js";
 
-function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft, presentation }) {
+function GroupMatchScoreRow({
+  match,
+  entries,
+  players,
+  onSubmitScore,
+  draft,
+  presentation,
+  commitLabel = "Chốt kết quả",
+}) {
   const [localScoreA, setLocalScoreA] = useState(match.scoreA ?? "");
   const [localScoreB, setLocalScoreB] = useState(match.scoreB ?? "");
 
@@ -65,11 +73,12 @@ function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft, pre
         </Typography>
         <Chip
           size="small"
-          label={completed ? "Đã xong" : "Chờ điểm"}
+          label={completed ? `${match.scoreA} — ${match.scoreB}` : "Chờ trọng tài / chốt"}
           color={completed ? "success" : "default"}
         />
       </Stack>
 
+      {completed || !onSubmitScore ? null : (
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
         <TextField
           size="small"
@@ -95,9 +104,10 @@ function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft, pre
           sx={{ ...touchButtonSx, whiteSpace: "nowrap" }}
           onClick={handleSubmit}
         >
-          Lưu điểm
+          {commitLabel}
         </Button>
       </Stack>
+      )}
     </Paper>
   );
 }
@@ -135,11 +145,10 @@ export default function GroupStagePanel({
       >
         <Box>
           <Typography variant="subtitle1" fontWeight="bold">
-            Nhập điểm vòng bảng
+            Nhập / chốt điểm vòng bảng
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Đã hoàn thành {completedCount}/{groupMatches.length} trận. Điểm đang nhập được giữ
-            khi chuyển tab. Khi nhập đủ, bracket knock-out sẽ được tạo tự động từ BXH.
+            Kết quả chính thức do lệnh chốt server ghi. Điểm live trọng tài chỉ là tạm thời.
           </Typography>
         </Box>
         <Chip label={`${completedCount}/${groupMatches.length} trận`} color="primary" />
@@ -164,7 +173,7 @@ export default function GroupStagePanel({
               </Typography>
               <Stack spacing={1}>
                 {matches.map((match) => (
-                  <GroupMatchScoreRow
+                    <GroupMatchScoreRow
                     key={match.id}
                     match={match}
                     entries={entries}
@@ -172,6 +181,7 @@ export default function GroupStagePanel({
                     onSubmitScore={onSubmitScore}
                     draft={draft}
                     presentation={matchPresentationById?.[String(match.id)] || null}
+                    commitLabel="Chốt kết quả"
                   />
                 ))}
               </Stack>
