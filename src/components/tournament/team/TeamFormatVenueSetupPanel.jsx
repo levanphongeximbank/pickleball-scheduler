@@ -35,6 +35,7 @@ import {
   validateRosterRules,
 } from "../../../features/team-tournament/engines/teamFormatVenueConfig.js";
 import { listLockedCompetitionStages } from "../../../features/team-tournament/engines/teamStageTieBreakPolicy.js";
+import { listClustersForVenue } from "../../../features/court-cluster/services/courtClusterService.js";
 import {
   DEFAULT_STAGE_SCORING_ENTRY,
   DEFAULT_STAGE_SCORING_POLICY,
@@ -84,6 +85,7 @@ export default function TeamFormatVenueSetupPanel({
   tournament = null,
   clubId = "",
   tenantId = null,
+  registeredClusterId = "",
   canManage = false,
   teamCountHint = 0,
   onSave,
@@ -93,6 +95,8 @@ export default function TeamFormatVenueSetupPanel({
   onFormatDirtyDiagnostic = null,
   /** @internal test override */
   listCourtsFn = listCanonicalClubCourtsForFormatVenue,
+  /** @internal test override */
+  listClustersFn = listClustersForVenue,
   /** @internal test override — canonical rename only (not Format & Venue blob). */
   renameTournamentFn = renameTeamTournamentDisplayName,
 }) {
@@ -127,7 +131,11 @@ export default function TeamFormatVenueSetupPanel({
     defaults.qualificationCount || 2
   );
   const [knockoutFormat, setKnockoutFormat] = useState(defaults.knockoutFormat);
+  const [clusterId, setClusterId] = useState(defaults.clusterId || "");
   const [selectedCourtIds, setSelectedCourtIds] = useState(defaults.selectedCourtIds || []);
+  const [courtCapacityWindow, setCourtCapacityWindow] = useState(
+    defaults.courtCapacityWindow || { date: "", startTime: "", endTime: "" }
+  );
   const [stageTieBreakPolicy, setStageTieBreakPolicy] = useState(
     defaults.stageTieBreakPolicy
   );
@@ -141,6 +149,15 @@ export default function TeamFormatVenueSetupPanel({
     () => listLockedCompetitionStages(teamData),
     [teamData]
   );
+  const clusterOptions = useMemo(
+    () => (resolvedTenantId ? listClustersFn(resolvedTenantId) : []),
+    [listClustersFn, resolvedTenantId]
+  );
+  const selectedCourtIdsOutsideCluster = useMemo(() => {
+    if (courtsLoading || !clusterId) return [];
+    const scopedIds = new Set(venueCourts.map((court) => String(court.id)));
+    return selectedCourtIds.filter((courtId) => !scopedIds.has(String(courtId)));
+  }, [clusterId, courtsLoading, selectedCourtIds, venueCourts]);
   const serverFingerprint = useMemo(
     () => buildFormatVenueFingerprint(defaults),
     [defaults]
@@ -162,6 +179,11 @@ export default function TeamFormatVenueSetupPanel({
       Number(groupCount) !== Number(defaults.groupCount || 1) ||
       Number(qualificationCount) !== Number(defaults.qualificationCount || 2) ||
       knockoutFormat !== defaults.knockoutFormat ||
+      clusterId !== (defaults.clusterId || "") ||
+      JSON.stringify(courtCapacityWindow) !==
+        JSON.stringify(
+          defaults.courtCapacityWindow || { date: "", startTime: "", endTime: "" }
+        ) ||
       resolvedGroupMode !== defaults.groupMode ||
       JSON.stringify(rosterRules || {}) !== JSON.stringify(defaults.rosterRules || {}) ||
       JSON.stringify(stageTieBreakPolicy || {}) !==
@@ -177,6 +199,8 @@ export default function TeamFormatVenueSetupPanel({
   }, [
     defaults,
     dreambreakerEnabled,
+    clusterId,
+    courtCapacityWindow,
     formatPreset,
     groupCount,
     groupSetup,
@@ -205,7 +229,11 @@ export default function TeamFormatVenueSetupPanel({
     setGroupCount(defaults.groupCount || 1);
     setQualificationCount(defaults.qualificationCount || 2);
     setKnockoutFormat(defaults.knockoutFormat);
+    setClusterId(defaults.clusterId || "");
     setSelectedCourtIds(defaults.selectedCourtIds || []);
+    setCourtCapacityWindow(
+      defaults.courtCapacityWindow || { date: "", startTime: "", endTime: "" }
+    );
     setStageTieBreakPolicy(defaults.stageTieBreakPolicy);
     setStageScoringPolicy(
       normalizeStageScoringPolicy(defaults.stageScoringPolicy || DEFAULT_STAGE_SCORING_POLICY)
@@ -223,11 +251,30 @@ export default function TeamFormatVenueSetupPanel({
   ]);
 
   useEffect(() => {
+    if (clusterId || defaults.clusterId || !registeredClusterId) return;
+    const registered = clusterOptions.filter(
+      (cluster) => String(cluster.id) === String(registeredClusterId)
+    );
+    if (clusterOptions.length === 1 && registered.length === 1) {
+      setClusterId(String(registered[0].id));
+    }
+  }, [
+    clusterId,
+    clusterOptions,
+    defaults.clusterId,
+    registeredClusterId,
+  ]);
+
+  useEffect(() => {
     let cancelled = false;
-    if (!resolvedClubId) {
+    if (!resolvedClubId || !clusterId) {
       setVenueCourts([]);
       setCourtsLoading(false);
-      setCourtsError("Thiếu clubId — không tải inventory sân.");
+      setCourtsError(
+        !resolvedClubId
+          ? "Thiếu clubId — không tải inventory sân."
+          : "Chọn cụm sân trước khi tải sân vật lý."
+      );
       return undefined;
     }
 
@@ -237,12 +284,13 @@ export default function TeamFormatVenueSetupPanel({
     void listCourtsFn({
       clubId: resolvedClubId,
       tenantId: resolvedTenantId,
+      clusterId,
     }).then((result) => {
       if (cancelled) return;
       setCourtsLoading(false);
       if (!result?.ok) {
         setVenueCourts([]);
-        setCourtsError(result?.error || "Không tải được sân từ cloud.");
+        setCourtsError(result?.error || "Không tải được sân trong cụm từ cloud.");
         return;
       }
       setVenueCourts(Array.isArray(result.courts) ? result.courts : []);
@@ -257,7 +305,7 @@ export default function TeamFormatVenueSetupPanel({
     return () => {
       cancelled = true;
     };
-  }, [resolvedClubId, resolvedTenantId, listCourtsFn]);
+  }, [clusterId, resolvedClubId, resolvedTenantId, listCourtsFn]);
 
   const complete = isFormatVenueSetupComplete(
     {
@@ -269,7 +317,9 @@ export default function TeamFormatVenueSetupPanel({
         groupCount,
         qualificationCount,
         knockoutFormat,
+        clusterId,
         selectedCourtIds,
+        courtCapacityWindow,
         stageTieBreakPolicy,
       }),
     },
@@ -323,6 +373,12 @@ export default function TeamFormatVenueSetupPanel({
 
   function clearCourts() {
     setSelectedCourtIds([]);
+  }
+
+  function handleClusterChange(nextClusterId) {
+    setClusterId(String(nextClusterId || ""));
+    setSelectedCourtIds([]);
+    setVenueCourts([]);
   }
 
   async function handleSaveName() {
@@ -392,9 +448,11 @@ export default function TeamFormatVenueSetupPanel({
       qualificationCount: Math.max(1, Number(qualificationCount) || 1),
       qualifiersPerGroup: Math.max(1, Number(qualificationCount) || 1),
       knockoutFormat,
+      clusterId,
       stageTieBreakPolicy,
       stageScoringPolicy: normalizeStageScoringPolicy(stageScoringPolicy),
       selectedCourtIds,
+      courtCapacityWindow,
       teamsPerGroup:
         resolvedGroupCount > 0
           ? Math.ceil((teamCountHint || teamData?.teams?.length || 0) / resolvedGroupCount) || null
@@ -468,6 +526,129 @@ export default function TeamFormatVenueSetupPanel({
               {nameBusy ? "Đang lưu…" : "Lưu tên giải"}
             </Button>
           ) : null}
+        </Stack>
+
+        <FormControl fullWidth size="small" disabled={!canManage}>
+          <InputLabel>Chọn cụm sân</InputLabel>
+          <Select
+            label="Chọn cụm sân"
+            value={clusterId}
+            onChange={(event) => handleClusterChange(event.target.value)}
+            inputProps={{ "data-testid": "team-tournament-cluster-select" }}
+          >
+            <MenuItem value="">
+              <em>Chưa chọn</em>
+            </MenuItem>
+            {clusterOptions.map((cluster) => (
+              <MenuItem key={cluster.id} value={String(cluster.id)}>
+                {cluster.name || cluster.label || cluster.id}
+                {cluster.status ? ` — ${cluster.status}` : ""}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        {resolvedTenantId && clusterOptions.length === 0 ? (
+          <Alert severity="warning">
+            Venue chưa có cụm sân canonical. Không thể tự dùng venueId làm clusterId.
+          </Alert>
+        ) : null}
+
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          <TextField
+            size="small"
+            type="date"
+            label="Capacity date"
+            value={courtCapacityWindow.date}
+            disabled={!canManage}
+            onChange={(event) =>
+              setCourtCapacityWindow((prev) => ({ ...prev, date: event.target.value }))
+            }
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ "data-testid": "team-tournament-capacity-date" }}
+            fullWidth
+          />
+          <TextField
+            size="small"
+            type="time"
+            label="Reservation start time"
+            value={courtCapacityWindow.startTime}
+            disabled={!canManage}
+            onChange={(event) =>
+              setCourtCapacityWindow((prev) => ({
+                ...prev,
+                startTime: event.target.value,
+              }))
+            }
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ "data-testid": "team-tournament-capacity-start" }}
+            fullWidth
+          />
+          <TextField
+            size="small"
+            type="time"
+            label="Reservation end time"
+            value={courtCapacityWindow.endTime}
+            disabled={!canManage}
+            onChange={(event) =>
+              setCourtCapacityWindow((prev) => ({ ...prev, endTime: event.target.value }))
+            }
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ "data-testid": "team-tournament-capacity-end" }}
+            fullWidth
+          />
+        </Stack>
+
+        <Stack spacing={1}>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Typography variant="subtitle2" fontWeight={700}>
+              Chọn sân vật lý (selectedCourtIds)
+            </Typography>
+            <Button size="small" disabled={!canManage || venueCourts.length === 0} onClick={selectAllCourts}>
+              Chọn tất cả
+            </Button>
+            <Button size="small" disabled={!canManage} onClick={clearCourts}>
+              Bỏ chọn
+            </Button>
+          </Stack>
+          {courtsLoading ? (
+            <Alert severity="info">Đang tải sân vật lý trong cụm từ cloud…</Alert>
+          ) : courtsError ? (
+            <Alert severity="info">{courtsError}</Alert>
+          ) : venueCourts.length === 0 ? (
+            <Alert severity="warning">
+              Không có sân vật lý đã gắn với cụm đã chọn. Sân thiếu clusterId bị từ chối.
+            </Alert>
+          ) : (
+            <FormGroup>
+              {venueCourts.map((court) => (
+                <FormControlLabel
+                  key={court.id}
+                  control={
+                    <Checkbox
+                      checked={selectedCourtIds.includes(String(court.id))}
+                      disabled={!canManage}
+                      onChange={() => toggleCourt(court.id)}
+                    />
+                  }
+                  label={getCourtDisplayName(court)}
+                />
+              ))}
+            </FormGroup>
+          )}
+          {selectedCourtIdsOutsideCluster.length > 0 ? (
+            <Alert severity="error">
+              Có sân đã chọn chưa được gắn vào cụm sân hiện tại:{" "}
+              {selectedCourtIdsOutsideCluster.join(", ")}. Hãy bỏ chọn hoặc cấu hình
+              clusterId canonical cho sân.
+            </Alert>
+          ) : null}
+          {!courtPublishGate.ok ? (
+            <Alert severity="warning">{courtPublishGate.error}</Alert>
+          ) : (
+            <Alert severity="success">
+              Đã chọn {selectedCourtIds.length} sân vật lý — courtId là authority.
+            </Alert>
+          )}
         </Stack>
 
         <FormControl fullWidth size="small" disabled={!canManage}>
@@ -746,53 +927,6 @@ export default function TeamFormatVenueSetupPanel({
               <MenuItem value={KNOCKOUT_FORMAT.SEMIFINALS}>Bán kết (top 4)</MenuItem>
             </Select>
           </FormControl>
-        </Stack>
-
-        <Stack spacing={1}>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Typography variant="subtitle2" fontWeight={700}>
-              Chọn sân (selectedCourtIds)
-            </Typography>
-            <Button size="small" disabled={!canManage || venueCourts.length === 0} onClick={selectAllCourts}>
-              Chọn tất cả
-            </Button>
-            <Button size="small" disabled={!canManage} onClick={clearCourts}>
-              Bỏ chọn
-            </Button>
-          </Stack>
-          {courtsLoading ? (
-            <Alert severity="info">Đang tải inventory sân từ cloud…</Alert>
-          ) : courtsError ? (
-            <Alert severity="error">{courtsError}</Alert>
-          ) : venueCourts.length === 0 ? (
-            <Alert severity="info">
-              CLB chưa có sân trong inventory cloud. Có thể tiếp tục thiết lập; công bố lịch sẽ bị
-              chặn đến khi chọn sân.
-            </Alert>
-          ) : (
-            <FormGroup>
-              {venueCourts.map((court) => (
-                <FormControlLabel
-                  key={court.id}
-                  control={
-                    <Checkbox
-                      checked={selectedCourtIds.includes(String(court.id))}
-                      disabled={!canManage}
-                      onChange={() => toggleCourt(court.id)}
-                    />
-                  }
-                  label={getCourtDisplayName(court)}
-                />
-              ))}
-            </FormGroup>
-          )}
-          {!courtPublishGate.ok ? (
-            <Alert severity="warning">{courtPublishGate.error}</Alert>
-          ) : (
-            <Alert severity="success">
-              Đã chọn {selectedCourtIds.length} sân — lịch sẽ dùng các ID này (không dùng Sân N giả).
-            </Alert>
-          )}
         </Stack>
 
         {canManage ? (

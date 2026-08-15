@@ -2,8 +2,11 @@ import { stableCanonicalStringify } from "../canonical/teamTournamentCanonical.j
 
 const SCHEDULE_MATCHUP_FIELDS = new Set([
   "scheduledAt",
+  "scheduledEnd",
   "lineupLockAt",
   "courtLabel",
+  "courtId",
+  "clusterId",
   "scheduleMeta",
   "groupId",
   "roundNumber",
@@ -31,8 +34,11 @@ function scheduleEntries(matchups) {
   return list(matchups).map((matchup) => ({
     matchupId: matchup.id,
     scheduledAt: matchup.scheduledAt ?? null,
+    scheduledEnd: matchup.scheduledEnd ?? null,
     lineupLockAt: matchup.lineupLockAt ?? null,
     courtLabel: matchup.courtLabel ?? null,
+    courtId: matchup.courtId ?? null,
+    clusterId: matchup.clusterId ?? null,
     groupId: matchup.groupId ?? matchup.scheduleMeta?.groupId ?? null,
     roundNumber: matchup.roundNumber ?? matchup.scheduleMeta?.roundNumber ?? null,
     matchNumberInRound:

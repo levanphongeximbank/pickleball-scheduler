@@ -108,7 +108,13 @@ export function buildFormatVenueFingerprint(defaults = {}) {
     groupCount: Number(defaults.groupCount) || 0,
     qualificationCount: Number(defaults.qualificationCount) || 0,
     knockoutFormat: defaults.knockoutFormat || "",
+    clusterId: defaults.clusterId || "",
     selectedCourtIds: [...(defaults.selectedCourtIds || [])].map(String).sort(),
+    courtCapacityWindow: defaults.courtCapacityWindow || {
+      date: "",
+      startTime: "",
+      endTime: "",
+    },
     stageTieBreakPolicy: defaults.stageTieBreakPolicy || {},
     stageScoringPolicy: defaults.stageScoringPolicy || {},
   });

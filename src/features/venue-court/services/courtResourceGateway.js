@@ -185,11 +185,13 @@ export function reserveCourts(options = {}) {
 
   let courts;
   try {
-    courts = deps.listCourts({
-      clubId,
-      tenantId,
-      includeInactive: true,
-    });
+    courts = Array.isArray(options.courts)
+      ? options.courts
+      : deps.listCourts({
+          clubId,
+          tenantId,
+          includeInactive: true,
+        });
   } catch (error) {
     return fail(
       COURT_RESOURCE_CODE.DATA_UNAVAILABLE,

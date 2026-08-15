@@ -338,10 +338,18 @@ export function normalizeMatchup(matchup) {
     id: String(matchup.id).trim(),
     teamAId: String(matchup.teamAId || "").trim(),
     teamBId: String(matchup.teamBId || "").trim(),
-    scheduledAt: matchup.scheduledAt || null,
+    scheduledAt: matchup.scheduledAt || matchup.scheduleMeta?.scheduledAt || null,
+    scheduledEnd: matchup.scheduledEnd || matchup.scheduleMeta?.scheduledEnd || null,
     lineupLockAt: matchup.lineupLockAt || null,
     courtLabel: matchup.courtLabel ? String(matchup.courtLabel).trim() : "",
-    courtId: matchup.courtId ? String(matchup.courtId).trim() : "",
+    courtId:
+      matchup.courtId || matchup.scheduleMeta?.courtId
+        ? String(matchup.courtId || matchup.scheduleMeta?.courtId).trim()
+        : "",
+    clusterId:
+      matchup.clusterId || matchup.scheduleMeta?.clusterId
+        ? String(matchup.clusterId || matchup.scheduleMeta?.clusterId).trim()
+        : "",
     groupId: matchup.groupId ? String(matchup.groupId).trim() : "",
     roundNumber: Number(matchup.roundNumber) > 0 ? Number(matchup.roundNumber) : 0,
     matchNumberInRound:
@@ -449,9 +457,11 @@ export function createMatchupRecord(teamAId, teamBId, options = {}) {
     teamBId,
     groupId: options.groupId || "",
     scheduledAt: options.scheduledAt || null,
+    scheduledEnd: options.scheduledEnd || null,
     lineupLockAt: options.lineupLockAt || null,
     courtLabel: options.courtLabel || "",
     courtId: options.courtId || "",
+    clusterId: options.clusterId || "",
     roundNumber: Number(options.roundNumber) > 0 ? Number(options.roundNumber) : 0,
     matchNumberInRound:
       Number(options.matchNumberInRound) > 0 ? Number(options.matchNumberInRound) : 0,

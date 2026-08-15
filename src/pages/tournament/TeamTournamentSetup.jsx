@@ -76,6 +76,10 @@ import TeamDisciplinesPanel from "../../components/tournament/team/TeamDisciplin
 import TeamGroupDivisionPanel from "../../components/tournament/team/TeamGroupDivisionPanel.jsx";
 import TeamFormatVenueSetupPanel from "../../components/tournament/team/TeamFormatVenueSetupPanel.jsx";
 import { renameTeamTournamentDisplayName } from "../../features/team-tournament/services/teamTournamentRenameService.js";
+import {
+  checkTeamTournamentCourtResourceReadiness,
+  saveTeamTournamentCourtResourceSetup,
+} from "../../features/team-tournament/services/teamTournamentCourtResourceSetupService.js";
 import TeamMatchupOperationsCard from "../../components/tournament/team/TeamMatchupOperationsCard.jsx";
 import TeamLineupOverrideDialog from "../../components/tournament/team/TeamLineupOverrideDialog.jsx";
 import TeamForfeitDialog from "../../components/tournament/team/TeamForfeitDialog.jsx";
@@ -209,6 +213,13 @@ export default function TeamTournamentSetup() {
   const effectiveClubId = String(
     tournament?.clubId || loadClubId || activeClubId || ""
   ).trim();
+  const effectiveClub = useMemo(
+    () =>
+      (clubs || []).find(
+        (club) => String(club?.id || club?.clubId || "") === effectiveClubId
+      ) || null,
+    [clubs, effectiveClubId]
+  );
 
   /** Preview-only: Format & Venue panel reports local dirty for Save-draft START marker. */
   const formatDirtyRef = useRef(false);
@@ -402,7 +413,21 @@ export default function TeamTournamentSetup() {
       );
       return false;
     }
-    const result = await persistFormatVenueSetup(config);
+    const tenantId =
+      tournament?.tenantId ||
+      tournament?.venueId ||
+      clubPool.tenantId ||
+      tenantPool.tenantId ||
+      currentTenantId;
+    const result = await saveTeamTournamentCourtResourceSetup({
+      clubId: effectiveClubId || activeClubId,
+      tenantId,
+      venueId: tournament?.venueId || tenantId,
+      tournamentId,
+      tournamentName: tournament?.name,
+      config,
+      persistSetupConfig: persistFormatVenueSetup,
+    });
     if (result?.isVersionConflict) {
       setError(
         result.error ||
@@ -664,6 +689,39 @@ export default function TeamTournamentSetup() {
       goToGroupsStep();
       return;
     }
+    const selectedCourtIds = Array.isArray(td?.settings?.selectedCourtIds)
+      ? td.settings.selectedCourtIds.map(String).filter(Boolean)
+      : [];
+    const clusterId = String(td?.settings?.clusterId || "").trim();
+    if (!clusterId || selectedCourtIds.length === 0) {
+      setError("Hãy chọn cụm sân và các sân vật lý trước khi tạo lịch.");
+      return;
+    }
+    const readiness = await checkTeamTournamentCourtResourceReadiness({
+      clubId: effectiveClubId || activeClubId || null,
+      tenantId:
+        tournament?.tenantId ||
+        tournament?.venueId ||
+        clubPool.tenantId ||
+        tenantPool.tenantId ||
+        currentTenantId ||
+        null,
+      venueId: tournament?.venueId || tournament?.tenantId || currentTenantId,
+      tournamentId,
+      config: {
+        clusterId,
+        selectedCourtIds,
+        courtCapacityWindow: td?.settings?.courtCapacityWindow,
+      },
+    });
+    if (!readiness?.ok) {
+      setError(
+        readiness?.error ||
+          "Sân đã chọn chưa sẵn sàng trong capacity reservation của giải."
+      );
+      return;
+    }
+    const venueCourts = readiness.courts || [];
 
     const prepared = await prepareLivePrivatePairingOptions({
       tournament: tournament || null,
@@ -693,7 +751,9 @@ export default function TeamTournamentSetup() {
       competitionClass: COMPETITION_CLASS.INTERNAL,
       clubId: effectiveClubId || activeClubId || null,
       tournamentId: tournamentId || null,
-      selectedCourtIds: td?.settings?.selectedCourtIds || options.selectedCourtIds || [],
+      clusterId,
+      selectedCourtIds,
+      venueCourts,
     };
 
     const next = buildRoundRobinMatchups(
@@ -1395,6 +1455,11 @@ export default function TeamTournamentSetup() {
               clubPool.tenantId ||
               tenantPool.tenantId ||
               currentTenantId
+            }
+            registeredClusterId={
+              effectiveClub?.governance?.registeredClusterId ||
+              effectiveClub?.registeredClusterId ||
+              ""
             }
             canManage={access.canManage}
             teamCountHint={td?.teams?.length || 0}

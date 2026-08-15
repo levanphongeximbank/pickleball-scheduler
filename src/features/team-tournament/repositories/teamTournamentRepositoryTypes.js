@@ -57,6 +57,10 @@
  * @property {SubMatchRecord[]} [subMatches]
  * @property {object} [result]
  * @property {string} [scheduledAt]
+ * @property {string} [scheduledEnd]
+ * @property {string} [courtId]
+ * @property {string} [clusterId]
+ * @property {string} [courtLabel]
  */
 
 /**
@@ -92,6 +96,9 @@
  * @typedef {object} ScheduleRecord
  * @property {string} matchupId
  * @property {string} [scheduledAt]
+ * @property {string} [scheduledEnd]
+ * @property {string} [courtId]
+ * @property {string} [clusterId]
  * @property {string} [courtLabel]
  * @property {number} [roundNumber]
  */
