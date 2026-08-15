@@ -64,6 +64,8 @@ export {
 
 export * from "./referee/index.js";
 
+export * from "./contracts/index.js";
+
 export {
   buildAdapterInventory,
   getAdapterInventoryEntry,
