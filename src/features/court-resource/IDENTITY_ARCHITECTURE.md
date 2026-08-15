@@ -45,5 +45,7 @@ It is authored only: no remote SQL was applied.
 ## Deferred
 
 Reservation tables, runtime gateway integration, venue-court integration,
-tournament booking, Daily Play, Team Tournament, and Court Engine cutover are
-outside Phase 3A.
+tournament booking, Daily Play, Team Tournament, and Court Engine cutover were
+outside Phase 3A. Phase 3B authors `public.court_resource_reservations` as the
+canonical durable capacity authority. Runtime cutover remains **OFF**
+(`CANONICAL_RESERVATION_CUTOVER=false`) until a separate Owner GO.

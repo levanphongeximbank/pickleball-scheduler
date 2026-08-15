@@ -31,6 +31,20 @@ export {
   CANONICAL_COURT_IDENTITY,
 } from "./constants/canonicalIdentity.js";
 export {
+  CANONICAL_RESERVATION_CONTRACT_VERSION,
+  CANONICAL_RESERVATION_TABLE,
+  CANONICAL_RESERVATION_COMMAND_LEDGER,
+  CANONICAL_RESERVE_RPC,
+  CANONICAL_RELEASE_RPC,
+  CANONICAL_AVAILABILITY_RPC,
+  CANONICAL_OWNER_TYPE,
+  CANONICAL_RESERVATION_STATUS,
+  CANONICAL_AVAILABILITY_STATUS,
+  CANONICAL_RESERVATION_CUTOVER_DEFAULT,
+  isCanonicalReservationCutover,
+  mapGatewayOwnerTypeToCanonical,
+} from "./constants/canonicalReservation.js";
+export {
   createCanonicalPhysicalCourt,
   normalizeCanonicalPhysicalCourt,
   updateCanonicalPhysicalCourt,

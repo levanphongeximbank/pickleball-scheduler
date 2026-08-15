@@ -3,7 +3,12 @@
 **Status:** Code foundation on existing booking/inventory substrate  
 **Module owner:** Court Resource (`src/features/court-resource/`)
 **Compatibility substrate:** Venue & Court (`src/features/venue-court/`)
-**Not:** Team Tournament-specific. **Not:** Court Engine live occupancy. **Not:** reservation authority cutover.
+**Not:** Team Tournament-specific. **Not:** Court Engine live occupancy. **Not:** silent Production reservation cutover.
+
+Phase 3B authors the canonical reservation table and RPCs under
+`docs/v5/migrations/court-resource-phase3b-canonical-reservation-01/`.
+`CANONICAL_RESERVATION_CUTOVER` defaults to **false**. Court Engine remains a
+projection/read consumer and does not insert canonical reservation rows.
 
 This document extends — it does not replace — `docs/venue-court/` Phase 1–3 contracts.
 

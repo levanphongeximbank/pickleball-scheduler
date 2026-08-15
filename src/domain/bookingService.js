@@ -46,6 +46,25 @@ import { getCourtDisplayName } from "../models/court.js";
 import { resolveTenantIdForClub } from "../features/tenant/guards/tenantGuard.js";
 import { emitBookingLifecycleNotification } from "../features/notifications/adapters/bookingNotificationPilot.js";
 import { NOTIFICATION_EVENT_TYPES } from "../features/notifications/constants/notificationEvents.js";
+import { isCanonicalReservationCutover } from "../features/court-resource/constants/canonicalReservation.js";
+
+let canonicalBookingGateway = {
+  reserveCourts: null,
+  releaseCourts: null,
+};
+
+/** @internal Gateway bind — breaks ESM init cycle. */
+export function __bindCanonicalBookingGateway(next = {}) {
+  canonicalBookingGateway = {
+    reserveCourts: next.reserveCourts || null,
+    releaseCourts: next.releaseCourts || null,
+  };
+}
+
+/** @internal */
+export function __resetCanonicalBookingGatewayForTests() {
+  canonicalBookingGateway = { reserveCourts: null, releaseCourts: null };
+}
 
 export function loadCourtManagementData(clubId) {
   return {
@@ -54,7 +73,7 @@ export function loadCourtManagementData(clubId) {
   };
 }
 
-export function saveBooking(booking, clubId, { excludeId = null } = {}) {
+export function saveBooking(booking, clubId, { excludeId = null, skipConflictCheck = false } = {}) {
   const bookings = loadBookingsForClub(clubId);
   const isNew = !bookings.some((item) => item.id === booking.id);
   const access = guardBookingSave(clubId, { isNew });
@@ -97,7 +116,7 @@ export function saveBooking(booking, clubId, { excludeId = null } = {}) {
   );
 
   const conflict = checkBookingConflict(bookings, enriched, excludeId);
-  if (conflict) {
+  if (conflict && !skipConflictCheck) {
     return { ok: false, message: conflict.message, conflict };
   }
 
@@ -133,7 +152,63 @@ export function saveBooking(booking, clubId, { excludeId = null } = {}) {
 
 export function createBooking(input, clubId) {
   const record = createBookingRecord(input);
+  if (isCanonicalReservationCutover()) {
+    return createBookingViaCanonical(record, clubId);
+  }
   return saveBooking(record, clubId);
+}
+
+function createBookingViaCanonical(record, clubId) {
+  const reserve = canonicalBookingGateway.reserveCourts;
+  if (typeof reserve !== "function") {
+    return {
+      ok: false,
+      code: "CANONICAL_PATH_UNAVAILABLE",
+      message: "Canonical reservation cutover is enabled but no reserve adapter is bound.",
+    };
+  }
+  const tenantId = resolveTenantIdForClub(clubId);
+  const result = reserve({
+    clubId,
+    tenantId,
+    courtId: record.courtId,
+    physicalCourtId: record.physicalCourtId,
+    physicalCourtIds: record.physicalCourtId ? [record.physicalCourtId] : undefined,
+    owner: {
+      type: "booking",
+      id: record.id,
+      subType: record.bookingType === "recurring" ? "recurring" : "customer",
+    },
+    date: record.date,
+    startTime: record.startTime,
+    endTime: record.endTime,
+    requestId: record.id,
+    label: record.customerName,
+    clusterId: record.clusterId,
+    sourceSystem: record.sourceSystem,
+    sourceVersion: record.sourceVersion,
+    legacyClusterId: record.legacyClusterId || record.clusterId,
+    legacyMappings: record.legacyMappings,
+  });
+  if (!result?.ok) {
+    return {
+      ok: false,
+      code: result?.code || "CANONICAL_PATH_UNAVAILABLE",
+      message: result?.error || result?.message || "Canonical reserve failed.",
+      conflict: result,
+    };
+  }
+  const reservationId = result.reservationIds?.[0]
+    || result.reserved?.[0]?.reservationId
+    || null;
+  const physicalCourtId = result.physicalCourtIds?.[0]
+    || record.physicalCourtId
+    || null;
+  return saveBooking(
+    { ...record, reservationId, physicalCourtId },
+    clubId,
+    { skipConflictCheck: true }
+  );
 }
 
 export function updateBookingStatus(bookingId, nextStatus, clubId) {
