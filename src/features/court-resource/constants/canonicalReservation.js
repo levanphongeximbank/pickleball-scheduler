@@ -45,25 +45,13 @@ export const CANONICAL_DERIVED_STATUS = Object.freeze({
   OPERATIONAL_BLOCK: "OPERATIONAL_BLOCK",
 });
 
-/** STAGING/PREVIEW CUTOVER ONLY — DO NOT MERGE TO PRODUCTION AS-IS */
-export const CANONICAL_RESERVATION_CUTOVER_DEFAULT = true;
+export const CANONICAL_RESERVATION_CUTOVER_DEFAULT = false;
 
 let cutoverOverride = null;
 
 export function isCanonicalReservationCutover() {
   if (cutoverOverride === true) return true;
   if (cutoverOverride === false) return false;
-  // node:test sets NODE_TEST_CONTEXT — keep unit suites on legacy/local paths
-  // unless a test explicitly opts in via __setCanonicalReservationCutoverForTests(true).
-  // Vite Preview/Production builds do not set this, so app default remains ON.
-  const nodeTestContext =
-    typeof globalThis !== "undefined" &&
-    globalThis.process &&
-    globalThis.process.env &&
-    globalThis.process.env.NODE_TEST_CONTEXT;
-  if (nodeTestContext) {
-    return false;
-  }
   return CANONICAL_RESERVATION_CUTOVER_DEFAULT;
 }
 

@@ -5,8 +5,7 @@ export const CANONICAL_PHYSICAL_COURT_MASTER_TARGET =
   "court_resource_physical_courts";
 
 export const DURABLE_CLUSTER_SOURCE = "public.court_clusters.id";
-/** STAGING/PREVIEW CUTOVER ONLY — DO NOT MERGE TO PRODUCTION AS-IS */
-export const CANONICAL_RESERVATION_CUTOVER = true;
+export const CANONICAL_RESERVATION_CUTOVER = false;
 
 export const LEGACY_COURT_MAPPING_STATUS = Object.freeze({
   DETERMINISTIC: "deterministic",
