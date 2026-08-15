@@ -11,6 +11,34 @@ export {
   AVAILABILITY_REASON,
 } from "./services/courtAvailabilityService.js";
 export { getCompetitionCourtAvailability } from "./adapters/competitionCourtAvailabilityAdapter.js";
+export {
+  getCourtAvailability as getCourtResourceAvailability,
+  reserveCourts,
+  releaseCourts,
+  validateCourtAssignment,
+  getReservationOwner,
+} from "./services/courtResourceGateway.js";
+export {
+  extractCourtsFromClubDataV3Payload,
+  normalizeCanonicalClubCourts,
+  listCanonicalCloudCourts,
+} from "./services/canonicalCloudCourtInventory.js";
+export {
+  assertCourtClusterMembership,
+  filterCourtsByClusterMembership,
+} from "./services/courtClusterMembershipService.js";
+export {
+  normalizeOwnerInput,
+  normalizeReservationOwnerFromBooking,
+  isSameReservationOwner,
+} from "./services/reservationOwnerService.js";
+export {
+  COURT_RESOURCE_CONTRACT_VERSION,
+  COURT_RESOURCE_CODE,
+  OWNERSHIP_STATUS,
+  RESERVATION_OWNER_TYPE,
+  CANONICAL_INVENTORY_SOURCE,
+} from "./constants/courtResourceContract.js";
 export { listCanonicalCourtDescriptors } from "./adapters/competitionCourtDescriptorAdapter.js";
 export {
   DESCRIPTOR_AUTHORITY,
