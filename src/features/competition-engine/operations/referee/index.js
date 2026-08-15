@@ -58,5 +58,7 @@ export const COMPETITION_ENGINE_REFEREE_OPERATIONS = Object.freeze({
   wiredToProductionRuntime: false,
   inMemoryRuntimeClassification: "TEST_DOUBLE_ONLY",
   productionRuntimePortsDefined: true,
+  productionRuntimeImplemented: true,
+  stagingBackendCertified: false,
   ownsEngines: false,
 });

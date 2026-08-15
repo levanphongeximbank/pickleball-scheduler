@@ -12,7 +12,11 @@ import {
 import {
   COMPETITION_REFEREE_ADAPTER_CONTRACT_ID,
 } from "../referee/constants.js";
-import { WORKSTREAM_OWNED_CONTRACT_IDS } from "./kernel/constants.js";
+import {
+  COURT_CONTRACT_PROTECTED_PATHS,
+  REFEREE_CONTRACT_PROTECTED_PATHS,
+  WORKSTREAM_OWNED_CONTRACT_IDS,
+} from "./kernel/constants.js";
 import { WORKSTREAM_CONTRACT_DEFINITIONS } from "./definitions.js";
 
 const SCAN_EXT = new Set([".js", ".jsx", ".ts", ".tsx"]);
@@ -127,20 +131,9 @@ export function refereeContractId() {
 
 export function isProtectedCourtOrRefereePath(relativePath) {
   const normalized = String(relativePath || "").split(path.sep).join("/");
-  if (normalized.startsWith("src/features/competition-engine/integration/referee/")) {
-    return true;
-  }
-  if (
-    normalized === COMPETITION_COURT_ADAPTER_AUTHORITATIVE_IMPORT_PATH ||
-    normalized ===
-      "src/features/competition-core/adapters/courtResourceCompetitionAdapter.js" ||
-    normalized === "docs/competition-core/COMPETITION_COURT_ADAPTER_CONTRACT.md" ||
-    normalized.startsWith("tests/competition-core-court-adapter-")
-  ) {
-    return true;
-  }
-  if (normalized.startsWith("tests/competition-engine-referee-")) {
-    return true;
-  }
-  return false;
+  return (
+    COURT_CONTRACT_PROTECTED_PATHS.includes(normalized) ||
+    REFEREE_CONTRACT_PROTECTED_PATHS.includes(normalized) ||
+    normalized === COMPETITION_COURT_ADAPTER_AUTHORITATIVE_IMPORT_PATH
+  );
 }

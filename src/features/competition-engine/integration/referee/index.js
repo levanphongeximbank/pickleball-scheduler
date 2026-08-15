@@ -19,6 +19,13 @@ export {
   REFEREE_ADAPTER_ERROR_CODE_VALUES,
   IN_MEMORY_RUNTIME_CLASSIFICATION,
   PRODUCTION_RUNTIME_CLASSIFICATION,
+  DURABLE_PRODUCTION_RUNTIME_CLASSIFICATION,
+  SCHEMA_FAITHFUL_DRIVER_KIND,
+  LIVE_RPC_DRIVER_KIND,
+  CANONICAL_REFEREE_STATE_ENVELOPE_VERSION,
+  REFEREE_V5_INTERNAL_COMMIT_RPC,
+  CANONICAL_RESULT_LINEAGE,
+  LIVE_RESULT_STATUS,
 } from "./constants.js";
 
 export {
@@ -60,6 +67,11 @@ export {
 } from "./runtimePorts.js";
 
 export { createCanonicalRefereePersistenceRuntime } from "./createCanonicalRefereePersistenceRuntime.js";
+export { createSchemaFaithfulCanonicalRefereeDurableDriver } from "./createSchemaFaithfulCanonicalRefereeDurableDriver.js";
+export { createCanonicalRefereeDurableRuntime } from "./createCanonicalRefereeDurableRuntime.js";
+export { createDurableRefereeOperationsStore } from "./createDurableRefereeOperationsStore.js";
+export { createLiveRpcCanonicalRefereeDurableDriver } from "./createLiveRpcCanonicalRefereeDurableDriver.js";
+export { createCompetitionRefereeProductionRuntime } from "./createCompetitionRefereeProductionRuntime.js";
 
 export { runCompetitionRefereeAdapterConformance } from "./conformance.js";
 
@@ -70,4 +82,6 @@ export const COMPETITION_REFEREE_ADAPTER_INTEGRATION = Object.freeze({
   wiredToProductionRuntime: false,
   inMemoryRuntimeClassification: "TEST_DOUBLE_ONLY",
   productionRuntimePortsDefined: true,
+  productionRuntimeImplemented: true,
+  stagingBackendCertified: false,
 });

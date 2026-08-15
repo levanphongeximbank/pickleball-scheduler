@@ -142,8 +142,21 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     });
   }
 
+  function bindStoreCommand(command = {}) {
+    if (typeof store.setCommandContext === "function") {
+      store.setCommandContext({
+        actor: command.actor || null,
+        idempotencyKey: command.idempotencyKey || command.commandId || null,
+        commandId: command.commandId || command.idempotencyKey || null,
+        tenantId: command.tenantId || null,
+        competitionId: command.competitionId || null,
+      });
+    }
+  }
+
   async function run(command, fn) {
     const inputSnap = snapshotInput(command);
+    bindStoreCommand(command);
     try {
       const result = await fn(command);
       if (JSON.stringify(snapshotInput(command)) !== JSON.stringify(inputSnap)) {
@@ -161,6 +174,10 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         REFEREE_ERROR_CODE.CANONICAL_CALL_FAILED,
         "Referee operations canonical call failed"
       );
+    } finally {
+      if (typeof store.setCommandContext === "function") {
+        store.setCommandContext(null);
+      }
     }
   }
 
@@ -177,11 +194,12 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         {}
       );
     }
+    bindStoreCommand(command);
     const record = store.upsertAssignments(
       tenantId,
       competitionId,
       command.assignments || [],
-      { venueId: command.venueId }
+      { venueId: command.venueId, actor: command.actor }
     );
     if (Array.isArray(command.matches)) {
       for (const match of command.matches) {
