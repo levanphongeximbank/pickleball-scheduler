@@ -76,6 +76,8 @@ Venue & Court must not import Court Engine. Phase 2D wires CE confirm/transfer/p
 * Shared Court Resource Gateway: `reserveCourts` / `releaseCourts` / `validateCourtAssignment` / `getReservationOwner`
 * Canonical cloud inventory: `listCanonicalCloudCourts` / `extractCourtsFromClubDataV3Payload`
 * Cluster membership: `assertCourtClusterMembership` (cluster is a filter, not a reservable unit)
+* Canonical cluster bind: `bindClubCourtsToCluster({ clubId, venueId, clusterId, courtIds, expectedVersion })`
+  (atomic club `registeredClusterId` + selected physical court `clusterId`; no silent `{venueId}-main` stamp)
 * `listCanonicalCourtDescriptors({ tenantId, clubId, venueId, courtIds?, clusterId?, includeInactive?, includeLocked? })` (Phase 3B)
 * `DESCRIPTOR_AUTHORITY` / `SOURCE_CONTRACT_VERSION` / `DESCRIPTOR_DIAGNOSTIC_REASON` / `DESCRIPTOR_ERROR`
 * Civil time helpers (Phase 2E): `getLocalCivilDate`, `normalizeCivilWindow`, `isoToCivilHhmmOnDate`, `CIVIL_TIME_ERROR`, …
