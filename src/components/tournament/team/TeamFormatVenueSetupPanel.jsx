@@ -35,7 +35,11 @@ import {
   validateRosterRules,
 } from "../../../features/team-tournament/engines/teamFormatVenueConfig.js";
 import { listLockedCompetitionStages } from "../../../features/team-tournament/engines/teamStageTieBreakPolicy.js";
-import { listClustersForVenue } from "../../../features/court-cluster/services/courtClusterService.js";
+import {
+  createTeamTournamentCourtAdapter,
+  deriveCanonicalClusterChoices,
+  toFormatVenueCourt,
+} from "../../../features/team-tournament/adapters/canonical/TeamTournamentCourtAdapter.js";
 import {
   DEFAULT_STAGE_SCORING_ENTRY,
   DEFAULT_STAGE_SCORING_POLICY,
@@ -49,12 +53,31 @@ import {
   buildFormatVenueFingerprint,
   decideSetupFormRehydration,
 } from "../../../features/team-tournament/setup/setupFormRehydration.js";
-import { listCanonicalClubCourtsForFormatVenue } from "../../../features/team-tournament/services/canonicalClubCourtInventory.js";
 import {
   hydrateTeamTournamentNameDraft,
   renameTeamTournamentDisplayName,
 } from "../../../features/team-tournament/services/teamTournamentRenameService.js";
 import { getCourtDisplayName } from "../../../pages/courts.logic.js";
+
+async function listEligibleCourtsForFormatVenue(params = {}) {
+  const adapter = params.courtAdapter || createTeamTournamentCourtAdapter();
+  const listed = await adapter.listEligibleCourts({
+    clubId: params.clubId,
+    tenantId: params.tenantId,
+    venueId: params.venueId,
+    competitionId: params.competitionId || params.tournamentId,
+    competitionType: "team",
+    clusterId: params.clusterId,
+  });
+  if (!listed?.ok) {
+    return { ok: false, error: listed?.error || "Không tải được sân canonical." };
+  }
+  return {
+    ok: true,
+    courts: (listed.courts || []).map(toFormatVenueCourt),
+    clusters: deriveCanonicalClusterChoices(listed.courts || []),
+  };
+}
 
 const STAGE_POLICY_LABELS = {
   [COMPETITION_STAGE.GROUP]: "Vòng bảng",
@@ -94,9 +117,9 @@ export default function TeamFormatVenueSetupPanel({
   /** Preview-only diagnostic: reports local Format dirty vs last loaded defaults. */
   onFormatDirtyDiagnostic = null,
   /** @internal test override */
-  listCourtsFn = listCanonicalClubCourtsForFormatVenue,
-  /** @internal test override */
-  listClustersFn = listClustersForVenue,
+  listCourtsFn = listEligibleCourtsForFormatVenue,
+  /** @internal test override — omit to derive clusters from canonical eligible courts */
+  listClustersFn = null,
   /** @internal test override — canonical rename only (not Format & Venue blob). */
   renameTournamentFn = renameTeamTournamentDisplayName,
 }) {
@@ -107,8 +130,8 @@ export default function TeamFormatVenueSetupPanel({
   );
 
   const resolvedClubId = clubId || tournament?.clubId || "";
-  const resolvedTenantId =
-    tenantId || tournament?.tenantId || tournament?.venueId || null;
+  const resolvedTenantId = tenantId || tournament?.tenantId || null;
+  const resolvedVenueId = tournament?.venueId || null;
 
   const [venueCourts, setVenueCourts] = useState([]);
   const [courtsLoading, setCourtsLoading] = useState(Boolean(resolvedClubId));
@@ -149,10 +172,13 @@ export default function TeamFormatVenueSetupPanel({
     () => listLockedCompetitionStages(teamData),
     [teamData]
   );
-  const clusterOptions = useMemo(
-    () => (resolvedTenantId ? listClustersFn(resolvedTenantId) : []),
-    [listClustersFn, resolvedTenantId]
-  );
+  const [canonicalClusters, setCanonicalClusters] = useState([]);
+  const clusterOptions = useMemo(() => {
+    if (typeof listClustersFn === "function") {
+      return resolvedTenantId ? listClustersFn(resolvedTenantId) : [];
+    }
+    return canonicalClusters;
+  }, [canonicalClusters, listClustersFn, resolvedTenantId]);
   const selectedCourtIdsOutsideCluster = useMemo(() => {
     if (courtsLoading || !clusterId) return [];
     const scopedIds = new Set(venueCourts.map((court) => String(court.id)));
@@ -251,6 +277,27 @@ export default function TeamFormatVenueSetupPanel({
   ]);
 
   useEffect(() => {
+    if (typeof listClustersFn === "function") return undefined;
+    let cancelled = false;
+    if (!resolvedClubId || !resolvedTenantId) {
+      setCanonicalClusters([]);
+      return undefined;
+    }
+    void listEligibleCourtsForFormatVenue({
+      clubId: resolvedClubId,
+      tenantId: resolvedTenantId,
+      venueId: resolvedVenueId,
+      competitionId: tournament?.id,
+    }).then((result) => {
+      if (cancelled) return;
+      setCanonicalClusters(result?.clusters || []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [listClustersFn, resolvedClubId, resolvedTenantId, resolvedVenueId, tournament?.id]);
+
+  useEffect(() => {
     if (clusterId || defaults.clusterId || !registeredClusterId) return;
     const registered = clusterOptions.filter(
       (cluster) => String(cluster.id) === String(registeredClusterId)
@@ -284,6 +331,8 @@ export default function TeamFormatVenueSetupPanel({
     void listCourtsFn({
       clubId: resolvedClubId,
       tenantId: resolvedTenantId,
+      venueId: resolvedVenueId,
+      competitionId: tournament?.id,
       clusterId,
     }).then((result) => {
       if (cancelled) return;
@@ -305,7 +354,7 @@ export default function TeamFormatVenueSetupPanel({
     return () => {
       cancelled = true;
     };
-  }, [clusterId, resolvedClubId, resolvedTenantId, listCourtsFn]);
+  }, [clusterId, resolvedClubId, resolvedTenantId, resolvedVenueId, listCourtsFn, tournament?.id]);
 
   const complete = isFormatVenueSetupComplete(
     {
@@ -549,7 +598,7 @@ export default function TeamFormatVenueSetupPanel({
         </FormControl>
         {resolvedTenantId && clusterOptions.length === 0 ? (
           <Alert severity="warning">
-            Venue chưa có cụm sân canonical. Không thể tự dùng venueId làm clusterId.
+            Cluster choices come from canonical eligible Physical Courts. venueId is not clusterId.
           </Alert>
         ) : null}
 

@@ -1,3 +1,9 @@
+/**
+ * Team-internal matchup/result helpers.
+ * Live scoring, official result acceptance, and result revision belong to
+ * CORE-16 / CORE-17. Only ACCEPTED + ACTIVE official results may feed
+ * standings / bracket / aggregate.
+ */
 import {
   LINEUP_STATUS,
   MATCHUP_STATUS,

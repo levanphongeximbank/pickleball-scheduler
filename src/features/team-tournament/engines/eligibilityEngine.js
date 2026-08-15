@@ -1,4 +1,5 @@
-import { getPlayerGenderKey, getPlayerRatingInternal } from "../../../models/player.js";
+import { getPlayerGenderKey } from "../../../models/player.js";
+import { readTeamRatingValue } from "../adapters/canonical/TeamTournamentRatingAdapter.js";
 import { findTeam, normalizeTeamData } from "../models/index.js";
 
 export const ELIGIBILITY_VIOLATION = {
@@ -121,18 +122,40 @@ export function checkPlayerEligibility(player, rules, options = {}) {
   }
 
   if (normalized.skill.enabled) {
-    const level = getPlayerRatingInternal(player);
-    if (normalized.skill.minLevel != null && level < normalized.skill.minLevel) {
+    try {
+      const level = readTeamRatingValue(player);
+      if (level == null) {
+        violations.push({
+          code: ELIGIBILITY_VIOLATION.SKILL_TOO_LOW,
+          message: "Thiếu rating evidence canonical để kiểm tra trình độ.",
+        });
+      } else {
+        if (normalized.skill.minLevel != null && level < normalized.skill.minLevel) {
+          violations.push({
+            code: ELIGIBILITY_VIOLATION.SKILL_TOO_LOW,
+            message: `Trình độ ${level} thấp hơn mức tối thiểu ${normalized.skill.minLevel}.`,
+          });
+        }
+        if (normalized.skill.maxLevel != null && level > normalized.skill.maxLevel) {
+          violations.push({
+            code: ELIGIBILITY_VIOLATION.SKILL_TOO_HIGH,
+            message: `Trình độ ${level} vượt mức tối đa ${normalized.skill.maxLevel}.`,
+          });
+        }
+      }
+    } catch (err) {
       violations.push({
         code: ELIGIBILITY_VIOLATION.SKILL_TOO_LOW,
-        message: `Trình độ ${level} thấp hơn mức tối thiểu ${normalized.skill.minLevel}.`,
+        message:
+          err?.message ||
+          "Rating evidence is not configured — refusing invented default.",
       });
-    }
-    if (normalized.skill.maxLevel != null && level > normalized.skill.maxLevel) {
-      violations.push({
-        code: ELIGIBILITY_VIOLATION.SKILL_TOO_HIGH,
-        message: `Trình độ ${level} vượt mức tối đa ${normalized.skill.maxLevel}.`,
-      });
+      return {
+        ok: false,
+        playerId: player?.id ? String(player.id) : "",
+        playerName: player?.name || "",
+        violations,
+      };
     }
   }
 

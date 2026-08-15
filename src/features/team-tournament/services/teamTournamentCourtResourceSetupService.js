@@ -1,9 +1,10 @@
 import {
-  getCourtAvailability,
-  releaseCourts,
-  reserveCourts,
-} from "../../venue-court/services/courtResourceGateway.js";
-import { listCanonicalCloudCourts } from "../../venue-court/services/canonicalCloudCourtInventory.js";
+  COMPETITION_COURT_RESULT_CODE,
+} from "../../competition-core/contracts/competitionCourtAdapterContract.js";
+import {
+  createTeamTournamentCourtAdapter,
+  toFormatVenueCourt,
+} from "../adapters/canonical/TeamTournamentCourtAdapter.js";
 
 const GENERIC_SAVE_ERROR =
   "Không thể lưu cụm sân và sức chứa. Kiểm tra lịch sân rồi thử lại.";
@@ -77,10 +78,139 @@ export function validateTeamTournamentCourtResourceSetup(config = {}) {
   };
 }
 
+function physicalId(court) {
+  return text(court?.physicalCourtId || court?.id || court?.courtId);
+}
+
+function isOwnReservation(row) {
+  const status = String(row?.ownership?.status || "").toLowerCase();
+  return (
+    row?.resultCode === COMPETITION_COURT_RESULT_CODE.OWN_RESERVATION ||
+    status === "own_reservation"
+  );
+}
+
+function isAvailable(row) {
+  return row?.available === true || row?.resultCode === COMPETITION_COURT_RESULT_CODE.AVAILABLE || isOwnReservation(row);
+}
+
+function wrapLegacyCourtDeps(deps = {}) {
+  if (deps.courtAdapter) return deps.courtAdapter;
+  const hasLegacy =
+    typeof deps.listCanonicalCloudCourts === "function" ||
+    typeof deps.getCourtAvailability === "function" ||
+    typeof deps.reserveCourts === "function";
+  if (!hasLegacy) {
+    return createTeamTournamentCourtAdapter(deps.courtDeps || {});
+  }
+
+  return {
+    async listEligibleCourts(input = {}) {
+      const listed = await deps.listCanonicalCloudCourts({
+        clubId: input.clubId,
+        tenantId: input.tenantId,
+        venueId: input.venueId,
+        clusterId: input.clusterId,
+        includeInactive: false,
+      });
+      const courts = listed?.ok ? listed.courts || [] : [];
+      return {
+        ok: listed?.ok === true,
+        courts: courts.map((court) => ({
+          ...court,
+          physicalCourtId: physicalId(court),
+          clusterId: court.clusterId,
+        })),
+      };
+    },
+    async getCourtAvailability(input = {}) {
+      const availability = await deps.getCourtAvailability({
+        clubId: input.clubId,
+        tenantId: input.tenantId,
+        venueId: input.venueId,
+        clusterId: input.clusterId,
+        courtIds: input.physicalCourtIds || input.selectedCourtIds,
+        selectedCourtIds: input.physicalCourtIds || input.selectedCourtIds,
+        date: input.date,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        owner: { type: "tournament", id: input.competitionId },
+        context: { owner: { type: "tournament", id: input.competitionId } },
+        includeUnavailable: input.includeUnavailable !== false,
+        courts: input.courts,
+      });
+      return {
+        ok: true,
+        courts: (availability?.courts || []).map((row) => ({
+          ...row,
+          physicalCourtId: physicalId(row) || text(row.courtId),
+          available: row.available === true,
+          resultCode:
+            row.ownership?.status === "own_reservation"
+              ? COMPETITION_COURT_RESULT_CODE.OWN_RESERVATION
+              : row.available === true
+                ? COMPETITION_COURT_RESULT_CODE.AVAILABLE
+                : row.resultCode,
+          ownership: row.ownership,
+        })),
+      };
+    },
+    async reserveCourts(input = {}) {
+      const reservation = await deps.reserveCourts({
+        clubId: input.clubId,
+        tenantId: input.tenantId,
+        venueId: input.venueId,
+        clusterId: input.clusterId,
+        selectedCourtIds: input.physicalCourtIds,
+        courtIds: input.physicalCourtIds,
+        date: input.date,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        owner: { type: "tournament", id: input.competitionId },
+        label: input.label,
+        courts: input.courts,
+      });
+      return {
+        ok: reservation?.ok === true,
+        reserved: (reservation?.created || []).map((booking) => ({
+          physicalCourtId: text(booking?.courtId || booking?.court_id),
+        })),
+        created: reservation?.created || [],
+        error: reservation?.error,
+      };
+    },
+    async releaseCourts(input = {}) {
+      const releaseFn = deps.releaseCourts;
+      if (typeof releaseFn !== "function") return { ok: true, released: [] };
+      return releaseFn({
+        clubId: input.clubId,
+        owner: { type: "tournament", id: input.competitionId },
+        courtIds: input.physicalCourtIds,
+      });
+    },
+  };
+}
+
+function teamCourtContext(params, normalized) {
+  return {
+    clubId: text(params.clubId),
+    tenantId: text(params.tenantId),
+    venueId: text(params.venueId),
+    competitionId: text(params.tournamentId || params.competitionId),
+    competitionType: "team",
+    clusterId: normalized.clusterId,
+    physicalCourtIds: normalized.selectedCourtIds,
+    selectedCourtIds: normalized.selectedCourtIds,
+    date: normalized.courtCapacityWindow.date,
+    startTime: normalized.courtCapacityWindow.startTime,
+    endTime: normalized.courtCapacityWindow.endTime,
+    label: text(params.tournamentName) || text(params.tournamentId),
+  };
+}
+
 /**
  * Single Team Tournament application boundary for court-capacity setup.
- * Shared Venue/Court remains the inventory, membership, availability, and
- * reservation authority; this service only coordinates the consumer write.
+ * Goes through TeamTournamentCourtAdapter → Competition Court Adapter V1.
  */
 export async function saveTeamTournamentCourtResourceSetup(
   params = {},
@@ -90,46 +220,24 @@ export async function saveTeamTournamentCourtResourceSetup(
   if (!normalized.ok) return normalized;
 
   const clubId = text(params.clubId);
-  const venueId = text(params.venueId || params.tenantId);
-  const tenantId = text(params.tenantId || params.venueId);
+  const tenantId = text(params.tenantId);
   const tournamentId = text(params.tournamentId);
-  const owner = { type: "tournament", id: tournamentId };
-  if (!clubId || !tournamentId) {
+  if (!clubId || !tournamentId || !tenantId) {
     return { ok: false, error: GENERIC_SAVE_ERROR };
   }
 
-  const availabilityFn = deps.getCourtAvailability || getCourtAvailability;
-  const listCourtsFn = deps.listCanonicalCloudCourts || listCanonicalCloudCourts;
-  const reserveFn = deps.reserveCourts || reserveCourts;
-  const releaseFn = deps.releaseCourts || releaseCourts;
   const persistFn = deps.persistSetupConfig || params.persistSetupConfig;
-
   if (typeof persistFn !== "function") {
     return { ok: false, error: GENERIC_SAVE_ERROR };
   }
 
-  const scope = {
-    clubId,
-    tenantId,
-    venueId,
-    clusterId: normalized.clusterId,
-    courtIds: normalized.selectedCourtIds,
-    selectedCourtIds: normalized.selectedCourtIds,
-    ...normalized.courtCapacityWindow,
-    owner,
-    context: { owner },
-  };
+  const adapter = wrapLegacyCourtDeps(deps);
+  const context = teamCourtContext(params, normalized);
 
   try {
-    const inventory = await listCourtsFn({
-      clubId,
-      tenantId,
-      venueId,
-      clusterId: normalized.clusterId,
-      includeInactive: false,
-    });
-    const courts = inventory?.ok ? inventory.courts || [] : [];
-    const inventoryIds = new Set(courts.map((court) => text(court?.id)));
+    const inventory = await adapter.listEligibleCourts(context);
+    const courts = inventory?.ok ? (inventory.courts || []).map(toFormatVenueCourt) : [];
+    const inventoryIds = new Set(courts.map((court) => physicalId(court)));
     if (
       !inventory?.ok ||
       normalized.selectedCourtIds.some((courtId) => !inventoryIds.has(courtId))
@@ -137,29 +245,20 @@ export async function saveTeamTournamentCourtResourceSetup(
       return { ok: false, error: GENERIC_SAVE_ERROR };
     }
 
-    const availability = await availabilityFn({
-      ...scope,
+    const availability = await adapter.getCourtAvailability({
+      ...context,
       courts,
       includeUnavailable: true,
     });
-    const unavailable = (availability?.courts || []).filter(
-      (court) => court?.available !== true
-    );
-    const returnedIds = new Set(
-      (availability?.courts || []).map((court) => text(court?.courtId))
-    );
-    const missing = normalized.selectedCourtIds.filter(
-      (courtId) => !returnedIds.has(courtId)
-    );
+    const rows = availability?.courts || [];
+    const returnedIds = new Set(rows.map((row) => physicalId(row)));
+    const unavailable = rows.filter((row) => !isAvailable(row));
+    const missing = normalized.selectedCourtIds.filter((courtId) => !returnedIds.has(courtId));
     if (unavailable.length > 0 || missing.length > 0) {
       return { ok: false, error: GENERIC_SAVE_ERROR };
     }
 
-    const reservation = await reserveFn({
-      ...scope,
-      courts,
-      label: text(params.tournamentName) || tournamentId,
-    });
+    const reservation = await adapter.reserveCourts({ ...context, courts });
     if (!reservation?.ok) {
       return { ok: false, error: GENERIC_SAVE_ERROR };
     }
@@ -173,16 +272,15 @@ export async function saveTeamTournamentCourtResourceSetup(
     if (result?.ok) return result;
 
     const createdCourtIds = uniqueIds(
-      (reservation.created || []).map(
-        (booking) => booking?.courtId || booking?.court_id
+      (reservation.reserved || reservation.created || []).map(
+        (booking) => booking?.physicalCourtId || booking?.courtId || booking?.court_id
       )
     );
     if (createdCourtIds.length > 0) {
       try {
-        await releaseFn({
-          clubId,
-          owner,
-          courtIds: createdCourtIds,
+        await adapter.releaseCourts({
+          ...context,
+          physicalCourtIds: createdCourtIds,
         });
       } catch {
         // Best-effort owned compensation only. Never broaden the release scope.
@@ -202,25 +300,18 @@ export async function checkTeamTournamentCourtResourceReadiness(
   if (!normalized.ok) return normalized;
 
   const clubId = text(params.clubId);
-  const venueId = text(params.venueId || params.tenantId);
-  const tenantId = text(params.tenantId || params.venueId);
+  const tenantId = text(params.tenantId);
   const tournamentId = text(params.tournamentId);
-  if (!clubId || !tournamentId) {
+  if (!clubId || !tournamentId || !tenantId) {
     return { ok: false, error: GENERIC_SAVE_ERROR };
   }
 
   try {
-    const inventory = await (
-      deps.listCanonicalCloudCourts || listCanonicalCloudCourts
-    )({
-      clubId,
-      tenantId,
-      venueId,
-      clusterId: normalized.clusterId,
-      includeInactive: false,
-    });
+    const adapter = wrapLegacyCourtDeps(deps);
+    const context = teamCourtContext(params, normalized);
+    const inventory = await adapter.listEligibleCourts(context);
     const courts = inventory?.ok ? inventory.courts || [] : [];
-    const inventoryIds = new Set(courts.map((court) => text(court?.id)));
+    const inventoryIds = new Set(courts.map((court) => physicalId(court)));
     if (
       !inventory?.ok ||
       normalized.selectedCourtIds.some((courtId) => !inventoryIds.has(courtId))
@@ -228,30 +319,19 @@ export async function checkTeamTournamentCourtResourceReadiness(
       return { ok: false, error: GENERIC_SAVE_ERROR };
     }
 
-    const owner = { type: "tournament", id: tournamentId };
-    const availability = await (
-      deps.getCourtAvailability || getCourtAvailability
-    )({
-      clubId,
-      tenantId,
-      venueId,
-      clusterId: normalized.clusterId,
-      courtIds: normalized.selectedCourtIds,
+    const availability = await adapter.getCourtAvailability({
+      ...context,
       courts,
-      ...normalized.courtCapacityWindow,
-      owner,
-      context: { owner },
       includeUnavailable: true,
     });
     const rows = availability?.courts || [];
     if (
       rows.length !== normalized.selectedCourtIds.length ||
-      rows.some(
-        (row) =>
-          row?.available !== true ||
-          row?.ownership?.status !== "own_reservation"
-      )
+      rows.some((row) => !isOwnReservation(row) && row?.available !== true)
     ) {
+      return { ok: false, error: GENERIC_SAVE_ERROR };
+    }
+    if (rows.some((row) => !isOwnReservation(row))) {
       return { ok: false, error: GENERIC_SAVE_ERROR };
     }
     return { ok: true, courts, availability };
@@ -259,4 +339,3 @@ export async function checkTeamTournamentCourtResourceReadiness(
     return { ok: false, error: GENERIC_SAVE_ERROR };
   }
 }
-

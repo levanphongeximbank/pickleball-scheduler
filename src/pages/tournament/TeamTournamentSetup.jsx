@@ -23,6 +23,9 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import {
+  createTeamTournamentCourtAdapter,
+} from "../../features/team-tournament/adapters/canonical/TeamTournamentCourtAdapter.js";
+import {
   useTeamTournamentAthletePool,
 } from "../../features/team-tournament/ui/useTeamTournamentAthletePool.js";
 import { TEAM_TOURNAMENT_ATHLETE_SCOPE } from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
@@ -744,6 +747,7 @@ export default function TeamTournamentSetup() {
       return;
     }
 
+    const capacityWindow = td?.settings?.courtCapacityWindow || {};
     const scheduleOptions = {
       ...options,
       ...prepared.pairingOptions,
@@ -754,6 +758,21 @@ export default function TeamTournamentSetup() {
       clusterId,
       selectedCourtIds,
       venueCourts,
+      validateMatchAssignment:
+        capacityWindow.date && capacityWindow.startTime && capacityWindow.endTime
+          ? (input) =>
+              createTeamTournamentCourtAdapter().requireValidMatchAssignment({
+                tenantId: tournament?.tenantId || null,
+                clubId: effectiveClubId || activeClubId || null,
+                competitionId: tournamentId,
+                competitionType: "team",
+                clusterId,
+                date: capacityWindow.date,
+                startTime: capacityWindow.startTime,
+                endTime: capacityWindow.endTime,
+                ...input,
+              })
+          : undefined,
     };
 
     const next = buildRoundRobinMatchups(

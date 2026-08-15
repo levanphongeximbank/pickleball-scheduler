@@ -111,6 +111,7 @@ export default function TournamentVprPanel({
   };
 
   const canConfirm =
+    !isTeamTournamentMode(tournament) &&
     tournament.status === TOURNAMENT_STATUS.ACTIVE &&
     tournament.resultsConfirmation?.confirmed !== true;
 
@@ -131,6 +132,11 @@ export default function TournamentVprPanel({
           <Alert severity="success" variant="outlined">
             Kết quả đã xác nhận lúc{" "}
             {new Date(tournament.resultsConfirmation.confirmedAt).toLocaleString("vi-VN")}
+          </Alert>
+        )}
+        {isTeamTournamentMode(tournament) && (
+          <Alert severity="info" variant="outlined">
+            Ranking chỉ nhận kết quả Team đã chấp nhận. Đóng giải thuộc Team Competition, không thuộc VPR.
           </Alert>
         )}
         {canConfirm && canEdit && (

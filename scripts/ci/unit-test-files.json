@@ -269,6 +269,7 @@
   "tests/team-tournament-referee-canonical-cloud-access-01.test.js",
   "tests/team-tournament-dreambreaker-submit-auth-privacy-01.test.js",
   "tests/team-tournament-stage-tiebreak-policy-01.test.js",
+  "tests/team-tournament-canonical-adapter-b-adoption-01.test.js",
   "tests/team-tournament-canonical-dashboard-lifecycle-01.test.js",
   "tests/team-tournament-post417-regression-closure-01.test.js",
   "tests/team-tournament-scenario-b-ko-lineup-remediation-01.test.js",

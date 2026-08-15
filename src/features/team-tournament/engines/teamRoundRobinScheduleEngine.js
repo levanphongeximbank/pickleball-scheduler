@@ -413,6 +413,31 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
     return errorData;
   }
 
+  if (typeof options.validateMatchAssignment === "function") {
+    for (const matchup of ranked.matchups || []) {
+      const physicalCourtId = matchup.physicalCourtId || matchup.courtId;
+      if (!physicalCourtId) continue;
+      const verdict = options.validateMatchAssignment({
+        matchId: matchup.id,
+        physicalCourtId,
+        clusterId: matchup.clusterId,
+        scheduledAt: matchup.scheduledAt,
+        scheduledEnd: matchup.scheduledEnd,
+      });
+      if (verdict?.ok !== true || verdict?.valid === false) {
+        const errorData = normalizeTeamData({
+          ...prepared,
+          matchups: [],
+        });
+        errorData.ok = false;
+        errorData.code = verdict?.code || "MATCH_ASSIGNMENT_INVALID";
+        errorData.error =
+          verdict?.error || "validateMatchAssignment must PASS before match assignment";
+        return errorData;
+      }
+    }
+  }
+
   return normalizeTeamData({
     ...prepared,
     matchups: ranked.matchups,

@@ -1,4 +1,5 @@
-import { getPlayerGenderKey, getPlayerRatingInternal, normalizeAthleteGender } from "../../../models/player.js";
+import { getPlayerGenderKey, normalizeAthleteGender } from "../../../models/player.js";
+import { readTeamRatingValueOrZero } from "../adapters/canonical/TeamTournamentRatingAdapter.js";
 import { createId } from "../../../utils/id.js";
 import { COMPETITION_CLASS, RESTRICTED_COMPETITION_CLASSES } from "../../private-pairing-rules/constants/enums.js";
 import {
@@ -67,7 +68,7 @@ function isMlpFormatPreset(formatPreset) {
 }
 
 function playerRating(player) {
-  return getPlayerRatingInternal(player);
+  return readTeamRatingValueOrZero(player);
 }
 
 function sortByRatingDesc(players = []) {

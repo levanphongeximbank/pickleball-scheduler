@@ -147,7 +147,11 @@ test("own capacity reservation is required for schedule readiness", async () => 
   };
   const ready = await checkTeamTournamentCourtResourceReadiness(base, deps);
   assert.equal(ready.ok, true);
-  assert.deepEqual(ready.courts, COURTS);
+  assert.equal(ready.courts.length, COURTS.length);
+  assert.deepEqual(
+    ready.courts.map((court) => court.physicalCourtId || court.id),
+    COURTS.map((court) => court.id)
+  );
 
   const notOwned = await checkTeamTournamentCourtResourceReadiness(base, {
     ...deps,
@@ -232,14 +236,17 @@ test("canonical matchup model carries group and knockout court assignment fields
 
 test("UI and shared inventory boundaries remain consumer-only", () => {
   const panel = read("src/components/tournament/team/TeamFormatVenueSetupPanel.jsx");
-  const adapter = read(
-    "src/features/team-tournament/services/canonicalClubCourtInventory.js"
+  const setup = read(
+    "src/features/team-tournament/services/teamTournamentCourtResourceSetupService.js"
   );
-  assert.match(panel, /listClustersForVenue/);
+  assert.match(panel, /TeamTournamentCourtAdapter|createTeamTournamentCourtAdapter/);
   assert.match(panel, /team-tournament-capacity-date/);
   assert.match(panel, /clusterId/);
-  assert.match(adapter, /canonicalCloudCourtInventory/);
-  assert.doesNotMatch(adapter, /\.from\(["']club_data_v3["']\)/);
+  assert.doesNotMatch(panel, /listClustersForVenue/);
+  assert.doesNotMatch(panel, /courtClusterService/);
+  assert.doesNotMatch(setup, /courtResourceGateway/);
+  assert.doesNotMatch(setup, /canonicalCloudCourtInventory/);
+  assert.match(setup, /createTeamTournamentCourtAdapter|TeamTournamentCourtAdapter/);
 });
 
 test("new SQL package uses dedicated identity and interval columns", () => {
