@@ -124,6 +124,8 @@ export {
   failReferee,
   normalizeRefereeError,
   REFEREE_CAPABILITY,
+  GENERIC_REFEREE_PERMISSIONS,
+  GENERIC_REFEREE_ROLE_PERMISSIONS,
   REFEREE_ACTION_PERMISSION_MAP,
   resolveRefereeActionPermissions,
   isKnownRefereeAction,

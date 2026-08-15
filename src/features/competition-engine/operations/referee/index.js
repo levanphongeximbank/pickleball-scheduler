@@ -24,9 +24,12 @@ export {
 
 export {
   REFEREE_CAPABILITY,
+  GENERIC_REFEREE_PERMISSIONS,
+  GENERIC_REFEREE_ROLE_PERMISSIONS,
   REFEREE_ACTION_PERMISSION_MAP,
   resolveRefereeActionPermissions,
   isKnownRefereeAction,
+  refereeMapRequiresTeamMatchResultManage,
 } from "./permissions/refereeActionMap.js";
 
 export {
@@ -53,5 +56,7 @@ export const COMPETITION_ENGINE_REFEREE_OPERATIONS = Object.freeze({
   phase: "E2E-04",
   version: "e2e-04-referee-operations-v1",
   wiredToProductionRuntime: false,
+  inMemoryRuntimeClassification: "TEST_DOUBLE_ONLY",
+  productionRuntimePortsDefined: true,
   ownsEngines: false,
 });

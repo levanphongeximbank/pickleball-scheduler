@@ -136,6 +136,8 @@ export function createInMemoryRefereeOperationsStore(options = {}) {
 
   return Object.freeze({
     kind: "in-memory-referee-operations-store",
+    classification: "TEST_DOUBLE_ONLY",
+    durable: false,
     clockIso: fixedClock,
     get: getOrCreate,
     getRaw,
