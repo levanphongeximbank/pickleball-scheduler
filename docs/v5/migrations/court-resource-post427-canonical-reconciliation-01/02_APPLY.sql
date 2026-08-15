@@ -130,34 +130,42 @@ SET search_path = pg_catalog, public AS $$
 DECLARE
   v_scope_tenant text;
 BEGIN
+  -- Table discriminator is evaluated in its own IF/ELSIF before any
+  -- table-specific NEW/OLD field. PL/pgSQL binds every record field in a
+  -- single IF expression, so `TG_TABLE_NAME = 'x' AND NEW.col` is unsafe
+  -- on tables that lack col (Stage 3: legacy mappings have no cluster_id).
   IF TG_OP = 'UPDATE' THEN
     IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
        OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
       RAISE EXCEPTION 'COURT_RESOURCE_IMMUTABLE_IDENTITY_SCOPE';
     END IF;
-    IF TG_TABLE_NAME = 'court_resource_physical_courts'
-       AND (NEW.physical_court_id IS DISTINCT FROM OLD.physical_court_id
-         OR NEW.cluster_id IS DISTINCT FROM OLD.cluster_id) THEN
-      RAISE EXCEPTION 'COURT_RESOURCE_IMMUTABLE_PHYSICAL_IDENTITY';
-    ELSIF TG_TABLE_NAME = 'court_resource_club_operational_access'
-       AND (NEW.access_id IS DISTINCT FROM OLD.access_id
+    IF TG_TABLE_NAME = 'court_resource_physical_courts' THEN
+      IF NEW.physical_court_id IS DISTINCT FROM OLD.physical_court_id
+         OR NEW.cluster_id IS DISTINCT FROM OLD.cluster_id THEN
+        RAISE EXCEPTION 'COURT_RESOURCE_IMMUTABLE_PHYSICAL_IDENTITY';
+      END IF;
+    ELSIF TG_TABLE_NAME = 'court_resource_club_operational_access' THEN
+      IF NEW.access_id IS DISTINCT FROM OLD.access_id
          OR NEW.club_id IS DISTINCT FROM OLD.club_id
-         OR NEW.physical_court_id IS DISTINCT FROM OLD.physical_court_id) THEN
-      RAISE EXCEPTION 'COURT_RESOURCE_IMMUTABLE_ACCESS_IDENTITY';
-    ELSIF TG_TABLE_NAME = 'court_resource_cluster_identity_mappings'
-       AND (NEW.cluster_mapping_id IS DISTINCT FROM OLD.cluster_mapping_id
+         OR NEW.physical_court_id IS DISTINCT FROM OLD.physical_court_id THEN
+        RAISE EXCEPTION 'COURT_RESOURCE_IMMUTABLE_ACCESS_IDENTITY';
+      END IF;
+    ELSIF TG_TABLE_NAME = 'court_resource_cluster_identity_mappings' THEN
+      IF NEW.cluster_mapping_id IS DISTINCT FROM OLD.cluster_mapping_id
          OR NEW.source_system IS DISTINCT FROM OLD.source_system
          OR NEW.source_version IS DISTINCT FROM OLD.source_version
-         OR NEW.legacy_cluster_id IS DISTINCT FROM OLD.legacy_cluster_id) THEN
-      RAISE EXCEPTION 'COURT_RESOURCE_IMMUTABLE_CLUSTER_PROVENANCE';
-    ELSIF TG_TABLE_NAME = 'court_resource_legacy_court_identity_mappings'
-       AND (NEW.mapping_id IS DISTINCT FROM OLD.mapping_id
+         OR NEW.legacy_cluster_id IS DISTINCT FROM OLD.legacy_cluster_id THEN
+        RAISE EXCEPTION 'COURT_RESOURCE_IMMUTABLE_CLUSTER_PROVENANCE';
+      END IF;
+    ELSIF TG_TABLE_NAME = 'court_resource_legacy_court_identity_mappings' THEN
+      IF NEW.mapping_id IS DISTINCT FROM OLD.mapping_id
          OR NEW.club_id IS DISTINCT FROM OLD.club_id
          OR NEW.source_system IS DISTINCT FROM OLD.source_system
          OR NEW.source_version IS DISTINCT FROM OLD.source_version
          OR NEW.legacy_cluster_id IS DISTINCT FROM OLD.legacy_cluster_id
-         OR NEW.legacy_court_id IS DISTINCT FROM OLD.legacy_court_id) THEN
-      RAISE EXCEPTION 'COURT_RESOURCE_IMMUTABLE_LEGACY_PROVENANCE';
+         OR NEW.legacy_court_id IS DISTINCT FROM OLD.legacy_court_id THEN
+        RAISE EXCEPTION 'COURT_RESOURCE_IMMUTABLE_LEGACY_PROVENANCE';
+      END IF;
     END IF;
     NEW.version := OLD.version + 1;
     NEW.updated_at := now();
@@ -175,10 +183,11 @@ BEGIN
     ) THEN
       RAISE EXCEPTION 'COURT_RESOURCE_INVALID_ACCESS_SCOPE';
     END IF;
-  ELSIF TG_TABLE_NAME = 'court_resource_cluster_identity_mappings'
-        AND NEW.cluster_id IS NOT NULL THEN
-    SELECT venue_id INTO v_scope_tenant FROM public.court_clusters
-      WHERE id = NEW.cluster_id;
+  ELSIF TG_TABLE_NAME = 'court_resource_cluster_identity_mappings' THEN
+    IF NEW.cluster_id IS NOT NULL THEN
+      SELECT venue_id INTO v_scope_tenant FROM public.court_clusters
+        WHERE id = NEW.cluster_id;
+    END IF;
   ELSIF TG_TABLE_NAME = 'court_resource_legacy_court_identity_mappings' THEN
     SELECT tenant_id INTO v_scope_tenant FROM public.clubs WHERE id = NEW.club_id;
     IF v_scope_tenant IS DISTINCT FROM NEW.tenant_id

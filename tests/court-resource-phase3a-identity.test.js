@@ -321,16 +321,141 @@ test("compatibility projection requires both deterministic mapping and access", 
   assert.equal(projected.operationalAccess.allowed, true);
 });
 
-test("SQL package is additive, provenance-complete and rollback-owned", async () => {
-  const root = new URL(
-    "../docs/v5/migrations/court-resource-post427-canonical-reconciliation-01/",
-    import.meta.url
+const PHASE3A_SQL_ROOT = new URL(
+  "../docs/v5/migrations/court-resource-post427-canonical-reconciliation-01/",
+  import.meta.url
+);
+
+const IDENTITY_GUARD_COMMON_FIELDS = new Set([
+  "tenant_id",
+  "created_at",
+  "version",
+  "updated_at",
+]);
+
+const IDENTITY_GUARD_TABLE_FIELDS = {
+  physical_court_id: new Set([
+    "court_resource_physical_courts",
+    "court_resource_club_operational_access",
+    "court_resource_legacy_court_identity_mappings",
+  ]),
+  cluster_id: new Set([
+    "court_resource_physical_courts",
+    "court_resource_cluster_identity_mappings",
+  ]),
+  access_id: new Set(["court_resource_club_operational_access"]),
+  club_id: new Set([
+    "court_resource_club_operational_access",
+    "court_resource_legacy_court_identity_mappings",
+  ]),
+  cluster_mapping_id: new Set(["court_resource_cluster_identity_mappings"]),
+  mapping_id: new Set(["court_resource_legacy_court_identity_mappings"]),
+  source_system: new Set([
+    "court_resource_cluster_identity_mappings",
+    "court_resource_legacy_court_identity_mappings",
+  ]),
+  source_version: new Set([
+    "court_resource_cluster_identity_mappings",
+    "court_resource_legacy_court_identity_mappings",
+  ]),
+  legacy_cluster_id: new Set([
+    "court_resource_cluster_identity_mappings",
+    "court_resource_legacy_court_identity_mappings",
+  ]),
+  legacy_court_id: new Set(["court_resource_legacy_court_identity_mappings"]),
+};
+
+function extractIdentityGuard(applySql) {
+  const start = applySql.indexOf(
+    "CREATE FUNCTION public.court_resource_identity_guard()"
   );
+  const end = applySql.indexOf("$$;", start);
+  assert.ok(start >= 0 && end > start, "identity guard function missing");
+  return applySql.slice(start, end);
+}
+
+function stripSqlLineComments(sql) {
+  return sql.replace(/--[^\n]*/g, "");
+}
+
+function extractTableBranches(fn, tableName) {
+  const src = stripSqlLineComments(fn);
+  const re = new RegExp(
+    `(?:IF|ELSIF)\\s+TG_TABLE_NAME\\s*=\\s*'${tableName}'\\s+THEN([\\s\\S]*?)(?=\\s+ELSIF\\s+TG_TABLE_NAME|\\s+END IF;)`,
+    "g"
+  );
+  return [...src.matchAll(re)].map((match) => match[1]);
+}
+
+function collectIdentityGuardFieldHazards(fn) {
+  const src = stripSqlLineComments(fn);
+  const tokenRe = /(?:ELSIF|IF)\s+([\s\S]*?)\s+THEN|\bELSE\b|\bEND IF\b/gi;
+  const stack = [];
+  const hazards = [];
+  let lastIndex = 0;
+  let match;
+
+  function activeTables() {
+    return stack.map((frame) => frame.table).filter(Boolean);
+  }
+
+  function checkFields(text, contextTables) {
+    const fieldRe = /(?:NEW|OLD)\.([A-Za-z_][A-Za-z0-9_]*)/g;
+    let fieldMatch;
+    while ((fieldMatch = fieldRe.exec(text))) {
+      const field = fieldMatch[1];
+      if (IDENTITY_GUARD_COMMON_FIELDS.has(field)) continue;
+      const owners = IDENTITY_GUARD_TABLE_FIELDS[field];
+      if (!owners) continue;
+      if (!contextTables.some((table) => owners.has(table))) {
+        hazards.push({
+          field,
+          contextTables: [...contextTables],
+          snippet: text
+            .slice(Math.max(0, fieldMatch.index - 48), fieldMatch.index + 48)
+            .replace(/\s+/g, " ")
+            .trim(),
+        });
+      }
+    }
+  }
+
+  while ((match = tokenRe.exec(src))) {
+    checkFields(src.slice(lastIndex, match.index), activeTables());
+    const token = match[0];
+    if (/^END IF\b/i.test(token)) {
+      stack.pop();
+    } else if (/^ELSE$/i.test(token.trim())) {
+      if (stack.length) stack[stack.length - 1] = { table: null };
+    } else {
+      const condition = match[1] ?? "";
+      const tableMatch = condition.match(/TG_TABLE_NAME\s*=\s*'([^']+)'/);
+      const table = tableMatch ? tableMatch[1] : null;
+      if (/^\s*ELSIF\b/i.test(token)) {
+        const parentTables = stack
+          .slice(0, -1)
+          .map((frame) => frame.table)
+          .filter(Boolean);
+        checkFields(condition, parentTables);
+        if (stack.length) stack[stack.length - 1] = { table };
+        else stack.push({ table });
+      } else {
+        checkFields(condition, activeTables());
+        stack.push({ table });
+      }
+    }
+    lastIndex = tokenRe.lastIndex;
+  }
+  checkFields(src.slice(lastIndex), activeTables());
+  return hazards;
+}
+
+test("SQL package is additive, provenance-complete and rollback-owned", async () => {
   const [apply, verify, rollback, readme] = await Promise.all([
-    readFile(new URL("02_APPLY.sql", root), "utf8"),
-    readFile(new URL("03_VERIFY.sql", root), "utf8"),
-    readFile(new URL("04_ROLLBACK.sql", root), "utf8"),
-    readFile(new URL("README.md", root), "utf8"),
+    readFile(new URL("02_APPLY.sql", PHASE3A_SQL_ROOT), "utf8"),
+    readFile(new URL("03_VERIFY.sql", PHASE3A_SQL_ROOT), "utf8"),
+    readFile(new URL("04_ROLLBACK.sql", PHASE3A_SQL_ROOT), "utf8"),
+    readFile(new URL("README.md", PHASE3A_SQL_ROOT), "utf8"),
   ]);
   assert.match(apply, /source_system text NOT NULL/);
   assert.match(apply, /source_version text NOT NULL/);
@@ -340,7 +465,110 @@ test("SQL package is additive, provenance-complete and rollback-owned", async ()
   assert.doesNotMatch(apply, /CREATE TABLE\s+public\.court_reservations/i);
   assert.doesNotMatch(apply, /ALTER TABLE\s+public\.court_reservations/i);
   assert.match(verify, /exactly four package SELECT policies/);
+  assert.match(verify, /nested table discriminator/);
+  assert.match(verify, /READ ONLY/);
+  assert.doesNotMatch(verify, /\bINSERT INTO\b|\bUPDATE\s+public\.|\bDELETE FROM\b/i);
   assert.doesNotMatch(rollback, /CASCADE/i);
   assert.doesNotMatch(rollback, /DROP TABLE IF EXISTS public\.court_clusters/i);
+  assert.match(rollback, /DROP FUNCTION IF EXISTS public\.court_resource_identity_guard\(\)/);
   assert.match(readme, /Complete ownership manifest/);
+});
+
+test("identity guard isolates table-specific NEW/OLD fields after table discriminator", async () => {
+  const apply = await readFile(new URL("02_APPLY.sql", PHASE3A_SQL_ROOT), "utf8");
+  const guard = extractIdentityGuard(apply);
+  const physicalBranches = extractTableBranches(
+    guard,
+    "court_resource_physical_courts"
+  );
+  const accessBranches = extractTableBranches(
+    guard,
+    "court_resource_club_operational_access"
+  );
+  const clusterBranches = extractTableBranches(
+    guard,
+    "court_resource_cluster_identity_mappings"
+  );
+  const legacyBranches = extractTableBranches(
+    guard,
+    "court_resource_legacy_court_identity_mappings"
+  );
+
+  assert.equal(physicalBranches.length, 2);
+  assert.match(physicalBranches.join("\n"), /NEW\.cluster_id/);
+  assert.match(physicalBranches.join("\n"), /NEW\.physical_court_id/);
+  assert.match(
+    physicalBranches.join("\n"),
+    /COURT_RESOURCE_IMMUTABLE_PHYSICAL_IDENTITY/
+  );
+
+  assert.equal(accessBranches.length, 2);
+  assert.match(accessBranches.join("\n"), /NEW\.access_id/);
+  assert.match(accessBranches.join("\n"), /NEW\.club_id/);
+  assert.match(accessBranches.join("\n"), /NEW\.physical_court_id/);
+  assert.doesNotMatch(accessBranches.join("\n"), /NEW\.cluster_id\b/);
+  assert.match(
+    accessBranches.join("\n"),
+    /COURT_RESOURCE_IMMUTABLE_ACCESS_IDENTITY/
+  );
+  assert.match(accessBranches.join("\n"), /COURT_RESOURCE_INVALID_ACCESS_SCOPE/);
+
+  assert.equal(clusterBranches.length, 2);
+  assert.match(
+    clusterBranches.join("\n"),
+    /IF NEW\.cluster_id IS NOT NULL THEN/
+  );
+  assert.match(
+    clusterBranches.join("\n"),
+    /COURT_RESOURCE_IMMUTABLE_CLUSTER_PROVENANCE/
+  );
+  assert.doesNotMatch(
+    guard,
+    /TG_TABLE_NAME\s*=\s*'court_resource_cluster_identity_mappings'\s+AND\s+NEW\.cluster_id/
+  );
+
+  assert.equal(legacyBranches.length, 2);
+  for (const branch of legacyBranches) {
+    assert.doesNotMatch(branch, /NEW\.cluster_id\b/);
+    assert.doesNotMatch(branch, /OLD\.cluster_id\b/);
+  }
+  assert.match(legacyBranches.join("\n"), /NEW\.mapping_id/);
+  assert.match(legacyBranches.join("\n"), /NEW\.legacy_court_id/);
+  assert.match(legacyBranches.join("\n"), /NEW\.physical_court_id/);
+  assert.match(
+    legacyBranches.join("\n"),
+    /COURT_RESOURCE_IMMUTABLE_LEGACY_PROVENANCE/
+  );
+  assert.match(
+    legacyBranches.join("\n"),
+    /COURT_RESOURCE_INVALID_MAPPING_SCOPE/
+  );
+
+  assert.doesNotMatch(
+    stripSqlLineComments(guard),
+    /TG_TABLE_NAME\s*=\s*'[^']+'\s+AND\s+\(?\s*(?:NEW|OLD)\./
+  );
+  assert.deepEqual(collectIdentityGuardFieldHazards(guard), []);
+  assert.match(guard, /COURT_RESOURCE_CROSS_TENANT_SCOPE/);
+  assert.match(guard, /NEW\.version\s*:=\s*OLD\.version\s*\+\s*1/);
+  assert.match(guard, /COURT_RESOURCE_IMMUTABLE_IDENTITY_SCOPE/);
+
+  const stage3Defect = `
+CREATE FUNCTION public.court_resource_identity_guard()
+BEGIN
+  IF TG_TABLE_NAME = 'court_resource_physical_courts' THEN
+    SELECT venue_id INTO v_scope_tenant FROM public.court_clusters WHERE id = NEW.cluster_id;
+  ELSIF TG_TABLE_NAME = 'court_resource_cluster_identity_mappings'
+        AND NEW.cluster_id IS NOT NULL THEN
+    SELECT venue_id INTO v_scope_tenant FROM public.court_clusters WHERE id = NEW.cluster_id;
+  ELSIF TG_TABLE_NAME = 'court_resource_legacy_court_identity_mappings' THEN
+    SELECT tenant_id INTO v_scope_tenant FROM public.clubs WHERE id = NEW.club_id;
+  END IF;
+END
+`;
+  const defectHazards = collectIdentityGuardFieldHazards(stage3Defect);
+  assert.ok(
+    defectHazards.some((item) => item.field === "cluster_id"),
+    "regression must flag NEW.cluster_id on the cluster-mapping AND expression"
+  );
 });

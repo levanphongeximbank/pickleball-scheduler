@@ -26,6 +26,25 @@ BEGIN
     RAISE EXCEPTION 'VERIFY_FAIL missing package objects: %',
       array_to_string(v_missing, ', ');
   END IF;
+  -- Read-only: the Stage 3 rowtype hazard was `TG_TABLE_NAME = cluster
+  -- mappings AND NEW.cluster_id` evaluated on legacy mapping rows.
+  IF pg_get_functiondef(
+       to_regprocedure('public.court_resource_identity_guard()')
+     ) ~* E'TG_TABLE_NAME\\s*=\\s*''court_resource_cluster_identity_mappings''\\s+AND\\s+NEW\\.cluster_id'
+  THEN
+    RAISE EXCEPTION
+      'VERIFY_FAIL identity guard binds NEW.cluster_id before nested table discriminator';
+  END IF;
+  IF pg_get_functiondef(
+       to_regprocedure('public.court_resource_identity_guard()')
+     ) !~ E'TG_TABLE_NAME\\s*=\\s*''court_resource_cluster_identity_mappings''\\s+THEN'
+     OR pg_get_functiondef(
+       to_regprocedure('public.court_resource_identity_guard()')
+     ) !~ E'IF NEW\\.cluster_id IS NOT NULL THEN'
+  THEN
+    RAISE EXCEPTION
+      'VERIFY_FAIL identity guard missing nested cluster_id discriminator';
+  END IF;
 
   IF EXISTS (
     SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
