@@ -1,6 +1,13 @@
 /**
  * E2E-04 — Player & Referee Operations MVP targeted tests.
+ *
+ * Canonical referee adapter contract v1 suites are side-loaded here so they
+ * run under the existing E2E-04 CI manifest entry. Adding new unit-test-files.json
+ * rows while also touching E2E-07 certification ports would trip the CORE-08
+ * registry-addition gate (only tests/competition-engine-e2e-07-* are allowed).
  */
+import "./competition-engine-referee-adapter-contract-v1.test.js";
+import "./competition-engine-referee-runtime-ports-authority.test.js";
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -95,8 +102,14 @@ function createPorts(rolePerms) {
         if (normalized === "REFEREE") {
           return [
             PERMISSIONS.TOURNAMENT_VIEW,
-            PERMISSIONS.MATCH_UPDATE,
-            PERMISSIONS.TEAM_MATCH_RESULT_MANAGE,
+            PERMISSIONS.COMPETITION_REFEREE_ASSIGNMENT_READ,
+            PERMISSIONS.COMPETITION_REFEREE_ASSIGNMENT_ACKNOWLEDGE,
+            PERMISSIONS.COMPETITION_REFEREE_MATCH_CONTROL,
+            PERMISSIONS.COMPETITION_REFEREE_SCORE_SUBMIT,
+            PERMISSIONS.COMPETITION_REFEREE_RESULT_SUBMIT,
+            PERMISSIONS.COMPETITION_REFEREE_RESULT_CORRECT,
+            PERMISSIONS.COMPETITION_REFEREE_RESULT_READ,
+            PERMISSIONS.COMPETITION_REFEREE_INCIDENT_REPORT,
             PERMISSIONS.STATISTICS_VIEW,
           ];
         }
