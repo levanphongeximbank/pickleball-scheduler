@@ -25,6 +25,7 @@ import {
   assignCourtsAndTimesToExistingInternalMatches,
   assignInternalMatchReferee,
   classifyInternalCourtAvailability,
+  createInternalCourtContractTestDouble,
   listInternalRefereeHubAssignments,
   loadInternalScheduleCourts,
   lockInternalSchedule,
@@ -102,6 +103,16 @@ const BOOKABLE_COURTS = [
   { id: "tt412-court-01", name: "Sân 1", active: true, status: "active", clubId: CLUB_ID },
   { id: "tt412-court-02", name: "Sân 2", active: true, status: "active", clubId: CLUB_ID },
 ];
+
+function assignWithContractV1(input = {}) {
+  return assignCourtsAndTimesToExistingInternalMatches({
+    courtAdapter: createInternalCourtContractTestDouble(),
+    competitionId: TOURNAMENT_ID,
+    clubId: CLUB_ID,
+    tenantId: TENANT_ID,
+    ...input,
+  });
+}
 
 describe("IT-E2E-BROWSER-009 Internal court inventory", () => {
   it("projects Physical Courts through Court Adapter V1 and does not invent an Internal court table", () => {
@@ -181,7 +192,7 @@ describe("IT-E2E-BROWSER-009 Internal court inventory", () => {
 
   it("assigns court/time onto existing match IDs without duplication and survives F5 mapper", () => {
     const before = makeGroupMatches(6);
-    const assigned = assignCourtsAndTimesToExistingInternalMatches({
+    const assigned = assignWithContractV1({
       matches: before,
       courts: BOOKABLE_COURTS,
       date: "2026-08-14",
@@ -211,7 +222,7 @@ describe("IT-E2E-BROWSER-009 Internal court inventory", () => {
 
 describe("IT-E2E-BROWSER-010 Internal lock/publish state machine", () => {
   it("does not require draw publish to lock Internal schedule and is not circular", () => {
-    const matches = assignCourtsAndTimesToExistingInternalMatches({
+    const matches = assignWithContractV1({
       matches: makeGroupMatches(6),
       courts: BOOKABLE_COURTS,
       date: "2026-08-14",
@@ -253,7 +264,7 @@ describe("IT-E2E-BROWSER-010 Internal lock/publish state machine", () => {
   });
 
   it("persists lock then publish across F5 mapper", () => {
-    const matches = assignCourtsAndTimesToExistingInternalMatches({
+    const matches = assignWithContractV1({
       matches: makeGroupMatches(6),
       courts: BOOKABLE_COURTS,
       date: "2026-08-14",
@@ -270,7 +281,7 @@ describe("IT-E2E-BROWSER-010 Internal lock/publish state machine", () => {
   });
 
   it("keeps Official/shared lock requiring draw publish by default", () => {
-    const matches = assignCourtsAndTimesToExistingInternalMatches({
+    const matches = assignWithContractV1({
       matches: makeGroupMatches(6),
       courts: BOOKABLE_COURTS,
       date: "2026-08-14",

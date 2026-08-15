@@ -23,6 +23,7 @@ import {
   INTERNAL_COURT_AVAILABILITY,
   assignCourtsAndTimesToExistingInternalMatches,
   classifyInternalCourtAvailability,
+  releaseInternalScheduleCourts,
 } from "../../../features/tournament/internal/internalScheduleCourts.js";
 import { createInternalTournamentCourtAdapter } from "../../../features/tournament/internal/InternalTournamentCourtAdapter.js";
 import {
@@ -136,6 +137,14 @@ export default function InternalScheduleStage({
   };
 
   const assignOntoExisting = async (currentTournament, currentMatches) => {
+    const previousCourtIds = [
+      ...new Set(
+        (currentMatches || [])
+          .map((match) => String(match?.physicalCourtId || match?.courtId || "").trim())
+          .filter(Boolean)
+      ),
+    ];
+    const courtAdapter = createInternalTournamentCourtAdapter();
     const allocated = assignCourtsAndTimesToExistingInternalMatches({
       matches: currentMatches,
       courts,
@@ -143,18 +152,49 @@ export default function InternalScheduleStage({
       startTime,
       matchMinutes: 25,
       bufferMinutes: 5,
-      courtAdapter: createInternalTournamentCourtAdapter(),
+      courtAdapter,
       competitionId: currentTournament?.id || tournament?.id || "",
       clubId: currentTournament?.clubId || clubId,
       tenantId: currentTournament?.tenantId || tournament?.tenantId || "",
+      venueId: currentTournament?.venueId || tournament?.venueId || "",
       actorId: actor?.id || actor?.actorId || "",
     });
     if (!allocated.ok) {
       setMessage({ type: "error", text: allocated.error });
       return false;
     }
+    // Persist only after Contract V1 validate + reserve succeeded.
     const persisted = await persistMatches(currentTournament, allocated.matches);
-    if (persisted === false) return false;
+    if (persisted === false) {
+      releaseInternalScheduleCourts({
+        courtAdapter,
+        physicalCourtIds: allocated.reservedPhysicalCourtIds || [],
+        competitionId: currentTournament?.id || tournament?.id || "",
+        clubId: currentTournament?.clubId || clubId,
+        tenantId: currentTournament?.tenantId || tournament?.tenantId || "",
+        actorId: actor?.id || actor?.actorId || "",
+        date,
+        startTime,
+      });
+      return false;
+    }
+    if (previousCourtIds.length) {
+      const releasedIds = previousCourtIds.filter(
+        (id) => !(allocated.reservedPhysicalCourtIds || []).includes(id)
+      );
+      if (releasedIds.length) {
+        releaseInternalScheduleCourts({
+          courtAdapter,
+          physicalCourtIds: releasedIds,
+          competitionId: currentTournament?.id || tournament?.id || "",
+          clubId: currentTournament?.clubId || clubId,
+          tenantId: currentTournament?.tenantId || tournament?.tenantId || "",
+          actorId: actor?.id || actor?.actorId || "",
+          date,
+          startTime,
+        });
+      }
+    }
     setMessage({
       type: "success",
       text: `Đã xếp sân/giờ cho ${allocated.matchCount} trận (không tạo trận mới).`,

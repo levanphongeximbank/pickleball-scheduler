@@ -2,6 +2,9 @@
  * Internal Tournament Adapter B — conditional / optional / disabled activation.
  * Inactive adapters must not block Internal lifecycle.
  * Required-but-NOT_CONFIGURED must fail honestly — never fake success.
+ *
+ * Rating ACTIVE only when an explicit rating rule exists.
+ * Referee ACTIVE only when an explicit referee requirement exists.
  */
 import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 
@@ -18,14 +21,22 @@ function settingsOf(tournament) {
     : {};
 }
 
-function hasExplicitRatingRule(tournament) {
+function pairingOf(settings) {
+  return settings.pairing && typeof settings.pairing === "object"
+    ? settings.pairing
+    : settings.draw && typeof settings.draw === "object"
+      ? settings.draw
+      : {};
+}
+
+/**
+ * Explicit rating rule only. mode=INTERNAL_TOURNAMENT alone is NOT enough.
+ */
+export function hasExplicitInternalRatingRule(tournament) {
   const settings = settingsOf(tournament);
-  const pairing = settings.pairing || settings.draw || {};
+  const pairing = pairingOf(settings);
   if (settings.useRating === false || pairing.useRating === false) {
     return false;
-  }
-  if (String(tournament?.mode || "") === TOURNAMENT_MODE.INTERNAL_TOURNAMENT) {
-    return true;
   }
   return Boolean(
     settings.minRating != null ||
@@ -33,6 +44,7 @@ function hasExplicitRatingRule(tournament) {
       settings.skillBand ||
       settings.balanceByRating === true ||
       settings.useRatingSeeding === true ||
+      settings.useRating === true ||
       pairing.useRating === true ||
       pairing.strategyKey === "skill_controlled" ||
       pairing.seedBy === "rating"
@@ -67,11 +79,88 @@ function hasFinanceRule(tournament) {
   );
 }
 
+function normalizeLower(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, "_");
+}
+
+/**
+ * Explicit Internal referee policy.
+ * Self-scored / optional / disabled → INACTIVE.
+ * Tournament/stage/match require referee → ACTIVE.
+ * Does not invent assignment authority.
+ */
+export function resolveInternalRefereeActivation(tournament = null) {
+  const settings = settingsOf(tournament);
+  const referee =
+    settings.referee && typeof settings.referee === "object" ? settings.referee : {};
+  const scoringMode = normalizeLower(
+    settings.scoringMode || settings.resultEntryMode || referee.scoringMode
+  );
+  const refereeMode = normalizeLower(
+    settings.refereeMode || referee.mode || referee.policy
+  );
+
+  if (
+    settings.requireReferee === false ||
+    settings.refereeRequired === false ||
+    referee.required === false ||
+    referee.enabled === false ||
+    scoringMode === "self_scored" ||
+    scoringMode === "selfscore" ||
+    scoringMode === "organizer_self_score" ||
+    refereeMode === "optional" ||
+    refereeMode === "self_scored" ||
+    refereeMode === "disabled" ||
+    refereeMode === "none"
+  ) {
+    return INTERNAL_ADAPTER_ACTIVATION.INACTIVE;
+  }
+
+  if (
+    settings.requireReferee === true ||
+    settings.refereeRequired === true ||
+    referee.required === true ||
+    referee.enabled === true ||
+    refereeMode === "required" ||
+    refereeMode === "mandatory"
+  ) {
+    return INTERNAL_ADAPTER_ACTIVATION.ACTIVE;
+  }
+
+  const stages = settings.stages && typeof settings.stages === "object" ? settings.stages : {};
+  for (const stage of Object.values(stages)) {
+    if (!stage || typeof stage !== "object") continue;
+    if (
+      stage.requireReferee === true ||
+      stage.refereeRequired === true ||
+      stage.referee?.required === true
+    ) {
+      return INTERNAL_ADAPTER_ACTIVATION.ACTIVE;
+    }
+  }
+
+  const events = Array.isArray(tournament?.events) ? tournament.events : [];
+  for (const event of events) {
+    const matches = Array.isArray(event?.matches) ? event.matches : [];
+    for (const match of matches) {
+      if (match?.requireReferee === true || match?.refereeRequired === true) {
+        return INTERNAL_ADAPTER_ACTIVATION.ACTIVE;
+      }
+    }
+  }
+
+  void TOURNAMENT_MODE;
+  return INTERNAL_ADAPTER_ACTIVATION.INACTIVE;
+}
+
 /**
  * @param {object} [tournament]
  */
 export function resolveInternalConditionalAdapterActivation(tournament = null) {
-  const rating = hasExplicitRatingRule(tournament)
+  const rating = hasExplicitInternalRatingRule(tournament)
     ? INTERNAL_ADAPTER_ACTIVATION.ACTIVE
     : INTERNAL_ADAPTER_ACTIVATION.INACTIVE;
   const ranking = hasExplicitExternalRankingRule(tournament)
@@ -80,6 +169,7 @@ export function resolveInternalConditionalAdapterActivation(tournament = null) {
   const finance = hasFinanceRule(tournament)
     ? INTERNAL_ADAPTER_ACTIVATION.ACTIVE
     : INTERNAL_ADAPTER_ACTIVATION.INACTIVE;
+  const referee = resolveInternalRefereeActivation(tournament);
 
   return Object.freeze({
     identity: INTERNAL_ADAPTER_ACTIVATION.ACTIVE,
@@ -89,7 +179,7 @@ export function resolveInternalConditionalAdapterActivation(tournament = null) {
     rating,
     ranking,
     court: INTERNAL_ADAPTER_ACTIVATION.ACTIVE,
-    referee: INTERNAL_ADAPTER_ACTIVATION.ACTIVE,
+    referee,
     finance,
     notification: INTERNAL_ADAPTER_ACTIVATION.OPTIONAL,
     fileMedia: INTERNAL_ADAPTER_ACTIVATION.OPTIONAL,

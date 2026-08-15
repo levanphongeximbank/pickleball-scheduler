@@ -204,12 +204,24 @@ describe("Internal Tournament Canonical Adapter B", () => {
       courts: [{ id: "tt412-court-01", name: "Sân 1", active: true, status: "active" }],
       date: "2026-08-15",
       courtAdapter: {
+        getCourtAvailability: () => ({
+          ok: true,
+          courts: [
+            {
+              physicalCourtId: "tt412-court-01",
+              available: true,
+              resultCode: COMPETITION_COURT_RESULT_CODE.AVAILABLE,
+            },
+          ],
+        }),
+        validateMatchAssignment: () => ({ ok: true, valid: true }),
         reserveCourts: () => ({
           ok: false,
           code: COMPETITION_COURT_RESULT_CODE.FOREIGN_RESERVATION,
           failClosed: true,
           error: "foreign",
         }),
+        releaseCourts: () => ({ ok: true, released: [] }),
       },
       competitionId: "comp-1",
       clubId: "club-1",
@@ -218,6 +230,80 @@ describe("Internal Tournament Canonical Adapter B", () => {
     assert.equal(blocked.ok, false);
     assert.equal(blocked.failClosed, true);
     assert.equal(blocked.matches[0].courtId, undefined);
+  });
+
+  it("07 uses getCourtAvailability + CORE-12 + validate + reserve; no local round-robin authority", () => {
+    const calls = { availability: 0, validate: 0, reserve: 0 };
+    const matches = [
+      { id: "m1", entryAId: "a", entryBId: "b" },
+      { id: "m2", entryAId: "c", entryBId: "d" },
+    ];
+    const assigned = assignCourtsAndTimesToExistingInternalMatches({
+      matches,
+      courts: [
+        { id: "court-1", name: "Sân 1", active: true },
+        { id: "court-2", name: "Sân 2", active: true },
+      ],
+      date: "2026-08-15",
+      startTime: "08:00",
+      competitionId: "comp-1",
+      clubId: "club-1",
+      tenantId: "tenant-1",
+      courtAdapter: {
+        getCourtAvailability: () => {
+          calls.availability += 1;
+          return {
+            ok: true,
+            courts: [
+              {
+                physicalCourtId: "court-1",
+                available: true,
+                resultCode: COMPETITION_COURT_RESULT_CODE.AVAILABLE,
+              },
+              {
+                physicalCourtId: "court-2",
+                available: true,
+                resultCode: COMPETITION_COURT_RESULT_CODE.AVAILABLE,
+              },
+            ],
+          };
+        },
+        validateMatchAssignment: () => {
+          calls.validate += 1;
+          return {
+            ok: true,
+            valid: true,
+            code: COMPETITION_COURT_RESULT_CODE.ASSIGNMENT_VALID,
+          };
+        },
+        reserveCourts: () => {
+          calls.reserve += 1;
+          return {
+            ok: true,
+            reserved: [{ physicalCourtId: "court-1" }, { physicalCourtId: "court-2" }],
+          };
+        },
+        releaseCourts: () => ({ ok: true, released: [] }),
+      },
+    });
+    assert.equal(assigned.ok, true);
+    assert.equal(assigned.validated, true);
+    assert.equal(assigned.assignmentSource, "CORE12_COURT_ASSIGNMENT");
+    assert.equal(calls.availability, 1);
+    assert.equal(calls.validate, 2);
+    assert.equal(calls.reserve, 1);
+    assert.ok(assigned.matches.every((match) => match.scheduledStart && match.physicalCourtId));
+    assert.deepEqual(
+      assigned.matches.map((match) => match.id),
+      ["m1", "m2"]
+    );
+    const courtSrc = readSrc("src/features/tournament/internal/internalScheduleCourts.js");
+    assert.doesNotMatch(courtSrc, /available\[index % available\.length\]/);
+    assert.doesNotMatch(courtSrc, /Court assignment decision stays in Internal/);
+    assert.match(courtSrc, /assignCourtsDeterministic/);
+    assert.match(courtSrc, /getCourtAvailability/);
+    assert.match(courtSrc, /validateMatchAssignment/);
+    assert.match(courtSrc, /releaseCourts/);
   });
 
   it("08 Referee Adapter V1 passes shared conformance", () => {
@@ -245,6 +331,70 @@ describe("Internal Tournament Canonical Adapter B", () => {
     assert.equal(adapter.wiredToProductionRuntime, false);
   });
 
+  it("05 rating inactive without explicit rule; active with explicit rule; useRating=false wins", () => {
+    const none = resolveInternalConditionalAdapterActivation({
+      mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+      settings: {},
+    });
+    assert.equal(none.rating, INTERNAL_ADAPTER_ACTIVATION.INACTIVE);
+
+    const explicit = resolveInternalConditionalAdapterActivation({
+      mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+      settings: { minRating: 3.0 },
+    });
+    assert.equal(explicit.rating, INTERNAL_ADAPTER_ACTIVATION.ACTIVE);
+
+    const disabled = resolveInternalConditionalAdapterActivation({
+      mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+      settings: { useRating: false, minRating: 3.0 },
+    });
+    assert.equal(disabled.rating, INTERNAL_ADAPTER_ACTIVATION.INACTIVE);
+
+    const inactiveBundle = createInternalTournamentAdapterB({
+      tournament: makeInternalTournament({ settings: {} }),
+    });
+    assert.equal(inactiveBundle.activation.rating, INTERNAL_ADAPTER_ACTIVATION.INACTIVE);
+    assert.equal(
+      inactiveBundle.rating.productionBinding,
+      PRODUCTION_BINDING_STATUS.NOT_CONFIGURED
+    );
+    const lifecycle = resolveInternalTournamentLifecycle(
+      makeInternalTournament({ settings: {} })
+    );
+    assert.ok(lifecycle.CURRENT_STEP);
+  });
+
+  it("08 referee inactive for self-scored; active when required; inactive does not block lifecycle", () => {
+    const selfScored = resolveInternalConditionalAdapterActivation({
+      mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+      settings: { scoringMode: "self_scored" },
+    });
+    assert.equal(selfScored.referee, INTERNAL_ADAPTER_ACTIVATION.INACTIVE);
+
+    const required = resolveInternalConditionalAdapterActivation({
+      mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+      settings: { refereeRequired: true },
+    });
+    assert.equal(required.referee, INTERNAL_ADAPTER_ACTIVATION.ACTIVE);
+
+    const stageRequired = resolveInternalConditionalAdapterActivation({
+      mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+      settings: { stages: { knockout: { requireReferee: true } } },
+    });
+    assert.equal(stageRequired.referee, INTERNAL_ADAPTER_ACTIVATION.ACTIVE);
+
+    const defaultInactive = resolveInternalConditionalAdapterActivation({
+      mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+      settings: {},
+    });
+    assert.equal(defaultInactive.referee, INTERNAL_ADAPTER_ACTIVATION.INACTIVE);
+    assert.equal(defaultInactive.lifecycleBlockedByInactiveConditional, false);
+    const lifecycle = resolveInternalTournamentLifecycle(
+      makeInternalTournament({ settings: { scoringMode: "self_scored" } })
+    );
+    assert.ok(lifecycle.CURRENT_STEP);
+  });
+
   it("05/06/09 conditional activation does not block Internal lifecycle when inactive", () => {
     const inactive = resolveInternalConditionalAdapterActivation({
       mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
@@ -253,6 +403,7 @@ describe("Internal Tournament Canonical Adapter B", () => {
     assert.equal(inactive.rating, INTERNAL_ADAPTER_ACTIVATION.INACTIVE);
     assert.equal(inactive.ranking, INTERNAL_ADAPTER_ACTIVATION.INACTIVE);
     assert.equal(inactive.finance, INTERNAL_ADAPTER_ACTIVATION.INACTIVE);
+    assert.equal(inactive.referee, INTERNAL_ADAPTER_ACTIVATION.INACTIVE);
     assert.equal(inactive.lifecycleBlockedByInactiveConditional, false);
     const lifecycle = resolveInternalTournamentLifecycle(
       makeInternalTournament({ settings: { useRating: false } })
@@ -292,20 +443,41 @@ describe("Internal Tournament Canonical Adapter B", () => {
     assert.ok(lifecycle.CURRENT_STEP);
   });
 
-  it("no direct club_data_v3 / Team court reader / synthetic court identity bypass", () => {
+  it("no direct club_data_v3 / Team court reader / synthetic court / local assignment authority", () => {
     const court = readSrc("src/features/tournament/internal/internalScheduleCourts.js");
     const adapter = readSrc("src/features/tournament/internal/InternalTournamentCourtAdapter.js");
     const referee = readSrc("src/features/tournament/internal/InternalTournamentRefereeAdapter.js");
     const composition = readSrc("src/features/tournament/internal/internalCanonicalAdapterB.js");
+    const activation = readSrc(
+      "src/features/tournament/internal/internalCanonicalAdapterActivation.js"
+    );
     const stage = readSrc("src/components/tournament/internal/InternalScheduleStage.jsx");
-    const blob = court + adapter + referee + composition + stage;
+    const setup = readSrc("src/pages/tournament/InternalTournamentSetup.jsx");
+    const blob = court + adapter + referee + composition + activation + stage + setup;
     assert.doesNotMatch(blob, /listCanonicalClubCourtsForFormatVenue/);
     assert.doesNotMatch(blob, /club_data_v3/);
     assert.doesNotMatch(blob, /localStorage/);
+    assert.doesNotMatch(blob, /available\[index % available\.length\]/);
+    assert.doesNotMatch(blob, /Court assignment decision stays in Internal/);
     assert.doesNotMatch(adapter, /court-\$\{index/);
     assert.doesNotMatch(referee, /assignReferee|persistScore|acceptResult/);
+    assert.doesNotMatch(activation, /mode === TOURNAMENT_MODE\.INTERNAL_TOURNAMENT/);
     assert.match(adapter, /createCourtResourceCompetitionAdapter/);
+    assert.match(adapter, /ownsCourtAssignmentAuthority: false/);
     assert.match(referee, /competition.referee.adapter.v1/);
     assert.match(stage, /createInternalTournamentCourtAdapter/);
+    assert.match(stage, /releaseInternalScheduleCourts/);
+    assert.match(stage, /Persist only after/);
+    assert.match(court, /assignCourtsDeterministic/);
+    assert.match(court, /validated: true/);
+    // Architecture lock counts for Adapter B court/activation authority surfaces.
+    const domainImportHits = (blob.match(/from ["'].*domain\//g) || []).length;
+    const localAssignmentHits = (blob.match(/available\[index %/g) || []).length;
+    const legacyClubCourtHits = (
+      blob.match(/listCanonicalClubCourtsForFormatVenue|club_data_v3/g) || []
+    ).length;
+    assert.equal(domainImportHits, 0, "DIRECT_DOMAIN_BYPASSES on Adapter B authority surfaces");
+    assert.equal(localAssignmentHits, 0, "DUPLICATE local court assignment authority");
+    assert.equal(legacyClubCourtHits, 0, "LEGACY court inventory authorities");
   });
 });

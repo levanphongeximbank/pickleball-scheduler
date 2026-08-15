@@ -140,6 +140,8 @@ export { resolveInternalSchedulePrerequisite } from "./internalSchedulePrerequis
 
 export {
   INTERNAL_ADAPTER_ACTIVATION,
+  hasExplicitInternalRatingRule,
+  resolveInternalRefereeActivation,
   resolveInternalConditionalAdapterActivation,
   isInternalConditionalAdapterRequired,
 } from "./internalCanonicalAdapterActivation.js";
@@ -161,6 +163,8 @@ export {
   listInternalAvailableScheduleCourts,
   classifyInternalCourtAvailability,
   assignCourtsAndTimesToExistingInternalMatches,
+  releaseInternalScheduleCourts,
+  createInternalCourtContractTestDouble,
   loadInternalScheduleCourts,
   matchesHaveCourtAndTime,
 } from "./internalScheduleCourts.js";
