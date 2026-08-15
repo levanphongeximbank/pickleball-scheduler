@@ -8,6 +8,7 @@
  */
 import "./competition-engine-referee-adapter-contract-v1.test.js";
 import "./competition-engine-referee-runtime-ports-authority.test.js";
+import "./competition-engine-referee-canonical-production-runtime-01.test.js";
 
 import assert from "node:assert/strict";
 import test from "node:test";

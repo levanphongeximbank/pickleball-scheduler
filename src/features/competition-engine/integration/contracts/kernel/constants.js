@@ -164,16 +164,12 @@ export const COURT_CONTRACT_PROTECTED_PATHS = Object.freeze([
 ]);
 
 export const REFEREE_CONTRACT_PROTECTED_PATHS = Object.freeze([
-  "src/features/competition-engine/integration/referee/constants.js",
   "src/features/competition-engine/integration/referee/contract.js",
   "src/features/competition-engine/integration/referee/registry.js",
   "src/features/competition-engine/integration/referee/conformance.js",
   "src/features/competition-engine/integration/referee/errors.js",
-  "src/features/competition-engine/integration/referee/helpers.js",
-  "src/features/competition-engine/integration/referee/index.js",
   "src/features/competition-engine/integration/referee/referenceAdapter.js",
   "src/features/competition-engine/integration/referee/runtimePorts.js",
-  "src/features/competition-engine/integration/referee/createCanonicalRefereePersistenceRuntime.js",
   "tests/competition-engine-referee-adapter-contract-v1.test.js",
   "tests/competition-engine-referee-runtime-ports-authority.test.js",
 ]);
