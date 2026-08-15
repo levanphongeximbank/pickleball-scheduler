@@ -12,7 +12,7 @@ import {
   revokeOfficialMatchLiveCommand,
 } from "../../tournament/official-lifecycle/officialOpenLifecycleCommands.js";
 
-export const REFEREE_IDENTITY_BINDING_BLOCKED = true;
+export const REFEREE_IDENTITY_BINDING_BLOCKED = false;
 /** Live table has no structured scoring-rules columns; stageLabel must not carry them. */
 export const REFEREE_SCORING_RULE_TRANSPORT_BLOCKED = true;
 

@@ -1,5 +1,13 @@
 import { officialOpenLifecycleService } from "./officialOpenLifecycleService.js";
 
+export async function listMyOfficialRefereeAssignmentsCommand() {
+  return officialOpenLifecycleService.listMyRefereeAssignments();
+}
+
+export async function openMyOfficialRefereeMatchCommand(input) {
+  return officialOpenLifecycleService.openMyRefereeMatch(input);
+}
+
 export async function ensureOfficialMatchLiveCommand(input) {
   return officialOpenLifecycleService.ensureMatchLive(input);
 }

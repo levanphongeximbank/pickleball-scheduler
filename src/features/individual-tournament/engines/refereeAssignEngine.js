@@ -99,6 +99,8 @@ export function normalizeAssignmentEntry(raw = {}, matchId = "") {
     matchId: String(raw.matchId || matchId).trim(),
     eventId: raw.eventId ? String(raw.eventId).trim() : "",
     rosterId,
+    canonicalUserId: String(raw.canonicalUserId || raw.refereeUserId || "").trim(),
+    refereeEmail: String(raw.refereeEmail || raw.email || "").trim(),
     refereeName: refereeName || rosterId,
     token: raw.token ? String(raw.token) : "",
     status,
@@ -126,6 +128,8 @@ export function getRefereeAssignments(tournament) {
           {
             matchId,
             rosterId,
+            canonicalUserId: entry?.canonicalUserId || entry?.refereeUserId || "",
+            refereeEmail: entry?.email || "",
             refereeName: entry?.name || rosterId,
             status: REFEREE_ASSIGN_STATUS.ASSIGNED,
           },
@@ -314,13 +318,19 @@ export function assignRefereeToIndividualMatch(tournament, matchId, rosterId, op
   const { match: matchedWithRef, referee: tokenReferee, token } = assignRefereeToMatch(
     match,
     referee.name,
-    { rosterId: referee.id }
+    {
+      rosterId: referee.id,
+      rosterEntry: referee,
+      canonicalUserId: referee.canonicalUserId || "",
+    }
   );
 
   const assignment = normalizeAssignmentEntry({
     matchId,
     eventId: match.eventId || options.eventId || "",
     rosterId: referee.id,
+    canonicalUserId: referee.canonicalUserId || "",
+    refereeEmail: referee.email || "",
     refereeName: referee.name,
     token: token || tokenReferee?.token || "",
     status: REFEREE_ASSIGN_STATUS.ASSIGNED,

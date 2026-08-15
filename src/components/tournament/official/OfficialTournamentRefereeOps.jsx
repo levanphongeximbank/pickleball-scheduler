@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
@@ -16,10 +16,14 @@ import {
   syncOfficialRefereeAssignResultToLive,
 } from "../../../features/individual-tournament/engines/officialRefereeLiveBridge.js";
 import { summarizeOfficialRefereeOps } from "../../../features/individual-tournament/engines/officialOrganizerWorkflowEngine.js";
+import {
+  annotateRosterEligibility,
+  listEligibleCanonicalReferees,
+} from "../../../features/daily-play/services/refereeDirectoryService.js";
 
 /**
  * Official-owned referee ops: roster + assign + live bridge.
- * Name-string roster remains; strong identity binding is blocked for this batch.
+ * Canonical account candidates and manual/external referees remain explicit.
  */
 export default function OfficialTournamentRefereeOps({
   tournament,
@@ -37,10 +41,55 @@ export default function OfficialTournamentRefereeOps({
 }) {
   const [bridgeMessage, setBridgeMessage] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [canonicalReferees, setCanonicalReferees] = useState([]);
+  const [canonicalLoading, setCanonicalLoading] = useState(false);
+  const [canonicalError, setCanonicalError] = useState(null);
+  const [canonicalWarning, setCanonicalWarning] = useState(null);
   const summary = useMemo(
     () => summarizeOfficialRefereeOps(tournament, eventId),
     [tournament, eventId]
   );
+  const tenantId = tournament?.tenantId || "";
+  const projectedRoster = useMemo(
+    () => annotateRosterEligibility(roster, canonicalReferees),
+    [roster, canonicalReferees]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!tenantId || !canManage) {
+      setCanonicalReferees([]);
+      setCanonicalError(null);
+      setCanonicalWarning(null);
+      return undefined;
+    }
+
+    setCanonicalLoading(true);
+    setCanonicalError(null);
+    void listEligibleCanonicalReferees({
+      tenantId,
+      clubId,
+      actor,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        if (!result.ok) {
+          setCanonicalReferees([]);
+          setCanonicalError(result.error || "Không tải được danh bạ trọng tài.");
+          setCanonicalWarning(null);
+          return;
+        }
+        setCanonicalReferees(result.referees || []);
+        setCanonicalWarning(result.warning || null);
+      })
+      .finally(() => {
+        if (!cancelled) setCanonicalLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantId, clubId, actor, canManage]);
 
   const handleAssignPersist = async (nextTournament, meta = {}) => {
     if (!canManage) return;
@@ -119,7 +168,16 @@ export default function OfficialTournamentRefereeOps({
       ) : null}
 
       <Typography variant="subtitle2">1. Danh sách trọng tài</Typography>
-      <RefereeRosterPanel roster={roster} onChange={onRosterChange} />
+      <RefereeRosterPanel
+        roster={projectedRoster}
+        onChange={onRosterChange}
+        enableCanonicalDirectory={canManage}
+        canonicalCandidates={canonicalReferees}
+        canonicalLoading={canonicalLoading}
+        canonicalError={canonicalError}
+        canonicalWarning={canonicalWarning}
+        description="Chọn tài khoản REFEREE để liên kết canonicalUserId, hoặc thêm trọng tài khách nhập tay không thuộc danh tính tài khoản."
+      />
 
       <Divider />
 

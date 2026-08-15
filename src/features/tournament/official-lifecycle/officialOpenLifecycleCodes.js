@@ -8,6 +8,8 @@ export const OFFICIAL_OPEN_LIFECYCLE_RPC = Object.freeze({
   GENERATE_KNOCKOUT: "official_open_generate_knockout",
   COMPLETE: "official_open_complete_tournament",
   PUBLIC_RESULTS: "official_open_get_public_results",
+  LIST_MY_REFEREE_ASSIGNMENTS: "official_open_list_my_referee_assignments",
+  OPEN_MY_REFEREE_MATCH: "official_open_open_my_referee_match",
 });
 
 export const OFFICIAL_OPEN_LIFECYCLE_CODE = Object.freeze({
@@ -24,6 +26,8 @@ export const OFFICIAL_OPEN_LIFECYCLE_CODE = Object.freeze({
   GROUP_INCOMPLETE: "GROUP_INCOMPLETE",
   KO_ALREADY_GENERATED: "KO_ALREADY_GENERATED",
   KO_ALREADY_STARTED: "KO_ALREADY_STARTED",
+  NOT_AUTHENTICATED: "NOT_AUTHENTICATED",
+  REFEREE_ASSIGNMENT_DENIED: "REFEREE_ASSIGNMENT_DENIED",
 });
 
 export const OFFICIAL_OPEN_LIFECYCLE_MESSAGES = Object.freeze({
@@ -43,4 +47,7 @@ export const OFFICIAL_OPEN_LIFECYCLE_MESSAGES = Object.freeze({
   [OFFICIAL_OPEN_LIFECYCLE_CODE.GROUP_INCOMPLETE]: "Cần hoàn tất vòng bảng trước khi tạo knockout.",
   [OFFICIAL_OPEN_LIFECYCLE_CODE.KO_ALREADY_GENERATED]: "Bracket knockout đã tồn tại.",
   [OFFICIAL_OPEN_LIFECYCLE_CODE.KO_ALREADY_STARTED]: "Knockout đã bắt đầu — không tạo lại nhánh.",
+  [OFFICIAL_OPEN_LIFECYCLE_CODE.NOT_AUTHENTICATED]: "Vui lòng đăng nhập lại.",
+  [OFFICIAL_OPEN_LIFECYCLE_CODE.REFEREE_ASSIGNMENT_DENIED]:
+    "Bạn không được phân công trận Official/Open này.",
 });

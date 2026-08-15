@@ -49,6 +49,8 @@ export function projectMyDashboardCard(raw = {}) {
 
   return {
     id,
+    tournamentId: id,
+    competitionType: "team",
     teamDomainId: raw.teamDomainId || null,
     name: raw.name || "Giải đồng đội",
     status: String(raw.status || "draft").toLowerCase(),
@@ -69,6 +71,70 @@ export function projectMyDashboardCard(raw = {}) {
     href,
     captainPortalHref,
     refereeHref,
+    requiresSecureOpen: false,
+    assignmentMatch: null,
+  };
+}
+
+export function normalizeOfficialRefereeAssignmentListResult(payload = {}) {
+  if (!payload || payload.ok === false) {
+    const code = payload?.code || "OFFICIAL_DISCOVERY_UNAVAILABLE";
+    return {
+      ok: false,
+      code,
+      error:
+        payload?.error ||
+        (code === "NOT_AUTHENTICATED"
+          ? "Phiên đăng nhập hết hạn — đăng nhập lại."
+          : code === "SQL_NOT_APPLIED" || code === "RPC_MISSING"
+            ? "Danh sách phân công Official/Open chưa sẵn sàng trên máy chủ."
+            : "Không tải được phân công Official/Open."),
+      tournaments: [],
+    };
+  }
+
+  const assignments = Array.isArray(payload.assignments) ? payload.assignments : [];
+  return {
+    ok: true,
+    tournaments: assignments.map(projectOfficialRefereeDashboardCard).filter(Boolean),
+  };
+}
+
+export function projectOfficialRefereeDashboardCard(raw = {}) {
+  const tournamentId = String(raw.tournamentId || "").trim();
+  const matchId = String(raw.matchId || "").trim();
+  if (!tournamentId || !matchId) return null;
+
+  return {
+    id: `official:${tournamentId}:${matchId}`,
+    tournamentId,
+    matchId,
+    name: raw.tournamentName || "Giải Official/Open",
+    status: String(raw.status || "ready").toLowerCase(),
+    clubId: null,
+    tenantId: null,
+    roles: ["referee"],
+    competitionType: "official_open",
+    competitionTypeLabel: "Official/Open",
+    myTeam: null,
+    openTaskCount: 0,
+    nextMatchup: null,
+    href: null,
+    captainPortalHref: null,
+    refereeHref: null,
+    requiresSecureOpen: raw.canOpen !== false,
+    assignmentMatch: {
+      matchId,
+      stage: raw.stage || "",
+      round: raw.round || "",
+      groupLabel: raw.groupLabel || "",
+      teamAName: raw.teamAName || "Cặp A",
+      teamBName: raw.teamBName || "Cặp B",
+      scheduledStart: raw.scheduledStart || "",
+      scheduledEnd: raw.scheduledEnd || "",
+      courtId: raw.courtId || "",
+      courtLabel: raw.courtLabel || "",
+    },
   };
 }
 

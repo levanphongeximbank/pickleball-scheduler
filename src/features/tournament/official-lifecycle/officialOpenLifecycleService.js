@@ -103,6 +103,15 @@ export function createOfficialOpenLifecycleService(deps = {}) {
   }
 
   return {
+    async listMyRefereeAssignments() {
+      return callRpc(OFFICIAL_OPEN_LIFECYCLE_RPC.LIST_MY_REFEREE_ASSIGNMENTS, {});
+    },
+    async openMyRefereeMatch(input = {}) {
+      return callRpc(OFFICIAL_OPEN_LIFECYCLE_RPC.OPEN_MY_REFEREE_MATCH, {
+        p_tournament_id: input.tournamentId,
+        p_match_id: input.matchId,
+      });
+    },
     async ensureMatchLive(input = {}) {
       return callRpc(OFFICIAL_OPEN_LIFECYCLE_RPC.ENSURE_LIVE, {
         p_tenant_id: input.tenantId,
