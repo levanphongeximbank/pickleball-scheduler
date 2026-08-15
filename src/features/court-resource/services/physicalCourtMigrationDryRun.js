@@ -24,8 +24,15 @@ function classify(record, context) {
     legacyClusterId: text(record.legacyClusterId),
     legacyCourtId: text(record.legacyCourtId),
   };
+  const scopeReady =
+    Boolean(identity.tenantId) &&
+    Boolean(identity.venueId) &&
+    Boolean(identity.clubId) &&
+    Boolean(identity.sourceSystem) &&
+    Boolean(identity.sourceVersion) &&
+    Boolean(identity.legacyCourtId);
   if (
-    !Object.values(identity).every(Boolean) ||
+    !scopeReady ||
     identity.tenantId !== text(context.scope.tenantId) ||
     identity.venueId !== text(context.scope.venueId) ||
     identity.clubId !== text(context.scope.clubId)

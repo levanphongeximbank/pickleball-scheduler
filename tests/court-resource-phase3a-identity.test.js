@@ -115,6 +115,26 @@ test("cluster reconciliation requires durable public.court_clusters evidence", (
     legacyClusterId: "tenant-a-main",
     durableClusters: [],
   }).classification, "unresolved_cluster");
+  assert.equal(reconcileClusterIdentity({
+    ...request,
+    legacyClusterId: "",
+    durableClusters: [{ id: "cluster-a", venue_id: "tenant-a" }],
+  }).classification, "unresolved_cluster");
+});
+
+test("unstamped legacy courts dry-run as unresolved_cluster, never silently assigned", () => {
+  const result = runPhysicalCourtMigrationDryRun({
+    scope: { tenantId: "tenant-a", venueId: "tenant-a", clubId: "club-a" },
+    durableClusters: [{ id: "cluster-a", venue_id: "tenant-a" }],
+    legacyCourts: [{
+      ...key,
+      legacyClusterId: "",
+    }],
+  });
+  assert.equal(result.records[0].classification, "unresolved_cluster");
+  assert.equal(result.records[0].physicalCourtId, null);
+  assert.equal(result.summary.UNRESOLVED_CLUSTER, 1);
+  assert.deepEqual(result.writes, []);
 });
 
 test("explicit cluster mappings detect ambiguity and cross-scope provenance", () => {

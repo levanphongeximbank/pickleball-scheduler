@@ -28,6 +28,19 @@ export {
   filterCourtsByClusterMembership,
 } from "./services/courtClusterMembershipService.js";
 export {
+  applyCanonicalClusterBinding,
+  listUnstampedCourts,
+  isUnstampedCourt,
+  resolveClubDataV3CourtsPath,
+  writeClubDataV3Courts,
+} from "./services/clusterBindingCore.js";
+export { bindClubCourtsToCluster } from "./services/bindClubCourtsToClusterService.js";
+export {
+  CLUSTER_BINDING_CODE,
+  CLUSTER_BINDING_COMMAND,
+  CLUSTER_BINDING_RPC,
+} from "./constants/clusterBindingContract.js";
+export {
   normalizeOwnerInput,
   normalizeReservationOwnerFromBooking,
   isSameReservationOwner,

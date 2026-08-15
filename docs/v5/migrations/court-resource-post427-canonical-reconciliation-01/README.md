@@ -16,6 +16,11 @@ The legacy mapping key is `(tenant_id, club_id, source_system, source_version,
 legacy_cluster_id, legacy_court_id)`. Every component is mandatory.
 Classification is independent from Club operational access status.
 
+This package does not require `public.bind_club_courts_to_cluster` to already
+exist. Unstamped legacy courts classify fail-closed (`unresolved_cluster` or
+review) instead of being silently mutated. Keep this package separate from
+`docs/v5/migrations/venue-court-canonical-cluster-binding-01`.
+
 ## Complete ownership manifest
 
 Package-owned tables:

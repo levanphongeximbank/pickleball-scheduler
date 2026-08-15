@@ -10,9 +10,13 @@ reservation or runtime authorities.
 - Every physical court belongs to one tenant and one durable
   `public.court_clusters.id`. Synthetic cluster values are never accepted as
   durable evidence.
+- Unstamped / missing legacy `clusterId` classifies as `unresolved_cluster`.
+  Do not silently assign a cluster. Conflicting durable evidence is
+  `ambiguous`. Incomplete tenant/source provenance is `invalid_scope`.
 - Club operational access is a separate many-to-many relation. Mapping
   `classification` (`deterministic`, `ambiguous`, and so on) never implies that access
-  is enabled.
+  is enabled. `clubs.registered_cluster_id` is Club facility registration and
+  is not `court_resource_club_operational_access`.
 - A legacy court mapping key is exactly `(tenantId, clubId, sourceSystem,
   sourceVersion, legacyClusterId, legacyCourtId)`. Provenance is mandatory; no
   `legacy` or `unversioned` fallback is permitted.

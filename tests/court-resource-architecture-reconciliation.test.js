@@ -89,4 +89,57 @@ test("club_data_v3 is documented as transitional, not the Physical Court master"
   assert.match(foundation, /transitional Club operational inventory/i);
   assert.match(foundation, /not.*system-wide Physical Court master/i);
   assert.match(inventory, /not the system-wide canonical\s+\* Physical Court master/i);
+  assert.match(inventory, /Does not fabricate clusterId from venueId/);
+  assert.doesNotMatch(inventory, /\$\{[^}]*venueId[^}]*\}-main/);
+});
+
+test("venue-court index keeps #429 binder exports and #428 canonical gateway re-export", () => {
+  const index = readFileSync(
+    path.join(root, "src/features/venue-court/index.js"),
+    "utf8"
+  );
+  assert.match(index, /bindClubCourtsToCluster/);
+  assert.match(index, /clusterBindingCore/);
+  assert.match(index, /clusterBindingContract/);
+  assert.match(
+    index,
+    /from ["']\.\.\/court-resource\/services\/courtResourceGateway\.js["']/
+  );
+  assert.match(
+    index,
+    /from ["']\.\.\/court-resource\/constants\/courtResourceContract\.js["']/
+  );
+  assert.doesNotMatch(
+    index,
+    /from ["']\.\/services\/courtResourceGateway\.js["']/
+  );
+});
+
+test("transitional cluster binder is not Physical Court identity or reservation authority", () => {
+  const binder = readFileSync(
+    path.join(root, "src/features/venue-court/services/bindClubCourtsToClusterService.js"),
+    "utf8"
+  );
+  const core = readFileSync(
+    path.join(root, "src/features/venue-court/services/clusterBindingCore.js"),
+    "utf8"
+  );
+  const access = readFileSync(
+    path.join(root, "src/features/court-resource/contracts/clubOperationalAccess.js"),
+    "utf8"
+  );
+  const foundation = readFileSync(
+    path.join(root, "docs/v5/SHARED_COURT_RESOURCE_FOUNDATION.md"),
+    "utf8"
+  );
+  for (const source of [binder, core]) {
+    assert.doesNotMatch(source, /\breserveCourts\b|\breleaseCourts\b/);
+    assert.doesNotMatch(source, /from ["'][^"']*court-resource[^"']*["']/);
+    assert.doesNotMatch(source, /createCanonicalPhysicalCourt|court_resource_physical_courts/);
+  }
+  assert.match(binder, /does not create physicalCourtId UUIDs/);
+  assert.doesNotMatch(access, /registeredClusterId|registered_cluster_id/);
+  assert.match(foundation, /transitional operational cluster-binding compatibility writer/i);
+  assert.match(foundation, /registered_cluster_id[\s\S]*court_resource_club_operational_access/);
+  assert.match(foundation, /CLUSTER BINDING/);
 });

@@ -23,9 +23,14 @@ export function reconcileClusterIdentity(input = {}) {
   const sourceSystem = text(input.sourceSystem);
   const sourceVersion = text(input.sourceVersion);
   const legacyClusterId = text(input.legacyClusterId);
-  if (!tenantId || !venueId || !sourceSystem || !sourceVersion || !legacyClusterId) {
+  if (!tenantId || !venueId || !sourceSystem || !sourceVersion) {
     return result(LEGACY_COURT_MAPPING_STATUS.INVALID_SCOPE, [
       { type: "INVALID_CLUSTER_PROVENANCE_OR_SCOPE" },
+    ]);
+  }
+  if (!legacyClusterId) {
+    return result(LEGACY_COURT_MAPPING_STATUS.UNRESOLVED_CLUSTER, [
+      { type: "MISSING_OR_UNSTAMPED_CLUSTER" },
     ]);
   }
 

@@ -96,6 +96,38 @@ Synchronous `listCourts` remains the local compatibility API. This foundation do
 
 ---
 
+## Transitional operational cluster binding
+
+`bindClubCourtsToCluster` / `public.bind_club_courts_to_cluster` is a
+**transitional operational cluster-binding compatibility writer**. It stamps:
+
+- Club facility registration: `clubs.registered_cluster_id`
+- selected transitional inventory courts: `club_data_v3.data.courts[].clusterId`
+
+It is **not** the final Physical Court identity master and **not** Court
+Resource reservation authority. It does not create `physicalCourtId` UUIDs.
+Missing `clusterId` stays missing; cloud readers must not fabricate
+`{venueId}-main`.
+
+```text
+CLUSTER BINDING
+≠ PHYSICAL COURT ACCESS
+≠ CAPACITY RESERVATION
+≠ MATCH ASSIGNMENT
+≠ LIVE OCCUPANCY
+```
+
+`clubs.registered_cluster_id` is Club facility/cluster registration.
+`court_resource_club_operational_access` is Club → Physical Court UUID
+authorization. A Club registered to Nam Long may have access to only a subset
+of that facility's courts. Registration does not reserve courts.
+
+Unstamped legacy courts classify as `unresolved_cluster` / review. Phase 3A
+identity PRECHECK/dry-run does not require the #429 binder SQL to already be
+applied.
+
+---
+
 ## Dependency direction
 
 ```text

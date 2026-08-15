@@ -7,6 +7,7 @@
  * Physical Court master.
  *
  * Does not read localStorage. Does not invent missing courts.
+ * Does not fabricate clusterId from venueId.
  * Does not require blob.venue_id = tenantId when venue_id is NULL.
  */
 
