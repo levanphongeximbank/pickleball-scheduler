@@ -14,10 +14,10 @@ import { PERMISSIONS } from "../auth/permissions.js";
 import { isRbacEnabled } from "../auth/authService.js";
 import { getClubById } from "../domain/clubService.js";
 import {
-  ensureCourtsHaveClusterId,
   filterCourtsByCluster,
   syncClusterCourtCount,
 } from "../features/court-cluster/services/courtClusterService.js";
+import { listUnstampedCourts } from "../features/venue-court/services/clusterBindingCore.js";
 import { isCourtClustersEnabled } from "../features/court-cluster/config/clusterFlags.js";
 
 const COURTS_STORAGE_KEY = "courts";
@@ -49,10 +49,12 @@ function loadAllCourtsRaw(fallbackCourts = [], clubId) {
 
 export function loadCourts(fallbackCourts = [], clubId, { clusterId = null, venueId = null } = {}) {
   const normalized = loadAllCourtsRaw(fallbackCourts, clubId);
-  const club = getClubById(clubId);
-  const resolvedVenueId = venueId || club?.venueId || club?.tenantId || null;
-  const withCluster = ensureCourtsHaveClusterId(normalized, resolvedVenueId);
-  return filterCourtsByCluster(withCluster, clusterId);
+  void venueId;
+  return filterCourtsByCluster(normalized, clusterId);
+}
+
+export function loadUnstampedCourts(clubId) {
+  return listUnstampedCourts(loadAllCourtsRaw([], clubId));
 }
 
 export function saveCourts(courts, clubId, options = {}) {
@@ -68,19 +70,17 @@ export function saveCourts(courts, clubId, options = {}) {
     return check;
   }
 
-  const club = getClubById(clubId);
-  const venueId = club?.venueId || club?.tenantId || null;
   let courtsToSave = normalizeCourts(courts);
 
   if (isCourtClustersEnabled() && clusterId) {
-    const existing = ensureCourtsHaveClusterId(loadAllCourtsRaw([], clubId), venueId);
-    const others = existing.filter((court) => court.clusterId !== clusterId);
+    const existing = loadAllCourtsRaw([], clubId);
+    const others = existing.filter(
+      (court) => String(court.clusterId || "") !== String(clusterId)
+    );
     courtsToSave = [
       ...others,
       ...courtsToSave.map((court) => ({ ...court, clusterId })),
     ];
-  } else if (isCourtClustersEnabled() && venueId) {
-    courtsToSave = ensureCourtsHaveClusterId(courtsToSave, venueId);
   }
 
   saveCourtsForClub(courtsToSave, clubId);
@@ -90,10 +90,9 @@ export function saveCourts(courts, clubId, options = {}) {
   );
 
   if (isCourtClustersEnabled()) {
-    const stamped = ensureCourtsHaveClusterId(courtsToSave, venueId);
-    const clusterIds = [...new Set(stamped.map((court) => court.clusterId).filter(Boolean))];
+    const clusterIds = [...new Set(courtsToSave.map((court) => court.clusterId).filter(Boolean))];
     for (const id of clusterIds) {
-      const count = stamped.filter((court) => court.clusterId === id).length;
+      const count = courtsToSave.filter((court) => court.clusterId === id).length;
       syncClusterCourtCount(id, count);
     }
   }
