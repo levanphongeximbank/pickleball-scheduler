@@ -58,19 +58,19 @@ afterEach(() => {
   Date.now = originalDateNow;
 });
 
-test("calculateDuration returns minutes between times", () => {
+test("calculateDuration returns minutes between times", async () => {
   assert.equal(calculateDuration("18:00", "20:00"), 120);
   assert.equal(calculateDuration("20:00", "18:00"), 0);
 });
 
-test("doTimesOverlap detects overlapping ranges", () => {
+test("doTimesOverlap detects overlapping ranges", async () => {
   assert.equal(doTimesOverlap("18:00", "20:00", "19:00", "21:00"), true);
   assert.equal(doTimesOverlap("18:00", "20:00", "20:00", "21:00"), false);
   assert.equal(doTimesOverlap("18:00", "20:00", "16:00", "18:00"), false);
   assert.equal(doTimesOverlap("18:00", "20:00", "17:30", "18:30"), true);
 });
 
-test("checkBookingConflict blocks overlapping booking on same court", () => {
+test("checkBookingConflict blocks overlapping booking on same court", async () => {
   const bookings = [
     {
       id: "b1",
@@ -94,7 +94,7 @@ test("checkBookingConflict blocks overlapping booking on same court", () => {
   assert.match(conflict.message, /Sân 1/);
 });
 
-test("checkBookingConflict allows adjacent booking", () => {
+test("checkBookingConflict allows adjacent booking", async () => {
   const bookings = [
     {
       id: "b1",
@@ -116,8 +116,8 @@ test("checkBookingConflict allows adjacent booking", () => {
   assert.equal(conflict, null);
 });
 
-test("createBooking saves booking and appears in storage", () => {
-  const result = createBooking(
+test("createBooking saves booking and appears in storage", async () => {
+  const result = await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -140,8 +140,8 @@ test("createBooking saves booking and appears in storage", () => {
   assert.equal(stored.length, 1);
 });
 
-test("saveBooking rejects conflict", () => {
-  createBooking(
+test("saveBooking rejects conflict", async () => {
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -153,7 +153,7 @@ test("saveBooking rejects conflict", () => {
     DEFAULT_CLUB.id
   );
 
-  const result = createBooking(
+  const result = await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -169,14 +169,14 @@ test("saveBooking rejects conflict", () => {
   assert.match(result.message, /trùng giờ/);
 });
 
-test("payment status updates correctly", () => {
+test("payment status updates correctly", async () => {
   assert.equal(derivePaymentStatus(400000, 0), "unpaid");
   assert.equal(derivePaymentStatus(400000, 100000), "deposit_paid");
   assert.equal(derivePaymentStatus(400000, 400000), "paid");
   assert.equal(getRemainingAmount(400000, 100000), 300000);
 });
 
-test("computeDailyRevenue aggregates day stats", () => {
+test("computeDailyRevenue aggregates day stats", async () => {
   const bookings = [
     {
       date: "2026-06-28",
@@ -215,7 +215,7 @@ test("computeDailyRevenue aggregates day stats", () => {
   assert.equal(summary.cancelled, 1);
 });
 
-test("getBookingsByDate filters by date", () => {
+test("getBookingsByDate filters by date", async () => {
   const bookings = [
     { date: "2026-06-28", id: "a" },
     { date: "2026-06-29", id: "b" },
@@ -224,14 +224,14 @@ test("getBookingsByDate filters by date", () => {
   assert.equal(getBookingsByDate(bookings, "2026-06-28").length, 1);
 });
 
-test("saveBooking rejects locked court", () => {
+test("saveBooking rejects locked court", async () => {
   const data = getDefaultClubData(DEFAULT_CLUB.id);
   data.courts = [
     normalizeCourt({ id: 1, name: "Sân 1", active: false, status: "locked" }),
   ];
   saveClubData(DEFAULT_CLUB.id, data);
 
-  const result = createBooking(
+  const result = await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -247,14 +247,14 @@ test("saveBooking rejects locked court", () => {
   assert.match(result.message, /khóa/i);
 });
 
-test("saveBooking rejects maintenance court", () => {
+test("saveBooking rejects maintenance court", async () => {
   const data = getDefaultClubData(DEFAULT_CLUB.id);
   data.courts = [
     normalizeCourt({ id: 1, name: "Sân 1", active: false, status: "maintenance" }),
   ];
   saveClubData(DEFAULT_CLUB.id, data);
 
-  const result = createBooking(
+  const result = await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -270,7 +270,7 @@ test("saveBooking rejects maintenance court", () => {
   assert.match(result.message, /bảo trì/i);
 });
 
-test("loadClubData initializes empty bookings and customers", () => {
+test("loadClubData initializes empty bookings and customers", async () => {
   const data = loadClubData(DEFAULT_CLUB.id);
   assert.ok(Array.isArray(data.bookings));
   assert.ok(Array.isArray(data.customers));
@@ -281,7 +281,7 @@ test("loadClubData initializes empty bookings and customers", () => {
 test("extendBookingTime adds duration and updates total", async () => {
   const { extendBookingTime } = await import("../src/domain/bookingService.js");
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -295,7 +295,7 @@ test("extendBookingTime adds duration and updates total", async () => {
   );
 
   const bookings = loadBookingsForClub(DEFAULT_CLUB.id);
-  const result = extendBookingTime(bookings[0].id, 60, DEFAULT_CLUB.id);
+  const result = await extendBookingTime(bookings[0].id, 60, DEFAULT_CLUB.id);
 
   assert.equal(result.ok, true);
   assert.equal(result.booking.endTime, "21:00");
@@ -304,7 +304,7 @@ test("extendBookingTime adds duration and updates total", async () => {
 test("transferBookingCourt moves booking to another court", async () => {
   const { transferBookingCourt } = await import("../src/domain/bookingService.js");
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -317,7 +317,7 @@ test("transferBookingCourt moves booking to another court", async () => {
   );
 
   const bookings = loadBookingsForClub(DEFAULT_CLUB.id);
-  const result = transferBookingCourt(bookings[0].id, 2, DEFAULT_CLUB.id);
+  const result = await transferBookingCourt(bookings[0].id, 2, DEFAULT_CLUB.id);
 
   assert.equal(result.ok, true);
   assert.equal(result.booking.courtId, 2);
@@ -373,7 +373,7 @@ test("calculateBookingAmount applies peak hour rules by time segment", async () 
 test("computeRangeRevenue aggregates multiple days", async () => {
   const { computeRangeRevenue } = await import("../src/domain/courtBookingEngine.js");
 
-  const first = createBooking(
+  const first = await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -386,7 +386,7 @@ test("computeRangeRevenue aggregates multiple days", async () => {
     DEFAULT_CLUB.id
   );
 
-  const second = createBooking(
+  const second = await createBooking(
     {
       courtId: 1,
       date: "2026-06-29",
@@ -491,7 +491,7 @@ test("getUpcomingReminders finds bookings starting soon", async () => {
     notificationSettings: { enabled: true, minutesBefore: 60 },
   });
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -517,7 +517,7 @@ test("getUpcomingReminders finds bookings starting soon", async () => {
 test("computeDebtSummary lists bookings with remaining balance", async () => {
   const { computeDebtSummary } = await import("../src/domain/courtBookingEngine.js");
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -562,7 +562,7 @@ test("mergeCustomersByPhone merges duplicate phone records", async () => {
 test("getTodayUpcomingBookings returns future bookings today", async () => {
   const { getTodayUpcomingBookings } = await import("../src/domain/courtBookingEngine.js");
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -588,7 +588,7 @@ test("getTodayUpcomingBookings returns future bookings today", async () => {
 test("duplicateBooking creates copy one week later", async () => {
   const { duplicateBooking } = await import("../src/domain/bookingService.js");
 
-  const created = createBooking(
+  const created = await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -604,7 +604,7 @@ test("duplicateBooking creates copy one week later", async () => {
 
   assert.equal(created.ok, true);
 
-  const result = duplicateBooking(created.booking.id, DEFAULT_CLUB.id);
+  const result = await duplicateBooking(created.booking.id, DEFAULT_CLUB.id);
   assert.equal(result.ok, true);
   assert.equal(result.booking.date, "2026-07-05");
   assert.equal(result.booking.paidAmount, 0);
@@ -614,7 +614,7 @@ test("duplicateBooking creates copy one week later", async () => {
 test("computeCourtUtilization measures booked minutes", async () => {
   const { computeCourtUtilization } = await import("../src/domain/courtBookingEngine.js");
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -654,7 +654,7 @@ test("getWeekDates returns seven dates starting Monday", async () => {
 test("findAvailableSlots returns free court windows", async () => {
   const { findAvailableSlots } = await import("../src/domain/courtBookingEngine.js");
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -685,7 +685,7 @@ test("findAvailableSlots returns free court windows", async () => {
 test("autoCompletePastBookings marks overdue bookings completed", async () => {
   const { autoCompletePastBookings } = await import("../src/domain/bookingService.js");
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-27",
@@ -732,7 +732,7 @@ test("buildBookingReceiptHtml includes booking code", async () => {
 test("summarizeTodayOperations aggregates daily and debt stats", async () => {
   const { summarizeTodayOperations } = await import("../src/domain/courtBookingEngine.js");
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -773,7 +773,7 @@ test("normalizeCourtManagementSettings includes automation settings", async () =
 test("buildCourtManagementExport includes bookings and customers", async () => {
   const { buildCourtManagementExport } = await import("../src/domain/courtManagementExport.js");
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -820,7 +820,7 @@ test("importCourtManagementExport restores bookings", async () => {
   } = await import("../src/domain/courtManagementExport.js");
   const { loadBookingsForClub } = await import("../src/domain/clubStorage.js");
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -841,7 +841,7 @@ test("importCourtManagementExport restores bookings", async () => {
 test("autoStartDueBookings marks in-window bookings as playing", async () => {
   const { autoStartDueBookings } = await import("../src/domain/bookingService.js");
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",
@@ -898,7 +898,7 @@ test("summarizeCourtManagementImport previews counts", async () => {
     summarizeCourtManagementImport,
   } = await import("../src/domain/courtManagementExport.js");
 
-  createBooking(
+  await createBooking(
     {
       courtId: 1,
       date: "2026-06-28",

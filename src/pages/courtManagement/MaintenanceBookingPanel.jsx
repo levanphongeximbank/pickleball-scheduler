@@ -42,8 +42,8 @@ export default function MaintenanceBookingPanel({ clubId, courts = [], onSaved }
     };
   }, [clubId]);
 
-  const handleSubmit = () => {
-    const result = createMaintenanceBooking(
+  const handleSubmit = async () => {
+    const result = await createMaintenanceBooking(
       {
         courtId,
         date,

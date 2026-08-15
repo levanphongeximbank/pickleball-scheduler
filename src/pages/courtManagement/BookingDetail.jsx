@@ -60,8 +60,8 @@ export default function BookingDetail({
   const canModify = !["completed", "cancelled", "no_show"].includes(booking.bookingStatus);
   const canExtend = canModify && booking.bookingType === "single";
 
-  const runStatusUpdate = (status) => {
-    const result = updateBookingStatus(booking.id, status, clubId);
+  const runStatusUpdate = async (status) => {
+    const result = await updateBookingStatus(booking.id, status, clubId);
 
     if (!result.ok) {
       setError(result.message);
@@ -98,8 +98,8 @@ export default function BookingDetail({
     onUpdated?.(result.booking);
   };
 
-  const handleExtend = (minutes) => {
-    const result = extendBookingTime(booking.id, minutes, clubId);
+  const handleExtend = async (minutes) => {
+    const result = await extendBookingTime(booking.id, minutes, clubId);
 
     if (!result.ok) {
       setError(result.message);
@@ -110,8 +110,8 @@ export default function BookingDetail({
     onUpdated?.(result.booking);
   };
 
-  const handleTransfer = () => {
-    const result = transferBookingCourt(booking.id, transferCourtId, clubId);
+  const handleTransfer = async () => {
+    const result = await transferBookingCourt(booking.id, transferCourtId, clubId);
 
     if (!result.ok) {
       setError(result.message);
@@ -122,8 +122,8 @@ export default function BookingDetail({
     onUpdated?.(result.booking);
   };
 
-  const handleDuplicate = () => {
-    const result = duplicateBooking(booking.id, clubId);
+  const handleDuplicate = async () => {
+    const result = await duplicateBooking(booking.id, clubId);
 
     if (!result.ok) {
       setError(result.message);

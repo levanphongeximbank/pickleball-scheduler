@@ -255,7 +255,7 @@ test("Court Engine assigned/playing does not create canonical reservations", () 
   }
 });
 
-test("gateway cutover OFF keeps legacy blob authority and does not call canonical RPC", () => {
+test("gateway cutover OFF keeps legacy blob authority and does not call canonical RPC", async () => {
   __resetCanonicalReservationCutoverForTests();
   let called = false;
   __setCourtResourceGatewayDepsForTests({
@@ -265,7 +265,7 @@ test("gateway cutover OFF keeps legacy blob authority and does not call canonica
     },
     isCanonicalReservationCutover: () => false,
   });
-  const result = reserveCourts({
+  const result = await reserveCourts({
     clubId: "club-a",
     tenantId: "tenant-a",
     courtIds: ["c1"],
@@ -281,13 +281,13 @@ test("gateway cutover OFF keeps legacy blob authority and does not call canonica
   __resetCourtResourceGatewayDepsForTests();
 });
 
-test("gateway cutover ON fail-closes when canonical adapter is missing", () => {
+test("gateway cutover ON fail-closes when canonical adapter is missing", async () => {
   __setCanonicalReservationCutoverForTests(true);
   __setCourtResourceGatewayDepsForTests({
     isCanonicalReservationCutover: () => true,
     canonicalReserve: null,
   });
-  const result = reserveCourts({
+  const result = await reserveCourts({
     clubId: "club-a",
     tenantId: "tenant-a",
     physicalCourtIds: [COURT01],
@@ -304,12 +304,12 @@ test("gateway cutover ON fail-closes when canonical adapter is missing", () => {
   __resetCanonicalReservationCutoverForTests();
 });
 
-test("acceptance H/I/J-shaped gateway rejects cluster-only, courtCount-only, and non-UUID identity", () => {
+test("acceptance H/I/J-shaped gateway rejects cluster-only, courtCount-only, and non-UUID identity", async () => {
   __setCourtResourceGatewayDepsForTests({
     isCanonicalReservationCutover: () => true,
     canonicalReserve: () => ({ ok: true, reservationIds: ["r1"], reservations: [] }),
   });
-  const clusterOnly = reserveCourts({
+  const clusterOnly = await reserveCourts({
     clubId: "club-a",
     tenantId: "tenant-a",
     clusterId: "NAM_LONG",
@@ -324,7 +324,7 @@ test("acceptance H/I/J-shaped gateway rejects cluster-only, courtCount-only, and
   assert.equal(clusterOnly.ok, false);
   assert.equal(clusterOnly.code, COURT_RESOURCE_CODE.WHOLE_CLUSTER_DENIED);
 
-  const countOnly = reserveCourts({
+  const countOnly = await reserveCourts({
     clubId: "club-a",
     tenantId: "tenant-a",
     courtCount: 4,
@@ -338,7 +338,7 @@ test("acceptance H/I/J-shaped gateway rejects cluster-only, courtCount-only, and
   assert.equal(countOnly.ok, false);
   assert.equal(countOnly.code, COURT_RESOURCE_CODE.COURT_COUNT_DENIED);
 
-  const label = reserveCourts({
+  const label = await reserveCourts({
     clubId: "club-a",
     tenantId: "tenant-a",
     physicalCourtIds: ["Sân 01"],
@@ -354,7 +354,7 @@ test("acceptance H/I/J-shaped gateway rejects cluster-only, courtCount-only, and
   __resetCourtResourceGatewayDepsForTests();
 });
 
-test("acceptance A/D/E/G-shaped gateway uses canonical availability/reserve adapters", () => {
+test("acceptance A/D/E/G-shaped gateway uses canonical availability/reserve adapters", async () => {
   const store = [];
   __setCourtResourceGatewayDepsForTests({
     isCanonicalReservationCutover: () => true,
@@ -399,7 +399,7 @@ test("acceptance A/D/E/G-shaped gateway uses canonical availability/reserve adap
     canonicalRelease: () => ({ ok: true, releasedReservationIds: [] }),
   });
 
-  const booking = reserveCourts({
+  const booking = await reserveCourts({
     clubId: "club-a",
     tenantId: "tenant-a",
     physicalCourtIds: [COURT01],
@@ -413,7 +413,7 @@ test("acceptance A/D/E/G-shaped gateway uses canonical availability/reserve adap
   assert.equal(booking.ok, true);
   assert.equal(booking.capacityAuthority, "canonical_reservation");
 
-  const competition = reserveCourts({
+  const competition = await reserveCourts({
     clubId: "club-a",
     tenantId: "tenant-a",
     physicalCourtIds: [COURT01],
@@ -427,7 +427,7 @@ test("acceptance A/D/E/G-shaped gateway uses canonical availability/reserve adap
   assert.equal(competition.ok, false);
   assert.equal(competition.code, COURT_RESOURCE_CODE.FOREIGN_RESERVATION_CONFLICT);
 
-  const otherCourt = reserveCourts({
+  const otherCourt = await reserveCourts({
     clubId: "club-a",
     tenantId: "tenant-a",
     physicalCourtIds: [COURT02],
@@ -440,7 +440,7 @@ test("acceptance A/D/E/G-shaped gateway uses canonical availability/reserve adap
   });
   assert.equal(otherCourt.ok, true);
 
-  const own = getCourtAvailability({
+  const own = await getCourtAvailability({
     clubId: "club-a",
     tenantId: "tenant-a",
     physicalCourtIds: [COURT01],
@@ -452,7 +452,7 @@ test("acceptance A/D/E/G-shaped gateway uses canonical availability/reserve adap
   });
   assert.equal(own.courts[0].status, CANONICAL_AVAILABILITY_STATUS.OWN_RESERVATION);
 
-  const foreign = getCourtAvailability({
+  const foreign = await getCourtAvailability({
     clubId: "club-a",
     tenantId: "tenant-a",
     physicalCourtIds: [COURT01],
@@ -464,7 +464,7 @@ test("acceptance A/D/E/G-shaped gateway uses canonical availability/reserve adap
   });
   assert.equal(foreign.courts[0].status, CANONICAL_AVAILABILITY_STATUS.FOREIGN_RESERVATION);
 
-  const assignment = validateCourtAssignment({
+  const assignment = await validateCourtAssignment({
     clubId: "club-a",
     tenantId: "tenant-a",
     physicalCourtIds: [COURT01],
@@ -477,7 +477,7 @@ test("acceptance A/D/E/G-shaped gateway uses canonical availability/reserve adap
   assert.equal(assignment.ok, true);
   assert.equal(assignment.valid, true);
 
-  const released = releaseCourts({
+  const released = await releaseCourts({
     clubId: "club-a",
     tenantId: "tenant-a",
     owner: { type: "booking", id: "bk-1" },

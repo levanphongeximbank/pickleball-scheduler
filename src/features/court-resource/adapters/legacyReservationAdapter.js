@@ -92,10 +92,11 @@ function validateDesiredAgainstForeign(bookings, owner, payloads, checkBookingCo
   return failed;
 }
 
-function upsertReservation(payload, clubId, bookings, deps) {
+async function upsertReservation(payload, clubId, bookings, deps) {
   const existing = bookings.find((item) => String(item.id) === String(payload.id));
   if (!existing) {
-    return deps.createBooking(payload, clubId);
+    const created = deps.createBooking(payload, clubId);
+    return created && typeof created.then === "function" ? await created : created;
   }
   return deps.saveBooking(
     {
@@ -112,7 +113,7 @@ function upsertReservation(payload, clubId, bookings, deps) {
   );
 }
 
-export function syncLegacyTournamentReservations(
+export async function syncLegacyTournamentReservations(
   { clubId, owner, courts = [], courtIds = [], window, label = "" },
   deps
 ) {
@@ -160,7 +161,7 @@ export function syncLegacyTournamentReservations(
 
   for (const payload of payloads) {
     const existing = bookings.find((booking) => String(booking.id) === String(payload.id));
-    const result = upsertReservation(payload, clubId, bookings, deps);
+    const result = await upsertReservation(payload, clubId, bookings, deps);
     if (!result.ok) {
       failed.push({
         courtId: payload.courtId,
@@ -198,7 +199,8 @@ export function syncLegacyTournamentReservations(
   const cancelled = [];
   const cancelFailed = [];
   for (const booking of ownedActive.filter((item) => !desiredIds.has(String(item.id)))) {
-    const result = deps.updateBookingStatus(booking.id, "cancelled", clubId);
+    const raw = deps.updateBookingStatus(booking.id, "cancelled", clubId);
+    const result = raw && typeof raw.then === "function" ? await raw : raw;
     if (result.ok) {
       cancelled.push(result.booking);
     } else {
@@ -239,7 +241,7 @@ export function syncLegacyTournamentReservations(
   };
 }
 
-export function releaseLegacyTournamentReservations(
+export async function releaseLegacyTournamentReservations(
   { clubId, owner, courtIds = null },
   deps
 ) {
@@ -265,7 +267,8 @@ export function releaseLegacyTournamentReservations(
   const cancelled = [];
   const failed = [];
   for (const booking of targets) {
-    const result = deps.updateBookingStatus(booking.id, "cancelled", clubId);
+    const raw = deps.updateBookingStatus(booking.id, "cancelled", clubId);
+    const result = raw && typeof raw.then === "function" ? await raw : raw;
     if (result.ok) {
       cancelled.push(result.booking);
     } else {

@@ -219,8 +219,8 @@ describe("Phase 2E absolute→civil IANA determinism", () => {
 });
 
 describe("Phase 2E booking automation (host-TZ independent)", () => {
-  test("booking near venue midnight uses venue civil date", () => {
-    createBooking(
+  test("booking near venue midnight uses venue civil date", async () => {
+    await createBooking(
       {
         courtId: 1,
         date: "2026-06-28",
@@ -243,8 +243,8 @@ describe("Phase 2E booking automation (host-TZ independent)", () => {
     assert.equal(current?.customerName, "Midnight");
   });
 
-  test("auto-start uses venue timezone not host TZ", () => {
-    createBooking(
+  test("auto-start uses venue timezone not host TZ", async () => {
+    await createBooking(
       {
         courtId: 1,
         date: "2026-06-28",
@@ -263,8 +263,8 @@ describe("Phase 2E booking automation (host-TZ independent)", () => {
     assert.equal(loadBookingsForClub(CLUB_ID)[0].bookingStatus, "playing");
   });
 
-  test("auto-complete uses venue timezone not host TZ", () => {
-    createBooking(
+  test("auto-complete uses venue timezone not host TZ", async () => {
+    await createBooking(
       {
         courtId: 1,
         date: "2026-06-28",
@@ -282,18 +282,18 @@ describe("Phase 2E booking automation (host-TZ independent)", () => {
     assert.equal(result.updatedCount, 1);
   });
 
-  test("auto-start fails closed without venue timezone", () => {
+  test("auto-start fails closed without venue timezone", async () => {
     saveClubs([{ ...DEFAULT_CLUB, venueId: null, tenantId: null }]);
     const result = autoStartDueBookings(CLUB_ID, new Date(), {});
     assert.equal(result.ok, false);
     assert.equal(result.code, CIVIL_TIME_ERROR.TIMEZONE_REQUIRED);
   });
 
-  test("reminder scheduling uses venue civil date", () => {
+  test("reminder scheduling uses venue civil date", async () => {
     saveCourtManagementSettings(CLUB_ID, {
       notificationSettings: { enabled: true, minutesBefore: 60 },
     });
-    createBooking(
+    await createBooking(
       {
         courtId: 1,
         date: "2026-06-28",
@@ -350,7 +350,7 @@ describe("Phase 2E integration boundaries", () => {
     assert.equal(built.code, CIVIL_TIME_ERROR.INVALID_TIME_WINDOW);
   });
 
-  test("Phase 2C tournament booking sync retains civil shape", () => {
+  test("Phase 2C tournament booking sync retains civil shape", async () => {
     const rows = buildTournamentCourtBookings(
       {
         id: "t-1",

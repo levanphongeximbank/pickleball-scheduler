@@ -19,7 +19,7 @@ import {
 
 import { getCourtDisplayName } from "../../models/court.js";
 import { calculateBookingAmount, formatCurrency } from "../../domain/courtBookingEngine.js";
-import { createBooking, saveBooking } from "../../domain/bookingService.js";
+import { createBooking, saveBookingCapacityMutation } from "../../domain/bookingService.js";
 import { loadCustomersForClub } from "../../domain/clubStorage.js";
 import { loadCourtManagementSettings } from "../../domain/courtManagementSettings.js";
 import { buildEndTimeOptions, buildTimeOptions, todayIsoDate } from "./courtManagement.constants.js";
@@ -127,7 +127,7 @@ export default function BookingForm({
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!customerName.trim()) {
       setError("Vui lòng nhập tên khách.");
       return;
@@ -155,8 +155,8 @@ export default function BookingForm({
     };
 
     const result = editingBooking
-      ? saveBooking(payload, clubId, { excludeId: editingBooking.id })
-      : createBooking(payload, clubId);
+      ? await saveBookingCapacityMutation(payload, clubId, { excludeId: editingBooking.id })
+      : await createBooking(payload, clubId);
 
     if (!result.ok) {
       setError(result.message);

@@ -37,8 +37,8 @@ export default function CourtStatusBoard({
     onRefresh?.();
   };
 
-  const handleQuickStatus = (booking, status) => {
-    const result = updateBookingStatus(booking.id, status, clubId);
+  const handleQuickStatus = async (booking, status) => {
+    const result = await updateBookingStatus(booking.id, status, clubId);
     if (result.ok) onRefresh?.();
   };
 

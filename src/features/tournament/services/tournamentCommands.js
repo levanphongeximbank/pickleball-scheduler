@@ -207,7 +207,7 @@ export async function setTournamentCourtScheduleCommand(
   };
 
   const courts = loadCourtsForClub(scope.clubId);
-  const syncResult = syncTournamentCourtBookings(pending, scope.clubId, courts);
+  const syncResult = await syncTournamentCourtBookings(pending, scope.clubId, courts);
   if (!syncResult.ok) {
     return {
       ok: false,

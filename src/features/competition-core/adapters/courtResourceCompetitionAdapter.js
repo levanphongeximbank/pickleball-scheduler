@@ -183,7 +183,16 @@ function gatewayScope(input) {
 
 function catchGateway(run) {
   try {
-    return run();
+    const result = run();
+    if (result && typeof result.then === "function") {
+      return result.catch((error) =>
+        reject(
+          error?.code || COMPETITION_COURT_ERROR_CODE.DATA_UNAVAILABLE,
+          error?.message || "CourtResourceGateway rejected the request."
+        )
+      );
+    }
+    return result;
   } catch (error) {
     return reject(
       error?.code || COMPETITION_COURT_ERROR_CODE.DATA_UNAVAILABLE,
@@ -221,7 +230,7 @@ function mapAvailabilityRow(row, input) {
 }
 
 function createAdapter(gateway) {
-  function listEligibleCourts(input = {}) {
+  async function listEligibleCourts(input = {}) {
     const identityError = denyIdentityMisuse(input, { courts: [] });
     if (identityError && hasCourtCountWithoutPhysicalIds(input)) {
       return { ...identityError, courts: [] };
@@ -238,7 +247,7 @@ function createAdapter(gateway) {
     }
 
     const physicalCourtIds = listPhysicalCourtIds(input);
-    const result = catchGateway(() =>
+    const result = await catchGateway(() =>
       gateway.listEligibleCourts({
         ...gatewayScope(input),
         selectedCourtIds: physicalCourtIds,
@@ -262,7 +271,7 @@ function createAdapter(gateway) {
     });
   }
 
-  function getCourtAvailability(input = {}) {
+  async function getCourtAvailability(input = {}) {
     const identityError = denyIdentityMisuse(input, { courts: [] });
     if (identityError && (hasCourtCountWithoutPhysicalIds(input) || hasDisplayIdentityWithoutPhysicalIds(input))) {
       return { ...identityError, courts: [] };
@@ -284,7 +293,7 @@ function createAdapter(gateway) {
     }
 
     const physicalCourtIds = listPhysicalCourtIds(input);
-    const result = catchGateway(() =>
+    const result = await catchGateway(() =>
       gateway.getCourtAvailability({
         ...gatewayScope(input),
         ...window,
@@ -306,7 +315,7 @@ function createAdapter(gateway) {
     });
   }
 
-  function reserveCourts(input = {}) {
+  async function reserveCourts(input = {}) {
     const identityError = denyIdentityMisuse(input, { reserved: [] });
     if (identityError) return { ...identityError, reserved: [] };
 
@@ -335,7 +344,7 @@ function createAdapter(gateway) {
       );
     }
 
-    const result = catchGateway(() =>
+    const result = await catchGateway(() =>
       gateway.reserveCourts({
         ...gatewayScope(input),
         selectedCourtIds: physicalCourtIds,
@@ -362,7 +371,7 @@ function createAdapter(gateway) {
     });
   }
 
-  function releaseCourts(input = {}) {
+  async function releaseCourts(input = {}) {
     const identityError = denyIdentityMisuse(input, { released: [] });
     if (identityError && (hasCourtCountWithoutPhysicalIds(input) || hasDisplayIdentityWithoutPhysicalIds(input))) {
       return { ...identityError, released: [] };
@@ -384,7 +393,7 @@ function createAdapter(gateway) {
     }
 
     const physicalCourtIds = listPhysicalCourtIds(input);
-    const result = catchGateway(() =>
+    const result = await catchGateway(() =>
       gateway.releaseCourts({
         ...gatewayScope(input),
         selectedCourtIds: physicalCourtIds,
@@ -411,7 +420,7 @@ function createAdapter(gateway) {
     });
   }
 
-  function validateMatchAssignment(input = {}) {
+  async function validateMatchAssignment(input = {}) {
     const identityError = denyIdentityMisuse(input, { valid: false });
     if (identityError) return identityError;
 
@@ -437,7 +446,7 @@ function createAdapter(gateway) {
       );
     }
 
-    const result = catchGateway(() =>
+    const result = await catchGateway(() =>
       gateway.validateCourtAssignment({
         ...gatewayScope(input),
         courtId: physicalCourtId,
@@ -475,7 +484,7 @@ function createAdapter(gateway) {
     reserveCourts,
     releaseCourts,
     validateMatchAssignment,
-    invoke(capability, input) {
+    async invoke(capability, input) {
       if (!isSupportedCompetitionCourtCapability(capability)) {
         return createSharedContractCapabilityGap(capability);
       }
