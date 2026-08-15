@@ -158,6 +158,7 @@
   "tests/internal-tournament-end-to-end-closure-01.it-e2e-browser-019.test.js",
   "tests/internal-tournament-end-to-end-closure-01.it-e2e-browser-020.test.js",
   "tests/internal-tournament-end-to-end-closure-01.it-e2e-browser-022.test.js",
+  "tests/internal-tournament-canonical-adapter-b-adoption.test.js",
   "tests/tournament-bracket.test.js",
   "tests/tournament-open-random.test.js",
   "tests/tournament-ai-balance.test.js",

@@ -104,16 +104,22 @@ const BOOKABLE_COURTS = [
 ];
 
 describe("IT-E2E-BROWSER-009 Internal court inventory", () => {
-  it("projects shared club_data_v3 courts and does not invent an Internal court table", () => {
+  it("projects Physical Courts through Court Adapter V1 and does not invent an Internal court table", () => {
     const setupSrc = readSrc("src/pages/tournament/InternalTournamentSetup.jsx");
     const stageSrc = readSrc("src/components/tournament/internal/InternalScheduleStage.jsx");
     const courtSrc = readSrc("src/features/tournament/internal/internalScheduleCourts.js");
+    const adapterSrc = readSrc(
+      "src/features/tournament/internal/InternalTournamentCourtAdapter.js"
+    );
 
     assert.match(setupSrc, /loadInternalScheduleCourts/);
     assert.doesNotMatch(setupSrc, /loadCourtsForClub/);
-    assert.match(courtSrc, /listCanonicalClubCourtsForFormatVenue/);
-    assert.equal(INTERNAL_COURT_AUTHORITY, "club_data_v3");
-    assert.equal(INTERNAL_COURT_READER, "listCanonicalClubCourtsForFormatVenue");
+    assert.match(adapterSrc, /createCourtResourceCompetitionAdapter/);
+    assert.match(courtSrc, /listEligibleCourts/);
+    assert.doesNotMatch(courtSrc, /listCanonicalClubCourtsForFormatVenue/);
+    assert.doesNotMatch(courtSrc, /club_data_v3/);
+    assert.equal(INTERNAL_COURT_AUTHORITY, "competition-court-adapter-v1");
+    assert.equal(INTERNAL_COURT_READER, "listEligibleCourts");
     assert.doesNotMatch(courtSrc + setupSrc + stageSrc, /internal_courts/);
     assert.doesNotMatch(stageSrc, /generateSchedule/);
     assert.doesNotMatch(stageSrc, /tất cả sân đang bị khóa/);
@@ -148,17 +154,29 @@ describe("IT-E2E-BROWSER-009 Internal court inventory", () => {
     assert.equal(available.message, null);
   });
 
-  it("loads courts through the shared canonical reader", async () => {
+  it("loads courts through the Competition Court Adapter Contract V1", async () => {
     const result = await loadInternalScheduleCourts({
       clubId: CLUB_ID,
       tenantId: TENANT_ID,
-      listCourtsFn: async () => ({ ok: true, courts: BOOKABLE_COURTS, source: "club_data_v3" }),
+      competitionId: TOURNAMENT_ID,
+      courtAdapter: {
+        listEligibleCourts: () => ({
+          ok: true,
+          courts: BOOKABLE_COURTS.map((court) => ({
+            physicalCourtId: court.id,
+            displayName: court.name,
+            active: true,
+            status: "active",
+          })),
+        }),
+      },
     });
     assert.equal(result.ok, true);
     assert.equal(result.authority, INTERNAL_COURT_AUTHORITY);
     assert.equal(result.reader, INTERNAL_COURT_READER);
     assert.equal(result.availability.availableCount, 2);
     assert.equal(projectInternalScheduleCourts(result.courts).length, 2);
+    assert.equal(result.courts[0].physicalCourtId, "tt412-court-01");
   });
 
   it("assigns court/time onto existing match IDs without duplication and survives F5 mapper", () => {

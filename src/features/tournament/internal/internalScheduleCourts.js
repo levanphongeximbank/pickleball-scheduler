@@ -1,12 +1,18 @@
 /**
- * Internal schedule courts — projection from shared club court inventory.
- * Internal does not own courts; it consumes club_data_v3 via Team/Daily reader.
+ * Internal schedule courts — projection from Competition Court Adapter Contract V1.
+ * Internal does not own courts, availability, or reservation authority.
  */
-import { isCourtBookable } from "../../../models/court.js";
-import { listCanonicalClubCourtsForFormatVenue } from "../../team-tournament/services/canonicalClubCourtInventory.js";
+import {
+  COMPETITION_COURT_RESULT_CODE,
+  isForeignReservationCode,
+} from "../../competition-core/contracts/competitionCourtAdapterContract.js";
+import {
+  INTERNAL_COURT_AUTHORITY,
+  INTERNAL_COURT_READER,
+  createInternalTournamentCourtAdapter,
+} from "./InternalTournamentCourtAdapter.js";
 
-export const INTERNAL_COURT_AUTHORITY = "club_data_v3";
-export const INTERNAL_COURT_READER = "listCanonicalClubCourtsForFormatVenue";
+export { INTERNAL_COURT_AUTHORITY, INTERNAL_COURT_READER };
 
 export const INTERNAL_COURT_AVAILABILITY = Object.freeze({
   AVAILABLE: "available",
@@ -23,14 +29,28 @@ export const INTERNAL_COURT_COPY = Object.freeze({
 
 export function projectInternalScheduleCourt(court, index = 0) {
   if (!court || typeof court !== "object") return null;
-  const bookable = isCourtBookable(court);
+  const physicalCourtId = String(
+    court.physicalCourtId || court.id || court.courtId || ""
+  ).trim();
+  if (!physicalCourtId) return null;
+  const foreign =
+    isForeignReservationCode(court.resultCode) ||
+    court.resultCode === COMPETITION_COURT_RESULT_CODE.FOREIGN_RESERVATION ||
+    court.failClosed === true;
+  const bookable =
+    !foreign &&
+    court.active !== false &&
+    court.status !== "locked" &&
+    court.status !== "maintenance";
   return {
-    id: String(court.id || `court-${index + 1}`),
-    name: String(court.name || court.id || `Sân ${index + 1}`),
+    id: physicalCourtId,
+    physicalCourtId,
+    name: String(court.displayName || court.courtLabel || court.name || physicalCourtId),
     active: court.active !== false,
-    status: court.status || (bookable ? "active" : "locked"),
+    status: foreign ? "unavailable" : court.status || (bookable ? "active" : "locked"),
     locked: !bookable,
-    number: court.number ?? index + 1,
+    foreignReservation: foreign,
+    number: court.displayNumber ?? court.number ?? index + 1,
     clubId: court.clubId || "",
     tenantId: court.tenantId || court.venueId || "",
   };
@@ -90,8 +110,24 @@ function toIso(date, totalMinutes) {
   return `${date}T${hours}:${mins}:00`;
 }
 
+function windowFromAssignment({ date, startTime, matchMinutes, matchCount, bufferMinutes }) {
+  const start = parseStartMinutes(startTime);
+  const slot = Number(matchMinutes) + Number(bufferMinutes);
+  const end = start + Math.max(1, matchCount) * slot;
+  const startHours = String(Math.floor(start / 60)).padStart(2, "0");
+  const startMins = String(start % 60).padStart(2, "0");
+  const endHours = String(Math.floor(end / 60)).padStart(2, "0");
+  const endMins = String(end % 60).padStart(2, "0");
+  return {
+    date,
+    startTime: `${startHours}:${startMins}`,
+    endTime: `${endHours}:${endMins}`,
+  };
+}
+
 /**
  * Assign court/time onto existing matches. Never creates or duplicates match IDs.
+ * Court assignment decision stays in Internal schedule; reservation goes through V1.
  */
 export function assignCourtsAndTimesToExistingInternalMatches({
   matches = [],
@@ -100,6 +136,11 @@ export function assignCourtsAndTimesToExistingInternalMatches({
   startTime = "08:00",
   matchMinutes = 25,
   bufferMinutes = 5,
+  courtAdapter = null,
+  competitionId = "",
+  clubId = "",
+  tenantId = "",
+  actorId = "",
 } = {}) {
   const existing = Array.isArray(matches) ? matches : [];
   const ids = existing.map((match) => String(match?.id || ""));
@@ -128,7 +169,8 @@ export function assignCourtsAndTimesToExistingInternalMatches({
     const startMinutes = start + index * slot;
     return {
       ...match,
-      courtId: court.id,
+      courtId: court.physicalCourtId,
+      physicalCourtId: court.physicalCourtId,
       courtName: court.name,
       scheduledStart: toIso(date, startMinutes),
       scheduledEnd: toIso(date, startMinutes + Number(matchMinutes)),
@@ -138,6 +180,33 @@ export function assignCourtsAndTimesToExistingInternalMatches({
   const nextIds = next.map((match) => String(match.id || ""));
   if (nextIds.join("|") !== ids.join("|")) {
     return { ok: false, code: "ID_MUTATION", error: "Không được đổi mã trận khi xếp sân.", matches: existing };
+  }
+
+  if (courtAdapter && typeof courtAdapter.reserveCourts === "function") {
+    const physicalCourtIds = [...new Set(next.map((match) => match.physicalCourtId).filter(Boolean))];
+    const reserved = courtAdapter.reserveCourts({
+      clubId,
+      tenantId,
+      competitionId,
+      actorId,
+      physicalCourtIds,
+      ...windowFromAssignment({
+        date,
+        startTime,
+        matchMinutes,
+        matchCount: next.length,
+        bufferMinutes,
+      }),
+    });
+    if (reserved?.ok === false || reserved?.failClosed) {
+      return {
+        ok: false,
+        code: reserved.code || COMPETITION_COURT_RESULT_CODE.FOREIGN_RESERVATION,
+        error: reserved.error || "Không đặt được sân — sân đang thuộc reservation khác.",
+        matches: existing,
+        failClosed: true,
+      };
+    }
   }
 
   return {
@@ -150,24 +219,32 @@ export function assignCourtsAndTimesToExistingInternalMatches({
 }
 
 /**
- * Load shared club court inventory for Internal scheduling. Internal never owns courts.
+ * Load eligible Physical Courts through Court Adapter V1. Internal never owns courts.
  */
 export async function loadInternalScheduleCourts({
   clubId,
   tenantId,
-  listCourtsFn = listCanonicalClubCourtsForFormatVenue,
+  competitionId,
+  actorId,
+  courtAdapter,
 } = {}) {
-  const result = await listCourtsFn({ clubId, tenantId });
-  const courts = projectInternalScheduleCourts(result?.courts || []);
+  const adapter = courtAdapter || createInternalTournamentCourtAdapter();
+  const listed = adapter.listEligibleCourts({
+    clubId,
+    tenantId,
+    competitionId,
+    actorId,
+  });
+  const courts = projectInternalScheduleCourts(listed?.courts || []);
   return {
-    ok: result?.ok !== false,
+    ok: listed?.ok !== false,
     courts,
-    source: result?.source || INTERNAL_COURT_AUTHORITY,
+    source: INTERNAL_COURT_AUTHORITY,
     authority: INTERNAL_COURT_AUTHORITY,
     reader: INTERNAL_COURT_READER,
     availability: classifyInternalCourtAvailability(courts),
-    error: result?.error || null,
-    code: result?.code || null,
+    error: listed?.error || null,
+    code: listed?.code || null,
   };
 }
 
@@ -176,6 +253,7 @@ export function matchesHaveCourtAndTime(matches = []) {
   if (!list.length) return false;
   return list.every(
     (match) =>
-      String(match?.courtId || "").trim() && String(match?.scheduledStart || "").trim()
+      String(match?.physicalCourtId || match?.courtId || "").trim() &&
+      String(match?.scheduledStart || "").trim()
   );
 }

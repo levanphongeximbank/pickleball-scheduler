@@ -24,6 +24,7 @@ import {
   assignCourtsAndTimesToExistingInternalMatches,
   classifyInternalCourtAvailability,
 } from "../../../features/tournament/internal/internalScheduleCourts.js";
+import { createInternalTournamentCourtAdapter } from "../../../features/tournament/internal/InternalTournamentCourtAdapter.js";
 import {
   INTERNAL_SCHEDULE_ACTIONS,
   lockInternalSchedule,
@@ -142,6 +143,11 @@ export default function InternalScheduleStage({
       startTime,
       matchMinutes: 25,
       bufferMinutes: 5,
+      courtAdapter: createInternalTournamentCourtAdapter(),
+      competitionId: currentTournament?.id || tournament?.id || "",
+      clubId: currentTournament?.clubId || clubId,
+      tenantId: currentTournament?.tenantId || tournament?.tenantId || "",
+      actorId: actor?.id || actor?.actorId || "",
     });
     if (!allocated.ok) {
       setMessage({ type: "error", text: allocated.error });

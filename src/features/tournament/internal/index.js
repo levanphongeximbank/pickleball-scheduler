@@ -139,8 +139,22 @@ export {
 export { resolveInternalSchedulePrerequisite } from "./internalSchedulePrerequisite.js";
 
 export {
+  INTERNAL_ADAPTER_ACTIVATION,
+  resolveInternalConditionalAdapterActivation,
+  isInternalConditionalAdapterRequired,
+} from "./internalCanonicalAdapterActivation.js";
+
+export { createInternalTournamentAdapterB } from "./internalCanonicalAdapterB.js";
+
+export {
   INTERNAL_COURT_AUTHORITY,
   INTERNAL_COURT_READER,
+  createInternalTournamentCourtAdapter,
+} from "./InternalTournamentCourtAdapter.js";
+
+export { createInternalTournamentRefereeAdapter } from "./InternalTournamentRefereeAdapter.js";
+
+export {
   INTERNAL_COURT_AVAILABILITY,
   INTERNAL_COURT_COPY,
   projectInternalScheduleCourts,

@@ -512,7 +512,12 @@ export default function InternalTournamentSetup() {
       setCourts([]);
       return undefined;
     }
-    void loadInternalScheduleCourts({ clubId, tenantId }).then((result) => {
+    void loadInternalScheduleCourts({
+      clubId,
+      tenantId,
+      competitionId: tournamentId,
+      actorId: user?.id,
+    }).then((result) => {
       if (cancelled) return;
       setCourts(result.courts || []);
     });
