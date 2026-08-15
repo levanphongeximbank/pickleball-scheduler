@@ -65,7 +65,9 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     : "2026-07-24T00:00:00.000Z";
 
   const store =
-    deps.store || createInMemoryRefereeOperationsStore({ clockIso });
+    deps.store ||
+    deps.runtime?.opsStore ||
+    createInMemoryRefereeOperationsStore({ clockIso });
 
   const runtimePorts =
     deps.runtimePorts ||
@@ -796,6 +798,11 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     kind: "referee-competition-operations-facade",
     version: E2E04_REFEREE_OPERATIONS_VERSION,
     store,
+    runtimeClassification:
+      deps.runtime?.classification ||
+      store.classification ||
+      "TEST_DOUBLE_ONLY",
+    wiredToProductionRuntime: false,
     seedAssignments,
     getRefereeAssignmentQueue,
     getAssignedMatch,

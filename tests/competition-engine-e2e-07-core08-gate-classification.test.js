@@ -20,6 +20,7 @@ import {
   CLASSIFICATION_META,
   EXECUTION_MODE,
   UNAUTHORIZED_UNIT_TEST_FILES,
+  E2E07_REGISTRY_PATTERN,
   detectClassificationExecutionMode,
   classifyCore08BranchDelta,
   reproduceCore08BranchLocalGate,
@@ -392,12 +393,52 @@ test("core08 gate — feature-branch mode: live delta ownership stays CORE-08 cl
       JSON.parse(baseRaw),
       JSON.parse(localRaw)
     );
+    const e2e07Additions = registry.added.filter((x) => E2E07_REGISTRY_PATTERN.test(x));
+    // Touching classification metadata while adding non-E2E-07 tests is not E2E-07 registry work.
+    if (e2e07Additions.length === 0) {
+      assert.equal(
+        registry.unexpected.every((x) => !E2E07_REGISTRY_PATTERN.test(x)),
+        true
+      );
+      return;
+    }
     assert.equal(registry.ok, true, `registry validation failed: ${JSON.stringify(registry)}`);
     assert.ok(registry.added.length >= 2);
 
     const reproduced = classifyCore08BranchDelta(live);
     assert.equal(reproduced.reproducesBranchLocalFailure, true);
   }
+});
+
+test("core08 gate — Competition Core non-draw-runtime files are not CORE-08 ownership", () => {
+  const live = [
+    "src/features/competition-core/adapters/courtResourceCompetitionAdapter.js",
+    "src/features/competition-core/contracts/competitionCourtAdapterContract.js",
+    "src/features/competition-core/index.js",
+    "docs/competition-core/COMPETITION_COURT_ADAPTER_CONTRACT.md",
+    "src/features/court-resource/services/courtResourceGateway.js",
+  ];
+  const classified = classifyCore08BranchDelta(live);
+  assert.equal(classified.coreOwnershipClean, true);
+  assert.deepEqual(classified.coreOwnershipTouches, []);
+});
+
+test("core08 gate — draw-runtime and CORE-08 docs/tests remain ownership touches", () => {
+  const live = [
+    "src/features/competition-core/draw-runtime/DrawResolver.js",
+    "docs/competition-engine/core-08/01_PHASE_1B_ADAPTER_CERTIFICATION.md",
+    "tests/competition-core-draw-runtime-core08-1e-certification.test.js",
+    "scripts/ci/unit-test-files.phase-core08-1e.json",
+    "src/features/competition-core/adapters/courtResourceCompetitionAdapter.js",
+  ];
+  const classified = classifyCore08BranchDelta(live);
+  assert.equal(classified.coreOwnershipClean, false);
+  assert.deepEqual(classified.coreOwnershipTouches, [
+    "src/features/competition-core/draw-runtime/DrawResolver.js",
+    "docs/competition-engine/core-08/01_PHASE_1B_ADAPTER_CERTIFICATION.md",
+    "tests/competition-core-draw-runtime-core08-1e-certification.test.js",
+    "scripts/ci/unit-test-files.phase-core08-1e.json",
+  ]);
 });
 
 test("core08 gate — unrelated registry addition without E2E-07 delta is not rejected", () => {
