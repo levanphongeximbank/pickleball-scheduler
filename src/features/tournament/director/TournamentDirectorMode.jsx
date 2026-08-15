@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { Alert, Box, Grid } from "@mui/material";
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, InputLabel, MenuItem, Select } from "@mui/material";
 
 import { hasSupabaseConfig } from "../../../domain/matchLiveSync.js";
+import { getCourtDisplayName } from "../../../models/court.js";
+import { TOURNAMENT_STATUS } from "../../../models/tournament/index.js";
 import DirectorActions from "./components/DirectorActions.jsx";
 import DirectorBracketSync from "./components/DirectorBracketSync.jsx";
 import DirectorCourtBoard from "./components/DirectorCourtBoard.jsx";
@@ -66,11 +69,17 @@ export default function TournamentDirectorMode() {
     backPath,
   } = state;
 
+  const [changeCourtMatch, setChangeCourtMatch] = useState(null);
+  const [changeCourtId, setChangeCourtId] = useState("");
+  const sessionCompleted =
+    isDaily && String(tournament?.status) === TOURNAMENT_STATUS.COMPLETED;
+
   const {
     handleRefereeAssign,
     handleAssignCourt,
     handleStartMatch,
     handleCancelMatch,
+    handleChangeCourt,
     handleToggleCourt,
     handleOpenScore,
     handleOpenCorrectScore,
@@ -142,6 +151,7 @@ export default function TournamentDirectorMode() {
         onClearError={() => setError(null)}
         hasSupabaseConfig={hasSupabaseConfig()}
         liveError={liveError}
+        sessionCompleted={sessionCompleted}
       />
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -154,11 +164,13 @@ export default function TournamentDirectorMode() {
           onCourtRefereeChange={handleCourtRefereeChange}
           disableManualLock={isDaily}
           lockDisabledReason="Khóa sân thủ công chưa hỗ trợ trong Daily canonical."
+          readOnly={sessionCompleted}
         />
       </Grid>
 
       <DirectorMatchBoard
         isDaily={isDaily}
+        readOnly={sessionCompleted}
         waitingMatches={waitingMatches}
         assignedMatches={assignedMatches}
         onCourtMatches={onCourtMatches}
@@ -167,6 +179,10 @@ export default function TournamentDirectorMode() {
         onAssignCourt={handleAssignCourt}
         onStartMatch={handleStartMatch}
         onCancelMatch={handleCancelMatch}
+        onChangeCourt={(match) => {
+          setChangeCourtMatch(match);
+          setChangeCourtId("");
+        }}
         onOpenScore={handleOpenScore}
         onCorrectScore={handleOpenCorrectScore}
         onOpenRefereeDialog={handleOpenRefereeDialog}
@@ -208,6 +224,55 @@ export default function TournamentDirectorMode() {
         onSubmit={handleSubmitScore}
         onDisputeReset={handleDisputeResetLive}
       />
+
+      <Dialog
+        open={Boolean(changeCourtMatch)}
+        onClose={() => {
+          setChangeCourtMatch(null);
+          setChangeCourtId("");
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Đổi sân</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth size="small" sx={{ mt: 1 }}>
+            <InputLabel>Sân trống</InputLabel>
+            <Select
+              label="Sân trống"
+              value={changeCourtId}
+              onChange={(event) => setChangeCourtId(event.target.value)}
+            >
+              {(dailySession?.availableCourts || []).map((court) => (
+                <MenuItem key={court.id} value={String(court.id)}>
+                  {getCourtDisplayName(court)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setChangeCourtMatch(null);
+              setChangeCourtId("");
+            }}
+          >
+            Hủy
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!changeCourtId || Boolean(dailySession?.mutating)}
+            onClick={async () => {
+              await handleChangeCourt(changeCourtMatch, changeCourtId);
+              setChangeCourtMatch(null);
+              setChangeCourtId("");
+            }}
+          >
+            Đổi sân
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

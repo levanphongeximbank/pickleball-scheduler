@@ -300,20 +300,21 @@ test("ownership lock baseline records ClubContext legacy read as debt (not a new
 
 test("DP-13B — ClubContext hydrates from security fingerprint, not raw user identity", () => {
   const source = fs.readFileSync(path.resolve("src/context/ClubContext.jsx"), "utf8");
-  assert.match(source, /buildUserSecurityScopeKey\(user\)/);
-  assert.match(source, /userSecurityScopeKey/);
+  assert.match(source, /buildClubRehydrateScopeKey\(user\)/);
+  assert.match(source, /clubRehydrateScopeKey/);
   assert.match(
     source,
-    /\[isAuthenticated, userSecurityScopeKey, currentTenantId, rbacEnabled\]/
+    /\[isAuthenticated, clubRehydrateScopeKey, currentTenantId, rbacEnabled\]/
   );
   assert.match(
     source,
-    /\[canonicalRead, isAuthenticated, userSecurityScopeKey, currentTenantId, rbacEnabled, canonicalReloadNonce\]/
+    /\[canonicalRead, isAuthenticated, clubRehydrateScopeKey, currentTenantId, rbacEnabled, canonicalReloadNonce\]/
   );
   assert.equal(source.includes("[isAuthenticated, user, currentTenantId, rbacEnabled]"), false);
   assert.equal(
     source.includes("[canonicalRead, isAuthenticated, user, currentTenantId, rbacEnabled, canonicalReloadNonce]"),
     false
   );
-  assert.match(source, /TOKEN_REFRESHED must not clear clubs/);
+  assert.match(source, /TOKEN_REFRESHED/);
+  assert.match(source, /must not clear clubs/);
 });

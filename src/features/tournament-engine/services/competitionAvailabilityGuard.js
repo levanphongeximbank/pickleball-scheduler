@@ -87,7 +87,9 @@ function stableContextKey(context) {
   const excludeBookingId =
     context.excludeBookingId != null ? String(context.excludeBookingId) : "";
   const clusterId = context.clusterId != null ? String(context.clusterId) : "";
-  return `ex:${excludeBookingId}|cl:${clusterId}`;
+  const ownerType = context.owner?.type != null ? String(context.owner.type) : "";
+  const ownerId = context.owner?.id != null ? String(context.owner.id) : "";
+  return `ex:${excludeBookingId}|cl:${clusterId}|own:${ownerType}:${ownerId}`;
 }
 
 /**

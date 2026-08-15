@@ -467,7 +467,8 @@
 
 .daily-match-card .daily-match-team {
   word-break: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 .daily-match-card .daily-match-vs {
@@ -476,11 +477,12 @@
 }
 
 .daily-fair-panel--matches {
-  min-width: 0;
+  min-width: 240px;
 }
 
 .daily-fair-panel--matches-full {
   max-width: none;
+  min-width: 0;
 }
 
 .daily-match-card--latest {
@@ -570,7 +572,7 @@
 }
 
 .daily-fair-layout [data-panel="matches"] {
-  min-width: 0;
+  min-width: 240px;
 }
 
 @media (max-width: 1200px) {
@@ -588,6 +590,11 @@
 }
 
 @media (max-width: 700px) {
+  .daily-fair-layout [data-panel="matches"],
+  .daily-fair-panel--matches {
+    min-width: 0;
+  }
+
   .daily-fair-reveal-stage {
     min-height: 360px;
     padding: 14px;

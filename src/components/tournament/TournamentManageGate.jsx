@@ -7,6 +7,7 @@ import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { assertLoadedTournamentAccess } from "../../features/tournament/guards/tournamentAccess.js";
+import { shouldBlockTournamentManageGate } from "../../features/tournament/guards/tournamentManageGatePolicy.js";
 import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import { resolveTournamentManageGatePresentation } from "../../features/tournament/internal/internalWorkspaceSections.js";
 
@@ -37,7 +38,8 @@ function AccessDenied({ title, message, to = "/tournament" }) {
 export default function TournamentManageGate({
   children,
   tournamentId = null,
-  tournament: loadedTournament = null,
+  tournament: tournamentProp = null,
+  loadedTournament = null,
 }) {
   const { rbacEnabled, isAuthenticated, can } = useAuth();
   const { activeClub, activeClubId } = useClub();
@@ -46,7 +48,7 @@ export default function TournamentManageGate({
     activeClub,
     tournamentId
   );
-  const tournament = loadedTournament || fetchedTournament;
+  const tournament = tournamentProp || loadedTournament || fetchedTournament;
   const presentation = resolveTournamentManageGatePresentation({
     tournamentId,
     loading,
@@ -58,7 +60,16 @@ export default function TournamentManageGate({
     return children;
   }
 
-  if (presentation.showFullPageLoading) {
+  if (
+    presentation.showFullPageLoading ||
+    shouldBlockTournamentManageGate({
+      rbacEnabled,
+      isAuthenticated,
+      tournamentId,
+      loading,
+      tournament,
+    })
+  ) {
     return (
       <Box sx={{ p: 3 }}>
         <CircularProgress size={28} />

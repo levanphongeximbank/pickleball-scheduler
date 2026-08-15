@@ -51,7 +51,7 @@ function toUnavailableCourt(row) {
  *   courtIds?,              // optional id list
  *   clusterId?,             // optional
  *   includeUnavailable?,    // default true — when false, unavailableCourts is []
- *   context?                // forwarded (e.g. excludeBookingId)
+ *   context?                // forwarded (excludeBookingId, owner: { type, id })
  * }
  *
  * Output:
@@ -75,11 +75,13 @@ export function getCompetitionCourtAvailability(options = {}) {
   const canonical = deps.getCourtAvailability({
     clubId: options.clubId,
     venueId: options.venueId,
+    tenantId: options.tenantId,
     date: options.date,
     startTime: options.startTime,
     endTime: options.endTime,
     courtIds: options.courtIds,
     clusterId: options.clusterId,
+    owner: options.owner,
     context: options.context,
     // Always request full reasoned rows so available IDs stay accurate and
     // unavailable reasons remain available for the adapter contract.

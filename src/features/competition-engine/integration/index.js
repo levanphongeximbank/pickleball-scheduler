@@ -62,6 +62,10 @@ export {
   authorizeCompetitionAction,
 } from "./composition/createCompetitionRuntimePorts.js";
 
+export * from "./referee/index.js";
+
+export * from "./contracts/index.js";
+
 export {
   buildAdapterInventory,
   getAdapterInventoryEntry,

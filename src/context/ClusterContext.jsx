@@ -29,6 +29,9 @@ export function ClusterProvider({ children }) {
       if (!currentTenantId) {
         return listClustersForAssignedUser(user);
       }
+      // LEGACY local-only compatibility: synthesize a default cluster catalog
+      // row when the cloud cluster feature is off. Canonical cloud inventory
+      // never uses this path.
       const ensured = ensureDefaultClusterForVenue(currentTenantId);
       return ensured.cluster ? [ensured.cluster] : [];
     }

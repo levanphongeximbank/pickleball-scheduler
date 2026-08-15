@@ -112,6 +112,9 @@ function seedAuthority({
       ...(dailyPlay?.checkedInPlayerIds || []),
     ];
   authority.__setEligibleAthletes(TENANT, CLUB, eligible);
+  authority.__setAthleteGenders(
+    Object.fromEntries(canonicalPlayers.map((player) => [player.id, player.gender]))
+  );
   authority.__seedTournament(
     createSeededDailyPlayTournament({
       id: TID,
@@ -2153,7 +2156,7 @@ describe("Daily Play instant presence (DP-15)", () => {
       source.indexOf("export default function DailyPlaySetup")
     );
     assert.equal(row.includes("CircularProgress"), false);
-    assert.equal(row.includes("disabled"), false);
+    assert.match(row, /disabled=\{!onToggle\}/);
     assert.match(row, /variant=\{checked \? "contained" : "outlined"\}/);
     assert.equal(source.includes("CircularProgress"), false);
   });
@@ -2241,7 +2244,8 @@ describe("Daily Play instant presence (DP-15)", () => {
       source.indexOf("handleAssignCourt")
     );
     assert.match(createBlock, /settings: dailySettings/);
-    assert.match(createBlock, /eligiblePlayerCount: dailySettings\.checkedInPlayerIds/);
+    assert.match(createBlock, /eligiblePlayerCount/);
+    assert.match(createBlock, /playerFilterView\.visibleCheckedPlayerIds/);
     assert.equal(createBlock.includes("presentedCheckedSet"), false);
     assert.equal(createBlock.includes("presenceOverride"), true);
     const session = fs.readFileSync(

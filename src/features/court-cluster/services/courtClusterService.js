@@ -89,6 +89,12 @@ export function getDefaultClusterIdForVenue(venueId) {
   return buildDefaultClusterId(venueId);
 }
 
+/**
+ * LEGACY COMPATIBILITY — local-only catalog bootstrap.
+ * Creates `{venueId}-main` in the local cluster registry.
+ * Canonical cloud readers must not call this. Missing physical-court
+ * clusterId must remain missing until an explicit bind.
+ */
 export function ensureDefaultClusterForVenue(venueId, { name = "Cụm chính", ownerUserId = null } = {}) {
   if (!venueId) {
     return { ok: false, error: "Thiếu venueId" };
@@ -421,6 +427,7 @@ export function listAccessibleClustersForUser(user, venueId) {
       return [];
     }
 
+    // LEGACY local-only compatibility. Canonical cloud readers must not use this.
     const ensured = ensureDefaultClusterForVenue(venueId);
     return ensured.cluster ? [ensured.cluster] : [];
   }
@@ -554,6 +561,12 @@ export function filterCourtsByCluster(courts = [], clusterId) {
   return courts.filter((court) => court.clusterId === clusterId);
 }
 
+/**
+ * LEGACY COMPATIBILITY ONLY.
+ * Stamps missing court.clusterId to `{venueId}-main` and may create a default
+ * cluster catalog row. Canonical cloud/read paths must never call this.
+ * Use bindClubCourtsToCluster for explicit membership.
+ */
 export function ensureCourtsHaveClusterId(courts = [], venueId) {
   if (!isCourtClustersEnabled() || !venueId) {
     return courts;

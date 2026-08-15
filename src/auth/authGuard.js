@@ -12,6 +12,23 @@ export function isAuthRequired({ authProductionEnabled, rbacEnabled }) {
   return Boolean(authProductionEnabled || rbacEnabled);
 }
 
+/**
+ * SAME_SEMANTIC_AUTH_REFRESH must not replace a loaded route with a spinner.
+ * Block only while auth is still bootstrapping with no established session.
+ * Real logout / missing user still fail closed.
+ */
+export function shouldBlockRouteForAuthLoading({
+  authLoading = false,
+  isAuthenticated = false,
+  user = null,
+  pathname = "",
+} = {}) {
+  if (!authLoading) return false;
+  if (pathname === "/login") return false;
+  if (isAuthenticated && user?.id) return false;
+  return true;
+}
+
 const PUBLIC_PATH_PREFIXES = [
   "/login",
   "/forgot-password",

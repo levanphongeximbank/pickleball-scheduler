@@ -146,6 +146,14 @@ afterEach(() => {
   delete globalThis.localStorage;
 });
 
+test("Daily Play setup path is not Team Tournament hub/dashboard/engine", () => {
+  const daily = "/tournament/daily/daily-1";
+  assert.equal(isMyTournamentsHubPath(daily), false);
+  assert.equal(isTournamentDashboardPath(daily), false);
+  assert.equal(isTournamentEnginePath(daily), false);
+  assert.equal(decideTournamentEngineRouteGate({ pathname: daily }).apply, false);
+});
+
 test("phase4 plural — /tournaments is authenticated My Tournaments hub (not public catalog)", () => {
   assert.equal(isPublicTournamentsCatalogPath("/tournaments"), false);
   assert.equal(isPublicTournamentsCatalogPath("/tournaments/"), false);

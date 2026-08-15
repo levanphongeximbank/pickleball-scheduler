@@ -28,6 +28,14 @@
       "description": "competition-core must not import domain persistence (clubStorage) — use ports in Phase 2B+."
     },
     {
+      "id": "cr-no-competition-or-tournament-business",
+      "description": "court-resource must not import Competition Core, Tournament business modules, or Court Engine."
+    },
+    {
+      "id": "cc-court-adapter-no-storage-bypass",
+      "description": "Competition Court Adapter Contract binding must not bypass CourtResourceGateway via storage or booking primitives."
+    },
+    {
       "id": "engine-no-page-logic",
       "description": "Domain engines must not import page logic (pages/*.logic.js)."
     },

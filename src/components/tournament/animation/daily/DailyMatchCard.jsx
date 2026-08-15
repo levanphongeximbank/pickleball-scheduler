@@ -44,7 +44,7 @@ export default function DailyMatchCard({
             variant="caption"
             color="text.secondary"
             fontWeight={700}
-            sx={{ minWidth: 0, overflowWrap: "anywhere", wordBreak: "normal" }}
+            sx={{ minWidth: 0, overflowWrap: "break-word", wordBreak: "normal" }}
           >
             {step.matchLabel}
           </Typography>
@@ -64,7 +64,7 @@ export default function DailyMatchCard({
             className="daily-match-team daily-match-team--a"
             sx={{
               wordBreak: "normal",
-              overflowWrap: "anywhere",
+              overflowWrap: "break-word",
               lineHeight: 1.35,
             }}
           >
@@ -83,7 +83,7 @@ export default function DailyMatchCard({
             className="daily-match-team daily-match-team--b"
             sx={{
               wordBreak: "normal",
-              overflowWrap: "anywhere",
+              overflowWrap: "break-word",
               lineHeight: 1.35,
             }}
           >

@@ -8,8 +8,9 @@ import {
 } from "react";
 
 import { useAuth } from "./AuthContext.jsx";
+import { buildClubRehydrateScopeKey } from "../auth/authSemanticScope.js";
 import { isGlobalRole, isClubScopedRole, isPlatformScopedRole } from "../auth/roles.js";
-import { loadActiveTenantId, saveActiveTenantId } from "../data/tenantSession.js";
+import { clearActiveTenantId, loadActiveTenantId } from "../data/tenantSession.js";
 import { getActiveClubId } from "../data/club.js";
 import { switchActiveClub } from "../domain/clubService.js";
 import {
@@ -17,15 +18,23 @@ import {
   canUserAccessTenant,
   ensureTenantBootstrap,
   getPrimaryClubIdForTenant,
-  listTenants,
-  resolveEffectiveTenantId,
 } from "../features/tenant/index.js";
 import {
   hydrateProfileVenueToLocalRegistry,
   hydrateSupabaseVenuesToLocalRegistry,
   resolveTenantRecord,
 } from "../features/tenant/services/profileVenueService.js";
-import { getTenantById } from "../features/tenant/index.js";
+import {
+  commitTenantSwitch,
+  readSelectableTenantCatalog,
+} from "../features/tenant/services/tenantSelectionService.js";
+import {
+  canOperateUnassignedTenant,
+  canSwitchTenant,
+  findCatalogTenant,
+  reconcileSessionWithCatalog,
+  resolvePickerCurrentTenantId,
+} from "../features/tenant/services/tenantSelectionModel.js";
 import { hasSupabaseConfig } from "../auth/supabaseClient.js";
 import {
   assertSubscriptionOperational,
@@ -42,8 +51,6 @@ import {
 } from "../features/billing/repositories/billingStoreRuntime.js";
 import { syncLegacySubscriptionsFromBilling } from "../domain/venueService.js";
 import { isSubscriptionOperationalExemptRole } from "../features/billing/guards/operationalRoutePolicy.js";
-import { invalidateClubRegistryCache } from "../features/club/registry/clubRegistryCache.js";
-import { quarantineOfflineQueueForTenantSwitch } from "../features/mobile/services/offlineQueueQuarantine.js";
 import { isCanonicalClubRepositoryEnabled } from "../features/club/config/canonicalRepositoryFlags.js";
 import { isCanonicalClubReadEnabled } from "../features/club/context/clubCanonicalReadModel.js";
 
@@ -51,7 +58,10 @@ const TenantContext = createContext(null);
 
 export function TenantProvider({ children }) {
   const { user, rbacEnabled, isAuthenticated } = useAuth();
-  const [adminTenantId, setAdminTenantId] = useState(() => loadActiveTenantId());
+  const clubRehydrateScopeKey = buildClubRehydrateScopeKey(user);
+  const userId = user?.id || null;
+  const [adminTenantId, setAdminTenantId] = useState(() => loadActiveTenantId(userId));
+  const [tenantCatalog, setTenantCatalog] = useState(() => readSelectableTenantCatalog());
   const [revision, setRevision] = useState(0);
 
   // When canonical club read is ON, ClubContext owns activeClub selection from
@@ -64,30 +74,37 @@ export function TenantProvider({ children }) {
 
   const isSuperAdmin = Boolean(user && isGlobalRole(user.role));
   const isPlatformTech = Boolean(user && isPlatformScopedRole(user.role));
-  const canPickTenant = isSuperAdmin || isPlatformTech;
+  // Unassigned-tenant navigation for SA + Platform Tech. Switch permission is SA only.
+  const canPickTenant = canOperateUnassignedTenant(user);
 
   const currentTenantId = useMemo(() => {
-    if (!rbacEnabled || !isAuthenticated || !user) {
-      return null;
-    }
-
-    if (canPickTenant) {
-      return adminTenantId || loadActiveTenantId() || null;
-    }
-
-    return resolveEffectiveTenantId(user);
-  }, [adminTenantId, canPickTenant, isAuthenticated, rbacEnabled, user]);
+    return resolvePickerCurrentTenantId({
+      rbacEnabled,
+      isAuthenticated,
+      user,
+      adminTenantId,
+      persistedTenantId: userId ? loadActiveTenantId(userId) : null,
+    });
+    // user is read from the current render; identity key avoids TOKEN_REFRESHED churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
+  }, [adminTenantId, canPickTenant, isAuthenticated, rbacEnabled, clubRehydrateScopeKey, userId]);
 
   const currentTenant = useMemo(() => {
     if (!currentTenantId) {
       return null;
     }
 
-    return resolveTenantRecord(currentTenantId, user);
-  }, [currentTenantId, revision, user]);
+    return (
+      findCatalogTenant(tenantCatalog, currentTenantId) ||
+      resolveTenantRecord(currentTenantId, user)
+    );
+  }, [currentTenantId, tenantCatalog, user]);
 
-  const userId = user?.id || null;
   const userClubId = user?.clubId || null;
+
+  useEffect(() => {
+    setAdminTenantId(userId ? loadActiveTenantId(userId) : null);
+  }, [userId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,6 +129,17 @@ export function TenantProvider({ children }) {
       }
 
       runSubscriptionMaintenance();
+      setTenantCatalog((current) => {
+        const registry = readSelectableTenantCatalog();
+        if (!current.length) {
+          return registry;
+        }
+        const merged = new Map(current.map((row) => [row.id, row]));
+        for (const row of registry) {
+          merged.set(row.id, row);
+        }
+        return [...merged.values()];
+      });
       setRevision((value) => value + 1);
     })();
 
@@ -146,9 +174,25 @@ export function TenantProvider({ children }) {
     let cancelled = false;
 
     void hydrateSupabaseVenuesToLocalRegistry().then((result) => {
-      if (!cancelled && result?.ok) {
-        setRevision((value) => value + 1);
+      if (cancelled || !result?.ok) {
+        return;
       }
+
+      const nextCatalog = readSelectableTenantCatalog();
+      setTenantCatalog(nextCatalog);
+      setAdminTenantId((current) => {
+        const next = reconcileSessionWithCatalog({
+          sessionTenantId: current,
+          catalog: nextCatalog,
+          canonicalHydrateSucceeded: true,
+          canonicalIds: result.tenantIds,
+        });
+        if (!next && current && userId) {
+          clearActiveTenantId();
+        }
+        return next;
+      });
+      setRevision((value) => value + 1);
     });
 
     return () => {
@@ -189,7 +233,7 @@ export function TenantProvider({ children }) {
     userId,
   ]);
 
-  // Phase 42K — SA must explicitly pick tenant (no listTenants()[0] fallback).
+  // Phase 42K — SA must explicitly pick tenant (no first-tenant auto-selection).
 
   const tenantCheck = useMemo(() => {
     if (!rbacEnabled || !isAuthenticated || !user) {
@@ -249,43 +293,19 @@ export function TenantProvider({ children }) {
 
   const switchTenant = useCallback(
     (tenantId) => {
-      if (!isSuperAdmin) {
-        return {
-          ok: false,
-          error: "Chỉ SUPER_ADMIN mới được chuyển tenant.",
-          code: "FORBIDDEN",
-        };
+      const result = commitTenantSwitch({
+        tenantId,
+        user,
+        catalog: tenantCatalog,
+        remapLegacyClub: !canonicalClubRead,
+      });
+      if (result.ok) {
+        setAdminTenantId(result.tenantId);
+        setRevision((value) => value + 1);
       }
-
-      const trimmed = String(tenantId || "").trim();
-      if (!trimmed) {
-        return { ok: false, error: "Tenant không hợp lệ." };
-      }
-
-      const tenant = getTenantById(trimmed);
-      if (!tenant) {
-        return { ok: false, error: "Không tìm thấy tenant." };
-      }
-
-      saveActiveTenantId(trimmed);
-      setAdminTenantId(trimmed);
-      invalidateClubRegistryCache({ tenantId: trimmed });
-      quarantineOfflineQueueForTenantSwitch(trimmed);
-
-      // Canonical mode: do not remap active club via legacy registry. ClubContext
-      // will re-hydrate visibleClubs for the new tenant and select deterministically.
-      let clubId = null;
-      if (!canonicalClubRead) {
-        clubId = getPrimaryClubIdForTenant(trimmed);
-        if (clubId && getActiveClubId() !== clubId) {
-          switchActiveClub(clubId);
-        }
-      }
-
-      setRevision((value) => value + 1);
-      return { ok: true, tenantId: trimmed, clubId };
+      return result;
     },
-    [canonicalClubRead, isSuperAdmin]
+    [canonicalClubRead, tenantCatalog, user]
   );
 
   const refreshTenant = useCallback(() => {
@@ -296,9 +316,11 @@ export function TenantProvider({ children }) {
     () => ({
       currentTenant,
       currentTenantId,
+      tenants: tenantCatalog,
       tenantCheck,
       subscriptionCheck,
       isSuperAdmin,
+      canSwitchTenant: canSwitchTenant(user),
       switchTenant,
       refreshTenant,
       revision,
@@ -311,7 +333,9 @@ export function TenantProvider({ children }) {
       revision,
       switchTenant,
       subscriptionCheck,
+      tenantCatalog,
       tenantCheck,
+      user,
     ]
   );
 

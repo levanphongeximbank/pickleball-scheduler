@@ -6,6 +6,7 @@ import path from "node:path";
 import { ROLES } from "../src/auth/roles.js";
 import {
   buildUserSecurityScopeKey,
+  buildClubRehydrateScopeKey,
   areAuthStatesSemanticallyEqual,
   selectStableAuthState,
   shouldRehydrateClubScope,
@@ -15,6 +16,7 @@ import {
   isAuthRequired,
   isPublicAuthPath,
   shouldRedirectToLogin,
+  shouldBlockRouteForAuthLoading,
 } from "../src/auth/authGuard.js";
 import {
   enableRbac,
@@ -333,4 +335,89 @@ test("DP-13B — same logical user new object does not publish a new auth state"
   const authSource = fs.readFileSync(path.resolve("src/context/AuthContext.jsx"), "utf8");
   assert.match(authSource, /selectStableAuthState\(previous, getAuthState\(\)\)/);
   assert.match(authSource, /TOKEN_REFRESHED/);
+});
+
+test("DP-13B — TOKEN_REFRESHED / repeated SIGNED_IN do not block an established session", () => {
+  const user = { id: "user-1", role: "TENANT_OWNER" };
+  assert.equal(
+    shouldBlockRouteForAuthLoading({
+      authLoading: true,
+      isAuthenticated: true,
+      user,
+      pathname: "/tournament/daily/t1",
+    }),
+    false
+  );
+  assert.equal(
+    shouldBlockRouteForAuthLoading({
+      authLoading: true,
+      isAuthenticated: true,
+      user,
+      pathname: "/tournaments",
+    }),
+    false
+  );
+  assert.equal(
+    shouldBlockRouteForAuthLoading({
+      authLoading: true,
+      isAuthenticated: false,
+      user: null,
+      pathname: "/tournament/daily/t1",
+    }),
+    true
+  );
+  assert.equal(
+    shouldBlockRouteForAuthLoading({
+      authLoading: false,
+      isAuthenticated: false,
+      user: null,
+      pathname: "/tournament/daily/t1",
+    }),
+    false
+  );
+  const gate = fs.readFileSync(path.resolve("src/components/auth/RouteAccessGate.jsx"), "utf8");
+  assert.match(gate, /shouldBlockRouteForAuthLoading/);
+});
+
+test("PROD-DP-02 — cluster/player enrichment does not rehydrate club scope", () => {
+  const base = {
+    id: "user-1",
+    email: "owner@club.local",
+    role: "TENANT_OWNER",
+    tenantId: "tenant-a",
+    venueId: "venue-a",
+    clubId: "club-a",
+    status: "active",
+    mustChangePassword: false,
+  };
+  const enriched = {
+    ...base,
+    assignedClusterIds: ["cluster-1"],
+    playerId: "player-9",
+    tournamentId: "t-1",
+    teamId: "team-1",
+  };
+  assert.equal(buildClubRehydrateScopeKey(base), buildClubRehydrateScopeKey(enriched));
+  assert.equal(
+    shouldRehydrateClubScope(
+      buildClubRehydrateScopeKey(base),
+      buildClubRehydrateScopeKey(enriched)
+    ),
+    false
+  );
+  assert.notEqual(buildUserSecurityScopeKey(base), buildUserSecurityScopeKey(enriched));
+  assert.equal(
+    shouldRehydrateClubScope(
+      buildClubRehydrateScopeKey(base),
+      buildClubRehydrateScopeKey({ ...base, tenantId: "tenant-b" })
+    ),
+    true
+  );
+  assert.equal(
+    shouldRehydrateClubScope(
+      buildClubRehydrateScopeKey(base),
+      buildClubRehydrateScopeKey({ ...base, role: "CLUB_MANAGER" })
+    ),
+    true
+  );
 });

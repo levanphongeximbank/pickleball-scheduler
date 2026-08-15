@@ -63,10 +63,11 @@ export const DAILY_FAIR_MATCH_PANEL_MIN_PX = 240;
 
 /**
  * Desktop CSS grid template — driven by container layout mode, NOT viewport
- * media queries (DP-11B). Prevents Dialog-clipped third column.
+ * media queries (DP-11B). Center may shrink; the result column cannot collapse
+ * below DAILY_FAIR_MATCH_PANEL_MIN_PX (character-wrap regression).
  */
 export const DAILY_FAIR_DESKTOP_GRID_TEMPLATE =
-  "minmax(200px, 3fr) minmax(280px, 6fr) minmax(240px, 3fr)";
+  "minmax(180px, 3fr) minmax(0, 6fr) minmax(240px, 3fr)";
 
 
 export const CREATION_FLOW_PHASES = [

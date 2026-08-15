@@ -19,9 +19,16 @@ import {
 } from "../../../domain/civilTime.js";
 import { loadClubs } from "../../../data/club.js";
 import { isCourtBookable } from "../../../models/court.js";
+import { OWNERSHIP_STATUS } from "../constants/courtResourceContract.js";
+import {
+  findContainingOwnReservation,
+  isSameReservationOwner,
+  normalizeOwnerInput,
+} from "./reservationOwnerService.js";
 
 export const AVAILABILITY_REASON = Object.freeze({
   AVAILABLE: "AVAILABLE",
+  OWN_RESERVATION: "OWN_RESERVATION",
   COURT_NOT_FOUND: "COURT_NOT_FOUND",
   COURT_INACTIVE: "COURT_INACTIVE",
   COURT_LOCKED: "COURT_LOCKED",
@@ -196,7 +203,22 @@ function toCourtPublic(court) {
   };
 }
 
-function unavailableResult(courtId, checkedRange, conflicts, court = null) {
+function buildOwnership(ownReservation, owner) {
+  if (ownReservation) {
+    return {
+      status: OWNERSHIP_STATUS.OWN_RESERVATION,
+      owner: normalizeOwnerInput(owner),
+      reservationId: ownReservation.id != null ? String(ownReservation.id) : null,
+    };
+  }
+  return {
+    status: OWNERSHIP_STATUS.UNRESERVED,
+    owner: normalizeOwnerInput(owner),
+    reservationId: null,
+  };
+}
+
+function unavailableResult(courtId, checkedRange, conflicts, court = null, ownership = null) {
   return {
     available: false,
     courtId,
@@ -205,10 +227,11 @@ function unavailableResult(courtId, checkedRange, conflicts, court = null) {
     conflicts: (conflicts || []).map((item) => ({ ...item })),
     reasons: (conflicts || []).map((item) => item.message).filter(Boolean),
     source: buildSource(),
+    ownership: ownership || buildOwnership(null, null),
   };
 }
 
-function availableResult(courtId, checkedRange, court) {
+function availableResult(courtId, checkedRange, court, ownership = null) {
   return {
     available: true,
     courtId,
@@ -217,6 +240,7 @@ function availableResult(courtId, checkedRange, court) {
     conflicts: [],
     reasons: [],
     source: buildSource(),
+    ownership: ownership || buildOwnership(null, null),
   };
 }
 
@@ -232,6 +256,7 @@ export function evaluateCourtAvailability({
   checkedRange,
   clusterId = null,
   excludeBookingId = null,
+  owner = null,
 }) {
   const range = {
     date: checkedRange.date,
@@ -306,8 +331,23 @@ export function evaluateCourtAvailability({
     );
   }
 
+  const requestedOwner = normalizeOwnerInput(owner);
+  const ownReservation = findContainingOwnReservation(bookings, {
+    courtId: court.id,
+    date: range.date,
+    startTime: range.startTime,
+    endTime: range.endTime,
+    owner: requestedOwner,
+    excludeBookingId,
+  });
+  const ownership = buildOwnership(ownReservation, requestedOwner);
+
+  const bookingsForConflict = requestedOwner
+    ? (bookings || []).filter((booking) => !isSameReservationOwner(booking, requestedOwner))
+    : bookings;
+
   const conflictCheck = deps.checkBookingConflict(
-    bookings,
+    bookingsForConflict,
     {
       courtId: court.id,
       date: range.date,
@@ -319,7 +359,15 @@ export function evaluateCourtAvailability({
 
   if (conflictCheck) {
     const conflict = classifyBookingConflict(conflictCheck.conflict);
-    return unavailableResult(court.id, range, [conflict], court);
+    return unavailableResult(court.id, range, [conflict], court, {
+      status: OWNERSHIP_STATUS.FOREIGN,
+      owner: requestedOwner,
+      reservationId: conflict.referenceId != null ? String(conflict.referenceId) : null,
+    });
+  }
+
+  if (ownReservation) {
+    return availableResult(court.id, range, court, ownership);
   }
 
   if (
@@ -339,11 +387,12 @@ export function evaluateCourtAvailability({
           message: "Requested time is outside venue operating hours",
         },
       ],
-      court
+      court,
+      ownership
     );
   }
 
-  return availableResult(court.id, range, court);
+  return availableResult(court.id, range, court, ownership);
 }
 
 /**
@@ -358,7 +407,7 @@ export function evaluateCourtAvailability({
  *   courtIds,            // optional; filter to these ids
  *   date,                // YYYY-MM-DD
  *   startTime, endTime,  // HH:mm, end > start same day
- *   context: { type?, excludeBookingId? },
+ *   context: { type?, excludeBookingId?, owner?: { type, id } },
  *   includeUnavailable   // default true
  * }
  *
@@ -377,6 +426,7 @@ export function getCourtAvailability(options = {}) {
     ? String(options.clusterId)
     : null;
   const excludeBookingId = options.context?.excludeBookingId || null;
+  const owner = normalizeOwnerInput(options.context?.owner || options.owner);
   const includeUnavailable = options.includeUnavailable !== false;
 
   let courts;
@@ -420,6 +470,7 @@ export function getCourtAvailability(options = {}) {
       checkedRange,
       clusterId,
       excludeBookingId,
+      owner,
     });
     if (includeUnavailable || result.available) {
       results.push(result);

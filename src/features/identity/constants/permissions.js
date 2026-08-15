@@ -181,6 +181,18 @@ export const PERMISSIONS = Object.freeze({
   PAIRING_PRIVATE_RULES_MANAGE: "pairing.private_rules.manage",
   PAIRING_PRIVATE_RULES_AUDIT: "pairing.private_rules.audit",
   PAIRING_PRIVATE_RULES_SIMULATE: "pairing.private_rules.simulate",
+
+  // ─── Canonical competition referee (generic, not Team Tournament) ─
+  COMPETITION_REFEREE_ASSIGNMENT_READ: "competition.referee.assignment.read",
+  COMPETITION_REFEREE_ASSIGNMENT_MANAGE: "competition.referee.assignment.manage",
+  COMPETITION_REFEREE_ASSIGNMENT_ACKNOWLEDGE:
+    "competition.referee.assignment.acknowledge",
+  COMPETITION_REFEREE_MATCH_CONTROL: "competition.referee.match.control",
+  COMPETITION_REFEREE_SCORE_SUBMIT: "competition.referee.score.submit",
+  COMPETITION_REFEREE_RESULT_SUBMIT: "competition.referee.result.submit",
+  COMPETITION_REFEREE_RESULT_CORRECT: "competition.referee.result.correct",
+  COMPETITION_REFEREE_RESULT_READ: "competition.referee.result.read",
+  COMPETITION_REFEREE_INCIDENT_REPORT: "competition.referee.incident.report",
 });
 
 export function isValidPermission(permission) {

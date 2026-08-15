@@ -5,10 +5,16 @@
 
 import { DAILY_PLAY_CODE, DAILY_PLAY_MESSAGES, DAILY_PLAY_RPC } from "./dailyPlayCodes.js";
 import { resolveCreateMatchCount } from "./dailyPlayCanonicalDomain.js";
+import { normalizeDailyPlayMutationResult } from "./dailyPlayMutationError.js";
 import { normalizeDailyPlayServerSnapshot } from "./normalizeDailyPlayServerSnapshot.js";
 
 function normalizeRpcPayload(data) {
-  if (data && typeof data === "object" && "ok" in data) return data;
+  if (data && typeof data === "object" && "ok" in data) {
+    return normalizeDailyPlayMutationResult(data);
+  }
+  if (data && typeof data === "object" && data.code && data.ok !== true) {
+    return normalizeDailyPlayMutationResult({ ...data, ok: false });
+  }
   return { ok: true, data };
 }
 
@@ -180,6 +186,14 @@ export function createDailyPlayCanonicalService(deps = {}) {
         p_court_id: String(courtId),
         p_expected_version: expectedVersion,
         p_idempotency_key: idempotencyKey || newIdempotencyKey("change-court"),
+      });
+    },
+
+    async closeSession(scope, { expectedVersion, idempotencyKey }) {
+      return callRpc(DAILY_PLAY_RPC.CLOSE_SESSION, {
+        ...scopeArgs(scope),
+        p_expected_version: expectedVersion,
+        p_idempotency_key: idempotencyKey || newIdempotencyKey("close-session"),
       });
     },
 

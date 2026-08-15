@@ -38,7 +38,7 @@ import {
   isSameAuthIdentity,
   shouldRefreshUiOnAuthEvent,
 } from "../src/auth/authService.js";
-import { shouldRenderRouteAuthLoading } from "../src/auth/authGuard.js";
+import { shouldBlockRouteForAuthLoading } from "../src/auth/authGuard.js";
 import {
   CLUB_READ_STATE,
   resolveCanonicalClubRefreshPolicy,
@@ -198,21 +198,22 @@ describe("IT-BROWSER-005 — tab return does not reset initial loading", () => {
 
     const club = readSrc("src/context/ClubContext.jsx");
     assert.match(club, /resolveCanonicalClubRefreshPolicy/);
-    assert.match(club, /userSecurityScopeKey/);
+    assert.match(club, /clubRehydrateScopeKey/);
     assert.match(club, /staleWhileRevalidate/);
   });
 
   it("known authenticated user does not get a route-guard full-page spinner", () => {
     assert.equal(
-      shouldRenderRouteAuthLoading({
+      shouldBlockRouteForAuthLoading({
         authLoading: true,
         isAuthenticated: true,
+        user: { id: "u1" },
         pathname: "/tournament/internal/abc",
       }),
       false
     );
     assert.equal(
-      shouldRenderRouteAuthLoading({
+      shouldBlockRouteForAuthLoading({
         authLoading: true,
         isAuthenticated: false,
         pathname: "/tournament/internal/abc",
@@ -220,7 +221,7 @@ describe("IT-BROWSER-005 — tab return does not reset initial loading", () => {
       true
     );
     assert.equal(
-      shouldRenderRouteAuthLoading({
+      shouldBlockRouteForAuthLoading({
         authLoading: true,
         isAuthenticated: false,
         pathname: "/login",
@@ -228,7 +229,7 @@ describe("IT-BROWSER-005 — tab return does not reset initial loading", () => {
       false
     );
     const gate = readSrc("src/components/auth/RouteAccessGate.jsx");
-    assert.match(gate, /shouldRenderRouteAuthLoading/);
+    assert.match(gate, /shouldBlockRouteForAuthLoading/);
   });
 
   it("scope gap after load keeps tournament and does not toggle initial loading", () => {

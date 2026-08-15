@@ -20,6 +20,9 @@ import {
   Stack,
   TextField,
   Typography,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
 } from "@mui/material";
 
 import SportsTennisIcon from "@mui/icons-material/SportsTennis";
@@ -43,6 +46,7 @@ import { ensureWritableClubForVenueOwner } from "../features/club/services/venue
 import {
   getCourtDisplayName,
   loadCourts,
+  loadUnstampedCourts,
   removeCourt,
   saveCourts,
   toggleCourtStatus,
@@ -54,6 +58,7 @@ import {
   buildBulkCourtRecords,
   getCourtCapacityForClub,
 } from "./courts.logic";
+import { bindClubCourtsToCluster } from "../features/venue-court/services/bindClubCourtsToClusterService.js";
 import { COURT_STATUSES, COURT_TYPES } from "../models/court.js";
 import { COURT_STATUS_LABELS } from "./courtManagement/courtManagement.constants.js";
 import ClubDataTransferPanel from "./ClubDataTransferPanel";
@@ -83,6 +88,9 @@ export default function Courts() {
     isCourtClustersEnabled() && isCourtOwnerAwaitingClaim(user);
   const operationsBlocked = awaitingClusterClaim;
   const [courts, setCourts] = useState(() => loadCourts([], activeClubId));
+  const [unstampedCourts, setUnstampedCourts] = useState(() => loadUnstampedCourts(activeClubId));
+  const [selectedUnstampedIds, setSelectedUnstampedIds] = useState([]);
+  const [bindBusy, setBindBusy] = useState(false);
   const [permissionError, setPermissionError] = useState(null);
   const [clubBootstrapError, setClubBootstrapError] = useState(null);
   const [writableClubId, setWritableClubId] = useState(activeClubId);
@@ -124,12 +132,15 @@ export default function Courts() {
   }, [activeClubId, isAuthenticated, rbacEnabled, refreshClubs, user]);
 
   useEffect(() => {
+    const clubId = writableClubId || activeClubId;
     setCourts(
-      loadCourts([], writableClubId || activeClubId, {
+      loadCourts([], clubId, {
         clusterId: activeClusterId,
         venueId: activeClub?.venueId || user?.venueId || null,
       })
     );
+    setUnstampedCourts(loadUnstampedCourts(clubId));
+    setSelectedUnstampedIds([]);
   }, [writableClubId, activeClubId, revision, activeClusterId, activeClub?.venueId, user?.venueId]);
   const [open, setOpen] = useState(false);
   const [quickSetupOpen, setQuickSetupOpen] = useState(false);
@@ -184,7 +195,37 @@ export default function Courts() {
         venueId: activeClub?.venueId || user?.venueId || null,
       })
     );
+    setUnstampedCourts(loadUnstampedCourts(targetClubId));
     return true;
+  };
+
+  const handleBindUnstampedCourts = async () => {
+    if (!activeClusterId || selectedUnstampedIds.length === 0) {
+      return;
+    }
+    setBindBusy(true);
+    const result = await bindClubCourtsToCluster({
+      clubId: targetClubId,
+      venueId: activeClub?.venueId || user?.venueId,
+      clusterId: activeClusterId,
+      courtIds: selectedUnstampedIds,
+      expectedClubVersion: activeClub?.version ?? 1,
+      user,
+    });
+    setBindBusy(false);
+    if (!result.ok) {
+      setPermissionError(result.error || "Không gán được cụm sân.");
+      return;
+    }
+    setPermissionError(null);
+    setSelectedUnstampedIds([]);
+    setCourts(
+      loadCourts([], targetClubId, {
+        clusterId: activeClusterId,
+        venueId: activeClub?.venueId || user?.venueId || null,
+      })
+    );
+    setUnstampedCourts(loadUnstampedCourts(targetClubId));
   };
 
   const handleSave = () => {
@@ -358,6 +399,49 @@ export default function Courts() {
           {typeof activeCluster.courtCount === "number"
             ? ` (${activeCluster.courtCount} sân)`
             : ""}
+        </Alert>
+      )}
+
+      {isCourtClustersEnabled() && activeClusterId && unstampedCourts.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          <Typography variant="body2" fontWeight={600} gutterBottom>
+            {unstampedCourts.length} sân chưa gán cụm sân
+          </Typography>
+          <Typography variant="caption" display="block" sx={{ mb: 1 }}>
+            Chọn sân rồi gán vào cụm đang xem. Không gán tự động toàn bộ sân.
+          </Typography>
+          <FormGroup sx={{ mb: 1 }}>
+            {unstampedCourts.map((court) => {
+              const courtId = String(court.id);
+              return (
+                <FormControlLabel
+                  key={courtId}
+                  control={
+                    <Checkbox
+                      checked={selectedUnstampedIds.includes(courtId)}
+                      onChange={(event) =>
+                        setSelectedUnstampedIds((ids) =>
+                          event.target.checked
+                            ? [...ids, courtId]
+                            : ids.filter((id) => id !== courtId)
+                        )
+                      }
+                      disabled={!canUpdate || operationsBlocked}
+                    />
+                  }
+                  label={getCourtDisplayName(court)}
+                />
+              );
+            })}
+          </FormGroup>
+          <Button
+            size="small"
+            variant="contained"
+            disabled={!canUpdate || operationsBlocked || bindBusy || selectedUnstampedIds.length === 0}
+            onClick={() => void handleBindUnstampedCourts()}
+          >
+            {bindBusy ? "Đang gán…" : `Gán vào cụm ${activeCluster?.name || ""}`}
+          </Button>
         </Alert>
       )}
 

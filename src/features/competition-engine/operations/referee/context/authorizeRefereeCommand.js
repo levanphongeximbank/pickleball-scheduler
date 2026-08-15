@@ -68,8 +68,28 @@ export async function authorizeRefereeCommand(input) {
   if (!isNonEmptyString(actor.actorId)) {
     failReferee(
       REFEREE_ERROR_CODE.MISSING_IDENTITY,
-      "actor.actorId is required",
+      "actor.actorId (canonical auth.uid) is required",
       {}
+    );
+  }
+  if (
+    isNonEmptyString(actor.refereeId) &&
+    String(actor.refereeId).trim() !== String(actor.actorId).trim()
+  ) {
+    failReferee(
+      REFEREE_ERROR_CODE.FUZZY_IDENTITY_REJECTED,
+      "refereeId must equal canonical actor.actorId; fuzzy aliases are not authority",
+      { actorId: actor.actorId, refereeId: actor.refereeId }
+    );
+  }
+  if (
+    isNonEmptyString(actor.authUid) &&
+    String(actor.authUid).trim() !== String(actor.actorId).trim()
+  ) {
+    failReferee(
+      REFEREE_ERROR_CODE.FUZZY_IDENTITY_REJECTED,
+      "authUid must equal canonical actor.actorId",
+      { actorId: actor.actorId, authUid: actor.authUid }
     );
   }
   if (!isNonEmptyString(actor.role)) {
@@ -191,8 +211,7 @@ export async function authorizeRefereeCommand(input) {
     subject,
     scope,
     decision,
-    refereeId:
-      (isNonEmptyString(actor.refereeId) && String(actor.refereeId).trim()) ||
-      String(actor.actorId).trim(),
+    refereeId: String(actor.actorId).trim(),
+    identityAuthority: "auth.uid",
   });
 }
