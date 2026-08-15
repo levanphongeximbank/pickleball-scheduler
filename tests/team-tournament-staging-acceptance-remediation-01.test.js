@@ -441,16 +441,24 @@ describe("team-tournament-staging-acceptance-remediation-01 name UI + court read
   });
 
   it("court inventory looks up club_data_v3 by club_id only", () => {
-    const inventory = readSrc(
+    const compatibilityInventory = readSrc(
       "src/features/team-tournament/services/canonicalClubCourtInventory.js"
+    );
+    const sharedInventory = readSrc(
+      "src/features/venue-court/services/canonicalCloudCourtInventory.js"
     );
     const core = readSrc("docs/supabase-club-v3.sql");
     const cloudSync = readSrc("src/ai/cloudSync.js");
     assert.match(core, /club_id text primary key/);
     assert.match(cloudSync, /club_id=eq\.\$\{encodeURIComponent\(clubId\)\}&limit=1/);
-    assert.match(inventory, /\.eq\("club_id", clubId\)/);
-    assert.doesNotMatch(inventory, /\.eq\("venue_id"/);
-    assert.match(inventory, /normalizeCanonicalClubCourts/);
-    assert.doesNotMatch(inventory, /localStorage\.getItem|loadCourtsForClub|loadClubData/);
+    assert.match(compatibilityInventory, /canonicalCloudCourtInventory/);
+    assert.doesNotMatch(compatibilityInventory, /\.from\(/);
+    assert.match(sharedInventory, /\.eq\("club_id", clubId\)/);
+    assert.doesNotMatch(sharedInventory, /\.eq\("venue_id"/);
+    assert.match(sharedInventory, /normalizeCanonicalClubCourts/);
+    assert.doesNotMatch(
+      sharedInventory,
+      /localStorage\.getItem|loadCourtsForClub|loadClubData/
+    );
   });
 });

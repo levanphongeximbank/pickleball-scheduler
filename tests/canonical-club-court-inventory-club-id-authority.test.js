@@ -83,14 +83,19 @@ describe("canonical-club-court-inventory-club-id-authority", () => {
   it("club_id is the unique Platform Core row key; query does not filter venue_id", () => {
     const sql = readSrc("docs/supabase-club-v3.sql");
     const cloudSync = readSrc("src/ai/cloudSync.js");
-    const inventory = readSrc(
+    const compatibilityInventory = readSrc(
       "src/features/team-tournament/services/canonicalClubCourtInventory.js"
+    );
+    const sharedInventory = readSrc(
+      "src/features/venue-court/services/canonicalCloudCourtInventory.js"
     );
     assert.match(sql, /club_id text primary key/);
     assert.match(cloudSync, /on_conflict=club_id/);
     assert.match(cloudSync, /club_id=eq\.\$\{encodeURIComponent\(clubId\)\}&limit=1/);
-    assert.match(inventory, /\.eq\("club_id", clubId\)/);
-    assert.doesNotMatch(inventory, /\.eq\("venue_id"/);
+    assert.match(compatibilityInventory, /canonicalCloudCourtInventory/);
+    assert.doesNotMatch(compatibilityInventory, /\.from\(/);
+    assert.match(sharedInventory, /\.eq\("club_id", clubId\)/);
+    assert.doesNotMatch(sharedInventory, /\.eq\("venue_id"/);
   });
 
   it("1-2 venue_id NULL nested blob returns tenant courts without venue_id=tenantId query", async () => {
