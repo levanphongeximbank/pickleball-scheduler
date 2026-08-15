@@ -31,6 +31,8 @@ Cơ sở, địa điểm hoặc cụm sân vật lý thuộc Venue.
 - Groups physical courts under a facility address / maps URL.
 - Feature-flagged: `VITE_COURT_CLUSTERS_ENABLED`.
 - Courts may carry optional `clusterId` on the court master record.
+- Cluster is a **filter/scope**, not a reservable physical unit. Selecting a cluster does not reserve every court in it.
+- `courtId` is reservation/assignment identity. `courtLabel` / display name is projection only.
 
 ### Court
 
