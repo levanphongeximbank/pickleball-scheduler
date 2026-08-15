@@ -118,7 +118,7 @@ test("1. first sync creates expected tournament bookings", () => {
     courtIds: [1, 2],
   });
 
-  assert.equal(result.ok, true);
+  assert.equal(result.ok, true, JSON.stringify(result));
   assert.equal(result.created.length, 2);
   assert.equal(getActiveTournamentCourtBookings(DEFAULT_CLUB.id, "tournament-test-1").length, 2);
 });
@@ -328,13 +328,14 @@ test("10. conflict causes fail-closed behavior", () => {
   assert.equal(tournament.courtSchedule, null);
 });
 
-test("11. static: bridge does not write club bookings directly; Competition does not either", () => {
+test("11. static: bridge routes writes through canonical Court Resource gateway", () => {
   const bridge = readFileSync(
     path.join(root, "src/domain/tournamentBookingService.js"),
     "utf8"
   );
   assert.doesNotMatch(bridge, /saveBookingsForClub/);
-  assert.match(bridge, /from ["'].*bookingService/);
+  assert.doesNotMatch(bridge, /from ["'].*bookingService/);
+  assert.match(bridge, /features\/court-resource/);
 
   const teAssign = readFileSync(
     path.join(root, "src/features/tournament-engine/engines/courtAssignmentEngine.js"),

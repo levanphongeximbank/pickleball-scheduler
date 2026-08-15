@@ -1,8 +1,9 @@
 # Shared Court Resource Foundation
 
 **Status:** Code foundation on existing booking/inventory substrate  
-**Module owner:** Venue & Court (`src/features/venue-court/`)  
-**Not:** Team Tournament-specific. **Not:** Court Engine live occupancy. **Not:** a new SQL authority.
+**Module owner:** Court Resource (`src/features/court-resource/`)
+**Compatibility substrate:** Venue & Court (`src/features/venue-court/`)
+**Not:** Team Tournament-specific. **Not:** Court Engine live occupancy. **Not:** reservation authority cutover.
 
 This document extends — it does not replace — `docs/venue-court/` Phase 1–3 contracts.
 
@@ -17,9 +18,10 @@ Venue  ≠  Court Cluster  ≠  Physical Court
 | Concept | Identity | Role |
 | ------- | -------- | ---- |
 | Venue / tenant | `tenantId` / `venueId` | Organization |
-| Club | `clubId` | Club blob / inventory owner |
+| Club | `clubId` | Operational context/access; not physical identity owner |
 | Court Cluster | `clusterId` | Location / facility **filter/scope** |
-| Physical court | `courtId` | Canonical resource authority |
+| Physical court | immutable `physicalCourtId` | Canonical physical identity |
+| Legacy court reference | `clubId + courtId` | Transitional compatibility identity |
 | Display name | `courtLabel` | Projection only — never reservation identity |
 
 Selecting cluster `NAM_LONG` does **not** reserve `NL_C01`…`NL_C06`. Only `selectedCourtIds` may be reserved.
@@ -76,9 +78,13 @@ Do **not** implement `bookingType=tournament → ignore all tournament bookings`
 
 ---
 
-## Canonical inventory
+## Transitional operational inventory
 
-- Cloud authority: `public.club_data_v3` **by `club_id`**.
+- Current legacy cloud source: `public.club_data_v3` **by `club_id`**.
+- `club_data_v3.data.courts[]` is a transitional Club operational inventory /
+  legacy projection. It is **not** the system-wide Physical Court master.
+- Final physical authority is durable `court_clusters.id` → immutable canonical
+  Physical Court UUID → explicit Club operational access.
 - Storage-shape parsing (`data.courts` and `data.data.courts`) lives in Venue & Court.
 - Canonical club row with `venue_id = NULL` is accepted; do not require blob `venue_id = tenantId`.
 - After read, fail-closed filter by `clubId`, `tenantId`/`venueId`, `clusterId` when supplied, active state.
@@ -90,19 +96,55 @@ Synchronous `listCourts` remains the local compatibility API. This foundation do
 
 ---
 
+## Transitional operational cluster binding
+
+`bindClubCourtsToCluster` / `public.bind_club_courts_to_cluster` is a
+**transitional operational cluster-binding compatibility writer**. It stamps:
+
+- Club facility registration: `clubs.registered_cluster_id`
+- selected transitional inventory courts: `club_data_v3.data.courts[].clusterId`
+
+It is **not** the final Physical Court identity master and **not** Court
+Resource reservation authority. It does not create `physicalCourtId` UUIDs.
+Missing `clusterId` stays missing; cloud readers must not fabricate
+`{venueId}-main`.
+
+```text
+CLUSTER BINDING
+≠ PHYSICAL COURT ACCESS
+≠ CAPACITY RESERVATION
+≠ MATCH ASSIGNMENT
+≠ LIVE OCCUPANCY
+```
+
+`clubs.registered_cluster_id` is Club facility/cluster registration.
+`court_resource_club_operational_access` is Club → Physical Court UUID
+authorization. A Club registered to Nam Long may have access to only a subset
+of that facility's courts. Registration does not reserve courts.
+
+Unstamped legacy courts classify as `unresolved_cluster` / review. Phase 3A
+identity PRECHECK/dry-run does not require the #429 binder SQL to already be
+applied.
+
+---
+
 ## Dependency direction
 
 ```text
 Customer Booking / Daily Play / Internal / Official / Team Tournament / Maintenance
     ↓
-CourtResourceGateway
+CourtResourceGateway (`src/features/court-resource/`)
     ↓
 canonical availability + cluster membership + owner normalization
     ↓
-club_data_v3 courts[] / bookings[]  +  bookingService / tournamentBookingService
+LegacyReservationAdapter
+    ↓
+club_data_v3 courts[] / bookings[]  +  bookingService / storage primitives
 ```
 
-**Forbidden reverse dependency:** Venue & Court must not import Competition, Tournament Engine, Court Engine, or AI.
+**Forbidden reverse dependency:** Court Resource and its lower-level adapters
+must not import `tournamentBookingService`, Competition, Tournament Engine,
+Team Tournament, Court Engine, or AI Director.
 
 Existing `getCompetitionCourtAvailability` is preserved and now depends on the gateway. It does not duplicate availability algorithms.
 
@@ -116,7 +158,7 @@ This foundation composes:
 - `courtAvailabilityService`
 - `competitionCourtAvailabilityAdapter`
 - `bookingService` / `courtBookingEngine`
-- `tournamentBookingService` (capacity rows: `bookingType=tournament` + `tournamentId`)
+- neutral legacy reservation adapter (capacity rows: `bookingType=tournament` + `tournamentId`)
 - court cluster membership (filter, not lock)
 
 No new booking table, court table, tournament reservation table, or lock table.

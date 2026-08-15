@@ -24,7 +24,7 @@ làm nguồn dữ liệu kế thừa hiện tại.
 
 ---
 
-## Current SSOT
+## Current Phase 1 operational substrate
 
 ```text
 Court inventory:
@@ -42,6 +42,12 @@ venues
 Physical facility grouping:
 court_clusters
 ```
+
+> Post-PR427 reconciliation: `club_data_v3.data.courts[]` remains the
+> transitional Club operational inventory / legacy projection for existing
+> readers. It is not the final system-wide Physical Court master. Canonical
+> physical identity is an immutable UUID under a durable `court_clusters`
+> parent, with Club access represented separately.
 
 ### Persistence map
 
@@ -134,7 +140,8 @@ Until then, Club V3 remains the inherited substrate.
 
 | Question | Answer |
 | -------- | ------ |
-| Where is court inventory SSOT? | `club_data_v3.data.courts[]` |
+| Where is the transitional operational inventory? | `club_data_v3.data.courts[]` |
+| Where is final physical identity defined? | Canonical Physical Court UUID under durable `court_clusters` |
 | Where is booking SSOT? | `club_data_v3.data.bookings[]` |
 | Create SQL courts/bookings in Phase 1? | **No** |
 | Create second blob/key? | **No** |

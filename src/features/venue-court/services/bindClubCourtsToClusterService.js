@@ -1,6 +1,10 @@
 /**
- * Shared canonical writer: bind a club's registeredClusterId and selected
- * physical courts to one court cluster.
+ * Transitional operational cluster-binding compatibility writer.
+ *
+ * Binds a club's registeredClusterId and selected transitional Club inventory
+ * courts (`club_data_v3.data.courts[].clusterId`) to one court cluster.
+ * This is not the final Physical Court identity master and not Court Resource
+ * reservation authority. It does not create physicalCourtId UUIDs.
  *
  * Cloud authority: public.bind_club_courts_to_cluster (atomic).
  * Local/legacy path is isolated and never fabricates clusterId from venueId.

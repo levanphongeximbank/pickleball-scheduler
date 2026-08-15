@@ -16,6 +16,7 @@ import {
 
 import { useTenant } from "../../context/TenantContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { resolveClubDetailTenantGate } from "../../features/tenant/services/tenantSelectionModel.js";
 import {
   CLUB_STATUS_LABELS,
   CLUB_STATUSES,
@@ -111,8 +112,9 @@ export default function ClubDetailPage() {
     }
   }, [activeTab, safeTab, setSearchParams]);
 
-  if (!currentTenantId) {
-    return <Alert severity="warning">Chưa xác định được tenant.</Alert>;
+  const tenantGate = resolveClubDetailTenantGate(currentTenantId);
+  if (tenantGate.blocked) {
+    return <Alert severity="warning">{tenantGate.warning}</Alert>;
   }
 
   if (isClubStorageV2Enabled() && clubLoading && !club) {
