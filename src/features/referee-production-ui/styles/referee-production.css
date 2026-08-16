@@ -650,8 +650,8 @@
 .rp-court {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 10;
-  max-height: 210px;
+  aspect-ratio: 16 / 9;
+  max-height: 220px;
   border-radius: 14px;
   overflow: hidden;
   background: var(--rp-court-border);
@@ -670,7 +670,7 @@
 
 .rp-court-surface {
   position: absolute;
-  inset: 8%;
+  inset: 10% 6%;
   border: 2px solid var(--rp-court-line);
   border-radius: 2px;
   z-index: 1;
@@ -688,44 +688,47 @@
   pointer-events: none;
 }
 
+/* Landscape: baselines on left/right, sidelines top/bottom, net vertical */
 .rp-court-label.sideline-left {
-  left: -1%;
-  top: 46%;
-  transform: rotate(-90deg);
-  transform-origin: left center;
+  left: 50%;
+  top: 2%;
+  transform: translateX(-50%);
 }
 
 .rp-court-label.sideline-right {
-  right: -1%;
-  top: 46%;
-  transform: rotate(90deg);
-  transform-origin: right center;
+  left: 50%;
+  bottom: 2%;
+  transform: translateX(-50%);
 }
 
 .rp-court-label.baseline-far {
-  top: 1%;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 1%;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: center;
 }
 
 .rp-court-label.baseline-near {
-  bottom: 1%;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 1%;
+  top: 50%;
+  transform: translateY(-50%) rotate(90deg);
+  transform-origin: center;
 }
 
 .rp-court-label.kitchen-far {
-  top: 34%;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.38rem;
+  left: 28%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  font-size: 0.36rem;
+  white-space: nowrap;
 }
 
 .rp-court-label.kitchen-near {
-  bottom: 34%;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.38rem;
+  left: 72%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(90deg);
+  font-size: 0.36rem;
+  white-space: nowrap;
 }
 
 .rp-court-baseline,
@@ -740,69 +743,70 @@
 
 .rp-court-baseline.far,
 .rp-court-baseline.near {
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--rp-court-line);
+}
+
+.rp-court-baseline.far { left: 0; }
+.rp-court-baseline.near { right: 0; }
+
+.rp-court-sideline.left,
+.rp-court-sideline.right {
   left: 0;
   right: 0;
   height: 2px;
   background: var(--rp-court-line);
 }
 
-.rp-court-baseline.far { top: 0; }
-.rp-court-baseline.near { bottom: 0; }
-
-.rp-court-sideline.left,
-.rp-court-sideline.right {
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: var(--rp-court-line);
-}
-
-.rp-court-sideline.left { left: 0; }
-.rp-court-sideline.right { right: 0; }
+.rp-court-sideline.left { top: 0; }
+.rp-court-sideline.right { bottom: 0; }
 
 .rp-court-net {
-  top: 50%;
-  left: -3%;
-  right: -3%;
-  height: 6px;
-  background: linear-gradient(180deg, #78909c, #37474f 45%, #90a4ae);
-  transform: translateY(-50%);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  top: -3%;
+  bottom: -3%;
+  left: 50%;
+  width: 6px;
+  background: linear-gradient(90deg, #78909c, #37474f 45%, #90a4ae);
+  transform: translateX(-50%);
+  box-shadow: 1px 0 2px rgba(0, 0, 0, 0.35);
 }
 
 .rp-court-center {
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 2px;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
   background: rgba(255, 255, 255, 0.8);
 }
 
 .rp-court-kitchen {
-  left: 0;
-  right: 0;
-  height: 16%;
-  border-top: 2px solid rgba(255, 255, 255, 0.9);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.9);
+  top: 0;
+  bottom: 0;
+  width: 16%;
+  border-left: 2px solid rgba(255, 255, 255, 0.9);
+  border-right: 2px solid rgba(255, 255, 255, 0.9);
   background: rgba(0, 0, 0, 0.08);
 }
 
-.rp-court-kitchen.far { top: 32%; }
-.rp-court-kitchen.near { bottom: 32%; }
+.rp-court-kitchen.far { left: 28%; }
+.rp-court-kitchen.near { right: 28%; }
 
 .rp-slot {
   position: absolute;
   width: auto;
-  max-width: 110px;
+  max-width: 120px;
   transform: translate(-50%, -50%);
   z-index: 3;
 }
 
-.rp-slot.leftTop { left: 28%; top: 22%; }
-.rp-slot.rightTop { left: 72%; top: 22%; }
-.rp-slot.leftBottom { left: 28%; top: 78%; }
-.rp-slot.rightBottom { left: 72%; top: 78%; }
+/* Left team (SIDE_A) | net | Right team (SIDE_B) */
+.rp-slot.leftTop { left: 22%; top: 28%; }
+.rp-slot.leftBottom { left: 22%; top: 72%; }
+.rp-slot.rightTop { left: 78%; top: 28%; }
+.rp-slot.rightBottom { left: 78%; top: 72%; }
 
 .rp-court-singles_or_db .rp-slot.leftTop,
 .rp-court-singles_or_db .rp-slot.rightTop {
@@ -1038,6 +1042,6 @@
 
 @media (min-width: 431px) {
   .rp-court {
-    max-height: 250px;
+    max-height: 280px;
   }
 }

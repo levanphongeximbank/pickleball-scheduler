@@ -143,16 +143,31 @@ async function loadPlayerDisplayNames(client, playerIds) {
   const ids = [...new Set((playerIds || []).map(trim).filter(Boolean))];
   const names = {};
   if (!ids.length) return names;
-  const { data } = await client.from("profiles").select("id, display_name, player_id").in("id", ids);
-  for (const row of data || []) {
-    const label = trim(row.display_name) || null;
-    if (!label) continue;
-    if (row.id) names[String(row.id)] = label;
-    if (row.player_id) names[String(row.player_id)] = label;
+
+  const { data: athletes } = await client
+    .from("athletes")
+    .select("id, display_name")
+    .in("id", ids);
+  for (const row of athletes || []) {
+    const label = trim(row.display_name);
+    if (label && row.id) names[String(row.id)] = label;
   }
-  for (const id of ids) {
-    if (!names[id]) names[id] = id;
+
+  const missing = ids.filter((id) => !names[id]);
+  if (missing.length) {
+    const { data: profiles } = await client
+      .from("profiles")
+      .select("id, display_name, player_id")
+      .in("id", missing);
+    for (const row of profiles || []) {
+      const label = trim(row.display_name);
+      if (!label) continue;
+      if (row.id) names[String(row.id)] = label;
+      if (row.player_id) names[String(row.player_id)] = label;
+    }
   }
+
+  // Never fall back to raw UUID — leave unresolved so UI can show team name / "VĐV".
   return names;
 }
 

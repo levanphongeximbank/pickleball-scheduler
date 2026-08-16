@@ -441,9 +441,25 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           }
         }
       }
-      const [names, assignedMatch, liveInfo] = await Promise.all([
+      const [names, liveInfo] = await Promise.all([
         resolveNames(row, modeState),
-        facade
+        readLiveVersion({
+          tenantId: row.tenantId || tenantId,
+          competitionId: row.competitionId,
+          matchId: row.matchId,
+        }).catch(() => null),
+      ]);
+      // Home list: prefer live lifecycle (fast). Full assignedMatch only when live is absent.
+      let assignedMatch = null;
+      const liveStatus = liveInfo?.live?.status || null;
+      if (liveStatus) {
+        assignedMatch = Object.freeze({
+          lifecycleState: liveStatus,
+          scoreProjection: null,
+          validationStatus: null,
+        });
+      } else {
+        assignedMatch = await facade
           .getAssignedMatch({
             tenantId: row.tenantId || tenantId,
             competitionId: row.competitionId,
@@ -454,13 +470,8 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
             modeState,
           })
           .then((got) => got.assignedMatch)
-          .catch(() => null),
-        readLiveVersion({
-          tenantId: row.tenantId || tenantId,
-          competitionId: row.competitionId,
-          matchId: row.matchId,
-        }).catch(() => null),
-      ]);
+          .catch(() => null);
+      }
       return buildRefereeAssignmentCard({
         assignment: {
           ...row,
@@ -471,7 +482,10 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           competitionName: modeState?.competitionName || null,
         },
         competitionContext,
-        matchContext,
+        matchContext: {
+          ...matchContext,
+          status: matchContext.status || liveStatus || null,
+        },
         participants,
         assignedMatch,
         live: liveInfo?.live || null,

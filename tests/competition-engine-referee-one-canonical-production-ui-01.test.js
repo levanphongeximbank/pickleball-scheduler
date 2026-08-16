@@ -917,9 +917,10 @@ test("owner visual remediation — chrome suppress + participant-aware controls"
   assert.doesNotMatch(match, /A: \{db\.sideAActivePlayer/);
   assert.match(card, /assignment-meta-row/);
   assert.doesNotMatch(card, /match-status-badge/);
-  assert.match(css, /max-height:\s*210px/);
+  assert.match(css, /max-height:\s*220px/);
   assert.match(css, /rp-court-kitchen/);
   assert.match(css, /rp-court-baseline/);
+  assert.match(css, /left:\s*50%/); // landscape net is vertical at center
 });
 
 test("home daily summary + status filters", async () => {
@@ -969,6 +970,42 @@ test("home daily summary + status filters", async () => {
   assert.equal(
     filterAssignmentsByHomeStatus([stale], HOME_STATUS_FILTER.DONE).length,
     0
+  );
+
+  // Live matchStatus wins over stale VIEW_RESULT action.
+  const liveStatus = normalizeRefereeHomeCard({
+    matchId: "live-1",
+    matchStatus: "IN_PROGRESS",
+    action: "VIEW_RESULT",
+    actionLabel: "XEM KẾT QUẢ",
+  });
+  assert.equal(liveStatus.homeStatusBucket, "LIVE");
+
+  // Summary board and list must use the same today-scoped set.
+  const mixedDays = [
+    {
+      matchId: "today-live",
+      matchStatus: "IN_PROGRESS",
+      action: "CONTINUE",
+      scheduledTimeRaw: "2026-08-16T10:00:00.000Z",
+    },
+    {
+      matchId: "old-done",
+      matchStatus: "COMPLETED",
+      action: "VIEW_RESULT",
+      scheduledTimeRaw: "2026-08-12T10:00:00.000Z",
+    },
+  ];
+  const daySummary = buildRefereeHomeSummary(
+    mixedDays,
+    new Date("2026-08-16T15:00:00+07:00")
+  );
+  assert.equal(daySummary.totalToday, 1);
+  assert.equal(daySummary.counters.live, 1);
+  assert.equal(daySummary.board.length, 1);
+  assert.equal(
+    filterAssignmentsByHomeStatus(daySummary.board, HOME_STATUS_FILTER.ALL).length,
+    1
   );
 });
 

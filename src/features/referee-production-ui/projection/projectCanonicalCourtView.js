@@ -12,10 +12,14 @@ function nameOf(id, names, fallback) {
   if (!id) return fallback || null;
   const mapped = names && names[id];
   if (mapped && typeof mapped === "object") {
-    return String(mapped.displayName || mapped.name || id);
+    const label = String(mapped.displayName || mapped.name || "").trim();
+    if (label) return label;
   }
-  if (typeof mapped === "string" && mapped.trim()) return mapped.trim();
-  return String(id);
+  if (typeof mapped === "string" && mapped.trim()) {
+    const label = mapped.trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(label)) return label;
+  }
+  return fallback || null;
 }
 
 function sideLabel(side, names) {
@@ -33,7 +37,7 @@ function playersForSide(side, names, activeOnlyId) {
   return source.filter(Boolean).map((playerId) =>
     Object.freeze({
       playerId,
-      displayName: nameOf(playerId, names, playerId),
+      displayName: nameOf(playerId, names, "VĐV"),
       permanentPlayerNumber: null,
     })
   );

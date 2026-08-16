@@ -38,6 +38,10 @@ const DONE_STATUSES = new Set([
  * @returns {"UPCOMING"|"LIVE"|"DONE"}
  */
 export function resolveAssignmentHomeBucket(card = {}) {
+  const status = card.matchStatus ? mapModeStatusToCore15(card.matchStatus) : "";
+  // Live lifecycle wins over a stale VIEW_RESULT action from partial enrichment.
+  if (LIVE_STATUSES.has(status)) return HOME_STATUS_FILTER.LIVE;
+
   const action = String(card.action || "").trim().toUpperCase();
   const actionLabel = String(card.actionLabel || "").trim().toUpperCase();
 
@@ -54,9 +58,6 @@ export function resolveAssignmentHomeBucket(card = {}) {
     return HOME_STATUS_FILTER.DONE;
   }
   if (card.acceptedOfficialResult === true) return HOME_STATUS_FILTER.DONE;
-
-  const status = card.matchStatus ? mapModeStatusToCore15(card.matchStatus) : "";
-  if (LIVE_STATUSES.has(status)) return HOME_STATUS_FILTER.LIVE;
   if (DONE_STATUSES.has(status)) return HOME_STATUS_FILTER.DONE;
   return HOME_STATUS_FILTER.UPCOMING;
 }
@@ -86,11 +87,22 @@ export function normalizeRefereeHomeCard(card = {}) {
  * @param {object[]} assignments
  * @param {Date} [now]
  */
-export function buildRefereeHomeSummary(assignments = [], now = new Date()) {
+export function selectRefereeHomeBoard(assignments = [], now = new Date()) {
   const list = Array.isArray(assignments) ? assignments : [];
   const todayKey = localDayKey(now);
   const today = list.filter((card) => isAssignmentForDay(card, todayKey));
-  const board = today.length > 0 ? today : list;
+  // Prefer today's matches when any exist; otherwise show the full assignment list.
+  return today.length > 0 ? today : list;
+}
+
+/**
+ * @param {object[]} assignments
+ * @param {Date} [now]
+ */
+export function buildRefereeHomeSummary(assignments = [], now = new Date()) {
+  const board = selectRefereeHomeBoard(assignments, now).map((card) =>
+    normalizeRefereeHomeCard(card)
+  );
 
   let upcoming = 0;
   let live = 0;
@@ -105,6 +117,7 @@ export function buildRefereeHomeSummary(assignments = [], now = new Date()) {
   return Object.freeze({
     totalToday: board.length,
     headline: `Hôm nay: ${board.length} trận`,
+    board: Object.freeze(board),
     counters: Object.freeze({
       upcoming,
       live,

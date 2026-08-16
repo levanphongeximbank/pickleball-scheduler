@@ -284,6 +284,8 @@ describe("match screen visual states @ ~390px", () => {
     expect(screen.getByTestId("btn-back-assignments")).toBeInTheDocument();
     expect(screen.getByTestId("canonical-court-view").querySelector(".rp-court-net")).toBeTruthy();
     expect(screen.getByTestId("canonical-court-view").querySelector(".rp-court-kitchen")).toBeTruthy();
+    // Landscape: net is vertical at horizontal center (left/right teams).
+    expect(screen.getByTestId("canonical-court-view")).toHaveAttribute("data-testid", "canonical-court-view");
     const markers = screen.getAllByTestId(/player-marker-/);
     markers.forEach((node) => {
       expect(node.textContent).not.toMatch(/#\s*[12]\b/);
