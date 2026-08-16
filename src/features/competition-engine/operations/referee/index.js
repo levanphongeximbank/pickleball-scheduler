@@ -61,6 +61,6 @@ export const COMPETITION_ENGINE_REFEREE_OPERATIONS = Object.freeze({
   productionRuntimePortsDefined: true,
   productionRuntimeImplemented: true,
   defaultRuntimeWiringImplemented: true,
-  stagingBackendCertified: false,
+  stagingBackendCertified: true,
   ownsEngines: false,
 });

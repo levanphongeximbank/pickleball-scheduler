@@ -7,6 +7,8 @@
  * registry-addition gate (only tests/competition-engine-e2e-07-* are allowed).
  */
 import "./competition-engine-referee-adapter-contract-v1.test.js";
+import "./competition-engine-referee-adapter-b-mode-adoption-01.test.js";
+import "./competition-engine-referee-adapter-b-phase-2b-cutover-01.test.js";
 import "./competition-engine-referee-runtime-ports-authority.test.js";
 import "./competition-engine-referee-canonical-production-runtime-01.test.js";
 import "./competition-engine-referee-canonical-default-runtime-cutover-01.test.js";

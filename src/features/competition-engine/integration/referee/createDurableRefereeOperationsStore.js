@@ -1,6 +1,7 @@
 /**
  * E2E-04 ops store backed by canonical durable tables.
  * Reconstructs F5/fresh-tab state from durable snapshots only.
+ * Driver methods may be sync (schema-faithful) or async (live RPC).
  */
 
 import {
@@ -29,6 +30,10 @@ function opsStatusFromAssignment(row) {
   return String(row.opsStatus || REFEREE_ASSIGNMENT_OPS_STATUS.ASSIGNED).toUpperCase();
 }
 
+async function resolve(value) {
+  return await value;
+}
+
 /**
  * @param {{
  *   driver: object,
@@ -53,10 +58,12 @@ export function createDurableRefereeOperationsStore(options = {}) {
     return commandContext?.actor || null;
   }
 
-  function reconstruct(tenantId, competitionId) {
+  async function reconstruct(tenantId, competitionId) {
     const record = emptyRecord(tenantId, competitionId);
-    const assignmentRows = driver.listByCompetition({ tenantId, competitionId });
-    record.assignments = assignmentRows.map((row) =>
+    const assignmentRows = await resolve(
+      driver.listByCompetition({ tenantId, competitionId })
+    );
+    record.assignments = (assignmentRows || []).map((row) =>
       Object.freeze({
         assignmentId: `${row.matchId}::${row.refereeUserId}`,
         matchId: row.matchId,
@@ -73,8 +80,10 @@ export function createDurableRefereeOperationsStore(options = {}) {
         source: "referee_assignments",
       })
     );
-    const liveRows = driver.listLiveStates({ tenantId, competitionId });
-    for (const live of liveRows) {
+    const liveRows = await resolve(
+      driver.listLiveStates({ tenantId, competitionId })
+    );
+    for (const live of liveRows || []) {
       const canonical = live.statePayload?.canonical || {};
       if (canonical.match) {
         record.matches[live.matchId] = clonePlain(canonical.match);
@@ -95,20 +104,23 @@ export function createDurableRefereeOperationsStore(options = {}) {
     return record;
   }
 
-  function persistMatchSlice(tenantId, competitionId, matchId, record, actor) {
+  async function persistMatchSlice(tenantId, competitionId, matchId, record, actor) {
     const actorId = requireCanonicalRefereeActor(actor);
     const scope = { tenantId, competitionId, matchId };
-    if (!driver.getLiveState(scope)) {
-      driver.ensureLiveState(
-        {
-          ...scope,
-          status: mapCore15ToLiveStatus(record.matches?.[matchId]?.status),
-          canonical: {},
-        },
-        actor
+    let live = await resolve(driver.getLiveState(scope));
+    if (!live) {
+      await resolve(
+        driver.ensureLiveState(
+          {
+            ...scope,
+            status: mapCore15ToLiveStatus(record.matches?.[matchId]?.status),
+            canonical: {},
+          },
+          actor
+        )
       );
+      live = await resolve(driver.getLiveState(scope));
     }
-    const live = driver.getLiveState(scope);
     const canonical = {
       ...(live.statePayload?.canonical || {}),
       match: record.matches?.[matchId] || null,
@@ -135,23 +147,26 @@ export function createDurableRefereeOperationsStore(options = {}) {
     const idempotencyKey = callerKey
       ? `${callerKey}::${contentHash}`
       : contentHash;
-    driver.commitTransition(
-      {
-        ...scope,
-        expectedVersion: Number(live.stateVersion ?? live.version ?? 0),
-        idempotencyKey,
-        commandId: commandContext?.commandId || idempotencyKey,
-        eventType: "E2E04_OPS_COMMIT",
-        payload: { matchId, canonical },
-        nextState,
-        status: nextState.status,
-      },
-      actor
+    await resolve(
+      driver.commitTransition(
+        {
+          ...scope,
+          expectedVersion: Number(live.stateVersion ?? live.version ?? 0),
+          expectedEventSequence: Number(live.lastEventSequence || 0),
+          idempotencyKey,
+          commandId: commandContext?.commandId || idempotencyKey,
+          eventType: "E2E04_OPS_COMMIT",
+          payload: { matchId, canonical },
+          nextState,
+          status: nextState.status,
+        },
+        actor
+      )
     );
   }
 
-  function getOrCreate(tenantId, competitionId) {
-    return deepFreeze(clonePlain(reconstruct(tenantId, competitionId)));
+  async function getOrCreate(tenantId, competitionId) {
+    return deepFreeze(clonePlain(await reconstruct(tenantId, competitionId)));
   }
 
   return Object.freeze({
@@ -163,11 +178,11 @@ export function createDurableRefereeOperationsStore(options = {}) {
       commandContext = context || null;
     },
     get: getOrCreate,
-    getRaw(tenantId, competitionId) {
-      return clonePlain(reconstruct(tenantId, competitionId));
+    async getRaw(tenantId, competitionId) {
+      return clonePlain(await reconstruct(tenantId, competitionId));
     },
-    update(tenantId, competitionId, mutator) {
-      const before = clonePlain(reconstruct(tenantId, competitionId));
+    async update(tenantId, competitionId, mutator) {
+      const before = clonePlain(await reconstruct(tenantId, competitionId));
       const draft = clonePlain(before);
       mutator(draft, { nextId, clockIso });
       draft.revision = Number(draft.revision || 0) + 1;
@@ -175,22 +190,24 @@ export function createDurableRefereeOperationsStore(options = {}) {
       const actor = currentActor();
       if (actor) {
         for (const row of draft.assignments || []) {
-          driver.upsertAssignment(
-            {
-              tenantId,
-              competitionId,
-              matchId: row.matchId,
-              refereeUserId: row.refereeId,
-              opsStatus: row.status,
-              status:
-                row.status === REFEREE_ASSIGNMENT_OPS_STATUS.RELEASED ||
-                row.status === REFEREE_ASSIGNMENT_OPS_STATUS.REASSIGNED
-                  ? "revoked"
-                  : "active",
-              venueId: row.venueId || draft.venueId,
-              courtId: row.courtId || null,
-            },
-            actor
+          await resolve(
+            driver.upsertAssignment(
+              {
+                tenantId,
+                competitionId,
+                matchId: row.matchId,
+                refereeUserId: row.refereeId,
+                opsStatus: row.status,
+                status:
+                  row.status === REFEREE_ASSIGNMENT_OPS_STATUS.RELEASED ||
+                  row.status === REFEREE_ASSIGNMENT_OPS_STATUS.REASSIGNED
+                    ? "revoked"
+                    : "active",
+                venueId: row.venueId || draft.venueId,
+                courtId: row.courtId || null,
+              },
+              actor
+            )
           );
         }
       }
@@ -215,63 +232,61 @@ export function createDurableRefereeOperationsStore(options = {}) {
             validation: draft.validationByMatch?.[matchId] || null,
           });
           if (beforeHash !== afterHash) {
-            persistMatchSlice(tenantId, competitionId, matchId, draft, actor);
+            await persistMatchSlice(tenantId, competitionId, matchId, draft, actor);
           }
         }
       }
-      return deepFreeze(clonePlain(reconstruct(tenantId, competitionId)));
+      return deepFreeze(clonePlain(await reconstruct(tenantId, competitionId)));
     },
-    upsertAssignments(tenantId, competitionId, assignments, meta = {}) {
+    async upsertAssignments(tenantId, competitionId, assignments, meta = {}) {
       const actor = meta.actor || currentActor();
       requireCanonicalRefereeActor(actor);
       for (const raw of assignments || []) {
         const matchId = String(raw.matchId || "").trim();
         const refereeUserId = String(raw.refereeId || raw.assigneeId || "").trim();
         if (!matchId || !refereeUserId) continue;
-        driver.upsertAssignment(
-          {
-            tenantId,
-            competitionId,
-            matchId,
-            refereeUserId,
-            opsStatus: raw.status || REFEREE_ASSIGNMENT_OPS_STATUS.ASSIGNED,
-            status: "active",
-            venueId: raw.venueId || meta.venueId || null,
-            courtId: raw.courtId || null,
-          },
-          actor
+        await resolve(
+          driver.upsertAssignment(
+            {
+              tenantId,
+              competitionId,
+              matchId,
+              refereeUserId,
+              opsStatus: raw.status || REFEREE_ASSIGNMENT_OPS_STATUS.ASSIGNED,
+              status: "active",
+              venueId: raw.venueId || meta.venueId || null,
+              courtId: raw.courtId || null,
+            },
+            actor
+          )
         );
-        driver.ensureLiveState(
-          {
-            tenantId,
-            competitionId,
-            matchId,
-            canonical: { venueId: meta.venueId || raw.venueId || null },
-          },
-          actor
+        await resolve(
+          driver.ensureLiveState(
+            {
+              tenantId,
+              competitionId,
+              matchId,
+              canonical: { venueId: meta.venueId || raw.venueId || null },
+            },
+            actor
+          )
         );
       }
       return getOrCreate(tenantId, competitionId);
     },
-    putMatch(tenantId, competitionId, match) {
+    async putMatch(tenantId, competitionId, match) {
       const matchId = String(match?.id || match?.matchId || "").trim();
       const actor = currentActor();
-      const draft = clonePlain(reconstruct(tenantId, competitionId));
+      const draft = clonePlain(await reconstruct(tenantId, competitionId));
       if (matchId) draft.matches[matchId] = clonePlain(match);
       if (actor && matchId) {
-        persistMatchSlice(tenantId, competitionId, matchId, draft, actor);
+        await persistMatchSlice(tenantId, competitionId, matchId, draft, actor);
       }
       return getOrCreate(tenantId, competitionId);
     },
     nextId: (prefix = "ref-ops") => nextId(prefix),
     listKeys() {
-      const keys = new Set();
-      for (const row of driver.listByCompetition
-        ? []
-        : []) {
-        keys.add(`${row.tenantId}::${row.competitionId}`);
-      }
-      return [...keys].sort();
+      return [];
     },
     matchStateId,
     REFEREE_ASSIGNMENT_OPS_STATUS,
