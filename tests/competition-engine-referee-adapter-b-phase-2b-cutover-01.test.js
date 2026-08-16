@@ -224,7 +224,7 @@ async function runAssignedOpenAndScore(runtime, fixture, actor = ACTOR) {
     competitionId: fixture.competitionId,
     matchId: fixture.matchId,
   };
-  runtime.assignmentRepository.upsert(
+  await runtime.assignmentRepository.upsert(
     { ...scope, refereeUserId: actor.actorId },
     actor
   );
@@ -386,7 +386,7 @@ for (const mode of [
 
     // Ensure match actually complete by flooding points if needed
     for (let i = 0; i < 30; i += 1) {
-      const live = runtime.opsStore.get("tenant-1", fixture.competitionId);
+      const live = await runtime.opsStore.get("tenant-1", fixture.competitionId);
       if (live.scoreSessions?.[fixture.matchId]?.state?.matchComplete) break;
       await runtime.facade.submitScoreProjection({
         ...cmdBase,
@@ -396,7 +396,7 @@ for (const mode of [
       });
     }
 
-    const live = runtime.opsStore.get("tenant-1", fixture.competitionId);
+    const live = await runtime.opsStore.get("tenant-1", fixture.competitionId);
     assert.equal(
       live.scoreSessions?.[fixture.matchId]?.state?.matchComplete,
       true
@@ -428,7 +428,7 @@ for (const mode of [
 test("canonical actor required on Adapter B application path", async () => {
   const { runtime } = createCutoverRuntime();
   const fixture = modeFixture(COMPETITION_REFEREE_MODE.INTERNAL);
-  runtime.assignmentRepository.upsert(
+  await runtime.assignmentRepository.upsert(
     {
       tenantId: "tenant-1",
       competitionId: fixture.competitionId,
@@ -460,7 +460,7 @@ test("canonical actor required on Adapter B application path", async () => {
 test("unknown mode and malformed mode state fail closed — no silent legacy fallback", async () => {
   const { runtime } = createCutoverRuntime();
   const fixture = modeFixture(COMPETITION_REFEREE_MODE.INTERNAL);
-  runtime.assignmentRepository.upsert(
+  await runtime.assignmentRepository.upsert(
     {
       tenantId: "tenant-1",
       competitionId: fixture.competitionId,
@@ -508,7 +508,7 @@ test("unknown mode and malformed mode state fail closed — no silent legacy fal
     ...daily.modeState,
     canonicalAssignmentAuthorityAvailable: false,
   };
-  runtime.assignmentRepository.upsert(
+  await runtime.assignmentRepository.upsert(
     {
       tenantId: "tenant-1",
       competitionId: daily.competitionId,
@@ -535,19 +535,19 @@ test("unknown mode and malformed mode state fail closed — no silent legacy fal
   );
 });
 
-test("expectedVersion/CAS remains required on durable Adapter B composition", () => {
+test("expectedVersion/CAS remains required on durable Adapter B composition", async () => {
   const { runtime } = createCutoverRuntime();
   const scope = {
     tenantId: "tenant-1",
     competitionId: "cas-comp-1",
     matchId: "cas-match-1",
   };
-  runtime.assignmentRepository.upsert(
+  await runtime.assignmentRepository.upsert(
     { ...scope, refereeUserId: ACTOR.actorId },
     ACTOR
   );
 
-  runtime.matchStateRepository.putLiveState(
+  await runtime.matchStateRepository.putLiveState(
     {
       ...scope,
       status: "in_progress",
@@ -556,10 +556,10 @@ test("expectedVersion/CAS remains required on durable Adapter B composition", ()
     },
     ACTOR
   );
-  const live = runtime.matchStateRepository.getLiveState(scope);
+  const live = await runtime.matchStateRepository.getLiveState(scope);
   assert.ok(live);
 
-  assert.throws(() => {
+  await assert.rejects(() =>
     runtime.matchStateRepository.putLiveState(
       {
         ...scope,
@@ -568,15 +568,15 @@ test("expectedVersion/CAS remains required on durable Adapter B composition", ()
         idempotencyKey: "cas-stale",
       },
       ACTOR
-    );
-  });
+    )
+  );
 
-  const event = runtime.scoringEventLedger.appendEvent(
+  const event = await runtime.scoringEventLedger.appendEvent(
     { ...scope, payload: { cmd: "POINT" }, idempotencyKey: "cas-cmd-1" },
     ACTOR
   );
   assert.equal(event.duplicate, false);
-  const replay = runtime.scoringEventLedger.appendEvent(
+  const replay = await runtime.scoringEventLedger.appendEvent(
     { ...scope, payload: { cmd: "POINT" }, idempotencyKey: "cas-cmd-1" },
     ACTOR
   );

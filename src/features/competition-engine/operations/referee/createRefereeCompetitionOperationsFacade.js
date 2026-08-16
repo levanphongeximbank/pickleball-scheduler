@@ -152,10 +152,10 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     });
   }
 
-  function loadRecord(command) {
+  async function loadRecord(command) {
     const tenantId = String(command.tenantId || "").trim();
     const competitionId = String(command.competitionId || "").trim();
-    return store.get(tenantId, competitionId);
+    return await store.get(tenantId, competitionId);
   }
 
   function findAssignment(record, refereeId, matchId) {
@@ -171,8 +171,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     );
   }
 
-  function requireAssignedMatch(command, auth, matchId) {
-    const record = loadRecord(command);
+  async function requireAssignedMatch(command, auth, matchId) {
+    const record = await loadRecord(command);
     const assignment = findAssignment(record, auth.refereeId, matchId);
     assertRefereeAssignmentScope({
       assignment,
@@ -185,8 +185,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return { record, assignment };
   }
 
-  function project(command, auth, matchId = null) {
-    const record = loadRecord(command);
+  async function project(command, auth, matchId = null) {
+    const record = await loadRecord(command);
     return buildRefereeOperationsProjection({
       record,
       refereeId: auth.refereeId,
@@ -238,7 +238,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
   /**
    * Seed CORE-13 assignment handoff + optional match snapshots (test/runtime wiring).
    */
-  function seedAssignments(command = {}) {
+  async function seedAssignments(command = {}) {
     const tenantId = String(command.tenantId || "").trim();
     const competitionId = String(command.competitionId || "").trim();
     if (!tenantId || !competitionId) {
@@ -249,7 +249,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
       );
     }
     bindStoreCommand(command);
-    const record = store.upsertAssignments(
+    const record = await store.upsertAssignments(
       tenantId,
       competitionId,
       command.assignments || [],
@@ -257,7 +257,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     );
     if (Array.isArray(command.matches)) {
       for (const match of command.matches) {
-        store.putMatch(tenantId, competitionId, match);
+        await store.putMatch(tenantId, competitionId, match);
       }
     }
     return deepFreeze({
@@ -273,7 +273,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
   async function getRefereeAssignmentQueue(command = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.ASSIGNMENT_READ);
-      const projection = project(cmd, auth);
+      const projection = await project(cmd, auth);
       return deepFreeze({
         ok: true,
         queue: projection.assignmentQueue,
@@ -294,8 +294,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
           {}
         );
       }
-      requireAssignedMatch(cmd, auth, matchId);
-      const projection = project(cmd, auth, matchId);
+      await requireAssignedMatch(cmd, auth, matchId);
+      const projection = await project(cmd, auth, matchId);
       return deepFreeze({
         ok: true,
         assignedMatch: projection.assignedMatch,
@@ -309,9 +309,9 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.ASSIGNMENT_ACK);
       const matchId = String(cmd.matchId || "").trim();
-      requireAssignedMatch(cmd, auth, matchId);
+      await requireAssignedMatch(cmd, auth, matchId);
       let idempotent = false;
-      store.update(cmd.tenantId, cmd.competitionId, (draft) => {
+      await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
         const row = draft.assignments.find(
           (a) =>
             a.matchId === matchId && a.refereeId === auth.refereeId
@@ -328,7 +328,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
           }
         }
       });
-      const record = loadRecord(cmd);
+      const record = await loadRecord(cmd);
       return deepFreeze({
         ok: true,
         idempotent,
@@ -341,8 +341,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     });
   }
 
-  function ensureMatchSnapshot(cmd, matchId, assignment) {
-    const record = loadRecord(cmd);
+  async function ensureMatchSnapshot(cmd, matchId, assignment) {
+    const record = await loadRecord(cmd);
     if (record.matches?.[matchId]) return record.matches[matchId];
     const match = createCompetitionMatch({
       id: matchId,
@@ -357,7 +357,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
       courtAssignmentRef: assignment.courtId || "court-1",
       refereeAssignmentRef: assignment.assignmentId,
     });
-    store.putMatch(cmd.tenantId, cmd.competitionId, match);
+    await store.putMatch(cmd.tenantId, cmd.competitionId, match);
     return match;
   }
 
@@ -365,7 +365,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.MATCH_OPEN);
       const matchId = String(cmd.matchId || "").trim();
-      const { assignment } = requireAssignedMatch(cmd, auth, matchId);
+      const { assignment } = await requireAssignedMatch(cmd, auth, matchId);
 
       const adapter = requireModeAdapter(cmd);
       if (adapter) {
@@ -385,7 +385,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         }
       }
 
-      let match = ensureMatchSnapshot(cmd, matchId, assignment);
+      let match = await ensureMatchSnapshot(cmd, matchId, assignment);
 
       // Transition toward IN_PROGRESS using CORE-15 only.
       const authz = {
@@ -417,7 +417,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
           enforceReadiness: false,
         }).match;
       } else if (match.status === MATCH_STATUS.IN_PROGRESS) {
-        store.putMatch(cmd.tenantId, cmd.competitionId, match);
+        await store.putMatch(cmd.tenantId, cmd.competitionId, match);
         return deepFreeze({
           ok: true,
           idempotent: true,
@@ -435,8 +435,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         );
       }
 
-      store.putMatch(cmd.tenantId, cmd.competitionId, match);
-      store.update(cmd.tenantId, cmd.competitionId, (draft) => {
+      await store.putMatch(cmd.tenantId, cmd.competitionId, match);
+      await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
         const row = draft.assignments.find(
           (a) => a.matchId === matchId && a.refereeId === auth.refereeId
         );
@@ -459,8 +459,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.MATCH_SUSPEND);
       const matchId = String(cmd.matchId || "").trim();
-      requireAssignedMatch(cmd, auth, matchId);
-      const record = loadRecord(cmd);
+      await requireAssignedMatch(cmd, auth, matchId);
+      const record = await loadRecord(cmd);
       const match = record.matches?.[matchId];
       if (!match) {
         failReferee(REFEREE_ERROR_CODE.MISSING_MATCH, "Match snapshot missing", {
@@ -480,7 +480,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         now: clockIso,
         enforceReadiness: false,
       });
-      store.putMatch(cmd.tenantId, cmd.competitionId, result.match);
+      await store.putMatch(cmd.tenantId, cmd.competitionId, result.match);
       return deepFreeze({
         ok: true,
         match: result.match,
@@ -496,8 +496,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.MATCH_RESUME);
       const matchId = String(cmd.matchId || "").trim();
-      requireAssignedMatch(cmd, auth, matchId);
-      const record = loadRecord(cmd);
+      await requireAssignedMatch(cmd, auth, matchId);
+      const record = await loadRecord(cmd);
       const match = record.matches?.[matchId];
       if (!match) {
         failReferee(REFEREE_ERROR_CODE.MISSING_MATCH, "Match snapshot missing", {
@@ -517,7 +517,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         now: clockIso,
         enforceReadiness: false,
       });
-      store.putMatch(cmd.tenantId, cmd.competitionId, result.match);
+      await store.putMatch(cmd.tenantId, cmd.competitionId, result.match);
       return deepFreeze({
         ok: true,
         match: result.match,
@@ -533,8 +533,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.SCORE_SESSION);
       const matchId = String(cmd.matchId || "").trim();
-      requireAssignedMatch(cmd, auth, matchId);
-      const record = loadRecord(cmd);
+      await requireAssignedMatch(cmd, auth, matchId);
+      const record = await loadRecord(cmd);
       const match = record.matches?.[matchId];
       if (!match || String(match.status).toUpperCase() !== MATCH_STATUS.IN_PROGRESS) {
         failReferee(
@@ -581,7 +581,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         state,
         projection,
       });
-      store.update(cmd.tenantId, cmd.competitionId, (draft) => {
+      await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
         draft.scoreSessions[matchId] = session;
       });
       return deepFreeze({
@@ -600,8 +600,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.SCORE_SUBMIT);
       const matchId = String(cmd.matchId || "").trim();
-      requireAssignedMatch(cmd, auth, matchId);
-      const record = loadRecord(cmd);
+      await requireAssignedMatch(cmd, auth, matchId);
+      const record = await loadRecord(cmd);
       const match = record.matches?.[matchId];
       if (!match || String(match.status).toUpperCase() !== MATCH_STATUS.IN_PROGRESS) {
         failReferee(
@@ -651,7 +651,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         projection,
         updatedAt: clockIso,
       });
-      store.update(cmd.tenantId, cmd.competitionId, (draft) => {
+      await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
         draft.scoreSessions[matchId] = nextSession;
       });
       return deepFreeze({
@@ -726,8 +726,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.RESULT_SUBMIT);
       const matchId = String(cmd.matchId || "").trim();
-      const { assignment } = requireAssignedMatch(cmd, auth, matchId);
-      const record = loadRecord(cmd);
+      const { assignment } = await requireAssignedMatch(cmd, auth, matchId);
+      const record = await loadRecord(cmd);
       const session = record.scoreSessions?.[matchId];
       if (!session?.projection) {
         failReferee(
@@ -833,7 +833,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
             enforceReadiness: false,
             completionReason: "COMPLETED",
           });
-          store.putMatch(cmd.tenantId, cmd.competitionId, completed.match);
+          await store.putMatch(cmd.tenantId, cmd.competitionId, completed.match);
         }
       }
 
@@ -865,7 +865,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
           : null,
       });
 
-      store.update(cmd.tenantId, cmd.competitionId, (draft) => {
+      await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
         draft.validationByMatch[matchId] = validationRecord;
       });
 
@@ -887,8 +887,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.RESULT_READ);
       const matchId = String(cmd.matchId || "").trim();
-      requireAssignedMatch(cmd, auth, matchId);
-      const record = loadRecord(cmd);
+      await requireAssignedMatch(cmd, auth, matchId);
+      const record = await loadRecord(cmd);
       const validation = record.validationByMatch?.[matchId] || null;
       return deepFreeze({
         ok: true,
@@ -909,8 +909,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.RESULT_CORRECT);
       const matchId = String(cmd.matchId || "").trim();
-      requireAssignedMatch(cmd, auth, matchId);
-      const record = loadRecord(cmd);
+      await requireAssignedMatch(cmd, auth, matchId);
+      const record = await loadRecord(cmd);
       const validation = record.validationByMatch?.[matchId];
       if (
         !validation ||
@@ -934,8 +934,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.RESULT_READ);
       const matchId = String(cmd.matchId || "").trim();
-      requireAssignedMatch(cmd, auth, matchId);
-      const record = loadRecord(cmd);
+      await requireAssignedMatch(cmd, auth, matchId);
+      const record = await loadRecord(cmd);
       const validation = record.validationByMatch?.[matchId] || {
         status: REFEREE_VALIDATION_OPS_STATUS.NONE,
         validatedResult: null,
