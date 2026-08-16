@@ -72,6 +72,12 @@ export { createCanonicalRefereeDurableRuntime } from "./createCanonicalRefereeDu
 export { createDurableRefereeOperationsStore } from "./createDurableRefereeOperationsStore.js";
 export { createLiveRpcCanonicalRefereeDurableDriver } from "./createLiveRpcCanonicalRefereeDurableDriver.js";
 export { createCompetitionRefereeProductionRuntime } from "./createCompetitionRefereeProductionRuntime.js";
+export { createDefaultCompetitionRefereeRuntime } from "./createDefaultCompetitionRefereeRuntime.js";
+export {
+  isBrowserRuntime,
+  assertServerOnlyPrivilegedRefereeComposition,
+  assertNoClientServiceRoleEnv,
+} from "./privilegedCompositionBoundary.js";
 
 export { runCompetitionRefereeAdapterConformance } from "./conformance.js";
 
@@ -79,9 +85,11 @@ export const COMPETITION_REFEREE_ADAPTER_INTEGRATION = Object.freeze({
   id: "competition.referee.adapter.v1",
   version: "1.0.0",
   locked: true,
-  wiredToProductionRuntime: false,
+  wiredToProductionRuntime: true,
   inMemoryRuntimeClassification: "TEST_DOUBLE_ONLY",
+  inMemoryProductionFallback: false,
   productionRuntimePortsDefined: true,
   productionRuntimeImplemented: true,
+  defaultRuntimeWiringImplemented: true,
   stagingBackendCertified: false,
 });

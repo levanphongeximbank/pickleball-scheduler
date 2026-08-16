@@ -12,6 +12,7 @@ import {
   createCompetitionGovernanceReliabilityFacade,
   createInMemoryOrganizerOperationsStore,
   createInMemoryPublicExperienceStore,
+  createInMemoryRefereeOperationsStore,
   createOrganizerOperationsFacade,
   createPlayerCompetitionOperationsFacade,
   createPublicCompetitionExperienceFacade,
@@ -65,6 +66,7 @@ export async function runHappyPathCertification(input = {}) {
   const refereeFacade = createRefereeCompetitionOperationsFacade({
     clockIso: fixture.clockIso,
     runtimePorts: ports,
+    store: createInMemoryRefereeOperationsStore({ clockIso: fixture.clockIso }),
   });
   const governanceFacade = createCompetitionGovernanceReliabilityFacade({
     runtimePorts: ports,

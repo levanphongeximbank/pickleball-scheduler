@@ -30,7 +30,7 @@ test("in-memory store is classified TEST_DOUBLE_ONLY and implements ops port", (
   assert.equal(matchesRefereeOperationsStorePort(store), true);
   assert.equal(
     COMPETITION_ENGINE_REFEREE_OPERATIONS.wiredToProductionRuntime,
-    false
+    true
   );
   assert.equal(
     COMPETITION_ENGINE_REFEREE_OPERATIONS.inMemoryRuntimeClassification,
@@ -135,6 +135,9 @@ test("fuzzy refereeId alias is rejected; result submit does not need TEAM permis
   const facade = createRefereeCompetitionOperationsFacade({
     runtimePorts: ports,
     clockIso: "2026-07-24T12:00:00.000Z",
+    store: createInMemoryRefereeOperationsStore({
+      clockIso: "2026-07-24T12:00:00.000Z",
+    }),
   });
   assert.equal(facade.runtimeClassification, "TEST_DOUBLE_ONLY");
   assert.equal(facade.wiredToProductionRuntime, false);
