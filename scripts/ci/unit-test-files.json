@@ -132,6 +132,7 @@
   "tests/court-resource-phase3a-identity.test.js",
   "tests/court-resource-phase3b-canonical-reservation.test.js",
   "tests/court-resource-phase4c-async-gateway-binding.test.js",
+  "tests/court-resource-phase4d-daily-play-interval-authority.test.js",
   "tests/court-resource-phase3b-pgcrypto-precheck-portability.test.js",
   "tests/court-resource-phase3b-canonical-reservation-real-postgres.test.js",
   "tests/venue-court/operating-hours-service.test.js",

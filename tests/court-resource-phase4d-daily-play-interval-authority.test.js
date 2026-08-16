@@ -30,12 +30,48 @@ const CERTIFIED_3B_HASHES = {
     "43E39245D3698ED21565AE43C2322A64A474122E51730BAABA7B9A5AAC280898",
 };
 
+const CERTIFIED_4D_EXECUTABLE = {
+  "01_PRECHECK.sql": {
+    sha256: "29011AE97747835174CD47B3E5DAC2F4C25E89A1ECF620C3781475B0DAA64478",
+    bytes: 4738,
+  },
+  "02_APPLY.sql": {
+    sha256: "15BA263207B2EE871C3860CFD61F0E810A591D31AFB4A5B3D95FA3C13A166F0B",
+    bytes: 15198,
+  },
+  "03_VERIFY.sql": {
+    sha256: "73E30440FB61E63DF87A1D036B28B69FC3F68C75BA491C798B9722DD6BC6B580",
+    bytes: 3610,
+  },
+  "04_ROLLBACK.sql": {
+    sha256: "7E537191E6B3F4EFA8D13BEA1F22B5B2F12BFEEFF2A00F375BAD6F9AAF7DF8CB",
+    bytes: 6476,
+  },
+};
+
+const D4_MIGRATION_VERSION = "20260816074600";
+const D4_MIGRATION_NAME =
+  "court_resource_phase3b_daily_play_interval_authority_01";
+const PHASE3B_MIGRATION_VERSION = "20260815153624";
+
 function read(dir, name) {
   return fs.readFileSync(path.join(dir, name), "utf8");
 }
 
 function sha256File(dir, name) {
   return crypto.createHash("sha256").update(fs.readFileSync(path.join(dir, name))).digest("hex").toUpperCase();
+}
+
+function parseIdentityLines(text) {
+  const out = {};
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq <= 0) continue;
+    out[trimmed.slice(0, eq)] = trimmed.slice(eq + 1);
+  }
+  return out;
 }
 
 test("4D package files exist", () => {
@@ -45,14 +81,45 @@ test("4D package files exist", () => {
     "03_VERIFY.sql",
     "04_ROLLBACK.sql",
     "README.md",
+    "MIGRATION_IDENTITY.txt",
   ]) {
     assert.equal(fs.existsSync(path.join(pkg4d, name)), true, name);
   }
 });
 
+test("4D migration identity is frozen and distinct from Phase 3B", () => {
+  const identityFile = read(pkg4d, "MIGRATION_IDENTITY.txt");
+  const identity = parseIdentityLines(identityFile);
+  assert.equal(identity.D4_MIGRATION_VERSION, D4_MIGRATION_VERSION);
+  assert.equal(identity.D4_MIGRATION_NAME, D4_MIGRATION_NAME);
+  assert.notEqual(identity.D4_MIGRATION_VERSION, PHASE3B_MIGRATION_VERSION);
+
+  const readme = read(pkg4d, "README.md");
+  assert.match(readme, /## Migration identity/);
+  assert.match(
+    readme,
+    new RegExp(`D4_MIGRATION_VERSION=${D4_MIGRATION_VERSION}`)
+  );
+  assert.match(
+    readme,
+    new RegExp(`D4_MIGRATION_NAME=${D4_MIGRATION_NAME}`)
+  );
+  assert.match(readme, /frozen before first Staging APPLY/i);
+  assert.match(readme, /20260815153624/);
+  assert.match(readme, /Do \*\*not\*\* generate a timestamp at execution time/i);
+});
+
 test("certified Phase3B SQL files unmodified", () => {
   for (const [name, expected] of Object.entries(CERTIFIED_3B_HASHES)) {
     assert.equal(sha256File(pkg3b, name), expected, name);
+  }
+});
+
+test("certified 4D executable SQL hashes and bytes unchanged", () => {
+  for (const [name, expected] of Object.entries(CERTIFIED_4D_EXECUTABLE)) {
+    const full = path.join(pkg4d, name);
+    assert.equal(sha256File(pkg4d, name), expected.sha256, name);
+    assert.equal(fs.statSync(full).size, expected.bytes, `${name} bytes`);
   }
 });
 

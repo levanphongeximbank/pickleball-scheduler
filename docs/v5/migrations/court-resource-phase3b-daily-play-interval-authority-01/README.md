@@ -3,6 +3,21 @@
 **LOCAL AUTHORING + LOCAL RECERTIFICATION ONLY.**  
 **DO NOT APPLY TO STAGING OR PRODUCTION IN THIS PASS.**
 
+## Migration identity
+
+```
+D4_MIGRATION_VERSION=20260816074600
+D4_MIGRATION_NAME=court_resource_phase3b_daily_play_interval_authority_01
+```
+
+This identity is **frozen before first Staging APPLY**. It is distinct from Phase 3B
+version `20260815153624`. Staging migration history must use this exact version and
+name. Do **not** generate a timestamp at execution time. If package source changes
+after Staging APPLY, create a later additive migration rather than changing this
+identity retrospectively.
+
+Machine-readable copy: `MIGRATION_IDENTITY.txt` (metadata only; not SQL payload).
+
 Layers **on top of** already-installed Phase 3B canonical reservation.  
 Does **not** replay or replace the certified Phase 3B package files.
 
