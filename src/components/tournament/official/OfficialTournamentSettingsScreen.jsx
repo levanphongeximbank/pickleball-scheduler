@@ -17,15 +17,22 @@ import {
   getOfficialCompetitionSettings,
   patchOfficialCompetitionSettings,
   parseOfficialDecimalLevelInput,
+  normalizeOfficialTournamentName,
   OFFICIAL_REGISTRATION_MODE,
   OFFICIAL_REGISTRATION_MODE_LABELS,
   OFFICIAL_SCORING_METHOD,
   OFFICIAL_SCORING_METHOD_LABELS,
+  OFFICIAL_MATCH_FORMAT,
+  OFFICIAL_MATCH_FORMAT_LABELS,
+  OFFICIAL_MATCH_FORMAT_HELPERS,
   OFFICIAL_ROUND_SCORE_KEY,
   OFFICIAL_ROUND_SCORE_LABELS,
   SIDEOUT_OPERATIONAL,
   SIDEOUT_SELECTION_FAIL_CLOSED,
-  INTENDED_NEW_TOURNAMENT_SCORING_METHOD,
+  BEST_OF_3_OPERATIONAL,
+  BEST_OF_3_SELECTION_FAIL_CLOSED,
+  BEST_OF_3_SHARED_CAPABILITY_GAP,
+  WIN_BY_POLICY_DEFERRED,
 } from "../../../features/individual-tournament/engines/officialTournamentSettingsEngine.js";
 import { OFFICIAL_MODE } from "../../../models/tournament/constants.js";
 import { allowedOfficialRegistrationModes } from "../../../features/individual-tournament/engines/officialCompetitionStrategyEngine.js";
@@ -40,6 +47,7 @@ const fieldLabelProps = { shrink: true };
  * Tournament Settings screen — configuration only (no match-day ops).
  * Eligibility binds to settings.eligibilityRules (eligibilityEngine).
  * Group count uses the single Setup ↔ officialCompetition.groupCount path.
+ * Tournament name uses canonical tournament.name (no second displayName).
  */
 export default function OfficialTournamentSettingsScreen({
   tournament,
@@ -53,8 +61,10 @@ export default function OfficialTournamentSettingsScreen({
   const current = useMemo(() => getOfficialCompetitionSettings(tournament), [tournament]);
   const eligibility = useMemo(() => getEligibilityRules(tournament), [tournament]);
   const [draft, setDraft] = useState(() => ({
+    tournamentName: tournament?.name || "",
     registrationMode: current.registrationMode || "",
     scoringMethod: current.scoringMethod || OFFICIAL_SCORING_METHOD.RALLY,
+    matchFormat: current.matchFormat || OFFICIAL_MATCH_FORMAT.BEST_OF_1,
     roundTargets: { ...current.roundTargets },
     qualifiersPerGroup: current.qualifiersPerGroup || 2,
     maxSkillLevel:
@@ -69,8 +79,10 @@ export default function OfficialTournamentSettingsScreen({
     const next = getOfficialCompetitionSettings(tournament);
     const nextEligibility = getEligibilityRules(tournament);
     setDraft({
+      tournamentName: tournament?.name || "",
       registrationMode: next.registrationMode || "",
       scoringMethod: next.scoringMethod || OFFICIAL_SCORING_METHOD.RALLY,
+      matchFormat: next.matchFormat || OFFICIAL_MATCH_FORMAT.BEST_OF_1,
       roundTargets: { ...next.roundTargets },
       qualifiersPerGroup: next.qualifiersPerGroup || 2,
       maxSkillLevel:
@@ -86,6 +98,12 @@ export default function OfficialTournamentSettingsScreen({
 
   const handleSave = async () => {
     if (!canManage) return;
+    const nameResult = normalizeOfficialTournamentName(draft.tournamentName);
+    if (!nameResult.ok) {
+      setMessage({ type: "error", text: nameResult.error });
+      return;
+    }
+
     const aiBalance = officialMode === OFFICIAL_MODE.AI_BALANCE;
     const allowedModes = allowedOfficialRegistrationModes(officialMode);
     const registrationMode = aiBalance
@@ -124,15 +142,32 @@ export default function OfficialTournamentSettingsScreen({
       return;
     }
 
+    const selectedFormat = String(draft.matchFormat || "")
+      .trim()
+      .toUpperCase()
+      .replace(/-/g, "_");
+    if (
+      selectedFormat === OFFICIAL_MATCH_FORMAT.BEST_OF_3 &&
+      (!BEST_OF_3_OPERATIONAL || BEST_OF_3_SELECTION_FAIL_CLOSED)
+    ) {
+      setMessage({
+        type: "error",
+        text: "Best of 3 chưa sẵn sàng trên đường Official classic hiện tại. Chọn Best of 1 để lưu.",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       let next = patchOfficialCompetitionSettings(tournament, {
         registrationMode,
         scoringMethod: selectedMethod,
+        matchFormat: selectedFormat,
         roundTargets: draft.roundTargets,
         groupCount,
         qualifiersPerGroup: Number(draft.qualifiersPerGroup) || 2,
       });
+      next = { ...next, name: nameResult.name };
 
       const eligibilityPatch = patchOfficialVisibleEligibilityLimits(next, {
         maxLevel: skillParsed.value,
@@ -158,6 +193,11 @@ export default function OfficialTournamentSettingsScreen({
       ? OFFICIAL_SCORING_METHOD.SIDE_OUT
       : OFFICIAL_SCORING_METHOD.RALLY;
 
+  const matchFormatValue =
+    draft.matchFormat === OFFICIAL_MATCH_FORMAT.BEST_OF_3 && BEST_OF_3_OPERATIONAL
+      ? OFFICIAL_MATCH_FORMAT.BEST_OF_3
+      : OFFICIAL_MATCH_FORMAT.BEST_OF_1;
+
   return (
     <Stack spacing={2.5}>
       {message ? (
@@ -180,7 +220,7 @@ export default function OfficialTournamentSettingsScreen({
       ) : null}
 
       <Typography variant="subtitle1" fontWeight={700}>
-        Thông tin cơ bản
+        Thông tin giải
       </Typography>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 6 }}>
@@ -188,10 +228,13 @@ export default function OfficialTournamentSettingsScreen({
             fullWidth
             size="small"
             label="Tên giải"
-            value={tournament?.name || ""}
+            value={draft.tournamentName}
+            disabled={!canManage}
             InputLabelProps={fieldLabelProps}
-            InputProps={{ readOnly: true }}
-            helperText="Đổi tên qua luồng tạo/sửa giải hiện có nếu cần."
+            onChange={(e) =>
+              setDraft((prev) => ({ ...prev, tournamentName: e.target.value }))
+            }
+            helperText="Tên hiển thị trên danh sách giải, trang BTC và kết quả công khai."
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
@@ -325,51 +368,96 @@ export default function OfficialTournamentSettingsScreen({
       </Grid>
 
       <Typography variant="subtitle1" fontWeight={700}>
-        Cách tính điểm
+        Luật trận đấu
       </Typography>
-      <FormControl fullWidth size="small">
-        <InputLabel id="official-settings-scoring-label" shrink>
-          Cách tính điểm
-        </InputLabel>
-        <Select
-          labelId="official-settings-scoring-label"
-          id="official-settings-scoring"
-          label="Cách tính điểm"
-          notched
-          value={scoringValue}
-          disabled={!canManage}
-          onChange={(e) =>
-            setDraft((prev) => ({ ...prev, scoringMethod: e.target.value }))
-          }
-        >
-          <MenuItem
-            value={OFFICIAL_SCORING_METHOD.SIDE_OUT}
-            disabled={!SIDEOUT_OPERATIONAL}
-          >
-            {OFFICIAL_SCORING_METHOD_LABELS[OFFICIAL_SCORING_METHOD.SIDE_OUT]}
-            {!SIDEOUT_OPERATIONAL ? " — chưa sẵn sàng" : ""}
-          </MenuItem>
-          <MenuItem value={OFFICIAL_SCORING_METHOD.RALLY}>
-            {OFFICIAL_SCORING_METHOD_LABELS[OFFICIAL_SCORING_METHOD.RALLY]}
-          </MenuItem>
-        </Select>
-        <FormHelperText>
-          {!SIDEOUT_OPERATIONAL
-            ? "Truyền thống (Side-out) chưa sẵn sàng trên môi trường hiện tại. Hiện chỉ Rally vận hành."
-            : INTENDED_NEW_TOURNAMENT_SCORING_METHOD === OFFICIAL_SCORING_METHOD.SIDE_OUT
-              ? "Giải mới mặc định Truyền thống (Side-out); Rally vẫn tùy chọn."
-              : "Chọn phương thức ghi điểm cho giải."}
-        </FormHelperText>
-      </FormControl>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <FormControl fullWidth size="small">
+            <InputLabel id="official-settings-scoring-label" shrink>
+              Cách tính điểm
+            </InputLabel>
+            <Select
+              labelId="official-settings-scoring-label"
+              id="official-settings-scoring"
+              label="Cách tính điểm"
+              notched
+              value={scoringValue}
+              disabled={!canManage}
+              onChange={(e) =>
+                setDraft((prev) => ({ ...prev, scoringMethod: e.target.value }))
+              }
+            >
+              <MenuItem value={OFFICIAL_SCORING_METHOD.RALLY}>
+                {OFFICIAL_SCORING_METHOD_LABELS[OFFICIAL_SCORING_METHOD.RALLY]}
+              </MenuItem>
+              <MenuItem
+                value={OFFICIAL_SCORING_METHOD.SIDE_OUT}
+                disabled={!SIDEOUT_OPERATIONAL}
+              >
+                {OFFICIAL_SCORING_METHOD_LABELS[OFFICIAL_SCORING_METHOD.SIDE_OUT]}
+                {!SIDEOUT_OPERATIONAL ? " — chưa sẵn sàng" : ""}
+              </MenuItem>
+            </Select>
+            <FormHelperText>
+              {!SIDEOUT_OPERATIONAL
+                ? "Rally: mỗi rally ghi 1 điểm. Truyền thống (Side-out) chưa vận hành trên live Official."
+                : "Rally: mỗi rally ghi 1 điểm. Side-out: chỉ bên giao bóng ghi điểm."}
+            </FormHelperText>
+          </FormControl>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <FormControl fullWidth size="small">
+            <InputLabel id="official-settings-match-format-label" shrink>
+              Thể thức trận đấu
+            </InputLabel>
+            <Select
+              labelId="official-settings-match-format-label"
+              id="official-settings-match-format"
+              label="Thể thức trận đấu"
+              notched
+              value={matchFormatValue}
+              disabled={!canManage}
+              onChange={(e) =>
+                setDraft((prev) => ({ ...prev, matchFormat: e.target.value }))
+              }
+            >
+              <MenuItem value={OFFICIAL_MATCH_FORMAT.BEST_OF_1}>
+                {OFFICIAL_MATCH_FORMAT_LABELS[OFFICIAL_MATCH_FORMAT.BEST_OF_1]}
+              </MenuItem>
+              <MenuItem
+                value={OFFICIAL_MATCH_FORMAT.BEST_OF_3}
+                disabled={!BEST_OF_3_OPERATIONAL}
+              >
+                {OFFICIAL_MATCH_FORMAT_LABELS[OFFICIAL_MATCH_FORMAT.BEST_OF_3]}
+                {!BEST_OF_3_OPERATIONAL ? " — chưa sẵn sàng" : ""}
+              </MenuItem>
+            </Select>
+            <FormHelperText>
+              {OFFICIAL_MATCH_FORMAT_HELPERS[matchFormatValue]}
+              {!BEST_OF_3_OPERATIONAL
+                ? " Best of 3 cần multi-game Official live/result — chưa bật."
+                : ""}
+            </FormHelperText>
+          </FormControl>
+        </Grid>
+      </Grid>
       {!SIDEOUT_OPERATIONAL ? (
         <Alert severity="info">
           Side-out cần trạng thái giao bóng trên live match (gói SQL riêng). Không lưu được Side-out
           như chế độ vận hành cho đến khi gói đó được Owner duyệt/apply.
         </Alert>
       ) : null}
+      {!BEST_OF_3_OPERATIONAL ? (
+        <Alert severity="info">{BEST_OF_3_SHARED_CAPABILITY_GAP}</Alert>
+      ) : null}
+      {WIN_BY_POLICY_DEFERRED ? (
+        <Alert severity="info">
+          Win-by (cách biệt điểm) đang deferred — Official classic không hardcode winBy=2.
+        </Alert>
+      ) : null}
 
       <Typography variant="subtitle1" fontWeight={700}>
-        Điểm đích theo vòng
+        Điểm kết thúc ván (theo vòng)
       </Typography>
       <Grid container spacing={2}>
         {Object.values(OFFICIAL_ROUND_SCORE_KEY).map((key) => (
@@ -392,6 +480,7 @@ export default function OfficialTournamentSettingsScreen({
                   },
                 }))
               }
+              helperText="Độc lập với thể thức Best of."
             />
           </Grid>
         ))}

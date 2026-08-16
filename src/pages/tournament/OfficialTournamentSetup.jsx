@@ -1875,6 +1875,7 @@ export default function OfficialTournamentSetup() {
             onPersistSettings={async (nextTournament) =>
               persistTournament(
                 {
+                  name: nextTournament.name,
                   settings: nextTournament.settings,
                   officialMode,
                 },

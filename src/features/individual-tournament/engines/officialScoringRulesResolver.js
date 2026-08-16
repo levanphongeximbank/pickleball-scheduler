@@ -5,6 +5,9 @@
  * Side-out point-by-point is NOT operational on classic Official live path
  * (see SIDEOUT_OPERATIONAL in officialTournamentSettingsEngine).
  *
+ * Match format BEST_OF_1 is the operable classic path (single game).
+ * BEST_OF_3 is fail-closed until multi-game Official live/result exists.
+ *
  * Win-by margin is NOT an Official authority today (matchEngine only rejects draws).
  * WIN_BY_POLICY_DEFERRED — do not copy Team/referee-v5 winBy=2.
  */
@@ -15,12 +18,18 @@ import {
   OFFICIAL_ROUND_SCORE_KEY,
   OFFICIAL_SCORING_METHOD,
   OFFICIAL_SCORING_METHOD_LABELS,
+  OFFICIAL_MATCH_FORMAT,
+  OFFICIAL_MATCH_FORMAT_LABELS,
   OFFICIAL_ROUND_SCORE_LABELS,
   CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT,
   SIDEOUT_OPERATIONAL,
   SIDEOUT_SELECTION_FAIL_CLOSED,
   SIDEOUT_BACKEND_REQUIREMENT,
+  BEST_OF_3_OPERATIONAL,
+  BEST_OF_3_SELECTION_FAIL_CLOSED,
+  BEST_OF_3_SHARED_CAPABILITY_GAP,
   WIN_BY_POLICY_DEFERRED,
+  deriveOfficialMatchFormatRules,
 } from "./officialTournamentSettingsEngine.js";
 
 /** @deprecated Use SIDEOUT_OPERATIONAL === false */
@@ -30,6 +39,9 @@ export {
   SIDEOUT_OPERATIONAL,
   SIDEOUT_SELECTION_FAIL_CLOSED,
   SIDEOUT_BACKEND_REQUIREMENT,
+  BEST_OF_3_OPERATIONAL,
+  BEST_OF_3_SELECTION_FAIL_CLOSED,
+  BEST_OF_3_SHARED_CAPABILITY_GAP,
   WIN_BY_POLICY_DEFERRED,
 };
 
@@ -88,10 +100,23 @@ export function resolveOfficialMatchScoringRules(tournament, match = {}, options
       : CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
   // Fail-closed: never expose side_out as operable method.
   const scoringMethod = OFFICIAL_SCORING_METHOD.RALLY;
+  const formatRules = deriveOfficialMatchFormatRules(settings.matchFormat);
+  // Fail-closed: never expose BEST_OF_3 as operable classic format.
+  const matchFormat = BEST_OF_3_OPERATIONAL
+    ? formatRules.matchFormat
+    : OFFICIAL_MATCH_FORMAT.BEST_OF_1;
+  const derived = deriveOfficialMatchFormatRules(matchFormat);
 
   return {
     scoringMethod,
     scoringMethodLabel: OFFICIAL_SCORING_METHOD_LABELS[scoringMethod] || scoringMethod,
+    matchFormat: derived.matchFormat,
+    matchFormatLabel: OFFICIAL_MATCH_FORMAT_LABELS[derived.matchFormat] || derived.matchFormat,
+    bestOf: derived.bestOf,
+    gamesToWin: derived.gamesToWin,
+    maximumGames: derived.maximumGames,
+    matchFormatIsOperational: derived.matchFormatIsOperational,
+    bestOf3Operational: BEST_OF_3_OPERATIONAL,
     roundKey,
     roundLabel: OFFICIAL_ROUND_SCORE_LABELS[roundKey] || roundKey,
     targetPoints,
@@ -102,7 +127,7 @@ export function resolveOfficialMatchScoringRules(tournament, match = {}, options
     sideOutPointByPointEnforced: false,
     sideOutOperational: SIDEOUT_OPERATIONAL,
     sideOutRuntimeBlocked: !SIDEOUT_OPERATIONAL,
-    summaryLabel: `${OFFICIAL_ROUND_SCORE_LABELS[roundKey] || roundKey} · Rally · ${targetPoints} điểm`,
+    summaryLabel: `${OFFICIAL_ROUND_SCORE_LABELS[roundKey] || roundKey} · Rally · ${OFFICIAL_MATCH_FORMAT_LABELS[derived.matchFormat]} · ${targetPoints} điểm`,
   };
 }
 

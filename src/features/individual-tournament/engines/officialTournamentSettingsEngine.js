@@ -3,11 +3,14 @@
  * Stored under tournament.settings.officialCompetition (JSONB payload).
  *
  * Authority boundaries:
- * - registrationMode / scoringMethod / roundTargets → officialCompetition
+ * - tournament identity name → tournament.name (top-level; not duplicated in blob)
+ * - registrationMode / scoringMethod / roundTargets / matchFormat → officialCompetition
  * - groupCount → officialCompetition.groupCount (single persisted draw-config authority;
  *   Setup UI hydrates from here; no parallel blob)
  * - eligibility max skill/rating → settings.eligibilityRules (eligibilityEngine) ONLY
  * - Side-out enum preserved but NOT operational on classic Official live path
+ * - matchFormat BEST_OF_1 is operational (legacy single-game); BEST_OF_3 fail-closed
+ *   until Official classic live/result path supports multi-game (scoreA/scoreB only today)
  */
 
 import { EVENT_TYPE, OFFICIAL_MODE } from "../../../models/tournament/constants.js";
@@ -28,6 +31,44 @@ export const OFFICIAL_REGISTRATION_MODE_RESOLUTION = Object.freeze({
 export const OFFICIAL_SCORING_METHOD = Object.freeze({
   SIDE_OUT: "side_out",
   RALLY: "rally",
+});
+
+/**
+ * Single persisted match-format authority for Official/Open.
+ * Derive bestOf / gamesToWin / maximumGames — never edit those independently.
+ */
+export const OFFICIAL_MATCH_FORMAT = Object.freeze({
+  BEST_OF_1: "BEST_OF_1",
+  BEST_OF_3: "BEST_OF_3",
+});
+
+export const DEFAULT_OFFICIAL_MATCH_FORMAT = OFFICIAL_MATCH_FORMAT.BEST_OF_1;
+
+/**
+ * Classic Official live/result path is single scoreA/scoreB only.
+ * CORE-16 can describe multi-game formats, but Official classic completion
+ * cannot operationally run BEST_OF_3 without inventing a second match engine.
+ */
+export const BEST_OF_3_OPERATIONAL = false;
+export const BEST_OF_3_SELECTION_FAIL_CLOSED = true;
+export const BEST_OF_3_SHARED_CAPABILITY_GAP =
+  "Official classic live/result path (scoreA/scoreB + matchEngine) does not model " +
+  "multi-game progression. CORE-16 multi-game exists but is not wired to Official " +
+  "Organizer/Referee completion or CORE-17 classic propagation. Do not enable BEST_OF_3.";
+
+export const OFFICIAL_MATCH_FORMAT_DERIVED = Object.freeze({
+  [OFFICIAL_MATCH_FORMAT.BEST_OF_1]: Object.freeze({
+    bestOf: 1,
+    gamesToWin: 1,
+    maximumGames: 1,
+    operational: true,
+  }),
+  [OFFICIAL_MATCH_FORMAT.BEST_OF_3]: Object.freeze({
+    bestOf: 3,
+    gamesToWin: 2,
+    maximumGames: 3,
+    operational: BEST_OF_3_OPERATIONAL,
+  }),
 });
 
 export const OFFICIAL_ROUND_SCORE_KEY = Object.freeze({
@@ -301,6 +342,67 @@ export function normalizeOfficialScoringMethod(value, { allowSideOutPersist = fa
   return DEFAULT_OFFICIAL_SCORING_METHOD;
 }
 
+/**
+ * Canonical tournament name (top-level tournament.name). Reject blank/whitespace.
+ */
+export function normalizeOfficialTournamentName(value) {
+  const name = String(value ?? "").trim();
+  if (!name) {
+    return {
+      ok: false,
+      name: "",
+      error: "Tên giải không được để trống.",
+      code: "TOURNAMENT_NAME_REQUIRED",
+    };
+  }
+  return { ok: true, name, error: null, code: null };
+}
+
+/**
+ * Normalize matchFormat authority. Legacy missing field → BEST_OF_1.
+ * BEST_OF_3 may be requested but is never persisted as operable while fail-closed.
+ */
+export function normalizeOfficialMatchFormat(value, { allowBestOf3Persist = false } = {}) {
+  const raw = String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, "_")
+    .replace(/\s+/g, "_");
+  if (
+    raw === OFFICIAL_MATCH_FORMAT.BEST_OF_3 ||
+    raw === "BO3" ||
+    raw === "BESTOF3" ||
+    raw === "3"
+  ) {
+    if (allowBestOf3Persist && BEST_OF_3_OPERATIONAL && !BEST_OF_3_SELECTION_FAIL_CLOSED) {
+      return OFFICIAL_MATCH_FORMAT.BEST_OF_3;
+    }
+    return DEFAULT_OFFICIAL_MATCH_FORMAT;
+  }
+  if (
+    raw === OFFICIAL_MATCH_FORMAT.BEST_OF_1 ||
+    raw === "BO1" ||
+    raw === "BESTOF1" ||
+    raw === "1" ||
+    raw === ""
+  ) {
+    return OFFICIAL_MATCH_FORMAT.BEST_OF_1;
+  }
+  return DEFAULT_OFFICIAL_MATCH_FORMAT;
+}
+
+export function deriveOfficialMatchFormatRules(matchFormat) {
+  const format = normalizeOfficialMatchFormat(matchFormat);
+  const derived = OFFICIAL_MATCH_FORMAT_DERIVED[format];
+  return {
+    matchFormat: format,
+    bestOf: derived.bestOf,
+    gamesToWin: derived.gamesToWin,
+    maximumGames: derived.maximumGames,
+    matchFormatIsOperational: derived.operational === true,
+  };
+}
+
 export function normalizeOfficialRoundTargets(input = {}) {
   const source = input && typeof input === "object" ? input : {};
   const next = {};
@@ -342,6 +444,19 @@ export function getOfficialCompetitionSettings(tournament) {
       : normalizeOfficialScoringMethod(blob.scoringMethod),
     scoringMethodOperational: DEFAULT_OFFICIAL_SCORING_METHOD,
     sideOutOperational: SIDEOUT_OPERATIONAL,
+    matchFormat: normalizeOfficialMatchFormat(blob.matchFormat),
+    matchFormatRequested: (() => {
+      const raw = String(blob.matchFormat || "")
+        .trim()
+        .toUpperCase()
+        .replace(/-/g, "_");
+      return raw === OFFICIAL_MATCH_FORMAT.BEST_OF_3
+        ? OFFICIAL_MATCH_FORMAT.BEST_OF_3
+        : normalizeOfficialMatchFormat(blob.matchFormat);
+    })(),
+    matchFormatOperational: DEFAULT_OFFICIAL_MATCH_FORMAT,
+    bestOf3Operational: BEST_OF_3_OPERATIONAL,
+    ...deriveOfficialMatchFormatRules(blob.matchFormat),
     roundTargets: normalizeOfficialRoundTargets(blob.roundTargets),
     groupCount:
       blob.groupCount != null
@@ -413,6 +528,21 @@ export function patchOfficialCompetitionSettings(tournament, patch = {}) {
     // Persist Rally as effective method; callers should surface unavailable messaging.
   }
 
+  const requestedFormat =
+    patch.matchFormat != null ? patch.matchFormat : current.matchFormat;
+  const requestedFormatRaw = String(requestedFormat || "")
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, "_");
+  const requestedBestOf3 =
+    requestedFormatRaw === OFFICIAL_MATCH_FORMAT.BEST_OF_3 ||
+    requestedFormatRaw === "BO3" ||
+    requestedFormatRaw === "BESTOF3";
+
+  if (requestedBestOf3 && BEST_OF_3_SELECTION_FAIL_CLOSED && !BEST_OF_3_OPERATIONAL) {
+    // Recognized but not operable — persist BEST_OF_1 as effective format.
+  }
+
   const nextBlob = {
     registrationMode:
       nextMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL ||
@@ -420,6 +550,7 @@ export function patchOfficialCompetitionSettings(tournament, patch = {}) {
         ? nextMode
         : current.registrationMode,
     scoringMethod: normalizeOfficialScoringMethod(requestedMethod),
+    matchFormat: normalizeOfficialMatchFormat(requestedFormat),
     roundTargets: normalizeOfficialRoundTargets({
       ...current.roundTargets,
       ...(patch.roundTargets || {}),
@@ -479,7 +610,17 @@ export const OFFICIAL_REGISTRATION_MODE_LABELS = Object.freeze({
 
 export const OFFICIAL_SCORING_METHOD_LABELS = Object.freeze({
   [OFFICIAL_SCORING_METHOD.SIDE_OUT]: "Truyền thống (Side-out)",
-  [OFFICIAL_SCORING_METHOD.RALLY]: "Rally (mỗi rally 1 điểm)",
+  [OFFICIAL_SCORING_METHOD.RALLY]: "Rally",
+});
+
+export const OFFICIAL_MATCH_FORMAT_LABELS = Object.freeze({
+  [OFFICIAL_MATCH_FORMAT.BEST_OF_1]: "Best of 1",
+  [OFFICIAL_MATCH_FORMAT.BEST_OF_3]: "Best of 3",
+});
+
+export const OFFICIAL_MATCH_FORMAT_HELPERS = Object.freeze({
+  [OFFICIAL_MATCH_FORMAT.BEST_OF_1]: "Thắng 1 ván là thắng trận.",
+  [OFFICIAL_MATCH_FORMAT.BEST_OF_3]: "VĐV/đội thắng 2 ván trước sẽ thắng trận.",
 });
 
 export const OFFICIAL_ROUND_SCORE_LABELS = Object.freeze({

@@ -97,6 +97,10 @@ function officialScoringRulesOrGap(tournament, match) {
         winByPolicyDeferred: official.winByPolicyDeferred,
         scoringMethod: official.scoringMethod,
         targetPoints: official.targetPoints,
+        matchFormat: official.matchFormat,
+        gamesToWin: official.gamesToWin,
+        maximumGames: official.maximumGames,
+        tournamentName: tournament?.name || null,
         contractId: COMPETITION_REFEREE_ADAPTER_CONTRACT_ID,
       }
     );
@@ -180,6 +184,9 @@ export function createOfficialTournamentRefereeAdapter(options = {}) {
           "CORE-16 createScoringFormat requires a positive integer winBy and cannot represent Official WIN_BY_POLICY_DEFERRED.",
         officialPolicy: Object.freeze({
           scoringMethod: "rally",
+          matchFormat: "BEST_OF_1",
+          gamesToWin: 1,
+          maximumGames: 1,
           winBy: null,
           winByPolicyDeferred: true,
         }),
@@ -217,6 +224,7 @@ export function createOfficialTournamentRefereeAdapter(options = {}) {
         venueId: req.venueId,
         clubId: req.clubId || trimId(tournament.clubId) || null,
         competitionType: "official_tournament",
+        tournamentName: tournament.name || null,
       });
     },
     getMatchContext(request) {
