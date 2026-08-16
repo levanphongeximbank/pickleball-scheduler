@@ -542,6 +542,202 @@ test("11b. configureLineup sets server + Lượt giao and unlocks start/score ga
   assert.equal(started.view.servingStatus.servingPlayerName, "Bình");
 });
 
+async function startSideOutWithLineup(client, fixture, lineup) {
+  const before = await client.getMatchView({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+  });
+  const configured = await client.configureLineup({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    expectedVersion: before.view.expectedVersion,
+    idempotencyKey: `lineup-${Date.now()}-${Math.random()}`,
+    ...lineup,
+  });
+  assert.equal(configured.ok, true);
+  const started = await client.startMatch({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    expectedVersion: configured.view.expectedVersion,
+    idempotencyKey: `start-${Date.now()}-${Math.random()}`,
+  });
+  assert.equal(started.ok, true);
+  return started;
+}
+
+test("side-out proof 1: 0-0-2 receiving win → opponent serves turn 1 + star", async () => {
+  const { runtime } = createUiRuntime();
+  const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
+  await seedAssigned(runtime, fixture);
+  const client = createClient(runtime, [fixture]);
+  const started = await startSideOutWithLineup(client, fixture, {
+    playerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+    serverPlayerId: "p1",
+    serverNumber: 2,
+    servingSide: "SIDE_A",
+  });
+  assert.equal(started.view.currentScore.points.SIDE_A, 0);
+  assert.equal(started.view.currentScore.serve.serverNumber, 2);
+  const changed = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_B,
+    expectedVersion: started.view.expectedVersion,
+    idempotencyKey: "so-002-recv",
+  });
+  assert.equal(changed.ok, true);
+  assert.equal(changed.view.currentScore.points.SIDE_A, 0);
+  assert.equal(changed.view.currentScore.points.SIDE_B, 0);
+  assert.equal(changed.view.currentScore.serve.servingSide, "SIDE_B");
+  assert.equal(changed.view.currentScore.serve.serverNumber, 1);
+  assert.equal(changed.view.servingStatus.serviceTurn, 1);
+  assert.equal(changed.view.courtProjection.serving.servingSide, "SIDE_B");
+  assert.equal(changed.view.courtProjection.serving.serverPlayerId, "p3");
+  assert.equal(changed.view.courtProjection.court.rightTop.isServing, true);
+  assert.equal(changed.latency?.networkPostCount, 1);
+  assert.equal(changed.latency?.postCommitRefetch, false);
+  assert.equal(changed.latency?.ackReturnsFullView, true);
+  assert.ok(Number(changed.latency?.totalMs) >= 0);
+  process.stdout.write(
+    `LATENCY_PROOF ${JSON.stringify({
+      NETWORK_POST_COUNT: changed.latency.networkPostCount,
+      POST_COMMIT_REFETCH: changed.latency.postCommitRefetch,
+      ACK_RETURNS_FULL_VIEW: changed.latency.ackReturnsFullView,
+      AUTH_MS: "N/A_LOCAL_INPROCESS",
+      CONTEXT_RESOLUTION_MS: changed.latency.contextResolutionMs,
+      CORE_WRITE_MS: changed.latency.coreWriteMs,
+      DURABLE_COMMIT_MS: changed.latency.durableCommitMs,
+      POST_COMMIT_PROJECTION_MS: changed.latency.postCommitProjectionMs,
+      TOTAL_MS_LOCAL: changed.latency.totalMs,
+      NOTE: "Local schema-faithful driver; browser AUTH_MS requires Preview",
+    })}\n`
+  );
+});
+
+test("side-out proof 2: turn 1 receiving win → same team turn 2 + partner star", async () => {
+  const { runtime } = createUiRuntime();
+  const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
+  await seedAssigned(runtime, fixture);
+  const client = createClient(runtime, [fixture]);
+  const started = await startSideOutWithLineup(client, fixture, {
+    playerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+    serverPlayerId: "p1",
+    serverNumber: 1,
+    servingSide: "SIDE_A",
+  });
+  const changed = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_B,
+    expectedVersion: started.view.expectedVersion,
+    idempotencyKey: "so-t1-recv",
+  });
+  assert.equal(changed.ok, true);
+  assert.equal(changed.view.currentScore.points.SIDE_A, 0);
+  assert.equal(changed.view.currentScore.points.SIDE_B, 0);
+  assert.equal(changed.view.currentScore.serve.servingSide, "SIDE_A");
+  assert.equal(changed.view.currentScore.serve.serverNumber, 2);
+  assert.equal(changed.view.servingStatus.serviceTurn, 2);
+  assert.equal(changed.view.courtProjection.serving.serverPlayerId, "p2");
+  assert.equal(changed.view.courtProjection.court.leftBottom.isServing, true);
+});
+
+test("side-out proof 3: turn 2 receiving win → opponent turn 1 + star", async () => {
+  const { runtime } = createUiRuntime();
+  const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
+  await seedAssigned(runtime, fixture);
+  const client = createClient(runtime, [fixture]);
+  const started = await startSideOutWithLineup(client, fixture, {
+    playerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+    serverPlayerId: "p2",
+    serverNumber: 2,
+    servingSide: "SIDE_A",
+  });
+  const changed = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_B,
+    expectedVersion: started.view.expectedVersion,
+    idempotencyKey: "so-t2-recv",
+  });
+  assert.equal(changed.ok, true);
+  assert.equal(changed.view.currentScore.points.SIDE_A, 0);
+  assert.equal(changed.view.currentScore.points.SIDE_B, 0);
+  assert.equal(changed.view.currentScore.serve.servingSide, "SIDE_B");
+  assert.equal(changed.view.currentScore.serve.serverNumber, 1);
+  assert.equal(changed.view.courtProjection.serving.serverPlayerId, "p3");
+  assert.equal(changed.view.courtProjection.court.rightTop.isServing, true);
+});
+
+test("side-out proof 4: serving scores → +1, serving positions swap, same server, star follows", async () => {
+  const { runtime } = createUiRuntime();
+  const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
+  await seedAssigned(runtime, fixture);
+  const client = createClient(runtime, [fixture]);
+  const started = await startSideOutWithLineup(client, fixture, {
+    playerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+    serverPlayerId: "p1",
+    serverNumber: 1,
+    servingSide: "SIDE_A",
+  });
+  assert.equal(started.view.courtProjection.court.leftTop.playerId, "p1");
+  assert.equal(started.view.courtProjection.court.leftBottom.playerId, "p2");
+  const scored = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_A,
+    expectedVersion: started.view.expectedVersion,
+    idempotencyKey: "so-serve-point",
+  });
+  assert.equal(scored.ok, true);
+  assert.equal(scored.view.currentScore.points.SIDE_A, 1);
+  assert.equal(scored.view.currentScore.points.SIDE_B, 0);
+  assert.equal(scored.view.currentScore.serve.servingSide, "SIDE_A");
+  assert.equal(scored.view.courtProjection.serving.serverPlayerId, "p1");
+  assert.equal(scored.view.courtProjection.court.leftTop.playerId, "p2");
+  assert.equal(scored.view.courtProjection.court.leftBottom.playerId, "p1");
+  assert.equal(scored.view.courtProjection.court.rightTop.playerId, "p3");
+  assert.equal(scored.view.courtProjection.court.rightBottom.playerId, "p4");
+  assert.equal(scored.view.courtProjection.court.leftBottom.isServing, true);
+});
+
+test("rally: winner gets point + serve; no change-serve control; no service turn", async () => {
+  const { runtime } = createUiRuntime();
+  const fixture = modeFixture(COMPETITION_REFEREE_MODE.INTERNAL);
+  await seedAssigned(runtime, fixture);
+  const client = createClient(runtime, [fixture]);
+  const started = await client.startMatch({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    idempotencyKey: "rally-start",
+  });
+  assert.equal(started.ok, true);
+  assert.equal(started.view.isRally, true);
+  assert.equal(started.view.canChangeServe, false);
+  assert.equal(started.view.servingStatus.showServiceTurn, false);
+  const scored = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_B,
+    expectedVersion: started.view.expectedVersion,
+    idempotencyKey: "rally-point-b",
+  });
+  assert.equal(scored.ok, true);
+  assert.equal(scored.view.currentScore.points.SIDE_B, 1);
+  assert.equal(scored.view.currentScore.serve?.servingSide || scored.view.courtProjection.serving.servingSide, "SIDE_B");
+  assert.equal(scored.view.servingStatus.showServiceTurn, false);
+  assert.equal(scored.view.canChangeServe, false);
+});
+
 test("12+13+14. expectedVersion + idempotency + duplicate click blocked", async () => {
   const { runtime } = createUiRuntime();
   const fixture = modeFixture(COMPETITION_REFEREE_MODE.INTERNAL);

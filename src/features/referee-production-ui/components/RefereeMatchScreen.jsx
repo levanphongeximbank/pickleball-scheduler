@@ -93,8 +93,7 @@ function ServingStatusStrip({ serving, expectedVersion }) {
   const hasAny =
     serving.servingTeamName ||
     serving.servingPlayerName ||
-    serving.serviceTurn != null ||
-    serving.showServiceTurn ||
+    (serving.showServiceTurn && serving.serviceTurn != null) ||
     serving.gameLabel;
   if (!hasAny) return null;
   const turnLabel =
@@ -110,13 +109,15 @@ function ServingStatusStrip({ serving, expectedVersion }) {
           </strong>
         </span>
       </span>
-      <span className="rp-serve-cell" data-testid="service-turn">
-        <PersonIcon className="rp-serve-icon rp-serve-icon-green" fontSize="inherit" aria-hidden="true" />
-        <span>
-          Lượt giao
-          <strong data-testid="service-turn-number">{turnLabel}</strong>
+      {serving.showServiceTurn ? (
+        <span className="rp-serve-cell" data-testid="service-turn">
+          <PersonIcon className="rp-serve-icon rp-serve-icon-green" fontSize="inherit" aria-hidden="true" />
+          <span>
+            Lượt giao
+            <strong data-testid="service-turn-number">{turnLabel}</strong>
+          </span>
         </span>
-      </span>
+      ) : null}
       {serving.gameLabel ? (
         <span className="rp-serve-cell" data-testid="serve-game">
           <EmojiEventsIcon className="rp-serve-icon rp-serve-icon-muted" fontSize="inherit" aria-hidden="true" />
@@ -380,6 +381,7 @@ export default function RefereeMatchScreen({
   onResume,
   onChangeEnds,
   onConfigureLineup,
+  onChangeServe,
   onSubmitResult,
   onCorrect,
   onReload,
@@ -711,29 +713,73 @@ export default function RefereeMatchScreen({
       ) : null}
 
       {view.canScore ? (
-        <div className="rp-score-actions">
-          <button
-            type="button"
-            className="rp-btn rp-btn-a"
-            disabled={pending || stale}
-            onClick={onPointA}
-            data-testid="btn-point-a"
-          >
-            {String(pendingAction || "").startsWith("point")
-              ? "Đang ghi…"
-              : pointLabel(leftName, "A")}
-          </button>
-          <button
-            type="button"
-            className="rp-btn rp-btn-b"
-            disabled={pending || stale}
-            onClick={onPointB}
-            data-testid="btn-point-b"
-          >
-            {String(pendingAction || "").startsWith("point")
-              ? "Đang ghi…"
-              : pointLabel(rightName, "B")}
-          </button>
+        <div className="rp-score-actions" data-testid="score-actions">
+          {view.isSideOut ? (
+            <>
+              {view.canPointSideA ? (
+                <button
+                  type="button"
+                  className="rp-btn rp-btn-a rp-actions-wide"
+                  disabled={pending || stale}
+                  onClick={onPointA}
+                  data-testid="btn-point-a"
+                >
+                  {String(pendingAction || "").startsWith("point")
+                    ? "Đang ghi…"
+                    : pointLabel(view.participantDisplay?.sideA?.label, "A")}
+                </button>
+              ) : null}
+              {view.canPointSideB ? (
+                <button
+                  type="button"
+                  className="rp-btn rp-btn-b rp-actions-wide"
+                  disabled={pending || stale}
+                  onClick={onPointB}
+                  data-testid="btn-point-b"
+                >
+                  {String(pendingAction || "").startsWith("point")
+                    ? "Đang ghi…"
+                    : pointLabel(view.participantDisplay?.sideB?.label, "B")}
+                </button>
+              ) : null}
+              {view.canChangeServe ? (
+                <button
+                  type="button"
+                  className="rp-btn rp-btn-warn rp-actions-wide"
+                  disabled={pending || stale}
+                  onClick={onChangeServe}
+                  data-testid="btn-change-serve"
+                >
+                  {pendingAction === "change-serve" ? "Đang ghi…" : "ĐỔI GIAO"}
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="rp-btn rp-btn-a"
+                disabled={pending || stale || view.canPointSideA === false}
+                onClick={onPointA}
+                data-testid="btn-point-a"
+              >
+                {String(pendingAction || "") === "point:SIDE_A"
+                  ? "Đang ghi…"
+                  : pointLabel(leftName, "A")}
+              </button>
+              <button
+                type="button"
+                className="rp-btn rp-btn-b"
+                disabled={pending || stale || view.canPointSideB === false}
+                onClick={onPointB}
+                data-testid="btn-point-b"
+              >
+                {String(pendingAction || "") === "point:SIDE_B"
+                  ? "Đang ghi…"
+                  : pointLabel(rightName, "B")}
+              </button>
+            </>
+          )}
         </div>
       ) : null}
 

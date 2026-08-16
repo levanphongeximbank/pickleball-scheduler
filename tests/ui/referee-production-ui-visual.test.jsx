@@ -293,16 +293,21 @@ describe("match screen visual states @ ~390px", () => {
     });
   });
 
-  it("3. Rally doubles — player name + Lượt giao", () => {
+  it("3. Rally doubles — two point buttons, no Lượt giao / no ĐỔI GIAO", () => {
     const court = doublesCourt(RALLY, { a: 4, b: 3 });
     const view = baseView({
       courtProjection: court,
       currentScore: { points: { SIDE_A: 4, SIDE_B: 3 }, gamesWon: { SIDE_A: 0, SIDE_B: 0 } },
+      isRally: true,
+      isSideOut: false,
+      canChangeServe: false,
+      canPointSideA: true,
+      canPointSideB: true,
       servingStatus: {
         servingTeamName: "Đội 4",
         servingPlayerName: "An",
-        showServiceTurn: true,
-        serviceTurn: 1,
+        showServiceTurn: false,
+        serviceTurn: null,
         gameLabel: "Game 1 / Best of 1",
       },
       rulesPanel: {
@@ -323,15 +328,44 @@ describe("match screen visual states @ ~390px", () => {
     );
     expect(screen.getByTestId("score-a")).toHaveTextContent("4");
     expect(screen.getByTestId("score-b")).toHaveTextContent("3");
-    expect(screen.getByTestId("service-turn")).toHaveTextContent(/Lượt giao/);
-    expect(screen.getByTestId("service-turn-number")).toHaveTextContent("Lượt 1");
-    expect(screen.getByTestId("serving-player-name")).toHaveTextContent("An");
-    expect(screen.getByTestId("court-slot-leftTop")).toBeInTheDocument();
-    expect(screen.getByTestId("court-slot-leftBottom")).toBeInTheDocument();
+    expect(screen.queryByTestId("service-turn")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("btn-change-serve")).not.toBeInTheDocument();
+    expect(screen.getByTestId("btn-point-a")).toBeInTheDocument();
+    expect(screen.getByTestId("btn-point-b")).toBeInTheDocument();
     expect(screen.getByTestId("rule-method")).toHaveTextContent("RALLY");
   });
 
-  it("3b. Lineup required blocks score until configured", async () => {
+  it("3b. Side-Out shows serving +Điểm and ĐỔI GIAO only", () => {
+    const court = doublesCourt(SIDE_OUT, { a: 1, b: 0 });
+    const view = baseView({
+      courtProjection: court,
+      isSideOut: true,
+      isRally: false,
+      canChangeServe: true,
+      canPointSideA: true,
+      canPointSideB: false,
+      receivingSideNow: "SIDE_B",
+      servingSideNow: "SIDE_A",
+      servingStatus: {
+        servingTeamName: "Đội 4",
+        servingPlayerName: "An",
+        showServiceTurn: true,
+        serviceTurn: 2,
+        gameLabel: "1 / Best of 3",
+      },
+    });
+    render(
+      <MemoryRouter>
+        <RefereeMatchScreen view={view} />
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId("btn-point-a")).toBeInTheDocument();
+    expect(screen.queryByTestId("btn-point-b")).not.toBeInTheDocument();
+    expect(screen.getByTestId("btn-change-serve")).toHaveTextContent("ĐỔI GIAO");
+    expect(screen.getByTestId("service-turn")).toHaveTextContent(/Lượt giao/);
+  });
+
+  it("3c. Lineup required blocks score until configured", async () => {
     const user = userEvent.setup();
     const court = projectCanonicalCourtView({
       participants: {
@@ -524,14 +558,22 @@ describe("match screen visual states @ ~390px", () => {
     render(
       <MemoryRouter>
         <RefereeMatchScreen
-          view={baseView()}
+          view={baseView({
+            isSideOut: true,
+            canPointSideA: true,
+            canPointSideB: false,
+            canChangeServe: true,
+            servingSideNow: "SIDE_A",
+            receivingSideNow: "SIDE_B",
+          })}
           pendingAction="point:SIDE_A"
         />
       </MemoryRouter>
     );
     expect(screen.getByTestId("pending-banner")).toHaveTextContent("Đang ghi…");
     expect(screen.getByTestId("btn-point-a")).toBeDisabled();
-    expect(screen.getByTestId("btn-point-b")).toBeDisabled();
+    expect(screen.getByTestId("btn-change-serve")).toBeDisabled();
+    expect(screen.queryByTestId("btn-point-b")).not.toBeInTheDocument();
     expect(screen.getByTestId("btn-point-a")).toHaveTextContent("Đang ghi…");
   });
 

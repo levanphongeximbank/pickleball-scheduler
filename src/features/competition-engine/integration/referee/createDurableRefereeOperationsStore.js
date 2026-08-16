@@ -20,6 +20,7 @@ function emptyRecord(tenantId, competitionId) {
     assignments: [],
     matches: {},
     scoreSessions: {},
+    courtsByMatch: {},
     validationByMatch: {},
     revision: 0,
   };
@@ -91,6 +92,9 @@ export function createDurableRefereeOperationsStore(options = {}) {
       if (canonical.scoreSession) {
         record.scoreSessions[live.matchId] = clonePlain(canonical.scoreSession);
       }
+      if (canonical.court) {
+        record.courtsByMatch[live.matchId] = clonePlain(canonical.court);
+      }
       if (canonical.validation) {
         record.validationByMatch[live.matchId] = clonePlain(canonical.validation);
       }
@@ -125,6 +129,10 @@ export function createDurableRefereeOperationsStore(options = {}) {
       ...(live.statePayload?.canonical || {}),
       match: record.matches?.[matchId] || null,
       scoreSession: record.scoreSessions?.[matchId] || null,
+      court:
+        record.courtsByMatch?.[matchId] != null
+          ? record.courtsByMatch[matchId]
+          : live.statePayload?.canonical?.court || null,
       validation: record.validationByMatch?.[matchId] || null,
       venueId: record.venueId,
     };
@@ -216,6 +224,8 @@ export function createDurableRefereeOperationsStore(options = {}) {
         ...Object.keys(draft.matches || {}),
         ...Object.keys(before.scoreSessions || {}),
         ...Object.keys(draft.scoreSessions || {}),
+        ...Object.keys(before.courtsByMatch || {}),
+        ...Object.keys(draft.courtsByMatch || {}),
         ...Object.keys(before.validationByMatch || {}),
         ...Object.keys(draft.validationByMatch || {}),
       ]);
@@ -224,11 +234,13 @@ export function createDurableRefereeOperationsStore(options = {}) {
           const beforeHash = hashCanonical({
             match: before.matches?.[matchId] || null,
             scoreSession: before.scoreSessions?.[matchId] || null,
+            court: before.courtsByMatch?.[matchId] || null,
             validation: before.validationByMatch?.[matchId] || null,
           });
           const afterHash = hashCanonical({
             match: draft.matches?.[matchId] || null,
             scoreSession: draft.scoreSessions?.[matchId] || null,
+            court: draft.courtsByMatch?.[matchId] || null,
             validation: draft.validationByMatch?.[matchId] || null,
           });
           if (beforeHash !== afterHash) {

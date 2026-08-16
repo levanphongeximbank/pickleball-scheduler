@@ -119,6 +119,14 @@ export function useCanonicalRefereeMatch({
     startMatch: () => run("start", (cmd) => client.startMatch(cmd)),
     submitPoint: (scoringSide) =>
       run(`point:${scoringSide}`, (cmd) => client.submitPoint({ ...cmd, scoringSide })),
+    changeServe: () =>
+      run("change-serve", (cmd) => {
+        const receiving = view?.receivingSideNow;
+        if (!receiving) {
+          return Promise.reject(new Error("Không xác định được bên nhận để đổi giao"));
+        }
+        return client.submitPoint({ ...cmd, scoringSide: receiving });
+      }),
     suspendMatch: () => run("suspend", (cmd) => client.suspendMatch(cmd)),
     resumeMatch: () => run("resume", (cmd) => client.resumeMatch(cmd)),
     confirmChangeEnds: () => run("change-ends", (cmd) => client.confirmChangeEnds(cmd)),

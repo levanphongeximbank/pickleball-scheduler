@@ -3,6 +3,7 @@
  */
 
 import { MATCH_STATUS } from "../../competition-core/matches/index.js";
+import { SCORING_SYSTEM } from "../../competition-core/scoring/index.js";
 import { REFEREE_ACTION } from "../../competition-engine/operations/referee/constants.js";
 import { formatScoringPolicyLabel } from "./formatScoringPolicyLabel.js";
 import { projectCanonicalCourtView } from "./projectCanonicalCourtView.js";
@@ -203,6 +204,17 @@ export function buildRefereeMatchView(input) {
       matchStatus === MATCH_STATUS.SUSPENDED ||
       matchStatus === MATCH_STATUS.PAUSED);
 
+  const scoringSystem = String(
+    scoringRules?.scoringSystem || scoreProjection?.format?.scoringSystem || ""
+  )
+    .trim()
+    .toUpperCase();
+  const isSideOut = scoringSystem === SCORING_SYSTEM.SIDE_OUT;
+  const isRally = scoringSystem === SCORING_SYSTEM.RALLY;
+  const servingSideNow = courtProjection.serving?.servingSide || scoreProjection?.serve?.servingSide || null;
+  const receivingSideNow =
+    servingSideNow === "SIDE_B" ? "SIDE_A" : servingSideNow === "SIDE_A" ? "SIDE_B" : null;
+
   return Object.freeze({
     matchId: String(input.matchId || "").trim(),
     competitionId: String(
@@ -311,13 +323,37 @@ export function buildRefereeMatchView(input) {
             ? sideAName
             : null,
       servingPlayerName: servingPlayer?.displayName || null,
-      serviceTurn: courtProjection.serving?.serviceTurn ?? null,
-      showServiceTurn: true,
+      serviceTurn: isSideOut ? courtProjection.serving?.serviceTurn ?? null : null,
+      showServiceTurn: isSideOut === true,
       gameLabel: policy.bestOfGames
         ? `${(scoreProjection?.currentGameIndex ?? 0) + 1} / Best of ${policy.bestOfGames}`
         : String((scoreProjection?.currentGameIndex ?? 0) + 1),
       changeEndAt: policy.changeEndAtLabel || null,
     }),
+    scoringSystem,
+    isSideOut,
+    isRally,
+    servingSideNow,
+    receivingSideNow,
+    canPointSideA:
+      matchStatus === MATCH_STATUS.IN_PROGRESS &&
+      capabilities.scoring !== false &&
+      assigned.scoreEntryReady !== false &&
+      (!hasCourtPlayers || lineupConfigured) &&
+      (!isSideOut || servingSideNow === "SIDE_A"),
+    canPointSideB:
+      matchStatus === MATCH_STATUS.IN_PROGRESS &&
+      capabilities.scoring !== false &&
+      assigned.scoreEntryReady !== false &&
+      (!hasCourtPlayers || lineupConfigured) &&
+      (!isSideOut || servingSideNow === "SIDE_B"),
+    canChangeServe:
+      isSideOut &&
+      matchStatus === MATCH_STATUS.IN_PROGRESS &&
+      capabilities.scoring !== false &&
+      assigned.scoreEntryReady !== false &&
+      (!hasCourtPlayers || lineupConfigured) &&
+      Boolean(receivingSideNow),
     diagnostics: Object.freeze({
       expectedVersion: Number(input.expectedVersion ?? 0),
     }),

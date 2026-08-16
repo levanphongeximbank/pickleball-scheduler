@@ -161,12 +161,15 @@ export function projectCanonicalCourtView(input = {}) {
 
   const fromCourtTurn = Number(courtState.serverNumber);
   const fromServeTurn = Number(serve?.serverNumber);
+  const scoringSystem = String(rules.scoringSystem || "").toUpperCase();
   const serviceTurn =
-    Number.isFinite(fromCourtTurn) && fromCourtTurn > 0
-      ? fromCourtTurn
+    scoringSystem === "RALLY"
+      ? null
       : Number.isFinite(fromServeTurn) && fromServeTurn > 0
         ? fromServeTurn
-        : scoreLine.serviceTurn;
+        : Number.isFinite(fromCourtTurn) && fromCourtTurn > 0
+          ? fromCourtTurn
+          : scoreLine.serviceTurn;
 
   const sideChangeRequired = courtState.sideChangeRequired === true;
   const sideChangePolicy =

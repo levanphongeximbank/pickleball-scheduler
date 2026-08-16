@@ -14,6 +14,7 @@ import {
 } from "../../integration/referee/constants.js";
 import { normalizeRefereeAdapterMode } from "../../integration/referee/contract.js";
 import { isRefereeAdapterContractError } from "../../integration/referee/errors.js";
+import { deriveCanonicalCourtAfterScoring } from "../../integration/referee/deriveCanonicalCourtAfterScoring.js";
 import {
   MATCH_ACTION,
   MATCH_STATUS,
@@ -571,7 +572,30 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
           bestOfGames: Number(cmd.bestOfGames) || 1,
         });
       }
-      const state = createInitialScoringState({ matchId, format });
+      let state = createInitialScoringState({ matchId, format });
+      const priorCourt = record.courtsByMatch?.[matchId] || null;
+      if (state.serve && priorCourt) {
+        const openingFromCourt = Number(priorCourt.serverNumber);
+        const sideFromCourt = priorCourt.servingSide
+          ? String(priorCourt.servingSide).toUpperCase()
+          : null;
+        if (
+          (Number.isFinite(openingFromCourt) && openingFromCourt >= 1) ||
+          sideFromCourt
+        ) {
+          const serve = {
+            servingSide: sideFromCourt || state.serve.servingSide,
+            serverNumber:
+              Number.isFinite(openingFromCourt) && openingFromCourt >= 1
+                ? openingFromCourt
+                : state.serve.serverNumber,
+          };
+          state = Object.freeze({
+            ...state,
+            serve: Object.freeze(serve),
+          });
+        }
+      }
       const projection = createScoringProjection(state);
       const session = Object.freeze({
         sessionId: nextDeterministicId("score-session"),
@@ -628,8 +652,23 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         );
       }
 
+      const priorCourt =
+        cmd.priorCourt ||
+        record.courtsByMatch?.[matchId] ||
+        null;
+      const priorServe = session.state?.serve
+        ? {
+            servingSide: session.state.serve.servingSide,
+            serverNumber: session.state.serve.serverNumber,
+          }
+        : null;
+      const priorPoints = session.state?.points
+        ? { ...session.state.points }
+        : null;
+
       let state = session.state;
       const points = Math.max(1, Number(cmd.points) || 1);
+      let awardedPoint = false;
       for (let i = 0; i < points; i += 1) {
         const applied = recordPoint(
           state,
@@ -643,6 +682,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
           }
         );
         state = applied.state;
+        if (applied.event?.payload?.awardedPoint === true) awardedPoint = true;
       }
       const projection = createScoringProjection(state);
       const nextSession = Object.freeze({
@@ -651,17 +691,38 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         projection,
         updatedAt: clockIso,
       });
+
+      const scoringSystem = String(
+        state.format?.scoringSystem || session.state?.format?.scoringSystem || ""
+      ).toUpperCase();
+      const nextCourt = deriveCanonicalCourtAfterScoring({
+        priorCourt: priorCourt || {
+          playerPositions: { sideA: [], sideB: [] },
+          serverPlayerId: null,
+        },
+        priorServe,
+        nextServe: state.serve,
+        priorPoints,
+        nextPoints: state.points,
+        scoringSystem,
+        awardedPoint,
+        rallyWinnerSide: scoringSide,
+      });
+
       await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
         draft.scoreSessions[matchId] = nextSession;
+        draft.courtsByMatch = draft.courtsByMatch || {};
+        draft.courtsByMatch[matchId] = nextCourt;
       });
       return deepFreeze({
         ok: true,
         scoreProjection: projection,
+        court: nextCourt,
         matchComplete: Boolean(state.matchComplete),
         calculatedWinnerSide: state.calculatedWinnerSide || null,
         winnerInferenceByFacade: false,
         fingerprint: computeOrganizerFingerprint(
-          { matchId, projection },
+          { matchId, projection, court: nextCourt },
           "e2e04-ref-score"
         ),
       });

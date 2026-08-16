@@ -237,7 +237,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
   }
 
   async function projectMatch(command, extras = {}) {
-    const resolved = await resolveScopeByMatchId(command);
+    const resolved = extras.resolved || (await resolveScopeByMatchId(command));
     const { assignment, mode, adapter, modeState, actor } = resolved;
     const req = adapterRequest(assignment, modeState);
     const competitionContext = adapter.getCompetitionContext(req);
@@ -272,7 +272,8 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           }
         : scoreProjection;
     const courtState = {
-      ...(extras.courtState || liveInfo.courtState || {}),
+      ...(liveInfo.courtState || {}),
+      ...(extras.courtState || {}),
       serverPlayerId:
         extras.courtState?.serverPlayerId ||
         liveInfo.courtState?.serverPlayerId ||
@@ -299,6 +300,10 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         extras.courtState?.courtOrientation ||
         liveInfo.courtState?.courtOrientation ||
         live.courtOrientation ||
+        null,
+      playerPositions:
+        extras.courtState?.playerPositions ||
+        liveInfo.courtState?.playerPositions ||
         null,
     };
     return buildRefereeMatchView({
@@ -529,7 +534,18 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
   async function runCommand(command, type, fn) {
     const key = requireIdempotency(command);
     return withInFlight(`${type}:${key}`, async () => {
+      const t0 = Date.now();
+      const timing = {
+        authMs: null,
+        contextResolutionMs: null,
+        coreWriteMs: null,
+        durableCommitMs: null,
+        postCommitProjectionMs: null,
+        totalMs: null,
+      };
+      const tContext0 = Date.now();
       const resolved = await resolveScopeByMatchId(command);
+      timing.contextResolutionMs = Date.now() - tContext0;
       const scope = {
         tenantId: resolved.assignment.tenantId,
         competitionId: resolved.assignment.competitionId,
@@ -541,14 +557,23 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         resolved.assignment
       );
       try {
+        const tWrite0 = Date.now();
         const result = await fn(base, resolved);
+        timing.coreWriteMs = Date.now() - tWrite0;
+        timing.durableCommitMs = timing.coreWriteMs;
+        const tProj0 = Date.now();
         const view = await projectMatch({
           ...command,
           modeState: resolved.modeState,
           competitionMode: resolved.mode,
           tenantId: scope.tenantId,
           competitionId: scope.competitionId,
+        }, {
+          resolved,
+          courtState: result?.court || undefined,
         });
+        timing.postCommitProjectionMs = Date.now() - tProj0;
+        timing.totalMs = Date.now() - t0;
         return Object.freeze({
           ok: true,
           command: type,
@@ -556,6 +581,12 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           view,
           stale: false,
           duplicateBlocked: false,
+          latency: Object.freeze({
+            ...timing,
+            networkPostCount: 1,
+            postCommitRefetch: false,
+            ackReturnsFullView: true,
+          }),
         });
       } catch (err) {
         if (
@@ -568,7 +599,8 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
             competitionMode: resolved.mode,
             tenantId: scope.tenantId,
             competitionId: scope.competitionId,
-          }, { stale: true });
+          }, { stale: true, resolved });
+          timing.totalMs = Date.now() - t0;
           return Object.freeze({
             ok: false,
             command: type,
@@ -577,6 +609,12 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
             code: REFEREE_ADAPTER_ERROR_CODE.STALE_WRITE,
             error: err.message,
             view,
+            latency: Object.freeze({
+              ...timing,
+              networkPostCount: 1,
+              postCommitRefetch: false,
+              ackReturnsFullView: true,
+            }),
           });
         }
         throw err;
@@ -759,8 +797,39 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       const serverNumber =
         Number.isFinite(serverNumberRaw) && serverNumberRaw > 0 ? serverNumberRaw : 1;
       const opposite = servingSide === "SIDE_B" ? sideA : sideB;
+      const servingList = servingSide === "SIDE_B" ? sideB : sideA;
+      const serverIdx = servingList.indexOf(serverPlayerId);
       const receiverPlayerId =
-        String(command.receiverPlayerId || "").trim() || opposite[0] || null;
+        String(command.receiverPlayerId || "").trim() ||
+        (serverIdx >= 0 ? opposite[serverIdx] : null) ||
+        opposite[0] ||
+        null;
+
+      const nextCourt = {
+        ...current,
+        playerPositions: { sideA, sideB },
+        serverPlayerId,
+        servingSide,
+        serverNumber,
+        receiverPlayerId,
+        lineupConfigured: true,
+      };
+
+      const priorCanonical = live?.statePayload?.canonical || {};
+      const priorSession = priorCanonical.scoreSession || null;
+      let nextScoreSession = priorSession;
+      if (priorSession?.state?.serve) {
+        nextScoreSession = {
+          ...priorSession,
+          state: {
+            ...priorSession.state,
+            serve: Object.freeze({
+              servingSide,
+              serverNumber,
+            }),
+          },
+        };
+      }
 
       await runtime.matchStateRepository.putLiveState(
         {
@@ -773,16 +842,9 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           statePayload: {
             ...(live?.statePayload || {}),
             canonical: {
-              ...(live?.statePayload?.canonical || {}),
-              court: {
-                ...current,
-                playerPositions: { sideA, sideB },
-                serverPlayerId,
-                servingSide,
-                serverNumber,
-                receiverPlayerId,
-                lineupConfigured: true,
-              },
+              ...priorCanonical,
+              court: nextCourt,
+              ...(nextScoreSession ? { scoreSession: nextScoreSession } : {}),
             },
           },
         },

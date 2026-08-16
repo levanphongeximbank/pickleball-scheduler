@@ -36,6 +36,7 @@ export function createInitialScoringState(input = {}) {
 
   const trackServe =
     format.scoringSystem === SCORING_SYSTEM.SIDE_OUT ||
+    format.scoringSystem === SCORING_SYSTEM.RALLY ||
     input.trackServe === true;
 
   const state = {
@@ -61,7 +62,11 @@ export function createInitialScoringState(input = {}) {
     serve: trackServe
       ? Object.freeze({
           servingSide: format.initialServingSide,
-          serverNumber: 1,
+          serverNumber: (() => {
+            const opening = Number(format.metadata?.openingServiceTurn);
+            if (Number.isFinite(opening) && opening >= 1) return opening;
+            return 1;
+          })(),
         })
       : null,
     matchComplete: false,
