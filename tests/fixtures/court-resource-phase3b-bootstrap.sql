@@ -26,7 +26,8 @@ $$;
 
 CREATE TABLE IF NOT EXISTS public.venues (
   id text PRIMARY KEY,
-  name text NOT NULL DEFAULT 'venue'
+  name text NOT NULL DEFAULT 'venue',
+  timezone text DEFAULT 'UTC'
 );
 CREATE TABLE IF NOT EXISTS public.clubs (
   id text PRIMARY KEY,
