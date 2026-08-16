@@ -224,9 +224,10 @@ describe("match screen visual states @ ~390px", () => {
     expect(screen.getByTestId("court-slot-leftBottom")).toHaveTextContent("Bình");
     expect(screen.getByTestId("court-slot-rightTop")).toHaveTextContent("Chi");
     expect(screen.getByTestId("court-slot-rightBottom")).toHaveTextContent("Dũng");
-    expect(screen.getByTestId("serving-indicator")).toHaveTextContent("GIAO");
+    expect(screen.getByTestId("serving-indicator")).toBeInTheDocument();
     expect(screen.getByTestId("serving-status-strip")).toBeInTheDocument();
-    expect(screen.getByTestId("service-turn")).toBeInTheDocument();
+    expect(screen.getByTestId("service-turn")).toHaveTextContent(/Lượt/);
+    expect(screen.getByTestId("service-turn")).not.toHaveTextContent(/Server/i);
     expect(screen.getByTestId("service-turn-number")).toHaveTextContent("#2");
     expect(screen.getByTestId("participant-names-a")).toHaveTextContent(/An/);
     expect(screen.getByTestId("participant-names-b")).toHaveTextContent(/Chi/);
@@ -239,6 +240,10 @@ describe("match screen visual states @ ~390px", () => {
     expect(screen.getByTestId("btn-back-assignments")).toBeInTheDocument();
     expect(screen.getByTestId("canonical-court-view").querySelector(".rp-court-net")).toBeTruthy();
     expect(screen.getByTestId("canonical-court-view").querySelector(".rp-court-kitchen")).toBeTruthy();
+    const markers = screen.getAllByTestId(/player-marker-/);
+    markers.forEach((node) => {
+      expect(node.textContent).not.toMatch(/#\s*[12]\b/);
+    });
   });
 
   it("3. Rally doubles — two-number score, no service turn #", () => {

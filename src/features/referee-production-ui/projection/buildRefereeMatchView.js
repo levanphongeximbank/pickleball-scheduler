@@ -295,8 +295,8 @@ export function buildRefereeMatchView(input) {
       serviceTurn: courtProjection.serving?.serviceTurn ?? null,
       showServiceTurn: courtProjection.scoreLine?.showServiceTurn === true,
       gameLabel: policy.bestOfGames
-        ? `Game ${(scoreProjection?.currentGameIndex ?? 0) + 1} / Best of ${policy.bestOfGames}`
-        : `Game ${(scoreProjection?.currentGameIndex ?? 0) + 1}`,
+        ? `${(scoreProjection?.currentGameIndex ?? 0) + 1} / Best of ${policy.bestOfGames}`
+        : String((scoreProjection?.currentGameIndex ?? 0) + 1),
     }),
     pendingCanonicalAction: input.pendingCanonicalAction || null,
     stale: input.stale === true,

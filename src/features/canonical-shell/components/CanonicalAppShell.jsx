@@ -94,15 +94,15 @@ function CanonicalAppShellInner() {
               },
             }}
           >
-            {refereeWorkspace ? (
+            {refereeWorkspace && !matchScreen ? (
               <RefereeCompactChrome
                 onMenuClick={openMobileDrawer}
-                title={matchScreen ? "Điều hành trận" : "Trọng tài của tôi"}
-                showBack={matchScreen}
+                title="Trọng tài của tôi"
+                showBack={false}
               />
-            ) : (
+            ) : !refereeWorkspace ? (
               <CanonicalTopBar />
-            )}
+            ) : null}
 
             <Box
               component="main"

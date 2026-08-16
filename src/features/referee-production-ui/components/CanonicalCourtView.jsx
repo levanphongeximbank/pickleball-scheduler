@@ -1,5 +1,15 @@
 import { COURT_SLOT } from "../constants.js";
 
+function shortName(displayName) {
+  const raw = String(displayName || "").trim();
+  if (!raw) return "?";
+  // Prefer last token for compact circle (e.g. "NGUYỄN A" → keep full when short)
+  if (raw.length <= 12) return raw;
+  const parts = raw.split(/\s+/);
+  if (parts.length >= 2) return `${parts[0]} ${parts[parts.length - 1]}`;
+  return raw.slice(0, 12);
+}
+
 function Marker({ player, slot }) {
   if (!player) return null;
   return (
@@ -23,37 +33,19 @@ function Marker({ player, slot }) {
           .filter(Boolean)
           .join(", ")}
       >
-        <p className="rp-marker-name">
-          {player.isServing ? <span className="rp-serve-star" aria-hidden="true">★ </span> : null}
-          {player.displayName}
-        </p>
         {player.isServing ? (
-          <span className="rp-serve-badge" data-testid="serving-indicator">
-            GIAO
+          <span className="rp-serve-star" data-testid="serving-indicator" aria-hidden="true">
+            ★
           </span>
         ) : null}
-        {player.isReceiving && !player.isServing ? (
-          <span className="rp-receive-badge" data-testid="receiving-indicator">
-            ĐỠ
-          </span>
-        ) : null}
+        <p className="rp-marker-name">{shortName(player.displayName)}</p>
       </article>
     </div>
   );
 }
 
-function SideLabel({ side, position }) {
-  if (!side?.participant?.displayName) return null;
-  return (
-    <span className={`rp-court-side-label ${position}`} data-testid={`court-side-${position}`}>
-      {side.participant.displayName}
-    </span>
-  );
-}
-
 export default function CanonicalCourtView({ courtProjection }) {
   const court = courtProjection?.court || {};
-  const sides = courtProjection?.sides || {};
   const geometry = courtProjection?.geometry || "DOUBLES";
 
   return (
@@ -64,18 +56,24 @@ export default function CanonicalCourtView({ courtProjection }) {
       data-orientation={courtProjection?.courtOrientation || "STANDARD"}
       aria-label="Sơ đồ sân trọng tài"
     >
-      <div className="rp-court-surface" aria-hidden="true">
-        <div className="rp-court-baseline far" />
-        <div className="rp-court-baseline near" />
-        <div className="rp-court-sideline left" />
-        <div className="rp-court-sideline right" />
-        <div className="rp-court-kitchen far" />
-        <div className="rp-court-kitchen near" />
-        <div className="rp-court-center" />
-        <div className="rp-court-net" />
+      <div className="rp-court-frame" aria-hidden="true">
+        <div className="rp-court-surface">
+          <span className="rp-court-label sideline-left">SIDELINE</span>
+          <span className="rp-court-label sideline-right">SIDELINE</span>
+          <span className="rp-court-label baseline-far">BASELINE</span>
+          <span className="rp-court-label baseline-near">BASELINE</span>
+          <span className="rp-court-label kitchen-far">KITCHEN (NON-VOLLEY ZONE)</span>
+          <span className="rp-court-label kitchen-near">KITCHEN (NON-VOLLEY ZONE)</span>
+          <div className="rp-court-baseline far" />
+          <div className="rp-court-baseline near" />
+          <div className="rp-court-sideline left" />
+          <div className="rp-court-sideline right" />
+          <div className="rp-court-kitchen far" />
+          <div className="rp-court-kitchen near" />
+          <div className="rp-court-center" />
+          <div className="rp-court-net" />
+        </div>
       </div>
-      <SideLabel side={sides.left} position="left" />
-      <SideLabel side={sides.right} position="right" />
       <Marker player={court[COURT_SLOT.LEFT_TOP]} slot={COURT_SLOT.LEFT_TOP} />
       <Marker player={court[COURT_SLOT.LEFT_BOTTOM]} slot={COURT_SLOT.LEFT_BOTTOM} />
       <Marker player={court[COURT_SLOT.RIGHT_TOP]} slot={COURT_SLOT.RIGHT_TOP} />

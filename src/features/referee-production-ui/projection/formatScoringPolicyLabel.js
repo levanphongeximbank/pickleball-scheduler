@@ -52,8 +52,8 @@ export function formatScoringPolicyLabel(input = {}) {
   const sideSwitchAt =
     rules.sideSwitchAt == null ? null : Number(rules.sideSwitchAt);
   const changeEndAt =
-    changeEndLabel ||
-    (sideSwitchAt != null && Number.isFinite(sideSwitchAt) ? `Tại ${sideSwitchAt}` : null);
+    (sideSwitchAt != null && Number.isFinite(sideSwitchAt) ? String(sideSwitchAt) : null) ||
+    changeEndLabel;
 
   return Object.freeze({
     scoringSystem,
@@ -80,7 +80,7 @@ export function formatScoringPolicyLabel(input = {}) {
           : null,
         Object.freeze({
           key: "cap",
-          label: "Điểm trần / cap",
+          label: "Điểm trần",
           value: cap != null && Number.isFinite(cap) ? String(cap) : "Không",
         }),
         changeEndAt

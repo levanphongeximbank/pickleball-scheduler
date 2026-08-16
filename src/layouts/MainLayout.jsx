@@ -56,15 +56,15 @@ function LegacyMainLayoutContent() {
             minHeight: "100dvh",
           }}
         >
-          {refereeWorkspace ? (
+          {refereeWorkspace && !matchScreen ? (
             <RefereeCompactChrome
               onMenuClick={() => setDrawerOpen(true)}
-              title={matchScreen ? "Điều hành trận" : "Trọng tài của tôi"}
-              showBack={matchScreen}
+              title="Trọng tài của tôi"
+              showBack={false}
             />
-          ) : (
+          ) : !refereeWorkspace ? (
             <Header onMenuClick={() => setDrawerOpen(true)} />
-          )}
+          ) : null}
           {isMobile && !refereeWorkspace && <AppContextBar />}
           <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 

@@ -457,9 +457,10 @@ test("9+10. player name on marker; no permanent #1/#2 identity; serviceTurn sepa
   assert.equal(court.court.leftTop.isServing, true);
   assert.equal(court.serving.serviceTurn, 1);
   const marker = read("src/features/referee-production-ui/components/CanonicalCourtView.jsx");
-  assert.match(marker, /player\.displayName/);
+  assert.match(marker, /player\.displayName|shortName\(/);
   assert.doesNotMatch(marker, /VĐV #1|#2 identity|playerNumberLabel/);
   assert.match(marker, /data-permanent-number="false"/);
+  assert.doesNotMatch(marker, />#1<|>#2</);
 });
 
 test("11. player position switch is distinct from change ends", async () => {
@@ -913,7 +914,7 @@ test("owner visual remediation — chrome suppress + participant-aware controls"
   assert.doesNotMatch(match, /A: \{db\.sideAActivePlayer/);
   assert.match(card, /assignment-meta-row/);
   assert.doesNotMatch(card, /match-status-badge/);
-  assert.match(css, /max-height:\s*220px/);
+  assert.match(css, /max-height:\s*210px/);
   assert.match(css, /rp-court-kitchen/);
   assert.match(css, /rp-court-baseline/);
 });
