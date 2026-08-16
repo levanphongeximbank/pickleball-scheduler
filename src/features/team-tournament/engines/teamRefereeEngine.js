@@ -1,3 +1,9 @@
+/**
+ * Team-internal matchup/result helpers.
+ * Live scoring, official result acceptance, and result revision belong to
+ * CORE-16 / CORE-17. Only ACCEPTED + ACTIVE official results may feed
+ * standings / bracket / aggregate.
+ */
 import {
   LINEUP_STATUS,
   MATCHUP_STATUS,
@@ -510,6 +516,9 @@ export function buildRefereeMatchupView(teamData, matchupId, players = []) {
       id: matchup.id,
       status: matchup.status,
       scheduledAt: matchup.scheduledAt,
+      scheduledEnd: matchup.scheduledEnd || null,
+      courtId: matchup.courtId || "",
+      clusterId: matchup.clusterId || "",
       courtLabel: matchup.courtLabel || "",
       teamAId: matchup.teamAId,
       teamBId: matchup.teamBId,

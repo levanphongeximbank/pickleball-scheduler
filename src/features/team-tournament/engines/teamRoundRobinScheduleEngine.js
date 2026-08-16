@@ -296,6 +296,21 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
     Array.isArray(options.courtSlots) && options.courtSlots.length > 0
       ? options.courtSlots
       : buildCourtSlotsFromSelectedIds(selectedCourtIds, options.venueCourts || []);
+  if (selectedCourtIds.length > 0 && courtSlots.length !== selectedCourtIds.length) {
+    const errorData = normalizeTeamData({
+      ...teamData,
+      matchups: teamData?.matchups || [],
+    });
+    errorData.ok = false;
+    errorData.code = "COURT_INVENTORY_MISMATCH";
+    errorData.error =
+      "Một hoặc nhiều sân đã chọn không thuộc inventory vật lý canonical của cụm sân.";
+    return errorData;
+  }
+  const clusterId =
+    options.clusterId || prepared.settings?.clusterId
+      ? String(options.clusterId || prepared.settings?.clusterId)
+      : "";
 
   const matchups = [];
 
@@ -321,6 +336,9 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
           : roundScheduledAt && leadMinutes
             ? computeLineupLockAt(roundScheduledAt, leadMinutes)
             : baseLineupLockAt;
+      const roundScheduledEnd = roundScheduledAt
+        ? addMinutes(roundScheduledAt, roundIntervalMinutes)
+        : null;
 
       round.pairs.forEach(([homeIndex, awayIndex], matchIndex) => {
         const homeTeam = teamRecords[homeIndex];
@@ -342,9 +360,11 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
             roundNumber: round.roundNumber,
             matchNumberInRound: matchIndex + 1,
             scheduledAt: roundScheduledAt,
+            scheduledEnd: roundScheduledEnd,
             lineupLockAt: roundLineupLockAt,
             courtLabel: court.courtLabel,
             courtId: court.courtId || undefined,
+            clusterId: court.courtId ? clusterId : undefined,
             status: MATCHUP_STATUS.LINEUP_OPEN,
           })
         );
@@ -393,6 +413,31 @@ export function buildStructuredRoundRobinMatchups(teamData, options = {}) {
     return errorData;
   }
 
+  if (typeof options.validateMatchAssignment === "function") {
+    for (const matchup of ranked.matchups || []) {
+      const physicalCourtId = matchup.physicalCourtId || matchup.courtId;
+      if (!physicalCourtId) continue;
+      const verdict = options.validateMatchAssignment({
+        matchId: matchup.id,
+        physicalCourtId,
+        clusterId: matchup.clusterId,
+        scheduledAt: matchup.scheduledAt,
+        scheduledEnd: matchup.scheduledEnd,
+      });
+      if (verdict?.ok !== true || verdict?.valid === false) {
+        const errorData = normalizeTeamData({
+          ...prepared,
+          matchups: [],
+        });
+        errorData.ok = false;
+        errorData.code = verdict?.code || "MATCH_ASSIGNMENT_INVALID";
+        errorData.error =
+          verdict?.error || "validateMatchAssignment must PASS before match assignment";
+        return errorData;
+      }
+    }
+  }
+
   return normalizeTeamData({
     ...prepared,
     matchups: ranked.matchups,
@@ -435,7 +480,13 @@ function buildGroupDiagramFromRounds(groupName, groupId, teamRecords, matchups) 
             matchupId: matchup?.id || "",
             status: matchup?.status || "",
             scheduledAt: matchup?.scheduledAt || null,
-            courtLabel: matchup?.courtLabel || `Sân ${matchIndex + 1}`,
+            scheduledEnd: matchup?.scheduledEnd || null,
+            courtId: matchup?.courtId || "",
+            clusterId: matchup?.clusterId || "",
+            courtLabel:
+              matchup?.courtLabel ||
+              matchup?.courtId ||
+              `Sân ${matchIndex + 1}`,
             result: matchup?.result || null,
           };
         }),

@@ -434,11 +434,13 @@ export function getCourtAvailability(options = {}) {
   let settings;
 
   try {
-    courts = deps.listCourts({
-      clubId,
-      tenantId: venueId || null,
-      includeInactive: true,
-    });
+    courts = Array.isArray(options.courts)
+      ? options.courts
+      : deps.listCourts({
+          clubId,
+          tenantId: venueId || null,
+          includeInactive: true,
+        });
     bookings = deps.loadBookingsForClub(clubId);
     settings = deps.loadCourtManagementSettings(clubId);
   } catch (error) {

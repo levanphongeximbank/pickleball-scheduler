@@ -34,6 +34,18 @@ export async function confirmTournamentResults(
     return { ok: false, error: loaded.error || "Không tìm thấy giải." };
   }
 
+  const isTeam =
+    String(loaded.tournament.mode || "") === "team_tournament" ||
+    Boolean(loaded.tournament.teamData);
+  if (isTeam) {
+    return {
+      ok: false,
+      code: "RANKING_MUST_NOT_CLOSE_TEAM_TOURNAMENT",
+      error:
+        "Ranking không được đóng Team Tournament hoặc xác nhận kết quả chính thức. Hãy đóng giải từ Team Awards/Close.",
+    };
+  }
+
   const validation = validateTournamentStatusChange(
     loaded.tournament,
     TOURNAMENT_STATUS.COMPLETED,

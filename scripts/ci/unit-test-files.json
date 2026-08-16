@@ -269,6 +269,7 @@
   "tests/team-tournament-referee-canonical-cloud-access-01.test.js",
   "tests/team-tournament-dreambreaker-submit-auth-privacy-01.test.js",
   "tests/team-tournament-stage-tiebreak-policy-01.test.js",
+  "tests/team-tournament-canonical-adapter-b-adoption-01.test.js",
   "tests/team-tournament-canonical-dashboard-lifecycle-01.test.js",
   "tests/team-tournament-post417-regression-closure-01.test.js",
   "tests/team-tournament-scenario-b-ko-lineup-remediation-01.test.js",
@@ -285,6 +286,11 @@
   "tests/team-tournament-pr412-save-draft-live-instrumentation-01.test.js",
   "tests/team-tournament-pr412-captain-confirm-live-instrumentation-01.test.js",
   "tests/team-tournament-get-setup-canonical-contract-hardening-01.test.js",
+  "tests/team-tournament-staging-acceptance-remediation-01.test.js",
+  "tests/team-tournament-staging-acceptance-name-ui-01.test.js",
+  "tests/canonical-club-court-inventory-club-id-authority.test.js",
+  "tests/team-tournament-pr412-live-court-and-captain-cta-remediation-01.test.js",
+  "tests/team-tournament-pr412-live-cert-blocker-remediation-01.test.js",
   "tests/v5-menu-audit.test.js",
   "tests/action-queue.test.js",
   "tests/tournament-phase25.test.js",
@@ -559,5 +565,6 @@
   "tests/platform-hard-cutover-01-pre-staging-coaching.test.js",
   "tests/platform-hard-cutover-01-pre-staging-messaging.test.js",
   "tests/platform-hard-cutover-01-pre-staging-dashboard.test.js",
-  "tests/platform-hard-cutover-01-pre-staging-reseed.test.js"
+  "tests/platform-hard-cutover-01-pre-staging-reseed.test.js",
+  "tests/team-tournament-court-resource-consumer-remediation-01.test.js"
 ]

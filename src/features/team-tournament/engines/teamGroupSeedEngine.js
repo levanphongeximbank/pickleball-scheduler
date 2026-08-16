@@ -1,4 +1,4 @@
-import { getPlayerRatingInternal } from "../../../models/player.js";
+import { readTeamRatingValueOrZero } from "../adapters/canonical/TeamTournamentRatingAdapter.js";
 import { createId } from "../../../utils/id.js";
 import { TEAM_GROUP_SEEDING } from "../constants.js";
 
@@ -14,7 +14,7 @@ export function computeTeamSeedMetrics(team, playersById = new Map()) {
   const roster = (team?.playerIds || [])
     .map((playerId) => playersById.get(String(playerId)))
     .filter(Boolean);
-  const ratings = roster.map((player) => getPlayerRatingInternal(player));
+  const ratings = roster.map((player) => readTeamRatingValueOrZero(player));
   const storedAvg = Number(team?.avgLevel) > 0 ? Number(team.avgLevel) : 0;
 
   if (!ratings.length) {

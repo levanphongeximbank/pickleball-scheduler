@@ -1,4 +1,5 @@
-import { getPlayerGenderKey, getPlayerRatingInternal, normalizeAthleteGender } from "../../../models/player.js";
+import { getPlayerGenderKey, normalizeAthleteGender } from "../../../models/player.js";
+import { readTeamRatingValueOrZero } from "../adapters/canonical/TeamTournamentRatingAdapter.js";
 import { createId } from "../../../utils/id.js";
 import { COMPETITION_CLASS, RESTRICTED_COMPETITION_CLASSES } from "../../private-pairing-rules/constants/enums.js";
 import {
@@ -67,7 +68,7 @@ function isMlpFormatPreset(formatPreset) {
 }
 
 function playerRating(player) {
-  return getPlayerRatingInternal(player);
+  return readTeamRatingValueOrZero(player);
 }
 
 function sortByRatingDesc(players = []) {
@@ -983,6 +984,158 @@ export function pairTeamsFromSelectedPlayers({
       optimizationRuleScore: best.scoreBreakdown,
       ruleResolution: formationResolved.ruleResolution,
     },
+  };
+}
+
+/**
+ * Generate MLP team-formation candidates without loading private rules.
+ * Server-side opaque runtime evaluates/ranks these candidates.
+ */
+export function generateMlpTeamFormationCandidatePool({
+  players = [],
+  selectedPlayerIds = [],
+  teamCount = 2,
+  teamNames = [],
+  formatPreset,
+  randomFn,
+  seed = 1,
+  maxCandidates = 24,
+  requireFullFill = false,
+} = {}) {
+  const selectedSet = new Set((selectedPlayerIds || []).map((id) => String(id)));
+  const pool = (Array.isArray(players) ? players : []).filter((player) =>
+    selectedSet.has(String(player.id))
+  );
+  const warnings = [];
+  const requestedCount = Math.max(2, Number(teamCount) || 2);
+  const names = resolveTeamNames(teamNames, requestedCount);
+
+  if (!pool.length) {
+    return {
+      ok: false,
+      candidates: [],
+      waitingPlayerIds: [],
+      warnings: ["Chọn ít nhất một VĐV để ghép đội."],
+    };
+  }
+
+  if (!isMlpFormatPreset(formatPreset)) {
+    return {
+      ok: false,
+      candidates: [],
+      waitingPlayerIds: pool.map((player) => player.id),
+      warnings: ["AI ghép đội hiện chỉ hỗ trợ preset MLP 4 người."],
+    };
+  }
+
+  const males = sortByRatingDesc(
+    pool.filter((player) => normalizeAthleteGender(player) === "male")
+  );
+  const females = sortByRatingDesc(
+    pool.filter((player) => normalizeAthleteGender(player) === "female")
+  );
+  const unknownGender = pool.filter(
+    (player) => normalizeAthleteGender(player) === "unknown"
+  );
+  const maxPossibleTeams = Math.min(
+    Math.floor(males.length / MLP_MALES_PER_TEAM),
+    Math.floor(females.length / MLP_FEMALES_PER_TEAM)
+  );
+  const effectiveTeamCount = Math.min(requestedCount, maxPossibleTeams);
+
+  if (effectiveTeamCount < 1) {
+    return {
+      ok: false,
+      candidates: [],
+      waitingPlayerIds: pool.map((player) => player.id),
+      warnings: ["Cần ít nhất 2 nam và 2 nữ để ghép 1 đội MLP."],
+    };
+  }
+
+  if (effectiveTeamCount < requestedCount) {
+    const shortageMessage =
+      `Không đủ nam/nữ để tạo ${requestedCount} đội MLP ` +
+      `(chỉ đủ ${effectiveTeamCount} đội = ${effectiveTeamCount * 4} VĐV; ` +
+      `hiện ${males.length} nam / ${females.length} nữ` +
+      (unknownGender.length ? ` / ${unknownGender.length} unknown` : "") +
+      `).`;
+    if (requireFullFill) {
+      return {
+        ok: false,
+        candidates: [],
+        waitingPlayerIds: pool.map((player) => player.id),
+        warnings: [shortageMessage],
+      };
+    }
+    warnings.push(shortageMessage);
+  }
+
+  const requiredMales = effectiveTeamCount * MLP_MALES_PER_TEAM;
+  const requiredFemales = effectiveTeamCount * MLP_FEMALES_PER_TEAM;
+  const malePool = males.slice(0, requiredMales);
+  const femalePool = females.slice(0, requiredFemales);
+  const rng =
+    typeof randomFn === "function" ? randomFn : createSeededRng(seed ?? 1);
+  const candidateLimit = Math.max(1, Math.min(64, Number(maxCandidates) || 24));
+  const candidates = [];
+
+  for (let index = 0; index < candidateLimit; index += 1) {
+    const buckets = buildMlpTeamsFourStep({
+      males: malePool,
+      females: femalePool,
+      teamCount: effectiveTeamCount,
+      randomFn: rng,
+    });
+    let teams = buildTeamRecordsFromBuckets(buckets, names.slice(0, effectiveTeamCount));
+    teams = assignSeedsByAvgLevel(teams);
+    const usedIds = new Set(teams.flatMap((team) => team.playerIds));
+    const waitingPlayerIds = pool
+      .filter((player) => !usedIds.has(player.id))
+      .map((player) => player.id);
+    const nextWarnings = [...warnings];
+    if (waitingPlayerIds.length) {
+      nextWarnings.push(`${waitingPlayerIds.length} VĐV sẽ ở trạng thái chờ.`);
+    }
+    const spreadWarning = buildTeamSpreadWarning(teams);
+    if (spreadWarning) {
+      nextWarnings.push(spreadWarning);
+    }
+    if (requireFullFill) {
+      const usedCount = teams.flatMap((team) => team.playerIds || []).length;
+      const expectedAthletes = requestedCount * MLP_MEMBERS_PER_TEAM;
+      if (
+        teams.length !== requestedCount ||
+        usedCount !== expectedAthletes ||
+        waitingPlayerIds.length > 0
+      ) {
+        continue;
+      }
+    }
+    candidates.push({
+      id: `mlp-cand-${index + 1}`,
+      teams,
+      waitingPlayerIds,
+      warnings: nextWarnings,
+      formationQuality: formationQualityScore(teams),
+    });
+  }
+
+  if (!candidates.length) {
+    return {
+      ok: false,
+      candidates: [],
+      waitingPlayerIds: pool.map((player) => player.id),
+      warnings: [
+        `Bạn đã chọn ${pool.length} VĐV nhưng hệ thống không tạo được phương án ghép đội hợp lệ.`,
+      ],
+    };
+  }
+
+  return {
+    ok: true,
+    candidates,
+    waitingPlayerIds: candidates[0].waitingPlayerIds,
+    warnings,
   };
 }
 

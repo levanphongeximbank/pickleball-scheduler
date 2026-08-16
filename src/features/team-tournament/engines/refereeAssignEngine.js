@@ -1,5 +1,28 @@
+/**
+ * Legacy local referee directory / assignment projection.
+ *
+ * Canonical assignment authority is CORE-13 + parent-matchup SSOT
+ * (`teamRefereeCanonicalLifecycle`). This module must not be treated as
+ * referee identity, scoring, or official-result authority.
+ */
+/**
+ * LEGACY display helpers for settings.referees / settings.refereeAssignments.
+ *
+ * NOT Competition referee assignment authority.
+ * NOT scoring authority.
+ * NOT official result authority.
+ *
+ * Canonical Team referee authority:
+ * - teamRefereeCanonicalLifecycle (parent SSOT / child override / Dreambreaker inherit)
+ * - TeamTournamentRefereeAdapter → competition.referee.adapter.v1
+ * - CORE-13 assignment / CORE-16 scoring / CORE-17 accepted result
+ */
+
+import { LEGACY_REFEREE_AUTHORITY } from "./legacyRefereeAuthority.js";
 import { createId } from "../../../utils/id.js";
 import { findMatchup, findTeam, normalizeTeamData } from "../models/index.js";
+
+export { LEGACY_REFEREE_AUTHORITY };
 
 function patchSettings(teamData, patch) {
   return normalizeTeamData({
@@ -158,6 +181,9 @@ export function buildRefereeAssignmentTable(teamData) {
     return {
       matchId: matchup.id,
       scheduledAt: matchup.scheduledAt,
+      scheduledEnd: matchup.scheduledEnd || null,
+      courtId: matchup.courtId || "",
+      clusterId: matchup.clusterId || "",
       courtLabel: matchup.courtLabel || "",
       teamAName: teamA?.name || matchup.teamAId,
       teamBName: teamB?.name || matchup.teamBId,

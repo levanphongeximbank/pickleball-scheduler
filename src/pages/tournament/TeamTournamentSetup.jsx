@@ -23,6 +23,9 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useTenant } from "../../context/TenantContext.jsx";
 import {
+  createTeamTournamentCourtAdapter,
+} from "../../features/team-tournament/adapters/canonical/TeamTournamentCourtAdapter.js";
+import {
   useTeamTournamentAthletePool,
 } from "../../features/team-tournament/ui/useTeamTournamentAthletePool.js";
 import { TEAM_TOURNAMENT_ATHLETE_SCOPE } from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
@@ -75,6 +78,11 @@ import TeamSchedulePreviewDialog from "../../components/tournament/team/TeamSche
 import TeamDisciplinesPanel from "../../components/tournament/team/TeamDisciplinesPanel.jsx";
 import TeamGroupDivisionPanel from "../../components/tournament/team/TeamGroupDivisionPanel.jsx";
 import TeamFormatVenueSetupPanel from "../../components/tournament/team/TeamFormatVenueSetupPanel.jsx";
+import { renameTeamTournamentDisplayName } from "../../features/team-tournament/services/teamTournamentRenameService.js";
+import {
+  checkTeamTournamentCourtResourceReadiness,
+  saveTeamTournamentCourtResourceSetup,
+} from "../../features/team-tournament/services/teamTournamentCourtResourceSetupService.js";
 import TeamMatchupOperationsCard from "../../components/tournament/team/TeamMatchupOperationsCard.jsx";
 import TeamLineupOverrideDialog from "../../components/tournament/team/TeamLineupOverrideDialog.jsx";
 import TeamForfeitDialog from "../../components/tournament/team/TeamForfeitDialog.jsx";
@@ -208,6 +216,13 @@ export default function TeamTournamentSetup() {
   const effectiveClubId = String(
     tournament?.clubId || loadClubId || activeClubId || ""
   ).trim();
+  const effectiveClub = useMemo(
+    () =>
+      (clubs || []).find(
+        (club) => String(club?.id || club?.clubId || "") === effectiveClubId
+      ) || null,
+    [clubs, effectiveClubId]
+  );
 
   /** Preview-only: Format & Venue panel reports local dirty for Save-draft START marker. */
   const formatDirtyRef = useRef(false);
@@ -401,7 +416,21 @@ export default function TeamTournamentSetup() {
       );
       return false;
     }
-    const result = await persistFormatVenueSetup(config);
+    const tenantId =
+      tournament?.tenantId ||
+      tournament?.venueId ||
+      clubPool.tenantId ||
+      tenantPool.tenantId ||
+      currentTenantId;
+    const result = await saveTeamTournamentCourtResourceSetup({
+      clubId: effectiveClubId || activeClubId,
+      tenantId,
+      venueId: tournament?.venueId || tenantId,
+      tournamentId,
+      tournamentName: tournament?.name,
+      config,
+      persistSetupConfig: persistFormatVenueSetup,
+    });
     if (result?.isVersionConflict) {
       setError(
         result.error ||
@@ -421,6 +450,25 @@ export default function TeamTournamentSetup() {
     setMessage("Đã cập nhật Format & Venue.");
     setError("");
     return true;
+  }
+
+  async function saveTournamentDisplayName(params) {
+    const result = await renameTeamTournamentDisplayName({
+      ...params,
+      canManage: access.canManage,
+      clubId: params?.clubId || effectiveClubId || activeClubId,
+      tenantId:
+        params?.tenantId ||
+        tournament?.tenantId ||
+        clubPool.tenantId ||
+        tenantPool.tenantId ||
+        currentTenantId,
+      tournamentId: params?.tournamentId || tournamentId,
+    });
+    if (result?.ok) {
+      await reload({ silent: true });
+    }
+    return result;
   }
 
   async function handleSaveDraft() {
@@ -644,6 +692,39 @@ export default function TeamTournamentSetup() {
       goToGroupsStep();
       return;
     }
+    const selectedCourtIds = Array.isArray(td?.settings?.selectedCourtIds)
+      ? td.settings.selectedCourtIds.map(String).filter(Boolean)
+      : [];
+    const clusterId = String(td?.settings?.clusterId || "").trim();
+    if (!clusterId || selectedCourtIds.length === 0) {
+      setError("Hãy chọn cụm sân và các sân vật lý trước khi tạo lịch.");
+      return;
+    }
+    const readiness = await checkTeamTournamentCourtResourceReadiness({
+      clubId: effectiveClubId || activeClubId || null,
+      tenantId:
+        tournament?.tenantId ||
+        tournament?.venueId ||
+        clubPool.tenantId ||
+        tenantPool.tenantId ||
+        currentTenantId ||
+        null,
+      venueId: tournament?.venueId || tournament?.tenantId || currentTenantId,
+      tournamentId,
+      config: {
+        clusterId,
+        selectedCourtIds,
+        courtCapacityWindow: td?.settings?.courtCapacityWindow,
+      },
+    });
+    if (!readiness?.ok) {
+      setError(
+        readiness?.error ||
+          "Sân đã chọn chưa sẵn sàng trong capacity reservation của giải."
+      );
+      return;
+    }
+    const venueCourts = readiness.courts || [];
 
     const prepared = await prepareLivePrivatePairingOptions({
       tournament: tournament || null,
@@ -666,6 +747,7 @@ export default function TeamTournamentSetup() {
       return;
     }
 
+    const capacityWindow = td?.settings?.courtCapacityWindow || {};
     const scheduleOptions = {
       ...options,
       ...prepared.pairingOptions,
@@ -673,7 +755,24 @@ export default function TeamTournamentSetup() {
       competitionClass: COMPETITION_CLASS.INTERNAL,
       clubId: effectiveClubId || activeClubId || null,
       tournamentId: tournamentId || null,
-      selectedCourtIds: td?.settings?.selectedCourtIds || options.selectedCourtIds || [],
+      clusterId,
+      selectedCourtIds,
+      venueCourts,
+      validateMatchAssignment:
+        capacityWindow.date && capacityWindow.startTime && capacityWindow.endTime
+          ? (input) =>
+              createTeamTournamentCourtAdapter().requireValidMatchAssignment({
+                tenantId: tournament?.tenantId || null,
+                clubId: effectiveClubId || activeClubId || null,
+                competitionId: tournamentId,
+                competitionType: "team",
+                clusterId,
+                date: capacityWindow.date,
+                startTime: capacityWindow.startTime,
+                endTime: capacityWindow.endTime,
+                ...input,
+              })
+          : undefined,
     };
 
     const next = buildRoundRobinMatchups(
@@ -1376,9 +1475,15 @@ export default function TeamTournamentSetup() {
               tenantPool.tenantId ||
               currentTenantId
             }
+            registeredClusterId={
+              effectiveClub?.governance?.registeredClusterId ||
+              effectiveClub?.registeredClusterId ||
+              ""
+            }
             canManage={access.canManage}
             teamCountHint={td?.teams?.length || 0}
             onSave={saveFormatVenueConfig}
+            renameTournamentFn={saveTournamentDisplayName}
             onError={setError}
             onMessage={setMessage}
             onFormatDirtyDiagnostic={(dirty) => {

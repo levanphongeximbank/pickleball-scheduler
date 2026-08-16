@@ -25,10 +25,20 @@ export function extractSubMatchesFromMatchups(matchups = []) {
  */
 export function extractScheduleFromMatchups(matchups = []) {
   return matchups
-    .filter((matchup) => matchup.scheduledAt || matchup.courtLabel || matchup.roundNumber != null)
+    .filter(
+      (matchup) =>
+        matchup.scheduledAt ||
+        matchup.scheduledEnd ||
+        matchup.courtId ||
+        matchup.courtLabel ||
+        matchup.roundNumber != null
+    )
     .map((matchup) => ({
       matchupId: matchup.id,
       scheduledAt: matchup.scheduledAt || null,
+      scheduledEnd: matchup.scheduledEnd || null,
+      courtId: matchup.courtId || null,
+      clusterId: matchup.clusterId || null,
       courtLabel: matchup.courtLabel || null,
       roundNumber: matchup.roundNumber ?? null,
     }));

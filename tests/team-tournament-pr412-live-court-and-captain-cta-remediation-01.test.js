@@ -131,7 +131,7 @@ describe("team-tournament-pr412-live-court-and-captain-cta-remediation-01", () =
     const panel = readSrc(
       "src/components/tournament/team/TeamFormatVenueSetupPanel.jsx"
     );
-    assert.match(panel, /listCanonicalClubCourtsForFormatVenue/);
+    assert.match(panel, /createTeamTournamentCourtAdapter|listEligibleCourtsForFormatVenue|listCourtsFn/);
     assert.doesNotMatch(panel, /loadCourtsForClub/);
   });
 
