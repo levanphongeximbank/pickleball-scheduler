@@ -71,6 +71,7 @@ export default function RefereeCanonicalMatchPage({ client: clientProp }) {
       onResume={match.resumeMatch}
       onChangeEnds={match.confirmChangeEnds}
       onSwitchPositions={match.switchPositions}
+      onConfigureLineup={match.configureLineup}
       onSubmitResult={() => match.submitResult(false)}
       onCorrect={match.correctResult}
       onReload={match.reload}

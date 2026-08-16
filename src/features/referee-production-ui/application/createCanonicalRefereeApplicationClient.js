@@ -283,6 +283,18 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         liveInfo.courtState?.receiverPlayerId ||
         live.receivingPlayerId ||
         null,
+      servingSide:
+        extras.courtState?.servingSide ||
+        liveInfo.courtState?.servingSide ||
+        null,
+      serverNumber:
+        extras.courtState?.serverNumber ??
+        liveInfo.courtState?.serverNumber ??
+        live.serverNumber ??
+        null,
+      lineupConfigured:
+        extras.courtState?.lineupConfigured === true ||
+        liveInfo.courtState?.lineupConfigured === true,
       courtOrientation:
         extras.courtState?.courtOrientation ||
         liveInfo.courtState?.courtOrientation ||
@@ -711,6 +723,82 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
     });
   }
 
+  async function configureLineup(command = {}) {
+    return runCommand(command, CANONICAL_UI_COMMAND.SWITCH_POSITIONS, async (base, resolved) => {
+      const scope = {
+        tenantId: resolved.assignment.tenantId,
+        competitionId: resolved.assignment.competitionId,
+        matchId: resolved.assignment.matchId,
+      };
+      const live = await runtime.matchStateRepository.getLiveState(scope);
+      const current = live?.statePayload?.canonical?.court || {};
+      const sideA = Array.isArray(command.playerPositions?.sideA)
+        ? command.playerPositions.sideA.map(String)
+        : Array.isArray(current.playerPositions?.sideA)
+          ? current.playerPositions.sideA.map(String)
+          : [];
+      const sideB = Array.isArray(command.playerPositions?.sideB)
+        ? command.playerPositions.sideB.map(String)
+        : Array.isArray(current.playerPositions?.sideB)
+          ? current.playerPositions.sideB.map(String)
+          : [];
+      const serverPlayerId = String(command.serverPlayerId || "").trim() || null;
+      if (!serverPlayerId) {
+        failRefereeAdapter(
+          REFEREE_ADAPTER_ERROR_CODE.MALFORMED_CONTEXT,
+          "configureLineup requires serverPlayerId",
+          {}
+        );
+      }
+      const onSideA = sideA.includes(serverPlayerId);
+      const onSideB = sideB.includes(serverPlayerId);
+      const servingSide =
+        String(command.servingSide || "").toUpperCase() ||
+        (onSideA ? "SIDE_A" : onSideB ? "SIDE_B" : "SIDE_A");
+      const serverNumberRaw = Number(command.serverNumber);
+      const serverNumber =
+        Number.isFinite(serverNumberRaw) && serverNumberRaw > 0 ? serverNumberRaw : 1;
+      const opposite = servingSide === "SIDE_B" ? sideA : sideB;
+      const receiverPlayerId =
+        String(command.receiverPlayerId || "").trim() || opposite[0] || null;
+
+      await runtime.matchStateRepository.putLiveState(
+        {
+          ...scope,
+          expectedVersion: command.expectedVersion,
+          idempotencyKey: command.idempotencyKey,
+          commandId: command.commandId || command.idempotencyKey,
+          eventType: CANONICAL_UI_COMMAND.SWITCH_POSITIONS,
+          status: live?.status,
+          statePayload: {
+            ...(live?.statePayload || {}),
+            canonical: {
+              ...(live?.statePayload?.canonical || {}),
+              court: {
+                ...current,
+                playerPositions: { sideA, sideB },
+                serverPlayerId,
+                servingSide,
+                serverNumber,
+                receiverPlayerId,
+                lineupConfigured: true,
+              },
+            },
+          },
+        },
+        base.actor
+      );
+      return {
+        ok: true,
+        distinctFromChangeEnds: true,
+        lineupConfigured: true,
+        serverPlayerId,
+        servingSide,
+        serverNumber,
+      };
+    });
+  }
+
   async function submitResult(command = {}) {
     return runCommand(command, CANONICAL_UI_COMMAND.SUBMIT_RESULT, (base) =>
       facade.submitMatchResultForValidation({
@@ -749,6 +837,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
     resumeMatch,
     confirmChangeEnds,
     switchPositions,
+    configureLineup,
     submitResult,
     correctResult,
     isRefereeOperationsError,

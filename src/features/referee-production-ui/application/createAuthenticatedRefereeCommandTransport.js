@@ -87,6 +87,7 @@ export function createAuthenticatedRefereeCommandTransport(options = {}) {
     resumeMatch: (payload) => invoke("resumeMatch", payload),
     confirmChangeEnds: (payload) => invoke("confirmChangeEnds", payload),
     switchPositions: (payload) => invoke("switchPositions", payload),
+    configureLineup: (payload) => invoke("configureLineup", payload),
     submitResult: (payload) => invoke("submitResult", payload),
     correctResult: (payload) => invoke("correctResult", payload),
   });

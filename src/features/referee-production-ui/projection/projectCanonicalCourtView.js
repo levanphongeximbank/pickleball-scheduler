@@ -3,7 +3,6 @@
  * Positions and ends come from canonical state/events only.
  */
 
-import { SCORING_SYSTEM } from "../../competition-core/scoring/index.js";
 import { COURT_ORIENTATION, COURT_SLOT } from "../constants.js";
 import { projectDreamBreakerRotation } from "./projectDreamBreakerRotation.js";
 import { formatCanonicalScoreLine } from "./formatScoringPolicyLabel.js";
@@ -119,14 +118,23 @@ export function projectCanonicalCourtView(input = {}) {
       })
     : playersB;
 
-  const servingSide = serve?.servingSide ? String(serve.servingSide).toUpperCase() : null;
   const servingPlayerId = String(
-    courtState.serverPlayerId ||
-      serve?.serverPlayerId ||
-      (servingSide === "SIDE_A" ? orderedA[0]?.playerId : null) ||
-      (servingSide === "SIDE_B" ? orderedB[0]?.playerId : null) ||
-      ""
+    courtState.serverPlayerId || serve?.serverPlayerId || ""
   ).trim() || null;
+  let servingSide = serve?.servingSide
+    ? String(serve.servingSide).toUpperCase()
+    : courtState.servingSide
+      ? String(courtState.servingSide).toUpperCase()
+      : null;
+  if (!servingSide && servingPlayerId) {
+    if (orderedA.some((p) => p.playerId === servingPlayerId)) servingSide = "SIDE_A";
+    else if (orderedB.some((p) => p.playerId === servingPlayerId)) servingSide = "SIDE_B";
+  }
+  const resolvedServingPlayerId =
+    servingPlayerId ||
+    (servingSide === "SIDE_A" ? orderedA[0]?.playerId : null) ||
+    (servingSide === "SIDE_B" ? orderedB[0]?.playerId : null) ||
+    null;
   const receiverPlayerId = String(
     courtState.receiverPlayerId || serve?.receiverPlayerId || ""
   ).trim() || null;
@@ -136,16 +144,29 @@ export function projectCanonicalCourtView(input = {}) {
   const leftPlayers = swapped ? orderedB : orderedA;
   const rightPlayers = swapped ? orderedA : orderedB;
 
-  const leftSlots = slotPlayers(leftPlayers, servingPlayerId, receiverPlayerId);
-  const rightSlots = slotPlayers(rightPlayers, servingPlayerId, receiverPlayerId);
+  const leftSlots = slotPlayers(leftPlayers, resolvedServingPlayerId, receiverPlayerId);
+  const rightSlots = slotPlayers(rightPlayers, resolvedServingPlayerId, receiverPlayerId);
 
   const scoreLine = formatCanonicalScoreLine({
     scoringSystem: rules.scoringSystem,
     scoringRules: rules,
     points: score.points,
-    serve,
+    serve: serve
+      ? { ...serve, servingSide: servingSide || serve.servingSide }
+      : servingSide
+        ? { servingSide, serverNumber: courtState.serverNumber, serverPlayerId: resolvedServingPlayerId }
+        : null,
     currentGameIndex: score.currentGameIndex,
   });
+
+  const fromCourtTurn = Number(courtState.serverNumber);
+  const fromServeTurn = Number(serve?.serverNumber);
+  const serviceTurn =
+    Number.isFinite(fromCourtTurn) && fromCourtTurn > 0
+      ? fromCourtTurn
+      : Number.isFinite(fromServeTurn) && fromServeTurn > 0
+        ? fromServeTurn
+        : scoreLine.serviceTurn;
 
   const sideChangeRequired = courtState.sideChangeRequired === true;
   const sideChangePolicy =
@@ -153,6 +174,9 @@ export function projectCanonicalCourtView(input = {}) {
     input.lifecyclePolicy?.changeEndSummary ||
     rules.metadata?.changeEndPolicyLabel ||
     null;
+  const lineupConfigured =
+    courtState.lineupConfigured === true ||
+    Boolean(courtState.serverPlayerId || serve?.serverPlayerId);
 
   return Object.freeze({
     courtOrientation: swapped ? COURT_ORIENTATION.SWAPPED : COURT_ORIENTATION.STANDARD,
@@ -160,6 +184,7 @@ export function projectCanonicalCourtView(input = {}) {
     isSingles: singles,
     isDoubles: !singles && !dreambreaker.isDreambreaker,
     isDreambreaker: dreambreaker.isDreambreaker,
+    lineupConfigured,
     sides: Object.freeze({
       left: Object.freeze({
         sideKey: leftSide.sideKey || (swapped ? "B" : "A"),
@@ -184,12 +209,9 @@ export function projectCanonicalCourtView(input = {}) {
     }),
     serving: Object.freeze({
       servingSide,
-      serverPlayerId: servingPlayerId,
+      serverPlayerId: resolvedServingPlayerId,
       receiverPlayerId,
-      serviceTurn:
-        String(rules.scoringSystem || "").toUpperCase() === SCORING_SYSTEM.RALLY
-          ? null
-          : scoreLine.serviceTurn,
+      serviceTurn: serviceTurn != null ? Number(serviceTurn) : null,
     }),
     court: Object.freeze({
       [COURT_SLOT.LEFT_TOP]: leftSlots.top,

@@ -124,6 +124,8 @@ export function useCanonicalRefereeMatch({
     confirmChangeEnds: () => run("change-ends", (cmd) => client.confirmChangeEnds(cmd)),
     switchPositions: (sideKey) =>
       run(`switch-pos:${sideKey}`, (cmd) => client.switchPositions({ ...cmd, sideKey })),
+    configureLineup: (payload) =>
+      run("configure-lineup", (cmd) => client.configureLineup({ ...cmd, ...payload })),
     submitResult: (acceptResult = false) =>
       run("submit-result", (cmd) => client.submitResult({ ...cmd, acceptResult })),
     correctResult: () => run("correct", (cmd) => client.correctResult(cmd)),

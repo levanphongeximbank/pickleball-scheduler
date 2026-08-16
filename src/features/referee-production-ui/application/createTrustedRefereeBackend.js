@@ -32,6 +32,7 @@ const COMMAND_MAP = Object.freeze({
   confirmChangeEnds: "confirmChangeEnds",
   [CANONICAL_UI_COMMAND.SWITCH_POSITIONS]: "switchPositions",
   switchPositions: "switchPositions",
+  configureLineup: "configureLineup",
   [CANONICAL_UI_COMMAND.SUBMIT_RESULT]: "submitResult",
   submitResult: "submitResult",
   [CANONICAL_UI_COMMAND.CORRECT_RESULT]: "correctResult",

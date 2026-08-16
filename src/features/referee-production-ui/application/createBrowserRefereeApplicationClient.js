@@ -107,6 +107,7 @@ export function createBrowserRefereeApplicationClient(options = {}) {
     resumeMatch: (command) => viaTransport("resumeMatch", command),
     confirmChangeEnds: (command) => viaTransport("confirmChangeEnds", command),
     switchPositions: (command) => viaTransport("switchPositions", command),
+    configureLineup: (command) => viaTransport("configureLineup", command),
     submitResult: (command) => viaTransport("submitResult", command),
     correctResult: (command) => viaTransport("correctResult", command),
   });

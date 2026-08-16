@@ -267,9 +267,10 @@ describe("match screen visual states @ ~390px", () => {
     expect(screen.getByTestId("court-slot-rightBottom")).toHaveTextContent("Dũng");
     expect(screen.getByTestId("serving-indicator")).toBeInTheDocument();
     expect(screen.getByTestId("serving-status-strip")).toBeInTheDocument();
-    expect(screen.getByTestId("service-turn")).toHaveTextContent(/Lượt/);
-    expect(screen.getByTestId("service-turn")).not.toHaveTextContent(/Server/i);
-    expect(screen.getByTestId("service-turn-number")).toHaveTextContent("#2");
+    expect(screen.getByTestId("service-turn")).toHaveTextContent(/Lượt giao/);
+    expect(screen.getByTestId("service-turn")).not.toHaveTextContent(/Người giao/);
+    expect(screen.getByTestId("service-turn-number")).toHaveTextContent("Lượt 2");
+    expect(screen.getByTestId("serving-player-name")).toHaveTextContent("An");
     expect(screen.getByTestId("team-name-a")).toHaveTextContent("Đội 4");
     expect(screen.getByTestId("team-name-b")).toHaveTextContent("Đội 3");
     expect(screen.getByTestId("participant-names-a")).toHaveTextContent(/An/);
@@ -292,7 +293,7 @@ describe("match screen visual states @ ~390px", () => {
     });
   });
 
-  it("3. Rally doubles — two-number score, no service turn #", () => {
+  it("3. Rally doubles — player name + Lượt giao", () => {
     const court = doublesCourt(RALLY, { a: 4, b: 3 });
     const view = baseView({
       courtProjection: court,
@@ -300,8 +301,8 @@ describe("match screen visual states @ ~390px", () => {
       servingStatus: {
         servingTeamName: "Đội 4",
         servingPlayerName: "An",
-        showServiceTurn: false,
-        serviceTurn: null,
+        showServiceTurn: true,
+        serviceTurn: 1,
         gameLabel: "Game 1 / Best of 1",
       },
       rulesPanel: {
@@ -322,10 +323,57 @@ describe("match screen visual states @ ~390px", () => {
     );
     expect(screen.getByTestId("score-a")).toHaveTextContent("4");
     expect(screen.getByTestId("score-b")).toHaveTextContent("3");
-    expect(screen.queryByTestId("service-turn")).not.toBeInTheDocument();
+    expect(screen.getByTestId("service-turn")).toHaveTextContent(/Lượt giao/);
+    expect(screen.getByTestId("service-turn-number")).toHaveTextContent("Lượt 1");
+    expect(screen.getByTestId("serving-player-name")).toHaveTextContent("An");
     expect(screen.getByTestId("court-slot-leftTop")).toBeInTheDocument();
     expect(screen.getByTestId("court-slot-leftBottom")).toBeInTheDocument();
     expect(screen.getByTestId("rule-method")).toHaveTextContent("RALLY");
+  });
+
+  it("3b. Lineup required blocks score until configured", async () => {
+    const user = userEvent.setup();
+    const court = projectCanonicalCourtView({
+      participants: {
+        sides: [
+          { sideKey: "A", participantIds: ["p1", "p2"], displayName: "Đội 4" },
+          { sideKey: "B", participantIds: ["p3", "p4"], displayName: "Đội 3" },
+        ],
+      },
+      participantNames: NAMES,
+      scoringRules: RALLY,
+      currentScore: { points: { SIDE_A: 0, SIDE_B: 0 }, currentGameIndex: 0 },
+      courtState: {},
+    });
+    const onConfigureLineup = vi.fn(async () => ({ ok: true }));
+    const view = baseView({
+      courtProjection: court,
+      lineupRequired: true,
+      lineupConfigured: false,
+      canScore: false,
+      canStart: false,
+      servingStatus: {
+        servingTeamName: null,
+        servingPlayerName: null,
+        showServiceTurn: true,
+        serviceTurn: null,
+        gameLabel: "1 / Best of 1",
+      },
+    });
+    render(
+      <MemoryRouter>
+        <RefereeMatchScreen view={view} onConfigureLineup={onConfigureLineup} />
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId("lineup-required-banner")).toBeInTheDocument();
+    expect(screen.getByTestId("lineup-setup-panel")).toBeInTheDocument();
+    expect(screen.queryByTestId("btn-point-a")).not.toBeInTheDocument();
+    expect(screen.getByTestId("service-turn")).toHaveTextContent(/Lượt giao/);
+    await user.click(screen.getByTestId("btn-lineup-confirm"));
+    expect(onConfigureLineup).toHaveBeenCalled();
+    const payload = onConfigureLineup.mock.calls[0][0];
+    expect(payload.serverPlayerId).toBeTruthy();
+    expect([1, 2]).toContain(payload.serverNumber);
   });
 
   it("4. Singles — two player markers only", () => {

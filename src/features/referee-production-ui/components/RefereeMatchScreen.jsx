@@ -1,5 +1,5 @@
 import { Link as RouterLink } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SportsTennisIcon from "@mui/icons-material/SportsTennis";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
@@ -93,47 +93,30 @@ function ServingStatusStrip({ serving, expectedVersion }) {
   const hasAny =
     serving.servingTeamName ||
     serving.servingPlayerName ||
+    serving.serviceTurn != null ||
     serving.showServiceTurn ||
     serving.gameLabel;
   if (!hasAny) return null;
+  const turnLabel =
+    serving.serviceTurn != null ? `Lượt ${serving.serviceTurn}` : "—";
   return (
     <div className="rp-serve-strip" data-testid="serving-status-strip">
       <span className="rp-serve-cell" data-testid="serve-team">
         <SportsVolleyballIcon className="rp-serve-icon" fontSize="inherit" aria-hidden="true" />
         <span>
           Giao bóng
-          <strong>
-            {serving.servingTeamName || serving.servingPlayerName ? (
-              <>
-                {serving.servingTeamName ? (
-                  <em className="rp-serve-team">{serving.servingTeamName}</em>
-                ) : null}
-                {serving.servingTeamName && serving.servingPlayerName ? " / " : null}
-                {serving.servingPlayerName || null}
-              </>
-            ) : (
-              "—"
-            )}
+          <strong data-testid="serving-player-name">
+            {serving.servingPlayerName || "—"}
           </strong>
         </span>
       </span>
-      {serving.showServiceTurn && serving.serviceTurn != null ? (
-        <span className="rp-serve-cell" data-testid="service-turn">
-          <PersonIcon className="rp-serve-icon rp-serve-icon-green" fontSize="inherit" aria-hidden="true" />
-          <span>
-            Lượt
-            <strong data-testid="service-turn-number">#{serving.serviceTurn}</strong>
-          </span>
+      <span className="rp-serve-cell" data-testid="service-turn">
+        <PersonIcon className="rp-serve-icon rp-serve-icon-green" fontSize="inherit" aria-hidden="true" />
+        <span>
+          Lượt giao
+          <strong data-testid="service-turn-number">{turnLabel}</strong>
         </span>
-      ) : (
-        <span className="rp-serve-cell" data-testid="serve-player">
-          <PersonIcon className="rp-serve-icon rp-serve-icon-green" fontSize="inherit" aria-hidden="true" />
-          <span>
-            Người giao
-            <strong>{serving.servingPlayerName || "—"}</strong>
-          </span>
-        </span>
-      )}
+      </span>
       {serving.gameLabel ? (
         <span className="rp-serve-cell" data-testid="serve-game">
           <EmojiEventsIcon className="rp-serve-icon rp-serve-icon-muted" fontSize="inherit" aria-hidden="true" />
@@ -153,6 +136,194 @@ function ServingStatusStrip({ serving, expectedVersion }) {
         </span>
       ) : null}
     </div>
+  );
+}
+
+function LineupSetupPanel({
+  view,
+  open,
+  pending,
+  stale,
+  onClose,
+  onConfirm,
+}) {
+  const court = view?.courtProjection || {};
+  const left = court.sides?.left || {};
+  const right = court.sides?.right || {};
+  const leftIsA = (left.scoringSide || "SIDE_A") === "SIDE_A";
+  const sideASource = leftIsA ? left : right;
+  const sideBSource = leftIsA ? right : left;
+  const initialSideA = (sideASource.activePlayers || []).map((p) => p.playerId).filter(Boolean);
+  const initialSideB = (sideBSource.activePlayers || []).map((p) => p.playerId).filter(Boolean);
+  const sideAKey = initialSideA.join("|");
+  const sideBKey = initialSideB.join("|");
+  const [sideA, setSideA] = useState([]);
+  const [sideB, setSideB] = useState([]);
+  const [serverPlayerId, setServerPlayerId] = useState("");
+  const [serverNumber, setServerNumber] = useState(1);
+
+  useEffect(() => {
+    if (!open) return;
+    const nextA = sideAKey ? sideAKey.split("|") : [];
+    const nextB = sideBKey ? sideBKey.split("|") : [];
+    setSideA(nextA);
+    setSideB(nextB);
+    setServerPlayerId(
+      court.serving?.serverPlayerId || nextA[0] || nextB[0] || ""
+    );
+    setServerNumber(
+      Number(court.serving?.serviceTurn) > 0 ? Number(court.serving.serviceTurn) : 1
+    );
+  }, [open, view?.matchId, sideAKey, sideBKey, court.serving?.serverPlayerId, court.serving?.serviceTurn]);
+
+  if (!open) return null;
+
+  const names = {};
+  for (const p of [
+    ...(left.activePlayers || []),
+    ...(right.activePlayers || []),
+  ]) {
+    if (p?.playerId) names[p.playerId] = p.displayName || "VĐV";
+  }
+
+  const labelA = sideASource.participant?.displayName || "Đội A";
+  const labelB = sideBSource.participant?.displayName || "Đội B";
+
+  const swap = (side) => {
+    if (side === "A") setSideA((prev) => (prev.length >= 2 ? [prev[1], prev[0]] : prev));
+    else setSideB((prev) => (prev.length >= 2 ? [prev[1], prev[0]] : prev));
+  };
+
+  const allPlayers = [
+    ...sideA.map((id) => ({ id, side: "A", name: names[id] || "VĐV" })),
+    ...sideB.map((id) => ({ id, side: "B", name: names[id] || "VĐV" })),
+  ];
+
+  const canConfirm = Boolean(serverPlayerId) && !pending && !stale;
+
+  return (
+    <section className="rp-lineup-panel" data-testid="lineup-setup-panel">
+      <h2 className="rp-lineup-title">Sắp xếp đội hình (bắt buộc)</h2>
+      <p className="rp-lineup-hint">
+        Chọn vị trí VĐV trên sân và người giao bóng đầu tiên trước khi ghi điểm.
+      </p>
+
+      <div className="rp-lineup-sides">
+        <div className="rp-lineup-side" data-testid="lineup-side-a">
+          <strong>{labelA}</strong>
+          <ol>
+            {sideA.map((id) => (
+              <li key={id}>{names[id] || id}</li>
+            ))}
+          </ol>
+          {sideA.length >= 2 ? (
+            <button
+              type="button"
+              className="rp-btn rp-btn-ghost rp-btn-inline"
+              disabled={pending}
+              onClick={() => swap("A")}
+              data-testid="btn-swap-side-a"
+            >
+              Đổi vị trí đội này
+            </button>
+          ) : null}
+        </div>
+        <div className="rp-lineup-side" data-testid="lineup-side-b">
+          <strong>{labelB}</strong>
+          <ol>
+            {sideB.map((id) => (
+              <li key={id}>{names[id] || id}</li>
+            ))}
+          </ol>
+          {sideB.length >= 2 ? (
+            <button
+              type="button"
+              className="rp-btn rp-btn-ghost rp-btn-inline"
+              disabled={pending}
+              onClick={() => swap("B")}
+              data-testid="btn-swap-side-b"
+            >
+              Đổi vị trí đội này
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <fieldset className="rp-lineup-fieldset">
+        <legend>Người giao bóng đầu tiên</legend>
+        <div className="rp-lineup-servers" data-testid="lineup-server-options">
+          {allPlayers.map((p) => (
+            <label key={p.id} className="rp-lineup-option">
+              <input
+                type="radio"
+                name="opening-server"
+                value={p.id}
+                checked={serverPlayerId === p.id}
+                onChange={() => setServerPlayerId(p.id)}
+                disabled={pending}
+              />
+              <span>
+                {p.name}
+                <em> ({p.side === "A" ? labelA : labelB})</em>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="rp-lineup-fieldset">
+        <legend>Lượt giao</legend>
+        <div className="rp-lineup-turns" data-testid="lineup-turn-options">
+          {[1, 2].map((n) => (
+            <label key={n} className="rp-lineup-option">
+              <input
+                type="radio"
+                name="service-turn"
+                value={n}
+                checked={serverNumber === n}
+                onChange={() => setServerNumber(n)}
+                disabled={pending}
+              />
+              <span>Lượt {n}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <div className="rp-lineup-actions">
+        {!view?.lineupRequired ? (
+          <button
+            type="button"
+            className="rp-btn rp-btn-ghost"
+            disabled={pending}
+            onClick={onClose}
+            data-testid="btn-lineup-cancel"
+          >
+            Đóng
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="rp-btn rp-btn-primary"
+          disabled={!canConfirm}
+          onClick={() =>
+            onConfirm?.({
+              playerPositions: { sideA, sideB },
+              serverPlayerId,
+              serverNumber,
+              servingSide: sideA.includes(serverPlayerId)
+                ? "SIDE_A"
+                : sideB.includes(serverPlayerId)
+                  ? "SIDE_B"
+                  : "SIDE_A",
+            })
+          }
+          data-testid="btn-lineup-confirm"
+        >
+          Xác nhận đội hình
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -208,12 +379,17 @@ export default function RefereeMatchScreen({
   onSuspend,
   onResume,
   onChangeEnds,
-  onSwitchPositions,
+  onConfigureLineup,
   onSubmitResult,
   onCorrect,
   onReload,
 }) {
   const [confirmChangeEnds, setConfirmChangeEnds] = useState(false);
+  const [lineupOpen, setLineupOpen] = useState(false);
+
+  useEffect(() => {
+    if (view?.lineupRequired) setLineupOpen(true);
+  }, [view?.lineupRequired, view?.matchId]);
 
   if (loading) {
     return (
@@ -377,6 +553,12 @@ export default function RefereeMatchScreen({
         </Banner>
       ) : null}
 
+      {view.lineupRequired ? (
+        <Banner kind="warn" testId="lineup-required-banner">
+          Bắt buộc sắp xếp đội hình: chọn người giao bóng đầu tiên và vị trí VĐV trên sân.
+        </Banner>
+      ) : null}
+
       <section className="rp-scoreboard" data-testid="scoreboard" aria-live="polite">
         <div className="rp-scoreboard-trio" data-testid="current-game-score">
           <div
@@ -478,16 +660,29 @@ export default function RefereeMatchScreen({
 
       <GameHistoryPanel summary={view.gameSummary} />
 
-      {view.canSwitchPositions ? (
+      <LineupSetupPanel
+        view={view}
+        open={lineupOpen || view.lineupRequired === true}
+        pending={pending}
+        stale={stale}
+        onClose={() => setLineupOpen(false)}
+        onConfirm={async (payload) => {
+          const result = await onConfigureLineup?.(payload);
+          if (result?.ok !== false) setLineupOpen(false);
+        }}
+      />
+
+      {view.canSwitchPositions || view.lineupRequired ? (
         <button
           type="button"
-          className="rp-btn rp-btn-ghost rp-btn-lineup"
+          className={`rp-btn rp-btn-ghost rp-btn-lineup${view.lineupRequired ? " is-required" : ""}`}
           disabled={pending || stale}
-          onClick={() => onSwitchPositions?.("A")}
+          onClick={() => setLineupOpen(true)}
           data-testid="btn-switch-positions"
         >
           <GroupsIcon fontSize="small" aria-hidden="true" />
           Sắp xếp đội hình
+          {view.lineupRequired ? " *" : ""}
         </button>
       ) : null}
 

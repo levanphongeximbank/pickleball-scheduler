@@ -184,6 +184,25 @@ export function buildRefereeMatchView(input) {
         ) || null
       : null;
 
+  const hasCourtPlayers =
+    (courtProjection.sides?.left?.activePlayers || []).length > 0 ||
+    (courtProjection.sides?.right?.activePlayers || []).length > 0;
+  const lineupConfigured =
+    courtProjection.lineupConfigured === true ||
+    Boolean(courtProjection.serving?.serverPlayerId);
+  const canStartBase =
+    matchStatus === MATCH_STATUS.READY_TO_START ||
+    matchStatus === MATCH_STATUS.SCHEDULED ||
+    matchStatus === MATCH_STATUS.READY ||
+    !matchStatus;
+  const lineupRequired =
+    hasCourtPlayers &&
+    !lineupConfigured &&
+    (canStartBase ||
+      matchStatus === MATCH_STATUS.IN_PROGRESS ||
+      matchStatus === MATCH_STATUS.SUSPENDED ||
+      matchStatus === MATCH_STATUS.PAUSED);
+
   return Object.freeze({
     matchId: String(input.matchId || "").trim(),
     competitionId: String(
@@ -293,7 +312,7 @@ export function buildRefereeMatchView(input) {
             : null,
       servingPlayerName: servingPlayer?.displayName || null,
       serviceTurn: courtProjection.serving?.serviceTurn ?? null,
-      showServiceTurn: courtProjection.scoreLine?.showServiceTurn === true,
+      showServiceTurn: true,
       gameLabel: policy.bestOfGames
         ? `${(scoreProjection?.currentGameIndex ?? 0) + 1} / Best of ${policy.bestOfGames}`
         : String((scoreProjection?.currentGameIndex ?? 0) + 1),
@@ -305,15 +324,14 @@ export function buildRefereeMatchView(input) {
     pendingCanonicalAction: input.pendingCanonicalAction || null,
     stale: input.stale === true,
     preStart: input.preStart || null,
-    canStart:
-      matchStatus === MATCH_STATUS.READY_TO_START ||
-      matchStatus === MATCH_STATUS.SCHEDULED ||
-      matchStatus === MATCH_STATUS.READY ||
-      !matchStatus,
+    lineupConfigured,
+    lineupRequired,
+    canStart: canStartBase && (!hasCourtPlayers || lineupConfigured),
     canScore:
       matchStatus === MATCH_STATUS.IN_PROGRESS &&
       capabilities.scoring !== false &&
-      assigned.scoreEntryReady !== false,
+      assigned.scoreEntryReady !== false &&
+      (!hasCourtPlayers || lineupConfigured),
     canSuspend:
       matchStatus === MATCH_STATUS.IN_PROGRESS && capabilities.suspend !== false,
     canResume:

@@ -497,6 +497,51 @@ test("11. player position switch is distinct from change ends", async () => {
   assert.equal(pos.view.courtProjection.courtOrientation, "SWAPPED");
 });
 
+test("11b. configureLineup sets server + Lượt giao and unlocks start/score gate", async () => {
+  const { runtime } = createUiRuntime();
+  const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
+  await seedAssigned(runtime, fixture);
+  const client = createClient(runtime, [fixture]);
+  const before = await client.getMatchView({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+  });
+  assert.equal(before.view.lineupRequired, true);
+  assert.equal(before.view.canStart, false);
+  const configured = await client.configureLineup({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    expectedVersion: before.view.expectedVersion,
+    idempotencyKey: "lineup-1",
+    playerPositions: {
+      sideA: ["p1", "p2"],
+      sideB: ["p3", "p4"],
+    },
+    serverPlayerId: "p2",
+    serverNumber: 2,
+    servingSide: "SIDE_A",
+  });
+  assert.equal(configured.ok, true);
+  assert.equal(configured.view.lineupConfigured, true);
+  assert.equal(configured.view.lineupRequired, false);
+  assert.equal(configured.view.canStart, true);
+  assert.equal(configured.view.servingStatus.servingPlayerName, "Bình");
+  assert.equal(configured.view.servingStatus.serviceTurn, 2);
+  assert.equal(configured.view.courtProjection.court.leftBottom.isServing, true);
+  const started = await client.startMatch({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    expectedVersion: configured.view.expectedVersion,
+    idempotencyKey: "start-after-lineup",
+  });
+  assert.equal(started.ok, true);
+  assert.equal(started.view.canScore, true);
+  assert.equal(started.view.servingStatus.servingPlayerName, "Bình");
+});
+
 test("12+13+14. expectedVersion + idempotency + duplicate click blocked", async () => {
   const { runtime } = createUiRuntime();
   const fixture = modeFixture(COMPETITION_REFEREE_MODE.INTERNAL);
@@ -728,6 +773,7 @@ test("browser client authenticated transport invoked with expectedVersion + idem
     resumeMatch: async () => ({ ok: true }),
     confirmChangeEnds: async () => ({ ok: true }),
     switchPositions: async () => ({ ok: true }),
+    configureLineup: async () => ({ ok: true }),
     submitResult: async () => ({ ok: true }),
     correctResult: async () => ({ ok: true }),
   };
