@@ -1,0 +1,249 @@
+.rp-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 12px 12px 96px;
+  box-sizing: border-box;
+  color: #102027;
+}
+
+.rp-title {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.rp-sub {
+  margin: 0 0 16px;
+  color: #455a64;
+  font-size: 0.9rem;
+}
+
+.rp-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: #fff;
+  border: 1px solid #cfd8dc;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.rp-card-title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.rp-card-meta,
+.rp-card-sub {
+  margin: 0 0 4px;
+  color: #546e7a;
+  font-size: 0.85rem;
+}
+
+.rp-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+
+.rp-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eceff1;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.rp-btn {
+  min-height: 52px;
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.rp-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.rp-btn-primary {
+  background: #0d47a1;
+  color: #fff;
+}
+
+.rp-btn-a {
+  background: #1565c0;
+  color: #fff;
+}
+
+.rp-btn-b {
+  background: #c62828;
+  color: #fff;
+}
+
+.rp-btn-warn {
+  background: #ef6c00;
+  color: #fff;
+}
+
+.rp-btn-ghost {
+  background: #eceff1;
+  color: #102027;
+}
+
+.rp-score {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #0d47a1;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.rp-score-team {
+  text-align: center;
+}
+
+.rp-score-team.is-serving {
+  outline: 3px solid #ffeb3b;
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.rp-score-num {
+  font-size: 2.4rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.rp-score-line {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-weight: 700;
+}
+
+.rp-banner {
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.rp-banner-info { background: #e3f2fd; color: #0d47a1; }
+.rp-banner-warn { background: #fff8e1; color: #e65100; }
+.rp-banner-error { background: #ffebee; color: #b71c1c; }
+.rp-banner-ok { background: #e8f5e9; color: #1b5e20; }
+
+.rp-court {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 440px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #1b5e20;
+  border: 3px solid #fff;
+  margin: 12px 0;
+}
+
+.rp-court-net,
+.rp-court-center {
+  position: absolute;
+  background: #fff;
+  z-index: 1;
+}
+
+.rp-court-net {
+  top: 50%;
+  left: 4%;
+  right: 4%;
+  height: 3px;
+  transform: translateY(-50%);
+}
+
+.rp-court-center {
+  top: 8%;
+  bottom: 8%;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.rp-slot {
+  position: absolute;
+  width: 40%;
+  max-width: 150px;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
+.rp-slot.leftTop { left: 28%; top: 18%; }
+.rp-slot.rightTop { left: 72%; top: 18%; }
+.rp-slot.leftBottom { left: 28%; top: 82%; }
+.rp-slot.rightBottom { left: 72%; top: 82%; }
+
+.rp-marker {
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px;
+  border: 3px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+.rp-marker.is-serving {
+  border-color: #1565c0;
+}
+
+.rp-marker-name {
+  margin: 0;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.rp-serve-badge {
+  display: inline-block;
+  margin-top: 4px;
+  background: #e3f2fd;
+  color: #0d47a1;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.rp-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.rp-actions-wide {
+  grid-column: 1 / -1;
+}
+
+.rp-policy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.rp-db {
+  background: #263238;
+  color: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 8px 0;
+}

@@ -226,7 +226,7 @@ const RefereeScoreboard = lazy(() => import("./pages/referee/RefereeScoreboard")
 
 const RefereeHub = lazy(() => import("./pages/referee/RefereeHub"));
 
-const RefereeV5TeamMatchPage = lazy(() => import("./pages/referee/RefereeV5TeamMatchPage"));
+const RefereeCanonicalMatchPage = lazy(() => import("./pages/referee/RefereeCanonicalMatchPage"));
 
 const CourtEnginePage = lazy(() => import("./pages/CourtEnginePage"));
 
@@ -514,7 +514,7 @@ export default function Router() {
 
             <Route path="/referee" element={<RefereeHub />} />
 
-            <Route path="/referee/match/:matchId" element={<RefereeV5TeamMatchPage />} />
+            <Route path="/referee/match/:matchId" element={<RefereeCanonicalMatchPage />} />
 
             <Route path="/courts-ops" element={<Navigate to="/court-management/courts" replace />} />
 

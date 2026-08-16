@@ -1,61 +1,58 @@
-import { useCallback, useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  Stack,
-  Typography,
-} from "@mui/material";
-import SportsIcon from "@mui/icons-material/Sports";
+import { Button, Stack } from "@mui/material";
 import QrCode2Icon from "@mui/icons-material/QrCode2";
 
-import { useClub } from "../../context/ClubContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { listRefereeAssignments } from "../../features/identity/services/refereeSessionService.js";
-import { touchButtonSx, MOBILE_PAGE_GUTTER } from "../../components/tournament/mobileUi.js";
+import { useTenant } from "../../context/TenantContext.jsx";
+import { getSupabaseAuthClient } from "../../auth/supabaseClient.js";
+import { touchButtonSx } from "../../components/tournament/mobileUi.js";
 import { useIsMobile } from "../../features/mobile/hooks/useIsMobile.js";
+import {
+  createBrowserRefereeApplicationClient,
+  RefereeHome,
+  useCanonicalRefereeHome,
+} from "../../features/referee-production-ui/index.js";
+import "../../features/referee-production-ui/styles/referee-production.css";
 
-export default function RefereeHub() {
-  const { activeClubId } = useClub();
+/**
+ * Production Referee Home / My Assignments.
+ * CORE-13 assignments via canonical application client. Not legacy token hub.
+ */
+export default function RefereeHub({ client: clientProp }) {
   const { user } = useAuth();
+  const { currentTenantId } = useTenant();
   const isMobile = useIsMobile();
-  const [matches, setMatches] = useState([]);
-  const [message, setMessage] = useState(null);
-  const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const result = await listRefereeAssignments({ clubId: activeClubId });
-    setLoading(false);
+  const actor = useMemo(() => {
+    if (!user?.id) return null;
+    return {
+      actorId: user.id,
+      authUid: user.id,
+      refereeId: user.id,
+      role: "REFEREE",
+    };
+  }, [user]);
 
-    if (!result.ok) {
-      setMessage({ type: "error", text: result.error });
-      setMatches([]);
-      return;
-    }
+  const client = useMemo(() => {
+    if (clientProp) return clientProp;
+    return createBrowserRefereeApplicationClient({
+      actor,
+      env: typeof import.meta !== "undefined" ? import.meta.env : {},
+      userClient: getSupabaseAuthClient(),
+    });
+  }, [actor, clientProp]);
 
-    setMatches(result.matches);
-  }, [activeClubId]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const home = useCanonicalRefereeHome({
+    client,
+    tenantId: currentTenantId,
+    actor,
+  });
 
   return (
-    <Box sx={{ px: isMobile ? MOBILE_PAGE_GUTTER : 0, pb: isMobile ? 8 : 0 }}>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-        <SportsIcon color="primary" />
-        <Typography variant={isMobile ? "h5" : "h4"} fontWeight={800}>
-          Trọng tài — Trận được phân công
-        </Typography>
-      </Stack>
-
-      {isMobile && (
-        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+    <>
+      {isMobile ? (
+        <Stack direction="row" spacing={1} sx={{ mb: 2, px: 1.5 }}>
           <Button
             component={RouterLink}
             to="/mobile/qr-scan"
@@ -67,65 +64,13 @@ export default function RefereeHub() {
             Quét QR trận
           </Button>
         </Stack>
-      )}
-
-      <Alert severity="info" sx={{ mb: 2 }}>
-        Đăng nhập bằng role REFEREE. Link token cũ <code>/referee/:token</code> vẫn dùng được
-        (legacy).
-      </Alert>
-
-      {message && (
-        <Alert severity={message.type} sx={{ mb: 2 }}>
-          {message.text}
-        </Alert>
-      )}
-
-      {loading && <Typography color="text.secondary">Đang tải…</Typography>}
-
-      <Stack spacing={2}>
-        {matches.map((match) => (
-          <Card key={`${match.tournamentId}-${match.matchId}`}>
-            <CardContent>
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                justifyContent="space-between"
-                spacing={2}
-              >
-                <Box>
-                  <Typography fontWeight={700}>
-                    {match.team1Name} vs {match.team2Name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {match.tournamentName} — Sân {match.courtId || "?"}
-                  </Typography>
-                  <Typography variant="body2">
-                    Tỷ số: {match.score1} - {match.score2}
-                  </Typography>
-                </Box>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Chip size="small" label={match.status || "playing"} />
-                  <Button
-                    component={RouterLink}
-                    to={`/referee/match/${match.matchId}`}
-                    state={{ refereeToken: match.refereeToken, tournamentId: match.tournamentId }}
-                    variant="contained"
-                    fullWidth={isMobile}
-                    sx={isMobile ? touchButtonSx : undefined}
-                  >
-                    Chấm điểm
-                  </Button>
-                </Stack>
-              </Stack>
-            </CardContent>
-          </Card>
-        ))}
-
-        {!loading && matches.length === 0 && (
-          <Typography color="text.secondary">
-            Chưa có trận live được phân công cho {user?.displayName || "bạn"}.
-          </Typography>
-        )}
-      </Stack>
-    </Box>
+      ) : null}
+      <RefereeHome
+        assignments={home.assignments}
+        loading={home.loading}
+        error={home.error}
+        userLabel={user?.displayName || "bạn"}
+      />
+    </>
   );
 }
