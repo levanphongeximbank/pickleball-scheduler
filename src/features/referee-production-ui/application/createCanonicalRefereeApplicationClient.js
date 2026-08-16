@@ -22,6 +22,10 @@ import { CANONICAL_UI_COMMAND, COURT_ORIENTATION, REFEREE_UI_ERROR_CODE } from "
 import { buildRefereeAssignmentCard } from "../projection/buildRefereeAssignmentCard.js";
 import { buildRefereeMatchView } from "../projection/buildRefereeMatchView.js";
 import {
+  mapLiveStatusToCore15,
+  resolveAuthoritativeMatchLifecycle,
+} from "../projection/resolveAuthoritativeMatchLifecycle.js";
+import {
   assertNotPrivilegedBrowserComposition,
   rejectLocationStateAuthority,
   rejectProductionFixtureFallback,
@@ -130,7 +134,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
   }
 
   async function assertExpectedVersion(scope, expectedVersion) {
-    if (expectedVersion == null) return;
+    if (expectedVersion == null) return null;
     const live = await runtime.matchStateRepository.getLiveState(scope);
     const current = Number(live?.stateVersion ?? live?.version ?? 0);
     if (Number(expectedVersion) !== current) {
@@ -140,6 +144,11 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         { expectedVersion, actualVersion: current }
       );
     }
+    return {
+      live,
+      expectedVersion: current,
+      courtState: live?.statePayload?.canonical?.court || live?.statePayload?.court || {},
+    };
   }
 
   async function withInFlight(key, fn) {
@@ -294,18 +303,47 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         : readLiveVersion(scope),
     ]);
 
+    const live = liveInfo?.live || {};
+    const assignedMatchRaw = assignedResult?.assignedMatch || null;
+    const scoreProjection =
+      extras.scoreProjection || assignedMatchRaw?.scoreProjection || null;
+
+    // CORE-15 lifecycle: never let Adapter/modeState READY override live/canonical IN_PROGRESS.
+    const lifecycleState = resolveAuthoritativeMatchLifecycle({
+      live,
+      assignedMatch: skipAssignedRead
+        ? {
+            scoreProjection,
+            lifecycleState: null,
+            match: live?.statePayload?.canonical?.match || null,
+          }
+        : assignedMatchRaw,
+      matchContext,
+      scoreProjection,
+      preferInProgressAfterScore: skipAssignedRead,
+    });
+
     const assignedMatch = skipAssignedRead
       ? {
-          lifecycleState: matchContext.status || liveInfo?.live?.status || "IN_PROGRESS",
+          lifecycleState,
           scoreProjection: extras.scoreProjection,
           scoreEntryReady: true,
-          match: { status: matchContext.status || liveInfo?.live?.status || "IN_PROGRESS" },
+          match: {
+            ...(live?.statePayload?.canonical?.match || {}),
+            status: lifecycleState,
+          },
         }
-      : assignedResult?.assignedMatch || null;
+      : assignedMatchRaw
+        ? {
+            ...assignedMatchRaw,
+            lifecycleState: lifecycleState || assignedMatchRaw.lifecycleState,
+            match: {
+              ...(assignedMatchRaw.match || {}),
+              status: lifecycleState || assignedMatchRaw.match?.status,
+            },
+          }
+        : null;
 
-    const live = liveInfo?.live || {};
-    const scoreProjection =
-      extras.scoreProjection || assignedMatch?.scoreProjection || null;
     const enrichedScoreProjection =
       scoreProjection && !scoreProjection.serve && (live.servingPlayerId || live.servingTeamId)
         ? {
@@ -371,7 +409,8 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       },
       matchContext: {
         ...matchContext,
-        status: matchContext.status || live.status || null,
+        // Authoritative CORE-15 only — never prefer Adapter READY over live IN_PROGRESS.
+        status: lifecycleState || mapLiveStatusToCore15(live.status) || null,
         courtLabel:
           matchContext.courtLabel ||
           modeState?.matchups?.[assignment.matchId]?.courtLabel ||
@@ -383,10 +422,19 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       lifecyclePolicy,
       capabilities,
       assignedMatch: enrichedScoreProjection
-        ? { ...(assignedMatch || {}), scoreProjection: enrichedScoreProjection }
+        ? {
+            ...(assignedMatch || {}),
+            lifecycleState: lifecycleState || assignedMatch?.lifecycleState,
+            scoreProjection: enrichedScoreProjection,
+            match: {
+              ...(assignedMatch?.match || {}),
+              status: lifecycleState || assignedMatch?.match?.status,
+            },
+          }
         : assignedMatch,
       operationsProjection: assignedResult?.projection || null,
       courtState,
+      live,
       modeState,
       participantNames: names,
       expectedVersion: liveInfo?.expectedVersion,
@@ -399,11 +447,30 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
 
   async function listMyAssignments(command = {}) {
     rejectLocationStateAuthority(command.locationState);
+    const homeT0 = Date.now();
+    const homeTiming = {
+      assignmentQueryMs: null,
+      enrichmentMs: null,
+      totalMs: null,
+      queryCount: 0,
+    };
     const actor = actorFrom(command, defaultActor);
     const tenantId = String(command.tenantId || "").trim();
+    const tAssign0 = Date.now();
     const rows = await listAssignmentRows(actor, tenantId);
+    homeTiming.assignmentQueryMs = Date.now() - tAssign0;
+    homeTiming.queryCount += 1;
+
+    const tEnrich0 = Date.now();
+    // Warm modeState in parallel (dedupe happens in resolver cache when present).
+    await Promise.all(rows.map((row) => resolveModeState(row, command).catch(() => null)));
 
     async function buildCardForRow(row) {
+      const livePromise = readLiveVersion({
+        tenantId: row.tenantId || tenantId,
+        competitionId: row.competitionId,
+        matchId: row.matchId,
+      }).catch(() => null);
       const modeState = await resolveModeState(row, command);
       const modeHint =
         row.competitionMode ||
@@ -424,6 +491,9 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           ? Object.values(modeState.matchups)[0].courtId
           : row.courtId || null;
       if (!modeHint) {
+        const liveInfo = await livePromise;
+        homeTiming.queryCount += 1;
+        const liveCore = mapLiveStatusToCore15(liveInfo?.live?.status);
         return buildRefereeAssignmentCard({
           assignment: {
             ...row,
@@ -443,9 +513,18 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
             courtId: courtIdFromMode,
             courtLabel: courtLabelFromMode,
             scheduledAt,
+            status: liveCore || null,
           },
           participants: { sides: [] },
           participantNames: modeState?.participantNames || {},
+          assignedMatch: liveCore
+            ? Object.freeze({
+                lifecycleState: liveCore,
+                scoreProjection: null,
+                validationStatus: null,
+              })
+            : null,
+          live: liveInfo?.live || null,
           modeState,
         });
       }
@@ -514,17 +593,14 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       }
       const [names, liveInfo] = await Promise.all([
         resolveNames(row, modeState),
-        readLiveVersion({
-          tenantId: row.tenantId || tenantId,
-          competitionId: row.competitionId,
-          matchId: row.matchId,
-        }).catch(() => null),
+        livePromise,
       ]);
+      homeTiming.queryCount += 1;
       // Home list: prefer live lifecycle (fast). Full assignedMatch only when live is absent.
-      const liveStatus = liveInfo?.live?.status || null;
-      const assignedMatch = liveStatus
+      const liveCore = mapLiveStatusToCore15(liveInfo?.live?.status);
+      const assignedMatch = liveCore
         ? Object.freeze({
-            lifecycleState: liveStatus,
+            lifecycleState: liveCore,
             scoreProjection: null,
             validationStatus: null,
           })
@@ -538,7 +614,10 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
               competitionMode: mode,
               modeState,
             })
-            .then((got) => got.assignedMatch)
+            .then((got) => {
+              homeTiming.queryCount += 1;
+              return got.assignedMatch;
+            })
             .catch(() => null);
       return buildRefereeAssignmentCard({
         assignment: {
@@ -552,7 +631,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         competitionContext,
         matchContext: {
           ...matchContext,
-          status: matchContext.status || liveStatus || null,
+          status: liveCore || matchContext.status || null,
         },
         participants,
         assignedMatch,
@@ -564,16 +643,21 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
     }
 
     const cards = await Promise.all(rows.map((row) => buildCardForRow(row)));
+    homeTiming.enrichmentMs = Date.now() - tEnrich0;
+    homeTiming.totalMs = Date.now() - homeT0;
+    if (typeof console !== "undefined" && console.info) {
+      console.info("[referee-home-timing]", homeTiming);
+    }
     return Object.freeze({
       ok: true,
       assignments: Object.freeze(cards),
+      homeTiming: Object.freeze(homeTiming),
       usesAdapterB: true,
       silentLegacyFallback: false,
       locationStateRequired: false,
       productionFixtureFallback: false,
     });
   }
-
   async function getMatchView(command = {}) {
     return Object.freeze({
       ok: true,
@@ -592,6 +676,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       const timing = {
         authMs: null,
         contextResolutionMs: null,
+        matchReadMs: null,
         coreWriteMs: null,
         durableCommitMs: null,
         postCommitProjectionMs: null,
@@ -605,7 +690,9 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         competitionId: resolved.assignment.competitionId,
         matchId: resolved.assignment.matchId,
       };
-      await assertExpectedVersion(scope, command.expectedVersion);
+      const tMatchRead0 = Date.now();
+      const preWriteLiveInfo = await assertExpectedVersion(scope, command.expectedVersion);
+      timing.matchReadMs = Date.now() - tMatchRead0;
       const base = commandBase(
         { ...command, modeState: resolved.modeState, competitionMode: resolved.mode },
         resolved.assignment
@@ -616,6 +703,21 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         timing.coreWriteMs = Date.now() - tWrite0;
         timing.durableCommitMs = timing.coreWriteMs;
         const tProj0 = Date.now();
+        // Prefer post-commit live when mutation returns it; else one fresh read for ACK.
+        const postLiveInfo =
+          result?.liveInfo ||
+          (result?.live
+            ? {
+                live: result.live,
+                expectedVersion: Number(
+                  result.live.stateVersion ?? result.live.version ?? 0
+                ),
+                courtState:
+                  result.live?.statePayload?.canonical?.court ||
+                  result.live?.statePayload?.court ||
+                  {},
+              }
+            : null);
         const view = await projectMatch({
           ...command,
           modeState: resolved.modeState,
@@ -626,6 +728,8 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           resolved,
           courtState: result?.court || undefined,
           scoreProjection: result?.scoreProjection || undefined,
+          // After durable score write, never reuse pre-write live for lifecycle/score.
+          liveInfo: postLiveInfo || undefined,
         });
         timing.postCommitProjectionMs = Date.now() - tProj0;
         timing.totalMs = Date.now() - t0;
@@ -643,6 +747,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
             ackReturnsFullView: true,
             projectMatchCount: 1,
             durableCommitCount: 1,
+            preWriteLiveReused: Boolean(preWriteLiveInfo) && !postLiveInfo,
           }),
         });
       } catch (err) {
@@ -656,7 +761,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
             competitionMode: resolved.mode,
             tenantId: scope.tenantId,
             competitionId: scope.competitionId,
-          }, { stale: true, resolved });
+          }, { stale: true, resolved, liveInfo: preWriteLiveInfo || undefined });
           timing.totalMs = Date.now() - t0;
           return Object.freeze({
             ok: false,

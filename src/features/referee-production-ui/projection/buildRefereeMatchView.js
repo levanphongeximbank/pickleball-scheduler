@@ -15,6 +15,7 @@ import {
   formatMatchStatusLabel,
   formatParticipantDisplayName,
 } from "./formatRefereeUiLabels.js";
+import { resolveAuthoritativeMatchLifecycle } from "./resolveAuthoritativeMatchLifecycle.js";
 
 function allowed(projection, action) {
   return (projection?.allowedActions || []).some((row) => row.action === action);
@@ -89,7 +90,12 @@ export function buildRefereeMatchView(input) {
   const capabilities = input.capabilities || {};
   const projection = input.operationsProjection || {};
   const scoreProjection = assigned.scoreProjection || null;
-  const matchStatus = assigned.lifecycleState || match.status || matchContext.status || null;
+  const matchStatus = resolveAuthoritativeMatchLifecycle({
+    live: input.live || null,
+    assignedMatch: assigned,
+    matchContext,
+    scoreProjection,
+  });
   const result = projectResultStatus({
     matchStatus,
     validationStatus: assigned.validationStatus,
@@ -191,11 +197,21 @@ export function buildRefereeMatchView(input) {
   const lineupConfigured =
     courtProjection.lineupConfigured === true ||
     Boolean(courtProjection.serving?.serverPlayerId);
+  const hasActiveScore =
+    Boolean(scoreProjection?.serve) ||
+    (points &&
+      (Number(points.SIDE_A || 0) > 0 || Number(points.SIDE_B || 0) > 0));
   const canStartBase =
-    matchStatus === MATCH_STATUS.READY_TO_START ||
-    matchStatus === MATCH_STATUS.SCHEDULED ||
-    matchStatus === MATCH_STATUS.READY ||
-    !matchStatus;
+    !hasActiveScore &&
+    matchStatus !== MATCH_STATUS.IN_PROGRESS &&
+    matchStatus !== MATCH_STATUS.PAUSED &&
+    matchStatus !== MATCH_STATUS.SUSPENDED &&
+    matchStatus !== MATCH_STATUS.COMPLETED &&
+    matchStatus !== MATCH_STATUS.CANCELLED &&
+    (matchStatus === MATCH_STATUS.READY_TO_START ||
+      matchStatus === MATCH_STATUS.SCHEDULED ||
+      matchStatus === MATCH_STATUS.READY ||
+      !matchStatus);
   const lineupRequired =
     hasCourtPlayers &&
     !lineupConfigured &&

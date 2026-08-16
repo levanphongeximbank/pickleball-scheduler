@@ -25,7 +25,10 @@ export default function RefereeHome({
       <header className="rp-home-header" data-testid="referee-home-header">
         <h1 className="rp-title">Trọng tài của tôi</h1>
         <p className="rp-sub" data-testid="referee-user-context">
-          Xin chào {userLabel}
+          Dashboard · Xin chào {userLabel}
+        </p>
+        <p className="rp-sub" data-testid="referee-home-nav-hint">
+          Trận được phân công · Tài khoản từ menu góc phải
         </p>
       </header>
 

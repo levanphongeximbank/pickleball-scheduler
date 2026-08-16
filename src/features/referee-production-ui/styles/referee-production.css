@@ -61,6 +61,31 @@
   min-width: 72px;
 }
 
+.rp-compact-chrome-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 72px;
+}
+
+.rp-account-menu-header {
+  padding: 10px 16px 8px;
+  max-width: 240px;
+}
+
+.rp-referee-nav-drawer {
+  width: min(300px, 88vw);
+  box-sizing: border-box;
+}
+
+.rp-referee-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 8px 10px 14px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
 .rp-home-header {
   margin-bottom: 8px;
 }

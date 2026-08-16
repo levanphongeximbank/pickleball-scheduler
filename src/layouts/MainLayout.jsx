@@ -57,16 +57,14 @@ function LegacyMainLayoutContent() {
           }}
         >
           {refereeWorkspace && !matchScreen ? (
-            <RefereeCompactChrome
-              onMenuClick={() => setDrawerOpen(true)}
-              title="Trọng tài của tôi"
-              showBack={false}
-            />
+            <RefereeCompactChrome title="Trọng tài của tôi" showBack={false} />
           ) : !refereeWorkspace ? (
             <Header onMenuClick={() => setDrawerOpen(true)} />
           ) : null}
           {isMobile && !refereeWorkspace && <AppContextBar />}
-          <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+          {isMobile && !refereeWorkspace ? (
+            <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+          ) : null}
 
           <Box
             component="main"

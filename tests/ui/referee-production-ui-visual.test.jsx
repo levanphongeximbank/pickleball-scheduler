@@ -10,6 +10,7 @@ import { MemoryRouter } from "react-router-dom";
 import RefereeHome from "../../src/features/referee-production-ui/components/RefereeHome.jsx";
 import RefereeMatchScreen from "../../src/features/referee-production-ui/components/RefereeMatchScreen.jsx";
 import CanonicalCourtView from "../../src/features/referee-production-ui/components/CanonicalCourtView.jsx";
+import RefereeCompactChrome from "../../src/features/referee-production-ui/components/RefereeCompactChrome.jsx";
 import { isRefereeWorkspaceRoute } from "../../src/features/referee-production-ui/application/isRefereeWorkspaceRoute.js";
 import { projectCanonicalCourtView } from "../../src/features/referee-production-ui/projection/projectCanonicalCourtView.js";
 import { projectDreamBreakerRotation } from "../../src/features/referee-production-ui/projection/projectDreamBreakerRotation.js";
@@ -19,6 +20,16 @@ import {
   createScoringFormat,
 } from "../../src/features/competition-core/scoring/index.js";
 import "../../src/features/referee-production-ui/styles/referee-production.css";
+
+const mockSignOut = vi.fn(async () => ({ ok: true }));
+
+vi.mock("../../src/context/AuthContext.jsx", () => ({
+  useAuth: () => ({
+    user: { id: "u1", displayName: "Phong", email: "phong@example.com" },
+    isAuthenticated: true,
+    signOut: (...args) => mockSignOut(...args),
+  }),
+}));
 
 const SIDE_OUT = createScoringFormat({
   scoringSystem: SCORING_SYSTEM.SIDE_OUT,
@@ -636,5 +647,28 @@ describe("match screen visual states @ ~390px", () => {
       expect(node).toHaveAttribute("data-permanent-number", "false");
       expect(node.textContent).not.toMatch(/VĐV\s*#\s*[12]/);
     });
+  });
+});
+
+describe("remediation05: referee account / nav chrome", () => {
+  it("shows account menu trigger, drawer nav, and logout control", async () => {
+    const user = userEvent.setup();
+    mockSignOut.mockClear();
+    render(
+      <MemoryRouter>
+        <RefereeCompactChrome title="Trọng tài của tôi" />
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId("referee-compact-chrome")).toBeInTheDocument();
+    expect(screen.getByTestId("referee-account-menu-trigger")).toBeInTheDocument();
+    await user.click(screen.getByTestId("referee-chrome-menu"));
+    expect(await screen.findByTestId("referee-nav-drawer")).toBeInTheDocument();
+    expect(screen.getByTestId("referee-nav-dashboard")).toBeInTheDocument();
+    expect(screen.getByTestId("referee-nav-assignments")).toBeInTheDocument();
+    expect(screen.getByTestId("referee-nav-account")).toBeInTheDocument();
+    expect(screen.getByTestId("referee-nav-logout")).toBeInTheDocument();
+    await user.click(screen.getByTestId("referee-account-menu-trigger"));
+    expect(await screen.findByTestId("referee-account-profile")).toBeInTheDocument();
+    expect(screen.getByTestId("referee-account-logout")).toBeInTheDocument();
   });
 });

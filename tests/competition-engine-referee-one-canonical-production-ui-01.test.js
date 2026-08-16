@@ -1627,3 +1627,114 @@ test("assignment card action labels", () => {
   });
   assert.equal(done.actionLabel, "XEM KẾT QUẢ");
 });
+
+test("remediation05: score ACK never regresses IN_PROGRESS → READY (adapter status ignored)", () => {
+  const scoreProjection = {
+    points: { SIDE_A: 8, SIDE_B: 3 },
+    serve: { servingSide: "SIDE_A", serverNumber: 1, serverPlayerId: "p1" },
+    format: SIDE_OUT,
+  };
+  const view = buildRefereeMatchView({
+    matchId: "m-regress",
+    competitionMode: "DAILY_PLAY",
+    scoringRules: SIDE_OUT,
+    matchContext: { status: "READY", courtLabel: "Sân 1" },
+    live: {
+      status: "in_progress",
+      statePayload: {
+        canonical: {
+          match: { status: "IN_PROGRESS" },
+          scoreSession: { points: { SIDE_A: 8, SIDE_B: 3 } },
+        },
+      },
+    },
+    assignedMatch: {
+      lifecycleState: null,
+      scoreProjection,
+      match: { status: null },
+    },
+    participants: {
+      sides: [
+        { sideKey: "A", participantIds: ["p1", "p2"] },
+        { sideKey: "B", participantIds: ["p3", "p4"] },
+      ],
+    },
+  });
+  assert.equal(view.matchStatus, "IN_PROGRESS");
+  assert.equal(view.canStart, false);
+  assert.equal(view.canScore, true);
+  assert.equal(view.currentScore.points.SIDE_A, 8);
+  assert.equal(view.currentScore.points.SIDE_B, 3);
+});
+
+test("remediation05: scoreProjection alone blocks READY/canStart even if adapter says READY", () => {
+  const view = buildRefereeMatchView({
+    matchId: "m-score-only",
+    competitionMode: "INTERNAL",
+    scoringRules: SIDE_OUT,
+    matchContext: { status: "READY" },
+    assignedMatch: {
+      lifecycleState: "READY",
+      scoreProjection: {
+        points: { SIDE_A: 1, SIDE_B: 0 },
+        serve: { servingSide: "SIDE_A", serverNumber: 2, serverPlayerId: "p1" },
+        format: SIDE_OUT,
+      },
+    },
+  });
+  assert.equal(view.matchStatus, "IN_PROGRESS");
+  assert.equal(view.canStart, false);
+});
+
+for (const mode of [
+  COMPETITION_REFEREE_MODE.DAILY_PLAY,
+  COMPETITION_REFEREE_MODE.INTERNAL,
+  COMPETITION_REFEREE_MODE.OFFICIAL,
+  COMPETITION_REFEREE_MODE.TEAM,
+]) {
+  test(`remediation05: ${mode} start→submitPoint→ACK stays IN_PROGRESS; F5 reload same`, async () => {
+    const { runtime } = createUiRuntime();
+    const fixture = modeFixture(mode);
+    await seedAssigned(runtime, fixture);
+    const client = createClient(runtime, [fixture]);
+    const started = await startSideOutWithLineup(client, fixture, {
+      playerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+      serverPlayerId: "p1",
+      serverNumber: 2,
+      servingSide: "SIDE_A",
+    });
+    assert.equal(started.view.matchStatus, "IN_PROGRESS");
+    assert.equal(started.view.canStart, false);
+    assert.equal(started.view.canScore, true);
+
+    const scored = await client.submitPoint({
+      tenantId: "tenant-1",
+      matchId: fixture.matchId,
+      actor: ACTOR,
+      scoringSide: SCORING_SIDE.SIDE_A,
+      expectedVersion: started.view.expectedVersion,
+      idempotencyKey: `r05-score-${mode}`,
+    });
+    assert.equal(scored.ok, true);
+    assert.equal(scored.view.matchStatus, "IN_PROGRESS");
+    assert.equal(scored.view.canStart, false);
+    assert.equal(scored.view.canScore, true);
+    assert.notEqual(scored.view.matchStatus, "READY");
+    assert.notEqual(scored.view.matchStatus, "READY_TO_START");
+    assert.ok(Number(scored.view.currentScore.points.SIDE_A) >= 1);
+
+    const reloaded = await client.getMatchView({
+      tenantId: "tenant-1",
+      matchId: fixture.matchId,
+      actor: ACTOR,
+    });
+    assert.equal(reloaded.ok, true);
+    assert.equal(reloaded.view.matchStatus, "IN_PROGRESS");
+    assert.equal(reloaded.view.canStart, false);
+    assert.equal(reloaded.view.canScore, true);
+    assert.equal(
+      reloaded.view.currentScore.points.SIDE_A,
+      scored.view.currentScore.points.SIDE_A
+    );
+  });
+}

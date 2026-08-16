@@ -80,7 +80,7 @@ function CanonicalAppShellInner() {
           }}
         >
           {!refereeWorkspace && <CanonicalSidebar menuGroups={menuGroups} />}
-          <CanonicalMobileDrawer menuGroups={menuGroups} />
+          {!refereeWorkspace && <CanonicalMobileDrawer menuGroups={menuGroups} />}
 
           <Box
             sx={{
@@ -95,11 +95,7 @@ function CanonicalAppShellInner() {
             }}
           >
             {refereeWorkspace && !matchScreen ? (
-              <RefereeCompactChrome
-                onMenuClick={openMobileDrawer}
-                title="Trọng tài của tôi"
-                showBack={false}
-              />
+              <RefereeCompactChrome title="Trọng tài của tôi" showBack={false} />
             ) : !refereeWorkspace ? (
               <CanonicalTopBar />
             ) : null}
