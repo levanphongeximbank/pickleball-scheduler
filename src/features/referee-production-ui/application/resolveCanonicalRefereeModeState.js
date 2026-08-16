@@ -120,21 +120,47 @@ async function loadDisciplines(client, header) {
 }
 
 /**
- * Lineup player ids are optional display enrichment.
- * Team names remain the primary Home card participants when lineups are absent.
+ * Lineup player ids + display enrichment from published team lineups.
  */
-async function loadLineupPlayerNames(client, header) {
+async function loadPublishedLineups(client, header, matchup) {
   const { data } = await client
-    .from("team_tournament_lineup_entries")
-    .select("player_id")
-    .eq("tournament_id", header.tournament_id)
-    .limit(200);
-  const names = {};
+    .from("team_tournament_lineups")
+    .select("team_external_id, status, selections")
+    .eq("matchup_id", matchup.id);
+  const byTeam = {};
   for (const row of data || []) {
-    const playerId = trim(row.player_id);
-    if (playerId) names[playerId] = playerId;
+    const teamId = trim(row.team_external_id);
+    if (!teamId) continue;
+    byTeam[teamId] = {
+      status: trim(row.status).toLowerCase(),
+      selections: asObject(row.selections) || {},
+    };
+  }
+  return byTeam;
+}
+
+async function loadPlayerDisplayNames(client, playerIds) {
+  const ids = [...new Set((playerIds || []).map(trim).filter(Boolean))];
+  const names = {};
+  if (!ids.length) return names;
+  const { data } = await client.from("profiles").select("id, display_name, player_id").in("id", ids);
+  for (const row of data || []) {
+    const label = trim(row.display_name) || null;
+    if (!label) continue;
+    if (row.id) names[String(row.id)] = label;
+    if (row.player_id) names[String(row.player_id)] = label;
+  }
+  for (const id of ids) {
+    if (!names[id]) names[id] = id;
   }
   return names;
+}
+
+function lineupIdsForDiscipline(lineupRow, disciplineExternalId) {
+  if (!lineupRow?.selections) return [];
+  const key = trim(disciplineExternalId);
+  const raw = lineupRow.selections[key];
+  return Array.isArray(raw) ? raw.map(trim).filter(Boolean) : [];
 }
 
 /**
@@ -191,34 +217,56 @@ async function resolveTeamModeState(client, { tenantId, competitionId, matchId, 
   }
 
   const subMatches = await loadSubMatches(client, matchup);
-  const [teamNames, disciplines, lineupNames] = await Promise.all([
+  const [teamNames, disciplines, publishedLineups] = await Promise.all([
     loadTeams(client, header),
     loadDisciplines(client, header),
-    loadLineupPlayerNames(client, header),
+    loadPublishedLineups(client, header, matchup),
   ]);
   const teamAId = trim(matchup.team_a_id);
   const teamBId = trim(matchup.team_b_id);
-  const participantNames = {
-    ...lineupNames,
-    ...(teamAId && teamNames[teamAId] ? { [teamAId]: teamNames[teamAId] } : {}),
-    ...(teamBId && teamNames[teamBId] ? { [teamBId]: teamNames[teamBId] } : {}),
-  };
+  const lineupARoot = publishedLineups[teamAId] || null;
+  const lineupBRoot = publishedLineups[teamBId] || null;
 
+  const allPlayerIds = [];
   const projectedSubs = subMatches.map((sub) => {
     const externalId = trim(sub.external_sub_match_id) || trim(sub.id);
-    const discipline = disciplines[trim(sub.discipline_external_id)] || {};
+    const disciplineId = trim(sub.discipline_external_id);
+    const discipline = disciplines[disciplineId] || {};
     const isDreambreaker =
       String(sub.discipline_external_id || "").toLowerCase() === "dreambreaker" ||
       externalId.startsWith("db-");
+    const lineupA = lineupIdsForDiscipline(lineupARoot, disciplineId);
+    const lineupB = lineupIdsForDiscipline(lineupBRoot, disciplineId);
+    allPlayerIds.push(...lineupA, ...lineupB);
     return {
       id: externalId,
       subMatchId: externalId,
       status: sub.status || "READY_TO_START",
       discipline: sub.discipline_external_id || null,
       isDreambreaker,
-      lineupA: [],
-      lineupB: [],
-      lineupsLocked: true,
+      lineupA,
+      lineupB,
+      lineupsLocked:
+        lineupARoot?.status === "published" ||
+        lineupARoot?.status === "locked" ||
+        lineupBRoot?.status === "published" ||
+        lineupBRoot?.status === "locked",
+      sides: [
+        {
+          sideKey: "A",
+          teamId: teamAId,
+          teamName: teamNames[teamAId] || null,
+          displayName: teamNames[teamAId] || null,
+          participantIds: lineupA,
+        },
+        {
+          sideKey: "B",
+          teamId: teamBId,
+          teamName: teamNames[teamBId] || null,
+          displayName: teamNames[teamBId] || null,
+          participantIds: lineupB,
+        },
+      ],
       scoringRules: discipline.scoringFormat || null,
       scoringFormat: discipline.scoringFormat || null,
       stage: null,
@@ -228,6 +276,13 @@ async function resolveTeamModeState(client, { tenantId, competitionId, matchId, 
     };
   });
 
+  const playerNames = await loadPlayerDisplayNames(client, allPlayerIds);
+  const participantNames = {
+    ...playerNames,
+    ...(teamAId && teamNames[teamAId] ? { [teamAId]: teamNames[teamAId] } : {}),
+    ...(teamBId && teamNames[teamBId] ? { [teamBId]: teamNames[teamBId] } : {}),
+  };
+
   const matchupKey = trim(matchup.external_matchup_id) || trim(matchup.id);
   const defaultScoring =
     disciplines["mlp-md"]?.scoringFormat ||
@@ -235,6 +290,8 @@ async function resolveTeamModeState(client, { tenantId, competitionId, matchId, 
     Object.values(disciplines).find((d) => d.scoringFormat)?.scoringFormat ||
     null;
 
+  const focusSub =
+    projectedSubs.find((sub) => sub.id === trim(matchId)) || projectedSubs[0] || null;
   const matchupProjection = {
     matchupId: matchupKey,
     teamAId,
@@ -247,7 +304,9 @@ async function resolveTeamModeState(client, { tenantId, competitionId, matchId, 
     scheduledAt: matchup.scheduled_at || null,
     stage: asObject(matchup.schedule_meta)?.stage || null,
     round: asObject(matchup.schedule_meta)?.round ?? null,
-    lineupsLocked: true,
+    lineupsLocked: focusSub?.lineupsLocked === true,
+    lineupA: focusSub?.lineupA || [],
+    lineupB: focusSub?.lineupB || [],
     scoringRules: defaultScoring,
     scoringFormat: defaultScoring,
     subMatches: projectedSubs,
@@ -262,7 +321,7 @@ async function resolveTeamModeState(client, { tenantId, competitionId, matchId, 
           rotationPoints: 4,
         },
     },
-    sides: [
+    sides: focusSub?.sides || [
       {
         sideKey: "A",
         teamId: teamAId,

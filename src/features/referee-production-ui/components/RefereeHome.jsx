@@ -4,6 +4,7 @@ import {
   HOME_STATUS_FILTER,
   buildRefereeHomeSummary,
   filterAssignmentsByHomeStatus,
+  normalizeRefereeHomeCard,
 } from "../projection/buildRefereeHomeSummary.js";
 
 export default function RefereeHome({
@@ -13,10 +14,14 @@ export default function RefereeHome({
   userLabel = "bạn",
 }) {
   const [filter, setFilter] = useState(HOME_STATUS_FILTER.ALL);
-  const summary = useMemo(() => buildRefereeHomeSummary(assignments), [assignments]);
+  const normalized = useMemo(
+    () => (Array.isArray(assignments) ? assignments.map(normalizeRefereeHomeCard) : []),
+    [assignments]
+  );
+  const summary = useMemo(() => buildRefereeHomeSummary(normalized), [normalized]);
   const visible = useMemo(
-    () => filterAssignmentsByHomeStatus(assignments, filter),
-    [assignments, filter]
+    () => filterAssignmentsByHomeStatus(normalized, filter),
+    [normalized, filter]
   );
 
   return (
@@ -82,7 +87,7 @@ export default function RefereeHome({
       {loading ? <p className="rp-sub">Đang tải…</p> : null}
       {!loading && visible.length === 0 ? (
         <p className="rp-sub" data-testid="referee-home-empty">
-          {assignments.length === 0
+          {normalized.length === 0
             ? `Chưa có trận được phân công cho ${userLabel}.`
             : "Không có trận trong bộ lọc này."}
         </p>

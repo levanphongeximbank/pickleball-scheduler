@@ -21,6 +21,7 @@ export {
   buildRefereeHomeSummary,
   filterAssignmentsByHomeStatus,
   resolveAssignmentHomeBucket,
+  normalizeRefereeHomeCard,
 } from "./projection/buildRefereeHomeSummary.js";
 export { projectDreamBreakerRotation } from "./projection/projectDreamBreakerRotation.js";
 export { projectCanonicalCourtView } from "./projection/projectCanonicalCourtView.js";

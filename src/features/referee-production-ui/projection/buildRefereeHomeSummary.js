@@ -4,7 +4,7 @@
 
 import { MATCH_STATUS } from "../../competition-core/matches/index.js";
 import { mapModeStatusToCore15 } from "../../competition-engine/integration/referee/adapters/shared/matchStatusMapper.js";
-import { ASSIGNMENT_CARD_ACTION } from "../constants.js";
+import { ASSIGNMENT_CARD_ACTION, ASSIGNMENT_CARD_ACTION_LABEL } from "../constants.js";
 
 export const HOME_STATUS_FILTER = Object.freeze({
   ALL: "ALL",
@@ -32,31 +32,54 @@ const DONE_STATUSES = new Set([
 ]);
 
 /**
+ * Single source for Home tabs/counters/labels.
+ * Product rule: TIẾP TỤC = Đang thi đấu (never trust a stale homeStatusBucket).
  * @param {object} card
  * @returns {"UPCOMING"|"LIVE"|"DONE"}
  */
 export function resolveAssignmentHomeBucket(card = {}) {
-  // Prefer precomputed bucket from card builder (single source of truth).
-  const precomputed = String(card.homeStatusBucket || "").trim().toUpperCase();
-  if (
-    precomputed === HOME_STATUS_FILTER.LIVE ||
-    precomputed === HOME_STATUS_FILTER.DONE ||
-    precomputed === HOME_STATUS_FILTER.UPCOMING
-  ) {
-    return precomputed;
-  }
+  const action = String(card.action || "").trim().toUpperCase();
+  const actionLabel = String(card.actionLabel || "").trim().toUpperCase();
 
-  // Action is product UX authority for Home tabs (TIẾP TỤC = đang thi đấu).
-  if (card.action === ASSIGNMENT_CARD_ACTION.CONTINUE) return HOME_STATUS_FILTER.LIVE;
-  if (card.action === ASSIGNMENT_CARD_ACTION.VIEW_RESULT) return HOME_STATUS_FILTER.DONE;
+  if (
+    action === ASSIGNMENT_CARD_ACTION.CONTINUE ||
+    actionLabel === String(ASSIGNMENT_CARD_ACTION_LABEL.CONTINUE).toUpperCase()
+  ) {
+    return HOME_STATUS_FILTER.LIVE;
+  }
+  if (
+    action === ASSIGNMENT_CARD_ACTION.VIEW_RESULT ||
+    actionLabel === String(ASSIGNMENT_CARD_ACTION_LABEL.VIEW_RESULT).toUpperCase()
+  ) {
+    return HOME_STATUS_FILTER.DONE;
+  }
   if (card.acceptedOfficialResult === true) return HOME_STATUS_FILTER.DONE;
 
-  const status = card.matchStatus
-    ? mapModeStatusToCore15(card.matchStatus)
-    : "";
+  const status = card.matchStatus ? mapModeStatusToCore15(card.matchStatus) : "";
   if (LIVE_STATUSES.has(status)) return HOME_STATUS_FILTER.LIVE;
   if (DONE_STATUSES.has(status)) return HOME_STATUS_FILTER.DONE;
   return HOME_STATUS_FILTER.UPCOMING;
+}
+
+/**
+ * Recompute bucket + Vietnamese label so Home never shows mismatched chip vs counters.
+ * @param {object} card
+ */
+export function normalizeRefereeHomeCard(card = {}) {
+  const bucket = resolveAssignmentHomeBucket({
+    ...card,
+    homeStatusBucket: undefined,
+  });
+  return Object.freeze({
+    ...card,
+    homeStatusBucket: bucket,
+    homeStatusLabel:
+      bucket === HOME_STATUS_FILTER.LIVE
+        ? "Đang thi đấu"
+        : bucket === HOME_STATUS_FILTER.DONE
+          ? "Hoàn tất"
+          : "Sắp diễn ra",
+  });
 }
 
 /**

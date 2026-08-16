@@ -254,6 +254,41 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       competitionId: assignment.competitionId,
       matchId: assignment.matchId,
     });
+    const live = liveInfo.live || {};
+    const scoreProjection = assigned.assignedMatch?.scoreProjection || null;
+    const enrichedScoreProjection =
+      scoreProjection && !scoreProjection.serve && (live.servingPlayerId || live.servingTeamId)
+        ? {
+            ...scoreProjection,
+            serve: {
+              servingSide:
+                live.servingTeamId && live.teamBId && String(live.servingTeamId) === String(live.teamBId)
+                  ? "SIDE_B"
+                  : "SIDE_A",
+              serverNumber: live.serverNumber,
+              serverPlayerId: live.servingPlayerId,
+              receiverPlayerId: live.receivingPlayerId,
+            },
+          }
+        : scoreProjection;
+    const courtState = {
+      ...(extras.courtState || liveInfo.courtState || {}),
+      serverPlayerId:
+        extras.courtState?.serverPlayerId ||
+        liveInfo.courtState?.serverPlayerId ||
+        live.servingPlayerId ||
+        null,
+      receiverPlayerId:
+        extras.courtState?.receiverPlayerId ||
+        liveInfo.courtState?.receiverPlayerId ||
+        live.receivingPlayerId ||
+        null,
+      courtOrientation:
+        extras.courtState?.courtOrientation ||
+        liveInfo.courtState?.courtOrientation ||
+        live.courtOrientation ||
+        null,
+    };
     return buildRefereeMatchView({
       matchId: assignment.matchId,
       competitionMode: mode,
@@ -265,6 +300,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       },
       matchContext: {
         ...matchContext,
+        status: matchContext.status || live.status || null,
         courtLabel:
           matchContext.courtLabel ||
           modeState?.matchups?.[assignment.matchId]?.courtLabel ||
@@ -275,9 +311,11 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       scoringRules,
       lifecyclePolicy,
       capabilities,
-      assignedMatch: assigned.assignedMatch,
+      assignedMatch: enrichedScoreProjection
+        ? { ...assigned.assignedMatch, scoreProjection: enrichedScoreProjection }
+        : assigned.assignedMatch,
       operationsProjection: assigned.projection,
-      courtState: extras.courtState || liveInfo.courtState,
+      courtState,
       modeState,
       participantNames: names,
       expectedVersion: liveInfo.expectedVersion,
@@ -403,7 +441,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           }
         }
       }
-      const [names, assignedMatch] = await Promise.all([
+      const [names, assignedMatch, liveInfo] = await Promise.all([
         resolveNames(row, modeState),
         facade
           .getAssignedMatch({
@@ -417,6 +455,11 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           })
           .then((got) => got.assignedMatch)
           .catch(() => null),
+        readLiveVersion({
+          tenantId: row.tenantId || tenantId,
+          competitionId: row.competitionId,
+          matchId: row.matchId,
+        }).catch(() => null),
       ]);
       return buildRefereeAssignmentCard({
         assignment: {
@@ -431,6 +474,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         matchContext,
         participants,
         assignedMatch,
+        live: liveInfo?.live || null,
         participantNames: names,
         competitionMode: mode,
         modeState,

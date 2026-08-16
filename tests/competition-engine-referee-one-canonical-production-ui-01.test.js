@@ -926,6 +926,7 @@ test("home daily summary + status filters", async () => {
   const {
     buildRefereeHomeSummary,
     filterAssignmentsByHomeStatus,
+    normalizeRefereeHomeCard,
     HOME_STATUS_FILTER,
   } = await import(
     "../src/features/referee-production-ui/projection/buildRefereeHomeSummary.js"
@@ -944,6 +945,30 @@ test("home daily summary + status filters", async () => {
   assert.equal(
     filterAssignmentsByHomeStatus(assignments, HOME_STATUS_FILTER.LIVE).length,
     1
+  );
+
+  // Screenshot regression: TIẾP TỤC must count as LIVE even if stale bucket says DONE.
+  const stale = normalizeRefereeHomeCard({
+    matchId: "sub-syysofdv",
+    matchStatus: "COMPLETED",
+    action: "CONTINUE",
+    actionLabel: "TIẾP TỤC",
+    homeStatusBucket: "DONE",
+    homeStatusLabel: "Hoàn tất",
+    acceptedOfficialResult: true,
+  });
+  assert.equal(stale.homeStatusBucket, "LIVE");
+  assert.equal(stale.homeStatusLabel, "Đang thi đấu");
+  const staleSummary = buildRefereeHomeSummary([stale]);
+  assert.equal(staleSummary.counters.live, 1);
+  assert.equal(staleSummary.counters.done, 0);
+  assert.equal(
+    filterAssignmentsByHomeStatus([stale], HOME_STATUS_FILTER.LIVE).length,
+    1
+  );
+  assert.equal(
+    filterAssignmentsByHomeStatus([stale], HOME_STATUS_FILTER.DONE).length,
+    0
   );
 });
 

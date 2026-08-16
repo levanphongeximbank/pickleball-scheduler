@@ -196,6 +196,47 @@ describe("1. Referee Home visual", () => {
       /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
     );
   });
+
+  it("1b. TIẾP TỤC counts as Đang thi đấu even when stale bucket says DONE", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <div style={{ width: 390 }}>
+          <RefereeHome
+            userLabel="Trọng tài 01"
+            assignments={[
+              {
+                competitionId: "comp-1",
+                matchId: "sub-syysofdv",
+                matchStatus: "COMPLETED",
+                homeStatusBucket: "DONE",
+                homeStatusLabel: "Hoàn tất",
+                acceptedOfficialResult: true,
+                competitionName: "Giải đồng đội 13/8/2026",
+                participantA: "Đội 4",
+                participantB: "Đội 3",
+                courtLabel: "Sân 2",
+                scheduledTime: "09:11",
+                action: "CONTINUE",
+                actionLabel: "TIẾP TỤC",
+                href: "/referee/match/sub-syysofdv",
+              },
+            ]}
+          />
+        </div>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId("counter-live")).toHaveTextContent("1");
+    expect(screen.getByTestId("counter-done")).toHaveTextContent("0");
+    expect(screen.getByTestId("filter-live")).toHaveTextContent("1");
+    await user.click(screen.getByTestId("filter-live"));
+    expect(screen.getByTestId("assignment-list").querySelectorAll("[data-testid='referee-assignment-card']")).toHaveLength(1);
+    expect(screen.getByTestId("status-badge")).toHaveTextContent("Đang thi đấu");
+    expect(screen.getByTestId("assignment-action")).toHaveTextContent("TIẾP TỤC");
+    await user.click(screen.getByTestId("filter-done"));
+    expect(screen.getByTestId("referee-home-empty")).toBeInTheDocument();
+  });
 });
 
 describe("match screen visual states @ ~390px", () => {
