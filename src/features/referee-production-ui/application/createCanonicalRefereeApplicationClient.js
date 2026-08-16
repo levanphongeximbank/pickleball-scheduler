@@ -450,28 +450,25 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         }).catch(() => null),
       ]);
       // Home list: prefer live lifecycle (fast). Full assignedMatch only when live is absent.
-      let assignedMatch = null;
       const liveStatus = liveInfo?.live?.status || null;
-      if (liveStatus) {
-        assignedMatch = Object.freeze({
-          lifecycleState: liveStatus,
-          scoreProjection: null,
-          validationStatus: null,
-        });
-      } else {
-        assignedMatch = await facade
-          .getAssignedMatch({
-            tenantId: row.tenantId || tenantId,
-            competitionId: row.competitionId,
-            matchId: row.matchId,
-            venueId: row.venueId || modeState?.venueId,
-            actor,
-            competitionMode: mode,
-            modeState,
+      const assignedMatch = liveStatus
+        ? Object.freeze({
+            lifecycleState: liveStatus,
+            scoreProjection: null,
+            validationStatus: null,
           })
-          .then((got) => got.assignedMatch)
-          .catch(() => null);
-      }
+        : await facade
+            .getAssignedMatch({
+              tenantId: row.tenantId || tenantId,
+              competitionId: row.competitionId,
+              matchId: row.matchId,
+              venueId: row.venueId || modeState?.venueId,
+              actor,
+              competitionMode: mode,
+              modeState,
+            })
+            .then((got) => got.assignedMatch)
+            .catch(() => null);
       return buildRefereeAssignmentCard({
         assignment: {
           ...row,

@@ -14,7 +14,7 @@ export default function RefereeHome({
 }) {
   const [filter, setFilter] = useState(HOME_STATUS_FILTER.ALL);
   const summary = useMemo(() => buildRefereeHomeSummary(assignments), [assignments]);
-  const board = summary.board || [];
+  const board = useMemo(() => summary.board || [], [summary]);
   const visible = useMemo(
     () => filterAssignmentsByHomeStatus(board, filter),
     [board, filter]
