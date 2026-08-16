@@ -8,6 +8,18 @@ export {
 } from "./constants/courtResourceContract.js";
 
 export {
+  COURT_RESOURCE_OWNER,
+  COURT_RESOURCE_GATEWAY_OWNER,
+  COURT_MASTER_OWNER,
+  COURT_ACCESS_AUTHORITY_OWNER,
+  COMPETITION_PROVIDER_BINDING_OWNER,
+  COURT_MASTER_TABLE,
+  COURT_CLUSTER_TOPOLOGY_TABLE,
+  COURT_ACCESS_AUTHORITY_TABLE,
+  CANONICAL_LIST_ELIGIBLE_RPC,
+} from "./constants/courtOperationsOwnership.js";
+
+export {
   getCourtAvailability,
   listEligibleCourts,
   reserveCourts,
@@ -76,3 +88,7 @@ export {
   projectCanonicalCourtToLegacy,
   projectLegacyCourtCompatibility,
 } from "./services/legacyCourtCompatibilityProjection.js";
+export {
+  listEligiblePhysicalCourts,
+  createCanonicalInventoryReader,
+} from "./services/canonicalCourtInventoryService.js";

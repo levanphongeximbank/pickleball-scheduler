@@ -17,6 +17,10 @@ reservation or runtime authorities.
   `classification` (`deterministic`, `ambiguous`, and so on) never implies that access
   is enabled. `clubs.registered_cluster_id` is Club facility registration and
   is not `court_resource_club_operational_access`.
+- Runtime eligibility (Batch 1) reads Court Master + Access Authority:
+  `tenantId + clubId + optional clusterId` → active physical courts with
+  **enabled** operational access. `CourtResourceGateway.listEligibleCourts`
+  uses that path and must not fall back to `club_data_v3` / localStorage.
 - A legacy court mapping key is exactly `(tenantId, clubId, sourceSystem,
   sourceVersion, legacyClusterId, legacyCourtId)`. Provenance is mandatory; no
   `legacy` or `unversioned` fallback is permitted.

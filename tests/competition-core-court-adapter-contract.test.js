@@ -14,7 +14,11 @@ import {
   COURT_RESOURCE_CODE,
   OWNERSHIP_STATUS,
 } from "../src/features/court-resource/index.js";
-import { __resetCourtResourceGatewayDepsForTests } from "../src/features/court-resource/services/courtResourceGateway.js";
+import {
+  __resetCourtResourceGatewayDepsForTests,
+  __setCourtResourceGatewayDepsForTests,
+} from "../src/features/court-resource/services/courtResourceGateway.js";
+import { createCanonicalInventoryReader } from "../src/features/court-resource/services/canonicalCourtInventoryService.js";
 import {
   COMPETITION_COURT_ADAPTER_CONTRACT_VERSION,
   COMPETITION_COURT_ADAPTER_CAPABILITY,
@@ -40,6 +44,12 @@ const DATE = "2026-08-15";
 const CAPACITY = { date: DATE, startTime: "08:00", endTime: "18:00" };
 const MATCH = { date: DATE, startTime: "10:00", endTime: "10:30" };
 const PHYSICAL = ["NL_C01", "NL_C02", "NL_C03", "NL_C04"];
+const CANONICAL_PHYSICAL = [
+  "11111111-1111-4111-8111-111111111111",
+  "22222222-2222-4222-8222-222222222222",
+  "33333333-3333-4333-8333-333333333333",
+  "44444444-4444-4444-8444-444444444444",
+];
 
 function createLocalStorageMock(seed = {}) {
   const store = new Map(Object.entries(seed));
@@ -78,6 +88,31 @@ function seedCourts() {
   );
   saveBookingsForClub([], CLUB_ID);
   saveCourtManagementSettings(CLUB_ID, { openHour: 6, closeHour: 22 });
+}
+
+function bindCanonicalEligibleCourts() {
+  __setCourtResourceGatewayDepsForTests({
+    listEligiblePhysicalCourts: createCanonicalInventoryReader({
+      clubs: [{ id: CLUB_ID, tenantId: TENANT_A }],
+      clusters: [{ id: CLUSTER, venueId: TENANT_A }],
+      physicalCourts: CANONICAL_PHYSICAL.map((physicalCourtId, index) => ({
+        physicalCourtId,
+        tenantId: TENANT_A,
+        clusterId: CLUSTER,
+        displayName: `Nam Long ${index + 1}`,
+        displayCode: PHYSICAL[index],
+        displayNumber: String(index + 1),
+        sortOrder: index + 1,
+        lifecycleStatus: "active",
+      })),
+      clubOperationalAccess: CANONICAL_PHYSICAL.map((physicalCourtId) => ({
+        tenantId: TENANT_A,
+        clubId: CLUB_ID,
+        physicalCourtId,
+        status: "enabled",
+      })),
+    }),
+  });
 }
 
 function baseInput(extra = {}) {
@@ -401,6 +436,7 @@ describe("live gateway binding", () => {
     setActiveClubId(DEFAULT_CLUB.id);
     __resetCourtResourceGatewayDepsForTests();
     seedCourts();
+    bindCanonicalEligibleCourts();
   });
 
   afterEach(() => {

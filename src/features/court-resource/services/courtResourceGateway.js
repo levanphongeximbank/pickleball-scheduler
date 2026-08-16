@@ -39,6 +39,7 @@ import {
   getCourtAvailability as getCanonicalCourtAvailability,
 } from "../../venue-court/services/courtAvailabilityService.js";
 import { listCourts } from "../../venue-court/services/courtInventoryService.js";
+import { productionListEligiblePhysicalCourts } from "./canonicalCourtInventoryClient.js";
 import { assertCourtClusterMembership } from "../../venue-court/services/courtClusterMembershipService.js";
 import {
   getReservationOwner as lookupReservationOwner,
@@ -133,6 +134,7 @@ function defaultResolveLegacyPhysicalCourt(options = {}) {
 const defaultDeps = Object.freeze({
   getCourtAvailability: getCanonicalCourtAvailability,
   listCourts,
+  listEligiblePhysicalCourts: productionListEligiblePhysicalCourts,
   loadBookingsForClub,
   checkBookingConflict,
   createBooking,
@@ -552,79 +554,85 @@ export async function getCourtAvailability(rawOptions = {}) {
   );
 }
 
+function normalizeEligibleInventoryResult(listed) {
+  if (!listed || typeof listed !== "object") {
+    return fail(
+      COURT_RESOURCE_CODE.DATA_UNAVAILABLE,
+      "Canonical inventory returned no result.",
+      { courts: [] }
+    );
+  }
+  if (listed.ok === false) {
+    return { courts: [], ...listed };
+  }
+  return {
+    ok: true,
+    code: listed.code || COURT_RESOURCE_CODE.OK,
+    courts: Array.isArray(listed.courts) ? listed.courts.map((court) => ({ ...court })) : [],
+    inventorySource: listed.inventorySource,
+    accessAuthority: listed.accessAuthority,
+  };
+}
+
 /**
- * Inventory listing for a club operational scope.
- * Cluster is a filter only. Does not reserve courts.
+ * Canonical inventory listing for a club operational scope.
+ * Authority: Court Master + club operational access. Cluster is a filter only.
+ * Does not read Club V3 blob, club storage loaders, or browser storage.
  */
 export function listEligibleCourts(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
   const clubId = trimId(options.clubId);
   const tenantId = trimId(options.tenantId) || trimId(options.venueId);
   const clusterId = trimId(options.clusterId);
-  const requestedIds = selectedCourtIds(options);
 
+  if (!tenantId) {
+    return fail(COURT_RESOURCE_CODE.TENANT_MISMATCH, "tenantId is required.", { courts: [] });
+  }
   if (!clubId) {
     return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required — no first-club fallback.", {
       courts: [],
     });
   }
-  if (trimId(options.courtLabel) && requestedIds.length === 0) {
+  if (
+    trimId(options.courtLabel)
+    && selectedPhysicalCourtIds(options).length === 0
+    && selectedCourtIds(options).length === 0
+  ) {
     return fail(
       COURT_RESOURCE_CODE.SYNTHETIC_COURT_DENIED,
-      "courtLabel is display-only — eligibility identity is courtId.",
+      "courtLabel is display-only — eligibility identity is physicalCourtId.",
       { courts: [] }
     );
   }
 
-  let courts;
+  if (typeof deps.listEligiblePhysicalCourts !== "function") {
+    return fail(
+      COURT_RESOURCE_CODE.CANONICAL_PATH_UNAVAILABLE,
+      "Canonical inventory reader is not bound — fail closed.",
+      { courts: [] }
+    );
+  }
+
   try {
-    courts = deps.listCourts({
-      clubId,
-      tenantId,
-      clusterId,
-      includeInactive: false,
-    });
+    return settle(
+      deps.listEligiblePhysicalCourts({
+        tenantId,
+        clubId,
+        clusterId,
+        physicalCourtIds: selectedPhysicalCourtIds(options),
+        selectedCourtIds: selectedCourtIds(options),
+        courtId: options.courtId,
+      })
+    ).then(normalizeEligibleInventoryResult, (error) =>
+      fail(COURT_RESOURCE_CODE.DATA_UNAVAILABLE, error?.message || "Failed to load canonical court inventory.", {
+        courts: [],
+      })
+    );
   } catch (error) {
-    return fail(COURT_RESOURCE_CODE.DATA_UNAVAILABLE, error?.message || "Failed to load court inventory.", {
+    return fail(COURT_RESOURCE_CODE.DATA_UNAVAILABLE, error?.message || "Failed to load canonical court inventory.", {
       courts: [],
     });
   }
-
-  const inventory = Array.isArray(courts) ? courts : [];
-  if (requestedIds.length === 0) {
-    return {
-      ok: true,
-      code: COURT_RESOURCE_CODE.OK,
-      courts: inventory.map((court) => ({ ...court })),
-    };
-  }
-
-  const matched = [];
-  const failed = [];
-  for (const courtId of requestedIds) {
-    const membership = deps.assertCourtClusterMembership({
-      clubId,
-      tenantId,
-      venueId: trimId(options.venueId),
-      clusterId,
-      courtId,
-      courts: inventory,
-      includeInactive: false,
-    });
-    if (!membership.ok) {
-      failed.push({ courtId, code: membership.code, error: membership.error });
-      continue;
-    }
-    matched.push(membership.court ? { ...membership.court } : { id: courtId });
-  }
-  if (failed.length) {
-    return fail(failed[0].code, failed[0].error, { courts: [], failed });
-  }
-  return {
-    ok: true,
-    code: COURT_RESOURCE_CODE.OK,
-    courts: matched,
-  };
 }
 
 export async function reserveCourts(rawOptions = {}) {

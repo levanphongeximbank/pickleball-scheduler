@@ -65,5 +65,6 @@ export const COURT_RESOURCE_CODE = Object.freeze({
   REQUEST_ID_REQUIRED: "REQUEST_ID_REQUIRED",
 });
 
+/** Transitional venue-court compatibility source. Not Court Operations inventory authority. */
 export const CANONICAL_INVENTORY_SOURCE = "club_data_v3";
 export const CLUB_DATA_V3_TABLE = "club_data_v3";
