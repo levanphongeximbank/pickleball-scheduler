@@ -1,4 +1,9 @@
-import { getActiveClubId } from "../../../data/club.js";
+import {
+  clearActiveClubIdPreference,
+  getActiveClubId,
+  getActiveClubIdPreference,
+} from "../../../data/club.js";
+import { setActiveClusterId } from "../../../data/courtCluster.js";
 import {
   clearActiveTenantId,
   loadActiveTenantId,
@@ -8,6 +13,7 @@ import { saveVenues } from "../../../data/venue.js";
 import { switchActiveClub } from "../../../domain/clubService.js";
 import { invalidateClubRegistryCache } from "../../club/registry/clubRegistryCache.js";
 import { quarantineOfflineQueueForTenantSwitch } from "../../mobile/services/offlineQueueQuarantine.js";
+import { getExplicitTenantIdForClub } from "../guards/tenantGuard.js";
 import {
   hydrateSupabaseVenuesToLocalRegistry,
   resolveTenantRecord,
@@ -32,6 +38,32 @@ function resolveSwitchableTenant(tenantId, catalog = []) {
   }
 
   return findCatalogTenant(catalog, trimmed) || getTenantById(trimmed);
+}
+
+/**
+ * Wave 1 — invalidate incompatible operational descendants before business modules read.
+ * Persisted club/cluster ids are preferences only; foreign tenant preferences are rejected.
+ */
+export function invalidateOperationalContextForTenantSwitch(nextTenantId) {
+  const tenantId = String(nextTenantId || "").trim();
+  const preferredClubId = getActiveClubIdPreference();
+  let clubInvalidated = false;
+
+  if (preferredClubId) {
+    const clubTenant = getExplicitTenantIdForClub(preferredClubId);
+    // Unknown / missing / foreign tenant → clear. Never retain a globally-valid
+    // Super Admin club merely because the actor is platform-wide authorized.
+    if (!tenantId || !clubTenant || clubTenant !== tenantId) {
+      clearActiveClubIdPreference();
+      clubInvalidated = true;
+    }
+  }
+
+  // Cluster is venue/tenant-scoped operational context — always clear on switch;
+  // ClusterProvider re-resolves against the new tenant catalog.
+  setActiveClusterId(null);
+
+  return { clubInvalidated, preferredClubId: clubInvalidated ? null : preferredClubId || null };
 }
 
 /**
@@ -64,6 +96,9 @@ export function commitTenantSwitch({
 
   saveActiveTenantId(trimmed, user?.id);
 
+  // Synchronous descendant invalidation BEFORE business modules consume context.
+  const invalidation = invalidateOperationalContextForTenantSwitch(trimmed);
+
   let clubId = null;
   try {
     invalidateClubRegistryCache({ tenantId: trimmed });
@@ -79,7 +114,13 @@ export function commitTenantSwitch({
     // Active tenant is already committed. Side effects must not leave a half-applied UI.
   }
 
-  return { ok: true, tenantId: trimmed, clubId, tenant };
+  return {
+    ok: true,
+    tenantId: trimmed,
+    clubId,
+    tenant,
+    clubInvalidated: invalidation.clubInvalidated,
+  };
 }
 
 export function readSelectableTenantCatalog() {

@@ -159,23 +159,38 @@ export function filterAccessibleCanonicalClubs({
  *
  * When requireTenant=true (canonical ClubContext path), only clubs with an
  * explicit tenant identity are selectable; the returned activeClub is
- * normalized to expose both tenantId and venueId.
+ * normalized to expose both tenantId and venueId (explicit Wave 1 compatibility
+ * mapping — not a claim that tenant ≡ venue universally).
+ *
+ * When selectedTenantId is provided, clubs outside that operational tenant are
+ * rejected even if they remain in an authorized platform-wide catalog.
  *
  * @param {object} params
  * @param {string|null|undefined} params.preferredClubId
  * @param {Array<{id:string}>} params.visibleClubs
  * @param {boolean} [params.requireTenant=false]
+ * @param {string|null|undefined} [params.selectedTenantId]
  * @returns {{ activeClubId: string|null, activeClub: object|null, stale: boolean }}
  */
 export function resolveActiveClubSelection({
   preferredClubId,
   visibleClubs,
   requireTenant = false,
+  selectedTenantId = null,
 } = {}) {
   const rawList = Array.isArray(visibleClubs) ? visibleClubs : [];
-  const list = requireTenant
+  const selected = String(selectedTenantId || "").trim() || null;
+  let list = requireTenant
     ? rawList.map(normalizeCanonicalActiveClub).filter(Boolean)
     : rawList;
+
+  if (selected) {
+    list = list.filter((club) => {
+      const clubTenant = resolveExplicitTenantFromCanonicalClub(club);
+      return clubTenant === selected;
+    });
+  }
+
   const preferred = String(preferredClubId || "").trim();
 
   if (preferred) {

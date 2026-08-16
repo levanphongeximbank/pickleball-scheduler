@@ -165,7 +165,7 @@ test("mapRepoCodeToClubError only ever returns registered canonical codes", () =
 });
 
 // --- 6 (cont). repository listClubsForCurrentScope contract ---
-test("listClubsForCurrentScope platform-wide reads whole registry (tenantId=null)", async () => {
+test("listClubsForCurrentScope platform-wide without selected tenant reads whole registry (tenantId=null)", async () => {
   let seenTenantId = "unset";
   const repo = createCanonicalClubRepository({
     isV2Enabled: () => true,
@@ -183,6 +183,24 @@ test("listClubsForCurrentScope platform-wide reads whole registry (tenantId=null
   assert.equal(result.data.length, 3);
 });
 
+test("listClubsForCurrentScope platform-wide WITH selected tenant scopes to that tenant", async () => {
+  let seenTenantId = "unset";
+  const repo = createCanonicalClubRepository({
+    isV2Enabled: () => true,
+    listRegistryRpc: async ({ tenantId }) => {
+      seenTenantId = tenantId;
+      return { ok: true, clubs: [CLUB_A, CLUB_B, CLUB_OTHER] };
+    },
+  });
+  const result = await repo.listClubsForCurrentScope({
+    user: { id: "admin", role: "SUPER_ADMIN" },
+    tenantId: "venue-1",
+    isPlatformWide: true,
+  });
+  assert.equal(result.ok, true);
+  assert.equal(seenTenantId, "venue-1");
+  assert.deepEqual(result.data.map((c) => c.id).sort(), ["club-a", "club-b"]);
+});
 test("listClubsForCurrentScope tenant-scoped user only sees own-tenant clubs", async () => {
   const repo = createCanonicalClubRepository({
     isV2Enabled: () => true,

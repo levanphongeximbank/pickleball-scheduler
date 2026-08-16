@@ -154,6 +154,14 @@ export function setActiveClubIdPreference(clubId) {
   return true;
 }
 
+/**
+ * Clear the persisted active-club preference (Wave 1 tenant switch / logout).
+ * Preference is never authorization authority — clearing prevents cross-tenant leak.
+ */
+export function clearActiveClubIdPreference() {
+  localStorage.removeItem(ACTIVE_CLUB_KEY);
+}
+
 export function getActiveClub() {
   const activeId = getActiveClubId();
   return loadClubs().find((club) => club.id === activeId) || DEFAULT_CLUB;

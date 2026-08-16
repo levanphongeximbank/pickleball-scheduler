@@ -11,6 +11,8 @@ import { isClubStorageV2Enabled } from "../features/club/config/clubRegistryFlag
 import { stripLegacyProfileClubFields } from "../features/club/services/clubActiveMembershipService.js";
 import { quarantineOfflineQueueOnLogout } from "../features/mobile/services/offlineQueueQuarantine.js";
 import { clearActiveTenantId } from "../data/tenantSession.js";
+import { clearActiveClubIdPreference } from "../data/club.js";
+import { setActiveClusterId } from "../data/courtCluster.js";
 
 function readJson(key, fallback) {
   try {
@@ -108,5 +110,7 @@ export function saveAuthSessionFromCloudProfile(user, meta = {}) {
 export function clearAuthSession() {
   quarantineOfflineQueueOnLogout();
   clearActiveTenantId();
+  clearActiveClubIdPreference();
+  setActiveClusterId(null);
   localStorage.removeItem(AUTH_SESSION_KEY);
 }

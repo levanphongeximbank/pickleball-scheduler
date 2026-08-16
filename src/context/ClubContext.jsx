@@ -185,22 +185,39 @@ export function ClubProvider({ children }) {
       if (clubReadState !== CLUB_READ_STATE.READY) {
         return [];
       }
-      return filterAccessibleCanonicalClubs({
+      const accessible = filterAccessibleCanonicalClubs({
         clubs: canonicalClubs,
         user,
         rbacEnabled,
         isAuthenticated,
         canAccessClub,
       });
+      // SELECTED_OPERATIONAL_CONTEXT: even if a platform-wide catalog leaked,
+      // never expose foreign-tenant clubs as operational options.
+      if (rbacEnabled && isAuthenticated && currentTenantId) {
+        return accessible.filter((club) => {
+          const clubTenant =
+            club?.tenantId || club?.venueId || club?.tenant_id || club?.venue_id || null;
+          return String(clubTenant || "").trim() === String(currentTenantId).trim();
+        });
+      }
+      if (rbacEnabled && isAuthenticated && !currentTenantId && isPlatformWideRole(user?.role)) {
+        return [];
+      }
+      return accessible;
     }
 
-    if (!rbacEnabled || !isAuthenticated || !currentTenantId) {
+    if (!rbacEnabled || !isAuthenticated) {
       return clubs;
     }
 
-    const sourceClubs = isPlatformWideRole(user?.role)
-      ? loadClubs()
-      : listClubsForTenant(currentTenantId);
+    // Wave 1: selected operational tenant scopes club options for ALL roles,
+    // including platform-wide (AUTHORIZED_SCOPE ≠ SELECTED_OPERATIONAL_CONTEXT).
+    if (!currentTenantId) {
+      return isPlatformWideRole(user?.role) ? [] : clubs;
+    }
+
+    const sourceClubs = listClubsForTenant(currentTenantId);
     const visible = sourceClubs.filter((club) =>
       canAccessClub(user, club.id, { venueId: club.venueId || null }, { rbacEnabled })
     );
@@ -211,6 +228,7 @@ export function ClubProvider({ children }) {
         const assigned = loadClubs().find((club) => club.id === user.clubId && !club.isDefault);
         if (
           assigned &&
+          String(assigned.venueId || assigned.tenantId || "").trim() === String(currentTenantId).trim() &&
           canAccessClub(user, assigned.id, { venueId: assigned.venueId || null }, { rbacEnabled })
         ) {
           return [...visible, assigned];
@@ -426,6 +444,7 @@ export function ClubProvider({ children }) {
         preferredClubId: activeClubId,
         visibleClubs,
         requireTenant: true,
+        selectedTenantId: currentTenantId,
       }).activeClub;
     }
 
@@ -443,7 +462,7 @@ export function ClubProvider({ children }) {
       return visibleClubs[0];
     }
     return null;
-  }, [canonicalRead, visibleClubs, activeClubId, rbacEnabled, isAuthenticated]);
+  }, [canonicalRead, visibleClubs, activeClubId, currentTenantId, rbacEnabled, isAuthenticated]);
 
   const activeClubReady = canonicalRead
     ? clubReadState === CLUB_READ_STATE.READY && isCanonicalActiveClubReady(activeClub)
@@ -465,6 +484,7 @@ export function ClubProvider({ children }) {
       preferredClubId: activeClubId,
       visibleClubs,
       requireTenant: true,
+      selectedTenantId: currentTenantId,
     });
 
     if (selection.activeClubId === activeClubId) {
@@ -482,7 +502,13 @@ export function ClubProvider({ children }) {
       setActiveClubId(selection.activeClubId);
       setRevision((value) => value + 1);
     }
-  }, [canonicalRead, clubReadState, activeClubId, visibleClubs]);
+  }, [canonicalRead, clubReadState, activeClubId, visibleClubs, currentTenantId]);
+
+  // Sync preference mirror after tenant switch invalidation (commitTenantSwitch clears storage).
+  useEffect(() => {
+    const preferred = canonicalRead ? getActiveClubIdPreference() : getActiveClubId();
+    setActiveClubId((current) => (current === preferred ? current : preferred));
+  }, [canonicalRead, currentTenantId]);
 
   // Legacy active-club validation (blob registry). Skipped in canonical mode.
   useEffect(() => {
