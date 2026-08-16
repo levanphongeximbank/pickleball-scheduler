@@ -22,6 +22,19 @@ function createServiceClient(url, serviceKey) {
   });
 }
 
+let cachedServiceClient = null;
+let cachedServiceClientKey = null;
+
+function getSharedServiceClient(url, serviceKey) {
+  const key = `${url}::${serviceKey.slice(0, 8)}`;
+  if (cachedServiceClient && cachedServiceClientKey === key) {
+    return cachedServiceClient;
+  }
+  cachedServiceClient = createServiceClient(url, serviceKey);
+  cachedServiceClientKey = key;
+  return cachedServiceClient;
+}
+
 function mapAuthError(userError) {
   const message = String(userError?.message || "").toLowerCase();
   if (message.includes("expired")) {
@@ -67,7 +80,7 @@ export async function authorizeRefereeActor(req) {
     return productionGate;
   }
 
-  const serviceClient = createServiceClient(url, serviceKey);
+  const serviceClient = getSharedServiceClient(url, serviceKey);
   const { data: userData, error: userError } =
     await serviceClient.auth.getUser(token);
   if (userError || !userData?.user?.id) {

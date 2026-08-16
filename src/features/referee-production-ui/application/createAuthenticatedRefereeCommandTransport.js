@@ -27,7 +27,10 @@ export function createAuthenticatedRefereeCommandTransport(options = {}) {
   }
 
   async function invoke(command, payload = {}) {
+    const clickStarted = Date.now();
+    const tToken0 = Date.now();
     const accessToken = await options.getAccessToken();
+    const TOKEN_MS = Date.now() - tToken0;
     if (!accessToken) {
       const err = new Error("Phiên đăng nhập hết hạn — đăng nhập lại để tiếp tục.");
       err.code = REFEREE_UI_ERROR_CODE.COMMAND_UNAVAILABLE;
@@ -36,6 +39,7 @@ export function createAuthenticatedRefereeCommandTransport(options = {}) {
       throw err;
     }
 
+    const tFetch0 = Date.now();
     const response = await fetchImpl(apiPath, {
       method: "POST",
       headers: {
@@ -53,6 +57,8 @@ export function createAuthenticatedRefereeCommandTransport(options = {}) {
       code: REFEREE_UI_ERROR_CODE.COMMAND_UNAVAILABLE,
       error: "Phản hồi server không hợp lệ",
     }));
+    const FETCH_RTT_MS = Date.now() - tFetch0;
+    const TOTAL_CLICK_TO_ACK_MS = Date.now() - clickStarted;
 
     if (!response.ok || json.ok === false) {
       const err = new Error(json.error || json.message || "Lệnh trọng tài thất bại");
@@ -64,10 +70,32 @@ export function createAuthenticatedRefereeCommandTransport(options = {}) {
       err.httpStatus = response.status;
       err.serviceRoleInBrowser = false;
       err.directPrivilegedRpcFromBrowser = false;
+      err.serverTiming = json.serverTiming || null;
       throw err;
     }
 
-    return json.result != null ? json.result : json;
+    const result = json.result != null ? json.result : json;
+    const browserTiming = Object.freeze({
+      TOKEN_MS,
+      FETCH_RTT_MS,
+      TOTAL_CLICK_TO_ACK_MS,
+      NETWORK_POST_COUNT: 1,
+    });
+    if (json.serverTiming && typeof console !== "undefined" && console.info) {
+      console.info("[referee-command-timing]", {
+        command,
+        browserTiming,
+        serverTiming: json.serverTiming,
+      });
+    }
+    if (result && typeof result === "object") {
+      return Object.freeze({
+        ...result,
+        browserTiming,
+        serverTiming: json.serverTiming || null,
+      });
+    }
+    return result;
   }
 
   return Object.freeze({

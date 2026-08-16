@@ -738,6 +738,169 @@ test("rally: winner gets point + serve; no change-serve control; no service turn
   assert.equal(scored.view.canChangeServe, false);
 });
 
+test("OWNER RALLY 6:2→6:3 receiving win moves serve/star + odd parity on B", async () => {
+  const { runtime } = createUiRuntime();
+  const competitionId = "daily-rally-parity";
+  const matchId = "daily-rally-parity-match";
+  const modeState = dailyModeState(competitionId, matchId);
+  modeState.matches[matchId].scoringRules = RALLY;
+  const fixture = {
+    mode: COMPETITION_REFEREE_MODE.DAILY_PLAY,
+    competitionId,
+    matchId,
+    modeState,
+  };
+  await seedAssigned(runtime, fixture);
+  const client = createClient(runtime, [fixture]);
+
+  const before = await client.getMatchView({
+    tenantId: "tenant-1",
+    matchId,
+    actor: ACTOR,
+  });
+  const lined = await client.configureLineup({
+    tenantId: "tenant-1",
+    matchId,
+    actor: ACTOR,
+    expectedVersion: before.view.expectedVersion,
+    idempotencyKey: "rally-lineup",
+    playerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+    serverPlayerId: "p1",
+    serverNumber: 1,
+    servingSide: "SIDE_A",
+  });
+  let cur = await client.startMatch({
+    tenantId: "tenant-1",
+    matchId,
+    actor: ACTOR,
+    expectedVersion: lined.view.expectedVersion,
+    idempotencyKey: "rally-start-6-2",
+  });
+  assert.equal(cur.ok, true);
+
+  async function point(side, key) {
+    cur = await client.submitPoint({
+      tenantId: "tenant-1",
+      matchId,
+      actor: ACTOR,
+      scoringSide: side,
+      expectedVersion: cur.view.expectedVersion,
+      idempotencyKey: key,
+    });
+    assert.equal(cur.ok, true, key);
+  }
+
+  // Reach 5-0 (A), then 5-2 (B), then 6-2 (A serving).
+  for (let i = 1; i <= 5; i += 1) await point(SCORING_SIDE.SIDE_A, `a-${i}`);
+  await point(SCORING_SIDE.SIDE_B, "b-1");
+  await point(SCORING_SIDE.SIDE_B, "b-2");
+  await point(SCORING_SIDE.SIDE_A, "a-6");
+
+  assert.equal(cur.view.currentScore.points.SIDE_A, 6);
+  assert.equal(cur.view.currentScore.points.SIDE_B, 2);
+  assert.equal(cur.view.courtProjection.serving.servingSide, "SIDE_A");
+  assert.ok(cur.view.courtProjection.serving.serverPlayerId === "p1" || cur.view.courtProjection.serving.serverPlayerId === "p2");
+
+  // Owner sequence: B wins rally → 6:3, B serves, odd parity, star on B.
+  await point(SCORING_SIDE.SIDE_B, "owner-6-2-to-6-3");
+  assert.equal(cur.view.currentScore.points.SIDE_A, 6);
+  assert.equal(cur.view.currentScore.points.SIDE_B, 3);
+  assert.equal(cur.view.courtProjection.serving.servingSide, "SIDE_B");
+  assert.equal(cur.view.servingStatus.showServiceTurn, false);
+  // B score 3 = odd → LEFT court (index 1) from home [p3,p4] swapped → [p4,p3], server = p3
+  assert.deepEqual(cur.view.courtProjection.sides.right.activePlayers.map((p) => p.playerId), [
+    "p4",
+    "p3",
+  ]);
+  assert.equal(cur.view.courtProjection.serving.serverPlayerId, "p3");
+  assert.equal(cur.view.courtProjection.court.rightBottom.isServing, true);
+  assert.equal(cur.view.courtProjection.court.leftTop?.isServing || false, false);
+  assert.equal(cur.view.courtProjection.court.leftBottom?.isServing || false, false);
+
+  // F5 reconstruct
+  const refreshed = await client.getMatchView({
+    tenantId: "tenant-1",
+    matchId,
+    actor: ACTOR,
+  });
+  assert.equal(refreshed.view.currentScore.points.SIDE_B, 3);
+  assert.equal(refreshed.view.courtProjection.serving.servingSide, "SIDE_B");
+  assert.equal(refreshed.view.courtProjection.serving.serverPlayerId, "p3");
+});
+
+test("RALLY parity matrix: even↔odd for keep-serve and side-change", async () => {
+  const { deriveCanonicalCourtAfterScoring } = await import(
+    "../src/features/competition-engine/integration/referee/deriveCanonicalCourtAfterScoring.js"
+  );
+  const home = {
+    playerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+    homePlayerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+    serverPlayerId: "p1",
+    servingSide: "SIDE_A",
+    lineupConfigured: true,
+  };
+
+  // A even→odd keep serve
+  const aOdd = deriveCanonicalCourtAfterScoring({
+    priorCourt: home,
+    priorServe: { servingSide: "SIDE_A", serverNumber: 1 },
+    nextServe: { servingSide: "SIDE_A", serverNumber: 1 },
+    priorPoints: { SIDE_A: 4, SIDE_B: 2 },
+    nextPoints: { SIDE_A: 5, SIDE_B: 2 },
+    scoringSystem: "RALLY",
+    awardedPoint: true,
+    rallyWinnerSide: "SIDE_A",
+  });
+  assert.deepEqual(aOdd.playerPositions.sideA, ["p2", "p1"]);
+  assert.equal(aOdd.serverPlayerId, "p1");
+  assert.equal(aOdd.servingSide, "SIDE_A");
+
+  // A odd→even keep serve
+  const aEven = deriveCanonicalCourtAfterScoring({
+    priorCourt: aOdd,
+    priorServe: { servingSide: "SIDE_A", serverNumber: 1 },
+    nextServe: { servingSide: "SIDE_A", serverNumber: 1 },
+    priorPoints: { SIDE_A: 5, SIDE_B: 2 },
+    nextPoints: { SIDE_A: 6, SIDE_B: 2 },
+    scoringSystem: "RALLY",
+    awardedPoint: true,
+    rallyWinnerSide: "SIDE_A",
+  });
+  assert.deepEqual(aEven.playerPositions.sideA, ["p1", "p2"]);
+  assert.equal(aEven.serverPlayerId, "p1");
+
+  // B wins: A6 B2 → A6 B3, B odd serve
+  const bOdd = deriveCanonicalCourtAfterScoring({
+    priorCourt: aEven,
+    priorServe: { servingSide: "SIDE_A", serverNumber: 1 },
+    nextServe: { servingSide: "SIDE_B", serverNumber: 1 },
+    priorPoints: { SIDE_A: 6, SIDE_B: 2 },
+    nextPoints: { SIDE_A: 6, SIDE_B: 3 },
+    scoringSystem: "RALLY",
+    awardedPoint: true,
+    rallyWinnerSide: "SIDE_B",
+  });
+  assert.equal(bOdd.servingSide, "SIDE_B");
+  assert.deepEqual(bOdd.playerPositions.sideB, ["p4", "p3"]);
+  assert.equal(bOdd.serverPlayerId, "p3");
+  assert.deepEqual(bOdd.playerPositions.sideA, ["p1", "p2"]);
+
+  // B odd→even keep serve
+  const bEven = deriveCanonicalCourtAfterScoring({
+    priorCourt: bOdd,
+    priorServe: { servingSide: "SIDE_B", serverNumber: 1 },
+    nextServe: { servingSide: "SIDE_B", serverNumber: 1 },
+    priorPoints: { SIDE_A: 6, SIDE_B: 3 },
+    nextPoints: { SIDE_A: 6, SIDE_B: 4 },
+    scoringSystem: "RALLY",
+    awardedPoint: true,
+    rallyWinnerSide: "SIDE_B",
+  });
+  assert.deepEqual(bEven.playerPositions.sideB, ["p3", "p4"]);
+  assert.equal(bEven.serverPlayerId, "p3");
+});
+
+
 test("12+13+14. expectedVersion + idempotency + duplicate click blocked", async () => {
   const { runtime } = createUiRuntime();
   const fixture = modeFixture(COMPETITION_REFEREE_MODE.INTERNAL);

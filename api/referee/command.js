@@ -55,7 +55,55 @@ function mapError(error) {
   };
 }
 
+function isPreviewOrDev(req) {
+  const host = String(req.headers?.host || "").toLowerCase();
+  const vercelEnv = String(globalThis.process?.env?.VERCEL_ENV || "").toLowerCase();
+  const nodeEnv = String(globalThis.process?.env?.NODE_ENV || "").toLowerCase();
+  if (vercelEnv === "preview" || vercelEnv === "development") return true;
+  if (nodeEnv !== "production") return true;
+  if (host.includes("localhost") || host.includes("127.0.0.1")) return true;
+  if (host.includes("vercel.app") && !host.includes("pickleball-scheduler")) return true;
+  // Preview deploy hosts typically contain "--" branch slug.
+  if (host.includes("---") || /--.*\.vercel\.app$/.test(host)) return true;
+  return false;
+}
+
+/** Warm-lambda cache: avoid recreating durable runtime per request. */
+let cachedBackendKey = null;
+let cachedBackend = null;
+
+function getOrCreateBackend(auth, tenantId) {
+  const key = `${auth.actorId}::${tenantId || ""}`;
+  if (cachedBackend && cachedBackendKey === key) {
+    return { backend: cachedBackend, runtimeCreateMs: 0, cacheHit: true };
+  }
+  const t0 = Date.now();
+  const backend = createTrustedRefereeBackend({
+    rpcClient: auth.serviceClient,
+    actorId: auth.actorId,
+    tenantId,
+  });
+  cachedBackend = backend;
+  cachedBackendKey = key;
+  return { backend, runtimeCreateMs: Date.now() - t0, cacheHit: false };
+}
+
 export default async function handler(req, res) {
+  const requestStarted = Date.now();
+  const serverTiming = {
+    REQUEST_TOTAL_MS: null,
+    AUTH_MS: null,
+    ACTOR_RESOLUTION_MS: null,
+    RUNTIME_CREATE_MS: null,
+    ADAPTER_CONTEXT_MS: null,
+    MATCH_READ_MS: null,
+    CORE_TRANSITION_MS: null,
+    DURABLE_COMMIT_MS: null,
+    POST_COMMIT_PROJECT_MS: null,
+    RESPONSE_BUILD_MS: null,
+    RUNTIME_CACHE_HIT: false,
+  };
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({
@@ -65,7 +113,10 @@ export default async function handler(req, res) {
     });
   }
 
+  const tAuth0 = Date.now();
   const auth = await authorizeRefereeActor(req);
+  serverTiming.AUTH_MS = Date.now() - tAuth0;
+  serverTiming.ACTOR_RESOLUTION_MS = serverTiming.AUTH_MS;
   if (!auth.ok) {
     const status =
       auth.code === "NOT_AUTHENTICATED"
@@ -107,18 +158,51 @@ export default async function handler(req, res) {
   delete payload.runtime;
 
   try {
-    const backend = createTrustedRefereeBackend({
-      rpcClient: auth.serviceClient,
-      actorId: auth.actorId,
-      tenantId: payload.tenantId || auth.tenantId,
-    });
+    const { backend, runtimeCreateMs, cacheHit } = getOrCreateBackend(
+      auth,
+      payload.tenantId || auth.tenantId
+    );
+    serverTiming.RUNTIME_CREATE_MS = runtimeCreateMs;
+    serverTiming.RUNTIME_CACHE_HIT = cacheHit;
+
+    const tExec0 = Date.now();
     const result = await backend.execute(command, payload);
-    return res.status(200).json({
+    const execMs = Date.now() - tExec0;
+
+    const clientLatency = result?.latency || {};
+    serverTiming.ADAPTER_CONTEXT_MS =
+      clientLatency.contextResolutionMs ?? clientLatency.ADAPTER_CONTEXT_MS ?? null;
+    serverTiming.CORE_TRANSITION_MS =
+      clientLatency.coreWriteMs ?? clientLatency.CORE_TRANSITION_MS ?? null;
+    serverTiming.DURABLE_COMMIT_MS =
+      clientLatency.durableCommitMs ?? clientLatency.DURABLE_COMMIT_MS ?? execMs;
+    serverTiming.POST_COMMIT_PROJECT_MS =
+      clientLatency.postCommitProjectionMs ?? clientLatency.POST_COMMIT_PROJECT_MS ?? null;
+    serverTiming.MATCH_READ_MS = clientLatency.matchReadMs ?? null;
+
+    const tResp0 = Date.now();
+    serverTiming.REQUEST_TOTAL_MS = Date.now() - requestStarted;
+    const includeDiag = isPreviewOrDev(req);
+    const responseBody = {
       ok: result?.ok !== false,
       command,
       result,
       diagnostic: backend.getPublicDiagnostic(),
-    });
+    };
+    if (includeDiag) {
+      responseBody.serverTiming = Object.freeze({
+        ...serverTiming,
+        RESPONSE_BUILD_MS: Date.now() - tResp0,
+        REQUEST_TOTAL_MS: Date.now() - requestStarted,
+        NETWORK_POST_COUNT: 1,
+        DURABLE_COMMIT_COUNT: clientLatency.durableCommitCount ?? 1,
+        POST_COMMIT_BROWSER_REFETCH: false,
+        ACK_RETURNS_FULL_VIEW: true,
+        PROJECT_MATCH_COUNT: clientLatency.projectMatchCount ?? 1,
+        clientLatency,
+      });
+    }
+    return res.status(200).json(responseBody);
   } catch (error) {
     if (error instanceof ApiKeyStoreConfigError) {
       return res.status(503).json({
@@ -127,7 +211,6 @@ export default async function handler(req, res) {
         error: error.message,
       });
     }
-    // Canonical client may return stale as thrown or as result — normalize throws.
     if (error?.stale === true || error?.code === "STALE_WRITE") {
       return res.status(409).json({
         ok: false,
@@ -137,6 +220,9 @@ export default async function handler(req, res) {
         failClosed: true,
         view: error.view || null,
         silentLegacyFallback: false,
+        ...(isPreviewOrDev(req)
+          ? { serverTiming: { ...serverTiming, REQUEST_TOTAL_MS: Date.now() - requestStarted } }
+          : {}),
       });
     }
     const mapped = mapError(error);

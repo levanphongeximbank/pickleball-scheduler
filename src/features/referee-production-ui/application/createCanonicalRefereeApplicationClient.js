@@ -185,25 +185,53 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         {}
       );
     }
-    const rows = await listAssignmentRows(actor, tenantId);
-    const assignment =
-      rows.find((row) => String(row.matchId) === matchId) ||
-      (command.competitionId
-        ? {
-            matchId,
-            tenantId,
-            competitionId: command.competitionId,
-            refereeUserId: actor?.actorId,
-            courtId: command.courtId || null,
-            status: "ASSIGNED",
-          }
-        : null);
+    const competitionId = String(command.competitionId || "").trim();
+    const refereeUserId = String(
+      actor?.actorId || actor?.authUid || actor?.refereeId || ""
+    ).trim();
+
+    let assignment = null;
+    // Prefer single-match assignment read when competitionId is known (Match commands).
+    if (competitionId && refereeUserId && runtime.assignmentRepository?.getActiveForMatch) {
+      const active = await runtime.assignmentRepository.getActiveForMatch({
+        tenantId,
+        competitionId,
+        matchId,
+        refereeUserId,
+      });
+      if (active) {
+        assignment = {
+          matchId: active.matchId || matchId,
+          tenantId: active.tenantId || tenantId,
+          competitionId: active.competitionId || competitionId,
+          refereeUserId: active.refereeUserId || refereeUserId,
+          courtId: active.courtId || command.courtId || null,
+          status: active.opsStatus || active.status || "ASSIGNED",
+        };
+      }
+    }
+    if (!assignment) {
+      const rows = await listAssignmentRows(actor, tenantId);
+      assignment =
+        rows.find((row) => String(row.matchId) === matchId) ||
+        (competitionId
+          ? {
+              matchId,
+              tenantId,
+              competitionId,
+              refereeUserId,
+              courtId: command.courtId || null,
+              status: "ASSIGNED",
+            }
+          : null);
+    }
     if (!assignment) {
       const err = new Error("Assigned match could not be resolved from durable CORE-13 state");
       err.code = REFEREE_UI_ERROR_CODE.MATCH_SCOPE_UNRESOLVED;
       throw err;
     }
-    const modeState = await resolveModeState(assignment, command);
+    const modeState =
+      command.modeState || (await resolveModeState(assignment, command));
     const modeHint =
       command.competitionMode ||
       assignment.competitionMode ||
@@ -214,7 +242,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
     return {
       assignment: {
         ...assignment,
-        competitionId: assignment.competitionId || command.competitionId,
+        competitionId: assignment.competitionId || competitionId,
         tenantId: assignment.tenantId || tenantId,
         matchId,
         competitionMode: mode,
@@ -247,15 +275,37 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
     const lifecyclePolicy = adapter.getLifecyclePolicy(req);
     const capabilities = adapter.getCapabilities(req);
     const preStart = adapter.validatePreStart(req);
-    const names = await resolveNames(assignment, modeState);
-    const assigned = await facade.getAssignedMatch(commandBase(command, assignment));
-    const liveInfo = await readLiveVersion({
+
+    const scope = {
       tenantId: assignment.tenantId,
       competitionId: assignment.competitionId,
       matchId: assignment.matchId,
-    });
-    const live = liveInfo.live || {};
-    const scoreProjection = assigned.assignedMatch?.scoreProjection || null;
+    };
+
+    // Post-mutation path: reuse CORE score + court from the same commit (no second facade read).
+    const skipAssignedRead = Boolean(extras.scoreProjection);
+    const [names, assignedResult, liveInfo] = await Promise.all([
+      resolveNames(assignment, modeState),
+      skipAssignedRead
+        ? Promise.resolve(null)
+        : facade.getAssignedMatch(commandBase(command, assignment)),
+      extras.liveInfo
+        ? Promise.resolve(extras.liveInfo)
+        : readLiveVersion(scope),
+    ]);
+
+    const assignedMatch = skipAssignedRead
+      ? {
+          lifecycleState: matchContext.status || liveInfo?.live?.status || "IN_PROGRESS",
+          scoreProjection: extras.scoreProjection,
+          scoreEntryReady: true,
+          match: { status: matchContext.status || liveInfo?.live?.status || "IN_PROGRESS" },
+        }
+      : assignedResult?.assignedMatch || null;
+
+    const live = liveInfo?.live || {};
+    const scoreProjection =
+      extras.scoreProjection || assignedMatch?.scoreProjection || null;
     const enrichedScoreProjection =
       scoreProjection && !scoreProjection.serve && (live.servingPlayerId || live.servingTeamId)
         ? {
@@ -272,38 +322,42 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           }
         : scoreProjection;
     const courtState = {
-      ...(liveInfo.courtState || {}),
+      ...(liveInfo?.courtState || {}),
       ...(extras.courtState || {}),
       serverPlayerId:
         extras.courtState?.serverPlayerId ||
-        liveInfo.courtState?.serverPlayerId ||
+        liveInfo?.courtState?.serverPlayerId ||
         live.servingPlayerId ||
         null,
       receiverPlayerId:
         extras.courtState?.receiverPlayerId ||
-        liveInfo.courtState?.receiverPlayerId ||
+        liveInfo?.courtState?.receiverPlayerId ||
         live.receivingPlayerId ||
         null,
       servingSide:
         extras.courtState?.servingSide ||
-        liveInfo.courtState?.servingSide ||
+        liveInfo?.courtState?.servingSide ||
         null,
       serverNumber:
         extras.courtState?.serverNumber ??
-        liveInfo.courtState?.serverNumber ??
+        liveInfo?.courtState?.serverNumber ??
         live.serverNumber ??
         null,
       lineupConfigured:
         extras.courtState?.lineupConfigured === true ||
-        liveInfo.courtState?.lineupConfigured === true,
+        liveInfo?.courtState?.lineupConfigured === true,
       courtOrientation:
         extras.courtState?.courtOrientation ||
-        liveInfo.courtState?.courtOrientation ||
+        liveInfo?.courtState?.courtOrientation ||
         live.courtOrientation ||
         null,
       playerPositions:
         extras.courtState?.playerPositions ||
-        liveInfo.courtState?.playerPositions ||
+        liveInfo?.courtState?.playerPositions ||
+        null,
+      homePlayerPositions:
+        extras.courtState?.homePlayerPositions ||
+        liveInfo?.courtState?.homePlayerPositions ||
         null,
     };
     return buildRefereeMatchView({
@@ -329,13 +383,13 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       lifecyclePolicy,
       capabilities,
       assignedMatch: enrichedScoreProjection
-        ? { ...assigned.assignedMatch, scoreProjection: enrichedScoreProjection }
-        : assigned.assignedMatch,
-      operationsProjection: assigned.projection,
+        ? { ...(assignedMatch || {}), scoreProjection: enrichedScoreProjection }
+        : assignedMatch,
+      operationsProjection: assignedResult?.projection || null,
       courtState,
       modeState,
       participantNames: names,
-      expectedVersion: liveInfo.expectedVersion,
+      expectedVersion: liveInfo?.expectedVersion,
       pendingCanonicalAction: extras.pendingCanonicalAction || null,
       stale: extras.stale === true,
       preStart,
@@ -571,6 +625,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         }, {
           resolved,
           courtState: result?.court || undefined,
+          scoreProjection: result?.scoreProjection || undefined,
         });
         timing.postCommitProjectionMs = Date.now() - tProj0;
         timing.totalMs = Date.now() - t0;
@@ -586,6 +641,8 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
             networkPostCount: 1,
             postCommitRefetch: false,
             ackReturnsFullView: true,
+            projectMatchCount: 1,
+            durableCommitCount: 1,
           }),
         });
       } catch (err) {
@@ -808,6 +865,10 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       const nextCourt = {
         ...current,
         playerPositions: { sideA, sideB },
+        homePlayerPositions: {
+          sideA: [...sideA],
+          sideB: [...sideB],
+        },
         serverPlayerId,
         servingSide,
         serverNumber,

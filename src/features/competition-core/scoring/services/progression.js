@@ -28,15 +28,13 @@ export function applyRallyOrSideOutPoint(draft, rallyWinnerSide) {
     draft.points[rallyWinnerSide] += 1;
     hints.push(SCORING_EVENT_TYPE.POINT_RECORDED);
 
-    if (draft.serve) {
-      const prev = draft.serve.servingSide;
-      draft.serve = {
-        servingSide: rallyWinnerSide,
-        serverNumber: 1,
-      };
-      if (prev !== rallyWinnerSide) {
-        hints.push(SCORING_EVENT_TYPE.SERVE_CHANGED);
-      }
+    const prev = draft.serve?.servingSide || null;
+    draft.serve = {
+      servingSide: rallyWinnerSide,
+      serverNumber: 1,
+    };
+    if (prev !== rallyWinnerSide) {
+      hints.push(SCORING_EVENT_TYPE.SERVE_CHANGED);
     }
 
     const sideSwitchAt = format.sideSwitchAt;
