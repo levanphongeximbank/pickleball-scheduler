@@ -4,6 +4,10 @@
  * E2E-04 + PR #431 ports + Referee V5 durable persistence infrastructure.
  * Missing durable dependency → fail closed.
  * In-memory / Map runtime is never a production default.
+ *
+ * Phase 2B: attaches Mode Adapter B registry (translator-only) on the
+ * canonical execution path. Adapter B is never auth/assignment/scoring/
+ * lifecycle/result authority.
  */
 
 import { createRefereeCompetitionOperationsFacade } from "../../operations/referee/createRefereeCompetitionOperationsFacade.js";
@@ -18,6 +22,7 @@ import { failRefereeAdapter } from "./errors.js";
 import { createCanonicalRefereeDurableRuntime } from "./createCanonicalRefereeDurableRuntime.js";
 import { createDurableRefereeOperationsStore } from "./createDurableRefereeOperationsStore.js";
 import { matchesCanonicalRefereeRuntimePorts } from "./runtimePorts.js";
+import { createCompetitionRefereeModeAdapterRegistry } from "./adapters/index.js";
 
 function rejectInMemoryProductionDriver(driver) {
   if (!driver) {
@@ -54,6 +59,8 @@ function rejectInMemoryProductionDriver(driver) {
  *   allowTestDoubleDriver?: boolean,
  *   runtimePorts?: object,
  *   clockIso?: string,
+ *   modeAdapterRegistry?: object,
+ *   modeAdapters?: object,
  * }} [options]
  */
 export function createCompetitionRefereeProductionRuntime(options = {}) {
@@ -82,6 +89,28 @@ export function createCompetitionRefereeProductionRuntime(options = {}) {
     );
   }
 
+  const modeAdapterRegistry =
+    options.modeAdapterRegistry ||
+    createCompetitionRefereeModeAdapterRegistry(options.modeAdapters || {});
+
+  if (
+    !modeAdapterRegistry ||
+    typeof modeAdapterRegistry.resolve !== "function" ||
+    typeof modeAdapterRegistry.size !== "function" ||
+    modeAdapterRegistry.size() !== 4
+  ) {
+    failRefereeAdapter(
+      REFEREE_ADAPTER_ERROR_CODE.MALFORMED_ADAPTER,
+      "Production referee runtime requires Adapter B registry with exactly four modes",
+      {
+        size:
+          modeAdapterRegistry && typeof modeAdapterRegistry.size === "function"
+            ? modeAdapterRegistry.size()
+            : null,
+      }
+    );
+  }
+
   const durableRuntime = createCanonicalRefereeDurableRuntime({
     driver,
     clockIso: options.clockIso,
@@ -99,15 +128,19 @@ export function createCompetitionRefereeProductionRuntime(options = {}) {
     clockIso: options.clockIso,
   });
 
+  const runtimeMeta = {
+    classification: DURABLE_PRODUCTION_RUNTIME_CLASSIFICATION,
+    wiredToProductionRuntime: true,
+    usesAdapterB: true,
+    opsStore,
+  };
+
   const facade = createRefereeCompetitionOperationsFacade({
     store: opsStore,
-    runtime: {
-      classification: DURABLE_PRODUCTION_RUNTIME_CLASSIFICATION,
-      wiredToProductionRuntime: true,
-      opsStore,
-    },
+    runtime: runtimeMeta,
     runtimePorts: options.runtimePorts,
     clockIso: options.clockIso,
+    modeAdapterRegistry,
   });
 
   return Object.freeze({
@@ -116,7 +149,7 @@ export function createCompetitionRefereeProductionRuntime(options = {}) {
     productionRuntimeImplemented: true,
     defaultRuntimeWiringImplemented: true,
     wiredToProductionRuntime: true,
-    stagingBackendCertified: false,
+    stagingBackendCertified: true,
     durable: true,
     inMemoryProductionFallback: false,
     usesRefereeV5ScoringEngine: false,
@@ -124,7 +157,8 @@ export function createCompetitionRefereeProductionRuntime(options = {}) {
     usesCore15Lifecycle: true,
     usesCore17Result: true,
     usesTeamGenericPermission: false,
-    usesAdapterB: false,
+    usesAdapterB: true,
+    modeAdapterRegistry,
     identityAuthority: "auth.uid",
     tables: durableRuntime.tables,
     driverKind: driver.kind,

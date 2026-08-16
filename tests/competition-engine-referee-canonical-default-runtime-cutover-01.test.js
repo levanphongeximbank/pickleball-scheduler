@@ -50,9 +50,9 @@ const CLIENT_SECRET_RE =
   /SUPABASE_SERVICE_ROLE_KEY|VITE_[A-Z0-9_]*SERVICE_ROLE|sb_secret_/i;
 const INTERNAL_COMMIT_RPC_RE = /referee_v5_commit_match_transition/;
 
-function expectAdapterCode(fn, code) {
+async function expectAdapterCode(fn, code) {
   try {
-    fn();
+    await fn();
     assert.fail(`expected ${code}`);
   } catch (err) {
     assert.equal(isRefereeAdapterContractError(err), true);
@@ -110,19 +110,19 @@ test("1. production default creates durable runtime", () => {
   assert.equal(runtime.tables.SYNC_MUTATIONS, "match_sync_mutations");
 });
 
-test("2-4. production dependencies required; missing fails closed; no in-memory fallback", () => {
-  expectAdapterCode(
+test("2-4. production dependencies required; missing fails closed; no in-memory fallback", async () => {
+  await expectAdapterCode(
     () => createDefaultCompetitionRefereeRuntime({}),
     REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED
   );
-  expectAdapterCode(
+  await expectAdapterCode(
     () =>
       createDefaultCompetitionRefereeRuntime({
         durableDriver: createInMemoryRefereeOperationsStore({ clockIso: CLOCK }),
       }),
     REFEREE_ADAPTER_ERROR_CODE.IN_MEMORY_PRODUCTION_FORBIDDEN
   );
-  expectAdapterCode(
+  await expectAdapterCode(
     () =>
       createDefaultCompetitionRefereeRuntime({
         durableDriver: createSchemaFaithfulCanonicalRefereeDurableDriver({
@@ -153,7 +153,7 @@ test("5. explicit in-memory test double still works", async () => {
   });
   assert.equal(facade.wiredToProductionRuntime, false);
   assert.equal(facade.runtimeClassification, "TEST_DOUBLE_ONLY");
-  facade.seedAssignments({
+  await facade.seedAssignments({
     tenantId: SCOPE.tenantId,
     competitionId: SCOPE.competitionId,
     assignments: [{ matchId: SCOPE.matchId, refereeId: ACTOR.actorId }],
@@ -180,17 +180,17 @@ test("6. wiredToProductionRuntime=true only on durable default path", () => {
   assert.equal(testFacade.wiredToProductionRuntime, false);
 });
 
-test("7-14. auth, tenant, assignment, version, idempotency, append-only, CORE-17, fresh-read", () => {
+test("7-14. auth, tenant, assignment, version, idempotency, append-only, CORE-17, fresh-read", async () => {
   const { driver, runtime } = createDefaultDurable();
-  expectAdapterCode(
+  await expectAdapterCode(
     () => runtime.assignmentRepository.upsert(SCOPE, { name: "Coach A" }),
     REFEREE_ADAPTER_ERROR_CODE.MISSING_CANONICAL_IDENTITY
   );
-  runtime.assignmentRepository.upsert(
+  await runtime.assignmentRepository.upsert(
     { ...SCOPE, refereeUserId: ACTOR.actorId },
     ACTOR
   );
-  expectAdapterCode(
+  await expectAdapterCode(
     () =>
       runtime.scoringEventLedger.appendEvent(
         {
@@ -204,7 +204,7 @@ test("7-14. auth, tenant, assignment, version, idempotency, append-only, CORE-17
       ),
     REFEREE_ADAPTER_ERROR_CODE.ASSIGNMENT_REQUIRED
   );
-  runtime.matchStateRepository.putLiveState(
+  await runtime.matchStateRepository.putLiveState(
     {
       ...SCOPE,
       status: "in_progress",
@@ -213,8 +213,8 @@ test("7-14. auth, tenant, assignment, version, idempotency, append-only, CORE-17
     },
     ACTOR
   );
-  const live = runtime.matchStateRepository.getLiveState(SCOPE);
-  expectAdapterCode(
+  const live = await runtime.matchStateRepository.getLiveState(SCOPE);
+  await expectAdapterCode(
     () =>
       runtime.matchStateRepository.putLiveState(
         {
@@ -227,70 +227,94 @@ test("7-14. auth, tenant, assignment, version, idempotency, append-only, CORE-17
       ),
     REFEREE_ADAPTER_ERROR_CODE.STALE_WRITE
   );
-  const event = runtime.scoringEventLedger.appendEvent(
+  const event = await runtime.scoringEventLedger.appendEvent(
     { ...SCOPE, payload: { cmd: "POINT" }, idempotencyKey: "cmd-1" },
     ACTOR
   );
   assert.equal(event.duplicate, false);
-  const replay = runtime.scoringEventLedger.appendEvent(
+  const replay = await runtime.scoringEventLedger.appendEvent(
     { ...SCOPE, payload: { cmd: "POINT" }, idempotencyKey: "cmd-1" },
     ACTOR
   );
   assert.equal(replay.duplicate, true);
-  expectAdapterCode(
+  await expectAdapterCode(
     () => driver.tryUpdateEvent(),
     REFEREE_ADAPTER_ERROR_CODE.APPEND_ONLY_VIOLATION
   );
-  expectAdapterCode(
+  await expectAdapterCode(
     () => driver.tryDeleteEvent(),
     REFEREE_ADAPTER_ERROR_CODE.APPEND_ONLY_VIOLATION
   );
-  const accepted = runtime.resultRevisionRepository.appendRevision(
+  const accepted = await runtime.resultRevisionRepository.appendRevision(
     { ...SCOPE, acceptanceStatus: "ACCEPTED", payload: { winner: "A" } },
     ACTOR
   );
   assert.equal(accepted.lineageStatus, "ACTIVE");
-  runtime.resultRevisionRepository.appendRevision(
+  await runtime.resultRevisionRepository.appendRevision(
     { ...SCOPE, acceptanceStatus: "ACCEPTED", payload: { winner: "B" } },
     ACTOR
   );
-  const active = runtime.resultRevisionRepository.getActive(SCOPE);
+  const active = await runtime.resultRevisionRepository.getActive(SCOPE);
   assert.equal(active.payload.winner, "B");
-  const fresh = runtime.matchStateRepository.getLiveState(SCOPE);
+  const fresh = await runtime.matchStateRepository.getLiveState(SCOPE);
   assert.equal(Number(fresh.stateVersion ?? fresh.version) >= Number(live.stateVersion ?? live.version), true);
 });
 
 test("7-14b. default durable facade reconstructs after assign+open", async () => {
   const { runtime } = createDefaultDurable();
-  runtime.assignmentRepository.upsert(
+  await runtime.assignmentRepository.upsert(
     { ...SCOPE, refereeUserId: ACTOR.actorId },
     ACTOR
   );
+  const modeState = {
+    tenantId: SCOPE.tenantId,
+    competitionId: SCOPE.competitionId,
+    competitionMode: "INTERNAL",
+    matches: {
+      [SCOPE.matchId]: {
+        matchId: SCOPE.matchId,
+        status: "READY_TO_START",
+        entryAId: "entry-a",
+        entryBId: "entry-b",
+        participantIdsA: ["p-a"],
+        participantIdsB: ["p-b"],
+        scoringRules: {
+          scoringSystem: "SIDE_OUT",
+          pointsToWin: 11,
+          winBy: 2,
+          bestOfGames: 1,
+        },
+        lineupsLocked: true,
+      },
+    },
+  };
   const opened = await runtime.facade.openAssignedMatch({
     tenantId: SCOPE.tenantId,
     competitionId: SCOPE.competitionId,
     matchId: SCOPE.matchId,
     actor: ACTOR,
     commandId: "open-cutover-1",
+    competitionMode: "INTERNAL",
+    modeState,
   });
   assert.equal(opened.ok, true);
   assert.equal(opened.match.status, MATCH_STATUS.IN_PROGRESS);
-  const reconstructed = runtime.opsStore.get(SCOPE.tenantId, SCOPE.competitionId);
+  const reconstructed = await runtime.opsStore.get(SCOPE.tenantId, SCOPE.competitionId);
   assert.equal(reconstructed.matches[SCOPE.matchId].status, MATCH_STATUS.IN_PROGRESS);
 });
 
-test("15-16. no privileged browser RPC and no client service-role env resolution", () => {
+test("15-16. no privileged browser RPC and no client service-role env resolution", async () => {
   const prev = globalThis.window;
   globalThis.window = {};
   try {
-    expectAdapterCode(
+    await expectAdapterCode(
       () =>
         createLiveRpcCanonicalRefereeDurableDriver({
           rpcClient: { rpc: () => ({ data: { ok: true }, error: null }) },
         }),
       REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED
     );
-    expectAdapterCode(
+    await expectAdapterCode(
       () =>
         createDefaultCompetitionRefereeRuntime({
           rpcClient: { rpc: () => ({ data: { ok: true }, error: null }) },
@@ -302,7 +326,7 @@ test("15-16. no privileged browser RPC and no client service-role env resolution
     else globalThis.window = prev;
   }
 
-  expectAdapterCode(
+  await expectAdapterCode(
     () =>
       createDefaultCompetitionRefereeRuntime({
         env: { VITE_SUPABASE_SERVICE_ROLE_KEY: "x" },
@@ -312,7 +336,16 @@ test("15-16. no privileged browser RPC and no client service-role env resolution
   );
 
   const live = createDefaultCompetitionRefereeRuntime({
-    rpcClient: { rpc: () => ({ data: { ok: true }, error: null }) },
+    rpcClient: {
+      rpc: () => ({ data: { ok: true }, error: null }),
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({ data: null, error: null }),
+          }),
+        }),
+      }),
+    },
     runtimePorts: createPorts(),
     clockIso: CLOCK,
   });
@@ -321,20 +354,26 @@ test("15-16. no privileged browser RPC and no client service-role env resolution
   assert.equal(live.inMemoryProductionFallback, false);
 });
 
-test("17-20. no duplicate authorities; Adapter B not implemented; contract locked", () => {
+test("17-20. Adapter B cut over; no duplicate authorities; contract locked", () => {
   const { runtime } = createDefaultDurable();
   assert.equal(runtime.usesRefereeV5ScoringEngine, false);
   assert.equal(runtime.usesCore16Scoring, true);
   assert.equal(runtime.usesCore15Lifecycle, true);
   assert.equal(runtime.usesCore17Result, true);
-  assert.equal(runtime.usesAdapterB, false);
+  assert.equal(runtime.usesAdapterB, true);
+  assert.equal(runtime.modeAdapterRegistry.size(), 4);
   assert.equal(runtime.identityAuthority, "auth.uid");
+  assert.equal(runtime.stagingBackendCertified, true);
   assert.equal(COMPETITION_REFEREE_ADAPTER_CONTRACT_LOCKED, true);
   assert.equal(
     COMPETITION_REFEREE_ADAPTER_CONTRACT_ID,
     "competition.referee.adapter.v1"
   );
   assert.equal(COMPETITION_REFEREE_ADAPTER_CONTRACT_VERSION, "1.0.0");
+  assert.equal(
+    COMPETITION_REFEREE_ADAPTER_INTEGRATION.usesAdapterBProductionCutover,
+    true
+  );
 });
 
 test("static secret/bundle audit — pages and referee UI must not host privileged runtime", () => {

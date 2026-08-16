@@ -23,8 +23,8 @@ export function createCanonicalRefereeDurableRuntime(options = {}) {
   }
 
   const assignmentRepository = Object.freeze({
-    getActiveForMatch(scope) {
-      const row = driver.getAssignment({
+    async getActiveForMatch(scope) {
+      const row = await driver.getAssignment({
         tenantId: scope.tenantId,
         competitionId: scope.competitionId,
         matchId: scope.matchId,
@@ -32,25 +32,25 @@ export function createCanonicalRefereeDurableRuntime(options = {}) {
       });
       return row ? freezeClone(row) : null;
     },
-    listByReferee(scope) {
-      return driver.listByReferee(scope);
+    async listByReferee(scope) {
+      return await driver.listByReferee(scope);
     },
-    upsert(row, actor) {
-      return driver.upsertAssignment(row, actor);
+    async upsert(row, actor) {
+      return await driver.upsertAssignment(row, actor);
     },
   });
 
   const matchStateRepository = Object.freeze({
-    getLiveState(scope) {
-      const row = driver.getLiveState(scope);
+    async getLiveState(scope) {
+      const row = await driver.getLiveState(scope);
       return row ? freezeClone(row) : null;
     },
-    putLiveState(input, actor) {
+    async putLiveState(input, actor) {
       requireCanonicalRefereeActor(actor);
-      if (!driver.getLiveState(input)) {
-        driver.ensureLiveState(input, actor);
+      if (!(await driver.getLiveState(input))) {
+        await driver.ensureLiveState(input, actor);
       }
-      const live = driver.getLiveState(input);
+      const live = await driver.getLiveState(input);
       const expectedVersion =
         input.expectedVersion != null
           ? Number(input.expectedVersion)
@@ -65,7 +65,7 @@ export function createCanonicalRefereeDurableRuntime(options = {}) {
           {}
         );
       }
-      const committed = driver.commitTransition(
+      const committed = await driver.commitTransition(
         {
           ...input,
           expectedVersion,
@@ -78,19 +78,19 @@ export function createCanonicalRefereeDurableRuntime(options = {}) {
         },
         actor
       );
-      return freezeClone(committed.live || driver.getLiveState(input));
+      return freezeClone(committed.live || (await driver.getLiveState(input)));
     },
   });
 
   const scoringEventLedger = Object.freeze({
-    findIdempotent(scope) {
-      const row = driver.findIdempotent(scope);
+    async findIdempotent(scope) {
+      const row = await driver.findIdempotent(scope);
       return row ? freezeClone(row) : null;
     },
-    listEvents(scope) {
-      return driver.listEvents(scope);
+    async listEvents(scope) {
+      return await driver.listEvents(scope);
     },
-    appendEvent(input, actor) {
+    async appendEvent(input, actor) {
       requireCanonicalRefereeActor(actor);
       const idempotencyKey = String(
         input.idempotencyKey || input.commandId || ""
@@ -102,16 +102,16 @@ export function createCanonicalRefereeDurableRuntime(options = {}) {
           {}
         );
       }
-      if (!driver.getLiveState(input)) {
-        driver.ensureLiveState(input, actor);
+      if (!(await driver.getLiveState(input))) {
+        await driver.ensureLiveState(input, actor);
       }
-      const live = driver.getLiveState(input);
+      const live = await driver.getLiveState(input);
       const requestHash = hashCanonical({
         eventType: input.eventType || "CORE16_COMMAND",
         payload: input.payload || {},
         commandId: input.commandId || idempotencyKey,
       });
-      const committed = driver.commitTransition(
+      const committed = await driver.commitTransition(
         {
           ...input,
           expectedVersion: Number(live?.stateVersion ?? live?.version ?? 0),
@@ -138,12 +138,12 @@ export function createCanonicalRefereeDurableRuntime(options = {}) {
   });
 
   const resultRevisionRepository = Object.freeze({
-    getActive(scope) {
-      const row = driver.getActiveRevision(scope);
+    async getActive(scope) {
+      const row = await driver.getActiveRevision(scope);
       return row ? freezeClone(row) : null;
     },
-    appendRevision(input, actor) {
-      return driver.appendRevision(input, actor);
+    async appendRevision(input, actor) {
+      return await driver.appendRevision(input, actor);
     },
   });
 

@@ -26,6 +26,8 @@ import {
  *   runtimePorts?: object,
  *   clockIso?: string,
  *   env?: Record<string, unknown>,
+ *   modeAdapterRegistry?: object,
+ *   modeAdapters?: object,
  * }} [options]
  */
 export function createDefaultCompetitionRefereeRuntime(options = {}) {
@@ -58,5 +60,7 @@ export function createDefaultCompetitionRefereeRuntime(options = {}) {
     allowTestDoubleDriver: options.allowTestDoubleDriver === true,
     runtimePorts: options.runtimePorts,
     clockIso: options.clockIso,
+    modeAdapterRegistry: options.modeAdapterRegistry,
+    modeAdapters: options.modeAdapters,
   });
 }
