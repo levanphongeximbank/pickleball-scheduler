@@ -67,6 +67,20 @@ Actor: `owner@staging.local` on Vercel Preview → Staging.
 
 **UI GAP:** CLOSED — `MaintenanceBookingPanel` exposes block-type selector for **MAINTENANCE** and **OPERATIONAL_BLOCK**, plus list/reschedule/transfer/cancel on the same canonical Resource Block lifecycle.
 
+### Post-UI-gap real-browser re-cert (HEAD `e268548f`)
+
+Artifact: `artifacts/batch10-browser-acceptance/browser-acceptance-1786902088891.json`  
+Preview asset: `/assets/index-ChR72bOy.js` (Staging-bound; all 5 Vite flags true).
+
+| Gate | Result |
+| --- | --- |
+| MAINTENANCE_REAL_BROWSER | PASS (create → conflict → cancel) |
+| OPERATIONAL_BLOCK_REAL_BROWSER | PASS (create → conflict → reschedule → transfer → cancel) |
+| OPERATIONAL_BLOCK_UI_PRESENT | PASS (`/court-management/future`) |
+| BROWSER_CONSOLE_ERRORS | 0 |
+| BROWSER_NETWORK_ERRORS | 0 |
+| RAW_SQL_ERROR_LEAK_COUNT | 0 |
+
 ### Observability
 
 | Gate | Value |
@@ -168,7 +182,7 @@ Artifacts:
 | SQL_RESERVATION_CUTOVER | true |
 | FULL_COURT_CUTOVER_STATE | ON_ON |
 | STAGING_CANONICAL_RUNTIME | PASS |
-| STAGING_REAL_BROWSER_ACCEPTED | YES — `artifacts/batch10-browser-acceptance/browser-acceptance-1786900566994.json` |
+| STAGING_REAL_BROWSER_ACCEPTED | YES — `artifacts/batch10-browser-acceptance/browser-acceptance-1786902088891.json` (also prior `...1786900566994.json`) |
 | CANONICAL_ON_LEGACY_AUTHORITY_HOPS | 0 |
 | DATA_CORRUPTION_COUNT | 0 |
 | PRODUCTION_MUTATIONS | 0 |

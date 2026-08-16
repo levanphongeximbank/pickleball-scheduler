@@ -39,8 +39,9 @@ const stagingEnv = getStagingSupabaseEnv();
 const anonFromFile = fs.existsSync(path.join(root, ".tmp-batch10-preview-anon.txt"))
   ? fs.readFileSync(path.join(root, ".tmp-batch10-preview-anon.txt"), "utf8").trim()
   : "";
+const stagingUrl = String(stagingEnv.url || `https://${STAGING_REF}.supabase.co`).trim();
 const anonKey = stagingEnv.anonKey || anonFromFile;
-if (!stagingEnv.url?.includes(STAGING_REF) || stagingEnv.url.includes(PRODUCTION_REF)) {
+if (!stagingUrl.includes(STAGING_REF) || stagingUrl.includes(PRODUCTION_REF)) {
   throw new Error("BLOCKED: non-staging URL");
 }
 if (!anonKey) throw new Error("Missing anon key");
@@ -194,7 +195,7 @@ async function main() {
   gate("PREVIEW_BINDS_STAGING", flagProbe.bindsStaging === true && flagProbe.bindsProdUrl === false);
 
   // Authenticated supabase client (same Staging as Preview) using password sign-in
-  const client = createClient(stagingEnv.url, anonKey, {
+  const client = createClient(stagingUrl, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: authData, error: authErr } = await client.auth.signInWithPassword({
