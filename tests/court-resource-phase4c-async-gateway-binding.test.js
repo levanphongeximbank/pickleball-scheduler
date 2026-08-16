@@ -124,6 +124,7 @@ test("production runtime binds canonicalReserve/release/availability to RPC clie
   assert.match(gatewaySource, /canonicalReserve:\s*productionCanonicalReserve/);
   assert.match(gatewaySource, /canonicalRelease:\s*productionCanonicalRelease/);
   assert.match(gatewaySource, /canonicalGetAvailability:\s*productionCanonicalGetAvailability/);
+  assert.match(gatewaySource, /canonicalListOwnerReservations:\s*productionCanonicalListOwnerReservations/);
   assert.doesNotMatch(
     gatewaySource,
     /Canonical reservation adapter at the gateway boundary must be synchronous/

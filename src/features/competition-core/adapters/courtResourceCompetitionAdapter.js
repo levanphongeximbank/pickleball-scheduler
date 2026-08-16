@@ -1,22 +1,24 @@
 /**
- * Neutral Competition → Court Resource binding (ĐẦU A implementation).
+ * 2.2 Court Operations provider binding for Competition Court Contract A.
+ *
+ * Owner: 2.2 Court Operations. This is not a Competition business module.
+ * Physical location remains under competition-core/adapters for Head A
+ * import-path stability (PROVIDER_PHYSICAL_RELOCATION_DEFERRED=YES).
  *
  * Competition Court Adapter Contract
  *   → this adapter
- *   → CourtResourceGateway
+ *   → CourtResourceGateway (native physicalCourtId / physicalCourtIds)
+ *   → canonical inventory / reservation RPCs
  *
  * Forbidden:
  *   - CourtResourceGateway → Competition business
  *   - this adapter → Internal / Official / Open / Team Tournament modules
- *   - storage bypass (club_data_v3, bookings, Physical Court tables)
+ *   - storage bypass (Club V3 blob, bookings, Physical Court tables)
+ *   - remapping native physicalCourtId into legacy Gateway identity fields
  *
- * Transitional owner mapping (Phase 3B-replaceable below the gateway):
+ * Transitional owner mapping (below the gateway):
  *   competition owner { ownerType: "competition", ownerId: competitionId }
  *   → gateway owner { type: "tournament", id: competitionId }
- *
- * Transitional identity mapping:
- *   physicalCourtId (contract) → courtId / selectedCourtIds (gateway)
- * Phase 3B may change the gateway substrate without changing the public contract.
  */
 import {
   OWNERSHIP_STATUS,
@@ -119,6 +121,8 @@ function displayProjection(court, physicalCourtId) {
 
 function windowFrom(input = {}) {
   const window = input.window || {};
+  const startsAt = trimId(input.startsAt) || trimId(window.startsAt);
+  const endsAt = trimId(input.endsAt) || trimId(window.endsAt);
   return {
     date: trimId(input.date) || trimId(window.date),
     startTime:
@@ -131,7 +135,31 @@ function windowFrom(input = {}) {
       trimId(input.scheduledEnd) ||
       trimId(window.endTime) ||
       trimId(window.scheduledEnd),
+    ...(startsAt ? { startsAt } : {}),
+    ...(endsAt ? { endsAt } : {}),
   };
+}
+
+function toGatewayPhysicalIdentity(input = {}) {
+  const physicalCourtIds = listPhysicalCourtIds(input);
+  const physicalCourtId =
+    physicalCourtIds.length === 1 ? physicalCourtIds[0] : trimId(input.physicalCourtId);
+  return {
+    physicalCourtIds,
+    ...(physicalCourtId ? { physicalCourtId } : {}),
+  };
+}
+
+function reservationRequestId(input, physicalCourtIds, window, operation) {
+  const explicit = trimId(input.requestId);
+  if (explicit) return explicit;
+  const owner = createCompetitionReservationOwner(input);
+  const ownerId = owner?.ownerId || "unknown";
+  const courts = (physicalCourtIds || []).join(",");
+  const span =
+    trimId(input.startsAt) ||
+    `${window.date || ""}T${window.startTime || ""}`;
+  return `${operation}:${ownerId}:${courts}:${span}`;
 }
 
 function reject(code, error, extra = {}) {
@@ -202,7 +230,7 @@ function catchGateway(run) {
 }
 
 function mapAvailabilityRow(row, input) {
-  const physicalCourtId = physicalCourtIdFromCourt(row?.court, row?.courtId);
+  const physicalCourtId = physicalCourtIdFromCourt(row?.court, row?.physicalCourtId || row?.courtId);
   const conflictCode = row?.conflicts?.[0]?.code || null;
   const ownershipStatus = row?.ownership?.status || null;
   let resultCode;
@@ -215,7 +243,7 @@ function mapAvailabilityRow(row, input) {
     resultCode = mapGatewayCodeToCompetitionCode(conflictCode || ownershipStatus, ownershipStatus);
   }
   return {
-    ...displayProjection(row?.court, physicalCourtId),
+    ...displayProjection(row?.court || row, physicalCourtId),
     available: Boolean(row?.available),
     resultCode,
     ownership: {
@@ -246,11 +274,10 @@ function createAdapter(gateway) {
       });
     }
 
-    const physicalCourtIds = listPhysicalCourtIds(input);
     const result = await catchGateway(() =>
       gateway.listEligibleCourts({
         ...gatewayScope(input),
-        selectedCourtIds: physicalCourtIds,
+        ...toGatewayPhysicalIdentity(input),
       })
     );
     if (result.ok === false && result.contractVersion) return result;
@@ -284,7 +311,9 @@ function createAdapter(gateway) {
         courts: [],
       });
     }
-    if (!window.date || !window.startTime || !window.endTime) {
+    const hasCivilWindow = Boolean(window.date && window.startTime && window.endTime);
+    const hasInstantWindow = Boolean(window.startsAt && window.endsAt);
+    if (!hasCivilWindow && !hasInstantWindow) {
       return reject(
         COMPETITION_COURT_ERROR_CODE.MISSING_WINDOW,
         "date, startTime, and endTime are required.",
@@ -292,12 +321,11 @@ function createAdapter(gateway) {
       );
     }
 
-    const physicalCourtIds = listPhysicalCourtIds(input);
     const result = await catchGateway(() =>
       gateway.getCourtAvailability({
         ...gatewayScope(input),
         ...window,
-        courtIds: physicalCourtIds,
+        ...toGatewayPhysicalIdentity(input),
         includeUnavailable: input.includeUnavailable !== false,
       })
     );
@@ -347,8 +375,10 @@ function createAdapter(gateway) {
     const result = await catchGateway(() =>
       gateway.reserveCourts({
         ...gatewayScope(input),
-        selectedCourtIds: physicalCourtIds,
+        ...toGatewayPhysicalIdentity(input),
         ...window,
+        requestId: reservationRequestId(input, physicalCourtIds, window, "competition-reserve"),
+        expectedVersion: input.expectedVersion,
         label: input.label || context.competitionId,
       })
     );
@@ -361,10 +391,14 @@ function createAdapter(gateway) {
       });
     }
 
+    const reservedIds =
+      Array.isArray(result.physicalCourtIds) && result.physicalCourtIds.length
+        ? result.physicalCourtIds
+        : physicalCourtIds;
     return createCompetitionCourtContractEnvelope({
       ok: true,
       code: COMPETITION_COURT_RESULT_CODE.OK,
-      reserved: (result.selectedCourtIds || physicalCourtIds).map((id) => ({
+      reserved: reservedIds.map((id) => ({
         physicalCourtId: String(id),
       })),
       owner: toCompetitionOwner(input),
@@ -393,10 +427,14 @@ function createAdapter(gateway) {
     }
 
     const physicalCourtIds = listPhysicalCourtIds(input);
+    const window = windowFrom(input);
     const result = await catchGateway(() =>
       gateway.releaseCourts({
         ...gatewayScope(input),
-        selectedCourtIds: physicalCourtIds,
+        ...toGatewayPhysicalIdentity(input),
+        reservationIds: Array.isArray(input.reservationIds) ? input.reservationIds : null,
+        requestId: reservationRequestId(input, physicalCourtIds, window, "competition-release"),
+        releaseReason: trimId(input.releaseReason) || "released",
       })
     );
     if (result.ok === false && result.contractVersion) return result;
@@ -408,10 +446,37 @@ function createAdapter(gateway) {
       );
     }
 
-    const released = (result.cancelled || []).map((booking) => ({
-      physicalCourtId: physicalCourtIdFromCourt(booking, booking?.courtId),
-      reservationId: booking?.id != null ? String(booking.id) : null,
-    }));
+    const cancelled = Array.isArray(result.cancelled) ? result.cancelled : [];
+    const releasedIds =
+      Array.isArray(result.physicalCourtIds) && result.physicalCourtIds.length
+        ? result.physicalCourtIds
+        : physicalCourtIds;
+    const released = releasedIds.length
+      ? releasedIds.map((id, index) => {
+          const item = cancelled[index];
+          return {
+            physicalCourtId: String(id),
+            reservationId:
+              item && typeof item === "object"
+                ? item.reservationId != null
+                  ? String(item.reservationId)
+                  : item.id != null
+                    ? String(item.id)
+                    : null
+                : item != null
+                  ? String(item)
+                  : null,
+          };
+        })
+      : cancelled.map((booking) => ({
+          physicalCourtId: physicalCourtIdFromCourt(booking, booking?.physicalCourtId || booking?.courtId),
+          reservationId:
+            booking?.reservationId != null
+              ? String(booking.reservationId)
+              : booking?.id != null
+                ? String(booking.id)
+                : null,
+        }));
     return createCompetitionCourtContractEnvelope({
       ok: true,
       code: COMPETITION_COURT_RESULT_CODE.OK,
@@ -439,7 +504,9 @@ function createAdapter(gateway) {
         "physicalCourtId is required for match assignment."
       );
     }
-    if (!window.date || !window.startTime || !window.endTime) {
+    const hasCivilWindow = Boolean(window.date && window.startTime && window.endTime);
+    const hasInstantWindow = Boolean(window.startsAt && window.endsAt);
+    if (!hasCivilWindow && !hasInstantWindow) {
       return reject(
         COMPETITION_COURT_ERROR_CODE.MISSING_WINDOW,
         "Match assignment requires a time window."
@@ -449,7 +516,7 @@ function createAdapter(gateway) {
     const result = await catchGateway(() =>
       gateway.validateCourtAssignment({
         ...gatewayScope(input),
-        courtId: physicalCourtId,
+        ...toGatewayPhysicalIdentity(input),
         matchId,
         ...window,
         requireOwnerReservation: input.requireOwnerReservation,
@@ -470,7 +537,7 @@ function createAdapter(gateway) {
       valid: true,
       code: COMPETITION_COURT_RESULT_CODE.ASSIGNMENT_VALID,
       matchId,
-      physicalCourtId: result.courtId || physicalCourtId,
+      physicalCourtId: result.physicalCourtId || physicalCourtId,
       owner: toCompetitionOwner(input, result.ownership?.owner),
       ownershipStatus: result.ownership?.status || null,
     });

@@ -12,6 +12,8 @@ export const COURT_MASTER_TABLE = "court_resource_physical_courts";
 export const COURT_CLUSTER_TOPOLOGY_TABLE = "court_clusters";
 export const COURT_ACCESS_AUTHORITY_TABLE = "court_resource_club_operational_access";
 export const CANONICAL_LIST_ELIGIBLE_RPC = "court_resource_list_eligible_courts";
+export const CANONICAL_LIST_OWNER_RESERVATIONS_RPC =
+  "court_resource_list_owner_reservations";
 
 export const PHYSICAL_COURT_ID_IS_IDENTITY = true;
 export const CLUSTER_ID_IS_IDENTITY = false;

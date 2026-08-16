@@ -131,6 +131,7 @@
   "tests/court-resource-architecture-reconciliation.test.js",
   "tests/court-resource-canonical-inventory.test.js",
   "tests/court-resource-canonical-inventory-architecture.test.js",
+  "tests/court-resource-canonical-provider-identity.test.js",
   "tests/court-resource-phase3a-identity.test.js",
   "tests/court-resource-phase3b-canonical-reservation.test.js",
   "tests/court-resource-phase4c-async-gateway-binding.test.js",

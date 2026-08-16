@@ -15,6 +15,8 @@ export const CANONICAL_RESERVATION_CUTOVER_TABLE =
 export const CANONICAL_RESERVE_RPC = "court_resource_reserve";
 export const CANONICAL_RELEASE_RPC = "court_resource_release";
 export const CANONICAL_AVAILABILITY_RPC = "court_resource_get_availability";
+export const CANONICAL_LIST_OWNER_RESERVATIONS_RPC =
+  "court_resource_list_owner_reservations";
 
 export const CANONICAL_OWNER_TYPE = Object.freeze({
   BOOKING: "booking",

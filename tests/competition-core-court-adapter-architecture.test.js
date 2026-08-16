@@ -93,6 +93,13 @@ test("neutral adapter calls CourtResourceGateway and does not import Tournament 
   assert.match(binding, /\breserveCourts\b/);
   assert.match(binding, /\breleaseCourts\b/);
   assert.match(binding, /\bvalidateCourtAssignment\b/);
+  assert.match(binding, /physicalCourtIds/);
+  assert.doesNotMatch(binding, /\bselectedCourtIds\b/);
+  assert.doesNotMatch(binding, /\blegacyCourtId\b/);
+  assert.doesNotMatch(binding, /\blegacyMappings\b/);
+  assert.doesNotMatch(binding, /\bresolveLegacyCourtIdentity\b/);
+  assert.doesNotMatch(binding, /\bclubStorage\b/);
+  assert.doesNotMatch(binding, /club_data_v3/);
   for (const spec of specs) {
     assert.doesNotMatch(spec, TOURNAMENT_BUSINESS, spec);
     assert.doesNotMatch(spec, STORAGE_BYPASS, spec);

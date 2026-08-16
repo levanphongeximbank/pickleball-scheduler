@@ -17,6 +17,7 @@ export {
   COURT_CLUSTER_TOPOLOGY_TABLE,
   COURT_ACCESS_AUTHORITY_TABLE,
   CANONICAL_LIST_ELIGIBLE_RPC,
+  CANONICAL_LIST_OWNER_RESERVATIONS_RPC,
 } from "./constants/courtOperationsOwnership.js";
 
 export {

@@ -6,6 +6,7 @@ import { getSupabaseAuthClient, hasSupabaseConfig } from "../../../auth/supabase
 import { COURT_RESOURCE_CODE } from "../constants/courtResourceContract.js";
 import {
   CANONICAL_AVAILABILITY_RPC,
+  CANONICAL_LIST_OWNER_RESERVATIONS_RPC,
   CANONICAL_RELEASE_RPC,
   CANONICAL_RESERVE_RPC,
 } from "../constants/canonicalReservation.js";
@@ -118,5 +119,15 @@ export async function rpcGetAvailability(input = {}) {
     p_ends_at: input.endsAt,
     p_owner_type: input.ownerType ?? null,
     p_owner_id: input.ownerId ?? null,
+  });
+}
+
+export async function rpcListOwnerReservations(input = {}) {
+  return callCanonicalRpc(CANONICAL_LIST_OWNER_RESERVATIONS_RPC, {
+    p_tenant_id: input.tenantId,
+    p_club_id: input.clubId,
+    p_owner_type: input.ownerType,
+    p_owner_id: input.ownerId,
+    p_physical_court_ids: input.physicalCourtIds ?? null,
   });
 }

@@ -49,6 +49,7 @@ import {
 } from "../../venue-court/services/reservationOwnerService.js";
 import {
   productionCanonicalGetAvailability,
+  productionCanonicalListOwnerReservations,
   productionCanonicalRelease,
   productionCanonicalReserve,
 } from "../runtime/canonicalReservationRuntime.js";
@@ -148,6 +149,7 @@ const defaultDeps = Object.freeze({
   canonicalReserve: productionCanonicalReserve,
   canonicalRelease: productionCanonicalRelease,
   canonicalGetAvailability: productionCanonicalGetAvailability,
+  canonicalListOwnerReservations: productionCanonicalListOwnerReservations,
   resolveLegacyPhysicalCourt: defaultResolveLegacyPhysicalCourt,
   isCanonicalReservationCutover,
 });
@@ -210,6 +212,10 @@ function selectedPhysicalCourtIds(options) {
   return raw.map(trimId).filter(Boolean);
 }
 
+function hasNativePhysicalCourtIds(options) {
+  return selectedPhysicalCourtIds(options).length > 0;
+}
+
 function canonicalCutoverEnabled(options = {}) {
   if (options.canonicalReservationCutover === true) return true;
   if (options.canonicalReservationCutover === false) return false;
@@ -217,6 +223,46 @@ function canonicalCutoverEnabled(options = {}) {
     return deps.isCanonicalReservationCutover() === true;
   }
   return isCanonicalReservationCutover() === true;
+}
+
+/**
+ * Native physicalCourtId input uses the canonical reservation path even when
+ * global business cutover is OFF. Legacy courtId/selectedCourtIds remain
+ * compatibility-only and keep the blob path while cutover is OFF.
+ */
+function shouldUseCanonicalReservationPath(options = {}) {
+  return hasNativePhysicalCourtIds(options) || canonicalCutoverEnabled(options);
+}
+
+function shouldUseCanonicalOwnerReservationRead(options = {}) {
+  if (shouldUseCanonicalReservationPath(options)) return true;
+  return Boolean(trimId(options.tenantId) || trimId(options.venueId));
+}
+
+function nativePhysicalCourtIdsOrFail(options) {
+  const direct = selectedPhysicalCourtIds(options);
+  if (!direct.length) {
+    return fail(
+      COURT_RESOURCE_CODE.MISSING_COURT_ID,
+      "physicalCourtIds are required — cluster and courtCount are not reservable units."
+    );
+  }
+  const invalid = direct.filter((id) => !isCanonicalPhysicalCourtId(id));
+  if (invalid.length) {
+    return fail(
+      COURT_RESOURCE_CODE.UNRESOLVED_MAPPING,
+      "physicalCourtId must be a UUID — labels and legacy court ids are not identity.",
+      { failed: invalid }
+    );
+  }
+  return { ok: true, physicalCourtIds: [...new Set(direct)].sort() };
+}
+
+function resolvePhysicalIdsForCanonical(options) {
+  if (hasNativePhysicalCourtIds(options)) {
+    return nativePhysicalCourtIdsOrFail(options);
+  }
+  return resolveCanonicalPhysicalIds(options);
 }
 
 async function invokeCanonicalAdapter(adapter, payload, missingMessage) {
@@ -359,7 +405,7 @@ async function reserveCourtsCanonical(options) {
   if (!window) {
     return fail(COURT_RESOURCE_CODE.MISSING_WINDOW, "startsAt/endsAt or date+startTime+endTime are required.");
   }
-  const resolved = resolveCanonicalPhysicalIds(options);
+  const resolved = resolvePhysicalIdsForCanonical(options);
   if (!resolved.ok) return resolved;
   const requestId = trimId(options.requestId);
   if (!requestId) return fail(COURT_RESOURCE_CODE.REQUEST_ID_REQUIRED, "requestId is required.");
@@ -376,7 +422,7 @@ async function reserveCourtsCanonical(options) {
       endsAt: window.endsAt,
       requestId,
     },
-    "Canonical reservation cutover is enabled but no reserve adapter is bound — fail closed."
+    "Canonical reservation adapter is not bound — fail closed."
   );
   if (!result?.ok) {
     return fail(
@@ -411,8 +457,8 @@ async function releaseCourtsCanonical(options) {
   const requestId = trimId(options.requestId)
     || `release:${owner.ownerType}:${owner.ownerId}`;
   let physicalCourtIds = null;
-  if (selectedPhysicalCourtIds(options).length || selectedCourtIds(options).length) {
-    const physical = resolveCanonicalPhysicalIds(options);
+  if (hasNativePhysicalCourtIds(options) || selectedCourtIds(options).length) {
+    const physical = resolvePhysicalIdsForCanonical(options);
     if (!physical.ok) return physical;
     physicalCourtIds = physical.physicalCourtIds;
   }
@@ -428,7 +474,7 @@ async function releaseCourtsCanonical(options) {
       requestId,
       releaseReason: trimId(options.releaseReason) || "released",
     },
-    "Canonical reservation cutover is enabled but no release adapter is bound — fail closed."
+    "Canonical release adapter is not bound — fail closed."
   );
   if (!result?.ok) {
     return fail(
@@ -442,6 +488,7 @@ async function releaseCourtsCanonical(options) {
     code: COURT_RESOURCE_CODE.OK,
     cancelled: result.releasedReservationIds || result.cancelled || [],
     failed: [],
+    physicalCourtIds: physicalCourtIds || result.physicalCourtIds || [],
     capacityAuthority: "canonical_reservation",
     replay: result.replay === true,
   };
@@ -464,7 +511,7 @@ async function getCourtAvailabilityCanonical(options) {
       { courts: [] }
     );
   }
-  const resolved = resolveCanonicalPhysicalIds(options);
+  const resolved = resolvePhysicalIdsForCanonical(options);
   if (!resolved.ok) return { ...resolved, courts: [] };
   const owner = canonicalOwnerFrom(options);
   const result = await invokeCanonicalAdapter(
@@ -478,7 +525,7 @@ async function getCourtAvailabilityCanonical(options) {
       ownerType: owner?.ownerType || null,
       ownerId: owner?.ownerId || null,
     },
-    "Canonical reservation cutover is enabled but no availability adapter is bound — fail closed."
+    "Canonical availability adapter is not bound — fail closed."
   );
   if (!result?.ok) {
     return fail(
@@ -542,7 +589,7 @@ function bookingTypeForOwner(owner) {
 
 export async function getCourtAvailability(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
-  if (canonicalCutoverEnabled(options)) {
+  if (shouldUseCanonicalReservationPath(options)) {
     return getCourtAvailabilityCanonical(options);
   }
   const owner = normalizeOwnerInput(options.owner);
@@ -637,7 +684,7 @@ export function listEligibleCourts(rawOptions = {}) {
 
 export async function reserveCourts(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
-  if (canonicalCutoverEnabled(options)) {
+  if (shouldUseCanonicalReservationPath(options)) {
     return reserveCourtsCanonical(options);
   }
   const clubId = trimId(options.clubId);
@@ -770,7 +817,7 @@ export async function reserveCourts(rawOptions = {}) {
 
 export async function releaseCourts(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
-  if (canonicalCutoverEnabled(options)) {
+  if (shouldUseCanonicalReservationPath(options)) {
     return releaseCourtsCanonical(options);
   }
   const clubId = trimId(options.clubId);
@@ -828,6 +875,13 @@ export function getReservationOwner(rawOptions = {}) {
 
 export function listOwnerReservations(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
+  if (shouldUseCanonicalOwnerReservationRead(options)) {
+    return listOwnerReservationsCanonical(options);
+  }
+  return listOwnerReservationsLegacy(options);
+}
+
+function listOwnerReservationsLegacy(options) {
   const clubId = trimId(options.clubId);
   const owner = normalizeOwnerInput(options.owner);
   if (!clubId) return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required.", { reservations: [] });
@@ -844,9 +898,60 @@ export function listOwnerReservations(rawOptions = {}) {
   }
 }
 
+async function listOwnerReservationsCanonical(options) {
+  const clubId = trimId(options.clubId);
+  const tenantId = trimId(options.tenantId) || trimId(options.venueId);
+  const owner = canonicalOwnerFrom(options);
+  if (!clubId) {
+    return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required.", { reservations: [] });
+  }
+  if (!tenantId) {
+    return fail(COURT_RESOURCE_CODE.TENANT_MISMATCH, "tenantId is required.", { reservations: [] });
+  }
+  if (!owner) {
+    return fail(COURT_RESOURCE_CODE.MISSING_OWNER, "owner.type and owner.id are required.", { reservations: [] });
+  }
+  let physicalCourtIds = null;
+  if (hasNativePhysicalCourtIds(options)) {
+    const resolved = nativePhysicalCourtIdsOrFail(options);
+    if (!resolved.ok) return { ...resolved, reservations: [] };
+    physicalCourtIds = resolved.physicalCourtIds;
+  }
+  const result = await invokeCanonicalAdapter(
+    deps.canonicalListOwnerReservations,
+    {
+      tenantId,
+      clubId,
+      ownerType: owner.ownerType,
+      ownerId: owner.ownerId,
+      physicalCourtIds,
+    },
+    "Canonical owner-reservation reader is not bound — fail closed."
+  );
+  if (!result?.ok) {
+    return fail(
+      result?.code || COURT_RESOURCE_CODE.CANONICAL_PATH_UNAVAILABLE,
+      result?.error || result?.message || "Canonical owner-reservation read failed.",
+      { reservations: [] }
+    );
+  }
+  const reservations = (result.reservations || []).map((row) => ({
+    ...row,
+    physicalCourtId: row.physicalCourtId || row.physical_court_id || null,
+    reservationId: row.reservationId || row.reservation_id || null,
+    identityAuthority: "physicalCourtId",
+  }));
+  return {
+    ok: true,
+    code: COURT_RESOURCE_CODE.OK,
+    reservations,
+    capacityAuthority: "canonical_reservation",
+  };
+}
+
 export async function validateCourtAssignment(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
-  if (canonicalCutoverEnabled(options)) {
+  if (shouldUseCanonicalReservationPath(options)) {
     const availability = await getCourtAvailabilityCanonical(options);
     if (!availability.ok) return { ...availability, valid: false };
     const row = availability.courts?.[0] || null;

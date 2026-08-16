@@ -6,4 +6,5 @@ export {
   rpcReserveCourts as productionCanonicalReserve,
   rpcReleaseCourts as productionCanonicalRelease,
   rpcGetAvailability as productionCanonicalGetAvailability,
+  rpcListOwnerReservations as productionCanonicalListOwnerReservations,
 } from "../services/canonicalReservationClient.js";

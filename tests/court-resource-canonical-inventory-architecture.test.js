@@ -19,6 +19,7 @@ import {
   DISPLAY_LABEL_IS_IDENTITY,
   PHYSICAL_COURT_ID_IS_IDENTITY,
   CANONICAL_LIST_ELIGIBLE_RPC,
+  CANONICAL_LIST_OWNER_RESERVATIONS_RPC,
 } from "../src/features/court-resource/constants/courtOperationsOwnership.js";
 import { COMPETITION_COURT_ADAPTER_CONTRACT_VERSION } from "../src/features/competition-core/contracts/competitionCourtAdapterContract.js";
 
@@ -45,8 +46,6 @@ const CERTIFIED_D4 = {
 
 const HEAD_A_CONTRACT_SHA256 =
   "B3DC18602C5AEE63CD565622FFADD6388F3DFBA38A21056570F3BD7526BB5CE6";
-const HEAD_A_BINDING_SHA256 =
-  "6DB63E07200D2B9D21B8FAE73F457BD1DDC2248A6797AA7A5A4A39E2444F3859";
 
 function read(rel) {
   return readFileSync(path.join(root, rel), "utf8");
@@ -56,9 +55,19 @@ function sha256File(rel) {
   return createHash("sha256").update(readFileSync(path.join(root, rel))).digest("hex").toUpperCase();
 }
 
-function extractExportedFunction(source, name) {
-  const start = source.indexOf(`export function ${name}`);
-  assert.notEqual(start, -1, `missing export function ${name}`);
+function extractNamedFunction(source, name) {
+  const needles = [
+    `export async function ${name}`,
+    `export function ${name}`,
+    `async function ${name}`,
+    `function ${name}`,
+  ];
+  let start = -1;
+  for (const needle of needles) {
+    start = source.indexOf(needle);
+    if (start >= 0) break;
+  }
+  assert.notEqual(start, -1, `missing function ${name}`);
   const signatureEnd = source.indexOf(")", start);
   const brace = source.indexOf("{", signatureEnd);
   let depth = 0;
@@ -70,6 +79,10 @@ function extractExportedFunction(source, name) {
     }
   }
   throw new Error(`unclosed function ${name}`);
+}
+
+function extractExportedFunction(source, name) {
+  return extractNamedFunction(source, name);
 }
 
 function importedModules(source) {
@@ -196,8 +209,75 @@ test("Competition Court Contract A V1 is unchanged", () => {
     sha256File("src/features/competition-core/contracts/competitionCourtAdapterContract.js"),
     HEAD_A_CONTRACT_SHA256
   );
-  assert.equal(
-    sha256File("src/features/competition-core/adapters/courtResourceCompetitionAdapter.js"),
-    HEAD_A_BINDING_SHA256
-  );
+});
+
+test("canonical provider passes native physicalCourtId and does not remap to legacy identity", () => {
+  const adapter = read("src/features/competition-core/adapters/courtResourceCompetitionAdapter.js");
+  assert.match(adapter, /2\.2 Court Operations/);
+  assert.match(adapter, /PROVIDER_PHYSICAL_RELOCATION_DEFERRED=YES/);
+  assert.match(adapter, /toGatewayPhysicalIdentity/);
+  assert.match(adapter, /physicalCourtIds/);
+  assert.doesNotMatch(adapter, /\bselectedCourtIds\b/);
+  assert.doesNotMatch(adapter, /\blegacyCourtId\b/);
+  assert.doesNotMatch(adapter, /\blegacyMappings\b/);
+  assert.doesNotMatch(adapter, /\bresolveLegacyCourtIdentity\b/);
+  assert.doesNotMatch(adapter, /\bclubStorage\b/);
+  assert.doesNotMatch(adapter, /club_data_v3/);
+  assert.doesNotMatch(adapter, /localStorage/);
+  assert.doesNotMatch(adapter, /selectedCourtIds:\s*physicalCourtIds/);
+  assert.doesNotMatch(adapter, /courtIds:\s*physicalCourtIds/);
+  assert.doesNotMatch(adapter, /courtId:\s*physicalCourtId/);
+});
+
+test("canonical Gateway native physical IDs do not fall back to legacy resolver", () => {
+  const gateway = read("src/features/court-resource/services/courtResourceGateway.js");
+  const native = extractNamedFunction(gateway, "nativePhysicalCourtIdsOrFail");
+  const resolveNative = extractNamedFunction(gateway, "resolvePhysicalIdsForCanonical");
+  const reserve = extractNamedFunction(gateway, "reserveCourtsCanonical");
+  const availability = extractNamedFunction(gateway, "getCourtAvailabilityCanonical");
+  const release = extractNamedFunction(gateway, "releaseCourtsCanonical");
+  const ownerRead = extractNamedFunction(gateway, "listOwnerReservationsCanonical");
+  for (const fn of [native, resolveNative, reserve, availability, release, ownerRead]) {
+    assert.doesNotMatch(fn, /resolveLegacyCourtIdentity/);
+    assert.doesNotMatch(fn, /loadBookingsForClub/);
+    assert.doesNotMatch(fn, /loadCourtsForClub/);
+    assert.doesNotMatch(fn, /clubStorage/);
+    assert.doesNotMatch(fn, /club_data_v3/);
+    assert.doesNotMatch(fn, /localStorage/);
+    assert.doesNotMatch(fn, /legacyReservationAdapter/);
+  }
+  assert.doesNotMatch(native, /resolveLegacyPhysicalCourt/);
+  assert.match(resolveNative, /hasNativePhysicalCourtIds/);
+  assert.match(resolveNative, /nativePhysicalCourtIdsOrFail/);
+  assert.match(gateway, /function shouldUseCanonicalReservationPath/);
+  assert.match(gateway, /hasNativePhysicalCourtIds\(options\) \|\| canonicalCutoverEnabled/);
+  assert.match(reserve, /resolvePhysicalIdsForCanonical/);
+  assert.match(availability, /resolvePhysicalIdsForCanonical/);
+  assert.match(ownerRead, /canonicalListOwnerReservations/);
+  assert.doesNotMatch(ownerRead, /listLegacyTournamentReservations/);
+});
+
+test("additive owner-reservation SQL is Court Operations-owned and fail closed", () => {
+  const apply = read("docs/v5/migrations/court-resource-canonical-owner-reservation-read-01/02_APPLY.sql");
+  const precheck = read("docs/v5/migrations/court-resource-canonical-owner-reservation-read-01/01_PRECHECK.sql");
+  const verify = read("docs/v5/migrations/court-resource-canonical-owner-reservation-read-01/03_VERIFY.sql");
+  const rollback = read("docs/v5/migrations/court-resource-canonical-owner-reservation-read-01/04_ROLLBACK.sql");
+  const readme = read("docs/v5/migrations/court-resource-canonical-owner-reservation-read-01/README.md");
+  assert.equal(CANONICAL_LIST_OWNER_RESERVATIONS_RPC, "court_resource_list_owner_reservations");
+  assert.match(apply, /CREATE FUNCTION public\.court_resource_list_owner_reservations/);
+  assert.match(apply, /SECURITY DEFINER/);
+  assert.match(apply, /auth\.uid\(\) IS NULL/);
+  assert.match(apply, /court_resource_reservations/);
+  assert.match(apply, /physicalCourtId/);
+  assert.match(apply, /REVOKE ALL ON FUNCTION public\.court_resource_list_owner_reservations/);
+  assert.match(apply, /GRANT EXECUTE ON FUNCTION public\.court_resource_list_owner_reservations/);
+  assert.doesNotMatch(apply, /GRANT SELECT/);
+  assert.doesNotMatch(apply, /club_data_v3/);
+  assert.doesNotMatch(apply, /ALTER TABLE public\.court_resource_reservations/);
+  assert.match(precheck, /STAGING_APPLY[\s\S]*NO/);
+  assert.match(verify, /direct client table privilege exists/);
+  assert.match(rollback, /DROP FUNCTION IF EXISTS public\.court_resource_list_owner_reservations/);
+  assert.doesNotMatch(rollback, /DROP TABLE/);
+  assert.match(readme, /STAGING_APPLY=NO/);
+  assert.match(readme, /PRODUCTION_APPLY=NO/);
 });
