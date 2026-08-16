@@ -609,17 +609,47 @@ export default function RefereeMatchScreen({
 
       <DreamBreakerPanel db={db} />
 
-      {changeEndsRequired ? (
-        <div className="rp-change-ends-required" data-testid="change-ends-warning">
+      {changeEndAt ? (
+        <div className="rp-change-ends-section" data-testid="change-ends-section">
           <div className="rp-change-ends-policy" data-testid="change-ends-policy">
             <SyncAltIcon fontSize="inherit" aria-hidden="true" />
-            <span>Đổi sân tại: {changeEndAt || "—"}</span>
+            <span>
+              Điểm đổi sân: <strong data-testid="change-ends-threshold">{changeEndAt}</strong>
+            </span>
           </div>
+          {changeEndsRequired ? (
+            <div className="rp-change-ends-required" data-testid="change-ends-warning">
+              <div className="rp-change-ends-copy-block">
+                <p className="rp-change-ends-title">
+                  <FlagIcon fontSize="inherit" aria-hidden="true" /> ĐÃ ĐẾN ĐIỂM ĐỔI SÂN
+                </p>
+                <p className="rp-change-ends-copy">
+                  Vui lòng xác nhận sau khi hai bên đã đổi đầu sân.
+                </p>
+              </div>
+              {!confirmChangeEnds ? (
+                <button
+                  type="button"
+                  className="rp-btn rp-btn-warn rp-btn-change-ends"
+                  disabled={pending || stale}
+                  onClick={() => setConfirmChangeEnds(true)}
+                  data-testid="btn-change-ends-required"
+                >
+                  <SyncAltIcon fontSize="inherit" aria-hidden="true" /> XÁC NHẬN ĐỔI SÂN
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : changeEndsRequired ? (
+        <div className="rp-change-ends-required" data-testid="change-ends-warning">
           <div className="rp-change-ends-copy-block">
             <p className="rp-change-ends-title">
               <FlagIcon fontSize="inherit" aria-hidden="true" /> ĐÃ ĐẾN ĐIỂM ĐỔI SÂN
             </p>
-            <p className="rp-change-ends-copy">Vui lòng xác nhận để đổi sân.</p>
+            <p className="rp-change-ends-copy">
+              Vui lòng xác nhận sau khi hai bên đã đổi đầu sân.
+            </p>
           </div>
           {!confirmChangeEnds ? (
             <button
@@ -654,7 +684,7 @@ export default function RefereeMatchScreen({
               onClick={handleConfirmChangeEnds}
               data-testid="btn-change-ends-confirm"
             >
-              Xác nhận đổi sân
+              XÁC NHẬN ĐỔI SÂN
             </button>
           </div>
         </div>

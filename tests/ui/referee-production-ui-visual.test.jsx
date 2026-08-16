@@ -544,7 +544,8 @@ describe("match screen visual states @ ~390px", () => {
       </MemoryRouter>
     );
     expect(screen.getByTestId("change-ends-warning")).toHaveTextContent("ĐÃ ĐẾN ĐIỂM ĐỔI SÂN");
-    expect(screen.getByTestId("change-ends-policy")).toHaveTextContent(/Đổi sân tại/);
+    expect(screen.getByTestId("change-ends-policy")).toHaveTextContent(/Điểm đổi sân/);
+    expect(screen.getByTestId("change-ends-threshold")).toBeInTheDocument();
     expect(screen.queryByTestId("btn-change-ends")).not.toBeInTheDocument();
     expect(screen.getByTestId("canonical-court-view")).toHaveAttribute(
       "data-orientation",

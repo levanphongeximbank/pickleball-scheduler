@@ -159,6 +159,7 @@ export function createDurableRefereeOperationsStore(options = {}) {
       driver.commitTransition(
         {
           ...scope,
+          currentLive: live,
           expectedVersion: Number(live.stateVersion ?? live.version ?? 0),
           expectedEventSequence: Number(live.lastEventSequence || 0),
           idempotencyKey,
@@ -196,7 +197,10 @@ export function createDurableRefereeOperationsStore(options = {}) {
       draft.revision = Number(draft.revision || 0) + 1;
       draft.updatedAt = clockIso;
       const actor = currentActor();
-      if (actor) {
+      const assignmentsChanged =
+        hashCanonical(before.assignments || []) !==
+        hashCanonical(draft.assignments || []);
+      if (actor && assignmentsChanged) {
         for (const row of draft.assignments || []) {
           await resolve(
             driver.upsertAssignment(
@@ -248,7 +252,9 @@ export function createDurableRefereeOperationsStore(options = {}) {
           }
         }
       }
-      return deepFreeze(clonePlain(await reconstruct(tenantId, competitionId)));
+      // Avoid a second full competition reconstruct after commit — draft is authoritative
+      // for the mutated slices just persisted.
+      return deepFreeze(clonePlain(draft));
     },
     async upsertAssignments(tenantId, competitionId, assignments, meta = {}) {
       const actor = meta.actor || currentActor();

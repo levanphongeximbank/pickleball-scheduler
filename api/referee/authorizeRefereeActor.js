@@ -9,6 +9,7 @@ import {
   getSupabaseServerUrl,
   getSupabaseServiceRoleKey,
 } from "../../src/features/api/config/apiKeyStoreConfig.js";
+import { instrumentSharedSupabaseClient } from "../../src/features/referee-production-ui/application/instrumentSupabaseRequestCounters.js";
 import { assertCommunicationProductionTargetAllowed } from "../communication/productionTargetGate.js";
 
 export function getRefereeApiSupabaseUrl() {
@@ -30,7 +31,9 @@ function getSharedServiceClient(url, serviceKey) {
   if (cachedServiceClient && cachedServiceClientKey === key) {
     return cachedServiceClient;
   }
-  cachedServiceClient = createServiceClient(url, serviceKey);
+  cachedServiceClient = instrumentSharedSupabaseClient(
+    createServiceClient(url, serviceKey)
+  );
   cachedServiceClientKey = key;
   return cachedServiceClient;
 }

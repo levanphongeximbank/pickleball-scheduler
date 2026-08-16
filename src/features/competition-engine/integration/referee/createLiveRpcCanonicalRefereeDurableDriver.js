@@ -386,7 +386,7 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
       );
     }
 
-    let live = await getLiveState({ tenantId, competitionId, matchId });
+    let live = input.currentLive || (await getLiveState({ tenantId, competitionId, matchId }));
     if (!live) {
       live = await ensureLiveState(
         {
@@ -464,11 +464,22 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
     }
     if (data?.ok === false) mapRpcFailure(data);
 
-    const refreshed = await getLiveState({ tenantId, competitionId, matchId });
+    // Reuse committed nextState — avoid a post-write live round-trip when CAS succeeded.
+    const committedLive = freezeClone({
+      ...(live || {}),
+      tenantId,
+      competitionId,
+      matchId,
+      status: nextState.status || live?.status || null,
+      statePayload: nextState,
+      stateVersion: Number(data?.stateVersion ?? nextVersion),
+      version: Number(data?.stateVersion ?? nextVersion),
+      lastEventSequence: Number(data?.lastEventSequence ?? nextSequence),
+    });
     return freezeClone({
       ok: true,
       duplicate: Boolean(data?.duplicate),
-      live: refreshed,
+      live: committedLive,
       stateVersion: Number(data?.stateVersion ?? nextVersion),
       lastEventSequence: Number(data?.lastEventSequence ?? nextSequence),
       event: {

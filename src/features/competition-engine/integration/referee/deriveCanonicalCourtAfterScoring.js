@@ -304,3 +304,45 @@ export function deriveCanonicalCourtAfterScoring(input = {}) {
     lineupConfigured: true,
   });
 }
+
+/**
+ * Durable change-end due flag. Sticky until confirmChangeEnds ACKs.
+ * Distinguishes "threshold reached, not acknowledged" from "already swapped".
+ */
+export function resolveSideChangeRequiredAfterScoring(input = {}) {
+  const priorCourt = input.priorCourt || {};
+  const hints = Array.isArray(input.domainHints) ? input.domainHints : [];
+  const thresholdRaw = input.sideSwitchAt;
+  const threshold =
+    thresholdRaw == null || thresholdRaw === ""
+      ? null
+      : Number(thresholdRaw);
+  const ackAt =
+    priorCourt.sideChangeAcknowledgedAtThreshold == null
+      ? null
+      : Number(priorCourt.sideChangeAcknowledgedAtThreshold);
+  const points = input.nextPoints || {};
+  const total = Number(points.SIDE_A || 0) + Number(points.SIDE_B || 0);
+  const acknowledgedForThreshold =
+    threshold != null && Number.isFinite(threshold) && ackAt === threshold;
+
+  if (acknowledgedForThreshold) {
+    return Object.freeze({
+      sideChangeRequired: false,
+      sideChangeAcknowledgedAtThreshold: threshold,
+      sideChangeThreshold: threshold,
+    });
+  }
+
+  const milestoneHint = hints.includes("ENDS_SWITCH_MILESTONE");
+  const pastThreshold =
+    threshold != null && Number.isFinite(threshold) && total >= threshold;
+  const sideChangeRequired =
+    priorCourt.sideChangeRequired === true || milestoneHint || pastThreshold;
+
+  return Object.freeze({
+    sideChangeRequired,
+    sideChangeAcknowledgedAtThreshold: ackAt,
+    sideChangeThreshold: threshold,
+  });
+}

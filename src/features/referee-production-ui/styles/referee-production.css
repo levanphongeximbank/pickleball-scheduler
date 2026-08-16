@@ -618,26 +618,38 @@
 .rp-banner-error { background: #ffebee; color: #b71c1c; }
 .rp-banner-ok { background: #e8f5e9; color: #1b5e20; }
 
+.rp-change-ends-section {
+  margin: 6px 0 8px;
+  border: 1px solid #c8e6c9;
+  background: #f1f8f2;
+  border-radius: 12px;
+  padding: 10px;
+}
+
 .rp-change-ends-required {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
   border: 1px solid #ffcc80;
   background: #fff8e1;
   border-radius: 12px;
   padding: 10px;
-  margin: 6px 0 8px;
-  flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 .rp-change-ends-policy {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 800;
-  color: #ef6c00;
+  color: #2e7d32;
   white-space: nowrap;
+}
+
+.rp-change-ends-required .rp-change-ends-policy {
+  color: #ef6c00;
 }
 
 .rp-change-ends-copy-block {

@@ -857,6 +857,12 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         courtOrientation: nextOrientation,
         lastSideChangeEventId: command.idempotencyKey,
         sideChangeRequired: false,
+        sideChangeAcknowledgedAtThreshold:
+          current.sideChangeThreshold != null
+            ? current.sideChangeThreshold
+            : current.sideChangeAcknowledgedAtThreshold != null
+              ? current.sideChangeAcknowledgedAtThreshold
+              : null,
       };
       await runtime.matchStateRepository.putLiveState(
         {
@@ -876,7 +882,12 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         },
         base.actor
       );
-      return { ok: true, courtOrientation: nextOrientation, ackRequired: true };
+      return {
+        ok: true,
+        courtOrientation: nextOrientation,
+        court: nextCourt,
+        ackRequired: true,
+      };
     });
   }
 

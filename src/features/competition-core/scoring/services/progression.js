@@ -61,6 +61,14 @@ export function applyRallyOrSideOutPoint(draft, rallyWinnerSide) {
   if (rallyWinnerSide === draft.serve.servingSide) {
     draft.points[rallyWinnerSide] += 1;
     hints.push(SCORING_EVENT_TYPE.POINT_RECORDED);
+    const sideSwitchAt = format.sideSwitchAt;
+    if (sideSwitchAt != null) {
+      const total =
+        draft.points[SCORING_SIDE.SIDE_A] + draft.points[SCORING_SIDE.SIDE_B];
+      if (total === sideSwitchAt) {
+        hints.push("ENDS_SWITCH_MILESTONE");
+      }
+    }
     return { awardedPoint: true, domainHints: hints };
   }
 

@@ -1310,7 +1310,8 @@ test("owner visual remediation — chrome suppress + participant-aware controls"
   assert.match(match, /Sắp xếp đội hình/);
   assert.match(match, /ĐỔI SÂN \/ ĐỔI ĐẦU SÂN/);
   assert.match(match, /ĐÃ ĐẾN ĐIỂM ĐỔI SÂN/);
-  assert.match(match, /Đổi sân tại/);
+  assert.match(match, /Điểm đổi sân/);
+  assert.match(match, /XÁC NHẬN ĐỔI SÂN/);
   assert.match(match, /rp-score-team-name/);
   assert.match(match, /pointLabel\(/);
   assert.match(match, /Đang ghi…/);
@@ -1738,3 +1739,177 @@ for (const mode of [
     );
   });
 }
+
+
+test("remediation06: change-end policy from sideSwitchAt (not hardcoded 11)", () => {
+  const format = createScoringFormat({
+    scoringSystem: SCORING_SYSTEM.RALLY,
+    pointsToWin: 21,
+    winBy: 2,
+    bestOfGames: 1,
+    sideSwitchAt: 6,
+  });
+  const view = buildRefereeMatchView({
+    matchId: "m-ce-policy",
+    competitionMode: "DAILY_PLAY",
+    scoringRules: format,
+    assignedMatch: { lifecycleState: "IN_PROGRESS" },
+  });
+  assert.equal(view.rulesPanel.changeEndAt, "6");
+  assert.equal(
+    view.rulesPanel.rows.find((r) => r.key === "changeEnd")?.label,
+    "Điểm đổi sân"
+  );
+  assert.equal(view.courtProjection.sideChangeRequired, false);
+});
+
+test("remediation06: threshold sticky until ACK; confirm swaps ends; F5 keeps swap", async () => {
+  const format = createScoringFormat({
+    scoringSystem: SCORING_SYSTEM.RALLY,
+    pointsToWin: 21,
+    winBy: 2,
+    bestOfGames: 1,
+    sideSwitchAt: 3,
+  });
+  const { runtime } = createUiRuntime();
+  const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
+  fixture.modeState = dailyModeState(fixture.competitionId, fixture.matchId, {
+    scoringRules: format,
+  });
+  await seedAssigned(runtime, fixture);
+  const client = createClient(runtime, [fixture]);
+  const started = await startSideOutWithLineup(client, fixture, {
+    playerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+    serverPlayerId: "p1",
+    serverNumber: 1,
+    servingSide: "SIDE_A",
+  });
+  assert.equal(started.view.courtProjection.sideChangeRequired, false);
+
+  let version = started.view.expectedVersion;
+  let scored = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_A,
+    expectedVersion: version,
+    idempotencyKey: "ce-p1",
+  });
+  version = scored.view.expectedVersion;
+  scored = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_A,
+    expectedVersion: version,
+    idempotencyKey: "ce-p2",
+  });
+  version = scored.view.expectedVersion;
+  scored = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_B,
+    expectedVersion: version,
+    idempotencyKey: "ce-p3",
+  });
+  assert.equal(scored.ok, true);
+  assert.equal(scored.view.courtProjection.sideChangeRequired, true);
+  assert.equal(scored.view.canStart, false);
+
+  version = scored.view.expectedVersion;
+  const past = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_A,
+    expectedVersion: version,
+    idempotencyKey: "ce-p4-past",
+  });
+  assert.equal(past.view.courtProjection.sideChangeRequired, true);
+
+  const confirmed = await client.confirmChangeEnds({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    expectedVersion: past.view.expectedVersion,
+    idempotencyKey: "ce-confirm-1",
+  });
+  assert.equal(confirmed.ok, true);
+  assert.equal(confirmed.view.courtProjection.sideChangeRequired, false);
+  assert.equal(confirmed.view.courtProjection.courtOrientation, "SWAPPED");
+  assert.equal(confirmed.view.currentScore.points.SIDE_A, past.view.currentScore.points.SIDE_A);
+  assert.equal(confirmed.view.currentScore.points.SIDE_B, past.view.currentScore.points.SIDE_B);
+  assert.equal(confirmed.view.matchStatus, "IN_PROGRESS");
+  assert.ok(confirmed.view.courtProjection.serving?.serverPlayerId);
+
+  const reloaded = await client.getMatchView({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+  });
+  assert.equal(reloaded.view.courtProjection.courtOrientation, "SWAPPED");
+  assert.equal(reloaded.view.courtProjection.sideChangeRequired, false);
+  assert.equal(reloaded.view.currentScore.points.SIDE_A, past.view.currentScore.points.SIDE_A);
+});
+
+test("remediation06: stale expectedVersion does not swap ends", async () => {
+  const format = createScoringFormat({
+    scoringSystem: SCORING_SYSTEM.RALLY,
+    pointsToWin: 21,
+    winBy: 2,
+    bestOfGames: 1,
+    sideSwitchAt: 2,
+  });
+  const { runtime } = createUiRuntime();
+  const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
+  fixture.modeState = dailyModeState(fixture.competitionId, fixture.matchId, {
+    scoringRules: format,
+  });
+  await seedAssigned(runtime, fixture);
+  const client = createClient(runtime, [fixture]);
+  const started = await startSideOutWithLineup(client, fixture, {
+    playerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+    serverPlayerId: "p1",
+    serverNumber: 1,
+    servingSide: "SIDE_A",
+  });
+  let version = started.view.expectedVersion;
+  let view = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_A,
+    expectedVersion: version,
+    idempotencyKey: "ce-stale-p1",
+  });
+  version = view.view.expectedVersion;
+  view = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_B,
+    expectedVersion: version,
+    idempotencyKey: "ce-stale-p2",
+  });
+  assert.equal(view.view.courtProjection.sideChangeRequired, true);
+  const staleVersion = Number(view.view.expectedVersion) - 1;
+  await assert.rejects(
+    () =>
+      client.confirmChangeEnds({
+        tenantId: "tenant-1",
+        matchId: fixture.matchId,
+        actor: ACTOR,
+        expectedVersion: staleVersion,
+        idempotencyKey: "ce-stale-confirm",
+      }),
+    /stale|expectedVersion|STALE/i
+  );
+  const reloaded = await client.getMatchView({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+  });
+  assert.equal(reloaded.view.courtProjection.courtOrientation, "STANDARD");
+  assert.equal(reloaded.view.courtProjection.sideChangeRequired, true);
+});

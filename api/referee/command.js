@@ -13,6 +13,11 @@ import {
   getSupabaseServiceRoleKey,
 } from "../../src/features/api/config/apiKeyStoreConfig.js";
 import { createTrustedRefereeBackend } from "../../src/features/referee-production-ui/application/createTrustedRefereeBackend.js";
+import {
+  createEmptySupabaseRequestCounters,
+  instrumentSharedSupabaseClient,
+  runWithSupabaseCounters,
+} from "../../src/features/referee-production-ui/application/instrumentSupabaseRequestCounters.js";
 import { authorizeRefereeActor } from "./authorizeRefereeActor.js";
 
 function parseBody(req) {
@@ -73,6 +78,7 @@ let cachedBackendKey = null;
 let cachedBackend = null;
 
 function getOrCreateBackend(auth, tenantId) {
+  instrumentSharedSupabaseClient(auth.serviceClient);
   const key = `${auth.actorId}::${tenantId || ""}`;
   if (cachedBackend && cachedBackendKey === key) {
     return { backend: cachedBackend, runtimeCreateMs: 0, cacheHit: true };
@@ -114,7 +120,10 @@ export default async function handler(req, res) {
   }
 
   const tAuth0 = Date.now();
-  const auth = await authorizeRefereeActor(req);
+  const supabaseCounters = createEmptySupabaseRequestCounters();
+  const auth = await runWithSupabaseCounters(supabaseCounters, () =>
+    authorizeRefereeActor(req)
+  );
   serverTiming.AUTH_MS = Date.now() - tAuth0;
   serverTiming.ACTOR_RESOLUTION_MS = serverTiming.AUTH_MS;
   if (!auth.ok) {
@@ -166,7 +175,9 @@ export default async function handler(req, res) {
     serverTiming.RUNTIME_CACHE_HIT = cacheHit;
 
     const tExec0 = Date.now();
-    const result = await backend.execute(command, payload);
+    const result = await runWithSupabaseCounters(supabaseCounters, () =>
+      backend.execute(command, payload)
+    );
     const execMs = Date.now() - tExec0;
 
     const clientLatency = result?.latency || {};
@@ -180,6 +191,14 @@ export default async function handler(req, res) {
       clientLatency.postCommitProjectionMs ?? clientLatency.POST_COMMIT_PROJECT_MS ?? null;
     serverTiming.MATCH_READ_MS = clientLatency.matchReadMs ?? null;
 
+    const accountedMs =
+      Number(serverTiming.AUTH_MS || 0) +
+      Number(serverTiming.RUNTIME_CREATE_MS || 0) +
+      Number(serverTiming.ADAPTER_CONTEXT_MS || 0) +
+      Number(serverTiming.MATCH_READ_MS || 0) +
+      Number(serverTiming.CORE_TRANSITION_MS || 0) +
+      Number(serverTiming.POST_COMMIT_PROJECT_MS || 0);
+
     const tResp0 = Date.now();
     serverTiming.REQUEST_TOTAL_MS = Date.now() - requestStarted;
     const includeDiag = isPreviewOrDev(req);
@@ -190,16 +209,25 @@ export default async function handler(req, res) {
       diagnostic: backend.getPublicDiagnostic(),
     };
     if (includeDiag) {
+      const responseBuildMs = Date.now() - tResp0;
+      const unaccountedMs = Math.max(
+        0,
+        Number(serverTiming.REQUEST_TOTAL_MS || 0) -
+          accountedMs -
+          responseBuildMs
+      );
       responseBody.serverTiming = Object.freeze({
         ...serverTiming,
-        RESPONSE_BUILD_MS: Date.now() - tResp0,
+        RESPONSE_BUILD_MS: responseBuildMs,
         REQUEST_TOTAL_MS: Date.now() - requestStarted,
+        UNACCOUNTED_MS: unaccountedMs,
         NETWORK_POST_COUNT: 1,
         DURABLE_COMMIT_COUNT: clientLatency.durableCommitCount ?? 1,
         POST_COMMIT_BROWSER_REFETCH: false,
         ACK_RETURNS_FULL_VIEW: true,
         PROJECT_MATCH_COUNT: clientLatency.projectMatchCount ?? 1,
         clientLatency,
+        supabaseCounters: Object.freeze({ ...supabaseCounters }),
       });
     }
     return res.status(200).json(responseBody);
