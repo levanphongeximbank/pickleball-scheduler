@@ -36,6 +36,8 @@ export const PKG = Object.freeze({
   batch4: "docs/v5/migrations/court-resource-canonical-resource-blocks-01",
   batch7: "docs/v5/migrations/court-operations-live-resource-runtime-01",
   batch8: "docs/v5/migrations/court-operations-legacy-isolation-01",
+  identityGuard:
+    "docs/v5/migrations/court-operations-pre-staging-identity-guard-01",
 });
 
 export const CERTIFIED_PACKAGE_HASHES = Object.freeze({
@@ -92,6 +94,12 @@ export const CERTIFIED_PACKAGE_HASHES = Object.freeze({
     "02_APPLY.sql": "8C05737355B09925D71CC4177192FBB521630927917D88999F2E5E2FADFAD9ED",
     "03_VERIFY.sql": "7F559C7FC0C54F6288C16FC89CE99C06157A6709D6D762DA52C22BC969563D5F",
     "04_ROLLBACK.sql": "923FBA4483A7A4DCD7DF44EC6F8AEC343AE6D7EB176FD7BC501188D28ADDE2C2",
+  },
+  identityGuard: {
+    "01_PRECHECK.sql": "FBC7137F989F6CA25DDAB8B67D2ACF31CE1DEFAE3A47D814D28A79291EA61EC9",
+    "02_APPLY.sql": "91AEC34B453E6312225D9326CB3CEE5D33E9CC78F3B262F02970A9A2BDF03AEA",
+    "03_VERIFY.sql": "8AC435CECDD497677AEBB4EEA167AAF247AB0F71CF07C217EC624DD537C67B45",
+    "04_ROLLBACK.sql": "008C4F84E1C526CE0C76005FECA647027293D288397CADFAA7C27C20AB6B20FD",
   },
 });
 
@@ -243,9 +251,19 @@ async function tryEmbeddedPostgres() {
     return null;
   }
   const dataDir = path.join(root, ".tmp-cr-p3b-pg-batch9");
+  const port = 55434;
+  // Windows: prior runs can leave the port held and a non-empty data dir.
+  spawnSync(
+    "powershell",
+    [
+      "-NoProfile",
+      "-Command",
+      `Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Start-Sleep -Milliseconds 400`,
+    ],
+    { encoding: "utf8", timeout: 15000 }
+  );
   fs.rmSync(dataDir, { recursive: true, force: true });
   fs.mkdirSync(dataDir, { recursive: true });
-  const port = 55434;
   const server = new EmbeddedPostgres({
     databaseDir: dataDir,
     user: "postgres",
@@ -262,12 +280,29 @@ async function tryEmbeddedPostgres() {
     databaseUrl,
     environment: "embedded-postgres-local/cr_p3b_batch9",
     stop: async () => {
+      const killer = setTimeout(() => {
+        try {
+          spawnSync("powershell", [
+            "-NoProfile",
+            "-Command",
+            `Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }`,
+          ], { encoding: "utf8", timeout: 10000 });
+        } catch {
+          /* ignore */
+        }
+      }, 8000);
       try {
         await server.stop();
       } catch {
         /* ignore */
+      } finally {
+        clearTimeout(killer);
       }
-      fs.rmSync(dataDir, { recursive: true, force: true });
+      try {
+        fs.rmSync(dataDir, { recursive: true, force: true });
+      } catch {
+        /* ignore locked files on Windows */
+      }
     },
   };
 }
@@ -333,6 +368,7 @@ export async function installCanonicalStack(client) {
   await applyPackage(client, PKG.batch4);
   await applyPackage(client, PKG.batch7);
   await applyPackage(client, PKG.batch8);
+  await applyPackage(client, PKG.identityGuard);
 }
 
 export async function setActor(client, actorId, { role = "SUPER_ADMIN", venueId, clubId } = {}) {
@@ -367,13 +403,14 @@ export async function seedBatch9Fixtures(client) {
      ON CONFLICT (id) DO NOTHING`,
     [F.CLUB_A, F.CLUB_B, F.CLUB_NO_ACCESS, F.CLUB_DISABLED, F.TENANT_A, F.TENANT_B]
   );
+  // Critical: tenantId != venueId on canonical clusters (Batch8 + identity-guard).
   await client.query(
     `INSERT INTO public.court_clusters(id, venue_id, tenant_id, name) VALUES
-       ($1, $3, $3, 'Cluster A'),
-       ($2, $4, $4, 'Cluster B'),
-       ('cluster-trap', $3, $4, 'Trap cluster: venue looks like tenant A, tenant_id is B')
+       ($1, $5, $3, 'Cluster A'),
+       ($2, $6, $4, 'Cluster B'),
+       ('cluster-trap', $5, $4, 'Trap: venue-A label, tenant_id is B')
      ON CONFLICT (id) DO UPDATE SET tenant_id = EXCLUDED.tenant_id, venue_id = EXCLUDED.venue_id`,
-    [F.CLUSTER_A, F.CLUSTER_B, F.TENANT_A, F.TENANT_B]
+    [F.CLUSTER_A, F.CLUSTER_B, F.TENANT_A, F.TENANT_B, F.VENUE_A, F.VENUE_B]
   );
   await client.query(
     `INSERT INTO public.court_resource_physical_courts(

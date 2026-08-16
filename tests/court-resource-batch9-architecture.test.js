@@ -138,6 +138,34 @@ test("B9-ARCH-03 certified SQL packages unchanged (Batch1–8 + 3A/3B/D4)", () =
   assertCertified(PKG.batch8, CERTIFIED_PACKAGE_HASHES.batch8);
 });
 
+test("B9-ARCH-03b pre-Staging identity-guard package is additive and present", () => {
+  assert.equal(
+    PKG.identityGuard,
+    "docs/v5/migrations/court-operations-pre-staging-identity-guard-01"
+  );
+  for (const name of [
+    "01_PRECHECK.sql",
+    "02_APPLY.sql",
+    "03_VERIFY.sql",
+    "04_ROLLBACK.sql",
+    "README.md",
+  ]) {
+    assert.equal(existsSync(path.join(ROOT, PKG.identityGuard, name)), true, name);
+  }
+  assertCertified(PKG.identityGuard, CERTIFIED_PACKAGE_HASHES.identityGuard);
+  const apply = read(`${PKG.identityGuard}/02_APPLY.sql`);
+  assert.match(apply, /CREATE OR REPLACE FUNCTION public\.court_resource_identity_guard/);
+  assert.match(apply, /SELECT cc\.tenant_id INTO v_scope_tenant/);
+  assert.doesNotMatch(
+    apply,
+    /SELECT venue_id INTO v_scope_tenant FROM public\.court_clusters/
+  );
+  assert.match(apply, /COURT_RESOURCE_UNKNOWN_CLUSTER/);
+  const readme = read(`${PKG.identityGuard}/README.md`);
+  assert.match(readme, /ROLLBACK_DEPENDENCY=/);
+  assert.match(readme, /Batch8/);
+});
+
 test("B9-ARCH-04 Mode Adapter B cannot import Gateway / legacy / D4 acquire", () => {
   assert.equal(MODE_COURT_ADAPTER_B_OWNER, "2.13_COMPETITION_ENGINE");
   const adapterRoot = "src/features/competition-engine/integration/court-adapters";

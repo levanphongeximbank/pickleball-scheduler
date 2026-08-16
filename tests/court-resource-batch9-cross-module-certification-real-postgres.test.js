@@ -862,11 +862,12 @@ test("Batch 9 isolated PostgreSQL cross-module certification", { timeout: 600000
           [F.CLUSTER_A]
         );
         assert.equal(rows[0].tenant_id, F.TENANT_A);
-        assert.ok(rows[0].venue_id);
+        assert.equal(rows[0].venue_id, F.VENUE_A);
+        assert.notEqual(rows[0].tenant_id, rows[0].venue_id);
         const { rows: trapRow } = await client.query(
           `SELECT tenant_id, venue_id FROM public.court_clusters WHERE id = 'cluster-trap'`
         );
-        assert.equal(trapRow[0].venue_id, F.TENANT_A);
+        assert.equal(trapRow[0].venue_id, F.VENUE_A);
         assert.equal(trapRow[0].tenant_id, F.TENANT_B);
         assert.notEqual(trapRow[0].tenant_id, trapRow[0].venue_id);
 
