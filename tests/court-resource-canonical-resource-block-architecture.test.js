@@ -208,11 +208,11 @@ test("MaintenanceBookingPanel adopts canonical path when flag ON + UUID court", 
   assert.match(source, /tenantId/);
 });
 
-test("CourtStatusBoard keeps indefinite court.status on legacy path", () => {
+test("CourtStatusBoard keeps indefinite court.status on legacy path; canonical uses Live Runtime", () => {
   const source = read("src/pages/courtManagement/CourtStatusBoard.jsx");
   assert.match(source, /setCourtOperationalStatus/);
-  assert.match(source, /Durable timed blocks/);
-  assert.match(source, /Resource Block/);
+  assert.match(source, /Durable timed blocks|Schedule a resource block|Resource Block/);
+  assert.match(source, /setCurrentOperationalState/);
   assert.doesNotMatch(source, /createResourceBlock/);
 });
 

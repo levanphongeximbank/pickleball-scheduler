@@ -9,6 +9,10 @@ export const COURT_ACCESS_AUTHORITY_OWNER = "2.2_COURT_OPERATIONS";
 export const COMPETITION_PROVIDER_BINDING_OWNER = "2.2_COURT_OPERATIONS";
 export const BOOKING_BUSINESS_OWNER = "2.2_COURT_OPERATIONS";
 export const RESOURCE_BLOCK_BUSINESS_OWNER = "2.2_COURT_OPERATIONS";
+export const COURT_LIVE_RESOURCE_RUNTIME_OWNER = "2.2_COURT_OPERATIONS";
+export const COMPETITION_MATCH_ASSIGNMENT_OWNER = "2.13_COMPETITION_ENGINE";
+export const COMPETITION_MATCH_LIFECYCLE_OWNER = "2.13_COMPETITION_ENGINE";
+export const COMPETITION_SCORING_OWNER = "2.13_COMPETITION_ENGINE";
 
 /** Distinct id owners — tenant ≠ venue ≠ club (Batch 5). */
 export const TENANT_ID_OWNER = "PLATFORM_CANONICAL_ORGANIZATION";
@@ -21,7 +25,7 @@ export const CLUB_OPERATIONAL_COURT_ACCESS_OWNER = "2.2_COURT_OPERATIONS";
 export const TENANT_ID_EQUALS_VENUE_ID_ASSUMPTION = "NO";
 export const COURT_CLUSTERS_VENUE_ID_SEMANTICS = "organization_parent_id_debt";
 export const D4_VENUE_BOUNDARY_STATUS = "COUPLED_TO_VENUES_AS_TENANT_OUT_OF_SCOPE";
-export const NEW_SQL_REQUIRED = "NO";
+export const NEW_SQL_REQUIRED = "YES";
 export const NEW_DUPLICATE_IDENTITY_CONTRACTS_CREATED = "NO";
 
 export const COURT_MASTER_TABLE = "court_resource_physical_courts";
@@ -30,6 +34,11 @@ export const COURT_ACCESS_AUTHORITY_TABLE = "court_resource_club_operational_acc
 export const CANONICAL_BOOKING_BUSINESS_TABLE = "court_operations_bookings";
 export const CANONICAL_RESOURCE_BLOCK_BUSINESS_TABLE =
   "court_operations_resource_blocks";
+export const CANONICAL_LIVE_STATE_TABLE = "court_operations_court_live_states";
+export const CANONICAL_RESOURCE_SESSION_TABLE =
+  "court_operations_resource_sessions";
+export const CANONICAL_LIVE_BEGIN_SESSION_RPC =
+  "court_operations_live_begin_resource_session";
 export const CANONICAL_LIST_ELIGIBLE_RPC = "court_resource_list_eligible_courts";
 export const CANONICAL_LIST_OWNER_RESERVATIONS_RPC =
   "court_resource_list_owner_reservations";

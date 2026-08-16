@@ -14,6 +14,7 @@ import {
   CANONICAL_BOOKING_OWNER_TYPE,
   isCanonicalBookingLifecycle,
 } from "../constants/canonicalBooking.js";
+import { isCanonicalCourtLiveRuntime } from "../constants/canonicalLiveRuntime.js";
 import {
   getCourtAvailability,
   listEligibleCourts,
@@ -28,6 +29,10 @@ import {
   rpcUpdateBookingLifecycle,
 } from "./canonicalBookingClient.js";
 import { requireCanonicalClubScope } from "../scope/courtOperationsScope.js";
+import {
+  projectBookingLiveBegin,
+  projectBookingLiveEnd,
+} from "../projections/courtLiveResourceUseProjection.js";
 
 function trimId(value) {
   if (value == null) return "";
@@ -318,6 +323,8 @@ export async function cancelCourtOperationsBooking(input = {}) {
 
 /**
  * Booking lifecycle only (check-in / start / complete / auto). No capacity mutation.
+ * When Live Runtime is ON, playing → begin session; terminal → end session.
+ * Live Runtime never changes Booking business status (no circular authority).
  */
 export async function updateCourtOperationsBookingLifecycle(input = {}) {
   if (!isCanonicalBookingLifecycle() && input.forceCanonical !== true) {
@@ -344,7 +351,43 @@ export async function updateCourtOperationsBookingLifecycle(input = {}) {
     expectedVersion: Number(input.expectedVersion ?? input.version),
     requestId,
   });
-  return mapBookingResult(result);
+  const mapped = mapBookingResult(result);
+  if (
+    mapped.ok
+    && isCanonicalCourtLiveRuntime()
+    && input.projectLiveRuntime !== false
+  ) {
+    const physicalCourtId =
+      trimId(mapped.physicalCourtId)
+      || trimId(mapped.booking?.physicalCourtId)
+      || trimId(input.physicalCourtId);
+    if (physicalCourtId) {
+      if (lifecycleStatus === CANONICAL_BOOKING_LIFECYCLE_STATUS.PLAYING) {
+        mapped.liveProjection = await projectBookingLiveBegin({
+          tenantId,
+          physicalCourtId,
+          bookingId,
+          reservationRef: mapped.reservationId || mapped.booking?.reservationId || null,
+          requestId: `${requestId}:live-begin`,
+          capacityClaimValid: true,
+          forceCanonical: true,
+        });
+      } else if (
+        lifecycleStatus === CANONICAL_BOOKING_LIFECYCLE_STATUS.COMPLETED
+        || lifecycleStatus === CANONICAL_BOOKING_LIFECYCLE_STATUS.CANCELLED
+        || lifecycleStatus === CANONICAL_BOOKING_LIFECYCLE_STATUS.NO_SHOW
+      ) {
+        mapped.liveProjection = await projectBookingLiveEnd({
+          tenantId,
+          physicalCourtId,
+          bookingId,
+          requestId: `${requestId}:live-end`,
+          forceCanonical: true,
+        });
+      }
+    }
+  }
+  return mapped;
 }
 
 export async function getCourtOperationsBooking(input = {}) {

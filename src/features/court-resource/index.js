@@ -15,6 +15,10 @@ export {
   COMPETITION_PROVIDER_BINDING_OWNER,
   BOOKING_BUSINESS_OWNER,
   RESOURCE_BLOCK_BUSINESS_OWNER,
+  COURT_LIVE_RESOURCE_RUNTIME_OWNER,
+  COMPETITION_MATCH_ASSIGNMENT_OWNER,
+  COMPETITION_MATCH_LIFECYCLE_OWNER,
+  COMPETITION_SCORING_OWNER,
   TENANT_ID_OWNER,
   VENUE_ID_OWNER,
   CLUB_ID_OWNER,
@@ -31,6 +35,9 @@ export {
   COURT_ACCESS_AUTHORITY_TABLE,
   CANONICAL_BOOKING_BUSINESS_TABLE,
   CANONICAL_RESOURCE_BLOCK_BUSINESS_TABLE,
+  CANONICAL_LIVE_STATE_TABLE,
+  CANONICAL_RESOURCE_SESSION_TABLE,
+  CANONICAL_LIVE_BEGIN_SESSION_RPC,
   CANONICAL_LIST_ELIGIBLE_RPC,
   CANONICAL_LIST_OWNER_RESERVATIONS_RPC,
   CANONICAL_BOOKING_CREATE_RPC,
@@ -95,6 +102,49 @@ export {
   getResourceBlock,
   listResourceBlocks,
 } from "./services/courtOperationsResourceBlockApplication.js";
+
+export {
+  CANONICAL_LIVE_RUNTIME_CONTRACT_VERSION,
+  CANONICAL_LIVE_RUNTIME_COMMAND_LEDGER,
+  CANONICAL_LIVE_END_SESSION_RPC,
+  CANONICAL_LIVE_SET_OPERATIONAL_STATE_RPC,
+  CANONICAL_LIVE_GET_STATE_RPC,
+  CANONICAL_LIVE_LIST_SESSIONS_RPC,
+  COURT_OCCUPANCY_STATE,
+  COURT_OPERATIONAL_STATE,
+  RESOURCE_SESSION_STATUS,
+  RESOURCE_SESSION_SOURCE_TYPE,
+  LIVE_RUNTIME_CODE,
+  COURT_LIVE_RUNTIME_IS_RESERVATION_SSOT,
+  LIVE_OCCUPANCY_USED_AS_RESERVATION_CONFLICT_AUTHORITY,
+  COURT_LIVE_RUNTIME_MATCH_LIFECYCLE_AUTHORITY,
+  COURT_LIVE_RUNTIME_SCORING_AUTHORITY,
+  CANONICAL_COURT_LIVE_RUNTIME_DEFAULT,
+  isCanonicalCourtLiveRuntime,
+  operationalStateAllowsUse,
+  normalizeOperationalState,
+  normalizeSourceType,
+} from "./constants/canonicalLiveRuntime.js";
+
+export {
+  beginResourceSession,
+  endResourceSession,
+  setCurrentOperationalState,
+  getCourtLiveState,
+  listResourceSessions,
+} from "./services/courtOperationsLiveRuntimeApplication.js";
+
+export {
+  projectLiveResourceUseBegin,
+  projectLiveResourceUseEnd,
+  projectCompetitionMatchLiveBegin,
+  projectCompetitionMatchLiveEnd,
+  projectBookingLiveBegin,
+  projectBookingLiveEnd,
+  projectDailyPlayLiveBegin,
+  projectDailyPlayLiveEnd,
+  COMPETITION_LIVE_INTEGRATION_MODEL,
+} from "./projections/courtLiveResourceUseProjection.js";
 
 export {
   getCourtAvailability,

@@ -4,9 +4,13 @@
  * Sequence (safe — no double reservation):
  *   1. Mode Adapter B → Head A.reserveCourts (capacity SSOT)
  *   2. Lease projection record (NOT capacity)
+ *   3. Optional Live Runtime projection (occupancy NOW — NOT capacity)
  *
  * Never calls the certified D4 acquire RPC.
  * Legacy D4 SQL path remains on the explicit OFF / legacy compatibility path.
+ *
+ * Live Runtime is the canonical current occupancy authority when enabled.
+ * Daily Play lease remains projection/compatibility — not a competing occupancy SSOT.
  */
 import { createDailyPlayCourtAdapter } from "./DailyPlayCourtAdapter.js";
 import {
@@ -16,6 +20,11 @@ import {
   createDailyPlayLeaseProjectionStore,
   defaultDailyPlayLeaseProjectionStore,
 } from "./dailyPlayLeaseProjection.js";
+import {
+  projectDailyPlayLiveBegin,
+  projectDailyPlayLiveEnd,
+} from "../../../court-resource/projections/courtLiveResourceUseProjection.js";
+import { isCanonicalCourtLiveRuntime } from "../../../court-resource/constants/canonicalLiveRuntime.js";
 
 // Constructed so architecture locks can forbid direct acquire RPC imports/calls
 // while this orchestrator still rejects the forbidden name if injected.
@@ -24,6 +33,8 @@ const FORBIDDEN_D4_ACQUIRE = ["court_resource", "daily_play", "acquire"].join("_
 export function createDailyPlayCourtOrchestrator(deps = {}) {
   const adapter = deps.adapter || createDailyPlayCourtAdapter({ headA: deps.headA });
   const leases = deps.leaseStore || defaultDailyPlayLeaseProjectionStore;
+  const projectLiveBegin = deps.projectLiveBegin || projectDailyPlayLiveBegin;
+  const projectLiveEnd = deps.projectLiveEnd || projectDailyPlayLiveEnd;
   let d4AcquireCalls = 0;
 
   function assertNoD4Acquire() {
@@ -57,7 +68,8 @@ export function createDailyPlayCourtOrchestrator(deps = {}) {
 
     /**
      * Reserve capacity via Head A, then record projection-only lease.
-     * Does not call D4 acquire.
+     * Does not call D4 acquire. Does not begin live occupancy by itself
+     * (capacity reserve ≠ physical use NOW).
      */
     async reserveWithProjection(input = {}) {
       assertNoD4Acquire();
@@ -139,6 +151,51 @@ export function createDailyPlayCourtOrchestrator(deps = {}) {
         doubleReservationPaths: 0,
         d4AcquireCalls,
       };
+    },
+
+    /**
+     * Project physical Daily Play use into Court Live Runtime.
+     * Lease remains projection; Live Runtime is occupancy authority.
+     * Does not write capacity. Does not bypass Head A.
+     */
+    async beginLiveUseProjection(input = {}) {
+      if (!isCanonicalCourtLiveRuntime() && input.forceCanonical !== true) {
+        return {
+          ok: false,
+          code: "CANONICAL_PATH_UNAVAILABLE",
+          projected: false,
+          leaseRemainsProjection: true,
+        };
+      }
+      return projectLiveBegin({
+        tenantId: input.tenantId,
+        physicalCourtId: input.physicalCourtId,
+        matchId: input.matchId,
+        sessionId: input.sessionId,
+        reservationRef: input.reservationRef || null,
+        capacityClaimValid: input.capacityClaimValid !== false,
+        requestId: input.requestId,
+        forceCanonical: true,
+      });
+    },
+
+    async endLiveUseProjection(input = {}) {
+      if (!isCanonicalCourtLiveRuntime() && input.forceCanonical !== true) {
+        return {
+          ok: false,
+          code: "CANONICAL_PATH_UNAVAILABLE",
+          projected: false,
+          leaseRemainsProjection: true,
+        };
+      }
+      return projectLiveEnd({
+        tenantId: input.tenantId,
+        physicalCourtId: input.physicalCourtId,
+        matchId: input.matchId,
+        sessionId: input.sessionId,
+        requestId: input.requestId,
+        forceCanonical: true,
+      });
     },
   };
 }

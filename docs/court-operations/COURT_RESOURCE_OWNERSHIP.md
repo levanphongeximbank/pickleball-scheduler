@@ -8,6 +8,7 @@ COURT_RESOURCE_GATEWAY_OWNER=2.2_COURT_OPERATIONS
 COURT_MASTER_OWNER=2.2_COURT_OPERATIONS
 COURT_ACCESS_AUTHORITY_OWNER=2.2_COURT_OPERATIONS
 COMPETITION_PROVIDER_BINDING_OWNER=2.2_COURT_OPERATIONS
+COURT_LIVE_RESOURCE_RUNTIME_OWNER=2.2_COURT_OPERATIONS
 ```
 
 ```
@@ -21,16 +22,22 @@ TENANT_ID_EQUALS_VENUE_ID_ASSUMPTION=NO
 COURT_CLUSTERS_VENUE_ID_SEMANTICS=organization_parent_id_debt
 D4_VENUE_BOUNDARY_STATUS=COUPLED_TO_VENUES_AS_TENANT_OUT_OF_SCOPE
 CANONICAL_COMPETITION_COURT_ADAPTERS_DEFAULT=false
+CANONICAL_COURT_LIVE_RUNTIME_DEFAULT=false
 MODE_ADAPTER_B_OWNER=2.13_COMPETITION_ENGINE
-NEW_SQL_REQUIRED=NO
+COMPETITION_MATCH_ASSIGNMENT_OWNER=2.13_COMPETITION_ENGINE
+NEW_SQL_REQUIRED=YES
 ```
 
 2.1 Venue Management owns venue identity/lifecycle.  
 Platform organization layer owns tenant/organization identity.  
 2.3 Club Management owns club identity/lifecycle/membership.  
 **Club Management does not own court access.**  
-**Venue Management does not own Physical Court identity.**
+**Venue Management does not own Physical Court identity.**  
+**Competition Engine does not own live occupancy SSOT.**
 
-2.2 Court Operations owns `clusterId` topology, `physicalCourtId`, court inventory, and club→physicalCourt operational access (`court_resource_club_operational_access`).
+2.2 Court Operations owns `clusterId` topology, `physicalCourtId`, court inventory,
+club→physicalCourt operational access, capacity reservations, Booking / Resource Block
+business aggregates, and Court Live Resource Runtime (occupancy / active session /
+current operational state NOW).
 
 ClubContext is UI selection only — not Court Operations identity authority.

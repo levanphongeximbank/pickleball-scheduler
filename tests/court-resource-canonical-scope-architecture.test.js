@@ -110,15 +110,16 @@ test("Batch 5 ownership constants and honesty markers", () => {
   assert.equal(TENANT_ID_EQUALS_VENUE_ID_ASSUMPTION, "NO");
   assert.equal(COURT_CLUSTERS_VENUE_ID_SEMANTICS, "organization_parent_id_debt");
   assert.equal(D4_VENUE_BOUNDARY_STATUS, "COUPLED_TO_VENUES_AS_TENANT_OUT_OF_SCOPE");
-  assert.equal(NEW_SQL_REQUIRED, "NO");
+  // Batch 7 authored live-runtime SQL; Batch 5 identity SQL package remains absent.
+  assert.equal(NEW_SQL_REQUIRED, "YES");
   assert.equal(NEW_DUPLICATE_IDENTITY_CONTRACTS_CREATED, "NO");
 
   const ownership = read("src/features/court-resource/OWNERSHIP.md");
-  assert.match(ownership, /Frozen for Batch 5/i);
+  assert.match(ownership, /Frozen for Batch 7/i);
   assert.match(ownership, /TENANT_ID_EQUALS_VENUE_ID_ASSUMPTION=NO/);
   assert.match(ownership, /COURT_CLUSTERS_VENUE_ID_SEMANTICS=organization_parent_id_debt/);
   assert.match(ownership, /D4_VENUE_BOUNDARY_STATUS=COUPLED_TO_VENUES_AS_TENANT_OUT_OF_SCOPE/);
-  assert.match(ownership, /NEW_SQL_REQUIRED=NO/);
+  assert.match(ownership, /NEW_SQL_REQUIRED=YES/);
   assert.match(ownership, /CANONICAL_RESOURCE_BLOCKS_DEFAULT=false/);
   assert.match(ownership, /DAILY_PLAY_RUNTIME_RESOURCE_BLOCK_CERTIFICATION_DEFERRED=YES/);
   assert.match(ownership, /ClubContext \/ active club selection is \*\*UI selection only\*\*/i);
@@ -216,10 +217,14 @@ test("NEW_DUPLICATE_IDENTITY_CONTRACTS_CREATED=NO", () => {
   assert.match(scope, /TENANT_VENUE_COLLAPSE_DENIED|MISSING_TENANT_ID/);
 });
 
-test("no Batch 5 SQL package authored", () => {
+test("no Batch 5 identity SQL package authored (Batch 7 live SQL is separate)", () => {
   assert.equal(
     existsSync(path.join(root, "docs/v5/migrations/court-resource-canonical-tenant-venue-club-01")),
     false
   );
-  assert.equal(NEW_SQL_REQUIRED, "NO");
+  assert.equal(NEW_DUPLICATE_IDENTITY_CONTRACTS_CREATED, "NO");
+  assert.equal(
+    existsSync(path.join(root, "docs/v5/migrations/court-operations-live-resource-runtime-01")),
+    true
+  );
 });

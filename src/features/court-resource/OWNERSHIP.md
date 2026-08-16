@@ -1,6 +1,6 @@
 # 2.2 Court Operations — Court Resource ownership freeze
 
-**Status:** Frozen for Batch 5 canonical Tenant / Venue / Club boundaries  
+**Status:** Frozen for Batch 7 canonical Court Live Resource Runtime  
 **Do not invert these owners without an Owner GO.**
 
 ```
@@ -11,6 +11,7 @@ COURT_ACCESS_AUTHORITY_OWNER=2.2_COURT_OPERATIONS
 COMPETITION_PROVIDER_BINDING_OWNER=2.2_COURT_OPERATIONS
 BOOKING_BUSINESS_OWNER=2.2_COURT_OPERATIONS
 RESOURCE_BLOCK_BUSINESS_OWNER=2.2_COURT_OPERATIONS
+COURT_LIVE_RESOURCE_RUNTIME_OWNER=2.2_COURT_OPERATIONS
 ```
 
 ## Distinct identity owners (Batch 5)
@@ -28,7 +29,7 @@ CLUB_OPERATIONAL_COURT_ACCESS_OWNER=2.2_COURT_OPERATIONS
 TENANT_ID_EQUALS_VENUE_ID_ASSUMPTION=NO
 COURT_CLUSTERS_VENUE_ID_SEMANTICS=organization_parent_id_debt
 D4_VENUE_BOUNDARY_STATUS=COUPLED_TO_VENUES_AS_TENANT_OUT_OF_SCOPE
-NEW_SQL_REQUIRED=NO
+NEW_SQL_REQUIRED=YES
 NEW_DUPLICATE_IDENTITY_CONTRACTS_CREATED=NO
 ```
 
@@ -56,6 +57,7 @@ Operations identity or access authority.
 - Court Operations scope normalizer (`courtOperationsScope`)
 - Court Operations Booking Application (`courtOperationsBookingApplication`)
 - Court Operations Resource Block Application (`courtOperationsResourceBlockApplication`)
+- Court Operations Live Resource Runtime (`courtOperationsLiveRuntimeApplication`)
 - court cluster **topology** (`clusterId` is filter/scope, not reservable identity)
 - canonical Physical Court identity (`physicalCourtId`)
 - court inventory
@@ -64,8 +66,9 @@ Operations identity or access authority.
 - court availability / capacity / reservation authority
 - canonical Booking business aggregate (`court_operations_bookings`)
 - canonical Resource Block business aggregate (`court_operations_resource_blocks`)
+- canonical Court Live State + Resource Session (`court_operations_court_live_states`,
+  `court_operations_resource_sessions`)
 - Competition Court Contract A **provider binding** (`courtResourceCompetitionAdapter`)
-- Court Live Resource Runtime (later batches)
 
 Canonical masters:
 
@@ -77,9 +80,33 @@ Canonical masters:
 | Durable reservation / capacity | `public.court_resource_reservations` |
 | Booking business aggregate | `public.court_operations_bookings` |
 | Resource block business aggregate | `public.court_operations_resource_blocks` |
+| Current occupancy / live session / NOW operational state | `public.court_operations_court_live_states` + `public.court_operations_resource_sessions` |
+
+**Three authorities must remain distinct:**
+
+1. Capacity SSOT = `court_resource_reservations` (durable/future windows)
+2. Resource Block business SSOT = `court_operations_resource_blocks` (why capacity is blocked)
+3. Live Resource Runtime = occupancy + active session + current operational state (NOW)
+
+```
+COURT_LIVE_RUNTIME_IS_RESERVATION_SSOT=NO
+LIVE_OCCUPANCY_USED_AS_RESERVATION_CONFLICT_AUTHORITY=NO
+LIVE_RUNTIME_MATCH_LIFECYCLE_AUTHORITY=NO
+LIVE_RUNTIME_SCORING_AUTHORITY=NO
+COMPETITION_MATCH_ASSIGNMENT_OWNER=2.13_COMPETITION_ENGINE
+```
+
+Live Runtime MUST NOT insert/delete `court_resource_reservations` when occupancy
+starts/ends. Starting a live session does NOT create capacity. Ending a live
+session does NOT release capacity.
+
+Current operational state is NOW-only (`AVAILABLE` / `UNAVAILABLE_NOW` /
+`OUT_OF_SERVICE_NOW`). It is NOT an infinite future reservation. Future durable
+closure requires a Resource Block with `startsAt`/`endsAt`.
 
 **Separation:** Booking business SSOT is **not** the reservation SSOT.
 Resource Block business SSOT is also **not** the reservation SSOT.
+Live Runtime is **not** the reservation SSOT.
 Reservation rows are capacity pointers:
 
 - Booking: `owner_type='booking'`, `owner_id=bookingId`
@@ -91,7 +118,7 @@ Reservation rows are capacity pointers:
 Do **not** invent a `court_resource_block` owner type. Resource Blocks must not
 create `bookingType=maintenance` and must not treat `court.status` as capacity.
 
-Canonical reservable / booking court identity is `physicalCourtId` / `physicalCourtIds`.
+Canonical reservable / booking / live court identity is `physicalCourtId` / `physicalCourtIds`.
 
 - `clusterId` = topology / filter only
 - `courtCount` = demand only — not identity
@@ -104,9 +131,25 @@ A Physical Court may be accessible to multiple clubs. That MUST NOT duplicate Ph
 
 Club blob possession of a court (`club_data_v3` / localStorage) is **not** access proof.
 `club_data_v3.bookings[]` is **not** canonical Booking business authority on the canonical path.
+`club_data_v3` `court.status` is **not** canonical current operational state on the canonical path.
 
 Club Management does not own court access.  
 Venue Management does not own Physical Court identity.
+
+## Court Engine responsibility matrix
+
+| Concern | Owner |
+| ------- | ----- |
+| physicalCourt identity | 2.2 Court Operations |
+| capacity reservation | 2.2 Court Operations |
+| current occupancy | 2.2 Court Operations |
+| active resource session | 2.2 Court Operations |
+| current operational state | 2.2 Court Operations |
+| match assignment business record | 2.13 Competition Engine |
+| match lifecycle | 2.13 Competition Engine |
+| score | 2.13 Competition Engine |
+| winner/result | 2.13 Competition Engine |
+| referee competition logic | 2.13 Competition Engine |
 
 ## Provider binding location
 
@@ -129,6 +172,18 @@ One provider implementation only. Native identity handoff is
 Competition Contract A scope passes `tenantId` unchanged — never invents
 `venueId` from `tenantId`.
 
+## Competition live integration (Batch 7)
+
+```
+COMPETITION_LIVE_INTEGRATION_MODEL=GENERIC_LIVE_RESOURCE_USE_PROJECTION_ONE_WAY
+```
+
+Competition owns match lifecycle. Court Live Runtime consumes only a generic
+resource-use projection (`sourceType=competition`, opaque `sourceId=matchId`).
+Court Operations never calls back into Competition business logic.
+Head A V1 is unchanged and remains capacity-only (Adapter B → Head A).
+No direct Gateway bypass.
+
 ## Adjacent owners (not Court Resource)
 
 | Owner | Owns | Does not own |
@@ -138,21 +193,31 @@ Competition Contract A scope passes `tenantId` unchanged — never invents
 | 2.3 Club Management | club identity / lifecycle / membership | court access, Physical Court identity |
 | Customer Management | customer master | booking business aggregate |
 | Finance | payment ledger | booking price metadata projections |
+| 2.13 Competition Engine | match lifecycle / score / winner / bracket | live occupancy SSOT |
 
-Venue & Court `listCourts` / `club_data_v3` remain **transitional compatibility** readers for old noncanonical consumers. They are not the target inventory, access, Booking, or Resource Block business authority.
+Venue & Court `listCourts` / `club_data_v3` remain **transitional compatibility** readers for old noncanonical consumers. They are not the target inventory, access, Booking, Resource Block, or Live Runtime authority.
 
 Reused (not duplicated) framing contracts: CourtOperationsTenantContract /
 CourtOperationsClubContract / VenueContractV2 projections via existing
 `projectTenantScope`, `projectVenueCourt*`, `projectClubScope` adapters.
 
-## Deferred
+## Deferred / Batch 8 legacy
 
 ```
 DAILY_PLAY_CANONICAL_BUSINESS_AGGREGATE=DEFERRED
 DAILY_PLAY_RUNTIME_RESOURCE_BLOCK_CERTIFICATION_DEFERRED=YES
-LIVE_RESOURCE_RUNTIME_REDESIGN_DEFERRED=YES
-COURT_ENGINE_LIVE_RUNTIME_DEBT=occupancy_and_match_assignment_lifecycle_still_mixed
+LIVE_RESOURCE_RUNTIME_REDESIGN_DEFERRED=NO
+COURT_ENGINE_LIVE_RUNTIME_DEBT=legacy_path_retained_until_batch8
 ```
+
+Legacy items for Batch 8 (not deleted in Batch 7):
+
+| Item | Classification |
+| ---- | -------------- |
+| `court.status` blob | LEGACY_COMPATIBILITY_ONLY |
+| tournament `currentMatchId` | UI_PROJECTION_ONLY / LEGACY_COMPATIBILITY_ONLY |
+| Daily Play lease projection | LEGACY_COMPATIBILITY + PROJECTION (not capacity SSOT) |
+| Court Engine session blob occupancy | MIGRATION_REQUIRED (demote as authority) |
 
 Daily Play remains capacity-owner vocabulary (`daily_play`) under Phase 3B / D4
 on the **legacy** path. Batch 6 Mode Adapter B (canonical, default OFF) reserves
@@ -166,6 +231,7 @@ Mode Court Adapter B owner = `2.13_COMPETITION_ENGINE`
 CANONICAL_BOOKING_LIFECYCLE_DEFAULT=false
 CANONICAL_RESOURCE_BLOCKS_DEFAULT=false
 CANONICAL_COMPETITION_COURT_ADAPTERS_DEFAULT=false
+CANONICAL_COURT_LIVE_RUNTIME_DEFAULT=false
 SQL_CUTOVER=false
 JS_CUTOVER=false
 DUAL_CUTOVER=OFF_OFF
