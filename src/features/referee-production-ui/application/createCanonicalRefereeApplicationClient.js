@@ -26,6 +26,7 @@ import {
   rejectLocationStateAuthority,
   rejectProductionFixtureFallback,
 } from "./assertProductionUiSecurity.js";
+import { detectCompetitionModeHint } from "./resolveCanonicalRefereeModeState.js";
 
 function requireRuntime(runtime) {
   if (!runtime || runtime.usesAdapterB !== true || !runtime.facade) {
@@ -207,6 +208,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       command.competitionMode ||
       assignment.competitionMode ||
       modeState?.competitionMode ||
+      detectCompetitionModeHint(assignment, modeState) ||
       COMPETITION_REFEREE_MODE.INTERNAL;
     const { mode, adapter } = resolveAdapter(modeHint);
     return {
@@ -256,8 +258,19 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       matchId: assignment.matchId,
       competitionMode: mode,
       adapterSelected: adapter.adapterId || mode,
-      competitionContext,
-      matchContext,
+      competitionContext: {
+        ...competitionContext,
+        competitionName:
+          modeState?.competitionName || competitionContext.competitionName || null,
+      },
+      matchContext: {
+        ...matchContext,
+        courtLabel:
+          matchContext.courtLabel ||
+          modeState?.matchups?.[assignment.matchId]?.courtLabel ||
+          Object.values(modeState?.matchups || {})[0]?.courtLabel ||
+          null,
+      },
       participants,
       scoringRules,
       lifecyclePolicy,
@@ -287,19 +300,45 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         row.competitionMode ||
         modeState?.competitionMode ||
         command.competitionModeByMatchId?.[row.matchId] ||
-        command.defaultCompetitionMode;
+        command.defaultCompetitionMode ||
+        detectCompetitionModeHint(row, modeState);
+      const scheduledAt =
+        modeState?.matchups && Object.values(modeState.matchups)[0]?.scheduledAt
+          ? Object.values(modeState.matchups)[0].scheduledAt
+          : row.assignedAt || row.scheduledAt || null;
+      const courtLabelFromMode =
+        modeState?.matchups && Object.values(modeState.matchups)[0]?.courtLabel
+          ? Object.values(modeState.matchups)[0].courtLabel
+          : modeState?.courtLabel || null;
+      const courtIdFromMode =
+        modeState?.matchups && Object.values(modeState.matchups)[0]?.courtId
+          ? Object.values(modeState.matchups)[0].courtId
+          : row.courtId || null;
       if (!modeHint) {
         cards.push(
           buildRefereeAssignmentCard({
             assignment: {
               ...row,
               competitionId: row.competitionId,
-              scheduledAt: row.assignedAt || row.scheduledAt || null,
+              competitionName: modeState?.competitionName || null,
+              scheduledAt,
+              courtId: courtIdFromMode,
+              courtLabel: courtLabelFromMode,
             },
             competitionMode: "",
-            competitionContext: { competitionId: row.competitionId },
-            matchContext: { matchId: row.matchId, courtId: row.courtId },
+            competitionContext: {
+              competitionId: row.competitionId,
+              competitionName: modeState?.competitionName || null,
+            },
+            matchContext: {
+              matchId: row.matchId,
+              courtId: courtIdFromMode,
+              courtLabel: courtLabelFromMode,
+              scheduledAt,
+            },
             participants: { sides: [] },
+            participantNames: modeState?.participantNames || {},
+            modeState,
           })
         );
         continue;
@@ -308,21 +347,64 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       const req = adapterRequest(
         {
           tenantId: row.tenantId || tenantId,
-          competitionId: row.competitionId,
+          competitionId: row.competitionId || modeState?.competitionId,
           matchId: row.matchId,
-          venueId: row.venueId,
+          venueId: row.venueId || modeState?.venueId,
         },
         modeState
       );
-      let competitionContext = { competitionId: row.competitionId, competitionMode: mode };
-      let matchContext = { matchId: row.matchId, courtId: row.courtId };
+      let competitionContext = {
+        competitionId: row.competitionId,
+        competitionMode: mode,
+        competitionName: modeState?.competitionName || null,
+      };
+      let matchContext = {
+        matchId: row.matchId,
+        courtId: courtIdFromMode,
+        courtLabel: courtLabelFromMode,
+        scheduledAt,
+      };
       let participants = { sides: [] };
       try {
-        competitionContext = adapter.getCompetitionContext(req);
-        matchContext = adapter.getMatchContext(req);
+        competitionContext = {
+          ...adapter.getCompetitionContext(req),
+          competitionName: modeState?.competitionName || null,
+        };
+        matchContext = {
+          ...adapter.getMatchContext(req),
+          courtLabel:
+            courtLabelFromMode ||
+            adapter.getMatchContext(req).courtLabel ||
+            null,
+        };
         participants = adapter.getParticipants(req);
       } catch {
         // Card still lists CORE-13 assignment; Adapter B details optional when modeState missing.
+        if (modeState?.matchups) {
+          const matchup = Object.values(modeState.matchups)[0];
+          if (matchup?.sides?.length === 2) {
+            participants = { sides: matchup.sides };
+          } else if (matchup?.teamAId && matchup?.teamBId) {
+            participants = {
+              sides: [
+                {
+                  sideKey: "A",
+                  teamId: matchup.teamAId,
+                  teamName: matchup.teamAName || null,
+                  displayName: matchup.teamAName || null,
+                  participantIds: [],
+                },
+                {
+                  sideKey: "B",
+                  teamId: matchup.teamBId,
+                  teamName: matchup.teamBName || null,
+                  displayName: matchup.teamBName || null,
+                  participantIds: [],
+                },
+              ],
+            };
+          }
+        }
       }
       const names = await resolveNames(row, modeState);
       let assignedMatch;
@@ -345,8 +427,10 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           assignment: {
             ...row,
             status: row.opsStatus || row.status,
-            scheduledAt: row.assignedAt || row.scheduledAt || null,
-            courtId: row.courtId,
+            scheduledAt,
+            courtId: courtIdFromMode,
+            courtLabel: courtLabelFromMode,
+            competitionName: modeState?.competitionName || null,
           },
           competitionContext,
           matchContext,
@@ -354,6 +438,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           assignedMatch,
           participantNames: names,
           competitionMode: mode,
+          modeState,
         })
       );
     }

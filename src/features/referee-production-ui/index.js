@@ -22,10 +22,24 @@ export { buildRefereeMatchView } from "./projection/buildRefereeMatchView.js";
 
 export { createCanonicalRefereeApplicationClient } from "./application/createCanonicalRefereeApplicationClient.js";
 export { createBrowserRefereeApplicationClient } from "./application/createBrowserRefereeApplicationClient.js";
+export { createAuthenticatedRefereeCommandTransport } from "./application/createAuthenticatedRefereeCommandTransport.js";
+export { createTrustedRefereeBackend } from "./application/createTrustedRefereeBackend.js";
+export {
+  resolveCanonicalRefereeModeState,
+  detectCompetitionModeHint,
+} from "./application/resolveCanonicalRefereeModeState.js";
 export {
   assertRefereeUiSecurity,
   assertNotPrivilegedBrowserComposition,
 } from "./application/assertProductionUiSecurity.js";
+
+export {
+  formatCompetitionModeLabel,
+  formatAssignmentStatusLabel,
+  formatLocalScheduledTime,
+  formatCourtLabel,
+  formatCompetitionDisplayName,
+} from "./projection/formatRefereeUiLabels.js";
 
 export { useCanonicalRefereeHome } from "./hooks/useCanonicalRefereeHome.js";
 export { useCanonicalRefereeMatch } from "./hooks/useCanonicalRefereeMatch.js";

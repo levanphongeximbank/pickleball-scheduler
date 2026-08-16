@@ -3,23 +3,44 @@ import { Link as RouterLink } from "react-router-dom";
 export default function RefereeAssignmentCard({ card }) {
   return (
     <article className="rp-card" data-testid="referee-assignment-card">
-      <h2 className="rp-card-title">
-        {card.participantA} vs {card.participantB}
-      </h2>
-      <p className="rp-card-meta">
+      <div className="rp-chip-row rp-chip-row-top">
+        {card.competitionModeLabel ? (
+          <span className="rp-chip rp-chip-mode" data-testid="mode-badge">
+            {card.competitionModeLabel}
+          </span>
+        ) : null}
+        <span className="rp-chip rp-chip-status" data-testid="status-badge">
+          {card.assignmentStatusLabel || "Đã phân công"}
+        </span>
+        {card.matchStatusLabel ? (
+          <span className="rp-chip" data-testid="match-status-badge">
+            {card.matchStatusLabel}
+          </span>
+        ) : null}
+      </div>
+
+      <h2 className="rp-card-competition" data-testid="competition-name">
         {card.competitionName}
-        {card.stageName ? ` • ${card.stageName}` : ""}
-        {card.roundName ? ` • Vòng ${card.roundName}` : ""}
-      </p>
-      <p className="rp-card-sub">
+      </h2>
+      {(card.stageName || card.roundName) && (
+        <p className="rp-card-meta" data-testid="stage-round">
+          {card.stageName || ""}
+          {card.stageName && card.roundName ? " • " : ""}
+          {card.roundName ? `Vòng ${card.roundName}` : ""}
+        </p>
+      )}
+
+      <div className="rp-card-vs" data-testid="participants">
+        <div className="rp-card-side">{card.participantA}</div>
+        <div className="rp-card-vs-label">vs</div>
+        <div className="rp-card-side">{card.participantB}</div>
+      </div>
+
+      <p className="rp-card-sub" data-testid="court-time">
         {card.courtLabel}
         {card.scheduledTime ? ` • ${card.scheduledTime}` : ""}
       </p>
-      <div className="rp-chip-row">
-        <span className="rp-chip">{card.competitionMode || "MODE"}</span>
-        <span className="rp-chip">{card.assignmentStatus}</span>
-        <span className="rp-chip">{card.matchStatus || "—"}</span>
-      </div>
+
       <RouterLink
         className="rp-btn rp-btn-primary"
         to={card.href}

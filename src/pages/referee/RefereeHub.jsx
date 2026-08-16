@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { Button, Stack } from "@mui/material";
+import { Button } from "@mui/material";
 import QrCode2Icon from "@mui/icons-material/QrCode2";
 
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -51,26 +51,26 @@ export default function RefereeHub({ client: clientProp }) {
 
   return (
     <>
-      {isMobile ? (
-        <Stack direction="row" spacing={1} sx={{ mb: 2, px: 1.5 }}>
-          <Button
-            component={RouterLink}
-            to="/mobile/qr-scan"
-            variant="outlined"
-            startIcon={<QrCode2Icon />}
-            sx={touchButtonSx}
-            fullWidth
-          >
-            Quét QR trận
-          </Button>
-        </Stack>
-      ) : null}
       <RefereeHome
         assignments={home.assignments}
         loading={home.loading}
         error={home.error}
         userLabel={user?.displayName || "bạn"}
       />
+      {isMobile ? (
+        <div className="rp-qr-secondary">
+          <Button
+            component={RouterLink}
+            to="/mobile/qr-scan"
+            variant="text"
+            size="small"
+            startIcon={<QrCode2Icon fontSize="small" />}
+            sx={{ ...touchButtonSx, minHeight: 40, fontWeight: 600 }}
+          >
+            Quét QR (tuỳ chọn)
+          </Button>
+        </div>
+      ) : null}
     </>
   );
 }

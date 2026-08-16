@@ -7,6 +7,12 @@ import { REFEREE_ACTION } from "../../competition-engine/operations/referee/cons
 import { formatScoringPolicyLabel } from "./formatScoringPolicyLabel.js";
 import { projectCanonicalCourtView } from "./projectCanonicalCourtView.js";
 import { projectResultStatus } from "./resultStatus.js";
+import {
+  formatCompetitionDisplayName,
+  formatCompetitionModeLabel,
+  formatCourtLabel,
+  formatMatchStatusLabel,
+} from "./formatRefereeUiLabels.js";
 
 function allowed(projection, action) {
   return (projection?.allowedActions || []).some((row) => row.action === action);
@@ -79,20 +85,22 @@ export function buildRefereeMatchView(input) {
       competition.competitionId || matchContext.competitionId || ""
     ).trim(),
     competitionMode: String(input.competitionMode || "").trim(),
-    competitionName:
-      competition.competitionName ||
-      competition.competitionId ||
-      matchContext.competitionId ||
-      "",
+    competitionModeLabel: formatCompetitionModeLabel(input.competitionMode),
+    competitionName: formatCompetitionDisplayName({
+      competitionName:
+        competition.competitionName ||
+        input.modeState?.competitionName ||
+        null,
+      competitionId: competition.competitionId || matchContext.competitionId,
+    }),
     adapterSelected: String(input.adapterSelected || input.competitionMode || "").trim(),
     stageName: matchContext.stage || null,
     roundName: matchContext.round != null ? String(matchContext.round) : null,
     courtId: matchContext.courtId || assigned.courtId || match.courtAssignmentRef || null,
-    courtLabel: matchContext.courtId
-      ? `Sân ${matchContext.courtId}`
-      : assigned.courtId
-        ? `Sân ${assigned.courtId}`
-        : null,
+    courtLabel: formatCourtLabel({
+      courtLabel: matchContext.courtLabel || null,
+      courtId: matchContext.courtId || assigned.courtId || match.courtAssignmentRef || null,
+    }),
     participants: input.participants || { sides: [] },
     scoringRules,
     lifecyclePolicy,
@@ -123,6 +131,7 @@ export function buildRefereeMatchView(input) {
       scorePolicyLine: policy.scorePolicyLine,
     }),
     matchStatus,
+    matchStatusLabel: formatMatchStatusLabel(matchStatus),
     resultStatus: result.resultStatus,
     resultStatusLabel: result.label,
     officialWinner: result.officialWinner,

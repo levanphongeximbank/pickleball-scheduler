@@ -28,7 +28,7 @@ export default function RefereeMatchScreen({
   if (loading) {
     return (
       <div className="rp-page" data-testid="referee-match-screen">
-        <p className="rp-sub">Đang tải trận từ trạng thái canonical…</p>
+        <p className="rp-sub">Đang tải trận…</p>
       </div>
     );
   }
@@ -55,13 +55,19 @@ export default function RefereeMatchScreen({
 
   return (
     <div className="rp-page" data-testid="referee-match-screen" data-mode={view.competitionMode}>
-      <h1 className="rp-title">{view.competitionName || "Trận trọng tài"}</h1>
-      <p className="rp-sub">
-        {view.competitionMode}
-        {view.stageName ? ` • ${view.stageName}` : ""}
-        {view.roundName ? ` • Vòng ${view.roundName}` : ""}
-        {view.courtLabel ? ` • ${view.courtLabel}` : ""}
-      </p>
+      <header className="rp-match-header">
+        <h1 className="rp-title">{view.competitionName || "Trận trọng tài"}</h1>
+        <p className="rp-sub">
+          {[
+            view.competitionModeLabel,
+            view.stageName,
+            view.roundName ? `Vòng ${view.roundName}` : null,
+            view.courtLabel,
+          ]
+            .filter(Boolean)
+            .join(" • ")}
+        </p>
+      </header>
 
       <div className="rp-policy" data-testid="scoring-policy">
         {view.gameSummary?.scorePolicyLine ? (
@@ -72,20 +78,29 @@ export default function RefereeMatchScreen({
             {view.gameSummary.changeEndPolicy}
           </span>
         ) : null}
-        <span className="rp-chip">Game {view.gameSummary?.currentGame || 1}</span>
-        <span className="rp-chip">{view.matchStatus || "—"}</span>
+        <span className="rp-chip">
+          Game {view.gameSummary?.currentGame || 1}
+          {view.gameSummary?.gamesWon
+            ? ` • Games ${view.gameSummary.gamesWon.SIDE_A || 0}-${view.gameSummary.gamesWon.SIDE_B || 0}`
+            : ""}
+        </span>
+        {view.matchStatusLabel ? (
+          <span className="rp-chip">{view.matchStatusLabel}</span>
+        ) : null}
       </div>
 
-      <Banner
-        kind={view.acceptedOfficialResult ? "ok" : "info"}
-        testId="result-status"
-      >
-        {view.resultStatusLabel}
-      </Banner>
+      {view.resultStatus && view.resultStatus !== "NONE" ? (
+        <Banner
+          kind={view.acceptedOfficialResult ? "ok" : "info"}
+          testId="result-status"
+        >
+          {view.resultStatusLabel}
+        </Banner>
+      ) : null}
 
       {stale ? (
         <Banner kind="warn" testId="stale-banner">
-          Trạng thái cũ — không ghi đè. Tải lại để hòa giải.
+          Dữ liệu đã đổi trên máy chủ. Tải lại trước khi ghi điểm.
           <button type="button" className="rp-btn rp-btn-ghost" onClick={onReload} style={{ marginTop: 8 }}>
             Hòa giải
           </button>
@@ -94,7 +109,7 @@ export default function RefereeMatchScreen({
 
       {pending ? (
         <Banner kind="info" testId="pending-banner">
-          Đang chờ ACK canonical…
+          Đang gửi lệnh…
         </Banner>
       ) : null}
 
@@ -102,7 +117,7 @@ export default function RefereeMatchScreen({
 
       {view.preStart && view.preStart.ok === false ? (
         <Banner kind="warn" testId="precheck-banner">
-          Precheck chưa đạt. Không mở trận cho đến khi Adapter B / CORE-13 sẵn sàng.
+          Chưa đủ điều kiện bắt đầu. Kiểm tra phân công và đội hình rồi thử lại.
         </Banner>
       ) : null}
 
@@ -117,7 +132,7 @@ export default function RefereeMatchScreen({
         </div>
         {scoreLine.showServiceTurn ? (
           <div className="rp-score-line" data-testid="service-turn">
-            Lượt giao #{scoreLine.serviceTurn} (không phải số áo VĐV)
+            Lượt giao #{scoreLine.serviceTurn}
           </div>
         ) : (
           <div className="rp-score-line" data-testid="rally-score-line">
@@ -131,15 +146,15 @@ export default function RefereeMatchScreen({
           <strong>DreamBreaker</strong>
           <p>
             A: {db.sideAActivePlayer?.displayName || "—"}
-            {db.nextPlayerA ? ` → ${db.nextPlayerA.displayName}` : ""}
+            {db.nextPlayerA ? ` → tiếp ${db.nextPlayerA.displayName}` : ""}
           </p>
           <p>
             B: {db.sideBActivePlayer?.displayName || "—"}
-            {db.nextPlayerB ? ` → ${db.nextPlayerB.displayName}` : ""}
+            {db.nextPlayerB ? ` → tiếp ${db.nextPlayerB.displayName}` : ""}
           </p>
           {db.rotationProgress ? (
             <p>
-              Rotation {db.rotationProgress.pointsInRotation ?? "—"}/
+              Xoay vòng {db.rotationProgress.pointsInRotation ?? "—"}/
               {db.rotationProgress.rotationPoints ?? "—"}
             </p>
           ) : null}
@@ -150,7 +165,7 @@ export default function RefereeMatchScreen({
 
       {court.sideChangeRequired ? (
         <Banner kind="warn" testId="change-ends-warning">
-          Canonical policy yêu cầu đổi sân. Xác nhận rồi mới gửi lệnh — không đảo sân local trước ACK.
+          Cần đổi sân theo luật. Xác nhận để gửi lệnh — sân chỉ đổi sau khi máy chủ xác nhận.
         </Banner>
       ) : null}
 
@@ -205,7 +220,7 @@ export default function RefereeMatchScreen({
           onClick={onChangeEnds}
           data-testid="btn-change-ends"
         >
-          Đổi sân (ends)
+          Đổi sân
         </button>
         <button
           type="button"
@@ -214,7 +229,7 @@ export default function RefereeMatchScreen({
           onClick={() => onSwitchPositions?.("A")}
           data-testid="btn-switch-positions"
         >
-          Đổi vị trí (trong đội)
+          Đổi vị trí trong đội
         </button>
         {view.canComplete ? (
           <button
@@ -235,7 +250,7 @@ export default function RefereeMatchScreen({
             onClick={onCorrect}
             data-testid="btn-correct"
           >
-            Correction
+            Sửa kết quả
           </button>
         ) : null}
       </div>

@@ -36,6 +36,58 @@
   font-weight: 800;
 }
 
+.rp-card-competition {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.rp-card-vs {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0 8px;
+}
+
+.rp-card-side {
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.rp-card-vs-label {
+  color: #78909c;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: lowercase;
+}
+
+.rp-chip-row-top {
+  margin-top: 0;
+}
+
+.rp-chip-mode {
+  background: #e3f2fd;
+  color: #0d47a1;
+}
+
+.rp-chip-status {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.rp-qr-secondary {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 12px 24px;
+  text-align: center;
+}
+
+.rp-match-header {
+  margin-bottom: 8px;
+}
+
 .rp-card-meta,
 .rp-card-sub {
   margin: 0 0 4px;

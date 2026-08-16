@@ -8,8 +8,8 @@ export default function RefereeHome({
 }) {
   return (
     <div className="rp-page" data-testid="referee-home">
-      <h1 className="rp-title">Trọng tài — Trận được phân công</h1>
-      <p className="rp-sub">Phân công theo CORE-13. F5 và deep-link không cần location.state.</p>
+      <h1 className="rp-title">Trận được phân công</h1>
+      <p className="rp-sub">Xin chào {userLabel}. Chọn trận để vào ghi điểm.</p>
       {error ? (
         <div className="rp-banner rp-banner-error" data-testid="referee-home-error">
           {error}

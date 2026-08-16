@@ -70,6 +70,7 @@ export function createIndividualTournamentRefereeAdapterSurface({
         competitionMode,
         competitionType:
           state.competitionType || competitionTypeForMode(competitionMode),
+        competitionName: state.competitionName || null,
         venueId: state.venueId || req.venueId || null,
         clubId: state.clubId || req.clubId || null,
         stageModel: state.stageModel || "individual_tournament",
@@ -95,6 +96,7 @@ export function createIndividualTournamentRefereeAdapterSurface({
         status: mapModeStatusToCore15(match.status),
         scheduledAt: match.scheduledAt || null,
         courtId: match.courtId || null,
+        courtLabel: match.courtLabel || null,
         stage: match.stage || null,
         round: match.round ?? null,
         eventId: match.eventId || null,

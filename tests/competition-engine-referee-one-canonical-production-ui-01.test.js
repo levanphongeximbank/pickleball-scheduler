@@ -31,6 +31,13 @@ import { projectCanonicalCourtView } from "../src/features/referee-production-ui
 import { projectDreamBreakerRotation } from "../src/features/referee-production-ui/projection/projectDreamBreakerRotation.js";
 import { formatCanonicalScoreLine } from "../src/features/referee-production-ui/projection/formatScoringPolicyLabel.js";
 import { projectResultStatus } from "../src/features/referee-production-ui/projection/resultStatus.js";
+import {
+  formatAssignmentStatusLabel,
+  formatCompetitionDisplayName,
+  formatCompetitionModeLabel,
+  formatCourtLabel,
+  formatLocalScheduledTime,
+} from "../src/features/referee-production-ui/projection/formatRefereeUiLabels.js";
 import { RESULT_STATUS, REFEREE_UI_ERROR_CODE } from "../src/features/referee-production-ui/constants.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -87,6 +94,7 @@ function dailyModeState(competitionId, matchId, extras = {}) {
     tenantId: "tenant-1",
     competitionId,
     competitionMode: COMPETITION_REFEREE_MODE.DAILY_PLAY,
+    competitionName: extras.competitionName || "Daily Club Night",
     venueId: "venue-1",
     clubId: "club-1",
     canonicalAssignmentAuthorityAvailable: true,
@@ -108,6 +116,7 @@ function dailyModeState(competitionId, matchId, extras = {}) {
         matchId,
         status: "ready",
         courtId: "court-1",
+        courtLabel: "Sân 1",
         teamAPlayerIds: extras.teamA || ["p1", "p2"],
         teamBPlayerIds: extras.teamB || ["p3", "p4"],
         scoringRules: extras.scoringRules || SIDE_OUT,
@@ -122,6 +131,9 @@ function individualModeState(mode, competitionId, matchId, extras = {}) {
     tenantId: "tenant-1",
     competitionId,
     competitionMode: mode,
+    competitionName:
+      extras.competitionName ||
+      (mode === COMPETITION_REFEREE_MODE.OFFICIAL ? "Open Official Cup" : "Internal Club Cup"),
     competitionType:
       mode === COMPETITION_REFEREE_MODE.OFFICIAL
         ? "official_tournament"
@@ -134,6 +146,7 @@ function individualModeState(mode, competitionId, matchId, extras = {}) {
         matchId,
         status: "READY_TO_START",
         courtId: "court-2",
+        courtLabel: "Sân 2",
         stage: "POOL",
         round: 1,
         eventId: "event-1",
@@ -154,9 +167,10 @@ function teamModeState(competitionId, matchId, extras = {}) {
     tenantId: "tenant-1",
     competitionId,
     competitionMode: COMPETITION_REFEREE_MODE.TEAM,
+    competitionName: extras.competitionName || "Giải đồng đội UI",
     venueId: "venue-1",
     clubId: "club-1",
-    participantNames: { a1: "Hà", a2: "Khoa", b1: "Linh", b2: "Nam" },
+    participantNames: { a1: "Hà", a2: "Khoa", b1: "Linh", b2: "Nam", "team-a": "Đội A", "team-b": "Đội B" },
     assignments: [
       {
         matchupId: matchId,
@@ -170,8 +184,11 @@ function teamModeState(competitionId, matchId, extras = {}) {
         matchupId: matchId,
         teamAId: "team-a",
         teamBId: "team-b",
+        teamAName: "Đội A",
+        teamBName: "Đội B",
         status: "READY_TO_START",
         courtId: "court-3",
+        courtLabel: "Sân 3",
         stage: "KO",
         round: 1,
         lineupsLocked: true,
@@ -648,7 +665,7 @@ test("canonical routes do not silently fall back to legacy token/session scoring
   assert.doesNotMatch(hub, /state=\{\{ refereeToken/);
 });
 
-test("browser client without runtime fail-closes commands (no V5/legacy)", async () => {
+test("browser client without transport fail-closes commands (no V5/legacy)", async () => {
   const client = createBrowserRefereeApplicationClient({
     actor: ACTOR,
     env: {},
@@ -659,6 +676,320 @@ test("browser client without runtime fail-closes commands (no V5/legacy)", async
   await assert.rejects(() => client.submitPoint({}), (err) => {
     return err.silentLegacyFallback === false && err.failClosed === true;
   });
+  await assert.rejects(() => client.getMatchView({ matchId: "x" }), (err) => {
+    return (
+      err.failClosed === true &&
+      err.silentLegacyFallback === false &&
+      !/Deep-link match view requires canonical Adapter B runtime/i.test(err.message)
+    );
+  });
+});
+
+test("browser client authenticated transport invoked with expectedVersion + idempotency", async () => {
+  const calls = [];
+  const transport = {
+    listMyAssignments: async () => ({ ok: true, assignments: [] }),
+    getMatchView: async (payload) => {
+      calls.push(["getMatchView", payload]);
+      return {
+        ok: true,
+        view: { matchId: payload.matchId, expectedVersion: 3, competitionMode: "TEAM" },
+      };
+    },
+    submitPoint: async (payload) => {
+      calls.push(["submitPoint", payload]);
+      return {
+        ok: true,
+        view: { matchId: payload.matchId, expectedVersion: 4 },
+      };
+    },
+    startMatch: async () => ({ ok: true }),
+    acknowledgeAssignment: async () => ({ ok: true }),
+    openAssignedMatch: async () => ({ ok: true }),
+    startScoreSession: async () => ({ ok: true }),
+    suspendMatch: async () => ({ ok: true }),
+    resumeMatch: async () => ({ ok: true }),
+    confirmChangeEnds: async () => ({ ok: true }),
+    switchPositions: async () => ({ ok: true }),
+    submitResult: async () => ({ ok: true }),
+    correctResult: async () => ({ ok: true }),
+  };
+  const client = createBrowserRefereeApplicationClient({
+    actor: ACTOR,
+    env: {},
+    transport,
+  });
+  assert.equal(client.commandTransport, "authenticated-api-referee-command");
+  assert.equal(client.readOnly, false);
+  const view = await client.getMatchView({
+    tenantId: "tenant-1",
+    matchId: "matchup-7t58gnjq",
+  });
+  assert.equal(view.view.matchId, "matchup-7t58gnjq");
+  await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: "matchup-7t58gnjq",
+    scoringSide: SCORING_SIDE.SIDE_A,
+    expectedVersion: 3,
+    idempotencyKey: "idem-1",
+  });
+  assert.equal(calls[0][0], "getMatchView");
+  assert.equal(calls[1][0], "submitPoint");
+  assert.equal(calls[1][1].expectedVersion, 3);
+  assert.equal(calls[1][1].idempotencyKey, "idem-1");
+  assert.doesNotMatch(
+    read("src/features/referee-production-ui/application/createBrowserRefereeApplicationClient.js"),
+    /Deep-link match view requires canonical Adapter B runtime/
+  );
+});
+
+test("owner visual acceptance — CORE-13 row enriched without raw UUID/MODE/ASSIGNED", async () => {
+  const { runtime } = createUiRuntime();
+  const competitionId = "b5cd6975-3a7f-4c11-8006-2ac14e7bef5b";
+  const matchId = "matchup-7t58gnjq";
+  const modeState = {
+    tenantId: "tenant-1",
+    competitionId,
+    competitionMode: COMPETITION_REFEREE_MODE.TEAM,
+    competitionName: "Giải đồng đội 13/8/2026",
+    participantNames: {
+      "team-biqspqe9": "Đội 4",
+      "team-sg9nd5xj": "Đội 2",
+    },
+    matchups: {
+      [matchId]: {
+        matchupId: matchId,
+        teamAId: "team-biqspqe9",
+        teamBId: "team-sg9nd5xj",
+        teamAName: "Đội 4",
+        teamBName: "Đội 2",
+        courtLabel: "Sân 1",
+        courtId: null,
+        scheduledAt: "2026-08-15T17:02:00.000Z",
+        status: "READY_TO_START",
+        stage: "KO",
+        round: 1,
+        lineupsLocked: true,
+        scoringRules: RALLY,
+        subMatches: [],
+        sides: [
+          {
+            sideKey: "A",
+            teamId: "team-biqspqe9",
+            displayName: "Đội 4",
+            participantIds: [],
+          },
+          {
+            sideKey: "B",
+            teamId: "team-sg9nd5xj",
+            displayName: "Đội 2",
+            participantIds: [],
+          },
+        ],
+      },
+    },
+  };
+  await runtime.assignmentRepository.upsert(
+    {
+      tenantId: "tenant-1",
+      competitionId,
+      matchId,
+      refereeUserId: ACTOR.actorId,
+    },
+    ACTOR
+  );
+  const client = createCanonicalRefereeApplicationClient({
+    runtime,
+    actor: ACTOR,
+    modeStateResolver: () => modeState,
+  });
+  const listed = await client.listMyAssignments({ tenantId: "tenant-1", actor: ACTOR });
+  const card = listed.assignments.find((row) => row.matchId === matchId);
+  assert.ok(card);
+  assert.equal(card.competitionName, "Giải đồng đội 13/8/2026");
+  assert.equal(card.participantA, "Đội 4");
+  assert.equal(card.participantB, "Đội 2");
+  assert.equal(card.courtLabel, "Sân 1");
+  assert.ok(card.scheduledTime);
+  assert.equal(String(card.scheduledTime).includes("T"), false);
+  assert.equal(card.competitionModeLabel, "Giải đồng đội");
+  assert.equal(card.assignmentStatusLabel, "Đã phân công");
+  assert.notEqual(card.competitionName, competitionId);
+  assert.notEqual(card.courtLabel, "Sân ?");
+  assert.notEqual(card.competitionModeLabel, "MODE");
+  assert.notEqual(card.assignmentStatusLabel, "ASSIGNED");
+  assert.notEqual(card.participantA, "—");
+  assert.notEqual(card.participantB, "—");
+
+  const deep = await client.getMatchView({
+    tenantId: "tenant-1",
+    matchId,
+    actor: ACTOR,
+  });
+  assert.equal(deep.view.competitionMode, COMPETITION_REFEREE_MODE.TEAM);
+  assert.equal(deep.view.competitionName, "Giải đồng đội 13/8/2026");
+  assert.equal(deep.locationStateRequired, false);
+});
+
+test("assignment card formatting helpers reject raw technical labels", () => {
+  assert.equal(
+    formatCourtLabel({ courtId: "b5cd6975-3a7f-4c11-8006-2ac14e7bef5b" }),
+    "Sân chưa xác định"
+  );
+  assert.equal(formatCourtLabel({ courtLabel: "Sân 1" }), "Sân 1");
+  assert.equal(
+    formatCompetitionDisplayName({
+      competitionName: null,
+      competitionId: "b5cd6975-3a7f-4c11-8006-2ac14e7bef5b",
+    }),
+    "Giải chưa xác định tên"
+  );
+  assert.equal(formatCompetitionModeLabel("DAILY_PLAY"), "Vui chơi hằng ngày");
+  assert.equal(formatAssignmentStatusLabel("ASSIGNED"), "Đã phân công");
+  assert.equal(formatAssignmentStatusLabel("IN_PROGRESS"), "Đang diễn ra");
+  assert.equal(formatAssignmentStatusLabel("COMPLETED"), "Đã hoàn tất");
+  const local = formatLocalScheduledTime("2026-08-15T17:02:00.000Z", "UTC");
+  assert.ok(local);
+  assert.equal(local.includes("T17:02:00"), false);
+});
+
+test("authenticated API host exists and blocks browser privileged composition", () => {
+  const api = read("api/referee/command.js");
+  assert.match(api, /createTrustedRefereeBackend/);
+  assert.match(api, /authorizeRefereeActor/);
+  assert.doesNotMatch(api, /VITE_SUPABASE_SERVICE_ROLE/);
+  const browser = read(
+    "src/features/referee-production-ui/application/createBrowserRefereeApplicationClient.js"
+  );
+  assert.match(browser, /createAuthenticatedRefereeCommandTransport/);
+  assert.doesNotMatch(browser, /createLiveRpcCanonicalRefereeDurableDriver/);
+  assert.doesNotMatch(browser, /createDefaultCompetitionRefereeRuntime/);
+  const hub = read("src/pages/referee/RefereeHub.jsx");
+  assert.doesNotMatch(hub, /Quét QR trận/);
+  assert.match(hub, /Quét QR \(tuỳ chọn\)/);
+});
+
+test("mode-state resolver enriches CORE-13-shaped Team assignment row", async () => {
+  const { resolveCanonicalRefereeModeState, detectCompetitionModeHint } =
+    await import(
+      "../src/features/referee-production-ui/application/resolveCanonicalRefereeModeState.js"
+    );
+  const assignment = {
+    tenantId: "venue-staging-a",
+    competitionId: "b5cd6975-3a7f-4c11-8006-2ac14e7bef5b",
+    matchId: "matchup-7t58gnjq",
+    matchupId: "7a474b76-adeb-4e1e-92cc-17195d11c6e4",
+    externalMatchupId: "matchup-7t58gnjq",
+    refereeUserId: ACTOR.actorId,
+  };
+  assert.equal(detectCompetitionModeHint(assignment, null), "TEAM");
+
+  const tables = {
+    team_tournaments: [
+      {
+        id: "2feb193a-0bd4-4852-9091-904d4ca40c29",
+        tenant_id: "venue-staging-a",
+        club_id: "club-1",
+        tournament_id: "b5cd6975-3a7f-4c11-8006-2ac14e7bef5b",
+        name: "Giải đồng đội 13/8/2026",
+        status: "draft",
+        settings: {},
+      },
+    ],
+    team_tournament_matchups: [
+      {
+        id: "7a474b76-adeb-4e1e-92cc-17195d11c6e4",
+        team_tournament_id: "2feb193a-0bd4-4852-9091-904d4ca40c29",
+        external_matchup_id: "matchup-7t58gnjq",
+        team_a_id: "team-biqspqe9",
+        team_b_id: "team-sg9nd5xj",
+        court_label: "Sân 1",
+        court_id: null,
+        scheduled_at: "2026-08-15T17:02:00.000Z",
+        status: "completed",
+        schedule_meta: { stage: "KO", round: 1 },
+      },
+    ],
+    team_tournament_sub_matches: [],
+    team_tournament_teams: [
+      {
+        team_tournament_id: "2feb193a-0bd4-4852-9091-904d4ca40c29",
+        external_team_id: "team-biqspqe9",
+        name: "Đội 4",
+      },
+      {
+        team_tournament_id: "2feb193a-0bd4-4852-9091-904d4ca40c29",
+        external_team_id: "team-sg9nd5xj",
+        name: "Đội 2",
+      },
+    ],
+    team_tournament_disciplines: [
+      {
+        team_tournament_id: "2feb193a-0bd4-4852-9091-904d4ca40c29",
+        external_discipline_id: "mlp-md",
+        name: "Đôi nam",
+        scoring_format: {
+          scoringSystem: "rally",
+          targetScore: 21,
+          winBy: 2,
+        },
+      },
+    ],
+    team_tournament_lineup_entries: [],
+    canonical_tournaments: [],
+  };
+
+  function mockFrom(table) {
+    const rows = tables[table] || [];
+    const state = { filters: [], ord: null, lim: null };
+    const filterRows = () =>
+      rows.filter((row) =>
+        state.filters.every(([col, val]) => String(row[col]) === String(val))
+      );
+    const api = {
+      select() {
+        return api;
+      },
+      eq(col, val) {
+        state.filters.push([col, val]);
+        return api;
+      },
+      or() {
+        return api;
+      },
+      in() {
+        return api;
+      },
+      order() {
+        return api;
+      },
+      limit(n) {
+        state.lim = n;
+        return api;
+      },
+      maybeSingle: async () => ({ data: filterRows()[0] || null, error: null }),
+      then(resolve, reject) {
+        try {
+          let data = filterRows();
+          if (state.lim != null) data = data.slice(0, state.lim);
+          resolve({ data, error: null });
+        } catch (err) {
+          reject(err);
+        }
+      },
+    };
+    return api;
+  }
+
+  const modeState = await resolveCanonicalRefereeModeState(
+    { from: mockFrom },
+    assignment
+  );
+  assert.ok(modeState);
+  assert.equal(modeState.competitionMode, "TEAM");
+  assert.equal(modeState.competitionName, "Giải đồng đội 13/8/2026");
+  assert.equal(modeState.participantNames["team-biqspqe9"], "Đội 4");
+  assert.equal(modeState.matchups["matchup-7t58gnjq"].courtLabel, "Sân 1");
 });
 
 test("change-end policy label only when canonical policy supplies it", () => {
