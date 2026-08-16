@@ -1,0 +1,232 @@
+{
+  "previewUrl": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app",
+  "startedAt": "2026-08-16T17:16:29.360Z",
+  "gates": {
+    "PREVIEW_ALL_5_FLAGS_TRUE": "PASS",
+    "PREVIEW_BINDS_STAGING": "PASS",
+    "PREVIEW_CANONICAL_RESERVATION": "PASS",
+    "PREVIEW_CANONICAL_BOOKING": "PASS",
+    "PREVIEW_CANONICAL_RESOURCE_BLOCKS": "PASS",
+    "PREVIEW_CANONICAL_COMPETITION_COURT_ADAPTERS": "PASS",
+    "PREVIEW_CANONICAL_COURT_LIVE_RUNTIME": "PASS",
+    "SQL_RESERVATION_CUTOVER_TRUE": "PASS",
+    "FULL_COURT_CUTOVER_STATE_ON_ON": "PASS",
+    "BROWSER_LOGIN": "PASS",
+    "COURT_INVENTORY_UI_ON_PATH": "PASS",
+    "REFEREE_BROWSER_ROUTE": "PASS",
+    "PREVIEW_PRODUCTION_REQUESTS_ZERO": "PASS",
+    "PREVIEW_STAGING_TRAFFIC_SEEN": "PASS",
+    "ACTIVATION_SMOKE_EXPECT_ON": "PASS",
+    "COURT_INVENTORY_CANONICAL_SMOKE": "PASS",
+    "BOOKING_CANONICAL_SMOKE": "PASS",
+    "RESOURCE_BLOCK_CANONICAL_SMOKE": "PASS",
+    "COURT_STATUS_CANONICAL_SMOKE": "PASS",
+    "DAILY_CANONICAL_SMOKE": "PASS",
+    "INTERNAL_CANONICAL_SMOKE": "PASS",
+    "OFFICIAL_CANONICAL_SMOKE": "PASS",
+    "TEAM_CANONICAL_SMOKE": "PASS",
+    "STAGING_REAL_BROWSER_ACCEPTED": "PASS",
+    "REFEREE_RUNTIME_UNCHANGED": "PASS",
+    "CANONICAL_ON_LEGACY_AUTHORITY_HOPS_ZERO": "PASS",
+    "SQL_CUTOVER_REMAINS_TRUE": "PASS",
+    "POST_REHEARSAL_FINGERPRINT_RESTORED": "PASS",
+    "NO_CERT_FIXTURE_LEFTOVERS": "PASS",
+    "NO_DUPLICATE_ACTIVE_WINDOWS": "PASS",
+    "DATA_CORRUPTION_COUNT_ZERO": "PASS",
+    "SCHEMA_REMAINS_INSTALLED": "PASS",
+    "BROWSER_CONSOLE_ERRORS_ZERO": "PASS",
+    "BROWSER_NETWORK_ERRORS_ZERO": "PASS",
+    "RAW_SQL_ERROR_LEAK_COUNT_ZERO": "PASS",
+    "PRODUCTION_MUTATIONS_ZERO": "PASS"
+  },
+  "details": {
+    "before": {
+      "sqlCutoverEnabled": true,
+      "sqlCutoverUpdatedAt": "2026-08-16T17:12:11.025Z",
+      "reservations": 29,
+      "active_future_reservations": 0,
+      "reservation_commands": 44,
+      "bookings": 3,
+      "bookings_non_cancelled": 0,
+      "booking_commands": 8,
+      "blocks": 2,
+      "blocks_non_cancelled": 0,
+      "block_commands": 4,
+      "physical_courts": 2,
+      "reservations_fingerprint": "1d924b1e027c888703b8ec3a0403e6db",
+      "bookings_fingerprint": "9bf37d155e85ffd71bc8b97ec7456eda",
+      "blocks_fingerprint": "6e0f66c295c40fa9f8d58797f3fd6f3c",
+      "cert_reservations": 11,
+      "cert_bookings": 3,
+      "cert_blocks": 2,
+      "cert_live_states": 0,
+      "duplicate_active_windows": 0
+    },
+    "SQL_RESERVATION_CUTOVER_BEFORE": {
+      "enabled": true,
+      "updated_at": "2026-08-16T17:12:11.025Z",
+      "cutover_id": "canonical-reservation-phase3b"
+    },
+    "flagProbe": {
+      "VITE_CANONICAL_RESERVATION_CUTOVER": {
+        "trueHit": true,
+        "falseHit": false
+      },
+      "VITE_CANONICAL_BOOKING_LIFECYCLE": {
+        "trueHit": true,
+        "falseHit": false
+      },
+      "VITE_CANONICAL_RESOURCE_BLOCKS": {
+        "trueHit": true,
+        "falseHit": false
+      },
+      "VITE_CANONICAL_COMPETITION_COURT_ADAPTERS": {
+        "trueHit": true,
+        "falseHit": false
+      },
+      "VITE_CANONICAL_COURT_LIVE_RUNTIME": {
+        "trueHit": true,
+        "falseHit": false
+      },
+      "bindsStaging": true,
+      "bindsProdUrl": false,
+      "joinedLen": 1178764
+    },
+    "afterRestore": {
+      "sqlCutoverEnabled": true,
+      "sqlCutoverUpdatedAt": "2026-08-16T17:12:11.025Z",
+      "reservations": 29,
+      "active_future_reservations": 0,
+      "reservation_commands": 44,
+      "bookings": 3,
+      "bookings_non_cancelled": 0,
+      "booking_commands": 8,
+      "blocks": 2,
+      "blocks_non_cancelled": 0,
+      "block_commands": 4,
+      "physical_courts": 2,
+      "reservations_fingerprint": "1d924b1e027c888703b8ec3a0403e6db",
+      "bookings_fingerprint": "9bf37d155e85ffd71bc8b97ec7456eda",
+      "blocks_fingerprint": "6e0f66c295c40fa9f8d58797f3fd6f3c",
+      "cert_reservations": 11,
+      "cert_bookings": 3,
+      "cert_blocks": 2,
+      "cert_live_states": 0,
+      "duplicate_active_windows": 0
+    },
+    "SQL_RESERVATION_CUTOVER": {
+      "enabled": true,
+      "updated_at": "2026-08-16T17:12:11.025Z",
+      "cutover_id": "canonical-reservation-phase3b"
+    },
+    "routeLoads": {
+      "/court-management": {
+        "url": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/court-management",
+        "bodyLen": 524
+      },
+      "/court-management/bookings": {
+        "url": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/court-management/bookings",
+        "bodyLen": 590
+      },
+      "/daily-play": {
+        "url": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/daily-play",
+        "bodyLen": 622
+      },
+      "/tournaments": {
+        "url": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/tournaments",
+        "bodyLen": 524
+      },
+      "/referee": {
+        "url": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/referee",
+        "bodyLen": 644
+      }
+    },
+    "activation": {
+      "status": 0,
+      "stdoutTail": "{\n  \"sqlCutoverEnabled\": true,\n  \"expect\": \"expectOn\"\n}\n{\n  \"ok\": true,\n  \"wrote\": \"C:\\\\Users\\\\Le Phong\\\\PICK_VN-Backups\\\\court-batch10-staging-qyewbxjsiiyufanzcjcq-20260816-191604\\\\10e-backend-cert.json\",\n  \"CANONICAL_BACKEND_STAGING\": \"PASS\",\n  \"SELF_CONFLICT_6_OF_6\": \"PASS\",\n  \"CROSS_MODULE_PAIR_PASS_COUNT\": 15,\n  \"REAL_STAGING_DB_CONCURRENCY\": \"PASS\",\n  \"UNINTENDED_FIXTURE_ROWS_REMAINING\": 0,\n  \"failures\": []\n}\n\n",
+      "stderrTail": "",
+      "parsed": {
+        "ok": true,
+        "wrote": "C:\\Users\\Le Phong\\PICK_VN-Backups\\court-batch10-staging-qyewbxjsiiyufanzcjcq-20260816-191604\\10e-backend-cert.json",
+        "CANONICAL_BACKEND_STAGING": "PASS",
+        "SELF_CONFLICT_6_OF_6": "PASS",
+        "CROSS_MODULE_PAIR_PASS_COUNT": 15,
+        "REAL_STAGING_DB_CONCURRENCY": "PASS",
+        "UNINTENDED_FIXTURE_ROWS_REMAINING": 0,
+        "failures": []
+      }
+    },
+    "browserAcceptance": {
+      "status": 0,
+      "stdoutTail": "PASS BROWSER_LOGIN — https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/login\nPASS PREVIEW_CANONICAL_RESERVATION\nPASS PREVIEW_CANONICAL_BOOKING\nPASS PREVIEW_CANONICAL_RESOURCE_BLOCKS\nPASS PREVIEW_CANONICAL_COMPETITION_COURT_ADAPTERS\nPASS PREVIEW_CANONICAL_COURT_LIVE_RUNTIME\nPASS PREVIEW_BINDS_STAGING\nPASS STAGING_JWT\nPASS COURT_INVENTORY_REAL_BROWSER — count=2\nPASS COURT_STATUS_UI_CANONICAL_CAPTION — hits=3 loaded=true\nPASS BOOKING_CREATE — OK\nPASS BOOKING_RESCHEDULE — OK\nPASS BOOKING_TRANSFER_CONFLICT_PRESERVES_COURT — xferOk=false stillOnA=true\nPASS BOOKING_TRANSFER — OK\nPASS BOOKING_CANCEL — OK\nPASS BOOKING_CAPACITY_RELEASED — OK\nPASS BOOKING_REAL_BROWSER\nPASS RESOURCE_BLOCK_MAINTENANCE_CREATE — OK\nPASS RESOURCE_BLOCK_BOOKING_OVERLAP_REJECTED — FOREIGN_RESERVATION_CONFLICT\nPASS RESOURCE_BLOCK_CANCEL_RELEASES — OK\nPASS RESOURCE_BLOCK_REAL_BROWSER\nPASS LIVE_STATE_UNAVAILABLE_NOW — OK\nPASS LIVE_STATE_OUT_OF_SERVICE_NOW — OK\nPASS LIVE_STATE_AVAILABLE — OK\nPASS COURT_STATUS_REAL_BROWSER\nPASS DAILY_REAL_BROWSER — reserve=OK release=OK\nPASS INTERNAL_REAL_BROWSER — reserve=OK release=OK\nPASS OFFICIAL_REAL_BROWSER — reserve=OK release=OK\nPASS TEAM_REAL_BROWSER — reserve=OK release=OK\nPASS DAILY_UI_ROUTE — https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/daily-play\nPASS REFEREE_RUNTIME_STAGING_REGRESSION — https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/referee\nPASS COURT_CUTOVER_REFEREE_BROWSER_REGRESSION\nPASS CROSS_MODULE_CONFLICT_REAL_BROWSER — maint=true bookVsMaint=false book2=true compVsBook=false\nPASS BROWSER_CONSOLE_ERRORS_OK — n=0\nPASS BROWSER_NETWORK_ERRORS_OK — n=0\nPASS RAW_SQL_ERROR_LEAK_COUNT_ZERO — n=0\nPASS NO_PRODUCTION_REQUESTS — n=0\n{\n  \"ok\": true,\n  \"outPath\": \"C:\\\\Users\\\\Le Phong\\\\PICK_VN-Workstreams\\\\court-resource-phase3b-canonical-reservation-01\\\\artifacts\\\\batch10-browser-acceptance\\\\browser-acceptance-1786900658372.json\",\n  \"failureCount\": 0,\n  \"uiGaps\": [\n    \"OPERATIONAL_BLOCK UI not present — MaintenanceBookingPanel creates MAINTENANCE only\"\n  ]\n}\n",
+      "stderrTail": "",
+      "parsed": {
+        "ok": true,
+        "outPath": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\court-resource-phase3b-canonical-reservation-01\\artifacts\\batch10-browser-acceptance\\browser-acceptance-1786900658372.json",
+        "failureCount": 0,
+        "uiGaps": [
+          "OPERATIONAL_BLOCK UI not present — MaintenanceBookingPanel creates MAINTENANCE only"
+        ]
+      }
+    },
+    "probeObservability": {
+      "consoleErrors": [],
+      "networkErrors": [],
+      "rawSqlErrorLeakCount": 0,
+      "productionRequests": 0,
+      "stagingRequests": 123
+    },
+    "referee": {
+      "initOk": true,
+      "startOk": true,
+      "rallyOk": true,
+      "scoreA": 1
+    },
+    "legacyAuthority": {
+      "ok": true,
+      "capacityAuthority": "canonical_reservation",
+      "canonicalReserveCalls": 1,
+      "legacyCreateCalls": 0
+    },
+    "CANONICAL_ON_LEGACY_AUTHORITY_HOPS": 0,
+    "after": {
+      "sqlCutoverEnabled": true,
+      "sqlCutoverUpdatedAt": "2026-08-16T17:12:11.025Z",
+      "reservations": 18,
+      "active_future_reservations": 0,
+      "reservation_commands": 36,
+      "bookings": 0,
+      "bookings_non_cancelled": 0,
+      "booking_commands": 0,
+      "blocks": 0,
+      "blocks_non_cancelled": 0,
+      "block_commands": 0,
+      "physical_courts": 2,
+      "reservations_fingerprint": "18adb561c4da598fd3f9e2c3bc08e63a",
+      "bookings_fingerprint": "d41d8cd98f00b204e9800998ecf8427e",
+      "blocks_fingerprint": "d41d8cd98f00b204e9800998ecf8427e",
+      "cert_reservations": 0,
+      "cert_bookings": 0,
+      "cert_blocks": 0,
+      "cert_live_states": 0,
+      "duplicate_active_windows": 0
+    },
+    "DATA_CORRUPTION_COUNT": 0,
+    "fingerprintMatch": true,
+    "BROWSER_CONSOLE_ERRORS": 0,
+    "BROWSER_NETWORK_ERRORS": 0,
+    "RAW_SQL_ERROR_LEAK_COUNT": 0,
+    "browserArtifactHint": {
+      "ok": true,
+      "outPath": "C:\\Users\\Le Phong\\PICK_VN-Workstreams\\court-resource-phase3b-canonical-reservation-01\\artifacts\\batch10-browser-acceptance\\browser-acceptance-1786900658372.json",
+      "failureCount": 0,
+      "uiGaps": [
+        "OPERATIONAL_BLOCK UI not present — MaintenanceBookingPanel creates MAINTENANCE only"
+      ]
+    },
+    "sha": "474b911eb11187c9"
+  },
+  "failures": [],
+  "finishedAt": "2026-08-16T17:17:40.780Z",
+  "FINAL_OK": true
+}

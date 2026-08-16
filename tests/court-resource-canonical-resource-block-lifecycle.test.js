@@ -137,6 +137,31 @@ test("D conflict vs competition reservation", async () => {
   }
 });
 
+test("D1b conflict vs daily_play reservation", async () => {
+  const store = setup();
+  try {
+    store.seedReservation({
+      physicalCourtId: COURT_A,
+      ownerType: "daily_play",
+      ownerId: "daily-session-1",
+      ...window("2026-08-21", "08:00", "10:00"),
+    });
+    const result = await createResourceBlock({
+      tenantId: "tenant-a",
+      clubId: "club-a",
+      physicalCourtId: COURT_A,
+      blockType: CANONICAL_RESOURCE_BLOCK_TYPE.MAINTENANCE,
+      ...window("2026-08-21", "09:00", "11:00"),
+      requestId: "rb-vs-daily",
+      forceCanonical: true,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, "FOREIGN_RESERVATION_CONFLICT");
+  } finally {
+    teardown();
+  }
+});
+
 test("D2 booking/competition over Resource Block reject via shared capacity SSOT", async () => {
   const store = setup();
   try {

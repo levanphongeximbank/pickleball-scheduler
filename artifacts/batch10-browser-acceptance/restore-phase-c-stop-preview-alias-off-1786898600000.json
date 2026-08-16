@@ -1,0 +1,78 @@
+{
+  "phase": "BATCH10_PHASE_C_RESTORE_CANONICAL_ON_ON",
+  "startedAt": "2026-08-16T16:36:00.000Z",
+  "finishedAt": "2026-08-16T16:41:00.000Z",
+  "FINAL_OK": false,
+  "FINAL_VERDICT": "STOP_PREVIEW_ALIAS_STILL_OFF",
+  "safety": {
+    "HEAD": "aa114f4121db4e01786189e07d77e57af9e92f11",
+    "ORIGIN_MAIN": "c8724e4c1d06a5489c4de4a86a29e59970039068",
+    "PR_STATE": "OPEN",
+    "PR_DRAFT": true,
+    "MERGED": false,
+    "PRODUCTION_MUTATIONS": 0
+  },
+  "preview": {
+    "PREVIEW_URL": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app",
+    "aliasIndex": "/assets/index-KcnM8UQv.js",
+    "PREVIEW_BINDS_STAGING": true,
+    "PREVIEW_BINDS_PROD_SUPABASE_URL": false,
+    "PREVIEW_ALL_5_FLAGS_TRUE": false,
+    "flags": {
+      "VITE_CANONICAL_RESERVATION_CUTOVER": { "trueHit": 0, "falseHit": 9 },
+      "VITE_CANONICAL_BOOKING_LIFECYCLE": { "trueHit": 0, "falseHit": 9 },
+      "VITE_CANONICAL_RESOURCE_BLOCKS": { "trueHit": 0, "falseHit": 9 },
+      "VITE_CANONICAL_COMPETITION_COURT_ADAPTERS": { "trueHit": 0, "falseHit": 9 },
+      "VITE_CANONICAL_COURT_LIVE_RUNTIME": { "trueHit": 0, "falseHit": 9 }
+    },
+    "latestUniqueOff": {
+      "url": "https://pickleball-scheduler-oxqpaj3gr-pickleball-scheduler.vercel.app",
+      "githubDeploymentUpdatedAt": "2026-08-16T15:12:22Z",
+      "sameIndexAsAlias": "/assets/index-KcnM8UQv.js",
+      "allFiveFlags": false
+    },
+    "staleUniqueOn": {
+      "url": "https://pickleball-scheduler-298xqyoj3-pickleball-scheduler.vercel.app",
+      "githubDeploymentUpdatedAt": "2026-08-16T13:42:09Z",
+      "index": "/assets/index-BlB91QwB.js",
+      "allFiveFlags": true,
+      "note": "Original Batch10 ON unique URL. Not the git-branch alias. Not a post-Phase-B restore redeploy."
+    },
+    "latestGithubPreviewDeploymentForHead": "2026-08-16T15:12:22Z"
+  },
+  "sql": {
+    "SQL_RESERVATION_CUTOVER": false,
+    "updated_at": "2026-08-16T15:34:45.149773+00",
+    "SQL_RESTORE_PERFORMED": false,
+    "reason": "Stopped before SQL restore because Preview git-branch alias still inlines all 5 Court Vite flags false. Restoring SQL now would create JS_OFF+SQL_ON, not ON_ON."
+  },
+  "data": {
+    "reservations": 18,
+    "reservations_fingerprint": "18adb561c4da598fd3f9e2c3bc08e63a",
+    "bookings": 0,
+    "blocks": 0,
+    "physical_courts": 2,
+    "cert_reservations": 0,
+    "cert_bookings": 0,
+    "cert_blocks": 0,
+    "matchesPhaseBPostRehearsal": true
+  },
+  "production": {
+    "court_resource_reservation_cutover": null,
+    "court_resource_reservations": null,
+    "PRODUCTION_SQL_APPLIED": false,
+    "PRODUCTION_MUTATIONS": 0
+  },
+  "gates": {
+    "PHASE_A_OFF_PATH": "PASS",
+    "PHASE_B_FULL_OFF_OFF": "PASS",
+    "FUNCTIONAL_ROLLBACK_TO_OFF": "PASS",
+    "PREVIEW_ALL_5_FLAGS_TRUE": "FAIL",
+    "SQL_RESERVATION_CUTOVER": "false",
+    "FULL_COURT_CUTOVER_STATE": "OFF_OFF",
+    "RESTORE_CANONICAL_ON_AFTER_ROLLBACK": "BLOCKED",
+    "STAGING_CANONICAL_RUNTIME": "NOT_RUN",
+    "STAGING_REAL_BROWSER_ACCEPTED": "NOT_RUN"
+  },
+  "OWNER_ACTION_REQUIRED": "Set all 5 Vercel Preview Vite flags true, then Redeploy PR #438 so git-branch alias inlines true (trueHit>0, falseHit=0). Re-run Phase C. Do not use stale unique URL 298xqyoj3 as restore proof."
+}
