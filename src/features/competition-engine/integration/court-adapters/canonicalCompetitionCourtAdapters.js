@@ -1,3 +1,8 @@
+import {
+  COURT_CANONICAL_VITE_FLAGS,
+  readCourtCanonicalViteFlag,
+} from "../../../court-resource/constants/courtCanonicalViteFlags.js";
+
 /**
  * Adoption control for Competition Mode Court Adapter B (Batch 6).
  *
@@ -7,13 +12,16 @@
 export const CANONICAL_COMPETITION_COURT_ADAPTERS_DEFAULT = false;
 
 export const CANONICAL_COMPETITION_COURT_ADAPTERS_FLAG =
-  "CANONICAL_COMPETITION_COURT_ADAPTERS";
+  COURT_CANONICAL_VITE_FLAGS.COMPETITION_COURT_ADAPTERS;
 
 let override = null;
 
 export function isCanonicalCompetitionCourtAdaptersEnabled() {
   if (override === true) return true;
   if (override === false) return false;
+  if (readCourtCanonicalViteFlag(CANONICAL_COMPETITION_COURT_ADAPTERS_FLAG)) {
+    return true;
+  }
   return CANONICAL_COMPETITION_COURT_ADAPTERS_DEFAULT;
 }
 

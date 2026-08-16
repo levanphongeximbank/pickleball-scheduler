@@ -47,6 +47,11 @@ export const CANONICAL_DERIVED_STATUS = Object.freeze({
   OPERATIONAL_BLOCK: "OPERATIONAL_BLOCK",
 });
 
+import {
+  COURT_CANONICAL_VITE_FLAGS,
+  readCourtCanonicalViteFlag,
+} from "./courtCanonicalViteFlags.js";
+
 export const CANONICAL_RESERVATION_CUTOVER_DEFAULT = false;
 
 let cutoverOverride = null;
@@ -54,6 +59,9 @@ let cutoverOverride = null;
 export function isCanonicalReservationCutover() {
   if (cutoverOverride === true) return true;
   if (cutoverOverride === false) return false;
+  if (readCourtCanonicalViteFlag(COURT_CANONICAL_VITE_FLAGS.RESERVATION_CUTOVER)) {
+    return true;
+  }
   return CANONICAL_RESERVATION_CUTOVER_DEFAULT;
 }
 

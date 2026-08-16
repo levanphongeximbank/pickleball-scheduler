@@ -76,6 +76,11 @@ export const COURT_LIVE_RUNTIME_MATCH_LIFECYCLE_AUTHORITY = "NO";
 export const COURT_LIVE_RUNTIME_SCORING_AUTHORITY = "NO";
 export const COMPETITION_MATCH_ASSIGNMENT_OWNER = "2.13_COMPETITION_ENGINE";
 
+import {
+  COURT_CANONICAL_VITE_FLAGS,
+  readCourtCanonicalViteFlag,
+} from "./courtCanonicalViteFlags.js";
+
 /** Global adoption control — OFF until Staging acceptance. */
 export const CANONICAL_COURT_LIVE_RUNTIME_DEFAULT = false;
 
@@ -84,6 +89,9 @@ let liveRuntimeOverride = null;
 export function isCanonicalCourtLiveRuntime() {
   if (liveRuntimeOverride === true) return true;
   if (liveRuntimeOverride === false) return false;
+  if (readCourtCanonicalViteFlag(COURT_CANONICAL_VITE_FLAGS.COURT_LIVE_RUNTIME)) {
+    return true;
+  }
   return CANONICAL_COURT_LIVE_RUNTIME_DEFAULT;
 }
 

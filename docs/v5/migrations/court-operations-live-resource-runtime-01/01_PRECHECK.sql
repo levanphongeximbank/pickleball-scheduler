@@ -34,6 +34,10 @@ BEGIN
   IF to_regprocedure('public.user_venue_id()') IS NULL THEN
     v_missing := array_append(v_missing, 'public.user_venue_id()');
   END IF;
+  -- Phase3B portable digest helper (Supabase pgcrypto lives in extensions).
+  IF to_regprocedure('public.court_resource_digest_sha256(bytea)') IS NULL THEN
+    v_missing := array_append(v_missing, 'public.court_resource_digest_sha256(bytea)');
+  END IF;
 
   IF cardinality(v_missing) > 0 THEN
     RAISE EXCEPTION 'PRECHECK_FAIL missing required prerequisite objects: %',

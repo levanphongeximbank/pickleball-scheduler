@@ -35,6 +35,11 @@ export const CANONICAL_BOOKING_LIFECYCLE_STATUS = Object.freeze({
   NO_SHOW: "no_show",
 });
 
+import {
+  COURT_CANONICAL_VITE_FLAGS,
+  readCourtCanonicalViteFlag,
+} from "./courtCanonicalViteFlags.js";
+
 /** Global adoption control — OFF until Staging acceptance. */
 export const CANONICAL_BOOKING_LIFECYCLE_DEFAULT = false;
 
@@ -43,6 +48,9 @@ let lifecycleOverride = null;
 export function isCanonicalBookingLifecycle() {
   if (lifecycleOverride === true) return true;
   if (lifecycleOverride === false) return false;
+  if (readCourtCanonicalViteFlag(COURT_CANONICAL_VITE_FLAGS.BOOKING_LIFECYCLE)) {
+    return true;
+  }
   return CANONICAL_BOOKING_LIFECYCLE_DEFAULT;
 }
 

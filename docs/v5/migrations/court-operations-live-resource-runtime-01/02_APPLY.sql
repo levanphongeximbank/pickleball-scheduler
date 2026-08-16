@@ -165,8 +165,9 @@ LANGUAGE sql
 STABLE
 SET search_path = pg_catalog, public
 AS $cr$
+  -- Use Phase3B portable digest helper (pgcrypto may live in extensions schema).
   SELECT encode(
-    digest(
+    public.court_resource_digest_sha256(
       convert_to(
         jsonb_build_object(
           'package', 'court_operations_live_resource_runtime_01',
@@ -174,8 +175,7 @@ AS $cr$
           'payload', coalesce(p_payload, '{}'::jsonb)
         )::text,
         'UTF8'
-      ),
-      'sha256'
+      )
     ),
     'hex'
   );

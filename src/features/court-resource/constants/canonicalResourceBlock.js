@@ -41,6 +41,11 @@ export const CANONICAL_RESOURCE_BLOCK_LIFECYCLE_STATUS = Object.freeze({
   CANCELLED: "cancelled",
 });
 
+import {
+  COURT_CANONICAL_VITE_FLAGS,
+  readCourtCanonicalViteFlag,
+} from "./courtCanonicalViteFlags.js";
+
 /** Global adoption control — OFF until Staging acceptance. */
 export const CANONICAL_RESOURCE_BLOCKS_DEFAULT = false;
 
@@ -49,6 +54,9 @@ let resourceBlocksOverride = null;
 export function isCanonicalResourceBlocks() {
   if (resourceBlocksOverride === true) return true;
   if (resourceBlocksOverride === false) return false;
+  if (readCourtCanonicalViteFlag(COURT_CANONICAL_VITE_FLAGS.RESOURCE_BLOCKS)) {
+    return true;
+  }
   return CANONICAL_RESOURCE_BLOCKS_DEFAULT;
 }
 
