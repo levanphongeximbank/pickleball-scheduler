@@ -45,7 +45,7 @@ function read(rel) {
 }
 
 function sha256File(rel) {
-  return createHash("sha256").update(readFileSync(path.join(ROOT, rel))).digest("hex").toUpperCase();
+  return createHash("sha256").update(readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"), "utf8").digest("hex").toUpperCase();
 }
 
 function assertCertified(relDir, expected) {
