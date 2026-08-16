@@ -363,7 +363,7 @@ test("17-20. Adapter B cut over; no duplicate authorities; contract locked", () 
   assert.equal(runtime.usesAdapterB, true);
   assert.equal(runtime.modeAdapterRegistry.size(), 4);
   assert.equal(runtime.identityAuthority, "auth.uid");
-  assert.equal(runtime.stagingBackendCertified, false);
+  assert.equal(runtime.stagingBackendCertified, true);
   assert.equal(COMPETITION_REFEREE_ADAPTER_CONTRACT_LOCKED, true);
   assert.equal(
     COMPETITION_REFEREE_ADAPTER_CONTRACT_ID,

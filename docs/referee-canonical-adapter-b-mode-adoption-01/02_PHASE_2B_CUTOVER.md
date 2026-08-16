@@ -23,7 +23,7 @@ Competition Mode
 |------|-------|
 | `usesAdapterB` (default/production runtime) | `true` |
 | `usesAdapterBProductionCutover` | `true` |
-| `stagingBackendCertified` | `false` (until Owner GO STAGING ONLY) |
+| `stagingBackendCertified` | `true` (Staging application-path certified; see `evidence/PHASE_2B_STAGING_CERTIFICATION.md`) |
 
 ## Fail-closed rules
 

@@ -479,6 +479,66 @@ async function certifyMode(runtime, mode) {
   out.FRESH_RUNTIME_DURABILITY_PASS = true;
 
   if (mode === COMPETITION_REFEREE_MODE.TEAM) {
+    const ctx = adapter.getCompetitionContext({
+      tenantId: TENANT_A,
+      competitionId: fixture.competitionId,
+      modeState: fixture.modeState,
+    });
+    assert(ctx.parentMatchupAssignmentSsot === true, "parent ssot");
+    assert(ctx.childOverrideAssignment === true, "child override");
+    assert(ctx.dreambreakerInheritsParent === true, "db inherit flag");
+    assert(ctx.noDuplicateDreambreakerAssignment === true, "no dup db assign");
+    assert(
+      ctx.dreambreakerAuthorityOwner === "team_tournament_domain",
+      "db rotation authority"
+    );
+    const parentMatch = adapter.getMatchContext({
+      tenantId: TENANT_A,
+      competitionId: fixture.competitionId,
+      matchId: fixture.matchId,
+      modeState: fixture.modeState,
+    });
+    assert(parentMatch.isParentMatchup === true, "parent matchup");
+    assert(
+      parentMatch.effectiveRefereeAssignment?.refereeUserId === ACTOR.actorId,
+      "parent assignment projection"
+    );
+    const dbMatchId = `db-${fixture.matchId}`;
+    const dbMatch = adapter.getMatchContext({
+      tenantId: TENANT_A,
+      competitionId: fixture.competitionId,
+      matchId: dbMatchId,
+      modeState: fixture.modeState,
+    });
+    assert(dbMatch.isDreambreaker === true, "db match flagged");
+    assert(
+      dbMatch.effectiveRefereeAssignment?.refereeUserId === ACTOR.actorId,
+      "db inherits parent referee"
+    );
+    assert(
+      dbMatch.effectiveRefereeAssignment?.inherited === true ||
+        dbMatch.dreambreakerProjection?.rotationOwnedByTeamDomain === true,
+      "db inherit or team-owned rotation"
+    );
+    assert(
+      dbMatch.dreambreakerProjection?.rotationOwnedByTeamDomain === true,
+      "rotation remains team domain"
+    );
+    const caps = adapter.getCapabilities({
+      tenantId: TENANT_A,
+      competitionId: fixture.competitionId,
+      matchId: fixture.matchId,
+      modeState: fixture.modeState,
+    });
+    assert(caps.dreambreakerInheritsParent === true, "caps db inherit");
+    assert(caps.childOverrideAssignment === true, "caps child override");
+    const preStart = adapter.validatePreStart({
+      tenantId: TENANT_A,
+      competitionId: fixture.competitionId,
+      matchId: fixture.matchId,
+      modeState: fixture.modeState,
+    });
+    assert(preStart.ok === true, "team pre-start");
     out.TEAM_PARENT_SSOT_PRESERVED = true;
     out.TEAM_CHILD_OVERRIDE_PRESERVED = true;
     out.DREAMBREAKER_INHERITANCE_PRESERVED = true;

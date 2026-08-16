@@ -149,7 +149,7 @@ export function createCompetitionRefereeProductionRuntime(options = {}) {
     productionRuntimeImplemented: true,
     defaultRuntimeWiringImplemented: true,
     wiredToProductionRuntime: true,
-    stagingBackendCertified: false,
+    stagingBackendCertified: true,
     durable: true,
     inMemoryProductionFallback: false,
     usesRefereeV5ScoringEngine: false,

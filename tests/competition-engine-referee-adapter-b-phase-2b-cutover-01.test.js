@@ -259,14 +259,14 @@ test("USES_ADAPTER_B_DEFAULT_PATH — default composition reaches all four Adapt
   const { runtime } = createCutoverRuntime();
   assert.equal(runtime.usesAdapterB, true);
   assert.equal(runtime.facade.usesAdapterB, true);
-  assert.equal(runtime.stagingBackendCertified, false);
+  assert.equal(runtime.stagingBackendCertified, true);
   assert.equal(
     COMPETITION_REFEREE_ADAPTER_INTEGRATION.usesAdapterBProductionCutover,
     true
   );
   assert.equal(
     COMPETITION_REFEREE_ADAPTER_INTEGRATION.stagingBackendCertified,
-    false
+    true
   );
 
   const modes = [

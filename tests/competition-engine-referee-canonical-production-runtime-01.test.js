@@ -379,7 +379,7 @@ test("19-20. Adapter B wired; no Team-specific generic permission", async () => 
   assert.equal(runtime.facade.usesAdapterB, true);
   assert.equal(runtime.inMemoryProductionFallback, false);
   assert.equal(matchesCanonicalRefereeRuntimePorts(runtime), true);
-  assert.equal(runtime.stagingBackendCertified, false);
+  assert.equal(runtime.stagingBackendCertified, true);
 
   const modeState = {
     tenantId: SCOPE.tenantId,

@@ -437,7 +437,10 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
         p_command_payload: input.payload || {},
         p_expected_state_version: expectedVersion,
         p_expected_event_sequence: expectedSequence,
-        p_client_mutation_id: input.commandId || idempotencyKey,
+        // Staging enforces UNIQUE(match_state_id, client_mutation_id). One facade
+        // command may emit multiple durable writes — always use the per-write
+        // idempotencyKey (includes content hash), never a shared commandId alone.
+        p_client_mutation_id: idempotencyKey,
         p_idempotency_key: idempotencyKey,
         p_request_hash: requestHash,
         p_next_state: nextState,
