@@ -36,9 +36,9 @@ import {
 } from "../../../features/team-tournament/engines/teamFormatVenueConfig.js";
 import { listLockedCompetitionStages } from "../../../features/team-tournament/engines/teamStageTieBreakPolicy.js";
 import {
+  TEAM_COURT_DISCOVERY_OUTCOME,
   createTeamTournamentCourtAdapter,
-  deriveCanonicalClusterChoices,
-  toFormatVenueCourt,
+  classifyTeamCourtDiscovery,
 } from "../../../features/team-tournament/adapters/canonical/TeamTournamentCourtAdapter.js";
 import {
   DEFAULT_STAGE_SCORING_ENTRY,
@@ -61,21 +61,37 @@ import { getCourtDisplayName } from "../../../pages/courts.logic.js";
 
 async function listEligibleCourtsForFormatVenue(params = {}) {
   const adapter = params.courtAdapter || createTeamTournamentCourtAdapter();
-  const listed = await adapter.listEligibleCourts({
+  const request = {
     clubId: params.clubId,
     tenantId: params.tenantId,
     venueId: params.venueId,
     competitionId: params.competitionId || params.tournamentId,
     competitionType: "team",
     clusterId: params.clusterId,
-  });
-  if (!listed?.ok) {
-    return { ok: false, error: listed?.error || "Không tải được sân canonical." };
+  };
+  const missing = classifyTeamCourtDiscovery(request, null);
+  if (missing.outcome === TEAM_COURT_DISCOVERY_OUTCOME.MISSING_TEAM_CONTEXT) {
+    return {
+      ...missing,
+      clusters: [],
+      courts: [],
+    };
   }
+  const listed = await adapter.listEligibleCourts(request);
+  const classified = classifyTeamCourtDiscovery(request, listed);
   return {
-    ok: true,
-    courts: (listed.courts || []).map(toFormatVenueCourt),
-    clusters: deriveCanonicalClusterChoices(listed.courts || []),
+    ...classified,
+    // Keep legacy fields for existing callers.
+    ok: classified.ok,
+    error: classified.error,
+    code: classified.code,
+    courts:
+      params.clusterId && classified.ok
+        ? classified.courts.filter(
+            (court) => String(court.clusterId || "") === String(params.clusterId)
+          )
+        : classified.courts,
+    clusters: classified.clusters,
   };
 }
 
@@ -173,6 +189,11 @@ export default function TeamFormatVenueSetupPanel({
     [teamData]
   );
   const [canonicalClusters, setCanonicalClusters] = useState([]);
+  const [clusterDiscovery, setClusterDiscovery] = useState({
+    outcome: null,
+    code: null,
+    error: null,
+  });
   const clusterOptions = useMemo(() => {
     if (typeof listClustersFn === "function") {
       return resolvedTenantId ? listClustersFn(resolvedTenantId) : [];
@@ -281,6 +302,13 @@ export default function TeamFormatVenueSetupPanel({
     let cancelled = false;
     if (!resolvedClubId || !resolvedTenantId) {
       setCanonicalClusters([]);
+      setClusterDiscovery({
+        outcome: TEAM_COURT_DISCOVERY_OUTCOME.MISSING_TEAM_CONTEXT,
+        code: "MISSING_TEAM_CONTEXT",
+        error: !resolvedClubId
+          ? "Thiếu clubId — không gọi Competition Court Adapter."
+          : "Thiếu tenantId — không gọi Competition Court Adapter.",
+      });
       return undefined;
     }
     void listEligibleCourtsForFormatVenue({
@@ -291,6 +319,19 @@ export default function TeamFormatVenueSetupPanel({
     }).then((result) => {
       if (cancelled) return;
       setCanonicalClusters(result?.clusters || []);
+      setClusterDiscovery({
+        outcome: result?.outcome || null,
+        code: result?.code || null,
+        error: result?.error || null,
+      });
+    }).catch((error) => {
+      if (cancelled) return;
+      setCanonicalClusters([]);
+      setClusterDiscovery({
+        outcome: TEAM_COURT_DISCOVERY_OUTCOME.END_A_ERROR,
+        code: "DATA_UNAVAILABLE",
+        error: error?.message || "Competition Court Adapter V1 thất bại.",
+      });
     });
     return () => {
       cancelled = true;
@@ -596,7 +637,30 @@ export default function TeamFormatVenueSetupPanel({
             ))}
           </Select>
         </FormControl>
-        {resolvedTenantId && clusterOptions.length === 0 ? (
+        {clusterDiscovery.outcome === TEAM_COURT_DISCOVERY_OUTCOME.MISSING_TEAM_CONTEXT ? (
+          <Alert severity="error" data-testid="team-court-discovery-missing-context">
+            {clusterDiscovery.error || "Thiếu clubId/tenantId — fail-closed."}
+            {clusterDiscovery.code ? ` [${clusterDiscovery.code}]` : ""}
+          </Alert>
+        ) : null}
+        {clusterDiscovery.outcome === TEAM_COURT_DISCOVERY_OUTCOME.END_A_ERROR ? (
+          <Alert severity="error" data-testid="team-court-discovery-end-a-error">
+            Competition Court Adapter V1 lỗi
+            {clusterDiscovery.code ? ` (${clusterDiscovery.code})` : ""}
+            {": "}
+            {clusterDiscovery.error || "không giả thành công rỗng."}
+          </Alert>
+        ) : null}
+        {clusterDiscovery.outcome === TEAM_COURT_DISCOVERY_OUTCOME.SUCCESS_EMPTY ? (
+          <Alert severity="warning" data-testid="team-court-discovery-empty">
+            Competition Court Adapter V1 trả ok nhưng không có Physical Court eligible
+            cho club/tenant hiện tại. Không dùng venueId làm clusterId và không fallback
+            local cluster registry.
+          </Alert>
+        ) : null}
+        {resolvedTenantId &&
+        clusterOptions.length === 0 &&
+        !clusterDiscovery.outcome ? (
           <Alert severity="warning">
             Cluster choices come from canonical eligible Physical Courts. venueId is not clusterId.
           </Alert>

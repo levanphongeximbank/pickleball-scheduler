@@ -67,6 +67,13 @@ export function toTeamCourtContractContext(input = {}) {
   };
 }
 
+export const TEAM_COURT_DISCOVERY_OUTCOME = Object.freeze({
+  SUCCESS_WITH_COURTS: "SUCCESS_WITH_COURTS",
+  SUCCESS_EMPTY: "SUCCESS_EMPTY",
+  END_A_ERROR: "END_A_ERROR",
+  MISSING_TEAM_CONTEXT: "MISSING_TEAM_CONTEXT",
+});
+
 export function deriveCanonicalClusterChoices(courts = []) {
   const byId = new Map();
   for (const court of Array.isArray(courts) ? courts : []) {
@@ -96,6 +103,70 @@ export function toFormatVenueCourt(court = {}) {
     name: trimId(court.displayName) || trimId(court.name) || physicalCourtId,
     displayName: trimId(court.displayName) || trimId(court.name) || physicalCourtId,
   };
+}
+
+/**
+ * Classify Contract A listEligibleCourts responses for Team Format & Venue.
+ * Never treat END_A_ERROR as empty-success.
+ */
+export function classifyTeamCourtDiscovery(input = {}, listed = null) {
+  const clubId = trimId(input.clubId);
+  const tenantId = trimId(input.tenantId);
+  if (!clubId || !tenantId) {
+    return Object.freeze({
+      ok: false,
+      outcome: TEAM_COURT_DISCOVERY_OUTCOME.MISSING_TEAM_CONTEXT,
+      code: COMPETITION_COURT_ERROR_CODE.MISSING_CLUB_ID,
+      error: !clubId
+        ? "Thiếu clubId — không gọi Competition Court Adapter."
+        : "Thiếu tenantId — không gọi Competition Court Adapter.",
+      clusters: [],
+      courts: [],
+      missing: {
+        clubId: !clubId,
+        tenantId: !tenantId,
+      },
+    });
+  }
+
+  if (!listed || listed.ok !== true) {
+    return Object.freeze({
+      ok: false,
+      outcome: TEAM_COURT_DISCOVERY_OUTCOME.END_A_ERROR,
+      code:
+        listed?.code || COMPETITION_COURT_ERROR_CODE.DATA_UNAVAILABLE,
+      error:
+        listed?.error ||
+        "Competition Court Adapter V1 trả lỗi — không giả thành công rỗng.",
+      clusters: [],
+      courts: [],
+      endA: listed || null,
+    });
+  }
+
+  const courts = (listed.courts || []).map(toFormatVenueCourt);
+  const clusters = deriveCanonicalClusterChoices(courts);
+  if (courts.length === 0) {
+    return Object.freeze({
+      ok: true,
+      outcome: TEAM_COURT_DISCOVERY_OUTCOME.SUCCESS_EMPTY,
+      code: listed.code || COMPETITION_COURT_RESULT_CODE.OK,
+      error: null,
+      clusters: [],
+      courts: [],
+      endA: listed,
+    });
+  }
+
+  return Object.freeze({
+    ok: true,
+    outcome: TEAM_COURT_DISCOVERY_OUTCOME.SUCCESS_WITH_COURTS,
+    code: listed.code || COMPETITION_COURT_RESULT_CODE.OK,
+    error: null,
+    clusters,
+    courts,
+    endA: listed,
+  });
 }
 
 export function createTeamTournamentCourtAdapter(deps = {}) {
@@ -147,15 +218,12 @@ export function createTeamTournamentCourtAdapter(deps = {}) {
       );
     },
     async listCanonicalClusters(input = {}) {
+      const context = toTeamCourtContractContext(input);
+      if (!trimId(context.clubId) || !trimId(context.tenantId)) {
+        return classifyTeamCourtDiscovery(context, null);
+      }
       const listed = await this.listEligibleCourts(input);
-      const courts = listed?.ok ? listed.courts || [] : [];
-      return {
-        ok: listed?.ok === true,
-        code: listed?.code || COMPETITION_COURT_RESULT_CODE.OK,
-        error: listed?.error || null,
-        clusters: deriveCanonicalClusterChoices(courts),
-        courts: courts.map(toFormatVenueCourt),
-      };
+      return classifyTeamCourtDiscovery(context, listed);
     },
     requireValidMatchAssignment(input = {}) {
       const result = this.validateMatchAssignment(input);

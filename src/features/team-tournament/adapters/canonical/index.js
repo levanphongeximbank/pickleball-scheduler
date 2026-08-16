@@ -43,6 +43,8 @@ export {
   teamRankingMayAward,
 } from "./TeamTournamentRankingAdapter.js";
 export {
+  TEAM_COURT_DISCOVERY_OUTCOME,
+  classifyTeamCourtDiscovery,
   createTeamTournamentCourtAdapter,
   deriveCanonicalClusterChoices,
   TeamTournamentCourtAdapter,
