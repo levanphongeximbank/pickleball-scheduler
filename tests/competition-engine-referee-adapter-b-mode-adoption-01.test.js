@@ -686,7 +686,7 @@ test("Official remains separate from Internal", () => {
   );
 });
 
-test("no production cutover — usesAdapterB false; stagingBackendCertified unchanged", () => {
+test("Phase 2B cutover — usesAdapterB true; stagingBackendCertified remains false", () => {
   const driver = createSchemaFaithfulCanonicalRefereeDurableDriver({
     allowTestDoubleDriver: true,
   });
@@ -694,15 +694,18 @@ test("no production cutover — usesAdapterB false; stagingBackendCertified unch
     durableDriver: driver,
     allowTestDoubleDriver: true,
   });
-  assert.equal(runtime.usesAdapterB, false);
+  assert.equal(runtime.usesAdapterB, true);
   assert.equal(runtime.stagingBackendCertified, false);
+  assert.equal(runtime.modeAdapterRegistry.size(), 4);
+  assert.equal(runtime.facade.usesAdapterB, true);
 
   const defaultRuntime = createDefaultCompetitionRefereeRuntime({
     durableDriver: driver,
     allowTestDoubleDriver: true,
   });
-  assert.equal(defaultRuntime.usesAdapterB, false);
+  assert.equal(defaultRuntime.usesAdapterB, true);
   assert.equal(defaultRuntime.stagingBackendCertified, false);
+  assert.equal(defaultRuntime.modeAdapterRegistry.size(), 4);
 
   assert.equal(
     COMPETITION_REFEREE_ADAPTER_INTEGRATION.stagingBackendCertified,
@@ -710,7 +713,7 @@ test("no production cutover — usesAdapterB false; stagingBackendCertified unch
   );
   assert.equal(
     COMPETITION_REFEREE_ADAPTER_INTEGRATION.usesAdapterBProductionCutover,
-    false
+    true
   );
   assert.equal(
     COMPETITION_REFEREE_ADAPTER_INTEGRATION.modeAdaptersImplemented,

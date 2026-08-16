@@ -1,8 +1,8 @@
 /**
  * Canonical mode Adapter B factories + registry wiring.
  *
- * Phase 2A: structurally ready. Does NOT cut over production runtime
- * (usesAdapterB remains false on production runtime composition).
+ * Phase 2B: production/default composition attaches this registry and sets
+ * usesAdapterB=true. Adapters remain translator-only (no authority ownership).
  */
 
 import {

@@ -357,9 +357,10 @@ test("18. fresh read equals committed state", () => {
   );
 });
 
-test("19-20. no Adapter B dependency and no Team-specific generic permission", async () => {
+test("19-20. Adapter B wired; no Team-specific generic permission", async () => {
   const { runtime } = createCertified();
-  assert.equal(runtime.usesAdapterB, false);
+  assert.equal(runtime.usesAdapterB, true);
+  assert.equal(runtime.modeAdapterRegistry.size(), 4);
   assert.equal(runtime.usesTeamGenericPermission, false);
   assert.equal(
     GENERIC_REFEREE_ROLE_PERMISSIONS.includes(
@@ -377,8 +378,33 @@ test("19-20. no Adapter B dependency and no Team-specific generic permission", a
   assert.equal(COMPETITION_ENGINE_REFEREE_OPERATIONS.wiredToProductionRuntime, true);
   assert.equal(runtime.wiredToProductionRuntime, true);
   assert.equal(runtime.facade.wiredToProductionRuntime, true);
+  assert.equal(runtime.facade.usesAdapterB, true);
   assert.equal(runtime.inMemoryProductionFallback, false);
   assert.equal(matchesCanonicalRefereeRuntimePorts(runtime), true);
+  assert.equal(runtime.stagingBackendCertified, false);
+
+  const modeState = {
+    tenantId: SCOPE.tenantId,
+    competitionId: SCOPE.competitionId,
+    competitionMode: "INTERNAL",
+    matches: {
+      [SCOPE.matchId]: {
+        matchId: SCOPE.matchId,
+        status: "READY_TO_START",
+        entryAId: "entry-a",
+        entryBId: "entry-b",
+        participantIdsA: ["p-a"],
+        participantIdsB: ["p-b"],
+        scoringRules: {
+          scoringSystem: "SIDE_OUT",
+          pointsToWin: 11,
+          winBy: 2,
+          bestOfGames: 1,
+        },
+        lineupsLocked: true,
+      },
+    },
+  };
 
   runtime.assignmentRepository.upsert(
     { ...SCOPE, refereeUserId: ACTOR.actorId },
@@ -390,6 +416,8 @@ test("19-20. no Adapter B dependency and no Team-specific generic permission", a
     matchId: SCOPE.matchId,
     actor: ACTOR,
     commandId: "open-1",
+    competitionMode: "INTERNAL",
+    modeState,
   });
   assert.equal(opened.ok, true);
   assert.equal(opened.match.status, MATCH_STATUS.IN_PROGRESS);
@@ -408,6 +436,8 @@ test("19-20. no Adapter B dependency and no Team-specific generic permission", a
           refereeId: "22222222-2222-4222-8222-222222222222",
         },
         commandId: "open-other",
+        competitionMode: "INTERNAL",
+        modeState,
       }),
     (err) =>
       isRefereeOperationsError(err) &&

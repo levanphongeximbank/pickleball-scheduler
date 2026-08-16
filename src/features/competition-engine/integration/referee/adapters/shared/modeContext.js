@@ -259,6 +259,10 @@ export function resolveInjectedModeState(options, request) {
   if (isPlainObject(options.modeState)) {
     return options.modeState;
   }
+  // Phase 2B: command/request may carry modeState for canonical composition
+  if (isPlainObject(request) && isPlainObject(request.modeState)) {
+    return request.modeState;
+  }
   failRefereeAdapter(
     REFEREE_ADAPTER_ERROR_CODE.MALFORMED_CONTEXT,
     "Mode adapter requires modeState or getModeState",

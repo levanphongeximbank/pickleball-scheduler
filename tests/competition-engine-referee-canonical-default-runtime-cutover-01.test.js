@@ -266,12 +266,36 @@ test("7-14b. default durable facade reconstructs after assign+open", async () =>
     { ...SCOPE, refereeUserId: ACTOR.actorId },
     ACTOR
   );
+  const modeState = {
+    tenantId: SCOPE.tenantId,
+    competitionId: SCOPE.competitionId,
+    competitionMode: "INTERNAL",
+    matches: {
+      [SCOPE.matchId]: {
+        matchId: SCOPE.matchId,
+        status: "READY_TO_START",
+        entryAId: "entry-a",
+        entryBId: "entry-b",
+        participantIdsA: ["p-a"],
+        participantIdsB: ["p-b"],
+        scoringRules: {
+          scoringSystem: "SIDE_OUT",
+          pointsToWin: 11,
+          winBy: 2,
+          bestOfGames: 1,
+        },
+        lineupsLocked: true,
+      },
+    },
+  };
   const opened = await runtime.facade.openAssignedMatch({
     tenantId: SCOPE.tenantId,
     competitionId: SCOPE.competitionId,
     matchId: SCOPE.matchId,
     actor: ACTOR,
     commandId: "open-cutover-1",
+    competitionMode: "INTERNAL",
+    modeState,
   });
   assert.equal(opened.ok, true);
   assert.equal(opened.match.status, MATCH_STATUS.IN_PROGRESS);
@@ -321,20 +345,26 @@ test("15-16. no privileged browser RPC and no client service-role env resolution
   assert.equal(live.inMemoryProductionFallback, false);
 });
 
-test("17-20. no duplicate authorities; Adapter B not implemented; contract locked", () => {
+test("17-20. Adapter B cut over; no duplicate authorities; contract locked", () => {
   const { runtime } = createDefaultDurable();
   assert.equal(runtime.usesRefereeV5ScoringEngine, false);
   assert.equal(runtime.usesCore16Scoring, true);
   assert.equal(runtime.usesCore15Lifecycle, true);
   assert.equal(runtime.usesCore17Result, true);
-  assert.equal(runtime.usesAdapterB, false);
+  assert.equal(runtime.usesAdapterB, true);
+  assert.equal(runtime.modeAdapterRegistry.size(), 4);
   assert.equal(runtime.identityAuthority, "auth.uid");
+  assert.equal(runtime.stagingBackendCertified, false);
   assert.equal(COMPETITION_REFEREE_ADAPTER_CONTRACT_LOCKED, true);
   assert.equal(
     COMPETITION_REFEREE_ADAPTER_CONTRACT_ID,
     "competition.referee.adapter.v1"
   );
   assert.equal(COMPETITION_REFEREE_ADAPTER_CONTRACT_VERSION, "1.0.0");
+  assert.equal(
+    COMPETITION_REFEREE_ADAPTER_INTEGRATION.usesAdapterBProductionCutover,
+    true
+  );
 });
 
 test("static secret/bundle audit — pages and referee UI must not host privileged runtime", () => {

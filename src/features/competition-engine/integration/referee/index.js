@@ -105,7 +105,7 @@ export const COMPETITION_REFEREE_ADAPTER_INTEGRATION = Object.freeze({
   productionRuntimeImplemented: true,
   defaultRuntimeWiringImplemented: true,
   stagingBackendCertified: false,
-  // Phase 2A: mode Adapter B implementations exist; production cutover is Phase 2B
+  // Phase 2B: mode Adapter B cut over on canonical default/production composition
   modeAdaptersImplemented: true,
-  usesAdapterBProductionCutover: false,
+  usesAdapterBProductionCutover: true,
 });

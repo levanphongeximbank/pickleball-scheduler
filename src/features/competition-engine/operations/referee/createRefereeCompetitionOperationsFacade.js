@@ -10,6 +10,11 @@
 
 import { createCompetitionRuntimePorts } from "../../integration/composition/createCompetitionRuntimePorts.js";
 import {
+  COMPETITION_TYPE_TO_REFEREE_MODE,
+} from "../../integration/referee/constants.js";
+import { normalizeRefereeAdapterMode } from "../../integration/referee/contract.js";
+import { isRefereeAdapterContractError } from "../../integration/referee/errors.js";
+import {
   MATCH_ACTION,
   MATCH_STATUS,
   applyMatchTransition,
@@ -79,10 +84,52 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     deps.runtimePorts ||
     createCompetitionRuntimePorts(deps.runtimePortDeps || {});
 
+  const usesAdapterB = deps.runtime?.usesAdapterB === true;
+  const modeAdapterRegistry =
+    deps.modeAdapterRegistry || deps.runtime?.modeAdapterRegistry || null;
+
+  if (usesAdapterB && (!modeAdapterRegistry || typeof modeAdapterRegistry.resolve !== "function")) {
+    failReferee(
+      REFEREE_ERROR_CODE.PRECONDITION_FAILED,
+      "Canonical Adapter B cutover requires modeAdapterRegistry; silent legacy fallback is forbidden",
+      {}
+    );
+  }
+
   let idSeq = 0;
   function nextDeterministicId(prefix) {
     idSeq += 1;
     return `${prefix}-${idSeq}`;
+  }
+
+  function adapterRequestFromCommand(cmd, matchId = null) {
+    return {
+      tenantId: cmd.tenantId,
+      competitionId: cmd.competitionId,
+      matchId: matchId || cmd.matchId || null,
+      venueId: cmd.venueId || null,
+      clubId: cmd.clubId || null,
+      modeState: cmd.modeState || null,
+      competitionMode: cmd.competitionMode || null,
+      competitionType: cmd.competitionType || null,
+    };
+  }
+
+  /**
+   * Resolve Mode Adapter B when cut over. Fail closed — no legacy fallback.
+   * Compatibility facade (no usesAdapterB) returns null and keeps prior path.
+   */
+  function requireModeAdapter(cmd) {
+    if (!usesAdapterB) return null;
+    const modeHint =
+      cmd.competitionMode ||
+      COMPETITION_TYPE_TO_REFEREE_MODE[
+        String(cmd.competitionType || "").trim().toLowerCase()
+      ] ||
+      cmd.modeState?.competitionMode ||
+      null;
+    const mode = normalizeRefereeAdapterMode(modeHint);
+    return modeAdapterRegistry.resolve(mode);
   }
 
   function grantedFromAuth(auth) {
@@ -175,6 +222,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
       return result;
     } catch (err) {
       if (isRefereeOperationsError(err)) throw err;
+      if (isRefereeAdapterContractError(err)) throw err;
       throw normalizeRefereeError(
         err,
         REFEREE_ERROR_CODE.CANONICAL_CALL_FAILED,
@@ -318,6 +366,25 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
       const auth = await authorize(cmd, REFEREE_ACTION.MATCH_OPEN);
       const matchId = String(cmd.matchId || "").trim();
       const { assignment } = requireAssignedMatch(cmd, auth, matchId);
+
+      const adapter = requireModeAdapter(cmd);
+      if (adapter) {
+        const preStart = adapter.validatePreStart(
+          adapterRequestFromCommand(cmd, matchId)
+        );
+        if (!preStart || preStart.ok !== true) {
+          failReferee(
+            REFEREE_ERROR_CODE.PRECONDITION_FAILED,
+            "Adapter B pre-start validation failed; canonical open denied",
+            {
+              blockers: preStart?.blockers || [],
+              competitionMode: adapter.competitionMode,
+              silentLegacyFallback: false,
+            }
+          );
+        }
+      }
+
       let match = ensureMatchSnapshot(cmd, matchId, assignment);
 
       // Transition toward IN_PROGRESS using CORE-15 only.
@@ -489,12 +556,21 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         });
       }
 
-      const format = createScoringFormat({
-        scoringSystem: SCORING_SYSTEM.RALLY,
-        pointsToWin: Number(cmd.pointsToWin) || 11,
-        winBy: Number(cmd.winBy) || 2,
-        bestOfGames: Number(cmd.bestOfGames) || 1,
-      });
+      const adapter = requireModeAdapter(cmd);
+      let format;
+      if (adapter) {
+        // Adapter B translates scoring rules; CORE-16 remains scoring authority.
+        format = adapter.getScoringRules(
+          adapterRequestFromCommand(cmd, matchId)
+        );
+      } else {
+        format = createScoringFormat({
+          scoringSystem: SCORING_SYSTEM.RALLY,
+          pointsToWin: Number(cmd.pointsToWin) || 11,
+          winBy: Number(cmd.winBy) || 2,
+          bestOfGames: Number(cmd.bestOfGames) || 1,
+        });
+      }
       const state = createInitialScoringState({ matchId, format });
       const projection = createScoringProjection(state);
       const session = Object.freeze({
@@ -596,6 +672,35 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     if (Array.isArray(cmd.sideBindings) && cmd.sideBindings.length === 2) {
       return cmd.sideBindings;
     }
+
+    const adapter = requireModeAdapter(cmd);
+    if (adapter) {
+      const participants = adapter.getParticipants(
+        adapterRequestFromCommand(cmd, cmd.matchId)
+      );
+      const sides = Array.isArray(participants?.sides) ? participants.sides : [];
+      if (sides.length !== 2) {
+        failReferee(
+          REFEREE_ERROR_CODE.VALIDATION_PRECONDITION,
+          "Adapter B participants must provide exactly two sides",
+          { sideCount: sides.length }
+        );
+      }
+      return sides.map((side, index) => {
+        const isA = index === 0;
+        return {
+          matchSideKey: isA ? MATCH_SIDE_KEY.A : MATCH_SIDE_KEY.B,
+          scoringSide: isA ? SCORING_SIDE.SIDE_A : SCORING_SIDE.SIDE_B,
+          matchSideId: isA ? "side-a" : "side-b",
+          entryId: side.entryId || (isA ? "entry-a" : "entry-b"),
+          teamId: side.teamId || null,
+          participantIds: Array.isArray(side.participantIds)
+            ? side.participantIds.map(String)
+            : [],
+        };
+      });
+    }
+
     const entries = assignment.entries || assignment.participants || [];
     return [
       {
@@ -637,6 +742,21 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
           "Match scoring is not complete; cannot submit result",
           { matchId }
         );
+      }
+
+      const adapter = requireModeAdapter(cmd);
+      let propagation = null;
+      if (adapter) {
+        propagation = adapter.resolveResultPropagation(
+          adapterRequestFromCommand(cmd, matchId)
+        );
+        if (propagation?.propagateOnlyIfAccepted !== true) {
+          failReferee(
+            REFEREE_ERROR_CODE.VALIDATION_PRECONDITION,
+            "Adapter B result propagation must require CORE-17 accepted active result",
+            { propagateOnlyIfAccepted: propagation?.propagateOnlyIfAccepted }
+          );
+        }
       }
 
       const winnerSide = session.state.calculatedWinnerSide;
@@ -682,6 +802,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
       }
 
       // Optional auto-accept for MVP when command requests director accept handoff.
+      // Adapter B may describe targets but MUST NOT accept; CORE-17 remains authority.
       let accepted = null;
       if (cmd.acceptResult === true && status === REFEREE_VALIDATION_OPS_STATUS.PENDING) {
         accepted = acceptMatchResult(validated, {
@@ -716,6 +837,19 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         }
       }
 
+      if (
+        adapter &&
+        propagation?.propagateOnlyIfAccepted === true &&
+        status !== REFEREE_VALIDATION_OPS_STATUS.ACCEPTED &&
+        cmd.forcePropagateWithoutAccept === true
+      ) {
+        failReferee(
+          REFEREE_ERROR_CODE.VALIDATION_PRECONDITION,
+          "Result propagation cannot bypass CORE-17 accepted active result",
+          { validationStatus: status, silentLegacyFallback: false }
+        );
+      }
+
       const validationRecord = Object.freeze({
         status,
         validatedResult: accepted || validated,
@@ -723,6 +857,12 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         standingsEligible:
           status === REFEREE_VALIDATION_OPS_STATUS.ACCEPTED,
         winnerInferenceByFacade: false,
+        propagation: propagation
+          ? {
+              propagateOnlyIfAccepted: true,
+              targets: propagation.targets || [],
+            }
+          : null,
       });
 
       store.update(cmd.tenantId, cmd.competitionId, (draft) => {
@@ -827,6 +967,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
       store.classification ||
       "TEST_DOUBLE_ONLY",
     wiredToProductionRuntime: deps.runtime?.wiredToProductionRuntime === true,
+    usesAdapterB,
+    modeAdapterRegistry: modeAdapterRegistry || null,
     seedAssignments,
     getRefereeAssignmentQueue,
     getAssignedMatch,
