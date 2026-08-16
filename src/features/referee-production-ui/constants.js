@@ -24,9 +24,9 @@ export const ASSIGNMENT_CARD_ACTION = Object.freeze({
 });
 
 export const ASSIGNMENT_CARD_ACTION_LABEL = Object.freeze({
-  ENTER: "Vào trận",
-  CONTINUE: "Tiếp tục",
-  VIEW_RESULT: "Xem kết quả",
+  ENTER: "VÀO TRẬN",
+  CONTINUE: "TIẾP TỤC",
+  VIEW_RESULT: "XEM KẾT QUẢ",
 });
 
 export const RESULT_STATUS = Object.freeze({

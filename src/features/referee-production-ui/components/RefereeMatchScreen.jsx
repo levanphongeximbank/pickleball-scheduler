@@ -1,3 +1,4 @@
+import { Link as RouterLink } from "react-router-dom";
 import { useState } from "react";
 import CanonicalCourtView from "./CanonicalCourtView.jsx";
 
@@ -53,6 +54,92 @@ function DreamBreakerPanel({ db }) {
   );
 }
 
+function RulesPanel({ rules }) {
+  if (!rules?.rows?.length) return null;
+  return (
+    <section className="rp-rules" data-testid="match-rules-panel">
+      <h2 className="rp-rules-title">{rules.title || "LUẬT TRẬN"}</h2>
+      <dl className="rp-rules-grid">
+        {rules.rows.map((row) => (
+          <div key={row.key} className="rp-rules-row" data-testid={`rule-${row.key}`}>
+            <dt>{row.label}</dt>
+            <dd>{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function ServingStatusStrip({ serving, scoreLine }) {
+  if (!serving) return null;
+  const hasAny =
+    serving.servingTeamName ||
+    serving.servingPlayerName ||
+    serving.showServiceTurn ||
+    serving.gameLabel;
+  if (!hasAny) return null;
+  return (
+    <div className="rp-serve-strip" data-testid="serving-status-strip">
+      {serving.servingTeamName ? (
+        <span data-testid="serve-team">
+          Giao bóng: <strong>{serving.servingTeamName}</strong>
+        </span>
+      ) : null}
+      {serving.servingPlayerName ? (
+        <span data-testid="serve-player">
+          Người giao: <strong>{serving.servingPlayerName}</strong>
+        </span>
+      ) : null}
+      {serving.showServiceTurn && serving.serviceTurn != null ? (
+        <span data-testid="service-turn">
+          Lượt giao: <strong data-testid="service-turn-number">#{serving.serviceTurn}</strong>
+        </span>
+      ) : null}
+      {serving.gameLabel ? <span data-testid="serve-game">{serving.gameLabel}</span> : null}
+      {scoreLine?.display && serving.showServiceTurn ? (
+        <span className="rp-serve-call" data-testid="sideout-call">
+          Đọc tỷ số: {scoreLine.display}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function GameHistoryPanel({ summary }) {
+  if (!summary) return null;
+  const current = summary.currentGamePoints;
+  const previous = Array.isArray(summary.previousGames) ? summary.previousGames : [];
+  const gamesWon = summary.gamesWon || {};
+  return (
+    <section className="rp-game-history" data-testid="game-summary-panel">
+      <div className="rp-game-current" data-testid="current-game-summary">
+        <strong>Game {summary.currentGame || 1}</strong>
+        {current ? (
+          <span>
+            {current.sideA} • {current.sideB}
+          </span>
+        ) : null}
+      </div>
+      {summary.bestOf ? (
+        <div className="rp-game-won" data-testid="games-won">
+          Games won: {Number(gamesWon.SIDE_A || 0)}–{Number(gamesWon.SIDE_B || 0)}
+          {summary.bestOf ? ` (Best of ${summary.bestOf})` : ""}
+        </div>
+      ) : null}
+      {previous.length > 0 ? (
+        <ul className="rp-game-previous" data-testid="previous-game-history">
+          {previous.map((game) => (
+            <li key={`g-${game.gameNumber}`}>
+              Game {game.gameNumber}: {game.sideA}–{game.sideB}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
 export default function RefereeMatchScreen({
   view,
   loading,
@@ -97,18 +184,29 @@ export default function RefereeMatchScreen({
 
   const court = view.courtProjection || {};
   const score = view.currentScore?.points || {};
-  const servingSide = court.serving?.servingSide;
   const pending = Boolean(pendingAction);
   const scoreLine = court.scoreLine || {};
   const db = court.dreambreaker;
-  const isSideOut = scoreLine.showServiceTurn === true;
-  const leftName = court.sides?.left?.participant?.displayName || "Đội A";
-  const rightName = court.sides?.right?.participant?.displayName || "Đội B";
-  const gamesWon = view.gameSummary?.gamesWon || {};
-  const gamesA = Number(gamesWon.SIDE_A || 0);
-  const gamesB = Number(gamesWon.SIDE_B || 0);
-  const servingTeamName =
-    servingSide === "SIDE_B" ? rightName : servingSide === "SIDE_A" ? leftName : null;
+  const leftSide = court.sides?.left || {};
+  const rightSide = court.sides?.right || {};
+  const leftScoring = leftSide.scoringSide || "SIDE_A";
+  const rightScoring = rightSide.scoringSide || "SIDE_B";
+  const leftName =
+    leftSide.participant?.displayName ||
+    view.participantDisplay?.sideA?.label ||
+    "Đội A";
+  const rightName =
+    rightSide.participant?.displayName ||
+    view.participantDisplay?.sideB?.label ||
+    "Đội B";
+  const leftPlayers =
+    (leftSide.activePlayers || []).map((p) => p.displayName).filter(Boolean).join(" / ") ||
+    leftName;
+  const rightPlayers =
+    (rightSide.activePlayers || []).map((p) => p.displayName).filter(Boolean).join(" / ") ||
+    rightName;
+  const changeEndsRequired = court.sideChangeRequired === true;
+  const showManualChangeEnds = view.canChangeEnds === true && !changeEndsRequired;
 
   const handleConfirmChangeEnds = () => {
     setConfirmChangeEnds(false);
@@ -124,21 +222,30 @@ export default function RefereeMatchScreen({
       data-stale={stale ? "true" : "false"}
     >
       <header className="rp-match-header" data-testid="match-header">
-        <h1 className="rp-match-title">{view.competitionName || "Trận trọng tài"}</h1>
-        <p className="rp-match-meta">
-          {[view.stageName, view.roundName ? `Vòng ${view.roundName}` : null, view.courtLabel]
-            .filter(Boolean)
-            .join(" · ")}
+        <div className="rp-match-header-top">
+          <RouterLink
+            className="rp-match-back"
+            to="/referee"
+            data-testid="btn-back-assignments"
+          >
+            ← Quay lại DS trận
+          </RouterLink>
+          <h1 className="rp-match-title">Điều hành trận</h1>
+          {view.matchStatusLabel ? (
+            <span className="rp-chip rp-chip-status" data-testid="match-status-badge">
+              {view.matchStatusLabel}
+            </span>
+          ) : null}
+        </div>
+        <p className="rp-match-context" data-testid="match-context-row">
+          {view.contextRow ||
+            [view.courtLabel, view.competitionName, view.stageRoundLabel]
+              .filter(Boolean)
+              .join(" | ")}
         </p>
-        {view.gameSummary?.scorePolicyLine ? (
-          <p className="rp-match-policy" data-testid="scoring-policy">
-            {view.gameSummary.scorePolicyLine}
-            {view.gameSummary.changeEndPolicy
-              ? ` · Đổi sân: ${view.gameSummary.changeEndPolicy}`
-              : ""}
-          </p>
-        ) : null}
       </header>
+
+      <RulesPanel rules={view.rulesPanel} />
 
       {view.resultStatus && view.resultStatus !== "NONE" ? (
         <Banner
@@ -183,57 +290,70 @@ export default function RefereeMatchScreen({
 
       <section className="rp-scoreboard" data-testid="scoreboard" aria-live="polite">
         <div className="rp-scoreboard-live" data-testid="current-game-score">
-          <div className={`rp-score-team${servingSide === "SIDE_A" ? " is-serving" : ""}`}>
-            <div className="rp-score-label">{leftName}</div>
+          <div
+            className={`rp-score-team${
+              court.serving?.servingSide === leftScoring ? " is-serving" : ""
+            }`}
+          >
+            <div className="rp-score-label" data-testid="participant-names-a">
+              {leftPlayers}
+            </div>
             <div className="rp-score-num" data-testid="score-a">
-              {Number(score.SIDE_A || 0)}
+              {Number(score[leftScoring] || 0)}
             </div>
           </div>
-          <div className={`rp-score-team${servingSide === "SIDE_B" ? " is-serving" : ""}`}>
-            <div className="rp-score-label">{rightName}</div>
+          <div
+            className={`rp-score-team${
+              court.serving?.servingSide === rightScoring ? " is-serving" : ""
+            }`}
+          >
+            <div className="rp-score-label" data-testid="participant-names-b">
+              {rightPlayers}
+            </div>
             <div className="rp-score-num" data-testid="score-b">
-              {Number(score.SIDE_B || 0)}
+              {Number(score[rightScoring] || 0)}
             </div>
           </div>
         </div>
         <div className="rp-scoreboard-summary" data-testid="games-summary">
           <span>
             Game {view.gameSummary?.currentGame || 1}
-            {view.gameSummary?.bestOf ? ` / ${view.gameSummary.bestOf}` : ""}
+            {view.gameSummary?.bestOf ? ` / Best of ${view.gameSummary.bestOf}` : ""}
           </span>
-          <span data-testid="games-won">
-            Games: {gamesA}–{gamesB}
+          <span data-testid="games-won-inline">
+            Games: {Number(view.gameSummary?.gamesWon?.SIDE_A || 0)}–
+            {Number(view.gameSummary?.gamesWon?.SIDE_B || 0)}
           </span>
         </div>
       </section>
 
-      {isSideOut ? (
-        <div className="rp-serve-meta" data-testid="service-turn">
-          {servingTeamName ? <span>Đội giao: {servingTeamName}</span> : null}
-          {scoreLine.serviceTurn != null ? (
-            <span data-testid="service-turn-number">Lượt giao: #{scoreLine.serviceTurn}</span>
-          ) : null}
-          {scoreLine.display ? (
-            <span className="rp-serve-call" data-testid="sideout-call">
-              Đọc tỷ số: {scoreLine.display}
-            </span>
+      <CanonicalCourtView courtProjection={court} />
+
+      <ServingStatusStrip serving={view.servingStatus} scoreLine={scoreLine} />
+
+      <DreamBreakerPanel db={db} />
+
+      {changeEndsRequired ? (
+        <div className="rp-change-ends-required" data-testid="change-ends-warning">
+          <p className="rp-change-ends-title">ĐÃ ĐẾN ĐIỂM ĐỔI SÂN</p>
+          <p className="rp-change-ends-copy">Vui lòng xác nhận để đổi sân</p>
+          {!confirmChangeEnds ? (
+            <button
+              type="button"
+              className="rp-btn rp-btn-warn"
+              disabled={pending || stale}
+              onClick={() => setConfirmChangeEnds(true)}
+              data-testid="btn-change-ends-required"
+            >
+              XÁC NHẬN ĐỔI SÂN
+            </button>
           ) : null}
         </div>
       ) : null}
 
-      <CanonicalCourtView courtProjection={court} />
-
-      <DreamBreakerPanel db={db} />
-
-      {court.sideChangeRequired ? (
-        <Banner kind="warn" testId="change-ends-warning">
-          Cần đổi sân theo luật. Xác nhận để gửi lệnh — sân chỉ đổi sau khi máy chủ xác nhận.
-        </Banner>
-      ) : null}
-
       {confirmChangeEnds ? (
         <div className="rp-confirm" data-testid="change-ends-confirm">
-          <p>Xác nhận đổi sân / đổi đầu sân? Sân chỉ đổi sau ACK từ máy chủ.</p>
+          <p>Xác nhận đổi sân? Sân chỉ đổi sau khi máy chủ xác nhận (ACK).</p>
           <div className="rp-confirm-actions">
             <button
               type="button"
@@ -255,6 +375,8 @@ export default function RefereeMatchScreen({
           </div>
         </div>
       ) : null}
+
+      <GameHistoryPanel summary={view.gameSummary} />
 
       <div className="rp-actions">
         {view.canStart ? (
@@ -318,24 +440,28 @@ export default function RefereeMatchScreen({
               Tiếp tục
             </button>
           ) : null}
-          <button
-            type="button"
-            className="rp-btn rp-btn-ghost"
-            disabled={pending || stale}
-            onClick={() => onSwitchPositions?.("A")}
-            data-testid="btn-switch-positions"
-          >
-            ĐỔI VỊ TRÍ VĐV
-          </button>
-          <button
-            type="button"
-            className="rp-btn rp-btn-warn"
-            disabled={pending || stale}
-            onClick={() => setConfirmChangeEnds(true)}
-            data-testid="btn-change-ends"
-          >
-            ĐỔI SÂN / ĐỔI ĐẦU SÂN
-          </button>
+          {view.canSwitchPositions ? (
+            <button
+              type="button"
+              className="rp-btn rp-btn-ghost"
+              disabled={pending || stale}
+              onClick={() => onSwitchPositions?.("A")}
+              data-testid="btn-switch-positions"
+            >
+              ĐỔI VỊ TRÍ VĐV
+            </button>
+          ) : null}
+          {showManualChangeEnds ? (
+            <button
+              type="button"
+              className="rp-btn rp-btn-warn"
+              disabled={pending || stale}
+              onClick={() => setConfirmChangeEnds(true)}
+              data-testid="btn-change-ends"
+            >
+              ĐỔI SÂN / ĐỔI ĐẦU SÂN
+            </button>
+          ) : null}
         </div>
 
         {view.canComplete ? (
@@ -346,7 +472,7 @@ export default function RefereeMatchScreen({
             onClick={onSubmitResult}
             data-testid="btn-complete"
           >
-            Hoàn tất / gửi kết quả
+            KẾT THÚC TRẬN
           </button>
         ) : null}
         {view.canCorrect ? (
@@ -357,7 +483,7 @@ export default function RefereeMatchScreen({
             onClick={onCorrect}
             data-testid="btn-correct"
           >
-            Sửa kết quả
+            Sửa / correction
           </button>
         ) : null}
       </div>

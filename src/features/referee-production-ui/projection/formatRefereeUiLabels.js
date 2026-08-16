@@ -94,6 +94,29 @@ export function formatLocalScheduledTime(value, timeZone) {
 }
 
 /**
+ * Compact clock for assignment meta row (HH:mm). Never return raw ISO.
+ * @param {string|number|Date|null|undefined} value
+ * @param {string} [timeZone]
+ */
+export function formatCompactScheduledClock(value, timeZone) {
+  if (value == null || value === "") return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  try {
+    return new Intl.DateTimeFormat("vi-VN", {
+      timeZone: timeZone || undefined,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(date);
+  } catch {
+    const h = String(date.getHours()).padStart(2, "0");
+    const m = String(date.getMinutes()).padStart(2, "0");
+    return `${h}:${m}`;
+  }
+}
+
+/**
  * Prefer human court labels. Never show raw UUID as "Sân <uuid>".
  */
 export function formatCourtLabel({ courtLabel, courtId } = {}) {

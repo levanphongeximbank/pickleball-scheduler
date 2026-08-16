@@ -13,6 +13,7 @@ import CanonicalCourtView from "../../src/features/referee-production-ui/compone
 import { isRefereeWorkspaceRoute } from "../../src/features/referee-production-ui/application/isRefereeWorkspaceRoute.js";
 import { projectCanonicalCourtView } from "../../src/features/referee-production-ui/projection/projectCanonicalCourtView.js";
 import { projectDreamBreakerRotation } from "../../src/features/referee-production-ui/projection/projectDreamBreakerRotation.js";
+import { buildRefereeMatchView } from "../../src/features/referee-production-ui/projection/buildRefereeMatchView.js";
 import {
   SCORING_SYSTEM,
   createScoringFormat,
@@ -64,40 +65,52 @@ function doublesCourt(system = SIDE_OUT, extras = {}) {
     },
     matchContext: extras.matchContext || {},
     modeState: extras.modeState || {},
+    lifecyclePolicy: extras.lifecyclePolicy || { changeEndPolicyLabel: "Sau mỗi game" },
   });
 }
 
 function baseView(overrides = {}) {
   const court = overrides.courtProjection || doublesCourt();
-  return {
-    competitionName: "Giải đồng đội 13/8/2026",
+  const built = buildRefereeMatchView({
+    matchId: "match-1",
     competitionMode: "TEAM",
-    competitionModeLabel: "Giải đồng đội",
-    stageName: "KO",
-    roundName: "1",
-    courtLabel: "Sân 1",
-    matchStatusLabel: "Đang diễn ra",
-    currentScore: {
-      points: { SIDE_A: 1, SIDE_B: 0 },
-      serve: { servingSide: "SIDE_A", serverNumber: 2 },
-      gamesWon: { SIDE_A: 0, SIDE_B: 0 },
+    competitionContext: { competitionName: "Giải đồng đội 13/8/2026", competitionId: "c1" },
+    matchContext: { stage: "KO", round: 1, courtLabel: "Sân 1", status: "IN_PROGRESS" },
+    participants: {
+      sides: [
+        { sideKey: "A", participantIds: ["p1", "p2"], displayName: "Đội 4" },
+        { sideKey: "B", participantIds: ["p3", "p4"], displayName: "Đội 3" },
+      ],
     },
-    gameSummary: {
-      currentGame: 1,
-      gamesWon: { SIDE_A: 0, SIDE_B: 0 },
-      bestOf: 3,
-      scorePolicyLine: "Best of 3 • đến 11 • win-by 2",
-      changeEndPolicy: "Sau mỗi game",
+    participantNames: NAMES,
+    scoringRules: SIDE_OUT,
+    lifecyclePolicy: { changeEndPolicyLabel: "Sau mỗi game" },
+    capabilities: { changeEnds: true, switchPositions: true, scoring: true, suspend: true },
+    assignedMatch: {
+      lifecycleState: "IN_PROGRESS",
+      scoreProjection: {
+        points: { SIDE_A: 1, SIDE_B: 0 },
+        serve: { servingSide: "SIDE_A", serverNumber: 2, serverPlayerId: "p1" },
+        gamesWonInCurrentSet: { SIDE_A: 0, SIDE_B: 0 },
+        currentGameIndex: 0,
+        completedGames: [],
+        format: SIDE_OUT,
+      },
+      match: {
+        court: court.sideChangeRequired
+          ? { sideChangeRequired: true, serverPlayerId: "p1", receiverPlayerId: "p4" }
+          : { serverPlayerId: "p1", receiverPlayerId: "p4" },
+      },
     },
+  });
+  return {
+    ...built,
     courtProjection: court,
-    canStart: false,
-    canScore: true,
-    canSuspend: true,
-    canResume: false,
-    canComplete: false,
-    canCorrect: false,
-    resultStatus: "NONE",
     ...overrides,
+    canSwitchPositions: overrides.canSwitchPositions ?? true,
+    canChangeEnds: overrides.canChangeEnds ?? true,
+    canScore: overrides.canScore ?? true,
+    canSuspend: overrides.canSuspend ?? true,
   };
 }
 
@@ -111,7 +124,7 @@ describe("referee workspace chrome contract", () => {
 });
 
 describe("1. Referee Home visual", () => {
-  it("renders compact My Assignments card without redundant chips / UUID", () => {
+  it("renders daily summary, filters, compact meta row, status CTA", () => {
     render(
       <MemoryRouter>
         <div style={{ width: 390 }}>
@@ -123,7 +136,10 @@ describe("1. Referee Home visual", () => {
                 matchId: "match-1",
                 competitionModeLabel: "Giải đồng đội",
                 assignmentStatusLabel: "Đã phân công",
+                matchStatus: "READY_TO_START",
                 matchStatusLabel: "Sẵn sàng",
+                homeStatusBucket: "UPCOMING",
+                homeStatusLabel: "Sắp diễn ra",
                 competitionName: "Giải đồng đội 13/8/2026",
                 stageName: "KO",
                 roundName: "1",
@@ -131,8 +147,24 @@ describe("1. Referee Home visual", () => {
                 participantB: "Đội 3",
                 courtLabel: "Sân 1",
                 scheduledTime: "17:02",
-                actionLabel: "Vào trận",
+                action: "ENTER",
+                actionLabel: "VÀO TRẬN",
                 href: "/referee/match/match-1",
+              },
+              {
+                competitionId: "comp-1",
+                matchId: "match-2",
+                matchStatus: "IN_PROGRESS",
+                homeStatusBucket: "LIVE",
+                homeStatusLabel: "Đang thi đấu",
+                competitionName: "Giải đồng đội 13/8/2026",
+                participantA: "An / Bình",
+                participantB: "Chi / Dũng",
+                courtLabel: "Sân 2",
+                scheduledTime: "18:00",
+                action: "CONTINUE",
+                actionLabel: "TIẾP TỤC",
+                href: "/referee/match/match-2",
               },
             ]}
           />
@@ -140,60 +172,109 @@ describe("1. Referee Home visual", () => {
       </MemoryRouter>
     );
 
-    const card = screen.getByTestId("referee-assignment-card");
-    expect(within(card).getByTestId("mode-badge")).toHaveTextContent("Giải đồng đội");
-    expect(within(card).getByTestId("status-badge")).toHaveTextContent("Đã phân công");
-    expect(within(card).queryByTestId("match-status-badge")).not.toBeInTheDocument();
+    expect(screen.getByTestId("referee-home-header")).toHaveTextContent("Trọng tài của tôi");
+    expect(screen.getByTestId("home-daily-headline")).toHaveTextContent("Hôm nay: 2 trận");
+    expect(screen.getByTestId("counter-upcoming")).toHaveTextContent("1");
+    expect(screen.getByTestId("counter-live")).toHaveTextContent("1");
+    expect(screen.getByTestId("home-status-filters")).toBeInTheDocument();
+    expect(screen.getByTestId("filter-all")).toBeInTheDocument();
+    expect(screen.getByTestId("filter-upcoming")).toBeInTheDocument();
+    expect(screen.getByTestId("filter-live")).toBeInTheDocument();
+    expect(screen.getByTestId("filter-done")).toBeInTheDocument();
+
+    const cards = screen.getAllByTestId("referee-assignment-card");
+    const card = cards[0];
+    expect(within(card).getByTestId("assignment-meta-row")).toBeInTheDocument();
+    expect(within(card).getByTestId("meta-court")).toHaveTextContent("Sân 1");
+    expect(within(card).getByTestId("meta-time")).toHaveTextContent("17:02");
     expect(within(card).getByTestId("competition-name")).toHaveTextContent("Giải đồng đội 13/8/2026");
+    expect(within(card).getByTestId("status-badge")).toHaveTextContent("Sắp diễn ra");
     expect(within(card).getByTestId("participants")).toHaveTextContent("VS");
-    expect(within(card).getByTestId("assignment-action")).toHaveTextContent("Vào trận");
+    expect(within(card).getByTestId("assignment-action")).toHaveTextContent("VÀO TRẬN");
+    expect(cards[1]).toHaveTextContent("TIẾP TỤC");
     expect(card.textContent).not.toMatch(
       /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
     );
-    expect(card.textContent).not.toMatch(/\bMODE\b|\bASSIGNED\b/);
   });
 });
 
 describe("match screen visual states @ ~390px", () => {
-  it("2. Side-Out doubles — 4 players, serving, service turn, distinct scores", () => {
+  it("2. Side-Out doubles — 4 players, serving, service turn, rules, names", () => {
     const court = doublesCourt(SIDE_OUT);
     render(
-      <div style={{ width: 390 }}>
-        <RefereeMatchScreen view={baseView({ courtProjection: court })} />
-      </div>
+      <MemoryRouter>
+        <div style={{ width: 390 }}>
+          <RefereeMatchScreen view={baseView({ courtProjection: court })} />
+        </div>
+      </MemoryRouter>
     );
 
+    expect(screen.getByTestId("match-header")).toHaveTextContent("Điều hành trận");
+    expect(screen.getByTestId("match-status-badge")).toBeInTheDocument();
+    expect(screen.getByTestId("match-context-row")).toHaveTextContent(/Sân 1/);
+    expect(screen.getByTestId("match-rules-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("rule-method")).toHaveTextContent("SIDE-OUT");
+    expect(screen.getByTestId("rule-target")).toHaveTextContent("11");
+    expect(screen.getByTestId("rule-winBy")).toHaveTextContent("2");
+    expect(screen.getByTestId("rule-cap")).toHaveTextContent("Không");
+    expect(screen.getByTestId("rule-changeEnd")).toBeInTheDocument();
+    expect(screen.getByTestId("rule-bestOf")).toHaveTextContent("Best of 3");
     expect(screen.getByTestId("canonical-court-view")).toBeInTheDocument();
     expect(screen.getByTestId("court-slot-leftTop")).toHaveTextContent("An");
     expect(screen.getByTestId("court-slot-leftBottom")).toHaveTextContent("Bình");
     expect(screen.getByTestId("court-slot-rightTop")).toHaveTextContent("Chi");
     expect(screen.getByTestId("court-slot-rightBottom")).toHaveTextContent("Dũng");
     expect(screen.getByTestId("serving-indicator")).toHaveTextContent("GIAO");
+    expect(screen.getByTestId("serving-status-strip")).toBeInTheDocument();
     expect(screen.getByTestId("service-turn")).toBeInTheDocument();
     expect(screen.getByTestId("service-turn-number")).toHaveTextContent("#2");
+    expect(screen.getByTestId("participant-names-a")).toHaveTextContent(/An/);
+    expect(screen.getByTestId("participant-names-b")).toHaveTextContent(/Chi/);
     expect(screen.getByTestId("current-game-score")).toBeInTheDocument();
-    expect(screen.getByTestId("games-won")).toHaveTextContent("Games: 0–0");
+    expect(screen.getByTestId("games-won")).toHaveTextContent(/0–0/);
+    expect(screen.getByTestId("current-game-summary")).toBeInTheDocument();
     expect(screen.queryByTestId("rally-score-line")).not.toBeInTheDocument();
     expect(screen.getByTestId("btn-point-a")).toHaveTextContent(/Điểm Đội 4|Điểm An|Đội 4/);
     expect(screen.getByTestId("btn-switch-positions")).toHaveTextContent("ĐỔI VỊ TRÍ VĐV");
-    expect(screen.getByTestId("btn-change-ends")).toHaveTextContent("ĐỔI SÂN");
+    expect(screen.getByTestId("btn-back-assignments")).toBeInTheDocument();
+    expect(screen.getByTestId("canonical-court-view").querySelector(".rp-court-net")).toBeTruthy();
+    expect(screen.getByTestId("canonical-court-view").querySelector(".rp-court-kitchen")).toBeTruthy();
   });
 
   it("3. Rally doubles — two-number score, no service turn #", () => {
     const court = doublesCourt(RALLY, { a: 4, b: 3 });
+    const view = baseView({
+      courtProjection: court,
+      currentScore: { points: { SIDE_A: 4, SIDE_B: 3 }, gamesWon: { SIDE_A: 0, SIDE_B: 0 } },
+      servingStatus: {
+        servingTeamName: "Đội 4",
+        servingPlayerName: "An",
+        showServiceTurn: false,
+        serviceTurn: null,
+        gameLabel: "Game 1 / Best of 1",
+      },
+      rulesPanel: {
+        title: "LUẬT TRẬN",
+        rows: [
+          { key: "method", label: "Cách tính", value: "RALLY" },
+          { key: "target", label: "Kết thúc game", value: "21" },
+          { key: "winBy", label: "Thắng cách", value: "2" },
+          { key: "cap", label: "Điểm trần / cap", value: "Không" },
+          { key: "bestOf", label: "Thể thức", value: "Best of 1" },
+        ],
+      },
+    });
     render(
-      <RefereeMatchScreen
-        view={baseView({
-          courtProjection: court,
-          currentScore: { points: { SIDE_A: 4, SIDE_B: 3 }, gamesWon: { SIDE_A: 0, SIDE_B: 0 } },
-        })}
-      />
+      <MemoryRouter>
+        <RefereeMatchScreen view={view} />
+      </MemoryRouter>
     );
     expect(screen.getByTestId("score-a")).toHaveTextContent("4");
     expect(screen.getByTestId("score-b")).toHaveTextContent("3");
     expect(screen.queryByTestId("service-turn")).not.toBeInTheDocument();
     expect(screen.getByTestId("court-slot-leftTop")).toBeInTheDocument();
     expect(screen.getByTestId("court-slot-leftBottom")).toBeInTheDocument();
+    expect(screen.getByTestId("rule-method")).toHaveTextContent("RALLY");
   });
 
   it("4. Singles — two player markers only", () => {
@@ -257,7 +338,11 @@ describe("match screen visual states @ ~390px", () => {
       dreambreaker: db,
       isDreambreaker: true,
     };
-    render(<RefereeMatchScreen view={baseView({ courtProjection: court })} />);
+    render(
+      <MemoryRouter>
+        <RefereeMatchScreen view={baseView({ courtProjection: court })} />
+      </MemoryRouter>
+    );
     expect(screen.getByTestId("dreambreaker-panel")).toBeInTheDocument();
     expect(screen.getByTestId("db-side-a")).toHaveTextContent("Hà");
     expect(screen.getByTestId("db-side-b")).toHaveTextContent("Linh");
@@ -270,11 +355,13 @@ describe("match screen visual states @ ~390px", () => {
       modeState: {},
     });
     render(
-      <RefereeMatchScreen
-        view={baseView({
-          courtProjection: { ...doublesCourt(), dreambreaker: db, isDreambreaker: true },
-        })}
-      />
+      <MemoryRouter>
+        <RefereeMatchScreen
+          view={baseView({
+            courtProjection: { ...doublesCourt(), dreambreaker: db, isDreambreaker: true },
+          })}
+        />
+      </MemoryRouter>
     );
     expect(screen.getByTestId("dreambreaker-fail-closed")).toBeInTheDocument();
     expect(screen.queryByTestId("dreambreaker-panel")).not.toBeInTheDocument();
@@ -288,32 +375,37 @@ describe("match screen visual states @ ~390px", () => {
     });
     expect(db.isDreambreaker).toBe(false);
     render(
-      <RefereeMatchScreen
-        view={baseView({
-          courtProjection: { ...doublesCourt(), dreambreaker: db },
-        })}
-      />
+      <MemoryRouter>
+        <RefereeMatchScreen
+          view={baseView({
+            courtProjection: { ...doublesCourt(), dreambreaker: db },
+          })}
+        />
+      </MemoryRouter>
     );
     expect(screen.queryByTestId("dreambreaker-panel")).not.toBeInTheDocument();
     expect(screen.queryByTestId("dreambreaker-fail-closed")).not.toBeInTheDocument();
   });
 
-  it("6+7. change-ends prompt then confirm (ACK path — no visual swap before ACK)", async () => {
+  it("6+7. change-ends required warning then confirm (ACK path — no visual swap before ACK)", async () => {
     const user = userEvent.setup();
     const onChangeEnds = vi.fn();
     const court = doublesCourt(SIDE_OUT, { sideChangeRequired: true });
     render(
-      <RefereeMatchScreen
-        view={baseView({ courtProjection: court })}
-        onChangeEnds={onChangeEnds}
-      />
+      <MemoryRouter>
+        <RefereeMatchScreen
+          view={baseView({ courtProjection: court, canChangeEnds: false })}
+          onChangeEnds={onChangeEnds}
+        />
+      </MemoryRouter>
     );
-    expect(screen.getByTestId("change-ends-warning")).toBeInTheDocument();
+    expect(screen.getByTestId("change-ends-warning")).toHaveTextContent("ĐÃ ĐẾN ĐIỂM ĐỔI SÂN");
+    expect(screen.queryByTestId("btn-change-ends")).not.toBeInTheDocument();
     expect(screen.getByTestId("canonical-court-view")).toHaveAttribute(
       "data-orientation",
       "STANDARD"
     );
-    await user.click(screen.getByTestId("btn-change-ends"));
+    await user.click(screen.getByTestId("btn-change-ends-required"));
     expect(screen.getByTestId("change-ends-confirm")).toBeInTheDocument();
     await user.click(screen.getByTestId("btn-change-ends-confirm"));
     expect(onChangeEnds).toHaveBeenCalledTimes(1);
@@ -330,10 +422,12 @@ describe("match screen visual states @ ~390px", () => {
 
   it("8. pending score disables conflicting controls and shows Đang ghi…", () => {
     render(
-      <RefereeMatchScreen
-        view={baseView()}
-        pendingAction="point:SIDE_A"
-      />
+      <MemoryRouter>
+        <RefereeMatchScreen
+          view={baseView()}
+          pendingAction="point:SIDE_A"
+        />
+      </MemoryRouter>
     );
     expect(screen.getByTestId("pending-banner")).toHaveTextContent("Đang ghi…");
     expect(screen.getByTestId("btn-point-a")).toBeDisabled();
@@ -343,13 +437,42 @@ describe("match screen visual states @ ~390px", () => {
 
   it("9. stale/reconcile fail-closed", () => {
     const onReload = vi.fn();
-    render(<RefereeMatchScreen view={baseView()} stale onReload={onReload} />);
+    render(
+      <MemoryRouter>
+        <RefereeMatchScreen view={baseView()} stale onReload={onReload} />
+      </MemoryRouter>
+    );
     expect(screen.getByTestId("stale-banner")).toBeInTheDocument();
     expect(screen.getByTestId("btn-point-a")).toBeDisabled();
     expect(screen.getByTestId("btn-reconcile")).toBeInTheDocument();
   });
 
-  it("mobile court stays compact (not full-screen empty rectangle)", () => {
+  it("10. capability-driven controls + completion/result state", () => {
+    render(
+      <MemoryRouter>
+        <RefereeMatchScreen
+          view={baseView({
+            canSuspend: true,
+            canResume: false,
+            canCorrect: true,
+            canComplete: true,
+            canSwitchPositions: true,
+            canChangeEnds: true,
+            resultStatus: "PENDING_ACCEPTANCE",
+            resultStatusLabel: "Đã tính tỷ số — chờ CORE-17 chấp nhận",
+            acceptedOfficialResult: false,
+          })}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId("btn-suspend")).toBeInTheDocument();
+    expect(screen.queryByTestId("btn-resume")).not.toBeInTheDocument();
+    expect(screen.getByTestId("btn-correct")).toHaveTextContent(/Sửa/);
+    expect(screen.getByTestId("btn-complete")).toHaveTextContent("KẾT THÚC TRẬN");
+    expect(screen.getByTestId("result-status")).toHaveTextContent(/CORE-17/);
+  });
+
+  it("mobile court stays compact with pickleball geometry", () => {
     const { container } = render(
       <div style={{ width: 390 }}>
         <CanonicalCourtView courtProjection={doublesCourt()} />
@@ -357,8 +480,10 @@ describe("match screen visual states @ ~390px", () => {
     );
     const court = container.querySelector(".rp-court");
     expect(court).toBeTruthy();
-    expect(court.classList.contains("rp-court")).toBe(true);
-    // Prefer landscape-ish court, not tall empty 3/4 viewport slab.
+    expect(court.querySelector(".rp-court-net")).toBeTruthy();
+    expect(court.querySelector(".rp-court-kitchen")).toBeTruthy();
+    expect(court.querySelector(".rp-court-baseline")).toBeTruthy();
+    expect(court.querySelector(".rp-court-sideline")).toBeTruthy();
     expect(court.className).not.toMatch(/full-viewport|hero-court/);
   });
 

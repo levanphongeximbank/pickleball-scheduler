@@ -890,21 +890,100 @@ test("owner visual remediation — chrome suppress + participant-aware controls"
   const shell = read("src/features/canonical-shell/components/CanonicalAppShell.jsx");
   const bottomNav = read("src/features/mobile/layout/MobileBottomNav.jsx");
   const match = read("src/features/referee-production-ui/components/RefereeMatchScreen.jsx");
+  const home = read("src/features/referee-production-ui/components/RefereeHome.jsx");
   const card = read("src/features/referee-production-ui/components/RefereeAssignmentCard.jsx");
   const css = read("src/features/referee-production-ui/styles/referee-production.css");
   assert.match(layout, /isRefereeWorkspaceRoute/);
   assert.match(shell, /isRefereeWorkspaceRoute/);
   assert.match(bottomNav, /isRefereeWorkspaceRoute/);
+  assert.match(home, /Trọng tài của tôi/);
+  assert.match(home, /home-daily-summary/);
+  assert.match(home, /home-status-filters/);
+  assert.match(match, /Điều hành trận/);
+  assert.match(match, /match-rules-panel/);
   assert.match(match, /ĐỔI VỊ TRÍ VĐV/);
   assert.match(match, /ĐỔI SÂN \/ ĐỔI ĐẦU SÂN/);
+  assert.match(match, /ĐÃ ĐẾN ĐIỂM ĐỔI SÂN/);
   assert.match(match, /pointLabel\(/);
   assert.match(match, /Đang ghi…/);
   assert.match(match, /current-game-score/);
   assert.match(match, /games-won/);
+  assert.match(match, /serving-status-strip/);
   assert.doesNotMatch(match, />Điểm A</);
   assert.doesNotMatch(match, /A: \{db\.sideAActivePlayer/);
+  assert.match(card, /assignment-meta-row/);
   assert.doesNotMatch(card, /match-status-badge/);
   assert.match(css, /max-height:\s*220px/);
+  assert.match(css, /rp-court-kitchen/);
+  assert.match(css, /rp-court-baseline/);
+});
+
+test("home daily summary + status filters", async () => {
+  const {
+    buildRefereeHomeSummary,
+    filterAssignmentsByHomeStatus,
+    HOME_STATUS_FILTER,
+  } = await import(
+    "../src/features/referee-production-ui/projection/buildRefereeHomeSummary.js"
+  );
+  const assignments = [
+    { matchId: "1", matchStatus: "READY_TO_START", action: "ENTER" },
+    { matchId: "2", matchStatus: "IN_PROGRESS", action: "CONTINUE" },
+    { matchId: "3", matchStatus: "COMPLETED", action: "VIEW_RESULT", acceptedOfficialResult: true },
+  ];
+  const summary = buildRefereeHomeSummary(assignments);
+  assert.equal(summary.totalToday, 3);
+  assert.equal(summary.counters.upcoming, 1);
+  assert.equal(summary.counters.live, 1);
+  assert.equal(summary.counters.done, 1);
+  assert.match(summary.headline, /Hôm nay: 3 trận/);
+  assert.equal(
+    filterAssignmentsByHomeStatus(assignments, HOME_STATUS_FILTER.LIVE).length,
+    1
+  );
+});
+
+test("match rules panel + game history derive from canonical policy/state", () => {
+  const view = buildRefereeMatchView({
+    matchId: "m1",
+    competitionMode: "DAILY_PLAY",
+    adapterSelected: "daily-play-referee-adapter-b",
+    competitionContext: { competitionName: "Club Night", competitionId: "c1" },
+    matchContext: { courtLabel: "Sân 3", stage: "Tứ kết", round: 1 },
+    participants: {
+      sides: [
+        { sideKey: "A", participantIds: ["p1", "p2"], displayName: "Đội 4" },
+        { sideKey: "B", participantIds: ["p3", "p4"], displayName: "Đội 3" },
+      ],
+    },
+    participantNames: { p1: "An", p2: "Bình", p3: "Chi", p4: "Dũng" },
+    scoringRules: SIDE_OUT,
+    lifecyclePolicy: { changeEndPolicyLabel: "Sau mỗi game • G3 tại 6" },
+    capabilities: { changeEnds: true, switchPositions: true },
+    assignedMatch: {
+      lifecycleState: "IN_PROGRESS",
+      scoreProjection: {
+        points: { SIDE_A: 6, SIDE_B: 4 },
+        serve: { servingSide: "SIDE_A", serverNumber: 1, serverPlayerId: "p1" },
+        gamesWonInCurrentSet: { SIDE_A: 1, SIDE_B: 0 },
+        currentGameIndex: 1,
+        completedGames: [{ gameIndex: 0, SIDE_A: 11, SIDE_B: 7, winnerSide: "SIDE_A" }],
+        format: SIDE_OUT,
+      },
+    },
+  });
+  assert.equal(view.rulesPanel.scoringMethod, "SIDE-OUT");
+  assert.equal(view.rulesPanel.targetScore, 11);
+  assert.equal(view.rulesPanel.winBy, 2);
+  assert.equal(view.rulesPanel.capLabel, "Không");
+  assert.match(view.rulesPanel.changeEndAt, /Sau mỗi game/);
+  assert.equal(view.rulesPanel.bestOf, 3);
+  assert.match(view.contextRow, /Sân 3/);
+  assert.equal(view.participantDisplay.sideA.playerNames.includes("An"), true);
+  assert.equal(view.gameSummary.previousGames.length, 1);
+  assert.equal(view.gameSummary.previousGames[0].sideA, 11);
+  assert.equal(view.canChangeEnds, true);
+  assert.equal(view.canSwitchPositions, true);
 });
 
 test("mode-state resolver enriches CORE-13-shaped Team assignment row", async () => {
@@ -1061,19 +1140,19 @@ test("assignment card action labels", () => {
     assignedMatch: { lifecycleState: "READY_TO_START" },
     participants: { sides: [] },
   });
-  assert.equal(enter.actionLabel, "Vào trận");
+  assert.equal(enter.actionLabel, "VÀO TRẬN");
   const cont = buildRefereeAssignmentCard({
     assignment: { matchId: "m", competitionId: "c", status: "READY" },
     competitionMode: "DAILY_PLAY",
     assignedMatch: { lifecycleState: "IN_PROGRESS" },
     participants: { sides: [] },
   });
-  assert.equal(cont.actionLabel, "Tiếp tục");
+  assert.equal(cont.actionLabel, "TIẾP TỤC");
   const done = buildRefereeAssignmentCard({
     assignment: { matchId: "m", competitionId: "c", status: "READY" },
     competitionMode: "DAILY_PLAY",
     assignedMatch: { lifecycleState: "COMPLETED", validationStatus: "ACCEPTED" },
     participants: { sides: [] },
   });
-  assert.equal(done.actionLabel, "Xem kết quả");
+  assert.equal(done.actionLabel, "XEM KẾT QUẢ");
 });

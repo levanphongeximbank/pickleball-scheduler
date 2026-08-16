@@ -59,7 +59,7 @@ function LegacyMainLayoutContent() {
           {refereeWorkspace ? (
             <RefereeCompactChrome
               onMenuClick={() => setDrawerOpen(true)}
-              title="Trọng tài"
+              title={matchScreen ? "Điều hành trận" : "Trọng tài của tôi"}
               showBack={matchScreen}
             />
           ) : (

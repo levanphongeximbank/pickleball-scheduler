@@ -97,7 +97,7 @@ function CanonicalAppShellInner() {
             {refereeWorkspace ? (
               <RefereeCompactChrome
                 onMenuClick={openMobileDrawer}
-                title="Trọng tài"
+                title={matchScreen ? "Điều hành trận" : "Trọng tài của tôi"}
                 showBack={matchScreen}
               />
             ) : (

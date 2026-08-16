@@ -8,12 +8,14 @@ import {
   formatAssignmentStatusLabel,
   formatCompetitionDisplayName,
   formatCompetitionModeLabel,
+  formatCompactScheduledClock,
   formatCourtLabel,
   formatLocalScheduledTime,
   formatMatchStatusLabel,
   formatParticipantDisplayName,
   isRawTechnicalId,
 } from "./formatRefereeUiLabels.js";
+import { resolveAssignmentHomeBucket } from "./buildRefereeHomeSummary.js";
 
 function resolveNameToken(token, names) {
   if (token == null) return null;
@@ -117,6 +119,11 @@ export function buildRefereeAssignmentCard(input) {
     assigned.scheduledAt ||
     null;
   const assignmentStatus = assignment.status || "ASSIGNED";
+  const homeBucket = resolveAssignmentHomeBucket({
+    matchStatus,
+    action: action.action,
+    acceptedOfficialResult: result.acceptedOfficialResult,
+  });
 
   return Object.freeze({
     matchId: String(assignment.matchId || matchContext.matchId || "").trim(),
@@ -133,7 +140,7 @@ export function buildRefereeAssignmentCard(input) {
     stageName: matchContext.stage || assignment.stageName || null,
     courtId: assignment.courtId || matchContext.courtId || assigned.courtId || null,
     courtLabel,
-    scheduledTime: formatLocalScheduledTime(scheduledRaw),
+    scheduledTime: formatCompactScheduledClock(scheduledRaw) || formatLocalScheduledTime(scheduledRaw),
     scheduledTimeRaw: scheduledRaw,
     participantA: firstName(sides[0], names),
     participantB: firstName(sides[1], names),
@@ -141,6 +148,13 @@ export function buildRefereeAssignmentCard(input) {
     assignmentStatusLabel: formatAssignmentStatusLabel(assignmentStatus),
     matchStatus,
     matchStatusLabel: formatMatchStatusLabel(matchStatus),
+    homeStatusBucket: homeBucket,
+    homeStatusLabel:
+      homeBucket === "LIVE"
+        ? "Đang thi đấu"
+        : homeBucket === "DONE"
+          ? "Hoàn tất"
+          : "Sắp diễn ra",
     resultStatus: result.resultStatus,
     acceptedOfficialResult: result.acceptedOfficialResult,
     action: action.action,

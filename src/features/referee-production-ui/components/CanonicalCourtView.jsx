@@ -64,12 +64,18 @@ export default function CanonicalCourtView({ courtProjection }) {
       data-orientation={courtProjection?.courtOrientation || "STANDARD"}
       aria-label="Sơ đồ sân trọng tài"
     >
+      <div className="rp-court-surface" aria-hidden="true">
+        <div className="rp-court-baseline far" />
+        <div className="rp-court-baseline near" />
+        <div className="rp-court-sideline left" />
+        <div className="rp-court-sideline right" />
+        <div className="rp-court-kitchen far" />
+        <div className="rp-court-kitchen near" />
+        <div className="rp-court-center" />
+        <div className="rp-court-net" />
+      </div>
       <SideLabel side={sides.left} position="left" />
       <SideLabel side={sides.right} position="right" />
-      <div className="rp-court-net" aria-hidden="true" />
-      <div className="rp-court-center" aria-hidden="true" />
-      <div className="rp-court-kitchen far" aria-hidden="true" />
-      <div className="rp-court-kitchen near" aria-hidden="true" />
       <Marker player={court[COURT_SLOT.LEFT_TOP]} slot={COURT_SLOT.LEFT_TOP} />
       <Marker player={court[COURT_SLOT.LEFT_BOTTOM]} slot={COURT_SLOT.LEFT_BOTTOM} />
       <Marker player={court[COURT_SLOT.RIGHT_TOP]} slot={COURT_SLOT.RIGHT_TOP} />

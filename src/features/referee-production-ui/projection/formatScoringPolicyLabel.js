@@ -15,6 +15,12 @@ function readLabel(source) {
   ).trim();
 }
 
+function scoringMethodLabel(scoringSystem) {
+  if (scoringSystem === SCORING_SYSTEM.SIDE_OUT) return "SIDE-OUT";
+  if (scoringSystem === SCORING_SYSTEM.RALLY) return "RALLY";
+  return scoringSystem || null;
+}
+
 /**
  * @param {{ scoringRules?: object|null, lifecyclePolicy?: object|null }} input
  */
@@ -28,8 +34,10 @@ export function formatScoringPolicyLabel(input = {}) {
   const winBy = Number(rules.winBy) || 0;
   const cap = rules.maximumScore == null ? null : Number(rules.maximumScore);
   const scoringSystem = String(rules.scoringSystem || "").toUpperCase();
+  const method = scoringMethodLabel(scoringSystem);
 
   const parts = [];
+  if (method) parts.push(method);
   if (bestOf > 0) parts.push(`Best of ${bestOf}`);
   if (pointsToWin > 0) parts.push(`đến ${pointsToWin}`);
   if (winBy > 0) parts.push(`win-by ${winBy}`);
@@ -41,18 +49,48 @@ export function formatScoringPolicyLabel(input = {}) {
     readLabel(policy.changeEndPolicy) ||
     readLabel(metadata.changeEndPolicy);
 
+  const sideSwitchAt =
+    rules.sideSwitchAt == null ? null : Number(rules.sideSwitchAt);
+  const changeEndAt =
+    changeEndLabel ||
+    (sideSwitchAt != null && Number.isFinite(sideSwitchAt) ? `Tại ${sideSwitchAt}` : null);
+
   return Object.freeze({
     scoringSystem,
+    scoringMethodLabel: method,
     isSideOut: scoringSystem === SCORING_SYSTEM.SIDE_OUT,
     isRally: scoringSystem === SCORING_SYSTEM.RALLY,
     bestOfGames: bestOf || null,
     pointsToWin: pointsToWin || null,
     winBy: winBy || null,
     cap: cap != null && Number.isFinite(cap) ? cap : null,
+    capLabel: cap != null && Number.isFinite(cap) ? String(cap) : "Không",
     scorePolicyLine: parts.join(" • ") || "",
     changeEndPolicyLabel: changeEndLabel || null,
-    sideSwitchAt:
-      rules.sideSwitchAt == null ? null : Number(rules.sideSwitchAt),
+    changeEndAtLabel: changeEndAt,
+    sideSwitchAt,
+    rulesRows: Object.freeze(
+      [
+        method ? Object.freeze({ key: "method", label: "Cách tính", value: method }) : null,
+        pointsToWin > 0
+          ? Object.freeze({ key: "target", label: "Kết thúc game", value: String(pointsToWin) })
+          : null,
+        winBy > 0
+          ? Object.freeze({ key: "winBy", label: "Thắng cách", value: String(winBy) })
+          : null,
+        Object.freeze({
+          key: "cap",
+          label: "Điểm trần / cap",
+          value: cap != null && Number.isFinite(cap) ? String(cap) : "Không",
+        }),
+        changeEndAt
+          ? Object.freeze({ key: "changeEnd", label: "Đổi sân tại", value: changeEndAt })
+          : null,
+        bestOf > 0
+          ? Object.freeze({ key: "bestOf", label: "Thể thức", value: `Best of ${bestOf}` })
+          : null,
+      ].filter(Boolean)
+    ),
   });
 }
 
