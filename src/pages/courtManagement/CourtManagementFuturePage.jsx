@@ -14,7 +14,7 @@ import SocialPlayPanel from "./SocialPlayPanel.jsx";
 import CourtManagementExportPanel from "./CourtManagementExportPanel.jsx";
 
 export default function CourtManagementFuturePage() {
-  const { clubId, courts, bookings, onRefresh, revision } = useOutletContext();
+  const { clubId, tenantId, courts, bookings, onRefresh, revision } = useOutletContext();
 
   return (
     <Stack spacing={2}>
@@ -28,7 +28,12 @@ export default function CourtManagementFuturePage() {
       <PeakHourPricingPanel clubId={clubId} revision={revision} onSaved={onRefresh} />
       <BookingNotificationPanel clubId={clubId} revision={revision} onSaved={onRefresh} />
       <AutoCompleteBookingsPanel clubId={clubId} onSaved={onRefresh} />
-      <MaintenanceBookingPanel clubId={clubId} courts={courts} onSaved={onRefresh} />
+      <MaintenanceBookingPanel
+        clubId={clubId}
+        tenantId={tenantId}
+        courts={courts}
+        onSaved={onRefresh}
+      />
       <SocialPlayPanel clubId={clubId} courts={courts} onSaved={onRefresh} />
       <RecurringBookingPanel clubId={clubId} courts={courts} onSaved={onRefresh} />
       <TournamentCourtScheduleManager

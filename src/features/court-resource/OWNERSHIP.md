@@ -1,6 +1,6 @@
 # 2.2 Court Operations — Court Resource ownership freeze
 
-**Status:** Frozen for Batch 3 canonical Booking business lifecycle  
+**Status:** Frozen for Batch 4 canonical Resource Block business lifecycle  
 **Do not invert these owners without an Owner GO.**
 
 ```
@@ -10,6 +10,7 @@ COURT_MASTER_OWNER=2.2_COURT_OPERATIONS
 COURT_ACCESS_AUTHORITY_OWNER=2.2_COURT_OPERATIONS
 COMPETITION_PROVIDER_BINDING_OWNER=2.2_COURT_OPERATIONS
 BOOKING_BUSINESS_OWNER=2.2_COURT_OPERATIONS
+RESOURCE_BLOCK_BUSINESS_OWNER=2.2_COURT_OPERATIONS
 ```
 
 ## What 2.2 Court Operations owns
@@ -17,6 +18,7 @@ BOOKING_BUSINESS_OWNER=2.2_COURT_OPERATIONS
 - `CourtResourceGateway`
 - Court Resource services
 - Court Operations Booking Application (`courtOperationsBookingApplication`)
+- Court Operations Resource Block Application (`courtOperationsResourceBlockApplication`)
 - court cluster **topology** (`clusterId` is filter/scope, not reservable identity)
 - canonical Physical Court identity (`physicalCourtId`)
 - court inventory
@@ -24,9 +26,9 @@ BOOKING_BUSINESS_OWNER=2.2_COURT_OPERATIONS
 - court eligibility
 - court availability / capacity / reservation authority
 - canonical Booking business aggregate (`court_operations_bookings`)
+- canonical Resource Block business aggregate (`court_operations_resource_blocks`)
 - Competition Court Contract A **provider binding** (`courtResourceCompetitionAdapter`)
 - Court Live Resource Runtime (later batches)
-- Resource blocks / maintenance windows (Batch 4)
 
 Canonical masters:
 
@@ -37,9 +39,20 @@ Canonical masters:
 | Club operational access | `public.court_resource_club_operational_access` |
 | Durable reservation / capacity | `public.court_resource_reservations` |
 | Booking business aggregate | `public.court_operations_bookings` |
+| Resource block business aggregate | `public.court_operations_resource_blocks` |
 
 **Separation:** Booking business SSOT is **not** the reservation SSOT.
-Reservation rows are capacity pointers (`owner_type='booking'`, `owner_id=bookingId`).
+Resource Block business SSOT is also **not** the reservation SSOT.
+Reservation rows are capacity pointers:
+
+- Booking: `owner_type='booking'`, `owner_id=bookingId`
+- Resource Block MAINTENANCE: `owner_type='maintenance'`, `owner_id=resourceBlockId`,
+  `owner_sub_type='resource_block'`
+- Resource Block OPERATIONAL_BLOCK: `owner_type='operations'`, `owner_id=resourceBlockId`,
+  `owner_sub_type='resource_block'`
+
+Do **not** invent a `court_resource_block` owner type. Resource Blocks must not
+create `bookingType=maintenance` and must not treat `court.status` as capacity.
 
 Canonical reservable / booking court identity is `physicalCourtId` / `physicalCourtIds`.
 
@@ -87,10 +100,25 @@ One provider implementation only. Native identity handoff is
 | Customer Management | customer master | booking business aggregate |
 | Finance | payment ledger | booking price metadata projections |
 
-Venue & Court `listCourts` / `club_data_v3` remain **transitional compatibility** readers for old noncanonical consumers. They are not the target inventory, access, or Booking business authority.
+Venue & Court `listCourts` / `club_data_v3` remain **transitional compatibility** readers for old noncanonical consumers. They are not the target inventory, access, Booking, or Resource Block business authority.
+
+## Deferred
+
+```
+DAILY_PLAY_CANONICAL_BUSINESS_AGGREGATE=DEFERRED
+DAILY_PLAY_RUNTIME_RESOURCE_BLOCK_CERTIFICATION_DEFERRED=YES
+LIVE_RESOURCE_RUNTIME_REDESIGN_DEFERRED=YES
+```
+
+Daily Play remains capacity-owner vocabulary (`daily_play`) under Phase 3B / D4.
+A Daily Play business aggregate (Batch-style) is **not** started in Batch 4.
+Whole-system Daily Play runtime Resource Block certification is deferred until
+caller adoption reaches the native identity/capacity path. Court Live Resource
+Runtime redesign remains deferred (Batch 7+).
 
 ```
 CANONICAL_BOOKING_LIFECYCLE_DEFAULT=false
+CANONICAL_RESOURCE_BLOCKS_DEFAULT=false
 SQL_CUTOVER=false
 JS_CUTOVER=false
 DUAL_CUTOVER=OFF_OFF

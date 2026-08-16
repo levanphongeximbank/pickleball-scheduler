@@ -26,6 +26,9 @@ export default function CourtStatusBoard({
     [courts, bookings, now, clubId]
   );
 
+  // Indefinite live court.status toggles stay on the legacy board path.
+  // Durable timed blocks (MAINTENANCE / OPERATIONAL_BLOCK) use the canonical
+  // Resource Block application API — do not invent infinite Resource Blocks here.
   const handleLockToggle = (court) => {
     const nextStatus = court.status === "locked" ? "active" : "locked";
     setCourtOperationalStatus(court.id, nextStatus, clubId);

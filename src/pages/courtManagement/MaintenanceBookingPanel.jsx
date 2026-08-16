@@ -19,15 +19,29 @@ import {
 import { createMaintenanceBooking } from "../../domain/bookingService.js";
 import { loadCourtManagementSettings } from "../../domain/courtManagementSettings.js";
 import { getCourtDisplayName } from "../../models/court.js";
+import { isCanonicalPhysicalCourtId } from "../../features/court-resource/contracts/canonicalPhysicalCourt.js";
+import {
+  CANONICAL_RESOURCE_BLOCK_TYPE,
+  isCanonicalResourceBlocks,
+} from "../../features/court-resource/constants/canonicalResourceBlock.js";
+import { createResourceBlock } from "../../features/court-resource/services/courtOperationsResourceBlockApplication.js";
 import {
   buildEndTimeOptions,
   buildTimeOptions,
   todayIsoDate,
 } from "./courtManagement.constants.js";
 
-export default function MaintenanceBookingPanel({ clubId, courts = [], onSaved }) {
+export default function MaintenanceBookingPanel({
+  clubId,
+  tenantId = null,
+  courts = [],
+  onSaved,
+}) {
+  const canonicalPath = isCanonicalResourceBlocks();
   const [date, setDate] = useState(todayIsoDate());
-  const [courtId, setCourtId] = useState(courts[0]?.id || "");
+  const [courtId, setCourtId] = useState(
+    courts[0]?.physicalCourtId || courts[0]?.id || ""
+  );
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("12:00");
   const [note, setNote] = useState("");
@@ -42,7 +56,57 @@ export default function MaintenanceBookingPanel({ clubId, courts = [], onSaved }
     };
   }, [clubId]);
 
+  const selectedCourt = useMemo(
+    () =>
+      courts.find(
+        (court) =>
+          court?.physicalCourtId === courtId || court?.id === courtId
+      ) || null,
+    [courts, courtId]
+  );
+
   const handleSubmit = async () => {
+    const physicalCourtId =
+      selectedCourt?.physicalCourtId ||
+      (isCanonicalPhysicalCourtId(courtId) ? courtId : "");
+    const useCanonical =
+      canonicalPath && Boolean(physicalCourtId) && isCanonicalPhysicalCourtId(physicalCourtId);
+
+    if (useCanonical) {
+      if (!tenantId) {
+        setError("Thiếu tenantId — không thể tạo resource block canonical.");
+        setMessage(null);
+        return;
+      }
+      const displayName = selectedCourt
+        ? getCourtDisplayName(selectedCourt, 0)
+        : "";
+      const result = await createResourceBlock({
+        tenantId,
+        clubId,
+        physicalCourtId,
+        date,
+        startTime,
+        endTime,
+        blockType: CANONICAL_RESOURCE_BLOCK_TYPE.MAINTENANCE,
+        reason: note.trim() || "Bảo trì sân",
+        operatorNotes: note.trim() || "Bảo trì sân",
+        courtDisplayName: displayName,
+        forceCanonical: true,
+      });
+
+      if (!result.ok) {
+        setError(result.message || result.error || "Không tạo được resource block.");
+        setMessage(null);
+        return;
+      }
+
+      setError(null);
+      setMessage("Đã khóa sân bảo trì (canonical Resource Block).");
+      onSaved?.();
+      return;
+    }
+
     const result = await createMaintenanceBooking(
       {
         courtId,
@@ -71,7 +135,9 @@ export default function MaintenanceBookingPanel({ clubId, courts = [], onSaved }
         <Stack spacing={2}>
           <Typography variant="h6">Khóa sân bảo trì</Typography>
           <Typography variant="body2" color="text.secondary">
-            Tạo booking loại bảo trì để chặn khách đặt trùng giờ.
+            {canonicalPath
+              ? "Canonical path: tạo Resource Block loại MAINTENANCE (không tạo booking bảo trì)."
+              : "Tạo booking loại bảo trì để chặn khách đặt trùng giờ."}
           </Typography>
 
           {error && <Alert severity="error">{error}</Alert>}
@@ -81,7 +147,10 @@ export default function MaintenanceBookingPanel({ clubId, courts = [], onSaved }
             <InputLabel>Sân</InputLabel>
             <Select label="Sân" value={courtId} onChange={(e) => setCourtId(e.target.value)}>
               {courts.map((court, index) => (
-                <MenuItem key={court.id} value={court.id}>
+                <MenuItem
+                  key={court.physicalCourtId || court.id}
+                  value={court.physicalCourtId || court.id}
+                >
                   {getCourtDisplayName(court, index)}
                 </MenuItem>
               ))}

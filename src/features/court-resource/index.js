@@ -14,13 +14,16 @@ export {
   COURT_ACCESS_AUTHORITY_OWNER,
   COMPETITION_PROVIDER_BINDING_OWNER,
   BOOKING_BUSINESS_OWNER,
+  RESOURCE_BLOCK_BUSINESS_OWNER,
   COURT_MASTER_TABLE,
   COURT_CLUSTER_TOPOLOGY_TABLE,
   COURT_ACCESS_AUTHORITY_TABLE,
   CANONICAL_BOOKING_BUSINESS_TABLE,
+  CANONICAL_RESOURCE_BLOCK_BUSINESS_TABLE,
   CANONICAL_LIST_ELIGIBLE_RPC,
   CANONICAL_LIST_OWNER_RESERVATIONS_RPC,
   CANONICAL_BOOKING_CREATE_RPC,
+  CANONICAL_RESOURCE_BLOCK_CREATE_RPC,
 } from "./constants/courtOperationsOwnership.js";
 
 export {
@@ -41,6 +44,24 @@ export {
 } from "./constants/canonicalBooking.js";
 
 export {
+  CANONICAL_RESOURCE_BLOCKS_CONTRACT_VERSION,
+  CANONICAL_RESOURCE_BLOCKS_TABLE,
+  CANONICAL_RESOURCE_BLOCKS_COMMAND_LEDGER,
+  CANONICAL_RESOURCE_BLOCK_CREATE_RPC as RESOURCE_BLOCK_CREATE_RPC,
+  CANONICAL_RESOURCE_BLOCK_RESCHEDULE_RPC,
+  CANONICAL_RESOURCE_BLOCK_TRANSFER_RPC,
+  CANONICAL_RESOURCE_BLOCK_CANCEL_RPC,
+  CANONICAL_RESOURCE_BLOCK_GET_RPC,
+  CANONICAL_RESOURCE_BLOCK_LIST_RPC,
+  CANONICAL_RESOURCE_BLOCK_TYPE,
+  CANONICAL_RESOURCE_BLOCK_OWNER_SUB_TYPE,
+  CANONICAL_RESOURCE_BLOCK_LIFECYCLE_STATUS,
+  CANONICAL_RESOURCE_BLOCKS_DEFAULT,
+  isCanonicalResourceBlocks,
+  mapBlockTypeToOwnerType,
+} from "./constants/canonicalResourceBlock.js";
+
+export {
   listBookingEligibleCourts,
   getBookingCourtAvailability,
   createCourtOperationsBooking,
@@ -51,6 +72,18 @@ export {
   getCourtOperationsBooking,
   listCourtOperationsBookings,
 } from "./services/courtOperationsBookingApplication.js";
+
+export {
+  listResourceBlockEligibleCourts,
+  getResourceBlockCourtAvailability,
+  createResourceBlock,
+  rescheduleResourceBlock,
+  updateResourceBlock,
+  transferResourceBlock,
+  cancelResourceBlock,
+  getResourceBlock,
+  listResourceBlocks,
+} from "./services/courtOperationsResourceBlockApplication.js";
 
 export {
   getCourtAvailability,
