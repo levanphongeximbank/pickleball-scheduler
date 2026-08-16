@@ -7,9 +7,11 @@ export default function RefereeHome({
   userLabel = "bạn",
 }) {
   return (
-    <div className="rp-page" data-testid="referee-home">
-      <h1 className="rp-title">Trận được phân công</h1>
-      <p className="rp-sub">Xin chào {userLabel}. Chọn trận để vào ghi điểm.</p>
+    <div className="rp-page rp-page-home" data-testid="referee-home">
+      <header className="rp-home-header">
+        <h1 className="rp-title">Trận được phân công</h1>
+        <p className="rp-sub">Xin chào {userLabel}. Chọn trận để ghi điểm.</p>
+      </header>
       {error ? (
         <div className="rp-banner rp-banner-error" data-testid="referee-home-error">
           {error}
@@ -21,9 +23,11 @@ export default function RefereeHome({
           Chưa có trận được phân công cho {userLabel}.
         </p>
       ) : null}
-      {assignments.map((card) => (
-        <RefereeAssignmentCard key={`${card.competitionId}-${card.matchId}`} card={card} />
-      ))}
+      <div className="rp-assignment-list" data-testid="assignment-list">
+        {assignments.map((card) => (
+          <RefereeAssignmentCard key={`${card.competitionId}-${card.matchId}`} card={card} />
+        ))}
+      </div>
     </div>
   );
 }

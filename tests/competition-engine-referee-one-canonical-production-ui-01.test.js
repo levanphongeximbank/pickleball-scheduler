@@ -416,10 +416,26 @@ test("8. DreamBreaker active-player projection stays Team-domain owned", () => {
     participantNames: { a1: "Hà", b1: "Linh", a2: "Khoa", b2: "Nam" },
   });
   assert.equal(db.isDreambreaker, true);
+  assert.equal(db.hasActiveRotation, true);
   assert.equal(db.rotationOwnedByTeamDomain, true);
   assert.equal(db.sideAActivePlayer.displayName, "Hà");
   assert.equal(db.sideBActivePlayer.displayName, "Linh");
   assert.equal(db.nextPlayerA.displayName, "Khoa");
+});
+
+test("8b. DreamBreaker requires genuine matchContext flag (no leftover blob UI)", () => {
+  const db = projectDreamBreakerRotation({
+    matchContext: { isDreambreaker: false },
+    modeState: {
+      dreambreaker: {
+        rotation: { sideAPlayerId: "a1", sideBPlayerId: "b1" },
+      },
+    },
+    participantNames: { a1: "Hà", b1: "Linh" },
+  });
+  assert.equal(db.isDreambreaker, false);
+  assert.equal(db.hasActiveRotation, false);
+  assert.equal(db.sideAActivePlayer, null);
 });
 
 test("9+10. player name on marker; no permanent #1/#2 identity; serviceTurn separate", () => {
@@ -867,6 +883,28 @@ test("authenticated API host exists and blocks browser privileged composition", 
   const hub = read("src/pages/referee/RefereeHub.jsx");
   assert.doesNotMatch(hub, /Quét QR trận/);
   assert.match(hub, /Quét QR \(tuỳ chọn\)/);
+});
+
+test("owner visual remediation — chrome suppress + participant-aware controls", () => {
+  const layout = read("src/layouts/MainLayout.jsx");
+  const shell = read("src/features/canonical-shell/components/CanonicalAppShell.jsx");
+  const bottomNav = read("src/features/mobile/layout/MobileBottomNav.jsx");
+  const match = read("src/features/referee-production-ui/components/RefereeMatchScreen.jsx");
+  const card = read("src/features/referee-production-ui/components/RefereeAssignmentCard.jsx");
+  const css = read("src/features/referee-production-ui/styles/referee-production.css");
+  assert.match(layout, /isRefereeWorkspaceRoute/);
+  assert.match(shell, /isRefereeWorkspaceRoute/);
+  assert.match(bottomNav, /isRefereeWorkspaceRoute/);
+  assert.match(match, /ĐỔI VỊ TRÍ VĐV/);
+  assert.match(match, /ĐỔI SÂN \/ ĐỔI ĐẦU SÂN/);
+  assert.match(match, /pointLabel\(/);
+  assert.match(match, /Đang ghi…/);
+  assert.match(match, /current-game-score/);
+  assert.match(match, /games-won/);
+  assert.doesNotMatch(match, />Điểm A</);
+  assert.doesNotMatch(match, /A: \{db\.sideAActivePlayer/);
+  assert.doesNotMatch(card, /match-status-badge/);
+  assert.match(css, /max-height:\s*220px/);
 });
 
 test("mode-state resolver enriches CORE-13-shaped Team assignment row", async () => {

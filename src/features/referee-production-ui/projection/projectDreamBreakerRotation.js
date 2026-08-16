@@ -31,17 +31,14 @@ function playerName(id, names) {
  */
 export function projectDreamBreakerRotation(input = {}) {
   const matchContext = input.matchContext || {};
+  // Fail closed: only genuine DreamBreaker match context may open the panel.
+  // Leftover modeState.dreambreaker blobs must not invent DreamBreaker UI.
   const isDreambreaker = matchContext.isDreambreaker === true;
-  const db =
-    matchContext.dreambreakerProjection ||
-    input.modeState?.dreambreaker ||
-    input.modeState?.matchups?.[matchContext.matchupId || matchContext.matchId]
-      ?.dreambreaker ||
-    null;
 
-  if (!isDreambreaker && !db) {
+  if (!isDreambreaker) {
     return Object.freeze({
       isDreambreaker: false,
+      hasActiveRotation: false,
       rotationOwnedByTeamDomain: true,
       sideAActivePlayer: null,
       sideBActivePlayer: null,
@@ -51,6 +48,13 @@ export function projectDreamBreakerRotation(input = {}) {
       currentRotation: null,
     });
   }
+
+  const db =
+    matchContext.dreambreakerProjection ||
+    input.modeState?.dreambreaker ||
+    input.modeState?.matchups?.[matchContext.matchupId || matchContext.matchId]
+      ?.dreambreaker ||
+    null;
 
   const rotation = db?.rotation || db?.currentRotation || {};
   const names = input.participantNames || {};
@@ -94,22 +98,26 @@ export function projectDreamBreakerRotation(input = {}) {
     db?.scoringFormat?.rotationPoints ??
     null;
 
+  const sideAActivePlayer = sideAId
+    ? Object.freeze({
+        playerId: sideAId,
+        displayName: playerName(sideAId, names),
+      })
+    : null;
+  const sideBActivePlayer = sideBId
+    ? Object.freeze({
+        playerId: sideBId,
+        displayName: playerName(sideBId, names),
+      })
+    : null;
+
   return Object.freeze({
     isDreambreaker: true,
+    hasActiveRotation: Boolean(sideAActivePlayer || sideBActivePlayer),
     rotationOwnedByTeamDomain: true,
     noDuplicateDreambreakerAssignment: true,
-    sideAActivePlayer: sideAId
-      ? Object.freeze({
-          playerId: sideAId,
-          displayName: playerName(sideAId, names),
-        })
-      : null,
-    sideBActivePlayer: sideBId
-      ? Object.freeze({
-          playerId: sideBId,
-          displayName: playerName(sideBId, names),
-        })
-      : null,
+    sideAActivePlayer,
+    sideBActivePlayer,
     nextPlayerA: nextA
       ? Object.freeze({ playerId: nextA, displayName: playerName(nextA, names) })
       : null,

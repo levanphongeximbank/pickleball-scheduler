@@ -32,6 +32,7 @@ export {
   assertRefereeUiSecurity,
   assertNotPrivilegedBrowserComposition,
 } from "./application/assertProductionUiSecurity.js";
+export { isRefereeWorkspaceRoute } from "./application/isRefereeWorkspaceRoute.js";
 
 export {
   formatCompetitionModeLabel,
@@ -48,3 +49,4 @@ export { default as RefereeHome } from "./components/RefereeHome.jsx";
 export { default as RefereeMatchScreen } from "./components/RefereeMatchScreen.jsx";
 export { default as CanonicalCourtView } from "./components/CanonicalCourtView.jsx";
 export { default as RefereeAssignmentCard } from "./components/RefereeAssignmentCard.jsx";
+export { default as RefereeCompactChrome } from "./components/RefereeCompactChrome.jsx";
