@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
  */
 export function useCanonicalRefereeHome({ client, tenantId, actor }) {
   const [assignments, setAssignments] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const reload = useCallback(async () => {

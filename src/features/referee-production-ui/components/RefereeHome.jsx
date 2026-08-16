@@ -30,19 +30,25 @@ export default function RefereeHome({
 
       <section className="rp-home-summary" data-testid="home-daily-summary">
         <p className="rp-home-summary-title" data-testid="home-daily-headline">
-          {summary.headline}
+          {loading && assignments.length === 0 ? "Đang tải phân công…" : summary.headline}
         </p>
         <div className="rp-home-counters" data-testid="home-status-counters">
           <div className="rp-home-counter" data-testid="counter-upcoming">
-            <span className="rp-home-counter-value">{summary.counters.upcoming}</span>
+            <span className="rp-home-counter-value">
+              {loading && assignments.length === 0 ? "—" : summary.counters.upcoming}
+            </span>
             <span className="rp-home-counter-label">Sắp diễn ra</span>
           </div>
           <div className="rp-home-counter" data-testid="counter-live">
-            <span className="rp-home-counter-value">{summary.counters.live}</span>
+            <span className="rp-home-counter-value">
+              {loading && assignments.length === 0 ? "—" : summary.counters.live}
+            </span>
             <span className="rp-home-counter-label">Đang thi đấu</span>
           </div>
           <div className="rp-home-counter" data-testid="counter-done">
-            <span className="rp-home-counter-value">{summary.counters.done}</span>
+            <span className="rp-home-counter-value">
+              {loading && assignments.length === 0 ? "—" : summary.counters.done}
+            </span>
             <span className="rp-home-counter-label">Hoàn tất</span>
           </div>
         </div>
@@ -58,9 +64,12 @@ export default function RefereeHome({
             className={`rp-filter-tab${filter === tab.id ? " is-active" : ""}`}
             data-testid={`filter-${tab.id.toLowerCase()}`}
             onClick={() => setFilter(tab.id)}
+            disabled={loading && assignments.length === 0}
           >
             {tab.label}
-            <span className="rp-filter-count">{tab.count}</span>
+            <span className="rp-filter-count">
+              {loading && assignments.length === 0 ? "—" : tab.count}
+            </span>
           </button>
         ))}
       </div>

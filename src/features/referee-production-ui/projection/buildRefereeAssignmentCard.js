@@ -2,6 +2,8 @@
  * Normalize one Home assignment card from CORE-13 + Adapter B projection.
  */
 
+import { mapModeStatusToCore15 } from "../../competition-engine/integration/referee/adapters/shared/matchStatusMapper.js";
+import { MATCH_STATUS } from "../../competition-core/matches/index.js";
 import { resolveAssignmentAction } from "./resolveAssignmentAction.js";
 import { projectResultStatus } from "./resultStatus.js";
 import {
@@ -16,6 +18,27 @@ import {
   isRawTechnicalId,
 } from "./formatRefereeUiLabels.js";
 import { resolveAssignmentHomeBucket } from "./buildRefereeHomeSummary.js";
+
+const LIVE_MATCH_STATUSES = new Set([
+  MATCH_STATUS.IN_PROGRESS,
+  MATCH_STATUS.SUSPENDED,
+  MATCH_STATUS.PAUSED,
+]);
+
+/**
+ * Prefer an active lifecycle signal when sources disagree (Home vs Match).
+ * @param {...unknown} candidates
+ */
+function pickMatchStatus(...candidates) {
+  const normalized = [];
+  for (const raw of candidates) {
+    if (raw == null || raw === "") continue;
+    normalized.push(mapModeStatusToCore15(raw));
+  }
+  if (!normalized.length) return null;
+  const live = normalized.find((status) => LIVE_MATCH_STATUSES.has(status));
+  return live || normalized[0];
+}
 
 function resolveNameToken(token, names) {
   if (token == null) return null;
@@ -75,12 +98,13 @@ export function buildRefereeAssignmentCard(input) {
   };
   const assigned = input.assignedMatch || {};
   const live = input.live || {};
-  const matchStatus =
-    assigned.lifecycleState ||
-    matchContext.status ||
-    live.status ||
-    assignment.matchStatus ||
-    null;
+  const matchStatus = pickMatchStatus(
+    assigned.lifecycleState,
+    matchContext.status,
+    live.status,
+    assignment.matchStatus,
+    assignment.lifecycleState
+  );
   const validationStatus = assigned.validationStatus || null;
   const result = projectResultStatus({
     matchStatus,

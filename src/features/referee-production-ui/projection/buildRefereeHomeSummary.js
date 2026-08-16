@@ -3,6 +3,7 @@
  */
 
 import { MATCH_STATUS } from "../../competition-core/matches/index.js";
+import { mapModeStatusToCore15 } from "../../competition-engine/integration/referee/adapters/shared/matchStatusMapper.js";
 import { ASSIGNMENT_CARD_ACTION } from "../constants.js";
 
 export const HOME_STATUS_FILTER = Object.freeze({
@@ -23,16 +24,11 @@ const LIVE_STATUSES = new Set([
   MATCH_STATUS.IN_PROGRESS,
   MATCH_STATUS.SUSPENDED,
   MATCH_STATUS.PAUSED,
-  "IN_PROGRESS",
-  "SUSPENDED",
-  "PAUSED",
 ]);
 
 const DONE_STATUSES = new Set([
   MATCH_STATUS.COMPLETED,
   MATCH_STATUS.CANCELLED,
-  "COMPLETED",
-  "CANCELLED",
 ]);
 
 /**
@@ -40,13 +36,26 @@ const DONE_STATUSES = new Set([
  * @returns {"UPCOMING"|"LIVE"|"DONE"}
  */
 export function resolveAssignmentHomeBucket(card = {}) {
+  // Prefer precomputed bucket from card builder (single source of truth).
+  const precomputed = String(card.homeStatusBucket || "").trim().toUpperCase();
+  if (
+    precomputed === HOME_STATUS_FILTER.LIVE ||
+    precomputed === HOME_STATUS_FILTER.DONE ||
+    precomputed === HOME_STATUS_FILTER.UPCOMING
+  ) {
+    return precomputed;
+  }
+
+  // Action is product UX authority for Home tabs (TIẾP TỤC = đang thi đấu).
+  if (card.action === ASSIGNMENT_CARD_ACTION.CONTINUE) return HOME_STATUS_FILTER.LIVE;
   if (card.action === ASSIGNMENT_CARD_ACTION.VIEW_RESULT) return HOME_STATUS_FILTER.DONE;
   if (card.acceptedOfficialResult === true) return HOME_STATUS_FILTER.DONE;
-  const status = String(card.matchStatus || "").trim().toUpperCase();
+
+  const status = card.matchStatus
+    ? mapModeStatusToCore15(card.matchStatus)
+    : "";
+  if (LIVE_STATUSES.has(status)) return HOME_STATUS_FILTER.LIVE;
   if (DONE_STATUSES.has(status)) return HOME_STATUS_FILTER.DONE;
-  if (LIVE_STATUSES.has(status) || card.action === ASSIGNMENT_CARD_ACTION.CONTINUE) {
-    return HOME_STATUS_FILTER.LIVE;
-  }
   return HOME_STATUS_FILTER.UPCOMING;
 }
 

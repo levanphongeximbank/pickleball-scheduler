@@ -293,8 +293,8 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
     const actor = actorFrom(command, defaultActor);
     const tenantId = String(command.tenantId || "").trim();
     const rows = await listAssignmentRows(actor, tenantId);
-    const cards = [];
-    for (const row of rows) {
+
+    async function buildCardForRow(row) {
       const modeState = await resolveModeState(row, command);
       const modeHint =
         row.competitionMode ||
@@ -315,33 +315,30 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           ? Object.values(modeState.matchups)[0].courtId
           : row.courtId || null;
       if (!modeHint) {
-        cards.push(
-          buildRefereeAssignmentCard({
-            assignment: {
-              ...row,
-              competitionId: row.competitionId,
-              competitionName: modeState?.competitionName || null,
-              scheduledAt,
-              courtId: courtIdFromMode,
-              courtLabel: courtLabelFromMode,
-            },
-            competitionMode: "",
-            competitionContext: {
-              competitionId: row.competitionId,
-              competitionName: modeState?.competitionName || null,
-            },
-            matchContext: {
-              matchId: row.matchId,
-              courtId: courtIdFromMode,
-              courtLabel: courtLabelFromMode,
-              scheduledAt,
-            },
-            participants: { sides: [] },
-            participantNames: modeState?.participantNames || {},
-            modeState,
-          })
-        );
-        continue;
+        return buildRefereeAssignmentCard({
+          assignment: {
+            ...row,
+            competitionId: row.competitionId,
+            competitionName: modeState?.competitionName || null,
+            scheduledAt,
+            courtId: courtIdFromMode,
+            courtLabel: courtLabelFromMode,
+          },
+          competitionMode: "",
+          competitionContext: {
+            competitionId: row.competitionId,
+            competitionName: modeState?.competitionName || null,
+          },
+          matchContext: {
+            matchId: row.matchId,
+            courtId: courtIdFromMode,
+            courtLabel: courtLabelFromMode,
+            scheduledAt,
+          },
+          participants: { sides: [] },
+          participantNames: modeState?.participantNames || {},
+          modeState,
+        });
       }
       const { mode, adapter } = resolveAdapter(modeHint);
       const req = adapterRequest(
@@ -406,42 +403,41 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           }
         }
       }
-      const names = await resolveNames(row, modeState);
-      let assignedMatch;
-      try {
-        const got = await facade.getAssignedMatch({
-          tenantId: row.tenantId || tenantId,
-          competitionId: row.competitionId,
-          matchId: row.matchId,
-          venueId: row.venueId || modeState?.venueId,
-          actor,
-          competitionMode: mode,
-          modeState,
-        });
-        assignedMatch = got.assignedMatch;
-      } catch {
-        assignedMatch = null;
-      }
-      cards.push(
-        buildRefereeAssignmentCard({
-          assignment: {
-            ...row,
-            status: row.opsStatus || row.status,
-            scheduledAt,
-            courtId: courtIdFromMode,
-            courtLabel: courtLabelFromMode,
-            competitionName: modeState?.competitionName || null,
-          },
-          competitionContext,
-          matchContext,
-          participants,
-          assignedMatch,
-          participantNames: names,
-          competitionMode: mode,
-          modeState,
-        })
-      );
+      const [names, assignedMatch] = await Promise.all([
+        resolveNames(row, modeState),
+        facade
+          .getAssignedMatch({
+            tenantId: row.tenantId || tenantId,
+            competitionId: row.competitionId,
+            matchId: row.matchId,
+            venueId: row.venueId || modeState?.venueId,
+            actor,
+            competitionMode: mode,
+            modeState,
+          })
+          .then((got) => got.assignedMatch)
+          .catch(() => null),
+      ]);
+      return buildRefereeAssignmentCard({
+        assignment: {
+          ...row,
+          status: row.opsStatus || row.status,
+          scheduledAt,
+          courtId: courtIdFromMode,
+          courtLabel: courtLabelFromMode,
+          competitionName: modeState?.competitionName || null,
+        },
+        competitionContext,
+        matchContext,
+        participants,
+        assignedMatch,
+        participantNames: names,
+        competitionMode: mode,
+        modeState,
+      });
     }
+
+    const cards = await Promise.all(rows.map((row) => buildCardForRow(row)));
     return Object.freeze({
       ok: true,
       assignments: Object.freeze(cards),

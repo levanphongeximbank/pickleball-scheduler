@@ -863,7 +863,7 @@ test("assignment card formatting helpers reject raw technical labels", () => {
   );
   assert.equal(formatCompetitionModeLabel("DAILY_PLAY"), "Vui chơi hằng ngày");
   assert.equal(formatAssignmentStatusLabel("ASSIGNED"), "Đã phân công");
-  assert.equal(formatAssignmentStatusLabel("IN_PROGRESS"), "Đang diễn ra");
+  assert.equal(formatAssignmentStatusLabel("IN_PROGRESS"), "Đang thi đấu");
   assert.equal(formatAssignmentStatusLabel("COMPLETED"), "Đã hoàn tất");
   const local = formatLocalScheduledTime("2026-08-15T17:02:00.000Z", "UTC");
   assert.ok(local);
