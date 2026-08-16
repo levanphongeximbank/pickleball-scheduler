@@ -22,14 +22,14 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 import { useClub } from "../../context/ClubContext.jsx";
-import { loadCourtsForClub } from "../../domain/clubStorage.js";
+import { listEligibleCanonicalReferees } from "../../features/daily-play/services/refereeDirectoryService.js";
+import { ensureInternalRefereeMatchLive } from "../../features/tournament/internal/internalRefereeRuntimeEnsure.js";
 import {
   listAvailableAthletes,
   resolveTeamTournamentAthleteClubId,
   resolveTeamTournamentAthleteTenantId,
   TEAM_TOURNAMENT_ATHLETE_SCOPE,
 } from "../../features/team-tournament/services/teamTournamentAthletePoolService.js";
-import TournamentCourtSchedulePanel from "../../components/tournament/TournamentCourtSchedulePanel.jsx";
 import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
 import {
   INTERNAL_SETUP_CLUB_NOT_READY,
@@ -44,11 +44,11 @@ import {
   EVENT_TYPE_OPTIONS,
 } from "../../models/tournament/index.js";
 import {
-  buildInternalTournamentPatch,
+  buildInternalDrawEventWithoutMatches,
+  buildInternalScheduleFromPersistedGroups,
   buildInternalTournamentPlan,
   suggestEntriesFromPlayers,
   filterPlayersForEventType,
-  isSingleEventType,
   canGenerateBracket,
   generateKnockoutBracket,
   resolveBracketProgress,
@@ -58,19 +58,64 @@ import {
   resetBracketState,
   submitTournamentDirectorMatchScore,
 } from "../../tournament/engines/index.js";
-import { buildIndividualAllGroupStandings } from "../../features/individual-tournament/adapters/individualStandingsAdapter.js";
+import {
+  advanceHydrationBaselineAfterOwnWrite,
+  assertInternalTournamentReadyForMutation,
+  decideInternalSetupHydration,
+  formatCanonicalVersionConflictError,
+  hydrateInternalSetupFromTournament,
+  isCanonicalVersionConflict,
+  INTERNAL_VERSION_SYNCING_USER_MESSAGE,
+  ONE_GROUP_COMPLETION_MESSAGE,
+  assignInternalMatchReferee,
+  classifyCanonicalMatchLifecycleResult,
+  listEligibleInternalReferees,
+  mapLifecycleStepToWorkspaceSection,
+  INTERNAL_WORKSPACE_SECTION_QUERY,
+  resolveInternalWorkspaceSection,
+  resolveInternalTournamentLifecycle,
+  resolveInternalWorkspaceKey,
+  resolveInternalPageLoadingGate,
+  shouldSkipKnockoutForInternal,
+  INTERNAL_WORKSPACE_SECTIONS,
+  INTERNAL_WORKSPACE_SECTION_LABELS,
+  listInternalPersistedGroups,
+  countInternalPersistedGroups,
+  resolveInternalGroupMemberLabels,
+  resolveInternalCompetitionUnit,
+  resolveInternalGroupingEntries,
+  projectInternalGroupDrawCard,
+  COMPETITION_UNIT,
+  loadInternalScheduleCourts,
+  projectInternalLiveGroupStandings,
+  projectInternalLiveKnockout,
+  projectInternalAwardsWorkspace,
+  confirmInternalAwards,
+  resolveInternalKnockoutAction,
+  shouldPersistKnockoutProgression,
+  INTERNAL_KNOCKOUT_INCOMPLETE_MESSAGE,
+  INTERNAL_LIFECYCLE_STEPS,
+} from "../../features/tournament/internal/index.js";
+import { useInternalCanonicalSnapshotRefresh } from "../../features/tournament/internal/useInternalCanonicalSnapshotRefresh.js";
+import {
+  closeTournament,
+  reopenClosedTournament,
+  isTournamentClosed,
+} from "../../features/individual-tournament/engines/tournamentClosingEngine.js";
+import InternalTournamentLifecycleStepper from "../../components/tournament/InternalTournamentLifecycleStepper.jsx";
+import InternalScheduleStage from "../../components/tournament/internal/InternalScheduleStage.jsx";
+import InternalMatchRefereeSelect from "../../components/tournament/internal/InternalMatchRefereeSelect.jsx";
+import InternalRefereeStage from "../../components/tournament/internal/InternalRefereeStage.jsx";
+import InternalGroupStandingsTable from "../../components/tournament/internal/InternalGroupStandingsTable.jsx";
+import InternalAwardsWorkspace from "../../components/tournament/internal/InternalAwardsWorkspace.jsx";
 import BracketView from "../../components/tournament/BracketView.jsx";
 import GroupStagePanel from "../../components/tournament/GroupStagePanel.jsx";
-import RefereeRosterPanel from "../../components/tournament/RefereeRosterPanel.jsx";
 import TournamentAnimationDialog from "../../components/tournament/animation/TournamentAnimationDialog.jsx";
-import BracketRevealAnimation from "../../components/tournament/animation/BracketRevealAnimation.jsx";
 import {
   ANIMATION_MODES,
-  buildGroupMatchPairingSteps,
   buildPairingSteps,
   buildPairingWaitingPlayers,
   buildSnakeSteps,
-  stripMatchesFromEvent,
 } from "../../components/tournament/animation/animationUtils.js";
 import { useTournamentAnimation } from "../../components/tournament/animation/useTournamentAnimation.js";
 import { useTournamentFlowOrchestrator } from "../../components/tournament/animation/useTournamentFlowOrchestrator.js";
@@ -82,11 +127,7 @@ import {
   useTournamentBroadcast,
   BroadcastVodResultAlert,
 } from "../../features/tournament-broadcast/index.js";
-import { PAIRING_CONTROL_MODES } from "../../components/tournament/animation/pairing/usePairingSequence.js";
-import {
-  buildRefereeSettingsPatch,
-  getRefereeSettings,
-} from "../../tournament/engines/refereeEngine.js";
+import { buildRefereeSettingsPatch } from "../../tournament/engines/refereeEngine.js";
 import TournamentManageGate from "../../components/tournament/TournamentManageGate.jsx";
 import TournamentSetupShell from "../../components/tournament/TournamentSetupShell.jsx";
 import TournamentSelectedPlayersPanel from "../../components/tournament/TournamentSelectedPlayersPanel.jsx";
@@ -137,7 +178,7 @@ const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
 export default function InternalTournamentSetup() {
   const { tournamentId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const {
     activeClub,
@@ -164,14 +205,43 @@ export default function InternalTournamentSetup() {
   const [selectedPlayerIds, setSelectedPlayerIds] = useState([]);
   const [previewEntries, setPreviewEntries] = useState([]);
   const [founderConstraints, setFounderConstraints] = useState([]);
-  const [bracketAdvanceAnim, setBracketAdvanceAnim] = useState(null);
+  const [scheduleBusy, setScheduleBusy] = useState(false);
+  const [courts, setCourts] = useState([]);
+  const [canonicalReferees, setCanonicalReferees] = useState([]);
+  const [canonicalRefereesLoading, setCanonicalRefereesLoading] = useState(false);
+  const [canonicalRefereesError, setCanonicalRefereesError] = useState(null);
+  const [canonicalRefereesWarning, setCanonicalRefereesWarning] = useState(null);
+  const [sessionSection, setSessionSection] = useState(null);
+  const [winnerDrafts, setWinnerDrafts] = useState({});
+  const [pendingMatchId, setPendingMatchId] = useState(null);
+  const [lifecycleNotice, setLifecycleNotice] = useState(null);
+  const workspaceTouchedRef = useRef(false);
+  const [staleHydrationNotice, setStaleHydrationNotice] = useState(null);
+  const [reopenBusy, setReopenBusy] = useState(false);
+  const [awardsBusy, setAwardsBusy] = useState(false);
+  const hydrationMetaRef = useRef({
+    tournamentId: "",
+    eventId: "",
+    baselineVersion: null,
+    baselineHydration: null,
+    generation: 0,
+  });
+  const setupFormRef = useRef({
+    eventType: preselectedEvent || EVENT_TYPE.MIXED_DOUBLE,
+    groupCount: 4,
+    selectedPlayerIds: [],
+    previewEntries: [],
+  });
   const anim = useTournamentAnimation();
-  const pendingPlanRef = useRef(null);
   const guidedPairingRef = useRef({
     ok: true,
     skipped: true,
     pairingOptions: { privatePairingRules: [] },
   });
+  const drawMutationGuardRef = useRef(false);
+  const scheduleMutationGuardRef = useRef(false);
+  const canonicalWriteInFlightRef = useRef(false);
+  const knockoutProgressionPersistKeyRef = useRef("");
 
   const canViewSkillInSetup = useMemo(
     () =>
@@ -197,13 +267,49 @@ export default function InternalTournamentSetup() {
   const {
     tournament,
     loading: tournamentLoading,
+    refreshing: tournamentRefreshing,
     error: tournamentLoadError,
+    reload: reloadCanonicalTournament,
     update,
   } = useCanonicalTournament(
     clubScope.shouldQuery ? clubScope.scope : null,
     tournamentId,
     localRevision
   );
+
+  const durableMutationReady = assertInternalTournamentReadyForMutation(tournament);
+
+  const writeCanonical = async (patch, options = {}) => {
+    const current = options.currentTournament || tournament;
+    const ready = assertInternalTournamentReadyForMutation(current);
+    if (!ready.ok) {
+      setError(formatCanonicalVersionConflictError(ready));
+      return ready;
+    }
+    canonicalWriteInFlightRef.current = true;
+    try {
+      const result = await update(patch, {
+        ...options,
+        currentTournament: current,
+        expectedVersion:
+          options.expectedVersion != null
+            ? options.expectedVersion
+            : ready.expectedVersion,
+      });
+      if (!result.ok) {
+        setError(formatCanonicalVersionConflictError(result) || result.error);
+      }
+      return result;
+    } finally {
+      canonicalWriteInFlightRef.current = false;
+    }
+  };
+
+  useInternalCanonicalSnapshotRefresh({
+    enabled: Boolean(clubScope.shouldQuery && tournamentId),
+    reload: reloadCanonicalTournament,
+    mutationInFlightRef: canonicalWriteInFlightRef,
+  });
 
   const tournamentClubId = useMemo(
     () =>
@@ -397,17 +503,86 @@ export default function InternalTournamentSetup() {
     tournamentClubId,
   ]);
 
-  const courts = useMemo(
-    () => loadCourtsForClub(tournamentClubId || clubScope.clubId),
-    [tournamentClubId, clubScope.clubId, localRevision]
-  );
+  useEffect(() => {
+    let cancelled = false;
+    const clubId = tournamentClubId || clubScope.clubId;
+    const tenantId =
+      tournament?.tenantId || clubScope.tenantId || playerTenantId || currentTenantId;
+    if (!clubId) {
+      setCourts([]);
+      return undefined;
+    }
+    void loadInternalScheduleCourts({
+      clubId,
+      tenantId,
+      competitionId: tournamentId,
+      actorId: user?.id,
+    }).then((result) => {
+      if (cancelled) return;
+      setCourts(result.courts || []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    tournamentClubId,
+    clubScope.clubId,
+    tournament?.tenantId,
+    clubScope.tenantId,
+    playerTenantId,
+    currentTenantId,
+    localRevision,
+  ]);
 
-  const refereeRoster = useMemo(
-    () => getRefereeSettings(tournament).roster,
-    [tournament, localRevision]
-  );
+  useEffect(() => {
+    let cancelled = false;
+    const tenantId =
+      tournament?.tenantId || clubScope.tenantId || playerTenantId || currentTenantId;
+    if (!tenantId) {
+      setCanonicalReferees([]);
+      setCanonicalRefereesError(null);
+      setCanonicalRefereesWarning(null);
+      return undefined;
+    }
+    setCanonicalRefereesLoading(true);
+    setCanonicalRefereesError(null);
+    void listEligibleCanonicalReferees({
+      tenantId,
+      clubId: tournamentClubId || clubScope.clubId,
+    }).then((result) => {
+      if (cancelled) return;
+      if (!result.ok) {
+        setCanonicalReferees([]);
+        setCanonicalRefereesError(result.error || "Không tải được danh bạ trọng tài.");
+        setCanonicalRefereesWarning(null);
+        return;
+      }
+      setCanonicalReferees(result.referees || []);
+      setCanonicalRefereesWarning(result.warning || null);
+    }).finally(() => {
+      if (!cancelled) setCanonicalRefereesLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    tournament?.tenantId,
+    clubScope.tenantId,
+    playerTenantId,
+    currentTenantId,
+    tournamentClubId,
+    clubScope.clubId,
+    user?.id,
+  ]);
 
-  const isSingleEvent = isSingleEventType(eventType);
+  const competitionUnit = resolveInternalCompetitionUnit(eventType);
+  const isSingleEvent = competitionUnit === COMPETITION_UNIT.PLAYER;
+  setupFormRef.current = {
+    eventType,
+    groupCount,
+    selectedPlayerIds,
+    previewEntries,
+  };
 
   const eligiblePlayers = useMemo(
     () => filterPlayersForEventType(players, eventType),
@@ -424,26 +599,123 @@ export default function InternalTournamentSetup() {
   }, [selectedPlayerIds, tenantPlayers, players]);
 
   const savedEvent = tournament?.events?.[0] || null;
-
-  const groupStandings = useMemo(
-    () => (savedEvent ? buildIndividualAllGroupStandings(savedEvent) : []),
+  const persistedGroups = useMemo(
+    () => listInternalPersistedGroups(savedEvent),
     [savedEvent]
   );
 
-  const bracketProgress = useMemo(
-    () => (savedEvent ? resolveBracketProgress(savedEvent) : null),
+  useEffect(() => {
+    if (!tournament?.id) return;
+    const meta = hydrationMetaRef.current;
+    const decision = decideInternalSetupHydration({
+      tournament,
+      hydratedTournamentId: meta.tournamentId,
+      hydratedEventId: meta.eventId,
+      baselineVersion: meta.baselineVersion,
+      form: {
+        ...setupFormRef.current,
+        queryEventType: preselectedEvent || null,
+      },
+      baselineHydration: meta.baselineHydration,
+      incomingGeneration: meta.generation + 1,
+      appliedGeneration: meta.generation,
+    });
+
+    if (decision.action === "IGNORE_STALE") {
+      return;
+    }
+
+    meta.tournamentId = decision.nextTournamentId;
+    meta.eventId = decision.nextEventId;
+    meta.generation += 1;
+
+    if (decision.action === "HYDRATE_FULL" && decision.hydration) {
+      if (decision.apply.eventType) setEventType(decision.hydration.eventType);
+      if (decision.apply.groupCount) setGroupCount(decision.hydration.groupCount);
+      if (
+        decision.apply.selectedPlayerIds &&
+        decision.hydration.selectedPlayerIds.length > 0
+      ) {
+        setSelectedPlayerIds(decision.hydration.selectedPlayerIds);
+      }
+      setPreviewEntries([]);
+      meta.baselineVersion = decision.nextBaselineVersion;
+      meta.baselineHydration = {
+        eventType: decision.hydration.eventType,
+        groupCount: decision.hydration.groupCount,
+        selectedPlayerIds: decision.hydration.selectedPlayerIds,
+        previewEntries: decision.hydration.previewEntries || [],
+      };
+      setStaleHydrationNotice(null);
+      return;
+    }
+
+    if (decision.staleServerRevision) {
+      setStaleHydrationNotice(
+        "Máy chủ đã cập nhật giải trong khi bạn đang chỉnh sửa chưa lưu. Thay đổi local được giữ — tải lại khi sẵn sàng đồng bộ."
+      );
+    }
+  }, [tournament?.id, tournament?.version, tournament?.updatedAt, preselectedEvent]);
+
+  const lifecycle = useMemo(
+    () => resolveInternalTournamentLifecycle(tournament),
+    [tournament]
+  );
+
+  const sectionResolution = useMemo(
+    () =>
+      resolveInternalWorkspaceSection({
+        requestedSection: searchParams.get(INTERNAL_WORKSPACE_SECTION_QUERY),
+        lifecycle,
+        event: savedEvent,
+      }),
+    [searchParams, lifecycle, savedEvent]
+  );
+  const workspaceSection = sessionSection || sectionResolution.section;
+
+  const selectWorkspaceSection = (stepIdOrSection) => {
+    workspaceTouchedRef.current = true;
+    const section = Object.values(INTERNAL_WORKSPACE_SECTIONS).includes(stepIdOrSection)
+      ? stepIdOrSection
+      : mapLifecycleStepToWorkspaceSection(stepIdOrSection);
+    setSessionSection(section);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set(INTERNAL_WORKSPACE_SECTION_QUERY, section);
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  const groupStandingsProjection = useMemo(
+    () => projectInternalLiveGroupStandings(savedEvent),
     [savedEvent]
   );
+  const knockoutAction = groupStandingsProjection.knockout || resolveInternalKnockoutAction(savedEvent);
+
+  const liveKnockoutProjection = useMemo(
+    () => projectInternalLiveKnockout(savedEvent),
+    [savedEvent]
+  );
+  const liveKnockoutEvent = liveKnockoutProjection.event || savedEvent;
+  const awardsProjection = useMemo(
+    () => projectInternalAwardsWorkspace(tournament),
+    [tournament]
+  );
+
+  const bracketProgress = liveKnockoutProjection.progress;
 
   const knockoutMatchesByBracketId = useMemo(() => {
     const map = {};
-    (savedEvent?.matches || []).forEach((match) => {
+    (liveKnockoutEvent?.matches || []).forEach((match) => {
       if (match.bracketMatchId) {
         map[match.bracketMatchId] = match;
       }
     });
     return map;
-  }, [savedEvent]);
+  }, [liveKnockoutEvent]);
 
   const scoreDraftScope = useMemo(
     () => ({
@@ -455,30 +727,32 @@ export default function InternalTournamentSetup() {
   );
 
   const persistEvent = async (nextEvent, options = {}) => {
-    const result = await update(
+    const result = await writeCanonical(
       {
         events: [{ ...savedEvent, ...nextEvent }],
       },
       {
         processMatchId: options.processMatchId || null,
         processEventId: savedEvent?.id || null,
+        currentTournament: tournament,
       }
     );
 
     if (!result.ok) {
-      setError(result.error);
+      setError(formatCanonicalVersionConflictError(result) || result.error);
+      if (isCanonicalVersionConflict(result)) {
+        setLocalRevision((value) => value + 1);
+      }
       return false;
     }
 
     if (options.processMatchId && result.lifecycleOk === false) {
-      setError(
-        result.lifecycleError ||
-          "Đã lưu kết quả nhưng cập nhật Elo/điểm mùa thất bại."
-      );
+      const classified = classifyCanonicalMatchLifecycleResult(result);
+      if (classified.class === "OPTIONAL_ENRICHMENT") {
+        setLifecycleNotice(classified.message);
+      }
     }
 
-    setLocalRevision((value) => value + 1);
-    refreshClubs();
     return {
       ok: true,
       tournament: result.tournament,
@@ -486,6 +760,38 @@ export default function InternalTournamentSetup() {
       lifecycleError: result.lifecycleError || null,
     };
   };
+
+  useEffect(() => {
+    if (!savedEvent || !tournament) return undefined;
+    if (
+      !shouldPersistKnockoutProgression({
+        drifted: liveKnockoutProjection.drifted,
+        mutationActive: canonicalWriteInFlightRef.current,
+        persistInFlight: canonicalWriteInFlightRef.current,
+      })
+    ) {
+      return undefined;
+    }
+    const key = `${tournament.version}:${liveKnockoutProjection.fingerprint}`;
+    if (knockoutProgressionPersistKeyRef.current === key) return undefined;
+    knockoutProgressionPersistKeyRef.current = key;
+    let cancelled = false;
+    (async () => {
+      const ok = await persistEvent(liveKnockoutProjection.event);
+      if (cancelled || !ok) {
+        knockoutProgressionPersistKeyRef.current = "";
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    liveKnockoutProjection.drifted,
+    liveKnockoutProjection.event,
+    liveKnockoutProjection.fingerprint,
+    savedEvent,
+    tournament,
+  ]);
 
   const pairingIntervention = usePairingIntervention({
     phase: INTERVENTION_PHASE.TOURNAMENT,
@@ -528,7 +834,7 @@ export default function InternalTournamentSetup() {
       setError(result.error);
       return;
     }
-    const updateResult = await update({
+    const updateResult = await writeCanonical({
       settings: result.tournament.settings,
     });
     if (updateResult.ok) {
@@ -555,7 +861,7 @@ export default function InternalTournamentSetup() {
         ? { ...event, groups: result.snapshot || groups }
         : event
     );
-    const updateResult = await update({
+    const updateResult = await writeCanonical({
       settings: result.tournament.settings,
       events,
     });
@@ -578,7 +884,7 @@ export default function InternalTournamentSetup() {
       setError(result.error);
       return;
     }
-    const updateResult = await update({
+    const updateResult = await writeCanonical({
       settings: result.tournament.settings,
     });
     if (updateResult.ok) {
@@ -600,13 +906,105 @@ export default function InternalTournamentSetup() {
       setError(result.error);
       return;
     }
-    const updateResult = await update({
+    const updateResult = await writeCanonical({
       settings: result.tournament.settings,
     });
     if (updateResult.ok) {
       setLocalRevision((value) => value + 1);
       refreshClubs();
       setMessage("Force redraw được phép. Bạn có thể chia bảng lại.");
+    }
+  };
+
+  const handleForceReopenTournament = async () => {
+    setError(null);
+    setMessage(null);
+    if (reopenBusy) return;
+    if (
+      !window.confirm(
+        "Mở lại giải đã hoàn tất? Kết quả sẽ được mở khóa để chỉnh sửa (force reopen)."
+      )
+    ) {
+      return;
+    }
+    const reopened = reopenClosedTournament(tournament, { force: true });
+    if (!reopened.ok) {
+      setError(reopened.error);
+      return;
+    }
+    setReopenBusy(true);
+    try {
+      const updateResult = await writeCanonical(
+        {
+          settings: reopened.tournament.settings,
+          events: reopened.tournament.events,
+          status: TOURNAMENT_STATUS.ACTIVE,
+        },
+        {
+          forceStatusReopen: true,
+          currentTournament: tournament,
+        }
+      );
+      if (!updateResult.ok) {
+        return;
+      }
+      setLocalRevision((value) => value + 1);
+      refreshClubs();
+      setMessage("Đã mở lại giải (completed → active).");
+    } finally {
+      setReopenBusy(false);
+    }
+  };
+
+  const handleConfirmInternalAwards = async () => {
+    setError(null);
+    setMessage(null);
+    if (awardsBusy) return;
+    const confirmed = confirmInternalAwards(tournament, { actor: user });
+    if (!confirmed.ok) {
+      setError(confirmed.error);
+      return;
+    }
+    setAwardsBusy(true);
+    try {
+      const result = await writeCanonical({
+        settings: confirmed.tournament.settings,
+      });
+      if (!result.ok) return;
+      setMessage("Đã xác nhận trao giải.");
+    } finally {
+      setAwardsBusy(false);
+    }
+  };
+
+  const handleCompleteInternalTournament = async () => {
+    setError(null);
+    setMessage(null);
+    if (awardsBusy) return;
+    const projection = projectInternalAwardsWorkspace(tournament);
+    if (!projection.completionReady) {
+      setError("Xác nhận trao giải trước khi hoàn tất.");
+      return;
+    }
+    const closed = closeTournament(tournament, {
+      actor: user,
+      autoAwards: false,
+    });
+    if (!closed.ok) {
+      setError(closed.error);
+      return;
+    }
+    setAwardsBusy(true);
+    try {
+      const result = await writeCanonical({
+        settings: closed.tournament.settings,
+        events: closed.tournament.events,
+        status: TOURNAMENT_STATUS.COMPLETED,
+      });
+      if (!result.ok) return;
+      setMessage("Đã hoàn tất giải.");
+    } finally {
+      setAwardsBusy(false);
     }
   };
 
@@ -648,12 +1046,11 @@ export default function InternalTournamentSetup() {
     }
 
     const before = getTournamentPairingConstraints(tournament);
-    const result = await update({
+    const result = await writeCanonical({
       founderPairingConstraints: founderConstraints,
     });
 
     if (!result.ok) {
-      setError(result.error);
       return;
     }
 
@@ -694,6 +1091,7 @@ export default function InternalTournamentSetup() {
         eventType,
         groupCount,
         isSingleEvent,
+        previewEntries,
         setPreviewEntries,
         setWarnings,
         setMessage,
@@ -702,6 +1100,7 @@ export default function InternalTournamentSetup() {
         refreshClubs,
         persistEvent,
         getPrivatePairingOptions: () => guidedPairingRef.current,
+        tournamentTenantId: tournament?.tenantId || clubScope.tenantId,
       }),
     [
       tournament,
@@ -713,7 +1112,9 @@ export default function InternalTournamentSetup() {
       eventType,
       groupCount,
       isSingleEvent,
+      previewEntries,
       refreshClubs,
+      clubScope.tenantId,
     ]
   );
 
@@ -738,23 +1139,35 @@ export default function InternalTournamentSetup() {
   }, [broadcast, broadcastFeatureEnabled, flow]);
 
   const handleRefereeRosterChange = async (nextRoster) => {
-    const result = await update(
+    const result = await writeCanonical(
       buildRefereeSettingsPatch(tournament, { roster: nextRoster })
     );
 
     if (!result.ok) {
-      setError(result.error);
-      return;
+      return result;
     }
 
     setLocalRevision((value) => value + 1);
     refreshClubs();
     setMessage("Đã cập nhật danh sách trọng tài.");
+    return { ok: true };
   };
 
-  const handleGenerateBracket = () => {
+  const handleGenerateBracket = async () => {
     setError(null);
     setMessage(null);
+
+    const knockout = resolveInternalKnockoutAction(savedEvent);
+    if (knockout.skipKnockout) {
+      setMessage(knockout.reason);
+      setWarnings([]);
+      return;
+    }
+    if (!knockout.enabled) {
+      setError(knockout.reason || INTERNAL_KNOCKOUT_INCOMPLETE_MESSAGE);
+      setWarnings([]);
+      return;
+    }
 
     const check = canGenerateBracket(savedEvent);
     if (!check.ok) {
@@ -769,62 +1182,95 @@ export default function InternalTournamentSetup() {
       return;
     }
 
+    const persisted = await persistEvent(generated.event);
+    if (!persisted) {
+      return;
+    }
+
     const progress = resolveBracketProgress(generated.event);
+    setWarnings(generated.warnings || []);
+    setMessage(`Da tao bracket knock-out voi ${generated.knockoutMatchCount} tran.`);
 
     anim.showAnimation(
       {
         animationMode: ANIMATION_MODES.BRACKET_REVEAL,
         bracket: progress,
       },
-      async () => {
-        if (!(await persistEvent(generated.event))) {
-          return;
-        }
-
-        setWarnings(generated.warnings || []);
-        setMessage(`Da tao bracket knock-out voi ${generated.knockoutMatchCount} tran.`);
-      }
+      null
     );
   };
 
-  const handleSelectBracketWinner = async (bracketMatchId, winnerSide) => {
-    const result = setBracketWinner(savedEvent, bracketMatchId, winnerSide || null);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+  const handleDraftBracketWinner = (bracketMatchId, winnerSide) => {
+    setWinnerDrafts((current) => ({
+      ...current,
+      [bracketMatchId]: winnerSide,
+    }));
+  };
+
+  const handleConfirmBracketWinner = async (bracketMatchId, winnerSide) => {
+    setPendingMatchId(bracketMatchId);
+    try {
+      const result = setBracketWinner(savedEvent, bracketMatchId, winnerSide || null);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      if (await persistEvent(result.event)) {
+        setWinnerDrafts((current) => {
+          const next = { ...current };
+          delete next[bracketMatchId];
+          return next;
+        });
+        setMessage(winnerSide ? "Đã lưu đội thắng." : "Đã xóa đội thắng.");
+      }
+    } finally {
+      setPendingMatchId(null);
     }
+  };
 
-    if (winnerSide) {
-      const progress = resolveBracketProgress(result.event);
-      const match = progress.rounds
-        .flatMap((round) => round.matches)
-        .find((item) => item.id === bracketMatchId);
-      const winnerName =
-        winnerSide === "home"
-          ? match?.home?.name || match?.homeSeed
-          : match?.away?.name || match?.awaySeed;
-
-      setBracketAdvanceAnim({
-        winnerName,
-        bracket: progress,
+  const handleAssignMatchReferee = async (matchId, rosterId) => {
+    setPendingMatchId(matchId);
+    try {
+      const assigned = assignInternalMatchReferee({
+        tournament,
+        event: savedEvent,
+        matchId,
+        rosterId,
       });
-    } else {
-      setBracketAdvanceAnim(null);
-    }
-
-    if (await persistEvent(result.event)) {
-      setMessage(winnerSide ? "Da cap nhat winner." : "Da xoa winner.");
+      if (!assigned.ok) {
+        setError(assigned.error);
+        return;
+      }
+      if (await persistEvent(assigned.event)) {
+        if (assigned.referee?.token) {
+          const live = await ensureInternalRefereeMatchLive(assigned.referee.token);
+          if (!live.ok) {
+            setMessage(
+              `Đã phân công ${assigned.referee.name}. Phiên chấm điểm sẽ sẵn sàng khi đồng bộ được.`
+            );
+            return;
+          }
+        }
+        setMessage(
+          assigned.referee ? `Đã phân công ${assigned.referee.name}.` : "Đã bỏ phân công trọng tài."
+        );
+      }
+    } finally {
+      setPendingMatchId(null);
     }
   };
 
   const handleSubmitGroupScore = async (matchId, scores) => {
+    setPendingMatchId(matchId);
     const result = submitTournamentDirectorMatchScore(savedEvent, matchId, scores);
     if (!result.ok) {
+      setPendingMatchId(null);
       setError(result.error);
       return false;
     }
 
     if (await persistEvent(result.event, { processMatchId: matchId })) {
+      setPendingMatchId(null);
       if (result.bracketAutoGenerated) {
         setMessage(
           `Đã lưu kết quả vòng bảng. Tự động tạo bracket knock-out (${result.bracketKnockoutMatchCount} trận).`
@@ -835,21 +1281,38 @@ export default function InternalTournamentSetup() {
       return true;
     }
 
+    setPendingMatchId(null);
     return false;
   };
 
   const handleSubmitKnockoutScore = async (matchId, scores) => {
-    const result = submitKnockoutMatchScore(savedEvent, matchId, scores);
+    setPendingMatchId(matchId);
+    let workingEvent = liveKnockoutEvent || savedEvent;
+    const linked = (savedEvent?.matches || []).find((item) => String(item.id) === String(matchId));
+    const draftSide = linked?.bracketMatchId ? winnerDrafts[linked.bracketMatchId] : null;
+    if (draftSide) {
+      const winnerResult = setBracketWinner(workingEvent, linked.bracketMatchId, draftSide);
+      if (!winnerResult.ok) {
+        setPendingMatchId(null);
+        setError(winnerResult.error);
+        return false;
+      }
+      workingEvent = winnerResult.event;
+    }
+    const result = submitKnockoutMatchScore(workingEvent, matchId, scores);
     if (!result.ok) {
+      setPendingMatchId(null);
       setError(result.error);
       return false;
     }
 
     if (await persistEvent(result.event, { processMatchId: matchId })) {
-      setMessage("Da luu ket qua knock-out.");
+      setPendingMatchId(null);
+      setMessage("Đã lưu kết quả knock-out.");
       return true;
     }
 
+    setPendingMatchId(null);
     return false;
   };
 
@@ -932,6 +1395,11 @@ export default function InternalTournamentSetup() {
     setError(null);
     setWarnings([]);
     setMessage(null);
+
+    if (!durableMutationReady.ok) {
+      setError(formatCanonicalVersionConflictError(durableMutationReady));
+      return;
+    }
 
     const prepared = await prepareInternalPrivatePairing();
 
@@ -1057,28 +1525,35 @@ export default function InternalTournamentSetup() {
       return;
     }
 
-    let entries = previewEntries;
-    if (previewEntries.length === 0) {
-      const pairingOptions = {
-        ...prepared.pairingOptions,
-        tournamentId,
-        eventId: savedEvent?.id || `event-${tournamentId}`,
-        pairingConstraints: founderConstraints,
-      };
+    const pairingOptions = {
+      ...prepared.pairingOptions,
+      tournamentId,
+      eventId: savedEvent?.id || `event-${tournamentId}`,
+      pairingConstraints: founderConstraints,
+    };
 
-      entries = suggestEntriesFromPlayers(
-        players.filter((player) => selectedPlayerIds.includes(String(player.id))),
-        eventType,
-        pairingOptions
-      );
+    const grouping = resolveInternalGroupingEntries({
+      eventType,
+      previewEntries,
+      selectedPlayers: players.filter((player) =>
+        selectedPlayerIds.includes(String(player.id))
+      ),
+      pairingOptions,
+    });
 
-      applyConstraintWarnings(pairingOptions);
+    applyConstraintWarnings(pairingOptions);
 
-      if (pairingOptions.privatePairingError) {
-        setError(pairingOptions.privatePairingError.message);
-        return;
-      }
+    if (pairingOptions.privatePairingError) {
+      setError(pairingOptions.privatePairingError.message);
+      return;
     }
+
+    if (!grouping.ok) {
+      setError(grouping.error);
+      return;
+    }
+
+    const entries = grouping.entries;
 
     const plan = buildInternalTournamentPlan({
       tournament,
@@ -1107,135 +1582,184 @@ export default function InternalTournamentSetup() {
       selectedPlayerIds.includes(String(player.id))
     );
 
-    const steps = buildSnakeSteps({
-      entries: plan.event.entries,
-      players: selectedPlayers,
-      groupCount,
-      finalGroups: plan.event.groups,
-    });
+    const mutationReady = assertInternalTournamentReadyForMutation(tournament);
+    if (!mutationReady.ok) {
+      setError(formatCanonicalVersionConflictError(mutationReady));
+      return;
+    }
 
-    pendingPlanRef.current = plan;
+    if (drawMutationGuardRef.current) {
+      return;
+    }
+    drawMutationGuardRef.current = true;
+    selectWorkspaceSection(INTERNAL_WORKSPACE_SECTIONS.DRAW);
 
-    const openMatchPairingFromDraw = () => {
-      openMatchPairingAnimation(plan);
-    };
+    try {
+      const draw = buildInternalDrawEventWithoutMatches(plan);
+      if (!draw.ok) {
+        setError(draw.error || "Không lưu được bảng đấu.");
+        return;
+      }
 
-    anim.showAnimation(
-      {
-        animationMode: ANIMATION_MODES.SNAKE_GROUP,
-        groups: plan.event.groups,
-        steps,
-        matchCount: plan.matchCount,
-        onStartMatchPairing: openMatchPairingFromDraw,
-      },
-      async () => {
-        const patch = buildInternalTournamentPatch(tournament, plan);
-        if (!patch.ok) {
-          setError(patch.error || "Khong luu duoc giai.");
-          return;
-        }
+      // ONE durable mutation: groups + draw-created settings/audit together.
+      const drafted = {
+        ...tournament,
+        events: [draw.event],
+        status: TOURNAMENT_STATUS.READY,
+        settings: {
+          ...(tournament?.settings || {}),
+          internal: {
+            ...(tournament?.settings?.internal || {}),
+            groupCount: draw.groupCount,
+            eventType: draw.event.eventType,
+          },
+        },
+      };
+      const created = recordDrawCreated(drafted, draw.event.groups || [], {
+        userId: user?.id,
+        actor: buildDrawActor(),
+        clubId: tournamentClubId,
+        before: summarizeGroups(savedEvent?.groups || []),
+      });
+      if (!created.ok) {
+        setError(created.error || "Không ghi nhận bốc thăm.");
+        return;
+      }
 
-        const eventWithoutMatches = stripMatchesFromEvent(patch.events[0]);
-        const result = await update({
-          events: [eventWithoutMatches],
+      const result = await writeCanonical(
+        {
+          events: created.tournament.events,
           status: TOURNAMENT_STATUS.READY,
-        });
-
-        if (!result.ok) {
-          setError(result.error);
-          return;
+          settings: created.tournament.settings,
+        },
+        {
+          currentTournament: tournament,
+          expectedVersion: mutationReady.expectedVersion,
         }
+      );
 
-        const created = recordDrawCreated(
-          result.tournament,
-          patch.events[0]?.groups || [],
-          {
-            userId: user?.id,
-            actor: buildDrawActor(),
-            clubId: tournamentClubId,
-            before: summarizeGroups(savedEvent?.groups || []),
-          }
-        );
-        if (created.ok) {
-          await update({
-            settings: created.tournament.settings,
-          });
+      if (!result.ok) {
+        return;
+      }
+
+      const advanced = advanceHydrationBaselineAfterOwnWrite({
+        tournament: result.tournament,
+        committedKeys: ["eventType", "groupCount", "selectedPlayerIds", "previewEntries"],
+        previousBaselineHydration: hydrationMetaRef.current.baselineHydration,
+      });
+      hydrationMetaRef.current.baselineVersion = advanced.baselineVersion;
+      hydrationMetaRef.current.baselineHydration = advanced.baselineHydration;
+      setPreviewEntries([]);
+
+      setWarnings(draw.warnings || []);
+      setLocalRevision((value) => value + 1);
+      refreshClubs();
+      setMessage(
+        `Đã chia ${countInternalPersistedGroups(result.tournament) || draw.groupCount} bảng và lưu lên máy chủ. Bước tiếp theo: Tạo lịch thi đấu.`
+      );
+
+      const steps = buildSnakeSteps({
+        entries: draw.event.entries,
+        players: selectedPlayers,
+        groupCount,
+        finalGroups: draw.event.groups,
+      });
+
+      anim.showAnimation(
+        {
+          animationMode: ANIMATION_MODES.SNAKE_GROUP,
+          groups: draw.event.groups,
+          steps,
+          matchCount: 0,
+        },
+        null
+      );
+    } finally {
+      drawMutationGuardRef.current = false;
+    }
+  };
+
+  const handleGenerateSchedule = async () => {
+    setError(null);
+    setWarnings([]);
+    setMessage(null);
+
+    const mutationReady = assertInternalTournamentReadyForMutation(tournament);
+    if (!mutationReady.ok) {
+      setError(formatCanonicalVersionConflictError(mutationReady));
+      return { ok: false };
+    }
+
+    if (scheduleMutationGuardRef.current || scheduleBusy) {
+      return { ok: false };
+    }
+
+    if ((savedEvent?.matches || []).some((match) => !match?.bracketMatchId)) {
+      setMessage("Lịch vòng bảng đã tồn tại.");
+      return { ok: true, tournament, alreadyExists: true };
+    }
+
+    if (!(savedEvent?.groups || []).length) {
+      setError("Chưa có bảng đấu để tạo lịch.");
+      return { ok: false };
+    }
+
+    scheduleMutationGuardRef.current = true;
+    setScheduleBusy(true);
+
+    try {
+      const prepared = await prepareInternalPrivatePairing();
+      const schedule = buildInternalScheduleFromPersistedGroups({
+        tournament,
+        players,
+        pairingConstraints: founderConstraints,
+        privatePairingRules: prepared.ok
+          ? prepared.pairingOptions?.privatePairingRules || []
+          : [],
+        clubId: tournamentClubId,
+        competitionClass: COMPETITION_CLASS.INTERNAL,
+        envSource: prepared.pairingOptions?.envSource,
+        seed: prepared.pairingOptions?.seed,
+        allowedByPublishedRules: prepared.pairingOptions?.allowedByPublishedRules,
+        contextTime: prepared.pairingOptions?.contextTime,
+      });
+
+      if (!schedule.ok) {
+        setError(schedule.errors?.join(" ") || "Không tạo được lịch.");
+        return { ok: false };
+      }
+
+      const result = await writeCanonical(
+        {
+          events: [schedule.event],
+          status: TOURNAMENT_STATUS.READY,
+        },
+        {
+          currentTournament: tournament,
+          expectedVersion: mutationReady.expectedVersion,
         }
+      );
 
-        setWarnings(patch.warnings || []);
-        setLocalRevision((value) => value + 1);
-        refreshClubs();
-        setMessage(`Đã chia ${patch.events[0].groups.length} bảng. Bấm "Ghép cặp thi đấu" trên màn hình kết quả.`);
+      if (!result.ok) {
+        return { ok: false };
       }
-    );
+
+      setWarnings(schedule.warnings || []);
+      setMessage(`Đã lưu ${schedule.matchCount} trận vòng bảng lên máy chủ.`);
+      return { ok: true, tournament: result.tournament };
+    } finally {
+      scheduleMutationGuardRef.current = false;
+      setScheduleBusy(false);
+    }
   };
 
-  const persistMatchPairing = async (plan) => {
-    if ((savedEvent?.matches?.length || 0) > 0) {
-      return true;
-    }
+  const pageLoadingGate = resolveInternalPageLoadingGate({
+    clubScopeOk: clubScope.ok,
+    tournamentLoading,
+    tournament,
+  });
 
-    const patch = buildInternalTournamentPatch(tournament, plan);
-    if (!patch.ok) {
-      setError(patch.error || "Không lưu được lịch thi đấu.");
-      return false;
-    }
-
-    const result = await update({
-      events: patch.events,
-      status: TOURNAMENT_STATUS.READY,
-    });
-
-    if (!result.ok) {
-      setError(result.error);
-      return false;
-    }
-
-    pendingPlanRef.current = null;
-    setWarnings(patch.warnings || []);
-    setLocalRevision((value) => value + 1);
-    refreshClubs();
-    setMessage(`Đã ghép ${patch.matchCount} trận vòng bảng. Xem lịch bên dưới.`);
-    return true;
-  };
-
-  const openMatchPairingAnimation = (plan) => {
-    if (!plan?.ok || !plan.event?.groups?.length) {
-      setError("Chưa có bảng đấu để ghép cặp.");
-      return;
-    }
-
-    const steps = buildGroupMatchPairingSteps({
-      groups: plan.event.groups,
-      matches: plan.event.matches,
-      entries: plan.event.entries,
-      courts,
-    });
-
-    if (!steps.length) {
-      setError("Không có trận đấu để ghép cặp.");
-      return;
-    }
-
-    anim.transitionAnimation(
-      {
-        animationMode: ANIMATION_MODES.GROUP_MATCH_PAIRING,
-        tournamentName: tournament.name,
-        groups: plan.event.groups,
-        entries: plan.event.entries,
-        steps,
-        courts,
-        autoStart: true,
-        controlMode: PAIRING_CONTROL_MODES.AUTO,
-        autoNextGroup: true,
-      },
-      async () => {
-        await persistMatchPairing(plan);
-      }
-    );
-  };
-
-  if (!clubScope.ok) {
+  if (pageLoadingGate.showFullPageLoading && pageLoadingGate.reason === "club-not-ready") {
     return (
       <Box>
         <Alert severity="info">
@@ -1245,7 +1769,7 @@ export default function InternalTournamentSetup() {
     );
   }
 
-  if (tournamentLoading) {
+  if (pageLoadingGate.showFullPageLoading && pageLoadingGate.reason === "initial-load") {
     return (
       <Box>
         <Alert severity="info">Đang tải giải nội bộ...</Alert>
@@ -1284,7 +1808,8 @@ export default function InternalTournamentSetup() {
   }
 
   return (
-    <TournamentManageGate tournamentId={tournamentId}>
+    <TournamentManageGate tournamentId={tournamentId} tournament={tournament}>
+    <Box key={resolveInternalWorkspaceKey(tournament)}>
     <TournamentSetupShell
       tournament={tournament}
       description="Giải nội bộ — đơn/đôi, chia bảng snake seeding, tạo lịch vòng bảng"
@@ -1301,6 +1826,88 @@ export default function InternalTournamentSetup() {
       }
       alerts={
         <>
+          <InternalTournamentLifecycleStepper
+            lifecycle={lifecycle}
+            selectedStepId={
+              workspaceSection === INTERNAL_WORKSPACE_SECTIONS.AWARDS
+                ? INTERNAL_LIFECYCLE_STEPS.AWARDS
+                : lifecycle?.CURRENT_STEP
+            }
+            disabledStepIds={
+              awardsProjection.awardsReady || isTournamentClosed(tournament)
+                ? []
+                : [INTERNAL_LIFECYCLE_STEPS.COMPLETED]
+            }
+            onSelectStep={selectWorkspaceSection}
+          />
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+            {Object.values(INTERNAL_WORKSPACE_SECTIONS).map((section) => (
+              <Button
+                key={section}
+                size="small"
+                variant={workspaceSection === section ? "contained" : "outlined"}
+                onClick={() => selectWorkspaceSection(section)}
+              >
+                {INTERNAL_WORKSPACE_SECTION_LABELS[section]}
+              </Button>
+            ))}
+            {tournamentRefreshing ? (
+              <Chip size="small" label="Đang đồng bộ..." variant="outlined" />
+            ) : null}
+          </Stack>
+          {staleHydrationNotice ? (
+            <Alert
+              severity="warning"
+              sx={{ mb: 2 }}
+              onClose={() => setStaleHydrationNotice(null)}
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => {
+                    const hydrated = hydrateInternalSetupFromTournament(tournament, {
+                      queryEventType: preselectedEvent || null,
+                    });
+                    setEventType(hydrated.eventType);
+                    setGroupCount(hydrated.groupCount);
+                    setSelectedPlayerIds(hydrated.selectedPlayerIds);
+                    hydrationMetaRef.current.baselineVersion = tournament?.version ?? null;
+                    hydrationMetaRef.current.baselineHydration = {
+                      eventType: hydrated.eventType,
+                      groupCount: hydrated.groupCount,
+                      selectedPlayerIds: hydrated.selectedPlayerIds,
+                      previewEntries: hydrated.previewEntries || [],
+                    };
+                    setStaleHydrationNotice(null);
+                    setLocalRevision((value) => value + 1);
+                  }}
+                >
+                  Tải lại từ máy chủ
+                </Button>
+              }
+            >
+              {staleHydrationNotice}
+            </Alert>
+          ) : null}
+          {(isTournamentClosed(tournament) ||
+            tournament?.status === TOURNAMENT_STATUS.COMPLETED) && (
+            <Alert
+              severity="info"
+              sx={{ mb: 2 }}
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  disabled={reopenBusy}
+                  onClick={() => void handleForceReopenTournament()}
+                >
+                  Mở lại giải
+                </Button>
+              }
+            >
+              Giải đã hoàn tất. Dùng &quot;Mở lại giải&quot; (force reopen + CAS) nếu cần chỉnh sửa.
+            </Alert>
+          )}
           {broadcastFeatureEnabled && broadcast.lastVodUpload ? (
             <BroadcastVodResultAlert
               result={broadcast.lastVodUpload}
@@ -1317,6 +1924,20 @@ export default function InternalTournamentSetup() {
               {error}
             </Alert>
           )}
+          {lifecycleNotice ? (
+            <Alert
+              severity="warning"
+              sx={{ mb: 2 }}
+              onClose={() => setLifecycleNotice(null)}
+            >
+              {lifecycleNotice}
+            </Alert>
+          ) : null}
+          {tournament && !durableMutationReady.ok ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {INTERNAL_VERSION_SYNCING_USER_MESSAGE}
+            </Alert>
+          ) : null}
           {playersLoadError && (
             <Alert
               severity={playersLoadError.severity === "warning" ? "warning" : "error"}
@@ -1325,7 +1946,7 @@ export default function InternalTournamentSetup() {
               {playersLoadError.message}
             </Alert>
           )}
-          {playerDiagnostics ? (
+          {import.meta.env?.DEV && searchParams.get("debug") === "1" && playerDiagnostics ? (
             <Alert severity="info" sx={{ mb: 2 }}>
               Candidate diagnostics: sourceCount={playerDiagnostics.sourceCount},
               membershipCount={playerDiagnostics.membershipCount},
@@ -1350,6 +1971,7 @@ export default function InternalTournamentSetup() {
       {aiEnabled && setupTab === 1 ? (
         <TournamentAiAssistantPanel
           tournamentId={tournamentId}
+          tournament={tournament}
           clubId={tournamentClubId || clubScope.clubId}
           tenantId={
             tournament?.tenantId ||
@@ -1374,10 +1996,10 @@ export default function InternalTournamentSetup() {
         />
       ) : (
       <>
+      {(workspaceSection === INTERNAL_WORKSPACE_SECTIONS.SETUP ||
+        workspaceSection === INTERNAL_WORKSPACE_SECTIONS.DRAW) && (
+      <>
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid size={{ xs: 12 }}>
-          <RefereeRosterPanel roster={refereeRoster} onChange={handleRefereeRosterChange} />
-        </Grid>
         <Grid size={{ xs: 12 }}>
           <FounderPairingConstraintsPanel
             constraints={founderConstraints}
@@ -1397,7 +2019,7 @@ export default function InternalTournamentSetup() {
             }
             clubId={tournamentClubId}
             onPersist={async (nextTournament) => {
-              const result = await update({
+              const result = await writeCanonical({
                 events: nextTournament.events,
                 settings: nextTournament.settings,
                 status: nextTournament.status,
@@ -1407,7 +2029,6 @@ export default function InternalTournamentSetup() {
                 refreshClubs();
                 return true;
               }
-              setError(result.error);
               return false;
             }}
           />
@@ -1449,7 +2070,7 @@ export default function InternalTournamentSetup() {
               variant="contained"
               color="secondary"
               onClick={handleStartGuidedFlow}
-              disabled={selectedPlayerIds.length === 0}
+              disabled={!durableMutationReady.ok || selectedPlayerIds.length === 0}
             >
               Bắt đầu trình chiếu
             </Button>
@@ -1466,13 +2087,37 @@ export default function InternalTournamentSetup() {
               <BroadcastLiveIndicator status={broadcast.status} error={broadcast.error} />
             ) : null}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Button fullWidth variant="outlined" onClick={handleSuggestPairs}>
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={handleSuggestPairs}
+                disabled={!durableMutationReady.ok}
+              >
                 {isSingleEvent ? "Đề xuất danh sách" : "Đề xuất ghép cặp"}
               </Button>
-              <Button fullWidth variant="contained" onClick={handleBuildGroups}>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={handleBuildGroups}
+                disabled={!durableMutationReady.ok}
+              >
                 Chia bảng
               </Button>
             </Stack>
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
+              onClick={handleGenerateSchedule}
+              disabled={
+                !durableMutationReady.ok ||
+                scheduleBusy ||
+                !(savedEvent?.groups || []).length ||
+                (savedEvent?.matches || []).some((match) => !match?.bracketMatchId)
+              }
+            >
+              {scheduleBusy ? "Đang tạo lịch..." : "Tạo lịch thi đấu"}
+            </Button>
           </Stack>
         </Grid>
       </Grid>
@@ -1622,31 +2267,53 @@ export default function InternalTournamentSetup() {
 
           <Paper variant="outlined" sx={{ p: 1.5 }}>
             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-              Bảng đấu ({savedEvent?.groups?.length || 0})
+              Bảng đấu ({persistedGroups.length})
             </Typography>
-            {!savedEvent?.groups?.length ? (
+            {!persistedGroups.length ? (
               <Typography variant="body2" color="text.secondary">
                 Chưa chia bảng. Chọn VĐV, đề xuất cặp rồi bấm &quot;Chia bảng&quot;.
               </Typography>
             ) : (
               <Stack spacing={1}>
-                {savedEvent.groups.map((group) => (
+                {persistedGroups.map((group) => {
+                  const card = projectInternalGroupDrawCard(
+                    group,
+                    savedEvent?.eventType || eventType,
+                    savedEvent
+                  );
+                  return (
                   <Paper key={group.id} variant="outlined" sx={{ p: 1.25 }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Typography fontWeight="bold">{group.name}</Typography>
+                      <Typography fontWeight="bold">{group.name || group.label || group.id}</Typography>
                       <Chip
                         size="small"
-                        label={`${group.entryIds?.length || 0} đội • ${group.matches?.length || 0} trận`}
+                        label={card.chipLabel}
                       />
                     </Stack>
-                    <Typography variant="caption" color="text.secondary">
-                      {(group.entries || []).map((entry) => entry.name).join(" | ")}
-                    </Typography>
+                    {card.athleteCountLabel ? (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        {card.athleteCountLabel}
+                      </Typography>
+                    ) : null}
+                    {card.teamLabels.length ? (
+                      <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                        {card.teamLabels.map((label, index) => (
+                          <Typography key={`${group.id}-${index}`} variant="body2">
+                            {index + 1}. {label}
+                          </Typography>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">
+                        {resolveInternalGroupMemberLabels(group, savedEvent).join(" | ") || "Chưa có thành viên"}
+                      </Typography>
+                    )}
                   </Paper>
-                ))}
+                  );
+                })}
                 <DrawPublishControls
                   tournament={tournament}
-                  groups={savedEvent.groups}
+                  groups={persistedGroups}
                   drawPublish={drawPublish}
                   hasReopenPermission={hasDrawReopenPermission}
                   onLock={handleLockDraw}
@@ -1656,23 +2323,22 @@ export default function InternalTournamentSetup() {
                   compact
                 />
                 <Button
-                  component={RouterLink}
-                  to={`/tournament/publish-schedule?tournamentId=${encodeURIComponent(tournamentId)}`}
                   variant="outlined"
                   size="small"
                   fullWidth
+                  onClick={() => selectWorkspaceSection(INTERNAL_WORKSPACE_SECTIONS.SCHEDULE)}
                 >
-                  Lịch thi đấu & công bố (S1-E)
+                  Mở lịch thi đấu
                 </Button>
               </Stack>
             )}
           </Paper>
 
           <TournamentGroupEditor
-            groups={savedEvent?.groups || []}
+            groups={persistedGroups}
             entries={savedEvent?.entries || editorEntries}
             players={players}
-            canIntervene={canInterveneSetup && (savedEvent?.groups?.length || 0) > 0}
+            canIntervene={canInterveneSetup && persistedGroups.length > 0}
             tournamentId={tournamentId}
             eventId={savedEvent?.id || ""}
             onApply={handleGroupInterventionApply}
@@ -1680,57 +2346,100 @@ export default function InternalTournamentSetup() {
           />
         </Grid>
       </Grid>
+      </>
+      )}
 
-      {savedEvent?.groups?.length > 0 && (
+      {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.SCHEDULE ? (
+        <Box sx={{ mt: 2 }}>
+          <InternalScheduleStage
+            tournament={tournament}
+            event={savedEvent}
+            courts={courts}
+            entryLabels={Object.fromEntries(
+              (savedEvent?.entries || []).map((entry) => [entry.id, entry.name || entry.id])
+            )}
+            busy={scheduleBusy}
+            actor={
+              user
+                ? { id: user.id, email: user.email || "", name: user.displayName || user.name || "" }
+                : null
+            }
+            clubId={tournamentClubId}
+            onCreateMatches={handleGenerateSchedule}
+            onSaveCourtSchedule={async (nextSchedule) =>
+              writeCanonical(
+                { courtSchedule: nextSchedule },
+                { currentTournament: tournament, expectedVersion: tournament?.version }
+              )
+            }
+            onPersistSettings={async (nextTournament, nextMatches) => {
+              const result = await writeCanonical(
+                {
+                  settings: nextTournament.settings,
+                  courtSchedule: nextTournament.courtSchedule,
+                  events: nextTournament.events?.[0]
+                    ? [
+                        {
+                          ...nextTournament.events[0],
+                          matches: nextMatches || nextTournament.events[0].matches,
+                        },
+                      ]
+                    : nextTournament.events,
+                },
+                { currentTournament: tournament, expectedVersion: tournament?.version }
+              );
+              return result.ok;
+            }}
+          />
+        </Box>
+      ) : null}
+
+      {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.REFEREE ? (
+        <InternalRefereeStage
+          tournament={tournament}
+          event={savedEvent}
+          entryLabels={Object.fromEntries(
+            (savedEvent?.entries || []).map((entry) => [entry.id, entry.name || entry.id])
+          )}
+          pendingMatchId={pendingMatchId}
+          onRosterChange={handleRefereeRosterChange}
+          onAssign={handleAssignMatchReferee}
+          enableCanonicalDirectory
+          canonicalCandidates={canonicalReferees}
+          canonicalLoading={canonicalRefereesLoading}
+          canonicalError={canonicalRefereesError}
+          canonicalWarning={canonicalRefereesWarning}
+        />
+      ) : null}
+
+      {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.RESULTS &&
+        savedEvent?.groups?.length > 0 && (
         <Stack spacing={2} sx={{ mt: 2 }}>
+          <InternalGroupStandingsTable projection={groupStandingsProjection} />
+
           <GroupStagePanel
             event={savedEvent}
             players={players}
             onSubmitScore={handleSubmitGroupScore}
             draftScope={scoreDraftScope}
-          />
-
-          <Paper variant="outlined" sx={{ p: 1.5 }}>
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
-              Bảng xếp hạng vòng bảng
-            </Typography>
-            {groupStandings[0]?.tieBreakExplanation ? (
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                Tie-break: {groupStandings[0].tieBreakExplanation}
-                {groupStandings[0].source === "standings_v2" ? " · STANDINGS_V2" : " · Legacy"}
-              </Typography>
-            ) : null}
-            {groupStandings.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                Chưa có kết quả trận vòng bảng. Nhập kết quả để tính BXH trước khi tạo bracket.
-              </Typography>
-            ) : (
-              <Grid container spacing={1.5}>
-                {groupStandings.map((groupStanding) => (
-                  <Grid key={groupStanding.group} size={{ xs: 12, md: 6, lg: 3 }}>
-                    <Paper variant="outlined" sx={{ p: 1.25 }}>
-                      <Typography fontWeight="bold" sx={{ mb: 0.75 }}>
-                        Bảng {groupStanding.group}
-                      </Typography>
-                      <Stack spacing={0.5}>
-                        {groupStanding.standing.map((team, index) => (
-                          <Typography
-                            key={team.id}
-                            variant="body2"
-                            fontWeight={index < 2 ? "bold" : "regular"}
-                          >
-                            {index + 1}. {team.name} — {team.matchPoints} điểm
-                            {team.qualificationStatus?.startsWith("qualified") ? " ✓ KO" : ""}
-                          </Typography>
-                        ))}
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
+            pendingMatchId={pendingMatchId}
+            renderMatchExtras={(match) => (
+              <InternalMatchRefereeSelect
+                match={match}
+                roster={listEligibleInternalReferees(tournament)}
+                pending={String(pendingMatchId || "") === String(match.id)}
+                onAssign={handleAssignMatchReferee}
+              />
             )}
-          </Paper>
+          />
+        </Stack>
+      )}
 
+      {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.BRACKET && (
+        <Stack spacing={2} sx={{ mt: 2 }}>
+          {savedEvent?.groups?.length > 0 ? (
+            <InternalGroupStandingsTable projection={groupStandingsProjection} />
+          ) : null}
           <Paper variant="outlined" sx={{ p: 1.5 }}>
             <Stack
               direction={{ xs: "column", sm: "row" }}
@@ -1740,10 +2449,13 @@ export default function InternalTournamentSetup() {
               sx={{ mb: 1.5 }}
             >
               <Typography variant="subtitle1" fontWeight="bold">
-                Sơ đồ knock-out
+                {shouldSkipKnockoutForInternal(savedEvent)
+                  ? "Kết thúc 1 bảng / Nhà vô địch"
+                  : "Sơ đồ knock-out"}
               </Typography>
               <Stack direction="row" spacing={1}>
-                {savedEvent?.bracket?.rounds?.length > 0 && (
+                {!shouldSkipKnockoutForInternal(savedEvent) &&
+                  savedEvent?.bracket?.rounds?.length > 0 && (
                   <Button
                     component={RouterLink}
                     to={`/tournament/internal/${tournamentId}/bracket`}
@@ -1752,35 +2464,69 @@ export default function InternalTournamentSetup() {
                     Mở sơ đồ đầy đủ
                   </Button>
                 )}
-                {!savedEvent?.bracket?.rounds?.length && (
-                  <Button variant="contained" onClick={handleGenerateBracket}>
+                {!shouldSkipKnockoutForInternal(savedEvent) &&
+                  !savedEvent?.bracket?.rounds?.length && (
+                  <Button
+                    variant="contained"
+                    onClick={handleGenerateBracket}
+                    disabled={!knockoutAction.enabled}
+                  >
                     Tạo bracket từ BXH
                   </Button>
                 )}
               </Stack>
             </Stack>
 
-            {!savedEvent?.bracket?.rounds?.length ? (
+            {shouldSkipKnockoutForInternal(savedEvent) ? (
+              <Alert severity="info" sx={{ mb: 1 }}>
+                {ONE_GROUP_COMPLETION_MESSAGE} Hoàn tất mọi trận vòng bảng rồi vào Trao giải / Đóng giải.
+              </Alert>
+            ) : !savedEvent?.bracket?.rounds?.length ? (
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Chưa có sơ đồ. Nhập điểm vòng bảng xong rồi bấm &quot;Tạo bracket từ BXH&quot;.
+                {knockoutAction.enabled
+                  ? "BXH vòng bảng đã chốt. Bấm \"Tạo bracket từ BXH\" để tạo knock-out."
+                  : knockoutAction.reason || INTERNAL_KNOCKOUT_INCOMPLETE_MESSAGE}{" "}
                 Cần số bảng chẵn (2, 4, 8...).
               </Typography>
             ) : null}
 
+            {!shouldSkipKnockoutForInternal(savedEvent) ? (
             <BracketView
               progress={bracketProgress}
-              unlockedRounds={savedEvent?.bracket?.unlockedRounds || {}}
+              unlockedRounds={liveKnockoutEvent?.bracket?.unlockedRounds || {}}
               knockoutMatchesByBracketId={knockoutMatchesByBracketId}
-              onSelectWinner={handleSelectBracketWinner}
+              onSelectWinner={handleDraftBracketWinner}
+              onConfirmWinner={handleConfirmBracketWinner}
+              winnerDrafts={winnerDrafts}
               onToggleRoundLock={handleToggleRoundLock}
               onSubmitScore={handleSubmitKnockoutScore}
               onReset={handleResetBracket}
               canReset={Boolean(savedEvent?.bracket?.rounds?.length)}
               draftScope={scoreDraftScope}
+              pendingMatchId={pendingMatchId}
+              renderMatchExtras={(match) => (
+                <InternalMatchRefereeSelect
+                  match={match}
+                  roster={listEligibleInternalReferees(tournament)}
+                  pending={String(pendingMatchId || "") === String(match.id)}
+                  onAssign={handleAssignMatchReferee}
+                />
+              )}
             />
+            ) : null}
           </Paper>
         </Stack>
       )}
+
+      {workspaceSection === INTERNAL_WORKSPACE_SECTIONS.AWARDS ? (
+        <InternalAwardsWorkspace
+          tournament={tournament}
+          confirming={awardsBusy}
+          completing={awardsBusy}
+          onConfirmAwards={() => void handleConfirmInternalAwards()}
+          onCompleteTournament={() => void handleCompleteInternalTournament()}
+        />
+      ) : null}
 
       <TournamentAnimationDialog
         {...flow.dialogProps}
@@ -1799,44 +2545,10 @@ export default function InternalTournamentSetup() {
         />
       ) : null}
 
-      {bracketAdvanceAnim && (
-        <Box
-          sx={{
-            position: "fixed",
-            bottom: 16,
-            left: 16,
-            right: 16,
-            zIndex: 1300,
-            maxWidth: 360,
-            mx: "auto",
-          }}
-        >
-          <BracketRevealAnimation
-            animationMode={ANIMATION_MODES.BRACKET_ADVANCE}
-            advanceHint={bracketAdvanceAnim}
-            bracket={bracketAdvanceAnim.bracket}
-            onAnimationComplete={() => setBracketAdvanceAnim(null)}
-            onSkip={() => setBracketAdvanceAnim(null)}
-          />
-        </Box>
-      )}
-
-      {tournament && (
-        <Box sx={{ mt: 3 }}>
-          <TournamentCourtSchedulePanel
-            clubId={tournamentClubId}
-            tournament={tournament}
-            courts={courts}
-            onSaved={() => {
-              refreshClubs();
-              setLocalRevision((value) => value + 1);
-            }}
-          />
-        </Box>
-      )}
       </>
       )}
     </TournamentSetupShell>
+    </Box>
     </TournamentManageGate>
   );
 }

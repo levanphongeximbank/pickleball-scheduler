@@ -493,7 +493,7 @@ export function getDefaultHomePath(user, rbacEnabled = false) {
     case ROLES.ACCOUNTANT:
       return "/court-management/revenue";
     case ROLES.REFEREE:
-      return "/referee";
+      return "/tournaments";
     case ROLES.SYSTEM_TECHNICIAN:
       return "/dashboard";
     case ROLES.TEAM_CAPTAIN: {

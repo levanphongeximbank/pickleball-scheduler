@@ -227,7 +227,7 @@ export default function ScheduleBuilderPanel({
         </Paper>
       )}
 
-      {editCheck.ok && onMatchesChange && (
+      {editCheck.ok && onMatchesChange && matches.length > 0 && (
         <Paper variant="outlined" sx={{ p: 1.5 }}>
           <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
             Đổi sân / giờ (BTC)

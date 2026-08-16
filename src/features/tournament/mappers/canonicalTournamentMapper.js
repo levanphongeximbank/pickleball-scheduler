@@ -58,6 +58,14 @@ export function canonicalRowToTournament(row) {
     settings.engineV4 = row.engine_v4;
   }
 
+  const versionRaw = row.version ?? payload.version;
+  const version =
+    versionRaw == null || versionRaw === ""
+      ? 1
+      : Number.isFinite(Number(versionRaw))
+        ? Number(versionRaw)
+        : 1;
+
   return normalizeTournament({
     ...payload,
     id: row.id || payload.id,
@@ -71,6 +79,7 @@ export function canonicalRowToTournament(row) {
     seasonId: row.season_id ?? payload.seasonId ?? "",
     leagueId: row.league_id ?? payload.leagueId ?? "",
     settings,
+    version,
     createdAt: row.created_at || payload.createdAt,
     updatedAt: row.updated_at || payload.updatedAt,
   });

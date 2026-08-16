@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getTournamentQuery,
   listTournamentsQuery,
@@ -12,6 +12,18 @@ import {
   setTournamentStatusCommand,
 } from "../services/tournamentCommands.js";
 import { resolveExplicitTenantFromClub } from "../guards/tournamentTenant.js";
+import {
+  assertInternalTournamentReadyForMutation,
+  resolveCanonicalExpectedVersion,
+} from "../internal/canonicalTournamentCas.js";
+import {
+  resolveCanonicalIdentityChangePolicy,
+  resolveCanonicalLoadPresentation,
+  resolveCanonicalScopeGapPolicy,
+} from "../internal/internalWorkspaceSections.js";
+import { selectAuthoritativeCanonicalTournament } from "../internal/internalPersistedDrawGroups.js";
+import { shouldReplaceCanonicalSnapshot } from "../internal/internalKnockoutLiveRefresh.js";
+import { TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 
 function readClubId(clubOrScope) {
   if (clubOrScope && typeof clubOrScope === "object") {
@@ -37,100 +49,247 @@ export function useCanonicalTournament(clubOrScope, tournamentId, revision = 0) 
   const tenantId = readTenantId(clubOrScope);
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(Boolean(clubId && tournamentId));
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const hasLoadedRef = useRef(false);
+  const lastAuthoritativeRef = useRef(null);
+  const lastScopeRef = useRef({ clubId: "", tenantId: "", tournamentId: "" });
+  const lastRevisionRef = useRef(revision);
 
-  const reload = useCallback(async () => {
-    if (!clubId || !tournamentId) {
-      setTournament(null);
-      setLoading(false);
-      return null;
+  const applyAuthoritativeTournament = useCallback((incoming) => {
+    const current = lastAuthoritativeRef.current;
+    const selected = selectAuthoritativeCanonicalTournament(current, incoming);
+    if (current && selected && !shouldReplaceCanonicalSnapshot(current, selected)) {
+      setTournament(current);
+      hasLoadedRef.current = true;
+      return current;
     }
-    setLoading(true);
-    setError(null);
+    lastAuthoritativeRef.current = selected;
+    setTournament(selected);
+    if (selected) {
+      hasLoadedRef.current = true;
+    }
+    return selected;
+  }, []);
+
+  const reload = useCallback(async ({ silent = false } = {}) => {
+    if (!clubId || !tournamentId) {
+      const gap = resolveCanonicalScopeGapPolicy({
+        hasTournament: hasLoadedRef.current || Boolean(lastAuthoritativeRef.current),
+        tournamentId,
+      });
+      if (!gap.keepRenderedTournament) {
+        setTournament(null);
+        hasLoadedRef.current = false;
+        lastAuthoritativeRef.current = null;
+      } else if (lastAuthoritativeRef.current) {
+        setTournament(lastAuthoritativeRef.current);
+      }
+      setLoading(false);
+      setRefreshing(false);
+      return lastAuthoritativeRef.current;
+    }
+    const presentation = resolveCanonicalLoadPresentation({
+      hasTournament: hasLoadedRef.current || Boolean(lastAuthoritativeRef.current),
+    });
+    if (!silent) {
+      if (presentation.initialLoading) setLoading(true);
+      else setRefreshing(true);
+    }
+    if (!silent) setError(null);
     const result = await getTournamentQuery(clubId, tournamentId, { tenantId });
     if (!result.ok) {
-      setTournament(null);
-      setError(result.error || "Không tải được giải.");
+      if (presentation.initialLoading && !silent) {
+        setTournament(null);
+        lastAuthoritativeRef.current = null;
+        hasLoadedRef.current = false;
+      }
+      if (!silent) setError(result.error || "Không tải được giải.");
       setLoading(false);
-      return null;
+      setRefreshing(false);
+      return silent ? lastAuthoritativeRef.current : null;
     }
-    setTournament(result.tournament);
+    applyAuthoritativeTournament(result.tournament);
+    lastScopeRef.current = { clubId, tenantId, tournamentId };
+    lastRevisionRef.current = revision;
     setLoading(false);
-    return result.tournament;
-  }, [clubId, tournamentId, tenantId]);
+    setRefreshing(false);
+    return lastAuthoritativeRef.current;
+  }, [applyAuthoritativeTournament, clubId, tournamentId, tenantId, revision]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const previous = lastScopeRef.current;
+      const identity = resolveCanonicalIdentityChangePolicy({
+        previousClubId: previous.clubId,
+        nextClubId: clubId,
+        previousTenantId: previous.tenantId,
+        nextTenantId: tenantId,
+        previousTournamentId: previous.tournamentId,
+        nextTournamentId: tournamentId,
+      });
+
+      if (identity.clearTournament) {
+        hasLoadedRef.current = false;
+        lastAuthoritativeRef.current = null;
+        if (!cancelled) setTournament(null);
+        lastScopeRef.current = { clubId, tenantId, tournamentId };
+      }
+
       if (!clubId || !tournamentId) {
         if (!cancelled) {
-          setTournament(null);
+          const gap = resolveCanonicalScopeGapPolicy({
+            hasTournament: hasLoadedRef.current || Boolean(lastAuthoritativeRef.current),
+            tournamentId,
+          });
+          if (!gap.keepRenderedTournament) {
+            setTournament(null);
+            hasLoadedRef.current = false;
+            lastAuthoritativeRef.current = null;
+          } else if (lastAuthoritativeRef.current) {
+            setTournament(lastAuthoritativeRef.current);
+          }
           setLoading(false);
+          setRefreshing(false);
         }
         return;
       }
-      setLoading(true);
+
+      const sameScopeRestored =
+        !identity.clearTournament &&
+        hasLoadedRef.current &&
+        lastAuthoritativeRef.current &&
+        String(lastAuthoritativeRef.current.id || "") === String(tournamentId) &&
+        previous.clubId === clubId &&
+        String(previous.tenantId || "") === String(tenantId || "") &&
+        lastRevisionRef.current === revision;
+      if (sameScopeRestored) {
+        if (!cancelled) {
+          setTournament(lastAuthoritativeRef.current);
+          setLoading(false);
+          setRefreshing(false);
+        }
+        return;
+      }
+
+      lastScopeRef.current = { clubId, tenantId, tournamentId };
+      lastRevisionRef.current = revision;
+
+      const presentation = resolveCanonicalLoadPresentation({
+        hasTournament: hasLoadedRef.current || Boolean(lastAuthoritativeRef.current),
+      });
+      if (presentation.initialLoading) setLoading(true);
+      else setRefreshing(true);
       const result = await getTournamentQuery(clubId, tournamentId, { tenantId });
       if (cancelled) return;
       if (!result.ok) {
-        setTournament(null);
+        if (presentation.initialLoading) {
+          setTournament(null);
+          lastAuthoritativeRef.current = null;
+          hasLoadedRef.current = false;
+        } else if (lastAuthoritativeRef.current) {
+          setTournament(lastAuthoritativeRef.current);
+        }
         setError(result.error || "Không tải được giải.");
       } else {
-        setTournament(result.tournament);
+        applyAuthoritativeTournament(result.tournament);
         setError(null);
       }
       setLoading(false);
+      setRefreshing(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [clubId, tournamentId, revision, tenantId]);
+  }, [applyAuthoritativeTournament, clubId, tournamentId, revision, tenantId]);
 
   const update = useCallback(
     async (patch, options = {}) => {
+      const current = options.currentTournament || tournament;
+      const expectedVersion =
+        options.expectedVersion != null
+          ? resolveCanonicalExpectedVersion(options.expectedVersion)
+          : resolveCanonicalExpectedVersion(current);
+      if (String(current?.mode || "") === TOURNAMENT_MODE.INTERNAL_TOURNAMENT) {
+        const ready = assertInternalTournamentReadyForMutation(current, {
+          mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+        });
+        if (!ready.ok) {
+          return ready;
+        }
+      }
       const result = await updateTournamentCommand(clubId, tournamentId, patch, {
         ...options,
         tenantId,
+        currentTournament: current,
+        expectedVersion:
+          expectedVersion != null ? expectedVersion : current?.version,
       });
       if (result.ok) {
-        setTournament(result.tournament);
+        applyAuthoritativeTournament(result.tournament);
       }
       return result;
     },
-    [clubId, tournamentId, tenantId]
+    [applyAuthoritativeTournament, clubId, tournamentId, tenantId, tournament]
   );
 
   const applyEngine = useCallback(
     async (engineState, options = {}) => {
+      const current = options.currentTournament || tournament;
+      if (String(current?.mode || "") === TOURNAMENT_MODE.INTERNAL_TOURNAMENT) {
+        const ready = assertInternalTournamentReadyForMutation(current, {
+          mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+        });
+        if (!ready.ok) return ready;
+      }
       const result = await applyEngineV4StateCommand(clubId, tournamentId, engineState, {
         ...options,
         tenantId,
+        currentTournament: current,
+        expectedVersion:
+          options.expectedVersion != null
+            ? options.expectedVersion
+            : resolveCanonicalExpectedVersion(current),
       });
       if (result.ok) {
-        setTournament(result.tournament);
+        applyAuthoritativeTournament(result.tournament);
       }
       return result;
     },
-    [clubId, tournamentId, tenantId]
+    [applyAuthoritativeTournament, clubId, tournamentId, tenantId, tournament]
   );
 
   const setStatus = useCallback(
     async (status, options = {}) => {
+      const current = options.currentTournament || tournament;
+      if (String(current?.mode || "") === TOURNAMENT_MODE.INTERNAL_TOURNAMENT) {
+        const ready = assertInternalTournamentReadyForMutation(current, {
+          mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+        });
+        if (!ready.ok) return ready;
+      }
       const result = await setTournamentStatusCommand(clubId, tournamentId, status, {
         ...options,
         tenantId,
+        currentTournament: current,
+        expectedVersion:
+          options.expectedVersion != null
+            ? options.expectedVersion
+            : resolveCanonicalExpectedVersion(current),
       });
       if (result.ok) {
-        setTournament(result.tournament);
+        applyAuthoritativeTournament(result.tournament);
       }
       return result;
     },
-    [clubId, tournamentId, tenantId]
+    [applyAuthoritativeTournament, clubId, tournamentId, tenantId, tournament]
   );
 
   return {
     tournament,
     loading,
+    refreshing,
     error,
     reload,
     update,

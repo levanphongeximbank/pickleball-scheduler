@@ -159,10 +159,65 @@ describe("tournament canonical cloud-mode RPC", () => {
     });
     assert.equal(engine.ok, true);
 
-    const resultPatch = await updateTournamentCommand(CLUB_SCOPE, id, {
+    const ready = await updateTournamentCommand(CLUB_SCOPE, id, {
+      status: TOURNAMENT_STATUS.READY,
+    });
+    assert.equal(ready.ok, true);
+
+    const active = await updateTournamentCommand(CLUB_SCOPE, id, {
+      status: TOURNAMENT_STATUS.ACTIVE,
+    });
+    assert.equal(active.ok, true);
+
+    // Premature completed without closed snapshot must fail closed (IT-REV-002).
+    const premature = await updateTournamentCommand(CLUB_SCOPE, id, {
       status: TOURNAMENT_STATUS.COMPLETED,
       settings: { resultsConfirmed: true },
     });
+    assert.equal(premature.ok, false);
+    assert.equal(
+      premature.code,
+      "INTERNAL_TOURNAMENT_NOT_COMPLETION_ELIGIBLE"
+    );
+
+    // Persist genuine terminal competition first (pre-patch authority).
+    const competed = await updateTournamentCommand(CLUB_SCOPE, id, {
+      events: [
+        {
+          id: "ev-1",
+          type: "men_double",
+          groups: [{ id: "g1", entryIds: ["e1"] }],
+          entries: [{ id: "e1", playerId: "player-a", name: "A" }],
+          matches: [
+            {
+              id: "m1",
+              status: "completed",
+              winnerId: "e1",
+              scoreA: 11,
+              scoreB: 5,
+            },
+          ],
+        },
+      ],
+    });
+    assert.equal(competed.ok, true);
+
+    const closedPayload = {
+      status: TOURNAMENT_STATUS.COMPLETED,
+      events: competed.tournament.events,
+      settings: {
+        resultsOps: {
+          closed: true,
+          resultsLocked: true,
+          summary: {
+            champion: { entryId: "e1", entryName: "A" },
+            completedMatchCount: 1,
+            matchCount: 1,
+          },
+        },
+      },
+    };
+    const resultPatch = await updateTournamentCommand(CLUB_SCOPE, id, closedPayload);
     assert.equal(resultPatch.ok, true);
 
     const reloaded = await getTournamentQuery(CLUB_SCOPE, id);

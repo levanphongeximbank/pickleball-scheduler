@@ -32,7 +32,10 @@ export default function RefereeSessionScoreboard() {
         return;
       }
 
-      const result = await listRefereeAssignments({ clubId: activeClubId });
+      const result = await listRefereeAssignments({
+        clubId: activeClubId,
+        tenantId: activeClub?.tenantId || activeClub?.venueId,
+      });
       if (cancelled) {
         return;
       }
@@ -51,7 +54,7 @@ export default function RefereeSessionScoreboard() {
     return () => {
       cancelled = true;
     };
-  }, [activeClub?.venueId, activeClubId, matchId, user]);
+  }, [activeClub?.tenantId, activeClub?.venueId, activeClubId, matchId, user]);
 
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;

@@ -10,6 +10,14 @@ import {
   TEAM_TOURNAMENT_DATA_MODES,
 } from "../../team-tournament/repositories/teamTournamentDataMode.js";
 import { resolveTournamentTenantScope } from "../guards/tournamentTenant.js";
+import {
+  formatCanonicalVersionConflictError,
+  isCanonicalVersionConflict,
+  isCanonicalVersionRequired,
+  resolveCanonicalExpectedVersion,
+} from "../internal/canonicalTournamentCas.js";
+import { resolveStatusAfterMatchActivity } from "../internal/internalTournamentStatusTransitions.js";
+import { TOURNAMENT_REPO_ERROR } from "../repositories/TournamentRepository.interface.js";
 
 function buildDefaultName(mode) {
   const date = new Date().toLocaleDateString("vi-VN");
@@ -82,11 +90,62 @@ export async function updateTournamentCommand(
   const scope = prepareScope(clubIdOrScope, options);
   if (!scope.ok) return scope;
   const repo = options.repository || getTournamentRepository();
-  const { processMatchId, processEventId, ...repoOptions } = options;
-  const result = await repo.update(scope.clubId, tournamentId, patch, {
+  const {
+    processMatchId,
+    processEventId,
+    expectedVersion,
+    forceStatusReopen,
+    requireCas,
+    ...repoOptions
+  } = options;
+
+  let nextPatch = { ...patch };
+  if (
+    processMatchId &&
+    nextPatch.status == null &&
+    options.currentTournament?.mode === TOURNAMENT_MODE.INTERNAL_TOURNAMENT
+  ) {
+    const bumped = resolveStatusAfterMatchActivity(options.currentTournament.status);
+    if (bumped !== options.currentTournament.status) {
+      nextPatch = { ...nextPatch, status: bumped };
+    }
+  }
+
+  const isInternal =
+    options.currentTournament?.mode === TOURNAMENT_MODE.INTERNAL_TOURNAMENT;
+
+  const result = await repo.update(scope.clubId, tournamentId, nextPatch, {
     ...repoOptions,
     tenantId: scope.tenantId,
+    expectedVersion:
+      expectedVersion != null
+        ? expectedVersion
+        : resolveCanonicalExpectedVersion(options.currentTournament),
+    forceStatusReopen,
+    // Internal: requireCas:false cannot bypass CAS.
+    requireCas: isInternal ? true : requireCas,
   });
+
+  if (isCanonicalVersionConflict(result) || isCanonicalVersionRequired(result)) {
+    return {
+      ...result,
+      ok: false,
+      error: formatCanonicalVersionConflictError(result),
+    };
+  }
+
+  if (
+    String(result?.code || "").toUpperCase() ===
+    TOURNAMENT_REPO_ERROR.INTERNAL_TOURNAMENT_NOT_COMPLETION_ELIGIBLE
+  ) {
+    return {
+      ...result,
+      ok: false,
+      error:
+        result.error ||
+        "Giải nội bộ chưa đủ điều kiện hoàn tất để chuyển sang completed.",
+    };
+  }
 
   // Contract B: score/update command explicitly invokes canonical lifecycle
   // after cloud persistence succeeds. Cloud repository never owns side-effects.
@@ -153,7 +212,12 @@ export async function setTournamentStatusCommand(
   status,
   options = {}
 ) {
-  return updateTournamentCommand(clubIdOrScope, tournamentId, { status }, options);
+  return updateTournamentCommand(
+    clubIdOrScope,
+    tournamentId,
+    { status },
+    options
+  );
 }
 
 /**

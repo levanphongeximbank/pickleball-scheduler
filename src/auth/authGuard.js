@@ -6,6 +6,7 @@ import {
   isMyTournamentsHubPath,
   isTournamentDashboardPath,
 } from "./tournamentEngineRouteAccess.js";
+import { isInternalRefereePortalPath } from "../features/tournament/internal/internalRefereeCanonicalPath.js";
 
 export function isAuthRequired({ authProductionEnabled, rbacEnabled }) {
   return Boolean(authProductionEnabled || rbacEnabled);
@@ -95,6 +96,7 @@ export function isAuthenticatedOnlyRoute(pathname) {
     pathname.startsWith("/referee/match/") ||
     pathname.startsWith("/team-portal/") ||
     pathname.startsWith("/team-referee/") ||
+    isInternalRefereePortalPath(pathname) ||
     // Exact `/tournaments` My Tournaments hub + `/tournaments/:id` Dashboard.
     isMyTournamentsHubPath(pathname) ||
     isTournamentDashboardPath(pathname)
@@ -135,6 +137,24 @@ export function shouldRedirectToLogin(
   }
 
   return !isPublicAuthPath(pathname, { authProductionEnabled, rbacEnabled });
+}
+
+/**
+ * AUTH_UNKNOWN_INITIAL → full-page auth spinner.
+ * AUTH_REFRESHING_KNOWN_USER → keep the protected route mounted.
+ */
+export function shouldRenderRouteAuthLoading({
+  authLoading = false,
+  isAuthenticated = false,
+  pathname = "",
+} = {}) {
+  if (!authLoading || pathname === "/login") {
+    return false;
+  }
+  if (isAuthenticated) {
+    return false;
+  }
+  return true;
 }
 
 export function shouldRedirectToForbidden(

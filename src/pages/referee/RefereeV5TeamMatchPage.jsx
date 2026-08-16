@@ -16,6 +16,8 @@ import {
   rpcTeamTournamentRequestRefereeCorrection,
 } from "../../features/team-tournament/services/teamTournamentRpcService.js";
 import RefereeSessionScoreboard from "./RefereeSessionScoreboard.jsx";
+import InternalRefereeMatchPage from "./InternalRefereeMatchPage.jsx";
+import { isInternalRefereeCanonicalRequest } from "../../features/tournament/internal/internalRefereeCanonicalPath.js";
 import { findTournamentClubId } from "../../features/club/services/clubTournamentBridge.js";
 import { useTeamTournamentRealtime } from "../../features/team-tournament/ui/useTeamTournamentRealtime.js";
 import RealtimeConnectionStatus from "../../features/team-tournament/ui/RealtimeConnectionStatus.jsx";
@@ -33,14 +35,20 @@ export default function RefereeV5TeamMatchPage() {
     searchParams.get("tournamentId") ||
     location.state?.tournamentId ||
     null;
+  const isInternalCanonical = isInternalRefereeCanonicalRequest({
+    searchParams,
+    locationState: location.state,
+  });
 
   const [accessOps, setAccessOps] = useState(null);
-  const [loading, setLoading] = useState(Boolean(tournamentId && isRefereeV5Enabled()));
+  const [loading, setLoading] = useState(
+    Boolean(!isInternalCanonical && tournamentId && isRefereeV5Enabled())
+  );
   const [requestBusy, setRequestBusy] = useState(false);
   const [requestNotice, setRequestNotice] = useState("");
 
   const reloadAccess = useCallback(async () => {
-    if (!tournamentId || !matchId) {
+    if (isInternalCanonical || !tournamentId || !matchId) {
       setLoading(false);
       return;
     }
@@ -52,24 +60,26 @@ export default function RefereeV5TeamMatchPage() {
     setAccessOps(result);
     setLoading(false);
     return result;
-  }, [matchId, tournamentId]);
+  }, [isInternalCanonical, matchId, tournamentId]);
 
   const resolvedClubId = findTournamentClubId(tournamentId);
 
   const realtime = useTeamTournamentRealtime({
     clubId: resolvedClubId,
     tournamentId,
-    enabled: Boolean(tournamentId && resolvedClubId && isRefereeV5Enabled()),
+    enabled: Boolean(
+      !isInternalCanonical && tournamentId && resolvedClubId && isRefereeV5Enabled()
+    ),
     onReload: useCallback(async () => reloadAccess(), [reloadAccess]),
   });
 
   useEffect(() => {
-    if (!isRefereeV5Enabled() || !tournamentId) {
+    if (isInternalCanonical || !isRefereeV5Enabled() || !tournamentId) {
       setLoading(false);
       return;
     }
     reloadAccess();
-  }, [reloadAccess, tournamentId]);
+  }, [isInternalCanonical, reloadAccess, tournamentId]);
 
   const accessState = useMemo(
     () => summarizeRefereeAccessState(accessOps || {}),
@@ -78,6 +88,10 @@ export default function RefereeV5TeamMatchPage() {
 
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (isInternalCanonical) {
+    return <InternalRefereeMatchPage />;
   }
 
   if (!isRefereeV5Enabled() || !tournamentId) {

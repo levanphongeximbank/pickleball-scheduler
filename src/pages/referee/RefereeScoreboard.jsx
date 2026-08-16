@@ -20,7 +20,6 @@ import SportsIcon from "@mui/icons-material/Sports";
 
 import {
   adjustMatchLiveScore,
-  fetchMatchLiveByToken,
   hasSupabaseConfig,
   MATCH_LIVE_STATUS,
   REFEREE_LINK_LOCKED_MESSAGE,
@@ -38,7 +37,10 @@ import {
   REFEREE_MATCH_ACTIONS,
 } from "../../features/mobile/services/refereeMatchGuard.js";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { useClub } from "../../context/ClubContext.jsx";
+import {
+  loadRefereeTokenScoreboard,
+  resolveRefereeTokenScoreboardScope,
+} from "../../features/tournament/internal/internalRefereeTokenScoreboard.js";
 
 function TeamScoreControls({
   label,
@@ -94,16 +96,16 @@ function TeamScoreControls({
   );
 }
 
-export default function RefereeScoreboard({ sessionToken = null, sessionMode = false } = {}) {
+export default function RefereeScoreboard({
+  sessionToken = null,
+  sessionMode = false,
+  canonicalCommit = null,
+  embedded = false,
+  onCanonicalCommitted = null,
+} = {}) {
   const { token: rawToken } = useParams();
   const token = sessionToken || decodeURIComponent(rawToken || "");
   const { user } = useAuth();
-  const { activeClubId, activeClub } = useClub();
-
-  const refereeScope = {
-    clubId: activeClubId,
-    venueId: activeClub?.venueId,
-  };
 
   const [row, setRow] = useState(null);
   const [scoreA, setScoreA] = useState(0);
@@ -115,6 +117,8 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
   const [locked, setLocked] = useState(false);
   const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
   const [confirmDecrement, setConfirmDecrement] = useState(null);
+  const [canonicalCommitted, setCanonicalCommitted] = useState(false);
+  const usesCanonicalCommit = typeof canonicalCommit === "function";
 
   const displayStatus = useMemo(
     () => resolveRefereeStatusLabel(resolveRefereeMatchStatus({ referee: { token } }, row)),
@@ -141,7 +145,10 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
       return;
     }
 
-    const result = await fetchMatchLiveByToken(token);
+    const result = await loadRefereeTokenScoreboard({
+      token,
+      user,
+    });
     if (!result.ok) {
       setError(result.error || REFEREE_LINK_LOCKED_MESSAGE);
       setLoading(false);
@@ -150,7 +157,7 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
 
     applyRow(result.row);
     setLoading(false);
-  }, [token, applyRow]);
+  }, [token, applyRow, user]);
 
   useEffect(() => {
     loadMatch();
@@ -175,12 +182,14 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
       delta > 0
         ? REFEREE_MATCH_ACTIONS.SCORE_INCREMENT
         : REFEREE_MATCH_ACTIONS.SCORE_DECREMENT;
+    const refereeScope = resolveRefereeTokenScoreboardScope(row, user);
     const guard = guardRefereeMatchAction({
       user,
       matchRow: row,
       action,
       scope: refereeScope,
       sessionToken: sessionMode ? token : null,
+      accessMode: sessionMode ? "session" : "token",
     });
 
     if (!guard.ok) {
@@ -222,15 +231,52 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
     setConfirmDecrement(team);
   };
 
+  const runCanonicalCommit = async () => {
+    if (!usesCanonicalCommit) {
+      return { ok: false, error: "Phiên chấm nội bộ chưa gắn ghi kết quả canonical." };
+    }
+    setSubmitting(true);
+    setError(null);
+    const result = await canonicalCommit({ token, scoreA, scoreB });
+    setSubmitting(false);
+    if (!result?.ok) {
+      setError(
+        result?.error ||
+          "Không ghi được kết quả vào bảng điểm giải. Cần Owner GO SQL nếu máy chủ chưa bật."
+      );
+      return result;
+    }
+    setCanonicalCommitted(true);
+    setLocked(true);
+    setMessage("Đã ghi kết quả vào bảng điểm giải.");
+    applyRow({
+      ...(row || {}),
+      scoreA,
+      scoreB,
+      status: MATCH_LIVE_STATUS.LOCKED,
+    });
+    if (typeof onCanonicalCommitted === "function") {
+      onCanonicalCommitted(result);
+    }
+    return result;
+  };
+
   const handleConfirmFinalize = async () => {
     setConfirmFinalizeOpen(false);
 
+    if (usesCanonicalCommit) {
+      await runCanonicalCommit();
+      return;
+    }
+
+    const refereeScope = resolveRefereeTokenScoreboardScope(row, user);
     const guard = guardRefereeMatchAction({
       user,
       matchRow: row,
       action: REFEREE_MATCH_ACTIONS.FINALIZE,
       scope: refereeScope,
       sessionToken: sessionMode ? token : null,
+      accessMode: sessionMode ? "session" : "token",
     });
 
     if (!guard.ok) {
@@ -265,7 +311,7 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
 
   if (loading) {
     return (
-      <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center" }}>
+      <Box sx={{ minHeight: embedded ? "auto" : "100dvh", display: "grid", placeItems: "center", py: embedded ? 4 : 0 }}>
         <Typography color="text.secondary">Đang tải trận đấu...</Typography>
       </Box>
     );
@@ -289,8 +335,11 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
           : "info";
 
   return (
-    <Box sx={{ minHeight: "100dvh", bgcolor: "background.default", pb: 4 }}>
-      {!sessionMode && (
+    <Box
+      sx={{ minHeight: embedded ? "auto" : "100dvh", bgcolor: "background.default", pb: 4 }}
+      data-testid="referee-token-scoreboard"
+    >
+      {!sessionMode && !usesCanonicalCommit && (
         <Container maxWidth="sm" sx={{ pt: 2 }}>
           <Alert severity="info" sx={{ mb: 1 }}>
             Link token legacy. Khuyến nghị{" "}
@@ -335,6 +384,9 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {row?.stageLabel && <Chip label={row.stageLabel} size="small" />}
             {row?.courtLabel && <Chip label={row.courtLabel} size="small" variant="outlined" />}
+            {row?.scheduledStart ? (
+              <Chip label={String(row.scheduledStart)} size="small" variant="outlined" />
+            ) : null}
             <Chip label={displayStatus} size="small" color={statusChipColor} />
           </Stack>
           <Typography variant="h4" fontWeight="bold" sx={{ mt: 2 }}>
@@ -375,15 +427,46 @@ export default function RefereeScoreboard({ sessionToken = null, sessionMode = f
           </Button>
         )}
 
-        {locked && row?.status === MATCH_LIVE_STATUS.FINALIZE_REQUESTED && (
+        {locked &&
+          row?.status === MATCH_LIVE_STATUS.FINALIZE_REQUESTED &&
+          !usesCanonicalCommit && (
           <Alert severity="info">
             Kết quả {scoreA} — {scoreB} đang chờ BTC xác nhận và cập nhật bảng điểm.
           </Alert>
         )}
 
-        {locked && (row?.status === MATCH_LIVE_STATUS.LOCKED || row?.status === MATCH_LIVE_STATUS.PROCESSED) && (
+        {usesCanonicalCommit &&
+          !canonicalCommitted &&
+          row?.status === MATCH_LIVE_STATUS.FINALIZE_REQUESTED && (
+          <Stack spacing={1.5} sx={{ mb: 2 }}>
+            <Alert severity="info">
+              Điểm {scoreA} — {scoreB} đã có trên phiên chấm. Ghi vào bảng điểm giải để
+              cập nhật xếp hạng.
+            </Alert>
+            <Button
+              fullWidth
+              size="large"
+              variant="contained"
+              color="success"
+              disabled={submitting}
+              onClick={() => {
+                runCanonicalCommit();
+              }}
+              sx={{ minHeight: 56, fontSize: "1.05rem", fontWeight: 700 }}
+            >
+              Ghi vào bảng điểm giải
+            </Button>
+          </Stack>
+        )}
+
+        {(canonicalCommitted ||
+          (locked &&
+            (row?.status === MATCH_LIVE_STATUS.LOCKED ||
+              row?.status === MATCH_LIVE_STATUS.PROCESSED))) && (
           <Alert severity="success">
-            Trận đã khóa: {scoreA} — {scoreB}. Liên hệ BTC nếu cần điều chỉnh.
+            {usesCanonicalCommit
+              ? `Đã ghi kết quả ${scoreA} — ${scoreB} vào bảng điểm giải.`
+              : `Trận đã khóa: ${scoreA} — ${scoreB}. Liên hệ BTC nếu cần điều chỉnh.`}
           </Alert>
         )}
       </Container>

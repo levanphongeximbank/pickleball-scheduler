@@ -20,6 +20,7 @@ export function assignRefereeToMatch(match, refereeName, options = {}) {
     token,
     assignedAt: new Date().toISOString(),
     canonicalUserId: options.canonicalUserId || rosterEntry?.canonicalUserId || "",
+    email: rosterEntry?.email || options.email || "",
     source: options.source || rosterEntry?.source || "",
   });
 

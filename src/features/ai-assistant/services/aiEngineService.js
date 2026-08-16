@@ -26,6 +26,16 @@ import {
 } from "./aiSuggestionStorage.js";
 import { teamToEntry } from "../../../tournament/engines/teamPairingEngine.js";
 
+function guardAiFromOptions(tournamentId, tenantId, options = {}, extra = {}) {
+  return guardAiAccess({
+    clubId: options.clubId,
+    tournamentId,
+    tenantId,
+    tournament: options.tournament || null,
+    ...extra,
+  });
+}
+
 function wrapSuggestion(type, result, context, userId, tenantId) {
   if (!result.ok) {
     return result;
@@ -65,8 +75,8 @@ function buildContextFromTournament(tournament, players, courts, options = {}) {
 }
 
 export function generateSeedSuggestion(tournamentId, tenantId, options = {}) {
-  const { clubId, players = [], courts = [] } = options;
-  const guard = guardAiAccess({ clubId, tournamentId, tenantId });
+  const { players = [], courts = [] } = options;
+  const guard = guardAiFromOptions(tournamentId, tenantId, options);
   if (!guard.ok) {
     return guard;
   }
@@ -88,8 +98,8 @@ export function generatePairingSuggestion(
   strategy = PAIRING_STRATEGY.BALANCED,
   options = {}
 ) {
-  const { clubId, players = [], courts = [], partnerHistory = {} } = options;
-  const guard = guardAiAccess({ clubId, tournamentId, tenantId });
+  const { players = [], courts = [], partnerHistory = {} } = options;
+  const guard = guardAiFromOptions(tournamentId, tenantId, options);
   if (!guard.ok) {
     return guard;
   }
@@ -114,8 +124,8 @@ export function generateGroupSuggestion(
   mode = GROUP_SUGGESTION_MODE.COMPETITIVE_BALANCED,
   options = {}
 ) {
-  const { clubId, players = [], courts = [] } = options;
-  const guard = guardAiAccess({ clubId, tournamentId, tenantId });
+  const { players = [], courts = [] } = options;
+  const guard = guardAiFromOptions(tournamentId, tenantId, options);
   if (!guard.ok) {
     return guard;
   }
@@ -132,8 +142,8 @@ export function generateGroupSuggestion(
 }
 
 export function predictTournamentTime(tournamentId, tenantId, options = {}) {
-  const { clubId, players = [], courts = [] } = options;
-  const guard = guardAiAccess({ clubId, tournamentId, tenantId });
+  const { players = [], courts = [] } = options;
+  const guard = guardAiFromOptions(tournamentId, tenantId, options);
   if (!guard.ok) {
     return guard;
   }
@@ -150,8 +160,8 @@ export function predictTournamentTime(tournamentId, tenantId, options = {}) {
 }
 
 export function validateTournamentSchedule(tournamentId, tenantId, options = {}) {
-  const { clubId, players = [], courts = [] } = options;
-  const guard = guardAiAccess({ clubId, tournamentId, tenantId });
+  const { players = [], courts = [] } = options;
+  const guard = guardAiFromOptions(tournamentId, tenantId, options);
   if (!guard.ok) {
     return guard;
   }
@@ -168,8 +178,8 @@ export function validateTournamentSchedule(tournamentId, tenantId, options = {})
 }
 
 export function generateRuleSuggestions(tournamentId, tenantId, options = {}) {
-  const { clubId, players = [], courts = [] } = options;
-  const guard = guardAiAccess({ clubId, tournamentId, tenantId });
+  const { players = [], courts = [] } = options;
+  const guard = guardAiFromOptions(tournamentId, tenantId, options);
   if (!guard.ok) {
     return guard;
   }
@@ -186,8 +196,8 @@ export function generateRuleSuggestions(tournamentId, tenantId, options = {}) {
 }
 
 export async function getAiTournamentSummary(tournamentId, tenantId, options = {}) {
-  const { clubId, players = [], courts = [] } = options;
-  const guard = guardAiAccess({ clubId, tournamentId, tenantId });
+  const { players = [], courts = [] } = options;
+  const guard = guardAiFromOptions(tournamentId, tenantId, options);
   if (!guard.ok) {
     return guard;
   }
@@ -482,10 +492,7 @@ function applyPairingSuggestion(tournament, payload, players) {
 
 export async function applyAiSuggestion(suggestionId, tenantId, userId, options = {}) {
   const { clubId, players = [] } = options;
-  const guard = guardAiAccess({
-    clubId,
-    tournamentId: options.tournamentId,
-    tenantId,
+  const guard = guardAiFromOptions(options.tournamentId, tenantId, options, {
     requireApply: true,
   });
   if (!guard.ok) {
@@ -537,7 +544,12 @@ export async function applyAiSuggestion(suggestionId, tenantId, userId, options 
   const updateResult = await updateTournamentCommand(
     clubId,
     guard.tournament.id,
-    applyResult.tournament
+    applyResult.tournament,
+    {
+      tenantId,
+      currentTournament: guard.tournament,
+      expectedVersion: guard.tournament?.version,
+    }
   );
   if (!updateResult.ok) {
     return updateResult;
@@ -571,7 +583,9 @@ export async function applyAiSuggestion(suggestionId, tenantId, userId, options 
 
 export async function dismissAiSuggestion(suggestionId, tenantId, userId, options = {}) {
   const { clubId, tournamentId } = options;
-  const guard = guardAiAccess({ clubId, tournamentId, tenantId, requireApply: true });
+  const guard = guardAiFromOptions(tournamentId, tenantId, options, {
+    requireApply: true,
+  });
   if (!guard.ok) {
     return guard;
   }
@@ -610,11 +624,7 @@ export async function dismissAiSuggestion(suggestionId, tenantId, userId, option
 }
 
 export function listAiSuggestions(tournamentId, tenantId, filters = {}) {
-  const guard = guardAiAccess({
-    clubId: filters.clubId,
-    tournamentId,
-    tenantId,
-  });
+  const guard = guardAiFromOptions(tournamentId, tenantId, filters);
   if (!guard.ok) {
     return guard;
   }

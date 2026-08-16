@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Snackbar } from "@mui/material";
 
 import {
@@ -46,6 +46,7 @@ import {
   isCanonicalClubReadEnabled,
   normalizeCanonicalActiveClub,
   resolveActiveClubSelection,
+  resolveCanonicalClubRefreshPolicy,
   toClubReadSnapshot,
 } from "../features/club/context/clubCanonicalReadModel.js";
 import { ensureMonthlySkillLevelProposals } from "../domain/skillLevelService.js";
@@ -89,6 +90,17 @@ export function ClubProvider({ children }) {
   );
   const [clubReadErrorCode, setClubReadErrorCode] = useState(null);
   const [canonicalReloadNonce, setCanonicalReloadNonce] = useState(0);
+  const userRef = useRef(user);
+  userRef.current = user;
+  const lastClubAuthIdentityRef = useRef("");
+  const clubReadSnapshotRef = useRef({
+    state: clubReadState,
+    count: 0,
+  });
+  clubReadSnapshotRef.current = {
+    state: clubReadState,
+    count: canonicalClubs.length,
+  };
 
   // Phase 44C.1 — hydrate the canonical allowed-club scope once per authenticated
   // club-rehydrate fingerprint (id/role/tenant/venue/club/status/email), not raw
@@ -96,7 +108,8 @@ export function ClubProvider({ children }) {
   // player enrichment also must not clear clubs. Real user/tenant/role change
   // still clears first so a previous context cannot leak; guards deny until ready.
   useEffect(() => {
-    if (!isAuthenticated || !user?.id) {
+    const currentUser = userRef.current;
+    if (!isAuthenticated || !currentUser?.id) {
       clearClubScope();
       clearGovernanceScope();
       setClubScopeStatus("idle");
@@ -112,8 +125,8 @@ export function ClubProvider({ children }) {
     // PLAYER president/vice-president elevation is decided by the cloud SSOT, never
     // by the local registry. Deny-by-default (no elevation) until ready.
     void Promise.all([
-      hydrateClubScope({ user, tenantId: currentTenantId, rbacEnabled }),
-      hydrateGovernanceScope({ user }),
+      hydrateClubScope({ user: currentUser, tenantId: currentTenantId, rbacEnabled }),
+      hydrateGovernanceScope({ user: currentUser }),
     ]).then(([clubResult]) => {
       if (cancelled) {
         return;
@@ -125,8 +138,6 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-    // user is read from the current render; the fingerprint is the rehydrate key.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
   }, [isAuthenticated, clubRehydrateScopeKey, currentTenantId, rbacEnabled]);
 
   // Phase 45A.1 — hydrate the Club-entity list from the canonical repository.
@@ -138,25 +149,46 @@ export function ClubProvider({ children }) {
       return undefined;
     }
 
-    if (!isAuthenticated || !user?.id) {
+    const currentUser = userRef.current;
+    if (!isAuthenticated || !currentUser?.id) {
+      lastClubAuthIdentityRef.current = clubRehydrateScopeKey;
       setCanonicalClubs([]);
       setClubReadState(CLUB_READ_STATE.IDLE);
       setClubReadErrorCode(null);
       return undefined;
     }
 
+    const policy = resolveCanonicalClubRefreshPolicy({
+      previousIdentityKey: lastClubAuthIdentityRef.current,
+      nextIdentityKey: clubRehydrateScopeKey,
+      clubReadState: clubReadSnapshotRef.current.state,
+      clubCount: clubReadSnapshotRef.current.count,
+    });
+    lastClubAuthIdentityRef.current = clubRehydrateScopeKey;
+
     let cancelled = false;
-    setCanonicalClubs([]);
-    setClubReadState(CLUB_READ_STATE.LOADING);
-    setClubReadErrorCode(null);
+    if (policy.clearClubs) {
+      setCanonicalClubs([]);
+    }
+    if (policy.emitLoading) {
+      setClubReadState(CLUB_READ_STATE.LOADING);
+      setClubReadErrorCode(null);
+    } else if (policy.idle) {
+      setClubReadState(CLUB_READ_STATE.IDLE);
+      setClubReadErrorCode(null);
+    }
 
     void canonicalClubRepository
-      .listClubsForCurrentScope({ user, tenantId: currentTenantId, rbacEnabled })
+      .listClubsForCurrentScope({ user: currentUser, tenantId: currentTenantId, rbacEnabled })
       .then((result) => {
         if (cancelled) {
           return;
         }
         const snapshot = toClubReadSnapshot(result);
+        if (snapshot.state !== CLUB_READ_STATE.READY && policy.staleWhileRevalidate) {
+          setClubReadErrorCode(snapshot.errorCode);
+          return;
+        }
         setCanonicalClubs(snapshot.clubs);
         setClubReadState(snapshot.state);
         setClubReadErrorCode(snapshot.errorCode);
@@ -164,6 +196,10 @@ export function ClubProvider({ children }) {
       })
       .catch(() => {
         if (cancelled) {
+          return;
+        }
+        if (policy.staleWhileRevalidate) {
+          setClubReadErrorCode(API_ERROR_CODES.INTERNAL_ERROR);
           return;
         }
         setCanonicalClubs([]);
@@ -175,14 +211,13 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
   }, [canonicalRead, isAuthenticated, clubRehydrateScopeKey, currentTenantId, rbacEnabled, canonicalReloadNonce]);
 
   const visibleClubs = useMemo(() => {
     if (canonicalRead) {
       // Cloud-authoritative canonical read: only expose clubs when READY.
       // Loading/error never leaks the legacy registry.
-      if (clubReadState !== CLUB_READ_STATE.READY) {
+      if (clubReadState !== CLUB_READ_STATE.READY && canonicalClubs.length === 0) {
         return [];
       }
       return filterAccessibleCanonicalClubs({
@@ -236,12 +271,13 @@ export function ClubProvider({ children }) {
     if (canonicalRead) {
       return undefined;
     }
-    if (!isAuthenticated || !user?.id || !isClubRegistryCloudEnabled()) {
+    const currentUser = userRef.current;
+    if (!isAuthenticated || !currentUser?.id || !isClubRegistryCloudEnabled()) {
       return undefined;
     }
 
     let cancelled = false;
-    void syncClubRegistryForUser(user).then((result) => {
+    void syncClubRegistryForUser(currentUser).then((result) => {
       if (!cancelled && result.ok) {
         setClubs(loadClubs());
         setRevision((value) => value + 1);
@@ -251,7 +287,6 @@ export function ClubProvider({ children }) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
   }, [canonicalRead, isAuthenticated, clubRehydrateScopeKey, currentTenantId]);
 
   useEffect(() => {

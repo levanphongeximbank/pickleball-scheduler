@@ -32,6 +32,9 @@ export function normalizeReferee(referee) {
     source,
   };
 
+  if (referee.email) {
+    normalized.email = String(referee.email).trim();
+  }
   if (canonicalUserId) {
     normalized.canonicalUserId = canonicalUserId;
   }

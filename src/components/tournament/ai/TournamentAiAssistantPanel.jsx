@@ -46,6 +46,7 @@ export default function TournamentAiAssistantPanel({
   tournamentId,
   clubId,
   tenantId,
+  tournament = null,
   players = [],
   courts = [],
   userId = "",
@@ -67,7 +68,7 @@ export default function TournamentAiAssistantPanel({
   const [groupMode, setGroupMode] = useState(GROUP_SUGGESTION_MODE.COMPETITIVE_BALANCED);
   const [pairingStrategy, setPairingStrategy] = useState(PAIRING_STRATEGY.BALANCED);
 
-  const baseOptions = { clubId, players, courts };
+  const baseOptions = { clubId, players, courts, tournament };
 
   const refreshSummary = useCallback(async () => {
     await hydrateSuggestionsFromCloud(tournamentId, tenantId);
@@ -81,7 +82,7 @@ export default function TournamentAiAssistantPanel({
     setCanApply(result.canApply);
     setViewOnly(result.viewOnly);
     setError("");
-  }, [tournamentId, tenantId, clubId, players, courts]);
+  }, [tournamentId, tenantId, clubId, players, courts, tournament]);
 
   useEffect(() => {
     void refreshSummary();

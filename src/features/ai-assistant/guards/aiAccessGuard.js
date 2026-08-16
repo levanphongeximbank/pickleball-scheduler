@@ -2,6 +2,7 @@ import { getCurrentUser } from "../../../auth/authService.js";
 import { can } from "../../../auth/rbac.js";
 import { guardClubAction } from "../../../auth/guardAction.js";
 import { assertTournamentAccess } from "../../../domain/tournamentService.js";
+import { assertLoadedTournamentAccess } from "../../tournament/guards/tournamentAccess.js";
 import {
   AI_MANAGEMENT_ROLES,
   AI_PERMISSION,
@@ -21,13 +22,23 @@ function userRole(user) {
  * @param {string} options.tenantId
  * @param {boolean} [options.requireApply=false]
  */
-export function guardAiAccess({ clubId, tournamentId, tenantId, requireApply = false } = {}) {
+export function guardAiAccess({
+  clubId,
+  tournamentId,
+  tenantId,
+  requireApply = false,
+  tournament = null,
+} = {}) {
   const user = getCurrentUser();
   if (!clubId || !tournamentId) {
     return { ok: false, error: "Thiếu clubId hoặc tournamentId.", code: "BAD_REQUEST" };
   }
 
-  const access = assertTournamentAccess(clubId, tournamentId, { tenantId });
+  const loaded =
+    tournament && String(tournament.id) === String(tournamentId) ? tournament : null;
+  const access = loaded
+    ? assertLoadedTournamentAccess(clubId, loaded, { tenantId })
+    : assertTournamentAccess(clubId, tournamentId, { tenantId });
   if (!access.ok) {
     return access;
   }

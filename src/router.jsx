@@ -13,6 +13,7 @@ import OperatorAcceptanceRouteGuard from "./features/platform-hard-cutover/Opera
 
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { MyClubMembershipRootProvider } from "./features/club/hooks/MyClubMembershipContext.jsx";
+import RefereeTokenRouteErrorBoundary from "./pages/referee/RefereeTokenRouteErrorBoundary.jsx";
 
 
 
@@ -171,6 +172,7 @@ const DailyPlayLauncher = lazy(() => import("./pages/tournament/DailyPlayLaunche
 const DailyPlaySetup = lazy(() => import("./pages/tournament/DailyPlaySetup"));
 
 const InternalTournamentSetup = lazy(() => import("./pages/tournament/InternalTournamentSetup"));
+const InternalRefereePortalPage = lazy(() => import("./pages/tournament/InternalRefereePortalPage"));
 
 const OfficialTournamentSetup = lazy(() => import("./pages/tournament/OfficialTournamentSetup"));
 
@@ -440,7 +442,14 @@ export default function Router() {
             <Route path="/403" element={<ForbiddenPage />} />
             <Route path="/coming-soon/:moduleKey" element={<ComingSoonPage />} />
 
-            <Route path="/referee/:token" element={<RefereeScoreboard />} />
+            <Route
+              path="/referee/:token"
+              element={
+                <RefereeTokenRouteErrorBoundary>
+                  <RefereeScoreboard />
+                </RefereeTokenRouteErrorBoundary>
+              }
+            />
 
             <Route element={<PublicLayout />}>
               <Route path="/" element={<PublicRootPage />} />
@@ -602,6 +611,14 @@ export default function Router() {
             <Route path="/daily-play" element={<DailyPlayLauncher />} />
 
             <Route path="/tournament/daily/:tournamentId" element={<DailyPlaySetup />} />
+
+            <Route
+
+              path="/tournament/internal/:tournamentId/referee"
+
+              element={<InternalRefereePortalPage />}
+
+            />
 
             <Route
 

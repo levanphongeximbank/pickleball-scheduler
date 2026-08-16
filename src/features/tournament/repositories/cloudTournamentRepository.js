@@ -13,13 +13,44 @@ import {
   canonicalRowToTournament,
   tournamentToCanonicalRow,
 } from "../mappers/canonicalTournamentMapper.js";
-import { createTournamentRecord } from "../../../models/tournament/index.js";
+import { createTournamentRecord, TOURNAMENT_MODE } from "../../../models/tournament/index.js";
+import {
+  validateInternalTournamentStatusTransition,
+} from "../internal/internalTournamentStatusTransitions.js";
+import {
+  assertInternalStatusCompletionGate,
+} from "../internal/internalTournamentCompletionEligibility.js";
+import {
+  CANONICAL_TOURNAMENT_VERSION_CONFLICT,
+  CANONICAL_TOURNAMENT_VERSION_REQUIRED,
+  assertInternalExpectedVersion,
+  resolveCanonicalExpectedVersion,
+} from "../internal/canonicalTournamentCas.js";
 
 export { CANONICAL_TOURNAMENT_RPC };
 
 function normalizeRpcPayload(data) {
   if (data && typeof data === "object" && "ok" in data) return data;
   return { ok: true, data };
+}
+
+function classifyCanonicalRpcFailure(error) {
+  const message = String(error?.message || error || "");
+  if (/expected_version is required/i.test(message) || /VERSION_REQUIRED/i.test(message)) {
+    return {
+      ok: false,
+      code: TOURNAMENT_REPO_ERROR.VERSION_REQUIRED,
+      error: message,
+    };
+  }
+  if (/VERSION_CONFLICT/i.test(message)) {
+    return {
+      ok: false,
+      code: TOURNAMENT_REPO_ERROR.VERSION_CONFLICT,
+      error: message,
+    };
+  }
+  return undefined;
 }
 
 function tenantOpts(options = {}) {
@@ -35,11 +66,13 @@ export function createCloudTournamentRepository(deps = {}) {
       try {
         return normalizeRpcPayload(await deps.rpc(name, args));
       } catch (error) {
-        return {
-          ok: false,
-          code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
-          error: String(error?.message || error),
-        };
+        return (
+          classifyCanonicalRpcFailure(error) || {
+            ok: false,
+            code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
+            error: String(error?.message || error),
+          }
+        );
       }
     }
 
@@ -66,19 +99,23 @@ export function createCloudTournamentRepository(deps = {}) {
       }
       const { data, error } = await client.rpc(name, args);
       if (error) {
-        return {
-          ok: false,
-          code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
-          error: String(error.message || error),
-        };
+        return (
+          classifyCanonicalRpcFailure(error) || {
+            ok: false,
+            code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
+            error: String(error.message || error),
+          }
+        );
       }
       return normalizeRpcPayload(data);
     } catch (error) {
-      return {
-        ok: false,
-        code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
-        error: String(error?.message || error),
-      };
+      return (
+        classifyCanonicalRpcFailure(error) || {
+          ok: false,
+          code: TOURNAMENT_REPO_ERROR.CLOUD_UNAVAILABLE,
+          error: String(error?.message || error),
+        }
+      );
     }
   }
 
@@ -203,6 +240,32 @@ export function createCloudTournamentRepository(deps = {}) {
         };
       }
 
+      const isInternal =
+        current.tournament.mode === TOURNAMENT_MODE.INTERNAL_TOURNAMENT;
+      const nextStatus =
+        patch.status != null ? patch.status : current.tournament.status;
+      if (
+        isInternal &&
+        nextStatus != null &&
+        String(nextStatus) !== String(current.tournament.status || "")
+      ) {
+        const transition = validateInternalTournamentStatusTransition(
+          current.tournament.status,
+          nextStatus,
+          { forceReopen: options.forceStatusReopen === true }
+        );
+        if (!transition.ok) {
+          return {
+            ok: false,
+            code: TOURNAMENT_REPO_ERROR.INTERNAL_STATUS_TRANSITION_DENIED,
+            error: transition.error,
+            from: transition.from,
+            to: transition.to,
+            tournament: current.tournament,
+          };
+        }
+      }
+
       const merged = {
         ...current.tournament,
         ...patch,
@@ -219,10 +282,61 @@ export function createCloudTournamentRepository(deps = {}) {
         merged.settings.engineV4 = patch.settings.engineV4;
       }
 
+      if (isInternal) {
+        const completionGate = assertInternalStatusCompletionGate(
+          current.tournament,
+          nextStatus,
+          merged
+        );
+        if (!completionGate.ok) {
+          return {
+            ok: false,
+            code: TOURNAMENT_REPO_ERROR.INTERNAL_TOURNAMENT_NOT_COMPLETION_ELIGIBLE,
+            error: completionGate.error,
+            reason: completionGate.reason,
+            tournament: current.tournament,
+          };
+        }
+      }
+
       const row = tournamentToCanonicalRow(merged, {
         tenantId: tenantCheck.tenantId,
         clubId: tenantCheck.clubId,
       });
+
+      // Internal: CAS mandatory. requireCas:false is rejected (cannot bypass).
+      // Team/other modes: omit expected_version remains backward compatible.
+      if (isInternal && options.requireCas === false) {
+        return {
+          ok: false,
+          code: TOURNAMENT_REPO_ERROR.VERSION_REQUIRED,
+          error:
+            "requireCas:false không được phép với internal_tournament. Hệ thống đã từ chối ghi.",
+          tournament: current.tournament,
+        };
+      }
+
+      let expectedVersion = resolveCanonicalExpectedVersion(
+        options.expectedVersion != null
+          ? options.expectedVersion
+          : current.tournament
+      );
+      if (isInternal) {
+        const casGate = assertInternalExpectedVersion(expectedVersion, {
+          mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
+        });
+        if (!casGate.ok) {
+          return {
+            ok: false,
+            code: TOURNAMENT_REPO_ERROR.VERSION_REQUIRED,
+            error: casGate.error,
+            tournament: current.tournament,
+          };
+        }
+        expectedVersion = casGate.expectedVersion;
+      } else if (options.requireCas === false) {
+        expectedVersion = null;
+      }
 
       const result = await callRpc(CANONICAL_TOURNAMENT_RPC.UPDATE, {
         p_tenant_id: tenantCheck.tenantId,
@@ -235,10 +349,42 @@ export function createCloudTournamentRepository(deps = {}) {
           league_id: row.league_id,
           payload: row.payload,
           engine_v4: row.engine_v4,
+          ...(expectedVersion != null ? { expected_version: expectedVersion } : {}),
+          ...(options.forceStatusReopen ? { force_status_reopen: true } : {}),
           ...(options.engineApply ? { engine_apply: true } : {}),
         },
       });
-      if (!result.ok) return result;
+      if (!result.ok) {
+        const code = String(result.code || "").toUpperCase();
+        if (code === CANONICAL_TOURNAMENT_VERSION_CONFLICT || code === "VERSION_CONFLICT") {
+          return {
+            ...result,
+            ok: false,
+            code: TOURNAMENT_REPO_ERROR.VERSION_CONFLICT,
+            tournament: current.tournament,
+          };
+        }
+        if (code === CANONICAL_TOURNAMENT_VERSION_REQUIRED || code === "VERSION_REQUIRED") {
+          return {
+            ...result,
+            ok: false,
+            code: TOURNAMENT_REPO_ERROR.VERSION_REQUIRED,
+            tournament: current.tournament,
+          };
+        }
+        if (
+          code === TOURNAMENT_REPO_ERROR.INTERNAL_TOURNAMENT_NOT_COMPLETION_ELIGIBLE ||
+          code === "INTERNAL_TOURNAMENT_NOT_COMPLETION_ELIGIBLE"
+        ) {
+          return {
+            ...result,
+            ok: false,
+            code: TOURNAMENT_REPO_ERROR.INTERNAL_TOURNAMENT_NOT_COMPLETION_ELIGIBLE,
+            tournament: current.tournament,
+          };
+        }
+        return result;
+      }
       return {
         ok: true,
         tournament: canonicalRowToTournament(result.tournament || result.data),

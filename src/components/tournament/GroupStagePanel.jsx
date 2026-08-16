@@ -14,7 +14,15 @@ import { resolveEntryLabel } from "../../tournament/engines/tournamentDirectorEn
 import { useScoreDrafts } from "../../tournament/useScoreDrafts.js";
 import { touchButtonSx } from "./mobileUi.js";
 
-function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft }) {
+function GroupMatchScoreRow({
+  match,
+  entries,
+  players,
+  onSubmitScore,
+  draft,
+  pending = false,
+  renderMatchExtras,
+}) {
   const [localScoreA, setLocalScoreA] = useState(match.scoreA ?? "");
   const [localScoreB, setLocalScoreB] = useState(match.scoreB ?? "");
 
@@ -59,7 +67,7 @@ function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft }) {
     >
       <Stack direction="row" justifyContent="space-between" spacing={1} sx={{ mb: 1 }}>
         <Typography variant="body2" fontWeight="bold" sx={{ wordBreak: "break-word", flex: 1 }}>
-          {labelA} vs {labelB}
+          Trận {match.id}: {labelA} vs {labelB}
         </Typography>
         <Chip
           size="small"
@@ -67,6 +75,17 @@ function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft }) {
           color={completed ? "success" : "default"}
         />
       </Stack>
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+        Sân: {match.courtId || "—"}
+        {match.scheduledStart
+          ? ` · Giờ: ${new Date(match.scheduledStart).toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}`
+          : ""}
+        {match.referee?.name ? ` · Trọng tài: ${match.referee.name}` : ""}
+      </Typography>
+      {typeof renderMatchExtras === "function" ? renderMatchExtras(match) : null}
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
         <TextField
@@ -92,15 +111,23 @@ function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft }) {
           variant="contained"
           sx={{ ...touchButtonSx, whiteSpace: "nowrap" }}
           onClick={handleSubmit}
+          disabled={pending}
         >
-          Lưu điểm
+          {pending ? "Đang lưu..." : "Lưu điểm"}
         </Button>
       </Stack>
     </Paper>
   );
 }
 
-export default function GroupStagePanel({ event, players = [], onSubmitScore, draftScope }) {
+export default function GroupStagePanel({
+  event,
+  players = [],
+  onSubmitScore,
+  draftScope,
+  pendingMatchId = null,
+  renderMatchExtras,
+}) {
   const draft = useScoreDrafts(draftScope);
   const groups = event?.groups || [];
   const entries = event?.entries || [];
@@ -160,6 +187,8 @@ export default function GroupStagePanel({ event, players = [], onSubmitScore, dr
                     players={players}
                     onSubmitScore={onSubmitScore}
                     draft={draft}
+                    pending={String(pendingMatchId || "") === String(match.id)}
+                    renderMatchExtras={renderMatchExtras}
                   />
                 ))}
               </Stack>

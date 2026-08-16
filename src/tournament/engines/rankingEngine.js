@@ -36,6 +36,25 @@ function isFinishedMatch(match) {
   );
 }
 
+function resolveStandingEntryIds(group = {}) {
+  const fromIds = (group.entryIds || []).map((id) => String(id || "").trim()).filter(Boolean);
+  if (fromIds.length) return fromIds;
+  return (group.entries || [])
+    .map((entry) => String(entry?.id || "").trim())
+    .filter(Boolean);
+}
+
+function mergeStandingEntries(entries = [], group = {}) {
+  const entryMap = new Map(
+    (entries || []).map((entry) => [String(entry?.id || ""), entry]).filter(([id]) => id)
+  );
+  (group.entries || []).forEach((entry) => {
+    const id = String(entry?.id || "").trim();
+    if (id && !entryMap.has(id)) entryMap.set(id, entry);
+  });
+  return entryMap;
+}
+
 export function buildGroupStandingFromMatches({
   group,
   entries = [],
@@ -46,10 +65,8 @@ export function buildGroupStandingFromMatches({
   const lossPts = Number(pointsConfig.loss ?? 1);
   const forfeitPts = Number(pointsConfig.forfeit ?? 0);
 
-  const entryMap = new Map(entries.map((entry) => [String(entry.id), entry]));
-  const entryIds = new Set(
-    (group.entryIds || []).map((id) => String(id)).filter(Boolean)
-  );
+  const entryMap = mergeStandingEntries(entries, group);
+  const entryIds = new Set(resolveStandingEntryIds(group));
 
   const rows = new Map();
   entryIds.forEach((entryId) => {

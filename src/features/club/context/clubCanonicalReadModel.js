@@ -209,6 +209,70 @@ export function resolveActiveClubSelection({
 }
 
 /**
+ * Stable ClubContext identity — token/session object churn must not count.
+ */
+export function readClubAuthIdentityKey({
+  isAuthenticated = false,
+  userId = "",
+  role = "",
+  tenantId = "",
+  rbacEnabled = false,
+} = {}) {
+  return [
+    isAuthenticated ? "1" : "0",
+    String(userId || "").trim(),
+    String(role || "").trim(),
+    String(tenantId || "").trim(),
+    rbacEnabled ? "1" : "0",
+  ].join("::");
+}
+
+/**
+ * Same auth/tenant identity: keep lastClubs / lastActiveClub (stale-while-revalidate).
+ * Sign-out or a real user/tenant change: clear so the previous context cannot leak.
+ */
+export function resolveCanonicalClubRefreshPolicy({
+  previousIdentityKey = "",
+  nextIdentityKey = "",
+  clubReadState = CLUB_READ_STATE.IDLE,
+  clubCount = 0,
+} = {}) {
+  const parts = String(nextIdentityKey || "").split("::");
+  const authenticated = parts[0] === "1";
+  const nextUserId = String(parts[1] || "").trim();
+  if (!authenticated || !nextUserId) {
+    return {
+      clearClubs: true,
+      emitLoading: false,
+      idle: true,
+      staleWhileRevalidate: false,
+    };
+  }
+  if (String(previousIdentityKey || "") !== String(nextIdentityKey || "")) {
+    return {
+      clearClubs: true,
+      emitLoading: true,
+      idle: false,
+      staleWhileRevalidate: false,
+    };
+  }
+  if (clubReadState === CLUB_READ_STATE.READY && Number(clubCount) > 0) {
+    return {
+      clearClubs: false,
+      emitLoading: false,
+      idle: false,
+      staleWhileRevalidate: true,
+    };
+  }
+  return {
+    clearClubs: true,
+    emitLoading: true,
+    idle: false,
+    staleWhileRevalidate: false,
+  };
+}
+
+/**
  * Map a canonical repository read result → an explicit UI snapshot.
  * A cloud error/loading never silently exposes legacy clubs (clubs = []).
  *

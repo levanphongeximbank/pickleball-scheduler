@@ -8,7 +8,9 @@ import {
   filterAccessibleCanonicalClubs,
   isCanonicalClubReadEnabled,
   mapRepoCodeToClubError,
+  readClubAuthIdentityKey,
   resolveActiveClubSelection,
+  resolveCanonicalClubRefreshPolicy,
   toClubReadSnapshot,
 } from "../src/features/club/context/clubCanonicalReadModel.js";
 import { createCanonicalClubRepository } from "../src/features/club/repositories/index.js";
@@ -270,6 +272,25 @@ test("ownership lock detects a NEW loadClubs()/registry RPC read but not loadClu
   assert.equal(rule.match("await rpcV2ClubGet(id);").length, 1);
   // Must NOT flag the club-data domain read (players/courts blob).
   assert.equal(rule.match("const data = loadClubData(clubId);").length, 0);
+});
+
+test("same auth identity keeps last clubs instead of emitting loading + empty snapshot", () => {
+  const key = readClubAuthIdentityKey({
+    isAuthenticated: true,
+    userId: "user-1",
+    role: "CLUB_OWNER",
+    tenantId: "tenant-a",
+    rbacEnabled: true,
+  });
+  const retained = resolveCanonicalClubRefreshPolicy({
+    previousIdentityKey: key,
+    nextIdentityKey: key,
+    clubReadState: CLUB_READ_STATE.READY,
+    clubCount: 1,
+  });
+  assert.equal(retained.clearClubs, false);
+  assert.equal(retained.emitLoading, false);
+  assert.equal(retained.staleWhileRevalidate, true);
 });
 
 test("ownership lock baseline records ClubContext legacy read as debt (not a new violation)", () => {

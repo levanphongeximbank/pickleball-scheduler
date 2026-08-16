@@ -9,6 +9,7 @@ import { PERMISSIONS } from "../../auth/permissions.js";
 import { assertLoadedTournamentAccess } from "../../features/tournament/guards/tournamentAccess.js";
 import { shouldBlockTournamentManageGate } from "../../features/tournament/guards/tournamentManageGatePolicy.js";
 import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
+import { resolveTournamentManageGatePresentation } from "../../features/tournament/internal/internalWorkspaceSections.js";
 
 function AccessDenied({ title, message, to = "/tournament" }) {
   return (
@@ -37,6 +38,7 @@ function AccessDenied({ title, message, to = "/tournament" }) {
 export default function TournamentManageGate({
   children,
   tournamentId = null,
+  tournament: tournamentProp = null,
   loadedTournament = null,
 }) {
   const { rbacEnabled, isAuthenticated, can } = useAuth();
@@ -46,13 +48,20 @@ export default function TournamentManageGate({
     activeClub,
     tournamentId
   );
-  const tournament = fetchedTournament || loadedTournament;
+  const tournament = tournamentProp || loadedTournament || fetchedTournament;
+  const presentation = resolveTournamentManageGatePresentation({
+    tournamentId,
+    loading,
+    tournament,
+    activeClubId,
+  });
 
   if (!rbacEnabled || !isAuthenticated) {
     return children;
   }
 
   if (
+    presentation.showFullPageLoading ||
     shouldBlockTournamentManageGate({
       rbacEnabled,
       isAuthenticated,
@@ -68,7 +77,11 @@ export default function TournamentManageGate({
     );
   }
 
-  if (tournamentId) {
+  if (presentation.keepChildren) {
+    return children;
+  }
+
+  if (presentation.assertAccess && tournamentId) {
     const tournamentAccess = assertLoadedTournamentAccess(activeClubId, tournament, {
       tenantId: currentTenantId,
     });

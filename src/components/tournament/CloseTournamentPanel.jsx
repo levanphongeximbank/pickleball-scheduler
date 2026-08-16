@@ -8,12 +8,14 @@ import {
   Typography,
 } from "@mui/material";
 import LockIcon from "@mui/icons-material/Lock";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
 
 import {
   canCloseTournament,
   closeTournament,
   getTournamentSummary,
   isTournamentClosed,
+  reopenClosedTournament,
 } from "../../features/individual-tournament/engines/tournamentClosingEngine.js";
 
 export default function CloseTournamentPanel({
@@ -22,10 +24,11 @@ export default function CloseTournamentPanel({
   onTournamentChange,
 }) {
   const [message, setMessage] = useState(null);
+  const [busy, setBusy] = useState(false);
   const closed = tournament ? isTournamentClosed(tournament) : false;
   const summary = tournament ? getTournamentSummary(tournament) : null;
 
-  const handleClose = () => {
+  const handleClose = async () => {
     const check = canCloseTournament(tournament);
     if (!check.ok) {
       setMessage({ type: "error", text: check.error });
@@ -36,11 +39,53 @@ export default function CloseTournamentPanel({
       setMessage({ type: "error", text: result.error });
       return;
     }
-    onTournamentChange?.(result.tournament);
-    setMessage({
-      type: "success",
-      text: "Đã đóng giải — kết quả khóa, BXH/bracket đóng băng, summary đã tạo.",
-    });
+    setBusy(true);
+    try {
+      const persisted = await onTournamentChange?.(result.tournament, {
+        forceStatusReopen: false,
+      });
+      if (persisted === false) {
+        setMessage({ type: "error", text: "Không lưu được trạng thái đóng giải." });
+        return;
+      }
+      setMessage({
+        type: "success",
+        text: "Đã đóng giải — kết quả khóa, BXH/bracket đóng băng, summary đã tạo.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleReopen = async () => {
+    if (
+      !window.confirm(
+        "Mở lại giải đã hoàn tất? Kết quả sẽ được mở khóa để chỉnh sửa (force reopen)."
+      )
+    ) {
+      return;
+    }
+    const result = reopenClosedTournament(tournament, { force: true, actor });
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.error });
+      return;
+    }
+    setBusy(true);
+    try {
+      const persisted = await onTournamentChange?.(result.tournament, {
+        forceStatusReopen: true,
+      });
+      if (persisted === false) {
+        setMessage({ type: "error", text: "Không mở lại được giải trên máy chủ." });
+        return;
+      }
+      setMessage({
+        type: "success",
+        text: "Đã mở lại giải (completed → active) với force reopen + CAS.",
+      });
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (!tournament) {
@@ -63,15 +108,28 @@ export default function CloseTournamentPanel({
           Khóa mọi kết quả trận, đóng băng bảng xếp hạng & nhánh, gán giải tự động (nếu chưa), tạo
           tóm tắt giải.
         </Typography>
-        <Button
-          variant="contained"
-          color="error"
-          startIcon={<LockIcon />}
-          onClick={handleClose}
-          disabled={closed}
-        >
-          {closed ? "Đã đóng giải" : "Đóng giải ngay"}
-        </Button>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Button
+            variant="contained"
+            color="error"
+            startIcon={<LockIcon />}
+            onClick={() => void handleClose()}
+            disabled={closed || busy}
+          >
+            {closed ? "Đã đóng giải" : "Đóng giải ngay"}
+          </Button>
+          {closed ? (
+            <Button
+              variant="outlined"
+              color="warning"
+              startIcon={<LockOpenIcon />}
+              onClick={() => void handleReopen()}
+              disabled={busy}
+            >
+              Mở lại giải
+            </Button>
+          ) : null}
+        </Stack>
       </Paper>
 
       {summary ? (
