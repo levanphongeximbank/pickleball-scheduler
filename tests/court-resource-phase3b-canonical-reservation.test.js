@@ -95,15 +95,9 @@ function listJs(directory) {
   });
 }
 
-test("Phase 3B staging cutover rehearsal enables JS default (DO NOT MERGE AS-IS)", () => {
-  // Temporary staging/preview cutover only — Production must remain OFF until Owner GO.
-  assert.equal(CANONICAL_RESERVATION_CUTOVER, true);
-  assert.equal(CANONICAL_RESERVATION_CUTOVER_DEFAULT, true);
-  // Under node:test, runtime stays OFF unless a test opts in; Preview uses DEFAULT=true.
-  assert.equal(isCanonicalReservationCutover(), false);
-  __setCanonicalReservationCutoverForTests(true);
-  assert.equal(isCanonicalReservationCutover(), true);
-  __resetCanonicalReservationCutoverForTests();
+test("Phase 3B cutover defaults OFF and does not silently switch Production", () => {
+  assert.equal(CANONICAL_RESERVATION_CUTOVER, false);
+  assert.equal(CANONICAL_RESERVATION_CUTOVER_DEFAULT, false);
   assert.equal(isCanonicalReservationCutover(), false);
 });
 
