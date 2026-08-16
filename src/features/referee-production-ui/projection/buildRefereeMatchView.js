@@ -297,6 +297,10 @@ export function buildRefereeMatchView(input) {
       gameLabel: policy.bestOfGames
         ? `${(scoreProjection?.currentGameIndex ?? 0) + 1} / Best of ${policy.bestOfGames}`
         : String((scoreProjection?.currentGameIndex ?? 0) + 1),
+      changeEndAt: policy.changeEndAtLabel || null,
+    }),
+    diagnostics: Object.freeze({
+      expectedVersion: Number(input.expectedVersion ?? 0),
     }),
     pendingCanonicalAction: input.pendingCanonicalAction || null,
     stale: input.stale === true,

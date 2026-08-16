@@ -902,14 +902,17 @@ test("owner visual remediation — chrome suppress + participant-aware controls"
   assert.match(home, /home-status-filters/);
   assert.match(match, /Điều hành trận/);
   assert.match(match, /match-rules-panel/);
-  assert.match(match, /ĐỔI VỊ TRÍ VĐV/);
+  assert.match(match, /Sắp xếp đội hình/);
   assert.match(match, /ĐỔI SÂN \/ ĐỔI ĐẦU SÂN/);
   assert.match(match, /ĐÃ ĐẾN ĐIỂM ĐỔI SÂN/);
+  assert.match(match, /Đổi sân tại/);
+  assert.match(match, /rp-score-team-name/);
   assert.match(match, /pointLabel\(/);
   assert.match(match, /Đang ghi…/);
   assert.match(match, /current-game-score/);
   assert.match(match, /games-won/);
   assert.match(match, /serving-status-strip/);
+  assert.match(match, /serve-version/);
   assert.doesNotMatch(match, />Điểm A</);
   assert.doesNotMatch(match, /A: \{db\.sideAActivePlayer/);
   assert.match(card, /assignment-meta-row/);

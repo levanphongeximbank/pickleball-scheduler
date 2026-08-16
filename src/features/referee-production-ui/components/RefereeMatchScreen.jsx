@@ -13,6 +13,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import PauseCircleOutlinedIcon from "@mui/icons-material/PauseCircleOutlined";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SyncAltIcon from "@mui/icons-material/SyncAlt";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import CanonicalCourtView from "./CanonicalCourtView.jsx";
 
 function Banner({ kind, children, testId }) {
@@ -87,39 +88,67 @@ function RulesPanel({ rules }) {
   );
 }
 
-function ServingStatusStrip({ serving }) {
+function ServingStatusStrip({ serving, expectedVersion }) {
   if (!serving) return null;
   const hasAny =
     serving.servingTeamName ||
+    serving.servingPlayerName ||
     serving.showServiceTurn ||
     serving.gameLabel;
   if (!hasAny) return null;
   return (
     <div className="rp-serve-strip" data-testid="serving-status-strip">
-      {serving.servingTeamName ? (
-        <span className="rp-serve-cell" data-testid="serve-team">
-          <SportsVolleyballIcon className="rp-serve-icon" fontSize="inherit" aria-hidden="true" />
-          <span>
-            Giao bóng
-            <strong>{serving.servingTeamName}</strong>
-          </span>
+      <span className="rp-serve-cell" data-testid="serve-team">
+        <SportsVolleyballIcon className="rp-serve-icon" fontSize="inherit" aria-hidden="true" />
+        <span>
+          Giao bóng
+          <strong>
+            {serving.servingTeamName || serving.servingPlayerName ? (
+              <>
+                {serving.servingTeamName ? (
+                  <em className="rp-serve-team">{serving.servingTeamName}</em>
+                ) : null}
+                {serving.servingTeamName && serving.servingPlayerName ? " / " : null}
+                {serving.servingPlayerName || null}
+              </>
+            ) : (
+              "—"
+            )}
+          </strong>
         </span>
-      ) : null}
+      </span>
       {serving.showServiceTurn && serving.serviceTurn != null ? (
         <span className="rp-serve-cell" data-testid="service-turn">
-          <PersonIcon className="rp-serve-icon" fontSize="inherit" aria-hidden="true" />
+          <PersonIcon className="rp-serve-icon rp-serve-icon-green" fontSize="inherit" aria-hidden="true" />
           <span>
             Lượt
             <strong data-testid="service-turn-number">#{serving.serviceTurn}</strong>
           </span>
         </span>
-      ) : null}
+      ) : (
+        <span className="rp-serve-cell" data-testid="serve-player">
+          <PersonIcon className="rp-serve-icon rp-serve-icon-green" fontSize="inherit" aria-hidden="true" />
+          <span>
+            Người giao
+            <strong>{serving.servingPlayerName || "—"}</strong>
+          </span>
+        </span>
+      )}
       {serving.gameLabel ? (
         <span className="rp-serve-cell" data-testid="serve-game">
-          <EmojiEventsIcon className="rp-serve-icon" fontSize="inherit" aria-hidden="true" />
+          <EmojiEventsIcon className="rp-serve-icon rp-serve-icon-muted" fontSize="inherit" aria-hidden="true" />
           <span>
             Game
             <strong>{serving.gameLabel.replace(/^Game\s+/i, "")}</strong>
+          </span>
+        </span>
+      ) : null}
+      {expectedVersion != null ? (
+        <span className="rp-serve-cell rp-serve-version" data-testid="serve-version">
+          <InfoOutlinedIcon className="rp-serve-icon rp-serve-icon-info" fontSize="inherit" aria-hidden="true" />
+          <span>
+            Version
+            <strong>{expectedVersion}</strong>
           </span>
         </span>
       ) : null}
@@ -217,27 +246,38 @@ export default function RefereeMatchScreen({
   const rightSide = court.sides?.right || {};
   const leftScoring = leftSide.scoringSide || "SIDE_A";
   const rightScoring = rightSide.scoringSide || "SIDE_B";
-  const leftName =
+  const leftTeam =
     leftSide.participant?.displayName ||
     view.participantDisplay?.sideA?.label ||
     "Đội A";
-  const rightName =
+  const rightTeam =
     rightSide.participant?.displayName ||
     view.participantDisplay?.sideB?.label ||
     "Đội B";
-  const leftPlayers =
-    (leftSide.activePlayers || []).map((p) => p.displayName).filter(Boolean).join(" / ") ||
-    leftName;
-  const rightPlayers =
-    (rightSide.activePlayers || []).map((p) => p.displayName).filter(Boolean).join(" / ") ||
-    rightName;
+  const leftAthletes = (leftSide.activePlayers || [])
+    .map((p) => p.displayName)
+    .filter(Boolean);
+  const rightAthletes = (rightSide.activePlayers || [])
+    .map((p) => p.displayName)
+    .filter(Boolean);
+  const leftPlayersLine = leftAthletes.length ? leftAthletes.join(" / ") : null;
+  const rightPlayersLine = rightAthletes.length ? rightAthletes.join(" / ") : null;
+  const leftName = leftTeam;
+  const rightName = rightTeam;
   const changeEndsRequired = court.sideChangeRequired === true;
   const showManualChangeEnds = view.canChangeEnds === true && !changeEndsRequired;
+  const changeEndAt =
+    view.servingStatus?.changeEndAt ||
+    view.rulesPanel?.changeEndAt ||
+    view.gameSummary?.changeEndPolicy ||
+    null;
   const scoreA = Number(score[leftScoring] || 0);
   const scoreB = Number(score[rightScoring] || 0);
   const statusLive =
     String(view.matchStatus || "").toUpperCase() === "IN_PROGRESS" ||
     /đang/i.test(String(view.matchStatusLabel || ""));
+  const versionLabel =
+    view.diagnostics?.expectedVersion ?? view.expectedVersion ?? null;
 
   const handleConfirmChangeEnds = () => {
     setConfirmChangeEnds(false);
@@ -345,8 +385,11 @@ export default function RefereeMatchScreen({
             }`}
           >
             <GroupsIcon className="rp-score-side-icon" fontSize="small" aria-hidden="true" />
+            <div className="rp-score-team-name" data-testid="team-name-a">
+              {leftTeam}
+            </div>
             <div className="rp-score-label" data-testid="participant-names-a">
-              {leftPlayers}
+              {leftPlayersLine || leftTeam}
             </div>
           </div>
           <div className="rp-score-center">
@@ -366,8 +409,11 @@ export default function RefereeMatchScreen({
             }`}
           >
             <GroupsIcon className="rp-score-side-icon" fontSize="small" aria-hidden="true" />
+            <div className="rp-score-team-name" data-testid="team-name-b">
+              {rightTeam}
+            </div>
             <div className="rp-score-label" data-testid="participant-names-b">
-              {rightPlayers}
+              {rightPlayersLine || rightTeam}
             </div>
           </div>
         </div>
@@ -375,17 +421,21 @@ export default function RefereeMatchScreen({
 
       <CanonicalCourtView courtProjection={court} />
 
-      <ServingStatusStrip serving={view.servingStatus} />
+      <ServingStatusStrip serving={view.servingStatus} expectedVersion={versionLabel} />
 
       <DreamBreakerPanel db={db} />
 
       {changeEndsRequired ? (
         <div className="rp-change-ends-required" data-testid="change-ends-warning">
+          <div className="rp-change-ends-policy" data-testid="change-ends-policy">
+            <SyncAltIcon fontSize="inherit" aria-hidden="true" />
+            <span>Đổi sân tại: {changeEndAt || "—"}</span>
+          </div>
           <div className="rp-change-ends-copy-block">
             <p className="rp-change-ends-title">
               <FlagIcon fontSize="inherit" aria-hidden="true" /> ĐÃ ĐẾN ĐIỂM ĐỔI SÂN
             </p>
-            <p className="rp-change-ends-copy">Vui lòng xác nhận để đổi sân</p>
+            <p className="rp-change-ends-copy">Vui lòng xác nhận để đổi sân.</p>
           </div>
           {!confirmChangeEnds ? (
             <button
@@ -427,6 +477,31 @@ export default function RefereeMatchScreen({
       ) : null}
 
       <GameHistoryPanel summary={view.gameSummary} />
+
+      {view.canSwitchPositions ? (
+        <button
+          type="button"
+          className="rp-btn rp-btn-ghost rp-btn-lineup"
+          disabled={pending || stale}
+          onClick={() => onSwitchPositions?.("A")}
+          data-testid="btn-switch-positions"
+        >
+          <GroupsIcon fontSize="small" aria-hidden="true" />
+          Sắp xếp đội hình
+        </button>
+      ) : null}
+
+      {showManualChangeEnds ? (
+        <button
+          type="button"
+          className="rp-btn rp-btn-warn rp-actions-wide"
+          disabled={pending || stale}
+          onClick={() => setConfirmChangeEnds(true)}
+          data-testid="btn-change-ends"
+        >
+          ĐỔI SÂN / ĐỔI ĐẦU SÂN
+        </button>
+      ) : null}
 
       {view.canStart ? (
         <button
@@ -535,33 +610,6 @@ export default function RefereeMatchScreen({
           </span>
         )}
       </div>
-
-      {(view.canSwitchPositions || showManualChangeEnds) && (
-        <div className="rp-actions-secondary">
-          {view.canSwitchPositions ? (
-            <button
-              type="button"
-              className="rp-btn rp-btn-ghost"
-              disabled={pending || stale}
-              onClick={() => onSwitchPositions?.("A")}
-              data-testid="btn-switch-positions"
-            >
-              ĐỔI VỊ TRÍ VĐV
-            </button>
-          ) : null}
-          {showManualChangeEnds ? (
-            <button
-              type="button"
-              className="rp-btn rp-btn-warn"
-              disabled={pending || stale}
-              onClick={() => setConfirmChangeEnds(true)}
-              data-testid="btn-change-ends"
-            >
-              ĐỔI SÂN / ĐỔI ĐẦU SÂN
-            </button>
-          ) : null}
-        </div>
-      )}
     </div>
   );
 }

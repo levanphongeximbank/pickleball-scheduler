@@ -229,6 +229,8 @@ describe("match screen visual states @ ~390px", () => {
     expect(screen.getByTestId("service-turn")).toHaveTextContent(/Lượt/);
     expect(screen.getByTestId("service-turn")).not.toHaveTextContent(/Server/i);
     expect(screen.getByTestId("service-turn-number")).toHaveTextContent("#2");
+    expect(screen.getByTestId("team-name-a")).toHaveTextContent("Đội 4");
+    expect(screen.getByTestId("team-name-b")).toHaveTextContent("Đội 3");
     expect(screen.getByTestId("participant-names-a")).toHaveTextContent(/An/);
     expect(screen.getByTestId("participant-names-b")).toHaveTextContent(/Chi/);
     expect(screen.getByTestId("current-game-score")).toBeInTheDocument();
@@ -236,7 +238,8 @@ describe("match screen visual states @ ~390px", () => {
     expect(screen.getByTestId("current-game-summary")).toBeInTheDocument();
     expect(screen.queryByTestId("rally-score-line")).not.toBeInTheDocument();
     expect(screen.getByTestId("btn-point-a")).toHaveTextContent(/Điểm Đội 4|Điểm An|Đội 4/);
-    expect(screen.getByTestId("btn-switch-positions")).toHaveTextContent("ĐỔI VỊ TRÍ VĐV");
+    expect(screen.getByTestId("btn-switch-positions")).toHaveTextContent("Sắp xếp đội hình");
+    expect(screen.getByTestId("serve-version")).toHaveTextContent(/Version/);
     expect(screen.getByTestId("btn-back-assignments")).toBeInTheDocument();
     expect(screen.getByTestId("canonical-court-view").querySelector(".rp-court-net")).toBeTruthy();
     expect(screen.getByTestId("canonical-court-view").querySelector(".rp-court-kitchen")).toBeTruthy();
@@ -405,6 +408,7 @@ describe("match screen visual states @ ~390px", () => {
       </MemoryRouter>
     );
     expect(screen.getByTestId("change-ends-warning")).toHaveTextContent("ĐÃ ĐẾN ĐIỂM ĐỔI SÂN");
+    expect(screen.getByTestId("change-ends-policy")).toHaveTextContent(/Đổi sân tại/);
     expect(screen.queryByTestId("btn-change-ends")).not.toBeInTheDocument();
     expect(screen.getByTestId("canonical-court-view")).toHaveAttribute(
       "data-orientation",

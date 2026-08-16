@@ -467,6 +467,7 @@
   text-align: right;
 }
 
+.rp-score-side.is-serving .rp-score-team-name,
 .rp-score-side.is-serving .rp-score-label {
   color: var(--rp-green);
 }
@@ -477,13 +478,21 @@
   margin-bottom: 2px;
 }
 
+.rp-score-team-name {
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.15;
+  color: var(--rp-ink);
+}
+
 .rp-score-label {
-  font-size: 0.68rem;
-  font-weight: 800;
+  font-size: 0.66rem;
+  font-weight: 700;
   line-height: 1.2;
   max-height: 2.6em;
   overflow: hidden;
-  color: var(--rp-ink);
+  color: var(--rp-muted);
+  margin-top: 2px;
 }
 
 .rp-score-center {
@@ -509,7 +518,7 @@
 
 .rp-serve-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   margin: 0 0 8px;
   padding: 8px 6px;
@@ -517,7 +526,7 @@
   background: #fff;
   border: 1px solid var(--rp-line);
   color: var(--rp-ink);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
 }
 
@@ -537,12 +546,38 @@
 
 .rp-serve-cell strong {
   color: var(--rp-green);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.rp-serve-team {
+  color: #ef6c00;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .rp-serve-icon {
   color: #ef6c00;
   margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.rp-serve-icon-green {
+  color: var(--rp-green);
+}
+
+.rp-serve-icon-muted {
+  color: #90a4ae;
+}
+
+.rp-serve-icon-info,
+.rp-serve-version strong {
+  color: #1565c0;
+}
+
+.rp-serve-version strong {
+  font-size: 0.74rem;
 }
 
 .rp-banner {
@@ -567,11 +602,22 @@
   border-radius: 12px;
   padding: 10px;
   margin: 6px 0 8px;
+  flex-wrap: wrap;
+}
+
+.rp-change-ends-policy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #ef6c00;
+  white-space: nowrap;
 }
 
 .rp-change-ends-copy-block {
   flex: 1;
-  min-width: 0;
+  min-width: 120px;
 }
 
 .rp-change-ends-title {
@@ -888,6 +934,18 @@
 .rp-actions-wide {
   width: 100%;
   margin: 8px 0;
+}
+
+.rp-btn-lineup {
+  width: 100%;
+  margin: 4px 0 8px;
+  min-height: 44px;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  background: #eceff1;
+  border-color: #cfd8dc;
+  color: var(--rp-ink);
 }
 
 .rp-actions-secondary {
