@@ -94,7 +94,7 @@ function bindCanonicalEligibleCourts() {
   __setCourtResourceGatewayDepsForTests({
     listEligiblePhysicalCourts: createCanonicalInventoryReader({
       clubs: [{ id: CLUB_ID, tenantId: TENANT_A }],
-      clusters: [{ id: CLUSTER, venueId: TENANT_A }],
+      clusters: [{ id: CLUSTER, tenantId: TENANT_A, venueId: TENANT_A }],
       physicalCourts: CANONICAL_PHYSICAL.map((physicalCourtId, index) => ({
         physicalCourtId,
         tenantId: TENANT_A,
@@ -456,7 +456,7 @@ describe("live gateway binding", () => {
     __setCourtResourceGatewayDepsForTests({
       listEligiblePhysicalCourts: createCanonicalInventoryReader({
         clubs: [{ id: CLUB_ID, tenantId: TENANT_A }],
-        clusters: [{ id: CLUSTER, venueId: TENANT_A }],
+        clusters: [{ id: CLUSTER, tenantId: TENANT_A, venueId: TENANT_A }],
         physicalCourts: CANONICAL_PHYSICAL.map((physicalCourtId, index) => ({
           physicalCourtId,
           tenantId: TENANT_A,

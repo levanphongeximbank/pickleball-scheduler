@@ -233,12 +233,14 @@ test("canonical Gateway native physical IDs do not fall back to legacy resolver"
   const gateway = read("src/features/court-resource/services/courtResourceGateway.js");
   const native = extractNamedFunction(gateway, "nativePhysicalCourtIdsOrFail");
   const resolveNative = extractNamedFunction(gateway, "resolvePhysicalIdsForCanonical");
+  const resolveCompat = extractNamedFunction(gateway, "resolveCanonicalPhysicalIds");
   const reserve = extractNamedFunction(gateway, "reserveCourtsCanonical");
   const availability = extractNamedFunction(gateway, "getCourtAvailabilityCanonical");
   const release = extractNamedFunction(gateway, "releaseCourtsCanonical");
   const ownerRead = extractNamedFunction(gateway, "listOwnerReservationsCanonical");
-  for (const fn of [native, resolveNative, reserve, availability, release, ownerRead]) {
+  for (const fn of [native, resolveNative, resolveCompat, reserve, availability, release, ownerRead]) {
     assert.doesNotMatch(fn, /resolveLegacyCourtIdentity/);
+    assert.doesNotMatch(fn, /resolveLegacyPhysicalCourt/);
     assert.doesNotMatch(fn, /loadBookingsForClub/);
     assert.doesNotMatch(fn, /loadCourtsForClub/);
     assert.doesNotMatch(fn, /clubStorage/);
@@ -255,6 +257,7 @@ test("canonical Gateway native physical IDs do not fall back to legacy resolver"
   assert.match(availability, /resolvePhysicalIdsForCanonical/);
   assert.match(ownerRead, /canonicalListOwnerReservations/);
   assert.doesNotMatch(ownerRead, /listLegacyTournamentReservations/);
+  assert.match(gateway, /legacy\/gatewayLegacyDeps/);
 });
 
 test("additive owner-reservation SQL is Court Operations-owned and fail closed", () => {

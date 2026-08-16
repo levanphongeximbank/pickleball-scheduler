@@ -23,10 +23,17 @@ export const PHYSICAL_COURT_ID_OWNER = "2.2_COURT_OPERATIONS";
 export const CLUB_OPERATIONAL_COURT_ACCESS_OWNER = "2.2_COURT_OPERATIONS";
 
 export const TENANT_ID_EQUALS_VENUE_ID_ASSUMPTION = "NO";
-export const COURT_CLUSTERS_VENUE_ID_SEMANTICS = "organization_parent_id_debt";
-export const D4_VENUE_BOUNDARY_STATUS = "COUPLED_TO_VENUES_AS_TENANT_OUT_OF_SCOPE";
+/** After Batch 8: venue_id is explicit 2.1 venue; tenant_id is explicit org scope. */
+export const COURT_CLUSTERS_VENUE_ID_SEMANTICS = "canonical_venue_id";
+export const COURT_CLUSTERS_TENANT_ID_SEMANTICS = "platform_tenant_id";
+export const COURT_CLUSTERS_TENANT_SEMANTICS_EXPLICIT = "YES";
+export const COURT_CLUSTERS_VENUE_SEMANTICS_EXPLICIT = "YES";
+export const COURT_CLUSTERS_VENUE_ID_ORG_PARENT_DEBT_ON_CANONICAL_PATH = "NO";
+export const D4_VENUE_BOUNDARY_STATUS = "COUPLED_TO_VENUES_AS_TENANT_OFF_PATH_ONLY";
 export const NEW_SQL_REQUIRED = "YES";
 export const NEW_DUPLICATE_IDENTITY_CONTRACTS_CREATED = "NO";
+export const LEGACY_COMPATIBILITY_BOUNDARY_EXPLICIT = "YES";
+export const LEGACY_BOUNDARY_LOCATION = "src/features/court-resource/legacy/";
 
 export const COURT_MASTER_TABLE = "court_resource_physical_courts";
 export const COURT_CLUSTER_TOPOLOGY_TABLE = "court_clusters";

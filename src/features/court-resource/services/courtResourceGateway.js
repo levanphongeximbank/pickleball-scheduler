@@ -3,15 +3,16 @@
  *
  * Supports the current flat option contract and the accepted Phase 2
  * scope/window shape. This is the only gateway implementation.
+ *
+ * Dual routing:
+ * - Canonical ON / native physicalCourtId → canonical adapters only
+ * - Legacy OFF path → explicit legacy/gatewayLegacyDeps substrate only
+ *
+ * CANONICAL_GATEWAY_LEGACY_SUBSTRATE_CALL_COUNT=0 on canonical branches.
+ * CANONICAL_PATH_LEGACY_MAPPING_CALLS=0
  */
 import { getCourtDisplayName } from "../../../models/court.js";
-import { loadBookingsForClub } from "../../../domain/clubStorage.js";
-import { checkBookingConflict } from "../../../domain/courtBookingEngine.js";
 import {
-  createBooking,
-  createMaintenanceBooking,
-  saveBooking,
-  updateBookingStatus,
   __bindCanonicalBookingGateway,
 } from "../../../domain/bookingService.js";
 import {
@@ -25,24 +26,19 @@ import {
   mapGatewayOwnerTypeToCanonical,
 } from "../constants/canonicalReservation.js";
 import { isCanonicalPhysicalCourtId } from "../contracts/canonicalPhysicalCourt.js";
-import { resolveLegacyCourtIdentity } from "../contracts/legacyCourtIdentityMapping.js";
+import {
+  AVAILABILITY_REASON,
+} from "../../venue-court/services/courtAvailabilityService.js";
 import {
   buildTournamentReservationId,
   isActiveTournamentReservation,
   isTournamentReservation,
-  listLegacyTournamentReservations,
-  releaseLegacyTournamentReservations,
-  syncLegacyTournamentReservations,
-} from "../adapters/legacyReservationAdapter.js";
+} from "../legacy/index.js";
 import {
-  AVAILABILITY_REASON,
-  getCourtAvailability as getCanonicalCourtAvailability,
-} from "../../venue-court/services/courtAvailabilityService.js";
-import { listCourts } from "../../venue-court/services/courtInventoryService.js";
+  defaultLegacyGatewaySubstrateDeps,
+} from "../legacy/gatewayLegacyDeps.js";
 import { productionListEligiblePhysicalCourts } from "./canonicalCourtInventoryClient.js";
-import { assertCourtClusterMembership } from "../../venue-court/services/courtClusterMembershipService.js";
 import {
-  getReservationOwner as lookupReservationOwner,
   isBlockingReservation,
   isSameReservationOwner,
   normalizeOwnerInput,
@@ -57,6 +53,8 @@ import {
   COURT_OPERATIONS_SCOPE_CODE,
   requireCanonicalTenantId,
 } from "../scope/courtOperationsScope.js";
+
+const legacySubstrate = defaultLegacyGatewaySubstrateDeps;
 
 function mapTenantScopeFailure(result, extra = {}) {
   if (result.code === COURT_OPERATIONS_SCOPE_CODE.TENANT_VENUE_COLLAPSE_DENIED) {
@@ -104,7 +102,7 @@ async function settle(value) {
 async function defaultSyncTournamentCourtBookings(tournament, clubId, courts = []) {
   const schedule = tournament?.courtSchedule || {};
   return settle(
-    syncLegacyTournamentReservations(
+    deps.syncLegacyTournamentReservations(
       {
         clubId,
         owner: { type: RESERVATION_OWNER_TYPE.TOURNAMENT, id: tournament.id },
@@ -120,7 +118,7 @@ async function defaultSyncTournamentCourtBookings(tournament, clubId, courts = [
 
 async function defaultCancelTournamentCourtBookings(clubId, ownerId, courtIds = null) {
   return settle(
-    releaseLegacyTournamentReservations(
+    deps.releaseLegacyTournamentReservations(
       {
         clubId,
         owner: { type: RESERVATION_OWNER_TYPE.TOURNAMENT, id: ownerId },
@@ -131,61 +129,28 @@ async function defaultCancelTournamentCourtBookings(clubId, ownerId, courtIds = 
   );
 }
 
-function defaultResolveLegacyPhysicalCourt(options = {}) {
-  const mappings = Array.isArray(options.legacyMappings) ? options.legacyMappings : [];
-  const tenantResolved = resolveExplicitTenantId(options);
-  if (!tenantResolved.ok) return tenantResolved;
-  const key = {
-    tenantId: tenantResolved.tenantId,
-    clubId: trimId(options.clubId),
-    sourceSystem: trimId(options.sourceSystem) || "club-data-v3",
-    sourceVersion: trimId(options.sourceVersion) || "3",
-    legacyClusterId: trimId(options.legacyClusterId) || trimId(options.clusterId),
-    legacyCourtId: trimId(options.courtId) || trimId(options.legacyCourtId),
-  };
-  if (!key.tenantId || !key.clubId || !key.legacyClusterId || !key.legacyCourtId) {
-    return fail(
-      COURT_RESOURCE_CODE.UNRESOLVED_MAPPING,
-      "Legacy court identity mapping is incomplete — fail closed."
-    );
-  }
-  try {
-    const resolved = resolveLegacyCourtIdentity(key, mappings);
-    if (resolved.classification !== "deterministic" || !resolved.physicalCourtId) {
-      return fail(
-        COURT_RESOURCE_CODE.UNRESOLVED_MAPPING,
-        "Legacy court identity is not a deterministic physicalCourtId mapping.",
-        { classification: resolved.classification }
-      );
-    }
-    return { ok: true, physicalCourtId: resolved.physicalCourtId };
-  } catch (error) {
-    return fail(
-      COURT_RESOURCE_CODE.UNRESOLVED_MAPPING,
-      error?.message || "Legacy court identity mapping failed closed."
-    );
-  }
-}
-
 const defaultDeps = Object.freeze({
-  getCourtAvailability: getCanonicalCourtAvailability,
-  listCourts,
+  getCourtAvailability: legacySubstrate.getCourtAvailability,
+  listCourts: legacySubstrate.listCourts,
   listEligiblePhysicalCourts: productionListEligiblePhysicalCourts,
-  loadBookingsForClub,
-  checkBookingConflict,
-  createBooking,
-  createMaintenanceBooking,
-  saveBooking,
-  updateBookingStatus,
-  assertCourtClusterMembership,
-  getReservationOwner: lookupReservationOwner,
+  loadBookingsForClub: legacySubstrate.loadBookingsForClub,
+  checkBookingConflict: legacySubstrate.checkBookingConflict,
+  createBooking: legacySubstrate.createBooking,
+  createMaintenanceBooking: legacySubstrate.createMaintenanceBooking,
+  saveBooking: legacySubstrate.saveBooking,
+  updateBookingStatus: legacySubstrate.updateBookingStatus,
+  assertCourtClusterMembership: legacySubstrate.assertCourtClusterMembership,
+  getReservationOwner: legacySubstrate.getReservationOwner,
   syncTournamentCourtBookings: defaultSyncTournamentCourtBookings,
   cancelTournamentCourtBookings: defaultCancelTournamentCourtBookings,
+  syncLegacyTournamentReservations: legacySubstrate.syncLegacyTournamentReservations,
+  releaseLegacyTournamentReservations: legacySubstrate.releaseLegacyTournamentReservations,
+  listLegacyTournamentReservations: legacySubstrate.listLegacyTournamentReservations,
   canonicalReserve: productionCanonicalReserve,
   canonicalRelease: productionCanonicalRelease,
   canonicalGetAvailability: productionCanonicalGetAvailability,
   canonicalListOwnerReservations: productionCanonicalListOwnerReservations,
-  resolveLegacyPhysicalCourt: defaultResolveLegacyPhysicalCourt,
+  resolveLegacyPhysicalCourt: legacySubstrate.resolveLegacyPhysicalCourt,
   isCanonicalReservationCutover,
 });
 
@@ -340,18 +305,15 @@ function windowToTimestamps(options) {
   return { startsAt: start.toISOString(), endsAt: end.toISOString() };
 }
 
+/**
+ * Canonical path identity resolution when physicalCourtIds were not supplied.
+ * UUID-shaped selectedCourtIds/courtIds are COMPATIBILITY_PROJECTION only.
+ * Never calls legacyCourtIdentityMapping (CANONICAL_PATH_LEGACY_MAPPING_CALLS=0).
+ */
 function resolveCanonicalPhysicalIds(options) {
   const direct = selectedPhysicalCourtIds(options);
   if (direct.length) {
-    const invalid = direct.filter((id) => !isCanonicalPhysicalCourtId(id));
-    if (invalid.length) {
-      return fail(
-        COURT_RESOURCE_CODE.UNRESOLVED_MAPPING,
-        "physicalCourtId must be a UUID — labels and legacy court ids are not identity.",
-        { failed: invalid }
-      );
-    }
-    return { ok: true, physicalCourtIds: [...new Set(direct)].sort() };
+    return nativePhysicalCourtIdsOrFail(options);
   }
   const courtIds = selectedCourtIds(options);
   if (!courtIds.length) {
@@ -360,19 +322,15 @@ function resolveCanonicalPhysicalIds(options) {
       "physicalCourtIds are required — cluster and courtCount are not reservable units."
     );
   }
-  const resolved = [];
-  for (const courtId of courtIds) {
-    const row = deps.resolveLegacyPhysicalCourt({ ...options, courtId });
-    if (!row?.ok) {
-      return fail(
-        row?.code || COURT_RESOURCE_CODE.UNRESOLVED_MAPPING,
-        row?.error || "Legacy court identity mapping failed closed.",
-        { courtId }
-      );
-    }
-    resolved.push(row.physicalCourtId);
+  const invalid = courtIds.filter((id) => !isCanonicalPhysicalCourtId(id));
+  if (invalid.length) {
+    return fail(
+      COURT_RESOURCE_CODE.UNRESOLVED_MAPPING,
+      "Canonical path requires native physicalCourtId UUID — legacy mapping is OFF-path only.",
+      { failed: invalid }
+    );
   }
-  return { ok: true, physicalCourtIds: [...new Set(resolved)].sort() };
+  return { ok: true, physicalCourtIds: [...new Set(courtIds.map(trimId).filter(Boolean))].sort() };
 }
 
 function denyNonPhysicalReservation(options) {
@@ -936,7 +894,7 @@ function listOwnerReservationsLegacy(options) {
     const bookings = deps.loadBookingsForClub(clubId);
     const reservations =
       owner.type === RESERVATION_OWNER_TYPE.TOURNAMENT
-        ? listLegacyTournamentReservations(bookings, owner.id)
+        ? deps.listLegacyTournamentReservations(bookings, owner.id)
         : bookings.filter((booking) => isSameReservationOwner(booking, owner));
     return { ok: true, code: COURT_RESOURCE_CODE.OK, reservations };
   } catch (error) {

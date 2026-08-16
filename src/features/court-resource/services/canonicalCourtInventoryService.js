@@ -4,8 +4,9 @@
  * Does not read Club V3 blob, club storage loaders, or browser storage.
  *
  * tenantId is required explicitly — never invented from venueId.
- * court_clusters.venue_id is organization_parent_id_debt (compare to explicit
- * tenantId only; never invent caller tenantId from cluster.venue_id).
+ * court_clusters.tenant_id = Platform/org tenant scope (explicit).
+ * court_clusters.venue_id = 2.1 Venue Management identity (explicit).
+ * COURT_CLUSTERS_VENUE_ID_ORG_PARENT_DEBT_ON_CANONICAL_PATH=NO
  */
 import { COURT_RESOURCE_CODE } from "../constants/courtResourceContract.js";
 import {
@@ -36,15 +37,17 @@ function fail(code, error, extra = {}) {
 }
 
 /**
- * Organization parent id on a cluster row for filter comparison only.
- * Prefer tenant_id when present; else venue_id is documented org-parent debt.
- * Never used to invent a missing request.tenantId.
+ * Explicit cluster tenant scope. Never invent from venue_id.
  */
-function clusterOrgParentId(cluster) {
-  const explicitTenant = trimId(cluster?.tenantId) || trimId(cluster?.tenant_id);
-  if (explicitTenant) return explicitTenant;
-  // COURT_CLUSTERS_VENUE_ID_SEMANTICS=organization_parent_id_debt
-  return trimId(cluster?.venue_id) || trimId(cluster?.venueId);
+function clusterTenantId(cluster) {
+  return trimId(cluster?.tenantId) || trimId(cluster?.tenant_id);
+}
+
+/**
+ * Explicit 2.1 venue identity on the cluster row.
+ */
+function clusterVenueId(cluster) {
+  return trimId(cluster?.venueId) || trimId(cluster?.venue_id);
 }
 
 function mapScopeFailure(result) {
@@ -166,9 +169,24 @@ export function listEligiblePhysicalCourts(request = {}, sources = {}) {
         "Unknown clusterId — cluster is a filter only."
       );
     }
-    const clusterParent = clusterOrgParentId(cluster);
-    if (clusterParent && clusterParent !== tenantId) {
+    const clusterTenant = clusterTenantId(cluster);
+    if (!clusterTenant) {
+      return fail(
+        COURT_RESOURCE_CODE.CLUSTER_MISMATCH,
+        "Cluster tenant_id unresolved — COURT_CLUSTERS_TENANT_SEMANTICS_EXPLICIT requires fail closed.",
+        { unresolvedClusterMapping: true }
+      );
+    }
+    if (clusterTenant !== tenantId) {
       return fail(COURT_RESOURCE_CODE.TENANT_MISMATCH, "Cluster does not belong to tenant — fail closed.");
+    }
+    const requestVenueId = trimId(request.venueId);
+    const clusterVenue = clusterVenueId(cluster);
+    if (requestVenueId && clusterVenue && requestVenueId !== clusterVenue) {
+      return fail(
+        COURT_RESOURCE_CODE.VENUE_MISMATCH,
+        "Cluster does not belong to venue context — fail closed."
+      );
     }
   }
 

@@ -72,7 +72,7 @@ function access(overrides = {}) {
 function snapshot(overrides = {}) {
   return {
     clubs: [{ id: CLUB, tenantId: TENANT }],
-    clusters: [{ id: CLUSTER, venueId: TENANT }],
+    clusters: [{ id: CLUSTER, tenantId: TENANT, venueId: TENANT }],
     physicalCourts: [court()],
     clubOperationalAccess: [access()],
     legacyBlobCourts: [{ id: "blob-1", name: "Blob", clubId: CLUB }],
@@ -295,7 +295,7 @@ test("N. same opaque string for tenantId and venueId allowed when both explicit"
   assert.equal(scope.scope.venueId, TENANT);
 });
 
-test("O. cluster filter compares org-parent to explicit tenantId only", () => {
+test("O. cluster filter uses explicit tenant_id — never venue_id as org-parent invent", () => {
   const ok = listEligiblePhysicalCourts(
     { tenantId: TENANT, clubId: CLUB, clusterId: CLUSTER },
     snapshot()
@@ -305,11 +305,21 @@ test("O. cluster filter compares org-parent to explicit tenantId only", () => {
   const mismatch = listEligiblePhysicalCourts(
     { tenantId: TENANT, clubId: CLUB, clusterId: CLUSTER },
     snapshot({
-      clusters: [{ id: CLUSTER, venueId: "other-org-parent" }],
+      clusters: [{ id: CLUSTER, tenantId: "other-tenant", venueId: TENANT }],
     })
   );
   assert.equal(mismatch.ok, false);
   assert.equal(mismatch.code, COURT_RESOURCE_CODE.TENANT_MISMATCH);
+
+  const unresolved = listEligiblePhysicalCourts(
+    { tenantId: TENANT, clubId: CLUB, clusterId: CLUSTER },
+    snapshot({
+      clusters: [{ id: CLUSTER, venueId: TENANT }],
+    })
+  );
+  assert.equal(unresolved.ok, false);
+  assert.equal(unresolved.code, COURT_RESOURCE_CODE.CLUSTER_MISMATCH);
+  assert.equal(unresolved.unresolvedClusterMapping, true);
 });
 
 test("P. requireCanonicalClubScope projects club framing without invent", () => {

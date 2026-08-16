@@ -100,7 +100,7 @@ function importedModules(source) {
   );
 }
 
-test("Batch 5 ownership constants and honesty markers", () => {
+test("Batch 5/8 ownership constants and honesty markers", () => {
   assert.equal(TENANT_ID_OWNER, "PLATFORM_CANONICAL_ORGANIZATION");
   assert.equal(VENUE_ID_OWNER, "2.1_VENUE_MANAGEMENT");
   assert.equal(CLUB_ID_OWNER, "2.3_CLUB_MANAGEMENT");
@@ -108,17 +108,18 @@ test("Batch 5 ownership constants and honesty markers", () => {
   assert.equal(PHYSICAL_COURT_ID_OWNER, "2.2_COURT_OPERATIONS");
   assert.equal(CLUB_OPERATIONAL_COURT_ACCESS_OWNER, "2.2_COURT_OPERATIONS");
   assert.equal(TENANT_ID_EQUALS_VENUE_ID_ASSUMPTION, "NO");
-  assert.equal(COURT_CLUSTERS_VENUE_ID_SEMANTICS, "organization_parent_id_debt");
-  assert.equal(D4_VENUE_BOUNDARY_STATUS, "COUPLED_TO_VENUES_AS_TENANT_OUT_OF_SCOPE");
-  // Batch 7 authored live-runtime SQL; Batch 5 identity SQL package remains absent.
+  assert.equal(COURT_CLUSTERS_VENUE_ID_SEMANTICS, "canonical_venue_id");
+  assert.equal(D4_VENUE_BOUNDARY_STATUS, "COUPLED_TO_VENUES_AS_TENANT_OFF_PATH_ONLY");
+  // Batch 8 authored cluster tenant/venue SQL; prior certified packages unchanged.
   assert.equal(NEW_SQL_REQUIRED, "YES");
   assert.equal(NEW_DUPLICATE_IDENTITY_CONTRACTS_CREATED, "NO");
 
   const ownership = read("src/features/court-resource/OWNERSHIP.md");
-  assert.match(ownership, /Frozen for Batch 7/i);
+  assert.match(ownership, /Frozen for Batch 8/i);
   assert.match(ownership, /TENANT_ID_EQUALS_VENUE_ID_ASSUMPTION=NO/);
-  assert.match(ownership, /COURT_CLUSTERS_VENUE_ID_SEMANTICS=organization_parent_id_debt/);
-  assert.match(ownership, /D4_VENUE_BOUNDARY_STATUS=COUPLED_TO_VENUES_AS_TENANT_OUT_OF_SCOPE/);
+  assert.match(ownership, /COURT_CLUSTERS_VENUE_ID_SEMANTICS=canonical_venue_id/);
+  assert.match(ownership, /COURT_CLUSTERS_VENUE_ID_ORG_PARENT_DEBT_ON_CANONICAL_PATH=NO/);
+  assert.match(ownership, /D4_VENUE_BOUNDARY_STATUS=COUPLED_TO_VENUES_AS_TENANT_OFF_PATH_ONLY/);
   assert.match(ownership, /NEW_SQL_REQUIRED=YES/);
   assert.match(ownership, /CANONICAL_RESOURCE_BLOCKS_DEFAULT=false/);
   assert.match(ownership, /DAILY_PLAY_RUNTIME_RESOURCE_BLOCK_CERTIFICATION_DEFERRED=YES/);

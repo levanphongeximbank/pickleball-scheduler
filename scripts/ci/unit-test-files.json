@@ -580,5 +580,6 @@
   "tests/court-resource-canonical-live-runtime-lifecycle.test.js",
   "tests/court-resource-canonical-live-runtime-architecture.test.js",
   "tests/court-resource-canonical-live-booking-projection.test.js",
-  "tests/court-resource-canonical-live-competition-projection.test.js"
+  "tests/court-resource-canonical-live-competition-projection.test.js",
+  "tests/court-resource-legacy-isolation-batch8.test.js"
 ]

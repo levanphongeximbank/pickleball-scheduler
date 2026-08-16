@@ -61,8 +61,8 @@ function snapshot(overrides = {}) {
       { id: CLUB_B, tenantId: TENANT_A },
     ],
     clusters: [
-      { id: CLUSTER_NL, venueId: TENANT_A },
-      { id: CLUSTER_OTHER, venueId: TENANT_A },
+      { id: CLUSTER_NL, tenantId: TENANT_A, venueId: TENANT_A },
+      { id: CLUSTER_OTHER, tenantId: TENANT_A, venueId: TENANT_A },
     ],
     physicalCourts: [
       court(),

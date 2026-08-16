@@ -42,7 +42,7 @@ afterEach(() => {
 function inventoryReader() {
   return createCanonicalInventoryReader({
     clubs: [{ id: CLUB, tenantId: TENANT }],
-    clusters: [{ id: CLUSTER, venueId: TENANT }],
+    clusters: [{ id: CLUSTER, tenantId: TENANT, venueId: TENANT }],
     physicalCourts: [
       {
         physicalCourtId: COURT01,

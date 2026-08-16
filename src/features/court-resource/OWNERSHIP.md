@@ -1,6 +1,6 @@
 # 2.2 Court Operations — Court Resource ownership freeze
 
-**Status:** Frozen for Batch 7 canonical Court Live Resource Runtime  
+**Status:** Frozen for Batch 8 legacy isolation + cluster semantic closure  
 **Do not invert these owners without an Owner GO.**
 
 ```
@@ -27,8 +27,14 @@ CLUB_OPERATIONAL_COURT_ACCESS_OWNER=2.2_COURT_OPERATIONS
 
 ```
 TENANT_ID_EQUALS_VENUE_ID_ASSUMPTION=NO
-COURT_CLUSTERS_VENUE_ID_SEMANTICS=organization_parent_id_debt
-D4_VENUE_BOUNDARY_STATUS=COUPLED_TO_VENUES_AS_TENANT_OUT_OF_SCOPE
+COURT_CLUSTERS_VENUE_ID_SEMANTICS=canonical_venue_id
+COURT_CLUSTERS_TENANT_ID_SEMANTICS=platform_tenant_id
+COURT_CLUSTERS_TENANT_SEMANTICS_EXPLICIT=YES
+COURT_CLUSTERS_VENUE_SEMANTICS_EXPLICIT=YES
+COURT_CLUSTERS_VENUE_ID_ORG_PARENT_DEBT_ON_CANONICAL_PATH=NO
+D4_VENUE_BOUNDARY_STATUS=COUPLED_TO_VENUES_AS_TENANT_OFF_PATH_ONLY
+LEGACY_COMPATIBILITY_BOUNDARY_EXPLICIT=YES
+LEGACY_BOUNDARY_LOCATION=src/features/court-resource/legacy/
 NEW_SQL_REQUIRED=YES
 NEW_DUPLICATE_IDENTITY_CONTRACTS_CREATED=NO
 ```
@@ -36,16 +42,16 @@ NEW_DUPLICATE_IDENTITY_CONTRACTS_CREATED=NO
 Court Operations API treats `tenantId` and `venueId` as **distinct concepts**.
 Product history may still store the same opaque string in both places; Court Ops
 must not collapse them (`tenantId || venueId` invent is forbidden on canonical
-paths). This batch does **not** claim a full organization-split migration.
+paths).
 
-`court_clusters.venue_id` remains an FK to `venues` and historically equated
-with tenant authority — additive schema correction is deferred
-(`organization_parent_id_debt`). Inventory filters compare cluster org-parent
-id against an **explicit** caller `tenantId` only; they never invent
-`tenantId` from `cluster.venue_id` when the caller omitted it.
+`court_clusters.tenant_id` is explicit Platform/org tenant scope.
+`court_clusters.venue_id` is explicit 2.1 Venue Management identity.
+Canonical inventory never treats `venue_id` as organization-parent invent
+(`COURT_CLUSTERS_VENUE_ID_ORG_PARENT_DEBT_ON_CANONICAL_PATH=NO`). Additive SQL:
+`docs/v5/migrations/court-operations-legacy-isolation-01/` (authored, not applied).
 
-D4 venue boundary remains coupled to venues-as-tenant historically and is
-out of scope for this batch.
+D4 venue-as-tenant coupling remains OFF-path only and is not used by canonical
+Daily Play Adapter B.
 
 ClubContext / active club selection is **UI selection only** — not Court
 Operations identity or access authority.
@@ -201,28 +207,34 @@ Reused (not duplicated) framing contracts: CourtOperationsTenantContract /
 CourtOperationsClubContract / VenueContractV2 projections via existing
 `projectTenantScope`, `projectVenueCourt*`, `projectClubScope` adapters.
 
-## Deferred / Batch 8 legacy
+## Deferred / Batch 8 legacy isolation
 
 ```
 DAILY_PLAY_CANONICAL_BUSINESS_AGGREGATE=DEFERRED
 DAILY_PLAY_RUNTIME_RESOURCE_BLOCK_CERTIFICATION_DEFERRED=YES
 LIVE_RESOURCE_RUNTIME_REDESIGN_DEFERRED=NO
-COURT_ENGINE_LIVE_RUNTIME_DEBT=legacy_path_retained_until_batch8
+COURT_ENGINE_LIVE_RUNTIME_DEBT=legacy_path_isolated_batch8
+LEGACY_COMPATIBILITY_BOUNDARY_EXPLICIT=YES
 ```
 
-Legacy items for Batch 8 (not deleted in Batch 7):
+Legacy items retained behind `src/features/court-resource/legacy/` (not deleted):
 
 | Item | Classification |
 | ---- | -------------- |
 | `court.status` blob | LEGACY_COMPATIBILITY_ONLY |
 | tournament `currentMatchId` | UI_PROJECTION_ONLY / LEGACY_COMPATIBILITY_ONLY |
 | Daily Play lease projection | LEGACY_COMPATIBILITY + PROJECTION (not capacity SSOT) |
-| Court Engine session blob occupancy | MIGRATION_REQUIRED (demote as authority) |
+| Court Engine session blob occupancy | LEGACY_COMPATIBILITY (not auto-promoted) |
+| Gateway blob substrate | EXPLICIT_LEGACY_RUNTIME (OFF path only) |
+| D4 acquire SQL | EXPLICIT_LEGACY_RUNTIME (certified, unchanged) |
+
+See `legacy/LEGACY_RETIREMENT_MANIFEST.md`.
 
 Daily Play remains capacity-owner vocabulary (`daily_play`) under Phase 3B / D4
 on the **legacy** path. Batch 6 Mode Adapter B (canonical, default OFF) reserves
 capacity only via Head A → `court_resource_reservations`; Daily Play lease is a
 projection (`DAILY_PLAY_LEASE_IS_CAPACITY_SSOT=NO`). D4 certified SQL is unchanged.
+`CANONICAL_DAILY_PLAY_CALLS_D4_LEGACY_CAPACITY_PATH=0`.
 
 Mode Court Adapter B owner = `2.13_COMPETITION_ENGINE`  
 (`src/features/competition-engine/integration/court-adapters/`).
