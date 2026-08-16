@@ -151,17 +151,21 @@ CourtOperationsClubContract / VenueContractV2 projections via existing
 DAILY_PLAY_CANONICAL_BUSINESS_AGGREGATE=DEFERRED
 DAILY_PLAY_RUNTIME_RESOURCE_BLOCK_CERTIFICATION_DEFERRED=YES
 LIVE_RESOURCE_RUNTIME_REDESIGN_DEFERRED=YES
+COURT_ENGINE_LIVE_RUNTIME_DEBT=occupancy_and_match_assignment_lifecycle_still_mixed
 ```
 
-Daily Play remains capacity-owner vocabulary (`daily_play`) under Phase 3B / D4.
-A Daily Play business aggregate (Batch-style) is **not** started in Batch 4/5.
-Whole-system Daily Play runtime Resource Block certification is deferred until
-caller adoption reaches the native identity/capacity path. Court Live Resource
-Runtime redesign remains deferred (Batch 7+).
+Daily Play remains capacity-owner vocabulary (`daily_play`) under Phase 3B / D4
+on the **legacy** path. Batch 6 Mode Adapter B (canonical, default OFF) reserves
+capacity only via Head A → `court_resource_reservations`; Daily Play lease is a
+projection (`DAILY_PLAY_LEASE_IS_CAPACITY_SSOT=NO`). D4 certified SQL is unchanged.
+
+Mode Court Adapter B owner = `2.13_COMPETITION_ENGINE`  
+(`src/features/competition-engine/integration/court-adapters/`).
 
 ```
 CANONICAL_BOOKING_LIFECYCLE_DEFAULT=false
 CANONICAL_RESOURCE_BLOCKS_DEFAULT=false
+CANONICAL_COMPETITION_COURT_ADAPTERS_DEFAULT=false
 SQL_CUTOVER=false
 JS_CUTOVER=false
 DUAL_CUTOVER=OFF_OFF

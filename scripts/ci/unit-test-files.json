@@ -573,5 +573,8 @@
   "tests/court-resource-canonical-resource-block-lifecycle.test.js",
   "tests/court-resource-canonical-resource-block-architecture.test.js",
   "tests/court-resource-canonical-scope-boundary.test.js",
-  "tests/court-resource-canonical-scope-architecture.test.js"
+  "tests/court-resource-canonical-scope-architecture.test.js",
+  "tests/competition-mode-court-adapter-b-batch6.test.js",
+  "tests/competition-mode-court-adapter-b-cross-capacity-batch6.test.js",
+  "tests/competition-mode-court-adapter-b-architecture-batch6.test.js"
 ]
