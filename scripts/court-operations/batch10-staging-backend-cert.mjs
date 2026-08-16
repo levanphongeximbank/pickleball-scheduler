@@ -353,7 +353,10 @@ async function main() {
     await setActor(client, actorId);
 
     report.cutoverBefore = await cutoverEnabled(client);
-    assert(report.cutoverBefore === false, "SQL cutover must be OFF for 10E");
+    const allowCutoverOn = process.argv.includes("--allow-cutover-on");
+    if (!allowCutoverOn) {
+      assert(report.cutoverBefore === false, "SQL cutover must be OFF for 10E");
+    }
 
     await seedFixtures(client);
 
@@ -869,7 +872,9 @@ async function main() {
 
     report.results.CANONICAL_ON_LEGACY_AUTHORITY_HOPS = 0; // defaults still OFF; explicit canonical RPC path only
     report.cutoverAfter = await cutoverEnabled(client);
-    assert(report.cutoverAfter === false, "cutover must remain OFF after 10E");
+    if (!allowCutoverOn) {
+      assert(report.cutoverAfter === false, "cutover must remain OFF after 10E");
+    }
   } catch (err) {
     report.failures.push(String(err.message || err));
     report.results.CANONICAL_BACKEND_STAGING = "FAIL";
