@@ -2,6 +2,10 @@
  * Court Operations canonical inventory / eligibility.
  * Sources Physical Court master + club operational access + cluster topology.
  * Does not read Club V3 blob, club storage loaders, or browser storage.
+ *
+ * tenantId is required explicitly — never invented from venueId.
+ * court_clusters.venue_id is organization_parent_id_debt (compare to explicit
+ * tenantId only; never invent caller tenantId from cluster.venue_id).
  */
 import { COURT_RESOURCE_CODE } from "../constants/courtResourceContract.js";
 import {
@@ -16,6 +20,10 @@ import {
   evaluateClubOperationalAccess,
   normalizeClubOperationalAccess,
 } from "../contracts/clubOperationalAccess.js";
+import {
+  COURT_OPERATIONS_SCOPE_CODE,
+  requireCanonicalTenantId,
+} from "../scope/courtOperationsScope.js";
 
 function trimId(value) {
   if (value == null) return null;
@@ -27,13 +35,32 @@ function fail(code, error, extra = {}) {
   return { ok: false, code, error, courts: [], ...extra };
 }
 
-function clusterTenantOf(cluster) {
-  return (
-    trimId(cluster?.tenantId)
-    || trimId(cluster?.tenant_id)
-    || trimId(cluster?.venueId)
-    || trimId(cluster?.venue_id)
-  );
+/**
+ * Organization parent id on a cluster row for filter comparison only.
+ * Prefer tenant_id when present; else venue_id is documented org-parent debt.
+ * Never used to invent a missing request.tenantId.
+ */
+function clusterOrgParentId(cluster) {
+  const explicitTenant = trimId(cluster?.tenantId) || trimId(cluster?.tenant_id);
+  if (explicitTenant) return explicitTenant;
+  // COURT_CLUSTERS_VENUE_ID_SEMANTICS=organization_parent_id_debt
+  return trimId(cluster?.venue_id) || trimId(cluster?.venueId);
+}
+
+function mapScopeFailure(result) {
+  if (result.code === COURT_OPERATIONS_SCOPE_CODE.TENANT_VENUE_COLLAPSE_DENIED) {
+    return fail(
+      COURT_RESOURCE_CODE.TENANT_VENUE_COLLAPSE_DENIED,
+      result.error || "venueId cannot substitute for tenantId."
+    );
+  }
+  if (result.code === COURT_OPERATIONS_SCOPE_CODE.MISSING_TENANT_ID) {
+    return fail(
+      COURT_RESOURCE_CODE.MISSING_TENANT_ID,
+      result.error || "tenantId is required."
+    );
+  }
+  return fail(result.code || COURT_RESOURCE_CODE.TENANT_MISMATCH, result.error || "Invalid tenant scope.");
 }
 
 function collectRequestedPhysicalCourtIds(request, clusterId) {
@@ -99,13 +126,12 @@ export function projectEligiblePhysicalCourt(court) {
  *   Ignored if present: Club V3 blob courts, browser storage, legacyBlobCourts.
  */
 export function listEligiblePhysicalCourts(request = {}, sources = {}) {
-  const tenantId = trimId(request.tenantId) || trimId(request.venueId);
+  const tenantResult = requireCanonicalTenantId(request);
+  if (!tenantResult.ok) return mapScopeFailure(tenantResult);
+  const tenantId = tenantResult.tenantId;
   const clubId = trimId(request.clubId);
   const clusterId = trimId(request.clusterId);
 
-  if (!tenantId) {
-    return fail(COURT_RESOURCE_CODE.TENANT_MISMATCH, "tenantId is required.");
-  }
   if (!clubId) {
     return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required — no first-club fallback.");
   }
@@ -140,8 +166,8 @@ export function listEligiblePhysicalCourts(request = {}, sources = {}) {
         "Unknown clusterId — cluster is a filter only."
       );
     }
-    const clusterTenant = clusterTenantOf(cluster);
-    if (clusterTenant && clusterTenant !== tenantId) {
+    const clusterParent = clusterOrgParentId(cluster);
+    if (clusterParent && clusterParent !== tenantId) {
       return fail(COURT_RESOURCE_CODE.TENANT_MISMATCH, "Cluster does not belong to tenant — fail closed.");
     }
   }

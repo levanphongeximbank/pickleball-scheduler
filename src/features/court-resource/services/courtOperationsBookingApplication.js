@@ -27,6 +27,7 @@ import {
   rpcTransferBookingCourt,
   rpcUpdateBookingLifecycle,
 } from "./canonicalBookingClient.js";
+import { requireCanonicalClubScope } from "../scope/courtOperationsScope.js";
 
 function trimId(value) {
   if (value == null) return "";
@@ -61,21 +62,14 @@ function windowToTimestamps(input = {}) {
 }
 
 function requireTenantClub(input = {}) {
-  const tenantId = trimId(input.tenantId);
-  const clubId = trimId(input.clubId);
-  if (!tenantId) {
+  const scoped = requireCanonicalClubScope(input);
+  if (!scoped.ok) {
     return fail(
-      COURT_RESOURCE_CODE.TENANT_MISMATCH,
-      "tenantId is required — fail closed (no venueId invent, no default-club)."
+      scoped.code || COURT_RESOURCE_CODE.TENANT_MISMATCH,
+      scoped.error || "tenantId is required — fail closed (no venueId invent, no default-club)."
     );
   }
-  if (!clubId) {
-    return fail(
-      COURT_RESOURCE_CODE.MISSING_CLUB_ID,
-      "clubId is required — no default-club fallback."
-    );
-  }
-  return { ok: true, tenantId, clubId };
+  return { ok: true, tenantId: scoped.tenantId, clubId: scoped.clubId };
 }
 
 function requirePhysicalCourtId(value) {

@@ -571,5 +571,7 @@
   "tests/court-resource-canonical-booking-lifecycle.test.js",
   "tests/court-resource-canonical-booking-architecture.test.js",
   "tests/court-resource-canonical-resource-block-lifecycle.test.js",
-  "tests/court-resource-canonical-resource-block-architecture.test.js"
+  "tests/court-resource-canonical-resource-block-architecture.test.js",
+  "tests/court-resource-canonical-scope-boundary.test.js",
+  "tests/court-resource-canonical-scope-architecture.test.js"
 ]

@@ -1,6 +1,6 @@
 # 2.2 Court Operations — Court Resource ownership freeze
 
-**Status:** Frozen for Batch 4 canonical Resource Block business lifecycle  
+**Status:** Frozen for Batch 5 canonical Tenant / Venue / Club boundaries  
 **Do not invert these owners without an Owner GO.**
 
 ```
@@ -13,10 +13,47 @@ BOOKING_BUSINESS_OWNER=2.2_COURT_OPERATIONS
 RESOURCE_BLOCK_BUSINESS_OWNER=2.2_COURT_OPERATIONS
 ```
 
+## Distinct identity owners (Batch 5)
+
+```
+TENANT_ID_OWNER=PLATFORM_CANONICAL_ORGANIZATION
+VENUE_ID_OWNER=2.1_VENUE_MANAGEMENT
+CLUB_ID_OWNER=2.3_CLUB_MANAGEMENT
+CLUSTER_ID_OWNER=2.2_COURT_OPERATIONS
+PHYSICAL_COURT_ID_OWNER=2.2_COURT_OPERATIONS
+CLUB_OPERATIONAL_COURT_ACCESS_OWNER=2.2_COURT_OPERATIONS
+```
+
+```
+TENANT_ID_EQUALS_VENUE_ID_ASSUMPTION=NO
+COURT_CLUSTERS_VENUE_ID_SEMANTICS=organization_parent_id_debt
+D4_VENUE_BOUNDARY_STATUS=COUPLED_TO_VENUES_AS_TENANT_OUT_OF_SCOPE
+NEW_SQL_REQUIRED=NO
+NEW_DUPLICATE_IDENTITY_CONTRACTS_CREATED=NO
+```
+
+Court Operations API treats `tenantId` and `venueId` as **distinct concepts**.
+Product history may still store the same opaque string in both places; Court Ops
+must not collapse them (`tenantId || venueId` invent is forbidden on canonical
+paths). This batch does **not** claim a full organization-split migration.
+
+`court_clusters.venue_id` remains an FK to `venues` and historically equated
+with tenant authority — additive schema correction is deferred
+(`organization_parent_id_debt`). Inventory filters compare cluster org-parent
+id against an **explicit** caller `tenantId` only; they never invent
+`tenantId` from `cluster.venue_id` when the caller omitted it.
+
+D4 venue boundary remains coupled to venues-as-tenant historically and is
+out of scope for this batch.
+
+ClubContext / active club selection is **UI selection only** — not Court
+Operations identity or access authority.
+
 ## What 2.2 Court Operations owns
 
 - `CourtResourceGateway`
 - Court Resource services
+- Court Operations scope normalizer (`courtOperationsScope`)
 - Court Operations Booking Application (`courtOperationsBookingApplication`)
 - Court Operations Resource Block Application (`courtOperationsResourceBlockApplication`)
 - court cluster **topology** (`clusterId` is filter/scope, not reservable identity)
@@ -89,6 +126,8 @@ PROVIDER_PHYSICAL_RELOCATION_DEFERRED=YES
 
 One provider implementation only. Native identity handoff is
 `physicalCourtId` / `physicalCourtIds` with no remap to legacy Gateway fields.
+Competition Contract A scope passes `tenantId` unchanged — never invents
+`venueId` from `tenantId`.
 
 ## Adjacent owners (not Court Resource)
 
@@ -102,6 +141,10 @@ One provider implementation only. Native identity handoff is
 
 Venue & Court `listCourts` / `club_data_v3` remain **transitional compatibility** readers for old noncanonical consumers. They are not the target inventory, access, Booking, or Resource Block business authority.
 
+Reused (not duplicated) framing contracts: CourtOperationsTenantContract /
+CourtOperationsClubContract / VenueContractV2 projections via existing
+`projectTenantScope`, `projectVenueCourt*`, `projectClubScope` adapters.
+
 ## Deferred
 
 ```
@@ -111,7 +154,7 @@ LIVE_RESOURCE_RUNTIME_REDESIGN_DEFERRED=YES
 ```
 
 Daily Play remains capacity-owner vocabulary (`daily_play`) under Phase 3B / D4.
-A Daily Play business aggregate (Batch-style) is **not** started in Batch 4.
+A Daily Play business aggregate (Batch-style) is **not** started in Batch 4/5.
 Whole-system Daily Play runtime Resource Block certification is deferred until
 caller adoption reaches the native identity/capacity path. Court Live Resource
 Runtime redesign remains deferred (Batch 7+).

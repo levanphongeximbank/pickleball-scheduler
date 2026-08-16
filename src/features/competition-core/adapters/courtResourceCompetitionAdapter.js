@@ -204,7 +204,6 @@ function gatewayScope(input) {
     tenantId: context.tenantId,
     clubId: context.clubId,
     clusterId: context.clusterId,
-    venueId: context.tenantId,
     owner,
   };
 }

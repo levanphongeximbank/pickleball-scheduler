@@ -288,7 +288,10 @@ test("missing tenantId and clubId fail closed without inventory reads", async ()
   bindInventory(snapshot());
   const noTenant = await listEligibleCourts({ clubId: CLUB_A });
   assert.equal(noTenant.ok, false);
-  assert.equal(noTenant.code, COURT_RESOURCE_CODE.TENANT_MISMATCH);
+  assert.equal(noTenant.code, COURT_RESOURCE_CODE.MISSING_TENANT_ID);
+  const venueOnly = await listEligibleCourts({ venueId: TENANT_A, clubId: CLUB_A });
+  assert.equal(venueOnly.ok, false);
+  assert.equal(venueOnly.code, COURT_RESOURCE_CODE.TENANT_VENUE_COLLAPSE_DENIED);
   const noClub = await listEligibleCourts({ tenantId: TENANT_A });
   assert.equal(noClub.ok, false);
   assert.equal(noClub.code, COURT_RESOURCE_CODE.MISSING_CLUB_ID);

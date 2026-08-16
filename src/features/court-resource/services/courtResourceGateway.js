@@ -53,6 +53,39 @@ import {
   productionCanonicalRelease,
   productionCanonicalReserve,
 } from "../runtime/canonicalReservationRuntime.js";
+import {
+  COURT_OPERATIONS_SCOPE_CODE,
+  requireCanonicalTenantId,
+} from "../scope/courtOperationsScope.js";
+
+function mapTenantScopeFailure(result, extra = {}) {
+  if (result.code === COURT_OPERATIONS_SCOPE_CODE.TENANT_VENUE_COLLAPSE_DENIED) {
+    return fail(
+      COURT_RESOURCE_CODE.TENANT_VENUE_COLLAPSE_DENIED,
+      result.error || "venueId cannot substitute for tenantId.",
+      extra
+    );
+  }
+  if (result.code === COURT_OPERATIONS_SCOPE_CODE.MISSING_TENANT_ID) {
+    return fail(
+      COURT_RESOURCE_CODE.MISSING_TENANT_ID,
+      result.error || "tenantId is required.",
+      extra
+    );
+  }
+  return fail(
+    result.code || COURT_RESOURCE_CODE.TENANT_MISMATCH,
+    result.error || "tenantId is required.",
+    extra
+  );
+}
+
+/** Explicit tenantId only — never invent from venueId (canonical or legacy). */
+function resolveExplicitTenantId(options, extra = {}) {
+  const result = requireCanonicalTenantId(options);
+  if (!result.ok) return mapTenantScopeFailure(result, extra);
+  return { ok: true, tenantId: result.tenantId };
+}
 
 function adapterDeps() {
   return {
@@ -100,8 +133,10 @@ async function defaultCancelTournamentCourtBookings(clubId, ownerId, courtIds = 
 
 function defaultResolveLegacyPhysicalCourt(options = {}) {
   const mappings = Array.isArray(options.legacyMappings) ? options.legacyMappings : [];
+  const tenantResolved = resolveExplicitTenantId(options);
+  if (!tenantResolved.ok) return tenantResolved;
   const key = {
-    tenantId: trimId(options.tenantId) || trimId(options.venueId),
+    tenantId: tenantResolved.tenantId,
     clubId: trimId(options.clubId),
     sourceSystem: trimId(options.sourceSystem) || "club-data-v3",
     sourceVersion: trimId(options.sourceVersion) || "3",
@@ -236,7 +271,10 @@ function shouldUseCanonicalReservationPath(options = {}) {
 
 function shouldUseCanonicalOwnerReservationRead(options = {}) {
   if (shouldUseCanonicalReservationPath(options)) return true;
-  return Boolean(trimId(options.tenantId) || trimId(options.venueId));
+  // Explicit tenantId opts into canonical owner-reservation read. venueId alone
+  // never selects the canonical branch (no tenant invent / collapse).
+  if (trimId(options.tenantId)) return true;
+  return false;
 }
 
 function nativePhysicalCourtIdsOrFail(options) {
@@ -396,10 +434,11 @@ async function reserveCourtsCanonical(options) {
   const denied = denyNonPhysicalReservation(options);
   if (denied) return denied;
   const clubId = trimId(options.clubId);
-  const tenantId = trimId(options.tenantId) || trimId(options.venueId);
+  const tenantResolved = resolveExplicitTenantId(options);
+  if (!tenantResolved.ok) return tenantResolved;
+  const tenantId = tenantResolved.tenantId;
   const owner = canonicalOwnerFrom(options);
   if (!clubId) return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required — no first-club fallback.");
-  if (!tenantId) return fail(COURT_RESOURCE_CODE.TENANT_MISMATCH, "tenantId is required.");
   if (!owner) return fail(COURT_RESOURCE_CODE.MISSING_OWNER, "owner.type and owner.id are required.");
   const window = windowToTimestamps(options);
   if (!window) {
@@ -449,10 +488,11 @@ async function reserveCourtsCanonical(options) {
 
 async function releaseCourtsCanonical(options) {
   const clubId = trimId(options.clubId);
-  const tenantId = trimId(options.tenantId) || trimId(options.venueId);
+  const tenantResolved = resolveExplicitTenantId(options);
+  if (!tenantResolved.ok) return tenantResolved;
+  const tenantId = tenantResolved.tenantId;
   const owner = canonicalOwnerFrom(options);
   if (!clubId) return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required.");
-  if (!tenantId) return fail(COURT_RESOURCE_CODE.TENANT_MISMATCH, "tenantId is required.");
   if (!owner) return fail(COURT_RESOURCE_CODE.MISSING_OWNER, "owner.type and owner.id are required.");
   const requestId = trimId(options.requestId)
     || `release:${owner.ownerType}:${owner.ownerId}`;
@@ -496,12 +536,11 @@ async function releaseCourtsCanonical(options) {
 
 async function getCourtAvailabilityCanonical(options) {
   const clubId = trimId(options.clubId);
-  const tenantId = trimId(options.tenantId) || trimId(options.venueId);
+  const tenantResolved = resolveExplicitTenantId(options, { courts: [] });
+  if (!tenantResolved.ok) return tenantResolved;
+  const tenantId = tenantResolved.tenantId;
   if (!clubId) {
     return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required.", { courts: [] });
-  }
-  if (!tenantId) {
-    return fail(COURT_RESOURCE_CODE.TENANT_MISMATCH, "tenantId is required.", { courts: [] });
   }
   const window = windowToTimestamps(options);
   if (!window) {
@@ -629,12 +668,11 @@ function normalizeEligibleInventoryResult(listed) {
 export function listEligibleCourts(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
   const clubId = trimId(options.clubId);
-  const tenantId = trimId(options.tenantId) || trimId(options.venueId);
+  const tenantResolved = resolveExplicitTenantId(options, { courts: [] });
+  if (!tenantResolved.ok) return tenantResolved;
+  const tenantId = tenantResolved.tenantId;
   const clusterId = trimId(options.clusterId);
 
-  if (!tenantId) {
-    return fail(COURT_RESOURCE_CODE.TENANT_MISMATCH, "tenantId is required.", { courts: [] });
-  }
   if (!clubId) {
     return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required — no first-club fallback.", {
       courts: [],
@@ -692,7 +730,10 @@ export async function reserveCourts(rawOptions = {}) {
   const courtIds = selectedCourtIds(options);
   const window = windowFrom(options);
   const clusterId = trimId(options.clusterId);
-  const tenantId = trimId(options.tenantId) || trimId(options.venueId);
+  // LEGACY_COMPATIBILITY blob path: clubId-scoped. Explicit tenantId/venueId are
+  // pass-through only — never invent tenantId from venueId.
+  const tenantId = trimId(options.tenantId);
+  const venueId = trimId(options.venueId);
 
   if (!clubId) return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required — no first-club fallback.");
   if (!owner) return fail(COURT_RESOURCE_CODE.MISSING_OWNER, "owner.type and owner.id are required.");
@@ -711,7 +752,12 @@ export async function reserveCourts(rawOptions = {}) {
 
   let courts;
   try {
-    courts = deps.listCourts({ clubId, tenantId, includeInactive: true });
+    courts = deps.listCourts({
+      clubId,
+      ...(tenantId ? { tenantId } : {}),
+      ...(venueId ? { venueId } : {}),
+      includeInactive: true,
+    });
   } catch (error) {
     return fail(COURT_RESOURCE_CODE.DATA_UNAVAILABLE, error?.message || "Failed to load court inventory.");
   }
@@ -720,8 +766,8 @@ export async function reserveCourts(rawOptions = {}) {
   for (const courtId of courtIds) {
     const membership = deps.assertCourtClusterMembership({
       clubId,
-      tenantId,
-      venueId: trimId(options.venueId),
+      ...(tenantId ? { tenantId } : {}),
+      ...(venueId ? { venueId } : {}),
       clusterId,
       courtId,
       courts,
@@ -900,13 +946,12 @@ function listOwnerReservationsLegacy(options) {
 
 async function listOwnerReservationsCanonical(options) {
   const clubId = trimId(options.clubId);
-  const tenantId = trimId(options.tenantId) || trimId(options.venueId);
+  const tenantResolved = resolveExplicitTenantId(options, { reservations: [] });
+  if (!tenantResolved.ok) return tenantResolved;
+  const tenantId = tenantResolved.tenantId;
   const owner = canonicalOwnerFrom(options);
   if (!clubId) {
     return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required.", { reservations: [] });
-  }
-  if (!tenantId) {
-    return fail(COURT_RESOURCE_CODE.TENANT_MISMATCH, "tenantId is required.", { reservations: [] });
   }
   if (!owner) {
     return fail(COURT_RESOURCE_CODE.MISSING_OWNER, "owner.type and owner.id are required.", { reservations: [] });
@@ -1002,10 +1047,15 @@ export async function validateCourtAssignment(rawOptions = {}) {
     return fail(COURT_RESOURCE_CODE.MISSING_WINDOW, "date and scheduled start/end are required.");
   }
 
+  // LEGACY_COMPATIBILITY assignment path: clubId + courtId scoped. Explicit
+  // tenantId/venueId are pass-through only — never invent tenant from venue.
+  const tenantId = trimId(options.tenantId);
+  const venueId = trimId(options.venueId);
+
   const membership = deps.assertCourtClusterMembership({
     clubId,
-    tenantId: trimId(options.tenantId) || trimId(options.venueId),
-    venueId: trimId(options.venueId),
+    ...(tenantId ? { tenantId } : {}),
+    ...(venueId ? { venueId } : {}),
     clusterId: trimId(options.clusterId),
     courtId,
     includeInactive: false,
@@ -1017,8 +1067,8 @@ export async function validateCourtAssignment(rawOptions = {}) {
     availability = await settle(
       deps.getCourtAvailability({
         clubId,
-        venueId: trimId(options.venueId),
-        tenantId: trimId(options.tenantId) || trimId(options.venueId),
+        ...(venueId ? { venueId } : {}),
+        ...(tenantId ? { tenantId } : {}),
         clusterId: trimId(options.clusterId),
         courtId,
         ...window,
