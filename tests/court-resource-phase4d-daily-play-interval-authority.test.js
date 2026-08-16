@@ -139,10 +139,10 @@ test("4D PRECHECK requires Phase3B and cutover false", () => {
   );
 });
 
-test("JS cutover default remains false", () => {
+test("JS cutover default is true for staging dual-cutover rehearsal", () => {
   const constants = fs.readFileSync(
     path.join(root, "src/features/court-resource/constants/canonicalReservation.js"),
     "utf8"
   );
-  assert.match(constants, /CANONICAL_RESERVATION_CUTOVER_DEFAULT\s*=\s*false/);
+  assert.match(constants, /CANONICAL_RESERVATION_CUTOVER_DEFAULT\s*=\s*true/);
 });
