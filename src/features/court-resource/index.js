@@ -13,12 +13,44 @@ export {
   COURT_MASTER_OWNER,
   COURT_ACCESS_AUTHORITY_OWNER,
   COMPETITION_PROVIDER_BINDING_OWNER,
+  BOOKING_BUSINESS_OWNER,
   COURT_MASTER_TABLE,
   COURT_CLUSTER_TOPOLOGY_TABLE,
   COURT_ACCESS_AUTHORITY_TABLE,
+  CANONICAL_BOOKING_BUSINESS_TABLE,
   CANONICAL_LIST_ELIGIBLE_RPC,
   CANONICAL_LIST_OWNER_RESERVATIONS_RPC,
+  CANONICAL_BOOKING_CREATE_RPC,
 } from "./constants/courtOperationsOwnership.js";
+
+export {
+  CANONICAL_BOOKING_CONTRACT_VERSION,
+  CANONICAL_BOOKING_TABLE,
+  CANONICAL_BOOKING_COMMAND_LEDGER,
+  CANONICAL_BOOKING_CREATE_RPC as BOOKING_CREATE_RPC,
+  CANONICAL_BOOKING_RESCHEDULE_RPC,
+  CANONICAL_BOOKING_TRANSFER_RPC,
+  CANONICAL_BOOKING_CANCEL_RPC,
+  CANONICAL_BOOKING_LIFECYCLE_RPC,
+  CANONICAL_BOOKING_GET_RPC,
+  CANONICAL_BOOKING_LIST_RPC,
+  CANONICAL_BOOKING_OWNER_TYPE,
+  CANONICAL_BOOKING_LIFECYCLE_STATUS,
+  CANONICAL_BOOKING_LIFECYCLE_DEFAULT,
+  isCanonicalBookingLifecycle,
+} from "./constants/canonicalBooking.js";
+
+export {
+  listBookingEligibleCourts,
+  getBookingCourtAvailability,
+  createCourtOperationsBooking,
+  rescheduleCourtOperationsBooking,
+  transferCourtOperationsBooking,
+  cancelCourtOperationsBooking,
+  updateCourtOperationsBookingLifecycle,
+  getCourtOperationsBooking,
+  listCourtOperationsBookings,
+} from "./services/courtOperationsBookingApplication.js";
 
 export {
   getCourtAvailability,

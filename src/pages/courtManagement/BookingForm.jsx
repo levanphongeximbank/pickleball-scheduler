@@ -22,6 +22,12 @@ import { calculateBookingAmount, formatCurrency } from "../../domain/courtBookin
 import { createBooking, saveBookingCapacityMutation } from "../../domain/bookingService.js";
 import { loadCustomersForClub } from "../../domain/clubStorage.js";
 import { loadCourtManagementSettings } from "../../domain/courtManagementSettings.js";
+import {
+  createCourtOperationsBooking,
+  listBookingEligibleCourts,
+  rescheduleCourtOperationsBooking,
+} from "../../features/court-resource/services/courtOperationsBookingApplication.js";
+import { isCanonicalBookingLifecycle } from "../../features/court-resource/constants/canonicalBooking.js";
 import { buildEndTimeOptions, buildTimeOptions, todayIsoDate } from "./courtManagement.constants.js";
 
 function toNumber(value) {
@@ -29,19 +35,33 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function courtOptionId(court) {
+  return court?.physicalCourtId || court?.id || "";
+}
+
+function courtOptionLabel(court, index) {
+  if (court?.displayName) return court.displayName;
+  if (court?.courtDisplayName) return court.courtDisplayName;
+  return getCourtDisplayName(court, index);
+}
+
 export default function BookingForm({
   open,
   onClose,
   clubId,
+  tenantId = null,
   courts = [],
   initialValues = {},
   editingBooking = null,
   onSaved,
 }) {
+  const canonicalPath = isCanonicalBookingLifecycle();
   const [customerName, setCustomerName] = useState(initialValues.customerName || "");
   const [customerPhone, setCustomerPhone] = useState(initialValues.customerPhone || "");
   const [date, setDate] = useState(initialValues.date || todayIsoDate({ clubId, allowBrowserLocal: !clubId }));
-  const [courtId, setCourtId] = useState(initialValues.courtId || courts[0]?.id || "");
+  const [courtId, setCourtId] = useState(
+    initialValues.physicalCourtId || initialValues.courtId || courts[0]?.physicalCourtId || courts[0]?.id || ""
+  );
   const [startTime, setStartTime] = useState(initialValues.startTime || "18:00");
   const [endTime, setEndTime] = useState(initialValues.endTime || "20:00");
   const [totalAmount, setTotalAmount] = useState(String(initialValues.totalAmount || ""));
@@ -50,6 +70,8 @@ export default function BookingForm({
   const [note, setNote] = useState(initialValues.note || "");
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [error, setError] = useState(null);
+  const [eligibleCourts, setEligibleCourts] = useState([]);
+  const [inventoryError, setInventoryError] = useState(null);
 
   const customers = useMemo(() => {
     if (!open) {
@@ -76,7 +98,15 @@ export default function BookingForm({
     setCustomerName(initialValues.customerName || editingBooking?.customerName || "");
     setCustomerPhone(initialValues.customerPhone || editingBooking?.customerPhone || "");
     setDate(initialValues.date || editingBooking?.date || todayIsoDate({ clubId, allowBrowserLocal: !clubId }));
-    setCourtId(initialValues.courtId || editingBooking?.courtId || courts[0]?.id || "");
+    setCourtId(
+      initialValues.physicalCourtId
+        || editingBooking?.physicalCourtId
+        || initialValues.courtId
+        || editingBooking?.courtId
+        || courts[0]?.physicalCourtId
+        || courts[0]?.id
+        || ""
+    );
     setStartTime(initialValues.startTime || editingBooking?.startTime || "18:00");
     setEndTime(initialValues.endTime || editingBooking?.endTime || "20:00");
     setTotalAmount(
@@ -103,14 +133,47 @@ export default function BookingForm({
     setNote(initialValues.note || editingBooking?.note || "");
     setSelectedCustomerId("");
     setError(null);
+    setInventoryError(null);
   }, [open, initialValues, editingBooking, courts, clubId]);
 
+  useEffect(() => {
+    if (!open || !canonicalPath) {
+      setEligibleCourts([]);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      const listed = await listBookingEligibleCourts({ tenantId, clubId });
+      if (cancelled) return;
+      if (!listed?.ok) {
+        setEligibleCourts([]);
+        setInventoryError(listed?.message || listed?.error || "Không tải được danh sách sân canonical.");
+        return;
+      }
+      setEligibleCourts(Array.isArray(listed.courts) ? listed.courts : []);
+      setInventoryError(null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, canonicalPath, tenantId, clubId]);
+
+  const courtOptions = canonicalPath
+    ? (eligibleCourts.length > 0 ? eligibleCourts : courts.filter((c) => c.physicalCourtId))
+    : courts;
+
   const selectedCourt = useMemo(
-    () => courts.find((court) => court.id === courtId),
-    [courts, courtId]
+    () => courtOptions.find((court) => courtOptionId(court) === courtId),
+    [courtOptions, courtId]
   );
 
   const suggestedAmount = useMemo(() => {
+    if (!selectedCourt || canonicalPath) {
+      // Canonical inventory rows may lack rate cards; keep amount user-entered.
+      if (!selectedCourt?.hourlyRate && !selectedCourt?.pricePerHour) {
+        return 0;
+      }
+    }
     if (!selectedCourt) {
       return 0;
     }
@@ -119,7 +182,7 @@ export default function BookingForm({
       peakHourRules: courtSettings.peakHourRules,
       date,
     });
-  }, [selectedCourt, startTime, endTime, courtSettings, date]);
+  }, [selectedCourt, startTime, endTime, courtSettings, date, canonicalPath]);
 
   const handleApplySuggested = () => {
     if (suggestedAmount > 0) {
@@ -135,6 +198,52 @@ export default function BookingForm({
 
     if (!courtId) {
       setError("Vui lòng chọn sân.");
+      return;
+    }
+
+    if (canonicalPath) {
+      if (!tenantId) {
+        setError("Thiếu tenantId — không thể tạo booking canonical.");
+        return;
+      }
+      const displayName = selectedCourt
+        ? courtOptionLabel(selectedCourt, 0)
+        : "";
+      const base = {
+        tenantId,
+        clubId,
+        physicalCourtId: courtId,
+        date,
+        startTime,
+        endTime,
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        customerRef: selectedCustomerId || null,
+        totalAmount: toNumber(totalAmount),
+        depositAmount: toNumber(depositAmount),
+        paidAmount: toNumber(paidAmount),
+        note: note.trim(),
+        bookingType: "single",
+        courtDisplayName: displayName,
+        forceCanonical: true,
+      };
+
+      const result = editingBooking
+        ? await rescheduleCourtOperationsBooking({
+            ...base,
+            bookingId: editingBooking.bookingId || editingBooking.id,
+            expectedVersion: editingBooking.version,
+          })
+        : await createCourtOperationsBooking(base);
+
+      if (!result.ok) {
+        setError(result.message || result.error || "Không lưu được booking canonical.");
+        return;
+      }
+
+      setError(null);
+      onSaved?.(result.booking);
+      onClose?.();
       return;
     }
 
@@ -174,6 +283,7 @@ export default function BookingForm({
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}
+          {inventoryError && <Alert severity="warning">{inventoryError}</Alert>}
 
           {!editingBooking && customers.length > 0 && (
             <FormControl fullWidth>
@@ -235,9 +345,9 @@ export default function BookingForm({
               value={courtId}
               onChange={(event) => setCourtId(event.target.value)}
             >
-              {courts.map((court, index) => (
-                <MenuItem key={court.id} value={court.id}>
-                  {getCourtDisplayName(court, index)}
+              {courtOptions.map((court, index) => (
+                <MenuItem key={courtOptionId(court)} value={courtOptionId(court)}>
+                  {courtOptionLabel(court, index)}
                 </MenuItem>
               ))}
             </Select>

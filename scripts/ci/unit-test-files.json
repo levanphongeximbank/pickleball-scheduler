@@ -567,5 +567,7 @@
   "tests/platform-hard-cutover-01-pre-staging-coaching.test.js",
   "tests/platform-hard-cutover-01-pre-staging-messaging.test.js",
   "tests/platform-hard-cutover-01-pre-staging-dashboard.test.js",
-  "tests/platform-hard-cutover-01-pre-staging-reseed.test.js"
+  "tests/platform-hard-cutover-01-pre-staging-reseed.test.js",
+  "tests/court-resource-canonical-booking-lifecycle.test.js",
+  "tests/court-resource-canonical-booking-architecture.test.js"
 ]

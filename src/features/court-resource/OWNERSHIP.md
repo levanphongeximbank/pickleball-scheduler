@@ -1,6 +1,6 @@
 # 2.2 Court Operations — Court Resource ownership freeze
 
-**Status:** Frozen for Batch 2 native physical identity + canonical gateway chain  
+**Status:** Frozen for Batch 3 canonical Booking business lifecycle  
 **Do not invert these owners without an Owner GO.**
 
 ```
@@ -9,20 +9,24 @@ COURT_RESOURCE_GATEWAY_OWNER=2.2_COURT_OPERATIONS
 COURT_MASTER_OWNER=2.2_COURT_OPERATIONS
 COURT_ACCESS_AUTHORITY_OWNER=2.2_COURT_OPERATIONS
 COMPETITION_PROVIDER_BINDING_OWNER=2.2_COURT_OPERATIONS
+BOOKING_BUSINESS_OWNER=2.2_COURT_OPERATIONS
 ```
 
 ## What 2.2 Court Operations owns
 
 - `CourtResourceGateway`
 - Court Resource services
+- Court Operations Booking Application (`courtOperationsBookingApplication`)
 - court cluster **topology** (`clusterId` is filter/scope, not reservable identity)
 - canonical Physical Court identity (`physicalCourtId`)
 - court inventory
 - club → physical court **operational access**
 - court eligibility
 - court availability / capacity / reservation authority
+- canonical Booking business aggregate (`court_operations_bookings`)
 - Competition Court Contract A **provider binding** (`courtResourceCompetitionAdapter`)
 - Court Live Resource Runtime (later batches)
+- Resource blocks / maintenance windows (Batch 4)
 
 Canonical masters:
 
@@ -32,8 +36,12 @@ Canonical masters:
 | Cluster topology | `public.court_clusters` |
 | Club operational access | `public.court_resource_club_operational_access` |
 | Durable reservation / capacity | `public.court_resource_reservations` |
+| Booking business aggregate | `public.court_operations_bookings` |
 
-Canonical reservable identity is `physicalCourtId` / `physicalCourtIds`.
+**Separation:** Booking business SSOT is **not** the reservation SSOT.
+Reservation rows are capacity pointers (`owner_type='booking'`, `owner_id=bookingId`).
+
+Canonical reservable / booking court identity is `physicalCourtId` / `physicalCourtIds`.
 
 - `clusterId` = topology / filter only
 - `courtCount` = demand only — not identity
@@ -45,6 +53,7 @@ A Physical Court may be accessible to multiple clubs. That MUST NOT duplicate Ph
 `clubs.registered_cluster_id` is Club facility registration. It is **not** operational physical-court access.
 
 Club blob possession of a court (`club_data_v3` / localStorage) is **not** access proof.
+`club_data_v3.bookings[]` is **not** canonical Booking business authority on the canonical path.
 
 Club Management does not own court access.  
 Venue Management does not own Physical Court identity.
@@ -75,5 +84,14 @@ One provider implementation only. Native identity handoff is
 | 2.1 Venue Management | venue identity / lifecycle | Physical Court identity, court inventory, capacity |
 | Platform canonical organization | tenant / organization identity | court access |
 | 2.3 Club Management | club identity / lifecycle / membership | court access, Physical Court identity |
+| Customer Management | customer master | booking business aggregate |
+| Finance | payment ledger | booking price metadata projections |
 
-Venue & Court `listCourts` / `club_data_v3` remain **transitional compatibility** readers for old noncanonical consumers. They are not the target inventory or access authority.
+Venue & Court `listCourts` / `club_data_v3` remain **transitional compatibility** readers for old noncanonical consumers. They are not the target inventory, access, or Booking business authority.
+
+```
+CANONICAL_BOOKING_LIFECYCLE_DEFAULT=false
+SQL_CUTOVER=false
+JS_CUTOVER=false
+DUAL_CUTOVER=OFF_OFF
+```

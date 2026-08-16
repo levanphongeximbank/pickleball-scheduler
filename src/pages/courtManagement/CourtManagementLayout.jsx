@@ -404,6 +404,8 @@ export default function CourtManagementLayout() {
 
           clubId: activeClubId,
 
+          tenantId: scope.venueId || null,
+
           courts,
 
           bookings,

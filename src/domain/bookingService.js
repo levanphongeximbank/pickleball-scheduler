@@ -48,6 +48,7 @@ import { resolveTenantIdForClub } from "../features/tenant/guards/tenantGuard.js
 import { emitBookingLifecycleNotification } from "../features/notifications/adapters/bookingNotificationPilot.js";
 import { NOTIFICATION_EVENT_TYPES } from "../features/notifications/constants/notificationEvents.js";
 import { isCanonicalReservationCutover } from "../features/court-resource/constants/canonicalReservation.js";
+import { isCanonicalBookingLifecycle } from "../features/court-resource/constants/canonicalBooking.js";
 import { COURT_RESOURCE_CODE } from "../features/court-resource/constants/courtResourceContract.js";
 
 let canonicalBookingGateway = {
@@ -730,6 +731,16 @@ export async function createMaintenanceBooking(input, clubId) {
 }
 
 export function autoCompletePastBookings(clubId, now = new Date(), options = {}) {
+  if (isCanonicalBookingLifecycle()) {
+    return {
+      ok: true,
+      updatedCount: 0,
+      canonical: true,
+      message:
+        "Canonical booking lifecycle is enabled — use Court Operations lifecycle commands (no blob auto-complete).",
+    };
+  }
+
   const tz = resolveVenueTimezoneForClub(clubId, options);
   if (!tz.ok) {
     return {
@@ -784,6 +795,16 @@ export function autoCompletePastBookings(clubId, now = new Date(), options = {})
 }
 
 export function autoStartDueBookings(clubId, now = new Date(), options = {}) {
+  if (isCanonicalBookingLifecycle()) {
+    return {
+      ok: true,
+      updatedCount: 0,
+      canonical: true,
+      message:
+        "Canonical booking lifecycle is enabled — use Court Operations lifecycle commands (no blob auto-start).",
+    };
+  }
+
   const tz = resolveVenueTimezoneForClub(clubId, options);
   if (!tz.ok) {
     return {

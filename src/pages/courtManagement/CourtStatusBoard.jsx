@@ -11,6 +11,7 @@ import BookingDetail from "./BookingDetail.jsx";
 
 export default function CourtStatusBoard({
   clubId,
+  tenantId = null,
   courts = [],
   bookings = [],
   onRefresh,
@@ -52,7 +53,15 @@ export default function CourtStatusBoard({
           >
             <CourtCard
               courtData={courtData}
-              onCreateBooking={(court) => setFormDefaults({ courtId: court.id, date: today })}
+              onCreateBooking={(court) =>
+                setFormDefaults({
+                  courtId: court.id,
+                  physicalCourtId: court.physicalCourtId || null,
+                  date: today,
+                  customerType: "walk_in",
+                  bookingType: "walk_in",
+                })
+              }
               onDetail={setDetailBooking}
               onQuickStatus={handleQuickStatus}
               onLockToggle={handleLockToggle}
@@ -66,6 +75,7 @@ export default function CourtStatusBoard({
         open={Boolean(formDefaults)}
         onClose={() => setFormDefaults(null)}
         clubId={clubId}
+        tenantId={tenantId}
         courts={courts}
         initialValues={formDefaults || {}}
         onSaved={() => {
