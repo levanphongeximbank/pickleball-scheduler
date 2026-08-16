@@ -37,11 +37,22 @@ export function reconcileClusterIdentity(input = {}) {
   const durableClusters = Array.isArray(input.durableClusters) ? input.durableClusters : [];
   const durableIds = new Set(
     durableClusters
-      .filter(
-        (cluster) =>
-          text(cluster.tenantId ?? cluster.venue_id) === tenantId &&
-          text(cluster.venueId ?? cluster.venue_id) === venueId
-      )
+      .filter((cluster) => {
+        const clusterTenant = text(cluster.tenantId ?? cluster.tenant_id);
+        const clusterVenue = text(cluster.venueId ?? cluster.venue_id);
+        if (clusterTenant) {
+          return clusterTenant === tenantId && (!clusterVenue || clusterVenue === venueId);
+        }
+        // Pre-Batch8 rows without tenant_id: accept only when caller tenantId === venueId
+        // and cluster.venue_id matches both (historical venues-as-tenant coupled row).
+        // Distinct tenant/venue scopes fail closed — no invent.
+        return Boolean(
+          clusterVenue
+          && tenantId === venueId
+          && clusterVenue === venueId
+          && clusterVenue === tenantId
+        );
+      })
       .map((cluster) => text(cluster.clusterId ?? cluster.id))
       .filter(Boolean)
   );

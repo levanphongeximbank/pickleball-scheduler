@@ -53,6 +53,7 @@ export default function CourtCard({
   onQuickStatus,
   onLockToggle,
   onMaintenanceToggle,
+  canonicalCurrentState = false,
 }) {
   const {
     court,
@@ -239,7 +240,13 @@ export default function CourtCard({
           onClick={() => onLockToggle(court)}
           sx={{ fontSize: 12 }}
         >
-          {court.status === "locked" ? "Mở khóa" : "Khóa"}
+          {canonicalCurrentState
+            ? court.status === "locked"
+              ? "Mở (NOW)"
+              : "Khóa (NOW)"
+            : court.status === "locked"
+              ? "Mở khóa"
+              : "Khóa"}
         </Button>
 
         <Button
@@ -249,7 +256,13 @@ export default function CourtCard({
           onClick={() => onMaintenanceToggle(court)}
           sx={{ fontSize: 12 }}
         >
-          {court.status === "maintenance" ? "Hết BT" : "Bảo trì"}
+          {canonicalCurrentState
+            ? court.status === "maintenance"
+              ? "Hết OOS (NOW)"
+              : "OOS (NOW)"
+            : court.status === "maintenance"
+              ? "Hết BT"
+              : "Bảo trì"}
         </Button>
 
         {currentBooking && (

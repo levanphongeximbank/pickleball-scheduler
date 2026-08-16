@@ -435,13 +435,13 @@ export function isOpenTournament(tournament) {
   );
 }
 
-export function purgeOpenTournaments(clubId = getActiveClubId()) {
+export async function purgeOpenTournaments(clubId = getActiveClubId()) {
   const data = loadClubData(clubId);
   const toRemove = (data.tournaments || []).filter(isOpenTournament);
 
-  toRemove.forEach((tournament) => {
-    cancelTournamentCourtBookings(clubId, tournament.id);
-  });
+  for (const tournament of toRemove) {
+    await cancelTournamentCourtBookings(clubId, tournament.id);
+  }
 
   const removedIds = new Set(toRemove.map((tournament) => tournament.id));
   data.tournaments = (data.tournaments || []).filter(
@@ -456,8 +456,8 @@ export function purgeOpenTournaments(clubId = getActiveClubId()) {
   };
 }
 
-export function cancelTournament(clubId, tournamentId) {
-  cancelTournamentCourtBookings(clubId, tournamentId);
+export async function cancelTournament(clubId, tournamentId) {
+  await cancelTournamentCourtBookings(clubId, tournamentId);
   return setTournamentStatus(clubId, tournamentId, TOURNAMENT_STATUS.CANCELLED);
 }
 
@@ -465,7 +465,7 @@ export function cancelTournament(clubId, tournamentId) {
  * Persist courtSchedule only after booking bridge sync succeeds (fail-closed).
  * Does not leave tournament.courtSchedule updated when bookings cannot be locked.
  */
-export function setTournamentCourtSchedule(clubId, tournamentId, scheduleInput) {
+export async function setTournamentCourtSchedule(clubId, tournamentId, scheduleInput) {
   const data = loadClubData(clubId);
   const index = findTournamentIndex(data.tournaments || [], tournamentId);
 
@@ -494,7 +494,7 @@ export function setTournamentCourtSchedule(clubId, tournamentId, scheduleInput) 
   });
 
   const courts = loadCourtsForClub(clubId);
-  const syncResult = syncTournamentCourtBookings(pending, clubId, courts);
+  const syncResult = await syncTournamentCourtBookings(pending, clubId, courts);
 
   if (!syncResult.ok) {
     return {
@@ -531,7 +531,7 @@ export function setTournamentCourtSchedule(clubId, tournamentId, scheduleInput) 
 /**
  * Clear tournament.courtSchedule and cancel only bridge-owned tournament bookings.
  */
-export function clearTournamentCourtSchedule(clubId, tournamentId) {
+export async function clearTournamentCourtSchedule(clubId, tournamentId) {
   const data = loadClubData(clubId);
   const index = findTournamentIndex(data.tournaments || [], tournamentId);
 
@@ -539,7 +539,7 @@ export function clearTournamentCourtSchedule(clubId, tournamentId) {
     return { ok: false, error: "Không tìm thấy giải." };
   }
 
-  const cancelResult = cancelTournamentCourtBookings(clubId, tournamentId);
+  const cancelResult = await cancelTournamentCourtBookings(clubId, tournamentId);
   if (!cancelResult.ok) {
     return {
       ok: false,

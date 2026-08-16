@@ -93,6 +93,13 @@ test("neutral adapter calls CourtResourceGateway and does not import Tournament 
   assert.match(binding, /\breserveCourts\b/);
   assert.match(binding, /\breleaseCourts\b/);
   assert.match(binding, /\bvalidateCourtAssignment\b/);
+  assert.match(binding, /physicalCourtIds/);
+  assert.doesNotMatch(binding, /\bselectedCourtIds\b/);
+  assert.doesNotMatch(binding, /\blegacyCourtId\b/);
+  assert.doesNotMatch(binding, /\blegacyMappings\b/);
+  assert.doesNotMatch(binding, /\bresolveLegacyCourtIdentity\b/);
+  assert.doesNotMatch(binding, /\bclubStorage\b/);
+  assert.doesNotMatch(binding, /club_data_v3/);
   for (const spec of specs) {
     assert.doesNotMatch(spec, TOURNAMENT_BUSINESS, spec);
     assert.doesNotMatch(spec, STORAGE_BYPASS, spec);
@@ -111,16 +118,38 @@ test("CourtResourceGateway has no reverse Competition business dependency", () =
   assert.doesNotMatch(gateway, /competition-core/);
 });
 
-test("Đầu B tournament adapters were not built in this workstream", () => {
-  const forbiddenNames = [
+test("Đầu B Mode Court adapters exist under Competition Engine and depend on Head A only", () => {
+  const adapterRoot = path.join(
+    ROOT,
+    "src/features/competition-engine/integration/court-adapters"
+  );
+  const required = [
+    "DailyPlayCourtAdapter.js",
     "InternalTournamentCourtAdapter.js",
     "OfficialTournamentCourtAdapter.js",
-    "OpenTournamentCourtAdapter.js",
     "TeamTournamentCourtAdapter.js",
+    "createModeCourtAdapterB.js",
   ];
-  for (const name of forbiddenNames) {
-    assert.equal(existsSync(path.join(ROOT, "src/features", name)), false);
+  for (const name of required) {
+    assert.equal(existsSync(path.join(adapterRoot, name)), true, name);
   }
+  // Must not be dumped at src/features root (avoids fake Head A duplicates).
+  for (const name of required.filter((n) => n.endsWith("CourtAdapter.js"))) {
+    assert.equal(existsSync(path.join(ROOT, "src/features", name)), false, name);
+  }
+
+  const BYPASS_IMPORT =
+    /(?:import|export)\s+[^;]*\b(?:clubStorage|loadCourtsForClub|legacyCourtIdentityMapping|courtResourceGateway)\b|club_data_v3|from\s+["'][^"']*courtResourceGateway/;
+  for (const name of required) {
+    const source = readFileSync(path.join(adapterRoot, name), "utf8");
+    assert.doesNotMatch(source, BYPASS_IMPORT, name);
+    if (name !== "createModeCourtAdapterB.js") {
+      assert.match(source, /createModeCourtAdapterB|competitionType/);
+    }
+  }
+  const shared = readFileSync(path.join(adapterRoot, "createModeCourtAdapterB.js"), "utf8");
+  assert.match(shared, /createCourtResourceCompetitionAdapter/);
+  assert.doesNotMatch(shared, /dreambreaker|stageTieBreak|seedBracket|drawEngine/i);
 });
 
 test("forbidden storage bypasses are documented", () => {

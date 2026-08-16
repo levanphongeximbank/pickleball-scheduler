@@ -1,3 +1,16 @@
+/**
+ * Tournament Court Engine — LEGACY / COMPATIBILITY projection (Batch 7).
+ *
+ * Canonical ownership split:
+ *   2.2 Court Operations → occupancy, active resource session, current operational state
+ *       (courtOperationsLiveRuntimeApplication / Court Live Resource Runtime)
+ *   2.13 Competition Engine → assignMatchCourt, match lifecycle, score, winner, bracket
+ *
+ * currentMatchId / PLAYING / LOCKED here are LEGACY_COMPATIBILITY_ONLY UI projections.
+ * Canonical live path uses opaque sourceType + sourceId — not match-domain models.
+ * COURT_ENGINE_OCCUPANCY_MATCH_LIFECYCLE_MIXED_ON_CANONICAL_PATH=NO
+ * LEGACY_COURT_ENGINE_PATH_RETAINED=YES (Batch 8 cleanup)
+ */
 import { getCourtDisplayName } from "../../models/court.js";
 import { COURT_STATUS, MATCH_STATUS } from "../../models/tournament/constants.js";
 import { assignMatchCourt } from "./matchEngine.js";
@@ -36,6 +49,7 @@ export function buildCourtRuntimeState(court, index = 0, options = {}) {
     id,
     name: getCourtDisplayName(court, index),
     status,
+    // LEGACY_COMPATIBILITY_ONLY — not Court Live Resource Runtime authority.
     currentMatchId: activeMatch?.id || court?.currentMatchId || null,
     locked: isLocked,
     active: court?.active !== false,

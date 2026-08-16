@@ -3,15 +3,17 @@
  *
  * Supports the current flat option contract and the accepted Phase 2
  * scope/window shape. This is the only gateway implementation.
+ *
+ * Dual routing:
+ * - Canonical ON / native physicalCourtId → canonical adapters only
+ * - Legacy OFF path → explicit legacy/gatewayLegacyDeps substrate only
+ *
+ * CANONICAL_GATEWAY_LEGACY_SUBSTRATE_CALL_COUNT=0 on canonical branches.
+ * CANONICAL_PATH_LEGACY_MAPPING_CALLS=0
  */
 import { getCourtDisplayName } from "../../../models/court.js";
-import { loadBookingsForClub } from "../../../domain/clubStorage.js";
-import { checkBookingConflict } from "../../../domain/courtBookingEngine.js";
 import {
-  createBooking,
-  createMaintenanceBooking,
-  saveBooking,
-  updateBookingStatus,
+  __bindCanonicalBookingGateway,
 } from "../../../domain/bookingService.js";
 import {
   COURT_RESOURCE_CODE,
@@ -19,25 +21,69 @@ import {
   RESERVATION_OWNER_TYPE,
 } from "../constants/courtResourceContract.js";
 import {
+  CANONICAL_AVAILABILITY_STATUS,
+  isCanonicalReservationCutover,
+  mapGatewayOwnerTypeToCanonical,
+} from "../constants/canonicalReservation.js";
+import { isCanonicalPhysicalCourtId } from "../contracts/canonicalPhysicalCourt.js";
+import {
+  AVAILABILITY_REASON,
+} from "../../venue-court/services/courtAvailabilityService.js";
+import {
   buildTournamentReservationId,
   isActiveTournamentReservation,
   isTournamentReservation,
-  listLegacyTournamentReservations,
-  releaseLegacyTournamentReservations,
-  syncLegacyTournamentReservations,
-} from "../adapters/legacyReservationAdapter.js";
+} from "../legacy/index.js";
 import {
-  AVAILABILITY_REASON,
-  getCourtAvailability as getCanonicalCourtAvailability,
-} from "../../venue-court/services/courtAvailabilityService.js";
-import { listCourts } from "../../venue-court/services/courtInventoryService.js";
-import { assertCourtClusterMembership } from "../../venue-court/services/courtClusterMembershipService.js";
+  defaultLegacyGatewaySubstrateDeps,
+} from "../legacy/gatewayLegacyDeps.js";
+import { productionListEligiblePhysicalCourts } from "./canonicalCourtInventoryClient.js";
 import {
-  getReservationOwner as lookupReservationOwner,
   isBlockingReservation,
   isSameReservationOwner,
   normalizeOwnerInput,
 } from "../../venue-court/services/reservationOwnerService.js";
+import {
+  productionCanonicalGetAvailability,
+  productionCanonicalListOwnerReservations,
+  productionCanonicalRelease,
+  productionCanonicalReserve,
+} from "../runtime/canonicalReservationRuntime.js";
+import {
+  COURT_OPERATIONS_SCOPE_CODE,
+  requireCanonicalTenantId,
+} from "../scope/courtOperationsScope.js";
+
+const legacySubstrate = defaultLegacyGatewaySubstrateDeps;
+
+function mapTenantScopeFailure(result, extra = {}) {
+  if (result.code === COURT_OPERATIONS_SCOPE_CODE.TENANT_VENUE_COLLAPSE_DENIED) {
+    return fail(
+      COURT_RESOURCE_CODE.TENANT_VENUE_COLLAPSE_DENIED,
+      result.error || "venueId cannot substitute for tenantId.",
+      extra
+    );
+  }
+  if (result.code === COURT_OPERATIONS_SCOPE_CODE.MISSING_TENANT_ID) {
+    return fail(
+      COURT_RESOURCE_CODE.MISSING_TENANT_ID,
+      result.error || "tenantId is required.",
+      extra
+    );
+  }
+  return fail(
+    result.code || COURT_RESOURCE_CODE.TENANT_MISMATCH,
+    result.error || "tenantId is required.",
+    extra
+  );
+}
+
+/** Explicit tenantId only — never invent from venueId (canonical or legacy). */
+function resolveExplicitTenantId(options, extra = {}) {
+  const result = requireCanonicalTenantId(options);
+  if (!result.ok) return mapTenantScopeFailure(result, extra);
+  return { ok: true, tenantId: result.tenantId };
+}
 
 function adapterDeps() {
   return {
@@ -49,45 +95,63 @@ function adapterDeps() {
   };
 }
 
-function defaultSyncTournamentCourtBookings(tournament, clubId, courts = []) {
+async function settle(value) {
+  return value && typeof value.then === "function" ? await value : value;
+}
+
+async function defaultSyncTournamentCourtBookings(tournament, clubId, courts = []) {
   const schedule = tournament?.courtSchedule || {};
-  return syncLegacyTournamentReservations(
-    {
-      clubId,
-      owner: { type: RESERVATION_OWNER_TYPE.TOURNAMENT, id: tournament.id },
-      courts,
-      courtIds: schedule.courtIds || [],
-      window: schedule,
-      label: tournament.name || tournament.id,
-    },
-    adapterDeps()
+  return settle(
+    deps.syncLegacyTournamentReservations(
+      {
+        clubId,
+        owner: { type: RESERVATION_OWNER_TYPE.TOURNAMENT, id: tournament.id },
+        courts,
+        courtIds: schedule.courtIds || [],
+        window: schedule,
+        label: tournament.name || tournament.id,
+      },
+      adapterDeps()
+    )
   );
 }
 
-function defaultCancelTournamentCourtBookings(clubId, ownerId, courtIds = null) {
-  return releaseLegacyTournamentReservations(
-    {
-      clubId,
-      owner: { type: RESERVATION_OWNER_TYPE.TOURNAMENT, id: ownerId },
-      courtIds,
-    },
-    adapterDeps()
+async function defaultCancelTournamentCourtBookings(clubId, ownerId, courtIds = null) {
+  return settle(
+    deps.releaseLegacyTournamentReservations(
+      {
+        clubId,
+        owner: { type: RESERVATION_OWNER_TYPE.TOURNAMENT, id: ownerId },
+        courtIds,
+      },
+      adapterDeps()
+    )
   );
 }
 
 const defaultDeps = Object.freeze({
-  getCourtAvailability: getCanonicalCourtAvailability,
-  listCourts,
-  loadBookingsForClub,
-  checkBookingConflict,
-  createBooking,
-  createMaintenanceBooking,
-  saveBooking,
-  updateBookingStatus,
-  assertCourtClusterMembership,
-  getReservationOwner: lookupReservationOwner,
+  getCourtAvailability: legacySubstrate.getCourtAvailability,
+  listCourts: legacySubstrate.listCourts,
+  listEligiblePhysicalCourts: productionListEligiblePhysicalCourts,
+  loadBookingsForClub: legacySubstrate.loadBookingsForClub,
+  checkBookingConflict: legacySubstrate.checkBookingConflict,
+  createBooking: legacySubstrate.createBooking,
+  createMaintenanceBooking: legacySubstrate.createMaintenanceBooking,
+  saveBooking: legacySubstrate.saveBooking,
+  updateBookingStatus: legacySubstrate.updateBookingStatus,
+  assertCourtClusterMembership: legacySubstrate.assertCourtClusterMembership,
+  getReservationOwner: legacySubstrate.getReservationOwner,
   syncTournamentCourtBookings: defaultSyncTournamentCourtBookings,
   cancelTournamentCourtBookings: defaultCancelTournamentCourtBookings,
+  syncLegacyTournamentReservations: legacySubstrate.syncLegacyTournamentReservations,
+  releaseLegacyTournamentReservations: legacySubstrate.releaseLegacyTournamentReservations,
+  listLegacyTournamentReservations: legacySubstrate.listLegacyTournamentReservations,
+  canonicalReserve: productionCanonicalReserve,
+  canonicalRelease: productionCanonicalRelease,
+  canonicalGetAvailability: productionCanonicalGetAvailability,
+  canonicalListOwnerReservations: productionCanonicalListOwnerReservations,
+  resolveLegacyPhysicalCourt: legacySubstrate.resolveLegacyPhysicalCourt,
+  isCanonicalReservationCutover,
 });
 
 let deps = { ...defaultDeps };
@@ -139,6 +203,357 @@ function selectedCourtIds(options) {
   return trimId(options.courtId) ? [trimId(options.courtId)] : [];
 }
 
+function selectedPhysicalCourtIds(options) {
+  const raw = Array.isArray(options.physicalCourtIds)
+    ? options.physicalCourtIds
+    : trimId(options.physicalCourtId)
+      ? [options.physicalCourtId]
+      : [];
+  return raw.map(trimId).filter(Boolean);
+}
+
+function hasNativePhysicalCourtIds(options) {
+  return selectedPhysicalCourtIds(options).length > 0;
+}
+
+function canonicalCutoverEnabled(options = {}) {
+  if (options.canonicalReservationCutover === true) return true;
+  if (options.canonicalReservationCutover === false) return false;
+  if (typeof deps.isCanonicalReservationCutover === "function") {
+    return deps.isCanonicalReservationCutover() === true;
+  }
+  return isCanonicalReservationCutover() === true;
+}
+
+/**
+ * Native physicalCourtId input uses the canonical reservation path even when
+ * global business cutover is OFF. Legacy courtId/selectedCourtIds remain
+ * compatibility-only and keep the blob path while cutover is OFF.
+ */
+function shouldUseCanonicalReservationPath(options = {}) {
+  return hasNativePhysicalCourtIds(options) || canonicalCutoverEnabled(options);
+}
+
+function shouldUseCanonicalOwnerReservationRead(options = {}) {
+  if (shouldUseCanonicalReservationPath(options)) return true;
+  // Explicit tenantId opts into canonical owner-reservation read. venueId alone
+  // never selects the canonical branch (no tenant invent / collapse).
+  if (trimId(options.tenantId)) return true;
+  return false;
+}
+
+function nativePhysicalCourtIdsOrFail(options) {
+  const direct = selectedPhysicalCourtIds(options);
+  if (!direct.length) {
+    return fail(
+      COURT_RESOURCE_CODE.MISSING_COURT_ID,
+      "physicalCourtIds are required — cluster and courtCount are not reservable units."
+    );
+  }
+  const invalid = direct.filter((id) => !isCanonicalPhysicalCourtId(id));
+  if (invalid.length) {
+    return fail(
+      COURT_RESOURCE_CODE.UNRESOLVED_MAPPING,
+      "physicalCourtId must be a UUID — labels and legacy court ids are not identity.",
+      { failed: invalid }
+    );
+  }
+  return { ok: true, physicalCourtIds: [...new Set(direct)].sort() };
+}
+
+function resolvePhysicalIdsForCanonical(options) {
+  if (hasNativePhysicalCourtIds(options)) {
+    return nativePhysicalCourtIdsOrFail(options);
+  }
+  return resolveCanonicalPhysicalIds(options);
+}
+
+async function invokeCanonicalAdapter(adapter, payload, missingMessage) {
+  if (typeof adapter !== "function") {
+    return fail(COURT_RESOURCE_CODE.CANONICAL_PATH_UNAVAILABLE, missingMessage);
+  }
+  try {
+    const result = adapter(payload);
+    return await settle(result);
+  } catch (error) {
+    return fail(
+      error?.code || COURT_RESOURCE_CODE.CANONICAL_PATH_UNAVAILABLE,
+      error?.message || "Canonical reservation adapter rejected.",
+      { reserved: [], cancelled: [], failed: [], courts: [] }
+    );
+  }
+}
+
+function windowToTimestamps(options) {
+  const startsAt = trimId(options.startsAt);
+  const endsAt = trimId(options.endsAt);
+  if (startsAt && endsAt) {
+    const start = new Date(startsAt);
+    const end = new Date(endsAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+      return null;
+    }
+    return { startsAt: start.toISOString(), endsAt: end.toISOString() };
+  }
+  const window = windowFrom(options);
+  if (!window.date || !window.startTime || !window.endTime) return null;
+  const start = new Date(`${window.date}T${window.startTime}:00`);
+  const end = new Date(`${window.date}T${window.endTime}:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    return null;
+  }
+  return { startsAt: start.toISOString(), endsAt: end.toISOString() };
+}
+
+/**
+ * Canonical path identity resolution when physicalCourtIds were not supplied.
+ * UUID-shaped selectedCourtIds/courtIds are COMPATIBILITY_PROJECTION only.
+ * Never calls legacyCourtIdentityMapping (CANONICAL_PATH_LEGACY_MAPPING_CALLS=0).
+ */
+function resolveCanonicalPhysicalIds(options) {
+  const direct = selectedPhysicalCourtIds(options);
+  if (direct.length) {
+    return nativePhysicalCourtIdsOrFail(options);
+  }
+  const courtIds = selectedCourtIds(options);
+  if (!courtIds.length) {
+    return fail(
+      COURT_RESOURCE_CODE.MISSING_COURT_ID,
+      "physicalCourtIds are required — cluster and courtCount are not reservable units."
+    );
+  }
+  const invalid = courtIds.filter((id) => !isCanonicalPhysicalCourtId(id));
+  if (invalid.length) {
+    return fail(
+      COURT_RESOURCE_CODE.UNRESOLVED_MAPPING,
+      "Canonical path requires native physicalCourtId UUID — legacy mapping is OFF-path only.",
+      { failed: invalid }
+    );
+  }
+  return { ok: true, physicalCourtIds: [...new Set(courtIds.map(trimId).filter(Boolean))].sort() };
+}
+
+function denyNonPhysicalReservation(options) {
+  if (
+    options.courtCount != null
+    && selectedPhysicalCourtIds(options).length === 0
+    && selectedCourtIds(options).length === 0
+  ) {
+    return fail(
+      COURT_RESOURCE_CODE.COURT_COUNT_DENIED,
+      "courtCount is demand only — reserve physicalCourtIds."
+    );
+  }
+  const clusterId = trimId(options.clusterId);
+  const courtIds = selectedCourtIds(options);
+  if (
+    clusterId
+    && courtIds.length === 1
+    && String(courtIds[0]) === clusterId
+    && selectedPhysicalCourtIds(options).length === 0
+  ) {
+    return fail(
+      COURT_RESOURCE_CODE.WHOLE_CLUSTER_DENIED,
+      "Cannot reserve a cluster id as a physical court."
+    );
+  }
+  return null;
+}
+
+function canonicalOwnerFrom(options) {
+  const owner = normalizeOwnerInput(options.owner);
+  if (!owner) return null;
+  const ownerType = mapGatewayOwnerTypeToCanonical(owner.type);
+  if (!ownerType) return null;
+  return {
+    ownerType,
+    ownerId: owner.id,
+    ownerSubType:
+      trimId(options.ownerSubType)
+      || trimId(options.owner?.subType)
+      || trimId(options.owner?.ownerSubType),
+  };
+}
+
+function mapCanonicalAvailabilityStatus(status) {
+  if (status === CANONICAL_AVAILABILITY_STATUS.OWN_RESERVATION) {
+    return OWNERSHIP_STATUS.OWN_RESERVATION;
+  }
+  if (status === CANONICAL_AVAILABILITY_STATUS.FOREIGN_RESERVATION) {
+    return OWNERSHIP_STATUS.FOREIGN;
+  }
+  if (status === CANONICAL_AVAILABILITY_STATUS.AVAILABLE) {
+    return OWNERSHIP_STATUS.UNRESERVED;
+  }
+  return status;
+}
+
+async function reserveCourtsCanonical(options) {
+  const denied = denyNonPhysicalReservation(options);
+  if (denied) return denied;
+  const clubId = trimId(options.clubId);
+  const tenantResolved = resolveExplicitTenantId(options);
+  if (!tenantResolved.ok) return tenantResolved;
+  const tenantId = tenantResolved.tenantId;
+  const owner = canonicalOwnerFrom(options);
+  if (!clubId) return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required — no first-club fallback.");
+  if (!owner) return fail(COURT_RESOURCE_CODE.MISSING_OWNER, "owner.type and owner.id are required.");
+  const window = windowToTimestamps(options);
+  if (!window) {
+    return fail(COURT_RESOURCE_CODE.MISSING_WINDOW, "startsAt/endsAt or date+startTime+endTime are required.");
+  }
+  const resolved = resolvePhysicalIdsForCanonical(options);
+  if (!resolved.ok) return resolved;
+  const requestId = trimId(options.requestId);
+  if (!requestId) return fail(COURT_RESOURCE_CODE.REQUEST_ID_REQUIRED, "requestId is required.");
+  const result = await invokeCanonicalAdapter(
+    deps.canonicalReserve,
+    {
+      tenantId,
+      clubId,
+      physicalCourtIds: resolved.physicalCourtIds,
+      ownerType: owner.ownerType,
+      ownerId: owner.ownerId,
+      ownerSubType: owner.ownerSubType,
+      startsAt: window.startsAt,
+      endsAt: window.endsAt,
+      requestId,
+    },
+    "Canonical reservation adapter is not bound — fail closed."
+  );
+  if (!result?.ok) {
+    return fail(
+      result?.code || COURT_RESOURCE_CODE.CANONICAL_PATH_UNAVAILABLE,
+      result?.error || result?.message || "Canonical reserve failed.",
+      { reserved: [], failed: result?.failed || [] }
+    );
+  }
+  return {
+    ok: true,
+    code: COURT_RESOURCE_CODE.OK,
+    reserved: result.reservations || result.reserved || [],
+    reservationIds: result.reservationIds || [],
+    created: result.reservations || result.created || [],
+    updated: [],
+    cancelled: [],
+    selectedCourtIds: resolved.physicalCourtIds,
+    physicalCourtIds: resolved.physicalCourtIds,
+    granularity: "physical_court_x_capacity_window",
+    replay: result.replay === true,
+    capacityAuthority: "canonical_reservation",
+  };
+}
+
+async function releaseCourtsCanonical(options) {
+  const clubId = trimId(options.clubId);
+  const tenantResolved = resolveExplicitTenantId(options);
+  if (!tenantResolved.ok) return tenantResolved;
+  const tenantId = tenantResolved.tenantId;
+  const owner = canonicalOwnerFrom(options);
+  if (!clubId) return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required.");
+  if (!owner) return fail(COURT_RESOURCE_CODE.MISSING_OWNER, "owner.type and owner.id are required.");
+  const requestId = trimId(options.requestId)
+    || `release:${owner.ownerType}:${owner.ownerId}`;
+  let physicalCourtIds = null;
+  if (hasNativePhysicalCourtIds(options) || selectedCourtIds(options).length) {
+    const physical = resolvePhysicalIdsForCanonical(options);
+    if (!physical.ok) return physical;
+    physicalCourtIds = physical.physicalCourtIds;
+  }
+  const result = await invokeCanonicalAdapter(
+    deps.canonicalRelease,
+    {
+      tenantId,
+      clubId,
+      ownerType: owner.ownerType,
+      ownerId: owner.ownerId,
+      reservationIds: Array.isArray(options.reservationIds) ? options.reservationIds : null,
+      physicalCourtIds,
+      requestId,
+      releaseReason: trimId(options.releaseReason) || "released",
+    },
+    "Canonical release adapter is not bound — fail closed."
+  );
+  if (!result?.ok) {
+    return fail(
+      result?.code || COURT_RESOURCE_CODE.CANONICAL_PATH_UNAVAILABLE,
+      result?.error || result?.message || "Canonical release failed.",
+      { cancelled: [], failed: result?.failed || [] }
+    );
+  }
+  return {
+    ok: true,
+    code: COURT_RESOURCE_CODE.OK,
+    cancelled: result.releasedReservationIds || result.cancelled || [],
+    failed: [],
+    physicalCourtIds: physicalCourtIds || result.physicalCourtIds || [],
+    capacityAuthority: "canonical_reservation",
+    replay: result.replay === true,
+  };
+}
+
+async function getCourtAvailabilityCanonical(options) {
+  const clubId = trimId(options.clubId);
+  const tenantResolved = resolveExplicitTenantId(options, { courts: [] });
+  if (!tenantResolved.ok) return tenantResolved;
+  const tenantId = tenantResolved.tenantId;
+  if (!clubId) {
+    return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required.", { courts: [] });
+  }
+  const window = windowToTimestamps(options);
+  if (!window) {
+    return fail(
+      COURT_RESOURCE_CODE.MISSING_WINDOW,
+      "startsAt/endsAt or date+startTime+endTime are required.",
+      { courts: [] }
+    );
+  }
+  const resolved = resolvePhysicalIdsForCanonical(options);
+  if (!resolved.ok) return { ...resolved, courts: [] };
+  const owner = canonicalOwnerFrom(options);
+  const result = await invokeCanonicalAdapter(
+    deps.canonicalGetAvailability,
+    {
+      tenantId,
+      clubId,
+      physicalCourtIds: resolved.physicalCourtIds,
+      startsAt: window.startsAt,
+      endsAt: window.endsAt,
+      ownerType: owner?.ownerType || null,
+      ownerId: owner?.ownerId || null,
+    },
+    "Canonical availability adapter is not bound — fail closed."
+  );
+  if (!result?.ok) {
+    return fail(
+      result?.code || COURT_RESOURCE_CODE.CANONICAL_PATH_UNAVAILABLE,
+      result?.error || result?.message || "Canonical availability failed.",
+      { courts: [] }
+    );
+  }
+  const courts = (result.courts || []).map((row) => {
+    const status = row.status || CANONICAL_AVAILABILITY_STATUS.UNKNOWN_COURT;
+    const available =
+      status === CANONICAL_AVAILABILITY_STATUS.AVAILABLE
+      || status === CANONICAL_AVAILABILITY_STATUS.OWN_RESERVATION;
+    return {
+      ...row,
+      id: row.physicalCourtId,
+      physicalCourtId: row.physicalCourtId,
+      available,
+      ownership: { status: mapCanonicalAvailabilityStatus(status) },
+      reasons: available ? [] : [status],
+      conflicts: available ? [] : [{ code: status, message: status }],
+    };
+  });
+  return {
+    ok: true,
+    code: COURT_RESOURCE_CODE.OK,
+    courts,
+    capacityAuthority: "canonical_reservation",
+  };
+}
+
 function windowFrom(options) {
   return {
     date: trimId(options.date),
@@ -169,98 +584,114 @@ function bookingTypeForOwner(owner) {
   return "single";
 }
 
-export function getCourtAvailability(rawOptions = {}) {
+export async function getCourtAvailability(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
+  if (shouldUseCanonicalReservationPath(options)) {
+    return getCourtAvailabilityCanonical(options);
+  }
   const owner = normalizeOwnerInput(options.owner);
-  return deps.getCourtAvailability({
-    ...options,
-    ...(owner ? { context: { ...(options.context || {}), owner } } : {}),
-  });
+  return settle(
+    deps.getCourtAvailability({
+      ...options,
+      ...(owner ? { context: { ...(options.context || {}), owner } } : {}),
+    })
+  );
+}
+
+function normalizeEligibleInventoryResult(listed) {
+  if (!listed || typeof listed !== "object") {
+    return fail(
+      COURT_RESOURCE_CODE.DATA_UNAVAILABLE,
+      "Canonical inventory returned no result.",
+      { courts: [] }
+    );
+  }
+  if (listed.ok === false) {
+    return { courts: [], ...listed };
+  }
+  return {
+    ok: true,
+    code: listed.code || COURT_RESOURCE_CODE.OK,
+    courts: Array.isArray(listed.courts) ? listed.courts.map((court) => ({ ...court })) : [],
+    inventorySource: listed.inventorySource,
+    accessAuthority: listed.accessAuthority,
+  };
 }
 
 /**
- * Inventory listing for a club operational scope.
- * Cluster is a filter only. Does not reserve courts.
+ * Canonical inventory listing for a club operational scope.
+ * Authority: Court Master + club operational access. Cluster is a filter only.
+ * Does not read Club V3 blob, club storage loaders, or browser storage.
  */
 export function listEligibleCourts(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
   const clubId = trimId(options.clubId);
-  const tenantId = trimId(options.tenantId) || trimId(options.venueId);
+  const tenantResolved = resolveExplicitTenantId(options, { courts: [] });
+  if (!tenantResolved.ok) return tenantResolved;
+  const tenantId = tenantResolved.tenantId;
   const clusterId = trimId(options.clusterId);
-  const requestedIds = selectedCourtIds(options);
 
   if (!clubId) {
     return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required — no first-club fallback.", {
       courts: [],
     });
   }
-  if (trimId(options.courtLabel) && requestedIds.length === 0) {
+  if (
+    trimId(options.courtLabel)
+    && selectedPhysicalCourtIds(options).length === 0
+    && selectedCourtIds(options).length === 0
+  ) {
     return fail(
       COURT_RESOURCE_CODE.SYNTHETIC_COURT_DENIED,
-      "courtLabel is display-only — eligibility identity is courtId.",
+      "courtLabel is display-only — eligibility identity is physicalCourtId.",
       { courts: [] }
     );
   }
 
-  let courts;
+  if (typeof deps.listEligiblePhysicalCourts !== "function") {
+    return fail(
+      COURT_RESOURCE_CODE.CANONICAL_PATH_UNAVAILABLE,
+      "Canonical inventory reader is not bound — fail closed.",
+      { courts: [] }
+    );
+  }
+
   try {
-    courts = deps.listCourts({
-      clubId,
-      tenantId,
-      clusterId,
-      includeInactive: false,
-    });
+    return settle(
+      deps.listEligiblePhysicalCourts({
+        tenantId,
+        clubId,
+        clusterId,
+        physicalCourtIds: selectedPhysicalCourtIds(options),
+        selectedCourtIds: selectedCourtIds(options),
+        courtId: options.courtId,
+      })
+    ).then(normalizeEligibleInventoryResult, (error) =>
+      fail(COURT_RESOURCE_CODE.DATA_UNAVAILABLE, error?.message || "Failed to load canonical court inventory.", {
+        courts: [],
+      })
+    );
   } catch (error) {
-    return fail(COURT_RESOURCE_CODE.DATA_UNAVAILABLE, error?.message || "Failed to load court inventory.", {
+    return fail(COURT_RESOURCE_CODE.DATA_UNAVAILABLE, error?.message || "Failed to load canonical court inventory.", {
       courts: [],
     });
   }
-
-  const inventory = Array.isArray(courts) ? courts : [];
-  if (requestedIds.length === 0) {
-    return {
-      ok: true,
-      code: COURT_RESOURCE_CODE.OK,
-      courts: inventory.map((court) => ({ ...court })),
-    };
-  }
-
-  const matched = [];
-  const failed = [];
-  for (const courtId of requestedIds) {
-    const membership = deps.assertCourtClusterMembership({
-      clubId,
-      tenantId,
-      venueId: trimId(options.venueId),
-      clusterId,
-      courtId,
-      courts: inventory,
-      includeInactive: false,
-    });
-    if (!membership.ok) {
-      failed.push({ courtId, code: membership.code, error: membership.error });
-      continue;
-    }
-    matched.push(membership.court ? { ...membership.court } : { id: courtId });
-  }
-  if (failed.length) {
-    return fail(failed[0].code, failed[0].error, { courts: [], failed });
-  }
-  return {
-    ok: true,
-    code: COURT_RESOURCE_CODE.OK,
-    courts: matched,
-  };
 }
 
-export function reserveCourts(rawOptions = {}) {
+export async function reserveCourts(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
+  if (shouldUseCanonicalReservationPath(options)) {
+    return reserveCourtsCanonical(options);
+  }
   const clubId = trimId(options.clubId);
   const owner = normalizeOwnerInput(options.owner);
   const courtIds = selectedCourtIds(options);
   const window = windowFrom(options);
   const clusterId = trimId(options.clusterId);
-  const tenantId = trimId(options.tenantId) || trimId(options.venueId);
+  // LEGACY_COMPATIBILITY blob path: clubId-scoped. Explicit tenantId/venueId are
+  // pass-through only — never invent tenantId from venueId.
+  const tenantId = trimId(options.tenantId);
+  const venueId = trimId(options.venueId);
 
   if (!clubId) return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required — no first-club fallback.");
   if (!owner) return fail(COURT_RESOURCE_CODE.MISSING_OWNER, "owner.type and owner.id are required.");
@@ -279,7 +710,12 @@ export function reserveCourts(rawOptions = {}) {
 
   let courts;
   try {
-    courts = deps.listCourts({ clubId, tenantId, includeInactive: true });
+    courts = deps.listCourts({
+      clubId,
+      ...(tenantId ? { tenantId } : {}),
+      ...(venueId ? { venueId } : {}),
+      includeInactive: true,
+    });
   } catch (error) {
     return fail(COURT_RESOURCE_CODE.DATA_UNAVAILABLE, error?.message || "Failed to load court inventory.");
   }
@@ -288,8 +724,8 @@ export function reserveCourts(rawOptions = {}) {
   for (const courtId of courtIds) {
     const membership = deps.assertCourtClusterMembership({
       clubId,
-      tenantId,
-      venueId: trimId(options.venueId),
+      ...(tenantId ? { tenantId } : {}),
+      ...(venueId ? { venueId } : {}),
       clusterId,
       courtId,
       courts,
@@ -307,14 +743,16 @@ export function reserveCourts(rawOptions = {}) {
   }
 
   if (owner.type === RESERVATION_OWNER_TYPE.TOURNAMENT) {
-    const result = deps.syncTournamentCourtBookings(
-      {
-        id: owner.id,
-        name: options.label || options.tournamentName || owner.id,
-        courtSchedule: { ...window, courtIds },
-      },
-      clubId,
-      courts
+    const result = await settle(
+      deps.syncTournamentCourtBookings(
+        {
+          id: owner.id,
+          name: options.label || options.tournamentName || owner.id,
+          courtSchedule: { ...window, courtIds },
+        },
+        clubId,
+        courts
+      )
     );
     if (!result.ok) {
       return fail(
@@ -355,10 +793,11 @@ export function reserveCourts(rawOptions = {}) {
       bookingStatus: "confirmed",
       note: `Court resource reservation: ${owner.type}:${owner.id}`,
     };
-    const result =
+    const result = await settle(
       owner.type === RESERVATION_OWNER_TYPE.MAINTENANCE
         ? deps.createMaintenanceBooking(payload, clubId)
-        : deps.createBooking(payload, clubId);
+        : deps.createBooking(payload, clubId)
+    );
     if (!result.ok) {
       failed.push({ courtId, message: result.message, conflict: result.conflict || null });
       break;
@@ -380,8 +819,11 @@ export function reserveCourts(rawOptions = {}) {
   };
 }
 
-export function releaseCourts(rawOptions = {}) {
+export async function releaseCourts(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
+  if (shouldUseCanonicalReservationPath(options)) {
+    return releaseCourtsCanonical(options);
+  }
   const clubId = trimId(options.clubId);
   const owner = normalizeOwnerInput(options.owner);
   const ids = selectedCourtIds(options);
@@ -390,10 +832,12 @@ export function releaseCourts(rawOptions = {}) {
   if (!owner) return fail(COURT_RESOURCE_CODE.MISSING_OWNER, "owner.type and owner.id are required.");
 
   if (owner.type === RESERVATION_OWNER_TYPE.TOURNAMENT) {
-    const result = deps.cancelTournamentCourtBookings(
-      clubId,
-      owner.id,
-      courtFilter ? [...courtFilter] : null
+    const result = await settle(
+      deps.cancelTournamentCourtBookings(
+        clubId,
+        owner.id,
+        courtFilter ? [...courtFilter] : null
+      )
     );
     if (!result.ok) {
       return fail(result.code || COURT_RESOURCE_CODE.PARTIAL_FAILURE, result.message || result.error, {
@@ -419,7 +863,7 @@ export function releaseCourts(rawOptions = {}) {
   const cancelled = [];
   const failed = [];
   for (const booking of targets) {
-    const result = deps.updateBookingStatus(booking.id, "cancelled", clubId);
+    const result = await settle(deps.updateBookingStatus(booking.id, "cancelled", clubId));
     if (result.ok) cancelled.push(result.booking);
     else failed.push({ bookingId: booking.id, courtId: booking.courtId, message: result.message });
   }
@@ -435,6 +879,13 @@ export function getReservationOwner(rawOptions = {}) {
 
 export function listOwnerReservations(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
+  if (shouldUseCanonicalOwnerReservationRead(options)) {
+    return listOwnerReservationsCanonical(options);
+  }
+  return listOwnerReservationsLegacy(options);
+}
+
+function listOwnerReservationsLegacy(options) {
   const clubId = trimId(options.clubId);
   const owner = normalizeOwnerInput(options.owner);
   if (!clubId) return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required.", { reservations: [] });
@@ -443,7 +894,7 @@ export function listOwnerReservations(rawOptions = {}) {
     const bookings = deps.loadBookingsForClub(clubId);
     const reservations =
       owner.type === RESERVATION_OWNER_TYPE.TOURNAMENT
-        ? listLegacyTournamentReservations(bookings, owner.id)
+        ? deps.listLegacyTournamentReservations(bookings, owner.id)
         : bookings.filter((booking) => isSameReservationOwner(booking, owner));
     return { ok: true, code: COURT_RESOURCE_CODE.OK, reservations };
   } catch (error) {
@@ -451,8 +902,96 @@ export function listOwnerReservations(rawOptions = {}) {
   }
 }
 
-export function validateCourtAssignment(rawOptions = {}) {
+async function listOwnerReservationsCanonical(options) {
+  const clubId = trimId(options.clubId);
+  const tenantResolved = resolveExplicitTenantId(options, { reservations: [] });
+  if (!tenantResolved.ok) return tenantResolved;
+  const tenantId = tenantResolved.tenantId;
+  const owner = canonicalOwnerFrom(options);
+  if (!clubId) {
+    return fail(COURT_RESOURCE_CODE.MISSING_CLUB_ID, "clubId is required.", { reservations: [] });
+  }
+  if (!owner) {
+    return fail(COURT_RESOURCE_CODE.MISSING_OWNER, "owner.type and owner.id are required.", { reservations: [] });
+  }
+  let physicalCourtIds = null;
+  if (hasNativePhysicalCourtIds(options)) {
+    const resolved = nativePhysicalCourtIdsOrFail(options);
+    if (!resolved.ok) return { ...resolved, reservations: [] };
+    physicalCourtIds = resolved.physicalCourtIds;
+  }
+  const result = await invokeCanonicalAdapter(
+    deps.canonicalListOwnerReservations,
+    {
+      tenantId,
+      clubId,
+      ownerType: owner.ownerType,
+      ownerId: owner.ownerId,
+      physicalCourtIds,
+    },
+    "Canonical owner-reservation reader is not bound — fail closed."
+  );
+  if (!result?.ok) {
+    return fail(
+      result?.code || COURT_RESOURCE_CODE.CANONICAL_PATH_UNAVAILABLE,
+      result?.error || result?.message || "Canonical owner-reservation read failed.",
+      { reservations: [] }
+    );
+  }
+  const reservations = (result.reservations || []).map((row) => ({
+    ...row,
+    physicalCourtId: row.physicalCourtId || row.physical_court_id || null,
+    reservationId: row.reservationId || row.reservation_id || null,
+    identityAuthority: "physicalCourtId",
+  }));
+  return {
+    ok: true,
+    code: COURT_RESOURCE_CODE.OK,
+    reservations,
+    capacityAuthority: "canonical_reservation",
+  };
+}
+
+export async function validateCourtAssignment(rawOptions = {}) {
   const options = normalizeOptions(rawOptions);
+  if (shouldUseCanonicalReservationPath(options)) {
+    const availability = await getCourtAvailabilityCanonical(options);
+    if (!availability.ok) return { ...availability, valid: false };
+    const row = availability.courts?.[0] || null;
+    if (!row) {
+      return fail(COURT_RESOURCE_CODE.COURT_NOT_FOUND, "Court not found in scoped inventory.", { valid: false });
+    }
+    if (!row.available) {
+      const conflict = row.conflicts?.[0] || {};
+      return fail(mapAvailabilityCode(conflict.code) === conflict.code
+        ? (conflict.code || COURT_RESOURCE_CODE.FOREIGN_RESERVATION_CONFLICT)
+        : mapAvailabilityCode(conflict.code), conflict.message || row.reasons?.[0], {
+        valid: false,
+        availability: row,
+      });
+    }
+    const owner = normalizeOwnerInput(options.owner);
+    if (
+      options.requireOwnerReservation !== false
+      && owner
+      && row.ownership?.status !== OWNERSHIP_STATUS.OWN_RESERVATION
+    ) {
+      return fail(
+        COURT_RESOURCE_CODE.COURT_NOT_IN_OWNER_SCOPE,
+        "Court is not inside the owner's reserved capacity window.",
+        { valid: false, availability: row }
+      );
+    }
+    return {
+      ok: true,
+      valid: true,
+      code: COURT_RESOURCE_CODE.ASSIGNMENT_VALID,
+      courtId: row.physicalCourtId,
+      physicalCourtId: row.physicalCourtId,
+      ownership: row.ownership,
+      capacityAuthority: "canonical_reservation",
+    };
+  }
   const clubId = trimId(options.clubId);
   const courtId = trimId(options.courtId);
   const owner = normalizeOwnerInput(options.owner);
@@ -466,10 +1005,15 @@ export function validateCourtAssignment(rawOptions = {}) {
     return fail(COURT_RESOURCE_CODE.MISSING_WINDOW, "date and scheduled start/end are required.");
   }
 
+  // LEGACY_COMPATIBILITY assignment path: clubId + courtId scoped. Explicit
+  // tenantId/venueId are pass-through only — never invent tenant from venue.
+  const tenantId = trimId(options.tenantId);
+  const venueId = trimId(options.venueId);
+
   const membership = deps.assertCourtClusterMembership({
     clubId,
-    tenantId: trimId(options.tenantId) || trimId(options.venueId),
-    venueId: trimId(options.venueId),
+    ...(tenantId ? { tenantId } : {}),
+    ...(venueId ? { venueId } : {}),
     clusterId: trimId(options.clusterId),
     courtId,
     includeInactive: false,
@@ -478,16 +1022,18 @@ export function validateCourtAssignment(rawOptions = {}) {
 
   let availability;
   try {
-    availability = deps.getCourtAvailability({
-      clubId,
-      venueId: trimId(options.venueId),
-      tenantId: trimId(options.tenantId) || trimId(options.venueId),
-      clusterId: trimId(options.clusterId),
-      courtId,
-      ...window,
-      context: { owner },
-      includeUnavailable: true,
-    });
+    availability = await settle(
+      deps.getCourtAvailability({
+        clubId,
+        ...(venueId ? { venueId } : {}),
+        ...(tenantId ? { tenantId } : {}),
+        clusterId: trimId(options.clusterId),
+        courtId,
+        ...window,
+        context: { owner },
+        includeUnavailable: true,
+      })
+    );
   } catch (error) {
     return fail(error?.code || COURT_RESOURCE_CODE.DATA_UNAVAILABLE, error?.message || "Failed to evaluate availability.", { valid: false });
   }
@@ -525,3 +1071,8 @@ export {
   isTournamentReservation,
   isActiveTournamentReservation,
 };
+
+__bindCanonicalBookingGateway({
+  reserveCourts,
+  releaseCourts,
+});

@@ -42,7 +42,7 @@ import { buildRuntimeAccessState } from "../../core/platform/app/runtimeAccess.j
 import BookingForm from "./BookingForm.jsx";
 import BookingDetail from "./BookingDetail.jsx";
 
-export default function BookingList({ clubId, courts = [], bookings = [], onRefresh }) {
+export default function BookingList({ clubId, tenantId = null, courts = [], bookings = [], onRefresh }) {
   const runtime = usePlatformRuntime();
   const [searchParams] = useSearchParams();
   const [dateFilter, setDateFilter] = useState(todayIsoDate());
@@ -342,6 +342,7 @@ export default function BookingList({ clubId, courts = [], bookings = [], onRefr
         open={formOpen}
         onClose={() => setFormOpen(false)}
         clubId={clubId}
+        tenantId={tenantId}
         courts={courts}
         initialValues={{ date: showAllDates ? todayIsoDate() : dateFilter }}
         onSaved={() => onRefresh?.()}

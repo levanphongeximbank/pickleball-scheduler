@@ -1,9 +1,11 @@
 # Phase 1A — Module Ownership Boundary
 
-**Status:** Official ownership boundary for Venue & Court Phase 1  
+**Status:** Official ownership boundary for Venue & Court Phase 1 — **transitional/compatibility**  
 **Scope:** Design only — no code changes  
 **Date:** 2026-07-18  
 **Branch:** `feature/venue-court-phase-1-foundation`
+
+**Ownership freeze (Batch 1):** Venue & Court does **not** own target Physical Court identity, canonical court inventory, or club operational access. Those belong to **2.2 Court Operations**. Phase 1 “Court inventory SSOT” below is the legacy Club V3 compatibility substrate, not the canonical master.
 
 ---
 

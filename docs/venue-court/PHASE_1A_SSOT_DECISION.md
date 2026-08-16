@@ -1,9 +1,11 @@
 # Phase 1A — SSOT Decision Record
 
-**Status:** Temporary SSOT decision for Phase 1  
+**Status:** Temporary SSOT decision for Phase 1 — **transitional/compatibility only**  
 **Scope:** Decision record only — no migration, no schema change  
 **Date:** 2026-07-18  
 **Branch:** `feature/venue-court-phase-1-foundation`
+
+**Ownership freeze (Batch 1):** Venue & Court Phase 1 inventory/capacity SSOT language is **not** the target authority. Canonical Physical Court identity, court inventory, and club operational access are owned by **2.2 Court Operations** (`src/features/court-resource/`). `club_data_v3.data.courts[]` remains a legacy compatibility projection.
 
 ---
 

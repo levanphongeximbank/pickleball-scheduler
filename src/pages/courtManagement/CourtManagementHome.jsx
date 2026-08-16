@@ -16,7 +16,7 @@ import {
 import { loadPlayersForClub } from "../../domain/clubStorage.js";
 
 export default function CourtManagementHome() {
-  const { clubId, courts, bookings, onRefresh } = useOutletContext();
+  const { clubId, tenantId, courts, bookings, onRefresh } = useOutletContext();
   const now = useMemo(() => new Date(), [bookings, courts]);
 
   const stats = useMemo(
@@ -41,6 +41,7 @@ export default function CourtManagementHome() {
         <Grid size={{ xs: 12, lg: 9 }}>
           <CourtStatusBoard
             clubId={clubId}
+            tenantId={tenantId}
             courts={courts}
             bookings={bookings}
             onRefresh={onRefresh}
