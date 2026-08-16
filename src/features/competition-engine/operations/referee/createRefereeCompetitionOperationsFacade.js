@@ -652,15 +652,30 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         cmd.priorCourt ||
         record.courtsByMatch?.[matchId] ||
         null;
+      const priorPointsForGate = session.state?.points
+        ? { ...session.state.points }
+        : null;
+      const dueBeforeScore = resolveSideChangeRequiredAfterScoring({
+        priorCourt: priorCourt || {},
+        priorPoints: priorPointsForGate || {},
+        nextPoints: priorPointsForGate || {},
+        sideSwitchAt: session.state?.format?.sideSwitchAt,
+        domainHints: [],
+      });
+      if (dueBeforeScore.sideChangeRequired === true) {
+        failReferee(
+          REFEREE_ERROR_CODE.PRECONDITION_FAILED,
+          "Change ends is due — confirm Đổi sân before scoring",
+          { sideChangeRequired: true, matchId }
+        );
+      }
       const priorServe = session.state?.serve
         ? {
             servingSide: session.state.serve.servingSide,
             serverNumber: session.state.serve.serverNumber,
           }
         : null;
-      const priorPoints = session.state?.points
-        ? { ...session.state.points }
-        : null;
+      const priorPoints = priorPointsForGate;
 
       let state = session.state;
       const points = Math.max(1, Number(cmd.points) || 1);
@@ -709,6 +724,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
       });
       const sideChange = resolveSideChangeRequiredAfterScoring({
         priorCourt,
+        priorPoints,
         nextPoints: state.points,
         sideSwitchAt: state.format?.sideSwitchAt,
         domainHints,

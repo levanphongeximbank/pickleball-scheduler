@@ -307,7 +307,8 @@ export function deriveCanonicalCourtAfterScoring(input = {}) {
 
 /**
  * Durable change-end due flag. Sticky until confirmChangeEnds ACKs.
- * Distinguishes "threshold reached, not acknowledged" from "already swapped".
+ * Threshold T applies to a team's game score (not A+B total):
+ * priorScore < T && nextScore >= T on either side.
  */
 export function resolveSideChangeRequiredAfterScoring(input = {}) {
   const priorCourt = input.priorCourt || {};
@@ -321,8 +322,9 @@ export function resolveSideChangeRequiredAfterScoring(input = {}) {
     priorCourt.sideChangeAcknowledgedAtThreshold == null
       ? null
       : Number(priorCourt.sideChangeAcknowledgedAtThreshold);
-  const points = input.nextPoints || {};
-  const total = Number(points.SIDE_A || 0) + Number(points.SIDE_B || 0);
+  const priorPoints = input.priorPoints || {};
+  const nextPoints = input.nextPoints || {};
+
   const acknowledgedForThreshold =
     threshold != null && Number.isFinite(threshold) && ackAt === threshold;
 
@@ -334,11 +336,29 @@ export function resolveSideChangeRequiredAfterScoring(input = {}) {
     });
   }
 
+  if (threshold == null || !Number.isFinite(threshold)) {
+    return Object.freeze({
+      sideChangeRequired: priorCourt.sideChangeRequired === true,
+      sideChangeAcknowledgedAtThreshold: ackAt,
+      sideChangeThreshold: null,
+    });
+  }
+
+  let crossedThisTransition = false;
+  let eitherAtOrPast = false;
+  for (const side of ["SIDE_A", "SIDE_B"]) {
+    const prior = Number(priorPoints[side] || 0);
+    const next = Number(nextPoints[side] || 0);
+    if (next >= threshold) eitherAtOrPast = true;
+    if (prior < threshold && next >= threshold) crossedThisTransition = true;
+  }
+
   const milestoneHint = hints.includes("ENDS_SWITCH_MILESTONE");
-  const pastThreshold =
-    threshold != null && Number.isFinite(threshold) && total >= threshold;
   const sideChangeRequired =
-    priorCourt.sideChangeRequired === true || milestoneHint || pastThreshold;
+    priorCourt.sideChangeRequired === true ||
+    milestoneHint ||
+    crossedThisTransition ||
+    eitherAtOrPast;
 
   return Object.freeze({
     sideChangeRequired,

@@ -39,9 +39,9 @@ export function applyRallyOrSideOutPoint(draft, rallyWinnerSide) {
 
     const sideSwitchAt = format.sideSwitchAt;
     if (sideSwitchAt != null) {
-      const total =
-        draft.points[SCORING_SIDE.SIDE_A] + draft.points[SCORING_SIDE.SIDE_B];
-      if (total === sideSwitchAt) {
+      const scorerScore = draft.points[rallyWinnerSide];
+      // Team score crossed T on this transition (not A+B total).
+      if (scorerScore >= sideSwitchAt && scorerScore - 1 < sideSwitchAt) {
         hints.push("ENDS_SWITCH_MILESTONE");
       }
     }
@@ -63,9 +63,8 @@ export function applyRallyOrSideOutPoint(draft, rallyWinnerSide) {
     hints.push(SCORING_EVENT_TYPE.POINT_RECORDED);
     const sideSwitchAt = format.sideSwitchAt;
     if (sideSwitchAt != null) {
-      const total =
-        draft.points[SCORING_SIDE.SIDE_A] + draft.points[SCORING_SIDE.SIDE_B];
-      if (total === sideSwitchAt) {
+      const scorerScore = draft.points[rallyWinnerSide];
+      if (scorerScore >= sideSwitchAt && scorerScore - 1 < sideSwitchAt) {
         hints.push("ENDS_SWITCH_MILESTONE");
       }
     }

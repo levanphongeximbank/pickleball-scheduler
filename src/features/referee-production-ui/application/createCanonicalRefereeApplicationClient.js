@@ -397,6 +397,21 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         extras.courtState?.homePlayerPositions ||
         liveInfo?.courtState?.homePlayerPositions ||
         null,
+      sideChangeRequired:
+        extras.courtState?.sideChangeRequired === true ||
+        liveInfo?.courtState?.sideChangeRequired === true,
+      sideChangeThreshold:
+        extras.courtState?.sideChangeThreshold ??
+        liveInfo?.courtState?.sideChangeThreshold ??
+        null,
+      sideChangeAcknowledgedAtThreshold:
+        extras.courtState?.sideChangeAcknowledgedAtThreshold ??
+        liveInfo?.courtState?.sideChangeAcknowledgedAtThreshold ??
+        null,
+      lastSideChangeEventId:
+        extras.courtState?.lastSideChangeEventId ||
+        liveInfo?.courtState?.lastSideChangeEventId ||
+        null,
     };
     return buildRefereeMatchView({
       matchId: assignment.matchId,
@@ -852,17 +867,41 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         COURT_ORIENTATION.SWAPPED
           ? COURT_ORIENTATION.STANDARD
           : COURT_ORIENTATION.SWAPPED;
+      // Team-end swap only: flip orientation. Preserve partner slot arrays + server identity.
+      const ackThreshold =
+        current.sideChangeThreshold != null
+          ? current.sideChangeThreshold
+          : current.sideChangeAcknowledgedAtThreshold != null
+            ? current.sideChangeAcknowledgedAtThreshold
+            : null;
       const nextCourt = {
         ...current,
         courtOrientation: nextOrientation,
+        playerPositions: {
+          sideA: Array.isArray(current.playerPositions?.sideA)
+            ? [...current.playerPositions.sideA]
+            : current.playerPositions?.sideA,
+          sideB: Array.isArray(current.playerPositions?.sideB)
+            ? [...current.playerPositions.sideB]
+            : current.playerPositions?.sideB,
+        },
+        homePlayerPositions: {
+          sideA: Array.isArray(current.homePlayerPositions?.sideA)
+            ? [...current.homePlayerPositions.sideA]
+            : current.homePlayerPositions?.sideA,
+          sideB: Array.isArray(current.homePlayerPositions?.sideB)
+            ? [...current.homePlayerPositions.sideB]
+            : current.homePlayerPositions?.sideB,
+        },
+        serverPlayerId: current.serverPlayerId || null,
+        receiverPlayerId: current.receiverPlayerId || null,
+        servingSide: current.servingSide || null,
+        serverNumber: current.serverNumber ?? null,
+        lineupConfigured: current.lineupConfigured === true,
         lastSideChangeEventId: command.idempotencyKey,
         sideChangeRequired: false,
-        sideChangeAcknowledgedAtThreshold:
-          current.sideChangeThreshold != null
-            ? current.sideChangeThreshold
-            : current.sideChangeAcknowledgedAtThreshold != null
-              ? current.sideChangeAcknowledgedAtThreshold
-              : null,
+        sideChangeThreshold: current.sideChangeThreshold ?? ackThreshold,
+        sideChangeAcknowledgedAtThreshold: ackThreshold,
       };
       await runtime.matchStateRepository.putLiveState(
         {

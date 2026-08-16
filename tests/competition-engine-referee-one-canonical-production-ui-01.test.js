@@ -31,6 +31,7 @@ import { projectCanonicalCourtView } from "../src/features/referee-production-ui
 import { projectDreamBreakerRotation } from "../src/features/referee-production-ui/projection/projectDreamBreakerRotation.js";
 import { formatCanonicalScoreLine } from "../src/features/referee-production-ui/projection/formatScoringPolicyLabel.js";
 import { projectResultStatus } from "../src/features/referee-production-ui/projection/resultStatus.js";
+import { resolveSideChangeRequiredAfterScoring } from "../src/features/competition-engine/integration/referee/deriveCanonicalCourtAfterScoring.js";
 import {
   formatAssignmentStatusLabel,
   formatCompetitionDisplayName,
@@ -1787,61 +1788,84 @@ test("remediation06: threshold sticky until ACK; confirm swaps ends; F5 keeps sw
   assert.equal(started.view.courtProjection.sideChangeRequired, false);
 
   let version = started.view.expectedVersion;
-  let scored = await client.submitPoint({
-    tenantId: "tenant-1",
-    matchId: fixture.matchId,
-    actor: ACTOR,
-    scoringSide: SCORING_SIDE.SIDE_A,
-    expectedVersion: version,
-    idempotencyKey: "ce-p1",
-  });
-  version = scored.view.expectedVersion;
-  scored = await client.submitPoint({
-    tenantId: "tenant-1",
-    matchId: fixture.matchId,
-    actor: ACTOR,
-    scoringSide: SCORING_SIDE.SIDE_A,
-    expectedVersion: version,
-    idempotencyKey: "ce-p2",
-  });
-  version = scored.view.expectedVersion;
-  scored = await client.submitPoint({
-    tenantId: "tenant-1",
-    matchId: fixture.matchId,
-    actor: ACTOR,
-    scoringSide: SCORING_SIDE.SIDE_B,
-    expectedVersion: version,
-    idempotencyKey: "ce-p3",
-  });
-  assert.equal(scored.ok, true);
+  let scored = started;
+  for (let i = 0; i < 3; i += 1) {
+    scored = await client.submitPoint({
+      tenantId: "tenant-1",
+      matchId: fixture.matchId,
+      actor: ACTOR,
+      scoringSide: SCORING_SIDE.SIDE_A,
+      expectedVersion: version,
+      idempotencyKey: `ce-p${i + 1}`,
+    });
+    version = scored.view.expectedVersion;
+  }
+  assert.equal(scored.view.currentScore.points.SIDE_A, 3);
   assert.equal(scored.view.courtProjection.sideChangeRequired, true);
-  assert.equal(scored.view.canStart, false);
+  assert.equal(scored.view.canScore, false);
+  assert.equal(scored.view.canPointSideA, false);
 
-  version = scored.view.expectedVersion;
-  const past = await client.submitPoint({
-    tenantId: "tenant-1",
-    matchId: fixture.matchId,
-    actor: ACTOR,
-    scoringSide: SCORING_SIDE.SIDE_A,
-    expectedVersion: version,
-    idempotencyKey: "ce-p4-past",
-  });
-  assert.equal(past.view.courtProjection.sideChangeRequired, true);
+  await assert.rejects(
+    () =>
+      client.submitPoint({
+        tenantId: "tenant-1",
+        matchId: fixture.matchId,
+        actor: ACTOR,
+        scoringSide: SCORING_SIDE.SIDE_A,
+        expectedVersion: version,
+        idempotencyKey: "ce-blocked-while-due",
+      }),
+    /[Cc]hange ends|PRECONDITION|Đổi sân/
+  );
+
+  const positionsBefore = {
+    a: [
+      ...(scored.view.courtProjection.sides?.left?.scoringSide === "SIDE_A"
+        ? scored.view.courtProjection.sides.left.activePlayers
+        : scored.view.courtProjection.sides.right.activePlayers
+      ).map((p) => p.playerId),
+    ],
+    b: [
+      ...(scored.view.courtProjection.sides?.left?.scoringSide === "SIDE_B"
+        ? scored.view.courtProjection.sides.left.activePlayers
+        : scored.view.courtProjection.sides.right.activePlayers
+      ).map((p) => p.playerId),
+    ],
+  };
+  const serverBefore = scored.view.courtProjection.serving?.serverPlayerId;
 
   const confirmed = await client.confirmChangeEnds({
     tenantId: "tenant-1",
     matchId: fixture.matchId,
     actor: ACTOR,
-    expectedVersion: past.view.expectedVersion,
+    expectedVersion: scored.view.expectedVersion,
     idempotencyKey: "ce-confirm-1",
   });
   assert.equal(confirmed.ok, true);
   assert.equal(confirmed.view.courtProjection.sideChangeRequired, false);
   assert.equal(confirmed.view.courtProjection.courtOrientation, "SWAPPED");
-  assert.equal(confirmed.view.currentScore.points.SIDE_A, past.view.currentScore.points.SIDE_A);
-  assert.equal(confirmed.view.currentScore.points.SIDE_B, past.view.currentScore.points.SIDE_B);
+  assert.equal(confirmed.view.currentScore.points.SIDE_A, 3);
+  assert.equal(confirmed.view.currentScore.points.SIDE_B, 0);
   assert.equal(confirmed.view.matchStatus, "IN_PROGRESS");
-  assert.ok(confirmed.view.courtProjection.serving?.serverPlayerId);
+  assert.equal(confirmed.view.courtProjection.serving?.serverPlayerId, serverBefore);
+  assert.equal(confirmed.view.canScore, true);
+
+  const positionsAfter = {
+    a: [
+      ...(confirmed.view.courtProjection.sides?.left?.scoringSide === "SIDE_A"
+        ? confirmed.view.courtProjection.sides.left.activePlayers
+        : confirmed.view.courtProjection.sides.right.activePlayers
+      ).map((p) => p.playerId),
+    ],
+    b: [
+      ...(confirmed.view.courtProjection.sides?.left?.scoringSide === "SIDE_B"
+        ? confirmed.view.courtProjection.sides.left.activePlayers
+        : confirmed.view.courtProjection.sides.right.activePlayers
+      ).map((p) => p.playerId),
+    ],
+  };
+  assert.deepEqual(positionsAfter.a, positionsBefore.a);
+  assert.deepEqual(positionsAfter.b, positionsBefore.b);
 
   const reloaded = await client.getMatchView({
     tenantId: "tenant-1",
@@ -1850,7 +1874,7 @@ test("remediation06: threshold sticky until ACK; confirm swaps ends; F5 keeps sw
   });
   assert.equal(reloaded.view.courtProjection.courtOrientation, "SWAPPED");
   assert.equal(reloaded.view.courtProjection.sideChangeRequired, false);
-  assert.equal(reloaded.view.currentScore.points.SIDE_A, past.view.currentScore.points.SIDE_A);
+  assert.equal(reloaded.view.courtProjection.serving?.serverPlayerId, serverBefore);
 });
 
 test("remediation06: stale expectedVersion does not swap ends", async () => {
@@ -1888,10 +1912,11 @@ test("remediation06: stale expectedVersion does not swap ends", async () => {
     tenantId: "tenant-1",
     matchId: fixture.matchId,
     actor: ACTOR,
-    scoringSide: SCORING_SIDE.SIDE_B,
+    scoringSide: SCORING_SIDE.SIDE_A,
     expectedVersion: version,
     idempotencyKey: "ce-stale-p2",
   });
+  assert.equal(view.view.currentScore.points.SIDE_A, 2);
   assert.equal(view.view.courtProjection.sideChangeRequired, true);
   const staleVersion = Number(view.view.expectedVersion) - 1;
   await assert.rejects(
@@ -1912,4 +1937,221 @@ test("remediation06: stale expectedVersion does not swap ends", async () => {
   });
   assert.equal(reloaded.view.courtProjection.courtOrientation, "STANDARD");
   assert.equal(reloaded.view.courtProjection.sideChangeRequired, true);
+});
+
+test("remediation07: Owner exact 10:5 → 11:5 triggers due on same ACK", async () => {
+  const format = createScoringFormat({
+    scoringSystem: SCORING_SYSTEM.RALLY,
+    pointsToWin: 21,
+    winBy: 2,
+    bestOfGames: 1,
+    sideSwitchAt: 11,
+  });
+  const { runtime } = createUiRuntime();
+  const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
+  fixture.modeState = dailyModeState(fixture.competitionId, fixture.matchId, {
+    scoringRules: format,
+  });
+  await seedAssigned(runtime, fixture);
+  const client = createClient(runtime, [fixture]);
+  const started = await startSideOutWithLineup(client, fixture, {
+    playerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+    serverPlayerId: "p1",
+    serverNumber: 1,
+    servingSide: "SIDE_A",
+  });
+  let version = started.view.expectedVersion;
+  for (let i = 0; i < 10; i += 1) {
+    const row = await client.submitPoint({
+      tenantId: "tenant-1",
+      matchId: fixture.matchId,
+      actor: ACTOR,
+      scoringSide: SCORING_SIDE.SIDE_A,
+      expectedVersion: version,
+      idempotencyKey: `r07-a-${i}`,
+    });
+    version = row.view.expectedVersion;
+    assert.equal(row.view.courtProjection.sideChangeRequired, false);
+  }
+  for (let i = 0; i < 5; i += 1) {
+    const row = await client.submitPoint({
+      tenantId: "tenant-1",
+      matchId: fixture.matchId,
+      actor: ACTOR,
+      scoringSide: SCORING_SIDE.SIDE_B,
+      expectedVersion: version,
+      idempotencyKey: `r07-b-${i}`,
+    });
+    version = row.view.expectedVersion;
+    assert.equal(row.view.courtProjection.sideChangeRequired, false);
+  }
+
+  const atThreshold = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_A,
+    expectedVersion: version,
+    idempotencyKey: "r07-10-to-11",
+  });
+  assert.equal(atThreshold.view.currentScore.points.SIDE_A, 11);
+  assert.equal(atThreshold.view.currentScore.points.SIDE_B, 5);
+  assert.equal(atThreshold.view.courtProjection.sideChangeRequired, true);
+  assert.equal(atThreshold.view.canScore, false);
+  assert.equal(atThreshold.view.canPointSideA, false);
+  assert.equal(atThreshold.view.canPointSideB, false);
+
+  const serverBefore = atThreshold.view.courtProjection.serving?.serverPlayerId;
+  const servingSideBefore = atThreshold.view.courtProjection.serving?.servingSide;
+  const leftBefore = atThreshold.view.courtProjection.sides.left.scoringSide;
+  const slotABefore = (
+    atThreshold.view.courtProjection.sides.left.scoringSide === "SIDE_A"
+      ? atThreshold.view.courtProjection.sides.left.activePlayers
+      : atThreshold.view.courtProjection.sides.right.activePlayers
+  ).map((p) => p.playerId);
+  const slotBBefore = (
+    atThreshold.view.courtProjection.sides.left.scoringSide === "SIDE_B"
+      ? atThreshold.view.courtProjection.sides.left.activePlayers
+      : atThreshold.view.courtProjection.sides.right.activePlayers
+  ).map((p) => p.playerId);
+
+  const confirmed = await client.confirmChangeEnds({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    expectedVersion: atThreshold.view.expectedVersion,
+    idempotencyKey: "r07-confirm",
+  });
+  assert.equal(confirmed.view.currentScore.points.SIDE_A, 11);
+  assert.equal(confirmed.view.currentScore.points.SIDE_B, 5);
+  assert.equal(confirmed.view.matchStatus, "IN_PROGRESS");
+  assert.equal(confirmed.view.courtProjection.sideChangeRequired, false);
+  assert.equal(confirmed.view.courtProjection.courtOrientation, "SWAPPED");
+  assert.equal(confirmed.view.courtProjection.serving?.serverPlayerId, serverBefore);
+  assert.equal(confirmed.view.courtProjection.serving?.servingSide, servingSideBefore);
+  assert.notEqual(confirmed.view.courtProjection.sides.left.scoringSide, leftBefore);
+  const slotAAfter = (
+    confirmed.view.courtProjection.sides.left.scoringSide === "SIDE_A"
+      ? confirmed.view.courtProjection.sides.left.activePlayers
+      : confirmed.view.courtProjection.sides.right.activePlayers
+  ).map((p) => p.playerId);
+  const slotBAfter = (
+    confirmed.view.courtProjection.sides.left.scoringSide === "SIDE_B"
+      ? confirmed.view.courtProjection.sides.left.activePlayers
+      : confirmed.view.courtProjection.sides.right.activePlayers
+  ).map((p) => p.playerId);
+  assert.deepEqual(slotAAfter, slotABefore);
+  assert.deepEqual(slotBAfter, slotBBefore);
+  assert.equal(confirmed.view.canScore, true);
+
+  const f5 = await client.getMatchView({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+  });
+  assert.equal(f5.view.courtProjection.courtOrientation, "SWAPPED");
+  assert.equal(f5.view.courtProjection.sideChangeRequired, false);
+  assert.equal(f5.view.currentScore.points.SIDE_A, 11);
+  assert.equal(f5.view.courtProjection.serving?.serverPlayerId, serverBefore);
+});
+
+test("remediation07: Owner opposite 5:10 → 5:11 triggers due on same ACK", async () => {
+  const format = createScoringFormat({
+    scoringSystem: SCORING_SYSTEM.RALLY,
+    pointsToWin: 21,
+    winBy: 2,
+    bestOfGames: 1,
+    sideSwitchAt: 11,
+  });
+  const { runtime } = createUiRuntime();
+  const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
+  fixture.modeState = dailyModeState(fixture.competitionId, fixture.matchId, {
+    scoringRules: format,
+  });
+  await seedAssigned(runtime, fixture);
+  const client = createClient(runtime, [fixture]);
+  const started = await startSideOutWithLineup(client, fixture, {
+    playerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+    serverPlayerId: "p3",
+    serverNumber: 1,
+    servingSide: "SIDE_B",
+  });
+  let version = started.view.expectedVersion;
+  for (let i = 0; i < 5; i += 1) {
+    const row = await client.submitPoint({
+      tenantId: "tenant-1",
+      matchId: fixture.matchId,
+      actor: ACTOR,
+      scoringSide: SCORING_SIDE.SIDE_A,
+      expectedVersion: version,
+      idempotencyKey: `r07b-a-${i}`,
+    });
+    version = row.view.expectedVersion;
+  }
+  for (let i = 0; i < 10; i += 1) {
+    const row = await client.submitPoint({
+      tenantId: "tenant-1",
+      matchId: fixture.matchId,
+      actor: ACTOR,
+      scoringSide: SCORING_SIDE.SIDE_B,
+      expectedVersion: version,
+      idempotencyKey: `r07b-b-${i}`,
+    });
+    version = row.view.expectedVersion;
+    assert.equal(row.view.courtProjection.sideChangeRequired, false);
+  }
+  const atThreshold = await client.submitPoint({
+    tenantId: "tenant-1",
+    matchId: fixture.matchId,
+    actor: ACTOR,
+    scoringSide: SCORING_SIDE.SIDE_B,
+    expectedVersion: version,
+    idempotencyKey: "r07b-10-to-11",
+  });
+  assert.equal(atThreshold.view.currentScore.points.SIDE_A, 5);
+  assert.equal(atThreshold.view.currentScore.points.SIDE_B, 11);
+  assert.equal(atThreshold.view.courtProjection.sideChangeRequired, true);
+  assert.equal(atThreshold.view.canScore, false);
+});
+
+test("remediation07: over-threshold unacked sticky; acked not retriggered", () => {
+  const unacked = resolveSideChangeRequiredAfterScoring({
+    priorCourt: { sideChangeRequired: false, sideChangeAcknowledgedAtThreshold: null },
+    priorPoints: { SIDE_A: 11, SIDE_B: 5 },
+    nextPoints: { SIDE_A: 12, SIDE_B: 5 },
+    sideSwitchAt: 11,
+    domainHints: [],
+  });
+  assert.equal(unacked.sideChangeRequired, true);
+
+  const restoredUnacked = resolveSideChangeRequiredAfterScoring({
+    priorCourt: { sideChangeRequired: false, sideChangeAcknowledgedAtThreshold: null },
+    priorPoints: { SIDE_A: 12, SIDE_B: 5 },
+    nextPoints: { SIDE_A: 12, SIDE_B: 5 },
+    sideSwitchAt: 11,
+    domainHints: [],
+  });
+  assert.equal(restoredUnacked.sideChangeRequired, true);
+
+  const acked = resolveSideChangeRequiredAfterScoring({
+    priorCourt: {
+      sideChangeRequired: false,
+      sideChangeAcknowledgedAtThreshold: 11,
+      sideChangeThreshold: 11,
+    },
+    priorPoints: { SIDE_A: 11, SIDE_B: 5 },
+    nextPoints: { SIDE_A: 12, SIDE_B: 5 },
+    sideSwitchAt: 11,
+    domainHints: [],
+  });
+  assert.equal(acked.sideChangeRequired, false);
+
+  const crossing = resolveSideChangeRequiredAfterScoring({
+    priorCourt: {},
+    priorPoints: { SIDE_A: 10, SIDE_B: 5 },
+    nextPoints: { SIDE_A: 11, SIDE_B: 5 },
+    sideSwitchAt: 11,
+    domainHints: ["ENDS_SWITCH_MILESTONE"],
+  });
+  assert.equal(crossing.sideChangeRequired, true);
 });

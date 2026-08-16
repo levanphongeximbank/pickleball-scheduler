@@ -227,6 +227,13 @@ export function buildRefereeMatchView(input) {
     .toUpperCase();
   const isSideOut = scoringSystem === SCORING_SYSTEM.SIDE_OUT;
   const isRally = scoringSystem === SCORING_SYSTEM.RALLY;
+  const changeEndDue = courtProjection.sideChangeRequired === true;
+  const canScoreBase =
+    matchStatus === MATCH_STATUS.IN_PROGRESS &&
+    capabilities.scoring !== false &&
+    assigned.scoreEntryReady !== false &&
+    (!hasCourtPlayers || lineupConfigured) &&
+    !changeEndDue;
   const servingSideNow = courtProjection.serving?.servingSide || scoreProjection?.serve?.servingSide || null;
   const receivingSideNow =
     servingSideNow === "SIDE_B" ? "SIDE_A" : servingSideNow === "SIDE_A" ? "SIDE_B" : null;
@@ -352,23 +359,12 @@ export function buildRefereeMatchView(input) {
     servingSideNow,
     receivingSideNow,
     canPointSideA:
-      matchStatus === MATCH_STATUS.IN_PROGRESS &&
-      capabilities.scoring !== false &&
-      assigned.scoreEntryReady !== false &&
-      (!hasCourtPlayers || lineupConfigured) &&
-      (!isSideOut || servingSideNow === "SIDE_A"),
+      canScoreBase && (!isSideOut || servingSideNow === "SIDE_A"),
     canPointSideB:
-      matchStatus === MATCH_STATUS.IN_PROGRESS &&
-      capabilities.scoring !== false &&
-      assigned.scoreEntryReady !== false &&
-      (!hasCourtPlayers || lineupConfigured) &&
-      (!isSideOut || servingSideNow === "SIDE_B"),
+      canScoreBase && (!isSideOut || servingSideNow === "SIDE_B"),
     canChangeServe:
       isSideOut &&
-      matchStatus === MATCH_STATUS.IN_PROGRESS &&
-      capabilities.scoring !== false &&
-      assigned.scoreEntryReady !== false &&
-      (!hasCourtPlayers || lineupConfigured) &&
+      canScoreBase &&
       Boolean(receivingSideNow),
     diagnostics: Object.freeze({
       expectedVersion: Number(input.expectedVersion ?? 0),
@@ -379,11 +375,7 @@ export function buildRefereeMatchView(input) {
     lineupConfigured,
     lineupRequired,
     canStart: canStartBase && (!hasCourtPlayers || lineupConfigured),
-    canScore:
-      matchStatus === MATCH_STATUS.IN_PROGRESS &&
-      capabilities.scoring !== false &&
-      assigned.scoreEntryReady !== false &&
-      (!hasCourtPlayers || lineupConfigured),
+    canScore: canScoreBase,
     canSuspend:
       matchStatus === MATCH_STATUS.IN_PROGRESS && capabilities.suspend !== false,
     canResume:

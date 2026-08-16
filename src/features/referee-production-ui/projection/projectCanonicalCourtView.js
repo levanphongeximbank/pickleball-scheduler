@@ -6,6 +6,7 @@
 import { COURT_ORIENTATION, COURT_SLOT } from "../constants.js";
 import { projectDreamBreakerRotation } from "./projectDreamBreakerRotation.js";
 import { formatCanonicalScoreLine } from "./formatScoringPolicyLabel.js";
+import { resolveSideChangeRequiredAfterScoring } from "../../competition-engine/integration/referee/deriveCanonicalCourtAfterScoring.js";
 
 function nameOf(id, names, fallback) {
   if (!id) return fallback || null;
@@ -171,7 +172,15 @@ export function projectCanonicalCourtView(input = {}) {
           ? fromCourtTurn
           : scoreLine.serviceTurn;
 
-  const sideChangeRequired = courtState.sideChangeRequired === true;
+  const points = score.points || {};
+  const sideChangeResolved = resolveSideChangeRequiredAfterScoring({
+    priorCourt: courtState,
+    priorPoints: points,
+    nextPoints: points,
+    sideSwitchAt: rules.sideSwitchAt ?? rules.changeEndAt ?? null,
+    domainHints: [],
+  });
+  const sideChangeRequired = sideChangeResolved.sideChangeRequired === true;
   const sideChangePolicy =
     input.lifecyclePolicy?.changeEndPolicyLabel ||
     input.lifecyclePolicy?.changeEndSummary ||
