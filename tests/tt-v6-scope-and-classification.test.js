@@ -118,14 +118,15 @@ describe("TT-V6 live pairing scope resolution", () => {
     }
   });
 
-  it("TeamAiPairingDialog passes tenantId into prepareLive", () => {
+  it("TeamAiPairingDialog uses opaque pairing runtime without Super Admin rule read", () => {
     const src = readFileSync(
       path.join(ROOT, "src/components/tournament/team/TeamAiPairingDialog.jsx"),
       "utf8"
     );
-    assert.match(src, /tenantId/);
-    assert.match(src, /prepareLivePrivatePairingOptions\(\{/);
+    assert.match(src, /formTeamTournamentPairingOpaque/);
     assert.match(src, /tournament\?\.clubId/);
+    assert.doesNotMatch(src, /prepareLivePrivatePairingOptions/);
+    assert.doesNotMatch(src, /private_pairing_get_active_rules_for_scope/);
   });
 });
 

@@ -158,6 +158,9 @@ export function buildRefereeAssignmentTable(teamData) {
     return {
       matchId: matchup.id,
       scheduledAt: matchup.scheduledAt,
+      scheduledEnd: matchup.scheduledEnd || null,
+      courtId: matchup.courtId || "",
+      clusterId: matchup.clusterId || "",
       courtLabel: matchup.courtLabel || "",
       teamAName: teamA?.name || matchup.teamAId,
       teamBName: teamB?.name || matchup.teamBId,

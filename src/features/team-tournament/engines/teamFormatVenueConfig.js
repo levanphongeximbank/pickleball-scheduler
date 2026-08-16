@@ -33,7 +33,9 @@ export const FORMAT_VENUE_SETTINGS_KEYS = Object.freeze([
   "qualificationCount",
   "qualifiersPerGroup",
   "knockoutFormat",
+  "clusterId",
   "selectedCourtIds",
+  "courtCapacityWindow",
   "teamsPerGroup",
   "stageTieBreakPolicy",
   "stageScoringPolicy",
@@ -203,6 +205,19 @@ export function resolveFormatVenueDefaults(teamData = {}, tournament = null) {
   const selectedCourtIds = Array.isArray(settings.selectedCourtIds)
     ? [...new Set(settings.selectedCourtIds.map((id) => String(id).trim()).filter(Boolean))]
     : [];
+  const clusterId =
+    settings.clusterId != null && String(settings.clusterId).trim()
+      ? String(settings.clusterId).trim()
+      : "";
+  const rawWindow =
+    settings.courtCapacityWindow && typeof settings.courtCapacityWindow === "object"
+      ? settings.courtCapacityWindow
+      : {};
+  const courtCapacityWindow = {
+    date: rawWindow.date ? String(rawWindow.date).slice(0, 10) : "",
+    startTime: rawWindow.startTime ? String(rawWindow.startTime).slice(0, 5) : "",
+    endTime: rawWindow.endTime ? String(rawWindow.endTime).slice(0, 5) : "",
+  };
 
   const teamsPerGroup =
     settings.teamsPerGroup != null && Number(settings.teamsPerGroup) > 0
@@ -221,7 +236,9 @@ export function resolveFormatVenueDefaults(teamData = {}, tournament = null) {
     qualifiersPerGroup,
     qualificationProgression,
     knockoutFormat,
+    clusterId,
     selectedCourtIds,
+    courtCapacityWindow,
     teamsPerGroup,
     stageTieBreakPolicy: normalizeStageTieBreakPolicy(rawSettings.stageTieBreakPolicy),
     stageScoringPolicy: normalizeStageScoringPolicy(rawSettings.stageScoringPolicy),
@@ -257,6 +274,23 @@ export function mergeFormatVenueIntoSettings(settings = {}, config = {}) {
     resolved.selectedCourtIds = [
       ...new Set(config.selectedCourtIds.map((id) => String(id).trim()).filter(Boolean)),
     ];
+  }
+  if (config.clusterId !== undefined) {
+    resolved.clusterId =
+      config.clusterId != null && String(config.clusterId).trim()
+        ? String(config.clusterId).trim()
+        : "";
+  }
+  if (config.courtCapacityWindow !== undefined) {
+    const raw =
+      config.courtCapacityWindow && typeof config.courtCapacityWindow === "object"
+        ? config.courtCapacityWindow
+        : {};
+    resolved.courtCapacityWindow = {
+      date: raw.date ? String(raw.date).slice(0, 10) : "",
+      startTime: raw.startTime ? String(raw.startTime).slice(0, 5) : "",
+      endTime: raw.endTime ? String(raw.endTime).slice(0, 5) : "",
+    };
   }
 
   const next = { ...settings };
@@ -335,7 +369,8 @@ export function buildCourtSlotsFromSelectedIds(selectedCourtIds = [], venueCourt
     courtId: String(court.id),
     courtLabel:
       court.name ||
-      (court.number != null ? `Sân ${court.number}` : `Sân ${index + 1}`),
+      court.label ||
+      (court.number != null ? `Sân ${court.number}` : String(court.id)),
     index,
   }));
 }

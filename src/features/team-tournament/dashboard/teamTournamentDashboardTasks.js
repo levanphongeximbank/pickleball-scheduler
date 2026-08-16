@@ -148,11 +148,17 @@ export function buildRefereeDashboardAssignments({
       matchupId,
       matchId: matchId || null,
       scheduledAt: matchup.scheduledAt || assignment.scheduledAt || null,
+      scheduledEnd: matchup.scheduledEnd || assignment.scheduledEnd || null,
+      courtId: matchup.courtId || assignment.courtId || null,
+      clusterId: matchup.clusterId || assignment.clusterId || null,
       courtLabel: matchup.courtLabel || assignment.courtLabel || null,
       label: matchupLabel(
         {
           ...matchup,
           scheduledAt: matchup.scheduledAt || assignment.scheduledAt,
+          scheduledEnd: matchup.scheduledEnd || assignment.scheduledEnd || null,
+          courtId: matchup.courtId || assignment.courtId || null,
+          clusterId: matchup.clusterId || assignment.clusterId || null,
           courtLabel: matchup.courtLabel || assignment.courtLabel,
         },
         teamsById

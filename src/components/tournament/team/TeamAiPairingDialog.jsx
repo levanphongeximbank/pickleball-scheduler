@@ -25,12 +25,11 @@ import {
   getPublishedAiDrawState,
   snapshotTeamFormationResult,
 } from "../../../features/team-tournament/engines/aiDrawSeedAudit.js";
-import { runTeamFormationWithCanonicalAdapter } from "../../../features/competition-core/formation/adapters/teamFormationAdapter.js";
+import { formTeamTournamentPairingOpaque } from "../../../features/team-tournament/services/opaqueTeamFormationRuntime.js";
 import {
   COMPETITION_CLASS,
   createSeededRng,
   PRIVATE_PAIRING_OPERATION,
-  prepareLivePrivatePairingOptions,
 } from "../../../features/private-pairing-rules/index.js";
 import TournamentPlayerQuickAddDialog from "../TournamentPlayerQuickAddDialog.jsx";
 import { formatPlayerPickerMeta } from "../../../utils/tournamentPlayerPicker.js";
@@ -87,9 +86,6 @@ export default function TeamAiPairingDialog({
   clubId = "",
   tournamentId = "",
   tournament = null,
-  tenantId = null,
-  clubFromQuery = null,
-  activeClubId = null,
   competitionClass = COMPETITION_CLASS.INTERNAL,
   defaultClubName = "",
   onPlayersRefresh,
@@ -154,6 +150,10 @@ export default function TeamAiPairingDialog({
       waitingPlayerIds: pending.waitingPlayerIds,
       warnings: pending.warnings,
       privatePairingMeta: pending.privatePairingMeta,
+      randomSeed: pending.randomSeed,
+      rulesVersion: pending.rulesVersion,
+      algorithmVersion: pending.algorithmVersion,
+      scoreBreakdown: pending.scoreBreakdown,
     });
     setCaptains(pending.captains || {});
     return pending;
@@ -317,22 +317,6 @@ export default function TeamAiPairingDialog({
     setGroupTeamData(null);
     setRevealSession(null);
 
-    const prepared = await prepareLivePrivatePairingOptions({
-      tournament: tournament || { id: tournamentId, clubId, tenantId },
-      tournamentId: tournamentId || tournament?.id || null,
-      clubId: clubId || tournament?.clubId || null,
-      clubFromQuery,
-      activeClubId,
-      tenantId: tenantId || tournament?.tenantId || null,
-      competitionClass: resolvedCompetitionClass,
-      pairingConstraints: [],
-    });
-
-    if (!prepared.ok) {
-      onError?.(prepared.error?.message || "Không thể ghép đội theo quy tắc riêng.");
-      return;
-    }
-
     const reconciliation = reconcileSelectedAthletesForEngineInput({
       athletes: pickerPlayers,
       selectedAthleteIds: selectedIds,
@@ -361,34 +345,31 @@ export default function TeamAiPairingDialog({
       return;
     }
 
-    const resolvedClubId = prepared.pairingOptions?.clubId || clubId || null;
-    const resolvedTournamentId =
-      prepared.pairingOptions?.tournamentId || tournamentId || null;
     const published = getPublishedAiDrawState(
       teamData,
       PRIVATE_PAIRING_OPERATION.TEAM_FORMATION
     );
     const randomSeed = createAiDrawRandomSeed(published?.randomSeed);
 
-    const pairing = runTeamFormationWithCanonicalAdapter({
+    const pairing = await formTeamTournamentPairingOpaque({
+      tournamentId: tournamentId || tournament?.id || null,
       players: reconciliation.finalAthletes,
       selectedPlayerIds: reconciliation.finalAthletes.map((athlete) => String(athlete.id)),
       teamCount,
       teamNames,
       formatPreset: teamData?.settings?.formatPreset || FORMAT_PRESET.MLP_4,
-      privatePairingRules: prepared.pairingOptions?.privatePairingRules || [],
       competitionClass: resolvedCompetitionClass,
-      clubId: resolvedClubId,
-      tournamentId: resolvedTournamentId,
+      clubId: clubId || tournament?.clubId || null,
       seed: randomSeed,
       randomFn: createSeededRng(randomSeed),
       requireFullFill: true,
     });
 
     if (pairing.privatePairingError || pairing.ok === false) {
-      const code = pairing.privatePairingError?.code;
+      const code = pairing.privatePairingError?.code || pairing.code;
       onError?.(
         pairing.privatePairingError?.message ||
+          pairing.message ||
           (code ? `${pairing.warnings?.[0] || "Không thể ghép đội"} (${code})` : null) ||
           pairing.warnings?.[0] ||
           "Không thể ghép đội thỏa quy tắc bắt buộc."
@@ -439,6 +420,10 @@ export default function TeamAiPairingDialog({
       waitingPlayerIds: pairing.waitingPlayerIds,
       warnings: pairing.warnings,
       privatePairingMeta: pairing.privatePairingMeta,
+      randomSeed,
+      rulesVersion: pairing.rulesVersion || "",
+      algorithmVersion: pairing.algorithmVersion || AI_DRAW_ALGORITHM_VERSION,
+      scoreBreakdown: pairing.privatePairingMeta || null,
       captains: initialCaptains,
     };
     setFocusTeamIndex(0);

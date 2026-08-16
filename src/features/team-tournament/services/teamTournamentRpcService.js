@@ -509,6 +509,10 @@ async function callTeamTournamentRpc(rpcName, args = {}) {
       "REFEREE_NOT_ASSIGNED",
       "MISSING_EXPECTED_VERSION",
       "MISSING_IDEMPOTENCY_KEY",
+      "NO_FEASIBLE_PAIRING",
+      "PAIRING_SEARCH_LIMIT_REACHED",
+      "PAIRING_RULE_CONSTRAINT_UNSATISFIED",
+      "CANONICAL_NOT_FOUND",
     ];
     if (passthrough.includes(code)) {
       const mapped = mapTeamTournamentDomainFailure(payload);
@@ -1267,6 +1271,27 @@ export async function rpcTeamTournamentCreateCanonical(params = {}) {
     p_league_id: params.leagueId || null,
     p_created_by: params.createdBy || null,
     p_settings: params.settings || {},
+  });
+  return mapOptionalLifecycleRpc(result);
+}
+
+export async function rpcTeamTournamentRename(params = {}) {
+  const result = await callTeamTournamentRpc("team_tournament_rename", {
+    p_tournament_id: String(params.tournamentId || ""),
+    p_name: String(params.name || ""),
+  });
+  return mapOptionalLifecycleRpc(result);
+}
+
+export async function rpcTeamTournamentFormPairingOpaque(params = {}) {
+  const result = await callTeamTournamentRpc("team_tournament_form_pairing_opaque", {
+    p_tournament_id: String(params.tournamentId || ""),
+    p_candidates: Array.isArray(params.candidates) ? params.candidates : [],
+    p_competition_class: params.competitionClass || "INTERNAL",
+    p_club_id: params.clubId || null,
+    p_seed: params.seed == null ? null : String(params.seed),
+    p_request_id: params.requestId || null,
+    p_allowed_by_published_rules: params.allowedByPublishedRules === true,
   });
   return mapOptionalLifecycleRpc(result);
 }
