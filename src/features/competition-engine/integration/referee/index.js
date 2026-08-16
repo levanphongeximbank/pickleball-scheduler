@@ -81,6 +81,19 @@ export {
 
 export { runCompetitionRefereeAdapterConformance } from "./conformance.js";
 
+export {
+  createDailyPlayRefereeAdapter,
+  DailyPlayRefereeAdapter,
+  createInternalTournamentRefereeAdapter,
+  InternalTournamentRefereeAdapter,
+  createOfficialTournamentRefereeAdapter,
+  OfficialTournamentRefereeAdapter,
+  createTeamTournamentRefereeAdapter,
+  TeamTournamentRefereeAdapter,
+  createCompetitionRefereeModeAdapters,
+  createCompetitionRefereeModeAdapterRegistry,
+} from "./adapters/index.js";
+
 export const COMPETITION_REFEREE_ADAPTER_INTEGRATION = Object.freeze({
   id: "competition.referee.adapter.v1",
   version: "1.0.0",
@@ -92,4 +105,7 @@ export const COMPETITION_REFEREE_ADAPTER_INTEGRATION = Object.freeze({
   productionRuntimeImplemented: true,
   defaultRuntimeWiringImplemented: true,
   stagingBackendCertified: false,
+  // Phase 2A: mode Adapter B implementations exist; production cutover is Phase 2B
+  modeAdaptersImplemented: true,
+  usesAdapterBProductionCutover: false,
 });
