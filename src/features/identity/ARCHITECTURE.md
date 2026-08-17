@@ -228,6 +228,19 @@ Rollback: `docs/supabase-identity-v40-phaseC-rollback.sql`
 
 Services gọi RPC trước, fallback direct query nếu SQL Phase C chưa apply.
 
+## Competition Contract #01 — subject identity point lookup
+
+`services/subjectIdentityLookupService.js` is the Identity-owned read for one canonical `subjectId`.
+
+- Point lookup only. No email / phone / display-name / bulk directory search.
+- Returns Competition-safe evidence: canonical subject id, Identity role, active/inactive status, tenant/venue/club scope.
+- Does not expose email, phone, password, session, or other private credentials.
+- Competition Adapter B translates this service. Competition must not query `public.profiles` directly.
+- Persistence (`subjectIdentityPersistence.js`) reads only `id, role, status, tenant_id, venue_id, club_id`. It does not reuse the legacy login profile projection.
+- **Tenant is not venue.** `tenantId` comes only from `tenant_id` / `tenantId`. `venueId` comes only from `venue_id` / `venueId`. Missing tenant is `null`; venue is never copied onto tenant, and venue equality is never tenant proof.
+- **Status is not synthesized.** Explicit `active` → `active=true`. Explicit `suspended` / `inactive` / `invited` → `active=false`. Missing or unreadable status fails closed as incomplete evidence.
+- If origin/main has no canonical `tenant_id` yet, Contract #01 returns `tenantId=null` and fails closed when a consumer requests tenant proof. Same UUID on both fields does not collapse the entities.
+
 ### Tests
 
 `tests/identity-phaseC.test.js` — `/audit` guard, audit list permission, user list permission.

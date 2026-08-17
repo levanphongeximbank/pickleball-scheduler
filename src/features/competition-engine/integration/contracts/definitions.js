@@ -54,11 +54,13 @@ export const IDENTITY_ACCESS_CONTRACT = defineContract({
     capability("resolveActorIdentity", CAPABILITY_KIND.QUERY),
     capability("getAuthorizationEvidence", CAPABILITY_KIND.QUERY),
     capability("getCapabilityEvidence", CAPABILITY_KIND.QUERY),
+    capability("resolveSubjectIdentity", CAPABILITY_KIND.QUERY),
   ],
   requiredMethods: [
     "resolveActorIdentity",
     "getAuthorizationEvidence",
     "getCapabilityEvidence",
+    "resolveSubjectIdentity",
   ],
   forbiddenMethods: [
     "authenticateCredentials",
@@ -67,6 +69,13 @@ export const IDENTITY_ACCESS_CONTRACT = defineContract({
     "grantPermission",
     "createRole",
     "inferIdentityByDisplayName",
+    "resolveSubjectIdentityByEmail",
+    "resolveSubjectIdentityByPhone",
+    "resolveSubjectIdentityByName",
+    "searchSubjects",
+    "listSubjects",
+    "findRefereeByName",
+    "bulkResolveIdentityDirectory",
   ],
 });
 
