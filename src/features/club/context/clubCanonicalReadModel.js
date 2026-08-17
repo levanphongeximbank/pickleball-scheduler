@@ -21,6 +21,17 @@ export const CLUB_READ_STATE = Object.freeze({
   ERROR: "error",
 });
 
+/**
+ * Persisted active-club id is a HINT, not authority.
+ * Clear storage only after AUTHORITATIVE rejection (INVALID), never while PENDING.
+ */
+export const CLUB_PREFERENCE_STATUS = Object.freeze({
+  NONE: "none",
+  PENDING_VALIDATION: "pending_validation",
+  VALID: "valid",
+  INVALID: "invalid",
+});
+
 /** Forbidden synthetic tenants — never treat as ready. */
 const FORBIDDEN_CANONICAL_TENANTS = new Set(["default-tenant", "default"]);
 
@@ -159,31 +170,75 @@ export function filterAccessibleCanonicalClubs({
  *
  * When requireTenant=true (canonical ClubContext path), only clubs with an
  * explicit tenant identity are selectable; the returned activeClub is
- * normalized to expose both tenantId and venueId.
+ * normalized to expose both tenantId and venueId (explicit Wave 1 compatibility
+ * mapping — not a claim that tenant ≡ venue universally).
+ *
+ * When selectedTenantId is provided, clubs outside that operational tenant are
+ * rejected even if they remain in an authorized platform-wide catalog.
+ *
+ * authorityReady=false means the eligible list is not yet authoritative for the
+ * selected operational scope (loading, tenant not restored, transient empty).
+ * In that case a preferred id stays PENDING_VALIDATION — callers must not clear
+ * the persisted hint.
  *
  * @param {object} params
  * @param {string|null|undefined} params.preferredClubId
  * @param {Array<{id:string}>} params.visibleClubs
  * @param {boolean} [params.requireTenant=false]
- * @returns {{ activeClubId: string|null, activeClub: object|null, stale: boolean }}
+ * @param {string|null|undefined} [params.selectedTenantId]
+ * @param {boolean} [params.authorityReady=true]
+ * @returns {{
+ *   activeClubId: string|null,
+ *   activeClub: object|null,
+ *   stale: boolean,
+ *   preferenceStatus: string,
+ * }}
  */
 export function resolveActiveClubSelection({
   preferredClubId,
   visibleClubs,
   requireTenant = false,
+  selectedTenantId = null,
+  authorityReady = true,
 } = {}) {
+  const preferred = String(preferredClubId || "").trim();
+
+  if (!authorityReady) {
+    return {
+      // Keep the hint id for rehydrate continuity; activeClub stays null until validated.
+      activeClubId: preferred || null,
+      activeClub: null,
+      stale: false,
+      preferenceStatus: preferred
+        ? CLUB_PREFERENCE_STATUS.PENDING_VALIDATION
+        : CLUB_PREFERENCE_STATUS.NONE,
+    };
+  }
+
   const rawList = Array.isArray(visibleClubs) ? visibleClubs : [];
-  const list = requireTenant
+  const selected = String(selectedTenantId || "").trim() || null;
+  let list = requireTenant
     ? rawList.map(normalizeCanonicalActiveClub).filter(Boolean)
     : rawList;
-  const preferred = String(preferredClubId || "").trim();
+
+  if (selected) {
+    list = list.filter((club) => {
+      const clubTenant = resolveExplicitTenantFromCanonicalClub(club);
+      return clubTenant === selected;
+    });
+  }
 
   if (preferred) {
     const match = list.find((club) => club.id === preferred);
     if (match) {
       const activeClub = requireTenant ? normalizeCanonicalActiveClub(match) : match;
       if (!requireTenant || activeClub) {
-        return { activeClubId: preferred, activeClub, stale: false };
+        return {
+          activeClubId: preferred,
+          activeClub,
+          stale: false,
+          preferenceStatus: CLUB_PREFERENCE_STATUS.VALID,
+        };
       }
     }
   }
@@ -197,6 +252,9 @@ export function resolveActiveClubSelection({
         activeClubId: only.id,
         activeClub,
         stale: Boolean(preferred),
+        preferenceStatus: preferred
+          ? CLUB_PREFERENCE_STATUS.INVALID
+          : CLUB_PREFERENCE_STATUS.NONE,
       };
     }
   }
@@ -205,7 +263,35 @@ export function resolveActiveClubSelection({
     activeClubId: null,
     activeClub: null,
     stale: Boolean(preferred) || list.length > 1,
+    preferenceStatus: preferred
+      ? CLUB_PREFERENCE_STATUS.INVALID
+      : CLUB_PREFERENCE_STATUS.NONE,
   };
+}
+
+/**
+ * Whether ClubContext may authoritatively validate / clear a persisted club hint.
+ * Transient tenant=null or non-READY reads must keep PREFERENCE_PENDING_VALIDATION.
+ *
+ * @param {{
+ *   canonicalRead?: boolean,
+ *   clubReadState?: string,
+ *   selectedTenantId?: string|null,
+ * }} params
+ * @returns {boolean}
+ */
+export function isClubPreferenceAuthorityReady({
+  canonicalRead = false,
+  clubReadState = CLUB_READ_STATE.IDLE,
+  selectedTenantId = null,
+} = {}) {
+  if (!canonicalRead) {
+    return Boolean(String(selectedTenantId || "").trim());
+  }
+  return (
+    clubReadState === CLUB_READ_STATE.READY &&
+    Boolean(String(selectedTenantId || "").trim())
+  );
 }
 
 /**

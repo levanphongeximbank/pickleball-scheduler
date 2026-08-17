@@ -52,7 +52,7 @@ afterEach(() => {
   Date.now = originalDateNow;
 });
 
-test("createTournament saves tournament in club blob", () => {
+test("createTournament saves tournament in club blob", async () => {
   const result = createTournament(DEFAULT_CLUB.id, {
     name: "Chơi vui thứ 7",
     mode: TOURNAMENT_MODE.DAILY_PLAY,
@@ -68,12 +68,12 @@ test("createTournament saves tournament in club blob", () => {
   assert.equal(data.tournaments[0].id, result.tournament.id);
 });
 
-test("createTournament rejects empty name", () => {
+test("createTournament rejects empty name", async () => {
   const result = createTournament(DEFAULT_CLUB.id, { name: "   " });
   assert.equal(result.ok, false);
 });
 
-test("listTournaments filters by mode and status", () => {
+test("listTournaments filters by mode and status", async () => {
   createTournament(DEFAULT_CLUB.id, {
     name: "Daily A",
     mode: TOURNAMENT_MODE.DAILY_PLAY,
@@ -90,7 +90,7 @@ test("listTournaments filters by mode and status", () => {
   assert.equal(daily[0].name, "Daily A");
 });
 
-test("getTournament returns saved record", () => {
+test("getTournament returns saved record", async () => {
   const created = createTournament(DEFAULT_CLUB.id, {
     name: "Open Cup",
     mode: TOURNAMENT_MODE.OFFICIAL_TOURNAMENT,
@@ -101,7 +101,7 @@ test("getTournament returns saved record", () => {
   assert.equal(found.officialMode, OFFICIAL_MODE.AI_BALANCE);
 });
 
-test("updateTournament patches fields without changing id", () => {
+test("updateTournament patches fields without changing id", async () => {
   const created = createTournament(DEFAULT_CLUB.id, {
     name: "Giải nội bộ",
     mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
@@ -117,7 +117,7 @@ test("updateTournament patches fields without changing id", () => {
   assert.equal(updated.tournament.status, TOURNAMENT_STATUS.REGISTRATION);
 });
 
-test("validateTournamentStatusChange blocks invalid transition", () => {
+test("validateTournamentStatusChange blocks invalid transition", async () => {
   const tournament = {
     status: TOURNAMENT_STATUS.DRAFT,
     mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
@@ -137,7 +137,7 @@ test("validateTournamentStatusChange blocks invalid transition", () => {
   assert.equal(valid.ok, true);
 });
 
-test("advanceTournamentStatus walks draft to ready through registration", () => {
+test("advanceTournamentStatus walks draft to ready through registration", async () => {
   const created = createTournament(DEFAULT_CLUB.id, {
     name: "Giải nội bộ",
     mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
@@ -166,7 +166,7 @@ test("advanceTournamentStatus walks draft to ready through registration", () => 
   assert.equal(result.tournament.events[0].groups.length, 1);
 });
 
-test("setTournamentStatus blocks active when no groups for internal tournament", () => {
+test("setTournamentStatus blocks active when no groups for internal tournament", async () => {
   const created = createTournament(DEFAULT_CLUB.id, {
     name: "Giải nội bộ",
     mode: TOURNAMENT_MODE.INTERNAL_TOURNAMENT,
@@ -188,7 +188,7 @@ test("setTournamentStatus blocks active when no groups for internal tournament",
   assert.equal(active.ok, false);
 });
 
-test("setTournamentStatus allows active for daily play without groups", () => {
+test("setTournamentStatus allows active for daily play without groups", async () => {
   const created = createTournament(DEFAULT_CLUB.id, {
     name: "Chơi vui",
     mode: TOURNAMENT_MODE.DAILY_PLAY,
@@ -210,7 +210,7 @@ test("setTournamentStatus allows active for daily play without groups", () => {
   assert.equal(active.ok, true);
 });
 
-test("deleteTournament only removes draft or cancelled tournaments", () => {
+test("deleteTournament only removes draft or cancelled tournaments", async () => {
   const created = createTournament(DEFAULT_CLUB.id, {
     name: "Giải tạm",
     mode: TOURNAMENT_MODE.DAILY_PLAY,
@@ -235,7 +235,7 @@ test("deleteTournament only removes draft or cancelled tournaments", () => {
   assert.equal(blocked.ok, false);
 });
 
-test("purgeOpenTournaments removes all non-completed and non-cancelled tournaments", () => {
+test("purgeOpenTournaments removes all non-completed and non-cancelled tournaments", async () => {
   const data = loadClubData(DEFAULT_CLUB.id);
   data.tournaments = [];
   saveClubData(DEFAULT_CLUB.id, data);
@@ -300,7 +300,7 @@ test("purgeOpenTournaments removes all non-completed and non-cancelled tournamen
   );
   assert.equal(cancelledDone.ok, true);
 
-  const result = purgeOpenTournaments(DEFAULT_CLUB.id);
+  const result = await purgeOpenTournaments(DEFAULT_CLUB.id);
   assert.equal(result.ok, true);
   assert.equal(result.removedCount, 2);
 
@@ -312,7 +312,7 @@ test("purgeOpenTournaments removes all non-completed and non-cancelled tournamen
   assert.equal(getTournament(DEFAULT_CLUB.id, active.tournament.id), null);
 });
 
-test("legacy club data remains intact after tournament CRUD", () => {
+test("legacy club data remains intact after tournament CRUD", async () => {
   const data = loadClubData(DEFAULT_CLUB.id);
   data.players = [{ id: 1, name: "A", gender: "Nam", level: 3.5, active: true }];
   data.rounds = [{ id: "r1", name: "Vòng 1" }];

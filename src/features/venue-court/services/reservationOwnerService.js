@@ -70,8 +70,11 @@ export function normalizeOwnerInput(owner) {
 
   const aliases = {
     tournament: RESERVATION_OWNER_TYPE.TOURNAMENT,
+    competition: RESERVATION_OWNER_TYPE.TOURNAMENT,
     customer: RESERVATION_OWNER_TYPE.CUSTOMER,
+    booking: RESERVATION_OWNER_TYPE.CUSTOMER,
     maintenance: RESERVATION_OWNER_TYPE.MAINTENANCE,
+    operations: RESERVATION_OWNER_TYPE.OPERATIONS,
     daily_play: RESERVATION_OWNER_TYPE.DAILY_PLAY,
     dailyplay: RESERVATION_OWNER_TYPE.DAILY_PLAY,
     social_play: RESERVATION_OWNER_TYPE.DAILY_PLAY,

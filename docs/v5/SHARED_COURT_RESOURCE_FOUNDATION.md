@@ -3,7 +3,12 @@
 **Status:** Code foundation on existing booking/inventory substrate  
 **Module owner:** Court Resource (`src/features/court-resource/`)
 **Compatibility substrate:** Venue & Court (`src/features/venue-court/`)
-**Not:** Team Tournament-specific. **Not:** Court Engine live occupancy. **Not:** reservation authority cutover.
+**Not:** Team Tournament-specific. **Not:** Court Engine live occupancy. **Not:** silent Production reservation cutover.
+
+Phase 3B authors the canonical reservation table and RPCs under
+`docs/v5/migrations/court-resource-phase3b-canonical-reservation-01/`.
+`CANONICAL_RESERVATION_CUTOVER` defaults to **false**. Court Engine remains a
+projection/read consumer and does not insert canonical reservation rows.
 
 This document extends — it does not replace — `docs/venue-court/` Phase 1–3 contracts.
 
@@ -44,20 +49,26 @@ Match assignment is **validation**. It must not create a customer booking merely
 
 ## Ownership of concerns
 
+**Frozen:** `COURT_RESOURCE_OWNER=2.2_COURT_OPERATIONS`. See `src/features/court-resource/OWNERSHIP.md`.
+
 | Owner | Owns |
 | ----- | ---- |
-| Venue & Court | inventory, hours, capabilities, inactive/maintenance master state |
-| Court Resource Authority (this foundation) | availability, reserve, release, conflict, reservation ownership, resource lease |
+| 2.1 Venue Management | venue identity / lifecycle |
+| Platform organization | tenant / organization identity |
+| 2.3 Club Management | club identity / lifecycle / membership — **not** court access |
+| 2.2 Court Operations (`src/features/court-resource/`) | `CourtResourceGateway`, Physical Court identity (`physicalCourtId`), cluster topology (`clusterId` filter only), court inventory, club→physicalCourt operational access, eligibility, availability, reserve, release, conflict, reservation ownership |
+| Venue & Court (`src/features/venue-court/`) | **transitional compatibility** hours/capabilities and legacy `club_data_v3` court projection — **not** target inventory/capacity SSOT |
 | Competition / Tournament | participants, draw, stage, schedule, match, **planned** court assignment, scoring |
 | Court Engine | actual physical court, actual start/end, playing/paused, transfer, live occupancy, referee dispatch |
 
-Do not move Venue/Court authority into Tournament. Do not add Competition-owned physical locks in this batch.
+Do not move Court Operations authority into Venue Management, Club Management, or Tournament. Do not add Competition-owned physical locks in this batch.
 
 ---
 
 ## Shared contract (`CourtResourceGateway`)
 
 ```javascript
+listEligibleCourts(options)        // canonical inventory: tenantId + clubId + optional clusterId
 getCourtAvailability(options)      // owner-aware; delegates to canonical availability
 reserveCourts(options)             // selected courtId × window; not whole cluster
 releaseCourts(options)             // only reservations owned by options.owner

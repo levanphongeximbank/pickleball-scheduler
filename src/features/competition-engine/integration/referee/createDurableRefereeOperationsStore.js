@@ -21,6 +21,7 @@ function emptyRecord(tenantId, competitionId) {
     matches: {},
     scoreSessions: {},
     courtsByMatch: {},
+    idempotencyByMatch: {},
     validationByMatch: {},
     revision: 0,
   };
@@ -95,6 +96,11 @@ export function createDurableRefereeOperationsStore(options = {}) {
       if (canonical.court) {
         record.courtsByMatch[live.matchId] = clonePlain(canonical.court);
       }
+      if (canonical.idempotencyReceipts) {
+        record.idempotencyByMatch[live.matchId] = clonePlain(
+          canonical.idempotencyReceipts
+        );
+      }
       if (canonical.validation) {
         record.validationByMatch[live.matchId] = clonePlain(canonical.validation);
       }
@@ -111,15 +117,7 @@ export function createDurableRefereeOperationsStore(options = {}) {
   async function persistMatchSlice(tenantId, competitionId, matchId, record, actor) {
     const actorId = requireCanonicalRefereeActor(actor);
     const scope = { tenantId, competitionId, matchId };
-    // Prefer request-local live from CAS pre-read — avoid a duplicate getLiveState.
-    let live =
-      commandContext?.currentLive &&
-      String(commandContext.currentLive.matchId || "") === String(matchId)
-        ? commandContext.currentLive
-        : null;
-    if (!live) {
-      live = await resolve(driver.getLiveState(scope));
-    }
+    let live = await resolve(driver.getLiveState(scope));
     if (!live) {
       await resolve(
         driver.ensureLiveState(
@@ -141,6 +139,7 @@ export function createDurableRefereeOperationsStore(options = {}) {
         record.courtsByMatch?.[matchId] != null
           ? record.courtsByMatch[matchId]
           : live.statePayload?.canonical?.court || null,
+      idempotencyReceipts: record.idempotencyByMatch?.[matchId] || null,
       validation: record.validationByMatch?.[matchId] || null,
       venueId: record.venueId,
     };
@@ -163,11 +162,10 @@ export function createDurableRefereeOperationsStore(options = {}) {
     const idempotencyKey = callerKey
       ? `${callerKey}::${contentHash}`
       : contentHash;
-    const committed = await resolve(
+    await resolve(
       driver.commitTransition(
         {
           ...scope,
-          currentLive: live,
           expectedVersion: Number(live.stateVersion ?? live.version ?? 0),
           expectedEventSequence: Number(live.lastEventSequence || 0),
           idempotencyKey,
@@ -180,10 +178,6 @@ export function createDurableRefereeOperationsStore(options = {}) {
         actor
       )
     );
-    if (commandContext) {
-      commandContext.commitSubphases = committed?.commitSubphases || null;
-    }
-    return committed?.live || null;
   }
 
   async function getOrCreate(tenantId, competitionId) {
@@ -198,39 +192,18 @@ export function createDurableRefereeOperationsStore(options = {}) {
     setCommandContext(context) {
       commandContext = context || null;
     },
-    getLastCommittedLive() {
-      return commandContext?.lastCommittedLive || null;
-    },
-    getCommitSubphases() {
-      return commandContext?.commitSubphases || null;
-    },
     get: getOrCreate,
     async getRaw(tenantId, competitionId) {
       return clonePlain(await reconstruct(tenantId, competitionId));
     },
     async update(tenantId, competitionId, mutator) {
-      // Hot score path: reuse request-local seedRecord (single-match) — no competition-wide
-      // listByCompetition / listLiveStates reconstruct.
-      const seeded =
-        commandContext?.seedRecord &&
-        String(commandContext.seedRecord.tenantId || "") === String(tenantId || "") &&
-        String(commandContext.seedRecord.competitionId || "") ===
-          String(competitionId || "")
-          ? commandContext.seedRecord
-          : null;
-      const before = clonePlain(
-        seeded || (await reconstruct(tenantId, competitionId))
-      );
+      const before = clonePlain(await reconstruct(tenantId, competitionId));
       const draft = clonePlain(before);
       mutator(draft, { nextId, clockIso });
       draft.revision = Number(draft.revision || 0) + 1;
       draft.updatedAt = clockIso;
       const actor = currentActor();
-      const assignmentsChanged =
-        hashCanonical(before.assignments || []) !==
-        hashCanonical(draft.assignments || []);
-      // submitPoint must not rewrite unchanged assignment rows.
-      if (actor && assignmentsChanged) {
+      if (actor) {
         for (const row of draft.assignments || []) {
           await resolve(
             driver.upsertAssignment(
@@ -260,41 +233,33 @@ export function createDurableRefereeOperationsStore(options = {}) {
         ...Object.keys(draft.scoreSessions || {}),
         ...Object.keys(before.courtsByMatch || {}),
         ...Object.keys(draft.courtsByMatch || {}),
+        ...Object.keys(before.idempotencyByMatch || {}),
+        ...Object.keys(draft.idempotencyByMatch || {}),
         ...Object.keys(before.validationByMatch || {}),
         ...Object.keys(draft.validationByMatch || {}),
       ]);
-      let lastCommittedLive = null;
       if (actor) {
         for (const matchId of matchIds) {
           const beforeHash = hashCanonical({
             match: before.matches?.[matchId] || null,
             scoreSession: before.scoreSessions?.[matchId] || null,
             court: before.courtsByMatch?.[matchId] || null,
+            idempotencyReceipts: before.idempotencyByMatch?.[matchId] || null,
             validation: before.validationByMatch?.[matchId] || null,
           });
           const afterHash = hashCanonical({
             match: draft.matches?.[matchId] || null,
             scoreSession: draft.scoreSessions?.[matchId] || null,
             court: draft.courtsByMatch?.[matchId] || null,
+            idempotencyReceipts: draft.idempotencyByMatch?.[matchId] || null,
             validation: draft.validationByMatch?.[matchId] || null,
           });
           if (beforeHash !== afterHash) {
-            lastCommittedLive = await persistMatchSlice(
-              tenantId,
-              competitionId,
-              matchId,
-              draft,
-              actor
-            );
+            await persistMatchSlice(tenantId, competitionId, matchId, draft, actor);
           }
         }
       }
-      if (commandContext) {
-        commandContext.lastCommittedLive = lastCommittedLive;
-      }
-      // Avoid a second full competition reconstruct after commit — draft is authoritative
-      // for the mutated slices just persisted.
-      return deepFreeze(clonePlain(draft));
+      return deepFreeze(clonePlain(await reconstruct(tenantId, competitionId)));
     },
     async upsertAssignments(tenantId, competitionId, assignments, meta = {}) {
       const actor = meta.actor || currentActor();

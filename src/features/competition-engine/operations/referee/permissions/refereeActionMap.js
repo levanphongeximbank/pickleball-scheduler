@@ -103,6 +103,13 @@ export const REFEREE_ACTION_PERMISSION_MAP = Object.freeze({
     ]),
     requireVenue: false,
   }),
+  [REFEREE_ACTION.SCORE_UNDO]: Object.freeze({
+    capability: REFEREE_CAPABILITY.SCORE_SUBMIT,
+    requiredPermissions: Object.freeze([
+      PERMISSIONS.COMPETITION_REFEREE_SCORE_SUBMIT,
+    ]),
+    requireVenue: false,
+  }),
   [REFEREE_ACTION.RESULT_SUBMIT]: Object.freeze({
     capability: REFEREE_CAPABILITY.RESULT_SUBMIT,
     requiredPermissions: Object.freeze([

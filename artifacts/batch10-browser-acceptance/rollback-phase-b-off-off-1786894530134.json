@@ -1,0 +1,131 @@
+{
+  "previewUrl": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app",
+  "startedAt": "2026-08-16T15:35:02.998Z",
+  "gates": {
+    "SQL_RESERVATION_CUTOVER_FALSE": "PASS",
+    "PREVIEW_ALL_5_COURT_FLAGS_FALSE": "PASS",
+    "PREVIEW_BINDS_STAGING": "PASS",
+    "FULL_COURT_CUTOVER_STATE_OFF_OFF": "PASS",
+    "BROWSER_LOGIN": "PASS",
+    "COURT_INVENTORY_UI_OFF_PATH": "PASS",
+    "REFEREE_BROWSER_ROUTE": "PASS",
+    "PREVIEW_NO_UNEXPECTED_CANONICAL_MUTATION_RPCS": "PASS",
+    "PREVIEW_PRODUCTION_REQUESTS_ZERO": "PASS",
+    "PREVIEW_STAGING_TRAFFIC_SEEN": "PASS",
+    "NODE_FLAGS_DEFAULT_OFF": "PASS",
+    "COURT_INVENTORY_OFF_PATH_SMOKE": "PASS",
+    "BOOKING_OFF_PATH_SMOKE": "PASS",
+    "RESOURCE_BLOCK_OFF_PATH_GATE": "PASS",
+    "DAILY_OFF_PATH_SMOKE": "PASS",
+    "INTERNAL_OFF_PATH_SMOKE": "PASS",
+    "OFFICIAL_OFF_PATH_SMOKE": "PASS",
+    "TEAM_OFF_PATH_SMOKE": "PASS",
+    "LEGACY_OFF_PATH_SMOKE": "PASS",
+    "BOOKING_CANCEL_OFF_PATH_GATE": "PASS",
+    "REFEREE_RUNTIME_UNCHANGED": "PASS",
+    "CANONICAL_WRITES_WHILE_OFF_OFF_ZERO": "PASS",
+    "DATA_CORRUPTION_COUNT_ZERO": "PASS",
+    "SQL_CUTOVER_REMAINS_FALSE": "PASS",
+    "SCHEMA_REMAINS_INSTALLED": "PASS"
+  },
+  "details": {
+    "SQL_RESERVATION_CUTOVER": {
+      "enabled": false,
+      "updated_at": "2026-08-16T15:34:45.149Z",
+      "cutover_id": "canonical-reservation-phase3b"
+    },
+    "before": {
+      "sqlCutoverEnabled": false,
+      "sqlCutoverUpdatedAt": "2026-08-16T15:34:45.149Z",
+      "reservations": 18,
+      "active_future_reservations": 0,
+      "reservation_commands": 36,
+      "bookings": 0,
+      "bookings_non_cancelled": 0,
+      "booking_commands": 0,
+      "blocks": 0,
+      "blocks_non_cancelled": 0,
+      "block_commands": 0,
+      "physical_courts": 2,
+      "reservations_fingerprint": "18adb561c4da598fd3f9e2c3bc08e63a",
+      "bookings_fingerprint": "d41d8cd98f00b204e9800998ecf8427e",
+      "blocks_fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "flagProbe": {
+      "VITE_CANONICAL_RESERVATION_CUTOVER": {
+        "trueHit": false,
+        "falseHit": true
+      },
+      "VITE_CANONICAL_BOOKING_LIFECYCLE": {
+        "trueHit": false,
+        "falseHit": true
+      },
+      "VITE_CANONICAL_RESOURCE_BLOCKS": {
+        "trueHit": false,
+        "falseHit": true
+      },
+      "VITE_CANONICAL_COMPETITION_COURT_ADAPTERS": {
+        "trueHit": false,
+        "falseHit": true
+      },
+      "VITE_CANONICAL_COURT_LIVE_RUNTIME": {
+        "trueHit": false,
+        "falseHit": true
+      },
+      "bindsStaging": true,
+      "bindsProdUrl": false,
+      "joinedLen": 1178809
+    },
+    "routeLoads": {
+      "/court-management": {
+        "url": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/court-management",
+        "bodyLen": 524
+      },
+      "/court-management/bookings": {
+        "url": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/court-management/bookings",
+        "bodyLen": 590
+      },
+      "/daily-play": {
+        "url": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/daily-play",
+        "bodyLen": 622
+      },
+      "/tournaments": {
+        "url": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/tournaments",
+        "bodyLen": 524
+      },
+      "/referee": {
+        "url": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app/referee",
+        "bodyLen": 644
+      }
+    },
+    "referee": {
+      "initOk": true,
+      "startOk": true,
+      "rallyOk": true,
+      "scoreA": 1
+    },
+    "after": {
+      "sqlCutoverEnabled": false,
+      "sqlCutoverUpdatedAt": "2026-08-16T15:34:45.149Z",
+      "reservations": 18,
+      "active_future_reservations": 0,
+      "reservation_commands": 36,
+      "bookings": 0,
+      "bookings_non_cancelled": 0,
+      "booking_commands": 0,
+      "blocks": 0,
+      "blocks_non_cancelled": 0,
+      "block_commands": 0,
+      "physical_courts": 2,
+      "reservations_fingerprint": "18adb561c4da598fd3f9e2c3bc08e63a",
+      "bookings_fingerprint": "d41d8cd98f00b204e9800998ecf8427e",
+      "blocks_fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "CANONICAL_WRITES_WHILE_OFF_OFF": 0,
+    "ACTIVE_FUTURE_DELTA": 0,
+    "fingerprintUnchanged": true
+  },
+  "failures": [],
+  "finishedAt": "2026-08-16T15:35:30.134Z",
+  "FINAL_OK": true
+}

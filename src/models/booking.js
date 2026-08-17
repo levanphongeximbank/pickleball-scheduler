@@ -114,6 +114,8 @@ export function normalizeBooking(raw = {}, index = 0) {
     recurringSeriesId: raw.recurringSeriesId ? String(raw.recurringSeriesId) : null,
     tournamentId: raw.tournamentId ? String(raw.tournamentId) : null,
     reminderSentAt: raw.reminderSentAt ? String(raw.reminderSentAt) : null,
+    reservationId: raw.reservationId ? String(raw.reservationId) : null,
+    physicalCourtId: raw.physicalCourtId ? String(raw.physicalCourtId) : null,
     createdAt: raw.createdAt || now,
     updatedAt: raw.updatedAt || now,
   };

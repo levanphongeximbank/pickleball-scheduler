@@ -44,6 +44,7 @@ export {
   commitTenantSwitch,
   createTenantSelectionRuntime,
   readSelectableTenantCatalog,
+  invalidateOperationalContextForTenantSwitch,
 } from "./services/tenantSelectionService.js";
 
 export {

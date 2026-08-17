@@ -35,7 +35,9 @@ function cloneCourt(court = {}) {
 }
 
 function sideKey(scoringSide) {
-  return String(scoringSide || "").toUpperCase() === SCORING_SIDE.SIDE_B ? "sideB" : "sideA";
+  return String(scoringSide || "").toUpperCase() === SCORING_SIDE.SIDE_B
+    ? "sideB"
+    : "sideA";
 }
 
 function oppositeSide(scoringSide) {
@@ -258,7 +260,8 @@ export function deriveCanonicalCourtAfterScoring(input = {}) {
 
   // SIDE_OUT
   const nextServingSide = String(nextServe.servingSide).toUpperCase();
-  const nextServerNumber = Number(nextServe.serverNumber) > 0 ? Number(nextServe.serverNumber) : 1;
+  const nextServerNumber =
+    Number(nextServe.serverNumber) > 0 ? Number(nextServe.serverNumber) : 1;
   const priorServingSide = priorServe?.servingSide
     ? String(priorServe.servingSide).toUpperCase()
     : nextServingSide;
@@ -266,19 +269,29 @@ export function deriveCanonicalCourtAfterScoring(input = {}) {
   let serverPlayerId = priorServerId;
 
   if (awardedPoint && samePossession) {
-    next.playerPositions = swapSidePositions(next.playerPositions, nextServingSide);
+    next.playerPositions = swapSidePositions(
+      next.playerPositions,
+      nextServingSide
+    );
     serverPlayerId = priorServerId;
   } else if (!awardedPoint && samePossession && nextServerNumber === 2) {
     const list = next.playerPositions[sideKey(nextServingSide)] || [];
     serverPlayerId =
-      partnerOf(list, priorServerId) || pickRightCourtServer(next.playerPositions, nextServingSide);
+      partnerOf(list, priorServerId) ||
+      pickRightCourtServer(next.playerPositions, nextServingSide);
   } else if (!awardedPoint && !samePossession) {
     // Side-out to opponent at serverNumber 1 → RIGHT court of new serving side.
-    serverPlayerId = pickRightCourtServer(next.playerPositions, nextServingSide);
+    serverPlayerId = pickRightCourtServer(
+      next.playerPositions,
+      nextServingSide
+    );
   }
 
   if (!serverPlayerId) {
-    serverPlayerId = pickRightCourtServer(next.playerPositions, nextServingSide);
+    serverPlayerId = pickRightCourtServer(
+      next.playerPositions,
+      nextServingSide
+    );
   }
 
   const receiverPlayerId = resolveReceiver(
@@ -315,9 +328,7 @@ export function resolveSideChangeRequiredAfterScoring(input = {}) {
   const hints = Array.isArray(input.domainHints) ? input.domainHints : [];
   const thresholdRaw = input.sideSwitchAt;
   const threshold =
-    thresholdRaw == null || thresholdRaw === ""
-      ? null
-      : Number(thresholdRaw);
+    thresholdRaw == null || thresholdRaw === "" ? null : Number(thresholdRaw);
   const ackAt =
     priorCourt.sideChangeAcknowledgedAtThreshold == null
       ? null
@@ -354,11 +365,13 @@ export function resolveSideChangeRequiredAfterScoring(input = {}) {
   }
 
   const milestoneHint = hints.includes("ENDS_SWITCH_MILESTONE");
+  // Per-team threshold is authoritative for change-end due.
+  // CORE-16 ENDS_SWITCH_MILESTONE uses A+B total and must not force due early.
   const sideChangeRequired =
     priorCourt.sideChangeRequired === true ||
-    milestoneHint ||
     crossedThisTransition ||
-    eitherAtOrPast;
+    eitherAtOrPast ||
+    (threshold == null && milestoneHint);
 
   return Object.freeze({
     sideChangeRequired,

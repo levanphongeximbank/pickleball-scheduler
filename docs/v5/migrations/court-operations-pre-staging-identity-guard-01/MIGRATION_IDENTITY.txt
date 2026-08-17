@@ -1,0 +1,5 @@
+IDENTITY_GUARD_CORRECTION_MIGRATION_VERSION=20260816190000
+IDENTITY_GUARD_CORRECTION_MIGRATION_NAME=court_operations_pre_staging_identity_guard_01
+STAGING_APPLY=NO
+PRODUCTION_APPLY=NO
+DEPENDS_ON=court-resource-post427-canonical-reconciliation-01,court-operations-legacy-isolation-01

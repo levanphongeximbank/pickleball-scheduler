@@ -477,7 +477,7 @@ test("createClub — cho phép khi RBAC tắt", () => {
   assert.equal(result.ok, true);
 });
 
-test("CASHIER tạo booking được, xóa booking bị chặn", () => {
+test("CASHIER tạo booking được, xóa booking bị chặn", async () => {
   globalThis.localStorage = createLocalStorageMock();
   setActiveClubId(DEFAULT_CLUB.id);
   const clubData = getDefaultClubData(DEFAULT_CLUB.id);
@@ -498,7 +498,7 @@ test("CASHIER tạo booking được, xóa booking bị chặn", () => {
     })
   );
 
-  const created = createBooking(
+  const created = await createBooking(
     {
       courtId: "court-1",
       date: "2026-06-29",
@@ -515,7 +515,7 @@ test("CASHIER tạo booking được, xóa booking bị chặn", () => {
 
   assert.equal(created.ok, true);
 
-  const removed = deleteBooking(created.booking.id, "default-club");
+  const removed = await deleteBooking(created.booking.id, "default-club");
   assert.equal(removed.ok, false);
   assert.match(removed.message, /quyền/i);
 

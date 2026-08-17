@@ -28,3 +28,4 @@ dist-ssr
 *.sw?
 .env*
 docs/v6/storage-recovery-drill-01/evidence/*.local.json
+.tmp-cr-p3b-pg-*

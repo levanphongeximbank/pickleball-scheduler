@@ -18,6 +18,10 @@ import { flushOfflineQueue } from "./features/mobile/services/offlineQueue.js";
 import { ensureStorageSchemaV42 } from "./features/club/storage/storageSchemaV42.js";
 import { isClubStorageV2Enabled } from "./features/club/config/clubRegistryFlags.js";
 import { registerClubNotificationWriter } from "./features/club/services/clubScheduleNotificationBridge.js";
+import { registerClubAuthSessionProjection } from "./features/club/bindings/registerClubAuthSessionProjection.js";
+import { registerMobileOfflineQueueAuthCleanup } from "./features/mobile/bindings/registerMobileOfflineQueueAuthCleanup.js";
+import { bindTournamentAccessPortFromDomain } from "./features/tournament/bindings/bindTournamentAccessPort.js";
+import { bindBillingAccessCapabilityFromModule } from "./features/billing/bindings/bindBillingAccessCapability.js";
 
 /**
  * Composition-root bridge: keeps Platform Core free of Business Module imports
@@ -28,6 +32,16 @@ function wireClubPlatformNotifications(runtime) {
     runtime.notificationService.create(input);
   });
 }
+
+/** Wave 2 — bind BM implementations into Platform-owned ports/hooks before React mount. */
+function wirePlatformRuntimeBoundaryBindings() {
+  registerClubAuthSessionProjection();
+  registerMobileOfflineQueueAuthCleanup();
+  bindTournamentAccessPortFromDomain();
+  bindBillingAccessCapabilityFromModule();
+}
+
+wirePlatformRuntimeBoundaryBindings();
 
 if (isClubStorageV2Enabled()) {
   ensureStorageSchemaV42();

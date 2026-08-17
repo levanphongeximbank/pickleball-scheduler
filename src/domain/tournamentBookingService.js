@@ -64,8 +64,8 @@ export function buildTournamentCourtBookings(tournament, courts = []) {
  * Cancel only bridge-owned tournament bookings for this tournament.
  * Routes through the canonical Court Resource gateway.
  */
-export function cancelTournamentCourtBookings(clubId, tournamentId) {
-  const result = releaseCourts({
+export async function cancelTournamentCourtBookings(clubId, tournamentId) {
+  const result = await releaseCourts({
     clubId,
     owner: { type: RESERVATION_OWNER_TYPE.TOURNAMENT, id: tournamentId },
   });
@@ -87,7 +87,7 @@ export function cancelTournamentCourtBookings(clubId, tournamentId) {
 /**
  * Idempotent reconcile of tournament courtSchedule through the gateway.
  */
-export function syncTournamentCourtBookings(tournament, clubId, courts = []) {
+export async function syncTournamentCourtBookings(tournament, clubId, courts = []) {
   const payloads = buildTournamentCourtBookings(tournament, courts);
   if (payloads.length === 0) {
     return {
@@ -102,7 +102,7 @@ export function syncTournamentCourtBookings(tournament, clubId, courts = []) {
   }
 
   const schedule = tournament.courtSchedule;
-  const result = reserveCourts({
+  const result = await reserveCourts({
     clubId,
     clusterId: schedule.clusterId || null,
     selectedCourtIds: schedule.courtIds,

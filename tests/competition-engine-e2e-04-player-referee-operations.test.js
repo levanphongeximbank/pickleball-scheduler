@@ -14,6 +14,7 @@ import "./competition-engine-referee-canonical-production-runtime-01.test.js";
 import "./competition-engine-referee-canonical-default-runtime-cutover-01.test.js";
 import "./competition-engine-referee-one-canonical-production-ui-01.test.js";
 import "./referee-optimistic-submit-point.test.js";
+import "./competition-engine-canonical-referee-score-undo-01.test.js";
 
 import assert from "node:assert/strict";
 import test from "node:test";

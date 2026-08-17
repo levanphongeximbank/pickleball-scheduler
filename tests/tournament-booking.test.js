@@ -87,7 +87,7 @@ afterEach(() => {
   Date.now = originalDateNow;
 });
 
-test("buildTournamentCourtBookings uses deterministic tournament booking ids", () => {
+test("buildTournamentCourtBookings uses deterministic tournament booking ids", async () => {
   const tournament = createTournamentRecord(DEFAULT_CLUB.id, {
     id: "t1",
     name: "Giải test",
@@ -110,8 +110,8 @@ test("buildTournamentCourtBookings uses deterministic tournament booking ids", (
   assert.equal(bookings[0].id, buildTournamentBookingId("t1", 1, "2026-08-10"));
 });
 
-test("1. first sync creates expected tournament bookings", () => {
-  const result = setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+test("1. first sync creates expected tournament bookings", async () => {
+  const result = await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
@@ -123,15 +123,15 @@ test("1. first sync creates expected tournament bookings", () => {
   assert.equal(getActiveTournamentCourtBookings(DEFAULT_CLUB.id, "tournament-test-1").length, 2);
 });
 
-test("2. repeating identical sync creates no duplicates", () => {
+test("2. repeating identical sync creates no duplicates", async () => {
   const input = {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
     courtIds: [1, 2],
   };
-  assert.equal(setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", input).ok, true);
-  const second = setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", input);
+  assert.equal((await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", input)).ok, true);
+  const second = await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", input);
 
   assert.equal(second.ok, true);
   assert.equal(second.created.length, 0);
@@ -141,14 +141,14 @@ test("2. repeating identical sync creates no duplicates", () => {
   assert.equal(new Set(active.map((item) => item.id)).size, 2);
 });
 
-test("3. adding a court creates only the missing booking", () => {
-  setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+test("3. adding a court creates only the missing booking", async () => {
+ setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
     courtIds: [1],
   });
-  const result = setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+  const result = await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
@@ -162,14 +162,14 @@ test("3. adding a court creates only the missing booking", () => {
   assert.equal(getActiveTournamentCourtBookings(DEFAULT_CLUB.id, "tournament-test-1").length, 2);
 });
 
-test("4. removing a court removes only the obsolete tournament booking", () => {
-  setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+test("4. removing a court removes only the obsolete tournament booking", async () => {
+  await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
     courtIds: [1, 2],
   });
-  const result = setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+  const result = await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
@@ -184,14 +184,14 @@ test("4. removing a court removes only the obsolete tournament booking", () => {
   assert.equal(String(active[0].courtId), "1");
 });
 
-test("5. changing time reconciles owned booking set in place", () => {
-  setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+test("5. changing time reconciles owned booking set in place", async () => {
+  await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
     courtIds: [1],
   });
-  const result = setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+  const result = await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "08:00",
     endTime: "14:00",
@@ -207,21 +207,21 @@ test("5. changing time reconciles owned booking set in place", () => {
   assert.equal(active[0].endTime, "14:00");
 });
 
-test("6. clearing schedule removes only tournament-owned bookings", () => {
-  setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+test("6. clearing schedule removes only tournament-owned bookings", async () => {
+  await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
     courtIds: [1, 2],
   });
-  const result = clearTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1");
+  const result = await clearTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1");
   assert.equal(result.ok, true);
   assert.equal(result.tournament.courtSchedule, null);
   assert.equal(getActiveTournamentCourtBookings(DEFAULT_CLUB.id, "tournament-test-1").length, 0);
 });
 
-test("7. unrelated user booking is preserved on clear", () => {
-  createBooking(
+test("7. unrelated user booking is preserved on clear", async () => {
+  await createBooking(
     {
       courtId: 1,
       date: "2026-08-11",
@@ -232,13 +232,13 @@ test("7. unrelated user booking is preserved on clear", () => {
     },
     DEFAULT_CLUB.id
   );
-  setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+  await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
     courtIds: [2],
   });
-  clearTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1");
+  await clearTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1");
 
   const userBooking = loadBookingsForClub(DEFAULT_CLUB.id).find(
     (item) => item.customerName === "Khách B"
@@ -247,8 +247,8 @@ test("7. unrelated user booking is preserved on clear", () => {
   assert.notEqual(userBooking.bookingStatus, "cancelled");
 });
 
-test("8. maintenance booking is preserved", () => {
-  createBooking(
+test("8. maintenance booking is preserved", async () => {
+  await createBooking(
     {
       courtId: 3,
       date: "2026-08-10",
@@ -260,13 +260,13 @@ test("8. maintenance booking is preserved", () => {
     },
     DEFAULT_CLUB.id
   );
-  setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+  await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
     courtIds: [1],
   });
-  cancelTournamentCourtBookings(DEFAULT_CLUB.id, "tournament-test-1");
+  await cancelTournamentCourtBookings(DEFAULT_CLUB.id, "tournament-test-1");
 
   const maintenance = loadBookingsForClub(DEFAULT_CLUB.id).find(
     (item) => item.bookingType === "maintenance"
@@ -275,31 +275,31 @@ test("8. maintenance booking is preserved", () => {
   assert.notEqual(maintenance.bookingStatus, "cancelled");
 });
 
-test("9. another tournament booking is preserved", () => {
+test("9. another tournament booking is preserved", async () => {
   assert.equal(
-    setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-2", {
+    (await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-2", {
       date: "2026-08-10",
       startTime: "07:00",
       endTime: "12:00",
       courtIds: [2],
-    }).ok,
+    })).ok,
     true
   );
   assert.equal(
-    setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+    (await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
       date: "2026-08-10",
       startTime: "07:00",
       endTime: "12:00",
       courtIds: [1],
-    }).ok,
+    })).ok,
     true
   );
-  clearTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1");
+  await clearTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1");
   assert.equal(getActiveTournamentCourtBookings(DEFAULT_CLUB.id, "tournament-test-2").length, 1);
 });
 
-test("10. conflict causes fail-closed behavior", () => {
-  createBooking(
+test("10. conflict causes fail-closed behavior", async () => {
+  await createBooking(
     {
       courtId: 1,
       date: "2026-08-10",
@@ -311,7 +311,7 @@ test("10. conflict causes fail-closed behavior", () => {
     DEFAULT_CLUB.id
   );
 
-  const result = setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+  const result = await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
@@ -328,7 +328,7 @@ test("10. conflict causes fail-closed behavior", () => {
   assert.equal(tournament.courtSchedule, null);
 });
 
-test("11. static: bridge routes writes through canonical Court Resource gateway", () => {
+test("11. static: bridge routes writes through canonical Court Resource gateway", async () => {
   const bridge = readFileSync(
     path.join(root, "src/domain/tournamentBookingService.js"),
     "utf8"
@@ -349,18 +349,18 @@ test("11. static: bridge routes writes through canonical Court Resource gateway"
   assert.doesNotMatch(teSchedule, /saveBookingsForClub|createBooking\(/);
 });
 
-test("12. successful sync blocks canonical availability", () => {
+test("12. successful sync blocks canonical availability", async () => {
   assert.equal(
-    setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+    (await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
       date: "2026-08-10",
       startTime: "07:00",
       endTime: "12:00",
       courtIds: [1],
-    }).ok,
+    })).ok,
     true
   );
 
-  const availability = getCourtAvailability({
+  const availability = await getCourtAvailability({
     clubId: DEFAULT_CLUB.id,
     date: "2026-08-10",
     startTime: "08:00",
@@ -380,16 +380,16 @@ test("12. successful sync blocks canonical availability", () => {
   );
 });
 
-test("13. cancellation restores availability", () => {
-  setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+test("13. cancellation restores availability", async () => {
+ setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
     courtIds: [1],
   });
-  clearTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1");
+  await clearTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1");
 
-  const availability = getCourtAvailability({
+  const availability = await getCourtAvailability({
     clubId: DEFAULT_CLUB.id,
     date: "2026-08-10",
     startTime: "08:00",
@@ -399,21 +399,21 @@ test("13. cancellation restores availability", () => {
   assert.equal(availability.courts[0].available, true);
 });
 
-test("14. cancelTournamentCourtBookings only targets owned bridge rows", () => {
-  setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
+test("14. cancelTournamentCourtBookings only targets owned bridge rows", async () => {
+ setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-1", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
     courtIds: [1],
   });
-  setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-2", {
+  await setTournamentCourtSchedule(DEFAULT_CLUB.id, "tournament-test-2", {
     date: "2026-08-10",
     startTime: "07:00",
     endTime: "12:00",
     courtIds: [2],
   });
 
-  const result = cancelTournamentCourtBookings(DEFAULT_CLUB.id, "tournament-test-1");
+  const result = await cancelTournamentCourtBookings(DEFAULT_CLUB.id, "tournament-test-1");
   assert.equal(result.ok, true);
   assert.equal(result.cancelled.length, 1);
   assert.equal(getActiveTournamentCourtBookings(DEFAULT_CLUB.id, "tournament-test-1").length, 0);

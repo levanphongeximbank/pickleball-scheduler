@@ -1,5 +1,5 @@
 /**
- * Shared Court Resource Foundation — contract tests.
+ * Shared Court Resource Foundation ΓÇö contract tests.
  */
 import test, { beforeEach, afterEach, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -242,7 +242,7 @@ describe("1-4 canonical cloud inventory", () => {
 });
 
 describe("5-7 cluster membership and inactive", () => {
-  test("5. cluster membership pass", () => {
+  test("5. cluster membership pass", async () => {
     const result = assertCourtClusterMembership({
       tenantId: TENANT_A,
       clubId: CLUB_ID,
@@ -254,7 +254,7 @@ describe("5-7 cluster membership and inactive", () => {
     assert.equal(result.courtId, "NL_C01");
   });
 
-  test("6. cluster mismatch denied", () => {
+  test("6. cluster mismatch denied", async () => {
     seedLocalInventory([
       normalizeCourt({
         id: "OTHER_CLUSTER_C01",
@@ -276,7 +276,7 @@ describe("5-7 cluster membership and inactive", () => {
     assert.equal(result.code, COURT_RESOURCE_CODE.CLUSTER_MISMATCH);
   });
 
-  test("7. inactive court unavailable", () => {
+  test("7. inactive court unavailable", async () => {
     seedLocalInventory([
       normalizeCourt({
         id: "NL_INACTIVE",
@@ -297,7 +297,7 @@ describe("5-7 cluster membership and inactive", () => {
     assert.equal(membership.ok, false);
     assert.equal(membership.code, COURT_RESOURCE_CODE.COURT_INACTIVE);
 
-    const availability = getCourtAvailability({
+    const availability = await getCourtAvailability({
       clubId: CLUB_ID,
       venueId: TENANT_A,
       courtId: "NL_INACTIVE",
@@ -309,7 +309,7 @@ describe("5-7 cluster membership and inactive", () => {
 });
 
 describe("8-11 conflicts and own-reservation reuse", () => {
-  test("8. maintenance conflict", () => {
+  test("8. maintenance conflict", async () => {
     saveBookingsForClub(
       [
         createBookingRecord({
@@ -324,7 +324,7 @@ describe("8-11 conflicts and own-reservation reuse", () => {
       ],
       CLUB_ID
     );
-    const result = getCourtAvailability({
+    const result = await getCourtAvailability({
       clubId: CLUB_ID,
       venueId: TENANT_A,
       courtId: "NL_C01",
@@ -335,7 +335,7 @@ describe("8-11 conflicts and own-reservation reuse", () => {
     assert.equal(result.courts[0].conflicts[0].code, AVAILABILITY_REASON.MAINTENANCE_BOOKING);
   });
 
-  test("9. customer booking conflict", () => {
+  test("9. customer booking conflict", async () => {
     saveBookingsForClub(
       [
         createBookingRecord({
@@ -350,7 +350,7 @@ describe("8-11 conflicts and own-reservation reuse", () => {
       ],
       CLUB_ID
     );
-    const result = getCourtAvailability({
+    const result = await getCourtAvailability({
       clubId: CLUB_ID,
       venueId: TENANT_A,
       courtId: "NL_C01",
@@ -361,8 +361,8 @@ describe("8-11 conflicts and own-reservation reuse", () => {
     assert.equal(result.courts[0].conflicts[0].code, AVAILABILITY_REASON.BOOKING_CONFLICT);
   });
 
-  test("10. foreign tournament conflict", () => {
-    const reserved = reserveCourts({
+  test("10. foreign tournament conflict", async () => {
+    const reserved = await reserveCourts({
       clubId: CLUB_ID,
       tenantId: TENANT_A,
       clusterId: CLUSTER,
@@ -372,7 +372,7 @@ describe("8-11 conflicts and own-reservation reuse", () => {
     });
     assert.equal(reserved.ok, true, reserved.error);
 
-    const result = getCourtAvailability({
+    const result = await getCourtAvailability({
       clubId: CLUB_ID,
       venueId: TENANT_A,
       courtId: "NL_C01",
@@ -386,8 +386,8 @@ describe("8-11 conflicts and own-reservation reuse", () => {
     );
   });
 
-  test("11. own tournament reservation reuse", () => {
-    const reserved = reserveCourts({
+  test("11. own tournament reservation reuse", async () => {
+    const reserved = await reserveCourts({
       clubId: CLUB_ID,
       tenantId: TENANT_A,
       clusterId: CLUSTER,
@@ -397,7 +397,7 @@ describe("8-11 conflicts and own-reservation reuse", () => {
     });
     assert.equal(reserved.ok, true, reserved.error);
 
-    const result = getCourtAvailability({
+    const result = await getCourtAvailability({
       clubId: CLUB_ID,
       venueId: TENANT_A,
       courtId: "NL_C01",
@@ -412,8 +412,8 @@ describe("8-11 conflicts and own-reservation reuse", () => {
 });
 
 describe("12-17 reserve / release / owner / assignment", () => {
-  test("12. reserve selected physical courts only", () => {
-    const result = reserveCourts({
+  test("12. reserve selected physical courts only", async () => {
+    const result = await reserveCourts({
       clubId: CLUB_ID,
       tenantId: TENANT_A,
       clusterId: CLUSTER,
@@ -435,8 +435,8 @@ describe("12-17 reserve / release / owner / assignment", () => {
     assert.equal(bookings.every((booking) => String(booking.courtId) !== "NL_C05"), true);
   });
 
-  test("13. no whole-cluster reservation", () => {
-    const denied = reserveCourts({
+  test("13. no whole-cluster reservation", async () => {
+    const denied = await reserveCourts({
       clubId: CLUB_ID,
       clusterId: CLUSTER,
       selectedCourtIds: [CLUSTER],
@@ -449,7 +449,7 @@ describe("12-17 reserve / release / owner / assignment", () => {
         denied.code === COURT_RESOURCE_CODE.COURT_NOT_FOUND
     );
 
-    const selected = reserveCourts({
+    const selected = await reserveCourts({
       clubId: CLUB_ID,
       clusterId: CLUSTER,
       selectedCourtIds: SELECTED,
@@ -465,23 +465,23 @@ describe("12-17 reserve / release / owner / assignment", () => {
     assert.equal(bookedIds.includes("NL_C03"), false);
   });
 
-  test("14. release only own reservations", () => {
+  test("14. release only own reservations", async () => {
     assert.equal(
-      reserveCourts({
+      (await reserveCourts({
         clubId: CLUB_ID,
         selectedCourtIds: ["NL_C01"],
         owner: { type: "tournament", id: "T01" },
         ...CAPACITY,
-      }).ok,
+      })).ok,
       true
     );
     assert.equal(
-      reserveCourts({
+      (await reserveCourts({
         clubId: CLUB_ID,
         selectedCourtIds: ["NL_C02"],
         owner: { type: "tournament", id: "T02" },
         ...CAPACITY,
-      }).ok,
+      })).ok,
       true
     );
     saveBookingsForClub(
@@ -509,7 +509,7 @@ describe("12-17 reserve / release / owner / assignment", () => {
       CLUB_ID
     );
 
-    const released = releaseCourts({
+    const released = await releaseCourts({
       clubId: CLUB_ID,
       owner: { type: "tournament", id: "T01" },
     });
@@ -530,14 +530,14 @@ describe("12-17 reserve / release / owner / assignment", () => {
     assert.ok(remainingIds.includes("maint-keep"));
   });
 
-  test("15. reservation owner lookup", () => {
+  test("15. reservation owner lookup", async () => {
     assert.equal(
-      reserveCourts({
+      (await reserveCourts({
         clubId: CLUB_ID,
         selectedCourtIds: ["NL_C01"],
         owner: { type: "tournament", id: "T01" },
         ...CAPACITY,
-      }).ok,
+      })).ok,
       true
     );
     const owner = getReservationOwner({
@@ -552,19 +552,19 @@ describe("12-17 reserve / release / owner / assignment", () => {
     assert.equal("data" in owner, false);
   });
 
-  test("16. no synthetic courtLabel authority", () => {
-    const denied = reserveCourts({
+  test("16. no synthetic courtLabel authority", async () => {
+    const denied = await reserveCourts({
       clubId: CLUB_ID,
-      courtLabel: "Sân 1",
+      courtLabel: "S├ón 1",
       owner: { type: "tournament", id: "T01" },
       ...CAPACITY,
     });
     assert.equal(denied.ok, false);
     assert.equal(denied.code, COURT_RESOURCE_CODE.SYNTHETIC_COURT_DENIED);
 
-    const assignDenied = validateCourtAssignment({
+    const assignDenied = await validateCourtAssignment({
       clubId: CLUB_ID,
-      courtLabel: "Sân 2",
+      courtLabel: "S├ón 2",
       owner: { type: "tournament", id: "T01" },
       ...MATCH,
     });
@@ -572,8 +572,8 @@ describe("12-17 reserve / release / owner / assignment", () => {
     assert.equal(assignDenied.code, COURT_RESOURCE_CODE.SYNTHETIC_COURT_DENIED);
   });
 
-  test("17. no per-match reservation requirement", () => {
-    const reserved = reserveCourts({
+  test("17. no per-match reservation requirement", async () => {
+    const reserved = await reserveCourts({
       clubId: CLUB_ID,
       selectedCourtIds: SELECTED,
       owner: { type: "tournament", id: "T01" },
@@ -585,7 +585,7 @@ describe("12-17 reserve / release / owner / assignment", () => {
     ).length;
     assert.equal(before, 4);
 
-    const assignment = validateCourtAssignment({
+    const assignment = await validateCourtAssignment({
       tenantId: TENANT_A,
       clubId: CLUB_ID,
       venueId: TENANT_A,
@@ -605,7 +605,7 @@ describe("12-17 reserve / release / owner / assignment", () => {
     ).length;
     assert.equal(after, before);
 
-    const unreservedCourt = validateCourtAssignment({
+    const unreservedCourt = await validateCourtAssignment({
       clubId: CLUB_ID,
       clusterId: CLUSTER,
       courtId: "NL_C03",
@@ -620,7 +620,7 @@ describe("12-17 reserve / release / owner / assignment", () => {
 });
 
 describe("18-19 determinism and isolation", () => {
-  test("18. availability deterministic", () => {
+  test("18. availability deterministic", async () => {
     const query = {
       clubId: CLUB_ID,
       venueId: TENANT_A,
@@ -629,8 +629,8 @@ describe("18-19 determinism and isolation", () => {
       startTime: "10:00",
       endTime: "11:00",
     };
-    const a = getCourtAvailability(query);
-    const b = getCourtAvailability(query);
+    const a = await getCourtAvailability(query);
+    const b = await getCourtAvailability(query);
     assert.deepEqual(
       a.courts.map((row) => [row.courtId, row.available]),
       b.courts.map((row) => [row.courtId, row.available])
@@ -640,7 +640,7 @@ describe("18-19 determinism and isolation", () => {
     assert.deepEqual(competitionA.availableCourtIds, competitionB.availableCourtIds);
   });
 
-  test("19. no cross-scope leak", () => {
+  test("19. no cross-scope leak", async () => {
     const unknown = assertCourtClusterMembership({
       clubId: CLUB_ID,
       clusterId: CLUSTER,
@@ -649,7 +649,7 @@ describe("18-19 determinism and isolation", () => {
     assert.equal(unknown.ok, false);
     assert.equal(unknown.code, COURT_RESOURCE_CODE.COURT_NOT_FOUND);
 
-    const availability = getCourtAvailability({
+    const availability = await getCourtAvailability({
       clubId: CLUB_ID,
       venueId: TENANT_A,
       courtId: "DOES_NOT_EXIST",
@@ -658,9 +658,8 @@ describe("18-19 determinism and isolation", () => {
     assert.equal(availability.courts[0].available, false);
     assert.equal(availability.courts[0].conflicts[0].code, AVAILABILITY_REASON.COURT_NOT_FOUND);
 
-    assert.throws(
-      () =>
-        getCourtAvailability({
+    await assert.rejects(async () =>
+        await getCourtAvailability({
           venueId: TENANT_A,
           courtId: "NL_C01",
           ...MATCH,
@@ -671,7 +670,7 @@ describe("18-19 determinism and isolation", () => {
 });
 
 describe("architecture boundaries", () => {
-  test("one canonical gateway implementation and identity-preserving compatibility exports", () => {
+  test("one canonical gateway implementation and identity-preserving compatibility exports", async () => {
     const gateway = readFileSync(
       path.join(root, "src/features/court-resource/services/courtResourceGateway.js"),
       "utf8"
@@ -707,7 +706,7 @@ describe("architecture boundaries", () => {
     assert.match(inventory, /club_data_v3/);
   });
 
-  test("team tournament inventory is compatibility-only", () => {
+  test("team tournament inventory is compatibility-only", async () => {
     const adapter = readFileSync(
       path.join(root, "src/features/team-tournament/services/canonicalClubCourtInventory.js"),
       "utf8"
@@ -717,7 +716,7 @@ describe("architecture boundaries", () => {
     assert.doesNotMatch(adapter, /localStorage\.getItem|loadCourtsForClub|loadClubData/);
   });
 
-  test("no new SQL authority in this foundation", () => {
+  test("no new SQL authority in this foundation", async () => {
     const doc = readFileSync(
       path.join(root, "docs/v5/SHARED_COURT_RESOURCE_FOUNDATION.md"),
       "utf8"

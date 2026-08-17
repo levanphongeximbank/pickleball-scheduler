@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Alert, Snackbar } from "@mui/material";
 
 import {
+  clearActiveClubIdPreference,
   getActiveClub,
   getActiveClubId,
   getActiveClubIdPreference,
@@ -27,9 +27,6 @@ import {
   isClubStorageV2Enabled,
 } from "../features/club/config/clubRegistryFlags.js";
 import { isClubCloudCommandAuthoritative } from "../features/club/services/clubLegacyWriteGuard.js";
-import { isClubDataDirty } from "../domain/clubSyncMetadata.js";
-import { PERMISSIONS } from "../auth/permissions.js";
-import { pullClubFromCloud } from "../ai/cloudSync.js";
 import { isVenueScopedRole, isClubScopedRole, isPlatformWideRole } from "../auth/roles.js";
 import { ensureWritableClubForVenueOwner } from "../features/club/services/venueOwnerClubService.js";
 import { invalidateMyActiveClubMembershipCache } from "../features/club/services/clubActiveMembershipService.js";
@@ -40,23 +37,27 @@ import { isCanonicalClubRepositoryEnabled } from "../features/club/config/canoni
 import { hasSupabaseConfig } from "../auth/supabaseClient.js";
 import { API_ERROR_CODES } from "../features/api/constants/apiErrors.js";
 import {
+  CLUB_PREFERENCE_STATUS,
   CLUB_READ_STATE,
   filterAccessibleCanonicalClubs,
   isCanonicalActiveClubReady,
   isCanonicalClubReadEnabled,
+  isClubPreferenceAuthorityReady,
   normalizeCanonicalActiveClub,
   resolveActiveClubSelection,
   toClubReadSnapshot,
 } from "../features/club/context/clubCanonicalReadModel.js";
-import { ensureMonthlySkillLevelProposals } from "../domain/skillLevelService.js";
 import { buildClubRehydrateScopeKey } from "../auth/authSemanticScope.js";
+import {
+  logPlatformContextEvent,
+  PLATFORM_CONTEXT_EVENT,
+} from "../core/platform/app/platformContextDiagnostics.js";
 import { useAuth } from "./AuthContext.jsx";
 import { useTenant } from "./TenantContext.jsx";
 import { canAccessClub } from "../auth/rbac.js";
 import {
   listClubsForTenant,
 } from "../features/tenant/guards/tenantGuard.js";
-import { autoPullOnClubActivate, isAiAutoCloudSyncEnabled } from "../ai/autoCloudSync.js";
 
 const ClubContext = createContext(null);
 
@@ -79,7 +80,6 @@ export function ClubProvider({ children }) {
     canonicalRead ? getActiveClubIdPreference() : getActiveClubId()
   );
   const [revision, setRevision] = useState(0);
-  const [syncConflictMessage, setSyncConflictMessage] = useState(null);
   const [clubScopeStatus, setClubScopeStatus] = useState("idle");
 
   // Canonical read snapshot (only authoritative when canonicalRead === true).
@@ -89,6 +89,17 @@ export function ClubProvider({ children }) {
   );
   const [clubReadErrorCode, setClubReadErrorCode] = useState(null);
   const [canonicalReloadNonce, setCanonicalReloadNonce] = useState(0);
+
+  useEffect(() => {
+    const hint = getActiveClubIdPreference();
+    logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_READ, {
+      hasHint: Boolean(hint),
+      canonicalRead,
+    });
+    logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.TENANT_HINT_READ, {
+      hasTenant: Boolean(currentTenantId),
+    });
+  }, [canonicalRead, currentTenantId]);
 
   // Phase 44C.1 — hydrate the canonical allowed-club scope once per authenticated
   // club-rehydrate fingerprint (id/role/tenant/venue/club/status/email), not raw
@@ -185,22 +196,39 @@ export function ClubProvider({ children }) {
       if (clubReadState !== CLUB_READ_STATE.READY) {
         return [];
       }
-      return filterAccessibleCanonicalClubs({
+      const accessible = filterAccessibleCanonicalClubs({
         clubs: canonicalClubs,
         user,
         rbacEnabled,
         isAuthenticated,
         canAccessClub,
       });
+      // SELECTED_OPERATIONAL_CONTEXT: even if a platform-wide catalog leaked,
+      // never expose foreign-tenant clubs as operational options.
+      if (rbacEnabled && isAuthenticated && currentTenantId) {
+        return accessible.filter((club) => {
+          const clubTenant =
+            club?.tenantId || club?.venueId || club?.tenant_id || club?.venue_id || null;
+          return String(clubTenant || "").trim() === String(currentTenantId).trim();
+        });
+      }
+      if (rbacEnabled && isAuthenticated && !currentTenantId && isPlatformWideRole(user?.role)) {
+        return [];
+      }
+      return accessible;
     }
 
-    if (!rbacEnabled || !isAuthenticated || !currentTenantId) {
+    if (!rbacEnabled || !isAuthenticated) {
       return clubs;
     }
 
-    const sourceClubs = isPlatformWideRole(user?.role)
-      ? loadClubs()
-      : listClubsForTenant(currentTenantId);
+    // Wave 1: selected operational tenant scopes club options for ALL roles,
+    // including platform-wide (AUTHORIZED_SCOPE ≠ SELECTED_OPERATIONAL_CONTEXT).
+    if (!currentTenantId) {
+      return isPlatformWideRole(user?.role) ? [] : clubs;
+    }
+
+    const sourceClubs = listClubsForTenant(currentTenantId);
     const visible = sourceClubs.filter((club) =>
       canAccessClub(user, club.id, { venueId: club.venueId || null }, { rbacEnabled })
     );
@@ -211,6 +239,7 @@ export function ClubProvider({ children }) {
         const assigned = loadClubs().find((club) => club.id === user.clubId && !club.isDefault);
         if (
           assigned &&
+          String(assigned.venueId || assigned.tenantId || "").trim() === String(currentTenantId).trim() &&
           canAccessClub(user, assigned.id, { venueId: assigned.venueId || null }, { rbacEnabled })
         ) {
           return [...visible, assigned];
@@ -347,66 +376,6 @@ export function ClubProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
   }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, clubRehydrateScopeKey, visibleClubs]);
 
-  useEffect(() => {
-    if (!activeClubId || !isAuthenticated || !isAiAutoCloudSyncEnabled()) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void autoPullOnClubActivate(activeClubId).then((result) => {
-      if (!cancelled && result?.ok && !result.skipped && !result.error) {
-        setRevision((value) => value + 1);
-      }
-    });
-
-    const onClubConflict = (event) => {
-      const conflictClubId = event?.detail?.clubId || activeClubId;
-
-      if (isClubDataDirty(conflictClubId)) {
-        setSyncConflictMessage(
-          "Dữ liệu CLB đã được cập nhật trên cloud trong khi máy bạn có thay đổi chưa đồng bộ. Vào Cài đặt để đẩy lên hoặc tải lại."
-        );
-        return;
-      }
-
-      setSyncConflictMessage("Dữ liệu CLB đã được cập nhật bởi người khác — đang tải lại...");
-      void pullClubFromCloud({
-        clubId: conflictClubId,
-        permission: PERMISSIONS.SCHEDULING_RUN,
-      }).then((result) => {
-        if (!cancelled && result?.ok) {
-          setRevision((value) => value + 1);
-          setSyncConflictMessage("Đã tải dữ liệu CLB mới nhất từ cloud.");
-        } else if (!cancelled && result?.error) {
-          setSyncConflictMessage(result.error);
-        }
-      });
-    };
-
-    window.addEventListener("club-data:version-conflict", onClubConflict);
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("club-data:version-conflict", onClubConflict);
-    };
-  }, [activeClubId, isAuthenticated]);
-
-  useEffect(() => {
-    if (!activeClubId) {
-      return;
-    }
-
-    const result = ensureMonthlySkillLevelProposals(activeClubId);
-    if (
-      result.ok &&
-      !result.skipped &&
-      (result.proposalCount > 0 || result.holds > 0)
-    ) {
-      setRevision((value) => value + 1);
-    }
-  }, [activeClubId]);
-
   const refreshClubs = useCallback(() => {
     if (canonicalRead) {
       setCanonicalReloadNonce((value) => value + 1);
@@ -426,6 +395,7 @@ export function ClubProvider({ children }) {
         preferredClubId: activeClubId,
         visibleClubs,
         requireTenant: true,
+        selectedTenantId: currentTenantId,
       }).activeClub;
     }
 
@@ -443,29 +413,75 @@ export function ClubProvider({ children }) {
       return visibleClubs[0];
     }
     return null;
-  }, [canonicalRead, visibleClubs, activeClubId, rbacEnabled, isAuthenticated]);
+  }, [canonicalRead, visibleClubs, activeClubId, currentTenantId, rbacEnabled, isAuthenticated]);
 
   const activeClubReady = canonicalRead
     ? clubReadState === CLUB_READ_STATE.READY && isCanonicalActiveClubReady(activeClub)
     : Boolean(activeClub?.id);
 
-  // Canonical active-club validation: a stale/absent/tenant-less activeClubId is
-  // replaced deterministically (unique tenant-ready visible club) or cleared.
-  // Never selects a club absent from the canonical cloud registry, and never
-  // promotes a tenant-less projection to tenant-ready activeClub.
+  // Canonical active-club validation: persisted id is a HINT, not authority.
+  // PREFERENCE_PENDING_VALIDATION (loading / tenant not restored / transient empty)
+  // must NOT clear the hint. Clear storage only after AUTHORITATIVE INVALID.
+  // Explicit tenant switch clears LS in commitTenantSwitch; this effect alone
+  // reconciles React state — do not mirror LS→React on every currentTenantId
+  // change (that path destroyed F5 hints after non-logout auth clears).
   useEffect(() => {
     if (!canonicalRead) {
       return;
     }
-    if (clubReadState !== CLUB_READ_STATE.READY) {
-      return;
+
+    const authorityReady = isClubPreferenceAuthorityReady({
+      canonicalRead: true,
+      clubReadState,
+      selectedTenantId: currentTenantId,
+    });
+
+    // Re-bind LS hint if React state was wiped by a prior transient empty race.
+    const preferredHint = activeClubId || getActiveClubIdPreference();
+
+    if (!authorityReady) {
+      logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_PENDING, {
+        hasHint: Boolean(preferredHint),
+        clubReadState,
+        hasTenant: Boolean(currentTenantId),
+      });
+    } else {
+      logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_AUTHORITY_READY, {
+        clubReadState,
+        eligibleCount: Array.isArray(visibleClubs) ? visibleClubs.length : 0,
+      });
     }
 
     const selection = resolveActiveClubSelection({
-      preferredClubId: activeClubId,
+      preferredClubId: preferredHint,
       visibleClubs,
       requireTenant: true,
+      selectedTenantId: currentTenantId,
+      authorityReady,
     });
+
+    if (selection.preferenceStatus === CLUB_PREFERENCE_STATUS.PENDING_VALIDATION) {
+      if (preferredHint && preferredHint !== activeClubId) {
+        setActiveClubId(preferredHint);
+      }
+      return;
+    }
+
+    if (selection.preferenceStatus === CLUB_PREFERENCE_STATUS.VALID) {
+      logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_VALID, {
+        hasHint: Boolean(preferredHint),
+      });
+    }
+
+    if (selection.preferenceStatus === CLUB_PREFERENCE_STATUS.INVALID && preferredHint) {
+      logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_INVALID, {
+        hasHint: true,
+      });
+      clearActiveClubIdPreference();
+      logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_CLEARED, {
+        reason: "authoritative_invalid",
+      });
+    }
 
     if (selection.activeClubId === activeClubId) {
       return;
@@ -482,14 +498,19 @@ export function ClubProvider({ children }) {
       setActiveClubId(selection.activeClubId);
       setRevision((value) => value + 1);
     }
-  }, [canonicalRead, clubReadState, activeClubId, visibleClubs]);
+  }, [canonicalRead, clubReadState, activeClubId, visibleClubs, currentTenantId]);
 
   // Legacy active-club validation (blob registry). Skipped in canonical mode.
+  // Wave 1: do not clear a club hint while selected operational tenant is still null
+  // (transient F5 rehydrate) — same PENDING vs INVALID distinction as canonical.
   useEffect(() => {
     if (canonicalRead) {
       return;
     }
     if (!rbacEnabled || !isAuthenticated) {
+      return;
+    }
+    if (!currentTenantId) {
       return;
     }
 
@@ -524,7 +545,15 @@ export function ClubProvider({ children }) {
       setRevision((value) => value + 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
-  }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, clubRehydrateScopeKey, visibleClubs]);
+  }, [
+    canonicalRead,
+    activeClubId,
+    currentTenantId,
+    isAuthenticated,
+    rbacEnabled,
+    clubRehydrateScopeKey,
+    visibleClubs,
+  ]);
 
   const summary = useMemo(() => {
     const base = getClubSummary(activeClub?.id || activeClubId);
@@ -734,21 +763,6 @@ export function ClubProvider({ children }) {
   return (
     <ClubContext.Provider value={value}>
       {children}
-      <Snackbar
-        open={Boolean(syncConflictMessage)}
-        autoHideDuration={6000}
-        onClose={() => setSyncConflictMessage(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          onClose={() => setSyncConflictMessage(null)}
-          severity="warning"
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {syncConflictMessage}
-        </Alert>
-      </Snackbar>
     </ClubContext.Provider>
   );
 }

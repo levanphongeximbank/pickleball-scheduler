@@ -1,4 +1,8 @@
-import { DEFAULT_TIMEZONE } from "../ai/config.js";
+/**
+ * Tenant model default timezone — owned here (not imported from AI module).
+ * Literal value: Asia/Ho_Chi_Minh.
+ */
+export const DEFAULT_TENANT_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 export const TENANT_STATUS = Object.freeze({
   ACTIVE: "active",
@@ -37,7 +41,7 @@ export function normalizeTenant(tenant) {
     status: tenant?.status || TENANT_STATUS.ACTIVE,
     plan: tenant?.plan || TENANT_PLANS.TRIAL,
     ownerUserId: tenant?.ownerUserId || tenant?.ownerId || null,
-    timezone: tenant?.timezone || DEFAULT_TIMEZONE,
+    timezone: tenant?.timezone || DEFAULT_TENANT_TIMEZONE,
     note: String(tenant?.note || "").trim(),
     createdAt: tenant?.createdAt || new Date().toISOString(),
     updatedAt: tenant?.updatedAt || new Date().toISOString(),
@@ -56,7 +60,7 @@ export function createTenantRecord(name, options = {}) {
     name: trimmed,
     slug,
     ownerUserId: options.ownerUserId || options.ownerId || null,
-    timezone: options.timezone || DEFAULT_TIMEZONE,
+    timezone: options.timezone || DEFAULT_TENANT_TIMEZONE,
     status: options.status || TENANT_STATUS.TRIAL,
     plan: options.plan || TENANT_PLANS.TRIAL,
     note: options.note || "",

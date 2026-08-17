@@ -96,6 +96,14 @@ export function saveClubs(clubs) {
   localStorage.setItem(CLUBS_KEY, JSON.stringify(withDefault));
 }
 
+/**
+ * Resolve a local-blob active club id for legacy callers.
+ *
+ * IMPORTANT (Wave 1 / canonical): when a persisted preference is not present in
+ * the local registry (cloud-only canonical club), do NOT overwrite
+ * pickleball-active-club-v1. Coercion to DEFAULT_CLUB is ephemeral for legacy
+ * blob APIs only — never preference authority.
+ */
 export function getActiveClubId() {
   const clubs = loadClubs();
   const raw = localStorage.getItem(ACTIVE_CLUB_KEY);
@@ -109,7 +117,7 @@ export function getActiveClubId() {
     return raw;
   }
 
-  localStorage.setItem(ACTIVE_CLUB_KEY, DEFAULT_CLUB.id);
+  // Preserve canonical / cloud-only preference in storage.
   return DEFAULT_CLUB.id;
 }
 
@@ -152,6 +160,14 @@ export function setActiveClubIdPreference(clubId) {
   }
   localStorage.setItem(ACTIVE_CLUB_KEY, normalizedId);
   return true;
+}
+
+/**
+ * Clear the persisted active-club preference (Wave 1 tenant switch / logout).
+ * Preference is never authorization authority — clearing prevents cross-tenant leak.
+ */
+export function clearActiveClubIdPreference() {
+  localStorage.removeItem(ACTIVE_CLUB_KEY);
 }
 
 export function getActiveClub() {

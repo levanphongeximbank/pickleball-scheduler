@@ -14,7 +14,6 @@ import {
 } from "../../integration/referee/constants.js";
 import { normalizeRefereeAdapterMode } from "../../integration/referee/contract.js";
 import { isRefereeAdapterContractError } from "../../integration/referee/errors.js";
-import { deriveCanonicalCourtAfterScoring, resolveSideChangeRequiredAfterScoring } from "../../integration/referee/deriveCanonicalCourtAfterScoring.js";
 import {
   MATCH_ACTION,
   MATCH_STATUS,
@@ -29,7 +28,18 @@ import {
   createInitialScoringState,
   createScoringProjection,
   recordPoint,
+  supersedeScoringEvent,
 } from "../../../competition-core/scoring/index.js";
+import {
+  deriveCanonicalCourtAfterScoring,
+  resolveSideChangeRequiredAfterScoring,
+} from "../../integration/referee/deriveCanonicalCourtAfterScoring.js";
+import {
+  assertUndoLastScoringEligible,
+  evaluateUndoAvailability,
+  findLastEligibleScoringEvent,
+  SCORING_ACTION_LEDGER_KIND,
+} from "./scoring/undoLastScoringActionHelpers.js";
 import {
   ACCEPTANCE_STATUS,
   ACTOR_TYPE,
@@ -71,6 +81,19 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
   const clockIso = isNonEmptyString(deps.clockIso)
     ? String(deps.clockIso).trim()
     : "2026-07-24T00:00:00.000Z";
+
+  // Host may inject wall-clock nowMs for UNDO_* instrumentation. Default is
+  // deterministic (no Date.now) so E2E-04 ops stay architecture-clean.
+  const nowMs =
+    typeof deps.nowMs === "function"
+      ? deps.nowMs
+      : (() => {
+          let tick = 0;
+          return () => {
+            tick += 1;
+            return tick;
+          };
+        })();
 
   const store = deps.store || deps.runtime?.opsStore || null;
   if (!store) {
@@ -295,6 +318,14 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
       for (const match of command.matches) {
         await store.putMatch(tenantId, competitionId, match);
       }
+    }
+    if (command.courtsByMatch && typeof command.courtsByMatch === "object") {
+      await store.update(tenantId, competitionId, (draft) => {
+        draft.courtsByMatch = draft.courtsByMatch || {};
+        for (const [matchId, court] of Object.entries(command.courtsByMatch)) {
+          draft.courtsByMatch[matchId] = court;
+        }
+      });
     }
     return deepFreeze({
       ok: true,
@@ -598,14 +629,27 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         );
       } else {
         format = createScoringFormat({
-          scoringSystem: SCORING_SYSTEM.RALLY,
+          scoringSystem: String(cmd.scoringSystem || SCORING_SYSTEM.RALLY)
+            .trim()
+            .toUpperCase(),
           pointsToWin: Number(cmd.pointsToWin) || 11,
           winBy: Number(cmd.winBy) || 2,
           bestOfGames: Number(cmd.bestOfGames) || 1,
+          sideSwitchAt:
+            cmd.sideSwitchAt != null && cmd.sideSwitchAt !== ""
+              ? Number(cmd.sideSwitchAt)
+              : null,
+          serversPerSide: Number(cmd.serversPerSide) || 2,
+          initialServingSide: cmd.initialServingSide || SCORING_SIDE.SIDE_A,
         });
       }
-      let state = createInitialScoringState({ matchId, format });
-      const priorCourt = record.courtsByMatch?.[matchId] || null;
+      const priorCourt = record.courtsByMatch?.[matchId] || cmd.priorCourt || null;
+      const trackServe =
+        String(format.scoringSystem).toUpperCase() === SCORING_SYSTEM.SIDE_OUT ||
+        cmd.trackServe === true ||
+        Boolean(priorCourt?.serverPlayerId) ||
+        Boolean(priorCourt?.lineupConfigured);
+      let state = createInitialScoringState({ matchId, format, trackServe });
       if (state.serve && priorCourt) {
         const openingFromCourt = Number(priorCourt.serverNumber);
         const sideFromCourt = priorCourt.servingSide
@@ -615,16 +659,15 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
           (Number.isFinite(openingFromCourt) && openingFromCourt >= 1) ||
           sideFromCourt
         ) {
-          const serve = {
-            servingSide: sideFromCourt || state.serve.servingSide,
-            serverNumber:
-              Number.isFinite(openingFromCourt) && openingFromCourt >= 1
-                ? openingFromCourt
-                : state.serve.serverNumber,
-          };
           state = Object.freeze({
             ...state,
-            serve: Object.freeze(serve),
+            serve: Object.freeze({
+              servingSide: sideFromCourt || state.serve.servingSide,
+              serverNumber:
+                Number.isFinite(openingFromCourt) && openingFromCourt >= 1
+                  ? openingFromCourt
+                  : state.serve.serverNumber,
+            }),
           });
         }
       }
@@ -636,14 +679,20 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         openedAt: clockIso,
         state,
         projection,
+        actionLedger: Object.freeze([]),
       });
       await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
         draft.scoreSessions[matchId] = session;
+        if (priorCourt) {
+          draft.courtsByMatch = draft.courtsByMatch || {};
+          draft.courtsByMatch[matchId] = priorCourt;
+        }
       });
       return deepFreeze({
         ok: true,
         idempotent: false,
         session,
+        court: priorCourt,
         fingerprint: computeOrganizerFingerprint(
           session,
           "e2e04-ref-score-session"
@@ -716,6 +765,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
       const points = Math.max(1, Number(cmd.points) || 1);
       let awardedPoint = false;
       const domainHints = [];
+      let lastEvent = null;
       for (let i = 0; i < points; i += 1) {
         const applied = recordPoint(
           state,
@@ -729,18 +779,12 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
           }
         );
         state = applied.state;
+        lastEvent = applied.event;
         if (applied.event?.payload?.awardedPoint === true) awardedPoint = true;
         const hints = applied.event?.payload?.domainHints;
         if (Array.isArray(hints)) domainHints.push(...hints);
       }
       const projection = createScoringProjection(state);
-      const nextSession = Object.freeze({
-        ...session,
-        state,
-        projection,
-        updatedAt: clockIso,
-      });
-
       const scoringSystem = String(
         state.format?.scoringSystem || session.state?.format?.scoringSystem || ""
       ).toUpperCase();
@@ -771,6 +815,26 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
           sideChange.sideChangeAcknowledgedAtThreshold,
         sideChangeThreshold: sideChange.sideChangeThreshold,
       });
+      const ledgerEntry = Object.freeze({
+        kind: SCORING_ACTION_LEDGER_KIND.SCORING,
+        eventId: lastEvent?.eventId || null,
+        atRevision: state.revision,
+        priorCourt: priorCourt ? cloneCourtSnapshot(priorCourt) : null,
+        nextCourt: cloneCourtSnapshot(nextCourt),
+        causedSideChangeDue: sideChange.sideChangeRequired === true,
+        scoringSide,
+        awardedPoint,
+      });
+      const nextSession = Object.freeze({
+        ...session,
+        state,
+        projection,
+        updatedAt: clockIso,
+        actionLedger: Object.freeze([
+          ...(Array.isArray(session.actionLedger) ? session.actionLedger : []),
+          ledgerEntry,
+        ]),
+      });
 
       await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
         draft.scoreSessions[matchId] = nextSession;
@@ -797,6 +861,11 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
               nextCourt,
           }
         : null;
+      let expectedVersion = liveInfo?.expectedVersion;
+      if (expectedVersion == null) {
+        const nextRecord = await loadRecord(cmd);
+        expectedVersion = Number(nextRecord.revision || 0);
+      }
       return deepFreeze({
         ok: true,
         scoreProjection: projection,
@@ -807,10 +876,309 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         matchComplete: Boolean(state.matchComplete),
         calculatedWinnerSide: state.calculatedWinnerSide || null,
         winnerInferenceByFacade: false,
+        expectedVersion,
         fingerprint: computeOrganizerFingerprint(
           { matchId, projection, court: nextCourt },
           "e2e04-ref-score"
         ),
+      });
+    });
+  }
+
+  function cloneCourtSnapshot(court) {
+    if (!court || typeof court !== "object") return null;
+    return JSON.parse(JSON.stringify(court));
+  }
+
+  async function confirmChangeEnds(command = {}) {
+    return run(command, async (cmd) => {
+      const auth = await authorize(cmd, REFEREE_ACTION.SCORE_SUBMIT);
+      const matchId = String(cmd.matchId || "").trim();
+      await requireAssignedMatch(cmd, auth, matchId);
+      const record = await loadRecord(cmd);
+      const match = record.matches?.[matchId];
+      if (!match || String(match.status).toUpperCase() !== MATCH_STATUS.IN_PROGRESS) {
+        failReferee(
+          REFEREE_ERROR_CODE.MATCH_NOT_ACTIVE,
+          "confirmChangeEnds requires an active match",
+          { status: match?.status || null }
+        );
+      }
+      const session = record.scoreSessions?.[matchId];
+      if (!session) {
+        failReferee(
+          REFEREE_ERROR_CODE.SCORE_ENTRY_NOT_READY,
+          "Score entry session is required before confirmChangeEnds",
+          { matchId }
+        );
+      }
+      if (cmd.expectedVersion != null) {
+        if (Number(cmd.expectedVersion) !== Number(record.revision || 0)) {
+          failReferee(
+            REFEREE_ERROR_CODE.STALE_WRITE,
+            "Fail-closed stale write: expectedVersion mismatch",
+            {
+              expectedVersion: cmd.expectedVersion,
+              actualVersion: record.revision,
+              stale: true,
+            }
+          );
+        }
+      }
+      const current = record.courtsByMatch?.[matchId] || {};
+      if (current.sideChangeRequired !== true) {
+        failReferee(
+          REFEREE_ERROR_CODE.PRECONDITION_FAILED,
+          "confirmChangeEnds requires sideChangeRequired",
+          { sideChangeRequired: current.sideChangeRequired === true }
+        );
+      }
+      const ackThreshold =
+        current.sideChangeThreshold != null
+          ? Number(current.sideChangeThreshold)
+          : current.sideChangeAcknowledgedAtThreshold != null
+            ? Number(current.sideChangeAcknowledgedAtThreshold)
+            : session.state?.format?.sideSwitchAt != null
+              ? Number(session.state.format.sideSwitchAt)
+              : null;
+      const nextOrientation =
+        String(current.orientation || "STANDARD").toUpperCase() === "SWAPPED"
+          ? "STANDARD"
+          : "SWAPPED";
+      const nextCourt = Object.freeze({
+        ...current,
+        orientation: nextOrientation,
+        sideChangeRequired: false,
+        sideChangeThreshold: current.sideChangeThreshold ?? ackThreshold,
+        sideChangeAcknowledgedAtThreshold: ackThreshold,
+      });
+      const ledgerEntry = Object.freeze({
+        kind: SCORING_ACTION_LEDGER_KIND.CHANGE_ENDS,
+        atRevision: Number(session.state?.revision || 0),
+        acknowledgedAtThreshold: ackThreshold,
+        priorCourt: cloneCourtSnapshot(current),
+        nextCourt: cloneCourtSnapshot(nextCourt),
+      });
+      const nextSession = Object.freeze({
+        ...session,
+        updatedAt: clockIso,
+        actionLedger: Object.freeze([
+          ...(Array.isArray(session.actionLedger) ? session.actionLedger : []),
+          ledgerEntry,
+        ]),
+      });
+      await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
+        draft.scoreSessions[matchId] = nextSession;
+        draft.courtsByMatch = draft.courtsByMatch || {};
+        draft.courtsByMatch[matchId] = nextCourt;
+      });
+      const nextRecord = await loadRecord(cmd);
+      return deepFreeze({
+        ok: true,
+        court: nextCourt,
+        expectedVersion: Number(nextRecord.revision || 0),
+        fingerprint: computeOrganizerFingerprint(
+          { matchId, court: nextCourt },
+          "e2e04-ref-change-ends"
+        ),
+      });
+    });
+  }
+
+  async function undoLastScoringAction(command = {}) {
+    return run(command, async (cmd) => {
+      const timing = {
+        UNDO_TOTAL_MS: null,
+        UNDO_READ_MS: null,
+        UNDO_REPLAY_MS: null,
+        UNDO_COMMIT_MS: null,
+        UNDO_PROJECT_MS: null,
+      };
+      const t0 = nowMs();
+      const auth = await authorize(cmd, REFEREE_ACTION.SCORE_UNDO);
+      const matchId = String(cmd.matchId || "").trim();
+      const tRead0 = nowMs();
+      await requireAssignedMatch(cmd, auth, matchId);
+      const record = await loadRecord(cmd);
+      timing.UNDO_READ_MS = nowMs() - tRead0;
+
+      const idemKey = String(cmd.idempotencyKey || cmd.commandId || "").trim();
+      const priorReceipt = idemKey
+        ? record.idempotencyByMatch?.[matchId]?.[idemKey]
+        : null;
+      if (priorReceipt) {
+        timing.UNDO_TOTAL_MS = nowMs() - t0;
+        return deepFreeze({
+          ...priorReceipt,
+          ok: true,
+          idempotent: true,
+          timing,
+        });
+      }
+
+      const match = record.matches?.[matchId];
+      const session = record.scoreSessions?.[matchId];
+      const validation = record.validationByMatch?.[matchId] || null;
+      const court = record.courtsByMatch?.[matchId] || null;
+      const targetEvent = findLastEligibleScoringEvent(session?.state);
+      const eligible = assertUndoLastScoringEligible({
+        match,
+        session,
+        validation,
+        court,
+        expectedVersion: cmd.expectedVersion,
+        actualVersion: record.revision,
+        targetEvent,
+        ledger: session?.actionLedger,
+      });
+
+      const tReplay0 = nowMs();
+      const applied = supersedeScoringEvent(
+        session.state,
+        {
+          targetEventId: eligible.targetEvent.eventId,
+          replacementScoringSide: null,
+          lifecycleStatus: MATCH_STATUS.IN_PROGRESS,
+          reason: "UNDO_LAST_SCORING_ACTION",
+          clientEventId: idemKey || nextDeterministicId("undo"),
+          occurredAt: clockIso,
+        },
+        {
+          now: () => clockIso,
+          nextId: () => nextDeterministicId("supersede"),
+        }
+      );
+      timing.UNDO_REPLAY_MS = nowMs() - tReplay0;
+
+      const projection = createScoringProjection(applied.state);
+
+      // Prefer exact prior court snapshot from the scoring ledger (incl. change-end due).
+      let restoredCourt;
+      if (eligible.scoringEntry?.priorCourt != null) {
+        restoredCourt = Object.freeze({
+          ...cloneCourtSnapshot(eligible.scoringEntry.priorCourt),
+          servingSide:
+            applied.state.serve?.servingSide ||
+            eligible.scoringEntry.priorCourt.servingSide ||
+            null,
+          serverNumber:
+            applied.state.serve?.serverNumber ||
+            eligible.scoringEntry.priorCourt.serverNumber ||
+            null,
+          serverPlayerId:
+            eligible.scoringEntry.priorCourt.serverPlayerId || null,
+        });
+      } else {
+        const restoredCourtBase = cloneCourtSnapshot(court) || {
+          playerPositions: { sideA: [], sideB: [] },
+          serverPlayerId: null,
+        };
+        const sideChange = resolveSideChangeRequiredAfterScoring({
+          priorCourt: restoredCourtBase,
+          priorPoints: applied.state.points,
+          nextPoints: applied.state.points,
+          sideSwitchAt: applied.state.format?.sideSwitchAt,
+          domainHints: [],
+        });
+        restoredCourt = Object.freeze({
+          ...restoredCourtBase,
+          servingSide:
+            applied.state.serve?.servingSide ||
+            restoredCourtBase.servingSide ||
+            null,
+          serverNumber:
+            applied.state.serve?.serverNumber ||
+            restoredCourtBase.serverNumber ||
+            null,
+          sideChangeRequired: sideChange.sideChangeRequired === true,
+          sideChangeAcknowledgedAtThreshold:
+            sideChange.sideChangeAcknowledgedAtThreshold,
+          sideChangeThreshold: sideChange.sideChangeThreshold,
+        });
+      }
+
+      const nextSession = Object.freeze({
+        ...session,
+        state: applied.state,
+        projection,
+        updatedAt: clockIso,
+        actionLedger: Object.freeze([
+          ...(Array.isArray(session.actionLedger) ? session.actionLedger : []),
+          Object.freeze({
+            kind: SCORING_ACTION_LEDGER_KIND.SUPERSEDE,
+            eventId: applied.event.eventId,
+            targetEventId: eligible.targetEvent.eventId,
+            atRevision: applied.state.revision,
+            priorCourt: cloneCourtSnapshot(court),
+            nextCourt: cloneCourtSnapshot(restoredCourt),
+          }),
+        ]),
+      });
+
+      const tCommit0 = nowMs();
+      const resultFingerprint = computeOrganizerFingerprint(
+        {
+          matchId,
+          projection,
+          court: restoredCourt,
+          supersedeEventId: applied.event.eventId,
+        },
+        "e2e04-ref-score-undo"
+      );
+      await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
+        draft.scoreSessions[matchId] = nextSession;
+        draft.courtsByMatch = draft.courtsByMatch || {};
+        draft.courtsByMatch[matchId] = restoredCourt;
+        if (idemKey) {
+          draft.idempotencyByMatch = draft.idempotencyByMatch || {};
+          const nextVersion = Number(draft.revision || 0) + 1;
+          draft.idempotencyByMatch[matchId] = {
+            ...(draft.idempotencyByMatch[matchId] || {}),
+            [idemKey]: {
+              scoreProjection: projection,
+              court: restoredCourt,
+              targetEventId: eligible.targetEvent.eventId,
+              supersedeEventId: applied.event.eventId,
+              expectedVersion: nextVersion,
+              fingerprint: resultFingerprint,
+            },
+          };
+        }
+      });
+      timing.UNDO_COMMIT_MS = nowMs() - tCommit0;
+
+      const tProject0 = nowMs();
+      const nextRecord = await loadRecord(cmd);
+      const undoAvailability = evaluateUndoAvailability({
+        match: nextRecord.matches?.[matchId],
+        session: nextRecord.scoreSessions?.[matchId],
+        validation: nextRecord.validationByMatch?.[matchId] || null,
+        court: nextRecord.courtsByMatch?.[matchId] || null,
+        actualVersion: nextRecord.revision,
+        targetEvent: findLastEligibleScoringEvent(
+          nextRecord.scoreSessions?.[matchId]?.state
+        ),
+        ledger: nextRecord.scoreSessions?.[matchId]?.actionLedger,
+      });
+      timing.UNDO_PROJECT_MS = nowMs() - tProject0;
+      timing.UNDO_TOTAL_MS = nowMs() - t0;
+
+      return deepFreeze({
+        ok: true,
+        idempotent: false,
+        command: "UNDO_LAST_SCORING_ACTION",
+        scoreProjection: projection,
+        court: restoredCourt,
+        targetEventId: eligible.targetEvent.eventId,
+        supersedeEventId: applied.event.eventId,
+        originalEventPreserved: true,
+        correctionEventType: applied.event.eventType,
+        matchComplete: Boolean(applied.state.matchComplete),
+        calculatedWinnerSide: applied.state.calculatedWinnerSide || null,
+        expectedVersion: Number(nextRecord.revision || 0),
+        undoAvailability,
+        fingerprint: resultFingerprint,
+        timing,
       });
     });
   }
@@ -1121,6 +1489,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     resumeAssignedMatch,
     createScoreEntrySession,
     submitScoreProjection,
+    confirmChangeEnds,
+    undoLastScoringAction,
     submitMatchResultForValidation,
     getCorrectionRequiredState,
     resubmitCorrectedResult,
