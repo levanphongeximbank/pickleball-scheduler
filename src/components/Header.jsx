@@ -21,8 +21,10 @@ import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import GlobalSearch from "./GlobalSearch.jsx";
 import AccountMenu from "./shell/AccountMenu.jsx";
 import TenantSwitcher from "./TenantSwitcher.jsx";
+import ClubSwitcher from "./ClubSwitcher.jsx";
 import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
 import { useTenant } from "../context/TenantContext.jsx";
+import { useClub } from "../context/ClubContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { SHELL_COLORS, SHELL_LAYOUT } from "./shell/shellTokens.js";
 import { useNotificationInbox } from "../features/notifications/runtime/useNotificationInbox.js";
@@ -31,6 +33,7 @@ import { NOTIFICATION_STATUSES } from "../features/notifications/constants/notif
 export default function Header({ onMenuClick }) {
   const isMobile = useIsMobile();
   const { isSuperAdmin, currentTenantId } = useTenant();
+  const { clubs, activeClubReady } = useClub();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
@@ -38,6 +41,8 @@ export default function Header({ onMenuClick }) {
   const tenantId = currentTenantId || user?.venueId || null;
   const userId = user?.id || null;
   const inboxEnabled = Boolean(tenantId && userId);
+  const showDesktopClubSwitcher =
+    !isMobile && Boolean(currentTenantId) && (clubs.length > 1 || !activeClubReady);
 
   const {
     items,
@@ -115,6 +120,11 @@ export default function Header({ onMenuClick }) {
                 <TenantSwitcher variant="light" minWidth={200} />
               </Box>
             )}
+            {showDesktopClubSwitcher ? (
+              <Box sx={{ flexShrink: 0 }} data-testid="desktop-club-switcher">
+                <ClubSwitcher variant="light" minWidth={160} />
+              </Box>
+            ) : null}
             <Box sx={{ flex: 1, display: "flex", justifyContent: "center", minWidth: 0, maxWidth: 520 }}>
               <GlobalSearch variant="light" maxWidth={520} />
             </Box>

@@ -185,25 +185,32 @@ export function createCanonicalClubRepository(deps = {}) {
 
   /**
    * Resolve the Club-entity list for the current user/tenant scope.
-   * Platform-wide roles read the whole registry (tenantId=null); other roles
-   * are scoped to their tenant. Delegates to listClubsForTenant (V2 RPC gateway
-   * when enabled, legacy adapter otherwise). This is the single read entry point
-   * ClubContext uses in canonical mode.
+   *
+   * Wave 1 — AUTHORIZED_SCOPE ≠ SELECTED_OPERATIONAL_CONTEXT:
+   * - Platform-wide roles MAY be authorized across tenants.
+   * - When an operational tenantId is selected, club options MUST be scoped to it.
+   * - Platform-wide without a selected tenant still reads the whole registry
+   *   (tenantId=null) for admin catalog paths that opt in; ClubContext must not
+   *   treat that catalog as a ready operational selection set.
    */
   async function listClubsForCurrentScope(options = {}) {
     const user = options.user ?? getCurrentUser();
     const rbacEnabled = options.rbacEnabled ?? isRbacEnabled();
     const platformWide =
       options.isPlatformWide ?? (user ? isPlatformWideRole(user.role) : false);
-    const effectiveTenantId = platformWide
-      ? null
-      : String(
-          options.tenantId ||
-            tenantIdFromRecord(user) ||
-            user?.tenantId ||
-            user?.venueId ||
-            ""
-        ).trim() || null;
+    const selectedOperationalTenantId =
+      String(options.tenantId || "").trim() || null;
+    const profileTenantId =
+      String(
+        tenantIdFromRecord(user) || user?.tenantId || user?.venueId || ""
+      ).trim() || null;
+
+    // Selected operational tenant always wins over platform-wide "all clubs".
+    const effectiveTenantId = selectedOperationalTenantId
+      ? selectedOperationalTenantId
+      : platformWide
+        ? null
+        : profileTenantId;
 
     return listClubsForTenant(effectiveTenantId, {
       includeInactive: Boolean(options.includeInactive),
@@ -212,6 +219,7 @@ export function createCanonicalClubRepository(deps = {}) {
         rbacEnabled,
         tenantId: effectiveTenantId,
         isPlatformAdmin: platformWide,
+        selectedOperationalTenantId,
       },
     });
   }

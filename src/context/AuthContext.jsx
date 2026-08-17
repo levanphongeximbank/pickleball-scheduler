@@ -1,7 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { can, canAccessClub, canAccessVenue, canAll, canAny } from "../auth/rbac.js";
-import { clearAuthSession, loadAuthSession } from "../auth/authStorage.js";
+import {
+  AUTH_SESSION_CLEAR_REASON,
+  clearAuthSession,
+  loadAuthSession,
+} from "../auth/authStorage.js";
 import { formatAuthError } from "../auth/authErrors.js";
 import {
   enableRbac,
@@ -19,6 +23,10 @@ import { getSupabaseConfigError, hasSupabaseConfig } from "../auth/supabaseClien
 import { selectStableAuthState } from "../auth/authSemanticScope.js";
 import { clearClubScope } from "../auth/clubScopeResolver.js";
 import { clearGovernanceScope } from "../auth/governanceScopeResolver.js";
+import {
+  logPlatformContextEvent,
+  PLATFORM_CONTEXT_EVENT,
+} from "../core/platform/app/platformContextDiagnostics.js";
 
 const AuthContext = createContext(null);
 
@@ -41,8 +49,12 @@ export function AuthProvider({ children }) {
       const shouldLogAuthDebug = env.DEV || env.VITE_ENABLE_AUTH_DEBUG === "true";
       const configError = getSupabaseConfigError();
 
+      logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.AUTH_BOOTSTRAP_START, {
+        hasConfigError: Boolean(configError),
+      });
+
       if (configError) {
-        clearAuthSession();
+        clearAuthSession(AUTH_SESSION_CLEAR_REASON.AUTH_INVALID);
         if (!cancelled) {
           setAuthError(configError);
           setState(getAuthState());
@@ -55,9 +67,11 @@ export function AuthProvider({ children }) {
         setAuthError(null);
         setAuthLoading(true);
 
+        // Leftover "dev" identity must not be treated as logout on F5.
+        // Only replace the auth key — preserve tenant/club/cluster preference hints.
         const existing = loadAuthSession();
         if (existing?.provider === "dev") {
-          clearAuthSession();
+          clearAuthSession(AUTH_SESSION_CLEAR_REASON.IDENTITY_REPLACE);
         }
 
         const result = await Promise.race([
@@ -70,6 +84,9 @@ export function AuthProvider({ children }) {
         if (!cancelled) {
           if (result?.ok) {
             setAuthError(null);
+            logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.AUTH_RESTORE_OK, {
+              code: "OK",
+            });
           } else if (result?.code === "PASSWORD_RECOVERY") {
             setAuthError(null);
           } else if (
@@ -78,17 +95,19 @@ export function AuthProvider({ children }) {
             result?.code === "PROFILE_REQUIRED" ||
             result?.code === "PROFILE_SUSPENDED"
           ) {
-            clearAuthSession();
+            clearAuthSession(AUTH_SESSION_CLEAR_REASON.AUTH_INVALID);
             setAuthError(formatAuthError(result.error, result.code));
           } else if (result?.code === "NO_SUPABASE") {
-            clearAuthSession();
+            clearAuthSession(AUTH_SESSION_CLEAR_REASON.AUTH_INVALID);
             setAuthError(getSupabaseConfigError());
           } else if (result?.code === "NO_RECOVERY_SESSION") {
             setAuthError(null);
           } else if (result?.code === "NO_SESSION") {
-            clearAuthSession();
+            clearAuthSession(AUTH_SESSION_CLEAR_REASON.LOGOUT);
           } else {
-            clearAuthSession();
+            // Transient SESSION_ERROR / unknown restore failure — do not destroy
+            // operational prefs; successful F5 must never look like logout.
+            clearAuthSession(AUTH_SESSION_CLEAR_REASON.IDENTITY_REPLACE);
           }
           refresh();
         }
@@ -100,7 +119,7 @@ export function AuthProvider({ children }) {
           // Timeout khi restore session: vẫn cho phép form đăng nhập (không khóa UI).
           const isTimeout = String(error?.message || "").includes("AUTH_INIT_TIMEOUT");
           if (!isTimeout) {
-            clearAuthSession();
+            clearAuthSession(AUTH_SESSION_CLEAR_REASON.IDENTITY_REPLACE);
           }
           setAuthError(
             isTimeout

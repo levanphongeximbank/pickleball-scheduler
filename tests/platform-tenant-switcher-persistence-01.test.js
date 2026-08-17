@@ -377,13 +377,34 @@ describe("platform tenant switcher persistence 01 — authorization policy", () 
     assert.equal(denied.code, "FORBIDDEN");
   });
 
-  it("TenantSwitcher view stays empty until an explicit matching catalog id is selected", () => {
+  it("TenantSwitcher view stays empty until an explicit tenant id is selected", () => {
     const view = resolveTenantSwitcherView({
       currentTenantId: null,
       tenants: CANONICAL_VENUES,
     });
     assert.equal(view.value, "");
     assert.equal(view.selectedLabel, "Chọn tổ chức…");
+    assert.equal(view.hasSelection, false);
+  });
+
+  it("keeps a visible label when selected id is temporarily missing from catalog", () => {
+    const view = resolveTenantSwitcherView({
+      currentTenantId: TENANT_A,
+      tenants: [],
+      currentTenant: { id: TENANT_A, name: "Venue Staging A" },
+    });
+    assert.equal(view.value, TENANT_A);
+    assert.equal(view.selectedLabel, "Venue Staging A");
+    assert.equal(view.hasSelection, true);
+  });
+
+  it("falls back to selected id when display name is blank", () => {
+    const view = resolveTenantSwitcherView({
+      currentTenantId: TENANT_A,
+      tenants: [{ id: TENANT_A, name: "   " }],
+    });
+    assert.equal(view.value, TENANT_A);
+    assert.equal(view.selectedLabel, TENANT_A);
   });
 });
 

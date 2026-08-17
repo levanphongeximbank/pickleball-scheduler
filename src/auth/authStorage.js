@@ -11,6 +11,16 @@ import { isClubStorageV2Enabled } from "../features/club/config/clubRegistryFlag
 import { stripLegacyProfileClubFields } from "../features/club/services/clubActiveMembershipService.js";
 import { quarantineOfflineQueueOnLogout } from "../features/mobile/services/offlineQueueQuarantine.js";
 import { clearActiveTenantId } from "../data/tenantSession.js";
+import { clearActiveClubIdPreference } from "../data/club.js";
+import { setActiveClusterId } from "../data/courtCluster.js";
+import {
+  AUTH_SESSION_CLEAR_REASON,
+  shouldClearOperationalContextOnAuthClear,
+} from "./authSessionLifecycle.js";
+import {
+  logPlatformContextEvent,
+  PLATFORM_CONTEXT_EVENT,
+} from "../core/platform/app/platformContextDiagnostics.js";
 
 function readJson(key, fallback) {
   try {
@@ -105,8 +115,31 @@ export function saveAuthSessionFromCloudProfile(user, meta = {}) {
   return next;
 }
 
-export function clearAuthSession() {
+/**
+ * Clear the persisted auth identity.
+ *
+ * @param {string} [reason=AUTH_SESSION_CLEAR_REASON.LOGOUT]
+ *   LOGOUT / USER_SWITCH / AUTH_INVALID → also clear tenant/club/cluster prefs.
+ *   IDENTITY_REPLACE → auth key only (F5 / bootstrap must not look like logout).
+ */
+export function clearAuthSession(reason = AUTH_SESSION_CLEAR_REASON.LOGOUT) {
+  const normalized = String(reason || AUTH_SESSION_CLEAR_REASON.LOGOUT).trim();
+  const clearOperational = shouldClearOperationalContextOnAuthClear(normalized);
+
   quarantineOfflineQueueOnLogout();
-  clearActiveTenantId();
+  if (clearOperational) {
+    clearActiveTenantId();
+    clearActiveClubIdPreference();
+    setActiveClusterId(null);
+    logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_CLEARED, {
+      reason: normalized,
+    });
+  }
+  logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.AUTH_SESSION_CLEAR, {
+    reason: normalized,
+    operationalContextCleared: clearOperational,
+  });
   localStorage.removeItem(AUTH_SESSION_KEY);
 }
+
+export { AUTH_SESSION_CLEAR_REASON };
