@@ -50,6 +50,9 @@ drop function if exists public.competition_unassign_referee(
 );
 
 -- Drop internal helpers.
+drop function if exists public.competition_assignment_assert_mutation_boundary(
+  text, text, text, uuid, text, boolean
+);
 drop function if exists public.competition_assignment_remember_idempotency(
   text, text, text, text, text, uuid, integer
 );

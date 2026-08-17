@@ -77,25 +77,23 @@ comment on table public.competition_referee_assignment_audit is
 
 alter table public.competition_referee_assignment_audit enable row level security;
 
-revoke all on table public.competition_referee_assignment_audit from public, anon;
-grant select on table public.competition_referee_assignment_audit to authenticated;
+-- Audit is durable and internal to SECURITY DEFINER RPCs.
+-- No direct client table read (S01). Authenticated SELECT would leak
+-- every tenant's assignment evidence under a mere auth.uid() IS NOT NULL policy.
+revoke all on table public.competition_referee_assignment_audit from public, anon, authenticated;
 
+drop policy if exists competition_referee_assignment_audit_select_auth
+  on public.competition_referee_assignment_audit;
 drop policy if exists competition_referee_assignment_audit_no_client_write
   on public.competition_referee_assignment_audit;
-create policy competition_referee_assignment_audit_no_client_write
+drop policy if exists competition_referee_assignment_audit_deny_authenticated
+  on public.competition_referee_assignment_audit;
+create policy competition_referee_assignment_audit_deny_authenticated
   on public.competition_referee_assignment_audit
   for all
   to authenticated
   using (false)
   with check (false);
-
-drop policy if exists competition_referee_assignment_audit_select_auth
-  on public.competition_referee_assignment_audit;
-create policy competition_referee_assignment_audit_select_auth
-  on public.competition_referee_assignment_audit
-  for select
-  to authenticated
-  using (auth.uid() is not null);
 
 -- ─────────────────────────────────────────────────────────────────
 -- C) Competition-owned assignment idempotency ledger
@@ -117,9 +115,9 @@ comment on table public.competition_referee_assignment_idempotency is
 
 alter table public.competition_referee_assignment_idempotency enable row level security;
 
-revoke all on table public.competition_referee_assignment_idempotency from public, anon;
+revoke all on table public.competition_referee_assignment_idempotency
+  from public, anon, authenticated;
 -- No client table access; RPCs (SECURITY DEFINER) own writes.
-grant select on table public.competition_referee_assignment_idempotency to authenticated;
 
 drop policy if exists competition_referee_assignment_idempotency_deny_all
   on public.competition_referee_assignment_idempotency;
@@ -335,6 +333,266 @@ revoke all on function public.competition_assignment_remember_idempotency(
 ) from public, anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────
+-- Authz + actor + non-bypassable lifecycle (existing authorities only)
+-- OPTION A: public authenticated RPC independently asserts:
+--   canonical_tournament_assert_tenant (user_venue_id / is_super_admin)
+--   tournament.bind (canonical_tournaments and/or team_tournament_resolve_header)
+--   canonical_tournament_assert_permission('tournament.update')
+--     OR team_tournament_can_manage() when Team header is bound
+-- Actor is always auth.uid(); caller-supplied p_actor_id is rejected when
+-- it does not equal the authenticated actor.
+-- Lifecycle is derived from match_live_states / Team SSOT / Daily Play
+-- payload / tournament status — never from trusted p_lifecycle_state.
+-- Does NOT reproduce CORE-13 candidate/qualification/overlap planning.
+-- ─────────────────────────────────────────────────────────────────
+create or replace function public.competition_assignment_assert_mutation_boundary(
+  p_tenant_id text,
+  p_tournament_id text,
+  p_match_id text,
+  p_actor_id uuid,
+  p_operation text,
+  p_emergency_replacement boolean default false
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_actor uuid;
+  v_canonical public.canonical_tournaments;
+  v_header public.team_tournaments;
+  v_perm_ok boolean := false;
+  v_live public.match_live_states;
+  v_sm public.team_tournament_sub_matches;
+  v_mu public.team_tournament_matchups;
+  v_lifecycle text := 'PRE_MATCH';
+  v_op text;
+  v_mid text;
+  v_daily jsonb;
+  v_match jsonb;
+begin
+  v_actor := auth.uid();
+  if v_actor is null then
+    raise exception 'NOT_AUTHENTICATED';
+  end if;
+
+  if p_actor_id is not null and p_actor_id is distinct from v_actor then
+    raise exception 'ACTOR_SPOOFING_DENIED'
+      using detail = 'p_actor_id must equal auth.uid() or be omitted';
+  end if;
+
+  if nullif(trim(coalesce(p_tenant_id, '')), '') is null
+     or nullif(trim(coalesce(p_tournament_id, '')), '') is null
+     or nullif(trim(coalesce(p_match_id, '')), '') is null then
+    raise exception 'INVALID_INPUT'
+      using detail = 'tenant_id, tournament_id, match_id required';
+  end if;
+
+  v_op := upper(trim(coalesce(p_operation, '')));
+  if v_op not in ('ASSIGN', 'REPLACE', 'UNASSIGN') then
+    raise exception 'INVALID_INPUT' using detail = format('unsupported operation=%s', p_operation);
+  end if;
+
+  -- Existing canonical tenant authority (JWT venue, not caller-invented tenant).
+  perform public.canonical_tournament_assert_tenant(p_tenant_id);
+
+  select * into v_canonical
+  from public.canonical_tournaments ct
+  where ct.tenant_id = p_tenant_id
+    and (ct.id::text = p_tournament_id or ct.external_key = p_tournament_id)
+  limit 1;
+
+  v_header := public.team_tournament_resolve_header(p_tournament_id);
+  if v_header.id is not null then
+    if v_header.tenant_id is distinct from p_tenant_id then
+      raise exception 'CROSS_TENANT_DENIED'
+        using detail = 'bound team tournament tenant does not match p_tenant_id';
+    end if;
+    perform public.team_tournament_assert_tenant(v_header.tenant_id);
+  end if;
+
+  if v_canonical.id is null and v_header.id is null then
+    raise exception 'CROSS_TOURNAMENT_DENIED'
+      using detail = 'tournament is not bound in caller tenant';
+  end if;
+
+  -- Existing permission authorities only. Do not invent a private RBAC.
+  if v_canonical.id is not null then
+    begin
+      perform public.canonical_tournament_assert_permission('tournament.update');
+      v_perm_ok := true;
+    exception
+      when insufficient_privilege then
+        v_perm_ok := false;
+      when others then
+        if sqlerrm in ('TOURNAMENT_FORBIDDEN') then
+          v_perm_ok := false;
+        else
+          raise;
+        end if;
+    end;
+  end if;
+
+  if not v_perm_ok and v_header.id is not null and public.team_tournament_can_manage() then
+    v_perm_ok := true;
+  end if;
+
+  if not v_perm_ok then
+    perform public.canonical_tournament_assert_permission('tournament.update');
+  end if;
+
+  -- Tournament-level lifecycle (authoritative row, not caller claim).
+  if v_canonical.id is not null and v_canonical.status in ('completed', 'cancelled') then
+    v_lifecycle := 'COMPLETED';
+  end if;
+  if v_header.id is not null and v_header.status in ('completed', 'cancelled') then
+    v_lifecycle := 'COMPLETED';
+  end if;
+
+  v_mid := trim(p_match_id);
+
+  select * into v_live
+  from public.match_live_states mls
+  where mls.tenant_id = p_tenant_id
+    and mls.match_id = v_mid
+    and mls.tournament_id in (
+      p_tournament_id,
+      coalesce(v_canonical.id::text, ''),
+      coalesce(v_canonical.external_key, ''),
+      coalesce(v_header.tournament_id, '')
+    )
+  order by mls.updated_at desc nulls last
+  limit 1;
+
+  if v_live.id is not null then
+    if v_live.status in ('completed', 'cancelled') then
+      v_lifecycle := 'COMPLETED';
+    elsif v_live.status in ('locked', 'paused', 'disputed') then
+      v_lifecycle := 'LOCKED';
+    elsif v_live.status in ('in_progress', 'game_break') then
+      if coalesce(v_live.last_event_sequence, 0) > 0
+         or coalesce(v_live.team_a_score, 0) > 0
+         or coalesce(v_live.team_b_score, 0) > 0 then
+        v_lifecycle := 'SCORING_ACTIVE';
+      else
+        v_lifecycle := 'IN_PROGRESS';
+      end if;
+    elsif v_live.status = 'not_started' and v_lifecycle not in ('COMPLETED', 'LOCKED') then
+      v_lifecycle := 'PRE_MATCH';
+    end if;
+  end if;
+
+  if v_header.id is not null then
+    select * into v_sm
+    from public.team_tournament_sub_matches sm
+    where sm.tenant_id = p_tenant_id
+      and sm.tournament_id = v_header.tournament_id
+      and sm.external_sub_match_id = v_mid
+    limit 1;
+
+    if v_sm.id is not null then
+      if v_sm.status in ('completed', 'forfeit') or v_sm.result_confirmed_at is not null then
+        v_lifecycle := 'COMPLETED';
+      elsif v_sm.status = 'playing' and v_lifecycle not in ('COMPLETED', 'LOCKED', 'SCORING_ACTIVE') then
+        v_lifecycle := 'IN_PROGRESS';
+      end if;
+    end if;
+
+    select * into v_mu
+    from public.team_tournament_matchups mu
+    where mu.tenant_id = p_tenant_id
+      and mu.team_tournament_id = v_header.id
+      and mu.external_matchup_id = v_mid
+    limit 1;
+
+    if v_mu.id is not null then
+      if v_mu.status = 'completed' then
+        v_lifecycle := 'COMPLETED';
+      elsif v_mu.status = 'locked' then
+        v_lifecycle := 'LOCKED';
+      elsif v_mu.status = 'in_progress'
+            and v_lifecycle not in ('COMPLETED', 'LOCKED', 'SCORING_ACTIVE') then
+        v_lifecycle := 'IN_PROGRESS';
+      end if;
+    end if;
+  end if;
+
+  if v_canonical.id is not null and v_canonical.mode = 'daily_play' then
+    v_daily := coalesce(v_canonical.payload#>'{settings,dailyPlay,matches}', '[]'::jsonb);
+    if jsonb_typeof(v_daily) = 'array' then
+      select value into v_match
+      from jsonb_array_elements(v_daily) e(value)
+      where coalesce(e.value->>'id', e.value->>'matchId') = v_mid
+      limit 1;
+      if v_match is not null then
+        if lower(coalesce(v_match->>'status', '')) in (
+          'completed', 'complete', 'finished', 'final', 'closed', 'cancelled'
+        ) then
+          v_lifecycle := 'COMPLETED';
+        elsif lower(coalesce(v_match->>'status', '')) in ('locked', 'suspended', 'paused') then
+          v_lifecycle := 'LOCKED';
+        elsif lower(coalesce(v_match->>'status', '')) in ('scoring', 'scoring_active', 'score_entry') then
+          v_lifecycle := 'SCORING_ACTIVE';
+        elsif lower(coalesce(v_match->>'status', '')) in ('in_progress', 'active', 'started', 'live', 'playing')
+              and v_lifecycle not in ('COMPLETED', 'LOCKED', 'SCORING_ACTIVE') then
+          v_lifecycle := 'IN_PROGRESS';
+        end if;
+      end if;
+    end if;
+  end if;
+
+  -- Owner non-negotiable mutation invariants (not CORE-13 planning).
+  if v_lifecycle in ('LOCKED', 'COMPLETED') then
+    raise exception 'LIFECYCLE_DENIED'
+      using detail = format('%s forbids assign/replace/unassign', v_lifecycle);
+  end if;
+
+  if v_lifecycle = 'IN_PROGRESS' then
+    if v_op = 'ASSIGN' then
+      raise exception 'LIFECYCLE_DENIED'
+        using detail = 'IN_PROGRESS forbids new assignment (use atomic replace)';
+    end if;
+    if v_op = 'UNASSIGN' then
+      raise exception 'UNASSIGN_WITHOUT_REPLACEMENT_DENIED'
+        using detail = 'IN_PROGRESS forbids unassign without replacement';
+    end if;
+  end if;
+
+  if v_lifecycle = 'SCORING_ACTIVE' then
+    if v_op = 'ASSIGN' then
+      raise exception 'LIFECYCLE_DENIED'
+        using detail = 'SCORING_ACTIVE forbids normal assign';
+    end if;
+    if v_op = 'UNASSIGN' then
+      raise exception 'UNASSIGN_WITHOUT_REPLACEMENT_DENIED'
+        using detail = 'SCORING_ACTIVE forbids unassign without replacement';
+    end if;
+    if v_op = 'REPLACE' and coalesce(p_emergency_replacement, false) is not true then
+      raise exception 'EMERGENCY_REPLACEMENT_REQUIRED'
+        using detail = 'SCORING_ACTIVE requires explicit emergencyReplacement=true';
+    end if;
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'actorId', v_actor,
+    'lifecycleState', v_lifecycle,
+    'tenantId', p_tenant_id,
+    'tournamentId', p_tournament_id,
+    'matchId', v_mid,
+    'canonicalBound', (v_canonical.id is not null),
+    'teamBound', (v_header.id is not null)
+  );
+end;
+$$;
+
+revoke all on function public.competition_assignment_assert_mutation_boundary(
+  text, text, text, uuid, text, boolean
+) from public, anon, authenticated;
+
+-- ─────────────────────────────────────────────────────────────────
 -- D1) competition_assign_referee
 -- ─────────────────────────────────────────────────────────────────
 create or replace function public.competition_assign_referee(
@@ -368,11 +626,8 @@ declare
   v_display text;
   v_audit_id uuid;
   v_payload jsonb;
+  v_boundary jsonb;
 begin
-  if auth.uid() is null then
-    raise exception 'NOT_AUTHENTICATED';
-  end if;
-
   if nullif(trim(coalesce(p_tenant_id, '')), '') is null
      or nullif(trim(coalesce(p_tournament_id, '')), '') is null
      or nullif(trim(coalesce(p_match_id, '')), '') is null
@@ -390,7 +645,10 @@ begin
     raise exception 'INVALID_INPUT' using detail = format('unsupported role=%s', p_role);
   end if;
 
-  v_actor := coalesce(p_actor_id, auth.uid());
+  v_boundary := public.competition_assignment_assert_mutation_boundary(
+    p_tenant_id, p_tournament_id, p_match_id, p_actor_id, 'ASSIGN', false
+  );
+  v_actor := (v_boundary->>'actorId')::uuid;
 
   v_payload := jsonb_build_object(
     'operation', 'ASSIGN',
@@ -400,7 +658,7 @@ begin
     'refereeUserId', p_referee_user_id,
     'role', v_role,
     'expectedVersion', p_expected_version,
-    'lifecycleState', p_lifecycle_state,
+    'lifecycleState', v_boundary->>'lifecycleState',
     'commandMetadata', coalesce(p_command_metadata, '{}'::jsonb)
   );
   v_hash := public.competition_assignment_payload_hash(v_payload);
@@ -496,7 +754,7 @@ begin
   v_audit_id := public.competition_assignment_write_audit(
     p_tenant_id, p_tournament_id, p_match_id, v_row.id,
     null, p_referee_user_id, 'ASSIGN',
-    v_actor, p_reason, p_lifecycle_state, trim(p_idempotency_key),
+    v_actor, p_reason, v_boundary->>'lifecycleState', trim(p_idempotency_key),
     p_expected_version, v_new_version, false,
     v_payload
   );
@@ -528,6 +786,9 @@ revoke all on function public.competition_assign_referee(
 grant execute on function public.competition_assign_referee(
   text, text, text, uuid, text, integer, text, uuid, text, text, jsonb
 ) to authenticated;
+grant execute on function public.competition_assign_referee(
+  text, text, text, uuid, text, integer, text, uuid, text, text, jsonb
+) to service_role;
 
 -- ─────────────────────────────────────────────────────────────────
 -- D2) competition_replace_referee (atomic revoke + insert)
@@ -564,11 +825,8 @@ declare
   v_audit_id uuid;
   v_payload jsonb;
   v_old uuid;
+  v_boundary jsonb;
 begin
-  if auth.uid() is null then
-    raise exception 'NOT_AUTHENTICATED';
-  end if;
-
   if nullif(trim(coalesce(p_tenant_id, '')), '') is null
      or nullif(trim(coalesce(p_tournament_id, '')), '') is null
      or nullif(trim(coalesce(p_match_id, '')), '') is null
@@ -586,7 +844,11 @@ begin
     raise exception 'INVALID_INPUT' using detail = format('unsupported role=%s', p_role);
   end if;
 
-  v_actor := coalesce(p_actor_id, auth.uid());
+  v_boundary := public.competition_assignment_assert_mutation_boundary(
+    p_tenant_id, p_tournament_id, p_match_id, p_actor_id, 'REPLACE',
+    coalesce(p_emergency_replacement, false)
+  );
+  v_actor := (v_boundary->>'actorId')::uuid;
 
   v_payload := jsonb_build_object(
     'operation', 'REPLACE',
@@ -597,7 +859,7 @@ begin
     'role', v_role,
     'expectedVersion', p_expected_version,
     'emergencyReplacement', coalesce(p_emergency_replacement, false),
-    'lifecycleState', p_lifecycle_state,
+    'lifecycleState', v_boundary->>'lifecycleState',
     'commandMetadata', coalesce(p_command_metadata, '{}'::jsonb)
   );
   v_hash := public.competition_assignment_payload_hash(v_payload);
@@ -700,7 +962,7 @@ begin
   v_audit_id := public.competition_assignment_write_audit(
     p_tenant_id, p_tournament_id, p_match_id, v_row.id,
     v_old, p_new_referee_user_id, 'REPLACE',
-    v_actor, p_reason, p_lifecycle_state, trim(p_idempotency_key),
+    v_actor, p_reason, v_boundary->>'lifecycleState', trim(p_idempotency_key),
     p_expected_version, v_new_version,
     coalesce(p_emergency_replacement, false),
     v_payload || jsonb_build_object(
@@ -739,6 +1001,9 @@ revoke all on function public.competition_replace_referee(
 grant execute on function public.competition_replace_referee(
   text, text, text, uuid, text, integer, text, uuid, text, text, boolean, jsonb
 ) to authenticated;
+grant execute on function public.competition_replace_referee(
+  text, text, text, uuid, text, integer, text, uuid, text, text, boolean, jsonb
+) to service_role;
 
 -- ─────────────────────────────────────────────────────────────────
 -- D3) competition_unassign_referee (revoke; keep history row)
@@ -770,11 +1035,8 @@ declare
   v_audit_id uuid;
   v_payload jsonb;
   v_old uuid;
+  v_boundary jsonb;
 begin
-  if auth.uid() is null then
-    raise exception 'NOT_AUTHENTICATED';
-  end if;
-
   if nullif(trim(coalesce(p_tenant_id, '')), '') is null
      or nullif(trim(coalesce(p_tournament_id, '')), '') is null
      or nullif(trim(coalesce(p_match_id, '')), '') is null then
@@ -791,7 +1053,10 @@ begin
     raise exception 'INVALID_INPUT' using detail = format('unsupported role=%s', p_role);
   end if;
 
-  v_actor := coalesce(p_actor_id, auth.uid());
+  v_boundary := public.competition_assignment_assert_mutation_boundary(
+    p_tenant_id, p_tournament_id, p_match_id, p_actor_id, 'UNASSIGN', false
+  );
+  v_actor := (v_boundary->>'actorId')::uuid;
 
   v_payload := jsonb_build_object(
     'operation', 'UNASSIGN',
@@ -800,7 +1065,7 @@ begin
     'matchId', p_match_id,
     'role', v_role,
     'expectedVersion', p_expected_version,
-    'lifecycleState', p_lifecycle_state,
+    'lifecycleState', v_boundary->>'lifecycleState',
     'commandMetadata', coalesce(p_command_metadata, '{}'::jsonb)
   );
   v_hash := public.competition_assignment_payload_hash(v_payload);
@@ -861,7 +1126,7 @@ begin
   v_audit_id := public.competition_assignment_write_audit(
     p_tenant_id, p_tournament_id, p_match_id, v_active.id,
     v_old, null, 'UNASSIGN',
-    v_actor, p_reason, p_lifecycle_state, trim(p_idempotency_key),
+    v_actor, p_reason, v_boundary->>'lifecycleState', trim(p_idempotency_key),
     p_expected_version, v_new_version, false,
     v_payload
   );
@@ -893,5 +1158,8 @@ revoke all on function public.competition_unassign_referee(
 grant execute on function public.competition_unassign_referee(
   text, text, text, text, integer, text, uuid, text, text, jsonb
 ) to authenticated;
+grant execute on function public.competition_unassign_referee(
+  text, text, text, text, integer, text, uuid, text, text, jsonb
+) to service_role;
 
 select 'APPLY_COMPLETE core13-canonical-assignment-runtime-closure-01' as status;

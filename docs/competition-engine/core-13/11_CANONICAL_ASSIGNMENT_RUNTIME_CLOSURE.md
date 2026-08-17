@@ -1,6 +1,6 @@
 # CORE-13 — Canonical Assignment Runtime Closure
 
-**Status:** SQL authored · **not executed** (`SQL_DESIGN_AND_MIGRATION_AUTHORING_GO=YES`, `SQL_EXECUTION_GO=NO`)  
+**Status:** SQL authored + security-hardened · **not executed** (`SQL_DESIGN_AND_MIGRATION_AUTHORING_GO=YES`, `SQL_EXECUTION_GO=NO`)  
 **Package:** `docs/v5/migrations/core13-canonical-assignment-runtime-closure-01/`  
 **Date:** 2026-08-17
 
@@ -18,6 +18,8 @@
 | Staging/Production apply | Owner GO only (refused without GO) |
 
 CORE-13 remains decision authority. Persistence RPCs execute validated commands only; they do not become a second business authority.
+
+SQL mutation RPCs independently assert existing canonical tenant/permission authorities (`canonical_tournament_assert_tenant`, `canonical_tournament_assert_permission('tournament.update')`, Team bind via `team_tournament_resolve_header` / `team_tournament_can_manage`). Direct RPC callers cannot bypass that boundary via the JS command layer. Actor provenance is `auth.uid()` only. Assignment audit is not directly readable by `authenticated`.
 
 ---
 
@@ -39,10 +41,11 @@ Product callers must use:
 
 | File | Role |
 |------|------|
-| `01_PRECHECK.sql` | Refuse if `referee_assignments` missing |
-| `02_APPLY.sql` | Audit + idempotency tables; competition_* RPCs; additive index/version |
-| `03_VERIFY.sql` | Assert tables/functions/indexes exist |
+| `01_PRECHECK.sql` | Refuse if `referee_assignments` **or** canonical tenant/permission helpers missing |
+| `02_APPLY.sql` | Audit + idempotency tables; competition_* RPCs; SQL authz boundary; additive index/version |
+| `03_VERIFY.sql` | Objects + grants + RLS + actor spoofing + search_path + CAS/idempotency |
 | `04_ROLLBACK.sql` | Drop new RPCs/tables if empty; **never** drop `referee_assignments` |
+| `05_STAGING_SQL_ACCEPTANCE.sql` | Later Owner GO only; currently fails closed |
 
 Constraints honored: additive evolution, no business DML, no Staging row copy, LOCAL PACKAGE ONLY headers.
 

@@ -5,6 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -30,6 +31,35 @@ import {
 } from "../src/features/team-tournament/engines/refereeAssignEngine.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const SQL_PKG = path.join(
+  ROOT,
+  "docs/v5/migrations/core13-canonical-assignment-runtime-closure-01"
+);
+
+const PACKAGE_LF_SHA256 = Object.freeze({
+  "01_PRECHECK.sql":
+    "1faa3140ab5b97c0e5e40b3c0425eb67d7d796639db55f286c8716271e66b7e5",
+  "02_APPLY.sql":
+    "a4d534c540aed036969e6dd696aab52d122b8fad1344b44fda79500b7015b87f",
+  "03_VERIFY.sql":
+    "fc93c49fa779c1ec5424923503656ee4d1c87aa4e65ad4f04f41fbf9fe795bdf",
+  "04_ROLLBACK.sql":
+    "6a6274ebbfc8e64456a8079e77871404d78c9bf1bb3f9652e808c52bdf76c1af",
+  "05_STAGING_SQL_ACCEPTANCE.sql":
+    "99464f540ae349407d99274114d03b98eb19f4d152881b84b5a7a6add40abc4f",
+});
+
+function sha256Lf(name) {
+  const raw = readFileSync(path.join(SQL_PKG, name));
+  const lf = Buffer.from(
+    raw.toString("utf8").replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+  );
+  return createHash("sha256").update(lf).digest("hex");
+}
+
+function readSql(name) {
+  return readFileSync(path.join(SQL_PKG, name), "utf8");
+}
 
 function baseCommand(overrides = {}) {
   return {
@@ -484,6 +514,7 @@ test("architecture guards: SQL package authored; Contract #08 untouched", () => 
     "02_APPLY.sql",
     "03_VERIFY.sql",
     "04_ROLLBACK.sql",
+    "05_STAGING_SQL_ACCEPTANCE.sql",
   ]) {
     assert.equal(existsSync(path.join(sqlDir, file)), true, file);
   }
@@ -502,6 +533,15 @@ test("architecture guards: SQL package authored; Contract #08 untouched", () => 
     "utf8"
   );
   assert.match(contract, /competition\.referee\.adapter\.v1/);
+
+  const determinism = readFileSync(
+    path.join(
+      ROOT,
+      "docs/competition-engine/core-13/02_DETERMINISM_POLICY.md"
+    ),
+    "utf8"
+  );
+  assert.match(determinism, /CORE-13/);
 
   // Panel cutover evidence
   const panel = readFileSync(
@@ -550,4 +590,127 @@ test("architecture guard: no product UI import of neutralized writers as authori
       );
     }
   }
+});
+
+test("SQL package LF SHA256 lock", () => {
+  for (const [name, expected] of Object.entries(PACKAGE_LF_SHA256)) {
+    assert.equal(sha256Lf(name), expected, name);
+  }
+  const readme = readSql("README.md");
+  for (const [name, expected] of Object.entries(PACKAGE_LF_SHA256)) {
+    assert.match(readme, new RegExp(expected));
+    assert.match(readme, new RegExp(name.replace(".", "\\.")));
+  }
+});
+
+test("SQL security: actor spoofing closed; audit not globally readable", () => {
+  const apply = readSql("02_APPLY.sql");
+  const verify = readSql("03_VERIFY.sql");
+  const precheck = readSql("01_PRECHECK.sql");
+  const acceptance = readSql("05_STAGING_SQL_ACCEPTANCE.sql");
+
+  assert.doesNotMatch(apply, /coalesce\s*\(\s*p_actor_id\s*,\s*auth\.uid\s*\(\s*\)\s*\)/i);
+  assert.match(apply, /ACTOR_SPOOFING_DENIED/);
+  assert.match(apply, /p_actor_id is not null and p_actor_id is distinct from v_actor/);
+  assert.match(apply, /v_actor := auth\.uid\(\)/);
+
+  assert.doesNotMatch(
+    apply,
+    /grant\s+select\s+on\s+table\s+public\.competition_referee_assignment_audit/i
+  );
+  assert.match(
+    apply,
+    /revoke all on table public\.competition_referee_assignment_audit from public, anon, authenticated/i
+  );
+  assert.doesNotMatch(
+    apply,
+    /using\s*\(\s*auth\.uid\s*\(\s*\)\s+is not null\s*\)/i
+  );
+
+  assert.match(precheck, /canonical_tournament_assert_tenant/);
+  assert.match(precheck, /canonical_tournament_assert_permission/);
+  assert.match(precheck, /user_venue_id/);
+  assert.match(precheck, /team_tournament_can_manage/);
+
+  assert.match(verify, /anon\.execute/);
+  assert.match(verify, /grant\.audit\.select\.authenticated/);
+  assert.match(verify, /actor\.spoof/);
+  assert.match(verify, /search_path=public/);
+  assert.match(verify, /has_function_privilege\('anon'/);
+
+  assert.match(
+    acceptance,
+    /STAGING_SQL_ACCEPTANCE_TEST_NOT_RUN_REQUIRES_OWNER_GO/
+  );
+  assert.match(
+    acceptance,
+    /raise exception\s+'STAGING_SQL_ACCEPTANCE_TEST_NOT_RUN_REQUIRES_OWNER_GO/
+  );
+});
+
+test("SQL security: direct RPC cannot bypass canonical tenant/tournament authz", () => {
+  const apply = readSql("02_APPLY.sql");
+  const assignFn = apply.split("create or replace function public.competition_assign_referee")[1];
+  const replaceFn = apply.split("create or replace function public.competition_replace_referee")[1];
+  const unassignFn = apply.split("create or replace function public.competition_unassign_referee")[1];
+  const boundary = apply.split(
+    "create or replace function public.competition_assignment_assert_mutation_boundary"
+  )[1].split("create or replace function")[0];
+
+  assert.match(boundary, /canonical_tournament_assert_tenant/);
+  assert.match(boundary, /canonical_tournament_assert_permission\('tournament\.update'\)/);
+  assert.match(boundary, /team_tournament_resolve_header/);
+  assert.match(boundary, /CROSS_TOURNAMENT_DENIED/);
+  assert.match(boundary, /CROSS_TENANT_DENIED/);
+  assert.doesNotMatch(boundary, /p_lifecycle_state/);
+
+  for (const [name, body] of [
+    ["assign", assignFn],
+    ["replace", replaceFn],
+    ["unassign", unassignFn],
+  ]) {
+    assert.match(
+      body,
+      /competition_assignment_assert_mutation_boundary/,
+      `${name} must call SQL authz boundary`
+    );
+    assert.match(body, /grant execute[\s\S]*to authenticated/i, name);
+    assert.match(body, /revoke all[\s\S]*from public, anon/i, name);
+    assert.doesNotMatch(body, /grant execute[\s\S]*to anon/i, name);
+  }
+
+  assert.match(apply, /LIFECYCLE_DENIED/);
+  assert.match(apply, /UNASSIGN_WITHOUT_REPLACEMENT_DENIED/);
+  assert.match(apply, /EMERGENCY_REPLACEMENT_REQUIRED/);
+  assert.match(apply, /set search_path = public/);
+  assert.match(apply, /ATOMIC: revoke old \+ activate new/);
+});
+
+test("SQL security: helpers are not client-executable", () => {
+  const apply = readSql("02_APPLY.sql");
+  const helpers = [
+    "competition_assignment_assert_mutation_boundary",
+    "competition_assignment_write_audit",
+    "competition_assignment_check_idempotency",
+    "competition_assignment_remember_idempotency",
+    "competition_assignment_scope_version",
+  ];
+  for (const helper of helpers) {
+    assert.match(apply, new RegExp(`create or replace function public\\.${helper}`));
+    assert.match(
+      apply,
+      new RegExp(
+        `revoke all on function public\\.${helper}[\\s\\S]{0,400}from public, anon, authenticated`,
+        "i"
+      ),
+      `${helper} must revoke public/anon/authenticated`
+    );
+  }
+});
+
+test("ROLLBACK drops security helper and never referee_assignments", () => {
+  const rollback = readSql("04_ROLLBACK.sql");
+  assert.match(rollback, /competition_assignment_assert_mutation_boundary/);
+  assert.match(rollback, /NEVER: drop table public\.referee_assignments/);
+  assert.doesNotMatch(rollback, /^\s*drop table public\.referee_assignments;/m);
 });
