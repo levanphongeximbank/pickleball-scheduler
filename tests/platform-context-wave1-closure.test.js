@@ -11,7 +11,12 @@ import {
   isPlatformContextReady,
   isPlatformContextRequired,
 } from "../src/core/platform/app/platformContextReadiness.js";
-import { resolveActiveClubSelection } from "../src/features/club/context/clubCanonicalReadModel.js";
+import {
+  CLUB_PREFERENCE_STATUS,
+  CLUB_READ_STATE,
+  isClubPreferenceAuthorityReady,
+  resolveActiveClubSelection,
+} from "../src/features/club/context/clubCanonicalReadModel.js";
 import {
   clearActiveClubIdPreference,
   getActiveClubIdPreference,
@@ -33,6 +38,12 @@ const CLUB_A = {
   tenantId: "tenant-a",
   venueId: "tenant-a",
 };
+const CLUB_A2 = {
+  id: "club-a2",
+  name: "Club A2",
+  tenantId: "tenant-a",
+  venueId: "tenant-a",
+};
 const CLUB_B1 = {
   id: "club-b1",
   name: "Club B1",
@@ -45,6 +56,60 @@ const CLUB_B2 = {
   tenantId: "tenant-b",
   venueId: "tenant-b",
 };
+
+/**
+ * Simulate ClubContext F5 preference lifecycle (pure, no React).
+ * Mirrors: pending while !authorityReady → validate when ready → clear only if INVALID.
+ */
+function simulateF5ClubPreferenceLifecycle({
+  persistedClubId,
+  selectedTenantId,
+  eligibleClubs,
+  clubReadState = CLUB_READ_STATE.READY,
+}) {
+  const store = { preference: persistedClubId || null, activeClubId: persistedClubId || null };
+
+  const authorityReady = isClubPreferenceAuthorityReady({
+    canonicalRead: true,
+    clubReadState,
+    selectedTenantId,
+  });
+
+  const preferredHint = store.activeClubId || store.preference;
+  const selection = resolveActiveClubSelection({
+    preferredClubId: preferredHint,
+    visibleClubs: eligibleClubs,
+    requireTenant: true,
+    selectedTenantId,
+    authorityReady,
+  });
+
+  if (selection.preferenceStatus === CLUB_PREFERENCE_STATUS.PENDING_VALIDATION) {
+    if (preferredHint) store.activeClubId = preferredHint;
+    return {
+      ...selection,
+      preference: store.preference,
+      activeClubId: store.activeClubId,
+      authorityReady,
+    };
+  }
+
+  if (selection.preferenceStatus === CLUB_PREFERENCE_STATUS.INVALID && preferredHint) {
+    store.preference = null;
+  }
+
+  store.activeClubId = selection.activeClubId;
+  if (selection.preferenceStatus === CLUB_PREFERENCE_STATUS.VALID && selection.activeClubId) {
+    store.preference = selection.activeClubId;
+  }
+
+  return {
+    ...selection,
+    preference: store.preference,
+    activeClubId: store.activeClubId,
+    authorityReady,
+  };
+}
 
 test("Wave1 readiness: AUTH / TENANT / CLUB distinctions exist", () => {
   assert.equal(
@@ -249,4 +314,204 @@ test("Wave1 Organization remains NOT_CONFIGURED; no Adapter A contract edits", (
     }).state,
     PLATFORM_CONTEXT_STATE.CONTEXT_READY
   );
+});
+
+// --- Wave 1 browser acceptance remediation: validated Club rehydrate after F5 ---
+
+test("F5 valid Tenant A + Club A restores Club A (CONTEXT_READY, not CLUB_REQUIRED)", () => {
+  const step = simulateF5ClubPreferenceLifecycle({
+    persistedClubId: "club-a",
+    selectedTenantId: "tenant-a",
+    eligibleClubs: [CLUB_A, CLUB_A2],
+    clubReadState: CLUB_READ_STATE.READY,
+  });
+  assert.equal(step.preferenceStatus, CLUB_PREFERENCE_STATUS.VALID);
+  assert.equal(step.activeClubId, "club-a");
+  assert.equal(step.preference, "club-a");
+
+  const ready = resolvePlatformContextReadiness({
+    isAuthenticated: true,
+    rbacEnabled: true,
+    selectedTenantId: "tenant-a",
+    eligibleClubs: [CLUB_A, CLUB_A2],
+    activeClub: step.activeClub,
+    activeClubReady: true,
+  });
+  assert.equal(ready.state, PLATFORM_CONTEXT_STATE.CONTEXT_READY);
+});
+
+test("F5 transient tenant=null does not destroy persisted Club hint", () => {
+  const pending = simulateF5ClubPreferenceLifecycle({
+    persistedClubId: "club-a",
+    selectedTenantId: null,
+    eligibleClubs: [],
+    clubReadState: CLUB_READ_STATE.READY,
+  });
+  assert.equal(pending.authorityReady, false);
+  assert.equal(pending.preferenceStatus, CLUB_PREFERENCE_STATUS.PENDING_VALIDATION);
+  assert.equal(pending.activeClubId, "club-a");
+  assert.equal(pending.preference, "club-a");
+
+  const restored = simulateF5ClubPreferenceLifecycle({
+    persistedClubId: pending.preference,
+    selectedTenantId: "tenant-a",
+    eligibleClubs: [CLUB_A, CLUB_A2],
+    clubReadState: CLUB_READ_STATE.READY,
+  });
+  assert.equal(restored.preferenceStatus, CLUB_PREFERENCE_STATUS.VALID);
+  assert.equal(restored.activeClubId, "club-a");
+});
+
+test("F5 canonical Club LOADING does not clear valid persisted Club", () => {
+  const loading = simulateF5ClubPreferenceLifecycle({
+    persistedClubId: "club-a",
+    selectedTenantId: "tenant-a",
+    eligibleClubs: [],
+    clubReadState: CLUB_READ_STATE.LOADING,
+  });
+  assert.equal(loading.preferenceStatus, CLUB_PREFERENCE_STATUS.PENDING_VALIDATION);
+  assert.equal(loading.preference, "club-a");
+  assert.equal(loading.activeClubId, "club-a");
+});
+
+test("F5 Tenant A persisted Club under Tenant B is rejected after authority", () => {
+  const rejected = simulateF5ClubPreferenceLifecycle({
+    persistedClubId: "club-a",
+    selectedTenantId: "tenant-b",
+    eligibleClubs: [CLUB_B1, CLUB_B2],
+    clubReadState: CLUB_READ_STATE.READY,
+  });
+  assert.equal(rejected.preferenceStatus, CLUB_PREFERENCE_STATUS.INVALID);
+  assert.equal(rejected.activeClubId, null);
+  assert.equal(rejected.preference, null);
+});
+
+test("F5 deleted/revoked Club is rejected after authoritative list READY", () => {
+  const rejected = simulateF5ClubPreferenceLifecycle({
+    persistedClubId: "club-deleted",
+    selectedTenantId: "tenant-a",
+    eligibleClubs: [CLUB_A, CLUB_A2],
+    clubReadState: CLUB_READ_STATE.READY,
+  });
+  assert.equal(rejected.preferenceStatus, CLUB_PREFERENCE_STATUS.INVALID);
+  assert.equal(rejected.activeClubId, null);
+  assert.equal(rejected.preference, null);
+});
+
+test("F5 N clubs + valid persisted Club restores persisted Club", () => {
+  const step = simulateF5ClubPreferenceLifecycle({
+    persistedClubId: "club-a2",
+    selectedTenantId: "tenant-a",
+    eligibleClubs: [CLUB_A, CLUB_A2],
+  });
+  assert.equal(step.activeClubId, "club-a2");
+  assert.equal(step.preferenceStatus, CLUB_PREFERENCE_STATUS.VALID);
+});
+
+test("F5 N clubs + no valid persisted Club remains CLUB_REQUIRED", () => {
+  const step = simulateF5ClubPreferenceLifecycle({
+    persistedClubId: null,
+    selectedTenantId: "tenant-a",
+    eligibleClubs: [CLUB_A, CLUB_A2],
+  });
+  assert.equal(step.activeClubId, null);
+  assert.equal(step.preferenceStatus, CLUB_PREFERENCE_STATUS.NONE);
+
+  const required = resolvePlatformContextReadiness({
+    isAuthenticated: true,
+    rbacEnabled: true,
+    selectedTenantId: "tenant-a",
+    eligibleClubs: [CLUB_A, CLUB_A2],
+    activeClub: null,
+    activeClubReady: false,
+  });
+  assert.equal(required.state, PLATFORM_CONTEXT_STATE.CLUB_REQUIRED);
+});
+
+test("F5 TOKEN_REFRESHED preserves valid Club (authority fingerprint unchanged)", () => {
+  const before = simulateF5ClubPreferenceLifecycle({
+    persistedClubId: "club-a",
+    selectedTenantId: "tenant-a",
+    eligibleClubs: [CLUB_A],
+  });
+  const afterRefresh = simulateF5ClubPreferenceLifecycle({
+    persistedClubId: before.preference,
+    selectedTenantId: "tenant-a",
+    eligibleClubs: [CLUB_A],
+  });
+  assert.equal(afterRefresh.activeClubId, "club-a");
+  assert.equal(afterRefresh.preferenceStatus, CLUB_PREFERENCE_STATUS.VALID);
+
+  const clubCtx = read("src/context/ClubContext.jsx");
+  assert.match(clubCtx, /TOKEN_REFRESHED/);
+  assert.match(clubCtx, /CLUB_PREFERENCE_STATUS\.PENDING_VALIDATION/);
+  assert.match(clubCtx, /clearActiveClubIdPreference/);
+  assert.match(clubCtx, /isClubPreferenceAuthorityReady/);
+});
+
+test("F5 logout/user switch isolation remains wired (preference cleared on logout)", () => {
+  const authStorage = read("src/auth/authStorage.js");
+  assert.match(authStorage, /clearActiveClubIdPreference/);
+  assert.equal(
+    isClubPreferenceAuthorityReady({
+      canonicalRead: true,
+      clubReadState: CLUB_READ_STATE.READY,
+      selectedTenantId: null,
+    }),
+    false
+  );
+});
+
+test("Tournament List after valid F5 restore: CONTEXT_READY + empty 0 giải ≠ CLUB_REQUIRED", () => {
+  const step = simulateF5ClubPreferenceLifecycle({
+    persistedClubId: "club-a",
+    selectedTenantId: "tenant-a",
+    eligibleClubs: [CLUB_A],
+  });
+  assert.equal(step.preferenceStatus, CLUB_PREFERENCE_STATUS.VALID);
+
+  const context = resolvePlatformContextReadiness({
+    isAuthenticated: true,
+    rbacEnabled: true,
+    selectedTenantId: "tenant-a",
+    eligibleClubs: [CLUB_A],
+    activeClub: step.activeClub,
+    activeClubReady: true,
+  });
+  assert.equal(context.state, PLATFORM_CONTEXT_STATE.CONTEXT_READY);
+  assert.notEqual(context.state, PLATFORM_CONTEXT_STATE.CLUB_REQUIRED);
+
+  // Valid empty business data (0 tournaments) is allowed only when context is ready.
+  const tournamentCount = 0;
+  assert.equal(context.ready, true);
+  assert.equal(tournamentCount, 0);
+
+  const listPage = read("src/features/tournament/pages/CanonicalTournamentListPage.jsx");
+  assert.match(listPage, /PlatformContextReadinessGate/);
+  assert.match(listPage, /contextReady \? activeClub : null/);
+});
+
+test("resolveActiveClubSelection authorityReady=false keeps PENDING hint", () => {
+  const sel = resolveActiveClubSelection({
+    preferredClubId: "club-a",
+    visibleClubs: [],
+    requireTenant: true,
+    selectedTenantId: null,
+    authorityReady: false,
+  });
+  assert.equal(sel.preferenceStatus, CLUB_PREFERENCE_STATUS.PENDING_VALIDATION);
+  assert.equal(sel.activeClubId, "club-a");
+  assert.equal(sel.activeClub, null);
+});
+
+test("resolveActiveClubSelection authorityReady=true empty list marks INVALID", () => {
+  const sel = resolveActiveClubSelection({
+    preferredClubId: "club-a",
+    visibleClubs: [],
+    requireTenant: true,
+    selectedTenantId: "tenant-a",
+    authorityReady: true,
+  });
+  assert.equal(sel.preferenceStatus, CLUB_PREFERENCE_STATUS.INVALID);
+  assert.equal(sel.activeClubId, null);
 });

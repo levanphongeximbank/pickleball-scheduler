@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { Alert, Snackbar } from "@mui/material";
 
 import {
+  clearActiveClubIdPreference,
   getActiveClub,
   getActiveClubId,
   getActiveClubIdPreference,
@@ -40,10 +41,12 @@ import { isCanonicalClubRepositoryEnabled } from "../features/club/config/canoni
 import { hasSupabaseConfig } from "../auth/supabaseClient.js";
 import { API_ERROR_CODES } from "../features/api/constants/apiErrors.js";
 import {
+  CLUB_PREFERENCE_STATUS,
   CLUB_READ_STATE,
   filterAccessibleCanonicalClubs,
   isCanonicalActiveClubReady,
   isCanonicalClubReadEnabled,
+  isClubPreferenceAuthorityReady,
   normalizeCanonicalActiveClub,
   resolveActiveClubSelection,
   toClubReadSnapshot,
@@ -468,24 +471,41 @@ export function ClubProvider({ children }) {
     ? clubReadState === CLUB_READ_STATE.READY && isCanonicalActiveClubReady(activeClub)
     : Boolean(activeClub?.id);
 
-  // Canonical active-club validation: a stale/absent/tenant-less activeClubId is
-  // replaced deterministically (unique tenant-ready visible club) or cleared.
-  // Never selects a club absent from the canonical cloud registry, and never
-  // promotes a tenant-less projection to tenant-ready activeClub.
+  // Canonical active-club validation: persisted id is a HINT, not authority.
+  // PREFERENCE_PENDING_VALIDATION (loading / tenant not restored / transient empty)
+  // must NOT clear the hint. Clear storage only after AUTHORITATIVE INVALID.
   useEffect(() => {
     if (!canonicalRead) {
       return;
     }
-    if (clubReadState !== CLUB_READ_STATE.READY) {
-      return;
-    }
+
+    const authorityReady = isClubPreferenceAuthorityReady({
+      canonicalRead: true,
+      clubReadState,
+      selectedTenantId: currentTenantId,
+    });
+
+    // Re-bind LS hint if React state was wiped by a prior transient empty race.
+    const preferredHint = activeClubId || getActiveClubIdPreference();
 
     const selection = resolveActiveClubSelection({
-      preferredClubId: activeClubId,
+      preferredClubId: preferredHint,
       visibleClubs,
       requireTenant: true,
       selectedTenantId: currentTenantId,
+      authorityReady,
     });
+
+    if (selection.preferenceStatus === CLUB_PREFERENCE_STATUS.PENDING_VALIDATION) {
+      if (preferredHint && preferredHint !== activeClubId) {
+        setActiveClubId(preferredHint);
+      }
+      return;
+    }
+
+    if (selection.preferenceStatus === CLUB_PREFERENCE_STATUS.INVALID && preferredHint) {
+      clearActiveClubIdPreference();
+    }
 
     if (selection.activeClubId === activeClubId) {
       return;
@@ -511,11 +531,16 @@ export function ClubProvider({ children }) {
   }, [canonicalRead, currentTenantId]);
 
   // Legacy active-club validation (blob registry). Skipped in canonical mode.
+  // Wave 1: do not clear a club hint while selected operational tenant is still null
+  // (transient F5 rehydrate) — same PENDING vs INVALID distinction as canonical.
   useEffect(() => {
     if (canonicalRead) {
       return;
     }
     if (!rbacEnabled || !isAuthenticated) {
+      return;
+    }
+    if (!currentTenantId) {
       return;
     }
 
@@ -550,7 +575,15 @@ export function ClubProvider({ children }) {
       setRevision((value) => value + 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
-  }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, clubRehydrateScopeKey, visibleClubs]);
+  }, [
+    canonicalRead,
+    activeClubId,
+    currentTenantId,
+    isAuthenticated,
+    rbacEnabled,
+    clubRehydrateScopeKey,
+    visibleClubs,
+  ]);
 
   const summary = useMemo(() => {
     const base = getClubSummary(activeClub?.id || activeClubId);

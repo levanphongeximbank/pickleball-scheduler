@@ -118,6 +118,18 @@ test("resolveActiveClubSelection clears selection when no clubs visible", () => 
   const sel = resolveActiveClubSelection({ preferredClubId: "club-a", visibleClubs: [] });
   assert.equal(sel.activeClubId, null);
   assert.equal(sel.activeClub, null);
+  assert.equal(sel.preferenceStatus, "invalid");
+});
+
+test("resolveActiveClubSelection authorityReady=false does not clear preferred hint", () => {
+  const sel = resolveActiveClubSelection({
+    preferredClubId: "club-a",
+    visibleClubs: [],
+    authorityReady: false,
+  });
+  assert.equal(sel.activeClubId, "club-a");
+  assert.equal(sel.activeClub, null);
+  assert.equal(sel.preferenceStatus, "pending_validation");
 });
 
 // --- 5 & 6. read snapshot: loading/error never leaks legacy clubs ---
