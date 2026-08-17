@@ -4,6 +4,12 @@ import { getCurrentUser, isRbacEnabled } from "../../../auth/authService.js";
 import { isGlobalRole } from "../../../auth/roles.js";
 import { loadVenues, saveVenues } from "../../../data/venue.js";
 import { loadTenants, saveTenants, upsertTenantRecord } from "../../../data/tenantRegistry.js";
+import {
+  PLATFORM_TENANT_ERROR,
+  isCloudCanonicalTenantAuthority,
+  listCachedPlatformTenants,
+  upsertCanonicalPlatformTenant,
+} from "../../../core/platform/app/platformTenantAuthority.js";
 import { loadClubData } from "../../../domain/clubStorage.js";
 import {
   createTenantRecord,
@@ -48,13 +54,12 @@ export function ensureTenantBootstrap() {
   return { ok: true };
 }
 
-export function listTenants() {
-  ensureTenantVenueLocalBootstrap();
+function listCompatibilityTenants() {
   const registry = loadTenants();
   if (registry.length) {
     return registry.map(normalizeTenant);
   }
-  // Transitional fallback: derive tenants from stamped venues (bridge).
+  // Compatibility only: derive tenants from stamped venues (explicit 1:1 bridge).
   const derived = new Map();
   for (const venue of loadVenues()) {
     const tenantId = String(venue.tenantId || "").trim();
@@ -73,10 +78,23 @@ export function listTenants() {
   return [...derived.values()];
 }
 
+export function listTenants() {
+  if (isCloudCanonicalTenantAuthority()) {
+    return listCachedPlatformTenants().map(normalizeTenant);
+  }
+  ensureTenantVenueLocalBootstrap();
+  return listCompatibilityTenants();
+}
+
 export function getTenantById(tenantId) {
   const id = String(tenantId || "").trim();
   if (!id) {
     return null;
+  }
+
+  if (isCloudCanonicalTenantAuthority()) {
+    const fromCanonical = listCachedPlatformTenants().find((item) => item.id === id);
+    return fromCanonical ? normalizeTenant(fromCanonical) : null;
   }
 
   ensureTenantVenueLocalBootstrap();
@@ -145,6 +163,13 @@ export function createTenant(name, options = {}) {
   }
 
   const tenant = createTenantRecord(trimmed, options);
+  if (isCloudCanonicalTenantAuthority()) {
+    return {
+      ok: false,
+      error: "Tenant identity is bound to public.platform_tenants. Use createTenantDurable.",
+      code: PLATFORM_TENANT_ERROR.CLOUD_WRITE_REQUIRED,
+    };
+  }
   upsertTenantRecord(tenant);
 
   // Wave 3: creating a tenant also creates its first venue under that tenant (1:N ready).
@@ -169,10 +194,59 @@ export function createTenant(name, options = {}) {
   return { ok: true, tenant };
 }
 
+export async function createTenantDurable(name, options = {}) {
+  if (!isCloudCanonicalTenantAuthority()) {
+    return createTenant(name, options);
+  }
+
+  const adminCheck = guardTenantAdmin();
+  if (!adminCheck.ok) {
+    return adminCheck;
+  }
+
+  const trimmed = String(name || "").trim();
+  if (!trimmed) {
+    return { ok: false, error: "Tên tenant không được để trống." };
+  }
+
+  const tenant = createTenantRecord(trimmed, options);
+  const persisted = await upsertCanonicalPlatformTenant(tenant);
+  if (!persisted.ok) {
+    return persisted;
+  }
+
+  const forceLegacyCoupledId = options.legacyCoupledVenueId === true;
+  const venueId = forceLegacyCoupledId
+    ? tenant.id
+    : options.defaultVenueId || `venue-${tenant.id}`;
+  const venues = loadVenues();
+  if (!venues.some((row) => row.id === venueId)) {
+    const venue = createVenueRecord(trimmed, {
+      id: venueId,
+      tenantId: tenant.id,
+      timezone: tenant.timezone,
+      status: tenant.status,
+      ownerId: tenant.ownerUserId,
+      note: tenant.note,
+    });
+    saveVenues([...venues, venue]);
+  }
+
+  return { ok: true, tenant: persisted.tenant ? normalizeTenant(persisted.tenant) : tenant };
+}
+
 export function updateTenant(tenantId, patch = {}) {
   const adminCheck = guardTenantAdmin();
   if (!adminCheck.ok) {
     return adminCheck;
+  }
+
+  if (isCloudCanonicalTenantAuthority()) {
+    return {
+      ok: false,
+      error: "Tenant identity is bound to public.platform_tenants. Use updateTenantDurable.",
+      code: PLATFORM_TENANT_ERROR.CLOUD_WRITE_REQUIRED,
+    };
   }
 
   const tenants = loadTenants();
@@ -207,6 +281,29 @@ export function updateTenant(tenantId, patch = {}) {
 
   saveTenants(next);
   return { ok: true, tenant: next[index] };
+}
+
+export async function updateTenantDurable(tenantId, patch = {}) {
+  if (!isCloudCanonicalTenantAuthority()) {
+    return updateTenant(tenantId, patch);
+  }
+
+  const adminCheck = guardTenantAdmin();
+  if (!adminCheck.ok) {
+    return adminCheck;
+  }
+
+  const existing = getTenantById(tenantId);
+  if (!existing) {
+    return { ok: false, error: "Không tìm thấy tenant." };
+  }
+  const tenant = normalizeTenant({
+    ...existing,
+    ...patch,
+    id: existing.id,
+    updatedAt: new Date().toISOString(),
+  });
+  return upsertCanonicalPlatformTenant(tenant);
 }
 
 export function setTenantStatus(tenantId, status) {

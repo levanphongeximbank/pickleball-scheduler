@@ -14,6 +14,11 @@ import { resolveTenantIdFromUser } from "../guards/tenantGuard.js";
 import { applyTeamPortalRouteScope } from "../../team-tournament/routing/teamPortalRouteScope.js";
 import { stampLegacyVenueTenantId } from "../../../core/platform/app/legacyTenantVenueBridge.js";
 import { ensureTenantVenueLocalBootstrap } from "../../venue/services/tenantVenueBootstrap.js";
+import {
+  PLATFORM_TENANT_MODE,
+  isCloudCanonicalTenantAuthority,
+  refreshPlatformTenantAuthority,
+} from "../../../core/platform/app/platformTenantAuthority.js";
 
 /**
  * profiles.venue_id is the actor home venue. Until Phase B, billing/RLS still
@@ -70,6 +75,10 @@ export async function hydrateProfileVenueToLocalRegistry(tenantId) {
 
   if (getTenantById(id)) {
     return { ok: true, hydrated: false, tenantId: id };
+  }
+
+  if (isCloudCanonicalTenantAuthority()) {
+    return { ok: false, code: "TENANT_NOT_FOUND", tenantId: id };
   }
 
   const lookup = await validateBillingTenantOnSupabase(null, id);
@@ -129,26 +138,46 @@ function mapSupabaseVenueStatus(raw) {
 
 /**
  * Phase 42L / Wave 3 — mirror Supabase public.venues into local venue registry.
- * Also upserts tenant registry rows (bridge tenantId until Phase B tenant_id column).
+ * Tenant identity hydrates from public.platform_tenants when that schema is
+ * readable. Venue rows must not invent a second Tenant authority.
  */
 export async function hydrateSupabaseVenuesToLocalRegistry(client) {
   if (!hasSupabaseConfig()) {
     return { ok: false, code: "NO_SUPABASE", tenantIds: [], venues: [] };
   }
 
+  const tenantAuthority = await refreshPlatformTenantAuthority();
+  const cloudCanonical = Boolean(tenantAuthority?.claimedCloud);
+
   const result = await fetchSupabaseVenues(client);
   if (!result.ok) {
-    return { ...result, tenantIds: [], venues: [] };
+    return {
+      ...result,
+      tenantIds: cloudCanonical ? (tenantAuthority.tenants || []).map((row) => row.id) : [],
+      venues: [],
+      tenantAuthorityMode: tenantAuthority?.mode || PLATFORM_TENANT_MODE.UNPROBED,
+      claimedCloud: cloudCanonical,
+    };
   }
 
   const incoming = result.venues || [];
-  if (!incoming.length) {
-    return { ok: true, hydrated: false, hydratedCount: 0, tenantIds: [], venues: [] };
+  if (!incoming.length && !cloudCanonical) {
+    return {
+      ok: true,
+      hydrated: false,
+      hydratedCount: 0,
+      tenantIds: [],
+      venues: [],
+      tenantAuthorityMode: tenantAuthority?.mode || PLATFORM_TENANT_MODE.UNPROBED,
+      claimedCloud: false,
+    };
   }
 
   const merged = new Map(loadVenues().map((item) => [item.id, item]));
   let hydratedCount = 0;
-  const tenantIds = new Set();
+  const tenantIds = new Set(
+    cloudCanonical ? (tenantAuthority.tenants || []).map((row) => row.id) : []
+  );
 
   for (const venue of incoming) {
     const id = sanitizeBillingTenantId(venue.id);
@@ -157,21 +186,25 @@ export async function hydrateSupabaseVenuesToLocalRegistry(client) {
     }
 
     const status = mapSupabaseVenueStatus(venue.status);
-    const tenantId = sanitizeBillingTenantId(venue.tenant_id || venue.tenantId) || id;
-    tenantIds.add(tenantId);
-
-    upsertTenantRecord(
-      normalizeTenant({
-        id: tenantId,
-        name: venue.name || tenantId,
-        status,
-      })
-    );
+    const explicitTenantId = sanitizeBillingTenantId(venue.tenant_id || venue.tenantId);
+    const tenantId = cloudCanonical
+      ? explicitTenantId
+      : explicitTenantId || id;
+    if (tenantId && !cloudCanonical) {
+      tenantIds.add(tenantId);
+      upsertTenantRecord(
+        normalizeTenant({
+          id: tenantId,
+          name: venue.name || tenantId,
+          status,
+        })
+      );
+    }
 
     const nextVenue = normalizeVenue(
       stampLegacyVenueTenantId({
         id,
-        tenantId,
+        tenantId: tenantId || undefined,
         name: venue.name || id,
         status,
         timezone: venue.timezone,
@@ -197,10 +230,12 @@ export async function hydrateSupabaseVenuesToLocalRegistry(client) {
 
   return {
     ok: true,
-    hydrated: hydratedCount > 0,
+    hydrated: hydratedCount > 0 || cloudCanonical,
     hydratedCount,
     tenantIds: [...tenantIds],
     venues: incoming,
+    tenantAuthorityMode: tenantAuthority?.mode || PLATFORM_TENANT_MODE.UNPROBED,
+    claimedCloud: cloudCanonical,
   };
 }
 

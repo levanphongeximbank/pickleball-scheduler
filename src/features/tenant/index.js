@@ -8,6 +8,8 @@ export {
   getTenantStats,
   createTenant,
   updateTenant,
+  createTenantDurable,
+  updateTenantDurable,
   setTenantStatus,
   renameTenant,
   getPrimaryClubIdForTenant,

@@ -322,4 +322,20 @@ test("Wave3 SQL package present for Owner review (not executed)", () => {
     "docs/platform-core-wave3-tenant-venue-separation/sql/00_OWNER_README.md"
   );
   assert.match(owner, /SQL_EXECUTION_GO = NO/);
+  assert.ok(
+    fs.existsSync(
+      path.join(
+        process.cwd(),
+        "docs/platform-core-wave3-tenant-venue-separation/sql/04_RLS_POLICIES.sql"
+      )
+    )
+  );
+  assert.ok(
+    fs.existsSync(
+      path.join(
+        process.cwd(),
+        "docs/platform-core-wave3-tenant-venue-separation/LEGACY_PUBLIC_TENANTS_CUTOVER.md"
+      )
+    )
+  );
 });

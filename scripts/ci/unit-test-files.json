@@ -87,6 +87,8 @@
   "tests/platform-tenant-venue-selected-display.test.js",
   "tests/platform-context-wave1-closure.test.js",
   "tests/platform-context-wave3-tenant-venue-separation.test.js",
+  "tests/platform-tenant-durable-runtime-boundary.test.js",
+  "tests/platform-core-wave3-sql-static.test.js",
   "tests/platform-runtime-boundary-closure-02.test.js",
   "tests/phase42m-club-ui.test.js",
   "tests/competition-core-rating-mapping.test.js",

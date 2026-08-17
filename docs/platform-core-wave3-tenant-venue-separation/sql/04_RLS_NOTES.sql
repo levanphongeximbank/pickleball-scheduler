@@ -1,44 +1,24 @@
--- Wave 3 Phase B — RLS NOTES / draft helpers
--- DO NOT blindly replace production policies.
--- Review each policy that compares profiles.venue_id to tenant_subscriptions.tenant_id.
+-- Wave 3 Phase B — RLS NOTES (NOT EXECUTABLE)
+-- DO NOT RUN THIS FILE.
+-- Function and policy statements were removed from this notes file
+-- after Owner architecture review. Execution-ready SQL lives only in:
+--   04_RLS_POLICIES.sql
+-- Design, grants, Super Admin / tenant / venue behavior, and fallback retirement:
+--   04_RLS_PACKAGE.md
+--
+-- Dual gate required before any RLS deploy:
+--   OWNER_SQL_GO_WAVE3_PHASE_B=YES
+--   OWNER_RLS_DEPLOY_GO=YES
+-- Default apply order does NOT include RLS.
+--
+-- Transitional fallback name:
+--   WAVE3_USER_TENANT_ID_VENUE_FALLBACK
+-- user_tenant_id() may COALESCE(profiles.tenant_id, profiles.venue_id)
+-- ONLY while profiles.tenant_id is still incomplete.
+-- user_home_venue_id() MUST NOT invent Venue identity from Tenant identity.
+--
+-- Removal condition for the fallback:
+--   COUNT(*) FROM profiles WHERE venue_id IS NOT NULL AND NULLIF(tenant_id,'') IS NULL = 0
+--   AND OWNER_RETIRE_USER_TENANT_VENUE_FALLBACK=YES
 
--- Helper: actor tenant (prefer profiles.tenant_id; fall back to venue_id during transition)
-CREATE OR REPLACE FUNCTION public.user_tenant_id()
-RETURNS text
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT COALESCE(
-    NULLIF(p.tenant_id, ''),
-    NULLIF(p.venue_id, '')
-  )
-  FROM public.profiles p
-  WHERE p.id = auth.uid()
-$$;
-
--- Helper: actor home venue (facility) — never invent from tenant unless equal by data
-CREATE OR REPLACE FUNCTION public.user_home_venue_id()
-RETURNS text
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT NULLIF(p.venue_id, '')
-  FROM public.profiles p
-  WHERE p.id = auth.uid()
-$$;
-
-COMMENT ON FUNCTION public.user_tenant_id() IS
-  'Wave 3 actor tenant scope. Distinct from home venue.';
-COMMENT ON FUNCTION public.user_home_venue_id() IS
-  'Wave 3 actor home venue facility id.';
-
--- Example policy direction (DO NOT auto-apply without Owner RLS review):
--- tenant_subscriptions SELECT: tenant_id = public.user_tenant_id() OR is_super_admin()
--- venues SELECT: tenant_id = public.user_tenant_id() OR id = public.user_home_venue_id() OR is_super_admin()
-
--- Enable RLS on new table when Owner authorizes policy set:
--- ALTER TABLE public.platform_tenants ENABLE ROW LEVEL SECURITY;
+SELECT 'WAVE3_04_RLS_NOTES_NOT_EXECUTABLE' AS status;

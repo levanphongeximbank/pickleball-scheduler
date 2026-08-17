@@ -1,5 +1,10 @@
 /**
- * Wave 3 — durable local tenant registry (distinct from venue registry).
+ * Wave 3 — local Tenant cache (pickleball-tenants-v1).
+ *
+ * After Phase B cloud bind, this is NOT Tenant identity authority.
+ * Canonical identity is public.platform_tenants via platformTenantAuthority.
+ * This key may store a projection/cache and the selected-tenant preference
+ * lives in tenantSession — never a second Tenant authority.
  */
 
 import { normalizeTenant } from "../models/tenant.js";
@@ -7,6 +12,7 @@ import {
   DEMO_SEED_TENANT_IDS,
   shouldHideDemoSeedData,
 } from "../demo/seed/demoSeedRegistry.js";
+import { PLATFORM_TENANT_CACHE_ROLE } from "../core/platform/app/platformTenantAuthority.js";
 
 const TENANTS_KEY = "pickleball-tenants-v1";
 
@@ -35,6 +41,14 @@ export function saveTenants(tenants) {
   );
 }
 
+/**
+ * Replace the local cache from an already-resolved authority list.
+ * Does not invent Tenant identity.
+ */
+export function replaceTenantCache(tenants) {
+  saveTenants(tenants);
+}
+
 export function upsertTenantRecord(tenant) {
   const normalized = normalizeTenant(tenant);
   if (!normalized.id) {
@@ -50,4 +64,12 @@ export function upsertTenantRecord(tenant) {
     saveTenants(next);
   }
   return { ok: true, tenant: normalized };
+}
+
+export function createLocalTenantCacheAdapter() {
+  return {
+    role: PLATFORM_TENANT_CACHE_ROLE,
+    read: loadTenants,
+    write: replaceTenantCache,
+  };
 }

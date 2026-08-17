@@ -8,6 +8,7 @@ import { loadTenants, saveTenants, upsertTenantRecord } from "../../../data/tena
 import { normalizeVenue } from "../../../models/venue.js";
 import { createTenantRecord, normalizeTenant } from "../../../models/tenant.js";
 import { stampLegacyVenueTenantId } from "../../../core/platform/app/legacyTenantVenueBridge.js";
+import { isCloudCanonicalTenantAuthority } from "../../../core/platform/app/platformTenantAuthority.js";
 
 export function resetTenantVenueBootstrapFlagForTests() {
   // retained for tests; bootstrap is now idempotent each call
@@ -27,6 +28,15 @@ export function ensureTenantVenueLocalBootstrap() {
 
   if (changed || stamped.length !== rawVenues.length) {
     saveVenues(stamped);
+  }
+
+  if (isCloudCanonicalTenantAuthority()) {
+    return {
+      ok: true,
+      venueCount: stamped.length,
+      tenantCount: loadTenants().length,
+      skippedTenantInvent: true,
+    };
   }
 
   const tenantsById = new Map(loadTenants().map((row) => [row.id, row]));
