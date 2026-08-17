@@ -10,6 +10,7 @@ import { ROLES, normalizeRole, isGlobalRole } from "../../../auth/roles.js";
 import { isCourtClustersEnabled } from "../config/clusterFlags.js";
 import { sanitizeBillingTenantId } from "../../billing/services/billingTenantResolver.js";
 import { isValidProfileUserId } from "../utils/profileUserId.js";
+import { resolveConcreteClusterVenueId } from "../utils/clusterCloudResolver.js";
 import {
   getActiveClusterId,
   getActiveClusterIdForVenue,
@@ -131,20 +132,29 @@ export function createCourtCluster({
     return { ok: false, error: "Thiếu venueId hoặc tên cụm sân" };
   }
 
+  const concreteVenueId = resolveConcreteClusterVenueId(venueId);
+  if (!concreteVenueId) {
+    return {
+      ok: false,
+      error: "Thiếu tổ chức hợp lệ để tạo cụm sân.",
+      code: "VENUE_ID_REQUIRED",
+    };
+  }
+
   const mapsCheck = assertGoogleMapsUrl(googleMapsUrl);
   if (!mapsCheck.ok) {
     return mapsCheck;
   }
 
   const normalizedSlug = slug || slugifyClusterName(name);
-  const existingSlug = listClustersForVenue(venueId).find((item) => item.slug === normalizedSlug);
+  const existingSlug = listClustersForVenue(concreteVenueId).find((item) => item.slug === normalizedSlug);
   if (existingSlug) {
     return { ok: false, error: "Slug cụm sân đã tồn tại trong tổ chức này" };
   }
 
   const cluster = upsertClusterList(
     createCourtClusterRecord({
-      venueId,
+      venueId: concreteVenueId,
       name: String(name).trim(),
       slug: normalizedSlug,
       ownerUserId,

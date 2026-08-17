@@ -5,20 +5,40 @@ import {
 } from "../../../models/courtCluster.js";
 import { sanitizeBillingTenantId } from "../../billing/services/billingTenantResolver.js";
 import { fetchSupabaseVenues } from "../../billing/services/billingVenueService.js";
-import { fetchProfileByUserId } from "../../../auth/profileService.js";
 import { hasSupabaseConfig } from "../../../auth/supabaseClient.js";
-import { isValidProfileUserId } from "./profileUserId.js";
 
-export function isLegacyClusterVenueId(venueId) {
+export const ADMIN_ALL_TENANTS_MUTATION_ID = "__all_tenants__";
+
+const AMBIGUOUS_CLUSTER_MUTATION_TARGETS = new Set([
+  ADMIN_ALL_TENANTS_MUTATION_ID,
+  DEFAULT_TENANT_ID,
+  "default",
+]);
+
+export function isAmbiguousClusterMutationTarget(venueId) {
   const normalized = String(venueId || "").trim();
   if (!normalized) {
     return true;
   }
-  return normalized === DEFAULT_TENANT_ID || !sanitizeBillingTenantId(normalized);
+  if (AMBIGUOUS_CLUSTER_MUTATION_TARGETS.has(normalized)) {
+    return true;
+  }
+  return !sanitizeBillingTenantId(normalized);
+}
+
+export function resolveConcreteClusterVenueId(venueId) {
+  if (isAmbiguousClusterMutationTarget(venueId)) {
+    return null;
+  }
+  return sanitizeBillingTenantId(venueId);
+}
+
+export function isLegacyClusterVenueId(venueId) {
+  return isAmbiguousClusterMutationTarget(venueId);
 }
 
 export function needsLegacyClusterMigration(cluster, cloudVenueId) {
-  if (!cluster || !cloudVenueId) {
+  if (!cluster || !resolveConcreteClusterVenueId(cloudVenueId)) {
     return false;
   }
 
@@ -26,11 +46,7 @@ export function needsLegacyClusterMigration(cluster, cloudVenueId) {
     return true;
   }
 
-  if (isLegacyClusterVenueId(cluster.venueId)) {
-    return true;
-  }
-
-  return cluster.venueId !== cloudVenueId && cluster.slug === "main";
+  return isLegacyClusterVenueId(cluster.venueId);
 }
 
 export function migrateLegacyClusterRecord(cluster, cloudVenueId) {
@@ -55,70 +71,76 @@ export function migrateLegacyClusterRecord(cluster, cloudVenueId) {
   });
 }
 
+/**
+ * Mutation target for one cluster. Persisted row ownership wins over UI scope.
+ * Never invents a target from venue list order, header context, or home profile.
+ */
+export function resolveClusterMutationVenueId({
+  cluster = null,
+  selectedVenueId = null,
+  persistedVenueId = null,
+} = {}) {
+  const fromRow = resolveConcreteClusterVenueId(
+    persistedVenueId || cluster?.venueId
+  );
+  if (fromRow) {
+    return fromRow;
+  }
+  return resolveConcreteClusterVenueId(selectedVenueId);
+}
+
+export function prepareClusterForCloudPersist(cluster, selectedVenueId = null) {
+  if (!cluster) {
+    return { ok: false, code: "CLUSTER_NOT_FOUND", error: "Không tìm thấy cụm sân." };
+  }
+
+  const normalized = normalizeCourtCluster(cluster);
+  const cloudVenueId = resolveClusterMutationVenueId({
+    cluster: normalized,
+    selectedVenueId,
+  });
+
+  if (!cloudVenueId) {
+    return {
+      ok: false,
+      code: "VENUE_ID_REQUIRED",
+      error:
+        "Cụm sân thiếu tổ chức cloud hợp lệ. Không dùng Tất cả / Default Tenant làm mục tiêu ghi.",
+      cluster: normalized,
+    };
+  }
+
+  return {
+    ok: true,
+    venueId: cloudVenueId,
+    cluster: migrateLegacyClusterRecord(normalized, cloudVenueId),
+  };
+}
+
 export async function resolveCloudVenueIdForClusterOps({
   selectedVenueId,
-  actor = null,
-  assigneeUserId = null,
+  persistedVenueId = null,
+  cluster = null,
 } = {}) {
-  let fromSelected = sanitizeBillingTenantId(selectedVenueId);
+  const resolved = resolveClusterMutationVenueId({
+    cluster,
+    selectedVenueId,
+    persistedVenueId,
+  });
 
-  // Tránh nhầm id cụm sân (vd. venue-prod-main-pickleball-nam-long-sports) thành venue_id
-  if (fromSelected && hasSupabaseConfig()) {
+  if (!resolved) {
+    return null;
+  }
+
+  if (hasSupabaseConfig()) {
     const venueResult = await fetchSupabaseVenues();
-    if (venueResult.ok && venueResult.venues?.length) {
-      const exact = venueResult.venues.find((venue) => venue.id === fromSelected);
+    if (venueResult.ok && Array.isArray(venueResult.venues) && venueResult.venues.length > 0) {
+      const exact = venueResult.venues.find((venue) => venue.id === resolved);
       if (!exact) {
-        const prefixMatch = venueResult.venues.find(
-          (venue) =>
-            fromSelected === venue.id ||
-            fromSelected.startsWith(`${venue.id}-`)
-        );
-        fromSelected = prefixMatch?.id || null;
+        return null;
       }
     }
   }
 
-  if (fromSelected) {
-    return fromSelected;
-  }
-
-  const fromActor = sanitizeBillingTenantId(actor?.venueId || actor?.tenantId);
-  if (fromActor) {
-    return fromActor;
-  }
-
-  if (assigneeUserId && isValidProfileUserId(assigneeUserId)) {
-    const profileResult = await fetchProfileByUserId(assigneeUserId);
-    const fromAssignee = sanitizeBillingTenantId(profileResult?.user?.venueId);
-    if (fromAssignee) {
-      return fromAssignee;
-    }
-  }
-
-  if (!hasSupabaseConfig()) {
-    return null;
-  }
-
-  const venueResult = await fetchSupabaseVenues();
-  if (!venueResult.ok || !venueResult.venues?.length) {
-    return null;
-  }
-
-  if (venueResult.venues.length === 1) {
-    return venueResult.venues[0].id;
-  }
-
-  const selectedName = String(selectedVenueId || "").trim().toLowerCase();
-  if (selectedName) {
-    const matched = venueResult.venues.find((venue) =>
-      String(venue.name || "")
-        .toLowerCase()
-        .includes(selectedName)
-    );
-    if (matched?.id) {
-      return matched.id;
-    }
-  }
-
-  return venueResult.venues[0]?.id || null;
+  return resolved;
 }
