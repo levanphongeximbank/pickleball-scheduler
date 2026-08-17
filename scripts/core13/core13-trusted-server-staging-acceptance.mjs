@@ -28,10 +28,11 @@
  *   STAGING_DAILY_PLAY_DISABLED_TOURNAMENT / STAGING_DAILY_PLAY_ENABLED_TOURNAMENT
  *   STAGING_MATCH_IN_PROGRESS / STAGING_MATCH_SCORING / STAGING_MATCH_LOCKED / STAGING_MATCH_COMPLETED
  *
- * Identity subject directory:
- *   Contract #01 currently has no arbitrary-subject lookup. Trusted-server
- *   PRE_MATCH assign (F) and Identity L cases fail closed until Owner GO
- *   expands Contract #01. Do not restore a Competition profiles-table read.
+ * Identity subject lookup:
+ *   Contract #01 gap was closed by merged PR #446. CORE-13 consumes
+ *   resolveSubjectIdentity. Identity L cases now test canonical deny
+ *   (unknown / non-referee / inactive / foreign / missing tenant).
+ *   Do not restore a Competition profiles-table read.
  */
 
 import { createClient } from "@supabase/supabase-js";

@@ -110,6 +110,28 @@ export function assertTrustedServerNoFakeSuccess(rootDir) {
     failures.push("directory port still uses serviceClient table reads");
   }
 
+  if (!/resolveSubjectIdentity/.test(directory)) {
+    failures.push("directory port does not consume Contract #01 resolveSubjectIdentity");
+  }
+  if (/tenantId \|\| .*venueId/.test(directory) || /data\.tenantId \|\| data\.venueId/.test(directory)) {
+    failures.push("directory port treats venueId as tenant proof");
+  }
+  if (/subjectIdentityPersistence/.test(directory) || /subjectIdentityPersistence/.test(loader) || /subjectIdentityPersistence/.test(handler)) {
+    failures.push("CORE-13 assignment server imports Identity private persistence");
+  }
+  if (/SHARED_CONTRACT_CAPABILITY_GAP/.test(directory)) {
+    failures.push("obsolete Contract #01 capability gap remains in directory port");
+  }
+  if (/CONTRACT_01_SUBJECT_DIRECTORY_NOT_CONFIGURED/.test(directory)) {
+    failures.push("obsolete Contract #01 subject-directory gap flag remains");
+  }
+  if (!/createTrustedServerIdentityAccessAdapter/.test(loader) && !/createIdentityAccessBinding/.test(loader)) {
+    failures.push("loader does not bind Contract #01 Identity Adapter B");
+  }
+  if (!/actorId/.test(directory)) {
+    failures.push("directory port does not pass authenticated actorId separately from subjectId");
+  }
+
   if (!/competition\.referee\.adapter\.v1/.test(contract08)) {
     failures.push("Contract #08 identity missing");
   }
@@ -126,8 +148,8 @@ export function assertTrustedServerNoFakeSuccess(rootDir) {
   if (!/resolveActorIdentity/.test(contract01) || !/getAuthorizationEvidence/.test(contract01)) {
     failures.push("Contract #01 required actor-context methods missing");
   }
-  if (/resolveSubjectIdentity/.test(contract01)) {
-    failures.push("Contract #01 must not be expanded with subject directory without Owner GO");
+  if (!/resolveSubjectIdentity/.test(contract01)) {
+    failures.push("Contract #01 must expose resolveSubjectIdentity after PR #446");
   }
 
   return { ok: failures.length === 0, failures };

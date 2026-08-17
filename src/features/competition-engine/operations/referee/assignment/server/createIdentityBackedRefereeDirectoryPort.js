@@ -2,17 +2,12 @@
  * RefereeDirectoryPort backed by Canonical Competition Identity Contract #01.
  *
  * Contract #08 Adapter B must not own referee identity.
- * This port may only translate Contract #01 / Identity Adapter B evidence
- * into CORE-13 createRefereeCandidate(...).
+ * This port translates Contract #01 / Identity Adapter B
+ * resolveSubjectIdentity evidence into CORE-13 createRefereeCandidate(...).
  *
- * Contract #01 currently exposes actor-context methods only:
- *   resolveActorIdentity, getAuthorizationEvidence, getCapabilityEvidence
- * Those methods echo caller-supplied actor/role and do not look up an
- * arbitrary referee subject (role / active / tenant). Direct public.profiles
- * reads from Competition trusted-server are therefore forbidden.
- *
- * If Adapter B later grows a subject-directory method (Owner GO on Contract #01),
- * this port consumes it. Until then it fails closed.
+ * Browser-supplied role / active / status / tenantId are not authority.
+ * Tenant is not venue. Missing tenant or missing status fail closed.
+ * Competition must not read public.profiles or import Identity persistence.
  */
 
 import { isRefereeRole } from "../../../../../identity/constants/roles.js";
@@ -24,6 +19,9 @@ import {
   createPopulatedSnapshotResult,
 } from "../../../../../competition-core/referee-assignment/ports/portResult.js";
 import { IDENTITY_ACCESS_CONTRACT } from "../../../../integration/contracts/definitions.js";
+import { SHARED_ADAPTER_ERROR_CODE } from "../../../../integration/contracts/kernel/constants.js";
+import { isCompetitionAdapterContractError } from "../../../../integration/contracts/kernel/errors.js";
+import { EVIDENCE_STATUS } from "../../../../integration/contracts/kernel/evidence.js";
 import { ASSIGNMENT_COMMAND_ERROR_CODE } from "../constants.js";
 import { failAssignmentCommand } from "../errors.js";
 import { isUuid } from "./loadCanonicalCompetitionModeState.js";
@@ -34,24 +32,11 @@ export const CONTRACT_01_CURRENT_METHODS = Object.freeze([
   ...IDENTITY_ACCESS_CONTRACT.requiredMethods,
 ]);
 
-export const CONTRACT_01_SUBJECT_DIRECTORY_METHODS = Object.freeze([
-  "resolveSubjectIdentity",
-  "getSubjectIdentityEvidence",
-  "lookupSubjectIdentity",
-]);
-
 export const IDENTITY_DIRECTORY_CAPABILITY = Object.freeze({
-  NOT_CONFIGURED: "CONTRACT_01_SUBJECT_DIRECTORY_NOT_CONFIGURED",
-  SUBJECT_IDENTITY: "CONTRACT_01_SUBJECT_IDENTITY",
+  RESOLVE_SUBJECT_IDENTITY: "CONTRACT_01_RESOLVE_SUBJECT_IDENTITY",
+  SUBJECT_IDENTITY: "CONTRACT_01_RESOLVE_SUBJECT_IDENTITY",
+  MISSING_BINDING: "CONTRACT_01_RESOLVE_SUBJECT_IDENTITY_MISSING",
 });
-
-function findSubjectDirectoryMethod(adapter) {
-  if (!adapter || typeof adapter !== "object") return null;
-  for (const name of CONTRACT_01_SUBJECT_DIRECTORY_METHODS) {
-    if (typeof adapter[name] === "function") return name;
-  }
-  return null;
-}
 
 function readEvidenceData(evidence) {
   if (!evidence || typeof evidence !== "object") return {};
@@ -59,9 +44,43 @@ function readEvidenceData(evidence) {
   return evidence;
 }
 
-function isActiveStatus(value) {
-  const raw = String(value ?? "active").trim().toLowerCase();
-  return raw !== "inactive" && raw !== "disabled" && raw !== "suspended";
+function mapIdentityAdapterError(err) {
+  if (!isCompetitionAdapterContractError(err)) throw err;
+  const code = err.code;
+  if (code === SHARED_ADAPTER_ERROR_CODE.CROSS_TENANT_CONTEXT) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.FOREIGN_REFEREE_DENIED,
+      err.message || "Referee identity is not bound to the authenticated tenant",
+      err.details || {}
+    );
+  }
+  if (code === SHARED_ADAPTER_ERROR_CODE.DISPLAY_NAME_IS_NOT_IDENTITY) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.DISPLAY_NAME_IDENTITY_DENIED,
+      err.message || "Display name is never canonical referee identity",
+      err.details || {}
+    );
+  }
+  if (code === SHARED_ADAPTER_ERROR_CODE.FUZZY_IDENTITY_FORBIDDEN) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.EMAIL_AS_AUTHORITY_DENIED,
+      err.message || "Email/phone is never canonical referee identity",
+      err.details || {}
+    );
+  }
+  failAssignmentCommand(
+    ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+    err.message || "Canonical referee Identity evidence is required",
+    err.details || {}
+  );
+}
+
+function denyUnknownSubject(refereeId, details = {}) {
+  failAssignmentCommand(
+    ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+    "Canonical referee subject was not found",
+    { refereeId, ...details }
+  );
 }
 
 /**
@@ -71,10 +90,12 @@ function isActiveStatus(value) {
  */
 export function createIdentityBackedRefereeDirectoryPort(options = {}) {
   const identityAccessAdapter = options.identityAccessAdapter || null;
-  const subjectMethod = findSubjectDirectoryMethod(identityAccessAdapter);
-  const source = subjectMethod
-    ? IDENTITY_DIRECTORY_CAPABILITY.SUBJECT_IDENTITY
-    : IDENTITY_DIRECTORY_CAPABILITY.NOT_CONFIGURED;
+  const hasResolveSubject =
+    Boolean(identityAccessAdapter) &&
+    typeof identityAccessAdapter.resolveSubjectIdentity === "function";
+  const source = hasResolveSubject
+    ? IDENTITY_DIRECTORY_CAPABILITY.RESOLVE_SUBJECT_IDENTITY
+    : IDENTITY_DIRECTORY_CAPABILITY.MISSING_BINDING;
 
   return Object.freeze({
     source,
@@ -82,10 +103,11 @@ export function createIdentityBackedRefereeDirectoryPort(options = {}) {
     synthesizesQualification: false,
     synthesizesAvailability: false,
     queriesIdentityPrivatePersistence: false,
-    subjectDirectoryMethod: subjectMethod,
+    subjectDirectoryMethod: hasResolveSubject ? "resolveSubjectIdentity" : null,
     async resolveRefereeDirectory(request = {}) {
       const refereeId = String(request.refereeId || "").trim();
       const tenantId = String(request.tenantId || "").trim();
+      const actorId = String(request.actorId || "").trim();
       if (!refereeId) {
         return createMissingSnapshotResult(
           "No refereeId supplied for Identity directory lookup",
@@ -100,34 +122,48 @@ export function createIdentityBackedRefereeDirectoryPort(options = {}) {
         );
       }
 
-      if (!subjectMethod) {
+      if (!hasResolveSubject) {
         failAssignmentCommand(
           ASSIGNMENT_COMMAND_ERROR_CODE.NOT_CONFIGURED,
-          "Contract #01 does not provide subject directory lookup for an arbitrary referee",
+          "Contract #01 resolveSubjectIdentity binding is required",
           {
             contractId: CONTRACT_01_ID,
-            missingCapability: "resolveSubjectIdentityDirectory",
+            missingCapability: "resolveSubjectIdentity",
             currentContractCapabilities: CONTRACT_01_CURRENT_METHODS,
-            whyRequired:
-              "CORE-13 needs canonical subject id, Identity role, active/inactive, and tenant/scope for the assigned referee — not the authenticated actor",
-            whyDirectProfilesReadIsNotAcceptable:
-              "Competition must not query Identity private persistence; evidence must enter through Contract #01 / Identity Adapter B",
-            ownerGoRequired: true,
-            sharedContractCapabilityGap: true,
           }
         );
       }
 
-      const evidence = await identityAccessAdapter[subjectMethod]({
-        tenantId,
-        actorId: refereeId,
-        subjectId: refereeId,
-        correlationId: request.correlationId || `core13-identity-${refereeId}`,
-        contractVersion: IDENTITY_ACCESS_CONTRACT.contractVersion,
-      });
+      let evidence;
+      try {
+        evidence = await identityAccessAdapter.resolveSubjectIdentity({
+          tenantId,
+          actorId: actorId || request.actorId,
+          subjectId: refereeId,
+          correlationId: request.correlationId || `core13-identity-${refereeId}`,
+          contractVersion: IDENTITY_ACCESS_CONTRACT.contractVersion,
+        });
+      } catch (err) {
+        mapIdentityAdapterError(err);
+      }
+
+      if (!evidence || evidence.status === EVIDENCE_STATUS.NOT_FOUND) {
+        denyUnknownSubject(refereeId, {
+          status: evidence?.status || null,
+          reasonCodes: evidence?.reasonCodes || [],
+        });
+      }
+      if (evidence.status !== EVIDENCE_STATUS.OK) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+          "Canonical Identity subject evidence is not OK",
+          { refereeId, status: evidence.status || null }
+        );
+      }
+
       const data = readEvidenceData(evidence);
       const subjectId = String(
-        data.subjectId || data.userId || data.actorId || ""
+        data.canonicalSubjectId || data.subjectId || ""
       ).trim();
       if (!subjectId || subjectId !== refereeId) {
         failAssignmentCommand(
@@ -137,10 +173,23 @@ export function createIdentityBackedRefereeDirectoryPort(options = {}) {
         );
       }
 
-      const evidenceTenant = String(
-        data.tenantId || data.venueId || data.boundTenantId || ""
-      ).trim();
-      if (evidenceTenant && tenantId && evidenceTenant !== tenantId) {
+      const evidenceTenant = String(data.tenantId || "").trim();
+      const evidenceVenue = String(data.venueId || "").trim();
+      if (evidenceVenue && evidenceVenue === tenantId && evidenceTenant !== tenantId) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+          "venueId is not tenant proof",
+          { refereeId, venueId: evidenceVenue, tenantId }
+        );
+      }
+      if (!evidenceTenant) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+          "Authoritative tenant evidence is required",
+          { refereeId, venueId: evidenceVenue || null }
+        );
+      }
+      if (evidenceTenant !== tenantId) {
         failAssignmentCommand(
           ASSIGNMENT_COMMAND_ERROR_CODE.FOREIGN_REFEREE_DENIED,
           "Referee identity is not bound to the authenticated tenant",
@@ -156,13 +205,21 @@ export function createIdentityBackedRefereeDirectoryPort(options = {}) {
         );
       }
 
-      const active = isActiveStatus(data.status ?? data.active);
+      const status = String(data.status || "").trim().toLowerCase();
+      if (!status) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+          "Identity subject status is required",
+          { refereeId }
+        );
+      }
+      const active = status === "active" && data.active !== false;
+
       return createPopulatedSnapshotResult([
         createRefereeCandidate({
           refereeId,
           active,
           userId: refereeId,
-          displayLabel: data.displayLabel || data.displayName || undefined,
         }),
       ]);
     },

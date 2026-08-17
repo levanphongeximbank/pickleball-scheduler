@@ -75,8 +75,9 @@ export const CORE13_CANONICAL_ASSIGNMENT_RUNTIME = Object.freeze({
   refereeAvailabilityEvidence: "NOT_CONFIGURED",
   hardcodedScheduleWindow: false,
   identityContract01Changed: false,
-  identitySubjectDirectoryCapability: "NOT_CONFIGURED",
+  identitySubjectDirectoryCapability: "RESOLVE_SUBJECT_IDENTITY",
+  contract01ResolveSubjectIdentity: "BOUND",
   directIdentityTableReadFromCompetition: false,
-  sharedContractCapabilityGap: true,
-  contractGapId: "01",
+  sharedContractCapabilityGap: false,
+  contractGapId: null,
 });

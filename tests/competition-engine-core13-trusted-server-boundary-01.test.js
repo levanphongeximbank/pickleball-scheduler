@@ -185,9 +185,12 @@ test("C: Edge Function authenticates JWT and ignores browser actorId", async () 
           status: "OK",
           data: {
             subjectId: "aaaa1111-bbbb-4ccc-8ddd-eeeeffffffff",
+            canonicalSubjectId: "aaaa1111-bbbb-4ccc-8ddd-eeeeffffffff",
             role: "REFEREE",
             status: "active",
+            active: true,
             tenantId: "tenant-a",
+            venueId: "venue-home",
           },
         };
       },

@@ -200,6 +200,26 @@ async function defaultLoadIdentitySubjectById(subjectId) {
 }
 
 /**
+ * Identity-owned point loader. Competition injects getAuthClient and must not
+ * import subjectIdentityPersistence.js.
+ *
+ * @param {{
+ *   getAuthClient?: () => { from: Function }|null,
+ * }} [deps]
+ * @returns {(subjectId: string) => Promise<object|null>}
+ */
+export function createIdentitySubjectPointLoader(deps = {}) {
+  const getAuthClient =
+    typeof deps.getAuthClient === "function" ? deps.getAuthClient : undefined;
+  return async function loadIdentitySubjectById(subjectId) {
+    const persistence = await import("./subjectIdentityPersistence.js");
+    return persistence.loadIdentitySubjectByIdFromPersistence(subjectId, {
+      getAuthClient,
+    });
+  };
+}
+
+/**
  * Resolve one known canonical subject by subjectId.
  *
  * Input authority that is ignored: role, status, active, tenant claims on the

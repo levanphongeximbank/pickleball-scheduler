@@ -11,7 +11,7 @@
  * Adapter B (#08) does not own referee identity/qualification/availability.
  * Qualification and availability are classified NOT_CONFIGURED unless a
  * requirement profile explicitly requires them (then fail closed).
- * Identity subject directory is fail-closed until Contract #01 exposes it.
+ * Referee identity is Contract #01 resolveSubjectIdentity only.
  */
 
 import {
@@ -22,6 +22,7 @@ import { ASSIGNMENT_COMMAND_ERROR_CODE } from "../constants.js";
 import { failAssignmentCommand } from "../errors.js";
 import { normalizeAssignmentLifecycleState } from "../evaluateLifecycleGate.js";
 import { createIdentityBackedRefereeDirectoryPort } from "./createIdentityBackedRefereeDirectoryPort.js";
+import { createTrustedServerIdentityAccessAdapter } from "./createTrustedServerIdentityAccessAdapter.js";
 import {
   createNotConfiguredAvailabilitySnapshot,
   createNotConfiguredQualificationSnapshot,
@@ -137,6 +138,9 @@ function resolveScheduleFromAdapterB({
  *   requireQualification?: boolean,
  *   requireAvailability?: boolean,
  *   identityAccessAdapter?: object,
+ *   actorId?: string,
+ *   loadIdentitySubjectById?: Function,
+ *   getAuthClient?: Function,
  * }} input
  */
 export async function loadAuthoritativeAssignmentEvidence(input = {}) {
@@ -145,6 +149,7 @@ export async function loadAuthoritativeAssignmentEvidence(input = {}) {
   const tournamentId = String(input.tournamentId || "").trim();
   const matchId = String(input.matchId || "").trim();
   const refereeId = String(input.refereeId || "").trim();
+  const actorId = String(input.actorId || "").trim();
   const roleCode = input.roleCode || REFEREE_ROLE_CODE.PRIMARY;
   const competitionMode = String(input.competitionMode || "INTERNAL").toUpperCase();
   const requireQualification = input.requireQualification === true;
@@ -201,8 +206,18 @@ export async function loadAuthoritativeAssignmentEvidence(input = {}) {
       })
     : createUnscheduledMatchSnapshot("missing-match");
 
+  const identityAccessAdapter =
+    input.identityAccessAdapter ||
+    createTrustedServerIdentityAccessAdapter({
+      tenantId,
+      getAuthClient:
+        typeof input.getAuthClient === "function"
+          ? input.getAuthClient
+          : () => serviceClient,
+      loadIdentitySubjectById: input.loadIdentitySubjectById,
+    });
   const directoryPort = createIdentityBackedRefereeDirectoryPort({
-    identityAccessAdapter: input.identityAccessAdapter || null,
+    identityAccessAdapter,
   });
   let directorySnapshot = createEmptySnapshotResult(
     "No refereeId supplied for Identity directory lookup"
@@ -212,6 +227,7 @@ export async function loadAuthoritativeAssignmentEvidence(input = {}) {
       tenantId,
       tournamentId,
       refereeId,
+      actorId,
       roleCode,
     });
   }

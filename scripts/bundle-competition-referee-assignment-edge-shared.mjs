@@ -16,8 +16,18 @@ const outfile = join(outDir, "competitionRefereeAssignmentServer.mjs");
 mkdirSync(outDir, { recursive: true });
 
 execSync(
-  `npx esbuild "${entry}" --bundle --platform=neutral --format=esm --outfile="${outfile}" --banner:js="/* Competition CORE-13 assignment trusted server bundle */"`,
-  { cwd: projectRoot, stdio: "inherit" },
+  [
+    "npx esbuild",
+    `"${entry}"`,
+    "--bundle",
+    "--platform=neutral",
+    "--format=esm",
+    `--outfile="${outfile}"`,
+    `--banner:js="/* Competition CORE-13 assignment trusted server bundle */"`,
+    "--external:@supabase/*",
+    "--external:../../../auth/supabaseClient.js",
+  ].join(" "),
+  { cwd: projectRoot, stdio: "inherit" }
 );
 
 console.log(`PASS — bundled ${outfile}`);

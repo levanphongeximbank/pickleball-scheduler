@@ -424,6 +424,8 @@ test("19 Platform Core tenant/venue separation is compatible", async () => {
 
 test("Identity public API does not add directory/search subject lookups", () => {
   assert.equal(typeof identityPublicApi.resolveSubjectIdentityRecord, "function");
+  assert.equal(typeof identityPublicApi.createIdentitySubjectPointLoader, "function");
+  assert.equal(identityPublicApi.loadIdentitySubjectByIdFromPersistence, undefined);
   assert.equal(identityPublicApi.resolveSubjectIdentityByEmail, undefined);
   assert.equal(identityPublicApi.resolveSubjectIdentityByPhone, undefined);
   assert.equal(identityPublicApi.resolveSubjectIdentityByName, undefined);

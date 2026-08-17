@@ -19,7 +19,7 @@
 | Persistence adapter | `createRpcCanonicalAssignmentPersistence` (translation only) |
 | Generic competition audit adapter | **Adapter #16** — **NOT modified** |
 | Contract #08 / Adapter B | Frozen; trusted server reuses Adapter B for match schedule/court context |
-| Referee identity | Identity-backed RefereeDirectoryPort (`profiles.role` = referee identity/source/active only) |
+| Referee identity | Contract #01 `resolveSubjectIdentity` → Identity-backed RefereeDirectoryPort |
 | Qualification / availability | Honest `NOT_CONFIGURED` unless a requirement profile requires them (then fail closed) |
 
 CORE-13 remains decision authority. SQL persistence RPCs execute validated commands only.
@@ -36,6 +36,10 @@ Browser / Competition Experience
 authenticated Competition assignment server endpoint
         ↓
 canonical actor / tenant / tournament authz
+        ↓
+Contract #01 resolveSubjectIdentity
+        ↓
+Contract #08 Adapter B evidence
         ↓
 SERVER-SIDE CORE-13 (same source, esbuild bundle)
         ↓

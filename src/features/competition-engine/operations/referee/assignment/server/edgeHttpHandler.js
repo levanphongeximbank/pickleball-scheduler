@@ -22,6 +22,7 @@ import {
 } from "../createCompetitionRefereeAssignmentCommandService.js";
 import { createRpcCanonicalAssignmentPersistence } from "../persistence/createRpcCanonicalAssignmentPersistence.js";
 import { assertTrustedAssignmentAuthz } from "./assertTrustedAssignmentAuthz.js";
+import { createTrustedServerIdentityAccessAdapter } from "./createTrustedServerIdentityAccessAdapter.js";
 import { loadAuthoritativeAssignmentEvidence } from "./loadAuthoritativeAssignmentEvidence.js";
 
 export const COMPETITION_ASSIGNMENT_CORS_HEADERS = {
@@ -172,11 +173,17 @@ async function executeCompetitionRefereeAssignmentAction({
     tournamentId: authz.tournamentId,
     matchId: command.matchId,
     refereeId: command.refereeId || command.newRefereeId || null,
+    actorId: verified.userId,
     roleCode: command.roleCode || command.role,
     competitionMode: command.competitionMode,
     requireQualification: command.requireQualification === true,
     requireAvailability: command.requireAvailability === true,
-    identityAccessAdapter,
+    identityAccessAdapter:
+      identityAccessAdapter ||
+      createTrustedServerIdentityAccessAdapter({
+        tenantId: authz.tenantId,
+        getAuthClient: () => serviceClient,
+      }),
   });
 
   await assertTrustedAssignmentAuthz({

@@ -101,8 +101,13 @@ test("runtime lock constants", () => {
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.refereeQualificationEvidence, "NOT_CONFIGURED");
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.identityContract01Changed, false);
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.directIdentityTableReadFromCompetition, false);
-  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.sharedContractCapabilityGap, true);
-  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.contractGapId, "01");
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.sharedContractCapabilityGap, false);
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.contractGapId, null);
+  assert.equal(
+    CORE13_CANONICAL_ASSIGNMENT_RUNTIME.identitySubjectDirectoryCapability,
+    "RESOLVE_SUBJECT_IDENTITY"
+  );
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.contract01ResolveSubjectIdentity, "BOUND");
 });
 
 test("authority: assign calls CORE-13 and persists", async () => {
