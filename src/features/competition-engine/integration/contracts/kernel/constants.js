@@ -109,6 +109,7 @@ export const CANONICAL_CONTEXT_FIELDS = Object.freeze({
     "clubId",
     "teamId",
     "participantId",
+    "subjectId",
     "matchId",
     "sourceVersion",
     "snapshotId",
