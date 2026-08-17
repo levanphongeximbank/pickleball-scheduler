@@ -1,8 +1,12 @@
 /**
  * INT-01 / BG-01 — Identity → CORE-02 IdentityEvidencePort adapter.
  *
+ * Translation only. Identity domain remains the authority.
  * Uses Identity role matrix as permission SoT. Never trusts client-sent grants.
  * Fail-closed when actor, role, or tenant is missing.
+ *
+ * resolveSubjectIdentity is a point lookup by canonical subjectId only.
+ * It does not search, list, or infer identity from display/email/phone.
  */
 
 import {
@@ -11,6 +15,7 @@ import {
 } from "../../../competition-core/role-permission/index.js";
 import { getPermissionsForRole } from "../../../identity/matrix/rolePermissions.js";
 import { normalizeRole } from "../../../identity/constants/roles.js";
+import { resolveSubjectIdentityRecord } from "../../../identity/services/subjectIdentityLookupService.js";
 import { INTEGRATION_ERROR_CODE, INTEGRATION_SOURCE } from "../constants.js";
 import {
   optionalNonEmptyString,
@@ -103,11 +108,19 @@ export function createIdentityPermissionResolver(options = {}) {
  *   requireVenueWhenPresent?: boolean,
  *   source?: string,
  *   evidenceVersion?: string,
+ *   loadIdentitySubjectById?: (subjectId: string) => Promise<object|null>|object|null,
+ *   resolveSubjectIdentityRecord?: Function,
  * }} [options]
- * @returns {import('../../../competition-core/role-permission/ports/identityEvidencePort.js').IdentityEvidencePort}
+ * @returns {import('../../../competition-core/role-permission/ports/identityEvidencePort.js').IdentityEvidencePort & {
+ *   resolveSubjectIdentity: Function,
+ * }}
  */
 export function createIdentityEvidenceFromIdentityAdapter(options = {}) {
   const resolveGrantedPermissions = createIdentityPermissionResolver(options);
+  const lookup =
+    typeof options.resolveSubjectIdentityRecord === "function"
+      ? options.resolveSubjectIdentityRecord
+      : resolveSubjectIdentityRecord;
 
   const projection = createIdentityProjectionEvidencePort({
     resolveGrantedPermissions: async (input) => resolveGrantedPermissions(input),
@@ -141,6 +154,28 @@ export function createIdentityEvidenceFromIdentityAdapter(options = {}) {
           clientGrantsIgnored: true,
         }),
       });
+    },
+    /**
+     * Point lookup by canonical subjectId. Translation only.
+     * @param {{
+     *   subjectId?: unknown,
+     *   requestedTenantId?: unknown,
+     *   tenantId?: unknown,
+     *   correlationId?: unknown,
+     * }} input
+     */
+    async resolveSubjectIdentity(input = {}) {
+      return lookup(
+        {
+          subjectId: input.subjectId,
+          requestedTenantId: input.requestedTenantId || input.tenantId,
+          tenantId: input.tenantId,
+          correlationId: input.correlationId,
+        },
+        {
+          loadIdentitySubjectById: options.loadIdentitySubjectById,
+        }
+      );
     },
   };
 }

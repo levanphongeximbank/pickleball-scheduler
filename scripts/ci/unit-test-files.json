@@ -112,6 +112,8 @@
   "tests/tenant-profile-venue-runtime.test.js",
   "tests/identity-phaseB.test.js",
   "tests/identity-phaseC.test.js",
+  "tests/identity-subject-lookup.test.js",
+  "tests/competition-engine-contract-01-subject-identity.test.js",
   "tests/subscription-sprint4.test.js",
   "tests/mobile-sprint9.test.js",
   "tests/mobile-phase8-hardening.test.js",
