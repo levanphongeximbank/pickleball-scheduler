@@ -30,6 +30,10 @@ import {
   resolvePickerCurrentTenantId,
   resolveTenantSwitcherView,
 } from "./tenantSelectionModel.js";
+import {
+  logPlatformContextEvent,
+  PLATFORM_CONTEXT_EVENT,
+} from "../../../core/platform/app/platformContextDiagnostics.js";
 
 function resolveSwitchableTenant(tenantId, catalog = []) {
   const trimmed = String(tenantId || "").trim();
@@ -96,8 +100,17 @@ export function commitTenantSwitch({
 
   saveActiveTenantId(trimmed, user?.id);
 
+  logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.EXPLICIT_TENANT_SWITCH, {
+    hasNextTenant: Boolean(trimmed),
+  });
+
   // Synchronous descendant invalidation BEFORE business modules consume context.
   const invalidation = invalidateOperationalContextForTenantSwitch(trimmed);
+  if (invalidation.clubInvalidated) {
+    logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_CLEARED, {
+      reason: "explicit_tenant_switch",
+    });
+  }
 
   let clubId = null;
   try {

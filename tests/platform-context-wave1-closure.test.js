@@ -515,3 +515,103 @@ test("resolveActiveClubSelection authorityReady=true empty list marks INVALID", 
   assert.equal(sel.preferenceStatus, CLUB_PREFERENCE_STATUS.INVALID);
   assert.equal(sel.activeClubId, null);
 });
+
+// --- Wave 1 F5 second failure: destructive writer / lifecycle contracts ---
+
+test("clearAuthSession IDENTITY_REPLACE preserves club/tenant preferences (F5 non-logout)", async () => {
+  const { clearAuthSession, AUTH_SESSION_CLEAR_REASON } = await import(
+    "../src/auth/authStorage.js"
+  );
+  const { saveActiveTenantId, loadActiveTenantId } = await import(
+    "../src/data/tenantSession.js"
+  );
+  const {
+    AUTH_SESSION_CLEAR_REASON: lifecycleReasons,
+    shouldClearOperationalContextOnAuthClear,
+  } = await import("../src/auth/authSessionLifecycle.js");
+
+  assert.equal(
+    shouldClearOperationalContextOnAuthClear(lifecycleReasons.IDENTITY_REPLACE),
+    false
+  );
+  assert.equal(shouldClearOperationalContextOnAuthClear(lifecycleReasons.LOGOUT), true);
+
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem: (key) => (store.has(key) ? store.get(key) : null),
+    setItem: (key, value) => {
+      store.set(String(key), String(value));
+    },
+    removeItem: (key) => {
+      store.delete(String(key));
+    },
+    clear: () => store.clear(),
+  };
+
+  try {
+    store.set(
+      "pickleball-auth-session-v1",
+      JSON.stringify({
+        user: { id: "user-1", role: "SUPER_ADMIN", email: "a@b.c" },
+        provider: "dev",
+      })
+    );
+    saveActiveTenantId("tenant-a", "user-1");
+    setActiveClubIdPreference("club-cloud-only");
+
+    clearAuthSession(AUTH_SESSION_CLEAR_REASON.IDENTITY_REPLACE);
+
+    assert.equal(store.has("pickleball-auth-session-v1"), false);
+    assert.equal(getActiveClubIdPreference(), "club-cloud-only");
+    assert.equal(loadActiveTenantId("user-1"), "tenant-a");
+
+    clearAuthSession(AUTH_SESSION_CLEAR_REASON.LOGOUT);
+    assert.equal(getActiveClubIdPreference(), null);
+    assert.equal(loadActiveTenantId("user-1"), null);
+  } finally {
+    delete globalThis.localStorage;
+  }
+});
+
+test("legacy getActiveClubId coercion is ephemeral — preference storage preserved", async () => {
+  const { getActiveClubId } = await import("../src/data/club.js");
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem: (key) => (store.has(key) ? store.get(key) : null),
+    setItem: (key, value) => {
+      store.set(String(key), String(value));
+    },
+    removeItem: (key) => {
+      store.delete(String(key));
+    },
+    clear: () => store.clear(),
+  };
+
+  try {
+    saveClubs([{ id: "default-club", name: "CLB Mac dinh", isDefault: true }]);
+    setActiveClubIdPreference("club-cloud-only");
+    assert.equal(getActiveClubId(), "default-club");
+    assert.equal(getActiveClubIdPreference(), "club-cloud-only");
+  } finally {
+    delete globalThis.localStorage;
+  }
+});
+
+test("Auth bootstrap + ClubContext must not reuse logout clear / LS mirror on rehydrate", () => {
+  const authCtx = read("src/context/AuthContext.jsx");
+  const clubCtx = read("src/context/ClubContext.jsx");
+  const authStorage = read("src/auth/authStorage.js");
+  const lifecycle = read("src/auth/authSessionLifecycle.js");
+
+  assert.match(lifecycle, /IDENTITY_REPLACE/);
+  assert.match(authStorage, /shouldClearOperationalContextOnAuthClear/);
+  assert.match(authCtx, /IDENTITY_REPLACE/);
+  assert.match(authCtx, /AUTH_BOOTSTRAP_START|AUTH_RESTORE_OK/);
+  // Destructive tenant-switch LS→React mirror removed (F5 root cause).
+  assert.doesNotMatch(
+    clubCtx,
+    /Sync preference mirror after tenant switch invalidation/
+  );
+  assert.match(clubCtx, /authoritative_invalid|CLUB_HINT_CLEARED/);
+  assert.match(clubCtx, /do not mirror LS/);
+});

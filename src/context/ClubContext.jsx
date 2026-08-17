@@ -53,6 +53,10 @@ import {
 } from "../features/club/context/clubCanonicalReadModel.js";
 import { ensureMonthlySkillLevelProposals } from "../domain/skillLevelService.js";
 import { buildClubRehydrateScopeKey } from "../auth/authSemanticScope.js";
+import {
+  logPlatformContextEvent,
+  PLATFORM_CONTEXT_EVENT,
+} from "../core/platform/app/platformContextDiagnostics.js";
 import { useAuth } from "./AuthContext.jsx";
 import { useTenant } from "./TenantContext.jsx";
 import { canAccessClub } from "../auth/rbac.js";
@@ -92,6 +96,17 @@ export function ClubProvider({ children }) {
   );
   const [clubReadErrorCode, setClubReadErrorCode] = useState(null);
   const [canonicalReloadNonce, setCanonicalReloadNonce] = useState(0);
+
+  useEffect(() => {
+    const hint = getActiveClubIdPreference();
+    logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_READ, {
+      hasHint: Boolean(hint),
+      canonicalRead,
+    });
+    logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.TENANT_HINT_READ, {
+      hasTenant: Boolean(currentTenantId),
+    });
+  }, [canonicalRead, currentTenantId]);
 
   // Phase 44C.1 — hydrate the canonical allowed-club scope once per authenticated
   // club-rehydrate fingerprint (id/role/tenant/venue/club/status/email), not raw
@@ -474,6 +489,9 @@ export function ClubProvider({ children }) {
   // Canonical active-club validation: persisted id is a HINT, not authority.
   // PREFERENCE_PENDING_VALIDATION (loading / tenant not restored / transient empty)
   // must NOT clear the hint. Clear storage only after AUTHORITATIVE INVALID.
+  // Explicit tenant switch clears LS in commitTenantSwitch; this effect alone
+  // reconciles React state — do not mirror LS→React on every currentTenantId
+  // change (that path destroyed F5 hints after non-logout auth clears).
   useEffect(() => {
     if (!canonicalRead) {
       return;
@@ -487,6 +505,19 @@ export function ClubProvider({ children }) {
 
     // Re-bind LS hint if React state was wiped by a prior transient empty race.
     const preferredHint = activeClubId || getActiveClubIdPreference();
+
+    if (!authorityReady) {
+      logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_PENDING, {
+        hasHint: Boolean(preferredHint),
+        clubReadState,
+        hasTenant: Boolean(currentTenantId),
+      });
+    } else {
+      logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_AUTHORITY_READY, {
+        clubReadState,
+        eligibleCount: Array.isArray(visibleClubs) ? visibleClubs.length : 0,
+      });
+    }
 
     const selection = resolveActiveClubSelection({
       preferredClubId: preferredHint,
@@ -503,8 +534,20 @@ export function ClubProvider({ children }) {
       return;
     }
 
+    if (selection.preferenceStatus === CLUB_PREFERENCE_STATUS.VALID) {
+      logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_VALID, {
+        hasHint: Boolean(preferredHint),
+      });
+    }
+
     if (selection.preferenceStatus === CLUB_PREFERENCE_STATUS.INVALID && preferredHint) {
+      logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_INVALID, {
+        hasHint: true,
+      });
       clearActiveClubIdPreference();
+      logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_CLEARED, {
+        reason: "authoritative_invalid",
+      });
     }
 
     if (selection.activeClubId === activeClubId) {
@@ -523,12 +566,6 @@ export function ClubProvider({ children }) {
       setRevision((value) => value + 1);
     }
   }, [canonicalRead, clubReadState, activeClubId, visibleClubs, currentTenantId]);
-
-  // Sync preference mirror after tenant switch invalidation (commitTenantSwitch clears storage).
-  useEffect(() => {
-    const preferred = canonicalRead ? getActiveClubIdPreference() : getActiveClubId();
-    setActiveClubId((current) => (current === preferred ? current : preferred));
-  }, [canonicalRead, currentTenantId]);
 
   // Legacy active-club validation (blob registry). Skipped in canonical mode.
   // Wave 1: do not clear a club hint while selected operational tenant is still null
