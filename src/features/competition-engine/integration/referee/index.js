@@ -82,6 +82,18 @@ export {
 export { runCompetitionRefereeAdapterConformance } from "./conformance.js";
 
 export {
+  deriveCanonicalCourtAfterScoring,
+  resolveSideChangeRequiredAfterScoring,
+} from "./deriveCanonicalCourtAfterScoring.js";
+
+export {
+  CANONICAL_REFEREE_COMMAND,
+  CANONICAL_REFEREE_COMMAND_TO_FACADE,
+  resolveCanonicalRefereeFacadeMethod,
+  executeCanonicalRefereeCommand,
+} from "./canonicalRefereeCommands.js";
+
+export {
   createDailyPlayRefereeAdapter,
   DailyPlayRefereeAdapter,
   createInternalTournamentRefereeAdapter,

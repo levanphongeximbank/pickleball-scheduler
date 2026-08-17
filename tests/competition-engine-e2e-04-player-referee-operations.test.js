@@ -12,6 +12,7 @@ import "./competition-engine-referee-adapter-b-phase-2b-cutover-01.test.js";
 import "./competition-engine-referee-runtime-ports-authority.test.js";
 import "./competition-engine-referee-canonical-production-runtime-01.test.js";
 import "./competition-engine-referee-canonical-default-runtime-cutover-01.test.js";
+import "./competition-engine-canonical-referee-score-undo-01.test.js";
 
 import assert from "node:assert/strict";
 import test from "node:test";
