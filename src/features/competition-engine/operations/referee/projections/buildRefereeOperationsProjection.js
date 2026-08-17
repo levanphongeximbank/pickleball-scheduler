@@ -141,7 +141,8 @@ export function buildRefereeOperationsProjection(input) {
     }
     if (
       (action === REFEREE_ACTION.SCORE_SESSION ||
-        action === REFEREE_ACTION.SCORE_SUBMIT) &&
+        action === REFEREE_ACTION.SCORE_SUBMIT ||
+        action === REFEREE_ACTION.SCORE_UNDO) &&
       match &&
       String(match.status || "").toUpperCase() !== MATCH_STATUS.IN_PROGRESS
     ) {

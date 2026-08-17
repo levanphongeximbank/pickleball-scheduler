@@ -136,6 +136,12 @@ export {
   refereeScopeKey,
   buildRefereeOperationsProjection,
   createRefereeCompetitionOperationsFacade,
+  SCORING_ACTION_LEDGER_KIND,
+  findLastEligibleScoringEvent,
+  findScoringLedgerEntry,
+  hasChangeEndAckAfterScoring,
+  assertUndoLastScoringEligible,
+  evaluateUndoAvailability,
   COMPETITION_ENGINE_REFEREE_OPERATIONS,
 } from "./referee/index.js";
 

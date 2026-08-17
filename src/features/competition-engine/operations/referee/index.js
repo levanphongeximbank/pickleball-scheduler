@@ -51,6 +51,15 @@ export { buildRefereeOperationsProjection } from "./projections/buildRefereeOper
 
 export { createRefereeCompetitionOperationsFacade } from "./createRefereeCompetitionOperationsFacade.js";
 
+export {
+  SCORING_ACTION_LEDGER_KIND,
+  findLastEligibleScoringEvent,
+  findScoringLedgerEntry,
+  hasChangeEndAckAfterScoring,
+  assertUndoLastScoringEligible,
+  evaluateUndoAvailability,
+} from "./scoring/undoLastScoringActionHelpers.js";
+
 export const COMPETITION_ENGINE_REFEREE_OPERATIONS = Object.freeze({
   id: "competition-engine-referee-operations",
   phase: "E2E-04",
@@ -63,4 +72,5 @@ export const COMPETITION_ENGINE_REFEREE_OPERATIONS = Object.freeze({
   defaultRuntimeWiringImplemented: true,
   stagingBackendCertified: true,
   ownsEngines: false,
+  undoLastScoringAction: true,
 });
