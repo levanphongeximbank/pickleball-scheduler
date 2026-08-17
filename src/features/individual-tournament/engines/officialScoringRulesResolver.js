@@ -127,7 +127,81 @@ export function resolveOfficialMatchScoringRules(tournament, match = {}, options
     sideOutPointByPointEnforced: false,
     sideOutOperational: SIDEOUT_OPERATIONAL,
     sideOutRuntimeBlocked: !SIDEOUT_OPERATIONAL,
-    summaryLabel: `${OFFICIAL_ROUND_SCORE_LABELS[roundKey] || roundKey} · Rally · ${OFFICIAL_MATCH_FORMAT_LABELS[derived.matchFormat]} · ${targetPoints} điểm`,
+    summaryLabel: formatOfficialMatchRulesSummary({
+      scoringMethodLabel: OFFICIAL_SCORING_METHOD_LABELS[scoringMethod] || scoringMethod,
+      matchFormatLabel: OFFICIAL_MATCH_FORMAT_LABELS[derived.matchFormat] || derived.matchFormat,
+      targetPoints,
+      roundLabel: OFFICIAL_ROUND_SCORE_LABELS[roundKey] || roundKey,
+    }),
+  };
+}
+
+/**
+ * Deterministic Organizer/Referee rules summary — operable fields only.
+ * Does not claim Side-out / Best of 3 / win-by / change-end when unavailable.
+ */
+export function formatOfficialMatchRulesSummary({
+  scoringMethodLabel,
+  matchFormatLabel,
+  targetPoints,
+  roundLabel,
+} = {}) {
+  const parts = [];
+  if (roundLabel) parts.push(String(roundLabel));
+  if (scoringMethodLabel) parts.push(String(scoringMethodLabel));
+  if (matchFormatLabel) parts.push(String(matchFormatLabel));
+  if (targetPoints != null) parts.push(`Đích ${targetPoints} điểm`);
+  return parts.join(" · ");
+}
+
+/**
+ * Operator-facing detail lines for Settings / Referee context.
+ */
+export function buildOfficialMatchRulesSummaryLines(tournament, match = {}, options = {}) {
+  const rules = resolveOfficialMatchScoringRules(tournament, match, options);
+  const lines = [
+    { key: "scoring", label: "Cách tính điểm", value: rules.scoringMethodLabel },
+    { key: "format", label: "Thể thức trận", value: rules.matchFormatLabel },
+    {
+      key: "target",
+      label: `Điểm kết thúc (${rules.roundLabel})`,
+      value: `${rules.targetPoints} điểm`,
+    },
+  ];
+  if (!rules.sideOutOperational) {
+    lines.push({
+      key: "side_out",
+      label: "Truyền thống (Side-out)",
+      value: "Chưa sẵn sàng — dùng Rally",
+      unavailable: true,
+    });
+  }
+  if (!rules.bestOf3Operational) {
+    lines.push({
+      key: "best_of_3",
+      label: "Best of 3",
+      value: "Chưa sẵn sàng — dùng Best of 1",
+      unavailable: true,
+    });
+  }
+  if (rules.winByPolicyDeferred) {
+    lines.push({
+      key: "win_by",
+      label: "Thắng cách (win-by)",
+      value: "Đang deferred — không hardcode winBy",
+      unavailable: true,
+    });
+  }
+  lines.push({
+    key: "change_end",
+    label: "Đổi sân / change-end",
+    value: "Chưa có Official live wiring (CORE-16 sideSwitchAt chưa nối classic path)",
+    unavailable: true,
+  });
+  return {
+    summaryLabel: rules.summaryLabel,
+    lines,
+    rules,
   };
 }
 

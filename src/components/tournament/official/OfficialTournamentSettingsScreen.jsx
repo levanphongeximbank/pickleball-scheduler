@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
+  Chip,
   FormControl,
   FormHelperText,
   Grid,
   InputLabel,
   MenuItem,
+  Paper,
   Select,
   Stack,
   TextField,
@@ -34,20 +36,21 @@ import {
   BEST_OF_3_SHARED_CAPABILITY_GAP,
   WIN_BY_POLICY_DEFERRED,
 } from "../../../features/individual-tournament/engines/officialTournamentSettingsEngine.js";
+import {
+  buildOfficialSettingsCanonicalFingerprint,
+  buildOfficialSettingsDraftFromTournament,
+} from "../../../features/individual-tournament/engines/officialSettingsDraftModel.js";
+import { buildOfficialMatchRulesSummaryLines } from "../../../features/individual-tournament/engines/officialScoringRulesResolver.js";
 import { OFFICIAL_MODE } from "../../../models/tournament/constants.js";
 import { allowedOfficialRegistrationModes } from "../../../features/individual-tournament/engines/officialCompetitionStrategyEngine.js";
-import {
-  getEligibilityRules,
-  patchOfficialVisibleEligibilityLimits,
-} from "../../../features/individual-tournament/engines/eligibilityEngine.js";
+import { patchOfficialVisibleEligibilityLimits } from "../../../features/individual-tournament/engines/eligibilityEngine.js";
 
 const fieldLabelProps = { shrink: true };
 
 /**
  * Tournament Settings screen — configuration only (no match-day ops).
- * Eligibility binds to settings.eligibilityRules (eligibilityEngine).
- * Group count uses the single Setup ↔ officialCompetition.groupCount path.
- * Tournament name uses canonical tournament.name (no second displayName).
+ * Local draft is dirty-stable: soft-poll / token refresh must not wipe unsaved edits.
+ * One primary save: "Lưu cài đặt" → canonical tournament.name + officialCompetition.
  */
 export default function OfficialTournamentSettingsScreen({
   tournament,
@@ -59,42 +62,49 @@ export default function OfficialTournamentSettingsScreen({
   onPersistSettings,
 }) {
   const current = useMemo(() => getOfficialCompetitionSettings(tournament), [tournament]);
-  const eligibility = useMemo(() => getEligibilityRules(tournament), [tournament]);
-  const [draft, setDraft] = useState(() => ({
-    tournamentName: tournament?.name || "",
-    registrationMode: current.registrationMode || "",
-    scoringMethod: current.scoringMethod || OFFICIAL_SCORING_METHOD.RALLY,
-    matchFormat: current.matchFormat || OFFICIAL_MATCH_FORMAT.BEST_OF_1,
-    roundTargets: { ...current.roundTargets },
-    qualifiersPerGroup: current.qualifiersPerGroup || 2,
-    maxSkillLevel:
-      eligibility.skill?.maxLevel != null ? String(eligibility.skill.maxLevel) : "",
-    maxRating:
-      eligibility.rating?.maxRating != null ? String(eligibility.rating.maxRating) : "",
-  }));
+  const canonicalFingerprint = useMemo(
+    () => buildOfficialSettingsCanonicalFingerprint(tournament),
+    [tournament]
+  );
+  const [draft, setDraft] = useState(() =>
+    buildOfficialSettingsDraftFromTournament(tournament)
+  );
+  const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const next = getOfficialCompetitionSettings(tournament);
-    const nextEligibility = getEligibilityRules(tournament);
-    setDraft({
-      tournamentName: tournament?.name || "",
-      registrationMode: next.registrationMode || "",
-      scoringMethod: next.scoringMethod || OFFICIAL_SCORING_METHOD.RALLY,
-      matchFormat: next.matchFormat || OFFICIAL_MATCH_FORMAT.BEST_OF_1,
-      roundTargets: { ...next.roundTargets },
-      qualifiersPerGroup: next.qualifiersPerGroup || 2,
-      maxSkillLevel:
-        nextEligibility.skill?.maxLevel != null
-          ? String(nextEligibility.skill.maxLevel)
-          : "",
-      maxRating:
-        nextEligibility.rating?.maxRating != null
-          ? String(nextEligibility.rating.maxRating)
-          : "",
-    });
-  }, [tournament]);
+    // Rehydrate only when canonical fingerprint changes AND draft is clean.
+    // Soft-poll with identical content keeps the same fingerprint → no wipe.
+    if (dirty) return;
+    setDraft(buildOfficialSettingsDraftFromTournament(tournament));
+  }, [canonicalFingerprint, dirty, tournament]);
+
+  const updateDraft = (patch) => {
+    setDirty(true);
+    setDraft((prev) => ({ ...prev, ...patch }));
+  };
+
+  const rulesPreview = useMemo(
+    () =>
+      buildOfficialMatchRulesSummaryLines(
+        {
+          ...tournament,
+          name: draft.tournamentName,
+          settings: {
+            ...(tournament?.settings || {}),
+            officialCompetition: {
+              ...(tournament?.settings?.officialCompetition || {}),
+              scoringMethod: draft.scoringMethod,
+              matchFormat: draft.matchFormat,
+              roundTargets: draft.roundTargets,
+            },
+          },
+        },
+        { stage: "group" }
+      ),
+    [tournament, draft]
+  );
 
   const handleSave = async () => {
     if (!canManage) return;
@@ -180,6 +190,8 @@ export default function OfficialTournamentSettingsScreen({
         setMessage({ type: "error", text: "Không lưu được cài đặt." });
         return;
       }
+      setDirty(false);
+      setDraft(buildOfficialSettingsDraftFromTournament(saved.tournament || next));
       setMessage({ type: "success", text: "Đã lưu cài đặt giải." });
     } catch (error) {
       setMessage({ type: "error", text: error?.message || "Không lưu được cài đặt." });
@@ -203,6 +215,13 @@ export default function OfficialTournamentSettingsScreen({
       {message ? (
         <Alert severity={message.type} onClose={() => setMessage(null)}>
           {message.text}
+        </Alert>
+      ) : null}
+
+      {dirty ? (
+        <Alert severity="warning">
+          Có thay đổi chưa lưu. Chọn nhiều trường rồi bấm <strong>Lưu cài đặt</strong> một lần —
+          soft refresh sẽ không xóa bản nháp khi đang chỉnh.
         </Alert>
       ) : null}
 
@@ -231,9 +250,7 @@ export default function OfficialTournamentSettingsScreen({
             value={draft.tournamentName}
             disabled={!canManage}
             InputLabelProps={fieldLabelProps}
-            onChange={(e) =>
-              setDraft((prev) => ({ ...prev, tournamentName: e.target.value }))
-            }
+            onChange={(e) => updateDraft({ tournamentName: e.target.value })}
             helperText="Tên hiển thị trên danh sách giải, trang BTC và kết quả công khai."
           />
         </Grid>
@@ -254,6 +271,9 @@ export default function OfficialTournamentSettingsScreen({
               <MenuItem value={OFFICIAL_MODE.OPEN}>Open (ghép cặp / chia bảng ngẫu nhiên)</MenuItem>
               <MenuItem value={OFFICIAL_MODE.AI_BALANCE}>AI Balance (ghép cặp AI, chia bảng ngẫu nhiên)</MenuItem>
             </Select>
+            <FormHelperText>
+              Chiến lược ghép/bốc lưu ngay khi đổi (riêng với form luật bên dưới).
+            </FormHelperText>
           </FormControl>
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
@@ -273,9 +293,7 @@ export default function OfficialTournamentSettingsScreen({
               }
               displayEmpty
               disabled={!canManage || officialMode === OFFICIAL_MODE.AI_BALANCE}
-              onChange={(e) =>
-                setDraft((prev) => ({ ...prev, registrationMode: e.target.value }))
-              }
+              onChange={(e) => updateDraft({ registrationMode: e.target.value })}
             >
               {officialMode === OFFICIAL_MODE.AI_BALANCE ? null : (
                 <MenuItem value="" disabled>
@@ -294,7 +312,7 @@ export default function OfficialTournamentSettingsScreen({
             <FormHelperText>
               {officialMode === OFFICIAL_MODE.AI_BALANCE
                 ? "AI Balance chỉ đăng ký cá nhân. Ghép cặp do hệ thống AI — không đăng ký theo cặp."
-                : "Open: cá nhân (ghép cặp ngẫu nhiên) hoặc theo cặp (không ghép lại)."}
+                : "Giữ lựa chọn trong bản nháp cho đến khi Lưu cài đặt."}
             </FormHelperText>
           </FormControl>
         </Grid>
@@ -308,8 +326,11 @@ export default function OfficialTournamentSettingsScreen({
             disabled={!canManage}
             InputLabelProps={fieldLabelProps}
             inputProps={{ min: 1, max: 16 }}
-            onChange={(e) => onGroupCountChange?.(Number(e.target.value) || 1)}
-            helperText="Cấu hình số bảng dùng khi bốc thăm (một nguồn)."
+            onChange={(e) => {
+              setDirty(true);
+              onGroupCountChange?.(Number(e.target.value) || 1);
+            }}
+            helperText="Lưu cùng Lưu cài đặt (một nguồn officialCompetition.groupCount)."
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
@@ -323,12 +344,9 @@ export default function OfficialTournamentSettingsScreen({
             InputLabelProps={fieldLabelProps}
             inputProps={{ min: 1, max: 8 }}
             onChange={(e) =>
-              setDraft((prev) => ({
-                ...prev,
-                qualifiersPerGroup: Number(e.target.value) || 2,
-              }))
+              updateDraft({ qualifiersPerGroup: Number(e.target.value) || 2 })
             }
-            helperText="Mặc định 2. Không dùng best runners-up. Hòa chỉ số thể thao tại ranh giới → không tạo KO."
+            helperText="Mặc định 2. Không dùng best runners-up."
           />
         </Grid>
       </Grid>
@@ -346,10 +364,8 @@ export default function OfficialTournamentSettingsScreen({
             disabled={!canManage}
             InputLabelProps={fieldLabelProps}
             placeholder="VD: 4.5 hoặc 4,4"
-            onChange={(e) =>
-              setDraft((prev) => ({ ...prev, maxSkillLevel: e.target.value }))
-            }
-            helperText="Để trống nếu không giới hạn. Thập phân: 4.5 hoặc 4,5."
+            onChange={(e) => updateDraft({ maxSkillLevel: e.target.value })}
+            helperText="Để trống nếu không giới hạn."
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
@@ -361,8 +377,8 @@ export default function OfficialTournamentSettingsScreen({
             disabled={!canManage}
             InputLabelProps={fieldLabelProps}
             placeholder="VD: 4.5 hoặc 4,4"
-            onChange={(e) => setDraft((prev) => ({ ...prev, maxRating: e.target.value }))}
-            helperText="Để trống nếu không giới hạn. Thập phân: 4.5 hoặc 4,5."
+            onChange={(e) => updateDraft({ maxRating: e.target.value })}
+            helperText="Để trống nếu không giới hạn."
           />
         </Grid>
       </Grid>
@@ -383,9 +399,7 @@ export default function OfficialTournamentSettingsScreen({
               notched
               value={scoringValue}
               disabled={!canManage}
-              onChange={(e) =>
-                setDraft((prev) => ({ ...prev, scoringMethod: e.target.value }))
-              }
+              onChange={(e) => updateDraft({ scoringMethod: e.target.value })}
             >
               <MenuItem value={OFFICIAL_SCORING_METHOD.RALLY}>
                 {OFFICIAL_SCORING_METHOD_LABELS[OFFICIAL_SCORING_METHOD.RALLY]}
@@ -400,7 +414,7 @@ export default function OfficialTournamentSettingsScreen({
             </Select>
             <FormHelperText>
               {!SIDEOUT_OPERATIONAL
-                ? "Rally: mỗi rally ghi 1 điểm. Truyền thống (Side-out) chưa vận hành trên live Official."
+                ? "Rally: mỗi rally ghi 1 điểm. Side-out chưa vận hành trên live Official."
                 : "Rally: mỗi rally ghi 1 điểm. Side-out: chỉ bên giao bóng ghi điểm."}
             </FormHelperText>
           </FormControl>
@@ -417,9 +431,7 @@ export default function OfficialTournamentSettingsScreen({
               notched
               value={matchFormatValue}
               disabled={!canManage}
-              onChange={(e) =>
-                setDraft((prev) => ({ ...prev, matchFormat: e.target.value }))
-              }
+              onChange={(e) => updateDraft({ matchFormat: e.target.value })}
             >
               <MenuItem value={OFFICIAL_MATCH_FORMAT.BEST_OF_1}>
                 {OFFICIAL_MATCH_FORMAT_LABELS[OFFICIAL_MATCH_FORMAT.BEST_OF_1]}
@@ -432,19 +444,14 @@ export default function OfficialTournamentSettingsScreen({
                 {!BEST_OF_3_OPERATIONAL ? " — chưa sẵn sàng" : ""}
               </MenuItem>
             </Select>
-            <FormHelperText>
-              {OFFICIAL_MATCH_FORMAT_HELPERS[matchFormatValue]}
-              {!BEST_OF_3_OPERATIONAL
-                ? " Best of 3 cần multi-game Official live/result — chưa bật."
-                : ""}
-            </FormHelperText>
+            <FormHelperText>{OFFICIAL_MATCH_FORMAT_HELPERS[matchFormatValue]}</FormHelperText>
           </FormControl>
         </Grid>
       </Grid>
       {!SIDEOUT_OPERATIONAL ? (
         <Alert severity="info">
-          Side-out cần trạng thái giao bóng trên live match (gói SQL riêng). Không lưu được Side-out
-          như chế độ vận hành cho đến khi gói đó được Owner duyệt/apply.
+          Side-out cần trạng thái giao bóng trên live match (gói SQL riêng — không apply trong task
+          này).
         </Alert>
       ) : null}
       {!BEST_OF_3_OPERATIONAL ? (
@@ -452,9 +459,13 @@ export default function OfficialTournamentSettingsScreen({
       ) : null}
       {WIN_BY_POLICY_DEFERRED ? (
         <Alert severity="info">
-          Win-by (cách biệt điểm) đang deferred — Official classic không hardcode winBy=2.
+          Thắng cách (win-by) đang deferred — không hardcode winBy=2 trên Official classic.
         </Alert>
       ) : null}
+      <Alert severity="info">
+        Đổi sân / change-end: CORE-16 có sideSwitchAt nhưng chưa nối Official classic live — không
+        cấu hình operable tại đây.
+      </Alert>
 
       <Typography variant="subtitle1" fontWeight={700}>
         Điểm kết thúc ván (theo vòng)
@@ -472,13 +483,12 @@ export default function OfficialTournamentSettingsScreen({
               InputLabelProps={fieldLabelProps}
               inputProps={{ min: 1, max: 99 }}
               onChange={(e) =>
-                setDraft((prev) => ({
-                  ...prev,
+                updateDraft({
                   roundTargets: {
-                    ...prev.roundTargets,
-                    [key]: Number(e.target.value) || prev.roundTargets[key],
+                    ...draft.roundTargets,
+                    [key]: Number(e.target.value) || draft.roundTargets[key],
                   },
-                }))
+                })
               }
               helperText="Độc lập với thể thức Best of."
             />
@@ -486,10 +496,36 @@ export default function OfficialTournamentSettingsScreen({
         ))}
       </Grid>
 
-      <Stack direction="row" spacing={1}>
-        <Button variant="contained" disabled={!canManage || saving} onClick={handleSave}>
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Stack spacing={1}>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Typography variant="subtitle2" fontWeight={800}>
+              Tóm tắt luật hiệu lực
+            </Typography>
+            <Chip size="small" color="info" label={rulesPreview.summaryLabel} />
+          </Stack>
+          {rulesPreview.lines.map((line) => (
+            <Typography
+              key={line.key}
+              variant="body2"
+              color={line.unavailable ? "text.secondary" : "text.primary"}
+            >
+              {line.label}: {line.value}
+            </Typography>
+          ))}
+        </Stack>
+      </Paper>
+
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Button
+          variant="contained"
+          size="large"
+          disabled={!canManage || saving}
+          onClick={handleSave}
+        >
           {saving ? "Đang lưu…" : "Lưu cài đặt"}
         </Button>
+        {dirty ? <Chip color="warning" label="Chưa lưu" size="small" /> : null}
       </Stack>
     </Stack>
   );

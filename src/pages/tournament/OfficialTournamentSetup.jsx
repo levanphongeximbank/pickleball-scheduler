@@ -60,6 +60,8 @@ import BracketRevealAnimation from "../../components/tournament/animation/Bracke
 import {
   ANIMATION_MODES,
   buildGroupMatchPairingSteps,
+  buildPairingSteps,
+  buildPairingWaitingPlayers,
   buildRandomDrawSteps,
 } from "../../components/tournament/animation/animationUtils.js";
 import {
@@ -1386,6 +1388,26 @@ export default function OfficialTournamentSetup() {
         };
       }
       setMessage(`Đã ghép ${result.pairs.length} cặp. Kiểm tra danh sách trước khi chia bảng.`);
+      const formedEntries = result.drawEntries || result.pairs || [];
+      // Presentation only — pairs already persisted; animation must not mutate.
+      anim.showAnimation(
+        {
+          animationMode: ANIMATION_MODES.PAIRING_REVEAL,
+          steps: buildPairingSteps(formedEntries),
+          waitingPlayers: buildPairingWaitingPlayers(formedEntries, flowPlayers),
+          title:
+            officialMode === OFFICIAL_MODE.AI_BALANCE
+              ? "Trình chiếu cặp AI Balance"
+              : "Trình chiếu cặp Open",
+          subtitle:
+            "Hiệu ứng trình chiếu cặp đã lưu — không đổi kết quả ghép cặp",
+        },
+        () => {
+          setMessage(
+            `Đã ghép ${result.pairs.length} cặp. Có thể bỏ qua trình chiếu — dữ liệu đã lưu.`
+          );
+        }
+      );
       return { ok: true, pairs: result.pairs };
     } finally {
       setPairBusy(false);

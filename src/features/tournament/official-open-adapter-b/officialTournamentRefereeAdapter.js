@@ -225,6 +225,7 @@ export function createOfficialTournamentRefereeAdapter(options = {}) {
         clubId: req.clubId || trimId(tournament.clubId) || null,
         competitionType: "official_tournament",
         tournamentName: tournament.name || null,
+        matchRulesSummary: resolveOfficialMatchScoringRules(tournament, {}).summaryLabel,
       });
     },
     getMatchContext(request) {
