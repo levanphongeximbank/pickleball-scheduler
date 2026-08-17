@@ -54,6 +54,8 @@ import {
 } from "../core/platform/app/platformContextDiagnostics.js";
 import { useAuth } from "./AuthContext.jsx";
 import { useTenant } from "./TenantContext.jsx";
+import { useVenue } from "./VenueContext.jsx";
+import { revalidatePhysicalResourceAccessForClubSwitch } from "../features/venue/services/venueSelectionService.js";
 import { canAccessClub } from "../auth/rbac.js";
 import {
   listClubsForTenant,
@@ -64,6 +66,7 @@ const ClubContext = createContext(null);
 export function ClubProvider({ children }) {
   const { user, rbacEnabled, isAuthenticated } = useAuth();
   const { currentTenantId } = useTenant();
+  const { currentVenueId } = useVenue();
   const clubRehydrateScopeKey = buildClubRehydrateScopeKey(user);
 
   // Phase 45A.1 — canonical Club READ cutover. When ON (flag + cloud backend),
@@ -600,6 +603,12 @@ export function ClubProvider({ children }) {
           return result;
         }
 
+        revalidatePhysicalResourceAccessForClubSwitch({
+          club: allowed,
+          selectedVenueId: currentVenueId,
+          selectedTenantId: currentTenantId,
+        });
+
         setActiveClubId(trimmed);
         setRevision((value) => value + 1);
         return result;
@@ -624,11 +633,27 @@ export function ClubProvider({ children }) {
         return result;
       }
 
+      const switchedClub =
+        visibleClubs.find((club) => club.id === trimmed) || result.club || null;
+      revalidatePhysicalResourceAccessForClubSwitch({
+        club: switchedClub,
+        selectedVenueId: currentVenueId,
+        selectedTenantId: currentTenantId,
+      });
+
       setActiveClubId(trimmed);
       setRevision((value) => value + 1);
       return result;
     },
-    [canonicalRead, isAuthenticated, rbacEnabled, user?.id, visibleClubs]
+    [
+      canonicalRead,
+      currentTenantId,
+      currentVenueId,
+      isAuthenticated,
+      rbacEnabled,
+      user?.id,
+      visibleClubs,
+    ]
   );
 
   // Phase 45A.3D — create/rename route through clubTenantService under V2.

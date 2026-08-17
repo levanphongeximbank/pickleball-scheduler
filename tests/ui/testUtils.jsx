@@ -11,6 +11,7 @@ import { AuthProvider } from "../../src/context/AuthContext.jsx";
 import { ClubProvider } from "../../src/context/ClubContext.jsx";
 import { SeasonProvider } from "../../src/context/SeasonContext.jsx";
 import { TenantProvider } from "../../src/context/TenantContext.jsx";
+import { VenueProvider } from "../../src/context/VenueContext.jsx";
 import { DEFAULT_CLUB } from "../../src/data/club.js";
 import { getClubDataKey } from "../../src/domain/clubStorage.js";
 
@@ -20,9 +21,11 @@ function AppProviders({ children }) {
   return (
     <AuthProvider>
       <TenantProvider>
-        <ClubProvider>
-          <SeasonProvider>{children}</SeasonProvider>
-        </ClubProvider>
+        <VenueProvider>
+          <ClubProvider>
+            <SeasonProvider>{children}</SeasonProvider>
+          </ClubProvider>
+        </VenueProvider>
       </TenantProvider>
     </AuthProvider>
   );

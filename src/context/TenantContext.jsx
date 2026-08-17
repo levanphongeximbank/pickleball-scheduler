@@ -165,7 +165,7 @@ export function TenantProvider({ children }) {
         const next = reconcileSessionWithCatalog({
           sessionTenantId: current,
           catalog: nextCatalog,
-          canonicalHydrateSucceeded: true,
+          canonicalHydrateSucceeded: Boolean(result.claimedCloud),
           canonicalIds: result.tenantIds,
         });
         if (!next && current && userId) {

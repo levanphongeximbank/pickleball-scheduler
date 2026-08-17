@@ -28,11 +28,10 @@ import { useClub } from "../../context/ClubContext.jsx";
 import { usePlatformRuntime } from "../../core/platform/app/usePlatformRuntime.js";
 import { buildRuntimeAccessState } from "../../core/platform/app/runtimeAccess.js";
 import {
-  createTenant,
+  createTenantDurable,
   listTenantsWithStats,
-  renameTenant,
-  setTenantStatus,
   TENANT_STATUS,
+  updateTenantDurable,
 } from "../../features/tenant/index.js";
 
 const STATUS_LABELS = {
@@ -117,14 +116,14 @@ export default function TenantManagement() {
     );
   }
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     setError(null);
     if (!accessAllowed) {
       setError("Runtime platform chặn thao tác quản lý tenant.");
       return;
     }
 
-    const result = createTenant(newName, { status: TENANT_STATUS.TRIAL, plan: "trial" });
+    const result = await createTenantDurable(newName, { status: TENANT_STATUS.TRIAL, plan: "trial" });
 
     if (!result.ok) {
       setError(result.error);
@@ -137,7 +136,7 @@ export default function TenantManagement() {
     refreshTenant();
   };
 
-  const handleRename = () => {
+  const handleRename = async () => {
     if (!renameTarget) return;
 
     setError(null);
@@ -146,7 +145,13 @@ export default function TenantManagement() {
       return;
     }
 
-    const result = renameTenant(renameTarget.id, newName);
+    const trimmed = String(newName || "").trim();
+    if (!trimmed) {
+      setError("Tên tenant không được để trống.");
+      return;
+    }
+
+    const result = await updateTenantDurable(renameTarget.id, { name: trimmed });
 
     if (!result.ok) {
       setError(result.error);
@@ -159,7 +164,7 @@ export default function TenantManagement() {
     refreshTenant();
   };
 
-  const handleToggleStatus = (tenant) => {
+  const handleToggleStatus = async (tenant) => {
     setError(null);
     if (!accessAllowed) {
       setError("Runtime platform chặn thao tác quản lý tenant.");
@@ -171,7 +176,7 @@ export default function TenantManagement() {
         ? TENANT_STATUS.SUSPENDED
         : TENANT_STATUS.ACTIVE;
 
-    const result = setTenantStatus(tenant.id, nextStatus);
+    const result = await updateTenantDurable(tenant.id, { status: nextStatus });
     if (!result.ok) {
       setError(result.error);
       return;

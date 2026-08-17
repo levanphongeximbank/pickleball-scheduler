@@ -113,3 +113,15 @@ export {
   isPlatformContextLoading,
 } from "./platformContextReadiness.js";
 
+export {
+  PLATFORM_TENANTS_TABLE,
+  LEGACY_PUBLIC_TENANTS_VIEW,
+  PLATFORM_TENANT_MODE,
+  PLATFORM_TENANT_ERROR,
+  bindPlatformTenantAuthority,
+  refreshPlatformTenantAuthority,
+  getPlatformTenantAuthoritySnapshot,
+  isCloudCanonicalTenantAuthority,
+  listCachedPlatformTenants,
+} from "./platformTenantAuthority.js";
+

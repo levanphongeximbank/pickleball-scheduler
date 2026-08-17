@@ -29,10 +29,10 @@ function slugify(name) {
   return slug || `tenant-${Date.now()}`;
 }
 
-/** Sprint 2 tenant model — lưu trữ dùng chung registry venue (venueId === tenantId). */
+/** Wave 3 tenant model — distinct from Venue. Does not accept venueId as tenant id. */
 export function normalizeTenant(tenant) {
   const name = String(tenant?.name || "").trim();
-  const id = String(tenant?.id || tenant?.tenantId || tenant?.venueId || "").trim();
+  const id = String(tenant?.id || tenant?.tenantId || "").trim();
 
   return {
     id,

@@ -8,6 +8,7 @@ import { AuthProvider } from "../../src/context/AuthContext.jsx";
 import { ClubProvider } from "../../src/context/ClubContext.jsx";
 import { SeasonProvider } from "../../src/context/SeasonContext.jsx";
 import { TenantProvider } from "../../src/context/TenantContext.jsx";
+import { VenueProvider } from "../../src/context/VenueContext.jsx";
 import { PlatformRuntimeProvider } from "../../src/core/platform/app/PlatformRuntimeProvider.jsx";
 import SettingsRouteErrorBoundary from "../../src/components/settings/SettingsRouteErrorBoundary.jsx";
 import SettingsRoute from "../../src/pages/settings/SettingsRoute.jsx";
@@ -32,9 +33,11 @@ function Providers({ children }) {
     <PlatformRuntimeProvider>
       <AuthProvider>
         <TenantProvider>
+          <VenueProvider>
           <ClubProvider>
             <SeasonProvider>{children}</SeasonProvider>
           </ClubProvider>
+          </VenueProvider>
         </TenantProvider>
       </AuthProvider>
     </PlatformRuntimeProvider>

@@ -6,6 +6,7 @@ import { AUTH_SESSION_KEY, RBAC_STORAGE_KEY, isRbacEnabledFromEnv } from "./conf
 import { isSecureRuntime } from "./runtime.js";
 import { normalizeUser } from "../models/user.js";
 import { clearActiveTenantId } from "../data/tenantSession.js";
+import { clearActiveVenueId } from "../data/venueSession.js";
 import { clearActiveClubIdPreference } from "../data/club.js";
 import { setActiveClusterId } from "../data/courtCluster.js";
 import {
@@ -113,6 +114,7 @@ export function clearAuthSession(reason = AUTH_SESSION_CLEAR_REASON.LOGOUT) {
   runAuthSessionClearHooks(normalized);
   if (clearOperational) {
     clearActiveTenantId();
+    clearActiveVenueId();
     clearActiveClubIdPreference();
     setActiveClusterId(null);
     logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_CLEARED, {

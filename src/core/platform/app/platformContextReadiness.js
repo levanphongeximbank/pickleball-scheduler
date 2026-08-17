@@ -1,9 +1,12 @@
 /**
- * Wave 1 — Canonical Platform Context readiness projection (pure).
+ * Wave 1/3 — Canonical Platform Context readiness projection (pure).
  *
  * MISSING REQUIRED CONTEXT ≠ VALID EMPTY BUSINESS DATA.
  * Platform Core projects readiness only; it does not own Club/Venue/Cluster entities
  * and does not absorb Business Domain truth.
+ *
+ * Wave 3: Venue readiness is page/capability-specific (requireVenue). Venue is NEVER
+ * a mandatory global shell requirement. Organization remains NOT_CONFIGURED.
  */
 
 export const PLATFORM_CONTEXT_STATE = Object.freeze({
@@ -11,6 +14,9 @@ export const PLATFORM_CONTEXT_STATE = Object.freeze({
   AUTH_REQUIRED: "AUTH_REQUIRED",
   TENANT_LOADING: "TENANT_LOADING",
   TENANT_REQUIRED: "TENANT_REQUIRED",
+  VENUE_LOADING: "VENUE_LOADING",
+  VENUE_REQUIRED: "VENUE_REQUIRED",
+  VENUE_EMPTY: "VENUE_EMPTY",
   CLUB_LOADING: "CLUB_LOADING",
   CLUB_REQUIRED: "CLUB_REQUIRED",
   CLUB_EMPTY: "CLUB_EMPTY",
@@ -21,11 +27,8 @@ export const PLATFORM_CONTEXT_STATE = Object.freeze({
 });
 
 /**
- * Explicit compatibility mapping for Wave 1 PC-TENANT-01 minimum portion.
- * tenantId and venueId are NOT universally identical; when a club projection
- * carries either field, operational scope matching may treat them as the
- * compatibility alias used by the current venue≡tenant runtime. Callers must
- * pass selectedTenantId explicitly — never invent Organization.
+ * Club → tenant matching. Prefer club.tenantId. venueId is last-resort compatibility
+ * for unmigrated club projections only — not proof that Tenant === Venue.
  *
  * @param {object|null|undefined} club
  * @returns {string|null}
@@ -34,9 +37,12 @@ export function resolveClubOperationalTenantId(club) {
   if (!club || typeof club !== "object") {
     return null;
   }
-  const raw =
-    club.tenantId ?? club.venueId ?? club.tenant_id ?? club.venue_id ?? null;
-  const id = String(raw || "").trim();
+  const primary = club.tenantId ?? club.tenant_id ?? null;
+  if (primary != null && String(primary).trim()) {
+    return String(primary).trim();
+  }
+  const legacy = club.venueId ?? club.venue_id ?? null;
+  const id = String(legacy || "").trim();
   return id || null;
 }
 
@@ -102,17 +108,25 @@ export function resolvePlatformContextReadiness({
   activeClub = null,
   activeClubReady = false,
   requireClub = true,
+  requireVenue = false,
+  venueCheck = null,
+  selectedVenueId = null,
+  eligibleVenueCount = 0,
   organizationConfigured = false,
 } = {}) {
   const tenantId = String(selectedTenantId || "").trim() || null;
+  const venueId = String(selectedVenueId || "").trim() || null;
   const clubs = Array.isArray(eligibleClubs) ? eligibleClubs : [];
   const eligibleClubCount = clubs.length;
 
   if (authLoading) {
     return base(PLATFORM_CONTEXT_STATE.AUTH_LOADING, {
       requireClub,
+      requireVenue,
       selectedTenantId: tenantId,
+      selectedVenueId: venueId,
       eligibleClubCount,
+      eligibleVenueCount,
       message: "Đang xác thực…",
     });
   }
@@ -120,8 +134,11 @@ export function resolvePlatformContextReadiness({
   if (!isAuthenticated) {
     return base(PLATFORM_CONTEXT_STATE.AUTH_REQUIRED, {
       requireClub,
+      requireVenue,
       selectedTenantId: tenantId,
+      selectedVenueId: venueId,
       eligibleClubCount,
+      eligibleVenueCount,
       message: "Cần đăng nhập để tiếp tục.",
     });
   }
@@ -131,8 +148,11 @@ export function resolvePlatformContextReadiness({
     if (code === "TENANT_FORBIDDEN" || code === "FORBIDDEN") {
       return base(PLATFORM_CONTEXT_STATE.FORBIDDEN, {
         requireClub,
+        requireVenue,
         selectedTenantId: tenantId,
+        selectedVenueId: venueId,
         eligibleClubCount,
+        eligibleVenueCount,
         code,
         message: tenantCheck.error || "Không có quyền truy cập tenant này.",
       });
@@ -140,31 +160,91 @@ export function resolvePlatformContextReadiness({
     if (code === "TENANT_MISSING") {
       return base(PLATFORM_CONTEXT_STATE.TENANT_REQUIRED, {
         requireClub,
+        requireVenue,
         selectedTenantId: tenantId,
+        selectedVenueId: venueId,
         eligibleClubCount,
+        eligibleVenueCount,
         code,
         message: tenantCheck.error || "Cần chọn hoặc gán tenant.",
       });
     }
     return base(PLATFORM_CONTEXT_STATE.ERROR, {
       requireClub,
+      requireVenue,
       selectedTenantId: tenantId,
+      selectedVenueId: venueId,
       eligibleClubCount,
+      eligibleVenueCount,
       code: code || "TENANT_ERROR",
       message: tenantCheck.error || "Lỗi ngữ cảnh tenant.",
     });
   }
 
   if (rbacEnabled && !tenantId) {
-    // Super Admin / platform tech may browse unassigned for some gates, but
-    // club-required business modules need an explicit operational tenant.
-    if (requireClub || !canOperateWithoutTenant) {
+    if (requireClub || requireVenue || !canOperateWithoutTenant) {
       return base(PLATFORM_CONTEXT_STATE.TENANT_REQUIRED, {
         requireClub,
+        requireVenue,
         selectedTenantId: null,
+        selectedVenueId: null,
         eligibleClubCount,
+        eligibleVenueCount,
         code: "TENANT_REQUIRED",
         message: "Cần chọn tenant trước khi thao tác nghiệp vụ.",
+      });
+    }
+  }
+
+  if (requireVenue) {
+    if (venueCheck && venueCheck.ok === false) {
+      const code = String(venueCheck.code || "VENUE_REQUIRED");
+      if (code === "VENUE_EMPTY") {
+        return base(PLATFORM_CONTEXT_STATE.VENUE_EMPTY, {
+          requireClub,
+          requireVenue: true,
+          selectedTenantId: tenantId,
+          selectedVenueId: null,
+          eligibleClubCount,
+          eligibleVenueCount,
+          code,
+          message: venueCheck.error || "Tenant này chưa có cơ sở (Venue).",
+        });
+      }
+      return base(PLATFORM_CONTEXT_STATE.VENUE_REQUIRED, {
+        requireClub,
+        requireVenue: true,
+        selectedTenantId: tenantId,
+        selectedVenueId: venueId,
+        eligibleClubCount,
+        eligibleVenueCount,
+        code,
+        message: venueCheck.error || "Cần chọn cơ sở (Venue).",
+      });
+    }
+
+    if (!venueId) {
+      if (eligibleVenueCount === 0) {
+        return base(PLATFORM_CONTEXT_STATE.VENUE_EMPTY, {
+          requireClub,
+          requireVenue: true,
+          selectedTenantId: tenantId,
+          selectedVenueId: null,
+          eligibleClubCount,
+          eligibleVenueCount: 0,
+          code: "VENUE_EMPTY",
+          message: "Tenant này chưa có cơ sở (Venue) khả dụng.",
+        });
+      }
+      return base(PLATFORM_CONTEXT_STATE.VENUE_REQUIRED, {
+        requireClub,
+        requireVenue: true,
+        selectedTenantId: tenantId,
+        selectedVenueId: null,
+        eligibleClubCount,
+        eligibleVenueCount,
+        code: "VENUE_REQUIRED",
+        message: "Cần chọn cơ sở (Venue) trước khi thao tác.",
       });
     }
   }
@@ -173,17 +253,23 @@ export function resolvePlatformContextReadiness({
     return base(PLATFORM_CONTEXT_STATE.CONTEXT_READY, {
       ready: true,
       requireClub: false,
+      requireVenue,
       selectedTenantId: tenantId,
+      selectedVenueId: venueId,
       activeClubId: activeClub?.id || null,
       eligibleClubCount,
+      eligibleVenueCount,
     });
   }
 
   if (clubReadLoading) {
     return base(PLATFORM_CONTEXT_STATE.CLUB_LOADING, {
       requireClub: true,
+      requireVenue,
       selectedTenantId: tenantId,
+      selectedVenueId: venueId,
       eligibleClubCount,
+      eligibleVenueCount,
       message: "Đang tải danh sách CLB…",
     });
   }
@@ -191,8 +277,11 @@ export function resolvePlatformContextReadiness({
   if (clubReadError) {
     return base(PLATFORM_CONTEXT_STATE.ERROR, {
       requireClub: true,
+      requireVenue,
       selectedTenantId: tenantId,
+      selectedVenueId: venueId,
       eligibleClubCount,
+      eligibleVenueCount,
       code: clubReadErrorCode || "CLUB_READ_ERROR",
       message: "Không tải được ngữ cảnh CLB.",
     });
@@ -201,8 +290,11 @@ export function resolvePlatformContextReadiness({
   if (eligibleClubCount === 0) {
     return base(PLATFORM_CONTEXT_STATE.CLUB_EMPTY, {
       requireClub: true,
+      requireVenue,
       selectedTenantId: tenantId,
+      selectedVenueId: venueId,
       eligibleClubCount: 0,
+      eligibleVenueCount,
       code: "CLUB_EMPTY",
       message: "Tenant này chưa có CLB khả dụng.",
     });
@@ -211,8 +303,11 @@ export function resolvePlatformContextReadiness({
   if (!activeClubReady || !activeClub?.id) {
     return base(PLATFORM_CONTEXT_STATE.CLUB_REQUIRED, {
       requireClub: true,
+      requireVenue,
       selectedTenantId: tenantId,
+      selectedVenueId: venueId,
       eligibleClubCount,
+      eligibleVenueCount,
       code: "CLUB_REQUIRED",
       message:
         eligibleClubCount > 1
@@ -227,24 +322,30 @@ export function resolvePlatformContextReadiness({
   ) {
     return base(PLATFORM_CONTEXT_STATE.CLUB_REQUIRED, {
       requireClub: true,
+      requireVenue,
       selectedTenantId: tenantId,
+      selectedVenueId: venueId,
       eligibleClubCount,
+      eligibleVenueCount,
       code: "CLUB_TENANT_MISMATCH",
       message: "CLB đang chọn không thuộc tenant đang chọn.",
     });
   }
 
-  // Organization remains NOT_CONFIGURED in Wave 1 — surface only when asked.
+  // Organization remains NOT_CONFIGURED — surface only when asked.
   if (organizationConfigured === true) {
-    // reserved — Wave 1 never enables Organization authority
+    // reserved — never enables Organization authority in Wave 3
   }
 
   return base(PLATFORM_CONTEXT_STATE.CONTEXT_READY, {
     ready: true,
     requireClub: true,
+    requireVenue,
     selectedTenantId: tenantId,
+    selectedVenueId: venueId,
     activeClubId: activeClub.id,
     eligibleClubCount,
+    eligibleVenueCount,
   });
 }
 
@@ -265,6 +366,8 @@ export function isPlatformContextRequired(state) {
   return (
     state === PLATFORM_CONTEXT_STATE.AUTH_REQUIRED ||
     state === PLATFORM_CONTEXT_STATE.TENANT_REQUIRED ||
+    state === PLATFORM_CONTEXT_STATE.VENUE_REQUIRED ||
+    state === PLATFORM_CONTEXT_STATE.VENUE_EMPTY ||
     state === PLATFORM_CONTEXT_STATE.CLUB_REQUIRED ||
     state === PLATFORM_CONTEXT_STATE.CLUB_EMPTY ||
     state === PLATFORM_CONTEXT_STATE.NOT_CONFIGURED
@@ -279,6 +382,7 @@ export function isPlatformContextLoading(state) {
   return (
     state === PLATFORM_CONTEXT_STATE.AUTH_LOADING ||
     state === PLATFORM_CONTEXT_STATE.TENANT_LOADING ||
+    state === PLATFORM_CONTEXT_STATE.VENUE_LOADING ||
     state === PLATFORM_CONTEXT_STATE.CLUB_LOADING
   );
 }
@@ -288,9 +392,12 @@ function base(state, extra = {}) {
     state,
     ready: false,
     requireClub: true,
+    requireVenue: false,
     selectedTenantId: null,
+    selectedVenueId: null,
     activeClubId: null,
     eligibleClubCount: 0,
+    eligibleVenueCount: 0,
     code: null,
     message: null,
     ...extra,
