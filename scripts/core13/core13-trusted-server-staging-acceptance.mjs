@@ -78,6 +78,7 @@ import {
   evaluatePhysicalEnvironment,
   evaluateReceiptRemoteReconciliation,
   hydrateHarnessFixtures,
+  loadAuthoritativeRemoteFixtureEvidence,
   loadFixtureReceiptFromPath,
   projectRefFromSupabaseUrl,
   STAGING_PROJECT_REF,
@@ -243,20 +244,39 @@ async function main() {
 
   const mutationGate = createMutationGate();
 
-  const { data: primaryTournament } = await service
-    .from("canonical_tournaments")
-    .select("id, tenant_id, status, name")
-    .eq("id", tournamentA)
-    .maybeSingle();
+  const remoteEvidence = await loadAuthoritativeRemoteFixtureEvidence(service, receipt);
+  // Schedule windows: only pass when Adapter B / payload evidence is actually present.
+  // Do not invent overlap truth from the receipt.
+  const scheduleEvidence = {
+    required: true,
+    overlapConflict: remoteEvidence.schedule?.overlapConflict,
+    nonOverlapConflict: remoteEvidence.schedule?.nonOverlapConflict,
+  };
+  if (
+    scheduleEvidence.overlapConflict === undefined ||
+    scheduleEvidence.nonOverlapConflict === undefined
+  ) {
+    const scheduleFail = {
+      ok: false,
+      detail: "REMOTE_SCHEDULE_EVIDENCE_UNPROVEN",
+    };
+    for (const name of CASE_CATALOG) record(name, scheduleFail);
+    console.error(`REFUSE: ${scheduleFail.detail}`);
+    console.log(`STAGING_ACCEPTANCE_CASE_COUNT=${CASE_CATALOG.length}`);
+    console.log("PASS_COUNT=0");
+    console.log(`FAIL_COUNT=${CASE_CATALOG.length}`);
+    process.exit(1);
+  }
+
   const remoteProof = evaluateReceiptRemoteReconciliation(receipt, {
     reconcile: true,
+    hardcodedLifecycleProof: false,
     projectRef: extractedRef || STAGING_PROJECT_REF,
     environment: env("PICK_VN_ENV") || "staging",
-    primaryTournamentTenantId: primaryTournament?.tenant_id || "",
-    preMatchTournamentId: primaryTournament?.id || "",
-    preMatchLifecycle: "PRE_MATCH",
     signedInUserA: userA.userId,
     signedInUserB: userB.userId,
+    ...remoteEvidence,
+    schedule: scheduleEvidence,
   });
   if (!remoteProof.ok) {
     for (const name of CASE_CATALOG) record(name, remoteProof);

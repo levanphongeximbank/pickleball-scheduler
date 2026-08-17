@@ -40,6 +40,7 @@ export const REQUIRED_TOURNAMENT_KEYS = Object.freeze([
   "crossTournament",
   "dailyEnabled",
   "dailyDisabled",
+  "completedLifecycle",
 ]);
 
 const SECRET_KEY_RE =
@@ -191,6 +192,13 @@ export function createValidFixtureReceipt(overrides = {}) {
         mode: "DAILY_PLAY",
         name: `${CORE13_FIXTURE_NAMESPACE} daily-off ${runId}`,
       },
+      completedLifecycle: {
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5",
+        tenantId: "core13-qa-tenant-a",
+        mode: "INTERNAL",
+        name: `${CORE13_FIXTURE_NAMESPACE} completed-only ${runId}`,
+        terminal: true,
+      },
     },
     matches: {
       preMatch: {
@@ -230,7 +238,7 @@ export function createValidFixtureReceipt(overrides = {}) {
       },
       completed: {
         id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb8",
-        tournamentId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+        tournamentId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5",
         lifecycle: "COMPLETED",
       },
       dailyEnabled: {
@@ -253,8 +261,10 @@ export function createValidFixtureReceipt(overrides = {}) {
     cleanupPlan: {
       unknownBaselineAutoClean: false,
       receiptScopedOnly: true,
-      unassignViaTrustedServer: true,
+      typedByResource: true,
+      genericUnassignOverAllReceiptIds: false,
       immutableAuditDelete: false,
+      immutableIdempotencyDelete: false,
     },
   };
   return stripReceiptSecrets({ ...base, ...overrides, provenance: { ...base.provenance, ...(overrides.provenance || {}) } });
@@ -320,6 +330,29 @@ export function evaluateFixtureReceipt(receipt, nowMs = Date.now()) {
   if (entityId(receipt.tournaments.primary) === entityId(receipt.tournaments.crossTournament)) {
     return proof(false, "cross-tournament must be distinct");
   }
+  if (entityId(receipt.tournaments.primary) === entityId(receipt.tournaments.completedLifecycle)) {
+    return proof(false, "completedLifecycle tournament must be distinct from primary");
+  }
+  if (receipt.tournaments.primary?.terminal === true) {
+    return proof(false, "primary tournament must remain non-terminal");
+  }
+  const completedTournamentId = entityId(receipt.tournaments.completedLifecycle);
+  if (String(receipt.matches.completed?.tournamentId || "") !== completedTournamentId) {
+    return proof(false, "completed match must bind to completedLifecycle tournament");
+  }
+  for (const key of [
+    "preMatch",
+    "overlapA",
+    "overlapB",
+    "nonOverlap",
+    "inProgress",
+    "scoringActive",
+    "locked",
+  ]) {
+    if (String(receipt.matches[key]?.tournamentId || "") !== entityId(receipt.tournaments.primary)) {
+      return proof(false, `${key} must bind to primary tournament`);
+    }
+  }
 
   for (const key of REQUIRED_MATCH_KEYS) {
     const row = receipt.matches?.[key];
@@ -372,6 +405,9 @@ export function evaluateManualFixtureOverride(receipt, envMap = {}) {
 export function evaluateReceiptRemoteReconciliation(receipt, remote = {}) {
   const receiptOk = evaluateFixtureReceipt(receipt);
   if (!receiptOk.ok) return receiptOk;
+  if (remote.hardcodedLifecycleProof === true) {
+    return proof(false, "HARDCODED_PREMATCH_LIFECYCLE_REMOTE_PROOF denied");
+  }
   if (remote.projectRef && remote.projectRef !== receipt.projectRef) {
     return proof(false, "remote projectRef mismatch");
   }
@@ -384,44 +420,220 @@ export function evaluateReceiptRemoteReconciliation(receipt, remote = {}) {
   if (remote.signedInUserB && remote.signedInUserB !== entityId(receipt.users.userB)) {
     return proof(false, "signed-in User B does not match receipt");
   }
-  if (remote.reconcile === true) {
-    const tournamentTenant = String(remote.primaryTournamentTenantId || "").trim();
-    if (!tournamentTenant || tournamentTenant !== entityId(receipt.tenantA)) {
-      return proof(false, "receipt tenantId does not match canonical tournament tenant");
-    }
-    const matchTournament = String(remote.preMatchTournamentId || "").trim();
-    if (!matchTournament || matchTournament !== entityId(receipt.tournaments.primary)) {
-      return proof(false, "receipt matchId does not resolve to receipt tournament");
-    }
-    const expectedLifecycle = String(remote.preMatchLifecycle || "").toUpperCase();
-    if (expectedLifecycle && expectedLifecycle !== "PRE_MATCH") {
-      return proof(false, `receipt lifecycle mismatch remote=${expectedLifecycle}`);
-    }
-    if (remote.requireRefereeEvidence === true) {
-      const refereeRole = String(remote.refereeARole || "").toUpperCase();
-      if (!refereeRole || refereeRole !== "REFEREE") {
-        return proof(false, `referee identity mismatch role=${refereeRole || "missing"}`);
-      }
-    }
-    return proof(true, "receipt-remote-reconciled");
+
+  if (remote.reconcile !== true) {
+    return proof(true, "receipt-local-only");
   }
-  const tournamentTenant = String(remote.primaryTournamentTenantId || "").trim();
-  if (tournamentTenant && tournamentTenant !== entityId(receipt.tenantA)) {
+
+  if (remote.receiptClaimOverridesRemote === true) {
+    return proof(false, "manual receipt claim cannot override remote truth");
+  }
+
+  const primaryTenant = String(remote.primaryTournamentTenantId || "").trim();
+  if (!primaryTenant || primaryTenant !== entityId(receipt.tenantA)) {
     return proof(false, "receipt tenantId does not match canonical tournament tenant");
   }
-  const matchTournament = String(remote.preMatchTournamentId || "").trim();
-  if (matchTournament && matchTournament !== entityId(receipt.tournaments.primary)) {
-    return proof(false, "receipt matchId does not resolve to receipt tournament");
+  const crossTenant = String(remote.crossTournamentTenantId || "").trim();
+  if (!crossTenant || crossTenant !== entityId(receipt.tenantA)) {
+    return proof(false, "cross-tournament tenant binding mismatch");
   }
-  const expectedLifecycle = String(remote.preMatchLifecycle || "").toUpperCase();
-  if (expectedLifecycle && expectedLifecycle !== "PRE_MATCH") {
-    return proof(false, `receipt lifecycle mismatch remote=${expectedLifecycle}`);
+  const completedTenant = String(remote.completedLifecycleTournamentTenantId || "").trim();
+  if (!completedTenant || completedTenant !== entityId(receipt.tenantA)) {
+    return proof(false, "completedLifecycle tournament tenant binding mismatch");
   }
-  const refereeRole = String(remote.refereeARole || "").toUpperCase();
-  if (remote.refereeARole && refereeRole !== "REFEREE") {
-    return proof(false, `referee identity mismatch role=${refereeRole}`);
+  const primaryStatus = String(remote.primaryTournamentStatus || "").toLowerCase();
+  if (primaryStatus === "completed" || primaryStatus === "cancelled") {
+    return proof(false, "primary tournament is terminal; PRIMARY_TOURNAMENT_REMAINS_NON_TERMINAL violated");
   }
+
+  const matchKeys = [
+    "preMatch",
+    "overlapA",
+    "overlapB",
+    "nonOverlap",
+    "inProgress",
+    "scoringActive",
+    "locked",
+    "completed",
+    "dailyEnabled",
+    "dailyDisabled",
+  ];
+  for (const key of matchKeys) {
+    const expected = String(receipt.matches[key]?.lifecycle || "").toUpperCase();
+    const evidence = remote.matches?.[key];
+    if (!evidence || evidence.exists !== true) {
+      return proof(false, `remote match evidence missing for ${key}`);
+    }
+    const actualLifecycle = String(evidence.lifecycle || "").toUpperCase();
+    if (!actualLifecycle) {
+      return proof(false, `remote lifecycle unproven for ${key}`);
+    }
+    if (actualLifecycle !== expected) {
+      return proof(false, `remote lifecycle mismatch ${key} expected=${expected} actual=${actualLifecycle}`);
+    }
+    const expectedTournament = entityId(receipt.matches[key].tournamentId);
+    if (String(evidence.tournamentId || "") !== expectedTournament) {
+      return proof(false, `remote match tournament binding mismatch ${key}`);
+    }
+  }
+
+  const identityKeys = ["refereeA", "replacementReferee", "inactiveReferee", "nonCanonicalSubject"];
+  for (const key of identityKeys) {
+    const expected = receipt.users[key];
+    const evidence = remote.identities?.[key];
+    if (!evidence || evidence.exists !== true) {
+      return proof(false, `remote identity evidence missing for ${key}`);
+    }
+    if (String(evidence.role || "").toUpperCase() !== String(expected.role || "").toUpperCase()) {
+      return proof(false, `remote identity role mismatch ${key}`);
+    }
+    if (
+      expected.status &&
+      String(evidence.status || "").toUpperCase() !== String(expected.status || "").toUpperCase()
+    ) {
+      return proof(false, `remote identity status mismatch ${key}`);
+    }
+    if (
+      evidence.tenantId != null &&
+      String(evidence.tenantId) !== entityId(receipt.tenantA)
+    ) {
+      return proof(false, `remote identity tenant mismatch ${key}`);
+    }
+  }
+  if (String(remote.identities?.refereeA?.role || "").toUpperCase() !== "REFEREE") {
+    return proof(false, "referee A must be REFEREE");
+  }
+  if (String(remote.identities?.nonCanonicalSubject?.role || "").toUpperCase() === "REFEREE") {
+    return proof(false, "non-canonical subject must not be REFEREE");
+  }
+  if (String(remote.identities?.inactiveReferee?.status || "").toUpperCase() !== "INACTIVE") {
+    return proof(false, "inactive referee must be INACTIVE");
+  }
+
+  const schedule = remote.schedule || {};
+  if (schedule.required === true) {
+    if (schedule.overlapConflict !== true) {
+      return proof(false, "schedule overlap evidence mismatch");
+    }
+    if (schedule.nonOverlapConflict !== false) {
+      return proof(false, "schedule non-overlap evidence mismatch");
+    }
+  }
+
   return proof(true, "receipt-remote-reconciled");
+}
+
+export function mapAuthoritativeLifecycle({ liveRow = null, tournamentStatus = "" } = {}) {
+  const tournament = String(tournamentStatus || "").toLowerCase();
+  if (tournament === "completed" || tournament === "cancelled") return "COMPLETED";
+  if (!liveRow) return "PRE_MATCH";
+  const scoringActive =
+    Number(liveRow.last_event_sequence || 0) > 0 ||
+    Number(liveRow.team_a_score || 0) > 0 ||
+    Number(liveRow.team_b_score || 0) > 0;
+  if (scoringActive) return "SCORING_ACTIVE";
+  const raw = String(liveRow.status || "").toLowerCase();
+  if (["paused", "suspended", "locked"].includes(raw)) return "LOCKED";
+  if (["in_progress", "started", "active", "live", "playing"].includes(raw)) return "IN_PROGRESS";
+  if (["completed", "final", "finished"].includes(raw)) return "COMPLETED";
+  if (["not_started", "scheduled", "pending", "ready"].includes(raw)) return "PRE_MATCH";
+  return "PRE_MATCH";
+}
+
+export function classifyReceiptOwnedResources(receipt = {}) {
+  return Object.freeze({
+    tenants: [entityId(receipt.tenantA), entityId(receipt.tenantB)].filter(Boolean),
+    authUsers: REQUIRED_USER_KEYS.map((key) => entityId(receipt.users?.[key])).filter(Boolean),
+    tournaments: REQUIRED_TOURNAMENT_KEYS.map((key) => entityId(receipt.tournaments?.[key])).filter(
+      Boolean
+    ),
+    matches: REQUIRED_MATCH_KEYS.map((key) => entityId(receipt.matches?.[key])).filter(Boolean),
+    assignments: Array.isArray(receipt.assignments)
+      ? receipt.assignments.map((row) => entityId(row)).filter(Boolean)
+      : [],
+    retainedImmutableArtifacts: ["competition_referee_assignment_audit", "competition_referee_assignment_idempotency"],
+  });
+}
+
+export function buildTypedCleanupPlan(receipt = {}) {
+  const resources = classifyReceiptOwnedResources(receipt);
+  return Object.freeze({
+    ok: true,
+    typedByResource: true,
+    genericUnassignOverAllReceiptIds: false,
+    immutableHistoryDelete: false,
+    steps: [
+      {
+        resource: "assignments",
+        command: "unassignViaTrustedServer",
+        ids: resources.assignments,
+        policy: "CORE13 trusted-server unassign only for active assignment rows",
+      },
+      {
+        resource: "authUsers",
+        command: "deleteAuthUser",
+        ids: resources.authUsers,
+        policy: "authorized test Identity Admin delete of provisioner-created users",
+      },
+      {
+        resource: "matches",
+        command: "retainOrCanonicalMatchInverse",
+        ids: resources.matches,
+        policy: "retain unless a canonical match cancel/delete exists",
+        retainIfUnsupported: true,
+      },
+      {
+        resource: "tournaments",
+        command: "deleteTournament",
+        ids: resources.tournaments,
+        policy: "canonical delete/archive/cancel if supported; else retain disposable artifact",
+        retainIfUnsupported: true,
+      },
+      {
+        resource: "tenants",
+        command: "retainOrCanonicalTenantDeactivate",
+        ids: resources.tenants,
+        policy: "retain unless canonical delete/deactivate is supported and safe",
+        retainIfUnsupported: true,
+      },
+      {
+        resource: "retainedImmutableArtifacts",
+        command: "retain",
+        ids: resources.retainedImmutableArtifacts,
+        policy: "NEVER force-delete audit/idempotency history",
+        retain: true,
+      },
+    ],
+  });
+}
+
+export function evaluateTypedTeardownTargets(receipt, requested = []) {
+  const resources = classifyReceiptOwnedResources(receipt);
+  const assignmentSet = new Set(resources.assignments);
+  const authSet = new Set(resources.authUsers);
+  const matchSet = new Set(resources.matches);
+  const tournamentSet = new Set(resources.tournaments);
+  const tenantSet = new Set(resources.tenants);
+  const owned = listReceiptOwnedIds(receipt);
+  for (const item of requested) {
+    const id = entityId(item.id || item);
+    const resource = String(item.resource || "").trim();
+    if (!id || !owned.has(id)) {
+      return proof(false, `teardown target not receipt-owned: ${id || "missing"}`);
+    }
+    if (resource === "assignments" && !assignmentSet.has(id) && resources.assignments.length) {
+      return proof(false, `assignment teardown id not typed as assignment: ${id}`);
+    }
+    if (resource === "assignments" && (tenantSet.has(id) || authSet.has(id) || tournamentSet.has(id))) {
+      return proof(false, `GENERIC_UNASSIGN_OVER_ALL_RECEIPT_IDS denied for ${id}`);
+    }
+    if (resource === "unassignViaTrustedServer") {
+      if (tenantSet.has(id) || authSet.has(id) || tournamentSet.has(id) || matchSet.has(id)) {
+        return proof(false, `unassign cannot target non-assignment resource ${id}`);
+      }
+    }
+  }
+  return proof(true, "typed-teardown");
 }
 
 export function evaluateTeardownScope(receipt, requestedIds = []) {
@@ -439,6 +651,7 @@ export function hydrateHarnessFixtures(receipt) {
     tenantB: entityId(receipt.tenantB),
     tournamentA: entityId(receipt.tournaments.primary),
     tournamentB: entityId(receipt.tournaments.crossTournament),
+    completedLifecycleTournament: entityId(receipt.tournaments.completedLifecycle),
     matchA: entityId(receipt.matches.preMatch),
     refereeId: entityId(receipt.users.refereeA),
     replaceRefereeId: entityId(receipt.users.replacementReferee),
@@ -466,4 +679,221 @@ export function loadFixtureReceiptFromPath(filePath) {
   const receipt = stripReceiptSecrets(raw);
   const proof = evaluateFixtureReceipt(receipt);
   return { ok: proof.ok, detail: proof.detail, receipt };
+}
+
+function payloadContainsMatchId(payload, matchId) {
+  const target = String(matchId || "");
+  if (!target) return false;
+  const walk = (value) => {
+    if (value == null) return false;
+    if (typeof value === "string") return value === target;
+    if (Array.isArray(value)) return value.some((item) => walk(item));
+    if (typeof value === "object") {
+      if (String(value.id || value.matchId || "") === target) return true;
+      return Object.values(value).some((child) => walk(child));
+    }
+    return false;
+  };
+  return walk(payload);
+}
+
+/**
+ * Read-only Staging evidence for receipt reconciliation (test harness only).
+ * Does not mutate. Does not invent lifecycle when evidence is missing.
+ */
+export async function loadAuthoritativeRemoteFixtureEvidence(service, receipt) {
+  async function loadTournament(id) {
+    const { data, error } = await service
+      .from("canonical_tournaments")
+      .select("id, tenant_id, status, mode, name, payload")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw new Error(`tournament evidence failed: ${error.message}`);
+    return data || null;
+  }
+
+  async function loadLive(matchId) {
+    const { data, error } = await service
+      .from("match_live_states")
+      .select("match_id, status, last_event_sequence, team_a_score, team_b_score")
+      .eq("match_id", matchId)
+      .maybeSingle();
+    if (error) throw new Error(`match live evidence failed: ${error.message}`);
+    return data || null;
+  }
+
+  async function loadIdentity(userId) {
+    const { data, error } = await service
+      .from("profiles")
+      .select("id, role, status, tenant_id")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) throw new Error(`identity evidence failed: ${error.message}`);
+    return data || null;
+  }
+
+  const primary = await loadTournament(entityId(receipt.tournaments.primary));
+  const cross = await loadTournament(entityId(receipt.tournaments.crossTournament));
+  const completedLifecycle = await loadTournament(entityId(receipt.tournaments.completedLifecycle));
+  const dailyEnabled = await loadTournament(entityId(receipt.tournaments.dailyEnabled));
+  const dailyDisabled = await loadTournament(entityId(receipt.tournaments.dailyDisabled));
+
+  const matches = {};
+  for (const key of REQUIRED_MATCH_KEYS) {
+    const matchId = entityId(receipt.matches[key]);
+    const tournamentId = String(receipt.matches[key].tournamentId || "");
+    const tournamentRow =
+      tournamentId === entityId(receipt.tournaments.primary)
+        ? primary
+        : tournamentId === entityId(receipt.tournaments.completedLifecycle)
+          ? completedLifecycle
+          : tournamentId === entityId(receipt.tournaments.dailyEnabled)
+            ? dailyEnabled
+            : tournamentId === entityId(receipt.tournaments.dailyDisabled)
+              ? dailyDisabled
+              : null;
+    const live = await loadLive(matchId);
+    const inPayload = tournamentRow ? payloadContainsMatchId(tournamentRow.payload, matchId) : false;
+    const exists = Boolean(live) || inPayload || (key === "preMatch" && inPayload);
+    // PRE_MATCH may exist as payload-only (missing live row). Other lifecycles need proof.
+    const lifecycle = mapAuthoritativeLifecycle({
+      liveRow: live,
+      tournamentStatus: tournamentRow?.status || "",
+    });
+    matches[key] = {
+      exists: exists === true,
+      tournamentId,
+      lifecycle,
+      livePresent: Boolean(live),
+      payloadPresent: inPayload,
+    };
+  }
+
+  const identities = {};
+  for (const key of REQUIRED_USER_KEYS) {
+    const id = entityId(receipt.users[key]);
+    const row = await loadIdentity(id);
+    identities[key] = {
+      exists: Boolean(row),
+      role: row?.role || "",
+      status: row?.status || "",
+      tenantId: row?.tenant_id || null,
+    };
+  }
+
+  const overlapAWindow = extractMatchWindow(primary?.payload, entityId(receipt.matches.overlapA));
+  const overlapBWindow = extractMatchWindow(primary?.payload, entityId(receipt.matches.overlapB));
+  const nonOverlapWindow = extractMatchWindow(primary?.payload, entityId(receipt.matches.nonOverlap));
+  let overlapConflict;
+  let nonOverlapConflict;
+  if (overlapAWindow && overlapBWindow) {
+    overlapConflict = windowsOverlap(overlapAWindow, overlapBWindow) === true;
+  }
+  if (overlapAWindow && nonOverlapWindow) {
+    nonOverlapConflict = windowsOverlap(overlapAWindow, nonOverlapWindow) === true;
+  }
+
+  return {
+    primaryTournamentTenantId: primary?.tenant_id || "",
+    crossTournamentTenantId: cross?.tenant_id || "",
+    completedLifecycleTournamentTenantId: completedLifecycle?.tenant_id || "",
+    primaryTournamentStatus: primary?.status || "",
+    dailyEnabledTournamentId: dailyEnabled?.id || "",
+    dailyDisabledTournamentId: dailyDisabled?.id || "",
+    matches,
+    identities,
+    schedule: {
+      required: true,
+      overlapConflict,
+      nonOverlapConflict,
+      overlapAWindow: overlapAWindow || null,
+      overlapBWindow: overlapBWindow || null,
+      nonOverlapWindow: nonOverlapWindow || null,
+    },
+  };
+}
+
+function extractMatchWindow(payload, matchId) {
+  const target = String(matchId || "");
+  if (!target || !payload) return null;
+  let found = null;
+  const walk = (value) => {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      value.forEach(walk);
+      return;
+    }
+    if (String(value.id || value.matchId || "") === target) {
+      const start = value.startAt || value.startsAt || value.scheduledStart || value.start;
+      const end = value.endAt || value.endsAt || value.scheduledEnd || value.end;
+      if (start && end) found = { start: String(start), end: String(end) };
+    }
+    Object.values(value).forEach(walk);
+  };
+  walk(payload);
+  return found;
+}
+
+function windowsOverlap(a, b) {
+  const aStart = Date.parse(a.start);
+  const aEnd = Date.parse(a.end);
+  const bStart = Date.parse(b.start);
+  const bEnd = Date.parse(b.end);
+  if (![aStart, aEnd, bStart, bEnd].every(Number.isFinite)) return null;
+  return aStart < bEnd && bStart < aEnd;
+}
+
+export function buildAlignedRemoteEvidenceForTests(receipt, overrides = {}) {
+  const matches = {};
+  for (const key of REQUIRED_MATCH_KEYS) {
+    matches[key] = {
+      exists: true,
+      tournamentId: String(receipt.matches[key].tournamentId),
+      lifecycle: String(receipt.matches[key].lifecycle).toUpperCase(),
+    };
+  }
+  const identities = {};
+  for (const key of REQUIRED_USER_KEYS) {
+    identities[key] = {
+      exists: true,
+      role: receipt.users[key].role,
+      status: receipt.users[key].status || "ACTIVE",
+      tenantId: entityId(receipt.tenantA),
+    };
+  }
+  if (overrides.matches) {
+    for (const [key, value] of Object.entries(overrides.matches)) {
+      matches[key] = { ...matches[key], ...value };
+    }
+  }
+  if (overrides.identities) {
+    for (const [key, value] of Object.entries(overrides.identities)) {
+      identities[key] = { ...identities[key], ...value };
+    }
+  }
+  const {
+    matches: _m,
+    identities: _i,
+    schedule: scheduleOverride,
+    ...rest
+  } = overrides;
+  return {
+    reconcile: true,
+    hardcodedLifecycleProof: false,
+    projectRef: receipt.projectRef,
+    environment: "staging",
+    primaryTournamentTenantId: entityId(receipt.tenantA),
+    crossTournamentTenantId: entityId(receipt.tenantA),
+    completedLifecycleTournamentTenantId: entityId(receipt.tenantA),
+    primaryTournamentStatus: "active",
+    matches,
+    identities,
+    schedule: {
+      required: true,
+      overlapConflict: true,
+      nonOverlapConflict: false,
+      ...(scheduleOverride || {}),
+    },
+    ...rest,
+  };
 }
