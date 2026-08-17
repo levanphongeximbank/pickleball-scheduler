@@ -39,6 +39,7 @@ export {
   resolveTenantSwitcherView,
   resolveClubDetailTenantGate,
   reconcileSessionWithCatalog,
+  reauthorizePersistedTenantSelection,
   CLUB_DETAIL_MISSING_TENANT_WARNING,
 } from "./services/tenantSelectionModel.js";
 

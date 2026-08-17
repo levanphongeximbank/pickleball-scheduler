@@ -44,27 +44,31 @@ afterEach(() => {
   delete globalThis.localStorage;
 });
 
-test("SUPER_ADMIN thấy tất cả CLB kể cả tenant khác", () => {
+test("SUPER_ADMIN tenant-scoped list stays on the explicit tenant; other clubs need an explicit target", () => {
   const user = createUserRecord({ role: ROLES.SUPER_ADMIN, status: "active" });
   const clubs = getClubsVisibleToUser(TENANT_A, user);
 
-  assert.equal(clubs.length, 2);
-  assert.ok(clubs.some((club) => club.id === CLUB_B));
+  assert.equal(clubs.length, 1);
+  assert.equal(clubs[0].id, CLUB_A);
+  assert.equal(
+    canAccessClub(user, CLUB_B, { venueId: TENANT_B }, { rbacEnabled: true }),
+    true
+  );
 });
 
-test("SYSTEM_TECHNICIAN (Admin) thấy tất cả CLB", () => {
+test("SYSTEM_TECHNICIAN không thấy CLB kinh doanh chỉ vì role kỹ thuật", () => {
   const user = createUserRecord({ role: ROLES.SYSTEM_TECHNICIAN, status: "active" });
   const clubs = getClubsVisibleToUser(TENANT_A, user);
 
-  assert.equal(clubs.length, 2);
+  assert.equal(clubs.length, 0);
 });
 
-test("SYSTEM_TECHNICIAN truy cập CLB tenant khác", () => {
+test("SYSTEM_TECHNICIAN không truy cập CLB tenant khác", () => {
   const user = createUserRecord({ role: ROLES.SYSTEM_TECHNICIAN, status: "active" });
 
   assert.equal(
     canAccessClub(user, CLUB_B, { venueId: TENANT_B }, { rbacEnabled: true }),
-    true
+    false
   );
 });
 

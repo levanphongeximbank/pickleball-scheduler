@@ -1,12 +1,13 @@
 import { loadClubs } from "../../../data/club.js";
 import { getCurrentUser, isRbacEnabled } from "../../../auth/authService.js";
-import { isClubScopedRole, isGlobalRole } from "../../../auth/roles.js";
+import { isGlobalRole } from "../../../auth/roles.js";
 import { DEFAULT_TENANT_ID, tenantIdFromRecord } from "../../../models/tenant.js";
 import { getTenantById } from "../services/tenantService.js";
 import {
   buildProfileBackedTenant,
   canTrustProfileVenue,
 } from "../services/profileVenueService.js";
+import { decideTenantAccess } from "../services/tenantAccessDecision.js";
 
 export function resolveTenantIdFromUser(user) {
   if (!user) {
@@ -49,12 +50,28 @@ export function guardTenantAccess(tenantId, options = {}) {
     return { ok: true };
   }
 
+  if (!tenantId) {
+    return {
+      ok: false,
+      error: "Thiếu tenant mục tiêu.",
+      code: "TARGET_REQUIRED",
+    };
+  }
+
   if (isGlobalRole(user.role)) {
     return { ok: true };
   }
 
-  const userTenantId = resolveTenantIdFromUser(user);
-  return assertSameTenant(tenantId, userTenantId);
+  const decision = decideTenantAccess(user, tenantId, { requireTarget: true });
+  if (!decision.allowed) {
+    return {
+      ok: false,
+      error: decision.reason || "Không có quyền truy cập tenant này.",
+      code: decision.code || "TENANT_FORBIDDEN",
+    };
+  }
+
+  return { ok: true };
 }
 
 export function guardClubTenant(clubId, currentTenantId, options = {}) {
@@ -64,20 +81,16 @@ export function guardClubTenant(clubId, currentTenantId, options = {}) {
     return { ok: true };
   }
 
-  const trimmedClubId = String(clubId || "").trim();
-  if (
-    rbacEnabled &&
-    user &&
-    isClubScopedRole(user.role) &&
-    trimmedClubId &&
-    String(user.clubId || user.club_id || "") === trimmedClubId
-  ) {
-    return { ok: true };
-  }
-
-  const clubTenantId = getExplicitTenantIdForClub(clubId);
+  const clubTenantId = options.clubTenantId || getExplicitTenantIdForClub(clubId);
 
   if (!clubTenantId || !currentTenantId) {
+    if (rbacEnabled && user) {
+      return {
+        ok: false,
+        error: "Thiếu định danh tenant cho CLB hoặc ngữ cảnh hiện tại.",
+        code: "TARGET_REQUIRED",
+      };
+    }
     return { ok: true };
   }
 
@@ -90,7 +103,10 @@ export function guardClubTenant(clubId, currentTenantId, options = {}) {
     };
   }
 
-  return guardTenantAccess(clubTenantId, { user, rbacEnabled });
+  // Club-tenant identity match only. Actor entitlement for the Club is decided
+  // by canAccessClub / club membership+governance evidence, not tenant_members
+  // and not profiles.club_id.
+  return { ok: true };
 }
 
 export function guardRecordTenant(record, currentTenantId, options = {}) {
@@ -103,6 +119,24 @@ export function guardRecordTenant(record, currentTenantId, options = {}) {
   const recordTenantId = tenantIdFromRecord(record);
 
   if (!recordTenantId) {
+    if (rbacEnabled && user) {
+      return {
+        ok: false,
+        error: "Bản ghi thiếu tenant id.",
+        code: "TARGET_REQUIRED",
+      };
+    }
+    return { ok: true };
+  }
+
+  if (!currentTenantId) {
+    if (rbacEnabled && user) {
+      return {
+        ok: false,
+        error: "Thiếu tenant mục tiêu.",
+        code: "TARGET_REQUIRED",
+      };
+    }
     return { ok: true };
   }
 
@@ -114,7 +148,10 @@ export function guardRecordTenant(record, currentTenantId, options = {}) {
     };
   }
 
-  return guardTenantAccess(recordTenantId, { user, rbacEnabled });
+  // Record-tenant identity match only. Tenant membership is decided by
+  // decideTenantAccess / guardTenantAccess for Tenant operations, not every
+  // tenant-scoped record read.
+  return { ok: true };
 }
 
 export function filterByTenant(items = [], tenantId) {
@@ -141,7 +178,7 @@ export function filterByCluster(items = [], clusterId) {
 
 export function listClubsForTenant(tenantId) {
   if (!tenantId) {
-    return loadClubs();
+    return [];
   }
 
   return loadClubs().filter((club) => getExplicitTenantIdForClub(club.id) === tenantId);

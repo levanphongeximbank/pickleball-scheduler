@@ -9,16 +9,16 @@ import {
 
 import { useAuth } from "./AuthContext.jsx";
 import { buildClubRehydrateScopeKey } from "../auth/authSemanticScope.js";
-import { isGlobalRole, isClubScopedRole, isPlatformScopedRole } from "../auth/roles.js";
+import { isGlobalRole, isClubScopedRole } from "../auth/roles.js";
 import { clearActiveTenantId, loadActiveTenantId } from "../data/tenantSession.js";
 import { getActiveClubId } from "../data/club.js";
 import { switchActiveClub } from "../domain/clubService.js";
 import {
   assertTenantOperational,
-  canUserAccessTenant,
   ensureTenantBootstrap,
   getPrimaryClubIdForTenant,
 } from "../features/tenant/index.js";
+import { decideTenantAccess } from "../features/tenant/services/tenantAccessDecision.js";
 import {
   hydrateProfileVenueToLocalRegistry,
   hydrateSupabaseVenuesToLocalRegistry,
@@ -59,8 +59,7 @@ export function TenantProvider({ children }) {
   });
 
   const isSuperAdmin = Boolean(user && isGlobalRole(user.role));
-  const isPlatformTech = Boolean(user && isPlatformScopedRole(user.role));
-  // Unassigned-tenant navigation for SA + Platform Tech. Switch permission is SA only.
+  // Unassigned-tenant navigation for Super Admin only. Switch permission is SA only.
   const canPickTenant = canOperateUnassignedTenant(user);
 
   const currentTenantId = useMemo(() => {
@@ -155,7 +154,18 @@ export function TenantProvider({ children }) {
     let cancelled = false;
 
     void hydrateSupabaseVenuesToLocalRegistry().then((result) => {
-      if (cancelled || !result?.ok) {
+      if (cancelled) {
+        return;
+      }
+
+      if (!result?.ok) {
+        setAdminTenantId((current) => {
+          if (current && userId) {
+            clearActiveTenantId();
+          }
+          return null;
+        });
+        setRevision((value) => value + 1);
         return;
       }
 
@@ -223,11 +233,11 @@ export function TenantProvider({ children }) {
 
     if (canPickTenant) {
       if (!currentTenantId) {
-        return { ok: true };
+        return { ok: true, code: "DIRECTORY_UNSCOPED" };
       }
       const operational = assertTenantOperational(currentTenantId, { user });
       if (!operational.ok) {
-        return { ok: true, warning: operational.error, code: operational.code };
+        return operational;
       }
       return operational;
     }
@@ -246,11 +256,12 @@ export function TenantProvider({ children }) {
       };
     }
 
-    if (!canUserAccessTenant(user, currentTenantId)) {
+    const access = decideTenantAccess(user, currentTenantId, { requireTarget: true });
+    if (!access.allowed) {
       return {
         ok: false,
-        error: "Không có quyền truy cập tenant này.",
-        code: "TENANT_FORBIDDEN",
+        error: access.reason || "Không có quyền truy cập tenant này.",
+        code: access.code === "ENTITLEMENT_MISSING" ? "TENANT_FORBIDDEN" : access.code,
       };
     }
 
@@ -262,7 +273,7 @@ export function TenantProvider({ children }) {
       return { ok: true };
     }
 
-    if (isSuperAdmin || isPlatformTech) {
+    if (isSuperAdmin) {
       return { ok: true };
     }
 
@@ -273,7 +284,7 @@ export function TenantProvider({ children }) {
 
     // Fail-closed when billing authority is required but unbound.
     return billing.assertOperational(currentTenantId);
-  }, [currentTenantId, isAuthenticated, isPlatformTech, isSuperAdmin, rbacEnabled, revision, user]);
+  }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, revision, user]);
 
   const switchTenant = useCallback(
     (tenantId) => {

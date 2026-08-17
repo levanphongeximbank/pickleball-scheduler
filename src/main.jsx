@@ -28,6 +28,19 @@ import {
   createSupabasePlatformTenantQueryAdapter,
 } from "./core/platform/app/platformTenantAuthority.js";
 import { createLocalTenantCacheAdapter } from "./data/tenantRegistry.js";
+import {
+  bindTenantEntitlementAuthority,
+  bindClubEntitlementAuthority,
+} from "./core/platform/authz/index.js";
+import {
+  createMemoryTenantEntitlementAdapter,
+  createSupabaseTenantMembersAdapter,
+} from "./features/tenant/services/tenantEntitlementAdapter.js";
+import {
+  createMemoryClubEntitlementAdapter,
+  createSupabaseClubEntitlementAdapter,
+} from "./features/club/services/clubEntitlementAdapter.js";
+import { rpcV2GetMyActiveMembership } from "./features/club/services/clubStorageV2RpcService.js";
 
 /**
  * Composition-root bridge: keeps Platform Core free of Business Module imports
@@ -51,6 +64,19 @@ function wirePlatformRuntimeBoundaryBindings() {
       : null,
     cacheAdapter: createLocalTenantCacheAdapter(),
   });
+  bindTenantEntitlementAuthority(
+    hasSupabaseConfig()
+      ? createSupabaseTenantMembersAdapter(() => getSupabaseAuthClient())
+      : createMemoryTenantEntitlementAdapter()
+  );
+  bindClubEntitlementAuthority(
+    hasSupabaseConfig()
+      ? createSupabaseClubEntitlementAdapter({
+          getClient: () => getSupabaseAuthClient(),
+          getMyActiveMembership: rpcV2GetMyActiveMembership,
+        })
+      : createMemoryClubEntitlementAdapter()
+  );
 }
 
 wirePlatformRuntimeBoundaryBindings();

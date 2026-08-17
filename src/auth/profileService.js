@@ -1,11 +1,10 @@
 import { normalizeUser, USER_STATUS } from "../models/user.js";
-import { ROLES, denormalizeRoleForDb, normalizeRole } from "./roles.js";
+import { ROLES, denormalizeRoleForDb } from "./roles.js";
 import { formatAuthError } from "./authErrors.js";
 import { getSupabaseAuthClient, PROFILES_TABLE } from "./supabaseClient.js";
 import { isSecureRuntime } from "./runtime.js";
 import { resolveAssignedClusterIdsForUser } from "../features/court-cluster/services/courtClusterService.js";
-import { normalizeProfileGender } from "../features/identity/utils/profileGender.js";
-import { resolveLegacyProfileTenantId } from "../core/platform/app/legacyTenantVenueBridge.js";
+import { projectCanonicalActorFromProfileRow } from "../features/identity/services/canonicalActorProjection.js";
 
 /**
  * Mapping auth.users ↔ public.profiles (docs/supabase-rbac.sql).
@@ -26,32 +25,7 @@ export function mapProfileRowToUser(row) {
     return null;
   }
 
-  // Wave 3: venue_id = home venue; tenant_id distinct when Phase B column exists.
-  const venueId = row.venue_id || row.venueId || null;
-  const bridged = resolveLegacyProfileTenantId({
-    tenantId: row.tenant_id || row.tenantId || null,
-    venueId,
-  });
-
-  return normalizeUser({
-    id: row.id,
-    email: row.email,
-    displayName: row.display_name || row.displayName || "",
-    role: normalizeRole(row.role),
-    tenantId: bridged.tenantId,
-    venueId,
-    clubId: row.club_id || row.clubId || null,
-    playerId: row.player_id || row.playerId || null,
-    tournamentId: row.tournament_id || row.tournamentId || null,
-    teamId: row.team_id || row.teamId || null,
-    phone: row.phone || "",
-    avatarUrl: row.avatar_url || row.avatarUrl || "",
-    gender: normalizeProfileGender(row.gender) || "",
-    birthYear: row.birth_year ?? row.birthYear ?? null,
-    status: row.status || "active",
-    mustChangePassword: Boolean(row.must_change_password ?? row.mustChangePassword),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+  return projectCanonicalActorFromProfileRow(row, {
     assignedClusterIds: resolveAssignedClusterIdsForUser({ id: row.id }),
   });
 }
@@ -62,10 +36,12 @@ export function mapAuthUserFallback(authUser, metadata = {}) {
     email: authUser.email || "",
     displayName: metadata.display_name || metadata.displayName || authUser.email || "",
     role: metadata.role || "",
+    tenantId: metadata.tenant_id || metadata.tenantId || null,
     venueId: metadata.venue_id || metadata.venueId || null,
     clubId: metadata.club_id || metadata.clubId || null,
     playerId: metadata.player_id || metadata.playerId || null,
-    status: metadata.status || "active",
+    status: metadata.status || "",
+    identityIncomplete: !metadata.status,
     mustChangePassword: Boolean(metadata.must_change_password ?? metadata.mustChangePassword),
   });
 }
@@ -205,7 +181,15 @@ export function resolveAuthUserFromProfile(authUser, profileResult, { rbacEnable
   const enforceProfile = rbacEnabled || isSecureRuntime();
 
   if (profileResult.ok) {
-    if (enforceProfile && profileResult.user.status !== USER_STATUS.ACTIVE) {
+    const actor = profileResult.user;
+    if (enforceProfile && (actor.identityIncomplete || !actor.status)) {
+      return {
+        ok: false,
+        error: "Hồ sơ thiếu trạng thái định danh.",
+        code: "IDENTITY_INCOMPLETE",
+      };
+    }
+    if (enforceProfile && actor.status !== USER_STATUS.ACTIVE) {
       return {
         ok: false,
         error: "Tài khoản chưa được kích hoạt hoặc đã bị khóa.",
@@ -213,7 +197,7 @@ export function resolveAuthUserFromProfile(authUser, profileResult, { rbacEnable
       };
     }
 
-    return { ok: true, user: profileResult.user, provider: "supabase" };
+    return { ok: true, user: actor, provider: "supabase" };
   }
 
   if (enforceProfile) {

@@ -186,6 +186,58 @@ export function getGovernanceScopeState() {
 }
 
 /**
+ * Explicit Club governance overlay (owner / president / vice).
+ * This is authorization evidence for the named club, not profiles.club_id.
+ */
+export function hasCanonicalClubGovernanceEvidence(user, clubId, club = null) {
+  const target = String(clubId || "").trim();
+  if (!user?.id || !target) {
+    return false;
+  }
+
+  if (isGovernanceCloudAuthoritative()) {
+    if (club && String(club.id) === target) {
+      return localHasOwnerOrManagerAccess(user, club);
+    }
+    return (
+      snapshot.userId === userKeyOf(user) &&
+      snapshot.status === GOV_SCOPE_STATUS.READY &&
+      snapshot.elevated &&
+      String(snapshot.clubId || "") === target
+    );
+  }
+
+  const resolved =
+    (club && String(club.id) === target ? club : null) ||
+    resolveLocalClubById(target);
+  if (!resolved) {
+    return false;
+  }
+  return localHasOwnerOrManagerAccess(user, resolved);
+}
+
+function localHasOwnerOrManagerAccess(user, club) {
+  if (!user?.id || !club?.governance) {
+    return false;
+  }
+  if (sameUserId(user.id, club.governance.ownerUserId)) {
+    return true;
+  }
+  return localHasManagerAccess(user, club);
+}
+
+function resolveLocalClubById(clubId) {
+  if (typeof globalThis.localStorage === "undefined") {
+    return null;
+  }
+  try {
+    return loadClubs().find((item) => item.id === clubId) || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Canonical: is this user a governance manager (president / vice-president)?
  *
  * @param {object} user

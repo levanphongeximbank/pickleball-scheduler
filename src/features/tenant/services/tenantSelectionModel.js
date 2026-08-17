@@ -1,4 +1,4 @@
-import { isGlobalRole, isPlatformScopedRole } from "../../../auth/roles.js";
+import { isGlobalRole } from "../../../auth/roles.js";
 import { normalizeTenant } from "../../../models/tenant.js";
 import { resolveEffectiveTenantId } from "./tenantService.js";
 
@@ -18,13 +18,12 @@ export function canRenderTenantSwitcher(user) {
 }
 
 /**
- * SA and Platform Tech have no profile venue. They may operate unassigned
- * (no TenantGate lock, no first-tenant auto-pick). This is NOT switch permission.
+ * Super Admin may operate without a selected Tenant (directory / unassigned).
+ * SYSTEM_TECHNICIAN is not a second Super Admin and cannot operate unassigned
+ * business Tenant context.
  */
 export function canOperateUnassignedTenant(user) {
-  return Boolean(
-    user && (isGlobalRole(user.role) || isPlatformScopedRole(user.role))
-  );
+  return Boolean(user && isGlobalRole(user.role));
 }
 
 export function buildTenantCatalog(venues = []) {
@@ -118,33 +117,56 @@ export function resolveClubDetailTenantGate(currentTenantId) {
 }
 
 /**
- * After a successful canonical hydrate, drop session ids that are no longer
- * in the catalog. Empty/failed hydrate must not erase an explicit selection.
+ * After hydrate: restore only still-authorized persisted targets.
+ * Failed / pending authority must not keep stale context as authorized.
  */
+export function reauthorizePersistedTenantSelection({
+  sessionTenantId,
+  catalog = [],
+  hydrateStatus = "READY",
+  canonicalIds = [],
+} = {}) {
+  const current = String(sessionTenantId || "").trim();
+  if (!current) {
+    return { tenantId: null, status: "EMPTY" };
+  }
+
+  if (hydrateStatus === "PENDING") {
+    return { tenantId: null, status: "CONTEXT_UNRESOLVED", previousTenantId: current };
+  }
+
+  if (hydrateStatus === "FAILED" || hydrateStatus === "AUTHORITY_UNAVAILABLE") {
+    return {
+      tenantId: null,
+      status: "AUTHORITY_UNAVAILABLE",
+      previousTenantId: current,
+    };
+  }
+
+  if (findCatalogTenant(catalog, current)) {
+    return { tenantId: current, status: "RESTORED" };
+  }
+
+  if (Array.isArray(canonicalIds) && canonicalIds.length > 0) {
+    return { tenantId: null, status: "CLEARED", previousTenantId: current };
+  }
+
+  return { tenantId: null, status: "CLEARED", previousTenantId: current };
+}
+
 export function reconcileSessionWithCatalog({
   sessionTenantId,
   catalog = [],
   canonicalHydrateSucceeded = false,
   canonicalIds = [],
 } = {}) {
-  const current = String(sessionTenantId || "").trim();
-  if (!current) {
-    return null;
-  }
-
-  if (findCatalogTenant(catalog, current)) {
-    return current;
-  }
-
-  if (
-    canonicalHydrateSucceeded &&
-    Array.isArray(canonicalIds) &&
-    canonicalIds.length > 0
-  ) {
-    return null;
-  }
-
-  return current;
+  const result = reauthorizePersistedTenantSelection({
+    sessionTenantId,
+    catalog,
+    hydrateStatus: canonicalHydrateSucceeded ? "READY" : "FAILED",
+    canonicalIds,
+  });
+  return result.tenantId;
 }
 
 export function firstTenantFallbackId(tenants = []) {

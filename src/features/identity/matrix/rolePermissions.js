@@ -341,6 +341,11 @@ export const ROLE_PERMISSIONS = Object.freeze({
   [ROLES.SUPPORT]: Object.freeze(SUPPORT_PERMISSIONS),
 });
 
+/** Explicit SYSTEM_TECHNICIAN technical capability set (not a second Super Admin). */
+export const SYSTEM_TECHNICIAN_TECHNICAL_CAPABILITIES = Object.freeze([
+  ...SYSTEM_TECHNICIAN_PERMISSIONS,
+]);
+
 export function getPermissionsForRole(role) {
   const canonical = normalizeRole(role);
   return ROLE_PERMISSIONS[canonical] || [];

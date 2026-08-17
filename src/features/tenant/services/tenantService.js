@@ -18,6 +18,7 @@ import {
   DEFAULT_TENANT_ID,
 } from "../../../models/tenant.js";
 import { createVenueRecord } from "../../../models/venue.js";
+import { decideTenantAccess } from "./tenantAccessDecision.js";
 import {
   getExplicitTenantIdForClub,
   listClubsForTenant,
@@ -346,19 +347,7 @@ export function resolveEffectiveTenantId(user, overrideTenantId = null) {
 }
 
 export function canUserAccessTenant(user, tenantId) {
-  if (!user || !tenantId) {
-    return false;
-  }
-
-  if (isGlobalRole(user.role)) {
-    return true;
-  }
-
-  if (user.tenantId) {
-    return user.tenantId === tenantId;
-  }
-
-  return false;
+  return decideTenantAccess(user, tenantId, { requireTarget: true }).allowed;
 }
 
 export function isCurrentTenantUsable(tenant) {
