@@ -55,7 +55,8 @@ export function createClub(name) {
         isVenueScopedRole(currentUser.role) ||
         currentUser.role === ROLES.SUPER_ADMIN
       ) {
-        venueId = resolveEffectiveTenantId(currentUser);
+        // Wave 3: club.venueId is the physical home venue, not Tenant identity.
+        venueId = currentUser.venueId || resolveEffectiveTenantId(currentUser);
       }
 
       if (venueId) {

@@ -96,6 +96,7 @@ export function ensureDemoVenue() {
 
   const venue = createVenueRecord("Sân Demo", {
     id: DEMO_VENUE_ID,
+    tenantId: DEMO_VENUE_ID,
     status: "trial",
   });
 
@@ -133,7 +134,16 @@ export function createVenue(name, options = {}) {
     return { ok: false, error: "Tên sân không được để trống." };
   }
 
-  const venue = createVenueRecord(trimmed, options);
+  const tenantId = String(options.tenantId || options.tenant_id || "").trim();
+  if (!tenantId) {
+    return {
+      ok: false,
+      error: "Tạo Venue yêu cầu tenantId — Venue phải thuộc một Tenant.",
+      code: "TENANT_REQUIRED",
+    };
+  }
+
+  const venue = createVenueRecord(trimmed, { ...options, tenantId });
   const venues = loadVenues();
   saveVenues([...venues, venue]);
 

@@ -8,6 +8,7 @@ import AthleteRatingSummary from "../../src/features/pick-vn-rating/components/A
 import AthleteSelfProfilePage from "../../src/pages/player/AthleteSelfProfilePage.jsx";
 import { AuthProvider } from "../../src/context/AuthContext.jsx";
 import { TenantProvider } from "../../src/context/TenantContext.jsx";
+import { VenueProvider } from "../../src/context/VenueContext.jsx";
 import { ClubProvider } from "../../src/context/ClubContext.jsx";
 import { SeasonProvider } from "../../src/context/SeasonContext.jsx";
 import { PlatformRuntimeProvider } from "../../src/core/platform/app/PlatformRuntimeProvider.jsx";
@@ -67,6 +68,7 @@ function ProfilePageShell() {
       <PlatformRuntimeProvider>
         <AuthProvider>
           <TenantProvider>
+            <VenueProvider>
             <ClubProvider>
               <SeasonProvider>
                 <MemoryRouter initialEntries={["/player/profile"]}>
@@ -74,6 +76,7 @@ function ProfilePageShell() {
                 </MemoryRouter>
               </SeasonProvider>
             </ClubProvider>
+            </VenueProvider>
           </TenantProvider>
         </AuthProvider>
       </PlatformRuntimeProvider>

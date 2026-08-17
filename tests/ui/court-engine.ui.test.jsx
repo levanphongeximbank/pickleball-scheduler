@@ -10,6 +10,7 @@ import { AuthProvider } from "../../src/context/AuthContext.jsx";
 import { ClubProvider } from "../../src/context/ClubContext.jsx";
 import { SeasonProvider } from "../../src/context/SeasonContext.jsx";
 import { TenantProvider } from "../../src/context/TenantContext.jsx";
+import { VenueProvider } from "../../src/context/VenueContext.jsx";
 
 function seedClubWithSeasonAndLeague() {
   localStorage.clear();
@@ -43,11 +44,13 @@ function renderCourtEnginePage() {
     <MemoryRouter>
       <AuthProvider>
         <TenantProvider>
+          <VenueProvider>
           <ClubProvider>
             <SeasonProvider>
               <CourtEnginePage />
             </SeasonProvider>
           </ClubProvider>
+          </VenueProvider>
         </TenantProvider>
       </AuthProvider>
     </MemoryRouter>

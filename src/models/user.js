@@ -15,17 +15,9 @@ export function normalizeUser(user) {
     email: String(user?.email || "").trim().toLowerCase(),
     displayName: String(user?.displayName || user?.name || "").trim(),
     role: isValidRole(role) ? normalizeRole(role) : "",
-    /** Tenant — bắt buộc với mọi role trừ PLATFORM_ADMIN. venueId giữ tương thích ngược. */
-    tenantId: user?.tenantId
-      ? String(user.tenantId).trim()
-      : user?.venueId
-        ? String(user.venueId).trim()
-        : null,
-    venueId: user?.venueId
-      ? String(user.venueId).trim()
-      : user?.tenantId
-        ? String(user.tenantId).trim()
-        : null,
+    /** Wave 3: tenantId and venueId are distinct — no cross-fill invent. */
+    tenantId: user?.tenantId ? String(user.tenantId).trim() : null,
+    venueId: user?.venueId ? String(user.venueId).trim() : null,
     /** CLB được gán — CLUB_MANAGER, PLAYER. */
     clubId: user?.clubId ? String(user.clubId).trim() : null,
     /** Giải đồng đội — TEAM_CAPTAIN. */

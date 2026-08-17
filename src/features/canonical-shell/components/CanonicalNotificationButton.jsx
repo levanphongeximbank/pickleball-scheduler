@@ -29,7 +29,7 @@ export default function CanonicalNotificationButton() {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
 
-  const tenantId = currentTenantId || user?.venueId || null;
+  const tenantId = currentTenantId || user?.tenantId || null;
   const userId = user?.id || null;
   const enabled = Boolean(tenantId && userId);
 

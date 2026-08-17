@@ -167,7 +167,7 @@ test("role permissions map đầy đủ cho SUPER_ADMIN", () => {
 });
 
 test("venue và subscription models", () => {
-  const venue = createVenueRecord("Sân ABC", { id: "venue-abc" });
+  const venue = createVenueRecord("Sân ABC", { id: "venue-abc", tenantId: "tenant-abc" });
   assert.equal(venue.name, "Sân ABC");
   assert.equal(venue.id, "venue-abc");
 

@@ -21,6 +21,7 @@ import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import GlobalSearch from "./GlobalSearch.jsx";
 import AccountMenu from "./shell/AccountMenu.jsx";
 import TenantSwitcher from "./TenantSwitcher.jsx";
+import VenueSwitcher from "./VenueSwitcher.jsx";
 import ClubSwitcher from "./ClubSwitcher.jsx";
 import { useIsMobile } from "../features/mobile/hooks/useIsMobile.js";
 import { useTenant } from "../context/TenantContext.jsx";
@@ -38,7 +39,7 @@ export default function Header({ onMenuClick }) {
   const navigate = useNavigate();
   const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
 
-  const tenantId = currentTenantId || user?.venueId || null;
+  const tenantId = currentTenantId || user?.tenantId || null;
   const userId = user?.id || null;
   const inboxEnabled = Boolean(tenantId && userId);
   const showDesktopClubSwitcher =
@@ -120,6 +121,11 @@ export default function Header({ onMenuClick }) {
                 <TenantSwitcher variant="light" minWidth={200} />
               </Box>
             )}
+            {!isMobile && currentTenantId ? (
+              <Box sx={{ flexShrink: 0 }} data-testid="desktop-venue-switcher">
+                <VenueSwitcher variant="light" minWidth={160} />
+              </Box>
+            ) : null}
             {showDesktopClubSwitcher ? (
               <Box sx={{ flexShrink: 0 }} data-testid="desktop-club-switcher">
                 <ClubSwitcher variant="light" minWidth={160} />

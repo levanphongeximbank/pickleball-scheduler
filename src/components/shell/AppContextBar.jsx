@@ -7,6 +7,7 @@ import ClubSwitcher from "../ClubSwitcher.jsx";
 import ClusterSwitcher from "../ClusterSwitcher.jsx";
 import SeasonLeagueSwitcher from "../SeasonLeagueSwitcher.jsx";
 import TenantSwitcher from "../TenantSwitcher.jsx";
+import VenueSwitcher from "../VenueSwitcher.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useClub } from "../../context/ClubContext.jsx";
 import { useSeasonLeague } from "../../context/SeasonContext.jsx";
@@ -48,6 +49,7 @@ export default function AppContextBar() {
       <Collapse in={expanded}>
         <Stack spacing={1} sx={{ pt: 1, pb: 0.5 }}>
           {isSuperAdmin && <TenantSwitcher variant="context" />}
+          <VenueSwitcher variant="context" />
           {!isPlayer && <ClusterSwitcher variant="context" />}
           <ClubSwitcher variant="context" />
           <SeasonLeagueSwitcher variant="context" />

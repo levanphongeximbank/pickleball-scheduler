@@ -23,6 +23,7 @@ export function buildDefaultClusterId(venueId) {
 
 export function normalizeCourtCluster(cluster) {
   const venueId = String(cluster?.venueId || cluster?.venue_id || "").trim();
+  const tenantId = String(cluster?.tenantId || cluster?.tenant_id || "").trim() || null;
   const id = String(cluster?.id || "").trim();
   const name = String(cluster?.name || "").trim();
   const slug = String(cluster?.slug || slugifyClusterName(name) || id).trim();
@@ -30,6 +31,7 @@ export function normalizeCourtCluster(cluster) {
   return {
     id,
     venueId,
+    tenantId,
     name: name || id,
     slug,
     status: CLUSTER_STATUSES.includes(cluster?.status) ? cluster.status : "active",
