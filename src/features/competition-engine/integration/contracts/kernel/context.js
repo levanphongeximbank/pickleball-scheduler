@@ -118,7 +118,13 @@ export function requireAdapterContext(context, options = {}) {
     }
   }
 
-  const identityCandidates = ["actorId", "participantId", "playerId", "canonicalPlayerId"];
+  const identityCandidates = [
+    "actorId",
+    "participantId",
+    "playerId",
+    "canonicalPlayerId",
+    "subjectId",
+  ];
   for (const key of identityCandidates) {
     if (isNonEmptyString(context[key]) && looksLikeFuzzyIdentity(context[key])) {
       failCompetitionAdapter(

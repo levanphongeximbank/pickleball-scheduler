@@ -228,6 +228,15 @@ Rollback: `docs/supabase-identity-v40-phaseC-rollback.sql`
 
 Services gọi RPC trước, fallback direct query nếu SQL Phase C chưa apply.
 
+## Competition Contract #01 — subject identity point lookup
+
+`services/subjectIdentityLookupService.js` is the Identity-owned read for one canonical `subjectId`.
+
+- Point lookup only. No email / phone / display-name / bulk directory search.
+- Returns Competition-safe evidence: canonical subject id, Identity role, active/inactive status, tenant/venue/club scope.
+- Does not expose email, phone, password, session, or other private credentials.
+- Competition Adapter B translates this service. Competition must not query `public.profiles` directly.
+
 ### Tests
 
 `tests/identity-phaseC.test.js` — `/audit` guard, audit list permission, user list permission.

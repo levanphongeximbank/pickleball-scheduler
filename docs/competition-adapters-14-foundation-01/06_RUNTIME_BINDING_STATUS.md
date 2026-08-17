@@ -4,7 +4,7 @@ Honesty rule: if runtime is missing, `PRODUCTION_BINDING=NOT_CONFIGURED`. No fak
 
 | Contract | productionBinding | Notes |
 | --- | --- | --- |
-| Identity & Access | BOUND | wraps `createIdentityEvidenceFromIdentityAdapter` |
+| Identity & Access | BOUND | wraps `createIdentityEvidenceFromIdentityAdapter`; `resolveSubjectIdentity` is Identity-domain point lookup by canonical subjectId only |
 | Tenant & Organization | PARTIAL | tenant context guards bound; organization directory NOT_CONFIGURED |
 | Participant | BOUND | wraps `createPlayerParticipantLookupAdapter` |
 | Club / Team / Membership | PARTIAL | membership bound; team roster/captain NOT_CONFIGURED |

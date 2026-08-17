@@ -5,6 +5,7 @@
 | 01 Identity | `resolveActorIdentity` | QUERY | inbound | BOUND |
 | 01 Identity | `getAuthorizationEvidence` | QUERY | inbound | BOUND |
 | 01 Identity | `getCapabilityEvidence` | QUERY | inbound | BOUND |
+| 01 Identity | `resolveSubjectIdentity` | QUERY | inbound | BOUND (point lookup by canonical subjectId only; additive V1) |
 | 02 Tenant | `resolveTenantIdentity` | QUERY | inbound | PARTIAL |
 | 02 Tenant | `validateScope` | QUERY | inbound | PARTIAL |
 | 02 Tenant | `distinguishScopeIds` | QUERY | inbound | PARTIAL |
