@@ -40,6 +40,8 @@ import {
  * TT-5D BTC panel: searchable assign / change / revoke + correction review.
  * Assignment authority: CORE-13 shared command path via assignTeamRefereeViaCore13.
  * Team RPC remains thin transport only (not assignment business authority).
+ * Candidate source: team_tournament_search_referee_candidates (profiles identity).
+ * MANUAL_REFEREE_UUID_REQUIRED=NO
  */
 export default function TeamRefereeSafetyPanel({
   tournamentId,
