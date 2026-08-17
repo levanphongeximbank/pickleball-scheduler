@@ -45,6 +45,7 @@ export {
 export {
   refereeV5EdgeApplyCommand,
   refereeV5EdgeFinalize,
+  refereeV5EdgeInitializeExecution,
 } from "./services/refereeV5EdgeClient.js";
 export {
   refereeV5CommitMatchTransition,

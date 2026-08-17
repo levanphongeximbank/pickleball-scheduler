@@ -26,7 +26,23 @@ export function deriveUserIdFromVerifiedToken(accessToken) {
 }
 
 export function rejectClientIdentityFields(requestBody = {}) {
-  const forbidden = ["actorId", "actor_id", "userId", "user_id", "tenantId", "tenant_id", "role"];
+  const forbidden = [
+    "actorId",
+    "actor_id",
+    "userId",
+    "user_id",
+    "tenantId",
+    "tenant_id",
+    "role",
+    "actor",
+    "actorRole",
+    "tenantRole",
+    "trustedActor",
+    "initialState",
+    "statePayload",
+    "stateSnapshot",
+    "serviceRoleKey",
+  ];
   for (const key of forbidden) {
     if (Object.prototype.hasOwnProperty.call(requestBody, key)) {
       return {
