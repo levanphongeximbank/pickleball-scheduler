@@ -1,5 +1,13 @@
 export { isRefereeV5Enabled } from "./flags.js";
 export { initializeMatchState } from "./engines/initializeMatchState.js";
+export {
+  initializeMatchExecutionState,
+  SHARED_REFEREE_MATCH_EXECUTION_INITIALIZATION,
+} from "./execution/initializeMatchExecutionState.js";
+export {
+  MATCH_EXECUTION_INIT_RPC,
+  MATCH_LIVE_STATES_CLASSIFICATION,
+} from "./execution/matchExecutionInitPolicy.js";
 export { applyMatchEvent, buildRuleConfig } from "./engines/matchStateEngine.js";
 export {
   dispatchMatchCommand,
@@ -41,6 +49,7 @@ export {
 export {
   refereeV5CommitMatchTransition,
   refereeV5CommitMatchFinalization,
+  refereeV5InitializeMatchExecutionState,
 } from "./services/refereeV5InternalRpcService.js";
 export { RefereeV5EdgeCommandHandler } from "./persistence/RefereeV5EdgeCommandHandler.js";
 export { RefereeV5AtomicCommitService } from "./persistence/RefereeV5AtomicCommitService.js";

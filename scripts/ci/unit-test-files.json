@@ -169,6 +169,7 @@
   "tests/referee-v5/referee-v5-persistence.test.js",
   "tests/referee-v5/referee-v5-d1.test.js",
   "tests/referee-v5/referee-v5-e1-realtime.test.js",
+  "tests/referee-v5/referee-v5-match-execution-init.test.js",
   "tests/score-history.test.js",
   "tests/player-management-phase-1b-facade.test.js",
   "tests/player-management-phase-1c-profile-fields.test.js",
