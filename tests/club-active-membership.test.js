@@ -86,10 +86,15 @@ test("active membership resolver is canonical-only and ignores legacy profile cl
 });
 
 test("authStorage V2 strips legacy club link fields", () => {
-  const src = readSrc("src/auth/authStorage.js");
-  assert.match(src, /isClubStorageV2Enabled/);
-  assert.match(src, /stripLegacyProfileClubFields/);
-  assert.match(src, /clearAthleteClubLink/);
+  // Wave 2: Club V2 strip binds via auth session projectors (no Club imports in Platform auth).
+  const authStorage = readSrc("src/auth/authStorage.js");
+  assert.match(authStorage, /applyAuthSessionLoadProjectors/);
+  assert.doesNotMatch(authStorage, /features\/club|stripLegacyProfileClubFields|isClubStorageV2Enabled/);
+
+  const projection = readSrc("src/features/club/services/authSessionClubProjection.js");
+  assert.match(projection, /isClubStorageV2Enabled/);
+  assert.match(projection, /stripLegacyProfileClubFields/);
+  assert.match(projection, /clearAthleteClubLink/);
 });
 
 test("Phase 42H SQL clears profile links on leave", () => {
