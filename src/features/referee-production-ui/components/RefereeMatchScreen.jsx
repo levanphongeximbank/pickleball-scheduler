@@ -383,6 +383,7 @@ export default function RefereeMatchScreen({
   onChangeEnds,
   onConfigureLineup,
   onChangeServe,
+  onUndoLastScoringAction,
   onSubmitResult,
   onCorrect,
   onReload,
@@ -851,6 +852,39 @@ export default function RefereeMatchScreen({
               </button>
             </>
           )}
+          <button
+            type="button"
+            className="rp-btn rp-btn-ghost rp-actions-wide rp-btn-undo"
+            disabled={pending || stale || view.canUndo !== true}
+            onClick={onUndoLastScoringAction}
+            data-testid="btn-undo-last-scoring-action"
+            aria-label="Hoàn tác lần ghi gần nhất"
+            title={
+              view.canUndo === true
+                ? "Hoàn tác lần ghi gần nhất"
+                : view.undoAvailability?.message ||
+                  "Không thể hoàn tác lần ghi gần nhất"
+            }
+          >
+            {pendingAction === "undo"
+              ? "Đang hoàn tác..."
+              : "↶ Hoàn tác lần ghi gần nhất"}
+          </button>
+        </div>
+      ) : view.canUndo === true || pendingAction === "undo" ? (
+        <div className="rp-score-actions" data-testid="score-actions">
+          <button
+            type="button"
+            className="rp-btn rp-btn-ghost rp-actions-wide rp-btn-undo"
+            disabled={pending || stale || view.canUndo !== true}
+            onClick={onUndoLastScoringAction}
+            data-testid="btn-undo-last-scoring-action"
+            aria-label="Hoàn tác lần ghi gần nhất"
+          >
+            {pendingAction === "undo"
+              ? "Đang hoàn tác..."
+              : "↶ Hoàn tác lần ghi gần nhất"}
+          </button>
         </div>
       ) : null}
 

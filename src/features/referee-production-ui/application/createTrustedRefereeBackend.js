@@ -24,6 +24,8 @@ const COMMAND_MAP = Object.freeze({
   startMatch: "startMatch",
   [CANONICAL_UI_COMMAND.SUBMIT_POINT]: "submitPoint",
   submitPoint: "submitPoint",
+  [CANONICAL_UI_COMMAND.UNDO_LAST_SCORING_ACTION]: "undoLastScoringAction",
+  undoLastScoringAction: "undoLastScoringAction",
   [CANONICAL_UI_COMMAND.SUSPEND]: "suspendMatch",
   suspendMatch: "suspendMatch",
   [CANONICAL_UI_COMMAND.RESUME]: "resumeMatch",

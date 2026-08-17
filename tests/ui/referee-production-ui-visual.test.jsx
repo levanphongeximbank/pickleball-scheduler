@@ -757,6 +757,7 @@ describe("match screen visual states @ ~390px", () => {
             canPointSideA: true,
             canPointSideB: false,
             canChangeServe: true,
+            canUndo: true,
             servingSideNow: "SIDE_A",
             receivingSideNow: "SIDE_B",
           })}
@@ -768,8 +769,72 @@ describe("match screen visual states @ ~390px", () => {
     expect(screen.getByTestId("score-pending-hint")).toHaveTextContent("Đang xác nhận...");
     expect(screen.getByTestId("btn-point-a")).toBeDisabled();
     expect(screen.getByTestId("btn-change-serve")).toBeDisabled();
+    expect(screen.getByTestId("btn-undo-last-scoring-action")).toBeDisabled();
     expect(screen.queryByTestId("btn-point-b")).not.toBeInTheDocument();
     expect(screen.getByTestId("btn-point-a")).toHaveTextContent("Đang xác nhận...");
+  });
+
+  it("8c. undo button uses Vietnamese restore label and pending Đang hoàn tác...", async () => {
+    const user = userEvent.setup();
+    const onUndo = vi.fn();
+    render(
+      <MemoryRouter>
+        <RefereeMatchScreen
+          view={baseView({
+            canScore: true,
+            canUndo: true,
+            undoAvailability: { undoAvailable: true, reasonCode: null },
+          })}
+          onUndoLastScoringAction={onUndo}
+        />
+      </MemoryRouter>
+    );
+    const undoBtn = screen.getByTestId("btn-undo-last-scoring-action");
+    expect(undoBtn).toHaveTextContent("↶ Hoàn tác lần ghi gần nhất");
+    expect(undoBtn).not.toHaveTextContent(/- Điểm|Giảm điểm/);
+    expect(undoBtn).not.toBeDisabled();
+    await user.click(undoBtn);
+    expect(onUndo).toHaveBeenCalledTimes(1);
+
+    render(
+      <MemoryRouter>
+        <RefereeMatchScreen
+          view={baseView({
+            canScore: true,
+            canUndo: true,
+            undoAvailability: { undoAvailable: true, reasonCode: null },
+          })}
+          pendingAction="undo"
+          onUndoLastScoringAction={onUndo}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getAllByTestId("btn-undo-last-scoring-action")[1]).toHaveTextContent(
+      "Đang hoàn tác..."
+    );
+    expect(screen.getAllByTestId("btn-undo-last-scoring-action")[1]).toBeDisabled();
+  });
+
+  it("8d. undo disabled when server eligibility is false", () => {
+    render(
+      <MemoryRouter>
+        <RefereeMatchScreen
+          view={baseView({
+            canScore: true,
+            canUndo: false,
+            undoAvailability: {
+              undoAvailable: false,
+              reasonCode: "FAIL_CLOSED_UNSUPPORTED_FOR_QUICK_UNDO",
+              message: "Quick undo rejected after confirmChangeEnds ACK (v1)",
+            },
+          })}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId("btn-undo-last-scoring-action")).toBeDisabled();
+    expect(screen.getByTestId("btn-undo-last-scoring-action")).toHaveTextContent(
+      "↶ Hoàn tác lần ghi gần nhất"
+    );
   });
 
   it("8b. optimistic change-end warning does not enable confirm before ACK", () => {

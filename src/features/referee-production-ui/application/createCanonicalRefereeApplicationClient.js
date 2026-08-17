@@ -18,6 +18,10 @@ import {
   isRefereeAdapterContractError,
 } from "../../competition-engine/integration/referee/errors.js";
 import { isRefereeOperationsError } from "../../competition-engine/operations/referee/errors.js";
+import {
+  evaluateUndoAvailability,
+  findLastEligibleScoringEvent,
+} from "../../competition-engine/operations/referee/scoring/undoLastScoringActionHelpers.js";
 import { CANONICAL_UI_COMMAND, COURT_ORIENTATION, REFEREE_UI_ERROR_CODE } from "../constants.js";
 import { buildRefereeAssignmentCard } from "../projection/buildRefereeAssignmentCard.js";
 import { buildRefereeMatchView } from "../projection/buildRefereeMatchView.js";
@@ -478,6 +482,28 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         liveInfo?.courtState?.lastSideChangeEventId ||
         null,
     };
+    const scoreSession =
+      live?.statePayload?.canonical?.scoreSession ||
+      assignedMatchRaw?.scoreSession ||
+      null;
+    const validation =
+      live?.statePayload?.canonical?.validation ||
+      assignedMatchRaw?.validation ||
+      (assignedMatchRaw?.validationStatus
+        ? { status: assignedMatchRaw.validationStatus }
+        : null);
+    // Server-derived eligibility only (trusted host). Never invent client-side undo rules.
+    const undoAvailability =
+      extras.undoAvailability ||
+      evaluateUndoAvailability({
+        match: assignedMatch?.match || live?.statePayload?.canonical?.match || null,
+        session: scoreSession,
+        validation,
+        court: courtState,
+        actualVersion: liveInfo?.expectedVersion,
+        targetEvent: findLastEligibleScoringEvent(scoreSession?.state),
+        ledger: scoreSession?.actionLedger,
+      });
     return buildRefereeMatchView({
       matchId: assignment.matchId,
       competitionMode: mode,
@@ -522,6 +548,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       stale: extras.stale === true,
       preStart,
       actor,
+      undoAvailability,
     });
   }
 
@@ -849,6 +876,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           scoreProjection: result?.scoreProjection || undefined,
           // After durable score write, never reuse pre-write live for lifecycle/score.
           liveInfo: postLiveInfo || undefined,
+          undoAvailability: result?.undoAvailability || undefined,
         });
         timing.postCommitProjectionMs = Date.now() - tProj0;
         timing.totalMs = Date.now() - t0;
@@ -946,6 +974,14 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
     }
     return runCommand(command, CANONICAL_UI_COMMAND.SUBMIT_POINT, (base) =>
       facade.submitScoreProjection({ ...base, scoringSide, points: command.points || 1 })
+    );
+  }
+
+  async function undoLastScoringAction(command = {}) {
+    return runCommand(
+      command,
+      CANONICAL_UI_COMMAND.UNDO_LAST_SCORING_ACTION,
+      (base) => facade.undoLastScoringAction(base)
     );
   }
 
@@ -1219,6 +1255,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
     startScoreSession,
     startMatch,
     submitPoint,
+    undoLastScoringAction,
     suspendMatch,
     resumeMatch,
     confirmChangeEnds,

@@ -103,6 +103,8 @@ export function createBrowserRefereeApplicationClient(options = {}) {
     startScoreSession: (command) => viaTransport("startScoreSession", command),
     startMatch: (command) => viaTransport("startMatch", command),
     submitPoint: (command) => viaTransport("submitPoint", command),
+    undoLastScoringAction: (command) =>
+      viaTransport("undoLastScoringAction", command),
     suspendMatch: (command) => viaTransport("suspendMatch", command),
     resumeMatch: (command) => viaTransport("resumeMatch", command),
     confirmChangeEnds: (command) => viaTransport("confirmChangeEnds", command),

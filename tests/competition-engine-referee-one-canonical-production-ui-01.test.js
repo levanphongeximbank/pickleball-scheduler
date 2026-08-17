@@ -1125,6 +1125,13 @@ test("browser client authenticated transport invoked with expectedVersion + idem
         view: { matchId: payload.matchId, expectedVersion: 4 },
       };
     },
+    undoLastScoringAction: async (payload) => {
+      calls.push(["undoLastScoringAction", payload]);
+      return {
+        ok: true,
+        view: { matchId: payload.matchId, expectedVersion: 5, canUndo: false },
+      };
+    },
     startMatch: async () => ({ ok: true }),
     acknowledgeAssignment: async () => ({ ok: true }),
     openAssignedMatch: async () => ({ ok: true }),
@@ -1156,13 +1163,44 @@ test("browser client authenticated transport invoked with expectedVersion + idem
     expectedVersion: 3,
     idempotencyKey: "idem-1",
   });
+  await client.undoLastScoringAction({
+    tenantId: "tenant-1",
+    matchId: "matchup-7t58gnjq",
+    expectedVersion: 4,
+    idempotencyKey: "idem-undo-1",
+  });
   assert.equal(calls[0][0], "getMatchView");
   assert.equal(calls[1][0], "submitPoint");
   assert.equal(calls[1][1].expectedVersion, 3);
   assert.equal(calls[1][1].idempotencyKey, "idem-1");
+  assert.equal(calls[2][0], "undoLastScoringAction");
+  assert.equal(calls[2][1].expectedVersion, 4);
+  assert.equal(calls[2][1].idempotencyKey, "idem-undo-1");
   assert.doesNotMatch(
     read("src/features/referee-production-ui/application/createBrowserRefereeApplicationClient.js"),
     /Deep-link match view requires canonical Adapter B runtime/
+  );
+  assert.match(
+    read(
+      "src/features/referee-production-ui/application/createAuthenticatedRefereeCommandTransport.js"
+    ),
+    /UNDO_LAST_SCORING_ACTION/
+  );
+  assert.match(
+    read("src/features/referee-production-ui/constants.js"),
+    /UNDO_LAST_SCORING_ACTION/
+  );
+  assert.match(
+    read("src/features/referee-production-ui/components/RefereeMatchScreen.jsx"),
+    /↶ Hoàn tác lần ghi gần nhất/
+  );
+  assert.match(
+    read("src/features/referee-production-ui/components/RefereeMatchScreen.jsx"),
+    /Đang hoàn tác\.\.\./
+  );
+  assert.doesNotMatch(
+    read("src/features/referee-production-ui/components/RefereeMatchScreen.jsx"),
+    /- Điểm|Giảm điểm/
   );
 });
 
@@ -1322,10 +1360,13 @@ test("owner visual remediation — chrome suppress + participant-aware controls"
   assert.match(match, /leftPointHandler/);
   assert.match(match, /data-display-end/);
   assert.match(match, /Đang xác nhận\.\.\./);
+  assert.match(match, /btn-undo-last-scoring-action/);
+  assert.match(match, /↶ Hoàn tác lần ghi gần nhất/);
+  assert.match(match, /Đang hoàn tác\.\.\./);
   assert.match(match, /score-pending-hint|changeEndConfirmBlocked|isOptimisticPresentation/);
   assert.match(
     read("src/features/referee-production-ui/hooks/useCanonicalRefereeMatch.js"),
-    /authoritativeView|optimisticView|deriveOptimisticSubmitPointView/
+    /authoritativeView|optimisticView|deriveOptimisticSubmitPointView|undoLastScoringAction/
   );
   assert.match(
     read("src/features/referee-production-ui/projection/deriveOptimisticSubmitPointView.js"),

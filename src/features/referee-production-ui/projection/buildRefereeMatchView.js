@@ -79,6 +79,7 @@ function playerNamesForSide(side, names) {
  *   pendingCanonicalAction?: string|null,
  *   stale?: boolean,
  *   preStart?: object|null,
+ *   undoAvailability?: { undoAvailable?: boolean, reasonCode?: string|null, message?: string|null }|null,
  * }} input
  */
 export function buildRefereeMatchView(input) {
@@ -142,6 +143,17 @@ export function buildRefereeMatchView(input) {
     (matchStatus === MATCH_STATUS.IN_PROGRESS &&
       capabilities.switchPositions !== false &&
       capabilities.switch_positions !== false);
+
+  // Server-derived only — never invent eligibility on the client.
+  const undoAvailability = Object.freeze(
+    input.undoAvailability ||
+      assigned.undoAvailability || {
+        undoAvailable: false,
+        reasonCode: null,
+        message: null,
+      }
+  );
+  const canUndo = undoAvailability.undoAvailable === true;
 
   const sides = Array.isArray(input.participants?.sides) ? input.participants.sides : [];
   const sideA = sides[0] || null;
@@ -388,6 +400,8 @@ export function buildRefereeMatchView(input) {
     lineupRequired,
     canStart: canStartBase && (!hasCourtPlayers || lineupConfigured),
     canScore: canScoreBase,
+    canUndo,
+    undoAvailability,
     canSuspend:
       matchStatus === MATCH_STATUS.IN_PROGRESS && capabilities.suspend !== false,
     canResume:

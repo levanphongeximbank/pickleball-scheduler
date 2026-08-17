@@ -866,6 +866,15 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         const nextRecord = await loadRecord(cmd);
         expectedVersion = Number(nextRecord.revision || 0);
       }
+      const undoAvailability = evaluateUndoAvailability({
+        match,
+        session: nextSession,
+        validation: record.validationByMatch?.[matchId] || null,
+        court: nextCourt,
+        actualVersion: expectedVersion,
+        targetEvent: findLastEligibleScoringEvent(nextSession.state),
+        ledger: nextSession.actionLedger,
+      });
       return deepFreeze({
         ok: true,
         scoreProjection: projection,
@@ -877,6 +886,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         calculatedWinnerSide: state.calculatedWinnerSide || null,
         winnerInferenceByFacade: false,
         expectedVersion,
+        undoAvailability,
         fingerprint: computeOrganizerFingerprint(
           { matchId, projection, court: nextCourt },
           "e2e04-ref-score"
@@ -973,10 +983,22 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         draft.courtsByMatch[matchId] = nextCourt;
       });
       const nextRecord = await loadRecord(cmd);
+      const undoAvailability = evaluateUndoAvailability({
+        match: nextRecord.matches?.[matchId],
+        session: nextRecord.scoreSessions?.[matchId],
+        validation: nextRecord.validationByMatch?.[matchId] || null,
+        court: nextRecord.courtsByMatch?.[matchId] || nextCourt,
+        actualVersion: nextRecord.revision,
+        targetEvent: findLastEligibleScoringEvent(
+          nextRecord.scoreSessions?.[matchId]?.state
+        ),
+        ledger: nextRecord.scoreSessions?.[matchId]?.actionLedger,
+      });
       return deepFreeze({
         ok: true,
         court: nextCourt,
         expectedVersion: Number(nextRecord.revision || 0),
+        undoAvailability,
         fingerprint: computeOrganizerFingerprint(
           { matchId, court: nextCourt },
           "e2e04-ref-change-ends"

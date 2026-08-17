@@ -111,6 +111,8 @@ export function createAuthenticatedRefereeCommandTransport(options = {}) {
     startScoreSession: (payload) => invoke("startScoreSession", payload),
     startMatch: (payload) => invoke("startMatch", payload),
     submitPoint: (payload) => invoke("submitPoint", payload),
+    undoLastScoringAction: (payload) =>
+      invoke("UNDO_LAST_SCORING_ACTION", payload),
     suspendMatch: (payload) => invoke("suspendMatch", payload),
     resumeMatch: (payload) => invoke("resumeMatch", payload),
     confirmChangeEnds: (payload) => invoke("confirmChangeEnds", payload),

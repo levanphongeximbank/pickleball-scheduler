@@ -68,6 +68,7 @@ export default function RefereeCanonicalMatchPage({ client: clientProp }) {
       onPointA={() => match.submitPoint("SIDE_A")}
       onPointB={() => match.submitPoint("SIDE_B")}
       onChangeServe={match.changeServe}
+      onUndoLastScoringAction={match.undoLastScoringAction}
       onSuspend={match.suspendMatch}
       onResume={match.resumeMatch}
       onChangeEnds={match.confirmChangeEnds}

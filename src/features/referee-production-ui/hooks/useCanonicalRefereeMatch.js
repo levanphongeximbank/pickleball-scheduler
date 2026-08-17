@@ -12,28 +12,56 @@ function isPointAction(action) {
   return String(action || "").startsWith("point:") || action === "change-serve";
 }
 
-function classifyCommandError(err) {
+function isUndoAction(action) {
+  return action === "undo" || action === "UNDO_LAST_SCORING_ACTION";
+}
+
+function classifyCommandError(err, { action } = {}) {
   const code = err?.code || "";
   const message = err instanceof Error ? err.message : String(err || "");
+  const forUndo = isUndoAction(action);
   if (
     code === REFEREE_ADAPTER_ERROR_CODE.STALE_WRITE ||
     /stale|expectedVersion|CAS|version/i.test(message)
   ) {
     return {
       stale: true,
-      message:
-        "Chưa ghi được điểm. Trạng thái trận đã thay đổi, vui lòng thử lại.",
+      message: forUndo
+        ? "Chưa hoàn tác được. Trạng thái trận đã thay đổi, vui lòng thử lại."
+        : "Chưa ghi được điểm. Trạng thái trận đã thay đổi, vui lòng thử lại.",
     };
   }
   if (/network|fetch|Failed to fetch|timeout|ECONN|offline/i.test(message)) {
     return {
       stale: false,
-      message: "Không thể xác nhận điểm. Vui lòng thử lại.",
+      message: forUndo
+        ? "Không thể hoàn tác. Vui lòng thử lại."
+        : "Không thể xác nhận điểm. Vui lòng thử lại.",
+    };
+  }
+  if (
+    code === "FAIL_CLOSED_UNSUPPORTED_FOR_QUICK_UNDO" ||
+    /confirmChangeEnds|CHANGE_END_ACKED|quick undo/i.test(message)
+  ) {
+    return {
+      stale: false,
+      message:
+        "Không thể hoàn tác nhanh sau khi đã xác nhận đổi sân.",
+    };
+  }
+  if (code === "UNDO_NOT_ELIGIBLE" || /No eligible scoring action/i.test(message)) {
+    return {
+      stale: false,
+      message: "Không có lần ghi điểm nào để hoàn tác.",
     };
   }
   return {
     stale: false,
-    message: message || "Không thể xác nhận điểm. Vui lòng thử lại.",
+    message:
+      message ||
+      (forUndo
+        ? "Không thể hoàn tác. Vui lòng thử lại."
+        : "Không thể xác nhận điểm. Vui lòng thử lại."),
   };
 }
 
@@ -187,9 +215,11 @@ export function useCanonicalRefereeMatch({
           clearOptimistic();
           setStale(true);
           if (result.view) setAuthoritativeView(result.view);
-          if (isPointAction(action)) {
+          if (isPointAction(action) || isUndoAction(action)) {
             setError(
-              "Chưa ghi được điểm. Trạng thái trận đã thay đổi, vui lòng thử lại."
+              isUndoAction(action)
+                ? "Chưa hoàn tác được. Trạng thái trận đã thay đổi, vui lòng thử lại."
+                : "Chưa ghi được điểm. Trạng thái trận đã thay đổi, vui lòng thử lại."
             );
           }
           return result;
@@ -206,20 +236,20 @@ export function useCanonicalRefereeMatch({
         if (err?.code === REFEREE_UI_ERROR_CODE.DUPLICATE_ACTION_BLOCKED) {
           return { ok: false, duplicateBlocked: true, code: err.code };
         }
-        const classified = classifyCommandError(err);
+        const classified = classifyCommandError(err, { action });
         if (classified.stale || err?.code === REFEREE_ADAPTER_ERROR_CODE.STALE_WRITE) {
           setStale(true);
           setError(classified.message);
           return { ok: false, stale: true, failClosed: true, error: classified.message };
         }
         setError(
-          isPointAction(action)
+          isPointAction(action) || isUndoAction(action)
             ? classified.message
             : err instanceof Error
               ? err.message
               : "Lệnh trọng tài thất bại"
         );
-        if (isPointAction(action)) {
+        if (isPointAction(action) || isUndoAction(action)) {
           return { ok: false, error: classified.message, networkFailure: true };
         }
         throw err;
@@ -260,6 +290,11 @@ export function useCanonicalRefereeMatch({
     );
   }, [client, run]);
 
+  // No optimistic restore — pending until server ACK replaces authoritative view.
+  const undoLastScoringAction = useCallback(() => {
+    return run("undo", (cmd) => client.undoLastScoringAction(cmd));
+  }, [client, run]);
+
   const displayView = optimisticView ?? authoritativeView;
 
   return {
@@ -277,6 +312,7 @@ export function useCanonicalRefereeMatch({
     startMatch: () => run("start", (cmd) => client.startMatch(cmd)),
     submitPoint,
     changeServe,
+    undoLastScoringAction,
     suspendMatch: () => run("suspend", (cmd) => client.suspendMatch(cmd)),
     resumeMatch: () => run("resume", (cmd) => client.resumeMatch(cmd)),
     confirmChangeEnds: () => run("change-ends", (cmd) => client.confirmChangeEnds(cmd)),
