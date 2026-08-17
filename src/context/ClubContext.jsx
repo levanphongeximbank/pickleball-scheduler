@@ -1,5 +1,4 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Alert, Snackbar } from "@mui/material";
 
 import {
   clearActiveClubIdPreference,
@@ -28,9 +27,6 @@ import {
   isClubStorageV2Enabled,
 } from "../features/club/config/clubRegistryFlags.js";
 import { isClubCloudCommandAuthoritative } from "../features/club/services/clubLegacyWriteGuard.js";
-import { isClubDataDirty } from "../domain/clubSyncMetadata.js";
-import { PERMISSIONS } from "../auth/permissions.js";
-import { pullClubFromCloud } from "../ai/cloudSync.js";
 import { isVenueScopedRole, isClubScopedRole, isPlatformWideRole } from "../auth/roles.js";
 import { ensureWritableClubForVenueOwner } from "../features/club/services/venueOwnerClubService.js";
 import { invalidateMyActiveClubMembershipCache } from "../features/club/services/clubActiveMembershipService.js";
@@ -51,7 +47,6 @@ import {
   resolveActiveClubSelection,
   toClubReadSnapshot,
 } from "../features/club/context/clubCanonicalReadModel.js";
-import { ensureMonthlySkillLevelProposals } from "../domain/skillLevelService.js";
 import { buildClubRehydrateScopeKey } from "../auth/authSemanticScope.js";
 import {
   logPlatformContextEvent,
@@ -63,7 +58,6 @@ import { canAccessClub } from "../auth/rbac.js";
 import {
   listClubsForTenant,
 } from "../features/tenant/guards/tenantGuard.js";
-import { autoPullOnClubActivate, isAiAutoCloudSyncEnabled } from "../ai/autoCloudSync.js";
 
 const ClubContext = createContext(null);
 
@@ -86,7 +80,6 @@ export function ClubProvider({ children }) {
     canonicalRead ? getActiveClubIdPreference() : getActiveClubId()
   );
   const [revision, setRevision] = useState(0);
-  const [syncConflictMessage, setSyncConflictMessage] = useState(null);
   const [clubScopeStatus, setClubScopeStatus] = useState("idle");
 
   // Canonical read snapshot (only authoritative when canonicalRead === true).
@@ -382,66 +375,6 @@ export function ClubProvider({ children }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
   }, [canonicalRead, activeClubId, isAuthenticated, rbacEnabled, clubRehydrateScopeKey, visibleClubs]);
-
-  useEffect(() => {
-    if (!activeClubId || !isAuthenticated || !isAiAutoCloudSyncEnabled()) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void autoPullOnClubActivate(activeClubId).then((result) => {
-      if (!cancelled && result?.ok && !result.skipped && !result.error) {
-        setRevision((value) => value + 1);
-      }
-    });
-
-    const onClubConflict = (event) => {
-      const conflictClubId = event?.detail?.clubId || activeClubId;
-
-      if (isClubDataDirty(conflictClubId)) {
-        setSyncConflictMessage(
-          "Dữ liệu CLB đã được cập nhật trên cloud trong khi máy bạn có thay đổi chưa đồng bộ. Vào Cài đặt để đẩy lên hoặc tải lại."
-        );
-        return;
-      }
-
-      setSyncConflictMessage("Dữ liệu CLB đã được cập nhật bởi người khác — đang tải lại...");
-      void pullClubFromCloud({
-        clubId: conflictClubId,
-        permission: PERMISSIONS.SCHEDULING_RUN,
-      }).then((result) => {
-        if (!cancelled && result?.ok) {
-          setRevision((value) => value + 1);
-          setSyncConflictMessage("Đã tải dữ liệu CLB mới nhất từ cloud.");
-        } else if (!cancelled && result?.error) {
-          setSyncConflictMessage(result.error);
-        }
-      });
-    };
-
-    window.addEventListener("club-data:version-conflict", onClubConflict);
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("club-data:version-conflict", onClubConflict);
-    };
-  }, [activeClubId, isAuthenticated]);
-
-  useEffect(() => {
-    if (!activeClubId) {
-      return;
-    }
-
-    const result = ensureMonthlySkillLevelProposals(activeClubId);
-    if (
-      result.ok &&
-      !result.skipped &&
-      (result.proposalCount > 0 || result.holds > 0)
-    ) {
-      setRevision((value) => value + 1);
-    }
-  }, [activeClubId]);
 
   const refreshClubs = useCallback(() => {
     if (canonicalRead) {
@@ -830,21 +763,6 @@ export function ClubProvider({ children }) {
   return (
     <ClubContext.Provider value={value}>
       {children}
-      <Snackbar
-        open={Boolean(syncConflictMessage)}
-        autoHideDuration={6000}
-        onClose={() => setSyncConflictMessage(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          onClose={() => setSyncConflictMessage(null)}
-          severity="warning"
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {syncConflictMessage}
-        </Alert>
-      </Snackbar>
     </ClubContext.Provider>
   );
 }

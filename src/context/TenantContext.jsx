@@ -36,21 +36,7 @@ import {
   resolvePickerCurrentTenantId,
 } from "../features/tenant/services/tenantSelectionModel.js";
 import { hasSupabaseConfig } from "../auth/supabaseClient.js";
-import {
-  assertSubscriptionOperational,
-  runSubscriptionMaintenance,
-} from "../features/billing/bridges/subscriptionAccessBridge.js";
-import {
-  BILLING_STORE_MODES,
-  getBillingStore,
-  resolveBillingStoreMode,
-} from "../features/billing/repositories/billingRepository.js";
-import {
-  ensureBillingStoreHydrated,
-  resetBillingStoreHydration,
-} from "../features/billing/repositories/billingStoreRuntime.js";
-import { syncLegacySubscriptionsFromBilling } from "../domain/venueService.js";
-import { isSubscriptionOperationalExemptRole } from "../features/billing/guards/operationalRoutePolicy.js";
+import { getBillingAccessCapability } from "../core/platform/app/billingAccessCapability.js";
 import { isCanonicalClubRepositoryEnabled } from "../features/club/config/canonicalRepositoryFlags.js";
 import { isCanonicalClubReadEnabled } from "../features/club/context/clubCanonicalReadModel.js";
 
@@ -108,27 +94,22 @@ export function TenantProvider({ children }) {
 
   useEffect(() => {
     let cancelled = false;
+    const billing = getBillingAccessCapability();
 
     void (async () => {
       ensureTenantBootstrap();
 
-      if (
-        resolveBillingStoreMode() === BILLING_STORE_MODES.SUPABASE &&
-        rbacEnabled &&
-        isAuthenticated &&
-        userId
-      ) {
-        const store = getBillingStore();
-        resetBillingStoreHydration(store);
-        await ensureBillingStoreHydrated(store);
-        syncLegacySubscriptionsFromBilling();
-      }
+      await billing.ensureSessionReady({
+        rbacEnabled,
+        isAuthenticated,
+        userId,
+      });
 
       if (cancelled) {
         return;
       }
 
-      runSubscriptionMaintenance();
+      billing.runMaintenance();
       setTenantCatalog((current) => {
         const registry = readSelectableTenantCatalog();
         if (!current.length) {
@@ -253,7 +234,8 @@ export function TenantProvider({ children }) {
 
     if (!currentTenantId) {
       // CLB/VĐV/huấn luyện — không bắt buộc gán tenant venue (đồng bộ operationalRoutePolicy).
-      if (isSubscriptionOperationalExemptRole(user)) {
+      const billing = getBillingAccessCapability();
+      if (billing.isExemptRole(user)) {
         return { ok: true, code: "TENANT_UNASSIGNED" };
       }
 
@@ -284,11 +266,13 @@ export function TenantProvider({ children }) {
       return { ok: true };
     }
 
-    if (isSubscriptionOperationalExemptRole(user)) {
+    const billing = getBillingAccessCapability();
+    if (billing.isExemptRole(user)) {
       return { ok: true };
     }
 
-    return assertSubscriptionOperational(currentTenantId);
+    // Fail-closed when billing authority is required but unbound.
+    return billing.assertOperational(currentTenantId);
   }, [currentTenantId, isAuthenticated, isPlatformTech, isSuperAdmin, rbacEnabled, revision, user]);
 
   const switchTenant = useCallback(

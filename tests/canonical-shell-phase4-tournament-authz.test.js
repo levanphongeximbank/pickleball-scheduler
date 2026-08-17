@@ -21,6 +21,7 @@ import {
   parseTournamentEnginePath,
   TOURNAMENT_ENGINE_ROUTE_PERMISSIONS,
 } from "../src/auth/tournamentEngineRouteAccess.js";
+import { bindTournamentAccessPortFromDomain } from "../src/features/tournament/bindings/bindTournamentAccessPort.js";
 import { PERMISSIONS } from "../src/auth/permissions.js";
 import { ROLES } from "../src/auth/roles.js";
 import { can } from "../src/auth/rbac.js";
@@ -140,6 +141,7 @@ function scopeFor(clubId, venueId) {
 beforeEach(() => {
   globalThis.localStorage = createLocalStorageMock();
   seedClubsAndTournament();
+  bindTournamentAccessPortFromDomain();
 });
 
 afterEach(() => {

@@ -1,18 +1,18 @@
 import { useMemo } from "react";
 
-import { useAuth } from "../../../context/AuthContext.jsx";
-import { useClub } from "../../../context/ClubContext.jsx";
-import { useTenant } from "../../../context/TenantContext.jsx";
-import { canOperateUnassignedTenant } from "../../../features/tenant/services/tenantSelectionModel.js";
-import { CLUB_READ_STATE } from "../../../features/club/context/clubCanonicalReadModel.js";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { useClub } from "../../context/ClubContext.jsx";
+import { useTenant } from "../../context/TenantContext.jsx";
+import { canOperateUnassignedTenant } from "../../features/tenant/services/tenantSelectionModel.js";
+import { CLUB_READ_STATE } from "../../features/club/context/clubCanonicalReadModel.js";
 import {
   filterClubsForSelectedOperationalTenant,
   resolvePlatformContextReadiness,
-} from "./platformContextReadiness.js";
+} from "../../core/platform/app/platformContextReadiness.js";
 
 /**
- * Shared Platform Context readiness for App Shell + Business Module consumers.
- * Composes existing Auth/Tenant/Club contexts — does not create a second state authority.
+ * Shell composition hook — reads Auth/Tenant/Club contexts for Platform readiness projection.
+ * Lives outside Platform Core so Core stays free of Business Module imports.
  */
 export function usePlatformContextReadiness({ requireClub = true } = {}) {
   const { authLoading, isAuthenticated, rbacEnabled, user } = useAuth();

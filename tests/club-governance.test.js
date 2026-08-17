@@ -5,7 +5,8 @@ import { loadClubs, saveClubs } from "../src/data/club.js";
 import { createClubRecord } from "../src/models/club.js";
 import { ROLES } from "../src/auth/roles.js";
 import { enableRbac } from "../src/auth/authService.js";
-import { saveAuthSession } from "../src/auth/authStorage.js";
+import { loadAuthSession, saveAuthSession } from "../src/auth/authStorage.js";
+import { registerClubAuthSessionProjection } from "../src/features/club/bindings/registerClubAuthSessionProjection.js";
 import { CLUB_STATUSES } from "../src/features/club/constants/clubStatus.js";
 import {
   canViewFullClubMembers,
@@ -33,7 +34,6 @@ import {
 import { createClub } from "../src/features/club/services/clubTenantService.js";
 import { saveVenues } from "../src/data/venue.js";
 import { createTenantRecord, TENANT_STATUS } from "../src/models/tenant.js";
-import { loadAuthSession } from "../src/auth/authStorage.js";
 import { saveAthleteClubLink, loadAthleteClubLink } from "../src/features/club/storage/athleteClubLinkStore.js";
 import { deleteClub } from "../src/domain/clubService.js";
 import { saveClubData, getDefaultClubData } from "../src/domain/clubStorage.js";
@@ -138,6 +138,7 @@ describe("club governance", () => {
   beforeEach(() => {
     globalThis.localStorage = createLocalStorageMock();
     enableRbac(true);
+    registerClubAuthSessionProjection();
     seedClub();
   });
 
