@@ -27,6 +27,11 @@
  *   STAGING_INACTIVE_REFEREE_ID / STAGING_NON_CANONICAL_REFEREE_ID
  *   STAGING_DAILY_PLAY_DISABLED_TOURNAMENT / STAGING_DAILY_PLAY_ENABLED_TOURNAMENT
  *   STAGING_MATCH_IN_PROGRESS / STAGING_MATCH_SCORING / STAGING_MATCH_LOCKED / STAGING_MATCH_COMPLETED
+ *
+ * Identity subject directory:
+ *   Contract #01 currently has no arbitrary-subject lookup. Trusted-server
+ *   PRE_MATCH assign (F) and Identity L cases fail closed until Owner GO
+ *   expands Contract #01. Do not restore a Competition profiles-table read.
  */
 
 import { createClient } from "@supabase/supabase-js";

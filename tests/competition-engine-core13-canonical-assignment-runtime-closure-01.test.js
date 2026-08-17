@@ -38,13 +38,13 @@ const SQL_PKG = path.join(
 
 const PACKAGE_LF_SHA256 = Object.freeze({
   "01_PRECHECK.sql":
-    "1faa3140ab5b97c0e5e40b3c0425eb67d7d796639db55f286c8716271e66b7e5",
+    "c2879ba0a4a123c7b328a58bb98d3e16d6ed95a11ef06b6846bb3fd138a8fa25",
   "02_APPLY.sql":
-    "566fb2fc0199c01dbef666de71ccf7a9c2f0bc4277ddfb1cd9513c37e9ffca84",
+    "3734b9436928c88c8747023bb75fd5be83f6ee006df911c16572640da07419db",
   "03_VERIFY.sql":
-    "2e1c1437b7b0cc90bc946628b74f5338f9cd7578e67a45536a0f5f89705677d9",
+    "b4886d61e9b7ec5a4e67afd81f96d50ae4447b30e8857b00026e45df7d401194",
   "04_ROLLBACK.sql":
-    "6a6274ebbfc8e64456a8079e77871404d78c9bf1bb3f9652e808c52bdf76c1af",
+    "0b33233fcb7d51d4781d4a214c32a68737dd9367d53ae5e014bf42e5e5a73209",
   "05_STAGING_SQL_ACCEPTANCE.sql":
     "661504f517e8bf4cda1988caa551bb56d317247e2628dadcf4dbfcd224cfee48",
 });
@@ -99,6 +99,10 @@ test("runtime lock constants", () => {
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.interimBlobAuthorityPostCutover, false);
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.hardcodedScheduleWindow, false);
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.refereeQualificationEvidence, "NOT_CONFIGURED");
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.identityContract01Changed, false);
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.directIdentityTableReadFromCompetition, false);
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.sharedContractCapabilityGap, true);
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.contractGapId, "01");
 });
 
 test("authority: assign calls CORE-13 and persists", async () => {
@@ -641,6 +645,17 @@ test("SQL security: actor spoofing closed; audit not globally readable", () => {
   assert.match(precheck, /canonical_tournament_assert_permission/);
   assert.match(precheck, /user_venue_id/);
   assert.match(precheck, /team_tournament_can_manage/);
+  assert.match(precheck, /ACTIVE_DUPLICATE_SCOPE_COUNT=/);
+  assert.match(precheck, /INVALID_VERSION_ROW_COUNT=/);
+  assert.match(precheck, /INDEX_COMPATIBILITY=/);
+  assert.match(precheck, /PRECHECK_FINAL=/);
+  assert.match(precheck, /group by ra\.tenant_id, ra\.tournament_id, ra\.match_id, ra\.role/);
+  assert.match(precheck, /having count\(\*\) > 1/);
+  assert.doesNotMatch(precheck, /\binsert\s+into\b/i);
+  assert.doesNotMatch(precheck, /\bupdate\s+public\./i);
+  assert.doesNotMatch(precheck, /\bdelete\s+from\b/i);
+  assert.doesNotMatch(precheck, /\balter\s+table\b/i);
+  assert.doesNotMatch(precheck, /\bdrop\s+(table|index|function)\b/i);
 
   assert.match(verify, /anon\.execute/);
   assert.match(verify, /grant\.audit\.select\.authenticated/);
@@ -725,4 +740,108 @@ test("ROLLBACK drops security helper and never referee_assignments", () => {
   assert.match(rollback, /competition_assignment_assert_mutation_boundary/);
   assert.match(rollback, /NEVER: drop table public\.referee_assignments/);
   assert.doesNotMatch(rollback, /^\s*drop table public\.referee_assignments;/m);
+  assert.doesNotMatch(rollback, /^\s*delete from public\.referee_assignments;/m);
+  assert.doesNotMatch(rollback, /^\s*truncate public\.referee_assignments;/m);
+});
+
+function evaluateActiveAssignmentUniqueIndexPrecheck(rows = []) {
+  const active = rows.filter((row) => String(row.status) === "active");
+  const scopes = new Map();
+  for (const row of active) {
+    const key = [row.tenant_id, row.tournament_id, row.match_id, row.role].join("\0");
+    scopes.set(key, (scopes.get(key) || 0) + 1);
+  }
+  const duplicateScopeCount = [...scopes.values()].filter((count) => count > 1).length;
+  const invalidScopeCount = active.filter(
+    (row) =>
+      !String(row.tenant_id || "").trim() ||
+      !String(row.tournament_id || "").trim() ||
+      !String(row.match_id || "").trim() ||
+      !String(row.role || "").trim()
+  ).length;
+  const invalidVersionCount = rows.filter(
+    (row) => row.version == null || Number(row.version) < 0
+  ).length;
+  const fail =
+    duplicateScopeCount > 0 || invalidScopeCount > 0 || invalidVersionCount > 0;
+  return {
+    ACTIVE_DUPLICATE_SCOPE_COUNT: duplicateScopeCount,
+    INVALID_SCOPE_ACTIVE_ROW_COUNT: invalidScopeCount,
+    INVALID_VERSION_ROW_COUNT: invalidVersionCount,
+    PRECHECK_FINAL: fail ? "FAIL" : "PASS",
+  };
+}
+
+test("SQL PRECHECK invariant: duplicate active assignments fail closed; clean rows pass", () => {
+  const clean = evaluateActiveAssignmentUniqueIndexPrecheck([
+    {
+      tenant_id: "t1",
+      tournament_id: "tn1",
+      match_id: "m1",
+      role: "REFEREE",
+      status: "active",
+      version: 1,
+    },
+    {
+      tenant_id: "t1",
+      tournament_id: "tn1",
+      match_id: "m1",
+      role: "REFEREE",
+      status: "revoked",
+      version: 1,
+    },
+  ]);
+  assert.equal(clean.PRECHECK_FINAL, "PASS");
+  assert.equal(clean.ACTIVE_DUPLICATE_SCOPE_COUNT, 0);
+
+  const duplicates = evaluateActiveAssignmentUniqueIndexPrecheck([
+    {
+      tenant_id: "t1",
+      tournament_id: "tn1",
+      match_id: "m1",
+      role: "REFEREE",
+      status: "active",
+      version: 1,
+    },
+    {
+      tenant_id: "t1",
+      tournament_id: "tn1",
+      match_id: "m1",
+      role: "REFEREE",
+      status: "active",
+      version: 2,
+    },
+  ]);
+  assert.equal(duplicates.PRECHECK_FINAL, "FAIL");
+  assert.equal(duplicates.ACTIVE_DUPLICATE_SCOPE_COUNT, 1);
+
+  const invalidVersion = evaluateActiveAssignmentUniqueIndexPrecheck([
+    {
+      tenant_id: "t1",
+      tournament_id: "tn1",
+      match_id: "m1",
+      role: "REFEREE",
+      status: "revoked",
+      version: -1,
+    },
+  ]);
+  assert.equal(invalidVersion.PRECHECK_FINAL, "FAIL");
+  assert.equal(invalidVersion.INVALID_VERSION_ROW_COUNT, 1);
+});
+
+test("APPLY unique index scope + transaction model; VERIFY index predicate", () => {
+  const apply = readSql("02_APPLY.sql");
+  const verify = readSql("03_VERIFY.sql");
+  assert.match(apply, /APPLY_TRANSACTION_MODEL=SINGLE_EXPLICIT_TRANSACTION/);
+  assert.match(apply, /^\s*begin;/m);
+  assert.match(apply, /^\s*commit;/m);
+  assert.doesNotMatch(apply, /create unique index concurrently/i);
+  assert.match(
+    apply,
+    /on public\.referee_assignments \(tenant_id, tournament_id, match_id, role\)/
+  );
+  assert.match(apply, /where status = 'active'/);
+  assert.match(verify, /indexdef ilike '%tenant_id%'/);
+  assert.match(verify, /indexdef ilike '%role%'/);
+  assert.match(verify, /active_match_role_unique_index/);
 });

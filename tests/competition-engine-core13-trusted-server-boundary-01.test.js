@@ -179,6 +179,19 @@ test("C: Edge Function authenticates JWT and ignores browser actorId", async () 
     },
     userClient,
     serviceClient,
+    identityAccessAdapter: {
+      async resolveSubjectIdentity() {
+        return {
+          status: "OK",
+          data: {
+            subjectId: "aaaa1111-bbbb-4ccc-8ddd-eeeeffffffff",
+            role: "REFEREE",
+            status: "active",
+            tenantId: "tenant-a",
+          },
+        };
+      },
+    },
   });
   assert.equal(result.body?.ok, true, JSON.stringify(result.body));
   assert.equal(persistedActor, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");

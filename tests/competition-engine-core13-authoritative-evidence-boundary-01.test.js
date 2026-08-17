@@ -22,6 +22,13 @@ import { handleCompetitionRefereeAssignmentAction } from "../src/features/compet
 import { loadAuthoritativeAssignmentEvidence } from "../src/features/competition-engine/operations/referee/assignment/server/loadAuthoritativeAssignmentEvidence.js";
 import { projectMatchScheduleFromAdapterB } from "../src/features/competition-engine/operations/referee/assignment/server/projectMatchScheduleFromAdapterB.js";
 import { createTrustedServerRefereeAdapterB } from "../src/features/competition-engine/operations/referee/assignment/server/createTrustedServerRefereeAdapterB.js";
+import {
+  createIdentityBackedRefereeDirectoryPort,
+  CONTRACT_01_CURRENT_METHODS,
+  CONTRACT_01_ID,
+  IDENTITY_DIRECTORY_CAPABILITY,
+} from "../src/features/competition-engine/operations/referee/assignment/server/createIdentityBackedRefereeDirectoryPort.js";
+import { IDENTITY_ACCESS_CONTRACT } from "../src/features/competition-engine/integration/contracts/definitions.js";
 import { assertTrustedServerNoFakeSuccess } from "../src/features/competition-engine/operations/referee/assignment/server/assertTrustedServerNoFakeSuccess.js";
 import { COMPETITION_ASSIGNMENT_MUTATION_RPC } from "../src/features/competition-engine/operations/referee/assignment/persistence/createRpcCanonicalAssignmentPersistence.js";
 import {
@@ -150,6 +157,32 @@ function createServiceClient({
   };
 }
 
+function createSubjectIdentityAdapter({
+  subjectId = REF_UUID,
+  role = "REFEREE",
+  status = "active",
+  tenantId = "tenant-a",
+  displayLabel = "Ref",
+} = {}) {
+  return {
+    async resolveSubjectIdentity(context = {}) {
+      return {
+        sourceSystem: "identity",
+        status: "OK",
+        data: {
+          subjectId: context.subjectId || subjectId,
+          actorId: context.subjectId || subjectId,
+          role,
+          status,
+          tenantId,
+          displayLabel,
+        },
+        reasonCodes: [],
+      };
+    },
+  };
+}
+
 function createUserClient() {
   return {
     auth: {
@@ -234,7 +267,23 @@ test("authoritative schedule is projected from Adapter B; no invented timestamps
   assert.equal(unscheduled.assignmentBeforeSchedule, true);
 });
 
-test("trusted-server loader uses Adapter B schedule and Identity directory, not fake qual/avail", async () => {
+test("trusted-server loader uses Adapter B schedule; Identity directory requires Contract #01 subject lookup", async () => {
+  await assert.rejects(
+    () =>
+      loadAuthoritativeAssignmentEvidence({
+        serviceClient: createServiceClient(),
+        tenantId: "tenant-a",
+        tournamentId: "tourn-a",
+        matchId: "match-1",
+        refereeId: REF_UUID,
+        competitionMode: "INTERNAL",
+      }),
+    (err) =>
+      isCompetitionRefereeAssignmentCommandError(err) &&
+      err.code === ASSIGNMENT_COMMAND_ERROR_CODE.NOT_CONFIGURED &&
+      err.details?.sharedContractCapabilityGap === true
+  );
+
   const evidence = await loadAuthoritativeAssignmentEvidence({
     serviceClient: createServiceClient(),
     tenantId: "tenant-a",
@@ -242,6 +291,7 @@ test("trusted-server loader uses Adapter B schedule and Identity directory, not 
     matchId: "match-1",
     refereeId: REF_UUID,
     competitionMode: "INTERNAL",
+    identityAccessAdapter: createSubjectIdentityAdapter(),
   });
   assert.equal(evidence.adapterBReused, true);
   assert.equal(evidence.authoritativeScheduleSource, "ADAPTER_B_GET_MATCH_CONTEXT");
@@ -256,6 +306,10 @@ test("trusted-server loader uses Adapter B schedule and Identity directory, not 
   assert.equal(evidence.availabilitySnapshot.items.length, 0);
   assert.equal(evidence.directorySnapshot.items[0].refereeId, REF_UUID);
   assert.equal(evidence.directorySnapshot.items[0].active, true);
+  assert.equal(
+    evidence.refereeIdentityEvidence,
+    IDENTITY_DIRECTORY_CAPABILITY.SUBJECT_IDENTITY
+  );
 });
 
 test("inactive referee is denied by CORE-13", async () => {
@@ -459,6 +513,7 @@ test("trusted-server assign uses real Adapter B schedule and ignores browser sna
     },
     userClient: createUserClient(),
     serviceClient: createServiceClient(),
+    identityAccessAdapter: createSubjectIdentityAdapter(),
   });
   assert.equal(result.body?.ok, true, JSON.stringify(result.body));
   assert.equal(result.body.originatingActorId, ACTOR);
@@ -478,15 +533,8 @@ test("non-canonical Identity role is denied", async () => {
       },
     },
     userClient: createUserClient(),
-    serviceClient: createServiceClient({
-      profile: {
-        id: REF_UUID,
-        display_name: "Player",
-        role: "PLAYER",
-        venue_id: "tenant-a",
-        status: "active",
-      },
-    }),
+    serviceClient: createServiceClient(),
+    identityAccessAdapter: createSubjectIdentityAdapter({ role: "PLAYER" }),
   });
   assert.equal(result.body?.ok, false);
   assert.equal(
@@ -511,12 +559,13 @@ test("required qualification on trusted server fails closed when capability miss
     },
     userClient: createUserClient(),
     serviceClient: createServiceClient(),
+    identityAccessAdapter: createSubjectIdentityAdapter(),
   });
   assert.equal(result.body?.ok, false);
   assert.equal(result.body.code, ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED);
 });
 
-test("architecture guard: no fake schedule/qual/avail and no loader profiles bypass", () => {
+test("architecture guard: no fake schedule/qual/avail and no Identity private persistence bypass", () => {
   const result = assertTrustedServerNoFakeSuccess(ROOT);
   assert.equal(result.ok, true, result.failures.join("; "));
   const contract = read(
@@ -529,6 +578,102 @@ test("architecture guard: no fake schedule/qual/avail and no loader profiles byp
   );
   assert.doesNotMatch(loader, /2026-08-17T10:00:00\.000Z/);
   assert.doesNotMatch(loader, /\.from\(\s*["']profiles["']\s*\)/);
+  const directory = read(
+    "src/features/competition-engine/operations/referee/assignment/server/createIdentityBackedRefereeDirectoryPort.js"
+  );
+  assert.doesNotMatch(directory, /\.from\(\s*["']profiles["']\s*\)/);
+  assert.deepEqual([...IDENTITY_ACCESS_CONTRACT.requiredMethods], [
+    "resolveActorIdentity",
+    "getAuthorizationEvidence",
+    "getCapabilityEvidence",
+  ]);
+  assert.deepEqual([...CONTRACT_01_CURRENT_METHODS], [
+    "resolveActorIdentity",
+    "getAuthorizationEvidence",
+    "getCapabilityEvidence",
+  ]);
+  assert.equal(CONTRACT_01_ID, "competition.identity-access.adapter.v1");
+});
+
+test("Contract #01 Adapter B does not provide subject directory; inactive/foreign fail closed when evidence exists", async () => {
+  const productionPort = createIdentityBackedRefereeDirectoryPort({
+    identityAccessAdapter: {
+      resolveActorIdentity() {
+        return { data: { actorId: REF_UUID, role: "REFEREE" } };
+      },
+      getAuthorizationEvidence() {
+        return { grantedPermissions: [] };
+      },
+      getCapabilityEvidence() {
+        return { grantedPermissions: [] };
+      },
+    },
+  });
+  assert.equal(
+    productionPort.source,
+    IDENTITY_DIRECTORY_CAPABILITY.NOT_CONFIGURED
+  );
+  await assert.rejects(
+    () =>
+      productionPort.resolveRefereeDirectory({
+        refereeId: REF_UUID,
+        tenantId: "tenant-a",
+      }),
+    (err) =>
+      isCompetitionRefereeAssignmentCommandError(err) &&
+      err.code === ASSIGNMENT_COMMAND_ERROR_CODE.NOT_CONFIGURED &&
+      err.details?.contractId === CONTRACT_01_ID
+  );
+
+  const inactivePort = createIdentityBackedRefereeDirectoryPort({
+    identityAccessAdapter: createSubjectIdentityAdapter({ status: "inactive" }),
+  });
+  const inactiveSnap = await inactivePort.resolveRefereeDirectory({
+    refereeId: REF_UUID,
+    tenantId: "tenant-a",
+  });
+  assert.equal(inactiveSnap.items[0].active, false);
+
+  const inactive = await handleCompetitionRefereeAssignmentAction({
+    action: "assignReferee",
+    body: {
+      command: {
+        tenantId: "tenant-a",
+        tournamentId: "tourn-a",
+        matchId: "match-1",
+        refereeId: REF_UUID,
+        expectedVersion: 0,
+        idempotencyKey: "idem-inactive",
+      },
+    },
+    userClient: createUserClient(),
+    serviceClient: createServiceClient(),
+    identityAccessAdapter: createSubjectIdentityAdapter({ status: "inactive" }),
+  });
+  assert.equal(inactive.body?.ok, false);
+  assert.equal(
+    inactive.body.code,
+    ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED
+  );
+
+  const foreign = await handleCompetitionRefereeAssignmentAction({
+    action: "assignReferee",
+    body: {
+      command: {
+        tenantId: "tenant-a",
+        tournamentId: "tourn-a",
+        matchId: "match-1",
+        refereeId: REF_UUID,
+        expectedVersion: 0,
+        idempotencyKey: "idem-foreign",
+      },
+    },
+    userClient: createUserClient(),
+    serviceClient: createServiceClient(),
+    identityAccessAdapter: createSubjectIdentityAdapter({ tenantId: "other-tenant" }),
+  });
+  assert.equal(foreign.body?.ok, false);
+  assert.equal(foreign.body.code, ASSIGNMENT_COMMAND_ERROR_CODE.FOREIGN_REFEREE_DENIED);
 });
 
 test("Daily Play disabled remains NOT_APPLICABLE", async () => {

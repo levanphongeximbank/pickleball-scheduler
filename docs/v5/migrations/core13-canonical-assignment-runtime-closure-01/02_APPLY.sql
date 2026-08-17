@@ -9,7 +9,15 @@
 -- Reuses public.referee_assignments. Creates Competition audit +
 -- idempotency tables and competition_* assignment RPCs (CAS + atomic replace).
 -- Does NOT modify Adapter #16. Does NOT drop referee_assignments.
+--
+-- APPLY_TRANSACTION_MODEL=SINGLE_EXPLICIT_TRANSACTION
+-- Unique index is NOT CONCURRENTLY (safe inside a transaction).
+-- PRECHECK must PASS first so foreseeable duplicate-active data cannot
+-- fail the unique index after earlier DDL in this script.
+-- PARTIAL_APPLY_RISK=LOW_IF_ONE_SESSION
 -- ═══════════════════════════════════════════════════════════════════
+
+begin;
 
 -- ─────────────────────────────────────────────────────────────────
 -- A) Additive evolution of referee_assignments (no parallel table)
@@ -37,6 +45,7 @@ end;
 $$;
 
 -- One active assignment per match+role (Competition CAS scope).
+-- NOT CONCURRENTLY — must remain inside the APPLY transaction.
 create unique index if not exists competition_referee_assignments_active_match_role_uq
   on public.referee_assignments (tenant_id, tournament_id, match_id, role)
   where status = 'active';
@@ -1141,5 +1150,7 @@ revoke all on function public.competition_unassign_referee(
 grant execute on function public.competition_unassign_referee(
   text, text, text, text, integer, text, uuid, text, text, jsonb
 ) to service_role;
+
+commit;
 
 select 'APPLY_COMPLETE core13-canonical-assignment-runtime-closure-01' as status;

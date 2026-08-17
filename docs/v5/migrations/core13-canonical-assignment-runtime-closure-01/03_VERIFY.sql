@@ -66,8 +66,15 @@ begin
     select 1 from pg_indexes
     where schemaname = 'public'
       and indexname = 'competition_referee_assignments_active_match_role_uq'
+      and indexdef ilike '%UNIQUE%'
+      and indexdef ilike '%tenant_id%'
+      and indexdef ilike '%tournament_id%'
+      and indexdef ilike '%match_id%'
+      and indexdef ilike '%role%'
+      and indexdef ilike '%status%'
+      and indexdef ilike '%active%'
   ) then
-    v_fail := array_append(v_fail, 'missing.active_match_role_uq');
+    v_fail := array_append(v_fail, 'missing_or_incompatible.active_match_role_uq');
   end if;
 
   if not exists (
@@ -282,4 +289,18 @@ select
     'service_role',
     'public.competition_assign_referee(text,text,text,uuid,text,integer,text,uuid,text,text,jsonb)',
     'EXECUTE'
-  ));
+  ))
+union all
+select
+  'active_match_role_unique_index',
+  exists (
+    select 1 from pg_indexes
+    where schemaname = 'public'
+      and indexname = 'competition_referee_assignments_active_match_role_uq'
+      and indexdef ilike '%UNIQUE%'
+      and indexdef ilike '%tenant_id%'
+      and indexdef ilike '%tournament_id%'
+      and indexdef ilike '%match_id%'
+      and indexdef ilike '%role%'
+      and indexdef ilike '%WHERE%'
+  );

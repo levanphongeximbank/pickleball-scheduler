@@ -99,9 +99,9 @@ Does **not** invent a private RBAC catalog. Does **not** reproduce CORE-13 candi
 
 ## Apply order (Owner GO only — later)
 
-1. `01_PRECHECK.sql` (fails closed if canonical tenant/permission helpers missing)
-2. `02_APPLY.sql` **once**
-3. `03_VERIFY.sql` (objects + grants + actor + authz + search_path)
+1. `01_PRECHECK.sql` (read-only; fails closed on missing helpers, duplicate active match+role rows, invalid version, incompatible index/function)
+2. `02_APPLY.sql` **once**, as **one transaction** (`BEGIN`/`COMMIT`; unique index is not `CONCURRENTLY`)
+3. `03_VERIFY.sql` (objects + unique-index predicate + grants + actor + authz + search_path)
 4. Staging acceptance harness `scripts/core13/core13-trusted-server-staging-acceptance.mjs`
    **only after** later Owner GO (`CORE13_STAGING_ACCEPTANCE_GO=YES` plus Staging flags).
    `05_STAGING_SQL_ACCEPTANCE.sql` remains a fail-closed pointer.
@@ -121,6 +121,8 @@ Does **not** invent a private RBAC catalog. Does **not** reproduce CORE-13 candi
 - `SQL_EXECUTION_GO=NO` until Owner GO
 - `EDGE_FUNCTION_DEPLOY_GO=NO` until Owner GO
 - `STAGING_SQL_ACCEPTANCE_TEST_NOT_RUN_REQUIRES_OWNER_GO=YES`
+- `APPLY_TRANSACTION_MODEL=SINGLE_EXPLICIT_TRANSACTION`
+- `PRECHECK_DUPLICATE_ACTIVE_GUARD=YES` (read-only; no auto-clean)
 
 ## Package LF SHA256 lock
 
@@ -129,10 +131,10 @@ and must match this table after each authoring change.
 
 | File | SHA256 |
 |------|--------|
-| `01_PRECHECK.sql` | `1faa3140ab5b97c0e5e40b3c0425eb67d7d796639db55f286c8716271e66b7e5` |
-| `02_APPLY.sql` | `566fb2fc0199c01dbef666de71ccf7a9c2f0bc4277ddfb1cd9513c37e9ffca84` |
-| `03_VERIFY.sql` | `2e1c1437b7b0cc90bc946628b74f5338f9cd7578e67a45536a0f5f89705677d9` |
-| `04_ROLLBACK.sql` | `6a6274ebbfc8e64456a8079e77871404d78c9bf1bb3f9652e808c52bdf76c1af` |
+| `01_PRECHECK.sql` | `c2879ba0a4a123c7b328a58bb98d3e16d6ed95a11ef06b6846bb3fd138a8fa25` |
+| `02_APPLY.sql` | `3734b9436928c88c8747023bb75fd5be83f6ee006df911c16572640da07419db` |
+| `03_VERIFY.sql` | `b4886d61e9b7ec5a4e67afd81f96d50ae4447b30e8857b00026e45df7d401194` |
+| `04_ROLLBACK.sql` | `0b33233fcb7d51d4781d4a214c32a68737dd9367d53ae5e014bf42e5e5a73209` |
 | `05_STAGING_SQL_ACCEPTANCE.sql` | `661504f517e8bf4cda1988caa551bb56d317247e2628dadcf4dbfcd224cfee48` |
 
 ## Related docs

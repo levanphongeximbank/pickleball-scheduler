@@ -1,49 +1,95 @@
 /**
- * Identity-backed RefereeDirectoryPort for trusted-server CORE-13.
+ * RefereeDirectoryPort backed by Canonical Competition Identity Contract #01.
  *
- * Contract #08 Adapter B forbids owning referee identity. Canonical referee
- * user identity remains Identity-domain (profiles.role = REFEREE, active,
- * tenant-bound). This port translates that evidence into CORE-13 candidates.
+ * Contract #08 Adapter B must not own referee identity.
+ * This port may only translate Contract #01 / Identity Adapter B evidence
+ * into CORE-13 createRefereeCandidate(...).
  *
- * It MUST NOT synthesize qualification or availability.
+ * Contract #01 currently exposes actor-context methods only:
+ *   resolveActorIdentity, getAuthorizationEvidence, getCapabilityEvidence
+ * Those methods echo caller-supplied actor/role and do not look up an
+ * arbitrary referee subject (role / active / tenant). Direct public.profiles
+ * reads from Competition trusted-server are therefore forbidden.
+ *
+ * If Adapter B later grows a subject-directory method (Owner GO on Contract #01),
+ * this port consumes it. Until then it fails closed.
  */
 
-import { normalizeRole, ROLES } from "../../../../../identity/constants/roles.js";
+import { isRefereeRole } from "../../../../../identity/constants/roles.js";
 import {
   createRefereeCandidate,
 } from "../../../../../competition-core/referee-assignment/index.js";
 import {
-  createEmptySnapshotResult,
   createMissingSnapshotResult,
   createPopulatedSnapshotResult,
 } from "../../../../../competition-core/referee-assignment/ports/portResult.js";
+import { IDENTITY_ACCESS_CONTRACT } from "../../../../integration/contracts/definitions.js";
 import { ASSIGNMENT_COMMAND_ERROR_CODE } from "../constants.js";
 import { failAssignmentCommand } from "../errors.js";
 import { isUuid } from "./loadCanonicalCompetitionModeState.js";
 
-function isCanonicalRefereeIdentityRole(role) {
-  const normalized = normalizeRole(role);
-  if (normalized === ROLES.REFEREE) return true;
-  const raw = String(role || "").trim().toUpperCase();
-  return raw === "HEAD_REFEREE" || raw === "SCOREKEEPER";
+export const CONTRACT_01_ID = IDENTITY_ACCESS_CONTRACT.contractId;
+
+export const CONTRACT_01_CURRENT_METHODS = Object.freeze([
+  ...IDENTITY_ACCESS_CONTRACT.requiredMethods,
+]);
+
+export const CONTRACT_01_SUBJECT_DIRECTORY_METHODS = Object.freeze([
+  "resolveSubjectIdentity",
+  "getSubjectIdentityEvidence",
+  "lookupSubjectIdentity",
+]);
+
+export const IDENTITY_DIRECTORY_CAPABILITY = Object.freeze({
+  NOT_CONFIGURED: "CONTRACT_01_SUBJECT_DIRECTORY_NOT_CONFIGURED",
+  SUBJECT_IDENTITY: "CONTRACT_01_SUBJECT_IDENTITY",
+});
+
+function findSubjectDirectoryMethod(adapter) {
+  if (!adapter || typeof adapter !== "object") return null;
+  for (const name of CONTRACT_01_SUBJECT_DIRECTORY_METHODS) {
+    if (typeof adapter[name] === "function") return name;
+  }
+  return null;
+}
+
+function readEvidenceData(evidence) {
+  if (!evidence || typeof evidence !== "object") return {};
+  if (evidence.data && typeof evidence.data === "object") return evidence.data;
+  return evidence;
+}
+
+function isActiveStatus(value) {
+  const raw = String(value ?? "active").trim().toLowerCase();
+  return raw !== "inactive" && raw !== "disabled" && raw !== "suspended";
 }
 
 /**
- * @param {{ serviceClient: object }} options
+ * @param {{
+ *   identityAccessAdapter?: object,
+ * }} [options]
  */
 export function createIdentityBackedRefereeDirectoryPort(options = {}) {
-  const serviceClient = options.serviceClient;
+  const identityAccessAdapter = options.identityAccessAdapter || null;
+  const subjectMethod = findSubjectDirectoryMethod(identityAccessAdapter);
+  const source = subjectMethod
+    ? IDENTITY_DIRECTORY_CAPABILITY.SUBJECT_IDENTITY
+    : IDENTITY_DIRECTORY_CAPABILITY.NOT_CONFIGURED;
 
   return Object.freeze({
-    source: "IDENTITY_PROFILES_REFEREE_ROLE",
+    source,
+    contractId: CONTRACT_01_ID,
     synthesizesQualification: false,
     synthesizesAvailability: false,
+    queriesIdentityPrivatePersistence: false,
+    subjectDirectoryMethod: subjectMethod,
     async resolveRefereeDirectory(request = {}) {
       const refereeId = String(request.refereeId || "").trim();
       const tenantId = String(request.tenantId || "").trim();
       if (!refereeId) {
-        return createEmptySnapshotResult(
-          "No refereeId supplied for Identity directory lookup"
+        return createMissingSnapshotResult(
+          "No refereeId supplied for Identity directory lookup",
+          { contractId: CONTRACT_01_ID }
         );
       }
       if (!isUuid(refereeId)) {
@@ -53,57 +99,70 @@ export function createIdentityBackedRefereeDirectoryPort(options = {}) {
           { refereeId }
         );
       }
-      if (!serviceClient || typeof serviceClient.from !== "function") {
-        return createMissingSnapshotResult(
-          "Identity-backed referee directory is unavailable",
-          { refereeId }
+
+      if (!subjectMethod) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.NOT_CONFIGURED,
+          "Contract #01 does not provide subject directory lookup for an arbitrary referee",
+          {
+            contractId: CONTRACT_01_ID,
+            missingCapability: "resolveSubjectIdentityDirectory",
+            currentContractCapabilities: CONTRACT_01_CURRENT_METHODS,
+            whyRequired:
+              "CORE-13 needs canonical subject id, Identity role, active/inactive, and tenant/scope for the assigned referee — not the authenticated actor",
+            whyDirectProfilesReadIsNotAcceptable:
+              "Competition must not query Identity private persistence; evidence must enter through Contract #01 / Identity Adapter B",
+            ownerGoRequired: true,
+            sharedContractCapabilityGap: true,
+          }
         );
       }
 
-      const { data: profile, error } = await serviceClient
-        .from("profiles")
-        .select("id, display_name, role, venue_id, status")
-        .eq("id", refereeId)
-        .maybeSingle();
-
-      if (error) {
-        return createMissingSnapshotResult(
-          "Identity-backed referee directory lookup failed",
-          { refereeId, error: error.message || String(error) }
-        );
-      }
-      if (!profile?.id) {
+      const evidence = await identityAccessAdapter[subjectMethod]({
+        tenantId,
+        actorId: refereeId,
+        subjectId: refereeId,
+        correlationId: request.correlationId || `core13-identity-${refereeId}`,
+        contractVersion: IDENTITY_ACCESS_CONTRACT.contractVersion,
+      });
+      const data = readEvidenceData(evidence);
+      const subjectId = String(
+        data.subjectId || data.userId || data.actorId || ""
+      ).trim();
+      if (!subjectId || subjectId !== refereeId) {
         failAssignmentCommand(
           ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
-          "Canonical referee Identity evidence was not found",
-          { refereeId }
+          "Canonical Identity subject evidence did not match refereeId",
+          { refereeId, subjectId: subjectId || null }
         );
       }
 
-      const profileTenant = String(profile.venue_id || "").trim();
-      if (profileTenant && tenantId && profileTenant !== tenantId) {
+      const evidenceTenant = String(
+        data.tenantId || data.venueId || data.boundTenantId || ""
+      ).trim();
+      if (evidenceTenant && tenantId && evidenceTenant !== tenantId) {
         failAssignmentCommand(
           ASSIGNMENT_COMMAND_ERROR_CODE.FOREIGN_REFEREE_DENIED,
           "Referee identity is not bound to the authenticated tenant",
-          { refereeId, profileTenant, tenantId }
+          { refereeId, evidenceTenant, tenantId }
         );
       }
 
-      if (!isCanonicalRefereeIdentityRole(profile.role)) {
+      if (!isRefereeRole(data.role)) {
         failAssignmentCommand(
           ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
           "Canonical Referee identity/source evidence is required (Identity role)",
-          { refereeId, role: profile.role || null }
+          { refereeId, role: data.role || null }
         );
       }
 
-      const active = String(profile.status || "active").toLowerCase() !== "inactive";
+      const active = isActiveStatus(data.status ?? data.active);
       return createPopulatedSnapshotResult([
         createRefereeCandidate({
           refereeId,
           active,
           userId: refereeId,
-          displayLabel: profile.display_name || undefined,
+          displayLabel: data.displayLabel || data.displayName || undefined,
         }),
       ]);
     },

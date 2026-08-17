@@ -73,5 +73,6 @@ drop index if exists public.competition_referee_assignments_active_match_role_uq
 
 -- NEVER: drop table public.referee_assignments;
 -- NEVER: truncate public.referee_assignments;
+-- NEVER: delete from public.referee_assignments;
 
 select 'ROLLBACK_COMPLETE competition assignment runtime objects dropped; referee_assignments preserved' as status;

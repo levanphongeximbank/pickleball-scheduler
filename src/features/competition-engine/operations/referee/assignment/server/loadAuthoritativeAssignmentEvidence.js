@@ -2,13 +2,16 @@
  * Authoritative lifecycle / schedule / referee evidence for trusted-server CORE-13.
  *
  * Topology:
- *   Identity (canonical referee user) → RefereeDirectoryPort
+ *   Identity/Auth domain
+ *     → Canonical Competition Identity Contract #01 / Adapter B
+ *     → RefereeDirectoryPort (translate only)
  *   Contract #08 Adapter B → match schedule / court / competition context
  *   CORE-13 ← snapshots (never browser-supplied)
  *
- * Adapter B does not own referee identity/qualification/availability.
+ * Adapter B (#08) does not own referee identity/qualification/availability.
  * Qualification and availability are classified NOT_CONFIGURED unless a
  * requirement profile explicitly requires them (then fail closed).
+ * Identity subject directory is fail-closed until Contract #01 exposes it.
  */
 
 import {
@@ -133,6 +136,7 @@ function resolveScheduleFromAdapterB({
  *   competitionMode?: string,
  *   requireQualification?: boolean,
  *   requireAvailability?: boolean,
+ *   identityAccessAdapter?: object,
  * }} input
  */
 export async function loadAuthoritativeAssignmentEvidence(input = {}) {
@@ -197,13 +201,13 @@ export async function loadAuthoritativeAssignmentEvidence(input = {}) {
       })
     : createUnscheduledMatchSnapshot("missing-match");
 
+  const directoryPort = createIdentityBackedRefereeDirectoryPort({
+    identityAccessAdapter: input.identityAccessAdapter || null,
+  });
   let directorySnapshot = createEmptySnapshotResult(
     "No refereeId supplied for Identity directory lookup"
   );
   if (refereeId) {
-    const directoryPort = createIdentityBackedRefereeDirectoryPort({
-      serviceClient,
-    });
     directorySnapshot = await directoryPort.resolveRefereeDirectory({
       tenantId,
       tournamentId,
@@ -242,8 +246,8 @@ export async function loadAuthoritativeAssignmentEvidence(input = {}) {
     adapterBReused: true,
     adapterBContractId: adapterRuntime.contractId,
     adapterBOwnsRefereeIdentity: false,
-    refereeIdentityEvidence: REFEREE_EVIDENCE_CAPABILITY.IDENTITY,
-    refereeActiveStatusEvidence: REFEREE_EVIDENCE_CAPABILITY.ACTIVE_STATUS,
+    refereeIdentityEvidence: directoryPort.source || REFEREE_EVIDENCE_CAPABILITY.IDENTITY,
+    refereeActiveStatusEvidence: directoryPort.source || REFEREE_EVIDENCE_CAPABILITY.ACTIVE_STATUS,
     refereeQualificationEvidence: REFEREE_EVIDENCE_CAPABILITY.QUALIFICATION,
     refereeAvailabilityEvidence: REFEREE_EVIDENCE_CAPABILITY.AVAILABILITY,
     requireQualification,

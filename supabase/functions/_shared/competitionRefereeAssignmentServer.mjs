@@ -4764,26 +4764,591 @@ function normalizeRole(role) {
   }
   return value;
 }
+function rolesEqual(roleA, roleB) {
+  return normalizeRole(roleA) === normalizeRole(roleB);
+}
+function isRefereeRole(role) {
+  return rolesEqual(role, ROLES.REFEREE);
+}
+
+// src/features/competition-engine/integration/contracts/kernel/constants.js
+var COMPETITION_ADAPTER_CONTRACT_VERSION_V1 = "1.0.0";
+var COMPETITION_ADAPTER_CONTRACT_LOCKED = true;
+var CAPABILITY_KIND = Object.freeze({
+  QUERY: "QUERY",
+  COMMAND: "COMMAND",
+  EVENT: "EVENT"
+});
+var CAPABILITY_KIND_VALUES = Object.freeze(Object.values(CAPABILITY_KIND));
+var ADAPTER_DIRECTION = Object.freeze({
+  INBOUND_QUERY: "INBOUND_QUERY",
+  OUTBOUND_COMMAND: "OUTBOUND_COMMAND",
+  OUTBOUND_EVENT: "OUTBOUND_EVENT",
+  MIXED: "MIXED"
+});
+var RUNTIME_CLASSIFICATION = Object.freeze({
+  EXISTING_CANONICAL_CAPABILITY: "EXISTING_CANONICAL_CAPABILITY",
+  EXISTING_PARTIAL_CAPABILITY: "EXISTING_PARTIAL_CAPABILITY",
+  CONTRACT_ONLY_NO_RUNTIME: "CONTRACT_ONLY_NO_RUNTIME",
+  EXTERNAL_FUTURE_CAPABILITY: "EXTERNAL_FUTURE_CAPABILITY"
+});
+var PRODUCTION_BINDING_STATUS = Object.freeze({
+  BOUND: "BOUND",
+  PARTIAL: "PARTIAL",
+  NOT_CONFIGURED: "NOT_CONFIGURED"
+});
+var SHARED_ADAPTER_ERROR_CODE = Object.freeze({
+  UNKNOWN_CONTRACT: "COMPETITION_ADAPTER_UNKNOWN_CONTRACT",
+  INCOMPATIBLE_CONTRACT_VERSION: "COMPETITION_ADAPTER_INCOMPATIBLE_CONTRACT_VERSION",
+  MALFORMED_ADAPTER: "COMPETITION_ADAPTER_MALFORMED_ADAPTER",
+  MISSING_REQUIRED_CONTEXT: "COMPETITION_ADAPTER_MISSING_REQUIRED_CONTEXT",
+  CROSS_TENANT_CONTEXT: "COMPETITION_ADAPTER_CROSS_TENANT_CONTEXT",
+  MISSING_CANONICAL_IDENTITY: "COMPETITION_ADAPTER_MISSING_CANONICAL_IDENTITY",
+  FORBIDDEN_AUTHORITY: "COMPETITION_ADAPTER_FORBIDDEN_AUTHORITY",
+  NOT_CONFIGURED: "COMPETITION_ADAPTER_NOT_CONFIGURED",
+  CAPABILITY_NOT_SUPPORTED: "COMPETITION_ADAPTER_CAPABILITY_NOT_SUPPORTED",
+  STALE_WRITE: "COMPETITION_ADAPTER_STALE_WRITE",
+  MISSING_IDEMPOTENCY: "COMPETITION_ADAPTER_MISSING_IDEMPOTENCY",
+  MALFORMED_RESPONSE: "COMPETITION_ADAPTER_MALFORMED_RESPONSE",
+  FUZZY_IDENTITY_FORBIDDEN: "COMPETITION_ADAPTER_FUZZY_IDENTITY_FORBIDDEN",
+  DUPLICATE_REGISTRATION: "COMPETITION_ADAPTER_DUPLICATE_REGISTRATION",
+  REGISTRY_FROZEN: "COMPETITION_ADAPTER_REGISTRY_FROZEN",
+  DISPLAY_NAME_IS_NOT_IDENTITY: "COMPETITION_ADAPTER_DISPLAY_NAME_IS_NOT_IDENTITY"
+});
+var SHARED_ADAPTER_ERROR_CODE_VALUES = Object.freeze(
+  Object.values(SHARED_ADAPTER_ERROR_CODE)
+);
+var FORBIDDEN_COMPETITION_CORE_AUTHORITY_KEYS = Object.freeze([
+  "eligibilityDecisionEngine",
+  "seedingEngine",
+  "pairingEngine",
+  "drawEngine",
+  "scheduleEngine",
+  "courtAssignmentEngine",
+  "refereeAssignmentEngine",
+  "scoringEngine",
+  "standingsEngine",
+  "qualificationEngine",
+  "knockoutEngine",
+  "championEngine",
+  "competitionLifecycleEngine"
+]);
+var SHARED_FORBIDDEN_METHODS = Object.freeze([
+  "decideEligibility",
+  "runSeeding",
+  "runPairing",
+  "runDraw",
+  "runSchedule",
+  "assignCourts",
+  "assignReferees",
+  "calculateScore",
+  "writeCanonicalScore",
+  "computeStandings",
+  "decideQualification",
+  "decideKnockout",
+  "decideChampion",
+  "advanceCompetitionLifecycle"
+]);
+var CANONICAL_CONTEXT_FIELDS = Object.freeze({
+  ALWAYS_APPLICABLE: Object.freeze([
+    "contractVersion",
+    "tenantId",
+    "competitionId",
+    "correlationId"
+  ]),
+  ACTOR_SENSITIVE: Object.freeze(["actorId"]),
+  WHEN_APPLICABLE: Object.freeze([
+    "organizationId",
+    "clubId",
+    "teamId",
+    "participantId",
+    "matchId",
+    "sourceVersion",
+    "snapshotId",
+    "effectiveAt",
+    "venueId"
+  ]),
+  MUTATION: Object.freeze(["expectedVersion", "idempotencyKey"])
+});
+var FUZZY_IDENTITY_FIELDS = Object.freeze([
+  "displayName",
+  "playerName",
+  "email",
+  "phone",
+  "phoneNumber",
+  "fullName",
+  "name"
+]);
+var DISTINCT_SCOPE_KEYS = Object.freeze([
+  "tenantId",
+  "organizationId",
+  "clubId",
+  "venueId"
+]);
+var WORKSTREAM_OWNED_CONTRACT_IDS = Object.freeze([
+  "competition.identity-access.adapter.v1",
+  "competition.tenant-organization.adapter.v1",
+  "competition.participant.adapter.v1",
+  "competition.club-team-membership.adapter.v1",
+  "competition.rating.adapter.v1",
+  "competition.ranking.adapter.v1",
+  "competition.finance-payment.adapter.v1",
+  "competition.notification-communication.adapter.v1",
+  "competition.file-media.adapter.v1",
+  "competition.streaming-scoreboard.adapter.v1",
+  "competition.federation-external-authority.adapter.v1",
+  "competition.crm-sponsor.adapter.v1",
+  "competition.analytics-reporting.adapter.v1",
+  "competition.audit.adapter.v1"
+]);
+var COURT_CONTRACT_PROTECTED_PATHS = Object.freeze([
+  "src/features/competition-core/contracts/competitionCourtAdapterContract.js",
+  "src/features/competition-core/adapters/courtResourceCompetitionAdapter.js",
+  "docs/competition-core/COMPETITION_COURT_ADAPTER_CONTRACT.md",
+  "tests/competition-core-court-adapter-contract.test.js",
+  "tests/competition-core-court-adapter-architecture.test.js"
+]);
+var REFEREE_CONTRACT_PROTECTED_PATHS = Object.freeze([
+  "src/features/competition-engine/integration/referee/contract.js",
+  "src/features/competition-engine/integration/referee/registry.js",
+  "src/features/competition-engine/integration/referee/conformance.js",
+  "src/features/competition-engine/integration/referee/errors.js",
+  "src/features/competition-engine/integration/referee/referenceAdapter.js",
+  "src/features/competition-engine/integration/referee/runtimePorts.js",
+  "tests/competition-engine-referee-adapter-contract-v1.test.js"
+]);
+var PRIVATE_PERSISTENCE_IMPORT_PATTERNS = Object.freeze([
+  "domain/clubStorage",
+  "auth/supabaseClient",
+  "@supabase/supabase-js",
+  "club_data_v3"
+]);
+
+// src/features/competition-engine/integration/contracts/kernel/helpers.js
+function deepFreeze2(value) {
+  if (value === null || typeof value !== "object") return value;
+  if (Object.isFrozen(value)) return value;
+  for (const key of Reflect.ownKeys(value)) {
+    const child = (
+      /** @type {Record<string|symbol, unknown>} */
+      value[key]
+    );
+    if (child && typeof child === "object") deepFreeze2(child);
+  }
+  return Object.freeze(value);
+}
+function clonePlain(value) {
+  return structuredClone(value);
+}
+function freezeClone(value) {
+  return deepFreeze2(clonePlain(value));
+}
+
+// src/features/competition-engine/integration/contracts/definitions.js
+function capability(name, kind, extra = {}) {
+  return Object.freeze({ name, kind, required: extra.required !== false, ...extra });
+}
+function defineContract(spec) {
+  const {
+    forbiddenAuthorityKeys = [],
+    forbiddenMethods = [],
+    errorCodes = [],
+    ...rest
+  } = spec;
+  return freezeClone({
+    contractVersion: COMPETITION_ADAPTER_CONTRACT_VERSION_V1,
+    locked: COMPETITION_ADAPTER_CONTRACT_LOCKED,
+    ...rest,
+    forbiddenAuthorityKeys: [
+      ...FORBIDDEN_COMPETITION_CORE_AUTHORITY_KEYS,
+      ...forbiddenAuthorityKeys
+    ],
+    forbiddenMethods: [...SHARED_FORBIDDEN_METHODS, ...forbiddenMethods],
+    errorCodes: [...Object.values(SHARED_ADAPTER_ERROR_CODE), ...errorCodes]
+  });
+}
+var IDENTITY_ACCESS_CONTRACT = defineContract({
+  ordinal: 1,
+  contractId: "competition.identity-access.adapter.v1",
+  domain: "identity-access",
+  authorityOwner: "src/features/identity",
+  direction: ADAPTER_DIRECTION.INBOUND_QUERY,
+  runtimeClassification: RUNTIME_CLASSIFICATION.EXISTING_CANONICAL_CAPABILITY,
+  productionBinding: PRODUCTION_BINDING_STATUS.BOUND,
+  requiredContext: ["contractVersion", "tenantId", "actorId", "correlationId"],
+  capabilities: [
+    capability("resolveActorIdentity", CAPABILITY_KIND.QUERY),
+    capability("getAuthorizationEvidence", CAPABILITY_KIND.QUERY),
+    capability("getCapabilityEvidence", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: [
+    "resolveActorIdentity",
+    "getAuthorizationEvidence",
+    "getCapabilityEvidence"
+  ],
+  forbiddenMethods: [
+    "authenticateCredentials",
+    "mintSession",
+    "storePassword",
+    "grantPermission",
+    "createRole",
+    "inferIdentityByDisplayName"
+  ]
+});
+var TENANT_ORGANIZATION_CONTRACT = defineContract({
+  ordinal: 2,
+  contractId: "competition.tenant-organization.adapter.v1",
+  domain: "tenant-organization",
+  authorityOwner: "src/features/tenant",
+  direction: ADAPTER_DIRECTION.INBOUND_QUERY,
+  runtimeClassification: RUNTIME_CLASSIFICATION.EXISTING_PARTIAL_CAPABILITY,
+  productionBinding: PRODUCTION_BINDING_STATUS.PARTIAL,
+  requiredContext: ["contractVersion", "tenantId", "correlationId"],
+  capabilities: [
+    capability("resolveTenantIdentity", CAPABILITY_KIND.QUERY),
+    capability("validateScope", CAPABILITY_KIND.QUERY),
+    capability("distinguishScopeIds", CAPABILITY_KIND.QUERY),
+    capability("resolveOrganizationIdentity", CAPABILITY_KIND.QUERY),
+    capability("getOrganizationStatus", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: [
+    "resolveTenantIdentity",
+    "validateScope",
+    "distinguishScopeIds",
+    "resolveOrganizationIdentity",
+    "getOrganizationStatus"
+  ],
+  forbiddenMethods: [
+    "createTenant",
+    "createOrganization",
+    "inferTenantFromDisplayName"
+  ]
+});
+var PARTICIPANT_CONTRACT = defineContract({
+  ordinal: 3,
+  contractId: "competition.participant.adapter.v1",
+  domain: "participant",
+  authorityOwner: "src/features/player",
+  direction: ADAPTER_DIRECTION.INBOUND_QUERY,
+  runtimeClassification: RUNTIME_CLASSIFICATION.EXISTING_CANONICAL_CAPABILITY,
+  productionBinding: PRODUCTION_BINDING_STATUS.BOUND,
+  requiredContext: ["contractVersion", "tenantId", "correlationId"],
+  capabilities: [
+    capability("resolveCanonicalParticipant", CAPABILITY_KIND.QUERY),
+    capability("getCompetitionSafeProfile", CAPABILITY_KIND.QUERY),
+    capability("verifySourceStatus", CAPABILITY_KIND.QUERY),
+    capability("getParticipantSnapshot", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: [
+    "resolveCanonicalParticipant",
+    "getCompetitionSafeProfile",
+    "verifySourceStatus",
+    "getParticipantSnapshot"
+  ],
+  forbiddenMethods: [
+    "mutatePlayerProfile",
+    "createPlayer",
+    "inferParticipantByDisplayName"
+  ]
+});
+var CLUB_TEAM_MEMBERSHIP_CONTRACT = defineContract({
+  ordinal: 4,
+  contractId: "competition.club-team-membership.adapter.v1",
+  domain: "club-team-membership",
+  authorityOwner: "src/features/club",
+  direction: ADAPTER_DIRECTION.INBOUND_QUERY,
+  runtimeClassification: RUNTIME_CLASSIFICATION.EXISTING_CANONICAL_CAPABILITY,
+  productionBinding: PRODUCTION_BINDING_STATUS.PARTIAL,
+  requiredContext: ["contractVersion", "tenantId", "correlationId"],
+  capabilities: [
+    capability("getClubAffiliation", CAPABILITY_KIND.QUERY),
+    capability("getMembershipStatus", CAPABILITY_KIND.QUERY),
+    capability("getMembershipEvidence", CAPABILITY_KIND.QUERY),
+    capability("getTeamIdentity", CAPABILITY_KIND.QUERY),
+    capability("getTeamRoster", CAPABILITY_KIND.QUERY),
+    capability("getCaptainRelationship", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: [
+    "getClubAffiliation",
+    "getMembershipStatus",
+    "getMembershipEvidence",
+    "getTeamIdentity",
+    "getTeamRoster",
+    "getCaptainRelationship"
+  ],
+  forbiddenMethods: [
+    "decideSeed",
+    "decideDraw",
+    "decideMatchup",
+    "decideStandings",
+    "decideChampion",
+    "decideEligibilityFinal"
+  ]
+});
+var RATING_CONTRACT = defineContract({
+  ordinal: 5,
+  contractId: "competition.rating.adapter.v1",
+  domain: "rating",
+  authorityOwner: "src/features/player-rating",
+  direction: ADAPTER_DIRECTION.INBOUND_QUERY,
+  runtimeClassification: RUNTIME_CLASSIFICATION.EXISTING_PARTIAL_CAPABILITY,
+  productionBinding: PRODUCTION_BINDING_STATUS.PARTIAL,
+  requiredContext: ["contractVersion", "tenantId", "correlationId"],
+  capabilities: [
+    capability("getRatingSnapshot", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: ["getRatingSnapshot"],
+  forbiddenMethods: [
+    "calculateSeed",
+    "formPairs",
+    "mutateLockedDraw",
+    "ownRatingEngine"
+  ]
+});
+var RANKING_CONTRACT = defineContract({
+  ordinal: 6,
+  contractId: "competition.ranking.adapter.v1",
+  domain: "ranking",
+  authorityOwner: "src/features/vpr-ranking",
+  direction: ADAPTER_DIRECTION.INBOUND_QUERY,
+  runtimeClassification: RUNTIME_CLASSIFICATION.EXISTING_PARTIAL_CAPABILITY,
+  productionBinding: PRODUCTION_BINDING_STATUS.NOT_CONFIGURED,
+  requiredContext: ["contractVersion", "tenantId", "correlationId"],
+  capabilities: [
+    capability("getRankingSnapshot", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: ["getRankingSnapshot"],
+  forbiddenMethods: ["runRankingEngine", "mutateLockedDrawFromRanking"]
+});
+var FINANCE_PAYMENT_CONTRACT = defineContract({
+  ordinal: 9,
+  contractId: "competition.finance-payment.adapter.v1",
+  domain: "finance-payment",
+  authorityOwner: "src/features/finance",
+  direction: ADAPTER_DIRECTION.INBOUND_QUERY,
+  runtimeClassification: RUNTIME_CLASSIFICATION.CONTRACT_ONLY_NO_RUNTIME,
+  productionBinding: PRODUCTION_BINDING_STATUS.NOT_CONFIGURED,
+  requiredContext: ["contractVersion", "tenantId", "competitionId", "correlationId"],
+  capabilities: [
+    capability("getEntryFeeStatus", CAPABILITY_KIND.QUERY),
+    capability("getPaymentState", CAPABILITY_KIND.QUERY),
+    capability("getWaiverStatus", CAPABILITY_KIND.QUERY),
+    capability("getRefundState", CAPABILITY_KIND.QUERY),
+    capability("getSettlementReference", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: [
+    "getEntryFeeStatus",
+    "getPaymentState",
+    "getWaiverStatus",
+    "getRefundState",
+    "getSettlementReference"
+  ],
+  forbiddenMethods: [
+    "postLedgerEntry",
+    "ownAccounting",
+    "createPaymentProcessor",
+    "createPaymentIntent",
+    "refundPayment"
+  ]
+});
+var NOTIFICATION_COMMUNICATION_CONTRACT = defineContract({
+  ordinal: 10,
+  contractId: "competition.notification-communication.adapter.v1",
+  domain: "notification-communication",
+  authorityOwner: "src/features/notifications",
+  direction: ADAPTER_DIRECTION.OUTBOUND_EVENT,
+  runtimeClassification: RUNTIME_CLASSIFICATION.EXISTING_PARTIAL_CAPABILITY,
+  productionBinding: PRODUCTION_BINDING_STATUS.PARTIAL,
+  requiredContext: ["contractVersion", "tenantId", "correlationId"],
+  capabilities: [
+    capability("publishCompetitionCommunicationEvent", CAPABILITY_KIND.EVENT, {
+      requiresIdempotencyKey: true
+    })
+  ],
+  requiredMethods: ["publishCompetitionCommunicationEvent"],
+  forbiddenMethods: ["decideCompetitionLifecycle", "mutateMatchResult"]
+});
+var FILE_MEDIA_CONTRACT = defineContract({
+  ordinal: 11,
+  contractId: "competition.file-media.adapter.v1",
+  domain: "file-media",
+  authorityOwner: "none-canonical",
+  direction: ADAPTER_DIRECTION.INBOUND_QUERY,
+  runtimeClassification: RUNTIME_CLASSIFICATION.CONTRACT_ONLY_NO_RUNTIME,
+  productionBinding: PRODUCTION_BINDING_STATUS.NOT_CONFIGURED,
+  requiredContext: ["contractVersion", "tenantId", "correlationId"],
+  capabilities: [
+    capability("getDocumentReference", CAPABILITY_KIND.QUERY),
+    capability("getMediaReference", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: ["getDocumentReference", "getMediaReference"],
+  forbiddenMethods: ["ownFileStorage", "bindStorageProvider"]
+});
+var STREAMING_SCOREBOARD_CONTRACT = defineContract({
+  ordinal: 12,
+  contractId: "competition.streaming-scoreboard.adapter.v1",
+  domain: "streaming-scoreboard",
+  authorityOwner: "src/features/tournament-broadcast",
+  direction: ADAPTER_DIRECTION.OUTBOUND_EVENT,
+  runtimeClassification: RUNTIME_CLASSIFICATION.EXISTING_PARTIAL_CAPABILITY,
+  productionBinding: PRODUCTION_BINDING_STATUS.NOT_CONFIGURED,
+  requiredContext: ["contractVersion", "tenantId", "competitionId", "correlationId"],
+  capabilities: [
+    capability("publishScoreboardProjection", CAPABILITY_KIND.EVENT),
+    capability("getStreamingMetadata", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: ["publishScoreboardProjection", "getStreamingMetadata"],
+  forbiddenMethods: ["writeCanonicalScore", "decideScoring"]
+});
+var FEDERATION_EXTERNAL_AUTHORITY_CONTRACT = defineContract({
+  ordinal: 13,
+  contractId: "competition.federation-external-authority.adapter.v1",
+  domain: "federation-external-authority",
+  authorityOwner: "src/features/ecosystem-integrations",
+  direction: ADAPTER_DIRECTION.INBOUND_QUERY,
+  runtimeClassification: RUNTIME_CLASSIFICATION.CONTRACT_ONLY_NO_RUNTIME,
+  productionBinding: PRODUCTION_BINDING_STATUS.NOT_CONFIGURED,
+  requiredContext: ["contractVersion", "tenantId", "correlationId"],
+  capabilities: [
+    capability("getFederationPlayerEvidence", CAPABILITY_KIND.QUERY),
+    capability("getLicenseEvidence", CAPABILITY_KIND.QUERY),
+    capability("getSanctionEvidence", CAPABILITY_KIND.QUERY),
+    capability("getExternalEligibilityEvidence", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: [
+    "getFederationPlayerEvidence",
+    "getLicenseEvidence",
+    "getSanctionEvidence",
+    "getExternalEligibilityEvidence"
+  ],
+  forbiddenMethods: ["inventFederationData", "decideFinalEligibility"]
+});
+var CRM_SPONSOR_CONTRACT = defineContract({
+  ordinal: 14,
+  contractId: "competition.crm-sponsor.adapter.v1",
+  domain: "crm-sponsor",
+  authorityOwner: "src/features/crm",
+  direction: ADAPTER_DIRECTION.INBOUND_QUERY,
+  runtimeClassification: RUNTIME_CLASSIFICATION.CONTRACT_ONLY_NO_RUNTIME,
+  productionBinding: PRODUCTION_BINDING_STATUS.NOT_CONFIGURED,
+  requiredContext: ["contractVersion", "tenantId", "correlationId"],
+  capabilities: [
+    capability("getSponsorReference", CAPABILITY_KIND.QUERY),
+    capability("getSponsorPackageReference", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: ["getSponsorReference", "getSponsorPackageReference"],
+  forbiddenMethods: ["ownTournament", "exposeSensitiveCrmStorage"]
+});
+var ANALYTICS_REPORTING_CONTRACT = defineContract({
+  ordinal: 15,
+  contractId: "competition.analytics-reporting.adapter.v1",
+  domain: "analytics-reporting",
+  authorityOwner: "src/features/intelligence-analytics",
+  direction: ADAPTER_DIRECTION.OUTBOUND_EVENT,
+  runtimeClassification: RUNTIME_CLASSIFICATION.EXISTING_PARTIAL_CAPABILITY,
+  productionBinding: PRODUCTION_BINDING_STATUS.NOT_CONFIGURED,
+  requiredContext: ["contractVersion", "tenantId", "correlationId"],
+  capabilities: [
+    capability("publishCompetitionAnalyticsFact", CAPABILITY_KIND.EVENT),
+    capability("getNonAuthoritativeReport", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: [
+    "publishCompetitionAnalyticsFact",
+    "getNonAuthoritativeReport"
+  ],
+  forbiddenMethods: ["writeCanonicalResult", "feedDerivedAsTruth"]
+});
+var AUDIT_CONTRACT = defineContract({
+  ordinal: 16,
+  contractId: "competition.audit.adapter.v1",
+  domain: "audit",
+  authorityOwner: "src/features/identity/services/auditService.js + competition-core/audit",
+  direction: ADAPTER_DIRECTION.MIXED,
+  runtimeClassification: RUNTIME_CLASSIFICATION.EXISTING_PARTIAL_CAPABILITY,
+  productionBinding: PRODUCTION_BINDING_STATUS.NOT_CONFIGURED,
+  requiredContext: ["contractVersion", "tenantId", "actorId", "correlationId"],
+  capabilities: [
+    capability("appendAuditRecord", CAPABILITY_KIND.COMMAND),
+    capability("queryAuditEvidence", CAPABILITY_KIND.QUERY)
+  ],
+  requiredMethods: ["appendAuditRecord", "queryAuditEvidence"],
+  forbiddenMethods: [
+    "approveBusinessOperation",
+    "mutateCompetitionDecision",
+    "replaceDomainPersistence",
+    "dropRequiredAuditEvent"
+  ]
+});
+var WORKSTREAM_CONTRACT_DEFINITIONS = Object.freeze([
+  IDENTITY_ACCESS_CONTRACT,
+  TENANT_ORGANIZATION_CONTRACT,
+  PARTICIPANT_CONTRACT,
+  CLUB_TEAM_MEMBERSHIP_CONTRACT,
+  RATING_CONTRACT,
+  RANKING_CONTRACT,
+  FINANCE_PAYMENT_CONTRACT,
+  NOTIFICATION_COMMUNICATION_CONTRACT,
+  FILE_MEDIA_CONTRACT,
+  STREAMING_SCOREBOARD_CONTRACT,
+  FEDERATION_EXTERNAL_AUTHORITY_CONTRACT,
+  CRM_SPONSOR_CONTRACT,
+  ANALYTICS_REPORTING_CONTRACT,
+  AUDIT_CONTRACT
+]);
+var WORKSTREAM_CONTRACTS_BY_ID = Object.freeze(
+  Object.fromEntries(
+    WORKSTREAM_CONTRACT_DEFINITIONS.map((def) => [def.contractId, def])
+  )
+);
 
 // src/features/competition-engine/operations/referee/assignment/server/createIdentityBackedRefereeDirectoryPort.js
-function isCanonicalRefereeIdentityRole(role) {
-  const normalized = normalizeRole(role);
-  if (normalized === ROLES.REFEREE) return true;
-  const raw = String(role || "").trim().toUpperCase();
-  return raw === "HEAD_REFEREE" || raw === "SCOREKEEPER";
+var CONTRACT_01_ID = IDENTITY_ACCESS_CONTRACT.contractId;
+var CONTRACT_01_CURRENT_METHODS = Object.freeze([
+  ...IDENTITY_ACCESS_CONTRACT.requiredMethods
+]);
+var CONTRACT_01_SUBJECT_DIRECTORY_METHODS = Object.freeze([
+  "resolveSubjectIdentity",
+  "getSubjectIdentityEvidence",
+  "lookupSubjectIdentity"
+]);
+var IDENTITY_DIRECTORY_CAPABILITY = Object.freeze({
+  NOT_CONFIGURED: "CONTRACT_01_SUBJECT_DIRECTORY_NOT_CONFIGURED",
+  SUBJECT_IDENTITY: "CONTRACT_01_SUBJECT_IDENTITY"
+});
+function findSubjectDirectoryMethod(adapter) {
+  if (!adapter || typeof adapter !== "object") return null;
+  for (const name of CONTRACT_01_SUBJECT_DIRECTORY_METHODS) {
+    if (typeof adapter[name] === "function") return name;
+  }
+  return null;
+}
+function readEvidenceData(evidence) {
+  if (!evidence || typeof evidence !== "object") return {};
+  if (evidence.data && typeof evidence.data === "object") return evidence.data;
+  return evidence;
+}
+function isActiveStatus(value) {
+  const raw = String(value ?? "active").trim().toLowerCase();
+  return raw !== "inactive" && raw !== "disabled" && raw !== "suspended";
 }
 function createIdentityBackedRefereeDirectoryPort(options = {}) {
-  const serviceClient = options.serviceClient;
+  const identityAccessAdapter = options.identityAccessAdapter || null;
+  const subjectMethod = findSubjectDirectoryMethod(identityAccessAdapter);
+  const source = subjectMethod ? IDENTITY_DIRECTORY_CAPABILITY.SUBJECT_IDENTITY : IDENTITY_DIRECTORY_CAPABILITY.NOT_CONFIGURED;
   return Object.freeze({
-    source: "IDENTITY_PROFILES_REFEREE_ROLE",
+    source,
+    contractId: CONTRACT_01_ID,
     synthesizesQualification: false,
     synthesizesAvailability: false,
+    queriesIdentityPrivatePersistence: false,
+    subjectDirectoryMethod: subjectMethod,
     async resolveRefereeDirectory(request = {}) {
       const refereeId = String(request.refereeId || "").trim();
       const tenantId = String(request.tenantId || "").trim();
       if (!refereeId) {
-        return createEmptySnapshotResult(
-          "No refereeId supplied for Identity directory lookup"
+        return createMissingSnapshotResult(
+          "No refereeId supplied for Identity directory lookup",
+          { contractId: CONTRACT_01_ID }
         );
       }
       if (!isUuid(refereeId)) {
@@ -4793,48 +5358,63 @@ function createIdentityBackedRefereeDirectoryPort(options = {}) {
           { refereeId }
         );
       }
-      if (!serviceClient || typeof serviceClient.from !== "function") {
-        return createMissingSnapshotResult(
-          "Identity-backed referee directory is unavailable",
-          { refereeId }
+      if (!subjectMethod) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.NOT_CONFIGURED,
+          "Contract #01 does not provide subject directory lookup for an arbitrary referee",
+          {
+            contractId: CONTRACT_01_ID,
+            missingCapability: "resolveSubjectIdentityDirectory",
+            currentContractCapabilities: CONTRACT_01_CURRENT_METHODS,
+            whyRequired: "CORE-13 needs canonical subject id, Identity role, active/inactive, and tenant/scope for the assigned referee \u2014 not the authenticated actor",
+            whyDirectProfilesReadIsNotAcceptable: "Competition must not query Identity private persistence; evidence must enter through Contract #01 / Identity Adapter B",
+            ownerGoRequired: true,
+            sharedContractCapabilityGap: true
+          }
         );
       }
-      const { data: profile, error } = await serviceClient.from("profiles").select("id, display_name, role, venue_id, status").eq("id", refereeId).maybeSingle();
-      if (error) {
-        return createMissingSnapshotResult(
-          "Identity-backed referee directory lookup failed",
-          { refereeId, error: error.message || String(error) }
-        );
-      }
-      if (!profile?.id) {
+      const evidence = await identityAccessAdapter[subjectMethod]({
+        tenantId,
+        actorId: refereeId,
+        subjectId: refereeId,
+        correlationId: request.correlationId || `core13-identity-${refereeId}`,
+        contractVersion: IDENTITY_ACCESS_CONTRACT.contractVersion
+      });
+      const data = readEvidenceData(evidence);
+      const subjectId = String(
+        data.subjectId || data.userId || data.actorId || ""
+      ).trim();
+      if (!subjectId || subjectId !== refereeId) {
         failAssignmentCommand(
           ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
-          "Canonical referee Identity evidence was not found",
-          { refereeId }
+          "Canonical Identity subject evidence did not match refereeId",
+          { refereeId, subjectId: subjectId || null }
         );
       }
-      const profileTenant = String(profile.venue_id || "").trim();
-      if (profileTenant && tenantId && profileTenant !== tenantId) {
+      const evidenceTenant = String(
+        data.tenantId || data.venueId || data.boundTenantId || ""
+      ).trim();
+      if (evidenceTenant && tenantId && evidenceTenant !== tenantId) {
         failAssignmentCommand(
           ASSIGNMENT_COMMAND_ERROR_CODE.FOREIGN_REFEREE_DENIED,
           "Referee identity is not bound to the authenticated tenant",
-          { refereeId, profileTenant, tenantId }
+          { refereeId, evidenceTenant, tenantId }
         );
       }
-      if (!isCanonicalRefereeIdentityRole(profile.role)) {
+      if (!isRefereeRole(data.role)) {
         failAssignmentCommand(
           ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
           "Canonical Referee identity/source evidence is required (Identity role)",
-          { refereeId, role: profile.role || null }
+          { refereeId, role: data.role || null }
         );
       }
-      const active = String(profile.status || "active").toLowerCase() !== "inactive";
+      const active = isActiveStatus(data.status ?? data.active);
       return createPopulatedSnapshotResult([
         createRefereeCandidate({
           refereeId,
           active,
           userId: refereeId,
-          displayLabel: profile.display_name || void 0
+          displayLabel: data.displayLabel || data.displayName || void 0
         })
       ]);
     }
@@ -4845,8 +5425,8 @@ function createIdentityBackedRefereeDirectoryPort(options = {}) {
 var REFEREE_EVIDENCE_CAPABILITY = Object.freeze({
   QUALIFICATION: "NOT_CONFIGURED",
   AVAILABILITY: "NOT_CONFIGURED",
-  IDENTITY: "IDENTITY_PROFILES_REFEREE_ROLE",
-  ACTIVE_STATUS: "IDENTITY_PROFILES_STATUS"
+  IDENTITY: "CONTRACT_01_SUBJECT_DIRECTORY_NOT_CONFIGURED",
+  ACTIVE_STATUS: "CONTRACT_01_SUBJECT_DIRECTORY_NOT_CONFIGURED"
 });
 function createNotConfiguredQualificationSnapshot() {
   return createEmptySnapshotResult(
@@ -5960,7 +6540,7 @@ function isNonEmptyString2(value) {
 function isPlainObject3(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
-function deepFreeze2(value) {
+function deepFreeze3(value) {
   if (value === null || typeof value !== "object") return value;
   if (Object.isFrozen(value)) return value;
   for (const key of Reflect.ownKeys(value)) {
@@ -5968,15 +6548,15 @@ function deepFreeze2(value) {
       /** @type {Record<string|symbol, unknown>} */
       value[key]
     );
-    if (child && typeof child === "object") deepFreeze2(child);
+    if (child && typeof child === "object") deepFreeze3(child);
   }
   return Object.freeze(value);
 }
-function clonePlain(value) {
+function clonePlain2(value) {
   return structuredClone(value);
 }
-function freezeClone(value) {
-  return deepFreeze2(clonePlain(value));
+function freezeClone2(value) {
+  return deepFreeze3(clonePlain2(value));
 }
 
 // src/features/competition-engine/integration/referee/contract.js
@@ -6018,7 +6598,7 @@ function requireAdapterRequest(request) {
       {}
     );
   }
-  return freezeClone({
+  return freezeClone2({
     tenantId,
     competitionId,
     matchId: isNonEmptyString2(request.matchId) ? String(request.matchId).trim() : null,
@@ -6035,7 +6615,7 @@ function assertScoringRulesPayload(scoringRules) {
     );
   }
   try {
-    return freezeClone(createScoringFormat(scoringRules));
+    return freezeClone2(createScoringFormat(scoringRules));
   } catch (err) {
     failRefereeAdapter(
       REFEREE_ADAPTER_ERROR_CODE.MISSING_SCORING_RULES,
@@ -6066,7 +6646,7 @@ function assertResultPropagationPayload(propagation) {
       {}
     );
   }
-  return freezeClone({
+  return freezeClone2({
     propagateOnlyIfAccepted: true,
     targets: Array.isArray(propagation.targets) ? [...propagation.targets] : Object.freeze(["standings", "bracket", "qualification", "aggregate"]),
     instructions: isPlainObject3(propagation.instructions) ? propagation.instructions : {}
@@ -6148,7 +6728,7 @@ function loadModeCompetitionState(state, request, expectedMode) {
       { competitionMode: stateMode, expectedMode }
     );
   }
-  return { req, state: freezeClone(state), tenantId, competitionId };
+  return { req, state: freezeClone2(state), tenantId, competitionId };
 }
 function requireModeMatch(state, matchId) {
   if (!isNonEmptyString2(matchId)) {
@@ -6167,7 +6747,7 @@ function requireModeMatch(state, matchId) {
       { matchId: id }
     );
   }
-  return freezeClone({ ...matches[id], matchId: id });
+  return freezeClone2({ ...matches[id], matchId: id });
 }
 function normalizeParticipantSides(sides) {
   if (!Array.isArray(sides) || sides.length !== 2) {
@@ -6187,7 +6767,7 @@ function normalizeParticipantSides(sides) {
     }
     const sideKey = isNonEmptyString2(side.sideKey) || isNonEmptyString2(side.side) ? String(side.sideKey || side.side).trim().toUpperCase() : index === 0 ? "A" : "B";
     const participantIds = Array.isArray(side.participantIds) ? side.participantIds.map((id) => String(id)) : [];
-    return freezeClone({
+    return freezeClone2({
       sideKey,
       entryId: isNonEmptyString2(side.entryId) ? String(side.entryId).trim() : null,
       teamId: isNonEmptyString2(side.teamId) ? String(side.teamId).trim() : null,
@@ -6306,7 +6886,7 @@ function buildStandardLifecyclePolicy(overrides = {}) {
     completionRequiresAcceptedResult: overrides.completionRequiresAcceptedResult === true,
     ...overrides
   };
-  return freezeClone({
+  return freezeClone2({
     ...base,
     // Locked invariants — cannot be overridden away
     requiresAssignment: true,
@@ -6323,7 +6903,7 @@ function buildStandardCapabilities(overrides = {}) {
     dreambreakerInheritsParent: overrides.dreambreakerInheritsParent === true,
     ...overrides
   };
-  return freezeClone({
+  return freezeClone2({
     ...base,
     // Locked — Adapter B never owns these
     ownsScoringAuthority: false,
@@ -6460,7 +7040,7 @@ function createDailyPlayRefereeAdapter(options = {}) {
         requireMatch: false
       });
       const session = isPlainObject3(state.session) ? state.session : {};
-      return freezeClone({
+      return freezeClone2({
         tenantId,
         competitionId,
         competitionMode,
@@ -6479,7 +7059,7 @@ function createDailyPlayRefereeAdapter(options = {}) {
     },
     getMatchContext(request) {
       const { match, tenantId, competitionId, state } = load(request);
-      return freezeClone({
+      return freezeClone2({
         matchId: match.matchId,
         competitionId,
         tenantId,
@@ -6496,7 +7076,7 @@ function createDailyPlayRefereeAdapter(options = {}) {
     },
     getParticipants(request) {
       const { match } = load(request);
-      return freezeClone({
+      return freezeClone2({
         sides: sidesFromDailyPlayMatch(match),
         lineupsLocked: match.lineupsLocked === true
       });
@@ -6564,7 +7144,7 @@ function createDailyPlayRefereeAdapter(options = {}) {
           message: "Daily Play session is closed"
         });
       }
-      return freezeClone({
+      return freezeClone2({
         ok: blockers.length === 0,
         blockers
       });
@@ -6617,7 +7197,7 @@ function createIndividualTournamentRefereeAdapterSurface({
       const { req, state, tenantId, competitionId } = load(request, {
         requireMatch: false
       });
-      return freezeClone({
+      return freezeClone2({
         tenantId,
         competitionId,
         competitionMode,
@@ -6634,7 +7214,7 @@ function createIndividualTournamentRefereeAdapterSurface({
     },
     getMatchContext(request) {
       const { match, tenantId, competitionId } = load(request);
-      return freezeClone({
+      return freezeClone2({
         matchId: match.matchId,
         competitionId,
         tenantId,
@@ -6652,7 +7232,7 @@ function createIndividualTournamentRefereeAdapterSurface({
     },
     getParticipants(request) {
       const { match } = load(request);
-      return freezeClone({
+      return freezeClone2({
         sides: sidesFromIndividualMatch(match),
         lineupsLocked: match.lineupsLocked === true
       });
@@ -6713,7 +7293,7 @@ function createIndividualTournamentRefereeAdapterSurface({
           message: "Competition is closed"
         });
       }
-      return freezeClone({
+      return freezeClone2({
         ok: blockers.length === 0,
         blockers
       });
@@ -6930,7 +7510,7 @@ function resolveTeamMatch(state, matchId) {
     const row = matches[id];
     const matchupId = String(row.matchupId || row.parentMatchId || "").trim();
     const matchup = matchupId && isPlainObject3(matchups[matchupId]) ? matchups[matchupId] : null;
-    return freezeClone({
+    return freezeClone2({
       matchId: id,
       matchupId: matchupId || id,
       matchup: matchup || {
@@ -6953,7 +7533,7 @@ function resolveTeamMatch(state, matchId) {
       ...matchups[id],
       matchupId: matchups[id].matchupId || id
     };
-    return freezeClone({
+    return freezeClone2({
       matchId: id,
       matchupId: id,
       matchup,
@@ -6969,7 +7549,7 @@ function resolveTeamMatch(state, matchId) {
     const sub = subs.find((item) => String(item?.id || item?.subMatchId || "") === id);
     if (sub) {
       const isDreambreaker = sub.isDreambreaker === true || String(sub.discipline || "").toLowerCase() === "dreambreaker" || String(id).startsWith("db-");
-      return freezeClone({
+      return freezeClone2({
         matchId: id,
         matchupId,
         matchup,
@@ -7019,7 +7599,7 @@ function createTeamTournamentRefereeAdapter(options = {}) {
       const { req, state, tenantId, competitionId } = load(request, {
         requireMatch: false
       });
-      return freezeClone({
+      return freezeClone2({
         tenantId,
         competitionId,
         competitionMode,
@@ -7045,7 +7625,7 @@ function createTeamTournamentRefereeAdapter(options = {}) {
         matchupId,
         subMatchId: isParent ? null : matchId
       });
-      return freezeClone({
+      return freezeClone2({
         matchId,
         competitionId,
         tenantId,
@@ -7077,7 +7657,7 @@ function createTeamTournamentRefereeAdapter(options = {}) {
     },
     getParticipants(request) {
       const { resolved } = load(request);
-      return freezeClone({
+      return freezeClone2({
         sides: sidesFromTeamMatchup(resolved.matchup, resolved.subMatch),
         lineupsLocked: resolved.subMatch?.lineupsLocked === true || resolved.matchup.lineupsLocked === true
       });
@@ -7146,7 +7726,7 @@ function createTeamTournamentRefereeAdapter(options = {}) {
           message: "Team tournament is closed"
         });
       }
-      return freezeClone({
+      return freezeClone2({
         ok: blockers.length === 0,
         blockers
       });
@@ -7177,7 +7757,7 @@ function createTeamTournamentRefereeAdapter(options = {}) {
         refereeUserId,
         isOrganizer
       });
-      return freezeClone({
+      return freezeClone2({
         allowed,
         authority: false,
         policy: "organizer_can_manage_OR_assigned_canonical_uid",
@@ -7396,13 +7976,13 @@ async function loadAuthoritativeAssignmentEvidence(input = {}) {
     tournamentId,
     matchId
   }) : createUnscheduledMatchSnapshot("missing-match");
+  const directoryPort = createIdentityBackedRefereeDirectoryPort({
+    identityAccessAdapter: input.identityAccessAdapter || null
+  });
   let directorySnapshot = createEmptySnapshotResult(
     "No refereeId supplied for Identity directory lookup"
   );
   if (refereeId) {
-    const directoryPort = createIdentityBackedRefereeDirectoryPort({
-      serviceClient
-    });
     directorySnapshot = await directoryPort.resolveRefereeDirectory({
       tenantId,
       tournamentId,
@@ -7434,8 +8014,8 @@ async function loadAuthoritativeAssignmentEvidence(input = {}) {
     adapterBReused: true,
     adapterBContractId: adapterRuntime.contractId,
     adapterBOwnsRefereeIdentity: false,
-    refereeIdentityEvidence: REFEREE_EVIDENCE_CAPABILITY.IDENTITY,
-    refereeActiveStatusEvidence: REFEREE_EVIDENCE_CAPABILITY.ACTIVE_STATUS,
+    refereeIdentityEvidence: directoryPort.source || REFEREE_EVIDENCE_CAPABILITY.IDENTITY,
+    refereeActiveStatusEvidence: directoryPort.source || REFEREE_EVIDENCE_CAPABILITY.ACTIVE_STATUS,
     refereeQualificationEvidence: REFEREE_EVIDENCE_CAPABILITY.QUALIFICATION,
     refereeAvailabilityEvidence: REFEREE_EVIDENCE_CAPABILITY.AVAILABILITY,
     requireQualification,
@@ -7483,6 +8063,7 @@ function mapHttpStatus(code) {
     case ASSIGNMENT_COMMAND_ERROR_CODE.LIFECYCLE_DENIED:
     case ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED:
     case ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED:
+    case ASSIGNMENT_COMMAND_ERROR_CODE.NOT_CONFIGURED:
       return 422;
     default:
       return 400;
@@ -7536,14 +8117,16 @@ async function handleCompetitionRefereeAssignmentAction({
   action,
   body,
   userClient,
-  serviceClient
+  serviceClient,
+  identityAccessAdapter
 }) {
   try {
     return await executeCompetitionRefereeAssignmentAction({
       action,
       body,
       userClient,
-      serviceClient
+      serviceClient,
+      identityAccessAdapter
     });
   } catch (err) {
     const payload = toErrorBody(err);
@@ -7554,7 +8137,8 @@ async function executeCompetitionRefereeAssignmentAction({
   action,
   body,
   userClient,
-  serviceClient
+  serviceClient,
+  identityAccessAdapter
 }) {
   const verified = await verifyBearerToken(userClient);
   if (!verified.ok) {
@@ -7582,7 +8166,8 @@ async function executeCompetitionRefereeAssignmentAction({
     roleCode: command.roleCode || command.role,
     competitionMode: command.competitionMode,
     requireQualification: command.requireQualification === true,
-    requireAvailability: command.requireAvailability === true
+    requireAvailability: command.requireAvailability === true,
+    identityAccessAdapter
   });
   await assertTrustedAssignmentAuthz({
     userClient,

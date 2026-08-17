@@ -64,6 +64,7 @@ function mapHttpStatus(code) {
     case ASSIGNMENT_COMMAND_ERROR_CODE.LIFECYCLE_DENIED:
     case ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED:
     case ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED:
+    case ASSIGNMENT_COMMAND_ERROR_CODE.NOT_CONFIGURED:
       return 422;
     default:
       return 400;
@@ -122,6 +123,7 @@ export async function handleCompetitionRefereeAssignmentAction({
   body,
   userClient,
   serviceClient,
+  identityAccessAdapter,
 }) {
   try {
     return await executeCompetitionRefereeAssignmentAction({
@@ -129,6 +131,7 @@ export async function handleCompetitionRefereeAssignmentAction({
       body,
       userClient,
       serviceClient,
+      identityAccessAdapter,
     });
   } catch (err) {
     const payload = toErrorBody(err);
@@ -141,6 +144,7 @@ async function executeCompetitionRefereeAssignmentAction({
   body,
   userClient,
   serviceClient,
+  identityAccessAdapter,
 }) {
   const verified = await verifyBearerToken(userClient);
   if (!verified.ok) {
@@ -172,6 +176,7 @@ async function executeCompetitionRefereeAssignmentAction({
     competitionMode: command.competitionMode,
     requireQualification: command.requireQualification === true,
     requireAvailability: command.requireAvailability === true,
+    identityAccessAdapter,
   });
 
   await assertTrustedAssignmentAuthz({
