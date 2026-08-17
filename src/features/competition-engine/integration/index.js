@@ -71,6 +71,8 @@ export {
   getAdapterInventoryEntry,
 } from "./inventory/adapterInventory.js";
 
+export * from "./court-adapters/index.js";
+
 export const COMPETITION_ENGINE_INTEGRATION = Object.freeze({
   id: "competition-engine-integration",
   phase: "E2E-01",

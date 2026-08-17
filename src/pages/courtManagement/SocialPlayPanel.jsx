@@ -54,7 +54,7 @@ export default function SocialPlayPanel({ clubId, courts = [], onSaved }) {
     );
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title.trim()) {
       setError("Vui lòng nhập tên buổi Social Play.");
       return;
@@ -71,7 +71,7 @@ export default function SocialPlayPanel({ clubId, courts = [], onSaved }) {
       note: note.trim(),
     });
 
-    const result = createSocialPlayBookings(event, clubId, courts, createBooking);
+    const result = await createSocialPlayBookings(event, clubId, courts, createBooking);
 
     if (!result.ok && result.created.length === 0) {
       setError(result.message);

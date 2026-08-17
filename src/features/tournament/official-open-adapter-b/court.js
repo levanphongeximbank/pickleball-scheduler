@@ -21,7 +21,7 @@ import { createOfficialOpenAdapterB } from "./createOfficialOpenAdapterB.js";
  *   selectedCourtIds?: string[],
  * }} [input]
  */
-export function listOfficialOpenEligibleCourts(input = {}) {
+export async function listOfficialOpenEligibleCourts(input = {}) {
   const adapter = createOfficialOpenAdapterB({
     tournament: input.tournament,
     activeClub: input.activeClub,

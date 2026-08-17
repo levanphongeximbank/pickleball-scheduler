@@ -7,7 +7,11 @@
  * registry-addition gate (only tests/competition-engine-e2e-07-* are allowed).
  */
 import "./competition-engine-referee-adapter-contract-v1.test.js";
+import "./competition-engine-referee-adapter-b-mode-adoption-01.test.js";
+import "./competition-engine-referee-adapter-b-phase-2b-cutover-01.test.js";
 import "./competition-engine-referee-runtime-ports-authority.test.js";
+import "./competition-engine-referee-canonical-production-runtime-01.test.js";
+import "./competition-engine-referee-canonical-default-runtime-cutover-01.test.js";
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -28,6 +32,7 @@ import {
   buildRefereePortalSections,
   createCompetitionRuntimePorts,
   createInMemoryOrganizerOperationsStore,
+  createInMemoryRefereeOperationsStore,
   createOrganizerOperationsFacade,
   createPlayerCompetitionOperationsFacade,
   createRefereeCompetitionOperationsFacade,
@@ -391,6 +396,9 @@ test("referee — assignment queue + unassigned rejection + wrong tenant", async
   const referee = createRefereeCompetitionOperationsFacade({
     runtimePorts: ports,
     clockIso: "2026-07-24T12:00:00.000Z",
+    store: createInMemoryRefereeOperationsStore({
+      clockIso: "2026-07-24T12:00:00.000Z",
+    }),
   });
   referee.seedAssignments({
     ...baseScope(),
@@ -446,6 +454,9 @@ test("referee — lifecycle start/suspend/resume + score requires active", async
   const referee = createRefereeCompetitionOperationsFacade({
     runtimePorts: ports,
     clockIso: "2026-07-24T12:00:00.000Z",
+    store: createInMemoryRefereeOperationsStore({
+      clockIso: "2026-07-24T12:00:00.000Z",
+    }),
   });
   referee.seedAssignments({
     ...baseScope(),
@@ -499,6 +510,9 @@ test("referee — score + validate + accepted visibility + no unvalidated standi
   const referee = createRefereeCompetitionOperationsFacade({
     runtimePorts: ports,
     clockIso: "2026-07-24T12:00:00.000Z",
+    store: createInMemoryRefereeOperationsStore({
+      clockIso: "2026-07-24T12:00:00.000Z",
+    }),
   });
   referee.seedAssignments({
     ...baseScope(),
@@ -592,6 +606,7 @@ test("referee — client grants rejected", async () => {
   const ports = createPorts();
   const referee = createRefereeCompetitionOperationsFacade({
     runtimePorts: ports,
+    store: createInMemoryRefereeOperationsStore(),
   });
   await assert.rejects(
     () =>

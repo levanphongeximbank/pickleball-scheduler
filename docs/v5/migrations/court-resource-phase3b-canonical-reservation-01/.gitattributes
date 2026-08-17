@@ -1,0 +1,6 @@
+# Preserve exact certified Phase 3B execution-manifest bytes (CRLF-aware SHA256).
+# Do not normalize these files; Staging acceptance hashes the on-disk payload.
+01_PRECHECK.sql -text
+02_APPLY.sql -text
+03_VERIFY.sql -text
+04_ROLLBACK.sql -text

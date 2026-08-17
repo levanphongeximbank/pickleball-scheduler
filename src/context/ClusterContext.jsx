@@ -40,7 +40,7 @@ export function ClusterProvider({ children }) {
   }, [currentTenantId, revision, user]);
 
   const activeCluster = useMemo(
-    () => clusters.find((cluster) => cluster.id === activeClusterId) || clusters[0] || null,
+    () => clusters.find((cluster) => cluster.id === activeClusterId) || null,
     [activeClusterId, clusters]
   );
 

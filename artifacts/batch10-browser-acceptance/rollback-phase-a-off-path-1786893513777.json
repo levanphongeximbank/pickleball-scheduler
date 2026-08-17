@@ -1,0 +1,89 @@
+{
+  "previewUrl": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app",
+  "startedAt": "2026-08-16T15:18:14.276Z",
+  "gates": {
+    "PREVIEW_ALL_5_COURT_FLAGS_FALSE": "PASS",
+    "PREVIEW_BINDS_STAGING": "PASS",
+    "BROWSER_LOGIN": "PASS",
+    "PREVIEW_NO_UNEXPECTED_CANONICAL_MUTATION_RPCS": "PASS",
+    "PREVIEW_PRODUCTION_REQUESTS_ZERO": "PASS",
+    "PREVIEW_STAGING_TRAFFIC_SEEN": "PASS",
+    "NODE_FLAGS_DEFAULT_OFF": "PASS",
+    "BOOKING_OFF_PATH_SMOKE": "PASS",
+    "RESOURCE_BLOCK_OFF_PATH_GATE": "PASS",
+    "COMPETITION_OFF_PATH_SMOKE": "PASS",
+    "COMPETITION_RELEASE_OFF_PATH": "PASS",
+    "LEGACY_OFF_PATH_SMOKE": "PASS",
+    "DAILY_OFF_PATH_SMOKE": "PASS",
+    "BOOKING_CANCEL_OFF_PATH_GATE": "PASS",
+    "UNEXPECTED_CANONICAL_WRITES_ZERO": "PASS",
+    "DATA_CORRUPTION_COUNT_ZERO": "PASS",
+    "SQL_CUTOVER_UNCHANGED": "PASS"
+  },
+  "details": {
+    "SQL_RESERVATION_CUTOVER_CURRENT_STATE": {
+      "enabled": true,
+      "updated_at": "2026-08-16T14:15:51.035Z",
+      "cutover_id": "canonical-reservation-phase3b"
+    },
+    "before": {
+      "sqlCutoverEnabled": true,
+      "sqlCutoverUpdatedAt": "2026-08-16T14:15:51.035Z",
+      "reservations": 18,
+      "active_future_reservations": 0,
+      "reservation_commands": 36,
+      "bookings": 0,
+      "booking_commands": 0,
+      "blocks": 0,
+      "block_commands": 0
+    },
+    "flagProbe": {
+      "VITE_CANONICAL_RESERVATION_CUTOVER": {
+        "trueHit": false,
+        "falseHit": true
+      },
+      "VITE_CANONICAL_BOOKING_LIFECYCLE": {
+        "trueHit": false,
+        "falseHit": true
+      },
+      "VITE_CANONICAL_RESOURCE_BLOCKS": {
+        "trueHit": false,
+        "falseHit": true
+      },
+      "VITE_CANONICAL_COMPETITION_COURT_ADAPTERS": {
+        "trueHit": false,
+        "falseHit": true
+      },
+      "VITE_CANONICAL_COURT_LIVE_RUNTIME": {
+        "trueHit": false,
+        "falseHit": true
+      },
+      "bindsStaging": true,
+      "bindsProdUrl": false,
+      "joinedLen": 1178809
+    },
+    "runtimeFlagTruth": [
+      "VITE_CANONICAL_RESERVATION_CUTOVER",
+      "VITE_CANONICAL_BOOKING_LIFECYCLE",
+      "VITE_CANONICAL_RESOURCE_BLOCKS",
+      "VITE_CANONICAL_COMPETITION_COURT_ADAPTERS",
+      "VITE_CANONICAL_COURT_LIVE_RUNTIME"
+    ],
+    "after": {
+      "sqlCutoverEnabled": true,
+      "sqlCutoverUpdatedAt": "2026-08-16T14:15:51.035Z",
+      "reservations": 18,
+      "active_future_reservations": 0,
+      "reservation_commands": 36,
+      "bookings": 0,
+      "booking_commands": 0,
+      "blocks": 0,
+      "block_commands": 0
+    },
+    "UNEXPECTED_CANONICAL_WRITES": 0,
+    "ACTIVE_FUTURE_DELTA": 0
+  },
+  "failures": [],
+  "finishedAt": "2026-08-16T15:18:33.777Z",
+  "FINAL_OK": true
+}

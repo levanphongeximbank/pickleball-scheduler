@@ -71,13 +71,38 @@ export function resolvePickerCurrentTenantId({
   return resolveEffectiveTenantId(user);
 }
 
-export function resolveTenantSwitcherView({ currentTenantId, tenants = [] } = {}) {
-  const hasSelection = tenants.some((tenant) => tenant.id === currentTenantId);
-  const value = hasSelection ? currentTenantId : "";
-  const selected = value ? findCatalogTenant(tenants, value) : null;
-  const selectedLabel = value ? selected?.name || value : TENANT_SWITCHER_EMPTY_LABEL;
+/**
+ * Project selected operational Tenant/Venue id → visible Select value + label.
+ * Selected id is authority; catalog/currentTenant are display records only.
+ * A valid currentTenantId must not blank merely because catalog is mid-rebuild.
+ */
+export function resolveTenantSwitcherView({
+  currentTenantId,
+  tenants = [],
+  currentTenant = null,
+} = {}) {
+  const id = String(currentTenantId || "").trim();
+  if (!id) {
+    return {
+      value: "",
+      selectedLabel: TENANT_SWITCHER_EMPTY_LABEL,
+      hasSelection: false,
+      displayTenant: null,
+    };
+  }
 
-  return { value, selectedLabel, hasSelection };
+  const fromCatalog = findCatalogTenant(tenants, id);
+  const fromCurrent =
+    currentTenant && String(currentTenant.id || "").trim() === id ? currentTenant : null;
+  const displayTenant = fromCatalog || fromCurrent || null;
+  const label = String(displayTenant?.name || "").trim() || id;
+
+  return {
+    value: id,
+    selectedLabel: label,
+    hasSelection: true,
+    displayTenant,
+  };
 }
 
 export function resolveClubDetailTenantGate(currentTenantId) {

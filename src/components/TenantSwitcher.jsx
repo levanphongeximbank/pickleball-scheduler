@@ -4,6 +4,13 @@ import { useTenant } from "../context/TenantContext.jsx";
 import { resolveTenantSwitcherView } from "../features/tenant/services/tenantSelectionModel.js";
 import { SHELL_COLORS } from "./shell/shellTokens.js";
 
+const LIGHT_STYLES = {
+  bgcolor: "#FFFFFF",
+  color: SHELL_COLORS.textPrimary,
+  outline: SHELL_COLORS.border,
+  icon: SHELL_COLORS.textSecondary,
+};
+
 const VARIANT_STYLES = {
   dark: {
     bgcolor: "rgba(255,255,255,0.12)",
@@ -11,12 +18,9 @@ const VARIANT_STYLES = {
     outline: "rgba(255,255,255,0.3)",
     icon: "common.white",
   },
-  context: {
-    bgcolor: "#FFFFFF",
-    color: SHELL_COLORS.textPrimary,
-    outline: SHELL_COLORS.border,
-    icon: SHELL_COLORS.textSecondary,
-  },
+  // Header + CanonicalTopBar both use light surfaces — never fall back to dark/white text.
+  light: LIGHT_STYLES,
+  context: LIGHT_STYLES,
 };
 
 export default function TenantSwitcher({
@@ -25,7 +29,13 @@ export default function TenantSwitcher({
   maxWidth,
   variant = "dark",
 }) {
-  const { currentTenantId, isSuperAdmin, switchTenant, tenants: contextTenants } = useTenant();
+  const {
+    currentTenantId,
+    currentTenant,
+    isSuperAdmin,
+    switchTenant,
+    tenants: contextTenants,
+  } = useTenant();
   const styles = VARIANT_STYLES[variant] || VARIANT_STYLES.dark;
   const tenants = contextTenants || [];
 
@@ -33,21 +43,31 @@ export default function TenantSwitcher({
     return null;
   }
 
-  const { value, selectedLabel } = resolveTenantSwitcherView({
+  const { value, selectedLabel, displayTenant } = resolveTenantSwitcherView({
     currentTenantId,
     tenants,
+    currentTenant,
   });
+
+  const catalogHasValue = Boolean(value) && tenants.some((tenant) => tenant.id === value);
+  const orphanDisplay =
+    value && !catalogHasValue && displayTenant
+      ? displayTenant
+      : value && !catalogHasValue
+        ? { id: value, name: selectedLabel }
+        : null;
 
   return (
     <FormControl
       size={size}
       fullWidth={Boolean(maxWidth)}
       data-testid="canonical-organization-switcher"
+      data-selected-tenant-id={value || ""}
+      data-selected-tenant-label={selectedLabel}
       sx={{
-        minWidth: 0,
+        minWidth: maxWidth ? Math.min(minWidth, maxWidth) : minWidth,
         width: maxWidth ? "100%" : undefined,
         maxWidth: maxWidth || undefined,
-        ...(maxWidth ? null : { minWidth }),
       }}
     >
       <InputLabel
@@ -65,6 +85,7 @@ export default function TenantSwitcher({
           <Typography
             component="span"
             title={selectedLabel}
+            data-testid="tenant-switcher-selected-label"
             sx={{
               display: "block",
               overflow: "hidden",
@@ -72,6 +93,7 @@ export default function TenantSwitcher({
               whiteSpace: "nowrap",
               fontSize: "inherit",
               lineHeight: 1.4,
+              color: "inherit",
             }}
           >
             {selectedLabel}
@@ -101,9 +123,14 @@ export default function TenantSwitcher({
         <MenuItem value="" disabled>
           <em>Chọn tổ chức…</em>
         </MenuItem>
+        {orphanDisplay ? (
+          <MenuItem key={orphanDisplay.id} value={orphanDisplay.id}>
+            {orphanDisplay.name || orphanDisplay.id}
+          </MenuItem>
+        ) : null}
         {tenants.map((tenant) => (
           <MenuItem key={tenant.id} value={tenant.id}>
-            {tenant.name}
+            {tenant.name || tenant.id}
           </MenuItem>
         ))}
       </Select>
@@ -112,9 +139,10 @@ export default function TenantSwitcher({
 }
 
 export function TenantBadge() {
-  const { currentTenant, isSuperAdmin } = useTenant();
+  const { currentTenant, currentTenantId, isSuperAdmin } = useTenant();
+  const label = String(currentTenant?.name || "").trim() || currentTenantId;
 
-  if (!currentTenant) {
+  if (!label) {
     return null;
   }
 
@@ -128,7 +156,7 @@ export function TenantBadge() {
       }}
     >
       {isSuperAdmin ? "Đang quản trị: " : "Sân: "}
-      {currentTenant.name}
+      {label}
     </Typography>
   );
 }

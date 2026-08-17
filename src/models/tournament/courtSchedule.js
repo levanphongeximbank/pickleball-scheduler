@@ -3,9 +3,15 @@ export function normalizeCourtSchedule(schedule) {
     return null;
   }
 
+  const physicalCourtIds = Array.isArray(schedule.physicalCourtIds)
+    ? schedule.physicalCourtIds.filter((id) => id !== null && id !== undefined)
+    : [];
+
   const courtIds = Array.isArray(schedule.courtIds)
     ? schedule.courtIds.filter((id) => id !== null && id !== undefined)
-    : [];
+    : physicalCourtIds.length > 0
+      ? [...physicalCourtIds]
+      : [];
 
   const date = schedule.date ? String(schedule.date).slice(0, 10) : "";
   const startTime = schedule.startTime ? String(schedule.startTime).slice(0, 5) : "";
@@ -24,6 +30,8 @@ export function normalizeCourtSchedule(schedule) {
     startTime,
     endTime,
     courtIds,
+    // Canonical identity when provided; otherwise courtIds may hold UUIDs on Adapter B path.
+    physicalCourtIds: physicalCourtIds.length > 0 ? physicalCourtIds : [...courtIds],
     clusterId,
     syncedAt: schedule.syncedAt || null,
   };

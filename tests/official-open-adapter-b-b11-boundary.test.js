@@ -203,13 +203,13 @@ describe("Official/Open Adapter B1.1 boundary", () => {
     );
   });
 
-  it("routes Court Adapter B through Competition Court Contract V1", () => {
+  it("routes Court Adapter B through Competition Court Contract V1", async () => {
     const adapter = createOfficialOpenAdapterB({
       tournament: officialTournament(),
       currentTenantId: "tenant-1",
       activeClub: { id: "club-1", tenantId: "tenant-1" },
     });
-    const result = adapter.listEligibleCourts({ clubId: "club-1", tenantId: "tenant-1" });
+    const result = await adapter.listEligibleCourts({ clubId: "club-1", tenantId: "tenant-1" });
     assert.equal(result.source, "competition-court-adapter-contract-v1");
     assert.equal(result.physicalCourtIdAuthority, true);
     assert.equal(result.sharedRuntimeGap, COURT_SHARED_RUNTIME_GAP);

@@ -44,7 +44,7 @@ export default function RecurringBookingPanel({ clubId, courts = [], onSaved }) 
     };
   }, [clubId]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!customerName.trim()) {
       setError("Vui lòng nhập tên khách.");
       return;
@@ -60,7 +60,7 @@ export default function RecurringBookingPanel({ clubId, courts = [], onSaved }) 
       return;
     }
 
-    const result = createRecurringSeriesBookings(
+    const result = await createRecurringSeriesBookings(
       {
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),

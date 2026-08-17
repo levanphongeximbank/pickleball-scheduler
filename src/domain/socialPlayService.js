@@ -30,7 +30,7 @@ export function createSocialPlayEvent(input = {}) {
   };
 }
 
-export function createSocialPlayBookings(event, clubId, courts = [], createBookingFn) {
+export async function createSocialPlayBookings(event, clubId, courts = [], createBookingFn) {
   const results = {
     ok: true,
     created: [],
@@ -42,7 +42,7 @@ export function createSocialPlayBookings(event, clubId, courts = [], createBooki
     return { ok: false, message: "Chọn ít nhất một sân.", created: [], failed: [] };
   }
 
-  event.courtIds.forEach((courtId) => {
+  for (const courtId of event.courtIds) {
     const court = courts.find((item) => item.id === courtId);
     const payload = socialPlayToBookingPayload(
       event,
@@ -50,18 +50,19 @@ export function createSocialPlayBookings(event, clubId, courts = [], createBooki
       court?.name || `Sân ${courtId}`
     );
 
-    const result = createBookingFn(payload, clubId);
+    const raw = createBookingFn(payload, clubId);
+    const result = raw && typeof raw.then === "function" ? await raw : raw;
 
     if (result.ok) {
       results.created.push(result.booking);
-      return;
+      continue;
     }
 
     results.failed.push({
       courtId,
       message: result.message,
     });
-  });
+  }
 
   if (results.created.length === 0) {
     results.ok = false;

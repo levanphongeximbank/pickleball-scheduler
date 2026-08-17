@@ -19,6 +19,13 @@ export {
   REFEREE_ADAPTER_ERROR_CODE_VALUES,
   IN_MEMORY_RUNTIME_CLASSIFICATION,
   PRODUCTION_RUNTIME_CLASSIFICATION,
+  DURABLE_PRODUCTION_RUNTIME_CLASSIFICATION,
+  SCHEMA_FAITHFUL_DRIVER_KIND,
+  LIVE_RPC_DRIVER_KIND,
+  CANONICAL_REFEREE_STATE_ENVELOPE_VERSION,
+  REFEREE_V5_INTERNAL_COMMIT_RPC,
+  CANONICAL_RESULT_LINEAGE,
+  LIVE_RESULT_STATUS,
 } from "./constants.js";
 
 export {
@@ -60,14 +67,45 @@ export {
 } from "./runtimePorts.js";
 
 export { createCanonicalRefereePersistenceRuntime } from "./createCanonicalRefereePersistenceRuntime.js";
+export { createSchemaFaithfulCanonicalRefereeDurableDriver } from "./createSchemaFaithfulCanonicalRefereeDurableDriver.js";
+export { createCanonicalRefereeDurableRuntime } from "./createCanonicalRefereeDurableRuntime.js";
+export { createDurableRefereeOperationsStore } from "./createDurableRefereeOperationsStore.js";
+export { createLiveRpcCanonicalRefereeDurableDriver } from "./createLiveRpcCanonicalRefereeDurableDriver.js";
+export { createCompetitionRefereeProductionRuntime } from "./createCompetitionRefereeProductionRuntime.js";
+export { createDefaultCompetitionRefereeRuntime } from "./createDefaultCompetitionRefereeRuntime.js";
+export {
+  isBrowserRuntime,
+  assertServerOnlyPrivilegedRefereeComposition,
+  assertNoClientServiceRoleEnv,
+} from "./privilegedCompositionBoundary.js";
 
 export { runCompetitionRefereeAdapterConformance } from "./conformance.js";
+
+export {
+  createDailyPlayRefereeAdapter,
+  DailyPlayRefereeAdapter,
+  createInternalTournamentRefereeAdapter,
+  InternalTournamentRefereeAdapter,
+  createOfficialTournamentRefereeAdapter,
+  OfficialTournamentRefereeAdapter,
+  createTeamTournamentRefereeAdapter,
+  TeamTournamentRefereeAdapter,
+  createCompetitionRefereeModeAdapters,
+  createCompetitionRefereeModeAdapterRegistry,
+} from "./adapters/index.js";
 
 export const COMPETITION_REFEREE_ADAPTER_INTEGRATION = Object.freeze({
   id: "competition.referee.adapter.v1",
   version: "1.0.0",
   locked: true,
-  wiredToProductionRuntime: false,
+  wiredToProductionRuntime: true,
   inMemoryRuntimeClassification: "TEST_DOUBLE_ONLY",
+  inMemoryProductionFallback: false,
   productionRuntimePortsDefined: true,
+  productionRuntimeImplemented: true,
+  defaultRuntimeWiringImplemented: true,
+  stagingBackendCertified: true,
+  // Phase 2B: mode Adapter B cut over on canonical default/production composition
+  modeAdaptersImplemented: true,
+  usesAdapterBProductionCutover: true,
 });

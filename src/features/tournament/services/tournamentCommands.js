@@ -447,10 +447,13 @@ export async function setTournamentCourtScheduleCommand(
   const { normalizeCourtSchedule, courtScheduleFieldsMatch } = await import(
     "../../../models/tournament/courtSchedule.js"
   );
-  const { syncTournamentCourtBookings, tournamentOwnedBookingsMatchCourtSchedule } =
-    await import("../../../domain/tournamentBookingService.js");
-  const { loadCourtsForClub } = await import("../../../domain/clubStorage.js");
   const { getTournamentQuery } = await import("./tournamentQueries.js");
+  const {
+    isCanonicalCompetitionCourtAdaptersEnabled,
+    syncCompetitionCourtScheduleViaAdapterB,
+  } = await import(
+    "../../competition-engine/integration/court-adapters/index.js"
+  );
 
   const loaded = await getTournamentQuery(scope.clubId, tournamentId, {
     ...options,
@@ -534,6 +537,10 @@ export async function setTournamentCourtScheduleCommand(
     ...loaded.tournament,
     courtSchedule: {
       ...courtSchedule,
+      // Compatibility projection: courtIds must hold physicalCourt UUIDs on canonical path.
+      physicalCourtIds: Array.isArray(scheduleInput?.physicalCourtIds)
+        ? scheduleInput.physicalCourtIds
+        : courtSchedule.courtIds,
       syncedAt: new Date().toISOString(),
     },
     id: tournamentId,
@@ -542,9 +549,30 @@ export async function setTournamentCourtScheduleCommand(
     updatedAt: new Date().toISOString(),
   };
 
-  const courtsProvided = Object.prototype.hasOwnProperty.call(options, "courts");
-  let courts;
-  if (courtsProvided) {
+  let syncResult;
+  if (isCanonicalCompetitionCourtAdaptersEnabled()) {
+    // Canonical Mode Adapter B path — fail closed (no legacy court loader / booking bridge).
+    syncResult = await syncCompetitionCourtScheduleViaAdapterB(pending, {
+      tenantId: scope.tenantId,
+      clubId: scope.clubId,
+      actorId: options.actorId || options.userId,
+      mode: loaded.tournament.mode,
+      physicalCourtIds: pending.courtSchedule.physicalCourtIds,
+      forceCanonical: true,
+    });
+    if (!syncResult.ok) {
+      return {
+        ok: false,
+        error: syncResult.error || syncResult.message || "Canonical court schedule sync failed.",
+        code: syncResult.code || null,
+        tournament: loaded.tournament,
+        ...syncResult,
+      };
+    }
+  } else if (Object.prototype.hasOwnProperty.call(options, "courts")) {
+    const { syncTournamentCourtBookings, tournamentOwnedBookingsMatchCourtSchedule } =
+      await import("../../../domain/tournamentBookingService.js");
+    let courts;
     const { readCanonicalClubCourtBookingSnapshot } = await import(
       "../../team-tournament/services/canonicalClubCourtInventory.js"
     );
@@ -858,17 +886,21 @@ export async function setTournamentCourtScheduleCommand(
       firstPushExpectedVersion,
     };
   } else {
-    courts = loadCourtsForClub(scope.clubId);
-  }
-  const syncResult = syncTournamentCourtBookings(pending, scope.clubId, courts);
-  if (!syncResult.ok) {
-    return {
-      ...syncResult,
-      ok: false,
-      error: syncResult.message,
-      code: syncResult.code || null,
-      tournament: loaded.tournament,
-    };
+    const { syncTournamentCourtBookings } = await import(
+      "../../../domain/tournamentBookingService.js"
+    );
+    const { loadCourtsForClub } = await import("../../../domain/clubStorage.js");
+    const courts = loadCourtsForClub(scope.clubId);
+    syncResult = await syncTournamentCourtBookings(pending, scope.clubId, courts);
+    if (!syncResult.ok) {
+      return {
+        ok: false,
+        error: syncResult.message,
+        code: syncResult.code || null,
+        tournament: loaded.tournament,
+        ...syncResult,
+      };
+    }
   }
 
   const saved = await updateTournamentCommand(

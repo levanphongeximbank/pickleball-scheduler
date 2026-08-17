@@ -488,8 +488,8 @@ export function createOfficialOpenAdapterB(deps = {}) {
       };
     },
 
-    listEligibleCourts(input = {}) {
-      const contractResult = court.listEligibleCourts({
+    async listEligibleCourts(input = {}) {
+      const contractResult = await court.listEligibleCourts({
         ...input,
         clubId: input.clubId || clubId,
         tenantId: input.tenantId || tenantId,

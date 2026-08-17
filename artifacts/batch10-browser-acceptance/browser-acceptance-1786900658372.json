@@ -1,0 +1,218 @@
+{
+  "previewUrl": "https://pickleball-scheduler-git-feat-court-dd7eb3-pickleball-scheduler.vercel.app",
+  "stagingRef": "qyewbxjsiiyufanzcjcq",
+  "startedAt": "2026-08-16T17:17:16.624Z",
+  "gates": {
+    "BROWSER_LOGIN": "PASS",
+    "PREVIEW_CANONICAL_RESERVATION": "PASS",
+    "PREVIEW_CANONICAL_BOOKING": "PASS",
+    "PREVIEW_CANONICAL_RESOURCE_BLOCKS": "PASS",
+    "PREVIEW_CANONICAL_COMPETITION_COURT_ADAPTERS": "PASS",
+    "PREVIEW_CANONICAL_COURT_LIVE_RUNTIME": "PASS",
+    "PREVIEW_BINDS_STAGING": "PASS",
+    "STAGING_JWT": "PASS",
+    "COURT_INVENTORY_REAL_BROWSER": "PASS",
+    "COURT_STATUS_UI_CANONICAL_CAPTION": "PASS",
+    "BOOKING_CREATE": "PASS",
+    "BOOKING_RESCHEDULE": "PASS",
+    "BOOKING_TRANSFER_CONFLICT_PRESERVES_COURT": "PASS",
+    "BOOKING_TRANSFER": "PASS",
+    "BOOKING_CANCEL": "PASS",
+    "BOOKING_CAPACITY_RELEASED": "PASS",
+    "BOOKING_REAL_BROWSER": "PASS",
+    "RESOURCE_BLOCK_MAINTENANCE_CREATE": "PASS",
+    "RESOURCE_BLOCK_BOOKING_OVERLAP_REJECTED": "PASS",
+    "RESOURCE_BLOCK_CANCEL_RELEASES": "PASS",
+    "RESOURCE_BLOCK_REAL_BROWSER": "PASS",
+    "LIVE_STATE_UNAVAILABLE_NOW": "PASS",
+    "LIVE_STATE_OUT_OF_SERVICE_NOW": "PASS",
+    "LIVE_STATE_AVAILABLE": "PASS",
+    "COURT_STATUS_REAL_BROWSER": "PASS",
+    "DAILY_REAL_BROWSER": "PASS",
+    "INTERNAL_REAL_BROWSER": "PASS",
+    "OFFICIAL_REAL_BROWSER": "PASS",
+    "TEAM_REAL_BROWSER": "PASS",
+    "DAILY_UI_ROUTE": "PASS",
+    "REFEREE_RUNTIME_STAGING_REGRESSION": "PASS",
+    "COURT_CUTOVER_REFEREE_BROWSER_REGRESSION": "PASS",
+    "CROSS_MODULE_CONFLICT_REAL_BROWSER": "PASS",
+    "BROWSER_CONSOLE_ERRORS_OK": "PASS",
+    "BROWSER_NETWORK_ERRORS_OK": "PASS",
+    "RAW_SQL_ERROR_LEAK_COUNT_ZERO": "PASS",
+    "NO_PRODUCTION_REQUESTS": "PASS"
+  },
+  "uiGaps": [
+    "OPERATIONAL_BLOCK UI not present — MaintenanceBookingPanel creates MAINTENANCE only"
+  ],
+  "observability": {
+    "consoleErrors": [],
+    "networkErrors": [],
+    "rawSqlErrorLeakCount": 0,
+    "rpcCalls": [
+      {
+        "name": "court_resource_list_eligible_courts",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_booking_create",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_booking_reschedule",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_booking_create",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_booking_transfer_court",
+        "ok": false,
+        "code": "FOREIGN_RESERVATION_CONFLICT"
+      },
+      {
+        "name": "court_operations_booking_get",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_booking_cancel",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_booking_transfer_court",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_booking_cancel",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_resource_get_availability",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_resource_block_create",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_booking_create",
+        "ok": false,
+        "code": "FOREIGN_RESERVATION_CONFLICT"
+      },
+      {
+        "name": "court_operations_resource_block_cancel",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_live_set_operational_state",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_live_set_operational_state",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_live_set_operational_state",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_resource_reserve",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_resource_release",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_resource_reserve",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_resource_release",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_resource_reserve",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_resource_release",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_resource_reserve",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_resource_release",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_resource_block_create",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_booking_create",
+        "ok": false,
+        "code": "FOREIGN_RESERVATION_CONFLICT"
+      },
+      {
+        "name": "court_operations_resource_block_cancel",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_operations_booking_create",
+        "ok": true,
+        "code": "OK"
+      },
+      {
+        "name": "court_resource_reserve",
+        "ok": false,
+        "code": "FOREIGN_RESERVATION_CONFLICT"
+      },
+      {
+        "name": "court_operations_booking_cancel",
+        "ok": true,
+        "code": "OK"
+      }
+    ],
+    "productionRequests": 0,
+    "stagingRequests": 119,
+    "networkNoise": [
+      "FAIL https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/notification_inbox?select=id&tenant_id=eq.venue-staging-a&status=neq.RE",
+      "FAIL https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/plan_limits?select=*",
+      "FAIL https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/notification_inbox?select=id&tenant_id=eq.venue-staging-a&status=neq.RE",
+      "FAIL https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/notification_inbox?select=id&tenant_id=eq.venue-staging-a&status=neq.RE",
+      "FAIL https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/notification_inbox?select=id&tenant_id=eq.venue-staging-a&status=neq.RE",
+      "FAIL https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/notification_inbox?select=id&tenant_id=eq.venue-staging-a&status=neq.RE",
+      "FAIL https://qyewbxjsiiyufanzcjcq.supabase.co/rest/v1/notification_inbox?select=id&tenant_id=eq.venue-staging-a&status=neq.RE"
+    ]
+  },
+  "failures": [],
+  "finishedAt": "2026-08-16T17:17:38.372Z",
+  "ok": true
+}

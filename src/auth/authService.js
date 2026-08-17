@@ -2,6 +2,7 @@ import { ROLES } from "./roles.js";
 import { createUserRecord, normalizeUser } from "../models/user.js";
 import {
   clearAuthSession,
+  AUTH_SESSION_CLEAR_REASON,
   loadAuthSession,
   loadRbacConfig,
   saveAuthSession,
@@ -261,7 +262,7 @@ async function syncSupabaseUser(authUser, options = {}) {
   });
 
   if (!resolved.ok) {
-    clearAuthSession();
+    clearAuthSession(AUTH_SESSION_CLEAR_REASON.AUTH_INVALID);
     const client = getSupabaseAuthClient();
     if (client) {
       await client.auth.signOut();
@@ -505,7 +506,7 @@ export function signInAs(userLike, meta = {}) {
 
 export async function signOut() {
   const current = getCurrentUser();
-  clearAuthSession();
+  clearAuthSession(AUTH_SESSION_CLEAR_REASON.LOGOUT);
 
   try {
     const { cleanupPushTokensOnLogout } = await import(
@@ -551,7 +552,7 @@ export function subscribeToSupabaseAuth(onChange) {
     // Never await inside onAuthStateChange — it deadlocks client.auth.getSession().
     queueMicrotask(async () => {
       if (event === "SIGNED_OUT") {
-        clearAuthSession();
+        clearAuthSession(AUTH_SESSION_CLEAR_REASON.LOGOUT);
         onChange({ event, user: null });
         return;
       }

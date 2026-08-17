@@ -14,10 +14,12 @@ import CanonicalGlobalSearchTrigger from "./CanonicalGlobalSearchTrigger.jsx";
 import CanonicalNotificationButton from "./CanonicalNotificationButton.jsx";
 import CanonicalTenantSwitcher from "./CanonicalTenantSwitcher.jsx";
 import CanonicalUserMenu from "./CanonicalUserMenu.jsx";
+import ClubSwitcher from "../../../components/ClubSwitcher.jsx";
 import { buildCanonicalBreadcrumbs } from "../services/buildCanonicalBreadcrumbs.js";
 import { buildCanonicalMenuTree } from "../config/canonicalMenuRegistry.js";
 import { useCanonicalShell } from "../hooks/useCanonicalShell.js";
 import { useTenant } from "../../../context/TenantContext.jsx";
+import { useClub } from "../../../context/ClubContext.jsx";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import {
   collapseCanonicalBreadcrumbItems,
@@ -28,6 +30,7 @@ import {
  * Compact Figure 1 top navigation (56px).
  * Wave 4: zone-based flex layout — breadcrumbs / organization / search / actions
  * never share unconstrained width (closes OBSERVATION_CANONICAL_TOPBAR_01).
+ * Wave 1 Platform Context: Club selection parity with mobile AppContextBar.
  */
 export default function CanonicalTopBar() {
   const location = useLocation();
@@ -35,10 +38,13 @@ export default function CanonicalTopBar() {
   const auth = useAuth();
   const { palette, layout, isMobile, isTablet, openMobileDrawer, menuTriggerRef } =
     useCanonicalShell();
-  const { isSuperAdmin } = useTenant();
+  const { isSuperAdmin, currentTenantId } = useTenant();
+  const { clubs, activeClubReady } = useClub();
 
   const viewport = isMobile ? "mobile" : isTablet ? "tablet" : "desktop";
   const zones = useMemo(() => resolveCanonicalTopbarZoneStyles(viewport), [viewport]);
+  const showClubSwitcher =
+    Boolean(currentTenantId) && (clubs.length > 1 || !activeClubReady || clubs.length === 1);
 
   const registryTree = useMemo(() => buildCanonicalMenuTree(), []);
   const breadcrumbs = useMemo(() => {
@@ -132,7 +138,8 @@ export default function CanonicalTopBar() {
               data-testid="canonical-topbar-organization-zone"
               sx={{
                 flex: zones.organization.flex,
-                minWidth: zones.organization.minWidth,
+                // Keep widthMin as floor so selected Tenant/Venue label cannot clip to blank.
+                minWidth: zones.organization.widthMin,
                 maxWidth: zones.organization.maxWidth,
                 width: "100%",
                 overflow: "hidden",
@@ -142,6 +149,14 @@ export default function CanonicalTopBar() {
                 minWidth={zones.organization.widthMin}
                 maxWidth={zones.organization.maxWidth}
               />
+            </Box>
+          ) : null}
+          {showClubSwitcher ? (
+            <Box
+              data-testid="canonical-topbar-club-zone"
+              sx={{ flexShrink: 0, minWidth: isMobile ? 120 : 160, maxWidth: 220 }}
+            >
+              <ClubSwitcher variant="light" minWidth={isMobile ? 120 : 160} />
             </Box>
           ) : null}
           <Box
