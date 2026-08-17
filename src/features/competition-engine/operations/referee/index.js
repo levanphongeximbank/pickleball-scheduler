@@ -52,6 +52,30 @@ export { buildRefereeOperationsProjection } from "./projections/buildRefereeOper
 export { createRefereeCompetitionOperationsFacade } from "./createRefereeCompetitionOperationsFacade.js";
 
 export {
+  CORE13_ASSIGNMENT_COMMAND_VERSION,
+  ASSIGNMENT_COMMAND,
+  ASSIGNMENT_OPERATION,
+  ASSIGNMENT_LIFECYCLE_STATE,
+  ASSIGNMENT_COMMAND_ERROR_CODE,
+  ASSIGNMENT_COMPETITION_MODE,
+  DURABLE_ASSIGNMENT_PERSISTENCE_CLASSIFICATION,
+  TEST_DOUBLE_ASSIGNMENT_PERSISTENCE_CLASSIFICATION,
+  CORE13_CANONICAL_ASSIGNMENT_RUNTIME,
+  CompetitionRefereeAssignmentCommandError,
+  isCompetitionRefereeAssignmentCommandError,
+  normalizeAssignmentLifecycleState,
+  evaluateAssignmentLifecycleGate,
+  assertAssignmentLifecycleGate,
+  assertCanonicalRefereeId,
+  assertAssignmentCommandAuthz,
+  createInMemoryCanonicalAssignmentPersistence,
+  createBlobCanonicalAssignmentPersistence,
+  createCompetitionRefereeAssignmentCommandService,
+  createModeAssignmentCommandBridge,
+  LEGACY_ASSIGNMENT_WRITER_STATUS,
+} from "./assignment/index.js";
+
+export {
   SCORING_ACTION_LEDGER_KIND,
   findLastEligibleScoringEvent,
   findScoringLedgerEntry,
@@ -73,4 +97,6 @@ export const COMPETITION_ENGINE_REFEREE_OPERATIONS = Object.freeze({
   stagingBackendCertified: true,
   ownsEngines: false,
   undoLastScoringAction: true,
+  core13AssignmentCommand: true,
+  seedAssignmentsCore13Bypass: false,
 });

@@ -19,22 +19,17 @@ import {
 } from "@mui/material";
 
 import {
-  buildCreateAssignmentPayload,
   buildRevokeAssignmentPayload,
   mapCorrectionStatusLabel,
 } from "../../../features/team-tournament/engines/teamRefereeV5SafetyEngine.js";
 import {
-  rpcTeamTournamentCreateRefereeAssignment,
   rpcTeamTournamentListRefereeAssignments,
   rpcTeamTournamentListRefereeCorrections,
   rpcTeamTournamentReviewRefereeCorrection,
   rpcTeamTournamentRevokeRefereeAssignment,
   rpcTeamTournamentSearchRefereeCandidates,
 } from "../../../features/team-tournament/services/teamTournamentRpcService.js";
-import {
-  planRefereeAssignment,
-  REFEREE_ASSIGN_ACTION,
-} from "../../../features/team-tournament/engines/teamRefereeAssignmentLifecycle.js";
+import { assignTeamRefereeViaCore13 } from "../../../features/team-tournament/services/teamCore13AssignmentTransport.js";
 import { mapTeamTournamentDomainFailure } from "../../../features/team-tournament/engines/teamTournamentDomainErrors.js";
 import {
   PARENT_ASSIGNMENT_SELECT_VALUE,
@@ -43,12 +38,13 @@ import {
 
 /**
  * TT-5D BTC panel: searchable assign / change / revoke + correction review.
- * Candidate source: team_tournament_search_referee_candidates (profiles identity).
- * Eligibility server check: create_referee_assignment (profiles row exists; no role).
- * MANUAL_REFEREE_UUID_REQUIRED=NO
+ * Assignment authority: CORE-13 shared command path via assignTeamRefereeViaCore13.
+ * Team RPC remains thin transport only (not assignment business authority).
  */
 export default function TeamRefereeSafetyPanel({
   tournamentId,
+  tenantId = null,
+  tournamentTenantId = null,
   matchupId = "",
   subMatches = [],
   subMatchId = null,
@@ -179,54 +175,43 @@ export default function TeamRefereeSafetyPanel({
     setError("");
 
     const canonicalMatchId = assignSubMatchId || matchupId;
-    const plan = planRefereeAssignment({
-      matchup: { id: matchupId, teamAId: "resolved", teamBId: "resolved" },
-      existingAssignments: activeForSelectedSub.map((row) => ({
-        ...row,
-        matchId: canonicalMatchId,
-        role: "REFEREE",
-      })),
-      refereeUserId: uid,
-      matchId: canonicalMatchId,
-    });
-    if (plan.action === REFEREE_ASSIGN_ACTION.IDEMPOTENT_NOOP) {
+    const sameLive = activeForSelectedSub.find(
+      (row) => String(row.refereeUserId || row.refereeId || "") === uid
+    );
+    if (sameLive) {
       setBusyId(null);
       onNotice?.("Trọng tài này đã được gán cho trận (không tạo trùng).");
       reload();
       return;
     }
 
-    if (activeForSelectedSub.length > 0 && plan.action === REFEREE_ASSIGN_ACTION.SUPERSEDE) {
-      const revoke = await revokeRows(
-        activeForSelectedSub,
-        revokeReason.trim() || "BTC đổi trọng tài"
-      );
-      if (!revoke.ok) {
-        setBusyId(null);
-        const mapped = mapTeamTournamentDomainFailure(revoke);
-        setError(mapped.error || revoke.error || revoke.code || "Revoke trước khi đổi thất bại.");
-        return;
-      }
-    }
-
-    const result = await rpcTeamTournamentCreateRefereeAssignment(
-      buildCreateAssignmentPayload({
-        tournamentId,
-        matchupId,
-        subMatchId: assignSubMatchId || null,
-        refereeUserId: uid,
-        activate: true,
-        reason: activeForSelectedSub.length > 0 ? "TT-5D BTC change" : "TT-5D BTC assign",
-      })
-    );
+    const result = await assignTeamRefereeViaCore13({
+      tenantId: String(tenantId || tournamentTenantId || tournamentId || ""),
+      tournamentId,
+      matchupId,
+      matchId: canonicalMatchId,
+      subMatchId: assignSubMatchId || null,
+      refereeUserId: uid,
+      displayLabel: selectedCandidate?.displayName || selectedCandidate?.fullName,
+      existingAssignments: activeForSelectedSub.map((row) => ({
+        ...row,
+        matchId: canonicalMatchId,
+      })),
+      reason:
+        activeForSelectedSub.length > 0
+          ? revokeReason.trim() || "TT-5D BTC change via CORE-13"
+          : "TT-5D BTC assign via CORE-13",
+      activate: true,
+      idempotencyKey: `team-ui-${tournamentId}-${canonicalMatchId}-${uid}`,
+    });
     setBusyId(null);
     if (result.ok) {
       onNotice?.(
         activeForSelectedSub.length > 0
-          ? "Đã đổi trọng tài."
+          ? "Đã đổi trọng tài (CORE-13)."
           : result.replayed
             ? "Assignment đã tồn tại (replay)."
-            : "Đã gán trọng tài."
+            : "Đã gán trọng tài (CORE-13)."
       );
       setSelectedCandidate(null);
       setCandidateQuery("");

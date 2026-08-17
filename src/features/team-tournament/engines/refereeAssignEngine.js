@@ -1,6 +1,16 @@
 import { createId } from "../../../utils/id.js";
 import { findMatchup, findTeam, normalizeTeamData } from "../models/index.js";
 
+/** @deprecated Product writers = 0. Use CORE-13 shared assignment command. */
+export const LEGACY_TEAM_BLOB_ASSIGNMENT_AUTHORITY = Object.freeze({
+  status: "NEUTRALIZED",
+  productWriters: 0,
+  duplicateConflictEngine: false,
+  transportOnlyRpcMayRemain: true,
+  delegateTo:
+    "src/features/competition-engine/operations/referee/assignment",
+});
+
 function patchSettings(teamData, patch) {
   return normalizeTeamData({
     ...teamData,
@@ -87,7 +97,16 @@ export function getRefereeForMatch(teamData, matchId) {
   };
 }
 
-export function assignReferee(teamData, matchId, refereeId) {
+export function assignReferee(teamData, matchId, refereeId, options = {}) {
+  if (options.allowLegacyBlobAuthority !== true) {
+    return {
+      ok: false,
+      error:
+        "Legacy Team blob assignment authority retired. Use CORE-13 shared assignReferee command.",
+      code: "LEGACY_ASSIGNMENT_AUTHORITY_RETIRED",
+      legacyAuthority: LEGACY_TEAM_BLOB_ASSIGNMENT_AUTHORITY,
+    };
+  }
   const matchup = findMatchup(teamData, matchId);
   if (!matchup) {
     return { ok: false, error: "Không tìm thấy lượt đối đầu." };
@@ -116,7 +135,16 @@ export function assignReferee(teamData, matchId, refereeId) {
   };
 }
 
-export function unassignReferee(teamData, matchId) {
+export function unassignReferee(teamData, matchId, options = {}) {
+  if (options.allowLegacyBlobAuthority !== true) {
+    return {
+      ok: false,
+      error:
+        "Legacy Team blob unassign authority retired. Use CORE-13 shared unassignReferee command.",
+      code: "LEGACY_ASSIGNMENT_AUTHORITY_RETIRED",
+      legacyAuthority: LEGACY_TEAM_BLOB_ASSIGNMENT_AUTHORITY,
+    };
+  }
   const assignments = { ...getAssignments(teamData) };
   if (!assignments[String(matchId)]) {
     return { ok: false, error: "Lượt đối đầu chưa được phân công trọng tài." };
