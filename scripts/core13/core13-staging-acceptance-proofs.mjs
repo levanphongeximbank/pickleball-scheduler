@@ -150,22 +150,20 @@ export function evaluateAcceptanceGate(envMap = {}) {
   return proof(true, "acceptance-gate");
 }
 
-export function belongsToFixtureNamespace(id, namespace = CORE13_FIXTURE_NAMESPACE) {
-  const value = String(id || "").trim();
-  const marker = String(namespace || "").trim();
-  if (!value || !marker) return false;
-  return value.includes(marker);
+/**
+ * UUID IDs are canonical and must not be required to contain namespace text.
+ * Ownership is the fixture receipt (namespace + runId + disposable), not ID substring.
+ * @deprecated Do not use ID substring as a mutation gate.
+ */
+export function belongsToFixtureNamespace(_id, _namespace = CORE13_FIXTURE_NAMESPACE) {
+  return false;
 }
 
-export function evaluateFixtureNamespace(ids, namespace = CORE13_FIXTURE_NAMESPACE) {
-  const missing = (Array.isArray(ids) ? ids : [])
-    .filter((row) => row && row.required)
-    .filter((row) => !belongsToFixtureNamespace(row.id, namespace))
-    .map((row) => row.label || row.id);
-  if (missing.length) {
-    return proof(false, `FIXTURE_NAMESPACE_REQUIRED missing=${missing.join(",")}`);
-  }
-  return proof(true, namespace);
+export function evaluateFixtureNamespace(_ids, _namespace = CORE13_FIXTURE_NAMESPACE) {
+  return proof(
+    false,
+    "UUID_ID_NAMESPACE_TEXT_REQUIREMENT_REMOVED; ownership is fixture receipt + runId"
+  );
 }
 
 export function evaluateBaselineKnownStart(actualCount, expectedCount, label) {

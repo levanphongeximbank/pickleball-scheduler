@@ -1,9 +1,10 @@
 # CORE-13 — Canonical Assignment Runtime Closure
 
-**Status:** Trusted-server execution boundary authored · Staging SQL PRECHECK/APPLY/VERIFY **PASS** · Staging Edge `competition-referee-assignment` **DEPLOYED** (`verify_jwt=true`) · 29-case harness **hardened locally, not executed** · live acceptance requires `SQL_ALREADY_APPLIED_PREREQUISITE` / `EDGE_ALREADY_DEPLOYED_PREREQUISITE` (not SQL/Edge execution GOs)
+**Status:** Trusted-server execution boundary authored · Staging SQL PRECHECK/APPLY/VERIFY **PASS** · Staging Edge `competition-referee-assignment` **DEPLOYED** (`verify_jwt=true`) · disposable fixture provisioner **IMPLEMENTED LOCAL ONLY** (receipt SSOT; UUID namespace-text ownership **removed**) · remote fixture provisioning **NOT RUN** · 29-case harness **hardened locally, not executed** · live acceptance requires `SQL_ALREADY_APPLIED_PREREQUISITE` / `EDGE_ALREADY_DEPLOYED_PREREQUISITE` (not SQL/Edge execution GOs)
 **Package:** `docs/v5/migrations/core13-canonical-assignment-runtime-closure-01/`  
 **Edge:** `supabase/functions/competition-referee-assignment/`  
-**Harness:** `scripts/core13/core13-trusted-server-staging-acceptance.mjs` (proofs: `scripts/core13/core13-staging-acceptance-proofs.mjs`)  
+**Harness:** `scripts/core13/core13-trusted-server-staging-acceptance.mjs` (proofs: `scripts/core13/core13-staging-acceptance-proofs.mjs`)
+**Fixture provisioner:** `scripts/core13/core13-staging-fixture-provisioner.mjs` (receipt: `scripts/core13/core13-staging-fixture-receipt.mjs`)
 **Date:** 2026-08-17
 
 ---

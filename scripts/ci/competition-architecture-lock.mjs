@@ -139,6 +139,14 @@ const RULES = [
         ? spec
         : null,
   },
+  {
+    id: "src-no-core13-fixture-provisioner",
+    description:
+      "Product/browser source must not import CORE-13 fixture provisioner, receipt, or writers tooling.",
+    onlyIn: ["src/"],
+    matchImport: (_file, spec) =>
+      /core13-staging-fixture-|scripts\/core13\//.test(spec) ? spec : null,
+  },
 ];
 
 const DEBT_META = {

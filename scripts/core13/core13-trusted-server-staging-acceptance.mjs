@@ -29,13 +29,13 @@
  *   STAGING_SERVICE_ROLE_KEY   (test evidence only — never product/browser)
  *   STAGING_USER_A_EMAIL / STAGING_USER_A_PASSWORD
  *   STAGING_USER_B_EMAIL / STAGING_USER_B_PASSWORD
- *   STAGING_TENANT_A / STAGING_TOURNAMENT_A / STAGING_MATCH_A
- *   STAGING_TENANT_B / STAGING_TOURNAMENT_B
- *   STAGING_REFEREE_USER_ID
- *   STAGING_REPLACE_REFEREE_USER_ID
+ *   CORE13_FIXTURE_RECEIPT_PATH   (immutable provisioner receipt — SSOT)
  *
- * Mutable tournament/match IDs MUST contain CORE13_STAGING_ACCEPTANCE
- * (or CORE13_FIXTURE_NAMESPACE). Arbitrary Staging business rows are refused.
+ * Optional env IDs (STAGING_TENANT_A, STAGING_MATCH_A, STAGING_REPLACE_REFEREE_USER_ID, ...)
+ * may only cross-check the receipt. They cannot bypass receipt ownership.
+ *
+ * UUID IDs stay canonical. Namespace text in entity IDs is not required.
+ * Arbitrary Staging business rows are refused.
  *
  * Identity subject lookup:
  *   Contract #01 gap was closed by merged PR #446. CORE-13 consumes
@@ -69,10 +69,19 @@ import {
   evaluateDurableAuditActor,
   evaluateDurableIdempotency,
   evaluateExactlyOneActive,
-  evaluateFixtureNamespace,
   evaluateOldAssignmentRevoked,
   runWithFinalization,
 } from "./core13-staging-acceptance-proofs.mjs";
+import {
+  evaluateFixtureReceipt,
+  evaluateManualFixtureOverride,
+  evaluatePhysicalEnvironment,
+  evaluateReceiptRemoteReconciliation,
+  hydrateHarnessFixtures,
+  loadFixtureReceiptFromPath,
+  projectRefFromSupabaseUrl,
+  STAGING_PROJECT_REF,
+} from "./core13-staging-fixture-receipt.mjs";
 
 function fail(message) {
   console.error(`REFUSE: ${message}`);
@@ -163,26 +172,43 @@ async function main() {
   const url = requireEnv("STAGING_SUPABASE_URL");
   const anonKey = requireEnv("STAGING_ANON_KEY");
   const serviceKey = requireEnv("STAGING_SERVICE_ROLE_KEY");
-  const namespace = env("CORE13_FIXTURE_NAMESPACE") || CORE13_FIXTURE_NAMESPACE;
-  const tenantA = requireEnv("STAGING_TENANT_A");
-  const tournamentA = requireEnv("STAGING_TOURNAMENT_A");
-  const matchA = requireEnv("STAGING_MATCH_A");
-  const tenantB = requireEnv("STAGING_TENANT_B");
-  const tournamentB = requireEnv("STAGING_TOURNAMENT_B");
-  const refereeId = requireEnv("STAGING_REFEREE_USER_ID");
-  const replaceRefereeId = requireEnv("STAGING_REPLACE_REFEREE_USER_ID");
-  const overlapA = env("STAGING_MATCH_OVERLAP_A");
-  const overlapB = env("STAGING_MATCH_OVERLAP_B");
-  const nonOverlap = env("STAGING_MATCH_NONOVERLAP");
-  const inactiveReferee = env("STAGING_INACTIVE_REFEREE_ID");
-  const nonCanonicalReferee = env("STAGING_NON_CANONICAL_REFEREE_ID");
-  const dailyDisabled = env("STAGING_DAILY_PLAY_DISABLED_TOURNAMENT");
-  const dailyEnabled = env("STAGING_DAILY_PLAY_ENABLED_TOURNAMENT");
-  const dailyEnabledMatch = env("STAGING_DAILY_PLAY_ENABLED_MATCH");
-  const matchInProgress = env("STAGING_MATCH_IN_PROGRESS");
-  const matchScoring = env("STAGING_MATCH_SCORING");
-  const matchLocked = env("STAGING_MATCH_LOCKED");
-  const matchCompleted = env("STAGING_MATCH_COMPLETED");
+  const receiptPath = requireEnv("CORE13_FIXTURE_RECEIPT_PATH");
+  const loaded = loadFixtureReceiptFromPath(receiptPath);
+  if (!loaded.ok) fail(loaded.detail);
+  const receipt = loaded.receipt;
+  const receiptProof = evaluateFixtureReceipt(receipt);
+  if (!receiptProof.ok) fail(receiptProof.detail);
+  if (receipt.namespace !== CORE13_FIXTURE_NAMESPACE) {
+    fail(`receipt namespace=${receipt.namespace}`);
+  }
+  const physical = evaluatePhysicalEnvironment(receipt, process.env);
+  if (!physical.ok) fail(physical.detail);
+  const extractedRef = projectRefFromSupabaseUrl(url);
+  if (extractedRef && extractedRef !== STAGING_PROJECT_REF) {
+    fail("physical Staging projectRef mismatch");
+  }
+  const overrideProof = evaluateManualFixtureOverride(receipt, process.env);
+  if (!overrideProof.ok) fail(overrideProof.detail);
+  const fixtures = hydrateHarnessFixtures(receipt);
+  const tenantA = fixtures.tenantA;
+  const tournamentA = fixtures.tournamentA;
+  const matchA = fixtures.matchA;
+  const tenantB = fixtures.tenantB;
+  const tournamentB = fixtures.tournamentB;
+  const refereeId = fixtures.refereeId;
+  const replaceRefereeId = fixtures.replaceRefereeId;
+  const overlapA = fixtures.overlapA;
+  const overlapB = fixtures.overlapB;
+  const nonOverlap = fixtures.nonOverlap;
+  const inactiveReferee = fixtures.inactiveReferee;
+  const nonCanonicalReferee = fixtures.nonCanonicalReferee;
+  const dailyDisabled = fixtures.dailyDisabled;
+  const dailyEnabled = fixtures.dailyEnabled;
+  const dailyEnabledMatch = fixtures.dailyEnabledMatch;
+  const matchInProgress = fixtures.matchInProgress;
+  const matchScoring = fixtures.matchScoring;
+  const matchLocked = fixtures.matchLocked;
+  const matchCompleted = fixtures.matchCompleted;
 
   const anon = createClient(url, anonKey, { auth: { persistSession: false } });
   const service = createClient(url, serviceKey, { auth: { persistSession: false } });
@@ -216,34 +242,25 @@ async function main() {
   };
 
   const mutationGate = createMutationGate();
-  const mutableMatches = [
-    { label: "STAGING_TOURNAMENT_A", id: tournamentA, required: true },
-    { label: "STAGING_MATCH_A", id: matchA, required: true },
-    { label: "STAGING_MATCH_OVERLAP_A", id: overlapA, required: Boolean(overlapA) },
-    { label: "STAGING_MATCH_OVERLAP_B", id: overlapB, required: Boolean(overlapB) },
-    { label: "STAGING_MATCH_NONOVERLAP", id: nonOverlap, required: Boolean(nonOverlap) },
-    {
-      label: "STAGING_DAILY_PLAY_ENABLED_TOURNAMENT",
-      id: dailyEnabled,
-      required: Boolean(dailyEnabled),
-    },
-    {
-      label: "STAGING_DAILY_PLAY_ENABLED_MATCH",
-      id: dailyEnabledMatch,
-      required: Boolean(dailyEnabled),
-    },
-    {
-      label: "STAGING_MATCH_IN_PROGRESS",
-      id: matchInProgress,
-      required: Boolean(matchInProgress),
-    },
-    { label: "STAGING_MATCH_SCORING", id: matchScoring, required: Boolean(matchScoring) },
-  ];
 
-  const namespaceProof = evaluateFixtureNamespace(mutableMatches, namespace);
-  if (!namespaceProof.ok) {
-    for (const name of CASE_CATALOG) record(name, namespaceProof);
-    console.error(`REFUSE: ${namespaceProof.detail}`);
+  const { data: primaryTournament } = await service
+    .from("canonical_tournaments")
+    .select("id, tenant_id, status, name")
+    .eq("id", tournamentA)
+    .maybeSingle();
+  const remoteProof = evaluateReceiptRemoteReconciliation(receipt, {
+    reconcile: true,
+    projectRef: extractedRef || STAGING_PROJECT_REF,
+    environment: env("PICK_VN_ENV") || "staging",
+    primaryTournamentTenantId: primaryTournament?.tenant_id || "",
+    preMatchTournamentId: primaryTournament?.id || "",
+    preMatchLifecycle: "PRE_MATCH",
+    signedInUserA: userA.userId,
+    signedInUserB: userB.userId,
+  });
+  if (!remoteProof.ok) {
+    for (const name of CASE_CATALOG) record(name, remoteProof);
+    console.error(`REFUSE: ${remoteProof.detail}`);
     console.log(`STAGING_ACCEPTANCE_CASE_COUNT=${CASE_CATALOG.length}`);
     console.log("PASS_COUNT=0");
     console.log(`FAIL_COUNT=${CASE_CATALOG.length}`);

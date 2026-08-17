@@ -259,7 +259,7 @@ test("ok=false without a code cannot PASS a denial", () => {
   );
 });
 
-test("missing disposable fixture marker stops before mutation", () => {
+test("missing fixture receipt ownership stops before mutation", () => {
   const proof = evaluateFixtureNamespace(
     [
       { label: "STAGING_MATCH_A", id: "owner-business-match-1", required: true },
@@ -268,23 +268,24 @@ test("missing disposable fixture marker stops before mutation", () => {
     CORE13_FIXTURE_NAMESPACE
   );
   assert.equal(proof.ok, false);
-  assert.match(proof.detail, /FIXTURE_NAMESPACE_REQUIRED/);
+  assert.match(proof.detail, /UUID_ID_NAMESPACE_TEXT_REQUIREMENT_REMOVED/);
   const gate = createMutationGate();
   assert.equal(gate.assertCanMutate().ok, false);
 });
 
-test("namespaced fixtures are accepted", () => {
+test("canonical UUID IDs are not required to contain namespace text", () => {
   const proof = evaluateFixtureNamespace(
     [
       {
         label: "STAGING_MATCH_A",
-        id: `${CORE13_FIXTURE_NAMESPACE}-match-a`,
+        id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
         required: true,
       },
     ],
     CORE13_FIXTURE_NAMESPACE
   );
-  assert.equal(proof.ok, true);
+  assert.equal(proof.ok, false);
+  assert.match(proof.detail, /fixture receipt/);
 });
 
 test("authenticated runtime probe required before first mutation", () => {
@@ -447,6 +448,10 @@ test("harness source keeps 29-case names, probe-before-mutation, and finally tea
   assert.match(harness, /evaluateDailyEnabledPass/);
   assert.match(harness, /STAGING_REPLACE_REFEREE_USER_ID/);
   assert.match(harness, /CORE13_FIXTURE_NAMESPACE/);
+  assert.match(harness, /CORE13_FIXTURE_RECEIPT_PATH/);
+  assert.match(harness, /evaluateReceiptRemoteReconciliation/);
+  assert.match(harness, /evaluateManualFixtureOverride/);
+  assert.doesNotMatch(harness, /evaluateFixtureNamespace/);
   assert.match(harness, /ACTIVE_ASSIGNMENT_FIXTURE_LEFTOVERS/);
   assert.doesNotMatch(harness, /ok === true \|\| .*ok === false/);
   assert.doesNotMatch(harness, /CORE13_ASSIGNMENT_INVALID_INPUT/);
