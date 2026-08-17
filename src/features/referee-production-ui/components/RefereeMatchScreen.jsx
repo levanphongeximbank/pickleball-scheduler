@@ -445,6 +445,11 @@ export default function RefereeMatchScreen({
   const leftPendingKey = `point:${leftScoring}`;
   const rightPendingKey = `point:${rightScoring}`;
   const changeEndsRequired = court.sideChangeRequired === true;
+  const changeEndConfirmBlocked =
+    pending ||
+    stale ||
+    view.changeEndConfirmBlocked === true ||
+    view.isOptimisticPresentation === true;
   const showManualChangeEnds = view.canChangeEnds === true && !changeEndsRequired;
   const changeEndAt =
     view.servingStatus?.changeEndAt ||
@@ -541,7 +546,7 @@ export default function RefereeMatchScreen({
 
       {pending ? (
         <Banner kind="info" testId="pending-banner">
-          Đang ghi…
+          Đang xác nhận...
         </Banner>
       ) : null}
 
@@ -586,15 +591,26 @@ export default function RefereeMatchScreen({
             </div>
           </div>
           <div className="rp-score-center">
-            <span className="rp-score-num" data-testid="score-a">
+            <span
+              className={`rp-score-num${pending && String(pendingAction || "").startsWith("point") ? " is-pending" : ""}`}
+              data-testid="score-a"
+            >
               {scoreA}
             </span>
             <span className="rp-score-colon" aria-hidden="true">
               :
             </span>
-            <span className="rp-score-num" data-testid="score-b">
+            <span
+              className={`rp-score-num${pending && String(pendingAction || "").startsWith("point") ? " is-pending" : ""}`}
+              data-testid="score-b"
+            >
               {scoreB}
             </span>
+            {pending && String(pendingAction || "").startsWith("point") ? (
+              <span className="rp-score-pending" data-testid="score-pending-hint">
+                Đang xác nhận...
+              </span>
+            ) : null}
           </div>
           <div
             className={`rp-score-side rp-score-side-right${
@@ -633,14 +649,16 @@ export default function RefereeMatchScreen({
                   <FlagIcon fontSize="inherit" aria-hidden="true" /> ĐÃ ĐẾN ĐIỂM ĐỔI SÂN
                 </p>
                 <p className="rp-change-ends-copy">
-                  Vui lòng xác nhận sau khi hai bên đã đổi đầu sân.
+                  {view.isOptimisticPresentation
+                    ? "Đang chờ máy chủ xác nhận..."
+                    : "Vui lòng xác nhận sau khi hai bên đã đổi đầu sân."}
                 </p>
               </div>
               {!confirmChangeEnds ? (
                 <button
                   type="button"
                   className="rp-btn rp-btn-warn rp-btn-change-ends"
-                  disabled={pending || stale}
+                  disabled={changeEndConfirmBlocked}
                   onClick={() => setConfirmChangeEnds(true)}
                   data-testid="btn-change-ends-required"
                 >
@@ -657,14 +675,16 @@ export default function RefereeMatchScreen({
               <FlagIcon fontSize="inherit" aria-hidden="true" /> ĐÃ ĐẾN ĐIỂM ĐỔI SÂN
             </p>
             <p className="rp-change-ends-copy">
-              Vui lòng xác nhận sau khi hai bên đã đổi đầu sân.
+              {view.isOptimisticPresentation
+                ? "Đang chờ máy chủ xác nhận..."
+                : "Vui lòng xác nhận sau khi hai bên đã đổi đầu sân."}
             </p>
           </div>
           {!confirmChangeEnds ? (
             <button
               type="button"
               className="rp-btn rp-btn-warn rp-btn-change-ends"
-              disabled={pending || stale}
+              disabled={changeEndConfirmBlocked}
               onClick={() => setConfirmChangeEnds(true)}
               data-testid="btn-change-ends-required"
             >
@@ -768,7 +788,7 @@ export default function RefereeMatchScreen({
                   data-display-end="left"
                 >
                   {String(pendingAction || "").startsWith("point")
-                    ? "Đang ghi…"
+                    ? "Đang xác nhận..."
                     : pointLabel(leftName, leftScoring === "SIDE_B" ? "B" : "A")}
                 </button>
               ) : null}
@@ -785,7 +805,7 @@ export default function RefereeMatchScreen({
                   data-display-end="right"
                 >
                   {String(pendingAction || "").startsWith("point")
-                    ? "Đang ghi…"
+                    ? "Đang xác nhận..."
                     : pointLabel(rightName, rightScoring === "SIDE_A" ? "A" : "B")}
                 </button>
               ) : null}
@@ -797,7 +817,7 @@ export default function RefereeMatchScreen({
                   onClick={onChangeServe}
                   data-testid="btn-change-serve"
                 >
-                  {pendingAction === "change-serve" ? "Đang ghi…" : "ĐỔI GIAO"}
+                  {pendingAction === "change-serve" ? "Đang xác nhận..." : "ĐỔI GIAO"}
                 </button>
               ) : null}
             </>
@@ -813,7 +833,7 @@ export default function RefereeMatchScreen({
                 data-display-end="left"
               >
                 {String(pendingAction || "") === leftPendingKey
-                  ? "Đang ghi…"
+                  ? "Đang xác nhận..."
                   : pointLabel(leftName, leftScoring === "SIDE_B" ? "B" : "A")}
               </button>
               <button
@@ -826,7 +846,7 @@ export default function RefereeMatchScreen({
                 data-display-end="right"
               >
                 {String(pendingAction || "") === rightPendingKey
-                  ? "Đang ghi…"
+                  ? "Đang xác nhận..."
                   : pointLabel(rightName, rightScoring === "SIDE_A" ? "A" : "B")}
               </button>
             </>

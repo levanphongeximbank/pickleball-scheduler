@@ -549,10 +549,12 @@
 
 .rp-score-center {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: center;
   gap: 4px;
   min-width: 88px;
+  position: relative;
 }
 
 .rp-score-num {
@@ -560,6 +562,19 @@
   font-weight: 900;
   line-height: 1;
   color: var(--rp-green);
+}
+
+.rp-score-num.is-pending {
+  opacity: 0.92;
+}
+
+.rp-score-pending {
+  flex-basis: 100%;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #1565c0;
+  margin-top: 2px;
 }
 
 .rp-score-colon {

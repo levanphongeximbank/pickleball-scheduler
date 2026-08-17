@@ -748,7 +748,7 @@ describe("match screen visual states @ ~390px", () => {
     expect(onPointA).toHaveBeenCalledTimes(1);
   });
 
-  it("8. pending score disables conflicting controls and shows Đang ghi…", () => {
+  it("8. pending score disables conflicting controls and shows Đang xác nhận...", () => {
     render(
       <MemoryRouter>
         <RefereeMatchScreen
@@ -764,11 +764,31 @@ describe("match screen visual states @ ~390px", () => {
         />
       </MemoryRouter>
     );
-    expect(screen.getByTestId("pending-banner")).toHaveTextContent("Đang ghi…");
+    expect(screen.getByTestId("pending-banner")).toHaveTextContent("Đang xác nhận...");
+    expect(screen.getByTestId("score-pending-hint")).toHaveTextContent("Đang xác nhận...");
     expect(screen.getByTestId("btn-point-a")).toBeDisabled();
     expect(screen.getByTestId("btn-change-serve")).toBeDisabled();
     expect(screen.queryByTestId("btn-point-b")).not.toBeInTheDocument();
-    expect(screen.getByTestId("btn-point-a")).toHaveTextContent("Đang ghi…");
+    expect(screen.getByTestId("btn-point-a")).toHaveTextContent("Đang xác nhận...");
+  });
+
+  it("8b. optimistic change-end warning does not enable confirm before ACK", () => {
+    render(
+      <MemoryRouter>
+        <RefereeMatchScreen
+          view={baseView({
+            isOptimisticPresentation: true,
+            changeEndConfirmBlocked: true,
+            courtProjection: doublesCourt(SIDE_OUT, { sideChangeRequired: true }),
+          })}
+          pendingAction="point:SIDE_A"
+        />
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId("change-ends-warning")).toHaveTextContent(
+      /Đang chờ máy chủ xác nhận/
+    );
+    expect(screen.getByTestId("btn-change-ends-required")).toBeDisabled();
   });
 
   it("9. stale/reconcile fail-closed", () => {

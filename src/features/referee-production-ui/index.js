@@ -30,6 +30,7 @@ export {
 export { projectDreamBreakerRotation } from "./projection/projectDreamBreakerRotation.js";
 export { projectCanonicalCourtView } from "./projection/projectCanonicalCourtView.js";
 export { deriveCourtPresentation } from "./projection/deriveCourtPresentation.js";
+export { deriveOptimisticSubmitPointView } from "./projection/deriveOptimisticSubmitPointView.js";
 export { buildRefereeAssignmentCard } from "./projection/buildRefereeAssignmentCard.js";
 export { buildRefereeMatchView } from "./projection/buildRefereeMatchView.js";
 

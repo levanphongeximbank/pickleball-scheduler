@@ -1321,7 +1321,16 @@ test("owner visual remediation — chrome suppress + participant-aware controls"
   assert.match(match, /pointLabel\(/);
   assert.match(match, /leftPointHandler/);
   assert.match(match, /data-display-end/);
-  assert.match(match, /Đang ghi…/);
+  assert.match(match, /Đang xác nhận\.\.\./);
+  assert.match(match, /score-pending-hint|changeEndConfirmBlocked|isOptimisticPresentation/);
+  assert.match(
+    read("src/features/referee-production-ui/hooks/useCanonicalRefereeMatch.js"),
+    /authoritativeView|optimisticView|deriveOptimisticSubmitPointView/
+  );
+  assert.match(
+    read("src/features/referee-production-ui/projection/deriveOptimisticSubmitPointView.js"),
+    /PURE|isOptimisticPresentation|changeEndConfirmBlocked/
+  );
   assert.match(match, /current-game-score/);
   assert.match(match, /games-won/);
   assert.match(match, /serving-status-strip/);
