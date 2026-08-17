@@ -10,8 +10,6 @@
 import {
   createRefereeCandidate,
   createRefereeAssignment,
-  createRefereeQualification,
-  createRefereeAvailabilityWindow,
   createManualRefereeAssignmentRequest,
   createRefereeReplacementRequest,
   createMatchScheduleRow,
@@ -20,7 +18,6 @@ import {
   REFEREE_ROLE_CODE,
   REFEREE_ASSIGNMENT_STATUS,
   REFEREE_ASSIGNMENT_SOURCE,
-  REFEREE_AVAILABILITY_SOURCE,
 } from "../../../../competition-core/referee-assignment/index.js";
 import {
   createPopulatedSnapshotResult,
@@ -129,19 +126,24 @@ function buildDirectorySnapshot(command, refereeId) {
   return createPopulatedSnapshotResult(items);
 }
 
-function buildScheduleSnapshot(command) {
-  if (command.scheduleSnapshot) return command.scheduleSnapshot;
-  const matchId = String(command.matchId || "").trim();
+function resolveWindow(command) {
   const startAt =
     command.startAt ||
     command.windowStart ||
     command.scheduledStartAt ||
-    "2026-08-17T10:00:00.000Z";
+    null;
   const endAt =
     command.endAt ||
     command.windowEnd ||
     command.scheduledEndAt ||
-    "2026-08-17T11:00:00.000Z";
+    null;
+  return { startAt, endAt };
+}
+
+function buildScheduleSnapshot(command) {
+  if (command.scheduleSnapshot) return command.scheduleSnapshot;
+  const matchId = String(command.matchId || "").trim();
+  const { startAt, endAt } = resolveWindow(command);
   const row = createMatchScheduleRow({
     matchId,
     startAt,
@@ -151,50 +153,44 @@ function buildScheduleSnapshot(command) {
   return createPopulatedSnapshotResult([row]);
 }
 
-/**
- * When modes have not supplied qualification ports yet, roster membership is
- * projected as competition-local qualification evidence for the concrete role.
- * Modes may still supply authoritative qualificationSnapshot.
- */
-function buildQualificationSnapshot(command, refereeId, roleCode, startAt, endAt) {
+function buildQualificationSnapshot(command) {
   if (command.qualificationSnapshot) return command.qualificationSnapshot;
-  return createPopulatedSnapshotResult([
-    createRefereeQualification({
-      qualificationId: `roster-qual-${refereeId}-${roleCode}`,
-      refereeId,
-      roleCode,
-      validFrom: startAt,
-      validTo: endAt,
-      certificationCode: command.certificationCode || null,
-    }),
-  ]);
+  return createEmptySnapshotResult(
+    "Referee qualification capability is NOT_CONFIGURED"
+  );
 }
 
-function buildAvailabilitySnapshot(command, refereeId, startAt, endAt) {
+function buildAvailabilitySnapshot(command) {
   if (command.availabilitySnapshot) return command.availabilitySnapshot;
-  return createPopulatedSnapshotResult([
-    createRefereeAvailabilityWindow({
-      windowId: `roster-avail-${refereeId}`,
-      refereeId,
-      startAt,
-      endAt,
-      source: REFEREE_AVAILABILITY_SOURCE.DIRECTORY,
-    }),
-  ]);
+  return createEmptySnapshotResult(
+    "Referee availability capability is NOT_CONFIGURED"
+  );
 }
 
-function resolveWindow(command) {
-  const startAt =
-    command.startAt ||
-    command.windowStart ||
-    command.scheduledStartAt ||
-    "2026-08-17T10:00:00.000Z";
-  const endAt =
-    command.endAt ||
-    command.windowEnd ||
-    command.scheduledEndAt ||
-    "2026-08-17T11:00:00.000Z";
-  return { startAt, endAt };
+function resolveRequirementProfile(command) {
+  const { startAt, endAt } = resolveWindow(command);
+  const scheduled = Boolean(startAt && endAt) || command.scheduled === true;
+  return {
+    requireQualification: command.requireQualification === true,
+    requireAvailability: command.requireAvailability === true,
+    requireScheduleWindowForMandatoryRoles:
+      command.requireScheduleWindowForMandatoryRoles === true ||
+      (command.requireScheduleWindowForMandatoryRoles !== false && scheduled),
+  };
+}
+
+function resolveCore13Policy(command) {
+  if (command.policy && typeof command.policy === "object") {
+    return command.policy;
+  }
+  const profile = resolveRequirementProfile(command);
+  return {
+    policyId: "core13-assignment-command",
+    policyVersion: "1",
+    requireScheduleWindowForMandatoryRoles:
+      profile.requireScheduleWindowForMandatoryRoles,
+    allowSoftOverride: command.allowSoftOverride === true,
+  };
 }
 
 function buildExistingSnapshot(rows) {
@@ -350,7 +346,7 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
 
     const role = defaultRole(command);
     const existingRows = await loadExistingForCore13(persistence, authz);
-    const { startAt, endAt } = resolveWindow(command);
+    const profile = resolveRequirementProfile(command);
 
     const request = createManualRefereeAssignmentRequest({
       requestId: String(
@@ -370,25 +366,16 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
     const core13 = validateManualRefereeAssignment({
       request,
       directorySnapshot: buildDirectorySnapshot(command, refereeId),
-      scheduleSnapshot: buildScheduleSnapshot({ ...command, matchId, startAt, endAt }),
+      scheduleSnapshot: buildScheduleSnapshot({ ...command, matchId }),
       existingAssignmentSnapshot: buildExistingSnapshot(existingRows),
-      qualificationSnapshot: buildQualificationSnapshot(
-        command,
-        refereeId,
-        role,
-        startAt,
-        endAt
-      ),
-      availabilitySnapshot: buildAvailabilitySnapshot(
-        command,
-        refereeId,
-        startAt,
-        endAt
-      ),
-      requireQualificationSnapshot: false,
-      requireAvailabilitySnapshot: false,
+      qualificationSnapshot: buildQualificationSnapshot(command),
+      availabilitySnapshot: buildAvailabilitySnapshot(command),
+      requireQualificationSnapshot: profile.requireQualification,
+      requireAvailabilitySnapshot: profile.requireAvailability,
+      requireQualification: profile.requireQualification,
+      requireAvailability: profile.requireAvailability,
       conflictPolicy: command.conflictPolicy,
-      policy: command.policy,
+      policy: resolveCore13Policy(command),
     });
     if (!core13.ok || core13.accepted === false) mapCore13Failure(core13);
 
@@ -478,7 +465,7 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
       );
     }
 
-    const { startAt, endAt } = resolveWindow(command);
+    const profile = resolveRequirementProfile(command);
     const request = createRefereeReplacementRequest({
       requestId: String(
         command.commandId || command.idempotencyKey || `replace-${matchId}`
@@ -498,23 +485,14 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
     const core13 = replaceRefereeAssignment({
       request,
       directorySnapshot: buildDirectorySnapshot(command, newRefereeId),
-      scheduleSnapshot: buildScheduleSnapshot({ ...command, matchId, startAt, endAt }),
+      scheduleSnapshot: buildScheduleSnapshot({ ...command, matchId }),
       existingAssignmentSnapshot: buildExistingSnapshot(existingRows),
-      qualificationSnapshot: buildQualificationSnapshot(
-        command,
-        newRefereeId,
-        role,
-        startAt,
-        endAt
-      ),
-      availabilitySnapshot: buildAvailabilitySnapshot(
-        command,
-        newRefereeId,
-        startAt,
-        endAt
-      ),
+      qualificationSnapshot: buildQualificationSnapshot(command),
+      availabilitySnapshot: buildAvailabilitySnapshot(command),
+      requireQualification: profile.requireQualification,
+      requireAvailability: profile.requireAvailability,
       conflictPolicy: command.conflictPolicy,
-      policy: command.policy,
+      policy: resolveCore13Policy(command),
     });
     if (!core13.ok || core13.accepted === false) mapCore13Failure(core13);
 

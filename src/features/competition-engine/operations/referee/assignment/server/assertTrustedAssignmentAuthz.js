@@ -1,15 +1,19 @@
 /**
  * Trusted-server authz — user-scoped canonical authorities only.
  * Does not invent RBAC. Browser permission claims are ignored.
+ *
+ * Generic tenant permission is not enough: the concrete tournament must also
+ * be bound via existing canonical_tournament_get / team_tournament_get_setup.
  */
 
 import { ASSIGNMENT_COMMAND_ERROR_CODE } from "../constants.js";
 import { failAssignmentCommand } from "../errors.js";
+import { isUuid } from "./loadCanonicalCompetitionModeState.js";
 
 function rpcFailed(error) {
   if (!error) return false;
   const combined = `${error.message || ""} ${error.details || ""} ${error.code || ""}`;
-  return /TOURNAMENT_FORBIDDEN|TOURNAMENT_MISSING_TENANT|42501|PGRST/i.test(
+  return /TOURNAMENT_FORBIDDEN|TOURNAMENT_MISSING_TENANT|TOURNAMENT_NOT_FOUND|42501|PGRST/i.test(
     combined
   )
     ? combined
@@ -21,12 +25,77 @@ async function callUserRpc(userClient, name, args) {
   return { data, error };
 }
 
+function unwrapRpc(data) {
+  if (data && typeof data === "object") return data;
+  return null;
+}
+
+async function assertConcreteCanonicalTournament(userClient, input) {
+  const tournamentId = String(input.tournamentId || "").trim();
+  const tenantId = String(input.tenantId || "").trim();
+  const clubId = String(input.clubId || "").trim();
+  const canonicalId = String(input.canonicalId || "").trim();
+  const targetId = isUuid(canonicalId)
+    ? canonicalId
+    : isUuid(tournamentId)
+      ? tournamentId
+      : "";
+  if (!targetId || !clubId) return false;
+  const got = await callUserRpc(userClient, "canonical_tournament_get", {
+    p_tenant_id: tenantId,
+    p_club_id: clubId,
+    p_tournament_id: targetId,
+  });
+  if (got.error) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+      rpcFailed(got.error) || "Canonical tournament binding failed",
+      { tenantId, tournamentId }
+    );
+  }
+  const payload = unwrapRpc(got.data);
+  if (payload && payload.ok === false) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+      "Canonical tournament is not bound for the authenticated actor",
+      { tenantId, tournamentId, code: payload.code || null }
+    );
+  }
+  return true;
+}
+
+async function assertConcreteTeamTournament(userClient, tournamentId) {
+  const got = await callUserRpc(userClient, "team_tournament_get_setup", {
+    p_tournament_id: tournamentId,
+  });
+  if (got.error) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+      rpcFailed(got.error) || "Team tournament binding failed",
+      { tournamentId }
+    );
+  }
+  const payload = unwrapRpc(got.data);
+  if (payload && payload.ok === false) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+      "Team tournament is not bound for the authenticated actor",
+      { tournamentId, code: payload.code || null }
+    );
+  }
+  return true;
+}
+
 /**
  * @param {{
  *   userClient: object,
  *   tenantId: string,
  *   tournamentId: string,
  *   actorId: string,
+ *   clubId?: string|null,
+ *   canonicalId?: string|null,
+ *   teamBound?: boolean,
+ *   canonicalBound?: boolean,
  * }} input
  */
 export async function assertTrustedAssignmentAuthz(input = {}) {
@@ -75,5 +144,28 @@ export async function assertTrustedAssignmentAuthz(input = {}) {
     );
   }
 
-  return Object.freeze({ tenantId, tournamentId, actorId, actorAuthorized: true });
+  let concreteBound = false;
+  if (input.canonicalBound !== false) {
+    concreteBound =
+      (await assertConcreteCanonicalTournament(userClient, {
+        tenantId,
+        tournamentId,
+        clubId: input.clubId,
+        canonicalId: input.canonicalId,
+      })) || concreteBound;
+  }
+  if (input.teamBound === true) {
+    concreteBound =
+      (await assertConcreteTeamTournament(userClient, tournamentId)) ||
+      concreteBound;
+  }
+
+  return Object.freeze({
+    tenantId,
+    tournamentId,
+    actorId,
+    actorAuthorized: true,
+    tournamentBound: true,
+    concreteTournamentBound: concreteBound,
+  });
 }

@@ -153,12 +153,17 @@ export function evaluateRefereeEligibility(input = {}) {
     }
   }
 
-  // Qualifications
+  // Qualifications — skipped only when the requirement profile says not required
   evaluated.push("QUALIFICATION");
+  const requireQualification = input.requireQualification !== false;
   const qualifications = Array.isArray(input.qualifications)
     ? input.qualifications
     : [];
-  if (roleCode && roleCode !== REFEREE_ROLE_CODE.ANY) {
+  if (
+    requireQualification &&
+    roleCode &&
+    roleCode !== REFEREE_ROLE_CODE.ANY
+  ) {
     const matching = qualifications.filter(
       (q) =>
         q &&
@@ -221,12 +226,13 @@ export function evaluateRefereeEligibility(input = {}) {
     }
   }
 
-  // Availability covers full match window
+  // Availability covers full match window — skipped when not required
   evaluated.push("AVAILABILITY");
+  const requireAvailability = input.requireAvailability !== false;
   const windows = Array.isArray(input.availabilityWindows)
     ? input.availabilityWindows
     : [];
-  if (matchWindow && refereeId) {
+  if (requireAvailability && matchWindow && refereeId) {
     const covering = windows.filter((w) => {
       if (!w || String(w.refereeId) !== refereeId) return false;
       const aw = tryHalfOpenWindow(w.startAt, w.endAt, "availability");

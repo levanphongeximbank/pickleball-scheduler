@@ -159,6 +159,7 @@ async function executeCompetitionRefereeAssignmentAction({
     tenantId: command.tenantId,
     tournamentId: command.tournamentId || command.competitionId,
     actorId: verified.userId,
+    canonicalBound: false,
   });
 
   const evidence = await loadAuthoritativeAssignmentEvidence({
@@ -168,6 +169,20 @@ async function executeCompetitionRefereeAssignmentAction({
     matchId: command.matchId,
     refereeId: command.refereeId || command.newRefereeId || null,
     roleCode: command.roleCode || command.role,
+    competitionMode: command.competitionMode,
+    requireQualification: command.requireQualification === true,
+    requireAvailability: command.requireAvailability === true,
+  });
+
+  await assertTrustedAssignmentAuthz({
+    userClient,
+    tenantId: authz.tenantId,
+    tournamentId: authz.tournamentId,
+    actorId: verified.userId,
+    clubId: evidence.clubId || command.clubId,
+    canonicalId: evidence.canonicalId,
+    canonicalBound: evidence.canonicalBound,
+    teamBound: evidence.teamBound,
   });
 
   const prepared = {
@@ -186,6 +201,19 @@ async function executeCompetitionRefereeAssignmentAction({
     scheduleSnapshot: evidence.scheduleSnapshot,
     startAt: evidence.startAt,
     endAt: evidence.endAt,
+    courtId: evidence.courtId,
+    scheduled: evidence.scheduled,
+    requireQualification: evidence.requireQualification,
+    requireAvailability: evidence.requireAvailability,
+    requireScheduleWindowForMandatoryRoles:
+      evidence.requireScheduleWindowForMandatoryRoles,
+    policy: {
+      policyId: "core13-trusted-server-assignment",
+      policyVersion: "1",
+      requireScheduleWindowForMandatoryRoles:
+        evidence.requireScheduleWindowForMandatoryRoles,
+      allowSoftOverride: command.allowSoftOverride === true,
+    },
   };
 
   const { commandService } = createTrustedCompetitionAssignmentRuntime({

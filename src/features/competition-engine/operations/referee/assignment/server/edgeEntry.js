@@ -13,3 +13,6 @@ export {
 } from "./edgeHttpHandler.js";
 export { assertTrustedAssignmentAuthz } from "./assertTrustedAssignmentAuthz.js";
 export { loadAuthoritativeAssignmentEvidence } from "./loadAuthoritativeAssignmentEvidence.js";
+export { createTrustedServerRefereeAdapterB } from "./createTrustedServerRefereeAdapterB.js";
+export { createIdentityBackedRefereeDirectoryPort } from "./createIdentityBackedRefereeDirectoryPort.js";
+export { projectMatchScheduleFromAdapterB } from "./projectMatchScheduleFromAdapterB.js";

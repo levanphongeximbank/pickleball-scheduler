@@ -58,6 +58,7 @@ export const CORE13_CANONICAL_ASSIGNMENT_RUNTIME = Object.freeze({
   assignmentAuthority: "CORE-13",
   refereeDomainAuthority: "SINGLE",
   adapterBAuthority: "TRANSLATION_ONLY",
+  adapterBServerReuse: true,
   authoritativeExecutionLocation: "TRUSTED_SERVER",
   clientCore13Role: "PRE_VALIDATION_ONLY",
   trustedServerEndpoint: "competition-referee-assignment",
@@ -70,4 +71,7 @@ export const CORE13_CANONICAL_ASSIGNMENT_RUNTIME = Object.freeze({
   inMemoryProductionFallback: false,
   authenticatedDirectRpcExecute: "DENY",
   interimBlobAuthorityPostCutover: false,
+  refereeQualificationEvidence: "NOT_CONFIGURED",
+  refereeAvailabilityEvidence: "NOT_CONFIGURED",
+  hardcodedScheduleWindow: false,
 });

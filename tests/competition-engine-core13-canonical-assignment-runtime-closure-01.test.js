@@ -90,12 +90,15 @@ function createService() {
 test("runtime lock constants", () => {
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.assignmentAuthority, "CORE-13");
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.adapterBAuthority, "TRANSLATION_ONLY");
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.adapterBServerReuse, true);
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.contract08Changed, false);
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.seedAssignmentsBypass, false);
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.inMemoryProductionFallback, false);
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.authoritativeExecutionLocation, "TRUSTED_SERVER");
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.authenticatedDirectRpcExecute, "DENY");
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.interimBlobAuthorityPostCutover, false);
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.hardcodedScheduleWindow, false);
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.refereeQualificationEvidence, "NOT_CONFIGURED");
 });
 
 test("authority: assign calls CORE-13 and persists", async () => {

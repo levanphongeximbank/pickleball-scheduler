@@ -1,31 +1,36 @@
 /**
  * Authoritative lifecycle / schedule / referee evidence for trusted-server CORE-13.
- * Browser lifecycle and directory snapshots are hints only and must not be used.
+ *
+ * Topology:
+ *   Identity (canonical referee user) → RefereeDirectoryPort
+ *   Contract #08 Adapter B → match schedule / court / competition context
+ *   CORE-13 ← snapshots (never browser-supplied)
+ *
+ * Adapter B does not own referee identity/qualification/availability.
+ * Qualification and availability are classified NOT_CONFIGURED unless a
+ * requirement profile explicitly requires them (then fail closed).
  */
 
 import {
-  createRefereeCandidate,
-  createRefereeQualification,
-  createRefereeAvailabilityWindow,
-  createMatchScheduleRow,
-  REFEREE_ROLE_CODE,
-  REFEREE_AVAILABILITY_SOURCE,
-} from "../../../../../competition-core/referee-assignment/index.js";
-import {
-  createPopulatedSnapshotResult,
+  createEmptySnapshotResult,
 } from "../../../../../competition-core/referee-assignment/ports/portResult.js";
+import { REFEREE_ROLE_CODE } from "../../../../../competition-core/referee-assignment/index.js";
 import { ASSIGNMENT_COMMAND_ERROR_CODE } from "../constants.js";
 import { failAssignmentCommand } from "../errors.js";
 import { normalizeAssignmentLifecycleState } from "../evaluateLifecycleGate.js";
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-const REFEREE_ROLE_TOKENS = new Set(["REFEREE", "HEAD_REFEREE", "SCOREKEEPER"]);
-
-function isUuid(value) {
-  return UUID_RE.test(String(value || "").trim());
-}
+import { createIdentityBackedRefereeDirectoryPort } from "./createIdentityBackedRefereeDirectoryPort.js";
+import {
+  createNotConfiguredAvailabilitySnapshot,
+  createNotConfiguredQualificationSnapshot,
+  createRequiredMissingAvailabilitySnapshot,
+  createRequiredMissingQualificationSnapshot,
+  REFEREE_EVIDENCE_CAPABILITY,
+} from "./createNotConfiguredRefereeEvidencePorts.js";
+import { createTrustedServerRefereeAdapterB } from "./createTrustedServerRefereeAdapterB.js";
+import {
+  createUnscheduledMatchSnapshot,
+  projectMatchScheduleFromAdapterB,
+} from "./projectMatchScheduleFromAdapterB.js";
 
 function mapLiveStatus(row) {
   if (!row) return { raw: "PRE_MATCH", scoringActive: false };
@@ -37,44 +42,30 @@ function mapLiveStatus(row) {
   return { raw: status, scoringActive };
 }
 
-/**
- * @param {{
- *   serviceClient: object,
- *   tenantId: string,
- *   tournamentId: string,
- *   matchId: string,
- *   refereeId?: string,
- *   roleCode?: string,
- * }} input
- */
-export async function loadAuthoritativeAssignmentEvidence(input = {}) {
-  const serviceClient = input.serviceClient;
-  const tenantId = String(input.tenantId || "").trim();
-  const tournamentId = String(input.tournamentId || "").trim();
-  const matchId = String(input.matchId || "").trim();
-  const refereeId = String(input.refereeId || "").trim();
-  const roleCode = input.roleCode || REFEREE_ROLE_CODE.PRIMARY;
-
+async function loadTournamentRows(serviceClient, tenantId) {
   const { data: canonicalRows } = await serviceClient
     .from("canonical_tournaments")
-    .select("id, tenant_id, status, mode, payload, external_key")
+    .select("id, tenant_id, club_id, status, mode, payload, external_key")
     .eq("tenant_id", tenantId);
-
-  const canonical = (canonicalRows || []).find(
-    (row) =>
-      String(row.id) === tournamentId || String(row.external_key) === tournamentId
-  ) || null;
 
   const { data: teamRows } = await serviceClient
     .from("team_tournaments")
-    .select("id, tenant_id, tournament_id, status")
+    .select("id, tenant_id, tournament_id, status, payload")
     .eq("tenant_id", tenantId);
 
-  const teamHeader =
-    (teamRows || []).find(
+  return { canonicalRows: canonicalRows || [], teamRows: teamRows || [] };
+}
+
+function bindTournament(canonicalRows, teamRows, tenantId, tournamentId) {
+  const canonical =
+    canonicalRows.find(
       (row) =>
-        String(row.tournament_id) === tournamentId ||
-        String(row.id) === tournamentId
+        String(row.id) === tournamentId || String(row.external_key) === tournamentId
+    ) || null;
+  const teamHeader =
+    teamRows.find(
+      (row) =>
+        String(row.tournament_id) === tournamentId || String(row.id) === tournamentId
     ) || null;
 
   if (!canonical && !teamHeader) {
@@ -84,7 +75,6 @@ export async function loadAuthoritativeAssignmentEvidence(input = {}) {
       { tenantId, tournamentId }
     );
   }
-
   if (canonical && String(canonical.tenant_id) !== tenantId) {
     failAssignmentCommand(
       ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TENANT_DENIED,
@@ -99,6 +89,73 @@ export async function loadAuthoritativeAssignmentEvidence(input = {}) {
       { tenantId, tournamentId }
     );
   }
+  return { canonical, teamHeader };
+}
+
+function resolveScheduleFromAdapterB({
+  adapterRuntime,
+  tenantId,
+  tournamentId,
+  matchId,
+}) {
+  const request = {
+    tenantId,
+    competitionId: tournamentId,
+    matchId,
+  };
+  try {
+    const matchContext = adapterRuntime.adapter.getMatchContext(request);
+    const modeMatch =
+      adapterRuntime.modeState?.matches?.[matchId] ||
+      adapterRuntime.modeState?.matchups?.[matchId] ||
+      null;
+    return projectMatchScheduleFromAdapterB({
+      matchContext,
+      modeMatch,
+      matchId,
+    });
+  } catch (err) {
+    if (adapterRuntime.isRefereeAdapterContractError(err)) {
+      return createUnscheduledMatchSnapshot(matchId);
+    }
+    throw err;
+  }
+}
+
+/**
+ * @param {{
+ *   serviceClient: object,
+ *   tenantId: string,
+ *   tournamentId: string,
+ *   matchId: string,
+ *   refereeId?: string,
+ *   roleCode?: string,
+ *   competitionMode?: string,
+ *   requireQualification?: boolean,
+ *   requireAvailability?: boolean,
+ * }} input
+ */
+export async function loadAuthoritativeAssignmentEvidence(input = {}) {
+  const serviceClient = input.serviceClient;
+  const tenantId = String(input.tenantId || "").trim();
+  const tournamentId = String(input.tournamentId || "").trim();
+  const matchId = String(input.matchId || "").trim();
+  const refereeId = String(input.refereeId || "").trim();
+  const roleCode = input.roleCode || REFEREE_ROLE_CODE.PRIMARY;
+  const competitionMode = String(input.competitionMode || "INTERNAL").toUpperCase();
+  const requireQualification = input.requireQualification === true;
+  const requireAvailability = input.requireAvailability === true;
+
+  const { canonicalRows, teamRows } = await loadTournamentRows(
+    serviceClient,
+    tenantId
+  );
+  const { canonical, teamHeader } = bindTournament(
+    canonicalRows,
+    teamRows,
+    tenantId,
+    tournamentId
+  );
 
   const { data: liveRows } = await serviceClient
     .from("match_live_states")
@@ -123,107 +180,75 @@ export async function loadAuthoritativeAssignmentEvidence(input = {}) {
     lifecycleState = "COMPLETED";
   }
 
-  const startAt = "2026-08-17T10:00:00.000Z";
-  const endAt = "2026-08-17T11:00:00.000Z";
+  const adapterRuntime = createTrustedServerRefereeAdapterB({
+    tenantId,
+    tournamentId,
+    competitionMode: teamHeader ? "TEAM" : competitionMode,
+    canonical,
+    teamHeader,
+  });
 
-  let directorySnapshot = createPopulatedSnapshotResult([]);
-  let qualificationSnapshot = createPopulatedSnapshotResult([]);
-  let availabilitySnapshot = createPopulatedSnapshotResult([]);
+  const schedule = matchId
+    ? resolveScheduleFromAdapterB({
+        adapterRuntime,
+        tenantId,
+        tournamentId,
+        matchId,
+      })
+    : createUnscheduledMatchSnapshot("missing-match");
 
+  let directorySnapshot = createEmptySnapshotResult(
+    "No refereeId supplied for Identity directory lookup"
+  );
   if (refereeId) {
-    if (!isUuid(refereeId)) {
-      failAssignmentCommand(
-        ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
-        "Canonical referee identity must be a UUID with Referee-domain evidence",
-        { refereeId }
-      );
-    }
-
-    const { data: profile, error: profileError } = await serviceClient
-      .from("profiles")
-      .select("id, display_name, email, role, venue_id, status")
-      .eq("id", refereeId)
-      .maybeSingle();
-
-    if (profileError || !profile?.id) {
-      failAssignmentCommand(
-        ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
-        "Canonical referee profile evidence was not found",
-        { refereeId }
-      );
-    }
-
-    const profileTenant = String(profile.venue_id || "").trim();
-    if (profileTenant && profileTenant !== tenantId) {
-      failAssignmentCommand(
-        ASSIGNMENT_COMMAND_ERROR_CODE.FOREIGN_REFEREE_DENIED,
-        "Referee profile is not bound to the authenticated tenant",
-        { refereeId, profileTenant, tenantId }
-      );
-    }
-
-    const role = String(profile.role || "").trim().toUpperCase();
-    const refereeRoleEvidence =
-      REFEREE_ROLE_TOKENS.has(role) || role.includes("REFEREE");
-    if (!refereeRoleEvidence && !teamHeader) {
-      failAssignmentCommand(
-        ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
-        "Canonical Referee identity/source evidence is required (profile role)",
-        { refereeId, role }
-      );
-    }
-
-    directorySnapshot = createPopulatedSnapshotResult([
-      createRefereeCandidate({
-        refereeId,
-        active: String(profile.status || "active").toLowerCase() !== "inactive",
-        userId: refereeId,
-        displayLabel: profile.display_name || profile.email || undefined,
-      }),
-    ]);
-    qualificationSnapshot = createPopulatedSnapshotResult([
-      createRefereeQualification({
-        qualificationId: `canonical-qual-${refereeId}-${roleCode}`,
-        refereeId,
-        roleCode,
-        validFrom: startAt,
-        validTo: endAt,
-        certificationCode: role || null,
-      }),
-    ]);
-    availabilitySnapshot = createPopulatedSnapshotResult([
-      createRefereeAvailabilityWindow({
-        windowId: `canonical-avail-${refereeId}`,
-        refereeId,
-        startAt,
-        endAt,
-        source: REFEREE_AVAILABILITY_SOURCE.DIRECTORY,
-      }),
-    ]);
+    const directoryPort = createIdentityBackedRefereeDirectoryPort({
+      serviceClient,
+    });
+    directorySnapshot = await directoryPort.resolveRefereeDirectory({
+      tenantId,
+      tournamentId,
+      refereeId,
+      roleCode,
+    });
   }
 
-  const scheduleSnapshot = createPopulatedSnapshotResult([
-    createMatchScheduleRow({
-      matchId,
-      startAt,
-      endAt,
-      courtId: null,
-    }),
-  ]);
+  const qualificationSnapshot = requireQualification
+    ? createRequiredMissingQualificationSnapshot()
+    : createNotConfiguredQualificationSnapshot();
+  const availabilitySnapshot = requireAvailability
+    ? createRequiredMissingAvailabilitySnapshot()
+    : createNotConfiguredAvailabilitySnapshot();
 
   return Object.freeze({
     tenantId,
     tournamentId,
     matchId,
     lifecycleState,
-    scoringActive: liveMapped.scoringActive === true || lifecycleState === "SCORING_ACTIVE",
+    scoringActive:
+      liveMapped.scoringActive === true || lifecycleState === "SCORING_ACTIVE",
     directorySnapshot,
     qualificationSnapshot,
     availabilitySnapshot,
-    scheduleSnapshot,
-    startAt,
-    endAt,
+    scheduleSnapshot: schedule.scheduleSnapshot,
+    startAt: schedule.startAt,
+    endAt: schedule.endAt,
+    courtId: schedule.courtId,
+    scheduled: schedule.scheduled === true,
+    assignmentBeforeSchedule: schedule.assignmentBeforeSchedule === true,
     canonicalBound: Boolean(canonical),
     teamBound: Boolean(teamHeader),
+    clubId: canonical?.club_id || null,
+    canonicalId: canonical?.id || null,
+    adapterBReused: true,
+    adapterBContractId: adapterRuntime.contractId,
+    adapterBOwnsRefereeIdentity: false,
+    refereeIdentityEvidence: REFEREE_EVIDENCE_CAPABILITY.IDENTITY,
+    refereeActiveStatusEvidence: REFEREE_EVIDENCE_CAPABILITY.ACTIVE_STATUS,
+    refereeQualificationEvidence: REFEREE_EVIDENCE_CAPABILITY.QUALIFICATION,
+    refereeAvailabilityEvidence: REFEREE_EVIDENCE_CAPABILITY.AVAILABILITY,
+    requireQualification,
+    requireAvailability,
+    requireScheduleWindowForMandatoryRoles: schedule.scheduled === true,
+    authoritativeScheduleSource: schedule.source,
   });
 }

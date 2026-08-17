@@ -387,6 +387,9 @@ test("staging acceptance harness refuses without explicit Staging flags", () => 
   assert.match(harness, /EDGE_FUNCTION_DEPLOY_GO/);
   assert.match(harness, /PICK_VN_ENV/);
   assert.match(harness, /PRODUCTION_HINTS/);
+  assert.match(harness, /A\.anon-direct-persistence-rpc-denied/);
+  assert.match(harness, /L\.overlapping-schedule-conflict-deny/);
+  assert.match(harness, /M\.daily-play-disabled-not-applicable/);
   assert.doesNotMatch(harness, /eyJ[A-Za-z0-9_-]{20,}/);
   const sqlAcceptance = read(
     "docs/v5/migrations/core13-canonical-assignment-runtime-closure-01/05_STAGING_SQL_ACCEPTANCE.sql"

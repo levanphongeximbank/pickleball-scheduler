@@ -18,7 +18,9 @@
 | Durable audit + idempotency | This SQL package |
 | Persistence adapter | `createRpcCanonicalAssignmentPersistence` (translation only) |
 | Generic competition audit adapter | **Adapter #16** — **NOT modified** |
-| Contract #08 / Adapter B | Unchanged; server consumes canonical Referee evidence |
+| Contract #08 / Adapter B | Frozen; trusted server reuses Adapter B for match schedule/court context |
+| Referee identity | Identity-backed RefereeDirectoryPort (`profiles.role` = referee identity/source/active only) |
+| Qualification / availability | Honest `NOT_CONFIGURED` unless a requirement profile requires them (then fail closed) |
 
 CORE-13 remains decision authority. SQL persistence RPCs execute validated commands only.
 

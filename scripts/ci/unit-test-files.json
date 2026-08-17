@@ -475,6 +475,7 @@
   "tests/competition-engine-e2e-03-organizer-operations.test.js",
   "tests/competition-engine-core13-canonical-assignment-runtime-closure-01.test.js",
   "tests/competition-engine-core13-trusted-server-boundary-01.test.js",
+  "tests/competition-engine-core13-authoritative-evidence-boundary-01.test.js",
   "tests/competition-engine-e2e-04-player-referee-operations.test.js",
   "tests/competition-engine-e2e-05-public-experience.test.js",
   "tests/competition-engine-e2e-06-governance-reliability.test.js",
