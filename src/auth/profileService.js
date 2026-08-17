@@ -5,6 +5,7 @@ import { getSupabaseAuthClient, PROFILES_TABLE } from "./supabaseClient.js";
 import { isSecureRuntime } from "./runtime.js";
 import { resolveAssignedClusterIdsForUser } from "../features/court-cluster/services/courtClusterService.js";
 import { normalizeProfileGender } from "../features/identity/utils/profileGender.js";
+import { resolveLegacyProfileTenantId } from "../core/platform/app/legacyTenantVenueBridge.js";
 
 /**
  * Mapping auth.users ↔ public.profiles (docs/supabase-rbac.sql).
@@ -25,14 +26,19 @@ export function mapProfileRowToUser(row) {
     return null;
   }
 
-  const venueId = row.venue_id || row.venueId || row.tenant_id || row.tenantId || null;
+  // Wave 3: venue_id = home venue; tenant_id distinct when Phase B column exists.
+  const venueId = row.venue_id || row.venueId || null;
+  const bridged = resolveLegacyProfileTenantId({
+    tenantId: row.tenant_id || row.tenantId || null,
+    venueId,
+  });
 
   return normalizeUser({
     id: row.id,
     email: row.email,
     displayName: row.display_name || row.displayName || "",
     role: normalizeRole(row.role),
-    tenantId: venueId,
+    tenantId: bridged.tenantId,
     venueId,
     clubId: row.club_id || row.clubId || null,
     playerId: row.player_id || row.playerId || null,

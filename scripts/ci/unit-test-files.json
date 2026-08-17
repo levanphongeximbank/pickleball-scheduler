@@ -86,6 +86,7 @@
   "tests/platform-tenant-switcher-persistence-01.test.js",
   "tests/platform-tenant-venue-selected-display.test.js",
   "tests/platform-context-wave1-closure.test.js",
+  "tests/platform-context-wave3-tenant-venue-separation.test.js",
   "tests/platform-runtime-boundary-closure-02.test.js",
   "tests/phase42m-club-ui.test.js",
   "tests/competition-core-rating-mapping.test.js",

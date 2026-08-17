@@ -3,9 +3,8 @@ import { FormControl, InputLabel, MenuItem, Select } from "@mui/material";
 
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTenant } from "../context/TenantContext.jsx";
-import { listVenues } from "../domain/venueService.js";
+import { useVenue } from "../context/VenueContext.jsx";
 import { canAccessVenue } from "../auth/rbac.js";
-import { loadActiveVenueId, saveActiveVenueId } from "../data/venueSession.js";
 import { SHELL_COLORS } from "./shell/shellTokens.js";
 
 const VARIANT_STYLES = {
@@ -29,43 +28,67 @@ const VARIANT_STYLES = {
   },
 };
 
-export default function VenueSwitcher({ size = "small", minWidth = 180, variant = "dark", hideLabel = false }) {
+/**
+ * Wave 3 — Venue selector (physical facility). Scoped by selected Tenant.
+ * Label is Venue/Cơ sở — not Organization.
+ */
+export default function VenueSwitcher({
+  size = "small",
+  minWidth = 180,
+  variant = "dark",
+  hideLabel = false,
+}) {
   const { user, rbacEnabled, isAuthenticated } = useAuth();
   const { currentTenantId } = useTenant();
+  const { venues, currentVenueId, switchVenue } = useVenue();
   const styles = VARIANT_STYLES[variant] || VARIANT_STYLES.dark;
 
-  const venues = useMemo(() => {
-    const all = listVenues();
-    if (!rbacEnabled || !isAuthenticated || !user) {
-      return all;
+  const scopedVenues = useMemo(() => {
+    if (!currentTenantId) {
+      return [];
     }
-    return all.filter((venue) => canAccessVenue(user, venue.id, { rbacEnabled }));
-  }, [rbacEnabled, isAuthenticated, user, currentTenantId]);
+    if (!rbacEnabled || !isAuthenticated || !user) {
+      return venues;
+    }
+    return venues.filter((venue) => canAccessVenue(user, venue.id, { rbacEnabled }));
+  }, [venues, currentTenantId, rbacEnabled, isAuthenticated, user]);
 
-  if (venues.length <= 1 && !user?.venueId) {
+  if (!currentTenantId) {
     return null;
   }
 
-  const storedId = loadActiveVenueId();
-  const defaultId = user?.venueId || venues[0]?.id || "";
-  const value = venues.some((v) => v.id === storedId) ? storedId : defaultId;
+  if (scopedVenues.length === 0) {
+    return null;
+  }
+
+  // Hide when exactly one venue and it is already selected (deterministic 1-option UX).
+  if (scopedVenues.length === 1 && currentVenueId === scopedVenues[0].id) {
+    return null;
+  }
+
+  const value = scopedVenues.some((v) => v.id === currentVenueId)
+    ? currentVenueId
+    : "";
 
   const handleChange = (event) => {
-    saveActiveVenueId(event.target.value);
-    window.dispatchEvent(new CustomEvent("venue-switched", { detail: event.target.value }));
+    switchVenue(event.target.value);
   };
 
-  const fieldLabel = hideLabel ? "" : "Tổ chức";
+  const fieldLabel = hideLabel ? "" : "Cơ sở";
 
   return (
     <FormControl size={size} sx={{ minWidth, width: hideLabel ? "100%" : undefined }}>
       {!hideLabel && (
-        <InputLabel id="header-venue-label" sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}>
-          Tổ chức
+        <InputLabel
+          id="header-venue-label"
+          sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}
+        >
+          Cơ sở
         </InputLabel>
       )}
       <Select
         labelId="header-venue-label"
+        data-testid="canonical-venue-switcher"
         value={value}
         label={fieldLabel}
         onChange={handleChange}
@@ -84,7 +107,12 @@ export default function VenueSwitcher({ size = "small", minWidth = 180, variant 
           ".MuiSvgIcon-root": { color: styles.icon },
         }}
       >
-        {venues.map((venue) => (
+        {value === "" && (
+          <MenuItem value="" disabled>
+            Chọn cơ sở…
+          </MenuItem>
+        )}
+        {scopedVenues.map((venue) => (
           <MenuItem key={venue.id} value={venue.id}>
             {venue.name}
           </MenuItem>

@@ -35,10 +35,13 @@ const STATIC_IMPORT_RE =
 const PLATFORM_SURFACES = [
   "src/context/ClubContext.jsx",
   "src/context/TenantContext.jsx",
+  "src/context/VenueContext.jsx",
+  "src/context/ClusterContext.jsx",
   "src/context/AuthContext.jsx",
   "src/auth/authStorage.js",
   "src/auth/tournamentEngineRouteAccess.js",
   "src/models/tenant.js",
+  "src/models/venue.js",
 ];
 
 const PLATFORM_CORE_PREFIX = "src/core/platform/";
@@ -48,6 +51,8 @@ const APPROVED_PUBLIC_BOUNDARIES = new Set([
   "src/core/platform/app/billingAccessCapability.js",
   "src/core/platform/app/platformContextDiagnostics.js",
   "src/core/platform/app/platformContextReadiness.js",
+  "src/core/platform/app/tenantVenueIdentity.js",
+  "src/core/platform/app/legacyTenantVenueBridge.js",
   "src/core/platform/app/runtimeAccess.js",
   "src/core/platform/app/usePlatformRuntime.js",
   "src/core/platform/app/PlatformRuntimeProvider.jsx",
@@ -75,6 +80,26 @@ const RULES = [
     description: "Tenant model must not depend on AI configuration.",
     files: ["src/models/tenant.js"],
     matchImport: (spec) => (/(?:^|\/)ai\//.test(spec) ? spec : null),
+  },
+  {
+    id: "venue-model-no-ai-config",
+    description: "Venue model must not depend on AI configuration.",
+    files: ["src/models/venue.js"],
+    matchImport: (spec) => (/(?:^|\/)ai\//.test(spec) ? spec : null),
+  },
+  {
+    id: "venue-context-no-billing-internals",
+    description: "VenueContext must not import Billing internals.",
+    files: ["src/context/VenueContext.jsx"],
+    matchImport: (spec) =>
+      /features\/billing\/(repositories|bridges|guards|services)\//.test(spec) ? spec : null,
+  },
+  {
+    id: "cluster-context-no-billing-internals",
+    description: "ClusterContext must not import Billing internals directly.",
+    files: ["src/context/ClusterContext.jsx"],
+    matchImport: (spec) =>
+      /features\/billing\/(repositories|bridges|guards|services)\//.test(spec) ? spec : null,
   },
   {
     id: "tenant-context-no-billing-internals",

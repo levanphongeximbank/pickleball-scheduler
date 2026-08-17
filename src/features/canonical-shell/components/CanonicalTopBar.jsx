@@ -15,6 +15,7 @@ import CanonicalNotificationButton from "./CanonicalNotificationButton.jsx";
 import CanonicalTenantSwitcher from "./CanonicalTenantSwitcher.jsx";
 import CanonicalUserMenu from "./CanonicalUserMenu.jsx";
 import ClubSwitcher from "../../../components/ClubSwitcher.jsx";
+import VenueSwitcher from "../../../components/VenueSwitcher.jsx";
 import { buildCanonicalBreadcrumbs } from "../services/buildCanonicalBreadcrumbs.js";
 import { buildCanonicalMenuTree } from "../config/canonicalMenuRegistry.js";
 import { useCanonicalShell } from "../hooks/useCanonicalShell.js";
@@ -151,6 +152,12 @@ export default function CanonicalTopBar() {
               />
             </Box>
           ) : null}
+          <Box
+            data-testid="canonical-topbar-venue-zone"
+            sx={{ flexShrink: 0, minWidth: isMobile ? 120 : 160, maxWidth: 220 }}
+          >
+            <VenueSwitcher variant="light" minWidth={isMobile ? 120 : 160} />
+          </Box>
           {showClubSwitcher ? (
             <Box
               data-testid="canonical-topbar-club-zone"
