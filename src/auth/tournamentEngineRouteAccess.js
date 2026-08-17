@@ -14,8 +14,10 @@
  */
 import { PERMISSIONS } from "./permissions.js";
 import { can } from "./rbac.js";
-import { assertTournamentAccess } from "../domain/tournamentService.js";
-import { resolveTournamentClubId } from "../features/club/services/clubTournamentBridge.js";
+import {
+  assertTournamentAccessViaPort,
+  resolveTournamentClubIdViaPort,
+} from "./ports/tournamentAccessPort.js";
 
 /** Local mirror of authGuard.isAuthRequired — avoid circular import with authGuard. */
 function isAuthzActive({ authProductionEnabled, rbacEnabled }) {
@@ -143,7 +145,8 @@ export function evaluateTournamentEngineRouteAccess({
   }
 
   // Prefer active club for cloud-only tournaments (not present in club blob).
-  let clubId = resolveTournamentClubId(activeClubId, tournamentId);
+  // Competition/Club bind assert + resolve via tournamentAccessPort at composition root.
+  let clubId = resolveTournamentClubIdViaPort(activeClubId, tournamentId);
   if (!clubId && activeClubId) {
     clubId = String(activeClubId).trim();
   }
@@ -153,7 +156,7 @@ export function evaluateTournamentEngineRouteAccess({
 
   const enforceRbac = forceAuthz ? true : Boolean(rbacEnabled);
 
-  const access = assertTournamentAccess(clubId, tournamentId, {
+  const access = assertTournamentAccessViaPort(clubId, tournamentId, {
     user,
     rbacEnabled: enforceRbac,
     tenantId: tenantId || user?.tenantId || user?.venueId || null,

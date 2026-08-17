@@ -39,7 +39,7 @@ import ModeCard from "../../components/tournament/ModeCard.jsx";
 import PermissionGate from "../../components/auth/PermissionGate.jsx";
 import ClubAssignmentBanner from "../../components/auth/ClubAssignmentBanner.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
-import { usePageRuntimeAccess } from "../../core/platform/app/usePageRuntimeAccess.js";
+import { usePageRuntimeAccess } from "../../components/shell/usePageRuntimeAccess.js";
 import { createTeamTournamentForUi } from "../../features/team-tournament/services/teamTournamentService.js";
 import { getTeamData } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import { findTeamForCaptain } from "../../features/team-tournament/engines/teamPermissionEngine.js";
