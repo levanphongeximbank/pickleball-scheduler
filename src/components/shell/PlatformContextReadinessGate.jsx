@@ -8,7 +8,7 @@ import {
   isPlatformContextReady,
   isPlatformContextRequired,
 } from "../../core/platform/app/platformContextReadiness.js";
-import { usePlatformContextReadiness } from "../../core/platform/app/usePlatformContextReadiness.js";
+import { usePlatformContextReadiness } from "./usePlatformContextReadiness.js";
 import { useTenant } from "../../context/TenantContext.jsx";
 
 /**

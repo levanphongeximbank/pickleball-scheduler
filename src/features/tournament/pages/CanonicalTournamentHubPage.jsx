@@ -15,7 +15,7 @@ import ClubAssignmentBanner from "../../../components/auth/ClubAssignmentBanner.
 import TournamentPageHeader from "../../../components/tournament/TournamentPageHeader.jsx";
 import ActiveTournamentsPanel from "../../../components/tournament/ActiveTournamentsPanel.jsx";
 import { TOURNAMENT_LAYOUT } from "../../../components/tournament/tournamentLayout.js";
-import { usePageRuntimeAccess } from "../../../core/platform/app/usePageRuntimeAccess.js";
+import { usePageRuntimeAccess } from "../../../components/shell/usePageRuntimeAccess.js";
 import { CANONICAL_TOURNAMENT_HUB_ITEMS } from "../constants/hubNav.js";
 import { useCanonicalTournamentList } from "../hooks/useCanonicalTournament.js";
 import { TOURNAMENT_ROUTES } from "../../../config/tournamentRoutes.js";

@@ -134,7 +134,7 @@ describe("Wave1 mounted provider F5 club preference lifecycle", () => {
     const { TenantProvider } = await import("../../src/context/TenantContext.jsx");
     const { ClubProvider, useClub } = await import("../../src/context/ClubContext.jsx");
     const { usePlatformContextReadiness } = await import(
-      "../../src/core/platform/app/usePlatformContextReadiness.js"
+      "../../src/components/shell/usePlatformContextReadiness.js"
     );
 
     function LiveProbe() {

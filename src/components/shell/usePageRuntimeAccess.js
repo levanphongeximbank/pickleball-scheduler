@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { useAuth } from "../../../context/AuthContext.jsx";
-import { useClub } from "../../../context/ClubContext.jsx";
-import { resolveRouteAccessScope } from "../../../auth/menuAccess.js";
-import { usePlatformRuntime } from "./usePlatformRuntime.js";
-import { buildPageRuntimeAccessState } from "./runtimeAccess.js";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { useClub } from "../../context/ClubContext.jsx";
+import { resolveRouteAccessScope } from "../../auth/menuAccess.js";
+import { usePlatformRuntime } from "../../core/platform/app/usePlatformRuntime.js";
+import { buildPageRuntimeAccessState } from "../../core/platform/app/runtimeAccess.js";
 
 /**
- * Resolve page runtime access using identity RBAC (production) + platform preview fallback.
+ * Shell composition hook — page runtime access using identity RBAC + platform preview fallback.
+ * Lives outside Platform Core so Core stays free of context/BM orchestration imports.
  */
 export function usePageRuntimeAccess(permission, tenantId, context = {}) {
   const runtime = usePlatformRuntime();
@@ -25,6 +26,8 @@ export function usePageRuntimeAccess(permission, tenantId, context = {}) {
     [user, activeClubId, activeClub]
   );
 
+  const contextKey = JSON.stringify(context);
+
   useEffect(() => {
     try {
       const resolvedTenantId =
@@ -41,7 +44,9 @@ export function usePageRuntimeAccess(permission, tenantId, context = {}) {
     } catch {
       setAccessAllowed(false);
     }
-  }, [runtime, user, can, rbacEnabled, scope, permission, tenantId, activeClub, activeClubId, JSON.stringify(context)]);
+    // contextKey is a stable serialization of `context` for effect identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Wave2 shell move; preserve prior access semantics
+  }, [runtime, user, can, rbacEnabled, scope, permission, tenantId, activeClub, activeClubId, contextKey]);
 
   return { accessAllowed, scope };
 }
