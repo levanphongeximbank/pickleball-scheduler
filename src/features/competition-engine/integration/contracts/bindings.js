@@ -123,6 +123,17 @@ function mapSubjectLookupFailure(result, ctx) {
       { field: "subjectId" }
     );
   }
+  if (code === SUBJECT_IDENTITY_LOOKUP_CODE.MISSING_SCOPE_EVIDENCE) {
+    failCompetitionAdapter(
+      SHARED_ADAPTER_ERROR_CODE.MISSING_CANONICAL_IDENTITY,
+      "Authoritative tenant evidence is required when tenant proof is requested",
+      {
+        subjectId: result?.evidence?.subjectId || null,
+        requestedTenantId: ctx.tenantId,
+        venueId: result?.evidence?.venueId || null,
+      }
+    );
+  }
   if (code === SUBJECT_IDENTITY_LOOKUP_CODE.SCOPE_MISMATCH) {
     failCompetitionAdapter(
       SHARED_ADAPTER_ERROR_CODE.CROSS_TENANT_CONTEXT,
@@ -287,12 +298,14 @@ export function createIdentityAccessBinding(deps = {}) {
             status: EVIDENCE_STATUS.OK,
             data: {
               subjectId: evidence.subjectId,
+              canonicalSubjectId: evidence.canonicalSubjectId || evidence.subjectId,
               role: evidence.role,
               status: evidence.status,
               active: evidence.active === true,
               tenantId: evidence.tenantId,
               venueId: evidence.venueId,
               clubId: evidence.clubId,
+              organizationId: evidence.organizationId ?? evidence.scopeIds?.organizationId ?? null,
               scopeIds: evidence.scopeIds,
               matchesRequestedTenant: evidence.matchesRequestedTenant === true,
               source: evidence.source,

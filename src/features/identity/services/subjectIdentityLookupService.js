@@ -4,6 +4,9 @@
  * Competition-safe evidence only. Not a directory, search, or login API.
  * Private persistence reads stay inside Identity. Callers cannot supply
  * role, status, or tenant/scope authority.
+ *
+ * Tenant is not venue. Missing tenant_id is null, never copied from venue_id.
+ * Missing status is incomplete evidence, never synthesized as ACTIVE.
  */
 
 import { isPlatformWideRole, normalizeRole } from "../constants/roles.js";
@@ -19,12 +22,22 @@ export const SUBJECT_IDENTITY_LOOKUP_CODE = Object.freeze({
   DISPLAY_NAME_IS_NOT_IDENTITY: "DISPLAY_NAME_IS_NOT_IDENTITY",
   SUBJECT_NOT_FOUND: "SUBJECT_NOT_FOUND",
   SCOPE_MISMATCH: "SCOPE_MISMATCH",
+  MISSING_SCOPE_EVIDENCE: "MISSING_SCOPE_EVIDENCE",
   INCOMPLETE_IDENTITY: "INCOMPLETE_IDENTITY",
 });
 
 const EMAIL_LIKE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_LIKE = /^[+]?[\d\s().-]{8,}$/;
 const MAX_SUBJECT_ID_LENGTH = 128;
+
+const ACTIVE_STATUS_VALUES = Object.freeze(["active"]);
+const INACTIVE_STATUS_VALUES = Object.freeze([
+  "suspended",
+  "inactive",
+  "invited",
+  "disabled",
+  "locked",
+]);
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
@@ -76,39 +89,84 @@ function classifySubjectId(value) {
   return null;
 }
 
-function authoritativeTenantId(record) {
-  if (isNonEmptyString(record?.tenantId)) return String(record.tenantId).trim();
-  if (isNonEmptyString(record?.venueId)) return String(record.venueId).trim();
+function readAuthoritativeField(record, keys) {
+  for (const key of keys) {
+    if (isNonEmptyString(record?.[key])) return String(record[key]).trim();
+  }
+  return null;
+}
+
+/**
+ * Tenant identity only. Never copied from venueId.
+ * @param {object|null|undefined} record
+ * @returns {string|null}
+ */
+export function authoritativeTenantId(record) {
+  return readAuthoritativeField(record, ["tenantId", "tenant_id"]);
+}
+
+/**
+ * Home/resource venue only. Never copied from tenantId.
+ * @param {object|null|undefined} record
+ * @returns {string|null}
+ */
+export function authoritativeVenueId(record) {
+  return readAuthoritativeField(record, ["venueId", "venue_id"]);
+}
+
+function authoritativeClubId(record) {
+  return readAuthoritativeField(record, ["clubId", "club_id"]);
+}
+
+function authoritativeOrganizationId(record) {
+  return readAuthoritativeField(record, ["organizationId", "organization_id"]);
+}
+
+/**
+ * Explicit Identity status only. Missing/unreadable status is null.
+ * Never synthesized as ACTIVE.
+ * @param {unknown} raw
+ * @returns {string|null}
+ */
+export function authoritativeStatus(raw) {
+  if (typeof raw !== "string") return null;
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) return null;
+  if (ACTIVE_STATUS_VALUES.includes(normalized)) return USER_STATUS.ACTIVE;
+  if (normalized === USER_STATUS.SUSPENDED || normalized === "suspended") {
+    return USER_STATUS.SUSPENDED;
+  }
+  if (normalized === USER_STATUS.INVITED || normalized === "invited") {
+    return USER_STATUS.INVITED;
+  }
+  if (INACTIVE_STATUS_VALUES.includes(normalized)) return normalized;
   return null;
 }
 
 function toCompetitionSafeEvidence(record) {
   const subjectId = String(record.id).trim();
   const role = normalizeRole(record.role);
-  const status = isNonEmptyString(record.status)
-    ? String(record.status).trim()
-    : USER_STATUS.ACTIVE;
+  const status = authoritativeStatus(record.status);
   const tenantId = authoritativeTenantId(record);
-  const venueId = isNonEmptyString(record.venueId)
-    ? String(record.venueId).trim()
-    : tenantId;
-  const clubId = isNonEmptyString(record.clubId)
-    ? String(record.clubId).trim()
-    : null;
+  const venueId = authoritativeVenueId(record);
+  const clubId = authoritativeClubId(record);
+  const organizationId = authoritativeOrganizationId(record);
 
   return Object.freeze({
     subjectId,
+    canonicalSubjectId: subjectId,
     role,
     status,
     active: status === USER_STATUS.ACTIVE,
     tenantId,
     venueId,
     clubId,
+    organizationId,
     scopeIds: Object.freeze({
       tenantId,
       venueId,
       clubId,
-      organizationId: null,
+      organizationId,
     }),
     source: "identity",
     evidenceVersion: SUBJECT_IDENTITY_EVIDENCE_VERSION,
@@ -118,9 +176,22 @@ function toCompetitionSafeEvidence(record) {
 function subjectMatchesRequestedTenant(evidence, requestedTenantId) {
   if (!requestedTenantId) return false;
   if (evidence.tenantId && evidence.tenantId === requestedTenantId) return true;
-  if (evidence.venueId && evidence.venueId === requestedTenantId) return true;
+  // Platform-wide roles may pass without tenant evidence (global-role semantics).
+  // venueId is never tenant proof, even when the string equals requestedTenantId.
   if (!evidence.tenantId && isPlatformWideRole(evidence.role)) return true;
   return false;
+}
+
+function incompleteResult(subjectId) {
+  return Object.freeze({
+    ok: false,
+    code: SUBJECT_IDENTITY_LOOKUP_CODE.INCOMPLETE_IDENTITY,
+    evidence: Object.freeze({
+      subjectId,
+      source: "identity",
+      evidenceVersion: SUBJECT_IDENTITY_EVIDENCE_VERSION,
+    }),
+  });
 }
 
 async function defaultLoadIdentitySubjectById(subjectId) {
@@ -197,33 +268,51 @@ export async function resolveSubjectIdentityRecord(input = {}, deps = {}) {
 
   const role = normalizeRole(record.role);
   if (!role) {
-    return Object.freeze({
-      ok: false,
-      code: SUBJECT_IDENTITY_LOOKUP_CODE.INCOMPLETE_IDENTITY,
-      evidence: Object.freeze({
-        subjectId,
-        source: "identity",
-        evidenceVersion: SUBJECT_IDENTITY_EVIDENCE_VERSION,
-      }),
-    });
+    return incompleteResult(subjectId);
+  }
+
+  const status = authoritativeStatus(record.status);
+  if (!status) {
+    return incompleteResult(subjectId);
   }
 
   const evidence = toCompetitionSafeEvidence(record);
-  if (requestedTenantId && !subjectMatchesRequestedTenant(evidence, requestedTenantId)) {
-    return Object.freeze({
-      ok: false,
-      code: SUBJECT_IDENTITY_LOOKUP_CODE.SCOPE_MISMATCH,
-      evidence: Object.freeze({
-        subjectId: evidence.subjectId,
-        tenantId: evidence.tenantId,
-        venueId: evidence.venueId,
-        clubId: evidence.clubId,
-        scopeIds: evidence.scopeIds,
-        matchesRequestedTenant: false,
-        source: evidence.source,
-        evidenceVersion: evidence.evidenceVersion,
-      }),
-    });
+
+  if (requestedTenantId) {
+    if (!evidence.tenantId && !isPlatformWideRole(evidence.role)) {
+      return Object.freeze({
+        ok: false,
+        code: SUBJECT_IDENTITY_LOOKUP_CODE.MISSING_SCOPE_EVIDENCE,
+        evidence: Object.freeze({
+          subjectId: evidence.subjectId,
+          tenantId: null,
+          venueId: evidence.venueId,
+          clubId: evidence.clubId,
+          organizationId: evidence.organizationId,
+          scopeIds: evidence.scopeIds,
+          matchesRequestedTenant: false,
+          source: evidence.source,
+          evidenceVersion: evidence.evidenceVersion,
+        }),
+      });
+    }
+    if (!subjectMatchesRequestedTenant(evidence, requestedTenantId)) {
+      return Object.freeze({
+        ok: false,
+        code: SUBJECT_IDENTITY_LOOKUP_CODE.SCOPE_MISMATCH,
+        evidence: Object.freeze({
+          subjectId: evidence.subjectId,
+          tenantId: evidence.tenantId,
+          venueId: evidence.venueId,
+          clubId: evidence.clubId,
+          organizationId: evidence.organizationId,
+          scopeIds: evidence.scopeIds,
+          matchesRequestedTenant: false,
+          source: evidence.source,
+          evidenceVersion: evidence.evidenceVersion,
+        }),
+      });
+    }
   }
 
   return Object.freeze({

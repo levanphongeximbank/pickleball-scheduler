@@ -81,13 +81,16 @@ function expectCode(fn, code) {
   }
 }
 
+const HOME_VENUE = "venue-home-1";
+const SHARED_UUID = "550e8400-e29b-41d4-a716-446655440000";
+
 function identityRow(overrides = {}) {
   return {
     id: SUBJECT_ID,
     role: ROLES.REFEREE,
     status: USER_STATUS.ACTIVE,
     tenantId: BOUND_TENANT,
-    venueId: BOUND_TENANT,
+    venueId: HOME_VENUE,
     clubId: "club-1",
     email: "hidden@example.com",
     phone: "+84900000000",
@@ -299,7 +302,9 @@ test("19 Identity private persistence remains inside Identity domain", () => {
   assert.ok(serviceSrc.includes("subjectIdentityPersistence"));
   assert.ok(serviceSrc.includes("defaultLoadIdentitySubjectById"));
   assert.equal(serviceSrc.includes("resolveRefereeIdentity"), false);
-  assert.equal(serviceSrc.includes("fetchProfileByUserId"), false);
+  assert.equal(serviceSrc.includes("profileService"), false);
+  assert.equal(serviceSrc.includes("record.tenantId || record.venueId"), false);
+  assert.equal(/:\s*USER_STATUS\.ACTIVE/.test(serviceSrc), false);
   const persistenceSrc = readFileSync(
     path.join(
       ROOT,
@@ -307,7 +312,10 @@ test("19 Identity private persistence remains inside Identity domain", () => {
     ),
     "utf8"
   );
-  assert.ok(persistenceSrc.includes("fetchProfileByUserId"));
+  assert.ok(persistenceSrc.includes("getSupabaseAuthClient"));
+  assert.ok(persistenceSrc.includes("tenant_id"));
+  assert.ok(persistenceSrc.includes("venue_id"));
+  assert.equal(persistenceSrc.includes("profileService"), false);
   assert.equal(persistenceSrc.includes("competition-engine"), false);
 });
 
@@ -433,4 +441,128 @@ test("phone subjectId is rejected as fuzzy identity", async () => {
       }),
     SHARED_ADAPTER_ERROR_CODE.FUZZY_IDENTITY_FORBIDDEN
   );
+});
+
+test("T01 tenantId never falls back to venueId on Contract #01", async () => {
+  const identity = bindingWith([
+    identityRow({ tenantId: null, venueId: BOUND_TENANT }),
+  ]);
+  await expectCode(
+    () =>
+      identity.resolveSubjectIdentity({
+        ...BASE_CTX,
+        subjectId: SUBJECT_ID,
+      }),
+    SHARED_ADAPTER_ERROR_CODE.MISSING_CANONICAL_IDENTITY
+  );
+});
+
+test("T01 venueId remains distinct when tenant evidence exists", async () => {
+  const identity = bindingWith([identityRow()]);
+  const evidence = await identity.resolveSubjectIdentity({
+    ...BASE_CTX,
+    subjectId: SUBJECT_ID,
+  });
+  assert.equal(evidence.data.tenantId, BOUND_TENANT);
+  assert.equal(evidence.data.venueId, HOME_VENUE);
+  assert.notEqual(evidence.data.tenantId, evidence.data.venueId);
+  assert.equal(evidence.data.scopeIds.tenantId, BOUND_TENANT);
+  assert.equal(evidence.data.scopeIds.venueId, HOME_VENUE);
+});
+
+test("T01 same UUID on tenantId and venueId is two fields, not one authority", async () => {
+  const identity = bindingWith([
+    identityRow({ tenantId: SHARED_UUID, venueId: SHARED_UUID }),
+  ]);
+  await expectCode(
+    () =>
+      identity.resolveSubjectIdentity({
+        ...BASE_CTX,
+        tenantId: BOUND_TENANT,
+        subjectId: SUBJECT_ID,
+      }),
+    SHARED_ADAPTER_ERROR_CODE.CROSS_TENANT_CONTEXT
+  );
+  const matching = createIdentityAccessBinding({
+    boundTenantId: SHARED_UUID,
+    loadIdentitySubjectById: async () =>
+      identityRow({ tenantId: SHARED_UUID, venueId: SHARED_UUID }),
+  });
+  const evidence = await matching.resolveSubjectIdentity({
+    ...BASE_CTX,
+    tenantId: SHARED_UUID,
+    subjectId: SUBJECT_ID,
+  });
+  assert.equal(evidence.data.tenantId, SHARED_UUID);
+  assert.equal(evidence.data.venueId, SHARED_UUID);
+  assert.ok(Object.prototype.hasOwnProperty.call(evidence.data.scopeIds, "tenantId"));
+  assert.ok(Object.prototype.hasOwnProperty.call(evidence.data.scopeIds, "venueId"));
+});
+
+test("T01 requested tenant + matching tenant PASSES with distinct venue", async () => {
+  const identity = bindingWith([
+    identityRow({ tenantId: BOUND_TENANT, venueId: HOME_VENUE }),
+  ]);
+  const evidence = await identity.resolveSubjectIdentity({
+    ...BASE_CTX,
+    subjectId: SUBJECT_ID,
+  });
+  assert.equal(evidence.status, EVIDENCE_STATUS.OK);
+  assert.equal(evidence.data.tenantId, BOUND_TENANT);
+  assert.equal(evidence.data.venueId, HOME_VENUE);
+});
+
+test("T01 requested tenant + foreign tenant DENIES even if venue matches request", async () => {
+  const identity = bindingWith([
+    identityRow({ tenantId: FOREIGN_TENANT, venueId: BOUND_TENANT }),
+  ]);
+  await expectCode(
+    () =>
+      identity.resolveSubjectIdentity({
+        ...BASE_CTX,
+        subjectId: SUBJECT_ID,
+      }),
+    SHARED_ADAPTER_ERROR_CODE.CROSS_TENANT_CONTEXT
+  );
+});
+
+test("T02 missing status fails closed", async () => {
+  const identity = bindingWith([identityRow({ status: null })]);
+  await expectCode(
+    () =>
+      identity.resolveSubjectIdentity({
+        ...BASE_CTX,
+        subjectId: SUBJECT_ID,
+      }),
+    SHARED_ADAPTER_ERROR_CODE.MISSING_CANONICAL_IDENTITY
+  );
+});
+
+test("T02 INACTIVE status is returned as active=false", async () => {
+  const identity = bindingWith([identityRow({ status: "inactive" })]);
+  const evidence = await identity.resolveSubjectIdentity({
+    ...BASE_CTX,
+    subjectId: SUBJECT_ID,
+  });
+  assert.equal(evidence.data.active, false);
+  assert.equal(evidence.data.status, "inactive");
+});
+
+test("19 Platform Core future tenant/venue separation is compatible", async () => {
+  const identity = bindingWith([
+    identityRow({
+      tenantId: BOUND_TENANT,
+      tenant_id: BOUND_TENANT,
+      venueId: HOME_VENUE,
+      venue_id: HOME_VENUE,
+    }),
+  ]);
+  const evidence = await identity.resolveSubjectIdentity({
+    ...BASE_CTX,
+    subjectId: SUBJECT_ID,
+  });
+  assert.equal(evidence.data.tenantId, BOUND_TENANT);
+  assert.equal(evidence.data.venueId, HOME_VENUE);
+  assert.notEqual(evidence.data.tenantId, evidence.data.venueId);
+  assert.equal(evidence.data.canonicalSubjectId, SUBJECT_ID);
 });
