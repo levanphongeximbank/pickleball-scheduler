@@ -10,7 +10,7 @@ import {
   normalizeRole,
 } from "./roles.js";
 import { getPermissionScopes, PERMISSION_SCOPE, PERMISSIONS } from "./permissions.js";
-import { roleHasPermission } from "./rolePermissions.js";
+import { roleHasPermission, classifySystemTechnicianPermission, isSystemTechnicianBusinessCapability } from "./rolePermissions.js";
 import { getEffectivePermissionsForTenantRole } from "../features/identity/services/tenantRolePermissionService.js";
 import { resolveGovernanceElevatedRole } from "./governanceScopeResolver.js";
 import { isUserActive } from "../models/user.js";
@@ -23,6 +23,8 @@ import {
 import { isCourtClustersEnabled } from "../features/court-cluster/config/clusterFlags.js";
 import { isSecureRuntime } from "./runtime.js";
 import { decideClubMembershipAccess, collectActiveClubEntitlements } from "./clubEntitlementDecision.js";
+import { decideTenantAccess } from "../features/tenant/services/tenantAccessDecision.js";
+import { requiresTenantOperationalEntitlement } from "../core/platform/authz/tenantOperationalCapability.js";
 
 /**
  * Secure runtime cannot run with RBAC effectively disabled (allow-all).
@@ -98,6 +100,14 @@ export function can(user, permission, scope = {}, options = {}) {
     return false;
   }
 
+  if (requiresTenantOperationalEntitlement(permission)) {
+    const tenantId = scope.tenantId || scope.tenant_id || null;
+    const tenantDecision = decideTenantAccess(user, tenantId, { requireTarget: true });
+    if (!tenantDecision.allowed) {
+      return false;
+    }
+  }
+
   return matchesScope(user, permission, scope);
 }
 
@@ -110,8 +120,33 @@ export function canAny(user, permissions = [], scope = {}, options = {}) {
 }
 
 export function assertCan(user, permission, scope = {}, options = {}) {
+  if (
+    isPlatformScopedRole(user?.role) &&
+    isSystemTechnicianBusinessCapability(permission) &&
+    !hasExplicitOperationalTarget(scope)
+  ) {
+    return {
+      ok: false,
+      error: `Không có quyền: ${permission} (role: SYSTEM_TECHNICIAN) — cần mục tiêu tài nguyên.`,
+      code: "TARGET_REQUIRED",
+      permission,
+    };
+  }
+
   if (!can(user, permission, scope, options)) {
     const role = normalizeRole(user?.role) || user?.role || "anonymous";
+    const tenantId = scope.tenantId || scope.tenant_id || null;
+    if (requiresTenantOperationalEntitlement(permission)) {
+      const tenantDecision = decideTenantAccess(user, tenantId, { requireTarget: true });
+      if (!tenantDecision.allowed) {
+        return {
+          ok: false,
+          error: tenantDecision.reason || `Không có quyền: ${permission}`,
+          code: tenantDecision.code || "FORBIDDEN",
+          permission,
+        };
+      }
+    }
     return {
       ok: false,
       error: `Không có quyền: ${permission} (role: ${role})`,
@@ -404,11 +439,20 @@ function matchesPlatformScope(user, scope, permission) {
     return false;
   }
 
-  if (scope.tenantId || scope.venueId || scope.clubId) {
-    return isViewLikePermission(permission);
+  const classified = classifySystemTechnicianPermission(permission);
+  if (!classified || classified.businessOrTechnical === "BUSINESS") {
+    return false;
   }
 
-  return true;
+  if (classified.explicitTargetRequired && !hasExplicitOperationalTarget(scope)) {
+    return false;
+  }
+
+  if (scope.tenantId || scope.venueId || scope.clubId) {
+    return classified.actionClass !== "BUSINESS_MUTATION" && classified.businessOrTechnical === "TECHNICAL";
+  }
+
+  return classified.businessOrTechnical === "TECHNICAL";
 }
 
 function matchesTournamentScope(user, scope, permission) {

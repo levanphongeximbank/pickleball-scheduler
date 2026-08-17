@@ -6,8 +6,7 @@ import {
   normalizeCourtCluster,
   slugifyClusterName,
 } from "../../../models/courtCluster.js";
-import { ROLES, normalizeRole } from "../../../auth/roles.js";
-import { isGlobalRole, isPlatformScopedRole, isVenueScopedRole } from "../../../auth/roles.js";
+import { ROLES, normalizeRole, isGlobalRole } from "../../../auth/roles.js";
 import { isCourtClustersEnabled } from "../config/clusterFlags.js";
 import { sanitizeBillingTenantId } from "../../billing/services/billingTenantResolver.js";
 import { isValidProfileUserId } from "../utils/profileUserId.js";
@@ -43,14 +42,9 @@ export function canManageCourtClusters(user) {
     return false;
   }
 
-  const role = normalizeRole(user.role);
-  return (
-    role === ROLES.PLATFORM_ADMIN ||
-    role === ROLES.SUPER_ADMIN ||
-    role === ROLES.SYSTEM_TECHNICIAN ||
-    isGlobalRole(user.role) ||
-    isPlatformScopedRole(user.role)
-  );
+  // SYSTEM_TECHNICIAN is not Super Admin. Cluster mutation is a business
+  // operation and must not be granted from the technician role alone.
+  return isGlobalRole(user.role);
 }
 
 function assertClusterManageAccess(user) {

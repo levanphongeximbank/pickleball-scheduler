@@ -117,41 +117,84 @@ export function resolveClubDetailTenantGate(currentTenantId) {
 }
 
 /**
- * After hydrate: restore only still-authorized persisted targets.
- * Failed / pending authority must not keep stale context as authorized.
+ * After hydrate: restore persisted Tenant as a context target/hint only.
+ * Failed / pending membership authority must not keep stale OPERATIONAL authorization.
+ * Context-purpose restore may keep a still-valid home/catalog hint without claiming
+ * tenant_members operational entitlement.
  */
 export function reauthorizePersistedTenantSelection({
   sessionTenantId,
   catalog = [],
   hydrateStatus = "READY",
   canonicalIds = [],
+  purpose = "operational",
+  homeTenantId = null,
 } = {}) {
   const current = String(sessionTenantId || "").trim();
+  const home = String(homeTenantId || "").trim();
   if (!current) {
-    return { tenantId: null, status: "EMPTY" };
+    return { tenantId: null, status: "EMPTY", operationalAuthorized: false };
   }
 
+  const asContextHint = purpose === "context";
+
   if (hydrateStatus === "PENDING") {
-    return { tenantId: null, status: "CONTEXT_UNRESOLVED", previousTenantId: current };
+    if (asContextHint && (current === home || findCatalogTenant(catalog, current))) {
+      return {
+        tenantId: current,
+        status: "CONTEXT_UNRESOLVED",
+        previousTenantId: current,
+        operationalAuthorized: false,
+      };
+    }
+    return {
+      tenantId: null,
+      status: "CONTEXT_UNRESOLVED",
+      previousTenantId: current,
+      operationalAuthorized: false,
+    };
   }
 
   if (hydrateStatus === "FAILED" || hydrateStatus === "AUTHORITY_UNAVAILABLE") {
+    if (asContextHint && (current === home || findCatalogTenant(catalog, current))) {
+      return {
+        tenantId: current,
+        status: "TENANT_CONTEXT_ONLY",
+        previousTenantId: current,
+        operationalAuthorized: false,
+      };
+    }
     return {
       tenantId: null,
       status: "AUTHORITY_UNAVAILABLE",
       previousTenantId: current,
+      operationalAuthorized: false,
     };
   }
 
-  if (findCatalogTenant(catalog, current)) {
-    return { tenantId: current, status: "RESTORED" };
+  if (findCatalogTenant(catalog, current) || current === home) {
+    return {
+      tenantId: current,
+      status: "RESTORED",
+      operationalAuthorized: false,
+    };
   }
 
   if (Array.isArray(canonicalIds) && canonicalIds.length > 0) {
-    return { tenantId: null, status: "CLEARED", previousTenantId: current };
+    return {
+      tenantId: null,
+      status: "CLEARED",
+      previousTenantId: current,
+      operationalAuthorized: false,
+    };
   }
 
-  return { tenantId: null, status: "CLEARED", previousTenantId: current };
+  return {
+    tenantId: null,
+    status: "CLEARED",
+    previousTenantId: current,
+    operationalAuthorized: false,
+  };
 }
 
 export function reconcileSessionWithCatalog({

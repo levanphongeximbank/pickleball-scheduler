@@ -4,7 +4,7 @@ import { COURT_ENGINE_PERMISSIONS } from "../../court-engine/guards/courtEngineG
 
 const ALL_PERMISSIONS = Object.values(PERMISSIONS);
 
-const SYSTEM_TECHNICIAN_PERMISSIONS = [
+const SYSTEM_TECHNICIAN_TECHNICAL_PERMISSIONS = [
   PERMISSIONS.SYSTEM_HEALTH_VIEW,
   PERMISSIONS.SYSTEM_LOG_VIEW,
   PERMISSIONS.SYSTEM_CONFIG_VIEW,
@@ -21,15 +21,20 @@ const SYSTEM_TECHNICIAN_PERMISSIONS = [
   PERMISSIONS.DATA_DIAGNOSTIC_VIEW,
   PERMISSIONS.MIGRATION_STATUS_VIEW,
   PERMISSIONS.SETTINGS_VIEW,
+  PERMISSIONS.CLUSTER_VIEW,
+  PERMISSIONS.PLAYER_VIEW,
+];
+
+const SYSTEM_TECHNICIAN_BUSINESS_PERMISSIONS = [
   PERMISSIONS.SKILL_LEVEL_APPROVE,
   PERMISSIONS.SKILL_LEVEL_VERIFY_CLUB,
   PERMISSIONS.RANKING_VIEW,
   PERMISSIONS.RANKING_MANAGE,
   PERMISSIONS.TOURNAMENT_CERTIFY,
-  PERMISSIONS.CLUSTER_VIEW,
   PERMISSIONS.CLUSTER_MANAGE,
-  PERMISSIONS.PLAYER_VIEW,
 ];
+
+const SYSTEM_TECHNICIAN_PERMISSIONS = [...SYSTEM_TECHNICIAN_TECHNICAL_PERMISSIONS];
 
 const TEAM_CAPTAIN_PERMISSIONS = [
   PERMISSIONS.TOURNAMENT_VIEW,
@@ -343,8 +348,222 @@ export const ROLE_PERMISSIONS = Object.freeze({
 
 /** Explicit SYSTEM_TECHNICIAN technical capability set (not a second Super Admin). */
 export const SYSTEM_TECHNICIAN_TECHNICAL_CAPABILITIES = Object.freeze([
-  ...SYSTEM_TECHNICIAN_PERMISSIONS,
+  ...SYSTEM_TECHNICIAN_TECHNICAL_PERMISSIONS,
 ]);
+
+export const SYSTEM_TECHNICIAN_DENIED_BUSINESS_CAPABILITIES = Object.freeze([
+  ...SYSTEM_TECHNICIAN_BUSINESS_PERMISSIONS,
+]);
+
+const SYSTEM_TECHNICIAN_CLASSIFICATION = Object.freeze({
+  [PERMISSIONS.SYSTEM_HEALTH_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.SYSTEM_LOG_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.SYSTEM_CONFIG_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.SYSTEM_CONFIG_UPDATE_LIMITED]: {
+    actionClass: "TECHNICAL_MUTATION",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.TENANT_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "TENANT",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.VENUE_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "VENUE",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.USER_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "IDENTITY",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.ROLE_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "IDENTITY",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.PERMISSION_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "IDENTITY",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.ACTIVITY_LOG_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.INTEGRATION_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.INTEGRATION_TEST]: {
+    actionClass: "TECHNICAL_MUTATION",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.SUPPORT_TICKET_MANAGE]: {
+    actionClass: "TECHNICAL_MUTATION",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.DATA_DIAGNOSTIC_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.MIGRATION_STATUS_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.SETTINGS_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.CLUSTER_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "CLUSTER",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.PLAYER_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "PLAYER",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true,
+  },
+  [PERMISSIONS.CLUSTER_MANAGE]: {
+    actionClass: "BUSINESS_MUTATION",
+    resourceType: "CLUSTER",
+    businessOrTechnical: "BUSINESS",
+    explicitTargetRequired: true,
+    entitlementRequired: "CLUSTER_ASSIGNMENT",
+    systemTechnicianDefaultGrant: false,
+  },
+  [PERMISSIONS.SKILL_LEVEL_APPROVE]: {
+    actionClass: "BUSINESS_MUTATION",
+    resourceType: "PLAYER_SKILL",
+    businessOrTechnical: "BUSINESS",
+    explicitTargetRequired: true,
+    entitlementRequired: "DOMAIN_AUTHORITY",
+    systemTechnicianDefaultGrant: false,
+  },
+  [PERMISSIONS.SKILL_LEVEL_VERIFY_CLUB]: {
+    actionClass: "BUSINESS_MUTATION",
+    resourceType: "CLUB",
+    businessOrTechnical: "BUSINESS",
+    explicitTargetRequired: true,
+    entitlementRequired: "CLUB_GOVERNANCE",
+    systemTechnicianDefaultGrant: false,
+  },
+  [PERMISSIONS.RANKING_VIEW]: {
+    actionClass: "BUSINESS_READ",
+    resourceType: "RANKING",
+    businessOrTechnical: "BUSINESS",
+    explicitTargetRequired: true,
+    entitlementRequired: "DOMAIN_AUTHORITY",
+    systemTechnicianDefaultGrant: false,
+  },
+  [PERMISSIONS.RANKING_MANAGE]: {
+    actionClass: "BUSINESS_MUTATION",
+    resourceType: "RANKING",
+    businessOrTechnical: "BUSINESS",
+    explicitTargetRequired: true,
+    entitlementRequired: "DOMAIN_AUTHORITY",
+    systemTechnicianDefaultGrant: false,
+  },
+  [PERMISSIONS.TOURNAMENT_CERTIFY]: {
+    actionClass: "BUSINESS_MUTATION",
+    resourceType: "TOURNAMENT",
+    businessOrTechnical: "BUSINESS",
+    explicitTargetRequired: true,
+    entitlementRequired: "DOMAIN_AUTHORITY",
+    systemTechnicianDefaultGrant: false,
+  },
+});
+
+export function classifySystemTechnicianPermission(permission) {
+  return SYSTEM_TECHNICIAN_CLASSIFICATION[permission] || null;
+}
+
+export function isSystemTechnicianBusinessCapability(permission) {
+  return classifySystemTechnicianPermission(permission)?.businessOrTechnical === "BUSINESS";
+}
+
+export function listSystemTechnicianCapabilityMatrix() {
+  return Object.entries(SYSTEM_TECHNICIAN_CLASSIFICATION).map(([permission, row]) => ({
+    permission,
+    ...row,
+  }));
+}
 
 export function getPermissionsForRole(role) {
   const canonical = normalizeRole(role);

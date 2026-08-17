@@ -65,6 +65,12 @@ export {
 } from "./guards/tenantGuard.js";
 
 export {
+  decideTenantAccess,
+  evaluateTenantContext,
+  collectActiveTenantEntitlements,
+} from "./services/tenantAccessDecision.js";
+
+export {
   ensureDefaultTenantMigration,
   ensureMultiTenantSeed,
   isMultiTenantSeedApplied,

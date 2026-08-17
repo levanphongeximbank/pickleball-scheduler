@@ -117,9 +117,9 @@ describe("court cluster model", () => {
     assert.equal(isValidGoogleMapsUrl(""), true);
   });
 
-  it("only platform roles can manage clusters", () => {
+  it("only Super Admin can manage clusters; SYSTEM_TECHNICIAN cannot", () => {
     assert.equal(canManageCourtClusters(PLATFORM_ADMIN), true);
-    assert.equal(canManageCourtClusters(SYSTEM_TECHNICIAN), true);
+    assert.equal(canManageCourtClusters(SYSTEM_TECHNICIAN), false);
     assert.equal(canManageCourtClusters(OWNER_A), false);
   });
 
@@ -151,7 +151,7 @@ describe("court cluster model", () => {
     assert.equal(listClustersForVenue(VENUE_A).length, 3);
   });
 
-  it("system technician can create cluster with location metadata", () => {
+  it("system technician cannot create cluster from role alone", () => {
     const created = createCourtCluster({
       venueId: VENUE_A,
       name: "Cụm Nam Long",
@@ -161,9 +161,7 @@ describe("court cluster model", () => {
       user: SYSTEM_TECHNICIAN,
     });
 
-    assert.equal(created.ok, true);
-    assert.equal(created.cluster.address, "123 Nam Long, Q.7");
-    assert.equal(created.cluster.googleMapsUrl, VALID_MAPS_URL);
+    assert.equal(created.ok, false);
   });
 
   it("rejects invalid google maps url on update", () => {

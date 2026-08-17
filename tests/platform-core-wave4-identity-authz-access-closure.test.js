@@ -15,10 +15,11 @@ import {
   canAccessVenue,
   isRbacConfigurationDenied,
   isRbacEnforced,
+  assertCan,
 } from "../src/auth/rbac.js";
 import { mapProfileRowToUser } from "../src/auth/profileService.js";
-import { createUserRecord } from "../src/models/user.js";
-import { decideTenantAccess } from "../src/features/tenant/services/tenantAccessDecision.js";
+import { createUserRecord, isUserActive } from "../src/models/user.js";
+import { decideTenantAccess, evaluateTenantContext } from "../src/features/tenant/services/tenantAccessDecision.js";
 import { reauthorizePersistedTenantSelection } from "../src/features/tenant/services/tenantSelectionModel.js";
 import { listClubsForTenant, guardClubTenant, guardRecordTenant } from "../src/features/tenant/guards/tenantGuard.js";
 import { resolveActiveVenueId } from "../src/features/venue/services/venueSelectionService.js";
@@ -34,9 +35,17 @@ import { AUTHZ_CODE } from "../src/core/platform/authz/decisionCodes.js";
 import { resolvePlatformContextReadiness, PLATFORM_CONTEXT_STATE } from "../src/core/platform/app/platformContextReadiness.js";
 import { mapIdentityUserToPlatformUser } from "../src/core/platform/app/runtimeAccess.js";
 import { createAccessService } from "../src/core/platform/services/index.js";
-import { SYSTEM_TECHNICIAN_TECHNICAL_CAPABILITIES } from "../src/features/identity/matrix/rolePermissions.js";
+import {
+  SYSTEM_TECHNICIAN_TECHNICAL_CAPABILITIES,
+  isSystemTechnicianBusinessCapability,
+  listSystemTechnicianCapabilityMatrix,
+  roleHasPermission,
+} from "../src/features/identity/matrix/rolePermissions.js";
+import { isPlatformWideRole } from "../src/auth/roles.js";
+import { canManageCourtClusters } from "../src/features/court-cluster/services/courtClusterService.js";
 import { canOperateUnassignedTenant } from "../src/features/tenant/services/tenantSelectionModel.js";
 import { isSecureRuntime } from "../src/auth/runtime.js";
+import { requiresTenantOperationalEntitlement } from "../src/core/platform/authz/tenantOperationalCapability.js";
 
 const RBAC_ON = { rbacEnabled: true };
 
@@ -145,7 +154,7 @@ describe("Wave4 4B tenant entitlement", () => {
     );
     const decision = decideTenantAccess(a, "tenant-b");
     assert.equal(decision.allowed, false);
-    assert.equal(decision.code, AUTHZ_CODE.ENTITLEMENT_MISSING);
+    assert.equal(decision.code, AUTHZ_CODE.TENANT_OPERATIONAL_ENTITLEMENT_MISSING);
   });
 
   it("21/22 profiles.tenant_id is not tenant entitlement; tenant_members is", () => {
@@ -300,6 +309,229 @@ describe("Wave4 SYSTEM_TECHNICIAN", () => {
     const tech = actor(ROLES.SYSTEM_TECHNICIAN);
     assert.equal(can(tech, PERMISSIONS.SYSTEM_HEALTH_VIEW, {}, RBAC_ON), true);
     assert.equal(can(tech, PERMISSIONS.CLUB_DELETE, { clubId: "c1" }, RBAC_ON), false);
+  });
+
+  it("CLUSTER_MANAGE empty scope is DENY/TARGET_REQUIRED", () => {
+    const tech = actor(ROLES.SYSTEM_TECHNICIAN);
+    assert.equal(can(tech, PERMISSIONS.CLUSTER_MANAGE, {}, RBAC_ON), false);
+    const denied = assertCan(tech, PERMISSIONS.CLUSTER_MANAGE, {}, RBAC_ON);
+    assert.equal(denied.ok, false);
+    assert.equal(denied.code, "TARGET_REQUIRED");
+  });
+
+  it("CLUSTER_MANAGE with arbitrary target and no cluster entitlement is DENY", () => {
+    const tech = actor(ROLES.SYSTEM_TECHNICIAN);
+    assert.equal(
+      can(tech, PERMISSIONS.CLUSTER_MANAGE, { clusterId: "cluster-x", venueId: "venue-x" }, RBAC_ON),
+      false
+    );
+    assert.equal(isSystemTechnicianBusinessCapability(PERMISSIONS.CLUSTER_MANAGE), true);
+  });
+
+  it("SKILL_LEVEL_APPROVE / RANKING_MANAGE / TOURNAMENT_CERTIFY are not role-alone business grants", () => {
+    const tech = actor(ROLES.SYSTEM_TECHNICIAN);
+    assert.equal(can(tech, PERMISSIONS.SKILL_LEVEL_APPROVE, {}, RBAC_ON), false);
+    assert.equal(can(tech, PERMISSIONS.RANKING_MANAGE, {}, RBAC_ON), false);
+    assert.equal(can(tech, PERMISSIONS.TOURNAMENT_CERTIFY, {}, RBAC_ON), false);
+    assert.equal(
+      can(tech, PERMISSIONS.RANKING_MANAGE, { tenantId: "t1" }, RBAC_ON),
+      false
+    );
+    assert.equal(
+      can(tech, PERMISSIONS.TOURNAMENT_CERTIFY, { tournamentId: "tn1" }, RBAC_ON),
+      false
+    );
+  });
+
+  it("legitimate technical permissions continue to work", () => {
+    const tech = actor(ROLES.SYSTEM_TECHNICIAN);
+    assert.equal(can(tech, PERMISSIONS.SYSTEM_HEALTH_VIEW, {}, RBAC_ON), true);
+    assert.equal(can(tech, PERMISSIONS.CLUSTER_VIEW, {}, RBAC_ON), true);
+    assert.equal(can(tech, PERMISSIONS.TENANT_VIEW, {}, RBAC_ON), true);
+    assert.equal(can(tech, PERMISSIONS.DATA_DIAGNOSTIC_VIEW, {}, RBAC_ON), true);
+  });
+
+  it("PLATFORM_ADMIN / Super Admin global authorization plus explicit target remains", () => {
+    const sa = actor(ROLES.PLATFORM_ADMIN);
+    assert.equal(can(sa, PERMISSIONS.CLUSTER_MANAGE, {}, RBAC_ON), true);
+    assert.equal(
+      can(sa, PERMISSIONS.CLUSTER_MANAGE, { clusterId: "c1", venueId: "v1" }, RBAC_ON),
+      true
+    );
+    assert.equal(can(sa, PERMISSIONS.RANKING_MANAGE, {}, RBAC_ON), true);
+    assert.equal(decideTenantAccess(sa, "tenant-a").allowed, true);
+  });
+
+  it("isPlatformWideRole does not grant SYSTEM_TECHNICIAN business resources", () => {
+    assert.equal(isPlatformWideRole(ROLES.SYSTEM_TECHNICIAN), true);
+    const tech = actor(ROLES.SYSTEM_TECHNICIAN);
+    assert.equal(roleHasPermission(ROLES.SYSTEM_TECHNICIAN, PERMISSIONS.CLUSTER_MANAGE), false);
+    assert.equal(canManageCourtClusters(tech), false);
+    assert.equal(can(tech, PERMISSIONS.CLUSTER_MANAGE, {}, RBAC_ON), false);
+    const matrix = listSystemTechnicianCapabilityMatrix();
+    for (const row of matrix.filter((item) => item.businessOrTechnical === "BUSINESS")) {
+      assert.equal(row.systemTechnicianDefaultGrant, false);
+    }
+  });
+});
+
+describe("Wave4 architecture amendment — tenant_members is operational only", () => {
+  it("PLAYER without tenant_members can authenticate", () => {
+    const user = mapProfileRowToUser({
+      id: "player-1",
+      email: "p@b.c",
+      role: "PLAYER",
+      status: "active",
+    });
+    assert.equal(user.identityIncomplete, false);
+    assert.equal(isUserActive(user), true);
+    assert.equal(decideTenantAccess(user, "tenant-a").allowed, false);
+  });
+
+  it("PLAYER without tenant_members can use player domain capability", () => {
+    const player = actor(ROLES.PLAYER, { playerId: "p1", clubId: "c1" });
+    assert.equal(
+      can(player, PERMISSIONS.TOURNAMENT_VIEW, {}, RBAC_ON),
+      true
+    );
+    assert.equal(
+      can(player, PERMISSIONS.PLAYER_VIEW, { playerId: "p1" }, RBAC_ON),
+      true
+    );
+  });
+
+  it("PLAYER without tenant_members cannot perform Tenant administration", () => {
+    const player = actor(ROLES.PLAYER, { tenantId: "tenant-a", playerId: "p1" });
+    assert.equal(decideTenantAccess(player, "tenant-a").allowed, false);
+    assert.equal(
+      decideTenantAccess(player, "tenant-a").code,
+      AUTHZ_CODE.TENANT_OPERATIONAL_ENTITLEMENT_MISSING
+    );
+    assert.equal(
+      can(player, PERMISSIONS.TENANT_ROLE_CUSTOMIZE, { tenantId: "tenant-a" }, RBAC_ON),
+      false
+    );
+  });
+
+  it("REFEREE without tenant_members can authenticate and use referee authority", () => {
+    const referee = actor(ROLES.REFEREE, { venueId: "venue-a" });
+    assert.equal(isUserActive(referee), true);
+    assert.equal(decideTenantAccess(referee, "tenant-a").allowed, false);
+    assert.equal(
+      can(referee, PERMISSIONS.MATCH_UPDATE, { venueId: "venue-a" }, RBAC_ON),
+      true
+    );
+  });
+
+  it("CLUB actor without tenant_members uses club membership, not tenant_members", () => {
+    const manager = withClubMembership(
+      actor(ROLES.CLUB_MANAGER, { clubId: "club-a", venueId: "venue-a", tenantId: "tenant-a" }),
+      "club-a"
+    );
+    assert.equal(decideTenantAccess(manager, "tenant-a").allowed, false);
+    assert.equal(canAccessClub(manager, "club-a", { venueId: "venue-a" }, RBAC_ON), true);
+  });
+
+  it("COACH without tenant_members may use coach domain capability", () => {
+    const coach = actor(ROLES.COACH, { venueId: "venue-a", tenantId: "tenant-a" });
+    assert.equal(decideTenantAccess(coach, "tenant-a").allowed, false);
+    assert.equal(can(coach, PERMISSIONS.CLUB_VIEW, { venueId: "venue-a" }, RBAC_ON), true);
+  });
+
+  it("profiles.tenant_id is a context hint and never grants Tenant operation", () => {
+    const user = actor(ROLES.VENUE_MANAGER, { tenantId: "tenant-a", venueId: "venue-a" });
+    const context = evaluateTenantContext(user, "tenant-a");
+    assert.equal(context.allowed, true);
+    assert.equal(context.code, AUTHZ_CODE.TENANT_CONTEXT_ONLY);
+    assert.equal(decideTenantAccess(user, "tenant-a").allowed, false);
+  });
+
+  it("selected Tenant does not grant Tenant operation", () => {
+    const user = actor(ROLES.PLAYER, { tenantId: "tenant-a" });
+    assert.equal(evaluateTenantContext(user, "tenant-b").allowed, false);
+    assert.equal(decideTenantAccess(user, "tenant-b").allowed, false);
+  });
+
+  it("non-global Tenant operator with active tenant_members can operate that tenant", () => {
+    const owner = withTenantMembership(
+      actor(ROLES.TENANT_OWNER, { tenantId: "tenant-a", venueId: "venue-a" }),
+      "tenant-a"
+    );
+    assert.equal(decideTenantAccess(owner, "tenant-a").allowed, true);
+  });
+
+  it("missing membership is TENANT_OPERATIONAL_ENTITLEMENT_MISSING only for operational actions", () => {
+    const player = actor(ROLES.PLAYER, { tenantId: "tenant-a", playerId: "p1" });
+    assert.equal(
+      decideTenantAccess(player, "tenant-a").code,
+      AUTHZ_CODE.TENANT_OPERATIONAL_ENTITLEMENT_MISSING
+    );
+    assert.equal(requiresTenantOperationalEntitlement(PERMISSIONS.TOURNAMENT_VIEW), false);
+    assert.equal(can(player, PERMISSIONS.TOURNAMENT_VIEW, {}, RBAC_ON), true);
+  });
+
+  it("authority query failure fail-closes Tenant operation but not player domain capability", () => {
+    const adapter = createMemoryTenantEntitlementAdapter();
+    adapter.setFailure("player-fail", "AUTHORITY_UNAVAILABLE", "query failed");
+    bindTenantEntitlementAuthority(adapter);
+    const player = actor(ROLES.PLAYER, {
+      id: "player-fail",
+      tenantId: "tenant-a",
+      playerId: "p1",
+    });
+    assert.equal(decideTenantAccess(player, "tenant-a").code, AUTHZ_CODE.AUTHORITY_UNAVAILABLE);
+    assert.equal(can(player, PERMISSIONS.TOURNAMENT_VIEW, {}, RBAC_ON), true);
+    const restored = reauthorizePersistedTenantSelection({
+      sessionTenantId: "tenant-a",
+      catalog: [{ id: "tenant-a", name: "A" }],
+      hydrateStatus: "FAILED",
+      purpose: "context",
+      homeTenantId: "tenant-a",
+    });
+    assert.equal(restored.tenantId, "tenant-a");
+    assert.equal(restored.operationalAuthorized, false);
+    assert.equal(restored.status, "TENANT_CONTEXT_ONLY");
+  });
+
+  it("F5 context rehydrate may restore a home hint without operational entitlement", () => {
+    const restored = reauthorizePersistedTenantSelection({
+      sessionTenantId: "tenant-home",
+      catalog: [{ id: "tenant-home", name: "Home" }],
+      hydrateStatus: "PENDING",
+      purpose: "context",
+      homeTenantId: "tenant-home",
+    });
+    assert.equal(restored.tenantId, "tenant-home");
+    assert.equal(restored.operationalAuthorized, false);
+    assert.equal(restored.status, "CONTEXT_UNRESOLVED");
+  });
+
+  it("no role synthesizes tenant_members evidence", () => {
+    const owner = actor(ROLES.TENANT_OWNER, { tenantId: "tenant-a" });
+    assert.equal(decideTenantAccess(owner, "tenant-a").allowed, false);
+    const inactive = withTenantMembership(owner, "tenant-a");
+    inactive.entitlementEvidence.tenants[0].status = "inactive";
+    const stale = createUserRecord(inactive);
+    stale.entitlementEvidence = inactive.entitlementEvidence;
+    assert.equal(decideTenantAccess(stale, "tenant-a").allowed, false);
+  });
+
+  it("Super Admin does not require tenant_members; mutation still needs explicit target", () => {
+    const sa = actor(ROLES.PLATFORM_ADMIN);
+    assert.equal(decideTenantAccess(sa, "tenant-a").allowed, true);
+    assert.equal(decideTenantAccess(sa, null, { requireTarget: true }).code, AUTHZ_CODE.TARGET_REQUIRED);
+  });
+
+  it("persisted Tenant restore is not operational entitlement", () => {
+    const restored = reauthorizePersistedTenantSelection({
+      sessionTenantId: "tenant-home",
+      catalog: [{ id: "tenant-home", name: "Home" }],
+      hydrateStatus: "READY",
+      purpose: "context",
+      homeTenantId: "tenant-home",
+    });
+    assert.equal(restored.tenantId, "tenant-home");
+    assert.equal(restored.operationalAuthorized, false);
   });
 });
 

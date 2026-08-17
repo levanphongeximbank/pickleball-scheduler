@@ -9,6 +9,12 @@ export {
 } from "./decisionCodes.js";
 
 export {
+  requiresTenantOperationalEntitlement,
+  isNonTenantOperationalDomainRole,
+  listTenantOperationalPermissions,
+} from "./tenantOperationalCapability.js";
+
+export {
   bindTenantEntitlementAuthority,
   bindClubEntitlementAuthority,
   isTenantEntitlementAuthorityBound,

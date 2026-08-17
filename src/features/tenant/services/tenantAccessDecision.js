@@ -1,9 +1,9 @@
 /**
  * Wave 4 — Tenant access decision from canonical tenant_members evidence.
  *
- * Selected Tenant and profiles.tenant_id are never entitlement evidence.
- * profiles.tenant_id may only be used as a preferred/default hint by context
- * reauthorization after membership is proven.
+ * tenant_members is Tenant OPERATIONAL entitlement, not universal account
+ * membership. Selected Tenant and profiles.tenant_id are never operational
+ * evidence. profiles.tenant_id may supply a home/default CONTEXT hint.
  */
 
 import { isGlobalRole, isPlatformScopedRole } from "../../../auth/roles.js";
@@ -44,6 +44,58 @@ export function collectActiveTenantEntitlements(user) {
     snapshot,
     entitlements: [...byTenant.values()],
   };
+}
+
+/**
+ * Context target / home hint. Never grants Tenant operational authorization.
+ * Cross-tenant context remains denied.
+ */
+export function evaluateTenantContext(user, tenantId) {
+  if (!user) {
+    return denyDecision(AUTHZ_CODE.UNAUTHENTICATED);
+  }
+
+  if (user.identityIncomplete || !user.role) {
+    return denyDecision(AUTHZ_CODE.IDENTITY_INCOMPLETE);
+  }
+
+  if (!isUserActive(user)) {
+    return denyDecision(AUTHZ_CODE.IDENTITY_INACTIVE);
+  }
+
+  const target = trimId(tenantId);
+  if (!target) {
+    return denyDecision(AUTHZ_CODE.TARGET_REQUIRED, {
+      reason: "No Tenant context target.",
+    });
+  }
+
+  if (isGlobalRole(user.role)) {
+    return allowDecision(AUTHZ_CODE.ALLOW, {
+      evidenceKind: ENTITLEMENT_KIND.GLOBAL_PLATFORM_ADMIN,
+      reason: "Super Admin may use an explicit Tenant context target.",
+    });
+  }
+
+  const homeTenantId = trimId(user.tenantId);
+  if (homeTenantId && homeTenantId === target) {
+    return allowDecision(AUTHZ_CODE.TENANT_CONTEXT_ONLY, {
+      reason: "profiles.tenant_id is a home/default context hint only.",
+    });
+  }
+
+  const { entitlements } = collectActiveTenantEntitlements(user);
+  const match = entitlements.find((row) => row.tenantId === target);
+  if (match) {
+    return allowDecision(AUTHZ_CODE.ALLOW, {
+      evidenceKind: match.evidenceKind,
+      reason: "Active tenant_members row may also identify a context target.",
+    });
+  }
+
+  return denyDecision(AUTHZ_CODE.UNAUTHORIZED, {
+    reason: "Selected Tenant is not a valid context target for this actor.",
+  });
 }
 
 export function decideTenantAccess(user, tenantId, { requireTarget = true } = {}) {
@@ -123,7 +175,7 @@ export function decideTenantAccess(user, tenantId, { requireTarget = true } = {}
     }
   }
 
-  return denyDecision(AUTHZ_CODE.ENTITLEMENT_MISSING, {
-    reason: "No active tenant_members row for the target tenant.",
+  return denyDecision(AUTHZ_CODE.TENANT_OPERATIONAL_ENTITLEMENT_MISSING, {
+    reason: "No active tenant_members row for the Tenant operational action.",
   });
 }
