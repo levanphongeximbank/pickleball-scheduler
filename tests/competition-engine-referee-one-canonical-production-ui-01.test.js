@@ -1,5 +1,5 @@
 /**
- * Phase 2C — One Canonical Production Referee UI.
+ * Phase 2C â One Canonical Production Referee UI.
  * Side-loaded from E2E-04 (CORE-08: no new unit-test-files.json rows).
  */
 
@@ -57,7 +57,7 @@ const SIDE_OUT = createScoringFormat({
   bestOfGames: 3,
   metadata: {
     openingServiceTurn: 2,
-    changeEndPolicyLabel: "Sau mỗi game • G3 tại 6",
+    changeEndPolicyLabel: "Sau mỗi game â¢ G3 tại 6",
   },
 });
 
@@ -376,7 +376,7 @@ test("6. Rally doubles rendering hides service-turn metadata", () => {
   assert.equal(line.display, "4 – 3");
 });
 
-test("7. singles rendering — one player per side", () => {
+test("7. singles rendering â one player per side", () => {
   const court = projectCanonicalCourtView({
     participants: {
       sides: [
@@ -459,7 +459,7 @@ test("9+10. player name on marker; no permanent #1/#2 identity; serviceTurn sepa
   assert.equal(court.serving.serviceTurn, 1);
   const marker = read("src/features/referee-production-ui/components/CanonicalCourtView.jsx");
   assert.match(marker, /player\.displayName|shortName\(/);
-  assert.doesNotMatch(marker, /VĐV #1|#2 identity|playerNumberLabel/);
+  assert.doesNotMatch(marker, /VÄV #1|#2 identity|playerNumberLabel/);
   assert.match(marker, /data-permanent-number="false"/);
   assert.doesNotMatch(marker, />#1<|>#2</);
 });
@@ -498,7 +498,7 @@ test("11. player position switch is distinct from change ends", async () => {
   assert.equal(pos.view.courtProjection.courtOrientation, "SWAPPED");
 });
 
-test("11b. configureLineup sets server + Lượt giao and unlocks start/score gate", async () => {
+test("11b. configureLineup sets server + LÆ°á»£t giao and unlocks start/score gate", async () => {
   const { runtime } = createUiRuntime();
   const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
   await seedAssigned(runtime, fixture);
@@ -569,7 +569,7 @@ async function startSideOutWithLineup(client, fixture, lineup) {
   return started;
 }
 
-test("side-out proof 1: 0-0-2 receiving win → opponent serves turn 1 + star", async () => {
+test("side-out proof 1: 0-0-2 receiving win â opponent serves turn 1 + star", async () => {
   const { runtime } = createUiRuntime();
   const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
   await seedAssigned(runtime, fixture);
@@ -619,7 +619,7 @@ test("side-out proof 1: 0-0-2 receiving win → opponent serves turn 1 + star", 
   );
 });
 
-test("side-out proof 2: turn 1 receiving win → same team turn 2 + partner star", async () => {
+test("side-out proof 2: turn 1 receiving win â same team turn 2 + partner star", async () => {
   const { runtime } = createUiRuntime();
   const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
   await seedAssigned(runtime, fixture);
@@ -648,7 +648,7 @@ test("side-out proof 2: turn 1 receiving win → same team turn 2 + partner star
   assert.equal(changed.view.courtProjection.court.leftBottom.isServing, true);
 });
 
-test("side-out proof 3: turn 2 receiving win → opponent turn 1 + star", async () => {
+test("side-out proof 3: turn 2 receiving win â opponent turn 1 + star", async () => {
   const { runtime } = createUiRuntime();
   const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
   await seedAssigned(runtime, fixture);
@@ -676,7 +676,7 @@ test("side-out proof 3: turn 2 receiving win → opponent turn 1 + star", async 
   assert.equal(changed.view.courtProjection.court.rightTop.isServing, true);
 });
 
-test("side-out proof 4: serving scores → +1, serving positions swap, same server, star follows", async () => {
+test("side-out proof 4: serving scores â +1, serving positions swap, same server, star follows", async () => {
   const { runtime } = createUiRuntime();
   const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
   await seedAssigned(runtime, fixture);
@@ -739,7 +739,7 @@ test("rally: winner gets point + serve; no change-serve control; no service turn
   assert.equal(scored.view.canChangeServe, false);
 });
 
-test("OWNER RALLY 6:2→6:3 receiving win moves serve/star + odd parity on B", async () => {
+test("OWNER RALLY 6:2â6:3 receiving win moves serve/star + odd parity on B", async () => {
   const { runtime } = createUiRuntime();
   const competitionId = "daily-rally-parity";
   const matchId = "daily-rally-parity-match";
@@ -802,13 +802,13 @@ test("OWNER RALLY 6:2→6:3 receiving win moves serve/star + odd parity on B", a
   assert.equal(cur.view.courtProjection.serving.servingSide, "SIDE_A");
   assert.ok(cur.view.courtProjection.serving.serverPlayerId === "p1" || cur.view.courtProjection.serving.serverPlayerId === "p2");
 
-  // Owner sequence: B wins rally → 6:3, B serves, odd parity, star on B.
+  // Owner sequence: B wins rally â 6:3, B serves, odd parity, star on B.
   await point(SCORING_SIDE.SIDE_B, "owner-6-2-to-6-3");
   assert.equal(cur.view.currentScore.points.SIDE_A, 6);
   assert.equal(cur.view.currentScore.points.SIDE_B, 3);
   assert.equal(cur.view.courtProjection.serving.servingSide, "SIDE_B");
   assert.equal(cur.view.servingStatus.showServiceTurn, false);
-  // B score 3 = odd → LEFT court (index 1) from home [p3,p4] swapped → [p4,p3], server = p3
+  // B score 3 = odd â LEFT court (index 1) from home [p3,p4] swapped â [p4,p3], server = p3
   assert.deepEqual(cur.view.courtProjection.sides.right.activePlayers.map((p) => p.playerId), [
     "p4",
     "p3",
@@ -829,7 +829,7 @@ test("OWNER RALLY 6:2→6:3 receiving win moves serve/star + odd parity on B", a
   assert.equal(refreshed.view.courtProjection.serving.serverPlayerId, "p3");
 });
 
-test("RALLY parity matrix: even↔odd for keep-serve and side-change", async () => {
+test("RALLY parity matrix: evenâodd for keep-serve and side-change", async () => {
   const { deriveCanonicalCourtAfterScoring } = await import(
     "../src/features/competition-engine/integration/referee/deriveCanonicalCourtAfterScoring.js"
   );
@@ -841,7 +841,7 @@ test("RALLY parity matrix: even↔odd for keep-serve and side-change", async () 
     lineupConfigured: true,
   };
 
-  // A even→odd keep serve
+  // A evenâodd keep serve
   const aOdd = deriveCanonicalCourtAfterScoring({
     priorCourt: home,
     priorServe: { servingSide: "SIDE_A", serverNumber: 1 },
@@ -856,7 +856,7 @@ test("RALLY parity matrix: even↔odd for keep-serve and side-change", async () 
   assert.equal(aOdd.serverPlayerId, "p1");
   assert.equal(aOdd.servingSide, "SIDE_A");
 
-  // A odd→even keep serve
+  // A oddâeven keep serve
   const aEven = deriveCanonicalCourtAfterScoring({
     priorCourt: aOdd,
     priorServe: { servingSide: "SIDE_A", serverNumber: 1 },
@@ -870,7 +870,7 @@ test("RALLY parity matrix: even↔odd for keep-serve and side-change", async () 
   assert.deepEqual(aEven.playerPositions.sideA, ["p1", "p2"]);
   assert.equal(aEven.serverPlayerId, "p1");
 
-  // B wins: A6 B2 → A6 B3, B odd serve
+  // B wins: A6 B2 â A6 B3, B odd serve
   const bOdd = deriveCanonicalCourtAfterScoring({
     priorCourt: aEven,
     priorServe: { servingSide: "SIDE_A", serverNumber: 1 },
@@ -886,7 +886,7 @@ test("RALLY parity matrix: even↔odd for keep-serve and side-change", async () 
   assert.equal(bOdd.serverPlayerId, "p3");
   assert.deepEqual(bOdd.playerPositions.sideA, ["p1", "p2"]);
 
-  // B odd→even keep serve
+  // B oddâeven keep serve
   const bEven = deriveCanonicalCourtAfterScoring({
     priorCourt: bOdd,
     priorServe: { servingSide: "SIDE_B", serverNumber: 1 },
@@ -938,7 +938,7 @@ test("12+13+14. expectedVersion + idempotency + duplicate click blocked", async 
   assert.equal(scored.ok, true);
 });
 
-test("14. stale fail-closed UX — no local confirm", async () => {
+test("14. stale fail-closed UX â no local confirm", async () => {
   const { runtime, driver } = createUiRuntime();
   const fixture = modeFixture(COMPETITION_REFEREE_MODE.OFFICIAL);
   await seedAssigned(runtime, fixture);
@@ -1166,7 +1166,7 @@ test("browser client authenticated transport invoked with expectedVersion + idem
   );
 });
 
-test("owner visual acceptance — CORE-13 row enriched without raw UUID/MODE/ASSIGNED", async () => {
+test("owner visual acceptance â CORE-13 row enriched without raw UUID/MODE/ASSIGNED", async () => {
   const { runtime } = createUiRuntime();
   const competitionId = "b5cd6975-3a7f-4c11-8006-2ac14e7bef5b";
   const matchId = "matchup-7t58gnjq";
@@ -1305,7 +1305,11 @@ test("owner visual remediation — chrome suppress + participant-aware controls"
   assert.match(bottomNav, /isRefereeWorkspaceRoute/);
   assert.match(home, /Trọng tài của tôi/);
   assert.match(home, /home-daily-summary/);
+  assert.match(home, /home-date-range/);
+  assert.match(home, /home-date-from/);
+  assert.match(home, /home-date-to/);
   assert.match(home, /home-status-filters/);
+  assert.match(match, /deriveCourtPresentation/);
   assert.match(match, /Điều hành trận/);
   assert.match(match, /match-rules-panel/);
   assert.match(match, /Sắp xếp đội hình/);
@@ -1315,6 +1319,8 @@ test("owner visual remediation — chrome suppress + participant-aware controls"
   assert.match(match, /XÁC NHẬN ĐỔI SÂN/);
   assert.match(match, /rp-score-team-name/);
   assert.match(match, /pointLabel\(/);
+  assert.match(match, /leftPointHandler/);
+  assert.match(match, /data-display-end/);
   assert.match(match, /Đang ghi…/);
   assert.match(match, /current-game-score/);
   assert.match(match, /games-won/);
@@ -1327,6 +1333,7 @@ test("owner visual remediation — chrome suppress + participant-aware controls"
   assert.match(css, /max-height:\s*220px/);
   assert.match(css, /rp-court-kitchen/);
   assert.match(css, /rp-court-baseline/);
+  assert.match(css, /rp-home-date-range/);
   assert.match(css, /left:\s*50%/); // landscape net is vertical at center
 });
 
@@ -1334,17 +1341,38 @@ test("home daily summary + status filters", async () => {
   const {
     buildRefereeHomeSummary,
     filterAssignmentsByHomeStatus,
+    filterAssignmentsByDateRange,
     normalizeRefereeHomeCard,
+    resolveAssignmentLocalDayKey,
+    localDayKey,
     HOME_STATUS_FILTER,
   } = await import(
     "../src/features/referee-production-ui/projection/buildRefereeHomeSummary.js"
   );
+  const today = new Date("2026-08-17T12:00:00+07:00");
+  const todayKey = localDayKey(today);
   const assignments = [
-    { matchId: "1", matchStatus: "READY_TO_START", action: "ENTER" },
-    { matchId: "2", matchStatus: "IN_PROGRESS", action: "CONTINUE" },
-    { matchId: "3", matchStatus: "COMPLETED", action: "VIEW_RESULT", acceptedOfficialResult: true },
+    {
+      matchId: "1",
+      matchStatus: "READY_TO_START",
+      action: "ENTER",
+      scheduledTimeRaw: "2026-08-17T08:00:00+07:00",
+    },
+    {
+      matchId: "2",
+      matchStatus: "IN_PROGRESS",
+      action: "CONTINUE",
+      scheduledTimeRaw: "2026-08-17T09:00:00+07:00",
+    },
+    {
+      matchId: "3",
+      matchStatus: "COMPLETED",
+      action: "VIEW_RESULT",
+      acceptedOfficialResult: true,
+      scheduledTimeRaw: "2026-08-17T10:00:00+07:00",
+    },
   ];
-  const summary = buildRefereeHomeSummary(assignments);
+  const summary = buildRefereeHomeSummary(assignments, today);
   assert.equal(summary.totalToday, 3);
   assert.equal(summary.counters.upcoming, 1);
   assert.equal(summary.counters.live, 1);
@@ -1364,10 +1392,11 @@ test("home daily summary + status filters", async () => {
     homeStatusBucket: "DONE",
     homeStatusLabel: "Hoàn tất",
     acceptedOfficialResult: true,
+    scheduledTimeRaw: "2026-08-17T09:11:00+07:00",
   });
   assert.equal(stale.homeStatusBucket, "LIVE");
   assert.equal(stale.homeStatusLabel, "Đang thi đấu");
-  const staleSummary = buildRefereeHomeSummary([stale]);
+  const staleSummary = buildRefereeHomeSummary([stale], today);
   assert.equal(staleSummary.counters.live, 1);
   assert.equal(staleSummary.counters.done, 0);
   assert.equal(
@@ -1385,10 +1414,11 @@ test("home daily summary + status filters", async () => {
     matchStatus: "IN_PROGRESS",
     action: "VIEW_RESULT",
     actionLabel: "XEM KẾT QUẢ",
+    scheduledTimeRaw: "2026-08-17T11:00:00+07:00",
   });
   assert.equal(liveStatus.homeStatusBucket, "LIVE");
 
-  // Summary board and list must use the same today-scoped set.
+  // Summary board must NOT fall back to historical when today is empty.
   const mixedDays = [
     {
       matchId: "today-live",
@@ -1414,6 +1444,137 @@ test("home daily summary + status filters", async () => {
     filterAssignmentsByHomeStatus(daySummary.board, HOME_STATUS_FILTER.ALL).length,
     1
   );
+
+  const emptyToday = buildRefereeHomeSummary(
+    mixedDays.filter((row) => row.matchId === "old-done"),
+    today
+  );
+  assert.equal(emptyToday.totalToday, 0);
+  assert.match(emptyToday.headline, /Hôm nay: 0 trận/);
+  assert.match(emptyToday.emptyMessage, /hôm nay/);
+
+  const historicalDay = buildRefereeHomeSummary(mixedDays, {
+    fromDate: "2026-08-12",
+    toDate: "2026-08-12",
+    now: today,
+  });
+  assert.equal(historicalDay.totalInRange, 1);
+  assert.match(historicalDay.headline, /Ngày 12\/08\/2026: 1 trận/);
+
+  const multiDay = buildRefereeHomeSummary(mixedDays, {
+    fromDate: "2026-08-12",
+    toDate: "2026-08-16",
+    now: today,
+  });
+  assert.equal(multiDay.totalInRange, 2);
+  assert.equal(multiDay.counters.live, 1);
+  assert.equal(multiDay.counters.done, 1);
+  assert.match(multiDay.headline, /12\/08\/2026 – 16\/08\/2026: 2 trận/);
+
+  const undated = {
+    matchId: "undated",
+    matchStatus: "READY_TO_START",
+    action: "ENTER",
+  };
+  assert.equal(resolveAssignmentLocalDayKey(undated), null);
+  const undatedSummary = buildRefereeHomeSummary([undated, ...assignments], today);
+  assert.equal(undatedSummary.totalToday, 3);
+  assert.equal(undatedSummary.undatedCount, 1);
+  assert.equal(
+    filterAssignmentsByDateRange([undated], { fromDate: todayKey, toDate: todayKey }).length,
+    0
+  );
+
+  // Timezone boundary: UTC evening that is next local Vietnam morning.
+  const boundary = {
+    matchId: "boundary",
+    matchStatus: "READY_TO_START",
+    action: "ENTER",
+    scheduledTimeRaw: "2026-08-16T17:30:00.000Z", // 00:30+07 on 17/08
+  };
+  const boundaryDay = resolveAssignmentLocalDayKey(boundary);
+  // Local day depends on runtime timezone; assert consistency with localDayKey.
+  assert.equal(boundaryDay, localDayKey(new Date(boundary.scheduledTimeRaw)));
+  const boundaryOnLocalDay = buildRefereeHomeSummary([boundary], {
+    fromDate: boundaryDay,
+    toDate: boundaryDay,
+    now: today,
+  });
+  assert.equal(boundaryOnLocalDay.totalInRange, 1);
+});
+
+test("remediation09: scoreboard presentation follows physical ends", async () => {
+  const { deriveCourtPresentation } = await import(
+    "../src/features/referee-production-ui/projection/deriveCourtPresentation.js"
+  );
+  const before = projectCanonicalCourtView({
+    participants: {
+      sides: [
+        { sideKey: "A", participantIds: ["p1", "p2"], displayName: "Team A", teamId: "ta" },
+        { sideKey: "B", participantIds: ["p3", "p4"], displayName: "Team B", teamId: "tb" },
+      ],
+    },
+    participantNames: { p1: "An", p2: "Bình", p3: "Chi", p4: "Dũng" },
+    scoringRules: SIDE_OUT,
+    currentScore: {
+      points: { SIDE_A: 11, SIDE_B: 5 },
+      serve: { servingSide: "SIDE_A", serverPlayerId: "p1", serverNumber: 2 },
+    },
+    courtState: {
+      courtOrientation: "STANDARD",
+      serverPlayerId: "p1",
+    },
+  });
+  const after = projectCanonicalCourtView({
+    participants: {
+      sides: [
+        { sideKey: "A", participantIds: ["p1", "p2"], displayName: "Team A", teamId: "ta" },
+        { sideKey: "B", participantIds: ["p3", "p4"], displayName: "Team B", teamId: "tb" },
+      ],
+    },
+    participantNames: { p1: "An", p2: "Bình", p3: "Chi", p4: "Dũng" },
+    scoringRules: SIDE_OUT,
+    currentScore: {
+      points: { SIDE_A: 11, SIDE_B: 5 },
+      serve: { servingSide: "SIDE_A", serverPlayerId: "p1", serverNumber: 2 },
+    },
+    courtState: {
+      courtOrientation: "SWAPPED",
+      serverPlayerId: "p1",
+    },
+  });
+
+  const beforePres = deriveCourtPresentation({
+    courtProjection: before,
+    currentScore: { points: { SIDE_A: 11, SIDE_B: 5 } },
+  });
+  assert.equal(beforePres.leftTeam, "Team A");
+  assert.equal(beforePres.rightTeam, "Team B");
+  assert.equal(beforePres.leftScore, 11);
+  assert.equal(beforePres.rightScore, 5);
+  assert.equal(beforePres.leftScoringSide, "SIDE_A");
+  assert.equal(beforePres.rightScoringSide, "SIDE_B");
+
+  const afterPres = deriveCourtPresentation({
+    courtProjection: after,
+    currentScore: { points: { SIDE_A: 11, SIDE_B: 5 } },
+  });
+  assert.equal(after.courtOrientation, "SWAPPED");
+  assert.equal(afterPres.leftTeam, "Team B");
+  assert.equal(afterPres.rightTeam, "Team A");
+  assert.equal(afterPres.leftScore, 5);
+  assert.equal(afterPres.rightScore, 11);
+  assert.equal(afterPres.leftScoringSide, "SIDE_B");
+  assert.equal(afterPres.rightScoringSide, "SIDE_A");
+  assert.equal(afterPres.leftTeamId, "tb");
+  assert.equal(afterPres.rightTeamId, "ta");
+  assert.deepEqual([...afterPres.leftParticipants], ["Chi", "Dũng"]);
+  assert.deepEqual([...afterPres.rightParticipants], ["An", "Bình"]);
+  // Score ownership unchanged in canonical points; server identity stays on Team A player.
+  assert.equal(after.serving.serverPlayerId, "p1");
+  assert.equal(after.sides.right.activePlayers[0].playerId, "p1");
+  assert.equal(after.sides.left.scoringSide, "SIDE_B");
+  assert.equal(after.sides.right.scoringSide, "SIDE_A");
 });
 
 test("match rules panel + game history derive from canonical policy/state", () => {
@@ -1431,7 +1592,7 @@ test("match rules panel + game history derive from canonical policy/state", () =
     },
     participantNames: { p1: "An", p2: "Bình", p3: "Chi", p4: "Dũng" },
     scoringRules: SIDE_OUT,
-    lifecyclePolicy: { changeEndPolicyLabel: "Sau mỗi game • G3 tại 6" },
+    lifecyclePolicy: { changeEndPolicyLabel: "Sau mỗi game â¢ G3 tại 6" },
     capabilities: { changeEnds: true, switchPositions: true },
     assignedMatch: {
       lifecycleState: "IN_PROGRESS",
@@ -1517,7 +1678,7 @@ test("mode-state resolver enriches CORE-13-shaped Team assignment row", async ()
       {
         team_tournament_id: "2feb193a-0bd4-4852-9091-904d4ca40c29",
         external_discipline_id: "mlp-md",
-        name: "Đôi nam",
+        name: "ÄÃ´i nam",
         scoring_format: {
           scoringSystem: "rally",
           targetScore: 21,
@@ -1588,10 +1749,10 @@ test("change-end policy label only when canonical policy supplies it", () => {
     competitionMode: "DAILY_PLAY",
     adapterSelected: "daily-play-referee-adapter-b",
     scoringRules: SIDE_OUT,
-    lifecyclePolicy: { changeEndPolicyLabel: "Sau mỗi game • G3 tại 6" },
+    lifecyclePolicy: { changeEndPolicyLabel: "Sau mỗi game â¢ G3 tại 6" },
     assignedMatch: { lifecycleState: "IN_PROGRESS" },
   });
-  assert.equal(view.gameSummary.changeEndPolicy, "Sau mỗi game • G3 tại 6");
+  assert.equal(view.gameSummary.changeEndPolicy, "Sau mỗi game â¢ G3 tại 6");
   const bare = buildRefereeMatchView({
     matchId: "m2",
     competitionMode: "DAILY_PLAY",
@@ -1630,7 +1791,7 @@ test("assignment card action labels", () => {
   assert.equal(done.actionLabel, "XEM KẾT QUẢ");
 });
 
-test("remediation05: score ACK never regresses IN_PROGRESS → READY (adapter status ignored)", () => {
+test("remediation05: score ACK never regresses IN_PROGRESS â READY (adapter status ignored)", () => {
   const scoreProjection = {
     points: { SIDE_A: 8, SIDE_B: 3 },
     serve: { servingSide: "SIDE_A", serverNumber: 1, serverPlayerId: "p1" },
@@ -1694,7 +1855,7 @@ for (const mode of [
   COMPETITION_REFEREE_MODE.OFFICIAL,
   COMPETITION_REFEREE_MODE.TEAM,
 ]) {
-  test(`remediation05: ${mode} start→submitPoint→ACK stays IN_PROGRESS; F5 reload same`, async () => {
+  test(`remediation05: ${mode} startâsubmitPointâACK stays IN_PROGRESS; F5 reload same`, async () => {
     const { runtime } = createUiRuntime();
     const fixture = modeFixture(mode);
     await seedAssigned(runtime, fixture);
@@ -1815,7 +1976,7 @@ test("remediation06: threshold sticky until ACK; confirm swaps ends; F5 keeps sw
         expectedVersion: version,
         idempotencyKey: "ce-blocked-while-due",
       }),
-    /[Cc]hange ends|PRECONDITION|Đổi sân/
+    /[Cc]hange ends|PRECONDITION|Äá»i sÃ¢n/
   );
 
   const positionsBefore = {
@@ -1849,6 +2010,14 @@ test("remediation06: threshold sticky until ACK; confirm swaps ends; F5 keeps sw
   assert.equal(confirmed.view.matchStatus, "IN_PROGRESS");
   assert.equal(confirmed.view.courtProjection.serving?.serverPlayerId, serverBefore);
   assert.equal(confirmed.view.canScore, true);
+  assert.equal(confirmed.view.courtPresentation.leftScoringSide, "SIDE_B");
+  assert.equal(confirmed.view.courtPresentation.rightScoringSide, "SIDE_A");
+  assert.equal(confirmed.view.courtPresentation.leftScore, 0);
+  assert.equal(confirmed.view.courtPresentation.rightScore, 3);
+  assert.equal(
+    confirmed.view.courtPresentation.courtOrientation,
+    confirmed.view.courtProjection.courtOrientation
+  );
 
   const positionsAfter = {
     a: [
@@ -1939,7 +2108,7 @@ test("remediation06: stale expectedVersion does not swap ends", async () => {
   assert.equal(reloaded.view.courtProjection.sideChangeRequired, true);
 });
 
-test("remediation07: Owner exact 10:5 → 11:5 triggers due on same ACK", async () => {
+test("remediation07: Owner exact 10:5 â 11:5 triggers due on same ACK", async () => {
   const format = createScoringFormat({
     scoringSystem: SCORING_SYSTEM.RALLY,
     pointsToWin: 21,
@@ -2055,7 +2224,7 @@ test("remediation07: Owner exact 10:5 → 11:5 triggers due on same ACK", async 
   assert.equal(f5.view.courtProjection.serving?.serverPlayerId, serverBefore);
 });
 
-test("remediation07: Owner opposite 5:10 → 5:11 triggers due on same ACK", async () => {
+test("remediation07: Owner opposite 5:10 â 5:11 triggers due on same ACK", async () => {
   const format = createScoringFormat({
     scoringSystem: SCORING_SYSTEM.RALLY,
     pointsToWin: 21,

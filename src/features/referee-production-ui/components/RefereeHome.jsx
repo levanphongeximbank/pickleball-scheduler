@@ -4,16 +4,35 @@ import {
   HOME_STATUS_FILTER,
   buildRefereeHomeSummary,
   filterAssignmentsByHomeStatus,
+  localDayKey,
 } from "../projection/buildRefereeHomeSummary.js";
+
+function todayInputValue(now = new Date()) {
+  return localDayKey(now);
+}
 
 export default function RefereeHome({
   assignments = [],
   loading = false,
   error = null,
   userLabel = "bạn",
+  now = null,
 }) {
+  const [rangeClock] = useState(() => (now instanceof Date ? now : new Date()));
+  const clock = now instanceof Date ? now : rangeClock;
+  const [fromDate, setFromDate] = useState(() => todayInputValue(clock));
+  const [toDate, setToDate] = useState(() => todayInputValue(clock));
   const [filter, setFilter] = useState(HOME_STATUS_FILTER.ALL);
-  const summary = useMemo(() => buildRefereeHomeSummary(assignments), [assignments]);
+
+  const summary = useMemo(
+    () =>
+      buildRefereeHomeSummary(assignments, {
+        fromDate,
+        toDate,
+        now: clock,
+      }),
+    [assignments, fromDate, toDate, clock]
+  );
   const board = useMemo(() => summary.board || [], [summary]);
   const visible = useMemo(
     () => filterAssignmentsByHomeStatus(board, filter),
@@ -31,6 +50,29 @@ export default function RefereeHome({
           Trận được phân công · Tài khoản từ menu góc phải
         </p>
       </header>
+
+      <section className="rp-home-date-range" data-testid="home-date-range">
+        <label className="rp-home-date-field" htmlFor="referee-home-from-date">
+          <span>Từ ngày</span>
+          <input
+            id="referee-home-from-date"
+            type="date"
+            value={fromDate}
+            onChange={(event) => setFromDate(event.target.value)}
+            data-testid="home-date-from"
+          />
+        </label>
+        <label className="rp-home-date-field" htmlFor="referee-home-to-date">
+          <span>Đến ngày</span>
+          <input
+            id="referee-home-to-date"
+            type="date"
+            value={toDate}
+            onChange={(event) => setToDate(event.target.value)}
+            data-testid="home-date-to"
+          />
+        </label>
+      </section>
 
       <section className="rp-home-summary" data-testid="home-daily-summary">
         <p className="rp-home-summary-title" data-testid="home-daily-headline">
@@ -87,8 +129,14 @@ export default function RefereeHome({
       {!loading && visible.length === 0 ? (
         <p className="rp-sub" data-testid="referee-home-empty">
           {board.length === 0
-            ? `Chưa có trận được phân công cho ${userLabel}.`
+            ? summary.emptyMessage ||
+              `Chưa có trận được phân công cho ${userLabel}.`
             : "Không có trận trong bộ lọc này."}
+        </p>
+      ) : null}
+      {summary.undatedCount > 0 ? (
+        <p className="rp-sub" data-testid="home-undated-note">
+          {summary.undatedCount} trận chưa xác định ngày (không tính trong khoảng đã chọn).
         </p>
       ) : null}
       <div className="rp-assignment-list" data-testid="assignment-list">

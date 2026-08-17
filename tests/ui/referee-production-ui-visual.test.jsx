@@ -3,7 +3,7 @@
  * Deterministic fixtures only — no production mock runtime fallback.
  */
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
@@ -135,12 +135,16 @@ describe("referee workspace chrome contract", () => {
 });
 
 describe("1. Referee Home visual", () => {
+  const TODAY = new Date("2026-08-17T12:00:00+07:00");
+  const todayIso = "2026-08-17T10:00:00+07:00";
+
   it("renders daily summary, filters, compact meta row, status CTA", () => {
     render(
       <MemoryRouter>
         <div style={{ width: 390 }}>
           <RefereeHome
             userLabel="Phong"
+            now={TODAY}
             assignments={[
               {
                 competitionId: "comp-1",
@@ -158,6 +162,7 @@ describe("1. Referee Home visual", () => {
                 participantB: "Đội 3",
                 courtLabel: "Sân 1",
                 scheduledTime: "17:02",
+                scheduledTimeRaw: todayIso,
                 action: "ENTER",
                 actionLabel: "VÀO TRẬN",
                 href: "/referee/match/match-1",
@@ -173,6 +178,7 @@ describe("1. Referee Home visual", () => {
                 participantB: "Chi / Dũng",
                 courtLabel: "Sân 2",
                 scheduledTime: "18:00",
+                scheduledTimeRaw: todayIso,
                 action: "CONTINUE",
                 actionLabel: "TIẾP TỤC",
                 href: "/referee/match/match-2",
@@ -184,6 +190,9 @@ describe("1. Referee Home visual", () => {
     );
 
     expect(screen.getByTestId("referee-home-header")).toHaveTextContent("Trọng tài của tôi");
+    expect(screen.getByTestId("home-date-range")).toBeInTheDocument();
+    expect(screen.getByTestId("home-date-from")).toHaveValue("2026-08-17");
+    expect(screen.getByTestId("home-date-to")).toHaveValue("2026-08-17");
     expect(screen.getByTestId("home-daily-headline")).toHaveTextContent("Hôm nay: 2 trận");
     expect(screen.getByTestId("counter-upcoming")).toHaveTextContent("1");
     expect(screen.getByTestId("counter-live")).toHaveTextContent("1");
@@ -215,6 +224,7 @@ describe("1. Referee Home visual", () => {
         <div style={{ width: 390 }}>
           <RefereeHome
             userLabel="Trọng tài 01"
+            now={TODAY}
             assignments={[
               {
                 competitionId: "comp-1",
@@ -228,6 +238,7 @@ describe("1. Referee Home visual", () => {
                 participantB: "Đội 3",
                 courtLabel: "Sân 2",
                 scheduledTime: "09:11",
+                scheduledTimeRaw: todayIso,
                 action: "CONTINUE",
                 actionLabel: "TIẾP TỤC",
                 href: "/referee/match/sub-syysofdv",
@@ -247,6 +258,88 @@ describe("1. Referee Home visual", () => {
     expect(screen.getByTestId("assignment-action")).toHaveTextContent("TIẾP TỤC");
     await user.click(screen.getByTestId("filter-done"));
     expect(screen.getByTestId("referee-home-empty")).toBeInTheDocument();
+  });
+
+  it("1c. date range excludes historical days from Hôm nay; empty today stays 0", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <RefereeHome
+          userLabel="Phong"
+          now={TODAY}
+          assignments={[
+            {
+              competitionId: "comp-1",
+              matchId: "hist-12",
+              matchStatus: "COMPLETED",
+              action: "VIEW_RESULT",
+              competitionName: "Giải 12/8",
+              participantA: "A",
+              participantB: "B",
+              courtLabel: "Sân 1",
+              scheduledTime: "09:00",
+              scheduledTimeRaw: "2026-08-12T09:00:00+07:00",
+              href: "/referee/match/hist-12",
+            },
+            {
+              competitionId: "comp-1",
+              matchId: "hist-13",
+              matchStatus: "READY_TO_START",
+              action: "ENTER",
+              competitionName: "Giải 13/8",
+              participantA: "C",
+              participantB: "D",
+              courtLabel: "Sân 2",
+              scheduledTime: "10:00",
+              scheduledTimeRaw: "2026-08-13T10:00:00+07:00",
+              href: "/referee/match/hist-13",
+            },
+            {
+              competitionId: "comp-1",
+              matchId: "undated-1",
+              matchStatus: "READY_TO_START",
+              action: "ENTER",
+              competitionName: "Chưa ngày",
+              participantA: "E",
+              participantB: "F",
+              courtLabel: "Sân 3",
+              href: "/referee/match/undated-1",
+            },
+          ]}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId("home-daily-headline")).toHaveTextContent("Hôm nay: 0 trận");
+    expect(screen.getByTestId("referee-home-empty")).toHaveTextContent(
+      "Chưa có trận được phân công trong ngày hôm nay."
+    );
+    expect(screen.getByTestId("home-undated-note")).toHaveTextContent(/1 trận chưa xác định ngày/);
+
+    fireEvent.change(screen.getByTestId("home-date-from"), {
+      target: { value: "2026-08-13" },
+    });
+    fireEvent.change(screen.getByTestId("home-date-to"), {
+      target: { value: "2026-08-13" },
+    });
+    expect(screen.getByTestId("home-daily-headline")).toHaveTextContent("Ngày 13/08/2026: 1 trận");
+    expect(screen.getAllByTestId("referee-assignment-card")).toHaveLength(1);
+
+    fireEvent.change(screen.getByTestId("home-date-from"), {
+      target: { value: "2026-08-12" },
+    });
+    fireEvent.change(screen.getByTestId("home-date-to"), {
+      target: { value: "2026-08-13" },
+    });
+    expect(screen.getByTestId("home-daily-headline")).toHaveTextContent(
+      "12/08/2026 – 13/08/2026: 2 trận"
+    );
+    expect(screen.getAllByTestId("referee-assignment-card")).toHaveLength(2);
+
+    await user.click(screen.getByTestId("filter-done"));
+    expect(screen.getAllByTestId("referee-assignment-card")).toHaveLength(1);
+    expect(screen.getByTestId("filter-done")).toHaveTextContent("1");
+    expect(screen.getByTestId("filter-upcoming")).toHaveTextContent("1");
   });
 });
 
@@ -564,6 +657,95 @@ describe("match screen visual states @ ~390px", () => {
       "data-orientation",
       "SWAPPED"
     );
+  });
+
+  it("7c. scoreboard + point buttons follow physical ends after confirmChangeEnds ACK", async () => {
+    const user = userEvent.setup();
+    const onPointA = vi.fn();
+    const onPointB = vi.fn();
+    const before = doublesCourt(RALLY, { a: 11, b: 5 });
+    const after = doublesCourt(RALLY, { a: 11, b: 5, swapped: true });
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <RefereeMatchScreen
+          view={baseView({
+            courtProjection: before,
+            currentScore: { points: { SIDE_A: 11, SIDE_B: 5 } },
+            isRally: true,
+            isSideOut: false,
+            canPointSideA: true,
+            canPointSideB: true,
+            canChangeServe: false,
+          })}
+          onPointA={onPointA}
+          onPointB={onPointB}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-orientation", "STANDARD");
+    expect(screen.getByTestId("team-name-a")).toHaveTextContent("Đội 4");
+    expect(screen.getByTestId("team-name-b")).toHaveTextContent("Đội 3");
+    expect(screen.getByTestId("score-a")).toHaveTextContent("11");
+    expect(screen.getByTestId("score-b")).toHaveTextContent("5");
+    expect(screen.getByTestId("court-slot-leftTop")).toHaveTextContent("An");
+    expect(screen.getByTestId("btn-point-a")).toHaveAttribute("data-display-end", "left");
+    expect(screen.getByTestId("btn-point-a")).toHaveAttribute("data-scoring-side", "SIDE_A");
+    expect(screen.getByTestId("btn-point-a")).toHaveTextContent(/Đội 4/);
+    expect(screen.getByTestId("btn-point-b")).toHaveAttribute("data-display-end", "right");
+
+    rerender(
+      <MemoryRouter>
+        <RefereeMatchScreen
+          view={baseView({
+            courtProjection: after,
+            currentScore: { points: { SIDE_A: 11, SIDE_B: 5 } },
+            isRally: true,
+            isSideOut: false,
+            canPointSideA: true,
+            canPointSideB: true,
+            canChangeServe: false,
+          })}
+          onPointA={onPointA}
+          onPointB={onPointB}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId("scoreboard")).toHaveAttribute("data-orientation", "SWAPPED");
+    expect(screen.getByTestId("canonical-court-view")).toHaveAttribute(
+      "data-orientation",
+      "SWAPPED"
+    );
+    // LEFT = Team B (5), RIGHT = Team A (11)
+    expect(screen.getByTestId("team-name-a")).toHaveTextContent("Đội 3");
+    expect(screen.getByTestId("team-name-b")).toHaveTextContent("Đội 4");
+    expect(screen.getByTestId("score-a")).toHaveTextContent("5");
+    expect(screen.getByTestId("score-b")).toHaveTextContent("11");
+    expect(screen.getByTestId("participant-names-a")).toHaveTextContent(/Chi/);
+    expect(screen.getByTestId("participant-names-b")).toHaveTextContent(/An/);
+    expect(screen.getByTestId("court-slot-leftTop")).toHaveTextContent("Chi");
+    expect(screen.getByTestId("court-slot-rightTop")).toHaveTextContent("An");
+    expect(screen.getByTestId("serving-indicator").closest("[data-testid^='player-marker-']")).toHaveAttribute(
+      "data-testid",
+      "player-marker-p1"
+    );
+
+    const leftBtn = screen.getByTestId("btn-point-b");
+    expect(leftBtn).toHaveAttribute("data-display-end", "left");
+    expect(leftBtn).toHaveAttribute("data-scoring-side", "SIDE_B");
+    expect(leftBtn).toHaveTextContent(/Đội 3/);
+    const rightBtn = screen.getByTestId("btn-point-a");
+    expect(rightBtn).toHaveAttribute("data-display-end", "right");
+    expect(rightBtn).toHaveAttribute("data-scoring-side", "SIDE_A");
+    expect(rightBtn).toHaveTextContent(/Đội 4/);
+
+    await user.click(leftBtn);
+    expect(onPointB).toHaveBeenCalledTimes(1);
+    expect(onPointA).not.toHaveBeenCalled();
+    await user.click(rightBtn);
+    expect(onPointA).toHaveBeenCalledTimes(1);
   });
 
   it("8. pending score disables conflicting controls and shows Đang ghi…", () => {

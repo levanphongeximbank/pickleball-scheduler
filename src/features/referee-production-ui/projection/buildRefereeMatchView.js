@@ -7,6 +7,7 @@ import { SCORING_SYSTEM } from "../../competition-core/scoring/index.js";
 import { REFEREE_ACTION } from "../../competition-engine/operations/referee/constants.js";
 import { formatScoringPolicyLabel } from "./formatScoringPolicyLabel.js";
 import { projectCanonicalCourtView } from "./projectCanonicalCourtView.js";
+import { deriveCourtPresentation } from "./deriveCourtPresentation.js";
 import { projectResultStatus } from "./resultStatus.js";
 import {
   formatCompetitionDisplayName,
@@ -238,6 +239,49 @@ export function buildRefereeMatchView(input) {
   const receivingSideNow =
     servingSideNow === "SIDE_B" ? "SIDE_A" : servingSideNow === "SIDE_A" ? "SIDE_B" : null;
 
+  const currentScore = scoreProjection
+    ? Object.freeze({
+        points: scoreProjection.points || null,
+        serve: scoreProjection.serve || null,
+        gamesWon: scoreProjection.gamesWonInCurrentSet || null,
+        setsWon: scoreProjection.setsWon || null,
+        currentGameIndex: scoreProjection.currentGameIndex ?? 0,
+      })
+    : null;
+
+  const participantDisplay = Object.freeze({
+    sideA: Object.freeze({
+      label: sideAName,
+      playerNames: Object.freeze(
+        courtProjection.sides?.left?.scoringSide === "SIDE_A"
+          ? leftPlayers.length
+            ? leftPlayers
+            : fallbackA
+          : rightPlayers.length
+            ? rightPlayers
+            : fallbackA
+      ),
+    }),
+    sideB: Object.freeze({
+      label: sideBName,
+      playerNames: Object.freeze(
+        courtProjection.sides?.left?.scoringSide === "SIDE_B"
+          ? leftPlayers.length
+            ? leftPlayers
+            : fallbackB
+          : rightPlayers.length
+            ? rightPlayers
+            : fallbackB
+      ),
+    }),
+  });
+
+  const courtPresentation = deriveCourtPresentation({
+    courtProjection,
+    currentScore,
+    participantDisplay,
+  });
+
   return Object.freeze({
     matchId: String(input.matchId || "").trim(),
     competitionId: String(
@@ -254,32 +298,7 @@ export function buildRefereeMatchView(input) {
     courtId: matchContext.courtId || assigned.courtId || match.courtAssignmentRef || null,
     courtLabel,
     participants: input.participants || { sides: [] },
-    participantDisplay: Object.freeze({
-      sideA: Object.freeze({
-        label: sideAName,
-        playerNames: Object.freeze(
-          courtProjection.sides?.left?.scoringSide === "SIDE_A"
-            ? leftPlayers.length
-              ? leftPlayers
-              : fallbackA
-            : rightPlayers.length
-              ? rightPlayers
-              : fallbackA
-        ),
-      }),
-      sideB: Object.freeze({
-        label: sideBName,
-        playerNames: Object.freeze(
-          courtProjection.sides?.left?.scoringSide === "SIDE_B"
-            ? leftPlayers.length
-              ? leftPlayers
-              : fallbackB
-            : rightPlayers.length
-              ? rightPlayers
-              : fallbackB
-        ),
-      }),
-    }),
+    participantDisplay,
     scoringRules,
     lifecyclePolicy,
     rulesPanel: Object.freeze({
@@ -302,15 +321,7 @@ export function buildRefereeMatchView(input) {
       changeEnds: canChangeEnds,
       switchPositions: canSwitchPositions,
     }),
-    currentScore: scoreProjection
-      ? Object.freeze({
-          points: scoreProjection.points || null,
-          serve: scoreProjection.serve || null,
-          gamesWon: scoreProjection.gamesWonInCurrentSet || null,
-          setsWon: scoreProjection.setsWon || null,
-          currentGameIndex: scoreProjection.currentGameIndex ?? 0,
-        })
-      : null,
+    currentScore,
     gameSummary: Object.freeze({
       currentGame: (scoreProjection?.currentGameIndex ?? 0) + 1,
       gamesWon: scoreProjection?.gamesWonInCurrentSet || null,
@@ -337,6 +348,7 @@ export function buildRefereeMatchView(input) {
     acceptedOfficialResult: result.acceptedOfficialResult,
     expectedVersion: Number(input.expectedVersion ?? 0),
     courtProjection,
+    courtPresentation,
     servingState: courtProjection.serving,
     servingStatus: Object.freeze({
       servingTeamName:

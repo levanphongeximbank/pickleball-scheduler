@@ -71,8 +71,11 @@ export function normalizeRefereeHomeCard(card = {}) {
     ...card,
     homeStatusBucket: undefined,
   });
+  const scheduledDayKey = resolveAssignmentLocalDayKey(card);
   return Object.freeze({
     ...card,
+    scheduledDayKey,
+    hasScheduledDate: scheduledDayKey != null,
     homeStatusBucket: bucket,
     homeStatusLabel:
       bucket === HOME_STATUS_FILTER.LIVE
@@ -84,23 +87,159 @@ export function normalizeRefereeHomeCard(card = {}) {
 }
 
 /**
- * @param {object[]} assignments
- * @param {Date} [now]
+ * Local calendar day key yyyy-mm-dd from a Date (browser/app local timezone).
+ * @param {Date} date
  */
-export function selectRefereeHomeBoard(assignments = [], now = new Date()) {
+export function localDayKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Authoritative scheduled match local day — never infer from created/updated/display clock.
+ * @param {object} card
+ * @returns {string|null} yyyy-mm-dd or null when undated
+ */
+export function resolveAssignmentLocalDayKey(card = {}) {
+  const raw =
+    card?.scheduledTimeRaw ??
+    card?.scheduledAt ??
+    card?.matchScheduledAt ??
+    null;
+  if (raw == null || raw === "") return null;
+  const date = raw instanceof Date ? raw : new Date(raw);
+  if (Number.isNaN(date.getTime())) return null;
+  return localDayKey(date);
+}
+
+/**
+ * Inclusive local-date range filter. Undated assignments are excluded.
+ * @param {object[]} assignments
+ * @param {{ fromDate?: string|Date|null, toDate?: string|Date|null, now?: Date }} [range]
+ */
+export function filterAssignmentsByDateRange(assignments = [], range = {}) {
   const list = Array.isArray(assignments) ? assignments : [];
-  const todayKey = localDayKey(now);
-  const today = list.filter((card) => isAssignmentForDay(card, todayKey));
-  // Prefer today's matches when any exist; otherwise show the full assignment list.
-  return today.length > 0 ? today : list;
+  const now = range.now instanceof Date ? range.now : new Date();
+  const fromKey = normalizeDayInput(range.fromDate, localDayKey(now));
+  const toKey = normalizeDayInput(range.toDate, fromKey);
+  const lo = fromKey <= toKey ? fromKey : toKey;
+  const hi = fromKey <= toKey ? toKey : fromKey;
+
+  return list.filter((card) => {
+    const day = resolveAssignmentLocalDayKey(card);
+    if (day == null) return false;
+    return day >= lo && day <= hi;
+  });
+}
+
+/**
+ * Undated assignments (no authoritative scheduled datetime).
+ * @param {object[]} assignments
+ */
+export function selectUndatedAssignments(assignments = []) {
+  const list = Array.isArray(assignments) ? assignments : [];
+  return list.filter((card) => resolveAssignmentLocalDayKey(card) == null);
 }
 
 /**
  * @param {object[]} assignments
- * @param {Date} [now]
+ * @param {{ fromDate?: string|Date|null, toDate?: string|Date|null, now?: Date }} [range]
+ * @deprecated Prefer filterAssignmentsByDateRange — kept for callers expecting a board list.
  */
-export function buildRefereeHomeSummary(assignments = [], now = new Date()) {
-  const board = selectRefereeHomeBoard(assignments, now).map((card) =>
+export function selectRefereeHomeBoard(assignments = [], rangeOrNow = new Date()) {
+  if (rangeOrNow instanceof Date) {
+    const day = localDayKey(rangeOrNow);
+    return filterAssignmentsByDateRange(assignments, {
+      fromDate: day,
+      toDate: day,
+      now: rangeOrNow,
+    });
+  }
+  return filterAssignmentsByDateRange(assignments, rangeOrNow || {});
+}
+
+function normalizeDayInput(value, fallbackKey) {
+  if (value == null || value === "") return fallbackKey;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return fallbackKey;
+    return localDayKey(value);
+  }
+  const raw = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return fallbackKey;
+  return localDayKey(parsed);
+}
+
+function formatDayLabelVi(dayKey) {
+  const [y, m, d] = String(dayKey).split("-");
+  if (!y || !m || !d) return dayKey;
+  return `${d}/${m}/${y}`;
+}
+
+/**
+ * @param {string} fromKey
+ * @param {string} toKey
+ * @param {string} todayKey
+ * @param {number} total
+ */
+export function buildHomeDateRangeHeadline(fromKey, toKey, todayKey, total) {
+  if (fromKey === toKey) {
+    if (fromKey === todayKey) return `Hôm nay: ${total} trận`;
+    return `Ngày ${formatDayLabelVi(fromKey)}: ${total} trận`;
+  }
+  return `${formatDayLabelVi(fromKey)} – ${formatDayLabelVi(toKey)}: ${total} trận`;
+}
+
+/**
+ * Empty-state copy for the selected date range (never falls back to historical).
+ * @param {{ fromDate: string, toDate: string, todayKey: string, userLabel?: string }} input
+ */
+export function buildHomeDateRangeEmptyMessage(input = {}) {
+  const fromKey = input.fromDate;
+  const toKey = input.toDate;
+  const todayKey = input.todayKey;
+  if (fromKey === toKey && fromKey === todayKey) {
+    return "Chưa có trận được phân công trong ngày hôm nay.";
+  }
+  if (fromKey === toKey) {
+    return `Chưa có trận được phân công trong ngày ${formatDayLabelVi(fromKey)}.`;
+  }
+  return `Chưa có trận được phân công trong khoảng ${formatDayLabelVi(fromKey)} – ${formatDayLabelVi(toKey)}.`;
+}
+
+/**
+ * @param {object[]} assignments
+ * @param {Date|{ fromDate?: string|Date|null, toDate?: string|Date|null, now?: Date }} [rangeOrNow]
+ */
+export function buildRefereeHomeSummary(assignments = [], rangeOrNow = new Date()) {
+  const now =
+    rangeOrNow instanceof Date
+      ? rangeOrNow
+      : rangeOrNow?.now instanceof Date
+        ? rangeOrNow.now
+        : new Date();
+  const todayKey = localDayKey(now);
+  const fromKey =
+    rangeOrNow instanceof Date
+      ? todayKey
+      : normalizeDayInput(rangeOrNow?.fromDate, todayKey);
+  const toKey =
+    rangeOrNow instanceof Date
+      ? todayKey
+      : normalizeDayInput(rangeOrNow?.toDate, fromKey);
+  const lo = fromKey <= toKey ? fromKey : toKey;
+  const hi = fromKey <= toKey ? toKey : fromKey;
+
+  const board = filterAssignmentsByDateRange(assignments, {
+    fromDate: lo,
+    toDate: hi,
+    now,
+  }).map((card) => normalizeRefereeHomeCard(card));
+
+  const undated = selectUndatedAssignments(assignments).map((card) =>
     normalizeRefereeHomeCard(card)
   );
 
@@ -116,8 +255,19 @@ export function buildRefereeHomeSummary(assignments = [], now = new Date()) {
 
   return Object.freeze({
     totalToday: board.length,
-    headline: `Hôm nay: ${board.length} trận`,
+    totalInRange: board.length,
+    fromDate: lo,
+    toDate: hi,
+    todayKey,
+    headline: buildHomeDateRangeHeadline(lo, hi, todayKey, board.length),
+    emptyMessage: buildHomeDateRangeEmptyMessage({
+      fromDate: lo,
+      toDate: hi,
+      todayKey,
+    }),
     board: Object.freeze(board),
+    undatedAssignments: Object.freeze(undated),
+    undatedCount: undated.length,
     counters: Object.freeze({
       upcoming,
       live,
@@ -157,19 +307,4 @@ export function filterAssignmentsByHomeStatus(assignments = [], filterId = HOME_
   const key = String(filterId || HOME_STATUS_FILTER.ALL).toUpperCase();
   if (key === HOME_STATUS_FILTER.ALL) return list;
   return list.filter((card) => resolveAssignmentHomeBucket(card) === key);
-}
-
-function localDayKey(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function isAssignmentForDay(card, dayKey) {
-  const raw = card?.scheduledTimeRaw;
-  if (raw == null || raw === "") return true;
-  const date = raw instanceof Date ? raw : new Date(raw);
-  if (Number.isNaN(date.getTime())) return true;
-  return localDayKey(date) === dayKey;
 }

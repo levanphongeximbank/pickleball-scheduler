@@ -15,6 +15,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SyncAltIcon from "@mui/icons-material/SyncAlt";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import CanonicalCourtView from "./CanonicalCourtView.jsx";
+import { deriveCourtPresentation } from "../projection/deriveCourtPresentation.js";
 
 function Banner({ kind, children, testId }) {
   return (
@@ -417,31 +418,32 @@ export default function RefereeMatchScreen({
   if (!view) return null;
 
   const court = view.courtProjection || {};
-  const score = view.currentScore?.points || {};
   const pending = Boolean(pendingAction);
   const db = court.dreambreaker;
-  const leftSide = court.sides?.left || {};
-  const rightSide = court.sides?.right || {};
-  const leftScoring = leftSide.scoringSide || "SIDE_A";
-  const rightScoring = rightSide.scoringSide || "SIDE_B";
-  const leftTeam =
-    leftSide.participant?.displayName ||
-    view.participantDisplay?.sideA?.label ||
-    "Đội A";
-  const rightTeam =
-    rightSide.participant?.displayName ||
-    view.participantDisplay?.sideB?.label ||
-    "Đội B";
-  const leftAthletes = (leftSide.activePlayers || [])
-    .map((p) => p.displayName)
-    .filter(Boolean);
-  const rightAthletes = (rightSide.activePlayers || [])
-    .map((p) => p.displayName)
-    .filter(Boolean);
-  const leftPlayersLine = leftAthletes.length ? leftAthletes.join(" / ") : null;
-  const rightPlayersLine = rightAthletes.length ? rightAthletes.join(" / ") : null;
+  // One shared orientation authority for scoreboard, court, and +Point buttons.
+  const presentation = deriveCourtPresentation(view);
+  const leftScoring = presentation.leftScoringSide;
+  const rightScoring = presentation.rightScoringSide;
+  const leftTeam = presentation.leftTeam;
+  const rightTeam = presentation.rightTeam;
+  const leftPlayersLine = presentation.leftParticipants.length
+    ? presentation.leftParticipants.join(" / ")
+    : null;
+  const rightPlayersLine = presentation.rightParticipants.length
+    ? presentation.rightParticipants.join(" / ")
+    : null;
   const leftName = leftTeam;
   const rightName = rightTeam;
+  const leftPointHandler =
+    leftScoring === "SIDE_B" ? onPointB : onPointA;
+  const rightPointHandler =
+    rightScoring === "SIDE_A" ? onPointA : onPointB;
+  const leftCanPoint =
+    leftScoring === "SIDE_B" ? view.canPointSideB : view.canPointSideA;
+  const rightCanPoint =
+    rightScoring === "SIDE_A" ? view.canPointSideA : view.canPointSideB;
+  const leftPendingKey = `point:${leftScoring}`;
+  const rightPendingKey = `point:${rightScoring}`;
   const changeEndsRequired = court.sideChangeRequired === true;
   const showManualChangeEnds = view.canChangeEnds === true && !changeEndsRequired;
   const changeEndAt =
@@ -449,8 +451,8 @@ export default function RefereeMatchScreen({
     view.rulesPanel?.changeEndAt ||
     view.gameSummary?.changeEndPolicy ||
     null;
-  const scoreA = Number(score[leftScoring] || 0);
-  const scoreB = Number(score[rightScoring] || 0);
+  const scoreA = presentation.leftScore;
+  const scoreB = presentation.rightScore;
   const statusLive =
     String(view.matchStatus || "").toUpperCase() === "IN_PROGRESS" ||
     /đang/i.test(String(view.matchStatusLabel || ""));
@@ -561,11 +563,18 @@ export default function RefereeMatchScreen({
         </Banner>
       ) : null}
 
-      <section className="rp-scoreboard" data-testid="scoreboard" aria-live="polite">
+      <section
+        className="rp-scoreboard"
+        data-testid="scoreboard"
+        data-orientation={presentation.courtOrientation}
+        data-left-scoring-side={leftScoring}
+        data-right-scoring-side={rightScoring}
+        aria-live="polite"
+      >
         <div className="rp-scoreboard-trio" data-testid="current-game-score">
           <div
             className={`rp-score-side${
-              court.serving?.servingSide === leftScoring ? " is-serving" : ""
+              presentation.servingSide === leftScoring ? " is-serving" : ""
             }`}
           >
             <GroupsIcon className="rp-score-side-icon" fontSize="small" aria-hidden="true" />
@@ -589,7 +598,7 @@ export default function RefereeMatchScreen({
           </div>
           <div
             className={`rp-score-side rp-score-side-right${
-              court.serving?.servingSide === rightScoring ? " is-serving" : ""
+              presentation.servingSide === rightScoring ? " is-serving" : ""
             }`}
           >
             <GroupsIcon className="rp-score-side-icon" fontSize="small" aria-hidden="true" />
@@ -746,30 +755,38 @@ export default function RefereeMatchScreen({
         <div className="rp-score-actions" data-testid="score-actions">
           {view.isSideOut ? (
             <>
-              {view.canPointSideA ? (
+              {leftCanPoint ? (
                 <button
                   type="button"
                   className="rp-btn rp-btn-a rp-actions-wide"
                   disabled={pending || stale}
-                  onClick={onPointA}
-                  data-testid="btn-point-a"
+                  onClick={leftPointHandler}
+                  data-testid={
+                    leftScoring === "SIDE_A" ? "btn-point-a" : "btn-point-b"
+                  }
+                  data-scoring-side={leftScoring}
+                  data-display-end="left"
                 >
                   {String(pendingAction || "").startsWith("point")
                     ? "Đang ghi…"
-                    : pointLabel(view.participantDisplay?.sideA?.label, "A")}
+                    : pointLabel(leftName, leftScoring === "SIDE_B" ? "B" : "A")}
                 </button>
               ) : null}
-              {view.canPointSideB ? (
+              {rightCanPoint ? (
                 <button
                   type="button"
                   className="rp-btn rp-btn-b rp-actions-wide"
                   disabled={pending || stale}
-                  onClick={onPointB}
-                  data-testid="btn-point-b"
+                  onClick={rightPointHandler}
+                  data-testid={
+                    rightScoring === "SIDE_B" ? "btn-point-b" : "btn-point-a"
+                  }
+                  data-scoring-side={rightScoring}
+                  data-display-end="right"
                 >
                   {String(pendingAction || "").startsWith("point")
                     ? "Đang ghi…"
-                    : pointLabel(view.participantDisplay?.sideB?.label, "B")}
+                    : pointLabel(rightName, rightScoring === "SIDE_A" ? "A" : "B")}
                 </button>
               ) : null}
               {view.canChangeServe ? (
@@ -789,24 +806,28 @@ export default function RefereeMatchScreen({
               <button
                 type="button"
                 className="rp-btn rp-btn-a"
-                disabled={pending || stale || view.canPointSideA === false}
-                onClick={onPointA}
-                data-testid="btn-point-a"
+                disabled={pending || stale || leftCanPoint === false}
+                onClick={leftPointHandler}
+                data-testid={leftScoring === "SIDE_A" ? "btn-point-a" : "btn-point-b"}
+                data-scoring-side={leftScoring}
+                data-display-end="left"
               >
-                {String(pendingAction || "") === "point:SIDE_A"
+                {String(pendingAction || "") === leftPendingKey
                   ? "Đang ghi…"
-                  : pointLabel(leftName, "A")}
+                  : pointLabel(leftName, leftScoring === "SIDE_B" ? "B" : "A")}
               </button>
               <button
                 type="button"
                 className="rp-btn rp-btn-b"
-                disabled={pending || stale || view.canPointSideB === false}
-                onClick={onPointB}
-                data-testid="btn-point-b"
+                disabled={pending || stale || rightCanPoint === false}
+                onClick={rightPointHandler}
+                data-testid={rightScoring === "SIDE_B" ? "btn-point-b" : "btn-point-a"}
+                data-scoring-side={rightScoring}
+                data-display-end="right"
               >
-                {String(pendingAction || "") === "point:SIDE_B"
+                {String(pendingAction || "") === rightPendingKey
                   ? "Đang ghi…"
-                  : pointLabel(rightName, "B")}
+                  : pointLabel(rightName, rightScoring === "SIDE_A" ? "A" : "B")}
               </button>
             </>
           )}

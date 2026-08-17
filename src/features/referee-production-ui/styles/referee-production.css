@@ -111,6 +111,33 @@
   margin-bottom: 10px;
 }
 
+.rp-home-date-range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.rp-home-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--rp-muted);
+}
+
+.rp-home-date-field input[type="date"] {
+  border: 1px solid var(--rp-line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--rp-ink);
+  background: #fff;
+  min-height: 40px;
+}
+
 .rp-home-summary-title {
   margin: 0 0 8px;
   font-size: 0.95rem;
