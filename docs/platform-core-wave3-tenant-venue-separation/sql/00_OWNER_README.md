@@ -14,22 +14,56 @@ RLS is a **second** gate (`04_RLS_PACKAGE.md`). Schema apply does not enable RLS
 
 ## Why SQL is required
 
-Staging evidence (read-only list_tables / column inventory):
-
-- `public.tenants` is a **VIEW** over venues (not a real tenant table)
-- `public.venues` has **no** `tenant_id` column
-- `public.profiles` has `venue_id` but **no** `tenant_id`
-- `public.court_clusters` already has both `venue_id` and `tenant_id` (good)
-- `public.clubs` has `tenant_id` (club is tenant-scoped)
-
 True durable Tenant → Venue 1:N cannot be stored without schema.
+
+Do **not** treat Staging schema as canonical merely because it already has
+`court_clusters.tenant_id`. Production precheck proved a second legitimate
+pre-Wave-3 shape.
+
+### Two legitimate pre-migration shapes
+
+Both must converge to the same post-apply state. Architecture is not forked
+by environment.
+
+| | Staging (historical) | Production (clean pre-Wave-3) |
+|---|---|---|
+| `platform_tenants` | absent | absent |
+| `venues.tenant_id` | absent | absent |
+| `profiles.tenant_id` | absent | absent |
+| `court_clusters.venue_id` | present (Phase 23 physical parent) | present (Phase 23 physical parent) |
+| `court_clusters.tenant_id` | **present** (Court Ops Batch 8, Staging cutover) | **absent** |
+
+`COURT_CLUSTERS_TENANT_ID_EXISTS=NO` on Production is **EXPECTED_PRE_SCHEMA**.
+`02_APPLY` creates the TEXT column; `03_BACKFILL` stamps it from the parent
+Venue; `05_VERIFY` proves the post-state. It is **not** resource-data
+corruption.
+
+Staging has the column because Court Operations Batch 8
+(`docs/v5/migrations/court-operations-legacy-isolation-01/`) added
+`court_clusters.tenant_id text NOT NULL` plus indexes, with **no** FK to
+`platform_tenants` (that table did not exist). Production never received
+Batch 8 / Batch 10. Phase 23 created `court_clusters` with `venue_id` only.
+
+Canonical hierarchy (both environments after Wave 3):
+
+```
+Tenant
+  ↓
+Venue          ← physical parent of Cluster
+  ↓
+Court Cluster  ← tenant_id is Tenant scope/projection, not physical parent
+  ↓
+Physical Court
+```
+
+Tenant ≠ Venue. Venue ≠ Cluster. Cluster ≠ Physical Court.
 
 ## Apply order (when authorized)
 
 1. `01_PRECHECK.sql` (read-only, including slug collision inventory)
 2. Snapshot / backup
 3. `02_APPLY_platform_tenants_and_venue_fk.sql`
-4. `03_BACKFILL.sql` (fails closed on slug collision / profile tenant orphans)
+4. `03_BACKFILL.sql` (fails closed on slug collision / profile tenant orphans / cluster tenant drift)
 5. `05_VERIFY.sql`
 6. **Stop.** Do not run `04_RLS_POLICIES.sql` unless `OWNER_RLS_DEPLOY_GO=YES`
 
@@ -52,7 +86,9 @@ Bootstrap 1:1:
 - For each `venues` row, create `platform_tenants` row with `id = venues.id` when missing
 - Set `venues.tenant_id = venues.id` where null
 - Set `profiles.tenant_id = venues.tenant_id` from home venue; NULL venue stays NULL
+- Set `court_clusters.tenant_id = parent venues.tenant_id` where null/blank (never invent Venue from Tenant; never use Cluster id as Tenant)
 - Add `profiles.tenant_id → platform_tenants(id)` FK (nullable, `ON DELETE SET NULL`)
+- Add `court_clusters.tenant_id` NOT NULL + FK → `platform_tenants(id)` + index `court_clusters_tenant_id_idx`
 
 After backfill, operators may create additional venues under an existing tenant (true 1:N).
 
@@ -78,3 +114,18 @@ Canonical after schema+RLS readable:
 ## Organization
 
 Do **not** create Organization tables or OrganizationContext.
+
+## Production backup gate (independent)
+
+Fixing this package so Production can be migrated does **not** make Production
+ready for APPLY.
+
+```
+RESOURCE_SCHEMA_PACKAGE_BLOCKER=REMEDIATED
+PRODUCTION_BACKUP_GATE=STILL_REQUIRED
+RESTORE_READINESS=UNKNOWN
+PRODUCTION_SQL_GO=NO
+```
+
+Owner must re-run Production PRECHECK and complete the backup gate before any
+SQL GO. This package does not create or attest a backup.

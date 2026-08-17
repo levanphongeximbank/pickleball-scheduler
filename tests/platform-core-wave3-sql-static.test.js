@@ -51,6 +51,8 @@ test("Wave3 SQL static: apply does not enable RLS or grant authenticated", () =>
   assert.match(apply, /REVOKE ALL ON TABLE public\.platform_tenants FROM authenticated/);
   assert.match(apply, /GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public\.platform_tenants TO service_role/);
   assert.match(apply, /CREATE TABLE IF NOT EXISTS public\.platform_tenants/);
+  assert.match(apply, /ADD COLUMN IF NOT EXISTS tenant_id text/);
+  assert.match(apply, /ALTER TABLE public\.court_clusters/);
 });
 
 test("Wave3 SQL static: backfill fail-closes slug collision and adds profiles FK", () => {
@@ -62,6 +64,9 @@ test("Wave3 SQL static: backfill fail-closes slug collision and adds profiles FK
   assert.match(backfill, /profiles_tenant_id_fkey/);
   assert.match(backfill, /WAVE3_PROFILE_TENANT_ORPHAN/);
   assert.match(backfill, /ON DELETE SET NULL/);
+  assert.match(backfill, /WAVE3_CLUSTER_TENANT_MISMATCH_PARENT_VENUE/);
+  assert.match(backfill, /court_clusters_tenant_id_fkey/);
+  assert.match(backfill, /court_clusters_tenant_id_idx/);
 });
 
 test("Wave3 SQL static: precheck inventories slug collisions without mutating", () => {
@@ -69,6 +74,8 @@ test("Wave3 SQL static: precheck inventories slug collisions without mutating", 
   assert.match(precheck, /does not mutate|READ-ONLY|read-only/i);
   assert.match(precheck, /normalized_tenant_slug|normalized tenant slug/);
   assert.match(precheck, /WAVE3_SLUG_COLLISION_EXISTING/);
+  assert.match(precheck, /ABSENT_EXPECTED_TO_BE_CREATED_BY_02/);
+  assert.match(precheck, /PRESENT_COMPATIBLE/);
   assert.doesNotMatch(precheck, /INSERT INTO/);
   assert.doesNotMatch(precheck, /UPDATE public\./);
   assert.doesNotMatch(precheck, /ALTER TABLE/);
@@ -82,6 +89,8 @@ test("Wave3 SQL static: verify covers slug, orphans, cardinality, cluster consis
   assert.match(verify, /tenants_with_zero_venues/);
   assert.match(verify, /profiles_tenant_home_venue_mismatch/);
   assert.match(verify, /clusters_tenant_mismatch_parent_venue/);
+  assert.match(verify, /COURT_CLUSTERS_TENANT_FK/);
+  assert.match(verify, /COURT_CLUSTERS_TENANT_INDEX/);
   assert.match(verify, /relrowsecurity/);
 });
 

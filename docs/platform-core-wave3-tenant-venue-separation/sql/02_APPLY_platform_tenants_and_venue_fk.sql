@@ -1,10 +1,18 @@
 -- Wave 3 Phase B — APPLY
 -- OWNER_SQL_GO_WAVE3_PHASE_B=YES required before execution.
--- Creates durable Tenant entity + Venue.tenant_id + profiles.tenant_id.
+-- Creates durable Tenant entity + Venue.tenant_id + profiles.tenant_id
+-- + court_clusters.tenant_id (idempotent; Production pre-Wave-3 lacks it).
 -- Does NOT implement Organization.
 -- Does NOT enable RLS (see 04_RLS_PACKAGE.md / 04_RLS_POLICIES.sql).
 -- Does NOT grant authenticated/anon access; browser bind stays compatibility
 -- until the RLS package is separately authorized.
+--
+-- Two legitimate pre-schema shapes this file must accept:
+--   STAGING:    court_clusters.tenant_id already exists (Court Ops Batch 8)
+--   PRODUCTION: court_clusters.tenant_id absent (Phase 23 venue_id only)
+-- Canonical type is TEXT (matches platform_tenants.id, venues.tenant_id,
+-- profiles.tenant_id, and Batch 8). ADD COLUMN IF NOT EXISTS is a no-op
+-- when the column is already present.
 
 BEGIN;
 
@@ -42,11 +50,20 @@ ALTER TABLE public.venues
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS tenant_id text;
 
+-- 4) Cluster Tenant scope/projection (nullable until 03_BACKFILL).
+-- Physical parent remains venue_id. Do not treat Tenant as Venue or Cluster as Venue.
+ALTER TABLE public.court_clusters
+  ADD COLUMN IF NOT EXISTS tenant_id text;
+
 COMMENT ON TABLE public.platform_tenants IS
   'Wave 3 durable Tenant identity. Distinct from Venue. Organization NOT_CONFIGURED. Canonical runtime authority after RLS GO.';
 COMMENT ON COLUMN public.venues.tenant_id IS
   'Parent Tenant id. Tenant → Venue = 1:N. Never invent Venue id from Tenant id.';
 COMMENT ON COLUMN public.profiles.tenant_id IS
   'Actor home Tenant. Distinct from profiles.venue_id (home Venue). NULL allowed for Super Admin / platform-scoped users.';
+COMMENT ON COLUMN public.court_clusters.tenant_id IS
+  'Tenant scope/projection for security and filtering. Not the physical parent. Physical parent remains court_clusters.venue_id (Venue). tenant_id must resolve from the parent Venue.tenant_id. Never infer Venue identity from Tenant identity. Tenant ≠ Venue; Venue ≠ Cluster; Cluster ≠ Physical Court.';
+COMMENT ON COLUMN public.court_clusters.venue_id IS
+  'Physical parent Venue. Cluster belongs to Venue, not to Tenant directly. Do not invent Venue id from Tenant id or Cluster id.';
 
 COMMIT;
