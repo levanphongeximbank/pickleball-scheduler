@@ -333,17 +333,21 @@ revoke all on function public.competition_assignment_remember_idempotency(
 ) from public, anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────────
--- Authz + actor + non-bypassable lifecycle (existing authorities only)
--- OPTION A: public authenticated RPC independently asserts:
---   canonical_tournament_assert_tenant (user_venue_id / is_super_admin)
---   tournament.bind (canonical_tournaments and/or team_tournament_resolve_header)
---   canonical_tournament_assert_permission('tournament.update')
---     OR team_tournament_can_manage() when Team header is bound
--- Actor is always auth.uid(); caller-supplied p_actor_id is rejected when
--- it does not equal the authenticated actor.
--- Lifecycle is derived from match_live_states / Team SSOT / Daily Play
--- payload / tournament status — never from trusted p_lifecycle_state.
--- Does NOT reproduce CORE-13 candidate/qualification/overlap planning.
+-- Trusted-server service_role persistence boundary
+--
+-- PROVEN CONFLICT: auth.uid() under service_role is not the originating
+-- user. JWT tenant/permission helpers (canonical_tournament_assert_tenant,
+-- canonical_tournament_assert_permission, team_tournament_can_manage)
+-- therefore cannot identify the end user here.
+--
+-- Trust model:
+--   * EXECUTE is revoked from public/anon/authenticated (no browser RPC).
+--   * Only service_role may execute (trusted Edge Function).
+--   * Originating actor is p_actor_id, set only after the Edge Function
+--     authenticates the user JWT on a user-scoped client.
+--   * Browser actor spoofing is impossible because browsers cannot EXECUTE.
+--   * SQL still binds tournament-in-tenant and derives lifecycle from
+--     authoritative rows (defense in depth). It is NOT a CORE-13 planner.
 -- ─────────────────────────────────────────────────────────────────
 create or replace function public.competition_assignment_assert_mutation_boundary(
   p_tenant_id text,
@@ -361,9 +365,9 @@ set search_path = public
 as $$
 declare
   v_actor uuid;
+  v_jwt_role text;
   v_canonical public.canonical_tournaments;
   v_header public.team_tournaments;
-  v_perm_ok boolean := false;
   v_live public.match_live_states;
   v_sm public.team_tournament_sub_matches;
   v_mu public.team_tournament_matchups;
@@ -373,15 +377,18 @@ declare
   v_daily jsonb;
   v_match jsonb;
 begin
-  v_actor := auth.uid();
-  if v_actor is null then
-    raise exception 'NOT_AUTHENTICATED';
+  v_jwt_role := coalesce(auth.role(), '');
+  if v_jwt_role is distinct from 'service_role' then
+    raise exception 'SERVICE_ROLE_REQUIRED'
+      using detail = 'competition_* assignment RPCs are trusted-server service_role only';
   end if;
 
-  if p_actor_id is not null and p_actor_id is distinct from v_actor then
-    raise exception 'ACTOR_SPOOFING_DENIED'
-      using detail = 'p_actor_id must equal auth.uid() or be omitted';
+  if p_actor_id is null then
+    raise exception 'ORIGINATING_ACTOR_REQUIRED'
+      using detail = 'trusted server must pass authenticated originating actor; auth.uid() is not the end user under service_role';
   end if;
+
+  v_actor := p_actor_id;
 
   if nullif(trim(coalesce(p_tenant_id, '')), '') is null
      or nullif(trim(coalesce(p_tournament_id, '')), '') is null
@@ -395,9 +402,8 @@ begin
     raise exception 'INVALID_INPUT' using detail = format('unsupported operation=%s', p_operation);
   end if;
 
-  -- Existing canonical tenant authority (JWT venue, not caller-invented tenant).
-  perform public.canonical_tournament_assert_tenant(p_tenant_id);
-
+  -- Tournament-in-tenant bind (data integrity). JWT permission is asserted
+  -- by the trusted server with the user-scoped client before this RPC.
   select * into v_canonical
   from public.canonical_tournaments ct
   where ct.tenant_id = p_tenant_id
@@ -410,37 +416,11 @@ begin
       raise exception 'CROSS_TENANT_DENIED'
         using detail = 'bound team tournament tenant does not match p_tenant_id';
     end if;
-    perform public.team_tournament_assert_tenant(v_header.tenant_id);
   end if;
 
   if v_canonical.id is null and v_header.id is null then
     raise exception 'CROSS_TOURNAMENT_DENIED'
       using detail = 'tournament is not bound in caller tenant';
-  end if;
-
-  -- Existing permission authorities only. Do not invent a private RBAC.
-  if v_canonical.id is not null then
-    begin
-      perform public.canonical_tournament_assert_permission('tournament.update');
-      v_perm_ok := true;
-    exception
-      when insufficient_privilege then
-        v_perm_ok := false;
-      when others then
-        if sqlerrm in ('TOURNAMENT_FORBIDDEN') then
-          v_perm_ok := false;
-        else
-          raise;
-        end if;
-    end;
-  end if;
-
-  if not v_perm_ok and v_header.id is not null and public.team_tournament_can_manage() then
-    v_perm_ok := true;
-  end if;
-
-  if not v_perm_ok then
-    perform public.canonical_tournament_assert_permission('tournament.update');
   end if;
 
   -- Tournament-level lifecycle (authoritative row, not caller claim).
@@ -583,7 +563,10 @@ begin
     'tournamentId', p_tournament_id,
     'matchId', v_mid,
     'canonicalBound', (v_canonical.id is not null),
-    'teamBound', (v_header.id is not null)
+    'teamBound', (v_header.id is not null),
+    'trustedServerDelegation', true,
+    'jwtRole', v_jwt_role,
+    'authUid', auth.uid()
   );
 end;
 $$;
@@ -659,7 +642,9 @@ begin
     'role', v_role,
     'expectedVersion', p_expected_version,
     'lifecycleState', v_boundary->>'lifecycleState',
-    'commandMetadata', coalesce(p_command_metadata, '{}'::jsonb)
+    'commandMetadata', coalesce(p_command_metadata, '{}'::jsonb),
+    'originatingActorId', v_actor,
+    'trustedServerBoundary', 'competition-referee-assignment'
   );
   v_hash := public.competition_assignment_payload_hash(v_payload);
 
@@ -782,10 +767,7 @@ $$;
 
 revoke all on function public.competition_assign_referee(
   text, text, text, uuid, text, integer, text, uuid, text, text, jsonb
-) from public, anon;
-grant execute on function public.competition_assign_referee(
-  text, text, text, uuid, text, integer, text, uuid, text, text, jsonb
-) to authenticated;
+) from public, anon, authenticated;
 grant execute on function public.competition_assign_referee(
   text, text, text, uuid, text, integer, text, uuid, text, text, jsonb
 ) to service_role;
@@ -860,7 +842,9 @@ begin
     'expectedVersion', p_expected_version,
     'emergencyReplacement', coalesce(p_emergency_replacement, false),
     'lifecycleState', v_boundary->>'lifecycleState',
-    'commandMetadata', coalesce(p_command_metadata, '{}'::jsonb)
+    'commandMetadata', coalesce(p_command_metadata, '{}'::jsonb),
+    'originatingActorId', v_actor,
+    'trustedServerBoundary', 'competition-referee-assignment'
   );
   v_hash := public.competition_assignment_payload_hash(v_payload);
 
@@ -997,10 +981,7 @@ $$;
 
 revoke all on function public.competition_replace_referee(
   text, text, text, uuid, text, integer, text, uuid, text, text, boolean, jsonb
-) from public, anon;
-grant execute on function public.competition_replace_referee(
-  text, text, text, uuid, text, integer, text, uuid, text, text, boolean, jsonb
-) to authenticated;
+) from public, anon, authenticated;
 grant execute on function public.competition_replace_referee(
   text, text, text, uuid, text, integer, text, uuid, text, text, boolean, jsonb
 ) to service_role;
@@ -1066,7 +1047,9 @@ begin
     'role', v_role,
     'expectedVersion', p_expected_version,
     'lifecycleState', v_boundary->>'lifecycleState',
-    'commandMetadata', coalesce(p_command_metadata, '{}'::jsonb)
+    'commandMetadata', coalesce(p_command_metadata, '{}'::jsonb),
+    'originatingActorId', v_actor,
+    'trustedServerBoundary', 'competition-referee-assignment'
   );
   v_hash := public.competition_assignment_payload_hash(v_payload);
 
@@ -1154,10 +1137,7 @@ $$;
 
 revoke all on function public.competition_unassign_referee(
   text, text, text, text, integer, text, uuid, text, text, jsonb
-) from public, anon;
-grant execute on function public.competition_unassign_referee(
-  text, text, text, text, integer, text, uuid, text, text, jsonb
-) to authenticated;
+) from public, anon, authenticated;
 grant execute on function public.competition_unassign_referee(
   text, text, text, text, integer, text, uuid, text, text, jsonb
 ) to service_role;

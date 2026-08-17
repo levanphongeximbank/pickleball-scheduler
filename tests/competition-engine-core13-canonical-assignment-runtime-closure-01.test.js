@@ -40,13 +40,13 @@ const PACKAGE_LF_SHA256 = Object.freeze({
   "01_PRECHECK.sql":
     "1faa3140ab5b97c0e5e40b3c0425eb67d7d796639db55f286c8716271e66b7e5",
   "02_APPLY.sql":
-    "a4d534c540aed036969e6dd696aab52d122b8fad1344b44fda79500b7015b87f",
+    "566fb2fc0199c01dbef666de71ccf7a9c2f0bc4277ddfb1cd9513c37e9ffca84",
   "03_VERIFY.sql":
-    "fc93c49fa779c1ec5424923503656ee4d1c87aa4e65ad4f04f41fbf9fe795bdf",
+    "2e1c1437b7b0cc90bc946628b74f5338f9cd7578e67a45536a0f5f89705677d9",
   "04_ROLLBACK.sql":
     "6a6274ebbfc8e64456a8079e77871404d78c9bf1bb3f9652e808c52bdf76c1af",
   "05_STAGING_SQL_ACCEPTANCE.sql":
-    "99464f540ae349407d99274114d03b98eb19f4d152881b84b5a7a6add40abc4f",
+    "661504f517e8bf4cda1988caa551bb56d317247e2628dadcf4dbfcd224cfee48",
 });
 
 function sha256Lf(name) {
@@ -93,6 +93,9 @@ test("runtime lock constants", () => {
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.contract08Changed, false);
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.seedAssignmentsBypass, false);
   assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.inMemoryProductionFallback, false);
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.authoritativeExecutionLocation, "TRUSTED_SERVER");
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.authenticatedDirectRpcExecute, "DENY");
+  assert.equal(CORE13_CANONICAL_ASSIGNMENT_RUNTIME.interimBlobAuthorityPostCutover, false);
 });
 
 test("authority: assign calls CORE-13 and persists", async () => {
@@ -548,7 +551,9 @@ test("architecture guards: SQL package authored; Contract #08 untouched", () => 
     path.join(ROOT, "src/components/tournament/RefereeAssignPanel.jsx"),
     "utf8"
   );
-  assert.match(panel, /createCompetitionRefereeAssignmentCommandService/);
+  assert.match(panel, /createCompetitionRefereeAssignmentTrustedClient/);
+  assert.doesNotMatch(panel, /createBlobCanonicalAssignmentPersistence/);
+  assert.doesNotMatch(panel, /createCompetitionRefereeAssignmentCommandService/);
   assert.doesNotMatch(panel, /assignRefereeToIndividualMatch/);
 
   const teamPanel = readFileSync(
@@ -557,6 +562,7 @@ test("architecture guards: SQL package authored; Contract #08 untouched", () => 
   );
   assert.match(teamPanel, /assignTeamRefereeViaCore13/);
   assert.doesNotMatch(teamPanel, /planRefereeAssignment/);
+  assert.doesNotMatch(teamPanel, /rpcTeamTournamentRevokeRefereeAssignment/);
 });
 
 test("architecture guard: no product UI import of neutralized writers as authority", () => {
@@ -610,9 +616,10 @@ test("SQL security: actor spoofing closed; audit not globally readable", () => {
   const acceptance = readSql("05_STAGING_SQL_ACCEPTANCE.sql");
 
   assert.doesNotMatch(apply, /coalesce\s*\(\s*p_actor_id\s*,\s*auth\.uid\s*\(\s*\)\s*\)/i);
-  assert.match(apply, /ACTOR_SPOOFING_DENIED/);
-  assert.match(apply, /p_actor_id is not null and p_actor_id is distinct from v_actor/);
-  assert.match(apply, /v_actor := auth\.uid\(\)/);
+  assert.match(apply, /SERVICE_ROLE_REQUIRED/);
+  assert.match(apply, /ORIGINATING_ACTOR_REQUIRED/);
+  assert.match(apply, /v_actor := p_actor_id/);
+  assert.doesNotMatch(apply, /v_actor := auth\.uid\(\)/);
 
   assert.doesNotMatch(
     apply,
@@ -634,7 +641,8 @@ test("SQL security: actor spoofing closed; audit not globally readable", () => {
 
   assert.match(verify, /anon\.execute/);
   assert.match(verify, /grant\.audit\.select\.authenticated/);
-  assert.match(verify, /actor\.spoof/);
+  assert.match(verify, /authenticated\.execute\./);
+  assert.match(verify, /service_role\.execute\.missing/);
   assert.match(verify, /search_path=public/);
   assert.match(verify, /has_function_privilege\('anon'/);
 
@@ -657,8 +665,8 @@ test("SQL security: direct RPC cannot bypass canonical tenant/tournament authz",
     "create or replace function public.competition_assignment_assert_mutation_boundary"
   )[1].split("create or replace function")[0];
 
-  assert.match(boundary, /canonical_tournament_assert_tenant/);
-  assert.match(boundary, /canonical_tournament_assert_permission\('tournament\.update'\)/);
+  assert.match(boundary, /SERVICE_ROLE_REQUIRED/);
+  assert.match(boundary, /ORIGINATING_ACTOR_REQUIRED/);
   assert.match(boundary, /team_tournament_resolve_header/);
   assert.match(boundary, /CROSS_TOURNAMENT_DENIED/);
   assert.match(boundary, /CROSS_TENANT_DENIED/);
@@ -674,8 +682,9 @@ test("SQL security: direct RPC cannot bypass canonical tenant/tournament authz",
       /competition_assignment_assert_mutation_boundary/,
       `${name} must call SQL authz boundary`
     );
-    assert.match(body, /grant execute[\s\S]*to authenticated/i, name);
-    assert.match(body, /revoke all[\s\S]*from public, anon/i, name);
+    assert.match(body, /grant execute[\s\S]*to service_role/i, name);
+    assert.match(body, /revoke all[\s\S]*from public, anon, authenticated/i, name);
+    assert.doesNotMatch(body, /grant execute[\s\S]*to authenticated/i, name);
     assert.doesNotMatch(body, /grant execute[\s\S]*to anon/i, name);
   }
 

@@ -5,8 +5,9 @@
  * Authority rows live under settings.core13RefereeAssignments (versioned).
  * Legacy settings.refereeAssignments is projection-only when synced by callers.
  *
- * Classification: DURABLE relative to the tournament document (not TEST_DOUBLE).
- * Prefer SQL RPC persistence once executed.
+ * Classification: INTERIM blob projection only. Not product assignment authority
+ * after trusted-server cutover. Prefer createRpcCanonicalAssignmentPersistence
+ * on the Competition Edge Function.
  */
 
 import {

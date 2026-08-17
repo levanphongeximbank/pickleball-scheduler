@@ -61,6 +61,7 @@ export {
   DURABLE_ASSIGNMENT_PERSISTENCE_CLASSIFICATION,
   TEST_DOUBLE_ASSIGNMENT_PERSISTENCE_CLASSIFICATION,
   CORE13_CANONICAL_ASSIGNMENT_RUNTIME,
+  COMPETITION_REFEREE_ASSIGNMENT_EDGE_FUNCTION,
   CompetitionRefereeAssignmentCommandError,
   isCompetitionRefereeAssignmentCommandError,
   normalizeAssignmentLifecycleState,
@@ -70,7 +71,9 @@ export {
   assertAssignmentCommandAuthz,
   createInMemoryCanonicalAssignmentPersistence,
   createBlobCanonicalAssignmentPersistence,
+  createRpcCanonicalAssignmentPersistence,
   createCompetitionRefereeAssignmentCommandService,
+  createCompetitionRefereeAssignmentTrustedClient,
   createModeAssignmentCommandBridge,
   LEGACY_ASSIGNMENT_WRITER_STATUS,
 } from "./assignment/index.js";

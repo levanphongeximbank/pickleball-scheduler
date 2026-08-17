@@ -1,7 +1,8 @@
 # CORE-13 — Canonical Assignment Runtime Closure
 
-**Status:** SQL authored + security-hardened · **not executed** (`SQL_DESIGN_AND_MIGRATION_AUTHORING_GO=YES`, `SQL_EXECUTION_GO=NO`)  
+**Status:** Trusted-server execution boundary authored · SQL **not executed** · Edge Function **not deployed**  
 **Package:** `docs/v5/migrations/core13-canonical-assignment-runtime-closure-01/`  
+**Edge:** `supabase/functions/competition-referee-assignment/`  
 **Date:** 2026-08-17
 
 ---
@@ -10,54 +11,74 @@
 
 | Concern | Owner |
 |---------|-------|
-| Assignment **decisions** (eligibility, validation, replace policy, lifecycle gate shapes) | **CORE-13** |
-| Shared command orchestration (authz → CORE-13 → CAS command → persist) | Competition Operations (`createCompetitionRefereeAssignmentCommandService`) |
-| Durable assignment rows | `public.referee_assignments` (additive reuse; no parallel table) |
-| Durable Competition assignment **audit** + **idempotency** | This package (`competition_referee_assignment_*`) |
-| Generic competition audit adapter | **Adapter #16** (`competition.audit.adapter.v1`) — **NOT modified** |
-| Staging/Production apply | Owner GO only (refused without GO) |
+| Assignment **decisions** | **CORE-13** (same runtime on trusted server) |
+| Authoritative execution | Competition Edge Function `competition-referee-assignment` |
+| Shared command orchestration | `createCompetitionRefereeAssignmentCommandService` |
+| Durable assignment rows | `public.referee_assignments` |
+| Durable audit + idempotency | This SQL package |
+| Persistence adapter | `createRpcCanonicalAssignmentPersistence` (translation only) |
+| Generic competition audit adapter | **Adapter #16** — **NOT modified** |
+| Contract #08 / Adapter B | Unchanged; server consumes canonical Referee evidence |
 
-CORE-13 remains decision authority. Persistence RPCs execute validated commands only; they do not become a second business authority.
+CORE-13 remains decision authority. SQL persistence RPCs execute validated commands only.
 
-SQL mutation RPCs independently assert existing canonical tenant/permission authorities (`canonical_tournament_assert_tenant`, `canonical_tournament_assert_permission('tournament.update')`, Team bind via `team_tournament_resolve_header` / `team_tournament_can_manage`). Direct RPC callers cannot bypass that boundary via the JS command layer. Actor provenance is `auth.uid()` only. Assignment audit is not directly readable by `authenticated`.
-
----
-
-## Runtime closure
-
-Product callers must use:
-
-1. Shared Competition assignment command service, and/or
-2. SECURITY DEFINER RPCs:
-   - `competition_assign_referee`
-   - `competition_replace_referee` (atomic revoke + insert)
-   - `competition_unassign_referee` (status=`revoked`; history retained)
-
-`team_tournament_create_referee_assignment` may remain as Team Tournament **transport compatibility**, but must **not** remain Competition assignment business authority.
+Browser CORE-13 is **pre-validation only**. Client-side CORE-13 is **not** authoritative execution proof.
 
 ---
 
-## SQL package contents
+## Target topology
 
-| File | Role |
-|------|------|
-| `01_PRECHECK.sql` | Refuse if `referee_assignments` **or** canonical tenant/permission helpers missing |
-| `02_APPLY.sql` | Audit + idempotency tables; competition_* RPCs; SQL authz boundary; additive index/version |
-| `03_VERIFY.sql` | Objects + grants + RLS + actor spoofing + search_path + CAS/idempotency |
-| `04_ROLLBACK.sql` | Drop new RPCs/tables if empty; **never** drop `referee_assignments` |
-| `05_STAGING_SQL_ACCEPTANCE.sql` | Later Owner GO only; currently fails closed |
+```
+Browser / Competition Experience
+        ↓
+authenticated Competition assignment server endpoint
+        ↓
+canonical actor / tenant / tournament authz
+        ↓
+SERVER-SIDE CORE-13 (same source, esbuild bundle)
+        ↓
+shared assignment command
+        ↓
+service-role persistence adapter
+        ↓
+competition_* SQL RPC
+        ↓
+referee_assignments + audit + idempotency
+```
 
-Constraints honored: additive evolution, no business DML, no Staging row copy, LOCAL PACKAGE ONLY headers.
+## Actor provenance
 
----
+`auth.uid()` under `service_role` is not the originating user (proven conflict).
 
-## Adapter #16 boundary
+The Edge Function authenticates the user JWT on a user-scoped client and sets
+`p_actor_id` from `auth.getUser().id`. Browser `actorId` is stripped.
 
-Adapter #16 is the locked generic audit contract (`appendAuditRecord` / `queryAuditEvidence`).  
-This closure adds **Competition-owned durable assignment audit tables** for CORE-13 runtime evidence. It does **not** change Adapter #16 contracts, bindings, or forbidden methods.
+This is trustworthy because:
 
----
+- `authenticated` / `anon` / `PUBLIC` cannot EXECUTE the mutation RPCs
+- only the trusted server holds the service-role key
+- the service-role key is not in the Vite browser bundle
+
+## RPC grants
+
+| Grantee | EXECUTE |
+|---------|---------|
+| anon | DENY |
+| PUBLIC | DENY |
+| authenticated | DENY |
+| service_role | ALLOW |
+
+## Product write path (post-cutover)
+
+| Mode | Authoritative mutation |
+|------|------------------------|
+| Internal | `competition-referee-assignment` |
+| Official/Open | `competition-referee-assignment` |
+| Team | `competition-referee-assignment` (Team RPC compatibility remains, not authority) |
+| Daily Play (referee enabled) | `competition-referee-assignment` |
+
+Interim blob assignment is **projection-only**, not authority.
 
 ## Execution gate
 
-Do **not** apply to Staging or Production until Owner GO. Authoring this package does not imply runtime enablement.
+Do **not** apply SQL or deploy the Edge Function until Owner GO.

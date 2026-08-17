@@ -145,8 +145,11 @@ begin
     if has_function_privilege('public', v_fn, 'EXECUTE') then
       v_fail := array_append(v_fail, format('public.execute.%s', v_fn));
     end if;
-    if not has_function_privilege('authenticated', v_fn, 'EXECUTE') then
-      v_fail := array_append(v_fail, format('authenticated.execute.missing.%s', v_fn));
+    if has_function_privilege('authenticated', v_fn, 'EXECUTE') then
+      v_fail := array_append(v_fail, format('authenticated.execute.%s', v_fn));
+    end if;
+    if not has_function_privilege('service_role', v_fn, 'EXECUTE') then
+      v_fail := array_append(v_fail, format('service_role.execute.missing.%s', v_fn));
     end if;
 
     v_def := pg_get_functiondef(v_fn::regprocedure);
@@ -167,14 +170,14 @@ begin
   end loop;
 
   v_def := pg_get_functiondef(v_boundary::regprocedure);
-  if position('canonical_tournament_assert_tenant' in v_def) = 0 then
-    v_fail := array_append(v_fail, 'boundary.missing.canonical_tournament_assert_tenant');
+  if position('SERVICE_ROLE_REQUIRED' in v_def) = 0 then
+    v_fail := array_append(v_fail, 'boundary.missing.SERVICE_ROLE_REQUIRED');
   end if;
-  if position('canonical_tournament_assert_permission' in v_def) = 0 then
-    v_fail := array_append(v_fail, 'boundary.missing.canonical_tournament_assert_permission');
+  if position('ORIGINATING_ACTOR_REQUIRED' in v_def) = 0 then
+    v_fail := array_append(v_fail, 'boundary.missing.ORIGINATING_ACTOR_REQUIRED');
   end if;
-  if position('ACTOR_SPOOFING_DENIED' in v_def) = 0 then
-    v_fail := array_append(v_fail, 'boundary.missing.ACTOR_SPOOFING_DENIED');
+  if position('canonical_tournaments' in v_def) = 0 then
+    v_fail := array_append(v_fail, 'boundary.missing.canonical_tournaments_bind');
   end if;
   if position('CROSS_TOURNAMENT_DENIED' in v_def) = 0 then
     v_fail := array_append(v_fail, 'boundary.missing.CROSS_TOURNAMENT_DENIED');
@@ -184,6 +187,9 @@ begin
   end if;
   if v_def ilike '%p_lifecycle_state%' then
     v_fail := array_append(v_fail, 'boundary.trusts.p_lifecycle_state');
+  end if;
+  if v_def ilike '%v_actor := auth.uid()%' then
+    v_fail := array_append(v_fail, 'boundary.actor.from.auth_uid');
   end if;
 
   foreach v_helper in array v_helpers loop
@@ -258,6 +264,22 @@ select
   'anon_assign_execute_denied',
   (not has_function_privilege(
     'anon',
+    'public.competition_assign_referee(text,text,text,uuid,text,integer,text,uuid,text,text,jsonb)',
+    'EXECUTE'
+  ))
+union all
+select
+  'authenticated_assign_execute_denied',
+  (not has_function_privilege(
+    'authenticated',
+    'public.competition_assign_referee(text,text,text,uuid,text,integer,text,uuid,text,text,jsonb)',
+    'EXECUTE'
+  ))
+union all
+select
+  'service_role_assign_execute_allowed',
+  (has_function_privilege(
+    'service_role',
     'public.competition_assign_referee(text,text,text,uuid,text,integer,text,uuid,text,text,jsonb)',
     'EXECUTE'
   ));

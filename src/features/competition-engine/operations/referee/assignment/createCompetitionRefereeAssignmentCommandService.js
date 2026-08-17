@@ -704,6 +704,7 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
     getActiveAssignment: (scope) => persistence.getActiveAssignment(scope),
     getMatchAssignmentVersion: (scope) =>
       persistence.getMatchAssignmentVersion(scope),
+    listActiveAssignments: (scope) => persistence.listActiveAssignments(scope),
     listAudit: (scope) => persistence.listAudit?.(scope),
   });
 }

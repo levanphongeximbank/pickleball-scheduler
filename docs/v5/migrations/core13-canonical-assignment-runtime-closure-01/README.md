@@ -15,37 +15,59 @@ assign / replace / unassign that:
 - enforces CAS (`expected_version`) + idempotency
 - records Competition-owned durable audit evidence
 - keeps replace **atomic** (revoke old + insert new in one RPC transaction)
-- **independently asserts** tenant/tournament/actor/lifecycle on the SQL boundary
-  so a direct RPC caller cannot bypass the JS shared command
+- is **not** directly executable by browser `authenticated` / `anon` / `PUBLIC`
+
+SQL persistence is **not** a second CORE-13 planner. Direct authenticated RPC
+execution is an architectural bypass of ONE DECISION = ONE AUTHORITY.
 
 ## Canonical model
 
 | Layer | Owns |
 |-------|------|
-| **CORE-13** | Eligibility / validation / replacement / lifecycle **decisions** |
-| **Shared command service** (`createCompetitionRefereeAssignmentCommandService`) | Authz + CORE-13 call + CAS command shaping |
-| **This SQL package** | Durable persist into `referee_assignments` + audit + idempotency RPCs; **fail-closed SQL authz** |
+| **CORE-13 (trusted server)** | Eligibility / validation / replacement / lifecycle **decisions** |
+| **Trusted Edge Function** (`competition-referee-assignment`) | Authenticate JWT, canonical tenant/tournament authz, run CORE-13, pass originating actor |
+| **Shared command service** (`createCompetitionRefereeAssignmentCommandService`) | Authz + CORE-13 call + CAS command shaping (server bundle) |
+| **This SQL package** | Durable persist into `referee_assignments` + audit + idempotency RPCs; service_role-only EXECUTE; tournament-bind + lifecycle defense in depth |
 | **Adapter #16 (`competition.audit.adapter.v1`)** | Generic competition audit adapter — **NOT modified** by this package |
 
-Product callers must use `competition_assign_referee` /
+Product callers must invoke the Competition assignment Edge Function. The Edge
+Function (service-role) then calls `competition_assign_referee` /
 `competition_replace_referee` /
-`competition_unassign_referee` (via the shared command service).
+`competition_unassign_referee`.
 
 `team_tournament_create_referee_assignment` may remain as **transport compatibility** for
 Team Tournament UI paths, but it is **not** Competition assignment business authority.
 
-## Security architecture (Option A)
+## Security architecture (trusted server)
 
-Authenticated clients may EXECUTE the three mutation RPCs. That is safe only because
-each RPC calls internal `competition_assignment_assert_mutation_boundary`, which:
+Mutation RPCs are **service_role EXECUTE only**.
 
-1. Requires `auth.uid()`
-2. Rejects `p_actor_id` when it is distinct from `auth.uid()` (`ACTOR_SPOOFING_DENIED`)
-3. Calls existing `canonical_tournament_assert_tenant(p_tenant_id)` (`user_venue_id()` / `is_super_admin()`)
-4. Binds `p_tournament_id` to `canonical_tournaments` (tenant-scoped id or `external_key`) and/or `team_tournament_resolve_header`; unbound → `CROSS_TOURNAMENT_DENIED`
-5. Asserts existing `canonical_tournament_assert_permission('tournament.update')` or, when a Team header is bound, `team_tournament_can_manage()`
-6. Derives lifecycle from `match_live_states` / Team match SSOT / Daily Play payload / tournament status — **never trusts `p_lifecycle_state`**
-7. Enforces Owner hard gates: COMPLETED/LOCKED deny all; IN_PROGRESS new assign deny; IN_PROGRESS unassign deny; SCORING_ACTIVE replace requires `p_emergency_replacement`
+| Grantee | `competition_assign/replace/unassign_referee` |
+|---------|-----------------------------------------------|
+| `anon` | DENY |
+| `PUBLIC` | DENY |
+| `authenticated` | DENY |
+| `service_role` | ALLOW |
+
+Why delegated `p_actor_id` is trustworthy:
+
+1. Ordinary browser JWTs cannot EXECUTE the RPC (grant deny).
+2. Only the trusted Edge Function holds the service-role key (never in the Vite bundle).
+3. The Edge Function authenticates the user JWT on a **user-scoped** client and sets
+   `p_actor_id` from `auth.getUser().id` — never from `body.actorId`.
+4. `auth.uid()` under service_role is not the originating user (proven conflict with
+   JWT tenant/permission helpers). SQL therefore records `p_actor_id` as the durable
+   actor and stores server-delegation metadata on the audit payload.
+5. Canonical tenant / `tournament.update` / Team manage checks run on the Edge
+   Function with the user-scoped client (`canonical_tournament_assert_tenant`,
+   `canonical_tournament_assert_permission`, `team_tournament_can_manage`).
+
+SQL defense in depth (not a planner):
+
+- `SERVICE_ROLE_REQUIRED` + `ORIGINATING_ACTOR_REQUIRED`
+- tournament-in-tenant bind (`canonical_tournaments` / `team_tournament_resolve_header`)
+- lifecycle from `match_live_states` / Team SSOT / Daily Play payload — **never** `p_lifecycle_state`
+- Owner hard gates: COMPLETED/LOCKED deny all; IN_PROGRESS new assign deny; IN_PROGRESS unassign deny; SCORING_ACTIVE replace requires `p_emergency_replacement`
 
 Does **not** invent a private RBAC catalog. Does **not** reproduce CORE-13 candidate selection.
 
@@ -60,7 +82,7 @@ Does **not** invent a private RBAC catalog. Does **not** reproduce CORE-13 candi
 - `public.competition_referee_assignment_audit` (no client SELECT)
 - `public.competition_referee_assignment_idempotency` (no client SELECT)
 
-**RPCs (SECURITY DEFINER · search_path=public · execute → authenticated + service_role · revoke public/anon)**
+**RPCs (SECURITY DEFINER · search_path=public · execute → service_role only · revoke public/anon/authenticated)**
 
 - `public.competition_assign_referee(...)`
 - `public.competition_replace_referee(...)`
@@ -80,7 +102,9 @@ Does **not** invent a private RBAC catalog. Does **not** reproduce CORE-13 candi
 1. `01_PRECHECK.sql` (fails closed if canonical tenant/permission helpers missing)
 2. `02_APPLY.sql` **once**
 3. `03_VERIFY.sql` (objects + grants + actor + authz + search_path)
-4. `05_STAGING_SQL_ACCEPTANCE.sql` **only after** later Owner GO (currently refuses)
+4. Staging acceptance harness `scripts/core13/core13-trusted-server-staging-acceptance.mjs`
+   **only after** later Owner GO (`CORE13_STAGING_ACCEPTANCE_GO=YES` plus Staging flags).
+   `05_STAGING_SQL_ACCEPTANCE.sql` remains a fail-closed pointer.
 5. `04_ROLLBACK.sql` emergency only (drops new RPCs/tables if empty; never `referee_assignments`)
 
 ## Safety
@@ -91,19 +115,25 @@ Does **not** invent a private RBAC catalog. Does **not** reproduce CORE-13 candi
 - `ANON_TABLE_WRITE=DENY`
 - `ANON_REFEREE_RPC_EXECUTE=DENY`
 - `PUBLIC_REFEREE_RPC_EXECUTE=DENY`
+- `AUTHENTICATED_REFEREE_RPC_EXECUTE=DENY`
+- `SERVICE_ROLE_REFEREE_RPC_EXECUTE=ALLOW`
 - `AUDIT_TABLE_DIRECT_AUTHENTICATED_READ=DENY`
 - `SQL_EXECUTION_GO=NO` until Owner GO
+- `EDGE_FUNCTION_DEPLOY_GO=NO` until Owner GO
 - `STAGING_SQL_ACCEPTANCE_TEST_NOT_RUN_REQUIRES_OWNER_GO=YES`
 
 ## Package LF SHA256 lock
 
+Checksums are asserted by `tests/competition-engine-core13-canonical-assignment-runtime-closure-01.test.js`
+and must match this table after each authoring change.
+
 | File | SHA256 |
 |------|--------|
 | `01_PRECHECK.sql` | `1faa3140ab5b97c0e5e40b3c0425eb67d7d796639db55f286c8716271e66b7e5` |
-| `02_APPLY.sql` | `a4d534c540aed036969e6dd696aab52d122b8fad1344b44fda79500b7015b87f` |
-| `03_VERIFY.sql` | `fc93c49fa779c1ec5424923503656ee4d1c87aa4e65ad4f04f41fbf9fe795bdf` |
+| `02_APPLY.sql` | `566fb2fc0199c01dbef666de71ccf7a9c2f0bc4277ddfb1cd9513c37e9ffca84` |
+| `03_VERIFY.sql` | `2e1c1437b7b0cc90bc946628b74f5338f9cd7578e67a45536a0f5f89705677d9` |
 | `04_ROLLBACK.sql` | `6a6274ebbfc8e64456a8079e77871404d78c9bf1bb3f9652e808c52bdf76c1af` |
-| `05_STAGING_SQL_ACCEPTANCE.sql` | `99464f540ae349407d99274114d03b98eb19f4d152881b84b5a7a6add40abc4f` |
+| `05_STAGING_SQL_ACCEPTANCE.sql` | `661504f517e8bf4cda1988caa551bb56d317247e2628dadcf4dbfcd224cfee48` |
 
 ## Related docs
 

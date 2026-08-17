@@ -3,109 +3,46 @@
 -- Package: core13-canonical-assignment-runtime-closure-01
 --
 -- STAGING_SQL_ACCEPTANCE_TEST_NOT_RUN_REQUIRES_OWNER_GO=YES
--- SQL_EXECUTION_GO=NO · STAGING_MUTATION_GO=NO
+-- SQL_EXECUTION_GO=NO · STAGING_MUTATION_GO=NO · EDGE_FUNCTION_DEPLOY_GO=NO
 --
--- Do NOT run this file now. Accidental execution fails closed.
--- After later Owner GO (SQL_EXECUTION_GO + STAGING_MUTATION_GO):
---   1. Apply 01_PRECHECK → 02_APPLY → 03_VERIFY
---   2. Remove or comment the GUARD block below
---   3. Run the catalog probes (read-only)
---   4. Run the fixture mutation probes on a dedicated non-prod tenant
+-- This file is intentionally fail-closed. Catalog-only SQL cannot exercise:
+--   Edge Function JWT auth, actor provenance, CORE-13 rejection, or
+--   authenticated direct-RPC denial against a live endpoint.
+--
+-- Executable harness (do NOT run now):
+--   scripts/core13/core13-trusted-server-staging-acceptance.mjs
+-- Requires explicit non-production flags; refuses Production URLs.
 -- ═══════════════════════════════════════════════════════════════════
 
 do $$
 begin
   raise exception
-    'STAGING_SQL_ACCEPTANCE_TEST_NOT_RUN_REQUIRES_OWNER_GO — refuse until Owner GO';
+    'STAGING_SQL_ACCEPTANCE_TEST_NOT_RUN_REQUIRES_OWNER_GO — refuse until Owner GO; use scripts/core13/core13-trusted-server-staging-acceptance.mjs';
 end;
 $$;
 
 -- ─────────────────────────────────────────────────────────────────
--- Later Owner GO — read-only catalog probes (safe after APPLY)
+-- Later Owner GO — catalog probes (also covered by 03_VERIFY.sql)
 -- ─────────────────────────────────────────────────────────────────
 -- Confirm:
---   * anon/public cannot EXECUTE competition_assign/replace/unassign_referee
---   * authenticated CAN EXECUTE those three RPCs (Option A)
+--   * anon/public/authenticated cannot EXECUTE competition_assign/replace/unassign_referee
+--   * service_role CAN EXECUTE those three RPCs
 --   * helpers including competition_assignment_assert_mutation_boundary
 --     are NOT executable by anon/authenticated/public
 --   * authenticated has NO SELECT on competition_referee_assignment_audit
 --   * authenticated has NO SELECT on competition_referee_assignment_idempotency
 --   * SECURITY DEFINER + search_path=public on mutation RPCs + boundary helper
 --   * pg_get_functiondef contains:
---       canonical_tournament_assert_tenant
---       ACTOR_SPOOFING_DENIED
+--       SERVICE_ROLE_REQUIRED
+--       ORIGINATING_ACTOR_REQUIRED
 --       CROSS_TOURNAMENT_DENIED
 --       LIFECYCLE_DENIED
+--     and does NOT contain v_actor := auth.uid()
 --     and does NOT contain coalesce(p_actor_id, auth.uid())
 --   * CAS objects: expected_version + STALE_WRITE
---   * idempotency table + check helper
 --   * unique index competition_referee_assignments_active_match_role_uq
 --   * RLS enabled on audit + idempotency
 --
 -- Re-run 03_VERIFY.sql for the automated catalog assertions.
-
--- ─────────────────────────────────────────────────────────────────
--- Later Owner GO — fixture mutation probes (dedicated staging tenant)
--- Use two authenticated users:
---   USER_A in TENANT_A with tournament.update (or team.manage for Team)
---   USER_B in TENANT_B (or same tenant without tournament.update)
--- Bound tournament T_A in TENANT_A; tournament T_B in TENANT_B.
--- Match M_A in T_A (PRE_MATCH / not_started). Do not use production rows.
--- ─────────────────────────────────────────────────────────────────
 --
--- 1) Actor spoofing
---    As USER_A call competition_assign_referee(..., p_actor_id => USER_B.id)
---    Expect: ACTOR_SPOOFING_DENIED
---    Confirm assigned_by / audit.actor_id would have been USER_A only on success.
---
--- 2) Cross-tenant direct RPC
---    As USER_B call competition_assign_referee(
---      p_tenant_id => TENANT_A, p_tournament_id => T_A, p_match_id => M_A, ...)
---    Expect: TOURNAMENT_FORBIDDEN (canonical_tournament_assert_tenant)
---    Confirm no referee_assignments / audit row inserted.
---
--- 3) Cross-tournament direct RPC
---    As USER_A (authorized for TENANT_A) call with p_tournament_id => T_B
---      and p_tenant_id => TENANT_A
---    Expect: CROSS_TOURNAMENT_DENIED (tournament not bound in caller tenant)
---    Confirm no write.
---
--- 4) Audit table not globally readable
---    As USER_A: SELECT * FROM public.competition_referee_assignment_audit
---    Expect: permission denied (no SELECT grant). Not a filtered empty set.
---
--- 5) Anon / public cannot execute RPCs
---    As anon JWT: rpc competition_assign_referee / replace / unassign
---    Expect: permission denied / 42501. No write.
---
--- 6) CAS
---    As USER_A: assign with expected_version=0 succeeds (version=1)
---    Second assign/replace with expected_version=0 → STALE_WRITE
---    replace with expected_version=1 succeeds.
---
--- 7) Idempotency
---    Replay same idempotency_key + same payload → replayed=true, no extra row
---    Same key + different payload → IDEMPOTENCY_CONFLICT
---
--- 8) Atomic replacement
---    replace_referee must leave exactly one active assignment for match+role
---    (unique index competition_referee_assignments_active_match_role_uq)
---    Mid-failure must not leave two actives (single transaction).
---
--- 9) Lifecycle fail-closed (authoritative row, not p_lifecycle_state)
---    COMPLETED match_live_states.status='completed' + p_lifecycle_state='PRE_MATCH'
---      → LIFECYCLE_DENIED (caller claim ignored)
---    LOCKED match_live_states.status='locked' → LIFECYCLE_DENIED
---    IN_PROGRESS + ASSIGN → LIFECYCLE_DENIED
---    IN_PROGRESS + UNASSIGN → UNASSIGN_WITHOUT_REPLACEMENT_DENIED
---    IN_PROGRESS + REPLACE → allow (authorized)
---    SCORING_ACTIVE (in_progress + score/events) + REPLACE without emergency
---      → EMERGENCY_REPLACEMENT_REQUIRED
---    SCORING_ACTIVE + REPLACE emergency=true → allow
---
--- 10) Shared CORE-13 command still required in product
---     Browser/UI must continue to call createCompetitionRefereeAssignmentCommandService
---     SQL does not become a second assignment planner.
---
--- Cleanup: delete only fixture rows created by this probe. Never truncate
--- referee_assignments. STAGING_ROWS_COPIED must remain 0 versus Production.
+-- Mutation / Edge / actor / CORE-13 probes live in the JS harness, not here.

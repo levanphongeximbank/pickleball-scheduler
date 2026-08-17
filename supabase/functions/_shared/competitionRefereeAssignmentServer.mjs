@@ -1,0 +1,5036 @@
+/* Competition CORE-13 assignment trusted server bundle */
+
+// src/features/competition-engine/operations/referee/assignment/constants.js
+var CORE13_ASSIGNMENT_COMMAND_VERSION = "core13-canonical-assignment-command-v1";
+var COMPETITION_REFEREE_ASSIGNMENT_EDGE_FUNCTION = "competition-referee-assignment";
+var ASSIGNMENT_COMMAND = Object.freeze({
+  ASSIGN: "assignReferee",
+  REPLACE: "replaceReferee",
+  UNASSIGN: "unassignReferee"
+});
+var ASSIGNMENT_COMMAND_VALUES = Object.freeze(
+  Object.values(ASSIGNMENT_COMMAND)
+);
+var ASSIGNMENT_OPERATION = Object.freeze({
+  ASSIGN: "ASSIGN",
+  REPLACE: "REPLACE",
+  UNASSIGN: "UNASSIGN"
+});
+var ASSIGNMENT_LIFECYCLE_STATE = Object.freeze({
+  PRE_MATCH: "PRE_MATCH",
+  IN_PROGRESS: "IN_PROGRESS",
+  SCORING_ACTIVE: "SCORING_ACTIVE",
+  LOCKED: "LOCKED",
+  COMPLETED: "COMPLETED"
+});
+var ASSIGNMENT_LIFECYCLE_STATE_VALUES = Object.freeze(
+  Object.values(ASSIGNMENT_LIFECYCLE_STATE)
+);
+var ASSIGNMENT_COMMAND_ERROR_CODE = Object.freeze({
+  INVALID_INPUT: "CORE13_ASSIGNMENT_INVALID_INPUT",
+  CANONICAL_REFEREE_ID_REQUIRED: "CORE13_CANONICAL_REFEREE_ID_REQUIRED",
+  DISPLAY_NAME_IDENTITY_DENIED: "CORE13_DISPLAY_NAME_IDENTITY_DENIED",
+  EMAIL_AS_AUTHORITY_DENIED: "CORE13_EMAIL_AS_AUTHORITY_DENIED",
+  PHONE_AS_AUTHORITY_DENIED: "CORE13_PHONE_AS_AUTHORITY_DENIED",
+  CROSS_TENANT_DENIED: "CORE13_CROSS_TENANT_DENIED",
+  CROSS_TOURNAMENT_DENIED: "CORE13_CROSS_TOURNAMENT_DENIED",
+  UNAUTHORIZED_ACTOR: "CORE13_UNAUTHORIZED_ACTOR",
+  CLIENT_GRANT_TRUST_REJECTED: "CORE13_CLIENT_GRANT_TRUST_REJECTED",
+  STALE_WRITE: "CORE13_STALE_WRITE",
+  IDEMPOTENCY_CONFLICT: "CORE13_IDEMPOTENCY_CONFLICT",
+  IDEMPOTENCY_KEY_REQUIRED: "CORE13_IDEMPOTENCY_KEY_REQUIRED",
+  EXPECTED_VERSION_REQUIRED: "CORE13_EXPECTED_VERSION_REQUIRED",
+  LIFECYCLE_DENIED: "CORE13_LIFECYCLE_DENIED",
+  EMERGENCY_REPLACEMENT_REQUIRED: "CORE13_EMERGENCY_REPLACEMENT_REQUIRED",
+  EMERGENCY_UNAUTHORIZED: "CORE13_EMERGENCY_UNAUTHORIZED",
+  UNASSIGN_WITHOUT_REPLACEMENT_DENIED: "CORE13_UNASSIGN_WITHOUT_REPLACEMENT_DENIED",
+  CORE13_VALIDATION_REJECTED: "CORE13_VALIDATION_REJECTED",
+  PERSISTENCE_REQUIRED: "CORE13_PERSISTENCE_REQUIRED",
+  IN_MEMORY_PRODUCTION_FORBIDDEN: "CORE13_IN_MEMORY_PRODUCTION_FORBIDDEN",
+  SEED_BYPASS_DENIED: "CORE13_SEED_BYPASS_DENIED",
+  DAILY_PLAY_NOT_APPLICABLE: "CORE13_DAILY_PLAY_NOT_APPLICABLE",
+  FOREIGN_REFEREE_DENIED: "CORE13_FOREIGN_REFEREE_DENIED",
+  STALE_TENANT_CONTEXT: "CORE13_STALE_TENANT_CONTEXT",
+  STALE_CLUB_CONTEXT: "CORE13_STALE_CLUB_CONTEXT",
+  NOT_CONFIGURED: "CORE13_NOT_CONFIGURED",
+  SERVICE_ROLE_REQUIRED: "CORE13_SERVICE_ROLE_REQUIRED",
+  ORIGINATING_ACTOR_REQUIRED: "CORE13_ORIGINATING_ACTOR_REQUIRED",
+  CANONICAL_REFEREE_EVIDENCE_REQUIRED: "CORE13_CANONICAL_REFEREE_EVIDENCE_REQUIRED",
+  TRUSTED_SERVER_REQUIRED: "CORE13_TRUSTED_SERVER_REQUIRED"
+});
+var ASSIGNMENT_COMMAND_ERROR_CODE_VALUES = Object.freeze(
+  Object.values(ASSIGNMENT_COMMAND_ERROR_CODE)
+);
+var DURABLE_ASSIGNMENT_PERSISTENCE_CLASSIFICATION = "DURABLE";
+var TEST_DOUBLE_ASSIGNMENT_PERSISTENCE_CLASSIFICATION = "TEST_DOUBLE_ONLY";
+var ASSIGNMENT_COMPETITION_MODE = Object.freeze({
+  INTERNAL: "INTERNAL",
+  OFFICIAL_OPEN: "OFFICIAL_OPEN",
+  TEAM: "TEAM",
+  DAILY_PLAY: "DAILY_PLAY"
+});
+
+// src/features/competition-engine/operations/referee/assignment/errors.js
+var CompetitionRefereeAssignmentCommandError = class extends Error {
+  /**
+   * @param {string} code
+   * @param {string} message
+   * @param {Record<string, unknown>} [details]
+   */
+  constructor(code, message, details = {}) {
+    super(message);
+    this.name = "CompetitionRefereeAssignmentCommandError";
+    this.code = code;
+    this.details = details && typeof details === "object" ? details : {};
+  }
+};
+function isCompetitionRefereeAssignmentCommandError(err) {
+  return err instanceof CompetitionRefereeAssignmentCommandError || err && typeof err === "object" && err.name === "CompetitionRefereeAssignmentCommandError" && typeof err.code === "string";
+}
+function failAssignmentCommand(code, message, details = {}) {
+  throw new CompetitionRefereeAssignmentCommandError(
+    code || ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+    message || "Assignment command failed",
+    details
+  );
+}
+
+// src/features/competition-engine/operations/referee/assignment/persistence/createRpcCanonicalAssignmentPersistence.js
+var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+var COMPETITION_ASSIGNMENT_MUTATION_RPC = Object.freeze({
+  ASSIGN: "competition_assign_referee",
+  REPLACE: "competition_replace_referee",
+  UNASSIGN: "competition_unassign_referee"
+});
+function toSqlRole(role) {
+  const value = String(role || "PRIMARY").trim() || "PRIMARY";
+  if (value === "PRIMARY") return "PRIMARY";
+  return value;
+}
+function fromSqlRole(role) {
+  const value = String(role || "").trim();
+  if (!value || value === "REFEREE") return "PRIMARY";
+  return value;
+}
+function requireUuid(value, label) {
+  const id = String(value || "").trim();
+  if (!UUID_RE.test(id)) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+      `${label} must be a canonical UUID`,
+      { value: id }
+    );
+  }
+  return id;
+}
+function mapRpcError(error) {
+  const combined = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
+  const codeMap = [
+    ["STALE_WRITE", ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE],
+    ["EXPECTED_VERSION_REQUIRED", ASSIGNMENT_COMMAND_ERROR_CODE.EXPECTED_VERSION_REQUIRED],
+    ["IDEMPOTENCY_CONFLICT", ASSIGNMENT_COMMAND_ERROR_CODE.IDEMPOTENCY_CONFLICT],
+    ["LIFECYCLE_DENIED", ASSIGNMENT_COMMAND_ERROR_CODE.LIFECYCLE_DENIED],
+    ["UNASSIGN_WITHOUT_REPLACEMENT_DENIED", ASSIGNMENT_COMMAND_ERROR_CODE.UNASSIGN_WITHOUT_REPLACEMENT_DENIED],
+    ["EMERGENCY_REPLACEMENT_REQUIRED", ASSIGNMENT_COMMAND_ERROR_CODE.EMERGENCY_REPLACEMENT_REQUIRED],
+    ["CROSS_TENANT_DENIED", ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TENANT_DENIED],
+    ["CROSS_TOURNAMENT_DENIED", ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED],
+    ["SERVICE_ROLE_REQUIRED", ASSIGNMENT_COMMAND_ERROR_CODE.SERVICE_ROLE_REQUIRED],
+    ["ORIGINATING_ACTOR_REQUIRED", ASSIGNMENT_COMMAND_ERROR_CODE.ORIGINATING_ACTOR_REQUIRED],
+    ["TOURNAMENT_FORBIDDEN", ASSIGNMENT_COMMAND_ERROR_CODE.UNAUTHORIZED_ACTOR]
+  ];
+  for (const [needle, code] of codeMap) {
+    if (combined.includes(needle)) {
+      failAssignmentCommand(code, combined.trim() || needle, { rpc: error });
+    }
+  }
+  failAssignmentCommand(
+    ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+    combined.trim() || "Assignment persistence RPC failed",
+    { rpc: error }
+  );
+}
+function mapRow(row) {
+  if (!row) return null;
+  return Object.freeze({
+    assignmentId: String(row.id || row.assignmentId),
+    tenantId: row.tenant_id || row.tenantId,
+    tournamentId: row.tournament_id || row.tournamentId,
+    matchId: row.match_id || row.matchId,
+    refereeId: String(row.referee_user_id || row.refereeUserId || row.refereeId || ""),
+    role: fromSqlRole(row.role),
+    roleCode: fromSqlRole(row.role),
+    status: row.status === "active" ? "active" : String(row.status || "revoked"),
+    version: Number(row.version || 0),
+    assignedAt: row.assigned_at || row.assignedAt || null,
+    assignedBy: row.assigned_by || row.assignedBy || null
+  });
+}
+function mapRpcResult(data, command) {
+  const payload = data && typeof data === "object" ? data : {};
+  const assignment = Object.freeze({
+    assignmentId: payload.assignmentId || payload.assignment_id || null,
+    tenantId: command.tenantId,
+    tournamentId: command.tournamentId,
+    matchId: payload.matchId || command.matchId,
+    refereeId: payload.refereeUserId || payload.newRefereeUserId || command.refereeId || command.newRefereeId || null,
+    role: fromSqlRole(payload.role || command.role),
+    roleCode: fromSqlRole(payload.role || command.role),
+    status: payload.status || (command.operation === "UNASSIGN" ? "revoked" : "active"),
+    version: payload.version != null ? Number(payload.version) : null
+  });
+  return Object.freeze({
+    ok: payload.ok !== false,
+    replayed: payload.replayed === true,
+    assignment,
+    previousAssignment: payload.previousAssignmentId ? Object.freeze({ assignmentId: payload.previousAssignmentId }) : null,
+    audit: payload.auditId ? Object.freeze({ auditId: payload.auditId }) : null
+  });
+}
+function createRpcCanonicalAssignmentPersistence(options = {}) {
+  const serviceClient = options.serviceClient;
+  if (!serviceClient || typeof serviceClient.rpc !== "function") {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.PERSISTENCE_REQUIRED,
+      "RPC assignment persistence requires a service-role Supabase client",
+      {}
+    );
+  }
+  async function rpc(name, args) {
+    const { data, error } = await serviceClient.rpc(name, args);
+    if (error) mapRpcError(error);
+    return data;
+  }
+  return Object.freeze({
+    kind: "rpc-canonical-assignment-persistence",
+    classification: DURABLE_ASSIGNMENT_PERSISTENCE_CLASSIFICATION,
+    durable: true,
+    translationOnly: true,
+    decisionAuthority: false,
+    productUiDecisionPath: false,
+    async getActiveAssignment({ tenantId, tournamentId, matchId, role = "PRIMARY" }) {
+      const sqlRole = toSqlRole(role);
+      const { data, error } = await serviceClient.from("referee_assignments").select("*").eq("tenant_id", tenantId).eq("tournament_id", tournamentId).eq("match_id", matchId).eq("status", "active").limit(20);
+      if (error) mapRpcError(error);
+      const rows = Array.isArray(data) ? data : [];
+      const match = rows.find((row) => fromSqlRole(row.role) === fromSqlRole(sqlRole)) || rows.find((row) => String(row.role) === sqlRole) || null;
+      return match ? mapRow(match) : null;
+    },
+    async listActiveAssignments({ tenantId, tournamentId } = {}) {
+      let query = serviceClient.from("referee_assignments").select("*").eq("status", "active");
+      if (tenantId) query = query.eq("tenant_id", tenantId);
+      if (tournamentId) query = query.eq("tournament_id", tournamentId);
+      const { data, error } = await query;
+      if (error) mapRpcError(error);
+      return Object.freeze((Array.isArray(data) ? data : []).map(mapRow));
+    },
+    async getMatchAssignmentVersion({ tenantId, tournamentId, matchId, role = "PRIMARY" }) {
+      const sqlRole = toSqlRole(role);
+      const { data, error } = await serviceClient.from("referee_assignments").select("version, status, role").eq("tenant_id", tenantId).eq("tournament_id", tournamentId).eq("match_id", matchId);
+      if (error) mapRpcError(error);
+      const rows = Array.isArray(data) ? data : [];
+      const scoped = rows.filter(
+        (row) => fromSqlRole(row.role) === fromSqlRole(sqlRole) || String(row.role) === sqlRole
+      );
+      const active = scoped.find((row) => row.status === "active");
+      if (active) return Number(active.version || 0);
+      return scoped.reduce((max, row) => Math.max(max, Number(row.version || 0)), 0);
+    },
+    async assign(command) {
+      const refereeUserId = requireUuid(command.refereeId, "refereeId");
+      const actorId = requireUuid(command.actorId, "actorId");
+      const data = await rpc(COMPETITION_ASSIGNMENT_MUTATION_RPC.ASSIGN, {
+        p_tenant_id: command.tenantId,
+        p_tournament_id: command.tournamentId,
+        p_match_id: command.matchId,
+        p_referee_user_id: refereeUserId,
+        p_role: toSqlRole(command.role || command.roleCode),
+        p_expected_version: Number(command.expectedVersion),
+        p_idempotency_key: String(command.idempotencyKey || ""),
+        p_actor_id: actorId,
+        p_reason: command.reason || null,
+        p_lifecycle_state: null,
+        p_command_metadata: {
+          trustedServerBoundary: "competition-referee-assignment",
+          originatingActorId: actorId
+        }
+      });
+      return mapRpcResult(data, command);
+    },
+    async replace(command) {
+      const newRefereeUserId = requireUuid(
+        command.newRefereeId || command.refereeId,
+        "newRefereeId"
+      );
+      const actorId = requireUuid(command.actorId, "actorId");
+      const data = await rpc(COMPETITION_ASSIGNMENT_MUTATION_RPC.REPLACE, {
+        p_tenant_id: command.tenantId,
+        p_tournament_id: command.tournamentId,
+        p_match_id: command.matchId,
+        p_new_referee_user_id: newRefereeUserId,
+        p_role: toSqlRole(command.role || command.roleCode),
+        p_expected_version: Number(command.expectedVersion),
+        p_idempotency_key: String(command.idempotencyKey || ""),
+        p_actor_id: actorId,
+        p_reason: command.reason || null,
+        p_lifecycle_state: null,
+        p_emergency_replacement: command.emergencyReplacement === true,
+        p_command_metadata: {
+          trustedServerBoundary: "competition-referee-assignment",
+          originatingActorId: actorId
+        }
+      });
+      return mapRpcResult(data, command);
+    },
+    async unassign(command) {
+      const actorId = requireUuid(command.actorId, "actorId");
+      const data = await rpc(COMPETITION_ASSIGNMENT_MUTATION_RPC.UNASSIGN, {
+        p_tenant_id: command.tenantId,
+        p_tournament_id: command.tournamentId,
+        p_match_id: command.matchId,
+        p_role: toSqlRole(command.role || command.roleCode),
+        p_expected_version: Number(command.expectedVersion),
+        p_idempotency_key: String(command.idempotencyKey || ""),
+        p_actor_id: actorId,
+        p_reason: command.reason || null,
+        p_lifecycle_state: null,
+        p_command_metadata: {
+          trustedServerBoundary: "competition-referee-assignment",
+          originatingActorId: actorId
+        }
+      });
+      return mapRpcResult(data, command);
+    }
+  });
+}
+
+// src/features/competition-core/referee-assignment/constants/versions.js
+var CORE13_ENGINE_ID = "competition-core-referee-assignment";
+var CORE13_ENGINE_VERSION = "0.1.0-phase1b";
+var CORE13_SCHEMA_VERSION = "CORE13_REFEREE_ASSIGNMENT_SCHEMA_V1";
+var CORE13_DETERMINISM_POLICY_ID = "CORE13_DETERMINISM_V1";
+var CORE13_COMPARATOR_VERSION = "CORE13_COMPARATOR_V1";
+var CORE13_IDENTITY = Object.freeze({
+  engineId: CORE13_ENGINE_ID,
+  version: CORE13_ENGINE_VERSION,
+  schemaVersion: CORE13_SCHEMA_VERSION,
+  determinismPolicyId: CORE13_DETERMINISM_POLICY_ID,
+  comparatorVersion: CORE13_COMPARATOR_VERSION
+});
+
+// src/features/competition-core/referee-assignment/enums/roleCodes.js
+var REFEREE_ROLE_CODE = Object.freeze({
+  PRIMARY: "PRIMARY",
+  ASSISTANT: "ASSISTANT",
+  OBSERVER: "OBSERVER",
+  ANY: "ANY"
+});
+var REFEREE_ROLE_CODE_VALUES = new Set(
+  Object.values(REFEREE_ROLE_CODE)
+);
+function normalizeRefereeRoleCode(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+// src/features/competition-core/referee-assignment/enums/assignmentStatus.js
+var REFEREE_ASSIGNMENT_STATUS = Object.freeze({
+  PLANNED: "PLANNED",
+  CONFIRMED: "CONFIRMED",
+  REPLACED: "REPLACED",
+  RELEASED: "RELEASED"
+});
+var REFEREE_ASSIGNMENT_STATUS_VALUES = new Set(
+  Object.values(REFEREE_ASSIGNMENT_STATUS)
+);
+
+// src/features/competition-core/referee-assignment/enums/assignmentSource.js
+var REFEREE_ASSIGNMENT_SOURCE = Object.freeze({
+  AUTO: "AUTO",
+  MANUAL: "MANUAL",
+  REPLACEMENT: "REPLACEMENT"
+});
+var REFEREE_ASSIGNMENT_SOURCE_VALUES = new Set(
+  Object.values(REFEREE_ASSIGNMENT_SOURCE)
+);
+
+// src/features/competition-core/referee-assignment/enums/conflictType.js
+var REFEREE_CONFLICT_TYPE = Object.freeze({
+  OVERLAP: "OVERLAP",
+  CONFLICT_OF_INTEREST: "CONFLICT_OF_INTEREST",
+  EXCLUSION: "EXCLUSION",
+  CAPACITY: "CAPACITY",
+  ROLE_UNSUPPORTED: "ROLE_UNSUPPORTED",
+  UNAVAILABLE: "UNAVAILABLE",
+  INACTIVE: "INACTIVE",
+  NOT_QUALIFIED: "NOT_QUALIFIED"
+});
+var REFEREE_CONFLICT_TYPE_VALUES = new Set(
+  Object.values(REFEREE_CONFLICT_TYPE)
+);
+
+// src/features/competition-core/referee-assignment/enums/constraintKind.js
+var REFEREE_CONSTRAINT_KIND = Object.freeze({
+  HARD: "HARD",
+  SOFT: "SOFT"
+});
+var REFEREE_CONSTRAINT_KIND_VALUES = new Set(
+  Object.values(REFEREE_CONSTRAINT_KIND)
+);
+
+// src/features/competition-core/referee-assignment/enums/diagnosticSeverity.js
+var REFEREE_DIAGNOSTIC_SEVERITY = Object.freeze({
+  FATAL: "FATAL",
+  MATCH_RECOVERABLE: "MATCH_RECOVERABLE",
+  WARNING: "WARNING"
+});
+var REFEREE_DIAGNOSTIC_SEVERITY_VALUES = new Set(
+  Object.values(REFEREE_DIAGNOSTIC_SEVERITY)
+);
+
+// src/features/competition-core/referee-assignment/enums/availabilitySource.js
+var REFEREE_AVAILABILITY_SOURCE = Object.freeze({
+  DIRECTORY: "DIRECTORY",
+  TOURNAMENT: "TOURNAMENT",
+  MANUAL: "MANUAL",
+  DERIVED: "DERIVED"
+});
+var REFEREE_AVAILABILITY_SOURCE_VALUES = new Set(
+  Object.values(REFEREE_AVAILABILITY_SOURCE)
+);
+
+// src/features/competition-core/referee-assignment/enums/auditAction.js
+var REFEREE_AUDIT_ACTION = Object.freeze({
+  ASSIGNED: "ASSIGNED",
+  MANUAL_ASSIGNED: "MANUAL_ASSIGNED",
+  REPLACED: "REPLACED",
+  RELEASED: "RELEASED",
+  REJECTED: "REJECTED",
+  PLAN_GENERATED: "PLAN_GENERATED"
+});
+var REFEREE_AUDIT_ACTION_VALUES = new Set(
+  Object.values(REFEREE_AUDIT_ACTION)
+);
+
+// src/features/competition-core/referee-assignment/enums/snapshotStatus.js
+var REFEREE_SNAPSHOT_STATUS = Object.freeze({
+  MISSING: "MISSING",
+  INVALID: "INVALID",
+  EMPTY: "EMPTY",
+  POPULATED: "POPULATED"
+});
+var REFEREE_SNAPSHOT_STATUS_VALUES = new Set(
+  Object.values(REFEREE_SNAPSHOT_STATUS)
+);
+var REFEREE_RESOURCE_TYPE = Object.freeze({
+  REFEREE: "REFEREE"
+});
+
+// src/features/competition-core/referee-assignment/enums/softNotes.js
+var REFEREE_SOFT_NOTE_CODE = Object.freeze({
+  PREFERRED_TAG_MISSING: "PREFERRED_TAG_MISSING",
+  PREFERRED_ROLE_MISMATCH: "PREFERRED_ROLE_MISMATCH",
+  AFFILIATED_TEAM: "AFFILIATED_TEAM",
+  AFFILIATED_CLUB: "AFFILIATED_CLUB",
+  AFFILIATED_ORGANIZATION: "AFFILIATED_ORGANIZATION",
+  WORKLOAD_ABOVE_PEER: "WORKLOAD_ABOVE_PEER",
+  EXPERIENCE_BELOW_PREFERRED: "EXPERIENCE_BELOW_PREFERRED",
+  DIVISION_UNFAMILIAR: "DIVISION_UNFAMILIAR",
+  CONTINUITY_BREAK: "CONTINUITY_BREAK"
+});
+var REFEREE_SOFT_NOTE_CODE_VALUES = new Set(
+  Object.values(REFEREE_SOFT_NOTE_CODE)
+);
+function isRefereeSoftNoteCode(value) {
+  return typeof value === "string" && REFEREE_SOFT_NOTE_CODE_VALUES.has(value);
+}
+var REFEREE_SOFT_OBJECTIVE_KEY = Object.freeze({
+  WORKLOAD_BALANCE: "WORKLOAD_BALANCE",
+  CONSECUTIVE_MATCH_MINIMIZATION: "CONSECUTIVE_MATCH_MINIMIZATION",
+  COURT_TRANSITION_MINIMIZATION: "COURT_TRANSITION_MINIMIZATION",
+  ROLE_PREFERENCE: "ROLE_PREFERENCE",
+  EXPERIENCE_PREFERENCE: "EXPERIENCE_PREFERENCE",
+  DIVISION_FAMILIARITY: "DIVISION_FAMILIARITY",
+  AFFILIATION_NEUTRALITY: "AFFILIATION_NEUTRALITY",
+  ASSIGNMENT_CONTINUITY: "ASSIGNMENT_CONTINUITY"
+});
+var REFEREE_SOFT_OBJECTIVE_KEY_VALUES = new Set(
+  Object.values(REFEREE_SOFT_OBJECTIVE_KEY)
+);
+function isRefereeSoftObjectiveKey(value) {
+  return typeof value === "string" && REFEREE_SOFT_OBJECTIVE_KEY_VALUES.has(value);
+}
+
+// src/features/competition-core/referee-assignment/errors/diagnosticCodes.js
+var REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE = Object.freeze({
+  INVALID_ASSIGNMENT_REQUEST: "INVALID_ASSIGNMENT_REQUEST",
+  TENANT_SCOPE_REQUIRED: "TENANT_SCOPE_REQUIRED",
+  TOURNAMENT_SCOPE_REQUIRED: "TOURNAMENT_SCOPE_REQUIRED",
+  MATCH_SCOPE_REQUIRED: "MATCH_SCOPE_REQUIRED",
+  SCHEDULE_WINDOW_REQUIRED: "SCHEDULE_WINDOW_REQUIRED",
+  NO_REFEREE_CANDIDATES: "NO_REFEREE_CANDIDATES",
+  NO_ELIGIBLE_REFEREE: "NO_ELIGIBLE_REFEREE",
+  REFEREE_NOT_FOUND: "REFEREE_NOT_FOUND",
+  REFEREE_INACTIVE: "REFEREE_INACTIVE",
+  REFEREE_NOT_QUALIFIED: "REFEREE_NOT_QUALIFIED",
+  REFEREE_UNAVAILABLE: "REFEREE_UNAVAILABLE",
+  REFEREE_ALREADY_ASSIGNED: "REFEREE_ALREADY_ASSIGNED",
+  REFEREE_CONFLICT_OF_INTEREST: "REFEREE_CONFLICT_OF_INTEREST",
+  REFEREE_ROLE_UNSUPPORTED: "REFEREE_ROLE_UNSUPPORTED",
+  MANUAL_ASSIGNMENT_REJECTED: "MANUAL_ASSIGNMENT_REJECTED",
+  REQUIRED_REFEREE_ROLE_UNFILLED: "REQUIRED_REFEREE_ROLE_UNFILLED",
+  ASSIGNMENT_CAPACITY_EXHAUSTED: "ASSIGNMENT_CAPACITY_EXHAUSTED",
+  NON_DETERMINISTIC_INPUT: "NON_DETERMINISTIC_INPUT",
+  INVALID_REPLACEMENT_REQUEST: "INVALID_REPLACEMENT_REQUEST",
+  REPLACEMENT_REFEREE_REJECTED: "REPLACEMENT_REFEREE_REJECTED",
+  /** Port / snapshot missing (fatal). */
+  SNAPSHOT_MISSING: "SNAPSHOT_MISSING",
+  /** Port / snapshot invalid (fatal). */
+  SNAPSHOT_INVALID: "SNAPSHOT_INVALID"
+});
+var REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE_VALUES = new Set(
+  Object.values(REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE)
+);
+function isRefereeAssignmentDiagnosticCode(value) {
+  return typeof value === "string" && REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE_VALUES.has(value);
+}
+
+// src/features/competition-core/referee-assignment/errors/failureSemantics.js
+var C = REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE;
+var S = REFEREE_DIAGNOSTIC_SEVERITY;
+var REFEREE_DIAGNOSTIC_DEFAULT_SEVERITY = Object.freeze({
+  [C.INVALID_ASSIGNMENT_REQUEST]: S.FATAL,
+  [C.TENANT_SCOPE_REQUIRED]: S.FATAL,
+  [C.TOURNAMENT_SCOPE_REQUIRED]: S.FATAL,
+  [C.MATCH_SCOPE_REQUIRED]: S.FATAL,
+  [C.SCHEDULE_WINDOW_REQUIRED]: S.MATCH_RECOVERABLE,
+  [C.NO_REFEREE_CANDIDATES]: S.MATCH_RECOVERABLE,
+  [C.NO_ELIGIBLE_REFEREE]: S.MATCH_RECOVERABLE,
+  [C.REFEREE_NOT_FOUND]: S.MATCH_RECOVERABLE,
+  [C.REFEREE_INACTIVE]: S.MATCH_RECOVERABLE,
+  [C.REFEREE_NOT_QUALIFIED]: S.MATCH_RECOVERABLE,
+  [C.REFEREE_UNAVAILABLE]: S.MATCH_RECOVERABLE,
+  [C.REFEREE_ALREADY_ASSIGNED]: S.MATCH_RECOVERABLE,
+  [C.REFEREE_CONFLICT_OF_INTEREST]: S.MATCH_RECOVERABLE,
+  [C.REFEREE_ROLE_UNSUPPORTED]: S.MATCH_RECOVERABLE,
+  [C.MANUAL_ASSIGNMENT_REJECTED]: S.FATAL,
+  [C.REQUIRED_REFEREE_ROLE_UNFILLED]: S.MATCH_RECOVERABLE,
+  [C.ASSIGNMENT_CAPACITY_EXHAUSTED]: S.MATCH_RECOVERABLE,
+  [C.NON_DETERMINISTIC_INPUT]: S.FATAL,
+  [C.INVALID_REPLACEMENT_REQUEST]: S.FATAL,
+  [C.REPLACEMENT_REFEREE_REJECTED]: S.FATAL,
+  [C.SNAPSHOT_MISSING]: S.FATAL,
+  [C.SNAPSHOT_INVALID]: S.FATAL
+});
+function resolveDefaultDiagnosticSeverity(code) {
+  return REFEREE_DIAGNOSTIC_DEFAULT_SEVERITY[code] || REFEREE_DIAGNOSTIC_SEVERITY.FATAL;
+}
+
+// src/features/competition-core/referee-assignment/errors/RefereeAssignmentContractError.js
+var RefereeAssignmentContractError = class extends Error {
+  /**
+   * @param {string} code
+   * @param {string} message
+   * @param {Record<string, unknown>} [details]
+   */
+  constructor(code, message, details = {}) {
+    super(message || code);
+    this.name = "RefereeAssignmentContractError";
+    this.code = String(code);
+    this.details = details && typeof details === "object" && !Array.isArray(details) ? { ...details } : {};
+  }
+};
+
+// src/features/competition-core/referee-assignment/deterministic/compare.js
+function compareStableString(a, b) {
+  const left = String(a ?? "");
+  const right = String(b ?? "");
+  const len = Math.min(left.length, right.length);
+  for (let i = 0; i < len; i += 1) {
+    const ca = left.charCodeAt(i);
+    const cb = right.charCodeAt(i);
+    if (ca !== cb) return ca - cb;
+  }
+  return left.length - right.length;
+}
+
+// src/features/competition-core/referee-assignment/deterministic/normalize.js
+function normalizeStableId(value, field, code = REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST) {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new RefereeAssignmentContractError(
+      code,
+      `${field} must be a non-empty stable string ID`,
+      { field, value: value ?? null }
+    );
+  }
+  return value.trim();
+}
+function normalizeOptionalStableId(value, field) {
+  if (value == null || value === "") return null;
+  if (typeof value !== "string") {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+      `${field} must be a string ID or null`,
+      { field, value }
+    );
+  }
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+function normalizeStableIdArray(values, options = {}) {
+  const field = options.field || "ids";
+  if (values == null) return [];
+  if (!Array.isArray(values)) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+      `${field} must be an array`,
+      { field }
+    );
+  }
+  const out = [];
+  for (let i = 0; i < values.length; i += 1) {
+    const item = values[i];
+    if (item == null || item === "") continue;
+    if (typeof item !== "string") {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+        `${field}[${i}] must be a string`,
+        { field, index: i }
+      );
+    }
+    const trimmed = item.trim();
+    if (trimmed) out.push(trimmed);
+  }
+  let result = out;
+  if (options.unique) {
+    const seen = /* @__PURE__ */ new Set();
+    result = [];
+    for (const id of out) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      result.push(id);
+    }
+  }
+  if (options.sort) {
+    result = [...result].sort(compareStableString);
+  }
+  return result;
+}
+function normalizePreferenceTags(values, field = "preferenceTags") {
+  return normalizeStableIdArray(values, { field, sort: true, unique: true });
+}
+
+// src/features/competition-core/referee-assignment/deterministic/canonicalize.js
+function isPlainObject(value) {
+  if (value === null || typeof value !== "object") return false;
+  if (Array.isArray(value)) return false;
+  if (value instanceof Date) return false;
+  if (value instanceof Map) return false;
+  if (value instanceof Set) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+function rejectNonCanonical(value, path) {
+  const type = value === null ? "null" : Array.isArray(value) ? "array" : value instanceof Date ? "Date" : value instanceof Map ? "Map" : value instanceof Set ? "Set" : typeof value;
+  throw new RefereeAssignmentContractError(
+    REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+    `Non-canonical value at ${path || "(root)"}: ${type}`,
+    { path, type }
+  );
+}
+function deepFreezeCanonical(value, path = "", seen = /* @__PURE__ */ new WeakSet()) {
+  if (value === null) {
+    return null;
+  }
+  const t = typeof value;
+  if (t === "string" || t === "boolean") {
+    return value;
+  }
+  if (t === "number") {
+    if (!Number.isFinite(value)) {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+        `Non-finite number at ${path || "(root)"}`,
+        { path, value: String(value) }
+      );
+    }
+    return Object.is(value, -0) ? 0 : value;
+  }
+  if (t === "undefined" || t === "function" || t === "symbol" || t === "bigint") {
+    rejectNonCanonical(value, path);
+  }
+  if (t !== "object") {
+    rejectNonCanonical(value, path);
+  }
+  if (value instanceof Date || value instanceof Map || value instanceof Set) {
+    rejectNonCanonical(value, path);
+  }
+  if (seen.has(
+    /** @type {object} */
+    value
+  )) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      `Cyclic reference at ${path || "(root)"}`,
+      { path }
+    );
+  }
+  seen.add(
+    /** @type {object} */
+    value
+  );
+  if (Array.isArray(value)) {
+    const out2 = value.map(
+      (item, i) => deepFreezeCanonical(item, path ? `${path}[${i}]` : `[${i}]`, seen)
+    );
+    return Object.freeze(out2);
+  }
+  if (!isPlainObject(value)) {
+    rejectNonCanonical(value, path);
+  }
+  const out = {};
+  const keys = Object.keys(
+    /** @type {Record<string, unknown>} */
+    value
+  ).sort(
+    compareStableString
+  );
+  for (const key of keys) {
+    out[key] = deepFreezeCanonical(
+      /** @type {Record<string, unknown>} */
+      value[key],
+      path ? `${path}.${key}` : key,
+      seen
+    );
+  }
+  return Object.freeze(out);
+}
+
+// src/features/competition-core/referee-assignment/contracts/shared.js
+function requireStableId(value, field, code = REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST) {
+  return normalizeStableId(value, field, code);
+}
+function requireBoolean(value, field, code = REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST) {
+  if (typeof value !== "boolean") {
+    throw new RefereeAssignmentContractError(
+      code,
+      `${field} must be a boolean`,
+      { field, value: value ?? null }
+    );
+  }
+  return value;
+}
+function requireNonNegativeInt(value, field, code = REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    throw new RefereeAssignmentContractError(
+      code,
+      `${field} must be a non-negative integer`,
+      { field, value: value ?? null }
+    );
+  }
+  return value;
+}
+function rejectUnknownFields(obj, allowed, path, code = REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST) {
+  if (!isPlainObject(obj)) {
+    throw new RefereeAssignmentContractError(
+      code,
+      `${path} must be a plain object`,
+      { path }
+    );
+  }
+  const allowedSet = new Set(allowed);
+  const unknown = Object.keys(obj).filter((k) => !allowedSet.has(k));
+  if (unknown.length > 0) {
+    unknown.sort();
+    throw new RefereeAssignmentContractError(
+      code,
+      `${path} has unknown fields: ${unknown.join(", ")}`,
+      { path, unknown }
+    );
+  }
+}
+function ownedFreeze(value) {
+  return (
+    /** @type {T} */
+    deepFreezeCanonical(value)
+  );
+}
+function normalizeOptionalInstant(value, field) {
+  if (value == null || value === "") return null;
+  if (typeof value !== "string") {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      `${field} must be a string instant or null`,
+      { field }
+    );
+  }
+  if (value instanceof Date) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      `${field} must not be a Date object`,
+      { field }
+    );
+  }
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+function requireEnum(value, field, allowed, code = REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST) {
+  if (typeof value !== "string" || !allowed.has(value)) {
+    throw new RefereeAssignmentContractError(
+      code,
+      `${field} must be a known enum value`,
+      { field, value: value ?? null }
+    );
+  }
+  return value;
+}
+function normalizeMetadata(value, path = "metadata") {
+  if (value == null) return ownedFreeze({});
+  if (!isPlainObject(value)) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      `${path} must be a plain object`,
+      { path }
+    );
+  }
+  return ownedFreeze(value);
+}
+
+// src/features/competition-core/referee-assignment/contracts/refereeCandidate.js
+var ALLOWED = Object.freeze([
+  "schemaVersion",
+  "refereeId",
+  "active",
+  "userId",
+  "playerId",
+  "organizationIds",
+  "clubIds",
+  "qualificationRefs",
+  "preferenceTags",
+  "displayLabel",
+  "metadata"
+]);
+var REFEREE_CANDIDATE_FORBIDDEN_PROFILE_FIELDS = Object.freeze([
+  "name",
+  "phone",
+  "email",
+  "password",
+  "profile"
+]);
+function createRefereeCandidate(partial = {}) {
+  rejectUnknownFields(
+    /** @type {Record<string, unknown>} */
+    partial,
+    ALLOWED,
+    "RefereeCandidate"
+  );
+  const refereeId = requireStableId(
+    partial.refereeId,
+    "RefereeCandidate.refereeId",
+    REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST
+  );
+  let displayLabel = null;
+  if (partial.displayLabel != null && partial.displayLabel !== "") {
+    if (typeof partial.displayLabel !== "string") {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+        "RefereeCandidate.displayLabel must be a string or null",
+        { field: "displayLabel" }
+      );
+    }
+    displayLabel = partial.displayLabel.trim() || null;
+  }
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    refereeId,
+    active: requireBoolean(
+      partial.active === void 0 ? true : partial.active,
+      "RefereeCandidate.active"
+    ),
+    userId: normalizeOptionalStableId(partial.userId, "RefereeCandidate.userId"),
+    playerId: normalizeOptionalStableId(
+      partial.playerId,
+      "RefereeCandidate.playerId"
+    ),
+    organizationIds: Object.freeze(
+      normalizeStableIdArray(partial.organizationIds, {
+        field: "RefereeCandidate.organizationIds",
+        sort: true,
+        unique: true
+      })
+    ),
+    clubIds: Object.freeze(
+      normalizeStableIdArray(partial.clubIds, {
+        field: "RefereeCandidate.clubIds",
+        sort: true,
+        unique: true
+      })
+    ),
+    qualificationRefs: Object.freeze(
+      normalizeStableIdArray(partial.qualificationRefs, {
+        field: "RefereeCandidate.qualificationRefs",
+        sort: true,
+        unique: true
+      })
+    ),
+    preferenceTags: Object.freeze(
+      normalizePreferenceTags(
+        partial.preferenceTags,
+        "RefereeCandidate.preferenceTags"
+      )
+    ),
+    displayLabel,
+    metadata: normalizeMetadata(partial.metadata, "RefereeCandidate.metadata")
+  });
+}
+
+// src/features/competition-core/referee-assignment/contracts/refereeQualification.js
+var ALLOWED2 = Object.freeze([
+  "schemaVersion",
+  "qualificationId",
+  "refereeId",
+  "roleCode",
+  "certificationCode",
+  "validFrom",
+  "validTo",
+  "level",
+  "tenantId",
+  "tournamentId",
+  "metadata"
+]);
+function createRefereeQualification(partial = {}) {
+  rejectUnknownFields(
+    /** @type {Record<string, unknown>} */
+    partial,
+    ALLOWED2,
+    "RefereeQualification"
+  );
+  const roleCode = normalizeRefereeRoleCode(partial.roleCode);
+  if (!roleCode) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED,
+      "RefereeQualification.roleCode is required",
+      { field: "roleCode" }
+    );
+  }
+  let level = null;
+  if (partial.level != null && partial.level !== "") {
+    if (typeof partial.level !== "string" && typeof partial.level !== "number") {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+        "RefereeQualification.level must be string, number, or null",
+        { field: "level" }
+      );
+    }
+    level = typeof partial.level === "number" ? partial.level : String(partial.level).trim() || null;
+    if (typeof level === "number" && !Number.isFinite(level)) {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+        "RefereeQualification.level must be finite",
+        { field: "level" }
+      );
+    }
+  }
+  const certificationCode = partial.certificationCode == null || partial.certificationCode === "" ? null : typeof partial.certificationCode === "string" ? partial.certificationCode.trim() || null : (() => {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+      "RefereeQualification.certificationCode must be a string or null",
+      { field: "certificationCode" }
+    );
+  })();
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    qualificationId: requireStableId(
+      partial.qualificationId,
+      "RefereeQualification.qualificationId"
+    ),
+    refereeId: requireStableId(
+      partial.refereeId,
+      "RefereeQualification.refereeId"
+    ),
+    roleCode,
+    certificationCode,
+    validFrom: normalizeOptionalInstant(
+      partial.validFrom,
+      "RefereeQualification.validFrom"
+    ),
+    validTo: normalizeOptionalInstant(
+      partial.validTo,
+      "RefereeQualification.validTo"
+    ),
+    level,
+    tenantId: normalizeOptionalStableId(
+      partial.tenantId,
+      "RefereeQualification.tenantId"
+    ),
+    tournamentId: normalizeOptionalStableId(
+      partial.tournamentId,
+      "RefereeQualification.tournamentId"
+    ),
+    metadata: normalizeMetadata(
+      partial.metadata,
+      "RefereeQualification.metadata"
+    )
+  });
+}
+
+// src/features/competition-core/referee-assignment/contracts/refereeAvailabilityWindow.js
+var ALLOWED3 = Object.freeze([
+  "schemaVersion",
+  "windowId",
+  "refereeId",
+  "startAt",
+  "endAt",
+  "timezone",
+  "source",
+  "metadata"
+]);
+function createRefereeAvailabilityWindow(partial = {}) {
+  rejectUnknownFields(
+    /** @type {Record<string, unknown>} */
+    partial,
+    ALLOWED3,
+    "RefereeAvailabilityWindow"
+  );
+  const startAt = normalizeOptionalInstant(
+    partial.startAt,
+    "RefereeAvailabilityWindow.startAt"
+  );
+  const endAt = normalizeOptionalInstant(
+    partial.endAt,
+    "RefereeAvailabilityWindow.endAt"
+  );
+  if (!startAt || !endAt) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SCHEDULE_WINDOW_REQUIRED,
+      "RefereeAvailabilityWindow requires startAt and endAt strings",
+      { startAt, endAt }
+    );
+  }
+  let timezone = null;
+  if (partial.timezone != null && partial.timezone !== "") {
+    if (typeof partial.timezone !== "string") {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+        "RefereeAvailabilityWindow.timezone must be a string or null",
+        { field: "timezone" }
+      );
+    }
+    timezone = partial.timezone.trim() || null;
+  }
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    windowId: requireStableId(
+      partial.windowId,
+      "RefereeAvailabilityWindow.windowId"
+    ),
+    refereeId: requireStableId(
+      partial.refereeId,
+      "RefereeAvailabilityWindow.refereeId"
+    ),
+    startAt,
+    endAt,
+    timezone,
+    source: requireEnum(
+      partial.source ?? REFEREE_AVAILABILITY_SOURCE.DIRECTORY,
+      "RefereeAvailabilityWindow.source",
+      REFEREE_AVAILABILITY_SOURCE_VALUES
+    ),
+    metadata: normalizeMetadata(
+      partial.metadata,
+      "RefereeAvailabilityWindow.metadata"
+    )
+  });
+}
+
+// src/features/competition-core/referee-assignment/contracts/refereeRoleRequirement.js
+var ALLOWED4 = Object.freeze([
+  "schemaVersion",
+  "roleCode",
+  "mandatory",
+  "minCount",
+  "maxCount",
+  "preferredRoleCode",
+  "priority"
+]);
+function createRefereeRoleRequirement(partial = {}) {
+  rejectUnknownFields(
+    /** @type {Record<string, unknown>} */
+    partial,
+    ALLOWED4,
+    "RefereeRoleRequirement"
+  );
+  const roleCode = normalizeRefereeRoleCode(partial.roleCode);
+  if (!roleCode) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED,
+      "RefereeRoleRequirement.roleCode is required",
+      { field: "roleCode" }
+    );
+  }
+  const minCount = requireNonNegativeInt(
+    partial.minCount === void 0 ? 1 : partial.minCount,
+    "RefereeRoleRequirement.minCount"
+  );
+  const maxCount = requireNonNegativeInt(
+    partial.maxCount === void 0 ? minCount : partial.maxCount,
+    "RefereeRoleRequirement.maxCount"
+  );
+  if (maxCount < minCount) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+      "RefereeRoleRequirement.maxCount must be >= minCount",
+      { minCount, maxCount }
+    );
+  }
+  const preferredRoleCode = partial.preferredRoleCode == null || partial.preferredRoleCode === "" ? null : normalizeRefereeRoleCode(partial.preferredRoleCode);
+  if (partial.preferredRoleCode != null && partial.preferredRoleCode !== "" && !preferredRoleCode) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED,
+      "RefereeRoleRequirement.preferredRoleCode is invalid",
+      { field: "preferredRoleCode" }
+    );
+  }
+  let priority = null;
+  if (partial.priority != null && partial.priority !== "") {
+    if (typeof partial.priority !== "number" || !Number.isInteger(partial.priority) || !Number.isFinite(partial.priority)) {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+        "RefereeRoleRequirement.priority must be a finite integer when present",
+        { field: "priority" }
+      );
+    }
+    priority = partial.priority;
+  }
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    roleCode,
+    mandatory: requireBoolean(
+      partial.mandatory === void 0 ? true : partial.mandatory,
+      "RefereeRoleRequirement.mandatory"
+    ),
+    minCount,
+    maxCount,
+    preferredRoleCode: preferredRoleCode ? preferredRoleCode : normalizeOptionalStableId(null, "preferredRoleCode"),
+    priority
+  });
+}
+
+// src/features/competition-core/referee-assignment/contracts/refereeAssignmentPolicy.js
+var ALLOWED5 = Object.freeze([
+  "schemaVersion",
+  "policyId",
+  "policyVersion",
+  "defaultRoleRequirements",
+  "allowSelfRefereed",
+  "maxSimultaneousAssignments",
+  "softObjectiveKeys",
+  "allowSoftOverride",
+  "requireScheduleWindowForMandatoryRoles",
+  "allowSameRefereeMultipleRolesOnMatch",
+  "enableSeededExploration",
+  "requireSeed",
+  "preferredConcreteRoles",
+  "consecutiveGapMinutesThreshold",
+  "comparatorVersion",
+  "metadata"
+]);
+function createRefereeAssignmentPolicy(partial = {}) {
+  rejectUnknownFields(
+    /** @type {Record<string, unknown>} */
+    partial,
+    ALLOWED5,
+    "RefereeAssignmentPolicy"
+  );
+  const rawReqs = Array.isArray(partial.defaultRoleRequirements) ? partial.defaultRoleRequirements : [
+    {
+      roleCode: "PRIMARY",
+      mandatory: true,
+      minCount: 1,
+      maxCount: 1
+    }
+  ];
+  const defaultRoleRequirements = Object.freeze(
+    rawReqs.map((item, index) => {
+      try {
+        return createRefereeRoleRequirement(item);
+      } catch (err) {
+        throw new RefereeAssignmentContractError(
+          REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+          `RefereeAssignmentPolicy.defaultRoleRequirements[${index}] invalid`,
+          {
+            index,
+            causeCode: err && typeof err === "object" && "code" in err ? (
+              /** @type {{ code: string }} */
+              err.code
+            ) : null
+          }
+        );
+      }
+    })
+  );
+  const defaultObjectives = [
+    REFEREE_SOFT_OBJECTIVE_KEY.WORKLOAD_BALANCE,
+    REFEREE_SOFT_OBJECTIVE_KEY.CONSECUTIVE_MATCH_MINIMIZATION,
+    REFEREE_SOFT_OBJECTIVE_KEY.COURT_TRANSITION_MINIMIZATION,
+    REFEREE_SOFT_OBJECTIVE_KEY.ROLE_PREFERENCE
+  ];
+  const softObjectiveKeys = Object.freeze(
+    (Array.isArray(partial.softObjectiveKeys) && partial.softObjectiveKeys.length > 0 ? partial.softObjectiveKeys : defaultObjectives).map((key, i) => {
+      if (typeof key !== "string" || key.trim() === "") {
+        throw new RefereeAssignmentContractError(
+          REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+          `softObjectiveKeys[${i}] must be a non-empty string`,
+          { index: i }
+        );
+      }
+      const trimmed = key.trim();
+      if (!isRefereeSoftObjectiveKey(trimmed)) {
+        throw new RefereeAssignmentContractError(
+          REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+          `Unsupported soft objective key: ${trimmed}`,
+          { key: trimmed }
+        );
+      }
+      return trimmed;
+    })
+  );
+  const preferredConcreteRoles = Object.freeze(
+    (Array.isArray(partial.preferredConcreteRoles) ? partial.preferredConcreteRoles : []).map((r) => normalizeRefereeRoleCode(r)).filter(Boolean)
+  );
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    policyId: requireStableId(
+      partial.policyId,
+      "RefereeAssignmentPolicy.policyId"
+    ),
+    policyVersion: requireStableId(
+      partial.policyVersion,
+      "RefereeAssignmentPolicy.policyVersion"
+    ),
+    defaultRoleRequirements,
+    allowSelfRefereed: requireBoolean(
+      partial.allowSelfRefereed === void 0 ? false : partial.allowSelfRefereed,
+      "RefereeAssignmentPolicy.allowSelfRefereed"
+    ),
+    maxSimultaneousAssignments: requireNonNegativeInt(
+      partial.maxSimultaneousAssignments === void 0 ? 1 : partial.maxSimultaneousAssignments,
+      "RefereeAssignmentPolicy.maxSimultaneousAssignments"
+    ),
+    softObjectiveKeys,
+    allowSoftOverride: requireBoolean(
+      partial.allowSoftOverride === void 0 ? false : partial.allowSoftOverride,
+      "RefereeAssignmentPolicy.allowSoftOverride"
+    ),
+    requireScheduleWindowForMandatoryRoles: requireBoolean(
+      partial.requireScheduleWindowForMandatoryRoles === void 0 ? true : partial.requireScheduleWindowForMandatoryRoles,
+      "RefereeAssignmentPolicy.requireScheduleWindowForMandatoryRoles"
+    ),
+    allowSameRefereeMultipleRolesOnMatch: requireBoolean(
+      partial.allowSameRefereeMultipleRolesOnMatch === void 0 ? false : partial.allowSameRefereeMultipleRolesOnMatch,
+      "allowSameRefereeMultipleRolesOnMatch"
+    ),
+    enableSeededExploration: requireBoolean(
+      partial.enableSeededExploration === void 0 ? false : partial.enableSeededExploration,
+      "enableSeededExploration"
+    ),
+    requireSeed: requireBoolean(
+      partial.requireSeed === void 0 ? false : partial.requireSeed,
+      "requireSeed"
+    ),
+    preferredConcreteRoles,
+    consecutiveGapMinutesThreshold: requireNonNegativeInt(
+      partial.consecutiveGapMinutesThreshold === void 0 ? 30 : partial.consecutiveGapMinutesThreshold,
+      "consecutiveGapMinutesThreshold"
+    ),
+    comparatorVersion: String(
+      partial.comparatorVersion ?? CORE13_COMPARATOR_VERSION
+    ),
+    metadata: normalizeMetadata(
+      partial.metadata,
+      "RefereeAssignmentPolicy.metadata"
+    )
+  });
+}
+
+// src/features/competition-core/referee-assignment/contracts/refereeAssignmentContext.js
+var ALLOWED6 = Object.freeze([
+  "schemaVersion",
+  "tenantId",
+  "tournamentId",
+  "divisionId",
+  "scheduleWindow",
+  "snapshotRefs",
+  "matchIds",
+  "metadata"
+]);
+var SNAPSHOT_REF_ALLOWED = Object.freeze([
+  "snapshotId",
+  "snapshotVersion",
+  "fingerprint",
+  "kind"
+]);
+var SCHEDULE_WINDOW_ALLOWED = Object.freeze([
+  "startAt",
+  "endAt",
+  "timezone"
+]);
+
+// src/features/competition-core/referee-assignment/contracts/refereeAssignmentRequest.js
+var ALLOWED7 = Object.freeze([
+  "schemaVersion",
+  "requestId",
+  "tenantId",
+  "tournamentId",
+  "matchIds",
+  "policy",
+  "context",
+  "seed",
+  "allowSoftOverride",
+  "metadata"
+]);
+
+// src/features/competition-core/referee-assignment/contracts/refereeConflict.js
+var ALLOWED8 = Object.freeze([
+  "schemaVersion",
+  "conflictId",
+  "conflictType",
+  "refereeId",
+  "matchId",
+  "relatedMatchIds",
+  "relatedIds",
+  "severity",
+  "reasonCodes",
+  "startAt",
+  "endAt",
+  "metadata"
+]);
+function createRefereeConflict(partial = {}) {
+  rejectUnknownFields(
+    /** @type {Record<string, unknown>} */
+    partial,
+    ALLOWED8,
+    "RefereeConflict"
+  );
+  const reasonCodes = Object.freeze(
+    normalizeStableIdArray(partial.reasonCodes, {
+      field: "RefereeConflict.reasonCodes",
+      sort: true,
+      unique: true
+    }).map((code) => {
+      if (!isRefereeAssignmentDiagnosticCode(code) && typeof code === "string") {
+        return code;
+      }
+      return code;
+    })
+  );
+  for (const code of reasonCodes) {
+    if (typeof code !== "string" || code.trim() === "") {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+        "reasonCodes must be non-empty strings",
+        {}
+      );
+    }
+  }
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    conflictId: requireStableId(partial.conflictId, "RefereeConflict.conflictId"),
+    conflictType: requireEnum(
+      partial.conflictType,
+      "RefereeConflict.conflictType",
+      REFEREE_CONFLICT_TYPE_VALUES
+    ),
+    refereeId: requireStableId(partial.refereeId, "RefereeConflict.refereeId"),
+    matchId: requireStableId(
+      partial.matchId,
+      "RefereeConflict.matchId",
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MATCH_SCOPE_REQUIRED
+    ),
+    relatedMatchIds: Object.freeze(
+      normalizeStableIdArray(partial.relatedMatchIds, {
+        field: "relatedMatchIds",
+        sort: true,
+        unique: true
+      })
+    ),
+    relatedIds: Object.freeze(
+      normalizeStableIdArray(partial.relatedIds, {
+        field: "relatedIds",
+        sort: true,
+        unique: true
+      })
+    ),
+    severity: requireEnum(
+      partial.severity ?? REFEREE_DIAGNOSTIC_SEVERITY.MATCH_RECOVERABLE,
+      "RefereeConflict.severity",
+      REFEREE_DIAGNOSTIC_SEVERITY_VALUES
+    ),
+    reasonCodes,
+    startAt: normalizeOptionalInstant(partial.startAt, "RefereeConflict.startAt"),
+    endAt: normalizeOptionalInstant(partial.endAt, "RefereeConflict.endAt"),
+    metadata: normalizeMetadata(partial.metadata, "RefereeConflict.metadata")
+  });
+}
+
+// src/features/competition-core/referee-assignment/contracts/refereeWorkload.js
+var ALLOWED9 = Object.freeze([
+  "schemaVersion",
+  "refereeId",
+  "assignmentCount",
+  "confirmedAssignmentCount",
+  "plannedAssignmentCount",
+  "consecutiveMatchCount",
+  "courtTransitionCount",
+  "minutesAssigned",
+  "fairnessDelta",
+  "fairnessScale",
+  "roleCounts",
+  "historicalAssignmentCount",
+  "metadata"
+]);
+
+// src/features/competition-core/referee-assignment/contracts/refereeAssignment.js
+var ALLOWED10 = Object.freeze([
+  "schemaVersion",
+  "assignmentId",
+  "matchId",
+  "refereeId",
+  "roleCode",
+  "status",
+  "source",
+  "constraintsSatisfied",
+  "metadata"
+]);
+function createRefereeAssignment(partial = {}) {
+  rejectUnknownFields(
+    /** @type {Record<string, unknown>} */
+    partial,
+    ALLOWED10,
+    "RefereeAssignment"
+  );
+  const roleCode = normalizeRefereeRoleCode(partial.roleCode);
+  if (!roleCode || roleCode === REFEREE_ROLE_CODE.ANY) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED,
+      "RefereeAssignment.roleCode must be a concrete role (ANY is not assignable)",
+      { field: "roleCode", roleCode: roleCode || null }
+    );
+  }
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    assignmentId: requireStableId(
+      partial.assignmentId,
+      "RefereeAssignment.assignmentId"
+    ),
+    matchId: requireStableId(
+      partial.matchId,
+      "RefereeAssignment.matchId",
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MATCH_SCOPE_REQUIRED
+    ),
+    refereeId: requireStableId(
+      partial.refereeId,
+      "RefereeAssignment.refereeId"
+    ),
+    roleCode,
+    status: requireEnum(
+      partial.status ?? REFEREE_ASSIGNMENT_STATUS.PLANNED,
+      "RefereeAssignment.status",
+      REFEREE_ASSIGNMENT_STATUS_VALUES
+    ),
+    source: requireEnum(
+      partial.source ?? REFEREE_ASSIGNMENT_SOURCE.AUTO,
+      "RefereeAssignment.source",
+      REFEREE_ASSIGNMENT_SOURCE_VALUES
+    ),
+    constraintsSatisfied: Object.freeze(
+      normalizeStableIdArray(partial.constraintsSatisfied, {
+        field: "constraintsSatisfied",
+        sort: true,
+        unique: true
+      })
+    ),
+    metadata: normalizeMetadata(partial.metadata, "RefereeAssignment.metadata")
+  });
+}
+
+// src/features/competition-core/referee-assignment/contracts/unassignedRefereeRequirement.js
+var ALLOWED11 = Object.freeze([
+  "schemaVersion",
+  "matchId",
+  "roleCode",
+  "mandatory",
+  "requiredCount",
+  "assignedCount",
+  "unfilledCount",
+  "candidateCountEvaluated",
+  "candidateCountEligible",
+  "reasonCodes",
+  "reasonCounts",
+  "blockingConflicts",
+  "evidenceRefs",
+  "severity",
+  "metadata"
+]);
+
+// src/features/competition-core/referee-assignment/contracts/refereeAssignmentFailure.js
+var ALLOWED12 = Object.freeze([
+  "schemaVersion",
+  "code",
+  "message",
+  "severity",
+  "details",
+  "matchId",
+  "refereeId",
+  "causedBy",
+  "reasonCodes"
+]);
+function createRefereeAssignmentFailure(partial = {}) {
+  rejectUnknownFields(
+    /** @type {Record<string, unknown>} */
+    partial,
+    ALLOWED12,
+    "RefereeAssignmentFailure"
+  );
+  const code = typeof partial.code === "string" && isRefereeAssignmentDiagnosticCode(partial.code) ? partial.code : null;
+  if (!code) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+      "RefereeAssignmentFailure.code must be a known diagnostic code",
+      { code: partial.code ?? null }
+    );
+  }
+  const message = typeof partial.message === "string" && partial.message.trim() ? partial.message.trim() : code;
+  const causedBy = partial.causedBy == null || partial.causedBy === "" ? null : typeof partial.causedBy === "string" && isRefereeAssignmentDiagnosticCode(partial.causedBy) ? partial.causedBy : typeof partial.causedBy === "string" && partial.causedBy.trim() ? partial.causedBy.trim() : (() => {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+      "causedBy must be a diagnostic code string or null",
+      {}
+    );
+  })();
+  const reasonCodes = Object.freeze(
+    normalizeStableIdArray(partial.reasonCodes, {
+      field: "reasonCodes",
+      sort: true,
+      unique: true
+    })
+  );
+  if ((code === REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MANUAL_ASSIGNMENT_REJECTED || code === REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REPLACEMENT_REFEREE_REJECTED) && !causedBy && reasonCodes.length === 0) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+      `${code} requires causedBy or reasonCodes`,
+      {}
+    );
+  }
+  const severity = requireEnum(
+    partial.severity ?? resolveDefaultDiagnosticSeverity(code),
+    "RefereeAssignmentFailure.severity",
+    REFEREE_DIAGNOSTIC_SEVERITY_VALUES
+  );
+  if (code === REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MANUAL_ASSIGNMENT_REJECTED && severity !== REFEREE_DIAGNOSTIC_SEVERITY.FATAL) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+      "MANUAL_ASSIGNMENT_REJECTED severity must be FATAL",
+      { severity }
+    );
+  }
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    code,
+    message,
+    severity,
+    details: normalizeMetadata(partial.details, "RefereeAssignmentFailure.details"),
+    matchId: normalizeOptionalStableId(
+      partial.matchId,
+      "RefereeAssignmentFailure.matchId"
+    ),
+    refereeId: normalizeOptionalStableId(
+      partial.refereeId,
+      "RefereeAssignmentFailure.refereeId"
+    ),
+    causedBy,
+    reasonCodes
+  });
+}
+function createManualAssignmentRejection(underlyingCode, options = {}) {
+  const causedBy = typeof underlyingCode === "string" && underlyingCode.trim() ? underlyingCode.trim() : null;
+  if (!causedBy) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+      "underlying reason code required for manual rejection",
+      {}
+    );
+  }
+  return createRefereeAssignmentFailure({
+    code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MANUAL_ASSIGNMENT_REJECTED,
+    message: typeof options.message === "string" && options.message.trim() ? options.message.trim() : `Manual assignment rejected: ${causedBy}`,
+    severity: REFEREE_DIAGNOSTIC_SEVERITY.FATAL,
+    causedBy,
+    reasonCodes: options.reasonCodes ?? [causedBy],
+    matchId: options.matchId ?? null,
+    refereeId: options.refereeId ?? null,
+    details: options.details ?? {}
+  });
+}
+
+// src/features/competition-core/referee-assignment/contracts/refereeAssignmentPlan.js
+var ALLOWED13 = Object.freeze([
+  "schemaVersion",
+  "planId",
+  "requestId",
+  "assignments",
+  "unassigned",
+  "workloads",
+  "diagnostics",
+  "planFingerprint",
+  "replayMetadata",
+  "metadata"
+]);
+
+// src/features/competition-core/referee-assignment/contracts/manualRefereeAssignmentRequest.js
+var ALLOWED14 = Object.freeze([
+  "schemaVersion",
+  "requestId",
+  "tenantId",
+  "tournamentId",
+  "matchId",
+  "refereeId",
+  "roleCode",
+  "actorRef",
+  "allowSoftOverride",
+  "metadata"
+]);
+function createManualRefereeAssignmentRequest(partial = {}) {
+  rejectUnknownFields(
+    /** @type {Record<string, unknown>} */
+    partial,
+    ALLOWED14,
+    "ManualRefereeAssignmentRequest"
+  );
+  const roleCode = normalizeRefereeRoleCode(partial.roleCode);
+  if (!roleCode || roleCode === REFEREE_ROLE_CODE.ANY) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED,
+      "ManualRefereeAssignmentRequest.roleCode must be a concrete role (ANY is not assignable)",
+      { field: "roleCode", roleCode: roleCode || null }
+    );
+  }
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    requestId: requireStableId(
+      partial.requestId,
+      "ManualRefereeAssignmentRequest.requestId"
+    ),
+    tenantId: requireStableId(
+      partial.tenantId,
+      "ManualRefereeAssignmentRequest.tenantId",
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.TENANT_SCOPE_REQUIRED
+    ),
+    tournamentId: requireStableId(
+      partial.tournamentId,
+      "ManualRefereeAssignmentRequest.tournamentId",
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.TOURNAMENT_SCOPE_REQUIRED
+    ),
+    matchId: requireStableId(
+      partial.matchId,
+      "ManualRefereeAssignmentRequest.matchId",
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MATCH_SCOPE_REQUIRED
+    ),
+    refereeId: requireStableId(
+      partial.refereeId,
+      "ManualRefereeAssignmentRequest.refereeId"
+    ),
+    roleCode,
+    actorRef: normalizeOptionalStableId(
+      partial.actorRef,
+      "ManualRefereeAssignmentRequest.actorRef"
+    ),
+    allowSoftOverride: requireBoolean(
+      partial.allowSoftOverride === void 0 ? false : partial.allowSoftOverride,
+      "ManualRefereeAssignmentRequest.allowSoftOverride"
+    ),
+    metadata: normalizeMetadata(
+      partial.metadata,
+      "ManualRefereeAssignmentRequest.metadata"
+    )
+  });
+}
+
+// src/features/competition-core/referee-assignment/contracts/refereeReplacementRequest.js
+var ALLOWED15 = Object.freeze([
+  "schemaVersion",
+  "requestId",
+  "tenantId",
+  "tournamentId",
+  "matchId",
+  "roleCode",
+  "assignmentId",
+  "outgoingRefereeId",
+  "incomingRefereeId",
+  "reasonCode",
+  "actorRef",
+  "allowSoftOverride",
+  "metadata"
+]);
+function createRefereeReplacementRequest(partial = {}) {
+  rejectUnknownFields(
+    /** @type {Record<string, unknown>} */
+    partial,
+    ALLOWED15,
+    "RefereeReplacementRequest"
+  );
+  const assignmentId = normalizeOptionalStableId(
+    partial.assignmentId,
+    "assignmentId"
+  );
+  const matchId = normalizeOptionalStableId(partial.matchId, "matchId");
+  const roleCodeRaw = partial.roleCode;
+  const roleCode = roleCodeRaw == null || roleCodeRaw === "" ? null : normalizeRefereeRoleCode(roleCodeRaw);
+  if (!assignmentId && !(matchId && roleCode)) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST,
+      "Replacement requires assignmentId or (matchId + roleCode)",
+      { assignmentId, matchId, roleCode }
+    );
+  }
+  if (roleCodeRaw != null && roleCodeRaw !== "" && !roleCode) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED,
+      "RefereeReplacementRequest.roleCode is invalid",
+      { field: "roleCode" }
+    );
+  }
+  let reasonCode = null;
+  if (partial.reasonCode != null && partial.reasonCode !== "") {
+    if (typeof partial.reasonCode !== "string") {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST,
+        "reasonCode must be a string or null",
+        {}
+      );
+    }
+    reasonCode = partial.reasonCode.trim() || null;
+  }
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    requestId: requireStableId(
+      partial.requestId,
+      "RefereeReplacementRequest.requestId",
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST
+    ),
+    tenantId: requireStableId(
+      partial.tenantId,
+      "RefereeReplacementRequest.tenantId",
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.TENANT_SCOPE_REQUIRED
+    ),
+    tournamentId: requireStableId(
+      partial.tournamentId,
+      "RefereeReplacementRequest.tournamentId",
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.TOURNAMENT_SCOPE_REQUIRED
+    ),
+    matchId,
+    roleCode,
+    assignmentId,
+    outgoingRefereeId: normalizeOptionalStableId(
+      partial.outgoingRefereeId,
+      "outgoingRefereeId"
+    ),
+    incomingRefereeId: requireStableId(
+      partial.incomingRefereeId,
+      "RefereeReplacementRequest.incomingRefereeId",
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST
+    ),
+    reasonCode,
+    actorRef: normalizeOptionalStableId(partial.actorRef, "actorRef"),
+    allowSoftOverride: requireBoolean(
+      partial.allowSoftOverride === void 0 ? false : partial.allowSoftOverride,
+      "allowSoftOverride"
+    ),
+    metadata: normalizeMetadata(
+      partial.metadata,
+      "RefereeReplacementRequest.metadata"
+    )
+  });
+}
+
+// src/features/competition-core/referee-assignment/contracts/refereeReplacementResult.js
+var ALLOWED16 = Object.freeze([
+  "schemaVersion",
+  "requestId",
+  "ok",
+  "outgoingAssignment",
+  "incomingAssignment",
+  "failure",
+  "metadata"
+]);
+
+// src/features/competition-core/referee-assignment/contracts/refereeAssignmentAuditRecord.js
+var ALLOWED17 = Object.freeze([
+  "schemaVersion",
+  "auditId",
+  "action",
+  "requestId",
+  "planFingerprint",
+  "beforeRef",
+  "afterRef",
+  "actorRef",
+  "reasonCode",
+  "recordedAt",
+  "payload",
+  "metadata"
+]);
+function createRefereeAssignmentAuditRecord(partial = {}) {
+  rejectUnknownFields(
+    /** @type {Record<string, unknown>} */
+    partial,
+    ALLOWED17,
+    "RefereeAssignmentAuditRecord"
+  );
+  let payload = null;
+  if (partial.payload != null) {
+    if (!isPlainObject(partial.payload)) {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+        "payload must be a plain object or null",
+        {}
+      );
+    }
+    payload = ownedFreeze(partial.payload);
+  }
+  let reasonCode = null;
+  if (partial.reasonCode != null && partial.reasonCode !== "") {
+    if (typeof partial.reasonCode !== "string") {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+        "reasonCode must be a string or null",
+        {}
+      );
+    }
+    reasonCode = partial.reasonCode.trim() || null;
+  }
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    auditId: requireStableId(
+      partial.auditId,
+      "RefereeAssignmentAuditRecord.auditId"
+    ),
+    action: requireEnum(
+      partial.action,
+      "RefereeAssignmentAuditRecord.action",
+      REFEREE_AUDIT_ACTION_VALUES
+    ),
+    requestId: normalizeOptionalStableId(partial.requestId, "requestId"),
+    planFingerprint: normalizeOptionalStableId(
+      partial.planFingerprint,
+      "planFingerprint"
+    ),
+    beforeRef: normalizeOptionalStableId(partial.beforeRef, "beforeRef"),
+    afterRef: normalizeOptionalStableId(partial.afterRef, "afterRef"),
+    actorRef: normalizeOptionalStableId(partial.actorRef, "actorRef"),
+    reasonCode,
+    recordedAt: normalizeOptionalInstant(
+      partial.recordedAt,
+      "RefereeAssignmentAuditRecord.recordedAt"
+    ),
+    payload,
+    metadata: normalizeMetadata(
+      partial.metadata,
+      "RefereeAssignmentAuditRecord.metadata"
+    )
+  });
+}
+
+// src/features/competition-core/referee-assignment/contracts/refereeResourceConflictProjection.js
+var ALLOWED18 = Object.freeze([
+  "schemaVersion",
+  "conflictId",
+  "resourceType",
+  "refereeId",
+  "matchId",
+  "conflictingMatchId",
+  "conflictType",
+  "startAt",
+  "endAt",
+  "severity",
+  "reasonCodes",
+  "metadata"
+]);
+function createRefereeResourceConflictProjection(partial = {}) {
+  rejectUnknownFields(
+    /** @type {Record<string, unknown>} */
+    partial,
+    ALLOWED18,
+    "RefereeResourceConflictProjection"
+  );
+  const resourceType = partial.resourceType ?? REFEREE_RESOURCE_TYPE.REFEREE;
+  if (resourceType !== REFEREE_RESOURCE_TYPE.REFEREE) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+      "resourceType must be REFEREE for CORE-13 projections",
+      { resourceType }
+    );
+  }
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    conflictId: requireStableId(
+      partial.conflictId,
+      "RefereeResourceConflictProjection.conflictId"
+    ),
+    resourceType: REFEREE_RESOURCE_TYPE.REFEREE,
+    refereeId: requireStableId(
+      partial.refereeId,
+      "RefereeResourceConflictProjection.refereeId"
+    ),
+    matchId: requireStableId(
+      partial.matchId,
+      "RefereeResourceConflictProjection.matchId",
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MATCH_SCOPE_REQUIRED
+    ),
+    conflictingMatchId: normalizeOptionalStableId(
+      partial.conflictingMatchId,
+      "conflictingMatchId"
+    ),
+    conflictType: requireEnum(
+      partial.conflictType,
+      "RefereeResourceConflictProjection.conflictType",
+      REFEREE_CONFLICT_TYPE_VALUES
+    ),
+    startAt: normalizeOptionalInstant(
+      partial.startAt,
+      "RefereeResourceConflictProjection.startAt"
+    ),
+    endAt: normalizeOptionalInstant(
+      partial.endAt,
+      "RefereeResourceConflictProjection.endAt"
+    ),
+    severity: requireEnum(
+      partial.severity ?? REFEREE_DIAGNOSTIC_SEVERITY.MATCH_RECOVERABLE,
+      "severity",
+      REFEREE_DIAGNOSTIC_SEVERITY_VALUES
+    ),
+    reasonCodes: Object.freeze(
+      normalizeStableIdArray(partial.reasonCodes, {
+        field: "reasonCodes",
+        sort: true,
+        unique: true
+      })
+    ),
+    metadata: normalizeMetadata(
+      partial.metadata,
+      "RefereeResourceConflictProjection.metadata"
+    )
+  });
+}
+
+// src/features/competition-core/referee-assignment/contracts/refereeEligibilityResult.js
+function createHardFailure(partial = {}) {
+  const code = String(partial.code || "");
+  return ownedFreeze({
+    code,
+    severity: partial.severity || resolveDefaultDiagnosticSeverity(code) || REFEREE_DIAGNOSTIC_SEVERITY.MATCH_RECOVERABLE,
+    constraintKind: REFEREE_CONSTRAINT_KIND.HARD,
+    message: typeof partial.message === "string" && partial.message.trim() ? partial.message.trim() : code,
+    details: ownedFreeze(
+      partial.details && typeof partial.details === "object" ? partial.details : {}
+    )
+  });
+}
+function createSoftNote(partial = {}) {
+  const code = String(partial.code || "");
+  if (!isRefereeSoftNoteCode(code)) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST,
+      `Unknown soft note code: ${code || "(empty)"}`,
+      { code }
+    );
+  }
+  return ownedFreeze({
+    code,
+    severity: REFEREE_DIAGNOSTIC_SEVERITY.WARNING,
+    constraintKind: REFEREE_CONSTRAINT_KIND.SOFT,
+    message: typeof partial.message === "string" && partial.message.trim() ? partial.message.trim() : code,
+    details: ownedFreeze(
+      partial.details && typeof partial.details === "object" ? partial.details : {}
+    )
+  });
+}
+function sortHardFailures(failures) {
+  return [...failures || []].sort((a, b) => {
+    const c = compareStableString(a.code, b.code);
+    if (c !== 0) return c;
+    return compareStableString(a.message, b.message);
+  });
+}
+function collectReasonCodes(failures) {
+  const set = /* @__PURE__ */ new Set();
+  for (const f of failures || []) {
+    if (f && typeof f.code === "string" && f.code) set.add(f.code);
+  }
+  return [...set].sort(compareStableString);
+}
+function createRefereeEligibilityResult(partial = {}) {
+  const hardFailures = Object.freeze(
+    sortHardFailures(partial.hardFailures || []).map(
+      (f) => createHardFailure(f)
+    )
+  );
+  const softNotes = Object.freeze(
+    [...partial.softNotes || []].map((n) => createSoftNote(n)).sort((a, b) => {
+      const c = compareStableString(a.code, b.code);
+      if (c !== 0) return c;
+      return compareStableString(a.message, b.message);
+    })
+  );
+  const evaluatedConstraintKinds = Object.freeze(
+    [...partial.evaluatedConstraintKinds || []].map(String).sort(compareStableString)
+  );
+  const evidenceRefs = Object.freeze(
+    [...partial.evidenceRefs || []].map(String).filter(Boolean).sort(compareStableString)
+  );
+  const eligible = typeof partial.eligible === "boolean" ? partial.eligible : hardFailures.length === 0;
+  return ownedFreeze({
+    schemaVersion: String(partial.schemaVersion ?? CORE13_SCHEMA_VERSION),
+    refereeId: String(partial.refereeId || ""),
+    matchId: String(partial.matchId || ""),
+    roleCode: String(partial.roleCode || ""),
+    eligible,
+    hardFailures,
+    softNotes,
+    evaluatedConstraintKinds,
+    evidenceRefs
+  });
+}
+
+// src/features/competition-core/referee-assignment/deterministic/fingerprint.js
+var CORE13_DIGEST_VERSION = "CORE13_DIGEST_SHA256_V1";
+var CORE13_DIGEST_DOMAIN = Object.freeze({
+  ASSIGNMENT: "CORE13:ASSIGNMENT:V1",
+  PLAN: "CORE13:PLAN:V1",
+  PLAN_FINGERPRINT: "CORE13:PLAN_FINGERPRINT:V1",
+  REPLACEMENT: "CORE13:REPLACEMENT:V1",
+  REPLACEMENT_RESULT: "CORE13:REPLACEMENT_RESULT:V1",
+  AUDIT: "CORE13:AUDIT:V1",
+  SNAPSHOT_DIRECTORY: "CORE13:SNAPSHOT:DIRECTORY:V1",
+  SNAPSHOT_QUALIFICATION: "CORE13:SNAPSHOT:QUALIFICATION:V1",
+  SNAPSHOT_AVAILABILITY: "CORE13:SNAPSHOT:AVAILABILITY:V1",
+  SNAPSHOT_EXISTING_ASSIGNMENT: "CORE13:SNAPSHOT:EXISTING_ASSIGNMENT:V1",
+  SNAPSHOT_SCHEDULE: "CORE13:SNAPSHOT:SCHEDULE:V1",
+  SNAPSHOT_CONFLICT_POLICY: "CORE13:SNAPSHOT:CONFLICT_POLICY:V1",
+  SNAPSHOT_WORKLOAD_HISTORY: "CORE13:SNAPSHOT:WORKLOAD_HISTORY:V1",
+  SEED_EXPLORATION: "CORE13:SEED_EXPLORATION:V1",
+  GENERIC: "CORE13:GENERIC:V1"
+});
+var CORE13_ID_PREFIX = Object.freeze({
+  ASSIGNMENT: "core13_assignment_v1_",
+  PLAN: "core13_plan_v1_",
+  REPLACEMENT: "core13_replacement_v1_",
+  AUDIT: "core13_audit_v1_"
+});
+var CORE13_ID_DIGEST_HEX_LEN = 32;
+var textEncoder = new TextEncoder();
+var SHA256_K = new Uint32Array([
+  1116352408,
+  1899447441,
+  3049323471,
+  3921009573,
+  961987163,
+  1508970993,
+  2453635748,
+  2870763221,
+  3624381080,
+  310598401,
+  607225278,
+  1426881987,
+  1925078388,
+  2162078206,
+  2614888103,
+  3248222580,
+  3835390401,
+  4022224774,
+  264347078,
+  604807628,
+  770255983,
+  1249150122,
+  1555081692,
+  1996064986,
+  2554220882,
+  2821834349,
+  2952996808,
+  3210313671,
+  3336571891,
+  3584528711,
+  113926993,
+  338241895,
+  666307205,
+  773529912,
+  1294757372,
+  1396182291,
+  1695183700,
+  1986661051,
+  2177026350,
+  2456956037,
+  2730485921,
+  2820302411,
+  3259730800,
+  3345764771,
+  3516065817,
+  3600352804,
+  4094571909,
+  275423344,
+  430227734,
+  506948616,
+  659060556,
+  883997877,
+  958139571,
+  1322822218,
+  1537002063,
+  1747873779,
+  1955562222,
+  2024104815,
+  2227730452,
+  2361852424,
+  2428436474,
+  2756734187,
+  3204031479,
+  3329325298
+]);
+function sha256RightRotate(value, amount) {
+  return value >>> amount | value << 32 - amount;
+}
+function sha256DigestBytes(message) {
+  const msgLen = message.length;
+  const bitLenHi = Math.floor(msgLen / 536870912);
+  const bitLenLo = msgLen << 3 >>> 0;
+  const padLen = msgLen % 64 < 56 ? 56 - msgLen % 64 : 120 - msgLen % 64;
+  const totalLen = msgLen + padLen + 8;
+  const padded = new Uint8Array(totalLen);
+  padded.set(message);
+  padded[msgLen] = 128;
+  const view = new DataView(padded.buffer);
+  view.setUint32(totalLen - 8, bitLenHi, false);
+  view.setUint32(totalLen - 4, bitLenLo, false);
+  let h0 = 1779033703;
+  let h1 = 3144134277;
+  let h2 = 1013904242;
+  let h3 = 2773480762;
+  let h4 = 1359893119;
+  let h5 = 2600822924;
+  let h6 = 528734635;
+  let h7 = 1541459225;
+  const w = new Uint32Array(64);
+  for (let offset = 0; offset < totalLen; offset += 64) {
+    for (let i = 0; i < 16; i += 1) {
+      w[i] = view.getUint32(offset + i * 4, false);
+    }
+    for (let i = 16; i < 64; i += 1) {
+      const s0 = sha256RightRotate(w[i - 15], 7) ^ sha256RightRotate(w[i - 15], 18) ^ w[i - 15] >>> 3;
+      const s1 = sha256RightRotate(w[i - 2], 17) ^ sha256RightRotate(w[i - 2], 19) ^ w[i - 2] >>> 10;
+      w[i] = w[i - 16] + s0 + w[i - 7] + s1 >>> 0;
+    }
+    let a = h0;
+    let b = h1;
+    let c = h2;
+    let d = h3;
+    let e = h4;
+    let f = h5;
+    let g = h6;
+    let h = h7;
+    for (let i = 0; i < 64; i += 1) {
+      const s1 = sha256RightRotate(e, 6) ^ sha256RightRotate(e, 11) ^ sha256RightRotate(e, 25);
+      const ch = e & f ^ ~e & g;
+      const temp1 = h + s1 + ch + SHA256_K[i] + w[i] >>> 0;
+      const s0 = sha256RightRotate(a, 2) ^ sha256RightRotate(a, 13) ^ sha256RightRotate(a, 22);
+      const maj = a & b ^ a & c ^ b & c;
+      const temp2 = s0 + maj >>> 0;
+      h = g;
+      g = f;
+      f = e;
+      e = d + temp1 >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = temp1 + temp2 >>> 0;
+    }
+    h0 = h0 + a >>> 0;
+    h1 = h1 + b >>> 0;
+    h2 = h2 + c >>> 0;
+    h3 = h3 + d >>> 0;
+    h4 = h4 + e >>> 0;
+    h5 = h5 + f >>> 0;
+    h6 = h6 + g >>> 0;
+    h7 = h7 + h >>> 0;
+  }
+  const out = new Uint8Array(32);
+  const outView = new DataView(out.buffer);
+  outView.setUint32(0, h0, false);
+  outView.setUint32(4, h1, false);
+  outView.setUint32(8, h2, false);
+  outView.setUint32(12, h3, false);
+  outView.setUint32(16, h4, false);
+  outView.setUint32(20, h5, false);
+  outView.setUint32(24, h6, false);
+  outView.setUint32(28, h7, false);
+  return out;
+}
+function sha256HexUtf8(text) {
+  const bytes = sha256DigestBytes(textEncoder.encode(String(text ?? "")));
+  let hex = "";
+  for (let i = 0; i < bytes.length; i += 1) {
+    hex += bytes[i].toString(16).padStart(2, "0");
+  }
+  return hex;
+}
+function canonicalizeJsonValue(value, seen = /* @__PURE__ */ new WeakSet()) {
+  if (value === null) return null;
+  const t = typeof value;
+  if (t === "string" || t === "boolean") return value;
+  if (t === "number") {
+    if (!Number.isFinite(value)) {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+        "Non-finite number in canonical serialization",
+        { value: String(value) }
+      );
+    }
+    return Object.is(value, -0) ? 0 : value;
+  }
+  if (t === "undefined" || t === "function" || t === "symbol" || t === "bigint") {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      `Unsupported type in canonical serialization: ${t}`,
+      { type: t }
+    );
+  }
+  if (t !== "object") {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Unsupported value in canonical serialization",
+      { type: t }
+    );
+  }
+  if (value instanceof Date || value instanceof Map || value instanceof Set) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Date/Map/Set forbidden in canonical serialization",
+      {}
+    );
+  }
+  if (seen.has(
+    /** @type {object} */
+    value
+  )) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Cyclic reference in canonical serialization",
+      {}
+    );
+  }
+  seen.add(
+    /** @type {object} */
+    value
+  );
+  if (Array.isArray(value)) {
+    return value.map((item) => canonicalizeJsonValue(item, seen));
+  }
+  if (!isPlainObject(value)) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Non-plain object in canonical serialization",
+      {}
+    );
+  }
+  const out = {};
+  const keys = Object.keys(
+    /** @type {Record<string, unknown>} */
+    value
+  ).sort(
+    compareStableString
+  );
+  for (const key of keys) {
+    const v = (
+      /** @type {Record<string, unknown>} */
+      value[key]
+    );
+    if (v === void 0) {
+      throw new RefereeAssignmentContractError(
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+        `Undefined value at key ${key}`,
+        { key }
+      );
+    }
+    out[key] = canonicalizeJsonValue(v, seen);
+  }
+  return out;
+}
+function serializeCanonical(value) {
+  return JSON.stringify(canonicalizeJsonValue(value));
+}
+function digestCanonical(domain, payload) {
+  if (typeof domain !== "string" || !domain.trim()) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Digest domain required",
+      {}
+    );
+  }
+  const material = serializeCanonical({
+    digestAlgorithmVersion: CORE13_DIGEST_VERSION,
+    schemaVersion: CORE13_SCHEMA_VERSION,
+    domain: domain.trim(),
+    payload: canonicalizeJsonValue(payload)
+  });
+  const hex = sha256HexUtf8(material);
+  if (!/^[0-9a-f]{64}$/.test(hex)) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Fingerprint primitive unavailable",
+      {}
+    );
+  }
+  return hex;
+}
+function fingerprintValue(value, domain = CORE13_DIGEST_DOMAIN.GENERIC) {
+  return digestCanonical(domain, value);
+}
+function buildNamespacedId(prefix, domain, payload) {
+  const digest = digestCanonical(domain, payload);
+  return `${prefix}${digest.slice(0, CORE13_ID_DIGEST_HEX_LEN)}`;
+}
+function buildReplacementId(facts) {
+  return buildNamespacedId(
+    CORE13_ID_PREFIX.REPLACEMENT,
+    CORE13_DIGEST_DOMAIN.REPLACEMENT,
+    {
+      schemaVersion: facts.schemaVersion || CORE13_SCHEMA_VERSION,
+      requestId: facts.requestId,
+      tenantId: facts.tenantId,
+      tournamentId: facts.tournamentId,
+      matchId: facts.matchId,
+      roleCode: facts.roleCode,
+      slotIndex: facts.slotIndex ?? 0,
+      refereeId: facts.refereeId,
+      priorAssignmentId: facts.priorAssignmentId ?? null,
+      source: facts.source
+    }
+  );
+}
+
+// src/features/competition-core/referee-assignment/ports/portResult.js
+function createPortResolveResult(partial = {}) {
+  const status = partial.status || REFEREE_SNAPSHOT_STATUS.MISSING;
+  const ok = status === REFEREE_SNAPSHOT_STATUS.EMPTY || status === REFEREE_SNAPSHOT_STATUS.POPULATED;
+  return Object.freeze({
+    ok,
+    status,
+    code: partial.code ?? null,
+    severity: partial.severity ?? (ok ? null : REFEREE_DIAGNOSTIC_SEVERITY.FATAL),
+    message: partial.message ?? null,
+    items: Object.freeze(Array.isArray(partial.items) ? [...partial.items] : []),
+    details: Object.freeze(
+      partial.details && typeof partial.details === "object" ? { ...partial.details } : {}
+    )
+  });
+}
+function createEmptySnapshotResult(message = "Valid empty snapshot") {
+  return createPortResolveResult({
+    status: REFEREE_SNAPSHOT_STATUS.EMPTY,
+    code: null,
+    severity: null,
+    message,
+    items: []
+  });
+}
+function createPopulatedSnapshotResult(items, message = "Snapshot populated") {
+  const list = Array.isArray(items) ? items : [];
+  if (list.length === 0) {
+    return createEmptySnapshotResult(message);
+  }
+  return createPortResolveResult({
+    status: REFEREE_SNAPSHOT_STATUS.POPULATED,
+    code: null,
+    severity: null,
+    message,
+    items: list
+  });
+}
+
+// src/features/competition-core/referee-assignment/ports/refereeDirectoryPort.js
+var REFEREE_DIRECTORY_PORT_METHODS = Object.freeze([
+  "resolveRefereeDirectory"
+]);
+
+// src/features/competition-core/referee-assignment/ports/refereeQualificationPort.js
+var REFEREE_QUALIFICATION_PORT_METHODS = Object.freeze([
+  "resolveRefereeQualifications"
+]);
+
+// src/features/competition-core/referee-assignment/ports/refereeAvailabilityPort.js
+var REFEREE_AVAILABILITY_PORT_METHODS = Object.freeze([
+  "resolveRefereeAvailability"
+]);
+
+// src/features/competition-core/referee-assignment/ports/existingAssignmentPort.js
+var EXISTING_ASSIGNMENT_PORT_METHODS = Object.freeze([
+  "resolveExistingAssignments"
+]);
+
+// src/features/competition-core/referee-assignment/ports/refereeConflictPolicyPort.js
+var REFEREE_CONFLICT_POLICY_PORT_METHODS = Object.freeze([
+  "resolveConflictPolicy"
+]);
+
+// src/features/competition-core/referee-assignment/ports/matchScheduleInputPort.js
+var MATCH_SCHEDULE_INPUT_PORT_METHODS = Object.freeze([
+  "resolveMatchSchedule"
+]);
+function createMatchScheduleRow(partial = {}) {
+  if (!isPlainObject(partial)) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      "Match schedule row must be a plain object",
+      {}
+    );
+  }
+  return ownedFreeze({
+    matchId: normalizeStableId(partial.matchId, "matchId"),
+    startAt: normalizeOptionalInstant(partial.startAt, "startAt"),
+    endAt: normalizeOptionalInstant(partial.endAt, "endAt"),
+    courtId: partial.courtId == null || partial.courtId === "" ? null : normalizeStableId(partial.courtId, "courtId"),
+    divisionId: partial.divisionId == null || partial.divisionId === "" ? null : normalizeStableId(partial.divisionId, "divisionId"),
+    participantRefs: Object.freeze(
+      Array.isArray(partial.participantRefs) ? partial.participantRefs.map((id) => String(id).trim()).filter(Boolean) : []
+    ),
+    teamRefs: Object.freeze(
+      Array.isArray(partial.teamRefs) ? partial.teamRefs.map((id) => String(id).trim()).filter(Boolean) : []
+    ),
+    clubIds: Object.freeze(
+      Array.isArray(partial.clubIds) ? partial.clubIds.map((id) => String(id).trim()).filter(Boolean) : []
+    )
+  });
+}
+
+// src/features/competition-core/referee-assignment/ports/refereeAuditSinkPort.js
+var REFEREE_AUDIT_SINK_PORT_METHODS = Object.freeze(["appendAuditRecord"]);
+
+// src/features/competition-core/referee-assignment/ports/refereeWorkloadHistoryPort.js
+var REFEREE_WORKLOAD_HISTORY_PORT_METHODS = Object.freeze([
+  "resolveWorkloadHistory"
+]);
+
+// src/features/competition-core/referee-assignment/services/timeModel.js
+function parseInstantMs(value, field) {
+  if (value instanceof Date) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      `${field} must be an instant string, not a Date object`,
+      { field }
+    );
+  }
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SCHEDULE_WINDOW_REQUIRED,
+      `${field} must be a non-empty instant string`,
+      { field, value: value ?? null }
+    );
+  }
+  const trimmed = value.trim();
+  const ms = Date.parse(trimmed);
+  if (!Number.isFinite(ms)) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      `${field} is not a valid instant`,
+      { field, value: trimmed }
+    );
+  }
+  return ms;
+}
+function requireHalfOpenWindow(startAt, endAt, label = "window") {
+  if (startAt == null || startAt === "" || endAt == null || endAt === "") {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SCHEDULE_WINDOW_REQUIRED,
+      `${label} requires startAt and endAt`,
+      { startAt: startAt ?? null, endAt: endAt ?? null }
+    );
+  }
+  const startMs = parseInstantMs(startAt, `${label}.startAt`);
+  const endMs = parseInstantMs(endAt, `${label}.endAt`);
+  if (!(endMs > startMs)) {
+    throw new RefereeAssignmentContractError(
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.NON_DETERMINISTIC_INPUT,
+      `${label}.endAt must be strictly greater than startAt`,
+      { startAt, endAt }
+    );
+  }
+  return {
+    startAt: String(startAt).trim(),
+    endAt: String(endAt).trim(),
+    startMs,
+    endMs
+  };
+}
+function tryHalfOpenWindow(startAt, endAt, label = "window") {
+  if (startAt == null || startAt === "" || endAt == null || endAt === "") {
+    return null;
+  }
+  return requireHalfOpenWindow(startAt, endAt, label);
+}
+function intervalsOverlapHalfOpen(aStartMs, aEndMs, bStartMs, bEndMs) {
+  return aStartMs < bEndMs && bStartMs < aEndMs;
+}
+function windowFullyCovers(cStartMs, cEndMs, rStartMs, rEndMs) {
+  return cStartMs <= rStartMs && cEndMs >= rEndMs;
+}
+
+// src/features/competition-core/referee-assignment/services/conflictPolicyNormalize.js
+function normalizeConflictPolicy(policy) {
+  const raw = isPlainObject(policy) ? policy : {};
+  const matchExclusions = [];
+  const rawExclusions = Array.isArray(raw.matchExclusions) ? raw.matchExclusions : [];
+  for (const item of rawExclusions) {
+    if (typeof item === "string" && item.includes(":")) {
+      const [refereeId, matchId] = item.split(":");
+      if (refereeId && matchId) {
+        matchExclusions.push({
+          refereeId: refereeId.trim(),
+          matchId: matchId.trim()
+        });
+      }
+    } else if (isPlainObject(item) && item.refereeId && item.matchId) {
+      matchExclusions.push({
+        refereeId: String(item.refereeId).trim(),
+        matchId: String(item.matchId).trim()
+      });
+    }
+  }
+  matchExclusions.sort((a, b) => {
+    const c = compareStableString(a.refereeId, b.refereeId);
+    if (c !== 0) return c;
+    return compareStableString(a.matchId, b.matchId);
+  });
+  const sortIds = (arr) => [...Array.isArray(arr) ? arr : []].map((id) => String(id).trim()).filter(Boolean).sort(compareStableString);
+  return ownedFreeze({
+    policyId: String(raw.policyId || "default-conflict-policy"),
+    /** Participant/player COI — hard by default */
+    prohibitSamePlayerId: raw.prohibitSamePlayerId !== false,
+    prohibitSelfReferee: raw.prohibitSelfReferee !== false,
+    /** General affiliation intersection — hard only when true (default false) */
+    disallowAffiliatedTeamReferee: raw.disallowAffiliatedTeamReferee === true,
+    disallowAffiliatedClubReferee: raw.disallowAffiliatedClubReferee === true,
+    disallowAffiliatedOrganizationReferee: raw.disallowAffiliatedOrganizationReferee === true,
+    /** When affiliation is not hard, emit soft notes if true (default true) */
+    softAffiliationAwareness: raw.softAffiliationAwareness !== false,
+    excludedRefereeIds: Object.freeze(sortIds(raw.excludedRefereeIds)),
+    prohibitedTeamIds: Object.freeze(sortIds(raw.prohibitedTeamIds)),
+    prohibitedClubIds: Object.freeze(sortIds(raw.prohibitedClubIds)),
+    prohibitedOrganizationIds: Object.freeze(
+      sortIds(raw.prohibitedOrganizationIds)
+    ),
+    matchExclusions: Object.freeze(matchExclusions)
+  });
+}
+function isActiveAssignmentStatus(status) {
+  return status === "PLANNED" || status === "CONFIRMED";
+}
+
+// src/features/competition-core/referee-assignment/services/detectRefereeConflicts.js
+function buildConflictId(parts) {
+  return parts.map((p) => String(p ?? "")).join("::");
+}
+function detectRefereeConflicts(input = {}) {
+  const refereeId = String(input.refereeId || "").trim();
+  const match = input.match && typeof input.match === "object" ? input.match : {};
+  const matchId = String(match.matchId || input.matchId || "").trim();
+  const roleCode = input.roleCode == null || input.roleCode === "" ? "" : String(input.roleCode).trim();
+  const candidate = input.candidate && typeof input.candidate === "object" ? input.candidate : null;
+  const policy = normalizeConflictPolicy(input.conflictPolicy);
+  const assignmentPolicy = input.policy && typeof input.policy === "object" ? input.policy : {};
+  const allowSelfRefereed = assignmentPolicy.allowSelfRefereed === true;
+  const existingAssignments = Array.isArray(input.existingAssignments) ? input.existingAssignments : [];
+  const scheduleByMatchId = buildScheduleIndex(input.scheduleRows);
+  const candidateTeamIds = normalizeIdList(
+    input.candidateTeamIds ?? candidate?.teamIds
+  );
+  const conflicts = [];
+  const softNotes = [];
+  if (!refereeId || !matchId) {
+    return ownedFreeze({
+      schemaVersion: CORE13_SCHEMA_VERSION,
+      conflicts: Object.freeze([]),
+      projections: Object.freeze([]),
+      softNotes: Object.freeze([])
+    });
+  }
+  if (policy.excludedRefereeIds.includes(refereeId)) {
+    conflicts.push(
+      makeConflict({
+        conflictType: REFEREE_CONFLICT_TYPE.EXCLUSION,
+        refereeId,
+        matchId,
+        roleCode,
+        reasonCodes: [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_CONFLICT_OF_INTEREST],
+        details: { kind: "excluded_referee" }
+      })
+    );
+  }
+  for (const ex of policy.matchExclusions) {
+    if (ex.refereeId === refereeId && ex.matchId === matchId) {
+      conflicts.push(
+        makeConflict({
+          conflictType: REFEREE_CONFLICT_TYPE.EXCLUSION,
+          refereeId,
+          matchId,
+          roleCode,
+          reasonCodes: [
+            REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_CONFLICT_OF_INTEREST
+          ],
+          details: { kind: "referee_match_exclusion" }
+        })
+      );
+    }
+  }
+  const participantRefs = normalizeIdList(match.participantRefs);
+  const playerId = candidate?.playerId ? String(candidate.playerId).trim() : "";
+  if (policy.prohibitSamePlayerId && playerId && participantRefs.includes(playerId)) {
+    conflicts.push(
+      makeConflict({
+        conflictType: REFEREE_CONFLICT_TYPE.CONFLICT_OF_INTEREST,
+        refereeId,
+        matchId,
+        roleCode,
+        reasonCodes: [
+          REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_CONFLICT_OF_INTEREST
+        ],
+        details: { kind: "referee_is_participant", playerId }
+      })
+    );
+  }
+  if (!allowSelfRefereed && policy.prohibitSelfReferee && playerId && participantRefs.includes(playerId)) {
+    if (!policy.prohibitSamePlayerId) {
+      conflicts.push(
+        makeConflict({
+          conflictType: REFEREE_CONFLICT_TYPE.CONFLICT_OF_INTEREST,
+          refereeId,
+          matchId,
+          roleCode,
+          reasonCodes: [
+            REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_CONFLICT_OF_INTEREST
+          ],
+          details: { kind: "self_referee_forbidden", playerId }
+        })
+      );
+    }
+  }
+  const matchTeamRefs = normalizeIdList(match.teamRefs);
+  for (const teamId of candidateTeamIds) {
+    if (policy.prohibitedTeamIds.includes(teamId)) {
+      conflicts.push(
+        makeConflict({
+          conflictType: REFEREE_CONFLICT_TYPE.CONFLICT_OF_INTEREST,
+          refereeId,
+          matchId,
+          roleCode,
+          reasonCodes: [
+            REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_CONFLICT_OF_INTEREST
+          ],
+          details: { kind: "prohibited_team", teamId },
+          relatedIds: [teamId]
+        })
+      );
+    }
+  }
+  for (const teamId of candidateTeamIds) {
+    if (!matchTeamRefs.includes(teamId)) continue;
+    if (policy.disallowAffiliatedTeamReferee) {
+      conflicts.push(
+        makeConflict({
+          conflictType: REFEREE_CONFLICT_TYPE.CONFLICT_OF_INTEREST,
+          refereeId,
+          matchId,
+          roleCode,
+          reasonCodes: [
+            REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_CONFLICT_OF_INTEREST
+          ],
+          details: { kind: "affiliated_team", teamId },
+          relatedIds: [teamId]
+        })
+      );
+    } else if (policy.softAffiliationAwareness) {
+      softNotes.push({
+        code: "AFFILIATED_TEAM",
+        details: { teamId }
+      });
+    }
+  }
+  const candidateClubIds = normalizeIdList(candidate?.clubIds);
+  const matchClubIds = normalizeIdList(match.clubIds);
+  for (const clubId of candidateClubIds) {
+    if (policy.prohibitedClubIds.includes(clubId)) {
+      conflicts.push(
+        makeConflict({
+          conflictType: REFEREE_CONFLICT_TYPE.CONFLICT_OF_INTEREST,
+          refereeId,
+          matchId,
+          roleCode,
+          reasonCodes: [
+            REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_CONFLICT_OF_INTEREST
+          ],
+          details: { kind: "prohibited_club", clubId },
+          relatedIds: [clubId]
+        })
+      );
+    } else if (matchClubIds.includes(clubId)) {
+      if (policy.disallowAffiliatedClubReferee) {
+        conflicts.push(
+          makeConflict({
+            conflictType: REFEREE_CONFLICT_TYPE.CONFLICT_OF_INTEREST,
+            refereeId,
+            matchId,
+            roleCode,
+            reasonCodes: [
+              REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_CONFLICT_OF_INTEREST
+            ],
+            details: { kind: "affiliated_club", clubId },
+            relatedIds: [clubId]
+          })
+        );
+      } else if (policy.softAffiliationAwareness) {
+        softNotes.push({
+          code: "AFFILIATED_CLUB",
+          details: { clubId }
+        });
+      }
+    }
+  }
+  const candidateOrgIds = normalizeIdList(candidate?.organizationIds);
+  const matchOrgIds = normalizeIdList(match.organizationIds);
+  for (const orgId of candidateOrgIds) {
+    if (policy.prohibitedOrganizationIds.includes(orgId)) {
+      conflicts.push(
+        makeConflict({
+          conflictType: REFEREE_CONFLICT_TYPE.CONFLICT_OF_INTEREST,
+          refereeId,
+          matchId,
+          roleCode,
+          reasonCodes: [
+            REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_CONFLICT_OF_INTEREST
+          ],
+          details: { kind: "prohibited_organization", orgId },
+          relatedIds: [orgId]
+        })
+      );
+    } else if (matchOrgIds.includes(orgId)) {
+      if (policy.disallowAffiliatedOrganizationReferee) {
+        conflicts.push(
+          makeConflict({
+            conflictType: REFEREE_CONFLICT_TYPE.CONFLICT_OF_INTEREST,
+            refereeId,
+            matchId,
+            roleCode,
+            reasonCodes: [
+              REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_CONFLICT_OF_INTEREST
+            ],
+            details: { kind: "affiliated_organization", orgId },
+            relatedIds: [orgId]
+          })
+        );
+      } else if (policy.softAffiliationAwareness) {
+        softNotes.push({
+          code: "AFFILIATED_ORGANIZATION",
+          details: { orgId }
+        });
+      }
+    }
+  }
+  const roleMaxCount = typeof input.roleMaxCount === "number" && Number.isInteger(input.roleMaxCount) && input.roleMaxCount >= 0 ? input.roleMaxCount : 1;
+  if (roleCode) {
+    const sameRoleActives = existingAssignments.filter(
+      (asg) => asg && typeof asg === "object" && String(asg.matchId) === matchId && isActiveAssignmentStatus(asg.status) && String(asg.roleCode) === roleCode
+    );
+    if (sameRoleActives.some((asg) => String(asg.refereeId) === refereeId)) {
+      conflicts.push(
+        makeConflict({
+          conflictType: REFEREE_CONFLICT_TYPE.CAPACITY,
+          refereeId,
+          matchId,
+          roleCode,
+          reasonCodes: [
+            REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ALREADY_ASSIGNED
+          ],
+          details: { kind: "duplicate_role_same_referee" }
+        })
+      );
+    }
+    const others = sameRoleActives.filter(
+      (asg) => String(asg.refereeId) !== refereeId
+    );
+    if (others.length >= roleMaxCount) {
+      conflicts.push(
+        makeConflict({
+          conflictType: REFEREE_CONFLICT_TYPE.CAPACITY,
+          refereeId,
+          matchId,
+          roleCode,
+          reasonCodes: [
+            REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.ASSIGNMENT_CAPACITY_EXHAUSTED
+          ],
+          details: {
+            kind: "duplicate_role_other_referee",
+            otherRefereeId: String(others[0].refereeId),
+            roleMaxCount,
+            sameRoleActiveCount: others.length
+          },
+          relatedIds: others.map((a) => String(a.refereeId)).sort(compareStableString)
+        })
+      );
+    }
+  }
+  const targetWindow = tryHalfOpenWindow(match.startAt, match.endAt, "match");
+  if (targetWindow) {
+    for (const asg of existingAssignments) {
+      if (!asg || typeof asg !== "object") continue;
+      if (String(asg.refereeId) !== refereeId) continue;
+      if (!isActiveAssignmentStatus(asg.status || REFEREE_ASSIGNMENT_STATUS.PLANNED))
+        continue;
+      const otherMatchId = String(asg.matchId || "");
+      if (!otherMatchId || otherMatchId === matchId) continue;
+      const other = scheduleByMatchId.get(otherMatchId) || (asg.startAt && asg.endAt ? { startAt: asg.startAt, endAt: asg.endAt, matchId: otherMatchId } : null);
+      if (!other) continue;
+      const otherWindow = tryHalfOpenWindow(
+        other.startAt,
+        other.endAt,
+        "otherMatch"
+      );
+      if (!otherWindow) continue;
+      if (intervalsOverlapHalfOpen(
+        targetWindow.startMs,
+        targetWindow.endMs,
+        otherWindow.startMs,
+        otherWindow.endMs
+      )) {
+        conflicts.push(
+          makeConflict({
+            conflictType: REFEREE_CONFLICT_TYPE.OVERLAP,
+            refereeId,
+            matchId,
+            conflictingMatchId: otherMatchId,
+            roleCode,
+            startAt: targetWindow.startAt,
+            endAt: targetWindow.endAt,
+            reasonCodes: [
+              REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ALREADY_ASSIGNED
+            ],
+            details: { kind: "schedule_overlap", otherMatchId },
+            relatedMatchIds: [otherMatchId]
+          })
+        );
+      }
+    }
+  }
+  const sorted = dedupeAndSortConflicts(conflicts);
+  const projections = sorted.filter(
+    (c) => c.conflictType === REFEREE_CONFLICT_TYPE.OVERLAP || c.conflictType === REFEREE_CONFLICT_TYPE.CONFLICT_OF_INTEREST || c.conflictType === REFEREE_CONFLICT_TYPE.EXCLUSION
+  ).map(
+    (c) => createRefereeResourceConflictProjection({
+      conflictId: `proj::${c.conflictId}`,
+      refereeId: c.refereeId,
+      matchId: c.matchId,
+      conflictingMatchId: c.relatedMatchIds?.[0] || null,
+      conflictType: c.conflictType,
+      startAt: c.startAt,
+      endAt: c.endAt,
+      severity: c.severity,
+      reasonCodes: [...c.reasonCodes]
+    })
+  );
+  return ownedFreeze({
+    schemaVersion: CORE13_SCHEMA_VERSION,
+    conflicts: Object.freeze(sorted),
+    projections: Object.freeze(projections),
+    softNotes: Object.freeze(
+      softNotes.map(
+        (n) => ownedFreeze({
+          code: String(n.code),
+          details: ownedFreeze(n.details || {})
+        })
+      )
+    )
+  });
+}
+function makeConflict({
+  conflictType,
+  refereeId,
+  matchId,
+  roleCode = "",
+  conflictingMatchId = "",
+  reasonCodes,
+  details = {},
+  relatedIds = [],
+  relatedMatchIds = [],
+  startAt = null,
+  endAt = null
+}) {
+  const conflictId = buildConflictId([
+    conflictType,
+    matchId,
+    refereeId,
+    conflictingMatchId || relatedMatchIds[0] || "",
+    roleCode || "",
+    details.kind || ""
+  ]);
+  return createRefereeConflict({
+    conflictId,
+    conflictType,
+    refereeId,
+    matchId,
+    relatedMatchIds: relatedMatchIds.length ? relatedMatchIds : conflictingMatchId ? [conflictingMatchId] : [],
+    relatedIds,
+    severity: REFEREE_DIAGNOSTIC_SEVERITY.MATCH_RECOVERABLE,
+    reasonCodes,
+    startAt,
+    endAt,
+    metadata: details
+  });
+}
+function dedupeAndSortConflicts(conflicts) {
+  const byId = /* @__PURE__ */ new Map();
+  for (const c of conflicts) {
+    if (!byId.has(c.conflictId)) byId.set(c.conflictId, c);
+  }
+  return [...byId.values()].sort((a, b) => {
+    let c = compareStableString(a.matchId, b.matchId);
+    if (c !== 0) return c;
+    c = compareStableString(a.refereeId, b.refereeId);
+    if (c !== 0) return c;
+    c = compareStableString(a.conflictType, b.conflictType);
+    if (c !== 0) return c;
+    const aOther = a.relatedMatchIds?.[0] || "";
+    const bOther = b.relatedMatchIds?.[0] || "";
+    c = compareStableString(aOther, bOther);
+    if (c !== 0) return c;
+    const aRole = a.metadata?.kind || "";
+    const bRole = b.metadata?.kind || "";
+    c = compareStableString(aRole, bRole);
+    if (c !== 0) return c;
+    return compareStableString(a.conflictId, b.conflictId);
+  });
+}
+function normalizeIdList(values) {
+  if (!Array.isArray(values)) return [];
+  return [...new Set(values.map((v) => String(v).trim()).filter(Boolean))].sort(
+    compareStableString
+  );
+}
+function buildScheduleIndex(rows) {
+  const map = /* @__PURE__ */ new Map();
+  if (!Array.isArray(rows)) return map;
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const id = String(row.matchId || "").trim();
+    if (id) map.set(id, row);
+  }
+  return map;
+}
+
+// src/features/competition-core/referee-assignment/services/evaluateRefereeEligibility.js
+function evaluateRefereeEligibility(input = {}) {
+  const hardFailures = [];
+  const softNotes = [];
+  const evaluated = [];
+  const evidenceRefs = [];
+  const tenantId = String(input.tenantId || "").trim();
+  const tournamentId = String(input.tournamentId || "").trim();
+  const match = input.match && typeof input.match === "object" ? input.match : {};
+  const matchId = String(match.matchId || input.matchId || "").trim();
+  const roleCode = String(input.roleCode || "").trim();
+  const policy = input.policy && typeof input.policy === "object" ? input.policy : {};
+  const maxSimultaneous = typeof policy.maxSimultaneousAssignments === "number" ? policy.maxSimultaneousAssignments : 1;
+  evaluated.push("SCOPE");
+  if (!tenantId) {
+    hardFailures.push(
+      createHardFailure({
+        code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.TENANT_SCOPE_REQUIRED,
+        message: "tenantId is required"
+      })
+    );
+  }
+  if (!tournamentId) {
+    hardFailures.push(
+      createHardFailure({
+        code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.TOURNAMENT_SCOPE_REQUIRED,
+        message: "tournamentId is required"
+      })
+    );
+  }
+  if (!matchId) {
+    hardFailures.push(
+      createHardFailure({
+        code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MATCH_SCOPE_REQUIRED,
+        message: "matchId is required"
+      })
+    );
+  }
+  evaluated.push("ROLE");
+  if (!roleCode || roleCode === REFEREE_ROLE_CODE.ANY) {
+    hardFailures.push(
+      createHardFailure({
+        code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED,
+        message: "Concrete roleCode required; ANY is not assignable",
+        details: { roleCode: roleCode || null }
+      })
+    );
+  }
+  evaluated.push("CANDIDATE");
+  let candidate = null;
+  if (input.candidate == null) {
+    hardFailures.push(
+      createHardFailure({
+        code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_NOT_FOUND,
+        message: "Candidate missing"
+      })
+    );
+  } else {
+    try {
+      candidate = isPlainObject(input.candidate) ? input.candidate.refereeId && input.candidate.schemaVersion ? input.candidate : createRefereeCandidate(input.candidate) : null;
+    } catch {
+      candidate = null;
+      hardFailures.push(
+        createHardFailure({
+          code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_NOT_FOUND,
+          message: "Candidate invalid"
+        })
+      );
+    }
+  }
+  const refereeId = candidate ? String(candidate.refereeId) : String(input.refereeId || "").trim();
+  if (candidate) {
+    evidenceRefs.push(`candidate:${candidate.refereeId}`);
+    evaluated.push("ACTIVE");
+    if (candidate.active === false) {
+      hardFailures.push(
+        createHardFailure({
+          code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_INACTIVE,
+          message: "Referee is inactive",
+          details: { refereeId }
+        })
+      );
+    }
+  }
+  evaluated.push("SCHEDULE_WINDOW");
+  const matchWindow = tryHalfOpenWindow(match.startAt, match.endAt, "match");
+  const requireWindow = policy.requireScheduleWindowForMandatoryRoles !== false;
+  if (!matchWindow) {
+    if (requireWindow) {
+      hardFailures.push(
+        createHardFailure({
+          code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SCHEDULE_WINDOW_REQUIRED,
+          message: "Match startAt/endAt required",
+          details: { matchId }
+        })
+      );
+    }
+  }
+  evaluated.push("QUALIFICATION");
+  const qualifications = Array.isArray(input.qualifications) ? input.qualifications : [];
+  if (roleCode && roleCode !== REFEREE_ROLE_CODE.ANY) {
+    const matching = qualifications.filter(
+      (q) => q && String(q.refereeId) === refereeId && (String(q.roleCode) === roleCode || String(q.roleCode) === REFEREE_ROLE_CODE.ANY)
+    );
+    if (matching.length === 0) {
+      hardFailures.push(
+        createHardFailure({
+          code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_NOT_QUALIFIED,
+          message: "No qualification for required role",
+          details: { refereeId, roleCode }
+        })
+      );
+    } else {
+      let anyValid = false;
+      for (const q of matching) {
+        evidenceRefs.push(`qualification:${q.qualificationId || q.roleCode}`);
+        if (matchWindow) {
+          const fromOk = !q.validFrom || parseInstantMs(q.validFrom, "validFrom") <= matchWindow.startMs;
+          const toOk = !q.validTo || parseInstantMs(q.validTo, "validTo") > matchWindow.startMs;
+          if (fromOk && toOk) {
+            const coversEnd = !q.validTo || parseInstantMs(q.validTo, "validTo") >= matchWindow.endMs;
+            if (coversEnd) anyValid = true;
+          }
+        } else {
+          anyValid = true;
+        }
+        if (input.requireCertification === true && !q.certificationCode) {
+          hardFailures.push(
+            createHardFailure({
+              code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_NOT_QUALIFIED,
+              message: "Certification evidence required",
+              details: { qualificationId: q.qualificationId || null }
+            })
+          );
+        }
+      }
+      if (matchWindow && matching.length > 0 && !anyValid) {
+        hardFailures.push(
+          createHardFailure({
+            code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_NOT_QUALIFIED,
+            message: "Qualification expired or not valid for match time",
+            details: { refereeId, roleCode }
+          })
+        );
+      }
+    }
+  }
+  evaluated.push("AVAILABILITY");
+  const windows = Array.isArray(input.availabilityWindows) ? input.availabilityWindows : [];
+  if (matchWindow && refereeId) {
+    const covering = windows.filter((w) => {
+      if (!w || String(w.refereeId) !== refereeId) return false;
+      const aw = tryHalfOpenWindow(w.startAt, w.endAt, "availability");
+      if (!aw) return false;
+      evidenceRefs.push(`availability:${w.windowId || `${w.startAt}/${w.endAt}`}`);
+      return windowFullyCovers(
+        aw.startMs,
+        aw.endMs,
+        matchWindow.startMs,
+        matchWindow.endMs
+      );
+    });
+    if (covering.length === 0) {
+      hardFailures.push(
+        createHardFailure({
+          code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_UNAVAILABLE,
+          message: "No availability window covers the full match",
+          details: { refereeId, matchId }
+        })
+      );
+    }
+  }
+  evaluated.push("OVERLAP");
+  evaluated.push("CAPACITY");
+  const existingAssignments = Array.isArray(input.existingAssignments) ? input.existingAssignments : [];
+  if (refereeId && matchWindow) {
+    let simultaneous = 0;
+    for (const asg of existingAssignments) {
+      if (!asg || String(asg.refereeId) !== refereeId) continue;
+      if (!isActiveAssignmentStatus(asg.status)) continue;
+      simultaneous += 1;
+    }
+    let overlappingCount = 0;
+    for (const asg of existingAssignments) {
+      if (!asg || String(asg.refereeId) !== refereeId) continue;
+      if (!isActiveAssignmentStatus(asg.status)) continue;
+      if (String(asg.matchId) === matchId) continue;
+      const rows = Array.isArray(input.scheduleRows) ? input.scheduleRows : [];
+      const other = rows.find((r) => String(r.matchId) === String(asg.matchId)) || asg;
+      const otherWindow = tryHalfOpenWindow(
+        other.startAt,
+        other.endAt,
+        "other"
+      );
+      if (!otherWindow) continue;
+      if (intervalsOverlapHalfOpen(
+        matchWindow.startMs,
+        matchWindow.endMs,
+        otherWindow.startMs,
+        otherWindow.endMs
+      )) {
+        overlappingCount += 1;
+      }
+    }
+    void simultaneous;
+    if (overlappingCount >= maxSimultaneous) {
+      hardFailures.push(
+        createHardFailure({
+          code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.ASSIGNMENT_CAPACITY_EXHAUSTED,
+          message: "Maximum simultaneous assignments exceeded",
+          details: {
+            overlappingCount,
+            maxSimultaneousAssignments: maxSimultaneous
+          }
+        })
+      );
+    }
+  }
+  evaluated.push("CONFLICT");
+  if (refereeId && matchId) {
+    const detected = detectRefereeConflicts({
+      refereeId,
+      candidate,
+      match,
+      roleCode: roleCode === REFEREE_ROLE_CODE.ANY ? "" : roleCode,
+      existingAssignments,
+      scheduleRows: input.scheduleRows,
+      conflictPolicy: normalizeConflictPolicy(input.conflictPolicy),
+      policy,
+      candidateTeamIds: input.candidateTeamIds,
+      roleMaxCount: typeof input.roleMaxCount === "number" ? input.roleMaxCount : 1
+    });
+    for (const conflict of detected.conflicts) {
+      const code = conflict.reasonCodes?.[0] || REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_CONFLICT_OF_INTEREST;
+      hardFailures.push(
+        createHardFailure({
+          code,
+          message: `Conflict: ${conflict.conflictType}`,
+          details: {
+            conflictId: conflict.conflictId,
+            conflictType: conflict.conflictType,
+            metadata: conflict.metadata
+          }
+        })
+      );
+      evidenceRefs.push(`conflict:${conflict.conflictId}`);
+    }
+    for (const note of detected.softNotes || []) {
+      softNotes.push(
+        createSoftNote({
+          code: note.code,
+          message: note.code,
+          details: note.details || {}
+        })
+      );
+    }
+  }
+  evaluated.push("SOFT");
+  if (Array.isArray(input.preferredTags) && candidate && Array.isArray(candidate.preferenceTags)) {
+    for (const tag of input.preferredTags) {
+      if (!candidate.preferenceTags.includes(tag)) {
+        softNotes.push(
+          createSoftNote({
+            code: REFEREE_SOFT_NOTE_CODE.PREFERRED_TAG_MISSING,
+            message: `Missing preferred tag ${tag}`,
+            details: { tag }
+          })
+        );
+      }
+    }
+  }
+  if (input.preferredRoleCode && roleCode && input.preferredRoleCode !== roleCode) {
+    softNotes.push(
+      createSoftNote({
+        code: REFEREE_SOFT_NOTE_CODE.PREFERRED_ROLE_MISMATCH,
+        message: "Assigned role differs from preferred role",
+        details: {
+          preferredRoleCode: input.preferredRoleCode,
+          roleCode
+        }
+      })
+    );
+  }
+  void REFEREE_CONSTRAINT_KIND;
+  return createRefereeEligibilityResult({
+    refereeId,
+    matchId,
+    roleCode,
+    eligible: hardFailures.length === 0,
+    hardFailures,
+    softNotes,
+    evaluatedConstraintKinds: evaluated,
+    evidenceRefs
+  });
+}
+
+// src/features/competition-core/referee-assignment/services/validateManualRefereeAssignment.js
+function validateManualRefereeAssignment(input = {}) {
+  let request;
+  try {
+    request = input.request?.schemaVersion && input.request?.matchId ? input.request : createManualRefereeAssignmentRequest(input.request || input);
+  } catch (err) {
+    const code = err && typeof err === "object" && "code" in err ? (
+      /** @type {{ code: string }} */
+      err.code
+    ) : REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_ASSIGNMENT_REQUEST;
+    return ownedFreeze({
+      ok: false,
+      accepted: false,
+      failure: createManualAssignmentRejection(code, {
+        message: err instanceof Error ? err.message : "Invalid manual request",
+        matchId: input.request?.matchId || null,
+        refereeId: input.request?.refereeId || null,
+        reasonCodes: [code]
+      })
+    });
+  }
+  if (request.roleCode === REFEREE_ROLE_CODE.ANY) {
+    return reject(
+      request,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED]
+    );
+  }
+  const dir = input.directorySnapshot;
+  const schedule = input.scheduleSnapshot;
+  const existing = input.existingAssignmentSnapshot;
+  const quals = input.qualificationSnapshot;
+  const avail = input.availabilitySnapshot;
+  for (const [name, snap] of [
+    ["directory", dir],
+    ["schedule", schedule],
+    ["existingAssignments", existing]
+  ]) {
+    const fatal = snapshotFatal(snap);
+    if (fatal) {
+      return reject(request, fatal, [fatal], {
+        details: { snapshot: name, status: snap?.status ?? null }
+      });
+    }
+  }
+  if (input.requireQualificationSnapshot !== false) {
+    const fatal = snapshotFatal(quals);
+    if (fatal) {
+      return reject(request, fatal, [fatal], {
+        details: { snapshot: "qualifications" }
+      });
+    }
+  }
+  if (input.requireAvailabilitySnapshot !== false) {
+    const fatal = snapshotFatal(avail);
+    if (fatal) {
+      return reject(request, fatal, [fatal], {
+        details: { snapshot: "availability" }
+      });
+    }
+  }
+  const candidates = Array.isArray(dir?.items) ? dir.items : [];
+  const candidate = candidates.find(
+    (c) => String(c.refereeId) === String(request.refereeId)
+  );
+  if (!candidate) {
+    return reject(
+      request,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_NOT_FOUND,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_NOT_FOUND]
+    );
+  }
+  const scheduleRows = Array.isArray(schedule?.items) ? schedule.items : [];
+  const match = scheduleRows.find((m) => String(m.matchId) === String(request.matchId)) || input.match || null;
+  if (!match) {
+    return reject(
+      request,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MATCH_SCOPE_REQUIRED,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MATCH_SCOPE_REQUIRED]
+    );
+  }
+  const eligibility = evaluateRefereeEligibility({
+    tenantId: request.tenantId,
+    tournamentId: request.tournamentId,
+    candidate,
+    match,
+    roleCode: request.roleCode,
+    qualifications: Array.isArray(quals?.items) ? quals.items : [],
+    availabilityWindows: Array.isArray(avail?.items) ? avail.items : [],
+    existingAssignments: Array.isArray(existing?.items) ? existing.items : [],
+    scheduleRows,
+    conflictPolicy: input.conflictPolicy,
+    policy: input.policy,
+    candidateTeamIds: input.candidateTeamIds,
+    preferredTags: input.preferredTags,
+    preferredRoleCode: input.preferredRoleCode,
+    requireCertification: input.requireCertification === true
+  });
+  const hardCodes = collectReasonCodes(eligibility.hardFailures);
+  if (hardCodes.length > 0) {
+    return reject(request, hardCodes[0], hardCodes, {
+      details: { hardFailures: eligibility.hardFailures }
+    });
+  }
+  const allowSoft = request.allowSoftOverride === true || input.allowSoftOverride === true || input.policy?.allowSoftOverride === true;
+  if (eligibility.softNotes.length > 0 && !allowSoft) {
+    const softCodes = [
+      ...new Set(eligibility.softNotes.map((n) => n.code))
+    ].sort(compareStableString);
+    return ownedFreeze({
+      ok: false,
+      accepted: false,
+      eligibility,
+      failure: createRefereeAssignmentFailure({
+        code: REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MANUAL_ASSIGNMENT_REJECTED,
+        message: `Manual assignment rejected: soft preferences require allowSoftOverride`,
+        severity: REFEREE_DIAGNOSTIC_SEVERITY.FATAL,
+        causedBy: softCodes[0],
+        reasonCodes: softCodes,
+        matchId: request.matchId,
+        refereeId: request.refereeId,
+        details: { softNotes: eligibility.softNotes }
+      })
+    });
+  }
+  const assignmentId = typeof input.assignmentId === "string" && input.assignmentId.trim() ? input.assignmentId.trim() : `manual:${request.tenantId}:${request.tournamentId}:${request.matchId}:${request.roleCode}:${request.refereeId}`;
+  const assignment = createRefereeAssignment({
+    assignmentId,
+    matchId: request.matchId,
+    refereeId: request.refereeId,
+    roleCode: request.roleCode,
+    status: REFEREE_ASSIGNMENT_STATUS.PLANNED,
+    source: REFEREE_ASSIGNMENT_SOURCE.MANUAL,
+    constraintsSatisfied: eligibility.evaluatedConstraintKinds
+  });
+  return ownedFreeze({
+    ok: true,
+    accepted: true,
+    eligibility,
+    assignment,
+    failure: null
+  });
+}
+function snapshotFatal(snap) {
+  if (snap == null) {
+    return REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SNAPSHOT_MISSING;
+  }
+  if (snap.status === REFEREE_SNAPSHOT_STATUS.MISSING) {
+    return REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SNAPSHOT_MISSING;
+  }
+  if (snap.status === REFEREE_SNAPSHOT_STATUS.INVALID) {
+    return REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SNAPSHOT_INVALID;
+  }
+  return null;
+}
+function reject(request, causedBy, reasonCodes, extra = {}) {
+  const uniqueSorted = [...new Set(reasonCodes.filter(Boolean))].sort(
+    compareStableString
+  );
+  return ownedFreeze({
+    ok: false,
+    accepted: false,
+    failure: createManualAssignmentRejection(causedBy, {
+      matchId: request.matchId,
+      refereeId: request.refereeId,
+      reasonCodes: uniqueSorted,
+      details: extra.details || {},
+      message: `Manual assignment rejected: ${causedBy}`
+    })
+  });
+}
+
+// src/features/competition-core/referee-assignment/engines/replaceRefereeAssignment.js
+function replaceRefereeAssignment(input = {}) {
+  let request;
+  try {
+    request = input.request?.requestId && input.request?.incomingRefereeId ? input.request.schemaVersion ? input.request : createRefereeReplacementRequest(input.request) : createRefereeReplacementRequest(input.request || input);
+  } catch (err) {
+    return rejectResult(
+      input.request?.requestId || "unknown",
+      err?.code || REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST,
+      [err?.code || REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST],
+      err instanceof Error ? err.message : "Invalid replacement request"
+    );
+  }
+  if (request.roleCode === REFEREE_ROLE_CODE.ANY) {
+    return rejectResult(
+      request.requestId,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED]
+    );
+  }
+  for (const [name, snap] of [
+    ["directory", input.directorySnapshot],
+    ["schedule", input.scheduleSnapshot],
+    ["existingAssignments", input.existingAssignmentSnapshot],
+    ["qualifications", input.qualificationSnapshot],
+    ["availability", input.availabilitySnapshot]
+  ]) {
+    if (snap == null || snap.status === REFEREE_SNAPSHOT_STATUS.MISSING) {
+      return rejectResult(
+        request.requestId,
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SNAPSHOT_MISSING,
+        [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SNAPSHOT_MISSING],
+        `Missing snapshot: ${name}`
+      );
+    }
+    if (snap.status === REFEREE_SNAPSHOT_STATUS.INVALID) {
+      return rejectResult(
+        request.requestId,
+        REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SNAPSHOT_INVALID,
+        [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SNAPSHOT_INVALID],
+        `Invalid snapshot: ${name}`
+      );
+    }
+  }
+  const existing = Array.isArray(input.existingAssignmentSnapshot.items) ? input.existingAssignmentSnapshot.items : [];
+  const prior = resolvePrior(existing, request);
+  if (!prior) {
+    return rejectResult(
+      request.requestId,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST],
+      "Prior assignment not found"
+    );
+  }
+  if (prior.status === REFEREE_ASSIGNMENT_STATUS.RELEASED) {
+    return rejectResult(
+      request.requestId,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST],
+      "Cannot replace RELEASED assignment"
+    );
+  }
+  if (prior.status === REFEREE_ASSIGNMENT_STATUS.REPLACED) {
+    return rejectResult(
+      request.requestId,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST],
+      "Cannot replace already REPLACED assignment"
+    );
+  }
+  if (prior.status !== REFEREE_ASSIGNMENT_STATUS.PLANNED && prior.status !== REFEREE_ASSIGNMENT_STATUS.CONFIRMED) {
+    return rejectResult(
+      request.requestId,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST],
+      "Prior assignment must be PLANNED or CONFIRMED"
+    );
+  }
+  if (String(prior.refereeId) === String(request.incomingRefereeId)) {
+    return rejectResult(
+      request.requestId,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REPLACEMENT_REFEREE_REJECTED,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ALREADY_ASSIGNED],
+      "Replacement with same referee rejected by default",
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ALREADY_ASSIGNED
+    );
+  }
+  const concreteRole = request.roleCode || prior.roleCode;
+  if (concreteRole === REFEREE_ROLE_CODE.ANY || !concreteRole) {
+    return rejectResult(
+      request.requestId,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED]
+    );
+  }
+  if (request.matchId && String(request.matchId) !== String(prior.matchId)) {
+    return rejectResult(
+      request.requestId,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST],
+      "Replacement must preserve matchId"
+    );
+  }
+  if (request.roleCode && String(request.roleCode) !== String(prior.roleCode)) {
+    return rejectResult(
+      request.requestId,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST],
+      "Replacement must preserve roleCode"
+    );
+  }
+  const candidates = Array.isArray(input.directorySnapshot.items) ? input.directorySnapshot.items : [];
+  const candidate = candidates.find(
+    (c) => String(c.refereeId) === String(request.incomingRefereeId)
+  );
+  if (!candidate) {
+    return rejectResult(
+      request.requestId,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_NOT_FOUND,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_NOT_FOUND]
+    );
+  }
+  const scheduleRows = Array.isArray(input.scheduleSnapshot.items) ? input.scheduleSnapshot.items : [];
+  const match = scheduleRows.find((m) => String(m.matchId) === String(prior.matchId)) || input.match || null;
+  if (!match) {
+    return rejectResult(
+      request.requestId,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MATCH_SCOPE_REQUIRED,
+      [REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MATCH_SCOPE_REQUIRED]
+    );
+  }
+  const assignmentsForEval = existing.filter(
+    (a) => String(a.assignmentId) !== String(prior.assignmentId)
+  );
+  const policy = input.policy?.policyId ? input.policy.schemaVersion ? input.policy : createRefereeAssignmentPolicy(input.policy) : createRefereeAssignmentPolicy({
+    policyId: "pol-replace",
+    policyVersion: "1"
+  });
+  const eligibility = evaluateRefereeEligibility({
+    tenantId: request.tenantId,
+    tournamentId: request.tournamentId,
+    candidate,
+    match,
+    roleCode: concreteRole,
+    qualifications: Array.isArray(input.qualificationSnapshot.items) ? input.qualificationSnapshot.items : [],
+    availabilityWindows: Array.isArray(input.availabilitySnapshot.items) ? input.availabilitySnapshot.items : [],
+    existingAssignments: assignmentsForEval,
+    scheduleRows,
+    conflictPolicy: normalizeConflictPolicy(input.conflictPolicy),
+    policy
+  });
+  if (!eligibility.eligible) {
+    const codes = eligibility.hardFailures.map((f) => f.code);
+    const unique = [...new Set(codes)].sort(compareStableString);
+    return rejectResult(
+      request.requestId,
+      REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REPLACEMENT_REFEREE_REJECTED,
+      unique,
+      `Replacement rejected: ${unique[0]}`,
+      unique[0]
+    );
+  }
+  const replacedPrior = createRefereeAssignment({
+    assignmentId: prior.assignmentId,
+    matchId: prior.matchId,
+    refereeId: prior.refereeId,
+    roleCode: prior.roleCode,
+    status: REFEREE_ASSIGNMENT_STATUS.REPLACED,
+    source: prior.source || REFEREE_ASSIGNMENT_SOURCE.AUTO,
+    constraintsSatisfied: prior.constraintsSatisfied || [],
+    metadata: {
+      ...prior.metadata || {},
+      replacedByRequestId: request.requestId
+    }
+  });
+  const incomingAssignmentId = buildReplacementId({
+    schemaVersion: CORE13_SCHEMA_VERSION,
+    requestId: request.requestId,
+    tenantId: request.tenantId,
+    tournamentId: request.tournamentId,
+    matchId: prior.matchId,
+    roleCode: concreteRole,
+    slotIndex: 0,
+    refereeId: request.incomingRefereeId,
+    priorAssignmentId: prior.assignmentId,
+    source: REFEREE_ASSIGNMENT_SOURCE.REPLACEMENT
+  });
+  const incomingAssignment = createRefereeAssignment({
+    assignmentId: incomingAssignmentId,
+    matchId: prior.matchId,
+    refereeId: request.incomingRefereeId,
+    roleCode: concreteRole,
+    status: REFEREE_ASSIGNMENT_STATUS.PLANNED,
+    source: REFEREE_ASSIGNMENT_SOURCE.REPLACEMENT,
+    constraintsSatisfied: eligibility.evaluatedConstraintKinds
+  });
+  const resultFingerprint = fingerprintValue(
+    {
+      requestId: request.requestId,
+      priorAssignmentId: prior.assignmentId,
+      incomingAssignmentId,
+      matchId: prior.matchId,
+      roleCode: concreteRole,
+      outgoingRefereeId: prior.refereeId,
+      incomingRefereeId: request.incomingRefereeId,
+      reasonCode: request.reasonCode || "REPLACEMENT"
+    },
+    CORE13_DIGEST_DOMAIN.REPLACEMENT_RESULT
+  );
+  const auditId = `${CORE13_ID_PREFIX.AUDIT}${digestCanonical(
+    CORE13_DIGEST_DOMAIN.AUDIT,
+    {
+      requestId: request.requestId,
+      resultFingerprint,
+      priorAssignmentId: prior.assignmentId,
+      incomingAssignmentId
+    }
+  ).slice(0, 32)}`;
+  const auditPayload = createRefereeAssignmentAuditRecord({
+    auditId,
+    action: REFEREE_AUDIT_ACTION.REPLACED,
+    requestId: request.requestId,
+    planFingerprint: resultFingerprint,
+    beforeRef: prior.assignmentId,
+    afterRef: incomingAssignmentId,
+    actorRef: request.actorRef,
+    reasonCode: request.reasonCode || "REPLACEMENT",
+    // recordedAt intentionally omitted — sink owns timestamps
+    payload: {
+      priorAssignmentId: prior.assignmentId,
+      incomingAssignmentId,
+      resultFingerprint
+    }
+  });
+  const validationEvidence = {
+    schemaVersion: eligibility.schemaVersion,
+    refereeId: eligibility.refereeId,
+    matchId: eligibility.matchId,
+    roleCode: eligibility.roleCode,
+    eligible: eligibility.eligible,
+    hardFailures: eligibility.hardFailures.map((f) => ({
+      code: f.code,
+      severity: f.severity,
+      constraintKind: f.constraintKind,
+      message: f.message,
+      details: { ...f.details || {} }
+    })),
+    softNotes: eligibility.softNotes.map((n) => ({
+      code: n.code,
+      severity: n.severity,
+      constraintKind: n.constraintKind,
+      message: n.message,
+      details: { ...n.details || {} }
+    })),
+    evaluatedConstraintKinds: [...eligibility.evaluatedConstraintKinds],
+    evidenceRefs: [...eligibility.evidenceRefs]
+  };
+  const conflictEvidence = validationEvidence.hardFailures.map((f) => ({
+    ...f,
+    details: { ...f.details || {} }
+  }));
+  return ownedFreeze({
+    ok: true,
+    schemaVersion: CORE13_SCHEMA_VERSION,
+    requestId: request.requestId,
+    priorAssignmentRef: prior.assignmentId,
+    outgoingAssignment: replacedPrior,
+    incomingAssignment,
+    replacementIdentity: incomingAssignmentId,
+    reasonCode: request.reasonCode || "REPLACEMENT",
+    validationEvidence,
+    conflictEvidence,
+    auditPayload,
+    resultFingerprint,
+    failure: null
+  });
+}
+function resolvePrior(existing, request) {
+  if (request.assignmentId) {
+    return existing.find(
+      (a) => String(a.assignmentId) === String(request.assignmentId)
+    ) || null;
+  }
+  if (request.matchId && request.roleCode) {
+    return existing.find(
+      (a) => String(a.matchId) === String(request.matchId) && String(a.roleCode) === String(request.roleCode) && (a.status === REFEREE_ASSIGNMENT_STATUS.PLANNED || a.status === REFEREE_ASSIGNMENT_STATUS.CONFIRMED)
+    ) || null;
+  }
+  return null;
+}
+function rejectResult(requestId, envelopeOrCode, reasonCodes, message, causedBy) {
+  const unique = [...new Set(reasonCodes.filter(Boolean))].sort(
+    compareStableString
+  );
+  const primary = causedBy || unique[0] || envelopeOrCode;
+  const fatalCodes = /* @__PURE__ */ new Set([
+    REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.INVALID_REPLACEMENT_REQUEST,
+    REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SNAPSHOT_MISSING,
+    REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.SNAPSHOT_INVALID,
+    REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.MATCH_SCOPE_REQUIRED,
+    REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_ROLE_UNSUPPORTED,
+    REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_NOT_FOUND
+  ]);
+  const useEnvelope = !fatalCodes.has(envelopeOrCode);
+  const code = useEnvelope ? REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REPLACEMENT_REFEREE_REJECTED : envelopeOrCode;
+  return ownedFreeze({
+    ok: false,
+    schemaVersion: CORE13_SCHEMA_VERSION,
+    requestId,
+    outgoingAssignment: null,
+    incomingAssignment: null,
+    failure: createRefereeAssignmentFailure({
+      code,
+      message: message || `Replacement rejected: ${primary}`,
+      severity: REFEREE_DIAGNOSTIC_SEVERITY.FATAL,
+      causedBy: useEnvelope ? primary : unique[0] || primary,
+      reasonCodes: unique.length > 0 ? unique : [primary]
+    }),
+    resultFingerprint: null,
+    auditPayload: null
+  });
+}
+
+// src/features/competition-engine/operations/referee/assignment/assertAssignmentCommandAuthz.js
+var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+var PHONE_RE = /^[+]?[\d\s().-]{7,}$/;
+function assertCanonicalRefereeId(refereeId, extras = {}) {
+  if (extras.email != null && String(extras.email).trim()) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.EMAIL_AS_AUTHORITY_DENIED,
+      "Email must not be used as referee assignment authority",
+      {}
+    );
+  }
+  if (extras.phone != null && String(extras.phone).trim()) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.PHONE_AS_AUTHORITY_DENIED,
+      "Phone must not be used as referee assignment authority",
+      {}
+    );
+  }
+  if (extras.displayName != null && String(extras.displayName).trim() || extras.name != null && String(extras.name).trim()) {
+  }
+  const id = String(refereeId || "").trim();
+  if (!id) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_ID_REQUIRED,
+      "Canonical refereeId is required",
+      {}
+    );
+  }
+  if (EMAIL_RE.test(id)) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.EMAIL_AS_AUTHORITY_DENIED,
+      "Email must not be used as refereeId",
+      { refereeId: id }
+    );
+  }
+  if (PHONE_RE.test(id) && !/[a-zA-Z_]/.test(id)) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.PHONE_AS_AUTHORITY_DENIED,
+      "Phone must not be used as refereeId",
+      { refereeId: id }
+    );
+  }
+  if (/\s/.test(id) || id.includes("@")) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.DISPLAY_NAME_IDENTITY_DENIED,
+      "Display name must not be used as refereeId",
+      { refereeId: id }
+    );
+  }
+  return id;
+}
+function assertAssignmentCommandAuthz(command = {}, ctx = {}) {
+  if (command.clientGrantedPermissions != null) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CLIENT_GRANT_TRUST_REJECTED,
+      "Client-granted permission claims are denied",
+      {}
+    );
+  }
+  if (ctx.allowClientGrantedPermissions === true) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CLIENT_GRANT_TRUST_REJECTED,
+      "allowClientGrantedPermissions is forbidden",
+      {}
+    );
+  }
+  const tenantId = String(command.tenantId || "").trim();
+  const tournamentId = String(
+    command.tournamentId || command.competitionId || ""
+  ).trim();
+  if (!tenantId || !tournamentId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+      "tenantId and tournamentId/competitionId are required",
+      {}
+    );
+  }
+  const authorizedTenantId = ctx.authorizedTenantId != null ? String(ctx.authorizedTenantId).trim() : null;
+  if (authorizedTenantId && authorizedTenantId !== tenantId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TENANT_DENIED,
+      "Cross-tenant assignment mutation denied",
+      { tenantId, authorizedTenantId }
+    );
+  }
+  const authorizedTournamentId = ctx.authorizedTournamentId != null ? String(ctx.authorizedTournamentId).trim() : null;
+  if (authorizedTournamentId && authorizedTournamentId !== tournamentId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+      "Cross-tournament assignment mutation denied",
+      { tournamentId, authorizedTournamentId }
+    );
+  }
+  if (command.staleTenantContext === true) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.STALE_TENANT_CONTEXT,
+      "Stale tenant context denied",
+      {}
+    );
+  }
+  if (command.staleClubContext === true) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.STALE_CLUB_CONTEXT,
+      "Stale club context denied",
+      {}
+    );
+  }
+  const clubId = command.clubId != null ? String(command.clubId).trim() : "";
+  const authorizedClubId = ctx.authorizedClubId != null ? String(ctx.authorizedClubId).trim() : null;
+  if (authorizedClubId && clubId && authorizedClubId !== clubId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.STALE_CLUB_CONTEXT,
+      "Club context mismatch denied",
+      { clubId, authorizedClubId }
+    );
+  }
+  if (ctx.actorAuthorized === false) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.UNAUTHORIZED_ACTOR,
+      "Unauthorized actor",
+      {}
+    );
+  }
+  const actorId = String(
+    command.actorId || command.actor?.id || command.actorRef || ""
+  ).trim();
+  if (!actorId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.UNAUTHORIZED_ACTOR,
+      "Actor identity required",
+      {}
+    );
+  }
+  return Object.freeze({
+    tenantId,
+    tournamentId,
+    actorId,
+    clubId: clubId || null
+  });
+}
+
+// src/features/competition-engine/operations/referee/assignment/evaluateLifecycleGate.js
+var PRE_MATCH_ALIASES = /* @__PURE__ */ new Set([
+  "PRE_MATCH",
+  "NOT_STARTED",
+  "SCHEDULED",
+  "READY",
+  "PENDING",
+  "ASSIGNED",
+  "ACKNOWLEDGED"
+]);
+var IN_PROGRESS_ALIASES = /* @__PURE__ */ new Set([
+  "IN_PROGRESS",
+  "ACTIVE",
+  "STARTED",
+  "LIVE"
+]);
+var SCORING_ACTIVE_ALIASES = /* @__PURE__ */ new Set([
+  "SCORING_ACTIVE",
+  "SCORING",
+  "SCORE_ENTRY"
+]);
+var LOCKED_ALIASES = /* @__PURE__ */ new Set(["LOCKED", "SUSPENDED", "PAUSED"]);
+var COMPLETED_ALIASES = /* @__PURE__ */ new Set([
+  "COMPLETED",
+  "COMPLETE",
+  "FINISHED",
+  "FINAL",
+  "CLOSED"
+]);
+function normalizeAssignmentLifecycleState(raw, hints = {}) {
+  if (hints.scoringActive === true) {
+    return ASSIGNMENT_LIFECYCLE_STATE.SCORING_ACTIVE;
+  }
+  const value = String(raw || "").trim().toUpperCase().replace(/\s+/g, "_");
+  if (!value) return ASSIGNMENT_LIFECYCLE_STATE.PRE_MATCH;
+  if (SCORING_ACTIVE_ALIASES.has(value)) {
+    return ASSIGNMENT_LIFECYCLE_STATE.SCORING_ACTIVE;
+  }
+  if (IN_PROGRESS_ALIASES.has(value)) {
+    return ASSIGNMENT_LIFECYCLE_STATE.IN_PROGRESS;
+  }
+  if (LOCKED_ALIASES.has(value)) return ASSIGNMENT_LIFECYCLE_STATE.LOCKED;
+  if (COMPLETED_ALIASES.has(value)) {
+    return ASSIGNMENT_LIFECYCLE_STATE.COMPLETED;
+  }
+  if (PRE_MATCH_ALIASES.has(value)) {
+    return ASSIGNMENT_LIFECYCLE_STATE.PRE_MATCH;
+  }
+  return ASSIGNMENT_LIFECYCLE_STATE.LOCKED;
+}
+function evaluateAssignmentLifecycleGate(input = {}) {
+  const command = String(input.command || "").trim();
+  const lifecycleState = normalizeAssignmentLifecycleState(input.lifecycleState);
+  const actorAuthorized = input.actorAuthorized !== false;
+  const emergencyReplacement = input.emergencyReplacement === true;
+  const emergencyAuthorized = input.emergencyAuthorized === true;
+  const deny = (reason, code = ASSIGNMENT_COMMAND_ERROR_CODE.LIFECYCLE_DENIED) => Object.freeze({
+    ok: false,
+    allowed: false,
+    code,
+    reason,
+    lifecycleState,
+    command
+  });
+  const allow = (policy) => Object.freeze({
+    ok: true,
+    allowed: true,
+    code: null,
+    reason: null,
+    lifecycleState,
+    command,
+    policy
+  });
+  if (!actorAuthorized) {
+    return deny(
+      "Actor is not authorized for assignment mutation",
+      ASSIGNMENT_COMMAND_ERROR_CODE.UNAUTHORIZED_ACTOR
+    );
+  }
+  if (lifecycleState === ASSIGNMENT_LIFECYCLE_STATE.LOCKED || lifecycleState === ASSIGNMENT_LIFECYCLE_STATE.COMPLETED) {
+    return deny(
+      `${lifecycleState} forbids assign/replace/unassign`,
+      ASSIGNMENT_COMMAND_ERROR_CODE.LIFECYCLE_DENIED
+    );
+  }
+  if (lifecycleState === ASSIGNMENT_LIFECYCLE_STATE.PRE_MATCH) {
+    if (command === ASSIGNMENT_COMMAND.ASSIGN || command === ASSIGNMENT_COMMAND.REPLACE || command === ASSIGNMENT_COMMAND.UNASSIGN) {
+      return allow("PRE_MATCH_ALLOW");
+    }
+    return deny(`Unknown command ${command}`);
+  }
+  if (lifecycleState === ASSIGNMENT_LIFECYCLE_STATE.IN_PROGRESS) {
+    if (command === ASSIGNMENT_COMMAND.ASSIGN) {
+      return deny(
+        "IN_PROGRESS forbids new assignment (use atomic replace)",
+        ASSIGNMENT_COMMAND_ERROR_CODE.LIFECYCLE_DENIED
+      );
+    }
+    if (command === ASSIGNMENT_COMMAND.UNASSIGN) {
+      return deny(
+        "IN_PROGRESS forbids unassign without replacement",
+        ASSIGNMENT_COMMAND_ERROR_CODE.UNASSIGN_WITHOUT_REPLACEMENT_DENIED
+      );
+    }
+    if (command === ASSIGNMENT_COMMAND.REPLACE) {
+      return allow("IN_PROGRESS_ATOMIC_REPLACEMENT_ALLOW_AUTHORIZED");
+    }
+    return deny(`Unknown command ${command}`);
+  }
+  if (lifecycleState === ASSIGNMENT_LIFECYCLE_STATE.SCORING_ACTIVE) {
+    if (command === ASSIGNMENT_COMMAND.ASSIGN) {
+      return deny(
+        "SCORING_ACTIVE forbids normal assign",
+        ASSIGNMENT_COMMAND_ERROR_CODE.LIFECYCLE_DENIED
+      );
+    }
+    if (command === ASSIGNMENT_COMMAND.UNASSIGN) {
+      return deny(
+        "SCORING_ACTIVE forbids unassign without replacement",
+        ASSIGNMENT_COMMAND_ERROR_CODE.UNASSIGN_WITHOUT_REPLACEMENT_DENIED
+      );
+    }
+    if (command === ASSIGNMENT_COMMAND.REPLACE) {
+      if (!emergencyReplacement) {
+        return deny(
+          "SCORING_ACTIVE requires explicit emergencyReplacement=true",
+          ASSIGNMENT_COMMAND_ERROR_CODE.EMERGENCY_REPLACEMENT_REQUIRED
+        );
+      }
+      if (!emergencyAuthorized) {
+        return deny(
+          "SCORING_ACTIVE emergency replacement requires emergency authorization",
+          ASSIGNMENT_COMMAND_ERROR_CODE.EMERGENCY_UNAUTHORIZED
+        );
+      }
+      return allow("SCORING_ACTIVE_ATOMIC_EMERGENCY_REPLACEMENT_ALLOW");
+    }
+    return deny(`Unknown command ${command}`);
+  }
+  return deny(`Lifecycle ${lifecycleState} forbids mutation`);
+}
+function assertAssignmentLifecycleGate(input) {
+  const result = evaluateAssignmentLifecycleGate(input);
+  if (!result.allowed) {
+    failAssignmentCommand(result.code, result.reason, {
+      lifecycleState: result.lifecycleState,
+      command: result.command
+    });
+  }
+  return result;
+}
+
+// src/features/competition-engine/operations/referee/assignment/createCompetitionRefereeAssignmentCommandService.js
+function deepFreeze(value) {
+  if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+  for (const key of Object.keys(value)) deepFreeze(value[key]);
+  return Object.freeze(value);
+}
+function requirePersistence(persistence, production) {
+  if (!persistence || typeof persistence !== "object") {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.PERSISTENCE_REQUIRED,
+      "Canonical assignment persistence is required",
+      {}
+    );
+  }
+  if (production === true && persistence.classification === TEST_DOUBLE_ASSIGNMENT_PERSISTENCE_CLASSIFICATION) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.IN_MEMORY_PRODUCTION_FORBIDDEN,
+      "In-memory assignment persistence is TEST_DOUBLE_ONLY",
+      {}
+    );
+  }
+  return persistence;
+}
+function resolveDailyPlayPolicy(command) {
+  const mode = String(command.competitionMode || "").toUpperCase();
+  if (mode !== ASSIGNMENT_COMPETITION_MODE.DAILY_PLAY) {
+    return { applicable: true, required: true };
+  }
+  const enabled = command.refereeFeatureEnabled === true;
+  if (!enabled) {
+    return {
+      applicable: false,
+      required: false,
+      code: "NOT_APPLICABLE_FOR_INSTANCE"
+    };
+  }
+  return { applicable: true, required: true };
+}
+function defaultRole(command) {
+  return command.roleCode || command.role || REFEREE_ROLE_CODE.PRIMARY;
+}
+function buildDirectorySnapshot(command, refereeId) {
+  if (command.directorySnapshot) return command.directorySnapshot;
+  const candidates = Array.isArray(command.candidates) ? command.candidates : [
+    {
+      refereeId,
+      active: command.refereeActive !== false,
+      userId: command.refereeUserId || null,
+      displayLabel: command.refereeDisplayLabel || void 0
+    }
+  ];
+  const items = candidates.map(
+    (c) => createRefereeCandidate({
+      refereeId: String(c.refereeId),
+      active: c.active !== false,
+      userId: c.userId || null,
+      playerId: c.playerId || null,
+      organizationIds: c.organizationIds || [],
+      clubIds: c.clubIds || [],
+      qualificationRefs: c.qualificationRefs || [],
+      preferenceTags: c.preferenceTags || [],
+      displayLabel: c.displayLabel
+    })
+  );
+  return createPopulatedSnapshotResult(items);
+}
+function buildScheduleSnapshot(command) {
+  if (command.scheduleSnapshot) return command.scheduleSnapshot;
+  const matchId = String(command.matchId || "").trim();
+  const startAt = command.startAt || command.windowStart || command.scheduledStartAt || "2026-08-17T10:00:00.000Z";
+  const endAt = command.endAt || command.windowEnd || command.scheduledEndAt || "2026-08-17T11:00:00.000Z";
+  const row = createMatchScheduleRow({
+    matchId,
+    startAt,
+    endAt,
+    courtId: command.courtId || null
+  });
+  return createPopulatedSnapshotResult([row]);
+}
+function buildQualificationSnapshot(command, refereeId, roleCode, startAt, endAt) {
+  if (command.qualificationSnapshot) return command.qualificationSnapshot;
+  return createPopulatedSnapshotResult([
+    createRefereeQualification({
+      qualificationId: `roster-qual-${refereeId}-${roleCode}`,
+      refereeId,
+      roleCode,
+      validFrom: startAt,
+      validTo: endAt,
+      certificationCode: command.certificationCode || null
+    })
+  ]);
+}
+function buildAvailabilitySnapshot(command, refereeId, startAt, endAt) {
+  if (command.availabilitySnapshot) return command.availabilitySnapshot;
+  return createPopulatedSnapshotResult([
+    createRefereeAvailabilityWindow({
+      windowId: `roster-avail-${refereeId}`,
+      refereeId,
+      startAt,
+      endAt,
+      source: REFEREE_AVAILABILITY_SOURCE.DIRECTORY
+    })
+  ]);
+}
+function resolveWindow(command) {
+  const startAt = command.startAt || command.windowStart || command.scheduledStartAt || "2026-08-17T10:00:00.000Z";
+  const endAt = command.endAt || command.windowEnd || command.scheduledEndAt || "2026-08-17T11:00:00.000Z";
+  return { startAt, endAt };
+}
+function buildExistingSnapshot(rows) {
+  if (!rows || rows.length === 0) return createEmptySnapshotResult();
+  const items = rows.map(
+    (row) => createRefereeAssignment({
+      assignmentId: String(row.assignmentId),
+      matchId: String(row.matchId),
+      refereeId: String(row.refereeId),
+      roleCode: row.roleCode || row.role || REFEREE_ROLE_CODE.PRIMARY,
+      status: row.status === "active" || row.status === REFEREE_ASSIGNMENT_STATUS.CONFIRMED ? REFEREE_ASSIGNMENT_STATUS.CONFIRMED : row.status === REFEREE_ASSIGNMENT_STATUS.PLANNED ? REFEREE_ASSIGNMENT_STATUS.PLANNED : REFEREE_ASSIGNMENT_STATUS.RELEASED,
+      source: REFEREE_ASSIGNMENT_SOURCE.MANUAL,
+      constraintsSatisfied: []
+    })
+  );
+  return createPopulatedSnapshotResult(items);
+}
+async function loadExistingForCore13(persistence, scope) {
+  const list = await persistence.listActiveAssignments({
+    tenantId: scope.tenantId,
+    tournamentId: scope.tournamentId
+  });
+  return list || [];
+}
+function mapCore13Failure(result) {
+  const code = result?.failure?.code || result?.failure?.causedBy || ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED;
+  failAssignmentCommand(
+    ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED,
+    result?.failure?.message || "CORE-13 rejected assignment command",
+    { core13Code: code, failure: result?.failure || null }
+  );
+}
+function createCompetitionRefereeAssignmentCommandService(options = {}) {
+  const production = options.production === true;
+  const persistence = requirePersistence(options.persistence, production);
+  async function resolveActorAuthorized(command) {
+    if (typeof options.authorize === "function") {
+      return Boolean(await options.authorize(command));
+    }
+    return command.actorAuthorized !== false;
+  }
+  async function resolveEmergencyAuthorized(command) {
+    if (typeof options.authorizeEmergency === "function") {
+      return Boolean(await options.authorizeEmergency(command));
+    }
+    return command.emergencyAuthorized === true;
+  }
+  async function prepare(command, mutationKind) {
+    const daily = resolveDailyPlayPolicy(command);
+    if (!daily.applicable) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.DAILY_PLAY_NOT_APPLICABLE,
+        "Daily Play referee feature disabled \u2014 CORE-13 assignment not applicable",
+        { policy: daily.code }
+      );
+    }
+    const actorAuthorized = await resolveActorAuthorized(command);
+    const authz = assertAssignmentCommandAuthz(command, {
+      authorizedTenantId: command.authorizedTenantId,
+      authorizedTournamentId: command.authorizedTournamentId,
+      authorizedClubId: command.authorizedClubId,
+      actorAuthorized
+    });
+    const lifecycleGate = assertAssignmentLifecycleGate({
+      command: mutationKind,
+      lifecycleState: normalizeAssignmentLifecycleState(
+        command.lifecycleState || command.matchStatus,
+        { scoringActive: command.scoringActive === true }
+      ),
+      emergencyReplacement: command.emergencyReplacement === true,
+      actorAuthorized,
+      emergencyAuthorized: await resolveEmergencyAuthorized(command)
+    });
+    return { authz, lifecycleGate, daily };
+  }
+  async function resolveIdempotentReplay(command) {
+    if (typeof persistence.peekIdempotency !== "function") return null;
+    const peek = await persistence.peekIdempotency({
+      ...command,
+      tenantId: command.tenantId,
+      tournamentId: command.tournamentId || command.competitionId
+    });
+    if (peek?.replay) {
+      return deepFreeze({
+        ok: true,
+        command: command.operation,
+        core13Decision: "ACCEPT",
+        replayed: true,
+        assignment: peek.result,
+        audit: null,
+        version: peek.result?.version ?? null,
+        engine: CORE13_ASSIGNMENT_COMMAND_VERSION,
+        persistenceClassification: persistence.classification
+      });
+    }
+    return null;
+  }
+  async function assignReferee(rawCommand = {}) {
+    const command = { ...rawCommand, operation: ASSIGNMENT_OPERATION.ASSIGN };
+    const replay = await resolveIdempotentReplay({
+      ...command,
+      operation: ASSIGNMENT_OPERATION.ASSIGN
+    });
+    if (replay) {
+      return { ...replay, command: ASSIGNMENT_COMMAND.ASSIGN };
+    }
+    const { authz, lifecycleGate } = await prepare(
+      command,
+      ASSIGNMENT_COMMAND.ASSIGN
+    );
+    const refereeId = assertCanonicalRefereeId(command.refereeId, {
+      email: command.email,
+      phone: command.phone,
+      displayName: command.displayName,
+      name: command.name
+    });
+    const matchId = String(command.matchId || "").trim();
+    if (!matchId) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+        "matchId is required",
+        {}
+      );
+    }
+    const role = defaultRole(command);
+    const existingRows = await loadExistingForCore13(persistence, authz);
+    const { startAt, endAt } = resolveWindow(command);
+    const request = createManualRefereeAssignmentRequest({
+      requestId: String(
+        command.commandId || command.idempotencyKey || `assign-${matchId}-${refereeId}`
+      ),
+      tenantId: authz.tenantId,
+      tournamentId: authz.tournamentId,
+      matchId,
+      refereeId,
+      roleCode: role,
+      actorRef: authz.actorId,
+      allowSoftOverride: command.allowSoftOverride === true
+    });
+    const core13 = validateManualRefereeAssignment({
+      request,
+      directorySnapshot: buildDirectorySnapshot(command, refereeId),
+      scheduleSnapshot: buildScheduleSnapshot({ ...command, matchId, startAt, endAt }),
+      existingAssignmentSnapshot: buildExistingSnapshot(existingRows),
+      qualificationSnapshot: buildQualificationSnapshot(
+        command,
+        refereeId,
+        role,
+        startAt,
+        endAt
+      ),
+      availabilitySnapshot: buildAvailabilitySnapshot(
+        command,
+        refereeId,
+        startAt,
+        endAt
+      ),
+      requireQualificationSnapshot: false,
+      requireAvailabilitySnapshot: false,
+      conflictPolicy: command.conflictPolicy,
+      policy: command.policy
+    });
+    if (!core13.ok || core13.accepted === false) mapCore13Failure(core13);
+    const expectedVersion = command.expectedVersion != null ? Number(command.expectedVersion) : await persistence.getMatchAssignmentVersion({
+      tenantId: authz.tenantId,
+      tournamentId: authz.tournamentId,
+      matchId,
+      role
+    });
+    const persisted = await persistence.assign({
+      tenantId: authz.tenantId,
+      tournamentId: authz.tournamentId,
+      matchId,
+      refereeId,
+      role,
+      actorId: authz.actorId,
+      expectedVersion,
+      idempotencyKey: String(command.idempotencyKey || "").trim(),
+      operation: ASSIGNMENT_OPERATION.ASSIGN,
+      reason: command.reason || null,
+      lifecycleState: lifecycleGate.lifecycleState
+    });
+    return deepFreeze({
+      ok: true,
+      command: ASSIGNMENT_COMMAND.ASSIGN,
+      core13Decision: "ACCEPT",
+      lifecyclePolicy: lifecycleGate.policy,
+      replayed: persisted.replayed === true,
+      assignment: persisted.assignment,
+      audit: persisted.audit || null,
+      version: persisted.assignment?.version ?? null,
+      engine: CORE13_ASSIGNMENT_COMMAND_VERSION,
+      persistenceClassification: persistence.classification
+    });
+  }
+  async function replaceReferee(rawCommand = {}) {
+    const command = { ...rawCommand, operation: ASSIGNMENT_OPERATION.REPLACE };
+    const replay = await resolveIdempotentReplay({
+      ...command,
+      operation: ASSIGNMENT_OPERATION.REPLACE,
+      newRefereeId: rawCommand.newRefereeId || rawCommand.refereeId
+    });
+    if (replay) {
+      return { ...replay, command: ASSIGNMENT_COMMAND.REPLACE };
+    }
+    const { authz, lifecycleGate } = await prepare(
+      command,
+      ASSIGNMENT_COMMAND.REPLACE
+    );
+    const newRefereeId = assertCanonicalRefereeId(
+      command.newRefereeId || command.refereeId,
+      {
+        email: command.email,
+        phone: command.phone,
+        displayName: command.displayName,
+        name: command.name
+      }
+    );
+    const matchId = String(command.matchId || "").trim();
+    if (!matchId) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+        "matchId is required",
+        {}
+      );
+    }
+    const role = defaultRole(command);
+    const existingRows = await loadExistingForCore13(persistence, authz);
+    const prior = existingRows.find(
+      (row) => String(row.matchId) === matchId && String(row.roleCode || row.role || REFEREE_ROLE_CODE.PRIMARY) === String(role)
+    ) || null;
+    if (!prior) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+        "No active assignment to replace",
+        {}
+      );
+    }
+    const { startAt, endAt } = resolveWindow(command);
+    const request = createRefereeReplacementRequest({
+      requestId: String(
+        command.commandId || command.idempotencyKey || `replace-${matchId}`
+      ),
+      tenantId: authz.tenantId,
+      tournamentId: authz.tournamentId,
+      matchId,
+      assignmentId: prior.assignmentId,
+      outgoingRefereeId: prior.refereeId,
+      incomingRefereeId: newRefereeId,
+      roleCode: role,
+      actorRef: authz.actorId,
+      allowSoftOverride: command.allowSoftOverride === true,
+      reasonCode: command.reason || command.reasonCode || "REPLACE"
+    });
+    const core13 = replaceRefereeAssignment({
+      request,
+      directorySnapshot: buildDirectorySnapshot(command, newRefereeId),
+      scheduleSnapshot: buildScheduleSnapshot({ ...command, matchId, startAt, endAt }),
+      existingAssignmentSnapshot: buildExistingSnapshot(existingRows),
+      qualificationSnapshot: buildQualificationSnapshot(
+        command,
+        newRefereeId,
+        role,
+        startAt,
+        endAt
+      ),
+      availabilitySnapshot: buildAvailabilitySnapshot(
+        command,
+        newRefereeId,
+        startAt,
+        endAt
+      ),
+      conflictPolicy: command.conflictPolicy,
+      policy: command.policy
+    });
+    if (!core13.ok || core13.accepted === false) mapCore13Failure(core13);
+    const expectedVersion = command.expectedVersion != null ? Number(command.expectedVersion) : Number(prior.version || 0);
+    const persisted = await persistence.replace({
+      tenantId: authz.tenantId,
+      tournamentId: authz.tournamentId,
+      matchId,
+      oldRefereeId: prior.refereeId,
+      newRefereeId,
+      role,
+      actorId: authz.actorId,
+      expectedVersion,
+      idempotencyKey: String(command.idempotencyKey || "").trim(),
+      operation: ASSIGNMENT_OPERATION.REPLACE,
+      reason: command.reason || null,
+      lifecycleState: lifecycleGate.lifecycleState,
+      emergencyReplacement: command.emergencyReplacement === true
+    });
+    return deepFreeze({
+      ok: true,
+      command: ASSIGNMENT_COMMAND.REPLACE,
+      core13Decision: "ACCEPT",
+      lifecyclePolicy: lifecycleGate.policy,
+      replayed: persisted.replayed === true,
+      assignment: persisted.assignment,
+      previousAssignment: persisted.previousAssignment || null,
+      audit: persisted.audit || null,
+      version: persisted.assignment?.version ?? null,
+      engine: CORE13_ASSIGNMENT_COMMAND_VERSION,
+      persistenceClassification: persistence.classification
+    });
+  }
+  async function unassignReferee(rawCommand = {}) {
+    const command = { ...rawCommand, operation: ASSIGNMENT_OPERATION.UNASSIGN };
+    const replay = await resolveIdempotentReplay({
+      ...command,
+      operation: ASSIGNMENT_OPERATION.UNASSIGN
+    });
+    if (replay) {
+      return { ...replay, command: ASSIGNMENT_COMMAND.UNASSIGN };
+    }
+    const { authz, lifecycleGate } = await prepare(
+      command,
+      ASSIGNMENT_COMMAND.UNASSIGN
+    );
+    const matchId = String(command.matchId || "").trim();
+    if (!matchId) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+        "matchId is required",
+        {}
+      );
+    }
+    const role = defaultRole(command);
+    const existingRows = await loadExistingForCore13(persistence, authz);
+    const prior = existingRows.find(
+      (row) => String(row.matchId) === matchId && String(row.roleCode || row.role || REFEREE_ROLE_CODE.PRIMARY) === String(role)
+    ) || null;
+    if (!prior) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+        "No active assignment to unassign",
+        {}
+      );
+    }
+    const expectedVersion = command.expectedVersion != null ? Number(command.expectedVersion) : Number(prior.version || 0);
+    const persisted = await persistence.unassign({
+      tenantId: authz.tenantId,
+      tournamentId: authz.tournamentId,
+      matchId,
+      oldRefereeId: prior.refereeId,
+      role,
+      actorId: authz.actorId,
+      expectedVersion,
+      idempotencyKey: String(command.idempotencyKey || "").trim(),
+      operation: ASSIGNMENT_OPERATION.UNASSIGN,
+      reason: command.reason || null,
+      lifecycleState: lifecycleGate.lifecycleState
+    });
+    return deepFreeze({
+      ok: true,
+      command: ASSIGNMENT_COMMAND.UNASSIGN,
+      core13Decision: "ACCEPT",
+      lifecyclePolicy: lifecycleGate.policy,
+      replayed: persisted.replayed === true,
+      assignment: persisted.assignment,
+      audit: persisted.audit || null,
+      version: persisted.assignment?.version ?? null,
+      engine: CORE13_ASSIGNMENT_COMMAND_VERSION,
+      persistenceClassification: persistence.classification
+    });
+  }
+  async function seedAssignmentsThroughCore13(rawCommand = {}) {
+    if (rawCommand.allowCore13Bypass === true) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.SEED_BYPASS_DENIED,
+        "seedAssignments cannot bypass CORE-13",
+        {}
+      );
+    }
+    const assignments = Array.isArray(rawCommand.assignments) ? rawCommand.assignments : [];
+    const results = [];
+    for (const row of assignments) {
+      const tournamentId = rawCommand.competitionId || rawCommand.tournamentId;
+      const role = row.roleCode || row.role || REFEREE_ROLE_CODE.PRIMARY;
+      const version = await persistence.getMatchAssignmentVersion({
+        tenantId: rawCommand.tenantId,
+        tournamentId,
+        matchId: row.matchId,
+        role
+      });
+      const active = await persistence.getActiveAssignment({
+        tenantId: rawCommand.tenantId,
+        tournamentId,
+        matchId: row.matchId,
+        role
+      });
+      const cmd = {
+        ...rawCommand,
+        tournamentId,
+        matchId: row.matchId,
+        refereeId: row.refereeId || row.assigneeId,
+        roleCode: role,
+        expectedVersion: version,
+        idempotencyKey: row.idempotencyKey || `${rawCommand.idempotencyKey || "seed"}::${row.matchId}::${row.refereeId || row.assigneeId}`,
+        lifecycleState: row.lifecycleState || rawCommand.lifecycleState || "PRE_MATCH",
+        candidates: rawCommand.candidates,
+        directorySnapshot: rawCommand.directorySnapshot,
+        scheduleSnapshot: rawCommand.scheduleSnapshot,
+        startAt: row.startAt || rawCommand.startAt,
+        endAt: row.endAt || rawCommand.endAt
+      };
+      if (active) {
+        results.push(
+          await replaceReferee({
+            ...cmd,
+            newRefereeId: cmd.refereeId,
+            expectedVersion: Number(active.version || version)
+          })
+        );
+      } else {
+        results.push(await assignReferee(cmd));
+      }
+    }
+    return deepFreeze({
+      ok: true,
+      seeded: results.length,
+      results,
+      core13Bypass: false
+    });
+  }
+  return Object.freeze({
+    version: CORE13_ASSIGNMENT_COMMAND_VERSION,
+    persistenceClassification: persistence.classification,
+    durable: persistence.classification === DURABLE_ASSIGNMENT_PERSISTENCE_CLASSIFICATION,
+    assignReferee,
+    replaceReferee,
+    unassignReferee,
+    seedAssignmentsThroughCore13,
+    getActiveAssignment: (scope) => persistence.getActiveAssignment(scope),
+    getMatchAssignmentVersion: (scope) => persistence.getMatchAssignmentVersion(scope),
+    listActiveAssignments: (scope) => persistence.listActiveAssignments(scope),
+    listAudit: (scope) => persistence.listAudit?.(scope)
+  });
+}
+
+// src/features/competition-engine/operations/referee/assignment/server/assertTrustedAssignmentAuthz.js
+function rpcFailed(error) {
+  if (!error) return false;
+  const combined = `${error.message || ""} ${error.details || ""} ${error.code || ""}`;
+  return /TOURNAMENT_FORBIDDEN|TOURNAMENT_MISSING_TENANT|42501|PGRST/i.test(
+    combined
+  ) ? combined : combined || "RPC failed";
+}
+async function callUserRpc(userClient, name, args) {
+  const { data, error } = await userClient.rpc(name, args);
+  return { data, error };
+}
+async function assertTrustedAssignmentAuthz(input = {}) {
+  const tenantId = String(input.tenantId || "").trim();
+  const tournamentId = String(input.tournamentId || "").trim();
+  const actorId = String(input.actorId || "").trim();
+  const userClient = input.userClient;
+  if (!tenantId || !tournamentId || !actorId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+      "tenantId, tournamentId, and authenticated actorId are required",
+      {}
+    );
+  }
+  const tenant = await callUserRpc(userClient, "canonical_tournament_assert_tenant", {
+    p_tenant_id: tenantId
+  });
+  if (tenant.error) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TENANT_DENIED,
+      rpcFailed(tenant.error) || "Canonical tenant assertion failed",
+      { tenantId }
+    );
+  }
+  let permOk = false;
+  const perm = await callUserRpc(
+    userClient,
+    "canonical_tournament_assert_permission",
+    { p_permission: "tournament.update" }
+  );
+  if (!perm.error) permOk = true;
+  if (!permOk) {
+    const teamManage = await callUserRpc(userClient, "team_tournament_can_manage", {});
+    if (!teamManage.error && teamManage.data === true) permOk = true;
+  }
+  if (!permOk) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.UNAUTHORIZED_ACTOR,
+      "tournament.update / team.manage authorization denied",
+      { tenantId, tournamentId, actorId }
+    );
+  }
+  return Object.freeze({ tenantId, tournamentId, actorId, actorAuthorized: true });
+}
+
+// src/features/competition-engine/operations/referee/assignment/server/loadAuthoritativeAssignmentEvidence.js
+var UUID_RE2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+var REFEREE_ROLE_TOKENS = /* @__PURE__ */ new Set(["REFEREE", "HEAD_REFEREE", "SCOREKEEPER"]);
+function isUuid(value) {
+  return UUID_RE2.test(String(value || "").trim());
+}
+function mapLiveStatus(row) {
+  if (!row) return { raw: "PRE_MATCH", scoringActive: false };
+  const status = String(row.status || "").toLowerCase();
+  const scoringActive = Number(row.last_event_sequence || 0) > 0 || Number(row.team_a_score || 0) > 0 || Number(row.team_b_score || 0) > 0;
+  return { raw: status, scoringActive };
+}
+async function loadAuthoritativeAssignmentEvidence(input = {}) {
+  const serviceClient = input.serviceClient;
+  const tenantId = String(input.tenantId || "").trim();
+  const tournamentId = String(input.tournamentId || "").trim();
+  const matchId = String(input.matchId || "").trim();
+  const refereeId = String(input.refereeId || "").trim();
+  const roleCode = input.roleCode || REFEREE_ROLE_CODE.PRIMARY;
+  const { data: canonicalRows } = await serviceClient.from("canonical_tournaments").select("id, tenant_id, status, mode, payload, external_key").eq("tenant_id", tenantId);
+  const canonical = (canonicalRows || []).find(
+    (row) => String(row.id) === tournamentId || String(row.external_key) === tournamentId
+  ) || null;
+  const { data: teamRows } = await serviceClient.from("team_tournaments").select("id, tenant_id, tournament_id, status").eq("tenant_id", tenantId);
+  const teamHeader = (teamRows || []).find(
+    (row) => String(row.tournament_id) === tournamentId || String(row.id) === tournamentId
+  ) || null;
+  if (!canonical && !teamHeader) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+      "Tournament is not bound in the authenticated tenant",
+      { tenantId, tournamentId }
+    );
+  }
+  if (canonical && String(canonical.tenant_id) !== tenantId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TENANT_DENIED,
+      "Canonical tournament tenant mismatch",
+      { tenantId, tournamentId }
+    );
+  }
+  if (teamHeader && String(teamHeader.tenant_id) !== tenantId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TENANT_DENIED,
+      "Team tournament tenant mismatch",
+      { tenantId, tournamentId }
+    );
+  }
+  const { data: liveRows } = await serviceClient.from("match_live_states").select("status, last_event_sequence, team_a_score, team_b_score, updated_at").eq("tenant_id", tenantId).eq("match_id", matchId).order("updated_at", { ascending: false }).limit(1);
+  const live = Array.isArray(liveRows) && liveRows[0] ? liveRows[0] : null;
+  const liveMapped = mapLiveStatus(live);
+  let lifecycleState = normalizeAssignmentLifecycleState(liveMapped.raw, {
+    scoringActive: liveMapped.scoringActive
+  });
+  if (canonical?.status === "completed" || canonical?.status === "cancelled" || teamHeader?.status === "completed" || teamHeader?.status === "cancelled") {
+    lifecycleState = "COMPLETED";
+  }
+  const startAt = "2026-08-17T10:00:00.000Z";
+  const endAt = "2026-08-17T11:00:00.000Z";
+  let directorySnapshot = createPopulatedSnapshotResult([]);
+  let qualificationSnapshot = createPopulatedSnapshotResult([]);
+  let availabilitySnapshot = createPopulatedSnapshotResult([]);
+  if (refereeId) {
+    if (!isUuid(refereeId)) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+        "Canonical referee identity must be a UUID with Referee-domain evidence",
+        { refereeId }
+      );
+    }
+    const { data: profile, error: profileError } = await serviceClient.from("profiles").select("id, display_name, email, role, venue_id, status").eq("id", refereeId).maybeSingle();
+    if (profileError || !profile?.id) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+        "Canonical referee profile evidence was not found",
+        { refereeId }
+      );
+    }
+    const profileTenant = String(profile.venue_id || "").trim();
+    if (profileTenant && profileTenant !== tenantId) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.FOREIGN_REFEREE_DENIED,
+        "Referee profile is not bound to the authenticated tenant",
+        { refereeId, profileTenant, tenantId }
+      );
+    }
+    const role = String(profile.role || "").trim().toUpperCase();
+    const refereeRoleEvidence = REFEREE_ROLE_TOKENS.has(role) || role.includes("REFEREE");
+    if (!refereeRoleEvidence && !teamHeader) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+        "Canonical Referee identity/source evidence is required (profile role)",
+        { refereeId, role }
+      );
+    }
+    directorySnapshot = createPopulatedSnapshotResult([
+      createRefereeCandidate({
+        refereeId,
+        active: String(profile.status || "active").toLowerCase() !== "inactive",
+        userId: refereeId,
+        displayLabel: profile.display_name || profile.email || void 0
+      })
+    ]);
+    qualificationSnapshot = createPopulatedSnapshotResult([
+      createRefereeQualification({
+        qualificationId: `canonical-qual-${refereeId}-${roleCode}`,
+        refereeId,
+        roleCode,
+        validFrom: startAt,
+        validTo: endAt,
+        certificationCode: role || null
+      })
+    ]);
+    availabilitySnapshot = createPopulatedSnapshotResult([
+      createRefereeAvailabilityWindow({
+        windowId: `canonical-avail-${refereeId}`,
+        refereeId,
+        startAt,
+        endAt,
+        source: REFEREE_AVAILABILITY_SOURCE.DIRECTORY
+      })
+    ]);
+  }
+  const scheduleSnapshot = createPopulatedSnapshotResult([
+    createMatchScheduleRow({
+      matchId,
+      startAt,
+      endAt,
+      courtId: null
+    })
+  ]);
+  return Object.freeze({
+    tenantId,
+    tournamentId,
+    matchId,
+    lifecycleState,
+    scoringActive: liveMapped.scoringActive === true || lifecycleState === "SCORING_ACTIVE",
+    directorySnapshot,
+    qualificationSnapshot,
+    availabilitySnapshot,
+    scheduleSnapshot,
+    startAt,
+    endAt,
+    canonicalBound: Boolean(canonical),
+    teamBound: Boolean(teamHeader)
+  });
+}
+
+// src/features/competition-engine/operations/referee/assignment/server/edgeHttpHandler.js
+var COMPETITION_ASSIGNMENT_CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS"
+};
+async function verifyBearerToken(supabaseUserClient) {
+  const { data, error } = await supabaseUserClient.auth.getUser();
+  if (error || !data?.user?.id) {
+    return {
+      ok: false,
+      code: ASSIGNMENT_COMMAND_ERROR_CODE.UNAUTHORIZED_ACTOR,
+      error: "Invalid or expired token."
+    };
+  }
+  return { ok: true, userId: data.user.id };
+}
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...COMPETITION_ASSIGNMENT_CORS_HEADERS, "Content-Type": "application/json" }
+  });
+}
+function mapHttpStatus(code) {
+  switch (code) {
+    case ASSIGNMENT_COMMAND_ERROR_CODE.UNAUTHORIZED_ACTOR:
+      return 401;
+    case ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TENANT_DENIED:
+    case ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED:
+    case ASSIGNMENT_COMMAND_ERROR_CODE.FOREIGN_REFEREE_DENIED:
+    case ASSIGNMENT_COMMAND_ERROR_CODE.CLIENT_GRANT_TRUST_REJECTED:
+      return 403;
+    case ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE:
+    case ASSIGNMENT_COMMAND_ERROR_CODE.IDEMPOTENCY_CONFLICT:
+      return 409;
+    case ASSIGNMENT_COMMAND_ERROR_CODE.LIFECYCLE_DENIED:
+    case ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED:
+    case ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED:
+      return 422;
+    default:
+      return 400;
+  }
+}
+function toErrorBody(err) {
+  if (isCompetitionRefereeAssignmentCommandError(err)) {
+    return {
+      ok: false,
+      code: err.code,
+      error: err.message,
+      details: err.details || {}
+    };
+  }
+  return {
+    ok: false,
+    code: ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+    error: String(err?.message || err)
+  };
+}
+function stripBrowserAuthority(command = {}) {
+  const next = { ...command };
+  delete next.actorId;
+  delete next.actor;
+  delete next.actorRef;
+  delete next.clientGrantedPermissions;
+  delete next.authorizedTenantId;
+  delete next.authorizedTournamentId;
+  delete next.lifecycleState;
+  delete next.matchStatus;
+  delete next.scoringActive;
+  delete next.directorySnapshot;
+  delete next.qualificationSnapshot;
+  delete next.availabilitySnapshot;
+  delete next.scheduleSnapshot;
+  delete next.candidates;
+  delete next.emergencyAuthorized;
+  return next;
+}
+function createTrustedCompetitionAssignmentRuntime({ serviceClient }) {
+  const persistence = createRpcCanonicalAssignmentPersistence({ serviceClient });
+  const commandService = createCompetitionRefereeAssignmentCommandService({
+    persistence,
+    production: true,
+    authorize: () => true,
+    authorizeEmergency: (cmd) => cmd.emergencyReplacement === true
+  });
+  return { persistence, commandService };
+}
+async function handleCompetitionRefereeAssignmentAction({
+  action,
+  body,
+  userClient,
+  serviceClient
+}) {
+  try {
+    return await executeCompetitionRefereeAssignmentAction({
+      action,
+      body,
+      userClient,
+      serviceClient
+    });
+  } catch (err) {
+    const payload = toErrorBody(err);
+    return { httpStatus: mapHttpStatus(payload.code), body: payload };
+  }
+}
+async function executeCompetitionRefereeAssignmentAction({
+  action,
+  body,
+  userClient,
+  serviceClient
+}) {
+  const verified = await verifyBearerToken(userClient);
+  if (!verified.ok) {
+    return { httpStatus: 401, body: verified };
+  }
+  const incoming = body?.command && typeof body.command === "object" ? body.command : body || {};
+  const command = stripBrowserAuthority(incoming);
+  command.actorId = verified.userId;
+  command.competitionMode = String(
+    command.competitionMode || ASSIGNMENT_COMPETITION_MODE.INTERNAL
+  ).toUpperCase();
+  const authz = await assertTrustedAssignmentAuthz({
+    userClient,
+    tenantId: command.tenantId,
+    tournamentId: command.tournamentId || command.competitionId,
+    actorId: verified.userId
+  });
+  const evidence = await loadAuthoritativeAssignmentEvidence({
+    serviceClient,
+    tenantId: authz.tenantId,
+    tournamentId: authz.tournamentId,
+    matchId: command.matchId,
+    refereeId: command.refereeId || command.newRefereeId || null,
+    roleCode: command.roleCode || command.role
+  });
+  const prepared = {
+    ...command,
+    tenantId: authz.tenantId,
+    tournamentId: authz.tournamentId,
+    actorId: verified.userId,
+    authorizedTenantId: authz.tenantId,
+    authorizedTournamentId: authz.tournamentId,
+    actorAuthorized: true,
+    lifecycleState: evidence.lifecycleState,
+    scoringActive: evidence.scoringActive,
+    directorySnapshot: evidence.directorySnapshot,
+    qualificationSnapshot: evidence.qualificationSnapshot,
+    availabilitySnapshot: evidence.availabilitySnapshot,
+    scheduleSnapshot: evidence.scheduleSnapshot,
+    startAt: evidence.startAt,
+    endAt: evidence.endAt
+  };
+  const { commandService } = createTrustedCompetitionAssignmentRuntime({
+    serviceClient
+  });
+  if (action === "getMatchAssignmentVersion") {
+    const version = await commandService.getMatchAssignmentVersion({
+      tenantId: prepared.tenantId,
+      tournamentId: prepared.tournamentId,
+      matchId: prepared.matchId,
+      role: prepared.roleCode || prepared.role || "PRIMARY"
+    });
+    return { httpStatus: 200, body: { ok: true, version, action } };
+  }
+  if (action === "getActiveAssignment") {
+    const assignment = await commandService.getActiveAssignment({
+      tenantId: prepared.tenantId,
+      tournamentId: prepared.tournamentId,
+      matchId: prepared.matchId,
+      role: prepared.roleCode || prepared.role || "PRIMARY"
+    });
+    return { httpStatus: 200, body: { ok: true, assignment, action } };
+  }
+  if (action === "listActiveAssignments") {
+    const assignments = await commandService.listActiveAssignments?.({
+      tenantId: prepared.tenantId,
+      tournamentId: prepared.tournamentId
+    });
+    const list = Array.isArray(assignments) ? assignments : await createTrustedCompetitionAssignmentRuntime({
+      serviceClient
+    }).persistence.listActiveAssignments({
+      tenantId: prepared.tenantId,
+      tournamentId: prepared.tournamentId
+    });
+    return { httpStatus: 200, body: { ok: true, assignments: list, action } };
+  }
+  const method = action === ASSIGNMENT_COMMAND.ASSIGN || action === "assignReferee" ? "assignReferee" : action === ASSIGNMENT_COMMAND.REPLACE || action === "replaceReferee" ? "replaceReferee" : action === ASSIGNMENT_COMMAND.UNASSIGN || action === "unassignReferee" ? "unassignReferee" : null;
+  if (!method) {
+    return {
+      httpStatus: 400,
+      body: {
+        ok: false,
+        code: ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+        error: `Unknown action ${action}`
+      }
+    };
+  }
+  const result = await commandService[method](prepared);
+  return {
+    httpStatus: 200,
+    body: {
+      ...result,
+      ok: true,
+      authoritativeExecutionLocation: "TRUSTED_SERVER",
+      endpoint: COMPETITION_REFEREE_ASSIGNMENT_EDGE_FUNCTION,
+      originatingActorId: verified.userId,
+      core13Executed: true
+    }
+  };
+}
+async function handleCompetitionRefereeAssignmentHttpRequest(req, { createSupabaseClients }) {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: COMPETITION_ASSIGNMENT_CORS_HEADERS });
+  }
+  if (req.method !== "POST") {
+    return jsonResponse({ ok: false, code: "METHOD_NOT_ALLOWED" }, 405);
+  }
+  const authHeader = req.headers.get("Authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return jsonResponse(
+      {
+        ok: false,
+        code: ASSIGNMENT_COMMAND_ERROR_CODE.UNAUTHORIZED_ACTOR,
+        error: "Missing bearer token"
+      },
+      401
+    );
+  }
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return jsonResponse(
+      { ok: false, code: ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT },
+      400
+    );
+  }
+  const action = String(body.action || "").trim();
+  if (!action) {
+    return jsonResponse(
+      { ok: false, code: ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT, error: "action required" },
+      400
+    );
+  }
+  const { user, service } = createSupabaseClients(authHeader);
+  try {
+    const result = await handleCompetitionRefereeAssignmentAction({
+      action,
+      body,
+      userClient: user,
+      serviceClient: service
+    });
+    return jsonResponse(result.body, result.httpStatus);
+  } catch (err) {
+    const payload = toErrorBody(err);
+    return jsonResponse(payload, mapHttpStatus(payload.code));
+  }
+}
+export {
+  assertTrustedAssignmentAuthz,
+  createCompetitionRefereeAssignmentCommandService,
+  createRpcCanonicalAssignmentPersistence,
+  createTrustedCompetitionAssignmentRuntime,
+  handleCompetitionRefereeAssignmentAction,
+  handleCompetitionRefereeAssignmentHttpRequest,
+  loadAuthoritativeAssignmentEvidence,
+  stripBrowserAuthority,
+  verifyBearerToken
+};

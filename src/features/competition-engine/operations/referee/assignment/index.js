@@ -4,6 +4,8 @@
 
 export {
   CORE13_ASSIGNMENT_COMMAND_VERSION,
+  CORE13_AUTHORITATIVE_EXECUTION_LOCATION,
+  COMPETITION_REFEREE_ASSIGNMENT_EDGE_FUNCTION,
   ASSIGNMENT_COMMAND,
   ASSIGNMENT_COMMAND_VALUES,
   ASSIGNMENT_OPERATION,
@@ -36,8 +38,15 @@ export {
 
 export { createInMemoryCanonicalAssignmentPersistence } from "./persistence/createInMemoryCanonicalAssignmentPersistence.js";
 export { createBlobCanonicalAssignmentPersistence } from "./persistence/createBlobCanonicalAssignmentPersistence.js";
+export { createRpcCanonicalAssignmentPersistence } from "./persistence/createRpcCanonicalAssignmentPersistence.js";
 
 export { createCompetitionRefereeAssignmentCommandService } from "./createCompetitionRefereeAssignmentCommandService.js";
+
+export {
+  createCompetitionRefereeAssignmentTrustedClient,
+  resolveCompetitionAssignmentEdgeBaseUrl,
+  stripUntrustedAssignmentActorFields,
+} from "./client/competitionRefereeAssignmentEdgeClient.js";
 
 export {
   createModeAssignmentCommandBridge,
@@ -49,6 +58,9 @@ export const CORE13_CANONICAL_ASSIGNMENT_RUNTIME = Object.freeze({
   assignmentAuthority: "CORE-13",
   refereeDomainAuthority: "SINGLE",
   adapterBAuthority: "TRANSLATION_ONLY",
+  authoritativeExecutionLocation: "TRUSTED_SERVER",
+  clientCore13Role: "PRE_VALIDATION_ONLY",
+  trustedServerEndpoint: "competition-referee-assignment",
   contract08Changed: false,
   seedAssignmentsBypass: false,
   casRequired: true,
@@ -56,4 +68,6 @@ export const CORE13_CANONICAL_ASSIGNMENT_RUNTIME = Object.freeze({
   atomicReplacement: true,
   durableAudit: true,
   inMemoryProductionFallback: false,
+  authenticatedDirectRpcExecute: "DENY",
+  interimBlobAuthorityPostCutover: false,
 });

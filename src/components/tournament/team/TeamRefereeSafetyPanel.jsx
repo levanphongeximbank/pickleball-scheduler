@@ -19,17 +19,15 @@ import {
 } from "@mui/material";
 
 import {
-  buildRevokeAssignmentPayload,
   mapCorrectionStatusLabel,
 } from "../../../features/team-tournament/engines/teamRefereeV5SafetyEngine.js";
 import {
   rpcTeamTournamentListRefereeAssignments,
   rpcTeamTournamentListRefereeCorrections,
   rpcTeamTournamentReviewRefereeCorrection,
-  rpcTeamTournamentRevokeRefereeAssignment,
   rpcTeamTournamentSearchRefereeCandidates,
 } from "../../../features/team-tournament/services/teamTournamentRpcService.js";
-import { assignTeamRefereeViaCore13 } from "../../../features/team-tournament/services/teamCore13AssignmentTransport.js";
+import { assignTeamRefereeViaCore13, unassignTeamRefereeViaCore13 } from "../../../features/team-tournament/services/teamCore13AssignmentTransport.js";
 import { mapTeamTournamentDomainFailure } from "../../../features/team-tournament/engines/teamTournamentDomainErrors.js";
 import {
   PARENT_ASSIGNMENT_SELECT_VALUE,
@@ -38,8 +36,8 @@ import {
 
 /**
  * TT-5D BTC panel: searchable assign / change / revoke + correction review.
- * Assignment authority: CORE-13 shared command path via assignTeamRefereeViaCore13.
- * Team RPC remains thin transport only (not assignment business authority).
+ * Assignment authority: CORE-13 via Competition trusted server endpoint.
+ * Team RPC remains non-authoritative compatibility transport only.
  * Candidate source: team_tournament_search_referee_candidates (profiles identity).
  * MANUAL_REFEREE_UUID_REQUIRED=NO
  */
@@ -147,14 +145,20 @@ export default function TeamRefereeSafetyPanel({
 
   async function revokeRows(rows, reason) {
     for (const row of rows) {
-      const result = await rpcTeamTournamentRevokeRefereeAssignment(
-        buildRevokeAssignmentPayload({
-          tournamentId,
-          assignmentId: row.assignmentId,
-          expectedVersion: row.version,
-          reason,
-        })
-      );
+      const result = await unassignTeamRefereeViaCore13({
+        tenantId: String(tenantId || tournamentTenantId || ""),
+        tournamentId,
+        matchId: String(
+          row.externalSubMatchId ||
+            row.subMatchId ||
+            row.matchId ||
+            assignSubMatchId ||
+            matchupId
+        ),
+        assignmentId: row.id || row.assignmentId,
+        expectedVersion: row.version,
+        reason,
+      });
       if (!result.ok) {
         return result;
       }

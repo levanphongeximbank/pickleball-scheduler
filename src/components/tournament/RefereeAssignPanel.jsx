@@ -26,12 +26,12 @@ import {
 import { buildRefereeUrl } from "../../tournament/engines/refereeEngine.js";
 import {
   ASSIGNMENT_COMPETITION_MODE,
-  createBlobCanonicalAssignmentPersistence,
-  createCompetitionRefereeAssignmentCommandService,
-  createModeAssignmentCommandBridge,
-  isCompetitionRefereeAssignmentCommandError,
+  assertCanonicalRefereeId,
+  createCompetitionRefereeAssignmentTrustedClient,
+  resolveCompetitionAssignmentEdgeBaseUrl,
 } from "../../features/competition-engine/operations/referee/assignment/index.js";
 import { REFEREE_ROLE_CODE } from "../../features/competition-core/referee-assignment/index.js";
+import { getSupabaseAuthClient } from "../../auth/supabaseClient.js";
 
 function formatTime(iso) {
   if (!iso) return "—";
@@ -53,7 +53,6 @@ function resolveCompetitionMode(tournament) {
 export default function RefereeAssignPanel({
   tournament,
   eventId = "",
-  actor = null,
   onTournamentChange,
   compact = false,
   tenantId = null,
@@ -72,119 +71,132 @@ export default function RefereeAssignPanel({
     [tournament]
   );
 
-  const bridge = useMemo(() => {
-    if (!tournament) return null;
-    let current = tournament;
-    const persistence = createBlobCanonicalAssignmentPersistence({
-      tenantId: String(tenantId || tournament.tenantId || tournament.clubId || "local-tenant"),
-      tournamentId: String(tournament.id || tournament.tournamentId || ""),
-      getTournament: () => current,
-      setTournament: (next) => {
-        current = next;
-      },
-      clockIso: new Date().toISOString(),
-    });
-    const commandService = createCompetitionRefereeAssignmentCommandService({
-      persistence,
-      production: false,
-    });
-    return {
-      current: () => current,
-      api: createModeAssignmentCommandBridge({
-        commandService,
-        competitionMode: resolveCompetitionMode(tournament),
+  const api = useMemo(
+    () =>
+      createCompetitionRefereeAssignmentTrustedClient({
+        edgeBaseUrl: resolveCompetitionAssignmentEdgeBaseUrl(),
+        getAccessToken: async () => {
+          const client = getSupabaseAuthClient();
+          const { data } = (await client?.auth.getSession()) || {};
+          return data?.session?.access_token || null;
+        },
       }),
-    };
-  }, [tournament, tenantId]);
+    []
+  );
 
-  const persistProjection = (successText) => {
-    onTournamentChange?.(bridge.current());
+  const projectTrustedResult = (result, matchId, rosterId, successText) => {
+    const current = tournament;
+    const prev = current?.settings?.core13RefereeAssignments || {
+      byScope: {},
+      versionByScope: {},
+    };
+    const key = `${String(matchId)}::${REFEREE_ROLE_CODE.PRIMARY}`;
+    const byScope = { ...(prev.byScope || {}) };
+    const versionByScope = { ...(prev.versionByScope || {}) };
+    if (!rosterId) {
+      delete byScope[key];
+    } else if (result?.assignment) {
+      byScope[key] = {
+        ...result.assignment,
+        rosterId: String(rosterId),
+        status: "active",
+      };
+    }
+    if (result?.version != null) versionByScope[key] = result.version;
+    onTournamentChange?.({
+      ...current,
+      settings: {
+        ...(current?.settings || {}),
+        core13RefereeAssignments: {
+          schema: "core13-blob-canonical-v1",
+          interimUntilSqlGo: false,
+          authority: false,
+          projectionOnly: true,
+          source: "trusted-server-projection",
+          byScope,
+          versionByScope,
+          audit: prev.audit || [],
+          idempotency: prev.idempotency || {},
+        },
+      },
+    });
     setMessage({ type: "success", text: successText });
   };
 
   const handleAssign = async (matchId, rosterId) => {
-    if (!bridge) return;
     setBusy(true);
     setMessage(null);
     try {
-      const actorId = String(actor?.id || actor?.userId || "organizer");
       const base = {
-        tenantId: String(tenantId || tournament.tenantId || tournament.clubId || "local-tenant"),
+        tenantId: String(tenantId || tournament.tenantId || tournament.clubId || ""),
         tournamentId: String(tournament.id || tournament.tournamentId || ""),
         matchId: String(matchId),
         roleCode: REFEREE_ROLE_CODE.PRIMARY,
-        actorId,
-        lifecycleState: "PRE_MATCH",
-        authorizedTenantId: String(
-          tenantId || tournament.tenantId || tournament.clubId || "local-tenant"
-        ),
-        authorizedTournamentId: String(tournament.id || tournament.tournamentId || ""),
-        candidates: referees.map((r) => ({
-          refereeId: String(r.id),
-          active: r.active !== false,
-          displayLabel: r.name,
-        })),
+        competitionMode: resolveCompetitionMode(tournament),
+        refereeFeatureEnabled: true,
       };
-      const version = await bridge.api.getMatchAssignmentVersion({
-        tenantId: base.tenantId,
-        tournamentId: base.tournamentId,
-        matchId: base.matchId,
-        role: REFEREE_ROLE_CODE.PRIMARY,
-      });
-      const active = await bridge.api.getActiveAssignment({
-        tenantId: base.tenantId,
-        tournamentId: base.tournamentId,
-        matchId: base.matchId,
-        role: REFEREE_ROLE_CODE.PRIMARY,
-      });
+      if (rosterId) {
+        assertCanonicalRefereeId(rosterId);
+      }
+      const versionRes = await api.getMatchAssignmentVersion(base);
+      if (versionRes?.ok === false) {
+        throw new Error(versionRes.error || versionRes.code || "Không đọc được phiên bản phân công.");
+      }
+      const version = Number(versionRes?.version ?? 0);
+      const activeRes = await api.getActiveAssignment(base);
+      const active = activeRes?.assignment || null;
 
+      let result;
       if (!rosterId) {
-        await bridge.api.unassignReferee({
+        result = await api.unassignReferee({
           ...base,
           expectedVersion: version,
           idempotencyKey: `ui-unassign-${matchId}-${version}`,
           reason: "organizer-unassign",
         });
-        persistProjection("Đã hủy phân công.");
+        if (!result?.ok) throw new Error(result?.error || result?.code || "Hủy phân công thất bại.");
+        projectTrustedResult(result, matchId, "", "Đã hủy phân công.");
         return;
       }
 
       if (active) {
-        await bridge.api.replaceReferee({
+        result = await api.replaceReferee({
           ...base,
           newRefereeId: String(rosterId),
           expectedVersion: version,
           idempotencyKey: `ui-replace-${matchId}-${rosterId}-${version}`,
           reason: "organizer-replace",
         });
-        persistProjection("Đã đổi trọng tài.");
+        if (!result?.ok) throw new Error(result?.error || result?.code || "Đổi trọng tài thất bại.");
+        projectTrustedResult(result, matchId, rosterId, "Đã đổi trọng tài.");
       } else {
-        await bridge.api.assignReferee({
+        result = await api.assignReferee({
           ...base,
           refereeId: String(rosterId),
           expectedVersion: version,
           idempotencyKey: `ui-assign-${matchId}-${rosterId}-${version}`,
           reason: "organizer-assign",
         });
-        persistProjection("Đã phân công trọng tài.");
+        if (!result?.ok) throw new Error(result?.error || result?.code || "Phân công thất bại.");
+        projectTrustedResult(result, matchId, rosterId, "Đã phân công trọng tài.");
       }
     } catch (err) {
-      const text = isCompetitionRefereeAssignmentCommandError(err)
-        ? err.message
-        : err?.message || "Phân công thất bại.";
-      setMessage({ type: "error", text });
+      setMessage({
+        type: "error",
+        text: err?.message || "Phân công thất bại.",
+      });
     } finally {
       setBusy(false);
     }
   };
 
   const handleAuto = async () => {
-    if (!bridge) return;
     setBusy(true);
     setMessage(null);
     try {
       let assigned = 0;
       let skipped = 0;
+      let current = tournament;
       for (const row of rows) {
         if (row.assigned) continue;
         const referee = referees[assigned % Math.max(referees.length, 1)];
@@ -193,34 +205,55 @@ export default function RefereeAssignPanel({
           continue;
         }
         try {
-          const version = await bridge.api.getMatchAssignmentVersion({
-            tenantId: String(tenantId || tournament.tenantId || tournament.clubId || "local-tenant"),
+          assertCanonicalRefereeId(referee.id);
+          const versionRes = await api.getMatchAssignmentVersion({
+            tenantId: String(tenantId || tournament.tenantId || tournament.clubId || ""),
             tournamentId: String(tournament.id || tournament.tournamentId || ""),
             matchId: String(row.matchId),
-            role: REFEREE_ROLE_CODE.PRIMARY,
+            roleCode: REFEREE_ROLE_CODE.PRIMARY,
+            competitionMode: resolveCompetitionMode(tournament),
+            refereeFeatureEnabled: true,
           });
-          await bridge.api.assignReferee({
-            tenantId: String(tenantId || tournament.tenantId || tournament.clubId || "local-tenant"),
+          if (versionRes?.ok === false) {
+            skipped += 1;
+            continue;
+          }
+          const version = Number(versionRes?.version ?? 0);
+          const result = await api.assignReferee({
+            tenantId: String(tenantId || tournament.tenantId || tournament.clubId || ""),
             tournamentId: String(tournament.id || tournament.tournamentId || ""),
             matchId: String(row.matchId),
             refereeId: String(referee.id),
             roleCode: REFEREE_ROLE_CODE.PRIMARY,
-            actorId: String(actor?.id || actor?.userId || "organizer"),
             expectedVersion: version,
             idempotencyKey: `ui-auto-${row.matchId}-${referee.id}-${version}`,
-            lifecycleState: "PRE_MATCH",
-            candidates: referees.map((r) => ({
-              refereeId: String(r.id),
-              active: r.active !== false,
-              displayLabel: r.name,
-            })),
+            competitionMode: resolveCompetitionMode(tournament),
+            refereeFeatureEnabled: true,
           });
+          if (!result?.ok) {
+            skipped += 1;
+            continue;
+          }
           assigned += 1;
+          current = {
+            ...current,
+            settings: {
+              ...(current?.settings || {}),
+              core13RefereeAssignments: {
+                ...(current?.settings?.core13RefereeAssignments || {}),
+                schema: "core13-blob-canonical-v1",
+                interimUntilSqlGo: false,
+                authority: false,
+                projectionOnly: true,
+                source: "trusted-server-projection",
+              },
+            },
+          };
         } catch {
           skipped += 1;
         }
       }
-      onTournamentChange?.(bridge.current());
+      onTournamentChange?.(current);
       setMessage({
         type: "success",
         text: `Tự động gán ${assigned} trận` + (skipped ? `, bỏ qua ${skipped}.` : "."),
