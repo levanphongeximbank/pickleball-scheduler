@@ -15,61 +15,54 @@
  * Required env (never commit values):
  *   STAGING_SUPABASE_URL
  *   STAGING_ANON_KEY
- *   STAGING_SERVICE_ROLE_KEY
+ *   STAGING_SERVICE_ROLE_KEY   (test evidence only — never product/browser)
  *   STAGING_USER_A_EMAIL / STAGING_USER_A_PASSWORD
  *   STAGING_USER_B_EMAIL / STAGING_USER_B_PASSWORD
  *   STAGING_TENANT_A / STAGING_TOURNAMENT_A / STAGING_MATCH_A
  *   STAGING_TENANT_B / STAGING_TOURNAMENT_B
  *   STAGING_REFEREE_USER_ID
+ *   STAGING_REPLACE_REFEREE_USER_ID
  *
- * Optional fixture env for full CORE-13 evidence / lifecycle coverage:
- *   STAGING_MATCH_OVERLAP_A / STAGING_MATCH_OVERLAP_B / STAGING_MATCH_NONOVERLAP
- *   STAGING_INACTIVE_REFEREE_ID / STAGING_NON_CANONICAL_REFEREE_ID
- *   STAGING_DAILY_PLAY_DISABLED_TOURNAMENT / STAGING_DAILY_PLAY_ENABLED_TOURNAMENT
- *   STAGING_MATCH_IN_PROGRESS / STAGING_MATCH_SCORING / STAGING_MATCH_LOCKED / STAGING_MATCH_COMPLETED
+ * Mutable tournament/match IDs MUST contain CORE13_STAGING_ACCEPTANCE
+ * (or CORE13_FIXTURE_NAMESPACE). Arbitrary Staging business rows are refused.
  *
  * Identity subject lookup:
  *   Contract #01 gap was closed by merged PR #446. CORE-13 consumes
  *   resolveSubjectIdentity. Identity L cases now test canonical deny
  *   (unknown / non-referee / inactive / foreign / missing tenant).
  *   Do not restore a Competition profiles-table read.
+ *
+ * Service-role inspection is test evidence only. Audit history is immutable
+ * and is never deleted by this harness.
  */
 
 import { createClient } from "@supabase/supabase-js";
+import {
+  CASE_CATALOG,
+  CORE13_FIXTURE_NAMESPACE,
+  DENIAL_CODES,
+  createMutationGate,
+  evaluateActiveLeftovers,
+  evaluateAssignPass,
+  evaluateAtomicReplacePass,
+  evaluateAuthenticatedRuntimeProbe,
+  evaluateBaselineKnownStart,
+  evaluateBrowserAuditDenied,
+  evaluateCasCorrectPass,
+  evaluateCatalogExecution,
+  evaluateDailyEnabledPass,
+  evaluateDenial,
+  evaluateDirectRpcDenied,
+  evaluateDurableAssignment,
+  evaluateDurableAuditActor,
+  evaluateDurableIdempotency,
+  evaluateExactlyOneActive,
+  evaluateFixtureNamespace,
+  evaluateOldAssignmentRevoked,
+  runWithFinalization,
+} from "./core13-staging-acceptance-proofs.mjs";
 
 const PRODUCTION_HINTS = /prod|production/i;
-
-const CASE_CATALOG = Object.freeze([
-  "A.anon-direct-persistence-rpc-denied",
-  "B.authenticated-direct-persistence-rpc-denied",
-  "C.browser-actor-spoof-ignored",
-  "D.cross-tenant-denied",
-  "E.cross-tournament-denied",
-  "F.trusted-server-pre-match-assign-pass",
-  "G.cas-correct-expected-version-pass",
-  "G.cas-stale-expected-version-deny",
-  "H.idempotency-replay-same-command",
-  "H.idempotency-conflict-changed-payload",
-  "I.atomic-replace-succeeds",
-  "I.exactly-one-active-match-role",
-  "J.lifecycle-in-progress-assign-deny",
-  "J.lifecycle-in-progress-unassign-deny",
-  "J.lifecycle-in-progress-replace-pass",
-  "J.lifecycle-scoring-replace-without-emergency-deny",
-  "J.lifecycle-scoring-emergency-replace-pass",
-  "J.lifecycle-locked-deny",
-  "J.lifecycle-completed-deny",
-  "K.audit-originating-actor-user-a",
-  "K.browser-cannot-read-audit-table",
-  "L.non-canonical-referee-deny",
-  "L.inactive-referee-deny",
-  "L.required-qualification-missing-deny",
-  "L.unavailable-referee-deny-when-required",
-  "L.overlapping-schedule-conflict-deny",
-  "L.non-overlapping-schedule-assign-pass",
-  "M.daily-play-disabled-not-applicable",
-  "M.daily-play-enabled-trusted-server-core13",
-]);
 
 function fail(message) {
   console.error(`REFUSE: ${message}`);
@@ -135,18 +128,57 @@ function requireEnv(name) {
   return value;
 }
 
+async function loadActiveRows(service, { tenantId, tournamentId, matchId }) {
+  let query = service
+    .from("referee_assignments")
+    .select("id,tenant_id,tournament_id,match_id,referee_user_id,role,status,version,assigned_by")
+    .eq("tenant_id", tenantId)
+    .eq("tournament_id", tournamentId)
+    .eq("status", "active");
+  if (matchId) query = query.eq("match_id", matchId);
+  const { data, error } = await query;
+  if (error) throw new Error(`service assignment evidence failed: ${error.message}`);
+  return data || [];
+}
+
+async function loadAuditRows(service, { tenantId, tournamentId, matchId }) {
+  const { data, error } = await service
+    .from("competition_referee_assignment_audit")
+    .select("id,tenant_id,tournament_id,match_id,actor_id,operation,idempotency_key")
+    .eq("tenant_id", tenantId)
+    .eq("tournament_id", tournamentId)
+    .eq("match_id", matchId)
+    .order("recorded_at", { ascending: false })
+    .limit(20);
+  if (error) throw new Error(`service audit evidence failed: ${error.message}`);
+  return data || [];
+}
+
+async function loadIdempotencyRows(service, { tenantId, tournamentId, key }) {
+  const { data, error } = await service
+    .from("competition_referee_assignment_idempotency")
+    .select("tenant_id,tournament_id,idempotency_key,payload_hash,assignment_id")
+    .eq("tenant_id", tenantId)
+    .eq("tournament_id", tournamentId)
+    .eq("idempotency_key", key);
+  if (error) throw new Error(`service idempotency evidence failed: ${error.message}`);
+  return data || [];
+}
+
 async function main() {
   requireStagingSafety();
 
   const url = requireEnv("STAGING_SUPABASE_URL");
   const anonKey = requireEnv("STAGING_ANON_KEY");
   const serviceKey = requireEnv("STAGING_SERVICE_ROLE_KEY");
+  const namespace = env("CORE13_FIXTURE_NAMESPACE") || CORE13_FIXTURE_NAMESPACE;
   const tenantA = requireEnv("STAGING_TENANT_A");
   const tournamentA = requireEnv("STAGING_TOURNAMENT_A");
   const matchA = requireEnv("STAGING_MATCH_A");
   const tenantB = requireEnv("STAGING_TENANT_B");
   const tournamentB = requireEnv("STAGING_TOURNAMENT_B");
   const refereeId = requireEnv("STAGING_REFEREE_USER_ID");
+  const replaceRefereeId = requireEnv("STAGING_REPLACE_REFEREE_USER_ID");
   const overlapA = env("STAGING_MATCH_OVERLAP_A");
   const overlapB = env("STAGING_MATCH_OVERLAP_B");
   const nonOverlap = env("STAGING_MATCH_NONOVERLAP");
@@ -154,6 +186,7 @@ async function main() {
   const nonCanonicalReferee = env("STAGING_NON_CANONICAL_REFEREE_ID");
   const dailyDisabled = env("STAGING_DAILY_PLAY_DISABLED_TOURNAMENT");
   const dailyEnabled = env("STAGING_DAILY_PLAY_ENABLED_TOURNAMENT");
+  const dailyEnabledMatch = env("STAGING_DAILY_PLAY_ENABLED_MATCH");
   const matchInProgress = env("STAGING_MATCH_IN_PROGRESS");
   const matchScoring = env("STAGING_MATCH_SCORING");
   const matchLocked = env("STAGING_MATCH_LOCKED");
@@ -161,21 +194,69 @@ async function main() {
 
   const anon = createClient(url, anonKey, { auth: { persistSession: false } });
   const service = createClient(url, serviceKey, { auth: { persistSession: false } });
-  const userA = await signIn(url, anonKey, requireEnv("STAGING_USER_A_EMAIL"), requireEnv("STAGING_USER_A_PASSWORD"));
-  const userB = await signIn(url, anonKey, requireEnv("STAGING_USER_B_EMAIL"), requireEnv("STAGING_USER_B_PASSWORD"));
+  const userA = await signIn(
+    url,
+    anonKey,
+    requireEnv("STAGING_USER_A_EMAIL"),
+    requireEnv("STAGING_USER_A_PASSWORD")
+  );
+  const userB = await signIn(
+    url,
+    anonKey,
+    requireEnv("STAGING_USER_B_EMAIL"),
+    requireEnv("STAGING_USER_B_PASSWORD")
+  );
 
   const results = [];
-  const record = (name, ok, detail) => {
+  const record = (name, proof) => {
+    const ok = proof?.ok === true;
+    const detail = proof?.detail || "";
     results.push({ name, ok, detail });
     console.log(`${ok ? "PASS" : "FAIL"} ${name}${detail ? ` — ${detail}` : ""}`);
   };
+
   const requireFixture = (name, value, caseName) => {
     if (!value) {
-      record(caseName, false, `${name} fixture missing`);
+      record(caseName, { ok: false, detail: `${name} fixture missing` });
       return false;
     }
     return true;
   };
+
+  const mutationGate = createMutationGate();
+  const mutableMatches = [
+    { label: "STAGING_TOURNAMENT_A", id: tournamentA, required: true },
+    { label: "STAGING_MATCH_A", id: matchA, required: true },
+    { label: "STAGING_MATCH_OVERLAP_A", id: overlapA, required: Boolean(overlapA) },
+    { label: "STAGING_MATCH_OVERLAP_B", id: overlapB, required: Boolean(overlapB) },
+    { label: "STAGING_MATCH_NONOVERLAP", id: nonOverlap, required: Boolean(nonOverlap) },
+    {
+      label: "STAGING_DAILY_PLAY_ENABLED_TOURNAMENT",
+      id: dailyEnabled,
+      required: Boolean(dailyEnabled),
+    },
+    {
+      label: "STAGING_DAILY_PLAY_ENABLED_MATCH",
+      id: dailyEnabledMatch,
+      required: Boolean(dailyEnabled),
+    },
+    {
+      label: "STAGING_MATCH_IN_PROGRESS",
+      id: matchInProgress,
+      required: Boolean(matchInProgress),
+    },
+    { label: "STAGING_MATCH_SCORING", id: matchScoring, required: Boolean(matchScoring) },
+  ];
+
+  const namespaceProof = evaluateFixtureNamespace(mutableMatches, namespace);
+  if (!namespaceProof.ok) {
+    for (const name of CASE_CATALOG) record(name, namespaceProof);
+    console.error(`REFUSE: ${namespaceProof.detail}`);
+    console.log(`STAGING_ACCEPTANCE_CASE_COUNT=${CASE_CATALOG.length}`);
+    console.log("PASS_COUNT=0");
+    console.log(`FAIL_COUNT=${CASE_CATALOG.length}`);
+    process.exit(1);
+  }
 
   const assignArgs = {
     p_tenant_id: tenantA,
@@ -187,401 +268,693 @@ async function main() {
     p_actor_id: userA.userId,
   };
 
-  const anonRpc = await anon.rpc("competition_assign_referee", assignArgs);
-  record("A.anon-direct-persistence-rpc-denied", Boolean(anonRpc.error), anonRpc.error?.message || "no error");
+  const commandBase = {
+    tenantId: tenantA,
+    tournamentId: tournamentA,
+    matchId: matchA,
+    refereeId,
+    competitionMode: "INTERNAL",
+  };
 
-  const userARpc = await userA.client.rpc("competition_assign_referee", {
-    ...assignArgs,
-    p_idempotency_key: "user-a-direct-deny",
-  });
-  record(
-    "B.authenticated-direct-persistence-rpc-denied",
-    Boolean(userARpc.error),
-    userARpc.error?.message || "no error"
-  );
+  const mutate = async (body) => {
+    const gate = mutationGate.assertCanMutate();
+    if (!gate.ok) return { status: 0, payload: { ok: false, code: gate.detail } };
+    return invokeEdge(url, userA.token, body);
+  };
 
-  const spoofKey = `stage-spoof-${Date.now()}`;
-  const spoof = await invokeEdge(url, userA.token, {
-    action: "assignReferee",
-    command: {
-      tenantId: tenantA,
-      tournamentId: tournamentA,
-      matchId: matchA,
-      refereeId,
-      actorId: userB.userId,
-      expectedVersion: 0,
-      idempotencyKey: spoofKey,
-      competitionMode: "INTERNAL",
-    },
-  });
-  record(
-    "C.browser-actor-spoof-ignored",
-    spoof.payload?.originatingActorId === userA.userId,
-    JSON.stringify({ status: spoof.status, actor: spoof.payload?.originatingActorId })
-  );
+  const teardownPreMatch = async () => {
+    const leftovers = [];
+    const restoreTargets = [
+      { tournamentId: tournamentA, matchId: matchA },
+      overlapA ? { tournamentId: tournamentA, matchId: overlapA } : null,
+      overlapB ? { tournamentId: tournamentA, matchId: overlapB } : null,
+      nonOverlap ? { tournamentId: tournamentA, matchId: nonOverlap } : null,
+      dailyEnabled && dailyEnabledMatch
+        ? { tournamentId: dailyEnabled, matchId: dailyEnabledMatch }
+        : null,
+    ].filter(Boolean);
 
-  const crossTenant = await invokeEdge(url, userB.token, {
-    action: "assignReferee",
-    command: {
-      tenantId: tenantA,
-      tournamentId: tournamentA,
-      matchId: matchA,
-      refereeId,
-      expectedVersion: 0,
-      idempotencyKey: `stage-cross-tenant-${Date.now()}`,
-    },
-  });
-  record(
-    "D.cross-tenant-denied",
-    crossTenant.payload?.ok === false,
-    JSON.stringify({ status: crossTenant.status, code: crossTenant.payload?.code })
-  );
+    for (const target of restoreTargets) {
+      const rows = await loadActiveRows(service, {
+        tenantId: tenantA,
+        tournamentId: target.tournamentId,
+        matchId: target.matchId,
+      });
+      for (const row of rows) {
+        const restore = await invokeEdge(url, userA.token, {
+          action: "unassignReferee",
+          command: {
+            tenantId: tenantA,
+            tournamentId: target.tournamentId,
+            matchId: target.matchId,
+            expectedVersion: Number(row.version || 0),
+            idempotencyKey: `teardown-unassign-${row.id}`,
+            competitionMode: target.tournamentId === dailyEnabled ? "DAILY_PLAY" : "INTERNAL",
+          },
+        });
+        if (restore.payload?.ok !== true) leftovers.push(row);
+      }
+    }
+    const leftoverProof = evaluateActiveLeftovers(leftovers);
+    console.log(
+      `ACTIVE_ASSIGNMENT_FIXTURE_LEFTOVERS=${leftovers.length} IMMUTABLE_AUDIT_DELETE=NO`
+    );
+    return leftoverProof;
+  };
 
-  const crossTournament = await invokeEdge(url, userA.token, {
-    action: "assignReferee",
-    command: {
-      tenantId: tenantA,
-      tournamentId: tournamentB,
-      matchId: matchA,
-      refereeId,
-      expectedVersion: 0,
-      idempotencyKey: `stage-cross-tournament-${Date.now()}`,
-    },
-  });
-  record(
-    "E.cross-tournament-denied",
-    crossTournament.payload?.ok === false,
-    JSON.stringify({ status: crossTournament.status, code: crossTournament.payload?.code })
-  );
+  let workError = null;
+  let leftoverProof = { ok: true, detail: "ACTIVE_ASSIGNMENT_FIXTURE_LEFTOVERS=0" };
+  await runWithFinalization(
+    async () => {
+      const anonRpc = await anon.rpc("competition_assign_referee", assignArgs);
+      record("A.anon-direct-persistence-rpc-denied", evaluateDirectRpcDenied(anonRpc));
 
-  const assign = spoof.payload?.ok === true
-    ? spoof
-    : await invokeEdge(url, userA.token, {
-        action: "assignReferee",
+      const userARpc = await userA.client.rpc("competition_assign_referee", {
+        ...assignArgs,
+        p_idempotency_key: "user-a-direct-deny",
+      });
+      record(
+        "B.authenticated-direct-persistence-rpc-denied",
+        evaluateDirectRpcDenied(userARpc)
+      );
+
+      const probe = await invokeEdge(url, userA.token, {
+        action: "getMatchAssignmentVersion",
         command: {
           tenantId: tenantA,
           tournamentId: tournamentA,
           matchId: matchA,
-          refereeId,
-          expectedVersion: 0,
-          idempotencyKey: `stage-assign-${Date.now()}`,
           competitionMode: "INTERNAL",
         },
       });
-  record(
-    "F.trusted-server-pre-match-assign-pass",
-    assign.payload?.ok === true && assign.payload?.core13Executed === true,
-    JSON.stringify(assign.payload)
-  );
+      const probeProof = evaluateAuthenticatedRuntimeProbe(probe);
+      console.log(
+        `${probeProof.ok ? "PASS" : "FAIL"} AUTHENTICATED_NON_MUTATING_EDGE_PROBE — ${probeProof.detail}`
+      );
+      if (!probeProof.ok) {
+        for (const name of CASE_CATALOG) {
+          if (!results.some((row) => row.name === name)) {
+            record(name, { ok: false, detail: `blocked by runtime probe: ${probeProof.detail}` });
+          }
+        }
+        throw new Error(probeProof.detail);
+      }
+      mutationGate.markProbePassed();
 
-  const version = Number(assign.payload?.version || 1);
-  const casPass = await invokeEdge(url, userA.token, {
-    action: "replaceReferee",
-    command: {
-      tenantId: tenantA,
-      tournamentId: tournamentA,
-      matchId: matchA,
-      refereeId,
-      newRefereeId: refereeId,
-      expectedVersion: version,
-      idempotencyKey: `stage-cas-pass-${Date.now()}`,
-      competitionMode: "INTERNAL",
-    },
-  });
-  record(
-    "G.cas-correct-expected-version-pass",
-    casPass.payload?.ok === true || casPass.payload?.code === "CORE13_ASSIGNMENT_INVALID_INPUT",
-    casPass.payload?.code || ""
-  );
-
-  const stale = await invokeEdge(url, userA.token, {
-    action: "assignReferee",
-    command: {
-      tenantId: tenantA,
-      tournamentId: tournamentA,
-      matchId: matchA,
-      refereeId,
-      expectedVersion: 0,
-      idempotencyKey: `stage-stale-${Date.now()}`,
-    },
-  });
-  record("G.cas-stale-expected-version-deny", stale.payload?.ok === false, stale.payload?.code || "");
-
-  const replay = await invokeEdge(url, userA.token, {
-    action: "assignReferee",
-    command: {
-      tenantId: tenantA,
-      tournamentId: tournamentA,
-      matchId: matchA,
-      refereeId,
-      actorId: userB.userId,
-      expectedVersion: 0,
-      idempotencyKey: spoofKey,
-      competitionMode: "INTERNAL",
-    },
-  });
-  record(
-    "H.idempotency-replay-same-command",
-    replay.payload?.ok === true && replay.payload?.replayed === true,
-    JSON.stringify({ replayed: replay.payload?.replayed, code: replay.payload?.code })
-  );
-
-  const idemConflict = await invokeEdge(url, userA.token, {
-    action: "assignReferee",
-    command: {
-      tenantId: tenantA,
-      tournamentId: tournamentA,
-      matchId: `${matchA}-changed`,
-      refereeId,
-      expectedVersion: 0,
-      idempotencyKey: spoofKey,
-      competitionMode: "INTERNAL",
-    },
-  });
-  record(
-    "H.idempotency-conflict-changed-payload",
-    idemConflict.payload?.ok === false,
-    idemConflict.payload?.code || ""
-  );
-
-  const replace = await invokeEdge(url, userA.token, {
-    action: "replaceReferee",
-    command: {
-      tenantId: tenantA,
-      tournamentId: tournamentA,
-      matchId: matchA,
-      newRefereeId: refereeId,
-      expectedVersion: Number(assign.payload?.version || version),
-      idempotencyKey: `stage-replace-${Date.now()}`,
-      competitionMode: "INTERNAL",
-      emergencyReplacement: false,
-    },
-  });
-  record("I.atomic-replace-succeeds", replace.payload?.ok === true || replace.payload?.ok === false, replace.payload?.code || "ok");
-
-  const listed = await invokeEdge(url, userA.token, {
-    action: "listActiveAssignments",
-    command: { tenantId: tenantA, tournamentId: tournamentA, matchId: matchA },
-  });
-  const activeForMatch = Array.isArray(listed.payload?.assignments)
-    ? listed.payload.assignments.filter(
-        (row) => String(row.matchId) === matchA && String(row.status || "").toLowerCase() === "active"
-      )
-    : [];
-  record(
-    "I.exactly-one-active-match-role",
-    activeForMatch.length <= 1,
-    `active=${activeForMatch.length}`
-  );
-
-  const lifecycle = async (caseName, matchId, action, extra, expectOk) => {
-    if (!requireFixture("lifecycle match", matchId, caseName)) return;
-    const result = await invokeEdge(url, userA.token, {
-      action,
-      command: {
-        tenantId: tenantA,
-        tournamentId: tournamentA,
-        matchId,
-        refereeId,
-        newRefereeId: refereeId,
-        expectedVersion: 0,
-        idempotencyKey: `stage-${caseName}-${Date.now()}`,
-        competitionMode: "INTERNAL",
-        ...extra,
-      },
-    });
-    record(caseName, expectOk ? result.payload?.ok === true : result.payload?.ok === false, result.payload?.code || "");
-  };
-
-  await lifecycle("J.lifecycle-in-progress-assign-deny", matchInProgress, "assignReferee", {}, false);
-  await lifecycle("J.lifecycle-in-progress-unassign-deny", matchInProgress, "unassignReferee", {}, false);
-  await lifecycle("J.lifecycle-in-progress-replace-pass", matchInProgress, "replaceReferee", {}, true);
-  await lifecycle(
-    "J.lifecycle-scoring-replace-without-emergency-deny",
-    matchScoring,
-    "replaceReferee",
-    { emergencyReplacement: false },
-    false
-  );
-  await lifecycle(
-    "J.lifecycle-scoring-emergency-replace-pass",
-    matchScoring,
-    "replaceReferee",
-    { emergencyReplacement: true },
-    true
-  );
-  await lifecycle("J.lifecycle-locked-deny", matchLocked, "assignReferee", {}, false);
-  await lifecycle("J.lifecycle-completed-deny", matchCompleted, "assignReferee", {}, false);
-
-  record(
-    "K.audit-originating-actor-user-a",
-    assign.payload?.originatingActorId === userA.userId,
-    assign.payload?.originatingActorId || ""
-  );
-  const auditRead = await userA.client.from("competition_referee_assignment_audit").select("id").limit(1);
-  record("K.browser-cannot-read-audit-table", Boolean(auditRead.error) || !auditRead.data, auditRead.error?.message || "readable");
-
-  if (requireFixture("STAGING_NON_CANONICAL_REFEREE_ID", nonCanonicalReferee, "L.non-canonical-referee-deny")) {
-    const denied = await invokeEdge(url, userA.token, {
-      action: "assignReferee",
-      command: {
+      const baselineA = await loadActiveRows(service, {
         tenantId: tenantA,
         tournamentId: tournamentA,
         matchId: matchA,
-        refereeId: nonCanonicalReferee,
-        expectedVersion: 0,
-        idempotencyKey: `stage-noncanonical-${Date.now()}`,
-      },
-    });
-    record("L.non-canonical-referee-deny", denied.payload?.ok === false, denied.payload?.code || "");
-  }
-  if (requireFixture("STAGING_INACTIVE_REFEREE_ID", inactiveReferee, "L.inactive-referee-deny")) {
-    const denied = await invokeEdge(url, userA.token, {
-      action: "assignReferee",
-      command: {
+      });
+      const baselineProof = evaluateBaselineKnownStart(baselineA.length, 0, "matchA");
+      if (!baselineProof.ok) {
+        for (const name of CASE_CATALOG) {
+          if (!results.some((row) => row.name === name)) record(name, baselineProof);
+        }
+        throw new Error(baselineProof.detail);
+      }
+
+      const spoofKey = `stage-spoof-${Date.now()}`;
+      const spoof = await mutate({
+        action: "assignReferee",
+        command: {
+          ...commandBase,
+          actorId: userB.userId,
+          expectedVersion: 0,
+          idempotencyKey: spoofKey,
+        },
+      });
+      record(
+        "C.browser-actor-spoof-ignored",
+        evaluateAssignPass(spoof, { actorId: userA.userId, previousVersion: 0 })
+      );
+
+      const crossTenant = await invokeEdge(url, userB.token, {
+        action: "assignReferee",
+        command: {
+          ...commandBase,
+          expectedVersion: 0,
+          idempotencyKey: `stage-cross-tenant-${Date.now()}`,
+        },
+      });
+      record("D.cross-tenant-denied", evaluateDenial(crossTenant, DENIAL_CODES.CROSS_TENANT));
+
+      const crossTournament = await mutate({
+        action: "assignReferee",
+        command: {
+          ...commandBase,
+          tournamentId: tournamentB,
+          expectedVersion: 0,
+          idempotencyKey: `stage-cross-tournament-${Date.now()}`,
+        },
+      });
+      record(
+        "E.cross-tournament-denied",
+        evaluateDenial(crossTournament, DENIAL_CODES.CROSS_TOURNAMENT)
+      );
+
+      const durableAfterAssign = await loadActiveRows(service, {
         tenantId: tenantA,
         tournamentId: tournamentA,
         matchId: matchA,
-        refereeId: inactiveReferee,
-        expectedVersion: 0,
-        idempotencyKey: `stage-inactive-${Date.now()}`,
-      },
-    });
-    record("L.inactive-referee-deny", denied.payload?.ok === false, denied.payload?.code || "");
-  }
-  const missingQual = await invokeEdge(url, userA.token, {
-    action: "assignReferee",
-    command: {
-      tenantId: tenantA,
-      tournamentId: tournamentA,
-      matchId: matchA,
-      refereeId,
-      expectedVersion: 0,
-      idempotencyKey: `stage-qual-${Date.now()}`,
-      requireQualification: true,
+      });
+      const assignProof = evaluateAssignPass(spoof, {
+        actorId: userA.userId,
+        previousVersion: 0,
+      });
+      const durableAssignProof = evaluateDurableAssignment(durableAfterAssign, {
+        matchId: matchA,
+        refereeId,
+        version: Number(spoof.payload?.version || 1),
+      });
+      record("F.trusted-server-pre-match-assign-pass", {
+        ok: assignProof.ok && durableAssignProof.ok,
+        detail: `${assignProof.detail}; durable=${durableAssignProof.detail}`,
+      });
+
+      const version = Number(spoof.payload?.version || 1);
+      const beforeIdempotencyCount = durableAfterAssign.length;
+      const replay = await mutate({
+        action: "assignReferee",
+        command: {
+          ...commandBase,
+          actorId: userB.userId,
+          expectedVersion: 0,
+          idempotencyKey: spoofKey,
+        },
+      });
+      const afterReplay = await loadActiveRows(service, {
+        tenantId: tenantA,
+        tournamentId: tournamentA,
+        matchId: matchA,
+      });
+      const idemConflict = await mutate({
+        action: "assignReferee",
+        command: {
+          ...commandBase,
+          refereeId: replaceRefereeId,
+          expectedVersion: 0,
+          idempotencyKey: spoofKey,
+        },
+      });
+      const afterConflict = await loadActiveRows(service, {
+        tenantId: tenantA,
+        tournamentId: tournamentA,
+        matchId: matchA,
+      });
+      const idempotentDurable = evaluateDurableIdempotency(
+        beforeIdempotencyCount,
+        afterReplay.length,
+        Math.max(0, afterConflict.length - afterReplay.length)
+      );
+      const idempotencyLedger = await loadIdempotencyRows(service, {
+        tenantId: tenantA,
+        tournamentId: tournamentA,
+        key: spoofKey,
+      });
+      const replayOk =
+        replay.payload?.ok === true &&
+        replay.payload?.replayed === true &&
+        Number(replay.payload?.version) === version;
+      record("H.idempotency-replay-same-command", {
+        ok: replayOk && idempotentDurable.ok && idempotencyLedger.length === 1,
+        detail: JSON.stringify({
+          replayed: replay.payload?.replayed,
+          code: replay.payload?.code,
+          version: replay.payload?.version,
+          durable: idempotentDurable.detail,
+          ledger: idempotencyLedger.length,
+        }),
+      });
+      const conflictProof = evaluateDenial(idemConflict, DENIAL_CODES.IDEMPOTENCY_CONFLICT);
+      record("H.idempotency-conflict-changed-payload", {
+        ok: conflictProof.ok && idempotentDurable.ok,
+        detail: `${conflictProof.detail}; ${idempotentDurable.detail}`,
+      });
+
+      const casPass = await mutate({
+        action: "replaceReferee",
+        command: {
+          ...commandBase,
+          newRefereeId: replaceRefereeId,
+          expectedVersion: version,
+          idempotencyKey: `stage-cas-pass-${Date.now()}`,
+        },
+      });
+      record("G.cas-correct-expected-version-pass", evaluateCasCorrectPass(casPass, version));
+
+      const stale = await mutate({
+        action: "assignReferee",
+        command: {
+          ...commandBase,
+          expectedVersion: 0,
+          idempotencyKey: `stage-stale-${Date.now()}`,
+        },
+      });
+      record("G.cas-stale-expected-version-deny", evaluateDenial(stale, DENIAL_CODES.STALE_WRITE));
+
+      const replaceVersion = Number(casPass.payload?.version || version + 1);
+      const previousAssignmentId =
+        casPass.payload?.assignment?.assignmentId ||
+        casPass.payload?.assignmentId ||
+        casPass.payload?.previousAssignmentId ||
+        durableAfterAssign[0]?.id ||
+        null;
+      const replace = await mutate({
+        action: "replaceReferee",
+        command: {
+          ...commandBase,
+          newRefereeId: refereeId,
+          expectedVersion: replaceVersion,
+          idempotencyKey: `stage-replace-${Date.now()}`,
+          emergencyReplacement: false,
+        },
+      });
+      record(
+        "I.atomic-replace-succeeds",
+        evaluateAtomicReplacePass(replace, {
+          previousVersion: replaceVersion,
+          refereeId,
+        })
+      );
+
+      const durableAfterReplace = await loadActiveRows(service, {
+        tenantId: tenantA,
+        tournamentId: tournamentA,
+        matchId: matchA,
+      });
+      const listed = await invokeEdge(url, userA.token, {
+        action: "listActiveAssignments",
+        command: { tenantId: tenantA, tournamentId: tournamentA, matchId: matchA },
+      });
+      const listedActive = Array.isArray(listed.payload?.assignments)
+        ? listed.payload.assignments.filter(
+            (row) =>
+              String(row.matchId || row.match_id) === matchA &&
+              String(row.status || "").toLowerCase() === "active"
+          )
+        : durableAfterReplace;
+      const oneActive = evaluateExactlyOneActive(durableAfterReplace, {
+        matchId: matchA,
+        refereeId,
+        version: Number(replace.payload?.version),
+        role: "PRIMARY",
+      });
+      const listedOne = evaluateExactlyOneActive(listedActive, {
+        matchId: matchA,
+        refereeId,
+      });
+      const oldRevoked = evaluateOldAssignmentRevoked(
+        durableAfterReplace,
+        previousAssignmentId
+      );
+      record("I.exactly-one-active-match-role", {
+        ok: oneActive.ok && listedOne.ok && oldRevoked.ok,
+        detail: `${oneActive.detail}; listed=${listedOne.detail}; ${oldRevoked.detail}`,
+      });
+
+      const lifecycle = async (caseName, matchId, action, extra, denialCodes) => {
+        if (!requireFixture("lifecycle match", matchId, caseName)) return;
+        let expectedVersion = 0;
+        if (action === "replaceReferee" && !denialCodes) {
+          const rows = await loadActiveRows(service, {
+            tenantId: tenantA,
+            tournamentId: tournamentA,
+            matchId,
+          });
+          const start = evaluateBaselineKnownStart(rows.length, 1, caseName);
+          if (!start.ok) {
+            record(caseName, {
+              ok: false,
+              detail: `fixture/evidence blocker: ${start.detail}`,
+            });
+            return;
+          }
+          expectedVersion = Number(rows[0].version || 0);
+        }
+        const result = await mutate({
+          action,
+          command: {
+            ...commandBase,
+            matchId,
+            newRefereeId: replaceRefereeId,
+            expectedVersion,
+            idempotencyKey: `stage-${caseName}-${Date.now()}`,
+            ...extra,
+          },
+        });
+        if (denialCodes) {
+          record(caseName, evaluateDenial(result, denialCodes));
+          return;
+        }
+        record(
+          caseName,
+          action === "replaceReferee"
+            ? evaluateAtomicReplacePass(result, { refereeId: replaceRefereeId })
+            : evaluateAssignPass(result)
+        );
+      };
+
+      await lifecycle(
+        "J.lifecycle-in-progress-assign-deny",
+        matchInProgress,
+        "assignReferee",
+        {},
+        DENIAL_CODES.IN_PROGRESS_ASSIGN
+      );
+      await lifecycle(
+        "J.lifecycle-in-progress-unassign-deny",
+        matchInProgress,
+        "unassignReferee",
+        {},
+        DENIAL_CODES.IN_PROGRESS_UNASSIGN
+      );
+      await lifecycle(
+        "J.lifecycle-in-progress-replace-pass",
+        matchInProgress,
+        "replaceReferee",
+        {},
+        null
+      );
+      await lifecycle(
+        "J.lifecycle-scoring-replace-without-emergency-deny",
+        matchScoring,
+        "replaceReferee",
+        { emergencyReplacement: false },
+        DENIAL_CODES.SCORING_REPLACE_WITHOUT_EMERGENCY
+      );
+      await lifecycle(
+        "J.lifecycle-scoring-emergency-replace-pass",
+        matchScoring,
+        "replaceReferee",
+        { emergencyReplacement: true },
+        null
+      );
+      await lifecycle(
+        "J.lifecycle-locked-deny",
+        matchLocked,
+        "assignReferee",
+        {},
+        DENIAL_CODES.LOCKED
+      );
+      await lifecycle(
+        "J.lifecycle-completed-deny",
+        matchCompleted,
+        "assignReferee",
+        {},
+        DENIAL_CODES.COMPLETED
+      );
+      console.log(
+        "LIFECYCLE_FIXTURE_FINAL_STATE=in-progress-replace and scoring-emergency-replace remain on dedicated disposable fixtures; unassign is lifecycle-denied"
+      );
+
+      const auditRows = await loadAuditRows(service, {
+        tenantId: tenantA,
+        tournamentId: tournamentA,
+        matchId: matchA,
+      });
+      record(
+        "K.audit-originating-actor-user-a",
+        evaluateDurableAuditActor(auditRows, {
+          actorId: userA.userId,
+          tenantId: tenantA,
+          tournamentId: tournamentA,
+          matchId: matchA,
+          operation: "ASSIGN",
+        })
+      );
+      const auditRead = await userA.client
+        .from("competition_referee_assignment_audit")
+        .select("id")
+        .limit(1);
+      record(
+        "K.browser-cannot-read-audit-table",
+        evaluateBrowserAuditDenied(auditRead, auditRows)
+      );
+
+      if (
+        requireFixture(
+          "STAGING_NON_CANONICAL_REFEREE_ID",
+          nonCanonicalReferee,
+          "L.non-canonical-referee-deny"
+        )
+      ) {
+        const denied = await mutate({
+          action: "assignReferee",
+          command: {
+            ...commandBase,
+            refereeId: nonCanonicalReferee,
+            expectedVersion: 0,
+            idempotencyKey: `stage-noncanonical-${Date.now()}`,
+          },
+        });
+        record(
+          "L.non-canonical-referee-deny",
+          evaluateDenial(denied, DENIAL_CODES.NON_CANONICAL_IDENTITY)
+        );
+      }
+      if (
+        requireFixture(
+          "STAGING_INACTIVE_REFEREE_ID",
+          inactiveReferee,
+          "L.inactive-referee-deny"
+        )
+      ) {
+        const denied = await mutate({
+          action: "assignReferee",
+          command: {
+            ...commandBase,
+            refereeId: inactiveReferee,
+            expectedVersion: 0,
+            idempotencyKey: `stage-inactive-${Date.now()}`,
+          },
+        });
+        record("L.inactive-referee-deny", evaluateDenial(denied, DENIAL_CODES.INACTIVE_REFEREE));
+      }
+
+      const missingQual = await mutate({
+        action: "assignReferee",
+        command: {
+          ...commandBase,
+          expectedVersion: 0,
+          idempotencyKey: `stage-qual-${Date.now()}`,
+          requireQualification: true,
+        },
+      });
+      record(
+        "L.required-qualification-missing-deny",
+        evaluateDenial(missingQual, DENIAL_CODES.QUALIFICATION_MISSING)
+      );
+      const missingAvail = await mutate({
+        action: "assignReferee",
+        command: {
+          ...commandBase,
+          expectedVersion: 0,
+          idempotencyKey: `stage-avail-${Date.now()}`,
+          requireAvailability: true,
+        },
+      });
+      record(
+        "L.unavailable-referee-deny-when-required",
+        evaluateDenial(missingAvail, DENIAL_CODES.AVAILABILITY_MISSING)
+      );
+
+      if (
+        requireFixture("STAGING_MATCH_OVERLAP_A", overlapA, "L.overlapping-schedule-conflict-deny") &&
+        requireFixture("STAGING_MATCH_OVERLAP_B", overlapB, "L.overlapping-schedule-conflict-deny")
+      ) {
+        const overlapBaselineA = await loadActiveRows(service, {
+          tenantId: tenantA,
+          tournamentId: tournamentA,
+          matchId: overlapA,
+        });
+        const overlapBaselineB = await loadActiveRows(service, {
+          tenantId: tenantA,
+          tournamentId: tournamentA,
+          matchId: overlapB,
+        });
+        const overlapStartA = evaluateBaselineKnownStart(
+          overlapBaselineA.length,
+          0,
+          "overlapA"
+        );
+        const overlapStartB = evaluateBaselineKnownStart(
+          overlapBaselineB.length,
+          0,
+          "overlapB"
+        );
+        if (!overlapStartA.ok || !overlapStartB.ok) {
+          record("L.overlapping-schedule-conflict-deny", {
+            ok: false,
+            detail: `${overlapStartA.detail}; ${overlapStartB.detail}`,
+          });
+        } else {
+          await mutate({
+            action: "assignReferee",
+            command: {
+              ...commandBase,
+              matchId: overlapA,
+              expectedVersion: 0,
+              idempotencyKey: `stage-overlap-a-${Date.now()}`,
+            },
+          });
+          const overlap = await mutate({
+            action: "assignReferee",
+            command: {
+              ...commandBase,
+              matchId: overlapB,
+              expectedVersion: 0,
+              idempotencyKey: `stage-overlap-b-${Date.now()}`,
+            },
+          });
+          record(
+            "L.overlapping-schedule-conflict-deny",
+            evaluateDenial(overlap, DENIAL_CODES.OVERLAP)
+          );
+        }
+      }
+      if (
+        requireFixture(
+          "STAGING_MATCH_NONOVERLAP",
+          nonOverlap,
+          "L.non-overlapping-schedule-assign-pass"
+        )
+      ) {
+        const nonOverlapBaseline = await loadActiveRows(service, {
+          tenantId: tenantA,
+          tournamentId: tournamentA,
+          matchId: nonOverlap,
+        });
+        const nonOverlapStart = evaluateBaselineKnownStart(
+          nonOverlapBaseline.length,
+          0,
+          "nonOverlap"
+        );
+        if (!nonOverlapStart.ok) {
+          record("L.non-overlapping-schedule-assign-pass", nonOverlapStart);
+        } else {
+          const allowed = await mutate({
+            action: "assignReferee",
+            command: {
+              ...commandBase,
+              matchId: nonOverlap,
+              expectedVersion: 0,
+              idempotencyKey: `stage-nonoverlap-${Date.now()}`,
+            },
+          });
+          record(
+            "L.non-overlapping-schedule-assign-pass",
+            evaluateAssignPass(allowed, { previousVersion: 0 })
+          );
+        }
+      }
+
+      if (
+        requireFixture(
+          "STAGING_DAILY_PLAY_DISABLED_TOURNAMENT",
+          dailyDisabled,
+          "M.daily-play-disabled-not-applicable"
+        )
+      ) {
+        const disabled = await mutate({
+          action: "assignReferee",
+          command: {
+            ...commandBase,
+            tournamentId: dailyDisabled,
+            expectedVersion: 0,
+            idempotencyKey: `stage-daily-off-${Date.now()}`,
+            competitionMode: "DAILY_PLAY",
+            refereeFeatureEnabled: false,
+          },
+        });
+        record(
+          "M.daily-play-disabled-not-applicable",
+          evaluateDenial(disabled, DENIAL_CODES.DAILY_DISABLED)
+        );
+      }
+      if (
+        requireFixture(
+          "STAGING_DAILY_PLAY_ENABLED_TOURNAMENT",
+          dailyEnabled,
+          "M.daily-play-enabled-trusted-server-core13"
+        ) &&
+        requireFixture(
+          "STAGING_DAILY_PLAY_ENABLED_MATCH",
+          dailyEnabledMatch,
+          "M.daily-play-enabled-trusted-server-core13"
+        )
+      ) {
+        const dailyBaseline = await loadActiveRows(service, {
+          tenantId: tenantA,
+          tournamentId: dailyEnabled,
+          matchId: dailyEnabledMatch,
+        });
+        const dailyStart = evaluateBaselineKnownStart(
+          dailyBaseline.length,
+          0,
+          "dailyEnabled"
+        );
+        if (!dailyStart.ok) {
+          record("M.daily-play-enabled-trusted-server-core13", dailyStart);
+        } else {
+          const enabled = await mutate({
+            action: "assignReferee",
+            command: {
+              ...commandBase,
+              tournamentId: dailyEnabled,
+              matchId: dailyEnabledMatch,
+              expectedVersion: 0,
+              idempotencyKey: `stage-daily-on-${Date.now()}`,
+              competitionMode: "DAILY_PLAY",
+              refereeFeatureEnabled: true,
+            },
+          });
+          record("M.daily-play-enabled-trusted-server-core13", evaluateDailyEnabledPass(enabled));
+        }
+      }
+
     },
+    async () => {
+      try {
+        leftoverProof = await teardownPreMatch();
+        if (!leftoverProof.ok) {
+          console.error(`REFUSE: ${leftoverProof.detail}`);
+        }
+      } catch (err) {
+        leftoverProof = {
+          ok: false,
+          detail: `teardown failed: ${err?.message || err}`,
+        };
+        console.error(`REFUSE: ${leftoverProof.detail}`);
+      }
+    }
+  ).catch((err) => {
+    workError = err;
   });
-  record(
-    "L.required-qualification-missing-deny",
-    missingQual.payload?.ok === false,
-    missingQual.payload?.code || ""
-  );
-  const missingAvail = await invokeEdge(url, userA.token, {
-    action: "assignReferee",
-    command: {
-      tenantId: tenantA,
-      tournamentId: tournamentA,
-      matchId: matchA,
-      refereeId,
-      expectedVersion: 0,
-      idempotencyKey: `stage-avail-${Date.now()}`,
-      requireAvailability: true,
-    },
-  });
-  record(
-    "L.unavailable-referee-deny-when-required",
-    missingAvail.payload?.ok === false,
-    missingAvail.payload?.code || ""
-  );
 
-  if (
-    requireFixture("STAGING_MATCH_OVERLAP_A", overlapA, "L.overlapping-schedule-conflict-deny") &&
-    requireFixture("STAGING_MATCH_OVERLAP_B", overlapB, "L.overlapping-schedule-conflict-deny")
-  ) {
-    await invokeEdge(url, userA.token, {
-      action: "assignReferee",
-      command: {
-        tenantId: tenantA,
-        tournamentId: tournamentA,
-        matchId: overlapA,
-        refereeId,
-        expectedVersion: 0,
-        idempotencyKey: `stage-overlap-a-${Date.now()}`,
-      },
-    });
-    const overlap = await invokeEdge(url, userA.token, {
-      action: "assignReferee",
-      command: {
-        tenantId: tenantA,
-        tournamentId: tournamentA,
-        matchId: overlapB,
-        refereeId,
-        expectedVersion: 0,
-        idempotencyKey: `stage-overlap-b-${Date.now()}`,
-      },
-    });
-    record("L.overlapping-schedule-conflict-deny", overlap.payload?.ok === false, overlap.payload?.code || "");
-  }
-  if (requireFixture("STAGING_MATCH_NONOVERLAP", nonOverlap, "L.non-overlapping-schedule-assign-pass")) {
-    const allowed = await invokeEdge(url, userA.token, {
-      action: "assignReferee",
-      command: {
-        tenantId: tenantA,
-        tournamentId: tournamentA,
-        matchId: nonOverlap,
-        refereeId,
-        expectedVersion: 0,
-        idempotencyKey: `stage-nonoverlap-${Date.now()}`,
-      },
-    });
-    record("L.non-overlapping-schedule-assign-pass", allowed.payload?.ok === true, allowed.payload?.code || "ok");
-  }
-
-  if (requireFixture("STAGING_DAILY_PLAY_DISABLED_TOURNAMENT", dailyDisabled, "M.daily-play-disabled-not-applicable")) {
-    const disabled = await invokeEdge(url, userA.token, {
-      action: "assignReferee",
-      command: {
-        tenantId: tenantA,
-        tournamentId: dailyDisabled,
-        matchId: matchA,
-        refereeId,
-        expectedVersion: 0,
-        idempotencyKey: `stage-daily-off-${Date.now()}`,
-        competitionMode: "DAILY_PLAY",
-        refereeFeatureEnabled: false,
-      },
-    });
-    record(
-      "M.daily-play-disabled-not-applicable",
-      disabled.payload?.ok === false && String(disabled.payload?.code || "").includes("DAILY_PLAY"),
-      disabled.payload?.code || ""
-    );
-  }
-  if (requireFixture("STAGING_DAILY_PLAY_ENABLED_TOURNAMENT", dailyEnabled, "M.daily-play-enabled-trusted-server-core13")) {
-    const enabled = await invokeEdge(url, userA.token, {
-      action: "assignReferee",
-      command: {
-        tenantId: tenantA,
-        tournamentId: dailyEnabled,
-        matchId: matchA,
-        refereeId,
-        expectedVersion: 0,
-        idempotencyKey: `stage-daily-on-${Date.now()}`,
-        competitionMode: "DAILY_PLAY",
-        refereeFeatureEnabled: true,
-      },
-    });
-    record(
-      "M.daily-play-enabled-trusted-server-core13",
-      enabled.payload?.core13Executed === true || enabled.payload?.ok === false,
-      enabled.payload?.code || "executed"
-    );
-  }
-
-  const named = new Set(results.map((row) => row.name));
   for (const expected of CASE_CATALOG) {
-    if (!named.has(expected)) {
-      record(expected, false, "case not executed");
+    if (!results.some((row) => row.name === expected)) {
+      record(expected, {
+        ok: false,
+        detail: workError ? String(workError.message || workError) : "case not executed",
+      });
     }
   }
 
+  const catalog = evaluateCatalogExecution(results, CASE_CATALOG);
   const failed = results.filter((row) => !row.ok);
-  console.log(`STAGING_ACCEPTANCE_CASE_COUNT=${results.length}`);
-  if (failed.length) {
-    fail(`Staging acceptance failures: ${failed.map((row) => row.name).join(", ")}`);
+  console.log(`STAGING_ACCEPTANCE_CASE_COUNT=${CASE_CATALOG.length}`);
+  console.log(`PASS_COUNT=${results.filter((row) => row.ok).length}`);
+  console.log(`FAIL_COUNT=${failed.length}`);
+  if (!catalog.ok) {
+    fail(catalog.detail);
+  }
+  if (failed.length || workError || leftoverProof.ok !== true) {
+    fail(
+      `Staging acceptance failures: ${failed.map((row) => row.name).join(", ") || workError || leftoverProof.detail}`
+    );
   }
   console.log("PASS core13 trusted-server staging acceptance");
-  void service;
 }
 
 main().catch((err) => {
