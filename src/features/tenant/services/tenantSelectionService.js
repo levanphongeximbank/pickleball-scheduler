@@ -167,14 +167,15 @@ export function createTenantSelectionRuntime({
       adminTenantId,
       persistedTenantId,
     });
-    const view = resolveTenantSwitcherView({
-      currentTenantId,
-      tenants: tenantCatalog,
-    });
     const currentTenant = currentTenantId
       ? findCatalogTenant(tenantCatalog, currentTenantId) ||
         resolveTenantRecord(currentTenantId, currentUser)
       : null;
+    const view = resolveTenantSwitcherView({
+      currentTenantId,
+      tenants: tenantCatalog,
+      currentTenant,
+    });
 
     return {
       currentTenantId,

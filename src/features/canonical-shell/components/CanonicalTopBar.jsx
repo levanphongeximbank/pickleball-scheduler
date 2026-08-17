@@ -138,7 +138,8 @@ export default function CanonicalTopBar() {
               data-testid="canonical-topbar-organization-zone"
               sx={{
                 flex: zones.organization.flex,
-                minWidth: zones.organization.minWidth,
+                // Keep widthMin as floor so selected Tenant/Venue label cannot clip to blank.
+                minWidth: zones.organization.widthMin,
                 maxWidth: zones.organization.maxWidth,
                 width: "100%",
                 overflow: "hidden",
