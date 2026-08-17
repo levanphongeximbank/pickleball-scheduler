@@ -7,10 +7,21 @@
  *
  * Required flags:
  *   CORE13_STAGING_ACCEPTANCE_GO=YES
- *   SQL_EXECUTION_GO=YES
  *   STAGING_MUTATION_GO=YES
- *   EDGE_FUNCTION_DEPLOY_GO=YES
+ *   SQL_ALREADY_APPLIED_PREREQUISITE=YES
+ *   EDGE_ALREADY_DEPLOYED_PREREQUISITE=YES
  *   PICK_VN_ENV=staging
+ *
+ * Optional negative guards (if set, must be NO; absence does not grant authority):
+ *   SQL_COMMAND_EXECUTION_THIS_PHASE=NO
+ *   SQL_REAPPLY_GO=NO
+ *   EDGE_REDEPLOY_GO=NO
+ *
+ * Not used as acceptance prerequisites:
+ *   SQL_EXECUTION_GO
+ *   EDGE_FUNCTION_DEPLOY_GO
+ *
+ * This harness does not execute SQL and does not deploy Edge Functions.
  *
  * Required env (never commit values):
  *   STAGING_SUPABASE_URL
@@ -42,6 +53,7 @@ import {
   CORE13_FIXTURE_NAMESPACE,
   DENIAL_CODES,
   createMutationGate,
+  evaluateAcceptanceGate,
   evaluateActiveLeftovers,
   evaluateAssignPass,
   evaluateAtomicReplacePass,
@@ -62,8 +74,6 @@ import {
   runWithFinalization,
 } from "./core13-staging-acceptance-proofs.mjs";
 
-const PRODUCTION_HINTS = /prod|production/i;
-
 function fail(message) {
   console.error(`REFUSE: ${message}`);
   process.exit(1);
@@ -74,26 +84,8 @@ function env(name) {
 }
 
 function requireStagingSafety() {
-  if (env("CORE13_STAGING_ACCEPTANCE_GO") !== "YES") {
-    fail("CORE13_STAGING_ACCEPTANCE_GO must be YES");
-  }
-  if (env("SQL_EXECUTION_GO") !== "YES") {
-    fail("SQL_EXECUTION_GO must be YES");
-  }
-  if (env("STAGING_MUTATION_GO") !== "YES") {
-    fail("STAGING_MUTATION_GO must be YES");
-  }
-  if (env("EDGE_FUNCTION_DEPLOY_GO") !== "YES") {
-    fail("EDGE_FUNCTION_DEPLOY_GO must be YES");
-  }
-  if (env("PICK_VN_ENV").toLowerCase() !== "staging") {
-    fail("PICK_VN_ENV must be staging");
-  }
-  const url = env("STAGING_SUPABASE_URL");
-  if (!url) fail("STAGING_SUPABASE_URL required");
-  if (PRODUCTION_HINTS.test(url) && !/staging/i.test(url)) {
-    fail("Refusing Production-like STAGING_SUPABASE_URL");
-  }
+  const gate = evaluateAcceptanceGate(process.env);
+  if (!gate.ok) fail(gate.detail);
 }
 
 function edgeUrl(base) {

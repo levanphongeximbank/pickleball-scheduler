@@ -88,12 +88,66 @@ export const FORBIDDEN_CASE_STATUSES = Object.freeze([
   "INCONCLUSIVE",
 ]);
 
+export const ACCEPTANCE_REQUIRED_YES_FLAGS = Object.freeze([
+  "CORE13_STAGING_ACCEPTANCE_GO",
+  "STAGING_MUTATION_GO",
+  "SQL_ALREADY_APPLIED_PREREQUISITE",
+  "EDGE_ALREADY_DEPLOYED_PREREQUISITE",
+]);
+
+export const ACCEPTANCE_OPTIONAL_NEGATIVE_GUARDS = Object.freeze([
+  "SQL_COMMAND_EXECUTION_THIS_PHASE",
+  "SQL_REAPPLY_GO",
+  "EDGE_REDEPLOY_GO",
+]);
+
+export const PRODUCTION_HINTS = /prod|production/i;
+export const PRODUCTION_PROJECT_REF_HINTS = /expuvcohlcjzvrrauvud/i;
+
 function payloadOf(result) {
   return result && typeof result === "object" ? result.payload || {} : {};
 }
 
 function proof(ok, detail) {
   return Object.freeze({ ok: ok === true, detail: String(detail || "") });
+}
+
+function readEnvFlag(envMap, name) {
+  return String(envMap?.[name] ?? "").trim();
+}
+
+/**
+ * Live acceptance gate. SQL/Edge execution GOs are not prerequisites.
+ * Optional negative guards refuse only when present and not NO.
+ * Absence of a negative guard does not grant mutation authority.
+ */
+export function evaluateAcceptanceGate(envMap = {}) {
+  for (const name of ACCEPTANCE_REQUIRED_YES_FLAGS) {
+    if (readEnvFlag(envMap, name) !== "YES") {
+      return proof(false, `${name} must be YES`);
+    }
+  }
+  if (readEnvFlag(envMap, "PICK_VN_ENV").toLowerCase() !== "staging") {
+    return proof(false, "PICK_VN_ENV must be staging");
+  }
+  for (const name of ACCEPTANCE_OPTIONAL_NEGATIVE_GUARDS) {
+    const value = readEnvFlag(envMap, name);
+    if (value && value.toUpperCase() !== "NO") {
+      return proof(false, `${name} must be NO for acceptance`);
+    }
+  }
+  const url = readEnvFlag(envMap, "STAGING_SUPABASE_URL");
+  if (!url) return proof(false, "STAGING_SUPABASE_URL required");
+  if (PRODUCTION_PROJECT_REF_HINTS.test(url)) {
+    return proof(false, "Refusing Production project URL");
+  }
+  if (PRODUCTION_HINTS.test(url) && !/staging/i.test(url)) {
+    return proof(false, "Refusing Production-like STAGING_SUPABASE_URL");
+  }
+  if (PRODUCTION_HINTS.test(readEnvFlag(envMap, "PICK_VN_ENV"))) {
+    return proof(false, "PICK_VN_ENV must be staging");
+  }
+  return proof(true, "acceptance-gate");
 }
 
 export function belongsToFixtureNamespace(id, namespace = CORE13_FIXTURE_NAMESPACE) {

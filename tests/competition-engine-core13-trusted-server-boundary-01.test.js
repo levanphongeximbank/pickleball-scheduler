@@ -398,11 +398,13 @@ test("in-memory command service still requires CORE-13 before persist", async ()
 
 test("staging acceptance harness refuses without explicit Staging flags", () => {
   const harness = read("scripts/core13/core13-trusted-server-staging-acceptance.mjs");
+  const proofs = read("scripts/core13/core13-staging-acceptance-proofs.mjs");
   assert.match(harness, /CORE13_STAGING_ACCEPTANCE_GO/);
   assert.match(harness, /STAGING_MUTATION_GO/);
-  assert.match(harness, /EDGE_FUNCTION_DEPLOY_GO/);
+  assert.match(harness, /SQL_ALREADY_APPLIED_PREREQUISITE/);
+  assert.match(harness, /EDGE_ALREADY_DEPLOYED_PREREQUISITE/);
   assert.match(harness, /PICK_VN_ENV/);
-  assert.match(harness, /PRODUCTION_HINTS/);
+  assert.match(proofs, /PRODUCTION_HINTS/);
   assert.match(harness, /A\.anon-direct-persistence-rpc-denied/);
   assert.match(harness, /L\.overlapping-schedule-conflict-deny/);
   assert.match(harness, /M\.daily-play-disabled-not-applicable/);
