@@ -373,6 +373,7 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
   }
 
   async function commitTransition(input, actor) {
+    const tPrepare0 = Date.now();
     const actorId = requireCanonicalRefereeActor(actor);
     const tenantId = String(input.tenantId || "").trim();
     const competitionId = String(input.competitionId || input.tournamentId || "").trim();
@@ -430,7 +431,9 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
         nextState: input.nextState || {},
         status: input.status || input.nextState?.status || null,
       });
+    const commitPrepareMs = Date.now() - tPrepare0;
 
+    const tRpc0 = Date.now();
     const { data, error } = await rpcClient.rpc(
       REFEREE_V5_INTERNAL_COMMIT_RPC.COMMIT_TRANSITION,
       {
@@ -455,6 +458,7 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
         p_state_before: input.stateBefore || live.statePayload || null,
       }
     );
+    const commitRpcMs = Date.now() - tRpc0;
     if (error) {
       failRefereeAdapter(
         REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED,
@@ -476,12 +480,30 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
       version: Number(data?.stateVersion ?? nextVersion),
       lastEventSequence: Number(data?.lastEventSequence ?? nextSequence),
     });
+
+    // Existing referee_v5_commit_match_transition RPC already folds event append,
+    // live state update, and sync mutation into one atomic network round-trip.
+    // No app-level sequential writes; do not fabricate fake atomicity.
+    const commitSubphases = Object.freeze({
+      COMMIT_PREPARE_MS: commitPrepareMs,
+      COMMIT_RPC_MS: commitRpcMs,
+      COMMIT_EVENT_WRITE_MS: 0,
+      COMMIT_LIVE_STATE_MS: 0,
+      COMMIT_RESULT_REVISION_MS: 0,
+      COMMIT_ASSIGNMENT_UPSERT_MS: 0,
+      COMMIT_SYNC_MUTATION_MS: 0,
+      COMMIT_POST_READ_MS: 0,
+      COMMIT_ATOMIC_RPC: REFEREE_V5_INTERNAL_COMMIT_RPC.COMMIT_TRANSITION,
+      NOTE: "event/live/sync folded inside existing COMMIT_TRANSITION RPC; no schema work",
+    });
+
     return freezeClone({
       ok: true,
       duplicate: Boolean(data?.duplicate),
       live: committedLive,
       stateVersion: Number(data?.stateVersion ?? nextVersion),
       lastEventSequence: Number(data?.lastEventSequence ?? nextSequence),
+      commitSubphases,
       event: {
         eventType: input.eventType || "E2E04_OPS_COMMIT",
         eventSequence: Number(data?.lastEventSequence ?? nextSequence),

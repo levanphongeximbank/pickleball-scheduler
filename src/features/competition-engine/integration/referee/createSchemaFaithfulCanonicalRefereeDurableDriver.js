@@ -231,7 +231,22 @@ export function createSchemaFaithfulCanonicalRefereeDurableDriver(options = {}) 
       })
     );
 
-    return freezeClone({ ...responsePayload, duplicate: false });
+    return freezeClone({
+      ...responsePayload,
+      duplicate: false,
+      commitSubphases: Object.freeze({
+        COMMIT_PREPARE_MS: 0,
+        COMMIT_RPC_MS: 0,
+        COMMIT_EVENT_WRITE_MS: 0,
+        COMMIT_LIVE_STATE_MS: 0,
+        COMMIT_RESULT_REVISION_MS: 0,
+        COMMIT_ASSIGNMENT_UPSERT_MS: 0,
+        COMMIT_SYNC_MUTATION_MS: 0,
+        COMMIT_POST_READ_MS: 0,
+        COMMIT_ATOMIC_RPC: "schema-faithful-in-memory",
+        NOTE: "local schema-faithful driver; no Supabase network",
+      }),
+    });
   }
 
   function ensureLiveState(input, actor) {

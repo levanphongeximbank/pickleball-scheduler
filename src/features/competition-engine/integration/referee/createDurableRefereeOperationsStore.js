@@ -111,7 +111,15 @@ export function createDurableRefereeOperationsStore(options = {}) {
   async function persistMatchSlice(tenantId, competitionId, matchId, record, actor) {
     const actorId = requireCanonicalRefereeActor(actor);
     const scope = { tenantId, competitionId, matchId };
-    let live = await resolve(driver.getLiveState(scope));
+    // Prefer request-local live from CAS pre-read — avoid a duplicate getLiveState.
+    let live =
+      commandContext?.currentLive &&
+      String(commandContext.currentLive.matchId || "") === String(matchId)
+        ? commandContext.currentLive
+        : null;
+    if (!live) {
+      live = await resolve(driver.getLiveState(scope));
+    }
     if (!live) {
       await resolve(
         driver.ensureLiveState(
@@ -155,7 +163,7 @@ export function createDurableRefereeOperationsStore(options = {}) {
     const idempotencyKey = callerKey
       ? `${callerKey}::${contentHash}`
       : contentHash;
-    await resolve(
+    const committed = await resolve(
       driver.commitTransition(
         {
           ...scope,
@@ -172,6 +180,10 @@ export function createDurableRefereeOperationsStore(options = {}) {
         actor
       )
     );
+    if (commandContext) {
+      commandContext.commitSubphases = committed?.commitSubphases || null;
+    }
+    return committed?.live || null;
   }
 
   async function getOrCreate(tenantId, competitionId) {
@@ -186,12 +198,29 @@ export function createDurableRefereeOperationsStore(options = {}) {
     setCommandContext(context) {
       commandContext = context || null;
     },
+    getLastCommittedLive() {
+      return commandContext?.lastCommittedLive || null;
+    },
+    getCommitSubphases() {
+      return commandContext?.commitSubphases || null;
+    },
     get: getOrCreate,
     async getRaw(tenantId, competitionId) {
       return clonePlain(await reconstruct(tenantId, competitionId));
     },
     async update(tenantId, competitionId, mutator) {
-      const before = clonePlain(await reconstruct(tenantId, competitionId));
+      // Hot score path: reuse request-local seedRecord (single-match) — no competition-wide
+      // listByCompetition / listLiveStates reconstruct.
+      const seeded =
+        commandContext?.seedRecord &&
+        String(commandContext.seedRecord.tenantId || "") === String(tenantId || "") &&
+        String(commandContext.seedRecord.competitionId || "") ===
+          String(competitionId || "")
+          ? commandContext.seedRecord
+          : null;
+      const before = clonePlain(
+        seeded || (await reconstruct(tenantId, competitionId))
+      );
       const draft = clonePlain(before);
       mutator(draft, { nextId, clockIso });
       draft.revision = Number(draft.revision || 0) + 1;
@@ -200,6 +229,7 @@ export function createDurableRefereeOperationsStore(options = {}) {
       const assignmentsChanged =
         hashCanonical(before.assignments || []) !==
         hashCanonical(draft.assignments || []);
+      // submitPoint must not rewrite unchanged assignment rows.
       if (actor && assignmentsChanged) {
         for (const row of draft.assignments || []) {
           await resolve(
@@ -233,6 +263,7 @@ export function createDurableRefereeOperationsStore(options = {}) {
         ...Object.keys(before.validationByMatch || {}),
         ...Object.keys(draft.validationByMatch || {}),
       ]);
+      let lastCommittedLive = null;
       if (actor) {
         for (const matchId of matchIds) {
           const beforeHash = hashCanonical({
@@ -248,9 +279,18 @@ export function createDurableRefereeOperationsStore(options = {}) {
             validation: draft.validationByMatch?.[matchId] || null,
           });
           if (beforeHash !== afterHash) {
-            await persistMatchSlice(tenantId, competitionId, matchId, draft, actor);
+            lastCommittedLive = await persistMatchSlice(
+              tenantId,
+              competitionId,
+              matchId,
+              draft,
+              actor
+            );
           }
         }
+      }
+      if (commandContext) {
+        commandContext.lastCommittedLive = lastCommittedLive;
       }
       // Avoid a second full competition reconstruct after commit — draft is authoritative
       // for the mutated slices just persisted.

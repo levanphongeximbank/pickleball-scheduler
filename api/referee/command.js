@@ -16,7 +16,9 @@ import { createTrustedRefereeBackend } from "../../src/features/referee-producti
 import {
   createEmptySupabaseRequestCounters,
   instrumentSharedSupabaseClient,
+  noteCommitSubphases,
   runWithSupabaseCounters,
+  snapshotSupabaseCounters,
 } from "../../src/features/referee-production-ui/application/instrumentSupabaseRequestCounters.js";
 import { authorizeRefereeActor } from "./authorizeRefereeActor.js";
 
@@ -190,6 +192,9 @@ export default async function handler(req, res) {
     serverTiming.POST_COMMIT_PROJECT_MS =
       clientLatency.postCommitProjectionMs ?? clientLatency.POST_COMMIT_PROJECT_MS ?? null;
     serverTiming.MATCH_READ_MS = clientLatency.matchReadMs ?? null;
+    if (clientLatency.commitSubphases) {
+      noteCommitSubphases(supabaseCounters, clientLatency.commitSubphases);
+    }
 
     const accountedMs =
       Number(serverTiming.AUTH_MS || 0) +
@@ -226,8 +231,13 @@ export default async function handler(req, res) {
         POST_COMMIT_BROWSER_REFETCH: false,
         ACK_RETURNS_FULL_VIEW: true,
         PROJECT_MATCH_COUNT: clientLatency.projectMatchCount ?? 1,
+        COMMIT_SUBPHASES:
+          clientLatency.commitSubphases ||
+          snapshotSupabaseCounters(supabaseCounters)?.COMMIT_SUBPHASES ||
+          null,
         clientLatency,
-        supabaseCounters: Object.freeze({ ...supabaseCounters }),
+        supabaseCounters: snapshotSupabaseCounters(supabaseCounters),
+        SUPABASE_LEDGER: snapshotSupabaseCounters(supabaseCounters)?.LEDGER || [],
       });
     }
     return res.status(200).json(responseBody);

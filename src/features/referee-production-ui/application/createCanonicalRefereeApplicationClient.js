@@ -73,6 +73,67 @@ function actorFrom(command, defaultActor) {
   return command?.actor || defaultActor || null;
 }
 
+function clonePlain(value) {
+  if (value == null) return value;
+  return JSON.parse(JSON.stringify(value));
+}
+
+/**
+ * Build a single-match ops record from durable live + verified assignment.
+ * Used by the hot submitPoint path to avoid competition-wide reconstruct.
+ */
+function buildSeedRecordFromLive({
+  tenantId,
+  competitionId,
+  matchId,
+  assignment,
+  live,
+}) {
+  const canonical = live?.statePayload?.canonical || {};
+  const refereeId = String(
+    assignment?.refereeId || assignment?.refereeUserId || ""
+  ).trim();
+  const status = String(
+    assignment?.status || assignment?.opsStatus || "ASSIGNED"
+  ).toUpperCase();
+  return {
+    tenantId: String(tenantId || "").trim() || null,
+    competitionId: String(competitionId || "").trim() || null,
+    venueId: canonical.venueId || assignment?.venueId || null,
+    assignments: refereeId
+      ? [
+          {
+            assignmentId: `${matchId}::${refereeId}`,
+            matchId,
+            refereeId,
+            tenantId: assignment?.tenantId || tenantId,
+            competitionId: assignment?.competitionId || competitionId,
+            venueId: assignment?.venueId || null,
+            courtId: assignment?.courtId || null,
+            scheduledAt: assignment?.assignedAt || assignment?.scheduledAt || null,
+            status: status === "ACTIVE" ? "ASSIGNED" : status,
+            participants: [],
+            entries: [],
+            checkInReady: false,
+            source: "referee_assignments",
+          },
+        ]
+      : [],
+    matches: canonical.match ? { [matchId]: clonePlain(canonical.match) } : {},
+    scoreSessions: canonical.scoreSession
+      ? { [matchId]: clonePlain(canonical.scoreSession) }
+      : {},
+    courtsByMatch: canonical.court
+      ? { [matchId]: clonePlain(canonical.court) }
+      : {},
+    validationByMatch: canonical.validation
+      ? { [matchId]: clonePlain(canonical.validation) }
+      : {},
+    revision: Number(live?.stateVersion ?? live?.version ?? 0),
+    updatedAt: live?.updatedAt || null,
+  };
+}
+
 function adapterRequest(scope, modeState) {
   return {
     tenantId: scope.tenantId,
@@ -179,6 +240,9 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       modeState: command.modeState,
       idempotencyKey: command.idempotencyKey,
       commandId: command.commandId || command.idempotencyKey,
+      seedRecord: command.seedRecord || null,
+      currentLive: command.currentLive || null,
+      authoritativeAssignment: command.authoritativeAssignment || null,
     };
   }
 
@@ -214,6 +278,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           tenantId: active.tenantId || tenantId,
           competitionId: active.competitionId || competitionId,
           refereeUserId: active.refereeUserId || refereeUserId,
+          refereeId: active.refereeUserId || refereeUserId,
           courtId: active.courtId || command.courtId || null,
           status: active.opsStatus || active.status || "ASSIGNED",
         };
@@ -708,8 +773,47 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       const tMatchRead0 = Date.now();
       const preWriteLiveInfo = await assertExpectedVersion(scope, command.expectedVersion);
       timing.matchReadMs = Date.now() - tMatchRead0;
+      // Hot-path seedRecord is only for score submit — other commands still reconstruct.
+      const useScoreHotPath = type === CANONICAL_UI_COMMAND.SUBMIT_POINT;
+      const authoritativeAssignment = useScoreHotPath
+        ? {
+            ...resolved.assignment,
+            refereeId:
+              resolved.assignment.refereeId ||
+              resolved.assignment.refereeUserId ||
+              actorFrom(command, defaultActor)?.actorId,
+            refereeUserId:
+              resolved.assignment.refereeUserId ||
+              resolved.assignment.refereeId ||
+              actorFrom(command, defaultActor)?.actorId,
+            status: (() => {
+              const ops = String(resolved.assignment.opsStatus || "").toUpperCase();
+              if (ops) return ops;
+              const raw = String(resolved.assignment.status || "").toUpperCase();
+              if (raw === "ACTIVE") return "ASSIGNED";
+              return raw || "ASSIGNED";
+            })(),
+          }
+        : null;
+      const seedRecord =
+        useScoreHotPath && preWriteLiveInfo?.live
+          ? buildSeedRecordFromLive({
+              tenantId: scope.tenantId,
+              competitionId: scope.competitionId,
+              matchId: scope.matchId,
+              assignment: authoritativeAssignment,
+              live: preWriteLiveInfo.live,
+            })
+          : null;
       const base = commandBase(
-        { ...command, modeState: resolved.modeState, competitionMode: resolved.mode },
+        {
+          ...command,
+          modeState: resolved.modeState,
+          competitionMode: resolved.mode,
+          seedRecord,
+          currentLive: useScoreHotPath ? preWriteLiveInfo?.live || null : null,
+          authoritativeAssignment,
+        },
         resolved.assignment
       );
       try {
@@ -748,6 +852,9 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         });
         timing.postCommitProjectionMs = Date.now() - tProj0;
         timing.totalMs = Date.now() - t0;
+        if (result?.commitSubphases) {
+          timing.commitSubphases = result.commitSubphases;
+        }
         return Object.freeze({
           ok: true,
           command: type,
@@ -762,7 +869,8 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
             ackReturnsFullView: true,
             projectMatchCount: 1,
             durableCommitCount: 1,
-            preWriteLiveReused: Boolean(preWriteLiveInfo) && !postLiveInfo,
+            preWriteLiveReused: Boolean(preWriteLiveInfo),
+            postCommitLiveFromCommit: Boolean(result?.liveInfo || result?.live),
           }),
         });
       } catch (err) {

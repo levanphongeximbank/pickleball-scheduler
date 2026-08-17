@@ -2,6 +2,10 @@
  * Authenticated JWT authorize for canonical Referee trusted backend.
  * Mirrors api/communication/authorizeCommunicationActor.js.
  * Never trusts browser-claimed userId / tenantId / role.
+ *
+ * Warm-lambda profile cache: JWT is verified every request via auth.getUser;
+ * active profile (role/tenant/status) may be reused briefly so AUTH_NETWORK_COUNT
+ * collapses to 1 on the hot scoring path without trusting the browser actorId.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -9,8 +13,16 @@ import {
   getSupabaseServerUrl,
   getSupabaseServiceRoleKey,
 } from "../../src/features/api/config/apiKeyStoreConfig.js";
-import { instrumentSharedSupabaseClient } from "../../src/features/referee-production-ui/application/instrumentSupabaseRequestCounters.js";
+import {
+  getActiveSupabaseCounters,
+  instrumentSharedSupabaseClient,
+  noteSupabaseLedgerEntry,
+} from "../../src/features/referee-production-ui/application/instrumentSupabaseRequestCounters.js";
 import { assertCommunicationProductionTargetAllowed } from "../communication/productionTargetGate.js";
+
+/** @type {Map<string, { profile: object, cachedAt: number }>} */
+const profileCacheByActorId = new Map();
+const PROFILE_CACHE_TTL_MS = 60_000;
 
 export function getRefereeApiSupabaseUrl() {
   const viteUrl = String(globalThis.process?.env?.VITE_SUPABASE_URL || "").trim();
@@ -47,6 +59,29 @@ function mapAuthError(userError) {
     return "Token đăng nhập không hợp lệ cho project Supabase trên server.";
   }
   return "Phiên đăng nhập không hợp lệ.";
+}
+
+function readCachedProfile(actorId) {
+  const hit = profileCacheByActorId.get(actorId);
+  if (!hit) return null;
+  if (Date.now() - hit.cachedAt > PROFILE_CACHE_TTL_MS) {
+    profileCacheByActorId.delete(actorId);
+    return null;
+  }
+  return hit.profile;
+}
+
+function writeCachedProfile(actorId, profile) {
+  profileCacheByActorId.set(actorId, {
+    profile: Object.freeze({
+      id: profile.id,
+      role: profile.role || null,
+      status: profile.status || null,
+      venue_id: profile.venue_id || null,
+      club_id: profile.club_id || null,
+    }),
+    cachedAt: Date.now(),
+  });
 }
 
 /**
@@ -95,21 +130,56 @@ export async function authorizeRefereeActor(req) {
   }
 
   const actorId = userData.user.id;
-  const { data: profile, error: profileError } = await serviceClient
-    .from("profiles")
-    .select("id, role, status, venue_id, club_id")
-    .eq("id", actorId)
-    .maybeSingle();
-
-  if (profileError) {
-    return {
-      ok: false,
-      code: "IDENTITY_LOOKUP_FAILED",
-      error: "Không đọc được profile — fail-closed.",
-    };
+  const counters = getActiveSupabaseCounters();
+  let profile = readCachedProfile(actorId);
+  if (profile) {
+    noteSupabaseLedgerEntry(counters, {
+      operation: "AUTH_PROFILE_CACHE_HIT",
+      tableOrRpc: "profiles",
+      kind: "auth",
+      elapsedMs: 0,
+      required: true,
+      reused: true,
+      duplicateOf: "AUTH_PROFILE_READ",
+      canReuseRequestLocal: true,
+    });
+  } else {
+    const tProfile0 = Date.now();
+    const { data, error: profileError } = await serviceClient
+      .from("profiles")
+      .select("id, role, status, venue_id, club_id")
+      .eq("id", actorId)
+      .maybeSingle();
+    if (profileError) {
+      return {
+        ok: false,
+        code: "IDENTITY_LOOKUP_FAILED",
+        error: "Không đọc được profile — fail-closed.",
+      };
+    }
+    profile = data;
+    if (profile && String(profile.status || "").toLowerCase() === "active") {
+      writeCachedProfile(actorId, profile);
+    }
+    // Auto-instrument already ledgered the from("profiles") call; enrich last row.
+    const ledger = counters?.LEDGER;
+    if (ledger?.length) {
+      const last = ledger[ledger.length - 1];
+      if (last?.operation === "AUTH_PROFILE_READ" || last?.tableOrRpc === "profiles") {
+        ledger[ledger.length - 1] = Object.freeze({
+          ...last,
+          operation: "AUTH_PROFILE_READ",
+          elapsedMs: Date.now() - tProfile0,
+          required: true,
+          canReuseRequestLocal: true,
+          canCombineWith: "AUTH_GET_USER (same request-local actor context)",
+        });
+      }
+    }
   }
 
   if (!profile || String(profile.status || "").toLowerCase() !== "active") {
+    profileCacheByActorId.delete(actorId);
     return {
       ok: false,
       code: "IDENTITY_INACTIVE",

@@ -173,6 +173,37 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
   }
 
   async function requireAssignedMatch(command, auth, matchId) {
+    // Hot path: reuse request-local authoritative assignment + seedRecord (no second/third
+    // competition-wide assignment list). Security asserts still run.
+    if (command?.seedRecord && command?.authoritativeAssignment) {
+      const assignment = {
+        ...command.authoritativeAssignment,
+        refereeId:
+          command.authoritativeAssignment.refereeId ||
+          command.authoritativeAssignment.refereeUserId ||
+          auth.refereeId,
+        matchId:
+          command.authoritativeAssignment.matchId || matchId,
+        tenantId:
+          command.authoritativeAssignment.tenantId || command.tenantId,
+        competitionId:
+          command.authoritativeAssignment.competitionId ||
+          command.competitionId,
+        status:
+          command.authoritativeAssignment.status ||
+          command.authoritativeAssignment.opsStatus ||
+          REFEREE_ASSIGNMENT_OPS_STATUS.ASSIGNED,
+      };
+      assertRefereeAssignmentScope({
+        assignment,
+        refereeId: auth.refereeId,
+        tenantId: command.tenantId,
+        competitionId: command.competitionId,
+        venueId: command.venueId,
+        matchId,
+      });
+      return { record: command.seedRecord, assignment };
+    }
     const record = await loadRecord(command);
     const assignment = findAssignment(record, auth.refereeId, matchId);
     assertRefereeAssignmentScope({
@@ -204,6 +235,10 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         commandId: command.commandId || command.idempotencyKey || null,
         tenantId: command.tenantId || null,
         competitionId: command.competitionId || null,
+        seedRecord: command.seedRecord || null,
+        currentLive: command.currentLive || null,
+        authoritativeAssignment: command.authoritativeAssignment || null,
+        lastCommittedLive: null,
       });
     }
   }
@@ -742,10 +777,33 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         draft.courtsByMatch = draft.courtsByMatch || {};
         draft.courtsByMatch[matchId] = nextCourt;
       });
+      const committedLive =
+        typeof store.getLastCommittedLive === "function"
+          ? store.getLastCommittedLive()
+          : null;
+      const commitSubphases =
+        typeof store.getCommitSubphases === "function"
+          ? store.getCommitSubphases()
+          : null;
+      const liveInfo = committedLive
+        ? {
+            live: committedLive,
+            expectedVersion: Number(
+              committedLive.stateVersion ?? committedLive.version ?? 0
+            ),
+            courtState:
+              committedLive?.statePayload?.canonical?.court ||
+              committedLive?.statePayload?.court ||
+              nextCourt,
+          }
+        : null;
       return deepFreeze({
         ok: true,
         scoreProjection: projection,
         court: nextCourt,
+        live: committedLive,
+        liveInfo,
+        commitSubphases,
         matchComplete: Boolean(state.matchComplete),
         calculatedWinnerSide: state.calculatedWinnerSide || null,
         winnerInferenceByFacade: false,
