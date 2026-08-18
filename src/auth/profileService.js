@@ -17,6 +17,7 @@ export const PROFILE_FIELD_MAP = Object.freeze({
   displayName: "display_name",
   role: "role",
   clubId: "club_id",
+  tenantId: "tenant_id",
   venueId: "venue_id",
   status: "status",
 });
@@ -109,7 +110,8 @@ export function mapUserToProfileRow(user) {
     email: normalized.email,
     display_name: normalized.displayName,
     role: denormalizeRoleForDb(normalized.role || ROLES.PLAYER),
-    venue_id: normalized.venueId,
+    tenant_id: normalized.tenantId || null,
+    venue_id: normalized.venueId || null,
     club_id: normalized.clubId,
     player_id: normalized.playerId,
     status: normalized.status || "active",

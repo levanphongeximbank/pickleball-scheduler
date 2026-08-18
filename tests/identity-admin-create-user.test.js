@@ -27,9 +27,12 @@ test("identityAdminCreateService source — admin API temp password + must_chang
   assert.equal(source.includes("email_confirm: true"), true);
   assert.equal(source.includes("must_change_password"), true);
   assert.equal(source.includes("temporaryPassword"), true);
-  assert.equal(source.includes('status: USER_STATUS.ACTIVE'), true);
+  assert.equal(source.includes("normalizeManagedUserStatus"), true);
+  assert.equal(source.includes("tenantId"), true);
+  assert.equal(source.includes("deleteUser"), true);
   assert.equal(source.includes('.from("profiles")'), true);
   assert.equal(source.includes(".upsert(profileRow"), true);
+  assert.equal(source.includes("tenantId: venueId"), false);
 });
 
 test("create-user API source — authorize + temp password default off", async () => {
@@ -41,4 +44,6 @@ test("create-user API source — authorize + temp password default off", async (
   assert.equal(source.includes("getSupabaseServiceRoleKey()"), true);
   assert.equal(source.includes("adminCreateManagedUser"), true);
   assert.equal(source.includes("body.sendPasswordSetupEmail === true"), true);
+  assert.equal(source.includes("body.tenantId"), true);
+  assert.equal(source.includes("stripCallerAuthorityFields"), true);
 });
