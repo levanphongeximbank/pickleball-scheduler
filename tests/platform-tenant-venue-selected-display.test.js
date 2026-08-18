@@ -206,4 +206,17 @@ describe("platform tenant/venue selected display — shell contracts", () => {
     assert.doesNotMatch(header, /selectedTenantLabel|organizationName/);
     assert.doesNotMatch(topBar, /selectedTenantLabel|organizationName/);
   });
+
+  it("outlined organization/club selectors shrink the label so placeholder is a single text layer", () => {
+    const tenant = readSrc("src/components/TenantSwitcher.jsx");
+    const club = readSrc("src/components/ClubSwitcher.jsx");
+    assert.match(tenant, /<InputLabel[\s\S]*shrink/);
+    assert.match(tenant, /displayEmpty\s*\n\s*notched/);
+    assert.match(tenant, /renderValue=\{\(\) => \(/);
+    assert.doesNotMatch(tenant, /<InputLabel[^>]*>\s*Chọn tổ chức/);
+    assert.match(club, /<InputLabel[\s\S]*shrink/);
+    assert.match(club, /displayEmpty\s*\n\s*notched/);
+    assert.match(club, /renderValue=/);
+    assert.doesNotMatch(club, /<InputLabel[^>]*>\s*Chọn CLB/);
+  });
 });
