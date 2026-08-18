@@ -1,6 +1,6 @@
 # CORE-13 — Canonical Assignment Runtime Closure
 
-**Status:** Trusted-server execution boundary authored · Staging SQL PRECHECK/APPLY/VERIFY **PASS** · Staging Edge `competition-referee-assignment` **DEPLOYED** (`verify_jwt=true`) · disposable fixture provisioner foundation **HARDENED LOCAL ONLY** · Team RPC **DENIED** as INTERNAL match authority · `INTERNAL_MATCH_LIVE_SHELL` writer gap **reported** · remote fixture provisioning **NOT RUN** · 29-case harness **hardened locally, not executed**
+**Status:** Trusted-server execution boundary authored · Staging SQL PRECHECK/APPLY/VERIFY **PASS** · Staging Edge `competition-referee-assignment` **DEPLOYED** (`verify_jwt=true`) · disposable fixture provisioner **adopted PR #448 Shared Referee initializer** (`refereeV5EdgeInitializeExecution`) · HISTORICAL_BLOCKER=`INTERNAL_MATCH_LIVE_SHELL` **CLOSED_BY_PR448** · Team/Daily **DENIED** as INTERNAL execution authority · remote fixture provisioning **NOT RUN** · 29-case harness **hardened locally, not executed**
 **Package:** `docs/v5/migrations/core13-canonical-assignment-runtime-closure-01/`  
 **Edge:** `supabase/functions/competition-referee-assignment/`  
 **Harness:** `scripts/core13/core13-trusted-server-staging-acceptance.mjs` (proofs: `scripts/core13/core13-staging-acceptance-proofs.mjs`)

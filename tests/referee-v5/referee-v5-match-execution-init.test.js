@@ -732,7 +732,7 @@ test("browser-supplied state snapshot is denied", async () => {
 });
 
 test("architecture — Contract #08 and CORE-13 assignment sources unchanged", () => {
-  const diff = execFileSync(
+  const contractDiff = execFileSync(
     "git",
     [
       "diff",
@@ -740,13 +740,35 @@ test("architecture — Contract #08 and CORE-13 assignment sources unchanged", (
       "--",
       "src/features/competition-engine/integration/referee/contract.js",
       "src/features/competition-engine/integration/referee/constants.js",
-      "src/features/competition-core/referee-assignment",
       "src/features/daily-play",
       "src/features/team-tournament/repositories/cloudTeamTournamentRepository.js",
     ],
     { cwd: ROOT, encoding: "utf8" }
   );
-  assert.equal(diff.trim(), "");
+  assert.equal(contractDiff.trim(), "");
+
+  // PR #444 already owns CORE-13 assignment-runtime vs main. PR #448 initializer
+  // adoption must not add further files under the shared assignment engine.
+  const assignmentFiles = execFileSync(
+    "git",
+    ["diff", "--name-only", "origin/main", "--", "src/features/competition-core/referee-assignment"],
+    { cwd: ROOT, encoding: "utf8" }
+  )
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const allowedPr444Assignment = new Set([
+    "src/features/competition-core/referee-assignment/engines/replaceRefereeAssignment.js",
+    "src/features/competition-core/referee-assignment/services/evaluateRefereeEligibility.js",
+    "src/features/competition-core/referee-assignment/services/validateManualRefereeAssignment.js",
+  ]);
+  for (const file of assignmentFiles) {
+    assert.equal(
+      allowedPr444Assignment.has(file),
+      true,
+      `unexpected assignment file vs origin/main: ${file}`
+    );
+  }
 });
 
 test("authorizeMatchExecutionInit does not use ambient window as a trust boundary", () => {

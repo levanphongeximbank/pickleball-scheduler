@@ -552,16 +552,36 @@ export function classifyReceiptOwnedResources(receipt = {}) {
       ? receipt.assignments.map((row) => entityId(row)).filter(Boolean)
       : [],
     retainedImmutableArtifacts: ["competition_referee_assignment_audit", "competition_referee_assignment_idempotency"],
+    liveExecutionArtifacts: ["match_live_states", "match_events", "match_sync_mutations"],
+    liveBackedMatchIds: listLiveBackedMatchIds(receipt),
   });
+}
+
+export const RETAINED_FIXTURE_CLEANUP_GAP = "SEPARATE_WORKSTREAM";
+export const LIVE_BACKED_LIFECYCLES = Object.freeze(["IN_PROGRESS", "SCORING_ACTIVE", "LOCKED"]);
+
+export function listLiveBackedMatchIds(receipt = {}) {
+  return REQUIRED_MATCH_KEYS.map((key) => receipt.matches?.[key])
+    .filter((row) => row && LIVE_BACKED_LIFECYCLES.includes(String(row.lifecycle || "")))
+    .map((row) => entityId(row))
+    .filter(Boolean);
+}
+
+export function receiptHasLiveBackedFixtures(receipt = {}) {
+  return listLiveBackedMatchIds(receipt).length > 0;
 }
 
 export function buildTypedCleanupPlan(receipt = {}) {
   const resources = classifyReceiptOwnedResources(receipt);
+  const liveBacked = resources.liveBackedMatchIds.length > 0;
   return Object.freeze({
     ok: true,
     typedByResource: true,
     genericUnassignOverAllReceiptIds: false,
     immutableHistoryDelete: false,
+    liveStateTeardownDirectDelete: false,
+    liveBackedFixtureRetentionFailClosed: liveBacked,
+    retainedFixtureCleanupGap: liveBacked ? RETAINED_FIXTURE_CLEANUP_GAP : null,
     steps: [
       {
         resource: "assignments",
@@ -579,15 +599,18 @@ export function buildTypedCleanupPlan(receipt = {}) {
         resource: "matches",
         command: "retainOrCanonicalMatchInverse",
         ids: resources.matches,
-        policy: "retain unless a canonical match cancel/delete exists",
+        policy: "retain unless a canonical match cancel/delete exists; never DML live execution",
         retainIfUnsupported: true,
       },
       {
         resource: "tournaments",
-        command: "deleteTournament",
+        command: liveBacked ? "retain" : "deleteTournament",
         ids: resources.tournaments,
-        policy: "canonical delete/archive/cancel if supported; else retain disposable artifact",
+        policy: liveBacked
+          ? "canonical_tournament_delete does not cascade match_live_states/match_sync_mutations; retain live-backed fixtures"
+          : "canonical delete/archive/cancel if supported; else retain disposable artifact",
         retainIfUnsupported: true,
+        retain: liveBacked,
       },
       {
         resource: "tenants",
@@ -595,6 +618,13 @@ export function buildTypedCleanupPlan(receipt = {}) {
         ids: resources.tenants,
         policy: "retain unless canonical delete/deactivate is supported and safe",
         retainIfUnsupported: true,
+      },
+      {
+        resource: "liveExecutionArtifacts",
+        command: "retain",
+        ids: resources.liveExecutionArtifacts,
+        policy: "NEVER direct-delete match_live_states / match_events / match_sync_mutations",
+        retain: true,
       },
       {
         resource: "retainedImmutableArtifacts",

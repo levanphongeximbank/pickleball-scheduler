@@ -4,7 +4,11 @@
  *
  * Not product runtime. Not browser. Not domain authority.
  * TEAM_RPC_AS_INTERNAL_FIXTURE_AUTHORITY=DENY
- * INTERNAL_MATCH_LIVE_SHELL remains a honest writer gap.
+ * DAILY_WRITER_AS_INTERNAL_FIXTURE_AUTHORITY=DENY
+ * DIRECT_INITIALIZER_RPC_FROM_FIXTURE_TOOL=DENY
+ *
+ * HISTORICAL_BLOCKER=CLOSED_BY_PR448 (INTERNAL_MATCH_LIVE_SHELL).
+ * Current initializer authority: refereeV5EdgeInitializeExecution.
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -13,13 +17,17 @@ import { fileURLToPath } from "node:url";
 
 import { CORE13_FIXTURE_NAMESPACE } from "./core13-staging-acceptance-proofs.mjs";
 import {
+  bindSharedRefereeExecutionWriters,
   CANONICAL_WRITER_CATALOG,
+  evaluateDailyWriterDeniedForInternal,
+  evaluateExecutableRemoteBinding,
+  evaluateForbiddenCallerAuthority,
   evaluateInternalMatchWriterArchitecture,
-  evaluatePortPresence,
   evaluateTeamWriterDeniedForInternal,
   evaluateWriterCoverage,
   HONEST_NOT_CONFIGURED,
-  INTERNAL_MATCH_LIVE_SHELL_GAP,
+  INITIALIZER_AUTHORITY,
+  INITIALIZER_PORT_NAME,
   REQUIRED_WRITER_PORTS,
 } from "./core13-staging-fixture-writers.mjs";
 import {
@@ -33,6 +41,7 @@ import {
   hydrateHarnessFixtures,
   listReceiptOwnedIds,
   loadFixtureReceiptFromPath,
+  receiptHasLiveBackedFixtures,
   STAGING_PROJECT_REF,
   stripReceiptSecrets,
 } from "./core13-staging-fixture-receipt.mjs";
@@ -43,7 +52,17 @@ function proof(ok, detail, extra = {}) {
   return Object.freeze({ ok: ok === true, detail: String(detail || ""), ...extra });
 }
 
-export function evaluateRemoteProvisionGate(envMap = {}) {
+export function readOrganizerAccessToken(envMap = {}) {
+  return String(
+    envMap.STAGING_ORGANIZER_ACCESS_TOKEN || envMap.STAGING_USER_A_ACCESS_TOKEN || ""
+  ).trim();
+}
+
+export function readStagingEdgeBaseUrl(envMap = {}) {
+  return String(envMap.STAGING_EDGE_BASE_URL || envMap.STAGING_SUPABASE_URL || "").trim();
+}
+
+export function evaluateRemoteProvisionGate(envMap = {}, options = {}) {
   if (String(envMap.CORE13_FIXTURE_PROVISION_GO || "").trim() !== "YES") {
     return proof(false, "CORE13_FIXTURE_PROVISION_GO required");
   }
@@ -61,8 +80,34 @@ export function evaluateRemoteProvisionGate(envMap = {}) {
   if (/expuvcohlcjzvrrauvud/i.test(url)) {
     return proof(false, "Production project denied");
   }
-  return proof(false, INTERNAL_MATCH_LIVE_SHELL_GAP, {
-    verdict: "BLOCKED_CANONICAL_FIXTURE_WRITER_GAP",
+  const accessToken = readOrganizerAccessToken(envMap);
+  if (!accessToken) {
+    return proof(false, "authenticated organizer token required", {
+      REMOTE_FIXTURE_PROVISION_READY: false,
+    });
+  }
+  const edgeBaseUrl = readStagingEdgeBaseUrl(envMap);
+  if (!edgeBaseUrl) {
+    return proof(false, "Staging Edge base URL required", {
+      REMOTE_FIXTURE_PROVISION_READY: false,
+    });
+  }
+  const executionWriters = bindSharedRefereeExecutionWriters({ accessToken, edgeBaseUrl });
+  const writers = { ...executionWriters, ...(options.writers || {}) };
+  const binding = evaluateExecutableRemoteBinding(writers);
+  if (!binding.ok) {
+    return proof(false, `missing canonical writer ports: ${(binding.missing || []).join(",")}`, {
+      verdict: "BLOCKED_CANONICAL_FIXTURE_WRITER_GAP",
+      missing: binding.missing,
+      REMOTE_FIXTURE_PROVISION_READY: false,
+      REMOTE_FIXTURE_PROVISION_EXECUTABLE_BINDING: binding.initializerBound === true,
+      architecture: evaluateInternalMatchWriterArchitecture(),
+    });
+  }
+  return proof(true, "remote provision gate open", {
+    verdict: "REMOTE_FIXTURE_PROVISION_READY",
+    REMOTE_FIXTURE_PROVISION_READY: true,
+    REMOTE_FIXTURE_PROVISION_EXECUTABLE_BINDING: true,
     architecture: evaluateInternalMatchWriterArchitecture(),
   });
 }
@@ -79,13 +124,23 @@ export function planFixtureProvision(options = {}) {
   const teamCheck = evaluateTeamWriterDeniedForInternal(
     CANONICAL_WRITER_CATALOG.teamTournamentProvisionRefereeMatch.authority
   );
+  const dailyCheck = evaluateDailyWriterDeniedForInternal(
+    CANONICAL_WRITER_CATALOG.createDailyPlayMatches.authority
+  );
+  const architecture = coverage.architecture || evaluateInternalMatchWriterArchitecture();
   return Object.freeze({
-    ok: false,
-    verdict: "BLOCKED_CANONICAL_FIXTURE_WRITER_GAP",
+    ok: coverage.ok === true,
+    verdict: coverage.ok ? "WRITER_COVERAGE_READY" : coverage.verdict,
     provisioner: FIXTURE_PROVISIONER_ID,
     namespace: CORE13_FIXTURE_NAMESPACE,
     TEAM_RPC_AS_INTERNAL_FIXTURE_AUTHORITY: "DENY",
-    INTERNAL_MATCH_WRITER_GAP: INTERNAL_MATCH_LIVE_SHELL_GAP,
+    DAILY_WRITER_AS_INTERNAL_FIXTURE_AUTHORITY: "DENY",
+    SHARED_REFEREE_MATCH_EXECUTION_INITIALIZER: architecture.SHARED_REFEREE_MATCH_EXECUTION_INITIALIZER,
+    CANONICAL_AUTHORITY: architecture.CANONICAL_AUTHORITY,
+    INITIALIZER_PORT_NAME,
+    INITIALIZER_AUTHORITY,
+    INTERNAL_MATCH_WRITER_GAP: coverage.ok ? null : coverage.missing,
+    HISTORICAL_BLOCKER: architecture.HISTORICAL_BLOCKER,
     remoteMarkerPolicy:
       "secondary name/description metadata only where canonical fields already allow it; receipt is SSOT",
     unknownBaselineAutoClean: false,
@@ -95,12 +150,20 @@ export function planFixtureProvision(options = {}) {
     primaryTournamentRemainsNonTerminal: true,
     completedFixtureIsolated: true,
     ...HONEST_NOT_CONFIGURED,
-    steps: [],
+    steps: coverage.ok
+      ? [
+          "createCanonicalMatchIdentity",
+          "initializeMatchExecution",
+          "refereeV5LifecycleCommands",
+          "completeIsolatedTournament",
+        ]
+      : [],
     missing: coverage.missing,
     gaps: coverage.gaps,
     catalog: CANONICAL_WRITER_CATALOG,
     teamCheck,
-    architecture: coverage.architecture,
+    dailyCheck,
+    architecture,
   });
 }
 
@@ -113,44 +176,64 @@ function entity(result, fallbackId) {
   };
 }
 
+function recordPath(paths, key, step) {
+  if (!paths[key]) paths[key] = [];
+  paths[key].push(step);
+}
+
+async function applyLiveLifecycle({ writers, tournamentId, matchId, runId, steps, paths, key }) {
+  const initInput = {
+    tournamentId,
+    matchId,
+    competitionMode: "INTERNAL",
+    runId,
+  };
+  const caller = evaluateForbiddenCallerAuthority(initInput);
+  if (!caller.ok) return caller;
+  const initialized = await writers.initializeMatchExecution(initInput);
+  if (initialized && initialized.ok === false) return initialized;
+  recordPath(paths, key, "initializeMatchExecution");
+  for (const step of steps) {
+    const result = await writers[step]({ tournamentId, matchId, runId });
+    if (result && result.ok === false) return result;
+    recordPath(paths, key, step);
+  }
+  return { ok: true };
+}
+
 /**
  * Local/stub materialization for receipt-shape proofs.
- * Refuses Team-as-INTERNAL. Refuses completing the primary tournament.
- * Still reports INTERNAL_MATCH_LIVE_SHELL gap for live lifecycle readiness.
+ * Refuses Team/Daily as INTERNAL execution authority.
+ * Live lifecycle uses initialize-execution then Referee V5 commands.
  */
 export async function materializeReceiptFromWriters(options = {}) {
   if (options.allowTeamAsInternal === true || options.writers?.__allowTeamAsInternal === true) {
     return proof(false, "TEAM_RPC_AS_INTERNAL_FIXTURE_AUTHORITY=DENY", {
       verdict: "BLOCKED_CANONICAL_FIXTURE_WRITER_GAP",
-      MISSING_CAPABILITY: INTERNAL_MATCH_LIVE_SHELL_GAP,
+    });
+  }
+  if (options.allowDailyAsInternal === true || options.writers?.__allowDailyAsInternal === true) {
+    return proof(false, "DAILY_WRITER_AS_INTERNAL_FIXTURE_AUTHORITY=DENY", {
+      verdict: "BLOCKED_CANONICAL_FIXTURE_WRITER_GAP",
     });
   }
   if (typeof options.writers?.provisionLiveMatchShell === "function") {
     return proof(false, "TEAM_RPC_AS_INTERNAL_FIXTURE_AUTHORITY=DENY provisionLiveMatchShell", {
       verdict: "BLOCKED_CANONICAL_FIXTURE_WRITER_GAP",
-      MISSING_CAPABILITY: INTERNAL_MATCH_LIVE_SHELL_GAP,
     });
   }
   if (typeof options.writers?.teamTournamentProvisionRefereeMatch === "function") {
     return proof(false, "TEAM_RPC_AS_INTERNAL_FIXTURE_AUTHORITY=DENY", {
       verdict: "BLOCKED_CANONICAL_FIXTURE_WRITER_GAP",
-      MISSING_CAPABILITY: INTERNAL_MATCH_LIVE_SHELL_GAP,
     });
   }
 
-  const ports = evaluatePortPresence(options.writers || {});
+  const identityOnly =
+    options.requireLiveLifecycle === false || options.requireInternalLiveShell === false;
+  const ports = evaluateWriterCoverage(options.writers || {});
   if (!ports.ok) return ports;
   if (options.allowExecute !== true) {
     return proof(false, "materialize requires explicit allowExecute");
-  }
-
-  // Full live lifecycle readiness remains blocked.
-  if (options.requireInternalLiveShell !== false) {
-    return proof(false, INTERNAL_MATCH_LIVE_SHELL_GAP, {
-      verdict: "BLOCKED_CANONICAL_FIXTURE_WRITER_GAP",
-      MISSING_CAPABILITY: INTERNAL_MATCH_LIVE_SHELL_GAP,
-      architecture: evaluateInternalMatchWriterArchitecture(),
-    });
   }
 
   const writers = options.writers;
@@ -214,25 +297,66 @@ export async function materializeReceiptFromWriters(options = {}) {
   );
   await writers.setCourtSchedule({ tournamentId: primary.id, tenantId: tenantA.id, marker });
 
-  const mkMatch = async (tournamentId, lifecycle) =>
-    entity(await writers.createInternalMatch({ tournamentId, lifecycle, mode: "INTERNAL" }));
+  const mkMatch = async (tournamentId) =>
+    entity(await writers.createInternalMatch({ tournamentId, mode: "INTERNAL" }));
 
-  const preMatch = await mkMatch(primary.id, "PRE_MATCH");
-  const overlapA = await mkMatch(primary.id, "PRE_MATCH");
-  const overlapB = await mkMatch(primary.id, "PRE_MATCH");
-  const nonOverlap = await mkMatch(primary.id, "PRE_MATCH");
-  // Live lifecycle shells are unavailable for INTERNAL — materialize only when
-  // requireInternalLiveShell=false for local receipt-shape tests; IDs are placeholders.
-  const inProgress = await mkMatch(primary.id, "IN_PROGRESS");
-  const scoringActive = await mkMatch(primary.id, "SCORING_ACTIVE");
-  const locked = await mkMatch(primary.id, "LOCKED");
-  const completed = await mkMatch(completedLifecycle.id, "COMPLETED");
+  const materializationPaths = {
+    preMatch: ["createInternalMatch"],
+    inProgress: ["createInternalMatch"],
+    scoringActive: ["createInternalMatch"],
+    locked: ["createInternalMatch"],
+    completed: ["createInternalMatch"],
+  };
+
+  const preMatch = await mkMatch(primary.id);
+  const overlapA = await mkMatch(primary.id);
+  const overlapB = await mkMatch(primary.id);
+  const nonOverlap = await mkMatch(primary.id);
+  const inProgress = await mkMatch(primary.id);
+  const scoringActive = await mkMatch(primary.id);
+  const locked = await mkMatch(primary.id);
+  const completed = await mkMatch(completedLifecycle.id);
+
+  if (!identityOnly) {
+    const inProgressLive = await applyLiveLifecycle({
+      writers,
+      tournamentId: primary.id,
+      matchId: inProgress.id,
+      runId,
+      steps: ["startMatchLive"],
+      paths: materializationPaths,
+      key: "inProgress",
+    });
+    if (inProgressLive.ok === false) return inProgressLive;
+    const scoringLive = await applyLiveLifecycle({
+      writers,
+      tournamentId: primary.id,
+      matchId: scoringActive.id,
+      runId,
+      steps: ["startMatchLive", "recordScoreEvent"],
+      paths: materializationPaths,
+      key: "scoringActive",
+    });
+    if (scoringLive.ok === false) return scoringLive;
+    const lockedLive = await applyLiveLifecycle({
+      writers,
+      tournamentId: primary.id,
+      matchId: locked.id,
+      runId,
+      steps: ["startMatchLive", "pauseMatchLive"],
+      paths: materializationPaths,
+      key: "locked",
+    });
+    if (lockedLive.ok === false) return lockedLive;
+  }
+
   await writers.completeIsolatedTournament({
     tournamentId: completedLifecycle.id,
     matchId: completed.id,
   });
-  if (writers.completeIsolatedTournament && options.forbidPrimaryComplete !== false) {
-    // Guard: primary must never be completed by this orchestrator.
+  recordPath(materializationPaths, "completed", "completeIsolatedTournament");
+  if (options.completePrimaryTournament === true) {
+    return proof(false, "PRIMARY_TOURNAMENT_REMAINS_NON_TERMINAL violated");
   }
 
   const dailyEnabledMatch = entity(
@@ -371,8 +495,12 @@ export async function materializeReceiptFromWriters(options = {}) {
     receipt,
     PRIMARY_TOURNAMENT_REMAINS_NON_TERMINAL: true,
     COMPLETED_FIXTURE_ISOLATED: true,
-    INTERNAL_MATCH_LIVE_SHELL_GAP,
-    liveLifecycleReady: false,
+    SHARED_REFEREE_MATCH_EXECUTION_INITIALIZER: "AVAILABLE",
+    CANONICAL_AUTHORITY: "refereeV5EdgeInitializeExecution",
+    liveLifecycleReady: identityOnly !== true,
+    materializationPaths,
+    COMPLETED_MATERIALIZATION_PATH: "completeIsolatedTournament",
+    COMPLETED_MATCH_EXECUTION_GAP: "TOURNAMENT_STATUS_ONLY",
   });
 }
 
@@ -454,9 +582,16 @@ export async function teardownFromReceipt(options = {}) {
       continue;
     }
     if (step.resource === "tournaments") {
+      const liveBacked = receiptHasLiveBackedFixtures(receipt);
       for (const id of step.ids) {
-        if (typeof writers.deleteTournament !== "function") {
-          retained.push({ resource: "tournaments", id, reason: "canonical delete unsupported" });
+        if (liveBacked || step.retain === true || typeof writers.deleteTournament !== "function") {
+          retained.push({
+            resource: "tournaments",
+            id,
+            reason: liveBacked
+              ? "canonical_tournament_delete does not cascade live execution"
+              : "canonical delete unsupported",
+          });
           continue;
         }
         await writers.deleteTournament({ id, receiptRunId: receipt.runId });
@@ -470,9 +605,16 @@ export async function teardownFromReceipt(options = {}) {
       }
       continue;
     }
-    if (step.resource === "retainedImmutableArtifacts") {
+    if (step.resource === "liveExecutionArtifacts" || step.resource === "retainedImmutableArtifacts") {
       for (const id of step.ids) {
-        retained.push({ resource: "retainedImmutableArtifacts", id, reason: "immutable history" });
+        retained.push({
+          resource: step.resource,
+          id,
+          reason:
+            step.resource === "liveExecutionArtifacts"
+              ? "never direct-delete live execution"
+              : "immutable history",
+        });
       }
     }
   }
@@ -501,13 +643,26 @@ export async function runFixtureProvisionerCli(argv = [], envMap = {}, options =
     });
   }
   if (mode === "provision" || mode === "teardown") {
-    const gate = evaluateRemoteProvisionGate(envMap);
+    const gate = evaluateRemoteProvisionGate(envMap, { writers: options.writers });
     if (!gate.ok) {
       return proof(false, gate.detail, {
         verdict: gate.verdict || "REMOTE_FIXTURE_PROVISION_DENIED",
         executed: false,
+        missing: gate.missing,
+        REMOTE_FIXTURE_PROVISION_READY: false,
       });
     }
+    if (options.allowExecute !== true) {
+      return proof(false, "remote provision structurally gated; allowExecute required", {
+        verdict: "REMOTE_FIXTURE_PROVISION_NOT_EXECUTED",
+        executed: false,
+        REMOTE_FIXTURE_PROVISION_READY: gate.REMOTE_FIXTURE_PROVISION_READY === true,
+      });
+    }
+    return proof(false, "remote provision execution is Owner-GO only and was not run", {
+      verdict: "REMOTE_FIXTURE_PROVISION_NOT_EXECUTED",
+      executed: false,
+    });
   }
   return proof(false, `unknown mode ${mode}`);
 }
