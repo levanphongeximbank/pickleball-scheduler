@@ -63,12 +63,12 @@ export function guardClubAccess(clubId, options = {}) {
 
   const { meta } = getClubMetaForAuthz(clubId, {
     user,
-    tenantId: user?.tenantId || user?.venueId,
+    tenantId: user?.tenantId || null,
     rbacEnabled,
   });
   const club = meta ? { id: clubId, venueId: meta.venueId, isDefault: meta.isDefault } : null;
   const profileVenueId =
-    user && isVenueScopedRole(user.role) ? user.venueId || user.tenantId : null;
+    user && isVenueScopedRole(user.role) ? user.venueId || null : null;
   const scope = scopeForClubId(clubId);
   const clubMeta = {
     venueId: profileVenueId || club?.venueId || scope.venueId || null,
@@ -115,7 +115,11 @@ export function guardClubAccess(clubId, options = {}) {
 
   const currentTenantId = resolveCurrentTenantId(user);
   if (currentTenantId) {
-    const tenantCheck = guardClubTenant(clubId, currentTenantId, { user, rbacEnabled });
+    const tenantCheck = guardClubTenant(clubId, currentTenantId, {
+      user,
+      rbacEnabled,
+      clubTenantId: getExplicitTenantIdForClub(clubId) || meta?.tenantId || null,
+    });
     if (!tenantCheck.ok) {
       return tenantCheck;
     }
@@ -138,10 +142,9 @@ export function guardClubAction(clubId, permission, extraScope = {}, options = {
 
   const authUser = options.user ?? getAuthOptions().user;
   if (authUser && isVenueScopedRole(authUser.role)) {
-    const profileVenueId = authUser.venueId || authUser.tenantId;
+    const profileVenueId = authUser.venueId || null;
     if (profileVenueId) {
       scope.venueId = profileVenueId;
-      scope.tenantId = profileVenueId;
     }
   }
 

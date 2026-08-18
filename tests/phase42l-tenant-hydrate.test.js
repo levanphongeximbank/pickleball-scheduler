@@ -213,6 +213,16 @@ describe("Phase 42L — tenant scope guard", () => {
       role: ROLES.TENANT_OWNER,
       venueId: TENANT_B,
       status: "active",
+      entitlementEvidence: {
+        tenants: [
+          {
+            tenant_id: TENANT_B,
+            user_id: "owner-b",
+            role_code: "tenant_owner",
+            status: "active",
+          },
+        ],
+      },
     };
 
     assert.equal(guardTenantAccess(TENANT_B, { user: owner, rbacEnabled: true }).ok, true);

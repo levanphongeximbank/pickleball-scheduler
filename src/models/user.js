@@ -9,6 +9,23 @@ export const USER_STATUS = Object.freeze({
 export function normalizeUser(user) {
   const id = String(user?.id || "").trim();
   const role = String(user?.role || "").trim();
+  const rawStatus = user?.status;
+  const hasStatus = rawStatus != null && String(rawStatus).trim() !== "";
+  const identityIncomplete = Boolean(
+    user?.identityIncomplete || user?.identityStatus === "INCOMPLETE"
+  );
+  const status = hasStatus
+    ? String(rawStatus).trim()
+    : identityIncomplete
+      ? ""
+      : USER_STATUS.ACTIVE;
+  const identityStatus =
+    user?.identityStatus ||
+    (identityIncomplete
+      ? "INCOMPLETE"
+      : status === USER_STATUS.ACTIVE
+        ? "ACTIVE"
+        : "INACTIVE");
 
   return {
     id,
@@ -40,7 +57,10 @@ export function normalizeUser(user) {
     avatarUrl: user?.avatarUrl ? String(user.avatarUrl).trim() : "",
     gender: user?.gender ? String(user.gender).trim() : "",
     birthYear: user?.birthYear ?? user?.birth_year ?? null,
-    status: user?.status || USER_STATUS.ACTIVE,
+    status,
+    identityIncomplete,
+    identityStatus,
+    entitlementEvidence: user?.entitlementEvidence || null,
     mustChangePassword: Boolean(user?.mustChangePassword ?? user?.must_change_password),
     createdAt: user?.createdAt || new Date().toISOString(),
     updatedAt: user?.updatedAt || new Date().toISOString(),
@@ -58,5 +78,8 @@ export function createUserRecord(fields) {
 }
 
 export function isUserActive(user) {
-  return user?.status === USER_STATUS.ACTIVE;
+  if (!user || user.identityIncomplete || user.identityStatus === "INCOMPLETE") {
+    return false;
+  }
+  return user.status === USER_STATUS.ACTIVE;
 }

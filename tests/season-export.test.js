@@ -221,6 +221,9 @@ test("buildSeasonExport allowed on trial — CLB không phụ thuộc gói venue
       role: ROLES.CLUB_OWNER,
       venueId: "venue-demo",
       clubId: DEFAULT_CLUB.id,
+      entitlementEvidence: {
+        clubs: [{ clubId: DEFAULT_CLUB.id, userId: "season-owner", status: "active" }],
+      },
     })
   );
 

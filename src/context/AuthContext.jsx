@@ -27,6 +27,10 @@ import {
   logPlatformContextEvent,
   PLATFORM_CONTEXT_EVENT,
 } from "../core/platform/app/platformContextDiagnostics.js";
+import {
+  hydrateClubEntitlements,
+  hydrateTenantEntitlements,
+} from "../core/platform/authz/index.js";
 
 const AuthContext = createContext(null);
 
@@ -161,6 +165,15 @@ export function AuthProvider({ children }) {
       unsubscribe();
     };
   }, [refresh]);
+
+  useEffect(() => {
+    const actorId = state.user?.id;
+    if (!actorId) {
+      return;
+    }
+    void hydrateTenantEntitlements(actorId);
+    void hydrateClubEntitlements(actorId);
+  }, [state.user?.id]);
 
   const handleSignInDev = useCallback(
     (email) => {

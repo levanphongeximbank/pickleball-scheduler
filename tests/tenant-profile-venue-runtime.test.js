@@ -82,7 +82,7 @@ describe("Profile venue runtime", () => {
     const user = ownerUser();
     assert.equal(user.role, ROLES.TENANT_OWNER);
     assert.equal(user.venueId, STAGING_VENUE);
-    assert.equal(user.tenantId, STAGING_VENUE);
+    assert.equal(user.tenantId, null);
   });
 
   it("assertTenantOperational passes without local venue registry when profile venue matches", () => {
@@ -108,7 +108,7 @@ describe("Profile venue runtime", () => {
     });
 
     assert.equal(scope.venueId, STAGING_VENUE);
-    assert.equal(scope.tenantId, STAGING_VENUE);
+    assert.equal(scope.tenantId, null);
     assert.notEqual(scope.venueId, "default-tenant");
     assert.notEqual(scope.venueId, "tenant-demo");
   });
@@ -120,7 +120,10 @@ describe("Profile venue runtime", () => {
 
     assert.equal(canAccessRoute(ownerCan, "/profile", scope), true);
     assert.equal(canAccessRoute(ownerCan, "/billing", scope), true);
-    assert.equal(resolveBillingTenantId({ user, currentTenantId: scope.tenantId }), STAGING_VENUE);
+    assert.equal(
+      resolveBillingTenantId({ user, currentTenantId: STAGING_VENUE }),
+      STAGING_VENUE
+    );
   });
 
   it("owner can access /settings/integrations with valid venue_id", () => {

@@ -9,9 +9,12 @@ import { createUserRecord } from "../src/models/user.js";
 
 const RBAC_ON = { rbacEnabled: true };
 
-test("SYSTEM_TECHNICIAN has ranking.manage and tournament.certify", () => {
-  assert.equal(roleHasPermission(ROLES.SYSTEM_TECHNICIAN, PERMISSIONS.RANKING_MANAGE), true);
-  assert.equal(roleHasPermission(ROLES.SYSTEM_TECHNICIAN, PERMISSIONS.TOURNAMENT_CERTIFY), true);
+test("SYSTEM_TECHNICIAN does not gain ranking.manage or tournament.certify from role alone", () => {
+  assert.equal(roleHasPermission(ROLES.SYSTEM_TECHNICIAN, PERMISSIONS.RANKING_MANAGE), false);
+  assert.equal(roleHasPermission(ROLES.SYSTEM_TECHNICIAN, PERMISSIONS.TOURNAMENT_CERTIFY), false);
+  const tech = createUserRecord({ role: ROLES.SYSTEM_TECHNICIAN, status: "active" });
+  assert.equal(can(tech, PERMISSIONS.RANKING_MANAGE, {}, RBAC_ON), false);
+  assert.equal(can(tech, PERMISSIONS.TOURNAMENT_CERTIFY, { tournamentId: "tn1" }, RBAC_ON), false);
 });
 
 test("VENUE_OWNER has ranking.view only", () => {
