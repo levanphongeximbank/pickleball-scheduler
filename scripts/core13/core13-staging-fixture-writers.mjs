@@ -16,10 +16,18 @@
 import {
   REFEREE_V5_ACTIONS,
   refereeV5EdgeApplyCommand,
+  refereeV5EdgeFinalize,
   refereeV5EdgeGetState,
   refereeV5EdgeInitializeExecution,
 } from "../../src/features/referee-v5/services/refereeV5EdgeClient.js";
 import { MATCH_EVENT_TYPE } from "../../src/features/referee-v5/constants/eventTypes.js";
+import { createCompetitionRefereeAssignmentTrustedClient } from "../../src/features/competition-engine/operations/referee/assignment/client/competitionRefereeAssignmentEdgeClient.js";
+import {
+  AUTH_CONTEXT_CLASS,
+  evaluateOrganizerAuthContext,
+  evaluateRefereeAuthContext,
+  FIXTURE_BINDING_MODE,
+} from "./core13-staging-qa-auth.mjs";
 
 export const WRITER_CLASS = Object.freeze({
   CANONICAL_PRODUCT_COMMAND: "CANONICAL_PRODUCT_COMMAND",
@@ -88,30 +96,53 @@ export const LIVE_BACKED_LIFECYCLES = Object.freeze([
 ]);
 
 export const CANONICAL_WRITER_CATALOG = Object.freeze({
+  resolveExistingTenantFixture: {
+    object: "TENANT",
+    requiredState: "canonical existing QA Tenant A / Tenant B from platform_tenants",
+    classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
+    authority: "scripts/core13/core13-staging-qa-auth.mjs#resolveExistingTenantFixture",
+    nodeBinding: NODE_BINDING.NODE_SAFE_BINDABLE,
+    required: false,
+    requiredInExistingQa: true,
+    notes: "READ/RESOLUTION only. TENANT_MUTATION_GO=NO.",
+  },
+  resolveQaIdentitySet: {
+    object: "IDENTITY_SUBJECT",
+    requiredState: "existing QA organizer/referee identities with canonical role/status/tenant",
+    classification: WRITER_CLASS.CANONICAL_ADMIN_TEST_COMMAND,
+    authority: "scripts/core13/core13-staging-qa-auth.mjs#evaluateExistingQaIdentitySet",
+    nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
+    required: false,
+    requiredInExistingQa: true,
+    notes: "No createAuthUser / updateIdentitySubject in EXISTING_QA_IDENTITY_MODE.",
+  },
   createTenant: {
     object: "TENANT",
-    requiredState: "disposable Tenant A and Tenant B",
+    requiredState: "disposable Tenant A and Tenant B (DISPOSABLE_IDENTITY_PROVISION_MODE only)",
     classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
     authority: "src/features/tenant/services/tenantService.js#createTenantDurable",
-    nodeBinding: NODE_BINDING.NODE_SAFE_BINDABLE,
-    required: true,
+    nodeBinding: NODE_BINDING.BROWSER_SINGLETON_DEPENDENT,
+    required: false,
+    requiredInExistingQa: false,
   },
   createAuthUser: {
     object: "AUTH_USER",
-    requiredState: "disposable Staging auth users",
+    requiredState: "disposable Staging auth users (DISPOSABLE_IDENTITY_PROVISION_MODE only)",
     classification: WRITER_CLASS.AUTHORIZED_IDENTITY_ADMIN_API,
     authority: "src/features/identity/services/identityAdminCreateService.js#adminCreateManagedUser",
     nodeBinding: NODE_BINDING.REQUIRES_IDENTITY_ADMIN_SERVER_CLIENT,
-    required: true,
+    required: false,
+    requiredInExistingQa: false,
     testOnlyIdentityAdmin: true,
   },
   updateIdentitySubject: {
     object: "IDENTITY_SUBJECT",
-    requiredState: "role/status evidence for referee / inactive / non-canonical subjects",
+    requiredState: "role/status mutation (DISPOSABLE_IDENTITY_PROVISION_MODE only)",
     classification: WRITER_CLASS.AUTHORIZED_IDENTITY_ADMIN_API,
     authority: "src/features/identity/services/userManagementService.js#updateManagedUser",
     nodeBinding: NODE_BINDING.REQUIRES_IDENTITY_ADMIN_SERVER_CLIENT,
-    required: true,
+    required: false,
+    requiredInExistingQa: false,
     testOnlyIdentityAdmin: true,
   },
   createCanonicalTournament: {
@@ -121,6 +152,8 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
     authority: "src/features/tournament/services/tournamentCommands.js#createTournamentCommand",
     nodeBinding: NODE_BINDING.NODE_SAFE_BINDABLE,
     required: true,
+    requiredInExistingQa: true,
+    tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
   },
   createDailyPlayTournament: {
     object: "DAILY_PLAY",
@@ -129,6 +162,8 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
     authority: "src/features/tournament/services/tournamentCommands.js#createTournamentCommand(DAILY_PLAY)",
     nodeBinding: NODE_BINDING.NODE_SAFE_BINDABLE,
     required: true,
+    requiredInExistingQa: true,
+    tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
   },
   createDailyPlayMatches: {
     object: "MATCH",
@@ -137,7 +172,9 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
     authority: "src/features/daily-play/canonical/dailyPlayCanonicalService.js#createMatches",
     nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
     required: true,
+    requiredInExistingQa: true,
     forbiddenAsInternalInitializer: true,
+    tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
   },
   setCourtSchedule: {
     object: "SCHEDULE",
@@ -146,6 +183,8 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
     authority: "src/features/tournament/services/tournamentCommands.js#setTournamentCourtScheduleCommand",
     nodeBinding: NODE_BINDING.NODE_SAFE_BINDABLE,
     required: true,
+    requiredInExistingQa: true,
+    tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
   },
   createInternalMatch: {
     object: "MATCH",
@@ -154,6 +193,8 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
     authority: "src/features/tournament/services/tournamentCommands.js#applyEngineV4StateCommand",
     nodeBinding: NODE_BINDING.NODE_SAFE_BINDABLE,
     required: true,
+    requiredInExistingQa: true,
+    tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
     notes: "Creates canonical match identity only. Does not initialize match execution.",
   },
   initializeMatchExecution: {
@@ -163,8 +204,32 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
     authority: INITIALIZER_AUTHORITY,
     nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
     required: true,
+    requiredInExistingQa: true,
+    tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
     notes:
       "Trusted Edge product path: authenticated organizer JWT → refereeV5EdgeInitializeExecution → referee-v5-match initialize-execution.",
+  },
+  bootstrapRefereeAssignment: {
+    object: "ASSIGNMENT_BOOTSTRAP",
+    requiredState: "one active CORE-13 assignment while match is still PRE_MATCH / not_started",
+    classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
+    authority:
+      "src/features/competition-engine/operations/referee/assignment/client/competitionRefereeAssignmentEdgeClient.js#assignReferee",
+    nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
+    required: true,
+    requiredInExistingQa: true,
+    tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
+    notes: "Organizer JWT via CORE-13 trusted client. Not assignment-table DML.",
+  },
+  getAuthoritativeState: {
+    object: "LIFECYCLE_READ",
+    requiredState: "authoritative Referee V5 live state after assignment",
+    classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
+    authority: "src/features/referee-v5/services/refereeV5EdgeClient.js#refereeV5EdgeGetState",
+    nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
+    required: false,
+    requiredInExistingQa: true,
+    tokenClass: AUTH_CONTEXT_CLASS.REFEREE,
   },
   teamTournamentProvisionRefereeMatch: {
     object: "MATCH_EXECUTION_INITIALIZATION",
@@ -177,59 +242,92 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
   },
   startMatchLive: {
     object: "LIFECYCLE",
-    requiredState: "IN_PROGRESS after initialize-execution + START_MATCH",
+    requiredState: "IN_PROGRESS after initialize-execution + CORE-13 bootstrap assignment + START_MATCH",
     classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
     authority:
       "src/features/referee-v5/services/refereeV5EdgeClient.js#refereeV5EdgeApplyCommand START_MATCH",
     nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
     required: true,
+    requiredInExistingQa: true,
     dependsOn: INITIALIZER_PORT_NAME,
+    tokenClass: AUTH_CONTEXT_CLASS.REFEREE,
   },
   recordScoreEvent: {
     object: "LIFECYCLE",
-    requiredState: "SCORING_ACTIVE after initialize-execution + START_MATCH + score event",
+    requiredState: "SCORING_ACTIVE after initialize-execution + bootstrap + START_MATCH + score event",
     classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
     authority:
       "src/features/referee-v5/services/refereeV5EdgeClient.js#refereeV5EdgeApplyCommand TEAM_A_WON_RALLY",
     nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
     required: true,
+    requiredInExistingQa: true,
     dependsOn: INITIALIZER_PORT_NAME,
+    tokenClass: AUTH_CONTEXT_CLASS.REFEREE,
   },
   pauseMatchLive: {
     object: "LIFECYCLE",
-    requiredState: "LOCKED via Referee V5 PAUSE_MATCH after initialize-execution + START_MATCH",
+    requiredState: "LOCKED via Referee V5 PAUSE_MATCH after initialize-execution + bootstrap + START_MATCH",
     classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
     authority:
       "src/features/referee-v5/services/refereeV5EdgeClient.js#refereeV5EdgeApplyCommand PAUSE_MATCH",
     nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
     required: true,
+    requiredInExistingQa: true,
     dependsOn: INITIALIZER_PORT_NAME,
+    tokenClass: AUTH_CONTEXT_CLASS.REFEREE,
+  },
+  declareForfeit: {
+    object: "LIFECYCLE",
+    requiredState: "engine COMPLETED via canonical DECLARE_FORFEIT after START_MATCH",
+    classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
+    authority:
+      "src/features/referee-v5/services/refereeV5EdgeClient.js#refereeV5EdgeApplyCommand DECLARE_FORFEIT",
+    nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
+    required: false,
+    requiredInExistingQa: true,
+    tokenClass: AUTH_CONTEXT_CLASS.REFEREE,
+    notes: "Shortest legal engine path to MATCH_STATUS.COMPLETED. forceComplete=false.",
+  },
+  finalizeMatchLive: {
+    object: "LIFECYCLE",
+    requiredState: "COMPLETED match after assigned Referee V5 finalize",
+    classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
+    authority: "src/features/referee-v5/services/refereeV5EdgeClient.js#refereeV5EdgeFinalize",
+    nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
+    required: false,
+    requiredInExistingQa: true,
+    tokenClass: AUTH_CONTEXT_CLASS.REFEREE,
+    notes: "forceComplete=false. Direct referee_v5_commit_match_finalization RPC denied.",
   },
   completeIsolatedTournament: {
-    object: "LIFECYCLE",
-    requiredState: "COMPLETED on dedicated completedLifecycle tournament only",
+    object: "TOURNAMENT_STATUS",
+    requiredState: "must never be used as MATCH completed proof",
     classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
     authority:
       "src/features/tournament/services/tournamentCommands.js#setTournamentStatusCommand|updateTournamentCommand completed",
     nodeBinding: NODE_BINDING.NODE_SAFE_BINDABLE,
-    required: true,
-    notes: "Must never complete the shared primary tournament. Match-level finalize remains a separate gap.",
+    required: false,
+    requiredInExistingQa: false,
+    notes: "Tournament status is not MATCH completed evidence.",
   },
   unassignViaTrustedServer: {
     object: "ASSIGNMENT_TEARDOWN",
-    requiredState: "inverse CORE-13 unassign for receipt-owned active assignments only",
+    requiredState: "inverse CORE-13 unassign only where lifecycle permits",
     classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
     authority: "Edge competition-referee-assignment unassignReferee",
     nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
     required: true,
+    requiredInExistingQa: true,
+    tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
   },
   deleteAuthUser: {
     object: "AUTH_USER_TEARDOWN",
-    requiredState: "delete provisioner-created disposable auth users",
+    requiredState: "delete provisioner-created disposable auth users (DISPOSABLE mode only)",
     classification: WRITER_CLASS.AUTHORIZED_IDENTITY_ADMIN_API,
     authority: "Supabase Auth Admin deleteUser (test-only wrap)",
     nodeBinding: NODE_BINDING.REQUIRES_IDENTITY_ADMIN_SERVER_CLIENT,
-    required: true,
+    required: false,
+    requiredInExistingQa: false,
     testOnlyIdentityAdmin: true,
   },
   deleteTournament: {
@@ -239,14 +337,37 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
     authority: "src/features/tournament/services/tournamentCommands.js#deleteTournamentCommand",
     nodeBinding: NODE_BINDING.NODE_SAFE_BINDABLE,
     required: false,
+    requiredInExistingQa: false,
   },
 });
 
+export const FORBIDDEN_DIRECT_FINALIZATION_RPC = "referee_v5_commit_match_finalization";
+export const BOOTSTRAP_ASSIGNMENT_PURPOSE = "LIFECYCLE_BOOTSTRAP";
+export const NON_CANONICAL_EXPECTED_ABSENT = "NON_CANONICAL_EXPECTED_ABSENT";
+export const NON_CANONICAL_ABSENT_UUID = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+
+export function listRequiredWriterPorts(
+  mode = FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY
+) {
+  return Object.entries(CANONICAL_WRITER_CATALOG)
+    .filter(([, row]) =>
+      mode === FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY
+        ? row.requiredInExistingQa === true
+        : row.required === true
+    )
+    .map(([name]) => name);
+}
+
 export const REQUIRED_WRITER_PORTS = Object.freeze(
-  Object.entries(CANONICAL_WRITER_CATALOG)
-    .filter(([, row]) => row.required)
-    .map(([name]) => name)
+  listRequiredWriterPorts(FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY)
 );
+
+export const EXISTING_QA_MUTATION_PORTS_DENIED = Object.freeze([
+  "createTenant",
+  "createAuthUser",
+  "updateIdentitySubject",
+  "deleteAuthUser",
+]);
 
 export const HONEST_NOT_CONFIGURED = Object.freeze({
   qualificationRuntime: "NOT_CONFIGURED",
@@ -334,7 +455,9 @@ function gap(portName) {
   };
 }
 
-export function evaluateWriterCoverage(writers = {}) {
+export function evaluateWriterCoverage(writers = {}, options = {}) {
+  const bindingMode = options.bindingMode || FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY;
+  const requiredPorts = listRequiredWriterPorts(bindingMode);
   const architecture = evaluateInternalMatchWriterArchitecture();
   if (writers.__allowTeamAsInternal === true) {
     return Object.freeze({
@@ -370,7 +493,7 @@ export function evaluateWriterCoverage(writers = {}) {
       architecture,
     });
   }
-  const missing = REQUIRED_WRITER_PORTS.filter((name) => typeof writers[name] !== "function");
+  const missing = requiredPorts.filter((name) => typeof writers[name] !== "function");
   if (missing.length) {
     return Object.freeze({
       ok: false,
@@ -378,6 +501,7 @@ export function evaluateWriterCoverage(writers = {}) {
       missing,
       gaps: missing.map((name) => gap(name)),
       architecture,
+      bindingMode,
     });
   }
   return Object.freeze({
@@ -387,11 +511,15 @@ export function evaluateWriterCoverage(writers = {}) {
     gaps: [],
     architecture,
     portsPresent: true,
+    bindingMode,
   });
 }
 
-export function evaluatePortPresence(writers = {}) {
-  const missing = REQUIRED_WRITER_PORTS.filter((name) => typeof writers[name] !== "function");
+export function evaluatePortPresence(writers = {}, options = {}) {
+  const requiredPorts = listRequiredWriterPorts(
+    options.bindingMode || FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY
+  );
+  const missing = requiredPorts.filter((name) => typeof writers[name] !== "function");
   if (missing.length) {
     return Object.freeze({
       ok: false,
@@ -411,6 +539,8 @@ export function buildNodeSafeWriterAudit() {
       nodeBinding: row.nodeBinding,
       authority: row.authority,
       required: row.required === true,
+      requiredInExistingQa: row.requiredInExistingQa === true,
+      tokenClass: row.tokenClass || null,
       gap: row.gap || null,
       forbiddenForInternal: row.forbiddenForInternal === true,
       forbiddenAsInternalInitializer: row.forbiddenAsInternalInitializer === true,
@@ -456,7 +586,7 @@ export function buildInitializeMatchExecutionRequest({
     competitionMode: String(competitionMode || "INTERNAL").trim() || "INTERNAL",
     idempotencyKey: buildInitializeExecutionIdempotencyKey({ runId, tournamentId, matchId }),
   };
-  if (accessToken) request.accessToken = accessToken;
+  if (accessToken) request["accessToken"] = accessToken;
   if (edgeBaseUrl) request.edgeBaseUrl = edgeBaseUrl;
   return Object.freeze(request);
 }
@@ -488,20 +618,24 @@ export function evaluateInitializerClientFields(input = {}) {
 /**
  * Fetch-based trusted Edge product path. Does not call the initializer RPC
  * and does not accept actor/tenant/initialState as caller authority.
+ * Token class: ORGANIZER.
  */
 export function createInitializeMatchExecutionWriter({
+  organizerAccessToken,
   accessToken,
   edgeBaseUrl,
   initializeExecution = refereeV5EdgeInitializeExecution,
   getState = refereeV5EdgeGetState,
 } = {}) {
+  const token = organizerAccessToken || accessToken;
   return async function initializeMatchExecution(input = {}) {
     const caller = evaluateForbiddenCallerAuthority(input);
     if (!caller.ok) return caller;
-    if (!accessToken) {
+    if (!token) {
       return Object.freeze({
         ok: false,
         detail: "authenticated organizer token required",
+        tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
       });
     }
     if (!edgeBaseUrl) {
@@ -512,7 +646,7 @@ export function createInitializeMatchExecutionWriter({
       matchId: input.matchId,
       competitionMode: input.competitionMode || "INTERNAL",
       runId: input.runId,
-      accessToken,
+      accessToken: token,
       edgeBaseUrl,
     });
     const fields = evaluateInitializerClientFields(request);
@@ -520,7 +654,7 @@ export function createInitializeMatchExecutionWriter({
 
     if (typeof getState === "function") {
       const existing = await getState({
-        accessToken,
+        accessToken: token,
         tournamentId: request.tournamentId,
         matchId: request.matchId,
         edgeBaseUrl,
@@ -533,6 +667,7 @@ export function createInitializeMatchExecutionWriter({
             alreadyInitialized: true,
             skippedReset: true,
             status,
+            tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
           });
         }
         if (["completed", "cancelled", "disputed"].includes(status)) {
@@ -545,34 +680,136 @@ export function createInitializeMatchExecutionWriter({
       }
     }
 
-    return initializeExecution({
-      accessToken: request.accessToken,
+    const tok = request.accessToken;
+    const result = await initializeExecution({
+      accessToken: tok,
       tournamentId: request.tournamentId,
       matchId: request.matchId,
       competitionMode: request.competitionMode,
       idempotencyKey: request.idempotencyKey,
       edgeBaseUrl: request.edgeBaseUrl,
     });
+    return Object.freeze({
+      ...(result && typeof result === "object" ? result : { ok: true }),
+      tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
+    });
   };
 }
 
+export function buildBootstrapAssignmentIdempotencyKey({
+  runId,
+  tournamentId,
+  matchId,
+} = {}) {
+  return [
+    CORE13_FIXTURE_IDEMPOTENCY_NAMESPACE,
+    String(runId || "").trim(),
+    String(tournamentId || "").trim(),
+    String(matchId || "").trim(),
+    BOOTSTRAP_ASSIGNMENT_PURPOSE,
+  ].join(":");
+}
+
+export function createBootstrapRefereeAssignmentWriter({
+  organizerAccessToken,
+  edgeBaseUrl,
+  createClient = createCompetitionRefereeAssignmentTrustedClient,
+} = {}) {
+  return async function bootstrapRefereeAssignment(input = {}) {
+    const caller = evaluateForbiddenCallerAuthority(input);
+    if (!caller.ok) return caller;
+    if (!organizerAccessToken) {
+      return Object.freeze({
+        ok: false,
+        detail: "authenticated organizer token required",
+        tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
+      });
+    }
+    const lifecycle = String(input.lifecycleState || input.executionStatus || "PRE_MATCH")
+      .trim()
+      .toUpperCase();
+    if (!["PRE_MATCH", "NOT_STARTED"].includes(lifecycle)) {
+      return Object.freeze({
+        ok: false,
+        detail: "bootstrap assignment requires PRE_MATCH/not_started",
+      });
+    }
+    if (!input.refereeId) {
+      return Object.freeze({ ok: false, detail: "bootstrap refereeId required" });
+    }
+    const client = createClient({
+      getAccessToken: async () => organizerAccessToken,
+      edgeBaseUrl,
+    });
+    const result = await client.assignReferee({
+      tournamentId: input.tournamentId,
+      matchId: input.matchId,
+      refereeId: input.refereeId,
+      idempotencyKey: buildBootstrapAssignmentIdempotencyKey({
+        runId: input.runId,
+        tournamentId: input.tournamentId,
+        matchId: input.matchId,
+      }),
+    });
+    const assignmentId = String(
+      result?.assignmentId || result?.id || result?.assignment?.id || ""
+    ).trim();
+    if (result && result.ok === false) return result;
+    return Object.freeze({
+      ...(result && typeof result === "object" ? result : { ok: true }),
+      ok: result?.ok !== false,
+      id: assignmentId || result?.id,
+      assignmentId: assignmentId || result?.id,
+      purpose: BOOTSTRAP_ASSIGNMENT_PURPOSE,
+      tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
+    });
+  };
+}
+
+function resolveRefereeLifecycleToken(options = {}) {
+  if (options.organizerAccessToken && !options.refereeAccessToken) {
+    return {
+      ok: false,
+      detail: "ORGANIZER_AS_REFEREE_IMPERSONATION denied",
+    };
+  }
+  const token = options.refereeAccessToken;
+  if (!token) {
+    return { ok: false, detail: "authenticated referee token required" };
+  }
+  return { ok: true, token };
+}
+
 export function createRefereeV5LifecycleWriters({
-  accessToken,
+  refereeAccessToken,
+  organizerAccessToken,
   edgeBaseUrl,
   applyCommand = refereeV5EdgeApplyCommand,
+  getState = refereeV5EdgeGetState,
+  finalize = refereeV5EdgeFinalize,
 } = {}) {
+  const resolved = resolveRefereeLifecycleToken({
+    refereeAccessToken,
+    organizerAccessToken,
+  });
+  const tok = resolved.ok ? resolved.token : "";
   const apply = (commandType) => async (input = {}) => {
     const caller = evaluateForbiddenCallerAuthority(input);
     if (!caller.ok) return caller;
-    if (!accessToken) {
-      return Object.freeze({ ok: false, detail: "authenticated organizer token required" });
+    if (!resolved.ok) return Object.freeze(resolved);
+    if (!input.bootstrapAssignmentProof) {
+      return Object.freeze({
+        ok: false,
+        detail: "Referee lifecycle requires CORE-13 bootstrap assignment proof",
+      });
     }
     return applyCommand({
-      accessToken,
+      accessToken: tok,
       tournamentId: input.tournamentId,
       matchId: input.matchId,
       commandType,
       payload: {},
+      expectedVersion: input.expectedVersion,
       idempotencyKey: [
         CORE13_FIXTURE_IDEMPOTENCY_NAMESPACE,
         String(input.runId || ""),
@@ -586,26 +823,117 @@ export function createRefereeV5LifecycleWriters({
     startMatchLive: apply(MATCH_EVENT_TYPE.START_MATCH),
     recordScoreEvent: apply(MATCH_EVENT_TYPE.TEAM_A_WON_RALLY),
     pauseMatchLive: apply(MATCH_EVENT_TYPE.PAUSE_MATCH),
+    declareForfeit: apply(MATCH_EVENT_TYPE.DECLARE_FORFEIT),
+    getAuthoritativeState: async (input = {}) => {
+      if (!resolved.ok) return Object.freeze(resolved);
+      return getState({
+        accessToken: tok,
+        tournamentId: input.tournamentId,
+        matchId: input.matchId,
+        edgeBaseUrl,
+      });
+    },
+    finalizeMatchLive: async (input = {}) => {
+      const caller = evaluateForbiddenCallerAuthority(input);
+      if (!caller.ok) return caller;
+      if (!resolved.ok) return Object.freeze(resolved);
+      if (!input.bootstrapAssignmentProof) {
+        return Object.freeze({
+          ok: false,
+          detail: "Referee lifecycle requires CORE-13 bootstrap assignment proof",
+        });
+      }
+      const request = {
+        accessToken: tok,
+        tournamentId: input.tournamentId,
+        matchId: input.matchId,
+        expectedVersion: input.expectedVersion,
+        idempotencyKey:
+          input.idempotencyKey ||
+          [
+            CORE13_FIXTURE_IDEMPOTENCY_NAMESPACE,
+            String(input.runId || ""),
+            String(input.matchId || ""),
+            "FINALIZE",
+          ].join(":"),
+        overrideReason: input.overrideReason,
+        isOverride: input.isOverride === true,
+        forceComplete: false,
+        edgeBaseUrl,
+      };
+      return finalize(request);
+    },
   });
 }
 
 export function bindSharedRefereeExecutionWriters(options = {}) {
+  const orgTok = options.organizerAccessToken || options.accessToken;
+  const refTok = options.refereeAccessToken;
+  const bound = {
+    initializeMatchExecution: createInitializeMatchExecutionWriter({
+      organizerAccessToken: orgTok,
+      edgeBaseUrl: options.edgeBaseUrl,
+      initializeExecution: options.initializeExecution,
+      getState: options.getState,
+    }),
+    bootstrapRefereeAssignment: createBootstrapRefereeAssignmentWriter({
+      organizerAccessToken: orgTok,
+      edgeBaseUrl: options.edgeBaseUrl,
+      createClient: options.createAssignmentClient,
+    }),
+  };
+  if (!refTok) {
+    return Object.freeze({
+      ...bound,
+      ORGANIZER_AS_REFEREE_IMPERSONATION: "DENY",
+      lifecycleBound: false,
+    });
+  }
   return Object.freeze({
-    initializeMatchExecution: createInitializeMatchExecutionWriter(options),
-    ...createRefereeV5LifecycleWriters(options),
+    ...bound,
+    ...createRefereeV5LifecycleWriters({
+      refereeAccessToken: refTok,
+      edgeBaseUrl: options.edgeBaseUrl,
+      applyCommand: options.applyCommand,
+      getState: options.getState,
+      finalize: options.finalize,
+    }),
+    ORGANIZER_AS_REFEREE_IMPERSONATION: "DENY",
+    lifecycleBound: true,
   });
 }
 
-export function evaluateExecutableRemoteBinding(writers = {}) {
-  const coverage = evaluateWriterCoverage(writers);
+export function evaluateExecutableRemoteBinding(writers = {}, options = {}) {
+  const coverage = evaluateWriterCoverage(writers, options);
   return Object.freeze({
     ok: coverage.ok,
     missing: coverage.missing || [],
     initializerBound: typeof writers.initializeMatchExecution === "function",
+    bootstrapBound: typeof writers.bootstrapRefereeAssignment === "function",
+    finalizeBound: typeof writers.finalizeMatchLive === "function",
     REMOTE_FIXTURE_PROVISION_READY: coverage.ok === true,
     INITIALIZER_AUTHORITY,
     INITIALIZER_PORT_NAME,
+    bindingMode: coverage.bindingMode,
   });
 }
 
-export { REFEREE_V5_ACTIONS, MATCH_EVENT_TYPE };
+export function evaluateExistingQaMutationPortsAbsentFromSetup(callLog = []) {
+  const hits = EXISTING_QA_MUTATION_PORTS_DENIED.filter((name) =>
+    (callLog || []).some((entry) => entry === name || entry?.port === name)
+  );
+  if (hits.length) {
+    return Object.freeze({
+      ok: false,
+      detail: `EXISTING_QA_IDENTITY_MODE mutation ports invoked: ${hits.join(",")}`,
+    });
+  }
+  return Object.freeze({ ok: true, detail: "existing-qa-no-identity-mutation" });
+}
+
+export {
+  REFEREE_V5_ACTIONS,
+  MATCH_EVENT_TYPE,
+  AUTH_CONTEXT_CLASS,
+  FIXTURE_BINDING_MODE,
+};

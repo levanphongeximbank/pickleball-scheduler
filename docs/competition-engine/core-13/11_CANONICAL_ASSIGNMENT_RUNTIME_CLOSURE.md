@@ -1,11 +1,12 @@
 # CORE-13 — Canonical Assignment Runtime Closure
 
-**Status:** Trusted-server execution boundary authored · Staging SQL PRECHECK/APPLY/VERIFY **PASS** · Staging Edge `competition-referee-assignment` **DEPLOYED** (`verify_jwt=true`) · disposable fixture provisioner **adopted PR #448 Shared Referee initializer** (`refereeV5EdgeInitializeExecution`) · HISTORICAL_BLOCKER=`INTERNAL_MATCH_LIVE_SHELL` **CLOSED_BY_PR448** · Team/Daily **DENIED** as INTERNAL execution authority · remote fixture provisioning **NOT RUN** · 29-case harness **hardened locally, not executed**
+**Status:** Trusted-server execution boundary authored · Staging SQL PRECHECK/APPLY/VERIFY **PASS** · Staging Edge `competition-referee-assignment` **DEPLOYED** (`verify_jwt=true`) · disposable fixture provisioner **adopted PR #448 Shared Referee initializer** (`refereeV5EdgeInitializeExecution`) · HISTORICAL_BLOCKER=`INTERNAL_MATCH_LIVE_SHELL` **CLOSED_BY_PR448** · Team/Daily **DENIED** as INTERNAL execution authority · Organizer vs Referee auth contexts **separated** · EXISTING_QA_IDENTITY_MODE **bound in source** · remote CLI execution path **implemented, not run against Staging** · remote fixture provisioning **NOT RUN** · 29-case harness **hardened locally, not executed**
 **Package:** `docs/v5/migrations/core13-canonical-assignment-runtime-closure-01/`  
 **Edge:** `supabase/functions/competition-referee-assignment/`  
 **Harness:** `scripts/core13/core13-trusted-server-staging-acceptance.mjs` (proofs: `scripts/core13/core13-staging-acceptance-proofs.mjs`)
 **Fixture provisioner:** `scripts/core13/core13-staging-fixture-provisioner.mjs` (receipt: `scripts/core13/core13-staging-fixture-receipt.mjs`)
-**Date:** 2026-08-17
+**QA auth helper:** `scripts/core13/core13-staging-qa-auth.mjs`
+**Date:** 2026-08-18
 
 ---
 
@@ -86,6 +87,19 @@ This is trustworthy because:
 | Daily Play (referee enabled) | `competition-referee-assignment` |
 
 Interim blob assignment is **projection-only**, not authority.
+
+## Remote fixture execution bindings (source-only)
+
+EXISTING_QA_IDENTITY_MODE reuses established Staging QA identities. It does **not** create tenants, Auth users, or identity mutations.
+
+| Token class | Allowed fixture commands |
+|-------------|--------------------------|
+| ORGANIZER | Tournament writers, `initializeMatchExecution`, CORE-13 `bootstrapRefereeAssignment` |
+| REFEREE | Referee V5 get-state / START / SCORE / PAUSE / DECLARE_FORFEIT / FINALIZE **after** an active CORE-13 assignment |
+
+Completed MATCH evidence is `refereeV5EdgeFinalize` after a legal engine sequence (`START_MATCH` then `DECLARE_FORFEIT`). `forceComplete=false`. Tournament status is not MATCH completed proof.
+
+Live-backed fixtures retain `match_live_states` / `match_sync_mutations` / initializer idempotency. `RETAINED_FIXTURE_CLEANUP_GAP=SEPARATE_WORKSTREAM`.
 
 ## Execution gate
 

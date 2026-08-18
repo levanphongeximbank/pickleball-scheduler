@@ -17,17 +17,29 @@ import { fileURLToPath } from "node:url";
 
 import { CORE13_FIXTURE_NAMESPACE } from "./core13-staging-acceptance-proofs.mjs";
 import {
-  bindSharedRefereeExecutionWriters,
+  evaluateExistingQaIdentitySet,
+  evaluateOrganizerAuthContext,
+  evaluateRefereeAuthContext,
+  evaluateVenueAsTenantFallbackDenied,
+  FIXTURE_BINDING_MODE,
+  sanitizeAuthContext,
+} from "./core13-staging-qa-auth.mjs";
+import {
+  BOOTSTRAP_ASSIGNMENT_PURPOSE,
   CANONICAL_WRITER_CATALOG,
   evaluateDailyWriterDeniedForInternal,
   evaluateExecutableRemoteBinding,
+  evaluateExistingQaMutationPortsAbsentFromSetup,
   evaluateForbiddenCallerAuthority,
   evaluateInternalMatchWriterArchitecture,
   evaluateTeamWriterDeniedForInternal,
   evaluateWriterCoverage,
+  EXISTING_QA_MUTATION_PORTS_DENIED,
   HONEST_NOT_CONFIGURED,
   INITIALIZER_AUTHORITY,
   INITIALIZER_PORT_NAME,
+  NON_CANONICAL_ABSENT_UUID,
+  NON_CANONICAL_EXPECTED_ABSENT,
   REQUIRED_WRITER_PORTS,
 } from "./core13-staging-fixture-writers.mjs";
 import {
@@ -58,8 +70,37 @@ export function readOrganizerAccessToken(envMap = {}) {
   ).trim();
 }
 
+export function readRefereeAccessToken(envMap = {}) {
+  return String(envMap.STAGING_REFEREE_ACCESS_TOKEN || "").trim();
+}
+
 export function readStagingEdgeBaseUrl(envMap = {}) {
   return String(envMap.STAGING_EDGE_BASE_URL || envMap.STAGING_SUPABASE_URL || "").trim();
+}
+
+export function resolveProvisionAuthContexts(envMap = {}, options = {}) {
+  if (options.organizerContext && options.refereeContext) {
+    const organizer = evaluateOrganizerAuthContext(options.organizerContext);
+    if (!organizer.ok) return organizer;
+    const referee = evaluateRefereeAuthContext(options.refereeContext, options.organizerContext);
+    if (!referee.ok) return referee;
+    return proof(true, "auth-contexts", {
+      organizerContext: options.organizerContext,
+      refereeContext: options.refereeContext,
+    });
+  }
+  const organizerToken = readOrganizerAccessToken(envMap);
+  const refereeToken = readRefereeAccessToken(envMap);
+  if (!organizerToken) {
+    return proof(false, "missing organizer context");
+  }
+  if (!refereeToken) {
+    return proof(false, "MISSING_EXISTING_QA_REFEREE_CREDENTIAL");
+  }
+  return proof(false, "missing organizer context", {
+    detail:
+      "env tokens are not sufficient without resolved organizerContext and refereeContext user/tenant/role",
+  });
 }
 
 export function evaluateRemoteProvisionGate(envMap = {}, options = {}) {
@@ -80,21 +121,22 @@ export function evaluateRemoteProvisionGate(envMap = {}, options = {}) {
   if (/expuvcohlcjzvrrauvud/i.test(url)) {
     return proof(false, "Production project denied");
   }
-  const accessToken = readOrganizerAccessToken(envMap);
-  if (!accessToken) {
-    return proof(false, "authenticated organizer token required", {
-      REMOTE_FIXTURE_PROVISION_READY: false,
-    });
-  }
   const edgeBaseUrl = readStagingEdgeBaseUrl(envMap);
   if (!edgeBaseUrl) {
     return proof(false, "Staging Edge base URL required", {
       REMOTE_FIXTURE_PROVISION_READY: false,
     });
   }
-  const executionWriters = bindSharedRefereeExecutionWriters({ accessToken, edgeBaseUrl });
-  const writers = { ...executionWriters, ...(options.writers || {}) };
-  const binding = evaluateExecutableRemoteBinding(writers);
+  const auth = resolveProvisionAuthContexts(envMap, options);
+  if (!auth.ok) {
+    return proof(false, auth.detail, {
+      REMOTE_FIXTURE_PROVISION_READY: false,
+    });
+  }
+  const writers = options.writers || {};
+  const binding = evaluateExecutableRemoteBinding(writers, {
+    bindingMode: FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY,
+  });
   if (!binding.ok) {
     return proof(false, `missing canonical writer ports: ${(binding.missing || []).join(",")}`, {
       verdict: "BLOCKED_CANONICAL_FIXTURE_WRITER_GAP",
@@ -109,6 +151,9 @@ export function evaluateRemoteProvisionGate(envMap = {}, options = {}) {
     REMOTE_FIXTURE_PROVISION_READY: true,
     REMOTE_FIXTURE_PROVISION_EXECUTABLE_BINDING: true,
     architecture: evaluateInternalMatchWriterArchitecture(),
+    identityMode: FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY,
+    organizerContext: sanitizeAuthContext(auth.organizerContext),
+    refereeContext: sanitizeAuthContext(auth.refereeContext),
   });
 }
 
@@ -152,10 +197,13 @@ export function planFixtureProvision(options = {}) {
     ...HONEST_NOT_CONFIGURED,
     steps: coverage.ok
       ? [
+          "resolveExistingTenantFixture",
+          "resolveQaIdentitySet",
           "createCanonicalMatchIdentity",
           "initializeMatchExecution",
+          "bootstrapRefereeAssignment",
           "refereeV5LifecycleCommands",
-          "completeIsolatedTournament",
+          "finalizeMatchLive",
         ]
       : [],
     missing: coverage.missing,
@@ -181,7 +229,16 @@ function recordPath(paths, key, step) {
   paths[key].push(step);
 }
 
-async function applyLiveLifecycle({ writers, tournamentId, matchId, runId, steps, paths, key }) {
+async function applyLiveLifecycle({
+  writers,
+  tournamentId,
+  matchId,
+  runId,
+  refereeId,
+  steps,
+  paths,
+  key,
+}) {
   const initInput = {
     tournamentId,
     matchId,
@@ -193,18 +250,89 @@ async function applyLiveLifecycle({ writers, tournamentId, matchId, runId, steps
   const initialized = await writers.initializeMatchExecution(initInput);
   if (initialized && initialized.ok === false) return initialized;
   recordPath(paths, key, "initializeMatchExecution");
+  const bootstrap = await writers.bootstrapRefereeAssignment({
+    tournamentId,
+    matchId,
+    refereeId,
+    runId,
+    lifecycleState: "PRE_MATCH",
+  });
+  if (bootstrap && bootstrap.ok === false) return bootstrap;
+  recordPath(paths, key, "bootstrapRefereeAssignment");
+  const assignmentProof = {
+    assignmentId: bootstrap?.assignmentId || bootstrap?.id,
+    purpose: BOOTSTRAP_ASSIGNMENT_PURPOSE,
+    matchId,
+    active: true,
+  };
+  if (!assignmentProof.assignmentId) {
+    return proof(false, "bootstrap assignment did not return assignmentId");
+  }
+  const commandInput = {
+    tournamentId,
+    matchId,
+    runId,
+    refereeId,
+    bootstrapAssignmentProof: assignmentProof,
+  };
   for (const step of steps) {
-    const result = await writers[step]({ tournamentId, matchId, runId });
+    const result = await writers[step](commandInput);
     if (result && result.ok === false) return result;
     recordPath(paths, key, step);
   }
-  return { ok: true };
+  return { ok: true, assignmentProof };
+}
+
+async function resolveExistingQaFixtures(writers, callLog) {
+  for (const denied of EXISTING_QA_MUTATION_PORTS_DENIED) {
+    if (typeof writers[denied] === "function" && writers.__invokeIdentityMutation === true) {
+      callLog.push(denied);
+    }
+  }
+  const mutationCheck = evaluateExistingQaMutationPortsAbsentFromSetup(callLog);
+  if (!mutationCheck.ok) return mutationCheck;
+
+  const tenantA = entity(
+    await writers.resolveExistingTenantFixture({ scope: "TENANT_A", deriveTenantFromVenue: false })
+  );
+  callLog.push("resolveExistingTenantFixture");
+  const tenantB = entity(
+    await writers.resolveExistingTenantFixture({ scope: "TENANT_B", deriveTenantFromVenue: false })
+  );
+  callLog.push("resolveExistingTenantFixture");
+  const venueCheckA = evaluateVenueAsTenantFallbackDenied(tenantA);
+  const venueCheckB = evaluateVenueAsTenantFallbackDenied(tenantB);
+  if (!venueCheckA.ok) return venueCheckA;
+  if (!venueCheckB.ok) return venueCheckB;
+  if (!tenantA.id || !tenantB.id || tenantA.id === tenantB.id) {
+    return proof(false, "TENANT_A and TENANT_B must be distinct canonical tenants");
+  }
+  const identities = await writers.resolveQaIdentitySet({
+    tenantA: tenantA.id,
+    tenantB: tenantB.id,
+  });
+  callLog.push("resolveQaIdentitySet");
+  if (identities && identities.ok === false) return identities;
+  const set = evaluateExistingQaIdentitySet({
+    organizerA: identities.organizerA || identities.userA,
+    organizerB: identities.organizerB || identities.userB,
+    refereeA: {
+      ...(identities.refereeA || {}),
+      credentialPresent:
+        identities.refereeA?.credentialPresent !== false &&
+        Boolean(identities.refereeA?.accessToken || identities.refereeA?.credentialPresent),
+    },
+    replacementReferee: identities.replacementReferee,
+    inactiveReferee: identities.inactiveReferee,
+  });
+  if (!set.ok) return set;
+  return proof(true, "existing-qa-resolved", { tenantA, tenantB, identities });
 }
 
 /**
- * Local/stub materialization for receipt-shape proofs.
- * Refuses Team/Daily as INTERNAL execution authority.
- * Live lifecycle uses initialize-execution then Referee V5 commands.
+ * Existing-QA materialization. Refuses Team/Daily as INTERNAL execution authority.
+ * Live lifecycle: identity → initialize [ORGANIZER] → CORE-13 bootstrap [ORGANIZER]
+ * → Referee V5 commands [REFEREE].
  */
 export async function materializeReceiptFromWriters(options = {}) {
   if (options.allowTeamAsInternal === true || options.writers?.__allowTeamAsInternal === true) {
@@ -228,38 +356,57 @@ export async function materializeReceiptFromWriters(options = {}) {
     });
   }
 
+  const identityMode = options.identityMode || FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY;
+  if (identityMode !== FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY) {
+    return proof(false, "DISPOSABLE_IDENTITY_PROVISION_MODE not authorized");
+  }
+
   const identityOnly =
     options.requireLiveLifecycle === false || options.requireInternalLiveShell === false;
-  const ports = evaluateWriterCoverage(options.writers || {});
+  const ports = evaluateWriterCoverage(options.writers || {}, { bindingMode: identityMode });
   if (!ports.ok) return ports;
   if (options.allowExecute !== true) {
     return proof(false, "materialize requires explicit allowExecute");
   }
 
   const writers = options.writers;
+  const callLog = [];
+  const wrap =
+    (name, fn) =>
+    async (...args) => {
+      callLog.push(name);
+      return fn(...args);
+    };
+  const tracked = {};
+  for (const [name, fn] of Object.entries(writers)) {
+    tracked[name] = typeof fn === "function" ? wrap(name, fn) : fn;
+  }
+
+  const resolved = await resolveExistingQaFixtures(tracked, []);
+  if (!resolved.ok) return resolved;
+  const { tenantA, tenantB, identities } = resolved;
+  const userA = identities.organizerA || identities.userA;
+  const userB = identities.organizerB || identities.userB;
+  const refereeA = identities.refereeA;
+  const replacementReferee = identities.replacementReferee;
+  const inactiveReferee = identities.inactiveReferee;
+  const nonCanonicalSubject = {
+    id: identities.nonCanonicalSubject?.id || NON_CANONICAL_ABSENT_UUID,
+    classification: NON_CANONICAL_EXPECTED_ABSENT,
+    role: "ABSENT",
+    status: "ABSENT",
+  };
+
+  const mutationHits = callLog.filter((name) => EXISTING_QA_MUTATION_PORTS_DENIED.includes(name));
+  if (mutationHits.length) {
+    return proof(false, `EXISTING_QA_IDENTITY_MODE mutation ports invoked: ${mutationHits.join(",")}`);
+  }
+
   const runId = String(options.runId || `run-${Date.now()}`);
   const marker = `${CORE13_FIXTURE_NAMESPACE} ${runId}`;
 
-  const tenantA = entity(await writers.createTenant({ name: `${marker} Tenant A`, disposable: true }));
-  const tenantB = entity(await writers.createTenant({ name: `${marker} Tenant B`, disposable: true }));
-  const userA = entity(await writers.createAuthUser({ tenantId: tenantA.id, role: "TENANT_OWNER" }));
-  const userB = entity(await writers.createAuthUser({ tenantId: tenantB.id, role: "TENANT_OWNER" }));
-  const refereeA = entity(
-    await writers.createAuthUser({ tenantId: tenantA.id, role: "REFEREE", status: "ACTIVE" })
-  );
-  const replacementReferee = entity(
-    await writers.createAuthUser({ tenantId: tenantA.id, role: "REFEREE", status: "ACTIVE" })
-  );
-  const inactiveReferee = entity(
-    await writers.createAuthUser({ tenantId: tenantA.id, role: "REFEREE", status: "INACTIVE" })
-  );
-  await writers.updateIdentitySubject({ id: inactiveReferee.id, status: "INACTIVE" });
-  const nonCanonicalSubject = entity(
-    await writers.createAuthUser({ tenantId: tenantA.id, role: "PLAYER", status: "ACTIVE" })
-  );
-
   const primary = entity(
-    await writers.createCanonicalTournament({
+    await tracked.createCanonicalTournament({
       tenantId: tenantA.id,
       name: `${marker} primary`,
       mode: "INTERNAL",
@@ -267,38 +414,38 @@ export async function materializeReceiptFromWriters(options = {}) {
     })
   );
   const crossTournament = entity(
-    await writers.createCanonicalTournament({
+    await tracked.createCanonicalTournament({
       tenantId: tenantA.id,
       name: `${marker} cross`,
       mode: "INTERNAL",
     })
   );
   const completedLifecycle = entity(
-    await writers.createCanonicalTournament({
+    await tracked.createCanonicalTournament({
       tenantId: tenantA.id,
       name: `${marker} completed-only`,
       mode: "INTERNAL",
-      terminal: true,
+      terminal: false,
     })
   );
   const dailyEnabled = entity(
-    await writers.createDailyPlayTournament({
+    await tracked.createDailyPlayTournament({
       tenantId: tenantA.id,
       name: `${marker} daily-on`,
       refereeFeatureEnabled: true,
     })
   );
   const dailyDisabled = entity(
-    await writers.createDailyPlayTournament({
+    await tracked.createDailyPlayTournament({
       tenantId: tenantA.id,
       name: `${marker} daily-off`,
       refereeFeatureEnabled: false,
     })
   );
-  await writers.setCourtSchedule({ tournamentId: primary.id, tenantId: tenantA.id, marker });
+  await tracked.setCourtSchedule({ tournamentId: primary.id, tenantId: tenantA.id, marker });
 
   const mkMatch = async (tournamentId) =>
-    entity(await writers.createInternalMatch({ tournamentId, mode: "INTERNAL" }));
+    entity(await tracked.createInternalMatch({ tournamentId, mode: "INTERNAL" }));
 
   const materializationPaths = {
     preMatch: ["createInternalMatch"],
@@ -317,67 +464,114 @@ export async function materializeReceiptFromWriters(options = {}) {
   const locked = await mkMatch(primary.id);
   const completed = await mkMatch(completedLifecycle.id);
 
+  const bootstrapAssignments = [];
   if (!identityOnly) {
     const inProgressLive = await applyLiveLifecycle({
-      writers,
+      writers: tracked,
       tournamentId: primary.id,
       matchId: inProgress.id,
       runId,
+      refereeId: refereeA.userId || refereeA.id,
       steps: ["startMatchLive"],
       paths: materializationPaths,
       key: "inProgress",
     });
     if (inProgressLive.ok === false) return inProgressLive;
+    bootstrapAssignments.push({
+      ...inProgressLive.assignmentProof,
+      fixture: "inProgress",
+    });
     const scoringLive = await applyLiveLifecycle({
-      writers,
+      writers: tracked,
       tournamentId: primary.id,
       matchId: scoringActive.id,
       runId,
+      refereeId: refereeA.userId || refereeA.id,
       steps: ["startMatchLive", "recordScoreEvent"],
       paths: materializationPaths,
       key: "scoringActive",
     });
     if (scoringLive.ok === false) return scoringLive;
+    bootstrapAssignments.push({
+      ...scoringLive.assignmentProof,
+      fixture: "scoringActive",
+    });
     const lockedLive = await applyLiveLifecycle({
-      writers,
+      writers: tracked,
       tournamentId: primary.id,
       matchId: locked.id,
       runId,
+      refereeId: refereeA.userId || refereeA.id,
       steps: ["startMatchLive", "pauseMatchLive"],
       paths: materializationPaths,
       key: "locked",
     });
     if (lockedLive.ok === false) return lockedLive;
+    bootstrapAssignments.push({
+      ...lockedLive.assignmentProof,
+      fixture: "locked",
+    });
+    const completedLive = await applyLiveLifecycle({
+      writers: tracked,
+      tournamentId: completedLifecycle.id,
+      matchId: completed.id,
+      runId,
+      refereeId: refereeA.userId || refereeA.id,
+      steps: ["startMatchLive", "declareForfeit", "finalizeMatchLive"],
+      paths: materializationPaths,
+      key: "completed",
+    });
+    if (completedLive.ok === false) return completedLive;
+    bootstrapAssignments.push({
+      ...completedLive.assignmentProof,
+      fixture: "completed",
+    });
   }
 
-  await writers.completeIsolatedTournament({
-    tournamentId: completedLifecycle.id,
-    matchId: completed.id,
-  });
-  recordPath(materializationPaths, "completed", "completeIsolatedTournament");
   if (options.completePrimaryTournament === true) {
     return proof(false, "PRIMARY_TOURNAMENT_REMAINS_NON_TERMINAL violated");
   }
+  if (typeof tracked.completeIsolatedTournament === "function" && options.allowTournamentCompletedAsMatchProof === true) {
+    return proof(false, "completeIsolatedTournament is not MATCH completed proof");
+  }
 
   const dailyEnabledMatch = entity(
-    await writers.createDailyPlayMatches({ tournamentId: dailyEnabled.id, enabled: true })
+    await tracked.createDailyPlayMatches({ tournamentId: dailyEnabled.id, enabled: true })
   );
   const dailyDisabledMatch = entity(
-    await writers.createDailyPlayMatches({ tournamentId: dailyDisabled.id, enabled: false })
+    await tracked.createDailyPlayMatches({ tournamentId: dailyDisabled.id, enabled: false })
   );
 
   const receipt = stripReceiptSecrets(
     createValidFixtureReceipt({
       runId,
+      identityMode: FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY,
       tenantA: { id: tenantA.id, name: `${marker} Tenant A`, marker: CORE13_FIXTURE_NAMESPACE },
       tenantB: { id: tenantB.id, name: `${marker} Tenant B`, marker: CORE13_FIXTURE_NAMESPACE },
       users: {
-        userA: { id: userA.id, role: "TENANT_OWNER" },
-        userB: { id: userB.id, role: "TENANT_OWNER" },
-        refereeA: { id: refereeA.id, role: "REFEREE", status: "ACTIVE" },
-        replacementReferee: { id: replacementReferee.id, role: "REFEREE", status: "ACTIVE" },
-        inactiveReferee: { id: inactiveReferee.id, role: "REFEREE", status: "INACTIVE" },
-        nonCanonicalSubject: { id: nonCanonicalSubject.id, role: "PLAYER", status: "ACTIVE" },
+        userA: { id: userA.userId || userA.id, role: userA.role || "TENANT_OWNER" },
+        userB: { id: userB.userId || userB.id, role: userB.role || "TENANT_OWNER" },
+        refereeA: {
+          id: refereeA.userId || refereeA.id,
+          role: "REFEREE",
+          status: "ACTIVE",
+        },
+        replacementReferee: {
+          id: replacementReferee.userId || replacementReferee.id,
+          role: "REFEREE",
+          status: "ACTIVE",
+        },
+        inactiveReferee: {
+          id: inactiveReferee.userId || inactiveReferee.id,
+          role: "REFEREE",
+          status: "INACTIVE",
+        },
+        nonCanonicalSubject: {
+          id: nonCanonicalSubject.id,
+          role: "ABSENT",
+          status: "ABSENT",
+          classification: NON_CANONICAL_EXPECTED_ABSENT,
+        },
       },
       tournaments: {
         primary: {
@@ -410,7 +604,7 @@ export async function materializeReceiptFromWriters(options = {}) {
           tenantId: tenantA.id,
           mode: "INTERNAL",
           name: `${marker} completed-only`,
-          terminal: true,
+          terminal: false,
         },
       },
       matches: {
@@ -441,46 +635,24 @@ export async function materializeReceiptFromWriters(options = {}) {
           lifecycle: "PRE_MATCH",
         },
       },
-      cleanupPlan: buildTypedCleanupPlan({
-        tenantA,
-        tenantB,
-        users: {
-          userA,
-          userB,
-          refereeA,
-          replacementReferee,
-          inactiveReferee,
-          nonCanonicalSubject,
-        },
-        tournaments: {
-          primary,
-          crossTournament,
-          dailyEnabled,
-          dailyDisabled,
-          completedLifecycle,
-        },
-        matches: {
-          preMatch,
-          overlapA,
-          overlapB,
-          nonOverlap,
-          inProgress,
-          scoringActive,
-          locked,
-          completed,
-          dailyEnabled: dailyEnabledMatch,
-          dailyDisabled: dailyDisabledMatch,
-        },
-      }).steps
-        ? {
-            unknownBaselineAutoClean: false,
-            receiptScopedOnly: true,
-            typedByResource: true,
-            genericUnassignOverAllReceiptIds: false,
-            immutableAuditDelete: false,
-            immutableIdempotencyDelete: false,
-          }
-        : undefined,
+      assignments: bootstrapAssignments.map((row) => ({
+        id: row.assignmentId,
+        matchId: row.matchId,
+        purpose: BOOTSTRAP_ASSIGNMENT_PURPOSE,
+        fixture: row.fixture,
+        active: true,
+      })),
+      bootstrapAssignments,
+      cleanupPlan: {
+        unknownBaselineAutoClean: false,
+        receiptScopedOnly: true,
+        typedByResource: true,
+        genericUnassignOverAllReceiptIds: false,
+        immutableAuditDelete: false,
+        immutableIdempotencyDelete: false,
+        existingQaAuthUsersRetained: true,
+        nonCanonicalExpectedAbsent: true,
+      },
     })
   );
   const valid = evaluateFixtureReceipt(receipt);
@@ -499,8 +671,13 @@ export async function materializeReceiptFromWriters(options = {}) {
     CANONICAL_AUTHORITY: "refereeV5EdgeInitializeExecution",
     liveLifecycleReady: identityOnly !== true,
     materializationPaths,
-    COMPLETED_MATERIALIZATION_PATH: "completeIsolatedTournament",
-    COMPLETED_MATCH_EXECUTION_GAP: "TOURNAMENT_STATUS_ONLY",
+    COMPLETED_MATERIALIZATION_PATH:
+      "createInternalMatch>initializeMatchExecution>bootstrapRefereeAssignment>startMatchLive>declareForfeit>finalizeMatchLive",
+    COMPLETED_MATCH_EXECUTION: "CANONICAL_REFEREE_V5_FINALIZE",
+    FAKE_COMPLETED_STATUS: "DENY",
+    FORCE_COMPLETE_USED_IN_SOURCE_PLAN: "NO",
+    identityMode,
+    callLog,
   });
 }
 
@@ -572,6 +749,10 @@ export async function teardownFromReceipt(options = {}) {
     }
     if (step.resource === "authUsers") {
       for (const id of step.ids) {
+        if (step.retain === true || step.command === "retain") {
+          retained.push({ resource: "authUsers", id, reason: "existing QA identity retained" });
+          continue;
+        }
         if (typeof writers.deleteAuthUser !== "function") {
           retained.push({ resource: "authUsers", id, reason: "writer missing" });
           continue;
@@ -643,7 +824,11 @@ export async function runFixtureProvisionerCli(argv = [], envMap = {}, options =
     });
   }
   if (mode === "provision" || mode === "teardown") {
-    const gate = evaluateRemoteProvisionGate(envMap, { writers: options.writers });
+    const gate = evaluateRemoteProvisionGate(envMap, {
+      writers: options.writers,
+      organizerContext: options.organizerContext,
+      refereeContext: options.refereeContext,
+    });
     if (!gate.ok) {
       return proof(false, gate.detail, {
         verdict: gate.verdict || "REMOTE_FIXTURE_PROVISION_DENIED",
@@ -659,9 +844,39 @@ export async function runFixtureProvisionerCli(argv = [], envMap = {}, options =
         REMOTE_FIXTURE_PROVISION_READY: gate.REMOTE_FIXTURE_PROVISION_READY === true,
       });
     }
-    return proof(false, "remote provision execution is Owner-GO only and was not run", {
-      verdict: "REMOTE_FIXTURE_PROVISION_NOT_EXECUTED",
-      executed: false,
+    if (mode === "teardown") {
+      return proof(false, "remote teardown execution is Owner-GO only and was not run", {
+        verdict: "REMOTE_FIXTURE_PROVISION_NOT_EXECUTED",
+        executed: false,
+      });
+    }
+    const materialized = await materializeReceiptFromWriters({
+      writers: options.writers,
+      allowExecute: true,
+      runId: options.runId || `run-cli-${Date.now()}`,
+      identityMode: FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY,
+      organizerContext: options.organizerContext,
+      refereeContext: options.refereeContext,
+    });
+    if (!materialized.ok) {
+      return proof(false, materialized.detail, {
+        verdict: materialized.verdict || "REMOTE_FIXTURE_PROVISION_FAILED",
+        executed: false,
+        missing: materialized.missing,
+      });
+    }
+    const persisted = persistReceiptArtifact(materialized.receipt, options.rootDir || process.cwd());
+    if (!persisted.ok) return persisted;
+    return proof(true, persisted.filePath, {
+      verdict: "REMOTE_FIXTURE_PROVISION_EXECUTED",
+      executed: true,
+      receiptPath: persisted.filePath,
+      receipt: materialized.receipt,
+      runId: materialized.receipt.runId,
+      PRIMARY_TOURNAMENT_REMAINS_NON_TERMINAL: materialized.PRIMARY_TOURNAMENT_REMAINS_NON_TERMINAL,
+      COMPLETED_FIXTURE_ISOLATED: materialized.COMPLETED_FIXTURE_ISOLATED,
+      materializationPaths: materialized.materializationPaths,
+      identityMode: FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY,
     });
   }
   return proof(false, `unknown mode ${mode}`);

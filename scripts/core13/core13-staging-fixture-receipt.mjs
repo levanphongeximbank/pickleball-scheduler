@@ -123,6 +123,7 @@ export function listReceiptOwnedIds(receipt = {}) {
   for (const key of REQUIRED_USER_KEYS) push(receipt.users?.[key]);
   for (const key of REQUIRED_TOURNAMENT_KEYS) push(receipt.tournaments?.[key]);
   for (const key of REQUIRED_MATCH_KEYS) push(receipt.matches?.[key]);
+  for (const row of receipt.assignments || []) push(row);
   return ids;
 }
 
@@ -266,6 +267,8 @@ export function createValidFixtureReceipt(overrides = {}) {
       immutableAuditDelete: false,
       immutableIdempotencyDelete: false,
     },
+    identityMode: "EXISTING_QA_IDENTITY_MODE",
+    assignments: [],
   };
   return stripReceiptSecrets({ ...base, ...overrides, provenance: { ...base.provenance, ...(overrides.provenance || {}) } });
 }
@@ -481,6 +484,15 @@ export function evaluateReceiptRemoteReconciliation(receipt, remote = {}) {
   for (const key of identityKeys) {
     const expected = receipt.users[key];
     const evidence = remote.identities?.[key];
+    const absentNonCanonical =
+      key === "nonCanonicalSubject" &&
+      String(expected?.classification || "") === "NON_CANONICAL_EXPECTED_ABSENT";
+    if (absentNonCanonical) {
+      if (evidence?.exists === true && String(evidence.role || "").toUpperCase() === "REFEREE") {
+        return proof(false, "non-canonical subject must not be REFEREE");
+      }
+      continue;
+    }
     if (!evidence || evidence.exists !== true) {
       return proof(false, `remote identity evidence missing for ${key}`);
     }
@@ -541,9 +553,22 @@ export function mapAuthoritativeLifecycle({ liveRow = null, tournamentStatus = "
 }
 
 export function classifyReceiptOwnedResources(receipt = {}) {
+  const nonCanonicalId = entityId(receipt.users?.nonCanonicalSubject);
+  const existingQa = String(receipt.identityMode || "") === "EXISTING_QA_IDENTITY_MODE";
+  const authUsers = existingQa
+    ? []
+    : REQUIRED_USER_KEYS.map((key) => entityId(receipt.users?.[key]))
+        .filter(Boolean)
+        .filter((id) => {
+          const classification = receipt.users?.nonCanonicalSubject?.classification;
+          if (classification === "NON_CANONICAL_EXPECTED_ABSENT" && id === nonCanonicalId) {
+            return false;
+          }
+          return true;
+        });
   return Object.freeze({
     tenants: [entityId(receipt.tenantA), entityId(receipt.tenantB)].filter(Boolean),
-    authUsers: REQUIRED_USER_KEYS.map((key) => entityId(receipt.users?.[key])).filter(Boolean),
+    authUsers,
     tournaments: REQUIRED_TOURNAMENT_KEYS.map((key) => entityId(receipt.tournaments?.[key])).filter(
       Boolean
     ),
@@ -558,7 +583,12 @@ export function classifyReceiptOwnedResources(receipt = {}) {
 }
 
 export const RETAINED_FIXTURE_CLEANUP_GAP = "SEPARATE_WORKSTREAM";
-export const LIVE_BACKED_LIFECYCLES = Object.freeze(["IN_PROGRESS", "SCORING_ACTIVE", "LOCKED"]);
+export const LIVE_BACKED_LIFECYCLES = Object.freeze([
+  "IN_PROGRESS",
+  "SCORING_ACTIVE",
+  "LOCKED",
+  "COMPLETED",
+]);
 
 export function listLiveBackedMatchIds(receipt = {}) {
   return REQUIRED_MATCH_KEYS.map((key) => receipt.matches?.[key])
@@ -591,9 +621,15 @@ export function buildTypedCleanupPlan(receipt = {}) {
       },
       {
         resource: "authUsers",
-        command: "deleteAuthUser",
+        command: String(receipt.identityMode || "") === "EXISTING_QA_IDENTITY_MODE"
+          ? "retain"
+          : "deleteAuthUser",
         ids: resources.authUsers,
-        policy: "authorized test Identity Admin delete of provisioner-created users",
+        policy:
+          String(receipt.identityMode || "") === "EXISTING_QA_IDENTITY_MODE"
+            ? "existing QA identities are not disposable and must not be deleted"
+            : "authorized test Identity Admin delete of provisioner-created users",
+        retain: String(receipt.identityMode || "") === "EXISTING_QA_IDENTITY_MODE",
       },
       {
         resource: "matches",
@@ -698,6 +734,30 @@ export function hydrateHarnessFixtures(receipt) {
     matchLocked: entityId(receipt.matches.locked),
     matchCompleted: entityId(receipt.matches.completed),
     runId: receipt.runId,
+  });
+}
+
+export function evaluateLifecycleAssignmentBaselines(receipt = {}) {
+  const assignments = Array.isArray(receipt.assignments) ? receipt.assignments : [];
+  const byMatch = (matchId) =>
+    assignments.filter(
+      (row) => String(row.matchId || "") === String(matchId || "") && row.active !== false
+    );
+  const matchA = entityId(receipt.matches?.preMatch);
+  const matchInProgress = entityId(receipt.matches?.inProgress);
+  const matchScoring = entityId(receipt.matches?.scoringActive);
+  return Object.freeze({
+    ok:
+      byMatch(matchA).length === 0 &&
+      byMatch(matchInProgress).length === 1 &&
+      byMatch(matchScoring).length === 1,
+    primaryMatchActiveAssignments: byMatch(matchA).length,
+    matchInProgressActiveAssignments: byMatch(matchInProgress).length,
+    matchScoringActiveAssignments: byMatch(matchScoring).length,
+    PRIMARY_TOURNAMENT_REMAINS_NON_TERMINAL: receipt.tournaments?.primary?.terminal !== true,
+    COMPLETED_FIXTURE_ISOLATED:
+      String(receipt.matches?.completed?.tournamentId || "") ===
+      entityId(receipt.tournaments?.completedLifecycle),
   });
 }
 

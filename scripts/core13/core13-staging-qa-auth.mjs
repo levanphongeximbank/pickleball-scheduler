@@ -1,0 +1,212 @@
+/**
+ * CORE-13 Staging QA identity/auth resolution — test/acceptance tooling only.
+ *
+ * EXISTING_QA_IDENTITY_MODE. No Auth/Identity/Tenant mutation.
+ * No owner→referee fallback. No hardcoded passwords. No JWT minting.
+ * Tokens are never logged or written to receipts.
+ */
+
+export const FIXTURE_BINDING_MODE = Object.freeze({
+  EXISTING_QA_IDENTITY: "EXISTING_QA_IDENTITY_MODE",
+  DISPOSABLE_IDENTITY_PROVISION: "DISPOSABLE_IDENTITY_PROVISION_MODE",
+});
+
+export const AUTH_CONTEXT_CLASS = Object.freeze({
+  ORGANIZER: "ORGANIZER",
+  REFEREE: "REFEREE",
+});
+
+const EXPLICIT_CREDENTIAL_KEYS = Object.freeze({
+  organizerAEmail: "STAGING_OWNER_A_EMAIL",
+  organizerACred: "STAGING_OWNER_A_PASSWORD",
+  organizerBEmail: "STAGING_OWNER_B_EMAIL",
+  organizerBCred: "STAGING_OWNER_B_PASSWORD",
+  refereeAEmail: "STAGING_REFEREE_EMAIL",
+  refereeACred: "STAGING_REFEREE_PASSWORD",
+  replacementRefereeEmail: "STAGING_REPLACEMENT_REFEREE_EMAIL",
+  inactiveRefereeEmail: "STAGING_INACTIVE_REFEREE_EMAIL",
+});
+
+function present(envMap, key) {
+  return Boolean(String(envMap?.[key] || "").trim());
+}
+
+function proof(ok, detail, extra = {}) {
+  return Object.freeze({ ok: ok === true, detail: String(detail || ""), ...extra });
+}
+
+export function readExplicitCredentialPresence(envMap = {}) {
+  return Object.freeze({
+    STAGING_OWNER_A_EMAIL: present(envMap, EXPLICIT_CREDENTIAL_KEYS.organizerAEmail),
+    STAGING_OWNER_A_PASSWORD: present(envMap, EXPLICIT_CREDENTIAL_KEYS.organizerACred),
+    STAGING_OWNER_B_EMAIL: present(envMap, EXPLICIT_CREDENTIAL_KEYS.organizerBEmail),
+    STAGING_OWNER_B_PASSWORD: present(envMap, EXPLICIT_CREDENTIAL_KEYS.organizerBCred),
+    STAGING_REFEREE_EMAIL: present(envMap, EXPLICIT_CREDENTIAL_KEYS.refereeAEmail),
+    STAGING_REFEREE_PASSWORD: present(envMap, EXPLICIT_CREDENTIAL_KEYS.refereeACred),
+    STAGING_REPLACEMENT_REFEREE_EMAIL: present(
+      envMap,
+      EXPLICIT_CREDENTIAL_KEYS.replacementRefereeEmail
+    ),
+    STAGING_INACTIVE_REFEREE_EMAIL: present(
+      envMap,
+      EXPLICIT_CREDENTIAL_KEYS.inactiveRefereeEmail
+    ),
+  });
+}
+
+export function evaluateOwnerToRefereeFallbackDenied(envMap = {}, options = {}) {
+  const refereeEmail = String(envMap.STAGING_REFEREE_EMAIL || "").trim().toLowerCase();
+  const ownerEmail = String(envMap.STAGING_OWNER_A_EMAIL || "").trim().toLowerCase();
+  if (options.fallbackFromOwner === true) {
+    return proof(false, "OWNER_TO_REFEREE_FALLBACK denied");
+  }
+  if (!refereeEmail) {
+    return proof(false, "MISSING_EXISTING_QA_REFEREE_CREDENTIAL");
+  }
+  if (ownerEmail && refereeEmail === ownerEmail) {
+    return proof(false, "OWNER_TO_REFEREE_FALLBACK denied");
+  }
+  return proof(true, "dedicated-referee-credential");
+}
+
+export function evaluateVenueAsTenantFallbackDenied(input = {}) {
+  if (input.deriveTenantFromVenue === true || input.venueAsTenant === true) {
+    return proof(false, "VENUE_AS_TENANT_FALLBACK denied");
+  }
+  const tenantId = String(input.tenantId || "").trim();
+  const venueId = String(input.venueId || "").trim();
+  if (!tenantId && venueId) {
+    return proof(false, "VENUE_AS_TENANT_FALLBACK denied");
+  }
+  return proof(true, "tenant-resolved-independently");
+}
+
+export function sanitizeAuthContext(context = {}) {
+  const rest = { ...(context || {}) };
+  delete rest.accessToken;
+  delete rest.password;
+  delete rest.refreshToken;
+  return Object.freeze({
+    userId: String(rest.userId || "").trim() || null,
+    tenantId: String(rest.tenantId || "").trim() || null,
+    venueId: String(rest.venueId || "").trim() || null,
+    role: String(rest.role || "").trim() || null,
+    status: String(rest.status || "").trim() || null,
+    class: rest.class || null,
+    emailPresent: Boolean(String(rest.email || "").trim()),
+  });
+}
+
+export function evaluateOrganizerAuthContext(context = {}) {
+  if (!context?.accessToken) {
+    return proof(false, "missing organizer context");
+  }
+  if (!context.userId || !context.tenantId) {
+    return proof(false, "organizer userId/tenantId required");
+  }
+  const venueCheck = evaluateVenueAsTenantFallbackDenied(context);
+  if (!venueCheck.ok) return venueCheck;
+  return proof(true, "organizer-context", { class: AUTH_CONTEXT_CLASS.ORGANIZER });
+}
+
+export function evaluateRefereeAuthContext(refereeContext = {}, organizerContext = {}) {
+  if (refereeContext?.fallbackFromOwner === true) {
+    return proof(false, "OWNER_TO_REFEREE_FALLBACK denied");
+  }
+  if (!refereeContext?.accessToken) {
+    return proof(false, "MISSING_EXISTING_QA_REFEREE_CREDENTIAL");
+  }
+  if (!refereeContext.userId || !refereeContext.tenantId) {
+    return proof(false, "referee userId/tenantId required");
+  }
+  const role = String(refereeContext.role || "").toUpperCase();
+  if (role !== "REFEREE") {
+    return proof(false, "ORGANIZER_AS_REFEREE_IMPERSONATION denied");
+  }
+  if (
+    organizerContext?.userId &&
+    String(refereeContext.userId) === String(organizerContext.userId)
+  ) {
+    return proof(false, "ORGANIZER_AS_REFEREE_IMPERSONATION denied");
+  }
+  const venueCheck = evaluateVenueAsTenantFallbackDenied(refereeContext);
+  if (!venueCheck.ok) return venueCheck;
+  return proof(true, "referee-context", { class: AUTH_CONTEXT_CLASS.REFEREE });
+}
+
+export function evaluateExistingQaIdentitySet(input = {}) {
+  const organizerA = input.organizerA || null;
+  const organizerB = input.organizerB || null;
+  const refereeA = input.refereeA || null;
+  const replacement = input.replacementReferee || null;
+  const inactive = input.inactiveReferee || null;
+  const missing = [];
+  if (!organizerA?.userId || !organizerA?.tenantId) missing.push("EXISTING_QA_ORGANIZER_A");
+  if (!organizerB?.userId || !organizerB?.tenantId) missing.push("EXISTING_QA_ORGANIZER_B");
+  if (organizerA?.tenantId && organizerB?.tenantId && organizerA.tenantId === organizerB.tenantId) {
+    return proof(false, "TENANT_A and TENANT_B must be distinct canonical tenants", {
+      EXISTING_QA_IDENTITY_SET_READY: false,
+    });
+  }
+  if (!refereeA?.userId || String(refereeA.role || "").toUpperCase() !== "REFEREE") {
+    missing.push("EXISTING_QA_REFEREE_A");
+  }
+  if (String(refereeA?.status || "").toUpperCase() !== "ACTIVE") {
+    missing.push("EXISTING_QA_REFEREE_A_ACTIVE");
+  }
+  if (!refereeA?.credentialPresent) missing.push("MISSING_EXISTING_QA_REFEREE_CREDENTIAL");
+  if (!replacement?.userId || String(replacement.role || "").toUpperCase() !== "REFEREE") {
+    missing.push("EXISTING_QA_REPLACEMENT_REFEREE");
+  }
+  if (String(replacement?.status || "").toUpperCase() !== "ACTIVE") {
+    missing.push("EXISTING_QA_REPLACEMENT_REFEREE_ACTIVE");
+  }
+  if (!inactive?.userId || String(inactive.role || "").toUpperCase() !== "REFEREE") {
+    missing.push("EXISTING_QA_INACTIVE_REFEREE");
+  }
+  if (String(inactive?.status || "").toUpperCase() !== "INACTIVE") {
+    missing.push("EXISTING_QA_INACTIVE_REFEREE_STATUS");
+  }
+  if (missing.length) {
+    return proof(false, missing.join(","), {
+      EXISTING_QA_IDENTITY_SET_READY: false,
+      missing,
+    });
+  }
+  const tok = refereeA.accessToken || (refereeA.credentialPresent ? "ok" : "");
+  const impersonation = evaluateRefereeAuthContext(
+    {
+      ...refereeA,
+      role: "REFEREE",
+      accessToken: tok,
+    },
+    organizerA
+  );
+  if (!impersonation.ok) return { ...impersonation, EXISTING_QA_IDENTITY_SET_READY: false };
+  return proof(true, "existing-qa-identity-set", { EXISTING_QA_IDENTITY_SET_READY: true });
+}
+
+export function evaluateExistingQaEnvReadiness(envMap = {}) {
+  const presence = readExplicitCredentialPresence(envMap);
+  const missing = [];
+  if (!presence.STAGING_OWNER_A_EMAIL || !presence.STAGING_OWNER_A_PASSWORD) {
+    missing.push("EXISTING_QA_ORGANIZER_A");
+  }
+  if (!presence.STAGING_OWNER_B_EMAIL || !presence.STAGING_OWNER_B_PASSWORD) {
+    missing.push("EXISTING_QA_ORGANIZER_B");
+  }
+  const referee = evaluateOwnerToRefereeFallbackDenied(envMap);
+  if (!referee.ok) missing.push(referee.detail);
+  if (!presence.STAGING_REFEREE_PASSWORD) missing.push("MISSING_EXISTING_QA_REFEREE_CREDENTIAL");
+  if (!presence.STAGING_INACTIVE_REFEREE_EMAIL) missing.push("EXISTING_QA_INACTIVE_REFEREE");
+  if (missing.length) {
+    return proof(false, missing.join(","), {
+      EXISTING_QA_IDENTITY_SET_READY: false,
+      presence,
+      missing,
+    });
+  }
+  return proof(true, "existing-qa-env-ready", { presence, EXISTING_QA_IDENTITY_SET_READY: true });
+}
+
+export { EXPLICIT_CREDENTIAL_KEYS };

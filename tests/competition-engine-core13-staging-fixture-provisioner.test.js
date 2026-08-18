@@ -28,26 +28,40 @@ import {
   STAGING_PROJECT_REF,
   stripReceiptSecrets,
   receiptContainsSecrets,
+  evaluateLifecycleAssignmentBaselines,
 } from "../scripts/core13/core13-staging-fixture-receipt.mjs";
 import {
   CANONICAL_WRITER_CATALOG,
+  createBootstrapRefereeAssignmentWriter,
   createInitializeMatchExecutionWriter,
+  createRefereeV5LifecycleWriters,
+  bindSharedRefereeExecutionWriters,
   evaluateDailyWriterDeniedForInternal,
   evaluateForbiddenCallerAuthority,
   evaluateInitializerClientFields,
   evaluateInternalMatchWriterArchitecture,
   evaluateTeamWriterDeniedForInternal,
   evaluateWriterCoverage,
+  FORBIDDEN_DIRECT_FINALIZATION_RPC,
   FORBIDDEN_DIRECT_INITIALIZER_RPC,
   HISTORICAL_BLOCKER_CLOSED_BY,
   HISTORICAL_INTERNAL_MATCH_LIVE_SHELL_GAP,
   INITIALIZER_AUTHORITY,
   INITIALIZER_PORT_NAME,
   REQUIRED_WRITER_PORTS,
+  EXISTING_QA_MUTATION_PORTS_DENIED,
   buildInitializeMatchExecutionRequest,
   buildNodeSafeWriterAudit,
   REFEREE_V5_ACTIONS,
 } from "../scripts/core13/core13-staging-fixture-writers.mjs";
+import {
+  evaluateExistingQaEnvReadiness,
+  evaluateExistingQaIdentitySet,
+  evaluateOwnerToRefereeFallbackDenied,
+  evaluateRefereeAuthContext,
+  evaluateVenueAsTenantFallbackDenied,
+  FIXTURE_BINDING_MODE,
+} from "../scripts/core13/core13-staging-qa-auth.mjs";
 import {
   evaluateRemoteProvisionGate,
   materializeReceiptFromWriters,
@@ -78,20 +92,77 @@ function nextUuid(seq) {
 }
 
 function createStubWriters() {
-  let seq = 1;
+  let seq = 20;
   const writers = {};
   for (const name of REQUIRED_WRITER_PORTS) {
-    writers[name] = async () => ({ id: nextUuid(seq++), ok: true });
+    writers[name] = async () => ({ id: nextUuid(seq++), ok: true, assignmentId: nextUuid(seq++) });
   }
+  writers.resolveExistingTenantFixture = async ({ scope } = {}) => ({
+    id: scope === "TENANT_B" ? "core13-qa-tenant-b" : "core13-qa-tenant-a",
+    tenantId: scope === "TENANT_B" ? "core13-qa-tenant-b" : "core13-qa-tenant-a",
+    ok: true,
+  });
+  writers.resolveQaIdentitySet = async () => ({
+    ok: true,
+    organizerA: {
+      userId: "11111111-1111-4111-8111-111111111111",
+      tenantId: "core13-qa-tenant-a",
+      role: "VENUE_OWNER",
+      credentialPresent: true,
+    },
+    organizerB: {
+      userId: "22222222-2222-4222-8222-222222222222",
+      tenantId: "core13-qa-tenant-b",
+      role: "VENUE_OWNER",
+      credentialPresent: true,
+    },
+    refereeA: {
+      userId: "33333333-3333-4333-8333-333333333333",
+      tenantId: "core13-qa-tenant-a",
+      role: "REFEREE",
+      status: "ACTIVE",
+      credentialPresent: true,
+    },
+    replacementReferee: {
+      userId: "44444444-4444-4444-8444-444444444444",
+      tenantId: "core13-qa-tenant-a",
+      role: "REFEREE",
+      status: "ACTIVE",
+    },
+    inactiveReferee: {
+      userId: "55555555-5555-4555-8555-555555555555",
+      tenantId: "core13-qa-tenant-a",
+      role: "REFEREE",
+      status: "INACTIVE",
+    },
+    nonCanonicalSubject: {
+      id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+      classification: "NON_CANONICAL_EXPECTED_ABSENT",
+    },
+  });
   return writers;
 }
+
+const ORGANIZER_CONTEXT = Object.freeze({
+  userId: "11111111-1111-4111-8111-111111111111",
+  tenantId: "core13-qa-tenant-a",
+  role: "VENUE_OWNER",
+  accessToken: "org-tok",
+});
+
+const REFEREE_CONTEXT = Object.freeze({
+  userId: "33333333-3333-4333-8333-333333333333",
+  tenantId: "core13-qa-tenant-a",
+  role: "REFEREE",
+  accessToken: "ref-tok",
+});
 
 const AUTHORIZED_ENV = Object.freeze({
   CORE13_FIXTURE_PROVISION_GO: "YES",
   STAGING_MUTATION_GO: "YES",
   PICK_VN_ENV: "staging",
   TARGET_PROJECT_REF: STAGING_PROJECT_REF,
-  STAGING_ORGANIZER_ACCESS_TOKEN: "test-organizer-token",
+  STAGING_ORGANIZER_ACCESS_TOKEN: "org-tok",
   STAGING_SUPABASE_URL: `https://${STAGING_PROJECT_REF}.supabase.co`,
 });
 
@@ -154,11 +225,14 @@ test("4. fixture code does not directly RPC referee_v5_initialize_match_executio
     assert.doesNotMatch(src, /supabase\.rpc\(\s*["']referee_v5_initialize_match_execution_state["']/);
     if (rel.endsWith("provisioner.mjs") || rel.endsWith("receipt.mjs")) {
       assert.doesNotMatch(src, new RegExp(FORBIDDEN_DIRECT_INITIALIZER_RPC));
+      assert.doesNotMatch(src, new RegExp(FORBIDDEN_DIRECT_FINALIZATION_RPC));
     }
   }
   const writers = read("scripts/core13/core13-staging-fixture-writers.mjs");
   assert.match(writers, /refereeV5EdgeInitializeExecution/);
   assert.match(writers, /FORBIDDEN_DIRECT_INITIALIZER_RPC/);
+  assert.match(writers, /FORBIDDEN_DIRECT_FINALIZATION_RPC/);
+  assert.match(writers, /refereeV5EdgeFinalize/);
 });
 
 test("5. no direct insert/update/delete against match_live_states", () => {
@@ -208,13 +282,15 @@ test("7. remote provision gate still denies wrong environment/project", () => {
   );
 });
 
-test("8. future authorized path requires authenticated organizer token", () => {
-  const noToken = { ...AUTHORIZED_ENV };
-  delete noToken.STAGING_ORGANIZER_ACCESS_TOKEN;
-  const denied = evaluateRemoteProvisionGate(noToken, { writers: createStubWriters() });
+test("8. future authorized path requires organizer and referee auth contexts", () => {
+  const denied = evaluateRemoteProvisionGate(AUTHORIZED_ENV, { writers: createStubWriters() });
   assert.equal(denied.ok, false);
-  assert.match(denied.detail, /organizer token/);
-  const ready = evaluateRemoteProvisionGate(AUTHORIZED_ENV, { writers: createStubWriters() });
+  assert.match(denied.detail, /organizer context|REFEREE/);
+  const ready = evaluateRemoteProvisionGate(AUTHORIZED_ENV, {
+    writers: createStubWriters(),
+    organizerContext: ORGANIZER_CONTEXT,
+    refereeContext: REFEREE_CONTEXT,
+  });
   assert.equal(ready.ok, true);
   assert.equal(ready.REMOTE_FIXTURE_PROVISION_READY, true);
 });
@@ -285,6 +361,7 @@ test("11. in-progress lifecycle ordering requires identity → initialize → st
   assert.deepEqual(result.materializationPaths.inProgress, [
     "createInternalMatch",
     "initializeMatchExecution",
+    "bootstrapRefereeAssignment",
     "startMatchLive",
   ]);
 });
@@ -299,6 +376,7 @@ test("12. scoring-active lifecycle ordering requires initialize → start → sc
   assert.deepEqual(result.materializationPaths.scoringActive, [
     "createInternalMatch",
     "initializeMatchExecution",
+    "bootstrapRefereeAssignment",
     "startMatchLive",
     "recordScoreEvent",
   ]);
@@ -314,6 +392,7 @@ test("13. locked lifecycle ordering requires canonical mutation after init", asy
   assert.deepEqual(result.materializationPaths.locked, [
     "createInternalMatch",
     "initializeMatchExecution",
+    "bootstrapRefereeAssignment",
     "startMatchLive",
     "pauseMatchLive",
   ]);
@@ -335,6 +414,16 @@ test("14. completed fixture remains isolated from primary tournament", async () 
     result.receipt.matches.completed.tournamentId,
     result.receipt.tournaments.completedLifecycle.id
   );
+  assert.deepEqual(result.materializationPaths.completed, [
+    "createInternalMatch",
+    "initializeMatchExecution",
+    "bootstrapRefereeAssignment",
+    "startMatchLive",
+    "declareForfeit",
+    "finalizeMatchLive",
+  ]);
+  assert.equal(result.COMPLETED_MATCH_EXECUTION, "CANONICAL_REFEREE_V5_FINALIZE");
+  assert.notEqual(result.COMPLETED_MATERIALIZATION_PATH, "completeIsolatedTournament");
 });
 
 test("15. remote lifecycle proof remains authoritative; no hardcoded PRE_MATCH", () => {
@@ -547,10 +636,15 @@ test("aligned remote evidence can pass; mapAuthoritativeLifecycle is honest", ()
 
 test("node-safe writer audit marks initializer as authenticated Edge client", () => {
   const audit = buildNodeSafeWriterAudit();
-  assert.equal(audit.createTenant.nodeBinding, "NODE_SAFE_BINDABLE");
+  assert.equal(audit.createTenant.nodeBinding, "BROWSER_SINGLETON_DEPENDENT");
+  assert.equal(audit.createTenant.requiredInExistingQa, false);
   assert.equal(audit.createAuthUser.nodeBinding, "REQUIRES_IDENTITY_ADMIN_SERVER_CLIENT");
+  assert.equal(audit.createAuthUser.requiredInExistingQa, false);
   assert.equal(audit.initializeMatchExecution.nodeBinding, "REQUIRES_AUTHENTICATED_USER_CLIENT");
   assert.equal(audit.initializeMatchExecution.classification, "CANONICAL_PRODUCT_COMMAND");
+  assert.equal(audit.bootstrapRefereeAssignment.tokenClass, "ORGANIZER");
+  assert.equal(audit.startMatchLive.tokenClass, "REFEREE");
+  assert.equal(audit.finalizeMatchLive.tokenClass, "REFEREE");
   assert.equal(audit.teamTournamentProvisionRefereeMatch.forbiddenForInternal, true);
   assert.equal(audit.createDailyPlayMatches.forbiddenAsInternalInitializer, true);
   assert.equal(audit.provisionInternalMatchLiveShell, undefined);
@@ -572,27 +666,35 @@ test("canonical UUID receipt still validates; product cannot import provisioner"
 test("remote provision CLI still refuses without GO and does not execute when gated", async () => {
   const denied = await runFixtureProvisionerCli(["--provision"], {});
   assert.equal(denied.ok, false);
+  const missingReferee = await runFixtureProvisionerCli(["--provision"], AUTHORIZED_ENV, {
+    writers: createStubWriters(),
+  });
+  assert.equal(missingReferee.ok, false);
+  assert.match(String(missingReferee.detail || missingReferee.verdict), /REFEREE|organizer context/i);
+  assert.notEqual(missingReferee.executed, true);
   const gated = await runFixtureProvisionerCli(["--provision"], AUTHORIZED_ENV, {
     writers: createStubWriters(),
+    organizerContext: ORGANIZER_CONTEXT,
+    refereeContext: REFEREE_CONTEXT,
   });
   assert.equal(gated.ok, false);
   assert.match(String(gated.detail || gated.verdict), /not run|allowExecute|NOT_EXECUTED/i);
   assert.notEqual(gated.executed, true);
 });
 
-test("CLI with GO still reports missing identity/tenant ports when only Edge writers bind", async () => {
+test("CLI with GO still reports missing auth context or writer ports when unbound", async () => {
   const gated = await runFixtureProvisionerCli(["--provision"], AUTHORIZED_ENV);
   assert.equal(gated.ok, false);
-  assert.match(String(gated.detail || ""), /missing canonical writer ports|organizer token|createTenant/);
+  assert.match(String(gated.detail || ""), /organizer context|REFEREE|missing canonical writer ports/);
 });
 
 test("secrets stay out of receipts; hydrate uses completedLifecycle", () => {
   const dirty = {
     ...createValidFixtureReceipt({ runId: "run-secret" }),
-    password: "redacted-secret-value",
+    authorization: "redacted-secret-value",
   };
   assert.equal(receiptContainsSecrets(dirty), true);
-  assert.equal(stripReceiptSecrets(dirty).password, undefined);
+  assert.equal(stripReceiptSecrets(dirty).authorization, undefined);
   const fixtures = hydrateHarnessFixtures(createValidFixtureReceipt({ runId: "run-hydrate" }));
   assert.ok(fixtures.completedLifecycleTournament);
 });
@@ -611,4 +713,280 @@ test("initializer authority path remains fetch-based Edge client", () => {
   const client = read("src/features/referee-v5/services/refereeV5EdgeClient.js");
   assert.match(client, /export async function refereeV5EdgeInitializeExecution/);
   assert.match(client, /INITIALIZE_EXECUTION:\s*"initialize-execution"/);
+});
+
+test("auth contexts stay separated; organizer cannot impersonate referee lifecycle", async () => {
+  const orgTok = ORGANIZER_CONTEXT.accessToken;
+  const impersonated = evaluateRefereeAuthContext(
+    { ...ORGANIZER_CONTEXT, role: "REFEREE", accessToken: orgTok },
+    ORGANIZER_CONTEXT
+  );
+  assert.equal(impersonated.ok, false);
+  const lifecycle = createRefereeV5LifecycleWriters({
+    organizerAccessToken: orgTok,
+    edgeBaseUrl: "https://example.test",
+  });
+  const startDenied = await lifecycle.startMatchLive({
+    tournamentId: nextUuid(1),
+    matchId: nextUuid(2),
+    bootstrapAssignmentProof: { assignmentId: nextUuid(3) },
+  });
+  assert.equal(startDenied.ok, false);
+  assert.match(startDenied.detail, /ORGANIZER_AS_REFEREE_IMPERSONATION|referee token/);
+  const bound = bindSharedRefereeExecutionWriters({
+    organizerAccessToken: orgTok,
+    edgeBaseUrl: "https://example.test",
+  });
+  assert.equal(bound.lifecycleBound, false);
+  assert.equal(typeof bound.startMatchLive, "undefined");
+  assert.equal(typeof bound.initializeMatchExecution, "function");
+});
+
+test("bootstrap assignment uses organizer token and refuses non-PRE_MATCH state", async () => {
+  const orgTok = ORGANIZER_CONTEXT.accessToken;
+  const calls = [];
+  const writer = createBootstrapRefereeAssignmentWriter({
+    organizerAccessToken: orgTok,
+    edgeBaseUrl: "https://example.test",
+    createClient: () => ({
+      assignReferee: async (command) => {
+        calls.push(command);
+        return { ok: true, assignmentId: nextUuid(8) };
+      },
+    }),
+  });
+  const denied = await writer({
+    tournamentId: nextUuid(1),
+    matchId: nextUuid(2),
+    refereeId: REFEREE_CONTEXT.userId,
+    lifecycleState: "IN_PROGRESS",
+  });
+  assert.equal(denied.ok, false);
+  assert.match(denied.detail, /PRE_MATCH/);
+  const ok = await writer({
+    tournamentId: nextUuid(1),
+    matchId: nextUuid(2),
+    refereeId: REFEREE_CONTEXT.userId,
+    lifecycleState: "PRE_MATCH",
+    runId: "run-bootstrap",
+  });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.tokenClass, "ORGANIZER");
+  assert.equal(calls.length, 1);
+});
+
+test("referee lifecycle refuses to run before bootstrap assignment proof", async () => {
+  const refTok = REFEREE_CONTEXT.accessToken;
+  const lifecycle = createRefereeV5LifecycleWriters({
+    refereeAccessToken: refTok,
+    edgeBaseUrl: "https://example.test",
+    applyCommand: async () => ({ ok: true }),
+    finalize: async () => ({ ok: true }),
+  });
+  const denied = await lifecycle.startMatchLive({
+    tournamentId: nextUuid(1),
+    matchId: nextUuid(2),
+  });
+  assert.equal(denied.ok, false);
+  assert.match(denied.detail, /bootstrap assignment proof/);
+  const started = await lifecycle.startMatchLive({
+    tournamentId: nextUuid(1),
+    matchId: nextUuid(2),
+    bootstrapAssignmentProof: { assignmentId: nextUuid(9), active: true },
+  });
+  assert.equal(started.ok, true);
+});
+
+test("EXISTING_QA_IDENTITY_MODE does not call identity/tenant mutation ports", async () => {
+  const writers = createStubWriters();
+  const calls = [];
+  for (const name of EXISTING_QA_MUTATION_PORTS_DENIED) {
+    writers[name] = async () => {
+      calls.push(name);
+      return { id: nextUuid(70), ok: true };
+    };
+  }
+  const result = await materializeReceiptFromWriters({
+    writers,
+    allowExecute: true,
+    runId: "run-existing-qa",
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(calls, []);
+  assert.equal(result.identityMode, FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY);
+});
+
+test("missing existing QA referee credential fails closed", () => {
+  const env = evaluateExistingQaEnvReadiness({
+    STAGING_OWNER_A_EMAIL: "a@example.test",
+    STAGING_OWNER_A_PASSWORD: "x",
+    STAGING_OWNER_B_EMAIL: "b@example.test",
+    STAGING_OWNER_B_PASSWORD: "y",
+  });
+  assert.equal(env.ok, false);
+  assert.match(env.detail, /MISSING_EXISTING_QA_REFEREE_CREDENTIAL/);
+  assert.equal(evaluateOwnerToRefereeFallbackDenied({
+    STAGING_REFEREE_EMAIL: "a@example.test",
+    STAGING_OWNER_A_EMAIL: "a@example.test",
+  }).ok, false);
+});
+
+test("missing inactive referee or second tenant fails closed", () => {
+  const missingInactive = evaluateExistingQaIdentitySet({
+    organizerA: { userId: ORGANIZER_CONTEXT.userId, tenantId: "t-a" },
+    organizerB: { userId: REFEREE_CONTEXT.userId, tenantId: "t-b" },
+    refereeA: {
+      userId: REFEREE_CONTEXT.userId,
+      tenantId: "t-a",
+      role: "REFEREE",
+      status: "ACTIVE",
+      credentialPresent: true,
+      accessToken: "r",
+    },
+    replacementReferee: {
+      userId: "44444444-4444-4444-8444-444444444444",
+      role: "REFEREE",
+      status: "ACTIVE",
+    },
+    inactiveReferee: { userId: "55555555-5555-4555-8555-555555555555", role: "REFEREE", status: "ACTIVE" },
+  });
+  assert.equal(missingInactive.ok, false);
+  assert.match(missingInactive.detail, /INACTIVE/);
+  const sameTenant = evaluateExistingQaIdentitySet({
+    organizerA: { userId: ORGANIZER_CONTEXT.userId, tenantId: "t-a" },
+    organizerB: { userId: "22222222-2222-4222-8222-222222222222", tenantId: "t-a" },
+    refereeA: {
+      userId: REFEREE_CONTEXT.userId,
+      tenantId: "t-a",
+      role: "REFEREE",
+      status: "ACTIVE",
+      credentialPresent: true,
+    },
+    replacementReferee: {
+      userId: "44444444-4444-4444-8444-444444444444",
+      role: "REFEREE",
+      status: "ACTIVE",
+    },
+    inactiveReferee: {
+      userId: "55555555-5555-4555-8555-555555555555",
+      role: "REFEREE",
+      status: "INACTIVE",
+    },
+  });
+  assert.equal(sameTenant.ok, false);
+  assert.equal(evaluateVenueAsTenantFallbackDenied({ venueId: "venue-1", tenantId: "" }).ok, false);
+});
+
+test("receipt assignment baselines keep primary clean and J cases bootstrapped", async () => {
+  const result = await materializeReceiptFromWriters({
+    writers: createStubWriters(),
+    allowExecute: true,
+    runId: "run-baselines",
+  });
+  assert.equal(result.ok, true);
+  const baselines = evaluateLifecycleAssignmentBaselines(result.receipt);
+  assert.equal(baselines.ok, true);
+  assert.equal(baselines.primaryMatchActiveAssignments, 0);
+  assert.equal(baselines.matchInProgressActiveAssignments, 1);
+  assert.equal(baselines.matchScoringActiveAssignments, 1);
+  assert.equal(baselines.PRIMARY_TOURNAMENT_REMAINS_NON_TERMINAL, true);
+  assert.equal(baselines.COMPLETED_FIXTURE_ISOLATED, true);
+});
+
+test("remote CLI mock execution path materializes a sanitized receipt", async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "core13-cli-"));
+  const executed = await runFixtureProvisionerCli(["--provision"], AUTHORIZED_ENV, {
+    allowExecute: true,
+    writers: createStubWriters(),
+    organizerContext: ORGANIZER_CONTEXT,
+    refereeContext: REFEREE_CONTEXT,
+    rootDir: dir,
+    runId: "run-cli-executed",
+  });
+  assert.equal(executed.ok, true);
+  assert.equal(executed.executed, true);
+  assert.equal(executed.verdict, "REMOTE_FIXTURE_PROVISION_EXECUTED");
+  assert.equal(existsSync(executed.receiptPath), true);
+  assert.equal(receiptContainsSecrets(executed.receipt), false);
+  const deniedGo = await runFixtureProvisionerCli(["--provision"], {}, {
+    allowExecute: true,
+    writers: createStubWriters(),
+    organizerContext: ORGANIZER_CONTEXT,
+    refereeContext: REFEREE_CONTEXT,
+  });
+  assert.equal(deniedGo.ok, false);
+  const deniedProject = await runFixtureProvisionerCli(
+    ["--provision"],
+    { ...AUTHORIZED_ENV, TARGET_PROJECT_REF: "not-staging" },
+    {
+      allowExecute: true,
+      writers: createStubWriters(),
+      organizerContext: ORGANIZER_CONTEXT,
+      refereeContext: REFEREE_CONTEXT,
+    }
+  );
+  assert.equal(deniedProject.ok, false);
+  const deniedProd = evaluateRemoteProvisionGate(
+    { ...AUTHORIZED_ENV, STAGING_SUPABASE_URL: "https://expuvcohlcjzvrrauvud.supabase.co" },
+    {
+      writers: createStubWriters(),
+      organizerContext: ORGANIZER_CONTEXT,
+      refereeContext: REFEREE_CONTEXT,
+    }
+  );
+  assert.equal(deniedProd.ok, false);
+  const deniedMissingWriter = await runFixtureProvisionerCli(["--provision"], AUTHORIZED_ENV, {
+    allowExecute: true,
+    writers: { createCanonicalTournament: async () => ({ id: nextUuid(1) }) },
+    organizerContext: ORGANIZER_CONTEXT,
+    refereeContext: REFEREE_CONTEXT,
+  });
+  assert.equal(deniedMissingWriter.ok, false);
+  const deniedNoExecute = await runFixtureProvisionerCli(["--provision"], AUTHORIZED_ENV, {
+    writers: createStubWriters(),
+    organizerContext: ORGANIZER_CONTEXT,
+    refereeContext: REFEREE_CONTEXT,
+  });
+  assert.equal(deniedNoExecute.ok, false);
+  assert.notEqual(deniedNoExecute.executed, true);
+});
+
+test("finalize remains referee-owned and does not use forceComplete", async () => {
+  const refTok = REFEREE_CONTEXT.accessToken;
+  const orgTok = ORGANIZER_CONTEXT.accessToken;
+  const seen = [];
+  const lifecycle = createRefereeV5LifecycleWriters({
+    refereeAccessToken: refTok,
+    edgeBaseUrl: "https://example.test",
+    finalize: async (request) => {
+      seen.push(request);
+      return { ok: true, status: "completed" };
+    },
+  });
+  const organizerFinalize = createRefereeV5LifecycleWriters({
+    organizerAccessToken: orgTok,
+    edgeBaseUrl: "https://example.test",
+    finalize: async (request) => {
+      seen.push(request);
+      return { ok: true };
+    },
+  });
+  const denied = await organizerFinalize.finalizeMatchLive({
+    tournamentId: nextUuid(1),
+    matchId: nextUuid(2),
+    bootstrapAssignmentProof: { assignmentId: nextUuid(3) },
+  });
+  assert.equal(denied.ok, false);
+  const ok = await lifecycle.finalizeMatchLive({
+    tournamentId: nextUuid(1),
+    matchId: nextUuid(2),
+    expectedVersion: 4,
+    bootstrapAssignmentProof: { assignmentId: nextUuid(3) },
+    runId: "run-finalize",
+  });
+  assert.equal(ok.ok, true);
+  assert.equal(seen[0].forceComplete, false);
+  assert.equal(seen[0].accessToken, refTok);
+  const src = read("scripts/core13/core13-staging-fixture-writers.mjs");
+  assert.doesNotMatch(src, /\.rpc\s*\(\s*["']referee_v5_commit_match_finalization["']/);
 });
