@@ -244,3 +244,18 @@ Services gọi RPC trước, fallback direct query nếu SQL Phase C chưa apply
 ### Tests
 
 `tests/identity-phaseC.test.js` — `/audit` guard, audit list permission, user list permission.
+
+## Tenant-aware managed user provisioning
+
+Canonical create contract: `adminCreateManagedUser` via `/api/identity/create-user`.
+
+- `tenantId` and `venueId` are independent. Venue is never copied onto Tenant.
+- Allowed initial status: `active` | `suspended` | `invited`. Default remains `active`.
+- Target Tenant existence is proven from `public.platform_tenants` before Auth create.
+- **Authorization policy:** `PLATFORM_ADMIN` / `SUPER_ADMIN` may create under an existing explicit Tenant. Non-super-admin may target a Tenant only when `platform_tenants.owner_user_id` equals the authenticated actor. `profiles.tenant_id` / `profiles.venue_id` are home/default Identity context, not Tenant operational entitlement. Venue equality is not Tenant authorization. Caller-supplied `actorId` / `actorRole` / `authorizedTenantId` / `permissions` / `tenantMembership` are stripped.
+- If profile persistence or Contract #01 post-create evidence fails after Auth create, the command compensates by deleting only the Auth user it just created.
+- Suspended users remain canonical subjects with `active=false` under Contract #01.
+
+### Tests
+
+`tests/identity-profile-tenant-mapping.test.js`, `tests/identity-tenant-aware-managed-user-create.test.js`, `tests/identity-managed-password-reset-audit.test.js`.

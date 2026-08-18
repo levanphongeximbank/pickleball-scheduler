@@ -4,6 +4,7 @@ import {
   getSupabaseServerUrl,
   getSupabaseServiceRoleKey,
 } from "../../src/features/api/config/apiKeyStoreConfig.js";
+import { isGlobalRole, normalizeRole } from "../../src/features/identity/constants/roles.js";
 
 /** Match browser bundle JWT issuer — SUPABASE_URL override can point at wrong project. */
 export function getIdentityApiSupabaseUrl() {
@@ -28,10 +29,21 @@ function mapAuthError(userError) {
   return "Phiên đăng nhập không hợp lệ. Đăng xuất và đăng nhập lại.";
 }
 
+function buildActor(userId, profile) {
+  const role = String(profile?.role || "").trim();
+  return {
+    actorId: userId,
+    role,
+    tenantId: profile?.tenant_id || profile?.tenantId || null,
+    venueId: profile?.venue_id || profile?.venueId || null,
+    isSuperAdmin: isGlobalRole(normalizeRole(role)),
+  };
+}
+
 async function resolveUserManagePermission(adminClient, userId) {
   const { data: profile, error: profileError } = await adminClient
     .from("profiles")
-    .select("role, status")
+    .select("role, status, tenant_id, venue_id")
     .eq("id", userId)
     .maybeSingle();
 
@@ -51,15 +63,15 @@ async function resolveUserManagePermission(adminClient, userId) {
     };
   }
 
-  const role = String(profile.role || "").trim();
-  if (role === "SUPER_ADMIN") {
-    return { ok: true };
+  const actor = buildActor(userId, profile);
+  if (actor.isSuperAdmin || String(profile.role || "").trim() === "SUPER_ADMIN") {
+    return { ok: true, actor };
   }
 
   const { data: permRow, error: permError } = await adminClient
     .from("role_permissions")
     .select("role_id")
-    .eq("role_id", role)
+    .eq("role_id", actor.role)
     .eq("permission_id", "user.manage")
     .maybeSingle();
 
@@ -75,7 +87,7 @@ async function resolveUserManagePermission(adminClient, userId) {
     return { ok: false, code: "FORBIDDEN", error: "Không có quyền user.manage." };
   }
 
-  return { ok: true };
+  return { ok: true, actor };
 }
 
 export async function authorizeUserManage(req) {
@@ -110,5 +122,10 @@ export async function authorizeUserManage(req) {
     return permission;
   }
 
-  return { ok: true, actorId: userData.user.id, adminClient };
+  return {
+    ok: true,
+    actorId: userData.user.id,
+    actor: permission.actor,
+    adminClient,
+  };
 }
