@@ -48,6 +48,28 @@ export const REQUIRED_TOURNAMENT_KEYS = Object.freeze([
 const SECRET_KEY_RE =
   /password|passwd|secret|token|jwt|service[_-]?role|anon[_-]?key|access[_-]?token|authorization|bearer/i;
 const JWT_LIKE_RE = /eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+\./;
+const BEARER_VALUE_RE = /^Bearer\s+\S+/i;
+const SECRET_VALUE_RE =
+  /SECRET_(ACCESS_TOKEN|JWT|PASSWORD|SERVICE_ROLE)|sk_live_|service_role/i;
+
+export const FIXTURE_ERROR_STAGE = Object.freeze({
+  REFEREE_V5_LIFECYCLE: "REFEREE_V5_LIFECYCLE",
+  MATCH_EXECUTION_INIT: "MATCH_EXECUTION_INIT",
+  ASSIGNMENT_BOOTSTRAP: "ASSIGNMENT_BOOTSTRAP",
+});
+
+const SAFE_ERROR_ENVELOPE_KEYS = Object.freeze([
+  "stage",
+  "writerPort",
+  "commandType",
+  "httpStatus",
+  "code",
+  "error",
+  "detail",
+  "currentVersion",
+  "currentSequence",
+  "transport",
+]);
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -101,10 +123,19 @@ export function evaluatePhysicalEnvironment(receipt, envMap = {}) {
   return proof(true, receipt.projectRef);
 }
 
+function redactSecretString(value) {
+  const text = String(value);
+  if (JWT_LIKE_RE.test(text) || BEARER_VALUE_RE.test(text) || SECRET_VALUE_RE.test(text)) {
+    return "[redacted]";
+  }
+  return value;
+}
+
 export function stripReceiptSecrets(value, trail = "") {
   if (Array.isArray(value)) {
     return value.map((item, index) => stripReceiptSecrets(item, `${trail}[${index}]`));
   }
+  if (typeof value === "string") return redactSecretString(value);
   if (!value || typeof value !== "object") return value;
   const out = {};
   for (const [key, child] of Object.entries(value)) {
@@ -112,6 +143,68 @@ export function stripReceiptSecrets(value, trail = "") {
     out[key] = stripReceiptSecrets(child, `${trail}.${key}`);
   }
   return out;
+}
+
+function presentText(value) {
+  if (value == null) return "";
+  const text = String(value).trim();
+  return text;
+}
+
+function presentNumber(value) {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function normalizeFixtureLifecycleError(source = {}, context = {}) {
+  const raw = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+  const ctx = context && typeof context === "object" && !Array.isArray(context) ? context : {};
+  const out = {};
+
+  const stage = presentText(ctx.stage || raw.stage);
+  if (stage) out.stage = stage;
+  const writerPort = presentText(ctx.writerPort || raw.writerPort);
+  if (writerPort) out.writerPort = writerPort;
+  const commandType = presentText(ctx.commandType || raw.commandType);
+  if (commandType) out.commandType = commandType;
+
+  const httpStatus = presentNumber(ctx.httpStatus ?? raw.httpStatus);
+  if (httpStatus != null) out.httpStatus = httpStatus;
+
+  for (const key of ["code", "error", "detail"]) {
+    const value = presentText(ctx[key] ?? raw[key]);
+    if (value) out[key] = value;
+  }
+  for (const key of ["currentVersion", "currentSequence"]) {
+    const value = presentNumber(ctx[key] ?? raw[key]);
+    if (value != null) out[key] = value;
+  }
+
+  const transportHint =
+    presentText(ctx.transport) === "INVALID_JSON" ||
+    raw.invalidJson === true ||
+    raw.transportFailure === true ||
+    presentText(raw.error) === "Invalid JSON response";
+  if (transportHint) out.transport = "INVALID_JSON";
+
+  const sanitized = stripReceiptSecrets(out);
+  for (const key of Object.keys(sanitized)) {
+    if (!SAFE_ERROR_ENVELOPE_KEYS.includes(key)) delete sanitized[key];
+  }
+  return sanitized;
+}
+
+export function buildFixtureAbortReason(envelope = {}, fallback = "") {
+  const parts = [
+    envelope.commandType || envelope.writerPort,
+    envelope.code,
+    envelope.error,
+    envelope.detail && envelope.detail !== envelope.error ? envelope.detail : null,
+    envelope.transport,
+  ].filter((part) => presentText(part));
+  if (parts.length) return parts.join(" ");
+  return presentText(fallback) || "provision aborted";
 }
 
 export function listReceiptOwnedIds(receipt = {}) {
@@ -277,6 +370,11 @@ export function createValidFixtureReceipt(overrides = {}) {
 
 export function createPartialFixtureReceipt(overrides = {}) {
   const runId = String(overrides.runId || "").trim();
+  const failureEnvelope = overrides.failureEnvelope
+    ? normalizeFixtureLifecycleError(overrides.failureEnvelope)
+    : undefined;
+  const failureStage =
+    presentText(overrides.failureStage) || presentText(failureEnvelope?.stage) || undefined;
   return stripReceiptSecrets({
     schemaVersion: FIXTURE_RECEIPT_SCHEMA_VERSION,
     namespace: CORE13_FIXTURE_NAMESPACE,
@@ -290,6 +388,8 @@ export function createPartialFixtureReceipt(overrides = {}) {
     runId,
     identityMode: overrides.identityMode || FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY,
     abortReason: String(overrides.abortReason || "provision aborted"),
+    ...(failureStage ? { failureStage } : {}),
+    ...(failureEnvelope && Object.keys(failureEnvelope).length ? { failureEnvelope } : {}),
     ownedIds: {
       tournaments: Array.isArray(overrides.ownedIds?.tournaments)
         ? overrides.ownedIds.tournaments

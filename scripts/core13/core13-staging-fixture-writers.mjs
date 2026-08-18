@@ -67,6 +67,16 @@ export const INITIALIZER_AUTHORITY =
   "src/features/referee-v5/services/refereeV5EdgeClient.js#refereeV5EdgeInitializeExecution";
 export const INITIALIZER_IDEMPOTENCY_PURPOSE = "INITIALIZE_MATCH_EXECUTION_STATE";
 export const CORE13_FIXTURE_IDEMPOTENCY_NAMESPACE = "CORE13_STAGING_ACCEPTANCE";
+export const FIXTURE_LIFECYCLE_CLIENT_MUTATION_PURPOSE = "CLIENT_MUTATION";
+export const FIXTURE_LIFECYCLE_IDEMPOTENCY_PURPOSE = "IDEMPOTENCY";
+export const FIXTURE_FINALIZE_COMMAND_TYPE = "FINALIZE";
+export const FIXTURE_LIFECYCLE_WRITER_COMMAND_TYPES = Object.freeze({
+  startMatchLive: MATCH_EVENT_TYPE.START_MATCH,
+  recordScoreEvent: MATCH_EVENT_TYPE.TEAM_A_WON_RALLY,
+  pauseMatchLive: MATCH_EVENT_TYPE.PAUSE_MATCH,
+  declareForfeit: MATCH_EVENT_TYPE.DECLARE_FORFEIT,
+  finalizeMatchLive: FIXTURE_FINALIZE_COMMAND_TYPE,
+});
 
 export const FORBIDDEN_INTERNAL_MATCH_AUTHORITIES = Object.freeze([
   "team_tournament_provision_referee_match",
@@ -575,6 +585,40 @@ export function buildInitializeExecutionIdempotencyKey({
   ].join(":");
 }
 
+function joinFixtureLifecycleId(parts) {
+  const normalized = (parts || []).map((part) => String(part || "").trim());
+  if (normalized.some((part) => !part)) return "";
+  return normalized.join(":");
+}
+
+export function buildFixtureLifecycleClientMutationId({
+  runId,
+  matchId,
+  commandType,
+} = {}) {
+  return joinFixtureLifecycleId([
+    CORE13_FIXTURE_IDEMPOTENCY_NAMESPACE,
+    runId,
+    matchId,
+    commandType,
+    FIXTURE_LIFECYCLE_CLIENT_MUTATION_PURPOSE,
+  ]);
+}
+
+export function buildFixtureLifecycleIdempotencyKey({
+  runId,
+  matchId,
+  commandType,
+} = {}) {
+  return joinFixtureLifecycleId([
+    CORE13_FIXTURE_IDEMPOTENCY_NAMESPACE,
+    runId,
+    matchId,
+    commandType,
+    FIXTURE_LIFECYCLE_IDEMPOTENCY_PURPOSE,
+  ]);
+}
+
 export function buildInitializeMatchExecutionRequest({
   tournamentId,
   matchId,
@@ -670,6 +714,8 @@ export function createInitializeMatchExecutionWriter({
             alreadyInitialized: true,
             skippedReset: true,
             status,
+            stateVersion: existing.stateVersion,
+            lastEventSequence: existing.lastEventSequence,
             tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
           });
         }
@@ -810,22 +856,44 @@ export function createRefereeV5LifecycleWriters({
       return Object.freeze({
         ok: false,
         detail: "Referee lifecycle requires CORE-13 bootstrap assignment proof",
+        commandType,
       });
     }
-    return applyCommand({
+    const clientMutationId = buildFixtureLifecycleClientMutationId({
+      runId: input.runId,
+      matchId: input.matchId,
+      commandType,
+    });
+    const idempotencyKey = buildFixtureLifecycleIdempotencyKey({
+      runId: input.runId,
+      matchId: input.matchId,
+      commandType,
+    });
+    if (!clientMutationId || !idempotencyKey) {
+      return Object.freeze({
+        ok: false,
+        code: "VALIDATION_FAILED",
+        detail: "fixture lifecycle clientMutationId and idempotencyKey required",
+        commandType,
+      });
+    }
+    const result = await applyCommand({
       accessToken: tok,
       tournamentId: input.tournamentId,
       matchId: input.matchId,
       commandType,
-      payload: {},
+      payload: input.payload && typeof input.payload === "object" ? input.payload : {},
       expectedVersion: input.expectedVersion,
-      idempotencyKey: [
-        CORE13_FIXTURE_IDEMPOTENCY_NAMESPACE,
-        String(input.runId || ""),
-        String(input.matchId || ""),
-        commandType,
-      ].join(":"),
+      expectedSequence: input.expectedSequence,
+      clientMutationId,
+      idempotencyKey,
       edgeBaseUrl,
+    });
+    return Object.freeze({
+      ...(result && typeof result === "object" ? result : { ok: true }),
+      commandType,
+      clientMutationId,
+      idempotencyKey,
     });
   };
   return Object.freeze({
@@ -850,27 +918,46 @@ export function createRefereeV5LifecycleWriters({
         return Object.freeze({
           ok: false,
           detail: "Referee lifecycle requires CORE-13 bootstrap assignment proof",
+          commandType: FIXTURE_FINALIZE_COMMAND_TYPE,
         });
       }
-      const request = {
+      const clientMutationId = buildFixtureLifecycleClientMutationId({
+        runId: input.runId,
+        matchId: input.matchId,
+        commandType: FIXTURE_FINALIZE_COMMAND_TYPE,
+      });
+      const idempotencyKey =
+        input.idempotencyKey ||
+        buildFixtureLifecycleIdempotencyKey({
+          runId: input.runId,
+          matchId: input.matchId,
+          commandType: FIXTURE_FINALIZE_COMMAND_TYPE,
+        });
+      if (!clientMutationId || !idempotencyKey) {
+        return Object.freeze({
+          ok: false,
+          code: "VALIDATION_FAILED",
+          detail: "fixture lifecycle clientMutationId and idempotencyKey required",
+          commandType: FIXTURE_FINALIZE_COMMAND_TYPE,
+        });
+      }
+      const result = await finalize({
         accessToken: tok,
         tournamentId: input.tournamentId,
         matchId: input.matchId,
         expectedVersion: input.expectedVersion,
-        idempotencyKey:
-          input.idempotencyKey ||
-          [
-            CORE13_FIXTURE_IDEMPOTENCY_NAMESPACE,
-            String(input.runId || ""),
-            String(input.matchId || ""),
-            "FINALIZE",
-          ].join(":"),
+        idempotencyKey,
         overrideReason: input.overrideReason,
         isOverride: input.isOverride === true,
         forceComplete: false,
         edgeBaseUrl,
-      };
-      return finalize(request);
+      });
+      return Object.freeze({
+        ...(result && typeof result === "object" ? result : { ok: true }),
+        commandType: FIXTURE_FINALIZE_COMMAND_TYPE,
+        clientMutationId,
+        idempotencyKey,
+      });
     },
   });
 }

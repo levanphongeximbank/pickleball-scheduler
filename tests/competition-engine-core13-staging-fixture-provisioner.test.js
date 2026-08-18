@@ -806,6 +806,7 @@ test("referee lifecycle refuses to run before bootstrap assignment proof", async
     tournamentId: nextUuid(1),
     matchId: nextUuid(2),
     bootstrapAssignmentProof: { assignmentId: nextUuid(9), active: true },
+    runId: "run-lifecycle-proof",
   });
   assert.equal(started.ok, true);
 });

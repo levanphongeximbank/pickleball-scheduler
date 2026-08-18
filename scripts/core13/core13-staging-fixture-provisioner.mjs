@@ -35,6 +35,7 @@ import {
   evaluateTeamWriterDeniedForInternal,
   evaluateWriterCoverage,
   EXISTING_QA_MUTATION_PORTS_DENIED,
+  FIXTURE_LIFECYCLE_WRITER_COMMAND_TYPES,
   HONEST_NOT_CONFIGURED,
   INITIALIZER_AUTHORITY,
   INITIALIZER_PORT_NAME,
@@ -43,6 +44,7 @@ import {
   REQUIRED_WRITER_PORTS,
 } from "./core13-staging-fixture-writers.mjs";
 import {
+  buildFixtureAbortReason,
   buildTypedCleanupPlan,
   createPartialFixtureReceipt,
   createValidFixtureReceipt,
@@ -51,10 +53,12 @@ import {
   evaluatePhysicalEnvironment,
   evaluateTeardownScope,
   evaluateTypedTeardownTargets,
+  FIXTURE_ERROR_STAGE,
   FIXTURE_PROVISIONER_ID,
   hydrateHarnessFixtures,
   listReceiptOwnedIds,
   loadFixtureReceiptFromPath,
+  normalizeFixtureLifecycleError,
   receiptHasLiveBackedFixtures,
   STAGING_PROJECT_REF,
   stripReceiptSecrets,
@@ -231,18 +235,51 @@ function recordPath(paths, key, step) {
   paths[key].push(step);
 }
 
-function failWithPartial(detail, runId, owned, extra = {}) {
+function failWithPartial(result, runId, owned, extra = {}) {
+  const writerPort = result?.writerPort || extra.writerPort;
+  const commandType =
+    result?.commandType ||
+    extra.commandType ||
+    FIXTURE_LIFECYCLE_WRITER_COMMAND_TYPES[writerPort];
+  const failureEnvelope = normalizeFixtureLifecycleError(result, {
+    stage: result?.stage || extra.stage || FIXTURE_ERROR_STAGE.REFEREE_V5_LIFECYCLE,
+    writerPort,
+    commandType,
+  });
+  const abortReason = buildFixtureAbortReason(
+    failureEnvelope,
+    result?.detail || extra.abortReason
+  );
   const partialReceipt = createPartialFixtureReceipt({
     runId,
-    abortReason: detail,
+    abortReason,
+    failureStage: failureEnvelope.stage,
+    failureEnvelope,
     ownedIds: owned,
   });
-  return proof(false, detail, {
+  return proof(false, abortReason, {
     ...extra,
     status: "PARTIAL",
     validLive29CaseSsot: false,
+    failureStage: failureEnvelope.stage,
+    failureEnvelope,
     partialReceipt,
   });
+}
+
+function readCanonicalCas(result = {}) {
+  const expectedVersion =
+    result.stateVersion != null && result.stateVersion !== ""
+      ? Number(result.stateVersion)
+      : undefined;
+  const expectedSequence =
+    result.lastEventSequence != null && result.lastEventSequence !== ""
+      ? Number(result.lastEventSequence)
+      : undefined;
+  return {
+    expectedVersion: Number.isFinite(expectedVersion) ? expectedVersion : undefined,
+    expectedSequence: Number.isFinite(expectedSequence) ? expectedSequence : undefined,
+  };
 }
 
 async function applyLiveLifecycle({
@@ -264,8 +301,15 @@ async function applyLiveLifecycle({
   const caller = evaluateForbiddenCallerAuthority(initInput);
   if (!caller.ok) return caller;
   const initialized = await writers.initializeMatchExecution(initInput);
-  if (initialized && initialized.ok === false) return initialized;
+  if (initialized && initialized.ok === false) {
+    return {
+      ...initialized,
+      writerPort: "initializeMatchExecution",
+      stage: FIXTURE_ERROR_STAGE.MATCH_EXECUTION_INIT,
+    };
+  }
   recordPath(paths, key, "initializeMatchExecution");
+  let { expectedVersion, expectedSequence } = readCanonicalCas(initialized);
   const bootstrap = await writers.bootstrapRefereeAssignment({
     tournamentId,
     matchId,
@@ -273,7 +317,13 @@ async function applyLiveLifecycle({
     runId,
     lifecycleState: "PRE_MATCH",
   });
-  if (bootstrap && bootstrap.ok === false) return bootstrap;
+  if (bootstrap && bootstrap.ok === false) {
+    return {
+      ...bootstrap,
+      writerPort: "bootstrapRefereeAssignment",
+      stage: FIXTURE_ERROR_STAGE.ASSIGNMENT_BOOTSTRAP,
+    };
+  }
   recordPath(paths, key, "bootstrapRefereeAssignment");
   const assignmentProof = {
     assignmentId: bootstrap?.assignmentId || bootstrap?.id,
@@ -292,11 +342,24 @@ async function applyLiveLifecycle({
     bootstrapAssignmentProof: assignmentProof,
   };
   for (const step of steps) {
-    const result = await writers[step](commandInput);
+    const result = await writers[step]({
+      ...commandInput,
+      expectedVersion,
+      expectedSequence,
+    });
     if (result && result.ok === false) {
-      return { ...result, assignmentProof };
+      return {
+        ...result,
+        assignmentProof,
+        writerPort: step,
+        stage: FIXTURE_ERROR_STAGE.REFEREE_V5_LIFECYCLE,
+        commandType: result.commandType || FIXTURE_LIFECYCLE_WRITER_COMMAND_TYPES[step],
+      };
     }
     recordPath(paths, key, step);
+    const nextCas = readCanonicalCas(result);
+    if (nextCas.expectedVersion != null) expectedVersion = nextCas.expectedVersion;
+    if (nextCas.expectedSequence != null) expectedSequence = nextCas.expectedSequence;
   }
   return { ok: true, assignmentProof };
 }
@@ -519,7 +582,7 @@ export async function materializeReceiptFromWriters(options = {}) {
       if (inProgressLive.assignmentProof?.assignmentId) {
         owned.assignments.push(inProgressLive.assignmentProof.assignmentId);
       }
-      return failWithPartial(inProgressLive.detail, runId, owned, {
+      return failWithPartial(inProgressLive, runId, owned, {
         verdict: inProgressLive.verdict,
       });
     }
@@ -544,7 +607,7 @@ export async function materializeReceiptFromWriters(options = {}) {
       if (scoringLive.assignmentProof?.assignmentId) {
         owned.assignments.push(scoringLive.assignmentProof.assignmentId);
       }
-      return failWithPartial(scoringLive.detail, runId, owned, {
+      return failWithPartial(scoringLive, runId, owned, {
         verdict: scoringLive.verdict,
       });
     }
@@ -569,7 +632,7 @@ export async function materializeReceiptFromWriters(options = {}) {
       if (lockedLive.assignmentProof?.assignmentId) {
         owned.assignments.push(lockedLive.assignmentProof.assignmentId);
       }
-      return failWithPartial(lockedLive.detail, runId, owned, {
+      return failWithPartial(lockedLive, runId, owned, {
         verdict: lockedLive.verdict,
       });
     }
@@ -594,7 +657,7 @@ export async function materializeReceiptFromWriters(options = {}) {
       if (completedLive.assignmentProof?.assignmentId) {
         owned.assignments.push(completedLive.assignmentProof.assignmentId);
       }
-      return failWithPartial(completedLive.detail, runId, owned, {
+      return failWithPartial(completedLive, runId, owned, {
         verdict: completedLive.verdict,
       });
     }
@@ -963,6 +1026,8 @@ export async function runFixtureProvisionerCli(argv = [], envMap = {}, options =
         missing: materialized.missing,
         status: materialized.status || null,
         validLive29CaseSsot: false,
+        failureStage: materialized.failureStage || null,
+        failureEnvelope: materialized.failureEnvelope || null,
         partialReceipt: materialized.partialReceipt || null,
       });
     }
@@ -992,7 +1057,16 @@ if (invokedPath && path.normalize(invokedPath) === path.normalize(selfPath)) {
     .then((result) => {
       console.log(
         JSON.stringify(
-          { ok: result.ok, verdict: result.verdict, detail: result.detail, missing: result.missing },
+          stripReceiptSecrets({
+            ok: result.ok,
+            verdict: result.verdict,
+            detail: result.detail,
+            missing: result.missing,
+            status: result.status || null,
+            validLive29CaseSsot: result.validLive29CaseSsot,
+            failureStage: result.failureStage || null,
+            failureEnvelope: result.failureEnvelope || null,
+          }),
           null,
           2
         )
