@@ -44,6 +44,10 @@ import {
   REQUIRED_WRITER_PORTS,
 } from "./core13-staging-fixture-writers.mjs";
 import {
+  evaluateDailyFixturePreflight,
+  evaluateSemantic29CasePreflight,
+} from "./core13-staging-fixture-preflight.mjs";
+import {
   buildFixtureAbortReason,
   buildTypedCleanupPlan,
   createPartialFixtureReceipt,
@@ -486,6 +490,47 @@ export async function materializeReceiptFromWriters(options = {}) {
   const runId = String(options.runId || `run-${Date.now()}`);
   const marker = `${CORE13_FIXTURE_NAMESPACE} ${runId}`;
 
+  const dailySnapshotRaw =
+    typeof tracked.resolveDailyPlayPreflight === "function"
+      ? await tracked.resolveDailyPlayPreflight({
+          tenantId: tenantA.id,
+          organizerId: userA.userId || userA.id,
+        })
+      : { ok: false, detail: "resolveDailyPlayPreflight missing" };
+  const dailyPreflight = evaluateDailyFixturePreflight({
+    ...(dailySnapshotRaw && typeof dailySnapshotRaw === "object" ? dailySnapshotRaw : {}),
+    expectedTenantId: tenantA.id,
+  });
+  if (!dailyPreflight.ok) {
+    return proof(false, dailyPreflight.detail, {
+      verdict: "NOT_READY",
+      FINAL_FRESH_FIXTURE_RUN_READY: false,
+      failureStage: FIXTURE_ERROR_STAGE.SEMANTIC_PREFLIGHT,
+      createCanonicalTournamentCalls: 0,
+    });
+  }
+  const semantic = evaluateSemantic29CasePreflight({
+    writers: tracked,
+    identities: {
+      organizerA: userA,
+      organizerB: userB,
+      refereeA,
+      replacementReferee,
+      inactiveReferee,
+    },
+    tenantA,
+    tenantB,
+    daily: dailyPreflight,
+  });
+  if (!semantic.ok) {
+    return proof(false, semantic.detail, {
+      verdict: "NOT_READY",
+      FINAL_FRESH_FIXTURE_RUN_READY: false,
+      failureStage: FIXTURE_ERROR_STAGE.SEMANTIC_PREFLIGHT,
+      createCanonicalTournamentCalls: 0,
+    });
+  }
+
   const primary = entity(
     await tracked.createCanonicalTournament({
       tenantId: tenantA.id,
@@ -677,12 +722,60 @@ export async function materializeReceiptFromWriters(options = {}) {
     return proof(false, "completeIsolatedTournament is not MATCH completed proof");
   }
 
-  const dailyEnabledMatch = entity(
-    await tracked.createDailyPlayMatches({ tournamentId: dailyEnabled.id, enabled: true })
-  );
-  const dailyDisabledMatch = entity(
-    await tracked.createDailyPlayMatches({ tournamentId: dailyDisabled.id, enabled: false })
-  );
+  const dailyMatchInput = {
+    tenantId: tenantA.id,
+    clubId: dailyPreflight.clubId,
+    playerIds: dailyPreflight.eligiblePlayerIds,
+    eligiblePlayerIds: dailyPreflight.eligiblePlayerIds,
+    runId,
+  };
+  const dailyEnabledMatchResult = await tracked.createDailyPlayMatches({
+    ...dailyMatchInput,
+    tournamentId: dailyEnabled.id,
+    enabled: true,
+  });
+  if (dailyEnabledMatchResult && dailyEnabledMatchResult.ok === false) {
+    return failWithPartial(dailyEnabledMatchResult, runId, owned, {
+      writerPort: "createDailyPlayMatches",
+      stage: FIXTURE_ERROR_STAGE.DAILY_MATERIALIZATION,
+    });
+  }
+  const dailyEnabledMatch = entity(dailyEnabledMatchResult);
+  if (!dailyEnabledMatch.id || dailyEnabledMatch.id === "undefined") {
+    return failWithPartial(
+      { ok: false, detail: "Daily enabled match identity missing" },
+      runId,
+      owned,
+      {
+        writerPort: "createDailyPlayMatches",
+        stage: FIXTURE_ERROR_STAGE.DAILY_MATERIALIZATION,
+      }
+    );
+  }
+  const dailyDisabledMatchResult = await tracked.createDailyPlayMatches({
+    ...dailyMatchInput,
+    tournamentId: dailyDisabled.id,
+    enabled: false,
+  });
+  if (dailyDisabledMatchResult && dailyDisabledMatchResult.ok === false) {
+    return failWithPartial(dailyDisabledMatchResult, runId, owned, {
+      writerPort: "createDailyPlayMatches",
+      stage: FIXTURE_ERROR_STAGE.DAILY_MATERIALIZATION,
+    });
+  }
+  const dailyDisabledMatch = entity(dailyDisabledMatchResult);
+  if (!dailyDisabledMatch.id || dailyDisabledMatch.id === "undefined") {
+    return failWithPartial(
+      { ok: false, detail: "Daily disabled match identity missing" },
+      runId,
+      owned,
+      {
+        writerPort: "createDailyPlayMatches",
+        stage: FIXTURE_ERROR_STAGE.DAILY_MATERIALIZATION,
+      }
+    );
+  }
+  owned.matches.push(dailyEnabledMatch.id, dailyDisabledMatch.id);
 
   const receipt = stripReceiptSecrets(
     createValidFixtureReceipt({

@@ -493,6 +493,7 @@
   "tests/competition-engine-core13-staging-acceptance-harness-hardening.test.js",
   "tests/competition-engine-core13-staging-acceptance-gate.test.js",
   "tests/competition-engine-core13-staging-fixture-provisioner.test.js",
+  "tests/competition-engine-core13-final-fixture-preflight-lifecycle.test.js",
   "tests/competition-engine-core13-fixture-lifecycle-client-mutation-01.test.js",
   "tests/competition-engine-core13-inactive-identity-semantics.test.js",
   "tests/competition-engine-core13-referee-v5-runtime-alignment-01.test.js",

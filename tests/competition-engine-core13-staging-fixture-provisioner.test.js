@@ -54,6 +54,7 @@ import {
   buildNodeSafeWriterAudit,
   REFEREE_V5_ACTIONS,
 } from "../scripts/core13/core13-staging-fixture-writers.mjs";
+import { createReadyDailyPreflightSnapshot } from "../scripts/core13/core13-staging-fixture-preflight.mjs";
 import {
   evaluateExistingQaEnvReadiness,
   evaluateExistingQaIdentitySet,
@@ -151,6 +152,11 @@ function createStubWriters() {
       classification: "NON_CANONICAL_EXPECTED_ABSENT",
     },
   });
+  writers.resolveDailyPlayPreflight = async ({ tenantId } = {}) =>
+    createReadyDailyPreflightSnapshot({
+      tenantId: tenantId || "core13-qa-tenant-a",
+      clubTenantId: tenantId || "core13-qa-tenant-a",
+    });
   return writers;
 }
 
@@ -640,7 +646,16 @@ test("aligned remote evidence can pass; mapAuthoritativeLifecycle is honest", ()
   );
   assert.equal(mapAuthoritativeLifecycle({ liveRow: { status: "paused" } }), "LOCKED");
   assert.equal(
-    mapAuthoritativeLifecycle({ liveRow: { status: "in_progress", last_event_sequence: 2 } }),
+    mapAuthoritativeLifecycle({
+      liveRow: { status: "in_progress", last_event_sequence: 1 },
+    }),
+    "IN_PROGRESS"
+  );
+  assert.equal(
+    mapAuthoritativeLifecycle({
+      liveRow: { status: "in_progress", last_event_sequence: 2 },
+      events: [{ command_type: "TEAM_A_WON_RALLY" }],
+    }),
     "SCORING_ACTIVE"
   );
 });

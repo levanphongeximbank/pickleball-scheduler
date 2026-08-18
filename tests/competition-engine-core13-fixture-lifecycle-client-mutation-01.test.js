@@ -17,6 +17,7 @@ import {
   MATCH_EVENT_TYPE,
   REQUIRED_WRITER_PORTS,
 } from "../scripts/core13/core13-staging-fixture-writers.mjs";
+import { createReadyDailyPreflightSnapshot } from "../scripts/core13/core13-staging-fixture-preflight.mjs";
 import {
   buildFixtureAbortReason,
   evaluateFixtureReceipt,
@@ -97,6 +98,11 @@ function createStubWriters() {
       classification: "NON_CANONICAL_EXPECTED_ABSENT",
     },
   });
+  writers.resolveDailyPlayPreflight = async ({ tenantId } = {}) =>
+    createReadyDailyPreflightSnapshot({
+      tenantId: tenantId || "core13-qa-tenant-a",
+      clubTenantId: tenantId || "core13-qa-tenant-a",
+    });
   return writers;
 }
 

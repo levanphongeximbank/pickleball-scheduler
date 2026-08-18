@@ -25,6 +25,10 @@ import {
   createCompetitionRefereeAssignmentTrustedClient,
   extractCanonicalAssignmentId,
 } from "../../src/features/competition-engine/operations/referee/assignment/client/competitionRefereeAssignmentEdgeClient.js";
+import { createHash } from "node:crypto";
+import { createDailyPlayCanonicalService } from "../../src/features/daily-play/canonical/dailyPlayCanonicalService.js";
+import { DAILY_PLAY_CODE } from "../../src/features/daily-play/canonical/dailyPlayCodes.js";
+import { DAILY_MATCH_TYPE } from "../../src/features/daily-play/canonical/dailyPlayMatchShape.js";
 import {
   AUTH_CONTEXT_CLASS,
   evaluateOrganizerAuthContext,
@@ -129,6 +133,16 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
     requiredInExistingQa: true,
     notes: "No createAuthUser / updateIdentitySubject in EXISTING_QA_IDENTITY_MODE.",
   },
+  resolveDailyPlayPreflight: {
+    object: "DAILY_PLAY_PREFLIGHT",
+    requiredState: "read-only Tenant A club + >=4 existing eligible athletes + court capability + Daily RPC",
+    classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
+    authority: "scripts/core13/core13-staging-fixture-preflight.mjs#evaluateDailyFixturePreflight",
+    nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
+    required: false,
+    requiredInExistingQa: true,
+    notes: "READ/RESOLUTION only. Must run before createCanonicalTournament. CREATE_PLAYER_GO=NO.",
+  },
   createTenant: {
     object: "TENANT",
     requiredState: "disposable Tenant A and Tenant B (DISPOSABLE_IDENTITY_PROVISION_MODE only)",
@@ -180,7 +194,8 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
   },
   createDailyPlayMatches: {
     object: "MATCH",
-    requiredState: "Daily Play match shells (mode-specific; not INTERNAL shared execution initializer)",
+    requiredState:
+      "Daily Play match identity via canonical getState → checkIn x4 CAS → createMatches doubles (not INTERNAL shared execution initializer)",
     classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
     authority: "src/features/daily-play/canonical/dailyPlayCanonicalService.js#createMatches",
     nodeBinding: NODE_BINDING.REQUIRES_AUTHENTICATED_USER_CLIENT,
@@ -188,6 +203,8 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
     requiredInExistingQa: true,
     forbiddenAsInternalInitializer: true,
     tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
+    notes:
+      "Must not call createMatches against zero checked-in athletes. Organizer JWT only. Server revision remains authoritative.",
   },
   setCourtSchedule: {
     object: "SCHEDULE",
@@ -960,6 +977,280 @@ export function createRefereeV5LifecycleWriters({
       });
     },
   });
+}
+
+export const DAILY_FIXTURE_MATCH_TYPE = "open_double";
+export const MIN_EXISTING_ELIGIBLE_DAILY_PLAYERS_REQUIRED = 4;
+
+function dailyFixtureHashUuid(seed) {
+  const hex = createHash("sha256").update(String(seed || "")).digest("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
+export function buildDailyCheckInIdempotencyKey({
+  runId,
+  tournamentId,
+  playerId,
+  index,
+} = {}) {
+  return [
+    CORE13_FIXTURE_IDEMPOTENCY_NAMESPACE,
+    String(runId || "").trim(),
+    String(tournamentId || "").trim(),
+    "DAILY_CHECKIN",
+    String(index),
+    String(playerId || "").trim(),
+  ].join(":");
+}
+
+export function buildDailyCreateMatchesIdempotencyKey({ runId, tournamentId } = {}) {
+  return [
+    CORE13_FIXTURE_IDEMPOTENCY_NAMESPACE,
+    String(runId || "").trim(),
+    String(tournamentId || "").trim(),
+    "DAILY_CREATE_MATCHES",
+  ].join(":");
+}
+
+export function buildDailyFixtureMatchId({ runId, tournamentId } = {}) {
+  return dailyFixtureHashUuid(
+    [CORE13_FIXTURE_IDEMPOTENCY_NAMESPACE, runId, tournamentId, "DAILY_MATCH"].join(":")
+  );
+}
+
+export function buildDailyDoublesMatchPayload({ playerIds = [], matchId } = {}) {
+  const ids = [...new Set((playerIds || []).map((id) => String(id || "").trim()).filter(Boolean))];
+  if (ids.length !== 4) {
+    return Object.freeze({
+      ok: false,
+      detail: "Daily doubles payload requires exactly four distinct eligible players",
+    });
+  }
+  return Object.freeze({
+    ok: true,
+    match: {
+      id: String(matchId || buildDailyFixtureMatchId({ runId: "payload", tournamentId: ids.join("-") })),
+      matchType: DAILY_FIXTURE_MATCH_TYPE,
+      teamAPlayerIds: ids.slice(0, 2),
+      teamBPlayerIds: ids.slice(2, 4),
+    },
+  });
+}
+
+function extractDailyRevision(result) {
+  const n = Number(
+    result?.revision ??
+      result?.dailyPlay?.revision ??
+      result?.data?.revision ??
+      result?.data?.dailyPlay?.revision
+  );
+  return Number.isFinite(n) ? n : null;
+}
+
+function extractCheckedInPlayerIds(result) {
+  const raw =
+    result?.dailyPlay?.checkedInPlayerIds ||
+    result?.checkedInPlayerIds ||
+    result?.data?.dailyPlay?.checkedInPlayerIds ||
+    [];
+  return [...new Set((Array.isArray(raw) ? raw : []).map((id) => String(id || "").trim()).filter(Boolean))];
+}
+
+function extractCreatedMatchId(result, expectedId) {
+  const lists = [
+    result?.dailyPlay?.matches,
+    result?.matches,
+    result?.data?.dailyPlay?.matches,
+    result?.data?.matches,
+  ].filter((row) => Array.isArray(row));
+  for (const matches of lists) {
+    const found =
+      matches.find((row) => String(row?.id || row?.matchId || "") === String(expectedId || "")) ||
+      matches[0];
+    const id = String(found?.id || found?.matchId || "").trim();
+    if (id) return id;
+  }
+  return String(result?.id || result?.matchId || "").trim();
+}
+
+/**
+ * Canonical Daily fixture match writer.
+ * Organizer JWT / injected service only. Never INTERNAL initializer.
+ * CAS: getState N → checkIn x4 with fresh revision each time → createMatches.
+ */
+export function createDailyPlayCanonicalMatchWriter({
+  service,
+  rpc,
+  organizerAccessToken,
+} = {}) {
+  const daily = service || createDailyPlayCanonicalService({ rpc });
+  return async function createDailyPlayMatches(input = {}) {
+    const callerHits = ["actor", "actorRole", "initialState", "adapter", "serviceRoleKey"].filter((key) =>
+      Object.prototype.hasOwnProperty.call(input || {}, key)
+    );
+    if (callerHits.length) {
+      return Object.freeze({
+        ok: false,
+        detail: `caller authority denied: ${callerHits.join(",")}`,
+      });
+    }
+    if (input.__allowDailyAsInternal === true) {
+      return Object.freeze({
+        ok: false,
+        detail: "DAILY_WRITER_AS_INTERNAL_FIXTURE_AUTHORITY=DENY",
+      });
+    }
+    if (!organizerAccessToken && !service && !rpc) {
+      return Object.freeze({
+        ok: false,
+        detail: "authenticated organizer Daily client required",
+        tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
+      });
+    }
+    const tenantId = String(input.tenantId || "").trim();
+    const clubId = String(input.clubId || "").trim();
+    const tournamentId = String(input.tournamentId || "").trim();
+    const runId = String(input.runId || "").trim();
+    const eligible = [...new Set((input.eligiblePlayerIds || input.playerIds || []).map((id) => String(id || "").trim()).filter(Boolean))];
+    const playerIds = eligible.slice(0, MIN_EXISTING_ELIGIBLE_DAILY_PLAYERS_REQUIRED);
+    if (!tenantId || !clubId || !tournamentId) {
+      return Object.freeze({ ok: false, detail: "Daily tenantId/clubId/tournamentId required" });
+    }
+    if (playerIds.length < MIN_EXISTING_ELIGIBLE_DAILY_PLAYERS_REQUIRED) {
+      return Object.freeze({
+        ok: false,
+        code: DAILY_PLAY_CODE.NOT_ENOUGH_PLAYERS,
+        detail: "DAILY_CHECKED_IN_PLAYERS_INSUFFICIENT",
+      });
+    }
+    const payload = buildDailyDoublesMatchPayload({
+      playerIds,
+      matchId: input.matchId || buildDailyFixtureMatchId({ runId, tournamentId }),
+    });
+    if (!payload.ok) return payload;
+    const scope = { tenantId, clubId, tournamentId };
+    const initial = await daily.getState(scope);
+    if (!initial || initial.ok === false) {
+      return Object.freeze({
+        ok: false,
+        detail: initial?.detail || initial?.error || "Daily getState failed",
+        code: initial?.code,
+      });
+    }
+    let expectedVersion = extractDailyRevision(initial);
+    if (expectedVersion == null) {
+      return Object.freeze({
+        ok: false,
+        code: DAILY_PLAY_CODE.MISSING_EXPECTED_VERSION,
+        detail: "authoritative Daily revision required",
+      });
+    }
+    const casTrace = [{ op: "getState", expectedVersion }];
+    for (let index = 0; index < playerIds.length; index += 1) {
+      const playerId = playerIds[index];
+      const checked = await daily.checkIn(scope, {
+        playerId,
+        expectedVersion,
+        idempotencyKey: buildDailyCheckInIdempotencyKey({
+          runId,
+          tournamentId,
+          playerId,
+          index: index + 1,
+        }),
+      });
+      if (!checked || checked.ok === false) {
+        return Object.freeze({
+          ok: false,
+          code: checked?.code || DAILY_PLAY_CODE.VALIDATION,
+          detail: checked?.detail || checked?.error || "Daily check-in failed",
+          expectedVersion,
+          casTrace,
+        });
+      }
+      const afterCheckIn = await daily.getState(scope);
+      if (!afterCheckIn || afterCheckIn.ok === false) {
+        return Object.freeze({
+          ok: false,
+          detail: "Daily getState failed after check-in",
+          code: afterCheckIn?.code,
+        });
+      }
+      const nextVersion = extractDailyRevision(afterCheckIn);
+      if (nextVersion == null || nextVersion === expectedVersion) {
+        return Object.freeze({
+          ok: false,
+          code: DAILY_PLAY_CODE.VERSION_CONFLICT,
+          detail: "Daily check-in did not advance authoritative revision",
+          expectedVersion,
+          actualVersion: nextVersion,
+        });
+      }
+      casTrace.push({
+        op: "checkIn",
+        playerId,
+        from: expectedVersion,
+        to: nextVersion,
+      });
+      expectedVersion = nextVersion;
+    }
+    const verified = await daily.getState(scope);
+    const checkedIn = extractCheckedInPlayerIds(verified);
+    const missing = playerIds.filter((id) => !checkedIn.includes(id));
+    if (missing.length) {
+      return Object.freeze({
+        ok: false,
+        code: DAILY_PLAY_CODE.NOT_ENOUGH_PLAYERS,
+        detail: "not all four existing athletes are checked in",
+        missing,
+      });
+    }
+    expectedVersion = extractDailyRevision(verified);
+    const created = await daily.createMatches(scope, {
+      matches: [payload.match],
+      expectedVersion,
+      eligiblePlayerCount: checkedIn.length,
+      idempotencyKey: buildDailyCreateMatchesIdempotencyKey({ runId, tournamentId }),
+    });
+    if (!created || created.ok === false) {
+      return Object.freeze({
+        ok: false,
+        code: created?.code || DAILY_PLAY_CODE.VALIDATION,
+        detail: created?.detail || created?.error || "Daily createMatches failed",
+        expectedVersion,
+        casTrace,
+      });
+    }
+    const readback = await daily.getState(scope);
+    const matchId =
+      extractCreatedMatchId(readback, payload.match.id) ||
+      extractCreatedMatchId(created, payload.match.id);
+    if (!matchId) {
+      return Object.freeze({
+        ok: false,
+        detail: "Daily createMatches did not return an authoritative match identity",
+        casTrace,
+      });
+    }
+    casTrace.push({
+      op: "createMatches",
+      from: expectedVersion,
+      to: extractDailyRevision(readback) ?? extractDailyRevision(created),
+      matchId,
+    });
+    return Object.freeze({
+      ok: true,
+      id: matchId,
+      matchId,
+      tournamentId,
+      enabled: input.enabled === true,
+      refereeFeatureEnabled: input.enabled === true,
+      matchType: DAILY_MATCH_TYPE.OPEN_DOUBLE,
+      revision: extractDailyRevision(readback),
+      casTrace,
+      tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
+      DAILY_WRITER_AS_INTERNAL_FIXTURE_AUTHORITY: "DENY",
+    });
+  };
 }
 
 export function bindSharedRefereeExecutionWriters(options = {}) {

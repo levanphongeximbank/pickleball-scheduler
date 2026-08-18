@@ -56,7 +56,23 @@ export const FIXTURE_ERROR_STAGE = Object.freeze({
   REFEREE_V5_LIFECYCLE: "REFEREE_V5_LIFECYCLE",
   MATCH_EXECUTION_INIT: "MATCH_EXECUTION_INIT",
   ASSIGNMENT_BOOTSTRAP: "ASSIGNMENT_BOOTSTRAP",
+  SEMANTIC_PREFLIGHT: "SEMANTIC_PREFLIGHT",
+  DAILY_MATERIALIZATION: "DAILY_MATERIALIZATION",
 });
+
+export const FIXTURE_LIFECYCLE = Object.freeze({
+  PRE_MATCH: "PRE_MATCH",
+  IN_PROGRESS: "IN_PROGRESS",
+  SCORING_ACTIVE: "SCORING_ACTIVE",
+  LOCKED: "LOCKED",
+  COMPLETED: "COMPLETED",
+  UNPROVEN: "UNPROVEN",
+});
+
+export const EVENT_SEQUENCE_ALONE_AS_SCORING_ACTIVE = "DENY";
+export const COMPLETED_FINALIZED_EVIDENCE_MODEL =
+  "ENGINE_COMPLETED_PLUS_CONFIRMED_RESULT_REVISION_PLUS_FINALIZED_LOCK";
+export const SCORING_COMMAND_TYPES = Object.freeze(["TEAM_A_WON_RALLY", "TEAM_B_WON_RALLY"]);
 
 const SAFE_ERROR_ENVELOPE_KEYS = Object.freeze([
   "stage",
@@ -623,11 +639,32 @@ export function evaluateReceiptRemoteReconciliation(receipt, remote = {}) {
       return proof(false, `remote match evidence missing for ${key}`);
     }
     const actualLifecycle = String(evidence.lifecycle || "").toUpperCase();
-    if (!actualLifecycle) {
+    if (!actualLifecycle || actualLifecycle === "UNPROVEN") {
       return proof(false, `remote lifecycle unproven for ${key}`);
     }
     if (actualLifecycle !== expected) {
       return proof(false, `remote lifecycle mismatch ${key} expected=${expected} actual=${actualLifecycle}`);
+    }
+    if (expected === "COMPLETED") {
+      if (
+        evidence.engineCompleted !== true ||
+        evidence.confirmedResultRevision !== true ||
+        evidence.finalizedLock !== true
+      ) {
+        return proof(
+          false,
+          "completed finalized locked accepted only with engine completed + confirmed result revision + finalized lock"
+        );
+      }
+    }
+    if (expected === "LOCKED" && evidence.finalizedLock === true) {
+      return proof(false, "locked paused is not completed finalization");
+    }
+    if (expected === "IN_PROGRESS" && evidence.scoringEvidence === true) {
+      return proof(false, "START-only is not scoring active");
+    }
+    if (expected === "SCORING_ACTIVE" && evidence.scoringEvidence !== true) {
+      return proof(false, "scoring event is required for scoring active");
     }
     const expectedTournament = entityId(receipt.matches[key].tournamentId);
     if (String(evidence.tournamentId || "") !== expectedTournament) {
@@ -698,21 +735,113 @@ export function evaluateReceiptRemoteReconciliation(receipt, remote = {}) {
   return proof(true, "receipt-remote-reconciled");
 }
 
-export function mapAuthoritativeLifecycle({ liveRow = null, tournamentStatus = "" } = {}) {
-  const tournament = String(tournamentStatus || "").toLowerCase();
-  if (tournament === "completed" || tournament === "cancelled") return "COMPLETED";
-  if (!liveRow) return "PRE_MATCH";
-  const scoringActive =
-    Number(liveRow.last_event_sequence || 0) > 0 ||
-    Number(liveRow.team_a_score || 0) > 0 ||
-    Number(liveRow.team_b_score || 0) > 0;
-  if (scoringActive) return "SCORING_ACTIVE";
-  const raw = String(liveRow.status || "").toLowerCase();
-  if (["paused", "suspended", "locked"].includes(raw)) return "LOCKED";
-  if (["in_progress", "started", "active", "live", "playing"].includes(raw)) return "IN_PROGRESS";
-  if (["completed", "final", "finished"].includes(raw)) return "COMPLETED";
-  if (["not_started", "scheduled", "pending", "ready"].includes(raw)) return "PRE_MATCH";
-  return "PRE_MATCH";
+function payloadStatus(payload) {
+  return String(payload?.status || "").toLowerCase();
+}
+
+function payloadScores(payload) {
+  const teams = payload?.teams || {};
+  const a = Number(teams.teamA?.score ?? teams.a?.score ?? payload?.scoreA ?? 0);
+  const b = Number(teams.teamB?.score ?? teams.b?.score ?? payload?.scoreB ?? 0);
+  return {
+    a: Number.isFinite(a) ? a : 0,
+    b: Number.isFinite(b) ? b : 0,
+  };
+}
+
+function eventCommandType(event = {}) {
+  return String(event.command_type || event.event_type || event.type || event.commandType || "")
+    .trim()
+    .toUpperCase();
+}
+
+function hasScoringCommand(events = []) {
+  return (events || []).some((event) => SCORING_COMMAND_TYPES.includes(eventCommandType(event)));
+}
+
+function hasStartOnlyEvents(events = []) {
+  const types = (events || []).map(eventCommandType).filter(Boolean);
+  return types.length > 0 && types.every((type) => type === "START_MATCH");
+}
+
+function revisionIsConfirmed(resultRevision) {
+  const status = String(resultRevision?.status || "").trim().toLowerCase();
+  return Boolean(resultRevision) && status === "confirmed";
+}
+
+export function classifyAuthoritativeLifecycleProofs({
+  liveRow = null,
+  events = [],
+  resultRevision = null,
+  payloadMatchPresent = false,
+} = {}) {
+  const payload = liveRow?.state_payload || liveRow?.statePayload || liveRow?.payload || null;
+  const liveStatus = String(liveRow?.status || "").toLowerCase();
+  const engineStatus = payloadStatus(payload) || liveStatus;
+  const scores = payloadScores(payload);
+  const sequence = Number(liveRow?.last_event_sequence || liveRow?.lastEventSequence || 0);
+  const scoringEvidence =
+    hasScoringCommand(events) || scores.a > 0 || scores.b > 0;
+  const paused = liveStatus === "paused" || engineStatus === "paused";
+  const durableLocked = liveStatus === "locked" || Boolean(liveRow?.locked_at);
+  const engineCompleted = engineStatus === "completed" || liveStatus === "completed";
+  const confirmedResultRevision = revisionIsConfirmed(resultRevision);
+  const finalizedLock = durableLocked === true;
+  const notStarted = liveStatus === "not_started" || engineStatus === "not_started";
+  const inProgress = liveStatus === "in_progress" || engineStatus === "in_progress";
+  return Object.freeze({
+    payloadMatchPresent: payloadMatchPresent === true,
+    livePresent: Boolean(liveRow),
+    liveStatus,
+    engineStatus,
+    sequence: Number.isFinite(sequence) ? sequence : 0,
+    scoringEvidence,
+    paused,
+    durableLocked,
+    engineCompleted,
+    confirmedResultRevision,
+    finalizedLock,
+    notStarted,
+    inProgress,
+    EVENT_SEQUENCE_ALONE_AS_SCORING_ACTIVE,
+  });
+}
+
+export function mapAuthoritativeLifecycle({
+  liveRow = null,
+  tournamentStatus = "",
+  payloadMatchPresent = false,
+  events = [],
+  resultRevision = null,
+} = {}) {
+  void tournamentStatus;
+  const proofs = classifyAuthoritativeLifecycleProofs({
+    liveRow,
+    events,
+    resultRevision,
+    payloadMatchPresent,
+  });
+
+  if (proofs.engineCompleted && proofs.confirmedResultRevision && proofs.finalizedLock) {
+    return FIXTURE_LIFECYCLE.COMPLETED;
+  }
+  if (proofs.engineCompleted && !proofs.finalizedLock) {
+    return FIXTURE_LIFECYCLE.COMPLETED;
+  }
+  if (proofs.durableLocked && !proofs.engineCompleted) {
+    return FIXTURE_LIFECYCLE.UNPROVEN;
+  }
+  if (proofs.paused) return FIXTURE_LIFECYCLE.LOCKED;
+
+  if (proofs.inProgress && proofs.scoringEvidence) return FIXTURE_LIFECYCLE.SCORING_ACTIVE;
+  if (proofs.inProgress && !proofs.scoringEvidence) {
+    if (proofs.sequence <= 1 || hasStartOnlyEvents(events)) return FIXTURE_LIFECYCLE.IN_PROGRESS;
+    return FIXTURE_LIFECYCLE.UNPROVEN;
+  }
+
+  if (!liveRow) return FIXTURE_LIFECYCLE.PRE_MATCH;
+  if (proofs.notStarted) return FIXTURE_LIFECYCLE.PRE_MATCH;
+  return FIXTURE_LIFECYCLE.UNPROVEN;
 }
 
 export function classifyReceiptOwnedResources(receipt = {}) {
@@ -968,10 +1097,33 @@ export async function loadAuthoritativeRemoteFixtureEvidence(service, receipt) {
   async function loadLive(matchId) {
     const { data, error } = await service
       .from("match_live_states")
-      .select("match_id, status, last_event_sequence, team_a_score, team_b_score")
+      .select(
+        "match_id, status, last_event_sequence, team_a_score, team_b_score, state_payload, state_version, locked_at, locked_by"
+      )
       .eq("match_id", matchId)
       .maybeSingle();
     if (error) throw new Error(`match live evidence failed: ${error.message}`);
+    return data || null;
+  }
+
+  async function loadEvents(matchId) {
+    const { data, error } = await service
+      .from("match_events")
+      .select("match_id, event_sequence, event_type, command_type")
+      .eq("match_id", matchId);
+    if (error) throw new Error(`match event evidence failed: ${error.message}`);
+    return Array.isArray(data) ? data : [];
+  }
+
+  async function loadResultRevision(matchId) {
+    const { data, error } = await service
+      .from("match_result_revisions")
+      .select("match_id, status, revision, winner_team_id, final_score, finalized_at")
+      .eq("match_id", matchId)
+      .order("revision", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(`match result revision evidence failed: ${error.message}`);
     return data || null;
   }
 
@@ -1006,12 +1158,22 @@ export async function loadAuthoritativeRemoteFixtureEvidence(service, receipt) {
               ? dailyDisabled
               : null;
     const live = await loadLive(matchId);
+    const events = live ? await loadEvents(matchId) : [];
+    const resultRevision = await loadResultRevision(matchId);
     const inPayload = tournamentRow ? payloadContainsMatchId(tournamentRow.payload, matchId) : false;
     const exists = Boolean(live) || inPayload || (key === "preMatch" && inPayload);
-    // PRE_MATCH may exist as payload-only (missing live row). Other lifecycles need proof.
+    const proofs = classifyAuthoritativeLifecycleProofs({
+      liveRow: live,
+      events,
+      resultRevision,
+      payloadMatchPresent: inPayload,
+    });
     const lifecycle = mapAuthoritativeLifecycle({
       liveRow: live,
       tournamentStatus: tournamentRow?.status || "",
+      payloadMatchPresent: inPayload,
+      events,
+      resultRevision,
     });
     matches[key] = {
       exists: exists === true,
@@ -1019,6 +1181,15 @@ export async function loadAuthoritativeRemoteFixtureEvidence(service, receipt) {
       lifecycle,
       livePresent: Boolean(live),
       payloadPresent: inPayload,
+      liveStatus: live?.status || null,
+      engineStatus: proofs.engineStatus || null,
+      stateVersion: live?.state_version ?? null,
+      lastEventSequence: live?.last_event_sequence ?? null,
+      scoringEvidence: proofs.scoringEvidence === true,
+      engineCompleted: proofs.engineCompleted === true,
+      confirmedResultRevision: proofs.confirmedResultRevision === true,
+      finalizedLock: proofs.finalizedLock === true,
+      resultRevisionStatus: resultRevision?.status || null,
     };
   }
 
@@ -1118,10 +1289,15 @@ function windowsOverlap(a, b) {
 export function buildAlignedRemoteEvidenceForTests(receipt, overrides = {}) {
   const matches = {};
   for (const key of REQUIRED_MATCH_KEYS) {
+    const lifecycle = String(receipt.matches[key].lifecycle).toUpperCase();
     matches[key] = {
       exists: true,
       tournamentId: String(receipt.matches[key].tournamentId),
-      lifecycle: String(receipt.matches[key].lifecycle).toUpperCase(),
+      lifecycle,
+      scoringEvidence: lifecycle === "SCORING_ACTIVE",
+      engineCompleted: lifecycle === "COMPLETED",
+      confirmedResultRevision: lifecycle === "COMPLETED",
+      finalizedLock: lifecycle === "COMPLETED",
     };
   }
   const identities = {};
