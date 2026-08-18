@@ -27,6 +27,12 @@ import {
   individualSettingsPath,
   resolveA1OpenPath,
 } from "../src/features/tournament/experience-a1/routes.js";
+import {
+  deriveAttentionItems,
+  deriveCenterCard,
+  deriveCenterKpis,
+  filterCenterTournaments,
+} from "../src/features/tournament/experience-a1/visual/centerListModel.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const A1_DIR = path.join(root, "src/features/tournament/experience-a1");
@@ -225,11 +231,111 @@ describe("tournament-experience-wave-a1", () => {
       "PICK VN OPEN 2026",
       "prototypeFixture",
       "FIXTURE_TOURNAMENTS",
+      "+14%",
+      "+9%",
+      "+20%",
+      "-25%",
     ];
     for (const item of readA1Sources()) {
       for (const needle of fixtures) {
         assert.equal(item.source.includes(needle), false, `${item.file} contains ${needle}`);
       }
     }
+  });
+
+  it("SCREEN_01_REAL_CANONICAL_LIST_BINDING", () => {
+    const center = readFileSync(path.join(A1_DIR, "pages/TournamentCenterExperiencePage.jsx"), "utf8");
+    assert.ok(center.includes("useCanonicalTournamentList"));
+    assert.ok(center.includes("deriveCenterKpis(tournaments)"));
+    assert.ok(center.includes("navigate(TOURNAMENT_ROUTES.create)"));
+    assert.equal(center.includes("prototypeFixture"), false);
+    assert.equal(center.includes("FIXTURE_TOURNAMENTS"), false);
+  });
+
+  it("NO_USER_VISIBLE_DEVELOPER_COPY", () => {
+    const center = readFileSync(path.join(A1_DIR, "pages/TournamentCenterExperiencePage.jsx"), "utf8");
+    const header = readFileSync(path.join(A1_DIR, "visual/CenterPageHeader.jsx"), "utf8");
+    const joined = `${center}\n${header}`;
+    for (const needle of [
+      "Phạm vi hiện tại",
+      "Vòng đời",
+      "trang hiện có",
+      "dữ liệu mẫu",
+      "Giao diện cũ",
+      "canonical_tournament_list",
+      "Production authority",
+      "read source",
+      "legacy route",
+    ]) {
+      assert.equal(joined.includes(needle), false, needle);
+    }
+  });
+
+  it("ZERO_DATA_STATE keeps Screen 01 structure", () => {
+    const kpis = deriveCenterKpis([]);
+    assert.deepEqual(kpis, { ongoing: 0, upcoming: 0, registering: 0, attention: 0 });
+    assert.deepEqual(deriveAttentionItems([]), []);
+    const center = readFileSync(path.join(A1_DIR, "pages/TournamentCenterExperiencePage.jsx"), "utf8");
+    assert.ok(center.includes("Chưa có giải đấu"));
+    assert.ok(center.includes("Đang diễn ra"));
+    assert.ok(center.includes("Sắp diễn ra"));
+    assert.ok(center.includes("Đang đăng ký"));
+    assert.ok(center.includes("Cần xử lý"));
+    assert.ok(center.includes("Giải nội bộ"));
+    assert.ok(center.includes("Chính thức / Mở rộng"));
+    assert.ok(center.includes("tournament-center-empty"));
+    assert.equal(center.includes("<Alert severity=\"info\">Không có giải"), false);
+  });
+
+  it("TOURNAMENT_CREATE_BEHAVIOR_UNCHANGED", () => {
+    const center = readFileSync(path.join(A1_DIR, "pages/TournamentCenterExperiencePage.jsx"), "utf8");
+    assert.ok(center.includes("TOURNAMENT_ROUTES.create"));
+    assert.equal(center.includes("createTournamentCommand"), false);
+    assert.equal(TOURNAMENT_ROUTES.create, "/tournament/create");
+  });
+
+  it("SCREEN_02_UNCHANGED writer and read-only contract", () => {
+    const overview = readFileSync(path.join(A1_DIR, "pages/IndividualOverviewPage.jsx"), "utf8");
+    assert.ok(overview.includes("deriveOverviewModel"));
+    assert.ok(overview.includes("useCanonicalTournament"));
+    assert.equal(overview.includes(".update("), false);
+    assert.equal(overview.includes("createTournamentCommand"), false);
+    assert.ok(overview.includes("TournamentKpiCard"));
+  });
+
+  it("SCREEN_03_UNCHANGED writer path", () => {
+    const settings = readFileSync(path.join(A1_DIR, "pages/IndividualSettingsPage.jsx"), "utf8");
+    assert.ok(settings.includes("await update(patch)"));
+    assert.equal(A1_SETTINGS_WRITER.command, "updateTournamentCommand");
+    assert.equal(settings.includes("lockRegistration"), false);
+  });
+
+  it("center list helpers bind real tournament fields only", () => {
+    const tournament = {
+      id: "t1",
+      name: "Giải CLB A",
+      mode: TOURNAMENT_MODE.OFFICIAL_TOURNAMENT,
+      status: "draft",
+      hostClubName: "CLB Thật",
+      events: [
+        {
+          id: "e1",
+          entries: [{ id: "p1" }],
+          matches: [{ status: "completed" }, { status: "waiting" }],
+        },
+      ],
+    };
+    const kpis = deriveCenterKpis([tournament, { status: "active" }, { status: "registration" }]);
+    assert.equal(kpis.attention, 1);
+    assert.equal(kpis.ongoing, 1);
+    assert.equal(kpis.registering, 1);
+    const card = deriveCenterCard(tournament, { clubName: "Fallback" });
+    assert.equal(card.athletes, 1);
+    assert.equal(card.events, 1);
+    assert.equal(card.matches, 2);
+    assert.equal(card.progress, 50);
+    assert.equal(card.location, "CLB Thật");
+    const filtered = filterCenterTournaments([tournament], { filterKey: "active" });
+    assert.equal(filtered.length, 0);
   });
 });
