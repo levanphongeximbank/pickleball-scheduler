@@ -13,6 +13,7 @@ import {
 } from "../src/features/tournament/experience-a1/flags.js";
 import {
   deriveOverviewModel,
+  deriveOverviewVisual,
   listTournamentEvents,
   resolveSelectedEvent,
 } from "../src/features/tournament/experience-a1/deriveOverview.js";
@@ -253,19 +254,30 @@ describe("tournament-experience-wave-a1", () => {
   });
 
   it("NO_USER_VISIBLE_DEVELOPER_COPY", () => {
-    const center = readFileSync(path.join(A1_DIR, "pages/TournamentCenterExperiencePage.jsx"), "utf8");
-    const header = readFileSync(path.join(A1_DIR, "visual/CenterPageHeader.jsx"), "utf8");
-    const joined = `${center}\n${header}`;
+    const pages = [
+      "pages/TournamentCenterExperiencePage.jsx",
+      "pages/IndividualOverviewPage.jsx",
+      "pages/IndividualSettingsPage.jsx",
+      "visual/CenterPageHeader.jsx",
+      "visual/ExperiencePageHeader.jsx",
+      "visual/ExperienceHero.jsx",
+    ].map((file) => readFileSync(path.join(A1_DIR, file), "utf8"));
+    const joined = pages.join("\n");
     for (const needle of [
       "Phạm vi hiện tại",
-      "Vòng đời",
       "trang hiện có",
       "dữ liệu mẫu",
       "Giao diện cũ",
       "canonical_tournament_list",
+      "canonical_tournament_update",
+      "updateTournamentCommand",
       "Production authority",
       "read source",
       "legacy route",
+      "Wave A1",
+      "official_open",
+      "internal_tournament",
+      "prototypeFixture",
     ]) {
       assert.equal(joined.includes(needle), false, needle);
     }
@@ -296,18 +308,26 @@ describe("tournament-experience-wave-a1", () => {
 
   it("SCREEN_02_UNCHANGED writer and read-only contract", () => {
     const overview = readFileSync(path.join(A1_DIR, "pages/IndividualOverviewPage.jsx"), "utf8");
-    assert.ok(overview.includes("deriveOverviewModel"));
+    assert.ok(overview.includes("deriveOverviewVisual"));
     assert.ok(overview.includes("useCanonicalTournament"));
+    assert.ok(overview.includes("ExperienceHero"));
+    assert.ok(overview.includes("CenterKpiCard"));
+    assert.ok(overview.includes("Vòng đời giải đấu"));
+    assert.ok(overview.includes("Trận đấu đang diễn ra"));
     assert.equal(overview.includes(".update("), false);
     assert.equal(overview.includes("createTournamentCommand"), false);
-    assert.ok(overview.includes("TournamentKpiCard"));
+    assert.equal(overview.includes("TournamentPageHeader"), false);
   });
 
   it("SCREEN_03_UNCHANGED writer path", () => {
     const settings = readFileSync(path.join(A1_DIR, "pages/IndividualSettingsPage.jsx"), "utf8");
     assert.ok(settings.includes("await update(patch)"));
+    assert.ok(settings.includes("Lưu nháp"));
+    assert.ok(settings.includes("Thiết kế thể thức"));
+    assert.ok(settings.includes("Phạm vi cấu hình"));
     assert.equal(A1_SETTINGS_WRITER.command, "updateTournamentCommand");
     assert.equal(settings.includes("lockRegistration"), false);
+    assert.equal(settings.includes("updateTournamentCommand"), false);
   });
 
   it("center list helpers bind real tournament fields only", () => {
@@ -337,5 +357,39 @@ describe("tournament-experience-wave-a1", () => {
     assert.equal(card.location, "CLB Thật");
     const filtered = filterCenterTournaments([tournament], { filterKey: "active" });
     assert.equal(filtered.length, 0);
+  });
+
+  it("SCREEN_02 visual model keeps all events and honest empty ops", () => {
+    const tournament = {
+      id: "t-open",
+      name: "Giải mở",
+      mode: TOURNAMENT_MODE.OFFICIAL_TOURNAMENT,
+      status: "active",
+      hostClubName: "CLB Thật",
+      events: [
+        {
+          id: "e-a",
+          name: "Đôi nam",
+          eventType: EVENT_TYPE.MEN_DOUBLE,
+          entries: [{ id: "1", name: "Cặp A", playerIds: ["p1", "p2"] }],
+          matches: [{ id: "m1", status: "playing", entryAId: "1", scoreA: 6, scoreB: 4 }],
+        },
+        {
+          id: "e-b",
+          name: "Đôi nữ",
+          eventType: EVENT_TYPE.WOMEN_DOUBLE,
+          entries: [],
+          matches: [],
+        },
+      ],
+    };
+    const visual = deriveOverviewVisual(tournament);
+    assert.equal(visual.eventCards.length, 2);
+    assert.equal(visual.ops.playing, 1);
+    assert.equal(visual.liveMatches.length, 1);
+    assert.equal(visual.liveMatches[0].a, "Cặp A");
+    assert.ok(visual.attention.some((item) => item.label.includes("Đôi nữ")));
+    assert.equal(visual.heroStatusLabel, "ĐANG DIỄN RA");
+    assert.equal(visual.lifecycle.some((step) => step.id === "compete" && step.state === "current"), true);
   });
 });

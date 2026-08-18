@@ -15,14 +15,18 @@ export const TOURNAMENT_COLOR = Object.freeze({
   danger: "#DC2626",
   dangerSurface: "#FEE2E2",
   live: "#DC2626",
+  liveSurface: "#FEE2E2",
   purple: "#7C3AED",
+  purpleSurface: "#EDE9FE",
   orange: "#EA580C",
+  orangeSurface: "#FFEDD5",
   navy: "#0F1B2D",
   pageBg: "#F8FAFC",
   cardBg: "#FFFFFF",
   text: "#0F172A",
   textMuted: "#64748B",
   divider: "#E2E8F0",
+  disabled: "#94A3B8",
   draft: "#94A3B8",
 });
 
@@ -48,6 +52,7 @@ export const TOURNAMENT_ELEVATION = Object.freeze({
 export const TOURNAMENT_TYPE = Object.freeze({
   pageTitle: { size: 22, weight: 800, lineHeight: 1.2 },
   pageSubtitle: { size: 13, weight: 400, lineHeight: 1.4 },
+  tournamentTitle: { size: 28, weight: 800, lineHeight: 1.12 },
   kpiValue: { size: 22, weight: 800, lineHeight: 1.05 },
   kpiLabel: { size: 11, weight: 600, lineHeight: 1.25 },
   sectionTitle: { size: 14, weight: 700, lineHeight: 1.3 },

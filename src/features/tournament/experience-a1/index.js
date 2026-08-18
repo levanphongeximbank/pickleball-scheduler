@@ -11,6 +11,7 @@ export {
 } from "./routes.js";
 export {
   deriveOverviewModel,
+  deriveOverviewVisual,
   listTournamentEvents,
   resolveSelectedEvent,
 } from "./deriveOverview.js";
