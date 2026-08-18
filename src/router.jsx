@@ -38,6 +38,22 @@ const PublicCatalogNotFoundPage = lazy(
   () => import("./pages/public/PublicCatalogNotFoundPage.jsx")
 );
 
+const TournamentExperiencePrototypeLayout = lazy(() =>
+  import("./features/tournament-experience-ui/TournamentExperiencePrototypeLayout.jsx")
+);
+const TournamentCenterPage = lazy(() =>
+  import("./features/tournament-experience-ui/pages/TournamentCenterPage.jsx")
+);
+const TournamentOverviewPage = lazy(() =>
+  import("./features/tournament-experience-ui/pages/TournamentOverviewPage.jsx")
+);
+const RegistrationPublicationPage = lazy(() =>
+  import("./features/tournament-experience-ui/pages/RegistrationPublicationPage.jsx")
+);
+const PrototypeComingSoonPage = lazy(() =>
+  import("./features/tournament-experience-ui/pages/PrototypeComingSoonPage.jsx")
+);
+
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 
@@ -453,6 +469,16 @@ export default function Router() {
               <Route path="/courts/:publicId" element={<PublicCatalogNotFoundPage kind="court" />} />
               <Route path="/rankings" element={<PublicRankingsPage />} />
               <Route path="/news" element={<PublicNewsPage />} />
+            </Route>
+
+            <Route
+              path="/ux-prototype/tournament-experience"
+              element={<TournamentExperiencePrototypeLayout />}
+            >
+              <Route index element={<TournamentCenterPage />} />
+              <Route path="t/:tournamentId" element={<TournamentOverviewPage />} />
+              <Route path="t/:tournamentId/registration" element={<RegistrationPublicationPage />} />
+              <Route path="t/:tournamentId/*" element={<PrototypeComingSoonPage />} />
             </Route>
 
             <Route

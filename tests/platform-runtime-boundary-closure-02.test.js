@@ -282,12 +282,12 @@ test("Wave2 — Club/MainLayout observers exist; ClubContext no longer owns AI/s
 });
 
 test("Wave2 — composition root binds ports; mobile cleanup registration exists", () => {
-  const main = read("src/main.jsx");
-  assert.match(main, /registerClubAuthSessionProjection/);
-  assert.match(main, /registerMobileOfflineQueueAuthCleanup/);
-  assert.match(main, /bindTournamentAccessPortFromDomain/);
-  assert.match(main, /bindBillingAccessCapabilityFromModule/);
-  assert.match(main, /wirePlatformRuntimeBoundaryBindings/);
+  const composition = `${read("src/main.jsx")}\n${read("src/appEntry.jsx")}`;
+  assert.match(composition, /registerClubAuthSessionProjection/);
+  assert.match(composition, /registerMobileOfflineQueueAuthCleanup/);
+  assert.match(composition, /bindTournamentAccessPortFromDomain/);
+  assert.match(composition, /bindBillingAccessCapabilityFromModule/);
+  assert.match(composition, /wirePlatformRuntimeBoundaryBindings/);
 });
 
 test("Wave2 — architecture guard catches synthetic forbidden import (self-test)", () => {
