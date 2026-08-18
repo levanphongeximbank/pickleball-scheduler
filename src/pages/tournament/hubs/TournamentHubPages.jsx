@@ -1,6 +1,5 @@
 import TournamentPickerHub from "./TournamentPickerHub.jsx";
 import {
-  TOURNAMENT_ROUTES,
   directorPath,
   engineTabPath,
   isDirectorTournament,
@@ -89,7 +88,9 @@ export function TournamentScheduleHub() {
       resolvePath={(tournament) =>
         isEngineTournament(tournament)
           ? engineTabPath(tournament.id, "schedule")
-          : TOURNAMENT_ROUTES.director
+          : isDirectorTournament(tournament)
+            ? directorPath(tournament.id)
+            : getTournamentSetupPath(tournament)
       }
     />
   );
@@ -136,7 +137,7 @@ export function TournamentDirectorHub() {
       description="Chọn giải đang diễn ra để vào Director Mode."
       filter={isDirectorTournament}
       resolvePath={(tournament) => directorPath(tournament.id)}
-      emptyHint="Chưa có giải active phù hợp. Dùng Điều phối sân (/court-engine) cho xếp sân CLB."
+      emptyHint="Chưa có giải active phù hợp. Điều hành giải dùng /tournament/director/:id — không dùng Điều phối sân CLB (/court-engine)."
     />
   );
 }

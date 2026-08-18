@@ -121,7 +121,11 @@ export const TOURNAMENT_IN_PAGE_NAV = Object.freeze({
         id: "organize",
         label: "Chuẩn bị thi đấu",
         items: [
-          leaf("tournament-pairing", "Ghép cặp", TOURNAMENT_ROUTES.pairing, { permissions: SCHED }),
+          leaf("tournament-pairing", "Ghép cặp", TOURNAMENT_ROUTES.pairing, {
+            permissions: SCHED,
+            featureStatus: FEATURE_STATUS.PARTIAL,
+            featureNote: "Chọn giải rồi mở trang tổ chức hiện tại. Chưa có studio ghép cặp riêng.",
+          }),
           leaf("tournament-seeding", "Xếp hạt giống", TOURNAMENT_ROUTES.draw, {
             permissions: MANAGE,
             featureStatus: FEATURE_STATUS.LIVE,
@@ -131,8 +135,9 @@ export const TOURNAMENT_IN_PAGE_NAV = Object.freeze({
             permissions: DIRECTOR,
           }),
           leaf("bracket", "Sơ đồ thi đấu", TOURNAMENT_ROUTES.bracket),
-          leaf("tournament-director", "Điều phối sân", TOURNAMENT_ROUTES.director, {
+          leaf("tournament-director", "Điều hành giải", TOURNAMENT_ROUTES.director, {
             permissions: DIRECTOR,
+            featureNote: "Chọn giải rồi mở Director Mode. Không dùng Điều phối sân CLB.",
           }),
           leaf("tournament-time-estimate", "Dự kiến thời gian", "/tournament?ai=time", {
             featureStatus: FEATURE_STATUS.LIVE,
@@ -168,7 +173,8 @@ export const TOURNAMENT_IN_PAGE_NAV = Object.freeze({
           }),
           leaf("tournament-court-change", "Thay đổi sân", TOURNAMENT_ROUTES.director, {
             permissions: DIRECTOR,
-            featureStatus: FEATURE_STATUS.LIVE,
+            featureStatus: FEATURE_STATUS.PARTIAL,
+            featureNote: "Mở tổ chức giải / Director. Không dùng /court-engine.",
           }),
           leaf("tournament-withdrawal", "Xử lý rút lui / bỏ cuộc", TOURNAMENT_ROUTES.withdrawal, {
             permissions: MANAGE,
@@ -205,9 +211,10 @@ export const TOURNAMENT_IN_PAGE_NAV = Object.freeze({
           leaf("tournament-awards", "Trao giải", TOURNAMENT_ROUTES.awards, {
             permissions: MANAGE,
           }),
-          leaf("tournament-export-results", "Xuất kết quả", "/statistics", {
+          leaf("tournament-export-results", "Xuất kết quả", TOURNAMENT_ROUTES.resultsHub, {
             permissions: STATS,
-            featureStatus: FEATURE_STATUS.LIVE,
+            featureStatus: FEATURE_STATUS.PARTIAL,
+            featureNote: "Chọn giải để xem xếp hạng Engine. Không dùng Thống kê CLB.",
           }),
         ],
       },

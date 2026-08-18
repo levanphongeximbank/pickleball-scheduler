@@ -110,7 +110,7 @@ export function CanonicalTournamentResultsPage() {
         if (isEngineTournament(tournament)) {
           return engineTabPath(tournament.id, "ranking");
         }
-        return TOURNAMENT_ROUTES.resultsRankings;
+        return getTournamentSetupPath(tournament);
       }}
       emptyHint="Chưa có giải để xem kết quả."
     />
