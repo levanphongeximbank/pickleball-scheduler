@@ -139,6 +139,8 @@ export async function createManagedUser({
   password,
   displayName,
   role,
+  status,
+  tenantId = null,
   venueId = null,
   clubId = null,
   phone = "",
@@ -174,6 +176,7 @@ export async function createManagedUser({
 
   const currentUser = getCurrentUser();
   const resolvedVenueId = venueId || currentUser?.venueId || null;
+  const explicitTenantId = String(tenantId || "").trim() || null;
 
   if (hasSupabaseConfig()) {
     const adminResult = await callIdentityAdminCreateUser({
@@ -181,6 +184,8 @@ export async function createManagedUser({
       password: providedPassword || undefined,
       displayName,
       role: targetRole,
+      status,
+      tenantId: explicitTenantId,
       venueId: resolvedVenueId,
       clubId,
       phone,
@@ -213,6 +218,7 @@ export async function createManagedUser({
       metadata: {
         email: normalizedEmail,
         role: targetRole,
+        tenantId: explicitTenantId || undefined,
         emailConfirmed: true,
         mustChangePassword: Boolean(adminResult.mustChangePassword),
         passwordSetupSent: Boolean(adminResult.passwordSetupSent),
@@ -222,6 +228,7 @@ export async function createManagedUser({
     return {
       ok: true,
       user: adminResult.user,
+      identityEvidence: adminResult.identityEvidence || null,
       temporaryPassword: adminResult.temporaryPassword || null,
       mustChangePassword: Boolean(adminResult.mustChangePassword),
       passwordSetupSent: adminResult.passwordSetupSent,
@@ -231,6 +238,14 @@ export async function createManagedUser({
 
   if (!isDevAuthAllowed()) {
     return { ok: false, error: "Dev registry không khả dụng.", code: "DEV_DISABLED" };
+  }
+
+  if (explicitTenantId) {
+    return {
+      ok: false,
+      error: "Tenant mục tiêu không tồn tại.",
+      code: "TARGET_TENANT_NOT_FOUND",
+    };
   }
 
   const user = createUserRecord({
@@ -461,7 +476,7 @@ export async function requestManagedPasswordReset({ userId, email } = {}) {
       metadata: {
         step: "admin_default_reset",
         email: normalizedEmail || undefined,
-        defaultPassword: adminResult.defaultPassword,
+        provider: adminResult.provider || undefined,
       },
     });
 
