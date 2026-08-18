@@ -321,6 +321,58 @@ test("authorized organizer valid INTERNAL match passes", async () => {
   assert.equal(result.body.actorId, undefined);
 });
 
+test("Supabase Edge globalThis.window does not deny trusted initialize-execution", async () => {
+  const hadWindow = Object.prototype.hasOwnProperty.call(globalThis, "window");
+  const previous = hadWindow ? globalThis.window : undefined;
+  globalThis.window = { supabaseEdgeExposesWindow: true };
+  try {
+    const harness = createHarness({ userId: ORGANIZER_ID });
+    const result = await initializeAction(
+      harness,
+      validBody({ idempotencyKey: "edge-window-false-positive" })
+    );
+    assert.equal(result.httpStatus, 200);
+    assert.equal(result.body.ok, true);
+    assert.equal(result.body.initialized, true);
+    assert.notEqual(result.body.code, REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN);
+    assert.deepEqual(
+      harness.rpcCalls.map((call) => call.name),
+      [MATCH_EXECUTION_INIT_RPC]
+    );
+  } finally {
+    if (hadWindow) globalThis.window = previous;
+    else delete globalThis.window;
+  }
+});
+
+test("client authority fields stay denied when globalThis.window exists", async () => {
+  const hadWindow = Object.prototype.hasOwnProperty.call(globalThis, "window");
+  const previous = hadWindow ? globalThis.window : undefined;
+  globalThis.window = { supabaseEdgeExposesWindow: true };
+  try {
+    const harness = createHarness({ userId: PLAYER_ID });
+    const result = await initializeAction(
+      harness,
+      validBody({
+        idempotencyKey: "window-spoof-role",
+        actor: { actorId: ORGANIZER_ID, role: "ORGANIZER", tenantId: TENANT },
+        actorId: ORGANIZER_ID,
+        role: "TOURNAMENT_MANAGER",
+        tenantId: TENANT,
+        initialState: { status: MATCH_STATUS.COMPLETED, version: 99 },
+        adapter: { contractId: "forged" },
+        serviceRoleKey: "not-a-key",
+      })
+    );
+    assert.equal(result.body.ok, false);
+    assert.equal(result.body.code, REFEREE_V5_ERROR.VALIDATION_DENIED);
+    assert.equal(harness.rpcCalls.length, 0);
+  } finally {
+    if (hadWindow) globalThis.window = previous;
+    else delete globalThis.window;
+  }
+});
+
 test("Super Admin with explicit tournament target can initialize", async () => {
   const harness = createHarness({ userId: ADMIN_ID });
   const result = await initializeAction(harness, validBody({ idempotencyKey: "admin-init" }));

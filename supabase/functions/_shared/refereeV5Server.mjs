@@ -4531,16 +4531,7 @@ var ACTIVE_LIVE_STATUSES = Object.freeze([
 ]);
 
 // src/features/referee-v5/execution/authorizeMatchExecutionInit.js
-function isBrowserRuntime() {
-  return typeof globalThis.window !== "undefined";
-}
 function authorizeMatchExecutionInit(input = {}) {
-  if (isBrowserRuntime()) {
-    return createPersistenceError(
-      REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN,
-      "Kh\u1EDFi t\u1EA1o tr\u1EA1ng th\xE1i thi \u0111\u1EA5u ch\u1EC9 ch\u1EA1y tr\xEAn trusted server."
-    );
-  }
   if (input.initialState != null || input.statePayload != null || input.stateSnapshot != null) {
     return createPersistenceError(
       REFEREE_V5_ERROR.VALIDATION_DENIED,

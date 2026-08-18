@@ -19,6 +19,7 @@ import { createTeamTournamentRefereeAdapter } from "../../src/features/competiti
 import { MATCH_EVENT_TYPE, MATCH_STATUS } from "../../src/features/referee-v5/constants/eventTypes.js";
 import { STATE_SCHEMA_VERSION } from "../../src/features/referee-v5/constants/stateSchema.js";
 import { initializeMatchExecutionState } from "../../src/features/referee-v5/execution/initializeMatchExecutionState.js";
+import { authorizeMatchExecutionInit } from "../../src/features/referee-v5/execution/authorizeMatchExecutionInit.js";
 import {
   MATCH_EXECUTION_INIT_RPC,
   MATCH_LIVE_STATES_CLASSIFICATION,
@@ -31,7 +32,9 @@ import { RefereeV5PersistenceService } from "../../src/features/referee-v5/persi
 import { validatePersistedMatchState } from "../../src/features/referee-v5/persistence/validatePersistedState.js";
 import { validateStateSchemaVersion } from "../../src/features/referee-v5/persistence/validateStateSchema.js";
 import {
+  assertInternalRpcAllowed,
   isPublicBrowserRpc,
+  refereeV5InitializeMatchExecutionState,
   REFEREE_V5_INTERNAL_RPC_NAMES,
 } from "../../src/features/referee-v5/services/refereeV5InternalRpcService.js";
 import { findSecretCandidates } from "../../scripts/phase5d-br01-br10/secret-scanner.mjs";
@@ -190,6 +193,18 @@ async function initInternal(overrides = {}) {
     rpcClient: overrides.rpcClient,
   });
   return { repository, result };
+}
+
+async function withGlobalWindow(run) {
+  const hadWindow = Object.prototype.hasOwnProperty.call(globalThis, "window");
+  const previous = hadWindow ? globalThis.window : undefined;
+  globalThis.window = { supabaseEdgeExposesWindow: true };
+  try {
+    return await run();
+  } finally {
+    if (hadWindow) globalThis.window = previous;
+    else delete globalThis.window;
+  }
 }
 
 test("capability identity is shared referee execution initialization", () => {
@@ -486,19 +501,122 @@ test("REFEREE cannot initialize arbitrary matches", async () => {
   });
   assert.equal(result.ok, false);
   assert.equal(result.code, REFEREE_V5_ERROR.VALIDATION_DENIED);
+  assert.notEqual(result.code, REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN);
 });
 
-test("browser cannot write live state directly", async () => {
-  const previous = globalThis.window;
-  globalThis.window = {};
-  try {
-    const { result } = await initInternal({ idempotencyKey: "k-browser" });
+test("PLAYER cannot initialize match execution state", async () => {
+  const { result } = await initInternal({
+    actor: { actorId: "player-1", tenantId: TENANT, role: "PLAYER" },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.code, REFEREE_V5_ERROR.VALIDATION_DENIED);
+  assert.notEqual(result.code, REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN);
+});
+
+test("authorized organizer passes authorizeMatchExecutionInit when globalThis.window exists", async () => {
+  await withGlobalWindow(async () => {
+    const result = authorizeMatchExecutionInit({
+      tenantId: TENANT,
+      tournamentId: TOURNAMENT,
+      matchId: MATCH,
+      competitionMode: COMPETITION_REFEREE_MODE.INTERNAL,
+      idempotencyKey: "k-window-organizer",
+      actor: organizer(),
+      adapter: internalAdapter(),
+    });
+    assert.equal(result.ok, true);
+    assert.notEqual(result.code, REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN);
+  });
+});
+
+test("REFEREE remains denied by role policy when globalThis.window exists", async () => {
+  await withGlobalWindow(async () => {
+    const result = authorizeMatchExecutionInit({
+      tenantId: TENANT,
+      tournamentId: TOURNAMENT,
+      matchId: MATCH,
+      competitionMode: COMPETITION_REFEREE_MODE.INTERNAL,
+      idempotencyKey: "k-window-ref",
+      actor: { actorId: "ref-1", tenantId: TENANT, role: "REFEREE" },
+      adapter: internalAdapter(),
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, REFEREE_V5_ERROR.VALIDATION_DENIED);
+    assert.notEqual(result.code, REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN);
+  });
+});
+
+test("PLAYER remains denied by role policy when globalThis.window exists", async () => {
+  await withGlobalWindow(async () => {
+    const result = authorizeMatchExecutionInit({
+      tenantId: TENANT,
+      tournamentId: TOURNAMENT,
+      matchId: MATCH,
+      competitionMode: COMPETITION_REFEREE_MODE.INTERNAL,
+      idempotencyKey: "k-window-player",
+      actor: { actorId: "player-1", tenantId: TENANT, role: "PLAYER" },
+      adapter: internalAdapter(),
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, REFEREE_V5_ERROR.VALIDATION_DENIED);
+    assert.notEqual(result.code, REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN);
+  });
+});
+
+test("cross-tenant actor is denied even when globalThis.window exists", async () => {
+  await withGlobalWindow(async () => {
+    const result = authorizeMatchExecutionInit({
+      tenantId: TENANT,
+      tournamentId: TOURNAMENT,
+      matchId: MATCH,
+      competitionMode: COMPETITION_REFEREE_MODE.INTERNAL,
+      idempotencyKey: "k-window-xtenant",
+      actor: { actorId: "org-b", tenantId: "tenant-b", role: "ORGANIZER" },
+      adapter: internalAdapter(),
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, REFEREE_V5_ERROR.TENANT_ACCESS_DENIED);
+  });
+});
+
+test("venue is not accepted as tenant fallback even when globalThis.window exists", async () => {
+  await withGlobalWindow(async () => {
+    const result = authorizeMatchExecutionInit({
+      tenantId: TENANT,
+      tournamentId: TOURNAMENT,
+      matchId: MATCH,
+      competitionMode: COMPETITION_REFEREE_MODE.INTERNAL,
+      idempotencyKey: "k-window-venue",
+      actor: { actorId: "org-venue", role: "ORGANIZER", venueId: TENANT },
+      adapter: internalAdapter(),
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, REFEREE_V5_ERROR.TENANT_ACCESS_DENIED);
+  });
+});
+
+test("trusted initialize proceeds when globalThis.window is defined", async () => {
+  await withGlobalWindow(async () => {
+    const { result } = await initInternal({ idempotencyKey: "k-edge-window" });
+    assert.equal(result.ok, true);
+    assert.equal(result.initialized, true);
+    assert.notEqual(result.code, REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN);
+  });
+});
+
+test("browser cannot invoke initializer internal RPC directly", async () => {
+  await withGlobalWindow(async () => {
+    const guard = assertInternalRpcAllowed();
+    assert.equal(guard.ok, false);
+    assert.equal(guard.code, REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN);
+    const result = await refereeV5InitializeMatchExecutionState({
+      p_tenant_id: TENANT,
+      p_tournament_id: TOURNAMENT,
+      p_match_id: MATCH,
+    });
     assert.equal(result.ok, false);
     assert.equal(result.code, REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN);
-  } finally {
-    if (previous === undefined) delete globalThis.window;
-    else globalThis.window = previous;
-  }
+  });
 });
 
 test("internal init RPC is not a public browser RPC", () => {
@@ -629,6 +747,19 @@ test("architecture — Contract #08 and CORE-13 assignment sources unchanged", (
     { cwd: ROOT, encoding: "utf8" }
   );
   assert.equal(diff.trim(), "");
+});
+
+test("authorizeMatchExecutionInit does not use ambient window as a trust boundary", () => {
+  const authz = readFileSync(path.join(EXEC_DIR, "authorizeMatchExecutionInit.js"), "utf8");
+  assert.equal(authz.includes("isBrowserRuntime"), false);
+  assert.equal(authz.includes("typeof globalThis.window"), false);
+  assert.equal(authz.includes('typeof window !== "undefined"'), false);
+  const internal = readFileSync(
+    path.join(ROOT, "src/features/referee-v5/services/refereeV5InternalRpcService.js"),
+    "utf8"
+  );
+  assert.match(internal, /typeof window !== "undefined"/);
+  assert.match(internal, /INTERNAL_RPC_FORBIDDEN/);
 });
 
 test("architecture — no Team RPC, Daily writer, browser DML, or service-role in capability", () => {

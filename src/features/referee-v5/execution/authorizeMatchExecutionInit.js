@@ -1,3 +1,18 @@
+/**
+ * Match-execution initialization policy checks.
+ *
+ * authorizeMatchExecutionInit validates explicit trusted inputs and
+ * canonical policy invariants.
+ *
+ * Runtime detection is not security authority. The trust boundary remains
+ * JWT verification, server-side Identity, canonical Tenant scope, organizer
+ * authorization, server-side Adapter B resolution, and the injected
+ * service-role RPC client. Ambient browser-global heuristics
+ * must not classify trusted Edge/Deno execution as a browser.
+ *
+ * Assigned REFEREE / PLAYER cannot initialize arbitrary matches.
+ * Venue is never a tenant fallback.
+ */
 import { REFEREE_V5_ERROR, createPersistenceError } from "../persistence/errors.js";
 import {
   ADAPTER_B_CONTRACT_ID,
@@ -9,23 +24,7 @@ function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-export function isBrowserRuntime() {
-  return typeof globalThis.window !== "undefined";
-}
-
-/**
- * Initialization is a trusted-server / organizer operation.
- * Assigned REFEREE cannot initialize arbitrary matches.
- * Venue is never a tenant fallback.
- */
 export function authorizeMatchExecutionInit(input = {}) {
-  if (isBrowserRuntime()) {
-    return createPersistenceError(
-      REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN,
-      "Khởi tạo trạng thái thi đấu chỉ chạy trên trusted server."
-    );
-  }
-
   if (input.initialState != null || input.statePayload != null || input.stateSnapshot != null) {
     return createPersistenceError(
       REFEREE_V5_ERROR.VALIDATION_DENIED,
