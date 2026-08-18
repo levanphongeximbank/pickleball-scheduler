@@ -188,6 +188,7 @@ test("createFairDailyMatches builds waiting matches for mixed doubles", async ()
     settings,
     tournamentId: "t1",
     matchCount: 1,
+    clubId: "club-test",
     skipPrivatePairingPrepare: true,
   });
 
@@ -218,6 +219,7 @@ test("createFairDailyMatches does not reuse busy players", async () => {
     settings,
     tournamentId: "t1",
     matchCount: 1,
+    clubId: "club-test",
     skipPrivatePairingPrepare: true,
   });
 
@@ -232,6 +234,7 @@ test("createFairDailyMatches refuses matchCount 0", async () => {
       checkedInPlayerIds: players.map((player) => String(player.id)),
     },
     matchCount: 0,
+    clubId: "club-test",
     skipPrivatePairingPrepare: true,
   });
   assert.equal(result.ok, false);

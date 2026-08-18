@@ -339,8 +339,23 @@ describe("tournament-shared-pairing-tenant-scope-remediation-01", () => {
     assert.match(src, /handleBuildGroups[\s\S]*prepareInternalPrivatePairing\(\)/);
   });
 
-  it("uses activeClub.venueId when tournament.tenantId absent (aligned)", () => {
+  it("uses activeClub.tenantId when tournament.tenantId absent — venueId is not Tenant", () => {
     const projected = projectLivePrivatePairingPrepareInput({
+      tournament: { id: "t1", clubId: PROD_CLUB_ID },
+      activeClub: {
+        id: PROD_CLUB_ID,
+        clubId: PROD_CLUB_ID,
+        tenantId: PROD_TENANT_ID,
+        venueId: "venue-distinct",
+      },
+      tournamentId: "t1",
+      hostClubId: PROD_CLUB_ID,
+      competitionClass: COMPETITION_CLASS.DAILY_PLAY,
+    });
+    assert.equal(projected.ok, true);
+    assert.equal(projected.tenantId, PROD_TENANT_ID);
+
+    const venueOnly = projectLivePrivatePairingPrepareInput({
       tournament: { id: "t1", clubId: PROD_CLUB_ID },
       activeClub: {
         id: PROD_CLUB_ID,
@@ -351,8 +366,8 @@ describe("tournament-shared-pairing-tenant-scope-remediation-01", () => {
       hostClubId: PROD_CLUB_ID,
       competitionClass: COMPETITION_CLASS.DAILY_PLAY,
     });
-    assert.equal(projected.ok, true);
-    assert.equal(projected.tenantId, PROD_TENANT_ID);
+    assert.equal(venueOnly.ok, false);
+    assert.equal(venueOnly.code, "SCOPE_ID_REQUIRED");
   });
 
   it("static: no legacy/default/localStorage tenant authority in changed pairing paths", () => {

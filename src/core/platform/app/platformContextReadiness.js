@@ -29,8 +29,8 @@ export const PLATFORM_CONTEXT_STATE = Object.freeze({
 });
 
 /**
- * Club → tenant matching. Prefer club.tenantId. venueId is last-resort compatibility
- * for unmigrated club projections only — not proof that Tenant === Venue.
+ * Club → tenant matching. Prefer club.tenantId only.
+ * venueId is never Tenant identity.
  *
  * @param {object|null|undefined} club
  * @returns {string|null}
@@ -40,17 +40,13 @@ export function resolveClubOperationalTenantId(club) {
     return null;
   }
   const primary = club.tenantId ?? club.tenant_id ?? null;
-  if (primary != null && String(primary).trim()) {
-    return String(primary).trim();
-  }
-  const legacy = club.venueId ?? club.venue_id ?? null;
-  const id = String(legacy || "").trim();
+  const id = String(primary || "").trim();
   return id || null;
 }
 
 /**
- * True when club belongs to the selected operational tenant under the explicit
- * Wave 1 compatibility mapping (tenantId ↔ venueId on the club projection).
+ * True when club belongs to the selected operational tenant.
+ * tenantId is canonical Platform Tenant identity — never venueId.
  *
  * @param {object|null|undefined} club
  * @param {string|null|undefined} selectedTenantId

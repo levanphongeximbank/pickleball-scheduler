@@ -17,21 +17,22 @@ import {
   buildRepoResult,
   isLocalDefaultClub,
 } from "./canonicalRepositoryTypes.js";
+import { projectClubTenantVenueIdentities } from "../compat/legacyClubVenueScope.js";
 
-function normalizeClub(row) {
+function normalizeClub(row, { resolveVenue } = {}) {
   if (!row) return null;
   const id = String(row.id || "").trim();
   if (!id) return null;
-  const tenantId = String(
-    row.tenantId || row.tenant_id || row.venueId || row.venue_id || ""
-  ).trim() || null;
+  const identities = projectClubTenantVenueIdentities(row, { resolveVenue });
   return {
     id,
     name: row.name || id,
     code: row.code || null,
     status: String(row.status || "active").toLowerCase(),
-    tenantId,
-    venueId: tenantId,
+    tenantId: identities.tenantId,
+    venueId: identities.venueId,
+    scopeSemantics: identities.scopeSemantics,
+    legacyVenueScopeId: identities.legacyVenueScopeId,
     isDefault: Boolean(row.isDefault) || id === LOCAL_DEFAULT_CLUB_ID,
     activeMemberCount: row.activeMemberCount ?? row.active_member_count ?? null,
     // Preserve UI-shape fields so ClubContext/Switcher consumers keep the same
@@ -49,13 +50,17 @@ function normalizeClub(row) {
   };
 }
 
-function filterClubsForTenant(clubs, tenantId, { includeInactive = false, excludeDefault = true } = {}) {
+function filterClubsForTenant(
+  clubs,
+  tenantId,
+  { includeInactive = false, excludeDefault = true, resolveVenue } = {}
+) {
   const tid = String(tenantId || "").trim();
   const warnings = [];
   const out = [];
 
   for (const club of clubs || []) {
-    const normalized = normalizeClub(club);
+    const normalized = normalizeClub(club, { resolveVenue });
     if (!normalized) continue;
 
     if (excludeDefault && isLocalDefaultClub(normalized)) {
@@ -98,7 +103,7 @@ function assertTenantAccess({ requestedTenantId, userContext }) {
     return { ok: true };
   }
   const userTenant = String(
-    userContext?.tenantId || tenantIdFromRecord(user) || user.tenantId || user.venueId || ""
+    userContext?.tenantId || tenantIdFromRecord(user) || user.tenantId || ""
   ).trim();
   const requested = String(requestedTenantId || "").trim();
   if (requested && userTenant && requested !== userTenant) {
@@ -123,6 +128,7 @@ export function createCanonicalClubRepository(deps = {}) {
     getMyActiveMembershipRpc = rpcV2GetMyActiveMembership,
     loadLocalClubs = loadClubs,
     listLocalClubsForTenant = legacyListClubsForTenant,
+    resolveVenueById = null,
   } = deps;
 
   async function listClubsForTenant(tenantId, options = {}) {
@@ -139,11 +145,14 @@ export function createCanonicalClubRepository(deps = {}) {
       });
     }
 
+    const resolveVenue = options.resolveVenueById || resolveVenueById;
+
     if (!isV2Enabled()) {
       const legacy = tid ? listLocalClubsForTenant(tid) : loadLocalClubs();
       const filtered = filterClubsForTenant(legacy, tid, {
         includeInactive,
         excludeDefault: Boolean(options.excludeDefault),
+        resolveVenue,
       });
       return buildRepoResult({
         data: filtered.clubs.map((c) => ({ ...c, source: CANONICAL_SOURCE.LEGACY_BLOB })),
@@ -168,6 +177,7 @@ export function createCanonicalClubRepository(deps = {}) {
     const filtered = filterClubsForTenant(rpc.clubs || [], tid, {
       includeInactive,
       excludeDefault: true,
+      resolveVenue,
     });
 
     return buildRepoResult({
@@ -201,11 +211,23 @@ export function createCanonicalClubRepository(deps = {}) {
     const selectedOperationalTenantId =
       String(options.tenantId || "").trim() || null;
     const profileTenantId =
-      String(
-        tenantIdFromRecord(user) || user?.tenantId || user?.venueId || ""
-      ).trim() || null;
+      String(tenantIdFromRecord(user) || user?.tenantId || "").trim() || null;
+    const operationalOnly = options.operationalOnly !== false;
 
-    // Selected operational tenant always wins over platform-wide "all clubs".
+    // GLOBAL DIRECTORY ≠ OPERATIONAL TARGET.
+    // Super Admin without a selected Tenant has no operational Club list.
+    if (operationalOnly && platformWide && !selectedOperationalTenantId) {
+      return buildRepoResult({
+        data: [],
+        source: CANONICAL_SOURCE.V2_REGISTRY,
+        execution: {
+          mode: "operational_unscoped_denied",
+          tenantId: null,
+          independentOfClubContext: true,
+        },
+      });
+    }
+
     const effectiveTenantId = selectedOperationalTenantId
       ? selectedOperationalTenantId
       : platformWide
@@ -214,6 +236,7 @@ export function createCanonicalClubRepository(deps = {}) {
 
     return listClubsForTenant(effectiveTenantId, {
       includeInactive: Boolean(options.includeInactive),
+      resolveVenueById: options.resolveVenueById || resolveVenueById,
       userContext: {
         user,
         rbacEnabled,
@@ -254,7 +277,10 @@ export function createCanonicalClubRepository(deps = {}) {
         });
       }
       return buildRepoResult({
-        data: normalizeClub({ ...hit, source: CANONICAL_SOURCE.LEGACY_BLOB }),
+        data: normalizeClub(
+          { ...hit, source: CANONICAL_SOURCE.LEGACY_BLOB },
+          { resolveVenue: options.resolveVenueById || resolveVenueById }
+        ),
         source: CANONICAL_SOURCE.LEGACY_BLOB,
       });
     }
@@ -268,7 +294,10 @@ export function createCanonicalClubRepository(deps = {}) {
       });
     }
 
-    const club = normalizeClub({ ...rpc.club, source: CANONICAL_SOURCE.V2_REGISTRY });
+    const club = normalizeClub(
+      { ...rpc.club, source: CANONICAL_SOURCE.V2_REGISTRY },
+      { resolveVenue: options.resolveVenueById || resolveVenueById }
+    );
     const access = assertTenantAccess({
       requestedTenantId: club.tenantId,
       userContext: options.userContext || {},
@@ -308,7 +337,9 @@ export function createCanonicalClubRepository(deps = {}) {
         clubId: rpc.clubId || null,
         memberId: rpc.memberId || null,
         hasActiveMembership: Boolean(rpc.hasActiveMembership),
-        club: rpc.club ? normalizeClub(rpc.club) : null,
+        club: rpc.club
+          ? normalizeClub(rpc.club, { resolveVenue: resolveVenueById })
+          : null,
       },
       source: CANONICAL_SOURCE.MEMBERSHIP_SSOT,
     });

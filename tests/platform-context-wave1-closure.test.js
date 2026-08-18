@@ -573,7 +573,7 @@ test("clearAuthSession IDENTITY_REPLACE preserves club/tenant preferences (F5 no
   }
 });
 
-test("legacy getActiveClubId coercion is ephemeral — preference storage preserved", async () => {
+test("active Club preference is independent of local registry membership", async () => {
   const { getActiveClubId } = await import("../src/data/club.js");
   const store = new Map();
   globalThis.localStorage = {
@@ -590,7 +590,7 @@ test("legacy getActiveClubId coercion is ephemeral — preference storage preser
   try {
     saveClubs([{ id: "default-club", name: "CLB Mac dinh", isDefault: true }]);
     setActiveClubIdPreference("club-cloud-only");
-    assert.equal(getActiveClubId(), "default-club");
+    assert.equal(getActiveClubId(), "club-cloud-only");
     assert.equal(getActiveClubIdPreference(), "club-cloud-only");
   } finally {
     delete globalThis.localStorage;

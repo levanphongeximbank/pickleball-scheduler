@@ -407,8 +407,12 @@ export default function Settings() {
       setStatusMessage({ type: "error", text: "Runtime platform chặn thao tác cài đặt hệ thống." });
       return;
     }
+    if (!activeClubId) {
+      setStatusMessage({ type: "error", text: "Cần chọn CLB trước khi đồng bộ cloud." });
+      return;
+    }
 
-    const result = await syncAIDataToCloud();
+    const result = await syncAIDataToCloud({ clubId: activeClubId });
 
     if (!result.ok) {
       setStatusMessage({ type: "error", text: result.error || "Đồng bộ cloud thất bại." });
@@ -426,8 +430,12 @@ export default function Settings() {
       setStatusMessage({ type: "error", text: "Runtime platform chặn thao tác cài đặt hệ thống." });
       return;
     }
+    if (!activeClubId) {
+      setStatusMessage({ type: "error", text: "Cần chọn CLB trước khi kéo dữ liệu cloud." });
+      return;
+    }
 
-    const result = await pullAIDataFromCloud();
+    const result = await pullAIDataFromCloud({ clubId: activeClubId });
 
     if (!result.ok) {
       setStatusMessage({ type: "error", text: result.error || "Không kéo được dữ liệu cloud." });

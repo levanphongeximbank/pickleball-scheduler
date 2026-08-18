@@ -92,6 +92,8 @@
   "tests/platform-core-wave3-cluster-tenant-precheck.test.js",
   "tests/platform-core-wave4-identity-authz-access-closure.test.js",
   "tests/platform-core-wave4-sql-static.test.js",
+  "tests/platform-core-wave5-club-context-closure.test.js",
+  "tests/platform-core-wave5-sql-static.test.js",
   "tests/platform-runtime-boundary-closure-02.test.js",
   "tests/phase42m-club-ui.test.js",
   "tests/competition-core-rating-mapping.test.js",

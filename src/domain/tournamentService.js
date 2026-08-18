@@ -1,4 +1,3 @@
-import { getActiveClubId } from "../data/club.js";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { guardClubAccess, guardClubAction, guardDirectorAction } from "../auth/guardAction.js";
 import { isRbacEnforced, hasRole } from "../auth/rbac.js";
@@ -8,6 +7,7 @@ import {
   guardRecordTenant,
   resolveTenantIdForClub,
 } from "../features/tenant/guards/tenantGuard.js";
+import { assertExplicitClubId } from "../features/club/context/requireExplicitClubId.js";
 import {
   TOURNAMENT_MODE,
   TOURNAMENT_STATUS,
@@ -198,13 +198,17 @@ export function validateTournamentStatusChange(tournament, nextStatus, options =
   return { ok: true };
 }
 
-export function listTournaments(clubId = getActiveClubId(), filters = {}) {
-  const access = guardClubAccess(clubId);
+export function listTournaments(clubId, filters = {}) {
+  const resolvedClubId = assertExplicitClubId(clubId);
+  const access = guardClubAccess(resolvedClubId);
   if (!access.ok) {
-    return [];
+    const error = new Error(access.code || "FORBIDDEN");
+    error.code = access.code || "FORBIDDEN";
+    error.name = "ClubContextError";
+    throw error;
   }
 
-  const data = loadClubData(clubId);
+  const data = loadClubData(resolvedClubId);
   let tournaments = data.tournaments || [];
 
   if (filters.seasonId) {
@@ -435,7 +439,8 @@ export function isOpenTournament(tournament) {
   );
 }
 
-export async function purgeOpenTournaments(clubId = getActiveClubId()) {
+export async function purgeOpenTournaments(clubId) {
+  assertExplicitClubId(clubId);
   const data = loadClubData(clubId);
   const toRemove = (data.tournaments || []).filter(isOpenTournament);
 

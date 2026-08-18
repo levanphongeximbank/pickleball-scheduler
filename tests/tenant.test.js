@@ -250,7 +250,7 @@ describe("tenant sprint 2", () => {
     enableRbac(false);
   });
 
-  it("listTournaments returns empty for cross-tenant club when RBAC on", async () => {
+  it("listTournaments fail-closes for cross-tenant club when RBAC on", async () => {
     ensureMultiTenantSeed();
     enableRbac(true);
     signInAs({
@@ -261,8 +261,10 @@ describe("tenant sprint 2", () => {
       venueId: "tenant-abc-pickleball",
     });
 
-    const list = listTournaments("club-future-arena");
-    assert.equal(list.length, 0);
+    assert.throws(
+      () => listTournaments("club-future-arena"),
+      (err) => err.code === "FORBIDDEN" || err.name === "ClubContextError"
+    );
 
     await signOut();
     enableRbac(false);

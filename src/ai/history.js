@@ -80,10 +80,10 @@ export function applyHistoryFromCourts(courts = [], history = {}) {
   return history;
 }
 
-export function commitHistoryFromCourts(courts = []) {
-  const data = loadAIData();
+export function commitHistoryFromCourts(courts = [], clubId) {
+  const data = loadAIData(clubId);
   data.history = applyHistoryFromCourts(courts, data.history || {});
-  saveAIData(data);
+  saveAIData(data, clubId);
 }
 
 export function runHistoryEngine(courts, options = {}) {
@@ -91,6 +91,6 @@ export function runHistoryEngine(courts, options = {}) {
     return courts;
   }
 
-  commitHistoryFromCourts(courts);
+  commitHistoryFromCourts(courts, options.clubId);
   return courts;
 }

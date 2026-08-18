@@ -257,6 +257,21 @@ export { ensureClubManagementSeed } from "./seed/clubManagementSeed.js";
 export { isClubRegistryCloudEnabled, isClubStorageV2Enabled } from "./config/clubRegistryFlags.js";
 
 export {
+  CLUB_SCOPE_SEMANTICS,
+  detectClubRowScopeSemantics,
+  resolveCanonicalTenantFromLegacyClubScope,
+  translateLegacyClubVenueScope,
+  projectClubTenantVenueIdentities,
+} from "./compat/legacyClubVenueScope.js";
+
+export {
+  CLUB_CONTEXT_ERROR_CODE,
+  createClubContextError,
+  requireExplicitClubId,
+  assertExplicitClubId,
+} from "./context/requireExplicitClubId.js";
+
+export {
   rpcV2ClubCreate,
   rpcV2ClubGet,
   rpcV2ClubListRegistry,

@@ -79,7 +79,7 @@ export default function ClubManagement() {
     deleteClub,
     refreshClubs,
   } = useClub();
-  const { accessAllowed } = usePageRuntimeAccess("club.manage", activeClub?.tenantId || activeClubId, {
+  const { accessAllowed } = usePageRuntimeAccess("club.manage", activeClub?.tenantId || null, {
     source: "club.management",
   });
   const {

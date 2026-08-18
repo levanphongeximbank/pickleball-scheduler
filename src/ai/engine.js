@@ -24,6 +24,7 @@ import {
   gatePrivatePairingForRunAi,
   isNoFeasibleAiPairing,
 } from "../features/private-pairing-rules/runtime/index.js";
+import { assertExplicitClubId } from "../features/club/context/requireExplicitClubId.js";
 
 function buildSessionMeta(options, competitionType) {
   return {
@@ -31,6 +32,7 @@ function buildSessionMeta(options, competitionType) {
     competitionType,
     templateId: options.templateId || null,
     schedulingMode: options.schedulingMode || null,
+    clubId: options.clubId || null,
   };
 }
 
@@ -91,9 +93,10 @@ function finalizeResult(baseResult, trace) {
 }
 
 export function runAI(players, options = {}) {
+  const clubId = assertExplicitClubId(options.clubId);
   const competitionType = options.competitionType || DEFAULT_COMPETITION_TYPE;
   const competition = getCompetitionTypeConfig(competitionType);
-  const aiData = loadAIData();
+  const aiData = loadAIData(clubId);
   const persist = options.persist === true;
 
   let trace = [
@@ -407,7 +410,10 @@ export function runAI(players, options = {}) {
     })
   );
 
-  const historyResult = runHistoryEngine(bestPairing.options || [], { dryRun: !persist });
+  const historyResult = runHistoryEngine(bestPairing.options || [], {
+    dryRun: !persist,
+    clubId,
+  });
 
   trace = appendDebugTrace(
     trace,

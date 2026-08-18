@@ -155,6 +155,8 @@ export function useCanonicalTournamentList(clubOrScope, revision = 0) {
         if (!cancelled) {
           setTournaments([]);
           setLoading(false);
+          setError("CLUB_REQUIRED");
+          setStats({ total: 0, open: 0, draft: 0, completed: 0 });
         }
         return;
       }

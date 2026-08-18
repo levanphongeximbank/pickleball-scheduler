@@ -16,9 +16,9 @@ import {
   Typography,
 } from "@mui/material";
 import { loadAIData, saveAIData } from "../ai/storage";
-import { getActiveClubId } from "../data/club";
 import { useClub } from "../context/ClubContext.jsx";
 import { useSeasonLeague } from "../context/SeasonContext.jsx";
+import PlatformContextReadinessGate from "../components/shell/PlatformContextReadinessGate.jsx";
 import {
   loadRoundsForClub,
   loadPlayersForClub,
@@ -46,41 +46,48 @@ import { buildGroupStandingsForRounds } from "./tournament.standings.logic";
 import { getCourtDisplayName, loadCourts } from "./courts.logic";
 import { loadInitialSelectedCourts } from "./selectPlayers.data";
 
-function loadRounds(clubId = getActiveClubId()) {
+function loadRounds(clubId) {
+  if (!String(clubId || "").trim()) return [];
   return loadRoundsForClub(clubId);
 }
 
-function saveRounds(rounds, clubId = getActiveClubId()) {
+function saveRounds(rounds, clubId) {
+  if (!String(clubId || "").trim()) return;
   saveRoundsForClub(rounds, clubId);
 }
 
-function loadActiveSlot(clubId = getActiveClubId()) {
+function loadActiveSlot(clubId) {
+  if (!String(clubId || "").trim()) return null;
   return getActivePointers(clubId)?.roundSlot || null;
 }
 
-function saveActiveSlot(slot, clubId = getActiveClubId()) {
+function saveActiveSlot(slot, clubId) {
+  if (!String(clubId || "").trim()) return;
   setActivePointers({ roundSlot: slot || null }, clubId);
 }
 
-function loadBracketWinners() {
-  const aiData = loadAIData();
+function loadBracketWinners(clubId) {
+  if (!String(clubId || "").trim()) return {};
+  const aiData = loadAIData(clubId);
   if (aiData?.tournament?.bracketWinners && typeof aiData.tournament.bracketWinners === "object") {
     return aiData.tournament.bracketWinners;
   }
   return {};
 }
 
-function saveBracketWinners(winners) {
-  const data = loadAIData();
+function saveBracketWinners(winners, clubId) {
+  if (!String(clubId || "").trim()) return;
+  const data = loadAIData(clubId);
   data.tournament = {
     ...(data.tournament || {}),
     bracketWinners: winners || {},
     updatedAt: new Date().toISOString(),
   };
-  saveAIData(data);
+  saveAIData(data, clubId);
 }
 
-function loadPlayersForTournamentSeed(clubId = getActiveClubId()) {
+function loadPlayersForTournamentSeed(clubId) {
+  if (!String(clubId || "").trim()) return [];
   return loadPlayersForClub(clubId);
 }
 
@@ -115,7 +122,7 @@ export default function Tournament() {
   const [groupLabel, setGroupLabel] = useState("");
   const [statusMessage, setStatusMessage] = useState(null);
   const [rounds, setRounds] = useState(() => loadRounds(activeClubId));
-  const [activeSlot, setActiveSlot] = useState(() => loadActiveSlot());
+  const [activeSlot, setActiveSlot] = useState(() => loadActiveSlot(activeClubId));
   const [exportText, setExportText] = useState("");
   const [importText, setImportText] = useState("");
   const [sessionRoundDraft, setSessionRoundDraft] = useState({});
@@ -124,9 +131,9 @@ export default function Tournament() {
   const [dataVersion, setDataVersion] = useState(0);
   const [seedMode, setSeedMode] = useState("open");
   const [seedGroupCount, setSeedGroupCount] = useState(4);
-  const [seedPreview, setSeedPreview] = useState(() => loadAIData().tournament?.seedPreview || []);
-  const [bracketWinners, setBracketWinners] = useState(() => loadBracketWinners());
-  const [bracketUnlockedRounds, setBracketUnlockedRounds] = useState(() => loadBracketUnlockedRounds());
+  const [seedPreview, setSeedPreview] = useState([]);
+  const [bracketWinners, setBracketWinners] = useState(() => loadBracketWinners(activeClubId));
+  const [bracketUnlockedRounds, setBracketUnlockedRounds] = useState(() => loadBracketUnlockedRounds(activeClubId));
   const [tournamentExportText, setTournamentExportText] = useState("");
   const [courts] = useState(() => loadCourts([]));
   const [selectedTournamentCourtIds, setSelectedTournamentCourtIds] = useState(() =>
@@ -135,6 +142,9 @@ export default function Tournament() {
 
   const sessions = useMemo(
     () => {
+      if (!String(activeClubId || "").trim()) {
+        return [];
+      }
       const allSessions = loadAIData(activeClubId).sessions || [];
       return allSessions.filter((session) => {
         if (activeLeague?.id && session.meta?.leagueId && session.meta.leagueId !== activeLeague.id) {
@@ -226,9 +236,9 @@ export default function Tournament() {
 
     if (!areWinnerMapsEqual(sanitized, bracketWinners)) {
       setBracketWinners(sanitized);
-      saveBracketWinners(sanitized);
+      saveBracketWinners(sanitized, activeClubId);
     }
-  }, [groupStandings, bracketWinners]);
+  }, [groupStandings, bracketWinners, activeClubId]);
 
   const handleSeedGroups = () => {
     const players = loadPlayersForTournamentSeed();
@@ -269,13 +279,13 @@ export default function Tournament() {
     saveRounds(nextRounds, activeClubId);
     setSeedPreview(seeded.groups);
 
-    const data = loadAIData();
+    const data = loadAIData(activeClubId);
     data.tournament = {
       ...(data.tournament || {}),
       seedPreview: seeded.groups,
       updatedAt: new Date().toISOString(),
     };
-    saveAIData(data);
+    saveAIData(data, activeClubId);
 
     setStatusMessage({
       type: "success",
@@ -297,7 +307,7 @@ export default function Tournament() {
       return;
     }
 
-    const data = loadAIData();
+    const data = loadAIData(activeClubId);
     const existingSessions = Array.isArray(data.sessions) ? data.sessions : [];
 
     const seededRoundIds = new Set(seededRounds.map((round) => String(round.id)));
@@ -327,7 +337,7 @@ export default function Tournament() {
     }
 
     data.sessions = [...existingSessions, ...generatedSessions];
-    saveAIData(data);
+    saveAIData(data, activeClubId);
     setDataVersion((value) => value + 1);
     setStatusMessage({
       type: "success",
@@ -347,7 +357,7 @@ export default function Tournament() {
     }
 
     setBracketWinners(nextWinners);
-    saveBracketWinners(nextWinners);
+    saveBracketWinners(nextWinners, activeClubId);
   };
 
   const handleToggleRoundLock = (roundName, unlock) => {
@@ -368,13 +378,13 @@ export default function Tournament() {
 
     setBracketUnlockedRounds(nextUnlockedRounds);
 
-    const data = loadAIData();
+    const data = loadAIData(activeClubId);
     data.tournament = {
       ...(data.tournament || {}),
       bracketUnlockedRounds: nextUnlockedRounds,
       updatedAt: new Date().toISOString(),
     };
-    saveAIData(data);
+    saveAIData(data, activeClubId);
 
     setStatusMessage({
       type: "success",
@@ -401,16 +411,16 @@ export default function Tournament() {
     setBracketWinners({});
     setBracketUnlockedRounds({});
 
-    const data = loadAIData();
+    const data = loadAIData(activeClubId);
     data.tournament = {
       ...(data.tournament || {}),
       bracketWinners: {},
       bracketUnlockedRounds: {},
       updatedAt: new Date().toISOString(),
     };
-    saveAIData(data);
+    saveAIData(data, activeClubId);
 
-    saveBracketWinners({});
+    saveBracketWinners({}, activeClubId);
     setStatusMessage({ type: "success", text: "─É├ú reset to├án bß╗Ö bracket (winner + lock state)." });
   };
 
@@ -581,7 +591,7 @@ export default function Tournament() {
       return;
     }
 
-    const data = loadAIData();
+    const data = loadAIData(activeClubId);
     data.sessions = (data.sessions || []).map((session) => {
       if (session.id !== sessionId) {
         return session;
@@ -598,13 +608,13 @@ export default function Tournament() {
       };
     });
 
-    saveAIData(data);
+    saveAIData(data, activeClubId);
     setDataVersion((value) => value + 1);
     setStatusMessage({ type: "success", text: "─É├ú g├ín session v├áo round th├ánh c├┤ng." });
   };
 
   const handleUnassignSessionRound = (sessionId) => {
-    const data = loadAIData();
+    const data = loadAIData(activeClubId);
     data.sessions = (data.sessions || []).map((session) => {
       if (session.id !== sessionId) {
         return session;
@@ -620,7 +630,7 @@ export default function Tournament() {
       };
     });
 
-    saveAIData(data);
+    saveAIData(data, activeClubId);
     setDataVersion((value) => value + 1);
     setStatusMessage({ type: "success", text: "─É├ú bß╗Å g├ín round cß╗ºa session." });
   };
@@ -632,7 +642,7 @@ export default function Tournament() {
       return;
     }
 
-    const data = loadAIData();
+    const data = loadAIData(activeClubId);
     let changedCount = 0;
 
     data.sessions = (data.sessions || []).map((session) => {
@@ -652,7 +662,7 @@ export default function Tournament() {
       };
     });
 
-    saveAIData(data);
+    saveAIData(data, activeClubId);
     setDataVersion((value) => value + 1);
 
     if (changedCount === 0) {
@@ -713,7 +723,7 @@ export default function Tournament() {
   const handleSaveSessionResult = (session) => {
     const draft = ensureSessionResultDraft(session);
     const payload = buildSessionResultPayload(draft);
-    const data = loadAIData();
+    const data = loadAIData(activeClubId);
 
     data.sessions = (data.sessions || []).map((item) => {
       if (item.id !== session.id) {
@@ -726,7 +736,7 @@ export default function Tournament() {
       };
     });
 
-    saveAIData(data);
+    saveAIData(data, activeClubId);
     setDataVersion((value) => value + 1);
     setStatusMessage({ type: "success", text: "─É├ú cß║¡p nhß║¡t kß║┐t quß║ú v├▓ng ─æß║Ñu cho session." });
   };
@@ -744,7 +754,7 @@ export default function Tournament() {
     }));
 
     const payload = buildSessionResultPayload(nextDraft);
-    const data = loadAIData();
+    const data = loadAIData(activeClubId);
 
     data.sessions = (data.sessions || []).map((item) => {
       if (item.id !== session.id) {
@@ -757,7 +767,7 @@ export default function Tournament() {
       };
     });
 
-    saveAIData(data);
+    saveAIData(data, activeClubId);
     setDataVersion((value) => value + 1);
     setStatusMessage({
       type: "success",
@@ -768,6 +778,7 @@ export default function Tournament() {
   };
 
   return (
+    <PlatformContextReadinessGate requireClub showClubSwitcher>
     <Box>
       <Typography variant="h4" fontWeight="bold" sx={{ mb: 3 }}>
         ≡ƒÅå Giß║úi ─æß║Ñu & Ca ch╞íi
@@ -1412,11 +1423,13 @@ export default function Tournament() {
         </Grid>
       </Stack>
     </Box>
+    </PlatformContextReadinessGate>
   );
 }
 
-function loadBracketUnlockedRounds() {
-  const aiData = loadAIData();
+function loadBracketUnlockedRounds(clubId) {
+  if (!String(clubId || "").trim()) return {};
+  const aiData = loadAIData(clubId);
   if (aiData?.tournament?.bracketUnlockedRounds && typeof aiData.tournament.bracketUnlockedRounds === "object") {
     return aiData.tournament.bracketUnlockedRounds;
   }

@@ -9,26 +9,31 @@ import { saveSession } from "./session.js";
 import { commitWaitingFromResult } from "./waiting.js";
 import { commitHistoryFromCourts } from "./history.js";
 import { autoSyncAfterScheduleCommit } from "./autoCloudSync.js";
-import { getActiveClubId } from "../data/club.js";
+import { assertExplicitClubId } from "../features/club/context/requireExplicitClubId.js";
 
 export function commitScheduleResult(result, meta = {}) {
   if (!result || !Array.isArray(result.courts)) {
     return { ok: false, error: "Không có kết quả xếp sân để lưu." };
   }
 
-  commitWaitingFromResult(result);
-  commitHistoryFromCourts(result.courts);
-  saveSession({
-    courts: result.courts,
-    waiting: result.waiting || [],
-    aiScore: result.aiScore || null,
-    meta: {
-      ...(result.meta || {}),
-      ...meta,
-    },
-  });
+  const clubId = assertExplicitClubId(meta.clubId);
 
-  const clubId = meta.clubId || getActiveClubId();
+  commitWaitingFromResult(result, clubId);
+  commitHistoryFromCourts(result.courts, clubId);
+  saveSession(
+    {
+      courts: result.courts,
+      waiting: result.waiting || [],
+      aiScore: result.aiScore || null,
+      meta: {
+        ...(result.meta || {}),
+        ...meta,
+        clubId,
+      },
+    },
+    clubId
+  );
+
   void autoSyncAfterScheduleCommit(clubId);
 
   return { ok: true };

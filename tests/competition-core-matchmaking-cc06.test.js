@@ -71,7 +71,7 @@ function createCourts(count) {
 
 function runAiExecutor(players, options) {
   globalThis.localStorage = createLocalStorageMock();
-  return runAI(players, { ...options, persist: false });
+  return runAI(players, { clubId: "club-test", ...options, persist: false });
 }
 
 function buildPayload(players, courts, options = {}) {
@@ -83,6 +83,7 @@ function buildPayload(players, courts, options = {}) {
       enabledCourts: courts,
       competitionType: options.competitionType || "doubles_mixed",
       persist: false,
+      clubId: "club-test",
       ...options,
     },
   };

@@ -129,6 +129,7 @@ test("regression Test 1: daily play mixed doubles with 12 men, 8 women, 4 courts
     players,
     settings,
     tournamentId: "t-daily",
+    clubId: "club-test",
     matchCount: 4,
   });
 

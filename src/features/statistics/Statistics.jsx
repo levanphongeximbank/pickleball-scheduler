@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 
 import { Alert, Box, Grid, Typography } from "@mui/material";
 
+import PlatformContextReadinessGate from "../../components/shell/PlatformContextReadinessGate.jsx";
+
 import ExportStatsPanel from "./components/ExportStatsPanel.jsx";
 import PlayerStatsPanel from "./components/PlayerStatsPanel.jsx";
 import SeasonRankingPanel from "./components/SeasonRankingPanel.jsx";
@@ -42,6 +44,7 @@ export default function Statistics() {
   const title = VIEW_LABELS[view] || "Thống kê";
 
   return (
+    <PlatformContextReadinessGate requireClub showClubSwitcher>
     <Box>
       <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
         {title}
@@ -138,5 +141,6 @@ export default function Statistics() {
         )}
       </Grid>
     </Box>
+    </PlatformContextReadinessGate>
   );
 }

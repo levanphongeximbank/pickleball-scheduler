@@ -17,6 +17,7 @@ import { guardMaxClubs } from "../auth/subscriptionGuard.js";
 import { createClubRecord, normalizeClub } from "../models/club.js";
 import { assertLegacyClubEntityWriteAllowed } from "../features/club/services/clubLegacyWriteGuard.js";
 import { loadClubData, purgeClubData, saveClubData } from "./clubStorage.js";
+import { assertExplicitClubId } from "../features/club/context/requireExplicitClubId.js";
 
 /**
  * Phase 45A.3E — domain Club writers are offline / V2-OFF / no-Supabase
@@ -153,7 +154,7 @@ export function bindClubVenueRegistry(clubId, venueId, options = {}) {
       ? normalizeClub({
           ...club,
           venueId,
-          tenantId: venueId,
+          tenantId: club.tenantId || null,
           updatedAt: new Date().toISOString(),
         })
       : club
@@ -286,9 +287,10 @@ export function switchActiveClubCanonical(clubId) {
   return { ok: true, clubId };
 }
 
-export function getClubSummary(clubId = getActiveClubId()) {
-  const data = loadClubData(clubId);
-  const club = getClubById(clubId);
+export function getClubSummary(clubId) {
+  const resolvedClubId = assertExplicitClubId(clubId);
+  const data = loadClubData(resolvedClubId);
+  const club = getClubById(resolvedClubId);
 
   return {
     club,

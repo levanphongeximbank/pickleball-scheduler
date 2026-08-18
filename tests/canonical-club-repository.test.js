@@ -10,6 +10,7 @@ import { ACCC_FIXTURE } from "./fixtures/accc-cloud-only-club.js";
 test("CanonicalClubRepository V2 ON reads registry RPC and excludes default-club", async () => {
   const repo = createCanonicalClubRepository({
     isV2Enabled: () => true,
+    resolveVenueById: (id) => ({ id, tenantId: id }),
     listRegistryRpc: async () => ({
       ok: true,
       clubs: [ACCC_FIXTURE.club, ACCC_FIXTURE.defaultClub, ACCC_FIXTURE.otherTenantClub],
@@ -46,6 +47,7 @@ test("CanonicalClubRepository V2 OFF uses legacy adapter with source legacy_blob
 test("CanonicalClubRepository blocks cross-tenant access for non-admin", async () => {
   const repo = createCanonicalClubRepository({
     isV2Enabled: () => true,
+    resolveVenueById: (id) => ({ id, tenantId: id }),
     listRegistryRpc: async () => ({ ok: true, clubs: [ACCC_FIXTURE.club] }),
   });
   const result = await repo.listClubsForTenant(ACCC_FIXTURE.tenantId, {
@@ -61,6 +63,7 @@ test("CanonicalClubRepository blocks cross-tenant access for non-admin", async (
 test("CanonicalClubRepository omits inactive clubs by default", async () => {
   const repo = createCanonicalClubRepository({
     isV2Enabled: () => true,
+    resolveVenueById: (id) => ({ id, tenantId: id }),
     listRegistryRpc: async ({ includeInactive }) => ({
       ok: true,
       clubs: [
@@ -78,6 +81,7 @@ test("CanonicalClubRepository omits inactive clubs by default", async () => {
 test("CanonicalClubRepository V2 still returns clubs when ClubContext/local registry empty", async () => {
   const repo = createCanonicalClubRepository({
     isV2Enabled: () => true,
+    resolveVenueById: (id) => ({ id, tenantId: id }),
     listRegistryRpc: async () => ({ ok: true, clubs: [ACCC_FIXTURE.club] }),
     loadLocalClubs: () => [],
   });

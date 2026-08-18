@@ -4,7 +4,7 @@ Director Engine
 ==========================================================
 */
 
-import { getActiveClubId, getScopedStorageKey } from "../data/club.js";
+import { getScopedStorageKey } from "../data/club.js";
 import { guardCourtLockAction } from "../auth/guardAction.js";
 import { loadClubData, saveClubData } from "../domain/clubStorage.js";
 
@@ -70,11 +70,11 @@ function saveDirector(data, clubId) {
   saveClubData(clubId, clubData);
 }
 
-export function getDirectorState(clubId = getActiveClubId()) {
+export function getDirectorState(clubId) {
   return loadDirector(clubId);
 }
 
-export function lockCourt(courtId, clubId = getActiveClubId()) {
+export function lockCourt(courtId, clubId) {
   const check = guardCourtLockAction(clubId);
   if (!check.ok) {
     return check;
@@ -90,7 +90,7 @@ export function lockCourt(courtId, clubId = getActiveClubId()) {
   return { ok: true };
 }
 
-export function unlockCourt(courtId, clubId = getActiveClubId()) {
+export function unlockCourt(courtId, clubId) {
   const check = guardCourtLockAction(clubId);
   if (!check.ok) {
     return check;
@@ -104,7 +104,7 @@ export function unlockCourt(courtId, clubId = getActiveClubId()) {
   return { ok: true };
 }
 
-export function lockPlayer(playerId, clubId = getActiveClubId()) {
+export function lockPlayer(playerId, clubId) {
   const check = guardCourtLockAction(clubId);
   if (!check.ok) {
     return check;
@@ -120,7 +120,7 @@ export function lockPlayer(playerId, clubId = getActiveClubId()) {
   return { ok: true };
 }
 
-export function unlockPlayer(playerId, clubId = getActiveClubId()) {
+export function unlockPlayer(playerId, clubId) {
   const check = guardCourtLockAction(clubId);
   if (!check.ok) {
     return check;

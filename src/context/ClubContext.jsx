@@ -2,8 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 import {
   clearActiveClubIdPreference,
-  getActiveClub,
-  getActiveClubId,
   getActiveClubIdPreference,
   loadClubs,
 } from "../data/club.js";
@@ -66,22 +64,20 @@ const ClubContext = createContext(null);
 export function ClubProvider({ children }) {
   const { user, rbacEnabled, isAuthenticated } = useAuth();
   const { currentTenantId } = useTenant();
-  const { currentVenueId } = useVenue();
+  const { currentVenueId, venues } = useVenue();
   const clubRehydrateScopeKey = buildClubRehydrateScopeKey(user);
 
-  // Phase 45A.1 — canonical Club READ cutover. When ON (flag + cloud backend),
-  // canonicalClubRepository is the single Club-entity read gateway. When OFF
-  // (Production default) or offline/no-Supabase, the legacy registry read path
-  // is preserved unchanged for rollback and explicit local mode.
+  // Wave 5 — canonical Club READ cutover. Live Staging/Production flag is TRUE:
+  // CLOUD_PRESENT + canonical capability => singular canonicalClubRepository
+  // authority. Local blob is honest no-cloud/local compatibility only. The env
+  // flag remains a documented rollback kill-switch; do not mutate Vercel env.
   const canonicalRead = isCanonicalClubReadEnabled({
     canonicalEnabled: isCanonicalClubRepositoryEnabled(),
     hasSupabase: hasSupabaseConfig(),
   });
 
   const [clubs, setClubs] = useState(() => loadClubs());
-  const [activeClubId, setActiveClubId] = useState(() =>
-    canonicalRead ? getActiveClubIdPreference() : getActiveClubId()
-  );
+  const [activeClubId, setActiveClubId] = useState(() => getActiveClubIdPreference());
   const [revision, setRevision] = useState(0);
   const [clubScopeStatus, setClubScopeStatus] = useState("idle");
 
@@ -159,13 +155,31 @@ export function ClubProvider({ children }) {
       return undefined;
     }
 
+    // GLOBAL DIRECTORY ≠ OPERATIONAL TARGET: Super Admin with no selected Tenant
+    // has no operational Club list and no automatic global operational target.
+    if (!currentTenantId && isPlatformWideRole(user?.role)) {
+      setCanonicalClubs([]);
+      setClubReadState(CLUB_READ_STATE.READY);
+      setClubReadErrorCode(null);
+      return undefined;
+    }
+
     let cancelled = false;
     setCanonicalClubs([]);
     setClubReadState(CLUB_READ_STATE.LOADING);
     setClubReadErrorCode(null);
 
     void canonicalClubRepository
-      .listClubsForCurrentScope({ user, tenantId: currentTenantId, rbacEnabled })
+      .listClubsForCurrentScope({
+        user,
+        tenantId: currentTenantId,
+        rbacEnabled,
+        resolveVenueById: (venueId) => {
+          const id = String(venueId || "").trim();
+          if (!id) return null;
+          return (venues || []).find((row) => String(row.id) === id) || null;
+        },
+      })
       .then((result) => {
         if (cancelled) {
           return;
@@ -190,7 +204,7 @@ export function ClubProvider({ children }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- semantic scope, not object identity
-  }, [canonicalRead, isAuthenticated, clubRehydrateScopeKey, currentTenantId, rbacEnabled, canonicalReloadNonce]);
+  }, [canonicalRead, isAuthenticated, clubRehydrateScopeKey, currentTenantId, rbacEnabled, canonicalReloadNonce, venues]);
 
   const visibleClubs = useMemo(() => {
     if (canonicalRead) {
@@ -210,8 +224,7 @@ export function ClubProvider({ children }) {
       // never expose foreign-tenant clubs as operational options.
       if (rbacEnabled && isAuthenticated && currentTenantId) {
         return accessible.filter((club) => {
-          const clubTenant =
-            club?.tenantId || club?.venueId || club?.tenant_id || club?.venue_id || null;
+          const clubTenant = club?.tenantId || club?.tenant_id || null;
           return String(clubTenant || "").trim() === String(currentTenantId).trim();
         });
       }
@@ -242,7 +255,7 @@ export function ClubProvider({ children }) {
         const assigned = loadClubs().find((club) => club.id === user.clubId && !club.isDefault);
         if (
           assigned &&
-          String(assigned.venueId || assigned.tenantId || "").trim() === String(currentTenantId).trim() &&
+          String(assigned.tenantId || "").trim() === String(currentTenantId).trim() &&
           canAccessClub(user, assigned.id, { venueId: assigned.venueId || null }, { rbacEnabled })
         ) {
           return [...visible, assigned];
@@ -385,7 +398,7 @@ export function ClubProvider({ children }) {
       setActiveClubId(getActiveClubIdPreference());
     } else {
       setClubs(loadClubs());
-      setActiveClubId(getActiveClubId());
+      setActiveClubId(getActiveClubIdPreference());
     }
     setRevision((value) => value + 1);
   }, [canonicalRead]);
@@ -408,7 +421,7 @@ export function ClubProvider({ children }) {
     }
 
     if (!rbacEnabled || !isAuthenticated) {
-      return getActiveClub();
+      return visibleClubs.find((club) => club.id === activeClubId) || null;
     }
 
     // Phase 2F: no silent first-of-many for display fallback.
@@ -496,6 +509,7 @@ export function ClubProvider({ children }) {
       return;
     }
 
+    // Unique eligible Club auto-select writes preference only — grants NO authorization.
     const result = switchActiveClubCanonical(selection.activeClubId);
     if (result.ok) {
       setActiveClubId(selection.activeClubId);
@@ -559,7 +573,26 @@ export function ClubProvider({ children }) {
   ]);
 
   const summary = useMemo(() => {
-    const base = getClubSummary(activeClub?.id || activeClubId);
+    const id = activeClub?.id || activeClubId;
+    if (!id) {
+      return {
+        club: null,
+        totals: {
+          players: 0,
+          courts: 0,
+          activeCourts: 0,
+          seasons: 0,
+          leagues: 0,
+          sessions: 0,
+          rounds: 0,
+        },
+        active: {},
+        seasons: [],
+        leagues: [],
+        clubContextUnresolved: true,
+      };
+    }
+    const base = getClubSummary(id);
     // Canonical mode: never let legacy registry club overwrite tenant-bearing
     // activeClub projection (legacy registry often lacks tenantId/venueId).
     if (canonicalRead && activeClub) {
@@ -734,7 +767,7 @@ export function ClubProvider({ children }) {
         setActiveClubId(getActiveClubIdPreference());
       } else {
         setClubs(loadClubs());
-        setActiveClubId(getActiveClubId());
+        setActiveClubId(getActiveClubIdPreference());
       }
       setRevision((value) => value + 1);
       return result;

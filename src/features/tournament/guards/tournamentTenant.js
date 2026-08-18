@@ -20,7 +20,7 @@ export function requireClubId(clubId) {
 
 /**
  * Extract explicit tenant from a canonical runtime club object.
- * No localStorage. No guessing. Recognizes tenantId | venueId only.
+ * No localStorage. No guessing. tenantId only — venueId is not Tenant identity.
  * @param {{ tenantId?: string|null, venueId?: string|null }|null|undefined} club
  * @returns {string|null}
  */
@@ -28,7 +28,7 @@ export function resolveExplicitTenantFromClub(club) {
   if (!club || typeof club !== "object") {
     return null;
   }
-  const raw = club.tenantId ?? club.venueId ?? null;
+  const raw = club.tenantId ?? club.tenant_id ?? null;
   const tenantId = String(raw || "").trim();
   if (!tenantId || FORBIDDEN_TENANTS.has(tenantId)) {
     return null;
@@ -39,7 +39,7 @@ export function resolveExplicitTenantFromClub(club) {
 /**
  * Build a scope object from ClubContext activeClub only.
  * No id-only fallback — tenant-scoped Tournament must wait for a ready
- * canonical activeClub (id + tenantId|venueId).
+ * canonical activeClub (id + canonical tenantId).
  */
 export function buildTournamentClubScope(activeClub) {
   if (!activeClub || typeof activeClub !== "object") {
@@ -56,7 +56,7 @@ export function buildTournamentClubScope(activeClub) {
     id: clubId,
     clubId,
     tenantId,
-    venueId: activeClub.venueId ?? tenantId ?? null,
+    venueId: activeClub.venueId || null,
   };
 }
 

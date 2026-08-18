@@ -130,12 +130,12 @@ test("Wave3 readiness: requireVenue can block without making Venue globally mand
   assert.equal(emptyVenues.state, PLATFORM_CONTEXT_STATE.VENUE_EMPTY);
 });
 
-test("Wave3 club operational tenant prefers tenantId over venueId", () => {
+test("Wave3 club operational tenant uses tenantId only — never venueId", () => {
   assert.equal(
     resolveClubOperationalTenantId({ tenantId: "t1", venueId: "v9" }),
     "t1"
   );
-  assert.equal(resolveClubOperationalTenantId({ venueId: "v9" }), "v9");
+  assert.equal(resolveClubOperationalTenantId({ venueId: "v9" }), null);
 });
 
 test("Wave3 legacy profile bridge is explicit and single-purpose", () => {

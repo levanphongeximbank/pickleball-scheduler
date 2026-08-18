@@ -384,6 +384,8 @@ test("Phase 2E — mapV2ClubToUiClub feeds canonical read model", () => {
     id: "c1",
     name: "Club",
     tenant_id: "t1",
+    scope_semantics: "canonical_platform_tenant",
+    canonical_tenant_id: "t1",
     version: 3,
     owner_user_id: "o1",
     owner_label: "O",
