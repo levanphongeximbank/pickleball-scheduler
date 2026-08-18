@@ -365,7 +365,7 @@ describe("platform tenant switcher persistence 01 — authorization policy", () 
 
     assert.equal(canRenderTenantSwitcher(tech), false);
     assert.equal(canSwitchTenant(tech), false);
-    assert.equal(canOperateUnassignedTenant(tech), true);
+    assert.equal(canOperateUnassignedTenant(tech), false);
 
     assert.equal(canRenderTenantSwitcher(owner), false);
     assert.equal(canSwitchTenant(owner), false);

@@ -91,10 +91,33 @@ export function createUserService({ persistence, collection = "users" } = {}) {
 }
 
 export function createAccessService({ permissionService } = {}) {
+  const directoryPermissions = new Set(["audit.read", "user.manage"]);
+
   return {
     authorize(user, scope = {}, permission) {
-      if (user?.role === "SUPER_ADMIN" || user?.role === "PLATFORM_ADMIN") {
-        return { ok: true, allowed: true, permission };
+      if (!user) {
+        return { ok: false, allowed: false, code: "UNAUTHENTICATED", permission };
+      }
+
+      const isSuperAdmin = user?.role === "SUPER_ADMIN" || user?.role === "PLATFORM_ADMIN";
+      if (isSuperAdmin) {
+        const hasTarget = Boolean(
+          scope.tenant_id || scope.venue_id || scope.club_id || scope.resourceId
+        );
+        const directory =
+          !permission ||
+          directoryPermissions.has(permission) ||
+          String(permission).endsWith(".view") ||
+          String(permission).endsWith(".read");
+        if (directory || hasTarget) {
+          return { ok: true, allowed: true, permission, code: "ALLOW" };
+        }
+        return {
+          ok: false,
+          allowed: false,
+          permission,
+          code: "TARGET_REQUIRED",
+        };
       }
 
       const tenantCheck = assertTenantAccess(user, scope);

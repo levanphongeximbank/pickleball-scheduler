@@ -17,6 +17,9 @@ import {
   PLATFORM_CONTEXT_EVENT,
 } from "../../../core/platform/app/platformContextDiagnostics.js";
 import { ensureTenantVenueLocalBootstrap } from "./tenantVenueBootstrap.js";
+import { canAccessVenue } from "../../../auth/rbac.js";
+import { isGlobalRole } from "../../../auth/roles.js";
+import { isRbacEnabled } from "../../../auth/authService.js";
 
 export function listVenuesForTenant(tenantId) {
   ensureTenantVenueLocalBootstrap();
@@ -127,6 +130,15 @@ export function commitVenueSwitch({
     return { ok: false, error: "Cần phiên người dùng để lưu venue.", code: "AUTH_REQUIRED" };
   }
 
+  const rbacEnabled = isRbacEnabled();
+  if (rbacEnabled && !canAccessVenue(user, nextVenueId, { rbacEnabled })) {
+    return {
+      ok: false,
+      error: "Không có quyền vận hành Venue này.",
+      code: "VENUE_FORBIDDEN",
+    };
+  }
+
   saveActiveVenueId(nextVenueId, user.id, { tenantId: nextTenantId });
   invalidatePhysicalResourceForVenueSwitch();
 
@@ -147,20 +159,33 @@ export function resolveActiveVenueId({
     return null;
   }
   const catalog = Array.isArray(venues) ? venues : listVenuesForTenant(tenantId);
+  const rbacEnabled = isRbacEnabled();
   const preferred = loadActiveVenueId(user?.id);
   if (preferred && catalog.some((row) => row.id === preferred && venueBelongsToTenant(row, tenantId))) {
-    return preferred;
+    if (!rbacEnabled || canAccessVenue(user, preferred, { rbacEnabled })) {
+      return preferred;
+    }
   }
 
-  // Profile home venue when it belongs to selected tenant.
+  // Profile home venue when it belongs to selected tenant AND actor is authorized.
   const homeVenueId = trimScopeId(user?.venueId);
   if (homeVenueId && catalog.some((row) => row.id === homeVenueId && venueBelongsToTenant(row, tenantId))) {
-    return homeVenueId;
+    if (!rbacEnabled || canAccessVenue(user, homeVenueId, { rbacEnabled })) {
+      return homeVenueId;
+    }
+  }
+
+  // Super Admin: no silent first/unique venue synthesis for authorization.
+  if (user && isGlobalRole(user.role)) {
+    return null;
   }
 
   // Deterministic 0/1 behavior: auto-select only when exactly one venue.
   if (catalog.length === 1) {
-    return catalog[0].id;
+    const onlyId = catalog[0].id;
+    if (!rbacEnabled || canAccessVenue(user, onlyId, { rbacEnabled })) {
+      return onlyId;
+    }
   }
 
   return null;

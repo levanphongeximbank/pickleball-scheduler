@@ -234,8 +234,10 @@ describe("Phase 44C.1 — canonical club scope (cloud authoritative)", () => {
       venueId: TENANT_A,
       clubId: CLUB_A,
       status: "active",
+      entitlementEvidence: {
+        clubs: [{ clubId: CLUB_A, userId: "club-owner-13", status: "active" }],
+      },
     });
-    // Club-scoped access is decided by the assigned clubId (JWT/profile), not the registry.
     assert.equal(canAccessClub(clubOwner, CLUB_A, { venueId: TENANT_A }, RBAC_ON), true);
     assert.equal(canAccessClub(clubOwner, CLUB_B, { venueId: TENANT_A }, RBAC_ON), false);
   });
