@@ -134,6 +134,111 @@ export function evaluateRefereeAuthContext(refereeContext = {}, organizerContext
   return proof(true, "referee-context", { class: AUTH_CONTEXT_CLASS.REFEREE });
 }
 
+/**
+ * CORE-13 inactive-referee fixture acceptance.
+ *
+ * Authority is Contract #01 evidence.active === false.
+ * Literal status "INACTIVE" is not required and is not a canonical Identity status.
+ * Canonical SUSPENDED + active=false is valid dedicated-fixture evidence.
+ *
+ * INVITED also yields Contract #01 active=false, but INVITED is pre-activation
+ * onboarding, not the retained CORE-13 negative fixture (PR #449 SUSPENDED REFEREE).
+ *
+ * Expected dedicated fixture:
+ *   role=REFEREE, status=suspended, active=false,
+ *   tenantId=venue-staging-a, venueId=null
+ */
+export const INACTIVE_REFEREE_ACCEPTANCE_RULE = Object.freeze({
+  authority: "CONTRACT_01_EVIDENCE_ACTIVE_FALSE",
+  literalInactiveRequired: false,
+  dedicatedFixtureStatus: "suspended",
+  dedicatedFixtureRole: "REFEREE",
+  invitedNotDedicatedFixture: true,
+});
+
+function readContract01Evidence(subject = {}) {
+  const evidence = subject?.contract01Evidence || subject?.evidence || null;
+  if (!evidence || typeof evidence !== "object") return null;
+  return evidence;
+}
+
+function subjectIdOf(subject = {}) {
+  return String(subject.userId || subject.id || subject.subjectId || "").trim();
+}
+
+/**
+ * Qualify an inactive-referee fixture from Contract #01 evidence only.
+ * Caller/local status/active/role/tenant cannot override canonical evidence.
+ */
+export function evaluateInactiveRefereeFixture(inactive = {}, options = {}) {
+  const localId = subjectIdOf(inactive);
+  const evidence = readContract01Evidence(inactive);
+  if (!localId && !evidence?.subjectId && !evidence?.canonicalSubjectId) {
+    return proof(false, "EXISTING_QA_INACTIVE_REFEREE", {
+      missing: ["EXISTING_QA_INACTIVE_REFEREE"],
+    });
+  }
+  if (!evidence) {
+    return proof(false, "EXISTING_QA_INACTIVE_REFEREE_CONTRACT_01_EVIDENCE_MISSING", {
+      missing: ["EXISTING_QA_INACTIVE_REFEREE_CONTRACT_01_EVIDENCE_MISSING"],
+    });
+  }
+
+  const evidenceId = String(evidence.subjectId || evidence.canonicalSubjectId || "").trim();
+  if (!evidenceId) {
+    return proof(false, "EXISTING_QA_INACTIVE_REFEREE_CONTRACT_01_EVIDENCE_MISSING", {
+      missing: ["EXISTING_QA_INACTIVE_REFEREE_CONTRACT_01_EVIDENCE_MISSING"],
+    });
+  }
+  if (localId && localId !== evidenceId) {
+    return proof(false, "EXISTING_QA_INACTIVE_REFEREE_SUBJECT_MISMATCH", {
+      missing: ["EXISTING_QA_INACTIVE_REFEREE_SUBJECT_MISMATCH"],
+    });
+  }
+
+  const role = String(evidence.role || "").trim().toUpperCase();
+  if (role !== INACTIVE_REFEREE_ACCEPTANCE_RULE.dedicatedFixtureRole) {
+    return proof(false, "EXISTING_QA_INACTIVE_REFEREE", {
+      missing: ["EXISTING_QA_INACTIVE_REFEREE"],
+    });
+  }
+
+  const requiredTenantId = String(options.requiredTenantId || "").trim();
+  const evidenceTenantId = String(evidence.tenantId || "").trim();
+  if (requiredTenantId && evidenceTenantId !== requiredTenantId) {
+    return proof(false, "EXISTING_QA_INACTIVE_REFEREE_TENANT", {
+      missing: ["EXISTING_QA_INACTIVE_REFEREE_TENANT"],
+    });
+  }
+
+  if (evidence.active !== false) {
+    return proof(false, "EXISTING_QA_INACTIVE_REFEREE_ACTIVE_NOT_FALSE", {
+      missing: ["EXISTING_QA_INACTIVE_REFEREE_ACTIVE_NOT_FALSE"],
+    });
+  }
+
+  const status = String(evidence.status || "").trim().toLowerCase();
+  if (status === "invited") {
+    return proof(false, "EXISTING_QA_INACTIVE_REFEREE_INVITED_NOT_DEDICATED", {
+      missing: ["EXISTING_QA_INACTIVE_REFEREE_INVITED_NOT_DEDICATED"],
+    });
+  }
+  if (status !== INACTIVE_REFEREE_ACCEPTANCE_RULE.dedicatedFixtureStatus) {
+    return proof(false, "EXISTING_QA_INACTIVE_REFEREE_NOT_DEDICATED_SUSPENDED", {
+      missing: ["EXISTING_QA_INACTIVE_REFEREE_NOT_DEDICATED_SUSPENDED"],
+    });
+  }
+
+  return proof(true, "SUSPENDED / CONTRACT_01_ACTIVE_FALSE", {
+    INACTIVE_REFEREE_EVIDENCE: "SUSPENDED / CONTRACT_01_ACTIVE_FALSE",
+    status,
+    active: false,
+    role,
+    tenantId: evidenceTenantId || null,
+    venueId: evidence.venueId == null || evidence.venueId === "" ? null : String(evidence.venueId),
+  });
+}
+
 export function evaluateExistingQaIdentitySet(input = {}) {
   const organizerA = input.organizerA || null;
   const organizerB = input.organizerB || null;
@@ -161,11 +266,11 @@ export function evaluateExistingQaIdentitySet(input = {}) {
   if (String(replacement?.status || "").toUpperCase() !== "ACTIVE") {
     missing.push("EXISTING_QA_REPLACEMENT_REFEREE_ACTIVE");
   }
-  if (!inactive?.userId || String(inactive.role || "").toUpperCase() !== "REFEREE") {
-    missing.push("EXISTING_QA_INACTIVE_REFEREE");
-  }
-  if (String(inactive?.status || "").toUpperCase() !== "INACTIVE") {
-    missing.push("EXISTING_QA_INACTIVE_REFEREE_STATUS");
+  const inactiveProof = evaluateInactiveRefereeFixture(inactive, {
+    requiredTenantId: organizerA?.tenantId || "",
+  });
+  if (!inactiveProof.ok) {
+    missing.push(...(inactiveProof.missing || [inactiveProof.detail]));
   }
   if (missing.length) {
     return proof(false, missing.join(","), {
@@ -183,7 +288,10 @@ export function evaluateExistingQaIdentitySet(input = {}) {
     organizerA
   );
   if (!impersonation.ok) return { ...impersonation, EXISTING_QA_IDENTITY_SET_READY: false };
-  return proof(true, "existing-qa-identity-set", { EXISTING_QA_IDENTITY_SET_READY: true });
+  return proof(true, "existing-qa-identity-set", {
+    EXISTING_QA_IDENTITY_SET_READY: true,
+    INACTIVE_REFEREE_EVIDENCE: inactiveProof.INACTIVE_REFEREE_EVIDENCE,
+  });
 }
 
 export function evaluateExistingQaEnvReadiness(envMap = {}) {

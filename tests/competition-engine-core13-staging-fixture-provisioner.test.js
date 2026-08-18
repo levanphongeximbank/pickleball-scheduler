@@ -61,6 +61,7 @@ import {
   evaluateRefereeAuthContext,
   evaluateVenueAsTenantFallbackDenied,
   FIXTURE_BINDING_MODE,
+  INACTIVE_REFEREE_ACCEPTANCE_RULE,
 } from "../scripts/core13/core13-staging-qa-auth.mjs";
 import {
   evaluateRemoteProvisionGate,
@@ -133,7 +134,17 @@ function createStubWriters() {
       userId: "55555555-5555-4555-8555-555555555555",
       tenantId: "core13-qa-tenant-a",
       role: "REFEREE",
-      status: "INACTIVE",
+      status: "suspended",
+      contract01Evidence: {
+        subjectId: "55555555-5555-4555-8555-555555555555",
+        canonicalSubjectId: "55555555-5555-4555-8555-555555555555",
+        role: "REFEREE",
+        status: "suspended",
+        active: false,
+        tenantId: "core13-qa-tenant-a",
+        venueId: null,
+        source: "identity",
+      },
     },
     nonCanonicalSubject: {
       id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
@@ -832,6 +843,7 @@ test("missing existing QA referee credential fails closed", () => {
 });
 
 test("missing inactive referee or second tenant fails closed", () => {
+  assert.equal(INACTIVE_REFEREE_ACCEPTANCE_RULE.literalInactiveRequired, false);
   const missingInactive = evaluateExistingQaIdentitySet({
     organizerA: { userId: ORGANIZER_CONTEXT.userId, tenantId: "t-a" },
     organizerB: { userId: REFEREE_CONTEXT.userId, tenantId: "t-b" },

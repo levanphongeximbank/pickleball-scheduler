@@ -564,7 +564,10 @@ export async function materializeReceiptFromWriters(options = {}) {
         inactiveReferee: {
           id: inactiveReferee.userId || inactiveReferee.id,
           role: "REFEREE",
-          status: "INACTIVE",
+          status:
+            inactiveReferee.contract01Evidence?.status ||
+            inactiveReferee.status ||
+            "suspended",
         },
         nonCanonicalSubject: {
           id: nonCanonicalSubject.id,

@@ -6,6 +6,8 @@
 
 import { readFileSync } from "node:fs";
 import { CORE13_FIXTURE_NAMESPACE } from "./core13-staging-acceptance-proofs.mjs";
+import { evaluateInactiveRefereeFixture } from "./core13-staging-qa-auth.mjs";
+import { resolveSubjectIdentityRecord } from "../../src/features/identity/services/subjectIdentityLookupService.js";
 
 export const FIXTURE_RECEIPT_SCHEMA_VERSION = 1;
 export const FIXTURE_PROVISIONER_ID = "core13-staging-fixture-provisioner-v1";
@@ -160,7 +162,7 @@ export function createValidFixtureReceipt(overrides = {}) {
       inactiveReferee: {
         id: "55555555-5555-4555-8555-555555555555",
         role: "REFEREE",
-        status: "INACTIVE",
+        status: "suspended",
       },
       nonCanonicalSubject: {
         id: "66666666-6666-4666-8666-666666666666",
@@ -518,8 +520,16 @@ export function evaluateReceiptRemoteReconciliation(receipt, remote = {}) {
   if (String(remote.identities?.nonCanonicalSubject?.role || "").toUpperCase() === "REFEREE") {
     return proof(false, "non-canonical subject must not be REFEREE");
   }
-  if (String(remote.identities?.inactiveReferee?.status || "").toUpperCase() !== "INACTIVE") {
-    return proof(false, "inactive referee must be INACTIVE");
+  const inactiveRemote = remote.identities?.inactiveReferee || {};
+  const inactiveProof = evaluateInactiveRefereeFixture(
+    {
+      userId: inactiveRemote.subjectId || inactiveRemote.userId || inactiveRemote.id,
+      contract01Evidence: inactiveRemote.contract01Evidence || null,
+    },
+    { requiredTenantId: entityId(receipt.tenantA) }
+  );
+  if (!inactiveProof.ok) {
+    return proof(false, inactiveProof.detail || "inactive referee requires Contract #01 active=false");
   }
 
   const schedule = remote.schedule || {};
@@ -815,7 +825,7 @@ export async function loadAuthoritativeRemoteFixtureEvidence(service, receipt) {
   async function loadIdentity(userId) {
     const { data, error } = await service
       .from("profiles")
-      .select("id, role, status, tenant_id")
+      .select("id, role, status, tenant_id, venue_id")
       .eq("id", userId)
       .maybeSingle();
     if (error) throw new Error(`identity evidence failed: ${error.message}`);
@@ -860,14 +870,33 @@ export async function loadAuthoritativeRemoteFixtureEvidence(service, receipt) {
   }
 
   const identities = {};
+  const requestedTenantId = entityId(receipt.tenantA);
   for (const key of REQUIRED_USER_KEYS) {
     const id = entityId(receipt.users[key]);
     const row = await loadIdentity(id);
+    let contract01Evidence = null;
+    if (row?.id) {
+      const lookup = await resolveSubjectIdentityRecord(
+        { subjectId: String(row.id), requestedTenantId },
+        {
+          loadIdentitySubjectById: async () => ({
+            id: String(row.id),
+            role: row.role,
+            status: row.status,
+            tenantId: row.tenant_id,
+            venueId: row.venue_id,
+          }),
+        }
+      );
+      contract01Evidence = lookup.ok ? lookup.evidence : null;
+    }
     identities[key] = {
       exists: Boolean(row),
-      role: row?.role || "",
-      status: row?.status || "",
-      tenantId: row?.tenant_id || null,
+      role: contract01Evidence?.role || row?.role || "",
+      status: contract01Evidence?.status || row?.status || "",
+      tenantId: contract01Evidence?.tenantId ?? row?.tenant_id ?? null,
+      venueId: contract01Evidence?.venueId ?? row?.venue_id ?? null,
+      contract01Evidence,
     };
   }
 
@@ -944,11 +973,27 @@ export function buildAlignedRemoteEvidenceForTests(receipt, overrides = {}) {
   }
   const identities = {};
   for (const key of REQUIRED_USER_KEYS) {
+    const status = receipt.users[key].status || "ACTIVE";
+    const role = receipt.users[key].role;
+    const tenantId = entityId(receipt.tenantA);
+    const subjectId = entityId(receipt.users[key]);
     identities[key] = {
       exists: true,
-      role: receipt.users[key].role,
-      status: receipt.users[key].status || "ACTIVE",
-      tenantId: entityId(receipt.tenantA),
+      id: subjectId,
+      role,
+      status,
+      tenantId,
+      contract01Active: key === "inactiveReferee" ? false : String(status).toLowerCase() === "active",
+      contract01Evidence: {
+        subjectId,
+        canonicalSubjectId: subjectId,
+        role,
+        status: String(status || "").toLowerCase(),
+        active: key === "inactiveReferee" ? false : String(status).toLowerCase() === "active",
+        tenantId,
+        venueId: receipt.users[key].venueId ?? null,
+        source: "identity",
+      },
     };
   }
   if (overrides.matches) {
