@@ -7,6 +7,7 @@ let allowInternalRpcInTests = false;
 export const REFEREE_V5_INTERNAL_RPC_NAMES = Object.freeze({
   COMMIT_MATCH_TRANSITION: "referee_v5_commit_match_transition",
   COMMIT_MATCH_FINALIZATION: "referee_v5_commit_match_finalization",
+  INITIALIZE_MATCH_EXECUTION_STATE: "referee_v5_initialize_match_execution_state",
 });
 
 export function setRefereeV5InternalRpcClientForTests(client, allow = true) {
@@ -59,6 +60,22 @@ export async function refereeV5CommitMatchFinalization(payload) {
   const client = getInternalClient();
   const { data, error } = await client.rpc(
     REFEREE_V5_INTERNAL_RPC_NAMES.COMMIT_MATCH_FINALIZATION,
+    payload
+  );
+  if (error) {
+    return { ok: false, code: REFEREE_V5_ERROR.VALIDATION_FAILED, error: error.message };
+  }
+  return data?.ok === false ? data : { ok: true, ...data };
+}
+
+export async function refereeV5InitializeMatchExecutionState(payload) {
+  const guard = assertInternalRpcAllowed();
+  if (!guard.ok) {
+    return guard;
+  }
+  const client = getInternalClient();
+  const { data, error } = await client.rpc(
+    REFEREE_V5_INTERNAL_RPC_NAMES.INITIALIZE_MATCH_EXECUTION_STATE,
     payload
   );
   if (error) {
