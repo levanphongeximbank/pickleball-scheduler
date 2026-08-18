@@ -492,6 +492,7 @@
   "tests/competition-engine-core13-staging-acceptance-gate.test.js",
   "tests/competition-engine-core13-staging-fixture-provisioner.test.js",
   "tests/competition-engine-core13-inactive-identity-semantics.test.js",
+  "tests/competition-engine-core13-referee-v5-runtime-alignment-01.test.js",
   "tests/competition-engine-e2e-04-player-referee-operations.test.js",
   "tests/competition-engine-e2e-05-public-experience.test.js",
   "tests/competition-engine-e2e-06-governance-reliability.test.js",

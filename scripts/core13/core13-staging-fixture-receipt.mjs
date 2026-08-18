@@ -6,7 +6,7 @@
 
 import { readFileSync } from "node:fs";
 import { CORE13_FIXTURE_NAMESPACE } from "./core13-staging-acceptance-proofs.mjs";
-import { evaluateInactiveRefereeFixture } from "./core13-staging-qa-auth.mjs";
+import { evaluateInactiveRefereeFixture, FIXTURE_BINDING_MODE } from "./core13-staging-qa-auth.mjs";
 import { resolveSubjectIdentityRecord } from "../../src/features/identity/services/subjectIdentityLookupService.js";
 
 export const FIXTURE_RECEIPT_SCHEMA_VERSION = 1;
@@ -275,9 +275,62 @@ export function createValidFixtureReceipt(overrides = {}) {
   return stripReceiptSecrets({ ...base, ...overrides, provenance: { ...base.provenance, ...(overrides.provenance || {}) } });
 }
 
+export function createPartialFixtureReceipt(overrides = {}) {
+  const runId = String(overrides.runId || "").trim();
+  return stripReceiptSecrets({
+    schemaVersion: FIXTURE_RECEIPT_SCHEMA_VERSION,
+    namespace: CORE13_FIXTURE_NAMESPACE,
+    disposable: true,
+    environment: "staging",
+    projectRef: STAGING_PROJECT_REF,
+    provisioner: FIXTURE_PROVISIONER_ID,
+    status: "PARTIAL",
+    validLive29CaseSsot: false,
+    createdAt: new Date().toISOString(),
+    runId,
+    identityMode: overrides.identityMode || FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY,
+    abortReason: String(overrides.abortReason || "provision aborted"),
+    ownedIds: {
+      tournaments: Array.isArray(overrides.ownedIds?.tournaments)
+        ? overrides.ownedIds.tournaments
+        : [],
+      matches: Array.isArray(overrides.ownedIds?.matches) ? overrides.ownedIds.matches : [],
+      assignments: Array.isArray(overrides.ownedIds?.assignments)
+        ? overrides.ownedIds.assignments
+        : [],
+    },
+    tenants: overrides.tenants || {},
+    users: overrides.users || {},
+  });
+}
+
+export function evaluatePartialFixtureReceipt(receipt) {
+  if (!receipt || typeof receipt !== "object") {
+    return proof(false, "partial receipt missing");
+  }
+  if (String(receipt.status || "").toUpperCase() !== "PARTIAL") {
+    return proof(false, "status must be PARTIAL");
+  }
+  if (receipt.validLive29CaseSsot !== false) {
+    return proof(false, "PARTIAL receipt must not claim live-29-case SSOT");
+  }
+  if (receipt.projectRef === PRODUCTION_PROJECT_REF) {
+    return proof(false, "Production projectRef denied");
+  }
+  if (receipt.projectRef !== STAGING_PROJECT_REF) {
+    return proof(false, `projectRef=${receipt.projectRef || "missing"}`);
+  }
+  if (!String(receipt.runId || "").trim()) return proof(false, "runId required");
+  if (receiptContainsSecrets(receipt)) return proof(false, "partial receipt contains secrets");
+  return proof(true, "partial-receipt");
+}
+
 export function evaluateFixtureReceipt(receipt, nowMs = Date.now()) {
   if (!receipt || typeof receipt !== "object") {
     return proof(false, "receipt missing");
+  }
+  if (String(receipt.status || "").toUpperCase() === "PARTIAL") {
+    return proof(false, "PARTIAL receipt is not valid live-29-case SSOT");
   }
   if (Number(receipt.schemaVersion) !== FIXTURE_RECEIPT_SCHEMA_VERSION) {
     return proof(false, `schemaVersion=${receipt.schemaVersion}`);

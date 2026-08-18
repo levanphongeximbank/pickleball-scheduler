@@ -46,6 +46,8 @@ export {
   createCompetitionRefereeAssignmentTrustedClient,
   resolveCompetitionAssignmentEdgeBaseUrl,
   stripUntrustedAssignmentActorFields,
+  extractCanonicalAssignmentId,
+  normalizeCompetitionAssignmentResult,
 } from "./client/competitionRefereeAssignmentEdgeClient.js";
 
 export {

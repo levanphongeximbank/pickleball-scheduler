@@ -156,7 +156,9 @@ var ASSIGNMENT_COMMAND_ERROR_CODE = Object.freeze({
   SERVICE_ROLE_REQUIRED: "CORE13_SERVICE_ROLE_REQUIRED",
   ORIGINATING_ACTOR_REQUIRED: "CORE13_ORIGINATING_ACTOR_REQUIRED",
   CANONICAL_REFEREE_EVIDENCE_REQUIRED: "CORE13_CANONICAL_REFEREE_EVIDENCE_REQUIRED",
-  TRUSTED_SERVER_REQUIRED: "CORE13_TRUSTED_SERVER_REQUIRED"
+  TRUSTED_SERVER_REQUIRED: "CORE13_TRUSTED_SERVER_REQUIRED",
+  MALFORMED_ASSIGNMENT_RESULT: "CORE13_MALFORMED_ASSIGNMENT_RESULT",
+  ACTIVE_ASSIGNMENT_EXISTS: "CORE13_ACTIVE_ASSIGNMENT_EXISTS"
 });
 var ASSIGNMENT_COMMAND_ERROR_CODE_VALUES = Object.freeze(
   Object.values(ASSIGNMENT_COMMAND_ERROR_CODE)
@@ -226,6 +228,8 @@ function requireUuid(value, label) {
 function mapRpcError(error) {
   const combined = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
   const codeMap = [
+    ["ACTIVE_ASSIGNMENT_EXISTS", ASSIGNMENT_COMMAND_ERROR_CODE.ACTIVE_ASSIGNMENT_EXISTS],
+    ["REFEREE_ALREADY_ASSIGNED", ASSIGNMENT_COMMAND_ERROR_CODE.ACTIVE_ASSIGNMENT_EXISTS],
     ["STALE_WRITE", ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE],
     ["EXPECTED_VERSION_REQUIRED", ASSIGNMENT_COMMAND_ERROR_CODE.EXPECTED_VERSION_REQUIRED],
     ["IDEMPOTENCY_CONFLICT", ASSIGNMENT_COMMAND_ERROR_CODE.IDEMPOTENCY_CONFLICT],
@@ -2140,8 +2144,8 @@ function sha256DigestBytes(message) {
   outView.setUint32(28, h7, false);
   return out;
 }
-function sha256HexUtf8(text) {
-  const bytes = sha256DigestBytes(textEncoder.encode(String(text ?? "")));
+function sha256HexUtf8(text2) {
+  const bytes = sha256DigestBytes(textEncoder.encode(String(text2 ?? "")));
   let hex = "";
   for (let i = 0; i < bytes.length; i += 1) {
     hex += bytes[i].toString(16).padStart(2, "0");
@@ -4239,6 +4243,24 @@ function createCompetitionRefereeAssignmentCommandService(options = {}) {
     }
     const role = defaultRole(command);
     const existingRows = await loadExistingForCore13(persistence, authz);
+    const sameActive = (existingRows || []).find(
+      (row) => String(row.matchId) === matchId && String(row.refereeId) === String(refereeId) && String(row.roleCode || row.role || REFEREE_ROLE_CODE.PRIMARY) === String(role) && String(row.status) === "active"
+    );
+    const requirementRequested = command.requireQualification === true || command.requireAvailability === true;
+    if (sameActive && !requirementRequested) {
+      return deepFreeze({
+        ok: true,
+        command: ASSIGNMENT_COMMAND.ASSIGN,
+        core13Decision: "ACCEPT",
+        replayed: true,
+        uniquenessReconciled: true,
+        assignment: sameActive,
+        audit: null,
+        version: sameActive.version ?? null,
+        engine: CORE13_ASSIGNMENT_COMMAND_VERSION,
+        persistenceClassification: persistence.classification
+      });
+    }
     const profile = resolveRequirementProfile(command);
     const request = createManualRefereeAssignmentRequest({
       requestId: String(
@@ -4273,19 +4295,46 @@ function createCompetitionRefereeAssignmentCommandService(options = {}) {
       matchId,
       role
     });
-    const persisted = await persistence.assign({
-      tenantId: authz.tenantId,
-      tournamentId: authz.tournamentId,
-      matchId,
-      refereeId,
-      role,
-      actorId: authz.actorId,
-      expectedVersion,
-      idempotencyKey: String(command.idempotencyKey || "").trim(),
-      operation: ASSIGNMENT_OPERATION.ASSIGN,
-      reason: command.reason || null,
-      lifecycleState: lifecycleGate.lifecycleState
-    });
+    let persisted;
+    try {
+      persisted = await persistence.assign({
+        tenantId: authz.tenantId,
+        tournamentId: authz.tournamentId,
+        matchId,
+        refereeId,
+        role,
+        actorId: authz.actorId,
+        expectedVersion,
+        idempotencyKey: String(command.idempotencyKey || "").trim(),
+        operation: ASSIGNMENT_OPERATION.ASSIGN,
+        reason: command.reason || null,
+        lifecycleState: lifecycleGate.lifecycleState
+      });
+    } catch (err) {
+      if (isCompetitionRefereeAssignmentCommandError(err) && err.code === ASSIGNMENT_COMMAND_ERROR_CODE.ACTIVE_ASSIGNMENT_EXISTS && typeof persistence.getActiveAssignment === "function") {
+        const active = await persistence.getActiveAssignment({
+          tenantId: authz.tenantId,
+          tournamentId: authz.tournamentId,
+          matchId,
+          role
+        });
+        if (active && String(active.refereeId) === String(refereeId)) {
+          return deepFreeze({
+            ok: true,
+            command: ASSIGNMENT_COMMAND.ASSIGN,
+            core13Decision: "ACCEPT",
+            replayed: true,
+            uniquenessReconciled: true,
+            assignment: active,
+            audit: null,
+            version: active.version ?? null,
+            engine: CORE13_ASSIGNMENT_COMMAND_VERSION,
+            persistenceClassification: persistence.classification
+          });
+        }
+      }
+      throw err;
+    }
     return deepFreeze({
       ok: true,
       command: ASSIGNMENT_COMMAND.ASSIGN,
@@ -4541,8 +4590,8 @@ function isPlainObject2(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 function trimId(value) {
-  const text = String(value || "").trim();
-  return text || null;
+  const text2 = String(value || "").trim();
+  return text2 || null;
 }
 function isPhysicalCourtId(value) {
   const id = trimId(value);
@@ -9925,9 +9974,9 @@ function createTrustedServerRefereeAdapterB(input = {}) {
 
 // src/features/competition-engine/operations/referee/assignment/server/projectMatchScheduleFromAdapterB.js
 function readInstant(value) {
-  const text = String(value || "").trim();
-  if (!text) return null;
-  const ms = Date.parse(text);
+  const text2 = String(value || "").trim();
+  if (!text2) return null;
+  const ms = Date.parse(text2);
   if (!Number.isFinite(ms)) return null;
   return new Date(ms).toISOString();
 }
@@ -10151,6 +10200,111 @@ async function loadAuthoritativeAssignmentEvidence(input = {}) {
   });
 }
 
+// src/features/competition-engine/operations/referee/assignment/server/resolveAuthoritativeAssignmentTenant.js
+function text(value) {
+  return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+async function loadCanonicalTournament(serviceClient, tournamentId) {
+  const { data, error } = await serviceClient.from("canonical_tournaments").select("id, tenant_id, club_id, status, mode, payload, external_key").eq("id", tournamentId).maybeSingle();
+  if (error) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.NOT_CONFIGURED,
+      error.message || "Canonical tournament lookup failed",
+      { tournamentId }
+    );
+  }
+  return data || null;
+}
+async function loadTeamTournament(serviceClient, tournamentId) {
+  const byId = await serviceClient.from("team_tournaments").select("id, tenant_id, tournament_id, status, payload").eq("id", tournamentId).maybeSingle();
+  if (byId.error) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.NOT_CONFIGURED,
+      byId.error.message || "Team tournament lookup failed",
+      { tournamentId }
+    );
+  }
+  if (byId.data) return byId.data;
+  const { data, error } = await serviceClient.from("team_tournaments").select("id, tenant_id, tournament_id, status, payload").eq("tournament_id", tournamentId).limit(1);
+  if (error) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.NOT_CONFIGURED,
+      error.message || "Team tournament lookup failed",
+      { tournamentId }
+    );
+  }
+  return Array.isArray(data) && data[0] ? data[0] : null;
+}
+async function loadLiveMatchTenant(serviceClient, matchId) {
+  const { data, error } = await serviceClient.from("match_live_states").select("tenant_id, tournament_id, match_id").eq("match_id", matchId).limit(1);
+  if (error) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.NOT_CONFIGURED,
+      error.message || "Match live tenant lookup failed",
+      { matchId }
+    );
+  }
+  return Array.isArray(data) && data[0] ? data[0] : null;
+}
+async function resolveAuthoritativeAssignmentTenant(input = {}) {
+  const tournamentId = text(input.tournamentId);
+  const matchId = text(input.matchId);
+  const claimedTenantId = text(input.claimedTenantId);
+  const serviceClient = input.serviceClient;
+  if (!tournamentId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+      "tournamentId is required for trusted-server tenant resolution",
+      {}
+    );
+  }
+  if (!serviceClient || typeof serviceClient.from !== "function") {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.NOT_CONFIGURED,
+      "Trusted-server service client is required",
+      {}
+    );
+  }
+  const canonical = await loadCanonicalTournament(serviceClient, tournamentId);
+  const teamHeader = canonical ? null : await loadTeamTournament(serviceClient, tournamentId);
+  const tenantId = text(canonical?.tenant_id) || text(teamHeader?.tenant_id);
+  if (!tenantId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+      "Tournament is not bound in canonical server context",
+      { tournamentId }
+    );
+  }
+  if (claimedTenantId && claimedTenantId !== tenantId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TENANT_DENIED,
+      "Caller tenantId is not authoritative and does not match canonical tournament tenant",
+      { claimedTenantId, canonicalTenantId: tenantId, tournamentId }
+    );
+  }
+  if (matchId) {
+    const live = await loadLiveMatchTenant(serviceClient, matchId);
+    const liveTenant = text(live?.tenant_id);
+    if (liveTenant && liveTenant !== tenantId) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TENANT_DENIED,
+        "Match live tenant does not match canonical tournament tenant",
+        { matchId, liveTenant, canonicalTenantId: tenantId }
+      );
+    }
+  }
+  return Object.freeze({
+    tenantId,
+    tournamentId,
+    clubId: text(canonical?.club_id) || null,
+    canonicalBound: Boolean(canonical?.id),
+    teamBound: Boolean(teamHeader?.id),
+    claimedTenantId: claimedTenantId || null,
+    callerTenantAsAuthority: "DENY",
+    venueAsTenantFallback: "DENY"
+  });
+}
+
 // src/features/competition-engine/operations/referee/assignment/server/edgeHttpHandler.js
 var COMPETITION_ASSIGNMENT_CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -10276,10 +10430,17 @@ async function executeCompetitionRefereeAssignmentAction({
   command.competitionMode = String(
     command.competitionMode || ASSIGNMENT_COMPETITION_MODE.INTERNAL
   ).toUpperCase();
+  const resolvedTenant = await resolveAuthoritativeAssignmentTenant({
+    serviceClient,
+    tournamentId: command.tournamentId || command.competitionId,
+    matchId: command.matchId,
+    claimedTenantId: command.tenantId
+  });
+  command.tenantId = resolvedTenant.tenantId;
   const authz = await assertTrustedAssignmentAuthz({
     userClient,
-    tenantId: command.tenantId,
-    tournamentId: command.tournamentId || command.competitionId,
+    tenantId: resolvedTenant.tenantId,
+    tournamentId: resolvedTenant.tournamentId,
     actorId: verified.userId,
     canonicalBound: false
   });
@@ -10383,15 +10544,34 @@ async function executeCompetitionRefereeAssignmentAction({
     };
   }
   const result = await commandService[method](prepared);
+  const assignmentId = String(
+    result?.assignment?.assignmentId || result?.assignmentId || ""
+  ).trim();
+  if (!assignmentId) {
+    return {
+      httpStatus: 500,
+      body: {
+        ok: false,
+        code: ASSIGNMENT_COMMAND_ERROR_CODE.MALFORMED_ASSIGNMENT_RESULT,
+        error: "Trusted server mutation result missing assignmentId"
+      }
+    };
+  }
   return {
     httpStatus: 200,
     body: {
       ...result,
       ok: true,
+      assignmentId,
+      assignment: {
+        ...result.assignment && typeof result.assignment === "object" ? result.assignment : {},
+        assignmentId
+      },
       authoritativeExecutionLocation: "TRUSTED_SERVER",
       endpoint: COMPETITION_REFEREE_ASSIGNMENT_EDGE_FUNCTION,
       originatingActorId: verified.userId,
-      core13Executed: true
+      core13Executed: true,
+      callerTenantAsAuthority: "DENY"
     }
   };
 }
@@ -10453,8 +10633,8 @@ export {
   createTrustedServerRefereeAdapterB,
   handleCompetitionRefereeAssignmentAction,
   handleCompetitionRefereeAssignmentHttpRequest,
-  loadAuthoritativeAssignmentEvidence,
   projectMatchScheduleFromAdapterB,
+  resolveAuthoritativeAssignmentTenant,
   stripBrowserAuthority,
   verifyBearerToken
 };

@@ -12,7 +12,7 @@ export {
   stripBrowserAuthority,
 } from "./edgeHttpHandler.js";
 export { assertTrustedAssignmentAuthz } from "./assertTrustedAssignmentAuthz.js";
-export { loadAuthoritativeAssignmentEvidence } from "./loadAuthoritativeAssignmentEvidence.js";
+export { resolveAuthoritativeAssignmentTenant } from "./resolveAuthoritativeAssignmentTenant.js";
 export { createTrustedServerRefereeAdapterB } from "./createTrustedServerRefereeAdapterB.js";
 export { createIdentityBackedRefereeDirectoryPort } from "./createIdentityBackedRefereeDirectoryPort.js";
 export { createTrustedServerIdentityAccessAdapter } from "./createTrustedServerIdentityAccessAdapter.js";

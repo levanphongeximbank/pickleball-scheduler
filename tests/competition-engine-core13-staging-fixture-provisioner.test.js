@@ -783,7 +783,9 @@ test("bootstrap assignment uses organizer token and refuses non-PRE_MATCH state"
   });
   assert.equal(ok.ok, true);
   assert.equal(ok.tokenClass, "ORGANIZER");
+  assert.equal(ok.assignmentId, nextUuid(8));
   assert.equal(calls.length, 1);
+  assert.equal(Object.prototype.hasOwnProperty.call(calls[0], "tenantId"), false);
 });
 
 test("referee lifecycle refuses to run before bootstrap assignment proof", async () => {

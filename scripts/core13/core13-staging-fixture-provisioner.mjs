@@ -44,8 +44,10 @@ import {
 } from "./core13-staging-fixture-writers.mjs";
 import {
   buildTypedCleanupPlan,
+  createPartialFixtureReceipt,
   createValidFixtureReceipt,
   evaluateFixtureReceipt,
+  evaluatePartialFixtureReceipt,
   evaluatePhysicalEnvironment,
   evaluateTeardownScope,
   evaluateTypedTeardownTargets,
@@ -229,6 +231,20 @@ function recordPath(paths, key, step) {
   paths[key].push(step);
 }
 
+function failWithPartial(detail, runId, owned, extra = {}) {
+  const partialReceipt = createPartialFixtureReceipt({
+    runId,
+    abortReason: detail,
+    ownedIds: owned,
+  });
+  return proof(false, detail, {
+    ...extra,
+    status: "PARTIAL",
+    validLive29CaseSsot: false,
+    partialReceipt,
+  });
+}
+
 async function applyLiveLifecycle({
   writers,
   tournamentId,
@@ -277,7 +293,9 @@ async function applyLiveLifecycle({
   };
   for (const step of steps) {
     const result = await writers[step](commandInput);
-    if (result && result.ok === false) return result;
+    if (result && result.ok === false) {
+      return { ...result, assignmentProof };
+    }
     recordPath(paths, key, step);
   }
   return { ok: true, assignmentProof };
@@ -464,6 +482,27 @@ export async function materializeReceiptFromWriters(options = {}) {
   const locked = await mkMatch(primary.id);
   const completed = await mkMatch(completedLifecycle.id);
 
+  const owned = {
+    tournaments: [
+      primary.id,
+      crossTournament.id,
+      completedLifecycle.id,
+      dailyEnabled.id,
+      dailyDisabled.id,
+    ].filter(Boolean),
+    matches: [
+      preMatch.id,
+      overlapA.id,
+      overlapB.id,
+      nonOverlap.id,
+      inProgress.id,
+      scoringActive.id,
+      locked.id,
+      completed.id,
+    ].filter(Boolean),
+    assignments: [],
+  };
+
   const bootstrapAssignments = [];
   if (!identityOnly) {
     const inProgressLive = await applyLiveLifecycle({
@@ -476,7 +515,17 @@ export async function materializeReceiptFromWriters(options = {}) {
       paths: materializationPaths,
       key: "inProgress",
     });
-    if (inProgressLive.ok === false) return inProgressLive;
+    if (inProgressLive.ok === false) {
+      if (inProgressLive.assignmentProof?.assignmentId) {
+        owned.assignments.push(inProgressLive.assignmentProof.assignmentId);
+      }
+      return failWithPartial(inProgressLive.detail, runId, owned, {
+        verdict: inProgressLive.verdict,
+      });
+    }
+    if (inProgressLive.assignmentProof?.assignmentId) {
+      owned.assignments.push(inProgressLive.assignmentProof.assignmentId);
+    }
     bootstrapAssignments.push({
       ...inProgressLive.assignmentProof,
       fixture: "inProgress",
@@ -491,7 +540,17 @@ export async function materializeReceiptFromWriters(options = {}) {
       paths: materializationPaths,
       key: "scoringActive",
     });
-    if (scoringLive.ok === false) return scoringLive;
+    if (scoringLive.ok === false) {
+      if (scoringLive.assignmentProof?.assignmentId) {
+        owned.assignments.push(scoringLive.assignmentProof.assignmentId);
+      }
+      return failWithPartial(scoringLive.detail, runId, owned, {
+        verdict: scoringLive.verdict,
+      });
+    }
+    if (scoringLive.assignmentProof?.assignmentId) {
+      owned.assignments.push(scoringLive.assignmentProof.assignmentId);
+    }
     bootstrapAssignments.push({
       ...scoringLive.assignmentProof,
       fixture: "scoringActive",
@@ -506,7 +565,17 @@ export async function materializeReceiptFromWriters(options = {}) {
       paths: materializationPaths,
       key: "locked",
     });
-    if (lockedLive.ok === false) return lockedLive;
+    if (lockedLive.ok === false) {
+      if (lockedLive.assignmentProof?.assignmentId) {
+        owned.assignments.push(lockedLive.assignmentProof.assignmentId);
+      }
+      return failWithPartial(lockedLive.detail, runId, owned, {
+        verdict: lockedLive.verdict,
+      });
+    }
+    if (lockedLive.assignmentProof?.assignmentId) {
+      owned.assignments.push(lockedLive.assignmentProof.assignmentId);
+    }
     bootstrapAssignments.push({
       ...lockedLive.assignmentProof,
       fixture: "locked",
@@ -521,7 +590,17 @@ export async function materializeReceiptFromWriters(options = {}) {
       paths: materializationPaths,
       key: "completed",
     });
-    if (completedLive.ok === false) return completedLive;
+    if (completedLive.ok === false) {
+      if (completedLive.assignmentProof?.assignmentId) {
+        owned.assignments.push(completedLive.assignmentProof.assignmentId);
+      }
+      return failWithPartial(completedLive.detail, runId, owned, {
+        verdict: completedLive.verdict,
+      });
+    }
+    if (completedLive.assignmentProof?.assignmentId) {
+      owned.assignments.push(completedLive.assignmentProof.assignmentId);
+    }
     bootstrapAssignments.push({
       ...completedLive.assignmentProof,
       fixture: "completed",
@@ -694,6 +773,16 @@ export function persistReceiptArtifact(receipt, rootDir = process.cwd()) {
   return proof(true, filePath, { filePath });
 }
 
+export function persistPartialReceiptArtifact(receipt, rootDir = process.cwd()) {
+  const valid = evaluatePartialFixtureReceipt(receipt);
+  if (!valid.ok) return valid;
+  const dir = path.join(rootDir, RUNTIME_ARTIFACT_DIR);
+  mkdirSync(dir, { recursive: true });
+  const filePath = path.join(dir, `${receipt.runId}.partial.json`);
+  writeFileSync(filePath, JSON.stringify(receipt, null, 2), "utf8");
+  return proof(true, filePath, { filePath, partial: true });
+}
+
 export function planTeardown(receipt, requestedIds) {
   const owned = [...listReceiptOwnedIds(receipt)];
   const ids = Array.isArray(requestedIds) && requestedIds.length ? requestedIds : owned;
@@ -862,10 +951,19 @@ export async function runFixtureProvisionerCli(argv = [], envMap = {}, options =
       refereeContext: options.refereeContext,
     });
     if (!materialized.ok) {
+      if (materialized.partialReceipt) {
+        persistPartialReceiptArtifact(
+          materialized.partialReceipt,
+          options.rootDir || process.cwd()
+        );
+      }
       return proof(false, materialized.detail, {
         verdict: materialized.verdict || "REMOTE_FIXTURE_PROVISION_FAILED",
         executed: false,
         missing: materialized.missing,
+        status: materialized.status || null,
+        validLive29CaseSsot: false,
+        partialReceipt: materialized.partialReceipt || null,
       });
     }
     const persisted = persistReceiptArtifact(materialized.receipt, options.rootDir || process.cwd());

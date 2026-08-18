@@ -346,6 +346,30 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
 
     const role = defaultRole(command);
     const existingRows = await loadExistingForCore13(persistence, authz);
+    const sameActive = (existingRows || []).find(
+      (row) =>
+        String(row.matchId) === matchId &&
+        String(row.refereeId) === String(refereeId) &&
+        String(row.roleCode || row.role || REFEREE_ROLE_CODE.PRIMARY) ===
+          String(role) &&
+        String(row.status) === "active"
+    );
+    const requirementRequested =
+      command.requireQualification === true || command.requireAvailability === true;
+    if (sameActive && !requirementRequested) {
+      return deepFreeze({
+        ok: true,
+        command: ASSIGNMENT_COMMAND.ASSIGN,
+        core13Decision: "ACCEPT",
+        replayed: true,
+        uniquenessReconciled: true,
+        assignment: sameActive,
+        audit: null,
+        version: sameActive.version ?? null,
+        engine: CORE13_ASSIGNMENT_COMMAND_VERSION,
+        persistenceClassification: persistence.classification,
+      });
+    }
     const profile = resolveRequirementProfile(command);
 
     const request = createManualRefereeAssignmentRequest({
@@ -389,19 +413,50 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
             role,
           });
 
-    const persisted = await persistence.assign({
-      tenantId: authz.tenantId,
-      tournamentId: authz.tournamentId,
-      matchId,
-      refereeId,
-      role,
-      actorId: authz.actorId,
-      expectedVersion,
-      idempotencyKey: String(command.idempotencyKey || "").trim(),
-      operation: ASSIGNMENT_OPERATION.ASSIGN,
-      reason: command.reason || null,
-      lifecycleState: lifecycleGate.lifecycleState,
-    });
+    let persisted;
+    try {
+      persisted = await persistence.assign({
+        tenantId: authz.tenantId,
+        tournamentId: authz.tournamentId,
+        matchId,
+        refereeId,
+        role,
+        actorId: authz.actorId,
+        expectedVersion,
+        idempotencyKey: String(command.idempotencyKey || "").trim(),
+        operation: ASSIGNMENT_OPERATION.ASSIGN,
+        reason: command.reason || null,
+        lifecycleState: lifecycleGate.lifecycleState,
+      });
+    } catch (err) {
+      if (
+        isCompetitionRefereeAssignmentCommandError(err) &&
+        err.code === ASSIGNMENT_COMMAND_ERROR_CODE.ACTIVE_ASSIGNMENT_EXISTS &&
+        typeof persistence.getActiveAssignment === "function"
+      ) {
+        const active = await persistence.getActiveAssignment({
+          tenantId: authz.tenantId,
+          tournamentId: authz.tournamentId,
+          matchId,
+          role,
+        });
+        if (active && String(active.refereeId) === String(refereeId)) {
+          return deepFreeze({
+            ok: true,
+            command: ASSIGNMENT_COMMAND.ASSIGN,
+            core13Decision: "ACCEPT",
+            replayed: true,
+            uniquenessReconciled: true,
+            assignment: active,
+            audit: null,
+            version: active.version ?? null,
+            engine: CORE13_ASSIGNMENT_COMMAND_VERSION,
+            persistenceClassification: persistence.classification,
+          });
+        }
+      }
+      throw err;
+    }
 
     return deepFreeze({
       ok: true,

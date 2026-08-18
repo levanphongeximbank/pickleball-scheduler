@@ -32,6 +32,12 @@ export function competitionRefereeAssignmentEdgeUrl(edgeBaseUrl) {
   return `${base}/functions/v1/${COMPETITION_REFEREE_ASSIGNMENT_EDGE_FUNCTION}`;
 }
 
+const MUTATION_ACTIONS = new Set([
+  COMPETITION_REFEREE_ASSIGNMENT_ACTIONS.ASSIGN,
+  COMPETITION_REFEREE_ASSIGNMENT_ACTIONS.REPLACE,
+  COMPETITION_REFEREE_ASSIGNMENT_ACTIONS.UNASSIGN,
+]);
+
 function stripUntrustedActor(command = {}) {
   const safe = { ...command };
   delete safe.actorId;
@@ -45,6 +51,48 @@ function stripUntrustedActor(command = {}) {
   delete safe.qualificationSnapshot;
   delete safe.availabilitySnapshot;
   return safe;
+}
+
+export function extractCanonicalAssignmentId(payload) {
+  if (!payload || typeof payload !== "object") return "";
+  return String(
+    payload.assignmentId ||
+      payload.assignment?.assignmentId ||
+      payload.assignment?.id ||
+      payload.id ||
+      ""
+  ).trim();
+}
+
+export function normalizeCompetitionAssignmentResult(action, payload) {
+  if (!payload || typeof payload !== "object") {
+    return {
+      ok: false,
+      code: ASSIGNMENT_COMMAND_ERROR_CODE.MALFORMED_ASSIGNMENT_RESULT,
+      error: "Invalid assignment response",
+    };
+  }
+  if (payload.ok === false) return payload;
+  if (!MUTATION_ACTIONS.has(action)) return payload;
+  const assignmentId = extractCanonicalAssignmentId(payload);
+  if (!assignmentId) {
+    return {
+      ok: false,
+      code: ASSIGNMENT_COMMAND_ERROR_CODE.MALFORMED_ASSIGNMENT_RESULT,
+      error: "malformed Edge success response: assignmentId required",
+    };
+  }
+  return {
+    ...payload,
+    ok: true,
+    assignmentId,
+    assignment: {
+      ...(payload.assignment && typeof payload.assignment === "object"
+        ? payload.assignment
+        : {}),
+      assignmentId,
+    },
+  };
 }
 
 async function postEdge({ accessToken, edgeBaseUrl, body }) {
@@ -94,7 +142,7 @@ export function createCompetitionRefereeAssignmentTrustedClient(options = {}) {
       typeof getAccessToken === "function"
         ? await getAccessToken()
         : getAccessToken;
-    return postEdge({
+    const payload = await postEdge({
       accessToken: token,
       edgeBaseUrl,
       body: {
@@ -102,6 +150,7 @@ export function createCompetitionRefereeAssignmentTrustedClient(options = {}) {
         command: stripUntrustedActor(command),
       },
     });
+    return normalizeCompetitionAssignmentResult(action, payload);
   }
 
   return Object.freeze({

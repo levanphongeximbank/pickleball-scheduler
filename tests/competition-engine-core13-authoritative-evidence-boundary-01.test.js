@@ -78,14 +78,14 @@ function baseCommand(overrides = {}) {
   };
 }
 
-function createQueryApi(rows, maybeSingleRow = null) {
+function createQueryApi(rows) {
   const api = {
     select: () => api,
     eq: () => api,
     order: () => api,
     limit: () => api,
     maybeSingle: async () => ({
-      data: maybeSingleRow !== undefined ? maybeSingleRow : rows[0] || null,
+      data: rows[0] || null,
       error: null,
     }),
     then: (resolve) => resolve({ data: rows, error: null }),
@@ -145,7 +145,7 @@ function createServiceClient({
       if (table === "canonical_tournaments") return createQueryApi(canonical);
       if (table === "team_tournaments") return createQueryApi(team);
       if (table === "match_live_states") return createQueryApi(live);
-      if (table === "profiles") return createQueryApi(profile ? [profile] : [], profile);
+      if (table === "profiles") return createQueryApi(profile ? [profile] : []);
       if (table === "referee_assignments") return createQueryApi([]);
       return createQueryApi([]);
     },

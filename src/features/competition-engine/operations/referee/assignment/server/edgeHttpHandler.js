@@ -24,6 +24,7 @@ import { createRpcCanonicalAssignmentPersistence } from "../persistence/createRp
 import { assertTrustedAssignmentAuthz } from "./assertTrustedAssignmentAuthz.js";
 import { createTrustedServerIdentityAccessAdapter } from "./createTrustedServerIdentityAccessAdapter.js";
 import { loadAuthoritativeAssignmentEvidence } from "./loadAuthoritativeAssignmentEvidence.js";
+import { resolveAuthoritativeAssignmentTenant } from "./resolveAuthoritativeAssignmentTenant.js";
 
 export const COMPETITION_ASSIGNMENT_CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -159,10 +160,18 @@ async function executeCompetitionRefereeAssignmentAction({
     command.competitionMode || ASSIGNMENT_COMPETITION_MODE.INTERNAL
   ).toUpperCase();
 
+  const resolvedTenant = await resolveAuthoritativeAssignmentTenant({
+    serviceClient,
+    tournamentId: command.tournamentId || command.competitionId,
+    matchId: command.matchId,
+    claimedTenantId: command.tenantId,
+  });
+  command.tenantId = resolvedTenant.tenantId;
+
   const authz = await assertTrustedAssignmentAuthz({
     userClient,
-    tenantId: command.tenantId,
-    tournamentId: command.tournamentId || command.competitionId,
+    tenantId: resolvedTenant.tenantId,
+    tournamentId: resolvedTenant.tournamentId,
     actorId: verified.userId,
     canonicalBound: false,
   });
@@ -286,15 +295,36 @@ async function executeCompetitionRefereeAssignmentAction({
   }
 
   const result = await commandService[method](prepared);
+  const assignmentId = String(
+    result?.assignment?.assignmentId || result?.assignmentId || ""
+  ).trim();
+  if (!assignmentId) {
+    return {
+      httpStatus: 500,
+      body: {
+        ok: false,
+        code: ASSIGNMENT_COMMAND_ERROR_CODE.MALFORMED_ASSIGNMENT_RESULT,
+        error: "Trusted server mutation result missing assignmentId",
+      },
+    };
+  }
   return {
     httpStatus: 200,
     body: {
       ...result,
       ok: true,
+      assignmentId,
+      assignment: {
+        ...(result.assignment && typeof result.assignment === "object"
+          ? result.assignment
+          : {}),
+        assignmentId,
+      },
       authoritativeExecutionLocation: "TRUSTED_SERVER",
       endpoint: COMPETITION_REFEREE_ASSIGNMENT_EDGE_FUNCTION,
       originatingActorId: verified.userId,
       core13Executed: true,
+      callerTenantAsAuthority: "DENY",
     },
   };
 }

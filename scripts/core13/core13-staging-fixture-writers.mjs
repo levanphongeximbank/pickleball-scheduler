@@ -21,7 +21,10 @@ import {
   refereeV5EdgeInitializeExecution,
 } from "../../src/features/referee-v5/services/refereeV5EdgeClient.js";
 import { MATCH_EVENT_TYPE } from "../../src/features/referee-v5/constants/eventTypes.js";
-import { createCompetitionRefereeAssignmentTrustedClient } from "../../src/features/competition-engine/operations/referee/assignment/client/competitionRefereeAssignmentEdgeClient.js";
+import {
+  createCompetitionRefereeAssignmentTrustedClient,
+  extractCanonicalAssignmentId,
+} from "../../src/features/competition-engine/operations/referee/assignment/client/competitionRefereeAssignmentEdgeClient.js";
 import {
   AUTH_CONTEXT_CLASS,
   evaluateOrganizerAuthContext,
@@ -751,15 +754,21 @@ export function createBootstrapRefereeAssignmentWriter({
         matchId: input.matchId,
       }),
     });
-    const assignmentId = String(
-      result?.assignmentId || result?.id || result?.assignment?.id || ""
-    ).trim();
     if (result && result.ok === false) return result;
+    const assignmentId = extractCanonicalAssignmentId(result);
+    if (!assignmentId) {
+      return Object.freeze({
+        ok: false,
+        detail: "bootstrap assignment did not return assignmentId",
+        code: "MALFORMED_ASSIGNMENT_RESULT",
+      });
+    }
     return Object.freeze({
-      ...(result && typeof result === "object" ? result : { ok: true }),
-      ok: result?.ok !== false,
-      id: assignmentId || result?.id,
-      assignmentId: assignmentId || result?.id,
+      ok: true,
+      id: assignmentId,
+      assignmentId,
+      replayed: result?.replayed === true || result?.uniquenessReconciled === true,
+      uniquenessReconciled: result?.uniquenessReconciled === true,
       purpose: BOOTSTRAP_ASSIGNMENT_PURPOSE,
       tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
     });

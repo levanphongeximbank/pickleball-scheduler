@@ -201,6 +201,8 @@ test("C: Edge Function authenticates JWT and ignores browser actorId", async () 
   assert.notEqual(persistedActor, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
   assert.equal(result.body.originatingActorId, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
   assert.equal(result.body?.core13Executed, true);
+  assert.equal(result.body?.assignmentId, "asg-1");
+  assert.equal(result.body?.callerTenantAsAuthority, "DENY");
 });
 
 test("D: service-role key never appears in browser/product source", () => {
@@ -317,7 +319,22 @@ test("H: cross-tenant and cross-tournament fail closed", async () => {
       },
     },
     userClient,
-    serviceClient: { rpc: async () => ({ data: null, error: null }), from: () => ({ select: () => ({ eq: () => ({ then: (r) => r({ data: [], error: null }) }) }) }) },
+    serviceClient: {
+      rpc: async () => ({ data: null, error: null }),
+      from: () => {
+        const api = {
+          select: () => api,
+          eq: () => api,
+          limit: () => api,
+          maybeSingle: async () => ({
+            data: { id: "tourn-a", tenant_id: "tenant-a", club_id: "club-a" },
+            error: null,
+          }),
+          then: (resolve) => resolve({ data: [], error: null }),
+        };
+        return api;
+      },
+    },
   });
   assert.equal(denied.body.ok, false);
   assert.equal(denied.body.code, ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TENANT_DENIED);
