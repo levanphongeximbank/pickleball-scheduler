@@ -62,6 +62,24 @@ export function individualPairsPath(tournamentId, eventId = "") {
   return withEventQuery(`/tournament/${encodeURIComponent(id)}/pairs`, eventId);
 }
 
+export function individualPairDrawPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/pair-draw`, eventId);
+}
+
+export function individualGroupDrawPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/group-draw`, eventId);
+}
+
+export function individualGroupStagePath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/groups`, eventId);
+}
+
 export function a1LegacyHubPath() {
   return "/tournament?experience=legacy";
 }

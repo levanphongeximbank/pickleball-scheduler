@@ -216,6 +216,15 @@ const IndividualParticipantsPage = lazy(() =>
 const IndividualPairFormationPage = lazy(() =>
   import("./features/tournament/experience-a1/pages/IndividualPairFormationPage.jsx")
 );
+const IndividualPairDrawRoomPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualPairDrawRoomPage.jsx")
+);
+const IndividualGroupDrawRoomPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualGroupDrawRoomPage.jsx")
+);
+const IndividualGroupStagePage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualGroupStagePage.jsx")
+);
 const TournamentWithdrawalPage = lazy(() =>
   import("./pages/tournament/TournamentWithdrawalPage.jsx")
 );
@@ -600,6 +609,18 @@ export default function Router() {
             <Route
               path="/tournament/:tournamentId/pairs"
               element={<IndividualPairFormationPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/pair-draw"
+              element={<IndividualPairDrawRoomPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/group-draw"
+              element={<IndividualGroupDrawRoomPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/groups"
+              element={<IndividualGroupStagePage />}
             />
             <Route
               path="/tournament/:tournamentId/register"
