@@ -111,14 +111,17 @@ export function createInMemoryCanonicalAssignmentPersistence(options = {}) {
   }
 
   function payloadFingerprint(command) {
+    const operation = command.operation;
     const targetRefereeId =
-      command.operation === "REPLACE"
+      operation === "REPLACE"
         ? command.newRefereeId || command.refereeId || null
-        : command.operation === "UNASSIGN"
+        : operation === "UNASSIGN"
           ? null
-          : command.refereeId || null;
+          : command.refereeId || command.newRefereeId || null;
     return JSON.stringify({
-      operation: command.operation,
+      operation,
+      tenantId: command.tenantId || null,
+      tournamentId: command.tournamentId || command.competitionId || null,
       matchId: command.matchId,
       role: command.roleCode || command.role || "PRIMARY",
       targetRefereeId,

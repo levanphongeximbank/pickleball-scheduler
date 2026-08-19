@@ -119,6 +119,7 @@ function makeClients(options = {}) {
     rpc: async (name) => {
       if (name === "canonical_tournament_assert_tenant") return { data: null, error: null };
       if (name === "canonical_tournament_assert_permission") return { data: null, error: null };
+      if (name === "canonical_tournament_get") return { data: { ok: true }, error: null };
       return { data: null, error: { message: "unexpected " + name } };
     },
   };
@@ -151,7 +152,16 @@ function makeClients(options = {}) {
             club_id: "club-a",
             status: "active",
             mode: "internal",
-            payload: {},
+            payload: {
+              matches: [
+                {
+                  id: "match-1",
+                  status: "SCHEDULED",
+                  entryAId: "a",
+                  entryBId: "b",
+                },
+              ],
+            },
             external_key: tournamentId,
           },
         ]);
@@ -392,12 +402,24 @@ test("idempotent replay returns same assignmentId; duplicate active denied", asy
     baseCommand({
       idempotencyKey: "idem-other-key",
       refereeId: "ref-001",
-      expectedVersion: 0,
+      expectedVersion: 1,
     })
   );
   assert.equal(uniqueness.ok, true);
   assert.equal(uniqueness.assignment.assignmentId, first.assignment.assignmentId);
   assert.equal(uniqueness.uniquenessReconciled, true);
+
+  await assert.rejects(
+    () =>
+      service.assignReferee(
+        baseCommand({
+          idempotencyKey: "idem-stale-same-ref",
+          refereeId: "ref-001",
+          expectedVersion: 0,
+        })
+      ),
+    (err) => err.code === ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE
+  );
 
   await assert.rejects(
     () =>

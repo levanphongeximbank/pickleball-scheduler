@@ -18,6 +18,7 @@ import {
   REFEREE_ROLE_CODE,
   REFEREE_ASSIGNMENT_STATUS,
   REFEREE_ASSIGNMENT_SOURCE,
+  REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE,
 } from "../../../../competition-core/referee-assignment/index.js";
 import {
   createPopulatedSnapshotResult,
@@ -223,15 +224,41 @@ async function loadExistingForCore13(persistence, scope) {
 }
 
 function mapCore13Failure(result) {
-  const code =
-    result?.failure?.code ||
-    result?.failure?.causedBy ||
-    ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED;
+  const failure = result?.failure || {};
+  const reasonCodes = Array.isArray(failure.reasonCodes) ? failure.reasonCodes : [];
+  const diagnostic = String(
+    failure.causedBy || reasonCodes[0] || failure.code || ""
+  );
+  if (
+    diagnostic === REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_INACTIVE ||
+    diagnostic === REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_NOT_FOUND ||
+    reasonCodes.includes(REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_INACTIVE)
+  ) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+      failure.message || "Canonical referee evidence required",
+      { core13Code: diagnostic, failure }
+    );
+  }
   failAssignmentCommand(
     ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED,
-    result?.failure?.message || "CORE-13 rejected assignment command",
-    { core13Code: code, failure: result?.failure || null }
+    failure.message || "CORE-13 rejected assignment command",
+    {
+      core13Code: diagnostic || ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED,
+      failure,
+    }
   );
+}
+
+function requireExpectedVersion(value) {
+  if (value == null || value === "" || Number.isNaN(Number(value))) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.EXPECTED_VERSION_REQUIRED,
+      "expectedVersion is required for assignment mutation",
+      {}
+    );
+  }
+  return Number(value);
 }
 
 /**
@@ -293,6 +320,12 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
     return { authz, lifecycleGate, daily };
   }
 
+  /**
+   * Idempotency peek runs before lifecycle/CORE-13 validation so an already
+   * committed key returns the stored result (or conflict) instead of being
+   * masked by later business validation. Authn/authz/match ownership remain
+   * on the trusted-server boundary before this service is invoked.
+   */
   async function resolveIdempotentReplay(command) {
     if (typeof persistence.peekIdempotency !== "function") return null;
     const peek = await persistence.peekIdempotency({
@@ -357,6 +390,17 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
     const requirementRequested =
       command.requireQualification === true || command.requireAvailability === true;
     if (sameActive && !requirementRequested) {
+      const expectedVersion = requireExpectedVersion(command.expectedVersion);
+      if (expectedVersion !== Number(sameActive.version || 0)) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE,
+          "Fail-closed stale write: expectedVersion mismatch",
+          {
+            expectedVersion,
+            currentVersion: Number(sameActive.version || 0),
+          }
+        );
+      }
       return deepFreeze({
         ok: true,
         command: ASSIGNMENT_COMMAND.ASSIGN,
@@ -371,6 +415,20 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
       });
     }
     const profile = resolveRequirementProfile(command);
+    const expectedVersion = requireExpectedVersion(command.expectedVersion);
+    const currentVersion = await persistence.getMatchAssignmentVersion({
+      tenantId: authz.tenantId,
+      tournamentId: authz.tournamentId,
+      matchId,
+      role,
+    });
+    if (currentVersion !== expectedVersion) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE,
+        "Fail-closed stale write: expectedVersion mismatch",
+        { expectedVersion, currentVersion }
+      );
+    }
 
     const request = createManualRefereeAssignmentRequest({
       requestId: String(
@@ -403,16 +461,6 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
     });
     if (!core13.ok || core13.accepted === false) mapCore13Failure(core13);
 
-    const expectedVersion =
-      command.expectedVersion != null
-        ? Number(command.expectedVersion)
-        : await persistence.getMatchAssignmentVersion({
-            tenantId: authz.tenantId,
-            tournamentId: authz.tournamentId,
-            matchId,
-            role,
-          });
-
     let persisted;
     try {
       persisted = await persistence.assign({
@@ -441,6 +489,16 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
           role,
         });
         if (active && String(active.refereeId) === String(refereeId)) {
+          if (expectedVersion !== Number(active.version || 0)) {
+            failAssignmentCommand(
+              ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE,
+              "Fail-closed stale write: expectedVersion mismatch",
+              {
+                expectedVersion,
+                currentVersion: Number(active.version || 0),
+              }
+            );
+          }
           return deepFreeze({
             ok: true,
             command: ASSIGNMENT_COMMAND.ASSIGN,
@@ -519,6 +577,14 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
         {}
       );
     }
+    const expectedVersion = requireExpectedVersion(command.expectedVersion);
+    if (Number(prior.version || 0) !== expectedVersion) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE,
+        "Fail-closed stale write: expectedVersion mismatch",
+        { expectedVersion, currentVersion: Number(prior.version || 0) }
+      );
+    }
 
     const profile = resolveRequirementProfile(command);
     const request = createRefereeReplacementRequest({
@@ -550,11 +616,6 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
       policy: resolveCore13Policy(command),
     });
     if (!core13.ok || core13.accepted === false) mapCore13Failure(core13);
-
-    const expectedVersion =
-      command.expectedVersion != null
-        ? Number(command.expectedVersion)
-        : Number(prior.version || 0);
 
     const persisted = await persistence.replace({
       tenantId: authz.tenantId,
@@ -625,10 +686,14 @@ export function createCompetitionRefereeAssignmentCommandService(options = {}) {
       );
     }
 
-    const expectedVersion =
-      command.expectedVersion != null
-        ? Number(command.expectedVersion)
-        : Number(prior.version || 0);
+    const expectedVersion = requireExpectedVersion(command.expectedVersion);
+    if (Number(prior.version || 0) !== expectedVersion) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE,
+        "Fail-closed stale write: expectedVersion mismatch",
+        { expectedVersion, currentVersion: Number(prior.version || 0) }
+      );
+    }
 
     const persisted = await persistence.unassign({
       tenantId: authz.tenantId,

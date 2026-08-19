@@ -4142,12 +4142,36 @@ async function loadExistingForCore13(persistence, scope) {
   return list || [];
 }
 function mapCore13Failure(result) {
-  const code = result?.failure?.code || result?.failure?.causedBy || ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED;
+  const failure = result?.failure || {};
+  const reasonCodes = Array.isArray(failure.reasonCodes) ? failure.reasonCodes : [];
+  const diagnostic = String(
+    failure.causedBy || reasonCodes[0] || failure.code || ""
+  );
+  if (diagnostic === REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_INACTIVE || diagnostic === REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_NOT_FOUND || reasonCodes.includes(REFEREE_ASSIGNMENT_DIAGNOSTIC_CODE.REFEREE_INACTIVE)) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+      failure.message || "Canonical referee evidence required",
+      { core13Code: diagnostic, failure }
+    );
+  }
   failAssignmentCommand(
     ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED,
-    result?.failure?.message || "CORE-13 rejected assignment command",
-    { core13Code: code, failure: result?.failure || null }
+    failure.message || "CORE-13 rejected assignment command",
+    {
+      core13Code: diagnostic || ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED,
+      failure
+    }
   );
+}
+function requireExpectedVersion(value) {
+  if (value == null || value === "" || Number.isNaN(Number(value))) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.EXPECTED_VERSION_REQUIRED,
+      "expectedVersion is required for assignment mutation",
+      {}
+    );
+  }
+  return Number(value);
 }
 function createCompetitionRefereeAssignmentCommandService(options = {}) {
   const production = options.production === true;
@@ -4248,6 +4272,17 @@ function createCompetitionRefereeAssignmentCommandService(options = {}) {
     );
     const requirementRequested = command.requireQualification === true || command.requireAvailability === true;
     if (sameActive && !requirementRequested) {
+      const expectedVersion2 = requireExpectedVersion(command.expectedVersion);
+      if (expectedVersion2 !== Number(sameActive.version || 0)) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE,
+          "Fail-closed stale write: expectedVersion mismatch",
+          {
+            expectedVersion: expectedVersion2,
+            currentVersion: Number(sameActive.version || 0)
+          }
+        );
+      }
       return deepFreeze({
         ok: true,
         command: ASSIGNMENT_COMMAND.ASSIGN,
@@ -4262,6 +4297,20 @@ function createCompetitionRefereeAssignmentCommandService(options = {}) {
       });
     }
     const profile = resolveRequirementProfile(command);
+    const expectedVersion = requireExpectedVersion(command.expectedVersion);
+    const currentVersion = await persistence.getMatchAssignmentVersion({
+      tenantId: authz.tenantId,
+      tournamentId: authz.tournamentId,
+      matchId,
+      role
+    });
+    if (currentVersion !== expectedVersion) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE,
+        "Fail-closed stale write: expectedVersion mismatch",
+        { expectedVersion, currentVersion }
+      );
+    }
     const request = createManualRefereeAssignmentRequest({
       requestId: String(
         command.commandId || command.idempotencyKey || `assign-${matchId}-${refereeId}`
@@ -4289,12 +4338,6 @@ function createCompetitionRefereeAssignmentCommandService(options = {}) {
       policy: resolveCore13Policy(command)
     });
     if (!core13.ok || core13.accepted === false) mapCore13Failure(core13);
-    const expectedVersion = command.expectedVersion != null ? Number(command.expectedVersion) : await persistence.getMatchAssignmentVersion({
-      tenantId: authz.tenantId,
-      tournamentId: authz.tournamentId,
-      matchId,
-      role
-    });
     let persisted;
     try {
       persisted = await persistence.assign({
@@ -4319,6 +4362,16 @@ function createCompetitionRefereeAssignmentCommandService(options = {}) {
           role
         });
         if (active && String(active.refereeId) === String(refereeId)) {
+          if (expectedVersion !== Number(active.version || 0)) {
+            failAssignmentCommand(
+              ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE,
+              "Fail-closed stale write: expectedVersion mismatch",
+              {
+                expectedVersion,
+                currentVersion: Number(active.version || 0)
+              }
+            );
+          }
           return deepFreeze({
             ok: true,
             command: ASSIGNMENT_COMMAND.ASSIGN,
@@ -4391,6 +4444,14 @@ function createCompetitionRefereeAssignmentCommandService(options = {}) {
         {}
       );
     }
+    const expectedVersion = requireExpectedVersion(command.expectedVersion);
+    if (Number(prior.version || 0) !== expectedVersion) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE,
+        "Fail-closed stale write: expectedVersion mismatch",
+        { expectedVersion, currentVersion: Number(prior.version || 0) }
+      );
+    }
     const profile = resolveRequirementProfile(command);
     const request = createRefereeReplacementRequest({
       requestId: String(
@@ -4420,7 +4481,6 @@ function createCompetitionRefereeAssignmentCommandService(options = {}) {
       policy: resolveCore13Policy(command)
     });
     if (!core13.ok || core13.accepted === false) mapCore13Failure(core13);
-    const expectedVersion = command.expectedVersion != null ? Number(command.expectedVersion) : Number(prior.version || 0);
     const persisted = await persistence.replace({
       tenantId: authz.tenantId,
       tournamentId: authz.tournamentId,
@@ -4483,7 +4543,14 @@ function createCompetitionRefereeAssignmentCommandService(options = {}) {
         {}
       );
     }
-    const expectedVersion = command.expectedVersion != null ? Number(command.expectedVersion) : Number(prior.version || 0);
+    const expectedVersion = requireExpectedVersion(command.expectedVersion);
+    if (Number(prior.version || 0) !== expectedVersion) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.STALE_WRITE,
+        "Fail-closed stale write: expectedVersion mismatch",
+        { expectedVersion, currentVersion: Number(prior.version || 0) }
+      );
+    }
     const persisted = await persistence.unassign({
       tenantId: authz.tenantId,
       tournamentId: authz.tournamentId,
@@ -5373,7 +5440,7 @@ var COURT_ENGINE_PERMISSIONS = Object.freeze({
 
 // src/features/identity/matrix/rolePermissions.js
 var ALL_PERMISSIONS = Object.values(PERMISSIONS);
-var SYSTEM_TECHNICIAN_PERMISSIONS = [
+var SYSTEM_TECHNICIAN_TECHNICAL_PERMISSIONS = [
   PERMISSIONS.SYSTEM_HEALTH_VIEW,
   PERMISSIONS.SYSTEM_LOG_VIEW,
   PERMISSIONS.SYSTEM_CONFIG_VIEW,
@@ -5390,15 +5457,18 @@ var SYSTEM_TECHNICIAN_PERMISSIONS = [
   PERMISSIONS.DATA_DIAGNOSTIC_VIEW,
   PERMISSIONS.MIGRATION_STATUS_VIEW,
   PERMISSIONS.SETTINGS_VIEW,
+  PERMISSIONS.CLUSTER_VIEW,
+  PERMISSIONS.PLAYER_VIEW
+];
+var SYSTEM_TECHNICIAN_BUSINESS_PERMISSIONS = [
   PERMISSIONS.SKILL_LEVEL_APPROVE,
   PERMISSIONS.SKILL_LEVEL_VERIFY_CLUB,
   PERMISSIONS.RANKING_VIEW,
   PERMISSIONS.RANKING_MANAGE,
   PERMISSIONS.TOURNAMENT_CERTIFY,
-  PERMISSIONS.CLUSTER_VIEW,
-  PERMISSIONS.CLUSTER_MANAGE,
-  PERMISSIONS.PLAYER_VIEW
+  PERMISSIONS.CLUSTER_MANAGE
 ];
+var SYSTEM_TECHNICIAN_PERMISSIONS = [...SYSTEM_TECHNICIAN_TECHNICAL_PERMISSIONS];
 var TEAM_CAPTAIN_PERMISSIONS = [
   PERMISSIONS.TOURNAMENT_VIEW,
   PERMISSIONS.TEAM_VIEW,
@@ -5680,6 +5750,206 @@ var ROLE_PERMISSIONS = Object.freeze({
   [ROLES.PLAYER]: Object.freeze(PLAYER_PERMISSIONS),
   [ROLES.CUSTOMER]: Object.freeze(CUSTOMER_PERMISSIONS),
   [ROLES.SUPPORT]: Object.freeze(SUPPORT_PERMISSIONS)
+});
+var SYSTEM_TECHNICIAN_TECHNICAL_CAPABILITIES = Object.freeze([
+  ...SYSTEM_TECHNICIAN_TECHNICAL_PERMISSIONS
+]);
+var SYSTEM_TECHNICIAN_DENIED_BUSINESS_CAPABILITIES = Object.freeze([
+  ...SYSTEM_TECHNICIAN_BUSINESS_PERMISSIONS
+]);
+var SYSTEM_TECHNICIAN_CLASSIFICATION = Object.freeze({
+  [PERMISSIONS.SYSTEM_HEALTH_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.SYSTEM_LOG_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.SYSTEM_CONFIG_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.SYSTEM_CONFIG_UPDATE_LIMITED]: {
+    actionClass: "TECHNICAL_MUTATION",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.TENANT_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "TENANT",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.VENUE_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "VENUE",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.USER_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "IDENTITY",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.ROLE_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "IDENTITY",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.PERMISSION_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "IDENTITY",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.ACTIVITY_LOG_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.INTEGRATION_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.INTEGRATION_TEST]: {
+    actionClass: "TECHNICAL_MUTATION",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.SUPPORT_TICKET_MANAGE]: {
+    actionClass: "TECHNICAL_MUTATION",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.DATA_DIAGNOSTIC_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.MIGRATION_STATUS_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.SETTINGS_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "SYSTEM",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.CLUSTER_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "CLUSTER",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.PLAYER_VIEW]: {
+    actionClass: "TECHNICAL_DIRECTORY_READ",
+    resourceType: "PLAYER",
+    businessOrTechnical: "TECHNICAL",
+    explicitTargetRequired: false,
+    entitlementRequired: "NONE",
+    systemTechnicianDefaultGrant: true
+  },
+  [PERMISSIONS.CLUSTER_MANAGE]: {
+    actionClass: "BUSINESS_MUTATION",
+    resourceType: "CLUSTER",
+    businessOrTechnical: "BUSINESS",
+    explicitTargetRequired: true,
+    entitlementRequired: "CLUSTER_ASSIGNMENT",
+    systemTechnicianDefaultGrant: false
+  },
+  [PERMISSIONS.SKILL_LEVEL_APPROVE]: {
+    actionClass: "BUSINESS_MUTATION",
+    resourceType: "PLAYER_SKILL",
+    businessOrTechnical: "BUSINESS",
+    explicitTargetRequired: true,
+    entitlementRequired: "DOMAIN_AUTHORITY",
+    systemTechnicianDefaultGrant: false
+  },
+  [PERMISSIONS.SKILL_LEVEL_VERIFY_CLUB]: {
+    actionClass: "BUSINESS_MUTATION",
+    resourceType: "CLUB",
+    businessOrTechnical: "BUSINESS",
+    explicitTargetRequired: true,
+    entitlementRequired: "CLUB_GOVERNANCE",
+    systemTechnicianDefaultGrant: false
+  },
+  [PERMISSIONS.RANKING_VIEW]: {
+    actionClass: "BUSINESS_READ",
+    resourceType: "RANKING",
+    businessOrTechnical: "BUSINESS",
+    explicitTargetRequired: true,
+    entitlementRequired: "DOMAIN_AUTHORITY",
+    systemTechnicianDefaultGrant: false
+  },
+  [PERMISSIONS.RANKING_MANAGE]: {
+    actionClass: "BUSINESS_MUTATION",
+    resourceType: "RANKING",
+    businessOrTechnical: "BUSINESS",
+    explicitTargetRequired: true,
+    entitlementRequired: "DOMAIN_AUTHORITY",
+    systemTechnicianDefaultGrant: false
+  },
+  [PERMISSIONS.TOURNAMENT_CERTIFY]: {
+    actionClass: "BUSINESS_MUTATION",
+    resourceType: "TOURNAMENT",
+    businessOrTechnical: "BUSINESS",
+    explicitTargetRequired: true,
+    entitlementRequired: "DOMAIN_AUTHORITY",
+    systemTechnicianDefaultGrant: false
+  }
 });
 function getPermissionsForRole(role) {
   const canonical = normalizeRole(role);
@@ -10076,31 +10346,49 @@ function bindTournament(canonicalRows, teamRows, tenantId, tournamentId) {
   }
   return { canonical, teamHeader };
 }
+function tryMatchContext(adapterRuntime, tenantId, tournamentId, matchId) {
+  try {
+    return adapterRuntime.adapter.getMatchContext({
+      tenantId,
+      competitionId: tournamentId,
+      matchId
+    });
+  } catch (err) {
+    if (adapterRuntime.isRefereeAdapterContractError(err)) return null;
+    throw err;
+  }
+}
 function resolveScheduleFromAdapterB({
   adapterRuntime,
   tenantId,
   tournamentId,
   matchId
 }) {
-  const request = {
-    tenantId,
-    competitionId: tournamentId,
-    matchId
+  const indexed = {
+    ...adapterRuntime.modeState?.matches || {},
+    ...adapterRuntime.modeState?.matchups || {}
   };
-  try {
-    const matchContext = adapterRuntime.adapter.getMatchContext(request);
-    const modeMatch = adapterRuntime.modeState?.matches?.[matchId] || adapterRuntime.modeState?.matchups?.[matchId] || null;
-    return projectMatchScheduleFromAdapterB({
-      matchContext,
-      modeMatch,
-      matchId
+  const ids = [...new Set([matchId, ...Object.keys(indexed)].filter(Boolean))];
+  const rows = [];
+  let current = createUnscheduledMatchSnapshot(matchId || "missing-match");
+  for (const id of ids) {
+    const projected = projectMatchScheduleFromAdapterB({
+      matchContext: tryMatchContext(adapterRuntime, tenantId, tournamentId, id),
+      modeMatch: indexed[id] || null,
+      matchId: id
     });
-  } catch (err) {
-    if (adapterRuntime.isRefereeAdapterContractError(err)) {
-      return createUnscheduledMatchSnapshot(matchId);
+    const items = Array.isArray(projected.scheduleSnapshot?.items) ? projected.scheduleSnapshot.items : [];
+    for (const row of items) {
+      if (row && !rows.some((existing) => String(existing.matchId) === String(row.matchId))) {
+        rows.push(row);
+      }
     }
-    throw err;
+    if (id === matchId) current = projected;
   }
+  return {
+    ...current,
+    scheduleSnapshot: rows.length > 0 ? createPopulatedSnapshotResult(rows) : current.scheduleSnapshot
+  };
 }
 async function loadAuthoritativeAssignmentEvidence(input = {}) {
   const serviceClient = input.serviceClient;
@@ -10123,8 +10411,30 @@ async function loadAuthoritativeAssignmentEvidence(input = {}) {
     tenantId,
     tournamentId
   );
-  const { data: liveRows } = await serviceClient.from("match_live_states").select("status, last_event_sequence, team_a_score, team_b_score, updated_at").eq("tenant_id", tenantId).eq("match_id", matchId).order("updated_at", { ascending: false }).limit(1);
+  const { data: liveRows } = await serviceClient.from("match_live_states").select("status, last_event_sequence, team_a_score, team_b_score, updated_at, tournament_id, tenant_id").eq("tenant_id", tenantId).eq("match_id", matchId).order("updated_at", { ascending: false }).limit(1);
   const live = Array.isArray(liveRows) && liveRows[0] ? liveRows[0] : null;
+  const liveTournamentId = String(live?.tournament_id || "").trim();
+  if (liveTournamentId && liveTournamentId !== tournamentId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+      "Canonical match tournament ownership does not match requested tournamentId",
+      {
+        matchId,
+        requestedTournamentId: tournamentId,
+        resolvedMatchTournamentId: liveTournamentId
+      }
+    );
+  }
+  if (matchId && !liveTournamentId) {
+    const index = extractCanonicalMatchIndex(canonical || teamHeader || {});
+    if (!index.matches?.[matchId] && !index.matchups?.[matchId]) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+        "Match is not bound to the requested tournament",
+        { matchId, requestedTournamentId: tournamentId }
+      );
+    }
+  }
   const liveMapped = mapLiveStatus(live);
   let lifecycleState = normalizeAssignmentLifecycleState(liveMapped.raw, {
     scoringActive: liveMapped.scoringActive
@@ -10282,6 +10592,7 @@ async function resolveAuthoritativeAssignmentTenant(input = {}) {
       { claimedTenantId, canonicalTenantId: tenantId, tournamentId }
     );
   }
+  let resolvedMatchTournamentId = null;
   if (matchId) {
     const live = await loadLiveMatchTenant(serviceClient, matchId);
     const liveTenant = text(live?.tenant_id);
@@ -10292,6 +10603,32 @@ async function resolveAuthoritativeAssignmentTenant(input = {}) {
         { matchId, liveTenant, canonicalTenantId: tenantId }
       );
     }
+    const liveTournamentId = text(live?.tournament_id);
+    if (liveTournamentId && liveTournamentId !== tournamentId) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+        "Canonical match tournament ownership does not match requested tournamentId",
+        {
+          matchId,
+          requestedTournamentId: tournamentId,
+          resolvedMatchTournamentId: liveTournamentId
+        }
+      );
+    }
+    if (!liveTournamentId) {
+      const index = extractCanonicalMatchIndex(canonical || teamHeader || {});
+      const bound = Boolean(index.matches?.[matchId]) || Boolean(index.matchups?.[matchId]);
+      if (!bound) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+          "Match is not bound to the requested tournament",
+          { matchId, requestedTournamentId: tournamentId }
+        );
+      }
+      resolvedMatchTournamentId = tournamentId;
+    } else {
+      resolvedMatchTournamentId = liveTournamentId;
+    }
   }
   return Object.freeze({
     tenantId,
@@ -10301,7 +10638,8 @@ async function resolveAuthoritativeAssignmentTenant(input = {}) {
     teamBound: Boolean(teamHeader?.id),
     claimedTenantId: claimedTenantId || null,
     callerTenantAsAuthority: "DENY",
-    venueAsTenantFallback: "DENY"
+    venueAsTenantFallback: "DENY",
+    resolvedMatchTournamentId
   });
 }
 

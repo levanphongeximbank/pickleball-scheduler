@@ -16,11 +16,13 @@
 
 import {
   createEmptySnapshotResult,
+  createPopulatedSnapshotResult,
 } from "../../../../../competition-core/referee-assignment/ports/portResult.js";
 import { REFEREE_ROLE_CODE } from "../../../../../competition-core/referee-assignment/index.js";
 import { ASSIGNMENT_COMMAND_ERROR_CODE } from "../constants.js";
 import { failAssignmentCommand } from "../errors.js";
 import { normalizeAssignmentLifecycleState } from "../evaluateLifecycleGate.js";
+import { extractCanonicalMatchIndex } from "./loadCanonicalCompetitionModeState.js";
 import { createIdentityBackedRefereeDirectoryPort } from "./createIdentityBackedRefereeDirectoryPort.js";
 import { createTrustedServerIdentityAccessAdapter } from "./createTrustedServerIdentityAccessAdapter.js";
 import {
@@ -96,34 +98,57 @@ function bindTournament(canonicalRows, teamRows, tenantId, tournamentId) {
   return { canonical, teamHeader };
 }
 
+function tryMatchContext(adapterRuntime, tenantId, tournamentId, matchId) {
+  try {
+    return adapterRuntime.adapter.getMatchContext({
+      tenantId,
+      competitionId: tournamentId,
+      matchId,
+    });
+  } catch (err) {
+    if (adapterRuntime.isRefereeAdapterContractError(err)) return null;
+    throw err;
+  }
+}
+
 function resolveScheduleFromAdapterB({
   adapterRuntime,
   tenantId,
   tournamentId,
   matchId,
 }) {
-  const request = {
-    tenantId,
-    competitionId: tournamentId,
-    matchId,
+  const indexed = {
+    ...(adapterRuntime.modeState?.matches || {}),
+    ...(adapterRuntime.modeState?.matchups || {}),
   };
-  try {
-    const matchContext = adapterRuntime.adapter.getMatchContext(request);
-    const modeMatch =
-      adapterRuntime.modeState?.matches?.[matchId] ||
-      adapterRuntime.modeState?.matchups?.[matchId] ||
-      null;
-    return projectMatchScheduleFromAdapterB({
-      matchContext,
-      modeMatch,
-      matchId,
+  const ids = [...new Set([matchId, ...Object.keys(indexed)].filter(Boolean))];
+  const rows = [];
+  let current = createUnscheduledMatchSnapshot(matchId || "missing-match");
+
+  for (const id of ids) {
+    const projected = projectMatchScheduleFromAdapterB({
+      matchContext: tryMatchContext(adapterRuntime, tenantId, tournamentId, id),
+      modeMatch: indexed[id] || null,
+      matchId: id,
     });
-  } catch (err) {
-    if (adapterRuntime.isRefereeAdapterContractError(err)) {
-      return createUnscheduledMatchSnapshot(matchId);
+    const items = Array.isArray(projected.scheduleSnapshot?.items)
+      ? projected.scheduleSnapshot.items
+      : [];
+    for (const row of items) {
+      if (row && !rows.some((existing) => String(existing.matchId) === String(row.matchId))) {
+        rows.push(row);
+      }
     }
-    throw err;
+    if (id === matchId) current = projected;
   }
+
+  return {
+    ...current,
+    scheduleSnapshot:
+      rows.length > 0
+        ? createPopulatedSnapshotResult(rows)
+        : current.scheduleSnapshot,
+  };
 }
 
 /**
@@ -168,13 +193,36 @@ export async function loadAuthoritativeAssignmentEvidence(input = {}) {
 
   const { data: liveRows } = await serviceClient
     .from("match_live_states")
-    .select("status, last_event_sequence, team_a_score, team_b_score, updated_at")
+    .select("status, last_event_sequence, team_a_score, team_b_score, updated_at, tournament_id, tenant_id")
     .eq("tenant_id", tenantId)
     .eq("match_id", matchId)
     .order("updated_at", { ascending: false })
     .limit(1);
 
   const live = Array.isArray(liveRows) && liveRows[0] ? liveRows[0] : null;
+  const liveTournamentId = String(live?.tournament_id || "").trim();
+  if (liveTournamentId && liveTournamentId !== tournamentId) {
+    failAssignmentCommand(
+      ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+      "Canonical match tournament ownership does not match requested tournamentId",
+      {
+        matchId,
+        requestedTournamentId: tournamentId,
+        resolvedMatchTournamentId: liveTournamentId,
+      }
+    );
+  }
+  if (matchId && !liveTournamentId) {
+    const index = extractCanonicalMatchIndex(canonical || teamHeader || {});
+    if (!index.matches?.[matchId] && !index.matchups?.[matchId]) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+        "Match is not bound to the requested tournament",
+        { matchId, requestedTournamentId: tournamentId }
+      );
+    }
+  }
+
   const liveMapped = mapLiveStatus(live);
   let lifecycleState = normalizeAssignmentLifecycleState(liveMapped.raw, {
     scoringActive: liveMapped.scoringActive,

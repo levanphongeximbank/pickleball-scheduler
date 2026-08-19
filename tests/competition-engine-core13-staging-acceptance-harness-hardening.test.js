@@ -35,6 +35,13 @@ import {
   evaluateExactlyOneActive,
   evaluateFixtureNamespace,
   evaluateServiceEvidenceTestOnly,
+  evaluateCasePreconditionDrift,
+  evaluateStopOnFirstFailure,
+  evaluateTeardownDiscovery,
+  createAcceptanceRunState,
+  createAssignmentMutationLedger,
+  mergeTeardownTargets,
+  CASE_NOT_EXECUTED_AFTER_FIRST_FAILURE,
   runWithFinalization,
 } from "../scripts/core13/core13-staging-acceptance-proofs.mjs";
 
@@ -457,6 +464,10 @@ test("harness source keeps 29-case names, probe-before-mutation, and finally tea
   assert.doesNotMatch(harness, /CORE13_ASSIGNMENT_INVALID_INPUT/);
   assert.doesNotMatch(harness, /activeForMatch\.length <= 1/);
   assert.doesNotMatch(harness, /eyJ[A-Za-z0-9_-]{20,}/);
+  assert.match(harness, /STOP_AFTER_FIRST_FAILURE/);
+  assert.match(harness, /createAssignmentMutationLedger/);
+  assert.match(harness, /evaluateCasePreconditionDrift/);
+  assert.match(harness, /NOT_EXECUTED_AFTER_FIRST_FAILURE/);
   for (const name of CASE_CATALOG) {
     assert.match(harness, new RegExp(name.replace(/\./g, "\\.")));
   }
@@ -473,4 +484,96 @@ test("product UI still does not hold service-role evidence inspection", () => {
       assert.doesNotMatch(src, /competition_referee_assignment_audit/);
     }
   }
+});
+
+test("case E unexpected mutation stops later cases", () => {
+  const run = createAcceptanceRunState(CASE_CATALOG);
+  let nextInvoked = false;
+  run.record(
+    "E.cross-tournament-denied",
+    evaluateDenial(
+      { status: 200, payload: { ok: true, code: "" } },
+      DENIAL_CODES.CROSS_TOURNAMENT
+    ),
+    { expectedDenial: true, mutatingUnexpectedSuccess: true }
+  );
+  if (run.shouldContinue()) nextInvoked = true;
+  assert.equal(nextInvoked, false);
+  const sealed = run.seal();
+  assert.equal(sealed.firstFailure.name, "E.cross-tournament-denied");
+  assert.equal(sealed.stopReason, "FIRST_MUTATING_UNEXPECTED_SUCCESS");
+  assert.equal(sealed.failCount, 1);
+  assert.equal(sealed.unexecutedCount, 28);
+  assert.equal(
+    sealed.results.find((row) => row.name === "G.cas-correct-expected-version-pass").status,
+    CASE_NOT_EXECUTED_AFTER_FIRST_FAILURE
+  );
+  assert.equal(
+    evaluateStopOnFirstFailure({
+      firstFailure: sealed.firstFailure,
+      remainingInvoked: nextInvoked,
+      stopReason: sealed.stopReason,
+    }).ok,
+    true
+  );
+  assert.equal(evaluateCatalogExecution(sealed.results).ok, true);
+});
+
+test("mutating cases refuse CASE_PRECONDITION_DRIFT", () => {
+  const drift = evaluateCasePreconditionDrift(1, 0, "matchA");
+  assert.equal(drift.ok, false);
+  assert.match(drift.detail, /CASE_PRECONDITION_DRIFT/);
+  assert.equal(evaluateCasePreconditionDrift(0, 0, "matchA").ok, true);
+});
+
+test("teardown discovery includes primary, cross-tournament, daily, replacement and never unrelated", () => {
+  const ledger = createAssignmentMutationLedger();
+  ledger.registerSuccessfulMutation({
+    assignmentId: "primary-1",
+    tenantId: "t-a",
+    tournamentId: "tourn-a",
+    matchId: "match-a",
+    action: "assignReferee",
+  });
+  ledger.registerSuccessfulMutation({
+    assignmentId: "cross-1",
+    tenantId: "t-a",
+    tournamentId: "tourn-b",
+    matchId: "match-a",
+    action: "assignReferee",
+  });
+  ledger.registerSuccessfulMutation({
+    assignmentId: "daily-1",
+    tenantId: "t-a",
+    tournamentId: "daily-t",
+    matchId: "daily-m",
+    action: "assignReferee",
+  });
+  ledger.registerSuccessfulMutation({
+    assignmentId: "replace-1",
+    tenantId: "t-a",
+    tournamentId: "tourn-a",
+    matchId: "match-live",
+    action: "replaceReferee",
+  });
+  const discovered = mergeTeardownTargets(
+    [{ tenantId: "t-a", tournamentId: "tourn-a", matchId: "match-a" }],
+    ledger.teardownTargets()
+  );
+  const proof = evaluateTeardownDiscovery(ledger.list(), discovered, ["unrelated-row"]);
+  assert.equal(proof.ok, true);
+  assert.equal(
+    discovered.some((row) => row.tournamentId === "tourn-b" && row.matchId === "match-a"),
+    true
+  );
+  assert.equal(
+    discovered.some((row) => row.tournamentId === "daily-t"),
+    true
+  );
+  assert.equal(
+    evaluateTeardownDiscovery(ledger.list(), discovered.concat([{ id: "unrelated-row", tenantId: "x", tournamentId: "y", matchId: "z" }]), [
+      "unrelated-row",
+    ]).ok,
+    false
+  );
 });

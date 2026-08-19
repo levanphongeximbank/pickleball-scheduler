@@ -324,7 +324,7 @@ test("inactive referee is denied by CORE-13", async () => {
       ),
     (err) =>
       isCompetitionRefereeAssignmentCommandError(err) &&
-      err.code === ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED
+      err.code === ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED
   );
 });
 
@@ -337,6 +337,7 @@ test("required qualification missing fails closed; unconfigured mode is not forc
     () =>
       service.assignReferee(
         baseCommand({
+          matchId: "match-qual-missing",
           requireQualification: true,
           qualificationSnapshot: createEmptySnapshotResult("missing"),
         })
@@ -682,7 +683,7 @@ test("Contract #01 resolveSubjectIdentity is required; inactive/foreign/missing-
   assert.equal(inactive.body?.ok, false);
   assert.equal(
     inactive.body.code,
-    ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED
+    ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED
   );
 
   const foreign = await handleCompetitionRefereeAssignmentAction({

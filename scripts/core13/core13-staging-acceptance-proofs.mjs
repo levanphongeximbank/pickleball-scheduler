@@ -88,6 +88,9 @@ export const FORBIDDEN_CASE_STATUSES = Object.freeze([
   "INCONCLUSIVE",
 ]);
 
+export const CASE_NOT_EXECUTED_AFTER_FIRST_FAILURE =
+  "NOT_EXECUTED_AFTER_FIRST_FAILURE";
+
 export const ACCEPTANCE_REQUIRED_YES_FLAGS = Object.freeze([
   "CORE13_STAGING_ACCEPTANCE_GO",
   "STAGING_MUTATION_GO",
@@ -476,6 +479,173 @@ export function evaluateCatalogExecution(results, catalog = CASE_CATALOG) {
     return proof(false, `count=${named.size} expected=${catalog.length}`);
   }
   return proof(true, `STAGING_ACCEPTANCE_CASE_COUNT=${catalog.length}`);
+}
+
+export function evaluateCasePreconditionDrift(actualCount, expectedCount, label) {
+  const actual = Number(actualCount);
+  const expected = Number(expectedCount);
+  if (actual !== expected) {
+    return proof(
+      false,
+      `CASE_PRECONDITION_DRIFT ${label} actual=${actual} expected=${expected}`
+    );
+  }
+  return proof(true, `${label} actual=${actual}`);
+}
+
+export function evaluateStopOnFirstFailure({ firstFailure, remainingInvoked, stopReason }) {
+  if (firstFailure && remainingInvoked === true) {
+    return proof(false, "subsequent case invoked after first failure");
+  }
+  if (firstFailure) {
+    return proof(true, stopReason || "FIRST_CASE_FAILURE");
+  }
+  return proof(true, "no-failure");
+}
+
+export function createAssignmentMutationLedger() {
+  const entries = [];
+  return {
+    registerSuccessfulMutation(entry = {}) {
+      const tenantId = String(entry.tenantId || "").trim();
+      const tournamentId = String(entry.tournamentId || "").trim();
+      const matchId = String(entry.matchId || "").trim();
+      if (!tenantId || !tournamentId || !matchId) return;
+      entries.push(
+        Object.freeze({
+          assignmentId: String(entry.assignmentId || "").trim() || null,
+          tenantId,
+          tournamentId,
+          matchId,
+          action: String(entry.action || ""),
+        })
+      );
+    },
+    list() {
+      return Object.freeze([...entries]);
+    },
+    teardownTargets() {
+      const seen = new Set();
+      const targets = [];
+      for (const row of entries) {
+        const key = `${row.tenantId}::${row.tournamentId}::${row.matchId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        targets.push(
+          Object.freeze({
+            tenantId: row.tenantId,
+            tournamentId: row.tournamentId,
+            matchId: row.matchId,
+          })
+        );
+      }
+      return Object.freeze(targets);
+    },
+  };
+}
+
+export function evaluateTeardownDiscovery(ledgerEntries, discovered, unrelatedIds = []) {
+  const ledger = Array.isArray(ledgerEntries) ? ledgerEntries : [];
+  const found = Array.isArray(discovered) ? discovered : [];
+  const foundKeys = new Set(
+    found.map((row) => `${row.tenantId}::${row.tournamentId}::${row.matchId}`)
+  );
+  const missing = ledger.filter(
+    (row) => !foundKeys.has(`${row.tenantId}::${row.tournamentId}::${row.matchId}`)
+  );
+  if (missing.length) {
+    return proof(false, `missing teardown targets=${missing.length}`);
+  }
+  const unrelatedHit = found.filter((row) =>
+    (unrelatedIds || []).includes(String(row.id || row.assignmentId || ""))
+  );
+  if (unrelatedHit.length) {
+    return proof(false, `unrelated teardown touch=${unrelatedHit.length}`);
+  }
+  return proof(true, `targets=${foundKeys.size}`);
+}
+
+export function mergeTeardownTargets(staticTargets, ledgerTargets) {
+  const seen = new Set();
+  const merged = [];
+  for (const row of [...(staticTargets || []), ...(ledgerTargets || [])]) {
+    if (!row) continue;
+    const tenantId = String(row.tenantId || "").trim();
+    const tournamentId = String(row.tournamentId || "").trim();
+    const matchId = String(row.matchId || "").trim();
+    if (!tenantId || !tournamentId || !matchId) continue;
+    const key = `${tenantId}::${tournamentId}::${matchId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(Object.freeze({ tenantId, tournamentId, matchId }));
+  }
+  return Object.freeze(merged);
+}
+
+export function createAcceptanceRunState(catalog = CASE_CATALOG) {
+  const results = [];
+  let firstFailure = null;
+  let stopReason = null;
+
+  function record(name, proofResult, meta = {}) {
+    const ok = proofResult?.ok === true;
+    const detail = String(proofResult?.detail || "");
+    const unexpectedMutation =
+      meta.expectedDenial === true && /^ok=true/.test(detail);
+    results.push({
+      name,
+      ok,
+      detail,
+      status: ok ? "PASS" : "FAIL",
+    });
+    if (!ok && !firstFailure) {
+      firstFailure = Object.freeze({ name, detail });
+      stopReason =
+        unexpectedMutation || meta.mutatingUnexpectedSuccess === true
+          ? "FIRST_MUTATING_UNEXPECTED_SUCCESS"
+          : "FIRST_CASE_FAILURE";
+    }
+  }
+
+  function shouldContinue() {
+    return firstFailure == null;
+  }
+
+  function seal() {
+    for (const name of catalog) {
+      if (!results.some((row) => row.name === name)) {
+        results.push({
+          name,
+          ok: false,
+          detail: CASE_NOT_EXECUTED_AFTER_FIRST_FAILURE,
+          status: CASE_NOT_EXECUTED_AFTER_FIRST_FAILURE,
+        });
+      }
+    }
+    const executed = results.filter(
+      (row) => row.status !== CASE_NOT_EXECUTED_AFTER_FIRST_FAILURE
+    );
+    const unexecuted = results.filter(
+      (row) => row.status === CASE_NOT_EXECUTED_AFTER_FIRST_FAILURE
+    );
+    return Object.freeze({
+      results: [...results],
+      executedCases: executed.map((row) => row.name),
+      passCount: executed.filter((row) => row.ok).length,
+      failCount: executed.filter((row) => !row.ok).length,
+      skippedCount: unexecuted.length,
+      unexecutedCount: unexecuted.length,
+      firstFailure,
+      stopReason,
+    });
+  }
+
+  return {
+    record,
+    shouldContinue,
+    seal,
+    getResults: () => results,
+  };
 }
 
 export function evaluateOldAssignmentRevoked(rows, previousAssignmentId) {

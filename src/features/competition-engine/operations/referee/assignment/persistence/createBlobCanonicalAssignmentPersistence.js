@@ -102,13 +102,21 @@ export function createBlobCanonicalAssignmentPersistence(options = {}) {
   }
 
   function payloadFingerprint(command) {
+    const operation = command.operation;
+    const targetRefereeId =
+      operation === "REPLACE"
+        ? command.newRefereeId || command.refereeId || null
+        : operation === "UNASSIGN"
+          ? null
+          : command.refereeId || command.newRefereeId || null;
     return JSON.stringify({
-      operation: command.operation,
+      operation,
+      tenantId: command.tenantId || null,
+      tournamentId: command.tournamentId || command.competitionId || null,
       matchId: command.matchId,
-      role: command.role,
-      refereeId: command.refereeId || null,
-      newRefereeId: command.newRefereeId || null,
-      expectedVersion: command.expectedVersion,
+      role: command.roleCode || command.role || "PRIMARY",
+      targetRefereeId,
+      expectedVersion: Number(command.expectedVersion),
       emergencyReplacement: command.emergencyReplacement === true,
     });
   }

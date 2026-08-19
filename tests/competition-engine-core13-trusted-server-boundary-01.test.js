@@ -108,6 +108,7 @@ test("C: Edge Function authenticates JWT and ignores browser actorId", async () 
     rpc: async (name) => {
       if (name === "canonical_tournament_assert_tenant") return { data: null, error: null };
       if (name === "canonical_tournament_assert_permission") return { data: null, error: null };
+      if (name === "canonical_tournament_get") return { data: { ok: true }, error: null };
       return { data: null, error: { message: "unexpected " + name } };
     },
   };
@@ -134,7 +135,7 @@ test("C: Edge Function authenticates JWT and ignores browser actorId", async () 
     from(table) {
       const rows =
         table === "canonical_tournaments"
-          ? [{ id: "tourn-a", tenant_id: "tenant-a", status: "active", mode: "internal", payload: {}, external_key: "tourn-a" }]
+          ? [{ id: "tourn-a", tenant_id: "tenant-a", club_id: "club-a", status: "active", mode: "internal", payload: { matches: [{ id: "match-1", status: "SCHEDULED", entryAId: "a", entryBId: "b" }] }, external_key: "tourn-a" }]
           : table === "team_tournaments"
             ? []
             : table === "match_live_states"

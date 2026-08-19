@@ -8,6 +8,7 @@
 
 import { ASSIGNMENT_COMMAND_ERROR_CODE } from "../constants.js";
 import { failAssignmentCommand } from "../errors.js";
+import { extractCanonicalMatchIndex } from "./loadCanonicalCompetitionModeState.js";
 
 function text(value) {
   return typeof value === "string" && value.trim() ? value.trim() : "";
@@ -125,6 +126,7 @@ export async function resolveAuthoritativeAssignmentTenant(input = {}) {
     );
   }
 
+  let resolvedMatchTournamentId = null;
   if (matchId) {
     const live = await loadLiveMatchTenant(serviceClient, matchId);
     const liveTenant = text(live?.tenant_id);
@@ -134,6 +136,33 @@ export async function resolveAuthoritativeAssignmentTenant(input = {}) {
         "Match live tenant does not match canonical tournament tenant",
         { matchId, liveTenant, canonicalTenantId: tenantId }
       );
+    }
+    const liveTournamentId = text(live?.tournament_id);
+    if (liveTournamentId && liveTournamentId !== tournamentId) {
+      failAssignmentCommand(
+        ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+        "Canonical match tournament ownership does not match requested tournamentId",
+        {
+          matchId,
+          requestedTournamentId: tournamentId,
+          resolvedMatchTournamentId: liveTournamentId,
+        }
+      );
+    }
+    if (!liveTournamentId) {
+      const index = extractCanonicalMatchIndex(canonical || teamHeader || {});
+      const bound =
+        Boolean(index.matches?.[matchId]) || Boolean(index.matchups?.[matchId]);
+      if (!bound) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.CROSS_TOURNAMENT_DENIED,
+          "Match is not bound to the requested tournament",
+          { matchId, requestedTournamentId: tournamentId }
+        );
+      }
+      resolvedMatchTournamentId = tournamentId;
+    } else {
+      resolvedMatchTournamentId = liveTournamentId;
     }
   }
 
@@ -146,5 +175,6 @@ export async function resolveAuthoritativeAssignmentTenant(input = {}) {
     claimedTenantId: claimedTenantId || null,
     callerTenantAsAuthority: "DENY",
     venueAsTenantFallback: "DENY",
+    resolvedMatchTournamentId,
   });
 }

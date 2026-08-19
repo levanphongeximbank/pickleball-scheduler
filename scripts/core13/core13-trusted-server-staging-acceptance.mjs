@@ -51,8 +51,12 @@ import { createClient } from "@supabase/supabase-js";
 import {
   CASE_CATALOG,
   CORE13_FIXTURE_NAMESPACE,
+  CASE_NOT_EXECUTED_AFTER_FIRST_FAILURE,
   DENIAL_CODES,
   createMutationGate,
+  createAcceptanceRunState,
+  createAssignmentMutationLedger,
+  mergeTeardownTargets,
   evaluateAcceptanceGate,
   evaluateActiveLeftovers,
   evaluateAssignPass,
@@ -69,6 +73,7 @@ import {
   evaluateDurableAuditActor,
   evaluateDurableIdempotency,
   evaluateExactlyOneActive,
+  evaluateCasePreconditionDrift,
   evaluateOldAssignmentRevoked,
   runWithFinalization,
 } from "./core13-staging-acceptance-proofs.mjs";
@@ -226,12 +231,20 @@ async function main() {
     requireEnv("STAGING_USER_B_PASSWORD")
   );
 
-  const results = [];
-  const record = (name, proof) => {
-    const ok = proof?.ok === true;
-    const detail = proof?.detail || "";
-    results.push({ name, ok, detail });
+  const run = createAcceptanceRunState(CASE_CATALOG);
+  const ledger = createAssignmentMutationLedger();
+  const record = (name, proof, meta = {}) => {
+    run.record(name, proof, meta);
+    const last = run.getResults()[run.getResults().length - 1];
+    const ok = last?.ok === true;
+    const detail = last?.detail || "";
     console.log(`${ok ? "PASS" : "FAIL"} ${name}${detail ? ` — ${detail}` : ""}`);
+    if (meta.halt === false) return;
+    if (!run.shouldContinue()) {
+      const err = new Error("STOP_AFTER_FIRST_FAILURE");
+      err.code = "STOP_AFTER_FIRST_FAILURE";
+      throw err;
+    }
   };
 
   const requireFixture = (name, value, caseName) => {
@@ -260,7 +273,7 @@ async function main() {
       ok: false,
       detail: "REMOTE_SCHEDULE_EVIDENCE_UNPROVEN",
     };
-    for (const name of CASE_CATALOG) record(name, scheduleFail);
+    for (const name of CASE_CATALOG) record(name, scheduleFail, { halt: false });
     console.error(`REFUSE: ${scheduleFail.detail}`);
     console.log(`STAGING_ACCEPTANCE_CASE_COUNT=${CASE_CATALOG.length}`);
     console.log("PASS_COUNT=0");
@@ -279,7 +292,7 @@ async function main() {
     schedule: scheduleEvidence,
   });
   if (!remoteProof.ok) {
-    for (const name of CASE_CATALOG) record(name, remoteProof);
+    for (const name of CASE_CATALOG) record(name, remoteProof, { halt: false });
     console.error(`REFUSE: ${remoteProof.detail}`);
     console.log(`STAGING_ACCEPTANCE_CASE_COUNT=${CASE_CATALOG.length}`);
     console.log("PASS_COUNT=0");
@@ -306,26 +319,60 @@ async function main() {
   };
 
   const mutate = async (body) => {
+    if (!run.shouldContinue()) {
+      return {
+        status: 0,
+        payload: { ok: false, code: CASE_NOT_EXECUTED_AFTER_FIRST_FAILURE },
+      };
+    }
     const gate = mutationGate.assertCanMutate();
     if (!gate.ok) return { status: 0, payload: { ok: false, code: gate.detail } };
-    return invokeEdge(url, userA.token, body);
+    const result = await invokeEdge(url, userA.token, body);
+    if (result.payload?.ok === true) {
+      const command = body.command || {};
+      ledger.registerSuccessfulMutation({
+        assignmentId:
+          result.payload.assignmentId || result.payload.assignment?.assignmentId,
+        tenantId: command.tenantId,
+        tournamentId: command.tournamentId,
+        matchId: command.matchId,
+        action: body.action,
+      });
+    }
+    return result;
   };
 
   const teardownPreMatch = async () => {
     const leftovers = [];
-    const restoreTargets = [
-      { tournamentId: tournamentA, matchId: matchA },
-      overlapA ? { tournamentId: tournamentA, matchId: overlapA } : null,
-      overlapB ? { tournamentId: tournamentA, matchId: overlapB } : null,
-      nonOverlap ? { tournamentId: tournamentA, matchId: nonOverlap } : null,
-      dailyEnabled && dailyEnabledMatch
-        ? { tournamentId: dailyEnabled, matchId: dailyEnabledMatch }
-        : null,
-    ].filter(Boolean);
+    const restoreTargets = mergeTeardownTargets(
+      [
+        { tenantId: tenantA, tournamentId: tournamentA, matchId: matchA },
+        overlapA
+          ? { tenantId: tenantA, tournamentId: tournamentA, matchId: overlapA }
+          : null,
+        overlapB
+          ? { tenantId: tenantA, tournamentId: tournamentA, matchId: overlapB }
+          : null,
+        nonOverlap
+          ? { tenantId: tenantA, tournamentId: tournamentA, matchId: nonOverlap }
+          : null,
+        dailyEnabled && dailyEnabledMatch
+          ? {
+              tenantId: tenantA,
+              tournamentId: dailyEnabled,
+              matchId: dailyEnabledMatch,
+            }
+          : null,
+        tournamentB && matchA
+          ? { tenantId: tenantA, tournamentId: tournamentB, matchId: matchA }
+          : null,
+      ],
+      ledger.teardownTargets()
+    );
 
     for (const target of restoreTargets) {
       const rows = await loadActiveRows(service, {
-        tenantId: tenantA,
+        tenantId: target.tenantId || tenantA,
         tournamentId: target.tournamentId,
         matchId: target.matchId,
       });
@@ -333,12 +380,13 @@ async function main() {
         const restore = await invokeEdge(url, userA.token, {
           action: "unassignReferee",
           command: {
-            tenantId: tenantA,
+            tenantId: target.tenantId || tenantA,
             tournamentId: target.tournamentId,
             matchId: target.matchId,
             expectedVersion: Number(row.version || 0),
             idempotencyKey: `teardown-unassign-${row.id}`,
-            competitionMode: target.tournamentId === dailyEnabled ? "DAILY_PLAY" : "INTERNAL",
+            competitionMode:
+              target.tournamentId === dailyEnabled ? "DAILY_PLAY" : "INTERNAL",
           },
         });
         if (restore.payload?.ok !== true) leftovers.push(row);
@@ -382,8 +430,12 @@ async function main() {
       );
       if (!probeProof.ok) {
         for (const name of CASE_CATALOG) {
-          if (!results.some((row) => row.name === name)) {
-            record(name, { ok: false, detail: `blocked by runtime probe: ${probeProof.detail}` });
+          if (!run.getResults().some((row) => row.name === name)) {
+            record(
+              name,
+              { ok: false, detail: `blocked by runtime probe: ${probeProof.detail}` },
+              { halt: false }
+            );
           }
         }
         throw new Error(probeProof.detail);
@@ -398,7 +450,9 @@ async function main() {
       const baselineProof = evaluateBaselineKnownStart(baselineA.length, 0, "matchA");
       if (!baselineProof.ok) {
         for (const name of CASE_CATALOG) {
-          if (!results.some((row) => row.name === name)) record(name, baselineProof);
+          if (!run.getResults().some((row) => row.name === name)) {
+            record(name, baselineProof, { halt: false });
+          }
         }
         throw new Error(baselineProof.detail);
       }
@@ -426,7 +480,9 @@ async function main() {
           idempotencyKey: `stage-cross-tenant-${Date.now()}`,
         },
       });
-      record("D.cross-tenant-denied", evaluateDenial(crossTenant, DENIAL_CODES.CROSS_TENANT));
+      record("D.cross-tenant-denied", evaluateDenial(crossTenant, DENIAL_CODES.CROSS_TENANT), {
+        expectedDenial: true,
+      });
 
       const crossTournament = await mutate({
         action: "assignReferee",
@@ -439,7 +495,8 @@ async function main() {
       });
       record(
         "E.cross-tournament-denied",
-        evaluateDenial(crossTournament, DENIAL_CODES.CROSS_TOURNAMENT)
+        evaluateDenial(crossTournament, DENIAL_CODES.CROSS_TOURNAMENT),
+        { expectedDenial: true, mutatingUnexpectedSuccess: true }
       );
 
       const durableAfterAssign = await loadActiveRows(service, {
@@ -540,7 +597,9 @@ async function main() {
           idempotencyKey: `stage-stale-${Date.now()}`,
         },
       });
-      record("G.cas-stale-expected-version-deny", evaluateDenial(stale, DENIAL_CODES.STALE_WRITE));
+      record("G.cas-stale-expected-version-deny", evaluateDenial(stale, DENIAL_CODES.STALE_WRITE), {
+        expectedDenial: true,
+      });
 
       const replaceVersion = Number(casPass.payload?.version || version + 1);
       const previousAssignmentId =
@@ -611,7 +670,7 @@ async function main() {
             tournamentId: tournamentA,
             matchId,
           });
-          const start = evaluateBaselineKnownStart(rows.length, 1, caseName);
+          const start = evaluateCasePreconditionDrift(rows.length, 1, caseName);
           if (!start.ok) {
             record(caseName, {
               ok: false,
@@ -633,7 +692,7 @@ async function main() {
           },
         });
         if (denialCodes) {
-          record(caseName, evaluateDenial(result, denialCodes));
+          record(caseName, evaluateDenial(result, denialCodes), { expectedDenial: true });
           return;
         }
         record(
@@ -739,7 +798,8 @@ async function main() {
         });
         record(
           "L.non-canonical-referee-deny",
-          evaluateDenial(denied, DENIAL_CODES.NON_CANONICAL_IDENTITY)
+          evaluateDenial(denied, DENIAL_CODES.NON_CANONICAL_IDENTITY),
+          { expectedDenial: true }
         );
       }
       if (
@@ -758,7 +818,9 @@ async function main() {
             idempotencyKey: `stage-inactive-${Date.now()}`,
           },
         });
-        record("L.inactive-referee-deny", evaluateDenial(denied, DENIAL_CODES.INACTIVE_REFEREE));
+        record("L.inactive-referee-deny", evaluateDenial(denied, DENIAL_CODES.INACTIVE_REFEREE), {
+          expectedDenial: true,
+        });
       }
 
       const missingQual = await mutate({
@@ -772,7 +834,8 @@ async function main() {
       });
       record(
         "L.required-qualification-missing-deny",
-        evaluateDenial(missingQual, DENIAL_CODES.QUALIFICATION_MISSING)
+        evaluateDenial(missingQual, DENIAL_CODES.QUALIFICATION_MISSING),
+        { expectedDenial: true }
       );
       const missingAvail = await mutate({
         action: "assignReferee",
@@ -785,7 +848,8 @@ async function main() {
       });
       record(
         "L.unavailable-referee-deny-when-required",
-        evaluateDenial(missingAvail, DENIAL_CODES.AVAILABILITY_MISSING)
+        evaluateDenial(missingAvail, DENIAL_CODES.AVAILABILITY_MISSING),
+        { expectedDenial: true }
       );
 
       if (
@@ -802,12 +866,12 @@ async function main() {
           tournamentId: tournamentA,
           matchId: overlapB,
         });
-        const overlapStartA = evaluateBaselineKnownStart(
+        const overlapStartA = evaluateCasePreconditionDrift(
           overlapBaselineA.length,
           0,
           "overlapA"
         );
-        const overlapStartB = evaluateBaselineKnownStart(
+        const overlapStartB = evaluateCasePreconditionDrift(
           overlapBaselineB.length,
           0,
           "overlapB"
@@ -838,7 +902,8 @@ async function main() {
           });
           record(
             "L.overlapping-schedule-conflict-deny",
-            evaluateDenial(overlap, DENIAL_CODES.OVERLAP)
+            evaluateDenial(overlap, DENIAL_CODES.OVERLAP),
+            { expectedDenial: true }
           );
         }
       }
@@ -854,7 +919,7 @@ async function main() {
           tournamentId: tournamentA,
           matchId: nonOverlap,
         });
-        const nonOverlapStart = evaluateBaselineKnownStart(
+        const nonOverlapStart = evaluateCasePreconditionDrift(
           nonOverlapBaseline.length,
           0,
           "nonOverlap"
@@ -898,7 +963,8 @@ async function main() {
         });
         record(
           "M.daily-play-disabled-not-applicable",
-          evaluateDenial(disabled, DENIAL_CODES.DAILY_DISABLED)
+          evaluateDenial(disabled, DENIAL_CODES.DAILY_DISABLED),
+          { expectedDenial: true }
         );
       }
       if (
@@ -918,7 +984,7 @@ async function main() {
           tournamentId: dailyEnabled,
           matchId: dailyEnabledMatch,
         });
-        const dailyStart = evaluateBaselineKnownStart(
+        const dailyStart = evaluateCasePreconditionDrift(
           dailyBaseline.length,
           0,
           "dailyEnabled"
@@ -958,29 +1024,34 @@ async function main() {
       }
     }
   ).catch((err) => {
-    workError = err;
+    if (err?.code !== "STOP_AFTER_FIRST_FAILURE") {
+      workError = err;
+    }
   });
 
-  for (const expected of CASE_CATALOG) {
-    if (!results.some((row) => row.name === expected)) {
-      record(expected, {
-        ok: false,
-        detail: workError ? String(workError.message || workError) : "case not executed",
-      });
-    }
-  }
-
-  const catalog = evaluateCatalogExecution(results, CASE_CATALOG);
-  const failed = results.filter((row) => !row.ok);
+  const sealed = run.seal();
+  const catalog = evaluateCatalogExecution(sealed.results, CASE_CATALOG);
   console.log(`STAGING_ACCEPTANCE_CASE_COUNT=${CASE_CATALOG.length}`);
-  console.log(`PASS_COUNT=${results.filter((row) => row.ok).length}`);
-  console.log(`FAIL_COUNT=${failed.length}`);
+  console.log(`EXECUTED_CASES=${sealed.executedCases.join(",")}`);
+  console.log(`PASS_COUNT=${sealed.passCount}`);
+  console.log(`FAIL_COUNT=${sealed.failCount}`);
+  console.log(`SKIPPED_COUNT=${sealed.skippedCount}`);
+  console.log(`UNEXECUTED_COUNT=${sealed.unexecutedCount}`);
+  console.log(
+    `FIRST_FAILURE=${sealed.firstFailure?.name || ""} ${sealed.firstFailure?.detail || ""}`.trim()
+  );
+  console.log(`STOP_REASON=${sealed.stopReason || ""}`);
   if (!catalog.ok) {
     fail(catalog.detail);
   }
-  if (failed.length || workError || leftoverProof.ok !== true) {
+  if (sealed.failCount || sealed.unexecutedCount || workError || leftoverProof.ok !== true) {
     fail(
-      `Staging acceptance failures: ${failed.map((row) => row.name).join(", ") || workError || leftoverProof.detail}`
+      `Staging acceptance failures: ${
+        sealed.results
+          .filter((row) => !row.ok && row.status !== CASE_NOT_EXECUTED_AFTER_FIRST_FAILURE)
+          .map((row) => row.name)
+          .join(", ") || workError || leftoverProof.detail
+      }`
     );
   }
   console.log("PASS core13 trusted-server staging acceptance");
