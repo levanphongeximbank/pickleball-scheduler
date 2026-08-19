@@ -37,7 +37,17 @@
 -- CLUB_CUTOVER_TABLE_LOCK=YES
 -- CLUB_CUTOVER_LOCK_MODE=ACCESS EXCLUSIVE
 -- CLUB_CUTOVER_LOCK_ORDER=DETERMINISTIC
+-- CUTOVER_LOCK_ORDER_PARENT_TO_CHILD=YES
+-- LOCK_ORDER_INVERSION_REVIEW=PASS
+-- UNBOUNDED_LOCK_WAIT=NO
+-- STAGING_RECOMMENDED_LOCK_TIMEOUT=5s
+-- PRODUCTION_RECOMMENDED_LOCK_TIMEOUT=15s
+-- PHASE_Q1_COMMITTED_WRITE_QUIESCE=REQUIRED
+-- APPLY_REQUIRES_DRAIN_PASS_ATTESTATION=YES
+-- APPLY_REQUIRES_Q1_QUIESCE_VISIBLE=YES
 -- CLUB_CUTOVER_CONCURRENT_WRITE_WINDOW=CLOSED
+-- WAVE5_APPLY_ABORT_RPC_BODY_DRIFT=YES
+-- EXISTING_FUNCTION_SIGNATURE_ONLY_NOT_ENOUGH=YES
 -- APPLY_IN_TRANSACTION_FK_STATE_GUARD=YES
 -- APPLY_EXPECTS_WAVE4_TENANT_MEMBERS_CANONICAL=YES
 -- APPLY_IN_TRANSACTION_MAPPING_GUARD=YES
@@ -57,32 +67,59 @@
 
 BEGIN;
 
+-- Bounded wait: abort before cutover mutation if locks cannot be acquired.
+-- Staging operators should SET LOCAL lock_timeout = '5s' before \i if TARGET_ENV=staging.
+-- Production default in this file matches PRODUCTION_RECOMMENDED_LOCK_TIMEOUT.
+SET LOCAL lock_timeout = '15s';
+SET LOCAL statement_timeout = '180s';
+
+-- Q1 + drain must already be committed/attested in this session.
+-- Do not SET wave5.drain_pass inside this file.
+DO $wave5_apply_prelock$
+BEGIN
+  IF current_setting('wave5.drain_pass', true) IS DISTINCT FROM 'YES' THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: CLUB_MUTATION_IN_FLIGHT_DRAINED not attested — run 07B, then SET wave5.drain_pass = YES before APPLY';
+  END IF;
+  IF to_regprocedure('public.club_create(uuid,text,text,text,text,text)') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_create missing before lock';
+  END IF;
+  IF has_function_privilege(
+       'authenticated',
+       'public.club_create(uuid,text,text,text,text,text)',
+       'EXECUTE'
+     ) THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: Q1 quiesce not visible — authenticated can still EXECUTE club_create (privilege drop must be a prior committed phase)';
+  END IF;
+  IF has_function_privilege(
+       'authenticated',
+       'public.club_add_member(uuid,text,uuid,text,integer)',
+       'EXECUTE'
+     ) THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: Q1 quiesce not visible — authenticated can still EXECUTE club_add_member';
+  END IF;
+END $wave5_apply_prelock$;
+
 -- =====================================================================
--- 0. Explicit Club-owned write locks (ACCESS EXCLUSIVE)
---    Blocks INSERT/UPDATE/DELETE/TRUNCATE/DDL and Club RPC writers on these
---    tables for the cutover transaction. One statement, deterministic order.
+-- 0. Parent/supporting locks, then Club parent, then Club children.
+--    SHARE ROW EXCLUSIVE: blocks ROW EXCLUSIVE writers; SELECT continues.
+--    ACCESS EXCLUSIVE on Club-owned tables: blocks INSERT/UPDATE/DELETE/DDL.
+--    tenant_members ACCESS SHARE: blocks ACCESS EXCLUSIVE DDL only.
+--    DETERMINISTIC order is not a deadlock-freedom proof.
 -- =====================================================================
+LOCK TABLE
+  public.platform_tenants,
+  public.venues,
+  public.court_clusters
+IN SHARE ROW EXCLUSIVE MODE;
+
+LOCK TABLE public.tenant_members IN ACCESS SHARE MODE;
+
 LOCK TABLE
   public.clubs,
   public.club_members,
   public.club_governance_assignments,
   public.club_membership_requests_v42
 IN ACCESS EXCLUSIVE MODE;
-
--- Supporting mapping tables: SHARE ROW EXCLUSIVE blocks ROW EXCLUSIVE
--- (INSERT/UPDATE/DELETE) and stronger (DDL) while ACCESS SHARE reads continue.
--- Prevents venues.tenant_id / court_clusters.venue_id / platform_tenants.id
--- from changing underneath mapping and facility guards.
-LOCK TABLE
-  public.venues,
-  public.platform_tenants,
-  public.court_clusters
-IN SHARE ROW EXCLUSIVE MODE;
-
--- tenant_members: Wave 5 expects catalog FK shape only (Wave 4 closed).
--- ACCESS SHARE blocks ACCESS EXCLUSIVE DDL; concurrent entitlement DML is
--- harmless because this cutover does not rewrite tenant_members rows.
-LOCK TABLE public.tenant_members IN ACCESS SHARE MODE;
 
 -- =====================================================================
 -- 1. Schema-state machine + locked safety gate + data translation (ONE DO)
@@ -113,6 +150,8 @@ DECLARE
   v_overload int;
   v_rpc_def text;
   v_gov_tg_enabled "char";
+  v_guard record;
+  v_marker text;
 BEGIN
   IF to_regclass('public.clubs') IS NULL
      OR to_regclass('public.club_members') IS NULL
@@ -227,56 +266,84 @@ BEGIN
   -- APPLY_IN_TRANSACTION_RPC_SIGNATURE_GUARD=YES
   -- Read-only pg_get_functiondef inspection. Do not EXECUTE or regexp_replace the text.
   -- APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED
-  IF to_regprocedure('public.club_add_member(uuid,text,uuid,text,integer)') IS NULL THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_add_member(uuid,text,uuid,text,integer) missing';
-  END IF;
-  IF to_regprocedure('public.club_restore_member(uuid,text,uuid,integer)') IS NULL THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_restore_member(uuid,text,uuid,integer) missing';
-  END IF;
-  IF to_regprocedure('public.club_review_membership_request(uuid,uuid,text,text,integer)') IS NULL THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_review_membership_request(uuid,uuid,text,text,integer) missing';
-  END IF;
+  -- EXISTING_FUNCTION_SIGNATURE_ONLY_NOT_ENOUGH=YES
+  -- EXISTING_RPC_OVERWRITE_GUARD covers every CREATE OR REPLACE of a pre-Wave5 RPC.
+  FOR v_guard IN
+    SELECT * FROM (VALUES
+      ('public.phase42_club_canonical(text)', 'phase42_club_canonical',
+       ARRAY['clubs', 'tenant_id']),
+      ('public.club_create(uuid,text,text,text,text,text)', 'club_create',
+       ARRAY['phase42_idempotency', 'clubs', 'p_tenant_id']),
+      ('public.club_list_registry(text,boolean)', 'club_list_registry',
+       ARRAY['phase42_club_canonical', 'clubs']),
+      ('public.club_list_members(text)', 'club_list_members',
+       ARRAY['club_members']),
+      ('public.phase42_can_update_club(text)', 'phase42_can_update_club',
+       ARRAY['clubs']),
+      ('public.phase42_can_assign_club_owner(text)', 'phase42_can_assign_club_owner',
+       ARRAY['clubs']),
+      ('public.phase42_can_transfer_president(text)', 'phase42_can_transfer_president',
+       ARRAY['clubs']),
+      ('public.club_add_member(uuid,text,uuid,text,integer)', 'club_add_member',
+       ARRAY['phase42_can_review_membership', 'club_members', 'phase42_idempotency']),
+      ('public.club_restore_member(uuid,text,uuid,integer)', 'club_restore_member',
+       ARRAY['phase42_can_review_membership', 'club_members']),
+      ('public.club_review_membership_request(uuid,uuid,text,text,integer)', 'club_review_membership_request',
+       ARRAY['club_membership_requests_v42', 'VERSION_CONFLICT'])
+    ) AS t(sig text, fname text, markers text[])
+  LOOP
+    IF to_regprocedure(v_guard.sig) IS NULL THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT % missing', v_guard.sig;
+    END IF;
+    SELECT count(*) INTO v_overload
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = v_guard.fname;
+    IF v_overload <> 1 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT % overload_count=%',
+        v_guard.fname, v_overload;
+    END IF;
+    v_rpc_def := pg_get_functiondef(v_guard.sig::regprocedure);
+    FOREACH v_marker IN ARRAY v_guard.markers LOOP
+      IF position(v_marker in v_rpc_def) = 0 THEN
+        RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: % missing certified marker %',
+          v_guard.fname, v_marker;
+      END IF;
+    END LOOP;
+  END LOOP;
 
-  SELECT count(*) INTO v_overload
-  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public' AND p.proname = 'club_add_member';
-  IF v_overload <> 1 THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_add_member overload_count=%', v_overload;
-  END IF;
-  SELECT count(*) INTO v_overload
-  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public' AND p.proname = 'club_restore_member';
-  IF v_overload <> 1 THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_restore_member overload_count=%', v_overload;
-  END IF;
-  SELECT count(*) INTO v_overload
-  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public' AND p.proname = 'club_review_membership_request';
-  IF v_overload <> 1 THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_review_membership_request overload_count=%', v_overload;
+  IF to_regprocedure('public.club_add_member(uuid,text,uuid,text,integer)') IS NULL
+     OR to_regprocedure('public.club_restore_member(uuid,text,uuid,integer)') IS NULL
+     OR to_regprocedure('public.club_review_membership_request(uuid,uuid,text,text,integer)') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT member RPC missing after overwrite inventory';
   END IF;
 
   v_rpc_def := pg_get_functiondef('public.club_add_member(uuid,text,uuid,text,integer)'::regprocedure);
-  IF position('phase42_can_review_membership' in v_rpc_def) = 0
-     OR position('club_members' in v_rpc_def) = 0
-     OR position('phase42_idempotency' in v_rpc_def) = 0 THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_add_member missing certified semantics';
-  END IF;
   IF position('wave5_ensure_athlete_for_club_member' in v_rpc_def) = 0
      AND position('phase42n_ensure_athlete_for_user' in v_rpc_def) = 0 THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_add_member athlete-ensure call missing';
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: club_add_member athlete-ensure call missing';
   END IF;
 
-  v_rpc_def := pg_get_functiondef('public.club_restore_member(uuid,text,uuid,integer)'::regprocedure);
-  IF position('phase42_can_review_membership' in v_rpc_def) = 0
-     OR position('club_members' in v_rpc_def) = 0 THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_restore_member missing certified semantics';
+  -- NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED — no silent replace of unknown objects.
+  IF to_regprocedure('public.platform_is_canonical_tenant_entitled(text)') IS NOT NULL THEN
+    v_rpc_def := pg_get_functiondef('public.platform_is_canonical_tenant_entitled(text)'::regprocedure);
+    IF position('tenant_members' in v_rpc_def) = 0
+       OR position('phase42_is_platform_super_admin' in v_rpc_def) = 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: unexpected existing platform_is_canonical_tenant_entitled';
+    END IF;
   END IF;
-
-  v_rpc_def := pg_get_functiondef('public.club_review_membership_request(uuid,uuid,text,text,integer)'::regprocedure);
-  IF position('club_membership_requests_v42' in v_rpc_def) = 0
-     OR position('VERSION_CONFLICT' in v_rpc_def) = 0 THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_review_membership_request missing certified semantics';
+  IF to_regprocedure('public.wave5_resolve_club_facility_venue_id(text)') IS NOT NULL THEN
+    v_rpc_def := pg_get_functiondef('public.wave5_resolve_club_facility_venue_id(text)'::regprocedure);
+    IF position('registered_cluster_id' in v_rpc_def) = 0
+       OR position('REGISTERED_CLUSTER_TENANT_MISMATCH' in v_rpc_def) = 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: unexpected existing wave5_resolve_club_facility_venue_id';
+    END IF;
+  END IF;
+  IF to_regprocedure('public.wave5_ensure_athlete_for_club_member(uuid,text,text)') IS NOT NULL THEN
+    v_rpc_def := pg_get_functiondef('public.wave5_ensure_athlete_for_club_member(uuid,text,text)'::regprocedure);
+    IF position('ATHLETE_FACILITY_VENUE_REQUIRED' in v_rpc_def) = 0
+       OR position('wave5_resolve_club_facility_venue_id' in v_rpc_def) = 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: unexpected existing wave5_ensure_athlete_for_club_member';
+    END IF;
   END IF;
 
   -- APPLY_IN_TRANSACTION_CHILD_CONSISTENCY_GUARD=YES
@@ -1389,7 +1456,7 @@ EXCEPTION
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.club_add_member(uuid, text, uuid, text, integer) TO authenticated;
+-- Mutation EXECUTE restore is 07D after VERIFY, not APPLY (fail-closed while quiesced).
 
 CREATE OR REPLACE FUNCTION public.club_restore_member(
   p_request_id uuid,
@@ -1573,8 +1640,6 @@ EXCEPTION
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.club_restore_member(uuid, text, uuid, integer) TO authenticated;
-
 CREATE OR REPLACE FUNCTION public.club_review_membership_request(
   p_request_id uuid,
   p_membership_request_id uuid,
@@ -1728,8 +1793,6 @@ EXCEPTION
     RAISE;
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION public.club_review_membership_request(uuid, uuid, text, text, integer) TO authenticated;
 
 -- =====================================================================
 -- 4. Club RLS — canonical tenant entitlement. Do not globally retire helper.

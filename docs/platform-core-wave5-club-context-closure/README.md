@@ -12,6 +12,7 @@
 **SQL_DESIGN_REVIEW_ROUND2_REMEDIATION=COMPLETE_PENDING_ROUND3_OWNER_REVIEW**
 **SQL_DESIGN_REVIEW_ROUND3_REMEDIATION=COMPLETE_PENDING_ROUND4_OWNER_REVIEW**
 **SQL_DESIGN_REVIEW_ROUND4_REMEDIATION=COMPLETE_PENDING_ROUND5_OWNER_REVIEW**
+**SQL_DESIGN_REVIEW_ROUND5_REMEDIATION=COMPLETE_PENDING_ROUND6_OWNER_REVIEW**
 **SQL_DESIGN_REVIEWED_PASS=NO**
 **ROUND2_BLOCKER_01=REMEDIATED**
 **ROUND2_BLOCKER_02=REMEDIATED**
@@ -20,6 +21,14 @@
 **ROUND4_BLOCKER_01_CONCURRENT_WRITE_LOCKING=FIXED**
 **ROUND4_BLOCKER_02_LOCKED_APPLY_SAFETY_GATE=FIXED**
 **ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED**
+**ROUND5_P1_01_PRECUTOVER_RPC_QUIESCENCE=REMEDIATED_DESIGN**
+**ROUND5_P1_02_LOCK_ORDER_AND_WAIT_BOUNDING=REMEDIATED_DESIGN**
+**ROUND5_P1_03_RPC_OVERWRITE_GUARD_COVERAGE=REMEDIATED_DESIGN**
+**PHASE_Q1_COMMITTED_WRITE_QUIESCE=REQUIRED**
+**CUTOVER_LOCK_ORDER_PARENT_TO_CHILD=YES**
+**UNBOUNDED_LOCK_WAIT=NO**
+**MAIN_DRIFT_CLUB_SCOPE_OVERLAP=NO**
+**RECONCILIATION_REQUIRED_BEFORE_STAGING_MUTATION=YES**
 **CLUB_CUTOVER_CONCURRENT_WRITE_WINDOW=CLOSED**
 **APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO**
 **SQL_EXECUTED=NO**
@@ -121,6 +130,14 @@ See `sql-design/`. **DO NOT RUN.** `OWNER_SQL_EXECUTION_GO=NO`.
 **ROUND4_BLOCKER_02_LOCKED_APPLY_SAFETY_GATE=FIXED** — APPLY reasserts FK state, Wave 4 `tenant_members` expectation, mapping, child consistency, name/code collision, registered-cluster orphan/cross-Tenant, and RPC exact signatures **inside the locked transaction**. `APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO`. `01_PRECHECK` remains operator-facing dry-run only.
 
 **ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED** — capture `pg_trigger.tgenabled` (`O`/`D`/`R`/`A`) and restore that exact mode after translation. No unconditional `ENABLE TRIGGER`.
+
+**SQL_DESIGN_REVIEW_ROUND5_REMEDIATION=COMPLETE_PENDING_ROUND6_OWNER_REVIEW** (not a SQL review PASS).
+
+**ROUND5_P1_01_PRECUTOVER_RPC_QUIESCENCE=REMEDIATED_DESIGN** — committed Q1 REVOKE of 14 canonical Club mutation EXECUTE privileges (`07A`) before APPLY. Drain proof (`07B`) required. APPLY aborts unless `wave5.drain_pass=YES` and Q1 is visible. Fail-closed: APPLY rollback leaves RPCs quiesced; `07C` restores exact captured ACLs only.
+
+**ROUND5_P1_02_LOCK_ORDER_AND_WAIT_BOUNDING=REMEDIATED_DESIGN** — lock `platform_tenants`, `venues`, `court_clusters`, then `tenant_members` (ACCESS SHARE), then Club parent/children ACCESS EXCLUSIVE. `SET LOCAL lock_timeout` (Staging 5s / Production 15s). Deterministic order is not a deadlock-freedom claim.
+
+**ROUND5_P1_03_RPC_OVERWRITE_GUARD_COVERAGE=REMEDIATED_DESIGN** — every APPLY `CREATE OR REPLACE FUNCTION` is inventoried (`08_`). Existing RPCs require certified markers + overload count. Unknown body → `WAVE5_APPLY_ABORT_RPC_BODY_DRIFT`. New Wave5 helpers abort if an unexpected body already exists.
 
 **ATHLETE_NO_CLUSTER_POLICY=reuse existing athlete if any (Participant user_id uniqueness; Venue not required for reuse); else require Club.registered_cluster_id → court_clusters.venue_id → venues.id with venues.tenant_id = clubs.tenant_id; else fail closed ATHLETE_FACILITY_VENUE_REQUIRED. No Tenant-as-Venue, no first/default Venue, no clubs.venue_id, no profiles.venue_id from the Wave 5 wrapper.**
 

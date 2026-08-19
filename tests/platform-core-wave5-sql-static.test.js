@@ -16,6 +16,12 @@ const PACKAGE_FILES = [
   "04_ROLLBACK_DESIGN.md",
   "05_CLUB_TENANT_TABLE_INVENTORY.md",
   "06_CLUB_MUTATION_RPC_INVENTORY.md",
+  "07_EXECUTION_RUNBOOK.md",
+  "07A_QUIESCE_WRITES_DESIGN.sql",
+  "07B_DRAIN_VERIFY.sql",
+  "07C_RESTORE_WRITES_DESIGN.sql",
+  "07D_RESTORE_INTENDED_WRITES_DESIGN.sql",
+  "08_RPC_OVERWRITE_GUARD_INVENTORY.md",
 ];
 
 function readPkg(name) {
@@ -205,10 +211,11 @@ test("explicit reviewed CREATE OR REPLACE for affected Club member RPCs", () => 
     apply,
     /CREATE OR REPLACE FUNCTION public\.club_review_membership_request\s*\(\s*p_request_id uuid/
   );
-  assert.match(apply, /GRANT EXECUTE ON FUNCTION public\.club_add_member\(uuid, text, uuid, text, integer\)/);
-  assert.match(apply, /GRANT EXECUTE ON FUNCTION public\.club_restore_member\(uuid, text, uuid, integer\)/);
+  const restoreIntended = readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql");
+  assert.match(restoreIntended, /GRANT EXECUTE ON FUNCTION public\.club_add_member\(uuid, text, uuid, text, integer\)/);
+  assert.match(restoreIntended, /GRANT EXECUTE ON FUNCTION public\.club_restore_member\(uuid, text, uuid, integer\)/);
   assert.match(
-    apply,
+    restoreIntended,
     /GRANT EXECUTE ON FUNCTION public\.club_review_membership_request\(uuid, uuid, text, text, integer\)/
   );
   const addStart = apply.indexOf("CREATE OR REPLACE FUNCTION public.club_add_member");
@@ -313,11 +320,16 @@ test("ATHLETE_INTERNAL_HELPER_AUTHENTICATED_EXECUTE_DESIGN=DENY", () => {
     apply,
     /GRANT EXECUTE ON FUNCTION public\.wave5_ensure_athlete_for_club_member\(uuid, text, text\) TO service_role/
   );
-  assert.match(apply, /GRANT EXECUTE ON FUNCTION public\.club_add_member\(uuid, text, uuid, text, integer\) TO authenticated/);
-  assert.match(apply, /GRANT EXECUTE ON FUNCTION public\.club_restore_member\(uuid, text, uuid, integer\) TO authenticated/);
+  const restoreIntended = readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql");
+  assert.match(restoreIntended, /GRANT EXECUTE ON FUNCTION public\.club_add_member\(uuid, text, uuid, text, integer\) TO authenticated/);
+  assert.match(restoreIntended, /GRANT EXECUTE ON FUNCTION public\.club_restore_member\(uuid, text, uuid, integer\) TO authenticated/);
   assert.match(
-    apply,
+    restoreIntended,
     /GRANT EXECUTE ON FUNCTION public\.club_review_membership_request\(uuid, uuid, text, text, integer\) TO authenticated/
+  );
+  assert.doesNotMatch(
+    apply,
+    /GRANT EXECUTE ON FUNCTION public\.club_add_member\(uuid, text, uuid, text, integer\) TO authenticated/
   );
   assert.match(verify, /has_function_privilege\(\s*'authenticated',\s*'public\.wave5_ensure_athlete_for_club_member/);
   assert.match(verify, /authenticated EXECUTE must be DENIED on wave5_ensure_athlete_for_club_member/);
@@ -353,7 +365,9 @@ test("Round 4 transaction safety: table lock before first mutation", () => {
     apply,
     /LOCK TABLE\s+public\.clubs,\s+public\.club_members,\s+public\.club_governance_assignments,\s+public\.club_membership_requests_v42\s+IN ACCESS EXCLUSIVE MODE/
   );
+  const parentLockIdx = apply.search(/LOCK TABLE\s+public\.platform_tenants/);
   const lockIdx = apply.search(/LOCK TABLE\s+public\.clubs/);
+  assert.ok(parentLockIdx >= 0 && parentLockIdx < lockIdx, "parent/supporting locks before Club ACCESS EXCLUSIVE");
   const tempIdx = apply.search(/CREATE TEMP TABLE wave5_club_tenant_map/);
   const dropIdx = apply.search(/DROP CONSTRAINT/);
   const updateIdx = apply.search(/UPDATE public\.clubs/);
@@ -432,6 +446,7 @@ test("Round 4 docs: transaction-safety remediation pending Round 5 Owner review"
   assert.match(readme, /ROUND4_BLOCKER_02_LOCKED_APPLY_SAFETY_GATE=FIXED/);
   assert.match(readme, /ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED/);
   assert.match(readme, /SQL_DESIGN_REVIEW_ROUND4_REMEDIATION=COMPLETE_PENDING_ROUND5_OWNER_REVIEW/);
+  assert.match(readme, /SQL_DESIGN_REVIEW_ROUND5_REMEDIATION=COMPLETE_PENDING_ROUND6_OWNER_REVIEW/);
   assert.match(readme, /CLUB_CUTOVER_CONCURRENT_WRITE_WINDOW=CLOSED/);
   assert.match(readme, /APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO/);
   assert.match(sqlReadme, /APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO/);
@@ -456,4 +471,190 @@ test("Round 3 docs: helper privilege and cluster binding, SQL review not claimed
   assert.match(sqlReadme, /REGISTERED_CLUSTER_RUNTIME_TENANT_BINDING=YES/);
   assert.match(sqlReadme, /REGISTERED_CLUSTER_VERIFY=YES/);
   assert.doesNotMatch(readme, /SQL_DESIGN_REVIEWED_PASS=YES/);
+});
+
+const EXISTING_APPLY_RPCS = [
+  "phase42_club_canonical",
+  "club_create",
+  "club_list_registry",
+  "club_list_members",
+  "phase42_can_update_club",
+  "phase42_can_assign_club_owner",
+  "phase42_can_transfer_president",
+  "club_add_member",
+  "club_restore_member",
+  "club_review_membership_request",
+];
+
+const NEW_WAVE5_FNS = [
+  "platform_is_canonical_tenant_entitled",
+  "wave5_resolve_club_facility_venue_id",
+  "wave5_ensure_athlete_for_club_member",
+];
+
+test("Round 5 A. quiesce is a committed phase before APPLY", () => {
+  const q1 = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const runbook = readPkg("07_EXECUTION_RUNBOOK.md");
+  assert.match(runbook, /PHASE_Q1_COMMITTED_WRITE_QUIESCE/);
+  assert.match(runbook, /QUIESCE_COMMITTED_PHASE_DESIGNED=YES/);
+  assert.match(q1, /\bCOMMIT\s*;/);
+  assert.match(q1, /REVOKE EXECUTE ON FUNCTION/);
+  assert.match(q1, /FROM authenticated/);
+  assert.doesNotMatch(apply, /REVOKE EXECUTE ON FUNCTION public\.club_create/);
+  assert.match(apply, /Q1 quiesce not visible/);
+});
+
+test("Round 5 B. APPLY is forbidden without drain-pass evidence", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const drain = uncommented(readPkg("07B_DRAIN_VERIFY.sql"));
+  const runbook = readPkg("07_EXECUTION_RUNBOOK.md");
+  assert.match(runbook, /APPLY=ABORT/);
+  assert.match(runbook, /CLUB_MUTATION_IN_FLIGHT_DRAINED=YES/);
+  assert.match(drain, /CLUB_MUTATION_IN_FLIGHT_DRAINED=NO/);
+  assert.match(drain, /pg_locks/);
+  assert.match(apply, /wave5\.drain_pass/);
+  assert.match(apply, /CLUB_MUTATION_IN_FLIGHT_DRAINED not attested/);
+  assert.doesNotMatch(apply, /SET LOCAL wave5\.drain_pass\s*=\s*'YES'/);
+  assert.doesNotMatch(apply, /SET wave5\.drain_pass\s*=\s*'YES'/);
+});
+
+test("Round 5 C. exact pre-privilege state is captured", () => {
+  const q1 = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  assert.match(q1, /wave5_cutover_rpc_privilege_snapshot/);
+  assert.match(q1, /aclexplode/);
+  assert.match(q1, /privilege snapshot empty/);
+  assert.match(readPkg("00_README.md"), /MUTATION_RPC_PRIVILEGE_CAPTURE=EXACT_ACL_SNAPSHOT/);
+});
+
+test("Round 5 D. restore does not generic-GRANT privileges", () => {
+  const restoreLegacy = uncommented(readPkg("07C_RESTORE_WRITES_DESIGN.sql"));
+  const restoreIntended = uncommented(readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql"));
+  assert.match(restoreLegacy, /WAVE5_RESTORE_ABORT: no privilege snapshot — refusing generic GRANT/);
+  assert.doesNotMatch(restoreLegacy, /GRANT EXECUTE ON FUNCTION public\.club_create/);
+  assert.doesNotMatch(restoreLegacy, /GRANT EXECUTE[^\n]+TO authenticated/);
+  assert.match(
+    restoreIntended,
+    /GRANT EXECUTE ON FUNCTION public\.club_create\(uuid, text, text, text, text, text\) TO authenticated/
+  );
+  assert.doesNotMatch(restoreIntended, /GRANT EXECUTE ON ALL FUNCTIONS/i);
+});
+
+test("Round 5 E. parent/supporting lock order precedes Club child lock order", () => {
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const apply = uncommented(src);
+  const tenantsIdx = apply.search(/LOCK TABLE\s+public\.platform_tenants/);
+  const venuesIdx = apply.indexOf("public.venues", tenantsIdx);
+  const clustersIdx = apply.indexOf("public.court_clusters", tenantsIdx);
+  const tmIdx = apply.search(/LOCK TABLE public\.tenant_members IN ACCESS SHARE MODE/);
+  const clubsIdx = apply.search(/LOCK TABLE\s+public\.clubs/);
+  assert.ok(tenantsIdx >= 0 && venuesIdx > tenantsIdx && clustersIdx > venuesIdx);
+  assert.ok(tmIdx > clustersIdx && clubsIdx > tmIdx);
+  assert.match(src, /CUTOVER_LOCK_ORDER_PARENT_TO_CHILD=YES/);
+  assert.match(src, /LOCK_ORDER_INVERSION_REVIEW=PASS/);
+  assert.match(src, /not a deadlock-freedom proof/);
+});
+
+test("Round 5 F. lock_timeout is bounded", () => {
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const apply = uncommented(src);
+  const runbook = readPkg("07_EXECUTION_RUNBOOK.md");
+  assert.match(apply, /SET LOCAL lock_timeout = '15s'/);
+  assert.match(apply, /SET LOCAL statement_timeout = '180s'/);
+  assert.match(src, /UNBOUNDED_LOCK_WAIT=NO/);
+  assert.match(src, /STAGING_RECOMMENDED_LOCK_TIMEOUT=5s/);
+  assert.match(src, /PRODUCTION_RECOMMENDED_LOCK_TIMEOUT=15s/);
+  const timeoutIdx = apply.search(/SET LOCAL lock_timeout/);
+  const lockIdx = apply.search(/LOCK TABLE\s+public\.platform_tenants/);
+  assert.ok(timeoutIdx >= 0 && timeoutIdx < lockIdx);
+  assert.match(runbook, /STAGING_RECOMMENDED_LOCK_TIMEOUT=5s/);
+  assert.match(runbook, /PRODUCTION_RECOMMENDED_LOCK_TIMEOUT=15s/);
+});
+
+test("Round 5 G. no mutation occurs before locked safety gate", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const gateIdx = apply.search(/APPLY_LOCKED_SAFETY_GATE_COMPLETE/);
+  assert.ok(gateIdx >= 0);
+  const before = apply.slice(0, gateIdx);
+  assert.match(before, /SET LOCAL lock_timeout/);
+  assert.match(before, /LOCK TABLE\s+public\.platform_tenants/);
+  assert.match(before, /IN ACCESS EXCLUSIVE MODE/);
+  assert.doesNotMatch(before, /UPDATE\s+public\.clubs\b/i);
+  assert.doesNotMatch(before, /ALTER TABLE[\s\S]{0,80}DROP CONSTRAINT/i);
+  assert.doesNotMatch(before, /CREATE OR REPLACE FUNCTION/i);
+});
+
+test("Round 5 H. every CREATE OR REPLACE existing RPC has an overwrite guard", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const creates = [...apply.matchAll(/CREATE OR REPLACE FUNCTION public\.([a-z0-9_]+)/gi)].map(
+    (m) => m[1]
+  );
+  assert.equal(
+    creates.length,
+    13,
+    `APPLY_CREATE_OR_REPLACE_FUNCTION_COUNT expected 13, got ${creates.length}`
+  );
+  for (const name of EXISTING_APPLY_RPCS) {
+    assert.equal(creates.includes(name), true, `missing CREATE ${name}`);
+    assert.match(apply, new RegExp(`'${name}'`));
+    assert.match(apply, /WAVE5_APPLY_ABORT_RPC_BODY_DRIFT/);
+  }
+  const inventory = readPkg("08_RPC_OVERWRITE_GUARD_INVENTORY.md");
+  assert.match(inventory, /EXISTING_RPC_OVERWRITE_GUARD_COUNT=10/);
+  assert.match(inventory, /APPLY_CREATE_OR_REPLACE_FUNCTION_COUNT=13/);
+});
+
+test("Round 5 I. unknown/newer RPC body aborts", () => {
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const apply = uncommented(src);
+  assert.match(apply, /WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: % missing certified marker/);
+  assert.match(src, /APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED/);
+  assert.doesNotMatch(apply, /regexp_replace\s*\(\s*v_rpc_def/);
+});
+
+test("Round 5 J. Wave5-new unexpected existing helper aborts", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  for (const name of NEW_WAVE5_FNS) {
+    assert.match(apply, new RegExp(`unexpected existing ${name}`));
+  }
+  assert.match(readPkg("08_RPC_OVERWRITE_GUARD_INVENTORY.md"), /NEW_WAVE5_FUNCTION_GUARD_COUNT=3/);
+});
+
+test("Round 5 K. internal helpers remain non-executable by authenticated", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const restoreIntended = uncommented(readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql"));
+  const verify = uncommented(readPkg("03_VERIFY.sql"));
+  assert.match(
+    apply,
+    /REVOKE ALL ON FUNCTION public\.wave5_ensure_athlete_for_club_member\(uuid, text, text\) FROM public, anon, authenticated/
+  );
+  assert.match(restoreIntended, /INTERNAL_HELPER_AUTHENTICATED_EXECUTE=DENIED/);
+  assert.match(restoreIntended, /authenticated EXECUTE must stay DENIED on wave5_ensure_athlete_for_club_member/);
+  assert.match(verify, /authenticated EXECUTE must be DENIED on wave5_ensure_athlete_for_club_member/);
+});
+
+test("Round 5 L. no live SQL execution in tests or design GO", () => {
+  for (const name of PACKAGE_FILES) {
+    const text = readPkg(name);
+    assert.match(text, /WAVE5_SQL_DESIGN_ONLY/);
+    assert.match(text, /OWNER_SQL_EXECUTION_GO=NO/);
+    assert.doesNotMatch(text, /PRODUCTION_ACCESS_GO\s*=\s*YES/);
+  }
+  const apply = readPkg("02_APPLY_DESIGN.sql");
+  assert.match(apply, /DO_NOT_RUN_ON_STAGING/);
+  assert.match(apply, /DO_NOT_RUN_ON_PRODUCTION/);
+  assert.match(apply, /SQL_EXECUTED=NO/);
+});
+
+test("Round 5 fail-closed while quiesced and mutation inventory count", () => {
+  const runbook = readPkg("07_EXECUTION_RUNBOOK.md");
+  const inventory = readPkg("06_CLUB_MUTATION_RPC_INVENTORY.md");
+  const verify = uncommented(readPkg("03_VERIFY.sql"));
+  assert.match(runbook, /FAIL_CLOSED_WHILE_QUIESCED=YES/);
+  assert.match(runbook, /Do \*\*not\*\* auto-run APPLY again/);
+  assert.match(inventory, /MUTATION_RPC_ENTRYPOINT_COUNT=14/);
+  assert.match(verify, /wave5\.verify_privileges/);
+  assert.match(verify, /still executable while quiesced/);
+  assert.match(readPkg("00_README.md"), /RECONCILIATION_REQUIRED_BEFORE_STAGING_MUTATION=YES/);
+  assert.match(readPkg("00_README.md"), /MAIN_DRIFT_CLUB_SCOPE_OVERLAP=NO/);
 });

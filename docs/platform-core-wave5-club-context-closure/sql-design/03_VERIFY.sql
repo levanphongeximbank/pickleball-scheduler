@@ -6,6 +6,8 @@
 --
 -- Post-apply VERIFY — READ-ONLY. Do not mutate.
 -- Post-state invariants only. Cannot prove a historical LOCK TABLE occurred.
+-- Default: mutation RPCs still quiesced. After 07D: SET wave5.verify_privileges = 'YES'
+-- MUTATION_RPC_POST_PRIVILEGES_VERIFIED is that second pass.
 
 DO $$
 DECLARE
@@ -233,12 +235,20 @@ BEGIN
   IF coalesce(array_to_string(v_proconfig, ','), '') NOT ILIKE '%search_path=public%' THEN
     RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_add_member search_path not public';
   END IF;
-  IF NOT has_function_privilege(
-    'authenticated',
-    'public.club_add_member(uuid,text,uuid,text,integer)',
-    'EXECUTE'
-  ) THEN
-    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated GRANT EXECUTE missing on club_add_member';
+  IF current_setting('wave5.verify_privileges', true) = 'YES' THEN
+    IF NOT has_function_privilege(
+      'authenticated',
+      'public.club_add_member(uuid,text,uuid,text,integer)',
+      'EXECUTE'
+    ) THEN
+      RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated GRANT EXECUTE missing on club_add_member';
+    END IF;
+  ELSIF has_function_privilege(
+      'authenticated',
+      'public.club_add_member(uuid,text,uuid,text,integer)',
+      'EXECUTE'
+    ) THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_add_member still executable while quiesced — restore is 07D after VERIFY bodies';
   END IF;
 
   IF to_regprocedure('public.club_restore_member(uuid,text,uuid,integer)') IS NULL THEN
@@ -252,12 +262,20 @@ BEGIN
   IF v_helper_fn ~ 'phase42n_ensure_athlete_for_user[[:space:]]*\([^)]*v_club\.tenant_id' THEN
     RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_restore_member still passes Club tenant_id to athlete helper';
   END IF;
-  IF NOT has_function_privilege(
-    'authenticated',
-    'public.club_restore_member(uuid,text,uuid,integer)',
-    'EXECUTE'
-  ) THEN
-    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated GRANT EXECUTE missing on club_restore_member';
+  IF current_setting('wave5.verify_privileges', true) = 'YES' THEN
+    IF NOT has_function_privilege(
+      'authenticated',
+      'public.club_restore_member(uuid,text,uuid,integer)',
+      'EXECUTE'
+    ) THEN
+      RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated GRANT EXECUTE missing on club_restore_member';
+    END IF;
+  ELSIF has_function_privilege(
+      'authenticated',
+      'public.club_restore_member(uuid,text,uuid,integer)',
+      'EXECUTE'
+    ) THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_restore_member still executable while quiesced — restore is 07D after VERIFY bodies';
   END IF;
 
   IF to_regprocedure('public.club_review_membership_request(uuid,uuid,text,text,integer)') IS NULL THEN
@@ -271,12 +289,20 @@ BEGIN
   IF v_helper_fn ~ 'phase42n_ensure_athlete_for_user[[:space:]]*\([^)]*v_row\.tenant_id' THEN
     RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_review_membership_request still passes Club tenant_id to athlete helper';
   END IF;
-  IF NOT has_function_privilege(
-    'authenticated',
-    'public.club_review_membership_request(uuid,uuid,text,text,integer)',
-    'EXECUTE'
-  ) THEN
-    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated GRANT EXECUTE missing on club_review_membership_request';
+  IF current_setting('wave5.verify_privileges', true) = 'YES' THEN
+    IF NOT has_function_privilege(
+      'authenticated',
+      'public.club_review_membership_request(uuid,uuid,text,text,integer)',
+      'EXECUTE'
+    ) THEN
+      RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated GRANT EXECUTE missing on club_review_membership_request';
+    END IF;
+  ELSIF has_function_privilege(
+      'authenticated',
+      'public.club_review_membership_request(uuid,uuid,text,text,integer)',
+      'EXECUTE'
+    ) THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_review_membership_request still executable while quiesced — restore is 07D after VERIFY bodies';
   END IF;
 
   SELECT pg_get_functiondef('public.wave5_ensure_athlete_for_club_member(uuid,text,text)'::regprocedure)

@@ -22,7 +22,13 @@ Do not apply until Owner issues a separate execution GO naming this package and 
 | `03_VERIFY.sql` | NO | Post-apply read-only invariants (cannot prove a historical `LOCK TABLE`) |
 | `04_ROLLBACK_DESIGN.md` | documentation | App rollback vs DB rollback |
 | `05_CLUB_TENANT_TABLE_INVENTORY.md` | documentation | Tenant-bearing table classification |
-| `06_CLUB_MUTATION_RPC_INVENTORY.md` | documentation | Club mutation RPC semantics |
+| `06_CLUB_MUTATION_RPC_INVENTORY.md` | documentation | Club mutation RPC semantics + EXECUTE privilege matrix |
+| `07_EXECUTION_RUNBOOK.md` | documentation | Pre-cutover quiesce, drain, lock order, fail-closed restore |
+| `07A_QUIESCE_WRITES_DESIGN.sql` | YES (when GO) | Committed Q1 REVOKE of mutation EXECUTE |
+| `07B_DRAIN_VERIFY.sql` | NO | Read-only in-flight drain proof |
+| `07C_RESTORE_WRITES_DESIGN.sql` | YES (when GO) | Exact captured ACL replay only (legacy restore) |
+| `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` | YES (when GO) | Intended public command surface after VERIFY |
+| `08_RPC_OVERWRITE_GUARD_INVENTORY.md` | documentation | Every APPLY CREATE OR REPLACE overwrite class |
 
 ## Schema-state machine
 
@@ -149,3 +155,33 @@ Club-owned tables are locked in one `LOCK TABLE ... ACCESS EXCLUSIVE` statement 
 APPLY-time `pg_get_functiondef` is read-only validation. It is never `EXECUTE`d or `regexp_replace`d into a replacement body.
 
 `trg_phase42_gov_active_member` enablement is captured from `pg_trigger.tgenabled` (`O`/`D`/`R`/`A`) and restored exactly after translation. One transaction; no internal `COMMIT`.
+
+## Round 5 remediation (pending Round 6 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND5_REMEDIATION=COMPLETE_PENDING_ROUND6_OWNER_REVIEW
+ROUND5_P1_01_PRECUTOVER_RPC_QUIESCENCE=REMEDIATED_DESIGN
+ROUND5_P1_02_LOCK_ORDER_AND_WAIT_BOUNDING=REMEDIATED_DESIGN
+ROUND5_P1_03_RPC_OVERWRITE_GUARD_COVERAGE=REMEDIATED_DESIGN
+PHASE_Q1_COMMITTED_WRITE_QUIESCE=REQUIRED
+QUIESCE_COMMITTED_PHASE_DESIGNED=YES
+MUTATION_RPC_ENTRYPOINT_COUNT=14
+MUTATION_RPC_PRIVILEGE_CAPTURE=EXACT_ACL_SNAPSHOT
+IN_FLIGHT_DRAIN_GATE=YES
+FAIL_CLOSED_WHILE_QUIESCED=YES
+CUTOVER_LOCK_ORDER_PARENT_TO_CHILD=YES
+LOCK_ORDER_INVERSION_REVIEW=PASS
+UNBOUNDED_LOCK_WAIT=NO
+STAGING_RECOMMENDED_LOCK_TIMEOUT=5s
+PRODUCTION_RECOMMENDED_LOCK_TIMEOUT=15s
+APPLY_CREATE_OR_REPLACE_FUNCTION_COUNT=13
+EXISTING_RPC_OVERWRITE_GUARD_COUNT=10
+NEW_WAVE5_FUNCTION_GUARD_COUNT=3
+UNKNOWN_RPC_BODY_OVERWRITE_DENIED=YES
+INTERNAL_HELPER_AUTHENTICATED_EXECUTE=DENIED
+MAIN_DRIFT_CLUB_SCOPE_OVERLAP=NO
+RECONCILIATION_REQUIRED_BEFORE_STAGING_MUTATION=YES
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Club mutation RPCs are quiesced in a **committed** Q1 (`07A`) before APPLY. APPLY aborts unless `wave5.drain_pass=YES` and authenticated EXECUTE on `club_create` / `club_add_member` is already denied. Lock order is parent/supporting tables then Club parent then children. `SET LOCAL lock_timeout` is required before `LOCK TABLE`. Every APPLY `CREATE OR REPLACE` is classified and guarded. Do not merge `origin/main` in this remediation.

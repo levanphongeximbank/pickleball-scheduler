@@ -50,6 +50,12 @@ There is no executable reverse-translation script in this package. No rollback i
 
 Athlete compatibility wrappers (`wave5_resolve_club_facility_venue_id`, `wave5_ensure_athlete_for_club_member`) are additive. Athletes themselves are not migrated.
 
+## Fail-closed while Q1 quiesced
+
+If Q1 committed and APPLY aborted, mutation EXECUTE stays revoked. Do not auto-retry APPLY. Owner-elected return to legacy privileges uses `07C_RESTORE_WRITES_DESIGN.sql` (exact snapshot replay only). Do not `GRANT EXECUTE TO authenticated` as a generic set.
+
+Successful APPLY + body VERIFY uses `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` for the intended public command surface. Internal helpers remain `authenticated EXECUTE = DENIED`.
+
 ## Direct `clubs.venue_id`
 
 Not added. Nothing to drop on rollback.

@@ -3,6 +3,8 @@
 ```
 WAVE5_SQL_DESIGN_ONLY
 OWNER_SQL_EXECUTION_GO=NO
+DO_NOT_RUN_ON_STAGING
+DO_NOT_RUN_ON_PRODUCTION
 SQL_EXECUTED=NO
 ```
 
@@ -53,3 +55,34 @@ Authoritative sources (no overload in repo):
 | `club_review_membership_request` | `(uuid, uuid, text, text, integer)` | json | YES | public | Super Admin or `phase42_has_gov_role` owner/president/VP | requests + `club_members` | wave5 helper on `v_row.club_id` | `docs/v5/PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL.sql` | YES | YES | same |
 
 `EXPLICIT_REVIEWED_BODY_IN_APPLY=NO` for all other Club RPCs in this inventory (they were already explicit in APPLY from Round 1; they were not the P1-01 regexp targets).
+
+### Round 5 — public Club mutation EXECUTE matrix (Q1)
+
+`MUTATION_RPC_ENTRYPOINT_COUNT=14` canonical V2 write RPCs. Privileges below are from **authoritative GRANT statements** in repo SQL. PostgreSQL may still have `PUBLIC` EXECUTE unless previously revoked — Q1 **must capture exact ACLs** (`MUTATION_RPC_PRIVILEGE_CAPTURE=EXACT_ACL_SNAPSHOT`) and must not assume this table is complete.
+
+| FUNCTION | EXACT_SIGNATURE | CURRENT_AUTHENTICATED_EXECUTE | CURRENT_ANON_EXECUTE | CURRENT_PUBLIC_EXECUTE | SERVICE_ROLE_DEPENDENCY | QUIESCE_REQUIRED | RESTORE_REQUIRED |
+|---|---|---|---|---|---|---|---|
+| `club_create` | `(uuid, text, text, text, text, text)` | YES | NO (not granted in phase SQL) | CAPTURE_REQUIRED | NO (PostgREST uses authenticated) | YES | YES |
+| `club_update` | `(uuid, text, integer, text, text, text, text, text)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+| `club_assign_owner` | `(uuid, text, uuid, integer)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+| `club_clear_owner` | `(uuid, text, integer)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+| `club_transfer_president` | `(uuid, text, uuid, integer)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+| `club_assign_vice_president` | `(uuid, text, uuid, integer)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+| `club_clear_vice_president` | `(uuid, text, integer, uuid)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+| `club_add_member` | `(uuid, text, uuid, text, integer)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+| `club_remove_member` | `(uuid, text, uuid, integer)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+| `club_restore_member` | `(uuid, text, uuid, integer)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+| `club_leave_membership` | `(uuid, text)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+| `club_submit_membership_request` | `(uuid, text, text)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+| `club_cancel_membership_request` | `(uuid, uuid, integer)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+| `club_review_membership_request` | `(uuid, uuid, text, text, integer)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
+
+Additional live app entrypoint (not canonical V2 command plane; quiesce **if present**):
+
+| FUNCTION | EXACT_SIGNATURE | NOTES | QUIESCE_REQUIRED | RESTORE_REQUIRED |
+|---|---|---|---|---|
+| `club_leave_my_membership` | `()` | Called from `clubMembershipRequestRpcService`; no in-repo CREATE SQL | YES if `to_regprocedure` exists | YES if captured |
+
+Non-canonical / read (not Q1 mutation list): `club_list_*`, `club_get`, `club_upsert_registry`, `club_claim_self_registration`.
+
+Internal helpers (`wave5_*`): `QUIESCE_REQUIRED=NO` (never authenticated EXECUTE). `INTERNAL_HELPER_AUTHENTICATED_EXECUTE=DENIED`.
