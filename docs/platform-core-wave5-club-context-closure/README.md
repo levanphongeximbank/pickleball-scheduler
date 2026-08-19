@@ -9,6 +9,10 @@
 **PC_LEGACY_01=PARTIAL_REMEDIATED_CLUB_PATH_PENDING_DURABLE_CUTOVER**
 
 **SQL_DESIGN_AUTHORED=YES**
+**SQL_DESIGN_REVIEW_ROUND2_REMEDIATION=COMPLETE_PENDING_ROUND3_OWNER_REVIEW**
+**SQL_DESIGN_REVIEWED_PASS=NO**
+**ROUND2_BLOCKER_01=REMEDIATED**
+**ROUND2_BLOCKER_02=REMEDIATED**
 **SQL_EXECUTED=NO**
 **RLS_DESIGN_AUTHORED=YES**
 **RLS_EXECUTED=NO**
@@ -84,7 +88,15 @@ Never: `if tenant id exists in platform_tenants then assume canonical` — live 
 
 See `sql-design/`. **DO NOT RUN.** `OWNER_SQL_EXECUTION_GO=NO`.
 
-**SQL_DESIGN_REVIEW_REMEDIATION** (this pass): strongly state-guarded APPLY; Club child tables `club_members` / `club_governance_assignments` / `club_membership_requests_v42` included; `club_create` uses `platform_tenants`; Wave 4 `tenant_members` canonical FK expected.
+**SQL_DESIGN_REVIEW_REMEDIATION** (Round 1, closed): strongly state-guarded APPLY; Club child tables `club_members` / `club_governance_assignments` / `club_membership_requests_v42` included; `club_create` uses `platform_tenants`; Wave 4 `tenant_members` canonical FK expected.
+
+**SQL_DESIGN_REVIEW_ROUND2_REMEDIATION=COMPLETE_PENDING_ROUND3_OWNER_REVIEW** (not a SQL review PASS).
+
+**ROUND2_BLOCKER_01=REMEDIATED** — APPLY no longer rewrites live RPC bodies via `pg_get_functiondef` + `regexp_replace` + `EXECUTE`. Affected member RPCs are explicit reviewed `CREATE OR REPLACE FUNCTION` bodies.
+
+**ROUND2_BLOCKER_02=REMEDIATED** — PRECHECK fail-closes on post-Venue→Tenant name/code uniqueness collisions (`POST_MAP_DUPLICATE_CLUB_*_COUNT`) before any APPLY mutation. No auto-rename/merge.
+
+**ATHLETE_NO_CLUSTER_POLICY=reuse existing athlete if any (Participant user_id uniqueness; Venue not required for reuse); else require Club.registered_cluster_id → court_clusters.venue_id → venues.id; else fail closed ATHLETE_FACILITY_VENUE_REQUIRED. No Tenant-as-Venue, no first/default Venue, no clubs.venue_id, no profiles.venue_id from the Wave 5 wrapper.**
 
 **TENANT_MEMBERS_WAVE4_CANONICAL_FK_EXPECTED=YES**
 **WAVE4_SQL_REEXECUTION_REQUIRED=NO**

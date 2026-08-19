@@ -178,3 +178,106 @@ test("Wave5 APPLY does not invent clubs.venue_id and keeps athlete compat honest
   assert.match(apply, /wave5_ensure_athlete_for_club_member/);
   assert.doesNotMatch(uncommented(apply), /ADD COLUMN[\s\S]*venue_id/i);
 });
+
+test("DYNAMIC_RPC_TEXT_REWRITE_PRESENT=NO", () => {
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const apply = uncommented(src);
+  assert.match(src, /DYNAMIC_RPC_TEXT_REWRITE_PRESENT=NO/);
+  assert.doesNotMatch(apply, /pg_get_functiondef\s*\(/);
+  assert.doesNotMatch(apply, /EXECUTE\s+v_next/);
+  assert.doesNotMatch(apply, /regexp_replace\s*\(\s*v_def/);
+});
+
+test("explicit reviewed CREATE OR REPLACE for affected Club member RPCs", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  assert.match(
+    apply,
+    /CREATE OR REPLACE FUNCTION public\.club_add_member\s*\(\s*p_request_id uuid/
+  );
+  assert.match(
+    apply,
+    /CREATE OR REPLACE FUNCTION public\.club_restore_member\s*\(\s*p_request_id uuid/
+  );
+  assert.match(
+    apply,
+    /CREATE OR REPLACE FUNCTION public\.club_review_membership_request\s*\(\s*p_request_id uuid/
+  );
+  assert.match(apply, /GRANT EXECUTE ON FUNCTION public\.club_add_member\(uuid, text, uuid, text, integer\)/);
+  assert.match(apply, /GRANT EXECUTE ON FUNCTION public\.club_restore_member\(uuid, text, uuid, integer\)/);
+  assert.match(
+    apply,
+    /GRANT EXECUTE ON FUNCTION public\.club_review_membership_request\(uuid, uuid, text, text, integer\)/
+  );
+  const addStart = apply.indexOf("CREATE OR REPLACE FUNCTION public.club_add_member");
+  const restoreStart = apply.indexOf("CREATE OR REPLACE FUNCTION public.club_restore_member");
+  const addBody = apply.slice(addStart, restoreStart);
+  assert.match(addBody, /wave5_ensure_athlete_for_club_member/);
+  assert.doesNotMatch(
+    addBody,
+    /phase42n_ensure_athlete_for_user\s*\(\s*p_target_user_id\s*,\s*v_club\.tenant_id/
+  );
+  assert.match(addBody, /ATHLETE_FACILITY_VENUE_REQUIRED/);
+});
+
+test("POST_MAP name and code collision guards run in PRECHECK before APPLY mutation", () => {
+  const precheck = uncommented(readPkg("01_PRECHECK.sql"));
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  assert.match(precheck, /POST_MAP_DUPLICATE_CLUB_NAME_COUNT/);
+  assert.match(precheck, /POST_MAP_DUPLICATE_CLUB_CODE_COUNT/);
+  assert.match(precheck, /DATA_RECONCILIATION_OWNER_DECISION_REQUIRED/);
+  assert.match(precheck, /lower\(c\.name\)/);
+  assert.match(precheck, /JOIN public\.venues v ON v\.id = c\.tenant_id/);
+  assert.match(precheck, /to_regprocedure\('public\.club_add_member\(uuid,text,uuid,text,integer\)'\)/);
+  assert.match(precheck, /RPC_SIGNATURE_DRIFT/);
+  const precheckHasInsert = /\bINSERT\s+INTO\b/i.test(precheck);
+  assert.equal(precheckHasInsert, false);
+  const applyUpdateIdx = apply.search(/UPDATE public\.clubs/);
+  assert.ok(applyUpdateIdx > 0);
+});
+
+test("Athlete no-cluster policy is explicit and does not invent Club→Venue ownership", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const helperStart = apply.indexOf(
+    "CREATE OR REPLACE FUNCTION public.wave5_ensure_athlete_for_club_member"
+  );
+  const helperEnd = apply.indexOf(
+    "REVOKE ALL ON FUNCTION public.wave5_resolve_club_facility_venue_id"
+  );
+  const helper = apply.slice(helperStart, helperEnd);
+  assert.match(helper, /ORDER BY a\.created_at ASC/);
+  assert.match(helper, /ATHLETE_FACILITY_VENUE_REQUIRED/);
+  assert.match(helper, /wave5_resolve_club_facility_venue_id/);
+  assert.doesNotMatch(helper, /v_club\.tenant_id/);
+  assert.doesNotMatch(helper, /FROM public\.venues/);
+  assert.doesNotMatch(helper, /profiles\.venue_id/);
+  assert.doesNotMatch(apply, /ADD COLUMN[\s\S]*clubs[\s\S]*venue_id/i);
+  const resolveStart = apply.indexOf(
+    "CREATE OR REPLACE FUNCTION public.wave5_resolve_club_facility_venue_id"
+  );
+  const resolve = apply.slice(resolveStart, helperStart);
+  assert.match(resolve, /registered_cluster_id/);
+  assert.match(resolve, /court_clusters/);
+  assert.match(resolve, /venues v ON v\.id = cc\.venue_id/);
+  assert.doesNotMatch(resolve, /ORDER BY cc\.id/);
+});
+
+test("Round 2 docs: blockers remediated, SQL review not claimed PASS", () => {
+  const readme = fs.readFileSync(
+    path.join(process.cwd(), "docs/platform-core-wave5-club-context-closure/README.md"),
+    "utf8"
+  );
+  const sqlReadme = readPkg("00_README.md");
+  const inventory = readPkg("06_CLUB_MUTATION_RPC_INVENTORY.md");
+  assert.match(readme, /ROUND2_BLOCKER_01=REMEDIATED/);
+  assert.match(readme, /ROUND2_BLOCKER_02=REMEDIATED/);
+  assert.match(readme, /SQL_DESIGN_REVIEW_ROUND2_REMEDIATION=COMPLETE_PENDING_ROUND3_OWNER_REVIEW/);
+  assert.match(readme, /SQL_DESIGN_REVIEWED_PASS=NO/);
+  assert.match(sqlReadme, /POST_MAP_NAME_COLLISION_GUARD=YES/);
+  assert.match(sqlReadme, /POST_MAP_CODE_COLLISION_GUARD=YES/);
+  assert.match(inventory, /EXPLICIT_REVIEWED_BODY_IN_APPLY/);
+  assert.match(inventory, /PHASE_45A4C1_MEMBER_RPC\.sql` \| YES \| YES/);
+  assert.match(inventory, /PHASE_45A4D1_MEMBER_RESTORE_RPC\.sql` \| YES \| YES/);
+  assert.match(inventory, /PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL\.sql` \| YES \| YES/);
+  assert.match(inventory, /docs\/v5\/phase45a4c1\/PHASE_45A4C1_MEMBER_RPC\.sql/);
+  assert.match(inventory, /docs\/v5\/PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL\.sql/);
+});

@@ -74,3 +74,21 @@ Wave 4 Production/Staging closed state already applied:
 `tenant_members.tenant_id` → `public.platform_tenants(id)` ON DELETE RESTRICT
 
 Wave 5 precheck **expects** that canonical FK and fails closed if the target environment unexpectedly differs. Do not rewrite Wave 4 migrations. Do not re-execute Wave 4 SQL.
+
+## Round 2 remediation (pending Round 3 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND2_REMEDIATION=COMPLETE_PENDING_ROUND3_OWNER_REVIEW
+ROUND2_BLOCKER_01=REMEDIATED
+ROUND2_BLOCKER_02=REMEDIATED
+DYNAMIC_RPC_TEXT_REWRITE_PRESENT=NO
+POST_MAP_NAME_COLLISION_GUARD=YES
+POST_MAP_CODE_COLLISION_GUARD=YES
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+**ATHLETE_NO_CLUSTER_POLICY=reuse existing athlete if any (Participant user_id uniqueness; Venue not required for reuse); else require Club.registered_cluster_id → court_clusters.venue_id → venues.id; else fail closed ATHLETE_FACILITY_VENUE_REQUIRED. No Tenant-as-Venue, no first/default Venue, no clubs.venue_id, no profiles.venue_id from the Wave 5 wrapper.**
+
+`athletes.tenant_id` remains facility/Venue-scoped. Wave 5 does not migrate `athletes` onto `platform_tenants`.
+
+PRECHECK uses `to_regprocedure` exact signatures (not `proname LIMIT 1`). `STATE_CANONICAL` uniqueness is checked on Club `tenant_id` without treating it as Venue. `STATE_LEGACY` uniqueness is checked on `venues.tenant_id` after conceptual translation. Collision classification: `DATA_RECONCILIATION_OWNER_DECISION_REQUIRED`.

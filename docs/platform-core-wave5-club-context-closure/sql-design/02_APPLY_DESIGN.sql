@@ -19,6 +19,9 @@
 -- Does NOT add clubs.venue_id.
 -- Does NOT globally retire phase42_is_tenant_member.
 -- Does NOT use venues.id = platform_tenants.id as a migration predicate.
+-- DYNAMIC_RPC_TEXT_REWRITE_PRESENT=NO
+-- ROUND2_BLOCKER_01=REMEDIATED
+-- ROUND2_BLOCKER_02=REMEDIATED
 
 BEGIN;
 
@@ -338,6 +341,11 @@ GRANT EXECUTE ON FUNCTION public.platform_is_canonical_tenant_entitled(text) TO 
 -- Honest facility-Venue translation for Participant athlete rows.
 -- athletes.tenant_id remains Venue-scoped. Never pass Club Tenant as venues.id.
 -- WAVE5_ATHLETE_COMPAT_REQUIRED
+-- ATHLETE_NO_CLUSTER_POLICY:
+--   existing athlete for user_id → reuse (Participant unique user_id), no Venue required
+--   new athlete → require registered_cluster_id → court_clusters.venue_id → venues.id
+--   else fail closed ATHLETE_FACILITY_VENUE_REQUIRED
+--   no Tenant-as-Venue, no first/default Venue, no clubs.venue_id, no profiles.venue_id from this wrapper
 CREATE OR REPLACE FUNCTION public.wave5_resolve_club_facility_venue_id(p_club_id text)
 RETURNS text
 LANGUAGE sql
@@ -347,8 +355,10 @@ SET search_path = public
 AS $$
   SELECT cc.venue_id
   FROM public.clubs c
-  JOIN public.court_clusters cc ON cc.id = c.registered_cluster_id
+  INNER JOIN public.court_clusters cc ON cc.id = c.registered_cluster_id
+  INNER JOIN public.venues v ON v.id = cc.venue_id
   WHERE c.id = p_club_id
+    AND c.registered_cluster_id IS NOT NULL
   LIMIT 1;
 $$;
 
@@ -363,9 +373,29 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  v_athlete_id uuid;
   v_venue_id text;
 BEGIN
+  IF p_user_id IS NULL THEN
+    RAISE EXCEPTION 'phase42n_ensure_athlete_for_user: p_user_id required';
+  END IF;
+
+  -- A. Existing Athlete is reusable regardless of Club facility Venue.
+  SELECT a.id INTO v_athlete_id
+  FROM public.athletes a
+  WHERE a.user_id = p_user_id
+  ORDER BY a.created_at ASC
+  LIMIT 1;
+  IF v_athlete_id IS NOT NULL THEN
+    RETURN v_athlete_id;
+  END IF;
+
+  -- C. Creation requires independently resolved physical Venue.
   v_venue_id := public.wave5_resolve_club_facility_venue_id(p_club_id);
+  IF v_venue_id IS NULL THEN
+    RAISE EXCEPTION 'ATHLETE_FACILITY_VENUE_REQUIRED';
+  END IF;
+
   RETURN public.phase42n_ensure_athlete_for_user(p_user_id, v_venue_id, p_display_name);
 END;
 $$;
@@ -781,50 +811,558 @@ AS $$
     );
 $$;
 
--- WAVE5_ATHLETE_COMPAT_REQUIRED — rewrite live Club RPC athlete-ensure calls.
-DO $$
+-- WAVE5_ATHLETE_COMPAT_REQUIRED — explicit reviewed Club RPC bodies.
+-- DYNAMIC_RPC_TEXT_REWRITE_PRESENT=NO
+-- Authoritative sources:
+--   club_add_member: docs/v5/phase45a4c1/PHASE_45A4C1_MEMBER_RPC.sql
+--   club_restore_member: docs/v5/phase45a4d1/PHASE_45A4D1_MEMBER_RESTORE_RPC.sql
+--   club_review_membership_request: docs/v5/PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL.sql
+-- Wave 5 delta only: athlete ensure via wave5_ensure_athlete_for_club_member (Club id, not Club tenant_id).
+
+CREATE OR REPLACE FUNCTION public.club_add_member(
+  p_request_id uuid,
+  p_club_id text,
+  p_target_user_id uuid,
+  p_membership_type text default 'regular',
+  p_expected_version integer default null
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
-  v_name text;
-  v_def text;
-  v_next text;
+  v_cached jsonb;
+  v_club public.clubs%rowtype;
+  v_member public.club_members%rowtype;
+  v_left public.club_members%rowtype;
+  v_membership_type text;
+  v_athlete_id uuid;
+  v_display_name text;
+  v_reactivated boolean := false;
+  v_resp jsonb;
 BEGIN
-  FOREACH v_name IN ARRAY ARRAY[
+  IF auth.uid() IS NULL THEN
+    RETURN public.phase42_err('NOT_AUTHENTICATED', 'Chưa đăng nhập.');
+  END IF;
+
+  IF p_request_id IS NULL THEN
+    RETURN public.phase42_err('REQUEST_ID_REQUIRED', 'Thiếu request_id.');
+  END IF;
+
+  IF p_target_user_id IS NULL THEN
+    RETURN public.phase42_err('VALIDATION', 'Thiếu target user_id.');
+  END IF;
+
+  v_cached := public.phase42_idempotency_get(p_request_id, 'club_add_member');
+  IF v_cached IS NOT NULL THEN
+    RETURN v_cached::json;
+  END IF;
+
+  SELECT * INTO v_club
+  FROM public.clubs
+  WHERE id = trim(coalesce(p_club_id, ''))
+    AND deleted_at IS NULL
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN public.phase42_err('NOT_FOUND', 'Không tìm thấy CLB.');
+  END IF;
+
+  IF NOT (
+    public.phase42_is_platform_super_admin()
+    OR public.phase42_can_review_membership(v_club.id)
+  ) THEN
+    RETURN public.phase42_err('FORBIDDEN', 'Không có quyền thêm thành viên.');
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = p_target_user_id) THEN
+    RETURN public.phase42_err('NOT_FOUND', 'Không tìm thấy người dùng đích.');
+  END IF;
+
+  v_membership_type := nullif(trim(coalesce(p_membership_type, '')), '');
+  IF v_membership_type IS NULL THEN
+    v_membership_type := 'regular';
+  END IF;
+
+  SELECT * INTO v_member
+  FROM public.club_members
+  WHERE club_id = v_club.id
+    AND user_id = p_target_user_id
+    AND status = 'active'
+  FOR UPDATE;
+  IF FOUND THEN
+    RETURN public.phase42_err('ALREADY_MEMBER', 'Người dùng đã là thành viên active.');
+  END IF;
+
+  SELECT * INTO v_left
+  FROM public.club_members
+  WHERE club_id = v_club.id
+    AND user_id = p_target_user_id
+    AND status = 'left'
+  ORDER BY left_at DESC NULLS LAST, updated_at DESC, created_at DESC
+  LIMIT 1
+  FOR UPDATE;
+
+  IF FOUND THEN
+    IF p_expected_version IS NOT NULL AND v_left.version IS DISTINCT FROM p_expected_version THEN
+      RETURN public.phase42_err('VERSION_CONFLICT', 'Phiên bản thành viên đã thay đổi.');
+    END IF;
+
+    SELECT coalesce(nullif(trim(p.display_name), ''), nullif(trim(p.email), ''), p_target_user_id::text)
+      INTO v_display_name
+    FROM public.profiles p
+    WHERE p.id = p_target_user_id;
+
+    v_athlete_id := coalesce(
+      v_left.athlete_id,
+      public.wave5_ensure_athlete_for_club_member(
+        p_target_user_id,
+        v_club.id,
+        v_display_name
+      )
+    );
+
+    UPDATE public.club_members
+    SET status = 'active',
+        left_at = NULL,
+        membership_type = v_membership_type,
+        athlete_id = v_athlete_id,
+        joined_at = coalesce(joined_at, now()),
+        version = version + 1,
+        updated_at = now()
+    WHERE id = v_left.id
+    RETURNING * INTO v_member;
+
+    v_reactivated := true;
+  ELSE
+    IF EXISTS (
+      SELECT 1
+      FROM public.club_members
+      WHERE club_id = v_club.id
+        AND user_id = p_target_user_id
+        AND status = 'removed'
+    ) THEN
+      RETURN public.phase42_err(
+        'CONFLICT',
+        'Thành viên đã bị gỡ (removed). Dùng quy trình restore riêng.'
+      );
+    END IF;
+
+    SELECT coalesce(nullif(trim(p.display_name), ''), nullif(trim(p.email), ''), p_target_user_id::text)
+      INTO v_display_name
+    FROM public.profiles p
+    WHERE p.id = p_target_user_id;
+
+    v_athlete_id := public.wave5_ensure_athlete_for_club_member(
+      p_target_user_id,
+      v_club.id,
+      v_display_name
+    );
+
+    INSERT INTO public.club_members (
+      tenant_id, club_id, user_id, athlete_id, membership_type, status, version
+    )
+    VALUES (
+      v_club.tenant_id, v_club.id, p_target_user_id, v_athlete_id,
+      v_membership_type, 'active', 1
+    )
+    RETURNING * INTO v_member;
+  END IF;
+
+  PERFORM public.phase42_write_audit(
+    'club.member.add',
+    'club_member',
+    v_member.id::text,
+    v_club.tenant_id,
+    v_club.id,
+    jsonb_build_object(
+      'request_id', p_request_id,
+      'target_user_id', p_target_user_id,
+      'member_id', v_member.id,
+      'athlete_id', v_member.athlete_id,
+      'reactivated', v_reactivated,
+      'membership_type', v_member.membership_type
+    )
+  );
+
+  v_resp := jsonb_build_object(
+    'ok', true,
+    'data', jsonb_build_object(
+      'id', v_member.id,
+      'club_id', v_club.id,
+      'user_id', v_member.user_id,
+      'athlete_id', v_member.athlete_id,
+      'status', v_member.status,
+      'membership_type', v_member.membership_type,
+      'reactivated', v_reactivated
+    ),
+    'version', v_member.version
+  );
+
+  PERFORM public.phase42_idempotency_put(
+    p_request_id,
+    v_club.tenant_id,
     'club_add_member',
-    'club_restore_member',
-    'club_review_membership_request'
-  ]
-  LOOP
-    SELECT pg_get_functiondef(p.oid) INTO v_def
-    FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public' AND p.proname = v_name
-    ORDER BY p.oid
-    LIMIT 1;
-    IF v_def IS NULL THEN
-      RAISE NOTICE 'WAVE5_APPLY: % not present — skip athlete compat rewrite', v_name;
-      CONTINUE;
+    v_member.id::text,
+    v_resp
+  );
+
+  RETURN v_resp::json;
+EXCEPTION
+  WHEN unique_violation THEN
+    RETURN public.phase42_err('ALREADY_MEMBER', 'Người dùng đã là thành viên active.');
+  WHEN OTHERS THEN
+    IF SQLERRM LIKE 'ATHLETE_FACILITY_VENUE_REQUIRED%' THEN
+      RETURN public.phase42_err(
+        'ATHLETE_FACILITY_VENUE_REQUIRED',
+        'CLB chưa đăng ký cụm sân hợp lệ. Không thể tạo hồ sơ VĐV mới khi thiếu cơ sở.'
+      );
     END IF;
-    v_next := regexp_replace(
-      v_def,
-      'public\.phase42n_ensure_athlete_for_user[[:space:]]*\([[:space:]]*([^,]+),[[:space:]]*v_club\.tenant_id[[:space:]]*,',
-      'public.wave5_ensure_athlete_for_club_member(\1, v_club.id,',
-      'g'
+    RAISE;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.club_add_member(uuid, text, uuid, text, integer) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.club_restore_member(
+  p_request_id uuid,
+  p_club_id text,
+  p_target_user_id uuid,
+  p_expected_version integer default null
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_cached jsonb;
+  v_club public.clubs%rowtype;
+  v_active public.club_members%rowtype;
+  v_removed public.club_members%rowtype;
+  v_member public.club_members%rowtype;
+  v_from_version integer;
+  v_athlete_id uuid;
+  v_display_name text;
+  v_resp jsonb;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN public.phase42_err('NOT_AUTHENTICATED', 'Chưa đăng nhập.');
+  END IF;
+
+  IF p_request_id IS NULL THEN
+    RETURN public.phase42_err('REQUEST_ID_REQUIRED', 'Thiếu request_id.');
+  END IF;
+
+  IF p_target_user_id IS NULL THEN
+    RETURN public.phase42_err('VALIDATION', 'Thiếu target user_id.');
+  END IF;
+
+  v_cached := public.phase42_idempotency_get(p_request_id, 'club_restore_member');
+  IF v_cached IS NOT NULL THEN
+    RETURN v_cached::json;
+  END IF;
+
+  SELECT * INTO v_club
+  FROM public.clubs
+  WHERE id = trim(coalesce(p_club_id, ''))
+    AND deleted_at IS NULL
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN public.phase42_err('NOT_FOUND', 'Không tìm thấy CLB.');
+  END IF;
+
+  IF NOT (
+    public.phase42_is_platform_super_admin()
+    OR public.phase42_can_review_membership(v_club.id)
+  ) THEN
+    RETURN public.phase42_err('FORBIDDEN', 'Không có quyền khôi phục thành viên.');
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = p_target_user_id) THEN
+    RETURN public.phase42_err('NOT_FOUND', 'Không tìm thấy người dùng đích.');
+  END IF;
+
+  SELECT * INTO v_active
+  FROM public.club_members
+  WHERE club_id = v_club.id
+    AND user_id = p_target_user_id
+    AND status = 'active'
+  FOR UPDATE;
+  IF FOUND THEN
+    RETURN public.phase42_err('ALREADY_MEMBER', 'Người dùng đã là thành viên active.');
+  END IF;
+
+  SELECT * INTO v_removed
+  FROM public.club_members
+  WHERE club_id = v_club.id
+    AND user_id = p_target_user_id
+    AND status = 'removed'
+  ORDER BY left_at DESC NULLS LAST, updated_at DESC, created_at DESC
+  LIMIT 1
+  FOR UPDATE;
+
+  IF FOUND THEN
+    IF p_expected_version IS NOT NULL AND v_removed.version IS DISTINCT FROM p_expected_version THEN
+      RETURN public.phase42_err('VERSION_CONFLICT', 'Phiên bản thành viên đã thay đổi.');
+    END IF;
+
+    v_from_version := v_removed.version;
+
+    SELECT coalesce(nullif(trim(p.display_name), ''), nullif(trim(p.email), ''), p_target_user_id::text)
+      INTO v_display_name
+    FROM public.profiles p
+    WHERE p.id = p_target_user_id;
+
+    v_athlete_id := coalesce(
+      v_removed.athlete_id,
+      public.wave5_ensure_athlete_for_club_member(
+        p_target_user_id,
+        v_club.id,
+        v_display_name
+      )
     );
-    v_next := regexp_replace(
-      v_next,
-      'public\.phase42n_ensure_athlete_for_user[[:space:]]*\([[:space:]]*([^,]+),[[:space:]]*v_row\.tenant_id[[:space:]]*,',
-      'public.wave5_ensure_athlete_for_club_member(\1, v_row.club_id,',
-      'g'
+
+    UPDATE public.club_members
+    SET status = 'active',
+        left_at = NULL,
+        athlete_id = v_athlete_id,
+        version = version + 1,
+        updated_at = now()
+    WHERE id = v_removed.id
+    RETURNING * INTO v_member;
+
+    PERFORM public.phase42_write_audit(
+      'club.member.restore',
+      'club_member',
+      v_member.id::text,
+      v_club.tenant_id,
+      v_club.id,
+      jsonb_build_object(
+        'request_id', p_request_id,
+        'target_user_id', p_target_user_id,
+        'member_id', v_member.id,
+        'from_version', v_from_version,
+        'prior_status', 'removed',
+        'target_status', 'active',
+        'membership_type', v_member.membership_type
+      )
     );
-    IF v_next ~ 'phase42n_ensure_athlete_for_user'
-       AND (v_next ~ 'v_club\.tenant_id' OR v_next ~ 'v_row\.tenant_id') THEN
-      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: % still passes Club tenant_id into athlete helper', v_name;
+
+    v_resp := jsonb_build_object(
+      'ok', true,
+      'data', jsonb_build_object(
+        'id', v_member.id,
+        'club_id', v_club.id,
+        'user_id', v_member.user_id,
+        'athlete_id', v_member.athlete_id,
+        'status', v_member.status,
+        'membership_type', v_member.membership_type,
+        'restored', true,
+        'from_version', v_from_version
+      ),
+      'version', v_member.version
+    );
+
+    PERFORM public.phase42_idempotency_put(
+      p_request_id,
+      v_club.tenant_id,
+      'club_restore_member',
+      v_member.id::text,
+      v_resp
+    );
+
+    RETURN v_resp::json;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.club_members
+    WHERE club_id = v_club.id
+      AND user_id = p_target_user_id
+      AND status = 'left'
+  ) THEN
+    RETURN public.phase42_err(
+      'CONFLICT',
+      'Thành viên đang ở trạng thái left. Dùng club_add_member để tái kích hoạt.'
+    );
+  END IF;
+
+  RETURN public.phase42_err(
+    'NOT_FOUND',
+    'Không có lịch sử removed. Dùng club_add_member để thêm thành viên mới.'
+  );
+EXCEPTION
+  WHEN unique_violation THEN
+    RETURN public.phase42_err('ALREADY_MEMBER', 'Người dùng đã là thành viên active.');
+  WHEN OTHERS THEN
+    IF SQLERRM LIKE 'ATHLETE_FACILITY_VENUE_REQUIRED%' THEN
+      RETURN public.phase42_err(
+        'ATHLETE_FACILITY_VENUE_REQUIRED',
+        'CLB chưa đăng ký cụm sân hợp lệ. Không thể tạo hồ sơ VĐV mới khi thiếu cơ sở.'
+      );
     END IF;
-    IF v_next IS DISTINCT FROM v_def THEN
-      EXECUTE v_next;
+    RAISE;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.club_restore_member(uuid, text, uuid, integer) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.club_review_membership_request(
+  p_request_id uuid,
+  p_membership_request_id uuid,
+  p_decision text,
+  p_review_note text default null,
+  p_expected_version integer default null
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row public.club_membership_requests_v42%rowtype;
+  v_decision text := lower(trim(coalesce(p_decision, '')));
+  v_member_id uuid;
+  v_athlete_id uuid;
+  v_resp json;
+  v_display_name text;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN public.phase42_err('NOT_AUTHENTICATED', 'Chưa đăng nhập.');
+  END IF;
+
+  IF v_decision NOT IN ('approved', 'rejected') THEN
+    RETURN public.phase42_err('VALIDATION', 'decision phải là approved hoặc rejected.');
+  END IF;
+
+  SELECT * INTO v_row
+  FROM public.club_membership_requests_v42
+  WHERE id = p_membership_request_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN public.phase42_err('NOT_FOUND', 'Không tìm thấy yêu cầu.');
+  END IF;
+
+  IF NOT public.phase42_has_gov_role(v_row.club_id, ARRAY['club_owner','president','vice_president'])
+     AND NOT public.phase42_is_platform_super_admin() THEN
+    RETURN public.phase42_err('FORBIDDEN', 'Không có quyền duyệt yêu cầu.');
+  END IF;
+
+  IF v_row.status <> 'pending' THEN
+    RETURN public.phase42_err('CONFLICT', 'Yêu cầu không còn ở trạng thái pending.');
+  END IF;
+
+  IF p_expected_version IS NOT NULL AND v_row.version IS DISTINCT FROM p_expected_version THEN
+    RETURN public.phase42_err('VERSION_CONFLICT', 'Phiên bản yêu cầu đã thay đổi.');
+  END IF;
+
+  UPDATE public.club_membership_requests_v42
+  SET status = v_decision,
+      reviewed_by = auth.uid(),
+      reviewed_at = now(),
+      review_note = p_review_note,
+      version = version + 1,
+      updated_at = now()
+  WHERE id = v_row.id
+  RETURNING * INTO v_row;
+
+  IF v_decision = 'approved' THEN
+    SELECT id, athlete_id INTO v_member_id, v_athlete_id
+    FROM public.club_members
+    WHERE club_id = v_row.club_id
+      AND user_id = v_row.user_id
+      AND status = 'active';
+
+    IF v_member_id IS NULL THEN
+      SELECT coalesce(nullif(trim(p.display_name), ''), nullif(trim(p.email), ''), v_row.user_id::text)
+        INTO v_display_name
+      FROM public.profiles p
+      WHERE p.id = v_row.user_id;
+
+      v_athlete_id := public.wave5_ensure_athlete_for_club_member(
+        v_row.user_id,
+        v_row.club_id,
+        v_display_name
+      );
+
+      INSERT INTO public.club_members (
+        tenant_id, club_id, user_id, athlete_id, membership_type, status, version
+      )
+      VALUES (
+        v_row.tenant_id, v_row.club_id, v_row.user_id, v_athlete_id, 'regular', 'active', 1
+      )
+      RETURNING id INTO v_member_id;
+    ELSIF v_athlete_id IS NULL THEN
+      SELECT coalesce(nullif(trim(p.display_name), ''), nullif(trim(p.email), ''), v_row.user_id::text)
+        INTO v_display_name
+      FROM public.profiles p
+      WHERE p.id = v_row.user_id;
+
+      v_athlete_id := public.wave5_ensure_athlete_for_club_member(
+        v_row.user_id,
+        v_row.club_id,
+        v_display_name
+      );
+
+      UPDATE public.club_members
+      SET athlete_id = v_athlete_id,
+          updated_at = now(),
+          version = version + 1
+      WHERE id = v_member_id;
     END IF;
-  END LOOP;
-END $$;
+  END IF;
+
+  PERFORM public.phase42_write_audit(
+    'club.membership_request.review',
+    'club_membership_request',
+    v_row.id::text,
+    v_row.tenant_id,
+    v_row.club_id,
+    jsonb_build_object(
+      'decision', v_decision,
+      'request_id', p_request_id,
+      'member_id', v_member_id,
+      'athlete_id', v_athlete_id
+    )
+  );
+
+  v_resp := jsonb_build_object(
+    'ok', true,
+    'data', jsonb_build_object(
+      'id', v_row.id,
+      'club_id', v_row.club_id,
+      'user_id', v_row.user_id,
+      'status', v_decision,
+      'member_id', v_member_id,
+      'athlete_id', v_athlete_id
+    ),
+    'version', v_row.version
+  );
+
+  PERFORM public.phase42_idempotency_put(
+    p_request_id,
+    v_row.tenant_id,
+    'club_review_membership_request',
+    v_row.id::text,
+    v_resp
+  );
+
+  RETURN v_resp::json;
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLERRM LIKE 'ATHLETE_FACILITY_VENUE_REQUIRED%' THEN
+      RETURN public.phase42_err(
+        'ATHLETE_FACILITY_VENUE_REQUIRED',
+        'CLB chưa đăng ký cụm sân hợp lệ. Không thể tạo hồ sơ VĐV mới khi thiếu cơ sở.'
+      );
+    END IF;
+    RAISE;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.club_review_membership_request(uuid, uuid, text, text, integer) TO authenticated;
 
 -- =====================================================================
 -- 4. Club RLS — canonical tenant entitlement. Do not globally retire helper.

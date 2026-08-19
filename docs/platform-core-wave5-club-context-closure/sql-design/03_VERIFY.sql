@@ -27,6 +27,10 @@ DECLARE
   v_helper_fn text;
   v_delete_rule text;
   v_phase42_global text;
+  v_dup_name int;
+  v_dup_code int;
+  v_prosecdef boolean;
+  v_proconfig text[];
 BEGIN
   SELECT count(*) INTO v_club_count FROM public.clubs;
   SELECT count(*) INTO v_member_count FROM public.club_members;
@@ -206,15 +210,86 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: phase42_can_assign_club_owner still uses Venue ID == Tenant ID';
   END IF;
 
-  SELECT pg_get_functiondef(p.oid) INTO v_helper_fn
-  FROM pg_proc p
-  JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public' AND p.proname = 'club_add_member'
-  LIMIT 1;
-  IF v_helper_fn IS NOT NULL
-     AND v_helper_fn ILIKE '%phase42n_ensure_athlete_for_user%'
-     AND v_helper_fn ILIKE '%v_club.tenant_id%' THEN
+  SELECT pg_get_functiondef('public.club_add_member(uuid,text,uuid,text,integer)'::regprocedure)
+    INTO v_helper_fn;
+  IF v_helper_fn IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_add_member(uuid,text,uuid,text,integer) missing';
+  END IF;
+  IF position('wave5_ensure_athlete_for_club_member' in v_helper_fn) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_add_member missing explicit wave5 athlete helper';
+  END IF;
+  IF v_helper_fn ~ 'phase42n_ensure_athlete_for_user[[:space:]]*\([^)]*v_club\.tenant_id' THEN
     RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_add_member still passes Club tenant_id to athlete helper';
+  END IF;
+  SELECT p.prosecdef, p.proconfig INTO v_prosecdef, v_proconfig
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE p.oid = 'public.club_add_member(uuid,text,uuid,text,integer)'::regprocedure;
+  IF v_prosecdef IS NOT TRUE THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_add_member is not SECURITY DEFINER';
+  END IF;
+  IF coalesce(array_to_string(v_proconfig, ','), '') NOT ILIKE '%search_path=public%' THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_add_member search_path not public';
+  END IF;
+  IF NOT has_function_privilege(
+    'authenticated',
+    'public.club_add_member(uuid,text,uuid,text,integer)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated GRANT EXECUTE missing on club_add_member';
+  END IF;
+
+  IF to_regprocedure('public.club_restore_member(uuid,text,uuid,integer)') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_restore_member(uuid,text,uuid,integer) missing';
+  END IF;
+  SELECT pg_get_functiondef('public.club_restore_member(uuid,text,uuid,integer)'::regprocedure)
+    INTO v_helper_fn;
+  IF position('wave5_ensure_athlete_for_club_member' in v_helper_fn) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_restore_member missing explicit wave5 athlete helper';
+  END IF;
+  IF v_helper_fn ~ 'phase42n_ensure_athlete_for_user[[:space:]]*\([^)]*v_club\.tenant_id' THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_restore_member still passes Club tenant_id to athlete helper';
+  END IF;
+
+  IF to_regprocedure('public.club_review_membership_request(uuid,uuid,text,text,integer)') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_review_membership_request(uuid,uuid,text,text,integer) missing';
+  END IF;
+  SELECT pg_get_functiondef('public.club_review_membership_request(uuid,uuid,text,text,integer)'::regprocedure)
+    INTO v_helper_fn;
+  IF position('wave5_ensure_athlete_for_club_member' in v_helper_fn) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_review_membership_request missing explicit wave5 athlete helper';
+  END IF;
+  IF v_helper_fn ~ 'phase42n_ensure_athlete_for_user[[:space:]]*\([^)]*v_row\.tenant_id' THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_review_membership_request still passes Club tenant_id to athlete helper';
+  END IF;
+
+  SELECT pg_get_functiondef('public.wave5_ensure_athlete_for_club_member(uuid,text,text)'::regprocedure)
+    INTO v_helper_fn;
+  IF position('ATHLETE_FACILITY_VENUE_REQUIRED' in v_helper_fn) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: wave5_ensure_athlete_for_club_member missing no-cluster fail-closed';
+  END IF;
+  IF v_helper_fn ~ 'p_tenant_id' OR v_helper_fn ILIKE '%v_club.tenant_id%' THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: wave5 athlete helper must not take Club Tenant as Venue';
+  END IF;
+
+  SELECT count(*) INTO v_dup_name FROM (
+    SELECT c.tenant_id, lower(c.name)
+    FROM public.clubs c
+    WHERE c.deleted_at IS NULL
+    GROUP BY c.tenant_id, lower(c.name)
+    HAVING count(*) > 1
+  ) d;
+  IF v_dup_name > 0 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: POST_MAP_DUPLICATE_CLUB_NAME_COUNT=%', v_dup_name;
+  END IF;
+  SELECT count(*) INTO v_dup_code FROM (
+    SELECT c.tenant_id, c.code
+    FROM public.clubs c
+    WHERE c.deleted_at IS NULL AND c.code IS NOT NULL
+    GROUP BY c.tenant_id, c.code
+    HAVING count(*) > 1
+  ) d;
+  IF v_dup_code > 0 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: POST_MAP_DUPLICATE_CLUB_CODE_COUNT=%', v_dup_code;
   END IF;
 
   SELECT pg_get_functiondef(p.oid) INTO v_phase42_global

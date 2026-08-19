@@ -29,6 +29,11 @@ DECLARE
   v_mapped int;
   v_mismatch int;
   v_delete_rule text;
+  v_overload int;
+  v_rpc_def text;
+  v_dup_name int;
+  v_dup_code int;
+  v_diag text;
 BEGIN
   IF to_regclass('public.clubs') IS NULL THEN
     RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: public.clubs missing';
@@ -189,6 +194,59 @@ BEGIN
       v_clubs_fk, v_members_fk, v_gov_fk, v_req_fk;
   END IF;
 
+  -- Exact RPC signatures (to_regprocedure). No proname LIMIT 1 replacement.
+  IF to_regprocedure('public.club_add_member(uuid,text,uuid,text,integer)') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: RPC_SIGNATURE_DRIFT club_add_member(uuid,text,uuid,text,integer) missing';
+  END IF;
+  IF to_regprocedure('public.club_restore_member(uuid,text,uuid,integer)') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: RPC_SIGNATURE_DRIFT club_restore_member(uuid,text,uuid,integer) missing';
+  END IF;
+  IF to_regprocedure('public.club_review_membership_request(uuid,uuid,text,text,integer)') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: RPC_SIGNATURE_DRIFT club_review_membership_request(uuid,uuid,text,text,integer) missing';
+  END IF;
+
+  SELECT count(*) INTO v_overload
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'club_add_member';
+  IF v_overload <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: RPC_SIGNATURE_DRIFT club_add_member overload_count=%', v_overload;
+  END IF;
+  SELECT count(*) INTO v_overload
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'club_restore_member';
+  IF v_overload <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: RPC_SIGNATURE_DRIFT club_restore_member overload_count=%', v_overload;
+  END IF;
+  SELECT count(*) INTO v_overload
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'club_review_membership_request';
+  IF v_overload <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: RPC_SIGNATURE_DRIFT club_review_membership_request overload_count=%', v_overload;
+  END IF;
+
+  v_rpc_def := pg_get_functiondef('public.club_add_member(uuid,text,uuid,text,integer)'::regprocedure);
+  IF position('phase42_can_review_membership' in v_rpc_def) = 0
+     OR position('club_members' in v_rpc_def) = 0
+     OR position('phase42_idempotency' in v_rpc_def) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: RPC_SIGNATURE_DRIFT club_add_member missing certified semantics';
+  END IF;
+  IF position('wave5_ensure_athlete_for_club_member' in v_rpc_def) = 0
+     AND position('phase42n_ensure_athlete_for_user' in v_rpc_def) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: RPC_SIGNATURE_DRIFT club_add_member athlete-ensure call missing';
+  END IF;
+
+  v_rpc_def := pg_get_functiondef('public.club_restore_member(uuid,text,uuid,integer)'::regprocedure);
+  IF position('phase42_can_review_membership' in v_rpc_def) = 0
+     OR position('club_members' in v_rpc_def) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: RPC_SIGNATURE_DRIFT club_restore_member missing certified semantics';
+  END IF;
+
+  v_rpc_def := pg_get_functiondef('public.club_review_membership_request(uuid,uuid,text,text,integer)'::regprocedure);
+  IF position('club_membership_requests_v42' in v_rpc_def) = 0
+     OR position('VERSION_CONFLICT' in v_rpc_def) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: RPC_SIGNATURE_DRIFT club_review_membership_request missing certified semantics';
+  END IF;
+
   SELECT count(*) INTO v_club_count FROM public.clubs;
   SELECT count(*) INTO v_member_count FROM public.club_members;
   SELECT count(*) INTO v_gov_count FROM public.club_governance_assignments;
@@ -221,7 +279,53 @@ BEGIN
     IF v_mismatch > 0 THEN
       RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: % club_membership_requests_v42.tenant_id disagree with parent Club', v_mismatch;
     END IF;
-    RAISE NOTICE 'WAVE5_PRECHECK_OK state=CANONICAL clubs=% members=% gov=% req=% — do not re-translate',
+
+    SELECT count(*) INTO v_dup_name FROM (
+      SELECT c.tenant_id, lower(c.name)
+      FROM public.clubs c
+      WHERE c.deleted_at IS NULL
+      GROUP BY c.tenant_id, lower(c.name)
+      HAVING count(*) > 1
+    ) d;
+    IF v_dup_name > 0 THEN
+      SELECT string_agg(format('tenant=%s name=%s count=%s ids=%s', d.tenant_id, d.n, d.cnt, d.ids), ' | ')
+        INTO v_diag
+      FROM (
+        SELECT c.tenant_id, lower(c.name) AS n, count(*)::int AS cnt,
+               string_agg(c.id, ',' ORDER BY c.id) AS ids
+        FROM public.clubs c
+        WHERE c.deleted_at IS NULL
+        GROUP BY c.tenant_id, lower(c.name)
+        HAVING count(*) > 1
+      ) d;
+      RAISE NOTICE 'WAVE5_PRECHECK_COLLISION_NAME %', v_diag;
+      RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: POST_MAP_DUPLICATE_CLUB_NAME_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+        v_dup_name;
+    END IF;
+    SELECT count(*) INTO v_dup_code FROM (
+      SELECT c.tenant_id, c.code
+      FROM public.clubs c
+      WHERE c.deleted_at IS NULL AND c.code IS NOT NULL
+      GROUP BY c.tenant_id, c.code
+      HAVING count(*) > 1
+    ) d;
+    IF v_dup_code > 0 THEN
+      SELECT string_agg(format('tenant=%s code=%s count=%s ids=%s', d.tenant_id, d.code, d.cnt, d.ids), ' | ')
+        INTO v_diag
+      FROM (
+        SELECT c.tenant_id, c.code, count(*)::int AS cnt,
+               string_agg(c.id, ',' ORDER BY c.id) AS ids
+        FROM public.clubs c
+        WHERE c.deleted_at IS NULL AND c.code IS NOT NULL
+        GROUP BY c.tenant_id, c.code
+        HAVING count(*) > 1
+      ) d;
+      RAISE NOTICE 'WAVE5_PRECHECK_COLLISION_CODE %', v_diag;
+      RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: POST_MAP_DUPLICATE_CLUB_CODE_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+        v_dup_code;
+    END IF;
+
+    RAISE NOTICE 'WAVE5_PRECHECK_OK state=CANONICAL clubs=% members=% gov=% req=% POST_MAP_DUPLICATE_CLUB_NAME_COUNT=0 POST_MAP_DUPLICATE_CLUB_CODE_COUNT=0 — do not re-translate',
       v_club_count, v_member_count, v_gov_count, v_req_count;
     RETURN;
   END IF;
@@ -316,7 +420,58 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: % club_membership_requests_v42.tenant_id disagree with parent Club', v_mismatch;
   END IF;
 
-  RAISE NOTICE 'WAVE5_PRECHECK_OK state=LEGACY clubs=% members=% gov=% req=% mapped=%',
+  -- POST_MAP uniqueness: Venue ID → venues.tenant_id collapses namespaces. Fail closed. No rename.
+  SELECT count(*) INTO v_dup_name FROM (
+    SELECT v.tenant_id AS canonical_tenant_id, lower(c.name) AS normalized_name
+    FROM public.clubs c
+    JOIN public.venues v ON v.id = c.tenant_id
+    WHERE c.deleted_at IS NULL
+    GROUP BY v.tenant_id, lower(c.name)
+    HAVING count(*) > 1
+  ) d;
+  IF v_dup_name > 0 THEN
+    SELECT string_agg(format('tenant=%s name=%s count=%s ids=%s', d.canonical_tenant_id, d.n, d.cnt, d.ids), ' | ')
+      INTO v_diag
+    FROM (
+      SELECT v.tenant_id AS canonical_tenant_id, lower(c.name) AS n, count(*)::int AS cnt,
+             string_agg(c.id, ',' ORDER BY c.id) AS ids
+      FROM public.clubs c
+      JOIN public.venues v ON v.id = c.tenant_id
+      WHERE c.deleted_at IS NULL
+      GROUP BY v.tenant_id, lower(c.name)
+      HAVING count(*) > 1
+    ) d;
+    RAISE NOTICE 'WAVE5_PRECHECK_COLLISION_NAME %', v_diag;
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: POST_MAP_DUPLICATE_CLUB_NAME_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+      v_dup_name;
+  END IF;
+
+  SELECT count(*) INTO v_dup_code FROM (
+    SELECT v.tenant_id AS canonical_tenant_id, c.code
+    FROM public.clubs c
+    JOIN public.venues v ON v.id = c.tenant_id
+    WHERE c.deleted_at IS NULL AND c.code IS NOT NULL
+    GROUP BY v.tenant_id, c.code
+    HAVING count(*) > 1
+  ) d;
+  IF v_dup_code > 0 THEN
+    SELECT string_agg(format('tenant=%s code=%s count=%s ids=%s', d.canonical_tenant_id, d.code, d.cnt, d.ids), ' | ')
+      INTO v_diag
+    FROM (
+      SELECT v.tenant_id AS canonical_tenant_id, c.code, count(*)::int AS cnt,
+             string_agg(c.id, ',' ORDER BY c.id) AS ids
+      FROM public.clubs c
+      JOIN public.venues v ON v.id = c.tenant_id
+      WHERE c.deleted_at IS NULL AND c.code IS NOT NULL
+      GROUP BY v.tenant_id, c.code
+      HAVING count(*) > 1
+    ) d;
+    RAISE NOTICE 'WAVE5_PRECHECK_COLLISION_CODE %', v_diag;
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: POST_MAP_DUPLICATE_CLUB_CODE_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+      v_dup_code;
+  END IF;
+
+  RAISE NOTICE 'WAVE5_PRECHECK_OK state=LEGACY clubs=% members=% gov=% req=% mapped=% POST_MAP_DUPLICATE_CLUB_NAME_COUNT=0 POST_MAP_DUPLICATE_CLUB_CODE_COUNT=0',
     v_club_count, v_member_count, v_gov_count, v_req_count, v_mapped;
 END $$;
 

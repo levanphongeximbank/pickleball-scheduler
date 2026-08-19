@@ -328,6 +328,8 @@ test("Wave5 docs do not claim PC_CLUB_01 closed or SQL applied", () => {
   const readme = readSrc("docs/platform-core-wave5-club-context-closure/README.md");
   assert.match(readme, /PC_CLUB_01=OPEN_PENDING_ACCEPTANCE/);
   assert.match(readme, /SQL_EXECUTED=NO/);
+  assert.match(readme, /ROUND2_BLOCKER_01=REMEDIATED/);
+  assert.match(readme, /SQL_DESIGN_REVIEW_ROUND2_REMEDIATION=COMPLETE_PENDING_ROUND3_OWNER_REVIEW/);
   assert.doesNotMatch(readme, /\*\*PC_CLUB_01=CLOSED\*\*/);
   assert.doesNotMatch(readme, /SQL_APPLIED=/);
 });
