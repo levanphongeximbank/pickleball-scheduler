@@ -258,6 +258,9 @@ test("Athlete no-cluster policy is explicit and does not invent Club→Venue own
   assert.match(resolve, /registered_cluster_id/);
   assert.match(resolve, /court_clusters/);
   assert.match(resolve, /venues v ON v\.id = cc\.venue_id/);
+  assert.match(resolve, /v\.tenant_id = c\.tenant_id/);
+  assert.match(resolve, /REGISTERED_CLUSTER_TENANT_MISMATCH/);
+  assert.doesNotMatch(resolve, /cc\.venue_id = c\.tenant_id/);
   assert.doesNotMatch(resolve, /ORDER BY cc\.id/);
 });
 
@@ -280,4 +283,76 @@ test("Round 2 docs: blockers remediated, SQL review not claimed PASS", () => {
   assert.match(inventory, /PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL\.sql` \| YES \| YES/);
   assert.match(inventory, /docs\/v5\/phase45a4c1\/PHASE_45A4C1_MEMBER_RPC\.sql/);
   assert.match(inventory, /docs\/v5\/PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL\.sql/);
+});
+
+test("ATHLETE_INTERNAL_HELPER_AUTHENTICATED_EXECUTE_DESIGN=DENY", () => {
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const apply = uncommented(src);
+  const verify = uncommented(readPkg("03_VERIFY.sql"));
+  assert.match(src, /WAVE5_ATHLETE_HELPER_DIRECT_AUTHENTICATED_EXECUTE=DENY/);
+  assert.match(
+    apply,
+    /REVOKE ALL ON FUNCTION public\.wave5_ensure_athlete_for_club_member\(uuid, text, text\) FROM public, anon, authenticated/
+  );
+  assert.match(
+    apply,
+    /REVOKE ALL ON FUNCTION public\.wave5_resolve_club_facility_venue_id\(text\) FROM public, anon, authenticated/
+  );
+  assert.doesNotMatch(
+    apply,
+    /GRANT EXECUTE ON FUNCTION public\.wave5_ensure_athlete_for_club_member\(uuid, text, text\) TO authenticated/
+  );
+  assert.doesNotMatch(
+    apply,
+    /GRANT EXECUTE ON FUNCTION public\.wave5_resolve_club_facility_venue_id\(text\) TO authenticated/
+  );
+  assert.match(
+    apply,
+    /GRANT EXECUTE ON FUNCTION public\.wave5_ensure_athlete_for_club_member\(uuid, text, text\) TO service_role/
+  );
+  assert.match(apply, /GRANT EXECUTE ON FUNCTION public\.club_add_member\(uuid, text, uuid, text, integer\) TO authenticated/);
+  assert.match(apply, /GRANT EXECUTE ON FUNCTION public\.club_restore_member\(uuid, text, uuid, integer\) TO authenticated/);
+  assert.match(
+    apply,
+    /GRANT EXECUTE ON FUNCTION public\.club_review_membership_request\(uuid, uuid, text, text, integer\) TO authenticated/
+  );
+  assert.match(verify, /has_function_privilege\(\s*'authenticated',\s*'public\.wave5_ensure_athlete_for_club_member/);
+  assert.match(verify, /authenticated EXECUTE must be DENIED on wave5_ensure_athlete_for_club_member/);
+  assert.match(verify, /authenticated EXECUTE must be DENIED on wave5_resolve_club_facility_venue_id/);
+  assert.match(verify, /authenticated GRANT EXECUTE missing on club_add_member/);
+});
+
+test("REGISTERED_CLUSTER tenant binding precheck helper verify", () => {
+  const precheck = uncommented(readPkg("01_PRECHECK.sql"));
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const verify = uncommented(readPkg("03_VERIFY.sql"));
+  assert.match(precheck, /REGISTERED_CLUSTER_ORPHAN_COUNT/);
+  assert.match(precheck, /REGISTERED_CLUSTER_CROSS_TENANT_COUNT/);
+  assert.match(precheck, /club_v\.tenant_id IS DISTINCT FROM cluster_v\.tenant_id/);
+  assert.match(precheck, /v\.tenant_id IS DISTINCT FROM c\.tenant_id/);
+  assert.match(precheck, /JOIN public\.venues club_v ON club_v\.id = c\.tenant_id/);
+  assert.doesNotMatch(precheck, /c\.tenant_id\s*=\s*cc\.venue_id/);
+  assert.match(apply, /v\.tenant_id = c\.tenant_id/);
+  assert.match(apply, /CLUSTER_TENANT_MISMATCH/);
+  assert.match(verify, /REGISTERED_CLUSTER_ORPHAN_COUNT=/);
+  assert.match(verify, /REGISTERED_CLUSTER_CROSS_TENANT_COUNT=/);
+  assert.match(verify, /facility resolver missing canonical Tenant binding/);
+});
+
+test("Round 3 docs: helper privilege and cluster binding, SQL review not claimed PASS", () => {
+  const readme = fs.readFileSync(
+    path.join(process.cwd(), "docs/platform-core-wave5-club-context-closure/README.md"),
+    "utf8"
+  );
+  const sqlReadme = readPkg("00_README.md");
+  assert.match(readme, /ROUND3_BLOCKER_01_INTERNAL_HELPER_PRIVILEGE=FIXED/);
+  assert.match(readme, /ROUND3_BLOCKER_02_REGISTERED_CLUSTER_TENANT_BINDING=FIXED/);
+  assert.match(readme, /SQL_DESIGN_REVIEW_ROUND3_REMEDIATION=COMPLETE_PENDING_ROUND4_OWNER_REVIEW/);
+  assert.match(readme, /ATHLETE_EXISTING_REUSE_POLICY=APPROVED/);
+  assert.match(readme, /ATHLETE_NEW_CREATE_NO_FACILITY_POLICY=FAIL_CLOSED_ATHLETE_FACILITY_VENUE_REQUIRED/);
+  assert.match(sqlReadme, /REGISTERED_CLUSTER_ORPHAN_PRECHECK=YES/);
+  assert.match(sqlReadme, /REGISTERED_CLUSTER_CROSS_TENANT_PRECHECK=YES/);
+  assert.match(sqlReadme, /REGISTERED_CLUSTER_RUNTIME_TENANT_BINDING=YES/);
+  assert.match(sqlReadme, /REGISTERED_CLUSTER_VERIFY=YES/);
+  assert.doesNotMatch(readme, /SQL_DESIGN_REVIEWED_PASS=YES/);
 });

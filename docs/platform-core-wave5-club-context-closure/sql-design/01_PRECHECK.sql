@@ -34,6 +34,8 @@ DECLARE
   v_dup_name int;
   v_dup_code int;
   v_diag text;
+  v_cluster_orphan int;
+  v_cluster_xtenant int;
 BEGIN
   IF to_regclass('public.clubs') IS NULL THEN
     RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: public.clubs missing';
@@ -325,7 +327,42 @@ BEGIN
         v_dup_code;
     END IF;
 
-    RAISE NOTICE 'WAVE5_PRECHECK_OK state=CANONICAL clubs=% members=% gov=% req=% POST_MAP_DUPLICATE_CLUB_NAME_COUNT=0 POST_MAP_DUPLICATE_CLUB_CODE_COUNT=0 — do not re-translate',
+    -- REGISTERED_CLUSTER_ORPHAN_PRECHECK / REGISTERED_CLUSTER_CROSS_TENANT_PRECHECK
+    -- Canonical: Club.tenant_id is already platform_tenants.id. Compare to cluster Venue.tenant_id.
+    -- Do not compare clubs.tenant_id = cluster.venue_id.
+    IF to_regclass('public.court_clusters') IS NULL THEN
+      SELECT count(*) INTO v_cluster_orphan
+      FROM public.clubs c
+      WHERE nullif(trim(c.registered_cluster_id), '') IS NOT NULL;
+      v_cluster_xtenant := 0;
+    ELSE
+      SELECT count(*) INTO v_cluster_orphan
+      FROM public.clubs c
+      WHERE nullif(trim(c.registered_cluster_id), '') IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM public.court_clusters cc
+          JOIN public.venues v ON v.id = cc.venue_id
+          WHERE cc.id = c.registered_cluster_id
+            AND nullif(trim(cc.venue_id), '') IS NOT NULL
+        );
+      SELECT count(*) INTO v_cluster_xtenant
+      FROM public.clubs c
+      JOIN public.court_clusters cc ON cc.id = c.registered_cluster_id
+      JOIN public.venues v ON v.id = cc.venue_id
+      WHERE nullif(trim(c.registered_cluster_id), '') IS NOT NULL
+        AND v.tenant_id IS DISTINCT FROM c.tenant_id;
+    END IF;
+    IF v_cluster_orphan > 0 THEN
+      RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: REGISTERED_CLUSTER_ORPHAN_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+        v_cluster_orphan;
+    END IF;
+    IF v_cluster_xtenant > 0 THEN
+      RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: REGISTERED_CLUSTER_CROSS_TENANT_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+        v_cluster_xtenant;
+    END IF;
+
+    RAISE NOTICE 'WAVE5_PRECHECK_OK state=CANONICAL clubs=% members=% gov=% req=% POST_MAP_DUPLICATE_CLUB_NAME_COUNT=0 POST_MAP_DUPLICATE_CLUB_CODE_COUNT=0 REGISTERED_CLUSTER_ORPHAN_COUNT=0 REGISTERED_CLUSTER_CROSS_TENANT_COUNT=0 — do not re-translate',
       v_club_count, v_member_count, v_gov_count, v_req_count;
     RETURN;
   END IF;
@@ -471,7 +508,43 @@ BEGIN
       v_dup_code;
   END IF;
 
-  RAISE NOTICE 'WAVE5_PRECHECK_OK state=LEGACY clubs=% members=% gov=% req=% mapped=% POST_MAP_DUPLICATE_CLUB_NAME_COUNT=0 POST_MAP_DUPLICATE_CLUB_CODE_COUNT=0',
+  -- REGISTERED_CLUSTER_ORPHAN_PRECHECK / REGISTERED_CLUSTER_CROSS_TENANT_PRECHECK
+  -- Legacy Club.tenant_id is Venue ID. Canonical Tenant = Club Venue.tenant_id.
+  -- Cluster canonical Tenant = cluster Venue.tenant_id. Compare Tenant IDs, not Venue IDs.
+  IF to_regclass('public.court_clusters') IS NULL THEN
+    SELECT count(*) INTO v_cluster_orphan
+    FROM public.clubs c
+    WHERE nullif(trim(c.registered_cluster_id), '') IS NOT NULL;
+    v_cluster_xtenant := 0;
+  ELSE
+    SELECT count(*) INTO v_cluster_orphan
+    FROM public.clubs c
+    WHERE nullif(trim(c.registered_cluster_id), '') IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.court_clusters cc
+        JOIN public.venues v ON v.id = cc.venue_id
+        WHERE cc.id = c.registered_cluster_id
+          AND nullif(trim(cc.venue_id), '') IS NOT NULL
+      );
+    SELECT count(*) INTO v_cluster_xtenant
+    FROM public.clubs c
+    JOIN public.venues club_v ON club_v.id = c.tenant_id
+    JOIN public.court_clusters cc ON cc.id = c.registered_cluster_id
+    JOIN public.venues cluster_v ON cluster_v.id = cc.venue_id
+    WHERE nullif(trim(c.registered_cluster_id), '') IS NOT NULL
+      AND club_v.tenant_id IS DISTINCT FROM cluster_v.tenant_id;
+  END IF;
+  IF v_cluster_orphan > 0 THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: REGISTERED_CLUSTER_ORPHAN_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+      v_cluster_orphan;
+  END IF;
+  IF v_cluster_xtenant > 0 THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: REGISTERED_CLUSTER_CROSS_TENANT_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+      v_cluster_xtenant;
+  END IF;
+
+  RAISE NOTICE 'WAVE5_PRECHECK_OK state=LEGACY clubs=% members=% gov=% req=% mapped=% POST_MAP_DUPLICATE_CLUB_NAME_COUNT=0 POST_MAP_DUPLICATE_CLUB_CODE_COUNT=0 REGISTERED_CLUSTER_ORPHAN_COUNT=0 REGISTERED_CLUSTER_CROSS_TENANT_COUNT=0',
     v_club_count, v_member_count, v_gov_count, v_req_count, v_mapped;
 END $$;
 

@@ -9,12 +9,17 @@ SQL_EXECUTED=NO
 Live/current canonical definitions in repo (latest authored body wins). `p_tenant_id` after cutover means **Platform Tenant ID**. Row `tenant_id` on Club-owned tables means **Platform Tenant ID**.
 
 ```
-ROUND2_BLOCKER_01=REMEDIATED
-DYNAMIC_RPC_TEXT_REWRITE_PRESENT=NO
-SQL_DESIGN_REVIEW_ROUND2_REMEDIATION=COMPLETE_PENDING_ROUND3_OWNER_REVIEW
+ROUND3_BLOCKER_01_INTERNAL_HELPER_PRIVILEGE=FIXED
+ROUND3_BLOCKER_02_REGISTERED_CLUSTER_TENANT_BINDING=FIXED
+WAVE5_ATHLETE_HELPER_DIRECT_AUTHENTICATED_EXECUTE=DENY
+SQL_DESIGN_REVIEW_ROUND3_REMEDIATION=COMPLETE_PENDING_ROUND4_OWNER_REVIEW
 ```
 
-**ATHLETE_NO_CLUSTER_POLICY=reuse existing athlete if any; else require registered_cluster_id → court_clusters.venue_id → venues.id; else ATHLETE_FACILITY_VENUE_REQUIRED**
+**ATHLETE_EXISTING_REUSE_POLICY=APPROVED**
+**ATHLETE_NEW_CREATE_NO_FACILITY_POLICY=FAIL_CLOSED_ATHLETE_FACILITY_VENUE_REQUIRED**
+**ATHLETE_NO_CLUSTER_POLICY=reuse existing athlete if any; else require registered_cluster_id → court_clusters.venue_id → venues.id with venues.tenant_id = clubs.tenant_id; else ATHLETE_FACILITY_VENUE_REQUIRED**
+
+Internal helpers `wave5_ensure_athlete_for_club_member` / `wave5_resolve_club_facility_venue_id`: no authenticated EXECUTE. Public Club command RPCs keep authenticated EXECUTE.
 
 | RPC | INPUT_TENANT_SEMANTIC | TABLES_WRITTEN | TENANT_ID_WRITTEN | VENUE_ID_USED | AUTHZ_HELPER | POST_WAVE5_SAFE |
 |---|---|---|---|---|---|---|

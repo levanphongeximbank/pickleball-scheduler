@@ -87,7 +87,27 @@ POST_MAP_CODE_COLLISION_GUARD=YES
 SQL_DESIGN_REVIEWED_PASS=NO
 ```
 
-**ATHLETE_NO_CLUSTER_POLICY=reuse existing athlete if any (Participant user_id uniqueness; Venue not required for reuse); else require Club.registered_cluster_id → court_clusters.venue_id → venues.id; else fail closed ATHLETE_FACILITY_VENUE_REQUIRED. No Tenant-as-Venue, no first/default Venue, no clubs.venue_id, no profiles.venue_id from the Wave 5 wrapper.**
+## Round 3 remediation (pending Round 4 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND3_REMEDIATION=COMPLETE_PENDING_ROUND4_OWNER_REVIEW
+ROUND3_BLOCKER_01_INTERNAL_HELPER_PRIVILEGE=FIXED
+ROUND3_BLOCKER_02_REGISTERED_CLUSTER_TENANT_BINDING=FIXED
+WAVE5_ATHLETE_HELPER_DIRECT_AUTHENTICATED_EXECUTE=DENY
+REGISTERED_CLUSTER_ORPHAN_PRECHECK=YES
+REGISTERED_CLUSTER_CROSS_TENANT_PRECHECK=YES
+REGISTERED_CLUSTER_RUNTIME_TENANT_BINDING=YES
+REGISTERED_CLUSTER_VERIFY=YES
+ATHLETE_EXISTING_REUSE_POLICY=APPROVED
+ATHLETE_NEW_CREATE_NO_FACILITY_POLICY=FAIL_CLOSED_ATHLETE_FACILITY_VENUE_REQUIRED
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Internal Athlete/facility helpers: REVOKE ALL FROM `public, anon, authenticated`; GRANT EXECUTE TO `service_role` only (same convention as `phase42n_ensure_athlete_for_user`). Certified outer Club RPCs keep authenticated EXECUTE. SECURITY DEFINER nested calls execute as the owner.
+
+Registered cluster: same-Tenant facility only (`venues.tenant_id = clubs.tenant_id` after cutover). Legacy precheck derives both canonical Tenants through Venue rows. Orphan and cross-Tenant counts fail closed. `club_create` `CLUSTER_TENANT_MISMATCH` is unchanged.
+
+**ATHLETE_NO_CLUSTER_POLICY=reuse existing athlete if any (Participant user_id uniqueness; Venue not required for reuse); else require Club.registered_cluster_id → court_clusters.venue_id → venues.id with venues.tenant_id = clubs.tenant_id; else fail closed ATHLETE_FACILITY_VENUE_REQUIRED. No Tenant-as-Venue, no first/default Venue, no clubs.venue_id, no profiles.venue_id from the Wave 5 wrapper.**
 
 `athletes.tenant_id` remains facility/Venue-scoped. Wave 5 does not migrate `athletes` onto `platform_tenants`.
 

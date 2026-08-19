@@ -10,9 +10,12 @@
 
 **SQL_DESIGN_AUTHORED=YES**
 **SQL_DESIGN_REVIEW_ROUND2_REMEDIATION=COMPLETE_PENDING_ROUND3_OWNER_REVIEW**
+**SQL_DESIGN_REVIEW_ROUND3_REMEDIATION=COMPLETE_PENDING_ROUND4_OWNER_REVIEW**
 **SQL_DESIGN_REVIEWED_PASS=NO**
 **ROUND2_BLOCKER_01=REMEDIATED**
 **ROUND2_BLOCKER_02=REMEDIATED**
+**ROUND3_BLOCKER_01_INTERNAL_HELPER_PRIVILEGE=FIXED**
+**ROUND3_BLOCKER_02_REGISTERED_CLUSTER_TENANT_BINDING=FIXED**
 **SQL_EXECUTED=NO**
 **RLS_DESIGN_AUTHORED=YES**
 **RLS_EXECUTED=NO**
@@ -96,7 +99,16 @@ See `sql-design/`. **DO NOT RUN.** `OWNER_SQL_EXECUTION_GO=NO`.
 
 **ROUND2_BLOCKER_02=REMEDIATED** — PRECHECK fail-closes on post-Venue→Tenant name/code uniqueness collisions (`POST_MAP_DUPLICATE_CLUB_*_COUNT`) before any APPLY mutation. No auto-rename/merge.
 
-**ATHLETE_NO_CLUSTER_POLICY=reuse existing athlete if any (Participant user_id uniqueness; Venue not required for reuse); else require Club.registered_cluster_id → court_clusters.venue_id → venues.id; else fail closed ATHLETE_FACILITY_VENUE_REQUIRED. No Tenant-as-Venue, no first/default Venue, no clubs.venue_id, no profiles.venue_id from the Wave 5 wrapper.**
+**ATHLETE_EXISTING_REUSE_POLICY=APPROVED**
+**ATHLETE_NEW_CREATE_NO_FACILITY_POLICY=FAIL_CLOSED_ATHLETE_FACILITY_VENUE_REQUIRED**
+
+**SQL_DESIGN_REVIEW_ROUND3_REMEDIATION=COMPLETE_PENDING_ROUND4_OWNER_REVIEW** (not a SQL review PASS).
+
+**ROUND3_BLOCKER_01_INTERNAL_HELPER_PRIVILEGE=FIXED** — `wave5_ensure_athlete_for_club_member` and `wave5_resolve_club_facility_venue_id` REVOKE ALL from `public, anon, authenticated`; GRANT EXECUTE only to `service_role`. Outer Club RPCs keep authenticated EXECUTE. Nested SECURITY DEFINER calls run as the function owner.
+
+**ROUND3_BLOCKER_02_REGISTERED_CLUSTER_TENANT_BINDING=FIXED** — PRECHECK fail-closes on `REGISTERED_CLUSTER_ORPHAN_COUNT` and `REGISTERED_CLUSTER_CROSS_TENANT_COUNT`. Legacy compares canonical Tenants via Club Venue vs Cluster Venue. Canonical/runtime compare `venues.tenant_id = clubs.tenant_id`. No `cc.venue_id = c.tenant_id` coincidence. Cross-Tenant cluster raises `ATHLETE_FACILITY_VENUE_REQUIRED: REGISTERED_CLUSTER_TENANT_MISMATCH` internally; public membership RPCs still map to `ATHLETE_FACILITY_VENUE_REQUIRED`.
+
+**ATHLETE_NO_CLUSTER_POLICY=reuse existing athlete if any (Participant user_id uniqueness; Venue not required for reuse); else require Club.registered_cluster_id → court_clusters.venue_id → venues.id with venues.tenant_id = clubs.tenant_id; else fail closed ATHLETE_FACILITY_VENUE_REQUIRED. No Tenant-as-Venue, no first/default Venue, no clubs.venue_id, no profiles.venue_id from the Wave 5 wrapper.**
 
 **TENANT_MEMBERS_WAVE4_CANONICAL_FK_EXPECTED=YES**
 **WAVE4_SQL_REEXECUTION_REQUIRED=NO**

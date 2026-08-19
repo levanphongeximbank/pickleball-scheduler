@@ -31,6 +31,8 @@ DECLARE
   v_dup_code int;
   v_prosecdef boolean;
   v_proconfig text[];
+  v_cluster_orphan int;
+  v_cluster_xtenant int;
 BEGIN
   SELECT count(*) INTO v_club_count FROM public.clubs;
   SELECT count(*) INTO v_member_count FROM public.club_members;
@@ -249,6 +251,13 @@ BEGIN
   IF v_helper_fn ~ 'phase42n_ensure_athlete_for_user[[:space:]]*\([^)]*v_club\.tenant_id' THEN
     RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_restore_member still passes Club tenant_id to athlete helper';
   END IF;
+  IF NOT has_function_privilege(
+    'authenticated',
+    'public.club_restore_member(uuid,text,uuid,integer)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated GRANT EXECUTE missing on club_restore_member';
+  END IF;
 
   IF to_regprocedure('public.club_review_membership_request(uuid,uuid,text,text,integer)') IS NULL THEN
     RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_review_membership_request(uuid,uuid,text,text,integer) missing';
@@ -261,6 +270,13 @@ BEGIN
   IF v_helper_fn ~ 'phase42n_ensure_athlete_for_user[[:space:]]*\([^)]*v_row\.tenant_id' THEN
     RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_review_membership_request still passes Club tenant_id to athlete helper';
   END IF;
+  IF NOT has_function_privilege(
+    'authenticated',
+    'public.club_review_membership_request(uuid,uuid,text,text,integer)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated GRANT EXECUTE missing on club_review_membership_request';
+  END IF;
 
   SELECT pg_get_functiondef('public.wave5_ensure_athlete_for_club_member(uuid,text,text)'::regprocedure)
     INTO v_helper_fn;
@@ -269,6 +285,82 @@ BEGIN
   END IF;
   IF v_helper_fn ~ 'p_tenant_id' OR v_helper_fn ILIKE '%v_club.tenant_id%' THEN
     RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: wave5 athlete helper must not take Club Tenant as Venue';
+  END IF;
+  SELECT p.prosecdef, p.proconfig INTO v_prosecdef, v_proconfig
+  FROM pg_proc p
+  WHERE p.oid = 'public.wave5_ensure_athlete_for_club_member(uuid,text,text)'::regprocedure;
+  IF v_prosecdef IS NOT TRUE THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: wave5_ensure_athlete_for_club_member is not SECURITY DEFINER';
+  END IF;
+  IF coalesce(array_to_string(v_proconfig, ','), '') NOT ILIKE '%search_path=public%' THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: wave5_ensure_athlete_for_club_member search_path not public';
+  END IF;
+  IF has_function_privilege(
+    'authenticated',
+    'public.wave5_ensure_athlete_for_club_member(uuid,text,text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated EXECUTE must be DENIED on wave5_ensure_athlete_for_club_member';
+  END IF;
+
+  SELECT pg_get_functiondef('public.wave5_resolve_club_facility_venue_id(text)'::regprocedure)
+    INTO v_helper_fn;
+  IF v_helper_fn !~ 'v\.tenant_id[[:space:]]*=[[:space:]]*c\.tenant_id' THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: facility resolver missing canonical Tenant binding v.tenant_id = c.tenant_id';
+  END IF;
+  IF v_helper_fn ~ 'cc\.venue_id[[:space:]]*=[[:space:]]*c\.tenant_id' THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: facility resolver must not treat cluster Venue as Club Tenant coincidence';
+  END IF;
+  IF position('REGISTERED_CLUSTER_TENANT_MISMATCH' in v_helper_fn) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: facility resolver missing REGISTERED_CLUSTER_TENANT_MISMATCH diagnostic';
+  END IF;
+  SELECT p.prosecdef, p.proconfig INTO v_prosecdef, v_proconfig
+  FROM pg_proc p
+  WHERE p.oid = 'public.wave5_resolve_club_facility_venue_id(text)'::regprocedure;
+  IF v_prosecdef IS NOT TRUE THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: wave5_resolve_club_facility_venue_id is not SECURITY DEFINER';
+  END IF;
+  IF coalesce(array_to_string(v_proconfig, ','), '') NOT ILIKE '%search_path=public%' THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: wave5_resolve_club_facility_venue_id search_path not public';
+  END IF;
+  IF has_function_privilege(
+    'authenticated',
+    'public.wave5_resolve_club_facility_venue_id(text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated EXECUTE must be DENIED on wave5_resolve_club_facility_venue_id';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    IF NOT has_function_privilege(
+      'service_role',
+      'public.wave5_ensure_athlete_for_club_member(uuid,text,text)',
+      'EXECUTE'
+    ) THEN
+      RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: service_role EXECUTE missing on wave5_ensure_athlete_for_club_member';
+    END IF;
+  END IF;
+
+  SELECT count(*) INTO v_cluster_orphan
+  FROM public.clubs c
+  WHERE nullif(trim(c.registered_cluster_id), '') IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.court_clusters cc
+      JOIN public.venues v ON v.id = cc.venue_id
+      WHERE cc.id = c.registered_cluster_id
+        AND nullif(trim(cc.venue_id), '') IS NOT NULL
+    );
+  IF v_cluster_orphan > 0 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: REGISTERED_CLUSTER_ORPHAN_COUNT=%', v_cluster_orphan;
+  END IF;
+  SELECT count(*) INTO v_cluster_xtenant
+  FROM public.clubs c
+  JOIN public.court_clusters cc ON cc.id = c.registered_cluster_id
+  JOIN public.venues v ON v.id = cc.venue_id
+  WHERE nullif(trim(c.registered_cluster_id), '') IS NOT NULL
+    AND v.tenant_id IS DISTINCT FROM c.tenant_id;
+  IF v_cluster_xtenant > 0 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: REGISTERED_CLUSTER_CROSS_TENANT_COUNT=%', v_cluster_xtenant;
   END IF;
 
   SELECT count(*) INTO v_dup_name FROM (

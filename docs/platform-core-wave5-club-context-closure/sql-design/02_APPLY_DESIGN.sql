@@ -344,22 +344,48 @@ GRANT EXECUTE ON FUNCTION public.platform_is_canonical_tenant_entitled(text) TO 
 -- ATHLETE_NO_CLUSTER_POLICY:
 --   existing athlete for user_id → reuse (Participant unique user_id), no Venue required
 --   new athlete → require registered_cluster_id → court_clusters.venue_id → venues.id
+--     AND venues.tenant_id = clubs.tenant_id (canonical Platform Tenant after cutover)
 --   else fail closed ATHLETE_FACILITY_VENUE_REQUIRED
+--   cross-Tenant cluster: ATHLETE_FACILITY_VENUE_REQUIRED: REGISTERED_CLUSTER_TENANT_MISMATCH
 --   no Tenant-as-Venue, no first/default Venue, no clubs.venue_id, no profiles.venue_id from this wrapper
+-- WAVE5_ATHLETE_HELPER_DIRECT_AUTHENTICATED_EXECUTE=DENY
 CREATE OR REPLACE FUNCTION public.wave5_resolve_club_facility_venue_id(p_club_id text)
 RETURNS text
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_venue_id text;
+BEGIN
   SELECT cc.venue_id
+    INTO v_venue_id
   FROM public.clubs c
   INNER JOIN public.court_clusters cc ON cc.id = c.registered_cluster_id
   INNER JOIN public.venues v ON v.id = cc.venue_id
   WHERE c.id = p_club_id
     AND c.registered_cluster_id IS NOT NULL
+    AND v.tenant_id = c.tenant_id
   LIMIT 1;
+  IF v_venue_id IS NOT NULL THEN
+    RETURN v_venue_id;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.clubs c
+    INNER JOIN public.court_clusters cc ON cc.id = c.registered_cluster_id
+    INNER JOIN public.venues v ON v.id = cc.venue_id
+    WHERE c.id = p_club_id
+      AND c.registered_cluster_id IS NOT NULL
+      AND v.tenant_id IS DISTINCT FROM c.tenant_id
+  ) THEN
+    RAISE EXCEPTION 'ATHLETE_FACILITY_VENUE_REQUIRED: REGISTERED_CLUSTER_TENANT_MISMATCH';
+  END IF;
+
+  RETURN NULL;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.wave5_ensure_athlete_for_club_member(
@@ -400,10 +426,15 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.wave5_resolve_club_facility_venue_id(text) FROM public, anon;
-REVOKE ALL ON FUNCTION public.wave5_ensure_athlete_for_club_member(uuid, text, text) FROM public, anon;
-GRANT EXECUTE ON FUNCTION public.wave5_resolve_club_facility_venue_id(text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.wave5_ensure_athlete_for_club_member(uuid, text, text) TO authenticated;
+-- Internal SECURITY DEFINER helpers. Outer Club RPCs remain the caller-facing authority.
+-- PostgreSQL checks nested EXECUTE as the SECURITY DEFINER owner, not the session user,
+-- so authenticated may call club_add_member / club_restore_member /
+-- club_review_membership_request without direct EXECUTE on these internals.
+-- Convention matches phase42n_ensure_athlete_for_user: service_role only.
+REVOKE ALL ON FUNCTION public.wave5_resolve_club_facility_venue_id(text) FROM public, anon, authenticated;
+REVOKE ALL ON FUNCTION public.wave5_ensure_athlete_for_club_member(uuid, text, text) FROM public, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.wave5_resolve_club_facility_venue_id(text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.wave5_ensure_athlete_for_club_member(uuid, text, text) TO service_role;
 
 -- =====================================================================
 -- 3. Club RPC: tenant_id is canonical Platform Tenant
