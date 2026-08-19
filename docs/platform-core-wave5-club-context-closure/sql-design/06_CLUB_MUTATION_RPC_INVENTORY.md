@@ -56,9 +56,28 @@ Authoritative sources (no overload in repo):
 
 `EXPLICIT_REVIEWED_BODY_IN_APPLY=NO` for all other Club RPCs in this inventory (they were already explicit in APPLY from Round 1; they were not the P1-01 regexp targets).
 
+### Round 6 — quiesce inventory classification
+
+```
+CANONICAL_MUTATION_RPC_COUNT=14
+LEGACY_COMPAT_MUTATION_RPC_COUNT=1
+TOTAL_QUIESCE_TARGET_COUNT=15
+CANONICAL_COMMAND_SURFACE=NO
+POST_CANONICAL_RESTORE=NO
+```
+
+Canonical command surface is **exactly** the 14 V2 write RPCs below. `club_leave_my_membership()` is **not** canonical and must not satisfy the canonical count.
+
+| CLASS | FUNCTION | EXACT_SIGNATURE | CANONICAL_COMMAND_SURFACE | QUIESCE_REQUIRED | POST_CANONICAL_RESTORE | NOTES |
+|---|---|---|---|---|---|---|
+| CANONICAL | 14 mutation RPCs in the matrix | see matrix | YES | YES | YES via 07D authenticated only | Missing signature → ABORT Q1 |
+| LEGACY_COMPAT | `club_leave_my_membership` | `()` | NO | YES if present | NO | Live app alias; no in-repo CREATE SQL. After successful cutover: `LEGACY_LEAVE_MY_POST_CUTOVER_STATE=QUIESCED_EXECUTE_DENIED`. 07C abort-path may replay captured ACLs only. |
+
 ### Round 5 — public Club mutation EXECUTE matrix (Q1)
 
 `MUTATION_RPC_ENTRYPOINT_COUNT=14` canonical V2 write RPCs. Privileges below are from **authoritative GRANT statements** in repo SQL. PostgreSQL may still have `PUBLIC` EXECUTE unless previously revoked — Q1 **must capture exact ACLs** (`MUTATION_RPC_PRIVILEGE_CAPTURE=EXACT_ACL_SNAPSHOT`) and must not assume this table is complete.
+
+Intended **post-cutover** surface for each canonical row: `authenticated EXECUTE=YES`, `anon EXECUTE=DENIED`, `PUBLIC EXECUTE=DENIED`. `service_role` is not the PostgREST command path.
 
 | FUNCTION | EXACT_SIGNATURE | CURRENT_AUTHENTICATED_EXECUTE | CURRENT_ANON_EXECUTE | CURRENT_PUBLIC_EXECUTE | SERVICE_ROLE_DEPENDENCY | QUIESCE_REQUIRED | RESTORE_REQUIRED |
 |---|---|---|---|---|---|---|---|
@@ -77,11 +96,11 @@ Authoritative sources (no overload in repo):
 | `club_cancel_membership_request` | `(uuid, uuid, integer)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
 | `club_review_membership_request` | `(uuid, uuid, text, text, integer)` | YES | NO | CAPTURE_REQUIRED | NO | YES | YES |
 
-Additional live app entrypoint (not canonical V2 command plane; quiesce **if present**):
+Additional live app entrypoint (not canonical V2 command plane):
 
-| FUNCTION | EXACT_SIGNATURE | NOTES | QUIESCE_REQUIRED | RESTORE_REQUIRED |
-|---|---|---|---|---|
-| `club_leave_my_membership` | `()` | Called from `clubMembershipRequestRpcService`; no in-repo CREATE SQL | YES if `to_regprocedure` exists | YES if captured |
+| FUNCTION | EXACT_SIGNATURE | NOTES | QUIESCE_REQUIRED | POST_CANONICAL_RESTORE | CANONICAL_COMMAND_SURFACE |
+|---|---|---|---|---|---|
+| `club_leave_my_membership` | `()` | Called from `clubMembershipRequestRpcService`; no in-repo CREATE SQL | YES if present | NO | NO |
 
 Non-canonical / read (not Q1 mutation list): `club_list_*`, `club_get`, `club_upsert_registry`, `club_claim_self_registration`.
 

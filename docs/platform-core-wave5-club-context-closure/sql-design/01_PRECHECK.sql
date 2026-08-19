@@ -4,6 +4,7 @@
 -- DO_NOT_RUN_ON_PRODUCTION
 -- SQL_EXECUTED=NO
 --
+-- RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
 -- Wave 5 Club Tenant migration PRECHECK — READ-ONLY, fail closed.
 -- Do not repair unexpected data. Do not mutate.
 --
@@ -556,3 +557,44 @@ SELECT
   (SELECT count(*) FROM public.venues) AS venues_count,
   (SELECT count(*) FROM public.platform_tenants) AS platform_tenants_count,
   (SELECT count(*) FROM public.tenant_members) AS tenant_members_count;
+
+-- RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
+-- Read-only live evidence for a later Owner-authorized Staging PRECHECK.
+-- Do not invent fingerprints in git. certification_status is always UNCERTIFIED here.
+SELECT
+  'RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES'::text AS gate,
+  cand.sig,
+  cand.class,
+  to_regprocedure(cand.sig) IS NOT NULL AS present,
+  (
+    SELECT count(*)
+    FROM pg_catalog.pg_proc p2
+    JOIN pg_catalog.pg_namespace n2 ON n2.oid = p2.pronamespace
+    WHERE n2.nspname = 'public' AND p2.proname = cand.proname
+  ) AS overload_count,
+  p.prosecdef,
+  p.proconfig,
+  p.provolatile,
+  l.lanname,
+  CASE WHEN p.oid IS NULL THEN NULL ELSE md5(convert_to(p.prosrc, 'UTF8')) END AS prosrc_md5,
+  'UNCERTIFIED'::text AS certification_status
+FROM (
+  VALUES
+    ('public.phase42_club_canonical(text)', 'phase42_club_canonical', 'EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY'),
+    ('public.club_create(uuid,text,text,text,text,text)', 'club_create', 'EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY'),
+    ('public.club_list_registry(text,boolean)', 'club_list_registry', 'EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY'),
+    ('public.club_list_members(text)', 'club_list_members', 'EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY'),
+    ('public.phase42_can_update_club(text)', 'phase42_can_update_club', 'EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY'),
+    ('public.phase42_can_assign_club_owner(text)', 'phase42_can_assign_club_owner', 'EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY'),
+    ('public.phase42_can_transfer_president(text)', 'phase42_can_transfer_president', 'EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY'),
+    ('public.club_add_member(uuid,text,uuid,text,integer)', 'club_add_member', 'EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY'),
+    ('public.club_restore_member(uuid,text,uuid,integer)', 'club_restore_member', 'EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY'),
+    ('public.club_review_membership_request(uuid,uuid,text,text,integer)', 'club_review_membership_request', 'EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY'),
+    ('public.platform_is_canonical_tenant_entitled(text)', 'platform_is_canonical_tenant_entitled', 'NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED'),
+    ('public.wave5_resolve_club_facility_venue_id(text)', 'wave5_resolve_club_facility_venue_id', 'NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED'),
+    ('public.wave5_ensure_athlete_for_club_member(uuid,text,text)', 'wave5_ensure_athlete_for_club_member', 'NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED')
+) AS cand(sig, proname, class)
+LEFT JOIN pg_catalog.pg_proc p ON p.oid = to_regprocedure(cand.sig)
+LEFT JOIN pg_catalog.pg_language l ON l.oid = p.prolang
+ORDER BY cand.class, cand.proname;
+

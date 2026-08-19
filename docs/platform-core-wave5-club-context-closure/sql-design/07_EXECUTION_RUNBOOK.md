@@ -40,28 +40,33 @@ Therefore Q1 (committed REVOKE) + drain proof are mandatory **before** APPLY sta
 | Step | Artifact | Commits? | Purpose |
 |---|---|---|---|
 | 0 | Owner GO + TARGET_ENV | n/a | Only then continue |
-| 1 | `07A_QUIESCE_WRITES_DESIGN.sql` | YES (Q1) | Snapshot exact EXECUTE ACLs; REVOKE mutation EXECUTE from `public` / `anon` / `authenticated`; COMMIT |
-| 2 | `07B_DRAIN_VERIFY.sql` | NO | Read-only drain proof |
-| 3 | Session GUC | n/a | `SET wave5.drain_pass = 'YES'` only after 07B PASS |
-| 4 | `02_APPLY_DESIGN.sql` | YES or ROLLBACK | Bounded parent→child locks; locked safety gate; translate/replace |
-| 5 | `03_VERIFY.sql` (default / quiesced) | NO | Canonical FK/RPC bodies; mutation EXECUTE still DENIED; helpers DENIED |
-| 6a APPLY failed | keep Q1 | n/a | Do **not** auto-retry APPLY. Owner review. Optional `07C` exact legacy ACL restore |
-| 6b APPLY+VERIFY bodies PASS | `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` | YES | Exact intended public command surface only |
-| 7 | `03_VERIFY.sql` with `SET wave5.verify_privileges = 'YES'` | NO | `MUTATION_RPC_POST_PRIVILEGES_VERIFIED=YES` |
+| 1 | `07A_QUIESCE_WRITES_DESIGN.sql` | YES (Q1) | Create/lock down cutover batch + ACL snapshot; REVOKE 14 canonical (+ legacy if present); COMMIT QUIESCED |
+| 2 | `07B_DRAIN_VERIFY.sql` | NO | Read-only drain + pre-Q1 inflight barrier; requires `wave5.cutover_batch_id` |
+| 2b | `07B2_MARK_DRAINED_DESIGN.sql` | YES | Recheck drain in-transaction; QUIESCED → DRAINED |
+| 3 | Session GUC | n/a | `SET wave5.cutover_batch_id` to the Q1 batch. `wave5.drain_pass=YES` is **not** APPLY authority |
+| 3b | Staging or Production wrapper | n/a | `02_APPLY_STAGING_WRAPPER.sql` (`target_env=staging`) or `02_APPLY_PRODUCTION_WRAPPER.sql` |
+| 4 | `02_APPLY_DESIGN.sql` | YES or ROLLBACK | Requires durable DRAINED + matching batch_id; bounded parent→child locks; locked safety gate |
+| 5 | `03_VERIFY.sql` (default / quiesced) | NO | Canonical FK/RPC bodies; all 14 mutation EXECUTE still DENIED; helpers DENIED |
+| 5b | `03B_MARK_VERIFIED_DESIGN.sql` | YES | APPLIED → VERIFIED |
+| 6a APPLY failed | keep Q1 | n/a | Do **not** auto-retry APPLY. Owner review. Optional `07C` with `wave5.restore_batch_id` |
+| 6b APPLY+VERIFY+VERIFIED | `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` | YES | Exact intended public command surface only |
+| 7 | `03_VERIFY.sql` with `SET wave5.verify_privileges = 'YES'` | NO | `POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14` |
 
 `CLUB_MUTATION_NEW_CALLS_QUIESCED=YES` and `CLUB_MUTATION_IN_FLIGHT_DRAINED=YES` are **both** required before step 4. If drain cannot be proven: **APPLY=ABORT**.
 
 ## Timeouts (do not invent Production values)
 
-| GUC | Staging recommended | Production recommended | Rationale |
+| GUC | Staging | Production | Rationale |
 |---|---|---|---|
 | `lock_timeout` | **5s** | **15s** | Staging should fail fast. Production allows a short post-quiesce wait for residual `RowExclusiveLock` / autovacuum on mapping tables, then abort instead of waiting unbounded during a maintenance window. |
 | `statement_timeout` | **60s** | **180s** | Caps the whole APPLY transaction (map + FK + RPC replace). Not a substitute for `lock_timeout`. |
 
+`STAGING_LOCK_TIMEOUT=5s`  
+`PRODUCTION_LOCK_TIMEOUT=15s`  
 `STAGING_RECOMMENDED_LOCK_TIMEOUT=5s`  
 `PRODUCTION_RECOMMENDED_LOCK_TIMEOUT=15s`
 
-APPLY uses `SET LOCAL lock_timeout` / `SET LOCAL statement_timeout` **before** `LOCK TABLE`. Operator may lower them; must not remove them. If a lock is not acquired in time, the transaction aborts **before** cutover mutation.
+Do **not** `SET LOCAL lock_timeout` before APPLY. Wrappers set `wave5.target_env` only. APPLY's first statements after `BEGIN` call `set_config(..., true)` (`SET LOCAL`) from that GUC. Running APPLY without a wrapper aborts.
 
 ## Lock order (parent / supporting → Club parent → Club children)
 
@@ -87,7 +92,7 @@ If Q1 commits and APPLY fails:
 - APPLY transaction rolls back (`PARTIAL_CUTOVER_COMMIT_POSSIBLE=NO`).
 - Do **not** auto-run APPLY again.
 - Mutation entrypoints stay quiesced until Owner review.
-- If Owner elects return to legacy app/database privileges: `07C_RESTORE_WRITES_DESIGN.sql` replays **only** the captured ACL rows. No generic `GRANT EXECUTE … TO authenticated`.
+- If Owner elects return to legacy app/database privileges: `07C_RESTORE_WRITES_DESIGN.sql` replays **only** the captured ACL rows for `wave5.restore_batch_id`. No `ORDER BY captured_at DESC LIMIT 1`. No generic `GRANT EXECUTE … TO authenticated`.
 
 ## Privilege restore after canonical VERIFY
 

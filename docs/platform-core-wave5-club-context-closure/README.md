@@ -131,11 +131,21 @@ See `sql-design/`. **DO NOT RUN.** `OWNER_SQL_EXECUTION_GO=NO`.
 
 **ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED** — capture `pg_trigger.tgenabled` (`O`/`D`/`R`/`A`) and restore that exact mode after translation. No unconditional `ENABLE TRIGGER`.
 
-**SQL_DESIGN_REVIEW_ROUND5_REMEDIATION=COMPLETE_PENDING_ROUND6_OWNER_REVIEW** (not a SQL review PASS).
+**SQL_DESIGN_REVIEW_ROUND6_REMEDIATION=COMPLETE_PENDING_ROUND7_OWNER_REVIEW** (not a SQL review PASS).
 
-**ROUND5_P1_01_PRECUTOVER_RPC_QUIESCENCE=REMEDIATED_DESIGN** — committed Q1 REVOKE of 14 canonical Club mutation EXECUTE privileges (`07A`) before APPLY. Drain proof (`07B`) required. APPLY aborts unless `wave5.drain_pass=YES` and Q1 is visible. Fail-closed: APPLY rollback leaves RPCs quiesced; `07C` restores exact captured ACLs only.
+**ROUND6_P1_01_QUIESCE_SIGNATURE_AND_OVERLOAD_COVERAGE=REMEDIATED_DESIGN** — 14 canonical signatures must be present before Q1; unknown overloads abort; legacy `club_leave_my_membership()` is classified separately (`CANONICAL_COMMAND_SURFACE=NO`, `POST_CANONICAL_RESTORE=NO`).
 
-**ROUND5_P1_02_LOCK_ORDER_AND_WAIT_BOUNDING=REMEDIATED_DESIGN** — lock `platform_tenants`, `venues`, `court_clusters`, then `tenant_members` (ACCESS SHARE), then Club parent/children ACCESS EXCLUSIVE. `SET LOCAL lock_timeout` (Staging 5s / Production 15s). Deterministic order is not a deadlock-freedom claim.
+**ROUND6_P1_02_DRAIN_PROOF_BATCH_BINDING=REMEDIATED_DESIGN** — drain is bound to explicit `batch_id`; 07B2 rechecks then marks `DRAINED`; APPLY requires durable DRAINED + matching batch_id; `wave5.drain_pass=YES` alone is not sufficient.
+
+**ROUND6_P1_03_CUTOVER_CONTROL_STATE_AND_ACL_SNAPSHOT_SECURITY=REMEDIATED_DESIGN** — `wave5_club_cutover_batch` state machine; one active batch; metadata `REVOKE ALL` from PUBLIC/anon/authenticated.
+
+**ROUND6_P1_04_RPC_BODY_CERTIFICATION_STRENGTH=REMEDIATED_DESIGN** — existing overwrites require `md5(prosrc)` plus attributes. Live fingerprints are **not** invented; `RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES`.
+
+**SQL_DESIGN_REVIEW_ROUND5_REMEDIATION=COMPLETE_PENDING_ROUND6_OWNER_REVIEW** (historical Round 5 close-out; not a SQL review PASS).
+
+**ROUND5_P1_01_PRECUTOVER_RPC_QUIESCENCE=REMEDIATED_DESIGN** — committed Q1 REVOKE of 14 canonical Club mutation EXECUTE privileges (`07A`) before APPLY. Drain proof (`07B` / `07B2`) required. APPLY aborts unless durable DRAINED batch matches. Fail-closed: APPLY rollback leaves RPCs quiesced; `07C` restores exact captured ACLs for an explicit batch_id only.
+
+**ROUND5_P1_02_LOCK_ORDER_AND_WAIT_BOUNDING=REMEDIATED_DESIGN** — lock `platform_tenants`, `venues`, `court_clusters`, then `tenant_members` (ACCESS SHARE), then Club parent/children ACCESS EXCLUSIVE. Staging lock_timeout **5s** / Production **15s** via reviewed wrappers. Deterministic order is not a deadlock-freedom claim.
 
 **ROUND5_P1_03_RPC_OVERWRITE_GUARD_COVERAGE=REMEDIATED_DESIGN** — every APPLY `CREATE OR REPLACE FUNCTION` is inventoried (`08_`). Existing RPCs require certified markers + overload count. Unknown body → `WAVE5_APPLY_ABORT_RPC_BODY_DRIFT`. New Wave5 helpers abort if an unexpected body already exists.
 

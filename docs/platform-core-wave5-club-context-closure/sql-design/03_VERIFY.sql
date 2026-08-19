@@ -8,6 +8,7 @@
 -- Post-state invariants only. Cannot prove a historical LOCK TABLE occurred.
 -- Default: mutation RPCs still quiesced. After 07D: SET wave5.verify_privileges = 'YES'
 -- MUTATION_RPC_POST_PRIVILEGES_VERIFIED is that second pass.
+-- POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14
 
 DO $$
 DECLARE
@@ -36,6 +37,9 @@ DECLARE
   v_proconfig text[];
   v_cluster_orphan int;
   v_cluster_xtenant int;
+  v_cmd text;
+  v_cmd_ok int := 0;
+  v_oid regprocedure;
 BEGIN
   SELECT count(*) INTO v_club_count FROM public.clubs;
   SELECT count(*) INTO v_member_count FROM public.club_members;
@@ -427,7 +431,92 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: clubs.venue_id invented without authorization';
   END IF;
 
-  RAISE NOTICE 'WAVE5_VERIFY_OK clubs=% members=% gov=% req=% fk=platform_tenants',
+  -- POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14
+  FOREACH v_cmd IN ARRAY ARRAY[
+    'public.club_create(uuid,text,text,text,text,text)',
+    'public.club_update(uuid,text,integer,text,text,text,text,text)',
+    'public.club_assign_owner(uuid,text,uuid,integer)',
+    'public.club_clear_owner(uuid,text,integer)',
+    'public.club_transfer_president(uuid,text,uuid,integer)',
+    'public.club_assign_vice_president(uuid,text,uuid,integer)',
+    'public.club_clear_vice_president(uuid,text,integer,uuid)',
+    'public.club_add_member(uuid,text,uuid,text,integer)',
+    'public.club_remove_member(uuid,text,uuid,integer)',
+    'public.club_restore_member(uuid,text,uuid,integer)',
+    'public.club_leave_membership(uuid,text)',
+    'public.club_submit_membership_request(uuid,text,text)',
+    'public.club_cancel_membership_request(uuid,uuid,integer)',
+    'public.club_review_membership_request(uuid,uuid,text,text,integer)'
+  ]
+  LOOP
+    IF to_regprocedure(v_cmd) IS NULL THEN
+      RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: canonical command missing %', v_cmd;
+    END IF;
+    IF EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_proc p
+      CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+      WHERE p.oid = v_cmd::regprocedure
+        AND acl.privilege_type = 'EXECUTE'
+        AND acl.grantee = 0
+    ) THEN
+      RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: PUBLIC EXECUTE must be DENIED on %', v_cmd;
+    END IF;
+    IF has_function_privilege('anon', v_cmd, 'EXECUTE') THEN
+      RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: anon EXECUTE must be DENIED on %', v_cmd;
+    END IF;
+    IF current_setting('wave5.verify_privileges', true) = 'YES' THEN
+      IF NOT has_function_privilege('authenticated', v_cmd, 'EXECUTE') THEN
+        RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated GRANT EXECUTE missing on %', v_cmd;
+      END IF;
+    ELSIF has_function_privilege('authenticated', v_cmd, 'EXECUTE') THEN
+      RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: % still executable while quiesced — restore is 07D after VERIFY bodies',
+        v_cmd;
+    END IF;
+    v_cmd_ok := v_cmd_ok + 1;
+  END LOOP;
+  IF v_cmd_ok <> 14 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT expected 14, got %',
+      v_cmd_ok;
+  END IF;
+
+  FOREACH v_cmd IN ARRAY ARRAY[
+    'public.wave5_ensure_athlete_for_club_member(uuid,text,text)',
+    'public.wave5_resolve_club_facility_venue_id(text)'
+  ]
+  LOOP
+    IF has_function_privilege('authenticated', v_cmd, 'EXECUTE')
+       OR has_function_privilege('anon', v_cmd, 'EXECUTE')
+       OR EXISTS (
+         SELECT 1
+         FROM pg_catalog.pg_proc p
+         CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+         WHERE p.oid = v_cmd::regprocedure
+           AND acl.privilege_type = 'EXECUTE'
+           AND acl.grantee = 0
+       ) THEN
+      RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: internal helper direct execute must be DENIED for PUBLIC/anon/authenticated: %',
+        v_cmd;
+    END IF;
+  END LOOP;
+
+  v_oid := to_regprocedure('public.club_leave_my_membership()');
+  IF v_oid IS NOT NULL THEN
+    IF has_function_privilege('authenticated', v_oid, 'EXECUTE')
+       OR has_function_privilege('anon', v_oid, 'EXECUTE')
+       OR EXISTS (
+         SELECT 1
+         FROM pg_catalog.pg_proc p
+         CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+         WHERE p.oid = v_oid
+           AND acl.privilege_type = 'EXECUTE'
+           AND acl.grantee = 0
+       ) THEN
+      RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: LEGACY_LEAVE_MY_POST_CUTOVER_STATE expected QUIESCED_EXECUTE_DENIED';
+    END IF;
+  END IF;
+
+  RAISE NOTICE 'WAVE5_VERIFY_OK clubs=% members=% gov=% req=% fk=platform_tenants POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14',
     v_club_count, v_member_count, v_gov_count, v_req_count;
 END $$;
 

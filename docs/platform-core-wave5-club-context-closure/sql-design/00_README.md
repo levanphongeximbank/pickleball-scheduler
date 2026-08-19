@@ -24,10 +24,14 @@ Do not apply until Owner issues a separate execution GO naming this package and 
 | `05_CLUB_TENANT_TABLE_INVENTORY.md` | documentation | Tenant-bearing table classification |
 | `06_CLUB_MUTATION_RPC_INVENTORY.md` | documentation | Club mutation RPC semantics + EXECUTE privilege matrix |
 | `07_EXECUTION_RUNBOOK.md` | documentation | Pre-cutover quiesce, drain, lock order, fail-closed restore |
-| `07A_QUIESCE_WRITES_DESIGN.sql` | YES (when GO) | Committed Q1 REVOKE of mutation EXECUTE |
-| `07B_DRAIN_VERIFY.sql` | NO | Read-only in-flight drain proof |
-| `07C_RESTORE_WRITES_DESIGN.sql` | YES (when GO) | Exact captured ACL replay only (legacy restore) |
-| `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` | YES (when GO) | Intended public command surface after VERIFY |
+| `07A_QUIESCE_WRITES_DESIGN.sql` | YES (when GO) | Committed Q1 REVOKE of mutation EXECUTE + cutover batch |
+| `07B_DRAIN_VERIFY.sql` | NO | Read-only drain + pre-Q1 transaction barrier bound to batch_id |
+| `07B2_MARK_DRAINED_DESIGN.sql` | YES (when GO) | Recheck drain in-transaction then QUIESCED → DRAINED |
+| `02_APPLY_STAGING_WRAPPER.sql` | session GUC | `wave5.target_env=staging` → APPLY lock_timeout 5s |
+| `02_APPLY_PRODUCTION_WRAPPER.sql` | session GUC | `wave5.target_env=production` → APPLY lock_timeout 15s |
+| `03B_MARK_VERIFIED_DESIGN.sql` | YES (when GO) | APPLIED → VERIFIED after read-only 03_VERIFY |
+| `07C_RESTORE_WRITES_DESIGN.sql` | YES (when GO) | Exact captured ACL replay for **explicit** batch_id only |
+| `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` | YES (when GO) | Intended public command surface after VERIFIED |
 | `08_RPC_OVERWRITE_GUARD_INVENTORY.md` | documentation | Every APPLY CREATE OR REPLACE overwrite class |
 
 ## Schema-state machine
@@ -184,4 +188,37 @@ RECONCILIATION_REQUIRED_BEFORE_STAGING_MUTATION=YES
 SQL_DESIGN_REVIEWED_PASS=NO
 ```
 
-Club mutation RPCs are quiesced in a **committed** Q1 (`07A`) before APPLY. APPLY aborts unless `wave5.drain_pass=YES` and authenticated EXECUTE on `club_create` / `club_add_member` is already denied. Lock order is parent/supporting tables then Club parent then children. `SET LOCAL lock_timeout` is required before `LOCK TABLE`. Every APPLY `CREATE OR REPLACE` is classified and guarded. Do not merge `origin/main` in this remediation.
+Club mutation RPCs are quiesced in a **committed** Q1 (`07A`) before APPLY. APPLY aborts unless a durable `DRAINED` Wave5 Club batch matches `wave5.cutover_batch_id`. `wave5.drain_pass=YES` is not sufficient. Lock order is parent/supporting tables then Club parent then children. Lock timeouts come from reviewed Staging/Production wrappers (`5s` / `15s`). Every APPLY `CREATE OR REPLACE` of an existing function requires a strong `md5(prosrc)` fingerprint. Do not merge `origin/main` in this remediation.
+
+## Round 6 remediation (pending Round 7 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND6_REMEDIATION=COMPLETE_PENDING_ROUND7_OWNER_REVIEW
+CANONICAL_MUTATION_RPC_COUNT=14
+LEGACY_COMPAT_MUTATION_RPC_COUNT=1
+TOTAL_QUIESCE_TARGET_COUNT=15
+ALL_CANONICAL_MUTATION_SIGNATURES_PRESENT_BEFORE_Q1=YES
+UNKNOWN_MUTATION_RPC_OVERLOAD=ABORT
+ONE_ACTIVE_CUTOVER_BATCH=YES
+CUTOVER_STATE_MACHINE=YES
+CUTOVER_METADATA_PUBLIC_ACCESS=DENIED
+CUTOVER_METADATA_AUTHENTICATED_ACCESS=DENIED
+CUTOVER_METADATA_ANON_ACCESS=DENIED
+RESTORE_REQUIRES_EXPLICIT_BATCH_ID=YES
+LATEST_SNAPSHOT_IMPLICIT_RESTORE=DENIED
+PRE_Q1_INFLIGHT_TRANSACTION_BARRIER=YES
+APPLY_REQUIRES_DURABLE_DRAIN_STATE=YES
+APPLY_BATCH_ID_MATCH_REQUIRED=YES
+ARBITRARY_DRAIN_PASS_GUC_NOT_SUFFICIENT=YES
+EXISTING_RPC_STRONG_FINGERPRINT_COUNT=10
+NEW_WAVE5_FUNCTION_STRONG_GUARD_COUNT=3
+RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
+POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14
+LEGACY_LEAVE_MY_POST_CUTOVER_STATE=QUIESCED_EXECUTE_DENIED
+STAGING_LOCK_TIMEOUT=5s
+PRODUCTION_LOCK_TIMEOUT=15s
+UNBOUNDED_LOCK_WAIT=NO
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Cutover control state lives in `public.wave5_club_cutover_batch` (no private operational schema exists in this architecture). Application roles are denied: `REVOKE ALL` from `PUBLIC` / `anon` / `authenticated` plus RLS with no policies. Fingerprints are **not** invented in git; PRECHECK will emit live `prosrc_md5` when Owner authorizes a read-only Staging run.

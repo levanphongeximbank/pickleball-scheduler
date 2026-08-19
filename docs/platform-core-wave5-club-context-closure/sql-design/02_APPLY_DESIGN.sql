@@ -40,11 +40,19 @@
 -- CUTOVER_LOCK_ORDER_PARENT_TO_CHILD=YES
 -- LOCK_ORDER_INVERSION_REVIEW=PASS
 -- UNBOUNDED_LOCK_WAIT=NO
+-- STAGING_LOCK_TIMEOUT=5s
+-- PRODUCTION_LOCK_TIMEOUT=15s
 -- STAGING_RECOMMENDED_LOCK_TIMEOUT=5s
 -- PRODUCTION_RECOMMENDED_LOCK_TIMEOUT=15s
 -- PHASE_Q1_COMMITTED_WRITE_QUIESCE=REQUIRED
--- APPLY_REQUIRES_DRAIN_PASS_ATTESTATION=YES
+-- APPLY_REQUIRES_DURABLE_DRAIN_STATE=YES
+-- APPLY_BATCH_ID_MATCH_REQUIRED=YES
+-- ARBITRARY_DRAIN_PASS_GUC_NOT_SUFFICIENT=YES
+-- APPLY_REQUIRES_DRAIN_PASS_ATTESTATION=NO
 -- APPLY_REQUIRES_Q1_QUIESCE_VISIBLE=YES
+-- RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
+-- EXISTING_RPC_STRONG_FINGERPRINT_COUNT=10
+-- NEW_WAVE5_FUNCTION_STRONG_GUARD_COUNT=3
 -- CLUB_CUTOVER_CONCURRENT_WRITE_WINDOW=CLOSED
 -- WAVE5_APPLY_ABORT_RPC_BODY_DRIFT=YES
 -- EXISTING_FUNCTION_SIGNATURE_ONLY_NOT_ENOUGH=YES
@@ -67,19 +75,77 @@
 
 BEGIN;
 
--- Bounded wait: abort before cutover mutation if locks cannot be acquired.
--- Staging operators should SET LOCAL lock_timeout = '5s' before \i if TARGET_ENV=staging.
--- Production default in this file matches PRODUCTION_RECOMMENDED_LOCK_TIMEOUT.
-SET LOCAL lock_timeout = '15s';
-SET LOCAL statement_timeout = '180s';
-
--- Q1 + drain must already be committed/attested in this session.
--- Do not SET wave5.drain_pass inside this file.
-DO $wave5_apply_prelock$
+-- Bounded wait from reviewed wrapper GUC wave5.target_env only.
+-- Do not SET LOCAL lock_timeout in this file to a hardcoded value.
+-- Staging wrapper → 5s / 60s. Production wrapper → 15s / 180s.
+DO $wave5_apply_timeout$
+DECLARE
+  v_env text := current_setting('wave5.target_env', true);
 BEGIN
-  IF current_setting('wave5.drain_pass', true) IS DISTINCT FROM 'YES' THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: CLUB_MUTATION_IN_FLIGHT_DRAINED not attested — run 07B, then SET wave5.drain_pass = YES before APPLY';
+  IF v_env IS DISTINCT FROM 'staging' AND v_env IS DISTINCT FROM 'production' THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: wave5.target_env must be staging or production via reviewed wrapper';
   END IF;
+  PERFORM set_config(
+    'lock_timeout',
+    CASE v_env WHEN 'staging' THEN '5s' WHEN 'production' THEN '15s' END,
+    true
+  );
+  PERFORM set_config(
+    'statement_timeout',
+    CASE v_env WHEN 'staging' THEN '60s' WHEN 'production' THEN '180s' END,
+    true
+  );
+END $wave5_apply_timeout$;
+
+-- Durable DRAINED batch is the authority. wave5.drain_pass=YES is not sufficient.
+-- Do not SET wave5.cutover_batch_id or wave5.drain_pass inside this file.
+DO $wave5_apply_prelock$
+DECLARE
+  v_batch uuid;
+  v_state text;
+  v_kind text;
+  v_q1 timestamptz;
+  v_drained timestamptz;
+  v_active int;
+BEGIN
+  IF current_setting('wave5.drain_pass', true) = 'YES'
+     AND nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: ARBITRARY_DRAIN_PASS_GUC_NOT_SUFFICIENT — durable DRAINED batch_id required';
+  END IF;
+
+  BEGIN
+    v_batch := nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '')::uuid;
+  EXCEPTION WHEN invalid_text_representation THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: APPLY_BATCH_ID_MATCH_REQUIRED — wave5.cutover_batch_id is not a uuid';
+  END;
+  IF v_batch IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: APPLY_BATCH_ID_MATCH_REQUIRED — set wave5.cutover_batch_id';
+  END IF;
+
+  SELECT b.state, b.cutover_kind, b.q1_committed_at, b.drained_at
+    INTO v_state, v_kind, v_q1, v_drained
+  FROM public.wave5_club_cutover_batch b
+  WHERE b.batch_id = v_batch;
+
+  IF v_kind IS DISTINCT FROM 'WAVE5_CLUB_TENANT' THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: batch % is not WAVE5_CLUB_TENANT', v_batch;
+  END IF;
+  IF v_state IS DISTINCT FROM 'DRAINED' THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: APPLY_REQUIRES_DURABLE_DRAIN_STATE state=% (wave5.drain_pass cannot manufacture DRAINED)',
+      coalesce(v_state, '<missing>');
+  END IF;
+  IF v_q1 IS NULL OR v_drained IS NULL OR v_drained <= v_q1 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: drained_at must be after q1_committed_at';
+  END IF;
+
+  SELECT count(*) INTO v_active
+  FROM public.wave5_club_cutover_batch b
+  WHERE b.cutover_kind = 'WAVE5_CLUB_TENANT'
+    AND b.state NOT IN ('RESTORED', 'ABORTED');
+  IF v_active <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: ONE_ACTIVE_CUTOVER_BATCH violated active=%', v_active;
+  END IF;
+
   IF to_regprocedure('public.club_create(uuid,text,text,text,text,text)') IS NULL THEN
     RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_create missing before lock';
   END IF;
@@ -121,6 +187,22 @@ LOCK TABLE
   public.club_membership_requests_v42
 IN ACCESS EXCLUSIVE MODE;
 
+DO $wave5_apply_mark$
+DECLARE
+  v_updated int := 0;
+BEGIN
+  UPDATE public.wave5_club_cutover_batch
+  SET state = 'APPLYING',
+      apply_started_at = clock_timestamp()
+  WHERE batch_id = nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '')::uuid
+    AND state = 'DRAINED'
+    AND cutover_kind = 'WAVE5_CLUB_TENANT';
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: DRAINED → APPLYING failed — APPLY_REQUIRES_DURABLE_DRAIN_STATE';
+  END IF;
+END $wave5_apply_mark$;
+
 -- =====================================================================
 -- 1. Schema-state machine + locked safety gate + data translation (ONE DO)
 -- =====================================================================
@@ -152,6 +234,10 @@ DECLARE
   v_gov_tg_enabled "char";
   v_guard record;
   v_marker text;
+  v_live_fp text;
+  v_lanname text;
+  v_prosecdef boolean;
+  v_proconfig text[];
 BEGIN
   IF to_regclass('public.clubs') IS NULL
      OR to_regclass('public.club_members') IS NULL
@@ -264,33 +350,36 @@ BEGIN
   END IF;
 
   -- APPLY_IN_TRANSACTION_RPC_SIGNATURE_GUARD=YES
-  -- Read-only pg_get_functiondef inspection. Do not EXECUTE or regexp_replace the text.
+  -- Strong identity: signature + overload + prosecdef + search_path + language
+  -- + md5(prosrc). Do not EXECUTE or regexp_replace the text.
+  -- Certified fingerprints remain UNCERTIFIED until Owner reviews live PRECHECK evidence.
   -- APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED
   -- EXISTING_FUNCTION_SIGNATURE_ONLY_NOT_ENOUGH=YES
-  -- EXISTING_RPC_OVERWRITE_GUARD covers every CREATE OR REPLACE of a pre-Wave5 RPC.
+  -- EXISTING_RPC_STRONG_FINGERPRINT_COUNT=10
+  -- RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
   FOR v_guard IN
     SELECT * FROM (VALUES
       ('public.phase42_club_canonical(text)', 'phase42_club_canonical',
-       ARRAY['clubs', 'tenant_id']),
+       ARRAY['clubs', 'tenant_id'], 'plpgsql', 'UNCERTIFIED'),
       ('public.club_create(uuid,text,text,text,text,text)', 'club_create',
-       ARRAY['phase42_idempotency', 'clubs', 'p_tenant_id']),
+       ARRAY['phase42_idempotency', 'clubs', 'p_tenant_id'], 'plpgsql', 'UNCERTIFIED'),
       ('public.club_list_registry(text,boolean)', 'club_list_registry',
-       ARRAY['phase42_club_canonical', 'clubs']),
+       ARRAY['phase42_club_canonical', 'clubs'], 'plpgsql', 'UNCERTIFIED'),
       ('public.club_list_members(text)', 'club_list_members',
-       ARRAY['club_members']),
+       ARRAY['club_members'], 'plpgsql', 'UNCERTIFIED'),
       ('public.phase42_can_update_club(text)', 'phase42_can_update_club',
-       ARRAY['clubs']),
+       ARRAY['clubs'], 'plpgsql', 'UNCERTIFIED'),
       ('public.phase42_can_assign_club_owner(text)', 'phase42_can_assign_club_owner',
-       ARRAY['clubs']),
+       ARRAY['clubs'], 'plpgsql', 'UNCERTIFIED'),
       ('public.phase42_can_transfer_president(text)', 'phase42_can_transfer_president',
-       ARRAY['clubs']),
+       ARRAY['clubs'], 'plpgsql', 'UNCERTIFIED'),
       ('public.club_add_member(uuid,text,uuid,text,integer)', 'club_add_member',
-       ARRAY['phase42_can_review_membership', 'club_members', 'phase42_idempotency']),
+       ARRAY['phase42_can_review_membership', 'club_members', 'phase42_idempotency'], 'plpgsql', 'UNCERTIFIED'),
       ('public.club_restore_member(uuid,text,uuid,integer)', 'club_restore_member',
-       ARRAY['phase42_can_review_membership', 'club_members']),
+       ARRAY['phase42_can_review_membership', 'club_members'], 'plpgsql', 'UNCERTIFIED'),
       ('public.club_review_membership_request(uuid,uuid,text,text,integer)', 'club_review_membership_request',
-       ARRAY['club_membership_requests_v42', 'VERSION_CONFLICT'])
-    ) AS t(sig text, fname text, markers text[])
+       ARRAY['club_membership_requests_v42', 'VERSION_CONFLICT'], 'plpgsql', 'UNCERTIFIED')
+    ) AS t(sig text, fname text, markers text[], lang text, certified_fp text)
   LOOP
     IF to_regprocedure(v_guard.sig) IS NULL THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT % missing', v_guard.sig;
@@ -302,6 +391,21 @@ BEGIN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT % overload_count=%',
         v_guard.fname, v_overload;
     END IF;
+    SELECT p.prosecdef, p.proconfig, md5(convert_to(p.prosrc, 'UTF8')), l.lanname
+      INTO v_prosecdef, v_proconfig, v_live_fp, v_lanname
+    FROM pg_proc p
+    JOIN pg_language l ON l.oid = p.prolang
+    WHERE p.oid = v_guard.sig::regprocedure;
+    IF v_prosecdef IS NOT TRUE THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: % prosecdef expected true', v_guard.fname;
+    END IF;
+    IF coalesce(array_to_string(v_proconfig, ','), '') NOT ILIKE '%search_path=public%' THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: % search_path not public', v_guard.fname;
+    END IF;
+    IF v_lanname IS DISTINCT FROM v_guard.lang THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: % language=% expected %',
+        v_guard.fname, v_lanname, v_guard.lang;
+    END IF;
     v_rpc_def := pg_get_functiondef(v_guard.sig::regprocedure);
     FOREACH v_marker IN ARRAY v_guard.markers LOOP
       IF position(v_marker in v_rpc_def) = 0 THEN
@@ -309,6 +413,16 @@ BEGIN
           v_guard.fname, v_marker;
       END IF;
     END LOOP;
+    IF v_guard.certified_fp IS NULL
+       OR v_guard.certified_fp = 'UNCERTIFIED'
+       OR v_guard.certified_fp = 'OWNER_REVIEW_REQUIRED' THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_prosrc_md5=% RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES',
+        v_guard.fname, v_live_fp;
+    END IF;
+    IF v_live_fp IS DISTINCT FROM v_guard.certified_fp THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_prosrc_md5=% certified=%',
+        v_guard.fname, v_live_fp, v_guard.certified_fp;
+    END IF;
   END LOOP;
 
   IF to_regprocedure('public.club_add_member(uuid,text,uuid,text,integer)') IS NULL
@@ -323,27 +437,94 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: club_add_member athlete-ensure call missing';
   END IF;
 
-  -- NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED — no silent replace of unknown objects.
+  -- NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED
+  -- NEW_WAVE5_FUNCTION_STRONG_GUARD_COUNT=3
+  -- signature alone is not enough; absent is valid; unknown body ABORT.
   IF to_regprocedure('public.platform_is_canonical_tenant_entitled(text)') IS NOT NULL THEN
+    SELECT count(*) INTO v_overload
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'platform_is_canonical_tenant_entitled';
+    IF v_overload <> 1 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: platform_is_canonical_tenant_entitled overload_count=%',
+        v_overload;
+    END IF;
+    SELECT p.prosecdef, p.proconfig, md5(convert_to(p.prosrc, 'UTF8')), l.lanname
+      INTO v_prosecdef, v_proconfig, v_live_fp, v_lanname
+    FROM pg_proc p
+    JOIN pg_language l ON l.oid = p.prolang
+    WHERE p.oid = 'public.platform_is_canonical_tenant_entitled(text)'::regprocedure;
+    IF v_prosecdef IS NOT TRUE
+       OR v_lanname IS DISTINCT FROM 'sql'
+       OR coalesce(array_to_string(v_proconfig, ','), '') NOT ILIKE '%search_path=public%' THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: unexpected existing platform_is_canonical_tenant_entitled attributes';
+    END IF;
     v_rpc_def := pg_get_functiondef('public.platform_is_canonical_tenant_entitled(text)'::regprocedure);
     IF position('tenant_members' in v_rpc_def) = 0
        OR position('phase42_is_platform_super_admin' in v_rpc_def) = 0 THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: unexpected existing platform_is_canonical_tenant_entitled';
     END IF;
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED platform_is_canonical_tenant_entitled live_prosrc_md5=%',
+      v_live_fp;
   END IF;
   IF to_regprocedure('public.wave5_resolve_club_facility_venue_id(text)') IS NOT NULL THEN
+    SELECT count(*) INTO v_overload
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'wave5_resolve_club_facility_venue_id';
+    IF v_overload <> 1 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: wave5_resolve_club_facility_venue_id overload_count=%',
+        v_overload;
+    END IF;
+    SELECT p.prosecdef, p.proconfig, md5(convert_to(p.prosrc, 'UTF8')), l.lanname
+      INTO v_prosecdef, v_proconfig, v_live_fp, v_lanname
+    FROM pg_proc p
+    JOIN pg_language l ON l.oid = p.prolang
+    WHERE p.oid = 'public.wave5_resolve_club_facility_venue_id(text)'::regprocedure;
+    IF v_prosecdef IS NOT TRUE
+       OR v_lanname IS DISTINCT FROM 'plpgsql'
+       OR coalesce(array_to_string(v_proconfig, ','), '') NOT ILIKE '%search_path=public%' THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: unexpected existing wave5_resolve_club_facility_venue_id attributes';
+    END IF;
     v_rpc_def := pg_get_functiondef('public.wave5_resolve_club_facility_venue_id(text)'::regprocedure);
     IF position('registered_cluster_id' in v_rpc_def) = 0
        OR position('REGISTERED_CLUSTER_TENANT_MISMATCH' in v_rpc_def) = 0 THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: unexpected existing wave5_resolve_club_facility_venue_id';
     END IF;
+    IF has_function_privilege('authenticated', 'public.wave5_resolve_club_facility_venue_id(text)', 'EXECUTE')
+       OR has_function_privilege('anon', 'public.wave5_resolve_club_facility_venue_id(text)', 'EXECUTE') THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: wave5_resolve_club_facility_venue_id callable by application role';
+    END IF;
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED wave5_resolve_club_facility_venue_id live_prosrc_md5=%',
+      v_live_fp;
   END IF;
   IF to_regprocedure('public.wave5_ensure_athlete_for_club_member(uuid,text,text)') IS NOT NULL THEN
+    SELECT count(*) INTO v_overload
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'wave5_ensure_athlete_for_club_member';
+    IF v_overload <> 1 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: wave5_ensure_athlete_for_club_member overload_count=%',
+        v_overload;
+    END IF;
+    SELECT p.prosecdef, p.proconfig, md5(convert_to(p.prosrc, 'UTF8')), l.lanname
+      INTO v_prosecdef, v_proconfig, v_live_fp, v_lanname
+    FROM pg_proc p
+    JOIN pg_language l ON l.oid = p.prolang
+    WHERE p.oid = 'public.wave5_ensure_athlete_for_club_member(uuid,text,text)'::regprocedure;
+    IF v_prosecdef IS NOT TRUE
+       OR v_lanname IS DISTINCT FROM 'plpgsql'
+       OR coalesce(array_to_string(v_proconfig, ','), '') NOT ILIKE '%search_path=public%' THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: unexpected existing wave5_ensure_athlete_for_club_member attributes';
+    END IF;
     v_rpc_def := pg_get_functiondef('public.wave5_ensure_athlete_for_club_member(uuid,text,text)'::regprocedure);
     IF position('ATHLETE_FACILITY_VENUE_REQUIRED' in v_rpc_def) = 0
        OR position('wave5_resolve_club_facility_venue_id' in v_rpc_def) = 0 THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: unexpected existing wave5_ensure_athlete_for_club_member';
     END IF;
+    IF has_function_privilege('authenticated', 'public.wave5_ensure_athlete_for_club_member(uuid,text,text)', 'EXECUTE')
+       OR has_function_privilege('anon', 'public.wave5_ensure_athlete_for_club_member(uuid,text,text)', 'EXECUTE') THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: wave5_ensure_athlete_for_club_member callable by application role';
+    END IF;
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED wave5_ensure_athlete_for_club_member live_prosrc_md5=%',
+      v_live_fp;
   END IF;
 
   -- APPLY_IN_TRANSACTION_CHILD_CONSISTENCY_GUARD=YES
@@ -1837,5 +2018,21 @@ CREATE POLICY club_gov_select ON public.club_governance_assignments
         AND cm.status = 'active'
     )
   );
+
+DO $wave5_apply_applied$
+DECLARE
+  v_updated int := 0;
+BEGIN
+  UPDATE public.wave5_club_cutover_batch
+  SET state = 'APPLIED',
+      apply_committed_at = clock_timestamp()
+  WHERE batch_id = nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '')::uuid
+    AND state = 'APPLYING'
+    AND cutover_kind = 'WAVE5_CLUB_TENANT';
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: APPLYING → APPLIED failed';
+  END IF;
+END $wave5_apply_applied$;
 
 COMMIT;

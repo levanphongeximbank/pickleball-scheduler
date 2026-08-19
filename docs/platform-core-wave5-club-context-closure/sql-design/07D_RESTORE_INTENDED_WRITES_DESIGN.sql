@@ -5,17 +5,72 @@
 -- SQL_EXECUTED=NO
 --
 -- Post-VERIFY intended public command surface ONLY.
--- Run after 03_VERIFY canonical/body PASS while still quiesced.
+-- Run after 03_VERIFY canonical/body PASS and 03B VERIFIED.
 -- Explicit signatures. Not a generic GRANT. Not 07C snapshot replay.
+--
+-- Intended post-cutover command surface (14 canonical):
+--   authenticated EXECUTE = YES
+--   anon EXECUTE = DENIED
+--   PUBLIC EXECUTE = DENIED
+--   service_role: not the PostgREST command path (no generic GRANT)
+-- Internal helpers: authenticated/anon/PUBLIC EXECUTE = DENIED; service_role EXECUTE = YES
+-- Legacy club_leave_my_membership():
+--   CANONICAL_COMMAND_SURFACE=NO
+--   POST_CANONICAL_RESTORE=NO
+--   LEGACY_LEAVE_MY_POST_CUTOVER_STATE=QUIESCED_EXECUTE_DENIED
+-- Rationale: not a canonical V2 command; app path is club_leave_membership(uuid, text).
 
 BEGIN;
+
+DO $$
+DECLARE
+  v_batch uuid;
+  v_state text;
+  v_updated int := 0;
+BEGIN
+  BEGIN
+    v_batch := nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '')::uuid;
+  EXCEPTION WHEN invalid_text_representation THEN
+    RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: wave5.cutover_batch_id is not a uuid';
+  END;
+  IF v_batch IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: explicit cutover_batch_id required';
+  END IF;
+
+  SELECT b.state INTO v_state
+  FROM public.wave5_club_cutover_batch b
+  WHERE b.batch_id = v_batch
+    AND b.cutover_kind = 'WAVE5_CLUB_TENANT'
+  FOR UPDATE;
+
+  IF v_state IS DISTINCT FROM 'VERIFIED' THEN
+    RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: wrong state % — require VERIFIED',
+      coalesce(v_state, '<missing>');
+  END IF;
+END $$;
 
 REVOKE ALL ON FUNCTION public.wave5_resolve_club_facility_venue_id(text) FROM public, anon, authenticated;
 REVOKE ALL ON FUNCTION public.wave5_ensure_athlete_for_club_member(uuid, text, text) FROM public, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.wave5_resolve_club_facility_venue_id(text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.wave5_ensure_athlete_for_club_member(uuid, text, text) TO service_role;
 
+REVOKE ALL ON FUNCTION public.platform_is_canonical_tenant_entitled(text) FROM public, anon;
 GRANT EXECUTE ON FUNCTION public.platform_is_canonical_tenant_entitled(text) TO authenticated;
+
+REVOKE ALL ON FUNCTION public.club_create(uuid, text, text, text, text, text) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_update(uuid, text, integer, text, text, text, text, text) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_assign_owner(uuid, text, uuid, integer) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_clear_owner(uuid, text, integer) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_transfer_president(uuid, text, uuid, integer) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_assign_vice_president(uuid, text, uuid, integer) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_clear_vice_president(uuid, text, integer, uuid) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_add_member(uuid, text, uuid, text, integer) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_remove_member(uuid, text, uuid, integer) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_restore_member(uuid, text, uuid, integer) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_leave_membership(uuid, text) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_submit_membership_request(uuid, text, text) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_cancel_membership_request(uuid, uuid, integer) FROM public, anon;
+REVOKE ALL ON FUNCTION public.club_review_membership_request(uuid, uuid, text, text, integer) FROM public, anon;
 
 GRANT EXECUTE ON FUNCTION public.club_create(uuid, text, text, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_update(uuid, text, integer, text, text, text, text, text) TO authenticated;
@@ -33,6 +88,12 @@ GRANT EXECUTE ON FUNCTION public.club_cancel_membership_request(uuid, uuid, inte
 GRANT EXECUTE ON FUNCTION public.club_review_membership_request(uuid, uuid, text, text, integer) TO authenticated;
 
 DO $$
+DECLARE
+  v_sig text;
+  v_oid regprocedure;
+  v_ok int := 0;
+  v_batch uuid;
+  v_updated int := 0;
 BEGIN
   IF has_function_privilege(
        'authenticated',
@@ -48,14 +109,71 @@ BEGIN
      ) THEN
     RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: authenticated EXECUTE must stay DENIED on wave5_resolve_club_facility_venue_id';
   END IF;
-  IF NOT has_function_privilege(
-       'authenticated',
-       'public.club_create(uuid,text,text,text,text,text)',
-       'EXECUTE'
-     ) THEN
-    RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: authenticated EXECUTE missing on club_create';
+
+  FOREACH v_sig IN ARRAY ARRAY[
+    'public.club_create(uuid,text,text,text,text,text)',
+    'public.club_update(uuid,text,integer,text,text,text,text,text)',
+    'public.club_assign_owner(uuid,text,uuid,integer)',
+    'public.club_clear_owner(uuid,text,integer)',
+    'public.club_transfer_president(uuid,text,uuid,integer)',
+    'public.club_assign_vice_president(uuid,text,uuid,integer)',
+    'public.club_clear_vice_president(uuid,text,integer,uuid)',
+    'public.club_add_member(uuid,text,uuid,text,integer)',
+    'public.club_remove_member(uuid,text,uuid,integer)',
+    'public.club_restore_member(uuid,text,uuid,integer)',
+    'public.club_leave_membership(uuid,text)',
+    'public.club_submit_membership_request(uuid,text,text)',
+    'public.club_cancel_membership_request(uuid,uuid,integer)',
+    'public.club_review_membership_request(uuid,uuid,text,text,integer)'
+  ]
+  LOOP
+    IF NOT has_function_privilege('authenticated', v_sig, 'EXECUTE') THEN
+      RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: authenticated EXECUTE missing on %', v_sig;
+    END IF;
+    IF has_function_privilege('anon', v_sig, 'EXECUTE') THEN
+      RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: anon EXECUTE must be DENIED on %', v_sig;
+    END IF;
+    IF EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_proc p
+      CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+      WHERE p.oid = v_sig::regprocedure
+        AND acl.privilege_type = 'EXECUTE'
+        AND acl.grantee = 0
+    ) THEN
+      RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: PUBLIC EXECUTE must be DENIED on %', v_sig;
+    END IF;
+    v_ok := v_ok + 1;
+  END LOOP;
+
+  IF v_ok <> 14 THEN
+    RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT expected 14, got %',
+      v_ok;
   END IF;
-  RAISE NOTICE 'WAVE5_RESTORE_INTENDED_WRITES_OK INTERNAL_HELPER_AUTHENTICATED_EXECUTE=DENIED';
+
+  v_oid := to_regprocedure('public.club_leave_my_membership()');
+  IF v_oid IS NOT NULL THEN
+    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC', v_oid);
+    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM anon', v_oid);
+    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM authenticated', v_oid);
+    IF has_function_privilege('authenticated', v_oid, 'EXECUTE')
+       OR has_function_privilege('anon', v_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: legacy club_leave_my_membership must stay QUIESCED_EXECUTE_DENIED';
+    END IF;
+  END IF;
+
+  v_batch := nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '')::uuid;
+  UPDATE public.wave5_club_cutover_batch
+  SET state = 'RESTORED',
+      writes_restored_at = clock_timestamp()
+  WHERE batch_id = v_batch
+    AND state = 'VERIFIED';
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: VERIFIED → RESTORED failed';
+  END IF;
+
+  RAISE NOTICE 'WAVE5_RESTORE_INTENDED_WRITES_OK INTERNAL_HELPER_AUTHENTICATED_EXECUTE=DENIED POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14 LEGACY_LEAVE_MY_POST_CUTOVER_STATE=QUIESCED_EXECUTE_DENIED';
 END $$;
 
 COMMIT;

@@ -12,13 +12,17 @@ const PACKAGE_FILES = [
   "00_README.md",
   "01_PRECHECK.sql",
   "02_APPLY_DESIGN.sql",
+  "02_APPLY_STAGING_WRAPPER.sql",
+  "02_APPLY_PRODUCTION_WRAPPER.sql",
   "03_VERIFY.sql",
+  "03B_MARK_VERIFIED_DESIGN.sql",
   "04_ROLLBACK_DESIGN.md",
   "05_CLUB_TENANT_TABLE_INVENTORY.md",
   "06_CLUB_MUTATION_RPC_INVENTORY.md",
   "07_EXECUTION_RUNBOOK.md",
   "07A_QUIESCE_WRITES_DESIGN.sql",
   "07B_DRAIN_VERIFY.sql",
+  "07B2_MARK_DRAINED_DESIGN.sql",
   "07C_RESTORE_WRITES_DESIGN.sql",
   "07D_RESTORE_INTENDED_WRITES_DESIGN.sql",
   "08_RPC_OVERWRITE_GUARD_INVENTORY.md",
@@ -447,6 +451,7 @@ test("Round 4 docs: transaction-safety remediation pending Round 5 Owner review"
   assert.match(readme, /ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED/);
   assert.match(readme, /SQL_DESIGN_REVIEW_ROUND4_REMEDIATION=COMPLETE_PENDING_ROUND5_OWNER_REVIEW/);
   assert.match(readme, /SQL_DESIGN_REVIEW_ROUND5_REMEDIATION=COMPLETE_PENDING_ROUND6_OWNER_REVIEW/);
+  assert.match(readme, /SQL_DESIGN_REVIEW_ROUND6_REMEDIATION=COMPLETE_PENDING_ROUND7_OWNER_REVIEW/);
   assert.match(readme, /CLUB_CUTOVER_CONCURRENT_WRITE_WINDOW=CLOSED/);
   assert.match(readme, /APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO/);
   assert.match(sqlReadme, /APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO/);
@@ -510,11 +515,11 @@ test("Round 5 B. APPLY is forbidden without drain-pass evidence", () => {
   const drain = uncommented(readPkg("07B_DRAIN_VERIFY.sql"));
   const runbook = readPkg("07_EXECUTION_RUNBOOK.md");
   assert.match(runbook, /APPLY=ABORT/);
-  assert.match(runbook, /CLUB_MUTATION_IN_FLIGHT_DRAINED=YES/);
+  assert.match(runbook, /CLUB_MUTATION_IN_FLIGHT_DRAINED/);
   assert.match(drain, /CLUB_MUTATION_IN_FLIGHT_DRAINED=NO/);
   assert.match(drain, /pg_locks/);
   assert.match(apply, /wave5\.drain_pass/);
-  assert.match(apply, /CLUB_MUTATION_IN_FLIGHT_DRAINED not attested/);
+  assert.match(apply, /ARBITRARY_DRAIN_PASS_GUC_NOT_SUFFICIENT/);
   assert.doesNotMatch(apply, /SET LOCAL wave5\.drain_pass\s*=\s*'YES'/);
   assert.doesNotMatch(apply, /SET wave5\.drain_pass\s*=\s*'YES'/);
 });
@@ -559,16 +564,23 @@ test("Round 5 F. lock_timeout is bounded", () => {
   const src = readPkg("02_APPLY_DESIGN.sql");
   const apply = uncommented(src);
   const runbook = readPkg("07_EXECUTION_RUNBOOK.md");
-  assert.match(apply, /SET LOCAL lock_timeout = '15s'/);
-  assert.match(apply, /SET LOCAL statement_timeout = '180s'/);
+  const staging = readPkg("02_APPLY_STAGING_WRAPPER.sql");
+  const production = readPkg("02_APPLY_PRODUCTION_WRAPPER.sql");
+  assert.match(apply, /set_config\(\s*'lock_timeout'/);
+  assert.match(apply, /WHEN 'staging' THEN '5s'/);
+  assert.match(apply, /WHEN 'production' THEN '15s'/);
+  assert.match(apply, /set_config\(\s*'statement_timeout'/);
   assert.match(src, /UNBOUNDED_LOCK_WAIT=NO/);
-  assert.match(src, /STAGING_RECOMMENDED_LOCK_TIMEOUT=5s/);
-  assert.match(src, /PRODUCTION_RECOMMENDED_LOCK_TIMEOUT=15s/);
-  const timeoutIdx = apply.search(/SET LOCAL lock_timeout/);
+  assert.match(src, /STAGING_LOCK_TIMEOUT=5s/);
+  assert.match(src, /PRODUCTION_LOCK_TIMEOUT=15s/);
+  const timeoutIdx = apply.search(/set_config\(\s*'lock_timeout'/);
   const lockIdx = apply.search(/LOCK TABLE\s+public\.platform_tenants/);
   assert.ok(timeoutIdx >= 0 && timeoutIdx < lockIdx);
-  assert.match(runbook, /STAGING_RECOMMENDED_LOCK_TIMEOUT=5s/);
-  assert.match(runbook, /PRODUCTION_RECOMMENDED_LOCK_TIMEOUT=15s/);
+  assert.match(runbook, /STAGING_LOCK_TIMEOUT=5s/);
+  assert.match(runbook, /PRODUCTION_LOCK_TIMEOUT=15s/);
+  assert.match(staging, /STAGING_LOCK_TIMEOUT=5s/);
+  assert.match(production, /PRODUCTION_LOCK_TIMEOUT=15s/);
+  assert.doesNotMatch(uncommented(src), /SET LOCAL lock_timeout = '15s'/);
 });
 
 test("Round 5 G. no mutation occurs before locked safety gate", () => {
@@ -576,7 +588,7 @@ test("Round 5 G. no mutation occurs before locked safety gate", () => {
   const gateIdx = apply.search(/APPLY_LOCKED_SAFETY_GATE_COMPLETE/);
   assert.ok(gateIdx >= 0);
   const before = apply.slice(0, gateIdx);
-  assert.match(before, /SET LOCAL lock_timeout/);
+  assert.match(before, /set_config\(\s*'lock_timeout'/);
   assert.match(before, /LOCK TABLE\s+public\.platform_tenants/);
   assert.match(before, /IN ACCESS EXCLUSIVE MODE/);
   assert.doesNotMatch(before, /UPDATE\s+public\.clubs\b/i);
@@ -657,4 +669,161 @@ test("Round 5 fail-closed while quiesced and mutation inventory count", () => {
   assert.match(verify, /still executable while quiesced/);
   assert.match(readPkg("00_README.md"), /RECONCILIATION_REQUIRED_BEFORE_STAGING_MUTATION=YES/);
   assert.match(readPkg("00_README.md"), /MAIN_DRIFT_CLUB_SCOPE_OVERLAP=NO/);
+});
+
+test("Round 6 A. 14 canonical is not 15 total quiesce targets", () => {
+  const q1 = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const inventory = readPkg("06_CLUB_MUTATION_RPC_INVENTORY.md");
+  assert.match(q1, /CANONICAL_MUTATION_RPC_COUNT=14/);
+  assert.match(q1, /LEGACY_COMPAT_MUTATION_RPC_COUNT=1/);
+  assert.match(q1, /TOTAL_QUIESCE_TARGET_COUNT=15/);
+  assert.match(inventory, /CANONICAL_MUTATION_RPC_COUNT=14/);
+  assert.match(inventory, /LEGACY_COMPAT_MUTATION_RPC_COUNT=1/);
+  assert.match(inventory, /TOTAL_QUIESCE_TARGET_COUNT=15/);
+  assert.notEqual(14, 15);
+});
+
+test("Round 6 B. legacy alias cannot satisfy canonical required count", () => {
+  const q1 = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  const inventory = readPkg("06_CLUB_MUTATION_RPC_INVENTORY.md");
+  assert.match(q1, /legacy alias cannot satisfy canonical required count/);
+  assert.match(q1, /is_canonical boolean/);
+  assert.match(inventory, /CANONICAL_COMMAND_SURFACE=NO/);
+  assert.match(inventory, /POST_CANONICAL_RESTORE=NO/);
+  assert.match(inventory, /club_leave_my_membership/);
+});
+
+test("Round 6 C. missing canonical signature aborts Q1", () => {
+  const q1 = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  assert.match(q1, /ALL_CANONICAL_MUTATION_SIGNATURES_PRESENT_BEFORE_Q1=NO missing/);
+  assert.doesNotMatch(q1, /WAVE5_Q1_SKIP_MISSING/);
+  assert.match(q1, /v_canonical_present <> 14/);
+});
+
+test("Round 6 D. unknown overload aborts", () => {
+  const q1 = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  assert.match(q1, /UNKNOWN_MUTATION_RPC_OVERLOAD/);
+  assert.match(q1, /MUTATION_RPC_OVERLOAD_INVENTORY_COMPLETE=NO/);
+});
+
+test("Round 6 E. PUBLIC/anon/authenticated all denied after Q1", () => {
+  const q1 = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  assert.match(q1, /PUBLIC_MUTATION_EXECUTE_AFTER_Q1=/);
+  assert.match(q1, /ANON_MUTATION_EXECUTE_AFTER_Q1=/);
+  assert.match(q1, /AUTHENTICATED_MUTATION_EXECUTE_AFTER_Q1=/);
+  assert.match(q1, /acl\.grantee = 0/);
+  assert.match(q1, /has_function_privilege\('anon'/);
+  assert.match(q1, /has_function_privilege\('authenticated'/);
+});
+
+test("Round 6 F. only one active batch", () => {
+  const q1 = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  assert.match(q1, /wave5_club_cutover_batch_one_active/);
+  assert.match(q1, /ONE_ACTIVE_CUTOVER_BATCH violated/);
+  assert.match(q1, /state NOT IN \('RESTORED', 'ABORTED'\)/);
+});
+
+test("Round 6 G. restore requires explicit batch id", () => {
+  const restore = uncommented(readPkg("07C_RESTORE_WRITES_DESIGN.sql"));
+  assert.match(restore, /RESTORE_REQUIRES_EXPLICIT_BATCH_ID/);
+  assert.match(restore, /wave5\.restore_batch_id/);
+});
+
+test("Round 6 H. latest-snapshot restore is absent", () => {
+  const restore = uncommented(readPkg("07C_RESTORE_WRITES_DESIGN.sql"));
+  assert.doesNotMatch(restore, /ORDER BY[\s\S]*captured_at[\s\S]*DESC[\s\S]*LIMIT 1/);
+  assert.match(readPkg("07C_RESTORE_WRITES_DESIGN.sql"), /LATEST_SNAPSHOT_IMPLICIT_RESTORE=DENIED/);
+});
+
+test("Round 6 I. cutover metadata application-role access denied", () => {
+  const q1 = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  assert.match(q1, /REVOKE ALL ON TABLE public\.wave5_club_cutover_batch FROM PUBLIC/);
+  assert.match(q1, /REVOKE ALL ON TABLE public\.wave5_club_cutover_batch FROM anon, authenticated/);
+  assert.match(q1, /REVOKE ALL ON TABLE public\.wave5_cutover_rpc_privilege_snapshot FROM PUBLIC/);
+  assert.match(q1, /REVOKE ALL ON TABLE public\.wave5_cutover_rpc_privilege_snapshot FROM anon, authenticated/);
+  assert.match(q1, /ENABLE ROW LEVEL SECURITY/);
+});
+
+test("Round 6 J. pre-Q1 transaction drain barrier exists", () => {
+  const drain = uncommented(readPkg("07B_DRAIN_VERIFY.sql"));
+  const mark = uncommented(readPkg("07B2_MARK_DRAINED_DESIGN.sql"));
+  assert.match(drain, /PRE_Q1_INFLIGHT_TRANSACTION_BARRIER/);
+  assert.match(drain, /xact_start <= v_q1/);
+  assert.match(drain, /pg_stat_activity/);
+  assert.match(mark, /PRE_Q1_INFLIGHT_TRANSACTION_BARRIER/);
+  assert.match(mark, /state = 'DRAINED'/);
+});
+
+test("Round 6 K. arbitrary wave5.drain_pass=YES alone cannot authorize APPLY", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  assert.match(apply, /ARBITRARY_DRAIN_PASS_GUC_NOT_SUFFICIENT/);
+  assert.match(apply, /wave5\.drain_pass cannot manufacture DRAINED/);
+});
+
+test("Round 6 L. APPLY requires durable DRAINED batch", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  assert.match(apply, /APPLY_REQUIRES_DURABLE_DRAIN_STATE/);
+  assert.match(apply, /APPLY_BATCH_ID_MATCH_REQUIRED/);
+  assert.match(apply, /wave5\.cutover_batch_id/);
+  assert.match(apply, /v_state IS DISTINCT FROM 'DRAINED'/);
+});
+
+test("Round 6 M. all existing overwrite functions require strong fingerprint", () => {
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const apply = uncommented(src);
+  const inventory = readPkg("08_RPC_OVERWRITE_GUARD_INVENTORY.md");
+  assert.match(apply, /md5\(convert_to\(p\.prosrc, 'UTF8'\)\)/);
+  assert.match(src, /EXISTING_RPC_STRONG_FINGERPRINT_COUNT=10/);
+  assert.match(apply, /OWNER_REVIEW_REQUIRED/);
+  assert.match(inventory, /EXISTING_RPC_STRONG_FINGERPRINT_COUNT=10/);
+  for (const name of EXISTING_APPLY_RPCS) {
+    assert.match(apply, new RegExp(`'${name}'[\\s\\S]{0,400}'UNCERTIFIED'`));
+  }
+});
+
+test("Round 6 N. all 14 post-cutover command privileges are verified", () => {
+  const verify = uncommented(readPkg("03_VERIFY.sql"));
+  const restore = uncommented(readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql"));
+  assert.match(verify, /POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT expected 14/);
+  assert.match(restore, /POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14/);
+  assert.match(restore, /GRANT EXECUTE ON FUNCTION public\.club_update\(uuid, text, integer, text, text, text, text, text\) TO authenticated/);
+  assert.match(restore, /GRANT EXECUTE ON FUNCTION public\.club_leave_membership\(uuid, text\) TO authenticated/);
+});
+
+test("Round 6 O. internal helper direct execute remains denied", () => {
+  const verify = uncommented(readPkg("03_VERIFY.sql"));
+  const restore = uncommented(readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql"));
+  assert.match(verify, /internal helper direct execute must be DENIED/);
+  assert.match(restore, /INTERNAL_HELPER_AUTHENTICATED_EXECUTE=DENIED/);
+  assert.match(restore, /LEGACY_LEAVE_MY_POST_CUTOVER_STATE=QUIESCED_EXECUTE_DENIED/);
+});
+
+test("Round 6 P. Staging timeout resolves to 5s", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const staging = readPkg("02_APPLY_STAGING_WRAPPER.sql");
+  assert.match(staging, /SET wave5\.target_env = 'staging'/);
+  assert.match(staging, /STAGING_LOCK_TIMEOUT=5s/);
+  assert.match(apply, /WHEN 'staging' THEN '5s'/);
+  assert.doesNotMatch(uncommented(staging), /SET LOCAL lock_timeout/);
+});
+
+test("Round 6 Q. Production timeout resolves to 15s", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const production = readPkg("02_APPLY_PRODUCTION_WRAPPER.sql");
+  assert.match(production, /SET wave5\.target_env = 'production'/);
+  assert.match(production, /PRODUCTION_LOCK_TIMEOUT=15s/);
+  assert.match(apply, /WHEN 'production' THEN '15s'/);
+});
+
+test("Round 6 R. no live SQL execution", () => {
+  for (const name of PACKAGE_FILES) {
+    const text = readPkg(name);
+    assert.match(text, /WAVE5_SQL_DESIGN_ONLY/);
+    assert.match(text, /OWNER_SQL_EXECUTION_GO=NO/);
+    assert.doesNotMatch(text, /SQL_EXECUTED=YES/);
+  }
+  const precheck = readPkg("01_PRECHECK.sql");
+  assert.match(precheck, /RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES/);
+  assert.match(precheck, /prosrc_md5/);
+  assert.match(precheck, /certification_status/);
 });

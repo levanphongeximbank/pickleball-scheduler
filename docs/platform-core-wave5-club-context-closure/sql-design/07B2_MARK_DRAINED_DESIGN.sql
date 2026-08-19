@@ -4,11 +4,12 @@
 -- DO_NOT_RUN_ON_PRODUCTION
 -- SQL_EXECUTED=NO
 --
--- 07B1 equivalent — READ-ONLY drain proof after committed Q1. Do not APPLY until PASS.
--- Do not MARK DRAINED here. Durable DRAINED is 07B2_MARK_DRAINED_DESIGN.sql.
--- Require explicit wave5.cutover_batch_id. Do not kill sessions.
--- PRE_Q1_INFLIGHT_TRANSACTION_BARRIER=YES
--- If ambiguous: DRAIN=FAIL_CLOSED.
+-- Durable QUIESCED → DRAINED. Rechecks critical drain conditions in THIS
+-- transaction before setting state. Operator cannot mark DRAINED without
+-- DB-side recheck. Does not kill sessions.
+-- APPLY_REQUIRES_DURABLE_DRAIN_STATE=YES
+
+BEGIN;
 
 DO $$
 DECLARE
@@ -22,33 +23,34 @@ DECLARE
   v_active_club_waiters int := 0;
   v_pre_q1 int := 0;
   v_active_other int := 0;
+  v_updated int := 0;
   v_sig text;
   v_oid regprocedure;
 BEGIN
   BEGIN
     v_batch := nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '')::uuid;
   EXCEPTION WHEN invalid_text_representation THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: wave5.cutover_batch_id is not a uuid';
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: wave5.cutover_batch_id is not a uuid';
   END;
   IF v_batch IS NULL THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: cutover_batch_id required — DRAIN=FAIL_CLOSED';
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: explicit cutover_batch_id required';
   END IF;
 
   SELECT b.state, b.q1_committed_at
     INTO v_state, v_q1
   FROM public.wave5_club_cutover_batch b
   WHERE b.batch_id = v_batch
-    AND b.cutover_kind = 'WAVE5_CLUB_TENANT';
+    AND b.cutover_kind = 'WAVE5_CLUB_TENANT'
+  FOR UPDATE;
 
   IF v_state IS NULL THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: batch % missing', v_batch;
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: batch % missing', v_batch;
   END IF;
-  IF v_state IS DISTINCT FROM 'QUIESCED' AND v_state IS DISTINCT FROM 'DRAINED' THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: batch % state=% — expected QUIESCED or DRAINED',
-      v_batch, v_state;
+  IF v_state IS DISTINCT FROM 'QUIESCED' THEN
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: invalid transition % → DRAINED', v_state;
   END IF;
   IF v_q1 IS NULL THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: q1_committed_at missing on batch %', v_batch;
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: q1_committed_at missing';
   END IF;
 
   IF (
@@ -57,7 +59,7 @@ BEGIN
     WHERE b.cutover_kind = 'WAVE5_CLUB_TENANT'
       AND b.state NOT IN ('RESTORED', 'ABORTED')
   ) <> 1 THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: ONE_ACTIVE_CUTOVER_BATCH violated';
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: ONE_ACTIVE_CUTOVER_BATCH violated';
   END IF;
 
   FOREACH v_sig IN ARRAY ARRAY[
@@ -101,7 +103,7 @@ BEGIN
   END LOOP;
 
   IF v_public_exec > 0 OR v_anon_exec > 0 OR v_auth_exec > 0 THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: CLUB_MUTATION_NEW_CALLS_QUIESCED=NO public=% anon=% authenticated=%',
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: mutation EXECUTE still present public=% anon=% authenticated=%',
       v_public_exec, v_anon_exec, v_auth_exec;
   END IF;
 
@@ -125,10 +127,8 @@ BEGIN
       'ExclusiveLock',
       'AccessExclusiveLock'
     );
-
   IF v_write_locks > 0 THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: CLUB_MUTATION_IN_FLIGHT_DRAINED=NO club_write_locks=% — APPLY=ABORT',
-      v_write_locks;
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: club_write_locks=%', v_write_locks;
   END IF;
 
   SELECT count(*) INTO v_active_club_waiters
@@ -146,14 +146,10 @@ BEGIN
       'club_membership_requests_v42'
     )
     AND l.granted = false;
-
   IF v_active_club_waiters > 0 THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: lock waiters on Club tables=% — APPLY=ABORT',
-      v_active_club_waiters;
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: lock waiters=%', v_active_club_waiters;
   END IF;
 
-  -- PRE_Q1_INFLIGHT_TRANSACTION_BARRIER: sessions that could have begun a Club
-  -- command before Q1 commit. Do not depend only on query text. Do not kill.
   SELECT count(*) INTO v_pre_q1
   FROM pg_catalog.pg_stat_activity a
   WHERE a.pid IS DISTINCT FROM pg_backend_pid()
@@ -173,9 +169,8 @@ BEGIN
       a.usename IN ('authenticated', 'anon', 'authenticator')
       OR lower(coalesce(a.application_name, '')) LIKE '%postgrest%'
     );
-
   IF v_pre_q1 > 0 THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: PRE_Q1_INFLIGHT_TRANSACTION_BARRIER pre_q1_api_xacts=% — DRAIN=FAIL_CLOSED',
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: PRE_Q1_INFLIGHT_TRANSACTION_BARRIER pre_q1_api_xacts=%',
       v_pre_q1;
   END IF;
 
@@ -195,21 +190,24 @@ BEGIN
     AND a.xact_start IS NOT NULL
     AND a.xact_start <= v_q1
     AND a.usename IS NULL;
-
   IF v_active_other > 0 THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: ambiguous pre-Q1 idle-in-transaction sessions=% — DRAIN=FAIL_CLOSED',
-      v_active_other;
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: ambiguous pre-Q1 sessions=%', v_active_other;
   END IF;
 
-  RAISE NOTICE 'WAVE5_DRAIN_PASS CLUB_MUTATION_NEW_CALLS_QUIESCED=YES CLUB_MUTATION_IN_FLIGHT_DRAINED=YES PRE_Q1_INFLIGHT_TRANSACTION_BARRIER=YES batch=%',
-    v_batch;
+  UPDATE public.wave5_club_cutover_batch
+  SET state = 'DRAINED',
+      drained_at = clock_timestamp()
+  WHERE batch_id = v_batch
+    AND state = 'QUIESCED'
+    AND q1_committed_at IS NOT NULL
+    AND clock_timestamp() > q1_committed_at;
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: DRAINED transition failed for batch %', v_batch;
+  END IF;
+
+  RAISE NOTICE 'WAVE5_DRAIN_MARKED batch=% state=DRAINED', v_batch;
 END $$;
 
--- Operator evidence (repeat once after >=1s). Query text is supporting only:
-SELECT a.pid, a.usename, a.application_name, a.state, a.wait_event_type, a.wait_event,
-       a.xact_start, a.query_start, left(a.query, 120) AS query_prefix
-FROM pg_catalog.pg_stat_activity a
-WHERE a.pid IS DISTINCT FROM pg_backend_pid()
-  AND a.datname = current_database()
-  AND a.state IS DISTINCT FROM 'idle'
-ORDER BY a.pid;
+COMMIT;
