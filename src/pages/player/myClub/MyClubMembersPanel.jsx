@@ -113,7 +113,7 @@ export default function MyClubMembersPanel({
     manageHref &&
     (!rbacEnabled ||
       !isAuthenticated ||
-      can(PERMISSIONS.PLAYER_UPDATE, { clubId, venueId: tenantId }));
+      can(PERMISSIONS.PLAYER_UPDATE, { clubId, tenantId }));
 
   // Phase 45A.2 — Membership canonical READ cutover. The member roster is read
   // through canonicalMembershipRepository (V2 RPC gateway → public.club_members)

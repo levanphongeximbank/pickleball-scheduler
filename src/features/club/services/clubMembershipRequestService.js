@@ -306,8 +306,7 @@ export async function leaveMyClub({
     };
   }
 
-  const resolvedTenantId =
-    tenantId || club.venueId || club.tenantId || athlete.tenantId || athlete.venueId || null;
+  const resolvedTenantId = tenantId || club.tenantId || athlete.tenantId || null;
 
   const memberResult = await removeMemberFromClub(clubId, playerId, resolvedTenantId, {
     skipPermissionGuard: true,
@@ -923,6 +922,10 @@ export async function rejectClubMembershipRequest(clubId, requestId, tenantId, o
 export function getMyClubSummary(clubId, tenantId) {
   const club = getRegistryClubById(clubId);
   if (!club) {
+    return null;
+  }
+
+  if (tenantId && club.tenantId && String(tenantId) !== String(club.tenantId)) {
     return null;
   }
 

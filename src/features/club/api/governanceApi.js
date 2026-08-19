@@ -60,7 +60,7 @@ export async function governanceGet(clubId, options = {}) {
       clubId: id,
       provider: "v2-rpc",
       readModel,
-      tenantId: club?.tenantId || club?.venueId || null,
+      tenantId: club?.tenantId || null,
     };
   }
 
@@ -88,7 +88,7 @@ export async function governanceGet(clubId, options = {}) {
     clubId: id,
     provider: "legacy-registry",
     readModel,
-    tenantId: club.tenantId || club.venueId || null,
+    tenantId: club.tenantId || null,
     /** V2 OFF fallback — not Production authority. */
     fallback: "legacy-registry",
   };

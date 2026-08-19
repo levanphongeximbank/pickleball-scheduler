@@ -84,6 +84,20 @@ Never: `if tenant id exists in platform_tenants then assume canonical` — live 
 
 See `sql-design/`. **DO NOT RUN.** `OWNER_SQL_EXECUTION_GO=NO`.
 
+**SQL_DESIGN_REVIEW_REMEDIATION** (this pass): strongly state-guarded APPLY; Club child tables `club_members` / `club_governance_assignments` / `club_membership_requests_v42` included; `club_create` uses `platform_tenants`; Wave 4 `tenant_members` canonical FK expected.
+
+**TENANT_MEMBERS_WAVE4_CANONICAL_FK_EXPECTED=YES**
+**WAVE4_SQL_REEXECUTION_REQUIRED=NO**
+
+## Competition leftovers (not Wave 5 blockers)
+
+| Path | Classification |
+|---|---|
+| `src/legacy/Tournament.jsx` | `DEAD_CODE_ONLY` — no production importer; lint-baseline only |
+| `useTournamentEngine` `tenantId: activeClubId` | `AUDIT_METADATA_ONLY` — event metadata, not authorization scope |
+
+`SEPARATE_COMPETITION_AUTHORITY_GAP=NO`. Documented as P2/P3 Competition debt. Not modified under Platform Core Wave 5.
+
 ## Explicit non-scope
 
 - Frozen Competition Contracts 01–16 / no Contract #17

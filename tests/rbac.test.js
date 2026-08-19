@@ -731,12 +731,14 @@ test("createClub — VENUE_OWNER tự gán venueId", () => {
   signInAs(
     user(ROLES.VENUE_OWNER, {
       venueId: "venue-demo",
+      tenantId: "tenant-demo",
     })
   );
 
   const result = createClub("CLB Venue Owner");
   assert.equal(result.ok, true);
   assert.equal(result.club.venueId, "venue-demo");
+  assert.equal(result.club.tenantId, "tenant-demo");
 
   signOut();
   enableRbac(false);
@@ -747,7 +749,7 @@ test("subscription — maxClubs chặn khi vượt giới hạn trial", () => {
   enableRbac(true);
   ensureDemoVenue();
 
-  signInAs(user(ROLES.VENUE_OWNER, { venueId: "venue-demo" }));
+  signInAs(user(ROLES.VENUE_OWNER, { venueId: "venue-demo", tenantId: "tenant-demo" }));
 
   const maxClubs = SUBSCRIPTION_PLANS.trial.maxClubs;
   for (let index = 0; index < maxClubs; index += 1) {

@@ -411,6 +411,9 @@ function matchesScopeType(user, permissionScope, scope, permission) {
     case PERMISSION_SCOPE.PLATFORM:
       return matchesPlatformScope(user, scope, permission);
 
+    case PERMISSION_SCOPE.TENANT:
+      return matchesTenantScope(user, scope);
+
     case PERMISSION_SCOPE.VENUE:
       return matchesVenueScope(user, scope.venueId, permission);
 
@@ -536,6 +539,19 @@ function matchesClusterScope(user, scope) {
   }
 
   return canUserAccessCluster(user, clusterId, { venueId });
+}
+
+function matchesTenantScope(user, scope) {
+  const tenantId = scope.tenantId || scope.tenant_id || null;
+  if (!tenantId) {
+    return false;
+  }
+  if (decideTenantAccess(user, tenantId, { requireTarget: true }).allowed) {
+    return true;
+  }
+  // Explicit tenant target for holders of tenant-scoped Club permissions
+  // (e.g. PLAYER / CLUB_MANAGER club.create) without stuffing Tenant into venueId.
+  return Boolean(user.tenantId) && user.tenantId === tenantId;
 }
 
 function matchesVenueScope(user, venueId, permission) {

@@ -331,3 +331,46 @@ test("Wave5 docs do not claim PC_CLUB_01 closed or SQL applied", () => {
   assert.doesNotMatch(readme, /\*\*PC_CLUB_01=CLOSED\*\*/);
   assert.doesNotMatch(readme, /SQL_APPLIED=/);
 });
+
+test("F. Club governance app path never sends venueId=tenantId", () => {
+  const governance = readSrc("src/features/club/services/clubGovernanceService.js");
+  const panel = readSrc("src/pages/clubs/ClubGovernancePanel.jsx");
+  const list = readSrc("src/pages/clubs/ClubListPage.jsx");
+  const nav = readSrc("src/features/club/navigation/clubNavMatrix.js");
+  const tenant = readSrc("src/features/club/services/clubTenantService.js");
+  const guard = readSrc("src/auth/guardAction.js");
+  const venueOwner = readSrc("src/features/club/services/venueOwnerClubService.js");
+  const registry = readSrc("src/features/club/services/clubRegistryCloudService.js");
+  const membership = readSrc("src/features/club/services/clubMembershipRequestService.js");
+  assert.doesNotMatch(governance, /venueId:\s*tenantId/);
+  assert.doesNotMatch(panel, /venueId:\s*tenantId/);
+  assert.doesNotMatch(list, /venueId:\s*currentTenantId/);
+  assert.doesNotMatch(nav, /venueId:\s*tenantId/);
+  assert.doesNotMatch(tenant, /venueId:\s*tenantId/);
+  assert.doesNotMatch(guard, /venueId:\s*meta\?\.venueId\s*\|\|\s*tenantId/);
+  assert.match(guard, /venueId:\s*meta\?\.venueId\s*\|\|\s*null/);
+  assert.doesNotMatch(venueOwner, /tenantId:\s*venueId/);
+  assert.doesNotMatch(venueOwner, /user\.venueId\s*\|\|\s*user\.tenantId/);
+  assert.doesNotMatch(registry, /tenantId:\s*cloudVenueId/);
+  assert.doesNotMatch(membership, /club\.venueId\s*\|\|\s*club\.tenantId/);
+});
+
+test("G. Club write authz uses canonical Tenant scope", () => {
+  const scope = readSrc("src/features/identity/constants/permissionScope.js");
+  const rbac = readSrc("src/auth/rbac.js");
+  const tenant = readSrc("src/features/club/services/clubTenantService.js");
+  assert.match(scope, /TENANT:\s*"tenant"/);
+  assert.match(scope, /CLUB_CREATE\]:\s*PERMISSION_SCOPE\.TENANT/);
+  assert.match(rbac, /function matchesTenantScope/);
+  assert.match(rbac, /PERMISSION_SCOPE\.TENANT/);
+  assert.match(tenant, /tenantId \? \{ tenantId \} : \{\}/);
+  assert.doesNotMatch(tenant, /venueId:\s*tenantId,\s*tenantId/);
+});
+
+test("J. no Contract A change in Wave 5 package", () => {
+  const readme = readSrc("docs/platform-core-wave5-club-context-closure/README.md");
+  assert.match(readme, /Frozen Competition Contracts 01–16/);
+  assert.match(readme, /SEPARATE_COMPETITION_AUTHORITY_GAP=NO/);
+  assert.match(readme, /DEAD_CODE_ONLY/);
+  assert.match(readme, /AUDIT_METADATA_ONLY/);
+});

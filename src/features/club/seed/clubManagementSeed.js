@@ -73,7 +73,7 @@ export function ensureClubManagementSeed() {
       description: `CLB demo ${spec.name} — Future Arena`,
       status: CLUB_STATUSES.ACTIVE,
       tenantId,
-      venueId: tenantId,
+      venueId: spec.venueId || null,
     });
 
     clubs.push(club);

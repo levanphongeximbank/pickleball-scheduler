@@ -158,7 +158,7 @@ export default function ClubMembersTab({ club, tenantId, onRefresh }) {
     governanceWriteAllowed &&
     (!rbacEnabled ||
       !isAuthenticated ||
-      can(PERMISSIONS.PLAYER_UPDATE, { clubId: club.id, venueId: tenantId }));
+      can(PERMISSIONS.PLAYER_UPDATE, { clubId: club.id, tenantId }));
 
   // Phase 1C — write visibility aligns with Phase 1B governance authz (not list-only probe).
   // Role/status remain legacy-only (disabled while canonical membership read is on).
