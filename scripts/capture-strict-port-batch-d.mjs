@@ -127,6 +127,12 @@ async function selectSeedClub() {
         await page.waitForTimeout(1000);
         return true;
       }
+      const fallback = page.getByRole("option").filter({ hasText: /CLB Venue Staging A|venue-staging-a/ });
+      if (await fallback.count()) {
+        await fallback.first().click({ force: true });
+        await page.waitForTimeout(1000);
+        return true;
+      }
       await page.keyboard.press("Escape");
     } catch {
       await page.keyboard.press("Escape").catch(() => {});
@@ -163,15 +169,25 @@ for (const screen of selectedScreens) {
   await page.goto(`${BASE}/tournament/${TOURNAMENT_ID}/group-draw`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.waitForSelector('[data-testid="tournament-group-draw-page"]', { timeout: 45000 });
   await selectSeedClub();
-  await page.waitForTimeout(800);
-  await page.goto(`${BASE}/tournament/${TOURNAMENT_ID}/schedule`, { waitUntil: "domcontentloaded", timeout: 90000 });
-  await page.waitForSelector('[data-testid="tournament-schedule-page"]', { timeout: 45000 });
-  if (screen.id !== "10") {
-    await page.getByText(screen.nav, { exact: true }).first().click({ force: true });
-    await page.waitForTimeout(1200);
-  }
+  await page.waitForTimeout(1200);
+  await page.goto(`${BASE}/tournament/${TOURNAMENT_ID}/group-draw`, { waitUntil: "domcontentloaded", timeout: 90000 });
+  await page.waitForSelector('[data-testid="tournament-group-draw-page"]', { timeout: 45000 });
+  await page.waitForFunction(() => !document.body.innerText.includes("Không tìm thấy giải"), null, { timeout: 45000 });
+  const suffix =
+    screen.id === "10"
+      ? "/schedule"
+      : screen.id === "11"
+        ? "/matches"
+        : screen.id === "12"
+          ? "/standings"
+          : screen.id === "13"
+            ? "/knockout"
+            : "/bracket";
+  await page.goto(`${BASE}/tournament/${TOURNAMENT_ID}${suffix}`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.waitForSelector(`[data-testid="${screen.testId}"]`, { timeout: 45000 });
-  await page.waitForFunction(() => !document.body.innerText.includes("Không tìm thấy giải"), { timeout: 20000 });
+  await selectSeedClub();
+  await page.waitForTimeout(1500);
+  await page.waitForFunction(() => !document.body.innerText.includes("Không tìm thấy giải"), null, { timeout: 45000 });
   for (const shot of screen.viewports) {
     await page.setViewportSize({ width: shot.width, height: shot.height });
     await page.waitForTimeout(400);
