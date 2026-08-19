@@ -301,10 +301,16 @@ export default function IndividualRegistrationPublicationPage() {
                 borderRadius: `${TOURNAMENT_RADIUS.card}px`,
               }}
             >
+              <Typography sx={{ fontSize: 11, fontWeight: 700, color: TOURNAMENT_COLOR.primary, mb: 0.35 }}>
+                Xem trước nút kêu gọi
+              </Typography>
               <Typography sx={{ fontWeight: 800, fontSize: 13, mb: 0.75 }}>{model.tournamentName}</Typography>
-              <Button variant="contained" fullWidth size="small" component={RouterLink} to={individualPublicTournamentPath(tournamentId)} sx={primaryActionSx}>
+              <Button variant="contained" fullWidth size="small" disabled sx={primaryActionSx}>
                 Đăng ký ngay
               </Button>
+              <Typography sx={{ fontSize: 11, color: TOURNAMENT_COLOR.textMuted, mt: 0.75 }}>
+                Chỉ hoạt động sau khi đăng ký được công bố.
+              </Typography>
             </Paper>
             <Divider sx={{ mb: 1.25 }} />
             <Typography sx={{ fontSize: 11, fontWeight: 700, color: TOURNAMENT_COLOR.textMuted, mb: 0.6 }}>

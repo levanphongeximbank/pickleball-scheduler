@@ -145,6 +145,21 @@ describe("tournament-experience-wave-b", () => {
     assert.equal(page.includes("approveEntry"), false);
   });
 
+  it("SCREEN_04_PUBLIC_CTA_SEMANTICS", () => {
+    const page = readFileSync(path.join(A1_DIR, "pages/IndividualRegistrationPublicationPage.jsx"), "utf8");
+    const previewStart = page.indexOf("Nút kêu gọi công khai");
+    const previewEnd = page.indexOf("Sẵn sàng đóng đăng ký");
+    assert.ok(previewStart >= 0 && previewEnd > previewStart);
+    const preview = page.slice(previewStart, previewEnd);
+    assert.ok(preview.includes("Đăng ký ngay"));
+    assert.ok(preview.includes("Xem trước nút kêu gọi"));
+    assert.ok(preview.includes("Chỉ hoạt động sau khi đăng ký được công bố."));
+    assert.ok(preview.includes("disabled"));
+    assert.equal(preview.includes("RouterLink"), false);
+    assert.equal(preview.includes("individualPublicTournamentPath"), false);
+    assert.equal(hasCanonicalRegistrationPublication(), false);
+  });
+
   it("SCREEN_05_REAL_PARTICIPANT_READ", () => {
     const tournament = sampleTournament([
       {
