@@ -80,6 +80,36 @@ export function individualGroupStagePath(tournamentId, eventId = "") {
   return withEventQuery(`/tournament/${encodeURIComponent(id)}/groups`, eventId);
 }
 
+export function individualSchedulePath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/schedule`, eventId);
+}
+
+export function individualMatchesPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/matches`, eventId);
+}
+
+export function individualStandingsPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/standings`, eventId);
+}
+
+export function individualKnockoutPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/knockout`, eventId);
+}
+
+export function individualBracketPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/bracket`, eventId);
+}
+
 export function a1LegacyHubPath() {
   return "/tournament?experience=legacy";
 }

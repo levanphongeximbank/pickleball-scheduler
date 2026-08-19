@@ -225,6 +225,21 @@ const IndividualGroupDrawRoomPage = lazy(() =>
 const IndividualGroupStagePage = lazy(() =>
   import("./features/tournament/experience-a1/pages/IndividualGroupStagePage.jsx")
 );
+const IndividualSchedulePage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualSchedulePage.jsx")
+);
+const IndividualMatchCenterPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualMatchCenterPage.jsx")
+);
+const IndividualStandingsPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualStandingsPage.jsx")
+);
+const IndividualKnockoutPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualKnockoutPage.jsx")
+);
+const IndividualBracketPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualBracketPage.jsx")
+);
 const TournamentWithdrawalPage = lazy(() =>
   import("./pages/tournament/TournamentWithdrawalPage.jsx")
 );
@@ -621,6 +636,26 @@ export default function Router() {
             <Route
               path="/tournament/:tournamentId/groups"
               element={<IndividualGroupStagePage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/schedule"
+              element={<IndividualSchedulePage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/matches"
+              element={<IndividualMatchCenterPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/standings"
+              element={<IndividualStandingsPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/knockout"
+              element={<IndividualKnockoutPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/bracket"
+              element={<IndividualBracketPage />}
             />
             <Route
               path="/tournament/:tournamentId/register"
