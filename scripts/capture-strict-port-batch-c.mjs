@@ -140,15 +140,33 @@ const EXTRA_VIEWPORTS = [
 ];
 
 const results = [];
-for (const screen of SCREENS) {
+const selectedScreens = process.env.BATCH_C_ONLY
+  ? SCREENS.filter((screen) => screen.id === process.env.BATCH_C_ONLY)
+  : SCREENS;
+for (const screen of selectedScreens) {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${BASE}/tournament`, { waitUntil: "domcontentloaded", timeout: 90000 });
+  await page.waitForTimeout(800);
+  const clubText = await page.evaluate(() => document.body.innerText);
+  if (!/HC Operator Seed Club venue-staging-a/.test(clubText)) {
+    await selectSeedClub();
+  }
   await page.goto(`${BASE}${screen.path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.waitForSelector(`[data-testid="${screen.testId}"]`, { timeout: 45000 });
   await page.waitForTimeout(800);
   let bodyText = await page.evaluate(() => document.body.innerText);
   if (bodyText.includes("Không tìm thấy giải")) {
+    await page.goto(`${BASE}/tournament/${TOURNAMENT_ID}/group-draw`, { waitUntil: "domcontentloaded", timeout: 90000 });
+    await page.waitForSelector('[data-testid="tournament-group-draw-page"]', { timeout: 45000 });
     await selectSeedClub();
-    await page.goto(`${BASE}${screen.path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
+    await page.waitForTimeout(1000);
+    const groupsLink = page.getByRole("link", { name: "Vòng bảng" });
+    if (screen.id === "09" && (await groupsLink.count())) {
+      await groupsLink.first().click();
+      await page.waitForTimeout(1500);
+    } else {
+      await page.goto(`${BASE}${screen.path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
+    }
     await page.waitForSelector(`[data-testid="${screen.testId}"]`, { timeout: 45000 });
     await page.waitForTimeout(1200);
     bodyText = await page.evaluate(() => document.body.innerText);
