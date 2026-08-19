@@ -31,12 +31,35 @@ export function individualOverviewPath(tournamentId) {
   return id ? `/tournament/${encodeURIComponent(id)}/overview` : "/tournament";
 }
 
+export function withEventQuery(path, eventId = "") {
+  const selected = String(eventId || "").trim();
+  if (!selected) return path;
+  const join = path.includes("?") ? "&" : "?";
+  return `${path}${join}eventId=${encodeURIComponent(selected)}`;
+}
+
 export function individualSettingsPath(tournamentId, eventId = "") {
   const id = String(tournamentId || "").trim();
   if (!id) return "/tournament";
-  const base = `/tournament/${encodeURIComponent(id)}/settings`;
-  const selected = String(eventId || "").trim();
-  return selected ? `${base}?eventId=${encodeURIComponent(selected)}` : base;
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/settings`, eventId);
+}
+
+export function individualRegistrationPublicationPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/registration`, eventId);
+}
+
+export function individualParticipantsPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/participants`, eventId);
+}
+
+export function individualPairsPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/pairs`, eventId);
 }
 
 export function a1LegacyHubPath() {

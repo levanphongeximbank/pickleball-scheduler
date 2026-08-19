@@ -600,5 +600,6 @@
   "tests/court-resource-batch9-architecture.test.js",
   "tests/court-resource-batch9-adapter-routing.test.js",
   "tests/court-resource-batch9-cross-module-certification-real-postgres.test.js",
-  "tests/tournament-experience-wave-a1.test.js"
+  "tests/tournament-experience-wave-a1.test.js",
+  "tests/tournament-experience-wave-b.test.js"
 ]

@@ -6,6 +6,9 @@ export {
 export {
   individualOverviewPath,
   individualSettingsPath,
+  individualRegistrationPublicationPath,
+  individualParticipantsPath,
+  individualPairsPath,
   a1LegacyHubPath,
   resolveA1OpenPath,
 } from "./routes.js";

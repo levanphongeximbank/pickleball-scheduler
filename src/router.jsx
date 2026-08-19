@@ -207,6 +207,15 @@ const IndividualOverviewPage = lazy(() =>
 const IndividualSettingsPage = lazy(() =>
   import("./features/tournament/experience-a1/pages/IndividualSettingsPage.jsx")
 );
+const IndividualRegistrationPublicationPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualRegistrationPublicationPage.jsx")
+);
+const IndividualParticipantsPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualParticipantsPage.jsx")
+);
+const IndividualPairFormationPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualPairFormationPage.jsx")
+);
 const TournamentWithdrawalPage = lazy(() =>
   import("./pages/tournament/TournamentWithdrawalPage.jsx")
 );
@@ -579,6 +588,18 @@ export default function Router() {
             <Route
               path="/tournament/:tournamentId/settings"
               element={<IndividualSettingsPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/registration"
+              element={<IndividualRegistrationPublicationPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/participants"
+              element={<IndividualParticipantsPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/pairs"
+              element={<IndividualPairFormationPage />}
             />
             <Route
               path="/tournament/:tournamentId/register"
