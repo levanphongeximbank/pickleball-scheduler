@@ -87,6 +87,38 @@ const page = await browser.newPage({
 const pageErrors = [];
 page.on("pageerror", (err) => pageErrors.push(String(err?.message || err)));
 
+async function selectSeedClub() {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const locators = [
+    page.locator("#header-club-label"),
+    page.locator("[aria-labelledby='header-club-label']"),
+    page.getByRole("combobox").filter({ hasText: /CLB|Chọn/ }),
+    page.getByText("Chọn CLB...", { exact: false }),
+  ];
+  for (const locator of locators) {
+    if (!(await locator.count())) continue;
+    try {
+      await locator.first().click({ force: true, timeout: 4000 });
+      const seed = page.getByRole("option").filter({ hasText: /HC Operator Seed Club venue-staging-a/ });
+      if (await seed.count()) {
+        await seed.first().click({ force: true });
+        await page.waitForTimeout(1000);
+        return true;
+      }
+      const fallback = page.getByRole("option").filter({ hasText: /CLB Venue Staging A|venue-staging-a/ });
+      if (await fallback.count()) {
+        await fallback.first().click({ force: true });
+        await page.waitForTimeout(1000);
+        return true;
+      }
+      await page.keyboard.press("Escape");
+    } catch {
+      await page.keyboard.press("Escape").catch(() => {});
+    }
+  }
+  return false;
+}
+
 await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded", timeout: 90000 });
 await page.waitForSelector('input[type="email"], label:has-text("Email")', { timeout: 30000 });
 await page.locator('input[type="email"]').first().fill(EMAIL);
@@ -95,25 +127,33 @@ await page.getByRole("button", { name: "Đăng nhập" }).click();
 await page.waitForTimeout(2500);
 
 await page.goto(`${BASE}/tournament`, { waitUntil: "domcontentloaded", timeout: 90000 });
-await page.waitForTimeout(1200);
+await page.waitForTimeout(1500);
+await selectSeedClub();
 
-const clubLabel = page.locator("#header-club-label, [aria-labelledby='header-club-label']").first();
-if (await clubLabel.count()) {
-  await clubLabel.click({ force: true });
-  const seed = page.getByRole("option").filter({ hasText: /HC Operator Seed Club venue-staging-a/ }).first();
-  if (await seed.count()) {
-    await seed.click();
-    await page.waitForTimeout(800);
-  } else {
-    await page.keyboard.press("Escape");
-  }
-}
+const EXTRA_VIEWPORTS = [
+  { width: 360, height: 800 },
+  { width: 430, height: 932 },
+  { width: 1024, height: 768 },
+  { width: 1920, height: 1080 },
+];
 
 const results = [];
 for (const screen of SCREENS) {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${BASE}${screen.path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.waitForSelector(`[data-testid="${screen.testId}"]`, { timeout: 45000 });
   await page.waitForTimeout(800);
+  let bodyText = await page.evaluate(() => document.body.innerText);
+  if (bodyText.includes("Không tìm thấy giải")) {
+    await selectSeedClub();
+    await page.goto(`${BASE}${screen.path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
+    await page.waitForSelector(`[data-testid="${screen.testId}"]`, { timeout: 45000 });
+    await page.waitForTimeout(1200);
+    bodyText = await page.evaluate(() => document.body.innerText);
+  }
+  if (bodyText.includes("Không tìm thấy giải")) {
+    throw new Error(`${screen.id} still missing tournament after club select`);
+  }
   for (const shot of screen.viewports) {
     await page.setViewportSize({ width: shot.width, height: shot.height });
     await page.waitForTimeout(400);
@@ -135,19 +175,35 @@ for (const screen of SCREENS) {
       overflow,
       hasDevCopy,
       titleHit: screen.titleRe.test(metrics.bodyText),
+      bound: /Giải đấu 17\/8\/2026|Đôi nam|Công bố đăng ký|Chốt danh sách|Đăng ký cùng/.test(metrics.bodyText),
     });
-    console.log(`${shot.file} overflow=${overflow} title=${results.at(-1).titleHit} dev=${hasDevCopy}`);
+    console.log(
+      `${shot.file} overflow=${overflow} title=${results.at(-1).titleHit} bound=${results.at(-1).bound} dev=${hasDevCopy}`
+    );
+  }
+  for (const extra of EXTRA_VIEWPORTS) {
+    await page.setViewportSize({ width: extra.width, height: extra.height });
+    await page.waitForTimeout(250);
+    const metrics = await page.evaluate(() => ({
+      innerWidth: window.innerWidth,
+      scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+    }));
+    const overflow = metrics.scrollWidth > metrics.innerWidth + 2;
+    results.push({ file: `${screen.id}_${extra.width}`, width: extra.width, overflow, extra: true });
+    console.log(`${screen.id} extra ${extra.width} overflow=${overflow}`);
   }
 }
 
 await browser.close();
 
 const unexpectedErrors = pageErrors.filter((item) => !item.includes("node:crypto"));
+const shots = results.filter((item) => !item.extra);
 const failedOverflow = results.filter((item) => item.overflow);
-const failedDev = results.filter((item) => item.hasDevCopy);
-const failedTitle = results.filter((item) => !item.titleHit);
-if (failedOverflow.length || failedDev.length || failedTitle.length || unexpectedErrors.length) {
-  console.error(JSON.stringify({ failedOverflow, failedDev, failedTitle, unexpectedErrors }, null, 2));
+const failedDev = shots.filter((item) => item.hasDevCopy);
+const failedTitle = shots.filter((item) => !item.titleHit);
+const failedBound = shots.filter((item) => !item.bound);
+if (failedOverflow.length || failedDev.length || failedTitle.length || failedBound.length || unexpectedErrors.length) {
+  console.error(JSON.stringify({ failedOverflow, failedDev, failedTitle, failedBound, unexpectedErrors }, null, 2));
   process.exit(1);
 }
 
