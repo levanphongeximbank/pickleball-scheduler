@@ -142,7 +142,9 @@ const EXTRA_VIEWPORTS = [
 const results = [];
 const selectedScreens = process.env.BATCH_C_ONLY
   ? SCREENS.filter((screen) => screen.id === process.env.BATCH_C_ONLY)
-  : SCREENS;
+  : process.env.BATCH_C_SKIP_09 === "1"
+    ? SCREENS.filter((screen) => screen.id !== "09")
+    : SCREENS;
 for (const screen of selectedScreens) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${BASE}/tournament`, { waitUntil: "domcontentloaded", timeout: 90000 });
@@ -200,6 +202,50 @@ for (const screen of selectedScreens) {
     console.log(
       `${shot.file} overflow=${overflow} title=${results.at(-1).titleHit} bound=${results.at(-1).bound} dev=${hasDevCopy}`
     );
+  }
+  if (screen.id === "07" || screen.id === "08") {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const present = page.getByRole("button", { name: "Trình chiếu" });
+    if (await present.count()) {
+      await present.first().click();
+      await page.waitForTimeout(400);
+    }
+    for (const shot of [
+      { file: `${screen.id}_PRESENTATION_1440.png`, width: 1440, height: 900 },
+      { file: `${screen.id}_PRESENTATION_768.png`, width: 768, height: 1024 },
+      { file: `${screen.id}_PRESENTATION_390.png`, width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize({ width: shot.width, height: shot.height });
+      await page.waitForTimeout(400);
+      const dest = path.join(OUT, shot.file);
+      await page.screenshot({ path: dest, fullPage: true });
+      const metrics = await page.evaluate(() => ({
+        innerWidth: window.innerWidth,
+        scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+        bodyText: document.body.innerText,
+      }));
+      const overflow = metrics.scrollWidth > metrics.innerWidth + 2;
+      const hasDevCopy =
+        /canonical_tournament|dữ liệu mẫu|Wave A1|Wave B|Wave C|updateTournamentCommand|lockRegistration|events\[0\]|B-03|Operator Mode|Presentation Mode/.test(
+          metrics.bodyText
+        );
+      results.push({
+        file: shot.file,
+        width: shot.width,
+        overflow,
+        hasDevCopy,
+        titleHit: /TRÌNH CHIẾU|Thoát trình chiếu/.test(metrics.bodyText),
+        bound: /Giải đấu 17\/8\/2026|Đôi nam|Phòng bốc thăm/.test(metrics.bodyText),
+      });
+      console.log(
+        `${shot.file} overflow=${overflow} title=${results.at(-1).titleHit} bound=${results.at(-1).bound} dev=${hasDevCopy}`
+      );
+    }
+    const exitPresent = page.getByRole("button", { name: "Thoát trình chiếu" });
+    if (await exitPresent.count()) {
+      await exitPresent.first().click();
+      await page.waitForTimeout(300);
+    }
   }
   for (const extra of EXTRA_VIEWPORTS) {
     await page.setViewportSize({ width: extra.width, height: extra.height });

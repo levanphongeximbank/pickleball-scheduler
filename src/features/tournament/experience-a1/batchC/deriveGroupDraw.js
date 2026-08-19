@@ -1,6 +1,6 @@
 import { normalizeEntries } from "../../../../models/tournament/entry.js";
 import { normalizeGroups } from "../../../../models/tournament/group.js";
-import { isDrawLocked, getDrawPublishStatus } from "../../../../tournament/engines/publishDrawEngine.js";
+import { isDrawLocked } from "../../../../tournament/engines/publishDrawEngine.js";
 import { eventDisplayName, resolveBatchBEvent } from "../batchB/eventScope.js";
 import { DRAW_LOCK_LABEL, resolveDrawRoomActionState } from "./drawRoomActionState.js";
 import { MULTI_CONTENT_LIMITATION } from "./actionMatrix.js";
@@ -48,15 +48,14 @@ export function deriveGroupDrawModel(tournament, { selectedEventId } = {}) {
 
   const expectedTotal = entries.length;
   const drawnCount = assignedIds.size;
-  const locked = Boolean(tournament && isDrawLocked(tournament));
-  const publish = getDrawPublishStatus(tournament);
-  const statusLabel =
-    publish.status === "published" ? "Đã công bố" : publish.status === "locked" ? "Đã khóa" : "Bản nháp";
+  const tournamentDrawLocked = Boolean(tournament && isDrawLocked(tournament));
+  const contentLocked = false;
+  const constraintsPass = groups.length > 0 && awaiting.length === 0;
   const actionState = resolveDrawRoomActionState({
     drawnCount,
     expectedTotal,
-    locked,
-    constraintsPass: groups.length > 0 && awaiting.length === 0,
+    contentLocked,
+    constraintsPass,
     remainingNoun: "cặp chưa chia bảng",
     lockAuthority: false,
   });
@@ -69,8 +68,9 @@ export function deriveGroupDrawModel(tournament, { selectedEventId } = {}) {
     needsEventChoice: scope.needsEventChoice,
     emptyEvents: scope.emptyEvents,
     events: scope.events,
-    locked,
-    drawStatusLabel: statusLabel,
+    locked: contentLocked,
+    tournamentDrawLocked,
+    drawStatusLabel: actionState.readinessLabel,
     multiContentLimitation: MULTI_CONTENT_LIMITATION,
     drawnCount,
     expectedTotal,
@@ -109,7 +109,7 @@ export function deriveGroupDrawModel(tournament, { selectedEventId } = {}) {
     },
     rules: [
       { label: "Sức chứa bảng", status: groups.length ? "Theo hồ sơ" : "Chưa có bảng", tone: groups.length ? "info" : "warning", note: groups.length ? `${groups.length} bảng trên hồ sơ` : "Chưa có bảng trên nội dung này." },
-      { label: "Khóa theo nội dung", status: "Chưa có", tone: "warning", note: MULTI_CONTENT_LIMITATION },
+      { label: "Khóa theo nội dung", status: "Chưa có", tone: "warning", note: "Nội dung này chưa có cơ chế khóa riêng." },
     ],
     readinessItems: [
       { label: "Đã bốc xong", ready: actionState.drawComplete, note: `${drawnCount}/${expectedTotal || 0}` },
@@ -117,12 +117,21 @@ export function deriveGroupDrawModel(tournament, { selectedEventId } = {}) {
       { label: "Luật hạt giống đạt", ready: false, note: "Chưa có dữ liệu" },
       { label: "Không vi phạm", ready: true, note: "Chưa có dữ liệu vi phạm" },
       { label: "Sẵn sàng khóa", ready: false, note: actionState.lockHelper },
+      {
+        label: "Hồ sơ giải đã khóa bốc thăm",
+        ready: tournamentDrawLocked,
+        note: tournamentDrawLocked
+          ? "Áp dụng cả giải, không khóa riêng nội dung này."
+          : "Hồ sơ giải chưa khóa bốc thăm.",
+      },
     ],
     actionState,
     lockLabel: DRAW_LOCK_LABEL,
-    lockHint: MULTI_CONTENT_LIMITATION,
+    lockHint: "Nội dung này chưa có cơ chế khóa riêng.",
     undoHint: "Hoàn tác bốc thăm chia bảng chưa có trên màn này.",
     drawNextHint: "Không bốc từng cặp trên màn này.",
-    nextHint: locked ? "Hồ sơ giải đã khóa bốc thăm." : "Chưa khóa bốc thăm trên hồ sơ giải.",
+    nextHint: actionState.drawComplete
+      ? "Nội dung này chưa có cơ chế khóa riêng."
+      : "Chưa hoàn tất bốc thăm",
   };
 }

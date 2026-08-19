@@ -18,12 +18,9 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import ExperienceChipRow from "../visual/ExperienceChipRow.jsx";
 import ExperienceStatusChip from "../visual/ExperienceStatusChip.jsx";
 import { eventDisplayName } from "../batchB/eventScope.js";
-import {
-  outlinedActionSx,
-  TOURNAMENT_COLOR,
-  TOURNAMENT_RADIUS,
-} from "../visual/tournamentExperienceTokens.js";
+import { TOURNAMENT_COLOR, TOURNAMENT_RADIUS } from "../visual/tournamentExperienceTokens.js";
 import { DRAW_LOCK_LABEL } from "./drawRoomActionState.js";
+import { DRAW_ROOM_OUTLINED_SX } from "./drawRoomButtonStyles.js";
 
 export function DrawPanel({ title, children, sx }) {
   return (
@@ -68,10 +65,11 @@ function DrawRoomHeader({ tournament, event, locked, expectedTotal, drawnCount, 
           {expectedTotal != null ? (
             <ExperienceStatusChip tone="info" label={`${drawnCount ?? 0}/${expectedTotal} cặp`} />
           ) : null}
-          <ExperienceStatusChip
-            tone={locked ? "success" : "draft"}
-            label={locked ? "ĐÃ KHÓA" : statusLabel || "BẢN NHÁP"}
-          />
+          {locked ? (
+            <ExperienceStatusChip tone="success" label="ĐÃ KHÓA" />
+          ) : statusLabel ? (
+            <ExperienceStatusChip tone="draft" label={statusLabel} />
+          ) : null}
         </Stack>
       </Stack>
     </Box>
@@ -118,7 +116,7 @@ export default function ExperienceDrawRoomShell({
             <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.navyTextMuted }}>{subtitle}</Typography>
           </Box>
           <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: "wrap" }}>
-            <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate(overviewPath)} sx={{ ...outlinedActionSx, color: "#FFF", borderColor: "rgba(255,255,255,0.2)" }}>
+            <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate(overviewPath)} sx={DRAW_ROOM_OUTLINED_SX}>
               Tổng quan
             </Button>
             {mode === "operator" ? (
@@ -131,7 +129,7 @@ export default function ExperienceDrawRoomShell({
                   sx={{
                     "& .MuiToggleButton-root": {
                       color: TOURNAMENT_COLOR.navyTextMuted,
-                      borderColor: "rgba(255,255,255,0.2)",
+                      borderColor: "rgba(255,255,255,0.32)",
                       textTransform: "none",
                       px: 1.25,
                     },
@@ -142,15 +140,15 @@ export default function ExperienceDrawRoomShell({
                   <ToggleButton value="presentation">Trình chiếu</ToggleButton>
                 </ToggleButtonGroup>
                 <span title={undoHint}>
-                  <Button variant="outlined" size="small" startIcon={<UndoIcon />} disabled sx={{ color: "#FFF", borderColor: "rgba(255,255,255,0.2)" }}>
+                  <Button variant="outlined" size="small" startIcon={<UndoIcon />} disabled sx={DRAW_ROOM_OUTLINED_SX}>
                     Hoàn tác
                   </Button>
                 </span>
-                <Button variant="outlined" size="small" startIcon={<SlideshowOutlinedIcon />} onClick={() => setMode("presentation")} sx={{ color: "#FFF", borderColor: "rgba(255,255,255,0.2)" }}>
+                <Button variant="outlined" size="small" startIcon={<SlideshowOutlinedIcon />} onClick={() => setMode("presentation")} sx={DRAW_ROOM_OUTLINED_SX}>
                   {isNarrow ? "Mở màn hình" : "Mở màn hình trình chiếu"}
                 </Button>
                 <span title={lockHint}>
-                  <Button variant="outlined" size="small" startIcon={<LockOutlinedIcon />} disabled={lockDisabled} sx={{ color: "#FFF", borderColor: "rgba(255,255,255,0.2)" }}>
+                  <Button variant="outlined" size="small" startIcon={<LockOutlinedIcon />} disabled={lockDisabled} sx={DRAW_ROOM_OUTLINED_SX}>
                     {lockLabel}
                   </Button>
                 </span>
@@ -161,7 +159,7 @@ export default function ExperienceDrawRoomShell({
                       size="small"
                       disabled={nextLifecycle.disabled}
                       onClick={nextLifecycle.onClick}
-                      sx={{ color: "#FFF", borderColor: "rgba(255,255,255,0.2)" }}
+                      sx={DRAW_ROOM_OUTLINED_SX}
                     >
                       {nextLifecycle.label}
                     </Button>
@@ -215,7 +213,7 @@ export function DrawRoomSiblingNav({ items }) {
           component={RouterLink}
           to={item.to}
           variant={item.current ? "contained" : "outlined"}
-          sx={item.current ? undefined : { color: "#FFF", borderColor: "rgba(255,255,255,0.2)" }}
+          sx={item.current ? undefined : DRAW_ROOM_OUTLINED_SX}
         >
           {item.label}
         </Button>

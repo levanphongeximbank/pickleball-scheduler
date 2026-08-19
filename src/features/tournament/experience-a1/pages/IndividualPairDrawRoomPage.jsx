@@ -25,6 +25,7 @@ import {
   DrawRoomMissingTournament,
   DrawRoomWrongFamily,
 } from "../batchC/ExperienceDrawRoomStates.jsx";
+import { DRAW_ROOM_CONTAINED_DISABLED_SX, DRAW_ROOM_OUTLINED_SX } from "../batchC/drawRoomButtonStyles.js";
 import {
   individualGroupDrawPath,
   individualGroupStagePath,
@@ -138,12 +139,12 @@ export default function IndividualPairDrawRoomPage() {
       />
       <Stack direction="row" spacing={0.75} useFlexGap sx={{ mb: 1.25, flexWrap: "wrap" }}>
         <span title={model.drawNextHint}>
-          <Button variant="contained" size="small" disabled>
+          <Button variant="contained" size="small" disabled sx={DRAW_ROOM_CONTAINED_DISABLED_SX}>
             Bốc tiếp
           </Button>
         </span>
         <span title={model.undoHint}>
-          <Button variant="outlined" size="small" disabled sx={{ color: "#FFF", borderColor: "rgba(255,255,255,0.2)" }}>
+          <Button variant="outlined" size="small" disabled sx={DRAW_ROOM_OUTLINED_SX}>
             Hoàn tác
           </Button>
         </span>

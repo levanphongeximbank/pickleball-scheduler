@@ -21,6 +21,7 @@ import {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const A1_DIR = path.join(root, "src/features/tournament/experience-a1");
 const BATCH_B_HEAD = "01f9f9cc32fe3fa5263f522cc64a2c7083200c7f";
+const SCREEN_09_ACCEPTED_HEAD = "d9be84557a9e839eb783b554175caabe06a17ed6";
 const FROZEN_PAGES = [
   "pages/TournamentCenterExperiencePage.jsx",
   "pages/IndividualOverviewPage.jsx",
@@ -220,21 +221,167 @@ describe("tournament-experience-wave-c", () => {
     assert.equal(model.actionState.lockAllowed, false);
   });
 
-  it("SCREEN_08_LOCK_NEXT_STATE_REAL", () => {
-    const unlocked = deriveGroupDrawModel(
-      sampleTournament([{ id: "e-a", name: "Đôi nam", eventType: EVENT_TYPE.MEN_DOUBLE, entries: [] }]),
+  it("SCREEN_07_AUTHORITY_GATING_UNCHANGED", () => {
+    const model = derivePairDrawModel(
+      sampleTournament([
+        {
+          id: "e-a",
+          name: "Đôi nam",
+          eventType: EVENT_TYPE.MEN_DOUBLE,
+          entries: Array.from({ length: 16 }, (_, index) => ({
+            id: `en${index + 1}`,
+            name: `Nam ${index + 1}`,
+            playerIds: [`p${index + 1}`],
+          })),
+        },
+      ]),
       { selectedEventId: "e-a" }
     );
-    assert.equal(unlocked.actionState.nextLifecycleDisabled, true);
-    const locked = deriveGroupDrawModel(
-      sampleTournament([{ id: "e-a", name: "Đôi nam", eventType: EVENT_TYPE.MEN_DOUBLE, entries: [] }], {
-        settings: { draw: { status: "locked" } },
-      }),
+    assert.equal(model.actionState.drawNextDisabled, true);
+    assert.equal(model.actionState.lockDisabled, true);
+    assert.equal(model.actionState.nextLifecycleDisabled, true);
+    assert.equal(model.actionState.lockAllowed, false);
+    const page = readFileSync(path.join(A1_DIR, "pages/IndividualPairDrawRoomPage.jsx"), "utf8");
+    assert.equal(page.includes("lockDraw("), false);
+    assert.equal(page.includes("setLocked"), false);
+  });
+
+  it("DRAW_ROOM_BLANK_HEADER_CONTROL=NO", () => {
+    const shell = readFileSync(path.join(A1_DIR, "batchC/ExperienceDrawRoomShell.jsx"), "utf8");
+    const styles = readFileSync(path.join(A1_DIR, "batchC/drawRoomButtonStyles.js"), "utf8");
+    assert.ok(shell.includes("Tổng quan"));
+    assert.ok(shell.includes("DRAW_ROOM_OUTLINED_SX"));
+    assert.equal(shell.includes("outlinedActionSx"), false);
+    assert.ok(styles.includes('bgcolor: "transparent"'));
+  });
+
+  it("DRAW_ROOM_DISABLED_ACTION_LABELS_READABLE", () => {
+    const styles = readFileSync(path.join(A1_DIR, "batchC/drawRoomButtonStyles.js"), "utf8");
+    assert.ok(styles.includes("&.Mui-disabled"));
+    assert.ok(styles.includes("opacity: 1"));
+    assert.ok(styles.includes("rgba(232,237,244,0.82)"));
+  });
+
+  it("SCREEN_08_TOURNAMENT_LOCK_NOT_RENDERED_AS_CONTENT_LOCK", () => {
+    const entries = Array.from({ length: 16 }, (_, index) => ({
+      id: `en${index + 1}`,
+      name: `Cặp ${index + 1}`,
+      playerIds: [`a${index}`, `b${index}`],
+    }));
+    const model = deriveGroupDrawModel(
+      sampleTournament(
+        [
+          {
+            id: "e-a",
+            name: "Đôi nam",
+            eventType: EVENT_TYPE.MEN_DOUBLE,
+            entries,
+            groups: [
+              { id: "g-a", label: "A", entryIds: entries.slice(0, 4).map((entry) => entry.id) },
+              { id: "g-b", label: "B", entryIds: entries.slice(4, 8).map((entry) => entry.id) },
+            ],
+          },
+        ],
+        { settings: { draw: { status: "locked" } } }
+      ),
       { selectedEventId: "e-a" }
     );
-    assert.equal(locked.locked, true);
-    assert.equal(locked.actionState.nextLifecycleDisabled, false);
-    assert.equal(locked.actionState.lockAllowed, false);
+    assert.equal(model.drawnCount, 8);
+    assert.equal(model.expectedTotal, 16);
+    assert.equal(model.tournamentDrawLocked, true);
+    assert.equal(model.locked, false);
+    assert.equal(model.drawStatusLabel, "Chưa hoàn tất bốc thăm");
+    assert.equal(model.actionState.statusLabel.includes("ĐÃ KHÓA"), false);
+    assert.equal(model.lockHint, "Nội dung này chưa có cơ chế khóa riêng.");
+    const lockItem = model.readinessItems.find((item) => item.label === "Hồ sơ giải đã khóa bốc thăm");
+    assert.ok(lockItem);
+    assert.equal(lockItem.ready, true);
+    const page = readFileSync(path.join(A1_DIR, "pages/IndividualGroupDrawRoomPage.jsx"), "utf8");
+    assert.equal(page.includes("ĐÃ KHÓA"), false);
+    assert.equal(page.includes("lockDraw("), false);
+  });
+
+  it("SCREEN_08_INCOMPLETE_DRAW_NEXT_DISABLED", () => {
+    const entries = Array.from({ length: 16 }, (_, index) => ({
+      id: `en${index + 1}`,
+      name: `Cặp ${index + 1}`,
+      playerIds: [`a${index}`, `b${index}`],
+    }));
+    const model = deriveGroupDrawModel(
+      sampleTournament(
+        [
+          {
+            id: "e-a",
+            name: "Đôi nam",
+            eventType: EVENT_TYPE.MEN_DOUBLE,
+            entries,
+            groups: [{ id: "g-a", label: "A", entryIds: entries.slice(0, 8).map((entry) => entry.id) }],
+          },
+        ],
+        { settings: { draw: { status: "locked" } } }
+      ),
+      { selectedEventId: "e-a" }
+    );
+    assert.equal(model.actionState.drawComplete, false);
+    assert.equal(model.actionState.nextLifecycleDisabled, true);
+  });
+
+  it("SCREEN_08_CONTENT_LOCK_DISABLED_WITHOUT_AUTHORITY", () => {
+    const complete = deriveGroupDrawModel(
+      sampleTournament(
+        [
+          {
+            id: "e-a",
+            name: "Đôi nam",
+            eventType: EVENT_TYPE.MEN_DOUBLE,
+            entries: [
+              { id: "en1", name: "A / B", playerIds: ["p1", "p2"] },
+              { id: "en2", name: "C / D", playerIds: ["p3", "p4"] },
+            ],
+            groups: [{ id: "g-a", label: "A", entryIds: ["en1", "en2"] }],
+          },
+        ],
+        { settings: { draw: { status: "locked" } } }
+      ),
+      { selectedEventId: "e-a" }
+    );
+    assert.equal(complete.actionState.drawComplete, true);
+    assert.equal(complete.actionState.lockAllowed, false);
+    assert.equal(complete.actionState.lockDisabled, true);
+    assert.equal(complete.actionState.nextLifecycleDisabled, true);
+  });
+
+  it("SCREEN_08_8_OF_16_NOT_READY", () => {
+    const entries = Array.from({ length: 16 }, (_, index) => ({
+      id: `en${index + 1}`,
+      name: `Cặp ${index + 1}`,
+      playerIds: [`a${index}`, `b${index}`],
+    }));
+    const model = deriveGroupDrawModel(
+      sampleTournament([
+        {
+          id: "e-a",
+          name: "Đôi nam",
+          eventType: EVENT_TYPE.MEN_DOUBLE,
+          entries,
+          groups: [{ id: "g-a", label: "A", entryIds: entries.slice(0, 8).map((entry) => entry.id) }],
+        },
+      ]),
+      { selectedEventId: "e-a" }
+    );
+    assert.equal(`${model.drawnCount}/${model.expectedTotal}`, "8/16");
+    assert.equal(model.actionState.readinessLabel, "Chưa hoàn tất bốc thăm");
+    assert.equal(model.actionState.nextLifecycleDisabled, true);
+  });
+
+  it("SCREEN_09_CHANGED=NO", () => {
+    const rel = "pages/IndividualGroupStagePage.jsx";
+    const current = readFileSync(path.join(A1_DIR, rel), "utf8").replaceAll("\r\n", "\n");
+    const accepted = execFileSync("git", ["show", `${SCREEN_09_ACCEPTED_HEAD}:src/features/tournament/experience-a1/${rel}`], {
+      encoding: "utf8",
+      cwd: root,
+    }).replaceAll("\r\n", "\n");
+    assert.equal(current, accepted);
   });
 
   it("SCREEN_09_STRICT_VISUAL_STRUCTURE", () => {

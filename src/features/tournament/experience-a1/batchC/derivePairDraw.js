@@ -55,7 +55,7 @@ export function derivePairDrawModel(tournament, { selectedEventId } = {}) {
   const actionState = resolveDrawRoomActionState({
     drawnCount,
     expectedTotal,
-    locked: false,
+    contentLocked: false,
     constraintsPass: false,
     remainingNoun: "cặp chưa bốc",
     lockAuthority: false,
