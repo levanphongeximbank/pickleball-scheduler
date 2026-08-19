@@ -25,6 +25,7 @@ import {
   createCompetitionRefereeAssignmentTrustedClient,
   extractCanonicalAssignmentId,
 } from "../../src/features/competition-engine/operations/referee/assignment/client/competitionRefereeAssignmentEdgeClient.js";
+import { ASSIGNMENT_COMMAND_ERROR_CODE } from "../../src/features/competition-engine/operations/referee/assignment/constants.js";
 import { createHash } from "node:crypto";
 import { createDailyPlayCanonicalService } from "../../src/features/daily-play/canonical/dailyPlayCanonicalService.js";
 import { DAILY_PLAY_CODE } from "../../src/features/daily-play/canonical/dailyPlayCodes.js";
@@ -807,10 +808,31 @@ export function createBootstrapRefereeAssignmentWriter({
       getAccessToken: async () => organizerAccessToken,
       edgeBaseUrl,
     });
+    if (typeof client.getMatchAssignmentVersion !== "function") {
+      return Object.freeze({
+        ok: false,
+        code: ASSIGNMENT_COMMAND_ERROR_CODE.EXPECTED_VERSION_REQUIRED,
+        detail: "authoritative assignment version reader required before bootstrap",
+      });
+    }
+    const versionResult = await client.getMatchAssignmentVersion({
+      tournamentId: input.tournamentId,
+      matchId: input.matchId,
+    });
+    if (versionResult && versionResult.ok === false) return versionResult;
+    if (versionResult?.version == null || Number.isNaN(Number(versionResult.version))) {
+      return Object.freeze({
+        ok: false,
+        code: ASSIGNMENT_COMMAND_ERROR_CODE.EXPECTED_VERSION_REQUIRED,
+        detail: "authoritative assignment version required before bootstrap",
+      });
+    }
+    const expectedVersion = Number(versionResult.version);
     const result = await client.assignReferee({
       tournamentId: input.tournamentId,
       matchId: input.matchId,
       refereeId: input.refereeId,
+      expectedVersion,
       idempotencyKey: buildBootstrapAssignmentIdempotencyKey({
         runId: input.runId,
         tournamentId: input.tournamentId,
@@ -830,10 +852,12 @@ export function createBootstrapRefereeAssignmentWriter({
       ok: true,
       id: assignmentId,
       assignmentId,
+      expectedVersion,
       replayed: result?.replayed === true || result?.uniquenessReconciled === true,
       uniquenessReconciled: result?.uniquenessReconciled === true,
       purpose: BOOTSTRAP_ASSIGNMENT_PURPOSE,
       tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
+      BOOTSTRAP_EXPECTED_VERSION_SOURCE: "CANONICAL_AUTHORITATIVE_ASSIGNMENT_STATE",
     });
   };
 }

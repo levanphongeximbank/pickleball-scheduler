@@ -54,6 +54,7 @@ import {
   buildNodeSafeWriterAudit,
   REFEREE_V5_ACTIONS,
 } from "../scripts/core13/core13-staging-fixture-writers.mjs";
+import { ASSIGNMENT_COMMAND_ERROR_CODE } from "../src/features/competition-engine/operations/referee/assignment/constants.js";
 import { createReadyDailyPreflightSnapshot } from "../scripts/core13/core13-staging-fixture-preflight.mjs";
 import {
   evaluateExistingQaEnvReadiness,
@@ -775,6 +776,7 @@ test("bootstrap assignment uses organizer token and refuses non-PRE_MATCH state"
     organizerAccessToken: orgTok,
     edgeBaseUrl: "https://example.test",
     createClient: () => ({
+      getMatchAssignmentVersion: async () => ({ ok: true, version: 0 }),
       assignReferee: async (command) => {
         calls.push(command);
         return { ok: true, assignmentId: nextUuid(8) };
@@ -799,7 +801,10 @@ test("bootstrap assignment uses organizer token and refuses non-PRE_MATCH state"
   assert.equal(ok.ok, true);
   assert.equal(ok.tokenClass, "ORGANIZER");
   assert.equal(ok.assignmentId, nextUuid(8));
+  assert.equal(ok.expectedVersion, 0);
+  assert.equal(ok.BOOTSTRAP_EXPECTED_VERSION_SOURCE, "CANONICAL_AUTHORITATIVE_ASSIGNMENT_STATE");
   assert.equal(calls.length, 1);
+  assert.equal(calls[0].expectedVersion, 0);
   assert.equal(Object.prototype.hasOwnProperty.call(calls[0], "tenantId"), false);
 });
 
@@ -1019,4 +1024,71 @@ test("finalize remains referee-owned and does not use forceComplete", async () =
   assert.equal(seen[0].accessToken, refTok);
   const src = read("scripts/core13/core13-staging-fixture-writers.mjs");
   assert.doesNotMatch(src, /\.rpc\s*\(\s*["']referee_v5_commit_match_finalization["']/);
+});
+
+test("bootstrap assignment reads authoritative version and does not hardcode expectedVersion", async () => {
+  const assignCalls = [];
+  const versionCalls = [];
+  const writer = createBootstrapRefereeAssignmentWriter({
+    organizerAccessToken: ORGANIZER_CONTEXT.accessToken,
+    edgeBaseUrl: "https://example.test",
+    createClient: () => ({
+      getMatchAssignmentVersion: async (command) => {
+        versionCalls.push(command);
+        return { ok: true, version: 3 };
+      },
+      assignReferee: async (command) => {
+        assignCalls.push(command);
+        return { ok: true, assignmentId: nextUuid(9) };
+      },
+    }),
+  });
+  const ok = await writer({
+    tournamentId: nextUuid(1),
+    matchId: nextUuid(2),
+    refereeId: REFEREE_CONTEXT.userId,
+    lifecycleState: "PRE_MATCH",
+    runId: "run-cas",
+  });
+  assert.equal(ok.ok, true);
+  assert.equal(versionCalls.length, 1);
+  assert.equal(assignCalls[0].expectedVersion, 3);
+  assert.equal(ok.expectedVersion, 3);
+  assert.notEqual(assignCalls[0].expectedVersion, undefined);
+
+  const missingReader = createBootstrapRefereeAssignmentWriter({
+    organizerAccessToken: ORGANIZER_CONTEXT.accessToken,
+    edgeBaseUrl: "https://example.test",
+    createClient: () => ({
+      assignReferee: async () => ({ ok: true, assignmentId: nextUuid(9) }),
+    }),
+  });
+  const deniedReader = await missingReader({
+    tournamentId: nextUuid(1),
+    matchId: nextUuid(2),
+    refereeId: REFEREE_CONTEXT.userId,
+    lifecycleState: "PRE_MATCH",
+    runId: "run-cas",
+  });
+  assert.equal(deniedReader.ok, false);
+  assert.equal(deniedReader.code, ASSIGNMENT_COMMAND_ERROR_CODE.EXPECTED_VERSION_REQUIRED);
+
+  const missingVersion = createBootstrapRefereeAssignmentWriter({
+    organizerAccessToken: ORGANIZER_CONTEXT.accessToken,
+    edgeBaseUrl: "https://example.test",
+    createClient: () => ({
+      getMatchAssignmentVersion: async () => ({ ok: true }),
+      assignReferee: async () => ({ ok: true, assignmentId: nextUuid(9) }),
+    }),
+  });
+  const deniedVersion = await missingVersion({
+    tournamentId: nextUuid(1),
+    matchId: nextUuid(2),
+    refereeId: REFEREE_CONTEXT.userId,
+    lifecycleState: "PRE_MATCH",
+    runId: "run-cas",
+  });
+  assert.equal(deniedVersion.ok, false);
+  assert.equal(deniedVersion.code, ASSIGNMENT_COMMAND_ERROR_CODE.EXPECTED_VERSION_REQUIRED);
+  assert.equal(CASE_CATALOG.length, 29);
 });

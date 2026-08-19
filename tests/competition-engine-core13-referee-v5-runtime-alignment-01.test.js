@@ -349,6 +349,7 @@ test("assignmentId is canonical; malformed success fails closed", async () => {
     organizerAccessToken: "tok",
     edgeBaseUrl: "https://example.test",
     createClient: () => ({
+      getMatchAssignmentVersion: async () => ({ ok: true, version: 0 }),
       assignReferee: async () => ({
         ok: true,
         assignment: { assignmentId: "asg-from-edge" },
@@ -369,6 +370,7 @@ test("assignmentId is canonical; malformed success fails closed", async () => {
     organizerAccessToken: "tok",
     edgeBaseUrl: "https://example.test",
     createClient: () => ({
+      getMatchAssignmentVersion: async () => ({ ok: true, version: 0 }),
       assignReferee: async () => ({ ok: true, assignment: {} }),
     }),
   });
