@@ -24,13 +24,14 @@ Do not apply until Owner issues a separate execution GO naming this package and 
 | `05_CLUB_TENANT_TABLE_INVENTORY.md` | documentation | Tenant-bearing table classification |
 | `06_CLUB_MUTATION_RPC_INVENTORY.md` | documentation | Club mutation RPC semantics + EXECUTE privilege matrix |
 | `07_EXECUTION_RUNBOOK.md` | documentation | Pre-cutover quiesce, drain, lock order, fail-closed restore |
-| `07A_QUIESCE_WRITES_DESIGN.sql` | YES (when GO) | Committed Q1 REVOKE of mutation EXECUTE + cutover batch |
-| `07B_DRAIN_VERIFY.sql` | NO | Read-only drain + pre-Q1 transaction barrier bound to batch_id |
+| `07A_QUIESCE_WRITES_DESIGN.sql` | YES (when GO) | Q1A: PREPARED batch + ACL snapshot + REVOKE; COMMIT before seal |
+| `07A2_QUIESCE_SEAL_DESIGN.sql` | YES (when GO) | Q1B post-commit seal: PREPARED → QUIESCED + `quiesce_visible_at` |
+| `07B_DRAIN_VERIFY.sql` | NO | Read-only drain + pre-quiesce transaction barrier bound to `quiesce_visible_at` |
 | `07B2_MARK_DRAINED_DESIGN.sql` | YES (when GO) | Recheck drain in-transaction then QUIESCED → DRAINED |
 | `02_APPLY_STAGING_WRAPPER.sql` | session GUC | `wave5.target_env=staging` → APPLY lock_timeout 5s |
 | `02_APPLY_PRODUCTION_WRAPPER.sql` | session GUC | `wave5.target_env=production` → APPLY lock_timeout 15s |
-| `03B_MARK_VERIFIED_DESIGN.sql` | YES (when GO) | APPLIED → VERIFIED after read-only 03_VERIFY |
-| `07C_RESTORE_WRITES_DESIGN.sql` | YES (when GO) | Exact captured ACL replay for **explicit** batch_id only |
+| `03B_MARK_VERIFIED_DESIGN.sql` | YES (when GO) | Durable APPLIED → VERIFIED after same-transaction recheck |
+| `07C_RESTORE_WRITES_DESIGN.sql` | YES (when GO) | Pre-APPLY legacy ACL replay for PREPARED/QUIESCED/DRAINED only |
 | `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` | YES (when GO) | Intended public command surface after VERIFIED |
 | `08_RPC_OVERWRITE_GUARD_INVENTORY.md` | documentation | Every APPLY CREATE OR REPLACE overwrite class |
 
@@ -189,6 +190,40 @@ SQL_DESIGN_REVIEWED_PASS=NO
 ```
 
 Club mutation RPCs are quiesced in a **committed** Q1 (`07A`) before APPLY. APPLY aborts unless a durable `DRAINED` Wave5 Club batch matches `wave5.cutover_batch_id`. `wave5.drain_pass=YES` is not sufficient. Lock order is parent/supporting tables then Club parent then children. Lock timeouts come from reviewed Staging/Production wrappers (`5s` / `15s`). Every APPLY `CREATE OR REPLACE` of an existing function requires a strong `md5(prosrc)` fingerprint. Do not merge `origin/main` in this remediation.
+
+## Round 7 remediation (pending Round 8 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND7_REMEDIATION=COMPLETE_PENDING_ROUND8_OWNER_REVIEW
+Q1_REVOKE_COMMIT_PRECEDES_QUIESCED_SEAL=YES
+QUIESCE_VISIBLE_AT_IS_POST_Q1_COMMIT=YES
+PRE_QUIESCE_INFLIGHT_TRANSACTION_BARRIER=YES
+SERVICE_ROLE_MUTATION_ENTRYPOINT_POLICY=QUIESCE_IF_PRESENT
+SERVICE_ROLE_INTERNAL_HELPER_EXECUTE=PRESERVE
+ALL_MUTATION_CALLER_ROLES_QUIESCED=YES
+VERIFIED_STATE_CANNOT_BE_MANUFACTURED=YES
+VERIFIED_GATE_CANONICAL_FK_COUNT=4
+VERIFIED_GATE_MUTATION_RPC_COUNT=14
+POST_APPLY_LEGACY_ACL_RESTORE=DENIED
+POST_APPLY_VERIFY_FAILURE_KEEP_QUIESCED=YES
+RPC_VOLATILITY_CERTIFICATION=REQUIRED
+RPC_OWNER_CERTIFICATION=REQUIRED
+RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
+POST_CUTOVER_ACL_NORMALIZED=YES
+AUTHENTICATED_GRANT_OPTION_DENIED=YES
+POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14
+CONTROL_PLANE_EXISTING_SCHEMA_GUARD=YES
+STAGING_LOCK_TIMEOUT=5s
+PRODUCTION_LOCK_TIMEOUT=15s
+UNBOUNDED_LOCK_WAIT=NO
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Q1A (`07A`) COMMITs REVOKE in `PREPARED` without `quiesce_visible_at`. Q1B (`07A2`) is a later transaction that seals `QUIESCED` and writes `quiesce_visible_at`. Drain uses that post-commit timestamp. `q1_committed_at` is compatibility-only and is not drain authority.
+
+`03B` rechecks mutation-critical post-APPLY invariants in the same transaction that marks `VERIFIED`. A 3-RPC subset is not sufficient.
+
+`07C` may restore captured ACLs only from `PREPARED` / `QUIESCED` / `DRAINED`. `APPLIED` / `VERIFIED` / `RESTORED` / `ABORTED` / `APPLYING` are denied. Failed APPLY remains `DRAINED`. Post-APPLY VERIFY failure keeps writes quiesced (`APP_ROLLBACK_KEEP_CANONICAL_DB`).
 
 ## Round 6 remediation (pending Round 7 Owner SQL review)
 

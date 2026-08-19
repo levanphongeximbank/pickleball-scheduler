@@ -575,6 +575,8 @@ SELECT
   p.prosecdef,
   p.proconfig,
   p.provolatile,
+  p.proowner,
+  pg_catalog.pg_get_userbyid(p.proowner) AS owner_role_name,
   l.lanname,
   CASE WHEN p.oid IS NULL THEN NULL ELSE md5(convert_to(p.prosrc, 'UTF8')) END AS prosrc_md5,
   'UNCERTIFIED'::text AS certification_status

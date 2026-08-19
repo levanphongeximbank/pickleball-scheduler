@@ -52,7 +52,9 @@ Athlete compatibility wrappers (`wave5_resolve_club_facility_venue_id`, `wave5_e
 
 ## Fail-closed while Q1 quiesced
 
-If Q1 committed and APPLY aborted, mutation EXECUTE stays revoked. Do not auto-retry APPLY. Owner-elected return to legacy privileges uses `07C_RESTORE_WRITES_DESIGN.sql` (exact snapshot replay only). Do not `GRANT EXECUTE TO authenticated` as a generic set.
+If Q1 committed and APPLY aborted, mutation EXECUTE stays revoked. Durable APPLY failure remains `DRAINED`. Do not auto-retry APPLY. Owner-elected return to **pre-APPLY** privileges uses `07C_RESTORE_WRITES_DESIGN.sql` from `PREPARED` / `QUIESCED` / `DRAINED` only (`POST_APPLY_LEGACY_ACL_RESTORE=DENIED`). Do not `GRANT EXECUTE TO authenticated` as a generic set.
+
+If APPLY **committed** and VERIFY fails: `KEEP_WRITES_QUIESCED=YES`. Do not run 07C. `POST_APPLY_VERIFY_FAILURE_OWNER_DECISION_REQUIRED=YES`. Preferred: `APP_ROLLBACK_KEEP_CANONICAL_DB`. Do not automatically reverse Tenant → Venue mappings.
 
 Successful APPLY + body VERIFY uses `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` for the intended public command surface. Internal helpers remain `authenticated EXECUTE = DENIED`.
 

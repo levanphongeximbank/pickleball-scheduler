@@ -14,6 +14,9 @@
 --   PUBLIC EXECUTE = DENIED
 --   service_role: not the PostgREST command path (no generic GRANT)
 -- Internal helpers: authenticated/anon/PUBLIC EXECUTE = DENIED; service_role EXECUTE = YES
+-- POST_CUTOVER_ACL_NORMALIZED=YES
+-- AUTHENTICATED_GRANT_OPTION_DENIED=YES
+-- Service role mutation entrypoints: reviewed intended state is DENIED (no generic GRANT).
 -- Legacy club_leave_my_membership():
 --   CANONICAL_COMMAND_SURFACE=NO
 --   POST_CANONICAL_RESTORE=NO
@@ -54,23 +57,25 @@ REVOKE ALL ON FUNCTION public.wave5_ensure_athlete_for_club_member(uuid, text, t
 GRANT EXECUTE ON FUNCTION public.wave5_resolve_club_facility_venue_id(text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.wave5_ensure_athlete_for_club_member(uuid, text, text) TO service_role;
 
-REVOKE ALL ON FUNCTION public.platform_is_canonical_tenant_entitled(text) FROM public, anon;
+REVOKE ALL ON FUNCTION public.platform_is_canonical_tenant_entitled(text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.platform_is_canonical_tenant_entitled(text) TO authenticated;
 
-REVOKE ALL ON FUNCTION public.club_create(uuid, text, text, text, text, text) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_update(uuid, text, integer, text, text, text, text, text) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_assign_owner(uuid, text, uuid, integer) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_clear_owner(uuid, text, integer) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_transfer_president(uuid, text, uuid, integer) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_assign_vice_president(uuid, text, uuid, integer) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_clear_vice_president(uuid, text, integer, uuid) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_add_member(uuid, text, uuid, text, integer) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_remove_member(uuid, text, uuid, integer) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_restore_member(uuid, text, uuid, integer) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_leave_membership(uuid, text) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_submit_membership_request(uuid, text, text) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_cancel_membership_request(uuid, uuid, integer) FROM public, anon;
-REVOKE ALL ON FUNCTION public.club_review_membership_request(uuid, uuid, text, text, integer) FROM public, anon;
+-- POST_CUTOVER_ACL_NORMALIZED=YES: REVOKE EXECUTE from PUBLIC/anon/authenticated
+-- on exact canonical commands, then GRANT authenticated without GRANT OPTION.
+REVOKE EXECUTE ON FUNCTION public.club_create(uuid, text, text, text, text, text) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_update(uuid, text, integer, text, text, text, text, text) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_assign_owner(uuid, text, uuid, integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_clear_owner(uuid, text, integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_transfer_president(uuid, text, uuid, integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_assign_vice_president(uuid, text, uuid, integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_clear_vice_president(uuid, text, integer, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_add_member(uuid, text, uuid, text, integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_remove_member(uuid, text, uuid, integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_restore_member(uuid, text, uuid, integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_leave_membership(uuid, text) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_submit_membership_request(uuid, text, text) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_cancel_membership_request(uuid, uuid, integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_review_membership_request(uuid, uuid, text, text, integer) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.club_create(uuid, text, text, text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_update(uuid, text, integer, text, text, text, text, text) TO authenticated;
@@ -143,6 +148,23 @@ BEGIN
     ) THEN
       RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: PUBLIC EXECUTE must be DENIED on %', v_sig;
     END IF;
+    IF EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_proc p
+      CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+      JOIN pg_catalog.pg_roles r ON r.oid = acl.grantee
+      WHERE p.oid = v_sig::regprocedure
+        AND acl.privilege_type = 'EXECUTE'
+        AND r.rolname = 'authenticated'
+        AND acl.is_grantable
+    ) THEN
+      RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: AUTHENTICATED_GRANT_OPTION_DENIED=NO on %', v_sig;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role')
+       AND has_function_privilege('service_role', v_sig, 'EXECUTE') THEN
+      RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: service_role mutation EXECUTE is not in reviewed intended state for %',
+        v_sig;
+    END IF;
     v_ok := v_ok + 1;
   END LOOP;
 
@@ -173,7 +195,7 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: VERIFIED → RESTORED failed';
   END IF;
 
-  RAISE NOTICE 'WAVE5_RESTORE_INTENDED_WRITES_OK INTERNAL_HELPER_AUTHENTICATED_EXECUTE=DENIED POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14 LEGACY_LEAVE_MY_POST_CUTOVER_STATE=QUIESCED_EXECUTE_DENIED';
+  RAISE NOTICE 'WAVE5_RESTORE_INTENDED_WRITES_OK INTERNAL_HELPER_AUTHENTICATED_EXECUTE=DENIED POST_CUTOVER_ACL_NORMALIZED=YES AUTHENTICATED_GRANT_OPTION_DENIED=YES POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14 LEGACY_LEAVE_MY_POST_CUTOVER_STATE=QUIESCED_EXECUTE_DENIED';
 END $$;
 
 COMMIT;

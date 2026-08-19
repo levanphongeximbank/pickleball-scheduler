@@ -1,6 +1,6 @@
 # Wave 5 — Canonical Club Context Cutover + Durable Club SQL Design
 
-**WAVE5_STATUS=IMPLEMENTED_LOCALLY_AWAITING_SQL_REVIEW_AND_STAGING_ACCEPTANCE**
+**WAVE5_STATUS=SQL_DESIGN_ROUND7_FINAL_CONTROL_PLANE_REMEDIATION_COMPLETE_PENDING_ROUND8_OWNER_REVIEW**
 
 **PC_CLUB_01=OPEN_PENDING_ACCEPTANCE** (not closed)
 
@@ -131,7 +131,21 @@ See `sql-design/`. **DO NOT RUN.** `OWNER_SQL_EXECUTION_GO=NO`.
 
 **ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED** — capture `pg_trigger.tgenabled` (`O`/`D`/`R`/`A`) and restore that exact mode after translation. No unconditional `ENABLE TRIGGER`.
 
-**SQL_DESIGN_REVIEW_ROUND6_REMEDIATION=COMPLETE_PENDING_ROUND7_OWNER_REVIEW** (not a SQL review PASS).
+**SQL_DESIGN_REVIEW_ROUND7_REMEDIATION=COMPLETE_PENDING_ROUND8_OWNER_REVIEW** (not a SQL review PASS).
+
+**ROUND7_P1_01_Q1_COMMIT_VISIBILITY_TIMESTAMP_RACE=REMEDIATED_DESIGN** — Q1A COMMITs REVOKE in `PREPARED`. Q1B post-commit seal writes `quiesce_visible_at` and marks `QUIESCED`. Drain uses that barrier, not a pre-commit `q1_committed_at`.
+
+**ROUND7_P1_02_SERVICE_ROLE_MUTATION_QUIESCE_GAP=REMEDIATED_DESIGN** — Q1 REVOKEs `service_role` EXECUTE on writer-capable mutation entrypoints if present (`QUIESCE_IF_PRESENT`) and does not globally revoke `service_role`. Internal helper EXECUTE is preserved.
+
+**ROUND7_P1_03_VERIFIED_STATE_GATE_NOT_DURABLY_PROVEN=REMEDIATED_DESIGN** — `03B` rechecks 4 canonical FKs, tenant consistency, helpers, and all 14 quiesced mutation RPCs in the same transaction before `VERIFIED`. A 3-RPC subset cannot manufacture `VERIFIED`.
+
+**ROUND7_P1_04_POST_APPLY_LEGACY_ACL_RESTORE_UNSAFE=REMEDIATED_DESIGN** — `07C` allowed only from `PREPARED` / `QUIESCED` / `DRAINED`. `POST_APPLY_LEGACY_ACL_RESTORE=DENIED`. Failed APPLY remains `DRAINED`. Post-APPLY VERIFY failure keeps writes quiesced.
+
+**ROUND7_P1_05_RPC_SECURITY_FINGERPRINT_INCOMPLETE=REMEDIATED_DESIGN** — PRECHECK/APPLY inspect `provolatile` and SECURITY DEFINER owner. Live certification remains required. Hashes are not invented.
+
+**ROUND7_P2_01_POST_CUTOVER_ACL_NORMALIZATION=REMEDIATED_DESIGN** — `07D` REVOKEs then GRANTs authenticated without GRANT OPTION.
+
+**SQL_DESIGN_REVIEW_ROUND6_REMEDIATION=COMPLETE_PENDING_ROUND7_OWNER_REVIEW** (historical Round 6 close-out; not a SQL review PASS).
 
 **ROUND6_P1_01_QUIESCE_SIGNATURE_AND_OVERLOAD_COVERAGE=REMEDIATED_DESIGN** — 14 canonical signatures must be present before Q1; unknown overloads abort; legacy `club_leave_my_membership()` is classified separately (`CANONICAL_COMMAND_SURFACE=NO`, `POST_CANONICAL_RESTORE=NO`).
 

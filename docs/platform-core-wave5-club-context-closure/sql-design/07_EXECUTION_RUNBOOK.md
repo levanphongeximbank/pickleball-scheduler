@@ -10,7 +10,7 @@ RLS_EXECUTED=NO
 STAGING_PRECHECK_EXECUTED=NO
 ```
 
-Do **not** execute this runbook. Do **not** run `07A` / `07B` / `07C` / `07D` / `02_APPLY_DESIGN.sql` until Owner issues a separate `SQL_EXECUTION_GO` naming this package and `TARGET_ENV`.
+Do **not** execute this runbook. Do **not** run `07A` / `07A2` / `07B` / `07B2` / `07C` / `07D` / `02_APPLY_DESIGN.sql` until Owner issues a separate `SQL_EXECUTION_GO` naming this package and `TARGET_ENV`.
 
 ```
 PHASE_Q1_COMMITTED_WRITE_QUIESCE=REQUIRED
@@ -40,15 +40,17 @@ Therefore Q1 (committed REVOKE) + drain proof are mandatory **before** APPLY sta
 | Step | Artifact | Commits? | Purpose |
 |---|---|---|---|
 | 0 | Owner GO + TARGET_ENV | n/a | Only then continue |
-| 1 | `07A_QUIESCE_WRITES_DESIGN.sql` | YES (Q1) | Create/lock down cutover batch + ACL snapshot; REVOKE 14 canonical (+ legacy if present); COMMIT QUIESCED |
-| 2 | `07B_DRAIN_VERIFY.sql` | NO | Read-only drain + pre-Q1 inflight barrier; requires `wave5.cutover_batch_id` |
+| 1 | `07A_QUIESCE_WRITES_DESIGN.sql` | YES (Q1A) | Control tables + PREPARED batch + ACL snapshot; REVOKE mutation caller roles including `service_role` if present; COMMIT |
+| 1b | `07A2_QUIESCE_SEAL_DESIGN.sql` | YES (Q1B) | Same `batch_id`; prove revoke still holds; PREPARED → QUIESCED; set `quiesce_visible_at` |
+| 2 | `07B_DRAIN_VERIFY.sql` | NO | Read-only drain + pre-quiesce inflight barrier on `quiesce_visible_at`; requires `wave5.cutover_batch_id` |
 | 2b | `07B2_MARK_DRAINED_DESIGN.sql` | YES | Recheck drain in-transaction; QUIESCED → DRAINED |
 | 3 | Session GUC | n/a | `SET wave5.cutover_batch_id` to the Q1 batch. `wave5.drain_pass=YES` is **not** APPLY authority |
 | 3b | Staging or Production wrapper | n/a | `02_APPLY_STAGING_WRAPPER.sql` (`target_env=staging`) or `02_APPLY_PRODUCTION_WRAPPER.sql` |
 | 4 | `02_APPLY_DESIGN.sql` | YES or ROLLBACK | Requires durable DRAINED + matching batch_id; bounded parent→child locks; locked safety gate |
 | 5 | `03_VERIFY.sql` (default / quiesced) | NO | Canonical FK/RPC bodies; all 14 mutation EXECUTE still DENIED; helpers DENIED |
-| 5b | `03B_MARK_VERIFIED_DESIGN.sql` | YES | APPLIED → VERIFIED |
-| 6a APPLY failed | keep Q1 | n/a | Do **not** auto-retry APPLY. Owner review. Optional `07C` with `wave5.restore_batch_id` |
+| 5b | `03B_MARK_VERIFIED_DESIGN.sql` | YES | Same-transaction full recheck; APPLIED → VERIFIED |
+| 6a APPLY failed (rolled back) | keep Q1 | n/a | Durable state remains DRAINED. Do **not** auto-retry APPLY. Optional `07C` with `wave5.restore_batch_id` from DRAINED/QUIESCED/PREPARED |
+| 6a2 APPLY committed + VERIFY failed | keep Q1 | n/a | KEEP_WRITES_QUIESCED=YES. Do **not** 07C. POST_APPLY_VERIFY_FAILURE_OWNER_DECISION_REQUIRED=YES. Prefer APP_ROLLBACK_KEEP_CANONICAL_DB |
 | 6b APPLY+VERIFY+VERIFIED | `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` | YES | Exact intended public command surface only |
 | 7 | `03_VERIFY.sql` with `SET wave5.verify_privileges = 'YES'` | NO | `POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14` |
 
@@ -92,7 +94,7 @@ If Q1 commits and APPLY fails:
 - APPLY transaction rolls back (`PARTIAL_CUTOVER_COMMIT_POSSIBLE=NO`).
 - Do **not** auto-run APPLY again.
 - Mutation entrypoints stay quiesced until Owner review.
-- If Owner elects return to legacy app/database privileges: `07C_RESTORE_WRITES_DESIGN.sql` replays **only** the captured ACL rows for `wave5.restore_batch_id`. No `ORDER BY captured_at DESC LIMIT 1`. No generic `GRANT EXECUTE … TO authenticated`.
+- If Owner elects return to **pre-APPLY** app/database privileges: `07C_RESTORE_WRITES_DESIGN.sql` replays **only** the captured ACL rows for `wave5.restore_batch_id` from `PREPARED` / `QUIESCED` / `DRAINED`. `POST_APPLY_LEGACY_ACL_RESTORE=DENIED`. No `ORDER BY captured_at DESC LIMIT 1`. No generic `GRANT EXECUTE … TO authenticated`.
 
 ## Privilege restore after canonical VERIFY
 

@@ -469,6 +469,18 @@ BEGIN
       IF NOT has_function_privilege('authenticated', v_cmd, 'EXECUTE') THEN
         RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: authenticated GRANT EXECUTE missing on %', v_cmd;
       END IF;
+      IF EXISTS (
+        SELECT 1
+        FROM pg_catalog.pg_proc p
+        CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+        JOIN pg_catalog.pg_roles r ON r.oid = acl.grantee
+        WHERE p.oid = v_cmd::regprocedure
+          AND acl.privilege_type = 'EXECUTE'
+          AND r.rolname = 'authenticated'
+          AND acl.is_grantable
+      ) THEN
+        RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: AUTHENTICATED_GRANT_OPTION_DENIED=NO on %', v_cmd;
+      END IF;
     ELSIF has_function_privilege('authenticated', v_cmd, 'EXECUTE') THEN
       RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: % still executable while quiesced — restore is 07D after VERIFY bodies',
         v_cmd;

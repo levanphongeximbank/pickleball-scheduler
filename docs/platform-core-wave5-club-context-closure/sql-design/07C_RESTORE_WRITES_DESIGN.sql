@@ -4,9 +4,15 @@
 -- DO_NOT_RUN_ON_PRODUCTION
 -- SQL_EXECUTED=NO
 --
--- RESTORE_LEGACY_WRITES — Owner-elected only after Q1 success + APPLY abort
--- (or abandoned cutover). Replay EXACT captured EXECUTE grants.
--- Do NOT GRANT a generic authenticated/public permission set.
+-- RESTORE_LEGACY_WRITES — PRE-APPLY abandonment/failure recovery only.
+-- Allowed durable states: PREPARED, QUIESCED, DRAINED.
+-- POST_APPLY_LEGACY_ACL_RESTORE=DENIED
+-- APPLYING is transaction-local and is not restore authority.
+-- If APPLY fails, its transaction rolls back to durable DRAINED.
+-- If APPLY has COMMITTED (APPLIED/VERIFIED): do not replay legacy ACL.
+-- Replay EXACT captured EXECUTE grants including service_role mutation
+-- privileges if Q1 changed them.
+-- Do NOT GRANT a generic authenticated/public/service_role permission set.
 -- RESTORE_REQUIRES_EXPLICIT_BATCH_ID=YES
 -- LATEST_SNAPSHOT_IMPLICIT_RESTORE=DENIED
 
@@ -47,11 +53,15 @@ BEGIN
   IF v_kind IS DISTINCT FROM 'WAVE5_CLUB_TENANT' THEN
     RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: batch % is another cutover kind=%', v_batch, v_kind;
   END IF;
-  IF v_state IN ('RESTORED', 'ABORTED') THEN
-    RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: already-restored or aborted batch % state=%',
-      v_batch, v_state;
+  IF v_state IN ('APPLIED', 'VERIFIED') THEN
+    RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: POST_APPLY_LEGACY_ACL_RESTORE=DENIED state=% — KEEP_WRITES_QUIESCED APP_ROLLBACK_KEEP_CANONICAL_DB POST_APPLY_VERIFY_FAILURE_OWNER_DECISION_REQUIRED=YES',
+      v_state;
   END IF;
-  IF v_state NOT IN ('QUIESCED', 'DRAINED', 'APPLYING', 'APPLIED', 'VERIFIED') THEN
+  IF v_state IN ('RESTORED', 'ABORTED', 'APPLYING') THEN
+    RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: already-restored, aborted, or transaction-local APPLYING is not restore authority state=%',
+      v_state;
+  END IF;
+  IF v_state NOT IN ('PREPARED', 'QUIESCED', 'DRAINED') THEN
     RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: wrong state % for legacy restore', v_state;
   END IF;
 
@@ -106,14 +116,14 @@ BEGIN
       aborted_at = clock_timestamp(),
       writes_restored_at = clock_timestamp()
   WHERE batch_id = v_batch
-    AND state IN ('QUIESCED', 'DRAINED', 'APPLYING', 'APPLIED', 'VERIFIED');
+    AND state IN ('PREPARED', 'QUIESCED', 'DRAINED');
 
   GET DIAGNOSTICS v_updated = ROW_COUNT;
   IF v_updated <> 1 THEN
     RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: state transition to ABORTED failed for %', v_batch;
   END IF;
 
-  RAISE NOTICE 'WAVE5_RESTORE_LEGACY_WRITES_OK batch=% replayed_execute_grants=% state=ABORTED',
+  RAISE NOTICE 'WAVE5_RESTORE_LEGACY_WRITES_OK batch=% replayed_execute_grants=% state=ABORTED POST_APPLY_LEGACY_ACL_RESTORE=DENIED',
     v_batch, v_granted;
 END $$;
 

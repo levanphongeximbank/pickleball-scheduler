@@ -21,6 +21,7 @@ const PACKAGE_FILES = [
   "06_CLUB_MUTATION_RPC_INVENTORY.md",
   "07_EXECUTION_RUNBOOK.md",
   "07A_QUIESCE_WRITES_DESIGN.sql",
+  "07A2_QUIESCE_SEAL_DESIGN.sql",
   "07B_DRAIN_VERIFY.sql",
   "07B2_MARK_DRAINED_DESIGN.sql",
   "07C_RESTORE_WRITES_DESIGN.sql",
@@ -744,13 +745,13 @@ test("Round 6 I. cutover metadata application-role access denied", () => {
   assert.match(q1, /ENABLE ROW LEVEL SECURITY/);
 });
 
-test("Round 6 J. pre-Q1 transaction drain barrier exists", () => {
+test("Round 6 J. pre-quiesce transaction drain barrier exists", () => {
   const drain = uncommented(readPkg("07B_DRAIN_VERIFY.sql"));
   const mark = uncommented(readPkg("07B2_MARK_DRAINED_DESIGN.sql"));
-  assert.match(drain, /PRE_Q1_INFLIGHT_TRANSACTION_BARRIER/);
-  assert.match(drain, /xact_start <= v_q1/);
+  assert.match(drain, /PRE_QUIESCE_INFLIGHT_TRANSACTION_BARRIER/);
+  assert.match(drain, /xact_start <= v_visible/);
   assert.match(drain, /pg_stat_activity/);
-  assert.match(mark, /PRE_Q1_INFLIGHT_TRANSACTION_BARRIER/);
+  assert.match(mark, /PRE_QUIESCE_INFLIGHT_TRANSACTION_BARRIER/);
   assert.match(mark, /state = 'DRAINED'/);
 });
 
@@ -827,3 +828,164 @@ test("Round 6 R. no live SQL execution", () => {
   assert.match(precheck, /prosrc_md5/);
   assert.match(precheck, /certification_status/);
 });
+
+test("Round 7 A. quiesce visibility timestamp is created only after Q1 revoke commit", () => {
+  const q1aSrc = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const q1a = uncommented(q1aSrc);
+  const q1bSrc = readPkg("07A2_QUIESCE_SEAL_DESIGN.sql");
+  const q1b = uncommented(q1bSrc);
+  assert.match(q1a, /'PREPARED'/);
+  assert.match(q1a, /\bCOMMIT\s*;/);
+  assert.doesNotMatch(q1a, /quiesce_visible_at\s*=/);
+  assert.match(q1aSrc, /Q1_REVOKE_COMMIT_PRECEDES_QUIESCED_SEAL=YES/);
+  assert.match(q1b, /PREPARED/);
+  assert.match(q1b, /quiesce_visible_at = clock_timestamp\(\)/);
+  assert.match(q1bSrc, /QUIESCE_VISIBLE_AT_IS_POST_Q1_COMMIT=YES/);
+});
+
+test("Round 7 B. pre-commit q1 timestamp cannot authorize drain", () => {
+  const drain = uncommented(readPkg("07B_DRAIN_VERIFY.sql"));
+  const mark = uncommented(readPkg("07B2_MARK_DRAINED_DESIGN.sql"));
+  assert.match(drain, /pre-commit q1 timestamp cannot authorize drain/);
+  assert.match(mark, /pre-commit q1 timestamp cannot authorize drain/);
+  assert.doesNotMatch(drain, /xact_start <= v_q1/);
+  assert.doesNotMatch(mark, /clock_timestamp\(\) > q1_committed_at/);
+});
+
+test("Round 7 C. drain uses quiesce_visible_at", () => {
+  const drain = uncommented(readPkg("07B_DRAIN_VERIFY.sql"));
+  const mark = uncommented(readPkg("07B2_MARK_DRAINED_DESIGN.sql"));
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  assert.match(drain, /b\.quiesce_visible_at/);
+  assert.match(drain, /xact_start <= v_visible/);
+  assert.match(mark, /quiesce_visible_at IS NOT NULL/);
+  assert.match(apply, /drained_at must be after quiesce_visible_at/);
+});
+
+test("Round 7 D. service_role mutation entrypoints are quiesced if executable", () => {
+  const q1aSrc = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const q1a = uncommented(q1aSrc);
+  assert.match(q1aSrc, /SERVICE_ROLE_MUTATION_ENTRYPOINT_POLICY=QUIESCE_IF_PRESENT/);
+  assert.match(q1a, /REVOKE EXECUTE ON FUNCTION %s FROM service_role/);
+  assert.match(q1a, /has_function_privilege\('service_role'/);
+});
+
+test("Round 7 E. internal helper service_role EXECUTE is preserved", () => {
+  const q1aSrc = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const q1a = uncommented(q1aSrc);
+  assert.match(q1aSrc, /SERVICE_ROLE_INTERNAL_HELPER_EXECUTE=PRESERVE/);
+  assert.doesNotMatch(
+    q1a,
+    /REVOKE EXECUTE ON FUNCTION public\.wave5_ensure_athlete_for_club_member/
+  );
+  assert.doesNotMatch(
+    q1a,
+    /REVOKE EXECUTE ON FUNCTION public\.wave5_resolve_club_facility_venue_id/
+  );
+  assert.doesNotMatch(q1a, /REVOKE[^\n]+FROM service_role CASCADE/i);
+});
+
+test("Round 7 F. 03B cannot mark VERIFIED with only a partial 3-RPC gate", () => {
+  const markSrc = readPkg("03B_MARK_VERIFIED_DESIGN.sql");
+  const mark = uncommented(markSrc);
+  assert.match(mark, /partial 3-RPC gate is insufficient/);
+  assert.match(markSrc, /VERIFIED_STATE_CANNOT_BE_MANUFACTURED=YES/);
+  assert.doesNotMatch(
+    mark,
+    /FOREACH v_sig IN ARRAY ARRAY\[\s*'public\.club_create[\s\S]*club_add_member[\s\S]*club_review_membership_request'\s*\]/
+  );
+});
+
+test("Round 7 G. 03B rechecks all 14 mutation RPCs quiesced", () => {
+  const markSrc = readPkg("03B_MARK_VERIFIED_DESIGN.sql");
+  const mark = uncommented(markSrc);
+  assert.match(markSrc, /VERIFIED_GATE_MUTATION_RPC_COUNT=14/);
+  assert.match(markSrc, /VERIFIED_GATE_CANONICAL_FK_COUNT=4/);
+  assert.match(mark, /v_cmd_ok <> 14/);
+  assert.match(mark, /club_leave_membership/);
+  assert.match(mark, /club_update\(uuid,text,integer/);
+});
+
+test("Round 7 H. 07C refuses APPLIED state", () => {
+  const restoreSrc = readPkg("07C_RESTORE_WRITES_DESIGN.sql");
+  const restore = uncommented(restoreSrc);
+  assert.match(restoreSrc, /POST_APPLY_LEGACY_ACL_RESTORE=DENIED/);
+  assert.match(restore, /v_state IN \('APPLIED', 'VERIFIED'\)/);
+});
+
+test("Round 7 I. 07C refuses VERIFIED state", () => {
+  const restore = uncommented(readPkg("07C_RESTORE_WRITES_DESIGN.sql"));
+  assert.match(restore, /POST_APPLY_LEGACY_ACL_RESTORE=DENIED state=%/);
+  assert.match(restore, /state IN \('PREPARED', 'QUIESCED', 'DRAINED'\)/);
+  assert.doesNotMatch(restore, /state IN \('QUIESCED', 'DRAINED', 'APPLYING', 'APPLIED', 'VERIFIED'\)/);
+});
+
+test("Round 7 J. failed APPLY durable state returns/remains DRAINED", () => {
+  const apply = readPkg("02_APPLY_DESIGN.sql");
+  const restore = readPkg("07C_RESTORE_WRITES_DESIGN.sql");
+  assert.match(apply, /FAILED_APPLY_DURABLE_STATE=DRAINED/);
+  assert.match(apply, /transaction-local and rolls back/);
+  assert.match(restore, /APPLYING is not restore authority/);
+});
+
+test("Round 7 K. prosrc fingerprint guard includes provolatile", () => {
+  const applySrc = readPkg("02_APPLY_DESIGN.sql");
+  const apply = uncommented(applySrc);
+  const precheck = uncommented(readPkg("01_PRECHECK.sql"));
+  assert.match(apply, /p\.provolatile/);
+  assert.match(applySrc, /RPC_VOLATILITY_CERTIFICATION=REQUIRED/);
+  assert.match(precheck, /p\.provolatile/);
+  assert.match(apply, /live_provolatile=/);
+});
+
+test("Round 7 L. SECURITY DEFINER owner is inspected/certified", () => {
+  const applySrc = readPkg("02_APPLY_DESIGN.sql");
+  const apply = uncommented(applySrc);
+  const precheck = uncommented(readPkg("01_PRECHECK.sql"));
+  assert.match(applySrc, /RPC_OWNER_CERTIFICATION=REQUIRED/);
+  assert.match(apply, /unknown\/untrusted SECURITY DEFINER owner/);
+  assert.match(apply, /r\.rolname/);
+  assert.match(precheck, /owner_role_name/);
+  assert.match(precheck, /p\.proowner/);
+  assert.doesNotMatch(uncommented(apply), /ALTER FUNCTION[\s\S]{0,80}OWNER TO/i);
+});
+
+test("Round 7 M. post-cutover authenticated ACL is normalized before GRANT", () => {
+  const restoreSrc = readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql");
+  const restore = uncommented(restoreSrc);
+  const revokeIdx = restore.search(
+    /REVOKE EXECUTE ON FUNCTION public\.club_create\(uuid, text, text, text, text, text\) FROM PUBLIC, anon, authenticated/
+  );
+  const grantIdx = restore.search(
+    /GRANT EXECUTE ON FUNCTION public\.club_create\(uuid, text, text, text, text, text\) TO authenticated/
+  );
+  assert.ok(revokeIdx >= 0 && grantIdx > revokeIdx);
+  assert.match(restoreSrc, /POST_CUTOVER_ACL_NORMALIZED=YES/);
+});
+
+test("Round 7 N. authenticated WITH GRANT OPTION is denied", () => {
+  const restore = uncommented(readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql"));
+  const verify = uncommented(readPkg("03_VERIFY.sql"));
+  assert.match(restore, /AUTHENTICATED_GRANT_OPTION_DENIED/);
+  assert.match(restore, /acl\.is_grantable/);
+  assert.match(verify, /AUTHENTICATED_GRANT_OPTION_DENIED=NO/);
+});
+
+test("Round 7 O. control-plane existing schema/index drift aborts", () => {
+  const q1aSrc = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const q1a = uncommented(q1aSrc);
+  assert.match(q1aSrc, /CONTROL_PLANE_EXISTING_SCHEMA_GUARD/);
+  assert.match(q1a, /one-active unique index missing|one-active index predicate drift/);
+  assert.match(q1a, /batch columns=/);
+});
+
+test("Round 7 P. no live SQL execution", () => {
+  for (const name of PACKAGE_FILES) {
+    const text = readPkg(name);
+    assert.match(text, /WAVE5_SQL_DESIGN_ONLY/);
+    assert.match(text, /OWNER_SQL_EXECUTION_GO=NO/);
+    assert.doesNotMatch(text, /SQL_EXECUTED=YES/);
+    assert.doesNotMatch(text, /STAGING_PRECHECK_EXECUTED=YES/);
+  }
+});
+

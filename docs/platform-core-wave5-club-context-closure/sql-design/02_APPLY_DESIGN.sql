@@ -69,6 +69,12 @@
 -- TRIGGER_POST_STATE_PRESERVED=YES
 -- MUTATION_BEFORE_LOCKED_SAFETY_GATE=NO
 -- PARTIAL_CUTOVER_COMMIT_POSSIBLE=NO
+-- FAILED_APPLY_DURABLE_STATE=DRAINED
+-- KEEP_WRITES_QUIESCED=YES
+-- POST_APPLY_VERIFY_FAILURE_OWNER_DECISION_REQUIRED=YES
+-- POST_APPLY_LEGACY_ACL_RESTORE=DENIED
+-- RPC_VOLATILITY_CERTIFICATION=REQUIRED
+-- RPC_OWNER_CERTIFICATION=REQUIRED
 -- No internal COMMIT. No exception handler that commits partial work.
 -- Transactional DDL (LOCK / ALTER TRIGGER / DROP/ADD FK) rolls back with the
 -- transaction if any later statement fails.
@@ -122,7 +128,7 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_APPLY_ABORT: APPLY_BATCH_ID_MATCH_REQUIRED — set wave5.cutover_batch_id';
   END IF;
 
-  SELECT b.state, b.cutover_kind, b.q1_committed_at, b.drained_at
+  SELECT b.state, b.cutover_kind, b.quiesce_visible_at, b.drained_at
     INTO v_state, v_kind, v_q1, v_drained
   FROM public.wave5_club_cutover_batch b
   WHERE b.batch_id = v_batch;
@@ -135,7 +141,7 @@ BEGIN
       coalesce(v_state, '<missing>');
   END IF;
   IF v_q1 IS NULL OR v_drained IS NULL OR v_drained <= v_q1 THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: drained_at must be after q1_committed_at';
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: drained_at must be after quiesce_visible_at — pre-commit q1 timestamp cannot authorize APPLY';
   END IF;
 
   SELECT count(*) INTO v_active
@@ -187,6 +193,8 @@ LOCK TABLE
   public.club_membership_requests_v42
 IN ACCESS EXCLUSIVE MODE;
 
+-- APPLYING is transaction-local and rolls back with this transaction.
+-- Failed APPLY durable state remains DRAINED.
 DO $wave5_apply_mark$
 DECLARE
   v_updated int := 0;
@@ -238,6 +246,8 @@ DECLARE
   v_lanname text;
   v_prosecdef boolean;
   v_proconfig text[];
+  v_provolatile "char";
+  v_owner_role text;
 BEGIN
   IF to_regclass('public.clubs') IS NULL
      OR to_regclass('public.club_members') IS NULL
@@ -349,37 +359,39 @@ BEGIN
       coalesce(v_delete_rule, '<null>');
   END IF;
 
-  -- APPLY_IN_TRANSACTION_RPC_SIGNATURE_GUARD=YES
   -- Strong identity: signature + overload + prosecdef + search_path + language
-  -- + md5(prosrc). Do not EXECUTE or regexp_replace the text.
+  -- + provolatile + owner role + md5(prosrc). Do not EXECUTE or regexp_replace.
   -- Certified fingerprints remain UNCERTIFIED until Owner reviews live PRECHECK evidence.
   -- APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED
   -- EXISTING_FUNCTION_SIGNATURE_ONLY_NOT_ENOUGH=YES
   -- EXISTING_RPC_STRONG_FINGERPRINT_COUNT=10
   -- RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
+  -- RPC_VOLATILITY_CERTIFICATION=REQUIRED
+  -- RPC_OWNER_CERTIFICATION=REQUIRED
+  -- Do not ALTER OWNER in this package.
   FOR v_guard IN
     SELECT * FROM (VALUES
       ('public.phase42_club_canonical(text)', 'phase42_club_canonical',
-       ARRAY['clubs', 'tenant_id'], 'plpgsql', 'UNCERTIFIED'),
+       ARRAY['clubs', 'tenant_id'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
       ('public.club_create(uuid,text,text,text,text,text)', 'club_create',
-       ARRAY['phase42_idempotency', 'clubs', 'p_tenant_id'], 'plpgsql', 'UNCERTIFIED'),
+       ARRAY['phase42_idempotency', 'clubs', 'p_tenant_id'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
       ('public.club_list_registry(text,boolean)', 'club_list_registry',
-       ARRAY['phase42_club_canonical', 'clubs'], 'plpgsql', 'UNCERTIFIED'),
+       ARRAY['phase42_club_canonical', 'clubs'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
       ('public.club_list_members(text)', 'club_list_members',
-       ARRAY['club_members'], 'plpgsql', 'UNCERTIFIED'),
+       ARRAY['club_members'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
       ('public.phase42_can_update_club(text)', 'phase42_can_update_club',
-       ARRAY['clubs'], 'plpgsql', 'UNCERTIFIED'),
+       ARRAY['clubs'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
       ('public.phase42_can_assign_club_owner(text)', 'phase42_can_assign_club_owner',
-       ARRAY['clubs'], 'plpgsql', 'UNCERTIFIED'),
+       ARRAY['clubs'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
       ('public.phase42_can_transfer_president(text)', 'phase42_can_transfer_president',
-       ARRAY['clubs'], 'plpgsql', 'UNCERTIFIED'),
+       ARRAY['clubs'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
       ('public.club_add_member(uuid,text,uuid,text,integer)', 'club_add_member',
-       ARRAY['phase42_can_review_membership', 'club_members', 'phase42_idempotency'], 'plpgsql', 'UNCERTIFIED'),
+       ARRAY['phase42_can_review_membership', 'club_members', 'phase42_idempotency'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
       ('public.club_restore_member(uuid,text,uuid,integer)', 'club_restore_member',
-       ARRAY['phase42_can_review_membership', 'club_members'], 'plpgsql', 'UNCERTIFIED'),
+       ARRAY['phase42_can_review_membership', 'club_members'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
       ('public.club_review_membership_request(uuid,uuid,text,text,integer)', 'club_review_membership_request',
-       ARRAY['club_membership_requests_v42', 'VERSION_CONFLICT'], 'plpgsql', 'UNCERTIFIED')
-    ) AS t(sig text, fname text, markers text[], lang text, certified_fp text)
+       ARRAY['club_membership_requests_v42', 'VERSION_CONFLICT'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED')
+    ) AS t(sig text, fname text, markers text[], lang text, certified_fp text, certified_owner text, certified_volatile text)
   LOOP
     IF to_regprocedure(v_guard.sig) IS NULL THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT % missing', v_guard.sig;
@@ -391,10 +403,12 @@ BEGIN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT % overload_count=%',
         v_guard.fname, v_overload;
     END IF;
-    SELECT p.prosecdef, p.proconfig, md5(convert_to(p.prosrc, 'UTF8')), l.lanname
-      INTO v_prosecdef, v_proconfig, v_live_fp, v_lanname
+    SELECT p.prosecdef, p.proconfig, p.provolatile, r.rolname,
+           md5(convert_to(p.prosrc, 'UTF8')), l.lanname
+      INTO v_prosecdef, v_proconfig, v_provolatile, v_owner_role, v_live_fp, v_lanname
     FROM pg_proc p
     JOIN pg_language l ON l.oid = p.prolang
+    JOIN pg_roles r ON r.oid = p.proowner
     WHERE p.oid = v_guard.sig::regprocedure;
     IF v_prosecdef IS NOT TRUE THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: % prosecdef expected true', v_guard.fname;
@@ -415,9 +429,21 @@ BEGIN
     END LOOP;
     IF v_guard.certified_fp IS NULL
        OR v_guard.certified_fp = 'UNCERTIFIED'
-       OR v_guard.certified_fp = 'OWNER_REVIEW_REQUIRED' THEN
-      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_prosrc_md5=% RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES',
-        v_guard.fname, v_live_fp;
+       OR v_guard.certified_fp = 'OWNER_REVIEW_REQUIRED'
+       OR v_guard.certified_owner IS NULL
+       OR v_guard.certified_owner = 'UNCERTIFIED'
+       OR v_guard.certified_volatile IS NULL
+       OR v_guard.certified_volatile = 'UNCERTIFIED' THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_prosrc_md5=% live_owner=% live_provolatile=% RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES',
+        v_guard.fname, v_live_fp, v_owner_role, v_provolatile;
+    END IF;
+    IF v_owner_role IS DISTINCT FROM v_guard.certified_owner THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_owner=% certified=% — unknown/untrusted SECURITY DEFINER owner',
+        v_guard.fname, v_owner_role, v_guard.certified_owner;
+    END IF;
+    IF v_provolatile::text IS DISTINCT FROM v_guard.certified_volatile THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_provolatile=% certified=%',
+        v_guard.fname, v_provolatile, v_guard.certified_volatile;
     END IF;
     IF v_live_fp IS DISTINCT FROM v_guard.certified_fp THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_prosrc_md5=% certified=%',
@@ -448,10 +474,12 @@ BEGIN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: platform_is_canonical_tenant_entitled overload_count=%',
         v_overload;
     END IF;
-    SELECT p.prosecdef, p.proconfig, md5(convert_to(p.prosrc, 'UTF8')), l.lanname
-      INTO v_prosecdef, v_proconfig, v_live_fp, v_lanname
+    SELECT p.prosecdef, p.proconfig, p.provolatile, r.rolname,
+           md5(convert_to(p.prosrc, 'UTF8')), l.lanname
+      INTO v_prosecdef, v_proconfig, v_provolatile, v_owner_role, v_live_fp, v_lanname
     FROM pg_proc p
     JOIN pg_language l ON l.oid = p.prolang
+    JOIN pg_roles r ON r.oid = p.proowner
     WHERE p.oid = 'public.platform_is_canonical_tenant_entitled(text)'::regprocedure;
     IF v_prosecdef IS NOT TRUE
        OR v_lanname IS DISTINCT FROM 'sql'
@@ -463,8 +491,8 @@ BEGIN
        OR position('phase42_is_platform_super_admin' in v_rpc_def) = 0 THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: unexpected existing platform_is_canonical_tenant_entitled';
     END IF;
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED platform_is_canonical_tenant_entitled live_prosrc_md5=%',
-      v_live_fp;
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED platform_is_canonical_tenant_entitled live_prosrc_md5=% live_owner=% live_provolatile=%',
+      v_live_fp, v_owner_role, v_provolatile;
   END IF;
   IF to_regprocedure('public.wave5_resolve_club_facility_venue_id(text)') IS NOT NULL THEN
     SELECT count(*) INTO v_overload
@@ -474,10 +502,12 @@ BEGIN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: wave5_resolve_club_facility_venue_id overload_count=%',
         v_overload;
     END IF;
-    SELECT p.prosecdef, p.proconfig, md5(convert_to(p.prosrc, 'UTF8')), l.lanname
-      INTO v_prosecdef, v_proconfig, v_live_fp, v_lanname
+    SELECT p.prosecdef, p.proconfig, p.provolatile, r.rolname,
+           md5(convert_to(p.prosrc, 'UTF8')), l.lanname
+      INTO v_prosecdef, v_proconfig, v_provolatile, v_owner_role, v_live_fp, v_lanname
     FROM pg_proc p
     JOIN pg_language l ON l.oid = p.prolang
+    JOIN pg_roles r ON r.oid = p.proowner
     WHERE p.oid = 'public.wave5_resolve_club_facility_venue_id(text)'::regprocedure;
     IF v_prosecdef IS NOT TRUE
        OR v_lanname IS DISTINCT FROM 'plpgsql'
@@ -493,8 +523,8 @@ BEGIN
        OR has_function_privilege('anon', 'public.wave5_resolve_club_facility_venue_id(text)', 'EXECUTE') THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: wave5_resolve_club_facility_venue_id callable by application role';
     END IF;
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED wave5_resolve_club_facility_venue_id live_prosrc_md5=%',
-      v_live_fp;
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED wave5_resolve_club_facility_venue_id live_prosrc_md5=% live_owner=% live_provolatile=%',
+      v_live_fp, v_owner_role, v_provolatile;
   END IF;
   IF to_regprocedure('public.wave5_ensure_athlete_for_club_member(uuid,text,text)') IS NOT NULL THEN
     SELECT count(*) INTO v_overload
@@ -504,10 +534,12 @@ BEGIN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: wave5_ensure_athlete_for_club_member overload_count=%',
         v_overload;
     END IF;
-    SELECT p.prosecdef, p.proconfig, md5(convert_to(p.prosrc, 'UTF8')), l.lanname
-      INTO v_prosecdef, v_proconfig, v_live_fp, v_lanname
+    SELECT p.prosecdef, p.proconfig, p.provolatile, r.rolname,
+           md5(convert_to(p.prosrc, 'UTF8')), l.lanname
+      INTO v_prosecdef, v_proconfig, v_provolatile, v_owner_role, v_live_fp, v_lanname
     FROM pg_proc p
     JOIN pg_language l ON l.oid = p.prolang
+    JOIN pg_roles r ON r.oid = p.proowner
     WHERE p.oid = 'public.wave5_ensure_athlete_for_club_member(uuid,text,text)'::regprocedure;
     IF v_prosecdef IS NOT TRUE
        OR v_lanname IS DISTINCT FROM 'plpgsql'
@@ -523,8 +555,8 @@ BEGIN
        OR has_function_privilege('anon', 'public.wave5_ensure_athlete_for_club_member(uuid,text,text)', 'EXECUTE') THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: wave5_ensure_athlete_for_club_member callable by application role';
     END IF;
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED wave5_ensure_athlete_for_club_member live_prosrc_md5=%',
-      v_live_fp;
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED wave5_ensure_athlete_for_club_member live_prosrc_md5=% live_owner=% live_provolatile=%',
+      v_live_fp, v_owner_role, v_provolatile;
   END IF;
 
   -- APPLY_IN_TRANSACTION_CHILD_CONSISTENCY_GUARD=YES
@@ -2019,6 +2051,8 @@ CREATE POLICY club_gov_select ON public.club_governance_assignments
     )
   );
 
+-- apply_committed_at is an in-transaction audit stamp for APPLIED; COMMIT
+-- is the visibility event. Not a drain barrier. FAILED_APPLY_DURABLE_STATE=DRAINED
 DO $wave5_apply_applied$
 DECLARE
   v_updated int := 0;

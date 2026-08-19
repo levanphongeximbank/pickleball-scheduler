@@ -77,7 +77,7 @@ Canonical command surface is **exactly** the 14 V2 write RPCs below. `club_leave
 
 `MUTATION_RPC_ENTRYPOINT_COUNT=14` canonical V2 write RPCs. Privileges below are from **authoritative GRANT statements** in repo SQL. PostgreSQL may still have `PUBLIC` EXECUTE unless previously revoked — Q1 **must capture exact ACLs** (`MUTATION_RPC_PRIVILEGE_CAPTURE=EXACT_ACL_SNAPSHOT`) and must not assume this table is complete.
 
-Intended **post-cutover** surface for each canonical row: `authenticated EXECUTE=YES`, `anon EXECUTE=DENIED`, `PUBLIC EXECUTE=DENIED`. `service_role` is not the PostgREST command path.
+Intended **post-cutover** surface for each canonical row: `authenticated EXECUTE=YES` (WITHOUT GRANT OPTION), `anon EXECUTE=DENIED`, `PUBLIC EXECUTE=DENIED`. `service_role` mutation entrypoint EXECUTE is quiesced if present and is **not** generically restored by 07D. Internal helper `service_role EXECUTE` is preserved.
 
 | FUNCTION | EXACT_SIGNATURE | CURRENT_AUTHENTICATED_EXECUTE | CURRENT_ANON_EXECUTE | CURRENT_PUBLIC_EXECUTE | SERVICE_ROLE_DEPENDENCY | QUIESCE_REQUIRED | RESTORE_REQUIRED |
 |---|---|---|---|---|---|---|---|

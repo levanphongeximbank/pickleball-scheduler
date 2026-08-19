@@ -7,13 +7,14 @@
 -- 07B1 equivalent — READ-ONLY drain proof after committed Q1. Do not APPLY until PASS.
 -- Do not MARK DRAINED here. Durable DRAINED is 07B2_MARK_DRAINED_DESIGN.sql.
 -- Require explicit wave5.cutover_batch_id. Do not kill sessions.
--- PRE_Q1_INFLIGHT_TRANSACTION_BARRIER=YES
+-- PRE_QUIESCE_INFLIGHT_TRANSACTION_BARRIER=YES
+-- Barrier timestamp is quiesce_visible_at (Q1B post-commit seal), not q1_committed_at.
 -- If ambiguous: DRAIN=FAIL_CLOSED.
 
 DO $$
 DECLARE
   v_batch uuid;
-  v_q1 timestamptz;
+  v_visible timestamptz;
   v_state text;
   v_auth_exec int := 0;
   v_public_exec int := 0;
@@ -34,8 +35,8 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: cutover_batch_id required — DRAIN=FAIL_CLOSED';
   END IF;
 
-  SELECT b.state, b.q1_committed_at
-    INTO v_state, v_q1
+  SELECT b.state, b.quiesce_visible_at
+    INTO v_state, v_visible
   FROM public.wave5_club_cutover_batch b
   WHERE b.batch_id = v_batch
     AND b.cutover_kind = 'WAVE5_CLUB_TENANT';
@@ -47,8 +48,8 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: batch % state=% — expected QUIESCED or DRAINED',
       v_batch, v_state;
   END IF;
-  IF v_q1 IS NULL THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: q1_committed_at missing on batch %', v_batch;
+  IF v_visible IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: quiesce_visible_at missing — pre-commit q1 timestamp cannot authorize drain';
   END IF;
 
   IF (
@@ -97,6 +98,11 @@ BEGIN
     END IF;
     IF has_function_privilege('authenticated', v_oid, 'EXECUTE') THEN
       v_auth_exec := v_auth_exec + 1;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role')
+       AND has_function_privilege('service_role', v_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: service_role still has EXECUTE on mutation entrypoint %',
+        v_sig;
     END IF;
   END LOOP;
 
@@ -152,8 +158,9 @@ BEGIN
       v_active_club_waiters;
   END IF;
 
-  -- PRE_Q1_INFLIGHT_TRANSACTION_BARRIER: sessions that could have begun a Club
-  -- command before Q1 commit. Do not depend only on query text. Do not kill.
+  -- PRE_QUIESCE_INFLIGHT_TRANSACTION_BARRIER: sessions that could have begun a
+  -- mutation-capable transaction before Q1B visibility. Do not depend only on
+  -- query text. Do not kill. Do not use q1_committed_at.
   SELECT count(*) INTO v_pre_q1
   FROM pg_catalog.pg_stat_activity a
   WHERE a.pid IS DISTINCT FROM pg_backend_pid()
@@ -168,14 +175,14 @@ BEGIN
     )
     AND a.state IS DISTINCT FROM 'idle'
     AND a.xact_start IS NOT NULL
-    AND a.xact_start <= v_q1
+    AND a.xact_start <= v_visible
     AND (
-      a.usename IN ('authenticated', 'anon', 'authenticator')
+      a.usename IN ('authenticated', 'anon', 'authenticator', 'service_role')
       OR lower(coalesce(a.application_name, '')) LIKE '%postgrest%'
     );
 
   IF v_pre_q1 > 0 THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: PRE_Q1_INFLIGHT_TRANSACTION_BARRIER pre_q1_api_xacts=% — DRAIN=FAIL_CLOSED',
+    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: PRE_QUIESCE_INFLIGHT_TRANSACTION_BARRIER pre_quiesce_api_xacts=% — DRAIN=FAIL_CLOSED',
       v_pre_q1;
   END IF;
 
@@ -193,15 +200,15 @@ BEGIN
     )
     AND a.state IN ('idle in transaction', 'idle in transaction (aborted)')
     AND a.xact_start IS NOT NULL
-    AND a.xact_start <= v_q1
+    AND a.xact_start <= v_visible
     AND a.usename IS NULL;
 
   IF v_active_other > 0 THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: ambiguous pre-Q1 idle-in-transaction sessions=% — DRAIN=FAIL_CLOSED',
+    RAISE EXCEPTION 'WAVE5_DRAIN_FAIL: ambiguous pre-quiesce idle-in-transaction sessions=% — DRAIN=FAIL_CLOSED',
       v_active_other;
   END IF;
 
-  RAISE NOTICE 'WAVE5_DRAIN_PASS CLUB_MUTATION_NEW_CALLS_QUIESCED=YES CLUB_MUTATION_IN_FLIGHT_DRAINED=YES PRE_Q1_INFLIGHT_TRANSACTION_BARRIER=YES batch=%',
+  RAISE NOTICE 'WAVE5_DRAIN_PASS CLUB_MUTATION_NEW_CALLS_QUIESCED=YES CLUB_MUTATION_IN_FLIGHT_DRAINED=YES PRE_QUIESCE_INFLIGHT_TRANSACTION_BARRIER=YES batch=%',
     v_batch;
 END $$;
 

@@ -18,10 +18,12 @@ Gate for existing overwrite candidates (not pretty-print alone):
 2. overload_count = 1
 3. prosecdef
 4. proconfig / search_path
-5. function language
-6. approved body fingerprint = `md5(convert_to(pg_proc.prosrc, 'UTF8'))`
+5. provolatile
+6. function language
+7. trusted owner role (`proowner` / role name)
+8. approved body fingerprint = `md5(convert_to(pg_proc.prosrc, 'UTF8'))`
 
-Certified fingerprints in APPLY are **UNCERTIFIED** until Owner reviews live PRECHECK evidence. Live drift or UNCERTIFIED → `WAVE5_APPLY_ABORT_RPC_BODY_DRIFT` + `OWNER_REVIEW_REQUIRED` (no overwrite). Do not invent live fingerprints in git.
+Certified fingerprints, volatility, and owner in APPLY are **UNCERTIFIED** until Owner reviews live PRECHECK evidence. Live drift, unknown owner, or UNCERTIFIED → `WAVE5_APPLY_ABORT_RPC_BODY_DRIFT` + `OWNER_REVIEW_REQUIRED` (no overwrite). Do not invent live fingerprints in git. Do not `ALTER OWNER` in this package.
 
 `pg_get_functiondef` remains supporting validation only.
 
@@ -29,7 +31,7 @@ Certified fingerprints in APPLY are **UNCERTIFIED** until Owner reviews live PRE
 
 | FUNCTION | EXACT_SIGNATURE | CLASS | IF_ABSENT | IF_PRESENT_UNKNOWN_BODY | STRONG_IDENTITY |
 |---|---|---|---|---|---|
-| `platform_is_canonical_tenant_entitled` | `(text)` | NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED | create OK | ABORT | signature + overload + prosecdef + search_path + language sql + prosrc md5 + privilege state |
+| `platform_is_canonical_tenant_entitled` | `(text)` | NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED | create OK | ABORT | signature + overload + prosecdef + search_path + language sql + provolatile + owner + prosrc md5 + privilege state |
 | `wave5_resolve_club_facility_venue_id` | `(text)` | NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED | create OK | ABORT | same + application-role EXECUTE DENIED |
 | `wave5_ensure_athlete_for_club_member` | `(uuid, text, text)` | NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED | create OK | ABORT | same + application-role EXECUTE DENIED |
 | `phase42_club_canonical` | `(text)` | EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY | ABORT signature | ABORT body | strong fingerprint required |

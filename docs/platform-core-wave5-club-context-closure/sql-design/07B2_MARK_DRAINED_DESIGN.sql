@@ -14,7 +14,7 @@ BEGIN;
 DO $$
 DECLARE
   v_batch uuid;
-  v_q1 timestamptz;
+  v_visible timestamptz;
   v_state text;
   v_auth_exec int := 0;
   v_public_exec int := 0;
@@ -36,8 +36,8 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: explicit cutover_batch_id required';
   END IF;
 
-  SELECT b.state, b.q1_committed_at
-    INTO v_state, v_q1
+  SELECT b.state, b.quiesce_visible_at
+    INTO v_state, v_visible
   FROM public.wave5_club_cutover_batch b
   WHERE b.batch_id = v_batch
     AND b.cutover_kind = 'WAVE5_CLUB_TENANT'
@@ -49,8 +49,8 @@ BEGIN
   IF v_state IS DISTINCT FROM 'QUIESCED' THEN
     RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: invalid transition % → DRAINED', v_state;
   END IF;
-  IF v_q1 IS NULL THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: q1_committed_at missing';
+  IF v_visible IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: quiesce_visible_at missing — pre-commit q1 timestamp cannot authorize drain';
   END IF;
 
   IF (
@@ -99,6 +99,11 @@ BEGIN
     END IF;
     IF has_function_privilege('authenticated', v_oid, 'EXECUTE') THEN
       v_auth_exec := v_auth_exec + 1;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role')
+       AND has_function_privilege('service_role', v_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: service_role still has EXECUTE on mutation entrypoint %',
+        v_sig;
     END IF;
   END LOOP;
 
@@ -164,13 +169,13 @@ BEGIN
     )
     AND a.state IS DISTINCT FROM 'idle'
     AND a.xact_start IS NOT NULL
-    AND a.xact_start <= v_q1
+    AND a.xact_start <= v_visible
     AND (
-      a.usename IN ('authenticated', 'anon', 'authenticator')
+      a.usename IN ('authenticated', 'anon', 'authenticator', 'service_role')
       OR lower(coalesce(a.application_name, '')) LIKE '%postgrest%'
     );
   IF v_pre_q1 > 0 THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: PRE_Q1_INFLIGHT_TRANSACTION_BARRIER pre_q1_api_xacts=%',
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: PRE_QUIESCE_INFLIGHT_TRANSACTION_BARRIER pre_quiesce_api_xacts=%',
       v_pre_q1;
   END IF;
 
@@ -188,10 +193,10 @@ BEGIN
     )
     AND a.state IN ('idle in transaction', 'idle in transaction (aborted)')
     AND a.xact_start IS NOT NULL
-    AND a.xact_start <= v_q1
+    AND a.xact_start <= v_visible
     AND a.usename IS NULL;
   IF v_active_other > 0 THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: ambiguous pre-Q1 sessions=%', v_active_other;
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: ambiguous pre-quiesce sessions=%', v_active_other;
   END IF;
 
   UPDATE public.wave5_club_cutover_batch
@@ -199,8 +204,8 @@ BEGIN
       drained_at = clock_timestamp()
   WHERE batch_id = v_batch
     AND state = 'QUIESCED'
-    AND q1_committed_at IS NOT NULL
-    AND clock_timestamp() > q1_committed_at;
+    AND quiesce_visible_at IS NOT NULL
+    AND clock_timestamp() > quiesce_visible_at;
 
   GET DIAGNOSTICS v_updated = ROW_COUNT;
   IF v_updated <> 1 THEN
