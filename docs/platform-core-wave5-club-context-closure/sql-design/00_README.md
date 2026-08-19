@@ -17,9 +17,9 @@ Do not apply until Owner issues a separate execution GO naming this package and 
 
 | File | Mutates? | Purpose |
 |---|---|---|
-| `01_PRECHECK.sql` | NO | Read-only fail-closed inventory for every in-scope Club table + Wave 4 `tenant_members` FK |
-| `02_APPLY_DESIGN.sql` | YES (when GO) | Strongly state-guarded Venue→Platform Tenant cutover for Club-owned tables + Club RPC/RLS |
-| `03_VERIFY.sql` | NO | Post-apply read-only invariants |
+| `01_PRECHECK.sql` | NO | Operator-facing read-only dry-run inventory. **Not** APPLY freshness. `APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO` |
+| `02_APPLY_DESIGN.sql` | YES (when GO) | Self-protecting locked transactional cutover. Reasserts mutation-critical invariants under lock before any mutation |
+| `03_VERIFY.sql` | NO | Post-apply read-only invariants (cannot prove a historical `LOCK TABLE`) |
 | `04_ROLLBACK_DESIGN.md` | documentation | App rollback vs DB rollback |
 | `05_CLUB_TENANT_TABLE_INVENTORY.md` | documentation | Tenant-bearing table classification |
 | `06_CLUB_MUTATION_RPC_INVENTORY.md` | documentation | Club mutation RPC semantics |
@@ -32,7 +32,9 @@ Do not apply until Owner issues a separate execution GO naming this package and 
 | `STATE_CANONICAL` | all four FKs **exactly** `public.platform_tenants(id)` | DO NOT translate data, DO NOT join values to `venues.id` as migration source, only rerunnable function/policy reconcile |
 | `STATE_UNKNOWN` | anything else, including mixed FKs | hard abort |
 
-The DATA `UPDATE` is inside the `STATE_LEGACY` branch of the **same** `DO` block. A prior local `RETURN` cannot leak into an unconditional rewrite.
+`01_PRECHECK.sql` is operator-facing dry-run evidence. `02_APPLY_DESIGN.sql` is independently safe: it does not depend on PRECHECK having been run immediately before.
+
+The DATA `UPDATE` is inside the `STATE_LEGACY` branch of the **same** `DO` block. A prior local `RETURN` cannot leak into an unconditional rewrite. `CANONICAL_STATE_DATA_TRANSLATION=DENIED`. Canonical invariant failure aborts; it does not repair.
 
 `CANONICAL_STATE_CANNOT_EXECUTE_LEGACY_TRANSLATION=YES`
 
@@ -112,3 +114,38 @@ Registered cluster: same-Tenant facility only (`venues.tenant_id = clubs.tenant_
 `athletes.tenant_id` remains facility/Venue-scoped. Wave 5 does not migrate `athletes` onto `platform_tenants`.
 
 PRECHECK uses `to_regprocedure` exact signatures (not `proname LIMIT 1`). `STATE_CANONICAL` uniqueness is checked on Club `tenant_id` without treating it as Venue. `STATE_LEGACY` uniqueness is checked on `venues.tenant_id` after conceptual translation. Collision classification: `DATA_RECONCILIATION_OWNER_DECISION_REQUIRED`.
+
+## Round 4 remediation (pending Round 5 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND4_REMEDIATION=COMPLETE_PENDING_ROUND5_OWNER_REVIEW
+ROUND4_BLOCKER_01_CONCURRENT_WRITE_LOCKING=FIXED
+ROUND4_BLOCKER_02_LOCKED_APPLY_SAFETY_GATE=FIXED
+ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED
+CLUB_CUTOVER_TABLE_LOCK=YES
+CLUB_CUTOVER_LOCK_MODE=ACCESS EXCLUSIVE
+CLUB_CUTOVER_LOCK_ORDER=DETERMINISTIC
+CLUB_CUTOVER_CONCURRENT_WRITE_WINDOW=CLOSED
+APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO
+APPLY_IN_TRANSACTION_FK_STATE_GUARD=YES
+APPLY_EXPECTS_WAVE4_TENANT_MEMBERS_CANONICAL=YES
+APPLY_IN_TRANSACTION_MAPPING_GUARD=YES
+APPLY_IN_TRANSACTION_CHILD_CONSISTENCY_GUARD=YES
+APPLY_IN_TRANSACTION_NAME_COLLISION_GUARD=YES
+APPLY_IN_TRANSACTION_CODE_COLLISION_GUARD=YES
+APPLY_IN_TRANSACTION_CLUSTER_ORPHAN_GUARD=YES
+APPLY_IN_TRANSACTION_CLUSTER_CROSS_TENANT_GUARD=YES
+APPLY_IN_TRANSACTION_RPC_SIGNATURE_GUARD=YES
+APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED
+CANONICAL_STATE_DATA_TRANSLATION=DENIED
+TRIGGER_PRE_STATE_CAPTURED=YES
+TRIGGER_POST_STATE_PRESERVED=YES
+PARTIAL_CUTOVER_COMMIT_POSSIBLE=NO
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Club-owned tables are locked in one `LOCK TABLE ... ACCESS EXCLUSIVE` statement before FK classification, mapping, uniqueness, `DROP CONSTRAINT`, `UPDATE`, or RPC replacement. Supporting mapping tables (`venues`, `platform_tenants`, `court_clusters`) use `SHARE ROW EXCLUSIVE` so mapping keys cannot change while ordinary `SELECT` continues. `tenant_members` uses `ACCESS SHARE` to block DDL of the Wave 4 FK without blocking entitlement DML.
+
+APPLY-time `pg_get_functiondef` is read-only validation. It is never `EXECUTE`d or `regexp_replace`d into a replacement body.
+
+`trg_phase42_gov_active_member` enablement is captured from `pg_trigger.tgenabled` (`O`/`D`/`R`/`A`) and restored exactly after translation. One transaction; no internal `COMMIT`.

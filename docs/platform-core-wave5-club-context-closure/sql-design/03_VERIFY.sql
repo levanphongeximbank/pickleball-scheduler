@@ -5,6 +5,7 @@
 -- SQL_EXECUTED=NO
 --
 -- Post-apply VERIFY — READ-ONLY. Do not mutate.
+-- Post-state invariants only. Cannot prove a historical LOCK TABLE occurred.
 
 DO $$
 DECLARE

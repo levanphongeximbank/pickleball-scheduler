@@ -11,11 +11,17 @@
 **SQL_DESIGN_AUTHORED=YES**
 **SQL_DESIGN_REVIEW_ROUND2_REMEDIATION=COMPLETE_PENDING_ROUND3_OWNER_REVIEW**
 **SQL_DESIGN_REVIEW_ROUND3_REMEDIATION=COMPLETE_PENDING_ROUND4_OWNER_REVIEW**
+**SQL_DESIGN_REVIEW_ROUND4_REMEDIATION=COMPLETE_PENDING_ROUND5_OWNER_REVIEW**
 **SQL_DESIGN_REVIEWED_PASS=NO**
 **ROUND2_BLOCKER_01=REMEDIATED**
 **ROUND2_BLOCKER_02=REMEDIATED**
 **ROUND3_BLOCKER_01_INTERNAL_HELPER_PRIVILEGE=FIXED**
 **ROUND3_BLOCKER_02_REGISTERED_CLUSTER_TENANT_BINDING=FIXED**
+**ROUND4_BLOCKER_01_CONCURRENT_WRITE_LOCKING=FIXED**
+**ROUND4_BLOCKER_02_LOCKED_APPLY_SAFETY_GATE=FIXED**
+**ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED**
+**CLUB_CUTOVER_CONCURRENT_WRITE_WINDOW=CLOSED**
+**APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO**
 **SQL_EXECUTED=NO**
 **RLS_DESIGN_AUTHORED=YES**
 **RLS_EXECUTED=NO**
@@ -102,11 +108,19 @@ See `sql-design/`. **DO NOT RUN.** `OWNER_SQL_EXECUTION_GO=NO`.
 **ATHLETE_EXISTING_REUSE_POLICY=APPROVED**
 **ATHLETE_NEW_CREATE_NO_FACILITY_POLICY=FAIL_CLOSED_ATHLETE_FACILITY_VENUE_REQUIRED**
 
-**SQL_DESIGN_REVIEW_ROUND3_REMEDIATION=COMPLETE_PENDING_ROUND4_OWNER_REVIEW** (not a SQL review PASS).
+**SQL_DESIGN_REVIEW_ROUND3_REMEDIATION=COMPLETE_PENDING_ROUND4_OWNER_REVIEW** (historical Round 3 close-out; not a SQL review PASS).
 
 **ROUND3_BLOCKER_01_INTERNAL_HELPER_PRIVILEGE=FIXED** — `wave5_ensure_athlete_for_club_member` and `wave5_resolve_club_facility_venue_id` REVOKE ALL from `public, anon, authenticated`; GRANT EXECUTE only to `service_role`. Outer Club RPCs keep authenticated EXECUTE. Nested SECURITY DEFINER calls run as the function owner.
 
 **ROUND3_BLOCKER_02_REGISTERED_CLUSTER_TENANT_BINDING=FIXED** — PRECHECK fail-closes on `REGISTERED_CLUSTER_ORPHAN_COUNT` and `REGISTERED_CLUSTER_CROSS_TENANT_COUNT`. Legacy compares canonical Tenants via Club Venue vs Cluster Venue. Canonical/runtime compare `venues.tenant_id = clubs.tenant_id`. No `cc.venue_id = c.tenant_id` coincidence. Cross-Tenant cluster raises `ATHLETE_FACILITY_VENUE_REQUIRED: REGISTERED_CLUSTER_TENANT_MISMATCH` internally; public membership RPCs still map to `ATHLETE_FACILITY_VENUE_REQUIRED`.
+
+**SQL_DESIGN_REVIEW_ROUND4_REMEDIATION=COMPLETE_PENDING_ROUND5_OWNER_REVIEW** (not a SQL review PASS).
+
+**ROUND4_BLOCKER_01_CONCURRENT_WRITE_LOCKING=FIXED** — APPLY takes `LOCK TABLE` on Club-owned write tables in `ACCESS EXCLUSIVE` (deterministic order: clubs, club_members, club_governance_assignments, club_membership_requests_v42) before classification, mapping, or mutation. Row-level `FOR UPDATE` is not the cutover concurrency authority. `CLUB_CUTOVER_CONCURRENT_WRITE_WINDOW=CLOSED`.
+
+**ROUND4_BLOCKER_02_LOCKED_APPLY_SAFETY_GATE=FIXED** — APPLY reasserts FK state, Wave 4 `tenant_members` expectation, mapping, child consistency, name/code collision, registered-cluster orphan/cross-Tenant, and RPC exact signatures **inside the locked transaction**. `APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO`. `01_PRECHECK` remains operator-facing dry-run only.
+
+**ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED** — capture `pg_trigger.tgenabled` (`O`/`D`/`R`/`A`) and restore that exact mode after translation. No unconditional `ENABLE TRIGGER`.
 
 **ATHLETE_NO_CLUSTER_POLICY=reuse existing athlete if any (Participant user_id uniqueness; Venue not required for reuse); else require Club.registered_cluster_id → court_clusters.venue_id → venues.id with venues.tenant_id = clubs.tenant_id; else fail closed ATHLETE_FACILITY_VENUE_REQUIRED. No Tenant-as-Venue, no first/default Venue, no clubs.venue_id, no profiles.venue_id from the Wave 5 wrapper.**
 

@@ -8,10 +8,18 @@
 -- DESIGN CANDIDATE ONLY. Do not apply without a separate Owner GO.
 -- Strongly state-guarded Club Tenant cutover.
 --
+-- 01_PRECHECK.sql = operator-facing dry-run evidence.
+-- 02_APPLY_DESIGN.sql = self-protecting authoritative transactional migration.
+-- APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO
+-- APPLY does not trust a prior PRECHECK run. All mutation-critical invariants
+-- are reasserted inside this locked transaction.
+--
 -- STATE_LEGACY: every in-scope Club tenant_id FK is public.venues(id)
 --   → materialize map, validate, translate, retarget FK
 -- STATE_CANONICAL: every in-scope Club tenant_id FK is public.platform_tenants(id)
 --   → DO NOT translate data, DO NOT join Club tenant_id to venues.id as source
+--   → CANONICAL_STATE_DATA_TRANSLATION=DENIED
+--   → CANONICAL_STATE_INVARIANT_FAILURE=ABORT
 -- STATE_UNKNOWN: mixed/other → hard abort
 --
 -- The DATA UPDATE itself is inside the STATE_LEGACY branch of the same DO block.
@@ -20,13 +28,64 @@
 -- Does NOT globally retire phase42_is_tenant_member.
 -- Does NOT use venues.id = platform_tenants.id as a migration predicate.
 -- DYNAMIC_RPC_TEXT_REWRITE_PRESENT=NO
+-- APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED
 -- ROUND2_BLOCKER_01=REMEDIATED
 -- ROUND2_BLOCKER_02=REMEDIATED
+-- ROUND4_BLOCKER_01_CONCURRENT_WRITE_LOCKING=FIXED
+-- ROUND4_BLOCKER_02_LOCKED_APPLY_SAFETY_GATE=FIXED
+-- ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED
+-- CLUB_CUTOVER_TABLE_LOCK=YES
+-- CLUB_CUTOVER_LOCK_MODE=ACCESS EXCLUSIVE
+-- CLUB_CUTOVER_LOCK_ORDER=DETERMINISTIC
+-- CLUB_CUTOVER_CONCURRENT_WRITE_WINDOW=CLOSED
+-- APPLY_IN_TRANSACTION_FK_STATE_GUARD=YES
+-- APPLY_EXPECTS_WAVE4_TENANT_MEMBERS_CANONICAL=YES
+-- APPLY_IN_TRANSACTION_MAPPING_GUARD=YES
+-- APPLY_IN_TRANSACTION_CHILD_CONSISTENCY_GUARD=YES
+-- APPLY_IN_TRANSACTION_NAME_COLLISION_GUARD=YES
+-- APPLY_IN_TRANSACTION_CODE_COLLISION_GUARD=YES
+-- APPLY_IN_TRANSACTION_CLUSTER_ORPHAN_GUARD=YES
+-- APPLY_IN_TRANSACTION_CLUSTER_CROSS_TENANT_GUARD=YES
+-- APPLY_IN_TRANSACTION_RPC_SIGNATURE_GUARD=YES
+-- TRIGGER_PRE_STATE_CAPTURED=YES
+-- TRIGGER_POST_STATE_PRESERVED=YES
+-- MUTATION_BEFORE_LOCKED_SAFETY_GATE=NO
+-- PARTIAL_CUTOVER_COMMIT_POSSIBLE=NO
+-- No internal COMMIT. No exception handler that commits partial work.
+-- Transactional DDL (LOCK / ALTER TRIGGER / DROP/ADD FK) rolls back with the
+-- transaction if any later statement fails.
 
 BEGIN;
 
 -- =====================================================================
--- 1. Schema-state machine + data translation (ONE DO block)
+-- 0. Explicit Club-owned write locks (ACCESS EXCLUSIVE)
+--    Blocks INSERT/UPDATE/DELETE/TRUNCATE/DDL and Club RPC writers on these
+--    tables for the cutover transaction. One statement, deterministic order.
+-- =====================================================================
+LOCK TABLE
+  public.clubs,
+  public.club_members,
+  public.club_governance_assignments,
+  public.club_membership_requests_v42
+IN ACCESS EXCLUSIVE MODE;
+
+-- Supporting mapping tables: SHARE ROW EXCLUSIVE blocks ROW EXCLUSIVE
+-- (INSERT/UPDATE/DELETE) and stronger (DDL) while ACCESS SHARE reads continue.
+-- Prevents venues.tenant_id / court_clusters.venue_id / platform_tenants.id
+-- from changing underneath mapping and facility guards.
+LOCK TABLE
+  public.venues,
+  public.platform_tenants,
+  public.court_clusters
+IN SHARE ROW EXCLUSIVE MODE;
+
+-- tenant_members: Wave 5 expects catalog FK shape only (Wave 4 closed).
+-- ACCESS SHARE blocks ACCESS EXCLUSIVE DDL; concurrent entitlement DML is
+-- harmless because this cutover does not rewrite tenant_members rows.
+LOCK TABLE public.tenant_members IN ACCESS SHARE MODE;
+
+-- =====================================================================
+-- 1. Schema-state machine + locked safety gate + data translation (ONE DO)
 -- =====================================================================
 DO $$
 DECLARE
@@ -34,6 +93,8 @@ DECLARE
   v_members_fk text;
   v_gov_fk text;
   v_req_fk text;
+  v_tm_fk text;
+  v_delete_rule text;
   v_state text;
   v_fk_name text;
   v_fk_table text;
@@ -41,16 +102,30 @@ DECLARE
   v_mapped int;
   v_bad int;
   v_mismatch int;
+  v_orphan int;
+  v_venue_missing_tenant int;
+  v_tenant_unresolved int;
+  v_ambiguous int;
+  v_dup_name int;
+  v_dup_code int;
+  v_cluster_orphan int;
+  v_cluster_xtenant int;
+  v_overload int;
+  v_rpc_def text;
+  v_gov_tg_enabled "char";
 BEGIN
   IF to_regclass('public.clubs') IS NULL
      OR to_regclass('public.club_members') IS NULL
      OR to_regclass('public.club_governance_assignments') IS NULL
      OR to_regclass('public.club_membership_requests_v42') IS NULL
      OR to_regclass('public.venues') IS NULL
-     OR to_regclass('public.platform_tenants') IS NULL THEN
+     OR to_regclass('public.platform_tenants') IS NULL
+     OR to_regclass('public.court_clusters') IS NULL
+     OR to_regclass('public.tenant_members') IS NULL THEN
     RAISE EXCEPTION 'WAVE5_APPLY_ABORT: required tables missing';
   END IF;
 
+  -- APPLY_IN_TRANSACTION_FK_STATE_GUARD=YES
   SELECT ccu.table_name INTO v_clubs_fk
   FROM information_schema.table_constraints tc
   JOIN information_schema.key_column_usage kcu
@@ -116,46 +191,95 @@ BEGIN
       v_clubs_fk, v_members_fk, v_gov_fk, v_req_fk;
   END IF;
 
-  PERFORM 1 FROM public.clubs FOR UPDATE;
-  PERFORM 1 FROM public.club_members FOR UPDATE;
-  PERFORM 1 FROM public.club_governance_assignments FOR UPDATE;
-  PERFORM 1 FROM public.club_membership_requests_v42 FOR UPDATE;
-
-  IF v_state = 'CANONICAL' THEN
-    RAISE NOTICE 'WAVE5_APPLY_SKIP_TRANSLATE: Club-owned tenant_id already canonical — no Venue join, no data rewrite';
-    -- STATE_CANONICAL: functions/policies below remain rerunnable.
-    RETURN;
+  -- APPLY_EXPECTS_WAVE4_TENANT_MEMBERS_CANONICAL=YES
+  -- Do not repair Wave 4 here.
+  SELECT ccu.table_name INTO v_tm_fk
+  FROM information_schema.table_constraints tc
+  JOIN information_schema.key_column_usage kcu
+    ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+  JOIN information_schema.constraint_column_usage ccu
+    ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
+  WHERE tc.table_schema = 'public' AND tc.table_name = 'tenant_members'
+    AND tc.constraint_type = 'FOREIGN KEY' AND kcu.column_name = 'tenant_id'
+  LIMIT 1;
+  IF v_tm_fk IS DISTINCT FROM 'platform_tenants' THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: tenant_members.tenant_id FK is %, expected platform_tenants (Wave 4 closed canonical). WAVE4_SQL_REEXECUTION_REQUIRED=NO — do not repair here',
+      coalesce(v_tm_fk, '<null>');
   END IF;
 
-  -- STATE_LEGACY only from here. DATA UPDATE cannot run in CANONICAL/UNKNOWN.
-  EXECUTE $map$
-    CREATE TEMP TABLE wave5_club_tenant_map ON COMMIT DROP AS
-    SELECT
-      c.id AS club_id,
-      c.tenant_id AS legacy_venue_scope_id,
-      v.tenant_id AS canonical_tenant_id
-    FROM public.clubs c
-    LEFT JOIN public.venues v ON v.id = c.tenant_id
-  $map$;
-
-  SELECT count(*) INTO v_clubs FROM public.clubs;
-  SELECT count(*) INTO v_mapped
-  FROM wave5_club_tenant_map
-  WHERE canonical_tenant_id IS NOT NULL;
-  IF v_clubs <> v_mapped THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: mapping incomplete clubs=% mapped=%', v_clubs, v_mapped;
+  SELECT rc.delete_rule INTO v_delete_rule
+  FROM information_schema.table_constraints tc
+  JOIN information_schema.key_column_usage kcu
+    ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+  JOIN information_schema.referential_constraints rc
+    ON rc.constraint_name = tc.constraint_name AND rc.constraint_schema = tc.table_schema
+  JOIN information_schema.constraint_column_usage ccu
+    ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
+  WHERE tc.table_schema = 'public' AND tc.table_name = 'tenant_members'
+    AND tc.constraint_type = 'FOREIGN KEY' AND kcu.column_name = 'tenant_id'
+    AND ccu.table_name = 'platform_tenants'
+  LIMIT 1;
+  IF v_delete_rule IS DISTINCT FROM 'RESTRICT' THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: tenant_members.tenant_id delete rule is %, expected RESTRICT',
+      coalesce(v_delete_rule, '<null>');
   END IF;
 
-  SELECT count(*) INTO v_bad
-  FROM wave5_club_tenant_map m
-  WHERE m.canonical_tenant_id IS NULL
-     OR NOT EXISTS (
-       SELECT 1 FROM public.platform_tenants pt WHERE pt.id = m.canonical_tenant_id
-     );
-  IF v_bad > 0 THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: % clubs lack a canonical Tenant', v_bad;
+  -- APPLY_IN_TRANSACTION_RPC_SIGNATURE_GUARD=YES
+  -- Read-only pg_get_functiondef inspection. Do not EXECUTE or regexp_replace the text.
+  -- APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED
+  IF to_regprocedure('public.club_add_member(uuid,text,uuid,text,integer)') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_add_member(uuid,text,uuid,text,integer) missing';
+  END IF;
+  IF to_regprocedure('public.club_restore_member(uuid,text,uuid,integer)') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_restore_member(uuid,text,uuid,integer) missing';
+  END IF;
+  IF to_regprocedure('public.club_review_membership_request(uuid,uuid,text,text,integer)') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_review_membership_request(uuid,uuid,text,text,integer) missing';
   END IF;
 
+  SELECT count(*) INTO v_overload
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'club_add_member';
+  IF v_overload <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_add_member overload_count=%', v_overload;
+  END IF;
+  SELECT count(*) INTO v_overload
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'club_restore_member';
+  IF v_overload <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_restore_member overload_count=%', v_overload;
+  END IF;
+  SELECT count(*) INTO v_overload
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'club_review_membership_request';
+  IF v_overload <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_review_membership_request overload_count=%', v_overload;
+  END IF;
+
+  v_rpc_def := pg_get_functiondef('public.club_add_member(uuid,text,uuid,text,integer)'::regprocedure);
+  IF position('phase42_can_review_membership' in v_rpc_def) = 0
+     OR position('club_members' in v_rpc_def) = 0
+     OR position('phase42_idempotency' in v_rpc_def) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_add_member missing certified semantics';
+  END IF;
+  IF position('wave5_ensure_athlete_for_club_member' in v_rpc_def) = 0
+     AND position('phase42n_ensure_athlete_for_user' in v_rpc_def) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_add_member athlete-ensure call missing';
+  END IF;
+
+  v_rpc_def := pg_get_functiondef('public.club_restore_member(uuid,text,uuid,integer)'::regprocedure);
+  IF position('phase42_can_review_membership' in v_rpc_def) = 0
+     OR position('club_members' in v_rpc_def) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_restore_member missing certified semantics';
+  END IF;
+
+  v_rpc_def := pg_get_functiondef('public.club_review_membership_request(uuid,uuid,text,text,integer)'::regprocedure);
+  IF position('club_membership_requests_v42' in v_rpc_def) = 0
+     OR position('VERSION_CONFLICT' in v_rpc_def) = 0 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_review_membership_request missing certified semantics';
+  END IF;
+
+  -- APPLY_IN_TRANSACTION_CHILD_CONSISTENCY_GUARD=YES
   SELECT count(*) INTO v_mismatch
   FROM public.club_members cm
   JOIN public.clubs c ON c.id = cm.club_id
@@ -176,6 +300,219 @@ BEGIN
   WHERE r.tenant_id IS DISTINCT FROM c.tenant_id;
   IF v_mismatch > 0 THEN
     RAISE EXCEPTION 'WAVE5_APPLY_ABORT: % request tenant_id disagree with parent Club', v_mismatch;
+  END IF;
+
+  SELECT count(*) INTO v_clubs FROM public.clubs;
+
+  IF v_state = 'CANONICAL' THEN
+    -- APPLY_IN_TRANSACTION_MAPPING_GUARD=YES (canonical: tenant_id is already platform_tenants.id)
+    SELECT count(*) INTO v_orphan FROM public.clubs c
+    WHERE NOT EXISTS (SELECT 1 FROM public.platform_tenants pt WHERE pt.id = c.tenant_id);
+    IF v_orphan > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: % clubs.tenant_id are not platform_tenants.id', v_orphan;
+    END IF;
+
+    -- APPLY_IN_TRANSACTION_NAME_COLLISION_GUARD=YES
+    SELECT count(*) INTO v_dup_name FROM (
+      SELECT c.tenant_id, lower(c.name)
+      FROM public.clubs c
+      WHERE c.deleted_at IS NULL
+      GROUP BY c.tenant_id, lower(c.name)
+      HAVING count(*) > 1
+    ) d;
+    IF v_dup_name > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: POST_MAP_DUPLICATE_CLUB_NAME_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+        v_dup_name;
+    END IF;
+
+    -- APPLY_IN_TRANSACTION_CODE_COLLISION_GUARD=YES
+    SELECT count(*) INTO v_dup_code FROM (
+      SELECT c.tenant_id, c.code
+      FROM public.clubs c
+      WHERE c.deleted_at IS NULL AND c.code IS NOT NULL
+      GROUP BY c.tenant_id, c.code
+      HAVING count(*) > 1
+    ) d;
+    IF v_dup_code > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: POST_MAP_DUPLICATE_CLUB_CODE_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+        v_dup_code;
+    END IF;
+
+    -- APPLY_IN_TRANSACTION_CLUSTER_ORPHAN_GUARD=YES
+    -- APPLY_IN_TRANSACTION_CLUSTER_CROSS_TENANT_GUARD=YES
+    SELECT count(*) INTO v_cluster_orphan
+    FROM public.clubs c
+    WHERE nullif(trim(c.registered_cluster_id), '') IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.court_clusters cc
+        JOIN public.venues v ON v.id = cc.venue_id
+        WHERE cc.id = c.registered_cluster_id
+          AND nullif(trim(cc.venue_id), '') IS NOT NULL
+      );
+    SELECT count(*) INTO v_cluster_xtenant
+    FROM public.clubs c
+    JOIN public.court_clusters cc ON cc.id = c.registered_cluster_id
+    JOIN public.venues v ON v.id = cc.venue_id
+    WHERE nullif(trim(c.registered_cluster_id), '') IS NOT NULL
+      AND v.tenant_id IS DISTINCT FROM c.tenant_id;
+    IF v_cluster_orphan > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: REGISTERED_CLUSTER_ORPHAN_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+        v_cluster_orphan;
+    END IF;
+    IF v_cluster_xtenant > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: REGISTERED_CLUSTER_CROSS_TENANT_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+        v_cluster_xtenant;
+    END IF;
+  ELSE
+    -- STATE_LEGACY mapping/collision/cluster under lock.
+    -- APPLY_IN_TRANSACTION_MAPPING_GUARD=YES
+    SELECT count(*) INTO v_orphan
+    FROM public.clubs c
+    WHERE c.tenant_id IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM public.venues v WHERE v.id = c.tenant_id);
+    IF v_orphan > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: % club tenant_id values do not resolve to venues.id', v_orphan;
+    END IF;
+
+    SELECT count(*) INTO v_venue_missing_tenant
+    FROM public.clubs c
+    JOIN public.venues v ON v.id = c.tenant_id
+    WHERE v.tenant_id IS NULL OR btrim(v.tenant_id) = '';
+    IF v_venue_missing_tenant > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: % clubs map to venues with null tenant_id', v_venue_missing_tenant;
+    END IF;
+
+    SELECT count(*) INTO v_tenant_unresolved
+    FROM public.clubs c
+    JOIN public.venues v ON v.id = c.tenant_id
+    WHERE NOT EXISTS (SELECT 1 FROM public.platform_tenants pt WHERE pt.id = v.tenant_id);
+    IF v_tenant_unresolved > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: % clubs map to venues.tenant_id not in platform_tenants', v_tenant_unresolved;
+    END IF;
+
+    SELECT count(*) INTO v_ambiguous
+    FROM (
+      SELECT c.id
+      FROM public.clubs c
+      JOIN public.venues v ON v.id = c.tenant_id
+      GROUP BY c.id
+      HAVING count(DISTINCT v.tenant_id) > 1
+    ) amb;
+    IF v_ambiguous > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: % clubs have non-deterministic canonical Tenant mapping', v_ambiguous;
+    END IF;
+
+    SELECT count(*) INTO v_mapped
+    FROM public.clubs c
+    JOIN public.venues v ON v.id = c.tenant_id
+    JOIN public.platform_tenants pt ON pt.id = v.tenant_id;
+    IF v_mapped <> v_clubs THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: mapping incomplete clubs=% mapped=%', v_clubs, v_mapped;
+    END IF;
+
+    -- APPLY_IN_TRANSACTION_NAME_COLLISION_GUARD=YES
+    SELECT count(*) INTO v_dup_name FROM (
+      SELECT v.tenant_id AS canonical_tenant_id, lower(c.name) AS normalized_name
+      FROM public.clubs c
+      JOIN public.venues v ON v.id = c.tenant_id
+      WHERE c.deleted_at IS NULL
+      GROUP BY v.tenant_id, lower(c.name)
+      HAVING count(*) > 1
+    ) d;
+    IF v_dup_name > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: POST_MAP_DUPLICATE_CLUB_NAME_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+        v_dup_name;
+    END IF;
+
+    -- APPLY_IN_TRANSACTION_CODE_COLLISION_GUARD=YES
+    SELECT count(*) INTO v_dup_code FROM (
+      SELECT v.tenant_id AS canonical_tenant_id, c.code
+      FROM public.clubs c
+      JOIN public.venues v ON v.id = c.tenant_id
+      WHERE c.deleted_at IS NULL AND c.code IS NOT NULL
+      GROUP BY v.tenant_id, c.code
+      HAVING count(*) > 1
+    ) d;
+    IF v_dup_code > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: POST_MAP_DUPLICATE_CLUB_CODE_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+        v_dup_code;
+    END IF;
+
+    -- APPLY_IN_TRANSACTION_CLUSTER_ORPHAN_GUARD=YES
+    -- APPLY_IN_TRANSACTION_CLUSTER_CROSS_TENANT_GUARD=YES
+    SELECT count(*) INTO v_cluster_orphan
+    FROM public.clubs c
+    WHERE nullif(trim(c.registered_cluster_id), '') IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.court_clusters cc
+        JOIN public.venues v ON v.id = cc.venue_id
+        WHERE cc.id = c.registered_cluster_id
+          AND nullif(trim(cc.venue_id), '') IS NOT NULL
+      );
+    SELECT count(*) INTO v_cluster_xtenant
+    FROM public.clubs c
+    JOIN public.venues club_v ON club_v.id = c.tenant_id
+    JOIN public.court_clusters cc ON cc.id = c.registered_cluster_id
+    JOIN public.venues cluster_v ON cluster_v.id = cc.venue_id
+    WHERE nullif(trim(c.registered_cluster_id), '') IS NOT NULL
+      AND club_v.tenant_id IS DISTINCT FROM cluster_v.tenant_id;
+    IF v_cluster_orphan > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: REGISTERED_CLUSTER_ORPHAN_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+        v_cluster_orphan;
+    END IF;
+    IF v_cluster_xtenant > 0 THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: REGISTERED_CLUSTER_CROSS_TENANT_COUNT=% DATA_RECONCILIATION_OWNER_DECISION_REQUIRED',
+        v_cluster_xtenant;
+    END IF;
+  END IF;
+
+  RAISE NOTICE 'APPLY_LOCKED_SAFETY_GATE_COMPLETE state=%', v_state;
+
+  -- TRIGGER_PRE_STATE_CAPTURED=YES — exact pg_trigger.tgenabled (O/D/R/A), not a boolean.
+  SELECT t.tgenabled INTO v_gov_tg_enabled
+  FROM pg_trigger t
+  WHERE t.tgname = 'trg_phase42_gov_active_member'
+    AND t.tgrelid = 'public.club_governance_assignments'::regclass
+    AND NOT t.tgisinternal
+  LIMIT 1;
+  IF v_gov_tg_enabled IS NOT NULL AND v_gov_tg_enabled NOT IN ('O', 'D', 'R', 'A') THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: unknown trg_phase42_gov_active_member tgenabled=%', v_gov_tg_enabled;
+  END IF;
+
+  IF v_state = 'CANONICAL' THEN
+    RAISE NOTICE 'WAVE5_APPLY_SKIP_TRANSLATE: Club-owned tenant_id already canonical — no Venue join, no data rewrite';
+    -- STATE_CANONICAL: functions/policies below remain rerunnable after this DO returns.
+    RETURN;
+  END IF;
+
+  -- STATE_LEGACY only from here. DATA UPDATE cannot run in CANONICAL/UNKNOWN.
+  EXECUTE $map$
+    CREATE TEMP TABLE wave5_club_tenant_map ON COMMIT DROP AS
+    SELECT
+      c.id AS club_id,
+      c.tenant_id AS legacy_venue_scope_id,
+      v.tenant_id AS canonical_tenant_id
+    FROM public.clubs c
+    LEFT JOIN public.venues v ON v.id = c.tenant_id
+  $map$;
+
+  SELECT count(*) INTO v_mapped
+  FROM wave5_club_tenant_map
+  WHERE canonical_tenant_id IS NOT NULL;
+  IF v_clubs <> v_mapped THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: mapping incomplete clubs=% mapped=%', v_clubs, v_mapped;
+  END IF;
+
+  SELECT count(*) INTO v_bad
+  FROM wave5_club_tenant_map m
+  WHERE m.canonical_tenant_id IS NULL
+     OR NOT EXISTS (
+       SELECT 1 FROM public.platform_tenants pt WHERE pt.id = m.canonical_tenant_id
+     );
+  IF v_bad > 0 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: % clubs lack a canonical Tenant', v_bad;
   END IF;
 
   FOR v_fk_name, v_fk_table IN
@@ -201,11 +538,7 @@ BEGIN
     EXECUTE format('ALTER TABLE public.%I DROP CONSTRAINT %I', v_fk_table, v_fk_name);
   END LOOP;
 
-  IF EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'trg_phase42_gov_active_member'
-      AND tgrelid = 'public.club_governance_assignments'::regclass
-  ) THEN
+  IF v_gov_tg_enabled IS NOT NULL AND v_gov_tg_enabled <> 'D' THEN
     EXECUTE 'ALTER TABLE public.club_governance_assignments DISABLE TRIGGER trg_phase42_gov_active_member';
   END IF;
 
@@ -233,12 +566,15 @@ BEGIN
   WHERE r.club_id = m.club_id
     AND r.tenant_id IS DISTINCT FROM m.canonical_tenant_id;
 
-  IF EXISTS (
-    SELECT 1 FROM pg_trigger
-    WHERE tgname = 'trg_phase42_gov_active_member'
-      AND tgrelid = 'public.club_governance_assignments'::regclass
-  ) THEN
+  -- TRIGGER_POST_STATE_PRESERVED=YES — restore exact tgenabled, never unconditional ENABLE.
+  IF v_gov_tg_enabled = 'O' THEN
     EXECUTE 'ALTER TABLE public.club_governance_assignments ENABLE TRIGGER trg_phase42_gov_active_member';
+  ELSIF v_gov_tg_enabled = 'D' THEN
+    EXECUTE 'ALTER TABLE public.club_governance_assignments DISABLE TRIGGER trg_phase42_gov_active_member';
+  ELSIF v_gov_tg_enabled = 'R' THEN
+    EXECUTE 'ALTER TABLE public.club_governance_assignments ENABLE REPLICA TRIGGER trg_phase42_gov_active_member';
+  ELSIF v_gov_tg_enabled = 'A' THEN
+    EXECUTE 'ALTER TABLE public.club_governance_assignments ENABLE ALWAYS TRIGGER trg_phase42_gov_active_member';
   END IF;
 
   IF NOT EXISTS (

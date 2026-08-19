@@ -331,7 +331,9 @@ test("Wave5 docs do not claim PC_CLUB_01 closed or SQL applied", () => {
   assert.match(readme, /ROUND2_BLOCKER_01=REMEDIATED/);
   assert.match(readme, /SQL_DESIGN_REVIEW_ROUND2_REMEDIATION=COMPLETE_PENDING_ROUND3_OWNER_REVIEW/);
   assert.match(readme, /SQL_DESIGN_REVIEW_ROUND3_REMEDIATION=COMPLETE_PENDING_ROUND4_OWNER_REVIEW/);
+  assert.match(readme, /SQL_DESIGN_REVIEW_ROUND4_REMEDIATION=COMPLETE_PENDING_ROUND5_OWNER_REVIEW/);
   assert.match(readme, /ROUND3_BLOCKER_01_INTERNAL_HELPER_PRIVILEGE=FIXED/);
+  assert.match(readme, /ROUND4_BLOCKER_01_CONCURRENT_WRITE_LOCKING=FIXED/);
   assert.doesNotMatch(readme, /\*\*PC_CLUB_01=CLOSED\*\*/);
   assert.doesNotMatch(readme, /SQL_APPLIED=/);
 });

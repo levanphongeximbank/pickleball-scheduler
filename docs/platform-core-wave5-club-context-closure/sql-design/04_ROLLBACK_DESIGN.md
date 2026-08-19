@@ -9,6 +9,8 @@ DO_NOT_RUN_ON_PRODUCTION
 
 Do **not** execute rollback from this document.
 
+APPLY is a single `BEGIN`…`COMMIT` with no internal `COMMIT`. If any statement fails after trigger disable or FK drop, the whole transaction rolls back (`PARTIAL_CUTOVER_COMMIT_POSSIBLE=NO`). That is abort/retry of the design package, not a data rollback after a successful canonical cutover.
+
 ## APP_ROLLBACK_KEEP_CANONICAL_DB (preferred)
 
 Once canonical SQL is eventually applied, reverse the **application** to a build that still understands both RPC shapes:

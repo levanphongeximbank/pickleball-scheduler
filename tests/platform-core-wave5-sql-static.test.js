@@ -183,9 +183,12 @@ test("DYNAMIC_RPC_TEXT_REWRITE_PRESENT=NO", () => {
   const src = readPkg("02_APPLY_DESIGN.sql");
   const apply = uncommented(src);
   assert.match(src, /DYNAMIC_RPC_TEXT_REWRITE_PRESENT=NO/);
-  assert.doesNotMatch(apply, /pg_get_functiondef\s*\(/);
+  assert.match(src, /APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED/);
+  assert.match(apply, /pg_get_functiondef\s*\(/);
   assert.doesNotMatch(apply, /EXECUTE\s+v_next/);
+  assert.doesNotMatch(apply, /EXECUTE\s+v_rpc_def/);
   assert.doesNotMatch(apply, /regexp_replace\s*\(\s*v_def/);
+  assert.doesNotMatch(apply, /regexp_replace\s*\(\s*v_rpc_def/);
 });
 
 test("explicit reviewed CREATE OR REPLACE for affected Club member RPCs", () => {
@@ -337,6 +340,104 @@ test("REGISTERED_CLUSTER tenant binding precheck helper verify", () => {
   assert.match(verify, /REGISTERED_CLUSTER_ORPHAN_COUNT=/);
   assert.match(verify, /REGISTERED_CLUSTER_CROSS_TENANT_COUNT=/);
   assert.match(verify, /facility resolver missing canonical Tenant binding/);
+});
+
+test("Round 4 transaction safety: table lock before first mutation", () => {
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const apply = uncommented(src);
+  assert.match(src, /CLUB_CUTOVER_TABLE_LOCK=YES/);
+  assert.match(src, /CLUB_CUTOVER_LOCK_MODE=ACCESS EXCLUSIVE/);
+  assert.match(src, /CLUB_CUTOVER_LOCK_ORDER=DETERMINISTIC/);
+  assert.match(src, /CLUB_CUTOVER_CONCURRENT_WRITE_WINDOW=CLOSED/);
+  assert.match(
+    apply,
+    /LOCK TABLE\s+public\.clubs,\s+public\.club_members,\s+public\.club_governance_assignments,\s+public\.club_membership_requests_v42\s+IN ACCESS EXCLUSIVE MODE/
+  );
+  const lockIdx = apply.search(/LOCK TABLE\s+public\.clubs/);
+  const tempIdx = apply.search(/CREATE TEMP TABLE wave5_club_tenant_map/);
+  const dropIdx = apply.search(/DROP CONSTRAINT/);
+  const updateIdx = apply.search(/UPDATE public\.clubs/);
+  assert.ok(lockIdx >= 0, "club ACCESS EXCLUSIVE lock required");
+  assert.ok(tempIdx > lockIdx, "LOCK_BEFORE_FIRST_MUTATION temp map");
+  assert.ok(dropIdx > lockIdx, "LOCK_BEFORE_FIRST_MUTATION DROP CONSTRAINT");
+  assert.ok(updateIdx > lockIdx, "LOCK_BEFORE_FIRST_MUTATION UPDATE clubs");
+  assert.doesNotMatch(apply, /PERFORM 1 FROM public\.clubs FOR UPDATE/);
+});
+
+test("Round 4 in-transaction APPLY safety gate markers", () => {
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const apply = uncommented(src);
+  assert.match(src, /APPLY_IN_TRANSACTION_FK_STATE_GUARD=YES/);
+  assert.match(src, /APPLY_EXPECTS_WAVE4_TENANT_MEMBERS_CANONICAL=YES/);
+  assert.match(src, /APPLY_IN_TRANSACTION_MAPPING_GUARD=YES/);
+  assert.match(src, /APPLY_IN_TRANSACTION_CHILD_CONSISTENCY_GUARD=YES/);
+  assert.match(src, /APPLY_IN_TRANSACTION_NAME_COLLISION_GUARD=YES/);
+  assert.match(src, /APPLY_IN_TRANSACTION_CODE_COLLISION_GUARD=YES/);
+  assert.match(src, /APPLY_IN_TRANSACTION_CLUSTER_ORPHAN_GUARD=YES/);
+  assert.match(src, /APPLY_IN_TRANSACTION_CLUSTER_CROSS_TENANT_GUARD=YES/);
+  assert.match(src, /APPLY_IN_TRANSACTION_RPC_SIGNATURE_GUARD=YES/);
+  assert.match(src, /APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO/);
+  assert.match(src, /CANONICAL_STATE_DATA_TRANSLATION=DENIED/);
+  assert.match(apply, /to_regprocedure\('public\.club_add_member\(uuid,text,uuid,text,integer\)'\)/);
+  assert.match(apply, /to_regprocedure\('public\.club_restore_member\(uuid,text,uuid,integer\)'\)/);
+  assert.match(apply, /to_regprocedure\('public\.club_review_membership_request\(uuid,uuid,text,text,integer\)'\)/);
+  assert.match(apply, /POST_MAP_DUPLICATE_CLUB_NAME_COUNT=/);
+  assert.match(apply, /POST_MAP_DUPLICATE_CLUB_CODE_COUNT=/);
+  assert.match(apply, /REGISTERED_CLUSTER_ORPHAN_COUNT=/);
+  assert.match(apply, /REGISTERED_CLUSTER_CROSS_TENANT_COUNT=/);
+  assert.match(apply, /APPLY_LOCKED_SAFETY_GATE_COMPLETE/);
+});
+
+test("Round 4 no durable mutation before locked safety gate", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const gateIdx = apply.search(/APPLY_LOCKED_SAFETY_GATE_COMPLETE/);
+  assert.ok(gateIdx >= 0, "locked safety gate marker required");
+  const before = apply.slice(0, gateIdx);
+  assert.match(before, /LOCK TABLE\s+public\.clubs/);
+  assert.match(before, /IN ACCESS EXCLUSIVE MODE/);
+  assert.doesNotMatch(before, /UPDATE\s+public\.clubs\b/i);
+  assert.doesNotMatch(before, /UPDATE\s+public\.club_members\b/i);
+  assert.doesNotMatch(before, /ALTER TABLE[\s\S]{0,80}DROP CONSTRAINT/i);
+  assert.doesNotMatch(before, /CREATE OR REPLACE FUNCTION/i);
+  assert.doesNotMatch(before, /\bGRANT\b/i);
+  assert.doesNotMatch(before, /\bREVOKE\b/i);
+});
+
+test("Round 4 trigger enablement captured and restored exactly", () => {
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const apply = uncommented(src);
+  assert.match(src, /TRIGGER_PRE_STATE_CAPTURED=YES/);
+  assert.match(src, /TRIGGER_POST_STATE_PRESERVED=YES/);
+  assert.match(apply, /t\.tgenabled/);
+  assert.match(apply, /NOT IN \('O', 'D', 'R', 'A'\)/);
+  assert.match(apply, /ENABLE REPLICA TRIGGER trg_phase42_gov_active_member/);
+  assert.match(apply, /ENABLE ALWAYS TRIGGER trg_phase42_gov_active_member/);
+  assert.match(apply, /v_gov_tg_enabled = 'O'/);
+  assert.match(apply, /v_gov_tg_enabled = 'D'/);
+  const firstDo = apply.match(/DO\s+\$\$[\s\S]*?END\s+\$\$;/i)[0];
+  const enableAll = [...firstDo.matchAll(/ENABLE TRIGGER trg_phase42_gov_active_member/g)];
+  assert.equal(enableAll.length, 1, "origin ENABLE must be conditional, not the only restore path");
+  assert.match(firstDo, /v_gov_tg_enabled = 'O'[\s\S]*ENABLE TRIGGER trg_phase42_gov_active_member/);
+  assert.match(firstDo, /v_gov_tg_enabled = 'D'[\s\S]*DISABLE TRIGGER trg_phase42_gov_active_member/);
+});
+
+test("Round 4 docs: transaction-safety remediation pending Round 5 Owner review", () => {
+  const readme = fs.readFileSync(
+    path.join(process.cwd(), "docs/platform-core-wave5-club-context-closure/README.md"),
+    "utf8"
+  );
+  const sqlReadme = readPkg("00_README.md");
+  const verify = readPkg("03_VERIFY.sql");
+  assert.match(readme, /ROUND4_BLOCKER_01_CONCURRENT_WRITE_LOCKING=FIXED/);
+  assert.match(readme, /ROUND4_BLOCKER_02_LOCKED_APPLY_SAFETY_GATE=FIXED/);
+  assert.match(readme, /ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED/);
+  assert.match(readme, /SQL_DESIGN_REVIEW_ROUND4_REMEDIATION=COMPLETE_PENDING_ROUND5_OWNER_REVIEW/);
+  assert.match(readme, /CLUB_CUTOVER_CONCURRENT_WRITE_WINDOW=CLOSED/);
+  assert.match(readme, /APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO/);
+  assert.match(sqlReadme, /APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO/);
+  assert.match(sqlReadme, /CLUB_CUTOVER_LOCK_ORDER=DETERMINISTIC/);
+  assert.match(verify, /Cannot prove a historical LOCK TABLE/);
+  assert.doesNotMatch(readme, /SQL_DESIGN_REVIEWED_PASS=YES/);
 });
 
 test("Round 3 docs: helper privilege and cluster binding, SQL review not claimed PASS", () => {
