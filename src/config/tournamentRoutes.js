@@ -17,18 +17,20 @@ export const TOURNAMENT_ROUTES = Object.freeze({
   teamBuildManual: "/tournament/teams/build/manual",
   teamBuildRandom: "/tournament/teams/build/random",
   teamBuildDraft: "/tournament/teams/build/draft",
-  /** B-18: not /select-players (club pairing). */
-  pairing: "/tournament/organize",
+  /** Organize picker → Engine seed. Not club /select-players. */
+  pairing: "/tournament/organize?intent=pairing",
   draw: "/tournament/bracket",
   schedule: "/tournament/schedule",
   bracket: "/tournament/bracket",
-  director: "/tournament/organize",
+  /** Organize picker → Director Mode. Not club /court-engine. */
+  director: "/tournament/organize?intent=director",
   referee: "/referee",
   scoreEntry: "/referee",
   matchReports: "/tournament/match-reports",
-  resultsScoreboard: "/tournament/results",
-  resultsRankings: "/tournament/results",
-  resultsPlayers: "/tournament/results",
+  /** Results picker → Engine ranking. Not club /statistics. */
+  resultsScoreboard: "/tournament/results?view=scoreboard",
+  resultsRankings: "/tournament/results?view=rankings",
+  resultsPlayers: "/tournament/results?view=players",
   configFormat: "/tournament/config/format",
   configScoring: "/settings",
   configSkill: "/players/skill",
@@ -96,6 +98,24 @@ export function engineTabPath(tournamentId, tab = "setup") {
 
 export function directorPath(tournamentId) {
   return `/tournament/director/${tournamentId}`;
+}
+
+export function tournamentSetupPath(tournament) {
+  const id = String(tournament?.id || "").trim();
+  if (!id) return TOURNAMENT_ROUTES.overview;
+  if (tournament.mode === TOURNAMENT_MODE.INTERNAL_TOURNAMENT) {
+    return `/tournament/internal/${id}`;
+  }
+  if (tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
+    return `/tournament/official/${id}`;
+  }
+  if (tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
+    return `/tournament/team/${id}`;
+  }
+  if (tournament.mode === TOURNAMENT_MODE.DAILY_PLAY) {
+    return `/tournament/daily/${id}`;
+  }
+  return TOURNAMENT_ROUTES.overview;
 }
 
 export const INDIVIDUAL_MODES = new Set([

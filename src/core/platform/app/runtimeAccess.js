@@ -44,8 +44,7 @@ export function resolvePlatformRole(role) {
 
 /** Map identity Auth user → platform runtime user shape. */
 export function mapIdentityUserToPlatformUser(authUser, tenantId) {
-  const resolvedTenant =
-    tenantId || authUser?.venueId || authUser?.tenantId || null;
+  const resolvedTenant = tenantId || authUser?.tenantId || null;
 
   return {
     user_id: authUser?.id || authUser?.user_id || "anonymous",
@@ -61,7 +60,19 @@ function resolveIdentityAccess(identityAuth, permission) {
   }
 
   if (isGlobalRole(identityAuth.user.role)) {
-    return { allowed: true, source: "identity_super_admin" };
+    const scope = identityAuth.scope || {};
+    const hasTarget = Boolean(
+      scope.tenantId ||
+        scope.tenant_id ||
+        scope.venueId ||
+        scope.clubId ||
+        scope.resourceId
+    );
+    const viewLike = String(permission || "").endsWith(".view") || permission === "audit.read";
+    if (viewLike || permission === "user.manage" || hasTarget) {
+      return { allowed: true, source: "identity_super_admin" };
+    }
+    return { allowed: false, source: "identity_super_admin", reason: "TARGET_REQUIRED" };
   }
 
   const mapped = PLATFORM_TO_IDENTITY_PERMISSIONS[permission] || [];

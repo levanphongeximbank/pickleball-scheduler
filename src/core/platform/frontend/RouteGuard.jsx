@@ -11,7 +11,7 @@ export default function RouteGuard({ children, permission, tenantId, user }) {
 
   const decision = runtime.accessService.authorize(
     user,
-    { tenant_id: tenantId || user.tenant_id },
+    { tenant_id: tenantId || null },
     permission
   );
 

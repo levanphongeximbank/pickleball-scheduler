@@ -9,16 +9,16 @@ import {
 
 import { useAuth } from "./AuthContext.jsx";
 import { buildClubRehydrateScopeKey } from "../auth/authSemanticScope.js";
-import { isGlobalRole, isClubScopedRole, isPlatformScopedRole } from "../auth/roles.js";
+import { isGlobalRole, isClubScopedRole } from "../auth/roles.js";
 import { clearActiveTenantId, loadActiveTenantId } from "../data/tenantSession.js";
 import { getActiveClubId } from "../data/club.js";
 import { switchActiveClub } from "../domain/clubService.js";
 import {
   assertTenantOperational,
-  canUserAccessTenant,
   ensureTenantBootstrap,
   getPrimaryClubIdForTenant,
 } from "../features/tenant/index.js";
+import { decideTenantAccess, evaluateTenantContext } from "../features/tenant/services/tenantAccessDecision.js";
 import {
   hydrateProfileVenueToLocalRegistry,
   hydrateSupabaseVenuesToLocalRegistry,
@@ -59,8 +59,7 @@ export function TenantProvider({ children }) {
   });
 
   const isSuperAdmin = Boolean(user && isGlobalRole(user.role));
-  const isPlatformTech = Boolean(user && isPlatformScopedRole(user.role));
-  // Unassigned-tenant navigation for SA + Platform Tech. Switch permission is SA only.
+  // Unassigned-tenant navigation for Super Admin only. Switch permission is SA only.
   const canPickTenant = canOperateUnassignedTenant(user);
 
   const currentTenantId = useMemo(() => {
@@ -155,7 +154,18 @@ export function TenantProvider({ children }) {
     let cancelled = false;
 
     void hydrateSupabaseVenuesToLocalRegistry().then((result) => {
-      if (cancelled || !result?.ok) {
+      if (cancelled) {
+        return;
+      }
+
+      if (!result?.ok) {
+        setAdminTenantId((current) => {
+          if (current && userId) {
+            clearActiveTenantId();
+          }
+          return null;
+        });
+        setRevision((value) => value + 1);
         return;
       }
 
@@ -223,38 +233,67 @@ export function TenantProvider({ children }) {
 
     if (canPickTenant) {
       if (!currentTenantId) {
-        return { ok: true };
+        return { ok: true, code: "DIRECTORY_UNSCOPED", operationalAuthorized: false };
       }
       const operational = assertTenantOperational(currentTenantId, { user });
       if (!operational.ok) {
-        return { ok: true, warning: operational.error, code: operational.code };
+        return { ...operational, operationalAuthorized: false };
       }
-      return operational;
+      return { ...operational, operationalAuthorized: true, operationalCode: "ALLOW" };
     }
 
     if (!currentTenantId) {
       // CLB/VĐV/huấn luyện — không bắt buộc gán tenant venue (đồng bộ operationalRoutePolicy).
       const billing = getBillingAccessCapability();
       if (billing.isExemptRole(user)) {
-        return { ok: true, code: "TENANT_UNASSIGNED" };
+        return { ok: true, code: "TENANT_UNASSIGNED", operationalAuthorized: false };
       }
 
       return {
         ok: false,
         error: "Tài khoản chưa được gán tenant.",
         code: "TENANT_MISSING",
+        operationalAuthorized: false,
       };
     }
 
-    if (!canUserAccessTenant(user, currentTenantId)) {
+    const context = evaluateTenantContext(user, currentTenantId);
+    if (!context.allowed) {
       return {
         ok: false,
-        error: "Không có quyền truy cập tenant này.",
-        code: "TENANT_FORBIDDEN",
+        error: context.reason || "Không có quyền dùng tenant này làm ngữ cảnh.",
+        code: context.code === "UNAUTHORIZED" ? "TENANT_FORBIDDEN" : context.code,
+        operationalAuthorized: false,
+        operationalCode: context.code,
       };
     }
 
-    return assertTenantOperational(currentTenantId, { user });
+    const operational = decideTenantAccess(user, currentTenantId, { requireTarget: true });
+    const billingForContext = getBillingAccessCapability();
+    if (!billingForContext.isExemptRole(user)) {
+      const lifecycle = assertTenantOperational(currentTenantId, { user });
+      if (!lifecycle.ok) {
+        return {
+          ...lifecycle,
+          operationalAuthorized: operational.allowed,
+          operationalCode: operational.code,
+        };
+      }
+      return {
+        ...lifecycle,
+        ok: true,
+        code: operational.allowed ? "TENANT_OPERATIONAL_AUTHORIZED" : "TENANT_CONTEXT_ONLY",
+        operationalAuthorized: operational.allowed,
+        operationalCode: operational.code,
+      };
+    }
+
+    return {
+      ok: true,
+      code: operational.allowed ? "TENANT_OPERATIONAL_AUTHORIZED" : "TENANT_CONTEXT_ONLY",
+      operationalAuthorized: operational.allowed,
+      operationalCode: operational.code,
+    };
   }, [canPickTenant, currentTenantId, isAuthenticated, rbacEnabled, user]);
 
   const subscriptionCheck = useMemo(() => {
@@ -262,7 +301,7 @@ export function TenantProvider({ children }) {
       return { ok: true };
     }
 
-    if (isSuperAdmin || isPlatformTech) {
+    if (isSuperAdmin) {
       return { ok: true };
     }
 
@@ -273,7 +312,7 @@ export function TenantProvider({ children }) {
 
     // Fail-closed when billing authority is required but unbound.
     return billing.assertOperational(currentTenantId);
-  }, [currentTenantId, isAuthenticated, isPlatformTech, isSuperAdmin, rbacEnabled, revision, user]);
+  }, [currentTenantId, isAuthenticated, isSuperAdmin, rbacEnabled, revision, user]);
 
   const switchTenant = useCallback(
     (tenantId) => {

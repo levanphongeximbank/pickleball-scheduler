@@ -69,18 +69,22 @@ function collectInPagePaths(nav = TOURNAMENT_IN_PAGE_NAV) {
 describe("tournament-experience-wave-a1", () => {
   it("FALSE_FRIEND_DIRECTOR_REMOVED", () => {
     assert.notEqual(TOURNAMENT_ROUTES.director, "/court-engine");
-    assert.equal(TOURNAMENT_ROUTES.director, "/tournament/organize");
+    assert.equal(TOURNAMENT_ROUTES.director.split("?")[0], "/tournament/organize");
+    assert.equal(TOURNAMENT_ROUTES.director, "/tournament/organize?intent=director");
     const directorItem = collectInPagePaths().find((item) => item.key === "tournament-director");
     assert.ok(directorItem);
     assert.notEqual(directorItem.path, "/court-engine");
+    assert.equal(directorItem.path.split("?")[0], "/tournament/organize");
   });
 
   it("FALSE_FRIEND_PAIRING_REMOVED", () => {
     assert.notEqual(TOURNAMENT_ROUTES.pairing, "/select-players");
-    assert.equal(TOURNAMENT_ROUTES.pairing, "/tournament/organize");
+    assert.equal(TOURNAMENT_ROUTES.pairing.split("?")[0], "/tournament/organize");
+    assert.equal(TOURNAMENT_ROUTES.pairing, "/tournament/organize?intent=pairing");
     const pairingItem = collectInPagePaths().find((item) => item.key === "tournament-pairing");
     assert.ok(pairingItem);
     assert.notEqual(pairingItem.path, "/select-players");
+    assert.equal(pairingItem.path.split("?")[0], "/tournament/organize");
   });
 
   it("FALSE_FRIEND_RESULTS_REMOVED", () => {

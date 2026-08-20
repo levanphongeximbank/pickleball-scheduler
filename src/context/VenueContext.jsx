@@ -17,6 +17,8 @@ import {
 import { ensureTenantVenueLocalBootstrap } from "../features/venue/services/tenantVenueBootstrap.js";
 import { loadActiveVenueId } from "../data/venueSession.js";
 import { venueBelongsToTenant } from "../core/platform/app/tenantVenueIdentity.js";
+import { canAccessVenue } from "../auth/rbac.js";
+import { isRbacEnabled } from "../auth/authService.js";
 
 const VenueContext = createContext(null);
 
@@ -28,7 +30,6 @@ export function VenueProvider({ children }) {
   const { user } = useAuth();
   const { currentTenantId } = useTenant();
   const userId = user?.id || null;
-  const userVenueId = user?.venueId || null;
 
   const [revision, setRevision] = useState(0);
   const [activeVenueIdState, setActiveVenueIdState] = useState(() =>
@@ -50,11 +51,11 @@ export function VenueProvider({ children }) {
     void revision;
     void activeVenueIdState;
     return resolveActiveVenueId({
-      user: userId ? { id: userId, venueId: userVenueId } : null,
+      user,
       selectedTenantId: currentTenantId,
       venues,
     });
-  }, [userId, userVenueId, currentTenantId, venues, activeVenueIdState, revision]);
+  }, [user, currentTenantId, venues, activeVenueIdState, revision]);
 
   const currentVenue = useMemo(() => {
     if (!currentVenueId) return null;
@@ -99,11 +100,11 @@ export function VenueProvider({ children }) {
 
   const venueCheck = useMemo(() => {
     if (!currentTenantId) {
-      return { ok: true, code: "TENANT_UNRESOLVED" };
+      return { ok: false, code: "CONTEXT_UNRESOLVED" };
     }
     if (!currentVenueId) {
       if (venues.length === 0) {
-        return { ok: true, code: "VENUE_EMPTY", empty: true };
+        return { ok: false, code: "VENUE_EMPTY", empty: true };
       }
       return {
         ok: false,
@@ -118,8 +119,15 @@ export function VenueProvider({ children }) {
         code: "VENUE_TENANT_MISMATCH",
       };
     }
+    if (isRbacEnabled() && user && !canAccessVenue(user, currentVenueId, { rbacEnabled: true })) {
+      return {
+        ok: false,
+        error: "Không có quyền vận hành Venue này.",
+        code: "VENUE_FORBIDDEN",
+      };
+    }
     return { ok: true };
-  }, [currentTenantId, currentVenue, currentVenueId, venues]);
+  }, [currentTenantId, currentVenue, currentVenueId, user, venues]);
 
   const value = useMemo(
     () => ({

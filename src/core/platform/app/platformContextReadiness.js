@@ -23,6 +23,8 @@ export const PLATFORM_CONTEXT_STATE = Object.freeze({
   CONTEXT_READY: "CONTEXT_READY",
   FORBIDDEN: "FORBIDDEN",
   NOT_CONFIGURED: "NOT_CONFIGURED",
+  CONTEXT_UNRESOLVED: "CONTEXT_UNRESOLVED",
+  AUTHORITY_UNAVAILABLE: "AUTHORITY_UNAVAILABLE",
   ERROR: "ERROR",
 });
 
@@ -145,7 +147,7 @@ export function resolvePlatformContextReadiness({
 
   if (tenantCheck && tenantCheck.ok === false) {
     const code = String(tenantCheck.code || "");
-    if (code === "TENANT_FORBIDDEN" || code === "FORBIDDEN") {
+    if (code === "TENANT_FORBIDDEN" || code === "FORBIDDEN" || code === "UNAUTHORIZED") {
       return base(PLATFORM_CONTEXT_STATE.FORBIDDEN, {
         requireClub,
         requireVenue,
@@ -155,6 +157,34 @@ export function resolvePlatformContextReadiness({
         eligibleVenueCount,
         code,
         message: tenantCheck.error || "Không có quyền truy cập tenant này.",
+      });
+    }
+    if (code === "CONTEXT_UNRESOLVED") {
+      return base(PLATFORM_CONTEXT_STATE.CONTEXT_UNRESOLVED, {
+        requireClub,
+        requireVenue,
+        selectedTenantId: tenantId,
+        selectedVenueId: venueId,
+        eligibleClubCount,
+        eligibleVenueCount,
+        code,
+        message: tenantCheck.error || "Đang xác thực phạm vi tenant.",
+      });
+    }
+    if (
+      code === "AUTHORITY_UNAVAILABLE" ||
+      code === "ENTITLEMENT_UNAVAILABLE" ||
+      code === "NOT_CONFIGURED"
+    ) {
+      return base(PLATFORM_CONTEXT_STATE.AUTHORITY_UNAVAILABLE, {
+        requireClub,
+        requireVenue,
+        selectedTenantId: tenantId,
+        selectedVenueId: venueId,
+        eligibleClubCount,
+        eligibleVenueCount,
+        code,
+        message: tenantCheck.error || "Không xác thực được quyền tenant.",
       });
     }
     if (code === "TENANT_MISSING") {

@@ -51,7 +51,7 @@ function userKeyOf(user) {
 }
 
 function tenantIdForUser(user) {
-  return user?.tenantId || user?.venueId || null;
+  return user?.tenantId || null;
 }
 
 function toMetaRecord(club) {
@@ -152,6 +152,14 @@ export async function hydrateClubScope({ user = null, tenantId = tenantIdForUser
  */
 export function ensureClubScopeSync({ user = null, tenantId = tenantIdForUser(user) } = {}) {
   const userId = userKeyOf(user);
+
+  if (
+    snapshot.source === "test" &&
+    snapshot.userId === userId &&
+    (snapshot.status === SCOPE_STATUS.READY || snapshot.status === SCOPE_STATUS.ERROR)
+  ) {
+    return snapshot;
+  }
 
   if (isCloudRegistryAuthoritative()) {
     if (
