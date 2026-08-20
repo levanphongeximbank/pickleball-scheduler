@@ -19,3 +19,16 @@ export {
   OFFICIAL_LEGACY_EXPERIENCE_QUERY,
   OFFICIAL_EXPERIENCE_QUERY_KEY,
 } from "./officialOpenPaths.js";
+export {
+  buildOfficialSettingsSavePatch,
+  buildOfficialPublishRegistrationPatch,
+  buildOfficialRegistrationWindowPatch,
+  buildOfficialCloseRegistrationPatch,
+  buildOfficialApproveEntryPatch,
+  buildOfficialRemoveEntryPatch,
+  projectOfficialSettings,
+  projectOfficialRegistration,
+  projectOfficialParticipants,
+  resolveOfficialRegistrationPublicationStatus,
+  OFFICIAL_COMMAND_DELEGATION_MAP,
+} from "./officialExperienceCommands.js";

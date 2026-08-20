@@ -104,6 +104,10 @@ export {
   OFFICIAL_EXPERIENCE_AUTHORITY,
   OFFICIAL_LEGACY_ROUTE_ACTIVATION,
   ENGINE_ROUTE_CLASSIFICATION,
+  buildOfficialSettingsSavePatch,
+  buildOfficialPublishRegistrationPatch,
+  resolveOfficialRegistrationPublicationStatus,
+  OFFICIAL_COMMAND_DELEGATION_MAP,
 } from "./official-tournament-experience/index.js";
 export {
   canonicalRowToTournament,

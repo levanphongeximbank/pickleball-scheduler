@@ -10,11 +10,14 @@ import {
   countApprovedEntries,
   countActiveRegistrations,
   getRegistrationSettings,
+  isRegistrationLocked,
 } from "../../../individual-tournament/engines/registrationEngine.js";
+import { isOfficialOpenFamily } from "../deriveOverview.js";
 import {
   hasCanonicalRegistrationPublication,
   publicationPrimaryActionLabel,
   registrationPublicationStatusLabel,
+  resolveRegistrationPublicationStatus,
 } from "../publicationSemantics.js";
 import { eventDisplayName, formatViDateTime, isProfileComplete, resolveBatchBEvent } from "./eventScope.js";
 
@@ -59,7 +62,10 @@ function statusMeta(tabStatus, entry) {
 export function deriveRegistrationModel(tournament, { selectedEventId, publicHref = "" } = {}) {
   const scope = resolveBatchBEvent(tournament, selectedEventId);
   const settings = getRegistrationSettings(tournament);
-  const published = hasCanonicalRegistrationPublication();
+  const official = isOfficialOpenFamily(tournament);
+  const publicationStatus = resolveRegistrationPublicationStatus(tournament);
+  const published = hasCanonicalRegistrationPublication(tournament);
+  const locked = isRegistrationLocked(tournament);
   const event = scope.event;
   const entries = event ? normalizeEntries(event.entries) : [];
   const rows = entries.map((entry) => {
@@ -67,6 +73,7 @@ export function deriveRegistrationModel(tournament, { selectedEventId, publicHre
     const status = statusMeta(tabStatus, entry);
     const payment = paymentDisplay(tournament, entry.id);
     const pending = entry.status === ENTRY_STATUS.PENDING;
+    const canApprove = official && pending && Boolean(event?.id);
     return {
       id: entry.id,
       names: entry.name,
@@ -79,10 +86,13 @@ export function deriveRegistrationModel(tournament, { selectedEventId, publicHre
       paymentLabel: payment.label,
       checkinLabel: "Chưa có dữ liệu",
       actionLabel: pending ? "Duyệt" : "Xem",
-      actionEnabled: !pending,
-      actionHint: pending
-        ? "Duyệt trên trang đăng ký VĐV hiện có."
-        : "Mở trang đăng ký VĐV hiện có.",
+      actionEnabled: canApprove || !pending,
+      actionHint: canApprove
+        ? "Duyệt qua registrationEngine.gatedApproveEntry."
+        : pending
+          ? "Duyệt trên trang đăng ký VĐV hiện có."
+          : "Mở trang đăng ký VĐV hiện có.",
+      approveEnabled: canApprove,
     };
   });
 
@@ -105,10 +115,18 @@ export function deriveRegistrationModel(tournament, { selectedEventId, publicHre
     needsEventChoice: scope.needsEventChoice,
     emptyEvents: scope.emptyEvents,
     events: scope.events,
-    publicationStatusLabel: registrationPublicationStatusLabel(),
+    official,
+    publicationStatus,
+    publicationStatusLabel: registrationPublicationStatusLabel(tournament),
     publicationActionLabel: publicationPrimaryActionLabel(published ? "PUBLISHED" : ""),
-    publicationEnabled: false,
-    publicationHint: "Chưa có quyền công bố đăng ký riêng.",
+    publicationEnabled: official && !locked,
+    publicationHint: official
+      ? published
+        ? locked
+          ? "Đăng ký đã khóa trên hồ sơ giải."
+          : "Đã công bố — có thể quản lý cửa sổ / đóng đăng ký."
+        : "Công bố = chuyển trạng thái giải sang Đang đăng ký (setTournamentStatus / update)."
+      : "Chưa có quyền công bố đăng ký riêng.",
     kpis: {
       maxSlots: maxEntries == null ? "—" : String(maxEntries),
       maxHint: maxEntries == null ? "Không giới hạn" : "Tối đa",
@@ -123,12 +141,19 @@ export function deriveRegistrationModel(tournament, { selectedEventId, publicHre
       opensAt: formatViDateTime(settings.opensAt) || "Chưa cấu hình",
       closesAt: formatViDateTime(settings.closesAt) || "Chưa cấu hình",
       maxEntries: maxEntries == null ? "Không giới hạn" : String(maxEntries),
+      opensAtRaw: settings.opensAt || "",
+      closesAtRaw: settings.closesAt || "",
+      maxEntriesRaw: settings.maxEntries ?? "",
     },
     publicHref,
     channels: [
       { label: "Dashboard PICK_VN", ready: false, note: "Chưa cấu hình từ màn này" },
       { label: "Website PICK_VN", ready: false, note: "Chưa cấu hình từ màn này" },
-      { label: "Trang giải đấu công khai", ready: Boolean(publicHref), note: publicHref ? "Có trang công khai" : "Chưa có" },
+      {
+        label: "Trang giải đấu công khai",
+        ready: Boolean(publicHref),
+        note: publicHref ? "Có trang công khai" : "Chưa có",
+      },
     ],
     closeReadiness: [
       {
@@ -141,8 +166,8 @@ export function deriveRegistrationModel(tournament, { selectedEventId, publicHre
       },
       {
         label: "Đã công bố public",
-        ready: false,
-        note: "Chưa có quyền công bố đăng ký",
+        ready: published,
+        note: published ? "Đã công bố trên hồ sơ giải" : "Chưa công bố đăng ký",
       },
       {
         label: missing ? `${missing} hồ sơ thiếu thông tin — chưa sẵn sàng khóa` : "Hồ sơ đủ thông tin",
@@ -150,8 +175,12 @@ export function deriveRegistrationModel(tournament, { selectedEventId, publicHre
         note: missing ? `${missing} hồ sơ thiếu thông tin` : "Không hồ sơ thiếu thông tin",
       },
     ],
-    closeEnabled: false,
-    closeHint: "Đóng đăng ký trên màn này chưa tách khỏi chốt danh sách.",
+    closeEnabled: official && published && !locked,
+    closeHint: official
+      ? locked
+        ? "Đăng ký đã khóa."
+        : "Đóng đăng ký = lockRegistration (khóa + READY khi draft/registration)."
+      : "Đóng đăng ký trên màn này chưa tách khỏi chốt danh sách.",
     tabs: [
       { id: "all", label: `Tất cả (${rows.length})` },
       { id: "confirmed", label: `Đã xác nhận (${confirmed})` },

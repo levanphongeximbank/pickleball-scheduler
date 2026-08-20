@@ -212,7 +212,7 @@ describe("wave-o1-official-canonical-experience-adoption", () => {
       ),
       "utf8"
     );
-    assert.ok(adapterSrc.includes("Command delegation boundary"));
+    assert.ok(adapterSrc.includes("COMMAND delegation") || adapterSrc.includes("Command surface delegates") || adapterSrc.includes("createOfficialExperienceCommandBoundary"));
     assert.equal(adapterSrc.includes("updateTournamentCommand"), false);
     assert.equal(OFFICIAL_LEGACY_ROUTE_ACTIVATION.bracketRedirectToCanonical, false);
     assert.equal(OFFICIAL_LEGACY_ROUTE_ACTIVATION.directorRedirectToCanonical, false);

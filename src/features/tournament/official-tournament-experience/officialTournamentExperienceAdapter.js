@@ -1,10 +1,8 @@
 /**
- * Official Tournament Experience Adapter (Wave O1 foundation).
+ * Official Tournament Experience Adapter (Wave O1 + O2).
  *
- * READ projections only. COMMAND surface is a delegation boundary — no new
- * business writers, no adapter-owned persistence.
- *
- * Downstream authority remains existing Official/Open domain/runtime + CORE-*.
+ * READ projections + COMMAND delegation to existing Official/Open engines.
+ * No adapter-owned persistence. No new business writers.
  */
 
 import {
@@ -19,6 +17,21 @@ import {
   ratingMayInfluencePairing,
 } from "../official-open-adapter-b/activation.js";
 import { OFFICIAL_EXPERIENCE_AUTHORITY } from "./authorityLock.js";
+import {
+  buildOfficialAddEventPatch,
+  buildOfficialApproveEntryPatch,
+  buildOfficialCloseRegistrationPatch,
+  buildOfficialEventMetaPatch,
+  buildOfficialPublishRegistrationPatch,
+  buildOfficialRegistrationWindowPatch,
+  buildOfficialRemoveEntryPatch,
+  buildOfficialSettingsSavePatch,
+  OFFICIAL_COMMAND_DELEGATION_MAP,
+  projectOfficialParticipants,
+  projectOfficialRegistration,
+  projectOfficialSettings,
+  resolveOfficialRegistrationPublicationStatus,
+} from "./officialExperienceCommands.js";
 
 function trim(value) {
   return value != null ? String(value).trim() : "";
@@ -82,10 +95,6 @@ function refereeAssignmentCount(tournament) {
   return 0;
 }
 
-/**
- * @param {object|null|undefined} tournament
- * @param {{ selectedEventId?: string }} [options]
- */
 export function projectOfficialTournamentExperience(tournament, options = {}) {
   const events = listTournamentEvents(tournament);
   const eventSummaries = events.map(mapEventSummary).filter(Boolean);
@@ -125,7 +134,6 @@ export function projectOfficialTournamentExperience(tournament, options = {}) {
     events: eventSummaries,
     selectedEventId: selectedEventId || (selectedSummary ? selectedSummary.id : ""),
     selectedEvent: selectedSummary,
-    /** Explicit: never invent a selected event from events[0] when many exist. */
     selectedEventExplicit: Boolean(selectedEventId) || events.length === 1,
     registrationSummary: {
       entryCount,
@@ -133,6 +141,7 @@ export function projectOfficialTournamentExperience(tournament, options = {}) {
       closesAt: registration.closesAt || null,
       lockedAt: registration.lockedAt || null,
       closedAt: registration.closedAt || null,
+      publicationStatus: resolveOfficialRegistrationPublicationStatus(tournament),
     },
     participantSummary: {
       entryCount,
@@ -188,20 +197,26 @@ export function projectOfficialTournamentExperience(tournament, options = {}) {
       matchCount,
       ready: trim(tournament?.status) === "completed",
     },
+    settings: projectOfficialSettings(tournament, options),
+    registration: projectOfficialRegistration(tournament, options),
+    participants: projectOfficialParticipants(tournament, options),
   };
 }
 
-/**
- * Command delegation boundary only — O1 does not move writers here.
- * Callers must continue using existing Official/Open services/engines.
- */
 export function createOfficialExperienceCommandBoundary() {
   return Object.freeze({
-    note: "O1 command surface is delegation-only. No adapter-owned writers.",
+    note: "O2 command surface delegates to existing Official/Open engines only.",
     authorities: { ...OFFICIAL_EXPERIENCE_AUTHORITY },
-    // Explicit stubs — do not implement persistence here.
-    updateSettings: null,
-    registerParticipant: null,
+    delegationMap: { ...OFFICIAL_COMMAND_DELEGATION_MAP },
+    saveSettings: buildOfficialSettingsSavePatch,
+    saveEventMeta: buildOfficialEventMetaPatch,
+    addEvent: buildOfficialAddEventPatch,
+    publishRegistration: buildOfficialPublishRegistrationPatch,
+    saveRegistrationWindow: buildOfficialRegistrationWindowPatch,
+    closeRegistration: buildOfficialCloseRegistrationPatch,
+    approveEntry: buildOfficialApproveEntryPatch,
+    removeEntry: buildOfficialRemoveEntryPatch,
+    // Deferred / not in O2
     runPairing: null,
     runGroupDraw: null,
     publishSchedule: null,
@@ -213,21 +228,13 @@ export function createOfficialExperienceCommandBoundary() {
   });
 }
 
-/**
- * @param {object|null|undefined} tournament
- * @param {{ selectedEventId?: string }} [options]
- */
 export function createOfficialTournamentExperienceAdapter(tournament, options = {}) {
   const projection = projectOfficialTournamentExperience(tournament, options);
   return Object.freeze({
     kind: "official-tournament-experience-adapter",
-    wave: "O1",
+    wave: "O2",
     projection,
     commands: createOfficialExperienceCommandBoundary(),
-    /**
-     * Re-project from a (possibly updated) tournament record.
-     * Does not persist adapter state.
-     */
     project(nextTournament = tournament, nextOptions = options) {
       return projectOfficialTournamentExperience(nextTournament, nextOptions);
     },

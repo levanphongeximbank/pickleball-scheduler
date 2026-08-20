@@ -23,11 +23,17 @@ import {
 } from "@mui/material";
 
 import { useClub } from "../../../../context/ClubContext.jsx";
+import PermissionGate from "../../../../components/auth/PermissionGate.jsx";
+import { PERMISSIONS } from "../../../../auth/permissions.js";
 import {
   individualPlayerRegistrationPath,
   isIndividualTournament,
 } from "../../../../config/tournamentRoutes.js";
 import { useCanonicalTournament } from "../../hooks/useCanonicalTournament.js";
+import {
+  isOfficialTournamentExperience,
+  resolveTournamentExperienceAdapter,
+} from "../experienceModeResolver.js";
 import TournamentExperienceWorkspace from "../components/TournamentExperienceWorkspace.jsx";
 import { deriveParticipantsModel, filterParticipantRows } from "../batchB/deriveParticipants.js";
 import {
@@ -52,6 +58,7 @@ import ExperienceMobileRecordCard from "../visual/ExperienceMobileRecordCard.jsx
 import ExperienceReadinessPanel from "../visual/ExperienceReadinessPanel.jsx";
 import ExperienceStatusChip from "../visual/ExperienceStatusChip.jsx";
 import { outlinedActionSx, TOURNAMENT_COLOR } from "../visual/tournamentExperienceTokens.js";
+import { Alert } from "@mui/material";
 
 const TITLE = "Người tham dự / Chốt danh sách";
 const SUBTITLE = "Tách biệt Đăng ký & Công bố";
@@ -64,14 +71,16 @@ export default function IndividualParticipantsPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isTable = useMediaQuery(theme.breakpoints.up("md"));
-  const { activeClub, revision } = useClub();
-  const { tournament, loading, error } = useCanonicalTournament(activeClub, tournamentId, revision);
+  const { activeClub, revision, refreshClubs } = useClub();
+  const { tournament, loading, error, update } = useCanonicalTournament(activeClub, tournamentId, revision);
   const [query, setQuery] = useState("");
   const [payment, setPayment] = useState("all");
   const [profile, setProfile] = useState("all");
   const [checkin, setCheckin] = useState("all");
   const [eligibility, setEligibility] = useState("all");
   const [issue, setIssue] = useState("all");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null);
   const selectedEventId = searchParams.get("eventId") || "";
 
   if (loading) {
@@ -90,6 +99,9 @@ export default function IndividualParticipantsPage() {
   const model = deriveParticipantsModel(tournament, { selectedEventId });
   const rows = filterParticipantRows(model.rows, { query, payment, profile, checkin, eligibility, issue });
   const registerTo = individualPlayerRegistrationPath(tournamentId);
+  const officialAdapter = isOfficialTournamentExperience(tournament)
+    ? resolveTournamentExperienceAdapter(tournament, { selectedEventId })
+    : null;
   const selectEvent = (eventId) => {
     const next = new URLSearchParams(searchParams);
     if (eventId) next.set("eventId", eventId);
@@ -97,6 +109,47 @@ export default function IndividualParticipantsPage() {
     setSearchParams(next);
   };
   const contextLine = [model.tournamentName, model.eventName].filter(Boolean).join(" • ");
+
+  const handleLock = async () => {
+    if (!model.official || !model.lockEnabled || !officialAdapter) return;
+    setBusy(true);
+    const built = officialAdapter.commands.closeRegistration(tournament);
+    if (!built.ok) {
+      setBusy(false);
+      setMessage({ type: "error", text: built.error || "Không chốt được." });
+      return;
+    }
+    const result = await update(built.patch);
+    setBusy(false);
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.error || "Không lưu được." });
+      return;
+    }
+    refreshClubs();
+    setMessage({ type: "success", text: "Đã chốt danh sách (lockRegistration)." });
+  };
+
+  const handleRemove = async (entryId) => {
+    if (!model.official || !model.eventId || !officialAdapter) {
+      setMessage({ type: "error", text: "Chọn nội dung trước khi xóa." });
+      return;
+    }
+    setBusy(true);
+    const built = officialAdapter.commands.removeEntry(tournament, model.eventId, entryId);
+    if (!built.ok) {
+      setBusy(false);
+      setMessage({ type: "error", text: built.error || "Không xóa được." });
+      return;
+    }
+    const result = await update(built.patch);
+    setBusy(false);
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.error || "Không lưu được." });
+      return;
+    }
+    refreshClubs();
+    setMessage({ type: "success", text: "Đã xóa hồ sơ khỏi nội dung." });
+  };
 
   return (
     <ExperienceBatchBFrame
@@ -110,9 +163,18 @@ export default function IndividualParticipantsPage() {
             Tổng quan
           </Button>
           <span title={model.lockHint}>
-            <Button variant="outlined" size="small" startIcon={<LockOutlinedIcon />} disabled sx={outlinedActionSx}>
-              {LOCK_LABEL}
-            </Button>
+            <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<LockOutlinedIcon />}
+                disabled={!model.lockEnabled || busy}
+                onClick={handleLock}
+                sx={outlinedActionSx}
+              >
+                {LOCK_LABEL}
+              </Button>
+            </PermissionGate>
           </span>
         </Stack>
       }
@@ -130,10 +192,15 @@ export default function IndividualParticipantsPage() {
           Chọn nội dung để xem người tham dự. Không lấy nội dung mặc định.
         </Typography>
       ) : null}
+      {message ? (
+        <Alert severity={message.type} sx={{ mb: 1.25 }} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
+      ) : null}
 
       <Grid container spacing={1.25} sx={{ mb: 1.5 }}>
         <Grid size={{ xs: 6, md: true }}>
-          <CenterKpiCard label="Tổng cặp" value={model.kpis.total} icon={<GroupsOutlinedIcon />} />
+          <CenterKpiCard label={model.official ? "Tổng hồ sơ" : "Tổng cặp"} value={model.kpis.total} icon={<GroupsOutlinedIcon />} />
         </Grid>
         <Grid size={{ xs: 6, md: true }}>
           <CenterKpiCard label="Đã thanh toán" value={model.kpis.paid} tone="success" />
@@ -240,7 +307,7 @@ export default function IndividualParticipantsPage() {
             <Table size="small" sx={{ minWidth: 720, "& .MuiTableCell-root": { py: 0.7 } }}>
               <TableHead>
                 <TableRow>
-                  {["Cặp / đội", "Thanh toán", "Hồ sơ", "Check-in", "Điều kiện", "Sự cố", "Thao tác"].map((header) => (
+                  {["Hồ sơ / ID", "Thanh toán", "Hồ sơ", "Check-in", "Điều kiện", "Sự cố", "Thao tác"].map((header) => (
                     <TableCell key={header} sx={{ fontSize: 11, fontWeight: 700, color: TOURNAMENT_COLOR.textMuted }}>
                       {header}
                     </TableCell>
@@ -252,7 +319,15 @@ export default function IndividualParticipantsPage() {
                   <TableRow key={row.id}>
                     <TableCell>
                       <Typography sx={{ fontWeight: 700, fontSize: 13 }}>{row.names}</Typography>
-                      <Typography sx={{ fontSize: 11, color: TOURNAMENT_COLOR.textMuted }}>{row.id}</Typography>
+                      <Typography sx={{ fontSize: 11, color: TOURNAMENT_COLOR.textMuted }}>
+                        entryId={row.id}
+                        {row.unitLabel ? ` • ${row.unitLabel}` : ""}
+                      </Typography>
+                      {row.playerIds?.length ? (
+                        <Typography sx={{ fontSize: 11, color: TOURNAMENT_COLOR.textMuted }}>
+                          playerIds: {row.playerIds.join(", ")}
+                        </Typography>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <ExperienceStatusChip
@@ -274,9 +349,18 @@ export default function IndividualParticipantsPage() {
                       {row.issue || "—"}
                     </TableCell>
                     <TableCell>
-                      <Button size="small" component={RouterLink} to={registerTo}>
-                        Xem
-                      </Button>
+                      <Stack direction="row" spacing={0.5}>
+                        <Button size="small" component={RouterLink} to={registerTo}>
+                          Xem
+                        </Button>
+                        {row.removeEnabled ? (
+                          <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+                            <Button size="small" color="warning" disabled={busy} onClick={() => handleRemove(row.id)}>
+                              Xóa
+                            </Button>
+                          </PermissionGate>
+                        ) : null}
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -298,14 +382,28 @@ export default function IndividualParticipantsPage() {
                     {row.paymentLabel} • {row.profileLabel}
                   </Typography>
                   <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>
-                    {row.id} • {row.checkinLabel}
+                    entryId={row.id} • {row.unitLabel || "—"} • {row.checkinLabel}
                   </Typography>
+                  {row.playerIds?.length ? (
+                    <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>
+                      playerIds: {row.playerIds.join(", ")}
+                    </Typography>
+                  ) : null}
                 </Stack>
               }
               action={
-                <Button size="small" component={RouterLink} to={registerTo}>
-                  Xem
-                </Button>
+                <Stack direction="row" spacing={0.5}>
+                  <Button size="small" component={RouterLink} to={registerTo}>
+                    Xem
+                  </Button>
+                  {row.removeEnabled ? (
+                    <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+                      <Button size="small" color="warning" disabled={busy} onClick={() => handleRemove(row.id)}>
+                        Xóa
+                      </Button>
+                    </PermissionGate>
+                  ) : null}
+                </Stack>
               }
             />
           ))

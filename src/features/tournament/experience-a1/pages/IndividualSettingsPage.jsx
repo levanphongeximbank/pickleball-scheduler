@@ -45,6 +45,20 @@ import {
 } from "../deriveOverview.js";
 import { individualOverviewPath } from "../routes.js";
 import {
+  OFFICIAL_MATCH_FORMAT,
+  OFFICIAL_REGISTRATION_MODE,
+  OFFICIAL_SCORING_METHOD,
+  BEST_OF_3_OPERATIONAL,
+  SIDEOUT_OPERATIONAL,
+  getOfficialCompetitionSettings,
+} from "../../../individual-tournament/engines/officialTournamentSettingsEngine.js";
+import { getEligibilityRules } from "../../../individual-tournament/engines/eligibilityEngine.js";
+import {
+  resolveTournamentExperienceAdapter,
+  isOfficialTournamentExperience,
+} from "../experienceModeResolver.js";
+import { buildOfficialSettingsSavePatch } from "../../official-tournament-experience/officialExperienceCommands.js";
+import {
   buildAddOfficialEventPatch,
   buildIdentityPatch,
   buildUpdateEventPatch,
@@ -180,6 +194,13 @@ export default function IndividualSettingsPage() {
   const [eventType, setEventType] = useState(EVENT_TYPE.MEN_DOUBLE);
   const [addEventType, setAddEventType] = useState(EVENT_TYPE.MEN_DOUBLE);
   const [eventName, setEventName] = useState("");
+  const [registrationMode, setRegistrationMode] = useState(OFFICIAL_REGISTRATION_MODE.INDIVIDUAL);
+  const [groupCount, setGroupCount] = useState(4);
+  const [scoringMethod, setScoringMethod] = useState(OFFICIAL_SCORING_METHOD.RALLY);
+  const [matchFormat, setMatchFormat] = useState(OFFICIAL_MATCH_FORMAT.BEST_OF_1);
+  const [maxLevel, setMaxLevel] = useState("");
+  const [maxRating, setMaxRating] = useState("");
+  const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -190,22 +211,41 @@ export default function IndividualSettingsPage() {
   const internal = isInternalCompatibilityFamily(tournament);
   const competitionLocked = Boolean(selectedEvent && eventHasStartedCompetition(selectedEvent));
   const formatSteps = deriveFormatSteps(selectedEvent);
+  const officialAdapter =
+    tournament && isOfficialTournamentExperience(tournament)
+      ? resolveTournamentExperienceAdapter(tournament, { selectedEventId })
+      : null;
 
   useEffect(() => {
-    if (!tournament) return;
+    if (!tournament || dirty) return;
     setName(tournament.name || "");
     setHostClubName(tournament.hostClubName || "");
     setOfficialMode(tournament.officialMode || OFFICIAL_MODE.OPEN);
-  }, [tournament]);
+    if (isOfficialOpenFamily(tournament)) {
+      const competition = getOfficialCompetitionSettings(tournament);
+      const eligibility = getEligibilityRules(tournament);
+      setRegistrationMode(competition.registrationMode || OFFICIAL_REGISTRATION_MODE.INDIVIDUAL);
+      setGroupCount(competition.groupCount || 4);
+      setScoringMethod(competition.scoringMethodOperational || OFFICIAL_SCORING_METHOD.RALLY);
+      setMatchFormat(competition.matchFormatOperational || OFFICIAL_MATCH_FORMAT.BEST_OF_1);
+      setMaxLevel(
+        eligibility?.skill?.maxLevel != null ? String(eligibility.skill.maxLevel) : ""
+      );
+      setMaxRating(
+        eligibility?.rating?.maxRating != null ? String(eligibility.rating.maxRating) : ""
+      );
+    }
+  }, [tournament, dirty]);
 
   useEffect(() => {
+    if (dirty) return;
     if (selectedEvent) {
       setEventName(selectedEvent.name || "");
       setEventType(selectedEvent.eventType || EVENT_TYPE.MEN_DOUBLE);
     } else {
       setEventName("");
     }
-  }, [selectedEvent]);
+  }, [selectedEvent, dirty]);
 
   const persist = async (patch, successText) => {
     setBusy(true);
@@ -216,12 +256,44 @@ export default function IndividualSettingsPage() {
       setMessage({ type: "error", text: result.error || "Không lưu được." });
       return false;
     }
+    setDirty(false);
     refreshClubs();
     setMessage({ type: "success", text: successText });
     return true;
   };
 
   const handleSaveIdentity = async () => {
+    if (official) {
+      const built =
+        officialAdapter?.commands?.saveSettings?.(tournament, {
+          name,
+          hostClubName,
+          officialMode,
+          registrationMode,
+          groupCount: Number(groupCount) || 4,
+          scoringMethod,
+          matchFormat,
+          maxLevel,
+          maxRating,
+        }) ||
+        buildOfficialSettingsSavePatch(tournament, {
+          name,
+          hostClubName,
+          officialMode,
+          registrationMode,
+          groupCount: Number(groupCount) || 4,
+          scoringMethod,
+          matchFormat,
+          maxLevel,
+          maxRating,
+        });
+      if (!built.ok) {
+        setMessage({ type: "error", text: built.error || "Không lưu được." });
+        return;
+      }
+      await persist(built.patch, "Đã lưu cài đặt Official (readback từ hồ sơ).");
+      return;
+    }
     const patch = buildIdentityPatch({
       name,
       hostClubName,
@@ -492,7 +564,16 @@ export default function IndividualSettingsPage() {
           <Stack spacing={1.25}>
             <Grid container spacing={1.25}>
               <Grid size={{ xs: 12, md: 8 }}>
-                <TextField size="small" fullWidth label="Tên giải đấu" value={name} onChange={(event) => setName(event.target.value)} />
+                <TextField
+                  size="small"
+                  fullWidth
+                  label="Tên giải đấu"
+                  value={name}
+                  onChange={(event) => {
+                    setDirty(true);
+                    setName(event.target.value);
+                  }}
+                />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField size="small" fullWidth label="Loại giải" value={typeLabel} disabled />
@@ -503,7 +584,10 @@ export default function IndividualSettingsPage() {
                   fullWidth
                   label="Cụm sân / Địa điểm"
                   value={hostClubName}
-                  onChange={(event) => setHostClubName(event.target.value)}
+                  onChange={(event) => {
+                    setDirty(true);
+                    setHostClubName(event.target.value);
+                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
@@ -517,7 +601,10 @@ export default function IndividualSettingsPage() {
                     select
                     label="Chế độ giải"
                     value={officialMode}
-                    onChange={(event) => setOfficialMode(event.target.value)}
+                    onChange={(event) => {
+                      setDirty(true);
+                      setOfficialMode(event.target.value);
+                    }}
                   >
                     {Object.entries(OFFICIAL_MODE_LABELS).map(([value, label]) => (
                       <MenuItem key={value} value={value}>
@@ -668,6 +755,109 @@ export default function IndividualSettingsPage() {
               locked={competitionLocked}
               emptyText="Chưa cấu hình thể thức trên hồ sơ nội dung này."
             />
+          ) : official ? (
+            <Stack spacing={1.25} data-testid="official-competition-settings">
+              <Alert severity="info">
+                Cài đặt Official/Open lưu qua officialCompetition + eligibilityEngine. Không tạo persistence mới.
+              </Alert>
+              <Grid container spacing={1.25}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    select
+                    label="Chế độ đăng ký"
+                    value={registrationMode}
+                    onChange={(event) => {
+                      setDirty(true);
+                      setRegistrationMode(event.target.value);
+                    }}
+                  >
+                    <MenuItem value={OFFICIAL_REGISTRATION_MODE.INDIVIDUAL}>Cá nhân</MenuItem>
+                    <MenuItem value={OFFICIAL_REGISTRATION_MODE.PAIR}>Theo cặp</MenuItem>
+                  </TextField>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    type="number"
+                    label="Số bảng (groupCount)"
+                    value={groupCount}
+                    onChange={(event) => {
+                      setDirty(true);
+                      setGroupCount(event.target.value);
+                    }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    select
+                    label="Cách tính điểm"
+                    value={scoringMethod}
+                    onChange={(event) => {
+                      setDirty(true);
+                      setScoringMethod(event.target.value);
+                    }}
+                  >
+                    <MenuItem value={OFFICIAL_SCORING_METHOD.RALLY}>Rally (hỗ trợ)</MenuItem>
+                    <MenuItem value={OFFICIAL_SCORING_METHOD.SIDE_OUT} disabled={!SIDEOUT_OPERATIONAL}>
+                      Side-out {!SIDEOUT_OPERATIONAL ? "(chưa hỗ trợ)" : ""}
+                    </MenuItem>
+                  </TextField>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    select
+                    label="Thể thức trận"
+                    value={matchFormat}
+                    onChange={(event) => {
+                      setDirty(true);
+                      setMatchFormat(event.target.value);
+                    }}
+                  >
+                    <MenuItem value={OFFICIAL_MATCH_FORMAT.BEST_OF_1}>BEST_OF_1 (hỗ trợ)</MenuItem>
+                    <MenuItem value={OFFICIAL_MATCH_FORMAT.BEST_OF_3} disabled={!BEST_OF_3_OPERATIONAL}>
+                      BEST_OF_3 {!BEST_OF_3_OPERATIONAL ? "(chưa hỗ trợ)" : ""}
+                    </MenuItem>
+                  </TextField>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    label="Trình độ tối đa"
+                    value={maxLevel}
+                    onChange={(event) => {
+                      setDirty(true);
+                      setMaxLevel(event.target.value);
+                    }}
+                    helperText="eligibilityEngine — max skill ceiling"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    label="Rating tối đa"
+                    value={maxRating}
+                    onChange={(event) => {
+                      setDirty(true);
+                      setMaxRating(event.target.value);
+                    }}
+                    helperText="eligibilityEngine — max rating ceiling"
+                  />
+                </Grid>
+              </Grid>
+              <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>
+                WIN_BY deferred · CHANGE_END chưa nối CORE-16 · không giả hỗ trợ.
+                {dirty ? " · Đang chỉnh nháp — không ghi đè từ refresh nền." : ""}
+              </Typography>
+            </Stack>
           ) : (
             <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted }}>
               Thể thức thuộc phạm vi Nội dung. Chọn Nội dung để xem thiết kế thể thức.
