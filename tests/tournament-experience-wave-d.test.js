@@ -240,6 +240,67 @@ describe("tournament-experience-wave-d", () => {
     }
   });
 
+  it("SCREEN12_KNOCKOUT_NAV_COPY_NOT_TRANSITION", () => {
+    const page = readFileSync(path.join(A1_DIR, "pages/IndividualStandingsPage.jsx"), "utf8");
+    assert.ok(page.includes("Xem vòng loại trực tiếp"));
+    assert.equal(page.includes("Sang vòng loại trực tiếp"), false);
+  });
+
+  it("SCREEN13_EMPTY_KNOCKOUT_DOES_NOT_RENDER_QF_SF_FIXTURES", () => {
+    const page = readFileSync(path.join(A1_DIR, "pages/IndividualKnockoutPage.jsx"), "utf8");
+    assert.equal(page.includes("MiniProgression"), false);
+    assert.ok(page.includes("knockout-progression-empty"));
+    assert.ok(page.includes("Chưa có cấu trúc vòng loại trực tiếp trên hồ sơ."));
+    const model = deriveKnockoutModel(
+      sampleTournament([{ id: "e-a", name: "Đôi nam", eventType: EVENT_TYPE.MEN_DOUBLE, matches: [] }]),
+      { selectedEventId: "e-a" }
+    );
+    assert.equal(model.hasBracket, false);
+    assert.equal(model.progressionForks.length, 0);
+  });
+
+  it("SCREEN13_REAL_ROUNDS_ONLY", () => {
+    const model = deriveKnockoutModel(
+      sampleTournament([
+        {
+          id: "e-a",
+          name: "Đôi nam",
+          eventType: EVENT_TYPE.MEN_DOUBLE,
+          entries: [
+            { id: "a", name: "A" },
+            { id: "b", name: "B" },
+          ],
+          matches: [
+            {
+              id: "QF1",
+              stage: MATCH_STAGE.QUARTERFINAL,
+              entryAId: "a",
+              entryBId: "b",
+              status: MATCH_STATUS.WAITING,
+              bracketMatchId: "QF1",
+            },
+            {
+              id: "QF2",
+              stage: MATCH_STAGE.QUARTERFINAL,
+              entryAId: "a",
+              entryBId: "b",
+              status: MATCH_STATUS.WAITING,
+              bracketMatchId: "QF2",
+            },
+          ],
+        },
+      ]),
+      { selectedEventId: "e-a", round: "QF" }
+    );
+    assert.equal(model.hasBracket, true);
+    assert.ok(model.progressionForks.length > 0);
+    assert.ok(model.progressionForks.every((fork) => String(fork.top).startsWith("QF")));
+    assert.equal(
+      model.progressionForks.some((fork) => fork.top === "QF1" && fork.bottom === "QF2"),
+      true
+    );
+  });
+
   it("SCREEN14_CONNECTORS_PRESENT", () => {
     const surfaces = readFileSync(path.join(A1_DIR, "batchD/ExperienceBatchDSurfaces.jsx"), "utf8");
     assert.ok(surfaces.includes("bracket-connector-"));

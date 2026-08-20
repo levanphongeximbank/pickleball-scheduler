@@ -50,6 +50,7 @@ export function deriveKnockoutModel(tournament, { selectedEventId, round = "" } 
   };
   const nextRound = rounds[rounds.indexOf(selectedRound) + 1] || "Champion";
   const roundReady = kpis.total > 0 && kpis.attention === 0 && kpis.live === 0 && kpis.upcoming === 0;
+  const progressionForks = deriveProgressionForks(cards, displayBracketRoundLabel(nextRound));
 
   return {
     tournamentName: String(tournament?.name || "Giải đấu"),
@@ -66,6 +67,7 @@ export function deriveKnockoutModel(tournament, { selectedEventId, round = "" } 
     kpis,
     roundReady,
     hasBracket: Boolean(rounds.length),
+    progressionForks,
   };
 }
 
@@ -134,6 +136,18 @@ function roundKeyFromMatch(match) {
   if (/SF/i.test(fromId)) return "SF";
   if (/Final|Chung/i.test(fromId)) return "Final";
   return bracketRoundKey(match.roundName) || "";
+}
+
+function deriveProgressionForks(roundMatchCards, nextRoundLabel) {
+  if (!roundMatchCards.length) return [];
+  const forks = [];
+  for (let i = 0; i < roundMatchCards.length; i += 2) {
+    const top = roundMatchCards[i]?.id;
+    const bottom = roundMatchCards[i + 1]?.id || null;
+    if (!top) continue;
+    forks.push({ top, bottom, next: nextRoundLabel });
+  }
+  return forks;
 }
 
 function uniqueRoundOrder(ids) {

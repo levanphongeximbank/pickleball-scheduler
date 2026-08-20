@@ -152,7 +152,7 @@ export default function IndividualStandingsPage() {
               </Table>
             </Paper>
             <Button component={RouterLink} to={individualKnockoutPath(tournamentId, model.eventId)} size="small" sx={{ mt: 1 }}>
-              Sang vòng loại trực tiếp
+              Xem vòng loại trực tiếp
             </Button>
           </>
         ) : null}

@@ -21,7 +21,7 @@ import {
   CompetitionContextHeader,
   CompetitionProgress,
   ExperienceMatchCard,
-  MiniProgression,
+  KnockoutProgressionDiagram,
   StageSelector,
 } from "../batchD/ExperienceBatchDSurfaces.jsx";
 import CenterKpiCard from "../visual/CenterKpiCard.jsx";
@@ -104,10 +104,21 @@ export default function IndividualKnockoutPage() {
               <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted }}>Đang thi đấu {model.kpis.live} • Sắp tới {model.kpis.upcoming}</Typography>
             </CenterRightRailCard>
             <CenterRightRailCard title="Tiến vào vòng sau">
-              <MiniProgression round={model.selectedRound || "QF"} />
-              <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted, mt: 1 }}>
-                Thắng {model.selectedRound || "—"} → vào {model.nextRoundLabel}.
-              </Typography>
+              {model.hasBracket && model.progressionForks.length ? (
+                <>
+                  <KnockoutProgressionDiagram forks={model.progressionForks} />
+                  <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted, mt: 1 }}>
+                    Thắng {model.selectedRound || "—"} → vào {model.nextRoundLabel}.
+                  </Typography>
+                </>
+              ) : (
+                <Typography
+                  data-testid="knockout-progression-empty"
+                  sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted }}
+                >
+                  Chưa có cấu trúc vòng loại trực tiếp trên hồ sơ.
+                </Typography>
+              )}
             </CenterRightRailCard>
             <CenterRightRailCard title="Cần xử lý" priority={model.kpis.attention > 0}>
               {model.kpis.attention ? model.matches.filter((m) => m.status === "attention").map((m) => (

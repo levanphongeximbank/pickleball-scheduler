@@ -173,6 +173,17 @@ export function SelectedMatchDetail({ match, onClose, compact = false }) {
   );
 }
 
+export function KnockoutProgressionDiagram({ forks = [] }) {
+  if (!forks.length) return null;
+  return (
+    <Stack spacing={1.25} data-testid="knockout-progression-diagram">
+      {forks.map((fork) => (
+        <ProgressionFork key={`${fork.top}-${fork.bottom || "solo"}-${fork.next}`} top={fork.top} bottom={fork.bottom} next={fork.next} />
+      ))}
+    </Stack>
+  );
+}
+
 export function MiniProgression({ round }) {
   const trees = {
     R32: [["R32-1", "R32-2", "R16-1"], ["R32-3", "R32-4", "R16-2"]],
