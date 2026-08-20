@@ -48,6 +48,12 @@ import {
   evaluateSemantic29CasePreflight,
 } from "./core13-staging-fixture-preflight.mjs";
 import {
+  NEGATIVE_OVERLAP_FIXTURE_CASE,
+  evaluateCapacitySafePlan,
+  planCapacitySafeFixtureSchedule,
+  toMatchScheduleFields,
+} from "./core13-staging-fixture-schedule-planner.mjs";
+import {
   buildFixtureAbortReason,
   buildTypedCleanupPlan,
   createPartialFixtureReceipt,
@@ -531,6 +537,38 @@ export async function materializeReceiptFromWriters(options = {}) {
     });
   }
 
+  let authoritativeBlockingWindows = Array.isArray(options.authoritativeBlockingWindows)
+    ? options.authoritativeBlockingWindows
+    : [];
+  if (typeof tracked.listAuthoritativeRefereeBlockingWindows === "function") {
+    const listed = await tracked.listAuthoritativeRefereeBlockingWindows({
+      refereeId: refereeA.userId || refereeA.id,
+      tenantId: tenantA.id,
+    });
+    if (listed && listed.ok === false) {
+      return proof(false, listed.detail || "authoritative blocking windows read failed", {
+        verdict: "NOT_READY",
+        failureStage: FIXTURE_ERROR_STAGE.SEMANTIC_PREFLIGHT,
+        createCanonicalTournamentCalls: 0,
+      });
+    }
+    authoritativeBlockingWindows = Array.isArray(listed)
+      ? listed
+      : listed?.windows || listed?.blockingWindows || authoritativeBlockingWindows;
+  }
+  const schedulePlan = planCapacitySafeFixtureSchedule({
+    authoritativeBlockingWindows,
+  });
+  const scheduleCheck = evaluateCapacitySafePlan(schedulePlan);
+  if (!scheduleCheck.ok) {
+    return proof(false, scheduleCheck.detail, {
+      verdict: "NOT_READY",
+      failureStage: FIXTURE_ERROR_STAGE.SEMANTIC_PREFLIGHT,
+      createCanonicalTournamentCalls: 0,
+      POSITIVE_WINDOWS_ALL_CAPACITY_SAFE: false,
+    });
+  }
+
   const primary = entity(
     await tracked.createCanonicalTournament({
       tenantId: tenantA.id,
@@ -568,10 +606,27 @@ export async function materializeReceiptFromWriters(options = {}) {
       refereeFeatureEnabled: false,
     })
   );
-  await tracked.setCourtSchedule({ tournamentId: primary.id, tenantId: tenantA.id, marker });
+  await tracked.setCourtSchedule({
+    tournamentId: primary.id,
+    tenantId: tenantA.id,
+    marker,
+    schedulePlan,
+    courtSchedule: schedulePlan.spanningCourtSchedule,
+  });
 
-  const mkMatch = async (tournamentId) =>
-    entity(await tracked.createInternalMatch({ tournamentId, mode: "INTERNAL" }));
+  const mkMatch = async (tournamentId, fixtureKey) => {
+    const window = schedulePlan.cases[fixtureKey];
+    const fields = toMatchScheduleFields(window);
+    return entity(
+      await tracked.createInternalMatch({
+        tournamentId,
+        mode: "INTERNAL",
+        fixtureKey,
+        scheduleWindow: window,
+        ...fields,
+      })
+    );
+  };
 
   const materializationPaths = {
     preMatch: ["createInternalMatch"],
@@ -581,14 +636,14 @@ export async function materializeReceiptFromWriters(options = {}) {
     completed: ["createInternalMatch"],
   };
 
-  const preMatch = await mkMatch(primary.id);
-  const overlapA = await mkMatch(primary.id);
-  const overlapB = await mkMatch(primary.id);
-  const nonOverlap = await mkMatch(primary.id);
-  const inProgress = await mkMatch(primary.id);
-  const scoringActive = await mkMatch(primary.id);
-  const locked = await mkMatch(primary.id);
-  const completed = await mkMatch(completedLifecycle.id);
+  const preMatch = await mkMatch(primary.id, "preMatch");
+  const overlapA = await mkMatch(primary.id, "overlapA");
+  const overlapB = await mkMatch(primary.id, NEGATIVE_OVERLAP_FIXTURE_CASE);
+  const nonOverlap = await mkMatch(primary.id, "nonOverlap");
+  const inProgress = await mkMatch(primary.id, "inProgress");
+  const scoringActive = await mkMatch(primary.id, "scoringActive");
+  const locked = await mkMatch(primary.id, "locked");
+  const completed = await mkMatch(completedLifecycle.id, "completed");
 
   const owned = {
     tournaments: [
@@ -846,21 +901,53 @@ export async function materializeReceiptFromWriters(options = {}) {
         },
       },
       matches: {
-        preMatch: { id: preMatch.id, tournamentId: primary.id, lifecycle: "PRE_MATCH" },
-        overlapA: { id: overlapA.id, tournamentId: primary.id, lifecycle: "PRE_MATCH" },
-        overlapB: { id: overlapB.id, tournamentId: primary.id, lifecycle: "PRE_MATCH" },
-        nonOverlap: { id: nonOverlap.id, tournamentId: primary.id, lifecycle: "PRE_MATCH" },
-        inProgress: { id: inProgress.id, tournamentId: primary.id, lifecycle: "IN_PROGRESS" },
+        preMatch: {
+          id: preMatch.id,
+          tournamentId: primary.id,
+          lifecycle: "PRE_MATCH",
+          ...toMatchScheduleFields(schedulePlan.cases.preMatch),
+        },
+        overlapA: {
+          id: overlapA.id,
+          tournamentId: primary.id,
+          lifecycle: "PRE_MATCH",
+          ...toMatchScheduleFields(schedulePlan.cases.overlapA),
+        },
+        overlapB: {
+          id: overlapB.id,
+          tournamentId: primary.id,
+          lifecycle: "PRE_MATCH",
+          ...toMatchScheduleFields(schedulePlan.cases.overlapB),
+        },
+        nonOverlap: {
+          id: nonOverlap.id,
+          tournamentId: primary.id,
+          lifecycle: "PRE_MATCH",
+          ...toMatchScheduleFields(schedulePlan.cases.nonOverlap),
+        },
+        inProgress: {
+          id: inProgress.id,
+          tournamentId: primary.id,
+          lifecycle: "IN_PROGRESS",
+          ...toMatchScheduleFields(schedulePlan.cases.inProgress),
+        },
         scoringActive: {
           id: scoringActive.id,
           tournamentId: primary.id,
           lifecycle: "SCORING_ACTIVE",
+          ...toMatchScheduleFields(schedulePlan.cases.scoringActive),
         },
-        locked: { id: locked.id, tournamentId: primary.id, lifecycle: "LOCKED" },
+        locked: {
+          id: locked.id,
+          tournamentId: primary.id,
+          lifecycle: "LOCKED",
+          ...toMatchScheduleFields(schedulePlan.cases.locked),
+        },
         completed: {
           id: completed.id,
           tournamentId: completedLifecycle.id,
           lifecycle: "COMPLETED",
+          ...toMatchScheduleFields(schedulePlan.cases.completed),
         },
         dailyEnabled: {
           id: dailyEnabledMatch.id,
@@ -881,6 +968,9 @@ export async function materializeReceiptFromWriters(options = {}) {
         active: true,
       })),
       bootstrapAssignments,
+      schedulePlan,
+      POSITIVE_FIXTURE_WINDOWS_NON_OVERLAPPING: true,
+      FIXED_SHARED_08_00_09_00_POSITIVE_WINDOW: "DENY",
       cleanupPlan: {
         unknownBaselineAutoClean: false,
         receiptScopedOnly: true,

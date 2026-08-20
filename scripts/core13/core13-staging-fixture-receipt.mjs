@@ -1267,8 +1267,22 @@ function extractMatchWindow(payload, matchId) {
       return;
     }
     if (String(value.id || value.matchId || "") === target) {
-      const start = value.startAt || value.startsAt || value.scheduledStart || value.start;
-      const end = value.endAt || value.endsAt || value.scheduledEnd || value.end;
+      const start =
+        value.startAt ||
+        value.startsAt ||
+        value.scheduledStart ||
+        value.scheduledAt ||
+        value.start;
+      let end = value.endAt || value.endsAt || value.scheduledEnd || value.end;
+      if (!end && start) {
+        const minutes = Number(value.durationMinutes || value.matchDurationMinutes || 0);
+        if (Number.isFinite(minutes) && minutes > 0) {
+          const startMs = Date.parse(String(start));
+          if (Number.isFinite(startMs)) {
+            end = new Date(startMs + minutes * 60 * 1000).toISOString();
+          }
+        }
+      }
       if (start && end) found = { start: String(start), end: String(end) };
     }
     Object.values(value).forEach(walk);

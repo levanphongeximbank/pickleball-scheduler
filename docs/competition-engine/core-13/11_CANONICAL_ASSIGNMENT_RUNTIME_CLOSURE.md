@@ -101,6 +101,15 @@ Completed MATCH evidence is `refereeV5EdgeFinalize` after a legal engine sequenc
 
 Live-backed fixtures retain `match_live_states` / `match_sync_mutations` / initializer idempotency. `RETAINED_FIXTURE_CLEANUP_GAP=SEPARATE_WORKSTREAM`.
 
+## Fixture schedule planner (harness only)
+
+`scripts/core13/core13-staging-fixture-schedule-planner.mjs` is **test orchestration**. It is not a schedule authority.
+
+- Positive fixture cases receive mutually non-overlapping canonical windows derived from authoritative blocking intervals plus in-plan reservations.
+- `FIXED_SHARED_08_00_09_00_WINDOW_FOR_POSITIVE_CASES=DENY`
+- The explicit overlap-negative case (`overlapB`) intentionally overlaps `overlapA`.
+- Canonical capacity guard remains `CORRECT` / `CAPACITY_CHECK_BYPASS=DENY`.
+
 ## Execution gate
 
 Do **not** apply SQL or deploy the Edge Function until Owner GO.

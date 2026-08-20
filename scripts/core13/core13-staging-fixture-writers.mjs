@@ -209,7 +209,7 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
   },
   setCourtSchedule: {
     object: "SCHEDULE",
-    requiredState: "canonical court/schedule context via Adapter B",
+    notes: "Canonical court/schedule context via Adapter B. Tournament court window may span planned fixture slots; it is not the per-match assignment window SSOT.",
     classification: WRITER_CLASS.CANONICAL_PRODUCT_COMMAND,
     authority: "src/features/tournament/services/tournamentCommands.js#setTournamentCourtScheduleCommand",
     nodeBinding: NODE_BINDING.NODE_SAFE_BINDABLE,
@@ -226,7 +226,7 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
     required: true,
     requiredInExistingQa: true,
     tokenClass: AUTH_CONTEXT_CLASS.ORGANIZER,
-    notes: "Creates canonical match identity only. Does not initialize match execution.",
+    notes: "Creates canonical match identity only. Does not initialize match execution. Must persist per-match scheduleWindow from the fixture planner (startAt/endAt/scheduledAt); do not stamp a shared 08:00–09:00 window onto positive cases.",
   },
   initializeMatchExecution: {
     object: "MATCH_EXECUTION_INITIALIZATION",
