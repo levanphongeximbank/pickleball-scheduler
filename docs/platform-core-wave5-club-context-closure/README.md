@@ -1,6 +1,6 @@
 # Wave 5 — Canonical Club Context Cutover + Durable Club SQL Design
 
-**WAVE5_STATUS=SQL_DESIGN_ROUND7_FINAL_CONTROL_PLANE_REMEDIATION_COMPLETE_PENDING_ROUND8_OWNER_REVIEW**
+**WAVE5_STATUS=SQL_DESIGN_ROUND8_LAST_EXECUTION_GATE_REMEDIATION_COMPLETE_PENDING_ROUND9_OWNER_REVIEW**
 
 **PC_CLUB_01=OPEN_PENDING_ACCEPTANCE** (not closed)
 
@@ -130,6 +130,18 @@ See `sql-design/`. **DO NOT RUN.** `OWNER_SQL_EXECUTION_GO=NO`.
 **ROUND4_BLOCKER_02_LOCKED_APPLY_SAFETY_GATE=FIXED** — APPLY reasserts FK state, Wave 4 `tenant_members` expectation, mapping, child consistency, name/code collision, registered-cluster orphan/cross-Tenant, and RPC exact signatures **inside the locked transaction**. `APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO`. `01_PRECHECK` remains operator-facing dry-run only.
 
 **ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED** — capture `pg_trigger.tgenabled` (`O`/`D`/`R`/`A`) and restore that exact mode after translation. No unconditional `ENABLE TRIGGER`.
+
+**SQL_DESIGN_REVIEW_ROUND8_REMEDIATION=COMPLETE_PENDING_ROUND9_OWNER_REVIEW** (not a SQL review PASS).
+
+**ROUND8_P1_01_MUTATION_SURFACE_TOCTOU_AFTER_DRAIN=REMEDIATED_DESIGN** — Q1B, 07B2, APPLY prelock, and 03B reassert unknown overload = 0. APPLY prelock rechecks all 14 canonical signatures and PUBLIC/anon/authenticated/service_role EXECUTE before table locks. `APPLY_DEPENDS_ON_STALE_QUIESCE_EVIDENCE=NO`.
+
+**ROUND8_P1_02_PRE_QUIESCE_DIRECT_DB_SESSION_DRAIN_GAP=REMEDIATED_DESIGN** — 07B/07B2 fail closed on any non-current transaction with `xact_start <= quiesce_visible_at` unless `backend_type` is an explicit harmless system class. Named SQL users are not exempt. Do not auto-terminate.
+
+**ROUND8_P1_03_CONTROL_PLANE_SCHEMA_GUARD_NOT_EXACT=REMEDIATED_DESIGN** — batch PK is exactly `(batch_id)`; snapshot PK/FK/ON DELETE RESTRICT/ON UPDATE RESTRICT certified; one-active unique index key is exactly `cutover_kind` with RESTORED/ABORTED predicate tokens.
+
+**ROUND8_P2_01_VERIFIED_GATE_EXACT_RPC_IDENTITY=REMEDIATED_DESIGN** — 03B uses exact `regprocedure` for `phase42_club_canonical(text)` and `club_create(...)` with `overload_count=1`. Unknown mutation overload aborts VERIFIED.
+
+**ROUND8_P2_02_LEGACY_ACL_RESTORE_FINAL_EXACTNESS=REMEDIATED_DESIGN** — 07C after snapshot replay requires caller-role ACL to equal captured snapshot. Drift rolls back and keeps writes quiesced.
 
 **SQL_DESIGN_REVIEW_ROUND7_REMEDIATION=COMPLETE_PENDING_ROUND8_OWNER_REVIEW** (not a SQL review PASS).
 

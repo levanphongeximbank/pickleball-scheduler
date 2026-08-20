@@ -116,6 +116,7 @@ BEGIN
   END IF;
 
   FOREACH v_sig IN ARRAY ARRAY[
+    -- WAVE5_CANONICAL_14_ARRAY_BEGIN
     'public.club_create(uuid,text,text,text,text,text)',
     'public.club_update(uuid,text,integer,text,text,text,text,text)',
     'public.club_assign_owner(uuid,text,uuid,integer)',
@@ -130,6 +131,7 @@ BEGIN
     'public.club_submit_membership_request(uuid,text,text)',
     'public.club_cancel_membership_request(uuid,uuid,integer)',
     'public.club_review_membership_request(uuid,uuid,text,text,integer)'
+    -- WAVE5_CANONICAL_14_ARRAY_END
   ]
   LOOP
     IF NOT has_function_privilege('authenticated', v_sig, 'EXECUTE') THEN

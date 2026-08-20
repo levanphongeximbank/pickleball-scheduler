@@ -64,6 +64,7 @@ LEGACY_COMPAT_MUTATION_RPC_COUNT=1
 TOTAL_QUIESCE_TARGET_COUNT=15
 CANONICAL_COMMAND_SURFACE=NO
 POST_CANONICAL_RESTORE=NO
+CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
 ```
 
 Canonical command surface is **exactly** the 14 V2 write RPCs below. `club_leave_my_membership()` is **not** canonical and must not satisfy the canonical count.

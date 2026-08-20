@@ -34,6 +34,11 @@
 -- CUTOVER_METADATA_AUTHENTICATED_ACCESS=DENIED
 -- CUTOVER_METADATA_ANON_ACCESS=DENIED
 -- CONTROL_PLANE_EXISTING_SCHEMA_GUARD=YES
+-- CONTROL_PLANE_BATCH_PK_EXACT=YES
+-- CONTROL_PLANE_SNAPSHOT_PK_EXACT=YES
+-- CONTROL_PLANE_SNAPSHOT_FK_EXACT=YES
+-- CONTROL_PLANE_ONE_ACTIVE_INDEX_EXACT=YES
+-- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
 -- MUTATION_RPC_PRE_PRIVILEGES_CAPTURED=YES
 --
 -- Does NOT revoke:
@@ -91,7 +96,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS wave5_club_cutover_batch_one_active
   WHERE state NOT IN ('RESTORED', 'ABORTED');
 
 CREATE TABLE IF NOT EXISTS public.wave5_cutover_rpc_privilege_snapshot (
-  batch_id uuid NOT NULL REFERENCES public.wave5_club_cutover_batch (batch_id),
+  batch_id uuid NOT NULL REFERENCES public.wave5_club_cutover_batch (batch_id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
   captured_at timestamptz NOT NULL DEFAULT now(),
   nspname name NOT NULL,
   proname name NOT NULL,
@@ -118,13 +124,41 @@ DO $$
 DECLARE
   v_cols text;
   v_pred text;
-  v_idxdef text;
+  v_idx_unique boolean;
+  v_idx_key text;
+  v_idx_tokens text;
   v_pk text;
+  v_pk_n int;
   v_fk text;
+  v_fk_n int;
+  v_fk_del char;
+  v_fk_upd char;
+  v_fk_ftable text;
+  v_fk_fcols text;
+  v_fk_lcols text;
   v_chk text;
+  v_chk_tokens text;
+  v_kind_tokens text;
   v_rls boolean;
+  v_relkind char;
+  v_tbl text;
+  v_priv text;
+  v_public_acl int;
 BEGIN
-  SELECT string_agg(a.attname, ',' ORDER BY a.attnum)
+  SELECT c.relkind INTO v_relkind
+  FROM pg_catalog.pg_class c
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname = 'wave5_club_cutover_batch';
+  IF v_relkind IS DISTINCT FROM 'r' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD wrong same-named batch object relkind=%',
+      coalesce(v_relkind::text, '<missing>');
+  END IF;
+
+  SELECT string_agg(
+           format('%s:%s:%s', a.attname, format_type(a.atttypid, a.atttypmod),
+                  CASE WHEN a.attnotnull THEN 'NOTNULL' ELSE 'NULL' END),
+           ',' ORDER BY a.attnum
+         )
     INTO v_cols
   FROM pg_catalog.pg_attribute a
   JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
@@ -133,20 +167,48 @@ BEGIN
     AND c.relname = 'wave5_club_cutover_batch'
     AND a.attnum > 0
     AND NOT a.attisdropped;
-  IF v_cols IS DISTINCT FROM 'batch_id,cutover_kind,state,created_at,q1_committed_at,quiesce_visible_at,drained_at,apply_started_at,apply_committed_at,verified_at,writes_restored_at,aborted_at,verify_evidence_fingerprint' THEN
+  IF v_cols IS DISTINCT FROM 'batch_id:uuid:NOTNULL,cutover_kind:text:NOTNULL,state:text:NOTNULL,created_at:timestamp with time zone:NOTNULL,q1_committed_at:timestamp with time zone:NULL,quiesce_visible_at:timestamp with time zone:NULL,drained_at:timestamp with time zone:NULL,apply_started_at:timestamp with time zone:NULL,apply_committed_at:timestamp with time zone:NULL,verified_at:timestamp with time zone:NULL,writes_restored_at:timestamp with time zone:NULL,aborted_at:timestamp with time zone:NULL,verify_evidence_fingerprint:text:NULL' THEN
     RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD batch columns=%',
       coalesce(v_cols, '<missing>');
   END IF;
 
-  SELECT con.conname INTO v_pk
+  SELECT count(*) INTO v_pk_n
   FROM pg_catalog.pg_constraint con
   JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
   JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = 'public'
     AND c.relname = 'wave5_club_cutover_batch'
     AND con.contype = 'p';
-  IF v_pk IS NULL THEN
-    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD batch PK missing';
+  SELECT string_agg(a.attname, ',' ORDER BY x.ord)
+    INTO v_pk
+  FROM pg_catalog.pg_constraint con
+  JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS x(attnum, ord) ON true
+  JOIN pg_catalog.pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = x.attnum
+  WHERE n.nspname = 'public'
+    AND c.relname = 'wave5_club_cutover_batch'
+    AND con.contype = 'p';
+  IF v_pk_n <> 1 OR v_pk IS DISTINCT FROM 'batch_id' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD batch PK missing CONTROL_PLANE_BATCH_PK_EXACT=NO pk=% count=%',
+      coalesce(v_pk, '<missing>'), v_pk_n;
+  END IF;
+
+  SELECT pg_get_constraintdef(con.oid) INTO v_chk
+  FROM pg_catalog.pg_constraint con
+  JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relname = 'wave5_club_cutover_batch'
+    AND con.contype = 'c'
+    AND con.conname = 'wave5_club_cutover_batch_kind_chk';
+  SELECT string_agg(m[1], ',' ORDER BY m[1]) INTO v_kind_tokens
+  FROM regexp_matches(coalesce(v_chk, ''), '''([A-Z0-9_]+)''', 'g') AS m;
+  IF v_chk IS NULL
+     OR position('cutover_kind' in v_chk) = 0
+     OR v_kind_tokens IS DISTINCT FROM 'WAVE5_CLUB_TENANT' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD cutover_kind CHECK drift %',
+      coalesce(v_chk, '<missing>');
   END IF;
 
   SELECT pg_get_constraintdef(con.oid) INTO v_chk
@@ -157,31 +219,44 @@ BEGIN
     AND c.relname = 'wave5_club_cutover_batch'
     AND con.contype = 'c'
     AND con.conname = 'wave5_club_cutover_batch_state_chk';
+  SELECT string_agg(m[1], ',' ORDER BY m[1]) INTO v_chk_tokens
+  FROM regexp_matches(coalesce(v_chk, ''), '''([A-Z0-9_]+)''', 'g') AS m;
   IF v_chk IS NULL
-     OR position('PREPARED' in v_chk) = 0
-     OR position('QUIESCED' in v_chk) = 0
-     OR position('DRAINED' in v_chk) = 0
-     OR position('APPLIED' in v_chk) = 0
-     OR position('VERIFIED' in v_chk) = 0
-     OR position('RESTORED' in v_chk) = 0
-     OR position('ABORTED' in v_chk) = 0 THEN
+     OR v_chk_tokens IS DISTINCT FROM 'ABORTED,APPLIED,APPLYING,DRAINED,PREPARED,QUIESCED,RESTORED,VERIFIED' THEN
     RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD state CHECK drift %',
       coalesce(v_chk, '<missing>');
   END IF;
 
-  SELECT pg_get_indexdef(i.indexrelid), pg_get_expr(i.indpred, i.indrelid)
-    INTO v_idxdef, v_pred
+  SELECT i.indisunique,
+         (
+           SELECT a.attname
+           FROM pg_catalog.pg_attribute a
+           WHERE a.attrelid = i.indrelid
+             AND a.attnum = i.indkey[1]
+         ),
+         pg_get_expr(i.indpred, i.indrelid)
+    INTO v_idx_unique, v_idx_key, v_pred
   FROM pg_catalog.pg_index i
   JOIN pg_catalog.pg_class idx ON idx.oid = i.indexrelid
   JOIN pg_catalog.pg_namespace n ON n.oid = idx.relnamespace
   WHERE n.nspname = 'public'
-    AND idx.relname = 'wave5_club_cutover_batch_one_active'
-    AND i.indisunique;
-  IF v_idxdef IS NULL THEN
+    AND idx.relname = 'wave5_club_cutover_batch_one_active';
+  IF v_idx_unique IS NULL THEN
     RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD one-active unique index missing';
   END IF;
-  IF coalesce(v_pred, '') NOT ILIKE '%RESTORED%'
-     OR coalesce(v_pred, '') NOT ILIKE '%ABORTED%' THEN
+  IF v_idx_unique IS NOT TRUE OR v_idx_key IS DISTINCT FROM 'cutover_kind' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD CONTROL_PLANE_ONE_ACTIVE_INDEX_EXACT=NO unique=% key=%',
+      v_idx_unique, coalesce(v_idx_key, '<missing>');
+  END IF;
+  SELECT string_agg(m[1], ',' ORDER BY m[1]) INTO v_idx_tokens
+  FROM regexp_matches(coalesce(v_pred, ''), '''([A-Z0-9_]+)''', 'g') AS m;
+  IF v_pred IS NULL
+     OR position('state' in v_pred) = 0
+     OR (
+       position('NOT' in upper(v_pred)) = 0
+       AND position('<>' in v_pred) = 0
+     )
+     OR v_idx_tokens IS DISTINCT FROM 'ABORTED,RESTORED' THEN
     RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD one-active index predicate drift %',
       coalesce(v_pred, '<missing>');
   END IF;
@@ -194,7 +269,20 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD batch RLS not enabled';
   END IF;
 
-  SELECT string_agg(a.attname, ',' ORDER BY a.attnum)
+  SELECT c.relkind INTO v_relkind
+  FROM pg_catalog.pg_class c
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname = 'wave5_cutover_rpc_privilege_snapshot';
+  IF v_relkind IS DISTINCT FROM 'r' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD wrong same-named snapshot object relkind=%',
+      coalesce(v_relkind::text, '<missing>');
+  END IF;
+
+  SELECT string_agg(
+           format('%s:%s:%s', a.attname, format_type(a.atttypid, a.atttypmod),
+                  CASE WHEN a.attnotnull THEN 'NOTNULL' ELSE 'NULL' END),
+           ',' ORDER BY a.attnum
+         )
     INTO v_cols
   FROM pg_catalog.pg_attribute a
   JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
@@ -203,20 +291,74 @@ BEGIN
     AND c.relname = 'wave5_cutover_rpc_privilege_snapshot'
     AND a.attnum > 0
     AND NOT a.attisdropped;
-  IF v_cols IS DISTINCT FROM 'batch_id,captured_at,nspname,proname,identity_args,grantee_name,privilege_type,is_grantable' THEN
+  IF v_cols IS DISTINCT FROM 'batch_id:uuid:NOTNULL,captured_at:timestamp with time zone:NOTNULL,nspname:name:NOTNULL,proname:name:NOTNULL,identity_args:text:NOTNULL,grantee_name:text:NOTNULL,privilege_type:text:NOTNULL,is_grantable:boolean:NOTNULL' THEN
     RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD snapshot columns=%',
       coalesce(v_cols, '<missing>');
   END IF;
 
-  SELECT con.conname INTO v_fk
+  SELECT count(*) INTO v_pk_n
+  FROM pg_catalog.pg_constraint con
+  JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relname = 'wave5_cutover_rpc_privilege_snapshot'
+    AND con.contype = 'p';
+  SELECT string_agg(a.attname, ',' ORDER BY x.ord)
+    INTO v_pk
+  FROM pg_catalog.pg_constraint con
+  JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS x(attnum, ord) ON true
+  JOIN pg_catalog.pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = x.attnum
+  WHERE n.nspname = 'public'
+    AND c.relname = 'wave5_cutover_rpc_privilege_snapshot'
+    AND con.contype = 'p';
+  IF v_pk_n <> 1 OR v_pk IS DISTINCT FROM 'batch_id,nspname,proname,identity_args,grantee_name,privilege_type' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD CONTROL_PLANE_SNAPSHOT_PK_EXACT=NO pk=% count=%',
+      coalesce(v_pk, '<missing>'), v_pk_n;
+  END IF;
+
+  SELECT count(*) INTO v_fk_n
   FROM pg_catalog.pg_constraint con
   JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
   JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = 'public'
     AND c.relname = 'wave5_cutover_rpc_privilege_snapshot'
     AND con.contype = 'f';
+  SELECT con.conname, con.confdeltype, con.confupdtype,
+         fn.nspname || '.' || ft.relname,
+         (
+           SELECT string_agg(a.attname, ',' ORDER BY x.ord)
+           FROM unnest(con.conkey) WITH ORDINALITY AS x(attnum, ord)
+           JOIN pg_catalog.pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = x.attnum
+         ),
+         (
+           SELECT string_agg(a.attname, ',' ORDER BY x.ord)
+           FROM unnest(con.confkey) WITH ORDINALITY AS x(attnum, ord)
+           JOIN pg_catalog.pg_attribute a ON a.attrelid = con.confrelid AND a.attnum = x.attnum
+         )
+    INTO v_fk, v_fk_del, v_fk_upd, v_fk_ftable, v_fk_lcols, v_fk_fcols
+  FROM pg_catalog.pg_constraint con
+  JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  JOIN pg_catalog.pg_class ft ON ft.oid = con.confrelid
+  JOIN pg_catalog.pg_namespace fn ON fn.oid = ft.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relname = 'wave5_cutover_rpc_privilege_snapshot'
+    AND con.contype = 'f';
   IF v_fk IS NULL THEN
     RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD snapshot FK missing';
+  END IF;
+  IF v_fk_n <> 1
+     OR v_fk_ftable IS DISTINCT FROM 'public.wave5_club_cutover_batch'
+     OR v_fk_lcols IS DISTINCT FROM 'batch_id'
+     OR v_fk_fcols IS DISTINCT FROM 'batch_id'
+     OR v_fk_del IS DISTINCT FROM 'r'
+     OR v_fk_upd IS DISTINCT FROM 'r' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD CONTROL_PLANE_SNAPSHOT_FK_EXACT=NO n=% target=% local=% foreign=% del=% upd=%',
+      v_fk_n, coalesce(v_fk_ftable, '<missing>'), coalesce(v_fk_lcols, '<missing>'),
+      coalesce(v_fk_fcols, '<missing>'), coalesce(v_fk_del::text, '<missing>'),
+      coalesce(v_fk_upd::text, '<missing>');
   END IF;
 
   SELECT c.relrowsecurity INTO v_rls
@@ -227,12 +369,31 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD snapshot RLS not enabled';
   END IF;
 
-  IF has_table_privilege('anon', 'public.wave5_club_cutover_batch', 'SELECT')
-     OR has_table_privilege('authenticated', 'public.wave5_club_cutover_batch', 'SELECT')
-     OR has_table_privilege('anon', 'public.wave5_cutover_rpc_privilege_snapshot', 'SELECT')
-     OR has_table_privilege('authenticated', 'public.wave5_cutover_rpc_privilege_snapshot', 'SELECT') THEN
-    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD application-role table access not denied';
-  END IF;
+  FOREACH v_tbl IN ARRAY ARRAY[
+    'wave5_club_cutover_batch',
+    'wave5_cutover_rpc_privilege_snapshot'
+  ]
+  LOOP
+    FOREACH v_priv IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']
+    LOOP
+      IF has_table_privilege('anon', format('public.%I', v_tbl), v_priv)
+         OR has_table_privilege('authenticated', format('public.%I', v_tbl), v_priv) THEN
+        RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD application-role table access not denied';
+      END IF;
+    END LOOP;
+    SELECT count(*) INTO v_public_acl
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) AS acl
+    WHERE n.nspname = 'public'
+      AND c.relname = v_tbl
+      AND acl.grantee = 0
+      AND acl.privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER');
+    IF v_public_acl > 0 THEN
+      RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD PUBLIC table access not denied on %',
+        v_tbl;
+    END IF;
+  END LOOP;
 END $$;
 
 DO $$
@@ -260,6 +421,7 @@ BEGIN
 
   FOR r IN
     SELECT * FROM (
+      -- WAVE5_CANONICAL_MUTATION_SURFACE_VALUES_BEGIN
       VALUES
         ('public.club_create(uuid,text,text,text,text,text)'::text, true),
         ('public.club_update(uuid,text,integer,text,text,text,text,text)', true),
@@ -276,6 +438,7 @@ BEGIN
         ('public.club_cancel_membership_request(uuid,uuid,integer)', true),
         ('public.club_review_membership_request(uuid,uuid,text,text,integer)', true),
         ('public.club_leave_my_membership()', false)
+      -- WAVE5_CANONICAL_MUTATION_SURFACE_VALUES_END
     ) AS t(sig text, is_canonical boolean)
   LOOP
     v_oid := to_regprocedure(r.sig);
@@ -395,6 +558,7 @@ BEGIN
 
   FOR r IN
     SELECT * FROM (
+      -- WAVE5_CANONICAL_MUTATION_SURFACE_VALUES_BEGIN
       VALUES
         ('public.club_create(uuid,text,text,text,text,text)'::text, true),
         ('public.club_update(uuid,text,integer,text,text,text,text,text)', true),
@@ -411,6 +575,7 @@ BEGIN
         ('public.club_cancel_membership_request(uuid,uuid,integer)', true),
         ('public.club_review_membership_request(uuid,uuid,text,text,integer)', true),
         ('public.club_leave_my_membership()', false)
+      -- WAVE5_CANONICAL_MUTATION_SURFACE_VALUES_END
     ) AS t(sig text, is_canonical boolean)
   LOOP
     v_oid := to_regprocedure(r.sig);
@@ -437,6 +602,7 @@ BEGIN
 
   FOR r IN
     SELECT * FROM (
+      -- WAVE5_QUIESCE_15_ARRAY_BEGIN
       VALUES
         ('public.club_create(uuid,text,text,text,text,text)'::text),
         ('public.club_update(uuid,text,integer,text,text,text,text,text)'),
@@ -453,6 +619,7 @@ BEGIN
         ('public.club_cancel_membership_request(uuid,uuid,integer)'),
         ('public.club_review_membership_request(uuid,uuid,text,text,integer)'),
         ('public.club_leave_my_membership()')
+      -- WAVE5_QUIESCE_15_ARRAY_END
     ) AS t(sig text)
   LOOP
     v_oid := to_regprocedure(r.sig);

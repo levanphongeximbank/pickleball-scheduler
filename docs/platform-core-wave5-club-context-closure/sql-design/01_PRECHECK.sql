@@ -5,6 +5,11 @@
 -- SQL_EXECUTED=NO
 --
 -- RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
+-- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
+-- DIRECT_CLUB_DML_PUBLIC=DENIED
+-- DIRECT_CLUB_DML_ANON=DENIED
+-- DIRECT_CLUB_DML_AUTHENTICATED=DENIED
+-- SERVICE_ROLE_DIRECT_CLUB_DML=CLASSIFY_ONLY
 -- Wave 5 Club Tenant migration PRECHECK — READ-ONLY, fail closed.
 -- Do not repair unexpected data. Do not mutate.
 --
@@ -599,4 +604,144 @@ FROM (
 LEFT JOIN pg_catalog.pg_proc p ON p.oid = to_regprocedure(cand.sig)
 LEFT JOIN pg_catalog.pg_language l ON l.oid = p.prolang
 ORDER BY cand.class, cand.proname;
+
+-- Mutation overload inventory + caller ACLs (read-only).
+SELECT
+  p.proname,
+  format('%s.%s(%s)', n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid)) AS live_sig,
+  CASE
+    WHEN format('%s.%s(%s)', n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid)) IN (
+      'public.club_create(uuid,text,text,text,text,text)',
+      'public.club_update(uuid,text,integer,text,text,text,text,text)',
+      'public.club_assign_owner(uuid,text,uuid,integer)',
+      'public.club_clear_owner(uuid,text,integer)',
+      'public.club_transfer_president(uuid,text,uuid,integer)',
+      'public.club_assign_vice_president(uuid,text,uuid,integer)',
+      'public.club_clear_vice_president(uuid,text,integer,uuid)',
+      'public.club_add_member(uuid,text,uuid,text,integer)',
+      'public.club_remove_member(uuid,text,uuid,integer)',
+      'public.club_restore_member(uuid,text,uuid,integer)',
+      'public.club_leave_membership(uuid,text)',
+      'public.club_submit_membership_request(uuid,text,text)',
+      'public.club_cancel_membership_request(uuid,uuid,integer)',
+      'public.club_review_membership_request(uuid,uuid,text,text,integer)',
+      'public.club_leave_my_membership()'
+    ) THEN 'APPROVED'
+    ELSE 'UNKNOWN_OVERLOAD'
+  END AS inventory_class,
+  EXISTS (
+    SELECT 1
+    FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+    WHERE acl.privilege_type = 'EXECUTE' AND acl.grantee = 0
+  ) AS public_execute,
+  CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN has_function_privilege('anon', p.oid, 'EXECUTE') END AS anon_execute,
+  CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'authenticated') THEN has_function_privilege('authenticated', p.oid, 'EXECUTE') END AS authenticated_execute,
+  CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN has_function_privilege('service_role', p.oid, 'EXECUTE') END AS service_role_execute
+FROM pg_catalog.pg_proc p
+JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname IN (
+    'club_create',
+    'club_update',
+    'club_assign_owner',
+    'club_clear_owner',
+    'club_transfer_president',
+    'club_assign_vice_president',
+    'club_clear_vice_president',
+    'club_add_member',
+    'club_remove_member',
+    'club_restore_member',
+    'club_leave_membership',
+    'club_submit_membership_request',
+    'club_cancel_membership_request',
+    'club_review_membership_request',
+    'club_leave_my_membership'
+  )
+ORDER BY p.proname, live_sig;
+
+-- Direct Club table DML privilege evidence. Do not mutate grants.
+SELECT
+  t.table_name,
+  'PUBLIC'::text AS grantee,
+  EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) AS acl
+    WHERE n.nspname = 'public'
+      AND c.relname = t.table_name
+      AND acl.grantee = 0
+      AND acl.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+  ) AS dml_present,
+  CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_class c
+      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+      CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) AS acl
+      WHERE n.nspname = 'public'
+        AND c.relname = t.table_name
+        AND acl.grantee = 0
+        AND acl.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+    ) THEN 'PRESENT'
+    ELSE 'DENIED'
+  END AS DIRECT_CLUB_DML_PUBLIC
+FROM (VALUES
+  ('clubs'),
+  ('club_members'),
+  ('club_governance_assignments'),
+  ('club_membership_requests_v42')
+) AS t(table_name)
+UNION ALL
+SELECT
+  t.table_name,
+  r.rolname,
+  CASE
+    WHEN NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = r.rolname) THEN NULL
+    ELSE has_table_privilege(r.rolname, format('public.%I', t.table_name), 'INSERT')
+      OR has_table_privilege(r.rolname, format('public.%I', t.table_name), 'UPDATE')
+      OR has_table_privilege(r.rolname, format('public.%I', t.table_name), 'DELETE')
+  END AS dml_present,
+  CASE
+    WHEN NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = r.rolname) THEN 'ROLE_ABSENT'
+    WHEN has_table_privilege(r.rolname, format('public.%I', t.table_name), 'INSERT')
+      OR has_table_privilege(r.rolname, format('public.%I', t.table_name), 'UPDATE')
+      OR has_table_privilege(r.rolname, format('public.%I', t.table_name), 'DELETE')
+    THEN CASE
+      WHEN r.rolname = 'service_role' THEN 'PRESENT_REQUIRES_EXECUTION_WINDOW_CONTROL'
+      ELSE 'PRESENT'
+    END
+    ELSE 'DENIED'
+  END AS classification
+FROM (VALUES
+  ('clubs'),
+  ('club_members'),
+  ('club_governance_assignments'),
+  ('club_membership_requests_v42')
+) AS t(table_name)
+CROSS JOIN (VALUES ('anon'), ('authenticated'), ('service_role')) AS r(rolname)
+ORDER BY 1, 2;
+
+SELECT
+  CASE
+    WHEN NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN 'ROLE_ABSENT'
+    WHEN EXISTS (
+      SELECT 1
+      FROM (VALUES
+        ('clubs'),
+        ('club_members'),
+        ('club_governance_assignments'),
+        ('club_membership_requests_v42')
+      ) AS t(table_name)
+      WHERE has_table_privilege('service_role', format('public.%I', t.table_name), 'INSERT')
+         OR has_table_privilege('service_role', format('public.%I', t.table_name), 'UPDATE')
+         OR has_table_privilege('service_role', format('public.%I', t.table_name), 'DELETE')
+    ) THEN 'PRESENT_REQUIRES_EXECUTION_WINDOW_CONTROL'
+    ELSE 'DENIED'
+  END AS "SERVICE_ROLE_DIRECT_CLUB_DML";
+
+SELECT
+  to_regclass('public.wave5_club_cutover_batch') IS NOT NULL AS batch_present,
+  to_regclass('public.wave5_cutover_rpc_privilege_snapshot') IS NOT NULL AS snapshot_present,
+  to_regclass('public.wave5_club_cutover_batch_one_active') IS NOT NULL AS one_active_index_present;
 

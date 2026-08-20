@@ -11,6 +11,11 @@
 -- 01_PRECHECK.sql = operator-facing dry-run evidence.
 -- 02_APPLY_DESIGN.sql = self-protecting authoritative transactional migration.
 -- APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO
+-- APPLY_DEPENDS_ON_STALE_QUIESCE_EVIDENCE=NO
+-- APPLY_PRELOCK_UNKNOWN_OVERLOAD_GATE=ABORT
+-- APPLY_PRELOCK_MUTATION_RPC_COUNT=14
+-- APPLY_PRELOCK_ALL_MUTATION_CALLER_ROLES_QUIESCED=YES
+-- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
 -- APPLY does not trust a prior PRECHECK run. All mutation-critical invariants
 -- are reasserted inside this locked transaction.
 --
@@ -113,6 +118,14 @@ DECLARE
   v_q1 timestamptz;
   v_drained timestamptz;
   v_active int;
+  v_sig text;
+  v_oid regprocedure;
+  v_unknown int := 0;
+  v_canonical int := 0;
+  v_public_exec int := 0;
+  v_anon_exec int := 0;
+  v_auth_exec int := 0;
+  v_service_exec int := 0;
 BEGIN
   IF current_setting('wave5.drain_pass', true) = 'YES'
      AND nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '') IS NULL THEN
@@ -152,22 +165,124 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_APPLY_ABORT: ONE_ACTIVE_CUTOVER_BATCH violated active=%', v_active;
   END IF;
 
-  IF to_regprocedure('public.club_create(uuid,text,text,text,text,text)') IS NULL THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT club_create missing before lock';
+  -- Live reassert. DRAINED / Q1A timestamps are not stale APPLY authority.
+  -- APPLY_DEPENDS_ON_STALE_QUIESCE_EVIDENCE=NO
+  SELECT count(*) INTO v_unknown
+  FROM pg_catalog.pg_proc p
+  JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname IN (
+      'club_create',
+      'club_update',
+      'club_assign_owner',
+      'club_clear_owner',
+      'club_transfer_president',
+      'club_assign_vice_president',
+      'club_clear_vice_president',
+      'club_add_member',
+      'club_remove_member',
+      'club_restore_member',
+      'club_leave_membership',
+      'club_submit_membership_request',
+      'club_cancel_membership_request',
+      'club_review_membership_request',
+      'club_leave_my_membership'
+    )
+    AND format('%s.%s(%s)', n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid))
+      NOT IN (
+        'public.club_create(uuid,text,text,text,text,text)',
+        'public.club_update(uuid,text,integer,text,text,text,text,text)',
+        'public.club_assign_owner(uuid,text,uuid,integer)',
+        'public.club_clear_owner(uuid,text,integer)',
+        'public.club_transfer_president(uuid,text,uuid,integer)',
+        'public.club_assign_vice_president(uuid,text,uuid,integer)',
+        'public.club_clear_vice_president(uuid,text,integer,uuid)',
+        'public.club_add_member(uuid,text,uuid,text,integer)',
+        'public.club_remove_member(uuid,text,uuid,integer)',
+        'public.club_restore_member(uuid,text,uuid,integer)',
+        'public.club_leave_membership(uuid,text)',
+        'public.club_submit_membership_request(uuid,text,text)',
+        'public.club_cancel_membership_request(uuid,uuid,integer)',
+        'public.club_review_membership_request(uuid,uuid,text,text,integer)',
+        'public.club_leave_my_membership()'
+      );
+  IF v_unknown > 0 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: APPLY_PRELOCK_UNKNOWN_OVERLOAD_GATE=ABORT UNKNOWN_MUTATION_RPC_OVERLOAD count=%',
+      v_unknown;
   END IF;
-  IF has_function_privilege(
-       'authenticated',
-       'public.club_create(uuid,text,text,text,text,text)',
-       'EXECUTE'
-     ) THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: Q1 quiesce not visible — authenticated can still EXECUTE club_create (privilege drop must be a prior committed phase)';
+
+  FOREACH v_sig IN ARRAY ARRAY[
+    -- WAVE5_CANONICAL_14_ARRAY_BEGIN
+    'public.club_create(uuid,text,text,text,text,text)',
+    'public.club_update(uuid,text,integer,text,text,text,text,text)',
+    'public.club_assign_owner(uuid,text,uuid,integer)',
+    'public.club_clear_owner(uuid,text,integer)',
+    'public.club_transfer_president(uuid,text,uuid,integer)',
+    'public.club_assign_vice_president(uuid,text,uuid,integer)',
+    'public.club_clear_vice_president(uuid,text,integer,uuid)',
+    'public.club_add_member(uuid,text,uuid,text,integer)',
+    'public.club_remove_member(uuid,text,uuid,integer)',
+    'public.club_restore_member(uuid,text,uuid,integer)',
+    'public.club_leave_membership(uuid,text)',
+    'public.club_submit_membership_request(uuid,text,text)',
+    'public.club_cancel_membership_request(uuid,uuid,integer)',
+    'public.club_review_membership_request(uuid,uuid,text,text,integer)'
+    -- WAVE5_CANONICAL_14_ARRAY_END
+  ]
+  LOOP
+    v_oid := to_regprocedure(v_sig);
+    IF v_oid IS NULL THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: APPLY_PRELOCK_MUTATION_RPC_COUNT missing %', v_sig;
+    END IF;
+    IF EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_proc p
+      CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+      WHERE p.oid = v_oid
+        AND acl.privilege_type = 'EXECUTE'
+        AND acl.grantee = 0
+    ) THEN
+      v_public_exec := v_public_exec + 1;
+    END IF;
+    IF has_function_privilege('anon', v_oid, 'EXECUTE') THEN
+      v_anon_exec := v_anon_exec + 1;
+    END IF;
+    IF has_function_privilege('authenticated', v_oid, 'EXECUTE') THEN
+      v_auth_exec := v_auth_exec + 1;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role')
+       AND has_function_privilege('service_role', v_oid, 'EXECUTE') THEN
+      v_service_exec := v_service_exec + 1;
+    END IF;
+    v_canonical := v_canonical + 1;
+  END LOOP;
+  IF v_canonical <> 14 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: APPLY_PRELOCK_MUTATION_RPC_COUNT expected 14, got %',
+      v_canonical;
   END IF;
-  IF has_function_privilege(
-       'authenticated',
-       'public.club_add_member(uuid,text,uuid,text,integer)',
-       'EXECUTE'
-     ) THEN
-    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: Q1 quiesce not visible — authenticated can still EXECUTE club_add_member';
+
+  v_oid := to_regprocedure('public.club_leave_my_membership()');
+  IF v_oid IS NOT NULL THEN
+    IF EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_proc p
+      CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+      WHERE p.oid = v_oid
+        AND acl.privilege_type = 'EXECUTE'
+        AND acl.grantee = 0
+    ) OR has_function_privilege('anon', v_oid, 'EXECUTE')
+      OR has_function_privilege('authenticated', v_oid, 'EXECUTE')
+      OR (
+        EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role')
+        AND has_function_privilege('service_role', v_oid, 'EXECUTE')
+      ) THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: legacy club_leave_my_membership mutation caller roles not quiesced';
+    END IF;
+  END IF;
+
+  IF v_public_exec <> 0 OR v_anon_exec <> 0 OR v_auth_exec <> 0 OR v_service_exec <> 0 THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: APPLY_PRELOCK_ALL_MUTATION_CALLER_ROLES_QUIESCED=NO PUBLIC=% ANON=% AUTHENTICATED=% SERVICE_ROLE=% — Q1 quiesce not visible',
+      v_public_exec, v_anon_exec, v_auth_exec, v_service_exec;
   END IF;
 END $wave5_apply_prelock$;
 

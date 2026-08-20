@@ -8,6 +8,10 @@
 -- transaction before setting state. Operator cannot mark DRAINED without
 -- DB-side recheck. Does not kill sessions.
 -- APPLY_REQUIRES_DURABLE_DRAIN_STATE=YES
+-- DRAINED_UNKNOWN_OVERLOAD_GATE=ABORT
+-- PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER=YES
+-- AMBIGUOUS_NAMED_DB_SESSION=FAIL_CLOSED
+-- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
 
 BEGIN;
 
@@ -22,10 +26,11 @@ DECLARE
   v_write_locks int := 0;
   v_active_club_waiters int := 0;
   v_pre_q1 int := 0;
-  v_active_other int := 0;
   v_updated int := 0;
   v_sig text;
   v_oid regprocedure;
+  v_unknown int := 0;
+  v_canonical_present int := 0;
 BEGIN
   BEGIN
     v_batch := nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '')::uuid;
@@ -62,7 +67,53 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: ONE_ACTIVE_CUTOVER_BATCH violated';
   END IF;
 
+  -- WAVE5_UNKNOWN_MUTATION_OVERLOAD_GATE
+  SELECT count(*) INTO v_unknown
+  FROM pg_catalog.pg_proc p
+  JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname IN (
+      'club_create',
+      'club_update',
+      'club_assign_owner',
+      'club_clear_owner',
+      'club_transfer_president',
+      'club_assign_vice_president',
+      'club_clear_vice_president',
+      'club_add_member',
+      'club_remove_member',
+      'club_restore_member',
+      'club_leave_membership',
+      'club_submit_membership_request',
+      'club_cancel_membership_request',
+      'club_review_membership_request',
+      'club_leave_my_membership'
+    )
+    AND format('%s.%s(%s)', n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid))
+      NOT IN (
+        'public.club_create(uuid,text,text,text,text,text)',
+        'public.club_update(uuid,text,integer,text,text,text,text,text)',
+        'public.club_assign_owner(uuid,text,uuid,integer)',
+        'public.club_clear_owner(uuid,text,integer)',
+        'public.club_transfer_president(uuid,text,uuid,integer)',
+        'public.club_assign_vice_president(uuid,text,uuid,integer)',
+        'public.club_clear_vice_president(uuid,text,integer,uuid)',
+        'public.club_add_member(uuid,text,uuid,text,integer)',
+        'public.club_remove_member(uuid,text,uuid,integer)',
+        'public.club_restore_member(uuid,text,uuid,integer)',
+        'public.club_leave_membership(uuid,text)',
+        'public.club_submit_membership_request(uuid,text,text)',
+        'public.club_cancel_membership_request(uuid,uuid,integer)',
+        'public.club_review_membership_request(uuid,uuid,text,text,integer)',
+        'public.club_leave_my_membership()'
+      );
+  IF v_unknown > 0 THEN
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: DRAINED_UNKNOWN_OVERLOAD_GATE=ABORT UNKNOWN_MUTATION_RPC_OVERLOAD count=%',
+      v_unknown;
+  END IF;
+
   FOREACH v_sig IN ARRAY ARRAY[
+    -- WAVE5_QUIESCE_15_ARRAY_BEGIN
     'public.club_create(uuid,text,text,text,text,text)',
     'public.club_update(uuid,text,integer,text,text,text,text,text)',
     'public.club_assign_owner(uuid,text,uuid,integer)',
@@ -78,11 +129,18 @@ BEGIN
     'public.club_cancel_membership_request(uuid,uuid,integer)',
     'public.club_review_membership_request(uuid,uuid,text,text,integer)',
     'public.club_leave_my_membership()'
+    -- WAVE5_QUIESCE_15_ARRAY_END
   ]
   LOOP
     v_oid := to_regprocedure(v_sig);
     IF v_oid IS NULL THEN
+      IF v_sig IS DISTINCT FROM 'public.club_leave_my_membership()' THEN
+        RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: canonical mutation RPC missing %', v_sig;
+      END IF;
       CONTINUE;
+    END IF;
+    IF v_sig IS DISTINCT FROM 'public.club_leave_my_membership()' THEN
+      v_canonical_present := v_canonical_present + 1;
     END IF;
     IF EXISTS (
       SELECT 1
@@ -107,6 +165,10 @@ BEGIN
     END IF;
   END LOOP;
 
+  IF v_canonical_present <> 14 THEN
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: CANONICAL_MUTATION_RPC_COUNT expected 14, present=%',
+      v_canonical_present;
+  END IF;
   IF v_public_exec > 0 OR v_anon_exec > 0 OR v_auth_exec > 0 THEN
     RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: mutation EXECUTE still present public=% anon=% authenticated=%',
       v_public_exec, v_anon_exec, v_auth_exec;
@@ -159,44 +221,23 @@ BEGIN
   FROM pg_catalog.pg_stat_activity a
   WHERE a.pid IS DISTINCT FROM pg_backend_pid()
     AND a.datname = current_database()
+    AND a.xact_start IS NOT NULL
+    AND a.xact_start <= v_visible
     AND coalesce(a.backend_type, '') NOT IN (
       'autovacuum worker',
       'autovacuum launcher',
       'background writer',
       'checkpointer',
       'walwriter',
-      'walreceiver'
-    )
-    AND a.state IS DISTINCT FROM 'idle'
-    AND a.xact_start IS NOT NULL
-    AND a.xact_start <= v_visible
-    AND (
-      a.usename IN ('authenticated', 'anon', 'authenticator', 'service_role')
-      OR lower(coalesce(a.application_name, '')) LIKE '%postgrest%'
+      'walreceiver',
+      'archiver',
+      'logger',
+      'stats collector',
+      'logical replication launcher'
     );
   IF v_pre_q1 > 0 THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: PRE_QUIESCE_INFLIGHT_TRANSACTION_BARRIER pre_quiesce_api_xacts=%',
+    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER=YES AMBIGUOUS_NAMED_DB_SESSION=FAIL_CLOSED PRE_QUIESCE_INFLIGHT_TRANSACTION_BARRIER pre_quiesce_xacts=%',
       v_pre_q1;
-  END IF;
-
-  SELECT count(*) INTO v_active_other
-  FROM pg_catalog.pg_stat_activity a
-  WHERE a.pid IS DISTINCT FROM pg_backend_pid()
-    AND a.datname = current_database()
-    AND coalesce(a.backend_type, '') NOT IN (
-      'autovacuum worker',
-      'autovacuum launcher',
-      'background writer',
-      'checkpointer',
-      'walwriter',
-      'walreceiver'
-    )
-    AND a.state IN ('idle in transaction', 'idle in transaction (aborted)')
-    AND a.xact_start IS NOT NULL
-    AND a.xact_start <= v_visible
-    AND a.usename IS NULL;
-  IF v_active_other > 0 THEN
-    RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: ambiguous pre-quiesce sessions=%', v_active_other;
   END IF;
 
   UPDATE public.wave5_club_cutover_batch

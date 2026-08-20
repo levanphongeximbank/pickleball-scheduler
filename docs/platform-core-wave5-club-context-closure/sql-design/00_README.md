@@ -34,6 +34,7 @@ Do not apply until Owner issues a separate execution GO naming this package and 
 | `07C_RESTORE_WRITES_DESIGN.sql` | YES (when GO) | Pre-APPLY legacy ACL replay for PREPARED/QUIESCED/DRAINED only |
 | `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` | YES (when GO) | Intended public command surface after VERIFIED |
 | `08_RPC_OVERWRITE_GUARD_INVENTORY.md` | documentation | Every APPLY CREATE OR REPLACE overwrite class |
+| `09_CANONICAL_MUTATION_SURFACE.sql` | NO | Static canonical 14+1 mutation-surface VALUES/ARRAY. Not a runtime helper |
 
 ## Schema-state machine
 
@@ -190,6 +191,35 @@ SQL_DESIGN_REVIEWED_PASS=NO
 ```
 
 Club mutation RPCs are quiesced in a **committed** Q1 (`07A`) before APPLY. APPLY aborts unless a durable `DRAINED` Wave5 Club batch matches `wave5.cutover_batch_id`. `wave5.drain_pass=YES` is not sufficient. Lock order is parent/supporting tables then Club parent then children. Lock timeouts come from reviewed Staging/Production wrappers (`5s` / `15s`). Every APPLY `CREATE OR REPLACE` of an existing function requires a strong `md5(prosrc)` fingerprint. Do not merge `origin/main` in this remediation.
+
+## Round 8 remediation (pending Round 9 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND8_REMEDIATION=COMPLETE_PENDING_ROUND9_OWNER_REVIEW
+Q1B_UNKNOWN_OVERLOAD_GATE=ABORT
+DRAINED_UNKNOWN_OVERLOAD_GATE=ABORT
+APPLY_PRELOCK_UNKNOWN_OVERLOAD_GATE=ABORT
+APPLY_PRELOCK_MUTATION_RPC_COUNT=14
+APPLY_PRELOCK_ALL_MUTATION_CALLER_ROLES_QUIESCED=YES
+APPLY_DEPENDS_ON_STALE_QUIESCE_EVIDENCE=NO
+PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER=YES
+AMBIGUOUS_NAMED_DB_SESSION=FAIL_CLOSED
+DIRECT_CLUB_DML_PUBLIC=DENIED
+DIRECT_CLUB_DML_ANON=DENIED
+DIRECT_CLUB_DML_AUTHENTICATED=DENIED
+SERVICE_ROLE_DIRECT_CLUB_DML=CLASSIFY_ONLY
+CONTROL_PLANE_BATCH_PK_EXACT=YES
+CONTROL_PLANE_SNAPSHOT_PK_EXACT=YES
+CONTROL_PLANE_SNAPSHOT_FK_EXACT=YES
+CONTROL_PLANE_ONE_ACTIVE_INDEX_EXACT=YES
+VERIFIED_GATE_EXACT_RPC_RESOLUTION=YES
+VERIFIED_GATE_UNKNOWN_OVERLOAD=ABORT
+RESTORE_FINAL_ACL_EQUALS_SNAPSHOT=YES
+POST_APPLY_LEGACY_ACL_RESTORE=DENIED
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Canonical mutation surface is `09_CANONICAL_MUTATION_SURFACE.sql`. Authority transitions reassert unknown-overload=0 and live ACLs. APPLY prelock reasserts full quiesce before table locks. Pre-quiesce drain fails closed on any non-system transaction started at or before `quiesce_visible_at`. PRECHECK reports direct Club DML; it does not revoke `service_role` table DML.
 
 ## Round 7 remediation (pending Round 8 Owner SQL review)
 

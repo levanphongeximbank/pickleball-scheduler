@@ -27,6 +27,7 @@ const PACKAGE_FILES = [
   "07C_RESTORE_WRITES_DESIGN.sql",
   "07D_RESTORE_INTENDED_WRITES_DESIGN.sql",
   "08_RPC_OVERWRITE_GUARD_INVENTORY.md",
+  "09_CANONICAL_MUTATION_SURFACE.sql",
 ];
 
 function readPkg(name) {
@@ -987,5 +988,226 @@ test("Round 7 P. no live SQL execution", () => {
     assert.doesNotMatch(text, /SQL_EXECUTED=YES/);
     assert.doesNotMatch(text, /STAGING_PRECHECK_EXECUTED=YES/);
   }
+});
+
+function markedInner(sql, name) {
+  const re = new RegExp(`${name}_BEGIN([\\s\\S]*?)${name}_END`);
+  const m = sql.match(re);
+  assert.ok(m, `missing ${name}`);
+  return m[1]
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*--\s?/, "").trim())
+    .filter((line) => line.length > 0)
+    .join("\n");
+}
+
+test("Round 8 canonical mutation surface is shared and does not drift", () => {
+  const canon = readPkg("09_CANONICAL_MUTATION_SURFACE.sql");
+  const values = markedInner(canon, "WAVE5_CANONICAL_MUTATION_SURFACE_VALUES");
+  const arr14 = markedInner(canon, "WAVE5_CANONICAL_14_ARRAY");
+  const arr15 = markedInner(canon, "WAVE5_QUIESCE_15_ARRAY");
+  assert.equal((values.match(/true/g) || []).length, 14);
+  assert.match(values, /club_leave_my_membership\(\)', false\)/);
+  assert.doesNotMatch(arr14, /club_leave_my_membership/);
+  assert.match(arr15, /club_leave_my_membership\(\)/);
+  assert.equal(markedInner(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"), "WAVE5_CANONICAL_MUTATION_SURFACE_VALUES"), values);
+  assert.equal(markedInner(readPkg("07A2_QUIESCE_SEAL_DESIGN.sql"), "WAVE5_QUIESCE_15_ARRAY"), arr15);
+  assert.equal(markedInner(readPkg("07B_DRAIN_VERIFY.sql"), "WAVE5_QUIESCE_15_ARRAY"), arr15);
+  assert.equal(markedInner(readPkg("07B2_MARK_DRAINED_DESIGN.sql"), "WAVE5_QUIESCE_15_ARRAY"), arr15);
+  assert.equal(markedInner(readPkg("02_APPLY_DESIGN.sql"), "WAVE5_CANONICAL_14_ARRAY"), arr14);
+  assert.equal(markedInner(readPkg("03B_MARK_VERIFIED_DESIGN.sql"), "WAVE5_CANONICAL_14_ARRAY"), arr14);
+  assert.equal(markedInner(readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql"), "WAVE5_CANONICAL_14_ARRAY"), arr14);
+  assert.match(readPkg("00_README.md"), /CANONICAL_MUTATION_RPC_COUNT=14/);
+  assert.match(readPkg("00_README.md"), /LEGACY_COMPAT_MUTATION_RPC_COUNT=1/);
+  assert.match(readPkg("00_README.md"), /TOTAL_QUIESCE_TARGET_COUNT=15/);
+});
+
+test("Round 8 A. Q1B rechecks unknown overloads", () => {
+  const q1b = uncommented(readPkg("07A2_QUIESCE_SEAL_DESIGN.sql"));
+  const src = readPkg("07A2_QUIESCE_SEAL_DESIGN.sql");
+  assert.match(src, /Q1B_UNKNOWN_OVERLOAD_GATE=ABORT/);
+  assert.match(q1b, /UNKNOWN_MUTATION_RPC_OVERLOAD/);
+  assert.match(q1b, /pg_get_function_identity_arguments/);
+  assert.match(q1b, /NOT IN \(/);
+});
+
+test("Round 8 B. 07B2 rechecks unknown overloads", () => {
+  const mark = uncommented(readPkg("07B2_MARK_DRAINED_DESIGN.sql"));
+  const src = readPkg("07B2_MARK_DRAINED_DESIGN.sql");
+  assert.match(src, /DRAINED_UNKNOWN_OVERLOAD_GATE=ABORT/);
+  assert.match(mark, /UNKNOWN_MUTATION_RPC_OVERLOAD/);
+  assert.match(mark, /pg_get_function_identity_arguments/);
+});
+
+test("Round 8 C. APPLY prelock rechecks unknown overloads", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const prelock = apply.slice(0, apply.search(/LOCK TABLE\s+public\.platform_tenants/));
+  assert.match(src, /APPLY_PRELOCK_UNKNOWN_OVERLOAD_GATE=ABORT/);
+  assert.match(prelock, /UNKNOWN_MUTATION_RPC_OVERLOAD/);
+  assert.match(prelock, /pg_get_function_identity_arguments/);
+});
+
+test("Round 8 D. APPLY prelock checks all 14 canonical mutation RPCs", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const prelock = apply.slice(0, apply.search(/LOCK TABLE\s+public\.platform_tenants/));
+  assert.match(src, /APPLY_PRELOCK_MUTATION_RPC_COUNT=14/);
+  assert.match(prelock, /APPLY_PRELOCK_MUTATION_RPC_COUNT expected 14/);
+  assert.match(prelock, /club_leave_membership/);
+  assert.match(prelock, /club_review_membership_request/);
+});
+
+test("Round 8 E. APPLY prelock checks PUBLIC/anon/authenticated/service_role", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const prelock = apply.slice(0, apply.search(/LOCK TABLE\s+public\.platform_tenants/));
+  assert.match(src, /APPLY_PRELOCK_ALL_MUTATION_CALLER_ROLES_QUIESCED=YES/);
+  assert.match(prelock, /acl\.grantee = 0/);
+  assert.match(prelock, /has_function_privilege\('anon'/);
+  assert.match(prelock, /has_function_privilege\('authenticated'/);
+  assert.match(prelock, /has_function_privilege\('service_role'/);
+  assert.match(prelock, /APPLY_PRELOCK_ALL_MUTATION_CALLER_ROLES_QUIESCED=NO/);
+});
+
+test("Round 8 F. no stale Q1 quiesce evidence is accepted as APPLY authority", () => {
+  const src = readPkg("02_APPLY_DESIGN.sql");
+  const apply = uncommented(src);
+  const prelock = apply.slice(0, apply.search(/LOCK TABLE\s+public\.platform_tenants/));
+  assert.match(src, /APPLY_DEPENDS_ON_STALE_QUIESCE_EVIDENCE=NO/);
+  const drainedIdx = prelock.search(/v_state IS DISTINCT FROM 'DRAINED'/);
+  const aclIdx = prelock.search(/has_function_privilege\('authenticated'/);
+  const unknownIdx = prelock.search(/UNKNOWN_MUTATION_RPC_OVERLOAD/);
+  assert.ok(drainedIdx >= 0 && unknownIdx > drainedIdx && aclIdx > unknownIdx);
+});
+
+test("Round 8 G. pre-quiesce barrier catches arbitrary named non-system user transactions", () => {
+  const drain = uncommented(readPkg("07B_DRAIN_VERIFY.sql"));
+  const mark = uncommented(readPkg("07B2_MARK_DRAINED_DESIGN.sql"));
+  for (const src of [drain, mark]) {
+    assert.match(src, /PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER/);
+    assert.match(src, /AMBIGUOUS_NAMED_DB_SESSION=FAIL_CLOSED/);
+    assert.match(src, /xact_start <= v_visible/);
+    assert.match(src, /backend_type/);
+    assert.doesNotMatch(src, /a\.usename IN \('authenticated'/);
+    assert.doesNotMatch(src, /pg_terminate_backend/);
+  }
+});
+
+test("Round 8 H. PRECHECK reports direct Club DML privileges", () => {
+  const precheck = readPkg("01_PRECHECK.sql");
+  const body = uncommented(precheck);
+  assert.match(precheck, /DIRECT_CLUB_DML_PUBLIC=DENIED/);
+  assert.match(precheck, /DIRECT_CLUB_DML_ANON=DENIED/);
+  assert.match(precheck, /DIRECT_CLUB_DML_AUTHENTICATED=DENIED/);
+  assert.match(precheck, /SERVICE_ROLE_DIRECT_CLUB_DML/);
+  assert.match(precheck, /PRESENT_REQUIRES_EXECUTION_WINDOW_CONTROL/);
+  assert.match(body, /has_table_privilege\(r\.rolname/);
+  assert.match(body, /has_table_privilege\('service_role'/);
+  assert.match(body, /\('anon'\), \('authenticated'\), \('service_role'\)/);
+  assert.match(body, /club_governance_assignments/);
+  assert.match(body, /club_membership_requests_v42/);
+  assert.doesNotMatch(body, /\bINSERT\s+INTO\b/i);
+  assert.doesNotMatch(body, /\bREVOKE\b/i);
+  assert.doesNotMatch(body, /\bGRANT\b/i);
+});
+
+test("Round 8 I. batch PK exactly batch_id", () => {
+  const q1a = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  const src = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  assert.match(src, /CONTROL_PLANE_BATCH_PK_EXACT=YES/);
+  assert.match(q1a, /CONTROL_PLANE_BATCH_PK_EXACT=NO/);
+  assert.match(q1a, /v_pk IS DISTINCT FROM 'batch_id'/);
+});
+
+test("Round 8 J. snapshot FK exactly targets batch(batch_id)", () => {
+  const q1a = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  const src = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  assert.match(src, /CONTROL_PLANE_SNAPSHOT_FK_EXACT=YES/);
+  assert.match(src, /ON DELETE RESTRICT ON UPDATE RESTRICT/);
+  assert.match(q1a, /public\.wave5_club_cutover_batch/);
+  assert.match(q1a, /v_fk_lcols IS DISTINCT FROM 'batch_id'/);
+  assert.match(q1a, /v_fk_fcols IS DISTINCT FROM 'batch_id'/);
+  assert.match(q1a, /v_fk_del IS DISTINCT FROM 'r'/);
+});
+
+test("Round 8 K. one-active unique index key exactly cutover_kind", () => {
+  const q1a = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  const src = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  assert.match(src, /CONTROL_PLANE_ONE_ACTIVE_INDEX_EXACT=YES/);
+  assert.match(q1a, /indisunique/);
+  assert.match(q1a, /v_idx_key IS DISTINCT FROM 'cutover_kind'/);
+  assert.match(q1a, /indkey\[1\]/);
+  assert.match(q1a, /ABORTED,RESTORED/);
+});
+
+test("Round 8 L. 03B uses exact regprocedure for critical functions", () => {
+  const mark = uncommented(readPkg("03B_MARK_VERIFIED_DESIGN.sql"));
+  const src = readPkg("03B_MARK_VERIFIED_DESIGN.sql");
+  assert.match(src, /VERIFIED_GATE_EXACT_RPC_RESOLUTION=YES/);
+  assert.match(mark, /to_regprocedure\('public\.phase42_club_canonical\(text\)'\)/);
+  assert.match(mark, /to_regprocedure\('public\.club_create\(uuid,text,text,text,text,text\)'\)/);
+  assert.match(mark, /pg_get_functiondef\('public\.phase42_club_canonical\(text\)'::regprocedure\)/);
+  assert.match(mark, /pg_get_functiondef\('public\.club_create\(uuid,text,text,text,text,text\)'::regprocedure\)/);
+  assert.match(mark, /overload_count=%/);
+  assert.doesNotMatch(mark, /p\.proname = 'phase42_club_canonical'[\s\S]{0,80}LIMIT 1/);
+  assert.doesNotMatch(mark, /p\.proname = 'club_create'[\s\S]{0,80}LIMIT 1/);
+});
+
+test("Round 8 M. 03B unknown overload fails", () => {
+  const mark = uncommented(readPkg("03B_MARK_VERIFIED_DESIGN.sql"));
+  const src = readPkg("03B_MARK_VERIFIED_DESIGN.sql");
+  assert.match(src, /VERIFIED_GATE_UNKNOWN_OVERLOAD=ABORT/);
+  assert.match(mark, /VERIFIED_GATE_UNKNOWN_OVERLOAD=ABORT UNKNOWN_MUTATION_RPC_OVERLOAD/);
+});
+
+test("Round 8 N. 07C final caller-role ACL equals captured snapshot", () => {
+  const restore = uncommented(readPkg("07C_RESTORE_WRITES_DESIGN.sql"));
+  const src = readPkg("07C_RESTORE_WRITES_DESIGN.sql");
+  assert.match(src, /RESTORE_FINAL_ACL_EQUALS_SNAPSHOT=YES/);
+  assert.match(restore, /RESTORE_FINAL_ACL_EQUALS_SNAPSHOT=NO/);
+  assert.match(restore, /KEEP WRITES QUIESCED OWNER REVIEW REQUIRED/);
+  assert.match(restore, /grantee_name IN \('PUBLIC', 'anon', 'authenticated', 'service_role'\)/);
+  assert.match(src, /POST_APPLY_LEGACY_ACL_RESTORE=DENIED/);
+  assert.match(restore, /state IN \('PREPARED', 'QUIESCED', 'DRAINED'\)/);
+});
+
+test("Round 8 O. Round7 Q1A/Q1B/service-role/fingerprint/07D guarantees preserved", () => {
+  const q1a = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  const q1aSrc = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const q1b = uncommented(readPkg("07A2_QUIESCE_SEAL_DESIGN.sql"));
+  const applySrc = readPkg("02_APPLY_DESIGN.sql");
+  const restoreIntended = uncommented(readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql"));
+  const restoreSrc = readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql");
+  const markSrc = readPkg("03B_MARK_VERIFIED_DESIGN.sql");
+  assert.match(q1aSrc, /Q1_REVOKE_COMMIT_PRECEDES_QUIESCED_SEAL=YES/);
+  assert.match(q1a, /\bCOMMIT\s*;/);
+  assert.doesNotMatch(q1a, /quiesce_visible_at\s*=/);
+  assert.match(q1b, /quiesce_visible_at = clock_timestamp\(\)/);
+  assert.match(q1aSrc, /SERVICE_ROLE_MUTATION_ENTRYPOINT_POLICY=QUIESCE_IF_PRESENT/);
+  assert.match(q1aSrc, /SERVICE_ROLE_INTERNAL_HELPER_EXECUTE=PRESERVE/);
+  assert.match(markSrc, /VERIFIED_GATE_CANONICAL_FK_COUNT=4/);
+  assert.match(markSrc, /VERIFIED_GATE_MUTATION_RPC_COUNT=14/);
+  assert.match(applySrc, /RPC_VOLATILITY_CERTIFICATION=REQUIRED/);
+  assert.match(applySrc, /RPC_OWNER_CERTIFICATION=REQUIRED/);
+  assert.match(restoreSrc, /POST_CUTOVER_ACL_NORMALIZED=YES/);
+  assert.match(restoreIntended, /AUTHENTICATED_GRANT_OPTION_DENIED/);
+  assert.match(restoreIntended, /POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14/);
+  assert.match(applySrc, /STAGING_LOCK_TIMEOUT=5s/);
+  assert.match(applySrc, /PRODUCTION_LOCK_TIMEOUT=15s/);
+  assert.match(readPkg("07C_RESTORE_WRITES_DESIGN.sql"), /POST_APPLY_LEGACY_ACL_RESTORE=DENIED/);
+});
+
+test("Round 8 P. no live SQL execution", () => {
+  for (const name of PACKAGE_FILES) {
+    const text = readPkg(name);
+    assert.match(text, /WAVE5_SQL_DESIGN_ONLY/);
+    assert.match(text, /OWNER_SQL_EXECUTION_GO=NO/);
+    assert.doesNotMatch(text, /SQL_EXECUTED=YES/);
+    assert.doesNotMatch(text, /STAGING_PRECHECK_EXECUTED=YES/);
+    assert.doesNotMatch(text, /SQL_EXECUTED=YES/);
+  }
+  assert.match(readPkg("00_README.md"), /SQL_DESIGN_REVIEWED_PASS=NO/);
+  assert.match(readPkg("00_README.md"), /SQL_DESIGN_REVIEW_ROUND8_REMEDIATION=COMPLETE_PENDING_ROUND9_OWNER_REVIEW/);
 });
 

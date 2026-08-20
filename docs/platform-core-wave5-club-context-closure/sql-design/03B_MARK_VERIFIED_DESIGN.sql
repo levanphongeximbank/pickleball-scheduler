@@ -9,6 +9,9 @@
 -- VERIFIED_STATE_CANNOT_BE_MANUFACTURED=YES
 -- VERIFIED_GATE_CANONICAL_FK_COUNT=4
 -- VERIFIED_GATE_MUTATION_RPC_COUNT=14
+-- VERIFIED_GATE_EXACT_RPC_RESOLUTION=YES
+-- VERIFIED_GATE_UNKNOWN_OVERLOAD=ABORT
+-- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
 -- 03_VERIFY.sql remains the operator report. This file is the durable gate.
 -- KEEP_WRITES_QUIESCED=YES until 07D. Do not 07C from APPLIED/VERIFIED.
 
@@ -36,6 +39,8 @@ DECLARE
   v_cluster_xtenant int;
   v_prosecdef boolean;
   v_evidence text;
+  v_unknown int := 0;
+  v_overload int := 0;
 BEGIN
   BEGIN
     v_batch := nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '')::uuid;
@@ -140,21 +145,35 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_VERIFY_MARK_ABORT: % request tenant_id disagree with Club', v_mismatch;
   END IF;
 
-  SELECT pg_get_functiondef(p.oid) INTO v_marker_fn
-  FROM pg_proc p
-  JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public' AND p.proname = 'phase42_club_canonical'
-  LIMIT 1;
+  SELECT count(*) INTO v_overload
+  FROM pg_catalog.pg_proc p
+  JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'phase42_club_canonical';
+  IF v_overload <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_MARK_ABORT: VERIFIED_GATE_EXACT_RPC_RESOLUTION=NO phase42_club_canonical overload_count=%',
+      v_overload;
+  END IF;
+  IF to_regprocedure('public.phase42_club_canonical(text)') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_MARK_ABORT: phase42_club_canonical(text) missing';
+  END IF;
+  v_marker_fn := pg_get_functiondef('public.phase42_club_canonical(text)'::regprocedure);
   IF v_marker_fn IS NULL OR v_marker_fn NOT ILIKE '%scope_semantics%'
      OR v_marker_fn NOT ILIKE '%canonical_tenant_id%' THEN
     RAISE EXCEPTION 'WAVE5_VERIFY_MARK_ABORT: phase42_club_canonical missing canonical marker';
   END IF;
 
-  SELECT pg_get_functiondef(p.oid) INTO v_create_fn
-  FROM pg_proc p
-  JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public' AND p.proname = 'club_create'
-  LIMIT 1;
+  SELECT count(*) INTO v_overload
+  FROM pg_catalog.pg_proc p
+  JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'club_create';
+  IF v_overload <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_MARK_ABORT: VERIFIED_GATE_EXACT_RPC_RESOLUTION=NO club_create overload_count=%',
+      v_overload;
+  END IF;
+  IF to_regprocedure('public.club_create(uuid,text,text,text,text,text)') IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_MARK_ABORT: club_create exact signature missing';
+  END IF;
+  v_create_fn := pg_get_functiondef('public.club_create(uuid,text,text,text,text,text)'::regprocedure);
   IF v_create_fn IS NULL
      OR v_create_fn ~* 'from[[:space:]]+public\.venues[[:space:]]+v[[:space:]]+where[[:space:]]+v\.id[[:space:]]*='
      OR v_create_fn NOT ILIKE '%platform_tenants%' THEN
@@ -222,7 +241,53 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_VERIFY_MARK_ABORT: registered-cluster same-Tenant binding missing';
   END IF;
 
+  -- WAVE5_UNKNOWN_MUTATION_OVERLOAD_GATE
+  SELECT count(*) INTO v_unknown
+  FROM pg_catalog.pg_proc p
+  JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname IN (
+      'club_create',
+      'club_update',
+      'club_assign_owner',
+      'club_clear_owner',
+      'club_transfer_president',
+      'club_assign_vice_president',
+      'club_clear_vice_president',
+      'club_add_member',
+      'club_remove_member',
+      'club_restore_member',
+      'club_leave_membership',
+      'club_submit_membership_request',
+      'club_cancel_membership_request',
+      'club_review_membership_request',
+      'club_leave_my_membership'
+    )
+    AND format('%s.%s(%s)', n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid))
+      NOT IN (
+        'public.club_create(uuid,text,text,text,text,text)',
+        'public.club_update(uuid,text,integer,text,text,text,text,text)',
+        'public.club_assign_owner(uuid,text,uuid,integer)',
+        'public.club_clear_owner(uuid,text,integer)',
+        'public.club_transfer_president(uuid,text,uuid,integer)',
+        'public.club_assign_vice_president(uuid,text,uuid,integer)',
+        'public.club_clear_vice_president(uuid,text,integer,uuid)',
+        'public.club_add_member(uuid,text,uuid,text,integer)',
+        'public.club_remove_member(uuid,text,uuid,integer)',
+        'public.club_restore_member(uuid,text,uuid,integer)',
+        'public.club_leave_membership(uuid,text)',
+        'public.club_submit_membership_request(uuid,text,text)',
+        'public.club_cancel_membership_request(uuid,uuid,integer)',
+        'public.club_review_membership_request(uuid,uuid,text,text,integer)',
+        'public.club_leave_my_membership()'
+      );
+  IF v_unknown > 0 THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_MARK_ABORT: VERIFIED_GATE_UNKNOWN_OVERLOAD=ABORT UNKNOWN_MUTATION_RPC_OVERLOAD count=%',
+      v_unknown;
+  END IF;
+
   FOREACH v_sig IN ARRAY ARRAY[
+    -- WAVE5_CANONICAL_14_ARRAY_BEGIN
     'public.club_create(uuid,text,text,text,text,text)',
     'public.club_update(uuid,text,integer,text,text,text,text,text)',
     'public.club_assign_owner(uuid,text,uuid,integer)',
@@ -237,6 +302,7 @@ BEGIN
     'public.club_submit_membership_request(uuid,text,text)',
     'public.club_cancel_membership_request(uuid,uuid,integer)',
     'public.club_review_membership_request(uuid,uuid,text,text,integer)'
+    -- WAVE5_CANONICAL_14_ARRAY_END
   ]
   LOOP
     v_oid := to_regprocedure(v_sig);

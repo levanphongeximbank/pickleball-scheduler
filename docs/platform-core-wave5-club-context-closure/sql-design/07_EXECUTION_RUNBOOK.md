@@ -56,6 +56,10 @@ Therefore Q1 (committed REVOKE) + drain proof are mandatory **before** APPLY sta
 
 `CLUB_MUTATION_NEW_CALLS_QUIESCED=YES` and `CLUB_MUTATION_IN_FLIGHT_DRAINED=YES` are **both** required before step 4. If drain cannot be proven: **APPLY=ABORT**.
 
+`PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER=YES`. Drain fails closed if any non-current transaction has `xact_start <= quiesce_visible_at`, except explicit harmless `backend_type` system backends. Do **not** exempt an arbitrary named SQL user. Do **not** auto-terminate sessions. `AMBIGUOUS_NAMED_DB_SESSION=FAIL_CLOSED`.
+
+New ordinary read transactions after quiesce are allowed. Direct Club DML from `PUBLIC` / `anon` / `authenticated` must remain denied (PRECHECK evidence). `SERVICE_ROLE_DIRECT_CLUB_DML`, if present, is an operational writer class that must be stopped/drained for the maintenance window. RPC `REVOKE` alone does not stop direct SQL.
+
 ## Timeouts (do not invent Production values)
 
 | GUC | Staging | Production | Rationale |

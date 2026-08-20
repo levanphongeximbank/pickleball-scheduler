@@ -15,6 +15,7 @@
 -- Do NOT GRANT a generic authenticated/public/service_role permission set.
 -- RESTORE_REQUIRES_EXPLICIT_BATCH_ID=YES
 -- LATEST_SNAPSHOT_IMPLICIT_RESTORE=DENIED
+-- RESTORE_FINAL_ACL_EQUALS_SNAPSHOT=YES
 
 BEGIN;
 
@@ -109,6 +110,55 @@ BEGIN
 
   IF v_granted < 1 THEN
     RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: snapshot batch % had zero EXECUTE rows', v_batch;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.wave5_cutover_rpc_privilege_snapshot s0
+    JOIN pg_catalog.pg_proc p ON p.proname = s0.proname
+    JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace AND n.nspname = s0.nspname
+    CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+    LEFT JOIN pg_catalog.pg_roles r ON r.oid = acl.grantee
+    WHERE s0.batch_id = v_batch
+      AND pg_catalog.pg_get_function_identity_arguments(p.oid) = s0.identity_args
+      AND acl.privilege_type = 'EXECUTE'
+      AND (acl.grantee = 0 OR r.rolname IN ('anon', 'authenticated', 'service_role'))
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.wave5_cutover_rpc_privilege_snapshot s
+        WHERE s.batch_id = v_batch
+          AND s.nspname = n.nspname
+          AND s.proname = p.proname
+          AND s.identity_args = pg_catalog.pg_get_function_identity_arguments(p.oid)
+          AND s.privilege_type = 'EXECUTE'
+          AND s.grantee_name = CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE r.rolname END
+          AND s.is_grantable = acl.is_grantable
+      )
+  ) THEN
+    RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: RESTORE_FINAL_ACL_EQUALS_SNAPSHOT=NO unexpected caller-role grant — ROLLBACK KEEP WRITES QUIESCED OWNER REVIEW REQUIRED';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.wave5_cutover_rpc_privilege_snapshot s
+    WHERE s.batch_id = v_batch
+      AND s.privilege_type = 'EXECUTE'
+      AND s.grantee_name IN ('PUBLIC', 'anon', 'authenticated', 'service_role')
+      AND NOT EXISTS (
+        SELECT 1
+        FROM pg_catalog.pg_proc p
+        JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+        CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
+        LEFT JOIN pg_catalog.pg_roles r ON r.oid = acl.grantee
+        WHERE n.nspname = s.nspname
+          AND p.proname = s.proname
+          AND pg_catalog.pg_get_function_identity_arguments(p.oid) = s.identity_args
+          AND acl.privilege_type = 'EXECUTE'
+          AND acl.is_grantable = s.is_grantable
+          AND CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE r.rolname END = s.grantee_name
+      )
+  ) THEN
+    RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: RESTORE_FINAL_ACL_EQUALS_SNAPSHOT=NO captured caller-role grant missing — ROLLBACK KEEP WRITES QUIESCED OWNER REVIEW REQUIRED';
   END IF;
 
   UPDATE public.wave5_club_cutover_batch
