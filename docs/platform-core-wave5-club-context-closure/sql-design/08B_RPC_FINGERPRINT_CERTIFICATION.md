@@ -10,6 +10,9 @@ LIVE_HASH_IS_AUTHORITY=NO
 REPO_CANONICAL_SOURCE_IS_AUTHORITY=YES
 STATIC_PROSRC_EXTRACTION=DETERMINISTIC_LOCAL_EXTRACTOR
 HASH_METHOD=md5(convert_to(pg_proc.prosrc, 'UTF8'))_EQUIVALENT
+STAGING_PROSRC_NEWLINE_FORM=CRLF
+GIT_SOURCE_NEWLINE_FORM=LF
+NEWLINE_DEPLOY_TRANSFORM=LF_TO_CRLF_DETERMINISTIC
 STAGING_PROJECT=qyewbxjsiiyufanzcjcq
 STAGING_READ_ONLY_FINGERPRINT_RECHECK=PASS_UNCHANGED
 RPC_EXISTING_REQUIRED_COUNT=10
@@ -30,6 +33,11 @@ Authority is the authoritative repository `CREATE OR REPLACE` body → extract
 Extractor: `scripts/wave5-rpc-prosrc-fingerprint.mjs` (and tests that import it).
 Hashes only the dollar-quoted function body; not CREATE header, RETURNS,
 LANGUAGE, SECURITY DEFINER, `SET search_path`, or outer delimiters.
+
+Git blobs are LF. Staging live `pg_proc.prosrc` for these RPCs stores CRLF
+(observed: equal CR and LF counts; body starts with `\r\n`). Approved Staging
+fingerprints are source-derived via deterministic `LF → CRLF` deploy-form
+transform, then MD5 — not by copying live hashes as authority.
 
 ## Certification set (exactly 10)
 

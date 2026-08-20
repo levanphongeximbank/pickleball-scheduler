@@ -1,10 +1,20 @@
 #!/usr/bin/env node
 /**
  * Deterministic pg_proc.prosrc extractor + MD5 for Wave5 RPC fingerprint certification.
- * Hash method: md5(UTF-8 bytes of body between AS $tag$ ... $tag$) — equivalent to
- * md5(convert_to(pg_proc.prosrc, 'UTF8')).
  *
- * Does NOT hash CREATE header, RETURNS, LANGUAGE, SECURITY, SET search_path, or delimiters.
+ * Repository sources are git-LF. Staging live prosrc for these Club RPCs was
+ * observed with CRLF (\r\n) deploy newlines (equal CR and LF counts).
+ *
+ * APPROVED_SOURCE_PROSRC_MD5 for Staging APPLY guards is:
+ *   md5(UTF-8 bytes of CRLF deploy-form body)
+ * derived by:
+ *   1) extract dollar-quoted body
+ *   2) canonicalize newlines to LF
+ *   3) expand LF → CRLF (deterministic Windows/psql deploy form)
+ *   4) md5
+ *
+ * Equivalent to live: md5(convert_to(pg_proc.prosrc, 'UTF8')) when live uses CRLF.
+ * LIVE_HASH_IS_AUTHORITY=NO — hash is derived from repository source + documented transform.
  */
 import fs from "node:fs";
 import crypto from "node:crypto";
@@ -13,6 +23,22 @@ import { fileURLToPath } from "node:url";
 
 export function md5Utf8(s) {
   return crypto.createHash("md5").update(Buffer.from(s, "utf8")).digest("hex");
+}
+
+/** Strip BOM; normalize all newlines to LF. */
+export function canonicalizeNewlinesToLf(text) {
+  return String(text)
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+}
+
+/**
+ * Deterministic deploy-form transform observed on Staging for these RPCs.
+ * Git sources are LF; live pg_proc.prosrc uses CRLF.
+ */
+export function toStagingProsrcNewlines(bodyLf) {
+  return canonicalizeNewlinesToLf(bodyLf).replace(/\n/g, "\r\n");
 }
 
 /**
@@ -45,7 +71,9 @@ export function extractProsrc(sql, functionName) {
   if (end < 0) {
     return { error: "UNCLOSED_DOLLAR_QUOTE", functionName };
   }
-  const body = sql.slice(bodyStart, end);
+  const bodyRaw = sql.slice(bodyStart, end);
+  const bodyLf = canonicalizeNewlinesToLf(bodyRaw);
+  const bodyStagingCrlf = toStagingProsrcNewlines(bodyLf);
   const header = window.slice(0, asDq.index);
 
   const langMatch = header.match(/\blanguage\s+(\w+)/i);
@@ -65,14 +93,17 @@ export function extractProsrc(sql, functionName) {
   }
 
   return {
-    body,
-    md5: md5Utf8(body),
+    body: bodyLf,
+    bodyStagingCrlf,
+    md5: md5Utf8(bodyStagingCrlf), // APPROVED_SOURCE_PROSRC_MD5 for Staging live form
+    md5GitLf: md5Utf8(bodyLf),
     lang,
     prosecdef,
     searchPath,
     volatility,
     volatilityDerivedDefault,
-    bodyLen: body.length,
+    bodyLen: bodyStagingCrlf.length,
+    bodyLfLen: bodyLf.length,
     headerSnippet: header.slice(0, 240).replace(/\s+/g, " ").trim(),
   };
 }
@@ -92,15 +123,11 @@ const LIVE = {
 
 const CANDIDATES = {
   phase42_club_canonical: [
-    "docs/v5/PHASE_42C_RLS_RPC.sql",
     "docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql",
   ],
   club_create: ["docs/v5/PHASE_42G_CLUB_CREATE_OWNER.sql"],
   club_list_registry: ["docs/v5/PHASE_42C_RLS_RPC.sql"],
-  club_list_members: [
-    "docs/v5/PHASE_42C_RLS_RPC.sql",
-    "docs/v5/PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL.sql",
-  ],
+  club_list_members: ["docs/v5/PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL.sql"],
   phase42_can_update_club: [
     "docs/v5/phase1b/PHASE_1B_CLUB_UPDATE_AUTHZ_SECURITY_GATE.sql",
   ],
@@ -137,7 +164,7 @@ function main() {
       }
       const match = r.md5 === LIVE[fname] ? "MATCH" : "DIFF ";
       console.log(
-        ` ${match} ${r.md5} vol=${r.volatility}${r.volatilityDerivedDefault ? "(default)" : ""} lang=${r.lang} ${path.basename(f)}`
+        ` ${match} stagingCrlf=${r.md5} gitLf=${r.md5GitLf} vol=${r.volatility} lang=${r.lang} ${path.basename(f)}`
       );
     }
   }

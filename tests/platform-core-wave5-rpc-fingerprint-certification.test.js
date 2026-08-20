@@ -133,11 +133,29 @@ $$;
   assert.equal(a.prosecdef, true);
   assert.equal(a.body.includes("begin"), true);
   assert.equal(a.body.includes("$body$"), false);
-  assert.equal(a.md5, md5Utf8(a.body));
+  assert.equal(a.body.includes("\r"), false);
+  assert.equal(a.bodyStagingCrlf.includes("\r\n"), true);
+  assert.equal(a.md5, md5Utf8(a.bodyStagingCrlf));
+  assert.equal(a.md5GitLf, md5Utf8(a.body));
   assert.equal(b.lang, "sql");
   assert.equal(b.volatility, "s");
   assert.match(b.body, /select p is not null/);
   assert.equal(b.body.includes("$$"), false);
+});
+
+test("extractor is newline-canonical across CRLF and LF working trees", () => {
+  const lf = `create or replace function public.demo_nl(p text)
+returns text language plpgsql stable security definer set search_path = public as $$
+begin
+  return p;
+end;
+$$;`;
+  const crlf = lf.replace(/\n/g, "\r\n");
+  const a = extractProsrc(lf, "demo_nl");
+  const b = extractProsrc(crlf, "demo_nl");
+  assert.equal(a.md5, b.md5);
+  assert.equal(a.md5GitLf, b.md5GitLf);
+  assert.equal(a.body, b.body);
 });
 
 test("certification set is exactly 10 existing + 3 new expected-absent", () => {
