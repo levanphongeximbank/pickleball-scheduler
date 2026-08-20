@@ -571,7 +571,7 @@ BEGIN
        ARRAY['club_membership_requests_v42', 'VERSION_CONFLICT'], 'plpgsql',
        '0b8ee11ef23090f8cd6e364ad2e6eb60', 'postgres', 'v',
        'CERTIFIED_HISTORICAL_SOURCE_MATCH')
-    ) AS t(sig text, fname text, markers text[], lang text, predecessor_fp text, certified_owner text, certified_volatile text, predecessor_gate text)
+    ) AS t(sig, fname, markers, lang, predecessor_fp, certified_owner, certified_volatile, predecessor_gate)
   LOOP
     IF to_regprocedure(v_guard.sig) IS NULL THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT % missing', v_guard.sig;
@@ -2224,7 +2224,7 @@ BEGIN
        '8391e0fbafc57917bdfcbd9401242c86'),
       ('public.club_review_membership_request(uuid,uuid,text,text,integer)', 'club_review_membership_request',
        '2ef9e0d87071bba93814ab20344539c1')
-    ) AS t(sig text, fname text, target_fp text)
+    ) AS t(sig, fname, target_fp)
   LOOP
     IF to_regprocedure(v_guard.sig) IS NULL THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT: POST_APPLY_TARGET missing %', v_guard.sig;

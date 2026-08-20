@@ -214,7 +214,7 @@ BEGIN
         ('public.club_add_member(uuid,text,uuid,text,integer)', '484c609b937c029f03be7cb37fb03005'),
         ('public.club_restore_member(uuid,text,uuid,integer)', '8391e0fbafc57917bdfcbd9401242c86'),
         ('public.club_review_membership_request(uuid,uuid,text,text,integer)', '2ef9e0d87071bba93814ab20344539c1')
-      ) AS t(sig text, target_fp text)
+      ) AS t(sig, target_fp)
     LOOP
       IF to_regprocedure(v_tgt.sig) IS NULL THEN
         RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: POST_APPLY_VERIFY=TARGET missing %', v_tgt.sig;

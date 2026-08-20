@@ -704,7 +704,7 @@ BEGIN
         ('public.club_review_membership_request(uuid,uuid,text,text,integer)', true),
         ('public.club_leave_my_membership()', false)
       -- WAVE5_CANONICAL_MUTATION_SURFACE_VALUES_END
-    ) AS t(sig text, is_canonical boolean)
+    ) AS t(sig, is_canonical)
   LOOP
     v_oid := to_regprocedure(r.sig);
     IF r.is_canonical THEN
@@ -843,7 +843,7 @@ BEGIN
         ('public.club_review_membership_request(uuid,uuid,text,text,integer)', true),
         ('public.club_leave_my_membership()', false)
       -- WAVE5_CANONICAL_MUTATION_SURFACE_VALUES_END
-    ) AS t(sig text, is_canonical boolean)
+    ) AS t(sig, is_canonical)
   LOOP
     v_oid := to_regprocedure(r.sig);
     IF v_oid IS NULL THEN
@@ -887,7 +887,7 @@ BEGIN
         ('public.club_review_membership_request(uuid,uuid,text,text,integer)'),
         ('public.club_leave_my_membership()')
       -- WAVE5_QUIESCE_15_ARRAY_END
-    ) AS t(sig text)
+    ) AS t(sig)
   LOOP
     v_oid := to_regprocedure(r.sig);
     IF v_oid IS NULL THEN

@@ -714,7 +714,9 @@ test("Round 6 B. legacy alias cannot satisfy canonical required count", () => {
   const q1 = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
   const inventory = readPkg("06_CLUB_MUTATION_RPC_INVENTORY.md");
   assert.match(q1, /legacy alias cannot satisfy canonical required count/);
-  assert.match(q1, /is_canonical boolean/);
+  // Column names only in VALUES alias lists (typed aliases are invalid SQL).
+  assert.match(q1, /AS t\(sig, is_canonical\)/);
+  assert.doesNotMatch(q1, /AS t\(sig text, is_canonical boolean\)/);
   assert.match(inventory, /CANONICAL_COMMAND_SURFACE=NO/);
   assert.match(inventory, /POST_CANONICAL_RESTORE=NO/);
   assert.match(inventory, /club_leave_my_membership/);
