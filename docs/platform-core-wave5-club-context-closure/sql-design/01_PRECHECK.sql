@@ -52,7 +52,7 @@ DECLARE
   v_overload int;
   v_canonical int := 0;
   v_sig text;
-  r record;
+  v_overload_row record;
   v_rpc_def text;
   v_svc_dml text;
   v_dup_name int;
@@ -299,9 +299,9 @@ BEGIN
       RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: % club_governance_assignments.tenant_id disagree with parent Club', v_mismatch;
     END IF;
     SELECT count(*) INTO v_mismatch
-    FROM public.club_membership_requests_v42 r
-    JOIN public.clubs c ON c.id = r.club_id
-    WHERE r.tenant_id IS DISTINCT FROM c.tenant_id;
+    FROM public.club_membership_requests_v42 req
+    JOIN public.clubs c ON c.id = req.club_id
+    WHERE req.tenant_id IS DISTINCT FROM c.tenant_id;
     IF v_mismatch > 0 THEN
       RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: % club_membership_requests_v42.tenant_id disagree with parent Club', v_mismatch;
     END IF;
@@ -416,8 +416,8 @@ BEGIN
   END IF;
 
   SELECT count(*) INTO v_orphan
-  FROM public.club_membership_requests_v42 r
-  WHERE NOT EXISTS (SELECT 1 FROM public.venues v WHERE v.id = r.tenant_id);
+  FROM public.club_membership_requests_v42 req
+  WHERE NOT EXISTS (SELECT 1 FROM public.venues v WHERE v.id = req.tenant_id);
   IF v_orphan > 0 THEN
     RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: % club_membership_requests_v42.tenant_id values do not resolve to venues.id', v_orphan;
   END IF;
@@ -475,9 +475,9 @@ BEGIN
   END IF;
 
   SELECT count(*) INTO v_mismatch
-  FROM public.club_membership_requests_v42 r
-  JOIN public.clubs c ON c.id = r.club_id
-  WHERE r.tenant_id IS DISTINCT FROM c.tenant_id;
+  FROM public.club_membership_requests_v42 req
+  JOIN public.clubs c ON c.id = req.club_id
+  WHERE req.tenant_id IS DISTINCT FROM c.tenant_id;
   IF v_mismatch > 0 THEN
     RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: % club_membership_requests_v42.tenant_id disagree with parent Club', v_mismatch;
   END IF;
@@ -650,7 +650,7 @@ BEGIN
       WHERE to_regprocedure(approved.sig)::oid = p.oid
     );
   IF v_overload > 0 THEN
-    FOR r IN
+    FOR v_overload_row IN
       SELECT
         p.proname,
         p.oid,
@@ -702,7 +702,7 @@ BEGIN
         )
     LOOP
       RAISE NOTICE 'UNKNOWN_MUTATION_OVERLOAD_DIAGNOSTIC: proname=% oid=% DISPLAY_IDENTITY_ARGUMENTS=% pg_get_function_result()=% owner=% prosecdef=%',
-        r.proname, r.oid, r.display_identity_arguments, r.display_result, r.owner_role_name, r.prosecdef;
+        v_overload_row.proname, v_overload_row.oid, v_overload_row.display_identity_arguments, v_overload_row.display_result, v_overload_row.owner_role_name, v_overload_row.prosecdef;
     END LOOP;
     RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: UNKNOWN_MUTATION_RPC_OVERLOAD_COUNT=%',
       v_overload;
