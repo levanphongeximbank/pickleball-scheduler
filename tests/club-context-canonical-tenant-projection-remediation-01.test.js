@@ -94,13 +94,16 @@ describe("club-context canonical tenant projection remediation 01", () => {
   });
 
   it("canonical DB projection preserves tenant; legacy localStorage cannot overwrite selection", () => {
-    const mapped = mapV2ClubToUiClub({
-      id: PROD_CLUB_ID,
-      name: "CLB ACCC",
-      tenant_id: PROD_TENANT_ID,
-      status: "active",
-      version: 1,
-    });
+    const mapped = mapV2ClubToUiClub(
+      {
+        id: PROD_CLUB_ID,
+        name: "CLB ACCC",
+        tenant_id: PROD_TENANT_ID,
+        status: "active",
+        version: 1,
+      },
+      { resolveVenue: (id) => ({ id, tenantId: id }) }
+    );
     assert.equal(mapped.tenantId, PROD_TENANT_ID);
     assert.equal(mapped.venueId, PROD_TENANT_ID);
 

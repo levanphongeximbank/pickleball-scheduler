@@ -8,8 +8,8 @@
  *
  * This module reads NO storage and performs NO RPC — it only transforms inputs.
  * Tenant identity for canonical activeClub must come from the club projection
- * itself (tenantId | venueId | tenant_id | venue_id) — never localStorage,
- * never user.venueId masking, never default-tenant.
+ * itself (canonical tenantId / tenant_id) — never localStorage, never
+ * user.venueId masking, never default-tenant, never venueId cross-fill.
  */
 import { API_ERROR_CODES } from "../../api/constants/apiErrors.js";
 
@@ -36,20 +36,28 @@ export const CLUB_PREFERENCE_STATUS = Object.freeze({
 const FORBIDDEN_CANONICAL_TENANTS = new Set(["default-tenant", "default"]);
 
 /**
- * Canonical cloud read mode requires BOTH the feature flag AND a cloud backend.
- * When there is no Supabase config, the app runs in explicit offline/local mode
- * and the legacy registry remains the read path (never a broken cloud RPC).
+ * Canonical cloud Club authority.
+ *
+ * CLOUD_PRESENT + CANONICAL_CAPABILITY_AVAILABLE (live Staging/Production flag
+ * TRUE) => singular canonical Club authority. Local blob must not become the
+ * authority because a preference is missing or validation is pending.
+ *
+ * The env flag remains a documented rollback kill-switch: explicit false keeps
+ * local compatibility even if cloud config is present. No-cloud => local mode.
  *
  * @param {{ canonicalEnabled?: boolean, hasSupabase?: boolean }} params
  * @returns {boolean}
  */
 export function isCanonicalClubReadEnabled({ canonicalEnabled, hasSupabase } = {}) {
-  return Boolean(canonicalEnabled) && Boolean(hasSupabase);
+  if (!hasSupabase) {
+    return false;
+  }
+  return canonicalEnabled !== false && Boolean(canonicalEnabled);
 }
 
 /**
- * Extract explicit tenant identity from a canonical club projection.
- * No localStorage. No user fallback. No default-tenant.
+ * Extract explicit canonical tenant identity from a club projection.
+ * No localStorage. No user fallback. No default-tenant. No venueId cross-fill.
  *
  * @param {object|null|undefined} club
  * @returns {string|null}
@@ -58,8 +66,7 @@ export function resolveExplicitTenantFromCanonicalClub(club) {
   if (!club || typeof club !== "object") {
     return null;
   }
-  const raw =
-    club.tenantId ?? club.venueId ?? club.tenant_id ?? club.venue_id ?? null;
+  const raw = club.tenantId ?? club.tenant_id ?? null;
   const tenantId = String(raw || "").trim();
   if (!tenantId || FORBIDDEN_CANONICAL_TENANTS.has(tenantId)) {
     return null;
@@ -68,9 +75,8 @@ export function resolveExplicitTenantFromCanonicalClub(club) {
 }
 
 /**
- * Normalize a canonical club so tenantId and venueId are both present and equal
- * when the architecture treats them as the same authority. Returns null when
- * the club lacks id or an explicit non-forbidden tenant — not tenant-ready.
+ * Normalize a canonical club. tenantId and venueId stay independent.
+ * Returns null when the club lacks id or an explicit non-forbidden tenant.
  *
  * @param {object|null|undefined} club
  * @returns {object|null}
@@ -87,11 +93,12 @@ export function normalizeCanonicalActiveClub(club) {
   if (!tenantId) {
     return null;
   }
+  const venueId = String(club.venueId ?? club.venue_id ?? "").trim() || null;
   return {
     ...club,
     id,
     tenantId,
-    venueId: tenantId,
+    venueId,
   };
 }
 
@@ -159,7 +166,12 @@ export function filterAccessibleCanonicalClubs({
     return list;
   }
   return list.filter((club) =>
-    canAccessClub(user, club.id, { venueId: club.venueId || null }, { rbacEnabled })
+    canAccessClub(
+      user,
+      club.id,
+      { venueId: club.venueId || null, tenantId: club.tenantId || null },
+      { rbacEnabled }
+    )
   );
 }
 
@@ -169,9 +181,8 @@ export function filterAccessibleCanonicalClubs({
  * localStorage never creates existence: only the visible set can.
  *
  * When requireTenant=true (canonical ClubContext path), only clubs with an
- * explicit tenant identity are selectable; the returned activeClub is
- * normalized to expose both tenantId and venueId (explicit Wave 1 compatibility
- * mapping — not a claim that tenant ≡ venue universally).
+ * explicit canonical tenant identity are selectable. tenantId and venueId stay
+ * independent — venueId is never manufactured from tenantId.
  *
  * When selectedTenantId is provided, clubs outside that operational tenant are
  * rejected even if they remain in an authorized platform-wide catalog.

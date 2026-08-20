@@ -62,7 +62,7 @@ export async function persistClubToCloud(club, { venueId = null, actor = getCurr
   }
 
   const cloudVenueId = await resolveCloudVenueIdForClusterOps({
-    selectedVenueId: venueId || club.venueId || club.tenantId,
+    selectedVenueId: venueId || club.venueId || null,
     actor,
     assigneeUserId: presidentUserId,
   });
@@ -76,13 +76,12 @@ export async function persistClubToCloud(club, { venueId = null, actor = getCurr
   }
 
   if (cloudVenueId !== club.venueId) {
-    updateClubMeta(club.id, { venueId: cloudVenueId, tenantId: cloudVenueId });
+    updateClubMeta(club.id, { venueId: cloudVenueId });
   }
 
   const latestClub = normalizeClub({
     ...club,
     venueId: cloudVenueId,
-    tenantId: cloudVenueId,
   });
 
   const rpcResult = await rpcClubUpsertRegistry({
@@ -133,7 +132,7 @@ export async function syncClubsForVenueToCloud({
 
   for (const club of scoped) {
     const result = await persistClubToCloud(club, {
-      venueId: venueId || club.venueId || club.tenantId,
+      venueId: venueId || club.venueId || null,
       actor,
     });
 

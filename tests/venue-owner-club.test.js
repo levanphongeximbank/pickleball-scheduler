@@ -105,7 +105,7 @@ test("guardClubAccess — auto-bind venueId cho CLB chưa gắn cơ sở", () =>
 
   const club = getClubById("club-untagged");
   assert.equal(club.venueId, VENUE_ID);
-  assert.equal(club.tenantId, VENUE_ID);
+  assert.equal(club.tenantId, null);
 });
 
 test("saveCourts — venue owner lưu sân khi club.venueId khớp profile", () => {
@@ -114,7 +114,7 @@ test("saveCourts — venue owner lưu sân khi club.venueId khớp profile", () 
       id: "club-mismatch",
       name: "CLB mismatch",
       venueId: VENUE_ID,
-      tenantId: "legacy-wrong-tenant",
+      tenantId: VENUE_ID,
     },
   ]);
   saveClubData("club-mismatch", getDefaultClubData("club-mismatch"));

@@ -16,6 +16,7 @@ import TournamentPageHeader from "../../../components/tournament/TournamentPageH
 import { TOURNAMENT_LAYOUT } from "../../../components/tournament/tournamentLayout.js";
 import { PERMISSIONS } from "../../../auth/permissions.js";
 import { usePageRuntimeAccess } from "../../../components/shell/usePageRuntimeAccess.js";
+import PlatformContextReadinessGate from "../../../components/shell/PlatformContextReadinessGate.jsx";
 import { TOURNAMENT_MODE } from "../../../models/tournament/index.js";
 import { resolveEventTypeFromQuery } from "../../individual-tournament/index.js";
 import { EVENT_TYPE_LABELS } from "../../../models/tournament/index.js";
@@ -76,7 +77,7 @@ export default function CanonicalTournamentCreatePage() {
   const { user } = useAuth();
   const { accessAllowed } = usePageRuntimeAccess(
     "tournament.manage",
-    activeClub?.tenantId || activeClubId,
+    activeClub?.tenantId || null,
     { source: "tournament.canonical.create" }
   );
   const [error, setError] = useState(null);
@@ -154,6 +155,7 @@ export default function CanonicalTournamentCreatePage() {
   const cardsDisabled = busy || !activeClubReady || !activeClub?.id;
 
   return (
+    <PlatformContextReadinessGate requireClub showClubSwitcher>
     <Box>
       <TournamentPageHeader
         title="Tạo giải"
@@ -208,5 +210,6 @@ export default function CanonicalTournamentCreatePage() {
         Engine 4.0 (hạt giống, bốc thăm, lịch, sân, xếp hạng) mở từ màn hình tổ chức sau khi tạo giải.
       </Typography>
     </Box>
+    </PlatformContextReadinessGate>
   );
 }

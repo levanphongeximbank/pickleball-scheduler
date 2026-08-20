@@ -72,6 +72,14 @@ export function listClustersForVenue(venueId) {
   return loadCourtClusters().filter((cluster) => cluster.venueId === venueId);
 }
 
+export function listClustersForTenant(tenantId) {
+  if (!tenantId) {
+    return [];
+  }
+
+  return loadCourtClusters().filter((cluster) => cluster.tenantId === tenantId);
+}
+
 export function getClusterById(clusterId) {
   if (!clusterId) {
     return null;

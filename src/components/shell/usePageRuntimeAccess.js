@@ -30,8 +30,7 @@ export function usePageRuntimeAccess(permission, tenantId, context = {}) {
 
   useEffect(() => {
     try {
-      const resolvedTenantId =
-        tenantId || activeClub?.tenantId || activeClub?.venueId || user?.venueId || activeClubId;
+      const resolvedTenantId = tenantId || activeClub?.tenantId || user?.tenantId || null;
       const accessState = buildPageRuntimeAccessState({
         runtime,
         authUser: user,

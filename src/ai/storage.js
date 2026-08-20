@@ -4,7 +4,6 @@ AI Storage — delegates to unified club blob v3
 ==================================================
 */
 
-import { getActiveClubId } from "../data/club.js";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { guardClubAction } from "../auth/guardAction.js";
 import { DEFAULT_COMPETITION_TYPE } from "./competition.js";
@@ -14,6 +13,7 @@ import {
   purgeLegacyAiScopedKeys,
   saveClubData,
 } from "../domain/clubStorage.js";
+import { assertExplicitClubId } from "../features/club/context/requireExplicitClubId.js";
 
 const KEY = "pickleball-ai";
 export const AI_SCHEMA_VERSION = 3;
@@ -102,28 +102,31 @@ function applyAiViewToClubData(clubData, aiView) {
   };
 }
 
-export function loadAIData(clubId = getActiveClubId()) {
-  const clubData = loadClubData(clubId);
+export function loadAIData(clubId) {
+  const resolvedClubId = assertExplicitClubId(clubId);
+  const clubData = loadClubData(resolvedClubId);
   return clubDataToAiView(clubData);
 }
 
-export function saveAIData(data, clubId = getActiveClubId()) {
-  const clubData = loadClubData(clubId);
+export function saveAIData(data, clubId) {
+  const resolvedClubId = assertExplicitClubId(clubId);
+  const clubData = loadClubData(resolvedClubId);
   const next = applyAiViewToClubData(clubData, data);
-  saveClubData(clubId, next);
-  purgeLegacyAiScopedKeys(clubId);
+  saveClubData(resolvedClubId, next);
+  purgeLegacyAiScopedKeys(resolvedClubId);
 }
 
-export function resetAIData(clubId = getActiveClubId()) {
-  const check = guardClubAction(clubId, PERMISSIONS.SYSTEM_SETTING);
+export function resetAIData(clubId) {
+  const resolvedClubId = assertExplicitClubId(clubId);
+  const check = guardClubAction(resolvedClubId, PERMISSIONS.SYSTEM_SETTING);
   if (!check.ok) {
     return check;
   }
 
-  const clubData = loadClubData(clubId);
+  const clubData = loadClubData(resolvedClubId);
   const next = applyAiViewToClubData(clubData, getDefaultAIData());
-  saveClubData(clubId, next);
-  purgeLegacyAiScopedKeys(clubId);
-  localStorage.removeItem(`${KEY}::${clubId}`);
+  saveClubData(resolvedClubId, next);
+  purgeLegacyAiScopedKeys(resolvedClubId);
+  localStorage.removeItem(`${KEY}::${resolvedClubId}`);
   return { ok: true };
 }

@@ -55,7 +55,7 @@ import { listCurrentClubMembers } from "./membershipReadService.js";
 import { invalidateAllClubRegistryCache } from "../registry/clubRegistryCache.js";
 import {
   getClusterById,
-  listClustersForVenue,
+  listClustersForTenant,
 } from "../../court-cluster/services/courtClusterService.js";
 import {  demoteGovernanceAthleteRole,
   isClubPresident,
@@ -69,17 +69,17 @@ export {
   syncGovernanceAuthRoleFromClub,
 } from "./governanceRoleElevation.js";
 
-function deriveRegisteredClusterIdFromLegacy(governance, tenantId) {
+function deriveRegisteredClusterIdFromLegacy(governance, tenantId, venueId) {
   if (governance?.registeredClusterId) {
     return governance.registeredClusterId;
   }
 
   const courtIds = governance?.registeredCourtIds || [];
-  if (!courtIds.length || !tenantId) {
+  if (!courtIds.length || !venueId) {
     return null;
   }
 
-  const courts = loadCourtsForVenueScoped(tenantId, tenantId);
+  const courts = loadCourtsForVenueScoped(venueId, tenantId);
   const clusterCounts = new Map();
 
   for (const courtId of courtIds) {
@@ -330,12 +330,10 @@ export function canApproveClubMembershipRequests(user, club) {
     return false;
   }
 
-  const tenantId =
-    club.tenantId || club.venueId || resolveTenantIdForClub(club.id);
+  const tenantId = club.tenantId || resolveTenantIdForClub(club.id);
   if (
     !can(user, PERMISSIONS.CLUB_MEMBERSHIP_REVIEW, {
       clubId: club.id,
-      venueId: tenantId,
       tenantId,
     })
   ) {
@@ -477,7 +475,7 @@ export async function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
 
   const club = getRegistryClubById(trimmedClubId);
   const effectiveTenantId =
-    tenantId || club?.venueId || club?.tenantId || normalizedUser.tenantId || normalizedUser.venueId || null;
+    tenantId || club?.tenantId || normalizedUser.tenantId || null;
 
   const data = loadClubData(trimmedClubId);
   const players = [...(data.players || [])];
@@ -517,7 +515,7 @@ export async function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
         normalizeUser({
           ...session.user,
           tenantId: effectiveTenantId,
-          venueId: effectiveTenantId,
+          venueId: session.user.venueId || null,
         }),
         { provider: session.provider || "dev" }
       );
@@ -540,8 +538,8 @@ export async function bootstrapSelfRegisteredPresident(clubId, user, tenantId) {
       clubId: trimmedClubId,
       playerId: player.id,
       role: ROLES.CLUB_MANAGER,
-      tenantId: effectiveTenantId || session.user.tenantId || session.user.venueId || null,
-      venueId: effectiveTenantId || session.user.venueId || session.user.tenantId || null,
+      tenantId: effectiveTenantId || session.user.tenantId || null,
+      venueId: session.user.venueId || null,
     });
     saveAuthSession(nextUser, { provider: session.provider || "dev" });
   }
@@ -566,11 +564,16 @@ export async function finalizeSelfRegisteredClubCloud(clubId, user, tenantId) {
     return { ok: false, code: "CLUB_NOT_FOUND", error: "Không tìm thấy CLB." };
   }
 
-  const effectiveTenantId =
-    tenantId || latestClub.venueId || latestClub.tenantId || normalizedUser.venueId || null;
+  if (tenantId && latestClub.tenantId && String(tenantId) !== String(latestClub.tenantId)) {
+    return {
+      ok: false,
+      code: API_ERROR_CODES.TENANT_MISMATCH,
+      error: "Tenant của CLB không khớp tenant đang thao tác.",
+    };
+  }
 
   const cloudResult = await persistClubToCloud(latestClub, {
-    venueId: effectiveTenantId,
+    venueId: latestClub.venueId || null,
     actor: normalizedUser,
   });
 
@@ -588,7 +591,7 @@ export async function finalizeSelfRegisteredClubCloud(clubId, user, tenantId) {
     return {
       ok: true,
       clubId: trimmedClubId,
-      venueId: cloudResult.venueId || effectiveTenantId,
+      venueId: cloudResult.venueId || latestClub.venueId || null,
       provider: "local",
     };
   }
@@ -603,7 +606,7 @@ export async function finalizeSelfRegisteredClubCloud(clubId, user, tenantId) {
       return {
         ok: true,
         clubId: trimmedClubId,
-        venueId: cloudResult.venueId || effectiveTenantId,
+        venueId: cloudResult.venueId || latestClub.venueId || null,
         warning: "Cloud claim RPC chưa sẵn sàng — đã thử cập nhật profile qua admin RPC.",
       };
     }
@@ -635,7 +638,7 @@ export async function finalizeSelfRegisteredClubCloud(clubId, user, tenantId) {
   return {
     ok: true,
     clubId: trimmedClubId,
-    venueId: claimResult.venue_id || cloudResult.venueId || effectiveTenantId,
+    venueId: claimResult.venue_id || cloudResult.venueId || latestClub.venueId || null,
     role: claimResult.role || ROLES.CLUB_MANAGER,
     user: claimedUser,
   };
@@ -684,7 +687,7 @@ export async function reclaimLocalPresidentClubForUser(user) {
   const result = await finalizeSelfRegisteredClubCloud(
     preferred.id,
     normalizedUser,
-    preferred.venueId || preferred.tenantId || null
+    preferred.tenantId || null
   );
 
   if (!result.ok) {
@@ -1036,7 +1039,7 @@ export async function transferClubOwnership(clubId, nextOwnerUserId, tenantId, o
       action: "club.owner.transfer",
       resourceType: "club",
       resourceId: clubId,
-      venueId: tenantId || club.venueId || club.tenantId,
+      venueId: club.venueId || null,
       clubId,
       metadata: {
         previousOwnerUserId,
@@ -1090,7 +1093,7 @@ export async function transferClubOwnership(clubId, nextOwnerUserId, tenantId, o
     action: "club.owner.transfer",
     resourceType: "club",
     resourceId: clubId,
-    venueId: tenantId || club.venueId || club.tenantId,
+    venueId: club.venueId || null,
     clubId,
     metadata: {
       previousOwnerUserId,
@@ -1145,7 +1148,7 @@ export async function transferClubPresident(
       action: "club.president.transfer",
       resourceType: "club",
       resourceId: clubId,
-      venueId: tenantId || club.venueId || club.tenantId,
+      venueId: club.venueId || null,
       clubId,
       metadata: {
         previousPresidentUserId: currentPresident,
@@ -1175,7 +1178,7 @@ export async function transferClubPresident(
     action: "club.president.transfer",
     resourceType: "club",
     resourceId: clubId,
-    venueId: tenantId || club.venueId || club.tenantId,
+    venueId: club.venueId || null,
     clubId,
     metadata: {
       previousPresidentUserId: currentPresident,
@@ -1286,7 +1289,7 @@ export async function setClubVicePresidents(clubId, userIds = [], tenantId, opti
       action: "club.vice_president.assign",
       resourceType: "club",
       resourceId: clubId,
-      venueId: tenantId || club.venueId || club.tenantId,
+      venueId: club.venueId || null,
       clubId,
       metadata: {
         previousVicePresidentUserIds: currentIds,
@@ -1357,7 +1360,7 @@ export async function setClubVicePresidents(clubId, userIds = [], tenantId, opti
     action: "club.vice_president.assign",
     resourceType: "club",
     resourceId: clubId,
-    venueId: tenantId || club.venueId || club.tenantId,
+    venueId: club.venueId || null,
     clubId,
     metadata: {
       previousVicePresidentUserIds: currentIds,
@@ -1407,6 +1410,10 @@ export function deleteClubAsOwner(clubId, tenantId) {
     return { ok: false, error: "Không tìm thấy CLB." };
   }
 
+  if (tenantId && club.tenantId && String(tenantId) !== String(club.tenantId)) {
+    return { ok: false, error: "Tenant của CLB không khớp tenant đang thao tác." };
+  }
+
   if (!canDeleteClub(user, club)) {
     return { ok: false, error: "Không có quyền xóa CLB này." };
   }
@@ -1422,7 +1429,7 @@ export function deleteClubAsOwner(clubId, tenantId) {
     action: "club.delete",
     resourceType: "club",
     resourceId: clubId,
-    venueId: tenantId || club.venueId || club.tenantId,
+    venueId: club.venueId || null,
     clubId,
     metadata: { clubName: club.name },
   });
@@ -1477,7 +1484,6 @@ export async function assignClubOwner(clubId, ownerUserId, tenantId, options = {
   }
 
   const check = guardPermission(PERMISSIONS.CLUB_GOVERNANCE_ASSIGN_OWNER, {
-    venueId: tenantId || club.venueId,
     tenantId: tenantId || club.tenantId,
     clubId,
   });
@@ -1522,9 +1528,9 @@ export async function assignClubOwner(clubId, ownerUserId, tenantId, options = {
 
   const result = updateClubMeta(clubId, { governance });
   if (result.ok) {
-    const effectiveTenantId = tenantId || club.venueId || club.tenantId || null;
+    const persistVenueId = club.venueId || result.club?.venueId || null;
     void persistClubToCloud(result.club || { ...club, governance }, {
-      venueId: effectiveTenantId,
+      venueId: persistVenueId,
       actor: user,
     });
   }
@@ -1544,7 +1550,6 @@ export function approveClubRegistration(clubId, tenantId) {
   }
 
   const check = guardPermission(PERMISSIONS.CLUB_GOVERNANCE_APPROVE, {
-    venueId: tenantId || club.venueId,
     tenantId: tenantId || club.tenantId,
     clubId,
   });
@@ -1574,6 +1579,10 @@ export function rejectClubRegistration(clubId, tenantId) {
     return { ok: false, error: "Không tìm thấy CLB." };
   }
 
+  if (tenantId && club.tenantId && String(tenantId) !== String(club.tenantId)) {
+    return { ok: false, error: "Tenant của CLB không khớp tenant đang thao tác." };
+  }
+
   if (!canApproveClubRegistration(user, club)) {
     return { ok: false, error: "Chỉ chủ sân được từ chối CLB đăng ký." };
   }
@@ -1582,14 +1591,18 @@ export function rejectClubRegistration(clubId, tenantId) {
 }
 
 export function getRegisteredClusterLabel(club, tenantId) {
-  const clusterId = deriveRegisteredClusterIdFromLegacy(club?.governance, tenantId);
+  const clusterId = deriveRegisteredClusterIdFromLegacy(
+    club?.governance,
+    tenantId,
+    club?.venueId
+  );
   if (!clusterId) {
     return null;
   }
 
   const cluster =
     getClusterById(clusterId) ||
-    listClustersForVenue(tenantId).find((item) => item.id === clusterId) ||
+    listClustersForTenant(tenantId).find((item) => item.id === clusterId) ||
     null;
 
   if (!cluster) {
@@ -1644,7 +1657,7 @@ export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
     return { ok: false, error: "Không tìm thấy CLB." };
   }
 
-  const effectiveTenantId = tenantId || club.tenantId || club.venueId || null;
+  const effectiveTenantId = tenantId || club.tenantId || null;
   const user = getCurrentUser();
   const canAssignOwner = canAssignClubOwner(user);
   const canManage = canManageClubGovernance(user, club);
@@ -1809,7 +1822,7 @@ export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
     }
   }
 
-  void persistClubToCloud(result.club, { venueId: effectiveTenantId, actor: user });
+  void persistClubToCloud(result.club, { venueId: result.club?.venueId || club.venueId || null, actor: user });
 
   return result;
 }
@@ -1820,7 +1833,7 @@ export function updateClubGovernance(clubId, patch = {}, tenantId = null) {
  * Under V2, legacy blob player names are not used as authority or silent promotion.
  */
 export function getGovernanceDisplayLabels(club, tenantId = null, nameHints = null) {
-  const effectiveTenantId = tenantId || club?.tenantId || club?.venueId || null;
+  const effectiveTenantId = tenantId || club?.tenantId || null;
   const profileByUserId = {};
   if (nameHints && typeof nameHints === "object") {
     for (const [userId, name] of Object.entries(nameHints)) {
@@ -1831,7 +1844,7 @@ export function getGovernanceDisplayLabels(club, tenantId = null, nameHints = nu
   // Phase 2E: single canonical read-model → display labels for all Club UI surfaces.
   const readModel = toGovernanceReadModel({
     club: club
-      ? { ...club, tenantId: club.tenantId || club.venueId || effectiveTenantId }
+      ? { ...club, tenantId: club.tenantId || effectiveTenantId }
       : null,
     profileByUserId,
     v2Enabled: isClubStorageV2Enabled(),

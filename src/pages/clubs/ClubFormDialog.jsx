@@ -20,7 +20,7 @@ import {
 import { useAuth } from "../../context/AuthContext.jsx";
 import { ROLES, normalizeRole } from "../../auth/roles.js";
 import GovernanceMemberSelect from "../../components/club/GovernanceMemberSelect.jsx";
-import { listClustersForVenue } from "../../features/court-cluster/services/courtClusterService.js";
+import { listClustersForTenant } from "../../features/court-cluster/services/courtClusterService.js";
 import {
   cacheRegisterableClusterLocally,
   listRegisterableClusters,
@@ -80,7 +80,7 @@ export default function ClubFormDialog({
   const isSelfRegister = canSelfRegisterClub(user);
 
   const localVenueClusters = useMemo(
-    () => (tenantId ? listClustersForVenue(tenantId) : []),
+    () => (tenantId ? listClustersForTenant(tenantId) : []),
     [tenantId, open]
   );
 

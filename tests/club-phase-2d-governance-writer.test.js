@@ -29,6 +29,65 @@ function readSrc(rel) {
   return readFileSync(join(__dirname, "..", rel), "utf8");
 }
 
+function normalizeNewlines(source) {
+  return String(source).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+function extractExportedFunctionSource(source, functionName, nextFunctionName) {
+  const text = normalizeNewlines(source);
+  const tokens = [
+    `export async function ${functionName}`,
+    `export function ${functionName}`,
+  ];
+  let start = -1;
+  for (const token of tokens) {
+    start = text.indexOf(token);
+    if (start >= 0) {
+      break;
+    }
+  }
+  if (start < 0) {
+    throw new Error(`missing exported function ${functionName}`);
+  }
+
+  let end = text.length;
+  if (nextFunctionName) {
+    for (const prefix of ["export async function ", "export function "]) {
+      const idx = text.indexOf(`${prefix}${nextFunctionName}`, start + 1);
+      if (idx >= 0 && idx < end) {
+        end = idx;
+      }
+    }
+  }
+
+  return text.slice(start, end);
+}
+
+function extractIfBlock(source, conditionSnippet) {
+  const text = normalizeNewlines(source);
+  const condIdx = text.indexOf(conditionSnippet);
+  if (condIdx < 0) {
+    throw new Error(`missing condition ${conditionSnippet}`);
+  }
+  const braceOpen = text.indexOf("{", condIdx);
+  if (braceOpen < 0) {
+    throw new Error(`missing opening brace for ${conditionSnippet}`);
+  }
+  let depth = 0;
+  for (let i = braceOpen; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === "{") {
+      depth += 1;
+    } else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(condIdx, i + 1);
+      }
+    }
+  }
+  throw new Error(`unbalanced braces for ${conditionSnippet}`);
+}
+
 function withV2Env(fn) {
   const prev = {
     flag: process.env.VITE_CLUB_STORAGE_V2,
@@ -203,23 +262,62 @@ test("Phase 2D — Club barrel does not export raw governance mutating RPCs", ()
 
 test("Phase 2D — canonical writers route through V2 RPCs (source contract)", () => {
   const gov = readSrc("src/features/club/services/clubGovernanceService.js");
-  const assignStart = gov.indexOf("export async function assignClubOwner");
-  const assignBody = gov.slice(assignStart, assignStart + 2200);
+  const assignBody = extractExportedFunctionSource(
+    gov,
+    "assignClubOwner",
+    "approveClubRegistration"
+  );
+  const canonicalV2Branch = extractIfBlock(
+    assignBody,
+    "if (isClubStorageV2Enabled())"
+  );
+  const legacyFallback = assignBody.slice(
+    assignBody.indexOf(canonicalV2Branch) + canonicalV2Branch.length
+  );
+
   assert.match(assignBody, /rpcV2ClubAssignOwner/);
   assert.match(assignBody, /rpcV2ClubClearOwner/);
-  assert.match(assignBody, /requestId/);
-  assert.doesNotMatch(assignBody.slice(0, 1800), /updateClubMeta/);
+  assert.match(canonicalV2Branch, /rpcV2ClubAssignOwner/);
+  assert.match(canonicalV2Branch, /rpcV2ClubClearOwner/);
+  assert.match(canonicalV2Branch, /requestId/);
+  assert.match(canonicalV2Branch, /return \{ ok: true, club: assigned\.club/);
+  assert.doesNotMatch(canonicalV2Branch, /updateClubMeta/);
+  assert.match(legacyFallback, /updateClubMeta/);
+  assert.match(legacyFallback, /persistClubToCloud/);
 
-  const transferStart = gov.indexOf("export async function transferClubOwnership");
-  const transferBody = gov.slice(transferStart, transferStart + 1800);
+  const lfGov = normalizeNewlines(gov);
+  const crlfGov = lfGov.replace(/\n/g, "\r\n");
+  const v2FromLf = extractIfBlock(
+    extractExportedFunctionSource(lfGov, "assignClubOwner", "approveClubRegistration"),
+    "if (isClubStorageV2Enabled())"
+  );
+  const v2FromCrlf = extractIfBlock(
+    extractExportedFunctionSource(crlfGov, "assignClubOwner", "approveClubRegistration"),
+    "if (isClubStorageV2Enabled())"
+  );
+  assert.equal(v2FromLf, v2FromCrlf);
+  assert.doesNotMatch(v2FromLf, /updateClubMeta/);
+  assert.doesNotMatch(v2FromCrlf, /updateClubMeta/);
+
+  const transferBody = extractExportedFunctionSource(
+    gov,
+    "transferClubOwnership",
+    "transferClubPresident"
+  );
   assert.match(transferBody, /rpcV2ClubAssignOwner/);
 
-  const presidentStart = gov.indexOf("export async function transferClubPresident");
-  const presidentBody = gov.slice(presidentStart, presidentStart + 1600);
+  const presidentBody = extractExportedFunctionSource(
+    gov,
+    "transferClubPresident",
+    "setClubVicePresidents"
+  );
   assert.match(presidentBody, /rpcV2ClubTransferPresident/);
 
-  const vpStart = gov.indexOf("export async function setClubVicePresidents");
-  const vpBody = gov.slice(vpStart, vpStart + 4500);
+  const vpBody = extractExportedFunctionSource(
+    gov,
+    "setClubVicePresidents",
+    "clearClubPresident"
+  );
   assert.match(vpBody, /rpcV2ClubAssignVicePresident/);
   assert.match(vpBody, /rpcV2ClubClearVicePresident/);
 

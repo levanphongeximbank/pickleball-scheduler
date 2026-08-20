@@ -24,7 +24,7 @@ import EditIcon from "@mui/icons-material/Edit";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import GovernanceMemberSelect from "../../components/club/GovernanceMemberSelect.jsx";
-import { listClustersForVenue } from "../../features/court-cluster/services/courtClusterService.js";
+import { listClustersForTenant, getClusterById } from "../../features/court-cluster/services/courtClusterService.js";
 import { bindClubCourtsToCluster } from "../../features/venue-court/services/bindClubCourtsToClusterService.js";
 import { loadUnstampedCourts } from "../courts.logic.js";
 import { getCourtDisplayName } from "../../models/court.js";
@@ -112,7 +112,7 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
   );
 
   const venueClusters = useMemo(
-    () => listClustersForVenue(tenantId),
+    () => listClustersForTenant(tenantId),
     [tenantId]
   );
 
@@ -201,9 +201,10 @@ export default function ClubGovernancePanel({ club, tenantId, onRefresh }) {
           return;
         }
       } else {
+        const cluster = getClusterById(nextCluster);
         const bindResult = await bindClubCourtsToCluster({
           clubId: club.id,
-          venueId: tenantId,
+          venueId: cluster?.venueId || null,
           clusterId: nextCluster,
           courtIds: form.selectedCourtIds,
           expectedClubVersion: club.version ?? governanceRead.version ?? 1,

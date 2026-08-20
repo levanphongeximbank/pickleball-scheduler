@@ -6,18 +6,21 @@ Version 2.0
 */
 
 import { getScopedStorageKey } from "../data/club.js";
+import { assertExplicitClubId } from "../features/club/context/requireExplicitClubId.js";
 
 const STORAGE_KEY = "pickleball_ai_waiting";
 
-function loadWaitingData() {
-  const data = localStorage.getItem(getScopedStorageKey(STORAGE_KEY));
+function loadWaitingData(clubId) {
+  const resolvedClubId = assertExplicitClubId(clubId);
+  const data = localStorage.getItem(getScopedStorageKey(STORAGE_KEY, resolvedClubId));
 
   return data ? JSON.parse(data) : {};
 }
 
-function saveWaitingData(data) {
+function saveWaitingData(data, clubId) {
+  const resolvedClubId = assertExplicitClubId(clubId);
   localStorage.setItem(
-    getScopedStorageKey(STORAGE_KEY),
+    getScopedStorageKey(STORAGE_KEY, resolvedClubId),
     JSON.stringify(data)
   );
 }
@@ -44,8 +47,8 @@ function cloneWaitingSnapshot(waitingData, players = []) {
   return snapshot;
 }
 
-export function commitWaitingFromResult(result = {}) {
-  const waitingData = loadWaitingData();
+export function commitWaitingFromResult(result = {}, clubId) {
+  const waitingData = loadWaitingData(clubId);
   const playingIds = new Set();
 
   (result.courts || []).forEach((court) => {
@@ -69,11 +72,12 @@ export function commitWaitingFromResult(result = {}) {
     waitingData[player.id].waitCount += 1;
   });
 
-  saveWaitingData(waitingData);
+  saveWaitingData(waitingData, clubId);
 }
 
 export function runWaitingEngine(players, options = {}) {
-  const waitingData = loadWaitingData();
+  const clubId = assertExplicitClubId(options.clubId);
+  const waitingData = loadWaitingData(clubId);
   const dryRun = options.dryRun === true;
 
   players.forEach((player) => {
@@ -113,7 +117,7 @@ export function runWaitingEngine(players, options = {}) {
       waitingData[player.id].waitCount += 1;
     });
 
-    saveWaitingData(waitingData);
+    saveWaitingData(waitingData, clubId);
   }
 
   return {

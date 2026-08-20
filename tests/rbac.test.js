@@ -501,6 +501,7 @@ test("createClub — cho phép khi RBAC tắt", () => {
 
 test("CASHIER tạo booking được, xóa booking bị chặn", async () => {
   globalThis.localStorage = createLocalStorageMock();
+  saveClubs([DEFAULT_CLUB]);
   setActiveClubId(DEFAULT_CLUB.id);
   const clubData = getDefaultClubData(DEFAULT_CLUB.id);
   clubData.courts = [
@@ -547,6 +548,7 @@ test("CASHIER tạo booking được, xóa booking bị chặn", async () => {
 
 test("PLAYER không tạo giải đấu khi RBAC bật", () => {
   globalThis.localStorage = createLocalStorageMock();
+  saveClubs([DEFAULT_CLUB]);
   setActiveClubId(DEFAULT_CLUB.id);
   saveClubData(DEFAULT_CLUB.id, getDefaultClubData(DEFAULT_CLUB.id));
 
@@ -569,6 +571,7 @@ test("PLAYER không tạo giải đấu khi RBAC bật", () => {
 
 test("venue onboarding — gán CLB vào venue demo", () => {
   globalThis.localStorage = createLocalStorageMock();
+  saveClubs([DEFAULT_CLUB]);
   setActiveClubId(DEFAULT_CLUB.id);
   saveClubData(DEFAULT_CLUB.id, getDefaultClubData(DEFAULT_CLUB.id));
 
@@ -585,6 +588,7 @@ test("venue onboarding — gán CLB vào venue demo", () => {
 
 test("directorMode — PLAYER không cập nhật giải qua director", () => {
   globalThis.localStorage = createLocalStorageMock();
+  saveClubs([DEFAULT_CLUB]);
   setActiveClubId(DEFAULT_CLUB.id);
   const data = getDefaultClubData(DEFAULT_CLUB.id);
   data.tournaments = [
@@ -662,6 +666,7 @@ test("subscription — trial không có director_mode", () => {
   globalThis.localStorage = createLocalStorageMock();
   enableRbac(true);
   ensureDemoVenue();
+  saveClubs([DEFAULT_CLUB]);
   assignClubToVenue(DEFAULT_CLUB.id, "venue-demo");
 
   const featureCheck = guardPlanFeature("venue-demo", "director_mode");
@@ -673,6 +678,7 @@ test("subscription — trial không có director_mode", () => {
 
 test("subscription — pro có director_mode sau upgrade", () => {
   globalThis.localStorage = createLocalStorageMock();
+  saveClubs([DEFAULT_CLUB]);
   setActiveClubId(DEFAULT_CLUB.id);
   enableRbac(true);
   ensureDemoVenue();
@@ -695,6 +701,7 @@ test("subscription — pro có director_mode sau upgrade", () => {
 
 test("subscription — club cloud_sync không phụ thuộc gói venue", async () => {
   globalThis.localStorage = createLocalStorageMock();
+  saveClubs([DEFAULT_CLUB]);
   setActiveClubId(DEFAULT_CLUB.id);
   saveClubData(DEFAULT_CLUB.id, getDefaultClubData(DEFAULT_CLUB.id));
 
@@ -709,7 +716,7 @@ test("subscription — club cloud_sync không phụ thuộc gói venue", async (
     })
   );
 
-  const onTrial = await syncClubToCloud();
+  const onTrial = await syncClubToCloud({ clubId: DEFAULT_CLUB.id });
   assert.equal(onTrial.ok, true);
 
   signOut();
@@ -724,12 +731,14 @@ test("createClub — VENUE_OWNER tự gán venueId", () => {
   signInAs(
     user(ROLES.VENUE_OWNER, {
       venueId: "venue-demo",
+      tenantId: "tenant-demo",
     })
   );
 
   const result = createClub("CLB Venue Owner");
   assert.equal(result.ok, true);
   assert.equal(result.club.venueId, "venue-demo");
+  assert.equal(result.club.tenantId, "tenant-demo");
 
   signOut();
   enableRbac(false);
@@ -740,7 +749,7 @@ test("subscription — maxClubs chặn khi vượt giới hạn trial", () => {
   enableRbac(true);
   ensureDemoVenue();
 
-  signInAs(user(ROLES.VENUE_OWNER, { venueId: "venue-demo" }));
+  signInAs(user(ROLES.VENUE_OWNER, { venueId: "venue-demo", tenantId: "tenant-demo" }));
 
   const maxClubs = SUBSCRIPTION_PLANS.trial.maxClubs;
   for (let index = 0; index < maxClubs; index += 1) {

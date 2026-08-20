@@ -129,7 +129,7 @@ export async function buildGovernanceReadModelFromClub(club, options = {}) {
   if (options.hydrateProfiles !== false && !profileByUserId) {
     const hydrated = await hydrateGovernanceDisplayProfiles(
       collectGovernanceUserIds(club),
-      { expectedTenantId: club.tenantId || club.venueId || null }
+      { expectedTenantId: club.tenantId || null }
     );
     profileByUserId = hydrated.profileByUserId;
     deniedCrossTenantIds = hydrated.deniedCrossTenantIds;

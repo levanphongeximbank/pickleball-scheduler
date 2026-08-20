@@ -32,15 +32,21 @@ export function useStatisticsData() {
   const { activeClubId, revision } = useClub();
   const { can } = useAuth();
   const { activeSeason, activeLeague, seasons, leagues } = useSeasonLeague();
+  const clubReady = Boolean(String(activeClubId || "").trim());
 
-  const aiData = useMemo(() => loadAIData(activeClubId), [activeClubId, revision]);
+  const aiData = useMemo(() => {
+    if (!clubReady) {
+      return null;
+    }
+    return loadAIData(activeClubId);
+  }, [clubReady, activeClubId, revision]);
   const sessions = useMemo(
     () =>
-      filterSessionsByContext(aiData.sessions || [], {
+      filterSessionsByContext(aiData?.sessions || [], {
         seasonId: activeSeason?.id || null,
         leagueId: activeLeague?.id || null,
       }),
-    [aiData.sessions, activeSeason?.id, activeLeague?.id]
+    [aiData, activeSeason?.id, activeLeague?.id]
   );
 
   const [selectedRound, setSelectedRound] = useState("all");
@@ -64,8 +70,14 @@ export function useStatisticsData() {
     }
   }, [activeLeague?.id]);
 
-  const rounds = useMemo(() => loadRoundsForClub(activeClubId), [activeClubId, revision]);
-  const players = useMemo(() => loadPlayersFromStorage(activeClubId), [activeClubId, revision]);
+  const rounds = useMemo(
+    () => (clubReady ? loadRoundsForClub(activeClubId) : []),
+    [clubReady, activeClubId, revision]
+  );
+  const players = useMemo(
+    () => (clubReady ? loadPlayersFromStorage(activeClubId) : []),
+    [clubReady, activeClubId, revision]
+  );
 
   const playerNameById = useMemo(() => {
     const map = {};
@@ -93,11 +105,11 @@ export function useStatisticsData() {
   );
 
   const seasonStandingsRows = useMemo(() => {
-    if (!standingsLeagueId) {
+    if (!clubReady || !standingsLeagueId) {
       return [];
     }
     return getLeagueStandingsBoard(activeClubId, standingsLeagueId);
-  }, [activeClubId, standingsLeagueId, revision]);
+  }, [clubReady, activeClubId, standingsLeagueId, revision]);
 
   const shiftOptions = useMemo(() => {
     const set = new Set();
@@ -374,6 +386,7 @@ export function useStatisticsData() {
   };
 
   return {
+    clubContextReady: clubReady,
     activeSeason,
     activeLeague,
     statusMessage,

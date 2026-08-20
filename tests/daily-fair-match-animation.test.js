@@ -82,6 +82,7 @@ async function createResult(players, matchCount) {
     players,
     settings: buildSettings(players.map((player) => String(player.id))),
     tournamentId: "daily-1",
+    clubId: "club-test",
     matchCount,
     skipPrivatePairingPrepare: true,
     privatePairingRules: [],

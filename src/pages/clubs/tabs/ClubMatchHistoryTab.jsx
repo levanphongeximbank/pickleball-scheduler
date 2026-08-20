@@ -54,7 +54,7 @@ export default function ClubMatchHistoryTab({ club, tenantId, onRefresh }) {
   const canCreate =
     !rbacEnabled ||
     !isAuthenticated ||
-    can(PERMISSIONS.TOURNAMENT_UPDATE, { clubId: club.id, venueId: tenantId });
+    can(PERMISSIONS.TOURNAMENT_UPDATE, { clubId: club.id, tenantId });
 
   const matches = useMemo(
     () => getClubMatches(club.id, tenantId),

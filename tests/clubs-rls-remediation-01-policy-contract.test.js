@@ -168,13 +168,37 @@ describe("Negative-test matrix N1–N10 (contract encoding)", () => {
     assert.doesNotMatch(forwardExec, /drop\s+function[\s\S]*public_catalog_list_clubs/i);
   });
 
-  it("N8: INSERT/UPDATE/DELETE not expanded", () => {
+  it("N8: INSERT/UPDATE/DELETE not expanded; TRUNCATE denied for anon/authenticated", () => {
     const f = stripSqlComments(forward);
-    assert.match(f, /revoke\s+insert\s*,\s*update\s*,\s*delete\s+on\s+public\.clubs/i);
+    assert.match(
+      f,
+      /revoke\s+insert\s*,\s*update\s*,\s*delete\s*,\s*truncate\s+on\s+public\.clubs/i
+    );
+    assert.match(f, /revoke\s+truncate\s+on\s+public\.club_members/i);
+    assert.match(f, /revoke\s+truncate\s+on\s+public\.club_governance_assignments/i);
+    assert.match(f, /revoke\s+truncate\s+on\s+public\.club_membership_requests_v42/i);
     assert.doesNotMatch(f, /create\s+policy\s+\w+\s+on\s+public\.clubs[\s\S]*for\s+insert/i);
     assert.doesNotMatch(f, /create\s+policy\s+\w+\s+on\s+public\.clubs[\s\S]*for\s+update/i);
     assert.doesNotMatch(f, /create\s+policy\s+\w+\s+on\s+public\.clubs[\s\S]*for\s+delete/i);
-    assert.match(phase42c, /revoke\s+insert\s*,\s*update\s*,\s*delete\s+on\s+public\.clubs/i);
+    assert.match(
+      phase42c,
+      /revoke\s+insert\s*,\s*update\s*,\s*delete\s*,\s*truncate\s+on\s+public\.clubs/i
+    );
+    assert.match(
+      phase42c,
+      /revoke\s+insert\s*,\s*update\s*,\s*delete\s*,\s*truncate\s+on\s+public\.club_members/i
+    );
+    assert.match(
+      phase42c,
+      /revoke\s+insert\s*,\s*update\s*,\s*delete\s*,\s*truncate\s+on\s+public\.club_governance_assignments/i
+    );
+    assert.match(
+      phase42c,
+      /revoke\s+insert\s*,\s*update\s*,\s*delete\s*,\s*truncate\s+on\s+public\.club_membership_requests_v42/i
+    );
+    assert.match(postApply, /anon_truncate/);
+    assert.match(postApply, /auth_truncate/);
+    assert.match(postApply, /INSERT\/UPDATE\/DELETE\/TRUNCATE columns false/i);
   });
 
   it("N9: deleted_at null gate retained for inactive/deleted contract", () => {

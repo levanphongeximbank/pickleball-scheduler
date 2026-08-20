@@ -92,7 +92,8 @@ export function projectLivePrivatePairingPrepareInput(input = {}) {
     };
   }
 
-  // Preferred: tournament.tenantId → aligned activeClub tenantId|venueId → explicit caller tenantId.
+  // Preferred: tournament.tenantId → canonical club.tenantId → explicit caller tenantId.
+  // venueId is never Tenant identity.
   const tenantId = tournamentTenantId || clubTenantId || explicitTenantId || "";
 
   const missing = [];

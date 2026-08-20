@@ -1,0 +1,350 @@
+# Wave 5 SQL design — AUTHOR ONLY
+
+```
+WAVE5_SQL_DESIGN_ONLY
+OWNER_SQL_EXECUTION_GO=NO
+DO_NOT_RUN_ON_STAGING
+DO_NOT_RUN_ON_PRODUCTION
+SQL_EXECUTED=NO
+RLS_EXECUTED=NO
+```
+
+This folder is a **reviewable design package**. Committing it must not auto-apply to any database. It is **not** a `supabase/migrations` deployment artifact.
+
+Do not apply until Owner issues a separate execution GO naming this package and `TARGET_ENV`.
+
+## Files
+
+| File | Mutates? | Purpose |
+|---|---|---|
+| `01_PRECHECK.sql` | NO | Operator-facing read-only dry-run inventory. Fail-closes on unknown mutation overloads and PUBLIC/anon/authenticated Club table DML. **Not** APPLY freshness. `APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO` |
+| `02_APPLY_DESIGN.sql` | YES (when GO) | Self-protecting locked transactional cutover. Reasserts mutation-critical invariants under lock before any mutation |
+| `03_VERIFY.sql` | NO | Post-apply read-only invariants (cannot prove a historical `LOCK TABLE`) |
+| `04_ROLLBACK_DESIGN.md` | documentation | App rollback vs DB rollback |
+| `05_CLUB_TENANT_TABLE_INVENTORY.md` | documentation | Tenant-bearing table classification |
+| `06_CLUB_MUTATION_RPC_INVENTORY.md` | documentation | Club mutation RPC semantics + EXECUTE privilege matrix |
+| `07_EXECUTION_RUNBOOK.md` | documentation | Pre-cutover Q0A→Q1A→Q1B quiesce, drain, lock order, fail-closed restore |
+| `10_SERVICE_ROLE_DIRECT_DML_GUARD.md` | documentation | Temporary service_role Club table DML maintenance-window guard architecture |
+| `10A_SERVICE_ROLE_DML_QUIESCE_DESIGN.sql` | YES (when GO) | Q0A: create PREPARED batch + snapshot/REVOKE service_role Club table DML |
+| `10B_SERVICE_ROLE_DML_VERIFY_DESIGN.sql` | NO | Read-only verify of Q0A snapshot + effective service_role DML DENIED |
+| `07A_QUIESCE_WRITES_DESIGN.sql` | YES (when GO) | Q1A: require existing PREPARED batch + Q0A guard; RPC ACL snapshot + REVOKE; COMMIT before seal |
+| `07A2_QUIESCE_SEAL_DESIGN.sql` | YES (when GO) | Q1B post-commit seal: reassert RPC + direct DML quiesced; PREPARED → QUIESCED + `quiesce_visible_at` |
+| `07B_DRAIN_VERIFY.sql` | NO | Read-only drain + pre-quiesce transaction barrier bound to `quiesce_visible_at` |
+| `07B2_MARK_DRAINED_DESIGN.sql` | YES (when GO) | Recheck drain in-transaction then QUIESCED → DRAINED |
+| `02_APPLY_STAGING_WRAPPER.sql` | session GUC | `wave5.target_env=staging` → APPLY lock_timeout 5s |
+| `02_APPLY_PRODUCTION_WRAPPER.sql` | session GUC | `wave5.target_env=production` → APPLY lock_timeout 15s |
+| `03B_MARK_VERIFIED_DESIGN.sql` | YES (when GO) | Durable APPLIED → VERIFIED after same-transaction recheck |
+| `07C_RESTORE_WRITES_DESIGN.sql` | YES (when GO) | Pre-APPLY legacy ACL replay for PREPARED/QUIESCED/DRAINED only |
+| `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` | YES (when GO) | Intended public command surface after VERIFIED |
+| `08_RPC_OVERWRITE_GUARD_INVENTORY.md` | documentation | Every APPLY CREATE OR REPLACE overwrite class |
+| `08B_RPC_FINGERPRINT_CERTIFICATION.md` | documentation | Predecessor vs target RPC fingerprint certification (8 CERTIFIED_HISTORICAL_SOURCE_MATCH / 2 OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR) |
+| `09_CANONICAL_MUTATION_SURFACE.sql` | NO | Static canonical 14+1 mutation-surface VALUES/ARRAY. Not a runtime helper |
+
+## Parse-safe dollar quoting
+
+Q0A/Q1A control-plane schema guards compare catalog expressions to exact dollar-quoted literals such as `$$CHECK ((cutover_kind = 'WAVE5_CLUB_TENANT'::text))$$`. Those inner untagged literals must stay byte-for-byte. Outer procedural blocks that contain them use unique tagged delimiters (`$wave5_q0_schema_guard$`, `$wave5_q1a_schema_guard$`) so PostgreSQL does not treat the inner `$$` as the end of `DO $$`. Do not retag inner expected CHECK/predicate strings to avoid quoting collisions. Static test: `tests/platform-core-wave5-sql-dollar-quote-parse.test.js`.
+
+## Schema-state machine
+
+| State | Condition | Allowed |
+|---|---|---|
+| `STATE_LEGACY` | `clubs` + `club_members` + `club_governance_assignments` + `club_membership_requests_v42` `tenant_id` FK **exactly** `public.venues(id)` | materialize map, validate, translate, replace FK |
+| `STATE_CANONICAL` | all four FKs **exactly** `public.platform_tenants(id)` | DO NOT translate data, DO NOT join values to `venues.id` as migration source, only rerunnable function/policy reconcile |
+| `STATE_UNKNOWN` | anything else, including mixed FKs | hard abort |
+
+`01_PRECHECK.sql` is operator-facing dry-run evidence. `02_APPLY_DESIGN.sql` is independently safe: it does not depend on PRECHECK having been run immediately before.
+
+The DATA `UPDATE` is inside the `STATE_LEGACY` branch of the **same** `DO` block. A prior local `RETURN` cannot leak into an unconditional rewrite. `CANONICAL_STATE_DATA_TRANSLATION=DENIED`. Canonical invariant failure aborts; it does not repair.
+
+`CANONICAL_STATE_CANNOT_EXECUTE_LEGACY_TRANSLATION=YES`
+
+Do not use `venues.id = platform_tenants.id` as a migration predicate.
+
+## Durable target
+
+Club-owned `tenant_id` → `public.platform_tenants(id)` ON DELETE RESTRICT:
+
+- `public.clubs`
+- `public.club_members`
+- `public.club_governance_assignments`
+- `public.club_membership_requests_v42`
+
+Algorithm when `STATE_LEGACY`: old `tenant_id` (Venue ID) → `venues.id` → `venues.tenant_id` → Platform Tenant ID. Child rows follow parent `club_id` mapping. Cross-table Club/Tenant disagreement aborts.
+
+No `clubs.venue_id` column.
+
+Athletes / idempotency / audit are **not** migrated. Club RPCs that ensure athletes use `wave5_ensure_athlete_for_club_member` (facility Venue from registered cluster), never Club Tenant as `venues.id`.
+
+## Club RPC
+
+Post-migration `p_tenant_id` / Club-owned row `tenant_id` = Platform Tenant ID.
+
+`club_create` existence check is `public.platform_tenants(id)`. Authorization is `phase42_can_create_in_tenant` (tenant_members + Super Admin + PLAYER/CLUB_MANAGER `club.create`). Registered cluster is validated independently through Venue/Cluster topology and must not redefine Club tenant identity.
+
+`club_list_registry` / Club SELECT RLS / `club_list_members` use `platform_is_canonical_tenant_entitled` (`tenant_members` + Super Admin). Club authz helpers drop `profiles.venue_id = c.tenant_id`.
+
+**PHASE42_GLOBAL_HELPER_RETIREMENT_INCLUDED=NO** — `phase42_is_tenant_member` is not dropped or globally rewritten.
+
+## Wave 4 tenant_members (CLOSED — do not re-execute)
+
+**TENANT_MEMBERS_WAVE4_CANONICAL_FK_EXPECTED=YES**
+
+**WAVE4_SQL_REEXECUTION_REQUIRED=NO**
+
+Wave 4 Production/Staging closed state already applied:
+
+`tenant_members.tenant_id` → `public.platform_tenants(id)` ON DELETE RESTRICT
+
+Wave 5 precheck **expects** that canonical FK and fails closed if the target environment unexpectedly differs. Do not rewrite Wave 4 migrations. Do not re-execute Wave 4 SQL.
+
+## Round 2 remediation (pending Round 3 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND2_REMEDIATION=COMPLETE_PENDING_ROUND3_OWNER_REVIEW
+ROUND2_BLOCKER_01=REMEDIATED
+ROUND2_BLOCKER_02=REMEDIATED
+DYNAMIC_RPC_TEXT_REWRITE_PRESENT=NO
+POST_MAP_NAME_COLLISION_GUARD=YES
+POST_MAP_CODE_COLLISION_GUARD=YES
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+## Round 3 remediation (pending Round 4 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND3_REMEDIATION=COMPLETE_PENDING_ROUND4_OWNER_REVIEW
+ROUND3_BLOCKER_01_INTERNAL_HELPER_PRIVILEGE=FIXED
+ROUND3_BLOCKER_02_REGISTERED_CLUSTER_TENANT_BINDING=FIXED
+WAVE5_ATHLETE_HELPER_DIRECT_AUTHENTICATED_EXECUTE=DENY
+REGISTERED_CLUSTER_ORPHAN_PRECHECK=YES
+REGISTERED_CLUSTER_CROSS_TENANT_PRECHECK=YES
+REGISTERED_CLUSTER_RUNTIME_TENANT_BINDING=YES
+REGISTERED_CLUSTER_VERIFY=YES
+ATHLETE_EXISTING_REUSE_POLICY=APPROVED
+ATHLETE_NEW_CREATE_NO_FACILITY_POLICY=FAIL_CLOSED_ATHLETE_FACILITY_VENUE_REQUIRED
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Internal Athlete/facility helpers: REVOKE ALL FROM `public, anon, authenticated`; GRANT EXECUTE TO `service_role` only (same convention as `phase42n_ensure_athlete_for_user`). Certified outer Club RPCs keep authenticated EXECUTE. SECURITY DEFINER nested calls execute as the owner.
+
+Registered cluster: same-Tenant facility only (`venues.tenant_id = clubs.tenant_id` after cutover). Legacy precheck derives both canonical Tenants through Venue rows. Orphan and cross-Tenant counts fail closed. `club_create` `CLUSTER_TENANT_MISMATCH` is unchanged.
+
+**ATHLETE_NO_CLUSTER_POLICY=reuse existing athlete if any (Participant user_id uniqueness; Venue not required for reuse); else require Club.registered_cluster_id → court_clusters.venue_id → venues.id with venues.tenant_id = clubs.tenant_id; else fail closed ATHLETE_FACILITY_VENUE_REQUIRED. No Tenant-as-Venue, no first/default Venue, no clubs.venue_id, no profiles.venue_id from the Wave 5 wrapper.**
+
+`athletes.tenant_id` remains facility/Venue-scoped. Wave 5 does not migrate `athletes` onto `platform_tenants`.
+
+PRECHECK uses `to_regprocedure` exact signatures (not `proname LIMIT 1`) and unknown-overload OID membership (not `pg_get_function_identity_arguments` string equality). `STATE_CANONICAL` uniqueness is checked on Club `tenant_id` without treating it as Venue. `STATE_LEGACY` uniqueness is checked on `venues.tenant_id` after conceptual translation. Collision classification: `DATA_RECONCILIATION_OWNER_DECISION_REQUIRED`.
+
+## Round 4 remediation (pending Round 5 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND4_REMEDIATION=COMPLETE_PENDING_ROUND5_OWNER_REVIEW
+ROUND4_BLOCKER_01_CONCURRENT_WRITE_LOCKING=FIXED
+ROUND4_BLOCKER_02_LOCKED_APPLY_SAFETY_GATE=FIXED
+ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED
+CLUB_CUTOVER_TABLE_LOCK=YES
+CLUB_CUTOVER_LOCK_MODE=ACCESS EXCLUSIVE
+CLUB_CUTOVER_LOCK_ORDER=DETERMINISTIC
+CLUB_CUTOVER_CONCURRENT_WRITE_WINDOW=CLOSED
+APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO
+APPLY_IN_TRANSACTION_FK_STATE_GUARD=YES
+APPLY_EXPECTS_WAVE4_TENANT_MEMBERS_CANONICAL=YES
+APPLY_IN_TRANSACTION_MAPPING_GUARD=YES
+APPLY_IN_TRANSACTION_CHILD_CONSISTENCY_GUARD=YES
+APPLY_IN_TRANSACTION_NAME_COLLISION_GUARD=YES
+APPLY_IN_TRANSACTION_CODE_COLLISION_GUARD=YES
+APPLY_IN_TRANSACTION_CLUSTER_ORPHAN_GUARD=YES
+APPLY_IN_TRANSACTION_CLUSTER_CROSS_TENANT_GUARD=YES
+APPLY_IN_TRANSACTION_RPC_SIGNATURE_GUARD=YES
+APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED
+CANONICAL_STATE_DATA_TRANSLATION=DENIED
+TRIGGER_PRE_STATE_CAPTURED=YES
+TRIGGER_POST_STATE_PRESERVED=YES
+PARTIAL_CUTOVER_COMMIT_POSSIBLE=NO
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Club-owned tables are locked in one `LOCK TABLE ... ACCESS EXCLUSIVE` statement before FK classification, mapping, uniqueness, `DROP CONSTRAINT`, `UPDATE`, or RPC replacement. Supporting mapping tables (`venues`, `platform_tenants`, `court_clusters`) use `SHARE ROW EXCLUSIVE` so mapping keys cannot change while ordinary `SELECT` continues. `tenant_members` uses `ACCESS SHARE` to block DDL of the Wave 4 FK without blocking entitlement DML.
+
+APPLY-time `pg_get_functiondef` is read-only validation. It is never `EXECUTE`d or `regexp_replace`d into a replacement body.
+
+`trg_phase42_gov_active_member` enablement is captured from `pg_trigger.tgenabled` (`O`/`D`/`R`/`A`) and restored exactly after translation. One transaction; no internal `COMMIT`.
+
+## Round 5 remediation (pending Round 6 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND5_REMEDIATION=COMPLETE_PENDING_ROUND6_OWNER_REVIEW
+ROUND5_P1_01_PRECUTOVER_RPC_QUIESCENCE=REMEDIATED_DESIGN
+ROUND5_P1_02_LOCK_ORDER_AND_WAIT_BOUNDING=REMEDIATED_DESIGN
+ROUND5_P1_03_RPC_OVERWRITE_GUARD_COVERAGE=REMEDIATED_DESIGN
+PHASE_Q1_COMMITTED_WRITE_QUIESCE=REQUIRED
+QUIESCE_COMMITTED_PHASE_DESIGNED=YES
+MUTATION_RPC_ENTRYPOINT_COUNT=14
+MUTATION_RPC_PRIVILEGE_CAPTURE=EXACT_ACL_SNAPSHOT
+IN_FLIGHT_DRAIN_GATE=YES
+FAIL_CLOSED_WHILE_QUIESCED=YES
+CUTOVER_LOCK_ORDER_PARENT_TO_CHILD=YES
+LOCK_ORDER_INVERSION_REVIEW=PASS
+UNBOUNDED_LOCK_WAIT=NO
+STAGING_RECOMMENDED_LOCK_TIMEOUT=5s
+PRODUCTION_RECOMMENDED_LOCK_TIMEOUT=15s
+APPLY_CREATE_OR_REPLACE_FUNCTION_COUNT=13
+EXISTING_RPC_OVERWRITE_GUARD_COUNT=10
+NEW_WAVE5_FUNCTION_GUARD_COUNT=3
+UNKNOWN_RPC_BODY_OVERWRITE_DENIED=YES
+INTERNAL_HELPER_AUTHENTICATED_EXECUTE=DENIED
+MAIN_DRIFT_CLUB_SCOPE_OVERLAP=NO
+RECONCILIATION_REQUIRED_BEFORE_STAGING_MUTATION=YES
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Club mutation RPCs are quiesced in a **committed** Q1 (`07A`) before APPLY. APPLY aborts unless a durable `DRAINED` Wave5 Club batch matches `wave5.cutover_batch_id`. `wave5.drain_pass=YES` is not sufficient. Lock order is parent/supporting tables then Club parent then children. Lock timeouts come from reviewed Staging/Production wrappers (`5s` / `15s`). Every APPLY `CREATE OR REPLACE` of an existing function requires a strong `md5(prosrc)` fingerprint. Do not merge `origin/main` in this remediation.
+
+## Round 8 remediation (pending Round 9 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND8_REMEDIATION=COMPLETE_PENDING_ROUND9_OWNER_REVIEW
+Q1B_UNKNOWN_OVERLOAD_GATE=ABORT
+DRAINED_UNKNOWN_OVERLOAD_GATE=ABORT
+APPLY_PRELOCK_UNKNOWN_OVERLOAD_GATE=ABORT
+APPLY_PRELOCK_MUTATION_RPC_COUNT=14
+APPLY_PRELOCK_ALL_MUTATION_CALLER_ROLES_QUIESCED=YES
+APPLY_DEPENDS_ON_STALE_QUIESCE_EVIDENCE=NO
+PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER=YES
+AMBIGUOUS_NAMED_DB_SESSION=FAIL_CLOSED
+DIRECT_CLUB_DML_PUBLIC_REQUIRED=DENIED
+DIRECT_CLUB_DML_ANON_REQUIRED=DENIED
+DIRECT_CLUB_DML_AUTHENTICATED_REQUIRED=DENIED
+SERVICE_ROLE_DIRECT_CLUB_DML=LIVE_CLASSIFICATION_ONLY
+CONTROL_PLANE_BATCH_PK_EXACT=YES
+CONTROL_PLANE_SNAPSHOT_PK_EXACT=YES
+CONTROL_PLANE_SNAPSHOT_FK_EXACT=YES
+CONTROL_PLANE_ONE_ACTIVE_INDEX_EXACT=YES
+VERIFIED_GATE_EXACT_RPC_RESOLUTION=YES
+VERIFIED_GATE_UNKNOWN_OVERLOAD=ABORT
+RESTORE_FINAL_ACL_EQUALS_SNAPSHOT=YES
+POST_APPLY_LEGACY_ACL_RESTORE=DENIED
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Canonical mutation surface is `09_CANONICAL_MUTATION_SURFACE.sql`. Authority transitions reassert unknown-overload=0 and live ACLs. APPLY prelock reasserts full quiesce before table locks. Pre-quiesce drain fails closed on any non-system transaction started at or before `quiesce_visible_at`. PRECHECK reports direct Club DML; it does not revoke `service_role` table DML. Round 8 static `DIRECT_CLUB_DML_*=DENIED` claims are replaced by live fail-closed `*_REQUIRED=DENIED` in Round 9.
+
+## Round 9 remediation (pending Round 10 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND9_REMEDIATION=COMPLETE_PENDING_ROUND10_OWNER_REVIEW
+CONTROL_PLANE_KIND_CHECK_EXACT=YES
+CONTROL_PLANE_STATE_CHECK_EXACT=YES
+CONTROL_PLANE_ONE_ACTIVE_INDEX_UNIQUE=YES
+CONTROL_PLANE_ONE_ACTIVE_INDEX_KEY_COUNT=1
+CONTROL_PLANE_ONE_ACTIVE_INDEX_KEY=cutover_kind
+CONTROL_PLANE_ONE_ACTIVE_INDEX_PREDICATE_EXACT=YES
+CONTROL_PLANE_DRIFT_ABORTS_Q1=YES
+PRECHECK_UNKNOWN_MUTATION_OVERLOAD_GATE=ABORT
+PRECHECK_READ_ONLY=YES
+WAVE5_PRECHECK_OK_IS_FINAL_GATE=YES
+DIRECT_CLUB_DML_OPERATION_SET=INSERT_UPDATE_DELETE_TRUNCATE
+DIRECT_CLUB_DML_PUBLIC_REQUIRED=DENIED
+DIRECT_CLUB_DML_ANON_REQUIRED=DENIED
+DIRECT_CLUB_DML_AUTHENTICATED_REQUIRED=DENIED
+SERVICE_ROLE_DIRECT_CLUB_DML=LIVE_CLASSIFICATION_ONLY
+SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=LIVE_CLASSIFICATION_ONLY
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Control-plane CHECK/index guards compare normalized `pg_get_constraintdef` / `pg_get_expr` to the approved catalog expression. Token-set membership is not sufficient. Q1 aborts the whole transaction on semantic drift.
+
+`01_PRECHECK.sql` fail-closes on unknown mutation overloads and on PUBLIC/anon/authenticated INSERT/UPDATE/DELETE/TRUNCATE against the four Club-owned tables. `WAVE5_PRECHECK_OK` is emitted only after those gates and after `service_role` is classified. PRECHECK does not revoke `service_role` table DML. If that class is present: `SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=YES` and PRECHECK is not apply-ready. Do not claim `DIRECT_CLUB_DML_*=DENIED` until live PRECHECK evidence exists.
+
+## Round 10 RPC identity comparator remediation
+
+```
+RPC_IDENTITY_AUTHORITY=OID_FROM_APPROVED_REGPROCEDURE
+UNKNOWN_OVERLOAD_AUTHORITY=OID
+TYPE_ONLY_APPROVED_SIGNATURE_RESOLUTION=to_regprocedure
+PG_GET_FUNCTION_IDENTITY_ARGUMENTS=DIAGNOSTIC_DISPLAY_ONLY
+PG_GET_FUNCTION_IDENTITY_ARGUMENTS_AUTHORITY_USES=0
+PRECHECK_FALSE_UNKNOWN_OVERLOAD_FROM_NAMED_ARGS=IMPOSSIBLE
+CANONICAL_MUTATION_SIGNATURE_COUNT=14
+CANONICAL_MUTATION_SIGNATURE_MISSING=ABORT
+ACL_RESTORE_FUNCTION_IDENTITY_AUTHORITY=APPROVED_REGPROCEDURE_OID
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Unknown-overload membership is `pg_proc.oid = to_regprocedure(approved_type_only_signature)`. `pg_get_function_identity_arguments()` is display evidence only. 07C restore maps snapshot `proname` to the reviewed approved signature and grants/verifies by that OID.
+
+## Round 7 remediation (pending Round 8 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND7_REMEDIATION=COMPLETE_PENDING_ROUND8_OWNER_REVIEW
+Q1_REVOKE_COMMIT_PRECEDES_QUIESCED_SEAL=YES
+QUIESCE_VISIBLE_AT_IS_POST_Q1_COMMIT=YES
+PRE_QUIESCE_INFLIGHT_TRANSACTION_BARRIER=YES
+SERVICE_ROLE_MUTATION_ENTRYPOINT_POLICY=QUIESCE_IF_PRESENT
+SERVICE_ROLE_INTERNAL_HELPER_EXECUTE=PRESERVE
+ALL_MUTATION_CALLER_ROLES_QUIESCED=YES
+VERIFIED_STATE_CANNOT_BE_MANUFACTURED=YES
+VERIFIED_GATE_CANONICAL_FK_COUNT=4
+VERIFIED_GATE_MUTATION_RPC_COUNT=14
+POST_APPLY_LEGACY_ACL_RESTORE=DENIED
+POST_APPLY_VERIFY_FAILURE_KEEP_QUIESCED=YES
+RPC_VOLATILITY_CERTIFICATION=REQUIRED
+RPC_OWNER_CERTIFICATION=REQUIRED
+RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
+POST_CUTOVER_ACL_NORMALIZED=YES
+AUTHENTICATED_GRANT_OPTION_DENIED=YES
+POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14
+CONTROL_PLANE_EXISTING_SCHEMA_GUARD=YES
+STAGING_LOCK_TIMEOUT=5s
+PRODUCTION_LOCK_TIMEOUT=15s
+UNBOUNDED_LOCK_WAIT=NO
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Q1A (`07A`) requires an existing Q0A `PREPARED` batch (`wave5.cutover_batch_id`) and COMMITs RPC REVOKE without `quiesce_visible_at`. Q0A (`10A`) creates that single PREPARED batch and quiesces `service_role` Club table DML. Q1B (`07A2`) is a later transaction that seals `QUIESCED` and writes `quiesce_visible_at`. Drain uses that post-commit timestamp. `q1_committed_at` is compatibility-only and is not drain authority.
+
+```
+SERVICE_ROLE_DIRECT_DML_GUARD_DESIGNED=YES
+Q0A_PRECEDES_Q1A=YES
+QUIESCED_MEANS_ALL_KNOWN_WRITER_SURFACES_CLOSED=YES
+APPLY_PRELOCK_SERVICE_ROLE_DIRECT_DML=DENIED
+VERIFIED_BEFORE_SERVICE_ROLE_RESTORE=YES
+PLATFORM_DEFAULT_TABLE_PRIVILEGE_HARDENING_GAP=OPEN_SEPARATE_SCOPE
+```
+
+`03B` rechecks mutation-critical post-APPLY invariants in the same transaction that marks `VERIFIED`. A 3-RPC subset is not sufficient. VERIFIED requires `service_role` Club table DML still DENIED.
+
+`07C` may restore captured ACLs (RPC + table DML snapshot) only from `PREPARED` / `QUIESCED` / `DRAINED`. `APPLIED` / `VERIFIED` / `RESTORED` / `ABORTED` / `APPLYING` are denied. Failed APPLY remains `DRAINED`. Post-APPLY VERIFY failure keeps writes quiesced (`APP_ROLLBACK_KEEP_CANONICAL_DB`) — no `07C`, `service_role` stays quiesced.
+
+## Round 6 remediation (pending Round 7 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND6_REMEDIATION=COMPLETE_PENDING_ROUND7_OWNER_REVIEW
+CANONICAL_MUTATION_RPC_COUNT=14
+LEGACY_COMPAT_MUTATION_RPC_COUNT=1
+TOTAL_QUIESCE_TARGET_COUNT=15
+ALL_CANONICAL_MUTATION_SIGNATURES_PRESENT_BEFORE_Q1=YES
+UNKNOWN_MUTATION_RPC_OVERLOAD=ABORT
+ONE_ACTIVE_CUTOVER_BATCH=YES
+CUTOVER_STATE_MACHINE=YES
+CUTOVER_METADATA_PUBLIC_ACCESS=DENIED
+CUTOVER_METADATA_AUTHENTICATED_ACCESS=DENIED
+CUTOVER_METADATA_ANON_ACCESS=DENIED
+RESTORE_REQUIRES_EXPLICIT_BATCH_ID=YES
+LATEST_SNAPSHOT_IMPLICIT_RESTORE=DENIED
+PRE_Q1_INFLIGHT_TRANSACTION_BARRIER=YES
+APPLY_REQUIRES_DURABLE_DRAIN_STATE=YES
+APPLY_BATCH_ID_MATCH_REQUIRED=YES
+ARBITRARY_DRAIN_PASS_GUC_NOT_SUFFICIENT=YES
+EXISTING_RPC_STRONG_FINGERPRINT_COUNT=10
+NEW_WAVE5_FUNCTION_STRONG_GUARD_COUNT=3
+RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
+POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14
+LEGACY_LEAVE_MY_POST_CUTOVER_STATE=QUIESCED_EXECUTE_DENIED
+STAGING_LOCK_TIMEOUT=5s
+PRODUCTION_LOCK_TIMEOUT=15s
+UNBOUNDED_LOCK_WAIT=NO
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Cutover control state lives in `public.wave5_club_cutover_batch` (no private operational schema exists in this architecture). Application roles are denied: `REVOKE ALL` from `PUBLIC` / `anon` / `authenticated` plus RLS with no policies. Fingerprints are **not** invented in git; PRECHECK will emit live `prosrc_md5` when Owner authorizes a read-only Staging run.

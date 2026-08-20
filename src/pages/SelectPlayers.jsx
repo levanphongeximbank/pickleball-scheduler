@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   lockCourt,
@@ -121,22 +121,21 @@ export default function SelectPlayers() {
 
   const canInterveneCourt = isSuperAdmin && previewMode && pairingIntervention.canIntervene;
 
-  const [lockedCourts, setLockedCourts] = useState(() => {
-    return getDirectorState().lockedCourts || [];
-  });
-
-  const [lockedPlayers, setLockedPlayers] = useState(() => {
-    return getDirectorState().lockedPlayers || [];
-  });
-
-  const [clubPolicies, setClubPolicies] = useState(() => getPolicies());
-  const [clubRules, setClubRules] = useState(() => getRules());
+  const [lockedCourts, setLockedCourts] = useState([]);
+  const [lockedPlayers, setLockedPlayers] = useState([]);
+  const [clubPolicies, setClubPolicies] = useState([]);
+  const [clubRules, setClubRules] = useState([]);
   const [founderConstraints, setFounderConstraints] = useState([]);
 
-  const refreshDirectorConfig = () => {
-    setClubPolicies(getPolicies());
-    setClubRules(getRules());
-  };
+  const refreshDirectorConfig = useCallback(() => {
+    if (!activeClubId) {
+      setClubPolicies([]);
+      setClubRules([]);
+      return;
+    }
+    setClubPolicies(getPolicies(activeClubId));
+    setClubRules(getRules(activeClubId));
+  }, [activeClubId]);
 
   const handleSaveFounderConstraints = async () => {
     if (!activeClubId) {
@@ -171,11 +170,9 @@ export default function SelectPlayers() {
     [founderConstraints]
   );
 
-  const [courts, setCourts] = useState(() => loadCourtsFromStorage());
+  const [courts, setCourts] = useState([]);
 
-  const [selectedCourts, setSelectedCourts] = useState(() =>
-    loadInitialSelectedCourts(loadCourtsFromStorage())
-  );
+  const [selectedCourts, setSelectedCourts] = useState([]);
 
   const [players, setPlayers] = useState([]);
   const [playersLoadState, setPlayersLoadState] = useState({
@@ -191,6 +188,21 @@ export default function SelectPlayers() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!activeClubId) {
+      setCourts([]);
+      setSelectedCourts([]);
+      setSelectedPlayers([]);
+      setScheduleResult(null);
+      setPreviewMode(false);
+      setLockedCourts([]);
+      setLockedPlayers([]);
+      setFounderConstraints([]);
+      setClubPolicies([]);
+      setClubRules([]);
+      setPlayers([]);
+      setPlayersLoadState({ status: "idle", message: null });
+      return undefined;
+    }
     const nextCourts = loadCourtsFromStorage(activeClubId);
 
     setCourts(nextCourts);
@@ -244,7 +256,7 @@ export default function SelectPlayers() {
     return () => {
       cancelled = true;
     };
-  }, [activeClubId, revision]);
+  }, [activeClubId, revision, refreshDirectorConfig]);
 
   useEffect(() => {
     const eligibleIds = new Set(
@@ -639,6 +651,7 @@ export default function SelectPlayers() {
           onSave={handleSaveFounderConstraints}
         />
         <SelectPlayersDirectorCard
+          clubId={activeClubId}
           lockedCourts={lockedCourts}
           lockedPlayers={lockedPlayers}
           clubPolicies={clubPolicies}

@@ -43,15 +43,15 @@ afterEach(() => {
   Date.now = originalDateNow;
 });
 
-test("loadClubs seeds default club when storage is empty", () => {
+test("loadClubs does not fabricate default-club when storage is empty", () => {
   const clubs = loadClubs();
 
-  assert.equal(clubs.length, 1);
-  assert.equal(clubs[0].id, DEFAULT_CLUB.id);
-  assert.equal(getActiveClubId(), DEFAULT_CLUB.id);
+  assert.deepEqual(clubs, []);
+  assert.equal(getActiveClubId(), null);
+  assert.equal(getActiveClub(), null);
 });
 
-test("addClub creates a new club and allows switching active club", () => {
+test("addClub creates a new club and allows switching active club preference", () => {
   const result = addClub("CLB Thu Bay");
 
   assert.equal(result.ok, true);
@@ -60,7 +60,7 @@ test("addClub creates a new club and allows switching active club", () => {
   assert.equal(getActiveClub().name, "CLB Thu Bay");
 });
 
-test("removeClub rejects deleting default and resets active when removing current club", () => {
+test("removeClub rejects deleting default identity and clears preference when removing current club", () => {
   const result = addClub("CLB Test");
   assert.equal(result.ok, true);
 
@@ -70,10 +70,12 @@ test("removeClub rejects deleting default and resets active when removing curren
 
   const removeResult = removeClub(result.club.id);
   assert.equal(removeResult.ok, true);
-  assert.equal(getActiveClubId(), DEFAULT_CLUB.id);
+  assert.equal(getActiveClubId(), null);
 });
 
-test("getScopedStorageKey uses active club and accepts explicit club id", () => {
-  assert.equal(getScopedStorageKey("players"), `players::${DEFAULT_CLUB.id}`);
+test("getScopedStorageKey requires an explicit club id", () => {
+  assert.throws(() => getScopedStorageKey("players"), (err) =>
+    String(err?.message || "").includes("CLUB_REQUIRED")
+  );
   assert.equal(getScopedStorageKey("players", "club-a"), "players::club-a");
 });

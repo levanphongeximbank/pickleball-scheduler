@@ -44,7 +44,7 @@ export default function ClubRatingsTab({ club, tenantId, onRefresh }) {
   const canEditElo =
     !rbacEnabled ||
     !isAuthenticated ||
-    can(PERMISSIONS.PLAYER_UPDATE, { clubId: club.id, venueId: tenantId });
+    can(PERMISSIONS.PLAYER_UPDATE, { clubId: club.id, tenantId });
 
   const playersById = useMemo(() => {
     const players = getTenantPlayers(tenantId);

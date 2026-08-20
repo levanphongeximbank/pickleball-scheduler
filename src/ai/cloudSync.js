@@ -1,4 +1,4 @@
-import { getActiveClubId } from "../data/club.js";
+import { assertExplicitClubId } from "../features/club/context/requireExplicitClubId.js";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { guardClubAction, guardAnyClubAction } from "../auth/guardAction.js";
 import { guardSubscriptionForClub } from "../auth/subscriptionGuard.js";
@@ -344,7 +344,7 @@ async function pullLegacyFromSupabase(clubId) {
  * Use club_data_v3 / syncClubToCloud only. Admin break-glass via service_role.
  */
 export async function mergeLegacyClubAiToV3(options = {}) {
-  const clubId = options.clubId || getActiveClubId();
+  const clubId = assertExplicitClubId(options.clubId);
   // Fail-closed (PROD-SEC-G3-B12-01 + hard cutover). Never read/write club_ai_data.
   return pullLegacyFromSupabase(clubId);
 }
@@ -376,7 +376,7 @@ function saveCloudDatabase(database) {
 }
 
 export async function syncClubToCloud(options = {}) {
-  const clubId = options.clubId || getActiveClubId();
+  const clubId = assertExplicitClubId(options.clubId);
   const check = options.permission
     ? guardClubAction(clubId, options.permission)
     : guardAnyClubAction(clubId, [
@@ -424,7 +424,7 @@ export async function syncClubToCloud(options = {}) {
 }
 
 export async function pullClubFromCloud(options = {}) {
-  const clubId = options.clubId || getActiveClubId();
+  const clubId = assertExplicitClubId(options.clubId);
   const permission = options.permission || PERMISSIONS.SYSTEM_SETTING;
   const check = guardClubAction(clubId, permission);
   if (!check.ok) {
@@ -484,12 +484,12 @@ export async function pullClubFromCloud(options = {}) {
   };
 }
 
-export async function syncAIDataToCloud() {
-  return syncClubToCloud();
+export async function syncAIDataToCloud(options = {}) {
+  return syncClubToCloud(options);
 }
 
-export async function pullAIDataFromCloud() {
-  return pullClubFromCloud();
+export async function pullAIDataFromCloud(options = {}) {
+  return pullClubFromCloud(options);
 }
 
 /**
@@ -510,10 +510,10 @@ export function readLastCloudSyncTimestamp(db, clubId) {
   return entry.syncedAt || null;
 }
 
-export function getLastCloudSync(clubId = getActiveClubId()) {
+export function getLastCloudSync(clubId) {
   return readLastCloudSyncTimestamp(loadCloudDatabase(), clubId);
 }
 
-export function buildClubCloudExport(clubId = getActiveClubId()) {
+export function buildClubCloudExport(clubId) {
   return buildFullClubExport(clubId);
 }

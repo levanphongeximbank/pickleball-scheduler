@@ -13,7 +13,7 @@
 | Staging-first patch | `docs/clubs-rls-remediation-01/sql/10_CLUBS_RLS_REMEDIATION_01_FORWARD.sql` |
 | Public discovery RPC | `docs/public-catalog/pc-01/10_PUBLIC_CATALOG_01_PUBLIC_READ_RPC.sql` |
 
-No other SQL file in-repo recreates `clubs_select`. Writer policies on `public.clubs` do not exist; Phase 42C revokes INSERT/UPDATE/DELETE from `authenticated`/`anon`.
+No other SQL file in-repo recreates `clubs_select`. Writer policies on Club-owned tables do not exist. Canonical Club writes are **RPC-only** (`SECURITY DEFINER`). Phase 42C plus Wave5 truncate hardening deny `authenticated`/`anon` **INSERT/UPDATE/DELETE/TRUNCATE** on `public.clubs`, `public.club_members`, `public.club_governance_assignments`, and `public.club_membership_requests_v42`. `service_role` remains outside this table-level revoke scope. `pg_default_acl` / `ALTER DEFAULT PRIVILEGES` hardening is a separate platform gap (`PLATFORM_DEFAULT_TABLE_PRIVILEGE_HARDENING_GAP=OPEN_SEPARATE_SCOPE`).
 
 ## Defect (current / Production evidence)
 
@@ -50,7 +50,7 @@ Public directory remains `public.public_catalog_list_clubs` (SECURITY DEFINER, a
 | Policy | Command | Roles | Conflict? |
 |--------|---------|-------|-----------|
 | `clubs_select` | SELECT | authenticated | Sole SELECT policy — remediation replaces it |
-| (none) | INSERT/UPDATE/DELETE | — | No writer policies; grants revoked |
+| (none) | INSERT/UPDATE/DELETE/TRUNCATE | — | No writer policies; table ACLs deny direct DML including TRUNCATE |
 
 **N10:** After forward, exactly one SELECT policy; no second permissive policy reintroduces broad read.
 
@@ -67,7 +67,9 @@ Public directory remains `public.public_catalog_list_clubs` (SECURITY DEFINER, a
 
 ## Writer impact
 
-None. Forward reaffirms `REVOKE INSERT, UPDATE, DELETE` and does not create writer policies (N8).
+None for application writers. Forward reaffirms RPC-only writes: no direct writer policies (N8). It revokes `INSERT, UPDATE, DELETE, TRUNCATE` from `anon`/`authenticated` on `public.clubs`, and `TRUNCATE` on the other three Club-owned tables.
+
+**Wave5 Staging audit (historical omission):** canonical/remediation sources previously revoked INSERT/UPDATE/DELETE but omitted TRUNCATE. RLS does **not** protect TRUNCATE. Wave5 Club truncate remediation closes that table-level gap. Do not treat `pg_default_acl` default-privilege templates as closed in this package.
 
 ## Inactive / deleted contract (N9)
 

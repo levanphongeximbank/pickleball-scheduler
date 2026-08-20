@@ -313,6 +313,7 @@ describe("DP-17 Fair Match follows Loại trận", () => {
       settings: pairingSettings(DAILY_MATCH_TYPE.MIXED_DOUBLE),
       tournamentId: "t-mixed",
       matchCount: 1,
+      clubId: "club-test",
       skipPrivatePairingPrepare: true,
     });
     assert.equal(result.ok, true);
@@ -342,6 +343,7 @@ describe("DP-17 Fair Match follows Loại trận", () => {
       settings: pairingSettings(DAILY_MATCH_TYPE.MEN_DOUBLE),
       tournamentId: "t-men",
       matchCount: 1,
+      clubId: "club-test",
       skipPrivatePairingPrepare: true,
     });
     assert.equal(men.ok, true);
@@ -352,6 +354,7 @@ describe("DP-17 Fair Match follows Loại trận", () => {
       settings: pairingSettings(DAILY_MATCH_TYPE.WOMEN_DOUBLE),
       tournamentId: "t-women",
       matchCount: 1,
+      clubId: "club-test",
       skipPrivatePairingPrepare: true,
     });
     assert.equal(women.ok, true);
@@ -362,6 +365,7 @@ describe("DP-17 Fair Match follows Loại trận", () => {
       settings: pairingSettings(DAILY_MATCH_TYPE.AUTO),
       tournamentId: "t-auto",
       matchCount: 1,
+      clubId: "club-test",
       skipPrivatePairingPrepare: true,
     });
     assert.equal(auto.ok, true);

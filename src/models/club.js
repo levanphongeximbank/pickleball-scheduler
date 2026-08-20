@@ -10,6 +10,20 @@ function slugify(name) {
   return slug || `club-${Date.now()}`;
 }
 
+function trimId(value) {
+  const id = String(value || "").trim();
+  return id || null;
+}
+
+/**
+ * Club application model.
+ *
+ * Club.id = Club identity
+ * Club.tenantId = canonical Platform Tenant identity (optional until resolved)
+ * Club.venueId = Venue identity ONLY when independently sourced
+ *
+ * tenantId and venueId are independent. Never cross-fill.
+ */
 export function normalizeClub(club) {
   const name = String(club?.name || "").trim();
   const id = String(club?.id || "").trim();
@@ -18,9 +32,9 @@ export function normalizeClub(club) {
       ? "inactive"
       : club?.status === "pending_approval"
         ? "pending_approval"
-      : club?.status === "pending_setup"
-        ? "pending_setup"
-        : "active";
+        : club?.status === "pending_setup"
+          ? "pending_setup"
+          : "active";
 
   const governance = normalizeClubGovernance(club);
 
@@ -33,17 +47,8 @@ export function normalizeClub(club) {
     governance,
     slug: String(club?.slug || "").trim() || slugify(name || id),
     note: String(club?.note || "").trim(),
-    /** Tenant — optional, dùng khi bật RBAC multi-tenant. tenantId === venueId. */
-    tenantId: club?.tenantId
-      ? String(club.tenantId).trim()
-      : club?.venueId
-        ? String(club.venueId).trim()
-        : null,
-    venueId: club?.venueId
-      ? String(club.venueId).trim()
-      : club?.tenantId
-        ? String(club.tenantId).trim()
-        : null,
+    tenantId: trimId(club?.tenantId ?? club?.tenant_id),
+    venueId: trimId(club?.venueId ?? club?.venue_id),
     createdByUserId: club?.createdByUserId ? String(club.createdByUserId).trim() : null,
     timezone: club?.timezone || DEFAULT_TIMEZONE,
     createdAt: club?.createdAt || new Date().toISOString(),
@@ -68,8 +73,8 @@ export function createClubRecord(name, options = {}) {
     status: options.status || "active",
     governance: options.governance,
     note: options.note || "",
-    venueId: options.venueId || options.tenantId || null,
-    tenantId: options.tenantId || options.venueId || null,
+    venueId: options.venueId || null,
+    tenantId: options.tenantId || null,
     createdByUserId: options.createdByUserId || null,
     timezone: options.timezone || DEFAULT_TIMEZONE,
     createdAt: new Date().toISOString(),

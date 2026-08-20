@@ -209,7 +209,7 @@ export async function createClub(data = {}) {
 
   const check = guardPermission(
     PERMISSIONS.CLUB_CREATE,
-    tenantId ? { venueId: tenantId, tenantId } : {}
+    tenantId ? { tenantId } : {}
   );
   if (!check.ok && !(user && canSelfRegisterClub(user))) {
     return check;
@@ -249,8 +249,9 @@ export async function createClub(data = {}) {
     };
   }
 
-  if (tenantId) {
-    const limitCheck = guardMaxClubs(tenantId);
+  const venueIdForLimit = data.venueId || null;
+  if (venueIdForLimit) {
+    const limitCheck = guardMaxClubs(venueIdForLimit);
     if (!limitCheck.ok) {
       return limitCheck;
     }
@@ -290,7 +291,7 @@ export async function createClub(data = {}) {
     description: data.description,
     status: data.status || status,
     governance,
-    venueId: tenantId,
+    venueId: data.venueId || null,
     tenantId,
     createdByUserId: user?.id || null,
   });
@@ -336,7 +337,10 @@ export async function createClub(data = {}) {
     };
   }
 
-  const cloudResult = await persistClubToCloud(club, { venueId: tenantId, actor: user });
+  const cloudResult = await persistClubToCloud(club, {
+    venueId: club.venueId || data.venueId || null,
+    actor: user,
+  });
   if (!cloudResult.ok && cloudResult.code !== "PRESIDENT_REQUIRED") {
     return {
       ok: true,
@@ -469,7 +473,7 @@ export async function updateClub(clubId, data = {}, tenantId) {
     };
   }
 
-  const effectiveTenantId = tenantId || club.tenantId || club.venueId;
+  const effectiveTenantId = tenantId || club.tenantId || null;
   const tenantClubs = getClubsByTenant(effectiveTenantId);
 
   if (data.name && findDuplicateName(tenantClubs, data.name, trimmedId)) {
@@ -528,13 +532,13 @@ export async function updateClub(clubId, data = {}, tenantId) {
 
   if (Object.keys(patch).length === 0) {
     const unchanged = getRegistryClubById(trimmedId);
-    void persistClubToCloud(unchanged, { venueId: effectiveTenantId });
+    void persistClubToCloud(unchanged, { venueId: unchanged?.venueId || null });
     return { ok: true, club: unchanged };
   }
 
   const result = updateClubMeta(trimmedId, patch);
   if (result.ok) {
-    void persistClubToCloud(result.club, { venueId: effectiveTenantId });
+    void persistClubToCloud(result.club, { venueId: result.club?.venueId || null });
   }
   return result;
 }

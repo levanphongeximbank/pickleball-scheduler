@@ -35,7 +35,7 @@ import {
   listClubActivitySessions,
   updateClubActivitySession,
 } from "../../../features/club/index.js";
-import { listClustersForVenue } from "../../../features/court-cluster/services/courtClusterService.js";
+import { listClustersForTenant } from "../../../features/court-cluster/services/courtClusterService.js";
 import { getTodayActivityDayOfWeek, WEEK_DAY_SHORT_LABELS, WEEK_GRID_DAYS } from "./myClubViewLogic.js";
 
 const EMPTY_FORM = {
@@ -61,7 +61,7 @@ export default function MyClubWeeklySchedule({
 
   const club = useMemo(() => getClubById(clubId, tenantId), [clubId, tenantId, revision]);
   const canManage = club && user && canManageClubActivitySchedule(user, club);
-  const venueClusters = useMemo(() => listClustersForVenue(tenantId), [tenantId]);
+  const venueClusters = useMemo(() => listClustersForTenant(tenantId), [tenantId]);
 
   const sessions = useMemo(() => {
     void revision;

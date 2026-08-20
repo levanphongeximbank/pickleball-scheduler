@@ -5,6 +5,7 @@ import { runWaitingEngine } from "../src/ai/waiting.js";
 import { getScopedStorageKey } from "../src/data/club.js";
 
 const WAITING_STORAGE_KEY = "pickleball_ai_waiting";
+const CLUB_ID = "club-test";
 
 function createLocalStorageMock(seed = {}) {
   const store = new Map(Object.entries(seed));
@@ -31,7 +32,7 @@ beforeEach(() => {
 
 test("runWaitingEngine prioritizes players with higher waitCount", () => {
   globalThis.localStorage = createLocalStorageMock({
-    [getScopedStorageKey(WAITING_STORAGE_KEY)]: JSON.stringify({
+    [getScopedStorageKey(WAITING_STORAGE_KEY, CLUB_ID)]: JSON.stringify({
       p1: { waitCount: 5, playCount: 3, lastWaitRound: 0, lastPlayRound: 0 },
       p2: { waitCount: 4, playCount: 3, lastWaitRound: 0, lastPlayRound: 0 },
       p3: { waitCount: 1, playCount: 1, lastWaitRound: 0, lastPlayRound: 0 },
@@ -46,7 +47,7 @@ test("runWaitingEngine prioritizes players with higher waitCount", () => {
     level: 3,
   }));
 
-  const result = runWaitingEngine(players, { courtCount: 1 });
+  const result = runWaitingEngine(players, { courtCount: 1, clubId: CLUB_ID });
 
   assert.equal(result.playingPlayers.length, 4);
   assert.equal(result.waitingPlayers.length, 1);
@@ -63,7 +64,7 @@ test("runWaitingEngine keeps playing players as multiples of 4", () => {
     level: 3,
   }));
 
-  const result = runWaitingEngine(players, { courtCount: 2 });
+  const result = runWaitingEngine(players, { courtCount: 2, clubId: CLUB_ID });
 
   assert.equal(result.playingPlayers.length, 8);
   assert.equal(result.waitingPlayers.length, 2);
@@ -71,7 +72,7 @@ test("runWaitingEngine keeps playing players as multiples of 4", () => {
 
 test("runWaitingEngine returns waitingSnapshot before round update", () => {
   globalThis.localStorage = createLocalStorageMock({
-    [getScopedStorageKey(WAITING_STORAGE_KEY)]: JSON.stringify({
+    [getScopedStorageKey(WAITING_STORAGE_KEY, CLUB_ID)]: JSON.stringify({
       p1: { waitCount: 3, playCount: 1, lastWaitRound: 0, lastPlayRound: 0 },
       p2: { waitCount: 0, playCount: 2, lastWaitRound: 0, lastPlayRound: 0 },
     }),
@@ -84,7 +85,7 @@ test("runWaitingEngine returns waitingSnapshot before round update", () => {
     { id: "p4", name: "P4", level: 3 },
   ];
 
-  const result = runWaitingEngine(players, { courtCount: 1 });
+  const result = runWaitingEngine(players, { courtCount: 1, clubId: CLUB_ID });
 
   assert.equal(result.waitingSnapshot.p1.waitCount, 3);
   assert.equal(result.waitingSnapshot.p2.waitCount, 0);

@@ -73,18 +73,19 @@ test("resolveActiveClubSelection keeps a valid preferred id", () => {
   assert.equal(sel.stale, false);
 });
 
-test("resolveActiveClubSelection requireTenant normalizes tenantId/venueId and rejects tenant-less", () => {
+test("resolveActiveClubSelection requireTenant keeps tenantId/venueId distinct and rejects tenant-less", () => {
   const ready = resolveActiveClubSelection({
     preferredClubId: "club-b",
     visibleClubs: [
-      { id: "club-a", tenantId: "venue-1" },
-      { id: "club-b", venueId: "venue-1" },
+      { id: "club-a", tenantId: "tenant-1", venueId: "venue-1" },
+      { id: "club-b", tenantId: "tenant-1", venueId: "venue-1" },
     ],
     requireTenant: true,
   });
   assert.equal(ready.activeClubId, "club-b");
-  assert.equal(ready.activeClub.tenantId, "venue-1");
+  assert.equal(ready.activeClub.tenantId, "tenant-1");
   assert.equal(ready.activeClub.venueId, "venue-1");
+  assert.notEqual(ready.activeClub.tenantId, ready.activeClub.venueId);
 
   const rejected = resolveActiveClubSelection({
     preferredClubId: "club-ghost",
@@ -177,13 +178,11 @@ test("mapRepoCodeToClubError only ever returns registered canonical codes", () =
 });
 
 // --- 6 (cont). repository listClubsForCurrentScope contract ---
-test("listClubsForCurrentScope platform-wide without selected tenant reads whole registry (tenantId=null)", async () => {
-  let seenTenantId = "unset";
+test("listClubsForCurrentScope platform-wide without selected tenant has no operational list", async () => {
   const repo = createCanonicalClubRepository({
     isV2Enabled: () => true,
-    listRegistryRpc: async ({ tenantId }) => {
-      seenTenantId = tenantId;
-      return { ok: true, clubs: [CLUB_A, CLUB_B, CLUB_OTHER] };
+    listRegistryRpc: async () => {
+      throw new Error("unscoped operational catalog must not be fetched");
     },
   });
   const result = await repo.listClubsForCurrentScope({
@@ -191,14 +190,15 @@ test("listClubsForCurrentScope platform-wide without selected tenant reads whole
     isPlatformWide: true,
   });
   assert.equal(result.ok, true);
-  assert.equal(seenTenantId, null);
-  assert.equal(result.data.length, 3);
+  assert.equal(result.data.length, 0);
+  assert.equal(result.execution.mode, "operational_unscoped_denied");
 });
 
 test("listClubsForCurrentScope platform-wide WITH selected tenant scopes to that tenant", async () => {
   let seenTenantId = "unset";
   const repo = createCanonicalClubRepository({
     isV2Enabled: () => true,
+    resolveVenueById: (id) => ({ id, tenantId: id }),
     listRegistryRpc: async ({ tenantId }) => {
       seenTenantId = tenantId;
       return { ok: true, clubs: [CLUB_A, CLUB_B, CLUB_OTHER] };
@@ -216,6 +216,7 @@ test("listClubsForCurrentScope platform-wide WITH selected tenant scopes to that
 test("listClubsForCurrentScope tenant-scoped user only sees own-tenant clubs", async () => {
   const repo = createCanonicalClubRepository({
     isV2Enabled: () => true,
+    resolveVenueById: (id) => ({ id, tenantId: id }),
     listRegistryRpc: async () => ({ ok: true, clubs: [CLUB_A, CLUB_B, CLUB_OTHER] }),
   });
   const result = await repo.listClubsForCurrentScope({
@@ -231,6 +232,7 @@ test("listClubsForCurrentScope tenant-scoped user only sees own-tenant clubs", a
 test("canonical mapper preserves governance/UI shape for ClubContext consumers", async () => {
   const repo = createCanonicalClubRepository({
     isV2Enabled: () => true,
+    resolveVenueById: (id) => ({ id, tenantId: id }),
     listRegistryRpc: async () => ({
       ok: true,
       clubs: [
@@ -242,7 +244,10 @@ test("canonical mapper preserves governance/UI shape for ClubContext consumers",
       ],
     }),
   });
-  const result = await repo.listClubsForCurrentScope({ isPlatformWide: true });
+  const result = await repo.listClubsForCurrentScope({
+    isPlatformWide: true,
+    operationalOnly: false,
+  });
   assert.equal(result.ok, true);
   assert.deepEqual(result.data[0].governance, {
     ownerUserId: "owner-1",
@@ -259,7 +264,10 @@ test("cloud read error surfaces as error snapshot with no legacy leakage", async
     loadLocalClubs: () => [CLUB_A, CLUB_B],
     listLocalClubsForTenant: () => [CLUB_A, CLUB_B],
   });
-  const result = await repo.listClubsForCurrentScope({ isPlatformWide: true });
+  const result = await repo.listClubsForCurrentScope({
+    isPlatformWide: true,
+    tenantId: "venue-1",
+  });
   assert.equal(result.ok, false);
   const snap = toClubReadSnapshot(result);
   assert.equal(snap.state, CLUB_READ_STATE.ERROR);
@@ -317,7 +325,7 @@ test("DP-13B — ClubContext hydrates from security fingerprint, not raw user id
   );
   assert.match(
     source,
-    /\[canonicalRead, isAuthenticated, clubRehydrateScopeKey, currentTenantId, rbacEnabled, canonicalReloadNonce\]/
+    /\[canonicalRead, isAuthenticated, clubRehydrateScopeKey, currentTenantId, rbacEnabled, canonicalReloadNonce, venues\]/
   );
   assert.equal(source.includes("[isAuthenticated, user, currentTenantId, rbacEnabled]"), false);
   assert.equal(

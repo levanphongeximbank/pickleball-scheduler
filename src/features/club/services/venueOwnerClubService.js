@@ -8,10 +8,7 @@ import {
   switchActiveClub,
 } from "../../../domain/clubService.js";
 import { getVenueById } from "../../../domain/venueService.js";
-import {
-  getExplicitTenantIdForClub,
-  listClubsForTenant,
-} from "../../tenant/guards/tenantGuard.js";
+import { listClubsForTenant } from "../../tenant/guards/tenantGuard.js";
 import { loadClubs } from "../../../data/club.js";
 import { createClub as createClubOffline } from "./clubOfflineCommandAdapter.js";
 import { createClub as createClubCommand } from "./clubTenantService.js";
@@ -24,11 +21,7 @@ function findClubForVenue(venueId) {
       return false;
     }
 
-    if (club.venueId === venueId) {
-      return true;
-    }
-
-    return getExplicitTenantIdForClub(club.id) === venueId;
+    return club.venueId === venueId;
   });
 }
 
@@ -38,8 +31,7 @@ function syncClubVenueBinding(clubId, venueId) {
     return { ok: true };
   }
 
-  const explicitTenant = getExplicitTenantIdForClub(clubId);
-  if (club.venueId === venueId && explicitTenant === venueId) {
+  if (club.venueId === venueId) {
     return { ok: true, club };
   }
 
@@ -56,18 +48,8 @@ function isClubWritableForVenueOwner(user, clubId, venueId) {
   );
 }
 
-/**
- * Ensure a venue owner has a writable club — create or bind when needed.
- * Phase 45A.3D: under V2, create goes through clubTenantService → club_create.
- */
-export async function ensureWritableClubForVenueOwner(user, options = {}) {
-  const { activeClubId = getActiveClubId(), switchIfNeeded = true } = options;
-
-  if (!isRbacEnabled() || !user || !isVenueScopedRole(user.role)) {
-    return { ok: true, skipped: true };
-  }
-
-  const venueId = user.venueId || user.tenantId;
+function resolveVenueAndTenantForVenueOwner(user) {
+  const venueId = user?.venueId || null;
   if (!venueId) {
     return {
       ok: false,
@@ -76,14 +58,44 @@ export async function ensureWritableClubForVenueOwner(user, options = {}) {
     };
   }
 
+  const venue = getVenueById(venueId);
+  const tenantId = user?.tenantId || venue?.tenantId || null;
+  if (!tenantId) {
+    return {
+      ok: false,
+      error: "Tài khoản chưa được gán tổ chức (tenant). Liên hệ quản trị viên.",
+      code: API_ERROR_CODES.TENANT_MISMATCH,
+    };
+  }
+
+  return { ok: true, venueId, tenantId, venue };
+}
+
+/**
+ * Ensure a venue owner has a writable club — create or bind when needed.
+ * Phase 45A.3D: under V2, create goes through clubTenantService → club_create.
+ * Wave 5: Club tenant identity is Platform Tenant, not Venue.id.
+ */
+export async function ensureWritableClubForVenueOwner(user, options = {}) {
+  const { activeClubId = getActiveClubId(), switchIfNeeded = true } = options;
+
+  if (!isRbacEnabled() || !user || !isVenueScopedRole(user.role)) {
+    return { ok: true, skipped: true };
+  }
+
+  const resolved = resolveVenueAndTenantForVenueOwner(user);
+  if (!resolved.ok) {
+    return resolved;
+  }
+  const { venueId, tenantId, venue } = resolved;
+
   let targetClub = findClubForVenue(venueId);
   let wasCreated = false;
 
   if (!targetClub) {
-    const venue = getVenueById(venueId);
     const clubName = venue?.name ? `CLB ${venue.name}` : "CLB chính";
     const created = isClubStorageV2Enabled()
-      ? await createClubCommand({ name: clubName, tenantId: venueId })
+      ? await createClubCommand({ name: clubName, tenantId, venueId })
       : createClubOffline(clubName);
     if (!created.ok) {
       return created;
@@ -117,7 +129,7 @@ export async function ensureWritableClubForVenueOwner(user, options = {}) {
     }
   }
 
-  const tenantClubs = listClubsForTenant(venueId);
+  const tenantClubs = listClubsForTenant(tenantId);
   const activeWritable =
     activeClubId &&
     (isClubStorageV2Enabled()

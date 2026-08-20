@@ -4,6 +4,11 @@ import { isDemoSeedClubId, shouldHideDemoSeedData } from "../demo/seed/demoSeedR
 const CLUBS_KEY = "pickleball-clubs-v1";
 const ACTIVE_CLUB_KEY = "pickleball-active-club-v1";
 
+/**
+ * Local/offline fixture identity. NOT an authority Club.
+ * Wave 5: must never be auto-inserted into the registry or persisted as a
+ * fabricated operational target merely because the registry is empty.
+ */
 export const DEFAULT_CLUB = normalizeClub({
   id: "default-club",
   name: "CLB Mac dinh",
@@ -55,23 +60,17 @@ function migrateClubRecord(club) {
   };
 }
 
+/**
+ * Local registry reader for no-cloud compatibility.
+ * Does not fabricate default-club when empty.
+ * Does not create Club existence from a preference.
+ */
 export function loadClubs() {
   const raw = localStorage.getItem(CLUBS_KEY);
   const parsed = safeParseArray(raw, []);
   const normalized = parsed
     .map(migrateClubRecord)
     .filter((club) => club.id !== "" && club.name !== "");
-
-  if (normalized.length === 0) {
-    localStorage.setItem(CLUBS_KEY, JSON.stringify([DEFAULT_CLUB]));
-    return filterDemoClubs([DEFAULT_CLUB]);
-  }
-
-  if (!normalized.some((club) => club.id === DEFAULT_CLUB.id)) {
-    const withDefault = [DEFAULT_CLUB, ...normalized];
-    localStorage.setItem(CLUBS_KEY, JSON.stringify(withDefault));
-    return filterDemoClubs(withDefault);
-  }
 
   return filterDemoClubs(normalized);
 }
@@ -89,48 +88,25 @@ export function saveClubs(clubs) {
     .map(migrateClubRecord)
     .filter((club) => club.id !== "" && club.name !== "");
 
-  const withDefault = normalized.some((club) => club.id === DEFAULT_CLUB.id)
-    ? normalized
-    : [DEFAULT_CLUB, ...normalized];
-
-  localStorage.setItem(CLUBS_KEY, JSON.stringify(withDefault));
+  localStorage.setItem(CLUBS_KEY, JSON.stringify(normalized));
 }
 
 /**
- * Resolve a local-blob active club id for legacy callers.
- *
- * IMPORTANT (Wave 1 / canonical): when a persisted preference is not present in
- * the local registry (cloud-only canonical club), do NOT overwrite
- * pickleball-active-club-v1. Coercion to DEFAULT_CLUB is ephemeral for legacy
- * blob APIs only — never preference authority.
+ * @deprecated Preference-only. Does not prove Club exists, is eligible, or
+ * belongs to the selected Tenant. Never fabricates default-club.
+ * Domain services must take an explicit clubId — do not use this as a default.
  */
 export function getActiveClubId() {
-  const clubs = loadClubs();
-  const raw = localStorage.getItem(ACTIVE_CLUB_KEY);
-
-  if (!raw) {
-    localStorage.setItem(ACTIVE_CLUB_KEY, DEFAULT_CLUB.id);
-    return DEFAULT_CLUB.id;
-  }
-
-  if (clubs.some((club) => club.id === raw)) {
-    return raw;
-  }
-
-  // Preserve canonical / cloud-only preference in storage.
-  return DEFAULT_CLUB.id;
+  return getActiveClubIdPreference();
 }
 
+/**
+ * Persist a Club id as a UI preference only.
+ * Does not require local-blob existence (canonical/cloud clubs can be selected).
+ * Does not create a Club record.
+ */
 export function setActiveClubId(clubId) {
-  const clubs = loadClubs();
-  const normalizedId = String(clubId || "").trim();
-
-  if (clubs.some((club) => club.id === normalizedId)) {
-    localStorage.setItem(ACTIVE_CLUB_KEY, normalizedId);
-    return true;
-  }
-
-  return false;
+  return setActiveClubIdPreference(clubId);
 }
 
 /**
@@ -146,10 +122,9 @@ export function getActiveClubIdPreference() {
 }
 
 /**
- * Persist the active-club id as a PREFERENCE only. Unlike setActiveClubId this
- * does NOT require the club to exist in the local blob, so canonical (cloud-only)
- * clubs can be selected. The canonical visible set remains the existence/access
- * authority; this is a UI preference write.
+ * Persist the active-club id as a PREFERENCE only. Unlike a registry write this
+ * does NOT create Club existence. The canonical visible set remains the
+ * existence/access authority; this is a UI preference write.
  * @param {string} clubId
  * @returns {boolean}
  */
@@ -163,16 +138,23 @@ export function setActiveClubIdPreference(clubId) {
 }
 
 /**
- * Clear the persisted active-club preference (Wave 1 tenant switch / logout).
+ * Clear the persisted active-club preference (tenant switch / logout).
  * Preference is never authorization authority — clearing prevents cross-tenant leak.
  */
 export function clearActiveClubIdPreference() {
   localStorage.removeItem(ACTIVE_CLUB_KEY);
 }
 
+/**
+ * Local-registry lookup of the preference. Returns null when the preferred
+ * Club is not in the local registry — never fabricates DEFAULT_CLUB.
+ */
 export function getActiveClub() {
-  const activeId = getActiveClubId();
-  return loadClubs().find((club) => club.id === activeId) || DEFAULT_CLUB;
+  const activeId = getActiveClubIdPreference();
+  if (!activeId) {
+    return null;
+  }
+  return loadClubs().find((club) => club.id === activeId) || null;
 }
 
 export function addClub(name) {
@@ -204,15 +186,19 @@ export function removeClub(clubId) {
 
   saveClubs(next);
 
-  if (getActiveClubId() === clubId) {
-    setActiveClubId(DEFAULT_CLUB.id);
+  if (getActiveClubIdPreference() === clubId) {
+    clearActiveClubIdPreference();
   }
 
   return { ok: true };
 }
 
-export function getScopedStorageKey(baseKey, clubId = getActiveClubId()) {
-  return `${baseKey}::${clubId}`;
+export function getScopedStorageKey(baseKey, clubId) {
+  const id = String(clubId || "").trim();
+  if (!id) {
+    throw new Error("CLUB_REQUIRED — scoped storage key needs an explicit clubId.");
+  }
+  return `${baseKey}::${id}`;
 }
 
 export { normalizeClub };

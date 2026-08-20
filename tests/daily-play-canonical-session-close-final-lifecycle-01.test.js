@@ -459,6 +459,7 @@ describe("fair match singles / open / mixed", () => {
       },
       tournamentId: "t-ms",
       matchCount: 2,
+      clubId: "club-test",
       skipPrivatePairingPrepare: true,
     });
     assert.equal(result.ok, true);
@@ -483,6 +484,7 @@ describe("fair match singles / open / mixed", () => {
       },
       tournamentId: "t-ws",
       matchCount: 1,
+      clubId: "club-test",
       skipPrivatePairingPrepare: true,
     });
     assert.equal(result.ok, true);
@@ -500,6 +502,7 @@ describe("fair match singles / open / mixed", () => {
       },
       tournamentId: "t-mx",
       matchCount: 1,
+      clubId: "club-test",
       skipPrivatePairingPrepare: true,
     });
     assert.equal(result.ok, true);
@@ -522,6 +525,7 @@ describe("fair match singles / open / mixed", () => {
       },
       tournamentId: "t-open",
       matchCount: 1,
+      clubId: "club-test",
       skipPrivatePairingPrepare: true,
     });
     assert.equal(result.ok, true);
@@ -536,6 +540,7 @@ describe("fair match singles / open / mixed", () => {
       },
       tournamentId: "t-auto",
       matchCount: 1,
+      clubId: "club-test",
       skipPrivatePairingPrepare: true,
     });
     assert.equal(auto.ok, true);

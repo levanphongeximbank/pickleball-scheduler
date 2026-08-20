@@ -31,7 +31,7 @@ export function scopeForClubId(clubId, clusterId = null) {
   const tenantId = meta?.tenantId || resolveTenantIdForClub(clubId);
   return {
     clubId: clubId || null,
-    venueId: meta?.venueId || tenantId || null,
+    venueId: meta?.venueId || null,
     tenantId,
     clusterId: clusterId || null,
   };
