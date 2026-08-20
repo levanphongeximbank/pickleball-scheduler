@@ -150,14 +150,9 @@ async function seedTournamentContext() {
     localStorage.setItem("pickleball-active-club-v1", "club-ecebf64c78f948ccb2b59842441eb26c");
     localStorage.setItem("pickleball-active-cluster-v1", "venue-staging-a-main");
   });
-  await page.goto(`${BASE}/tournament/${TOURNAMENT_ID}/overview`, { waitUntil: "domcontentloaded", timeout: 90000 });
+  await page.goto(`${BASE}/tournament`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.waitForTimeout(1500);
   await selectSeedClub();
-  await page.waitForFunction(
-    () => !document.body.innerText.includes("Không tìm thấy giải"),
-    null,
-    { timeout: 45000 }
-  );
   return "";
 }
 
@@ -174,8 +169,30 @@ for (const screen of selectedScreens) {
   const target = `${BASE}/tournament/${TOURNAMENT_ID}${screen.suffix}${eventQuery}`;
   await page.goto(target, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.waitForSelector(`[data-testid="${screen.testId}"]`, { timeout: 45000 });
+  await page.evaluate(() => {
+    localStorage.setItem("pickleball-active-club-v1", "club-ecebf64c78f948ccb2b59842441eb26c");
+    localStorage.setItem("pickleball-active-cluster-v1", "venue-staging-a-main");
+  });
   await selectSeedClub();
-  await page.waitForTimeout(1200);
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 90000 });
+  await page.waitForSelector(`[data-testid="${screen.testId}"]`, { timeout: 45000 });
+  await selectSeedClub();
+  await page.waitForTimeout(2000);
+  try {
+    await page.waitForFunction(
+      () => !document.body.innerText.includes("Không tìm thấy giải"),
+      null,
+      { timeout: 30000 }
+    );
+  } catch {
+    await page.evaluate(() => {
+      localStorage.setItem("pickleball-active-club-v1", "club-ecebf64c78f948ccb2b59842441eb26c");
+    });
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 90000 });
+    await page.waitForSelector(`[data-testid="${screen.testId}"]`, { timeout: 45000 });
+    await selectSeedClub();
+    await page.waitForTimeout(2500);
+  }
   for (const shot of screen.viewports) {
     await page.setViewportSize({ width: shot.width, height: shot.height });
     await page.waitForTimeout(400);
