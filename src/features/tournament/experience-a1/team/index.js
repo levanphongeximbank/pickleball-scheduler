@@ -5,6 +5,7 @@ export {
   TEAM_LEGACY_TAB_COMPAT,
   teamOverviewPath,
   teamExperiencePath,
+  teamTournamentLegacyPath,
   resolveTeamExperienceOpenPath,
   resolveTeamLegacyCompatPath,
   resolveSafeTeamLegacyRedirect,
@@ -18,6 +19,13 @@ export {
   createTeamExperienceCommandDelegate,
   TeamTournamentExperienceAdapter,
 } from "./TeamTournamentExperienceAdapter.js";
+
+export {
+  projectTeamSettings,
+  projectTeamParticipants,
+  projectTeamSchedule,
+  TEAM_EXPERIENCE_COMMANDS,
+} from "./projectTeamExperienceSurfaces.js";
 
 export { buildTeamExperienceNav } from "./teamExperienceNav.js";
 

@@ -34,6 +34,10 @@ import {
 } from "../visual/tournamentExperienceTokens.js";
 import { projectTeamOverview } from "./TeamTournamentExperienceAdapter.js";
 import { buildTeamExperienceNav } from "./teamExperienceNav.js";
+import {
+  teamExperiencePath,
+  teamTournamentLegacyPath,
+} from "./teamExperienceRoutes.js";
 
 function OverviewState({ children }) {
   return (
@@ -96,7 +100,7 @@ export default function TeamOverviewPage() {
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
             <Button
               component={RouterLink}
-              to={teamTournamentPath(tournamentId, TEAM_TAB_QUERY.teams)}
+              to={teamTournamentLegacyPath(tournamentId, TEAM_TAB_QUERY.teams)}
               size="small"
               variant="contained"
               sx={primaryActionSx}
@@ -128,8 +132,11 @@ export default function TeamOverviewPage() {
     );
   }
 
-  const legacySetupTo = teamTournamentPath(tournamentId, TEAM_TAB_QUERY.teams);
+  const legacySetupTo = teamTournamentLegacyPath(tournamentId, TEAM_TAB_QUERY.teams);
   const opsDashboardTo = teamTournamentDashboardPath(tournamentId);
+  const settingsTo = teamExperiencePath(tournamentId, "settings");
+  const participantsTo = teamExperiencePath(tournamentId, "participants");
+  const scheduleTo = teamExperiencePath(tournamentId, "schedule");
 
   return (
     <OverviewState>
@@ -275,16 +282,17 @@ export default function TeamOverviewPage() {
             Lối vào vận hành
           </ExperienceSectionTitle>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap sx={{ mb: 1.5, flexWrap: "wrap" }}>
-            <Button component={RouterLink} to={legacySetupTo} variant="contained" size="small" sx={primaryActionSx}>
-              Thiết lập / đội / nội dung
+            <Button component={RouterLink} to={settingsTo} variant="contained" size="small" sx={primaryActionSx}>
+              Cài đặt
             </Button>
-            <Button
-              component={RouterLink}
-              to={teamTournamentPath(tournamentId, TEAM_TAB_QUERY.matchups)}
-              size="small"
-              sx={outlinedActionSx}
-            >
-              Trận đồng đội
+            <Button component={RouterLink} to={participantsTo} size="small" sx={outlinedActionSx}>
+              Đội tham dự
+            </Button>
+            <Button component={RouterLink} to={scheduleTo} size="small" sx={outlinedActionSx}>
+              Lịch đối đầu
+            </Button>
+            <Button component={RouterLink} to={legacySetupTo} size="small" sx={outlinedActionSx}>
+              Thiết lập đầy đủ
             </Button>
             <Button
               component={RouterLink}

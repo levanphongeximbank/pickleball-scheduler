@@ -13,6 +13,9 @@ import {
 /** Adopted this wave — safe to open from list / center. */
 export const TEAM_EXPERIENCE_ADOPTED_SCREENS = Object.freeze({
   overview: "overview",
+  settings: "settings",
+  participants: "participants",
+  schedule: "schedule",
 });
 
 /** Future IA slots — not mounted as fake screens. */
@@ -57,6 +60,13 @@ export function teamExperiencePath(tournamentId, screen = "overview") {
   return `/tournaments/${encodeId(id)}/${encodeURIComponent(key)}`;
 }
 
+/** Full TeamTournamentSetup shell with redirect bypass (lineup / Dreambreaker / etc.). */
+export function teamTournamentLegacyPath(tournamentId, tab = TEAM_TAB_QUERY.teams) {
+  const base = teamTournamentPath(tournamentId, tab);
+  const join = base.includes("?") ? "&" : "?";
+  return `${base}${join}experience=legacy`;
+}
+
 /**
  * Open path for Team Tournament — status-agnostic (no DRAFT/ACTIVE split).
  */
@@ -71,17 +81,18 @@ export function resolveTeamExperienceOpenPath(tournament) {
 
 /**
  * Compatibility map: legacy ?tab= → canonical screen intent.
- * Wave T1/T2: only overview is adopted; other tabs stay on legacy setup.
+ * Wave T3: format → settings, teams → participants, matchups → schedule.
+ * Disciplines stay on legacy (separate save path / not fully covered by Settings).
  */
 export const TEAM_LEGACY_TAB_COMPAT = Object.freeze({
   [TEAM_TAB_QUERY.format]: {
     canonicalScreen: "settings",
-    adopted: false,
+    adopted: true,
     legacyFallback: TEAM_TAB_QUERY.format,
   },
   [TEAM_TAB_QUERY.teams]: {
     canonicalScreen: "participants",
-    adopted: false,
+    adopted: true,
     legacyFallback: TEAM_TAB_QUERY.teams,
   },
   [TEAM_TAB_QUERY.disciplines]: {
@@ -91,7 +102,7 @@ export const TEAM_LEGACY_TAB_COMPAT = Object.freeze({
   },
   [TEAM_TAB_QUERY.matchups]: {
     canonicalScreen: "schedule",
-    adopted: false,
+    adopted: true,
     legacyFallback: TEAM_TAB_QUERY.matchups,
   },
   [TEAM_TAB_QUERY.standings]: {
@@ -126,8 +137,8 @@ export function resolveTeamLegacyCompatPath(tournamentId, tab) {
 }
 
 /**
- * Safe redirect target from legacy Team URL. Only overview is auto-canonical this wave.
- * Unknown / non-adopted tabs → stay on legacy (caller should not Navigate).
+ * Safe redirect target from legacy Team URL.
+ * Only adopted screens redirect; others stay on legacy (caller should not Navigate).
  */
 export function resolveSafeTeamLegacyRedirect({ tournamentId, tab } = {}) {
   const id = String(tournamentId || "").trim();

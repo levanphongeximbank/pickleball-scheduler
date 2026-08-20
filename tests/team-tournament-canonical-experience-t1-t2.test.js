@@ -145,8 +145,12 @@ describe("team-tournament-canonical-experience-t1-t2", () => {
       teamTournamentPath("abc", TEAM_TAB_QUERY.standings)
     );
     assert.equal(resolveSafeTeamLegacyRedirect({ tournamentId: "abc", tab: "standings" }), null);
-    assert.equal(resolveSafeTeamLegacyRedirect({ tournamentId: "abc", tab: "teams" }), null);
-    assert.equal(TEAM_LEGACY_TAB_COMPAT.format.adopted, false);
+    assert.equal(
+      resolveSafeTeamLegacyRedirect({ tournamentId: "abc", tab: "teams" }),
+      "/tournaments/abc/participants"
+    );
+    assert.equal(TEAM_LEGACY_TAB_COMPAT.format.adopted, true);
+    assert.equal(TEAM_LEGACY_TAB_COMPAT.disciplines.adopted, false);
     assert.equal(TEAM_LEGACY_TAB_COMPAT.diagram.canonicalScreen, "bracket");
     // Open path never points back at legacy setup (avoids redirect loop with future bridges).
     assert.equal(resolveTeamTournamentOpenPath({ id: "abc" }).includes("/tournament/team/"), false);
@@ -262,8 +266,11 @@ describe("team-tournament-canonical-experience-t1-t2", () => {
     const nav = buildTeamExperienceNav("abc");
     const overview = nav.find((item) => item.key === "overview");
     const standings = nav.find((item) => item.key === "standings");
+    const settings = nav.find((item) => item.key === "settings");
     assert.equal(overview.adopted, true);
     assert.equal(overview.to, "/tournaments/abc/overview");
+    assert.equal(settings.adopted, true);
+    assert.equal(settings.to, "/tournaments/abc/settings");
     assert.equal(standings.adopted, false);
     assert.equal(standings.kind, "legacy");
     assert.ok(standings.to.includes("/tournament/team/abc"));

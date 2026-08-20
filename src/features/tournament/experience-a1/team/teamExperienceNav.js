@@ -45,9 +45,9 @@ export function buildTeamExperienceNav(tournamentId) {
 
   const items = [
     { key: "overview", label: "Tổng quan", adopted: true },
-    { key: "settings", label: "Cài đặt / Nội dung", adopted: false },
-    { key: "participants", label: "Đội tham dự", adopted: false },
-    { key: "schedule", label: "Lịch / Trận đồng đội", adopted: false },
+    { key: "settings", label: "Cài đặt", adopted: true },
+    { key: "participants", label: "Đội tham dự", adopted: true },
+    { key: "schedule", label: "Lịch đối đầu", adopted: true },
     { key: "standings", label: "Bảng xếp hạng", adopted: false },
     { key: "bracket", label: "Sơ đồ / Knockout", adopted: false },
     { key: "awards", label: "Giải thưởng", adopted: false },

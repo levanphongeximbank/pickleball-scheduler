@@ -34,8 +34,11 @@ const ENGINE_TABS = new Set([
   "logs",
 ]);
 
-/** Team / shared Tournament Experience shell under plural family (Wave T1). */
-const TEAM_EXPERIENCE_SHELL_TABS = new Set(["overview"]);
+/** Team / shared Tournament Experience shell under plural family (Wave T1/T3).
+ * Note: `schedule` stays an Engine tab for auth — Team Schedule shares that path
+ * via mode resolver but keeps Engine UPDATE gate (organizer ops).
+ */
+const TEAM_EXPERIENCE_SHELL_TABS = new Set(["overview", "settings", "participants"]);
 
 export const TOURNAMENT_ENGINE_ROUTE_PERMISSIONS = Object.freeze([
   PERMISSIONS.TOURNAMENT_UPDATE,
