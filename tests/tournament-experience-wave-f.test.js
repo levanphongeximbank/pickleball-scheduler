@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { EVENT_TYPE, MATCH_STAGE, MATCH_STATUS, TOURNAMENT_MODE, TOURNAMENT_STATUS } from "../src/models/tournament/constants.js";
 import { BATCH_F_ACTION_MATRIX } from "../src/features/tournament/experience-a1/batchF/actionMatrix.js";
 import { deriveCommunicationsModel } from "../src/features/tournament/experience-a1/batchF/deriveCommunications.js";
-import { normalizeScoreLine } from "../src/features/tournament/experience-a1/batchF/deriveMediaPresentation.js";
+import { normalizeScoreLine, deriveMediaPresentationModel } from "../src/features/tournament/experience-a1/batchF/deriveMediaPresentation.js";
 import { deriveAwardsModel } from "../src/features/tournament/experience-a1/batchF/deriveAwards.js";
 import { deriveCompletionModel } from "../src/features/tournament/experience-a1/batchF/deriveCompletion.js";
 import {
@@ -149,12 +149,35 @@ describe("tournament-experience-wave-f", () => {
   });
 
   it("SCREEN20_PRESENTATION_STATE_ACTIONS_CONSISTENT=PASS", () => {
-    const live = resolvePresentationActions(PRESENTATION_SESSION.LIVE);
+    const live = resolvePresentationActions(PRESENTATION_SESSION.LIVE, { contentReady: true });
     assert.equal(live.startEnabled, false);
     assert.equal(live.pauseEnabled, true);
-    const paused = resolvePresentationActions(PRESENTATION_SESSION.PAUSED);
+    const paused = resolvePresentationActions(PRESENTATION_SESSION.PAUSED, { contentReady: true });
     assert.equal(paused.resumeEnabled, true);
     assert.equal(paused.startEnabled, false);
+    const offlineNoContent = resolvePresentationActions(PRESENTATION_SESSION.OFFLINE, { contentReady: false });
+    assert.equal(offlineNoContent.startEnabled, false);
+    const offlineWithContent = resolvePresentationActions(PRESENTATION_SESSION.OFFLINE, { contentReady: true });
+    assert.equal(offlineWithContent.startEnabled, true);
+  });
+
+  it("SCREEN20_CATALOG_READINESS_REAL_DATA_ONLY=YES", () => {
+    const model = deriveMediaPresentationModel(
+      sampleTournament([{ id: "e-a", name: "Đôi nam", eventType: EVENT_TYPE.MEN_DOUBLE, matches: [] }]),
+      { selectedEventId: "e-a", activeOutputId: "live" }
+    );
+    assert.equal(model.fakeReadyCount, 0);
+    assert.equal(model.outputs.find((item) => item.id === "live").status, "NO_DATA");
+    assert.equal(model.outputs.find((item) => item.id === "standings").status, "NO_DATA");
+    assert.equal(model.outputs.find((item) => item.id === "bracket").status, "NO_DATA");
+    assert.equal(model.outputs.find((item) => item.id === "champion").status, "NO_DATA");
+    assert.equal(model.outputs.find((item) => item.id === "sponsor").status, "NO_DATA");
+    assert.equal(model.outputs.find((item) => item.id === "media").status, "NO_DATA");
+    assert.equal(model.selectedOutputHasData, false);
+    assert.equal(
+      resolvePresentationActions(PRESENTATION_SESSION.OFFLINE, { contentReady: model.selectedOutputHasData }).startEnabled,
+      false
+    );
   });
 
   it("SCREEN20_NEW_MEDIA_SESSION_AUTHORITY=NO", () => {

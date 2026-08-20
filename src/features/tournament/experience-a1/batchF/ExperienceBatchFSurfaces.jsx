@@ -12,6 +12,7 @@ function presentationStatusTone(status) {
   if (status === "LIVE") return "live";
   if (status === "READY" || status === "CONFIRMED" || status === "COMPLETED" || status === "ASSIGNED") return "success";
   if (status === "IN_PROGRESS" || status === "NOT_READY" || status === "PAUSED") return "warning";
+  if (status === "NO_DATA") return "draft";
   return "draft";
 }
 
@@ -20,6 +21,7 @@ function presentationStatusLabelVi(status) {
   if (status === "READY") return "Sẵn sàng";
   if (status === "CONFIRMED" || status === "COMPLETED") return "Hoàn tất";
   if (status === "ASSIGNED") return "Đã gán";
+  if (status === "NO_DATA") return "Chưa có dữ liệu";
   if (status === "NOT_READY") return "Chưa sẵn sàng";
   if (status === "IN_PROGRESS") return "Đang diễn ra";
   if (status === "PAUSED") return "Tạm dừng";

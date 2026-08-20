@@ -122,7 +122,8 @@ export default function IndividualMediaPresentationPage() {
 
   const model = deriveMediaPresentationModel(tournament, { selectedEventId, activeOutputId: active });
   const output = model.outputs.find((item) => item.id === active);
-  const actions = resolvePresentationActions(sessionStatus);
+  const selectedOutputHasData = Boolean(output?.available);
+  const actions = resolvePresentationActions(sessionStatus, { contentReady: selectedOutputHasData });
   const setEvent = (id) => {
     const next = new URLSearchParams(searchParams);
     if (!id || id === "all") next.delete("eventId");
@@ -139,7 +140,7 @@ export default function IndividualMediaPresentationPage() {
         <Box sx={{ textAlign: "center" }}>
           <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.navyTextMuted }}>Đầu ra vô địch</Typography>
           <Typography sx={{ fontSize: 28, fontWeight: 800, color: "#FFF" }}>
-            {model.championPreview || "Chưa xác định"}
+            {model.championPreview || "Chưa có dữ liệu"}
           </Typography>
         </Box>
       );
@@ -148,7 +149,9 @@ export default function IndividualMediaPresentationPage() {
       <Box sx={{ textAlign: "center" }}>
         <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.navyTextMuted }}>{tournament.name}</Typography>
         <Typography sx={{ fontSize: { xs: 24, md: 32 }, fontWeight: 800, color: "#FFF", mt: 1 }}>{output?.label}</Typography>
-        <Typography sx={{ color: TOURNAMENT_COLOR.navyTextMuted, mt: 1 }}>{output?.hint}</Typography>
+        <Typography sx={{ color: TOURNAMENT_COLOR.navyTextMuted, mt: 1 }}>
+          {selectedOutputHasData ? output?.hint : output?.emptyHint || "Chưa có dữ liệu"}
+        </Typography>
       </Box>
     );
   })();
@@ -229,6 +232,9 @@ export default function IndividualMediaPresentationPage() {
               </Stack>
               <Typography sx={{ fontSize: 13 }}><b>Đầu ra đang chọn:</b> {output?.label}</Typography>
               <Typography sx={{ fontSize: 13 }}><b>Chế độ:</b> {actions.modeLabel}</Typography>
+              <Typography sx={{ fontSize: 12.5, color: selectedOutputHasData ? TOURNAMENT_COLOR.textMuted : TOURNAMENT_COLOR.warning }}>
+                {selectedOutputHasData ? "Có dữ liệu để trình chiếu." : "Chưa có dữ liệu cho đầu ra đang chọn."}
+              </Typography>
               <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>
                 Phiên trình chiếu chỉ trên máy này — không ghi hồ sơ phát sóng.
               </Typography>
@@ -256,9 +262,17 @@ export default function IndividualMediaPresentationPage() {
                 Tiếp tục trình chiếu
               </Button>
             ) : (
-              <Button size="small" variant="contained" disabled={!actions.startEnabled} onClick={() => setSessionStatus(PRESENTATION_SESSION.LIVE)}>
-                Bắt đầu trình chiếu
-              </Button>
+              <span title={selectedOutputHasData ? undefined : "Chưa có dữ liệu cho đầu ra đang chọn."}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  disabled={!actions.startEnabled}
+                  data-testid="presentation-start-button"
+                  onClick={() => setSessionStatus(PRESENTATION_SESSION.LIVE)}
+                >
+                  Bắt đầu trình chiếu
+                </Button>
+              </span>
             )}
             <Button size="small" variant="outlined" disabled={!actions.pauseEnabled} onClick={() => setSessionStatus(PRESENTATION_SESSION.PAUSED)}>
               Tạm dừng
