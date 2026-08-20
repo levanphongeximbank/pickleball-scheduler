@@ -377,10 +377,11 @@ test("10. actor/role/tenant/initialState cannot be caller authority", async () =
 
 test("11. in-progress lifecycle ordering requires identity → initialize → start", async () => {
   const order = [];
+  let matchSeq = 11;
   const writers = createStubWriters();
   writers.createInternalMatch = async () => {
     order.push("createInternalMatch");
-    return { id: nextUuid(11) };
+    return { id: nextUuid(matchSeq++) };
   };
   writers.initializeMatchExecution = async () => {
     order.push("initializeMatchExecution");
@@ -458,9 +459,8 @@ test("14. completed fixture remains isolated from primary tournament", async () 
     "bootstrapRefereeAssignment",
     "startMatchLive",
     "declareForfeit",
-    "finalizeMatchLive",
   ]);
-  assert.equal(result.COMPLETED_MATCH_EXECUTION, "CANONICAL_REFEREE_V5_FINALIZE");
+  assert.equal(result.COMPLETED_MATCH_EXECUTION, "CANONICAL_REFEREE_V5_DECLARE_FORFEIT");
   assert.notEqual(result.COMPLETED_MATERIALIZATION_PATH, "completeIsolatedTournament");
 });
 

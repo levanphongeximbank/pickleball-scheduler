@@ -68,6 +68,7 @@ import {
   evaluateCatalogExecution,
   evaluateDailyEnabledPass,
   evaluateDenial,
+  evaluateCompletedFalsePassGuard,
   evaluateDirectRpcDenied,
   evaluateDurableAssignment,
   evaluateDurableAuditActor,
@@ -87,7 +88,12 @@ import {
   loadFixtureReceiptFromPath,
   projectRefFromSupabaseUrl,
   STAGING_PROJECT_REF,
+  buildReceiptCaseAssignmentCommand,
+  evaluateCompletedAuthoritativeState,
+  evaluateCompletedCaseCommandBind,
+  mapCore13AssignmentLifecycleFromLiveRow,
 } from "./core13-staging-fixture-receipt.mjs";
+import { evaluateCompletedSamePathSemanticPreflight } from "./core13-staging-fixture-preflight.mjs";
 
 function fail(message) {
   console.error(`REFUSE: ${message}`);
@@ -299,6 +305,36 @@ async function main() {
     console.log(`FAIL_COUNT=${CASE_CATALOG.length}`);
     process.exit(1);
   }
+
+  const completedSamePath = evaluateCompletedSamePathSemanticPreflight({
+    receipt,
+    writers: {
+      declareForfeit: async () => ({ ok: true }),
+    },
+    commandBase: {
+      tenantId: tenantA,
+      tournamentId: tournamentA,
+      matchId: matchA,
+      refereeId,
+      competitionMode: "INTERNAL",
+    },
+    completedLiveRow: {
+      status: remoteEvidence.matches?.completed?.liveStatus,
+      liveStatus: remoteEvidence.matches?.completed?.liveStatus,
+    },
+  });
+  if (!completedSamePath.ok) {
+    fail(`COMPLETED_SAME_PATH_SEMANTIC_PREFLIGHT ${completedSamePath.detail}`);
+  }
+  const completedAuthoritative = evaluateCompletedAuthoritativeState({
+    status: remoteEvidence.matches?.completed?.liveStatus,
+  });
+  if (!completedAuthoritative.ok) {
+    fail(`COMPLETED_AUTHORITATIVE_LIFECYCLE ${completedAuthoritative.detail}`);
+  }
+  console.log(
+    `COMPLETED_SAME_PATH_SEMANTIC_PREFLIGHT=PASS liveStatus=${remoteEvidence.matches?.completed?.liveStatus || ""} core13=${mapCore13AssignmentLifecycleFromLiveRow({ status: remoteEvidence.matches?.completed?.liveStatus })}`
+  );
 
   const assignArgs = {
     p_tenant_id: tenantA,
@@ -663,11 +699,20 @@ async function main() {
 
       const lifecycle = async (caseName, matchId, action, extra, denialCodes) => {
         if (!requireFixture("lifecycle match", matchId, caseName)) return;
+        const scope = buildReceiptCaseAssignmentCommand(receipt, commandBase, matchId);
+        const bind =
+          caseName === "J.lifecycle-completed-deny"
+            ? evaluateCompletedCaseCommandBind(scope, receipt)
+            : { ok: true };
+        if (!bind.ok) {
+          record(caseName, bind);
+          return;
+        }
         let expectedVersion = 0;
         if (action === "replaceReferee" && !denialCodes) {
           const rows = await loadActiveRows(service, {
-            tenantId: tenantA,
-            tournamentId: tournamentA,
+            tenantId: scope.tenantId,
+            tournamentId: scope.tournamentId,
             matchId,
           });
           const start = evaluateCasePreconditionDrift(rows.length, 1, caseName);
@@ -680,17 +725,49 @@ async function main() {
           }
           expectedVersion = Number(rows[0].version || 0);
         }
+        if (caseName === "J.lifecycle-completed-deny") {
+          const completedLive = remoteEvidence.matches?.completed;
+          const core13Lifecycle = mapCore13AssignmentLifecycleFromLiveRow({
+            status: completedLive?.liveStatus,
+          });
+          console.log(
+            `J_COMPLETED_COMMAND_TENANT=${scope.tenantId} TOURNAMENT=${scope.tournamentId} MATCH=${scope.matchId}`
+          );
+          console.log(
+            `J_COMPLETED_RECEIPT_TENANT=${receipt.tenantA?.id} TOURNAMENT=${receipt.matches?.completed?.tournamentId} MATCH=${receipt.matches?.completed?.id}`
+          );
+          console.log(
+            `J_COMPLETED_LIFECYCLE_BEFORE_MUTATION=${core13Lifecycle} LIVE_STATUS=${completedLive?.liveStatus || ""}`
+          );
+        }
         const result = await mutate({
           action,
           command: {
-            ...commandBase,
-            matchId,
+            ...scope,
             newRefereeId: replaceRefereeId,
             expectedVersion,
             idempotencyKey: `stage-${caseName}-${Date.now()}`,
             ...extra,
           },
         });
+        if (caseName === "J.lifecycle-completed-deny") {
+          const completedLive = remoteEvidence.matches?.completed;
+          const core13Lifecycle = mapCore13AssignmentLifecycleFromLiveRow({
+            status: completedLive?.liveStatus,
+          });
+          const denial = evaluateDenial(result, denialCodes);
+          const guard = evaluateCompletedFalsePassGuard({
+            denialCode: result?.payload?.code,
+            core13Lifecycle,
+            liveStatus: completedLive?.liveStatus,
+          });
+          if (denial.ok && !guard.ok) {
+            record(caseName, guard, { expectedDenial: true });
+            return;
+          }
+          record(caseName, denial, { expectedDenial: true });
+          return;
+        }
         if (denialCodes) {
           record(caseName, evaluateDenial(result, denialCodes), { expectedDenial: true });
           return;

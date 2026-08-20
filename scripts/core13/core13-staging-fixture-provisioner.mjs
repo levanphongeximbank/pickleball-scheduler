@@ -42,10 +42,14 @@ import {
   NON_CANONICAL_ABSENT_UUID,
   NON_CANONICAL_EXPECTED_ABSENT,
   REQUIRED_WRITER_PORTS,
+  COMPLETED_LIFECYCLE_WRITER_STEPS,
+  COMPLETED_MATCH_EXECUTION,
+  COMPLETED_MATERIALIZATION_PATH,
 } from "./core13-staging-fixture-writers.mjs";
 import {
   evaluateDailyFixturePreflight,
   evaluateSemantic29CasePreflight,
+  evaluateCompletedSamePathSemanticPreflight,
 } from "./core13-staging-fixture-preflight.mjs";
 import {
   NEGATIVE_OVERLAP_FIXTURE_CASE,
@@ -749,7 +753,7 @@ export async function materializeReceiptFromWriters(options = {}) {
       matchId: completed.id,
       runId,
       refereeId: refereeA.userId || refereeA.id,
-      steps: ["startMatchLive", "declareForfeit", "finalizeMatchLive"],
+      steps: [...COMPLETED_LIFECYCLE_WRITER_STEPS],
       paths: materializationPaths,
       key: "completed",
     });
@@ -991,6 +995,11 @@ export async function materializeReceiptFromWriters(options = {}) {
   if (String(receipt.matches.completed.tournamentId) === String(receipt.tournaments.primary.id)) {
     return proof(false, "COMPLETED_FIXTURE_ISOLATED violated");
   }
+  const completedPreflight = evaluateCompletedSamePathSemanticPreflight({
+    receipt,
+    writers: tracked,
+  });
+  if (!completedPreflight.ok) return completedPreflight;
   return proof(true, runId, {
     receipt,
     PRIMARY_TOURNAMENT_REMAINS_NON_TERMINAL: true,
@@ -999,9 +1008,8 @@ export async function materializeReceiptFromWriters(options = {}) {
     CANONICAL_AUTHORITY: "refereeV5EdgeInitializeExecution",
     liveLifecycleReady: identityOnly !== true,
     materializationPaths,
-    COMPLETED_MATERIALIZATION_PATH:
-      "createInternalMatch>initializeMatchExecution>bootstrapRefereeAssignment>startMatchLive>declareForfeit>finalizeMatchLive",
-    COMPLETED_MATCH_EXECUTION: "CANONICAL_REFEREE_V5_FINALIZE",
+    COMPLETED_MATERIALIZATION_PATH,
+    COMPLETED_MATCH_EXECUTION,
     FAKE_COMPLETED_STATUS: "DENY",
     FORCE_COMPLETE_USED_IN_SOURCE_PLAN: "NO",
     identityMode,

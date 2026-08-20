@@ -8,6 +8,8 @@ import { readFileSync } from "node:fs";
 import { CORE13_FIXTURE_NAMESPACE } from "./core13-staging-acceptance-proofs.mjs";
 import { evaluateInactiveRefereeFixture, FIXTURE_BINDING_MODE } from "./core13-staging-qa-auth.mjs";
 import { resolveSubjectIdentityRecord } from "../../src/features/identity/services/subjectIdentityLookupService.js";
+import { ASSIGNMENT_LIFECYCLE_STATE } from "../../src/features/competition-engine/operations/referee/assignment/constants.js";
+import { normalizeAssignmentLifecycleState } from "../../src/features/competition-engine/operations/referee/assignment/evaluateLifecycleGate.js";
 
 export const FIXTURE_RECEIPT_SCHEMA_VERSION = 1;
 export const FIXTURE_PROVISIONER_ID = "core13-staging-fixture-provisioner-v1";
@@ -71,7 +73,9 @@ export const FIXTURE_LIFECYCLE = Object.freeze({
 
 export const EVENT_SEQUENCE_ALONE_AS_SCORING_ACTIVE = "DENY";
 export const COMPLETED_FINALIZED_EVIDENCE_MODEL =
-  "ENGINE_COMPLETED_PLUS_CONFIRMED_RESULT_REVISION_PLUS_FINALIZED_LOCK";
+  "CORE13_LIVE_STATUS_COMPLETED_VIA_CANONICAL_DECLARE_FORFEIT";
+export const LOCKED_AS_COMPLETED_PROOF = "DENY";
+export const CROSS_TOURNAMENT_AS_COMPLETED_PROOF = "DENY";
 export const SCORING_COMMAND_TYPES = Object.freeze(["TEAM_A_WON_RALLY", "TEAM_B_WON_RALLY"]);
 
 const SAFE_ERROR_ENVELOPE_KEYS = Object.freeze([
@@ -646,15 +650,24 @@ export function evaluateReceiptRemoteReconciliation(receipt, remote = {}) {
       return proof(false, `remote lifecycle mismatch ${key} expected=${expected} actual=${actualLifecycle}`);
     }
     if (expected === "COMPLETED") {
-      if (
-        evidence.engineCompleted !== true ||
-        evidence.confirmedResultRevision !== true ||
-        evidence.finalizedLock !== true
-      ) {
+      const liveStatus = String(evidence.liveStatus || "").toLowerCase();
+      const core13Lifecycle = String(
+        evidence.core13Lifecycle || actualLifecycle || ""
+      ).toUpperCase();
+      if (liveStatus === "locked" || liveStatus === "paused" || core13Lifecycle === "LOCKED") {
+        return proof(false, "LOCKED_AS_COMPLETED_PROOF denied");
+      }
+      if (core13Lifecycle === "SCORING_ACTIVE" || actualLifecycle === "SCORING_ACTIVE") {
+        return proof(false, "SCORING_ACTIVE cannot satisfy completed fixture");
+      }
+      if (core13Lifecycle !== "COMPLETED" || actualLifecycle !== "COMPLETED") {
         return proof(
           false,
-          "completed finalized locked accepted only with engine completed + confirmed result revision + finalized lock"
+          `completed requires CORE-13 lifecycle COMPLETED actual=${actualLifecycle} core13=${core13Lifecycle}`
         );
+      }
+      if (liveStatus && liveStatus !== "completed") {
+        return proof(false, `completed live status is not authoritative status=${liveStatus}`);
       }
     }
     if (expected === "LOCKED" && evidence.finalizedLock === true) {
@@ -822,14 +835,15 @@ export function mapAuthoritativeLifecycle({
     payloadMatchPresent,
   });
 
-  if (proofs.engineCompleted && proofs.confirmedResultRevision && proofs.finalizedLock) {
-    return FIXTURE_LIFECYCLE.COMPLETED;
+  const core13FromLive = normalizeAssignmentLifecycleState(liveRow?.status);
+  if (core13FromLive === ASSIGNMENT_LIFECYCLE_STATE.LOCKED) {
+    return FIXTURE_LIFECYCLE.LOCKED;
   }
-  if (proofs.engineCompleted && !proofs.finalizedLock) {
+  if (core13FromLive === ASSIGNMENT_LIFECYCLE_STATE.COMPLETED) {
     return FIXTURE_LIFECYCLE.COMPLETED;
   }
   if (proofs.durableLocked && !proofs.engineCompleted) {
-    return FIXTURE_LIFECYCLE.UNPROVEN;
+    return FIXTURE_LIFECYCLE.LOCKED;
   }
   if (proofs.paused) return FIXTURE_LIFECYCLE.LOCKED;
 
@@ -1029,6 +1043,103 @@ export function hydrateHarnessFixtures(receipt) {
   });
 }
 
+export function findReceiptMatchById(receipt, matchId) {
+  const target = String(matchId || "").trim();
+  for (const [key, row] of Object.entries(receipt?.matches || {})) {
+    if (entityId(row) === target) {
+      return Object.freeze({
+        key,
+        match: row,
+        tournamentId: String(row?.tournamentId || "").trim(),
+      });
+    }
+  }
+  return null;
+}
+
+export function resolveReceiptMatchCommandScope(receipt, matchId) {
+  const found = findReceiptMatchById(receipt, matchId);
+  const tenantId = entityId(receipt?.tenantA);
+  const primaryTournamentId = entityId(receipt?.tournaments?.primary);
+  if (!found) {
+    return Object.freeze({
+      ok: false,
+      tenantId,
+      tournamentId: primaryTournamentId,
+      matchId: String(matchId || "").trim(),
+      dedicatedTournament: false,
+      detail: "receipt match not found",
+    });
+  }
+  return Object.freeze({
+    ok: true,
+    tenantId,
+    tournamentId: found.tournamentId,
+    matchId: entityId(found.match),
+    matchKey: found.key,
+    dedicatedTournament: Boolean(found.tournamentId) && found.tournamentId !== primaryTournamentId,
+    detail: "case-receipt-owning-tournament",
+  });
+}
+
+export function buildReceiptCaseAssignmentCommand(receipt, commandBase = {}, matchId, extra = {}) {
+  const scope = resolveReceiptMatchCommandScope(receipt, matchId);
+  return Object.freeze({
+    ...commandBase,
+    tenantId: scope.tenantId,
+    tournamentId: scope.tournamentId,
+    matchId: scope.matchId,
+    ...extra,
+  });
+}
+
+export function mapCore13AssignmentLifecycleFromLiveRow(liveRow = null) {
+  return normalizeAssignmentLifecycleState(liveRow?.status || liveRow?.liveStatus);
+}
+
+export function evaluateCompletedCaseCommandBind(command = {}, receipt = {}) {
+  const ownerTournament = String(receipt?.matches?.completed?.tournamentId || "").trim();
+  const ownerMatch = entityId(receipt?.matches?.completed);
+  const ownerTenant = entityId(receipt?.tenantA);
+  const primaryTournament = entityId(receipt?.tournaments?.primary);
+  if (!ownerTournament || !ownerMatch || !ownerTenant) {
+    return proof(false, "completed receipt identity missing");
+  }
+  if (String(command.tenantId || "") !== ownerTenant) {
+    return proof(false, "completed command tenant does not match owning tenant");
+  }
+  if (String(command.matchId || "") !== ownerMatch) {
+    return proof(false, "completed command match does not match receipt match");
+  }
+  if (String(command.tournamentId || "") === primaryTournament) {
+    return proof(false, "PRIMARY_COMMAND_BASE_USED_WRONG_TOURNAMENT");
+  }
+  if (String(command.tournamentId || "") !== ownerTournament) {
+    return proof(false, "completed command tournament does not match owning tournament");
+  }
+  return proof(true, "CASE_RECEIPT_OWNING_TOURNAMENT_BIND");
+}
+
+export function evaluateCompletedAuthoritativeState(liveRow = null) {
+  const core13Lifecycle = mapCore13AssignmentLifecycleFromLiveRow(liveRow);
+  const liveStatus = String(liveRow?.status || liveRow?.liveStatus || "").toLowerCase();
+  if (core13Lifecycle === ASSIGNMENT_LIFECYCLE_STATE.LOCKED || liveStatus === "locked") {
+    return proof(false, "LOCKED_AS_COMPLETED_PROOF denied");
+  }
+  if (core13Lifecycle === ASSIGNMENT_LIFECYCLE_STATE.SCORING_ACTIVE) {
+    return proof(false, "SCORING_ACTIVE cannot satisfy completed validator");
+  }
+  if (core13Lifecycle !== ASSIGNMENT_LIFECYCLE_STATE.COMPLETED) {
+    return proof(false, `core13Lifecycle=${core13Lifecycle} expected=COMPLETED`);
+  }
+  return Object.freeze({
+    ok: true,
+    detail: "COMPLETED",
+    core13Lifecycle,
+    liveStatus: liveStatus || "completed",
+  });
+}
+
 export function evaluateLifecycleAssignmentBaselines(receipt = {}) {
   const assignments = Array.isArray(receipt.assignments) ? receipt.assignments : [];
   const byMatch = (matchId) =>
@@ -1175,10 +1286,12 @@ export async function loadAuthoritativeRemoteFixtureEvidence(service, receipt) {
       events,
       resultRevision,
     });
+    const core13Lifecycle = mapCore13AssignmentLifecycleFromLiveRow(live);
     matches[key] = {
       exists: exists === true,
       tournamentId,
       lifecycle,
+      core13Lifecycle,
       livePresent: Boolean(live),
       payloadPresent: inPayload,
       liveStatus: live?.status || null,
@@ -1308,10 +1421,19 @@ export function buildAlignedRemoteEvidenceForTests(receipt, overrides = {}) {
       exists: true,
       tournamentId: String(receipt.matches[key].tournamentId),
       lifecycle,
+      core13Lifecycle: lifecycle,
+      liveStatus:
+        lifecycle === "COMPLETED"
+          ? "completed"
+          : lifecycle === "LOCKED"
+            ? "paused"
+            : lifecycle === "IN_PROGRESS" || lifecycle === "SCORING_ACTIVE"
+              ? "in_progress"
+              : "not_started",
       scoringEvidence: lifecycle === "SCORING_ACTIVE",
       engineCompleted: lifecycle === "COMPLETED",
-      confirmedResultRevision: lifecycle === "COMPLETED",
-      finalizedLock: lifecycle === "COMPLETED",
+      confirmedResultRevision: false,
+      finalizedLock: false,
     };
   }
   const identities = {};

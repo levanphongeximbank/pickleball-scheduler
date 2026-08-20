@@ -15,9 +15,14 @@ import {
   REQUIRED_MATCH_KEYS,
   REQUIRED_TOURNAMENT_KEYS,
   REQUIRED_USER_KEYS,
+  buildReceiptCaseAssignmentCommand,
+  evaluateCompletedAuthoritativeState,
+  evaluateCompletedCaseCommandBind,
 } from "./core13-staging-fixture-receipt.mjs";
 import {
   CANONICAL_WRITER_CATALOG,
+  COMPLETED_DIRECT_DML_USED,
+  COMPLETED_LIFECYCLE_WRITER_STEPS,
   evaluateWriterCoverage,
   REQUIRED_WRITER_PORTS,
 } from "./core13-staging-fixture-writers.mjs";
@@ -356,5 +361,84 @@ export function evaluateSemantic29CasePreflight(input = {}) {
     REQUIRED_WRITER_PORTS: REQUIRED_WRITER_PORTS.length,
     daily,
     EVENT_SEQUENCE_ALONE_AS_SCORING_ACTIVE,
+  });
+}
+
+export function evaluateCompletedSamePathSemanticPreflight(input = {}) {
+  const receipt = input.receipt;
+  if (!receipt) {
+    return proof(false, "completed same-path preflight requires a receipt", {
+      verdict: "NOT_READY",
+      COMPLETED_CASE_COMMAND_SCOPE_PARITY: "FAIL",
+      COMPLETED_CASE_AUTHORITATIVE_COMPLETION_PATH: "FAIL",
+    });
+  }
+  const writers = input.writers || {};
+  const commandBase = input.commandBase || {
+    tenantId: receipt.tenantA?.id,
+    tournamentId: receipt.tournaments?.primary?.id,
+    matchId: receipt.matches?.preMatch?.id,
+    refereeId: receipt.users?.refereeA?.id,
+    competitionMode: "INTERNAL",
+  };
+  const completedMatchId = String(receipt.matches?.completed?.id || "").trim();
+  const command = buildReceiptCaseAssignmentCommand(
+    receipt,
+    commandBase,
+    completedMatchId
+  );
+  const bind = evaluateCompletedCaseCommandBind(command, receipt);
+  if (!bind.ok) {
+    return proof(false, bind.detail, {
+      verdict: "NOT_READY",
+      COMPLETED_CASE_COMMAND_SCOPE_PARITY: "FAIL",
+      COMPLETED_CASE_AUTHORITATIVE_COMPLETION_PATH: "FAIL",
+      command,
+    });
+  }
+  const writerPathCanonical =
+    typeof writers.declareForfeit === "function" &&
+    COMPLETED_LIFECYCLE_WRITER_STEPS.includes("declareForfeit") &&
+    COMPLETED_DIRECT_DML_USED === "NO";
+  if (!writerPathCanonical) {
+    return proof(false, "completed writer path is not canonical DECLARE_FORFEIT", {
+      verdict: "NOT_READY",
+      COMPLETED_CASE_COMMAND_SCOPE_PARITY: "PASS",
+      COMPLETED_CASE_AUTHORITATIVE_COMPLETION_PATH: "FAIL",
+      COMPLETED_CASE_COMPLETION_WRITER_CANONICAL: "NO",
+    });
+  }
+  if (COMPLETED_LIFECYCLE_WRITER_STEPS.includes("finalizeMatchLive")) {
+    return proof(false, "completed path must not finalize into locked as COMPLETED proof", {
+      verdict: "NOT_READY",
+      COMPLETED_CASE_AUTHORITATIVE_COMPLETION_PATH: "FAIL",
+    });
+  }
+  const completedLive = input.completedLiveRow;
+  if (completedLive) {
+    const authoritative = evaluateCompletedAuthoritativeState(completedLive);
+    if (!authoritative.ok) {
+      return proof(false, authoritative.detail, {
+        verdict: "NOT_READY",
+        COMPLETED_CASE_COMMAND_SCOPE_PARITY: "PASS",
+        COMPLETED_CASE_AUTHORITATIVE_COMPLETION_PATH: "FAIL",
+      });
+    }
+  }
+  return proof(true, "completed-same-path-semantic-preflight", {
+    verdict: "READY",
+    COMPLETED_CASE_MATCH_HAS_DEDICATED_TOURNAMENT: "YES",
+    COMPLETED_CASE_COMMAND_TOURNAMENT_MATCHES_OWNER: "YES",
+    COMPLETED_CASE_COMMAND_MATCH_MATCHES_RECEIPT: "YES",
+    COMPLETED_CASE_COMMAND_TENANT_MATCHES_OWNER: "YES",
+    COMPLETED_CASE_COMPLETION_WRITER_CANONICAL: "YES",
+    COMPLETED_CASE_EXPECTED_AUTHORITATIVE_STATE: "COMPLETED",
+    EXPECTED_RUNTIME_RESULT: "CORE13_LIFECYCLE_DENIED",
+    EXPECTED_DENIAL_REASON: "COMPLETED forbids assign/replace/unassign",
+    COMPLETED_CASE_COMMAND_SCOPE_PARITY: "PASS",
+    COMPLETED_CASE_AUTHORITATIVE_COMPLETION_PATH: "PASS",
+    LOCKED_AS_COMPLETED_PROOF: "DENY",
+    CROSS_TOURNAMENT_AS_COMPLETED_PROOF: "DENY",
+    command,
   });
 }

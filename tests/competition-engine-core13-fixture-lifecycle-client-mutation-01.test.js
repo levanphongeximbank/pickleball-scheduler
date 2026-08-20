@@ -313,8 +313,7 @@ test("applyLiveLifecycle chains canonical stateVersion/lastEventSequence", async
   assert.equal(forfeit.expectedVersion, 1);
   assert.equal(forfeit.expectedSequence, 1);
   const finalize = captured.find((row) => row.port === "finalizeMatchLive");
-  assert.equal(finalize.expectedVersion, 2);
-  assert.equal(finalize.matchId, forfeit.matchId);
+  assert.equal(finalize, undefined);
 });
 
 async function materializeWithStartFailure(edgeResult, runId = "run-start-fail") {

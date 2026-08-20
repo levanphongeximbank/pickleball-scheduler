@@ -323,6 +323,33 @@ export function evaluateDenial(result, allowedCodes) {
   return proof(true, code);
 }
 
+export function evaluateCompletedFalsePassGuard({
+  denialCode,
+  core13Lifecycle,
+  liveStatus,
+} = {}) {
+  const lifecycle = String(core13Lifecycle || "").toUpperCase();
+  const status = String(liveStatus || "").toLowerCase();
+  if (denialCode !== ASSIGNMENT_COMMAND_ERROR_CODE.LIFECYCLE_DENIED) {
+    return proof(false, `completed denial code=${denialCode || "missing"}`);
+  }
+  if (
+    lifecycle === "LOCKED" ||
+    lifecycle === "SCORING_ACTIVE" ||
+    lifecycle === "IN_PROGRESS" ||
+    lifecycle === "PRE_MATCH" ||
+    lifecycle === "UNKNOWN" ||
+    status === "locked" ||
+    status === "paused"
+  ) {
+    return proof(false, "FALSE_PASS_COMPLETED_SEMANTICS");
+  }
+  if (lifecycle !== "COMPLETED") {
+    return proof(false, `FALSE_PASS_COMPLETED_SEMANTICS lifecycle=${lifecycle || "missing"}`);
+  }
+  return proof(true, "COMPLETED_SEMANTICS_GUARD_PASS");
+}
+
 export function evaluateDailyEnabledPass(result) {
   const payload = payloadOf(result);
   if (payload.ok !== true) {

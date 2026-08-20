@@ -317,7 +317,8 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
     required: false,
     requiredInExistingQa: true,
     tokenClass: AUTH_CONTEXT_CLASS.REFEREE,
-    notes: "Shortest legal engine path to MATCH_STATUS.COMPLETED. forceComplete=false.",
+    notes:
+      "Shortest legal engine path to MATCH_STATUS.COMPLETED. forceComplete=false. Finalize is not required once live.status is completed.",
   },
   finalizeMatchLive: {
     object: "LIFECYCLE",
@@ -328,7 +329,8 @@ export const CANONICAL_WRITER_CATALOG = Object.freeze({
     required: false,
     requiredInExistingQa: true,
     tokenClass: AUTH_CONTEXT_CLASS.REFEREE,
-    notes: "forceComplete=false. Direct referee_v5_commit_match_finalization RPC denied.",
+    notes:
+      "Optional lock after COMPLETED. Not used as CORE-13 completed proof because live.status becomes locked.",
   },
   completeIsolatedTournament: {
     object: "TOURNAMENT_STATUS",
@@ -376,6 +378,11 @@ export const FORBIDDEN_DIRECT_FINALIZATION_RPC = "referee_v5_commit_match_finali
 export const BOOTSTRAP_ASSIGNMENT_PURPOSE = "LIFECYCLE_BOOTSTRAP";
 export const NON_CANONICAL_EXPECTED_ABSENT = "NON_CANONICAL_EXPECTED_ABSENT";
 export const NON_CANONICAL_ABSENT_UUID = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+export const COMPLETED_LIFECYCLE_WRITER_STEPS = Object.freeze(["startMatchLive", "declareForfeit"]);
+export const COMPLETED_MATCH_EXECUTION = "CANONICAL_REFEREE_V5_DECLARE_FORFEIT";
+export const COMPLETED_MATERIALIZATION_PATH =
+  "createInternalMatch>initializeMatchExecution>bootstrapRefereeAssignment>startMatchLive>declareForfeit";
+export const COMPLETED_DIRECT_DML_USED = "NO";
 
 export function listRequiredWriterPorts(
   mode = FIXTURE_BINDING_MODE.EXISTING_QA_IDENTITY

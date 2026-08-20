@@ -199,9 +199,8 @@ function buildRealisticRemoteEvidence(receipt) {
       state_payload: { status: "paused", teams: { teamA: { score: 0 }, teamB: { score: 0 } } },
     },
     completed: {
-      status: "locked",
+      status: "completed",
       last_event_sequence: 2,
-      locked_at: "2026-01-01T00:00:00.000Z",
       state_payload: { status: "completed", teams: { teamA: { score: 0 }, teamB: { score: 0 } } },
     },
     dailyEnabled: null,
@@ -230,8 +229,17 @@ function buildRealisticRemoteEvidence(receipt) {
       lifecycle: mapAuthoritativeLifecycle(proofsArgs),
       scoringEvidence: key === "scoringActive",
       engineCompleted: key === "completed",
-      confirmedResultRevision: key === "completed",
-      finalizedLock: key === "completed",
+      confirmedResultRevision: false,
+      finalizedLock: false,
+      liveStatus:
+        key === "completed"
+          ? "completed"
+          : key === "locked"
+            ? "paused"
+            : key === "inProgress" || key === "scoringActive"
+              ? "in_progress"
+              : "not_started",
+      core13Lifecycle: mapAuthoritativeLifecycle(proofsArgs),
     };
   }
   return {
@@ -388,9 +396,9 @@ test("C. Daily doubles payload requires four distinct existing players", () => {
   assert.match(buildDailyCreateMatchesIdempotencyKey({ runId: "r", tournamentId: "t" }), /DAILY_CREATE_MATCHES/);
 });
 
-test("D/E. lifecycle mapper covers START-only, rally, pause, completed, and finalized lock", () => {
+test("D/E. lifecycle mapper covers START-only, rally, pause, completed, and rejects locked-as-completed", () => {
   assert.equal(EVENT_SEQUENCE_ALONE_AS_SCORING_ACTIVE, "DENY");
-  assert.equal(COMPLETED_FINALIZED_EVIDENCE_MODEL, "ENGINE_COMPLETED_PLUS_CONFIRMED_RESULT_REVISION_PLUS_FINALIZED_LOCK");
+  assert.equal(COMPLETED_FINALIZED_EVIDENCE_MODEL, "CORE13_LIVE_STATUS_COMPLETED_VIA_CANONICAL_DECLARE_FORFEIT");
   assert.equal(mapAuthoritativeLifecycle({ payloadMatchPresent: true }), "PRE_MATCH");
   assert.equal(mapAuthoritativeLifecycle({ liveRow: { status: "not_started", last_event_sequence: 0 } }), "PRE_MATCH");
   assert.equal(
@@ -445,13 +453,13 @@ test("D/E. lifecycle mapper covers START-only, rally, pause, completed, and fina
       },
       resultRevision: { status: "confirmed", revision: 1 },
     }),
-    "COMPLETED"
+    "LOCKED"
   );
   assert.equal(
     mapAuthoritativeLifecycle({
       liveRow: { status: "locked", last_event_sequence: 2, state_payload: { status: "in_progress" } },
     }),
-    "UNPROVEN"
+    "LOCKED"
   );
   assert.notEqual(
     mapAuthoritativeLifecycle({
@@ -461,7 +469,7 @@ test("D/E. lifecycle mapper covers START-only, rally, pause, completed, and fina
   );
 });
 
-test("D. completed fixture uses DECLARE_FORFEIT + FINALIZE without forceComplete", async () => {
+test("D. completed fixture uses DECLARE_FORFEIT without finalize lock-as-completed", async () => {
   const result = await materializeReceiptFromWriters({
     writers: createStubWriters(),
     allowExecute: true,
@@ -474,7 +482,6 @@ test("D. completed fixture uses DECLARE_FORFEIT + FINALIZE without forceComplete
     "bootstrapRefereeAssignment",
     "startMatchLive",
     "declareForfeit",
-    "finalizeMatchLive",
   ]);
   assert.equal(result.FORCE_COMPLETE_USED_IN_SOURCE_PLAN, "NO");
   assert.equal(result.FAKE_COMPLETED_STATUS, "DENY");
