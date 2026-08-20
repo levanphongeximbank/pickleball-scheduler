@@ -9,6 +9,7 @@
 -- DB-side recheck. Does not kill sessions.
 -- APPLY_REQUIRES_DURABLE_DRAIN_STATE=YES
 -- DRAINED_UNKNOWN_OVERLOAD_GATE=ABORT
+-- DRAINED_UNKNOWN_OVERLOAD_AUTHORITY=OID
 -- PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER=YES
 -- AMBIGUOUS_NAMED_DB_SESSION=FAIL_CLOSED
 -- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
@@ -89,24 +90,28 @@ BEGIN
       'club_review_membership_request',
       'club_leave_my_membership'
     )
-    AND format('%s.%s(%s)', n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid))
-      NOT IN (
-        'public.club_create(uuid,text,text,text,text,text)',
-        'public.club_update(uuid,text,integer,text,text,text,text,text)',
-        'public.club_assign_owner(uuid,text,uuid,integer)',
-        'public.club_clear_owner(uuid,text,integer)',
-        'public.club_transfer_president(uuid,text,uuid,integer)',
-        'public.club_assign_vice_president(uuid,text,uuid,integer)',
-        'public.club_clear_vice_president(uuid,text,integer,uuid)',
-        'public.club_add_member(uuid,text,uuid,text,integer)',
-        'public.club_remove_member(uuid,text,uuid,integer)',
-        'public.club_restore_member(uuid,text,uuid,integer)',
-        'public.club_leave_membership(uuid,text)',
-        'public.club_submit_membership_request(uuid,text,text)',
-        'public.club_cancel_membership_request(uuid,uuid,integer)',
-        'public.club_review_membership_request(uuid,uuid,text,text,integer)',
-        'public.club_leave_my_membership()'
-      );
+    AND NOT EXISTS (
+      SELECT 1
+      FROM (
+        VALUES
+          ('public.club_create(uuid,text,text,text,text,text)'::text),
+          ('public.club_update(uuid,text,integer,text,text,text,text,text)'),
+          ('public.club_assign_owner(uuid,text,uuid,integer)'),
+          ('public.club_clear_owner(uuid,text,integer)'),
+          ('public.club_transfer_president(uuid,text,uuid,integer)'),
+          ('public.club_assign_vice_president(uuid,text,uuid,integer)'),
+          ('public.club_clear_vice_president(uuid,text,integer,uuid)'),
+          ('public.club_add_member(uuid,text,uuid,text,integer)'),
+          ('public.club_remove_member(uuid,text,uuid,integer)'),
+          ('public.club_restore_member(uuid,text,uuid,integer)'),
+          ('public.club_leave_membership(uuid,text)'),
+          ('public.club_submit_membership_request(uuid,text,text)'),
+          ('public.club_cancel_membership_request(uuid,uuid,integer)'),
+          ('public.club_review_membership_request(uuid,uuid,text,text,integer)'),
+          ('public.club_leave_my_membership()')
+      ) AS approved(sig)
+      WHERE to_regprocedure(approved.sig)::oid = p.oid
+    );
   IF v_unknown > 0 THEN
     RAISE EXCEPTION 'WAVE5_DRAIN_MARK_ABORT: DRAINED_UNKNOWN_OVERLOAD_GATE=ABORT UNKNOWN_MUTATION_RPC_OVERLOAD count=%',
       v_unknown;

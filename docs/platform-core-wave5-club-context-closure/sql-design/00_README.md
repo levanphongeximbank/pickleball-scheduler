@@ -125,7 +125,7 @@ Registered cluster: same-Tenant facility only (`venues.tenant_id = clubs.tenant_
 
 `athletes.tenant_id` remains facility/Venue-scoped. Wave 5 does not migrate `athletes` onto `platform_tenants`.
 
-PRECHECK uses `to_regprocedure` exact signatures (not `proname LIMIT 1`). `STATE_CANONICAL` uniqueness is checked on Club `tenant_id` without treating it as Venue. `STATE_LEGACY` uniqueness is checked on `venues.tenant_id` after conceptual translation. Collision classification: `DATA_RECONCILIATION_OWNER_DECISION_REQUIRED`.
+PRECHECK uses `to_regprocedure` exact signatures (not `proname LIMIT 1`) and unknown-overload OID membership (not `pg_get_function_identity_arguments` string equality). `STATE_CANONICAL` uniqueness is checked on Club `tenant_id` without treating it as Venue. `STATE_LEGACY` uniqueness is checked on `venues.tenant_id` after conceptual translation. Collision classification: `DATA_RECONCILIATION_OWNER_DECISION_REQUIRED`.
 
 ## Round 4 remediation (pending Round 5 Owner SQL review)
 
@@ -247,6 +247,23 @@ SQL_DESIGN_REVIEWED_PASS=NO
 Control-plane CHECK/index guards compare normalized `pg_get_constraintdef` / `pg_get_expr` to the approved catalog expression. Token-set membership is not sufficient. Q1 aborts the whole transaction on semantic drift.
 
 `01_PRECHECK.sql` fail-closes on unknown mutation overloads and on PUBLIC/anon/authenticated INSERT/UPDATE/DELETE/TRUNCATE against the four Club-owned tables. `WAVE5_PRECHECK_OK` is emitted only after those gates and after `service_role` is classified. PRECHECK does not revoke `service_role` table DML. If that class is present: `SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=YES` and PRECHECK is not apply-ready. Do not claim `DIRECT_CLUB_DML_*=DENIED` until live PRECHECK evidence exists.
+
+## Round 10 RPC identity comparator remediation
+
+```
+RPC_IDENTITY_AUTHORITY=OID_FROM_APPROVED_REGPROCEDURE
+UNKNOWN_OVERLOAD_AUTHORITY=OID
+TYPE_ONLY_APPROVED_SIGNATURE_RESOLUTION=to_regprocedure
+PG_GET_FUNCTION_IDENTITY_ARGUMENTS=DIAGNOSTIC_DISPLAY_ONLY
+PG_GET_FUNCTION_IDENTITY_ARGUMENTS_AUTHORITY_USES=0
+PRECHECK_FALSE_UNKNOWN_OVERLOAD_FROM_NAMED_ARGS=IMPOSSIBLE
+CANONICAL_MUTATION_SIGNATURE_COUNT=14
+CANONICAL_MUTATION_SIGNATURE_MISSING=ABORT
+ACL_RESTORE_FUNCTION_IDENTITY_AUTHORITY=APPROVED_REGPROCEDURE_OID
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Unknown-overload membership is `pg_proc.oid = to_regprocedure(approved_type_only_signature)`. `pg_get_function_identity_arguments()` is display evidence only. 07C restore maps snapshot `proname` to the reviewed approved signature and grants/verifies by that OID.
 
 ## Round 7 remediation (pending Round 8 Owner SQL review)
 

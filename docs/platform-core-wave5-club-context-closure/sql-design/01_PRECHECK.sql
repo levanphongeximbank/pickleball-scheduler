@@ -9,6 +9,13 @@
 -- RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
 -- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
 -- PRECHECK_UNKNOWN_MUTATION_OVERLOAD_GATE=ABORT
+-- UNKNOWN_OVERLOAD_AUTHORITY=OID
+-- TYPE_ONLY_APPROVED_SIGNATURE_RESOLUTION=to_regprocedure
+-- PRECHECK_FALSE_UNKNOWN_OVERLOAD_FROM_NAMED_ARGS=IMPOSSIBLE
+-- CANONICAL_MUTATION_SIGNATURE_COUNT=14
+-- CANONICAL_MUTATION_SIGNATURE_MISSING=ABORT
+-- RPC_IDENTITY_AUTHORITY=OID_FROM_APPROVED_REGPROCEDURE
+-- PG_GET_FUNCTION_IDENTITY_ARGUMENTS=DIAGNOSTIC_DISPLAY_ONLY
 -- WAVE5_PRECHECK_OK_IS_FINAL_GATE=YES
 -- DIRECT_CLUB_DML_OPERATION_SET=INSERT_UPDATE_DELETE_TRUNCATE
 -- DIRECT_CLUB_DML_PUBLIC_REQUIRED=DENIED
@@ -43,6 +50,9 @@ DECLARE
   v_mismatch int;
   v_delete_rule text;
   v_overload int;
+  v_canonical int := 0;
+  v_sig text;
+  r record;
   v_rpc_def text;
   v_svc_dml text;
   v_dup_name int;
@@ -564,7 +574,38 @@ BEGIN
   END IF;
 
   -- PRECHECK_UNKNOWN_MUTATION_OVERLOAD_GATE=ABORT
-  -- actual signatures minus approved 14 canonical + optional legacy exact alias must be 0.
+  -- UNKNOWN_OVERLOAD_AUTHORITY=OID
+  -- Named identity-argument display text is DIAGNOSTIC_DISPLAY_ONLY.
+  FOREACH v_sig IN ARRAY ARRAY[
+    -- WAVE5_CANONICAL_14_ARRAY_BEGIN
+    'public.club_create(uuid,text,text,text,text,text)',
+    'public.club_update(uuid,text,integer,text,text,text,text,text)',
+    'public.club_assign_owner(uuid,text,uuid,integer)',
+    'public.club_clear_owner(uuid,text,integer)',
+    'public.club_transfer_president(uuid,text,uuid,integer)',
+    'public.club_assign_vice_president(uuid,text,uuid,integer)',
+    'public.club_clear_vice_president(uuid,text,integer,uuid)',
+    'public.club_add_member(uuid,text,uuid,text,integer)',
+    'public.club_remove_member(uuid,text,uuid,integer)',
+    'public.club_restore_member(uuid,text,uuid,integer)',
+    'public.club_leave_membership(uuid,text)',
+    'public.club_submit_membership_request(uuid,text,text)',
+    'public.club_cancel_membership_request(uuid,uuid,integer)',
+    'public.club_review_membership_request(uuid,uuid,text,text,integer)'
+    -- WAVE5_CANONICAL_14_ARRAY_END
+  ]
+  LOOP
+    IF to_regprocedure(v_sig) IS NULL THEN
+      RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: CANONICAL_MUTATION_SIGNATURE_MISSING=% CANONICAL_MUTATION_SIGNATURE_MISSING=ABORT',
+        v_sig;
+    END IF;
+    v_canonical := v_canonical + 1;
+  END LOOP;
+  IF v_canonical <> 14 THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: CANONICAL_MUTATION_SIGNATURE_COUNT expected 14, present=% CANONICAL_MUTATION_SIGNATURE_MISSING=ABORT',
+      v_canonical;
+  END IF;
+
   SELECT count(*) INTO v_overload
   FROM pg_catalog.pg_proc p
   JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
@@ -586,25 +627,83 @@ BEGIN
       'club_review_membership_request',
       'club_leave_my_membership'
     )
-    AND format('%s.%s(%s)', n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid))
-      NOT IN (
-        'public.club_create(uuid,text,text,text,text,text)',
-        'public.club_update(uuid,text,integer,text,text,text,text,text)',
-        'public.club_assign_owner(uuid,text,uuid,integer)',
-        'public.club_clear_owner(uuid,text,integer)',
-        'public.club_transfer_president(uuid,text,uuid,integer)',
-        'public.club_assign_vice_president(uuid,text,uuid,integer)',
-        'public.club_clear_vice_president(uuid,text,integer,uuid)',
-        'public.club_add_member(uuid,text,uuid,text,integer)',
-        'public.club_remove_member(uuid,text,uuid,integer)',
-        'public.club_restore_member(uuid,text,uuid,integer)',
-        'public.club_leave_membership(uuid,text)',
-        'public.club_submit_membership_request(uuid,text,text)',
-        'public.club_cancel_membership_request(uuid,uuid,integer)',
-        'public.club_review_membership_request(uuid,uuid,text,text,integer)',
-        'public.club_leave_my_membership()'
-      );
+    AND NOT EXISTS (
+      SELECT 1
+      FROM (
+        VALUES
+          ('public.club_create(uuid,text,text,text,text,text)'::text),
+          ('public.club_update(uuid,text,integer,text,text,text,text,text)'),
+          ('public.club_assign_owner(uuid,text,uuid,integer)'),
+          ('public.club_clear_owner(uuid,text,integer)'),
+          ('public.club_transfer_president(uuid,text,uuid,integer)'),
+          ('public.club_assign_vice_president(uuid,text,uuid,integer)'),
+          ('public.club_clear_vice_president(uuid,text,integer,uuid)'),
+          ('public.club_add_member(uuid,text,uuid,text,integer)'),
+          ('public.club_remove_member(uuid,text,uuid,integer)'),
+          ('public.club_restore_member(uuid,text,uuid,integer)'),
+          ('public.club_leave_membership(uuid,text)'),
+          ('public.club_submit_membership_request(uuid,text,text)'),
+          ('public.club_cancel_membership_request(uuid,uuid,integer)'),
+          ('public.club_review_membership_request(uuid,uuid,text,text,integer)'),
+          ('public.club_leave_my_membership()')
+      ) AS approved(sig)
+      WHERE to_regprocedure(approved.sig)::oid = p.oid
+    );
   IF v_overload > 0 THEN
+    FOR r IN
+      SELECT
+        p.proname,
+        p.oid,
+        pg_catalog.pg_get_function_identity_arguments(p.oid) AS display_identity_arguments,
+        pg_catalog.pg_get_function_result(p.oid) AS display_result,
+        pg_catalog.pg_get_userbyid(p.proowner) AS owner_role_name,
+        p.prosecdef
+      FROM pg_catalog.pg_proc p
+      JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public'
+        AND p.proname IN (
+          'club_create',
+          'club_update',
+          'club_assign_owner',
+          'club_clear_owner',
+          'club_transfer_president',
+          'club_assign_vice_president',
+          'club_clear_vice_president',
+          'club_add_member',
+          'club_remove_member',
+          'club_restore_member',
+          'club_leave_membership',
+          'club_submit_membership_request',
+          'club_cancel_membership_request',
+          'club_review_membership_request',
+          'club_leave_my_membership'
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM (
+            VALUES
+              ('public.club_create(uuid,text,text,text,text,text)'::text),
+              ('public.club_update(uuid,text,integer,text,text,text,text,text)'),
+              ('public.club_assign_owner(uuid,text,uuid,integer)'),
+              ('public.club_clear_owner(uuid,text,integer)'),
+              ('public.club_transfer_president(uuid,text,uuid,integer)'),
+              ('public.club_assign_vice_president(uuid,text,uuid,integer)'),
+              ('public.club_clear_vice_president(uuid,text,integer,uuid)'),
+              ('public.club_add_member(uuid,text,uuid,text,integer)'),
+              ('public.club_remove_member(uuid,text,uuid,integer)'),
+              ('public.club_restore_member(uuid,text,uuid,integer)'),
+              ('public.club_leave_membership(uuid,text)'),
+              ('public.club_submit_membership_request(uuid,text,text)'),
+              ('public.club_cancel_membership_request(uuid,uuid,integer)'),
+              ('public.club_review_membership_request(uuid,uuid,text,text,integer)'),
+              ('public.club_leave_my_membership()')
+          ) AS approved(sig)
+          WHERE to_regprocedure(approved.sig)::oid = p.oid
+        )
+    LOOP
+      RAISE NOTICE 'UNKNOWN_MUTATION_OVERLOAD_DIAGNOSTIC: proname=% oid=% DISPLAY_IDENTITY_ARGUMENTS=% pg_get_function_result()=% owner=% prosecdef=%',
+        r.proname, r.oid, r.display_identity_arguments, r.display_result, r.owner_role_name, r.prosecdef;
+    END LOOP;
     RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: UNKNOWN_MUTATION_RPC_OVERLOAD_COUNT=%',
       v_overload;
   END IF;
@@ -713,7 +812,12 @@ SELECT
 -- Do not invent fingerprints in git. certification_status is always UNCERTIFIED here.
 SELECT
   'RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES'::text AS gate,
-  cand.sig,
+  cand.sig AS approved_signature,
+  CASE
+    WHEN p.oid IS NULL THEN NULL
+    ELSE pg_catalog.pg_get_function_identity_arguments(p.oid)
+  END AS display_identity_arguments,
+  p.oid AS function_oid,
   cand.class,
   to_regprocedure(cand.sig) IS NOT NULL AS present,
   (
@@ -751,39 +855,44 @@ LEFT JOIN pg_catalog.pg_language l ON l.oid = p.prolang
 ORDER BY cand.class, cand.proname;
 
 -- Mutation overload inventory + caller ACLs (read-only).
+-- INVENTORY_CLASS uses approved-regprocedure OID membership, not display args.
 SELECT
-  p.proname,
-  format('%s.%s(%s)', n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid)) AS live_sig,
+  a.sig AS "APPROVED_SIGNATURE",
+  pg_catalog.pg_get_function_identity_arguments(p.oid) AS "DISPLAY_IDENTITY_ARGUMENTS",
+  p.oid AS "FUNCTION_OID",
   CASE
-    WHEN format('%s.%s(%s)', n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid)) IN (
-      'public.club_create(uuid,text,text,text,text,text)',
-      'public.club_update(uuid,text,integer,text,text,text,text,text)',
-      'public.club_assign_owner(uuid,text,uuid,integer)',
-      'public.club_clear_owner(uuid,text,integer)',
-      'public.club_transfer_president(uuid,text,uuid,integer)',
-      'public.club_assign_vice_president(uuid,text,uuid,integer)',
-      'public.club_clear_vice_president(uuid,text,integer,uuid)',
-      'public.club_add_member(uuid,text,uuid,text,integer)',
-      'public.club_remove_member(uuid,text,uuid,integer)',
-      'public.club_restore_member(uuid,text,uuid,integer)',
-      'public.club_leave_membership(uuid,text)',
-      'public.club_submit_membership_request(uuid,text,text)',
-      'public.club_cancel_membership_request(uuid,uuid,integer)',
-      'public.club_review_membership_request(uuid,uuid,text,text,integer)',
-      'public.club_leave_my_membership()'
-    ) THEN 'APPROVED'
-    ELSE 'UNKNOWN_OVERLOAD'
-  END AS inventory_class,
+    WHEN a.sig IS NULL THEN 'UNKNOWN_OVERLOAD'
+    WHEN a.sig = 'public.club_leave_my_membership()' THEN 'LEGACY_OPTIONAL'
+    ELSE 'CANONICAL'
+  END AS "INVENTORY_CLASS",
   EXISTS (
     SELECT 1
     FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
     WHERE acl.privilege_type = 'EXECUTE' AND acl.grantee = 0
-  ) AS public_execute,
-  CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN has_function_privilege('anon', p.oid, 'EXECUTE') END AS anon_execute,
-  CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'authenticated') THEN has_function_privilege('authenticated', p.oid, 'EXECUTE') END AS authenticated_execute,
-  CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN has_function_privilege('service_role', p.oid, 'EXECUTE') END AS service_role_execute
+  ) AS "PUBLIC_EXECUTE",
+  CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN has_function_privilege('anon', p.oid, 'EXECUTE') END AS "ANON_EXECUTE",
+  CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'authenticated') THEN has_function_privilege('authenticated', p.oid, 'EXECUTE') END AS "AUTHENTICATED_EXECUTE",
+  CASE WHEN EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN has_function_privilege('service_role', p.oid, 'EXECUTE') END AS "SERVICE_ROLE_EXECUTE"
 FROM pg_catalog.pg_proc p
 JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+LEFT JOIN (
+  VALUES
+    ('public.club_create(uuid,text,text,text,text,text)'::text),
+    ('public.club_update(uuid,text,integer,text,text,text,text,text)'),
+    ('public.club_assign_owner(uuid,text,uuid,integer)'),
+    ('public.club_clear_owner(uuid,text,integer)'),
+    ('public.club_transfer_president(uuid,text,uuid,integer)'),
+    ('public.club_assign_vice_president(uuid,text,uuid,integer)'),
+    ('public.club_clear_vice_president(uuid,text,integer,uuid)'),
+    ('public.club_add_member(uuid,text,uuid,text,integer)'),
+    ('public.club_remove_member(uuid,text,uuid,integer)'),
+    ('public.club_restore_member(uuid,text,uuid,integer)'),
+    ('public.club_leave_membership(uuid,text)'),
+    ('public.club_submit_membership_request(uuid,text,text)'),
+    ('public.club_cancel_membership_request(uuid,uuid,integer)'),
+    ('public.club_review_membership_request(uuid,uuid,text,text,integer)'),
+    ('public.club_leave_my_membership()')
+) AS a(sig) ON to_regprocedure(a.sig)::oid = p.oid
 WHERE n.nspname = 'public'
   AND p.proname IN (
     'club_create',
@@ -802,7 +911,7 @@ WHERE n.nspname = 'public'
     'club_review_membership_request',
     'club_leave_my_membership'
   )
-ORDER BY p.proname, live_sig;
+ORDER BY p.proname, a.sig;
 
 -- Direct Club table DML privilege evidence. Do not mutate grants.
 SELECT

@@ -21,6 +21,9 @@
 -- TOTAL_QUIESCE_TARGET_COUNT=15
 -- ALL_CANONICAL_MUTATION_SIGNATURES_PRESENT_BEFORE_Q1=YES
 -- UNKNOWN_MUTATION_RPC_OVERLOAD=ABORT
+-- Q1A_UNKNOWN_OVERLOAD_AUTHORITY=OID
+-- Q1A_CANONICAL_SIGNATURE_GATE=14
+-- Q1A_LEGACY_ALIAS_OPTIONAL=YES
 -- MUTATION_RPC_OVERLOAD_INVENTORY_COMPLETE=YES
 -- PUBLIC_MUTATION_EXECUTE_AFTER_Q1=0
 -- ANON_MUTATION_EXECUTE_AFTER_Q1=0
@@ -515,24 +518,28 @@ BEGIN
       'club_review_membership_request',
       'club_leave_my_membership'
     )
-    AND format('%s.%s(%s)', n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid))
-      NOT IN (
-        'public.club_create(uuid,text,text,text,text,text)',
-        'public.club_update(uuid,text,integer,text,text,text,text,text)',
-        'public.club_assign_owner(uuid,text,uuid,integer)',
-        'public.club_clear_owner(uuid,text,integer)',
-        'public.club_transfer_president(uuid,text,uuid,integer)',
-        'public.club_assign_vice_president(uuid,text,uuid,integer)',
-        'public.club_clear_vice_president(uuid,text,integer,uuid)',
-        'public.club_add_member(uuid,text,uuid,text,integer)',
-        'public.club_remove_member(uuid,text,uuid,integer)',
-        'public.club_restore_member(uuid,text,uuid,integer)',
-        'public.club_leave_membership(uuid,text)',
-        'public.club_submit_membership_request(uuid,text,text)',
-        'public.club_cancel_membership_request(uuid,uuid,integer)',
-        'public.club_review_membership_request(uuid,uuid,text,text,integer)',
-        'public.club_leave_my_membership()'
-      );
+    AND NOT EXISTS (
+      SELECT 1
+      FROM (
+        VALUES
+          ('public.club_create(uuid,text,text,text,text,text)'::text),
+          ('public.club_update(uuid,text,integer,text,text,text,text,text)'),
+          ('public.club_assign_owner(uuid,text,uuid,integer)'),
+          ('public.club_clear_owner(uuid,text,integer)'),
+          ('public.club_transfer_president(uuid,text,uuid,integer)'),
+          ('public.club_assign_vice_president(uuid,text,uuid,integer)'),
+          ('public.club_clear_vice_president(uuid,text,integer,uuid)'),
+          ('public.club_add_member(uuid,text,uuid,text,integer)'),
+          ('public.club_remove_member(uuid,text,uuid,integer)'),
+          ('public.club_restore_member(uuid,text,uuid,integer)'),
+          ('public.club_leave_membership(uuid,text)'),
+          ('public.club_submit_membership_request(uuid,text,text)'),
+          ('public.club_cancel_membership_request(uuid,uuid,integer)'),
+          ('public.club_review_membership_request(uuid,uuid,text,text,integer)'),
+          ('public.club_leave_my_membership()')
+      ) AS approved(sig)
+      WHERE to_regprocedure(approved.sig)::oid = p.oid
+    );
 
   IF v_unknown > 0 THEN
     RAISE EXCEPTION 'WAVE5_Q1_ABORT: UNKNOWN_MUTATION_RPC_OVERLOAD count=% MUTATION_RPC_OVERLOAD_INVENTORY_COMPLETE=NO',
@@ -555,7 +562,7 @@ BEGIN
     v_batch,
     n.nspname,
     p.proname,
-    pg_catalog.pg_get_function_identity_arguments(p.oid),
+    pg_catalog.pg_get_function_identity_arguments(p.oid), -- DISPLAY_IDENTITY_ARGUMENTS only; not restore authority
     CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE r.rolname END,
     acl.privilege_type,
     acl.is_grantable
@@ -564,24 +571,28 @@ BEGIN
   CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
   LEFT JOIN pg_catalog.pg_roles r ON r.oid = acl.grantee
   WHERE n.nspname = 'public'
-    AND format('%s.%s(%s)', n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid))
-      IN (
-        'public.club_create(uuid,text,text,text,text,text)',
-        'public.club_update(uuid,text,integer,text,text,text,text,text)',
-        'public.club_assign_owner(uuid,text,uuid,integer)',
-        'public.club_clear_owner(uuid,text,integer)',
-        'public.club_transfer_president(uuid,text,uuid,integer)',
-        'public.club_assign_vice_president(uuid,text,uuid,integer)',
-        'public.club_clear_vice_president(uuid,text,integer,uuid)',
-        'public.club_add_member(uuid,text,uuid,text,integer)',
-        'public.club_remove_member(uuid,text,uuid,integer)',
-        'public.club_restore_member(uuid,text,uuid,integer)',
-        'public.club_leave_membership(uuid,text)',
-        'public.club_submit_membership_request(uuid,text,text)',
-        'public.club_cancel_membership_request(uuid,uuid,integer)',
-        'public.club_review_membership_request(uuid,uuid,text,text,integer)',
-        'public.club_leave_my_membership()'
-      )
+    AND EXISTS (
+      SELECT 1
+      FROM (
+        VALUES
+          ('public.club_create(uuid,text,text,text,text,text)'::text),
+          ('public.club_update(uuid,text,integer,text,text,text,text,text)'),
+          ('public.club_assign_owner(uuid,text,uuid,integer)'),
+          ('public.club_clear_owner(uuid,text,integer)'),
+          ('public.club_transfer_president(uuid,text,uuid,integer)'),
+          ('public.club_assign_vice_president(uuid,text,uuid,integer)'),
+          ('public.club_clear_vice_president(uuid,text,integer,uuid)'),
+          ('public.club_add_member(uuid,text,uuid,text,integer)'),
+          ('public.club_remove_member(uuid,text,uuid,integer)'),
+          ('public.club_restore_member(uuid,text,uuid,integer)'),
+          ('public.club_leave_membership(uuid,text)'),
+          ('public.club_submit_membership_request(uuid,text,text)'),
+          ('public.club_cancel_membership_request(uuid,uuid,integer)'),
+          ('public.club_review_membership_request(uuid,uuid,text,text,integer)'),
+          ('public.club_leave_my_membership()')
+      ) AS approved(sig)
+      WHERE to_regprocedure(approved.sig)::oid = p.oid
+    )
     AND acl.privilege_type = 'EXECUTE';
 
   IF NOT EXISTS (

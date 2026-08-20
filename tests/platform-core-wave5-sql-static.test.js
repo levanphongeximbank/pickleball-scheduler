@@ -1032,6 +1032,7 @@ test("Round 8 canonical mutation surface is shared and does not drift", () => {
   assert.doesNotMatch(arr14, /club_leave_my_membership/);
   assert.match(arr15, /club_leave_my_membership\(\)/);
   assert.equal(markedInner(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"), "WAVE5_CANONICAL_MUTATION_SURFACE_VALUES"), values);
+  assert.equal(markedInner(readPkg("01_PRECHECK.sql"), "WAVE5_CANONICAL_14_ARRAY"), arr14);
   assert.equal(markedInner(readPkg("07A2_QUIESCE_SEAL_DESIGN.sql"), "WAVE5_QUIESCE_15_ARRAY"), arr15);
   assert.equal(markedInner(readPkg("07B_DRAIN_VERIFY.sql"), "WAVE5_QUIESCE_15_ARRAY"), arr15);
   assert.equal(markedInner(readPkg("07B2_MARK_DRAINED_DESIGN.sql"), "WAVE5_QUIESCE_15_ARRAY"), arr15);
@@ -1047,17 +1048,22 @@ test("Round 8 A. Q1B rechecks unknown overloads", () => {
   const q1b = uncommented(readPkg("07A2_QUIESCE_SEAL_DESIGN.sql"));
   const src = readPkg("07A2_QUIESCE_SEAL_DESIGN.sql");
   assert.match(src, /Q1B_UNKNOWN_OVERLOAD_GATE=ABORT/);
+  assert.match(src, /Q1B_UNKNOWN_OVERLOAD_AUTHORITY=OID/);
   assert.match(q1b, /UNKNOWN_MUTATION_RPC_OVERLOAD/);
-  assert.match(q1b, /pg_get_function_identity_arguments/);
-  assert.match(q1b, /NOT IN \(/);
+  assert.match(q1b, /to_regprocedure\(approved\.sig\)::oid = p\.oid/);
+  assert.doesNotMatch(
+    q1b,
+    /format\('%s\.%s\(%s\)',\s*n\.nspname,\s*p\.proname,\s*pg_catalog\.pg_get_function_identity_arguments\(p\.oid\)\)\s*NOT IN/
+  );
 });
 
 test("Round 8 B. 07B2 rechecks unknown overloads", () => {
   const mark = uncommented(readPkg("07B2_MARK_DRAINED_DESIGN.sql"));
   const src = readPkg("07B2_MARK_DRAINED_DESIGN.sql");
   assert.match(src, /DRAINED_UNKNOWN_OVERLOAD_GATE=ABORT/);
+  assert.match(src, /DRAINED_UNKNOWN_OVERLOAD_AUTHORITY=OID/);
   assert.match(mark, /UNKNOWN_MUTATION_RPC_OVERLOAD/);
-  assert.match(mark, /pg_get_function_identity_arguments/);
+  assert.match(mark, /to_regprocedure\(approved\.sig\)::oid = p\.oid/);
 });
 
 test("Round 8 C. APPLY prelock rechecks unknown overloads", () => {
@@ -1065,8 +1071,9 @@ test("Round 8 C. APPLY prelock rechecks unknown overloads", () => {
   const src = readPkg("02_APPLY_DESIGN.sql");
   const prelock = apply.slice(0, apply.search(/LOCK TABLE\s+public\.platform_tenants/));
   assert.match(src, /APPLY_PRELOCK_UNKNOWN_OVERLOAD_GATE=ABORT/);
+  assert.match(src, /APPLY_PRELOCK_UNKNOWN_OVERLOAD_AUTHORITY=OID/);
   assert.match(prelock, /UNKNOWN_MUTATION_RPC_OVERLOAD/);
-  assert.match(prelock, /pg_get_function_identity_arguments/);
+  assert.match(prelock, /to_regprocedure\(approved\.sig\)::oid = p\.oid/);
 });
 
 test("Round 8 D. APPLY prelock checks all 14 canonical mutation RPCs", () => {
@@ -1191,7 +1198,13 @@ test("Round 8 N. 07C final caller-role ACL equals captured snapshot", () => {
   assert.match(restore, /KEEP WRITES QUIESCED OWNER REVIEW REQUIRED/);
   assert.match(restore, /grantee_name IN \('PUBLIC', 'anon', 'authenticated', 'service_role'\)/);
   assert.match(src, /POST_APPLY_LEGACY_ACL_RESTORE=DENIED/);
+  assert.match(src, /ACL_RESTORE_FUNCTION_IDENTITY_AUTHORITY=APPROVED_REGPROCEDURE_OID/);
   assert.match(restore, /state IN \('PREPARED', 'QUIESCED', 'DRAINED'\)/);
+  assert.match(restore, /to_regprocedure\(r\.approved_sig\)/);
+  assert.match(restore, /p\.oid = to_regprocedure\(approved\.sig\)/);
+  assert.doesNotMatch(restore, /format\('%s\.%s\(%s\)',\s*r\.nspname,\s*r\.proname,\s*r\.identity_args\)/);
+  assert.doesNotMatch(restore, /pg_get_function_identity_arguments\(p\.oid\) = s0\.identity_args/);
+  assert.doesNotMatch(restore, /pg_get_function_identity_arguments\(p\.oid\) = s\.identity_args/);
 });
 
 test("Round 8 O. Round7 Q1A/Q1B/service-role/fingerprint/07D guarantees preserved", () => {
@@ -1446,6 +1459,186 @@ test("Round 9 N. Round 8 authority-transition guarantees remain present", () => 
   assert.match(readPkg("00_README.md"), /POST_APPLY_VERIFY_FAILURE_KEEP_QUIESCED=YES/);
   assert.match(readPkg("00_README.md"), /SQL_DESIGN_REVIEW_ROUND9_REMEDIATION=COMPLETE_PENDING_ROUND10_OWNER_REVIEW/);
   assert.match(readPkg("00_README.md"), /SQL_DESIGN_REVIEWED_PASS=NO/);
+});
+
+const APPROVED_CLUB_ADD_MEMBER = "public.club_add_member(uuid,text,uuid,text,integer)";
+const APPROVED_CLUB_CREATE = "public.club_create(uuid,text,text,text,text,text)";
+const APPROVED_LEAVE_MY = "public.club_leave_my_membership()";
+
+function unknownOverloadByOid(liveOid, approvedResolvedOids) {
+  return !approvedResolvedOids.some((oid) => oid != null && oid === liveOid);
+}
+
+function canonicalMissing(resolvedOid) {
+  return resolvedOid == null;
+}
+
+test("Round 10 A. named display identity arguments still match approved OID", () => {
+  const liveOid = 4242;
+  const displayIdentityArguments = "p_club_id uuid, p_tenant_id text, p_user_id uuid, p_role text, p_expected_revision integer";
+  const approvedSignature = APPROVED_CLUB_ADD_MEMBER;
+  const resolvedFromApproved = liveOid;
+  assert.equal(displayIdentityArguments.includes("p_club_id"), true);
+  assert.equal(approvedSignature, "public.club_add_member(uuid,text,uuid,text,integer)");
+  assert.equal(unknownOverloadByOid(liveOid, [resolvedFromApproved]), false);
+});
+
+test("Round 10 B. named arguments do not create UNKNOWN_MUTATION_RPC_OVERLOAD", () => {
+  assert.equal(unknownOverloadByOid(100, [100, null]), false);
+});
+
+test("Round 10 C. a genuinely different overload creates UNKNOWN_MUTATION_RPC_OVERLOAD", () => {
+  assert.equal(unknownOverloadByOid(999, [100, 101]), true);
+});
+
+test("Round 10 D. missing canonical required signature still aborts", () => {
+  const precheck = uncommented(readPkg("01_PRECHECK.sql"));
+  assert.equal(canonicalMissing(null), true);
+  assert.match(precheck, /CANONICAL_MUTATION_SIGNATURE_MISSING=/);
+  assert.match(precheck, /CANONICAL_MUTATION_SIGNATURE_MISSING=ABORT/);
+  assert.match(precheck, /to_regprocedure\(v_sig\) IS NULL/);
+});
+
+test("Round 10 E. optional legacy alias absent does not produce unknown overload", () => {
+  assert.equal(unknownOverloadByOid(100, [100, null]), false);
+  const precheck = uncommented(readPkg("01_PRECHECK.sql"));
+  assert.match(precheck, /to_regprocedure\(approved\.sig\)::oid = p\.oid/);
+});
+
+test("Round 10 F. optional legacy alias present with exact approved OID is accepted", () => {
+  const legacyOid = 77;
+  assert.equal(unknownOverloadByOid(legacyOid, [100, legacyOid]), false);
+  assert.equal(APPROVED_LEAVE_MY, "public.club_leave_my_membership()");
+});
+
+test("Round 10 G. extra club_create overload with a different arg vector aborts", () => {
+  const approvedCreateOid = 10;
+  const extraCreateOid = 11;
+  assert.equal(unknownOverloadByOid(extraCreateOid, [approvedCreateOid]), true);
+  assert.equal(APPROVED_CLUB_CREATE, "public.club_create(uuid,text,text,text,text,text)");
+});
+
+function assertOidUnknownOverloadAuthority(body) {
+  assert.match(body, /to_regprocedure\(approved\.sig\)::oid = p\.oid/);
+  assert.doesNotMatch(
+    body,
+    /format\('%s\.%s\(%s\)',\s*n\.nspname,\s*p\.proname,\s*pg_catalog\.pg_get_function_identity_arguments\(p\.oid\)\)\s*(NOT IN|IN)/
+  );
+}
+
+test("Round 10 H. 01_PRECHECK uses OID membership", () => {
+  const src = readPkg("01_PRECHECK.sql");
+  const body = uncommented(src);
+  assert.match(src, /UNKNOWN_OVERLOAD_AUTHORITY=OID/);
+  assert.match(src, /PRECHECK_FALSE_UNKNOWN_OVERLOAD_FROM_NAMED_ARGS=IMPOSSIBLE/);
+  assertOidUnknownOverloadAuthority(body);
+});
+
+test("Round 10 I. 07A Q1A uses OID membership", () => {
+  const src = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  assert.match(src, /Q1A_UNKNOWN_OVERLOAD_AUTHORITY=OID/);
+  assert.match(src, /Q1A_CANONICAL_SIGNATURE_GATE=14/);
+  assert.match(src, /Q1A_LEGACY_ALIAS_OPTIONAL=YES/);
+  assertOidUnknownOverloadAuthority(uncommented(src));
+});
+
+test("Round 10 J. 07A2 Q1B uses OID membership", () => {
+  assert.match(readPkg("07A2_QUIESCE_SEAL_DESIGN.sql"), /Q1B_UNKNOWN_OVERLOAD_AUTHORITY=OID/);
+  assertOidUnknownOverloadAuthority(uncommented(readPkg("07A2_QUIESCE_SEAL_DESIGN.sql")));
+});
+
+test("Round 10 K. 07B2 DRAINED gate uses OID membership", () => {
+  assert.match(readPkg("07B2_MARK_DRAINED_DESIGN.sql"), /DRAINED_UNKNOWN_OVERLOAD_AUTHORITY=OID/);
+  assertOidUnknownOverloadAuthority(uncommented(readPkg("07B2_MARK_DRAINED_DESIGN.sql")));
+});
+
+test("Round 10 L. 02 APPLY prelock uses OID membership", () => {
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const prelock = apply.slice(0, apply.search(/LOCK TABLE\s+public\.platform_tenants/));
+  assert.match(readPkg("02_APPLY_DESIGN.sql"), /APPLY_PRELOCK_UNKNOWN_OVERLOAD_AUTHORITY=OID/);
+  assertOidUnknownOverloadAuthority(prelock);
+});
+
+test("Round 10 M. 03B VERIFIED gate uses OID membership", () => {
+  assert.match(readPkg("03B_MARK_VERIFIED_DESIGN.sql"), /VERIFIED_UNKNOWN_OVERLOAD_AUTHORITY=OID/);
+  assertOidUnknownOverloadAuthority(uncommented(readPkg("03B_MARK_VERIFIED_DESIGN.sql")));
+});
+
+test("Round 10 N. 07C restore target identity does not reconstruct authority from identity_args", () => {
+  const restore = uncommented(readPkg("07C_RESTORE_WRITES_DESIGN.sql"));
+  assert.doesNotMatch(restore, /format\('%s\.%s\(%s\)',\s*r\.nspname,\s*r\.proname,\s*r\.identity_args\)/);
+  assert.doesNotMatch(restore, /to_regprocedure\(v_reg\)/);
+  assert.match(restore, /to_regprocedure\(r\.approved_sig\)/);
+});
+
+test("Round 10 O. 07C final ACL comparison uses exact approved function OID", () => {
+  const restore = uncommented(readPkg("07C_RESTORE_WRITES_DESIGN.sql"));
+  assert.match(restore, /p\.oid = to_regprocedure\(approved\.sig\)/);
+  assert.doesNotMatch(restore, /pg_get_function_identity_arguments\(p\.oid\) = s/);
+});
+
+test("Round 10 P. no regex argument-name stripping is introduced", () => {
+  const files = [
+    "01_PRECHECK.sql",
+    "02_APPLY_DESIGN.sql",
+    "03B_MARK_VERIFIED_DESIGN.sql",
+    "07A_QUIESCE_WRITES_DESIGN.sql",
+    "07A2_QUIESCE_SEAL_DESIGN.sql",
+    "07B2_MARK_DRAINED_DESIGN.sql",
+    "07C_RESTORE_WRITES_DESIGN.sql",
+  ];
+  for (const name of files) {
+    const body = uncommented(readPkg(name));
+    assert.doesNotMatch(body, /regexp_replace\s*\([^)]*identity_args/i);
+    assert.doesNotMatch(body, /regexp_replace\s*\([^)]*pg_get_function_identity_arguments/i);
+    assert.doesNotMatch(body, /substring\s*\([^)]*identity_args/i);
+  }
+});
+
+test("Round 10 Q. Round4-Round9 execution-safety guarantees remain present", () => {
+  const applySrc = readPkg("02_APPLY_DESIGN.sql");
+  const q1aSrc = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const q1bSrc = readPkg("07A2_QUIESCE_SEAL_DESIGN.sql");
+  const drainSrc = readPkg("07B_DRAIN_VERIFY.sql");
+  const restoreSrc = readPkg("07C_RESTORE_WRITES_DESIGN.sql");
+  assert.match(applySrc, /CLUB_CUTOVER_LOCK_MODE=ACCESS EXCLUSIVE/);
+  assert.match(applySrc, /CUTOVER_LOCK_ORDER_PARENT_TO_CHILD=YES/);
+  assert.match(q1aSrc, /Q1_REVOKE_COMMIT_PRECEDES_QUIESCED_SEAL=YES/);
+  assert.match(q1bSrc, /QUIESCE_VISIBLE_AT_IS_POST_Q1_COMMIT=YES/);
+  assert.match(drainSrc, /PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER=YES/);
+  assert.match(restoreSrc, /RESTORE_REQUIRES_EXPLICIT_BATCH_ID=YES/);
+  assert.match(restoreSrc, /POST_APPLY_LEGACY_ACL_RESTORE=DENIED/);
+  assert.match(applySrc, /APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED/);
+  assert.match(readPkg("00_README.md"), /SQL_DESIGN_REVIEW_ROUND9_REMEDIATION=COMPLETE_PENDING_ROUND10_OWNER_REVIEW/);
+});
+
+test("Round 10 R. no live SQL mutation in PRECHECK", () => {
+  const body = uncommented(readPkg("01_PRECHECK.sql"));
+  assert.match(readPkg("01_PRECHECK.sql"), /PRECHECK_READ_ONLY=YES/);
+  assert.doesNotMatch(body, /\bINSERT\s+INTO\b/i);
+  assert.doesNotMatch(body, /\bGRANT\b/i);
+  assert.doesNotMatch(body, /\bREVOKE\b/i);
+});
+
+test("Round 10 semantic search: pg_get_function_identity_arguments is not authority", () => {
+  const authorityFiles = [
+    "01_PRECHECK.sql",
+    "02_APPLY_DESIGN.sql",
+    "03B_MARK_VERIFIED_DESIGN.sql",
+    "07A_QUIESCE_WRITES_DESIGN.sql",
+    "07A2_QUIESCE_SEAL_DESIGN.sql",
+    "07B2_MARK_DRAINED_DESIGN.sql",
+    "07C_RESTORE_WRITES_DESIGN.sql",
+  ];
+  for (const name of authorityFiles) {
+    const body = uncommented(readPkg(name));
+    assert.doesNotMatch(
+      body,
+      /format\('%s\.%s\(%s\)',\s*n\.nspname,\s*p\.proname,\s*pg_catalog\.pg_get_function_identity_arguments/
+    );
+    assert.doesNotMatch(body, /format\('%s\.%s\(%s\)',\s*r\.nspname,\s*r\.proname,\s*r\.identity_args\)/);
+  }
+  assert.match(readPkg("00_README.md"), /PG_GET_FUNCTION_IDENTITY_ARGUMENTS_AUTHORITY_USES=0/);
 });
 
 
