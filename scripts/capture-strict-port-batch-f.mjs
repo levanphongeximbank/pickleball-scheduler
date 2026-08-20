@@ -161,7 +161,7 @@ const eventId = PASSWORD ? await seedTournamentContext() : "";
 const eventQuery = eventId ? `?eventId=${encodeURIComponent(eventId)}` : "";
 
 for (const screen of OPERATOR_SCREENS) {
-  if (!PASSWORD) break;
+  if (!PASSWORD || process.env.BATCH_F_PUBLIC_ONLY) break;
   const target = `${BASE}/tournament/${TOURNAMENT_ID}${screen.suffix}${eventQuery}`;
   await page.goto(target, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.waitForSelector(`[data-testid="${screen.testId}"]`, { timeout: 45000 });
@@ -184,12 +184,19 @@ for (const screen of OPERATOR_SCREENS) {
   }
 }
 
+await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 90000 });
 await page.evaluate(() => {
   localStorage.setItem("pickleball-active-club-v1", "club-ecebf64c78f948ccb2b59842441eb26c");
+  localStorage.setItem("pickleball-active-cluster-v1", "venue-staging-a-main");
 });
 const publicTarget = `${BASE}/tournament/${TOURNAMENT_ID}${PUBLIC_SCREEN.suffix}`;
 await page.goto(publicTarget, { waitUntil: "domcontentloaded", timeout: 90000 });
-await page.waitForSelector(`[data-testid="${PUBLIC_SCREEN.testId}"]`, { timeout: 45000 });
+try {
+  await page.waitForSelector(`[data-testid="${PUBLIC_SCREEN.testId}"]`, { timeout: 90000 });
+} catch (err) {
+  await page.screenshot({ path: path.join(OUT, "DEBUG_PUBLIC_FAIL.png"), fullPage: true });
+  throw err;
+}
 for (const shot of PUBLIC_SCREEN.viewports) {
   await page.setViewportSize({ width: shot.width, height: shot.height });
   await page.waitForTimeout(400);

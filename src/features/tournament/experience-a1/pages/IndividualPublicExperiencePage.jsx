@@ -65,6 +65,14 @@ export default function IndividualPublicExperiencePage() {
   const { tournament, loading, error } = useCanonicalTournament(activeClub, tournamentId, revision);
   const [tab, setTab] = useState("overview");
 
+  if (!tournamentId) {
+    return (
+      <Box sx={{ minHeight: "100dvh", bgcolor: TOURNAMENT_COLOR.pageBg, p: 3 }} data-testid={TEST_ID}>
+        <Typography sx={{ fontWeight: 700 }}>Không tìm thấy trang công khai giải đấu.</Typography>
+      </Box>
+    );
+  }
+
   if (loading) {
     return (
       <Box sx={{ minHeight: "100dvh", bgcolor: TOURNAMENT_COLOR.pageBg, p: 3 }} data-testid={TEST_ID}>
