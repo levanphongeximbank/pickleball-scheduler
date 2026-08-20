@@ -289,8 +289,8 @@ BEGIN
            SELECT a.attname
            FROM pg_catalog.pg_attribute a
            WHERE a.attrelid = i.indrelid
-             AND a.attnum = i.indkey[1]
-             AND i.indkey[1] > 0
+             AND a.attnum = i.indkey[0]
+             AND i.indkey[0] > 0
          ),
          pg_get_expr(i.indpred, i.indrelid)
     INTO v_idx_unique, v_idx_nkey, v_idx_natts, v_idx_expr, v_idx_key, v_pred

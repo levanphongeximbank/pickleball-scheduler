@@ -1195,9 +1195,61 @@ test("Round 8 K. one-active unique index key exactly cutover_kind", () => {
   assert.match(src, /CONTROL_PLANE_ONE_ACTIVE_INDEX_EXACT=YES/);
   assert.match(q1a, /indisunique/);
   assert.match(q1a, /v_idx_key IS DISTINCT FROM 'cutover_kind'/);
-  assert.match(q1a, /indkey\[1\]/);
+  // pg_index.indkey is int2vector with lower bound 0 — first key is [0], not [1].
+  assert.match(q1a, /indkey\[0\]/);
+  assert.doesNotMatch(q1a, /indkey\[1\]/);
   assert.match(q1a, /indnkeyatts/);
   assert.match(q1a, /'RESTORED'::text, 'ABORTED'::text/);
+});
+
+test("Round 12. Q0A/Q1A first-key indkey guards use int2vector [0]", () => {
+  const q0a = uncommented(readPkg("10A_SERVICE_ROLE_DML_QUIESCE_DESIGN.sql"));
+  const q1a = uncommented(readPkg("07A_QUIESCE_WRITES_DESIGN.sql"));
+  for (const [label, src] of [
+    ["10A", q0a],
+    ["07A", q1a],
+  ]) {
+    assert.match(
+      src,
+      /a\.attnum\s*=\s*i\.indkey\[0\]/,
+      `${label} must resolve first index key via indkey[0]`
+    );
+    assert.match(
+      src,
+      /i\.indkey\[0\]\s*>\s*0/,
+      `${label} must guard first-key attnum with indkey[0] > 0`
+    );
+    assert.doesNotMatch(
+      src,
+      /indkey\[1\]/,
+      `${label} must not use defective first-key indkey[1]`
+    );
+    assert.match(src, /v_idx_key IS DISTINCT FROM 'cutover_kind'/);
+    assert.match(src, /indnkeyatts/);
+    assert.match(src, /indisunique/);
+    assert.match(src, /CONTROL_PLANE_ONE_ACTIVE_INDEX_EXACT=NO|CONTROL_PLANE_ONE_ACTIVE_INDEX/);
+  }
+  // Package-wide: no Wave5 SQL design file may use first-key indkey[1].
+  const sqlDir = path.join(
+    process.cwd(),
+    "docs/platform-core-wave5-club-context-closure"
+  );
+  function walk(dir, out = []) {
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, ent.name);
+      if (ent.isDirectory()) walk(p, out);
+      else if (ent.isFile() && ent.name.endsWith(".sql")) out.push(p);
+    }
+    return out;
+  }
+  for (const file of walk(sqlDir)) {
+    const body = uncommented(fs.readFileSync(file, "utf8"));
+    assert.doesNotMatch(
+      body,
+      /indkey\[1\]/,
+      `${path.relative(process.cwd(), file)} must not use indkey[1]`
+    );
+  }
 });
 
 test("Round 8 L. 03B uses exact regprocedure for critical functions", () => {
