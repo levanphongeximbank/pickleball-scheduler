@@ -783,13 +783,13 @@ BEGIN
     n.nspname,
     p.proname,
     pg_catalog.pg_get_function_identity_arguments(p.oid), -- DISPLAY_IDENTITY_ARGUMENTS only; not restore authority
-    CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE r.rolname END,
+    CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE role_row.rolname END,
     acl.privilege_type,
     acl.is_grantable
   FROM pg_catalog.pg_proc p
   JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
   CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
-  LEFT JOIN pg_catalog.pg_roles r ON r.oid = acl.grantee
+  LEFT JOIN pg_catalog.pg_roles role_row ON role_row.oid = acl.grantee
   WHERE n.nspname = 'public'
     AND EXISTS (
       SELECT 1

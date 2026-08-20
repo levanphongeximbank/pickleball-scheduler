@@ -238,10 +238,10 @@ BEGIN
       JOIN pg_catalog.pg_proc p ON p.oid = to_regprocedure(approved.sig)
       JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace AND n.nspname = s0.nspname
       CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
-      LEFT JOIN pg_catalog.pg_roles r ON r.oid = acl.grantee
+      LEFT JOIN pg_catalog.pg_roles role_row ON role_row.oid = acl.grantee
       WHERE s0.batch_id = v_batch
         AND acl.privilege_type = 'EXECUTE'
-        AND (acl.grantee = 0 OR r.rolname IN ('anon', 'authenticated', 'service_role'))
+        AND (acl.grantee = 0 OR role_row.rolname IN ('anon', 'authenticated', 'service_role'))
         AND NOT EXISTS (
           SELECT 1
           FROM public.wave5_cutover_rpc_privilege_snapshot s
@@ -249,7 +249,7 @@ BEGIN
             AND s.nspname = n.nspname
             AND s.proname = p.proname
             AND s.privilege_type = 'EXECUTE'
-            AND s.grantee_name = CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE r.rolname END
+            AND s.grantee_name = CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE role_row.rolname END
             AND s.is_grantable = acl.is_grantable
         )
     ) THEN
@@ -285,12 +285,12 @@ BEGIN
           FROM pg_catalog.pg_proc p
           JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
           CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
-          LEFT JOIN pg_catalog.pg_roles r ON r.oid = acl.grantee
+          LEFT JOIN pg_catalog.pg_roles role_row ON role_row.oid = acl.grantee
           WHERE p.oid = to_regprocedure(approved.sig)
             AND n.nspname = s.nspname
             AND acl.privilege_type = 'EXECUTE'
             AND acl.is_grantable = s.is_grantable
-            AND CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE r.rolname END = s.grantee_name
+            AND CASE WHEN acl.grantee = 0 THEN 'PUBLIC' ELSE role_row.rolname END = s.grantee_name
         )
     ) THEN
       RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: RESTORE_FINAL_ACL_EQUALS_SNAPSHOT=NO captured caller-role grant missing — ROLLBACK KEEP WRITES QUIESCED OWNER REVIEW REQUIRED';

@@ -163,10 +163,10 @@ BEGIN
       SELECT 1
       FROM pg_catalog.pg_proc p
       CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) AS acl
-      JOIN pg_catalog.pg_roles r ON r.oid = acl.grantee
+      JOIN pg_catalog.pg_roles role_row ON role_row.oid = acl.grantee
       WHERE p.oid = v_sig::regprocedure
         AND acl.privilege_type = 'EXECUTE'
-        AND r.rolname = 'authenticated'
+        AND role_row.rolname = 'authenticated'
         AND acl.is_grantable
     ) THEN
       RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: AUTHENTICATED_GRANT_OPTION_DENIED=NO on %', v_sig;
