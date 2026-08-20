@@ -48,11 +48,16 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   CASE_CATALOG,
   CORE13_FIXTURE_NAMESPACE,
   CASE_NOT_EXECUTED_AFTER_FIRST_FAILURE,
   DENIAL_CODES,
+  AUTO_CURRENT_VERSION_FOR_ALL_CASES,
+  AUTHORITATIVE_VERSION_SOURCE,
+  PRIMARY_BUSINESS_DENIAL_CASES_REQUIRING_CURRENT_VERSION,
   createMutationGate,
   createAcceptanceRunState,
   createAssignmentMutationLedger,
@@ -62,6 +67,7 @@ import {
   evaluateAssignPass,
   evaluateAtomicReplacePass,
   evaluateAuthenticatedRuntimeProbe,
+  evaluateAuthoritativeMatchAssignmentVersionResult,
   evaluateBaselineKnownStart,
   evaluateBrowserAuditDenied,
   evaluateCasCorrectPass,
@@ -91,9 +97,14 @@ import {
   buildReceiptCaseAssignmentCommand,
   evaluateCompletedAuthoritativeState,
   evaluateCompletedCaseCommandBind,
+  evaluateDailyDisabledCaseCommandBind,
+  evaluateDailyEnabledCaseCommandBind,
   mapCore13AssignmentLifecycleFromLiveRow,
 } from "./core13-staging-fixture-receipt.mjs";
-import { evaluateCompletedSamePathSemanticPreflight } from "./core13-staging-fixture-preflight.mjs";
+import {
+  evaluateCompletedSamePathSemanticPreflight,
+  evaluateRemainingLmSamePathPreflight,
+} from "./core13-staging-fixture-preflight.mjs";
 
 function fail(message) {
   console.error(`REFUSE: ${message}`);
@@ -217,6 +228,7 @@ async function main() {
   const dailyDisabled = fixtures.dailyDisabled;
   const dailyEnabled = fixtures.dailyEnabled;
   const dailyEnabledMatch = fixtures.dailyEnabledMatch;
+  const dailyDisabledMatch = fixtures.dailyDisabledMatch;
   const matchInProgress = fixtures.matchInProgress;
   const matchScoring = fixtures.matchScoring;
   const matchLocked = fixtures.matchLocked;
@@ -336,6 +348,24 @@ async function main() {
     `COMPLETED_SAME_PATH_SEMANTIC_PREFLIGHT=PASS liveStatus=${remoteEvidence.matches?.completed?.liveStatus || ""} core13=${mapCore13AssignmentLifecycleFromLiveRow({ status: remoteEvidence.matches?.completed?.liveStatus })}`
   );
 
+  const remainingLmPreflight = evaluateRemainingLmSamePathPreflight({
+    receipt,
+    commandBase: {
+      tenantId: tenantA,
+      tournamentId: tournamentA,
+      matchId: matchA,
+      refereeId,
+      competitionMode: "INTERNAL",
+    },
+    harnessSource: readFileSync(fileURLToPath(import.meta.url), "utf8"),
+  });
+  if (!remainingLmPreflight.ok) {
+    fail(`REMAINING_LM_SAME_PATH_PREFLIGHT ${remainingLmPreflight.detail}`);
+  }
+  console.log(
+    `REMAINING_LM_SAME_PATH_PREFLIGHT=PASS AUTHORITATIVE_VERSION_SOURCE=${AUTHORITATIVE_VERSION_SOURCE} AUTO_CURRENT_VERSION_FOR_ALL_CASES=${AUTO_CURRENT_VERSION_FOR_ALL_CASES}`
+  );
+
   const assignArgs = {
     p_tenant_id: tenantA,
     p_tournament_id: tournamentA,
@@ -353,6 +383,53 @@ async function main() {
     refereeId,
     competitionMode: "INTERNAL",
   };
+
+  /**
+   * Authoritative CAS version reader for acceptance commands.
+   * Read-only Edge action. Fail closed — never silently return 0.
+   */
+  async function getAuthoritativeMatchAssignmentVersion({
+    tenantId,
+    tournamentId,
+    matchId,
+    competitionMode = "INTERNAL",
+    role = "PRIMARY",
+  }) {
+    const result = await invokeEdge(url, userA.token, {
+      action: "getMatchAssignmentVersion",
+      command: {
+        tenantId,
+        tournamentId,
+        matchId,
+        competitionMode,
+        role,
+      },
+    });
+    const parsed = evaluateAuthoritativeMatchAssignmentVersionResult(result);
+    if (!parsed.ok) {
+      throw new Error(parsed.detail);
+    }
+    return parsed.version;
+  }
+
+  async function resolveCurrentExpectedVersionForPrimaryBusinessDenial(
+    caseName,
+    scope
+  ) {
+    if (!PRIMARY_BUSINESS_DENIAL_CASES_REQUIRING_CURRENT_VERSION.includes(caseName)) {
+      throw new Error(
+        `AUTO_CURRENT_VERSION_FOR_ALL_CASES=DENY; ${caseName} is not a targeted primary business-denial case`
+      );
+    }
+    const version = await getAuthoritativeMatchAssignmentVersion({
+      tenantId: scope.tenantId,
+      tournamentId: scope.tournamentId,
+      matchId: scope.matchId,
+      competitionMode: scope.competitionMode || "INTERNAL",
+    });
+    console.log(`${caseName}_EXPECTED_VERSION_READ=${version}`);
+    return version;
+  }
 
   const mutate = async (body) => {
     if (!run.shouldContinue()) {
@@ -555,6 +632,7 @@ async function main() {
       });
 
       const version = Number(spoof.payload?.version || 1);
+      console.log(`PRIMARY_VERSION_AFTER_F=${version}`);
       const beforeIdempotencyCount = durableAfterAssign.length;
       const replay = await mutate({
         action: "assignReferee",
@@ -624,6 +702,9 @@ async function main() {
         },
       });
       record("G.cas-correct-expected-version-pass", evaluateCasCorrectPass(casPass, version));
+      console.log(
+        `PRIMARY_VERSION_AFTER_G=${Number(casPass.payload?.version || version + 1)}`
+      );
 
       const stale = await mutate({
         action: "assignReferee",
@@ -633,6 +714,9 @@ async function main() {
           idempotencyKey: `stage-stale-${Date.now()}`,
         },
       });
+      console.log(
+        `G_STALE_EXPECTED_VERSION=0 G_CURRENT_VERSION=${Number(casPass.payload?.version || version + 1)}`
+      );
       record("G.cas-stale-expected-version-deny", evaluateDenial(stale, DENIAL_CODES.STALE_WRITE), {
         expectedDenial: true,
       });
@@ -660,6 +744,9 @@ async function main() {
           previousVersion: replaceVersion,
           refereeId,
         })
+      );
+      console.log(
+        `PRIMARY_VERSION_AFTER_I=${Number(replace.payload?.version || replaceVersion + 1)}`
       );
 
       const durableAfterReplace = await loadActiveRows(service, {
@@ -886,48 +973,76 @@ async function main() {
           "L.inactive-referee-deny"
         )
       ) {
+        const inactiveExpectedVersion =
+          await resolveCurrentExpectedVersionForPrimaryBusinessDenial(
+            "L.inactive-referee-deny",
+            commandBase
+          );
         const denied = await mutate({
           action: "assignReferee",
           command: {
             ...commandBase,
             refereeId: inactiveReferee,
-            expectedVersion: 0,
+            expectedVersion: inactiveExpectedVersion,
             idempotencyKey: `stage-inactive-${Date.now()}`,
           },
         });
+        console.log(
+          `L.inactive-referee-deny_VERSION_AT_MUTATION=${inactiveExpectedVersion}`
+        );
         record("L.inactive-referee-deny", evaluateDenial(denied, DENIAL_CODES.INACTIVE_REFEREE), {
           expectedDenial: true,
         });
       }
 
-      const missingQual = await mutate({
-        action: "assignReferee",
-        command: {
-          ...commandBase,
-          expectedVersion: 0,
-          idempotencyKey: `stage-qual-${Date.now()}`,
-          requireQualification: true,
-        },
-      });
-      record(
-        "L.required-qualification-missing-deny",
-        evaluateDenial(missingQual, DENIAL_CODES.QUALIFICATION_MISSING),
-        { expectedDenial: true }
-      );
-      const missingAvail = await mutate({
-        action: "assignReferee",
-        command: {
-          ...commandBase,
-          expectedVersion: 0,
-          idempotencyKey: `stage-avail-${Date.now()}`,
-          requireAvailability: true,
-        },
-      });
-      record(
-        "L.unavailable-referee-deny-when-required",
-        evaluateDenial(missingAvail, DENIAL_CODES.AVAILABILITY_MISSING),
-        { expectedDenial: true }
-      );
+      {
+        const qualificationExpectedVersion =
+          await resolveCurrentExpectedVersionForPrimaryBusinessDenial(
+            "L.required-qualification-missing-deny",
+            commandBase
+          );
+        const missingQual = await mutate({
+          action: "assignReferee",
+          command: {
+            ...commandBase,
+            expectedVersion: qualificationExpectedVersion,
+            idempotencyKey: `stage-qual-${Date.now()}`,
+            requireQualification: true,
+          },
+        });
+        console.log(
+          `L.required-qualification-missing-deny_VERSION_AT_MUTATION=${qualificationExpectedVersion}`
+        );
+        record(
+          "L.required-qualification-missing-deny",
+          evaluateDenial(missingQual, DENIAL_CODES.QUALIFICATION_MISSING),
+          { expectedDenial: true }
+        );
+      }
+      {
+        const availabilityExpectedVersion =
+          await resolveCurrentExpectedVersionForPrimaryBusinessDenial(
+            "L.unavailable-referee-deny-when-required",
+            commandBase
+          );
+        const missingAvail = await mutate({
+          action: "assignReferee",
+          command: {
+            ...commandBase,
+            expectedVersion: availabilityExpectedVersion,
+            idempotencyKey: `stage-avail-${Date.now()}`,
+            requireAvailability: true,
+          },
+        });
+        console.log(
+          `L.unavailable-referee-deny-when-required_VERSION_AT_MUTATION=${availabilityExpectedVersion}`
+        );
+        record(
+          "L.unavailable-referee-deny-when-required",
+          evaluateDenial(missingAvail, DENIAL_CODES.AVAILABILITY_MISSING),
+          { expectedDenial: true }
+        );
+      }
 
       if (
         requireFixture("STAGING_MATCH_OVERLAP_A", overlapA, "L.overlapping-schedule-conflict-deny") &&
@@ -1025,24 +1140,60 @@ async function main() {
           "STAGING_DAILY_PLAY_DISABLED_TOURNAMENT",
           dailyDisabled,
           "M.daily-play-disabled-not-applicable"
+        ) &&
+        requireFixture(
+          "STAGING_DAILY_PLAY_DISABLED_MATCH",
+          dailyDisabledMatch,
+          "M.daily-play-disabled-not-applicable"
         )
       ) {
-        const disabled = await mutate({
-          action: "assignReferee",
-          command: {
-            ...commandBase,
-            tournamentId: dailyDisabled,
-            expectedVersion: 0,
-            idempotencyKey: `stage-daily-off-${Date.now()}`,
+        const dailyDisabledCommand = buildReceiptCaseAssignmentCommand(
+          receipt,
+          commandBase,
+          dailyDisabledMatch,
+          {
             competitionMode: "DAILY_PLAY",
             refereeFeatureEnabled: false,
-          },
-        });
-        record(
-          "M.daily-play-disabled-not-applicable",
-          evaluateDenial(disabled, DENIAL_CODES.DAILY_DISABLED),
-          { expectedDenial: true }
+          }
         );
+        const dailyDisabledBind = evaluateDailyDisabledCaseCommandBind(
+          dailyDisabledCommand,
+          receipt
+        );
+        if (!dailyDisabledBind.ok) {
+          record("M.daily-play-disabled-not-applicable", dailyDisabledBind, {
+            expectedDenial: true,
+          });
+        } else {
+          console.log(
+            `DAILY_DISABLED_COMMAND_TOURNAMENT=${dailyDisabledCommand.tournamentId}`
+          );
+          console.log(
+            `DAILY_DISABLED_RECEIPT_TOURNAMENT=${receipt.tournaments?.dailyDisabled?.id || ""}`
+          );
+          console.log(
+            `DAILY_DISABLED_COMMAND_MATCH=${dailyDisabledCommand.matchId}`
+          );
+          console.log(
+            `DAILY_DISABLED_RECEIPT_MATCH=${receipt.matches?.dailyDisabled?.id || ""}`
+          );
+          console.log(
+            `DAILY_DISABLED_MATCH_OWNER_TOURNAMENT=${receipt.matches?.dailyDisabled?.tournamentId || ""}`
+          );
+          const disabled = await mutate({
+            action: "assignReferee",
+            command: {
+              ...dailyDisabledCommand,
+              expectedVersion: 0,
+              idempotencyKey: `stage-daily-off-${Date.now()}`,
+            },
+          });
+          record(
+            "M.daily-play-disabled-not-applicable",
+            evaluateDenial(disabled, DENIAL_CODES.DAILY_DISABLED),
+            { expectedDenial: true }
+          );
+        }
       }
       if (
         requireFixture(
@@ -1056,32 +1207,54 @@ async function main() {
           "M.daily-play-enabled-trusted-server-core13"
         )
       ) {
-        const dailyBaseline = await loadActiveRows(service, {
-          tenantId: tenantA,
-          tournamentId: dailyEnabled,
-          matchId: dailyEnabledMatch,
-        });
-        const dailyStart = evaluateCasePreconditionDrift(
-          dailyBaseline.length,
-          0,
-          "dailyEnabled"
+        const dailyEnabledCommand = buildReceiptCaseAssignmentCommand(
+          receipt,
+          commandBase,
+          dailyEnabledMatch,
+          {
+            competitionMode: "DAILY_PLAY",
+            refereeFeatureEnabled: true,
+          }
         );
-        if (!dailyStart.ok) {
-          record("M.daily-play-enabled-trusted-server-core13", dailyStart);
+        const dailyEnabledBind = evaluateDailyEnabledCaseCommandBind(
+          dailyEnabledCommand,
+          receipt
+        );
+        if (!dailyEnabledBind.ok) {
+          record("M.daily-play-enabled-trusted-server-core13", dailyEnabledBind);
         } else {
-          const enabled = await mutate({
-            action: "assignReferee",
-            command: {
-              ...commandBase,
-              tournamentId: dailyEnabled,
-              matchId: dailyEnabledMatch,
-              expectedVersion: 0,
-              idempotencyKey: `stage-daily-on-${Date.now()}`,
-              competitionMode: "DAILY_PLAY",
-              refereeFeatureEnabled: true,
-            },
+          const dailyBaseline = await loadActiveRows(service, {
+            tenantId: dailyEnabledCommand.tenantId,
+            tournamentId: dailyEnabledCommand.tournamentId,
+            matchId: dailyEnabledCommand.matchId,
           });
-          record("M.daily-play-enabled-trusted-server-core13", evaluateDailyEnabledPass(enabled));
+          const dailyStart = evaluateCasePreconditionDrift(
+            dailyBaseline.length,
+            0,
+            "dailyEnabled"
+          );
+          if (!dailyStart.ok) {
+            record("M.daily-play-enabled-trusted-server-core13", dailyStart);
+          } else {
+            console.log(
+              `DAILY_ENABLED_COMMAND_TOURNAMENT=${dailyEnabledCommand.tournamentId}`
+            );
+            console.log(
+              `DAILY_ENABLED_COMMAND_MATCH=${dailyEnabledCommand.matchId}`
+            );
+            const enabled = await mutate({
+              action: "assignReferee",
+              command: {
+                ...dailyEnabledCommand,
+                expectedVersion: 0,
+                idempotencyKey: `stage-daily-on-${Date.now()}`,
+              },
+            });
+            record(
+              "M.daily-play-enabled-trusted-server-core13",
+              evaluateDailyEnabledPass(enabled)
+            );
+          }
         }
       }
 

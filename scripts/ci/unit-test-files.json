@@ -490,6 +490,7 @@
   "tests/competition-engine-e2e-03-organizer-operations.test.js",
   "tests/competition-engine-core13-canonical-assignment-runtime-closure-01.test.js",
   "tests/competition-engine-core13-completed-case-command-bind-01.test.js",
+  "tests/competition-engine-core13-remaining-lm-version-parity-01.test.js",
   "tests/competition-engine-core13-lifecycle-scoring-classification-01.test.js",
   "tests/competition-engine-core13-trusted-server-boundary-01.test.js",
   "tests/competition-engine-core13-authoritative-evidence-boundary-01.test.js",

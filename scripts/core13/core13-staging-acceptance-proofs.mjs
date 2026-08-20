@@ -82,6 +82,65 @@ export const DENIAL_CODES = Object.freeze({
   DAILY_DISABLED: [ASSIGNMENT_COMMAND_ERROR_CODE.DAILY_PLAY_NOT_APPLICABLE],
 });
 
+/** Primary-match business denials that must reach CORE-13 after CAS. */
+export const PRIMARY_BUSINESS_DENIAL_CASES_REQUIRING_CURRENT_VERSION = Object.freeze([
+  "L.inactive-referee-deny",
+  "L.required-qualification-missing-deny",
+  "L.unavailable-referee-deny-when-required",
+]);
+
+/** Cases that must keep an explicit non-current expectedVersion. */
+export const CASES_PRESERVING_EXPLICIT_VERSION_POLICY = Object.freeze({
+  "G.cas-stale-expected-version-deny": "STALE_ZERO",
+  "L.non-canonical-referee-deny": "EDGE_IDENTITY_BEFORE_CAS_ZERO_OK",
+});
+
+export const AUTHORITATIVE_VERSION_SOURCE = "getMatchAssignmentVersion";
+export const AUTO_CURRENT_VERSION_FOR_ALL_CASES = "DENY";
+
+/**
+ * Fail-closed parse of trusted getMatchAssignmentVersion Edge payload.
+ * Never silently defaults to 0.
+ */
+export function evaluateAuthoritativeMatchAssignmentVersionResult(result = {}) {
+  const payload = payloadOf(result);
+  if (result?.ok === false || payload?.ok === false) {
+    return proof(
+      false,
+      `authoritative version read failed: ${payload?.code || payload?.error || result?.detail || "unknown"}`
+    );
+  }
+  if (payload?.version == null || Number.isNaN(Number(payload.version))) {
+    return proof(false, "authoritative version missing; refuse silent zero fallback");
+  }
+  const version = Number(payload.version);
+  if (!Number.isFinite(version) || version < 0) {
+    return proof(false, `authoritative version invalid: ${payload.version}`);
+  }
+  return Object.freeze({
+    ok: true,
+    detail: `version=${version}`,
+    version,
+    source: AUTHORITATIVE_VERSION_SOURCE,
+  });
+}
+
+export function evaluatePrimaryVersionAfterMutations(input = {}) {
+  const afterF = Number(input.afterF);
+  const afterG = Number(input.afterG);
+  const afterI = Number(input.afterI);
+  if (![afterF, afterG, afterI].every((n) => Number.isFinite(n))) {
+    return proof(false, "primary mutation versions must be finite");
+  }
+  if (!(afterF > 0 && afterG > afterF && afterI >= afterG)) {
+    return proof(
+      false,
+      `primary version sequence invalid F=${afterF} G=${afterG} I=${afterI}`
+    );
+  }
+  return proof(true, `PRIMARY_VERSION_AFTER_I=${afterI}`);
+}
+
 export const FORBIDDEN_CASE_STATUSES = Object.freeze([
   "SKIP",
   "NOT_RUN",

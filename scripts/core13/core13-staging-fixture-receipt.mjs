@@ -570,6 +570,7 @@ export function evaluateManualFixtureOverride(receipt, envMap = {}) {
     ["STAGING_DAILY_PLAY_ENABLED_TOURNAMENT", entityId(receipt.tournaments.dailyEnabled)],
     ["STAGING_DAILY_PLAY_DISABLED_TOURNAMENT", entityId(receipt.tournaments.dailyDisabled)],
     ["STAGING_DAILY_PLAY_ENABLED_MATCH", entityId(receipt.matches.dailyEnabled)],
+    ["STAGING_DAILY_PLAY_DISABLED_MATCH", entityId(receipt.matches.dailyDisabled)],
   ];
   for (const [name, expected] of pairs) {
     const actual = String(envMap[name] || "").trim();
@@ -1035,6 +1036,7 @@ export function hydrateHarnessFixtures(receipt) {
     dailyDisabled: entityId(receipt.tournaments.dailyDisabled),
     dailyEnabled: entityId(receipt.tournaments.dailyEnabled),
     dailyEnabledMatch: entityId(receipt.matches.dailyEnabled),
+    dailyDisabledMatch: entityId(receipt.matches.dailyDisabled),
     matchInProgress: entityId(receipt.matches.inProgress),
     matchScoring: entityId(receipt.matches.scoringActive),
     matchLocked: entityId(receipt.matches.locked),
@@ -1118,6 +1120,77 @@ export function evaluateCompletedCaseCommandBind(command = {}, receipt = {}) {
     return proof(false, "completed command tournament does not match owning tournament");
   }
   return proof(true, "CASE_RECEIPT_OWNING_TOURNAMENT_BIND");
+}
+
+export function evaluateDailyDisabledCaseCommandBind(command = {}, receipt = {}) {
+  const ownerTournament = entityId(receipt?.tournaments?.dailyDisabled);
+  const ownerMatch = entityId(receipt?.matches?.dailyDisabled);
+  const ownerMatchTournament = String(receipt?.matches?.dailyDisabled?.tournamentId || "").trim();
+  const ownerTenant = entityId(receipt?.tenantA);
+  const primaryTournament = entityId(receipt?.tournaments?.primary);
+  const primaryMatch = entityId(receipt?.matches?.preMatch);
+  if (!ownerTournament || !ownerMatch || !ownerTenant) {
+    return proof(false, "daily-disabled receipt identity missing");
+  }
+  if (ownerMatchTournament && ownerMatchTournament !== ownerTournament) {
+    return proof(false, "daily-disabled match owner tournament mismatch in receipt");
+  }
+  if (String(command.tenantId || "") !== ownerTenant) {
+    return proof(false, "daily-disabled command tenant does not match owning tenant");
+  }
+  if (String(command.tournamentId || "") === primaryTournament) {
+    return proof(false, "PRIMARY_COMMAND_BASE_USED_WRONG_TOURNAMENT");
+  }
+  if (String(command.matchId || "") === primaryMatch) {
+    return proof(false, "PRIMARY_COMMAND_BASE_USED_WRONG_MATCH");
+  }
+  if (String(command.tournamentId || "") !== ownerTournament) {
+    return proof(false, "daily-disabled command tournament does not match receipt");
+  }
+  if (String(command.matchId || "") !== ownerMatch) {
+    return proof(false, "daily-disabled command match does not match receipt");
+  }
+  if (String(command.competitionMode || "").toUpperCase() !== "DAILY_PLAY") {
+    return proof(false, "daily-disabled competitionMode must be DAILY_PLAY");
+  }
+  if (command.refereeFeatureEnabled !== false) {
+    return proof(false, "daily-disabled refereeFeatureEnabled must be false");
+  }
+  return proof(true, "DAILY_DISABLED_RECEIPT_OWNING_SCOPE_BIND");
+}
+
+export function evaluateDailyEnabledCaseCommandBind(command = {}, receipt = {}) {
+  const ownerTournament = entityId(receipt?.tournaments?.dailyEnabled);
+  const ownerMatch = entityId(receipt?.matches?.dailyEnabled);
+  const ownerMatchTournament = String(receipt?.matches?.dailyEnabled?.tournamentId || "").trim();
+  const ownerTenant = entityId(receipt?.tenantA);
+  const primaryTournament = entityId(receipt?.tournaments?.primary);
+  const primaryMatch = entityId(receipt?.matches?.preMatch);
+  if (!ownerTournament || !ownerMatch || !ownerTenant) {
+    return proof(false, "daily-enabled receipt identity missing");
+  }
+  if (ownerMatchTournament && ownerMatchTournament !== ownerTournament) {
+    return proof(false, "daily-enabled match owner tournament mismatch in receipt");
+  }
+  if (String(command.tenantId || "") !== ownerTenant) {
+    return proof(false, "daily-enabled command tenant does not match owning tenant");
+  }
+  if (String(command.tournamentId || "") === primaryTournament) {
+    return proof(false, "PRIMARY_COMMAND_BASE_USED_WRONG_TOURNAMENT");
+  }
+  if (String(command.matchId || "") === primaryMatch) {
+    return proof(false, "PRIMARY_COMMAND_BASE_USED_WRONG_MATCH");
+  }
+  if (String(command.tournamentId || "") !== ownerTournament) {
+    return proof(false, "daily-enabled command tournament does not match receipt");
+  }
+  if (String(command.matchId || "") !== ownerMatch) {
+    return proof(false, "daily-enabled command match does not match receipt");
+  }
+  if (String(command.competitionMode || "").toUpperCase() !== "DAILY_PLAY") {
+    return proof(false, "daily-enabled competitionMode must be DAILY_PLAY");
+  }
+  return proof(true, "DAILY_ENABLED_RECEIPT_OWNING_SCOPE_BIND");
 }
 
 export function evaluateCompletedAuthoritativeState(liveRow = null) {
