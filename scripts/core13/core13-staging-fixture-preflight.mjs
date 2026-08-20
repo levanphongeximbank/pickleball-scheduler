@@ -22,8 +22,10 @@ import {
   REQUIRED_WRITER_PORTS,
 } from "./core13-staging-fixture-writers.mjs";
 import { evaluateExistingQaIdentitySet } from "./core13-staging-qa-auth.mjs";
+import { DAILY_ATHLETE_ELIGIBILITY_AUTHORITY } from "./core13-staging-daily-eligibility.mjs";
 
 export const MIN_EXISTING_ELIGIBLE_DAILY_PLAYERS_REQUIRED = 4;
+export const DAILY_ELIGIBILITY_AUTHORITY = DAILY_ATHLETE_ELIGIBILITY_AUTHORITY;
 export const DAILY_FIXTURE_MATCH_TYPE = "open_double";
 export const DAILY_PRODUCT_RULE_CHANGED = "NO";
 export const EVENT_SEQUENCE_ALONE_AS_SCORING_ACTIVE = "DENY";
@@ -71,8 +73,15 @@ export function createReadyDailyPreflightSnapshot(overrides = {}) {
     casReadable: true,
     idempotencyKeysBuildable: true,
     doublesPayloadValid: true,
+    DAILY_ELIGIBILITY_AUTHORITY: DAILY_ATHLETE_ELIGIBILITY_AUTHORITY,
+    canonicalEligibilityVerified: overrides.canonicalEligibilityVerified !== false,
+    PRECHECK_ELIGIBILITY_RULE_EQUALS_CREATE_MATCHES: "YES",
+    CLUB_DATA_V3_AS_PLAYER_SSOT: "DENY",
+    PLAYER_ELIGIBILITY_BYPASS: "DENY",
+    HARDCODED_PLAYER_IDS: "DENY",
     ...overrides,
     eligiblePlayerIds,
+    DAILY_ELIGIBILITY_AUTHORITY: DAILY_ATHLETE_ELIGIBILITY_AUTHORITY,
   };
 }
 
@@ -152,6 +161,25 @@ export function evaluateDailyFixturePreflight(snapshot = {}) {
   if (snapshot.fabricated === true) {
     return proof(false, "fabricated Daily players denied", { verdict: "DENY" });
   }
+  if (text(snapshot.DAILY_ELIGIBILITY_AUTHORITY) !== DAILY_ATHLETE_ELIGIBILITY_AUTHORITY) {
+    return proof(false, "Daily eligibility authority must be daily_play_athlete_eligible_for_club", {
+      verdict: "NOT_READY",
+      expectedAuthority: DAILY_ATHLETE_ELIGIBILITY_AUTHORITY,
+      actualAuthority: snapshot.DAILY_ELIGIBILITY_AUTHORITY || null,
+    });
+  }
+  if (snapshot.canonicalEligibilityVerified !== true) {
+    return proof(false, "Daily eligible athletes must be verified via canonical RPC", {
+      verdict: "NOT_READY",
+      PRECHECK_ELIGIBILITY_RULE_EQUALS_CREATE_MATCHES: "YES",
+    });
+  }
+  if (snapshot.PLAYER_ELIGIBILITY_BYPASS === true) {
+    return proof(false, "PLAYER_ELIGIBILITY_BYPASS denied", { verdict: "DENY" });
+  }
+  if (snapshot.CLUB_DATA_V3_AS_PLAYER_SSOT === true) {
+    return proof(false, "CLUB_DATA_V3_AS_PLAYER_SSOT denied", { verdict: "DENY" });
+  }
   if (eligiblePlayerIds.length < MIN_EXISTING_ELIGIBLE_DAILY_PLAYERS_REQUIRED) {
     return proof(
       false,
@@ -216,6 +244,10 @@ export function evaluateDailyFixturePreflight(snapshot = {}) {
     hasCourtCapability: true,
     usableCourtCount,
     matchType: DAILY_FIXTURE_MATCH_TYPE,
+    DAILY_ELIGIBILITY_AUTHORITY: DAILY_ATHLETE_ELIGIBILITY_AUTHORITY,
+    canonicalEligibilityVerified: true,
+    PRECHECK_ELIGIBILITY_RULE_EQUALS_CREATE_MATCHES: "YES",
+    selectedPlayerTrace: snapshot.selectedPlayerTrace || null,
     FINAL_FRESH_FIXTURE_RUN_READY: true,
   });
 }

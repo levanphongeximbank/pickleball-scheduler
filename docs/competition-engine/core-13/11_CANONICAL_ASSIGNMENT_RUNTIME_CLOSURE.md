@@ -110,6 +110,15 @@ Live-backed fixtures retain `match_live_states` / `match_sync_mutations` / initi
 - The explicit overlap-negative case (`overlapB`) intentionally overlaps `overlapA`.
 - Canonical capacity guard remains `CORRECT` / `CAPACITY_CHECK_BYPASS=DENY`.
 
+## Daily athlete eligibility (fixture harness)
+
+`scripts/core13/core13-staging-daily-eligibility.mjs` resolves fixture Daily athletes via the same authority as check-in/createMatches: `daily_play_athlete_eligible_for_club`.
+
+- `CLUB_DATA_V3_AS_PLAYER_SSOT=DENY`
+- `PLAYER_ELIGIBILITY_BYPASS=DENY`
+- `DUPLICATED_JS_ELIGIBILITY_RULE=DENY`
+- Preflight requires `canonicalEligibilityVerified=YES` before tournament materialization.
+
 ## Execution gate
 
 Do **not** apply SQL or deploy the Edge Function until Owner GO.
