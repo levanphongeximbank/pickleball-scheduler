@@ -16,6 +16,7 @@ import {
   COMPETITION_REFEREE_ADAPTER_INTEGRATION,
   GENERIC_REFEREE_ROLE_PERMISSIONS,
   REFEREE_ADAPTER_ERROR_CODE,
+  REFEREE_DURABLE_RUNTIME_ERROR_CODE,
   REFEREE_ERROR_CODE,
   createCanonicalRefereePersistenceRuntime,
   createCompetitionRefereeProductionRuntime,
@@ -704,7 +705,7 @@ test("live RPC driver — assignment upsert denied; CAS/idempotency/stale via mo
         },
         ACTOR
       ),
-    REFEREE_ADAPTER_ERROR_CODE.DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN
+    REFEREE_DURABLE_RUNTIME_ERROR_CODE.DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN
   );
   // Simulate CORE-13 persistence already wrote the assignment row (read path only).
   await rpcClient

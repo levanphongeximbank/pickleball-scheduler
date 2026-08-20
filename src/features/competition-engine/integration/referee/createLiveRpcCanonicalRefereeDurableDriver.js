@@ -14,6 +14,7 @@ import {
   REFEREE_ADAPTER_ERROR_CODE,
   REFEREE_V5_INTERNAL_COMMIT_RPC,
 } from "./constants.js";
+import { REFEREE_DURABLE_RUNTIME_ERROR_CODE } from "./durableRuntimeErrorCodes.js";
 import { failRefereeAdapter } from "./errors.js";
 import { freezeClone, hashCanonical, isNonEmptyString, matchStateId } from "./helpers.js";
 import { assertServerOnlyPrivilegedRefereeComposition } from "./privilegedCompositionBoundary.js";
@@ -284,7 +285,7 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
     // CORE-13 is the sole assignment mutation authority. LiveRpc may READ
     // referee_assignments for projections; product-path table DML is denied.
     failRefereeAdapter(
-      REFEREE_ADAPTER_ERROR_CODE.DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN,
+      REFEREE_DURABLE_RUNTIME_ERROR_CODE.DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN,
       "Direct referee_assignments upsert is denied — CORE-13 command authority only",
       {
         directAssignmentTableDml: "DENY",

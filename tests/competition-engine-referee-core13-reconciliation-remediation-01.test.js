@@ -13,6 +13,7 @@ import {
   COMPETITION_REFEREE_MODE,
   GENERIC_REFEREE_ROLE_PERMISSIONS,
   REFEREE_ADAPTER_ERROR_CODE,
+  REFEREE_DURABLE_RUNTIME_ERROR_CODE,
   createCompetitionRuntimePorts,
   createDefaultCompetitionRefereeRuntime,
   createDurableRefereeOperationsStore,
@@ -147,7 +148,8 @@ test("RC-A1: LiveRpc product path cannot upsert referee_assignments", async () =
       ),
     (err) =>
       isRefereeAdapterContractError(err) &&
-      err.code === REFEREE_ADAPTER_ERROR_CODE.DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN
+      err.code ===
+        REFEREE_DURABLE_RUNTIME_ERROR_CODE.DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN
   );
 });
 

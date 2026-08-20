@@ -251,7 +251,11 @@ export function createDurableRefereeOperationsStore(options = {}) {
           new Error(
             "Assignment mutation requires CORE-13 command authority — durable store cannot upsert"
           ),
-          { code: "DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN" }
+          {
+            code: "DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN",
+            directAssignmentTableDml: "DENY",
+            assignmentAuthority: "CORE-13",
+          }
         );
       }
       for (const raw of assignments || []) {

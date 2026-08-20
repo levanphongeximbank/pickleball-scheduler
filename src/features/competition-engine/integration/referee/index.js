@@ -29,6 +29,11 @@ export {
 } from "./constants.js";
 
 export {
+  REFEREE_DURABLE_RUNTIME_ERROR_CODE,
+  DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN,
+} from "./durableRuntimeErrorCodes.js";
+
+export {
   RefereeAdapterContractError,
   isRefereeAdapterContractError,
   isRefereeAdapterErrorCode,
