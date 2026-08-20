@@ -42,6 +42,27 @@ function uncommented(sql) {
     .join("\n");
 }
 
+function normalizeCatalogExpr(s) {
+  return s.replace(/\s+/g, " ").trim();
+}
+
+const APPROVED_KIND_CHECK = "CHECK ((cutover_kind = 'WAVE5_CLUB_TENANT'::text))";
+const APPROVED_STATE_CHECK =
+  "CHECK ((state = ANY (ARRAY['PREPARED'::text, 'QUIESCED'::text, 'DRAINED'::text, 'APPLYING'::text, 'APPLIED'::text, 'VERIFIED'::text, 'RESTORED'::text, 'ABORTED'::text])))";
+const APPROVED_ONE_ACTIVE_PRED = "(state <> ALL (ARRAY['RESTORED'::text, 'ABORTED'::text]))";
+
+function kindCheckExact(def) {
+  return normalizeCatalogExpr(def) === APPROVED_KIND_CHECK;
+}
+
+function stateCheckExact(def) {
+  return normalizeCatalogExpr(def) === APPROVED_STATE_CHECK;
+}
+
+function oneActivePredicateExact(def) {
+  return normalizeCatalogExpr(def) === APPROVED_ONE_ACTIVE_PRED;
+}
+
 test("Wave5 SQL design files exist", () => {
   for (const name of PACKAGE_FILES) {
     assert.equal(fs.existsSync(path.join(SQL_DIR, name)), true, name);
@@ -1097,9 +1118,9 @@ test("Round 8 G. pre-quiesce barrier catches arbitrary named non-system user tra
 test("Round 8 H. PRECHECK reports direct Club DML privileges", () => {
   const precheck = readPkg("01_PRECHECK.sql");
   const body = uncommented(precheck);
-  assert.match(precheck, /DIRECT_CLUB_DML_PUBLIC=DENIED/);
-  assert.match(precheck, /DIRECT_CLUB_DML_ANON=DENIED/);
-  assert.match(precheck, /DIRECT_CLUB_DML_AUTHENTICATED=DENIED/);
+  assert.match(precheck, /DIRECT_CLUB_DML_PUBLIC_REQUIRED=DENIED/);
+  assert.match(precheck, /DIRECT_CLUB_DML_ANON_REQUIRED=DENIED/);
+  assert.match(precheck, /DIRECT_CLUB_DML_AUTHENTICATED_REQUIRED=DENIED/);
   assert.match(precheck, /SERVICE_ROLE_DIRECT_CLUB_DML/);
   assert.match(precheck, /PRESENT_REQUIRES_EXECUTION_WINDOW_CONTROL/);
   assert.match(body, /has_table_privilege\(r\.rolname/);
@@ -1138,7 +1159,8 @@ test("Round 8 K. one-active unique index key exactly cutover_kind", () => {
   assert.match(q1a, /indisunique/);
   assert.match(q1a, /v_idx_key IS DISTINCT FROM 'cutover_kind'/);
   assert.match(q1a, /indkey\[1\]/);
-  assert.match(q1a, /ABORTED,RESTORED/);
+  assert.match(q1a, /indnkeyatts/);
+  assert.match(q1a, /'RESTORED'::text, 'ABORTED'::text/);
 });
 
 test("Round 8 L. 03B uses exact regprocedure for critical functions", () => {
@@ -1210,4 +1232,220 @@ test("Round 8 P. no live SQL execution", () => {
   assert.match(readPkg("00_README.md"), /SQL_DESIGN_REVIEWED_PASS=NO/);
   assert.match(readPkg("00_README.md"), /SQL_DESIGN_REVIEW_ROUND8_REMEDIATION=COMPLETE_PENDING_ROUND9_OWNER_REVIEW/);
 });
+
+test("Round 9 A. cutover_kind inequality cannot pass exact guard", () => {
+  const src = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const q1a = uncommented(src);
+  assert.match(src, /CONTROL_PLANE_KIND_CHECK_EXACT=YES/);
+  assert.match(q1a, /CONTROL_PLANE_KIND_CHECK_EXACT=NO/);
+  assert.equal(kindCheckExact(APPROVED_KIND_CHECK), true);
+  assert.equal(kindCheckExact("CHECK ((cutover_kind <> 'WAVE5_CLUB_TENANT'::text))"), false);
+  assert.equal(kindCheckExact("CHECK ((cutover_kind != 'WAVE5_CLUB_TENANT'::text))"), false);
+  assert.equal(kindCheckExact("CHECK ((NOT (cutover_kind = 'WAVE5_CLUB_TENANT'::text)))"), false);
+  assert.equal(
+    kindCheckExact("CHECK ((cutover_kind = ANY (ARRAY['WAVE5_CLUB_TENANT'::text, 'OTHER'::text])))"),
+    false
+  );
+  assert.match(q1a, /v_chk ~ '<>'/);
+  assert.match(q1a, /cutover_kind = 'WAVE5_CLUB_TENANT'::text/);
+  assert.doesNotMatch(q1a, /v_kind_tokens/);
+});
+
+test("Round 9 B. inverted state NOT IN cannot pass exact guard", () => {
+  const src = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const q1a = uncommented(src);
+  assert.match(src, /CONTROL_PLANE_STATE_CHECK_EXACT=YES/);
+  assert.match(q1a, /CONTROL_PLANE_STATE_CHECK_EXACT=NO/);
+  assert.equal(stateCheckExact(APPROVED_STATE_CHECK), true);
+  assert.equal(
+    stateCheckExact(
+      "CHECK ((NOT (state = ANY (ARRAY['PREPARED'::text, 'QUIESCED'::text, 'DRAINED'::text, 'APPLYING'::text, 'APPLIED'::text, 'VERIFIED'::text, 'RESTORED'::text, 'ABORTED'::text]))))"
+    ),
+    false
+  );
+  assert.equal(
+    stateCheckExact(
+      "CHECK ((state <> ALL (ARRAY['PREPARED'::text, 'QUIESCED'::text, 'DRAINED'::text, 'APPLYING'::text, 'APPLIED'::text, 'VERIFIED'::text, 'RESTORED'::text, 'ABORTED'::text])))"
+    ),
+    false
+  );
+  assert.match(q1a, /NOT\\s\+IN/);
+  assert.doesNotMatch(q1a, /v_chk_tokens IS DISTINCT FROM 'ABORTED,APPLIED/);
+});
+
+test("Round 9 C. UNIQUE(cutover_kind,batch_id) cannot satisfy one-active index exact guard", () => {
+  const src = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const q1a = uncommented(src);
+  assert.match(src, /UNIQUE\(cutover_kind, batch_id\) fails KEY_COUNT=1/);
+  assert.match(q1a, /v_idx_nkey IS DISTINCT FROM 1/);
+  assert.match(q1a, /v_idx_natts IS DISTINCT FROM 1/);
+});
+
+test("Round 9 D. one-active index key count must equal 1", () => {
+  const src = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const q1a = uncommented(src);
+  assert.match(src, /CONTROL_PLANE_ONE_ACTIVE_INDEX_KEY_COUNT=1/);
+  assert.match(src, /CONTROL_PLANE_ONE_ACTIVE_INDEX_UNIQUE=YES/);
+  assert.match(src, /CONTROL_PLANE_ONE_ACTIVE_INDEX_KEY=cutover_kind/);
+  assert.match(q1a, /v_idx_nkey IS DISTINCT FROM 1/);
+  assert.match(q1a, /v_idx_natts IS DISTINCT FROM 1/);
+  assert.match(q1a, /v_idx_expr IS NOT NULL/);
+  assert.match(q1a, /v_idx_key IS DISTINCT FROM 'cutover_kind'/);
+});
+
+test("Round 9 E. incorrect OR predicate cannot satisfy one-active predicate guard", () => {
+  const src = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const q1a = uncommented(src);
+  assert.match(src, /CONTROL_PLANE_ONE_ACTIVE_INDEX_PREDICATE_EXACT=YES/);
+  assert.equal(oneActivePredicateExact(APPROVED_ONE_ACTIVE_PRED), true);
+  assert.equal(
+    oneActivePredicateExact("((state <> 'RESTORED'::text) OR (state <> 'ABORTED'::text))"),
+    false
+  );
+  assert.equal(
+    oneActivePredicateExact("((state <> 'RESTORED'::text) AND (state <> 'ABORTED'::text))"),
+    false
+  );
+  assert.match(q1a, /v_pred ~\* '\\mOR\\M'/);
+  assert.match(q1a, /state <> ALL \(ARRAY\['RESTORED'::text, 'ABORTED'::text\]\)/);
+  assert.doesNotMatch(q1a, /v_idx_tokens IS DISTINCT FROM 'ABORTED,RESTORED'/);
+});
+
+test("Round 9 F. unknown mutation overload makes PRECHECK fail", () => {
+  const src = readPkg("01_PRECHECK.sql");
+  const body = uncommented(src);
+  assert.match(src, /PRECHECK_UNKNOWN_MUTATION_OVERLOAD_GATE=ABORT/);
+  assert.match(body, /WAVE5_PRECHECK_FAIL: UNKNOWN_MUTATION_RPC_OVERLOAD_COUNT=/);
+  assert.match(body, /pg_get_function_identity_arguments/);
+  assert.match(body, /IF v_overload > 0/);
+});
+
+test("Round 9 G. PUBLIC direct Club DML makes PRECHECK fail", () => {
+  const body = uncommented(readPkg("01_PRECHECK.sql"));
+  assert.match(
+    body,
+    /WAVE5_PRECHECK_FAIL: DIRECT_CLUB_DML_PUBLIC_REQUIRED=DENIED observed=PRESENT DIRECT_CLUB_DML_OPERATION_SET=INSERT_UPDATE_DELETE_TRUNCATE/
+  );
+  assert.match(body, /acl\.grantee = 0/);
+  assert.match(body, /acl\.privilege_type IN \('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'\)/);
+});
+
+test("Round 9 H. anon direct Club DML makes PRECHECK fail", () => {
+  const body = uncommented(readPkg("01_PRECHECK.sql"));
+  assert.match(
+    body,
+    /WAVE5_PRECHECK_FAIL: DIRECT_CLUB_DML_ANON_REQUIRED=DENIED observed=PRESENT DIRECT_CLUB_DML_OPERATION_SET=INSERT_UPDATE_DELETE_TRUNCATE/
+  );
+  assert.match(body, /has_table_privilege\('anon', format\('public\.%I', t\.table_name\), 'TRUNCATE'\)/);
+});
+
+test("Round 9 I. authenticated direct Club DML makes PRECHECK fail", () => {
+  const body = uncommented(readPkg("01_PRECHECK.sql"));
+  assert.match(
+    body,
+    /WAVE5_PRECHECK_FAIL: DIRECT_CLUB_DML_AUTHENTICATED_REQUIRED=DENIED observed=PRESENT DIRECT_CLUB_DML_OPERATION_SET=INSERT_UPDATE_DELETE_TRUNCATE/
+  );
+  assert.match(
+    body,
+    /has_table_privilege\('authenticated', format\('public\.%I', t\.table_name\), 'TRUNCATE'\)/
+  );
+});
+
+test("Round 9 J. service_role classification includes TRUNCATE", () => {
+  const src = readPkg("01_PRECHECK.sql");
+  const body = uncommented(src);
+  assert.match(src, /DIRECT_CLUB_DML_OPERATION_SET=INSERT_UPDATE_DELETE_TRUNCATE/);
+  assert.match(
+    body,
+    /has_table_privilege\('service_role', format\('public\.%I', t\.table_name\), 'TRUNCATE'\)/
+  );
+  assert.match(body, /has_table_privilege\(r\.rolname, format\('public\.%I', t\.table_name\), 'TRUNCATE'\)/);
+});
+
+test("Round 9 K. service_role PRESENT produces writer-control-required YES", () => {
+  const body = uncommented(readPkg("01_PRECHECK.sql"));
+  assert.match(
+    body,
+    /SERVICE_ROLE_DIRECT_CLUB_DML=PRESENT_REQUIRES_EXECUTION_WINDOW_CONTROL SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=YES/
+  );
+  assert.match(body, /SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=NO/);
+  assert.match(body, /PRECHECK is not apply-ready/);
+  assert.doesNotMatch(body, /\bREVOKE\b/);
+});
+
+test("Round 9 L. WAVE5_PRECHECK_OK appears only after security gates", () => {
+  const src = readPkg("01_PRECHECK.sql");
+  const body = uncommented(src);
+  assert.match(src, /WAVE5_PRECHECK_OK_IS_FINAL_GATE=YES/);
+  const unknownIdx = body.indexOf("UNKNOWN_MUTATION_RPC_OVERLOAD_COUNT=");
+  const publicIdx = body.indexOf("DIRECT_CLUB_DML_PUBLIC_REQUIRED=DENIED observed=PRESENT");
+  const anonIdx = body.indexOf("DIRECT_CLUB_DML_ANON_REQUIRED=DENIED observed=PRESENT");
+  const authIdx = body.indexOf("DIRECT_CLUB_DML_AUTHENTICATED_REQUIRED=DENIED observed=PRESENT");
+  const svcIdx = body.indexOf("SERVICE_ROLE_DIRECT_CLUB_DML=");
+  const okIdx = body.indexOf("RAISE NOTICE 'WAVE5_PRECHECK_OK");
+  assert.ok(unknownIdx >= 0 && publicIdx > unknownIdx);
+  assert.ok(anonIdx > publicIdx && authIdx > anonIdx);
+  assert.ok(svcIdx > authIdx && okIdx > svcIdx);
+  assert.equal(body.includes("RAISE NOTICE 'WAVE5_PRECHECK_OK"), true);
+  const firstOk = body.search(/WAVE5_PRECHECK_OK/);
+  assert.ok(firstOk > unknownIdx && firstOk > publicIdx);
+});
+
+test("Round 9 M. 01_PRECHECK contains no live mutation statement", () => {
+  const src = readPkg("01_PRECHECK.sql");
+  const body = uncommented(src);
+  assert.match(src, /PRECHECK_READ_ONLY=YES/);
+  assert.doesNotMatch(body, /\bINSERT\s+INTO\b/i);
+  assert.doesNotMatch(body, /\bUPDATE\s+public\./i);
+  assert.doesNotMatch(body, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(body, /\bTRUNCATE\s+(TABLE\s+)?(ONLY\s+)?public\./i);
+  assert.doesNotMatch(body, /\bALTER\s+(TABLE|FUNCTION|INDEX|ROLE)\b/i);
+  assert.doesNotMatch(body, /\bCREATE\s+(TABLE|INDEX|UNIQUE|FUNCTION|POLICY|ROLE)\b/i);
+  assert.doesNotMatch(body, /\bDROP\s+(TABLE|INDEX|FUNCTION|POLICY|ROLE)\b/i);
+  assert.doesNotMatch(body, /\bGRANT\b/i);
+  assert.doesNotMatch(body, /\bREVOKE\b/i);
+});
+
+test("Round 9 N. Round 8 authority-transition guarantees remain present", () => {
+  const q1aSrc = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const q1bSrc = readPkg("07A2_QUIESCE_SEAL_DESIGN.sql");
+  const drainSrc = readPkg("07B_DRAIN_VERIFY.sql");
+  const markDrainSrc = readPkg("07B2_MARK_DRAINED_DESIGN.sql");
+  const applySrc = readPkg("02_APPLY_DESIGN.sql");
+  const markSrc = readPkg("03B_MARK_VERIFIED_DESIGN.sql");
+  const restoreSrc = readPkg("07C_RESTORE_WRITES_DESIGN.sql");
+  const restoreIntended = uncommented(readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql"));
+  assert.match(q1bSrc, /Q1B_UNKNOWN_OVERLOAD_GATE=ABORT/);
+  assert.match(markDrainSrc, /DRAINED_UNKNOWN_OVERLOAD_GATE=ABORT/);
+  assert.match(applySrc, /APPLY_PRELOCK_UNKNOWN_OVERLOAD_GATE=ABORT/);
+  assert.match(applySrc, /APPLY_PRELOCK_MUTATION_RPC_COUNT=14/);
+  assert.match(applySrc, /APPLY_PRELOCK_ALL_MUTATION_CALLER_ROLES_QUIESCED=YES/);
+  assert.match(applySrc, /APPLY_DEPENDS_ON_STALE_QUIESCE_EVIDENCE=NO/);
+  assert.match(drainSrc, /PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER=YES/);
+  assert.match(drainSrc, /AMBIGUOUS_NAMED_DB_SESSION=FAIL_CLOSED/);
+  assert.match(markSrc, /VERIFIED_GATE_EXACT_RPC_RESOLUTION=YES/);
+  assert.match(markSrc, /VERIFIED_GATE_UNKNOWN_OVERLOAD=ABORT/);
+  assert.match(restoreSrc, /RESTORE_FINAL_ACL_EQUALS_SNAPSHOT=YES/);
+  assert.match(q1aSrc, /Q1_REVOKE_COMMIT_PRECEDES_QUIESCED_SEAL=YES/);
+  assert.match(q1bSrc, /QUIESCE_VISIBLE_AT_IS_POST_Q1_COMMIT=YES/);
+  assert.match(q1aSrc, /SERVICE_ROLE_MUTATION_ENTRYPOINT_POLICY=QUIESCE_IF_PRESENT/);
+  assert.match(q1aSrc, /SERVICE_ROLE_INTERNAL_HELPER_EXECUTE=PRESERVE/);
+  assert.match(markSrc, /VERIFIED_GATE_CANONICAL_FK_COUNT=4/);
+  assert.match(markSrc, /VERIFIED_GATE_MUTATION_RPC_COUNT=14/);
+  assert.match(restoreSrc, /POST_APPLY_LEGACY_ACL_RESTORE=DENIED/);
+  assert.match(applySrc, /FAILED_APPLY_DURABLE_STATE=DRAINED/);
+  assert.match(applySrc, /RPC_VOLATILITY_CERTIFICATION=REQUIRED/);
+  assert.match(applySrc, /RPC_OWNER_CERTIFICATION=REQUIRED/);
+  assert.match(readPkg("01_PRECHECK.sql"), /RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES/);
+  assert.match(readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql"), /POST_CUTOVER_ACL_NORMALIZED=YES/);
+  assert.match(restoreIntended, /AUTHENTICATED_GRANT_OPTION_DENIED/);
+  assert.match(readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql"), /POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14/);
+  assert.match(applySrc, /STAGING_LOCK_TIMEOUT=5s/);
+  assert.match(applySrc, /PRODUCTION_LOCK_TIMEOUT=15s/);
+  assert.match(q1aSrc, /CONTROL_PLANE_DRIFT_ABORTS_Q1=YES/);
+  assert.match(readPkg("00_README.md"), /POST_APPLY_VERIFY_FAILURE_KEEP_QUIESCED=YES/);
+  assert.match(readPkg("00_README.md"), /SQL_DESIGN_REVIEW_ROUND9_REMEDIATION=COMPLETE_PENDING_ROUND10_OWNER_REVIEW/);
+  assert.match(readPkg("00_README.md"), /SQL_DESIGN_REVIEWED_PASS=NO/);
+});
+
 

@@ -58,7 +58,7 @@ Therefore Q1 (committed REVOKE) + drain proof are mandatory **before** APPLY sta
 
 `PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER=YES`. Drain fails closed if any non-current transaction has `xact_start <= quiesce_visible_at`, except explicit harmless `backend_type` system backends. Do **not** exempt an arbitrary named SQL user. Do **not** auto-terminate sessions. `AMBIGUOUS_NAMED_DB_SESSION=FAIL_CLOSED`.
 
-New ordinary read transactions after quiesce are allowed. Direct Club DML from `PUBLIC` / `anon` / `authenticated` must remain denied (PRECHECK evidence). `SERVICE_ROLE_DIRECT_CLUB_DML`, if present, is an operational writer class that must be stopped/drained for the maintenance window. RPC `REVOKE` alone does not stop direct SQL.
+New ordinary read transactions after quiesce are allowed. Direct Club DML from `PUBLIC` / `anon` / `authenticated` must remain denied (`DIRECT_CLUB_DML_*_REQUIRED=DENIED`; live PRECHECK fail-closed evidence, not a static git claim). `SERVICE_ROLE_DIRECT_CLUB_DML`, if present, is an operational writer class that must be stopped/drained for the maintenance window (`SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=YES`). RPC `REVOKE` alone does not stop direct SQL.
 
 ## Timeouts (do not invent Production values)
 

@@ -37,7 +37,17 @@
 -- CONTROL_PLANE_BATCH_PK_EXACT=YES
 -- CONTROL_PLANE_SNAPSHOT_PK_EXACT=YES
 -- CONTROL_PLANE_SNAPSHOT_FK_EXACT=YES
+-- CONTROL_PLANE_KIND_CHECK_EXACT=YES
+-- CONTROL_PLANE_STATE_CHECK_EXACT=YES
 -- CONTROL_PLANE_ONE_ACTIVE_INDEX_EXACT=YES
+-- CONTROL_PLANE_ONE_ACTIVE_INDEX_UNIQUE=YES
+-- CONTROL_PLANE_ONE_ACTIVE_INDEX_KEY_COUNT=1
+-- CONTROL_PLANE_ONE_ACTIVE_INDEX_KEY=cutover_kind
+-- CONTROL_PLANE_ONE_ACTIVE_INDEX_PREDICATE_EXACT=YES
+-- CONTROL_PLANE_DRIFT_ABORTS_Q1=YES
+-- CONTROL_PLANE_KIND_CHECK_APPROVED_DEF=CHECK ((cutover_kind = 'WAVE5_CLUB_TENANT'::text))
+-- CONTROL_PLANE_STATE_CHECK_APPROVED_DEF=CHECK ((state = ANY (ARRAY['PREPARED'::text, 'QUIESCED'::text, 'DRAINED'::text, 'APPLYING'::text, 'APPLIED'::text, 'VERIFIED'::text, 'RESTORED'::text, 'ABORTED'::text])))
+-- CONTROL_PLANE_ONE_ACTIVE_INDEX_PREDICATE_APPROVED_DEF=(state <> ALL (ARRAY['RESTORED'::text, 'ABORTED'::text]))
 -- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
 -- MUTATION_RPC_PRE_PRIVILEGES_CAPTURED=YES
 --
@@ -52,6 +62,11 @@
 --   POST_CANONICAL_RESTORE=NO
 
 BEGIN;
+
+-- CONTROL_PLANE_DRIFT_ABORTS_Q1=YES
+-- CREATE/INDEX/REVOKE below are the same transaction as the schema-guard DO.
+-- Semantic drift of a same-named control-plane object RAISE EXCEPTION and
+-- aborts this Q1A transaction. No partial control plane is persisted.
 
 CREATE TABLE IF NOT EXISTS public.wave5_club_cutover_batch (
   batch_id uuid PRIMARY KEY,
@@ -126,7 +141,9 @@ DECLARE
   v_pred text;
   v_idx_unique boolean;
   v_idx_key text;
-  v_idx_tokens text;
+  v_idx_nkey int;
+  v_idx_natts int;
+  v_idx_expr pg_node_tree;
   v_pk text;
   v_pk_n int;
   v_fk text;
@@ -137,8 +154,8 @@ DECLARE
   v_fk_fcols text;
   v_fk_lcols text;
   v_chk text;
-  v_chk_tokens text;
-  v_kind_tokens text;
+  v_chk_norm text;
+  v_pred_norm text;
   v_rls boolean;
   v_relkind char;
   v_tbl text;
@@ -194,6 +211,9 @@ BEGIN
       coalesce(v_pk, '<missing>'), v_pk_n;
   END IF;
 
+  -- CONTROL_PLANE_KIND_CHECK_EXACT: catalog expression must equal the approved
+  -- definition. Token membership of WAVE5_CLUB_TENANT is not sufficient.
+  -- Rejected: <>, !=, NOT (...), IN with extra values, OR branches.
   SELECT pg_get_constraintdef(con.oid) INTO v_chk
   FROM pg_catalog.pg_constraint con
   JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
@@ -202,15 +222,21 @@ BEGIN
     AND c.relname = 'wave5_club_cutover_batch'
     AND con.contype = 'c'
     AND con.conname = 'wave5_club_cutover_batch_kind_chk';
-  SELECT string_agg(m[1], ',' ORDER BY m[1]) INTO v_kind_tokens
-  FROM regexp_matches(coalesce(v_chk, ''), '''([A-Z0-9_]+)''', 'g') AS m;
+  v_chk_norm := btrim(regexp_replace(coalesce(v_chk, ''), E'\\s+', ' ', 'g'));
   IF v_chk IS NULL
-     OR position('cutover_kind' in v_chk) = 0
-     OR v_kind_tokens IS DISTINCT FROM 'WAVE5_CLUB_TENANT' THEN
-    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD cutover_kind CHECK drift %',
+     OR v_chk ~ '<>'
+     OR v_chk ~ '!='
+     OR v_chk ~* '\mNOT\M'
+     OR v_chk ~* '\mOR\M'
+     OR v_chk ~* '\mIN\M'
+     OR v_chk_norm IS DISTINCT FROM $$CHECK ((cutover_kind = 'WAVE5_CLUB_TENANT'::text))$$ THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_KIND_CHECK_EXACT=NO CONTROL_PLANE_EXISTING_SCHEMA_GUARD cutover_kind CHECK drift %',
       coalesce(v_chk, '<missing>');
   END IF;
 
+  -- CONTROL_PLANE_STATE_CHECK_EXACT: catalog expression must equal the approved
+  -- IN-list (= ANY ARRAY) of the eight states. Token-set membership is not sufficient.
+  -- Rejected: state NOT IN (...), <>, unrelated OR expressions.
   SELECT pg_get_constraintdef(con.oid) INTO v_chk
   FROM pg_catalog.pg_constraint con
   JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
@@ -219,23 +245,29 @@ BEGIN
     AND c.relname = 'wave5_club_cutover_batch'
     AND con.contype = 'c'
     AND con.conname = 'wave5_club_cutover_batch_state_chk';
-  SELECT string_agg(m[1], ',' ORDER BY m[1]) INTO v_chk_tokens
-  FROM regexp_matches(coalesce(v_chk, ''), '''([A-Z0-9_]+)''', 'g') AS m;
+  v_chk_norm := btrim(regexp_replace(coalesce(v_chk, ''), E'\\s+', ' ', 'g'));
   IF v_chk IS NULL
-     OR v_chk_tokens IS DISTINCT FROM 'ABORTED,APPLIED,APPLYING,DRAINED,PREPARED,QUIESCED,RESTORED,VERIFIED' THEN
-    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD state CHECK drift %',
+     OR v_chk ~* 'NOT\s+IN'
+     OR v_chk ~ '<>'
+     OR v_chk ~* '\mOR\M'
+     OR v_chk_norm IS DISTINCT FROM $$CHECK ((state = ANY (ARRAY['PREPARED'::text, 'QUIESCED'::text, 'DRAINED'::text, 'APPLYING'::text, 'APPLIED'::text, 'VERIFIED'::text, 'RESTORED'::text, 'ABORTED'::text])))$$ THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_STATE_CHECK_EXACT=NO CONTROL_PLANE_EXISTING_SCHEMA_GUARD state CHECK drift %',
       coalesce(v_chk, '<missing>');
   END IF;
 
   SELECT i.indisunique,
+         i.indnkeyatts,
+         i.indnatts,
+         i.indexprs,
          (
            SELECT a.attname
            FROM pg_catalog.pg_attribute a
            WHERE a.attrelid = i.indrelid
              AND a.attnum = i.indkey[1]
+             AND i.indkey[1] > 0
          ),
          pg_get_expr(i.indpred, i.indrelid)
-    INTO v_idx_unique, v_idx_key, v_pred
+    INTO v_idx_unique, v_idx_nkey, v_idx_natts, v_idx_expr, v_idx_key, v_pred
   FROM pg_catalog.pg_index i
   JOIN pg_catalog.pg_class idx ON idx.oid = i.indexrelid
   JOIN pg_catalog.pg_namespace n ON n.oid = idx.relnamespace
@@ -244,20 +276,24 @@ BEGIN
   IF v_idx_unique IS NULL THEN
     RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD one-active unique index missing';
   END IF;
-  IF v_idx_unique IS NOT TRUE OR v_idx_key IS DISTINCT FROM 'cutover_kind' THEN
-    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD CONTROL_PLANE_ONE_ACTIVE_INDEX_EXACT=NO unique=% key=%',
-      v_idx_unique, coalesce(v_idx_key, '<missing>');
+  -- UNIQUE(cutover_kind, batch_id) fails KEY_COUNT=1. Expression keys fail indexprs/indkey.
+  IF v_idx_unique IS NOT TRUE
+     OR v_idx_nkey IS DISTINCT FROM 1
+     OR v_idx_natts IS DISTINCT FROM 1
+     OR v_idx_expr IS NOT NULL
+     OR v_idx_key IS DISTINCT FROM 'cutover_kind' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD CONTROL_PLANE_ONE_ACTIVE_INDEX_EXACT=NO unique=% nkey=% natts=% expr=% key=%',
+      v_idx_unique, v_idx_nkey, v_idx_natts,
+      CASE WHEN v_idx_expr IS NULL THEN 'NULL' ELSE 'PRESENT' END,
+      coalesce(v_idx_key, '<missing>');
   END IF;
-  SELECT string_agg(m[1], ',' ORDER BY m[1]) INTO v_idx_tokens
-  FROM regexp_matches(coalesce(v_pred, ''), '''([A-Z0-9_]+)''', 'g') AS m;
+  -- Predicate must be exactly state NOT IN ('RESTORED', 'ABORTED') catalog form.
+  -- Rejected: state <> 'RESTORED' OR state <> 'ABORTED'; token presence of RESTORED/ABORTED is not sufficient.
+  v_pred_norm := btrim(regexp_replace(coalesce(v_pred, ''), E'\\s+', ' ', 'g'));
   IF v_pred IS NULL
-     OR position('state' in v_pred) = 0
-     OR (
-       position('NOT' in upper(v_pred)) = 0
-       AND position('<>' in v_pred) = 0
-     )
-     OR v_idx_tokens IS DISTINCT FROM 'ABORTED,RESTORED' THEN
-    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD one-active index predicate drift %',
+     OR v_pred ~* '\mOR\M'
+     OR v_pred_norm IS DISTINCT FROM $$(state <> ALL (ARRAY['RESTORED'::text, 'ABORTED'::text]))$$ THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_ONE_ACTIVE_INDEX_PREDICATE_EXACT=NO CONTROL_PLANE_EXISTING_SCHEMA_GUARD one-active index predicate drift %',
       coalesce(v_pred, '<missing>');
   END IF;
 

@@ -17,7 +17,7 @@ Do not apply until Owner issues a separate execution GO naming this package and 
 
 | File | Mutates? | Purpose |
 |---|---|---|
-| `01_PRECHECK.sql` | NO | Operator-facing read-only dry-run inventory. **Not** APPLY freshness. `APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO` |
+| `01_PRECHECK.sql` | NO | Operator-facing read-only dry-run inventory. Fail-closes on unknown mutation overloads and PUBLIC/anon/authenticated Club table DML. **Not** APPLY freshness. `APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO` |
 | `02_APPLY_DESIGN.sql` | YES (when GO) | Self-protecting locked transactional cutover. Reasserts mutation-critical invariants under lock before any mutation |
 | `03_VERIFY.sql` | NO | Post-apply read-only invariants (cannot prove a historical `LOCK TABLE`) |
 | `04_ROLLBACK_DESIGN.md` | documentation | App rollback vs DB rollback |
@@ -204,10 +204,10 @@ APPLY_PRELOCK_ALL_MUTATION_CALLER_ROLES_QUIESCED=YES
 APPLY_DEPENDS_ON_STALE_QUIESCE_EVIDENCE=NO
 PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER=YES
 AMBIGUOUS_NAMED_DB_SESSION=FAIL_CLOSED
-DIRECT_CLUB_DML_PUBLIC=DENIED
-DIRECT_CLUB_DML_ANON=DENIED
-DIRECT_CLUB_DML_AUTHENTICATED=DENIED
-SERVICE_ROLE_DIRECT_CLUB_DML=CLASSIFY_ONLY
+DIRECT_CLUB_DML_PUBLIC_REQUIRED=DENIED
+DIRECT_CLUB_DML_ANON_REQUIRED=DENIED
+DIRECT_CLUB_DML_AUTHENTICATED_REQUIRED=DENIED
+SERVICE_ROLE_DIRECT_CLUB_DML=LIVE_CLASSIFICATION_ONLY
 CONTROL_PLANE_BATCH_PK_EXACT=YES
 CONTROL_PLANE_SNAPSHOT_PK_EXACT=YES
 CONTROL_PLANE_SNAPSHOT_FK_EXACT=YES
@@ -219,7 +219,34 @@ POST_APPLY_LEGACY_ACL_RESTORE=DENIED
 SQL_DESIGN_REVIEWED_PASS=NO
 ```
 
-Canonical mutation surface is `09_CANONICAL_MUTATION_SURFACE.sql`. Authority transitions reassert unknown-overload=0 and live ACLs. APPLY prelock reasserts full quiesce before table locks. Pre-quiesce drain fails closed on any non-system transaction started at or before `quiesce_visible_at`. PRECHECK reports direct Club DML; it does not revoke `service_role` table DML.
+Canonical mutation surface is `09_CANONICAL_MUTATION_SURFACE.sql`. Authority transitions reassert unknown-overload=0 and live ACLs. APPLY prelock reasserts full quiesce before table locks. Pre-quiesce drain fails closed on any non-system transaction started at or before `quiesce_visible_at`. PRECHECK reports direct Club DML; it does not revoke `service_role` table DML. Round 8 static `DIRECT_CLUB_DML_*=DENIED` claims are replaced by live fail-closed `*_REQUIRED=DENIED` in Round 9.
+
+## Round 9 remediation (pending Round 10 Owner SQL review)
+
+```
+SQL_DESIGN_REVIEW_ROUND9_REMEDIATION=COMPLETE_PENDING_ROUND10_OWNER_REVIEW
+CONTROL_PLANE_KIND_CHECK_EXACT=YES
+CONTROL_PLANE_STATE_CHECK_EXACT=YES
+CONTROL_PLANE_ONE_ACTIVE_INDEX_UNIQUE=YES
+CONTROL_PLANE_ONE_ACTIVE_INDEX_KEY_COUNT=1
+CONTROL_PLANE_ONE_ACTIVE_INDEX_KEY=cutover_kind
+CONTROL_PLANE_ONE_ACTIVE_INDEX_PREDICATE_EXACT=YES
+CONTROL_PLANE_DRIFT_ABORTS_Q1=YES
+PRECHECK_UNKNOWN_MUTATION_OVERLOAD_GATE=ABORT
+PRECHECK_READ_ONLY=YES
+WAVE5_PRECHECK_OK_IS_FINAL_GATE=YES
+DIRECT_CLUB_DML_OPERATION_SET=INSERT_UPDATE_DELETE_TRUNCATE
+DIRECT_CLUB_DML_PUBLIC_REQUIRED=DENIED
+DIRECT_CLUB_DML_ANON_REQUIRED=DENIED
+DIRECT_CLUB_DML_AUTHENTICATED_REQUIRED=DENIED
+SERVICE_ROLE_DIRECT_CLUB_DML=LIVE_CLASSIFICATION_ONLY
+SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=LIVE_CLASSIFICATION_ONLY
+SQL_DESIGN_REVIEWED_PASS=NO
+```
+
+Control-plane CHECK/index guards compare normalized `pg_get_constraintdef` / `pg_get_expr` to the approved catalog expression. Token-set membership is not sufficient. Q1 aborts the whole transaction on semantic drift.
+
+`01_PRECHECK.sql` fail-closes on unknown mutation overloads and on PUBLIC/anon/authenticated INSERT/UPDATE/DELETE/TRUNCATE against the four Club-owned tables. `WAVE5_PRECHECK_OK` is emitted only after those gates and after `service_role` is classified. PRECHECK does not revoke `service_role` table DML. If that class is present: `SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=YES` and PRECHECK is not apply-ready. Do not claim `DIRECT_CLUB_DML_*=DENIED` until live PRECHECK evidence exists.
 
 ## Round 7 remediation (pending Round 8 Owner SQL review)
 

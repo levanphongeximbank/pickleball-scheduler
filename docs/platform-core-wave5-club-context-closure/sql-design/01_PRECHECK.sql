@@ -3,13 +3,20 @@
 -- DO_NOT_RUN_ON_STAGING
 -- DO_NOT_RUN_ON_PRODUCTION
 -- SQL_EXECUTED=NO
+-- STAGING_PRECHECK_EXECUTED=NO
+-- PRECHECK_READ_ONLY=YES
 --
 -- RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
 -- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
--- DIRECT_CLUB_DML_PUBLIC=DENIED
--- DIRECT_CLUB_DML_ANON=DENIED
--- DIRECT_CLUB_DML_AUTHENTICATED=DENIED
--- SERVICE_ROLE_DIRECT_CLUB_DML=CLASSIFY_ONLY
+-- PRECHECK_UNKNOWN_MUTATION_OVERLOAD_GATE=ABORT
+-- WAVE5_PRECHECK_OK_IS_FINAL_GATE=YES
+-- DIRECT_CLUB_DML_OPERATION_SET=INSERT_UPDATE_DELETE_TRUNCATE
+-- DIRECT_CLUB_DML_PUBLIC_REQUIRED=DENIED
+-- DIRECT_CLUB_DML_ANON_REQUIRED=DENIED
+-- DIRECT_CLUB_DML_AUTHENTICATED_REQUIRED=DENIED
+-- SERVICE_ROLE_DIRECT_CLUB_DML=LIVE_CLASSIFICATION_ONLY
+-- SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=LIVE_CLASSIFICATION_ONLY
+-- Do not claim DIRECT_CLUB_DML_*=DENIED before live PRECHECK evidence exists.
 -- Wave 5 Club Tenant migration PRECHECK — READ-ONLY, fail closed.
 -- Do not repair unexpected data. Do not mutate.
 --
@@ -37,6 +44,7 @@ DECLARE
   v_delete_rule text;
   v_overload int;
   v_rpc_def text;
+  v_svc_dml text;
   v_dup_name int;
   v_dup_code int;
   v_diag text;
@@ -368,10 +376,11 @@ BEGIN
         v_cluster_xtenant;
     END IF;
 
-    RAISE NOTICE 'WAVE5_PRECHECK_OK state=CANONICAL clubs=% members=% gov=% req=% POST_MAP_DUPLICATE_CLUB_NAME_COUNT=0 POST_MAP_DUPLICATE_CLUB_CODE_COUNT=0 REGISTERED_CLUSTER_ORPHAN_COUNT=0 REGISTERED_CLUSTER_CROSS_TENANT_COUNT=0 — do not re-translate',
+    -- WAVE5_PRECHECK_OK_IS_FINAL_GATE=YES: do not emit PASS before security gates.
+    RAISE NOTICE 'WAVE5_PRECHECK_DATA_INVARIANTS_OK state=CANONICAL clubs=% members=% gov=% req=% POST_MAP_DUPLICATE_CLUB_NAME_COUNT=0 POST_MAP_DUPLICATE_CLUB_CODE_COUNT=0 REGISTERED_CLUSTER_ORPHAN_COUNT=0 REGISTERED_CLUSTER_CROSS_TENANT_COUNT=0 — do not re-translate; security gates follow',
       v_club_count, v_member_count, v_gov_count, v_req_count;
-    RETURN;
-  END IF;
+    -- Continue to fail-closed security gates. Do not RETURN past them.
+  ELSE
 
   -- STATE_LEGACY: every Club-owned tenant_id is a Venue ID.
   SELECT count(*) INTO v_orphan
@@ -550,8 +559,144 @@ BEGIN
       v_cluster_xtenant;
   END IF;
 
-  RAISE NOTICE 'WAVE5_PRECHECK_OK state=LEGACY clubs=% members=% gov=% req=% mapped=% POST_MAP_DUPLICATE_CLUB_NAME_COUNT=0 POST_MAP_DUPLICATE_CLUB_CODE_COUNT=0 REGISTERED_CLUSTER_ORPHAN_COUNT=0 REGISTERED_CLUSTER_CROSS_TENANT_COUNT=0',
-    v_club_count, v_member_count, v_gov_count, v_req_count, v_mapped;
+    RAISE NOTICE 'WAVE5_PRECHECK_DATA_INVARIANTS_OK state=LEGACY clubs=% members=% gov=% req=% mapped=% POST_MAP_DUPLICATE_CLUB_NAME_COUNT=0 POST_MAP_DUPLICATE_CLUB_CODE_COUNT=0 REGISTERED_CLUSTER_ORPHAN_COUNT=0 REGISTERED_CLUSTER_CROSS_TENANT_COUNT=0 — security gates follow',
+      v_club_count, v_member_count, v_gov_count, v_req_count, v_mapped;
+  END IF;
+
+  -- PRECHECK_UNKNOWN_MUTATION_OVERLOAD_GATE=ABORT
+  -- actual signatures minus approved 14 canonical + optional legacy exact alias must be 0.
+  SELECT count(*) INTO v_overload
+  FROM pg_catalog.pg_proc p
+  JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname IN (
+      'club_create',
+      'club_update',
+      'club_assign_owner',
+      'club_clear_owner',
+      'club_transfer_president',
+      'club_assign_vice_president',
+      'club_clear_vice_president',
+      'club_add_member',
+      'club_remove_member',
+      'club_restore_member',
+      'club_leave_membership',
+      'club_submit_membership_request',
+      'club_cancel_membership_request',
+      'club_review_membership_request',
+      'club_leave_my_membership'
+    )
+    AND format('%s.%s(%s)', n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid))
+      NOT IN (
+        'public.club_create(uuid,text,text,text,text,text)',
+        'public.club_update(uuid,text,integer,text,text,text,text,text)',
+        'public.club_assign_owner(uuid,text,uuid,integer)',
+        'public.club_clear_owner(uuid,text,integer)',
+        'public.club_transfer_president(uuid,text,uuid,integer)',
+        'public.club_assign_vice_president(uuid,text,uuid,integer)',
+        'public.club_clear_vice_president(uuid,text,integer,uuid)',
+        'public.club_add_member(uuid,text,uuid,text,integer)',
+        'public.club_remove_member(uuid,text,uuid,integer)',
+        'public.club_restore_member(uuid,text,uuid,integer)',
+        'public.club_leave_membership(uuid,text)',
+        'public.club_submit_membership_request(uuid,text,text)',
+        'public.club_cancel_membership_request(uuid,uuid,integer)',
+        'public.club_review_membership_request(uuid,uuid,text,text,integer)',
+        'public.club_leave_my_membership()'
+      );
+  IF v_overload > 0 THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: UNKNOWN_MUTATION_RPC_OVERLOAD_COUNT=%',
+      v_overload;
+  END IF;
+
+  -- Direct Club DML fail-closed. Operation set: INSERT/UPDATE/DELETE/TRUNCATE.
+  -- PRECHECK does not GRANT/REVOKE. PUBLIC/anon/authenticated must be DENIED.
+  -- service_role is classified only; never revoked here.
+  IF EXISTS (
+    SELECT 1
+    FROM (VALUES
+      ('clubs'),
+      ('club_members'),
+      ('club_governance_assignments'),
+      ('club_membership_requests_v42')
+    ) AS t(table_name)
+    JOIN pg_catalog.pg_class c ON c.relname = t.table_name
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) AS acl
+    WHERE n.nspname = 'public'
+      AND acl.grantee = 0
+      AND acl.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+  ) THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: DIRECT_CLUB_DML_PUBLIC_REQUIRED=DENIED observed=PRESENT DIRECT_CLUB_DML_OPERATION_SET=INSERT_UPDATE_DELETE_TRUNCATE';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: DIRECT_CLUB_DML_ANON_REQUIRED=DENIED role=ABSENT';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM (VALUES
+      ('clubs'),
+      ('club_members'),
+      ('club_governance_assignments'),
+      ('club_membership_requests_v42')
+    ) AS t(table_name)
+    WHERE has_table_privilege('anon', format('public.%I', t.table_name), 'INSERT')
+       OR has_table_privilege('anon', format('public.%I', t.table_name), 'UPDATE')
+       OR has_table_privilege('anon', format('public.%I', t.table_name), 'DELETE')
+       OR has_table_privilege('anon', format('public.%I', t.table_name), 'TRUNCATE')
+  ) THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: DIRECT_CLUB_DML_ANON_REQUIRED=DENIED observed=PRESENT DIRECT_CLUB_DML_OPERATION_SET=INSERT_UPDATE_DELETE_TRUNCATE';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'authenticated') THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: DIRECT_CLUB_DML_AUTHENTICATED_REQUIRED=DENIED role=ABSENT';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM (VALUES
+      ('clubs'),
+      ('club_members'),
+      ('club_governance_assignments'),
+      ('club_membership_requests_v42')
+    ) AS t(table_name)
+    WHERE has_table_privilege('authenticated', format('public.%I', t.table_name), 'INSERT')
+       OR has_table_privilege('authenticated', format('public.%I', t.table_name), 'UPDATE')
+       OR has_table_privilege('authenticated', format('public.%I', t.table_name), 'DELETE')
+       OR has_table_privilege('authenticated', format('public.%I', t.table_name), 'TRUNCATE')
+  ) THEN
+    RAISE EXCEPTION 'WAVE5_PRECHECK_FAIL: DIRECT_CLUB_DML_AUTHENTICATED_REQUIRED=DENIED observed=PRESENT DIRECT_CLUB_DML_OPERATION_SET=INSERT_UPDATE_DELETE_TRUNCATE';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN
+    v_svc_dml := 'DENIED';
+  ELSIF EXISTS (
+    SELECT 1
+    FROM (VALUES
+      ('clubs'),
+      ('club_members'),
+      ('club_governance_assignments'),
+      ('club_membership_requests_v42')
+    ) AS t(table_name)
+    WHERE has_table_privilege('service_role', format('public.%I', t.table_name), 'INSERT')
+       OR has_table_privilege('service_role', format('public.%I', t.table_name), 'UPDATE')
+       OR has_table_privilege('service_role', format('public.%I', t.table_name), 'DELETE')
+       OR has_table_privilege('service_role', format('public.%I', t.table_name), 'TRUNCATE')
+  ) THEN
+    v_svc_dml := 'PRESENT_REQUIRES_EXECUTION_WINDOW_CONTROL';
+  ELSE
+    v_svc_dml := 'DENIED';
+  END IF;
+
+  IF v_svc_dml = 'PRESENT_REQUIRES_EXECUTION_WINDOW_CONTROL' THEN
+    RAISE NOTICE 'SERVICE_ROLE_DIRECT_CLUB_DML=PRESENT_REQUIRES_EXECUTION_WINDOW_CONTROL SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=YES — PRECHECK is not apply-ready; Owner review required after live evidence';
+  ELSE
+    RAISE NOTICE 'SERVICE_ROLE_DIRECT_CLUB_DML=DENIED SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=NO';
+  END IF;
+
+  RAISE NOTICE 'WAVE5_PRECHECK_OK state=% clubs=% members=% gov=% req=% UNKNOWN_MUTATION_RPC_OVERLOAD_COUNT=0 DIRECT_CLUB_DML_PUBLIC_REQUIRED=DENIED DIRECT_CLUB_DML_ANON_REQUIRED=DENIED DIRECT_CLUB_DML_AUTHENTICATED_REQUIRED=DENIED SERVICE_ROLE_DIRECT_CLUB_DML=% SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=% WAVE5_PRECHECK_OK_IS_FINAL_GATE=YES',
+    v_state, v_club_count, v_member_count, v_gov_count, v_req_count, v_svc_dml,
+    CASE WHEN v_svc_dml = 'PRESENT_REQUIRES_EXECUTION_WINDOW_CONTROL' THEN 'YES' ELSE 'NO' END;
 END $$;
 
 SELECT
@@ -701,12 +846,14 @@ SELECT
     ELSE has_table_privilege(r.rolname, format('public.%I', t.table_name), 'INSERT')
       OR has_table_privilege(r.rolname, format('public.%I', t.table_name), 'UPDATE')
       OR has_table_privilege(r.rolname, format('public.%I', t.table_name), 'DELETE')
+      OR has_table_privilege(r.rolname, format('public.%I', t.table_name), 'TRUNCATE')
   END AS dml_present,
   CASE
     WHEN NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = r.rolname) THEN 'ROLE_ABSENT'
     WHEN has_table_privilege(r.rolname, format('public.%I', t.table_name), 'INSERT')
       OR has_table_privilege(r.rolname, format('public.%I', t.table_name), 'UPDATE')
       OR has_table_privilege(r.rolname, format('public.%I', t.table_name), 'DELETE')
+      OR has_table_privilege(r.rolname, format('public.%I', t.table_name), 'TRUNCATE')
     THEN CASE
       WHEN r.rolname = 'service_role' THEN 'PRESENT_REQUIRES_EXECUTION_WINDOW_CONTROL'
       ELSE 'PRESENT'
@@ -724,7 +871,7 @@ ORDER BY 1, 2;
 
 SELECT
   CASE
-    WHEN NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN 'ROLE_ABSENT'
+    WHEN NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN 'DENIED'
     WHEN EXISTS (
       SELECT 1
       FROM (VALUES
@@ -736,9 +883,27 @@ SELECT
       WHERE has_table_privilege('service_role', format('public.%I', t.table_name), 'INSERT')
          OR has_table_privilege('service_role', format('public.%I', t.table_name), 'UPDATE')
          OR has_table_privilege('service_role', format('public.%I', t.table_name), 'DELETE')
+         OR has_table_privilege('service_role', format('public.%I', t.table_name), 'TRUNCATE')
     ) THEN 'PRESENT_REQUIRES_EXECUTION_WINDOW_CONTROL'
     ELSE 'DENIED'
-  END AS "SERVICE_ROLE_DIRECT_CLUB_DML";
+  END AS "SERVICE_ROLE_DIRECT_CLUB_DML",
+  CASE
+    WHEN NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN 'NO'
+    WHEN EXISTS (
+      SELECT 1
+      FROM (VALUES
+        ('clubs'),
+        ('club_members'),
+        ('club_governance_assignments'),
+        ('club_membership_requests_v42')
+      ) AS t(table_name)
+      WHERE has_table_privilege('service_role', format('public.%I', t.table_name), 'INSERT')
+         OR has_table_privilege('service_role', format('public.%I', t.table_name), 'UPDATE')
+         OR has_table_privilege('service_role', format('public.%I', t.table_name), 'DELETE')
+         OR has_table_privilege('service_role', format('public.%I', t.table_name), 'TRUNCATE')
+    ) THEN 'YES'
+    ELSE 'NO'
+  END AS "SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED";
 
 SELECT
   to_regclass('public.wave5_club_cutover_batch') IS NOT NULL AS batch_present,

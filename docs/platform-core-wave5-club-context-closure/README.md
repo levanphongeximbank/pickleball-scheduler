@@ -1,6 +1,6 @@
 # Wave 5 — Canonical Club Context Cutover + Durable Club SQL Design
 
-**WAVE5_STATUS=SQL_DESIGN_ROUND8_LAST_EXECUTION_GATE_REMEDIATION_COMPLETE_PENDING_ROUND9_OWNER_REVIEW**
+**WAVE5_STATUS=SQL_DESIGN_ROUND9_PRECHECK_GATE_HARDENING_COMPLETE_PENDING_ROUND10_OWNER_REVIEW**
 
 **PC_CLUB_01=OPEN_PENDING_ACCEPTANCE** (not closed)
 
@@ -130,6 +130,12 @@ See `sql-design/`. **DO NOT RUN.** `OWNER_SQL_EXECUTION_GO=NO`.
 **ROUND4_BLOCKER_02_LOCKED_APPLY_SAFETY_GATE=FIXED** — APPLY reasserts FK state, Wave 4 `tenant_members` expectation, mapping, child consistency, name/code collision, registered-cluster orphan/cross-Tenant, and RPC exact signatures **inside the locked transaction**. `APPLY_DEPENDS_ON_PRIOR_PRECHECK_FRESHNESS=NO`. `01_PRECHECK` remains operator-facing dry-run only.
 
 **ROUND4_P2_TRIGGER_STATE_PRESERVATION=FIXED** — capture `pg_trigger.tgenabled` (`O`/`D`/`R`/`A`) and restore that exact mode after translation. No unconditional `ENABLE TRIGGER`.
+
+**SQL_DESIGN_REVIEW_ROUND9_REMEDIATION=COMPLETE_PENDING_ROUND10_OWNER_REVIEW** (not a SQL review PASS).
+
+**ROUND9_P1_01_CONTROL_PLANE_EXACT_SEMANTIC_CERTIFICATION=REMEDIATED_DESIGN** — `cutover_kind` CHECK must equal `cutover_kind = 'WAVE5_CLUB_TENANT'` catalog form. Batch `state` CHECK must equal the eight-value `IN` / `= ANY ARRAY` catalog form. One-active unique index is `UNIQUE(cutover_kind)` with `indnkeyatts=1`, `indnatts=1`, no expression key, predicate exactly `state NOT IN ('RESTORED', 'ABORTED')` catalog form. Token membership, `<>` inversions, `NOT IN` of all states, `UNIQUE(cutover_kind, batch_id)`, and `state <> 'RESTORED' OR state <> 'ABORTED'` cannot pass. Drift aborts the Q1 transaction.
+
+**ROUND9_P1_02_READ_ONLY_PRECHECK_FAIL_CLOSED_GATE=REMEDIATED_DESIGN** — PRECHECK fail-closes on unknown mutation overloads and on PUBLIC/anon/authenticated INSERT/UPDATE/DELETE/TRUNCATE against the four Club-owned tables. `WAVE5_PRECHECK_OK` is the final gate after those checks and after `service_role` classification. PRECHECK remains read-only and does not revoke `service_role` table DML. Live classification is `DENIED` or `PRESENT_REQUIRES_EXECUTION_WINDOW_CONTROL`; present requires `SERVICE_ROLE_DIRECT_WRITER_CONTROL_REQUIRED=YES`. Do not claim `DIRECT_CLUB_DML_*=DENIED` without live PRECHECK evidence.
 
 **SQL_DESIGN_REVIEW_ROUND8_REMEDIATION=COMPLETE_PENDING_ROUND9_OWNER_REVIEW** (not a SQL review PASS).
 
