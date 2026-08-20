@@ -111,32 +111,37 @@ page.on("pageerror", (err) => pageErrors.push(String(err?.message || err)));
 
 async function selectSeedClub() {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const locators = [
-    page.locator("#header-club-label"),
-    page.locator("[aria-labelledby='header-club-label']"),
-    page.getByRole("combobox").filter({ hasText: /CLB|Chọn/ }),
-    page.getByText("Chọn CLB...", { exact: false }),
-  ];
-  for (const locator of locators) {
-    if (!(await locator.count())) continue;
-    try {
-      await locator.first().click({ force: true, timeout: 4000 });
-      const seed = page.getByRole("option").filter({ hasText: /HC Operator Seed Club venue-staging-a/ });
-      if (await seed.count()) {
-        await seed.first().click({ force: true });
-        await page.waitForTimeout(1000);
-        return true;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const locators = [
+      page.locator("#header-club-label"),
+      page.locator("[aria-labelledby='header-club-label']"),
+      page.getByRole("combobox").filter({ hasText: /CLB|Chọn/ }),
+      page.getByText("Chọn CLB...", { exact: false }),
+    ];
+    for (const locator of locators) {
+      if (!(await locator.count())) continue;
+      try {
+        await locator.first().click({ force: true, timeout: 4000 });
+        const seed = page.getByRole("option").filter({ hasText: /HC Operator Seed Club venue-staging-a/ });
+        if (await seed.count()) {
+          await seed.first().click({ force: true });
+          await page.waitForTimeout(1200);
+        } else {
+          const fallback = page.getByRole("option").filter({ hasText: /CLB Venue Staging A|venue-staging-a/ });
+          if (await fallback.count()) {
+            await fallback.first().click({ force: true });
+            await page.waitForTimeout(1200);
+          } else {
+            await page.keyboard.press("Escape");
+          }
+        }
+      } catch {
+        await page.keyboard.press("Escape").catch(() => {});
       }
-      const fallback = page.getByRole("option").filter({ hasText: /CLB Venue Staging A|venue-staging-a/ });
-      if (await fallback.count()) {
-        await fallback.first().click({ force: true });
-        await page.waitForTimeout(1000);
-        return true;
-      }
-      await page.keyboard.press("Escape");
-    } catch {
-      await page.keyboard.press("Escape").catch(() => {});
     }
+    const active = await page.evaluate(() => localStorage.getItem("pickleball-active-club-v1") || "");
+    if (active && active !== "default-club") return true;
+    await page.waitForTimeout(800);
   }
   return false;
 }
@@ -147,6 +152,11 @@ await page.locator('input[type="email"]').first().fill(EMAIL);
 await page.locator('input[type="password"]').first().fill(PASSWORD);
 await page.getByRole("button", { name: "Đăng nhập" }).click();
 await page.waitForTimeout(2500);
+await page.waitForFunction(() => !location.pathname.includes("/login"), null, { timeout: 30000 }).catch(() => {});
+await page.evaluate(() => {
+  localStorage.setItem("pickleball-active-club-v1", "club-ecebf64c78f948ccb2b59842441eb26c");
+  localStorage.setItem("pickleball-active-cluster-v1", "venue-staging-a-main");
+});
 await page.goto(`${BASE}/tournament`, { waitUntil: "domcontentloaded", timeout: 90000 });
 await page.waitForTimeout(1500);
 await selectSeedClub();
@@ -163,8 +173,36 @@ const selectedScreens = process.env.BATCH_D_ONLY
   ? SCREENS.filter((screen) => screen.id === process.env.BATCH_D_ONLY)
   : SCREENS;
 
-for (const screen of selectedScreens) {
+async function snapshotShell(label) {
+  return page.evaluate((tag) => {
+    const club = document.querySelector("#header-club-label")?.textContent || "";
+    const body = document.body.innerText || "";
+    const storage = {};
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (/club|tenant|venue|active/i.test(key || "")) {
+        storage[key] = String(localStorage.getItem(key) || "").slice(0, 180);
+      }
+    }
+    return {
+      tag,
+      href: location.href,
+      club,
+      storage,
+      missing: body.includes("Không tìm thấy giải"),
+      hasSchedule: body.includes("Lịch thi đấu"),
+      hasMatches: body.includes("Trung tâm trận"),
+      hasStandings: body.includes("Kết quả & Bảng xếp hạng"),
+      hasKnockout: body.includes("Vòng loại trực tiếp"),
+      hasBracket: body.includes("Sơ đồ nhánh đấu"),
+    };
+  }, label);
+}
+
+async function seedTournamentContext() {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${BASE}/tournament`, { waitUntil: "domcontentloaded", timeout: 90000 });
+  await page.waitForTimeout(1200);
   await selectSeedClub();
   await page.goto(`${BASE}/tournament/${TOURNAMENT_ID}/group-draw`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.waitForSelector('[data-testid="tournament-group-draw-page"]', { timeout: 45000 });
@@ -172,7 +210,31 @@ for (const screen of selectedScreens) {
   await page.waitForTimeout(1200);
   await page.goto(`${BASE}/tournament/${TOURNAMENT_ID}/group-draw`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.waitForSelector('[data-testid="tournament-group-draw-page"]', { timeout: 45000 });
-  await page.waitForFunction(() => !document.body.innerText.includes("Không tìm thấy giải"), null, { timeout: 45000 });
+  try {
+    await page.waitForFunction(() => !document.body.innerText.includes("Không tìm thấy giải"), null, { timeout: 45000 });
+  } catch (err) {
+    console.log("SEED_FAIL", JSON.stringify(await snapshotShell("group-draw-still-missing")));
+    await page.screenshot({ path: path.join(OUT, "DEBUG_SEED_FAIL.png"), fullPage: true });
+    throw err;
+  }
+  const doiNam = page.getByRole("button", { name: /Đôi nam/ }).or(page.getByText("Đôi nam", { exact: false }));
+  if (await doiNam.count()) {
+    await doiNam.first().click({ force: true }).catch(() => {});
+    await page.waitForTimeout(800);
+  }
+  const seeded = await snapshotShell("group-draw-seeded");
+  console.log("SEED", JSON.stringify(seeded));
+  const href = seeded.href || "";
+  const eventId = new URL(href).searchParams.get("eventId") || "";
+  return eventId;
+}
+
+const eventId = await seedTournamentContext();
+const eventQuery = eventId ? `?eventId=${encodeURIComponent(eventId)}` : "";
+console.log("EVENT_ID", eventId || "(none — single-event default)");
+
+for (const screen of selectedScreens) {
+  await page.setViewportSize({ width: 1440, height: 900 });
   const suffix =
     screen.id === "10"
       ? "/schedule"
@@ -183,11 +245,43 @@ for (const screen of selectedScreens) {
           : screen.id === "13"
             ? "/knockout"
             : "/bracket";
-  await page.goto(`${BASE}/tournament/${TOURNAMENT_ID}${suffix}`, { waitUntil: "domcontentloaded", timeout: 90000 });
+  const queryParts = [];
+  if (eventId) queryParts.push(`eventId=${encodeURIComponent(eventId)}`);
+  if (screen.id === "12") queryParts.push("tab=ko");
+  const eventQuery = queryParts.length ? `?${queryParts.join("&")}` : "";
+  const target = `${BASE}/tournament/${TOURNAMENT_ID}${suffix}${eventQuery}`;
+  await page.goto(target, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.waitForSelector(`[data-testid="${screen.testId}"]`, { timeout: 45000 });
+  const beforeClub = await snapshotShell(`${screen.id}-before-club`);
+  console.log("NAV", JSON.stringify(beforeClub));
   await selectSeedClub();
   await page.waitForTimeout(1500);
-  await page.waitForFunction(() => !document.body.innerText.includes("Không tìm thấy giải"), null, { timeout: 45000 });
+  try {
+    await page.waitForFunction(
+      () => !document.body.innerText.includes("Không tìm thấy giải"),
+      null,
+      { timeout: 20000 }
+    );
+  } catch {
+    console.log("MISSING_AFTER_GOTO", JSON.stringify(await snapshotShell(`${screen.id}-missing`)));
+    await page.goto(`${BASE}/tournament/${TOURNAMENT_ID}/group-draw${eventQuery}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90000,
+    });
+    await page.waitForSelector('[data-testid="tournament-group-draw-page"]', { timeout: 45000 });
+    await selectSeedClub();
+    await page.waitForFunction(() => !document.body.innerText.includes("Không tìm thấy giải"), null, {
+      timeout: 45000,
+    });
+    await page.goto(target, { waitUntil: "domcontentloaded", timeout: 90000 });
+    await page.waitForSelector(`[data-testid="${screen.testId}"]`, { timeout: 45000 });
+    await selectSeedClub();
+    await page.waitForTimeout(2000);
+    await page.waitForFunction(() => !document.body.innerText.includes("Không tìm thấy giải"), null, {
+      timeout: 45000,
+    });
+  }
+  console.log("READY", JSON.stringify(await snapshotShell(`${screen.id}-ready`)));
   for (const shot of screen.viewports) {
     await page.setViewportSize({ width: shot.width, height: shot.height });
     await page.waitForTimeout(400);
@@ -201,6 +295,17 @@ for (const screen of selectedScreens) {
     const overflow = metrics.scrollWidth > metrics.innerWidth + 2;
     const hasDevCopy =
       /canonical_tournament|dữ liệu mẫu|Wave D|updateTournamentCommand|events\[0\]|SSOT/.test(metrics.bodyText);
+    const champion = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="bracket-next-column-title"]');
+      if (!el) return { text: "", clipped: false };
+      const r = el.getBoundingClientRect();
+      return {
+        text: String(el.textContent || "").trim(),
+        clipped: r.width > 0 && r.right > window.innerWidth + 1,
+        left: Math.round(r.left),
+        right: Math.round(r.right),
+      };
+    });
     results.push({
       file: shot.file,
       width: shot.width,
@@ -208,8 +313,9 @@ for (const screen of selectedScreens) {
       hasDevCopy,
       titleHit: screen.titleRe.test(metrics.bodyText),
       bound: /Giải đấu 17\/8\/2026|Đôi nam|Lịch thi đấu|Trung tâm trận|Kết quả|Loại trực tiếp|nhánh/.test(metrics.bodyText),
+      champion,
     });
-    console.log(`${shot.file} overflow=${overflow} title=${results.at(-1).titleHit} bound=${results.at(-1).bound} dev=${hasDevCopy}`);
+    console.log(`${shot.file} overflow=${overflow} title=${results.at(-1).titleHit} bound=${results.at(-1).bound} dev=${hasDevCopy} champion=${JSON.stringify(champion)}`);
   }
   for (const extra of EXTRA_VIEWPORTS) {
     await page.setViewportSize({ width: extra.width, height: extra.height });
@@ -219,8 +325,20 @@ for (const screen of selectedScreens) {
       scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
     }));
     const overflow = metrics.scrollWidth > metrics.innerWidth + 2;
-    results.push({ file: `${screen.id}_${extra.width}`, width: extra.width, overflow, extra: true });
-    console.log(`${screen.id} extra ${extra.width} overflow=${overflow}`);
+    const champion = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="bracket-next-column-title"]');
+      if (!el) return { text: "", clipped: false };
+      const r = el.getBoundingClientRect();
+      return {
+        text: String(el.textContent || "").trim(),
+        clipped: r.width > 0 && r.right > window.innerWidth + 1,
+      };
+    });
+    if (screen.id === "14" && (extra.width === 360 || extra.width === 430)) {
+      await page.screenshot({ path: path.join(OUT, `14_${extra.width}.png`), fullPage: true });
+    }
+    results.push({ file: `${screen.id}_${extra.width}`, width: extra.width, overflow, extra: true, champion });
+    console.log(`${screen.id} extra ${extra.width} overflow=${overflow} champion=${JSON.stringify(champion)}`);
   }
 }
 
