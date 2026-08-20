@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -29,7 +30,11 @@ import {
   DashboardAnalyticsView,
   resolveDashboardAccess,
 } from "../features/dashboard-analytics/index.js";
-import { buildDashboardSummary } from "./dashboard.logic";
+import {
+  buildDashboardSummary,
+  hasExplicitDashboardClubId,
+  loadClubOperationsDashboardSummary,
+} from "./dashboard.logic";
 import { loadCourtsFromStorage, loadPlayersFromStorage } from "./selectPlayers.data";
 
 function StatCard({ label, value, hint }) {
@@ -52,26 +57,56 @@ function StatCard({ label, value, hint }) {
   );
 }
 
+/**
+ * Gate only — never call club-scoped storage here.
+ * Club-scoped queries live in ClubOperationsContent after explicit clubId is known.
+ */
 function ClubOperationsSection() {
-  const { activeClub, activeClubId, revision } = useClub();
+  const { activeClub, activeClubId, revision, clubReadReady } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
 
-  const summary = useMemo(() => {
-    const aiData = loadAIData(activeClubId);
-    const sessions = aiData.sessions || [];
-    const players = loadPlayersFromStorage(activeClubId);
-    const courts = loadCourtsFromStorage(activeClubId);
-    const rounds = loadRoundsForClub(activeClubId);
+  if (!hasExplicitDashboardClubId(activeClubId)) {
+    const loading = clubReadReady === false;
+    return (
+      <Alert
+        severity={loading ? "info" : "warning"}
+        data-testid="dashboard-club-operations-gate"
+        data-state={loading ? "loading" : "club-required"}
+      >
+        {loading
+          ? "Đang tải ngữ cảnh CLB…"
+          : "Chọn CLB trên thanh công cụ để xem vận hành CLB."}
+      </Alert>
+    );
+  }
 
-    return buildDashboardSummary({
-      sessions,
-      players,
-      courts,
-      rounds,
+  return (
+    <ClubOperationsContent
+      clubId={String(activeClubId).trim()}
+      activeClub={activeClub}
+      revision={revision}
+      activeSeason={activeSeason}
+      activeLeague={activeLeague}
+    />
+  );
+}
+
+function ClubOperationsContent({ clubId, activeClub, revision, activeSeason, activeLeague }) {
+  const summary = useMemo(() => {
+    const loaded = loadClubOperationsDashboardSummary({
+      clubId,
       seasonId: activeSeason?.id || null,
       leagueId: activeLeague?.id || null,
+      loadAIData,
+      loadPlayers: loadPlayersFromStorage,
+      loadCourts: loadCourtsFromStorage,
+      loadRounds: loadRoundsForClub,
     });
-  }, [activeClubId, revision, activeSeason?.id, activeLeague?.id]);
+    if (!loaded.ok || !loaded.summary) {
+      return buildDashboardSummary({});
+    }
+    return loaded.summary;
+  }, [clubId, revision, activeSeason?.id, activeLeague?.id]);
 
   const { tournaments = [] } = useCanonicalTournamentList(activeClub, revision);
 
@@ -79,18 +114,18 @@ function ClubOperationsSection() {
     if (!activeLeague?.id) {
       return [];
     }
-    return getLeagueStandingsBoard(activeClubId, activeLeague.id);
-  }, [activeClubId, activeLeague?.id, revision]);
+    return getLeagueStandingsBoard(clubId, activeLeague.id);
+  }, [clubId, activeLeague?.id, revision]);
 
   const leagueRounds = useMemo(() => {
-    return listLeagueRounds(activeClubId, {
+    return listLeagueRounds(clubId, {
       seasonId: activeSeason?.id || null,
       leagueId: activeLeague?.id || null,
     });
-  }, [activeClubId, activeSeason?.id, activeLeague?.id, revision]);
+  }, [clubId, activeSeason?.id, activeLeague?.id, revision]);
 
   return (
-    <Box>
+    <Box data-testid="dashboard-club-operations">
       <Typography variant="h5" fontWeight="bold" sx={{ mb: 1 }}>
         Vận hành CLB
       </Typography>
@@ -124,7 +159,7 @@ function ClubOperationsSection() {
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12 }}>
-          <CourtOperationsPanel clubId={activeClubId} revision={revision} />
+          <CourtOperationsPanel clubId={clubId} revision={revision} />
         </Grid>
       </Grid>
 
