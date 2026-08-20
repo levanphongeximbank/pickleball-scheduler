@@ -11,6 +11,7 @@ import { deriveScheduleModel } from "../src/features/tournament/experience-a1/ba
 import { deriveMatchCenterModel } from "../src/features/tournament/experience-a1/batchD/deriveMatchCenter.js";
 import { deriveStandingsModel } from "../src/features/tournament/experience-a1/batchD/deriveStandings.js";
 import { deriveBracketModel, deriveKnockoutModel } from "../src/features/tournament/experience-a1/batchD/deriveKnockout.js";
+import { displayBracketRoundLabel } from "../src/features/tournament/experience-a1/batchD/labels.js";
 import { resolveSelectedEvent, listTournamentEvents } from "../src/features/tournament/experience-a1/deriveOverview.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -277,6 +278,20 @@ describe("tournament-experience-wave-d", () => {
     const page = readFileSync(path.join(A1_DIR, "pages/IndividualBracketPage.jsx"), "utf8");
     assert.ok(page.includes("bracket-mobile-nav"));
     assert.ok(page.includes("scrollSnapType"));
+  });
+
+  it("SCREEN14_CHAMPION_LABEL_NOT_CLIPPED_ON_MOBILE_PEEK", () => {
+    const page = readFileSync(path.join(A1_DIR, "pages/IndividualBracketPage.jsx"), "utf8");
+    const peek = Number(page.match(/BRACKET_MOBILE_NEXT_COLUMN_PEEK_PX = (\d+)/)?.[1]);
+    assert.ok(Number.isFinite(peek) && peek >= 104);
+    assert.ok(page.includes("bracket-next-column-title"));
+    assert.ok(page.includes("calc(100% - ${BRACKET_MOBILE_NEXT_COLUMN_PEEK_PX}px)"));
+    assert.equal(page.includes('minWidth: "86%"'), false);
+    assert.equal(displayBracketRoundLabel("Champion"), "Vô địch");
+    for (const width of [360, 390, 430]) {
+      assert.ok(width - peek >= 200, `first pane still dominant at ${width}`);
+      assert.ok(peek >= 104, `champion peek at ${width}`);
+    }
   });
 
   it("PROTOTYPE_FIXTURE_USED=NO and NEW_DOMAIN_AUTHORITY=NO", () => {

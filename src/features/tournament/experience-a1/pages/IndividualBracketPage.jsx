@@ -28,6 +28,8 @@ import { individualOverviewPath } from "../routes.js";
 const TITLE = "Sơ đồ nhánh đấu";
 const SUBTITLE = "Thắng X → vào Y. Trang không tràn ngang.";
 const TEST_ID = "tournament-bracket-page";
+/** Viewport peek for the next-round / champion column title so "Vô địch" is not cropped at 360–430. */
+const BRACKET_MOBILE_NEXT_COLUMN_PEEK_PX = 112;
 
 export default function IndividualBracketPage() {
   const { tournamentId } = useParams();
@@ -95,7 +97,13 @@ export default function IndividualBracketPage() {
               scrollSnapType: "x mandatory",
             }}
           >
-            <Box sx={{ minWidth: "86%", scrollSnapAlign: "start" }}>
+            <Box
+              sx={{
+                minWidth: `calc(100% - ${BRACKET_MOBILE_NEXT_COLUMN_PEEK_PX}px)`,
+                flex: "0 0 auto",
+                scrollSnapAlign: "start",
+              }}
+            >
               <Typography sx={{ fontWeight: 800, mb: 1 }}>{displayBracketRoundLabel(model.selectedRound)}</Typography>
               <Stack spacing={1}>
                 {currentMatches.map((match) => (
@@ -103,8 +111,13 @@ export default function IndividualBracketPage() {
                 ))}
               </Stack>
             </Box>
-            <Box sx={{ minWidth: "70%", scrollSnapAlign: "start" }}>
-              <Typography sx={{ fontWeight: 800, mb: 1 }}>{displayBracketRoundLabel(model.nextRound || "Champion")}</Typography>
+            <Box sx={{ minWidth: "70%", flex: "0 0 auto", scrollSnapAlign: "start" }}>
+              <Typography
+                data-testid="bracket-next-column-title"
+                sx={{ fontWeight: 800, mb: 1, whiteSpace: "nowrap", overflow: "visible" }}
+              >
+                {displayBracketRoundLabel(model.nextRound || "Champion")}
+              </Typography>
               <Stack spacing={1}>
                 {nextMatches.map((match) => (
                   <BracketMatchNode key={match.id} match={match} champion={model.nextRound === "Champion" || match.id === "champion"} />
