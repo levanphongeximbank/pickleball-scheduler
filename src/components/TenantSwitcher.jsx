@@ -72,6 +72,7 @@ export default function TenantSwitcher({
     >
       <InputLabel
         id="header-tenant-label"
+        shrink
         sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}
       >
         Đang quản trị
@@ -81,6 +82,7 @@ export default function TenantSwitcher({
         value={value}
         label="Đang quản trị"
         displayEmpty
+        notched
         renderValue={() => (
           <Typography
             component="span"
