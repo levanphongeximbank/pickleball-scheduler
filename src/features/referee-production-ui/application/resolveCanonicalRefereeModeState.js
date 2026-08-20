@@ -1,6 +1,12 @@
 /**
  * Resolve Adapter B modeState from durable competition tables (server/rpc client).
  * Does not invent participants or scores. Returns null when context cannot be resolved.
+ *
+ * Match-index precedence for canonical individual tournaments (INTERNAL / OFFICIAL):
+ * 1. payload.events[*].matches[*] — durable Staging shape for Internal/Official
+ * 2. payload.matches — preserved for modes/fixtures that store matches directly
+ * Never silently overwrite conflicting IDs; fail closed on ambiguous duplicates.
+ * Adapter B remains translation-only and must not crawl nested payload itself.
  */
 
 import { COMPETITION_REFEREE_MODE } from "../../competition-engine/integration/referee/constants.js";
@@ -11,6 +17,201 @@ function trim(value) {
 
 function asObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function failMatchIndex(code, message, details = {}) {
+  const err = new Error(message);
+  err.code = code;
+  err.failClosed = true;
+  err.details = details;
+  throw err;
+}
+
+function playerIdsForSide(match, entry, side) {
+  const fromMatch = side === "A" ? match.participantIdsA : match.participantIdsB;
+  if (Array.isArray(fromMatch) && fromMatch.length > 0) {
+    return fromMatch.map((id) => String(id));
+  }
+  if (Array.isArray(entry?.playerIds) && entry.playerIds.length > 0) {
+    return entry.playerIds.map((id) => String(id));
+  }
+  const entryId = side === "A" ? match.entryAId : match.entryBId;
+  const id = trim(entryId);
+  return id ? [id] : [];
+}
+
+function scoringRulesForMatch(match, event, payload) {
+  return (
+    match?.scoringRules ||
+    match?.scoringFormat ||
+    event?.scoringRules ||
+    event?.scoringFormat ||
+    payload?.scoringRules ||
+    payload?.scoringFormat ||
+    null
+  );
+}
+
+function identityFingerprint(normalized) {
+  return JSON.stringify({
+    matchId: normalized.matchId,
+    entryAId: normalized.entryAId || null,
+    entryBId: normalized.entryBId || null,
+    courtId: normalized.courtId || null,
+    physicalCourtId: normalized.physicalCourtId || null,
+    participantIdsA: normalized.participantIdsA || [],
+    participantIdsB: normalized.participantIdsB || [],
+  });
+}
+
+/**
+ * Normalize one durable individual-tournament match into Adapter B modeState.matches shape.
+ */
+export function normalizeIndividualTournamentMatch(match, event = null, payload = {}) {
+  if (!asObject(match)) return null;
+  const matchId = trim(match.id || match.matchId);
+  if (!matchId) return null;
+
+  const entriesById = new Map(
+    asArray(event?.entries)
+      .filter((entry) => entry && entry.id != null)
+      .map((entry) => [String(entry.id), entry])
+  );
+  const entryA = entriesById.get(trim(match.entryAId));
+  const entryB = entriesById.get(trim(match.entryBId));
+  const courtId =
+    trim(match.physicalCourtId) ||
+    trim(match.courtId) ||
+    trim(match.court_id) ||
+    null;
+
+  return {
+    ...match,
+    id: matchId,
+    matchId,
+    status: match.status || "READY_TO_START",
+    courtId: courtId || null,
+    physicalCourtId: trim(match.physicalCourtId) || courtId || null,
+    stage: match.stage || event?.stage || null,
+    round: match.round ?? null,
+    eventId: trim(event?.id) || trim(match.eventId) || null,
+    groupId: match.groupId || null,
+    entryAId: match.entryAId || null,
+    entryBId: match.entryBId || null,
+    participantIdsA: playerIdsForSide(match, entryA, "A"),
+    participantIdsB: playerIdsForSide(match, entryB, "B"),
+    scoringRules: scoringRulesForMatch(match, event, payload),
+    scoringFormat: match.scoringFormat || scoringRulesForMatch(match, event, payload),
+    scheduledAt:
+      match.scheduledAt || match.scheduledStart || match.startAt || null,
+    scheduledStart:
+      match.scheduledStart || match.scheduledAt || match.startAt || null,
+    scheduledEnd: match.scheduledEnd || match.endAt || null,
+    lineupsLocked:
+      match.lineupsLocked === true || Boolean(match.entryAId && match.entryBId),
+  };
+}
+
+function indexMatchMap(target, normalized, sourceLabel) {
+  const existing = target[normalized.matchId];
+  if (!existing) {
+    target[normalized.matchId] = normalized;
+    return;
+  }
+  if (identityFingerprint(existing) === identityFingerprint(normalized)) {
+    return;
+  }
+  failMatchIndex(
+    "MATCH_IDENTITY_CONFLICT",
+    `Conflicting match identity for ${normalized.matchId} (${sourceLabel})`,
+    {
+      matchId: normalized.matchId,
+      source: sourceLabel,
+      existingFingerprint: identityFingerprint(existing),
+      incomingFingerprint: identityFingerprint(normalized),
+    }
+  );
+}
+
+/**
+ * Build normalized matches map from durable canonical tournament payload.
+ *
+ * Precedence (INTERNAL / OFFICIAL):
+ * - Index payload.events[*].matches[*] first (durable evidenced shape)
+ * - Then merge payload.matches when present; equivalent IDs ok; conflicts fail closed
+ *
+ * Precedence (DAILY / other):
+ * - Preserve existing payload.matches-only behavior (do not invent dailyPlay crawl here)
+ *
+ * @param {object} payload
+ * @param {{ competitionMode?: string|null, competitionId?: string|null }} [options]
+ * @returns {Record<string, object>}
+ */
+export function normalizeCanonicalTournamentMatchesFromPayload(payload, options = {}) {
+  const root = asObject(payload) || {};
+  const competitionMode = String(options.competitionMode || "")
+    .trim()
+    .toUpperCase();
+  const competitionId = trim(options.competitionId);
+  const usesEventMatches =
+    competitionMode === COMPETITION_REFEREE_MODE.INTERNAL ||
+    competitionMode === COMPETITION_REFEREE_MODE.OFFICIAL ||
+    // Unknown mode with events still present — evidence-only individual shape
+    (competitionMode === "" && asArray(root.events).length > 0);
+
+  const fromEvents = {};
+  if (usesEventMatches) {
+    for (const event of asArray(root.events)) {
+      if (!asObject(event)) continue;
+      for (const match of asArray(event.matches)) {
+        const normalized = normalizeIndividualTournamentMatch(match, event, root);
+        if (!normalized) continue;
+        if (
+          competitionId &&
+          trim(match.tournamentId) &&
+          trim(match.tournamentId) !== competitionId
+        ) {
+          continue;
+        }
+        indexMatchMap(fromEvents, normalized, "payload.events[].matches");
+      }
+    }
+  }
+
+  const fromPayloadMatches = {};
+  const direct = root.matches;
+  if (asObject(direct)) {
+    for (const [key, match] of Object.entries(direct)) {
+      const normalized = normalizeIndividualTournamentMatch(
+        asObject(match) ? { ...match, id: match.id || match.matchId || key } : match,
+        null,
+        root
+      );
+      if (!normalized) continue;
+      indexMatchMap(fromPayloadMatches, normalized, "payload.matches");
+    }
+  } else if (Array.isArray(direct)) {
+    for (const match of direct) {
+      const normalized = normalizeIndividualTournamentMatch(match, null, root);
+      if (!normalized) continue;
+      indexMatchMap(fromPayloadMatches, normalized, "payload.matches[]");
+    }
+  }
+
+  if (!usesEventMatches) {
+    return fromPayloadMatches;
+  }
+
+  // Internal/Official: events first, then payload.matches without silent overwrite.
+  const merged = { ...fromEvents };
+  for (const normalized of Object.values(fromPayloadMatches)) {
+    indexMatchMap(merged, normalized, "payload.matches");
+  }
+  return merged;
 }
 
 async function loadTeamHeader(client, competitionId) {
@@ -402,36 +603,41 @@ async function resolveCanonicalTournamentModeState(client, { tenantId, competiti
   else if (modeRaw.includes("INTERNAL")) competitionMode = COMPETITION_REFEREE_MODE.INTERNAL;
 
   const payload = asObject(row.payload) || {};
-  const matches = asObject(payload.matches) || {};
-  const match = matches[matchId] || null;
+  const resolvedCompetitionId = trim(row.id) || competitionId;
+  const matches = normalizeCanonicalTournamentMatchesFromPayload(payload, {
+    competitionMode,
+    competitionId: resolvedCompetitionId,
+  });
+  const match = matchId && asObject(matches[matchId]) ? matches[matchId] : null;
 
   if (!competitionMode) {
     return {
       tenantId,
-      competitionId,
+      competitionId: resolvedCompetitionId,
       competitionMode: null,
       competitionName: trim(row.name) || null,
       clubId: row.club_id || null,
       displayPartial: true,
-      matches: match ? { [matchId]: match } : {},
+      matches: match ? { [matchId]: match } : matches,
       participantNames: asObject(payload.participantNames) || {},
     };
   }
 
   return {
     tenantId,
-    competitionId,
+    competitionId: resolvedCompetitionId,
     competitionMode,
     competitionName: trim(row.name) || null,
     clubId: row.club_id || null,
     venueId: row.tenant_id || tenantId,
     canonicalAssignmentAuthorityAvailable: true,
     participantNames: asObject(payload.participantNames) || {},
-    matches: match
-      ? { [matchId]: match }
-      : matches,
+    matches: match ? { [matchId]: match } : matches,
     session: asObject(payload.session) || undefined,
-    scoringRules: asObject(payload.scoringRules) || asObject(match?.scoringRules) || null,
+    scoringRules:
+      asObject(payload.scoringRules) ||
+      asObject(match?.scoringRules) ||
+      null,
   };
 }
 

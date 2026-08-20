@@ -41,6 +41,8 @@ export { createTrustedRefereeBackend } from "./application/createTrustedRefereeB
 export {
   resolveCanonicalRefereeModeState,
   detectCompetitionModeHint,
+  normalizeCanonicalTournamentMatchesFromPayload,
+  normalizeIndividualTournamentMatch,
 } from "./application/resolveCanonicalRefereeModeState.js";
 export {
   assertRefereeUiSecurity,
