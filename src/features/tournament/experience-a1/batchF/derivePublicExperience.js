@@ -9,7 +9,21 @@ import { eventDisplayName } from "../batchB/eventScope.js";
 import { listTournamentEvents } from "../deriveOverview.js";
 import { projectEventMatches } from "../batchE/collectMatches.js";
 
-function publicStatusLabel(status) {
+function sanitizePublicCourt(label) {
+  const text = String(label || "").trim();
+  if (!text) return "Sân";
+  if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(text)) {
+    return text.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "…").replace(/…+/g, "…").trim() || "Sân";
+  }
+  return text;
+}
+
+function sanitizePublicMatch(row) {
+  return {
+    ...row,
+    court: sanitizePublicCourt(row.court),
+  };
+}
   if (status === TOURNAMENT_STATUS.ACTIVE) return "ĐANG DIỄN RA";
   if (status === TOURNAMENT_STATUS.REGISTRATION) return "ĐANG MỞ ĐĂNG KÝ";
   if (status === TOURNAMENT_STATUS.COMPLETED) return "ĐÃ HOÀN TẤT";
@@ -84,8 +98,8 @@ export function derivePublicExperienceModel(tournament) {
     schedulePublished: isSchedulePublished(tournament),
     registration: resolvePublicRegistrationCta(tournament),
     eventCards,
-    liveMatches,
-    schedulePreview,
+    liveMatches: liveMatches.map(sanitizePublicMatch),
+    schedulePreview: schedulePreview.map(sanitizePublicMatch),
     standingsPreview: standingsPreview.slice(0, 12),
     resultsPreview: resultsPreview.slice(0, 12),
     hasBracket: events.some((event) => Boolean(event.bracket)),
