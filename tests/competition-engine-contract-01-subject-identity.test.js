@@ -282,13 +282,21 @@ test("18 Competition adapter does not query profiles directly", () => {
     ),
     "utf8"
   );
-  for (const src of [adapterSrc, bindingSrc]) {
+  const identityBindingSrc = readFileSync(
+    path.join(
+      ROOT,
+      "src/features/competition-engine/integration/contracts/identityAccessBinding.js"
+    ),
+    "utf8"
+  );
+  for (const src of [adapterSrc, bindingSrc, identityBindingSrc]) {
     assert.equal(src.includes(".from(\"profiles\")"), false);
     assert.equal(src.includes(".from('profiles')"), false);
     assert.equal(src.includes("auth/supabaseClient"), false);
     assert.equal(src.includes("@supabase/supabase-js"), false);
   }
   assert.ok(adapterSrc.includes("subjectIdentityLookupService"));
+  assert.ok(identityBindingSrc.includes("resolveSubjectIdentity"));
 });
 
 test("19 Identity private persistence remains inside Identity domain", () => {

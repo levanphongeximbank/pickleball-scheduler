@@ -1,6 +1,11 @@
 /**
- * S1-F — Individual tournament referee assignment (blob-first).
- * Closes S1-GAP-061 / soft S1-GAP-100 (assignment-row scoped on blob).
+ * S1-F — Individual tournament referee assignment helpers.
+ *
+ * Product assignment authority is RETIRED from this module.
+ * Active mutations must use CORE-13 shared command:
+ *   competition-engine/operations/referee/assignment
+ *
+ * Blob map helpers remain for projection / read compatibility only.
  */
 
 import { createId } from "../../../utils/id.js";
@@ -16,6 +21,15 @@ import {
   patchRefereeInTournament,
   resolveMatchLabels,
 } from "../../../tournament/engines/refereeEngine.js";
+
+/** @deprecated Product writers = 0. Use CORE-13 shared assignment command. */
+export const LEGACY_INDIVIDUAL_ASSIGNMENT_AUTHORITY = Object.freeze({
+  status: "NEUTRALIZED",
+  productWriters: 0,
+  duplicateConflictEngine: false,
+  delegateTo:
+    "src/features/competition-engine/operations/referee/assignment",
+});
 
 export const REFEREE_ASSIGN_STATUS = Object.freeze({
   ASSIGNED: "assigned",
@@ -110,37 +124,65 @@ export function normalizeAssignmentEntry(raw = {}, matchId = "") {
 }
 
 export function getRefereeAssignments(tournament) {
-  const raw = tournament?.settings?.refereeAssignments;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return {};
-  }
+  const fromLegacy = (() => {
+    const raw = tournament?.settings?.refereeAssignments;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return {};
+    }
 
-  return Object.entries(raw).reduce((acc, [matchId, value]) => {
-    // Legacy team-style: matchId → refereeId string
-    if (typeof value === "string") {
-      const rosterId = value.trim();
-      if (rosterId) {
-        const roster = getRefereeSettings(tournament).roster;
-        const entry = findRefereeRosterEntry(roster, rosterId);
-        acc[String(matchId)] = normalizeAssignmentEntry(
-          {
-            matchId,
-            rosterId,
-            refereeName: entry?.name || rosterId,
-            status: REFEREE_ASSIGN_STATUS.ASSIGNED,
-          },
-          matchId
-        );
+    return Object.entries(raw).reduce((acc, [matchId, value]) => {
+      // Legacy team-style: matchId → refereeId string
+      if (typeof value === "string") {
+        const rosterId = value.trim();
+        if (rosterId) {
+          const roster = getRefereeSettings(tournament).roster;
+          const entry = findRefereeRosterEntry(roster, rosterId);
+          acc[String(matchId)] = normalizeAssignmentEntry(
+            {
+              matchId,
+              rosterId,
+              refereeName: entry?.name || rosterId,
+              status: REFEREE_ASSIGN_STATUS.ASSIGNED,
+            },
+            matchId
+          );
+        }
+        return acc;
+      }
+
+      const normalized = normalizeAssignmentEntry(value, matchId);
+      if (normalized && normalized.status !== REFEREE_ASSIGN_STATUS.REVOKED) {
+        acc[String(matchId)] = normalized;
       }
       return acc;
-    }
+    }, {});
+  })();
 
-    const normalized = normalizeAssignmentEntry(value, matchId);
-    if (normalized && normalized.status !== REFEREE_ASSIGN_STATUS.REVOKED) {
-      acc[String(matchId)] = normalized;
-    }
-    return acc;
-  }, {});
+  // CORE-13 canonical blob projection (authority); legacy map is display fallback only.
+  const core13 = tournament?.settings?.core13RefereeAssignments?.byScope;
+  if (!core13 || typeof core13 !== "object") {
+    return fromLegacy;
+  }
+  const merged = { ...fromLegacy };
+  for (const row of Object.values(core13)) {
+    if (!row || row.status !== "active") continue;
+    const matchId = String(row.matchId || "");
+    if (!matchId) continue;
+    const roster = getRefereeSettings(tournament).roster;
+    const entry = findRefereeRosterEntry(roster, row.refereeId);
+    merged[matchId] = normalizeAssignmentEntry(
+      {
+        matchId,
+        rosterId: row.refereeId,
+        refereeName: entry?.name || row.refereeId,
+        status: REFEREE_ASSIGN_STATUS.ASSIGNED,
+        assignedAt: row.assignedAt || null,
+        assignedBy: row.assignedBy || "",
+      },
+      matchId
+    );
+  }
+  return merged;
 }
 
 export function listIndividualReferees(tournament) {
@@ -294,8 +336,18 @@ function setAssignmentOnMap(assignments, matchId, entry) {
 
 /**
  * Manual assign / reassign referee to a match.
+ * Product authority neutralized — requires CORE-13 bridge or explicit legacy test flag.
  */
 export function assignRefereeToIndividualMatch(tournament, matchId, rosterId, options = {}) {
+  if (!options.core13Bridge && options.allowLegacyBlobAuthority !== true) {
+    return {
+      ok: false,
+      error:
+        "Legacy individual assignment authority retired. Use CORE-13 shared assignReferee command.",
+      code: "LEGACY_ASSIGNMENT_AUTHORITY_RETIRED",
+      legacyAuthority: LEGACY_INDIVIDUAL_ASSIGNMENT_AUTHORITY,
+    };
+  }
   const matches = collectEventMatches(tournament, options.eventId);
   const match = matches.find((m) => String(m.id) === String(matchId));
   if (!match) {
@@ -376,6 +428,15 @@ export function reassignReferee(tournament, matchId, rosterId, options = {}) {
 }
 
 export function unassignRefereeFromMatch(tournament, matchId, options = {}) {
+  if (!options.core13Bridge && options.allowLegacyBlobAuthority !== true) {
+    return {
+      ok: false,
+      error:
+        "Legacy individual unassign authority retired. Use CORE-13 shared unassignReferee command.",
+      code: "LEGACY_ASSIGNMENT_AUTHORITY_RETIRED",
+      legacyAuthority: LEGACY_INDIVIDUAL_ASSIGNMENT_AUTHORITY,
+    };
+  }
   const assignments = getRefereeAssignments(tournament);
   const existing = assignments[String(matchId)];
   if (!existing) {
@@ -419,8 +480,18 @@ export function unassignRefereeFromMatch(tournament, matchId, options = {}) {
 
 /**
  * Auto-assign active referees round-robin, skipping conflicts.
+ * Product authority neutralized — requires CORE-13 bridge or explicit legacy test flag.
  */
 export function autoAssignReferees(tournament, options = {}) {
+  if (!options.core13Bridge && options.allowLegacyBlobAuthority !== true) {
+    return {
+      ok: false,
+      error:
+        "Legacy auto-assign authority retired. Use CORE-13 shared assignReferee command.",
+      code: "LEGACY_ASSIGNMENT_AUTHORITY_RETIRED",
+      legacyAuthority: LEGACY_INDIVIDUAL_ASSIGNMENT_AUTHORITY,
+    };
+  }
   const referees = listIndividualReferees(tournament);
   if (referees.length === 0) {
     return { ok: false, error: "Chưa có trọng tài trong danh sách." };
