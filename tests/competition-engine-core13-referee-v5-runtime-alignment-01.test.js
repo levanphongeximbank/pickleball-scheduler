@@ -20,7 +20,7 @@ import {
   normalizeCompetitionAssignmentResult,
 } from "../src/features/competition-engine/operations/referee/assignment/index.js";
 import { handleCompetitionRefereeAssignmentAction } from "../src/features/competition-engine/operations/referee/assignment/server/edgeHttpHandler.js";
-import { COMPETITION_ASSIGNMENT_MUTATION_RPC } from "../src/features/competition-engine/operations/referee/assignment/persistence/createRpcCanonicalAssignmentPersistence.js";
+import { COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC, COMPETITION_ASSIGNMENT_MUTATION_RPC } from "../src/features/competition-engine/operations/referee/assignment/persistence/createRpcCanonicalAssignmentPersistence.js";
 import { resolveAuthoritativeAssignmentTenant } from "../src/features/competition-engine/operations/referee/assignment/server/resolveAuthoritativeAssignmentTenant.js";
 import { CASE_CATALOG } from "../scripts/core13/core13-staging-acceptance-proofs.mjs";
 import {
@@ -125,6 +125,12 @@ function makeClients(options = {}) {
   };
   const serviceClient = {
     rpc: async (name, args) => {
+      if (name === COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC.PAYLOAD_HASH) {
+        return { data: "peek-hash", error: null };
+      }
+      if (name === COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC.CHECK) {
+        return { data: { replay: false }, error: null };
+      }
       if (name === COMPETITION_ASSIGNMENT_MUTATION_RPC.ASSIGN) {
         persisted.tenantId = args.p_tenant_id;
         return {

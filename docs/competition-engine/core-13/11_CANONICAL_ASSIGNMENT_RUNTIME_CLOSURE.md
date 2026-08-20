@@ -119,6 +119,16 @@ Live-backed fixtures retain `match_live_states` / `match_sync_mutations` / initi
 - `DUPLICATED_JS_ELIGIBILITY_RULE=DENY`
 - Preflight requires `canonicalEligibilityVerified=YES` before tournament materialization.
 
+## Durable idempotency replay (RPC persistence)
+
+`createRpcCanonicalAssignmentPersistence.peekIdempotency` translates existing `competition_assignment_payload_hash` + `competition_assignment_check_idempotency` so same-key same-payload replay returns the original committed result **before** JS CAS.
+
+- Same key + same canonical payload → original result, `replayed=true`, no second mutation
+- Same key + changed canonical payload → `IDEMPOTENCY_CONFLICT`
+- New key + stale expectedVersion → `STALE_WRITE`
+- Authn / tenant / tournament / match ownership remain on the Edge trusted boundary before peek
+- `PRIMARY` and `REFEREE` are the same durable canonical role
+
 ## Execution gate
 
 Do **not** apply SQL or deploy the Edge Function until Owner GO.

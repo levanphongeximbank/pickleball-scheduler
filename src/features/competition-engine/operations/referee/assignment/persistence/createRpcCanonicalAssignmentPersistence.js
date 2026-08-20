@@ -21,10 +21,115 @@ export const COMPETITION_ASSIGNMENT_MUTATION_RPC = Object.freeze({
   UNASSIGN: "competition_unassign_referee",
 });
 
+export const COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC = Object.freeze({
+  PAYLOAD_HASH: "competition_assignment_payload_hash",
+  CHECK: "competition_assignment_check_idempotency",
+});
+
+const TRUSTED_SERVER_BOUNDARY = "competition-referee-assignment";
+
 function toSqlRole(role) {
   const value = String(role || "PRIMARY").trim() || "PRIMARY";
   if (value === "PRIMARY") return "PRIMARY";
   return value;
+}
+
+/**
+ * Matches public.competition_assignment_normalize_role for hash parity.
+ * PRIMARY and REFEREE are the same durable canonical role.
+ */
+export function toDurableCanonicalRole(role) {
+  const value = String(role || "REFEREE").trim().toUpperCase();
+  if (value === "PRIMARY" || value === "REFEREE" || !value) return "REFEREE";
+  if (value === "HEAD" || value === "HEAD_REFEREE") return "HEAD_REFEREE";
+  if (value === "SCOREKEEPER") return "SCOREKEEPER";
+  return value;
+}
+
+function durableCommandMetadata(actorId) {
+  return {
+    trustedServerBoundary: TRUSTED_SERVER_BOUNDARY,
+    originatingActorId: actorId,
+  };
+}
+
+/**
+ * Canonical idempotency payload — same keys/order as SQL jsonb_build_object
+ * inside competition_assign_referee / replace / unassign.
+ * Hash is computed by competition_assignment_payload_hash, not in JS.
+ */
+export function buildDurableAssignmentIdempotencyPayload(command = {}) {
+  const operation = String(command.operation || "ASSIGN").trim().toUpperCase();
+  const role = toDurableCanonicalRole(command.role || command.roleCode);
+  const actorId = String(command.actorId || "").trim();
+  const expectedVersion = Number(command.expectedVersion);
+  const lifecycleState = String(command.lifecycleState || "PRE_MATCH").trim() || "PRE_MATCH";
+  const metadata = durableCommandMetadata(actorId);
+  const base = {
+    operation,
+    tenantId: command.tenantId,
+    tournamentId: command.tournamentId,
+    matchId: command.matchId,
+  };
+  if (operation === "REPLACE") {
+    return {
+      ...base,
+      newRefereeUserId: command.newRefereeId || command.refereeId,
+      role,
+      expectedVersion,
+      emergencyReplacement: command.emergencyReplacement === true,
+      lifecycleState,
+      commandMetadata: metadata,
+      originatingActorId: actorId,
+      trustedServerBoundary: TRUSTED_SERVER_BOUNDARY,
+    };
+  }
+  if (operation === "UNASSIGN") {
+    return {
+      ...base,
+      role,
+      expectedVersion,
+      lifecycleState,
+      commandMetadata: metadata,
+      originatingActorId: actorId,
+      trustedServerBoundary: TRUSTED_SERVER_BOUNDARY,
+    };
+  }
+  return {
+    ...base,
+    refereeUserId: command.refereeId,
+    role,
+    expectedVersion,
+    lifecycleState,
+    commandMetadata: metadata,
+    originatingActorId: actorId,
+    trustedServerBoundary: TRUSTED_SERVER_BOUNDARY,
+  };
+}
+
+function mapDurableReplayResult(command, peek) {
+  const operation = String(peek?.operation || command.operation || "ASSIGN").trim().toUpperCase();
+  const refereeId =
+    operation === "UNASSIGN"
+      ? null
+      : String(
+          command.newRefereeId ||
+            command.refereeId ||
+            peek?.refereeUserId ||
+            ""
+        ).trim() || null;
+  return Object.freeze({
+    assignmentId: String(peek?.assignmentId || peek?.assignment_id || ""),
+    tenantId: command.tenantId,
+    tournamentId: command.tournamentId,
+    matchId: command.matchId,
+    refereeId,
+    role: fromSqlRole(peek?.role || command.role || command.roleCode),
+    roleCode: fromSqlRole(peek?.role || command.role || command.roleCode),
+    status: operation === "UNASSIGN" ? "revoked" : "active",
+    version: peek?.version != null ? Number(peek.version) : null,
+    operation,
+  });
 }
 
 function fromSqlRole(role) {
@@ -148,6 +253,48 @@ export function createRpcCanonicalAssignmentPersistence(options = {}) {
     translationOnly: true,
     decisionAuthority: false,
     productUiDecisionPath: false,
+    async peekIdempotency(command = {}) {
+      const key = String(command.idempotencyKey || "").trim();
+      if (!key) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.IDEMPOTENCY_KEY_REQUIRED,
+          "idempotencyKey is required",
+          {}
+        );
+      }
+      const tenantId = String(command.tenantId || "").trim();
+      const tournamentId = String(command.tournamentId || command.competitionId || "").trim();
+      if (!tenantId || !tournamentId) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+          "tenantId and tournamentId are required for durable idempotency peek",
+          {}
+        );
+      }
+      const payload = buildDurableAssignmentIdempotencyPayload({
+        ...command,
+        tenantId,
+        tournamentId,
+      });
+      const hash = await rpc(COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC.PAYLOAD_HASH, {
+        p_payload: payload,
+      });
+      const checked = await rpc(COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC.CHECK, {
+        p_tenant_id: tenantId,
+        p_tournament_id: tournamentId,
+        p_idempotency_key: key,
+        p_payload_hash: String(hash || ""),
+      });
+      const peek = checked && typeof checked === "object" ? checked : {};
+      if (peek.replay !== true) {
+        return { replay: false, key };
+      }
+      return {
+        replay: true,
+        key,
+        result: mapDurableReplayResult(command, peek),
+      };
+    },
     async getActiveAssignment({ tenantId, tournamentId, matchId, role = "PRIMARY" }) {
       const sqlRole = toSqlRole(role);
       const { data, error } = await serviceClient
@@ -210,10 +357,7 @@ export function createRpcCanonicalAssignmentPersistence(options = {}) {
         p_actor_id: actorId,
         p_reason: command.reason || null,
         p_lifecycle_state: null,
-        p_command_metadata: {
-          trustedServerBoundary: "competition-referee-assignment",
-          originatingActorId: actorId,
-        },
+        p_command_metadata: durableCommandMetadata(actorId),
       });
       return mapRpcResult(data, command);
     },
@@ -235,10 +379,7 @@ export function createRpcCanonicalAssignmentPersistence(options = {}) {
         p_reason: command.reason || null,
         p_lifecycle_state: null,
         p_emergency_replacement: command.emergencyReplacement === true,
-        p_command_metadata: {
-          trustedServerBoundary: "competition-referee-assignment",
-          originatingActorId: actorId,
-        },
+        p_command_metadata: durableCommandMetadata(actorId),
       });
       return mapRpcResult(data, command);
     },
@@ -254,10 +395,7 @@ export function createRpcCanonicalAssignmentPersistence(options = {}) {
         p_actor_id: actorId,
         p_reason: command.reason || null,
         p_lifecycle_state: null,
-        p_command_metadata: {
-          trustedServerBoundary: "competition-referee-assignment",
-          originatingActorId: actorId,
-        },
+        p_command_metadata: durableCommandMetadata(actorId),
       });
       return mapRpcResult(data, command);
     },

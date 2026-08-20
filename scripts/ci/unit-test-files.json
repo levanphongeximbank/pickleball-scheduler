@@ -496,6 +496,7 @@
   "tests/competition-engine-core13-staging-fixture-provisioner.test.js",
   "tests/competition-engine-core13-fixture-capacity-safe-scheduler.test.js",
   "tests/competition-engine-core13-daily-canonical-eligibility-fixture.test.js",
+  "tests/competition-engine-core13-durable-rpc-idempotency-replay-01.test.js",
   "tests/competition-engine-core13-final-fixture-preflight-lifecycle.test.js",
   "tests/competition-engine-core13-fixture-lifecycle-client-mutation-01.test.js",
   "tests/competition-engine-core13-inactive-identity-semantics.test.js",

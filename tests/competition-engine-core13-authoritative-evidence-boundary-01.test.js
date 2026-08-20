@@ -31,7 +31,7 @@ import {
 import { IDENTITY_ACCESS_CONTRACT } from "../src/features/competition-engine/integration/contracts/definitions.js";
 import { createIdentityAccessBinding } from "../src/features/competition-engine/integration/contracts/identityAccessBinding.js";
 import { assertTrustedServerNoFakeSuccess } from "../src/features/competition-engine/operations/referee/assignment/server/assertTrustedServerNoFakeSuccess.js";
-import { COMPETITION_ASSIGNMENT_MUTATION_RPC } from "../src/features/competition-engine/operations/referee/assignment/persistence/createRpcCanonicalAssignmentPersistence.js";
+import { COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC, COMPETITION_ASSIGNMENT_MUTATION_RPC } from "../src/features/competition-engine/operations/referee/assignment/persistence/createRpcCanonicalAssignmentPersistence.js";
 import {
   COMPETITION_REFEREE_ADAPTER_CONTRACT_ID,
   COMPETITION_REFEREE_ADAPTER_CONTRACT_VERSION,
@@ -121,6 +121,12 @@ function createServiceClient({
   live = [],
   profile = null,
   persist = async (name, args) => {
+    if (name === COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC.PAYLOAD_HASH) {
+      return { data: "peek-hash", error: null };
+    }
+    if (name === COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC.CHECK) {
+      return { data: { replay: false }, error: null };
+    }
     if (name === COMPETITION_ASSIGNMENT_MUTATION_RPC.ASSIGN) {
       return {
         data: {

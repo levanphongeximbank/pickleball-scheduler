@@ -12,7 +12,7 @@ import {
   createInMemoryCanonicalAssignmentPersistence,
 } from "../src/features/competition-engine/operations/referee/assignment/index.js";
 import { handleCompetitionRefereeAssignmentAction } from "../src/features/competition-engine/operations/referee/assignment/server/edgeHttpHandler.js";
-import { COMPETITION_ASSIGNMENT_MUTATION_RPC } from "../src/features/competition-engine/operations/referee/assignment/persistence/createRpcCanonicalAssignmentPersistence.js";
+import { COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC, COMPETITION_ASSIGNMENT_MUTATION_RPC } from "../src/features/competition-engine/operations/referee/assignment/persistence/createRpcCanonicalAssignmentPersistence.js";
 import {
   createRefereeCandidate,
   createMatchScheduleRow,
@@ -174,6 +174,12 @@ test("E isolated: correct tournament proceeds; client cannot bypass with another
     userClient: createUserClient(),
     serviceClient: {
       rpc: async (name, args) => {
+        if (name === COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC.PAYLOAD_HASH) {
+          return { data: "peek-hash", error: null };
+        }
+        if (name === COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC.CHECK) {
+          return { data: { replay: false }, error: null };
+        }
         if (name === COMPETITION_ASSIGNMENT_MUTATION_RPC.ASSIGN) {
           assert.equal(args.p_tournament_id, "tourn-a");
           return {

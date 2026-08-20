@@ -27,7 +27,7 @@ import {
   stripBrowserAuthority,
   verifyBearerToken,
 } from "../src/features/competition-engine/operations/referee/assignment/server/edgeHttpHandler.js";
-import { COMPETITION_ASSIGNMENT_MUTATION_RPC } from "../src/features/competition-engine/operations/referee/assignment/persistence/createRpcCanonicalAssignmentPersistence.js";
+import { COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC, COMPETITION_ASSIGNMENT_MUTATION_RPC } from "../src/features/competition-engine/operations/referee/assignment/persistence/createRpcCanonicalAssignmentPersistence.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -114,6 +114,12 @@ test("C: Edge Function authenticates JWT and ignores browser actorId", async () 
   };
   const serviceClient = {
     rpc: async (name, args) => {
+      if (name === COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC.PAYLOAD_HASH) {
+        return { data: "peek-hash", error: null };
+      }
+      if (name === COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC.CHECK) {
+        return { data: { replay: false }, error: null };
+      }
       if (name === COMPETITION_ASSIGNMENT_MUTATION_RPC.ASSIGN) {
         persistedActor = args.p_actor_id;
         return {
