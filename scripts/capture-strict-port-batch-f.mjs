@@ -184,6 +184,7 @@ for (const screen of OPERATOR_SCREENS) {
   }
 }
 
+
 await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 90000 });
 await page.evaluate(() => {
   localStorage.setItem("pickleball-active-club-v1", "club-ecebf64c78f948ccb2b59842441eb26c");
