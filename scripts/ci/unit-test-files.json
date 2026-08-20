@@ -604,5 +604,6 @@
   "tests/tournament-experience-wave-b.test.js",
   "tests/tournament-experience-wave-c.test.js",
   "tests/tournament-experience-wave-d.test.js",
-  "tests/tournament-experience-wave-e.test.js"
+  "tests/tournament-experience-wave-e.test.js",
+  "tests/tournament-experience-wave-f.test.js"
 ]

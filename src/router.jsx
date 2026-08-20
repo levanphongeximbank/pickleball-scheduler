@@ -252,14 +252,29 @@ const IndividualRefereeBoardPage = lazy(() =>
 const IndividualExceptionCenterPage = lazy(() =>
   import("./features/tournament/experience-a1/pages/IndividualExceptionCenterPage.jsx")
 );
+const IndividualCommunicationsPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualCommunicationsPage.jsx")
+);
+const IndividualMediaPresentationPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualMediaPresentationPage.jsx")
+);
+const IndividualAwardsExperiencePage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualAwardsExperiencePage.jsx")
+);
+const IndividualCompleteTournamentPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualCompleteTournamentPage.jsx")
+);
+const IndividualPublicExperiencePage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualPublicExperiencePage.jsx")
+);
+const PublicTournamentExperienceLayout = lazy(() =>
+  import("./features/tournament/experience-a1/layouts/PublicTournamentExperienceLayout.jsx")
+);
 const TournamentWithdrawalPage = lazy(() =>
   import("./pages/tournament/TournamentWithdrawalPage.jsx")
 );
 const IndividualPlayerPortalPage = lazy(() =>
   import("./pages/tournament/IndividualPlayerPortalPage.jsx")
-);
-const IndividualTournamentPublicPage = lazy(() =>
-  import("./pages/tournament/IndividualTournamentPublicPage.jsx")
 );
 const TournamentPublishSchedulePage = lazy(() =>
   import("./pages/tournament/TournamentPublishSchedulePage.jsx")
@@ -493,6 +508,13 @@ export default function Router() {
 
             <Route path="/referee/:token" element={<RefereeScoreboard />} />
 
+            <Route element={<PublicTournamentExperienceLayout />}>
+              <Route
+                path="/tournament/:tournamentId/public"
+                element={<IndividualPublicExperiencePage />}
+              />
+            </Route>
+
             <Route element={<PublicLayout />}>
               <Route path="/" element={<PublicRootPage />} />
               <Route path="/home" element={<HomePage />} />
@@ -614,10 +636,6 @@ export default function Router() {
             <Route path="/tournament/my" element={<IndividualPlayerPortalPage />} />
             <Route path="/tournament/my/:tournamentId" element={<IndividualPlayerPortalPage />} />
             <Route
-              path="/tournament/:tournamentId/public"
-              element={<IndividualTournamentPublicPage />}
-            />
-            <Route
               path="/tournament/:tournamentId/overview"
               element={<IndividualOverviewPage />}
             />
@@ -684,6 +702,22 @@ export default function Router() {
             <Route
               path="/tournament/:tournamentId/exceptions"
               element={<IndividualExceptionCenterPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/communications"
+              element={<IndividualCommunicationsPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/media"
+              element={<IndividualMediaPresentationPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/awards"
+              element={<IndividualAwardsExperiencePage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/complete"
+              element={<IndividualCompleteTournamentPage />}
             />
             <Route
               path="/tournament/:tournamentId/register"

@@ -134,6 +134,30 @@ export function individualExceptionsPath(tournamentId, eventId = "") {
   return withEventQuery(`/tournament/${encodeURIComponent(id)}/exceptions`, eventId);
 }
 
+export function individualCommunicationsPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/communications`, eventId);
+}
+
+export function individualMediaPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/media`, eventId);
+}
+
+export function individualAwardsExperiencePath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/awards`, eventId);
+}
+
+export function individualCompletePath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/complete`, eventId);
+}
+
 export function a1LegacyHubPath() {
   return "/tournament?experience=legacy";
 }
