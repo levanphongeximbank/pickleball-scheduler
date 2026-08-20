@@ -9,6 +9,8 @@
 -- Reuses public.referee_assignments. Creates Competition audit +
 -- idempotency tables and competition_* assignment RPCs (CAS + atomic replace).
 -- Does NOT modify Adapter #16. Does NOT drop referee_assignments.
+-- Lifecycle scoring: last_event_sequence > 0 is NOT SCORING_ACTIVE.
+-- Canonical scoring evidence = numeric score > 0 OR Referee V5 rally history.
 --
 -- APPLY_TRANSACTION_MODEL=SINGLE_EXPLICIT_TRANSACTION
 -- Unique index is NOT CONCURRENTLY (safe inside a transaction).
@@ -385,6 +387,7 @@ declare
   v_mid text;
   v_daily jsonb;
   v_match jsonb;
+  v_scoring boolean := false;
 begin
   v_jwt_role := coalesce(auth.role(), '');
   if v_jwt_role is distinct from 'service_role' then
@@ -455,18 +458,77 @@ begin
   order by mls.updated_at desc nulls last
   limit 1;
 
+  -- Lifecycle precedence (highest wins; never downgrade):
+  --   COMPLETED > LOCKED > SCORING_ACTIVE > IN_PROGRESS > PRE_MATCH
+  -- SCORING_ACTIVE may only refine an otherwise IN_PROGRESS live row.
+  -- last_event_sequence > 0 alone is NOT scoring evidence.
   if v_live.id is not null then
     if v_live.status in ('completed', 'cancelled') then
       v_lifecycle := 'COMPLETED';
     elsif v_live.status in ('locked', 'paused', 'disputed') then
-      v_lifecycle := 'LOCKED';
+      if v_lifecycle is distinct from 'COMPLETED' then
+        v_lifecycle := 'LOCKED';
+      end if;
     elsif v_live.status in ('in_progress', 'game_break') then
-      if coalesce(v_live.last_event_sequence, 0) > 0
-         or coalesce(v_live.team_a_score, 0) > 0
-         or coalesce(v_live.team_b_score, 0) > 0 then
-        v_lifecycle := 'SCORING_ACTIVE';
-      else
+      if v_lifecycle not in ('COMPLETED', 'LOCKED') then
         v_lifecycle := 'IN_PROGRESS';
+        v_scoring := false;
+        if coalesce(v_live.team_a_score, 0) > 0
+           or coalesce(v_live.team_b_score, 0) > 0 then
+          v_scoring := true;
+        end if;
+        if v_scoring is not true and v_live.state_payload is not null then
+          begin
+            if coalesce((v_live.state_payload #>> '{teams,teamA,score}')::numeric, 0) > 0
+               or coalesce((v_live.state_payload #>> '{teams,teamB,score}')::numeric, 0) > 0
+               or coalesce((v_live.state_payload #>> '{teams,a,score}')::numeric, 0) > 0
+               or coalesce((v_live.state_payload #>> '{teams,b,score}')::numeric, 0) > 0
+               or coalesce((v_live.state_payload #>> '{scoreA}')::numeric, 0) > 0
+               or coalesce((v_live.state_payload #>> '{scoreB}')::numeric, 0) > 0 then
+              v_scoring := true;
+            end if;
+          exception when invalid_text_representation then
+            null;
+          end;
+        end if;
+        -- Referee V5 scoring history, bound to the authoritative live row
+        -- (tenant + tournament + match). START_MATCH / timeout / pause /
+        -- resume / SWITCH_ENDS are not scoring.
+        if v_scoring is not true then
+          v_scoring := exists (
+            select 1
+            from public.match_events me
+            where me.tenant_id = v_live.tenant_id
+              and me.tournament_id = v_live.tournament_id
+              and me.match_id = v_live.match_id
+              and (
+                upper(trim(coalesce(me.command_type, ''))) in (
+                  'TEAM_A_WON_RALLY', 'TEAM_B_WON_RALLY'
+                )
+                or upper(trim(coalesce(me.event_type, ''))) in (
+                  'TEAM_A_WON_RALLY', 'TEAM_B_WON_RALLY'
+                )
+                or exists (
+                  select 1
+                  from jsonb_array_elements_text(
+                    case
+                      when jsonb_typeof(coalesce(me.generated_events, '[]'::jsonb)) = 'array'
+                      then coalesce(me.generated_events, '[]'::jsonb)
+                      else '[]'::jsonb
+                    end
+                  ) ge(val)
+                  where upper(trim(ge.val)) in (
+                    'TEAM_A_WON_RALLY',
+                    'TEAM_B_WON_RALLY',
+                    'POINT_AWARDED'
+                  )
+                )
+              )
+          );
+        end if;
+        if v_scoring is true then
+          v_lifecycle := 'SCORING_ACTIVE';
+        end if;
       end if;
     elsif v_live.status = 'not_started' and v_lifecycle not in ('COMPLETED', 'LOCKED') then
       v_lifecycle := 'PRE_MATCH';
@@ -499,7 +561,7 @@ begin
     if v_mu.id is not null then
       if v_mu.status = 'completed' then
         v_lifecycle := 'COMPLETED';
-      elsif v_mu.status = 'locked' then
+      elsif v_mu.status = 'locked' and v_lifecycle is distinct from 'COMPLETED' then
         v_lifecycle := 'LOCKED';
       elsif v_mu.status = 'in_progress'
             and v_lifecycle not in ('COMPLETED', 'LOCKED', 'SCORING_ACTIVE') then
@@ -520,9 +582,11 @@ begin
           'completed', 'complete', 'finished', 'final', 'closed', 'cancelled'
         ) then
           v_lifecycle := 'COMPLETED';
-        elsif lower(coalesce(v_match->>'status', '')) in ('locked', 'suspended', 'paused') then
+        elsif lower(coalesce(v_match->>'status', '')) in ('locked', 'suspended', 'paused')
+              and v_lifecycle is distinct from 'COMPLETED' then
           v_lifecycle := 'LOCKED';
-        elsif lower(coalesce(v_match->>'status', '')) in ('scoring', 'scoring_active', 'score_entry') then
+        elsif lower(coalesce(v_match->>'status', '')) in ('scoring', 'scoring_active', 'score_entry')
+              and v_lifecycle = 'IN_PROGRESS' then
           v_lifecycle := 'SCORING_ACTIVE';
         elsif lower(coalesce(v_match->>'status', '')) in ('in_progress', 'active', 'started', 'live', 'playing')
               and v_lifecycle not in ('COMPLETED', 'LOCKED', 'SCORING_ACTIVE') then

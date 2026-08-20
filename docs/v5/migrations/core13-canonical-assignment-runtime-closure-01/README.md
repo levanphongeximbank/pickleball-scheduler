@@ -132,10 +132,20 @@ and must match this table after each authoring change.
 | File | SHA256 |
 |------|--------|
 | `01_PRECHECK.sql` | `c2879ba0a4a123c7b328a58bb98d3e16d6ed95a11ef06b6846bb3fd138a8fa25` |
-| `02_APPLY.sql` | `3734b9436928c88c8747023bb75fd5be83f6ee006df911c16572640da07419db` |
+| `02_APPLY.sql` | `4a98aa8c66491d4e2ee2c939118b6cf327f2a52e1248d2e5ed47f9b3d87f9ed3` |
 | `03_VERIFY.sql` | `b4886d61e9b7ec5a4e67afd81f96d50ae4447b30e8857b00026e45df7d401194` |
 | `04_ROLLBACK.sql` | `0b33233fcb7d51d4781d4a214c32a68737dd9367d53ae5e014bf42e5e5a73209` |
 | `05_STAGING_SQL_ACCEPTANCE.sql` | `661504f517e8bf4cda1988caa551bb56d317247e2628dadcf4dbfcd224cfee48` |
+| `06_STAGING_SURGICAL_LIFECYCLE_SCORING_PARITY.sql` | `35d418dba34fab93ba0e20d944feb1250d496ea522e92b199c27b62da51777b8` |
+| `07_STAGING_SURGICAL_LIFECYCLE_SCORING_PARITY_ROLLBACK.sql` | `638bce12d3b03eb2aa80fe1acb5c7605e21b5833e26c997fe24e8d783de8d66e` |
+
+Surgical Staging apply (Owner GO only, after exact-head CI): execute
+`06_STAGING_SURGICAL_LIFECYCLE_SCORING_PARITY.sql` **once** on
+`qyewbxjsiiyufanzcjcq`. Do **not** re-execute `02_APPLY.sql`.
+Do **not** execute rollback unless a later Owner GO is issued.
+
+Pre-apply Staging function definition SHA256 (pg_get_functiondef):
+`d0b889c963a73b9c1eefeebed2857e8b05060bff145634006fa3caad944f2345`
 
 ## Related docs
 

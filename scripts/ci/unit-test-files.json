@@ -504,6 +504,7 @@
   "tests/competition-engine-core13-live29-failure-remediation-01.test.js",
   "tests/competition-engine-core13-referee-v5-runtime-alignment-01.test.js",
   "tests/competition-engine-core13-replace-evidence-subject-01.test.js",
+  "tests/competition-engine-core13-sql-lifecycle-scoring-parity-01.test.js",
   "tests/competition-engine-e2e-04-player-referee-operations.test.js",
   "tests/competition-engine-e2e-05-public-experience.test.js",
   "tests/competition-engine-e2e-06-governance-reliability.test.js",
