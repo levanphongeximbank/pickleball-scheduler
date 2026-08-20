@@ -1,8 +1,8 @@
+import { useSearchParams } from "react-router-dom";
+
 import CanonicalTournamentPicker from "../components/CanonicalTournamentPicker.jsx";
 import {
   TOURNAMENT_ROUTES,
-  directorPath,
-  engineTabPath,
   individualPlayerRegistrationPath,
   isDirectorTournament,
   isEngineTournament,
@@ -13,7 +13,10 @@ import {
   teamTournamentPath,
   TEAM_TAB_QUERY,
 } from "../../../config/tournamentRoutes.js";
-import { getTournamentSetupPath } from "../../../utils/tournamentNavigation.js";
+import {
+  resolveOrganizeDestination,
+  resolveResultsDestination,
+} from "./canonicalTournamentHubDestinations.js";
 
 export function CanonicalTournamentRegisterPage() {
   return (
@@ -48,28 +51,19 @@ export function CanonicalTournamentRosterPage() {
 }
 
 export function CanonicalTournamentOrganizePage() {
+  const [searchParams] = useSearchParams();
+  const intent = searchParams.get("intent") || "";
   return (
     <CanonicalTournamentPicker
       title="Tổ chức & điều hành"
-      description="Chọn giải để mở setup, Engine 4.0 hoặc điều hành sân."
+      description="Chọn giải để mở Engine 4.0, hạt giống hoặc Director Mode."
       filter={(tournament) =>
         isEngineTournament(tournament) ||
         isDirectorTournament(tournament) ||
         isTeamTournament(tournament) ||
         isSchedulableTournament(tournament)
       }
-      resolvePath={(tournament) => {
-        if (isTeamTournament(tournament)) {
-          return teamTournamentPath(tournament.id, TEAM_TAB_QUERY.matchups);
-        }
-        if (isEngineTournament(tournament)) {
-          return engineTabPath(tournament.id, "engine");
-        }
-        if (isDirectorTournament(tournament)) {
-          return directorPath(tournament.id);
-        }
-        return getTournamentSetupPath(tournament);
-      }}
+      resolvePath={(tournament) => resolveOrganizeDestination(tournament, intent)}
       emptyHint="Chưa có giải để tổ chức."
     />
   );
@@ -97,21 +91,13 @@ export function CanonicalTournamentResultsPage() {
   return (
     <CanonicalTournamentPicker
       title="Kết quả"
-      description="Chọn giải để xem xếp hạng, kết quả và nhật ký vận hành."
+      description="Chọn giải để xem xếp hạng Engine hoặc bảng đồng đội."
       filter={(tournament) =>
         isEngineTournament(tournament) ||
         isTeamTournament(tournament) ||
         isIndividualTournament(tournament)
       }
-      resolvePath={(tournament) => {
-        if (isTeamTournament(tournament)) {
-          return teamTournamentPath(tournament.id, TEAM_TAB_QUERY.standings);
-        }
-        if (isEngineTournament(tournament)) {
-          return engineTabPath(tournament.id, "ranking");
-        }
-        return TOURNAMENT_ROUTES.resultsRankings;
-      }}
+      resolvePath={(tournament) => resolveResultsDestination(tournament)}
       emptyHint="Chưa có giải để xem kết quả."
     />
   );

@@ -168,7 +168,8 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
       pathOnly === "/tournament/organize" ||
       pathOnly === "/tournament/schedule" ||
       pathOnly === "/tournament/bracket" ||
-      pathOnly === "/select-players"
+      pathOnly.startsWith("/tournament/director/") ||
+      /^\/tournaments\/[^/]+\/(engine|seed|draw|schedule|courts)$/.test(pathOnly)
     );
   }
 
@@ -184,10 +185,8 @@ export function isNavItemActive(currentPath, item, resolvedPath) {
   if (item.match === "tournament-results-hub") {
     return (
       pathOnly === "/tournament/results" ||
-      (pathOnly === "/statistics" &&
-        (currentPath.includes("view=scoreboard") ||
-          currentPath.includes("view=rankings") ||
-          currentPath.includes("view=players")))
+      pathOnly === "/tournament/awards" ||
+      /^\/tournaments\/[^/]+\/ranking$/.test(pathOnly)
     );
   }
 
