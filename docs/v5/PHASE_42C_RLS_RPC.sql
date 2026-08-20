@@ -299,12 +299,14 @@ create policy idempotency_select on public.idempotency_requests
   using (actor_user_id = auth.uid() or public.phase42_is_platform_super_admin());
 
 -- No direct INSERT/UPDATE/DELETE policies for authenticated on business tables.
+-- Club-owned tables: RPC-only writes. TRUNCATE is not protected by RLS, so
+-- deny it at the table ACL for anon/authenticated (Wave5 Staging audit).
 revoke insert, update, delete on public.tenant_members from authenticated, anon;
-revoke insert, update, delete on public.clubs from authenticated, anon;
+revoke insert, update, delete, truncate on public.clubs from authenticated, anon;
 revoke insert, update, delete on public.athletes from authenticated, anon;
-revoke insert, update, delete on public.club_members from authenticated, anon;
-revoke insert, update, delete on public.club_governance_assignments from authenticated, anon;
-revoke insert, update, delete on public.club_membership_requests_v42 from authenticated, anon;
+revoke insert, update, delete, truncate on public.club_members from authenticated, anon;
+revoke insert, update, delete, truncate on public.club_governance_assignments from authenticated, anon;
+revoke insert, update, delete, truncate on public.club_membership_requests_v42 from authenticated, anon;
 revoke insert, update, delete on public.idempotency_requests from authenticated, anon;
 
 grant select on public.tenant_members to authenticated;

@@ -43,13 +43,32 @@ WHERE n.nspname = 'public'
   AND pol.polcmd IN ('a', 'w', 'd', '*');
 -- EXPECT: 0
 
--- D) Privileges unchanged (SELECT yes; INSERT/UPDATE/DELETE no for authenticated/anon)
+-- D) Privileges: SELECT yes for authenticated; INSERT/UPDATE/DELETE/TRUNCATE denied for authenticated/anon
 SELECT grantee, privilege_type
 FROM information_schema.role_table_grants
 WHERE table_schema = 'public'
   AND table_name = 'clubs'
   AND grantee IN ('authenticated', 'anon')
 ORDER BY grantee, privilege_type;
+
+SELECT
+  t.table_name,
+  has_table_privilege('anon', format('public.%I', t.table_name), 'INSERT') AS anon_insert,
+  has_table_privilege('anon', format('public.%I', t.table_name), 'UPDATE') AS anon_update,
+  has_table_privilege('anon', format('public.%I', t.table_name), 'DELETE') AS anon_delete,
+  has_table_privilege('anon', format('public.%I', t.table_name), 'TRUNCATE') AS anon_truncate,
+  has_table_privilege('authenticated', format('public.%I', t.table_name), 'INSERT') AS auth_insert,
+  has_table_privilege('authenticated', format('public.%I', t.table_name), 'UPDATE') AS auth_update,
+  has_table_privilege('authenticated', format('public.%I', t.table_name), 'DELETE') AS auth_delete,
+  has_table_privilege('authenticated', format('public.%I', t.table_name), 'TRUNCATE') AS auth_truncate
+FROM (
+  VALUES
+    ('clubs'),
+    ('club_members'),
+    ('club_governance_assignments'),
+    ('club_membership_requests_v42')
+) AS t(table_name);
+-- EXPECT: all INSERT/UPDATE/DELETE/TRUNCATE columns false
 
 -- E) Public catalog RPC still executable
 SELECT has_function_privilege(

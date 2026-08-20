@@ -1641,4 +1641,158 @@ test("Round 10 semantic search: pg_get_function_identity_arguments is not author
   assert.match(readPkg("00_README.md"), /PG_GET_FUNCTION_IDENTITY_ARGUMENTS_AUTHORITY_USES=0/);
 });
 
+const REMEDIATION_DIR = path.join(
+  process.cwd(),
+  "docs/platform-core-wave5-club-context-closure/staging-remediation"
+);
+
+function readRemediation(name) {
+  return fs.readFileSync(path.join(REMEDIATION_DIR, name), "utf8");
+}
+
+test("Wave5 Club TRUNCATE remediation package exists outside auto-migration path", () => {
+  for (const name of [
+    "00_README.md",
+    "01_PRECHECK_CLUB_TRUNCATE.sql",
+    "02_APPLY_CLUB_TRUNCATE.sql",
+    "03_VERIFY_CLUB_TRUNCATE.sql",
+    "04_ROLLBACK_DESIGN.md",
+  ]) {
+    assert.equal(fs.existsSync(path.join(REMEDIATION_DIR, name)), true, name);
+  }
+  assert.equal(REMEDIATION_DIR.includes("supabase"), false);
+  assert.equal(REMEDIATION_DIR.includes("migrations"), false);
+  const readme = readRemediation("00_README.md");
+  assert.match(readme, /TARGET=STAGING/);
+  assert.match(readme, /PROJECT_REF=qyewbxjsiiyufanzcjcq/);
+  assert.match(readme, /AUTHORIZED_MUTATION=REVOKE TRUNCATE ONLY/);
+  assert.match(readme, /AUTHORIZED_PRIVILEGE_EDGES=8/);
+  assert.match(readme, /PLATFORM_DEFAULT_TABLE_PRIVILEGE_HARDENING_GAP=OPEN_SEPARATE_SCOPE/);
+  assert.match(readme, /WAVE5_DEFAULT_ACL_MUTATION=NO/);
+});
+
+test("A. PHASE_42C revokes TRUNCATE from anon/authenticated on four Club tables", () => {
+  const src = fs.readFileSync(path.join(process.cwd(), "docs/v5/PHASE_42C_RLS_RPC.sql"), "utf8");
+  for (const table of [
+    "clubs",
+    "club_members",
+    "club_governance_assignments",
+    "club_membership_requests_v42",
+  ]) {
+    assert.match(
+      src,
+      new RegExp(
+        `revoke insert, update, delete, truncate on public\\.${table} from authenticated, anon`,
+        "i"
+      )
+    );
+  }
+  assert.doesNotMatch(
+    uncommented(src),
+    /revoke insert, update, delete, truncate on public\.tenant_members/i
+  );
+  assert.doesNotMatch(uncommented(src), /revoke[^\n]+from service_role/i);
+});
+
+test("B/C. clubs-RLS forward revokes TRUNCATE and post-apply verifies it", () => {
+  const forward = fs.readFileSync(
+    path.join(process.cwd(), "docs/clubs-rls-remediation-01/sql/10_CLUBS_RLS_REMEDIATION_01_FORWARD.sql"),
+    "utf8"
+  );
+  const post = fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "docs/clubs-rls-remediation-01/sql/20_CLUBS_RLS_REMEDIATION_01_POST_APPLY_VERIFY.sql"
+    ),
+    "utf8"
+  );
+  assert.match(forward, /REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public\.clubs/i);
+  assert.match(forward, /REVOKE TRUNCATE ON public\.club_members/i);
+  assert.match(forward, /REVOKE TRUNCATE ON public\.club_governance_assignments/i);
+  assert.match(forward, /REVOKE TRUNCATE ON public\.club_membership_requests_v42/i);
+  assert.match(post, /anon_truncate/);
+  assert.match(post, /auth_truncate/);
+  assert.match(uncommented(post), /has_table_privilege\('anon'/);
+});
+
+test("D-J. Wave5 narrow APPLY changes only TRUNCATE for four tables and two roles", () => {
+  const applySrc = readRemediation("02_APPLY_CLUB_TRUNCATE.sql");
+  const apply = uncommented(applySrc);
+  assert.match(apply, /REVOKE TRUNCATE ON TABLE/);
+  assert.match(apply, /public\.clubs/);
+  assert.match(apply, /public\.club_members/);
+  assert.match(apply, /public\.club_governance_assignments/);
+  assert.match(apply, /public\.club_membership_requests_v42/);
+  assert.match(apply, /FROM anon, authenticated/);
+  assert.equal((apply.match(/REVOKE/gi) || []).length, 1);
+  assert.doesNotMatch(apply, /\bGRANT\b/);
+  assert.doesNotMatch(apply, /service_role/);
+  assert.doesNotMatch(apply, /ALTER DEFAULT PRIVILEGES/i);
+  assert.doesNotMatch(apply, /\bALTER\s+TABLE\b/i);
+  assert.doesNotMatch(apply, /CREATE POLICY/i);
+  assert.doesNotMatch(apply, /DROP POLICY/i);
+  assert.doesNotMatch(apply, /ENABLE ROW LEVEL SECURITY/i);
+  assert.doesNotMatch(apply, /FORCE ROW LEVEL SECURITY/i);
+  assert.doesNotMatch(apply, /\bINSERT\s+INTO\b/i);
+  assert.doesNotMatch(apply, /\bUPDATE\s+public\./i);
+  assert.doesNotMatch(apply, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(apply, /\bTRUNCATE\s+(TABLE\s+)?(ONLY\s+)?public\./i);
+  const tableMatches =
+    apply.match(
+      /public\.(club_membership_requests_v42|club_governance_assignments|club_members|clubs)\b/g
+    ) || [];
+  assert.equal(new Set(tableMatches).size, 4);
+});
+
+test("G. service_role never appears as a REVOKE target in the truncate package", () => {
+  const apply = uncommented(readRemediation("02_APPLY_CLUB_TRUNCATE.sql"));
+  const precheck = uncommented(readRemediation("01_PRECHECK_CLUB_TRUNCATE.sql"));
+  const verify = uncommented(readRemediation("03_VERIFY_CLUB_TRUNCATE.sql"));
+  assert.doesNotMatch(apply, /REVOKE[\s\S]*FROM[\s\S]*service_role/i);
+  assert.doesNotMatch(apply, /ALTER DEFAULT PRIVILEGES/i);
+  assert.doesNotMatch(precheck, /ALTER DEFAULT PRIVILEGES/i);
+  assert.doesNotMatch(verify, /ALTER DEFAULT PRIVILEGES/i);
+});
+
+test("K/L. remediation PRECHECK and VERIFY are read-only", () => {
+  for (const name of ["01_PRECHECK_CLUB_TRUNCATE.sql", "03_VERIFY_CLUB_TRUNCATE.sql"]) {
+    const src = readRemediation(name);
+    const body = uncommented(src);
+    assert.doesNotMatch(body, /\bINSERT\s+INTO\b/i);
+    assert.doesNotMatch(body, /\bUPDATE\s+public\./i);
+    assert.doesNotMatch(body, /\bDELETE\s+FROM\b/i);
+    assert.doesNotMatch(body, /\bGRANT\b/i);
+    assert.doesNotMatch(body, /\bREVOKE\b/i);
+    assert.doesNotMatch(body, /\bALTER\s+(TABLE|FUNCTION|INDEX|ROLE)\b/i);
+    assert.doesNotMatch(body, /\bCREATE\s+(TABLE|INDEX|UNIQUE|FUNCTION|POLICY|ROLE)\b/i);
+    assert.doesNotMatch(body, /\bDROP\s+(TABLE|INDEX|FUNCTION|POLICY|ROLE)\b/i);
+    assert.doesNotMatch(body, /ALTER DEFAULT PRIVILEGES/i);
+    assert.doesNotMatch(body, /\bTRUNCATE\s+(TABLE\s+)?(ONLY\s+)?public\./i);
+  }
+  assert.match(readRemediation("01_PRECHECK_CLUB_TRUNCATE.sql"), /TRUNCATE_PRECHECK=PASS/);
+  assert.match(readRemediation("03_VERIFY_CLUB_TRUNCATE.sql"), /CLUB_TRUNCATE_REMEDIATION_VERIFY=PASS/);
+});
+
+test("M/N/O. full Wave5 PRECHECK still denies Club DML and OID comparator remains intact", () => {
+  const precheck = readPkg("01_PRECHECK.sql");
+  const body = uncommented(precheck);
+  assert.match(precheck, /DIRECT_CLUB_DML_ANON_REQUIRED=DENIED/);
+  assert.match(precheck, /DIRECT_CLUB_DML_AUTHENTICATED_REQUIRED=DENIED/);
+  assert.match(body, /has_table_privilege\('anon', format\('public\.%I', t\.table_name\), 'TRUNCATE'\)/);
+  assert.match(
+    body,
+    /has_table_privilege\('authenticated', format\('public\.%I', t\.table_name\), 'TRUNCATE'\)/
+  );
+  assert.match(precheck, /UNKNOWN_OVERLOAD_AUTHORITY=OID/);
+  assert.match(body, /to_regprocedure\(approved\.sig\)::oid = p\.oid/);
+  assert.match(readPkg("00_README.md"), /PG_GET_FUNCTION_IDENTITY_ARGUMENTS_AUTHORITY_USES=0/);
+});
+
+test("Wave5 truncate rollback design forbids auto re-grant", () => {
+  const rollback = readRemediation("04_ROLLBACK_DESIGN.md");
+  assert.match(rollback, /AUTO_REGRANT_TRUNCATE_ON_VERIFY_FAILURE=NO/);
+  assert.match(rollback, /GRANT TRUNCATE/);
+  assert.match(rollback, /not\*\* the preferred rollback|not the preferred rollback/i);
+});
+
 
