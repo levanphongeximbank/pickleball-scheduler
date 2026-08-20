@@ -22,6 +22,10 @@ import { REFEREE_ROLE_CODE } from "../../../../../competition-core/referee-assig
 import { ASSIGNMENT_COMMAND_ERROR_CODE } from "../constants.js";
 import { failAssignmentCommand } from "../errors.js";
 import { normalizeAssignmentLifecycleState } from "../evaluateLifecycleGate.js";
+import { classifyCanonicalScoringActivity } from "../classifyCanonicalScoringActivity.js";
+import { isRefereeAdapterContractError } from "../../../../integration/referee/errors.js";
+import { REFEREE_ADAPTER_ERROR_CODE } from "../../../../integration/referee/constants.js";
+import { listCanonicalRefereeMatchEvents } from "../../../../integration/referee/createLiveRpcCanonicalRefereeDurableDriver.js";
 import { extractCanonicalMatchIndex } from "./loadCanonicalCompetitionModeState.js";
 import { createIdentityBackedRefereeDirectoryPort } from "./createIdentityBackedRefereeDirectoryPort.js";
 import { createTrustedServerIdentityAccessAdapter } from "./createTrustedServerIdentityAccessAdapter.js";
@@ -38,14 +42,90 @@ import {
   projectMatchScheduleFromAdapterB,
 } from "./projectMatchScheduleFromAdapterB.js";
 
-function mapLiveStatus(row) {
+function failClosedScoringEvidence(details = {}) {
+  failAssignmentCommand(
+    ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+    "Canonical Referee V5 scoring-event evidence is required and could not be read",
+    details
+  );
+}
+
+function mapLiveStatus(row, scoring) {
   if (!row) return { raw: "PRE_MATCH", scoringActive: false };
   const status = String(row.status || "").toLowerCase();
-  const scoringActive =
-    Number(row.last_event_sequence || 0) > 0 ||
-    Number(row.team_a_score || 0) > 0 ||
-    Number(row.team_b_score || 0) > 0;
-  return { raw: status, scoringActive };
+  return {
+    raw: status,
+    scoringActive: scoring?.scoringActive === true,
+  };
+}
+
+async function loadCanonicalScoringActivity({
+  serviceClient,
+  tenantId,
+  tournamentId,
+  matchId,
+  live,
+  rawLifecycle,
+}) {
+  const needsScoringHint =
+    rawLifecycle === "IN_PROGRESS" || rawLifecycle === "SCORING_ACTIVE";
+  if (!live || needsScoringHint !== true) {
+    return classifyCanonicalScoringActivity({
+      liveRow: live,
+      events: [],
+      eventsReadable: true,
+    });
+  }
+
+  const numeric = classifyCanonicalScoringActivity({
+    liveRow: live,
+    events: [],
+    eventsReadable: true,
+  });
+  if (numeric.numericScore === true) {
+    return numeric;
+  }
+  if (numeric.evidenceRequired !== true) {
+    return numeric;
+  }
+
+  let events;
+  try {
+    events = await listCanonicalRefereeMatchEvents(serviceClient, {
+      tenantId,
+      tournamentId,
+      competitionId: tournamentId,
+      matchId,
+    });
+  } catch (err) {
+    if (
+      isRefereeAdapterContractError(err) &&
+      err.code === REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED
+    ) {
+      failClosedScoringEvidence({
+        matchId,
+        tournamentId,
+        tenantId,
+        durableReadFailed: true,
+      });
+    }
+    throw err;
+  }
+
+  const classified = classifyCanonicalScoringActivity({
+    liveRow: live,
+    events,
+    eventsReadable: true,
+  });
+  if (classified.evidenceRequired === true && events.length === 0) {
+    failClosedScoringEvidence({
+      matchId,
+      tournamentId,
+      tenantId,
+      eventCount: 0,
+    });
+  }
+  return classified;
 }
 
 async function loadTournamentRows(serviceClient, tenantId) {
@@ -193,7 +273,9 @@ export async function loadAuthoritativeAssignmentEvidence(input = {}) {
 
   const { data: liveRows } = await serviceClient
     .from("match_live_states")
-    .select("status, last_event_sequence, team_a_score, team_b_score, updated_at, tournament_id, tenant_id")
+    .select(
+      "status, last_event_sequence, team_a_score, team_b_score, state_payload, updated_at, tournament_id, tenant_id"
+    )
     .eq("tenant_id", tenantId)
     .eq("match_id", matchId)
     .order("updated_at", { ascending: false })
@@ -223,7 +305,18 @@ export async function loadAuthoritativeAssignmentEvidence(input = {}) {
     }
   }
 
-  const liveMapped = mapLiveStatus(live);
+  const rawLifecycle = normalizeAssignmentLifecycleState(
+    live ? live.status : "PRE_MATCH"
+  );
+  const scoring = await loadCanonicalScoringActivity({
+    serviceClient,
+    tenantId,
+    tournamentId,
+    matchId,
+    live,
+    rawLifecycle,
+  });
+  const liveMapped = mapLiveStatus(live, scoring);
   let lifecycleState = normalizeAssignmentLifecycleState(liveMapped.raw, {
     scoringActive: liveMapped.scoringActive,
   });

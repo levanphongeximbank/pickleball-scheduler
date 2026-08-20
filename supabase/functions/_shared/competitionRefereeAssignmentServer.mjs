@@ -3968,6 +3968,99 @@ function assertAssignmentCommandAuthz(command = {}, ctx = {}) {
   });
 }
 
+// src/features/competition-engine/operations/referee/assignment/classifyCanonicalScoringActivity.js
+var EVENT_SEQUENCE_ALONE_AS_SCORING_ACTIVE = "DENY";
+var SCORING_ACTIVE_REFINEMENT_ONLY_FOR_IN_PROGRESS = "YES";
+var CANONICAL_SCORING_COMMAND_TYPES = Object.freeze([
+  "TEAM_A_WON_RALLY",
+  "TEAM_B_WON_RALLY"
+]);
+var CANONICAL_SCORING_DOMAIN_EVENT_TYPES = Object.freeze([
+  "POINT_AWARDED"
+]);
+function upper(value) {
+  return String(value || "").trim().toUpperCase();
+}
+function eventCommandType(event = {}) {
+  return upper(
+    event.commandType || event.command_type || event.eventType || event.event_type || event.type
+  );
+}
+function generatedEventTypes(event = {}) {
+  const raw = event.generatedEvents || event.generated_events || [];
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item) => upper(item)).filter(Boolean);
+}
+function eventHasCanonicalScoringActivity(event = {}) {
+  const command = eventCommandType(event);
+  if (CANONICAL_SCORING_COMMAND_TYPES.includes(command)) return true;
+  return generatedEventTypes(event).some(
+    (type) => CANONICAL_SCORING_COMMAND_TYPES.includes(type) || CANONICAL_SCORING_DOMAIN_EVENT_TYPES.includes(type)
+  );
+}
+function eventsHaveCanonicalScoringActivity(events = []) {
+  return (events || []).some((event) => eventHasCanonicalScoringActivity(event));
+}
+function readCanonicalLiveScores(row = null) {
+  if (!row) return { teamA: 0, teamB: 0 };
+  const payload = row.state_payload || row.statePayload || row.payload || {};
+  const teams = payload.teams || {};
+  const columnA = Number(row.team_a_score ?? row.teamAScore ?? 0);
+  const columnB = Number(row.team_b_score ?? row.teamBScore ?? 0);
+  const payloadA = Number(
+    teams.teamA?.score ?? teams.a?.score ?? payload.scoreA ?? 0
+  );
+  const payloadB = Number(
+    teams.teamB?.score ?? teams.b?.score ?? payload.scoreB ?? 0
+  );
+  return {
+    teamA: Math.max(
+      Number.isFinite(columnA) ? columnA : 0,
+      Number.isFinite(payloadA) ? payloadA : 0
+    ),
+    teamB: Math.max(
+      Number.isFinite(columnB) ? columnB : 0,
+      Number.isFinite(payloadB) ? payloadB : 0
+    )
+  };
+}
+function hasCanonicalNumericScore(row = null) {
+  const scores = readCanonicalLiveScores(row);
+  return scores.teamA > 0 || scores.teamB > 0;
+}
+function classifyCanonicalScoringActivity(input = {}) {
+  const liveRow = input.liveRow || null;
+  const events = Array.isArray(input.events) ? input.events : [];
+  const eventsReadable = input.eventsReadable !== false;
+  const sequence = Number(
+    liveRow?.last_event_sequence ?? liveRow?.lastEventSequence ?? 0
+  );
+  const numericScore = hasCanonicalNumericScore(liveRow);
+  const scoringCommand = eventsHaveCanonicalScoringActivity(events);
+  const scoringActive = numericScore === true || scoringCommand === true;
+  const evidenceRequired = Boolean(liveRow) && numericScore !== true && Number.isFinite(sequence) && sequence > 0;
+  if (evidenceRequired && eventsReadable !== true) {
+    return Object.freeze({
+      scoringActive: null,
+      evidenceRequired: true,
+      evidenceAvailable: false,
+      numericScore,
+      scoringCommand: false,
+      sequence: Number.isFinite(sequence) ? sequence : 0,
+      EVENT_SEQUENCE_ALONE_AS_SCORING_ACTIVE
+    });
+  }
+  return Object.freeze({
+    scoringActive,
+    evidenceRequired,
+    evidenceAvailable: evidenceRequired ? eventsReadable === true : true,
+    numericScore,
+    scoringCommand,
+    sequence: Number.isFinite(sequence) ? sequence : 0,
+    EVENT_SEQUENCE_ALONE_AS_SCORING_ACTIVE
+  });
+}
+
 // src/features/competition-engine/operations/referee/assignment/evaluateLifecycleGate.js
 var PRE_MATCH_ALIASES = /* @__PURE__ */ new Set([
   "PRE_MATCH",
@@ -3998,23 +4091,23 @@ var COMPLETED_ALIASES = /* @__PURE__ */ new Set([
   "CLOSED"
 ]);
 function normalizeAssignmentLifecycleState(raw, hints = {}) {
-  if (hints.scoringActive === true) {
-    return ASSIGNMENT_LIFECYCLE_STATE.SCORING_ACTIVE;
-  }
   const value = String(raw || "").trim().toUpperCase().replace(/\s+/g, "_");
   if (!value) return ASSIGNMENT_LIFECYCLE_STATE.PRE_MATCH;
-  if (SCORING_ACTIVE_ALIASES.has(value)) {
-    return ASSIGNMENT_LIFECYCLE_STATE.SCORING_ACTIVE;
-  }
-  if (IN_PROGRESS_ALIASES.has(value)) {
-    return ASSIGNMENT_LIFECYCLE_STATE.IN_PROGRESS;
-  }
   if (LOCKED_ALIASES.has(value)) return ASSIGNMENT_LIFECYCLE_STATE.LOCKED;
   if (COMPLETED_ALIASES.has(value)) {
     return ASSIGNMENT_LIFECYCLE_STATE.COMPLETED;
   }
   if (PRE_MATCH_ALIASES.has(value)) {
     return ASSIGNMENT_LIFECYCLE_STATE.PRE_MATCH;
+  }
+  if (SCORING_ACTIVE_ALIASES.has(value)) {
+    return ASSIGNMENT_LIFECYCLE_STATE.SCORING_ACTIVE;
+  }
+  if (IN_PROGRESS_ALIASES.has(value)) {
+    if (hints.scoringActive === true && SCORING_ACTIVE_REFINEMENT_ONLY_FOR_IN_PROGRESS === "YES") {
+      return ASSIGNMENT_LIFECYCLE_STATE.SCORING_ACTIVE;
+    }
+    return ASSIGNMENT_LIFECYCLE_STATE.IN_PROGRESS;
   }
   return ASSIGNMENT_LIFECYCLE_STATE.LOCKED;
 }
@@ -5356,12 +5449,12 @@ function normalizeRole(role) {
   if (LEGACY_ROLE_ALIASES[value]) {
     return LEGACY_ROLE_ALIASES[value];
   }
-  const upper = value.toUpperCase();
-  if (LEGACY_ROLE_ALIASES[upper]) {
-    return LEGACY_ROLE_ALIASES[upper];
+  const upper2 = value.toUpperCase();
+  if (LEGACY_ROLE_ALIASES[upper2]) {
+    return LEGACY_ROLE_ALIASES[upper2];
   }
-  if (CANONICAL_ROLES.includes(upper)) {
-    return upper;
+  if (CANONICAL_ROLES.includes(upper2)) {
+    return upper2;
   }
   return value;
 }
@@ -7799,6 +7892,234 @@ function createTrustedServerIdentityAccessAdapter(options = {}) {
   });
 }
 
+// src/features/competition-engine/integration/referee/constants.js
+var COMPETITION_REFEREE_ADAPTER_CONTRACT_ID = "competition.referee.adapter.v1";
+var COMPETITION_REFEREE_ADAPTER_CONTRACT_VERSION = "1.0.0";
+var COMPETITION_REFEREE_MODE = Object.freeze({
+  DAILY_PLAY: "DAILY_PLAY",
+  INTERNAL: "INTERNAL",
+  OFFICIAL: "OFFICIAL",
+  TEAM: "TEAM"
+});
+var COMPETITION_REFEREE_MODE_VALUES = Object.freeze(
+  Object.values(COMPETITION_REFEREE_MODE)
+);
+var COMPETITION_REFEREE_MODE_TO_TYPE = Object.freeze({
+  DAILY_PLAY: "daily_play",
+  INTERNAL: "internal_tournament",
+  OFFICIAL: "official_tournament",
+  TEAM: "team_tournament"
+});
+var COMPETITION_TYPE_TO_REFEREE_MODE = Object.freeze({
+  daily_play: "DAILY_PLAY",
+  internal_tournament: "INTERNAL",
+  official_tournament: "OFFICIAL",
+  team_tournament: "TEAM"
+});
+var REFEREE_ADAPTER_REQUIRED_METHODS = Object.freeze([
+  "getCompetitionContext",
+  "getMatchContext",
+  "getParticipants",
+  "getScoringRules",
+  "getLifecyclePolicy",
+  "getCapabilities",
+  "validatePreStart",
+  "resolveResultPropagation"
+]);
+var REFEREE_ADAPTER_FORBIDDEN_METHODS = Object.freeze([
+  "assignReferee",
+  "persistAssignment",
+  "authorizeReferee",
+  "resolveRefereeIdentity",
+  "applyMatchTransition",
+  "completeMatch",
+  "recordPoint",
+  "calculateScore",
+  "persistScore",
+  "acceptResult",
+  "correctResult",
+  "persistResult",
+  "appendMatchEvent",
+  "persistEvent",
+  "reviseResult"
+]);
+var REFEREE_ADAPTER_FORBIDDEN_AUTHORITY_KEYS = Object.freeze([
+  "scoringEngine",
+  "lifecycleEngine",
+  "resultEngine",
+  "refereeIdentityAuthority",
+  "assignmentPersistence"
+]);
+var CANONICAL_REFEREE_PERSISTENCE_TABLES = Object.freeze({
+  ASSIGNMENTS: "referee_assignments",
+  LIVE_STATES: "match_live_states",
+  EVENTS: "match_events",
+  RESULT_REVISIONS: "match_result_revisions",
+  SYNC_MUTATIONS: "match_sync_mutations"
+});
+var CANONICAL_REFEREE_AUTHORITY = Object.freeze({
+  IDENTITY: "auth.uid",
+  ASSIGNMENT: "CORE-13",
+  LIFECYCLE: "CORE-15",
+  SCORING: "CORE-16",
+  EVENT: "append-only match_events + CORE-16 commands",
+  RESULT: "CORE-17 accepted active result"
+});
+var REFEREE_ADAPTER_ERROR_CODE = Object.freeze({
+  UNKNOWN_MODE: "REFEREE_ADAPTER_UNKNOWN_MODE",
+  UNKNOWN_MATCH: "REFEREE_ADAPTER_UNKNOWN_MATCH",
+  MALFORMED_CONTEXT: "REFEREE_ADAPTER_MALFORMED_CONTEXT",
+  MISSING_SCORING_RULES: "REFEREE_ADAPTER_MISSING_SCORING_RULES",
+  CROSS_TENANT_CONTEXT: "REFEREE_ADAPTER_CROSS_TENANT_CONTEXT",
+  INCOMPATIBLE_CONTRACT_VERSION: "REFEREE_ADAPTER_INCOMPATIBLE_CONTRACT_VERSION",
+  MALFORMED_ADAPTER: "REFEREE_ADAPTER_MALFORMED_ADAPTER",
+  DUPLICATE_MODE: "REFEREE_ADAPTER_DUPLICATE_MODE",
+  DIRECT_SCORE_AUTHORITY_FORBIDDEN: "REFEREE_ADAPTER_DIRECT_SCORE_AUTHORITY_FORBIDDEN",
+  DIRECT_RESULT_AUTHORITY_FORBIDDEN: "REFEREE_ADAPTER_DIRECT_RESULT_AUTHORITY_FORBIDDEN",
+  DIRECT_REFEREE_AUTHORITY_FORBIDDEN: "REFEREE_ADAPTER_DIRECT_REFEREE_AUTHORITY_FORBIDDEN",
+  REGISTRY_FROZEN: "REFEREE_ADAPTER_REGISTRY_FROZEN",
+  STALE_WRITE: "REFEREE_ADAPTER_STALE_WRITE",
+  MISSING_IDEMPOTENCY: "REFEREE_ADAPTER_MISSING_IDEMPOTENCY",
+  IDEMPOTENCY_CONFLICT: "REFEREE_ADAPTER_IDEMPOTENCY_CONFLICT",
+  MISSING_CANONICAL_IDENTITY: "REFEREE_ADAPTER_MISSING_CANONICAL_IDENTITY",
+  FUZZY_IDENTITY_FORBIDDEN: "REFEREE_ADAPTER_FUZZY_IDENTITY_FORBIDDEN",
+  PROPAGATION_REQUIRES_ACCEPTED_RESULT: "REFEREE_ADAPTER_PROPAGATION_REQUIRES_ACCEPTED_RESULT",
+  DURABLE_DEPENDENCY_REQUIRED: "REFEREE_ADAPTER_DURABLE_DEPENDENCY_REQUIRED",
+  IN_MEMORY_PRODUCTION_FORBIDDEN: "REFEREE_ADAPTER_IN_MEMORY_PRODUCTION_FORBIDDEN",
+  UNOFFICIAL_RESULT_FORBIDDEN: "REFEREE_ADAPTER_UNOFFICIAL_RESULT_FORBIDDEN",
+  ASSIGNMENT_REQUIRED: "REFEREE_ADAPTER_ASSIGNMENT_REQUIRED",
+  APPEND_ONLY_VIOLATION: "REFEREE_ADAPTER_APPEND_ONLY_VIOLATION"
+});
+var REFEREE_ADAPTER_ERROR_CODE_VALUES = Object.freeze(
+  Object.values(REFEREE_ADAPTER_ERROR_CODE)
+);
+var REFEREE_V5_INTERNAL_COMMIT_RPC = Object.freeze({
+  GET_MATCH_STATE: "referee_v5_get_match_state",
+  COMMIT_TRANSITION: "referee_v5_commit_match_transition",
+  COMMIT_FINALIZATION: "referee_v5_commit_match_finalization",
+  MATCH_STATE_ID: "referee_v5_match_state_id",
+  CURRENT_USER_HAS_ASSIGNMENT: "referee_v5_current_user_has_assignment"
+});
+var CANONICAL_RESULT_LINEAGE = Object.freeze({
+  ACTIVE: "ACTIVE",
+  SUPERSEDED: "SUPERSEDED"
+});
+var LIVE_RESULT_STATUS = Object.freeze({
+  CONFIRMED: "confirmed",
+  OVERRIDDEN: "overridden",
+  DRAFT: "draft",
+  VOID: "void"
+});
+
+// src/features/competition-engine/integration/referee/errors.js
+var RefereeAdapterContractError = class extends Error {
+  /**
+   * @param {string} code
+   * @param {string} message
+   * @param {Record<string, unknown>} [details]
+   */
+  constructor(code, message, details = {}) {
+    super(message);
+    this.name = "RefereeAdapterContractError";
+    this.code = typeof code === "string" && code.trim() ? code.trim() : REFEREE_ADAPTER_ERROR_CODE.MALFORMED_ADAPTER;
+    this.failClosed = true;
+    this.details = Object.freeze({ ...details });
+  }
+};
+function isRefereeAdapterContractError(err) {
+  return err instanceof RefereeAdapterContractError || Boolean(err) && typeof err === "object" && /** @type {{ name?: unknown }} */
+  err.name === "RefereeAdapterContractError" && typeof /** @type {{ code?: unknown }} */
+  err.code === "string";
+}
+function failRefereeAdapter(code, message, details) {
+  throw new RefereeAdapterContractError(code, message, details);
+}
+
+// src/features/competition-engine/integration/referee/helpers.js
+function isNonEmptyString4(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+function isPlainObject5(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+function deepFreeze3(value) {
+  if (value === null || typeof value !== "object") return value;
+  if (Object.isFrozen(value)) return value;
+  for (const key of Reflect.ownKeys(value)) {
+    const child = (
+      /** @type {Record<string|symbol, unknown>} */
+      value[key]
+    );
+    if (child && typeof child === "object") deepFreeze3(child);
+  }
+  return Object.freeze(value);
+}
+function clonePlain2(value) {
+  return structuredClone(value);
+}
+function freezeClone2(value) {
+  return deepFreeze3(clonePlain2(value));
+}
+function matchStateId(tenantId, competitionId, matchId) {
+  return `${tenantId}::${competitionId}::${matchId}`;
+}
+
+// src/features/competition-engine/integration/referee/createLiveRpcCanonicalRefereeDurableDriver.js
+function mapEventRow(row) {
+  return freezeClone2({
+    table: CANONICAL_REFEREE_PERSISTENCE_TABLES.EVENTS,
+    id: row.id,
+    tenantId: row.tenant_id,
+    competitionId: row.tournament_id,
+    matchId: row.match_id,
+    matchStateId: row.match_state_id,
+    eventSequence: Number(row.event_sequence),
+    eventType: row.event_type,
+    commandType: row.command_type || row.event_type,
+    generatedEvents: Array.isArray(row.generated_events) ? row.generated_events : [],
+    payload: row.payload,
+    stateVersionBefore: row.state_version_before,
+    stateVersionAfter: row.state_version_after,
+    actorId: row.actor_id,
+    idempotencyKey: row.idempotency_key,
+    appendOnly: true
+  });
+}
+async function listCanonicalRefereeMatchEvents(fromClient, scope = {}) {
+  if (!fromClient || typeof fromClient.from !== "function") {
+    failRefereeAdapter(
+      REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED,
+      "Canonical match_events reader requires from()",
+      {}
+    );
+  }
+  const tenantId = String(scope.tenantId || "").trim();
+  const competitionId = String(
+    scope.competitionId || scope.tournamentId || ""
+  ).trim();
+  const matchId = String(scope.matchId || "").trim();
+  const id = matchStateId(tenantId, competitionId, matchId);
+  const { data, error } = await fromClient.from(CANONICAL_REFEREE_PERSISTENCE_TABLES.EVENTS).select(
+    "id, tenant_id, tournament_id, match_id, match_state_id, event_sequence, event_type, command_type, generated_events, payload, state_version_before, state_version_after, actor_id, idempotency_key"
+  ).eq("tenant_id", tenantId).eq("tournament_id", competitionId).eq("match_id", matchId).eq("match_state_id", id).order("event_sequence", { ascending: true });
+  if (error) {
+    failRefereeAdapter(
+      REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED,
+      error.message || "Failed to list match_events",
+      {
+        tenantId,
+        tournamentId: competitionId,
+        matchId
+      }
+    );
+  }
+  return Object.freeze(
+    (data || []).filter(
+      (row) => String(row.tenant_id || "") === tenantId && String(row.tournament_id || "") === competitionId && String(row.match_id || "") === matchId && String(row.match_state_id || "") === id
+    ).map(mapEventRow)
+  );
+}
+
 // src/features/competition-engine/operations/referee/assignment/server/createIdentityBackedRefereeDirectoryPort.js
 var CONTRACT_01_ID = IDENTITY_ACCESS_CONTRACT.contractId;
 var CONTRACT_01_CURRENT_METHODS = Object.freeze([
@@ -8002,149 +8323,6 @@ function createRequiredMissingAvailabilitySnapshot() {
   return createMissingSnapshotResult(
     "Required availability evidence is unavailable; fail closed"
   );
-}
-
-// src/features/competition-engine/integration/referee/constants.js
-var COMPETITION_REFEREE_ADAPTER_CONTRACT_ID = "competition.referee.adapter.v1";
-var COMPETITION_REFEREE_ADAPTER_CONTRACT_VERSION = "1.0.0";
-var COMPETITION_REFEREE_MODE = Object.freeze({
-  DAILY_PLAY: "DAILY_PLAY",
-  INTERNAL: "INTERNAL",
-  OFFICIAL: "OFFICIAL",
-  TEAM: "TEAM"
-});
-var COMPETITION_REFEREE_MODE_VALUES = Object.freeze(
-  Object.values(COMPETITION_REFEREE_MODE)
-);
-var COMPETITION_REFEREE_MODE_TO_TYPE = Object.freeze({
-  DAILY_PLAY: "daily_play",
-  INTERNAL: "internal_tournament",
-  OFFICIAL: "official_tournament",
-  TEAM: "team_tournament"
-});
-var COMPETITION_TYPE_TO_REFEREE_MODE = Object.freeze({
-  daily_play: "DAILY_PLAY",
-  internal_tournament: "INTERNAL",
-  official_tournament: "OFFICIAL",
-  team_tournament: "TEAM"
-});
-var REFEREE_ADAPTER_REQUIRED_METHODS = Object.freeze([
-  "getCompetitionContext",
-  "getMatchContext",
-  "getParticipants",
-  "getScoringRules",
-  "getLifecyclePolicy",
-  "getCapabilities",
-  "validatePreStart",
-  "resolveResultPropagation"
-]);
-var REFEREE_ADAPTER_FORBIDDEN_METHODS = Object.freeze([
-  "assignReferee",
-  "persistAssignment",
-  "authorizeReferee",
-  "resolveRefereeIdentity",
-  "applyMatchTransition",
-  "completeMatch",
-  "recordPoint",
-  "calculateScore",
-  "persistScore",
-  "acceptResult",
-  "correctResult",
-  "persistResult",
-  "appendMatchEvent",
-  "persistEvent",
-  "reviseResult"
-]);
-var REFEREE_ADAPTER_FORBIDDEN_AUTHORITY_KEYS = Object.freeze([
-  "scoringEngine",
-  "lifecycleEngine",
-  "resultEngine",
-  "refereeIdentityAuthority",
-  "assignmentPersistence"
-]);
-var CANONICAL_REFEREE_PERSISTENCE_TABLES = Object.freeze({
-  ASSIGNMENTS: "referee_assignments",
-  LIVE_STATES: "match_live_states",
-  EVENTS: "match_events",
-  RESULT_REVISIONS: "match_result_revisions",
-  SYNC_MUTATIONS: "match_sync_mutations"
-});
-var CANONICAL_REFEREE_AUTHORITY = Object.freeze({
-  IDENTITY: "auth.uid",
-  ASSIGNMENT: "CORE-13",
-  LIFECYCLE: "CORE-15",
-  SCORING: "CORE-16",
-  EVENT: "append-only match_events + CORE-16 commands",
-  RESULT: "CORE-17 accepted active result"
-});
-var REFEREE_ADAPTER_ERROR_CODE = Object.freeze({
-  UNKNOWN_MODE: "REFEREE_ADAPTER_UNKNOWN_MODE",
-  UNKNOWN_MATCH: "REFEREE_ADAPTER_UNKNOWN_MATCH",
-  MALFORMED_CONTEXT: "REFEREE_ADAPTER_MALFORMED_CONTEXT",
-  MISSING_SCORING_RULES: "REFEREE_ADAPTER_MISSING_SCORING_RULES",
-  CROSS_TENANT_CONTEXT: "REFEREE_ADAPTER_CROSS_TENANT_CONTEXT",
-  INCOMPATIBLE_CONTRACT_VERSION: "REFEREE_ADAPTER_INCOMPATIBLE_CONTRACT_VERSION",
-  MALFORMED_ADAPTER: "REFEREE_ADAPTER_MALFORMED_ADAPTER",
-  DUPLICATE_MODE: "REFEREE_ADAPTER_DUPLICATE_MODE",
-  DIRECT_SCORE_AUTHORITY_FORBIDDEN: "REFEREE_ADAPTER_DIRECT_SCORE_AUTHORITY_FORBIDDEN",
-  DIRECT_RESULT_AUTHORITY_FORBIDDEN: "REFEREE_ADAPTER_DIRECT_RESULT_AUTHORITY_FORBIDDEN",
-  DIRECT_REFEREE_AUTHORITY_FORBIDDEN: "REFEREE_ADAPTER_DIRECT_REFEREE_AUTHORITY_FORBIDDEN",
-  REGISTRY_FROZEN: "REFEREE_ADAPTER_REGISTRY_FROZEN",
-  STALE_WRITE: "REFEREE_ADAPTER_STALE_WRITE",
-  MISSING_IDEMPOTENCY: "REFEREE_ADAPTER_MISSING_IDEMPOTENCY",
-  IDEMPOTENCY_CONFLICT: "REFEREE_ADAPTER_IDEMPOTENCY_CONFLICT",
-  MISSING_CANONICAL_IDENTITY: "REFEREE_ADAPTER_MISSING_CANONICAL_IDENTITY",
-  FUZZY_IDENTITY_FORBIDDEN: "REFEREE_ADAPTER_FUZZY_IDENTITY_FORBIDDEN",
-  PROPAGATION_REQUIRES_ACCEPTED_RESULT: "REFEREE_ADAPTER_PROPAGATION_REQUIRES_ACCEPTED_RESULT",
-  DURABLE_DEPENDENCY_REQUIRED: "REFEREE_ADAPTER_DURABLE_DEPENDENCY_REQUIRED",
-  IN_MEMORY_PRODUCTION_FORBIDDEN: "REFEREE_ADAPTER_IN_MEMORY_PRODUCTION_FORBIDDEN",
-  UNOFFICIAL_RESULT_FORBIDDEN: "REFEREE_ADAPTER_UNOFFICIAL_RESULT_FORBIDDEN",
-  ASSIGNMENT_REQUIRED: "REFEREE_ADAPTER_ASSIGNMENT_REQUIRED",
-  APPEND_ONLY_VIOLATION: "REFEREE_ADAPTER_APPEND_ONLY_VIOLATION"
-});
-var REFEREE_ADAPTER_ERROR_CODE_VALUES = Object.freeze(
-  Object.values(REFEREE_ADAPTER_ERROR_CODE)
-);
-var REFEREE_V5_INTERNAL_COMMIT_RPC = Object.freeze({
-  GET_MATCH_STATE: "referee_v5_get_match_state",
-  COMMIT_TRANSITION: "referee_v5_commit_match_transition",
-  COMMIT_FINALIZATION: "referee_v5_commit_match_finalization",
-  MATCH_STATE_ID: "referee_v5_match_state_id",
-  CURRENT_USER_HAS_ASSIGNMENT: "referee_v5_current_user_has_assignment"
-});
-var CANONICAL_RESULT_LINEAGE = Object.freeze({
-  ACTIVE: "ACTIVE",
-  SUPERSEDED: "SUPERSEDED"
-});
-var LIVE_RESULT_STATUS = Object.freeze({
-  CONFIRMED: "confirmed",
-  OVERRIDDEN: "overridden",
-  DRAFT: "draft",
-  VOID: "void"
-});
-
-// src/features/competition-engine/integration/referee/errors.js
-var RefereeAdapterContractError = class extends Error {
-  /**
-   * @param {string} code
-   * @param {string} message
-   * @param {Record<string, unknown>} [details]
-   */
-  constructor(code, message, details = {}) {
-    super(message);
-    this.name = "RefereeAdapterContractError";
-    this.code = typeof code === "string" && code.trim() ? code.trim() : REFEREE_ADAPTER_ERROR_CODE.MALFORMED_ADAPTER;
-    this.failClosed = true;
-    this.details = Object.freeze({ ...details });
-  }
-};
-function isRefereeAdapterContractError(err) {
-  return err instanceof RefereeAdapterContractError || Boolean(err) && typeof err === "object" && /** @type {{ name?: unknown }} */
-  err.name === "RefereeAdapterContractError" && typeof /** @type {{ code?: unknown }} */
-  err.code === "string";
-}
-function failRefereeAdapter(code, message, details) {
-  throw new RefereeAdapterContractError(code, message, details);
 }
 
 // src/features/competition-core/scoring/constants/versions.js
@@ -8517,8 +8695,8 @@ function mapLegacyMatchStatus(raw, options = {}) {
   const key = String(raw).trim().toLowerCase().replace(/\s+/g, "_");
   const mapped = LEGACY_MATCH_STATUS_MAP[key];
   if (mapped) return mapped;
-  const upper = String(raw).trim().toUpperCase();
-  if (Object.values(MATCH_STATUS).includes(upper)) return upper;
+  const upper2 = String(raw).trim().toUpperCase();
+  if (Object.values(MATCH_STATUS).includes(upper2)) return upper2;
   throw new MatchRuntimeError(
     MATCH_RUNTIME_ERROR_CODE.MATCH_UNSUPPORTED_STATUS,
     "Unsupported match status",
@@ -8547,7 +8725,7 @@ function createFormatExtension(partial) {
     payload: partial.payload && typeof partial.payload === "object" && !Array.isArray(partial.payload) ? { ...partial.payload } : {}
   };
 }
-function isNonEmptyString4(value) {
+function isNonEmptyString5(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 function cloneJsonSafe(value) {
@@ -8589,7 +8767,7 @@ function buildMatchIdentityKey(parts = {}) {
   return `${competitionId}::${MATCH_IDENTITY_KIND}::${contextId}`;
 }
 function buildMatchSideId(parts = {}) {
-  const matchKey = isNonEmptyString4(parts.matchIdentityKey) ? String(parts.matchIdentityKey).trim() : buildMatchIdentityKey({
+  const matchKey = isNonEmptyString5(parts.matchIdentityKey) ? String(parts.matchIdentityKey).trim() : buildMatchIdentityKey({
     competitionId: parts.competitionId,
     contextId: parts.contextId
   });
@@ -8625,9 +8803,9 @@ function createMatchSide(partial = {}, identityParts = {}) {
     competitionId: identityParts.competitionId,
     contextId: identityParts.contextId
   }) : null);
-  const identityKey = isNonEmptyString4(partial?.identityKey) ? String(partial.identityKey).trim() : matchIdentityKey ? buildMatchSideId({ matchIdentityKey, sideKey }) : null;
-  const id = isNonEmptyString4(partial?.id) ? String(partial.id).trim() : identityKey || `side:${sideKey}`;
-  const participantReferences = Array.isArray(partial?.participantReferences) ? partial.participantReferences.filter((p) => p && typeof p === "object" && isNonEmptyString4(p.id)).map((p) => ({
+  const identityKey = isNonEmptyString5(partial?.identityKey) ? String(partial.identityKey).trim() : matchIdentityKey ? buildMatchSideId({ matchIdentityKey, sideKey }) : null;
+  const id = isNonEmptyString5(partial?.id) ? String(partial.id).trim() : identityKey || `side:${sideKey}`;
+  const participantReferences = Array.isArray(partial?.participantReferences) ? partial.participantReferences.filter((p) => p && typeof p === "object" && isNonEmptyString5(p.id)).map((p) => ({
     kind: String(p.kind || "PLAYER_PROFILE"),
     id: String(p.id).trim()
   })) : [];
@@ -8651,7 +8829,7 @@ function createMatchSide(partial = {}, identityParts = {}) {
 function createCompetitionMatch(partial = {}) {
   const competitionId = String(partial?.competitionId || "").trim();
   const contextId = String(partial?.contextId || "").trim();
-  const identityKey = isNonEmptyString4(partial?.identityKey) ? String(partial.identityKey).trim() : competitionId && contextId ? buildMatchIdentityKey({ competitionId, contextId }) : null;
+  const identityKey = isNonEmptyString5(partial?.identityKey) ? String(partial.identityKey).trim() : competitionId && contextId ? buildMatchIdentityKey({ competitionId, contextId }) : null;
   const sides = Array.isArray(partial?.sides) ? partial.sides.map(
     (side) => createMatchSide(side, {
       matchIdentityKey: identityKey || void 0,
@@ -8661,7 +8839,7 @@ function createCompetitionMatch(partial = {}) {
   ) : [];
   return {
     schemaVersion: String(partial?.schemaVersion ?? PARTICIPANT_SCHEMA_VERSION),
-    id: isNonEmptyString4(partial?.id) ? String(partial.id).trim() : identityKey || "",
+    id: isNonEmptyString5(partial?.id) ? String(partial.id).trim() : identityKey || "",
     identityKey,
     competitionId,
     contextId,
@@ -8671,8 +8849,8 @@ function createCompetitionMatch(partial = {}) {
     groupId: partial?.groupId == null || partial.groupId === "" ? null : String(partial.groupId),
     matchNumber: typeof partial?.matchNumber === "number" && Number.isInteger(partial.matchNumber) ? partial.matchNumber : null,
     formatType: partial?.formatType == null || partial.formatType === "" ? null : String(partial.formatType),
-    status: isNonEmptyString4(partial?.status) ? String(partial.status).trim().toUpperCase() : MATCH_STATUS.DRAFT,
-    completionReason: isNonEmptyString4(partial?.completionReason) ? String(partial.completionReason).trim().toUpperCase() : MATCH_COMPLETION_REASON.NONE,
+    status: isNonEmptyString5(partial?.status) ? String(partial.status).trim().toUpperCase() : MATCH_STATUS.DRAFT,
+    completionReason: isNonEmptyString5(partial?.completionReason) ? String(partial.completionReason).trim().toUpperCase() : MATCH_COMPLETION_REASON.NONE,
     sides,
     courtAssignmentRef: partial?.courtAssignmentRef == null || partial.courtAssignmentRef === "" ? null : String(partial.courtAssignmentRef),
     refereeAssignmentRef: partial?.refereeAssignmentRef == null || partial.refereeAssignmentRef === "" ? null : String(partial.refereeAssignmentRef),
@@ -8685,7 +8863,7 @@ function createCompetitionMatch(partial = {}) {
     cancelledAt: partial?.cancelledAt ?? null,
     abandonedAt: partial?.abandonedAt ?? null,
     resultReference: createMatchResultReference(partial?.resultReference),
-    sourceType: isNonEmptyString4(partial?.sourceType) ? String(partial.sourceType) : MATCH_SOURCE_TYPE.CANONICAL_MATCH,
+    sourceType: isNonEmptyString5(partial?.sourceType) ? String(partial.sourceType) : MATCH_SOURCE_TYPE.CANONICAL_MATCH,
     revision: typeof partial?.revision === "number" && Number.isInteger(partial.revision) && partial.revision >= 1 ? partial.revision : 1,
     metadata: partial?.metadata && typeof partial.metadata === "object" && !Array.isArray(partial.metadata) ? (
       /** @type {Record<string, unknown>} */
@@ -9088,32 +9266,6 @@ var MATCH_LIFECYCLE_EVENT_TYPE = Object.freeze({
   TRANSITION: "MATCH_LIFECYCLE_TRANSITION"
 });
 
-// src/features/competition-engine/integration/referee/helpers.js
-function isNonEmptyString5(value) {
-  return typeof value === "string" && value.trim().length > 0;
-}
-function isPlainObject5(value) {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-function deepFreeze3(value) {
-  if (value === null || typeof value !== "object") return value;
-  if (Object.isFrozen(value)) return value;
-  for (const key of Reflect.ownKeys(value)) {
-    const child = (
-      /** @type {Record<string|symbol, unknown>} */
-      value[key]
-    );
-    if (child && typeof child === "object") deepFreeze3(child);
-  }
-  return Object.freeze(value);
-}
-function clonePlain2(value) {
-  return structuredClone(value);
-}
-function freezeClone2(value) {
-  return deepFreeze3(clonePlain2(value));
-}
-
 // src/features/competition-engine/integration/referee/contract.js
 var COMPETITION_REFEREE_ADAPTER_OWNED = Object.freeze([
   "competition context translation",
@@ -9156,9 +9308,9 @@ function requireAdapterRequest(request) {
   return freezeClone2({
     tenantId,
     competitionId,
-    matchId: isNonEmptyString5(request.matchId) ? String(request.matchId).trim() : null,
-    venueId: isNonEmptyString5(request.venueId) ? String(request.venueId).trim() : null,
-    clubId: isNonEmptyString5(request.clubId) ? String(request.clubId).trim() : null
+    matchId: isNonEmptyString4(request.matchId) ? String(request.matchId).trim() : null,
+    venueId: isNonEmptyString4(request.venueId) ? String(request.venueId).trim() : null,
+    clubId: isNonEmptyString4(request.clubId) ? String(request.clubId).trim() : null
   });
 }
 function assertScoringRulesPayload(scoringRules) {
@@ -9286,7 +9438,7 @@ function loadModeCompetitionState(state, request, expectedMode) {
   return { req, state: freezeClone2(state), tenantId, competitionId };
 }
 function requireModeMatch(state, matchId) {
-  if (!isNonEmptyString5(matchId)) {
+  if (!isNonEmptyString4(matchId)) {
     failRefereeAdapter(
       REFEREE_ADAPTER_ERROR_CODE.UNKNOWN_MATCH,
       "matchId is required",
@@ -9320,12 +9472,12 @@ function normalizeParticipantSides(sides) {
         { index }
       );
     }
-    const sideKey = isNonEmptyString5(side.sideKey) || isNonEmptyString5(side.side) ? String(side.sideKey || side.side).trim().toUpperCase() : index === 0 ? "A" : "B";
+    const sideKey = isNonEmptyString4(side.sideKey) || isNonEmptyString4(side.side) ? String(side.sideKey || side.side).trim().toUpperCase() : index === 0 ? "A" : "B";
     const participantIds = Array.isArray(side.participantIds) ? side.participantIds.map((id) => String(id)) : [];
     return freezeClone2({
       sideKey,
-      entryId: isNonEmptyString5(side.entryId) ? String(side.entryId).trim() : null,
-      teamId: isNonEmptyString5(side.teamId) ? String(side.teamId).trim() : null,
+      entryId: isNonEmptyString4(side.entryId) ? String(side.entryId).trim() : null,
+      teamId: isNonEmptyString4(side.teamId) ? String(side.teamId).trim() : null,
       participantIds
     });
   });
@@ -9888,7 +10040,7 @@ function assertIndividualModeStateSafe(state) {
       {}
     );
   }
-  if (isNonEmptyString5(state.browserExposedPrivilegedRpc) || state.callBrowserExposedPrivilegedRpc === true) {
+  if (isNonEmptyString4(state.browserExposedPrivilegedRpc) || state.callBrowserExposedPrivilegedRpc === true) {
     failRefereeAdapter(
       REFEREE_ADAPTER_ERROR_CODE.DIRECT_REFEREE_AUTHORITY_FORBIDDEN,
       "Adapter B must not call browser-exposed privileged RPC",
@@ -10051,7 +10203,7 @@ function assertTeamStateSafe(state) {
   }
 }
 function resolveTeamMatch(state, matchId) {
-  if (!isNonEmptyString5(matchId)) {
+  if (!isNonEmptyString4(matchId)) {
     failRefereeAdapter(
       REFEREE_ADAPTER_ERROR_CODE.UNKNOWN_MATCH,
       "matchId is required",
@@ -10422,11 +10574,81 @@ function createUnscheduledMatchSnapshot(matchId) {
 }
 
 // src/features/competition-engine/operations/referee/assignment/server/loadAuthoritativeAssignmentEvidence.js
-function mapLiveStatus(row) {
+function failClosedScoringEvidence(details = {}) {
+  failAssignmentCommand(
+    ASSIGNMENT_COMMAND_ERROR_CODE.CANONICAL_REFEREE_EVIDENCE_REQUIRED,
+    "Canonical Referee V5 scoring-event evidence is required and could not be read",
+    details
+  );
+}
+function mapLiveStatus(row, scoring) {
   if (!row) return { raw: "PRE_MATCH", scoringActive: false };
   const status = String(row.status || "").toLowerCase();
-  const scoringActive = Number(row.last_event_sequence || 0) > 0 || Number(row.team_a_score || 0) > 0 || Number(row.team_b_score || 0) > 0;
-  return { raw: status, scoringActive };
+  return {
+    raw: status,
+    scoringActive: scoring?.scoringActive === true
+  };
+}
+async function loadCanonicalScoringActivity({
+  serviceClient,
+  tenantId,
+  tournamentId,
+  matchId,
+  live,
+  rawLifecycle
+}) {
+  const needsScoringHint = rawLifecycle === "IN_PROGRESS" || rawLifecycle === "SCORING_ACTIVE";
+  if (!live || needsScoringHint !== true) {
+    return classifyCanonicalScoringActivity({
+      liveRow: live,
+      events: [],
+      eventsReadable: true
+    });
+  }
+  const numeric = classifyCanonicalScoringActivity({
+    liveRow: live,
+    events: [],
+    eventsReadable: true
+  });
+  if (numeric.numericScore === true) {
+    return numeric;
+  }
+  if (numeric.evidenceRequired !== true) {
+    return numeric;
+  }
+  let events;
+  try {
+    events = await listCanonicalRefereeMatchEvents(serviceClient, {
+      tenantId,
+      tournamentId,
+      competitionId: tournamentId,
+      matchId
+    });
+  } catch (err) {
+    if (isRefereeAdapterContractError(err) && err.code === REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED) {
+      failClosedScoringEvidence({
+        matchId,
+        tournamentId,
+        tenantId,
+        durableReadFailed: true
+      });
+    }
+    throw err;
+  }
+  const classified = classifyCanonicalScoringActivity({
+    liveRow: live,
+    events,
+    eventsReadable: true
+  });
+  if (classified.evidenceRequired === true && events.length === 0) {
+    failClosedScoringEvidence({
+      matchId,
+      tournamentId,
+      tenantId,
+      eventCount: 0
+    });
+  }
+  return classified;
 }
 async function loadTournamentRows(serviceClient, tenantId) {
   const { data: canonicalRows } = await serviceClient.from("canonical_tournaments").select("id, tenant_id, club_id, status, mode, payload, external_key").eq("tenant_id", tenantId);
@@ -10528,7 +10750,9 @@ async function loadAuthoritativeAssignmentEvidence(input = {}) {
     tenantId,
     tournamentId
   );
-  const { data: liveRows } = await serviceClient.from("match_live_states").select("status, last_event_sequence, team_a_score, team_b_score, updated_at, tournament_id, tenant_id").eq("tenant_id", tenantId).eq("match_id", matchId).order("updated_at", { ascending: false }).limit(1);
+  const { data: liveRows } = await serviceClient.from("match_live_states").select(
+    "status, last_event_sequence, team_a_score, team_b_score, state_payload, updated_at, tournament_id, tenant_id"
+  ).eq("tenant_id", tenantId).eq("match_id", matchId).order("updated_at", { ascending: false }).limit(1);
   const live = Array.isArray(liveRows) && liveRows[0] ? liveRows[0] : null;
   const liveTournamentId = String(live?.tournament_id || "").trim();
   if (liveTournamentId && liveTournamentId !== tournamentId) {
@@ -10552,7 +10776,18 @@ async function loadAuthoritativeAssignmentEvidence(input = {}) {
       );
     }
   }
-  const liveMapped = mapLiveStatus(live);
+  const rawLifecycle = normalizeAssignmentLifecycleState(
+    live ? live.status : "PRE_MATCH"
+  );
+  const scoring = await loadCanonicalScoringActivity({
+    serviceClient,
+    tenantId,
+    tournamentId,
+    matchId,
+    live,
+    rawLifecycle
+  });
+  const liveMapped = mapLiveStatus(live, scoring);
   let lifecycleState = normalizeAssignmentLifecycleState(liveMapped.raw, {
     scoringActive: liveMapped.scoringActive
   });

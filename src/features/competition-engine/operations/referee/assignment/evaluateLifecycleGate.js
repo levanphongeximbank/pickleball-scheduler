@@ -14,6 +14,7 @@ import {
   ASSIGNMENT_LIFECYCLE_STATE,
 } from "./constants.js";
 import { failAssignmentCommand } from "./errors.js";
+import { SCORING_ACTIVE_REFINEMENT_ONLY_FOR_IN_PROGRESS } from "./classifyCanonicalScoringActivity.js";
 
 const PRE_MATCH_ALIASES = new Set([
   "PRE_MATCH",
@@ -50,30 +51,42 @@ const COMPLETED_ALIASES = new Set([
 
 /**
  * Normalize product/match status into Owner lifecycle vocabulary.
+ *
+ * Precedence:
+ *   no live / NOT_STARTED → PRE_MATCH
+ *   PAUSED / LOCKED / SUSPENDED → LOCKED (scoring hint cannot overwrite)
+ *   COMPLETED / FINISHED / FINAL / CLOSED → COMPLETED (scoring hint cannot overwrite)
+ *   IN_PROGRESS / ACTIVE / STARTED / LIVE + scoringActive=false → IN_PROGRESS
+ *   IN_PROGRESS / ACTIVE / STARTED / LIVE + scoringActive=true → SCORING_ACTIVE
+ *
+ * SCORING_ACTIVE is a refinement of IN_PROGRESS only.
  * @param {unknown} raw
  * @param {{ scoringActive?: boolean }} [hints]
  */
 export function normalizeAssignmentLifecycleState(raw, hints = {}) {
-  if (hints.scoringActive === true) {
-    return ASSIGNMENT_LIFECYCLE_STATE.SCORING_ACTIVE;
-  }
   const value = String(raw || "")
     .trim()
     .toUpperCase()
     .replace(/\s+/g, "_");
   if (!value) return ASSIGNMENT_LIFECYCLE_STATE.PRE_MATCH;
-  if (SCORING_ACTIVE_ALIASES.has(value)) {
-    return ASSIGNMENT_LIFECYCLE_STATE.SCORING_ACTIVE;
-  }
-  if (IN_PROGRESS_ALIASES.has(value)) {
-    return ASSIGNMENT_LIFECYCLE_STATE.IN_PROGRESS;
-  }
   if (LOCKED_ALIASES.has(value)) return ASSIGNMENT_LIFECYCLE_STATE.LOCKED;
   if (COMPLETED_ALIASES.has(value)) {
     return ASSIGNMENT_LIFECYCLE_STATE.COMPLETED;
   }
   if (PRE_MATCH_ALIASES.has(value)) {
     return ASSIGNMENT_LIFECYCLE_STATE.PRE_MATCH;
+  }
+  if (SCORING_ACTIVE_ALIASES.has(value)) {
+    return ASSIGNMENT_LIFECYCLE_STATE.SCORING_ACTIVE;
+  }
+  if (IN_PROGRESS_ALIASES.has(value)) {
+    if (
+      hints.scoringActive === true &&
+      SCORING_ACTIVE_REFINEMENT_ONLY_FOR_IN_PROGRESS === "YES"
+    ) {
+      return ASSIGNMENT_LIFECYCLE_STATE.SCORING_ACTIVE;
+    }
+    return ASSIGNMENT_LIFECYCLE_STATE.IN_PROGRESS;
   }
   // Unknown → fail closed as LOCKED (safer than allowing mutation)
   return ASSIGNMENT_LIFECYCLE_STATE.LOCKED;

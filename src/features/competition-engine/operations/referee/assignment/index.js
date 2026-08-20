@@ -32,6 +32,14 @@ export {
 } from "./evaluateLifecycleGate.js";
 
 export {
+  EVENT_SEQUENCE_ALONE_AS_SCORING_ACTIVE,
+  SCORING_ACTIVE_REFINEMENT_ONLY_FOR_IN_PROGRESS,
+  CANONICAL_SCORING_COMMAND_TYPES,
+  classifyCanonicalScoringActivity,
+  eventsHaveCanonicalScoringActivity,
+} from "./classifyCanonicalScoringActivity.js";
+
+export {
   assertCanonicalRefereeId,
   assertAssignmentCommandAuthz,
 } from "./assertAssignmentCommandAuthz.js";
