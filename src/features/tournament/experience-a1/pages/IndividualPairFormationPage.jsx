@@ -3,11 +3,26 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import { Box, Button, Grid, LinearProgress, Stack, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Grid,
+  LinearProgress,
+  Stack,
+  Typography,
+} from "@mui/material";
 
 import { useClub } from "../../../../context/ClubContext.jsx";
+import PermissionGate from "../../../../components/auth/PermissionGate.jsx";
+import { PERMISSIONS } from "../../../../auth/permissions.js";
 import { isIndividualTournament } from "../../../../config/tournamentRoutes.js";
+import { loadPlayersForClub } from "../../../../domain/clubStorage.js";
 import { useCanonicalTournament } from "../../hooks/useCanonicalTournament.js";
+import {
+  isOfficialTournamentExperience,
+  resolveTournamentExperienceAdapter,
+} from "../experienceModeResolver.js";
 import TournamentExperienceWorkspace from "../components/TournamentExperienceWorkspace.jsx";
 import { deriveFormationModel } from "../batchB/deriveFormation.js";
 import {
@@ -64,9 +79,15 @@ export default function IndividualPairFormationPage() {
   const { tournamentId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { activeClub, revision } = useClub();
-  const { tournament, loading, error } = useCanonicalTournament(activeClub, tournamentId, revision);
+  const { activeClub, activeClubId, revision, refreshClubs } = useClub();
+  const { tournament, loading, error, update } = useCanonicalTournament(
+    activeClub,
+    tournamentId,
+    revision
+  );
   const [mode, setMode] = useState("together");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null);
   const selectedEventId = searchParams.get("eventId") || "";
 
   if (loading) {
@@ -83,6 +104,10 @@ export default function IndividualPairFormationPage() {
   }
 
   const model = deriveFormationModel(tournament, { selectedEventId, mode });
+  const official = isOfficialTournamentExperience(tournament);
+  const officialAdapter = official
+    ? resolveTournamentExperienceAdapter(tournament, { selectedEventId })
+    : null;
   const selectEvent = (eventId) => {
     const next = new URLSearchParams(searchParams);
     if (eventId) next.set("eventId", eventId);
@@ -90,6 +115,33 @@ export default function IndividualPairFormationPage() {
     setSearchParams(next);
   };
   const contextLine = [model.tournamentName, model.eventName].filter(Boolean).join(" • ");
+
+  const handleFormPairs = async () => {
+    if (!official || !officialAdapter || !model.formPairsEnabled) return;
+    setBusy(true);
+    setMessage(null);
+    const players = loadPlayersForClub(activeClubId) || [];
+    const built = officialAdapter.commands.formPairs(tournament, {
+      selectedEventId: model.eventId || selectedEventId,
+      players,
+    });
+    if (!built.ok) {
+      setBusy(false);
+      setMessage({ type: "error", text: built.error || "Ghép cặp thất bại." });
+      return;
+    }
+    const result = await update(built.patch);
+    setBusy(false);
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.error || "Không lưu được cặp." });
+      return;
+    }
+    refreshClubs();
+    setMessage({
+      type: "success",
+      text: `Đã ghép ${(built.pairs || []).length} cặp (${built.mode}). F5 sẽ đọc lại drawEntries đã lưu.`,
+    });
+  };
 
   return (
     <ExperienceBatchBFrame
@@ -107,11 +159,28 @@ export default function IndividualPairFormationPage() {
               Chốt cặp / đội
             </Button>
           </span>
-          <span title={model.drawHint}>
-            <Button variant="contained" size="small" disabled sx={primaryActionSx}>
-              Sang bốc thăm ghép
-            </Button>
-          </span>
+          {official ? (
+            <span title={model.formPairsHint}>
+              <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={!model.formPairsEnabled || busy}
+                  onClick={handleFormPairs}
+                  sx={primaryActionSx}
+                  data-testid="official-form-pairs-action"
+                >
+                  {model.formPairsLabel}
+                </Button>
+              </PermissionGate>
+            </span>
+          ) : (
+            <span title={model.drawHint}>
+              <Button variant="contained" size="small" disabled sx={primaryActionSx}>
+                Sang bốc thăm ghép
+              </Button>
+            </span>
+          )}
         </Stack>
       }
     >
@@ -128,12 +197,17 @@ export default function IndividualPairFormationPage() {
           Chọn nội dung để xem cặp / đội. Không lấy nội dung mặc định.
         </Typography>
       ) : null}
+      {message ? (
+        <Alert severity={message.type} sx={{ mb: 1.25 }} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
+      ) : null}
 
       <ExperienceEventContextCard
         eyebrow="NGỮ CẢNH HÌNH THÀNH CẶP / ĐỘI"
         tournamentName={model.tournamentName}
         eventName={model.eventName}
-        extra={`Cách ghép: ${model.modeLabel}`}
+        extra={`Cách ghép: ${model.modeLabel}${model.pairFormationMode ? ` • ${model.pairFormationMode}` : ""}`}
       />
       <Grid container spacing={1.25} sx={{ mb: 1.5 }}>
         <Grid size={{ xs: 6, md: true }}>
@@ -153,12 +227,21 @@ export default function IndividualPairFormationPage() {
         </Grid>
       </Grid>
       <BoxProgress label="Tiến độ hình thành cặp" pct={model.progressPct} />
-      <ExperienceChipRow value={model.mode} onChange={setMode} items={model.modes} />
+      <ExperienceChipRow
+        value={model.mode}
+        onChange={official ? () => {} : setMode}
+        items={model.modes}
+      />
       <ExperienceOperatorCard sx={{ mb: 1.5 }}>
         <Typography sx={{ fontSize: 12, fontWeight: 700, color: TOURNAMENT_COLOR.primary, mb: 0.5 }}>
           Tác động cách ghép
         </Typography>
         <Typography sx={{ fontSize: 13 }}>{model.modeImpact}</Typography>
+        {official ? (
+          <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted, mt: 0.75 }}>
+            Không ghép trên page load / F5 / đổi nội dung. Chỉ khi bấm nút tường minh.
+          </Typography>
+        ) : null}
       </ExperienceOperatorCard>
       <TournamentExperienceWorkspace
         rail={
@@ -166,7 +249,7 @@ export default function IndividualPairFormationPage() {
             <ExperienceReadinessPanel
               title={model.readinessTitle}
               statusLabel={model.readinessStatusLabel}
-              statusTone="warning"
+              statusTone={model.notReady ? "warning" : "success"}
               items={model.readinessItems}
               lockLabel="Chốt cặp / đội"
               lockDisabled
@@ -178,13 +261,13 @@ export default function IndividualPairFormationPage() {
                   {model.kpis.unpaired} VĐV chưa ghép
                 </Typography>
               ) : null}
-              {model.kpis.warnings ? (
+              {model.groupsCreated ? (
                 <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.warning }}>
-                  {model.kpis.warnings} cặp cảnh báo
+                  Đã có bảng — không ghép lại
                 </Typography>
               ) : null}
-              <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.warning }}>
-                Chốt cặp / đội chưa có trên hệ thống này.
+              <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted }}>
+                {model.lockHint}
               </Typography>
             </CenterRightRailCard>
           </>
@@ -200,6 +283,11 @@ export default function IndividualPairFormationPage() {
                 model.unpaired.map((player) => (
                   <ExperienceOperatorCard key={player.id}>
                     <Typography sx={{ fontWeight: 700, fontSize: 13.5 }}>{player.name}</Typography>
+                    <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>
+                      {(player.playerIds || []).length
+                        ? `playerIds: ${player.playerIds.join(", ")}`
+                        : player.id}
+                    </Typography>
                     <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>
                       {player.club} • Rating {player.rating} • Seed {player.seed}
                     </Typography>
@@ -218,13 +306,20 @@ export default function IndividualPairFormationPage() {
             <ExperienceSectionTitle>Cặp đã hình thành ({model.formed.length})</ExperienceSectionTitle>
             {model.formed.length === 0 ? (
               <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted }}>
-                Chưa có cặp đăng ký cùng trên nội dung này.
+                {official
+                  ? "Chưa có cặp materialize trên nội dung này."
+                  : "Chưa có cặp đăng ký cùng trên nội dung này."}
               </Typography>
             ) : (
               <Grid container spacing={1}>
                 {model.formed.map((pair) => (
                   <Grid key={pair.id} size={{ xs: 12, sm: 6 }}>
                     <ExperienceFormationPairCard pair={pair} />
+                    {pair.playerIds?.length ? (
+                      <Typography sx={{ fontSize: 11, color: TOURNAMENT_COLOR.textMuted, mt: 0.35 }}>
+                        playerIds: {pair.playerIds.join(", ")}
+                      </Typography>
+                    ) : null}
                   </Grid>
                 ))}
               </Grid>

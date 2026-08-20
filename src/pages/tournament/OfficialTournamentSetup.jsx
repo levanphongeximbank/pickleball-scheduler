@@ -1842,6 +1842,18 @@ export default function OfficialTournamentSetup() {
       }
       alerts={
         <>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Wave O3 — Hình thành cặp / đội chính:{" "}
+            <Button
+              component={RouterLink}
+              to={`/tournament/${encodeURIComponent(tournamentId)}/pairs`}
+              size="small"
+              sx={{ textTransform: "none", p: 0, minWidth: 0, verticalAlign: "baseline" }}
+            >
+              /tournament/{tournamentId}/pairs
+            </Button>
+            . Setup legacy giữ Draw / Group Draw / Schedule chưa adopt.
+          </Alert>
           {broadcastFeatureEnabled && broadcast.lastVodUpload ? (
             <BroadcastVodResultAlert
               result={broadcast.lastVodUpload}

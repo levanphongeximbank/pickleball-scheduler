@@ -106,9 +106,13 @@ export {
   ENGINE_ROUTE_CLASSIFICATION,
   buildOfficialSettingsSavePatch,
   buildOfficialPublishRegistrationPatch,
+  buildOfficialFormPairsPatch,
   resolveOfficialRegistrationPublicationStatus,
   OFFICIAL_COMMAND_DELEGATION_MAP,
+  PAIR_FORMATION_MODE,
+  resolveOfficialPairFormationMode,
 } from "./official-tournament-experience/index.js";
+
 export {
   canonicalRowToTournament,
   tournamentToCanonicalRow,

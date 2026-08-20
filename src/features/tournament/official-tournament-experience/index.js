@@ -26,9 +26,15 @@ export {
   buildOfficialCloseRegistrationPatch,
   buildOfficialApproveEntryPatch,
   buildOfficialRemoveEntryPatch,
+  buildOfficialFormPairsPatch,
   projectOfficialSettings,
   projectOfficialRegistration,
   projectOfficialParticipants,
+  projectOfficialPairFormation,
   resolveOfficialRegistrationPublicationStatus,
   OFFICIAL_COMMAND_DELEGATION_MAP,
 } from "./officialExperienceCommands.js";
+export {
+  PAIR_FORMATION_MODE,
+  resolveOfficialPairFormationMode,
+} from "./pairFormationModeResolver.js";

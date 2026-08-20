@@ -31,8 +31,21 @@ import {
   setRegistrationWindow,
 } from "../../individual-tournament/engines/registrationEngine.js";
 import { gatedApproveEntry } from "../../individual-tournament/engines/registrationValidation.js";
+import {
+  formOfficialIndividualPairs,
+  projectOfficialDrawSubsteps,
+} from "../../individual-tournament/engines/officialDrawOrchestrationEngine.js";
+import { OFFICIAL_PAIRING_AUTHORITY } from "../../individual-tournament/engines/officialCompetitionStrategyEngine.js";
+import {
+  suggestOpenRandomEntriesFromPlayers,
+  suggestBalancedEntriesFromIndividuals,
+} from "../../../tournament/engines/teamPairingEngine.js";
 import { resolveSelectedEvent, listTournamentEvents } from "../experience-a1/deriveOverview.js";
 import { OFFICIAL_EXPERIENCE_AUTHORITY } from "./authorityLock.js";
+import {
+  PAIR_FORMATION_MODE,
+  resolveOfficialPairFormationMode,
+} from "./pairFormationModeResolver.js";
 
 function trim(value) {
   return value != null ? String(value).trim() : "";
@@ -376,6 +389,154 @@ export function buildOfficialRemoveEntryPatch(tournament, selectedEventId, entry
   };
 }
 
+/**
+ * Screen 06 — form pairs. Explicit operator trigger only.
+ * OPEN INDIVIDUAL → suggestOpenRandomEntriesFromPlayers
+ * AI BALANCE → suggestBalancedEntriesFromIndividuals
+ * OPEN PAIR → fail closed (no re-pair)
+ */
+export function buildOfficialFormPairsPatch(tournament, options = {}) {
+  const selectedEventId = trim(options.selectedEventId || options.eventId);
+  const events = listTournamentEvents(tournament);
+  if (events.length > 1 && !selectedEventId) {
+    return {
+      ok: false,
+      error: "Chọn nội dung trước khi ghép cặp.",
+      code: "EVENT_REQUIRED",
+    };
+  }
+  const event = resolveSelectedEvent(events, selectedEventId);
+  if (!event) {
+    return {
+      ok: false,
+      error: "Không tìm thấy nội dung thi đấu.",
+      code: "EVENT_NOT_FOUND",
+    };
+  }
+
+  const modeResolution = resolveOfficialPairFormationMode(tournament);
+  if (!modeResolution.ok || modeResolution.mode === PAIR_FORMATION_MODE.NOT_SUPPORTED) {
+    return {
+      ok: false,
+      error: modeResolution.error || "Chế độ ghép cặp không được hỗ trợ.",
+      code: modeResolution.code || "PAIR_FORMATION_NOT_SUPPORTED",
+    };
+  }
+  if (modeResolution.mode === PAIR_FORMATION_MODE.REGISTERED_PAIRS) {
+    return {
+      ok: false,
+      error: "Đăng ký theo cặp — không ghép lại. Dùng cặp đã đăng ký.",
+      code: "OPEN_PAIR_NO_REPAIR",
+      mode: modeResolution.mode,
+    };
+  }
+
+  const sub = projectOfficialDrawSubsteps(tournament, event.id);
+  if (sub.groupsCreated) {
+    return {
+      ok: false,
+      error: "Đã có bảng đấu — không ghép cặp lại khi bảng đã tạo.",
+      code: "GROUPS_BLOCK_REPAIR",
+    };
+  }
+
+  const players = Array.isArray(options.players) ? options.players : [];
+  let pairingFn = suggestOpenRandomEntriesFromPlayers;
+  if (modeResolution.pairingAuthority === OFFICIAL_PAIRING_AUTHORITY.AI_BALANCE) {
+    pairingFn = suggestBalancedEntriesFromIndividuals;
+  } else if (modeResolution.pairingAuthority !== OFFICIAL_PAIRING_AUTHORITY.OPEN_RANDOM) {
+    return {
+      ok: false,
+      error: "Authority ghép cặp không hợp lệ.",
+      code: "INVALID_PAIRING_AUTHORITY",
+    };
+  }
+
+  // Guard: Open random must not receive AI Balance writer.
+  if (
+    modeResolution.mode === PAIR_FORMATION_MODE.RANDOM_PAIRING &&
+    pairingFn !== suggestOpenRandomEntriesFromPlayers
+  ) {
+    return {
+      ok: false,
+      error: "Open Individual chỉ được ghép ngẫu nhiên.",
+      code: "OPEN_RANDOM_AUTHORITY_VIOLATION",
+    };
+  }
+  if (
+    modeResolution.mode === PAIR_FORMATION_MODE.AI_BALANCE_PAIRING &&
+    pairingFn !== suggestBalancedEntriesFromIndividuals
+  ) {
+    return {
+      ok: false,
+      error: "AI Balance phải dùng engine cân bằng hiện có.",
+      code: "AI_BALANCE_AUTHORITY_VIOLATION",
+    };
+  }
+
+  const result = formOfficialIndividualPairs({
+    tournament,
+    eventId: event.id,
+    players,
+    eventType: event.eventType,
+    pairingFn,
+    pairingOptions: {
+      ...(options.pairingOptions || {}),
+      tournamentId: trim(tournament?.id),
+      eventId: event.id,
+    },
+  });
+
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: result.error || "Ghép cặp thất bại.",
+      code: "FORM_PAIRS_FAILED",
+      pairingInvoked: result.pairingInvoked,
+    };
+  }
+
+  return {
+    ok: true,
+    patch: tournamentPatchFrom(result.tournament, ["events"]),
+    pairs: result.pairs || result.drawEntries || [],
+    mode: modeResolution.mode,
+    pairingAuthority: modeResolution.pairingAuthority,
+    usesRating: modeResolution.usesRating === true,
+    authority: OFFICIAL_EXPERIENCE_AUTHORITY.OFFICIAL_PAIRING,
+  };
+}
+
+export function projectOfficialPairFormation(tournament, { selectedEventId } = {}) {
+  const events = listTournamentEvents(tournament);
+  const event = resolveSelectedEvent(events, selectedEventId);
+  const modeResolution = resolveOfficialPairFormationMode(tournament);
+  const sub = event
+    ? projectOfficialDrawSubsteps(tournament, event.id)
+    : null;
+
+  return {
+    modeResolution,
+    selectedEventId: trim(selectedEventId),
+    selectedEvent: event
+      ? { id: String(event.id), name: String(event.name || ""), eventType: event.eventType }
+      : null,
+    selectedEventExplicit: Boolean(trim(selectedEventId)) || events.length === 1,
+    needsEventChoice: events.length > 1 && !trim(selectedEventId),
+    substeps: sub,
+    pairingComplete: Boolean(sub?.pairingComplete),
+    groupsCreated: Boolean(sub?.groupsCreated),
+    formPairsEnabled:
+      modeResolution.ok &&
+      (modeResolution.mode === PAIR_FORMATION_MODE.RANDOM_PAIRING ||
+        modeResolution.mode === PAIR_FORMATION_MODE.AI_BALANCE_PAIRING) &&
+      Boolean(event) &&
+      !sub?.groupsCreated &&
+      !sub?.singlesContent,
+    authority: OFFICIAL_EXPERIENCE_AUTHORITY.OFFICIAL_PAIRING,
+  };
+}
+
 export const OFFICIAL_COMMAND_DELEGATION_MAP = Object.freeze({
   saveSettings: "buildOfficialSettingsSavePatch → updateTournamentCommand",
   saveEventMeta: "buildUpdateEventPatch → updateTournamentCommand",
@@ -385,4 +546,6 @@ export const OFFICIAL_COMMAND_DELEGATION_MAP = Object.freeze({
   closeRegistration: "lockRegistration → updateTournamentCommand",
   approveEntry: "gatedApproveEntry → updateTournamentCommand",
   removeEntry: "event.entries filter persist → updateTournamentCommand",
+  formPairs:
+    "resolveOfficialPairFormationMode → formOfficialIndividualPairs(suggestOpenRandomEntriesFromPlayers|suggestBalancedEntriesFromIndividuals) → event.drawEntries",
 });

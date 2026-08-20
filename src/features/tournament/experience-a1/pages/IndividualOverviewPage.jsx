@@ -32,7 +32,12 @@ import {
 import { officialLegacySetupPath } from "../../official-tournament-experience/officialOpenPaths.js";
 import TournamentExperienceWorkspace from "../components/TournamentExperienceWorkspace.jsx";
 import { deriveOverviewVisual } from "../deriveOverview.js";
-import { individualSettingsPath } from "../routes.js";
+import {
+  individualSettingsPath,
+  individualRegistrationPublicationPath,
+  individualParticipantsPath,
+  individualPairsPath,
+} from "../routes.js";
 import CenterKpiCard from "../visual/CenterKpiCard.jsx";
 import CenterRightRailCard from "../visual/CenterRightRailCard.jsx";
 import ExperienceHero from "../visual/ExperienceHero.jsx";
@@ -171,9 +176,35 @@ export default function IndividualOverviewPage() {
               Cài đặt
             </Button>
             {legacySetupTo ? (
-              <Button component={RouterLink} to={legacySetupTo} size="small" sx={outlinedActionSx}>
-                Setup đầy đủ
-              </Button>
+              <>
+                <Button
+                  component={RouterLink}
+                  to={individualRegistrationPublicationPath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  Đăng ký
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to={individualParticipantsPath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  Người tham dự
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to={individualPairsPath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  Hình thành cặp
+                </Button>
+                <Button component={RouterLink} to={legacySetupTo} size="small" sx={outlinedActionSx}>
+                  Setup đầy đủ (legacy)
+                </Button>
+              </>
             ) : null}
           </Stack>
         }

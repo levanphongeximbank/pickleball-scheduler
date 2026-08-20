@@ -22,11 +22,13 @@ import {
   buildOfficialApproveEntryPatch,
   buildOfficialCloseRegistrationPatch,
   buildOfficialEventMetaPatch,
+  buildOfficialFormPairsPatch,
   buildOfficialPublishRegistrationPatch,
   buildOfficialRegistrationWindowPatch,
   buildOfficialRemoveEntryPatch,
   buildOfficialSettingsSavePatch,
   OFFICIAL_COMMAND_DELEGATION_MAP,
+  projectOfficialPairFormation,
   projectOfficialParticipants,
   projectOfficialRegistration,
   projectOfficialSettings,
@@ -200,6 +202,7 @@ export function projectOfficialTournamentExperience(tournament, options = {}) {
     settings: projectOfficialSettings(tournament, options),
     registration: projectOfficialRegistration(tournament, options),
     participants: projectOfficialParticipants(tournament, options),
+    pairFormation: projectOfficialPairFormation(tournament, options),
   };
 }
 
@@ -216,8 +219,9 @@ export function createOfficialExperienceCommandBoundary() {
     closeRegistration: buildOfficialCloseRegistrationPatch,
     approveEntry: buildOfficialApproveEntryPatch,
     removeEntry: buildOfficialRemoveEntryPatch,
-    // Deferred / not in O2
-    runPairing: null,
+    formPairs: buildOfficialFormPairsPatch,
+    runPairing: buildOfficialFormPairsPatch,
+    // Deferred / not in O3
     runGroupDraw: null,
     publishSchedule: null,
     scoreMatch: null,
@@ -232,7 +236,7 @@ export function createOfficialTournamentExperienceAdapter(tournament, options = 
   const projection = projectOfficialTournamentExperience(tournament, options);
   return Object.freeze({
     kind: "official-tournament-experience-adapter",
-    wave: "O2",
+    wave: "O3",
     projection,
     commands: createOfficialExperienceCommandBoundary(),
     project(nextTournament = tournament, nextOptions = options) {
