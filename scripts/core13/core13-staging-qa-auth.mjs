@@ -239,6 +239,73 @@ export function evaluateInactiveRefereeFixture(inactive = {}, options = {}) {
   });
 }
 
+/**
+ * Qualify an active referee fixture from Contract #01 evidence only.
+ * Fixture-local role/status/tenant/active cannot override canonical evidence.
+ */
+export function evaluateActiveRefereeContract01Fixture(subject = {}, options = {}) {
+  const label = String(options.label || "EXISTING_QA_REFEREE").trim();
+  const localId = subjectIdOf(subject);
+  const evidence = readContract01Evidence(subject);
+  if (!localId && !evidence?.subjectId && !evidence?.canonicalSubjectId) {
+    return proof(false, `${label}_CONTRACT_01_EVIDENCE_MISSING`, {
+      missing: [`${label}_CONTRACT_01_EVIDENCE_MISSING`],
+    });
+  }
+  if (!evidence) {
+    return proof(false, `${label}_CONTRACT_01_EVIDENCE_MISSING`, {
+      missing: [`${label}_CONTRACT_01_EVIDENCE_MISSING`],
+    });
+  }
+
+  const evidenceId = String(evidence.subjectId || evidence.canonicalSubjectId || "").trim();
+  if (!evidenceId) {
+    return proof(false, `${label}_CONTRACT_01_EVIDENCE_MISSING`, {
+      missing: [`${label}_CONTRACT_01_EVIDENCE_MISSING`],
+    });
+  }
+  if (localId && localId !== evidenceId) {
+    return proof(false, `${label}_SUBJECT_MISMATCH`, {
+      missing: [`${label}_SUBJECT_MISMATCH`],
+    });
+  }
+
+  const role = String(evidence.role || "").trim().toUpperCase();
+  if (role !== "REFEREE") {
+    return proof(false, `${label}_ROLE`, { missing: [`${label}_ROLE`] });
+  }
+
+  const requiredTenantId = String(options.requiredTenantId || subject.tenantId || "").trim();
+  const evidenceTenantId = String(evidence.tenantId || "").trim();
+  if (requiredTenantId && evidenceTenantId !== requiredTenantId) {
+    return proof(false, `${label}_TENANT`, { missing: [`${label}_TENANT`] });
+  }
+  if (!evidenceTenantId) {
+    return proof(false, `${label}_MISSING_TENANT_EVIDENCE`, {
+      missing: [`${label}_MISSING_TENANT_EVIDENCE`],
+    });
+  }
+
+  const status = String(evidence.status || "").trim().toLowerCase();
+  if (status !== "active") {
+    return proof(false, `${label}_NOT_ACTIVE`, { missing: [`${label}_NOT_ACTIVE`] });
+  }
+  if (evidence.active !== true) {
+    return proof(false, `${label}_ACTIVE_NOT_TRUE`, {
+      missing: [`${label}_ACTIVE_NOT_TRUE`],
+    });
+  }
+
+  return proof(true, "CONTRACT_01_ACTIVE_REFEREE", {
+    role,
+    status,
+    active: true,
+    tenantId: evidenceTenantId,
+    venueId: evidence.venueId == null || evidence.venueId === "" ? null : String(evidence.venueId),
+    contract01Evidence: evidence,
+  });
+}
+
 export function evaluateExistingQaIdentitySet(input = {}) {
   const organizerA = input.organizerA || null;
   const organizerB = input.organizerB || null;
@@ -253,18 +320,21 @@ export function evaluateExistingQaIdentitySet(input = {}) {
       EXISTING_QA_IDENTITY_SET_READY: false,
     });
   }
-  if (!refereeA?.userId || String(refereeA.role || "").toUpperCase() !== "REFEREE") {
-    missing.push("EXISTING_QA_REFEREE_A");
-  }
-  if (String(refereeA?.status || "").toUpperCase() !== "ACTIVE") {
-    missing.push("EXISTING_QA_REFEREE_A_ACTIVE");
+  const requiredTenantId = organizerA?.tenantId || "";
+  const refereeAProof = evaluateActiveRefereeContract01Fixture(refereeA, {
+    label: "EXISTING_QA_REFEREE_A",
+    requiredTenantId,
+  });
+  if (!refereeAProof.ok) {
+    missing.push(...(refereeAProof.missing || [refereeAProof.detail]));
   }
   if (!refereeA?.credentialPresent) missing.push("MISSING_EXISTING_QA_REFEREE_CREDENTIAL");
-  if (!replacement?.userId || String(replacement.role || "").toUpperCase() !== "REFEREE") {
-    missing.push("EXISTING_QA_REPLACEMENT_REFEREE");
-  }
-  if (String(replacement?.status || "").toUpperCase() !== "ACTIVE") {
-    missing.push("EXISTING_QA_REPLACEMENT_REFEREE_ACTIVE");
+  const replacementProof = evaluateActiveRefereeContract01Fixture(replacement, {
+    label: "EXISTING_QA_REPLACEMENT_REFEREE",
+    requiredTenantId,
+  });
+  if (!replacementProof.ok) {
+    missing.push(...(replacementProof.missing || [replacementProof.detail]));
   }
   const inactiveProof = evaluateInactiveRefereeFixture(inactive, {
     requiredTenantId: organizerA?.tenantId || "",

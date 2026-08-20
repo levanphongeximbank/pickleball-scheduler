@@ -94,6 +94,24 @@ function nextUuid(seq) {
   return `aaaaaaaa-bbbb-4ccc-8ddd-${String(seq).padStart(12, "0")}`;
 }
 
+const REFEREE_A_ID = "33333333-3333-4333-8333-333333333333";
+const REPLACEMENT_ID = "44444444-4444-4444-8444-444444444444";
+const TENANT_A_STUB = "core13-qa-tenant-a";
+
+function activeContract01Evidence(userId, tenantId = TENANT_A_STUB) {
+  return {
+    subjectId: userId,
+    canonicalSubjectId: userId,
+    role: "REFEREE",
+    status: "active",
+    active: true,
+    tenantId,
+    venueId: tenantId,
+    source: "identity",
+    evidenceVersion: "identity-subject-evidence-v1",
+  };
+}
+
 function createStubWriters() {
   let seq = 20;
   const writers = {};
@@ -120,17 +138,19 @@ function createStubWriters() {
       credentialPresent: true,
     },
     refereeA: {
-      userId: "33333333-3333-4333-8333-333333333333",
-      tenantId: "core13-qa-tenant-a",
+      userId: REFEREE_A_ID,
+      tenantId: TENANT_A_STUB,
       role: "REFEREE",
       status: "ACTIVE",
       credentialPresent: true,
+      contract01Evidence: activeContract01Evidence(REFEREE_A_ID),
     },
     replacementReferee: {
-      userId: "44444444-4444-4444-8444-444444444444",
-      tenantId: "core13-qa-tenant-a",
+      userId: REPLACEMENT_ID,
+      tenantId: TENANT_A_STUB,
       role: "REFEREE",
       status: "ACTIVE",
+      contract01Evidence: activeContract01Evidence(REPLACEMENT_ID),
     },
     inactiveReferee: {
       userId: "55555555-5555-4555-8555-555555555555",
@@ -877,11 +897,27 @@ test("missing inactive referee or second tenant fails closed", () => {
       status: "ACTIVE",
       credentialPresent: true,
       accessToken: "r",
+      contract01Evidence: {
+        subjectId: REFEREE_CONTEXT.userId,
+        canonicalSubjectId: REFEREE_CONTEXT.userId,
+        role: "REFEREE",
+        status: "active",
+        active: true,
+        tenantId: "t-a",
+      },
     },
     replacementReferee: {
       userId: "44444444-4444-4444-8444-444444444444",
       role: "REFEREE",
       status: "ACTIVE",
+      contract01Evidence: {
+        subjectId: "44444444-4444-4444-8444-444444444444",
+        canonicalSubjectId: "44444444-4444-4444-8444-444444444444",
+        role: "REFEREE",
+        status: "active",
+        active: true,
+        tenantId: "t-a",
+      },
     },
     inactiveReferee: { userId: "55555555-5555-4555-8555-555555555555", role: "REFEREE", status: "ACTIVE" },
   });
@@ -896,11 +932,27 @@ test("missing inactive referee or second tenant fails closed", () => {
       role: "REFEREE",
       status: "ACTIVE",
       credentialPresent: true,
+      contract01Evidence: {
+        subjectId: REFEREE_CONTEXT.userId,
+        canonicalSubjectId: REFEREE_CONTEXT.userId,
+        role: "REFEREE",
+        status: "active",
+        active: true,
+        tenantId: "t-a",
+      },
     },
     replacementReferee: {
       userId: "44444444-4444-4444-8444-444444444444",
       role: "REFEREE",
       status: "ACTIVE",
+      contract01Evidence: {
+        subjectId: "44444444-4444-4444-8444-444444444444",
+        canonicalSubjectId: "44444444-4444-4444-8444-444444444444",
+        role: "REFEREE",
+        status: "active",
+        active: true,
+        tenantId: "t-a",
+      },
     },
     inactiveReferee: {
       userId: "55555555-5555-4555-8555-555555555555",

@@ -46,22 +46,40 @@ function contract01(overrides = {}) {
   };
 }
 
+function activeContract01(userId, tenantId = TENANT_A) {
+  return {
+    subjectId: userId,
+    canonicalSubjectId: userId,
+    role: "REFEREE",
+    status: "active",
+    active: true,
+    tenantId,
+    venueId: tenantId,
+    source: "identity",
+    evidenceVersion: "identity-subject-evidence-v1",
+  };
+}
+
 function readyIdentities(overrides = {}) {
+  const refereeAId = "33333333-3333-4333-8333-333333333333";
+  const replacementId = "44444444-4444-4444-8444-444444444444";
   return {
     organizerA: { userId: "11111111-1111-4111-8111-111111111111", tenantId: TENANT_A },
     organizerB: { userId: "22222222-2222-4222-8222-222222222222", tenantId: TENANT_B },
     refereeA: {
-      userId: "33333333-3333-4333-8333-333333333333",
+      userId: refereeAId,
       tenantId: TENANT_A,
       role: "REFEREE",
       status: "ACTIVE",
       credentialPresent: true,
       accessToken: "r",
+      contract01Evidence: activeContract01(refereeAId),
     },
     replacementReferee: {
-      userId: "44444444-4444-4444-8444-444444444444",
+      userId: replacementId,
       role: "REFEREE",
       status: "ACTIVE",
+      contract01Evidence: activeContract01(replacementId),
     },
     inactiveReferee: {
       userId: SUBJECT_ID,

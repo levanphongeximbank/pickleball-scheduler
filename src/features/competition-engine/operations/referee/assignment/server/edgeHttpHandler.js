@@ -25,6 +25,10 @@ import { assertTrustedAssignmentAuthz } from "./assertTrustedAssignmentAuthz.js"
 import { createTrustedServerIdentityAccessAdapter } from "./createTrustedServerIdentityAccessAdapter.js";
 import { loadAuthoritativeAssignmentEvidence } from "./loadAuthoritativeAssignmentEvidence.js";
 import { resolveAuthoritativeAssignmentTenant } from "./resolveAuthoritativeAssignmentTenant.js";
+import {
+  isReadOnlyAssignmentAction,
+  resolveRefereeEvidenceSubjectId,
+} from "./resolveRefereeEvidenceSubjectId.js";
 
 export const COMPETITION_ASSIGNMENT_CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -176,12 +180,50 @@ async function executeCompetitionRefereeAssignmentAction({
     canonicalBound: false,
   });
 
+  const { commandService, persistence } = createTrustedCompetitionAssignmentRuntime({
+    serviceClient,
+  });
+
+  if (isReadOnlyAssignmentAction(action)) {
+    if (action === "getMatchAssignmentVersion") {
+      const version = await commandService.getMatchAssignmentVersion({
+        tenantId: authz.tenantId,
+        tournamentId: authz.tournamentId,
+        matchId: command.matchId,
+        role: command.roleCode || command.role || "PRIMARY",
+      });
+      return { httpStatus: 200, body: { ok: true, version, action } };
+    }
+    if (action === "getActiveAssignment") {
+      const assignment = await commandService.getActiveAssignment({
+        tenantId: authz.tenantId,
+        tournamentId: authz.tournamentId,
+        matchId: command.matchId,
+        role: command.roleCode || command.role || "PRIMARY",
+      });
+      return { httpStatus: 200, body: { ok: true, assignment, action } };
+    }
+    const assignments = await commandService.listActiveAssignments?.({
+      tenantId: authz.tenantId,
+      tournamentId: authz.tournamentId,
+    });
+    const list = Array.isArray(assignments)
+      ? assignments
+      : await persistence.listActiveAssignments({
+          tenantId: authz.tenantId,
+          tournamentId: authz.tournamentId,
+        });
+    return { httpStatus: 200, body: { ok: true, assignments: list, action } };
+  }
+
+  const refereeEvidenceSubjectId = resolveRefereeEvidenceSubjectId(action, command);
+
   const evidence = await loadAuthoritativeAssignmentEvidence({
     serviceClient,
     tenantId: authz.tenantId,
     tournamentId: authz.tournamentId,
     matchId: command.matchId,
-    refereeId: command.refereeId || command.newRefereeId || null,
+    refereeId: refereeEvidenceSubjectId,
     actorId: verified.userId,
     roleCode: command.roleCode || command.role,
     competitionMode: command.competitionMode,
@@ -236,44 +278,6 @@ async function executeCompetitionRefereeAssignmentAction({
       allowSoftOverride: command.allowSoftOverride === true,
     },
   };
-
-  const { commandService } = createTrustedCompetitionAssignmentRuntime({
-    serviceClient,
-  });
-
-  if (action === "getMatchAssignmentVersion") {
-    const version = await commandService.getMatchAssignmentVersion({
-      tenantId: prepared.tenantId,
-      tournamentId: prepared.tournamentId,
-      matchId: prepared.matchId,
-      role: prepared.roleCode || prepared.role || "PRIMARY",
-    });
-    return { httpStatus: 200, body: { ok: true, version, action } };
-  }
-  if (action === "getActiveAssignment") {
-    const assignment = await commandService.getActiveAssignment({
-      tenantId: prepared.tenantId,
-      tournamentId: prepared.tournamentId,
-      matchId: prepared.matchId,
-      role: prepared.roleCode || prepared.role || "PRIMARY",
-    });
-    return { httpStatus: 200, body: { ok: true, assignment, action } };
-  }
-  if (action === "listActiveAssignments") {
-    const assignments = await commandService.listActiveAssignments?.({
-      tenantId: prepared.tenantId,
-      tournamentId: prepared.tournamentId,
-    });
-    const list = Array.isArray(assignments)
-      ? assignments
-      : await createTrustedCompetitionAssignmentRuntime({
-          serviceClient,
-        }).persistence.listActiveAssignments({
-          tenantId: prepared.tenantId,
-          tournamentId: prepared.tournamentId,
-        });
-    return { httpStatus: 200, body: { ok: true, assignments: list, action } };
-  }
 
   const method =
     action === ASSIGNMENT_COMMAND.ASSIGN || action === "assignReferee"

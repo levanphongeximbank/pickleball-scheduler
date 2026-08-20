@@ -204,10 +204,94 @@ var COMPETITION_ASSIGNMENT_MUTATION_RPC = Object.freeze({
   REPLACE: "competition_replace_referee",
   UNASSIGN: "competition_unassign_referee"
 });
+var COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC = Object.freeze({
+  PAYLOAD_HASH: "competition_assignment_payload_hash",
+  CHECK: "competition_assignment_check_idempotency"
+});
+var TRUSTED_SERVER_BOUNDARY = "competition-referee-assignment";
 function toSqlRole(role) {
   const value = String(role || "PRIMARY").trim() || "PRIMARY";
   if (value === "PRIMARY") return "PRIMARY";
   return value;
+}
+function toDurableCanonicalRole(role) {
+  const value = String(role || "REFEREE").trim().toUpperCase();
+  if (value === "PRIMARY" || value === "REFEREE" || !value) return "REFEREE";
+  if (value === "HEAD" || value === "HEAD_REFEREE") return "HEAD_REFEREE";
+  if (value === "SCOREKEEPER") return "SCOREKEEPER";
+  return value;
+}
+function durableCommandMetadata(actorId) {
+  return {
+    trustedServerBoundary: TRUSTED_SERVER_BOUNDARY,
+    originatingActorId: actorId
+  };
+}
+function buildDurableAssignmentIdempotencyPayload(command = {}) {
+  const operation = String(command.operation || "ASSIGN").trim().toUpperCase();
+  const role = toDurableCanonicalRole(command.role || command.roleCode);
+  const actorId = String(command.actorId || "").trim();
+  const expectedVersion = Number(command.expectedVersion);
+  const lifecycleState = String(command.lifecycleState || "PRE_MATCH").trim() || "PRE_MATCH";
+  const metadata = durableCommandMetadata(actorId);
+  const base = {
+    operation,
+    tenantId: command.tenantId,
+    tournamentId: command.tournamentId,
+    matchId: command.matchId
+  };
+  if (operation === "REPLACE") {
+    return {
+      ...base,
+      newRefereeUserId: command.newRefereeId || command.refereeId,
+      role,
+      expectedVersion,
+      emergencyReplacement: command.emergencyReplacement === true,
+      lifecycleState,
+      commandMetadata: metadata,
+      originatingActorId: actorId,
+      trustedServerBoundary: TRUSTED_SERVER_BOUNDARY
+    };
+  }
+  if (operation === "UNASSIGN") {
+    return {
+      ...base,
+      role,
+      expectedVersion,
+      lifecycleState,
+      commandMetadata: metadata,
+      originatingActorId: actorId,
+      trustedServerBoundary: TRUSTED_SERVER_BOUNDARY
+    };
+  }
+  return {
+    ...base,
+    refereeUserId: command.refereeId,
+    role,
+    expectedVersion,
+    lifecycleState,
+    commandMetadata: metadata,
+    originatingActorId: actorId,
+    trustedServerBoundary: TRUSTED_SERVER_BOUNDARY
+  };
+}
+function mapDurableReplayResult(command, peek) {
+  const operation = String(peek?.operation || command.operation || "ASSIGN").trim().toUpperCase();
+  const refereeId = operation === "UNASSIGN" ? null : String(
+    command.newRefereeId || command.refereeId || peek?.refereeUserId || ""
+  ).trim() || null;
+  return Object.freeze({
+    assignmentId: String(peek?.assignmentId || peek?.assignment_id || ""),
+    tenantId: command.tenantId,
+    tournamentId: command.tournamentId,
+    matchId: command.matchId,
+    refereeId,
+    role: fromSqlRole(peek?.role || command.role || command.roleCode),
+    roleCode: fromSqlRole(peek?.role || command.role || command.roleCode),
+    status: operation === "UNASSIGN" ? "revoked" : "active",
+    version: peek?.version != null ? Number(peek.version) : null,
+    operation
+  });
 }
 function fromSqlRole(role) {
   const value = String(role || "").trim();
@@ -311,6 +395,48 @@ function createRpcCanonicalAssignmentPersistence(options = {}) {
     translationOnly: true,
     decisionAuthority: false,
     productUiDecisionPath: false,
+    async peekIdempotency(command = {}) {
+      const key = String(command.idempotencyKey || "").trim();
+      if (!key) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.IDEMPOTENCY_KEY_REQUIRED,
+          "idempotencyKey is required",
+          {}
+        );
+      }
+      const tenantId = String(command.tenantId || "").trim();
+      const tournamentId = String(command.tournamentId || command.competitionId || "").trim();
+      if (!tenantId || !tournamentId) {
+        failAssignmentCommand(
+          ASSIGNMENT_COMMAND_ERROR_CODE.INVALID_INPUT,
+          "tenantId and tournamentId are required for durable idempotency peek",
+          {}
+        );
+      }
+      const payload = buildDurableAssignmentIdempotencyPayload({
+        ...command,
+        tenantId,
+        tournamentId
+      });
+      const hash = await rpc(COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC.PAYLOAD_HASH, {
+        p_payload: payload
+      });
+      const checked = await rpc(COMPETITION_ASSIGNMENT_IDEMPOTENCY_RPC.CHECK, {
+        p_tenant_id: tenantId,
+        p_tournament_id: tournamentId,
+        p_idempotency_key: key,
+        p_payload_hash: String(hash || "")
+      });
+      const peek = checked && typeof checked === "object" ? checked : {};
+      if (peek.replay !== true) {
+        return { replay: false, key };
+      }
+      return {
+        replay: true,
+        key,
+        result: mapDurableReplayResult(command, peek)
+      };
+    },
     async getActiveAssignment({ tenantId, tournamentId, matchId, role = "PRIMARY" }) {
       const sqlRole = toSqlRole(role);
       const { data, error } = await serviceClient.from("referee_assignments").select("*").eq("tenant_id", tenantId).eq("tournament_id", tournamentId).eq("match_id", matchId).eq("status", "active").limit(20);
@@ -353,10 +479,7 @@ function createRpcCanonicalAssignmentPersistence(options = {}) {
         p_actor_id: actorId,
         p_reason: command.reason || null,
         p_lifecycle_state: null,
-        p_command_metadata: {
-          trustedServerBoundary: "competition-referee-assignment",
-          originatingActorId: actorId
-        }
+        p_command_metadata: durableCommandMetadata(actorId)
       });
       return mapRpcResult(data, command);
     },
@@ -378,10 +501,7 @@ function createRpcCanonicalAssignmentPersistence(options = {}) {
         p_reason: command.reason || null,
         p_lifecycle_state: null,
         p_emergency_replacement: command.emergencyReplacement === true,
-        p_command_metadata: {
-          trustedServerBoundary: "competition-referee-assignment",
-          originatingActorId: actorId
-        }
+        p_command_metadata: durableCommandMetadata(actorId)
       });
       return mapRpcResult(data, command);
     },
@@ -397,10 +517,7 @@ function createRpcCanonicalAssignmentPersistence(options = {}) {
         p_actor_id: actorId,
         p_reason: command.reason || null,
         p_lifecycle_state: null,
-        p_command_metadata: {
-          trustedServerBoundary: "competition-referee-assignment",
-          originatingActorId: actorId
-        }
+        p_command_metadata: durableCommandMetadata(actorId)
       });
       return mapRpcResult(data, command);
     }
@@ -10643,6 +10760,35 @@ async function resolveAuthoritativeAssignmentTenant(input = {}) {
   });
 }
 
+// src/features/competition-engine/operations/referee/assignment/server/resolveRefereeEvidenceSubjectId.js
+var READ_ACTIONS = Object.freeze([
+  "getMatchAssignmentVersion",
+  "getActiveAssignment",
+  "listActiveAssignments"
+]);
+function isReadOnlyAssignmentAction(action) {
+  const normalized = String(action || "").trim();
+  return READ_ACTIONS.includes(normalized);
+}
+function resolveRefereeEvidenceSubjectId(action, command = {}) {
+  const normalized = String(action || "").trim();
+  if (isReadOnlyAssignmentAction(normalized)) {
+    return null;
+  }
+  if (normalized === ASSIGNMENT_COMMAND.UNASSIGN || normalized === "unassignReferee") {
+    return null;
+  }
+  if (normalized === ASSIGNMENT_COMMAND.REPLACE || normalized === "replaceReferee") {
+    const incoming = String(command.newRefereeId || command.refereeId || "").trim();
+    return incoming || null;
+  }
+  if (normalized === ASSIGNMENT_COMMAND.ASSIGN || normalized === "assignReferee") {
+    const assignTarget = String(command.refereeId || "").trim();
+    return assignTarget || null;
+  }
+  return null;
+}
+
 // src/features/competition-engine/operations/referee/assignment/server/edgeHttpHandler.js
 var COMPETITION_ASSIGNMENT_CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -10782,12 +10928,45 @@ async function executeCompetitionRefereeAssignmentAction({
     actorId: verified.userId,
     canonicalBound: false
   });
+  const { commandService, persistence } = createTrustedCompetitionAssignmentRuntime({
+    serviceClient
+  });
+  if (isReadOnlyAssignmentAction(action)) {
+    if (action === "getMatchAssignmentVersion") {
+      const version = await commandService.getMatchAssignmentVersion({
+        tenantId: authz.tenantId,
+        tournamentId: authz.tournamentId,
+        matchId: command.matchId,
+        role: command.roleCode || command.role || "PRIMARY"
+      });
+      return { httpStatus: 200, body: { ok: true, version, action } };
+    }
+    if (action === "getActiveAssignment") {
+      const assignment = await commandService.getActiveAssignment({
+        tenantId: authz.tenantId,
+        tournamentId: authz.tournamentId,
+        matchId: command.matchId,
+        role: command.roleCode || command.role || "PRIMARY"
+      });
+      return { httpStatus: 200, body: { ok: true, assignment, action } };
+    }
+    const assignments = await commandService.listActiveAssignments?.({
+      tenantId: authz.tenantId,
+      tournamentId: authz.tournamentId
+    });
+    const list = Array.isArray(assignments) ? assignments : await persistence.listActiveAssignments({
+      tenantId: authz.tenantId,
+      tournamentId: authz.tournamentId
+    });
+    return { httpStatus: 200, body: { ok: true, assignments: list, action } };
+  }
+  const refereeEvidenceSubjectId = resolveRefereeEvidenceSubjectId(action, command);
   const evidence = await loadAuthoritativeAssignmentEvidence({
     serviceClient,
     tenantId: authz.tenantId,
     tournamentId: authz.tournamentId,
     matchId: command.matchId,
-    refereeId: command.refereeId || command.newRefereeId || null,
+    refereeId: refereeEvidenceSubjectId,
     actorId: verified.userId,
     roleCode: command.roleCode || command.role,
     competitionMode: command.competitionMode,
@@ -10836,40 +11015,6 @@ async function executeCompetitionRefereeAssignmentAction({
       allowSoftOverride: command.allowSoftOverride === true
     }
   };
-  const { commandService } = createTrustedCompetitionAssignmentRuntime({
-    serviceClient
-  });
-  if (action === "getMatchAssignmentVersion") {
-    const version = await commandService.getMatchAssignmentVersion({
-      tenantId: prepared.tenantId,
-      tournamentId: prepared.tournamentId,
-      matchId: prepared.matchId,
-      role: prepared.roleCode || prepared.role || "PRIMARY"
-    });
-    return { httpStatus: 200, body: { ok: true, version, action } };
-  }
-  if (action === "getActiveAssignment") {
-    const assignment = await commandService.getActiveAssignment({
-      tenantId: prepared.tenantId,
-      tournamentId: prepared.tournamentId,
-      matchId: prepared.matchId,
-      role: prepared.roleCode || prepared.role || "PRIMARY"
-    });
-    return { httpStatus: 200, body: { ok: true, assignment, action } };
-  }
-  if (action === "listActiveAssignments") {
-    const assignments = await commandService.listActiveAssignments?.({
-      tenantId: prepared.tenantId,
-      tournamentId: prepared.tournamentId
-    });
-    const list = Array.isArray(assignments) ? assignments : await createTrustedCompetitionAssignmentRuntime({
-      serviceClient
-    }).persistence.listActiveAssignments({
-      tenantId: prepared.tenantId,
-      tournamentId: prepared.tournamentId
-    });
-    return { httpStatus: 200, body: { ok: true, assignments: list, action } };
-  }
   const method = action === ASSIGNMENT_COMMAND.ASSIGN || action === "assignReferee" ? "assignReferee" : action === ASSIGNMENT_COMMAND.REPLACE || action === "replaceReferee" ? "replaceReferee" : action === ASSIGNMENT_COMMAND.UNASSIGN || action === "unassignReferee" ? "unassignReferee" : null;
   if (!method) {
     return {
