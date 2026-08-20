@@ -83,7 +83,8 @@ export function getTournamentSetupPath(tournament) {
   }
 
   if (tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
-    return `/tournament/official/${tournament.id}`;
+    // Wave O1: Official primary open = canonical Overview.
+    return `/tournament/${encodeURIComponent(tournament.id)}/overview`;
   }
 
   if (tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {

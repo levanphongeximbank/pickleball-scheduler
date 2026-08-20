@@ -75,9 +75,10 @@ export function resolveTournamentCreateNavigatePath(mode, tournamentId, preselec
       : `/tournament/internal/${id}`;
   }
   if (mode === "official_tournament") {
+    // Wave O1: Official create → canonical Overview (eventId query semantics).
     return preselectedEvent
-      ? `/tournament/official/${id}?event=${preselectedEvent}`
-      : `/tournament/official/${id}`;
+      ? `/tournament/${encodeURIComponent(id)}/overview?eventId=${encodeURIComponent(preselectedEvent)}`
+      : `/tournament/${encodeURIComponent(id)}/overview`;
   }
   if (mode === "team_tournament") {
     return `/tournament/team/${id}`;

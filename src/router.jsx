@@ -172,7 +172,9 @@ const DailyPlaySetup = lazy(() => import("./pages/tournament/DailyPlaySetup"));
 
 const InternalTournamentSetup = lazy(() => import("./pages/tournament/InternalTournamentSetup"));
 
-const OfficialTournamentSetup = lazy(() => import("./pages/tournament/OfficialTournamentSetup"));
+const OfficialExperienceCompatibilityRoute = lazy(() =>
+  import("./features/tournament/official-tournament-experience/OfficialExperienceCompatibilityRoute.jsx")
+);
 
 const TeamTournamentSetup = lazy(() => import("./pages/tournament/TeamTournamentSetup"));
 const TeamPortal = lazy(() => import("./pages/tournament/TeamPortal"));
@@ -784,7 +786,7 @@ export default function Router() {
 
               path="/tournament/official/:tournamentId"
 
-              element={<OfficialTournamentSetup />}
+              element={<OfficialExperienceCompatibilityRoute />}
 
             />
 

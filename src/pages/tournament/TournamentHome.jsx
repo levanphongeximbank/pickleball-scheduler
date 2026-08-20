@@ -288,8 +288,8 @@ export default function TournamentHome({ section = "overview" }) {
     if (option.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
       navigate(
         preselectedEvent
-          ? `/tournament/official/${result.tournament.id}?event=${preselectedEvent}`
-          : `/tournament/official/${result.tournament.id}`
+          ? `/tournament/${encodeURIComponent(result.tournament.id)}/overview?eventId=${encodeURIComponent(preselectedEvent)}`
+          : `/tournament/${encodeURIComponent(result.tournament.id)}/overview`
       );
       return;
     }

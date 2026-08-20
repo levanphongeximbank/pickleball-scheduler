@@ -1,4 +1,5 @@
 import { TOURNAMENT_MODE } from "../../../../models/tournament/index.js";
+import { resolveOfficialCanonicalOpenPath } from "../../official-tournament-experience/officialOpenPaths.js";
 
 export function buildDirectorBackPath(tournament, tournamentId) {
   if (!tournament) {
@@ -17,5 +18,9 @@ export function buildDirectorBackPath(tournament, tournamentId) {
     return `/tournament/team/${tournamentId}`;
   }
 
-  return `/tournament/official/${tournamentId}`;
+  if (tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
+    return resolveOfficialCanonicalOpenPath(tournamentId);
+  }
+
+  return resolveOfficialCanonicalOpenPath(tournamentId);
 }

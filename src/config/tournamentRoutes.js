@@ -107,7 +107,8 @@ export function tournamentSetupPath(tournament) {
     return `/tournament/internal/${id}`;
   }
   if (tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
-    return `/tournament/official/${id}`;
+    // Wave O1: Official primary open = canonical Overview (not legacy setup).
+    return `/tournament/${encodeURIComponent(id)}/overview`;
   }
   if (tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
     return `/tournament/team/${id}`;

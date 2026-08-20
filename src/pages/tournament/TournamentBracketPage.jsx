@@ -80,7 +80,7 @@ export default function TournamentBracketPage() {
 
   const backPath =
     mode === "official"
-      ? `/tournament/official/${tournamentId}`
+      ? `/tournament/${encodeURIComponent(tournamentId)}/overview`
       : `/tournament/internal/${tournamentId}`;
 
   if (tournamentId && !tournamentAccess.ok) {

@@ -97,6 +97,15 @@ export {
   createOfficialTournamentRefereeAdapter,
 } from "./official-open-adapter-b/index.js";
 export {
+  createOfficialTournamentExperienceAdapter,
+  projectOfficialTournamentExperience,
+  resolveOfficialCanonicalOpenPath,
+  officialLegacySetupPath,
+  OFFICIAL_EXPERIENCE_AUTHORITY,
+  OFFICIAL_LEGACY_ROUTE_ACTIVATION,
+  ENGINE_ROUTE_CLASSIFICATION,
+} from "./official-tournament-experience/index.js";
+export {
   canonicalRowToTournament,
   tournamentToCanonicalRow,
   tournamentMatchesMine,
