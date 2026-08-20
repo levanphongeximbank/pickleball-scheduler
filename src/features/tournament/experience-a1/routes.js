@@ -110,6 +110,30 @@ export function individualBracketPath(tournamentId, eventId = "") {
   return withEventQuery(`/tournament/${encodeURIComponent(id)}/bracket`, eventId);
 }
 
+export function individualDirectorPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/director`, eventId);
+}
+
+export function individualCourtsPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/courts`, eventId);
+}
+
+export function individualRefereesPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/referees`, eventId);
+}
+
+export function individualExceptionsPath(tournamentId, eventId = "") {
+  const id = String(tournamentId || "").trim();
+  if (!id) return "/tournament";
+  return withEventQuery(`/tournament/${encodeURIComponent(id)}/exceptions`, eventId);
+}
+
 export function a1LegacyHubPath() {
   return "/tournament?experience=legacy";
 }

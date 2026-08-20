@@ -240,6 +240,18 @@ const IndividualKnockoutPage = lazy(() =>
 const IndividualBracketPage = lazy(() =>
   import("./features/tournament/experience-a1/pages/IndividualBracketPage.jsx")
 );
+const IndividualDirectorOpsPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualDirectorOpsPage.jsx")
+);
+const IndividualCourtBoardPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualCourtBoardPage.jsx")
+);
+const IndividualRefereeBoardPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualRefereeBoardPage.jsx")
+);
+const IndividualExceptionCenterPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualExceptionCenterPage.jsx")
+);
 const TournamentWithdrawalPage = lazy(() =>
   import("./pages/tournament/TournamentWithdrawalPage.jsx")
 );
@@ -656,6 +668,22 @@ export default function Router() {
             <Route
               path="/tournament/:tournamentId/bracket"
               element={<IndividualBracketPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/director"
+              element={<IndividualDirectorOpsPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/courts"
+              element={<IndividualCourtBoardPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/referees"
+              element={<IndividualRefereeBoardPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/exceptions"
+              element={<IndividualExceptionCenterPage />}
             />
             <Route
               path="/tournament/:tournamentId/register"
