@@ -7,6 +7,7 @@ import {
   isIndividualTournament,
   isTeamTournament,
 } from "../../../config/tournamentRoutes.js";
+import { resolveTeamExperienceOpenPath } from "./team/teamExperienceRoutes.js";
 
 function legacySetupPath(tournament) {
   const id = String(tournament?.id || "").trim();
@@ -168,7 +169,7 @@ export function resolveA1OpenPath(tournament) {
     return individualOverviewPath(tournament.id);
   }
   if (isTeamTournament(tournament)) {
-    return `/tournaments/${encodeURIComponent(tournament.id)}`;
+    return resolveTeamExperienceOpenPath(tournament);
   }
   if (tournament.mode === TOURNAMENT_MODE.DAILY_PLAY) {
     return `/tournament/daily/${encodeURIComponent(tournament.id)}`;

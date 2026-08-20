@@ -16,6 +16,14 @@ export {
   resolveA1OpenPath,
 } from "./routes.js";
 export {
+  teamOverviewPath,
+  resolveTeamExperienceOpenPath,
+  TEAM_LEGACY_TAB_COMPAT,
+  TeamTournamentExperienceAdapter,
+  projectTeamOverview,
+  resolveCanonicalExperienceOpenPath,
+} from "./team/index.js";
+export {
   deriveOverviewModel,
   deriveOverviewVisual,
   listTournamentEvents,

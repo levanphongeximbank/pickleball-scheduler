@@ -167,6 +167,11 @@ export function buildOrganizerDashboardActions(tournament) {
   if (!id) return [];
   return [
     {
+      id: "overview",
+      label: "Tổng quan (canonical)",
+      href: `/tournaments/${id}/overview`,
+    },
+    {
       id: "dashboard",
       label: "Bảng điều khiển",
       href: teamTournamentDashboardPath(id),

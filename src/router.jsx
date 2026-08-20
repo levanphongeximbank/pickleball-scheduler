@@ -264,6 +264,9 @@ const IndividualAwardsExperiencePage = lazy(() =>
 const IndividualCompleteTournamentPage = lazy(() =>
   import("./features/tournament/experience-a1/pages/IndividualCompleteTournamentPage.jsx")
 );
+const TeamOverviewPage = lazy(() =>
+  import("./features/tournament/experience-a1/team/TeamOverviewPage.jsx")
+);
 const IndividualPublicExperiencePage = lazy(() =>
   import("./features/tournament/experience-a1/pages/IndividualPublicExperiencePage.jsx")
 );
@@ -821,6 +824,7 @@ export default function Router() {
             />
 
             <Route path="/tournaments" element={<MyTournamentsHubPage />} />
+            <Route path="/tournaments/:tournamentId/overview" element={<TeamOverviewPage />} />
             <Route path="/tournaments/:tournamentId" element={<TournamentDashboardPage />} />
             <Route path="/tournaments/:tournamentId/engine" element={<TournamentEnginePage />} />
             <Route path="/tournaments/:tournamentId/seed" element={<TournamentEnginePage />} />

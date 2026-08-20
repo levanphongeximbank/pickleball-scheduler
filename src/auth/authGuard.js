@@ -4,6 +4,7 @@
 import { canAccessRoute } from "./menuAccess.js";
 import {
   isMyTournamentsHubPath,
+  isTeamTournamentExperiencePath,
   isTournamentDashboardPath,
 } from "./tournamentEngineRouteAccess.js";
 
@@ -95,9 +96,11 @@ export function isAuthenticatedOnlyRoute(pathname) {
     pathname.startsWith("/referee/match/") ||
     pathname.startsWith("/team-portal/") ||
     pathname.startsWith("/team-referee/") ||
-    // Exact `/tournaments` My Tournaments hub + `/tournaments/:id` Dashboard.
+    // Exact `/tournaments` My Tournaments hub + `/tournaments/:id` Dashboard
+    // + `/tournaments/:id/overview` Team Experience shell (Wave T1).
     isMyTournamentsHubPath(pathname) ||
-    isTournamentDashboardPath(pathname)
+    isTournamentDashboardPath(pathname) ||
+    isTeamTournamentExperiencePath(pathname)
   );
 }
 

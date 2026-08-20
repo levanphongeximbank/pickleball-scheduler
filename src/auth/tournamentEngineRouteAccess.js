@@ -34,6 +34,9 @@ const ENGINE_TABS = new Set([
   "logs",
 ]);
 
+/** Team / shared Tournament Experience shell under plural family (Wave T1). */
+const TEAM_EXPERIENCE_SHELL_TABS = new Set(["overview"]);
+
 export const TOURNAMENT_ENGINE_ROUTE_PERMISSIONS = Object.freeze([
   PERMISSIONS.TOURNAMENT_UPDATE,
 ]);
@@ -76,6 +79,26 @@ export function isTournamentDashboardPath(pathname) {
   if (!match) return false;
   const tournamentId = match[1];
   return Boolean(tournamentId) && !ENGINE_TABS.has(tournamentId);
+}
+
+/**
+ * Team Tournament Experience shell — `/tournaments/:id/overview` (Wave T1).
+ * Authenticated shell; visibility = Dashboard RPC (same as exact dashboard).
+ * Must not require TOURNAMENT_UPDATE (captains / athletes may open).
+ * Must not collide with Engine tabs.
+ * @param {string} pathname
+ * @returns {boolean}
+ */
+export function isTeamTournamentExperiencePath(pathname) {
+  if (!pathname) return false;
+  const path = normalizeTournamentsPathname(pathname);
+  const match = path.match(/^\/tournaments\/([^/]+)\/([^/]+)\/?$/);
+  if (!match) return false;
+  const tournamentId = match[1];
+  const tab = match[2];
+  if (!tournamentId || ENGINE_TABS.has(tournamentId)) return false;
+  if (ENGINE_TABS.has(tab)) return false;
+  return TEAM_EXPERIENCE_SHELL_TABS.has(tab);
 }
 
 /**
