@@ -4,6 +4,7 @@ import {
   getSupabaseServiceRoleKey,
 } from "../../src/features/api/config/apiKeyStoreConfig.js";
 import { authorizeUserManage } from "./authorizeUserManage.js";
+import { stripCallerAuthorityFields } from "../../src/features/identity/services/identityManagedUserTargetPolicy.js";
 
 function parseBody(req) {
   if (!req.body) return {};
@@ -40,26 +41,37 @@ export default async function handler(req, res) {
     });
   }
 
-  const body = parseBody(req);
+  const body = stripCallerAuthorityFields(parseBody(req));
   const providedPassword = String(body.password || "").trim();
   const sendPasswordSetupEmail =
     body.sendPasswordSetupEmail === true && !providedPassword;
 
   try {
-    const result = await adminCreateManagedUser({
+    const result = await adminCreateManagedUser(
+      {
       email: body.email,
       password: body.password,
       displayName: body.displayName,
       role: body.role,
+      status: body.status,
+      tenantId: body.tenantId,
       venueId: body.venueId,
       clubId: body.clubId,
       phone: body.phone,
       redirectTo: body.redirectTo,
       sendPasswordSetupEmail,
-    });
+      actor: auth.actor,
+      },
+      { getAdminClient: () => auth.adminClient }
+    );
 
     if (!result.ok) {
-      const status = result.code === "DUPLICATE_EMAIL" ? 409 : 400;
+      const status =
+        result.code === "DUPLICATE_EMAIL"
+          ? 409
+          : result.code === "TARGET_TENANT_FORBIDDEN"
+            ? 403
+            : 400;
       return res.status(status).json(result);
     }
 

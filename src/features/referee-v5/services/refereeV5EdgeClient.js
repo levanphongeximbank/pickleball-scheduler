@@ -6,6 +6,7 @@ export const REFEREE_V5_ACTIONS = Object.freeze({
   GET_STATE: "get-state",
   APPLY_COMMAND: "apply-command",
   FINALIZE: "finalize",
+  INITIALIZE_EXECUTION: "initialize-execution",
 });
 
 function edgeUrl(edgeBaseUrl) {
@@ -107,6 +108,27 @@ export async function refereeV5EdgeFinalize({
       overrideReason,
       isOverride,
       forceComplete,
+    },
+  });
+}
+
+export async function refereeV5EdgeInitializeExecution({
+  accessToken,
+  tournamentId,
+  matchId,
+  competitionMode,
+  idempotencyKey,
+  edgeBaseUrl = "",
+}) {
+  return postEdge({
+    accessToken,
+    edgeBaseUrl,
+    body: {
+      action: REFEREE_V5_ACTIONS.INITIALIZE_EXECUTION,
+      tournamentId,
+      matchId,
+      competitionMode,
+      idempotencyKey,
     },
   });
 }

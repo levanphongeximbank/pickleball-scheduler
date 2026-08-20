@@ -58,3 +58,13 @@ export {
   listRefereeAssignments,
   canAccessRefereeSession,
 } from "./services/refereeSessionService.js";
+export {
+  resolveSubjectIdentityRecord,
+  createIdentitySubjectPointLoader,
+  isCanonicalSubjectId,
+  authoritativeTenantId,
+  authoritativeVenueId,
+  authoritativeStatus,
+  SUBJECT_IDENTITY_LOOKUP_CODE,
+  SUBJECT_IDENTITY_EVIDENCE_VERSION,
+} from "./services/subjectIdentityLookupService.js";

@@ -70,7 +70,10 @@ export { createCanonicalRefereePersistenceRuntime } from "./createCanonicalRefer
 export { createSchemaFaithfulCanonicalRefereeDurableDriver } from "./createSchemaFaithfulCanonicalRefereeDurableDriver.js";
 export { createCanonicalRefereeDurableRuntime } from "./createCanonicalRefereeDurableRuntime.js";
 export { createDurableRefereeOperationsStore } from "./createDurableRefereeOperationsStore.js";
-export { createLiveRpcCanonicalRefereeDurableDriver } from "./createLiveRpcCanonicalRefereeDurableDriver.js";
+export {
+  createLiveRpcCanonicalRefereeDurableDriver,
+  listCanonicalRefereeMatchEvents,
+} from "./createLiveRpcCanonicalRefereeDurableDriver.js";
 export { createCompetitionRefereeProductionRuntime } from "./createCompetitionRefereeProductionRuntime.js";
 export { createDefaultCompetitionRefereeRuntime } from "./createDefaultCompetitionRefereeRuntime.js";
 export {

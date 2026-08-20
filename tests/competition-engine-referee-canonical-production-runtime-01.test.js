@@ -669,8 +669,13 @@ function createMockLiveRpcClient() {
       const list = events.get(id) || [];
       list.push({
         match_state_id: id,
+        tenant_id: args.p_tenant_id,
+        tournament_id: args.p_tournament_id,
+        match_id: args.p_match_id,
         event_sequence: nextSeq,
         event_type: args.p_command_type,
+        command_type: args.p_command_type,
+        generated_events: [],
         payload: args.p_command_payload,
       });
       events.set(id, list);

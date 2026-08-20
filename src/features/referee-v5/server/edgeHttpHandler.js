@@ -4,11 +4,16 @@ import { RefereeV5SupabaseRepository } from "../persistence/RefereeV5SupabaseRep
 import { RefereeV5RpcAtomicCommitService } from "../persistence/RefereeV5RpcAtomicCommitService.js";
 import { deserializeMatchState } from "../persistence/matchStateSerializer.js";
 import { REFEREE_V5_ERROR, REFEREE_V5_ERROR_VI } from "../persistence/errors.js";
+import {
+  processTrustedMatchExecutionInit,
+  TRUSTED_INIT_ACTION,
+} from "./trustedMatchExecutionInit.js";
 
 export const REFEREE_V5_INTERNAL_RPC = Object.freeze({
   COMMIT_TRANSITION: "referee_v5_commit_match_transition",
   COMMIT_FINALIZATION: "referee_v5_commit_match_finalization",
   GET_STATE: "referee_v5_get_match_state",
+  INITIALIZE_EXECUTION: "referee_v5_initialize_match_execution_state",
 });
 
 export async function verifyBearerToken(supabaseUserClient) {
@@ -37,6 +42,8 @@ function mapHttpStatus(code) {
     case REFEREE_V5_ERROR.EVENT_SEQUENCE_CONFLICT:
     case REFEREE_V5_ERROR.IDEMPOTENCY_KEY_REUSE_MISMATCH:
     case REFEREE_V5_ERROR.MATCH_LOCKED:
+    case REFEREE_V5_ERROR.MATCH_ALREADY_ACTIVE:
+    case REFEREE_V5_ERROR.TERMINAL_STATE:
       return 409;
     case REFEREE_V5_ERROR.MATCH_NOT_FOUND:
       return 404;
@@ -82,6 +89,19 @@ export async function handleRefereeV5MatchAction({
   }
 
   const token = `jwt:${verified.userId}`;
+
+  if (action === TRUSTED_INIT_ACTION) {
+    const result = await processTrustedMatchExecutionInit({
+      body,
+      verifiedUserId: verified.userId,
+      serviceClient,
+    });
+    return {
+      httpStatus: result.ok ? 200 : mapHttpStatus(result.code),
+      body: result.ok ? result : enrichError(result),
+    };
+  }
+
   const { handler, repository } = createRefereeV5EdgeRuntime({ serviceClient });
 
   if (action === "get-state") {

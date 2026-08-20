@@ -228,6 +228,34 @@ Rollback: `docs/supabase-identity-v40-phaseC-rollback.sql`
 
 Services gọi RPC trước, fallback direct query nếu SQL Phase C chưa apply.
 
+## Competition Contract #01 — subject identity point lookup
+
+`services/subjectIdentityLookupService.js` is the Identity-owned read for one canonical `subjectId`.
+
+- Point lookup only. No email / phone / display-name / bulk directory search.
+- Returns Competition-safe evidence: canonical subject id, Identity role, active/inactive status, tenant/venue/club scope.
+- Does not expose email, phone, password, session, or other private credentials.
+- Competition Adapter B translates this service. Competition must not query `public.profiles` directly.
+- Persistence (`subjectIdentityPersistence.js`) reads only `id, role, status, tenant_id, venue_id, club_id`. It does not reuse the legacy login profile projection.
+- **Tenant is not venue.** `tenantId` comes only from `tenant_id` / `tenantId`. `venueId` comes only from `venue_id` / `venueId`. Missing tenant is `null`; venue is never copied onto tenant, and venue equality is never tenant proof.
+- **Status is not synthesized.** Explicit `active` → `active=true`. Explicit `suspended` / `inactive` / `invited` → `active=false`. Missing or unreadable status fails closed as incomplete evidence.
+- If origin/main has no canonical `tenant_id` yet, Contract #01 returns `tenantId=null` and fails closed when a consumer requests tenant proof. Same UUID on both fields does not collapse the entities.
+
 ### Tests
 
 `tests/identity-phaseC.test.js` — `/audit` guard, audit list permission, user list permission.
+
+## Tenant-aware managed user provisioning
+
+Canonical create contract: `adminCreateManagedUser` via `/api/identity/create-user`.
+
+- `tenantId` and `venueId` are independent. Venue is never copied onto Tenant.
+- Allowed initial status: `active` | `suspended` | `invited`. Default remains `active`.
+- Target Tenant existence is proven from `public.platform_tenants` before Auth create.
+- **Authorization policy:** `PLATFORM_ADMIN` / `SUPER_ADMIN` may create under an existing explicit Tenant. Non-super-admin may target a Tenant only when `platform_tenants.owner_user_id` equals the authenticated actor. `profiles.tenant_id` / `profiles.venue_id` are home/default Identity context, not Tenant operational entitlement. Venue equality is not Tenant authorization. Caller-supplied `actorId` / `actorRole` / `authorizedTenantId` / `permissions` / `tenantMembership` are stripped.
+- If profile persistence or Contract #01 post-create evidence fails after Auth create, the command compensates by deleting only the Auth user it just created.
+- Suspended users remain canonical subjects with `active=false` under Contract #01.
+
+### Tests
+
+`tests/identity-profile-tenant-mapping.test.js`, `tests/identity-tenant-aware-managed-user-create.test.js`, `tests/identity-managed-password-reset-audit.test.js`.

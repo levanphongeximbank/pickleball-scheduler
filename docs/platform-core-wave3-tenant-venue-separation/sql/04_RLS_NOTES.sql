@@ -1,0 +1,24 @@
+-- Wave 3 Phase B — RLS NOTES (NOT EXECUTABLE)
+-- DO NOT RUN THIS FILE.
+-- Function and policy statements were removed from this notes file
+-- after Owner architecture review. Execution-ready SQL lives only in:
+--   04_RLS_POLICIES.sql
+-- Design, grants, Super Admin / tenant / venue behavior, and fallback retirement:
+--   04_RLS_PACKAGE.md
+--
+-- Dual gate required before any RLS deploy:
+--   OWNER_SQL_GO_WAVE3_PHASE_B=YES
+--   OWNER_RLS_DEPLOY_GO=YES
+-- Default apply order does NOT include RLS.
+--
+-- Transitional fallback name:
+--   WAVE3_USER_TENANT_ID_VENUE_FALLBACK
+-- user_tenant_id() may COALESCE(profiles.tenant_id, profiles.venue_id)
+-- ONLY while profiles.tenant_id is still incomplete.
+-- user_home_venue_id() MUST NOT invent Venue identity from Tenant identity.
+--
+-- Removal condition for the fallback:
+--   COUNT(*) FROM profiles WHERE venue_id IS NOT NULL AND NULLIF(tenant_id,'') IS NULL = 0
+--   AND OWNER_RETIRE_USER_TENANT_VENUE_FALLBACK=YES
+
+SELECT 'WAVE3_04_RLS_NOTES_NOT_EXECUTABLE' AS status;

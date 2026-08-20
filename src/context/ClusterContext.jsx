@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 import { useAuth } from "./AuthContext.jsx";
 import { useTenant } from "./TenantContext.jsx";
+import { useVenue } from "./VenueContext.jsx";
 import { isCourtClustersEnabled } from "../features/court-cluster/config/clusterFlags.js";
 import { pullClusterContextForUser } from "../features/court-cluster/services/courtClusterCloudSync.js";
 import {
@@ -13,36 +14,45 @@ import {
   switchActiveCluster,
 } from "../features/court-cluster/services/courtClusterService.js";
 import { getActiveClusterId, getActiveClusterIdForVenue, setActiveClusterId } from "../data/courtCluster.js";
+import { clusterBelongsToVenue } from "../core/platform/app/tenantVenueIdentity.js";
 
 const ClusterContext = createContext(null);
 
+/**
+ * Wave 3 — Cluster is scoped by Venue (not Tenant identity, not Club).
+ */
 export function ClusterProvider({ children }) {
   const { user } = useAuth();
   const { currentTenantId } = useTenant();
+  const { currentVenueId } = useVenue();
   const [activeClusterId, setActiveClusterIdState] = useState(() =>
-    currentTenantId ? getActiveClusterIdForVenue(currentTenantId) : getActiveClusterId()
+    currentVenueId ? getActiveClusterIdForVenue(currentVenueId) : getActiveClusterId()
   );
   const [revision, setRevision] = useState(0);
 
   const clusters = useMemo(() => {
     if (!isCourtClustersEnabled()) {
-      if (!currentTenantId) {
+      if (!currentVenueId) {
         return listClustersForAssignedUser(user);
       }
       // LEGACY local-only compatibility: synthesize a default cluster catalog
       // row when the cloud cluster feature is off. Canonical cloud inventory
       // never uses this path.
-      const ensured = ensureDefaultClusterForVenue(currentTenantId);
+      const ensured = ensureDefaultClusterForVenue(currentVenueId);
       return ensured.cluster ? [ensured.cluster] : [];
     }
 
-    return listAccessibleClustersForUser(user, currentTenantId);
-  }, [currentTenantId, revision, user]);
+    return listAccessibleClustersForUser(user, currentVenueId);
+  }, [currentVenueId, revision, user]);
 
-  const activeCluster = useMemo(
-    () => clusters.find((cluster) => cluster.id === activeClusterId) || null,
-    [activeClusterId, clusters]
-  );
+  const activeCluster = useMemo(() => {
+    const found = clusters.find((cluster) => cluster.id === activeClusterId) || null;
+    if (!found) return null;
+    if (!clusterBelongsToVenue(found, currentVenueId, currentTenantId)) {
+      return null;
+    }
+    return found;
+  }, [activeClusterId, clusters, currentTenantId, currentVenueId]);
 
   const refreshClusters = useCallback(() => {
     setRevision((value) => value + 1);
@@ -77,38 +87,61 @@ export function ClusterProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [user, currentTenantId]);
+  }, [user, currentVenueId, currentTenantId]);
 
   useEffect(() => {
     const assigned = listClustersForAssignedUser(user);
     const shouldBootstrapDefault =
       !isCourtClustersEnabled() &&
-      currentTenantId &&
+      currentVenueId &&
       user?.venueId &&
       assigned.length === 0 &&
       isOrgWideClusterRole(user);
 
     if (shouldBootstrapDefault) {
-      ensureDefaultClusterForVenue(currentTenantId);
+      ensureDefaultClusterForVenue(currentVenueId);
     }
 
-    const resolved = resolveActiveClusterForUser(user, currentTenantId);
+    const resolved = resolveActiveClusterForUser(user, currentVenueId);
     if (resolved?.id && resolved.id !== activeClusterId) {
-      setActiveClusterIdState(resolved.id);
-      setActiveClusterId(resolved.id);
+      if (clusterBelongsToVenue(resolved, currentVenueId, currentTenantId)) {
+        setActiveClusterIdState(resolved.id);
+        setActiveClusterId(resolved.id);
+      } else {
+        setActiveClusterIdState(null);
+        setActiveClusterId(null);
+      }
     } else if (!resolved && activeClusterId) {
       setActiveClusterIdState(null);
       setActiveClusterId(null);
+    } else if (
+      activeClusterId &&
+      !clusterBelongsToVenue(
+        clusters.find((c) => c.id === activeClusterId),
+        currentVenueId,
+        currentTenantId
+      )
+    ) {
+      setActiveClusterIdState(null);
+      setActiveClusterId(null);
     }
-  }, [activeClusterId, currentTenantId, revision, user]);
+  }, [activeClusterId, clusters, currentTenantId, currentVenueId, revision, user]);
 
   const switchCluster = useCallback(
     (clusterId) => {
-      const clusterVenueId =
-        clusters.find((cluster) => cluster.id === clusterId)?.venueId || currentTenantId;
+      const cluster = clusters.find((row) => row.id === clusterId) || null;
+      const clusterVenueId = cluster?.venueId || currentVenueId;
+      if (!currentVenueId || clusterVenueId !== currentVenueId) {
+        return {
+          ok: false,
+          error: "Cluster không thuộc Venue đang chọn.",
+          code: "CLUSTER_VENUE_MISMATCH",
+        };
+      }
+
       const result = switchActiveCluster(clusterId, {
         user,
-        venueId: clusterVenueId,
+        venueId: currentVenueId,
       });
 
       if (!result.ok) {
@@ -119,7 +152,7 @@ export function ClusterProvider({ children }) {
       setRevision((value) => value + 1);
       return result;
     },
-    [clusters, currentTenantId, user]
+    [clusters, currentVenueId, user]
   );
 
   const value = useMemo(

@@ -104,6 +104,84 @@ function isActiveAssignment(row, nowIso) {
   return true;
 }
 
+function mapEventRow(row) {
+  return freezeClone({
+    table: CANONICAL_REFEREE_PERSISTENCE_TABLES.EVENTS,
+    id: row.id,
+    tenantId: row.tenant_id,
+    competitionId: row.tournament_id,
+    matchId: row.match_id,
+    matchStateId: row.match_state_id,
+    eventSequence: Number(row.event_sequence),
+    eventType: row.event_type,
+    commandType: row.command_type || row.event_type,
+    generatedEvents: Array.isArray(row.generated_events)
+      ? row.generated_events
+      : [],
+    payload: row.payload,
+    stateVersionBefore: row.state_version_before,
+    stateVersionAfter: row.state_version_after,
+    actorId: row.actor_id,
+    idempotencyKey: row.idempotency_key,
+    appendOnly: true,
+  });
+}
+
+/**
+ * Authoritative append-only match_events read, tenant + tournament + match scoped.
+ * Server/Edge callers only. Does not invent scoring authority.
+ *
+ * @param {{ from: Function }} fromClient
+ * @param {{ tenantId: string, competitionId?: string, tournamentId?: string, matchId: string }} scope
+ */
+export async function listCanonicalRefereeMatchEvents(fromClient, scope = {}) {
+  if (!fromClient || typeof fromClient.from !== "function") {
+    failRefereeAdapter(
+      REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED,
+      "Canonical match_events reader requires from()",
+      {}
+    );
+  }
+  const tenantId = String(scope.tenantId || "").trim();
+  const competitionId = String(
+    scope.competitionId || scope.tournamentId || ""
+  ).trim();
+  const matchId = String(scope.matchId || "").trim();
+  const id = matchStateId(tenantId, competitionId, matchId);
+  const { data, error } = await fromClient
+    .from(CANONICAL_REFEREE_PERSISTENCE_TABLES.EVENTS)
+    .select(
+      "id, tenant_id, tournament_id, match_id, match_state_id, event_sequence, event_type, command_type, generated_events, payload, state_version_before, state_version_after, actor_id, idempotency_key"
+    )
+    .eq("tenant_id", tenantId)
+    .eq("tournament_id", competitionId)
+    .eq("match_id", matchId)
+    .eq("match_state_id", id)
+    .order("event_sequence", { ascending: true });
+  if (error) {
+    failRefereeAdapter(
+      REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED,
+      error.message || "Failed to list match_events",
+      {
+        tenantId,
+        tournamentId: competitionId,
+        matchId,
+      }
+    );
+  }
+  return Object.freeze(
+    (data || [])
+      .filter(
+        (row) =>
+          String(row.tenant_id || "") === tenantId &&
+          String(row.tournament_id || "") === competitionId &&
+          String(row.match_id || "") === matchId &&
+          String(row.match_state_id || "") === id
+      )
+      .map(mapEventRow)
+  );
+}
+
 /**
  * @param {{ rpcClient?: { rpc: Function, from?: Function }, clockIso?: string }} [options]
  */
@@ -305,39 +383,8 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
   }
 
   async function listEvents(scope) {
-    const id = matchStateId(scope.tenantId, scope.competitionId, scope.matchId);
-    const { data, error } = await rpcClient
-      .from(CANONICAL_REFEREE_PERSISTENCE_TABLES.EVENTS)
-      .select("*")
-      .eq("match_state_id", id)
-      .order("event_sequence", { ascending: true });
-    if (error) {
-      failRefereeAdapter(
-        REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED,
-        error.message || "Failed to list match_events",
-        {}
-      );
-    }
-    return Object.freeze(
-      (data || []).map((row) =>
-        freezeClone({
-          table: CANONICAL_REFEREE_PERSISTENCE_TABLES.EVENTS,
-          id: row.id,
-          tenantId: row.tenant_id,
-          competitionId: row.tournament_id,
-          matchId: row.match_id,
-          matchStateId: row.match_state_id,
-          eventSequence: Number(row.event_sequence),
-          eventType: row.event_type,
-          payload: row.payload,
-          stateVersionBefore: row.state_version_before,
-          stateVersionAfter: row.state_version_after,
-          actorId: row.actor_id,
-          idempotencyKey: row.idempotency_key,
-          appendOnly: true,
-        })
-      )
-    );
+    const events = await listCanonicalRefereeMatchEvents(rpcClient, scope);
+    return Object.freeze(events.map((row) => freezeClone(row)));
   }
 
   async function findIdempotent(scope) {
@@ -658,6 +705,8 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
     listByReferee,
     listByCompetition,
     listEvents,
+    listCanonicalRefereeMatchEvents: (scope) =>
+      listCanonicalRefereeMatchEvents(rpcClient, scope),
     findIdempotent,
     commitTransition,
     appendRevision,

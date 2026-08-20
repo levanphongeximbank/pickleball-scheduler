@@ -41,6 +41,18 @@ import {
   SCORING_ACTION_LEDGER_KIND,
 } from "./scoring/undoLastScoringActionHelpers.js";
 import {
+  createRefereeCandidate,
+  createManualRefereeAssignmentRequest,
+  createMatchScheduleRow,
+  validateManualRefereeAssignment,
+  REFEREE_ROLE_CODE,
+} from "../../../competition-core/referee-assignment/index.js";
+import {
+  createPopulatedSnapshotResult,
+  createEmptySnapshotResult,
+} from "../../../competition-core/referee-assignment/ports/portResult.js";
+import { ASSIGNMENT_COMMAND_ERROR_CODE } from "./assignment/constants.js";
+import {
   ACCEPTANCE_STATUS,
   ACTOR_TYPE,
   LIFECYCLE_COMPLETION_REASON,
@@ -295,9 +307,18 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
   }
 
   /**
-   * Seed CORE-13 assignment handoff + optional match snapshots (test/runtime wiring).
+   * Seed assignment handoff — MUST pass CORE-13 validation per row.
+   * No business-authority bypass. Optional assignmentCommandService routes
+   * through the shared command surface (CAS + idempotency + audit).
    */
   async function seedAssignments(command = {}) {
+    if (command.allowCore13Bypass === true) {
+      failReferee(
+        REFEREE_ERROR_CODE.INVALID_INPUT,
+        "seedAssignments cannot bypass CORE-13",
+        { code: ASSIGNMENT_COMMAND_ERROR_CODE.SEED_BYPASS_DENIED }
+      );
+    }
     const tenantId = String(command.tenantId || "").trim();
     const competitionId = String(command.competitionId || "").trim();
     if (!tenantId || !competitionId) {
@@ -307,6 +328,120 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         {}
       );
     }
+
+    const assignmentCommandService = deps.assignmentCommandService || null;
+    if (assignmentCommandService) {
+      bindStoreCommand(command);
+      const seeded =
+        await assignmentCommandService.seedAssignmentsThroughCore13({
+          ...command,
+          tournamentId: competitionId,
+          actorId:
+            command.actorId ||
+            command.actor?.id ||
+            command.actor?.userId ||
+            "seed-actor",
+          lifecycleState: command.lifecycleState || "PRE_MATCH",
+        });
+      if (Array.isArray(command.matches)) {
+        for (const match of command.matches) {
+          await store.putMatch(tenantId, competitionId, match);
+        }
+      }
+      return deepFreeze({
+        ok: true,
+        assignmentCount: seeded.seeded,
+        core13Bypass: false,
+        core13Decision: "ACCEPT",
+        fingerprint: computeOrganizerFingerprint(
+          { seeded: seeded.seeded },
+          "e2e04-ref-seed"
+        ),
+      });
+    }
+
+    const rows = Array.isArray(command.assignments) ? command.assignments : [];
+    const matchById = new Map(
+      (Array.isArray(command.matches) ? command.matches : []).map((m) => [
+        String(m.id || m.matchId),
+        m,
+      ])
+    );
+    for (const row of rows) {
+      const matchId = String(row.matchId || "").trim();
+      const refereeId = String(row.refereeId || row.assigneeId || "").trim();
+      if (!matchId || !refereeId) {
+        failReferee(
+          REFEREE_ERROR_CODE.INVALID_INPUT,
+          "Each seeded assignment requires matchId and canonical refereeId",
+          {}
+        );
+      }
+      const roleCode = row.roleCode || row.role || REFEREE_ROLE_CODE.PRIMARY;
+      const startAt =
+        row.startAt ||
+        matchById.get(matchId)?.scheduledAt ||
+        "2026-08-17T10:00:00.000Z";
+      const endAt = row.endAt || "2026-08-17T11:00:00.000Z";
+      const core13 = validateManualRefereeAssignment({
+        request: createManualRefereeAssignmentRequest({
+          requestId: `seed-${tenantId}-${competitionId}-${matchId}-${refereeId}`,
+          tenantId,
+          tournamentId: competitionId,
+          matchId,
+          refereeId,
+          roleCode,
+          actorRef: String(
+            command.actor?.id || command.actorId || "seed-actor"
+          ),
+          allowSoftOverride: true,
+        }),
+        directorySnapshot: createPopulatedSnapshotResult([
+          createRefereeCandidate({
+            refereeId,
+            active: true,
+            displayLabel: row.displayLabel,
+          }),
+        ]),
+        scheduleSnapshot: createPopulatedSnapshotResult([
+          createMatchScheduleRow({ matchId, startAt, endAt }),
+        ]),
+        existingAssignmentSnapshot: createEmptySnapshotResult(),
+        qualificationSnapshot: createPopulatedSnapshotResult([
+          {
+            qualificationId: `seed-qual-${refereeId}-${roleCode}`,
+            refereeId,
+            roleCode,
+            validFrom: startAt,
+            validTo: endAt,
+          },
+        ]),
+        availabilitySnapshot: createPopulatedSnapshotResult([
+          {
+            windowId: `seed-avail-${refereeId}`,
+            refereeId,
+            startAt,
+            endAt,
+            source: "DIRECTORY",
+          },
+        ]),
+        requireQualificationSnapshot: false,
+        requireAvailabilitySnapshot: false,
+      });
+      if (!core13.ok || !core13.accepted) {
+        failReferee(
+          REFEREE_ERROR_CODE.PRECONDITION_FAILED,
+          core13.failure?.message || "CORE-13 rejected seeded assignment",
+          {
+            code: ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED,
+            matchId,
+            refereeId,
+            core13: core13.failure || null,
+          }
+        );
+      }
+    }
+
     bindStoreCommand(command);
     const record = await store.upsertAssignments(
       tenantId,
@@ -330,6 +465,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return deepFreeze({
       ok: true,
       assignmentCount: record.assignments.length,
+      core13Bypass: false,
+      core13Decision: "ACCEPT",
       fingerprint: computeOrganizerFingerprint(
         { assignments: record.assignments.map((a) => a.assignmentId) },
         "e2e04-ref-seed"

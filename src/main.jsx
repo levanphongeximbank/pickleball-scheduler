@@ -22,6 +22,25 @@ import { registerClubAuthSessionProjection } from "./features/club/bindings/regi
 import { registerMobileOfflineQueueAuthCleanup } from "./features/mobile/bindings/registerMobileOfflineQueueAuthCleanup.js";
 import { bindTournamentAccessPortFromDomain } from "./features/tournament/bindings/bindTournamentAccessPort.js";
 import { bindBillingAccessCapabilityFromModule } from "./features/billing/bindings/bindBillingAccessCapability.js";
+import { getSupabaseAuthClient, hasSupabaseConfig } from "./auth/supabaseClient.js";
+import {
+  bindPlatformTenantAuthority,
+  createSupabasePlatformTenantQueryAdapter,
+} from "./core/platform/app/platformTenantAuthority.js";
+import { createLocalTenantCacheAdapter } from "./data/tenantRegistry.js";
+import {
+  bindTenantEntitlementAuthority,
+  bindClubEntitlementAuthority,
+} from "./core/platform/authz/index.js";
+import {
+  createMemoryTenantEntitlementAdapter,
+  createSupabaseTenantMembersAdapter,
+} from "./features/tenant/services/tenantEntitlementAdapter.js";
+import {
+  createMemoryClubEntitlementAdapter,
+  createSupabaseClubEntitlementAdapter,
+} from "./features/club/services/clubEntitlementAdapter.js";
+import { rpcV2GetMyActiveMembership } from "./features/club/services/clubStorageV2RpcService.js";
 
 /**
  * Composition-root bridge: keeps Platform Core free of Business Module imports
@@ -39,6 +58,25 @@ function wirePlatformRuntimeBoundaryBindings() {
   registerMobileOfflineQueueAuthCleanup();
   bindTournamentAccessPortFromDomain();
   bindBillingAccessCapabilityFromModule();
+  bindPlatformTenantAuthority({
+    queryAdapter: hasSupabaseConfig()
+      ? createSupabasePlatformTenantQueryAdapter(() => getSupabaseAuthClient())
+      : null,
+    cacheAdapter: createLocalTenantCacheAdapter(),
+  });
+  bindTenantEntitlementAuthority(
+    hasSupabaseConfig()
+      ? createSupabaseTenantMembersAdapter(() => getSupabaseAuthClient())
+      : createMemoryTenantEntitlementAdapter()
+  );
+  bindClubEntitlementAuthority(
+    hasSupabaseConfig()
+      ? createSupabaseClubEntitlementAdapter({
+          getClient: () => getSupabaseAuthClient(),
+          getMyActiveMembership: rpcV2GetMyActiveMembership,
+        })
+      : createMemoryClubEntitlementAdapter()
+  );
 }
 
 wirePlatformRuntimeBoundaryBindings();

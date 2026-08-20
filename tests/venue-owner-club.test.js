@@ -61,6 +61,7 @@ beforeEach(() => {
   saveVenues([
     createVenueRecord("Pickleball Test", {
       id: VENUE_ID,
+      tenantId: VENUE_ID,
       status: "trial",
     }),
   ]);

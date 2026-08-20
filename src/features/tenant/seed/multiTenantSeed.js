@@ -99,17 +99,32 @@ function upsertTenantVenue(config) {
   const venues = loadVenues();
   const existing = venues.find((venue) => venue.id === config.id);
 
-  if (existing) {
-    return existing;
-  }
-
   const tenant = createTenantRecord(config.name, {
     id: config.id,
     status: config.status,
     plan: config.plan,
   });
 
-  saveVenues([...venues, tenant]);
+  // Seed keeps transitional 1:1 ids (venue.id === tenant.id) but stamps tenantId.
+  const venueRecord = {
+    id: config.id,
+    tenantId: config.id,
+    name: config.name,
+    slug: config.slug,
+    status: config.status,
+  };
+
+  if (existing) {
+    saveVenues(
+      venues.map((row) =>
+        row.id === config.id ? { ...row, ...venueRecord, tenantId: config.id } : row
+      )
+    );
+  } else {
+    saveVenues([...venues, venueRecord]);
+  }
+
+  // Tenant registry is written by ensureTenantVenueLocalBootstrap / tenantService.
   return tenant;
 }
 

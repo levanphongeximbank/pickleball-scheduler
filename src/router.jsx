@@ -201,14 +201,80 @@ const TournamentRefereeAssignPage = lazy(() =>
   import("./pages/tournament/TournamentRefereeAssignPage.jsx")
 );
 const TournamentAwardsPage = lazy(() => import("./pages/tournament/TournamentAwardsPage.jsx"));
+const IndividualOverviewPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualOverviewPage.jsx")
+);
+const IndividualSettingsPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualSettingsPage.jsx")
+);
+const IndividualRegistrationPublicationPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualRegistrationPublicationPage.jsx")
+);
+const IndividualParticipantsPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualParticipantsPage.jsx")
+);
+const IndividualPairFormationPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualPairFormationPage.jsx")
+);
+const IndividualPairDrawRoomPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualPairDrawRoomPage.jsx")
+);
+const IndividualGroupDrawRoomPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualGroupDrawRoomPage.jsx")
+);
+const IndividualGroupStagePage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualGroupStagePage.jsx")
+);
+const IndividualSchedulePage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualSchedulePage.jsx")
+);
+const IndividualMatchCenterPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualMatchCenterPage.jsx")
+);
+const IndividualStandingsPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualStandingsPage.jsx")
+);
+const IndividualKnockoutPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualKnockoutPage.jsx")
+);
+const IndividualBracketPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualBracketPage.jsx")
+);
+const IndividualDirectorOpsPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualDirectorOpsPage.jsx")
+);
+const IndividualCourtBoardPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualCourtBoardPage.jsx")
+);
+const IndividualRefereeBoardPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualRefereeBoardPage.jsx")
+);
+const IndividualExceptionCenterPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualExceptionCenterPage.jsx")
+);
+const IndividualCommunicationsPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualCommunicationsPage.jsx")
+);
+const IndividualMediaPresentationPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualMediaPresentationPage.jsx")
+);
+const IndividualAwardsExperiencePage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualAwardsExperiencePage.jsx")
+);
+const IndividualCompleteTournamentPage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualCompleteTournamentPage.jsx")
+);
+const IndividualPublicExperiencePage = lazy(() =>
+  import("./features/tournament/experience-a1/pages/IndividualPublicExperiencePage.jsx")
+);
+const PublicTournamentExperienceLayout = lazy(() =>
+  import("./features/tournament/experience-a1/layouts/PublicTournamentExperienceLayout.jsx")
+);
 const TournamentWithdrawalPage = lazy(() =>
   import("./pages/tournament/TournamentWithdrawalPage.jsx")
 );
 const IndividualPlayerPortalPage = lazy(() =>
   import("./pages/tournament/IndividualPlayerPortalPage.jsx")
-);
-const IndividualTournamentPublicPage = lazy(() =>
-  import("./pages/tournament/IndividualTournamentPublicPage.jsx")
 );
 const TournamentPublishSchedulePage = lazy(() =>
   import("./pages/tournament/TournamentPublishSchedulePage.jsx")
@@ -442,6 +508,13 @@ export default function Router() {
 
             <Route path="/referee/:token" element={<RefereeScoreboard />} />
 
+            <Route element={<PublicTournamentExperienceLayout />}>
+              <Route
+                path="/tournament/:tournamentId/public"
+                element={<IndividualPublicExperiencePage />}
+              />
+            </Route>
+
             <Route element={<PublicLayout />}>
               <Route path="/" element={<PublicRootPage />} />
               <Route path="/home" element={<HomePage />} />
@@ -563,8 +636,88 @@ export default function Router() {
             <Route path="/tournament/my" element={<IndividualPlayerPortalPage />} />
             <Route path="/tournament/my/:tournamentId" element={<IndividualPlayerPortalPage />} />
             <Route
-              path="/tournament/:tournamentId/public"
-              element={<IndividualTournamentPublicPage />}
+              path="/tournament/:tournamentId/overview"
+              element={<IndividualOverviewPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/settings"
+              element={<IndividualSettingsPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/registration"
+              element={<IndividualRegistrationPublicationPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/participants"
+              element={<IndividualParticipantsPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/pairs"
+              element={<IndividualPairFormationPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/pair-draw"
+              element={<IndividualPairDrawRoomPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/group-draw"
+              element={<IndividualGroupDrawRoomPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/groups"
+              element={<IndividualGroupStagePage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/schedule"
+              element={<IndividualSchedulePage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/matches"
+              element={<IndividualMatchCenterPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/standings"
+              element={<IndividualStandingsPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/knockout"
+              element={<IndividualKnockoutPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/bracket"
+              element={<IndividualBracketPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/director"
+              element={<IndividualDirectorOpsPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/courts"
+              element={<IndividualCourtBoardPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/referees"
+              element={<IndividualRefereeBoardPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/exceptions"
+              element={<IndividualExceptionCenterPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/communications"
+              element={<IndividualCommunicationsPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/media"
+              element={<IndividualMediaPresentationPage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/awards"
+              element={<IndividualAwardsExperiencePage />}
+            />
+            <Route
+              path="/tournament/:tournamentId/complete"
+              element={<IndividualCompleteTournamentPage />}
             />
             <Route
               path="/tournament/:tournamentId/register"

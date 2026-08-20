@@ -67,6 +67,155 @@ export class InMemoryMatchRepository {
     return record;
   }
 
+  findConflictingLiveState({ tenantId, tournamentId, matchId, matchStateId }) {
+    for (const row of this.liveStates.values()) {
+      if (String(row.matchIdRaw) === String(matchId) && row.matchId !== matchStateId) {
+        return row;
+      }
+      if (
+        row.matchId === matchStateId &&
+        (String(row.tenantId) !== String(tenantId) ||
+          String(row.tournamentId) !== String(tournamentId))
+      ) {
+        return row;
+      }
+    }
+    return null;
+  }
+
+  async initializeExecutionState({
+    tenantId,
+    tournamentId,
+    matchId,
+    initialState,
+    teamAId,
+    teamBId,
+    idempotencyKey,
+    requestHash,
+  }) {
+    const matchStateId = buildMatchStateId({ tenantId, tournamentId, matchId });
+    return this.withRowLock(matchStateId, async () => {
+      const cached = this.findIdempotency(matchStateId, idempotencyKey);
+      if (cached) {
+        if (cached.requestHash && cached.requestHash !== requestHash) {
+          return createPersistenceError(REFEREE_V5_ERROR.IDEMPOTENCY_KEY_REUSE_MISMATCH);
+        }
+        if (cached.responsePayload) {
+          return { ok: true, duplicate: true, alreadyInitialized: true, reset: false, initialized: false, ...cached.responsePayload };
+        }
+      }
+
+      const conflict = this.findConflictingLiveState({
+        tenantId,
+        tournamentId,
+        matchId,
+        matchStateId,
+      });
+      if (conflict) {
+        return createPersistenceError(
+          REFEREE_V5_ERROR.MATCH_STATE_CONFLICT,
+          "Existing live state conflicts with requested identity."
+        );
+      }
+
+      const existing = this.getLiveState(matchStateId);
+      if (existing) {
+        if (
+          String(existing.tenantId) !== String(tenantId) ||
+          String(existing.tournamentId) !== String(tournamentId) ||
+          String(existing.matchIdRaw) !== String(matchId)
+        ) {
+          return createPersistenceError(
+            REFEREE_V5_ERROR.MATCH_STATE_CONFLICT,
+            "Existing live state conflicts with requested identity."
+          );
+        }
+        const status = String(existing.status || "");
+        if (status === MATCH_STATUS.LOCKED) {
+          return createPersistenceError(REFEREE_V5_ERROR.MATCH_LOCKED);
+        }
+        if (status === MATCH_STATUS.COMPLETED || status === "cancelled" || status === "disputed") {
+          return createPersistenceError(REFEREE_V5_ERROR.TERMINAL_STATE);
+        }
+        const version = Number(existing.stateVersion ?? 0);
+        const sequence = Number(existing.lastEventSequence ?? 0);
+        const scoringActive =
+          status === MATCH_STATUS.IN_PROGRESS ||
+          status === MATCH_STATUS.PAUSED ||
+          status === "SCORING_ACTIVE" ||
+          status === "scoring_active" ||
+          status === "game_break";
+        if (scoringActive || version > 0 || sequence > 0) {
+          return createPersistenceError(REFEREE_V5_ERROR.MATCH_ALREADY_ACTIVE);
+        }
+        const state = deserializeMatchState(existing.statePayload);
+        const responsePayload = {
+          capabilityId: "SHARED_REFEREE_MATCH_EXECUTION_INITIALIZATION",
+          matchStateId,
+          tenantId,
+          tournamentId,
+          matchId,
+          status: existing.status,
+          stateVersion: existing.stateVersion,
+          lastEventSequence: existing.lastEventSequence,
+          state,
+          stateHash: hashMatchState(state),
+        };
+        this.saveIdempotency({
+          matchId: matchStateId,
+          idempotencyKey,
+          requestHash,
+          responsePayload,
+          status: "applied",
+        });
+        return {
+          ok: true,
+          initialized: false,
+          alreadyInitialized: true,
+          duplicate: false,
+          reset: false,
+          ...responsePayload,
+        };
+      }
+
+      const record = this.initLiveState({
+        tenantId,
+        tournamentId,
+        matchId,
+        initialState,
+        config: { teamAId, teamBId },
+      });
+      const state = deserializeMatchState(record.statePayload);
+      const responsePayload = {
+        capabilityId: "SHARED_REFEREE_MATCH_EXECUTION_INITIALIZATION",
+        matchStateId,
+        tenantId,
+        tournamentId,
+        matchId,
+        status: record.status,
+        stateVersion: record.stateVersion,
+        lastEventSequence: record.lastEventSequence,
+        state,
+        stateHash: hashMatchState(state),
+      };
+      this.saveIdempotency({
+        matchId: matchStateId,
+        idempotencyKey,
+        requestHash,
+        responsePayload,
+        status: "applied",
+      });
+      return {
+        ok: true,
+        initialized: true,
+        alreadyInitialized: false,
+        duplicate: false,
+        reset: false,
+        ...responsePayload,
+      };
+    });
+  }
+
   getLiveState(matchStateId) {
     return this.liveStates.get(matchStateId) || null;
   }

@@ -71,7 +71,29 @@ import { normalizeCourt } from "../src/models/court.js";
 const RBAC_ON = { rbacEnabled: true };
 
 function user(role, extra = {}) {
-  return createUserRecord({ role, ...extra });
+  const created = createUserRecord({ role, ...extra });
+  const evidence = { ...(created.entitlementEvidence || {}) };
+  if (created.clubId && !evidence.clubs) {
+    evidence.clubs = [{ clubId: created.clubId, userId: created.id, status: "active" }];
+  }
+  const tenantTarget = created.tenantId || created.venueId || null;
+  if (tenantTarget && !evidence.tenants) {
+    evidence.tenants = [
+      {
+        tenant_id: tenantTarget,
+        user_id: created.id,
+        role_code: "tenant_staff",
+        status: "active",
+      },
+    ];
+  }
+  if (!evidence.clubs && !evidence.tenants) {
+    return created;
+  }
+  return createUserRecord({
+    ...created,
+    entitlementEvidence: evidence,
+  });
 }
 
 test("RBAC tắt → mọi permission được phép (không phá app cũ)", () => {
@@ -167,7 +189,7 @@ test("role permissions map đầy đủ cho SUPER_ADMIN", () => {
 });
 
 test("venue và subscription models", () => {
-  const venue = createVenueRecord("Sân ABC", { id: "venue-abc" });
+  const venue = createVenueRecord("Sân ABC", { id: "venue-abc", tenantId: "tenant-abc" });
   assert.equal(venue.name, "Sân ABC");
   assert.equal(venue.id, "venue-abc");
 

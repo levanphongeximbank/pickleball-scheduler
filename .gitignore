@@ -29,3 +29,5 @@ dist-ssr
 .env*
 docs/v6/storage-recovery-drill-01/evidence/*.local.json
 .tmp-cr-p3b-pg-*
+supabase/.temp/
+artifacts/core13-staging-acceptance/runtime/

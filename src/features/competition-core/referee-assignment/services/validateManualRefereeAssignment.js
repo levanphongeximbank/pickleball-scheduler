@@ -136,6 +136,8 @@ export function validateManualRefereeAssignment(input = {}) {
     preferredTags: input.preferredTags,
     preferredRoleCode: input.preferredRoleCode,
     requireCertification: input.requireCertification === true,
+    requireQualification: input.requireQualification !== false,
+    requireAvailability: input.requireAvailability !== false,
   });
 
   const hardCodes = collectReasonCodes(eligibility.hardFailures);
