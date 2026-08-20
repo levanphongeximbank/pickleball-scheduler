@@ -84,8 +84,7 @@ export function buildClubNavContext({ user, membership, can, tenantId = null }) 
     Boolean(can) &&
     !hasActiveMembership &&
     can(PERMISSIONS.CLUB_CREATE, {
-      venueId: tenantId || user.venueId || user.venue_id,
-      tenantId: tenantId || user.tenantId || user.venueId || user.venue_id,
+      tenantId: tenantId || user.tenantId || null,
     }) &&
     (isPlayerLike || isTenantStaff || isSa);
 

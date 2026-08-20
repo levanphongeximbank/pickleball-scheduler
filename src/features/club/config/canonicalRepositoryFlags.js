@@ -1,6 +1,13 @@
 /**
- * PR-4.25 — Canonical Club & Player Repository feature flags.
- * Production default OFF. Prefer injectable envSource in tests.
+ * Canonical Club & Player Repository feature flags.
+ *
+ * Live Staging/Production: VITE_CANONICAL_CLUB_REPOSITORY_ENABLED=TRUE.
+ * Under that deployed TRUE + cloud config, Club entity read authority is
+ * singular: canonicalClubRepository / canonical Club RPC. Local blob is not
+ * a second Production authority.
+ *
+ * Flag is a rollback kill-switch only. Do not mutate Vercel env for correctness.
+ * Prefer injectable envSource in tests.
  */
 
 export const CANONICAL_REPOSITORY_FLAG_KEYS = Object.freeze({

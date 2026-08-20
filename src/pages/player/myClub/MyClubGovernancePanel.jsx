@@ -43,7 +43,7 @@ import {
   updateClubGovernance,
   useGovernanceReadModel,
 } from "../../../features/club/index.js";
-import { listClustersForVenue } from "../../../features/court-cluster/services/courtClusterService.js";
+import { listClustersForTenant } from "../../../features/court-cluster/services/courtClusterService.js";
 
 function mapGovernanceError(result) {
   const serverCode = String(result?.serverCode || "").trim();
@@ -123,7 +123,7 @@ export default function MyClubGovernancePanel({
     () => (club ? getRegisteredClusterLabel(club, tenantId) : null),
     [club, tenantId]
   );
-  const venueClusters = useMemo(() => listClustersForVenue(tenantId), [tenantId]);
+  const venueClusters = useMemo(() => listClustersForTenant(tenantId), [tenantId]);
 
   if (!club) {
     return null;

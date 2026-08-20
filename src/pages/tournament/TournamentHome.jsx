@@ -40,6 +40,7 @@ import PermissionGate from "../../components/auth/PermissionGate.jsx";
 import ClubAssignmentBanner from "../../components/auth/ClubAssignmentBanner.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { usePageRuntimeAccess } from "../../components/shell/usePageRuntimeAccess.js";
+import PlatformContextReadinessGate from "../../components/shell/PlatformContextReadinessGate.jsx";
 import { createTeamTournamentForUi } from "../../features/team-tournament/services/teamTournamentService.js";
 import { getTeamData } from "../../features/team-tournament/engines/teamTournamentEngine.js";
 import { findTeamForCaptain } from "../../features/team-tournament/engines/teamPermissionEngine.js";
@@ -120,7 +121,7 @@ export default function TournamentHome({ section = "overview" }) {
   const preselectedEvent = resolveEventTypeFromQuery(searchParams.get("event"));
   const { activeClub, activeClubId, revision, refreshClubs } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
-  const { accessAllowed } = usePageRuntimeAccess("tournament.manage", activeClub?.tenantId || activeClubId, {
+  const { accessAllowed } = usePageRuntimeAccess("tournament.manage", activeClub?.tenantId || null, {
     source: "tournament.home",
   });
   const [message, setMessage] = useState(null);
@@ -128,9 +129,15 @@ export default function TournamentHome({ section = "overview" }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  const tournaments = useMemo(
-    () => listTournaments(activeClubId),
-    [activeClubId, revision]
+  const tournaments = useMemo(() => {
+    if (!String(activeClubId || "").trim()) {
+      return null;
+    }
+    return listTournaments(activeClubId);
+  }, [activeClubId, revision]);
+  const tournamentList = useMemo(
+    () => (Array.isArray(tournaments) ? tournaments : []),
+    [tournaments]
   );
 
   const showCreateSection = section === "overview" || section === "create";
@@ -155,11 +162,11 @@ export default function TournamentHome({ section = "overview" }) {
 
   const deletableSelectedCount = useMemo(
     () =>
-      tournaments.filter(
+      tournamentList.filter(
         (tournament) =>
           selectedIds.includes(tournament.id) && canDeleteTournament(tournament)
       ).length,
-    [tournaments, selectedIds]
+    [tournamentList, selectedIds]
   );
 
   const handleToggleSelection = (tournamentId, checked) => {
@@ -169,7 +176,7 @@ export default function TournamentHome({ section = "overview" }) {
   };
 
   const handleSelectAll = () => {
-    setSelectedIds(tournaments.map((tournament) => tournament.id));
+    setSelectedIds(tournamentList.map((tournament) => tournament.id));
   };
 
   const handleClearSelection = () => {
@@ -189,7 +196,7 @@ export default function TournamentHome({ section = "overview" }) {
     const blocked = [];
 
     selectedIds.forEach((tournamentId) => {
-      const tournament = tournaments.find((item) => item.id === tournamentId);
+      const tournament = tournamentList.find((item) => item.id === tournamentId);
       if (!tournament) return;
 
       const result = deleteTournament(activeClubId, tournamentId);
@@ -309,6 +316,7 @@ export default function TournamentHome({ section = "overview" }) {
   };
 
   return (
+    <PlatformContextReadinessGate requireClub showClubSwitcher>
     <Box>
       <TournamentPageHeader
         title={sectionMeta.title}
@@ -362,14 +370,14 @@ export default function TournamentHome({ section = "overview" }) {
 
       {showActiveSection ? (
         <Box sx={{ mb: TOURNAMENT_LAYOUT.sectionGap }}>
-          <ActiveTournamentsPanel tournaments={tournaments} title="Giải đang mở" />
+          <ActiveTournamentsPanel tournaments={tournamentList} title="Giải đang mở" />
         </Box>
       ) : null}
 
       {showListSection ? (
         <Box ref={listRef}>
           <TournamentListTable
-            tournaments={tournaments}
+            tournaments={tournamentList}
             selectedIds={selectedIds}
             onToggleSelection={handleToggleSelection}
             onSelectAll={handleSelectAll}
@@ -413,5 +421,6 @@ export default function TournamentHome({ section = "overview" }) {
         </DialogActions>
       </Dialog>
     </Box>
+    </PlatformContextReadinessGate>
   );
 }

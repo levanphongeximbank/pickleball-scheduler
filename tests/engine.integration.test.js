@@ -42,6 +42,8 @@ function createCourts(count) {
   }));
 }
 
+const CLUB_ID = "club-test";
+
 beforeEach(() => {
   globalThis.localStorage = createLocalStorageMock();
 });
@@ -50,6 +52,7 @@ test("runAI returns validation errors and debug trace when input is invalid", ()
   const result = runAI([], {
     enabledCourts: createCourts(1),
     persist: false,
+    clubId: CLUB_ID,
   });
 
   assert.equal(result.courts.length, 0);
@@ -66,6 +69,7 @@ test("runAI schedules players on courts with full debug trace in preview mode", 
   const result = runAI(players, {
     enabledCourts: courts,
     persist: false,
+    clubId: CLUB_ID,
     topCandidates: 2,
   });
 
@@ -97,9 +101,10 @@ test("runAI dry run does not persist session or history", () => {
   runAI(players, {
     enabledCourts: courts,
     persist: false,
+    clubId: CLUB_ID,
   });
 
-  const aiData = loadAIData();
+  const aiData = loadAIData(CLUB_ID);
   assert.equal(aiData.sessions.length, 0);
   assert.equal(Object.keys(aiData.history || {}).length, 0);
 });
@@ -111,12 +116,13 @@ test("runAI persist mode saves session", () => {
   const result = runAI(players, {
     enabledCourts: courts,
     persist: true,
+    clubId: CLUB_ID,
   });
 
   assert.equal(result.persisted, true);
   assert.ok(result.debugTrace.some((entry) => entry.step === "persist.commit"));
 
-  const aiData = loadAIData();
+  const aiData = loadAIData(CLUB_ID);
   assert.equal(aiData.sessions.length, 1);
   assert.ok(Object.keys(aiData.history || {}).length > 0);
 });
@@ -140,6 +146,7 @@ test("runAI keeps locked court assignment from current result", () => {
     lockedCourts: [1],
     currentResult: { courts: [lockedCourt] },
     persist: false,
+    clubId: CLUB_ID,
   });
 
   const courtOne = result.courts.find((court) => court.court === 1);
@@ -156,6 +163,7 @@ test("runAI puts overflow players into waiting when court capacity is insufficie
   const result = runAI(players, {
     enabledCourts: courts,
     persist: false,
+    clubId: CLUB_ID,
   });
 
   assert.equal(result.courts.length, 2);

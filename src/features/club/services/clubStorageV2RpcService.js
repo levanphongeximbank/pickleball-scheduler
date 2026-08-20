@@ -1,4 +1,5 @@
 import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
+import { projectClubTenantVenueIdentities } from "../compat/legacyClubVenueScope.js";
 
 function isMissingRpcError(error) {
   const message = String(error?.message || error?.code || "").toLowerCase();
@@ -69,20 +70,25 @@ function mapVicePresidentLabels(row = {}, vicePresidentUserIds = []) {
 }
 
 /** Map Phase 42 canonical club JSON → UI club shape (compat with existing pages). */
-export function mapV2ClubToUiClub(row) {
+export function mapV2ClubToUiClub(row, { resolveVenue } = {}) {
   if (!row) {
     return null;
   }
   const vicePresidentUserIds = mapVicePresidentUserIds(row);
   const vicePresidentLabels = mapVicePresidentLabels(row, vicePresidentUserIds);
+  const identities = projectClubTenantVenueIdentities(row, {
+    resolveVenue,
+  });
   return {
     id: row.id,
     name: row.name,
     code: row.code || null,
     description: row.description || "",
     status: row.status || "active",
-    venueId: row.tenant_id,
-    tenantId: row.tenant_id,
+    tenantId: identities.tenantId,
+    venueId: identities.venueId,
+    scopeSemantics: identities.scopeSemantics,
+    legacyVenueScopeId: identities.legacyVenueScopeId,
     version: row.version,
     governance: {
       ownerUserId: row.owner_user_id || null,

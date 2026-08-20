@@ -7,6 +7,9 @@ import {
   loadPlayersFromStorage,
 } from "../src/pages/selectPlayers.data.js";
 import { setActiveClubId } from "../src/data/club.js";
+import { saveClubData, getDefaultClubData } from "../src/domain/clubStorage.js";
+
+const CLUB_ID = "club-a";
 
 function createLocalStorageMock(seed = {}) {
   const store = new Map(Object.entries(seed));
@@ -31,43 +34,37 @@ beforeEach(() => {
   globalThis.localStorage = createLocalStorageMock();
 });
 
-test("loadCourtsFromStorage returns empty array for missing or invalid data", () => {
-  assert.deepEqual(loadCourtsFromStorage(), []);
-
-  globalThis.localStorage = createLocalStorageMock({
-    courts: "not-json",
-  });
-
-  assert.deepEqual(loadCourtsFromStorage(), []);
+test("loadCourtsFromStorage requires an explicit clubId", () => {
+  assert.throws(() => loadCourtsFromStorage(), (err) => err.code === "CLUB_REQUIRED");
+  assert.deepEqual(loadCourtsFromStorage(CLUB_ID), []);
 });
 
-test("loadCourtsFromStorage and loadPlayersFromStorage parse valid arrays", () => {
-  globalThis.localStorage = createLocalStorageMock({
-    courts: JSON.stringify([{ id: 1, name: "Sân 1", active: true }]),
-    players: JSON.stringify([{ id: 1, name: "A", level: 3 }]),
+test("loadCourtsFromStorage and loadPlayersFromStorage parse club blob arrays", () => {
+  saveClubData(CLUB_ID, {
+    ...getDefaultClubData(CLUB_ID),
+    courts: [{ id: 1, name: "Sân 1", number: 1, active: true }],
+    players: [{ id: 1, name: "A", gender: "Nam", level: 3, active: true }],
   });
 
-  assert.equal(loadCourtsFromStorage().length, 1);
-  assert.equal(loadPlayersFromStorage().length, 1);
+  assert.equal(loadCourtsFromStorage(CLUB_ID).length, 1);
+  assert.equal(loadPlayersFromStorage(CLUB_ID).length, 1);
 });
 
-test("loaders prefer active club scoped keys over legacy keys", () => {
-  globalThis.localStorage = createLocalStorageMock({
-    "pickleball-clubs-v1": JSON.stringify([
-      { id: "default-club", name: "CLB Mac dinh" },
-      { id: "club-a", name: "CLB A" },
-    ]),
-    "pickleball-active-club-v1": "club-a",
-    courts: JSON.stringify([{ id: 1, name: "Legacy Court", active: true }]),
-    players: JSON.stringify([{ id: 1, name: "Legacy Player", level: 2.5 }]),
-    "courts::club-a": JSON.stringify([{ id: 10, name: "Club A Court", active: true }]),
-    "players::club-a": JSON.stringify([{ id: 10, name: "Club A Player", level: 3.5 }]),
-  });
-
+test("loaders use the explicit club blob, not a hidden active-club lookup", () => {
   setActiveClubId("club-a");
+  saveClubData("club-a", {
+    ...getDefaultClubData("club-a"),
+    courts: [{ id: 10, name: "Club A Court", number: 1, active: true }],
+    players: [{ id: 10, name: "Club A Player", gender: "Nam", level: 3.5, active: true }],
+  });
+  saveClubData("default-club", {
+    ...getDefaultClubData("default-club"),
+    courts: [{ id: 1, name: "Legacy Court", number: 1, active: true }],
+    players: [{ id: 1, name: "Legacy Player", gender: "Nam", level: 2.5, active: true }],
+  });
 
-  assert.equal(loadCourtsFromStorage()[0].id, 10);
-  assert.equal(loadPlayersFromStorage()[0].id, 10);
+  assert.equal(loadCourtsFromStorage("club-a")[0].id, 10);
+  assert.equal(loadPlayersFromStorage("club-a")[0].id, 10);
 });
 
 test("loadInitialSelectedCourts keeps only active courts", () => {

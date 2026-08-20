@@ -6,6 +6,7 @@ import { loadAIData } from "../src/ai/storage.js";
 import { getScopedStorageKey } from "../src/data/club.js";
 
 const WAITING_STORAGE_KEY = "pickleball_ai_waiting";
+const CLUB_ID = "club-test";
 
 function createLocalStorageMock(seed = {}) {
   const store = new Map(Object.entries(seed));
@@ -43,17 +44,17 @@ test("commitScheduleResult saves session, waiting, and history", () => {
     aiScore: { total: 80 },
   };
 
-  const commit = commitScheduleResult(result, { competitionType: "open" });
+  const commit = commitScheduleResult(result, { competitionType: "open", clubId: CLUB_ID });
 
   assert.equal(commit.ok, true);
-  assert.equal(loadAIData().sessions.length, 1);
+  assert.equal(loadAIData(CLUB_ID).sessions.length, 1);
 
-  const waitingRaw = globalThis.localStorage.getItem(getScopedStorageKey(WAITING_STORAGE_KEY));
+  const waitingRaw = globalThis.localStorage.getItem(getScopedStorageKey(WAITING_STORAGE_KEY, CLUB_ID));
   const waitingData = JSON.parse(waitingRaw);
   assert.equal(waitingData.p1.playCount, 1);
   assert.equal(waitingData.p5.waitCount, 1);
 
-  const aiData = loadAIData();
+  const aiData = loadAIData(CLUB_ID);
   assert.equal(aiData.history.p1.games, 1);
   assert.equal(aiData.history.p1.partners.p2, 1);
 });

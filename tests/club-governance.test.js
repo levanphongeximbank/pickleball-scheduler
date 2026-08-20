@@ -316,7 +316,7 @@ describe("club governance", () => {
     const session = loadAuthSession();
     assert.equal(session.user.clubId, result.club.id);
     assert.equal(session.user.tenantId, TENANT);
-    assert.equal(session.user.venueId, TENANT);
+    assert.equal(session.user.venueId, null);
     assert.equal(session.user.role, ROLES.CLUB_MANAGER);
   });
 

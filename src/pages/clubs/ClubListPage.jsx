@@ -111,11 +111,11 @@ export default function ClubListPage() {
   const canCreate =
     !rbacEnabled ||
     !isAuthenticated ||
-    can(PERMISSIONS.CLUB_CREATE, { venueId: currentTenantId, tenantId: currentTenantId });
+    can(PERMISSIONS.CLUB_CREATE, { tenantId: currentTenantId });
   const canUpdate =
     !rbacEnabled ||
     !isAuthenticated ||
-    can(PERMISSIONS.CLUB_UPDATE, { venueId: currentTenantId, tenantId: currentTenantId });
+    can(PERMISSIONS.CLUB_UPDATE, { tenantId: currentTenantId });
 
   const clubsWithStats = useMemo(() => {
     if (storageV2) {
@@ -369,7 +369,7 @@ export default function ClubListPage() {
           </Button>
         </>
       )}
-      <PermissionGate permission={PERMISSIONS.CLUB_CREATE} scope={{ venueId: currentTenantId }}>
+      <PermissionGate permission={PERMISSIONS.CLUB_CREATE} scope={{ tenantId: currentTenantId }}>
         <Button
           variant="contained"
           startIcon={<AddIcon />}

@@ -48,6 +48,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 
 export default function SelectPlayersDirectorCard({
+  clubId,
   lockedCourts,
   lockedPlayers,
   clubPolicies,
@@ -68,7 +69,8 @@ export default function SelectPlayersDirectorCard({
   };
 
   const handleAddRule = () => {
-    addRule(buildDefaultRule(ruleType));
+    if (!clubId) return;
+    addRule(buildDefaultRule(ruleType), clubId);
     setRuleDialogOpen(false);
     refreshDirectorConfig();
   };
@@ -84,8 +86,9 @@ export default function SelectPlayersDirectorCard({
       setFormError(error);
       return;
     }
+    if (!clubId) return;
 
-    addPolicy(buildDefaultPolicy(policyType, policyPlayerA, policyPlayerB));
+    addPolicy(buildDefaultPolicy(policyType, policyPlayerA, policyPlayerB), clubId);
     setFormError(null);
     setPolicyPlayerA("");
     setPolicyPlayerB("");
@@ -94,22 +97,26 @@ export default function SelectPlayersDirectorCard({
   };
 
   const handleToggleRule = (ruleId) => {
-    toggleRule(ruleId);
+    if (!clubId) return;
+    toggleRule(ruleId, clubId);
     refreshDirectorConfig();
   };
 
   const handleRemoveRule = (ruleId) => {
-    removeRule(ruleId);
+    if (!clubId) return;
+    removeRule(ruleId, clubId);
     refreshDirectorConfig();
   };
 
   const handleTogglePolicy = (policyId) => {
-    togglePolicy(policyId);
+    if (!clubId) return;
+    togglePolicy(policyId, clubId);
     refreshDirectorConfig();
   };
 
   const handleRemovePolicy = (policyId) => {
-    removePolicy(policyId);
+    if (!clubId) return;
+    removePolicy(policyId, clubId);
     refreshDirectorConfig();
   };
 

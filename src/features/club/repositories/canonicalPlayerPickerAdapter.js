@@ -94,7 +94,7 @@ export function createCanonicalPlayerPickerAdapter(deps = {}) {
       .map((club) => ({
         id: club.id,
         name: club.name || club.id,
-        tenantId: club.tenantId || club.venueId || null,
+        tenantId: club.tenantId || null,
         status: club.status || "active",
         isDefault: Boolean(club.isDefault),
         source: CANONICAL_SOURCE.LEGACY_BLOB,

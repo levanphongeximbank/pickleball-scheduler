@@ -1,15 +1,15 @@
-import { getActiveClubId } from "../data/club.js";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { guardClubAction } from "../auth/guardAction.js";
 import { createSeasonRecord, normalizeSeason } from "../models/season.js";
 import { loadClubData, saveClubData } from "./clubStorage.js";
+import { assertExplicitClubId } from "../features/club/context/requireExplicitClubId.js";
 
-export function listSeasons(clubId = getActiveClubId()) {
-  return loadClubData(clubId).seasons;
+export function listSeasons(clubId) {
+  return loadClubData(assertExplicitClubId(clubId)).seasons;
 }
 
-export function getActiveSeason(clubId = getActiveClubId()) {
-  const data = loadClubData(clubId);
+export function getActiveSeason(clubId) {
+  const data = loadClubData(assertExplicitClubId(clubId));
   return (
     data.seasons.find((season) => season.id === data.active.seasonId) ||
     data.seasons.find((season) => season.status === "active") ||

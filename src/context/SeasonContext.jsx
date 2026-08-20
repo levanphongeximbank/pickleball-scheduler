@@ -18,13 +18,15 @@ const SeasonContext = createContext(null);
 export function SeasonProvider({ children }) {
   const { activeClubId, revision, refreshClubs } = useClub();
 
-  const clubData = useMemo(
-    () => loadClubData(activeClubId),
-    [activeClubId, revision]
-  );
+  const clubData = useMemo(() => {
+    if (!activeClubId) {
+      return null;
+    }
+    return loadClubData(activeClubId);
+  }, [activeClubId, revision]);
 
-  const seasons = clubData.seasons || [];
-  const leagues = clubData.leagues || [];
+  const seasons = clubData?.seasons || [];
+  const leagues = clubData?.leagues || [];
   const activeSeasonId = clubData?.active?.seasonId ?? null;
   const activeLeagueId = clubData?.active?.leagueId ?? null;
 
@@ -136,6 +138,7 @@ export function SeasonProvider({ children }) {
       createLeague: handleCreateLeague,
       updateSeason: handleUpdateSeason,
       updateLeague: handleUpdateLeague,
+      clubContextReady: Boolean(activeClubId && clubData),
     }),
     [
       seasons,
@@ -151,6 +154,8 @@ export function SeasonProvider({ children }) {
       handleCreateLeague,
       handleUpdateSeason,
       handleUpdateLeague,
+      activeClubId,
+      clubData,
     ]
   );
 

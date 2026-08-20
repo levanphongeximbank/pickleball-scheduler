@@ -42,7 +42,7 @@ export default function ClubTournamentsTab({ club, tenantId, onNavigateTournamen
   const canCreate =
     !rbacEnabled ||
     !isAuthenticated ||
-    can(PERMISSIONS.TOURNAMENT_CREATE, { clubId: club.id, venueId: tenantId });
+    can(PERMISSIONS.TOURNAMENT_CREATE, { clubId: club.id, tenantId });
 
   const tournaments = useMemo(
     () => getClubTournaments(club.id, tenantId),

@@ -29,6 +29,6 @@ CREATE POLICY clubs_select ON public.clubs
   );
 
 GRANT SELECT ON public.clubs TO authenticated;
-REVOKE INSERT, UPDATE, DELETE ON public.clubs FROM authenticated, anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.clubs FROM authenticated, anon;
 
 COMMIT;

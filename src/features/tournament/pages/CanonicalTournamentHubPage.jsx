@@ -16,6 +16,9 @@ import TournamentPageHeader from "../../../components/tournament/TournamentPageH
 import ActiveTournamentsPanel from "../../../components/tournament/ActiveTournamentsPanel.jsx";
 import { TOURNAMENT_LAYOUT } from "../../../components/tournament/tournamentLayout.js";
 import { usePageRuntimeAccess } from "../../../components/shell/usePageRuntimeAccess.js";
+import PlatformContextReadinessGate from "../../../components/shell/PlatformContextReadinessGate.jsx";
+import { usePlatformContextReadiness } from "../../../components/shell/usePlatformContextReadiness.js";
+import { isPlatformContextReady } from "../../../core/platform/app/platformContextReadiness.js";
 import { CANONICAL_TOURNAMENT_HUB_ITEMS } from "../constants/hubNav.js";
 import { useCanonicalTournamentList } from "../hooks/useCanonicalTournament.js";
 import { TOURNAMENT_ROUTES } from "../../../config/tournamentRoutes.js";
@@ -23,14 +26,17 @@ import { TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
 
 export default function CanonicalTournamentHubPage() {
   const navigate = useNavigate();
-  const { activeClub, activeClubId, revision } = useClub();
+  const { activeClub, revision } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
   const { accessAllowed } = usePageRuntimeAccess(
     "tournament.manage",
-    activeClub?.tenantId || activeClubId,
+    activeClub?.tenantId || null,
     { source: "tournament.canonical.hub" }
   );
-  const { tournaments, loading, error, stats } = useCanonicalTournamentList(activeClub,
+  const contextReadiness = usePlatformContextReadiness({ requireClub: true });
+  const contextReady = isPlatformContextReady(contextReadiness.state);
+  const { tournaments, loading, error, stats } = useCanonicalTournamentList(
+    contextReady ? activeClub : null,
     revision
   );
   const openTournaments = tournaments.filter((item) =>
@@ -51,6 +57,7 @@ export default function CanonicalTournamentHubPage() {
     .join(" • ");
 
   return (
+    <PlatformContextReadinessGate requireClub showClubSwitcher>
     <Box>
       <TournamentPageHeader
         title="Giải đấu"
@@ -143,5 +150,6 @@ export default function CanonicalTournamentHubPage() {
         </Button>
       </Stack>
     </Box>
+    </PlatformContextReadinessGate>
   );
 }

@@ -1,7 +1,7 @@
 import test, { beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
-import { setActiveClubId, DEFAULT_CLUB } from "../src/data/club.js";
+import { setActiveClubId, DEFAULT_CLUB, saveClubs } from "../src/data/club.js";
 import { loadClubData } from "../src/domain/clubStorage.js";
 import {
   buildSeasonExport,
@@ -32,6 +32,7 @@ function createLocalStorageMock() {
 
 beforeEach(() => {
   globalThis.localStorage = createLocalStorageMock();
+  saveClubs([DEFAULT_CLUB]);
   setActiveClubId(DEFAULT_CLUB.id);
   loadClubData(DEFAULT_CLUB.id);
 });

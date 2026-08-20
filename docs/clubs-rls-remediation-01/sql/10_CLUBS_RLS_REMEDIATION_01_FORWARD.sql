@@ -9,7 +9,10 @@
 --
 -- Scope:
 --   - DROP/CREATE policy public.clubs → clubs_select only
---   - Does NOT alter writer grants / INSERT|UPDATE|DELETE policies (none exist)
+--   - Reaffirm RPC-only writes: no INSERT|UPDATE|DELETE|ALL writer policies
+--   - REVOKE INSERT, UPDATE, DELETE, TRUNCATE from authenticated, anon on public.clubs
+--   - REVOKE TRUNCATE from authenticated, anon on remaining Club-owned tables
+--   - Does NOT alter service_role, PUBLIC default ACL, or FORCE RLS
 --   - Does NOT alter public.public_catalog_list_clubs
 --   - Does NOT alter SECURITY DEFINER club_* RPCs
 -- =============================================================================
@@ -38,8 +41,11 @@ CREATE POLICY clubs_select ON public.clubs
 -- Keep SELECT grant for authenticated (unchanged Phase 42C contract).
 GRANT SELECT ON public.clubs TO authenticated;
 
--- Writers remain revoked (idempotent reaffirmation — no expansion).
-REVOKE INSERT, UPDATE, DELETE ON public.clubs FROM authenticated, anon;
+-- Writers remain revoked (idempotent reaffirmation — include TRUNCATE; RLS does not protect it).
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.clubs FROM authenticated, anon;
+REVOKE TRUNCATE ON public.club_members FROM authenticated, anon;
+REVOKE TRUNCATE ON public.club_governance_assignments FROM authenticated, anon;
+REVOKE TRUNCATE ON public.club_membership_requests_v42 FROM authenticated, anon;
 
 COMMIT;
 

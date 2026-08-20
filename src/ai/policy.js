@@ -6,169 +6,105 @@ Policy Engine
 */
 
 import { loadAIData, saveAIData } from "./storage.js";
+import { assertExplicitClubId } from "../features/club/context/requireExplicitClubId.js";
 
-function getData() {
+function getData(clubId) {
+  const resolvedClubId = assertExplicitClubId(clubId);
+  const data = loadAIData(resolvedClubId);
 
-    const data = loadAIData();
+  if (!data.policies) {
+    data.policies = [];
+  }
 
-    if (!data.policies) {
+  if (!data.rules) {
+    data.rules = [];
+  }
 
-        data.policies = [];
-
-    }
-
-    if (!data.rules) {
-
-        data.rules = [];
-
-    }
-
-    return data;
-
+  return { data, clubId: resolvedClubId };
 }
 
-/*
-========================================
-Lấy toàn bộ Policy
-========================================
-*/
-
-export function getPolicies() {
-
-    return getData().policies;
-
+export function getPolicies(clubId) {
+  return getData(clubId).data.policies;
 }
 
-/*
-========================================
-Thêm Policy
-========================================
-*/
+export function addPolicy(policy, clubId) {
+  const { data, clubId: resolvedClubId } = getData(clubId);
 
-export function addPolicy(policy) {
-
-    const data = getData();
-
-    data.policies.push({
-
-        id: Date.now(),
-
-        enabled: true,
-
-        priority: "HIGH",
-
-        once: true,
-
-        ...policy,
-
-    });
-
-    saveAIData(data);
-
-}
-
-/*
-========================================
-Xóa Policy
-========================================
-*/
-
-export function removePolicy(id) {
-
-    const data = getData();
-
-    data.policies =
-        data.policies.filter(p => p.id !== id);
-
-    saveAIData(data);
-
-}
-
-/*
-========================================
-Bật / Tắt
-========================================
-*/
-
-export function togglePolicy(id) {
-
-    const data = getData();
-
-    const policy =
-        data.policies.find(p => p.id === id);
-
-    if (policy) {
-
-        policy.enabled = !policy.enabled;
-
-    }
-
-    saveAIData(data);
-
-}
-export function addTestPolicy(playerA, playerB) {
-  addPolicy({
-    type: "prefer_teammate",
-    playerA,
-    playerB,
+  data.policies.push({
+    id: Date.now(),
+    enabled: true,
     priority: "HIGH",
+    once: true,
+    ...policy,
   });
+
+  saveAIData(data, resolvedClubId);
 }
 
-/*
-========================================
-Rules tùy chỉnh CLB
-========================================
-*/
+export function removePolicy(id, clubId) {
+  const { data, clubId: resolvedClubId } = getData(clubId);
 
-export function getRules() {
+  data.policies = data.policies.filter((p) => p.id !== id);
 
-    return getData().rules;
-
+  saveAIData(data, resolvedClubId);
 }
 
-export function addRule(rule) {
+export function togglePolicy(id, clubId) {
+  const { data, clubId: resolvedClubId } = getData(clubId);
 
-    const data = getData();
+  const policy = data.policies.find((p) => p.id === id);
 
-    data.rules.push({
+  if (policy) {
+    policy.enabled = !policy.enabled;
+  }
 
-        id: Date.now(),
-
-        enabled: true,
-
-        ...rule,
-
-    });
-
-    saveAIData(data);
-
+  saveAIData(data, resolvedClubId);
 }
 
-export function removeRule(id) {
-
-    const data = getData();
-
-    data.rules =
-        data.rules.filter(r => r.id !== id);
-
-    saveAIData(data);
-
+export function addTestPolicy(playerA, playerB, clubId) {
+  addPolicy(
+    {
+      type: "prefer_teammate",
+      playerA,
+      playerB,
+      priority: "HIGH",
+    },
+    clubId
+  );
 }
 
-export function toggleRule(id) {
+export function getRules(clubId) {
+  return getData(clubId).data.rules;
+}
 
-    const data = getData();
+export function addRule(rule, clubId) {
+  const { data, clubId: resolvedClubId } = getData(clubId);
 
-    const rule =
-        data.rules.find(r => r.id === id);
+  data.rules.push({
+    id: Date.now(),
+    enabled: true,
+    ...rule,
+  });
 
-    if (rule) {
+  saveAIData(data, resolvedClubId);
+}
 
-        rule.enabled = !rule.enabled;
+export function removeRule(id, clubId) {
+  const { data, clubId: resolvedClubId } = getData(clubId);
 
-    }
+  data.rules = data.rules.filter((p) => p.id !== id);
 
-    saveAIData(data);
+  saveAIData(data, resolvedClubId);
+}
 
+export function toggleRule(id, clubId) {
+  const { data, clubId: resolvedClubId } = getData(clubId);
+
+  const rule = data.rules.find((p) => p.id === id);
+
+  if (rule) {
+    rule.enabled = !rule.enabled;
+  }
+
+  saveAIData(data, resolvedClubId);
 }

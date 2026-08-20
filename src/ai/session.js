@@ -4,13 +4,12 @@ AI Session Engine
 ==================================================
 */
 
-import { getActiveClubId } from "../data/club.js";
 import { SESSION_CAP } from "./config.js";
 import { loadAIData, saveAIData } from "./storage.js";
 import { createDebugTrace, appendDebugTrace } from "./debug.js";
 import { loadClubData } from "../domain/clubStorage.js";
 
-function getActiveSlotMeta(clubId = getActiveClubId()) {
+function getActiveSlotMeta(clubId) {
   const clubData = loadClubData(clubId);
   const slot = clubData.active?.roundSlot;
 
@@ -25,7 +24,7 @@ function getActiveSlotMeta(clubId = getActiveClubId()) {
   };
 }
 
-function buildSessionMeta(resultMeta = {}, clubId = getActiveClubId()) {
+function buildSessionMeta(resultMeta = {}, clubId) {
   const clubData = loadClubData(clubId);
   const activeMeta = getActiveSlotMeta(clubId);
 
@@ -38,7 +37,7 @@ function buildSessionMeta(resultMeta = {}, clubId = getActiveClubId()) {
   };
 }
 
-export function saveSession(result, clubId = getActiveClubId()) {
+export function saveSession(result, clubId) {
   const data = loadAIData(clubId);
   const trace = [createDebugTrace("session.save", { courtCount: result?.courts?.length || 0 })];
   const sessionMeta = buildSessionMeta(result?.meta, clubId);
@@ -61,11 +60,11 @@ export function saveSession(result, clubId = getActiveClubId()) {
   return appendDebugTrace(trace, createDebugTrace("session.saved", { sessionCount: data.sessions.length }));
 }
 
-export function getSessions(clubId = getActiveClubId()) {
+export function getSessions(clubId) {
   return loadAIData(clubId).sessions;
 }
 
-export function clearSessions(clubId = getActiveClubId()) {
+export function clearSessions(clubId) {
   const data = loadAIData(clubId);
   data.sessions = [];
   saveAIData(data, clubId);

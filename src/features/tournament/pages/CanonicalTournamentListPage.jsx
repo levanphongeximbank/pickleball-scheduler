@@ -47,7 +47,7 @@ export default function CanonicalTournamentListPage() {
   const contextReady = isPlatformContextReady(contextReadiness.state);
   const { accessAllowed } = usePageRuntimeAccess(
     "tournament.manage",
-    activeClub?.tenantId || activeClubId,
+    activeClub?.tenantId || null,
     { source: "tournament.canonical.list" }
   );
   // Only load tournaments when platform context is ready — missing club must not

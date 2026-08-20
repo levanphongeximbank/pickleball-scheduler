@@ -10,13 +10,14 @@ import { loadActiveTenantId } from "../data/tenantSession.js";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { guardClubAction, guardClubAccess, guardPermission } from "../auth/guardAction.js";
 import { getCurrentUser, isRbacEnabled } from "../auth/authService.js";
-import { ROLES, isGlobalRole, isVenueScopedRole } from "../auth/roles.js";
+import { isGlobalRole } from "../auth/roles.js";
 import { canDeleteClub } from "../features/club/services/clubGovernanceService.js";
 import { resolveEffectiveTenantId } from "../features/tenant/services/tenantService.js";
 import { guardMaxClubs } from "../auth/subscriptionGuard.js";
 import { createClubRecord, normalizeClub } from "../models/club.js";
 import { assertLegacyClubEntityWriteAllowed } from "../features/club/services/clubLegacyWriteGuard.js";
 import { loadClubData, purgeClubData, saveClubData } from "./clubStorage.js";
+import { assertExplicitClubId } from "../features/club/context/requireExplicitClubId.js";
 
 /**
  * Phase 45A.3E — domain Club writers are offline / V2-OFF / no-Supabase
@@ -43,21 +44,17 @@ export function createClub(name) {
   }
 
   let venueId = null;
+  let tenantId = null;
 
   if (isRbacEnabled()) {
     const currentUser = getCurrentUser();
     if (currentUser) {
-      if (isGlobalRole(currentUser.role)) {
-        venueId = loadActiveTenantId() || resolveEffectiveTenantId(currentUser);
-      } else if (
-        currentUser.venueId ||
+      tenantId =
+        resolveEffectiveTenantId(currentUser) ||
+        (isGlobalRole(currentUser.role) ? loadActiveTenantId() : null) ||
         currentUser.tenantId ||
-        isVenueScopedRole(currentUser.role) ||
-        currentUser.role === ROLES.SUPER_ADMIN
-      ) {
-        // Wave 3: club.venueId is the physical home venue, not Tenant identity.
-        venueId = currentUser.venueId || resolveEffectiveTenantId(currentUser);
-      }
+        null;
+      venueId = currentUser.venueId || null;
 
       if (venueId) {
         const limitCheck = guardMaxClubs(venueId);
@@ -70,14 +67,17 @@ export function createClub(name) {
 
   const check = guardPermission(
     PERMISSIONS.CLUB_CREATE,
-    venueId ? { venueId } : {}
+    tenantId ? { tenantId } : {}
   );
   if (!check.ok) {
     return check;
   }
 
   const clubs = loadClubs();
-  const club = createClubRecord(trimmed, venueId ? { venueId } : {});
+  const club = createClubRecord(trimmed, {
+    ...(venueId ? { venueId } : {}),
+    ...(tenantId ? { tenantId } : {}),
+  });
   const next = [...clubs, club];
   saveClubs(next);
 
@@ -153,7 +153,7 @@ export function bindClubVenueRegistry(clubId, venueId, options = {}) {
       ? normalizeClub({
           ...club,
           venueId,
-          tenantId: venueId,
+          tenantId: club.tenantId || null,
           updatedAt: new Date().toISOString(),
         })
       : club
@@ -286,9 +286,10 @@ export function switchActiveClubCanonical(clubId) {
   return { ok: true, clubId };
 }
 
-export function getClubSummary(clubId = getActiveClubId()) {
-  const data = loadClubData(clubId);
-  const club = getClubById(clubId);
+export function getClubSummary(clubId) {
+  const resolvedClubId = assertExplicitClubId(clubId);
+  const data = loadClubData(resolvedClubId);
+  const club = getClubById(resolvedClubId);
 
   return {
     club,

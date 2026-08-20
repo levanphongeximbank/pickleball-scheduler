@@ -59,12 +59,12 @@ test("syncAIDataToCloud and pullAIDataFromCloud isolate data by active club", as
     })
   );
 
-  let result = await syncAIDataToCloud();
+  let result = await syncAIDataToCloud({ clubId: "default-club" });
   assert.equal(result.ok, true);
   assert.equal(result.clubId, "default-club");
 
   setActiveClubId("club-b");
-  result = await syncAIDataToCloud();
+  result = await syncAIDataToCloud({ clubId: "club-b" });
   assert.equal(result.ok, true);
   assert.equal(result.clubId, "club-b");
 
@@ -80,22 +80,22 @@ test("syncAIDataToCloud and pullAIDataFromCloud isolate data by active club", as
     })
   );
 
-  const pullResult = await pullAIDataFromCloud();
+  const pullResult = await pullAIDataFromCloud({ clubId: "club-b" });
   assert.equal(pullResult.ok, true);
   assert.equal(pullResult.clubId, "club-b");
 
-  const clubBData = loadAIData();
+  const clubBData = loadAIData("club-b");
   assert.equal(clubBData.sessions.length, 3);
   assert.equal(Object.keys(clubBData.history).length, 2);
 
   setActiveClubId("default-club");
-  const defaultData = loadAIData();
+  const defaultData = loadAIData("default-club");
   assert.equal(defaultData.sessions.length, 1);
   assert.equal(Object.keys(defaultData.history).length, 1);
 });
 
 test("pullAIDataFromCloud returns error when no cloud snapshot for active club", async () => {
-  const result = await pullAIDataFromCloud();
+  const result = await pullAIDataFromCloud({ clubId: "default-club" });
 
   assert.equal(result.ok, false);
   assert.equal(result.clubId, "default-club");

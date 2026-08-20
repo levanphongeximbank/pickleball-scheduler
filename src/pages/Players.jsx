@@ -22,6 +22,7 @@ import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 
 import { useClub } from "../context/ClubContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import PlatformContextReadinessGate from "../components/shell/PlatformContextReadinessGate.jsx";
 import PermissionGate from "../components/auth/PermissionGate.jsx";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { isPlatformAthleteViewer } from "../auth/roles.js";
@@ -134,6 +135,11 @@ export default function Players() {
       return;
     }
 
+    if (!String(activeClubId || "").trim()) {
+      setPlayers([]);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       if (isCanonicalPlayerRepositoryEnabled()) {
@@ -212,9 +218,11 @@ export default function Players() {
     if (!platformMode) {
       return players;
     }
-
+    if (!String(activeClubId || "").trim()) {
+      return [];
+    }
     return loadPlayersForClub(activeClubId);
-  }, [activeClubId, platformMode, revision]);
+  }, [activeClubId, platformMode, revision, players]);
 
   const canManagePlayer = (player) => {
     if (!canManagePlayers) {
@@ -363,6 +371,7 @@ export default function Players() {
   );
 
   return (
+    <PlatformContextReadinessGate requireClub={!platformMode} showClubSwitcher={!platformMode}>
     <Box>
       <TournamentPageHeader
         title={platformMode ? "Vận động viên toàn hệ thống" : "Quản lý người chơi"}
@@ -577,5 +586,6 @@ export default function Players() {
         </DialogActions>
       </Dialog>
     </Box>
+    </PlatformContextReadinessGate>
   );
 }

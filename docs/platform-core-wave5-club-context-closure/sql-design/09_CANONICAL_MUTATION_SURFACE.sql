@@ -1,0 +1,74 @@
+-- WAVE5_SQL_DESIGN_ONLY
+-- OWNER_SQL_EXECUTION_GO=NO
+-- DO_NOT_RUN_ON_STAGING
+-- DO_NOT_RUN_ON_PRODUCTION
+-- SQL_EXECUTED=NO
+-- RLS_EXECUTED=NO
+-- STAGING_PRECHECK_EXECUTED=NO
+--
+-- Static canonical mutation-surface definition.
+-- Do not CREATE a runtime helper. Consumers copy these exact VALUES/ARRAY
+-- blocks. Static tests fail if any consumer list drifts.
+--
+-- CANONICAL_MUTATION_RPC_COUNT=14
+-- LEGACY_COMPAT_MUTATION_RPC_COUNT=1
+-- TOTAL_QUIESCE_TARGET_COUNT=15
+-- UNKNOWN_MUTATION_RPC_OVERLOAD=ABORT
+-- FUNCTION_IDENTITY_AUTHORITY=PG_PROC_OID_RESOLVED_FROM_APPROVED_TO_REGPROCEDURE_SIGNATURE
+-- APPROVED_SIGNATURE=STATIC_REVIEWED_TYPE_ONLY_REGPROCEDURE_TEXT
+-- PG_GET_FUNCTION_IDENTITY_ARGUMENTS=DIAGNOSTIC_DISPLAY_ONLY
+-- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
+
+-- WAVE5_CANONICAL_MUTATION_SURFACE_VALUES_BEGIN
+--       VALUES
+--         ('public.club_create(uuid,text,text,text,text,text)'::text, true),
+--         ('public.club_update(uuid,text,integer,text,text,text,text,text)', true),
+--         ('public.club_assign_owner(uuid,text,uuid,integer)', true),
+--         ('public.club_clear_owner(uuid,text,integer)', true),
+--         ('public.club_transfer_president(uuid,text,uuid,integer)', true),
+--         ('public.club_assign_vice_president(uuid,text,uuid,integer)', true),
+--         ('public.club_clear_vice_president(uuid,text,integer,uuid)', true),
+--         ('public.club_add_member(uuid,text,uuid,text,integer)', true),
+--         ('public.club_remove_member(uuid,text,uuid,integer)', true),
+--         ('public.club_restore_member(uuid,text,uuid,integer)', true),
+--         ('public.club_leave_membership(uuid,text)', true),
+--         ('public.club_submit_membership_request(uuid,text,text)', true),
+--         ('public.club_cancel_membership_request(uuid,uuid,integer)', true),
+--         ('public.club_review_membership_request(uuid,uuid,text,text,integer)', true),
+--         ('public.club_leave_my_membership()', false)
+-- WAVE5_CANONICAL_MUTATION_SURFACE_VALUES_END
+
+-- WAVE5_CANONICAL_14_ARRAY_BEGIN
+--     'public.club_create(uuid,text,text,text,text,text)',
+--     'public.club_update(uuid,text,integer,text,text,text,text,text)',
+--     'public.club_assign_owner(uuid,text,uuid,integer)',
+--     'public.club_clear_owner(uuid,text,integer)',
+--     'public.club_transfer_president(uuid,text,uuid,integer)',
+--     'public.club_assign_vice_president(uuid,text,uuid,integer)',
+--     'public.club_clear_vice_president(uuid,text,integer,uuid)',
+--     'public.club_add_member(uuid,text,uuid,text,integer)',
+--     'public.club_remove_member(uuid,text,uuid,integer)',
+--     'public.club_restore_member(uuid,text,uuid,integer)',
+--     'public.club_leave_membership(uuid,text)',
+--     'public.club_submit_membership_request(uuid,text,text)',
+--     'public.club_cancel_membership_request(uuid,uuid,integer)',
+--     'public.club_review_membership_request(uuid,uuid,text,text,integer)'
+-- WAVE5_CANONICAL_14_ARRAY_END
+
+-- WAVE5_QUIESCE_15_ARRAY_BEGIN
+--     'public.club_create(uuid,text,text,text,text,text)',
+--     'public.club_update(uuid,text,integer,text,text,text,text,text)',
+--     'public.club_assign_owner(uuid,text,uuid,integer)',
+--     'public.club_clear_owner(uuid,text,integer)',
+--     'public.club_transfer_president(uuid,text,uuid,integer)',
+--     'public.club_assign_vice_president(uuid,text,uuid,integer)',
+--     'public.club_clear_vice_president(uuid,text,integer,uuid)',
+--     'public.club_add_member(uuid,text,uuid,text,integer)',
+--     'public.club_remove_member(uuid,text,uuid,integer)',
+--     'public.club_restore_member(uuid,text,uuid,integer)',
+--     'public.club_leave_membership(uuid,text)',
+--     'public.club_submit_membership_request(uuid,text,text)',
+--     'public.club_cancel_membership_request(uuid,uuid,integer)',
+--     'public.club_review_membership_request(uuid,uuid,text,text,integer)',
+--     'public.club_leave_my_membership()'
+-- WAVE5_QUIESCE_15_ARRAY_END

@@ -1,4 +1,5 @@
-import { getActiveClubId, getScopedStorageKey } from "../data/club.js";
+import { getScopedStorageKey } from "../data/club.js";
+import { assertExplicitClubId } from "../features/club/context/requireExplicitClubId.js";
 import { scheduleClubCloudPush } from "../ai/clubCloudPush.js";
 import { isPhase43aSafetyEnabled } from "../features/safety/phase43aFlags.js";
 import { DEFAULT_COMPETITION_TYPE } from "../ai/competition.js";
@@ -53,7 +54,7 @@ export function getClubDataKey(clubId) {
   return `${CLUB_DATA_KEY}::${clubId}`;
 }
 
-export function getScopedSnapshotsKey(clubId = getActiveClubId()) {
+export function getScopedSnapshotsKey(clubId) {
   return getScopedStorageKey(BACKUP_SNAPSHOTS_BASE_KEY, clubId);
 }
 
@@ -261,8 +262,8 @@ function normalizeClubData(data, clubId) {
   });
 }
 
-export function loadClubData(clubId = getActiveClubId()) {
-  const resolvedClubId = clubId || getActiveClubId();
+export function loadClubData(clubId) {
+  const resolvedClubId = assertExplicitClubId(clubId);
   const key = getClubDataKey(resolvedClubId);
   const raw = localStorage.getItem(key);
 
@@ -325,7 +326,7 @@ export function purgeClubData(clubId) {
   localStorage.removeItem(getScopedSnapshotsKey(clubId));
 }
 
-export function loadPlayersForClub(clubId = getActiveClubId()) {
+export function loadPlayersForClub(clubId) {
   const players = loadClubData(clubId).players;
   if (!shouldHideDemoSeedData()) {
     return players;
@@ -339,87 +340,87 @@ function stampCollectionWithTenant(items, clubId) {
   return (items || []).map((item) => stampWithTenantId(item, tenantId));
 }
 
-export function savePlayersForClub(players, clubId = getActiveClubId()) {
+export function savePlayersForClub(players, clubId) {
   const data = loadClubData(clubId);
   data.players = normalizePlayers(stampCollectionWithTenant(players, clubId));
   return saveClubData(clubId, data);
 }
 
-export function loadCourtsForClub(clubId = getActiveClubId()) {
+export function loadCourtsForClub(clubId) {
   return loadClubData(clubId).courts;
 }
 
-export function saveCourtsForClub(courts, clubId = getActiveClubId()) {
+export function saveCourtsForClub(courts, clubId) {
   const data = loadClubData(clubId);
   data.courts = normalizeCourts(stampCollectionWithTenant(courts, clubId));
   return saveClubData(clubId, data);
 }
 
-export function loadBookingsForClub(clubId = getActiveClubId()) {
+export function loadBookingsForClub(clubId) {
   return loadClubData(clubId).bookings;
 }
 
-export function saveBookingsForClub(bookings, clubId = getActiveClubId()) {
+export function saveBookingsForClub(bookings, clubId) {
   const data = loadClubData(clubId);
   data.bookings = normalizeBookings(stampCollectionWithTenant(bookings, clubId));
   return saveClubData(clubId, data);
 }
 
-export function loadCustomersForClub(clubId = getActiveClubId()) {
+export function loadCustomersForClub(clubId) {
   return loadClubData(clubId).customers;
 }
 
-export function saveCustomersForClub(customers, clubId = getActiveClubId()) {
+export function saveCustomersForClub(customers, clubId) {
   const data = loadClubData(clubId);
   data.customers = normalizeCustomers(stampCollectionWithTenant(customers, clubId));
   return saveClubData(clubId, data);
 }
 
-export function loadRecurringSeriesForClub(clubId = getActiveClubId()) {
+export function loadRecurringSeriesForClub(clubId) {
   return loadClubData(clubId).recurringSeries || [];
 }
 
-export function saveRecurringSeriesForClub(series, clubId = getActiveClubId()) {
+export function saveRecurringSeriesForClub(series, clubId) {
   const data = loadClubData(clubId);
   data.recurringSeries = Array.isArray(series) ? series : [];
   return saveClubData(clubId, data);
 }
 
-export function loadRoundsForClub(clubId = getActiveClubId()) {
+export function loadRoundsForClub(clubId) {
   return loadClubData(clubId).rounds;
 }
 
-export function saveRoundsForClub(rounds, clubId = getActiveClubId()) {
+export function saveRoundsForClub(rounds, clubId) {
   const data = loadClubData(clubId);
   data.rounds = Array.isArray(rounds) ? rounds : [];
   return saveClubData(clubId, data);
 }
 
-export function loadSessionsForClub(clubId = getActiveClubId()) {
+export function loadSessionsForClub(clubId) {
   return loadClubData(clubId).sessions;
 }
 
-export function saveSessionsForClub(sessions, clubId = getActiveClubId()) {
+export function saveSessionsForClub(sessions, clubId) {
   const data = loadClubData(clubId);
   data.sessions = Array.isArray(sessions) ? sessions : [];
   return saveClubData(clubId, data);
 }
 
-export function loadTournamentsForClub(clubId = getActiveClubId()) {
+export function loadTournamentsForClub(clubId) {
   return loadClubData(clubId).tournaments;
 }
 
-export function saveTournamentsForClub(tournaments, clubId = getActiveClubId()) {
+export function saveTournamentsForClub(tournaments, clubId) {
   const data = loadClubData(clubId);
   data.tournaments = normalizeTournaments(stampCollectionWithTenant(tournaments, clubId));
   return saveClubData(clubId, data);
 }
 
-export function getActivePointers(clubId = getActiveClubId()) {
+export function getActivePointers(clubId) {
   return loadClubData(clubId).active;
 }
 
-export function setActivePointers(pointers, clubId = getActiveClubId()) {
+export function setActivePointers(pointers, clubId) {
   const data = loadClubData(clubId);
   data.active = {
     ...data.active,
@@ -491,7 +492,7 @@ export function purgeLegacyAiScopedKeys(clubId) {
   localStorage.removeItem(getScopedStorageKey("pickleball-ai", clubId));
 }
 
-export function buildFullClubExport(clubId = getActiveClubId()) {
+export function buildFullClubExport(clubId) {
   const data = loadClubData(clubId);
   return {
     schemaVersion: CLUB_SCHEMA_VERSION,

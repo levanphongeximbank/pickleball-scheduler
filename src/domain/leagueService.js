@@ -1,11 +1,11 @@
-import { getActiveClubId } from "../data/club.js";
 import { PERMISSIONS } from "../auth/permissions.js";
 import { guardClubAction } from "../auth/guardAction.js";
 import { createLeagueRecord, normalizeLeague } from "../models/league.js";
 import { loadClubData, saveClubData } from "./clubStorage.js";
+import { assertExplicitClubId } from "../features/club/context/requireExplicitClubId.js";
 
-export function listLeagues(clubId = getActiveClubId(), seasonId = null) {
-  const data = loadClubData(clubId);
+export function listLeagues(clubId, seasonId = null) {
+  const data = loadClubData(assertExplicitClubId(clubId));
 
   if (!seasonId) {
     return data.leagues;
@@ -14,8 +14,8 @@ export function listLeagues(clubId = getActiveClubId(), seasonId = null) {
   return data.leagues.filter((league) => league.seasonId === seasonId);
 }
 
-export function getActiveLeague(clubId = getActiveClubId()) {
-  const data = loadClubData(clubId);
+export function getActiveLeague(clubId) {
+  const data = loadClubData(assertExplicitClubId(clubId));
   return (
     data.leagues.find((league) => league.id === data.active.leagueId) ||
     data.leagues.find(
