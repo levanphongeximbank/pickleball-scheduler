@@ -14,3 +14,7 @@ export {
   verifyBearerToken,
   REFEREE_V5_INTERNAL_RPC,
 } from "./edgeHttpHandler.js";
+export {
+  processTrustedMatchExecutionInit,
+  TRUSTED_INIT_ACTION,
+} from "./trustedMatchExecutionInit.js";

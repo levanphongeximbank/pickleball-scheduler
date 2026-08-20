@@ -18,6 +18,29 @@ import { flushOfflineQueue } from "./features/mobile/services/offlineQueue.js";
 import { ensureStorageSchemaV42 } from "./features/club/storage/storageSchemaV42.js";
 import { isClubStorageV2Enabled } from "./features/club/config/clubRegistryFlags.js";
 import { registerClubNotificationWriter } from "./features/club/services/clubScheduleNotificationBridge.js";
+import { registerClubAuthSessionProjection } from "./features/club/bindings/registerClubAuthSessionProjection.js";
+import { registerMobileOfflineQueueAuthCleanup } from "./features/mobile/bindings/registerMobileOfflineQueueAuthCleanup.js";
+import { bindTournamentAccessPortFromDomain } from "./features/tournament/bindings/bindTournamentAccessPort.js";
+import { bindBillingAccessCapabilityFromModule } from "./features/billing/bindings/bindBillingAccessCapability.js";
+import { getSupabaseAuthClient, hasSupabaseConfig } from "./auth/supabaseClient.js";
+import {
+  bindPlatformTenantAuthority,
+  createSupabasePlatformTenantQueryAdapter,
+} from "./core/platform/app/platformTenantAuthority.js";
+import { createLocalTenantCacheAdapter } from "./data/tenantRegistry.js";
+import {
+  bindTenantEntitlementAuthority,
+  bindClubEntitlementAuthority,
+} from "./core/platform/authz/index.js";
+import {
+  createMemoryTenantEntitlementAdapter,
+  createSupabaseTenantMembersAdapter,
+} from "./features/tenant/services/tenantEntitlementAdapter.js";
+import {
+  createMemoryClubEntitlementAdapter,
+  createSupabaseClubEntitlementAdapter,
+} from "./features/club/services/clubEntitlementAdapter.js";
+import { rpcV2GetMyActiveMembership } from "./features/club/services/clubStorageV2RpcService.js";
 
 /**
  * Composition-root bridge: keeps Platform Core free of Business Module imports
@@ -28,6 +51,35 @@ function wireClubPlatformNotifications(runtime) {
     runtime.notificationService.create(input);
   });
 }
+
+/** Wave 2 — bind BM implementations into Platform-owned ports/hooks before React mount. */
+function wirePlatformRuntimeBoundaryBindings() {
+  registerClubAuthSessionProjection();
+  registerMobileOfflineQueueAuthCleanup();
+  bindTournamentAccessPortFromDomain();
+  bindBillingAccessCapabilityFromModule();
+  bindPlatformTenantAuthority({
+    queryAdapter: hasSupabaseConfig()
+      ? createSupabasePlatformTenantQueryAdapter(() => getSupabaseAuthClient())
+      : null,
+    cacheAdapter: createLocalTenantCacheAdapter(),
+  });
+  bindTenantEntitlementAuthority(
+    hasSupabaseConfig()
+      ? createSupabaseTenantMembersAdapter(() => getSupabaseAuthClient())
+      : createMemoryTenantEntitlementAdapter()
+  );
+  bindClubEntitlementAuthority(
+    hasSupabaseConfig()
+      ? createSupabaseClubEntitlementAdapter({
+          getClient: () => getSupabaseAuthClient(),
+          getMyActiveMembership: rpcV2GetMyActiveMembership,
+        })
+      : createMemoryClubEntitlementAdapter()
+  );
+}
+
+wirePlatformRuntimeBoundaryBindings();
 
 if (isClubStorageV2Enabled()) {
   ensureStorageSchemaV42();

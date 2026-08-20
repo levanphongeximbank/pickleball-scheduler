@@ -28,7 +28,30 @@ import {
   createInitialScoringState,
   createScoringProjection,
   recordPoint,
+  supersedeScoringEvent,
 } from "../../../competition-core/scoring/index.js";
+import {
+  deriveCanonicalCourtAfterScoring,
+  resolveSideChangeRequiredAfterScoring,
+} from "../../integration/referee/deriveCanonicalCourtAfterScoring.js";
+import {
+  assertUndoLastScoringEligible,
+  evaluateUndoAvailability,
+  findLastEligibleScoringEvent,
+  SCORING_ACTION_LEDGER_KIND,
+} from "./scoring/undoLastScoringActionHelpers.js";
+import {
+  createRefereeCandidate,
+  createManualRefereeAssignmentRequest,
+  createMatchScheduleRow,
+  validateManualRefereeAssignment,
+  REFEREE_ROLE_CODE,
+} from "../../../competition-core/referee-assignment/index.js";
+import {
+  createPopulatedSnapshotResult,
+  createEmptySnapshotResult,
+} from "../../../competition-core/referee-assignment/ports/portResult.js";
+import { ASSIGNMENT_COMMAND_ERROR_CODE } from "./assignment/constants.js";
 import {
   ACCEPTANCE_STATUS,
   ACTOR_TYPE,
@@ -70,6 +93,19 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
   const clockIso = isNonEmptyString(deps.clockIso)
     ? String(deps.clockIso).trim()
     : "2026-07-24T00:00:00.000Z";
+
+  // Host may inject wall-clock nowMs for UNDO_* instrumentation. Default is
+  // deterministic (no Date.now) so E2E-04 ops stay architecture-clean.
+  const nowMs =
+    typeof deps.nowMs === "function"
+      ? deps.nowMs
+      : (() => {
+          let tick = 0;
+          return () => {
+            tick += 1;
+            return tick;
+          };
+        })();
 
   const store = deps.store || deps.runtime?.opsStore || null;
   if (!store) {
@@ -236,9 +272,18 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
   }
 
   /**
-   * Seed CORE-13 assignment handoff + optional match snapshots (test/runtime wiring).
+   * Seed assignment handoff — MUST pass CORE-13 validation per row.
+   * No business-authority bypass. Optional assignmentCommandService routes
+   * through the shared command surface (CAS + idempotency + audit).
    */
   async function seedAssignments(command = {}) {
+    if (command.allowCore13Bypass === true) {
+      failReferee(
+        REFEREE_ERROR_CODE.INVALID_INPUT,
+        "seedAssignments cannot bypass CORE-13",
+        { code: ASSIGNMENT_COMMAND_ERROR_CODE.SEED_BYPASS_DENIED }
+      );
+    }
     const tenantId = String(command.tenantId || "").trim();
     const competitionId = String(command.competitionId || "").trim();
     if (!tenantId || !competitionId) {
@@ -248,6 +293,120 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         {}
       );
     }
+
+    const assignmentCommandService = deps.assignmentCommandService || null;
+    if (assignmentCommandService) {
+      bindStoreCommand(command);
+      const seeded =
+        await assignmentCommandService.seedAssignmentsThroughCore13({
+          ...command,
+          tournamentId: competitionId,
+          actorId:
+            command.actorId ||
+            command.actor?.id ||
+            command.actor?.userId ||
+            "seed-actor",
+          lifecycleState: command.lifecycleState || "PRE_MATCH",
+        });
+      if (Array.isArray(command.matches)) {
+        for (const match of command.matches) {
+          await store.putMatch(tenantId, competitionId, match);
+        }
+      }
+      return deepFreeze({
+        ok: true,
+        assignmentCount: seeded.seeded,
+        core13Bypass: false,
+        core13Decision: "ACCEPT",
+        fingerprint: computeOrganizerFingerprint(
+          { seeded: seeded.seeded },
+          "e2e04-ref-seed"
+        ),
+      });
+    }
+
+    const rows = Array.isArray(command.assignments) ? command.assignments : [];
+    const matchById = new Map(
+      (Array.isArray(command.matches) ? command.matches : []).map((m) => [
+        String(m.id || m.matchId),
+        m,
+      ])
+    );
+    for (const row of rows) {
+      const matchId = String(row.matchId || "").trim();
+      const refereeId = String(row.refereeId || row.assigneeId || "").trim();
+      if (!matchId || !refereeId) {
+        failReferee(
+          REFEREE_ERROR_CODE.INVALID_INPUT,
+          "Each seeded assignment requires matchId and canonical refereeId",
+          {}
+        );
+      }
+      const roleCode = row.roleCode || row.role || REFEREE_ROLE_CODE.PRIMARY;
+      const startAt =
+        row.startAt ||
+        matchById.get(matchId)?.scheduledAt ||
+        "2026-08-17T10:00:00.000Z";
+      const endAt = row.endAt || "2026-08-17T11:00:00.000Z";
+      const core13 = validateManualRefereeAssignment({
+        request: createManualRefereeAssignmentRequest({
+          requestId: `seed-${tenantId}-${competitionId}-${matchId}-${refereeId}`,
+          tenantId,
+          tournamentId: competitionId,
+          matchId,
+          refereeId,
+          roleCode,
+          actorRef: String(
+            command.actor?.id || command.actorId || "seed-actor"
+          ),
+          allowSoftOverride: true,
+        }),
+        directorySnapshot: createPopulatedSnapshotResult([
+          createRefereeCandidate({
+            refereeId,
+            active: true,
+            displayLabel: row.displayLabel,
+          }),
+        ]),
+        scheduleSnapshot: createPopulatedSnapshotResult([
+          createMatchScheduleRow({ matchId, startAt, endAt }),
+        ]),
+        existingAssignmentSnapshot: createEmptySnapshotResult(),
+        qualificationSnapshot: createPopulatedSnapshotResult([
+          {
+            qualificationId: `seed-qual-${refereeId}-${roleCode}`,
+            refereeId,
+            roleCode,
+            validFrom: startAt,
+            validTo: endAt,
+          },
+        ]),
+        availabilitySnapshot: createPopulatedSnapshotResult([
+          {
+            windowId: `seed-avail-${refereeId}`,
+            refereeId,
+            startAt,
+            endAt,
+            source: "DIRECTORY",
+          },
+        ]),
+        requireQualificationSnapshot: false,
+        requireAvailabilitySnapshot: false,
+      });
+      if (!core13.ok || !core13.accepted) {
+        failReferee(
+          REFEREE_ERROR_CODE.PRECONDITION_FAILED,
+          core13.failure?.message || "CORE-13 rejected seeded assignment",
+          {
+            code: ASSIGNMENT_COMMAND_ERROR_CODE.CORE13_VALIDATION_REJECTED,
+            matchId,
+            refereeId,
+            core13: core13.failure || null,
+          }
+        );
+      }
+    }
+
     bindStoreCommand(command);
     const record = await store.upsertAssignments(
       tenantId,
@@ -260,9 +419,19 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         await store.putMatch(tenantId, competitionId, match);
       }
     }
+    if (command.courtsByMatch && typeof command.courtsByMatch === "object") {
+      await store.update(tenantId, competitionId, (draft) => {
+        draft.courtsByMatch = draft.courtsByMatch || {};
+        for (const [matchId, court] of Object.entries(command.courtsByMatch)) {
+          draft.courtsByMatch[matchId] = court;
+        }
+      });
+    }
     return deepFreeze({
       ok: true,
       assignmentCount: record.assignments.length,
+      core13Bypass: false,
+      core13Decision: "ACCEPT",
       fingerprint: computeOrganizerFingerprint(
         { assignments: record.assignments.map((a) => a.assignmentId) },
         "e2e04-ref-seed"
@@ -565,13 +734,48 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         );
       } else {
         format = createScoringFormat({
-          scoringSystem: SCORING_SYSTEM.RALLY,
+          scoringSystem: String(cmd.scoringSystem || SCORING_SYSTEM.RALLY)
+            .trim()
+            .toUpperCase(),
           pointsToWin: Number(cmd.pointsToWin) || 11,
           winBy: Number(cmd.winBy) || 2,
           bestOfGames: Number(cmd.bestOfGames) || 1,
+          sideSwitchAt:
+            cmd.sideSwitchAt != null && cmd.sideSwitchAt !== ""
+              ? Number(cmd.sideSwitchAt)
+              : null,
+          serversPerSide: Number(cmd.serversPerSide) || 2,
+          initialServingSide: cmd.initialServingSide || SCORING_SIDE.SIDE_A,
         });
       }
-      const state = createInitialScoringState({ matchId, format });
+      const priorCourt = record.courtsByMatch?.[matchId] || cmd.priorCourt || null;
+      const trackServe =
+        String(format.scoringSystem).toUpperCase() === SCORING_SYSTEM.SIDE_OUT ||
+        cmd.trackServe === true ||
+        Boolean(priorCourt?.serverPlayerId) ||
+        Boolean(priorCourt?.lineupConfigured);
+      let state = createInitialScoringState({ matchId, format, trackServe });
+      if (state.serve && priorCourt) {
+        const openingFromCourt = Number(priorCourt.serverNumber);
+        const sideFromCourt = priorCourt.servingSide
+          ? String(priorCourt.servingSide).toUpperCase()
+          : null;
+        if (
+          (Number.isFinite(openingFromCourt) && openingFromCourt >= 1) ||
+          sideFromCourt
+        ) {
+          state = Object.freeze({
+            ...state,
+            serve: Object.freeze({
+              servingSide: sideFromCourt || state.serve.servingSide,
+              serverNumber:
+                Number.isFinite(openingFromCourt) && openingFromCourt >= 1
+                  ? openingFromCourt
+                  : state.serve.serverNumber,
+            }),
+          });
+        }
+      }
       const projection = createScoringProjection(state);
       const session = Object.freeze({
         sessionId: nextDeterministicId("score-session"),
@@ -580,14 +784,20 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         openedAt: clockIso,
         state,
         projection,
+        actionLedger: Object.freeze([]),
       });
       await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
         draft.scoreSessions[matchId] = session;
+        if (priorCourt) {
+          draft.courtsByMatch = draft.courtsByMatch || {};
+          draft.courtsByMatch[matchId] = priorCourt;
+        }
       });
       return deepFreeze({
         ok: true,
         idempotent: false,
         session,
+        court: priorCourt,
         fingerprint: computeOrganizerFingerprint(
           session,
           "e2e04-ref-score-session"
@@ -628,8 +838,40 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         );
       }
 
+      const priorCourt =
+        cmd.priorCourt ||
+        record.courtsByMatch?.[matchId] ||
+        null;
+      const priorPointsForGate = session.state?.points
+        ? { ...session.state.points }
+        : null;
+      const dueBeforeScore = resolveSideChangeRequiredAfterScoring({
+        priorCourt: priorCourt || {},
+        priorPoints: priorPointsForGate || {},
+        nextPoints: priorPointsForGate || {},
+        sideSwitchAt: session.state?.format?.sideSwitchAt,
+        domainHints: [],
+      });
+      if (dueBeforeScore.sideChangeRequired === true) {
+        failReferee(
+          REFEREE_ERROR_CODE.PRECONDITION_FAILED,
+          "Change ends is due — confirm Đổi sân before scoring",
+          { sideChangeRequired: true, matchId }
+        );
+      }
+      const priorServe = session.state?.serve
+        ? {
+            servingSide: session.state.serve.servingSide,
+            serverNumber: session.state.serve.serverNumber,
+          }
+        : null;
+      const priorPoints = priorPointsForGate;
+
       let state = session.state;
       const points = Math.max(1, Number(cmd.points) || 1);
+      let awardedPoint = false;
+      const domainHints = [];
+      let lastEvent = null;
       for (let i = 0; i < points; i += 1) {
         const applied = recordPoint(
           state,
@@ -643,27 +885,378 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
           }
         );
         state = applied.state;
+        lastEvent = applied.event;
+        if (applied.event?.payload?.awardedPoint === true) awardedPoint = true;
+        const hints = applied.event?.payload?.domainHints;
+        if (Array.isArray(hints)) domainHints.push(...hints);
       }
       const projection = createScoringProjection(state);
+      const scoringSystem = String(
+        state.format?.scoringSystem || session.state?.format?.scoringSystem || ""
+      ).toUpperCase();
+      const derivedCourt = deriveCanonicalCourtAfterScoring({
+        priorCourt: priorCourt || {
+          playerPositions: { sideA: [], sideB: [] },
+          serverPlayerId: null,
+        },
+        priorServe,
+        nextServe: state.serve,
+        priorPoints,
+        nextPoints: state.points,
+        scoringSystem,
+        awardedPoint,
+        rallyWinnerSide: scoringSide,
+      });
+      const sideChange = resolveSideChangeRequiredAfterScoring({
+        priorCourt,
+        priorPoints,
+        nextPoints: state.points,
+        sideSwitchAt: state.format?.sideSwitchAt,
+        domainHints,
+      });
+      const nextCourt = Object.freeze({
+        ...derivedCourt,
+        sideChangeRequired: sideChange.sideChangeRequired,
+        sideChangeAcknowledgedAtThreshold:
+          sideChange.sideChangeAcknowledgedAtThreshold,
+        sideChangeThreshold: sideChange.sideChangeThreshold,
+      });
+      const ledgerEntry = Object.freeze({
+        kind: SCORING_ACTION_LEDGER_KIND.SCORING,
+        eventId: lastEvent?.eventId || null,
+        atRevision: state.revision,
+        priorCourt: priorCourt ? cloneCourtSnapshot(priorCourt) : null,
+        nextCourt: cloneCourtSnapshot(nextCourt),
+        causedSideChangeDue: sideChange.sideChangeRequired === true,
+        scoringSide,
+        awardedPoint,
+      });
       const nextSession = Object.freeze({
         ...session,
         state,
         projection,
         updatedAt: clockIso,
+        actionLedger: Object.freeze([
+          ...(Array.isArray(session.actionLedger) ? session.actionLedger : []),
+          ledgerEntry,
+        ]),
       });
       await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
         draft.scoreSessions[matchId] = nextSession;
+        draft.courtsByMatch = draft.courtsByMatch || {};
+        draft.courtsByMatch[matchId] = nextCourt;
       });
+      const nextRecord = await loadRecord(cmd);
       return deepFreeze({
         ok: true,
         scoreProjection: projection,
+        court: nextCourt,
         matchComplete: Boolean(state.matchComplete),
         calculatedWinnerSide: state.calculatedWinnerSide || null,
         winnerInferenceByFacade: false,
+        expectedVersion: Number(nextRecord.revision || 0),
         fingerprint: computeOrganizerFingerprint(
-          { matchId, projection },
+          { matchId, projection, court: nextCourt },
           "e2e04-ref-score"
         ),
+      });
+    });
+  }
+
+  function cloneCourtSnapshot(court) {
+    if (!court || typeof court !== "object") return null;
+    return JSON.parse(JSON.stringify(court));
+  }
+
+  async function confirmChangeEnds(command = {}) {
+    return run(command, async (cmd) => {
+      const auth = await authorize(cmd, REFEREE_ACTION.SCORE_SUBMIT);
+      const matchId = String(cmd.matchId || "").trim();
+      await requireAssignedMatch(cmd, auth, matchId);
+      const record = await loadRecord(cmd);
+      const match = record.matches?.[matchId];
+      if (!match || String(match.status).toUpperCase() !== MATCH_STATUS.IN_PROGRESS) {
+        failReferee(
+          REFEREE_ERROR_CODE.MATCH_NOT_ACTIVE,
+          "confirmChangeEnds requires an active match",
+          { status: match?.status || null }
+        );
+      }
+      const session = record.scoreSessions?.[matchId];
+      if (!session) {
+        failReferee(
+          REFEREE_ERROR_CODE.SCORE_ENTRY_NOT_READY,
+          "Score entry session is required before confirmChangeEnds",
+          { matchId }
+        );
+      }
+      if (cmd.expectedVersion != null) {
+        if (Number(cmd.expectedVersion) !== Number(record.revision || 0)) {
+          failReferee(
+            REFEREE_ERROR_CODE.STALE_WRITE,
+            "Fail-closed stale write: expectedVersion mismatch",
+            {
+              expectedVersion: cmd.expectedVersion,
+              actualVersion: record.revision,
+              stale: true,
+            }
+          );
+        }
+      }
+      const current = record.courtsByMatch?.[matchId] || {};
+      if (current.sideChangeRequired !== true) {
+        failReferee(
+          REFEREE_ERROR_CODE.PRECONDITION_FAILED,
+          "confirmChangeEnds requires sideChangeRequired",
+          { sideChangeRequired: current.sideChangeRequired === true }
+        );
+      }
+      const ackThreshold =
+        current.sideChangeThreshold != null
+          ? Number(current.sideChangeThreshold)
+          : current.sideChangeAcknowledgedAtThreshold != null
+            ? Number(current.sideChangeAcknowledgedAtThreshold)
+            : session.state?.format?.sideSwitchAt != null
+              ? Number(session.state.format.sideSwitchAt)
+              : null;
+      const nextOrientation =
+        String(current.orientation || "STANDARD").toUpperCase() === "SWAPPED"
+          ? "STANDARD"
+          : "SWAPPED";
+      const nextCourt = Object.freeze({
+        ...current,
+        orientation: nextOrientation,
+        sideChangeRequired: false,
+        sideChangeThreshold: current.sideChangeThreshold ?? ackThreshold,
+        sideChangeAcknowledgedAtThreshold: ackThreshold,
+      });
+      const ledgerEntry = Object.freeze({
+        kind: SCORING_ACTION_LEDGER_KIND.CHANGE_ENDS,
+        atRevision: Number(session.state?.revision || 0),
+        acknowledgedAtThreshold: ackThreshold,
+        priorCourt: cloneCourtSnapshot(current),
+        nextCourt: cloneCourtSnapshot(nextCourt),
+      });
+      const nextSession = Object.freeze({
+        ...session,
+        updatedAt: clockIso,
+        actionLedger: Object.freeze([
+          ...(Array.isArray(session.actionLedger) ? session.actionLedger : []),
+          ledgerEntry,
+        ]),
+      });
+      await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
+        draft.scoreSessions[matchId] = nextSession;
+        draft.courtsByMatch = draft.courtsByMatch || {};
+        draft.courtsByMatch[matchId] = nextCourt;
+      });
+      const nextRecord = await loadRecord(cmd);
+      return deepFreeze({
+        ok: true,
+        court: nextCourt,
+        expectedVersion: Number(nextRecord.revision || 0),
+        fingerprint: computeOrganizerFingerprint(
+          { matchId, court: nextCourt },
+          "e2e04-ref-change-ends"
+        ),
+      });
+    });
+  }
+
+  async function undoLastScoringAction(command = {}) {
+    return run(command, async (cmd) => {
+      const timing = {
+        UNDO_TOTAL_MS: null,
+        UNDO_READ_MS: null,
+        UNDO_REPLAY_MS: null,
+        UNDO_COMMIT_MS: null,
+        UNDO_PROJECT_MS: null,
+      };
+      const t0 = nowMs();
+      const auth = await authorize(cmd, REFEREE_ACTION.SCORE_UNDO);
+      const matchId = String(cmd.matchId || "").trim();
+      const tRead0 = nowMs();
+      await requireAssignedMatch(cmd, auth, matchId);
+      const record = await loadRecord(cmd);
+      timing.UNDO_READ_MS = nowMs() - tRead0;
+
+      const idemKey = String(cmd.idempotencyKey || cmd.commandId || "").trim();
+      const priorReceipt = idemKey
+        ? record.idempotencyByMatch?.[matchId]?.[idemKey]
+        : null;
+      if (priorReceipt) {
+        timing.UNDO_TOTAL_MS = nowMs() - t0;
+        return deepFreeze({
+          ...priorReceipt,
+          ok: true,
+          idempotent: true,
+          timing,
+        });
+      }
+
+      const match = record.matches?.[matchId];
+      const session = record.scoreSessions?.[matchId];
+      const validation = record.validationByMatch?.[matchId] || null;
+      const court = record.courtsByMatch?.[matchId] || null;
+      const targetEvent = findLastEligibleScoringEvent(session?.state);
+      const eligible = assertUndoLastScoringEligible({
+        match,
+        session,
+        validation,
+        court,
+        expectedVersion: cmd.expectedVersion,
+        actualVersion: record.revision,
+        targetEvent,
+        ledger: session?.actionLedger,
+      });
+
+      const tReplay0 = nowMs();
+      const applied = supersedeScoringEvent(
+        session.state,
+        {
+          targetEventId: eligible.targetEvent.eventId,
+          replacementScoringSide: null,
+          lifecycleStatus: MATCH_STATUS.IN_PROGRESS,
+          reason: "UNDO_LAST_SCORING_ACTION",
+          clientEventId: idemKey || nextDeterministicId("undo"),
+          occurredAt: clockIso,
+        },
+        {
+          now: () => clockIso,
+          nextId: () => nextDeterministicId("supersede"),
+        }
+      );
+      timing.UNDO_REPLAY_MS = nowMs() - tReplay0;
+
+      const projection = createScoringProjection(applied.state);
+
+      // Prefer exact prior court snapshot from the scoring ledger (incl. change-end due).
+      let restoredCourt;
+      if (eligible.scoringEntry?.priorCourt != null) {
+        restoredCourt = Object.freeze({
+          ...cloneCourtSnapshot(eligible.scoringEntry.priorCourt),
+          servingSide:
+            applied.state.serve?.servingSide ||
+            eligible.scoringEntry.priorCourt.servingSide ||
+            null,
+          serverNumber:
+            applied.state.serve?.serverNumber ||
+            eligible.scoringEntry.priorCourt.serverNumber ||
+            null,
+          serverPlayerId:
+            eligible.scoringEntry.priorCourt.serverPlayerId || null,
+        });
+      } else {
+        const restoredCourtBase = cloneCourtSnapshot(court) || {
+          playerPositions: { sideA: [], sideB: [] },
+          serverPlayerId: null,
+        };
+        const sideChange = resolveSideChangeRequiredAfterScoring({
+          priorCourt: restoredCourtBase,
+          priorPoints: applied.state.points,
+          nextPoints: applied.state.points,
+          sideSwitchAt: applied.state.format?.sideSwitchAt,
+          domainHints: [],
+        });
+        restoredCourt = Object.freeze({
+          ...restoredCourtBase,
+          servingSide:
+            applied.state.serve?.servingSide ||
+            restoredCourtBase.servingSide ||
+            null,
+          serverNumber:
+            applied.state.serve?.serverNumber ||
+            restoredCourtBase.serverNumber ||
+            null,
+          sideChangeRequired: sideChange.sideChangeRequired === true,
+          sideChangeAcknowledgedAtThreshold:
+            sideChange.sideChangeAcknowledgedAtThreshold,
+          sideChangeThreshold: sideChange.sideChangeThreshold,
+        });
+      }
+
+      const nextSession = Object.freeze({
+        ...session,
+        state: applied.state,
+        projection,
+        updatedAt: clockIso,
+        actionLedger: Object.freeze([
+          ...(Array.isArray(session.actionLedger) ? session.actionLedger : []),
+          Object.freeze({
+            kind: SCORING_ACTION_LEDGER_KIND.SUPERSEDE,
+            eventId: applied.event.eventId,
+            targetEventId: eligible.targetEvent.eventId,
+            atRevision: applied.state.revision,
+            priorCourt: cloneCourtSnapshot(court),
+            nextCourt: cloneCourtSnapshot(restoredCourt),
+          }),
+        ]),
+      });
+
+      const tCommit0 = nowMs();
+      const resultFingerprint = computeOrganizerFingerprint(
+        {
+          matchId,
+          projection,
+          court: restoredCourt,
+          supersedeEventId: applied.event.eventId,
+        },
+        "e2e04-ref-score-undo"
+      );
+      await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
+        draft.scoreSessions[matchId] = nextSession;
+        draft.courtsByMatch = draft.courtsByMatch || {};
+        draft.courtsByMatch[matchId] = restoredCourt;
+        if (idemKey) {
+          draft.idempotencyByMatch = draft.idempotencyByMatch || {};
+          const nextVersion = Number(draft.revision || 0) + 1;
+          draft.idempotencyByMatch[matchId] = {
+            ...(draft.idempotencyByMatch[matchId] || {}),
+            [idemKey]: {
+              scoreProjection: projection,
+              court: restoredCourt,
+              targetEventId: eligible.targetEvent.eventId,
+              supersedeEventId: applied.event.eventId,
+              expectedVersion: nextVersion,
+              fingerprint: resultFingerprint,
+            },
+          };
+        }
+      });
+      timing.UNDO_COMMIT_MS = nowMs() - tCommit0;
+
+      const tProject0 = nowMs();
+      const nextRecord = await loadRecord(cmd);
+      const undoAvailability = evaluateUndoAvailability({
+        match: nextRecord.matches?.[matchId],
+        session: nextRecord.scoreSessions?.[matchId],
+        validation: nextRecord.validationByMatch?.[matchId] || null,
+        court: nextRecord.courtsByMatch?.[matchId] || null,
+        actualVersion: nextRecord.revision,
+        targetEvent: findLastEligibleScoringEvent(
+          nextRecord.scoreSessions?.[matchId]?.state
+        ),
+        ledger: nextRecord.scoreSessions?.[matchId]?.actionLedger,
+      });
+      timing.UNDO_PROJECT_MS = nowMs() - tProject0;
+      timing.UNDO_TOTAL_MS = nowMs() - t0;
+
+      return deepFreeze({
+        ok: true,
+        idempotent: false,
+        command: "UNDO_LAST_SCORING_ACTION",
+        scoreProjection: projection,
+        court: restoredCourt,
+        targetEventId: eligible.targetEvent.eventId,
+        supersedeEventId: applied.event.eventId,
+        originalEventPreserved: true,
+        correctionEventType: applied.event.eventType,
+        matchComplete: Boolean(applied.state.matchComplete),
+        calculatedWinnerSide: applied.state.calculatedWinnerSide || null,
+        expectedVersion: Number(nextRecord.revision || 0),
+        undoAvailability,
+        fingerprint: resultFingerprint,
+        timing,
       });
     });
   }
@@ -978,6 +1571,8 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     resumeAssignedMatch,
     createScoreEntrySession,
     submitScoreProjection,
+    confirmChangeEnds,
+    undoLastScoringAction,
     submitMatchResultForValidation,
     getCorrectionRequiredState,
     resubmitCorrectedResult,

@@ -51,6 +51,42 @@ export { buildRefereeOperationsProjection } from "./projections/buildRefereeOper
 
 export { createRefereeCompetitionOperationsFacade } from "./createRefereeCompetitionOperationsFacade.js";
 
+export {
+  CORE13_ASSIGNMENT_COMMAND_VERSION,
+  ASSIGNMENT_COMMAND,
+  ASSIGNMENT_OPERATION,
+  ASSIGNMENT_LIFECYCLE_STATE,
+  ASSIGNMENT_COMMAND_ERROR_CODE,
+  ASSIGNMENT_COMPETITION_MODE,
+  DURABLE_ASSIGNMENT_PERSISTENCE_CLASSIFICATION,
+  TEST_DOUBLE_ASSIGNMENT_PERSISTENCE_CLASSIFICATION,
+  CORE13_CANONICAL_ASSIGNMENT_RUNTIME,
+  COMPETITION_REFEREE_ASSIGNMENT_EDGE_FUNCTION,
+  CompetitionRefereeAssignmentCommandError,
+  isCompetitionRefereeAssignmentCommandError,
+  normalizeAssignmentLifecycleState,
+  evaluateAssignmentLifecycleGate,
+  assertAssignmentLifecycleGate,
+  assertCanonicalRefereeId,
+  assertAssignmentCommandAuthz,
+  createInMemoryCanonicalAssignmentPersistence,
+  createBlobCanonicalAssignmentPersistence,
+  createRpcCanonicalAssignmentPersistence,
+  createCompetitionRefereeAssignmentCommandService,
+  createCompetitionRefereeAssignmentTrustedClient,
+  createModeAssignmentCommandBridge,
+  LEGACY_ASSIGNMENT_WRITER_STATUS,
+} from "./assignment/index.js";
+
+export {
+  SCORING_ACTION_LEDGER_KIND,
+  findLastEligibleScoringEvent,
+  findScoringLedgerEntry,
+  hasChangeEndAckAfterScoring,
+  assertUndoLastScoringEligible,
+  evaluateUndoAvailability,
+} from "./scoring/undoLastScoringActionHelpers.js";
+
 export const COMPETITION_ENGINE_REFEREE_OPERATIONS = Object.freeze({
   id: "competition-engine-referee-operations",
   phase: "E2E-04",
@@ -63,4 +99,7 @@ export const COMPETITION_ENGINE_REFEREE_OPERATIONS = Object.freeze({
   defaultRuntimeWiringImplemented: true,
   stagingBackendCertified: true,
   ownsEngines: false,
+  undoLastScoringAction: true,
+  core13AssignmentCommand: true,
+  seedAssignmentsCore13Bypass: false,
 });

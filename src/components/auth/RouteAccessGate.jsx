@@ -18,6 +18,7 @@ import { decideTournamentEngineRouteGate } from "../../auth/tournamentEngineRout
 import { isClubStorageV2Enabled } from "../../features/club/config/clubRegistryFlags.js";
 import { isTeamTournamentPortalPath } from "../../features/team-tournament/routing/teamPortalRouteScope.js";
 import { ROLES, normalizeRole } from "../../auth/roles.js";
+import { isSecureRuntime } from "../../auth/runtime.js";
 import ClubPlayerHomeRedirect from "../../pages/player/guards/ClubPlayerHomeRedirect.jsx";
 
 function AuthLoading() {
@@ -103,7 +104,7 @@ export default function RouteAccessGate({ children }) {
       activeClubId,
       authProductionEnabled,
       rbacEnabled,
-      tenantId: user?.tenantId || user?.venueId || activeClub?.venueId || null,
+      tenantId: user?.tenantId || activeClub?.tenantId || null,
     });
     if (engineDecision.apply) {
       if (engineDecision.redirect === "login") {
@@ -122,6 +123,21 @@ export default function RouteAccessGate({ children }) {
   }
 
   if (!rbacEnabled) {
+    if (
+      isSecureRuntime() &&
+      isAuthenticated &&
+      user &&
+      !isPermissionExemptPath(location.pathname) &&
+      !isAuthenticatedOnlyRoute(location.pathname)
+    ) {
+      return (
+        <Navigate
+          to="/403"
+          replace
+          state={{ from: location, reason: "RBAC_CONFIG_DENIED" }}
+        />
+      );
+    }
     return children;
   }
 

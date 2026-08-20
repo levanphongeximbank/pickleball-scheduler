@@ -9,23 +9,32 @@ export const USER_STATUS = Object.freeze({
 export function normalizeUser(user) {
   const id = String(user?.id || "").trim();
   const role = String(user?.role || "").trim();
+  const rawStatus = user?.status;
+  const hasStatus = rawStatus != null && String(rawStatus).trim() !== "";
+  const identityIncomplete = Boolean(
+    user?.identityIncomplete || user?.identityStatus === "INCOMPLETE"
+  );
+  const status = hasStatus
+    ? String(rawStatus).trim()
+    : identityIncomplete
+      ? ""
+      : USER_STATUS.ACTIVE;
+  const identityStatus =
+    user?.identityStatus ||
+    (identityIncomplete
+      ? "INCOMPLETE"
+      : status === USER_STATUS.ACTIVE
+        ? "ACTIVE"
+        : "INACTIVE");
 
   return {
     id,
     email: String(user?.email || "").trim().toLowerCase(),
     displayName: String(user?.displayName || user?.name || "").trim(),
     role: isValidRole(role) ? normalizeRole(role) : "",
-    /** Tenant — bắt buộc với mọi role trừ PLATFORM_ADMIN. venueId giữ tương thích ngược. */
-    tenantId: user?.tenantId
-      ? String(user.tenantId).trim()
-      : user?.venueId
-        ? String(user.venueId).trim()
-        : null,
-    venueId: user?.venueId
-      ? String(user.venueId).trim()
-      : user?.tenantId
-        ? String(user.tenantId).trim()
-        : null,
+    /** Wave 3: tenantId and venueId are distinct — no cross-fill invent. */
+    tenantId: user?.tenantId ? String(user.tenantId).trim() : null,
+    venueId: user?.venueId ? String(user.venueId).trim() : null,
     /** CLB được gán — CLUB_MANAGER, PLAYER. */
     clubId: user?.clubId ? String(user.clubId).trim() : null,
     /** Giải đồng đội — TEAM_CAPTAIN. */
@@ -48,7 +57,10 @@ export function normalizeUser(user) {
     avatarUrl: user?.avatarUrl ? String(user.avatarUrl).trim() : "",
     gender: user?.gender ? String(user.gender).trim() : "",
     birthYear: user?.birthYear ?? user?.birth_year ?? null,
-    status: user?.status || USER_STATUS.ACTIVE,
+    status,
+    identityIncomplete,
+    identityStatus,
+    entitlementEvidence: user?.entitlementEvidence || null,
     mustChangePassword: Boolean(user?.mustChangePassword ?? user?.must_change_password),
     createdAt: user?.createdAt || new Date().toISOString(),
     updatedAt: user?.updatedAt || new Date().toISOString(),
@@ -66,5 +78,8 @@ export function createUserRecord(fields) {
 }
 
 export function isUserActive(user) {
-  return user?.status === USER_STATUS.ACTIVE;
+  if (!user || user.identityIncomplete || user.identityStatus === "INCOMPLETE") {
+    return false;
+  }
+  return user.status === USER_STATUS.ACTIVE;
 }

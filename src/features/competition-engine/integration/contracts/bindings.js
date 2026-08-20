@@ -3,7 +3,7 @@
  * No duplicate domain implementation. No Competition Core authority.
  */
 
-import { createIdentityEvidenceFromIdentityAdapter } from "../adapters/identityEvidenceFromIdentityAdapter.js";
+import { createIdentityAccessBinding } from "./identityAccessBinding.js";
 import { createMembershipStatusFromClubAdapter } from "../adapters/membershipStatusFromClubAdapter.js";
 import { createPlayerParticipantLookupAdapter } from "../adapters/playerParticipantLookupAdapter.js";
 import { createRankingRatingSnapshotFromRatingAdapter } from "../adapters/rankingRatingSnapshotFromRatingAdapter.js";
@@ -17,7 +17,6 @@ import {
   FEDERATION_EXTERNAL_AUTHORITY_CONTRACT,
   FILE_MEDIA_CONTRACT,
   FINANCE_PAYMENT_CONTRACT,
-  IDENTITY_ACCESS_CONTRACT,
   NOTIFICATION_COMMUNICATION_CONTRACT,
   PARTICIPANT_CONTRACT,
   RANKING_CONTRACT,
@@ -76,109 +75,7 @@ function participantIdFrom(context) {
   );
 }
 
-export function createIdentityAccessBinding(deps = {}) {
-  const boundTenantId = isNonEmptyString(deps.boundTenantId)
-    ? String(deps.boundTenantId).trim()
-    : null;
-  const port =
-    deps.identityEvidencePort || createIdentityEvidenceFromIdentityAdapter(deps);
-
-  return createContractAdapter(IDENTITY_ACCESS_CONTRACT, {
-    productionBinding: PRODUCTION_BINDING_STATUS.BOUND,
-    handlers: {
-      resolveActorIdentity(context) {
-        const ctx = requireAdapterContext(context, {
-          requiredFields: ["tenantId", "actorId", "correlationId"],
-          boundTenantId,
-          requireActor: true,
-        });
-        return freezeEvidence({
-          sourceSystem: "identity",
-          sourceVersion: "identity-matrix",
-          status: EVIDENCE_STATUS.OK,
-          data: {
-            actorId: ctx.actorId,
-            tenantId: ctx.tenantId,
-            role: ctx.role,
-          },
-          reasonCodes: [],
-          retrievedAt: ctx.effectiveAt,
-        });
-      },
-      async getAuthorizationEvidence(context) {
-        const ctx = requireAdapterContext(context, {
-          requiredFields: ["tenantId", "actorId", "correlationId"],
-          boundTenantId,
-          requireActor: true,
-        });
-        try {
-          const evidence = await port.getEvidence({
-            subject: { actorId: ctx.actorId, role: context.role },
-            scope: {
-              tenantId: ctx.tenantId,
-              venueId: ctx.venueId,
-              clubId: ctx.clubId,
-              competitionId: ctx.competitionId,
-            },
-          });
-          if (!evidence) {
-            failCompetitionAdapter(
-              SHARED_ADAPTER_ERROR_CODE.MISSING_CANONICAL_IDENTITY,
-              "Authorization evidence is unavailable for this actor",
-              { actorId: ctx.actorId }
-            );
-          }
-          return freezeEvidence({
-            sourceSystem: "identity",
-            sourceVersion: evidence.evidenceVersion || "e2e-01-identity-evidence-v1",
-            snapshotId: evidence.evidenceId || null,
-            status: EVIDENCE_STATUS.OK,
-            data: evidence,
-            reasonCodes: [],
-          });
-        } catch (err) {
-          mapIntegrationError(err);
-        }
-      },
-      async getCapabilityEvidence(context) {
-        const ctx = requireAdapterContext(context, {
-          requiredFields: ["tenantId", "actorId", "correlationId"],
-          boundTenantId,
-          requireActor: true,
-        });
-        try {
-          const evidence = await port.getEvidence({
-            subject: { actorId: ctx.actorId, role: context.role },
-            scope: {
-              tenantId: ctx.tenantId,
-              venueId: ctx.venueId,
-              clubId: ctx.clubId,
-              competitionId: ctx.competitionId,
-            },
-          });
-          if (!evidence) {
-            failCompetitionAdapter(
-              SHARED_ADAPTER_ERROR_CODE.MISSING_CANONICAL_IDENTITY,
-              "Capability evidence is unavailable for this actor",
-              { actorId: ctx.actorId }
-            );
-          }
-          return freezeEvidence({
-            sourceSystem: "identity",
-            status: EVIDENCE_STATUS.OK,
-            data: {
-              actorId: ctx.actorId,
-              grantedPermissions: evidence.grantedPermissions || [],
-            },
-            reasonCodes: [],
-          });
-        } catch (err) {
-          mapIntegrationError(err);
-        }
-      },
-    },
-  });
-}
+export { createIdentityAccessBinding };
 
 export function createTenantOrganizationBinding(deps = {}) {
   const boundTenantId = isNonEmptyString(deps.boundTenantId)

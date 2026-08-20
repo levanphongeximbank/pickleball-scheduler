@@ -70,7 +70,10 @@ export { createCanonicalRefereePersistenceRuntime } from "./createCanonicalRefer
 export { createSchemaFaithfulCanonicalRefereeDurableDriver } from "./createSchemaFaithfulCanonicalRefereeDurableDriver.js";
 export { createCanonicalRefereeDurableRuntime } from "./createCanonicalRefereeDurableRuntime.js";
 export { createDurableRefereeOperationsStore } from "./createDurableRefereeOperationsStore.js";
-export { createLiveRpcCanonicalRefereeDurableDriver } from "./createLiveRpcCanonicalRefereeDurableDriver.js";
+export {
+  createLiveRpcCanonicalRefereeDurableDriver,
+  listCanonicalRefereeMatchEvents,
+} from "./createLiveRpcCanonicalRefereeDurableDriver.js";
 export { createCompetitionRefereeProductionRuntime } from "./createCompetitionRefereeProductionRuntime.js";
 export { createDefaultCompetitionRefereeRuntime } from "./createDefaultCompetitionRefereeRuntime.js";
 export {
@@ -80,6 +83,18 @@ export {
 } from "./privilegedCompositionBoundary.js";
 
 export { runCompetitionRefereeAdapterConformance } from "./conformance.js";
+
+export {
+  deriveCanonicalCourtAfterScoring,
+  resolveSideChangeRequiredAfterScoring,
+} from "./deriveCanonicalCourtAfterScoring.js";
+
+export {
+  CANONICAL_REFEREE_COMMAND,
+  CANONICAL_REFEREE_COMMAND_TO_FACADE,
+  resolveCanonicalRefereeFacadeMethod,
+  executeCanonicalRefereeCommand,
+} from "./canonicalRefereeCommands.js";
 
 export {
   createDailyPlayRefereeAdapter,

@@ -42,6 +42,10 @@
     {
       "id": "engine-no-react-ui",
       "description": "Domain engines must not import React components."
+    },
+    {
+      "id": "src-no-core13-fixture-provisioner",
+      "description": "Product/browser source must not import CORE-13 fixture provisioner, receipt, or writers tooling."
     }
   ],
   "exceptions": [

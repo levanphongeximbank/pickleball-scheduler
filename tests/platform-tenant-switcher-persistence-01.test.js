@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { ROLES } from "../src/auth/roles.js";
 import { clearAuthSession } from "../src/auth/authStorage.js";
 import { saveVenues } from "../src/data/venue.js";
+import { saveTenants } from "../src/data/tenantRegistry.js";
 import { getTenantById, listTenants } from "../src/features/tenant/services/tenantService.js";
 import {
   canOperateUnassignedTenant,
@@ -129,6 +130,7 @@ describe("platform tenant switcher persistence 01 — mixed authority repro", ()
     assert.ok(uiList.some((row) => row.id === TENANT_B));
 
     saveVenues([]);
+    saveTenants([]);
 
     assert.equal(getTenantById(TENANT_A), null);
     assert.equal(
@@ -363,7 +365,7 @@ describe("platform tenant switcher persistence 01 — authorization policy", () 
 
     assert.equal(canRenderTenantSwitcher(tech), false);
     assert.equal(canSwitchTenant(tech), false);
-    assert.equal(canOperateUnassignedTenant(tech), true);
+    assert.equal(canOperateUnassignedTenant(tech), false);
 
     assert.equal(canRenderTenantSwitcher(owner), false);
     assert.equal(canSwitchTenant(owner), false);

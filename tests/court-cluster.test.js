@@ -57,7 +57,17 @@ import {
 import {
   migrateLegacyClusterRecord,
   isLegacyClusterVenueId,
+  prepareClusterForCloudPersist,
+  resolveCloudVenueIdForClusterOps,
+  resolveClusterMutationVenueId,
+  resolveConcreteClusterVenueId,
 } from "../src/features/court-cluster/utils/clusterCloudResolver.js";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { can, assertCan } from "../src/auth/rbac.js";
+import { PERMISSIONS } from "../src/auth/permissions.js";
+import { DEFAULT_TENANT_ID } from "../src/models/tenant.js";
 
 const VENUE_A = "venue-test-a";
 const VENUE_B = "venue-test-b";
@@ -117,9 +127,9 @@ describe("court cluster model", () => {
     assert.equal(isValidGoogleMapsUrl(""), true);
   });
 
-  it("only platform roles can manage clusters", () => {
+  it("only Super Admin can manage clusters; SYSTEM_TECHNICIAN cannot", () => {
     assert.equal(canManageCourtClusters(PLATFORM_ADMIN), true);
-    assert.equal(canManageCourtClusters(SYSTEM_TECHNICIAN), true);
+    assert.equal(canManageCourtClusters(SYSTEM_TECHNICIAN), false);
     assert.equal(canManageCourtClusters(OWNER_A), false);
   });
 
@@ -151,7 +161,7 @@ describe("court cluster model", () => {
     assert.equal(listClustersForVenue(VENUE_A).length, 3);
   });
 
-  it("system technician can create cluster with location metadata", () => {
+  it("system technician cannot create cluster from role alone", () => {
     const created = createCourtCluster({
       venueId: VENUE_A,
       name: "Cụm Nam Long",
@@ -161,9 +171,7 @@ describe("court cluster model", () => {
       user: SYSTEM_TECHNICIAN,
     });
 
-    assert.equal(created.ok, true);
-    assert.equal(created.cluster.address, "123 Nam Long, Q.7");
-    assert.equal(created.cluster.googleMapsUrl, VALID_MAPS_URL);
+    assert.equal(created.ok, false);
   });
 
   it("rejects invalid google maps url on update", () => {
@@ -497,5 +505,187 @@ describe("court cluster model", () => {
     });
     assert.equal(result.ok, true);
     assert.equal(isClusterUnassigned(created.cluster.id), true);
+  });
+});
+
+describe("Wave4 GAP E court cluster mutation targeting", () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const RBAC_ON = { rbacEnabled: true };
+
+  beforeEach(() => {
+    process.env.VITE_COURT_CLUSTERS_ENABLED = "true";
+    if (typeof import.meta !== "undefined" && import.meta.env) {
+      import.meta.env.VITE_COURT_CLUSTERS_ENABLED = "true";
+    }
+    resetStorage();
+  });
+
+  it("TEST_01 resolver does not return venues[0] under __all_tenants__", async () => {
+    const resolved = await resolveCloudVenueIdForClusterOps({
+      selectedVenueId: ADMIN_ALL_TENANTS_ID,
+    });
+    assert.equal(resolved, null);
+    assert.equal(resolveConcreteClusterVenueId(ADMIN_ALL_TENANTS_ID), null);
+  });
+
+  it("TEST_02 multiple venues with no selected target fail closed", async () => {
+    const resolved = await resolveCloudVenueIdForClusterOps({
+      selectedVenueId: null,
+    });
+    assert.equal(resolved, null);
+    assert.equal(resolveClusterMutationVenueId({ selectedVenueId: null }), null);
+  });
+
+  it("TEST_03 default-tenant is not a mutation target", async () => {
+    const resolved = await resolveCloudVenueIdForClusterOps({
+      selectedVenueId: DEFAULT_TENANT_ID,
+    });
+    assert.equal(resolved, null);
+    assert.equal(resolveConcreteClusterVenueId(DEFAULT_TENANT_ID), null);
+  });
+
+  it("TEST_04 valid B-main is not rewritten when UI scope is A", () => {
+    const clusterB = normalizeCourtCluster({
+      id: `${VENUE_B}-main`,
+      venueId: VENUE_B,
+      name: "B",
+      slug: "main",
+      status: "active",
+    });
+
+    const prepared = prepareClusterForCloudPersist(clusterB, VENUE_A);
+    assert.equal(prepared.ok, true);
+    assert.equal(prepared.venueId, VENUE_B);
+    assert.equal(prepared.cluster.venueId, VENUE_B);
+    assert.equal(prepared.cluster.id, `${VENUE_B}-main`);
+
+    const migrated = migrateLegacyClusterRecord(clusterB, VENUE_A);
+    assert.equal(migrated.venueId, VENUE_B);
+    assert.equal(migrated.id, `${VENUE_B}-main`);
+  });
+
+  it("TEST_05 legacy default-tenant-main still migrates to explicit A", () => {
+    const legacy = normalizeCourtCluster({
+      id: "default-tenant-main",
+      venueId: DEFAULT_TENANT_ID,
+      name: "Legacy main",
+      slug: "main",
+      status: "active",
+    });
+    const migrated = migrateLegacyClusterRecord(legacy, VENUE_A);
+    assert.equal(migrated.id, `${VENUE_A}-main`);
+    assert.equal(migrated.venueId, VENUE_A);
+  });
+
+  it("TEST_06 global sync under ALL keeps A and B on their own targets", () => {
+    const clusterA = normalizeCourtCluster({
+      id: `${VENUE_A}-main`,
+      venueId: VENUE_A,
+      name: "A",
+      slug: "main",
+      status: "active",
+    });
+    const clusterB = normalizeCourtCluster({
+      id: `${VENUE_B}-main`,
+      venueId: VENUE_B,
+      name: "B",
+      slug: "main",
+      status: "active",
+    });
+
+    const preparedA = prepareClusterForCloudPersist(clusterA, ADMIN_ALL_TENANTS_ID);
+    const preparedB = prepareClusterForCloudPersist(clusterB, ADMIN_ALL_TENANTS_ID);
+    assert.equal(preparedA.ok, true);
+    assert.equal(preparedB.ok, true);
+    assert.equal(preparedA.venueId, VENUE_A);
+    assert.equal(preparedB.venueId, VENUE_B);
+    assert.equal(preparedA.cluster.venueId, VENUE_A);
+    assert.equal(preparedB.cluster.venueId, VENUE_B);
+  });
+
+  it("TEST_07 existing-row persist under ALL uses row ownership", () => {
+    const clusterB = normalizeCourtCluster({
+      id: `${VENUE_B}-main`,
+      venueId: VENUE_B,
+      name: "B",
+      slug: "main",
+      status: "active",
+    });
+    const target = resolveClusterMutationVenueId({
+      cluster: clusterB,
+      selectedVenueId: ADMIN_ALL_TENANTS_ID,
+    });
+    assert.equal(target, VENUE_B);
+    const prepared = prepareClusterForCloudPersist(clusterB, null);
+    assert.equal(prepared.ok, true);
+    assert.equal(prepared.cluster.venueId, VENUE_B);
+  });
+
+  it("TEST_08 create under ALL or default-tenant is denied", () => {
+    const allDenied = createCourtCluster({
+      venueId: ADMIN_ALL_TENANTS_ID,
+      name: "Should fail",
+      slug: "fail-all",
+      user: PLATFORM_ADMIN,
+    });
+    assert.equal(allDenied.ok, false);
+    assert.equal(allDenied.code, "VENUE_ID_REQUIRED");
+
+    const defaultDenied = createCourtCluster({
+      venueId: DEFAULT_TENANT_ID,
+      name: "Should fail",
+      slug: "fail-default",
+      user: PLATFORM_ADMIN,
+    });
+    assert.equal(defaultDenied.ok, false);
+
+    const nullDenied = createCourtCluster({
+      venueId: null,
+      name: "Should fail",
+      slug: "fail-null",
+      user: PLATFORM_ADMIN,
+    });
+    assert.equal(nullDenied.ok, false);
+
+    const allowed = createCourtCluster({
+      venueId: VENUE_A,
+      name: "Concrete A",
+      slug: "concrete-a",
+      user: PLATFORM_ADMIN,
+    });
+    assert.equal(allowed.ok, true);
+    assert.equal(allowed.cluster.venueId, VENUE_A);
+  });
+
+  it("TEST_09 resolver source does not use venues[0] mutation fallback", () => {
+    const resolverSrc = readFileSync(
+      join(here, "../src/features/court-cluster/utils/clusterCloudResolver.js"),
+      "utf8"
+    );
+    assert.doesNotMatch(resolverSrc, /venues\[0\]/);
+    const pageSrc = readFileSync(
+      join(here, "../src/pages/admin/CourtClusterManagement.jsx"),
+      "utf8"
+    );
+    assert.match(pageSrc, /mutationVenueId/);
+    assert.doesNotMatch(
+      pageSrc,
+      /persistCourtClusterToCloud\([^)]*\{\s*venueId,\s*actor/
+    );
+  });
+
+  it("TEST_10 SYSTEM_TECHNICIAN still cannot arbitrarily mutate clusters", () => {
+    assert.equal(canManageCourtClusters(SYSTEM_TECHNICIAN), false);
+    assert.equal(can(SYSTEM_TECHNICIAN, PERMISSIONS.CLUSTER_MANAGE, {}, RBAC_ON), false);
+    const denied = assertCan(SYSTEM_TECHNICIAN, PERMISSIONS.CLUSTER_MANAGE, {}, RBAC_ON);
+    assert.equal(denied.ok, false);
+    assert.equal(denied.code, "TARGET_REQUIRED");
+    const created = createCourtCluster({
+      venueId: VENUE_A,
+      name: "Tech cluster",
+      slug: "tech",
+      user: SYSTEM_TECHNICIAN,
+    });
+    assert.equal(created.ok, false);
   });
 });

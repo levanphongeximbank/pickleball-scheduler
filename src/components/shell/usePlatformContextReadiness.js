@@ -1,22 +1,28 @@
 import { useMemo } from "react";
 
-import { useAuth } from "../../../context/AuthContext.jsx";
-import { useClub } from "../../../context/ClubContext.jsx";
-import { useTenant } from "../../../context/TenantContext.jsx";
-import { canOperateUnassignedTenant } from "../../../features/tenant/services/tenantSelectionModel.js";
-import { CLUB_READ_STATE } from "../../../features/club/context/clubCanonicalReadModel.js";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { useClub } from "../../context/ClubContext.jsx";
+import { useTenant } from "../../context/TenantContext.jsx";
+import { useVenue } from "../../context/VenueContext.jsx";
+import { canOperateUnassignedTenant } from "../../features/tenant/services/tenantSelectionModel.js";
+import { CLUB_READ_STATE } from "../../features/club/context/clubCanonicalReadModel.js";
 import {
   filterClubsForSelectedOperationalTenant,
   resolvePlatformContextReadiness,
-} from "./platformContextReadiness.js";
+} from "../../core/platform/app/platformContextReadiness.js";
 
 /**
- * Shared Platform Context readiness for App Shell + Business Module consumers.
- * Composes existing Auth/Tenant/Club contexts — does not create a second state authority.
+ * Shell composition hook — reads Auth/Tenant/Venue/Club contexts for Platform readiness.
+ * Lives outside Platform Core so Core stays free of Business Module imports.
+ * requireVenue defaults false — Venue is never a global shell requirement.
  */
-export function usePlatformContextReadiness({ requireClub = true } = {}) {
+export function usePlatformContextReadiness({
+  requireClub = true,
+  requireVenue = false,
+} = {}) {
   const { authLoading, isAuthenticated, rbacEnabled, user } = useAuth();
   const { currentTenantId, tenantCheck } = useTenant();
+  const { currentVenueId, venues, venueCheck } = useVenue();
   const {
     clubs,
     activeClub,
@@ -55,6 +61,10 @@ export function usePlatformContextReadiness({ requireClub = true } = {}) {
       activeClub,
       activeClubReady,
       requireClub,
+      requireVenue,
+      venueCheck,
+      selectedVenueId: currentVenueId,
+      eligibleVenueCount: Array.isArray(venues) ? venues.length : 0,
       organizationConfigured: false,
     });
   }, [
@@ -64,6 +74,9 @@ export function usePlatformContextReadiness({ requireClub = true } = {}) {
     user,
     currentTenantId,
     tenantCheck,
+    currentVenueId,
+    venues,
+    venueCheck,
     clubs,
     activeClub,
     activeClubReady,
@@ -71,5 +84,6 @@ export function usePlatformContextReadiness({ requireClub = true } = {}) {
     clubReadState,
     clubReadError,
     requireClub,
+    requireVenue,
   ]);
 }

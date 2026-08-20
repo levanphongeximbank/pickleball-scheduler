@@ -19,8 +19,8 @@ import ClubAssignmentBanner from "../../../components/auth/ClubAssignmentBanner.
 import PlatformContextReadinessGate from "../../../components/shell/PlatformContextReadinessGate.jsx";
 import TournamentListTable from "../../../components/tournament/TournamentListTable.jsx";
 import TournamentPageHeader from "../../../components/tournament/TournamentPageHeader.jsx";
-import { usePageRuntimeAccess } from "../../../core/platform/app/usePageRuntimeAccess.js";
-import { usePlatformContextReadiness } from "../../../core/platform/app/usePlatformContextReadiness.js";
+import { usePageRuntimeAccess } from "../../../components/shell/usePageRuntimeAccess.js";
+import { usePlatformContextReadiness } from "../../../components/shell/usePlatformContextReadiness.js";
 import { isPlatformContextReady } from "../../../core/platform/app/platformContextReadiness.js";
 import { TOURNAMENT_STATUS } from "../../../models/tournament/index.js";
 import { TOURNAMENT_MODE } from "../../../models/tournament/index.js";

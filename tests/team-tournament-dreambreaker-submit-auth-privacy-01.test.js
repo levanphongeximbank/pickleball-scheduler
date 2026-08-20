@@ -360,8 +360,12 @@ test("M: Existing Captain lineup Save/Submit path unchanged", () => {
 });
 
 test("N: Identity V2 strip remains unchanged", () => {
+  // Wave 2: strip lives in Club projection; Platform auth only invokes session projectors.
+  const projection = readSrc("src/features/club/services/authSessionClubProjection.js");
+  assert.match(projection, /stripLegacyProfileClubFields/);
   const authStorage = readSrc("src/auth/authStorage.js");
-  assert.match(authStorage, /stripLegacyProfileClubFields/);
+  assert.match(authStorage, /applyAuthSessionLoadProjectors/);
+  assert.doesNotMatch(authStorage, /stripLegacyProfileClubFields|features\/club/);
   const stripSrc = readSrc("src/features/club/services/clubActiveMembershipService.js");
   assert.match(stripSrc, /clubId:\s*null/);
   const stripped = stripLegacyProfileClubFields({ clubId: "club-x", playerId: "p1" });

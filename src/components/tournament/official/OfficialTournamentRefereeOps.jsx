@@ -191,6 +191,7 @@ export default function OfficialTournamentRefereeOps({
           tournament={tournament}
           eventId={eventId}
           actor={actor}
+          tenantId={tenantId}
           compact
           onTournamentChange={handleAssignPersist}
           matchPresentationById={matchPresentationById}

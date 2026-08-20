@@ -1,22 +1,22 @@
+/**
+ * Platform Auth session storage — no Business Module implementation imports.
+ * Club projection + Mobile cleanup bind via authSessionHooks at composition root.
+ */
 import { AUTH_SESSION_KEY, RBAC_STORAGE_KEY, isRbacEnabledFromEnv } from "./config.js";
 import { isSecureRuntime } from "./runtime.js";
 import { normalizeUser } from "../models/user.js";
-import {
-  mergeAthleteClubLink,
-  reconcileAthleteClubLinkWithProfile,
-  clearAthleteClubLink,
-} from "../features/club/storage/athleteClubLinkStore.js";
-import { syncGovernanceAuthRoleFromClub } from "../features/club/services/governanceRoleElevation.js";
-import { isClubStorageV2Enabled } from "../features/club/config/clubRegistryFlags.js";
-import { stripLegacyProfileClubFields } from "../features/club/services/clubActiveMembershipService.js";
-import { quarantineOfflineQueueOnLogout } from "../features/mobile/services/offlineQueueQuarantine.js";
 import { clearActiveTenantId } from "../data/tenantSession.js";
+import { clearActiveVenueId } from "../data/venueSession.js";
 import { clearActiveClubIdPreference } from "../data/club.js";
 import { setActiveClusterId } from "../data/courtCluster.js";
 import {
   AUTH_SESSION_CLEAR_REASON,
   shouldClearOperationalContextOnAuthClear,
 } from "./authSessionLifecycle.js";
+import {
+  applyAuthSessionLoadProjectors,
+  runAuthSessionClearHooks,
+} from "./authSessionHooks.js";
 import {
   logPlatformContextEvent,
   PLATFORM_CONTEXT_EVENT,
@@ -64,21 +64,12 @@ export function loadAuthSession() {
   const session = readJson(AUTH_SESSION_KEY, null);
   if (!session?.user) return null;
 
-  let user = normalizeUser(session.user);
+  const projected = applyAuthSessionLoadProjectors(normalizeUser(session.user), {
+    source: "session",
+  });
+  let user = projected.user;
 
-  // Phase 42H — V2: never restore membership from session/profile/athlete-link.
-  if (isClubStorageV2Enabled()) {
-    if (user.id) {
-      clearAthleteClubLink(user.id);
-    }
-    user = stripLegacyProfileClubFields(user);
-  } else {
-    user = mergeAthleteClubLink(user);
-  }
-
-  const synced = syncGovernanceAuthRoleFromClub(user);
-  if (synced.changed) {
-    user = synced.user;
+  if (projected.changed) {
     writeJson(AUTH_SESSION_KEY, {
       ...session,
       user,
@@ -100,19 +91,13 @@ export function saveAuthSession(user, meta = {}) {
   });
 }
 
-/** Lưu session từ profile cloud — V2 strips club_id only; legacy reconciles athlete link. */
+/** Lưu session từ profile cloud — club projection binds externally (V2 strip / legacy reconcile). */
 export function saveAuthSessionFromCloudProfile(user, meta = {}) {
-  let next = normalizeUser(user);
-  if (isClubStorageV2Enabled()) {
-    if (next?.id) {
-      clearAthleteClubLink(next.id);
-    }
-    next = stripLegacyProfileClubFields(next);
-  } else {
-    next = reconcileAthleteClubLinkWithProfile(next);
-  }
-  saveAuthSession(next, meta);
-  return next;
+  const projected = applyAuthSessionLoadProjectors(normalizeUser(user), {
+    source: "cloud_profile",
+  });
+  saveAuthSession(projected.user, meta);
+  return projected.user;
 }
 
 /**
@@ -126,9 +111,10 @@ export function clearAuthSession(reason = AUTH_SESSION_CLEAR_REASON.LOGOUT) {
   const normalized = String(reason || AUTH_SESSION_CLEAR_REASON.LOGOUT).trim();
   const clearOperational = shouldClearOperationalContextOnAuthClear(normalized);
 
-  quarantineOfflineQueueOnLogout();
+  runAuthSessionClearHooks(normalized);
   if (clearOperational) {
     clearActiveTenantId();
+    clearActiveVenueId();
     clearActiveClubIdPreference();
     setActiveClusterId(null);
     logPlatformContextEvent(PLATFORM_CONTEXT_EVENT.CLUB_HINT_CLEARED, {

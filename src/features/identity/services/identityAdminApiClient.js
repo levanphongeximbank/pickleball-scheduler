@@ -43,7 +43,16 @@ export async function callIdentityAdminCreateUser(payload = {}) {
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        ...payload,
+        email: payload.email,
+        password: payload.password,
+        displayName: payload.displayName,
+        role: payload.role,
+        status: payload.status,
+        tenantId: payload.tenantId,
+        venueId: payload.venueId,
+        clubId: payload.clubId,
+        phone: payload.phone,
+        sendPasswordSetupEmail: payload.sendPasswordSetupEmail,
         redirectTo: payload.redirectTo || getResetPasswordRedirectUrl(),
       }),
     });
@@ -85,6 +94,7 @@ export async function callIdentityAdminCreateUser(payload = {}) {
     mustChangePassword: Boolean(body.mustChangePassword),
     passwordSetupSent: Boolean(body.passwordSetupSent),
     passwordSetupMessage: body.passwordSetupMessage || null,
+    identityEvidence: body.identityEvidence || null,
     provider: body.provider || "admin_api",
   };
 }

@@ -19,6 +19,10 @@ export const REFEREE_V5_ERROR = Object.freeze({
   IDEMPOTENCY_KEY_REUSE_MISMATCH: "IDEMPOTENCY_KEY_REUSE_MISMATCH",
   APPEND_ONLY_VIOLATION: "APPEND_ONLY_VIOLATION",
   INTERNAL_RPC_FORBIDDEN: "INTERNAL_RPC_FORBIDDEN",
+  NOT_CONFIGURED: "NOT_CONFIGURED",
+  VALIDATION_DENIED: "VALIDATION_DENIED",
+  MATCH_ALREADY_ACTIVE: "MATCH_ALREADY_ACTIVE",
+  TERMINAL_STATE: "TERMINAL_STATE",
 });
 
 export const REFEREE_V5_ERROR_VI = Object.freeze({
@@ -42,6 +46,10 @@ export const REFEREE_V5_ERROR_VI = Object.freeze({
     "Idempotency key đã dùng cho request khác.",
   [REFEREE_V5_ERROR.APPEND_ONLY_VIOLATION]: "Không được sửa hoặc xóa sự kiện trận đấu.",
   [REFEREE_V5_ERROR.INTERNAL_RPC_FORBIDDEN]: "RPC nội bộ không khả dụng từ client.",
+  [REFEREE_V5_ERROR.NOT_CONFIGURED]: "Thiếu ngữ cảnh Adapter B hoặc cấu hình trọng tài.",
+  [REFEREE_V5_ERROR.VALIDATION_DENIED]: "Yêu cầu khởi tạo trạng thái thi đấu không hợp lệ.",
+  [REFEREE_V5_ERROR.MATCH_ALREADY_ACTIVE]: "Trận đã có trạng thái thi đấu, không được reset.",
+  [REFEREE_V5_ERROR.TERMINAL_STATE]: "Trận đã kết thúc hoặc bị khóa, không được khởi tạo lại.",
 });
 
 export function createPersistenceError(code, message, extra = {}) {

@@ -1,5 +1,5 @@
 import { PERMISSIONS } from "../constants/permissions.js";
-import { ROLES, denormalizeRoleForDb, normalizeRole, CANONICAL_ROLES } from "../constants/roles.js";
+import { ROLES, denormalizeRoleForDb, normalizeRole, CANONICAL_ROLES, isGlobalRole } from "../constants/roles.js";
 import { guardPermission } from "../../../auth/guardAction.js";
 import { getCurrentUser, isDevAuthAllowed, listDevUsers } from "../../../auth/authService.js";
 import {
@@ -15,6 +15,7 @@ import { writeAuditLog, AUDIT_ACTIONS } from "./auditService.js";
 import { requestPasswordReset } from "./passwordService.js";
 import { callIdentityAdminCreateUser, callIdentityAdminResetPassword } from "./identityAdminApiClient.js";
 import { rpcAdminUpdateUser, rpcListUsers } from "./identityRpcService.js";
+import { isSecureRuntime } from "../../../auth/runtime.js";
 
 const DEV_REGISTRY_KEY = "pickleball-dev-user-registry-v1";
 
@@ -73,14 +74,30 @@ export async function listUsers({ search = "", role = "", status = "" } = {}) {
       return rpcResult;
     }
 
+    if (isSecureRuntime()) {
+      return {
+        ok: false,
+        code: "RPC_NOT_CONFIGURED",
+        error: "Identity RPC is required in secure runtime. Client profiles fallback is denied.",
+      };
+    }
+
     const client = getSupabaseAuthClient();
     if (!client) {
       return { ok: false, error: "Supabase chưa cấu hình.", code: "NO_SUPABASE" };
     }
 
+    if (!currentUser?.venueId && !isGlobalRole(currentUser?.role)) {
+      return {
+        ok: false,
+        code: "TARGET_REQUIRED",
+        error: "Local identity directory fallback requires an explicit venue target.",
+      };
+    }
+
     let query = client.from(PROFILES_TABLE).select("*").order("created_at", { ascending: false });
 
-    if (currentUser?.venueId && normalizeRole(currentUser.role) !== ROLES.SUPER_ADMIN) {
+    if (currentUser?.venueId && !isGlobalRole(currentUser?.role)) {
       query = query.eq("venue_id", currentUser.venueId);
     }
 
@@ -122,6 +139,8 @@ export async function createManagedUser({
   password,
   displayName,
   role,
+  status,
+  tenantId = null,
   venueId = null,
   clubId = null,
   phone = "",
@@ -157,6 +176,7 @@ export async function createManagedUser({
 
   const currentUser = getCurrentUser();
   const resolvedVenueId = venueId || currentUser?.venueId || null;
+  const explicitTenantId = String(tenantId || "").trim() || null;
 
   if (hasSupabaseConfig()) {
     const adminResult = await callIdentityAdminCreateUser({
@@ -164,6 +184,8 @@ export async function createManagedUser({
       password: providedPassword || undefined,
       displayName,
       role: targetRole,
+      status,
+      tenantId: explicitTenantId,
       venueId: resolvedVenueId,
       clubId,
       phone,
@@ -196,6 +218,7 @@ export async function createManagedUser({
       metadata: {
         email: normalizedEmail,
         role: targetRole,
+        tenantId: explicitTenantId || undefined,
         emailConfirmed: true,
         mustChangePassword: Boolean(adminResult.mustChangePassword),
         passwordSetupSent: Boolean(adminResult.passwordSetupSent),
@@ -205,6 +228,7 @@ export async function createManagedUser({
     return {
       ok: true,
       user: adminResult.user,
+      identityEvidence: adminResult.identityEvidence || null,
       temporaryPassword: adminResult.temporaryPassword || null,
       mustChangePassword: Boolean(adminResult.mustChangePassword),
       passwordSetupSent: adminResult.passwordSetupSent,
@@ -214,6 +238,14 @@ export async function createManagedUser({
 
   if (!isDevAuthAllowed()) {
     return { ok: false, error: "Dev registry không khả dụng.", code: "DEV_DISABLED" };
+  }
+
+  if (explicitTenantId) {
+    return {
+      ok: false,
+      error: "Tenant mục tiêu không tồn tại.",
+      code: "TARGET_TENANT_NOT_FOUND",
+    };
   }
 
   const user = createUserRecord({
@@ -296,6 +328,14 @@ export async function updateManagedUser(userId, patch = {}) {
     }
     if (rpcResult.code !== "RPC_NOT_DEPLOYED") {
       return rpcResult;
+    }
+
+    if (isSecureRuntime()) {
+      return {
+        ok: false,
+        code: "RPC_NOT_CONFIGURED",
+        error: "Identity RPC is required in secure runtime. Client profile update fallback is denied.",
+      };
     }
 
     const existing = await fetchProfileByUserId(userId);
@@ -436,7 +476,7 @@ export async function requestManagedPasswordReset({ userId, email } = {}) {
       metadata: {
         step: "admin_default_reset",
         email: normalizedEmail || undefined,
-        defaultPassword: adminResult.defaultPassword,
+        provider: adminResult.provider || undefined,
       },
     });
 

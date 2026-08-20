@@ -5,14 +5,15 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { PERMISSIONS } from "../../auth/permissions.js";
 import { getSubscriptionForVenue } from "../../domain/venueService.js";
 import { SUBSCRIPTION_PLANS } from "../../models/subscription.js";
-import { loadActiveVenueId } from "../../data/venueSession.js";
+import { useVenue } from "../../context/VenueContext.jsx";
 import { isPlatformHardCutoverEnabled } from "../../features/platform-hard-cutover/index.js";
 import { SHELL_COLORS } from "./shellTokens.js";
 
 export default function SidebarSubscriptionCard() {
   const { user, can } = useAuth();
+  const { currentVenueId } = useVenue();
   const hardCutoverEnabled = isPlatformHardCutoverEnabled(import.meta.env);
-  const venueId = user?.venueId || loadActiveVenueId();
+  const venueId = currentVenueId || user?.venueId || null;
   const subscription = !hardCutoverEnabled && venueId ? getSubscriptionForVenue(venueId) : null;
   const planId = subscription?.planId || "trial";
   const plan = !hardCutoverEnabled

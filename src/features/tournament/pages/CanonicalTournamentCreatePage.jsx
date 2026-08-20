@@ -15,7 +15,7 @@ import ClubAssignmentBanner from "../../../components/auth/ClubAssignmentBanner.
 import TournamentPageHeader from "../../../components/tournament/TournamentPageHeader.jsx";
 import { TOURNAMENT_LAYOUT } from "../../../components/tournament/tournamentLayout.js";
 import { PERMISSIONS } from "../../../auth/permissions.js";
-import { usePageRuntimeAccess } from "../../../core/platform/app/usePageRuntimeAccess.js";
+import { usePageRuntimeAccess } from "../../../components/shell/usePageRuntimeAccess.js";
 import { TOURNAMENT_MODE } from "../../../models/tournament/index.js";
 import { resolveEventTypeFromQuery } from "../../individual-tournament/index.js";
 import { EVENT_TYPE_LABELS } from "../../../models/tournament/index.js";

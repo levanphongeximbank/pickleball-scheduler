@@ -1,15 +1,11 @@
-import {
-  clearActiveClubIdPreference,
-  getActiveClubId,
-  getActiveClubIdPreference,
-} from "../../../data/club.js";
-import { setActiveClusterId } from "../../../data/courtCluster.js";
+import { clearActiveClubIdPreference, getActiveClubId, getActiveClubIdPreference } from "../../../data/club.js";
 import {
   clearActiveTenantId,
   loadActiveTenantId,
   saveActiveTenantId,
 } from "../../../data/tenantSession.js";
 import { saveVenues } from "../../../data/venue.js";
+import { saveTenants } from "../../../data/tenantRegistry.js";
 import { switchActiveClub } from "../../../domain/clubService.js";
 import { invalidateClubRegistryCache } from "../../club/registry/clubRegistryCache.js";
 import { quarantineOfflineQueueForTenantSwitch } from "../../mobile/services/offlineQueueQuarantine.js";
@@ -34,6 +30,7 @@ import {
   logPlatformContextEvent,
   PLATFORM_CONTEXT_EVENT,
 } from "../../../core/platform/app/platformContextDiagnostics.js";
+import { invalidatePhysicalResourceForTenantSwitch } from "../../venue/services/venueSelectionService.js";
 
 function resolveSwitchableTenant(tenantId, catalog = []) {
   const trimmed = String(tenantId || "").trim();
@@ -45,8 +42,8 @@ function resolveSwitchableTenant(tenantId, catalog = []) {
 }
 
 /**
- * Wave 1 — invalidate incompatible operational descendants before business modules read.
- * Persisted club/cluster ids are preferences only; foreign tenant preferences are rejected.
+ * Wave 1/3 — invalidate incompatible operational descendants before business modules read.
+ * Persisted club/venue/cluster ids are preferences only; foreign tenant preferences are rejected.
  */
 export function invalidateOperationalContextForTenantSwitch(nextTenantId) {
   const tenantId = String(nextTenantId || "").trim();
@@ -63,11 +60,13 @@ export function invalidateOperationalContextForTenantSwitch(nextTenantId) {
     }
   }
 
-  // Cluster is venue/tenant-scoped operational context — always clear on switch;
-  // ClusterProvider re-resolves against the new tenant catalog.
-  setActiveClusterId(null);
+  const physical = invalidatePhysicalResourceForTenantSwitch(tenantId);
 
-  return { clubInvalidated, preferredClubId: clubInvalidated ? null : preferredClubId || null };
+  return {
+    clubInvalidated,
+    preferredClubId: clubInvalidated ? null : preferredClubId || null,
+    venueInvalidated: Boolean(physical.venueInvalidated),
+  };
 }
 
 /**
@@ -249,6 +248,7 @@ export function createTenantSelectionRuntime({
     },
     wipeLocalRegistryKeepingCatalog() {
       saveVenues([]);
+      saveTenants([]);
     },
     setCatalog(nextCatalog) {
       tenantCatalog = buildTenantCatalog(nextCatalog);

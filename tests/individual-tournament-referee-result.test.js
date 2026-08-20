@@ -119,6 +119,7 @@ test("T-S1-F05 Referee assignment scoped to match", () => {
 
   const assigned = assignRefereeToIndividualMatch(tournament, "m1", refs[0].id, {
     actor: { id: "btc-1" },
+    allowLegacyBlobAuthority: true,
   });
   assert.equal(assigned.ok, true);
   tournament = assigned.tournament;
@@ -145,7 +146,9 @@ test("referee auto assign + conflict detection + reassign", () => {
   tournament = addIndividualReferee(tournament, { name: "Ref B" }).tournament;
   const refs = tournament.settings.refereeRoster;
 
-  const first = assignRefereeToIndividualMatch(tournament, "m1", refs[0].id);
+  const first = assignRefereeToIndividualMatch(tournament, "m1", refs[0].id, {
+    allowLegacyBlobAuthority: true,
+  });
   assert.equal(first.ok, true);
   tournament = first.tournament;
 
@@ -154,12 +157,18 @@ test("referee auto assign + conflict detection + reassign", () => {
   assert.equal(conflict.code, "REFEREE_CONFLICT");
   assert.ok(detectRefereeConflicts(tournament, tournament.events[0].matches[1], refs[0].id).length > 0);
 
-  const auto = autoAssignReferees(tournament, { onlyUnassigned: true });
+  const auto = autoAssignReferees(tournament, {
+    onlyUnassigned: true,
+    allowLegacyBlobAuthority: true,
+  });
   assert.equal(auto.ok, true);
   tournament = auto.tournament;
   assert.ok(Object.keys(getRefereeAssignments(tournament)).length >= 2);
 
-  const changed = reassignReferee(tournament, "m1", refs[1].id, { allowConflict: true });
+  const changed = reassignReferee(tournament, "m1", refs[1].id, {
+    allowConflict: true,
+    allowLegacyBlobAuthority: true,
+  });
   assert.equal(changed.ok, true);
   assert.equal(changed.reassigned, true);
   const audits = getResultPropagationState(changed.tournament).auditLog.map((a) => a.action);

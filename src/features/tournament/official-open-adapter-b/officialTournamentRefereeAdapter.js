@@ -25,6 +25,24 @@ import {
   officialRefereeGetMatchCommand,
 } from "../official-lifecycle/officialOpenLifecycleCommands.js";
 import { SHARED_REFEREE_CONTRACT_CAPABILITY_GAP } from "./constants.js";
+import {
+  ASSIGNMENT_COMPETITION_MODE,
+  createCompetitionRefereeAssignmentTrustedClient,
+  resolveCompetitionAssignmentEdgeBaseUrl,
+} from "../../competition-engine/operations/referee/assignment/index.js";
+import { resolveCanonicalRefereeIdFromRoster } from "../../individual-tournament/engines/core13AssignmentProjection.js";
+import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
+
+function createOfficialCore13AssignmentClient() {
+  return createCompetitionRefereeAssignmentTrustedClient({
+    edgeBaseUrl: resolveCompetitionAssignmentEdgeBaseUrl(),
+    getAccessToken: async () => {
+      const client = getSupabaseAuthClient();
+      const { data } = (await client?.auth.getSession()) || {};
+      return data?.session?.access_token || null;
+    },
+  });
+}
 
 function trimId(value) {
   return value != null ? String(value).trim() : "";
@@ -176,6 +194,23 @@ export function createOfficialTournamentRefereeAdapter(options = {}) {
     existingLifecycle: Object.freeze({
       listMyRefereeAssignments: listMyOfficialRefereeAssignmentsCommand,
       refereeGetMatch: officialRefereeGetMatchCommand,
+      /**
+       * CORE-13 assignment surface — translator only.
+       * Does NOT add forbidden assignReferee/persistAssignment adapter methods.
+       */
+      core13Assignment: Object.freeze({
+        competitionMode: ASSIGNMENT_COMPETITION_MODE.OFFICIAL_OPEN,
+        createTrustedClient: createOfficialCore13AssignmentClient,
+        resolveCanonicalRefereeIdFromRoster,
+        commands: Object.freeze([
+          "assignReferee",
+          "replaceReferee",
+          "unassignReferee",
+          "getActiveAssignment",
+          "getMatchAssignmentVersion",
+          "listActiveAssignments",
+        ]),
+      }),
     }),
     sharedContractCapabilityGaps: Object.freeze([
       {

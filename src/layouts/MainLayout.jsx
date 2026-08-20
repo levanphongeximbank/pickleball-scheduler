@@ -10,9 +10,12 @@ import TenantGate from "../components/TenantGate.jsx";
 import SubscriptionBanner from "../components/SubscriptionBanner.jsx";
 import OperationalRouteGate from "../features/billing/components/OperationalRouteGate.jsx";
 import { TenantProvider } from "../context/TenantContext.jsx";
+import { VenueProvider } from "../context/VenueContext.jsx";
 import { ClusterProvider } from "../context/ClusterContext.jsx";
 import { ClubProvider } from "../context/ClubContext.jsx";
 import { SeasonProvider } from "../context/SeasonContext.jsx";
+import { ClubCloudSyncObserver } from "../features/club/observers/ClubCloudSyncObserver.jsx";
+import { ClubSkillLevelObserver } from "../features/club/observers/ClubSkillLevelObserver.jsx";
 import { NotificationRuntimeProvider } from "../features/notifications/runtime/NotificationRuntimeProvider.jsx";
 import { CommunicationRuntimeProvider } from "../features/communication/runtime/CommunicationRuntimeProvider.jsx";
 import { FinanceStagingRuntimeProvider } from "../features/finance/runtime/FinanceStagingRuntimeProvider.jsx";
@@ -93,19 +96,23 @@ function MainLayoutContent() {
 export default function MainLayout() {
   return (
     <TenantProvider>
-      <ClusterProvider>
-        <ClubProvider>
-          <SeasonProvider>
-            <NotificationRuntimeProvider>
-              <CommunicationRuntimeProvider>
-                <FinanceStagingRuntimeProvider>
-                  <MainLayoutContent />
-                </FinanceStagingRuntimeProvider>
-              </CommunicationRuntimeProvider>
-            </NotificationRuntimeProvider>
-          </SeasonProvider>
-        </ClubProvider>
-      </ClusterProvider>
+      <VenueProvider>
+        <ClusterProvider>
+          <ClubProvider>
+            <ClubCloudSyncObserver />
+            <ClubSkillLevelObserver />
+            <SeasonProvider>
+              <NotificationRuntimeProvider>
+                <CommunicationRuntimeProvider>
+                  <FinanceStagingRuntimeProvider>
+                    <MainLayoutContent />
+                  </FinanceStagingRuntimeProvider>
+                </CommunicationRuntimeProvider>
+              </NotificationRuntimeProvider>
+            </SeasonProvider>
+          </ClubProvider>
+        </ClusterProvider>
+      </VenueProvider>
     </TenantProvider>
   );
 }

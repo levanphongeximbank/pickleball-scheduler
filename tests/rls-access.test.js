@@ -56,6 +56,9 @@ test("RLS intent — CLUB_OWNER sai club_id", () => {
   const clubOwner = user(ROLES.CLUB_OWNER, {
     venueId: "venue-a",
     clubId: "club-1",
+    entitlementEvidence: {
+      clubs: [{ clubId: "club-1", userId: "club-owner", status: "active" }],
+    },
   });
 
   assert.equal(

@@ -28,6 +28,8 @@ function createEmptyRecord() {
     assignments: [],
     matches: {},
     scoreSessions: {},
+    courtsByMatch: {},
+    idempotencyByMatch: {},
     validationByMatch: {},
     revision: 0,
   };

@@ -8,6 +8,8 @@ export {
   getTenantStats,
   createTenant,
   updateTenant,
+  createTenantDurable,
+  updateTenantDurable,
   setTenantStatus,
   renameTenant,
   getPrimaryClubIdForTenant,
@@ -37,6 +39,7 @@ export {
   resolveTenantSwitcherView,
   resolveClubDetailTenantGate,
   reconcileSessionWithCatalog,
+  reauthorizePersistedTenantSelection,
   CLUB_DETAIL_MISSING_TENANT_WARNING,
 } from "./services/tenantSelectionModel.js";
 
@@ -60,6 +63,12 @@ export {
   assertTenantOperational,
   stampWithTenantId,
 } from "./guards/tenantGuard.js";
+
+export {
+  decideTenantAccess,
+  evaluateTenantContext,
+  collectActiveTenantEntitlements,
+} from "./services/tenantAccessDecision.js";
 
 export {
   ensureDefaultTenantMigration,

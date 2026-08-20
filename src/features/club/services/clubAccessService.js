@@ -1,51 +1,38 @@
 import { getCurrentUser, isRbacEnabled } from "../../../auth/authService.js";
-import {
-  isClubScopedRole,
-  isPlatformWideRole,
-  isVenueScopedRole,
-} from "../../../auth/roles.js";
+import { isGlobalRole } from "../../../auth/roles.js";
 import { loadClubs } from "../../../data/club.js";
 import { listClubsForTenant } from "../../tenant/guards/tenantGuard.js";
-import { getCurrentClubMembers } from "./clubMemberService.js";
+import { canAccessClub } from "../../../auth/rbac.js";
 
 /**
  * User có quyền xem CLB này không (ngoài RBAC permission).
- * - Platform admin / Admin (SYSTEM_TECHNICIAN): toàn hệ thống
- * - Venue roles: toàn tenant
- * - CLUB_OWNER / PLAYER: CLB được gán hoặc là thành viên active
+ * Selected Club is never a grant. VENUE_MANAGER is limited to home Venue clubs.
+ * SYSTEM_TECHNICIAN does not inherit all-club visibility.
  */
-export function canUserViewClub(user, clubId, tenantId) {
+export function canUserViewClub(user, clubId) {
   if (!user || !clubId) {
-    return true;
+    return false;
   }
 
   if (!isRbacEnabled()) {
     return true;
   }
 
-  if (isPlatformWideRole(user.role) || isVenueScopedRole(user.role)) {
-    return true;
-  }
-
-  if (user.clubId === clubId) {
-    return true;
-  }
-
-  if (!isClubScopedRole(user.role)) {
-    return false;
-  }
-
-  if (!user.playerId) {
-    return false;
-  }
-
-  const members = getCurrentClubMembers(clubId, tenantId, { skipGovernanceGuard: true });
-  return members.some((m) => m.playerId === user.playerId);
+  const club = loadClubs().find((item) => item.id === clubId) || null;
+  return canAccessClub(
+    user,
+    clubId,
+    { venueId: club?.venueId || null },
+    { rbacEnabled: true }
+  );
 }
 
 function listClubsForUserScope(tenantId, user) {
-  if (user && isPlatformWideRole(user.role)) {
-    return loadClubs().filter((club) => !club.isDefault);
+  if (user && isGlobalRole(user.role)) {
+    if (!tenantId) {
+      return [];
+    }
+    return listClubsForTenant(tenantId).filter((club) => !club.isDefault);
   }
 
   return listClubsForTenant(tenantId).filter((club) => !club.isDefault);
@@ -58,32 +45,11 @@ export function getClubsVisibleToUser(tenantId, user = getCurrentUser()) {
     return clubs;
   }
 
-  if (isPlatformWideRole(user.role) || isVenueScopedRole(user.role)) {
-    return clubs;
-  }
-
-  if (isClubScopedRole(user.role)) {
-    const visible = clubs.filter((club) => canUserViewClub(user, club.id, tenantId));
-
-    if (user.clubId && !visible.some((club) => club.id === user.clubId)) {
-      const assigned = loadClubs().find((club) => club.id === user.clubId && !club.isDefault);
-      if (assigned && canUserViewClub(user, assigned.id, tenantId)) {
-        return [...visible, assigned];
-      }
-    }
-
-    return visible;
-  }
-
-  return clubs;
+  return clubs.filter((club) => canUserViewClub(user, club.id, tenantId));
 }
 
 export function filterClubsForUser(clubs = [], tenantId, user = getCurrentUser()) {
   if (!isRbacEnabled() || !user) {
-    return clubs;
-  }
-
-  if (isPlatformWideRole(user.role) || isVenueScopedRole(user.role)) {
     return clubs;
   }
 

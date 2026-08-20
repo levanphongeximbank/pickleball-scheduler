@@ -1,4 +1,8 @@
-import { DEFAULT_TIMEZONE } from "../ai/config.js";
+/**
+ * Tenant model default timezone — owned here (not imported from AI module).
+ * Literal value: Asia/Ho_Chi_Minh.
+ */
+export const DEFAULT_TENANT_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 export const TENANT_STATUS = Object.freeze({
   ACTIVE: "active",
@@ -25,10 +29,10 @@ function slugify(name) {
   return slug || `tenant-${Date.now()}`;
 }
 
-/** Sprint 2 tenant model — lưu trữ dùng chung registry venue (venueId === tenantId). */
+/** Wave 3 tenant model — distinct from Venue. Does not accept venueId as tenant id. */
 export function normalizeTenant(tenant) {
   const name = String(tenant?.name || "").trim();
-  const id = String(tenant?.id || tenant?.tenantId || tenant?.venueId || "").trim();
+  const id = String(tenant?.id || tenant?.tenantId || "").trim();
 
   return {
     id,
@@ -37,7 +41,7 @@ export function normalizeTenant(tenant) {
     status: tenant?.status || TENANT_STATUS.ACTIVE,
     plan: tenant?.plan || TENANT_PLANS.TRIAL,
     ownerUserId: tenant?.ownerUserId || tenant?.ownerId || null,
-    timezone: tenant?.timezone || DEFAULT_TIMEZONE,
+    timezone: tenant?.timezone || DEFAULT_TENANT_TIMEZONE,
     note: String(tenant?.note || "").trim(),
     createdAt: tenant?.createdAt || new Date().toISOString(),
     updatedAt: tenant?.updatedAt || new Date().toISOString(),
@@ -56,7 +60,7 @@ export function createTenantRecord(name, options = {}) {
     name: trimmed,
     slug,
     ownerUserId: options.ownerUserId || options.ownerId || null,
-    timezone: options.timezone || DEFAULT_TIMEZONE,
+    timezone: options.timezone || DEFAULT_TENANT_TIMEZONE,
     status: options.status || TENANT_STATUS.TRIAL,
     plan: options.plan || TENANT_PLANS.TRIAL,
     note: options.note || "",

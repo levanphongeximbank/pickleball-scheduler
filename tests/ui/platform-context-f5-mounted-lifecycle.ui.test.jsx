@@ -132,9 +132,10 @@ describe("Wave1 mounted provider F5 club preference lifecycle", () => {
     const snaps = [];
     const { AuthProvider } = await import("../../src/context/AuthContext.jsx");
     const { TenantProvider } = await import("../../src/context/TenantContext.jsx");
+    const { VenueProvider } = await import("../../src/context/VenueContext.jsx");
     const { ClubProvider, useClub } = await import("../../src/context/ClubContext.jsx");
     const { usePlatformContextReadiness } = await import(
-      "../../src/core/platform/app/usePlatformContextReadiness.js"
+      "../../src/components/shell/usePlatformContextReadiness.js"
     );
 
     function LiveProbe() {
@@ -154,9 +155,11 @@ describe("Wave1 mounted provider F5 club preference lifecycle", () => {
     render(
       <AuthProvider>
         <TenantProvider>
+          <VenueProvider>
           <ClubProvider>
             <LiveProbe />
           </ClubProvider>
+          </VenueProvider>
         </TenantProvider>
       </AuthProvider>
     );

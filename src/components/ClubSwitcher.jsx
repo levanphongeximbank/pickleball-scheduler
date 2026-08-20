@@ -50,6 +50,7 @@ export default function ClubSwitcher({
       <FormControl size={size} sx={{ minWidth }} disabled data-testid="club-switcher-loading">
         <InputLabel
           id="header-club-label"
+          shrink
           sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}
         >
           CLB
@@ -59,6 +60,8 @@ export default function ClubSwitcher({
           value=""
           label="CLB"
           displayEmpty
+          notched
+          renderValue={() => "Đang tải…"}
           sx={{
             bgcolor: styles.bgcolor,
             color: styles.color,
@@ -112,7 +115,11 @@ export default function ClubSwitcher({
       data-testid="club-switcher"
       data-club-required={!hasActive && visibleClubs.length > 0 ? "true" : "false"}
     >
-      <InputLabel id="header-club-label" sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}>
+      <InputLabel
+        id="header-club-label"
+        shrink
+        sx={variant !== "dark" ? { color: SHELL_COLORS.textSecondary } : undefined}
+      >
         CLB
       </InputLabel>
       <Select
@@ -120,6 +127,14 @@ export default function ClubSwitcher({
         value={value}
         label="CLB"
         displayEmpty
+        notched
+        renderValue={(selected) => {
+          if (!selected) {
+            return visibleClubs.length > 1 ? "Chọn CLB…" : "Chưa chọn CLB";
+          }
+          const club = visibleClubs.find((item) => item.id === selected);
+          return club?.name || selected;
+        }}
         onChange={(event) => switchClub(event.target.value)}
         sx={{
           bgcolor: styles.bgcolor,

@@ -22,33 +22,19 @@ import {
 } from "./courtClusterCloudService.js";
 import { isValidProfileUserId } from "../utils/profileUserId.js";
 import {
-  migrateLegacyClusterRecord,
-  resolveCloudVenueIdForClusterOps,
+  prepareClusterForCloudPersist,
+  resolveConcreteClusterVenueId,
 } from "../utils/clusterCloudResolver.js";
 import { rpcAdminAssignClusterOwner } from "./courtClaimRequestRpcService.js";
 
-async function ensureClustersOnCloud(clusterIds = [], { venueId, actor, assigneeUserId } = {}) {
+async function ensureClustersOnCloud(clusterIds = [], { venueId, actor } = {}) {
   const ids = [...new Set((clusterIds || []).map((id) => String(id).trim()).filter(Boolean))];
   if (ids.length === 0) {
     return { ok: false, error: "Chọn ít nhất một cụm sân.", code: "CLUSTER_IDS_REQUIRED" };
   }
 
-  const cloudVenueId = await resolveCloudVenueIdForClusterOps({
-    selectedVenueId: venueId,
-    actor,
-    assigneeUserId,
-  });
-
-  if (!cloudVenueId) {
-    return {
-      ok: false,
-      code: "VENUE_ID_REQUIRED",
-      error:
-        "Không xác định được tổ chức cloud. Chọn tổ chức hợp lệ hoặc gán venue_id trên profile chủ sân.",
-    };
-  }
-
   const resolvedIds = [];
+  const rowVenueIds = [];
 
   for (const clusterId of ids) {
     const cluster = getClusterById(clusterId);
@@ -60,7 +46,12 @@ async function ensureClustersOnCloud(clusterIds = [], { venueId, actor, assignee
       };
     }
 
-    const cloudCluster = migrateLegacyClusterRecord(cluster, cloudVenueId);
+    const prepared = prepareClusterForCloudPersist(cluster, venueId);
+    if (!prepared.ok) {
+      return prepared;
+    }
+
+    const cloudCluster = prepared.cluster;
     if (cloudCluster.id !== cluster.id) {
       remapClusterIdLocally(cluster.id, cloudCluster);
     } else if (cloudCluster.venueId !== cluster.venueId) {
@@ -72,15 +63,22 @@ async function ensureClustersOnCloud(clusterIds = [], { venueId, actor, assignee
     if (!upsertResult.ok) {
       if (upsertResult.code === "RPC_NOT_DEPLOYED" && isDevAuthAllowed()) {
         resolvedIds.push(cloudCluster.id);
+        rowVenueIds.push(prepared.venueId);
         continue;
       }
       return upsertResult;
     }
 
     resolvedIds.push(cloudCluster.id);
+    rowVenueIds.push(prepared.venueId);
   }
 
-  return { ok: true, clusterIds: resolvedIds, venueId: cloudVenueId };
+  const uniqueVenueIds = [...new Set(rowVenueIds)];
+  return {
+    ok: true,
+    clusterIds: resolvedIds,
+    venueId: uniqueVenueIds.length === 1 ? uniqueVenueIds[0] : null,
+  };
 }
 
 export async function assignClusterOwnerToUser({
@@ -112,7 +110,6 @@ export async function assignClusterOwnerToUser({
     const ensured = await ensureClustersOnCloud(ids, {
       venueId,
       actor,
-      assigneeUserId: normalizedUserId,
     });
     if (!ensured.ok) {
       return ensured;
@@ -241,8 +238,9 @@ export async function syncClustersForVenueToCloud({
   venueId = null,
   actor = getCurrentUser(),
 } = {}) {
-  if (venueId) {
-    pruneOrphanLocalClusters(venueId);
+  const concreteVenueId = resolveConcreteClusterVenueId(venueId);
+  if (concreteVenueId) {
+    pruneOrphanLocalClusters(concreteVenueId);
   }
 
   const clusterIds = (clusters || []).map((cluster) => cluster.id).filter(Boolean);

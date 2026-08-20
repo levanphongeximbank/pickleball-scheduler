@@ -126,6 +126,8 @@ export default function CourtClusterManagement() {
     effectiveVenueId === ADMIN_ALL_TENANTS_ID ? ADMIN_ALL_TENANTS_ID : effectiveVenueId;
   const createVenueId =
     effectiveVenueId === ADMIN_ALL_TENANTS_ID ? null : effectiveVenueId;
+  const mutationVenueId =
+    effectiveVenueId === ADMIN_ALL_TENANTS_ID ? null : effectiveVenueId;
   const clusters = useMemo(
     () => listClustersForAdminManagement(user, venueId),
     [user, venueId, message, clusterRevision]
@@ -227,7 +229,10 @@ export default function CourtClusterManagement() {
       return;
     }
 
-    const cloudResult = await persistCourtClusterToCloud(result.cluster, { venueId, actor: user });
+    const cloudResult = await persistCourtClusterToCloud(result.cluster, {
+      venueId: result.cluster.venueId || createVenueId,
+      actor: user,
+    });
     setCreateSaving(false);
 
     if (!cloudResult.ok) {
@@ -276,7 +281,10 @@ export default function CourtClusterManagement() {
       return;
     }
 
-    const cloudResult = await persistCourtClusterToCloud(result.cluster, { venueId, actor: user });
+    const cloudResult = await persistCourtClusterToCloud(result.cluster, {
+      venueId: result.cluster.venueId,
+      actor: user,
+    });
     setEditSaving(false);
 
     if (!cloudResult.ok) {
@@ -298,7 +306,10 @@ export default function CourtClusterManagement() {
       return;
     }
 
-    const cloudResult = await persistCourtClusterToCloud(result.cluster, { venueId, actor: user });
+    const cloudResult = await persistCourtClusterToCloud(result.cluster, {
+      venueId: result.cluster.venueId,
+      actor: user,
+    });
     if (!cloudResult.ok) {
       setError(cloudResult.error || "Không đồng bộ trạng thái lên Supabase.");
       return;
@@ -313,7 +324,7 @@ export default function CourtClusterManagement() {
     setSyncSaving(true);
     const result = await syncClustersForVenueToCloud({
       clusters,
-      venueId,
+      venueId: mutationVenueId,
       actor: user,
     });
     setSyncSaving(false);
@@ -338,7 +349,7 @@ export default function CourtClusterManagement() {
     setError(null);
     const result = await removeCourtCluster({
       clusterId: deleteTarget.id,
-      venueId: effectiveVenueId === ADMIN_ALL_TENANTS_ID ? null : effectiveVenueId,
+      venueId: deleteTarget.venueId || mutationVenueId,
       actor: user,
     });
     setDeleteSaving(false);
@@ -408,7 +419,11 @@ export default function CourtClusterManagement() {
 
     setError(null);
     setRemoveOwnerSaving(true);
-    const result = await removeClusterOwner({ clusterId: infoCluster.id, venueId, actor: user });
+    const result = await removeClusterOwner({
+      clusterId: infoCluster.id,
+      venueId: infoCluster.venueId || mutationVenueId,
+      actor: user,
+    });
     setRemoveOwnerSaving(false);
     setRemoveOwnerConfirmOpen(false);
 
@@ -450,7 +465,7 @@ export default function CourtClusterManagement() {
     const result = await assignClusterOwnerToUser({
       userId: assignForm.user?.id,
       clusterIds: assignForm.clusterIds,
-      venueId,
+      venueId: mutationVenueId,
       actor: user,
     });
     setAssignSaving(false);
