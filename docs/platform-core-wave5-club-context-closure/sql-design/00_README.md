@@ -40,6 +40,10 @@ Do not apply until Owner issues a separate execution GO naming this package and 
 | `08B_RPC_FINGERPRINT_CERTIFICATION.md` | documentation | Predecessor vs target RPC fingerprint certification (8 CERTIFIED_HISTORICAL_SOURCE_MATCH / 2 OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR) |
 | `09_CANONICAL_MUTATION_SURFACE.sql` | NO | Static canonical 14+1 mutation-surface VALUES/ARRAY. Not a runtime helper |
 
+## Parse-safe dollar quoting
+
+Q0A/Q1A control-plane schema guards compare catalog expressions to exact dollar-quoted literals such as `$$CHECK ((cutover_kind = 'WAVE5_CLUB_TENANT'::text))$$`. Those inner untagged literals must stay byte-for-byte. Outer procedural blocks that contain them use unique tagged delimiters (`$wave5_q0_schema_guard$`, `$wave5_q1a_schema_guard$`) so PostgreSQL does not treat the inner `$$` as the end of `DO $$`. Do not retag inner expected CHECK/predicate strings to avoid quoting collisions. Static test: `tests/platform-core-wave5-sql-dollar-quote-parse.test.js`.
+
 ## Schema-state machine
 
 | State | Condition | Allowed |

@@ -161,7 +161,7 @@ ALTER TABLE public.wave5_club_cutover_batch ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wave5_cutover_rpc_privilege_snapshot ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wave5_cutover_table_privilege_snapshot ENABLE ROW LEVEL SECURITY;
 
-DO $$
+DO $wave5_q1a_schema_guard$
 DECLARE
   v_cols text;
   v_pred text;
@@ -557,7 +557,7 @@ BEGIN
         v_tbl;
     END IF;
   END LOOP;
-END $$;
+END $wave5_q1a_schema_guard$;
 
 DO $$
 DECLARE
