@@ -4,7 +4,8 @@
 -- DO_NOT_RUN_ON_PRODUCTION
 -- SQL_EXECUTED=NO
 --
--- Post-apply VERIFY — READ-ONLY. Do not mutate.
+-- POST_APPLY_VERIFY=TARGET
+-- PRE_APPLY_GUARD=PREDECESSOR (APPLY only; this file never asserts predecessor hashes)
 -- Post-state invariants only. Cannot prove a historical LOCK TABLE occurred.
 -- Default: mutation RPCs still quiesced. After 07D: SET wave5.verify_privileges = 'YES'
 -- MUTATION_RPC_POST_PRIVILEGES_VERIFIED is that second pass.
@@ -194,6 +195,39 @@ BEGIN
   IF v_list_fn IS NULL OR v_list_fn NOT ILIKE '%platform_is_canonical_tenant_entitled%' THEN
     RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: club_list_registry missing canonical entitlement';
   END IF;
+
+  -- POST_APPLY_VERIFY=TARGET (newline-canonical LF). Never assert predecessor hashes here.
+  DECLARE
+    v_tgt record;
+    v_norm text;
+    v_fp text;
+  BEGIN
+    FOR v_tgt IN
+      SELECT * FROM (VALUES
+        ('public.phase42_club_canonical(text)', '1dccf73c5ee25b96376371e1f89a9dac'),
+        ('public.club_create(uuid,text,text,text,text,text)', 'e847c5d23e51370fe4ef1360efbaa10a'),
+        ('public.club_list_registry(text,boolean)', '202fef07f6859107971329412b8beb3b'),
+        ('public.club_list_members(text)', 'a497610e6d2d905fe02b7aa2b67724ea'),
+        ('public.phase42_can_update_club(text)', '969ce4b24e48632045ae75f4e8b9ca14'),
+        ('public.phase42_can_assign_club_owner(text)', '17491a5d3df2b96da44f5bececdb257e'),
+        ('public.phase42_can_transfer_president(text)', '61dd0458b9240d5407394f6f8d492bf0'),
+        ('public.club_add_member(uuid,text,uuid,text,integer)', '484c609b937c029f03be7cb37fb03005'),
+        ('public.club_restore_member(uuid,text,uuid,integer)', '8391e0fbafc57917bdfcbd9401242c86'),
+        ('public.club_review_membership_request(uuid,uuid,text,text,integer)', '2ef9e0d87071bba93814ab20344539c1')
+      ) AS t(sig text, target_fp text)
+    LOOP
+      IF to_regprocedure(v_tgt.sig) IS NULL THEN
+        RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: POST_APPLY_VERIFY=TARGET missing %', v_tgt.sig;
+      END IF;
+      SELECT replace(replace(p.prosrc, E'\r\n', E'\n'), E'\r', E'\n') INTO v_norm
+      FROM pg_proc p WHERE p.oid = v_tgt.sig::regprocedure;
+      v_fp := md5(convert_to(v_norm, 'UTF8'));
+      IF v_fp IS DISTINCT FROM v_tgt.target_fp THEN
+        RAISE EXCEPTION 'WAVE5_VERIFY_FAIL: POST_APPLY_VERIFY=TARGET % live_canonical_lf_md5=% APPROVED_TARGET_PROSRC_MD5=%',
+          v_tgt.sig, v_fp, v_tgt.target_fp;
+      END IF;
+    END LOOP;
+  END;
 
   SELECT pg_get_functiondef(p.oid) INTO v_members_fn
   FROM pg_proc p

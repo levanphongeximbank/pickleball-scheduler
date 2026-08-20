@@ -506,13 +506,18 @@ BEGIN
   -- + provolatile + owner role + md5(prosrc). Do not EXECUTE or regexp_replace.
   -- APPROVED_FINGERPRINT_SOURCE=AUTHORITATIVE_REPOSITORY_FUNCTION_BODY
   -- LIVE_HASH_IS_AUTHORITY=NO
-  -- APPROVED_SOURCE_PROSRC_MD5 values are source-derived (see 08B).
-  -- club_create + club_list_registry remain UNCERTIFIED (BLOCKED_BODY_MISMATCH).
+  -- PRE_APPLY_GUARD=PREDECESSOR
+  -- POST_APPLY_VERIFY=TARGET
+  -- PREDECESSOR_AND_TARGET_FINGERPRINTS_DISTINCTLY_NAMED=YES
+  -- APPROVED_PREDECESSOR_PROSRC_MD5 is live-exact (see 08B).
+  -- APPROVED_TARGET_PROSRC_MD5 is APPLY CREATE body (newline-canonical LF).
+  -- club_create + club_list_registry: OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT.
   -- APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED
   -- EXISTING_FUNCTION_SIGNATURE_ONLY_NOT_ENOUGH=YES
   -- EXISTING_RPC_STRONG_FINGERPRINT_COUNT=10
   -- RPC_EXISTING_CERTIFIED_MATCH_COUNT=8
-  -- RPC_EXISTING_BLOCKED_BODY_MISMATCH_COUNT=2
+  -- RPC_EXISTING_OWNER_ACCEPTANCE_REQUIRED_COUNT=2
+  -- RPC_EXISTING_BLOCKED_BODY_MISMATCH_COUNT=0
   -- RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
   -- RPC_VOLATILITY_CERTIFICATION=REQUIRED
   -- RPC_OWNER_CERTIFICATION=REQUIRED
@@ -521,35 +526,45 @@ BEGIN
     SELECT * FROM (VALUES
       ('public.phase42_club_canonical(text)', 'phase42_club_canonical',
        ARRAY['clubs', 'tenant_id'], 'plpgsql',
-       '871ff5136397a42f5c5718179b65aed9', 'postgres', 's'),
+       '871ff5136397a42f5c5718179b65aed9', 'postgres', 's',
+       'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.club_create(uuid,text,text,text,text,text)', 'club_create',
        ARRAY['phase42_idempotency', 'clubs', 'p_tenant_id'], 'plpgsql',
-       'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
+       'cb9669f04a35e9b60242a5d3b18a5b27', 'postgres', 'v',
+       'OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT'),
       ('public.club_list_registry(text,boolean)', 'club_list_registry',
        ARRAY['phase42_club_canonical', 'clubs'], 'plpgsql',
-       'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
+       '214cb6e88de6f2d9d0e55e1f33c6e582', 'postgres', 'v',
+       'OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT'),
       ('public.club_list_members(text)', 'club_list_members',
        ARRAY['club_members'], 'plpgsql',
-       '3089518678635910041656a1ae30cacd', 'postgres', 'v'),
+       '3089518678635910041656a1ae30cacd', 'postgres', 'v',
+       'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.phase42_can_update_club(text)', 'phase42_can_update_club',
        ARRAY['clubs'], 'sql',
-       '24f9f7e47c2dc0a166c6385811f6c43d', 'postgres', 's'),
+       '24f9f7e47c2dc0a166c6385811f6c43d', 'postgres', 's',
+       'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.phase42_can_assign_club_owner(text)', 'phase42_can_assign_club_owner',
        ARRAY['clubs'], 'sql',
-       '509ea5949fa8389edd1c4827e1bf5779', 'postgres', 's'),
+       '509ea5949fa8389edd1c4827e1bf5779', 'postgres', 's',
+       'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.phase42_can_transfer_president(text)', 'phase42_can_transfer_president',
        ARRAY['clubs'], 'sql',
-       '24f9f7e47c2dc0a166c6385811f6c43d', 'postgres', 's'),
+       '24f9f7e47c2dc0a166c6385811f6c43d', 'postgres', 's',
+       'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.club_add_member(uuid,text,uuid,text,integer)', 'club_add_member',
        ARRAY['phase42_can_review_membership', 'club_members', 'phase42_idempotency'], 'plpgsql',
-       '922df1b5d672f70150ae4010bb97bed0', 'postgres', 'v'),
+       '922df1b5d672f70150ae4010bb97bed0', 'postgres', 'v',
+       'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.club_restore_member(uuid,text,uuid,integer)', 'club_restore_member',
        ARRAY['phase42_can_review_membership', 'club_members'], 'plpgsql',
-       'd24dbfa3f21e674f31ad509c655a7ef6', 'postgres', 'v'),
+       'd24dbfa3f21e674f31ad509c655a7ef6', 'postgres', 'v',
+       'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.club_review_membership_request(uuid,uuid,text,text,integer)', 'club_review_membership_request',
        ARRAY['club_membership_requests_v42', 'VERSION_CONFLICT'], 'plpgsql',
-       '0b8ee11ef23090f8cd6e364ad2e6eb60', 'postgres', 'v')
-    ) AS t(sig text, fname text, markers text[], lang text, certified_fp text, certified_owner text, certified_volatile text)
+       '0b8ee11ef23090f8cd6e364ad2e6eb60', 'postgres', 'v',
+       'CERTIFIED_HISTORICAL_SOURCE_MATCH')
+    ) AS t(sig text, fname text, markers text[], lang text, predecessor_fp text, certified_owner text, certified_volatile text, predecessor_gate text)
   LOOP
     IF to_regprocedure(v_guard.sig) IS NULL THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT % missing', v_guard.sig;
@@ -585,9 +600,9 @@ BEGIN
           v_guard.fname, v_marker;
       END IF;
     END LOOP;
-    IF v_guard.certified_fp IS NULL
-       OR v_guard.certified_fp = 'UNCERTIFIED'
-       OR v_guard.certified_fp = 'OWNER_REVIEW_REQUIRED'
+    IF v_guard.predecessor_fp IS NULL
+       OR v_guard.predecessor_fp = 'UNCERTIFIED'
+       OR v_guard.predecessor_fp = 'OWNER_REVIEW_REQUIRED'
        OR v_guard.certified_owner IS NULL
        OR v_guard.certified_owner = 'UNCERTIFIED'
        OR v_guard.certified_volatile IS NULL
@@ -603,9 +618,13 @@ BEGIN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_provolatile=% certified=%',
         v_guard.fname, v_provolatile, v_guard.certified_volatile;
     END IF;
-    IF v_live_fp IS DISTINCT FROM v_guard.certified_fp THEN
-      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_prosrc_md5=% certified=%',
-        v_guard.fname, v_live_fp, v_guard.certified_fp;
+    IF v_live_fp IS DISTINCT FROM v_guard.predecessor_fp THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_prosrc_md5=% APPROVED_PREDECESSOR_PROSRC_MD5=% LIVE_RPC_CHANGED_SINCE_OWNER_EVIDENCE=YES',
+        v_guard.fname, v_live_fp, v_guard.predecessor_fp;
+    END IF;
+    IF v_guard.predecessor_gate = 'OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT' THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_PREDECESSOR % live_prosrc_md5=% APPLY_EXECUTION_NOT_ENABLED=YES',
+        v_guard.fname, v_live_fp;
     END IF;
   END LOOP;
 
@@ -2164,6 +2183,52 @@ EXCEPTION
     RAISE;
 END;
 $$;
+
+-- POST_APPLY_VERIFY=TARGET (newline-canonical LF). PRE_APPLY_GUARD=PREDECESSOR already ran.
+-- Do not compare live predecessor hashes here.
+DO $wave5_post_apply_target_fp$
+DECLARE
+  v_guard record;
+  v_live_fp text;
+  v_norm text;
+BEGIN
+  FOR v_guard IN
+    SELECT * FROM (VALUES
+      ('public.phase42_club_canonical(text)', 'phase42_club_canonical',
+       '1dccf73c5ee25b96376371e1f89a9dac'),
+      ('public.club_create(uuid,text,text,text,text,text)', 'club_create',
+       'e847c5d23e51370fe4ef1360efbaa10a'),
+      ('public.club_list_registry(text,boolean)', 'club_list_registry',
+       '202fef07f6859107971329412b8beb3b'),
+      ('public.club_list_members(text)', 'club_list_members',
+       'a497610e6d2d905fe02b7aa2b67724ea'),
+      ('public.phase42_can_update_club(text)', 'phase42_can_update_club',
+       '969ce4b24e48632045ae75f4e8b9ca14'),
+      ('public.phase42_can_assign_club_owner(text)', 'phase42_can_assign_club_owner',
+       '17491a5d3df2b96da44f5bececdb257e'),
+      ('public.phase42_can_transfer_president(text)', 'phase42_can_transfer_president',
+       '61dd0458b9240d5407394f6f8d492bf0'),
+      ('public.club_add_member(uuid,text,uuid,text,integer)', 'club_add_member',
+       '484c609b937c029f03be7cb37fb03005'),
+      ('public.club_restore_member(uuid,text,uuid,integer)', 'club_restore_member',
+       '8391e0fbafc57917bdfcbd9401242c86'),
+      ('public.club_review_membership_request(uuid,uuid,text,text,integer)', 'club_review_membership_request',
+       '2ef9e0d87071bba93814ab20344539c1')
+    ) AS t(sig text, fname text, target_fp text)
+  LOOP
+    IF to_regprocedure(v_guard.sig) IS NULL THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT: POST_APPLY_TARGET missing %', v_guard.sig;
+    END IF;
+    SELECT replace(replace(p.prosrc, E'\r\n', E'\n'), E'\r', E'\n') INTO v_norm
+    FROM pg_proc p
+    WHERE p.oid = v_guard.sig::regprocedure;
+    v_live_fp := md5(convert_to(v_norm, 'UTF8'));
+    IF v_live_fp IS DISTINCT FROM v_guard.target_fp THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: POST_APPLY_VERIFY=TARGET % live_canonical_lf_md5=% APPROVED_TARGET_PROSRC_MD5=%',
+        v_guard.fname, v_live_fp, v_guard.target_fp;
+    END IF;
+  END LOOP;
+END $wave5_post_apply_target_fp$;
 
 -- =====================================================================
 -- 4. Club RLS — canonical tenant entitlement. Do not globally retire helper.

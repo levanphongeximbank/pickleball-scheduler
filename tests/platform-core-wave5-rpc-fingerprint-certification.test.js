@@ -5,6 +5,8 @@ import path from "node:path";
 import {
   extractProsrc,
   md5Utf8,
+  normalizeStructuralSql,
+  WAVE5_EXISTING_RPC_TRANSITIONS,
 } from "../scripts/wave5-rpc-prosrc-fingerprint.mjs";
 
 const SQL_DIR = path.join(
@@ -161,7 +163,8 @@ $$;`;
 test("certification set is exactly 10 existing + 3 new expected-absent", () => {
   assert.match(CERT, /RPC_EXISTING_REQUIRED_COUNT=10/);
   assert.match(CERT, /RPC_EXISTING_CERTIFIED_MATCH_COUNT=8/);
-  assert.match(CERT, /RPC_EXISTING_BLOCKED_BODY_MISMATCH_COUNT=2/);
+  assert.match(CERT, /RPC_EXISTING_OWNER_ACCEPTANCE_REQUIRED_COUNT=2/);
+  assert.match(CERT, /RPC_EXISTING_BLOCKED_BODY_MISMATCH_COUNT=0/);
   assert.match(CERT, /RPC_NEW_EXPECTED_ABSENT_COUNT=3/);
   assert.match(CERT, /RPC_NEW_LIVE_PRESENT_COUNT=0/);
   assert.match(CERT, /LIVE_HASH_IS_AUTHORITY=NO/);
@@ -194,15 +197,26 @@ test("each CERTIFIED_MATCH RPC has source-derived MD5 matching APPLY guard", () 
   }
 });
 
-test("blocked RPCs source MD5 does not match live and remain UNCERTIFIED", () => {
+test("live-only RPCs keep predecessor != target and require Owner acceptance", () => {
   for (const row of BLOCKED) {
     const sql = fs.readFileSync(row.source, "utf8");
     const extracted = extractProsrc(sql, row.name);
     assert.ok(extracted && !extracted.error, row.name);
     assert.notEqual(extracted.md5, row.liveMd5, row.name);
-    assert.match(APPLY, new RegExp(`'${row.name}'[\\s\\S]{0,500}'UNCERTIFIED'`));
-    assert.match(CERT, /BLOCKED_BODY_MISMATCH/);
-    assert.match(INVENTORY, new RegExp(`${row.name}[\\s\\S]{0,200}BLOCKED_BODY_MISMATCH`));
+    const future = extractProsrc(APPLY, row.name);
+    assert.ok(future && !future.error, row.name);
+    assert.notEqual(future.md5GitLf, row.liveMd5, `${row.name} target must not copy live predecessor`);
+    assert.match(APPLY, new RegExp(`'${row.name}'[\\s\\S]{0,500}'${row.liveMd5}'`));
+    assert.match(
+      APPLY,
+      /OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT/
+    );
+    assert.match(CERT, /OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT/);
+    assert.match(
+      INVENTORY,
+      new RegExp(`${row.name}[\\s\\S]{0,400}OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT`)
+    );
+    assert.match(CERT, /RPC_EXISTING_BLOCKED_BODY_MISMATCH_COUNT=0/);
   }
 });
 
@@ -218,7 +232,7 @@ test("live hash is never treated as source authority in docs", () => {
 test("APPLY aborts on UNCERTIFIED / owner / volatility / fingerprint drift", () => {
   assert.match(APPLY, /WAVE5_APPLY_ABORT_RPC_BODY_DRIFT/);
   assert.match(APPLY, /OWNER_REVIEW_REQUIRED/);
-  assert.match(APPLY, /certified_fp = 'UNCERTIFIED'/);
+  assert.match(APPLY, /predecessor_fp = 'UNCERTIFIED'/);
   assert.match(APPLY, /unknown\/untrusted SECURITY DEFINER owner|live_owner=%/);
   assert.match(APPLY, /overload_count=%/);
   assert.match(APPLY, /v_overload <> 1/);
@@ -236,14 +250,168 @@ test("new Wave5 functions remain expected-absent pre-APPLY", () => {
   assert.match(APPLY, /NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED/);
 });
 
-test("Wave5 APPLY future bodies are not certification authority for existing RPCs", () => {
+test("Wave5 APPLY future bodies are not predecessor authority for existing RPCs", () => {
   for (const row of CERTIFIED) {
     const future = extractProsrc(APPLY, row.name);
     assert.ok(future && !future.error, row.name);
     assert.notEqual(
-      future.md5,
+      future.md5GitLf,
       row.md5,
-      `${row.name} future APPLY body must differ from certified pre-overwrite source`
+      `${row.name} APPLY target must differ from certified predecessor`
     );
   }
+});
+
+const VERIFY = fs.readFileSync(path.join(SQL_DIR, "03_VERIFY.sql"), "utf8");
+
+const LIVE_REGISTRY = `
+declare v_rows jsonb;
+begin
+  if auth.uid() is null then return public.phase42_err('NOT_AUTHENTICATED', 'Chưa đăng nhập.'); end if;
+  select coalesce(jsonb_agg(public.phase42_club_canonical(c.id) order by c.name), '[]'::jsonb) into v_rows
+  from public.clubs c
+  where c.deleted_at is null
+    and (p_tenant_id is null or c.tenant_id = p_tenant_id)
+    and (p_include_inactive or c.status = 'active')
+    and (public.phase42_is_platform_super_admin() or public.phase42_is_tenant_member(c.tenant_id));
+  return json_build_object('ok', true, 'data', v_rows);
+end;
+`;
+
+test("two-state predecessor vs target catalog covers all 10 existing RPCs", () => {
+  assert.equal(WAVE5_EXISTING_RPC_TRANSITIONS.length, 10);
+  const ownerReq = WAVE5_EXISTING_RPC_TRANSITIONS.filter(
+    (r) =>
+      r.predecessorAuthority ===
+      "OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT"
+  );
+  const hist = WAVE5_EXISTING_RPC_TRANSITIONS.filter(
+    (r) => r.predecessorAuthority === "CERTIFIED_HISTORICAL_SOURCE_MATCH"
+  );
+  assert.equal(hist.length, 8);
+  assert.equal(ownerReq.length, 2);
+  assert.deepEqual(
+    ownerReq.map((r) => r.name).sort(),
+    ["club_create", "club_list_registry"]
+  );
+  for (const row of WAVE5_EXISTING_RPC_TRANSITIONS) {
+    assert.notEqual(row.predecessorMd5, row.targetMd5Lf, row.name);
+    assert.match(CERT, new RegExp(row.predecessorMd5));
+    assert.match(CERT, new RegExp(row.targetMd5Lf));
+    assert.match(APPLY, new RegExp(`'${row.name}'[\\s\\S]{0,800}'${row.predecessorMd5}'`));
+    assert.match(APPLY, new RegExp(row.targetMd5Lf));
+    const future = extractProsrc(APPLY, row.name);
+    assert.equal(future.md5GitLf, row.targetMd5Lf, row.name);
+  }
+});
+
+test("pre-APPLY uses predecessor hash and post-APPLY uses target hash", () => {
+  assert.match(APPLY, /PRE_APPLY_GUARD=PREDECESSOR/);
+  assert.match(APPLY, /POST_APPLY_VERIFY=TARGET/);
+  assert.match(APPLY, /APPROVED_PREDECESSOR_PROSRC_MD5/);
+  assert.match(APPLY, /APPROVED_TARGET_PROSRC_MD5/);
+  assert.match(VERIFY, /POST_APPLY_VERIFY=TARGET/);
+  assert.match(VERIFY, /Never assert predecessor hashes here/);
+  assert.match(CERT, /PREDECESSOR_AND_TARGET_FINGERPRINTS_DISTINCTLY_NAMED=YES/);
+  assert.doesNotMatch(APPLY, /APPROVED_CANONICAL_MD5=cb9669f04a35e9b60242a5d3b18a5b27/);
+  assert.doesNotMatch(APPLY, /APPROVED_CANONICAL_MD5=214cb6e88de6f2d9d0e55e1f33c6e582/);
+  assert.match(APPLY, /v_live_fp IS DISTINCT FROM v_guard\.predecessor_fp/);
+  assert.match(APPLY, /OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_PREDECESSOR/);
+  assert.match(APPLY, /APPLY_EXECUTION_NOT_ENABLED=YES/);
+});
+
+test("historical source match is required for automatic certification", () => {
+  assert.match(CERT, /HISTORICAL_SOURCE_NOT_FOUND=YES/);
+  assert.match(CERT, /LIVE_ONLY_NO_HISTORICAL_SOURCE/);
+  assert.match(CERT, /CLUB_CREATE_HISTORICAL_EXACT_BODY_FOUND=NO/);
+  assert.match(CERT, /CLUB_LIST_REGISTRY_HISTORICAL_EXACT_BODY_FOUND=NO/);
+  assert.match(CERT, /OWNER_ACCEPTANCE_REQUIRED=YES/);
+});
+
+test("live-only equivalent body requires Owner acceptance and does not enable APPLY", () => {
+  assert.match(CERT, /STAGING_CUTOVER_EXECUTION_READY=NO_PENDING_OWNER_PREDECESSOR_ACCEPTANCE/);
+  assert.match(CERT, /WAVE5_APPLY_READINESS_ALL_10_CERTIFIED_MATCH=NO/);
+  const createRow = APPLY.match(
+    /'club_create'[\s\S]{0,400}OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT/
+  );
+  assert.ok(createRow);
+});
+
+test("security / data-integrity / unknown semantic difference classifications remain blocking vocabulary", () => {
+  assert.match(CERT, /BLOCKED_SECURITY_DIFFERENCE/);
+  assert.match(CERT, /BLOCKED_DATA_INTEGRITY_DIFFERENCE/);
+  assert.match(CERT, /BLOCKED_SEMANTIC_DIFFERENCE/);
+  assert.match(CERT, /BLOCKED_UNKNOWN_PROVENANCE/);
+  assert.match(CERT, /OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT/);
+  const allowed = [
+    "CERTIFIED_HISTORICAL_SOURCE_MATCH",
+    "CERTIFIED_DEPLOYMENT_ARTIFACT_MATCH",
+    "OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT",
+    "BLOCKED_SEMANTIC_DIFFERENCE",
+    "BLOCKED_SECURITY_DIFFERENCE",
+    "BLOCKED_DATA_INTEGRITY_DIFFERENCE",
+    "BLOCKED_UNKNOWN_PROVENANCE",
+  ];
+  for (const row of WAVE5_EXISTING_RPC_TRANSITIONS) {
+    assert.equal(allowed.includes(row.predecessorAuthority), true, row.name);
+  }
+});
+
+test("club_create semantic checklist is documented", () => {
+  for (const concern of [
+    "authentication",
+    "Tenant",
+    "entitlement",
+    "club.create",
+    "plan",
+    "idempotency",
+    "duplicate",
+    "registered_cluster",
+    "INSERT",
+    "tenant_id",
+    "membership",
+    "club_owner",
+    "president",
+    "Super Admin",
+    "profiles.role",
+    "profiles.club_id",
+    "version",
+    "audit",
+    "exception",
+    "transaction",
+    "security",
+    "ASCII_FOLDED_RUNTIME_LITERAL_IMPACT=HUMAN_MESSAGE_ONLY",
+  ]) {
+    assert.match(CERT, new RegExp(concern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+});
+
+test("club_list_registry semantic checklist and formatting proof", () => {
+  const src = fs.readFileSync("docs/v5/PHASE_42C_RLS_RPC.sql", "utf8");
+  const body = extractProsrc(src, "club_list_registry");
+  assert.equal(normalizeStructuralSql(body.body), normalizeStructuralSql(LIVE_REGISTRY));
+  assert.match(CERT, /REGISTRY_LIVE_DIFF=FORMATTING_ONLY/);
+  assert.match(CERT, /p_tenant_id/);
+  assert.match(CERT, /p_include_inactive/);
+  assert.match(CERT, /phase42_is_tenant_member/);
+  assert.match(CERT, /platform_is_canonical_tenant_entitled/);
+  assert.match(CERT, /deleted_at/);
+  assert.match(CERT, /phase42_club_canonical/);
+  const applyBody = extractProsrc(APPLY, "club_list_registry");
+  assert.equal(applyBody.body.includes("platform_is_canonical_tenant_entitled"), true);
+  assert.equal(applyBody.body.includes("phase42_is_tenant_member"), false);
+});
+
+test("eight previous certifications and three expected-absent remain unchanged", () => {
+  for (const row of CERTIFIED) {
+    assert.match(CERT, new RegExp(row.md5));
+    assert.match(CERT, /CERTIFIED_MATCH/);
+  }
+  assert.match(CERT, /RPC_NEW_EXPECTED_ABSENT_COUNT=3/);
+  assert.match(CERT, /RPC_NEW_LIVE_PRESENT_COUNT=0/);
+});
+
+test("service_role cutover guard comments remain intact in APPLY package", () => {
+  assert.match(APPLY, /APPLY_PRELOCK_SERVICE_ROLE_DIRECT_DML=DENIED/);
+  assert.doesNotMatch(APPLY, /ALTER\s+ROLE\s+service_role/i);
 });

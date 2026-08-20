@@ -41,6 +41,17 @@ export function toStagingProsrcNewlines(bodyLf) {
   return canonicalizeNewlinesToLf(bodyLf).replace(/\n/g, "\r\n");
 }
 
+/** Structural SQL compare (predicates/joins), ignoring comment/whitespace/paren spacing. */
+export function normalizeStructuralSql(s) {
+  return canonicalizeNewlinesToLf(s)
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/--[^\n]*/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\s*([(),;])\s*/g, "$1")
+    .trim()
+    .toLowerCase();
+}
+
 /**
  * Extract the first public.<name>(...) function body from SQL source.
  * @param {string} sql
@@ -107,6 +118,129 @@ export function extractProsrc(sql, functionName) {
     headerSnippet: header.slice(0, 240).replace(/\s+/g, " ").trim(),
   };
 }
+
+/**
+ * Two-state model:
+ * APPROVED_PREDECESSOR_PROSRC_MD5 = exact live Staging md5(convert_to(prosrc,'UTF8'))
+ * APPROVED_TARGET_PROSRC_MD5 = newline-canonical LF md5 of Wave5 APPLY CREATE body
+ * LIVE_HASH_IS_AUTHORITY=NO — live hash is predecessor evidence only.
+ */
+export const WAVE5_EXISTING_RPC_TRANSITIONS = [
+  {
+    name: "phase42_club_canonical",
+    sig: "public.phase42_club_canonical(text)",
+    predecessorAuthority: "CERTIFIED_HISTORICAL_SOURCE_MATCH",
+    predecessorSource: "docs/v5/phase1b/PHASE_1B_V2_COMMAND_COMPLETION.sql",
+    predecessorMd5: "871ff5136397a42f5c5718179b65aed9",
+    targetSource: "docs/platform-core-wave5-club-context-closure/sql-design/02_APPLY_DESIGN.sql",
+    targetMd5Lf: "1dccf73c5ee25b96376371e1f89a9dac",
+    lang: "plpgsql",
+    vol: "s",
+  },
+  {
+    name: "club_create",
+    sig: "public.club_create(uuid,text,text,text,text,text)",
+    predecessorAuthority: "OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT",
+    predecessorSource: null,
+    predecessorMd5: "cb9669f04a35e9b60242a5d3b18a5b27",
+    lineageSource: "docs/v5/PHASE_42G_CLUB_CREATE_OWNER.sql",
+    lineageMd5Crlf: "a99c4c6f5021d29142229aeba4c49315",
+    targetSource: "docs/platform-core-wave5-club-context-closure/sql-design/02_APPLY_DESIGN.sql",
+    targetMd5Lf: "e847c5d23e51370fe4ef1360efbaa10a",
+    lang: "plpgsql",
+    vol: "v",
+  },
+  {
+    name: "club_list_registry",
+    sig: "public.club_list_registry(text,boolean)",
+    predecessorAuthority: "OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT",
+    predecessorSource: null,
+    predecessorMd5: "214cb6e88de6f2d9d0e55e1f33c6e582",
+    lineageSource: "docs/v5/PHASE_42C_RLS_RPC.sql",
+    lineageMd5Crlf: "b8dc3e51123e4205c1f61ad19ffda555",
+    targetSource: "docs/platform-core-wave5-club-context-closure/sql-design/02_APPLY_DESIGN.sql",
+    targetMd5Lf: "202fef07f6859107971329412b8beb3b",
+    lang: "plpgsql",
+    vol: "v",
+  },
+  {
+    name: "club_list_members",
+    sig: "public.club_list_members(text)",
+    predecessorAuthority: "CERTIFIED_HISTORICAL_SOURCE_MATCH",
+    predecessorSource: "docs/v5/PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL.sql",
+    predecessorMd5: "3089518678635910041656a1ae30cacd",
+    targetSource: "docs/platform-core-wave5-club-context-closure/sql-design/02_APPLY_DESIGN.sql",
+    targetMd5Lf: "a497610e6d2d905fe02b7aa2b67724ea",
+    lang: "plpgsql",
+    vol: "v",
+  },
+  {
+    name: "phase42_can_update_club",
+    sig: "public.phase42_can_update_club(text)",
+    predecessorAuthority: "CERTIFIED_HISTORICAL_SOURCE_MATCH",
+    predecessorSource: "docs/v5/phase1b/PHASE_1B_CLUB_UPDATE_AUTHZ_SECURITY_GATE.sql",
+    predecessorMd5: "24f9f7e47c2dc0a166c6385811f6c43d",
+    targetSource: "docs/platform-core-wave5-club-context-closure/sql-design/02_APPLY_DESIGN.sql",
+    targetMd5Lf: "969ce4b24e48632045ae75f4e8b9ca14",
+    lang: "sql",
+    vol: "s",
+  },
+  {
+    name: "phase42_can_assign_club_owner",
+    sig: "public.phase42_can_assign_club_owner(text)",
+    predecessorAuthority: "CERTIFIED_HISTORICAL_SOURCE_MATCH",
+    predecessorSource: "docs/v5/phase1c/PHASE_1C_CLUB_OWNER_ASSIGN_AUTHZ_SECURITY_GATE.sql",
+    predecessorMd5: "509ea5949fa8389edd1c4827e1bf5779",
+    targetSource: "docs/platform-core-wave5-club-context-closure/sql-design/02_APPLY_DESIGN.sql",
+    targetMd5Lf: "17491a5d3df2b96da44f5bececdb257e",
+    lang: "sql",
+    vol: "s",
+  },
+  {
+    name: "phase42_can_transfer_president",
+    sig: "public.phase42_can_transfer_president(text)",
+    predecessorAuthority: "CERTIFIED_HISTORICAL_SOURCE_MATCH",
+    predecessorSource: "docs/v5/phase2d/PHASE_2D_TRANSFER_PRESIDENT_AUTHZ_GATE.sql",
+    predecessorMd5: "24f9f7e47c2dc0a166c6385811f6c43d",
+    targetSource: "docs/platform-core-wave5-club-context-closure/sql-design/02_APPLY_DESIGN.sql",
+    targetMd5Lf: "61dd0458b9240d5407394f6f8d492bf0",
+    lang: "sql",
+    vol: "s",
+  },
+  {
+    name: "club_add_member",
+    sig: "public.club_add_member(uuid,text,uuid,text,integer)",
+    predecessorAuthority: "CERTIFIED_HISTORICAL_SOURCE_MATCH",
+    predecessorSource: "docs/v5/phase45a4c1/PHASE_45A4C1_MEMBER_RPC.sql",
+    predecessorMd5: "922df1b5d672f70150ae4010bb97bed0",
+    targetSource: "docs/platform-core-wave5-club-context-closure/sql-design/02_APPLY_DESIGN.sql",
+    targetMd5Lf: "484c609b937c029f03be7cb37fb03005",
+    lang: "plpgsql",
+    vol: "v",
+  },
+  {
+    name: "club_restore_member",
+    sig: "public.club_restore_member(uuid,text,uuid,integer)",
+    predecessorAuthority: "CERTIFIED_HISTORICAL_SOURCE_MATCH",
+    predecessorSource: "docs/v5/phase45a4d1/PHASE_45A4D1_MEMBER_RESTORE_RPC.sql",
+    predecessorMd5: "d24dbfa3f21e674f31ad509c655a7ef6",
+    targetSource: "docs/platform-core-wave5-club-context-closure/sql-design/02_APPLY_DESIGN.sql",
+    targetMd5Lf: "8391e0fbafc57917bdfcbd9401242c86",
+    lang: "plpgsql",
+    vol: "v",
+  },
+  {
+    name: "club_review_membership_request",
+    sig: "public.club_review_membership_request(uuid,uuid,text,text,integer)",
+    predecessorAuthority: "CERTIFIED_HISTORICAL_SOURCE_MATCH",
+    predecessorSource: "docs/v5/PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL.sql",
+    predecessorMd5: "0b8ee11ef23090f8cd6e364ad2e6eb60",
+    targetSource: "docs/platform-core-wave5-club-context-closure/sql-design/02_APPLY_DESIGN.sql",
+    targetMd5Lf: "2ef9e0d87071bba93814ab20344539c1",
+    lang: "plpgsql",
+    vol: "v",
+  },
+];
 
 const LIVE = {
   phase42_club_canonical: "871ff5136397a42f5c5718179b65aed9",

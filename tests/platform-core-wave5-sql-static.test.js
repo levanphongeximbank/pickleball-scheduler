@@ -808,12 +808,18 @@ test("Round 6 M. existing overwrite functions require strong fingerprint certifi
   assert.match(inventory, /LIVE_HASH_IS_AUTHORITY=NO/);
   assert.match(cert, /APPROVED_FINGERPRINT_SOURCE=AUTHORITATIVE_REPOSITORY_FUNCTION_BODY/);
   assert.match(cert, /LIVE_HASH_IS_AUTHORITY=NO/);
-  // Two blocked functions remain UNCERTIFIED placeholders.
+  // Two live-only predecessors require Owner acceptance; hashes are encoded, APPLY still aborts.
   for (const name of ["club_create", "club_list_registry"]) {
-    assert.match(apply, new RegExp(`'${name}'[\\s\\S]{0,500}'UNCERTIFIED'`));
-    assert.match(inventory, new RegExp(`${name}[\\s\\S]{0,200}BLOCKED_BODY_MISMATCH`));
+    assert.match(
+      apply,
+      new RegExp(`'${name}'[\\s\\S]{0,500}'OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT'`)
+    );
+    assert.match(
+      inventory,
+      new RegExp(`${name}[\\s\\S]{0,400}OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT`)
+    );
   }
-  // Eight CERTIFIED_MATCH functions must carry APPROVED_SOURCE_PROSRC_MD5 (not UNCERTIFIED).
+  // Eight CERTIFIED_MATCH functions must carry APPROVED_PREDECESSOR_PROSRC_MD5 (not UNCERTIFIED).
   assert.match(apply, /'phase42_club_canonical'[\s\S]{0,400}'871ff5136397a42f5c5718179b65aed9'/);
   assert.match(apply, /'club_list_members'[\s\S]{0,400}'3089518678635910041656a1ae30cacd'/);
   assert.match(apply, /'phase42_can_update_club'[\s\S]{0,400}'24f9f7e47c2dc0a166c6385811f6c43d'/);
