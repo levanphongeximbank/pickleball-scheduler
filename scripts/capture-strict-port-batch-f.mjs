@@ -153,6 +153,11 @@ async function seedTournamentContext() {
   await page.goto(`${BASE}/tournament/${TOURNAMENT_ID}/overview`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.waitForTimeout(1500);
   await selectSeedClub();
+  await page.waitForFunction(
+    () => !document.body.innerText.includes("Không tìm thấy giải"),
+    null,
+    { timeout: 45000 }
+  );
   return "";
 }
 
@@ -194,6 +199,14 @@ const publicTarget = `${BASE}/tournament/${TOURNAMENT_ID}${PUBLIC_SCREEN.suffix}
 await page.goto(publicTarget, { waitUntil: "domcontentloaded", timeout: 90000 });
 try {
   await page.waitForSelector(`[data-testid="${PUBLIC_SCREEN.testId}"]`, { timeout: 90000 });
+  await page.waitForFunction(
+    () => {
+      const text = document.body.innerText || "";
+      return text.includes("PICK_VN") && !text.includes("Không tìm thấy trang công khai");
+    },
+    null,
+    { timeout: 90000 }
+  );
 } catch (err) {
   await page.screenshot({ path: path.join(OUT, "DEBUG_PUBLIC_FAIL.png"), fullPage: true });
   throw err;

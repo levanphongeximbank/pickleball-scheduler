@@ -61,8 +61,8 @@ function PublicMatchRow({ match }) {
 
 export default function IndividualPublicExperiencePage() {
   const { tournamentId } = useParams();
-  const { activeClub, revision } = useClub();
-  const { tournament, loading, error } = useCanonicalTournament(activeClub, tournamentId, revision);
+  const { activeClub, revision, clubScopeReady } = useClub();
+  const { tournament, loading: tournamentLoading, error } = useCanonicalTournament(activeClub, tournamentId, revision);
   const [tab, setTab] = useState("overview");
 
   if (!tournamentId) {
@@ -73,7 +73,13 @@ export default function IndividualPublicExperiencePage() {
     );
   }
 
-  if (loading) {
+  if (!clubScopeReady || tournamentLoading) {
+    return (
+      <Box sx={{ minHeight: "100dvh", bgcolor: TOURNAMENT_COLOR.pageBg, p: 3 }} data-testid={TEST_ID}>
+        <Typography>Đang tải trang công khai…</Typography>
+      </Box>
+    );
+  }
     return (
       <Box sx={{ minHeight: "100dvh", bgcolor: TOURNAMENT_COLOR.pageBg, p: 3 }} data-testid={TEST_ID}>
         <Typography>Đang tải trang công khai…</Typography>
