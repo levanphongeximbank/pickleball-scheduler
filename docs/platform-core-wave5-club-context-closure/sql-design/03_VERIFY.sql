@@ -9,6 +9,9 @@
 -- Default: mutation RPCs still quiesced. After 07D: SET wave5.verify_privileges = 'YES'
 -- MUTATION_RPC_POST_PRIVILEGES_VERIFIED is that second pass.
 -- POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14
+-- While quiesced (before 07D): service_role INSERT/UPDATE/DELETE/TRUNCATE on the
+-- four Club tables should remain DENIED (Q0A guard). Optional live check OK;
+-- APPLY prelock / 03B already gate this.
 
 DO $$
 DECLARE

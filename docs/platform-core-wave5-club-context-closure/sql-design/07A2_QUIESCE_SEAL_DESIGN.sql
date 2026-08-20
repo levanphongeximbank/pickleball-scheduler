@@ -14,9 +14,12 @@
 -- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
 --
 -- Verifies the Q1A PREPARED batch exists, mutation privileges remain
--- quiesced, and exactly one active batch. Then PREPARED → QUIESCED and
--- sets quiesce_visible_at = clock_timestamp() in THIS post-commit transaction.
+-- quiesced, service_role Club table DML remains DENIED, and exactly one
+-- active batch. Then PREPARED → QUIESCED and sets quiesce_visible_at =
+-- clock_timestamp() in THIS post-commit transaction.
 --
+-- QUIESCED_MEANS_ALL_KNOWN_WRITER_SURFACES_CLOSED=YES
+-- (RPC mutation entrypoints + service_role direct Club table DML)
 -- Do not use q1_committed_at as drain authority.
 
 BEGIN;
@@ -35,6 +38,8 @@ DECLARE
   v_service_exec int := 0;
   v_unknown int := 0;
   v_canonical_present int := 0;
+  v_tbl text;
+  v_priv text;
 BEGIN
   BEGIN
     v_batch := nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '')::uuid;
@@ -182,6 +187,27 @@ BEGIN
       v_public_exec, v_anon_exec, v_auth_exec, v_service_exec;
   END IF;
 
+  -- Reassert Q0A service_role direct Club DML guard before PREPARED → QUIESCED.
+  -- QUIESCED_MEANS_ALL_KNOWN_WRITER_SURFACES_CLOSED=YES
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN
+    RAISE EXCEPTION 'WAVE5_Q1B_ABORT: service_role role missing';
+  END IF;
+  FOREACH v_tbl IN ARRAY ARRAY[
+    'clubs',
+    'club_members',
+    'club_governance_assignments',
+    'club_membership_requests_v42'
+  ]
+  LOOP
+    FOREACH v_priv IN ARRAY ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']
+    LOOP
+      IF has_table_privilege('service_role', format('public.%I', v_tbl), v_priv) THEN
+        RAISE EXCEPTION 'WAVE5_Q1B_ABORT: service_role Club table DML reappeared on %.% — QUIESCED_MEANS_ALL_KNOWN_WRITER_SURFACES_CLOSED=NO',
+          v_tbl, v_priv;
+      END IF;
+    END LOOP;
+  END LOOP;
+
   UPDATE public.wave5_club_cutover_batch
   SET state = 'QUIESCED',
       quiesce_visible_at = clock_timestamp()
@@ -194,7 +220,7 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_Q1B_ABORT: PREPARED → QUIESCED seal failed for batch %', v_batch;
   END IF;
 
-  RAISE NOTICE 'WAVE5_Q1B_SEALED batch=% state=QUIESCED QUIESCE_VISIBLE_AT_IS_POST_Q1_COMMIT=YES',
+  RAISE NOTICE 'WAVE5_Q1B_SEALED batch=% state=QUIESCED QUIESCE_VISIBLE_AT_IS_POST_Q1_COMMIT=YES QUIESCED_MEANS_ALL_KNOWN_WRITER_SURFACES_CLOSED=YES',
     v_batch;
 END $$;
 

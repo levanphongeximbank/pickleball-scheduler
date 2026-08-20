@@ -16,6 +16,7 @@
 -- APPLY_PRELOCK_UNKNOWN_OVERLOAD_AUTHORITY=OID
 -- APPLY_PRELOCK_MUTATION_RPC_COUNT=14
 -- APPLY_PRELOCK_ALL_MUTATION_CALLER_ROLES_QUIESCED=YES
+-- APPLY_PRELOCK_SERVICE_ROLE_DIRECT_DML=DENIED
 -- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
 -- APPLY does not trust a prior PRECHECK run. All mutation-critical invariants
 -- are reasserted inside this locked transaction.
@@ -127,6 +128,8 @@ DECLARE
   v_anon_exec int := 0;
   v_auth_exec int := 0;
   v_service_exec int := 0;
+  v_tbl text;
+  v_priv text;
 BEGIN
   IF current_setting('wave5.drain_pass', true) = 'YES'
      AND nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '') IS NULL THEN
@@ -289,6 +292,26 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_APPLY_ABORT: APPLY_PRELOCK_ALL_MUTATION_CALLER_ROLES_QUIESCED=NO PUBLIC=% ANON=% AUTHENTICATED=% SERVICE_ROLE=% — Q1 quiesce not visible',
       v_public_exec, v_anon_exec, v_auth_exec, v_service_exec;
   END IF;
+
+  -- APPLY_PRELOCK_SERVICE_ROLE_DIRECT_DML=DENIED
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN
+    RAISE EXCEPTION 'WAVE5_APPLY_ABORT: service_role role missing';
+  END IF;
+  FOREACH v_tbl IN ARRAY ARRAY[
+    'clubs',
+    'club_members',
+    'club_governance_assignments',
+    'club_membership_requests_v42'
+  ]
+  LOOP
+    FOREACH v_priv IN ARRAY ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']
+    LOOP
+      IF has_table_privilege('service_role', format('public.%I', v_tbl), v_priv) THEN
+        RAISE EXCEPTION 'WAVE5_APPLY_ABORT: APPLY_PRELOCK_SERVICE_ROLE_DIRECT_DML=DENIED violated — service_role %.% reappeared',
+          v_tbl, v_priv;
+      END IF;
+    END LOOP;
+  END LOOP;
 END $wave5_apply_prelock$;
 
 -- =====================================================================
@@ -481,10 +504,15 @@ BEGIN
 
   -- Strong identity: signature + overload + prosecdef + search_path + language
   -- + provolatile + owner role + md5(prosrc). Do not EXECUTE or regexp_replace.
-  -- Certified fingerprints remain UNCERTIFIED until Owner reviews live PRECHECK evidence.
+  -- APPROVED_FINGERPRINT_SOURCE=AUTHORITATIVE_REPOSITORY_FUNCTION_BODY
+  -- LIVE_HASH_IS_AUTHORITY=NO
+  -- APPROVED_SOURCE_PROSRC_MD5 values are source-derived (see 08B).
+  -- club_create + club_list_registry remain UNCERTIFIED (BLOCKED_BODY_MISMATCH).
   -- APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED
   -- EXISTING_FUNCTION_SIGNATURE_ONLY_NOT_ENOUGH=YES
   -- EXISTING_RPC_STRONG_FINGERPRINT_COUNT=10
+  -- RPC_EXISTING_CERTIFIED_MATCH_COUNT=8
+  -- RPC_EXISTING_BLOCKED_BODY_MISMATCH_COUNT=2
   -- RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
   -- RPC_VOLATILITY_CERTIFICATION=REQUIRED
   -- RPC_OWNER_CERTIFICATION=REQUIRED
@@ -492,25 +520,35 @@ BEGIN
   FOR v_guard IN
     SELECT * FROM (VALUES
       ('public.phase42_club_canonical(text)', 'phase42_club_canonical',
-       ARRAY['clubs', 'tenant_id'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
+       ARRAY['clubs', 'tenant_id'], 'plpgsql',
+       '871ff5136397a42f5c5718179b65aed9', 'postgres', 's'),
       ('public.club_create(uuid,text,text,text,text,text)', 'club_create',
-       ARRAY['phase42_idempotency', 'clubs', 'p_tenant_id'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
+       ARRAY['phase42_idempotency', 'clubs', 'p_tenant_id'], 'plpgsql',
+       'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
       ('public.club_list_registry(text,boolean)', 'club_list_registry',
-       ARRAY['phase42_club_canonical', 'clubs'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
+       ARRAY['phase42_club_canonical', 'clubs'], 'plpgsql',
+       'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
       ('public.club_list_members(text)', 'club_list_members',
-       ARRAY['club_members'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
+       ARRAY['club_members'], 'plpgsql',
+       '3089518678635910041656a1ae30cacd', 'postgres', 'v'),
       ('public.phase42_can_update_club(text)', 'phase42_can_update_club',
-       ARRAY['clubs'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
+       ARRAY['clubs'], 'sql',
+       '24f9f7e47c2dc0a166c6385811f6c43d', 'postgres', 's'),
       ('public.phase42_can_assign_club_owner(text)', 'phase42_can_assign_club_owner',
-       ARRAY['clubs'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
+       ARRAY['clubs'], 'sql',
+       '509ea5949fa8389edd1c4827e1bf5779', 'postgres', 's'),
       ('public.phase42_can_transfer_president(text)', 'phase42_can_transfer_president',
-       ARRAY['clubs'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
+       ARRAY['clubs'], 'sql',
+       '24f9f7e47c2dc0a166c6385811f6c43d', 'postgres', 's'),
       ('public.club_add_member(uuid,text,uuid,text,integer)', 'club_add_member',
-       ARRAY['phase42_can_review_membership', 'club_members', 'phase42_idempotency'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
+       ARRAY['phase42_can_review_membership', 'club_members', 'phase42_idempotency'], 'plpgsql',
+       '922df1b5d672f70150ae4010bb97bed0', 'postgres', 'v'),
       ('public.club_restore_member(uuid,text,uuid,integer)', 'club_restore_member',
-       ARRAY['phase42_can_review_membership', 'club_members'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED'),
+       ARRAY['phase42_can_review_membership', 'club_members'], 'plpgsql',
+       'd24dbfa3f21e674f31ad509c655a7ef6', 'postgres', 'v'),
       ('public.club_review_membership_request(uuid,uuid,text,text,integer)', 'club_review_membership_request',
-       ARRAY['club_membership_requests_v42', 'VERSION_CONFLICT'], 'plpgsql', 'UNCERTIFIED', 'UNCERTIFIED', 'UNCERTIFIED')
+       ARRAY['club_membership_requests_v42', 'VERSION_CONFLICT'], 'plpgsql',
+       '0b8ee11ef23090f8cd6e364ad2e6eb60', 'postgres', 'v')
     ) AS t(sig text, fname text, markers text[], lang text, certified_fp text, certified_owner text, certified_volatile text)
   LOOP
     IF to_regprocedure(v_guard.sig) IS NULL THEN

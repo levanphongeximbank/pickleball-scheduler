@@ -12,9 +12,11 @@
 -- VERIFIED_GATE_EXACT_RPC_RESOLUTION=YES
 -- VERIFIED_GATE_UNKNOWN_OVERLOAD=ABORT
 -- VERIFIED_UNKNOWN_OVERLOAD_AUTHORITY=OID
+-- VERIFIED_BEFORE_SERVICE_ROLE_RESTORE=YES
 -- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
 -- 03_VERIFY.sql remains the operator report. This file is the durable gate.
 -- KEEP_WRITES_QUIESCED=YES until 07D. Do not 07C from APPLIED/VERIFIED.
+-- service_role Club table DML must remain DENIED until 07D exact restore.
 
 BEGIN;
 
@@ -42,6 +44,8 @@ DECLARE
   v_evidence text;
   v_unknown int := 0;
   v_overload int := 0;
+  v_tbl text;
+  v_priv text;
 BEGIN
   BEGIN
     v_batch := nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '')::uuid;
@@ -355,6 +359,26 @@ BEGIN
     END IF;
   END IF;
 
+  -- VERIFIED_BEFORE_SERVICE_ROLE_RESTORE=YES
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN
+    RAISE EXCEPTION 'WAVE5_VERIFY_MARK_ABORT: service_role role missing';
+  END IF;
+  FOREACH v_tbl IN ARRAY ARRAY[
+    'clubs',
+    'club_members',
+    'club_governance_assignments',
+    'club_membership_requests_v42'
+  ]
+  LOOP
+    FOREACH v_priv IN ARRAY ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']
+    LOOP
+      IF has_table_privilege('service_role', format('public.%I', v_tbl), v_priv) THEN
+        RAISE EXCEPTION 'WAVE5_VERIFY_MARK_ABORT: VERIFIED_BEFORE_SERVICE_ROLE_RESTORE=YES violated — service_role %.% not DENIED',
+          v_tbl, v_priv;
+      END IF;
+    END LOOP;
+  END LOOP;
+
   v_evidence := md5(format(
     'fk=%s rpc=%s orphan=%s xtenant=%s mismatch=%s',
     v_fk_ok, v_cmd_ok, v_cluster_orphan, v_cluster_xtenant, v_mismatch
@@ -371,7 +395,7 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_VERIFY_MARK_ABORT: APPLIED → VERIFIED failed';
   END IF;
 
-  RAISE NOTICE 'WAVE5_VERIFIED batch=% VERIFIED_STATE_CANNOT_BE_MANUFACTURED=YES VERIFIED_GATE_CANONICAL_FK_COUNT=4 VERIFIED_GATE_MUTATION_RPC_COUNT=14 evidence=%',
+  RAISE NOTICE 'WAVE5_VERIFIED batch=% VERIFIED_STATE_CANNOT_BE_MANUFACTURED=YES VERIFIED_GATE_CANONICAL_FK_COUNT=4 VERIFIED_GATE_MUTATION_RPC_COUNT=14 VERIFIED_BEFORE_SERVICE_ROLE_RESTORE=YES evidence=%',
     v_batch, v_evidence;
 END $$;
 

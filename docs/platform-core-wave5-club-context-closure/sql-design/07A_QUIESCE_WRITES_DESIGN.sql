@@ -6,15 +6,21 @@
 -- RLS_EXECUTED=NO
 --
 -- PHASE_Q1A_REVOKE_COMMIT
--- Q1A: establish/certify control tables, create PREPARED batch, snapshot
--- exact mutation ACL (including service_role if present), REVOKE mutation
--- caller roles, verify revoke inside this transaction, COMMIT.
+-- Q0A_PRECEDES_Q1A=YES
+-- Q0A must precede Q1A (10A_SERVICE_ROLE_DML_QUIESCE_DESIGN.sql).
+-- Q1A uses the existing PREPARED batch from wave5.cutover_batch_id.
+-- Q1A_MUST_NOT_CREATE_BATCH=YES
+-- Q1A: certify control tables (batch + rpc + table-privilege snapshots),
+-- require Q0A service_role direct DML guard, snapshot exact mutation ACL
+-- (including service_role if present), REVOKE mutation caller roles, verify
+-- revoke inside this transaction, COMMIT.
 --
 -- Q1_REVOKE_COMMIT_PRECEDES_QUIESCED_SEAL=YES
 -- This transaction does NOT set quiesce_visible_at and does NOT mark QUIESCED.
 -- Post-commit seal is 07A2_QUIESCE_SEAL_DESIGN.sql.
 -- q1_committed_at is compatibility-only and is NOT written here.
 -- q1_committed_at is NOT drain authority.
+-- SERVICE_ROLE_DIRECT_DML_GUARD_DESIGNED=YES
 --
 -- CANONICAL_MUTATION_RPC_COUNT=14
 -- LEGACY_COMPAT_MUTATION_RPC_COUNT=1
@@ -126,17 +132,34 @@ CREATE TABLE IF NOT EXISTS public.wave5_cutover_rpc_privilege_snapshot (
   PRIMARY KEY (batch_id, nspname, proname, identity_args, grantee_name, privilege_type)
 );
 
+CREATE TABLE IF NOT EXISTS public.wave5_cutover_table_privilege_snapshot (
+  batch_id uuid NOT NULL REFERENCES public.wave5_club_cutover_batch (batch_id)
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
+  captured_at timestamptz NOT NULL DEFAULT now(),
+  schema_name name NOT NULL,
+  table_name name NOT NULL,
+  grantee_name text NOT NULL,
+  privilege_type text NOT NULL,
+  is_grantable boolean NOT NULL,
+  PRIMARY KEY (batch_id, schema_name, table_name, grantee_name, privilege_type)
+);
+
 COMMENT ON TABLE public.wave5_club_cutover_batch IS
   'WAVE5_SQL_DESIGN_ONLY cutover control plane. Not an application table.';
 COMMENT ON TABLE public.wave5_cutover_rpc_privilege_snapshot IS
   'WAVE5_SQL_DESIGN_ONLY capture of exact function EXECUTE ACLs before Q1 REVOKE. Restore via 07C with explicit batch_id only.';
+COMMENT ON TABLE public.wave5_cutover_table_privilege_snapshot IS
+  'WAVE5_SQL_DESIGN_ONLY capture of exact service_role Club table DML before Q0A REVOKE. Restore via 07C/07D with explicit batch_id only.';
 
 REVOKE ALL ON TABLE public.wave5_club_cutover_batch FROM PUBLIC;
 REVOKE ALL ON TABLE public.wave5_club_cutover_batch FROM anon, authenticated;
 REVOKE ALL ON TABLE public.wave5_cutover_rpc_privilege_snapshot FROM PUBLIC;
 REVOKE ALL ON TABLE public.wave5_cutover_rpc_privilege_snapshot FROM anon, authenticated;
+REVOKE ALL ON TABLE public.wave5_cutover_table_privilege_snapshot FROM PUBLIC;
+REVOKE ALL ON TABLE public.wave5_cutover_table_privilege_snapshot FROM anon, authenticated;
 ALTER TABLE public.wave5_club_cutover_batch ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wave5_cutover_rpc_privilege_snapshot ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wave5_cutover_table_privilege_snapshot ENABLE ROW LEVEL SECURITY;
 
 DO $$
 DECLARE
@@ -408,9 +431,110 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD snapshot RLS not enabled';
   END IF;
 
+  SELECT c.relkind INTO v_relkind
+  FROM pg_catalog.pg_class c
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname = 'wave5_cutover_table_privilege_snapshot';
+  IF v_relkind IS DISTINCT FROM 'r' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD wrong same-named table-privilege snapshot object relkind=%',
+      coalesce(v_relkind::text, '<missing>');
+  END IF;
+
+  SELECT string_agg(
+           format('%s:%s:%s', a.attname, format_type(a.atttypid, a.atttypmod),
+                  CASE WHEN a.attnotnull THEN 'NOTNULL' ELSE 'NULL' END),
+           ',' ORDER BY a.attnum
+         )
+    INTO v_cols
+  FROM pg_catalog.pg_attribute a
+  JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relname = 'wave5_cutover_table_privilege_snapshot'
+    AND a.attnum > 0
+    AND NOT a.attisdropped;
+  IF v_cols IS DISTINCT FROM 'batch_id:uuid:NOTNULL,captured_at:timestamp with time zone:NOTNULL,schema_name:name:NOTNULL,table_name:name:NOTNULL,grantee_name:text:NOTNULL,privilege_type:text:NOTNULL,is_grantable:boolean:NOTNULL' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD table privilege snapshot columns=%',
+      coalesce(v_cols, '<missing>');
+  END IF;
+
+  SELECT count(*) INTO v_pk_n
+  FROM pg_catalog.pg_constraint con
+  JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relname = 'wave5_cutover_table_privilege_snapshot'
+    AND con.contype = 'p';
+  SELECT string_agg(a.attname, ',' ORDER BY x.ord)
+    INTO v_pk
+  FROM pg_catalog.pg_constraint con
+  JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS x(attnum, ord) ON true
+  JOIN pg_catalog.pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = x.attnum
+  WHERE n.nspname = 'public'
+    AND c.relname = 'wave5_cutover_table_privilege_snapshot'
+    AND con.contype = 'p';
+  IF v_pk_n <> 1 OR v_pk IS DISTINCT FROM 'batch_id,schema_name,table_name,grantee_name,privilege_type' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD CONTROL_PLANE_TABLE_PRIV_SNAPSHOT_PK_EXACT=NO pk=% count=%',
+      coalesce(v_pk, '<missing>'), v_pk_n;
+  END IF;
+
+  SELECT count(*) INTO v_fk_n
+  FROM pg_catalog.pg_constraint con
+  JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relname = 'wave5_cutover_table_privilege_snapshot'
+    AND con.contype = 'f';
+  SELECT con.conname, con.confdeltype, con.confupdtype,
+         fn.nspname || '.' || ft.relname,
+         (
+           SELECT string_agg(a.attname, ',' ORDER BY x.ord)
+           FROM unnest(con.conkey) WITH ORDINALITY AS x(attnum, ord)
+           JOIN pg_catalog.pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = x.attnum
+         ),
+         (
+           SELECT string_agg(a.attname, ',' ORDER BY x.ord)
+           FROM unnest(con.confkey) WITH ORDINALITY AS x(attnum, ord)
+           JOIN pg_catalog.pg_attribute a ON a.attrelid = con.confrelid AND a.attnum = x.attnum
+         )
+    INTO v_fk, v_fk_del, v_fk_upd, v_fk_ftable, v_fk_lcols, v_fk_fcols
+  FROM pg_catalog.pg_constraint con
+  JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  JOIN pg_catalog.pg_class ft ON ft.oid = con.confrelid
+  JOIN pg_catalog.pg_namespace fn ON fn.oid = ft.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relname = 'wave5_cutover_table_privilege_snapshot'
+    AND con.contype = 'f';
+  IF v_fk IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD table privilege snapshot FK missing';
+  END IF;
+  IF v_fk_n <> 1
+     OR v_fk_ftable IS DISTINCT FROM 'public.wave5_club_cutover_batch'
+     OR v_fk_lcols IS DISTINCT FROM 'batch_id'
+     OR v_fk_fcols IS DISTINCT FROM 'batch_id'
+     OR v_fk_del IS DISTINCT FROM 'r'
+     OR v_fk_upd IS DISTINCT FROM 'r' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD CONTROL_PLANE_TABLE_PRIV_SNAPSHOT_FK_EXACT=NO n=% target=% local=% foreign=% del=% upd=%',
+      v_fk_n, coalesce(v_fk_ftable, '<missing>'), coalesce(v_fk_lcols, '<missing>'),
+      coalesce(v_fk_fcols, '<missing>'), coalesce(v_fk_del::text, '<missing>'),
+      coalesce(v_fk_upd::text, '<missing>');
+  END IF;
+
+  SELECT c.relrowsecurity INTO v_rls
+  FROM pg_catalog.pg_class c
+  JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname = 'wave5_cutover_table_privilege_snapshot';
+  IF v_rls IS NOT TRUE THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: CONTROL_PLANE_EXISTING_SCHEMA_GUARD table privilege snapshot RLS not enabled';
+  END IF;
+
   FOREACH v_tbl IN ARRAY ARRAY[
     'wave5_club_cutover_batch',
-    'wave5_cutover_rpc_privilege_snapshot'
+    'wave5_cutover_rpc_privilege_snapshot',
+    'wave5_cutover_table_privilege_snapshot'
   ]
   LOOP
     FOREACH v_priv IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']
@@ -437,7 +561,13 @@ END $$;
 
 DO $$
 DECLARE
-  v_batch uuid := gen_random_uuid();
+  v_batch uuid;
+  v_state text;
+  v_kind text;
+  v_active int;
+  v_snap_tables int;
+  v_tbl text;
+  v_priv text;
   v_oid regprocedure;
   v_canonical_present int := 0;
   v_legacy_present int := 0;
@@ -449,14 +579,110 @@ DECLARE
   v_unknown int := 0;
   r record;
 BEGIN
+  BEGIN
+    v_batch := nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '')::uuid;
+  EXCEPTION WHEN invalid_text_representation THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: wave5.cutover_batch_id is not a uuid';
+  END;
+  IF v_batch IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: explicit cutover_batch_id required — Q0A creates PREPARED batch; SET wave5.cutover_batch_id before Q1A';
+  END IF;
+
+  SELECT b.state, b.cutover_kind
+    INTO v_state, v_kind
+  FROM public.wave5_club_cutover_batch b
+  WHERE b.batch_id = v_batch
+  FOR UPDATE;
+
+  IF v_state IS NULL THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: Q0A_SERVICE_ROLE_DIRECT_DML_GUARD_REQUIRED — batch % missing',
+      v_batch;
+  END IF;
+  IF v_kind IS DISTINCT FROM 'WAVE5_CLUB_TENANT' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: batch % kind=% expected WAVE5_CLUB_TENANT',
+      v_batch, v_kind;
+  END IF;
+  IF v_state IS DISTINCT FROM 'PREPARED' THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: Q0A PREPARED batch required — state=%',
+      v_state;
+  END IF;
+
+  SELECT count(*) INTO v_active
+  FROM public.wave5_club_cutover_batch b
+  WHERE b.cutover_kind = 'WAVE5_CLUB_TENANT'
+    AND b.state NOT IN ('RESTORED', 'ABORTED');
+  IF v_active <> 1 THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: ONE_ACTIVE_CUTOVER_BATCH violated — active=%',
+      v_active;
+  END IF;
+
+  -- Q0A table-privilege snapshot for service_role on the four Club tables.
+  -- Empty snapshot is allowed only when Q0A found no capturable grants; when
+  -- rows exist they must cover all four tables and certified privileges only.
   IF EXISTS (
     SELECT 1
-    FROM public.wave5_club_cutover_batch b
-    WHERE b.cutover_kind = 'WAVE5_CLUB_TENANT'
-      AND b.state NOT IN ('RESTORED', 'ABORTED')
+    FROM public.wave5_cutover_table_privilege_snapshot s
+    WHERE s.batch_id = v_batch
+      AND (
+        s.grantee_name IS DISTINCT FROM 'service_role'
+        OR s.schema_name IS DISTINCT FROM 'public'
+        OR s.table_name NOT IN (
+          'clubs',
+          'club_members',
+          'club_governance_assignments',
+          'club_membership_requests_v42'
+        )
+        OR s.privilege_type NOT IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+      )
   ) THEN
-    RAISE EXCEPTION 'WAVE5_Q1_ABORT: ONE_ACTIVE_CUTOVER_BATCH violated — active Wave5 Club batch already exists';
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: Q0A_SERVICE_ROLE_DIRECT_DML_GUARD_REQUIRED — table privilege snapshot out of scope';
   END IF;
+
+  SELECT count(DISTINCT s.table_name) INTO v_snap_tables
+  FROM public.wave5_cutover_table_privilege_snapshot s
+  WHERE s.batch_id = v_batch
+    AND s.grantee_name = 'service_role'
+    AND s.schema_name = 'public'
+    AND s.table_name IN (
+      'clubs',
+      'club_members',
+      'club_governance_assignments',
+      'club_membership_requests_v42'
+    )
+    AND s.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE');
+
+  -- Require Q0A snapshot rows for service_role on the 4 Club tables when any
+  -- capturable grants existed. Empty-capture (0) is allowed only with DENIED below.
+  IF v_snap_tables IS DISTINCT FROM 0 AND v_snap_tables IS DISTINCT FROM 4 THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: Q0A_SERVICE_ROLE_DIRECT_DML_GUARD_REQUIRED';
+  END IF;
+  IF v_snap_tables = 0
+     AND EXISTS (
+       SELECT 1
+       FROM public.wave5_cutover_table_privilege_snapshot s
+       WHERE s.batch_id = v_batch
+     ) THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: Q0A_SERVICE_ROLE_DIRECT_DML_GUARD_REQUIRED';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN
+    RAISE EXCEPTION 'WAVE5_Q1_ABORT: Q0A_SERVICE_ROLE_DIRECT_DML_GUARD_REQUIRED — service_role missing';
+  END IF;
+
+  FOREACH v_tbl IN ARRAY ARRAY[
+    'clubs',
+    'club_members',
+    'club_governance_assignments',
+    'club_membership_requests_v42'
+  ]
+  LOOP
+    FOREACH v_priv IN ARRAY ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']
+    LOOP
+      IF has_table_privilege('service_role', format('public.%I', v_tbl), v_priv) THEN
+        RAISE EXCEPTION 'WAVE5_Q1_ABORT: Q0A_SERVICE_ROLE_DIRECT_DML_GUARD_REQUIRED';
+      END IF;
+    END LOOP;
+  END LOOP;
 
   FOR r IN
     SELECT * FROM (
@@ -546,13 +772,7 @@ BEGIN
       v_unknown;
   END IF;
 
-  INSERT INTO public.wave5_club_cutover_batch (
-    batch_id, cutover_kind, state, created_at
-  ) VALUES (
-    v_batch, 'WAVE5_CLUB_TENANT', 'PREPARED', now()
-  );
-
-  RAISE NOTICE 'WAVE5_Q1A_CAPTURE_BATCH=% CANONICAL_MUTATION_RPC_COUNT=14 LEGACY_COMPAT_MUTATION_RPC_COUNT=% TOTAL_QUIESCE_TARGET_COUNT=15 Q1_REVOKE_COMMIT_PRECEDES_QUIESCED_SEAL=YES',
+  RAISE NOTICE 'WAVE5_Q1A_CAPTURE_BATCH=% CANONICAL_MUTATION_RPC_COUNT=14 LEGACY_COMPAT_MUTATION_RPC_COUNT=% TOTAL_QUIESCE_TARGET_COUNT=15 Q1_REVOKE_COMMIT_PRECEDES_QUIESCED_SEAL=YES Q0A_PRECEDES_Q1A=YES',
     v_batch, v_legacy_present;
 
   INSERT INTO public.wave5_cutover_rpc_privilege_snapshot (

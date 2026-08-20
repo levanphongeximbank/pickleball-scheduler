@@ -27,7 +27,11 @@ const PACKAGE_FILES = [
   "07C_RESTORE_WRITES_DESIGN.sql",
   "07D_RESTORE_INTENDED_WRITES_DESIGN.sql",
   "08_RPC_OVERWRITE_GUARD_INVENTORY.md",
+  "08B_RPC_FINGERPRINT_CERTIFICATION.md",
   "09_CANONICAL_MUTATION_SURFACE.sql",
+  "10_SERVICE_ROLE_DIRECT_DML_GUARD.md",
+  "10A_SERVICE_ROLE_DML_QUIESCE_DESIGN.sql",
+  "10B_SERVICE_ROLE_DML_VERIFY_DESIGN.sql",
 ];
 
 function readPkg(name) {
@@ -791,17 +795,37 @@ test("Round 6 L. APPLY requires durable DRAINED batch", () => {
   assert.match(apply, /v_state IS DISTINCT FROM 'DRAINED'/);
 });
 
-test("Round 6 M. all existing overwrite functions require strong fingerprint", () => {
+test("Round 6 M. existing overwrite functions require strong fingerprint certification", () => {
   const src = readPkg("02_APPLY_DESIGN.sql");
   const apply = uncommented(src);
   const inventory = readPkg("08_RPC_OVERWRITE_GUARD_INVENTORY.md");
+  const cert = readPkg("08B_RPC_FINGERPRINT_CERTIFICATION.md");
   assert.match(apply, /md5\(convert_to\(p\.prosrc, 'UTF8'\)\)/);
   assert.match(src, /EXISTING_RPC_STRONG_FINGERPRINT_COUNT=10/);
   assert.match(apply, /OWNER_REVIEW_REQUIRED/);
   assert.match(inventory, /EXISTING_RPC_STRONG_FINGERPRINT_COUNT=10/);
-  for (const name of EXISTING_APPLY_RPCS) {
-    assert.match(apply, new RegExp(`'${name}'[\\s\\S]{0,400}'UNCERTIFIED'`));
+  assert.match(inventory, /RPC_EXISTING_CERTIFIED_MATCH_COUNT=8/);
+  assert.match(inventory, /LIVE_HASH_IS_AUTHORITY=NO/);
+  assert.match(cert, /APPROVED_FINGERPRINT_SOURCE=AUTHORITATIVE_REPOSITORY_FUNCTION_BODY/);
+  assert.match(cert, /LIVE_HASH_IS_AUTHORITY=NO/);
+  // Two blocked functions remain UNCERTIFIED placeholders.
+  for (const name of ["club_create", "club_list_registry"]) {
+    assert.match(apply, new RegExp(`'${name}'[\\s\\S]{0,500}'UNCERTIFIED'`));
+    assert.match(inventory, new RegExp(`${name}[\\s\\S]{0,200}BLOCKED_BODY_MISMATCH`));
   }
+  // Eight CERTIFIED_MATCH functions must carry APPROVED_SOURCE_PROSRC_MD5 (not UNCERTIFIED).
+  assert.match(apply, /'phase42_club_canonical'[\s\S]{0,400}'871ff5136397a42f5c5718179b65aed9'/);
+  assert.match(apply, /'club_list_members'[\s\S]{0,400}'3089518678635910041656a1ae30cacd'/);
+  assert.match(apply, /'phase42_can_update_club'[\s\S]{0,400}'24f9f7e47c2dc0a166c6385811f6c43d'/);
+  assert.match(apply, /'phase42_can_assign_club_owner'[\s\S]{0,400}'509ea5949fa8389edd1c4827e1bf5779'/);
+  assert.match(apply, /'phase42_can_transfer_president'[\s\S]{0,400}'24f9f7e47c2dc0a166c6385811f6c43d'/);
+  assert.match(apply, /'club_add_member'[\s\S]{0,400}'922df1b5d672f70150ae4010bb97bed0'/);
+  assert.match(apply, /'club_restore_member'[\s\S]{0,400}'d24dbfa3f21e674f31ad509c655a7ef6'/);
+  assert.match(apply, /'club_review_membership_request'[\s\S]{0,400}'0b8ee11ef23090f8cd6e364ad2e6eb60'/);
+  // SQL helpers must declare language sql (not plpgsql) once certified.
+  assert.match(apply, /'phase42_can_update_club'[\s\S]{0,200}'sql'/);
+  assert.match(apply, /'phase42_can_assign_club_owner'[\s\S]{0,200}'sql'/);
+  assert.match(apply, /'phase42_can_transfer_president'[\s\S]{0,200}'sql'/);
 });
 
 test("Round 6 N. all 14 post-cutover command privileges are verified", () => {
@@ -1793,6 +1817,84 @@ test("Wave5 truncate rollback design forbids auto re-grant", () => {
   assert.match(rollback, /AUTO_REGRANT_TRUNCATE_ON_VERIFY_FAILURE=NO/);
   assert.match(rollback, /GRANT TRUNCATE/);
   assert.match(rollback, /not\*\* the preferred rollback|not the preferred rollback/i);
+});
+
+test("Round 11 A. Q0A service_role DML guard design is fail-closed and scoped", () => {
+  const q0a = readPkg("10A_SERVICE_ROLE_DML_QUIESCE_DESIGN.sql");
+  const body = uncommented(q0a);
+  const guard = readPkg("10_SERVICE_ROLE_DIRECT_DML_GUARD.md");
+  assert.match(q0a, /WAVE5_SQL_DESIGN_ONLY/);
+  assert.match(q0a, /OWNER_SQL_EXECUTION_GO=NO/);
+  assert.match(q0a, /DO_NOT_RUN_ON_STAGING/);
+  assert.match(q0a, /PHASE_Q0A_SERVICE_ROLE_DIRECT_DML_QUIESCE/);
+  assert.match(q0a, /Q0A_CREATES_PREPARED_BATCH=YES/);
+  assert.match(q0a, /Q1A_MUST_NOT_CREATE_BATCH=YES/);
+  assert.match(q0a, /wave5_cutover_table_privilege_snapshot/);
+  assert.match(guard, /SERVICE_ROLE_DIRECT_DML_IS_CLUB_DOMAIN_AUTHORITY=NO/);
+  assert.match(guard, /PLATFORM_DEFAULT_TABLE_PRIVILEGE_HARDENING_GAP=OPEN_SEPARATE_SCOPE/);
+  assert.doesNotMatch(body, /ALTER\s+DEFAULT\s+PRIVILEGES/i);
+  assert.doesNotMatch(body, /ALTER\s+ROLE\s+service_role/i);
+  assert.match(q0a, /SERVICE_ROLE_BYPASSRLS_UNCHANGED=YES/);
+  assert.match(body, /rolbypassrls/); // observe/verify unchanged; do not mutate role attrs
+  for (const t of [
+    "clubs",
+    "club_members",
+    "club_governance_assignments",
+    "club_membership_requests_v42",
+  ]) {
+    assert.match(q0a, new RegExp(t));
+  }
+  for (const p of ["INSERT", "UPDATE", "DELETE", "TRUNCATE"]) {
+    assert.match(q0a, new RegExp(p));
+  }
+  assert.match(body, /REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public\.%I FROM service_role/);
+  assert.match(body, /has_table_privilege\('service_role'/);
+  assert.match(q0a, /WAVE5_Q0A_ABORT/);
+});
+
+test("Round 11 B. Q1A requires Q0A guard and does not create batch", () => {
+  const q1a = readPkg("07A_QUIESCE_WRITES_DESIGN.sql");
+  const body = uncommented(q1a);
+  assert.match(q1a, /Q0A_PRECEDES_Q1A=YES|Q1A_MUST_NOT_CREATE_BATCH=YES/);
+  assert.match(q1a, /Q0A_SERVICE_ROLE_DIRECT_DML_GUARD_REQUIRED/);
+  assert.match(body, /wave5\.cutover_batch_id/);
+  assert.match(body, /wave5_cutover_table_privilege_snapshot/);
+  assert.doesNotMatch(body, /INSERT INTO public\.wave5_club_cutover_batch/);
+  assert.doesNotMatch(body, /v_batch\s*:=\s*gen_random_uuid\(\)/);
+});
+
+test("Round 11 C. Q1B / APPLY / VERIFIED reassert service_role table DML denied", () => {
+  const q1b = uncommented(readPkg("07A2_QUIESCE_SEAL_DESIGN.sql"));
+  const apply = uncommented(readPkg("02_APPLY_DESIGN.sql"));
+  const verified = uncommented(readPkg("03B_MARK_VERIFIED_DESIGN.sql"));
+  assert.match(readPkg("07A2_QUIESCE_SEAL_DESIGN.sql"), /QUIESCED_MEANS_ALL_KNOWN_WRITER_SURFACES_CLOSED=YES/);
+  assert.match(readPkg("02_APPLY_DESIGN.sql"), /APPLY_PRELOCK_SERVICE_ROLE_DIRECT_DML=DENIED/);
+  assert.match(readPkg("03B_MARK_VERIFIED_DESIGN.sql"), /VERIFIED_BEFORE_SERVICE_ROLE_RESTORE=YES/);
+  for (const src of [q1b, apply, verified]) {
+    assert.match(src, /has_table_privilege\('service_role'/);
+    assert.match(src, /TRUNCATE/);
+  }
+});
+
+test("Round 11 D. 07C/07D restore exact service_role table DML snapshot only", () => {
+  const c = readPkg("07C_RESTORE_WRITES_DESIGN.sql");
+  const d = readPkg("07D_RESTORE_INTENDED_WRITES_DESIGN.sql");
+  assert.match(c, /wave5_cutover_table_privilege_snapshot/);
+  assert.match(d, /wave5_cutover_table_privilege_snapshot/);
+  assert.match(c, /RESTORE_FINAL_TABLE_DML_EQUALS_SNAPSHOT=YES|equals snapshot/i);
+  assert.match(d, /SERVICE_ROLE_DIRECT_DML_IS_CLUB_DOMAIN_AUTHORITY=NO|not Club domain/i);
+  assert.doesNotMatch(uncommented(c), /GRANT\s+ALL\s+ON\s+TABLE\s+public\.clubs\s+TO\s+service_role/i);
+  assert.doesNotMatch(uncommented(d), /GRANT\s+ALL\s+ON\s+TABLE\s+public\.clubs\s+TO\s+service_role/i);
+  assert.doesNotMatch(uncommented(c), /ALTER\s+DEFAULT\s+PRIVILEGES/i);
+  assert.doesNotMatch(uncommented(d), /ALTER\s+DEFAULT\s+PRIVILEGES/i);
+});
+
+test("Round 11 E. post-APPLY VERIFY failure keeps service_role quiesced", () => {
+  const runbook = readPkg("07_EXECUTION_RUNBOOK.md");
+  const restore = readPkg("07C_RESTORE_WRITES_DESIGN.sql");
+  assert.match(runbook, /KEEP_WRITES_QUIESCED|POST_APPLY_VERIFY_FAILURE/);
+  assert.match(restore, /POST_APPLY_LEGACY_ACL_RESTORE=DENIED/);
+  assert.match(restore, /APPLIED|VERIFIED/);
 });
 
 

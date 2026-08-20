@@ -12,12 +12,17 @@
 -- If APPLY has COMMITTED (APPLIED/VERIFIED): do not replay legacy ACL.
 -- Replay EXACT captured EXECUTE grants including service_role mutation
 -- privileges if Q1 changed them.
+-- Also restore exact service_role Club table DML from
+-- wave5_cutover_table_privilege_snapshot (GRANT only snapshotted privileges;
+-- respect is_grantable). No generic full-DML GRANT.
 -- Do NOT GRANT a generic authenticated/public/service_role permission set.
 -- RESTORE_REQUIRES_EXPLICIT_BATCH_ID=YES
 -- LATEST_SNAPSHOT_IMPLICIT_RESTORE=DENIED
 -- RESTORE_FINAL_ACL_EQUALS_SNAPSHOT=YES
+-- RESTORE_FINAL_TABLE_DML_EQUALS_SNAPSHOT=YES
 -- ACL_RESTORE_FUNCTION_IDENTITY_AUTHORITY=APPROVED_REGPROCEDURE_OID
 -- identity_args in the snapshot is DISPLAY_IDENTITY_ARGUMENTS only.
+-- SERVICE_ROLE_DIRECT_DML_IS_CLUB_DOMAIN_AUTHORITY=NO
 
 BEGIN;
 
@@ -27,10 +32,13 @@ DECLARE
   r record;
   v_oid regprocedure;
   v_granted int := 0;
+  v_tbl_granted int := 0;
   v_state text;
   v_kind text;
   v_snap_batches int := 0;
   v_updated int := 0;
+  v_tbl text;
+  v_priv text;
 BEGIN
   BEGIN
     v_batch := nullif(btrim(current_setting('wave5.restore_batch_id', true)), '')::uuid;
@@ -247,6 +255,70 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: RESTORE_FINAL_ACL_EQUALS_SNAPSHOT=NO captured caller-role grant missing — ROLLBACK KEEP WRITES QUIESCED OWNER REVIEW REQUIRED';
   END IF;
 
+  -- Exact service_role Club table DML restore from Q0A snapshot.
+  IF EXISTS (
+    SELECT 1
+    FROM public.wave5_cutover_table_privilege_snapshot s
+    WHERE s.batch_id = v_batch
+      AND (
+        s.grantee_name IS DISTINCT FROM 'service_role'
+        OR s.schema_name IS DISTINCT FROM 'public'
+        OR s.table_name NOT IN (
+          'clubs',
+          'club_members',
+          'club_governance_assignments',
+          'club_membership_requests_v42'
+        )
+        OR s.privilege_type NOT IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+      )
+  ) THEN
+    RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: table privilege snapshot out of certified scope — ROLLBACK KEEP WRITES QUIESCED';
+  END IF;
+
+  FOR r IN
+    SELECT s.schema_name, s.table_name, s.grantee_name, s.privilege_type, s.is_grantable
+    FROM public.wave5_cutover_table_privilege_snapshot s
+    WHERE s.batch_id = v_batch
+      AND s.grantee_name = 'service_role'
+      AND s.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+  LOOP
+    EXECUTE format(
+      'GRANT %s ON TABLE %I.%I TO %I%s',
+      r.privilege_type,
+      r.schema_name,
+      r.table_name,
+      r.grantee_name,
+      CASE WHEN r.is_grantable THEN ' WITH GRANT OPTION' ELSE '' END
+    );
+    v_tbl_granted := v_tbl_granted + 1;
+  END LOOP;
+
+  -- Final effective privileges for service_role on Club tables must equal snapshot.
+  FOREACH v_tbl IN ARRAY ARRAY[
+    'clubs',
+    'club_members',
+    'club_governance_assignments',
+    'club_membership_requests_v42'
+  ]
+  LOOP
+    FOREACH v_priv IN ARRAY ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']
+    LOOP
+      IF has_table_privilege('service_role', format('public.%I', v_tbl), v_priv)
+         IS DISTINCT FROM EXISTS (
+           SELECT 1
+           FROM public.wave5_cutover_table_privilege_snapshot s
+           WHERE s.batch_id = v_batch
+             AND s.schema_name = 'public'
+             AND s.table_name = v_tbl
+             AND s.grantee_name = 'service_role'
+             AND s.privilege_type = v_priv
+         ) THEN
+        RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: RESTORE_FINAL_TABLE_DML_EQUALS_SNAPSHOT=NO on %.% — ROLLBACK KEEP WRITES QUIESCED OWNER REVIEW REQUIRED',
+          v_tbl, v_priv;
+      END IF;
+    END LOOP;
+  END LOOP;
+
   UPDATE public.wave5_club_cutover_batch
   SET state = 'ABORTED',
       aborted_at = clock_timestamp(),
@@ -259,8 +331,8 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_RESTORE_ABORT: state transition to ABORTED failed for %', v_batch;
   END IF;
 
-  RAISE NOTICE 'WAVE5_RESTORE_LEGACY_WRITES_OK batch=% replayed_execute_grants=% state=ABORTED POST_APPLY_LEGACY_ACL_RESTORE=DENIED',
-    v_batch, v_granted;
+  RAISE NOTICE 'WAVE5_RESTORE_LEGACY_WRITES_OK batch=% replayed_execute_grants=% replayed_table_dml_grants=% state=ABORTED POST_APPLY_LEGACY_ACL_RESTORE=DENIED RESTORE_FINAL_TABLE_DML_EQUALS_SNAPSHOT=YES',
+    v_batch, v_granted, v_tbl_granted;
 END $$;
 
 COMMIT;

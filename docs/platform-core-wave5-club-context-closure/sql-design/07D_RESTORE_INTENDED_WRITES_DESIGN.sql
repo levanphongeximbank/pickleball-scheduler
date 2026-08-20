@@ -17,6 +17,11 @@
 -- POST_CUTOVER_ACL_NORMALIZED=YES
 -- AUTHENTICATED_GRANT_OPTION_DENIED=YES
 -- Service role mutation entrypoints: reviewed intended state is DENIED (no generic GRANT).
+-- After VERIFIED: restore exact captured pre-cutover service_role Club table DML from
+-- wave5_cutover_table_privilege_snapshot (infrastructure capability, not Club domain authority).
+-- SERVICE_ROLE_DIRECT_DML_IS_CLUB_DOMAIN_AUTHORITY=NO
+-- RESTORE_FINAL_TABLE_DML_EQUALS_SNAPSHOT=YES
+-- anon/authenticated Club table DML remain DENIED.
 -- Legacy club_leave_my_membership():
 --   CANONICAL_COMMAND_SURFACE=NO
 --   POST_CANONICAL_RESTORE=NO
@@ -99,6 +104,10 @@ DECLARE
   v_ok int := 0;
   v_batch uuid;
   v_updated int := 0;
+  r record;
+  v_tbl_granted int := 0;
+  v_tbl text;
+  v_priv text;
 BEGIN
   IF has_function_privilege(
        'authenticated',
@@ -187,6 +196,75 @@ BEGIN
   END IF;
 
   v_batch := nullif(btrim(current_setting('wave5.cutover_batch_id', true)), '')::uuid;
+
+  -- Exact service_role Club table DML restore from Q0A snapshot (infrastructure only).
+  IF EXISTS (
+    SELECT 1
+    FROM public.wave5_cutover_table_privilege_snapshot s
+    WHERE s.batch_id = v_batch
+      AND (
+        s.grantee_name IS DISTINCT FROM 'service_role'
+        OR s.schema_name IS DISTINCT FROM 'public'
+        OR s.table_name NOT IN (
+          'clubs',
+          'club_members',
+          'club_governance_assignments',
+          'club_membership_requests_v42'
+        )
+        OR s.privilege_type NOT IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+      )
+  ) THEN
+    RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: table privilege snapshot out of certified scope';
+  END IF;
+
+  FOR r IN
+    SELECT s.schema_name, s.table_name, s.grantee_name, s.privilege_type, s.is_grantable
+    FROM public.wave5_cutover_table_privilege_snapshot s
+    WHERE s.batch_id = v_batch
+      AND s.grantee_name = 'service_role'
+      AND s.privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+  LOOP
+    EXECUTE format(
+      'GRANT %s ON TABLE %I.%I TO %I%s',
+      r.privilege_type,
+      r.schema_name,
+      r.table_name,
+      r.grantee_name,
+      CASE WHEN r.is_grantable THEN ' WITH GRANT OPTION' ELSE '' END
+    );
+    v_tbl_granted := v_tbl_granted + 1;
+  END LOOP;
+
+  FOREACH v_tbl IN ARRAY ARRAY[
+    'clubs',
+    'club_members',
+    'club_governance_assignments',
+    'club_membership_requests_v42'
+  ]
+  LOOP
+    FOREACH v_priv IN ARRAY ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']
+    LOOP
+      IF has_table_privilege('anon', format('public.%I', v_tbl), v_priv)
+         OR has_table_privilege('authenticated', format('public.%I', v_tbl), v_priv) THEN
+        RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: anon/authenticated Club table DML must remain DENIED on %.%',
+          v_tbl, v_priv;
+      END IF;
+      IF has_table_privilege('service_role', format('public.%I', v_tbl), v_priv)
+         IS DISTINCT FROM EXISTS (
+           SELECT 1
+           FROM public.wave5_cutover_table_privilege_snapshot s
+           WHERE s.batch_id = v_batch
+             AND s.schema_name = 'public'
+             AND s.table_name = v_tbl
+             AND s.grantee_name = 'service_role'
+             AND s.privilege_type = v_priv
+         ) THEN
+        RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: RESTORE_FINAL_TABLE_DML_EQUALS_SNAPSHOT=NO on %.%',
+          v_tbl, v_priv;
+      END IF;
+    END LOOP;
+  END LOOP;
+
   UPDATE public.wave5_club_cutover_batch
   SET state = 'RESTORED',
       writes_restored_at = clock_timestamp()
@@ -197,7 +275,8 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_RESTORE_INTENDED_ABORT: VERIFIED → RESTORED failed';
   END IF;
 
-  RAISE NOTICE 'WAVE5_RESTORE_INTENDED_WRITES_OK INTERNAL_HELPER_AUTHENTICATED_EXECUTE=DENIED POST_CUTOVER_ACL_NORMALIZED=YES AUTHENTICATED_GRANT_OPTION_DENIED=YES POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14 LEGACY_LEAVE_MY_POST_CUTOVER_STATE=QUIESCED_EXECUTE_DENIED';
+  RAISE NOTICE 'WAVE5_RESTORE_INTENDED_WRITES_OK INTERNAL_HELPER_AUTHENTICATED_EXECUTE=DENIED POST_CUTOVER_ACL_NORMALIZED=YES AUTHENTICATED_GRANT_OPTION_DENIED=YES POST_CUTOVER_MUTATION_PRIVILEGE_VERIFY_COUNT=14 LEGACY_LEAVE_MY_POST_CUTOVER_STATE=QUIESCED_EXECUTE_DENIED RESTORE_FINAL_TABLE_DML_EQUALS_SNAPSHOT=YES replayed_table_dml_grants=% SERVICE_ROLE_DIRECT_DML_IS_CLUB_DOMAIN_AUTHORITY=NO',
+    v_tbl_granted;
 END $$;
 
 COMMIT;

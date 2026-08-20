@@ -23,9 +23,12 @@ Do not apply until Owner issues a separate execution GO naming this package and 
 | `04_ROLLBACK_DESIGN.md` | documentation | App rollback vs DB rollback |
 | `05_CLUB_TENANT_TABLE_INVENTORY.md` | documentation | Tenant-bearing table classification |
 | `06_CLUB_MUTATION_RPC_INVENTORY.md` | documentation | Club mutation RPC semantics + EXECUTE privilege matrix |
-| `07_EXECUTION_RUNBOOK.md` | documentation | Pre-cutover quiesce, drain, lock order, fail-closed restore |
-| `07A_QUIESCE_WRITES_DESIGN.sql` | YES (when GO) | Q1A: PREPARED batch + ACL snapshot + REVOKE; COMMIT before seal |
-| `07A2_QUIESCE_SEAL_DESIGN.sql` | YES (when GO) | Q1B post-commit seal: PREPARED → QUIESCED + `quiesce_visible_at` |
+| `07_EXECUTION_RUNBOOK.md` | documentation | Pre-cutover Q0A→Q1A→Q1B quiesce, drain, lock order, fail-closed restore |
+| `10_SERVICE_ROLE_DIRECT_DML_GUARD.md` | documentation | Temporary service_role Club table DML maintenance-window guard architecture |
+| `10A_SERVICE_ROLE_DML_QUIESCE_DESIGN.sql` | YES (when GO) | Q0A: create PREPARED batch + snapshot/REVOKE service_role Club table DML |
+| `10B_SERVICE_ROLE_DML_VERIFY_DESIGN.sql` | NO | Read-only verify of Q0A snapshot + effective service_role DML DENIED |
+| `07A_QUIESCE_WRITES_DESIGN.sql` | YES (when GO) | Q1A: require existing PREPARED batch + Q0A guard; RPC ACL snapshot + REVOKE; COMMIT before seal |
+| `07A2_QUIESCE_SEAL_DESIGN.sql` | YES (when GO) | Q1B post-commit seal: reassert RPC + direct DML quiesced; PREPARED → QUIESCED + `quiesce_visible_at` |
 | `07B_DRAIN_VERIFY.sql` | NO | Read-only drain + pre-quiesce transaction barrier bound to `quiesce_visible_at` |
 | `07B2_MARK_DRAINED_DESIGN.sql` | YES (when GO) | Recheck drain in-transaction then QUIESCED → DRAINED |
 | `02_APPLY_STAGING_WRAPPER.sql` | session GUC | `wave5.target_env=staging` → APPLY lock_timeout 5s |
@@ -34,6 +37,7 @@ Do not apply until Owner issues a separate execution GO naming this package and 
 | `07C_RESTORE_WRITES_DESIGN.sql` | YES (when GO) | Pre-APPLY legacy ACL replay for PREPARED/QUIESCED/DRAINED only |
 | `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` | YES (when GO) | Intended public command surface after VERIFIED |
 | `08_RPC_OVERWRITE_GUARD_INVENTORY.md` | documentation | Every APPLY CREATE OR REPLACE overwrite class |
+| `08B_RPC_FINGERPRINT_CERTIFICATION.md` | documentation | Source-derived LIVE RPC fingerprint certification evidence (8 CERTIFIED_MATCH / 2 BLOCKED_BODY_MISMATCH) |
 | `09_CANONICAL_MUTATION_SURFACE.sql` | NO | Static canonical 14+1 mutation-surface VALUES/ARRAY. Not a runtime helper |
 
 ## Schema-state machine
@@ -293,11 +297,20 @@ UNBOUNDED_LOCK_WAIT=NO
 SQL_DESIGN_REVIEWED_PASS=NO
 ```
 
-Q1A (`07A`) COMMITs REVOKE in `PREPARED` without `quiesce_visible_at`. Q1B (`07A2`) is a later transaction that seals `QUIESCED` and writes `quiesce_visible_at`. Drain uses that post-commit timestamp. `q1_committed_at` is compatibility-only and is not drain authority.
+Q1A (`07A`) requires an existing Q0A `PREPARED` batch (`wave5.cutover_batch_id`) and COMMITs RPC REVOKE without `quiesce_visible_at`. Q0A (`10A`) creates that single PREPARED batch and quiesces `service_role` Club table DML. Q1B (`07A2`) is a later transaction that seals `QUIESCED` and writes `quiesce_visible_at`. Drain uses that post-commit timestamp. `q1_committed_at` is compatibility-only and is not drain authority.
 
-`03B` rechecks mutation-critical post-APPLY invariants in the same transaction that marks `VERIFIED`. A 3-RPC subset is not sufficient.
+```
+SERVICE_ROLE_DIRECT_DML_GUARD_DESIGNED=YES
+Q0A_PRECEDES_Q1A=YES
+QUIESCED_MEANS_ALL_KNOWN_WRITER_SURFACES_CLOSED=YES
+APPLY_PRELOCK_SERVICE_ROLE_DIRECT_DML=DENIED
+VERIFIED_BEFORE_SERVICE_ROLE_RESTORE=YES
+PLATFORM_DEFAULT_TABLE_PRIVILEGE_HARDENING_GAP=OPEN_SEPARATE_SCOPE
+```
 
-`07C` may restore captured ACLs only from `PREPARED` / `QUIESCED` / `DRAINED`. `APPLIED` / `VERIFIED` / `RESTORED` / `ABORTED` / `APPLYING` are denied. Failed APPLY remains `DRAINED`. Post-APPLY VERIFY failure keeps writes quiesced (`APP_ROLLBACK_KEEP_CANONICAL_DB`).
+`03B` rechecks mutation-critical post-APPLY invariants in the same transaction that marks `VERIFIED`. A 3-RPC subset is not sufficient. VERIFIED requires `service_role` Club table DML still DENIED.
+
+`07C` may restore captured ACLs (RPC + table DML snapshot) only from `PREPARED` / `QUIESCED` / `DRAINED`. `APPLIED` / `VERIFIED` / `RESTORED` / `ABORTED` / `APPLYING` are denied. Failed APPLY remains `DRAINED`. Post-APPLY VERIFY failure keeps writes quiesced (`APP_ROLLBACK_KEEP_CANONICAL_DB`) — no `07C`, `service_role` stays quiesced.
 
 ## Round 6 remediation (pending Round 7 Owner SQL review)
 
