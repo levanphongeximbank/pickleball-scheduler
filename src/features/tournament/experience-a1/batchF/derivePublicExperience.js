@@ -9,19 +9,38 @@ import { eventDisplayName } from "../batchB/eventScope.js";
 import { listTournamentEvents } from "../deriveOverview.js";
 import { projectEventMatches } from "../batchE/collectMatches.js";
 
-function sanitizePublicCourt(label) {
-  const text = String(label || "").trim();
-  if (!text) return "Sân";
-  if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(text)) {
-    return text.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "…").replace(/…+/g, "…").trim() || "Sân";
+/** Standard UUID form used for public text audit. */
+export const PUBLIC_UUID_PATTERN =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+export const PUBLIC_COURT_FALLBACK = "Sân thi đấu";
+
+/**
+ * Presentation-only public court label.
+ * Never returns "Sân " + UUID or a raw UUID. Does not invent Sân 1/2/A/B.
+ */
+export function resolvePublicCourtLabel(realCourtDisplayName, courtId = "") {
+  const display = String(realCourtDisplayName || "").trim();
+  const id = String(courtId || "").trim();
+  if (display && !PUBLIC_UUID_PATTERN.test(display) && display !== id) {
+    return display;
   }
-  return text;
+  return PUBLIC_COURT_FALLBACK;
 }
 
 function sanitizePublicMatch(row) {
+  const court = resolvePublicCourtLabel(row.court, row.courtId);
   return {
-    ...row,
-    court: sanitizePublicCourt(row.court),
+    event: row.event,
+    stage: row.stage,
+    a: row.a,
+    b: row.b,
+    time: row.time,
+    court,
+    score: row.score,
+    status: row.status,
+    // Stable React key only — not rendered as visible public text.
+    id: row.id,
   };
 }
 
@@ -107,4 +126,10 @@ export function derivePublicExperienceModel(tournament) {
     hasBracket: events.some((event) => Boolean(event.bracket)),
     mediaAvailable: false,
   };
+}
+
+/** Visible public court labels for tests / capture. */
+export function collectPublicVisibleCourtLabels(model) {
+  const rows = [...(model.liveMatches || []), ...(model.schedulePreview || [])];
+  return rows.map((row) => row.court);
 }

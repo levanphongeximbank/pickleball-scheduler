@@ -122,8 +122,29 @@ export default function IndividualPublicExperiencePage() {
               variant="contained"
               size="small"
               disabled={cta.disabled}
+              disableRipple={cta.disabled}
+              tabIndex={cta.disabled ? -1 : undefined}
+              aria-disabled={cta.disabled}
               data-testid="public-registration-cta"
-              sx={{ mt: 1.25, ...(cta.disabled ? { bgcolor: TOURNAMENT_COLOR.disabled } : {}) }}
+              sx={{
+                mt: 1.25,
+                textTransform: "none",
+                fontWeight: 800,
+                ...(cta.disabled
+                  ? {
+                      bgcolor: "rgba(255,255,255,0.95)",
+                      color: TOURNAMENT_COLOR.navy,
+                      cursor: "not-allowed",
+                      pointerEvents: "none",
+                      boxShadow: "none",
+                      "&.Mui-disabled": {
+                        bgcolor: "rgba(255,255,255,0.95)",
+                        color: TOURNAMENT_COLOR.navy,
+                        opacity: 1,
+                      },
+                    }
+                  : {}),
+              }}
             >
               {cta.label}
             </Button>

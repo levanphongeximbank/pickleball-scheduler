@@ -211,7 +211,7 @@ for (const screen of selectedScreens) {
 }
 
 
-if (!process.env.BATCH_F_ONLY) {
+if (!process.env.BATCH_F_ONLY || process.env.BATCH_F_ONLY === "23") {
 await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 90000 });
 await page.evaluate(() => {
   localStorage.setItem("pickleball-active-club-v1", "club-ecebf64c78f948ccb2b59842441eb26c");
@@ -233,6 +233,7 @@ try {
   await page.screenshot({ path: path.join(OUT, "DEBUG_PUBLIC_FAIL.png"), fullPage: true });
   throw err;
 }
+const uuidRe = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 for (const shot of PUBLIC_SCREEN.viewports) {
   await page.setViewportSize({ width: shot.width, height: shot.height });
   await page.waitForTimeout(400);
@@ -242,12 +243,31 @@ for (const shot of PUBLIC_SCREEN.viewports) {
     scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
     bodyText: document.body.innerText,
     hasSidebar: Boolean(document.querySelector('[data-testid="app-sidebar"]') || document.querySelector("nav.MuiDrawer-root")),
+    ctaText: document.querySelector('[data-testid="public-registration-cta"]')?.textContent || "",
   }));
   results.push({
     file: shot.file,
     overflow: metrics.scrollWidth > metrics.innerWidth + 2,
     titleHit: PUBLIC_SCREEN.titleRe.test(metrics.bodyText),
     adminSidebar: metrics.hasSidebar,
+    uuidLeak: uuidRe.test(metrics.bodyText),
+    cta: metrics.ctaText,
+  });
+}
+const scheduleTab = page.getByRole("tab", { name: "Lịch thi đấu" });
+if (await scheduleTab.count()) {
+  await scheduleTab.first().click();
+  await page.waitForTimeout(500);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.screenshot({ path: path.join(OUT, "23_SCHEDULE_TAB_1440.png"), fullPage: true });
+  const scheduleText = await page.evaluate(() => document.body.innerText || "");
+  results.push({
+    file: "23_SCHEDULE_TAB_1440.png",
+    overflow: false,
+    titleHit: true,
+    adminSidebar: false,
+    uuidLeak: uuidRe.test(scheduleText),
+    hasSafeCourt: scheduleText.includes("Sân thi đấu") || !/Sân\s+[0-9a-f]{8}-/i.test(scheduleText),
   });
 }
 }
@@ -255,7 +275,9 @@ for (const shot of PUBLIC_SCREEN.viewports) {
 await browser.close();
 
 const unexpectedErrors = pageErrors.filter((item) => !item.includes("node:crypto"));
-const failed = results.filter((item) => item.overflow || item.adminSidebar === true || item.titleHit === false);
+const failed = results.filter(
+  (item) => item.overflow || item.adminSidebar === true || item.titleHit === false || item.uuidLeak === true
+);
 if (failed.length || unexpectedErrors.length) {
   console.error(JSON.stringify({ failed, unexpectedErrors }, null, 2));
   process.exit(1);

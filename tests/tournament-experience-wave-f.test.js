@@ -14,6 +14,10 @@ import { deriveCompletionModel } from "../src/features/tournament/experience-a1/
 import {
   derivePublicExperienceModel,
   resolvePublicRegistrationCta,
+  resolvePublicCourtLabel,
+  collectPublicVisibleCourtLabels,
+  PUBLIC_COURT_FALLBACK,
+  PUBLIC_UUID_PATTERN,
 } from "../src/features/tournament/experience-a1/batchF/derivePublicExperience.js";
 import { resolvePresentationActions, PRESENTATION_SESSION } from "../src/features/tournament/experience-a1/batchF/presentationSessionState.js";
 import { resolveSelectedEvent, listTournamentEvents } from "../src/features/tournament/experience-a1/deriveOverview.js";
@@ -295,6 +299,47 @@ describe("tournament-experience-wave-f", () => {
     assert.equal(open.label, "Đăng ký ngay");
     assert.equal(closed.label, "Đã đóng đăng ký");
     assert.equal(closed.disabled, true);
+  });
+
+  it("SCREEN23_RAW_COURT_UUID_VISIBLE=NO", () => {
+    assert.equal(resolvePublicCourtLabel("Sân 952a6c15-a3c1-4cd4-9dee-6720bcf5e073"), PUBLIC_COURT_FALLBACK);
+    assert.equal(resolvePublicCourtLabel("952a6c15-a3c1-4cd4-9dee-6720bcf5e073"), PUBLIC_COURT_FALLBACK);
+    assert.equal(resolvePublicCourtLabel("", "65c66b97-5522-4e09-b9b0-29ec61543370"), PUBLIC_COURT_FALLBACK);
+    assert.equal(resolvePublicCourtLabel("Sân Trung tâm"), "Sân Trung tâm");
+
+    const tournament = sampleTournament([
+      {
+        id: "e-a",
+        name: "Đôi nam",
+        eventType: EVENT_TYPE.MEN_DOUBLE,
+        matches: [
+          {
+            id: "m1",
+            status: MATCH_STATUS.WAITING,
+            courtId: "952a6c15-a3c1-4cd4-9dee-6720bcf5e073",
+            scheduledStart: "13:00",
+            entryAId: "a",
+            entryBId: "b",
+          },
+        ],
+      },
+    ]);
+    const model = derivePublicExperienceModel(tournament);
+    const courts = collectPublicVisibleCourtLabels(model);
+    assert.ok(courts.length >= 1);
+    for (const label of courts) {
+      assert.equal(PUBLIC_UUID_PATTERN.test(label), false, label);
+      assert.equal(label.includes("952a6c15"), false);
+    }
+    assert.equal(model.schedulePreview[0].court, PUBLIC_COURT_FALLBACK);
+    assert.equal(model.schedulePreview[0].courtId, undefined);
+  });
+
+  it("SCREEN23_CLOSED_CTA_NON_ACTIONABLE", () => {
+    const page = readFileSync(path.join(A1_DIR, "pages/IndividualPublicExperiencePage.jsx"), "utf8");
+    assert.ok(page.includes("pointerEvents: \"none\""));
+    assert.ok(page.includes("cursor: \"not-allowed\""));
+    assert.ok(page.includes("Đã đóng đăng ký") || page.includes("cta.label"));
   });
 
   it("PROTOTYPE_FIXTURE_USED=NO and NEW_DOMAIN_AUTHORITY=NO", () => {
