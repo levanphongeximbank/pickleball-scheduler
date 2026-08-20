@@ -90,16 +90,18 @@ const CERTIFIED = [
   },
 ];
 
-const BLOCKED = [
+const ACCEPTED_LIVE = [
   {
     name: "club_create",
     source: "docs/v5/PHASE_42G_CLUB_CREATE_OWNER.sql",
     liveMd5: "cb9669f04a35e9b60242a5d3b18a5b27",
+    targetMd5: "e847c5d23e51370fe4ef1360efbaa10a",
   },
   {
     name: "club_list_registry",
     source: "docs/v5/PHASE_42C_RLS_RPC.sql",
     liveMd5: "214cb6e88de6f2d9d0e55e1f33c6e582",
+    targetMd5: "202fef07f6859107971329412b8beb3b",
   },
 ];
 
@@ -163,7 +165,10 @@ $$;`;
 test("certification set is exactly 10 existing + 3 new expected-absent", () => {
   assert.match(CERT, /RPC_EXISTING_REQUIRED_COUNT=10/);
   assert.match(CERT, /RPC_EXISTING_CERTIFIED_MATCH_COUNT=8/);
-  assert.match(CERT, /RPC_EXISTING_OWNER_ACCEPTANCE_REQUIRED_COUNT=2/);
+  assert.match(CERT, /RPC_EXISTING_OWNER_ACCEPTANCE_REQUIRED_COUNT=0/);
+  assert.match(CERT, /RPC_OWNER_ACCEPTED_CAPTURED_LIVE_COUNT=2/);
+  assert.match(CERT, /RPC_PREDECESSOR_EXECUTION_CERTIFIED_COUNT=10/);
+  assert.match(CERT, /RPC_UNCERTIFIED_COUNT=0/);
   assert.match(CERT, /RPC_EXISTING_BLOCKED_BODY_MISMATCH_COUNT=0/);
   assert.match(CERT, /RPC_NEW_EXPECTED_ABSENT_COUNT=3/);
   assert.match(CERT, /RPC_NEW_LIVE_PRESENT_COUNT=0/);
@@ -197,8 +202,9 @@ test("each CERTIFIED_MATCH RPC has source-derived MD5 matching APPLY guard", () 
   }
 });
 
-test("live-only RPCs keep predecessor != target and require Owner acceptance", () => {
-  for (const row of BLOCKED) {
+test("live-only RPCs keep predecessor != target and are Owner-accepted captured live predecessors", () => {
+  assert.equal(ACCEPTED_LIVE.length, 2);
+  for (const row of ACCEPTED_LIVE) {
     const sql = fs.readFileSync(row.source, "utf8");
     const extracted = extractProsrc(sql, row.name);
     assert.ok(extracted && !extracted.error, row.name);
@@ -206,15 +212,16 @@ test("live-only RPCs keep predecessor != target and require Owner acceptance", (
     const future = extractProsrc(APPLY, row.name);
     assert.ok(future && !future.error, row.name);
     assert.notEqual(future.md5GitLf, row.liveMd5, `${row.name} target must not copy live predecessor`);
+    assert.equal(future.md5GitLf, row.targetMd5, row.name);
     assert.match(APPLY, new RegExp(`'${row.name}'[\\s\\S]{0,500}'${row.liveMd5}'`));
     assert.match(
       APPLY,
-      /OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT/
+      new RegExp(`'${row.name}'[\\s\\S]{0,500}'OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR'`)
     );
-    assert.match(CERT, /OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT/);
+    assert.match(CERT, /OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR/);
     assert.match(
       INVENTORY,
-      new RegExp(`${row.name}[\\s\\S]{0,400}OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT`)
+      new RegExp(`${row.name}[\\s\\S]{0,400}OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR`)
     );
     assert.match(CERT, /RPC_EXISTING_BLOCKED_BODY_MISMATCH_COUNT=0/);
   }
@@ -236,6 +243,11 @@ test("APPLY aborts on UNCERTIFIED / owner / volatility / fingerprint drift", () 
   assert.match(APPLY, /unknown\/untrusted SECURITY DEFINER owner|live_owner=%/);
   assert.match(APPLY, /overload_count=%/);
   assert.match(APPLY, /v_overload <> 1/);
+  assert.match(APPLY, /prosecdef expected true/);
+  assert.match(APPLY, /search_path not public/);
+  assert.match(APPLY, /language=% expected %/);
+  assert.match(APPLY, /live_provolatile=% certified=%/);
+  assert.match(APPLY, /LIVE_RPC_CHANGED_SINCE_OWNER_EVIDENCE=YES/);
 });
 
 test("new Wave5 functions remain expected-absent pre-APPLY", () => {
@@ -280,18 +292,17 @@ end;
 
 test("two-state predecessor vs target catalog covers all 10 existing RPCs", () => {
   assert.equal(WAVE5_EXISTING_RPC_TRANSITIONS.length, 10);
-  const ownerReq = WAVE5_EXISTING_RPC_TRANSITIONS.filter(
+  const ownerAccepted = WAVE5_EXISTING_RPC_TRANSITIONS.filter(
     (r) =>
-      r.predecessorAuthority ===
-      "OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT"
+      r.predecessorAuthority === "OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR"
   );
   const hist = WAVE5_EXISTING_RPC_TRANSITIONS.filter(
     (r) => r.predecessorAuthority === "CERTIFIED_HISTORICAL_SOURCE_MATCH"
   );
   assert.equal(hist.length, 8);
-  assert.equal(ownerReq.length, 2);
+  assert.equal(ownerAccepted.length, 2);
   assert.deepEqual(
-    ownerReq.map((r) => r.name).sort(),
+    ownerAccepted.map((r) => r.name).sort(),
     ["club_create", "club_list_registry"]
   );
   for (const row of WAVE5_EXISTING_RPC_TRANSITIONS) {
@@ -307,34 +318,50 @@ test("two-state predecessor vs target catalog covers all 10 existing RPCs", () =
 
 test("pre-APPLY uses predecessor hash and post-APPLY uses target hash", () => {
   assert.match(APPLY, /PRE_APPLY_GUARD=PREDECESSOR/);
+  assert.match(APPLY, /PRE_APPLY_GUARD_USES_PREDECESSOR=YES/);
   assert.match(APPLY, /POST_APPLY_VERIFY=TARGET/);
+  assert.match(APPLY, /POST_APPLY_VERIFY_USES_TARGET=YES/);
   assert.match(APPLY, /APPROVED_PREDECESSOR_PROSRC_MD5/);
   assert.match(APPLY, /APPROVED_TARGET_PROSRC_MD5/);
   assert.match(VERIFY, /POST_APPLY_VERIFY=TARGET/);
   assert.match(VERIFY, /Never assert predecessor hashes here/);
   assert.match(CERT, /PREDECESSOR_AND_TARGET_FINGERPRINTS_DISTINCTLY_NAMED=YES/);
+  assert.match(CERT, /OWNER_ACCEPTANCE_IS_PREDECESSOR_ACCEPTANCE_ONLY=YES/);
+  assert.match(CERT, /CANONICAL_TARGET_AUTHORITY_CHANGED=NO/);
+  assert.match(CERT, /LIVE_HASH_IS_CANONICAL_AUTHORITY=NO/);
   assert.doesNotMatch(APPLY, /APPROVED_CANONICAL_MD5=cb9669f04a35e9b60242a5d3b18a5b27/);
   assert.doesNotMatch(APPLY, /APPROVED_CANONICAL_MD5=214cb6e88de6f2d9d0e55e1f33c6e582/);
   assert.match(APPLY, /v_live_fp IS DISTINCT FROM v_guard\.predecessor_fp/);
-  assert.match(APPLY, /OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_PREDECESSOR/);
-  assert.match(APPLY, /APPLY_EXECUTION_NOT_ENABLED=YES/);
+  assert.match(APPLY, /'club_create'[\s\S]{0,800}'cb9669f04a35e9b60242a5d3b18a5b27'/);
+  assert.match(APPLY, /'club_list_registry'[\s\S]{0,800}'214cb6e88de6f2d9d0e55e1f33c6e582'/);
+  assert.match(APPLY, /'e847c5d23e51370fe4ef1360efbaa10a'/);
+  assert.match(APPLY, /'202fef07f6859107971329412b8beb3b'/);
+  assert.doesNotMatch(
+    APPLY,
+    /OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_PREDECESSOR % live_prosrc_md5=% APPLY_EXECUTION_NOT_ENABLED=YES/
+  );
 });
 
 test("historical source match is required for automatic certification", () => {
   assert.match(CERT, /HISTORICAL_SOURCE_NOT_FOUND=YES/);
-  assert.match(CERT, /LIVE_ONLY_NO_HISTORICAL_SOURCE/);
+  assert.match(CERT, /LIVE_CAPTURE_NO_HISTORICAL_EXACT_SOURCE/);
+  assert.match(CERT, /LIVE_ONLY_NO_HISTORICAL_SOURCE=YES/);
   assert.match(CERT, /CLUB_CREATE_HISTORICAL_EXACT_BODY_FOUND=NO/);
   assert.match(CERT, /CLUB_LIST_REGISTRY_HISTORICAL_EXACT_BODY_FOUND=NO/);
-  assert.match(CERT, /OWNER_ACCEPTANCE_REQUIRED=YES/);
+  assert.match(CERT, /OWNER_ACCEPTANCE_REQUIRED=NO/);
+  assert.match(CERT, /OWNER_ACCEPTED=YES/);
 });
 
-test("live-only equivalent body requires Owner acceptance and does not enable APPLY", () => {
-  assert.match(CERT, /STAGING_CUTOVER_EXECUTION_READY=NO_PENDING_OWNER_PREDECESSOR_ACCEPTANCE/);
+test("Owner-accepted captured live predecessors pass the fingerprint PRE-APPLY gate", () => {
+  assert.match(CERT, /STAGING_CUTOVER_DESIGN_READY=YES/);
+  assert.match(CERT, /STAGING_CUTOVER_EXECUTION_AUTHORIZED=NO/);
+  assert.match(CERT, /STAGING_CUTOVER_EXECUTION_READY=NO_PENDING_OWNER_STAGING_CUTOVER_EXECUTION_GO/);
   assert.match(CERT, /WAVE5_APPLY_READINESS_ALL_10_CERTIFIED_MATCH=NO/);
   const createRow = APPLY.match(
-    /'club_create'[\s\S]{0,400}OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT/
+    /'club_create'[\s\S]{0,400}OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR/
   );
   assert.ok(createRow);
+  assert.match(APPLY, /UNKNOWN_OR_UNACCEPTED_PREDECESSOR_GATE/);
 });
 
 test("security / data-integrity / unknown semantic difference classifications remain blocking vocabulary", () => {
@@ -342,10 +369,11 @@ test("security / data-integrity / unknown semantic difference classifications re
   assert.match(CERT, /BLOCKED_DATA_INTEGRITY_DIFFERENCE/);
   assert.match(CERT, /BLOCKED_SEMANTIC_DIFFERENCE/);
   assert.match(CERT, /BLOCKED_UNKNOWN_PROVENANCE/);
-  assert.match(CERT, /OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT/);
+  assert.match(CERT, /OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR/);
   const allowed = [
     "CERTIFIED_HISTORICAL_SOURCE_MATCH",
     "CERTIFIED_DEPLOYMENT_ARTIFACT_MATCH",
+    "OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR",
     "OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT",
     "BLOCKED_SEMANTIC_DIFFERENCE",
     "BLOCKED_SECURITY_DIFFERENCE",
@@ -414,4 +442,13 @@ test("eight previous certifications and three expected-absent remain unchanged",
 test("service_role cutover guard comments remain intact in APPLY package", () => {
   assert.match(APPLY, /APPLY_PRELOCK_SERVICE_ROLE_DIRECT_DML=DENIED/);
   assert.doesNotMatch(APPLY, /ALTER\s+ROLE\s+service_role/i);
+});
+
+test("Q0 Q1 and APPLY are not executed by certification tests", () => {
+  assert.match(CERT, /Q0_EXECUTED=NO/);
+  assert.match(CERT, /Q1_EXECUTED=NO/);
+  assert.match(CERT, /TENANT_CUTOVER_APPLY_EXECUTED=NO/);
+  assert.match(APPLY, /OWNER_SQL_EXECUTION_GO=NO/);
+  assert.match(APPLY, /DO_NOT_RUN_ON_STAGING/);
+  assert.match(APPLY, /SQL_EXECUTED=NO/);
 });

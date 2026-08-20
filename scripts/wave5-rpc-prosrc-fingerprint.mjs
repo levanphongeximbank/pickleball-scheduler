@@ -140,7 +140,7 @@ export const WAVE5_EXISTING_RPC_TRANSITIONS = [
   {
     name: "club_create",
     sig: "public.club_create(uuid,text,text,text,text,text)",
-    predecessorAuthority: "OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT",
+    predecessorAuthority: "OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR",
     predecessorSource: null,
     predecessorMd5: "cb9669f04a35e9b60242a5d3b18a5b27",
     lineageSource: "docs/v5/PHASE_42G_CLUB_CREATE_OWNER.sql",
@@ -153,7 +153,7 @@ export const WAVE5_EXISTING_RPC_TRANSITIONS = [
   {
     name: "club_list_registry",
     sig: "public.club_list_registry(text,boolean)",
-    predecessorAuthority: "OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT",
+    predecessorAuthority: "OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR",
     predecessorSource: null,
     predecessorMd5: "214cb6e88de6f2d9d0e55e1f33c6e582",
     lineageSource: "docs/v5/PHASE_42C_RLS_RPC.sql",

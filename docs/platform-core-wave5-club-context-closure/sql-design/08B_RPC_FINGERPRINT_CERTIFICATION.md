@@ -7,39 +7,58 @@ DO_NOT_RUN_ON_STAGING
 DO_NOT_RUN_ON_PRODUCTION
 APPROVED_FINGERPRINT_SOURCE=AUTHORITATIVE_REPOSITORY_FUNCTION_BODY
 LIVE_HASH_IS_AUTHORITY=NO
+LIVE_HASH_IS_CANONICAL_AUTHORITY=NO
 REPO_CANONICAL_SOURCE_IS_AUTHORITY=YES
 LIVE_SOURCE_CAPTURE_IS_CANONICAL_AUTHORITY=NO
 STATIC_PROSRC_EXTRACTION=DETERMINISTIC_LOCAL_EXTRACTOR
 HASH_METHOD=md5(convert_to(pg_proc.prosrc, 'UTF8'))_EQUIVALENT
 PREDECESSOR_AND_TARGET_FINGERPRINTS_DISTINCTLY_NAMED=YES
 PRE_APPLY_GUARD=PREDECESSOR
+PRE_APPLY_GUARD_USES_PREDECESSOR=YES
 POST_APPLY_VERIFY=TARGET
+POST_APPLY_VERIFY_USES_TARGET=YES
+OWNER_ACCEPTANCE_DOES_NOT_DISABLE_DRIFT_GUARD=YES
+OWNER_ACCEPTANCE_IS_PREDECESSOR_ACCEPTANCE_ONLY=YES
+CANONICAL_TARGET_AUTHORITY_CHANGED=NO
 STAGING_PROJECT=qyewbxjsiiyufanzcjcq
 STAGING_READ_ONLY_FINGERPRINT_RECHECK=PASS_UNCHANGED
 RPC_EXISTING_REQUIRED_COUNT=10
 RPC_EXISTING_CERTIFIED_MATCH_COUNT=8
-RPC_EXISTING_OWNER_ACCEPTANCE_REQUIRED_COUNT=2
+RPC_HISTORICAL_SOURCE_CERTIFIED_COUNT=8
+RPC_EXISTING_OWNER_ACCEPTANCE_REQUIRED_COUNT=0
+RPC_OWNER_ACCEPTED_CAPTURED_LIVE_COUNT=2
+RPC_PREDECESSOR_EXECUTION_CERTIFIED_COUNT=10
+RPC_UNCERTIFIED_COUNT=0
 RPC_EXISTING_BLOCKED_BODY_MISMATCH_COUNT=0
 RPC_NEW_EXPECTED_ABSENT_COUNT=3
 RPC_NEW_LIVE_PRESENT_COUNT=0
 EXPECTED_ABSENT=PASS
 WAVE5_APPLY_READINESS_ALL_10_CERTIFIED_MATCH=NO
-STAGING_CUTOVER_EXECUTION_READY=NO_PENDING_OWNER_PREDECESSOR_ACCEPTANCE
+STAGING_CUTOVER_DESIGN_READY=YES
+STAGING_CUTOVER_EXECUTION_AUTHORIZED=NO
+STAGING_CUTOVER_EXECUTION_READY=NO_PENDING_OWNER_STAGING_CUTOVER_EXECUTION_GO
 HISTORICAL_SOURCE_NOT_FOUND=YES
-OWNER_ACCEPTANCE_REQUIRED=YES
+OWNER_ACCEPTANCE_REQUIRED=NO
+OWNER_ACCEPTED=YES
+Q0_EXECUTED=NO
+Q1_EXECUTED=NO
+TENANT_CUTOVER_APPLY_EXECUTED=NO
+STAGING_QUERIED_IN_THIS_PHASE=NO
+STAGING_MUTATED_IN_THIS_PHASE=NO
 ```
 
 Predecessor classification for each function is exactly one of:
 
 `CERTIFIED_HISTORICAL_SOURCE_MATCH` |
 `CERTIFIED_DEPLOYMENT_ARTIFACT_MATCH` |
+`OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR` |
 `OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT` |
 `BLOCKED_SEMANTIC_DIFFERENCE` |
 `BLOCKED_SECURITY_DIFFERENCE` |
 `BLOCKED_DATA_INTEGRITY_DIFFERENCE` |
 `BLOCKED_UNKNOWN_PROVENANCE`
 
-Do not invent another vague status. The two live-only RPCs are `OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT`, not a `BLOCKED_*` mismatch.
+Do not invent another vague status. The two live-only RPCs are `OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR`. That is predecessor-acceptance only — not canonical-source authority.
 
 ## Two-state model
 
@@ -70,8 +89,8 @@ Git blobs are LF. Eight historically certified functions store CRLF on Staging. 
 | APPROVED_SIGNATURE | PREDECESSOR_AUTHORITY | APPROVED_PREDECESSOR_PROSRC_MD5 | TARGET_SOURCE | APPROVED_TARGET_PROSRC_MD5 | PRE_APPLY_GUARD | POST_APPLY_VERIFY | STATUS |
 |---|---|---|---|---|---|---|---|
 | `public.phase42_club_canonical(text)` | CERTIFIED_HISTORICAL_SOURCE_MATCH | `871ff5136397a42f5c5718179b65aed9` | `02_APPLY_DESIGN.sql` | `1dccf73c5ee25b96376371e1f89a9dac` | PREDECESSOR | TARGET | CERTIFIED_MATCH |
-| `public.club_create(uuid,text,text,text,text,text)` | OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT | `cb9669f04a35e9b60242a5d3b18a5b27` | `02_APPLY_DESIGN.sql` | `e847c5d23e51370fe4ef1360efbaa10a` | PREDECESSOR | TARGET | OWNER_ACCEPTANCE_REQUIRED |
-| `public.club_list_registry(text,boolean)` | OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT | `214cb6e88de6f2d9d0e55e1f33c6e582` | `02_APPLY_DESIGN.sql` | `202fef07f6859107971329412b8beb3b` | PREDECESSOR | TARGET | OWNER_ACCEPTANCE_REQUIRED |
+| `public.club_create(uuid,text,text,text,text,text)` | OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR | `cb9669f04a35e9b60242a5d3b18a5b27` | `02_APPLY_DESIGN.sql` | `e847c5d23e51370fe4ef1360efbaa10a` | PREDECESSOR | TARGET | EXECUTION_CERTIFIED |
+| `public.club_list_registry(text,boolean)` | OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR | `214cb6e88de6f2d9d0e55e1f33c6e582` | `02_APPLY_DESIGN.sql` | `202fef07f6859107971329412b8beb3b` | PREDECESSOR | TARGET | EXECUTION_CERTIFIED |
 | `public.club_list_members(text)` | CERTIFIED_HISTORICAL_SOURCE_MATCH | `3089518678635910041656a1ae30cacd` | `02_APPLY_DESIGN.sql` | `a497610e6d2d905fe02b7aa2b67724ea` | PREDECESSOR | TARGET | CERTIFIED_MATCH |
 | `public.phase42_can_update_club(text)` | CERTIFIED_HISTORICAL_SOURCE_MATCH | `24f9f7e47c2dc0a166c6385811f6c43d` | `02_APPLY_DESIGN.sql` | `969ce4b24e48632045ae75f4e8b9ca14` | PREDECESSOR | TARGET | CERTIFIED_MATCH |
 | `public.phase42_can_assign_club_owner(text)` | CERTIFIED_HISTORICAL_SOURCE_MATCH | `509ea5949fa8389edd1c4827e1bf5779` | `02_APPLY_DESIGN.sql` | `17491a5d3df2b96da44f5bececdb257e` | PREDECESSOR | TARGET | CERTIFIED_MATCH |
@@ -119,9 +138,18 @@ Deployment docs (`PHASE_42G_CLUB_CREATE_OWNER.md`, `PHASE_42K_*`) describe apply
 
 ```
 CLUB_CREATE_HISTORICAL_EXACT_BODY_FOUND=NO
-CLUB_CREATE_PREDECESSOR_PROVENANCE=LIVE_ONLY_NO_HISTORICAL_SOURCE
+CLUB_CREATE_PREDECESSOR_PROVENANCE=LIVE_CAPTURE_NO_HISTORICAL_EXACT_SOURCE
+CLUB_CREATE_OWNER_ACCEPTED=YES
+CLUB_CREATE_PREDECESSOR_MD5=cb9669f04a35e9b60242a5d3b18a5b27
+CLUB_CREATE_TARGET_MD5=e847c5d23e51370fe4ef1360efbaa10a
 CLUB_LIST_REGISTRY_HISTORICAL_EXACT_BODY_FOUND=NO
-CLUB_LIST_REGISTRY_PREDECESSOR_PROVENANCE=LIVE_ONLY_NO_HISTORICAL_SOURCE
+CLUB_LIST_REGISTRY_PREDECESSOR_PROVENANCE=LIVE_CAPTURE_NO_HISTORICAL_EXACT_SOURCE
+CLUB_LIST_REGISTRY_OWNER_ACCEPTED=YES
+CLUB_LIST_REGISTRY_PREDECESSOR_MD5=214cb6e88de6f2d9d0e55e1f33c6e582
+CLUB_LIST_REGISTRY_TARGET_MD5=202fef07f6859107971329412b8beb3b
+OWNER_ACCEPTANCE_IS_PREDECESSOR_ACCEPTANCE_ONLY=YES
+CANONICAL_TARGET_AUTHORITY_CHANGED=NO
+LIVE_ONLY_NO_HISTORICAL_SOURCE=YES
 ```
 
 ## Live Staging capture (read-only)
@@ -143,7 +171,15 @@ RPCs were **not** invoked. Catalog only.
 
 ## `club_create` predecessor notes
 
-`PREDECESSOR_CLASSIFICATION=OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT`
+`PREDECESSOR_CLASSIFICATION=OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR`
+
+`PREDECESSOR_PROVENANCE=LIVE_CAPTURE_NO_HISTORICAL_EXACT_SOURCE`
+
+`OWNER_ACCEPTED=YES`
+
+`PREDECESSOR_MD5=cb9669f04a35e9b60242a5d3b18a5b27`
+
+`TARGET_MD5=e847c5d23e51370fe4ef1360efbaa10a`
 
 Versus Phase 42G lineage: same control flow, same error **codes**, same inserts, same SA skip, no `profiles.role` / `profiles.club_id` writes. Differences: SQL comments omitted (`COMMENT_ONLY`); Vietnamese `phase42_err` **messages** ASCII-folded (`ERROR_MESSAGE_TEXT_ONLY`). Codes / branches / return envelope unchanged.
 
@@ -151,11 +187,19 @@ Versus Phase 42G lineage: same control flow, same error **codes**, same inserts,
 
 Versus Wave5 APPLY target: intended cutover (Platform Tenant existence, registered-cluster validation, audit `scope_semantics`). Predecessor ≠ target is valid.
 
-APPLY must **not** overwrite until Owner accepts this captured live predecessor. If live MD5 changes, abort (`LIVE_RPC_CHANGED_SINCE_OWNER_EVIDENCE`).
+APPLY must **not** overwrite unless this exact captured live predecessor still matches, including owner / SECURITY DEFINER / search_path / volatility / language / overload. If live MD5 changes, abort (`LIVE_RPC_CHANGED_SINCE_OWNER_EVIDENCE`). Owner acceptance does not treat the live hash as canonical target authority.
 
 ## `club_list_registry` predecessor notes
 
-`PREDECESSOR_CLASSIFICATION=OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT`
+`PREDECESSOR_CLASSIFICATION=OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR`
+
+`PREDECESSOR_PROVENANCE=LIVE_CAPTURE_NO_HISTORICAL_EXACT_SOURCE`
+
+`OWNER_ACCEPTED=YES`
+
+`PREDECESSOR_MD5=214cb6e88de6f2d9d0e55e1f33c6e582`
+
+`TARGET_MD5=202fef07f6859107971329412b8beb3b`
 
 `REGISTRY_LIVE_DIFF=FORMATTING_ONLY` versus `PHASE_42C_RLS_RPC.sql` after structural SQL normalization (predicates, joins, WHERE, ORDER BY inside `jsonb_agg`, authorization calls, result envelope).
 
@@ -171,11 +215,14 @@ Versus Wave5 APPLY target: `phase42_is_tenant_member` → `platform_is_canonical
 
 ## APPLY / VERIFY implications
 
-- PRE-APPLY: exact `APPROVED_PREDECESSOR_PROSRC_MD5` + owner/volatility/language/overload/prosecdef/search_path.
-- The two live-only functions additionally abort `OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_PREDECESSOR` even when the predecessor hash matches (APPLY execution not enabled).
-- POST-APPLY: newline-canonical LF `APPROVED_TARGET_PROSRC_MD5` from this APPLY file. Predecessor mismatch must not be “fixed” by rewriting the target to the live hash.
+- PRE-APPLY: exact `APPROVED_PREDECESSOR_PROSRC_MD5` + owner/volatility/language/overload/prosecdef/search_path. `PRE_APPLY_GUARD_USES_PREDECESSOR=YES`.
+- The two live-only functions are `OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR`. Matching predecessor fingerprint + security attributes authorizes CREATE OR REPLACE of the Wave5 target. Wrong live MD5, owner, SECURITY DEFINER, search_path, volatility, language, or overload still aborts. Owner acceptance does not disable the drift guard.
+- POST-APPLY: newline-canonical LF `APPROVED_TARGET_PROSRC_MD5` from this APPLY file. `POST_APPLY_VERIFY_USES_TARGET=YES`. Predecessor mismatch must not be “fixed” by rewriting the target to the live hash.
 - Eight CERTIFIED_HISTORICAL_SOURCE_MATCH predecessors remain unchanged.
 - `UNCERTIFIED` remains a fail-closed sentinel if a row is left without a predecessor hash.
+- `OWNER_ACCEPTANCE_IS_PREDECESSOR_ACCEPTANCE_ONLY=YES`
+- `CANONICAL_TARGET_AUTHORITY_CHANGED=NO`
+- This document does not execute Q0, Q1, or Tenant cutover APPLY.
 
 ## club_create semantic diff (predecessor vs Wave5 APPLY target)
 
@@ -210,7 +257,7 @@ Versus Wave5 APPLY target: `phase42_is_tenant_member` → `platform_is_canonical
 
 `ASCII_FOLDED_RUNTIME_LITERAL_IMPACT=HUMAN_MESSAGE_ONLY` — error **codes**, branching, and structured `ok/code/error` envelope are unchanged vs 42G; only human-readable `error` text is folded.
 
-Versus 42G lineage (not Wave5 target): no unknown security or data-integrity difference. Guarded replacement to Wave5 target is understood and remains Owner-gated because historical exact body was not found.
+Versus 42G lineage (not Wave5 target): no unknown security or data-integrity difference. Guarded replacement to Wave5 target uses the Owner-accepted live predecessor fingerprint, not the 42G lineage hash.
 
 ## club_list_registry semantic diff (predecessor vs Wave5 APPLY target)
 

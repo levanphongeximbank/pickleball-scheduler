@@ -808,15 +808,15 @@ test("Round 6 M. existing overwrite functions require strong fingerprint certifi
   assert.match(inventory, /LIVE_HASH_IS_AUTHORITY=NO/);
   assert.match(cert, /APPROVED_FINGERPRINT_SOURCE=AUTHORITATIVE_REPOSITORY_FUNCTION_BODY/);
   assert.match(cert, /LIVE_HASH_IS_AUTHORITY=NO/);
-  // Two live-only predecessors require Owner acceptance; hashes are encoded, APPLY still aborts.
+  // Two live-only predecessors are Owner-accepted captured live; hashes remain encoded.
   for (const name of ["club_create", "club_list_registry"]) {
     assert.match(
       apply,
-      new RegExp(`'${name}'[\\s\\S]{0,500}'OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT'`)
+      new RegExp(`'${name}'[\\s\\S]{0,500}'OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR'`)
     );
     assert.match(
       inventory,
-      new RegExp(`${name}[\\s\\S]{0,400}OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT`)
+      new RegExp(`${name}[\\s\\S]{0,400}OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR`)
     );
   }
   // Eight CERTIFIED_MATCH functions must carry APPROVED_PREDECESSOR_PROSRC_MD5 (not UNCERTIFIED).

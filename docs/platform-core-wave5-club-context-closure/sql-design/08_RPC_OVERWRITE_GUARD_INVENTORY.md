@@ -10,9 +10,13 @@ DYNAMIC_RPC_TEXT_REWRITE_PRESENT=NO
 RPC_FINGERPRINT_LIVE_CERTIFICATION_REQUIRED=YES
 APPROVED_FINGERPRINT_SOURCE=AUTHORITATIVE_REPOSITORY_FUNCTION_BODY
 LIVE_HASH_IS_AUTHORITY=NO
+LIVE_HASH_IS_CANONICAL_AUTHORITY=NO
 EXISTING_RPC_STRONG_FINGERPRINT_COUNT=10
 RPC_EXISTING_CERTIFIED_MATCH_COUNT=8
-RPC_EXISTING_OWNER_ACCEPTANCE_REQUIRED_COUNT=2
+RPC_EXISTING_OWNER_ACCEPTANCE_REQUIRED_COUNT=0
+RPC_OWNER_ACCEPTED_CAPTURED_LIVE_COUNT=2
+RPC_PREDECESSOR_EXECUTION_CERTIFIED_COUNT=10
+RPC_UNCERTIFIED_COUNT=0
 RPC_EXISTING_BLOCKED_BODY_MISMATCH_COUNT=0
 NEW_WAVE5_FUNCTION_STRONG_GUARD_COUNT=3
 CERTIFICATION_EVIDENCE=08B_RPC_FINGERPRINT_CERTIFICATION.md
@@ -31,7 +35,7 @@ Gate for existing overwrite candidates (not pretty-print alone):
 9. post-APPLY target fingerprint = newline-canonical LF MD5 as **APPROVED_TARGET_PROSRC_MD5**
 
 Eight functions are **CERTIFIED_HISTORICAL_SOURCE_MATCH** (historical source MD5 == Staging live predecessor).
-Two (`club_create`, `club_list_registry`) are **OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT** — live predecessor MD5 is encoded for the pre-APPLY guard but APPLY still aborts until Owner accepts the captured live predecessor. Live hash is not canonical target authority. Unknown owner, `UNCERTIFIED` sentinel, predecessor mismatch, or target post-write mismatch → `WAVE5_APPLY_ABORT_RPC_BODY_DRIFT`. Do not `ALTER OWNER` in this package.
+Two (`club_create`, `club_list_registry`) are **OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR** — Owner accepted those exact live predecessor MD5s as pre-cutover current-state evidence. PRE-APPLY still requires exact predecessor fingerprint + owner / SECURITY DEFINER / search_path / volatility / language / overload. POST-APPLY still requires canonical target MD5. Live hash is not canonical target authority. Unknown owner, `UNCERTIFIED` sentinel, predecessor mismatch, or target post-write mismatch → `WAVE5_APPLY_ABORT_RPC_BODY_DRIFT`. Do not `ALTER OWNER` in this package.
 
 `pg_get_functiondef` remains supporting validation only.
 
@@ -43,8 +47,8 @@ Two (`club_create`, `club_list_registry`) are **OWNER_ACCEPTANCE_REQUIRED_CAPTUR
 | `wave5_resolve_club_facility_venue_id` | `(text)` | NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED | create OK | ABORT | same + application-role EXECUTE DENIED | EXPECTED_ABSENT |
 | `wave5_ensure_athlete_for_club_member` | `(uuid, text, text)` | NEW_WAVE5_FUNCTION_EXPECTED_ABSENT_OR_CERTIFIED | create OK | ABORT | same + application-role EXECUTE DENIED | EXPECTED_ABSENT |
 | `phase42_club_canonical` | `(text)` | EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY | ABORT signature | ABORT body | PREDECESSOR=`871ff5136397a42f5c5718179b65aed9` TARGET=`1dccf73c5ee25b96376371e1f89a9dac` owner=`postgres` vol=`s` lang=`plpgsql` | CERTIFIED_MATCH |
-| `club_create` | `(uuid, text, text, text, text, text)` | EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY | ABORT | ABORT | PREDECESSOR=`cb9669f04a35e9b60242a5d3b18a5b27` TARGET=`e847c5d23e51370fe4ef1360efbaa10a` OWNER_ACCEPTANCE_REQUIRED | OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT |
-| `club_list_registry` | `(text, boolean)` | EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY | ABORT | ABORT | PREDECESSOR=`214cb6e88de6f2d9d0e55e1f33c6e582` TARGET=`202fef07f6859107971329412b8beb3b` OWNER_ACCEPTANCE_REQUIRED | OWNER_ACCEPTANCE_REQUIRED_CAPTURED_LIVE_EQUIVALENT |
+| `club_create` | `(uuid, text, text, text, text, text)` | EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY | ABORT | ABORT | PREDECESSOR=`cb9669f04a35e9b60242a5d3b18a5b27` TARGET=`e847c5d23e51370fe4ef1360efbaa10a` PRE_APPLY=PREDECESSOR POST_APPLY=TARGET | OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR |
+| `club_list_registry` | `(text, boolean)` | EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY | ABORT | ABORT | PREDECESSOR=`214cb6e88de6f2d9d0e55e1f33c6e582` TARGET=`202fef07f6859107971329412b8beb3b` PRE_APPLY=PREDECESSOR POST_APPLY=TARGET | OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR |
 | `club_list_members` | `(text)` | EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY | ABORT | ABORT | PREDECESSOR=`3089518678635910041656a1ae30cacd` TARGET=`a497610e6d2d905fe02b7aa2b67724ea` owner=`postgres` vol=`v` lang=`plpgsql` | CERTIFIED_MATCH |
 | `phase42_can_update_club` | `(text)` | EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY | ABORT | ABORT | PREDECESSOR=`24f9f7e47c2dc0a166c6385811f6c43d` TARGET=`969ce4b24e48632045ae75f4e8b9ca14` owner=`postgres` vol=`s` lang=`sql` | CERTIFIED_MATCH |
 | `phase42_can_assign_club_owner` | `(text)` | EXISTING_FUNCTION_EXPECTED_CERTIFIED_BODY | ABORT | ABORT | PREDECESSOR=`509ea5949fa8389edd1c4827e1bf5779` TARGET=`17491a5d3df2b96da44f5bececdb257e` owner=`postgres` vol=`s` lang=`sql` | CERTIFIED_MATCH |

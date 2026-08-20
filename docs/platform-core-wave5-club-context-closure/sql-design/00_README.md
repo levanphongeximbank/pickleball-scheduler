@@ -37,7 +37,7 @@ Do not apply until Owner issues a separate execution GO naming this package and 
 | `07C_RESTORE_WRITES_DESIGN.sql` | YES (when GO) | Pre-APPLY legacy ACL replay for PREPARED/QUIESCED/DRAINED only |
 | `07D_RESTORE_INTENDED_WRITES_DESIGN.sql` | YES (when GO) | Intended public command surface after VERIFIED |
 | `08_RPC_OVERWRITE_GUARD_INVENTORY.md` | documentation | Every APPLY CREATE OR REPLACE overwrite class |
-| `08B_RPC_FINGERPRINT_CERTIFICATION.md` | documentation | Predecessor vs target RPC fingerprint certification (8 CERTIFIED_MATCH / 2 OWNER_ACCEPTANCE_REQUIRED) |
+| `08B_RPC_FINGERPRINT_CERTIFICATION.md` | documentation | Predecessor vs target RPC fingerprint certification (8 CERTIFIED_HISTORICAL_SOURCE_MATCH / 2 OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR) |
 | `09_CANONICAL_MUTATION_SURFACE.sql` | NO | Static canonical 14+1 mutation-surface VALUES/ARRAY. Not a runtime helper |
 
 ## Schema-state machine
