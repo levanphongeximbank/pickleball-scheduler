@@ -133,6 +133,19 @@ describe("tournament-experience-wave-f", () => {
     const page = readFileSync(path.join(A1_DIR, "pages/IndividualCommunicationsPage.jsx"), "utf8");
     assert.ok(page.includes("disabled"));
     assert.ok(page.includes("Chưa hỗ trợ gửi thông báo"));
+    assert.ok(page.includes("Chưa hỗ trợ chọn phạm vi người nhận trên màn này."));
+    assert.ok(page.includes("UnavailableChipRow"));
+    assert.equal(page.includes("setAudience"), false);
+    assert.equal(page.includes('value={audience}'), false);
+    assert.equal(page.includes("color=\"primary\""), false);
+    assert.ok(/variant="contained"[\s\S]*disabled>\s*Gửi/.test(page) || page.includes("disabled>Gửi"));
+    assert.ok(page.includes("disabled>Lên lịch"));
+  });
+
+  it("SCREEN19_TARGETING_CONTROLS_OPERATIONAL=NO", () => {
+    const page = readFileSync(path.join(A1_DIR, "pages/IndividualCommunicationsPage.jsx"), "utf8");
+    assert.ok(page.includes('clickable={false}'));
+    assert.ok(page.includes("communications-audience-scopes"));
   });
 
   it("SCREEN20_PRESENTATION_STATE_ACTIONS_CONSISTENT=PASS", () => {

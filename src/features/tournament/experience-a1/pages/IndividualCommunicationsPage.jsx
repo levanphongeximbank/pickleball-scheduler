@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Button, Grid, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { Button, Chip, Grid, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from "@mui/material";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
@@ -15,7 +14,7 @@ import {
   ExperienceBatchBFrame,
 } from "../batchB/ExperienceBatchBFrame.jsx";
 import { eventDisplayName } from "../batchB/eventScope.js";
-import { CompetitionContextHeader, StageSelector } from "../batchD/ExperienceBatchDSurfaces.jsx";
+import { CompetitionContextHeader } from "../batchD/ExperienceBatchDSurfaces.jsx";
 import CenterKpiCard from "../visual/CenterKpiCard.jsx";
 import CenterRightRailCard from "../visual/CenterRightRailCard.jsx";
 import ExperienceChipRow from "../visual/ExperienceChipRow.jsx";
@@ -38,6 +37,36 @@ const AUDIENCE_ITEMS = [
   { id: "individual", label: "Cá nhân" },
 ];
 
+const TIMING_ITEMS = [
+  { id: "now", label: "Gửi ngay" },
+  { id: "schedule", label: "Lên lịch" },
+];
+
+function UnavailableChipRow({ items, testId }) {
+  return (
+    <Stack
+      direction="row"
+      spacing={0.5}
+      useFlexGap
+      data-testid={testId}
+      sx={{ mb: 1.25, flexWrap: "wrap" }}
+    >
+      {items.map((item) => (
+        <Chip
+          key={item.id}
+          label={item.label}
+          size="small"
+          disabled
+          clickable={false}
+          color="default"
+          variant="outlined"
+          sx={{ opacity: 0.72 }}
+        />
+      ))}
+    </Stack>
+  );
+}
+
 export default function IndividualCommunicationsPage() {
   const { tournamentId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -45,10 +74,8 @@ export default function IndividualCommunicationsPage() {
   const { activeClub, revision } = useClub();
   const { tournament, loading, error } = useCanonicalTournament(activeClub, tournamentId, revision);
   const selectedEventId = searchParams.get("eventId") || "all";
-  const [audience, setAudience] = useState("tournament");
-  const [timing, setTiming] = useState("now");
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
+  const title = "";
+  const body = "";
 
   if (loading) return <BatchBLoading testId={TEST_ID} title={TITLE} subtitle={SUBTITLE} message="Đang tải truyền thông…" />;
   if (error) return <BatchBError testId={TEST_ID} title={TITLE} subtitle={SUBTITLE} error={error} />;
@@ -76,7 +103,7 @@ export default function IndividualCommunicationsPage() {
       }
     >
       <BatchFNav tournamentId={tournamentId} eventId={selectedEventId === "all" ? "" : selectedEventId} current="communications" />
-      <CompetitionContextHeader tournament={model.tournamentName} event={model.eventName} extra="Nhắm đối tượng trên hồ sơ" />
+      <CompetitionContextHeader tournament={model.tournamentName} event={model.eventName} extra="Chưa hỗ trợ chọn phạm vi người nhận" />
       <Grid container spacing={1.25} sx={{ mb: 1.5 }}>
         <Grid size={{ xs: 6, sm: true }}><CenterKpiCard label="Đã gửi hôm nay" value={model.kpis.sentToday} /></Grid>
         <Grid size={{ xs: 6, sm: true }}><CenterKpiCard label="Đã lên lịch" value={model.kpis.scheduled} /></Grid>
@@ -99,7 +126,7 @@ export default function IndividualCommunicationsPage() {
               <Typography sx={{ fontSize: 13, fontWeight: 700, mt: 0.5 }}>{title || "Tiêu đề thông báo"}</Typography>
               <Typography sx={{ fontSize: 12.5 }}>{body || "Nội dung thông báo"}</Typography>
               <Typography sx={{ fontSize: 11.5, color: TOURNAMENT_COLOR.textMuted, mt: 0.75 }}>
-                Đối tượng: {AUDIENCE_ITEMS.find((item) => item.id === audience)?.label || audience} • {timing === "now" ? "Gửi ngay" : "Lên lịch"}
+                Đối tượng: chưa hỗ trợ chọn phạm vi người nhận
               </Typography>
             </CenterRightRailCard>
             <CenterRightRailCard title="Tự động hóa">
@@ -111,19 +138,15 @@ export default function IndividualCommunicationsPage() {
         }
       >
         <ExperienceSectionTitle>Đối tượng</ExperienceSectionTitle>
-        <ExperienceChipRow value={audience} onChange={setAudience} items={AUDIENCE_ITEMS} />
+        <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted, mb: 0.75 }}>
+          Chưa hỗ trợ chọn phạm vi người nhận trên màn này.
+        </Typography>
+        <UnavailableChipRow items={AUDIENCE_ITEMS} testId="communications-audience-scopes" />
         <ExperienceSectionTitle>Soạn thông báo</ExperienceSectionTitle>
         <Stack spacing={1.25} sx={{ mb: 1.5 }}>
-          <TextField size="small" label="Tiêu đề" value={title} onChange={(e) => setTitle(e.target.value)} disabled />
-          <TextField size="small" multiline minRows={3} label="Nội dung" value={body} onChange={(e) => setBody(e.target.value)} disabled />
-          <StageSelector
-            value={timing}
-            onChange={setTiming}
-            items={[
-              { id: "now", label: "Gửi ngay" },
-              { id: "schedule", label: "Lên lịch" },
-            ]}
-          />
+          <TextField size="small" label="Tiêu đề" value={title} disabled />
+          <TextField size="small" multiline minRows={3} label="Nội dung" value={body} disabled />
+          <UnavailableChipRow items={TIMING_ITEMS} testId="communications-timing-scopes" />
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
             <span title="Chưa hỗ trợ gửi thông báo từ màn này.">
               <Button variant="outlined" size="small" disabled>Xem trước</Button>

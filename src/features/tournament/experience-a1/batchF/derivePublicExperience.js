@@ -24,6 +24,8 @@ function sanitizePublicMatch(row) {
     court: sanitizePublicCourt(row.court),
   };
 }
+
+function publicStatusLabel(status) {
   if (status === TOURNAMENT_STATUS.ACTIVE) return "ĐANG DIỄN RA";
   if (status === TOURNAMENT_STATUS.REGISTRATION) return "ĐANG MỞ ĐĂNG KÝ";
   if (status === TOURNAMENT_STATUS.COMPLETED) return "ĐÃ HOÀN TẤT";

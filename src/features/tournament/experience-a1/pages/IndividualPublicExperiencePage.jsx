@@ -80,12 +80,6 @@ export default function IndividualPublicExperiencePage() {
       </Box>
     );
   }
-    return (
-      <Box sx={{ minHeight: "100dvh", bgcolor: TOURNAMENT_COLOR.pageBg, p: 3 }} data-testid={TEST_ID}>
-        <Typography>Đang tải trang công khai…</Typography>
-      </Box>
-    );
-  }
 
   if (error || !tournament || !isIndividualTournament(tournament)) {
     return (

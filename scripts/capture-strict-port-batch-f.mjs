@@ -165,7 +165,11 @@ const results = [];
 const eventId = PASSWORD ? await seedTournamentContext() : "";
 const eventQuery = eventId ? `?eventId=${encodeURIComponent(eventId)}` : "";
 
-for (const screen of OPERATOR_SCREENS) {
+const selectedScreens = process.env.BATCH_F_ONLY
+  ? OPERATOR_SCREENS.filter((screen) => screen.id === process.env.BATCH_F_ONLY)
+  : OPERATOR_SCREENS;
+
+for (const screen of selectedScreens) {
   if (!PASSWORD || process.env.BATCH_F_PUBLIC_ONLY) break;
   const target = `${BASE}/tournament/${TOURNAMENT_ID}${screen.suffix}${eventQuery}`;
   await page.goto(target, { waitUntil: "domcontentloaded", timeout: 90000 });
@@ -190,6 +194,7 @@ for (const screen of OPERATOR_SCREENS) {
 }
 
 
+if (!process.env.BATCH_F_ONLY) {
 await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 90000 });
 await page.evaluate(() => {
   localStorage.setItem("pickleball-active-club-v1", "club-ecebf64c78f948ccb2b59842441eb26c");
@@ -227,6 +232,7 @@ for (const shot of PUBLIC_SCREEN.viewports) {
     titleHit: PUBLIC_SCREEN.titleRe.test(metrics.bodyText),
     adminSidebar: metrics.hasSidebar,
   });
+}
 }
 
 await browser.close();
