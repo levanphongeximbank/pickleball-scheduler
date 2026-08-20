@@ -530,6 +530,8 @@ export const ROUTE_PERMISSIONS = Object.freeze({
   "/tournament/config/format": [PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.TOURNAMENT_VIEW],
   "/tournament/config/settings": [PERMISSIONS.TOURNAMENT_UPDATE, PERMISSIONS.TOURNAMENT_VIEW],
   "/tournament/bracket": [PERMISSIONS.TOURNAMENT_VIEW],
+  "/tournament/organize": [PERMISSIONS.TOURNAMENT_VIEW],
+  "/tournament/results": [PERMISSIONS.TOURNAMENT_VIEW],
   "/court-engine": [PERMISSIONS.DIRECTOR_USE, PERMISSIONS.SCHEDULING_RUN],
   "/statistics": [PERMISSIONS.STATISTICS_VIEW],
   "/court-management/future": [
