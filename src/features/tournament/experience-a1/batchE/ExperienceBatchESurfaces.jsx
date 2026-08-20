@@ -152,7 +152,7 @@ export function IncidentDetail({ item, onClose }) {
       <ExperienceOperatorCard>
         <Typography sx={{ fontWeight: 700 }}>Sự cố đang chọn</Typography>
         <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted }}>
-          Chọn một sự cố trên danh sách. Chưa có kho sự cố riêng — chỉ hiện ngoại lệ đã có trên hồ sơ trận.
+          Chọn một sự cố trên danh sách. Hiện chỉ hiển thị ngoại lệ đã có trên hồ sơ trận.
         </Typography>
       </ExperienceOperatorCard>
     );
