@@ -136,7 +136,9 @@ test("referee assign engine maps match to referee", () => {
   teamData = addReferee(teamData, { id: "ref-1", name: "Ref A" }).teamData;
   const matchupId = teamData.matchups[0].id;
 
-  const assigned = assignReferee(teamData, matchupId, "ref-1");
+  const assigned = assignReferee(teamData, matchupId, "ref-1", {
+    allowLegacyBlobAuthority: true,
+  });
   assert.equal(assigned.ok, true);
   assert.equal(getRefereeForMatch(assigned.teamData, matchupId)?.id, "ref-1");
 

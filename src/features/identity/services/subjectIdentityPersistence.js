@@ -7,7 +7,7 @@
  * defaults missing status to ACTIVE.
  */
 
-import { getSupabaseAuthClient, PROFILES_TABLE } from "../../../auth/supabaseClient.js";
+const PROFILES_TABLE = "profiles";
 
 export const SUBJECT_IDENTITY_RAW_FIELDS = Object.freeze([
   "id",
@@ -95,9 +95,13 @@ export async function loadIdentitySubjectByIdFromPersistence(subjectId, deps = {
   const id = String(subjectId || "").trim();
   if (!id) return null;
 
-  const getClient =
-    typeof deps.getAuthClient === "function" ? deps.getAuthClient : getSupabaseAuthClient;
-  const client = getClient();
+  let client = null;
+  if (typeof deps.getAuthClient === "function") {
+    client = deps.getAuthClient();
+  } else {
+    const { getSupabaseAuthClient } = await import("../../../auth/supabaseClient.js");
+    client = getSupabaseAuthClient();
+  }
   if (!client) return null;
 
   const query = async (select) =>

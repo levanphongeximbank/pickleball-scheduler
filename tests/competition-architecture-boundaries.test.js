@@ -30,6 +30,7 @@ test("architecture lock rules are defined for Phase 2A boundaries", () => {
   assert.ok(ids.includes("cc-no-page-logic"));
   assert.ok(ids.includes("cc-no-supabase-gateway"));
   assert.ok(ids.includes("engine-no-page-logic"));
+  assert.ok(ids.includes("src-no-core13-fixture-provisioner"));
 });
 
 test("competition-core public API exports contracts usable by format modules", () => {

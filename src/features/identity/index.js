@@ -60,6 +60,7 @@ export {
 } from "./services/refereeSessionService.js";
 export {
   resolveSubjectIdentityRecord,
+  createIdentitySubjectPointLoader,
   isCanonicalSubjectId,
   authoritativeTenantId,
   authoritativeVenueId,

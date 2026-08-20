@@ -220,6 +220,8 @@ export function replaceRefereeAssignment(input = {}) {
     scheduleRows,
     conflictPolicy: normalizeConflictPolicy(input.conflictPolicy),
     policy,
+    requireQualification: input.requireQualification !== false,
+    requireAvailability: input.requireAvailability !== false,
   });
 
   if (!eligibility.eligible) {

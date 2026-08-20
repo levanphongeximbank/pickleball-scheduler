@@ -1,6 +1,6 @@
 /**
- * Client planner for TT-5D referee assign / change.
- * Server create_referee_assignment is the write authority after SQL GO.
+ * Client planner helper for TT-5D referee assign / change preflight.
+ * NOT assignment authority — CORE-13 owns decisions; Team RPC is thin transport.
  */
 
 import { isUnresolvedBracketPlaceholder } from "./teamKnockoutEngine.js";

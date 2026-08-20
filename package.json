@@ -32,6 +32,7 @@
     "qa:v5p1:checksums": "node scripts/compute-v5p1-migration-checksums.mjs",
     "qa:v5p1b:smoke": "node scripts/verify-v5p1b-production-smoke-flag-off.mjs",
     "lint:referee-v5": "node scripts/lint-referee-v5-scoped.mjs",
+    "bundle:core13-assignment-edge": "node scripts/bundle-competition-referee-assignment-edge-shared.mjs",
     "qa:referee-v5:staging-closure": "node scripts/verify-referee-v5-staging-closure.mjs",
     "qa:referee-v5:d41-closure": "node scripts/verify-referee-v5-d41-staging-closure.mjs",
     "qa:referee-v5:e1-closure": "node scripts/verify-referee-v5-e1-staging-closure.mjs",
