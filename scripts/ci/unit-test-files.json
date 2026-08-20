@@ -313,6 +313,7 @@
   "tests/team-tournament-get-setup-canonical-contract-hardening-01.test.js",
   "tests/v5-menu-audit.test.js",
   "tests/action-queue.test.js",
+  "tests/b18-full-menu-readiness-closure.test.js",
   "tests/tournament-phase25.test.js",
   "tests/finance-crm-phase26-27.test.js",
   "tests/crm-phase-1b-foundation.test.js",
@@ -622,5 +623,11 @@
   "tests/court-resource-legacy-isolation-batch8.test.js",
   "tests/court-resource-batch9-architecture.test.js",
   "tests/court-resource-batch9-adapter-routing.test.js",
-  "tests/court-resource-batch9-cross-module-certification-real-postgres.test.js"
+  "tests/court-resource-batch9-cross-module-certification-real-postgres.test.js",
+  "tests/tournament-experience-wave-a1.test.js",
+  "tests/tournament-experience-wave-b.test.js",
+  "tests/tournament-experience-wave-c.test.js",
+  "tests/tournament-experience-wave-d.test.js",
+  "tests/tournament-experience-wave-e.test.js",
+  "tests/tournament-experience-wave-f.test.js"
 ]
