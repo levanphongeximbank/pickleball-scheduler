@@ -142,7 +142,7 @@ export function buildRefereeAssignmentCard(input) {
     matchContext.scheduledAt ||
     assigned.scheduledAt ||
     null;
-  const assignmentStatus = assignment.status || "ASSIGNED";
+  const assignmentStatus = assignment.status || assignment.opsStatus || null;
   const homeBucket = resolveAssignmentHomeBucket({
     matchStatus,
     action: action.action,
@@ -183,7 +183,19 @@ export function buildRefereeAssignmentCard(input) {
     acceptedOfficialResult: result.acceptedOfficialResult,
     action: action.action,
     actionLabel: action.label,
-    href: `/referee/match/${encodeURIComponent(String(assignment.matchId || matchContext.matchId || "").trim())}`,
+    href: (() => {
+      const mid = String(
+        assignment.matchId || matchContext.matchId || ""
+      ).trim();
+      const cid = String(
+        assignment.competitionId ||
+          competition.competitionId ||
+          matchContext.competitionId ||
+          ""
+      ).trim();
+      const base = `/referee/match/${encodeURIComponent(mid)}`;
+      return cid ? `${base}?competitionId=${encodeURIComponent(cid)}` : base;
+    })(),
     // Diagnostics only — not primary card content
     diagnostics: Object.freeze({
       matchId: String(assignment.matchId || matchContext.matchId || "").trim(),

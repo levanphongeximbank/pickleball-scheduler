@@ -350,13 +350,15 @@ describe("Referee V5-C Court Visualizer", () => {
     vi.stubEnv("VITE_REFEREE_V5_ENABLED", "true");
   });
 
-  it("34 legacy referee routes remain registered", async () => {
+  it("34 legacy referee token route is isolated (non-production)", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const { fileURLToPath } = await import("node:url");
     const root = path.dirname(fileURLToPath(import.meta.url));
     const routerSource = fs.readFileSync(path.join(root, "../../src/router.jsx"), "utf8");
     expect(routerSource).toContain('path="/referee/:token"');
+    expect(routerSource).toContain("LegacyRefereeTokenRetirementPage");
+    expect(routerSource).not.toContain('path="/referee/:token" element={<RefereeScoreboard />}');
     expect(routerSource).toContain('path="/referee/match/:matchId"');
   });
 

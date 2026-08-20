@@ -53,8 +53,8 @@ export function formatCompetitionModeLabel(mode) {
 
 export function formatAssignmentStatusLabel(status) {
   const key = String(status || "").trim().toUpperCase();
-  if (!key) return ASSIGNMENT_STATUS_LABEL_VI.ASSIGNED;
-  return ASSIGNMENT_STATUS_LABEL_VI[key] || "Đã phân công";
+  if (!key) return null;
+  return ASSIGNMENT_STATUS_LABEL_VI[key] || null;
 }
 
 export function formatMatchStatusLabel(status) {

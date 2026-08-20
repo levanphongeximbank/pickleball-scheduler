@@ -465,22 +465,45 @@ test("9+10. player name on marker; no permanent #1/#2 identity; serviceTurn sepa
 });
 
 test("11. player position switch is distinct from change ends", async () => {
+  const format = createScoringFormat({
+    scoringSystem: SCORING_SYSTEM.RALLY,
+    pointsToWin: 21,
+    winBy: 2,
+    bestOfGames: 1,
+    sideSwitchAt: 2,
+  });
   const { runtime } = createUiRuntime();
   const fixture = modeFixture(COMPETITION_REFEREE_MODE.DAILY_PLAY);
+  fixture.modeState = dailyModeState(fixture.competitionId, fixture.matchId, {
+    scoringRules: format,
+  });
   await seedAssigned(runtime, fixture);
   const client = createClient(runtime, [fixture]);
-  const opened = await client.startMatch({
-    tenantId: "tenant-1",
-    matchId: fixture.matchId,
-    actor: ACTOR,
-    idempotencyKey: "start-1",
+  const started = await startSideOutWithLineup(client, fixture, {
+    playerPositions: { sideA: ["p1", "p2"], sideB: ["p3", "p4"] },
+    serverPlayerId: "p1",
+    serverNumber: 1,
+    servingSide: "SIDE_A",
   });
-  assert.equal(opened.ok, true);
+  let version = started.view.expectedVersion;
+  let scored = started;
+  for (let i = 0; i < 2; i += 1) {
+    scored = await client.submitPoint({
+      tenantId: "tenant-1",
+      matchId: fixture.matchId,
+      actor: ACTOR,
+      scoringSide: SCORING_SIDE.SIDE_A,
+      expectedVersion: version,
+      idempotencyKey: `ends-due-${i}`,
+    });
+    version = scored.view.expectedVersion;
+  }
+  assert.equal(scored.view.courtProjection.sideChangeRequired, true);
   const ends = await client.confirmChangeEnds({
     tenantId: "tenant-1",
     matchId: fixture.matchId,
     actor: ACTOR,
-    expectedVersion: opened.view.expectedVersion,
+    expectedVersion: scored.view.expectedVersion,
     idempotencyKey: "ends-1",
   });
   assert.equal(ends.ok, true);

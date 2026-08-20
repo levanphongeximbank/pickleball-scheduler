@@ -1,13 +1,13 @@
 /**
  * TeamTournamentRefereeAdapter — Competition Referee Adapter B translator.
  *
- * Translates existing Team Tournament referee / matchup state into End A.
- * Preserves locked semantics by projection only:
- * - parent matchup assignment SSOT
- * - child override where defined
- * - DreamBreaker inherits parent; no duplicate DreamBreaker assignment
- * - organizer can_manage OR assigned canonical uid (write policy description)
- * - automatic/idempotent V5 ensure (policy note — not executed here)
+ * ADAPTER_B_TRANSLATION_ONLY=YES
+ * Translates Team Tournament mode state into End A projections:
+ * - mode state / participants / rules / stage / round / capabilities
+ * - pre-start context / result propagation context
+ *
+ * May consume CORE-13 assignment results as projection input.
+ * Must NOT own assignment policy, mutation, or SSOT authority.
  *
  * DreamBreaker rotation authority remains in Team Tournament domain.
  */
@@ -73,6 +73,13 @@ function assertTeamStateSafe(state) {
     failRefereeAdapter(
       REFEREE_ADAPTER_ERROR_CODE.DIRECT_RESULT_AUTHORITY_FORBIDDEN,
       "Adapter B must not accept official results",
+      {}
+    );
+  }
+  if (state.adapterOwnsAssignmentAuthority === true) {
+    failRefereeAdapter(
+      REFEREE_ADAPTER_ERROR_CODE.DIRECT_REFEREE_AUTHORITY_FORBIDDEN,
+      "Adapter B must not own assignment authority — CORE-13 only",
       {}
     );
   }
@@ -226,6 +233,9 @@ export function createTeamTournamentRefereeAdapter(options = {}) {
     contractVersion: COMPETITION_REFEREE_ADAPTER_CONTRACT_VERSION,
     adapterId: String(options.adapterId || "team-tournament-referee-adapter-b").trim(),
     competitionMode,
+    translationOnly: true,
+    adapterBTranslationOnly: true,
+    assignmentAuthority: "CORE-13",
     getCompetitionContext(request) {
       const { req, state, tenantId, competitionId } = load(request, {
         requireMatch: false,
@@ -238,13 +248,11 @@ export function createTeamTournamentRefereeAdapter(options = {}) {
         competitionName: state.competitionName || null,
         venueId: state.venueId || req.venueId || null,
         clubId: state.clubId || req.clubId || null,
-        parentMatchupAssignmentSsot: true,
-        childOverrideAssignment: true,
-        dreambreakerInheritsParent: true,
-        noDuplicateDreambreakerAssignment: true,
-        writePolicy: "organizer_can_manage_OR_assigned_canonical_uid",
-        automaticIdempotentV5Ensure: true,
+        // Projection notes only — not assignment SSOT / write authority.
+        dreambreakerInheritsParentProjection: true,
+        noDuplicateDreambreakerAssignmentProjection: true,
         dreambreakerAuthorityOwner: "team_tournament_domain",
+        adapterOwnsAssignmentAuthority: false,
       });
     },
     getMatchContext(request) {
@@ -283,12 +291,14 @@ export function createTeamTournamentRefereeAdapter(options = {}) {
         matchupId,
         isParentMatchup: isParent,
         isDreambreaker,
-        // Projection only — Team domain remains assignment SSOT
+        // Projection only — CORE-13 remains assignment authority
         effectiveRefereeAssignment: effective
           ? {
               refereeUserId: effective.refereeUserId || null,
               scope: effective.scope || null,
               inherited: effective.inherited === true,
+              authority: false,
+              projectionOnly: true,
             }
           : null,
         dreambreakerProjection: isPlainObject(matchup.dreambreaker)
@@ -319,21 +329,17 @@ export function createTeamTournamentRefereeAdapter(options = {}) {
       return buildStandardLifecyclePolicy({
         requiresLineups: true,
         mode: competitionMode,
-        parentMatchupAssignmentSsot: true,
-        dreambreakerInheritsParentAssignment: true,
-        automaticIdempotentV5Ensure: true,
+        dreambreakerInheritsParentAssignmentProjection: true,
       });
     },
     getCapabilities(request) {
       load(request);
       return buildStandardCapabilities({
+        // Projection capability flags — not assignment SSOT authority
         childOverrideAssignment: true,
         dreambreakerInheritsParent: true,
         mode: competitionMode,
-        // Write policy description for UI — Adapter B does not authorize
-        writePolicyDescription:
-          "organizer_can_manage_OR_assigned_canonical_uid",
-        canEvaluateWritePolicyProjection: true,
+        ownsAssignmentAuthority: false,
       });
     },
     validatePreStart(request) {
@@ -402,14 +408,12 @@ export function createTeamTournamentRefereeAdapter(options = {}) {
           matchupId: resolved.matchupId,
           isDreambreaker: resolved.isDreambreaker,
           doNotAcceptResultInAdapter: true,
-          writeGuardProjection:
-            "organizer_can_manage_OR_assigned_canonical_uid",
         },
       });
     },
     /**
-     * Read-only projection helper for tests/UI policy display.
-     * Does NOT authorize writes.
+     * Read-only projection helper for tests/UI display.
+     * Does NOT authorize writes. Does NOT own assignment authority.
      */
     projectWritePolicy(request, { refereeUserId, isOrganizer = false } = {}) {
       const { resolved, state } = load(request);
@@ -423,8 +427,9 @@ export function createTeamTournamentRefereeAdapter(options = {}) {
       return freezeClone({
         allowed,
         authority: false,
-        policy: "organizer_can_manage_OR_assigned_canonical_uid",
         projectionOnly: true,
+        ownsAssignmentAuthority: false,
+        assignmentAuthority: "CORE-13",
       });
     },
   });

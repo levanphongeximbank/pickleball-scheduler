@@ -235,9 +235,11 @@ test("1. valid context — all four Adapter B modes", () => {
     "TEAM"
   );
   assert.equal(
-    adapters.team.getCompetitionContext(teamReq).parentMatchupAssignmentSsot,
-    true
+    adapters.team.getCompetitionContext(teamReq).adapterOwnsAssignmentAuthority,
+    false
   );
+  assert.equal(adapters.team.assignmentAuthority, "CORE-13");
+  assert.equal(adapters.team.adapterBTranslationOnly, true);
 });
 
 test("2. participant normalization", () => {

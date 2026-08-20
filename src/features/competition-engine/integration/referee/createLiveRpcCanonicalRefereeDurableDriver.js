@@ -280,49 +280,17 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
     return mapLiveRow(data) || (await getLiveState({ tenantId, competitionId, matchId }));
   }
 
-  async function upsertAssignment(row, actor) {
-    const actorId = requireCanonicalRefereeActor(actor);
-    const tenantId = String(row.tenantId || "").trim();
-    const competitionId = String(row.competitionId || row.tournamentId || "").trim();
-    const matchId = String(row.matchId || "").trim();
-    const refereeUserId = String(row.refereeUserId || row.refereeId || "").trim();
-    if (!tenantId || !competitionId || !matchId || !refereeUserId) {
-      failRefereeAdapter(
-        REFEREE_ADAPTER_ERROR_CODE.MALFORMED_CONTEXT,
-        "Assignment requires tenant, competition, match, refereeUserId",
-        {}
-      );
-    }
-    const status = String(row.status || "active");
-    const { data, error } = await rpcClient
-      .from(CANONICAL_REFEREE_PERSISTENCE_TABLES.ASSIGNMENTS)
-      .upsert(
-        {
-          tenant_id: tenantId,
-          tournament_id: competitionId,
-          match_id: matchId,
-          referee_user_id: refereeUserId,
-          referee_display_name: row.refereeDisplayName || "CE Adapter B Cert",
-          role: row.role || "REFEREE",
-          status,
-          assigned_by: actorId,
-          assigned_at: clockIso,
-          expires_at: row.expiresAt || null,
-          revoked_at: status === "revoked" ? clockIso : null,
-          version: Number(row.version || 1),
-        },
-        { onConflict: "tenant_id,tournament_id,match_id,role,referee_user_id" }
-      )
-      .select("*")
-      .maybeSingle();
-    if (error) {
-      failRefereeAdapter(
-        REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED,
-        error.message || "Failed to upsert referee_assignments",
-        {}
-      );
-    }
-    return mapAssignmentRow(data);
+  async function upsertAssignment() {
+    // CORE-13 is the sole assignment mutation authority. LiveRpc may READ
+    // referee_assignments for projections; product-path table DML is denied.
+    failRefereeAdapter(
+      REFEREE_ADAPTER_ERROR_CODE.DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN,
+      "Direct referee_assignments upsert is denied — CORE-13 command authority only",
+      {
+        directAssignmentTableDml: "DENY",
+        assignmentAuthority: "CORE-13",
+      }
+    );
   }
 
   async function listByCompetition({ tenantId, competitionId }) {

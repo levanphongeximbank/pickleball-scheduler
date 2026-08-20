@@ -1088,13 +1088,16 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
             : session.state?.format?.sideSwitchAt != null
               ? Number(session.state.format.sideSwitchAt)
               : null;
+      const priorOrientation = String(
+        current.courtOrientation || current.orientation || "STANDARD"
+      ).toUpperCase();
       const nextOrientation =
-        String(current.orientation || "STANDARD").toUpperCase() === "SWAPPED"
-          ? "STANDARD"
-          : "SWAPPED";
+        priorOrientation === "SWAPPED" ? "STANDARD" : "SWAPPED";
       const nextCourt = Object.freeze({
         ...current,
+        // Production UI projects courtOrientation; E2E-04 also reads orientation.
         orientation: nextOrientation,
+        courtOrientation: nextOrientation,
         sideChangeRequired: false,
         sideChangeThreshold: current.sideChangeThreshold ?? ackThreshold,
         sideChangeAcknowledgedAtThreshold: ackThreshold,

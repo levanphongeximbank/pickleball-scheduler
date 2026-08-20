@@ -96,8 +96,19 @@ export default function RefereeAssignDialog({
     }
 
     setRefereeName(assigned.referee.name);
-    setUrl(buildRefereeUrl(assigned.token));
-    setMessage("Đã gán trọng tài. Gửi link hoặc QR bên dưới cho trọng tài.");
+    if (result?.canonicalHref) {
+      setUrl(
+        typeof window !== "undefined" && window.location?.origin
+          ? `${window.location.origin}${result.canonicalHref}`
+          : result.canonicalHref
+      );
+      setMessage(
+        "Đã gán trọng tài qua CORE-13. Mở link chuẩn /referee/match (không dùng token cũ)."
+      );
+    } else {
+      setUrl(buildRefereeUrl(assigned.token));
+      setMessage("Đã gán trọng tài. Gửi link hoặc QR bên dưới cho trọng tài.");
+    }
   };
 
   const sharePayload = {

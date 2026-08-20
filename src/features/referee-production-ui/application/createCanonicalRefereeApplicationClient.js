@@ -22,7 +22,7 @@ import {
   evaluateUndoAvailability,
   findLastEligibleScoringEvent,
 } from "../../competition-engine/operations/referee/scoring/undoLastScoringActionHelpers.js";
-import { CANONICAL_UI_COMMAND, COURT_ORIENTATION, REFEREE_UI_ERROR_CODE } from "../constants.js";
+import { CANONICAL_UI_COMMAND, REFEREE_UI_ERROR_CODE } from "../constants.js";
 import { buildRefereeAssignmentCard } from "../projection/buildRefereeAssignmentCard.js";
 import { buildRefereeMatchView } from "../projection/buildRefereeMatchView.js";
 import {
@@ -98,7 +98,7 @@ function buildSeedRecordFromLive({
     assignment?.refereeId || assignment?.refereeUserId || ""
   ).trim();
   const status = String(
-    assignment?.status || assignment?.opsStatus || "ASSIGNED"
+    assignment?.status || assignment?.opsStatus || ""
   ).toUpperCase();
   return {
     tenantId: String(tenantId || "").trim() || null,
@@ -115,7 +115,7 @@ function buildSeedRecordFromLive({
             venueId: assignment?.venueId || null,
             courtId: assignment?.courtId || null,
             scheduledAt: assignment?.assignedAt || assignment?.scheduledAt || null,
-            status: status === "ACTIVE" ? "ASSIGNED" : status,
+            status: status === "ACTIVE" ? "ASSIGNED" : status || "ASSIGNED",
             participants: [],
             entries: [],
             checkInReady: false,
@@ -262,14 +262,24 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         {}
       );
     }
+    if (!tenantId) {
+      const err = new Error("tenantId is required for referee authorization");
+      err.code = REFEREE_UI_ERROR_CODE.MATCH_SCOPE_UNRESOLVED;
+      throw err;
+    }
     const competitionId = String(command.competitionId || "").trim();
     const refereeUserId = String(
       actor?.actorId || actor?.authUid || actor?.refereeId || ""
     ).trim();
+    if (!refereeUserId) {
+      const err = new Error("Canonical referee actor is required");
+      err.code = REFEREE_UI_ERROR_CODE.MATCH_SCOPE_UNRESOLVED;
+      throw err;
+    }
 
     let assignment = null;
-    // Prefer single-match assignment read when competitionId is known (Match commands).
-    if (competitionId && refereeUserId && runtime.assignmentRepository?.getActiveForMatch) {
+    // Prefer single-match assignment read when competitionId is known.
+    if (competitionId && runtime.assignmentRepository?.getActiveForMatch) {
       const active = await runtime.assignmentRepository.getActiveForMatch({
         tenantId,
         competitionId,
@@ -277,6 +287,21 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         refereeUserId,
       });
       if (active) {
+        const activeTenant = String(active.tenantId || "").trim();
+        const activeCompetition = String(active.competitionId || "").trim();
+        if (activeTenant && activeTenant !== tenantId) {
+          failRefereeAdapter(
+            REFEREE_ADAPTER_ERROR_CODE.CROSS_TENANT_CONTEXT,
+            "Cross-tenant referee deep-link denied",
+            { tenantId, assignmentTenantId: activeTenant }
+          );
+        }
+        if (activeCompetition && activeCompetition !== competitionId) {
+          const err = new Error("Cross-tournament referee deep-link denied");
+          err.code = REFEREE_UI_ERROR_CODE.MATCH_SCOPE_UNRESOLVED;
+          throw err;
+        }
+        const status = String(active.opsStatus || active.status || "").toUpperCase();
         assignment = {
           matchId: active.matchId || matchId,
           tenantId: active.tenantId || tenantId,
@@ -284,27 +309,50 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
           refereeUserId: active.refereeUserId || refereeUserId,
           refereeId: active.refereeUserId || refereeUserId,
           courtId: active.courtId || command.courtId || null,
-          status: active.opsStatus || active.status || "ASSIGNED",
+          status: status === "ACTIVE" ? "ASSIGNED" : status,
+          opsStatus: status,
         };
       }
     }
     if (!assignment) {
       const rows = await listAssignmentRows(actor, tenantId);
-      assignment =
-        rows.find((row) => String(row.matchId) === matchId) ||
-        (competitionId
-          ? {
-              matchId,
-              tenantId,
-              competitionId,
-              refereeUserId,
-              courtId: command.courtId || null,
-              status: "ASSIGNED",
-            }
-          : null);
+      const row = rows.find((candidate) => {
+        if (String(candidate.matchId) !== matchId) return false;
+        if (competitionId) {
+          const rowCompetition = String(
+            candidate.competitionId || candidate.tournamentId || ""
+          ).trim();
+          if (rowCompetition && rowCompetition !== competitionId) return false;
+        }
+        const rowTenant = String(candidate.tenantId || "").trim();
+        if (rowTenant && rowTenant !== tenantId) return false;
+        return true;
+      });
+      if (row) {
+        const status = String(row.opsStatus || row.status || "").toUpperCase();
+        assignment = {
+          ...row,
+          matchId,
+          tenantId: row.tenantId || tenantId,
+          competitionId: row.competitionId || row.tournamentId || competitionId,
+          refereeUserId: row.refereeUserId || row.refereeId || refereeUserId,
+          refereeId: row.refereeId || row.refereeUserId || refereeUserId,
+          status: status === "ACTIVE" ? "ASSIGNED" : status,
+        };
+      }
     }
+    // Fail closed: never invent synthetic ASSIGNED scope from competitionId alone.
     if (!assignment) {
-      const err = new Error("Assigned match could not be resolved from durable CORE-13 state");
+      const err = new Error(
+        "Assigned match could not be resolved from durable CORE-13 state"
+      );
+      err.code = REFEREE_UI_ERROR_CODE.MATCH_SCOPE_UNRESOLVED;
+      throw err;
+    }
+    if (!String(assignment.competitionId || "").trim()) {
+      const err = new Error(
+        "Canonical competition identity required for referee authorization"
+      );
       err.code = REFEREE_UI_ERROR_CODE.MATCH_SCOPE_UNRESOLVED;
       throw err;
     }
@@ -455,7 +503,9 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         liveInfo?.courtState?.lineupConfigured === true,
       courtOrientation:
         extras.courtState?.courtOrientation ||
+        extras.courtState?.orientation ||
         liveInfo?.courtState?.courtOrientation ||
+        liveInfo?.courtState?.orientation ||
         live.courtOrientation ||
         null,
       playerPositions:
@@ -815,10 +865,10 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
               actorFrom(command, defaultActor)?.actorId,
             status: (() => {
               const ops = String(resolved.assignment.opsStatus || "").toUpperCase();
-              if (ops) return ops;
+              if (ops) return ops === "ACTIVE" ? "ASSIGNED" : ops;
               const raw = String(resolved.assignment.status || "").toUpperCase();
               if (raw === "ACTIVE") return "ASSIGNED";
-              return raw || "ASSIGNED";
+              return raw || null;
             })(),
           }
         : null;
@@ -998,80 +1048,9 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
   }
 
   async function confirmChangeEnds(command = {}) {
-    return runCommand(command, CANONICAL_UI_COMMAND.CHANGE_ENDS, async (base, resolved) => {
-      const scope = {
-        tenantId: resolved.assignment.tenantId,
-        competitionId: resolved.assignment.competitionId,
-        matchId: resolved.assignment.matchId,
-      };
-      const live = await runtime.matchStateRepository.getLiveState(scope);
-      const current = live?.statePayload?.canonical?.court || {};
-      const nextOrientation =
-        String(current.courtOrientation || COURT_ORIENTATION.STANDARD) ===
-        COURT_ORIENTATION.SWAPPED
-          ? COURT_ORIENTATION.STANDARD
-          : COURT_ORIENTATION.SWAPPED;
-      // Team-end swap only: flip orientation. Preserve partner slot arrays + server identity.
-      const ackThreshold =
-        current.sideChangeThreshold != null
-          ? current.sideChangeThreshold
-          : current.sideChangeAcknowledgedAtThreshold != null
-            ? current.sideChangeAcknowledgedAtThreshold
-            : null;
-      const nextCourt = {
-        ...current,
-        courtOrientation: nextOrientation,
-        playerPositions: {
-          sideA: Array.isArray(current.playerPositions?.sideA)
-            ? [...current.playerPositions.sideA]
-            : current.playerPositions?.sideA,
-          sideB: Array.isArray(current.playerPositions?.sideB)
-            ? [...current.playerPositions.sideB]
-            : current.playerPositions?.sideB,
-        },
-        homePlayerPositions: {
-          sideA: Array.isArray(current.homePlayerPositions?.sideA)
-            ? [...current.homePlayerPositions.sideA]
-            : current.homePlayerPositions?.sideA,
-          sideB: Array.isArray(current.homePlayerPositions?.sideB)
-            ? [...current.homePlayerPositions.sideB]
-            : current.homePlayerPositions?.sideB,
-        },
-        serverPlayerId: current.serverPlayerId || null,
-        receiverPlayerId: current.receiverPlayerId || null,
-        servingSide: current.servingSide || null,
-        serverNumber: current.serverNumber ?? null,
-        lineupConfigured: current.lineupConfigured === true,
-        lastSideChangeEventId: command.idempotencyKey,
-        sideChangeRequired: false,
-        sideChangeThreshold: current.sideChangeThreshold ?? ackThreshold,
-        sideChangeAcknowledgedAtThreshold: ackThreshold,
-      };
-      await runtime.matchStateRepository.putLiveState(
-        {
-          ...scope,
-          expectedVersion: command.expectedVersion,
-          idempotencyKey: command.idempotencyKey,
-          commandId: command.commandId || command.idempotencyKey,
-          eventType: CANONICAL_UI_COMMAND.CHANGE_ENDS,
-          status: live?.status,
-          statePayload: {
-            ...(live?.statePayload || {}),
-            canonical: {
-              ...(live?.statePayload?.canonical || {}),
-              court: nextCourt,
-            },
-          },
-        },
-        base.actor
-      );
-      return {
-        ok: true,
-        courtOrientation: nextOrientation,
-        court: nextCourt,
-        ackRequired: true,
-      };
-    });
+    return runCommand(command, CANONICAL_UI_COMMAND.CHANGE_ENDS, (base) =>
+      facade.confirmChangeEnds(base)
+    );
   }
 
   async function switchPositions(command = {}) {

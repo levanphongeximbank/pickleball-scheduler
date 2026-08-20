@@ -2,10 +2,11 @@
  * Team Tournament assignment transport.
  *
  * Preferred final write path: shared Competition assignment trusted server.
- * Team RPC may remain as non-authoritative compatibility transport.
+ * Legacy Team create/revoke RPC is unreachable from product runtime.
  *
- * TEAM_RPC_MAY_REMAIN_AS_THIN_TRANSPORT=YES
+ * TEAM_RPC_MAY_REMAIN_AS_THIN_TRANSPORT=NO (product)
  * TEAM_RPC_MAY_REMAIN_ASSIGNMENT_AUTHORITY=NO
+ * forceLegacyTeamTransport=DENIED
  */
 
 import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
@@ -14,11 +15,16 @@ import {
   resolveCompetitionAssignmentEdgeBaseUrl,
 } from "../../competition-engine/operations/referee/assignment/client/competitionRefereeAssignmentEdgeClient.js";
 import { ASSIGNMENT_COMPETITION_MODE } from "../../competition-engine/operations/referee/assignment/constants.js";
-import {
-  rpcTeamTournamentCreateRefereeAssignment,
-  rpcTeamTournamentRevokeRefereeAssignment,
-} from "./teamTournamentRpcService.js";
-import { buildCreateAssignmentPayload } from "../engines/teamRefereeV5SafetyEngine.js";
+
+export const TEAM_LEGACY_ASSIGNMENT_TRANSPORT_DENIED = Object.freeze({
+  ok: false,
+  code: "LEGACY_TEAM_TRANSPORT_DISABLED",
+  error:
+    "forceLegacyTeamTransport cannot restore Team RPC as a second assignment authority",
+  assignmentAuthority: "CORE-13",
+  transportIsAuthority: false,
+  teamRpcAsAssignmentAuthority: "DENY",
+});
 
 function createTrustedClient() {
   return createCompetitionRefereeAssignmentTrustedClient({
@@ -32,57 +38,11 @@ function createTrustedClient() {
 }
 
 /**
- * Compatibility Team RPC transport — not assignment authority.
- * Kept until callers are proven cut over.
+ * Legacy Team RPC transport is retired from product authority.
+ * Kept as an explicit deny so callers cannot reintroduce dual write.
  */
-export async function assignTeamRefereeViaLegacyTeamRpcTransport(input = {}) {
-  const existing = Array.isArray(input.existingAssignments)
-    ? input.existingAssignments
-    : [];
-  const live = existing.filter((row) => {
-    const status = String(row.effectiveStatus || row.status || "").toLowerCase();
-    return status === "pending" || status === "active";
-  });
-
-  if (live.length > 0) {
-    for (const row of live) {
-      const revoke = await rpcTeamTournamentRevokeRefereeAssignment({
-        assignmentId: row.id || row.assignmentId,
-        expectedVersion: row.version,
-        reason: input.reason || "CORE-13 atomic replace compatibility transport",
-      });
-      if (!revoke.ok && !revoke.replayed) {
-        return {
-          ok: false,
-          code: revoke.code || "REVOKE_FAILED",
-          error: revoke.error || "Replace transport revoke failed",
-          revoke,
-          transport: "team_tournament_create_referee_assignment",
-          transportIsAuthority: false,
-        };
-      }
-    }
-  }
-
-  const created = await rpcTeamTournamentCreateRefereeAssignment(
-    buildCreateAssignmentPayload({
-      tournamentId: input.tournamentId,
-      matchupId: input.matchupId,
-      subMatchId: input.subMatchId || null,
-      refereeUserId: input.refereeUserId,
-      activate: input.activate !== false,
-      reason: input.reason || "CORE-13 team assign compatibility transport",
-      idempotencyKey: input.idempotencyKey || null,
-    })
-  );
-
-  return {
-    ...created,
-    assignmentAuthority: "CORE-13",
-    transport: "team_tournament_create_referee_assignment",
-    transportIsAuthority: false,
-    authoritativeExecutionLocation: "COMPATIBILITY_ONLY",
-  };
+export async function assignTeamRefereeViaLegacyTeamRpcTransport() {
+  return { ...TEAM_LEGACY_ASSIGNMENT_TRANSPORT_DENIED };
 }
 
 /**
@@ -102,7 +62,7 @@ export async function assignTeamRefereeViaCore13(input = {}) {
   }
 
   if (input.forceLegacyTeamTransport === true) {
-    return assignTeamRefereeViaLegacyTeamRpcTransport(input);
+    return assignTeamRefereeViaLegacyTeamRpcTransport();
   }
 
   const existing = Array.isArray(input.existingAssignments)
@@ -175,11 +135,7 @@ export async function unassignTeamRefereeViaCore13(input = {}) {
     };
   }
   if (input.forceLegacyTeamTransport === true) {
-    return rpcTeamTournamentRevokeRefereeAssignment({
-      assignmentId: input.assignmentId,
-      expectedVersion: input.expectedVersion,
-      reason: input.reason || "compatibility unassign",
-    });
+    return assignTeamRefereeViaLegacyTeamRpcTransport();
   }
   const api = createTrustedClient();
   const versionRes = await api.getMatchAssignmentVersion({

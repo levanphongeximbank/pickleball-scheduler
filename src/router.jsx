@@ -288,7 +288,9 @@ const TournamentDirectorMode = lazy(() => import("./pages/tournament/TournamentD
 
 const TournamentEnginePage = lazy(() => import("./pages/tournament/TournamentEnginePage"));
 
-const RefereeScoreboard = lazy(() => import("./pages/referee/RefereeScoreboard"));
+const LegacyRefereeTokenRetirementPage = lazy(
+  () => import("./pages/referee/LegacyRefereeTokenRetirementPage")
+);
 
 const RefereeHub = lazy(() => import("./pages/referee/RefereeHub"));
 
@@ -506,7 +508,11 @@ export default function Router() {
             <Route path="/403" element={<ForbiddenPage />} />
             <Route path="/coming-soon/:moduleKey" element={<ComingSoonPage />} />
 
-            <Route path="/referee/:token" element={<RefereeScoreboard />} />
+            {/* Legacy token path: isolated — no production scoring/assignment authority */}
+            <Route
+              path="/referee/:token"
+              element={<LegacyRefereeTokenRetirementPage />}
+            />
 
             <Route element={<PublicTournamentExperienceLayout />}>
               <Route
