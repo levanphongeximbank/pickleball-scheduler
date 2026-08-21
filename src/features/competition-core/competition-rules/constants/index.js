@@ -38,6 +38,9 @@ export {
   bestOfGamesToMatchSeries,
   mapInGroupCriterionToCore18,
   deriveKnockoutEntryRound,
+  KNOCKOUT_ENTRY_ROUND_ORDER,
+  knockoutEntryRoundRank,
+  isDirectEntryTargetStageCompatible,
 } from "./enums.js";
 
 export {

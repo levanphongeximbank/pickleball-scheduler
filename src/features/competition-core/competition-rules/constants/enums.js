@@ -225,3 +225,44 @@ export function deriveKnockoutEntryRound(qualifierCount) {
   if (n === 32) return KNOCKOUT_ENTRY_ROUND.ROUND_OF_32;
   return null;
 }
+
+/**
+ * Ordered from earliest/largest bracket round → latest/smallest.
+ * Used for DIRECT_KNOCKOUT_ENTRY targetStage vs bracket-wide entryRound compatibility.
+ */
+export const KNOCKOUT_ENTRY_ROUND_ORDER = Object.freeze([
+  KNOCKOUT_ENTRY_ROUND.ROUND_OF_32,
+  KNOCKOUT_ENTRY_ROUND.ROUND_OF_16,
+  KNOCKOUT_ENTRY_ROUND.QUARTERFINAL,
+  KNOCKOUT_ENTRY_ROUND.SEMIFINAL,
+  KNOCKOUT_ENTRY_ROUND.FINAL,
+]);
+
+/**
+ * @param {string} round
+ * @returns {number} rank, or -1 if unknown
+ */
+export function knockoutEntryRoundRank(round) {
+  return KNOCKOUT_ENTRY_ROUND_ORDER.indexOf(round);
+}
+
+/**
+ * Direct-entry targetStage is compatible when it is the bracket-wide entry round
+ * or a later (smaller) stage. Earlier/larger rounds are rejected.
+ *
+ * Example: bracketWideEntryRound=QUARTERFINAL → QUARTERFINAL|SEMIFINAL|FINAL ok;
+ * ROUND_OF_16 / ROUND_OF_32 rejected.
+ *
+ * @param {string} targetStage
+ * @param {string} bracketWideEntryRound
+ * @returns {boolean}
+ */
+export function isDirectEntryTargetStageCompatible(
+  targetStage,
+  bracketWideEntryRound
+) {
+  const t = knockoutEntryRoundRank(targetStage);
+  const b = knockoutEntryRoundRank(bracketWideEntryRound);
+  if (t < 0 || b < 0) return false;
+  return t >= b;
+}

@@ -99,7 +99,9 @@ Capability matrix separates `POLICY` vs `EXECUTION` axes.
 - `DIRECT_KNOCKOUT_ENTRY`: policy `SUPPORTED`, execution `DEFERRED` — CE qualification
   remains pool-derived; no canonical direct-entry composition yet.
 - `KNOCKOUT_BYE`: policy `SUPPORTED`, execution `SUPPORTED` for single-elimination
-  power-of-two **first-round** BYEs (CORE-08/09/CE). Not a new bye engine.
+  power-of-two **first-round** BYEs (CORE-08/09/CE). Default `byePolicy=NONE`
+  (CORE-09 compatible) — legacy profiles do not configure BYE demand.
+  Configured only when `byePolicy !== NONE`. Not a new bye engine.
   Arbitrary mid-bracket BYEs are not certified.
 
 Gateway rejects fake operational claims; `enforceExecutionCapability` fails closed
@@ -115,6 +117,10 @@ codes. Does not mutate CORE-15.
 
 - `DIRECT_KNOCKOUT_ENTRY` / `GROUP_STAGE_BYPASS` → `GROUP_ALLOCATION` @ `AFTER_GROUP_DRAW`
 - `KNOCKOUT_BYE` → `KNOCKOUT` @ `AFTER_MATCH_CREATION`
+
+Mandatory admission lock ceilings cannot be loosened by profile configuration.
+Profile may only tighten earlier via
+`effectiveLockAt = earlierOf(mandatory, configured)`.
 
 Owner locks: `POST_GROUP_DRAW_DIRECT_ENTRY_MUTATION=DENY`,
 `POST_GROUP_DRAW_GROUP_BYPASS_MUTATION=DENY`,

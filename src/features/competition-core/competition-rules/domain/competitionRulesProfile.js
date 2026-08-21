@@ -337,6 +337,18 @@ export function createDefaultKnockoutAdmissionPolicy(overrides = {}) {
       ? bypassRaw.enabled
       : bypassEntrants.length > 0;
 
+  const byePolicy = enumOr(byeRaw.byePolicy, BYE_POLICY, BYE_POLICY.NONE);
+  const allocationShape =
+    byePolicy === BYE_POLICY.NONE
+      ? byeRaw.allocationShape == null
+        ? null
+        : enumOr(byeRaw.allocationShape, KNOCKOUT_BYE_ALLOCATION_SHAPE, null)
+      : enumOr(
+          byeRaw.allocationShape,
+          KNOCKOUT_BYE_ALLOCATION_SHAPE,
+          KNOCKOUT_BYE_ALLOCATION_SHAPE.SINGLE_ELIMINATION_POWER_OF_TWO_FIRST_ROUND
+        );
+
   return {
     groupStageBypass: {
       enabled: bypassEnabled,
@@ -354,12 +366,15 @@ export function createDefaultKnockoutAdmissionPolicy(overrides = {}) {
       entrants,
     },
     bye: {
-      byePolicy: enumOr(byeRaw.byePolicy, BYE_POLICY, BYE_POLICY.EXPLICIT_PLACEMENTS),
-      allocationShape: enumOr(
-        byeRaw.allocationShape,
-        KNOCKOUT_BYE_ALLOCATION_SHAPE,
-        KNOCKOUT_BYE_ALLOCATION_SHAPE.SINGLE_ELIMINATION_POWER_OF_TWO_FIRST_ROUND
-      ),
+      /**
+       * CORE-09 default is NONE — legacy profiles must not suddenly configure BYE.
+       */
+      byePolicy,
+      /**
+       * Certified allocation shape when BYE is active.
+       * When byePolicy === NONE this is dormant metadata (null) — not an active BYE demand.
+       */
+      allocationShape,
     },
   };
 }

@@ -44,8 +44,8 @@ knockoutAdmission: {
     entrants: [{ entryId, sourceCategory?, targetStage?, seedNumber? }],
   },
   bye: {
-    byePolicy,             // CORE-09 BYE_POLICY vocabulary
-    allocationShape,       // SINGLE_ELIMINATION_POWER_OF_TWO_FIRST_ROUND
+    byePolicy,             // CORE-09 default NONE; EXPLICIT_PLACEMENTS|… when active
+    allocationShape,       // null when bye disabled (dormant); certified shape when active
   },
 }
 ```
@@ -56,13 +56,31 @@ Canonical identity: `entryId` (seeding/standings vocabulary).
 `directKnockoutEntry.targetStage` uses `KNOCKOUT_ENTRY_ROUND` vocabulary and is
 **not** the same field as bracket-wide `knockout.entryRound`.
 
+**Distinctions (hard lock):**
+
+- `DIRECT_ENTRY_IMPLIES_BYPASS=NO` — direct entrants are NOT auto-merged into bypass.
+- `EXPLICIT_DIRECT_AND_BYPASS_OVERLAP_ALLOWED=YES` — same `entryId` may appear in both lists only when explicitly listed in both.
+- Group-participant conflict applies to **explicit bypass** only.
+
+**Direct-entry target stage:**
+
+- Required (via policy default or per-entrant) when direct entry is configured.
+- Must be compatible with bracket-wide entry round (same or later stage).
+- Example: `totalKnockoutSlots=8` → `QUARTERFINAL` bracket; allow `QUARTERFINAL|SEMIFINAL|FINAL`; reject `ROUND_OF_16|ROUND_OF_32`.
+- Execution remains DEFERRED.
+
+**No-group slot accounting (`groupStageEnabled=false`):**
+
+- `wildcardSlots=0`, `requiresCrossGroupWildcardRanking=false`
+- `remainingSlots = max(0, totalKnockoutSlots - directKnockoutEntrySlots)` — base knockout population slots, **not** cross-group wildcards.
+
 ## Capability truth
 
 | ID | Policy | Execution |
 |----|--------|-----------|
 | GROUP_STAGE_BYPASS | SUPPORTED | PARTIAL |
 | DIRECT_KNOCKOUT_ENTRY | SUPPORTED | DEFERRED |
-| KNOCKOUT_BYE | SUPPORTED | SUPPORTED (SE first-round power-of-two only) |
+| KNOCKOUT_BYE | SUPPORTED | SUPPORTED (SE first-round power-of-two only; configured only when `byePolicy !== NONE`) |
 | CROSS_GROUP_WILDCARD_RANKING | SUPPORTED | DEFERRED (preserved) |
 
 ## Gateway APIs (additive)
@@ -76,6 +94,11 @@ Canonical identity: `entryId` (seeding/standings vocabulary).
 ## Lifecycle (no new RULE_CLASS)
 
 Composes `GROUP_ALLOCATION` @ `AFTER_GROUP_DRAW` and `KNOCKOUT` @ `AFTER_MATCH_CREATION`.
+
+Mandatory admission ceilings cannot be loosened by profile lockMap.
+Profile may tighten earlier only:
+
+`effectiveLockAt = earlierOf(mandatoryAdmissionLock, configuredRuleClassLock)`
 
 ## Expected mode persistence shape (document only)
 

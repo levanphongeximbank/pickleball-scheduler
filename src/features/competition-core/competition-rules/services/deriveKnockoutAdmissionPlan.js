@@ -3,6 +3,9 @@
  * Policy/plan only. Does NOT call group draw or mutate brackets.
  *
  * GROUP_STAGE_BYPASS ≠ DIRECT_KNOCKOUT_ENTRY ≠ KNOCKOUT_BYE ≠ SEEDING
+ *
+ * DIRECT_ENTRY_IMPLIES_BYPASS = NO
+ * EXPLICIT_DIRECT_AND_BYPASS_OVERLAP_ALLOWED = YES
  */
 
 import { COMPETITION_RULES_ERROR_CODE } from "../constants/errorCodes.js";
@@ -12,6 +15,7 @@ import {
   DIRECT_KNOCKOUT_ENTRY_SOURCE,
   KNOCKOUT_BYE_ALLOCATION_SHAPE,
   deriveKnockoutEntryRound,
+  isDirectEntryTargetStageCompatible,
 } from "../constants/enums.js";
 import { createCompetitionRulesProfile } from "../domain/competitionRulesProfile.js";
 import { deriveQualificationPlan } from "./deriveQualificationPlan.js";
@@ -72,19 +76,22 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
     );
   }
 
-  // Same entrant cannot be both group participant and bypass/direct when caller supplies both
+  // Group-participant conflict applies ONLY to explicit BYPASS entrants.
+  // DIRECT_KNOCKOUT_ENTRY alone may still appear in group participant population.
   const groupParticipantIds = Array.isArray(context.groupParticipantEntryIds)
-    ? context.groupParticipantEntryIds.map((id) => String(id).trim()).filter(Boolean)
+    ? context.groupParticipantEntryIds
+        .map((id) => String(id).trim())
+        .filter(Boolean)
     : null;
   if (groupParticipantIds) {
     const groupSet = new Set(groupParticipantIds);
-    for (const id of [...bypassIds, ...directIds]) {
+    for (const id of bypassIds) {
       if (groupSet.has(id)) {
         issues.push(
           Object.freeze({
             code: COMPETITION_RULES_ERROR_CODE.IMPOSSIBLE_KNOCKOUT_ADMISSION,
             message:
-              "Same entryId cannot be both group participant and group-bypass/direct entrant",
+              "Same entryId cannot be both group participant and explicit group-stage bypass",
             details: Object.freeze({ entryId: id }),
           })
         );
@@ -99,14 +106,17 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
     issues.push(
       Object.freeze({
         code: COMPETITION_RULES_ERROR_CODE.INVALID_DIRECT_KNOCKOUT_ENTRY,
-        message:
-          "directKnockoutEntry.enabled requires count >= 1",
+        message: "directKnockoutEntry.enabled requires count >= 1",
         details: Object.freeze({
           count: admission.directKnockoutEntry.count,
         }),
       })
     );
   }
+
+  const bracketEntryRound = deriveKnockoutEntryRound(
+    qualificationPlan.totalKnockoutSlots
+  );
 
   if (
     admission.directKnockoutEntry.enabled ||
@@ -129,16 +139,85 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
       );
     }
 
-    const targetStage = admission.directKnockoutEntry.targetStage;
+    const policyTargetStage = admission.directKnockoutEntry.targetStage;
+    const unresolvedSlotCount = Math.max(
+      0,
+      admission.directKnockoutEntry.count - directEntrants.length
+    );
+
+    // Unresolved slots require an unambiguous policy-level default targetStage
+    if (unresolvedSlotCount > 0) {
+      if (
+        policyTargetStage == null ||
+        !Object.values(KNOCKOUT_ENTRY_ROUND).includes(policyTargetStage)
+      ) {
+        issues.push(
+          Object.freeze({
+            code: COMPETITION_RULES_ERROR_CODE.INVALID_DIRECT_KNOCKOUT_ENTRY,
+            message:
+              "directKnockoutEntry.targetStage required when unresolved direct slots remain",
+            details: Object.freeze({
+              unresolvedSlotCount,
+              targetStage: policyTargetStage,
+            }),
+          })
+        );
+      }
+    }
+
+    // Every resolved entrant must have a valid targetStage (own or inherited)
+    for (const e of directEntrants) {
+      const effectiveStage = e.targetStage || policyTargetStage;
+      if (
+        effectiveStage == null ||
+        !Object.values(KNOCKOUT_ENTRY_ROUND).includes(effectiveStage)
+      ) {
+        issues.push(
+          Object.freeze({
+            code: COMPETITION_RULES_ERROR_CODE.INVALID_DIRECT_KNOCKOUT_ENTRY,
+            message:
+              "Resolved direct entrant requires a valid targetStage (own or policy default)",
+            details: Object.freeze({ entryId: e.entryId, targetStage: effectiveStage }),
+          })
+        );
+        continue;
+      }
+      if (
+        bracketEntryRound &&
+        !isDirectEntryTargetStageCompatible(effectiveStage, bracketEntryRound)
+      ) {
+        issues.push(
+          Object.freeze({
+            code: COMPETITION_RULES_ERROR_CODE.INVALID_DIRECT_KNOCKOUT_ENTRY,
+            message:
+              "direct-entry targetStage is incompatible with bracket-wide entry round (must be same or later stage)",
+            details: Object.freeze({
+              entryId: e.entryId,
+              targetStage: effectiveStage,
+              bracketWideEntryRound: bracketEntryRound,
+              totalKnockoutSlots: qualificationPlan.totalKnockoutSlots,
+            }),
+          })
+        );
+      }
+    }
+
     if (
-      targetStage != null &&
-      !Object.values(KNOCKOUT_ENTRY_ROUND).includes(targetStage)
+      policyTargetStage != null &&
+      Object.values(KNOCKOUT_ENTRY_ROUND).includes(policyTargetStage) &&
+      bracketEntryRound &&
+      !isDirectEntryTargetStageCompatible(policyTargetStage, bracketEntryRound)
     ) {
       issues.push(
         Object.freeze({
           code: COMPETITION_RULES_ERROR_CODE.INVALID_DIRECT_KNOCKOUT_ENTRY,
-          message: "Invalid direct-entry targetStage",
-          details: Object.freeze({ targetStage }),
+          message:
+            "policy directKnockoutEntry.targetStage is incompatible with bracket-wide entry round",
+          details: Object.freeze({
+            targetStage: policyTargetStage,
+            bracketWideEntryRound: bracketEntryRound,
+            totalKnockoutSlots: qualificationPlan.totalKnockoutSlots,
+          }),
         })
       );
     }
@@ -206,7 +285,25 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
       })
     );
   }
-  if (
+  if (admission.bye.byePolicy === BYE_POLICY.NONE) {
+    // allocationShape may be null (dormant) or a valid dormant metadata value
+    if (
+      admission.bye.allocationShape != null &&
+      !Object.values(KNOCKOUT_BYE_ALLOCATION_SHAPE).includes(
+        admission.bye.allocationShape
+      )
+    ) {
+      issues.push(
+        Object.freeze({
+          code: COMPETITION_RULES_ERROR_CODE.INVALID_BYE_POLICY,
+          message: "Invalid dormant BYE allocationShape metadata",
+          details: Object.freeze({
+            allocationShape: admission.bye.allocationShape,
+          }),
+        })
+      );
+    }
+  } else if (
     !Object.values(KNOCKOUT_BYE_ALLOCATION_SHAPE).includes(
       admission.bye.allocationShape
     )
@@ -214,18 +311,15 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
     issues.push(
       Object.freeze({
         code: COMPETITION_RULES_ERROR_CODE.INVALID_BYE_POLICY,
-        message: "Unsupported BYE allocationShape",
+        message: "Unsupported BYE allocationShape when byePolicy is active",
         details: Object.freeze({
           allocationShape: admission.bye.allocationShape,
+          byePolicy: admission.bye.byePolicy,
         }),
       })
     );
   }
 
-  // Bracket size / entry round compatibility for knockout field
-  const bracketEntryRound = deriveKnockoutEntryRound(
-    qualificationPlan.totalKnockoutSlots
-  );
   if (profile.knockout.knockoutEnabled && !bracketEntryRound) {
     issues.push(
       Object.freeze({
@@ -239,32 +333,17 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
     );
   }
 
-  // Impossible BYE: NONE policy cannot pad non-power-of-two admitted counts.
-  // (Admitted count for bye math is totalKnockoutSlots when field is full;
-  //  under-filled fields are an execution concern — policy flags NONE + padding need.)
-  if (
-    admission.bye.byePolicy === BYE_POLICY.NONE &&
-    profile.knockout.knockoutEnabled &&
-    qualificationPlan.totalKnockoutSlots > 0
-  ) {
-    // Policy allows NONE only when no padding is expected at declared field size.
-    // Declared field is already power-of-two; runtime underfill would still need byes —
-    // document that NONE fails closed at match-generation when B−N > 0.
-    // No additional issue here unless allocationShape is unsupported.
-  }
-
-  const competitionPopulation = Array.isArray(context.competitionPopulationEntryIds)
+  const competitionPopulation = Array.isArray(
+    context.competitionPopulationEntryIds
+  )
     ? context.competitionPopulationEntryIds
         .map((id) => String(id).trim())
         .filter(Boolean)
     : null;
 
-  // Direct knockout entrants are excluded from group allocation by definition
-  // (GROUP_STAGE_BYPASS population includes them for plan filtering).
-  const effectiveBypassIds = new Set([...bypassIds, ...directIds]);
-
+  // GROUP_STAGE_BYPASS population = explicit bypassIds ONLY (not auto-merged from direct).
   const groupStageParticipantPopulation = competitionPopulation
-    ? competitionPopulation.filter((id) => !effectiveBypassIds.has(id))
+    ? competitionPopulation.filter((id) => !bypassIds.has(id))
     : null;
 
   const ok = issues.length === 0;
@@ -281,6 +360,8 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
     });
   }
 
+  const bothPolicies = [...directIds].filter((id) => bypassIds.has(id));
+
   const plan = Object.freeze({
     totalKnockoutSlots: qualificationPlan.totalKnockoutSlots,
     directKnockoutEntrySlots: qualificationPlan.directKnockoutEntrySlots,
@@ -290,12 +371,12 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
     requiresCrossGroupWildcardRanking:
       qualificationPlan.requiresCrossGroupWildcardRanking,
     groupStageBypass: Object.freeze({
-      enabled: admission.groupStageBypass.enabled || directIds.size > 0,
+      enabled: admission.groupStageBypass.enabled,
       entrants: Object.freeze(
-        [...effectiveBypassIds].sort().map((entryId) => Object.freeze({ entryId }))
+        [...bypassIds].sort().map((entryId) => Object.freeze({ entryId }))
       ),
       note:
-        "Bypassed units remain in competition population but must not enter group allocation / group matches / group standings",
+        "Explicit bypass only — DIRECT_KNOCKOUT_ENTRY does not imply GROUP_STAGE_BYPASS",
     }),
     directKnockoutEntry: Object.freeze({
       enabled: admission.directKnockoutEntry.enabled,
@@ -307,15 +388,26 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
        * (derived from totalKnockoutSlots / qualifierCount).
        */
       bracketWideEntryRound: bracketEntryRound,
-      entrants: Object.freeze(directEntrants.map((e) => Object.freeze({ ...e }))),
+      entrants: Object.freeze(
+        directEntrants.map((e) =>
+          Object.freeze({
+            ...e,
+            effectiveTargetStage:
+              e.targetStage || admission.directKnockoutEntry.targetStage || null,
+          })
+        )
+      ),
       unresolvedSlotCount: Math.max(
         0,
         admission.directKnockoutEntry.count - directEntrants.length
       ),
+      executionDeferred: true,
     }),
     bye: Object.freeze({
       byePolicy: admission.bye.byePolicy,
       allocationShape: admission.bye.allocationShape,
+      byeActive: admission.bye.byePolicy !== BYE_POLICY.NONE,
+      allocationShapeDormant: admission.bye.byePolicy === BYE_POLICY.NONE,
       executionOwner: "CORE-08 / CORE-09 / CE",
       newByeEngine: false,
       fakeByeWinner: false,
@@ -328,12 +420,19 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
       groupStageParticipantEntryIds: groupStageParticipantPopulation
         ? Object.freeze([...groupStageParticipantPopulation])
         : null,
-      groupStageBypassEntryIds: Object.freeze([...effectiveBypassIds].sort()),
+      groupStageBypassEntryIds: Object.freeze([...bypassIds].sort()),
       directKnockoutEntryIds: Object.freeze([...directIds].sort()),
+      explicitDirectAndBypassOverlapEntryIds: Object.freeze(
+        bothPolicies.sort()
+      ),
     }),
-    seedingDistinctFromDirectEntry: true,
-    groupStageBypassDistinctFromDirectEntry: true,
-    directEntryDistinctFromBye: true,
+    distinctions: Object.freeze({
+      DIRECT_ENTRY_IMPLIES_BYPASS: false,
+      EXPLICIT_DIRECT_AND_BYPASS_OVERLAP_ALLOWED: true,
+      seedingDistinctFromDirectEntry: true,
+      groupStageBypassDistinctFromDirectEntry: true,
+      directEntryDistinctFromBye: true,
+    }),
     canonicalIdentity: "entryId",
     displayNameIdentityAllowed: false,
   });

@@ -54,6 +54,22 @@ export function deriveQualificationPlan(input = {}) {
   );
 
   if (!groupStageEnabled) {
+    if (directKnockoutEntrySlots > totalKnockoutSlots && totalKnockoutSlots > 0) {
+      return Object.freeze({
+        ok: false,
+        code: COMPETITION_RULES_ERROR_CODE.IMPOSSIBLE_QUALIFICATION,
+        message:
+          "directKnockoutEntrySlots exceed totalKnockoutSlots",
+        details: Object.freeze({
+          directKnockoutEntrySlots,
+          totalKnockoutSlots,
+        }),
+      });
+    }
+    const remainingSlots = Math.max(
+      0,
+      totalKnockoutSlots - directKnockoutEntrySlots
+    );
     return Object.freeze({
       ok: true,
       groupStageEnabled: false,
@@ -66,12 +82,17 @@ export function deriveQualificationPlan(input = {}) {
       /** @deprecated alias — prefer groupDirectQualifierSlots */
       directSlots: 0,
       wildcardSlots: 0,
-      remainingSlots: 0,
+      /**
+       * Base knockout population slots not explained by directKnockoutEntry.
+       * NOT cross-group wildcard slots (requiresCrossGroupWildcardRanking=false).
+       */
+      remainingSlots,
       requiresCrossGroupWildcardRanking: false,
       details: Object.freeze({
-        note: "group stage disabled — knockout admission may still use direct slots",
+        note:
+          "group stage disabled — remainingSlots are base no-group knockout population slots, not cross-group wildcards",
         formula:
-          "TOTAL_KNOCKOUT_SLOTS = DIRECT_KNOCKOUT_ENTRY_SLOTS + GROUP_DIRECT_QUALIFIER_SLOTS + WILDCARD_SLOTS",
+          "remainingSlots = max(0, totalKnockoutSlots - directKnockoutEntrySlots); wildcardSlots = 0",
       }),
     });
   }

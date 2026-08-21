@@ -14,6 +14,7 @@ import { COMPETITION_RULES_ERROR_CODE } from "../constants/errorCodes.js";
 import {
   SCORING_METHOD,
   MATCH_SERIES,
+  BYE_POLICY,
 } from "../constants/enums.js";
 import { createCompetitionRulesProfile } from "../domain/competitionRulesProfile.js";
 import { deriveQualificationPlan } from "./deriveQualificationPlan.js";
@@ -162,7 +163,9 @@ export function resolveProfileCapabilityState(profileOrRaw) {
   );
   push(
     COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT_BYE,
-    profile.knockout.knockoutEnabled === true
+    profile.knockout.knockoutEnabled === true &&
+      profile.knockoutAdmission?.bye?.byePolicy != null &&
+      profile.knockoutAdmission.bye.byePolicy !== BYE_POLICY.NONE
   );
   push(COMPETITION_RULES_CAPABILITY_ID.LIFECYCLE_LOCK, true);
 

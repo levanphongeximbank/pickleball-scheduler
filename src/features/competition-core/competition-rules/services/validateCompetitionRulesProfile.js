@@ -304,8 +304,7 @@ export function validateCompetitionRulesProfile(raw, options = {}) {
   }
   if (
     admission.groupStageBypass.enabled &&
-    admission.groupStageBypass.entrants.length === 0 &&
-    admission.directKnockoutEntry.entrants.length === 0
+    admission.groupStageBypass.entrants.length === 0
   ) {
     issues.push(
       issue(
@@ -324,7 +323,22 @@ export function validateCompetitionRulesProfile(raw, options = {}) {
       )
     );
   }
-  if (
+  if (admission.bye.byePolicy === BYE_POLICY.NONE) {
+    if (
+      admission.bye.allocationShape != null &&
+      !Object.values(KNOCKOUT_BYE_ALLOCATION_SHAPE).includes(
+        admission.bye.allocationShape
+      )
+    ) {
+      issues.push(
+        issue(
+          COMPETITION_RULES_ERROR_CODE.INVALID_BYE_POLICY,
+          "Invalid dormant BYE allocationShape metadata",
+          { allocationShape: admission.bye.allocationShape }
+        )
+      );
+    }
+  } else if (
     !Object.values(KNOCKOUT_BYE_ALLOCATION_SHAPE).includes(
       admission.bye.allocationShape
     )
@@ -332,8 +346,11 @@ export function validateCompetitionRulesProfile(raw, options = {}) {
     issues.push(
       issue(
         COMPETITION_RULES_ERROR_CODE.INVALID_BYE_POLICY,
-        "Unsupported BYE allocationShape for certified execution",
-        { allocationShape: admission.bye.allocationShape }
+        "Unsupported BYE allocationShape when byePolicy is active",
+        {
+          allocationShape: admission.bye.allocationShape,
+          byePolicy: admission.bye.byePolicy,
+        }
       )
     );
   }
