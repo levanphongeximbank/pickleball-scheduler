@@ -50,7 +50,8 @@ function playersForSide(side, names, activeOnlyId) {
   return source.map((playerId, index) =>
     Object.freeze({
       playerId,
-      displayName: resolveAthleteDisplayName(playerId, names, side) || playerId,
+      displayName:
+        resolveAthleteDisplayName(playerId, names, side) || "Chưa có tên VĐV",
       permanentPlayerNumber: null,
       logicalPosition:
         index === 0
@@ -134,6 +135,7 @@ export function projectCanonicalCourtView(input = {}) {
   const formatProjection = projectCompetitionMatchFormat({
     competitionMode: matchContext.competitionMode || input.modeState?.competitionMode,
     eventType: matchContext.eventType,
+    type: matchContext.type || matchContext.eventTypeRaw,
     competitionContentCode: matchContext.competitionContentCode,
     competitionContentLabel: matchContext.competitionContentLabel,
     matchFormat: matchContext.matchFormat,
@@ -146,16 +148,18 @@ export function projectCanonicalCourtView(input = {}) {
   });
 
   const expectedPlayersPerSide = Number(formatProjection.expectedPlayersPerSide) || null;
+  // Content controls geometry. Never silently reinterpret doubles content as singles
+  // merely because roster projection currently has one athlete per side.
   const singles =
     formatProjection.matchFormat === REFEREE_MATCH_FORMAT.SINGLES ||
+    (expectedPlayersPerSide === 1 &&
+      formatProjection.matchFormat !== REFEREE_MATCH_FORMAT.DOUBLES &&
+      formatProjection.matchFormat !== REFEREE_MATCH_FORMAT.TEAM_SUBMATCH &&
+      !dreambreaker.isDreambreaker);
+  const oneMarkerPerSide =
     formatProjection.matchFormat === REFEREE_MATCH_FORMAT.DREAMBREAKER ||
-    (expectedPlayersPerSide === 1 && !dreambreaker.isDreambreaker
-      ? true
-      : !dreambreaker.isDreambreaker &&
-        expectedPlayersPerSide == null &&
-        (sideA.participantIds || []).length === 1 &&
-        (sideB.participantIds || []).length === 1);
-  const oneMarkerPerSide = singles || dreambreaker.isDreambreaker;
+    dreambreaker.isDreambreaker ||
+    singles;
 
   const playersA = dreambreaker.isDreambreaker
     ? playersForSide(sideA, names, dreambreaker.sideAActivePlayer?.playerId)
@@ -177,7 +181,7 @@ export function projectCanonicalCourtView(input = {}) {
         return (
           found || {
             playerId: id,
-            displayName: resolveAthleteDisplayName(id, names, sideA) || id,
+            displayName: resolveAthleteDisplayName(id, names, sideA) || "Chưa có tên VĐV",
             permanentPlayerNumber: null,
             logicalPosition,
             logicalPositionLabel: formatLogicalCourtPositionLabel(logicalPosition),
@@ -197,7 +201,7 @@ export function projectCanonicalCourtView(input = {}) {
         return (
           found || {
             playerId: id,
-            displayName: resolveAthleteDisplayName(id, names, sideB) || id,
+            displayName: resolveAthleteDisplayName(id, names, sideB) || "Chưa có tên VĐV",
             permanentPlayerNumber: null,
             logicalPosition,
             logicalPositionLabel: formatLogicalCourtPositionLabel(logicalPosition),
@@ -207,8 +211,18 @@ export function projectCanonicalCourtView(input = {}) {
     : playersB;
 
   const servingPlayerId = String(
-    courtState.serverPlayerId || serve?.serverPlayerId || ""
+    courtState.serverPlayerId ||
+      serve?.serverPlayerId ||
+      (courtState.lineupConfigured !== true && input.previewServerPlayerId
+        ? input.previewServerPlayerId
+        : "") ||
+      ""
   ).trim() || null;
+  const previewOnlyServer =
+    Boolean(input.previewServerPlayerId) &&
+    courtState.lineupConfigured !== true &&
+    !courtState.serverPlayerId &&
+    !serve?.serverPlayerId;
   let servingSide = serve?.servingSide
     ? String(serve.servingSide).toUpperCase()
     : courtState.servingSide
@@ -337,6 +351,36 @@ export function projectCanonicalCourtView(input = {}) {
   };
   const markerCount = Object.values(courtMarkers).filter(Boolean).length;
 
+  const SLOT_ARROW_POINTS = Object.freeze({
+    [COURT_SLOT.LEFT_TOP]: Object.freeze({ x: 22, y: 28 }),
+    [COURT_SLOT.LEFT_BOTTOM]: Object.freeze({ x: 22, y: 72 }),
+    [COURT_SLOT.RIGHT_TOP]: Object.freeze({ x: 78, y: 28 }),
+    [COURT_SLOT.RIGHT_BOTTOM]: Object.freeze({ x: 78, y: 72 }),
+  });
+  const singlesSlotPoints = Object.freeze({
+    [COURT_SLOT.LEFT_TOP]: Object.freeze({ x: 22, y: 50 }),
+    [COURT_SLOT.RIGHT_TOP]: Object.freeze({ x: 78, y: 50 }),
+  });
+  function pointForSlot(slot) {
+    if (!slot) return null;
+    if (oneMarkerPerSide && singlesSlotPoints[slot]) return singlesSlotPoints[slot];
+    return SLOT_ARROW_POINTS[slot] || null;
+  }
+  const serveArrow =
+    servingCourtSlot && receivingCourtSlot
+      ? Object.freeze({
+          from: pointForSlot(servingCourtSlot),
+          to: pointForSlot(receivingCourtSlot),
+          fromSlot: servingCourtSlot,
+          toSlot: receivingCourtSlot,
+          isDiagonal: true,
+          serveDirection:
+            servingCourtSlot && receivingCourtSlot
+              ? `${servingCourtSlot} → ${receivingCourtSlot}`
+              : null,
+        })
+      : null;
+
   return Object.freeze({
     courtOrientation: swapped ? COURT_ORIENTATION.SWAPPED : COURT_ORIENTATION.STANDARD,
     geometry: oneMarkerPerSide ? "SINGLES_OR_DB" : "DOUBLES",
@@ -353,6 +397,7 @@ export function projectCanonicalCourtView(input = {}) {
     isDreambreaker: dreambreaker.isDreambreaker,
     markerCount,
     lineupConfigured,
+    previewOnlyServer,
     sides: Object.freeze({
       left: Object.freeze({
         sideKey: leftSide.sideKey || (swapped ? "B" : "A"),
@@ -392,7 +437,9 @@ export function projectCanonicalCourtView(input = {}) {
           : serviceCourt && receiverCourt
             ? `${serviceCourt} → ${receiverCourt}`
             : null,
+      previewOnly: previewOnlyServer === true,
     }),
+    serveArrow,
     court: Object.freeze(courtMarkers),
     sideChangeRequired,
     sideChangePolicy,

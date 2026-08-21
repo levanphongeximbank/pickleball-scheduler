@@ -30,12 +30,15 @@ import {
   REFEREE_MATCH_FORMAT,
   serviceCourtFromScore,
   logicalPositionForCourtSlot,
+  validateContentRosterConsistency,
+  resolveDurableEventTypeCode,
 } from "../src/features/referee-production-ui/projection/projectCompetitionMatchFormat.js";
 import { normalizeIndividualTournamentMatch } from "../src/features/referee-production-ui/application/resolveCanonicalRefereeModeState.js";
 import { buildRefereeAssignmentCard } from "../src/features/referee-production-ui/projection/buildRefereeAssignmentCard.js";
 import { buildRefereeMatchView } from "../src/features/referee-production-ui/projection/buildRefereeMatchView.js";
 import { projectCanonicalCourtView } from "../src/features/referee-production-ui/projection/projectCanonicalCourtView.js";
 import { presentEntryLabel } from "../src/features/referee-production-ui/projection/resolveRefereeSideDisplay.js";
+import { formatParticipantDisplayName } from "../src/features/referee-production-ui/projection/formatRefereeUiLabels.js";
 import { EVENT_TYPE, EVENT_TYPE_LABELS } from "../src/models/tournament/constants.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -596,4 +599,317 @@ test("ARCHITECTURE: CORE/contracts freeze surfaces unchanged by this remediation
   );
   assert.match(mapper, /Translator-only|openingServiceTurn/);
   assert.doesNotMatch(mapper, /createInitialScoringState/);
+});
+
+test("CONTRADICTION 1: MIXED_DOUBLES + 2/side → DOUBLES valid", () => {
+  const projected = projectCompetitionMatchFormat({
+    eventType: EVENT_TYPE.MIXED_DOUBLE,
+    participantIdsA: ["a1", "a2"],
+    participantIdsB: ["b1", "b2"],
+  });
+  assert.equal(projected.matchFormat, REFEREE_MATCH_FORMAT.DOUBLES);
+  assert.equal(projected.expectedPlayersPerSide, 2);
+  const roster = validateContentRosterConsistency({
+    eventType: EVENT_TYPE.MIXED_DOUBLE,
+    participantIdsA: ["a1", "a2"],
+    participantIdsB: ["b1", "b2"],
+  });
+  assert.equal(roster.ok, true);
+});
+
+test("CONTRADICTION 2: MIXED_DOUBLES + 1/side → INVALID_ROSTER, never SINGLES", () => {
+  const projected = projectCompetitionMatchFormat({
+    eventType: EVENT_TYPE.MIXED_DOUBLE,
+    participantIdsA: ["a1"],
+    participantIdsB: ["b1"],
+  });
+  assert.equal(projected.matchFormat, REFEREE_MATCH_FORMAT.DOUBLES);
+  assert.notEqual(projected.matchFormat, REFEREE_MATCH_FORMAT.SINGLES);
+  const roster = validateContentRosterConsistency({
+    eventType: EVENT_TYPE.MIXED_DOUBLE,
+    participantIdsA: ["a1"],
+    participantIdsB: ["b1"],
+  });
+  assert.equal(roster.ok, false);
+  assert.equal(roster.code, "INVALID_ROSTER");
+  assert.match(roster.message, /2 VĐV mỗi bên/);
+
+  const view = buildRefereeMatchView({
+    matchId: "m-bad",
+    competitionMode: COMPETITION_REFEREE_MODE.INTERNAL,
+    matchContext: {
+      eventType: EVENT_TYPE.MIXED_DOUBLE,
+      competitionContentCode: EVENT_TYPE.MIXED_DOUBLE,
+      competitionContentLabel: "Đôi nam nữ",
+      matchFormat: REFEREE_MATCH_FORMAT.DOUBLES,
+      expectedPlayersPerSide: 2,
+      rosterValidation: roster,
+    },
+    participants: {
+      sides: [
+        { sideKey: "A", entryId: "e1", participantIds: ["a1"] },
+        { sideKey: "B", entryId: "e2", participantIds: ["b1"] },
+      ],
+    },
+    scoringRules: createScoringFormat({
+      scoringSystem: SCORING_SYSTEM.SIDE_OUT,
+      pointsToWin: 11,
+      winBy: 2,
+      bestOfGames: 1,
+    }),
+    assignedMatch: { match: { status: "READY_TO_START" } },
+  });
+  assert.equal(view.rosterValid, false);
+  assert.equal(view.canStart, false);
+  assert.equal(view.matchFormat, REFEREE_MATCH_FORMAT.DOUBLES);
+});
+
+test("CONTRADICTION 3-4: MEN/WOMEN_DOUBLES + 1/side invalid", () => {
+  for (const eventType of [EVENT_TYPE.MEN_DOUBLE, EVENT_TYPE.WOMEN_DOUBLE]) {
+    const roster = validateContentRosterConsistency({
+      eventType,
+      participantIdsA: ["a1"],
+      participantIdsB: ["b1"],
+    });
+    assert.equal(roster.ok, false);
+    assert.equal(
+      projectCompetitionMatchFormat({
+        eventType,
+        participantIdsA: ["a1"],
+        participantIdsB: ["b1"],
+      }).matchFormat,
+      REFEREE_MATCH_FORMAT.DOUBLES
+    );
+  }
+});
+
+test("CONTRADICTION 5-6: SINGLES + 1/side valid", () => {
+  for (const eventType of [EVENT_TYPE.MEN_SINGLE, EVENT_TYPE.WOMEN_SINGLE]) {
+    const roster = validateContentRosterConsistency({
+      eventType,
+      participantIdsA: ["a1"],
+      participantIdsB: ["b1"],
+    });
+    assert.equal(roster.ok, true);
+    assert.equal(
+      projectCompetitionMatchFormat({ eventType, participantIdsA: ["a1"], participantIdsB: ["b1"] })
+        .matchFormat,
+      REFEREE_MATCH_FORMAT.SINGLES
+    );
+  }
+});
+
+test("CONTRADICTION 7: SINGLES + 2/side invalid", () => {
+  const roster = validateContentRosterConsistency({
+    eventType: EVENT_TYPE.MEN_SINGLE,
+    participantIdsA: ["a1", "a2"],
+    participantIdsB: ["b1", "b2"],
+  });
+  assert.equal(roster.ok, false);
+});
+
+test("CONTRADICTION 8: DreamBreaker allows 1 active/side", () => {
+  const roster = validateContentRosterConsistency({
+    isDreambreaker: true,
+    participantIdsA: ["a1"],
+    participantIdsB: ["b1"],
+  });
+  assert.equal(roster.ok, true);
+  assert.equal(roster.matchFormat, REFEREE_MATCH_FORMAT.DREAMBREAKER);
+});
+
+test("CONTRADICTION 9-10: marker counts doubles=4 singles=2", () => {
+  const doubles = projectCanonicalCourtView({
+    matchContext: {
+      matchFormat: "DOUBLES",
+      expectedPlayersPerSide: 2,
+      eventType: EVENT_TYPE.MIXED_DOUBLE,
+    },
+    participants: {
+      sides: [
+        { sideKey: "A", participantIds: ["a1", "a2"] },
+        { sideKey: "B", participantIds: ["b1", "b2"] },
+      ],
+    },
+    participantNames: { a1: "A1", a2: "A2", b1: "B1", b2: "B2" },
+  });
+  assert.equal(doubles.markerCount, 4);
+  const singles = projectCanonicalCourtView({
+    matchContext: {
+      matchFormat: "SINGLES",
+      expectedPlayersPerSide: 1,
+      eventType: EVENT_TYPE.MEN_SINGLE,
+    },
+    participants: {
+      sides: [
+        { sideKey: "A", participantIds: ["a1"] },
+        { sideKey: "B", participantIds: ["b1"] },
+      ],
+    },
+    participantNames: { a1: "Lan", b1: "Minh" },
+  });
+  assert.equal(singles.markerCount, 2);
+});
+
+test("CONTRADICTION 11-14: singles/doubles service courts + diagonal arrow", () => {
+  assert.equal(serviceCourtFromScore(0), "RIGHT");
+  assert.equal(serviceCourtFromScore(1), "LEFT");
+  const singles = projectCanonicalCourtView({
+    matchContext: { matchFormat: "SINGLES", expectedPlayersPerSide: 1 },
+    participants: {
+      sides: [
+        { sideKey: "A", participantIds: ["a1"] },
+        { sideKey: "B", participantIds: ["b1"] },
+      ],
+    },
+    scoringRules: createScoringFormat({
+      scoringSystem: SCORING_SYSTEM.SIDE_OUT,
+      pointsToWin: 11,
+      winBy: 2,
+      bestOfGames: 1,
+    }),
+    currentScore: {
+      points: { SIDE_A: 0, SIDE_B: 0 },
+      serve: { servingSide: "SIDE_A", serverPlayerId: "a1", receiverPlayerId: "b1" },
+    },
+    courtState: {
+      serverPlayerId: "a1",
+      receiverPlayerId: "b1",
+      servingSide: "SIDE_A",
+      lineupConfigured: true,
+    },
+    participantNames: { a1: "Lan", b1: "Minh" },
+  });
+  assert.equal(singles.serving.serviceCourt, "RIGHT");
+  assert.equal(singles.serving.receiverCourt, "LEFT");
+  assert.ok(singles.serveArrow?.from && singles.serveArrow?.to);
+
+  const doubles = projectCanonicalCourtView({
+    matchContext: { matchFormat: "DOUBLES", expectedPlayersPerSide: 2 },
+    participants: {
+      sides: [
+        { sideKey: "A", participantIds: ["a1", "a2"] },
+        { sideKey: "B", participantIds: ["b1", "b2"] },
+      ],
+    },
+    scoringRules: createScoringFormat({
+      scoringSystem: SCORING_SYSTEM.SIDE_OUT,
+      pointsToWin: 11,
+      winBy: 2,
+      bestOfGames: 1,
+      metadata: { openingServiceTurn: 2 },
+    }),
+    currentScore: {
+      points: { SIDE_A: 0, SIDE_B: 0 },
+      serve: { servingSide: "SIDE_A", serverNumber: 2, serverPlayerId: "a1", receiverPlayerId: "b2" },
+    },
+    courtState: {
+      serverPlayerId: "a1",
+      receiverPlayerId: "b2",
+      servingSide: "SIDE_A",
+      serverNumber: 2,
+      lineupConfigured: true,
+      playerPositions: { sideA: ["a1", "a2"], sideB: ["b1", "b2"] },
+    },
+    participantNames: { a1: "A1", a2: "A2", b1: "B1", b2: "B2" },
+  });
+  assert.equal(doubles.serving.serviceCourt, "RIGHT");
+  assert.equal(doubles.serving.receiverCourt, "LEFT");
+  assert.ok(doubles.serveArrow);
+});
+
+test("CONTRADICTION 15-20: names, no UUID primary, no Phải concat", () => {
+  assert.equal(formatParticipantDisplayName("7be5f51a-50a0-4d61-88a4-e0a213acd298"), "Chưa có tên VĐV");
+  assert.equal(formatParticipantDisplayName(""), "Chưa có tên VĐV");
+  const court = projectCanonicalCourtView({
+    matchContext: { matchFormat: "SINGLES", expectedPlayersPerSide: 1 },
+    participants: {
+      sides: [
+        { sideKey: "A", participantIds: ["7be5f51a-50a0-4d61-88a4-e0a213acd298"] },
+        { sideKey: "B", participantIds: ["f7349ada-91c6-4683-a645-2b86f412b017"] },
+      ],
+    },
+    courtState: {
+      serverPlayerId: "7be5f51a-50a0-4d61-88a4-e0a213acd298",
+      receiverPlayerId: "f7349ada-91c6-4683-a645-2b86f412b017",
+      servingSide: "SIDE_A",
+      lineupConfigured: true,
+    },
+  });
+  assert.equal(court.court.leftTop.displayName, "Chưa có tên VĐV");
+  assert.equal(court.court.leftTop.logicalPositionLabel, "Phải");
+  assert.notEqual(
+    `${court.court.leftTop.logicalPositionLabel}${court.court.leftTop.displayName}`,
+    court.court.leftTop.displayName
+  );
+  assert.equal(court.court.leftTop.isServing, true);
+  assert.equal(court.court.rightTop.isReceiving, true);
+});
+
+test("CONTRADICTION 21-23: owner live case type vs eventType conflict → men_single", () => {
+  const code = resolveDurableEventTypeCode({
+    eventType: EVENT_TYPE.MIXED_DOUBLE,
+    type: EVENT_TYPE.MEN_SINGLE,
+    matchType: "singles",
+  });
+  assert.equal(code, EVENT_TYPE.MEN_SINGLE);
+  const normalized = normalizeIndividualTournamentMatch(
+    {
+      id: "4d8f7fd3-e36a-4995-b628-7f1de34b0690",
+      entryAId: "da59b2ee-27b7-46cc-8d75-fb121314dc1f",
+      entryBId: "60c30a61-94a3-4eb0-9968-421c68249956",
+      matchType: "singles",
+      participantIdsA: ["7be5f51a-50a0-4d61-88a4-e0a213acd298"],
+      participantIdsB: ["f7349ada-91c6-4683-a645-2b86f412b017"],
+    },
+    {
+      id: "fd0911ce-7f04-4abf-b7f7-f8e813a37abc",
+      type: EVENT_TYPE.MEN_SINGLE,
+      eventType: EVENT_TYPE.MIXED_DOUBLE,
+      entries: [
+        {
+          id: "da59b2ee-27b7-46cc-8d75-fb121314dc1f",
+          name: "Đội 9",
+          playerIds: ["7be5f51a-50a0-4d61-88a4-e0a213acd298"],
+        },
+        {
+          id: "60c30a61-94a3-4eb0-9968-421c68249956",
+          name: "Đội 10",
+          playerIds: ["f7349ada-91c6-4683-a645-2b86f412b017"],
+        },
+      ],
+    },
+    {}
+  );
+  assert.equal(normalized.eventType, EVENT_TYPE.MEN_SINGLE);
+  assert.equal(normalized.competitionContentLabel, "Đơn nam");
+  assert.equal(normalized.matchFormat, REFEREE_MATCH_FORMAT.SINGLES);
+  assert.equal(normalized.rosterValidation.ok, true);
+  assert.notEqual(normalized.competitionContentLabel, "Đôi nam nữ");
+});
+
+test("CONTRADICTION 24-25: F5 durability fields + change-ends orientation only", () => {
+  const court = projectCanonicalCourtView({
+    matchContext: { matchFormat: "DOUBLES", expectedPlayersPerSide: 2 },
+    participants: {
+      sides: [
+        { sideKey: "A", entryId: "e1", participantIds: ["a1", "a2"] },
+        { sideKey: "B", entryId: "e2", participantIds: ["b1", "b2"] },
+      ],
+    },
+    courtState: {
+      serverPlayerId: "a1",
+      receiverPlayerId: "b2",
+      servingSide: "SIDE_A",
+      serverNumber: 2,
+      lineupConfigured: true,
+      courtOrientation: "SWAPPED",
+      playerPositions: { sideA: ["a1", "a2"], sideB: ["b1", "b2"] },
+    },
+    participantNames: { a1: "A1", a2: "A2", b1: "B1", b2: "B2", e1: "Cặp 1", e2: "Cặp 2" },
+  });
+  assert.equal(court.serving.serverPlayerId, "a1");
+  assert.equal(court.serving.receiverPlayerId, "b2");
+  assert.equal(court.courtOrientation, "SWAPPED");
+  assert.equal(court.sides.left.scoringSide, "SIDE_B");
 });

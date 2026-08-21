@@ -17,6 +17,31 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import CanonicalCourtView from "./CanonicalCourtView.jsx";
 import { deriveCourtPresentation } from "../projection/deriveCourtPresentation.js";
 
+function applyPreviewServer(courtProjection, previewServerPlayerId) {
+  if (!previewServerPlayerId || !courtProjection?.court) return courtProjection;
+  const nextCourt = {};
+  for (const [slot, player] of Object.entries(courtProjection.court)) {
+    if (!player) {
+      nextCourt[slot] = null;
+      continue;
+    }
+    nextCourt[slot] = {
+      ...player,
+      isServing: player.playerId === previewServerPlayerId,
+    };
+  }
+  return {
+    ...courtProjection,
+    previewOnlyServer: true,
+    court: nextCourt,
+    serving: {
+      ...(courtProjection.serving || {}),
+      serverPlayerId: previewServerPlayerId,
+      previewOnly: true,
+    },
+  };
+}
+
 function Banner({ kind, children, testId }) {
   return (
     <div className={`rp-banner rp-banner-${kind}`} data-testid={testId}>
@@ -102,10 +127,19 @@ function ServingStatusStrip({ serving, expectedVersion, compactVersion = true })
     serving.serviceTurn != null ? String(serving.serviceTurn) : "—";
   return (
     <div className="rp-serve-strip" data-testid="serving-status-strip">
+      {serving.servingTeamName ? (
+        <span className="rp-serve-cell" data-testid="serve-team-side">
+          <SportsVolleyballIcon className="rp-serve-icon" fontSize="inherit" aria-hidden="true" />
+          <span>
+            Đội có quyền giao
+            <strong>{serving.servingTeamName}</strong>
+          </span>
+        </span>
+      ) : null}
       <span className="rp-serve-cell" data-testid="serve-team">
         <SportsVolleyballIcon className="rp-serve-icon" fontSize="inherit" aria-hidden="true" />
         <span>
-          Giao bóng
+          ★ Người giao
           <strong data-testid="serving-player-name">
             {serving.servingPlayerName || "—"}
           </strong>
@@ -114,7 +148,7 @@ function ServingStatusStrip({ serving, expectedVersion, compactVersion = true })
       <span className="rp-serve-cell" data-testid="receive-player">
         <PersonIcon className="rp-serve-icon rp-serve-icon-teal" fontSize="inherit" aria-hidden="true" />
         <span>
-          Đỡ bóng
+          Người đỡ
           <strong data-testid="receiving-player-name">
             {serving.receivingPlayerName || "—"}
           </strong>
@@ -207,7 +241,7 @@ function SideIdentityBlock({ sideKey, entryLabel, members, playerNames, testId }
     Array.isArray(members) && members.length
       ? members.map((m) => ({
           id: m.participantId || m.displayName || m.name,
-          name: m.displayName || m.name || "Chưa có tên",
+          name: m.displayName || m.name || "Chưa có tên VĐV",
           position: m.logicalPositionLabel || null,
         }))
       : Array.isArray(playerNames)
@@ -224,9 +258,13 @@ function SideIdentityBlock({ sideKey, entryLabel, members, playerNames, testId }
       <ul className="rp-side-athletes" data-testid={`${testId}-athletes`}>
         {rows.length ? (
           rows.map((row) => (
-            <li key={row.id}>
-              {row.position ? <span className="rp-logical-pos">{row.position}</span> : null}
-              {row.name}
+            <li key={row.id} className="rp-side-athlete-row">
+              {row.position ? (
+                <span className="rp-logical-pos" data-testid={`${testId}-pos`}>
+                  {row.position}
+                </span>
+              ) : null}
+              <span className="rp-side-athlete-name">{row.name}</span>
             </li>
           ))
         ) : (
@@ -244,6 +282,7 @@ function LineupSetupPanel({
   stale,
   onClose,
   onConfirm,
+  onPreviewServerChange,
 }) {
   const court = view?.courtProjection || {};
   const left = court.sides?.left || {};
@@ -282,11 +321,20 @@ function LineupSetupPanel({
     const nextB = sideBKey ? sideBKey.split("|") : [];
     setSideA(nextA);
     setSideB(nextB);
-    setServerPlayerId(
-      court.serving?.serverPlayerId || nextA[0] || nextB[0] || ""
-    );
+    const initialServer =
+      court.serving?.serverPlayerId || nextA[0] || nextB[0] || "";
+    setServerPlayerId(initialServer);
     setServerNumber(openingTurnDefault);
-  }, [open, view?.matchId, sideAKey, sideBKey, court.serving?.serverPlayerId, openingTurnDefault]);
+    onPreviewServerChange?.(initialServer || null);
+  }, [open, view?.matchId, sideAKey, sideBKey, court.serving?.serverPlayerId, openingTurnDefault, onPreviewServerChange]);
+
+  useEffect(() => {
+    if (!open) {
+      onPreviewServerChange?.(null);
+      return;
+    }
+    onPreviewServerChange?.(serverPlayerId || null);
+  }, [open, serverPlayerId, onPreviewServerChange]);
 
   if (!open) return null;
 
@@ -527,6 +575,7 @@ export default function RefereeMatchScreen({
 }) {
   const [confirmChangeEnds, setConfirmChangeEnds] = useState(false);
   const [lineupOpen, setLineupOpen] = useState(false);
+  const [previewServerPlayerId, setPreviewServerPlayerId] = useState(null);
 
   useEffect(() => {
     if (view?.lineupRequired) setLineupOpen(true);
@@ -555,7 +604,14 @@ export default function RefereeMatchScreen({
 
   if (!view) return null;
 
-  const court = view.courtProjection || {};
+  const baseCourt = view.courtProjection || {};
+  const lineupPanelOpen = lineupOpen || view.lineupRequired === true;
+  const court =
+    lineupPanelOpen &&
+    previewServerPlayerId &&
+    view.lineupConfigured !== true
+      ? applyPreviewServer(baseCourt, previewServerPlayerId)
+      : baseCourt;
   const pending = Boolean(pendingAction);
   const db = court.dreambreaker;
   // One shared orientation authority for scoreboard, court, and +Point buttons.
@@ -681,6 +737,12 @@ export default function RefereeMatchScreen({
       {view.lineupRequired ? (
         <Banner kind="warn" testId="lineup-required-banner">
           Bắt buộc sắp xếp đội hình: chọn người giao bóng đầu tiên và vị trí VĐV trên sân.
+        </Banner>
+      ) : null}
+
+      {view.rosterValid === false && view.rosterValidation?.message ? (
+        <Banner kind="error" testId="invalid-roster-banner">
+          {view.rosterValidation.message}
         </Banner>
       ) : null}
 
@@ -819,13 +881,20 @@ export default function RefereeMatchScreen({
 
           <LineupSetupPanel
             view={view}
-            open={lineupOpen || view.lineupRequired === true}
+            open={lineupPanelOpen}
             pending={pending}
             stale={stale}
-            onClose={() => setLineupOpen(false)}
+            onClose={() => {
+              setLineupOpen(false);
+              setPreviewServerPlayerId(null);
+            }}
+            onPreviewServerChange={setPreviewServerPlayerId}
             onConfirm={async (payload) => {
               const result = await onConfigureLineup?.(payload);
-              if (result?.ok !== false) setLineupOpen(false);
+              if (result?.ok !== false) {
+                setLineupOpen(false);
+                setPreviewServerPlayerId(null);
+              }
             }}
           />
 

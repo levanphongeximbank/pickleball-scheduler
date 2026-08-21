@@ -78,24 +78,100 @@ function labelForEventType(code) {
 }
 
 function countPlayers(ids) {
-  return Array.isArray(ids) ? ids.map(String).filter(Boolean).length : 0;
+  return Array.isArray(ids)
+    ? [...new Set(ids.map((id) => String(id || "").trim()).filter(Boolean))].length
+    : 0;
+}
+
+function sidePlayerIds(input = {}, side) {
+  if (side === "A") {
+    return (
+      (Array.isArray(input.participantIdsA) && input.participantIdsA) ||
+      (Array.isArray(input.teamAPlayerIds) && input.teamAPlayerIds) ||
+      (Array.isArray(input.lineupA) && input.lineupA) ||
+      (Array.isArray(input.sides?.[0]?.participantIds) &&
+        input.sides[0].participantIds) ||
+      []
+    );
+  }
+  return (
+    (Array.isArray(input.participantIdsB) && input.participantIdsB) ||
+    (Array.isArray(input.teamBPlayerIds) && input.teamBPlayerIds) ||
+    (Array.isArray(input.lineupB) && input.lineupB) ||
+    (Array.isArray(input.sides?.[1]?.participantIds) &&
+      input.sides[1].participantIds) ||
+    []
+  );
 }
 
 function rosterEvidencePlayersPerSide(input = {}) {
-  const a =
-    countPlayers(input.participantIdsA) ||
-    countPlayers(input.teamAPlayerIds) ||
-    countPlayers(input.lineupA) ||
-    countPlayers(input.sides?.[0]?.participantIds);
-  const b =
-    countPlayers(input.participantIdsB) ||
-    countPlayers(input.teamBPlayerIds) ||
-    countPlayers(input.lineupB) ||
-    countPlayers(input.sides?.[1]?.participantIds);
+  const a = countPlayers(sidePlayerIds(input, "A"));
+  const b = countPlayers(sidePlayerIds(input, "B"));
   if (a === 1 && (b === 1 || b === 0)) return 1;
   if (a >= 2 || b >= 2) return 2;
   if (a === 1 || b === 1) return 1;
   return null;
+}
+
+function formatFamilyFromMatchType(matchType) {
+  const key = trim(matchType).toLowerCase();
+  if (!key) return null;
+  if (DAILY_SINGLES_TYPES.has(key) || key === "singles" || key === "single") {
+    return "SINGLES";
+  }
+  if (DAILY_DOUBLES_TYPES.has(key) || key === "doubles" || key === "double") {
+    return "DOUBLES";
+  }
+  return null;
+}
+
+function formatFamilyFromEventType(code) {
+  if (!code) return null;
+  if (SINGLES_EVENT_TYPES.has(code)) return "SINGLES";
+  if (DOUBLES_EVENT_TYPES.has(code)) return "DOUBLES";
+  return null;
+}
+
+/**
+ * Resolve durable event type when payload may expose both `eventType` and legacy `type`.
+ * Content controls format — roster never picks the code, but when durable fields conflict,
+ * prefer the candidate that agrees with match.matchType family (singles/doubles).
+ * @param {object} input
+ */
+export function resolveDurableEventTypeCode(input = {}) {
+  const candidates = [
+    normalizeEventTypeCode(input.eventType),
+    normalizeEventTypeCode(input.type),
+    normalizeEventTypeCode(input.matchEventType),
+    normalizeEventTypeCode(input.contentCode),
+    normalizeEventTypeCode(input.competitionContentCode),
+  ].filter((code) => code && labelForEventType(code));
+
+  if (!candidates.length) return null;
+  const unique = [...new Set(candidates)];
+  if (unique.length === 1) return unique[0];
+
+  const familyHint =
+    formatFamilyFromMatchType(input.matchType) ||
+    formatFamilyFromMatchType(input.match?.matchType);
+  if (familyHint) {
+    const agreeing = unique.filter((code) => formatFamilyFromEventType(code) === familyHint);
+    if (agreeing.length === 1) return agreeing[0];
+    if (agreeing.length > 1) {
+      // Prefer explicit eventType among agreeing candidates when present.
+      const preferred = normalizeEventTypeCode(input.eventType);
+      if (agreeing.includes(preferred)) return preferred;
+      return agreeing[0];
+    }
+  }
+
+  // Conflicting singles/doubles codes with no matchType hint: prefer legacy `type`
+  // when it is a known event code (CORE13 fixtures store truthful type + stale eventType).
+  const fromType = normalizeEventTypeCode(input.type);
+  if (fromType && labelForEventType(fromType)) return fromType;
+  const fromEventType = normalizeEventTypeCode(input.eventType);
+  if (fromEventType && labelForEventType(fromEventType)) return fromEventType;
+  return unique[0];
 }
 
 function isDreambreakerSignal(input = {}) {
@@ -128,9 +204,7 @@ export function resolveCompetitionContent(input = {}) {
     });
   }
 
-  const eventType = normalizeEventTypeCode(
-    input.eventType || input.competitionContentCode || input.contentCode
-  );
+  const eventType = resolveDurableEventTypeCode(input);
   if (eventType && labelForEventType(eventType)) {
     return Object.freeze({
       competitionContentCode: eventType,
@@ -187,8 +261,9 @@ export function resolveCompetitionContent(input = {}) {
 
 /**
  * Derive presentation match format + expectedPlayersPerSide.
- * Prefer durable content codes; use roster evidence as secondary signal.
- * Never infer solely from display names like "Đội".
+ * Content / discipline controls format. Roster NEVER silently downgrades
+ * a canonical doubles content code into SINGLES.
+ * Roster is only a secondary signal when no durable content code exists.
  * @param {object} input
  */
 export function resolveRefereeMatchFormat(input = {}) {
@@ -199,9 +274,10 @@ export function resolveRefereeMatchFormat(input = {}) {
     });
   }
 
-  const eventType = normalizeEventTypeCode(
-    input.eventType || input.competitionContentCode || input.contentCode
-  );
+  const eventType = resolveDurableEventTypeCode({
+    ...input,
+    eventType: input.eventType || input.competitionContentCode || input.contentCode,
+  });
   const roster = rosterEvidencePlayersPerSide(input);
   const explicit =
     Number(input.expectedPlayersPerSide) > 0
@@ -209,6 +285,7 @@ export function resolveRefereeMatchFormat(input = {}) {
       : null;
 
   let playersPerSide = explicit;
+  // Content precedence: known singles/doubles event codes always win over roster length.
   if (playersPerSide == null && eventType && SINGLES_EVENT_TYPES.has(eventType)) {
     playersPerSide = 1;
   } else if (playersPerSide == null && eventType && DOUBLES_EVENT_TYPES.has(eventType)) {
@@ -240,6 +317,106 @@ export function resolveRefereeMatchFormat(input = {}) {
   });
 }
 
+export const ROSTER_VALIDATION_CODE = Object.freeze({
+  OK: "OK",
+  INVALID_ROSTER: "INVALID_ROSTER",
+  DATA_INCONSISTENCY: "DATA_INCONSISTENCY",
+});
+
+/**
+ * Fail-closed content↔roster consistency. Does not invent athletes or downgrade format.
+ * DreamBreaker allows 1 active athlete per side by explicit discipline.
+ * @param {object} input
+ */
+export function validateContentRosterConsistency(input = {}) {
+  const content = projectCompetitionMatchFormat(input);
+  if (content.matchFormat === REFEREE_MATCH_FORMAT.DREAMBREAKER) {
+    return Object.freeze({
+      ok: true,
+      code: ROSTER_VALIDATION_CODE.OK,
+      message: null,
+      matchFormat: content.matchFormat,
+      expectedPlayersPerSide: 1,
+      sideACount: countPlayers(sidePlayerIds(input, "A")),
+      sideBCount: countPlayers(sidePlayerIds(input, "B")),
+      offendingSides: Object.freeze([]),
+      competitionContentCode: content.competitionContentCode,
+      competitionContentLabel: content.competitionContentLabel,
+    });
+  }
+
+  const expected = Number(content.expectedPlayersPerSide);
+  const sideACount = countPlayers(sidePlayerIds(input, "A"));
+  const sideBCount = countPlayers(sidePlayerIds(input, "B"));
+
+  // Team parent matchup projection often exposes team sides without athlete
+  // participantIds (lineups live on submatches). Do not invent INVALID_ROSTER there.
+  if (
+    content.matchFormat === REFEREE_MATCH_FORMAT.TEAM_SUBMATCH &&
+    sideACount === 0 &&
+    sideBCount === 0
+  ) {
+    return Object.freeze({
+      ok: true,
+      code: ROSTER_VALIDATION_CODE.OK,
+      message: null,
+      matchFormat: content.matchFormat,
+      expectedPlayersPerSide: expected,
+      sideACount,
+      sideBCount,
+      offendingSides: Object.freeze([]),
+      competitionContentCode: content.competitionContentCode,
+      competitionContentLabel: content.competitionContentLabel,
+      deferredToSubmatch: true,
+    });
+  }
+
+  const offending = [];
+  if (Number.isFinite(expected) && expected > 0) {
+    if (sideACount !== expected) offending.push({ side: "A", count: sideACount, expected });
+    if (sideBCount !== expected) offending.push({ side: "B", count: sideBCount, expected });
+  }
+
+  if (!offending.length) {
+    return Object.freeze({
+      ok: true,
+      code: ROSTER_VALIDATION_CODE.OK,
+      message: null,
+      matchFormat: content.matchFormat,
+      expectedPlayersPerSide: expected,
+      sideACount,
+      sideBCount,
+      offendingSides: Object.freeze([]),
+      competitionContentCode: content.competitionContentCode,
+      competitionContentLabel: content.competitionContentLabel,
+    });
+  }
+
+  const contentLabel =
+    content.competitionContentLabel ||
+    (expected === 2 ? "Đôi" : expected === 1 ? "Đơn" : "nội dung");
+  const detail = offending
+    .map((row) => `Side ${row.side}: ${row.count}/${row.expected}`)
+    .join("; ");
+  const message =
+    expected === 2
+      ? `Dữ liệu đội hình không hợp lệ: Nội dung ${contentLabel} yêu cầu 2 VĐV mỗi bên. (${detail})`
+      : `Dữ liệu đội hình không hợp lệ: Nội dung ${contentLabel} yêu cầu ${expected} VĐV mỗi bên. (${detail})`;
+
+  return Object.freeze({
+    ok: false,
+    code: ROSTER_VALIDATION_CODE.INVALID_ROSTER,
+    message,
+    matchFormat: content.matchFormat,
+    expectedPlayersPerSide: expected,
+    sideACount,
+    sideBCount,
+    offendingSides: Object.freeze(offending),
+    competitionContentCode: content.competitionContentCode,
+    competitionContentLabel: content.competitionContentLabel,
+  });
+}
+
 /**
  * Full projection fields for modeState / matchContext / Home+Match cards.
  * @param {object} input
@@ -248,7 +425,9 @@ export function projectCompetitionMatchFormat(input = {}) {
   const content = resolveCompetitionContent(input);
   const format = resolveRefereeMatchFormat({
     ...input,
-    eventType: input.eventType || content.competitionContentCode,
+    eventType: content.competitionContentCode || input.eventType,
+    type: input.type,
+    matchType: input.matchType,
     competitionContentCode: content.competitionContentCode,
   });
   return Object.freeze({

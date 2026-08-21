@@ -22,6 +22,7 @@ import { resolveRefereeSideDisplay } from "./resolveRefereeSideDisplay.js";
 import {
   formatLogicalCourtPositionLabel,
   projectCompetitionMatchFormat,
+  validateContentRosterConsistency,
   REFEREE_MATCH_FORMAT,
 } from "./projectCompetitionMatchFormat.js";
 
@@ -159,6 +160,7 @@ export function buildRefereeMatchView(input) {
   const content = projectCompetitionMatchFormat({
     competitionMode: input.competitionMode,
     eventType: matchContext.eventType,
+    type: matchContext.type,
     competitionContentCode: matchContext.competitionContentCode,
     competitionContentLabel: matchContext.competitionContentLabel,
     matchFormat: matchContext.matchFormat || courtProjection.matchFormat,
@@ -170,6 +172,23 @@ export function buildRefereeMatchView(input) {
     matchType: matchContext.matchType,
     sides,
   });
+  const rosterValidation =
+    matchContext.rosterValidation ||
+    match?.rosterValidation ||
+    validateContentRosterConsistency({
+      competitionMode: input.competitionMode,
+      eventType: matchContext.eventType || content.competitionContentCode,
+      type: matchContext.type,
+      matchType: matchContext.matchType,
+      competitionContentCode: content.competitionContentCode,
+      matchFormat: content.matchFormat,
+      expectedPlayersPerSide: content.expectedPlayersPerSide,
+      isDreambreaker: content.matchFormat === REFEREE_MATCH_FORMAT.DREAMBREAKER,
+      sides,
+      participantIdsA: sideA?.participantIds,
+      participantIdsB: sideB?.participantIds,
+    });
+  const rosterValid = rosterValidation?.ok !== false;
   const resolvedA = resolveRefereeSideDisplay(sideA, names, {
     matchFormat: content.matchFormat,
   });
@@ -305,7 +324,8 @@ export function buildRefereeMatchView(input) {
     capabilities.scoring !== false &&
     assigned.scoreEntryReady !== false &&
     (!hasCourtPlayers || lineupConfigured) &&
-    !changeEndDue;
+    !changeEndDue &&
+    rosterValid;
   const servingSideNow = courtProjection.serving?.servingSide || scoreProjection?.serve?.servingSide || null;
   const receivingSideNow =
     servingSideNow === "SIDE_B" ? "SIDE_A" : servingSideNow === "SIDE_A" ? "SIDE_B" : null;
@@ -539,7 +559,9 @@ export function buildRefereeMatchView(input) {
     preStart: input.preStart || null,
     lineupConfigured,
     lineupRequired,
-    canStart: canStartBase && (!hasCourtPlayers || lineupConfigured),
+    rosterValidation,
+    rosterValid,
+    canStart: canStartBase && (!hasCourtPlayers || lineupConfigured) && rosterValid,
     canScore: canScoreBase,
     canUndo,
     undoAvailability,

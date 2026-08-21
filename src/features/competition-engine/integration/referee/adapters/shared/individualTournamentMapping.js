@@ -20,7 +20,10 @@ import {
   buildStandardLifecyclePolicy,
 } from "./policyBuilders.js";
 import { mapModeScoringRulesToCore16 } from "./scoringRulesMapper.js";
-import { projectCompetitionMatchFormat } from "./competitionContentProjection.js";
+import {
+  projectCompetitionMatchFormat,
+  validateContentRosterConsistency,
+} from "./competitionContentProjection.js";
 
 /**
  * @param {object} options
@@ -130,6 +133,8 @@ export function createIndividualTournamentRefereeAdapterSurface({
         round: match.round ?? null,
         eventId: match.eventId || null,
         eventType: match.eventType || content.competitionContentCode || null,
+        type: match.type || null,
+        matchType: match.matchType || null,
         groupId: match.groupId || null,
         parentMatchId: match.parentMatchId || null,
         childMatchIds: Array.isArray(match.childMatchIds)
@@ -140,6 +145,7 @@ export function createIndividualTournamentRefereeAdapterSurface({
         competitionContentLabel: content.competitionContentLabel,
         matchFormat: content.matchFormat,
         expectedPlayersPerSide: content.expectedPlayersPerSide,
+        rosterValidation: match.rosterValidation || null,
       });
     },
     getParticipants(request) {
@@ -214,6 +220,32 @@ export function createIndividualTournamentRefereeAdapterSurface({
         blockers.push({
           code: REFEREE_ADAPTER_ERROR_CODE.MALFORMED_CONTEXT,
           message: "Competition is closed",
+        });
+      }
+
+      const rosterCheck =
+        match.rosterValidation ||
+        validateContentRosterConsistency({
+          eventType: match.eventType,
+          type: match.type,
+          matchType: match.matchType,
+          competitionContentCode: match.competitionContentCode,
+          matchFormat: match.matchFormat,
+          expectedPlayersPerSide: match.expectedPlayersPerSide,
+          participantIdsA: match.participantIdsA,
+          participantIdsB: match.participantIdsB,
+          competitionMode,
+        });
+      if (rosterCheck && rosterCheck.ok === false) {
+        blockers.push({
+          code: rosterCheck.code || REFEREE_ADAPTER_ERROR_CODE.MALFORMED_CONTEXT,
+          message: rosterCheck.message || "Invalid roster for competition content",
+          details: {
+            sideACount: rosterCheck.sideACount,
+            sideBCount: rosterCheck.sideBCount,
+            expectedPlayersPerSide: rosterCheck.expectedPlayersPerSide,
+            offendingSides: rosterCheck.offendingSides,
+          },
         });
       }
 

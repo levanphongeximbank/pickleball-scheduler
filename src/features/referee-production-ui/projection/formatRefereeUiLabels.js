@@ -139,7 +139,7 @@ export function formatCompetitionDisplayName({ competitionName } = {}) {
   return "Giải chưa xác định tên";
 }
 
-export function formatParticipantDisplayName(raw, fallback = "Chưa có tên") {
+export function formatParticipantDisplayName(raw, fallback = "Chưa có tên VĐV") {
   const name = String(raw || "").trim();
   if (!name || name === "—" || isRawTechnicalId(name)) return fallback;
   return name;

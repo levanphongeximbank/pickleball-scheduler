@@ -46,7 +46,10 @@ export { buildRefereeMatchView } from "./projection/buildRefereeMatchView.js";
 export { resolveRefereeSideDisplay } from "./projection/resolveRefereeSideDisplay.js";
 export {
   REFEREE_MATCH_FORMAT,
+  ROSTER_VALIDATION_CODE,
   projectCompetitionMatchFormat,
+  resolveDurableEventTypeCode,
+  validateContentRosterConsistency,
   applySideOutDoublesOpeningPolicy,
   logicalPositionForCourtSlot,
   formatLogicalCourtPositionLabel,

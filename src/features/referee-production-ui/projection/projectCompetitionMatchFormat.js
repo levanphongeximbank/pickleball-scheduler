@@ -6,9 +6,12 @@
 export {
   REFEREE_MATCH_FORMAT,
   LOGICAL_COURT_POSITION,
+  ROSTER_VALIDATION_CODE,
   resolveCompetitionContent,
   resolveRefereeMatchFormat,
+  resolveDurableEventTypeCode,
   projectCompetitionMatchFormat,
+  validateContentRosterConsistency,
   applySideOutDoublesOpeningPolicy,
   logicalPositionForCourtSlot,
   formatLogicalCourtPositionLabel,

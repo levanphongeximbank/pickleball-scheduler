@@ -123,7 +123,7 @@ export function resolveRefereeSideDisplay(side, names = {}, options = {}) {
   const memberLine = memberNames.length ? memberNames.join(" / ") : null;
   const honestMemberLine = members.length
     ? members
-        .map((row) => row.displayName || "Chưa có tên")
+        .map((row) => row.displayName || "Chưa có tên VĐV")
         .join(" / ")
     : null;
   const presentationEntryLabel = presentEntryLabel(

@@ -1,12 +1,9 @@
 import { COURT_SLOT } from "../constants.js";
+import { isRawTechnicalId } from "../projection/formatRefereeUiLabels.js";
 
 function shortName(displayName, playerId) {
   const raw = String(displayName || "").trim();
-  const id = String(playerId || "").trim();
-  const uuidRe =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  const technicalRe = /^(c4\d{2}a101-|team-|sub-|entry-|p-)/i;
-  if (raw && !uuidRe.test(raw) && !technicalRe.test(raw)) {
+  if (raw && !isRawTechnicalId(raw) && raw !== "Chưa có tên" && raw !== "Chưa có tên VĐV") {
     if (raw.length <= 18) return raw;
     const parts = raw.split(/\s+/);
     if (parts.length >= 2) {
@@ -15,13 +12,20 @@ function shortName(displayName, playerId) {
     }
     return raw.slice(0, 18);
   }
-  const source = uuidRe.test(raw) ? raw : uuidRe.test(id) ? id : raw || id;
-  if (uuidRe.test(source)) return source.slice(-8);
-  return source || "Chưa có tên";
+  void playerId;
+  return "Chưa có tên VĐV";
 }
 
 function Marker({ player, slot }) {
   if (!player) return null;
+  const positionLabel =
+    player.logicalPositionLabel ||
+    (player.logicalPosition === "RIGHT"
+      ? "Phải"
+      : player.logicalPosition === "LEFT"
+        ? "Trái"
+        : player.logicalPosition) ||
+    null;
   return (
     <div
       className={`rp-slot ${slot}${player.isServing ? " is-serving-slot" : ""}${
@@ -38,7 +42,7 @@ function Marker({ player, slot }) {
         data-permanent-number="false"
         aria-label={[
           player.displayName,
-          player.logicalPositionLabel || player.logicalPosition,
+          positionLabel,
           player.isServing ? "đang giao" : null,
           player.isReceiving ? "đỡ bóng" : null,
         ]
@@ -50,14 +54,64 @@ function Marker({ player, slot }) {
             ★
           </span>
         ) : null}
-        {player.logicalPositionLabel || player.logicalPosition ? (
+        {positionLabel ? (
           <p className="rp-marker-pos" data-testid={`logical-pos-${player.playerId}`}>
-            {player.logicalPosition || player.logicalPositionLabel}
+            {positionLabel}
           </p>
         ) : null}
         <p className="rp-marker-name">{shortName(player.displayName, player.playerId)}</p>
+        {player.isServing ? (
+          <p className="rp-marker-role rp-marker-role-serve" data-testid="marker-serving-label">
+            ĐANG GIAO
+          </p>
+        ) : null}
+        {player.isReceiving ? (
+          <p className="rp-marker-role rp-marker-role-receive" data-testid="marker-receiving-label">
+            ĐỠ BÓNG
+          </p>
+        ) : null}
       </article>
     </div>
+  );
+}
+
+function ServeDiagonalArrow({ arrow }) {
+  if (!arrow?.from || !arrow?.to) return null;
+  return (
+    <svg
+      className="rp-serve-arrow"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden={false}
+      role="img"
+      aria-label={`Hướng giao chéo: ${arrow.serveDirection || ""}`}
+      data-testid="serve-direction-arrow"
+      data-serve-direction={arrow.serveDirection || ""}
+      data-is-diagonal="true"
+    >
+      <defs>
+        <marker
+          id="rp-arrowhead"
+          markerWidth="8"
+          markerHeight="8"
+          refX="6"
+          refY="3"
+          orient="auto"
+        >
+          <polygon points="0 0, 8 3, 0 6" fill="#f9a825" />
+        </marker>
+      </defs>
+      <line
+        x1={arrow.from.x}
+        y1={arrow.from.y}
+        x2={arrow.to.x}
+        y2={arrow.to.y}
+        stroke="#f9a825"
+        strokeWidth="1.6"
+        markerEnd="url(#rp-arrowhead)"
+        data-testid="serve-arrow-line"
+      />
+    </svg>
   );
 }
 
@@ -91,6 +145,7 @@ export default function CanonicalCourtView({ courtProjection }) {
           <div className="rp-court-net" />
         </div>
       </div>
+      <ServeDiagonalArrow arrow={courtProjection?.serveArrow} />
       <Marker player={court[COURT_SLOT.LEFT_TOP]} slot={COURT_SLOT.LEFT_TOP} />
       <Marker player={court[COURT_SLOT.LEFT_BOTTOM]} slot={COURT_SLOT.LEFT_BOTTOM} />
       <Marker player={court[COURT_SLOT.RIGHT_TOP]} slot={COURT_SLOT.RIGHT_TOP} />

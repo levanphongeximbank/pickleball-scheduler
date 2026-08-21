@@ -10,7 +10,11 @@
  */
 
 import { COMPETITION_REFEREE_MODE } from "../../competition-engine/integration/referee/constants.js";
-import { projectCompetitionMatchFormat } from "../../competition-engine/integration/referee/adapters/shared/competitionContentProjection.js";
+import {
+  projectCompetitionMatchFormat,
+  resolveDurableEventTypeCode,
+  validateContentRosterConsistency,
+} from "../../competition-engine/integration/referee/adapters/shared/competitionContentProjection.js";
 
 function trim(value) {
   return String(value || "").trim();
@@ -92,12 +96,30 @@ export function normalizeIndividualTournamentMatch(match, event = null, payload 
 
   const participantIdsA = playerIdsForSide(match, entryA, "A");
   const participantIdsB = playerIdsForSide(match, entryB, "B");
-  const eventType = trim(event?.eventType || match.eventType) || null;
+  const eventType = resolveDurableEventTypeCode({
+    eventType: event?.eventType || match.eventType,
+    type: event?.type || match.type,
+    matchType: match.matchType,
+    competitionContentCode: match.competitionContentCode || event?.competitionContentCode,
+  });
   const content = projectCompetitionMatchFormat({
     eventType,
+    type: event?.type || match.type,
+    matchType: match.matchType,
     participantIdsA,
     participantIdsB,
     competitionMode: payload?.competitionMode || null,
+  });
+  const rosterValidation = validateContentRosterConsistency({
+    eventType,
+    type: event?.type || match.type,
+    matchType: match.matchType,
+    participantIdsA,
+    participantIdsB,
+    competitionMode: payload?.competitionMode || null,
+    competitionContentCode: content.competitionContentCode,
+    matchFormat: content.matchFormat,
+    expectedPlayersPerSide: content.expectedPlayersPerSide,
   });
 
   return {
@@ -120,6 +142,7 @@ export function normalizeIndividualTournamentMatch(match, event = null, payload 
     competitionContentLabel: content.competitionContentLabel,
     matchFormat: content.matchFormat,
     expectedPlayersPerSide: content.expectedPlayersPerSide,
+    rosterValidation,
     scoringRules: scoringRulesForMatch(match, event, payload),
     scoringFormat: match.scoringFormat || scoringRulesForMatch(match, event, payload),
     scheduledAt:
