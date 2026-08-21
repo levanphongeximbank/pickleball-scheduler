@@ -86,37 +86,132 @@ function normalizeRegistrationMode(value, fallback = OFFICIAL_REGISTRATION_MODE.
   return fallback;
 }
 
-function normalizeStageOverrides(input = {}, baseTarget) {
+function normalizeStageOverrides(input = {}, baseScoring) {
   const source = input && typeof input === "object" ? input : {};
-  // Accept either stage keys (GROUP/FINAL) or legacy roundTargets keys (group/final).
-  const roundTargets = normalizeOfficialRoundTargets({
-    [OFFICIAL_ROUND_SCORE_KEY.GROUP]:
-      source.GROUP?.targetPoints ?? source.group ?? baseTarget,
-    [OFFICIAL_ROUND_SCORE_KEY.ROUND_OF_16]:
-      source.ROUND_OF_16?.targetPoints ?? source.round_of_16 ?? baseTarget,
-    [OFFICIAL_ROUND_SCORE_KEY.QUARTERFINAL]:
-      source.QUARTERFINAL?.targetPoints ?? source.quarterfinal ?? baseTarget,
-    [OFFICIAL_ROUND_SCORE_KEY.SEMIFINAL]:
-      source.SEMIFINAL?.targetPoints ?? source.semifinal ?? baseTarget,
-    [OFFICIAL_ROUND_SCORE_KEY.FINAL]:
-      source.FINAL?.targetPoints ?? source.final ?? baseTarget,
-  });
-  return {
-    roundTargets,
-    byStage: Object.freeze({
-      GROUP: { targetPoints: roundTargets[OFFICIAL_ROUND_SCORE_KEY.GROUP] },
-      ROUND_OF_16: {
-        targetPoints: roundTargets[OFFICIAL_ROUND_SCORE_KEY.ROUND_OF_16],
-      },
-      QUARTERFINAL: {
-        targetPoints: roundTargets[OFFICIAL_ROUND_SCORE_KEY.QUARTERFINAL],
-      },
-      SEMIFINAL: {
-        targetPoints: roundTargets[OFFICIAL_ROUND_SCORE_KEY.SEMIFINAL],
-      },
-      FINAL: { targetPoints: roundTargets[OFFICIAL_ROUND_SCORE_KEY.FINAL] },
-    }),
+  const baseTarget = Number(baseScoring?.targetPoints) || CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
+  const stages = ["GROUP", "ROUND_OF_16", "QUARTERFINAL", "SEMIFINAL", "FINAL"];
+  const roundKeyByStage = {
+    GROUP: OFFICIAL_ROUND_SCORE_KEY.GROUP,
+    ROUND_OF_16: OFFICIAL_ROUND_SCORE_KEY.ROUND_OF_16,
+    QUARTERFINAL: OFFICIAL_ROUND_SCORE_KEY.QUARTERFINAL,
+    SEMIFINAL: OFFICIAL_ROUND_SCORE_KEY.SEMIFINAL,
+    FINAL: OFFICIAL_ROUND_SCORE_KEY.FINAL,
   };
+
+  const byStage = {};
+  const roundTargetsInput = {};
+
+  for (const stage of stages) {
+    const entry =
+      source[stage] ||
+      source[roundKeyByStage[stage]] ||
+      (typeof source[roundKeyByStage[stage]] === "number"
+        ? { targetPoints: source[roundKeyByStage[stage]] }
+        : null);
+    const inheritBase =
+      !entry ||
+      entry.inheritBase === true ||
+      (entry.targetPoints == null &&
+        entry.scoringMethod == null &&
+        entry.matchSeries == null &&
+        entry.matchFormat == null);
+    if (inheritBase && (!entry || entry.inheritBase !== false)) {
+      byStage[stage] = Object.freeze({
+        inheritBase: true,
+        targetPoints: baseTarget,
+        scoringMethod: baseScoring.scoringMethod,
+        matchSeries: baseScoring.matchSeries || baseScoring.matchFormat,
+        winCondition: baseScoring.winCondition,
+        changeEnd: baseScoring.changeEnd,
+      });
+      roundTargetsInput[roundKeyByStage[stage]] = baseTarget;
+      continue;
+    }
+    const target =
+      toPositiveInt(entry.targetPoints, null) ||
+      toPositiveInt(entry, null) ||
+      baseTarget;
+    const scoringMethod = normalizeScoringMethod(
+      entry.scoringMethod ?? baseScoring.scoringMethod
+    );
+    const matchFormat = normalizeMatchFormat(
+      entry.matchSeries ?? entry.matchFormat ?? baseScoring.matchFormat
+    );
+    const win = entry.winCondition || {};
+    const changeEnd = entry.changeEnd || {};
+    byStage[stage] = Object.freeze({
+      inheritBase: false,
+      targetPoints: target,
+      scoringMethod,
+      matchSeries: matchFormat,
+      matchFormat,
+      winCondition: Object.freeze({
+        winByEnabled: boolOr(win.winByEnabled, baseScoring.winCondition.winByEnabled),
+        winByMargin: toPositiveInt(win.winByMargin, baseScoring.winCondition.winByMargin),
+        pointCapEnabled: boolOr(
+          win.pointCapEnabled,
+          baseScoring.winCondition.pointCapEnabled
+        ),
+        pointCap:
+          boolOr(win.pointCapEnabled, baseScoring.winCondition.pointCapEnabled) &&
+          toPositiveInt(win.pointCap, null)
+            ? toPositiveInt(win.pointCap, null)
+            : baseScoring.winCondition.pointCap,
+      }),
+      changeEnd: Object.freeze({
+        changeEndsEnabled: boolOr(
+          changeEnd.changeEndsEnabled,
+          baseScoring.changeEnd.changeEndsEnabled
+        ),
+        changeEndsAtPoints: toPositiveInt(
+          changeEnd.changeEndsAtPoints,
+          baseScoring.changeEnd.changeEndsAtPoints
+        ),
+        changeEndsBetweenGames: boolOr(
+          changeEnd.changeEndsBetweenGames,
+          baseScoring.changeEnd.changeEndsBetweenGames
+        ),
+        decidingGameChangeEndsAt: toPositiveInt(
+          changeEnd.decidingGameChangeEndsAt,
+          baseScoring.changeEnd.decidingGameChangeEndsAt
+        ),
+      }),
+    });
+    roundTargetsInput[roundKeyByStage[stage]] = target;
+  }
+
+  // Legacy flat roundTargets merge
+  if (source.group != null || source.final != null) {
+    const legacy = normalizeOfficialRoundTargets(source);
+    Object.assign(roundTargetsInput, legacy);
+    for (const stage of stages) {
+      const key = roundKeyByStage[stage];
+      if (legacy[key] != null) {
+        byStage[stage] = Object.freeze({
+          ...byStage[stage],
+          inheritBase: false,
+          targetPoints: legacy[key],
+        });
+      }
+    }
+  }
+
+  const roundTargets = normalizeOfficialRoundTargets(roundTargetsInput);
+  return { roundTargets, byStage: Object.freeze(byStage) };
+}
+
+function nonNegOrNull(value) {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.floor(n);
+}
+
+function decimalOrNull(value) {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return n;
 }
 
 /**
@@ -138,16 +233,41 @@ export function normalizeContentCompetitionRules(input = {}, options = {}) {
   );
   const win = input?.matchScoring?.winCondition || input?.winCondition || {};
   const changeEnd = input?.matchScoring?.changeEnd || input?.changeEnd || {};
-  const groupStage = input?.groupStage || {};
+  const matchScoring = Object.freeze({
+    scoringMethod,
+    matchFormat,
+    matchSeries: matchFormat,
+    targetPoints: baseTarget,
+    winCondition: Object.freeze({
+      winByEnabled: boolOr(win.winByEnabled, true),
+      winByMargin: toPositiveInt(win.winByMargin, 2),
+      pointCapEnabled: boolOr(win.pointCapEnabled, false),
+      pointCap:
+        boolOr(win.pointCapEnabled, false) && toPositiveInt(win.pointCap, null)
+          ? toPositiveInt(win.pointCap, null)
+          : null,
+    }),
+    changeEnd: Object.freeze({
+      changeEndsEnabled: boolOr(changeEnd.changeEndsEnabled, false),
+      changeEndsAtPoints: toPositiveInt(changeEnd.changeEndsAtPoints, null),
+      changeEndsBetweenGames: boolOr(changeEnd.changeEndsBetweenGames, true),
+      decidingGameChangeEndsAt: toPositiveInt(
+        changeEnd.decidingGameChangeEndsAt,
+        null
+      ),
+    }),
+  });
+
+  const groupStageIn = input?.groupStage || {};
   const qualification = input?.qualification || {};
   const knockout = input?.knockout || {};
   const eligibility = input?.eligibility || {};
   const stage = normalizeStageOverrides(
     input?.stageOverrides || input?.roundTargets || {},
-    baseTarget
+    matchScoring
   );
 
-  const groupCount = toPositiveInt(groupStage.groupCount ?? input?.groupCount, 4);
+  const groupCount = toPositiveInt(groupStageIn.groupCount ?? input?.groupCount, 4);
   const directQualifiersPerGroup = toPositiveInt(
     qualification.directQualifiersPerGroup ?? input?.qualifiersPerGroup,
     DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP
@@ -155,6 +275,17 @@ export function normalizeContentCompetitionRules(input = {}, options = {}) {
   const totalQualifiersExplicit = toPositiveInt(qualification.totalQualifiers, null);
   const totalQualifiers =
     totalQualifiersExplicit || groupCount * directQualifiersPerGroup;
+  const derivedWildcard = Math.max(0, totalQualifiers - groupCount * directQualifiersPerGroup);
+
+  const inGroup = input?.inGroupTieBreak || {};
+  const crossGroup = input?.crossGroupRanking || {};
+  const walkover = input?.walkover || {};
+  const checkIn = input?.checkIn || {};
+  const schedule = input?.scheduleConstraints || {};
+  const court = input?.courtRequirement || {};
+  const referee = input?.refereeRequirement || {};
+  const publication = input?.publication || {};
+  const substitution = input?.substitution || {};
 
   return Object.freeze({
     schemaVersion: CONTENT_COMPETITION_RULES_SCHEMA_V1,
@@ -162,82 +293,210 @@ export function normalizeContentCompetitionRules(input = {}, options = {}) {
       input?.registrationMode ?? input?.competitionUnit?.registrationMode,
       options.defaultRegistrationMode || OFFICIAL_REGISTRATION_MODE.INDIVIDUAL
     ),
-    matchScoring: Object.freeze({
-      scoringMethod,
-      matchFormat,
-      matchSeries: matchFormat,
-      targetPoints: baseTarget,
-      winCondition: Object.freeze({
-        winByEnabled: boolOr(win.winByEnabled, true),
-        winByMargin: toPositiveInt(win.winByMargin, 2),
-        pointCapEnabled: boolOr(win.pointCapEnabled, false),
-        pointCap:
-          boolOr(win.pointCapEnabled, false) && toPositiveInt(win.pointCap, null)
-            ? toPositiveInt(win.pointCap, null)
-            : null,
-      }),
-      changeEnd: Object.freeze({
-        // CHANGE-END = đổi đầu sân / đổi bên — NOT physical court move.
-        changeEndsEnabled: boolOr(changeEnd.changeEndsEnabled, false),
-        changeEndsAtPoints: toPositiveInt(changeEnd.changeEndsAtPoints, null),
-        changeEndsBetweenGames: boolOr(changeEnd.changeEndsBetweenGames, true),
-        decidingGameChangeEndsAt: toPositiveInt(
-          changeEnd.decidingGameChangeEndsAt,
-          null
-        ),
-      }),
+    capacity: Object.freeze({
+      maxParticipants: toPositiveInt(
+        input?.capacity?.maxParticipants ?? input?.maxParticipants,
+        null
+      ),
+      maxPairs: toPositiveInt(input?.capacity?.maxPairs ?? input?.maxPairs, null),
     }),
+    seedingPolicy: (() => {
+      const raw = String(input?.seedingPolicy || "NONE").trim().toUpperCase();
+      if (["NONE", "MANUAL", "RANKING", "RATING"].includes(raw)) return raw;
+      return "NONE";
+    })(),
+    matchScoring,
     stageOverrides: stage.byStage,
     roundTargets: stage.roundTargets,
     groupStage: Object.freeze({
-      groupStageEnabled: boolOr(groupStage.groupStageEnabled, true),
+      groupStageEnabled: boolOr(groupStageIn.groupStageEnabled, true),
       groupCount,
-      groupSizingPolicy: groupStage.groupSizingPolicy || "FIXED_GROUP_COUNT",
-      roundRobinPolicy: groupStage.roundRobinPolicy || "SINGLE",
-      allowUnevenGroups: boolOr(groupStage.allowUnevenGroups, true),
+      maxUnitsPerGroup: toPositiveInt(groupStageIn.maxUnitsPerGroup, null),
+      groupSizingPolicy: groupStageIn.groupSizingPolicy || "FIXED_GROUP_COUNT",
+      roundRobinPolicy:
+        String(groupStageIn.roundRobinPolicy || "SINGLE").toUpperCase() === "DOUBLE"
+          ? "SINGLE" // DOUBLE not operational on Official classic path
+          : "SINGLE",
+      allowUnevenGroups: boolOr(groupStageIn.allowUnevenGroups, true),
     }),
     qualification: Object.freeze({
       directQualifiersPerGroup,
       totalQualifiers,
-      // PR #459 admission modes remain deferred / not available on this branch.
+      wildcardSlots: derivedWildcard,
       groupStageBypass: null,
       directKnockoutEntry: null,
       knockoutBye: null,
-      wildcardSlots: toPositiveInt(qualification.wildcardSlots, 0) || 0,
     }),
     knockout: Object.freeze({
       knockoutEnabled: boolOr(knockout.knockoutEnabled, true),
       qualifierCount: totalQualifiers,
-      pairingPolicy: knockout.pairingPolicy || "CROSS_GROUP",
+      entryRound: knockout.entryRound || null,
+      pairingPolicy: ["CROSS_GROUP", "SEEDED", "RANDOM"].includes(
+        String(knockout.pairingPolicy || "").toUpperCase()
+      )
+        ? String(knockout.pairingPolicy).toUpperCase()
+        : "CROSS_GROUP",
       avoidSameGroupFirstRound: boolOr(knockout.avoidSameGroupFirstRound, true),
     }),
     eligibility: Object.freeze({
-      maxLevel:
-        eligibility.maxLevel != null && eligibility.maxLevel !== ""
-          ? Number(eligibility.maxLevel)
-          : null,
-      maxRating:
-        eligibility.maxRating != null && eligibility.maxRating !== ""
-          ? Number(eligibility.maxRating)
-          : null,
+      minLevel: decimalOrNull(eligibility.minLevel),
+      maxLevel: decimalOrNull(eligibility.maxLevel),
+      minRating: decimalOrNull(eligibility.minRating),
+      maxRating: decimalOrNull(eligibility.maxRating),
     }),
-    refereeRequirement: Object.freeze({
-      ...(input?.refereeRequirement && typeof input.refereeRequirement === "object"
-        ? input.refereeRequirement
-        : {}),
+    inGroupTieBreak: Object.freeze({
+      criteria: Array.isArray(inGroup.criteria) && inGroup.criteria.length
+        ? inGroup.criteria.map((c) => String(c).trim().toUpperCase())
+        : [
+            "MATCH_WINS",
+            "HEAD_TO_HEAD",
+            "POINT_DIFFERENTIAL",
+            "POINTS_SCORED",
+            "DRAW_LOTS",
+          ],
+      multiWayRequiresMiniTable: boolOr(inGroup.multiWayRequiresMiniTable, true),
     }),
-    courtRequirement: Object.freeze({
-      ...(input?.courtRequirement && typeof input.courtRequirement === "object"
-        ? input.courtRequirement
-        : {}),
+    crossGroupRanking: Object.freeze({
+      criteria: Array.isArray(crossGroup.criteria) && crossGroup.criteria.length
+        ? crossGroup.criteria.map((c) => String(c).trim().toUpperCase())
+        : [
+            "WIN_PERCENTAGE",
+            "POINT_DIFFERENTIAL_PER_MATCH",
+            "POINTS_SCORED_PER_MATCH",
+            "DRAW_LOTS",
+          ],
+      normalizeByMatchesPlayed: boolOr(crossGroup.normalizeByMatchesPlayed, true),
+    }),
+    walkover: Object.freeze({
+      walkoverPolicy: walkover.walkoverPolicy || "STANDARD_WALKOVER",
+      lateArrivalPolicy: Object.freeze({
+        enabled: boolOr(walkover.lateArrivalPolicy?.enabled, true),
+        thresholdMinutes: toPositiveInt(
+          walkover.lateArrivalPolicy?.thresholdMinutes,
+          15
+        ),
+        directorOverrideAllowed: boolOr(
+          walkover.lateArrivalPolicy?.directorOverrideAllowed,
+          true
+        ),
+      }),
+      retiredMatchPolicy: walkover.retiredMatchPolicy || "RETIRED_AS_LOSS",
+      withdrawalPolicy:
+        walkover.withdrawalPolicy || "KEEP_COMPLETED_AND_WO_REMAINING",
+    }),
+    checkIn: Object.freeze({
+      checkInRequired: boolOr(checkIn.checkInRequired, false),
+      checkInCloseMinutesBeforeStart: nonNegOrNull(
+        checkIn.checkInCloseMinutesBeforeStart
+      ) ?? 30,
+      noCheckInPolicy: checkIn.noCheckInPolicy || "WARN",
+      directorOverrideAllowed: boolOr(checkIn.directorOverrideAllowed, true),
+    }),
+    substitution: Object.freeze({
+      allowed: boolOr(substitution.allowed, false),
+      deadline: ["BEFORE_DRAW", "BEFORE_FIRST_MATCH", "EMERGENCY_ONLY"].includes(
+        String(substitution.deadline || "").toUpperCase()
+      )
+        ? String(substitution.deadline).toUpperCase()
+        : "BEFORE_DRAW",
+      directorApprovalRequired: boolOr(substitution.directorApprovalRequired, true),
+      runtimeSupport: "PARTIAL",
     }),
     scheduleConstraints: Object.freeze({
-      ...(input?.scheduleConstraints && typeof input.scheduleConstraints === "object"
-        ? input.scheduleConstraints
-        : {}),
+      estimatedMatchDurationMinutes: toPositiveInt(
+        schedule.estimatedMatchDurationMinutes,
+        45
+      ),
+      minimumRestMinutes: nonNegOrNull(schedule.minimumRestMinutes) ?? 15,
+      noOverlapSameParticipant: boolOr(schedule.noOverlapSameParticipant, true),
+      restConstraintEnforcement: schedule.restConstraintEnforcement || "WARN",
+    }),
+    courtRequirement: Object.freeze({
+      minimumCourts: toPositiveInt(court.minimumCourts, null),
+      stageCourtRequirements:
+        court.stageCourtRequirements && typeof court.stageCourtRequirements === "object"
+          ? Object.freeze({ ...court.stageCourtRequirements })
+          : Object.freeze({}),
+      note: "POLICY only — physical court assignment is Schedule/Court Adapter",
+    }),
+    refereeRequirement: Object.freeze({
+      byStage: Object.freeze({
+        GROUP: referee.byStage?.GROUP || "OPTIONAL",
+        ROUND_OF_16: referee.byStage?.ROUND_OF_16 || "OPTIONAL",
+        QUARTERFINAL: referee.byStage?.QUARTERFINAL || "REQUIRED",
+        SEMIFINAL: referee.byStage?.SEMIFINAL || "REQUIRED",
+        FINAL: referee.byStage?.FINAL || "REQUIRED",
+      }),
+      fallbackPolicy: referee.fallbackPolicy || "BLOCK_START",
+    }),
+    publication: Object.freeze({
+      resultsPublicationPolicy:
+        publication.resultsPublicationPolicy || "AFTER_ACCEPTED_RESULT",
+      standingsPublicationPolicy:
+        publication.standingsPublicationPolicy || "PUBLIC",
+      bracketPublicationPolicy:
+        publication.bracketPublicationPolicy || "DIRECTOR_APPROVAL",
+      finalResultsPublicationPolicy:
+        publication.finalResultsPublicationPolicy || "DIRECTOR_APPROVAL",
     }),
     updatedAt: input?.updatedAt || null,
   });
+}
+
+export function buildContentRulesSummaryLines(rules) {
+  if (!rules?.matchScoring) return ["Chưa cấu hình thể thức"];
+  const method =
+    String(rules.matchScoring.scoringMethod || "").toLowerCase() === "side_out"
+      ? "Side-out"
+      : "Rally";
+  const series =
+    String(rules.matchScoring.matchSeries || rules.matchScoring.matchFormat || "")
+      .toUpperCase()
+      .includes("BEST_OF_3")
+      ? "BO3"
+      : "BO1";
+  const stages = [
+    ["Vòng bảng", "GROUP"],
+    ["Vòng 16", "ROUND_OF_16"],
+    ["Tứ kết", "QUARTERFINAL"],
+    ["Bán kết", "SEMIFINAL"],
+    ["Chung kết", "FINAL"],
+  ];
+  const lines = [`${method} · ${series}`];
+  for (const [label, key] of stages) {
+    const pts =
+      rules.stageOverrides?.[key]?.targetPoints ??
+      rules.matchScoring.targetPoints ??
+      11;
+    lines.push(`${label} ${pts}`);
+  }
+  return lines;
+}
+
+export function serializeContentCompetitionRulesForPersist(rules) {
+  return {
+    schemaVersion: rules.schemaVersion,
+    registrationMode: rules.registrationMode,
+    capacity: rules.capacity,
+    seedingPolicy: rules.seedingPolicy,
+    matchScoring: rules.matchScoring,
+    stageOverrides: rules.stageOverrides,
+    roundTargets: rules.roundTargets,
+    groupStage: rules.groupStage,
+    qualification: rules.qualification,
+    knockout: rules.knockout,
+    eligibility: rules.eligibility,
+    inGroupTieBreak: rules.inGroupTieBreak,
+    crossGroupRanking: rules.crossGroupRanking,
+    walkover: rules.walkover,
+    checkIn: rules.checkIn,
+    substitution: rules.substitution,
+    scheduleConstraints: rules.scheduleConstraints,
+    courtRequirement: rules.courtRequirement,
+    refereeRequirement: rules.refereeRequirement,
+    publication: rules.publication,
+    updatedAt: rules.updatedAt,
+  };
 }
 
 export function hasExplicitContentCompetitionRules(event) {
@@ -421,6 +680,8 @@ export function resolveContentCompetitionRules(tournament, options = {}) {
 /**
  * Persist Content rules onto ONE event. Does not touch other events.
  * Does not write tournament.settings.officialCompetition competition-rule fields.
+ *
+ * Prefer draft.contentRules (full object) when provided by Settings UI.
  */
 export function patchEventContentCompetitionRules(tournament, eventId, patch = {}) {
   const scoped = resolveExplicitEvent(tournament, eventId);
@@ -436,112 +697,104 @@ export function patchEventContentCompetitionRules(tournament, eventId, patch = {
       )
     : resolveContentCompetitionRules(tournament, { eventId: scoped.eventId }).rules;
 
+  const draftSource =
+    patch.contentRules && typeof patch.contentRules === "object"
+      ? patch.contentRules
+      : patch;
+
   const mergedInput = {
     ...current,
-    ...patch,
-    registrationMode: patch.registrationMode ?? current.registrationMode,
+    ...draftSource,
+    registrationMode: draftSource.registrationMode ?? current.registrationMode,
+    capacity: { ...current.capacity, ...(draftSource.capacity || {}) },
+    seedingPolicy: draftSource.seedingPolicy ?? current.seedingPolicy,
     matchScoring: {
       ...current.matchScoring,
-      ...(patch.matchScoring || {}),
+      ...(draftSource.matchScoring || {}),
       scoringMethod:
-        patch.scoringMethod ??
-        patch.matchScoring?.scoringMethod ??
+        draftSource.scoringMethod ??
+        draftSource.matchScoring?.scoringMethod ??
         current.matchScoring.scoringMethod,
       matchFormat:
-        patch.matchFormat ??
-        patch.matchScoring?.matchFormat ??
+        draftSource.matchFormat ??
+        draftSource.matchScoring?.matchFormat ??
         current.matchScoring.matchFormat,
       targetPoints:
-        patch.targetPoints ??
-        patch.matchScoring?.targetPoints ??
+        draftSource.targetPoints ??
+        draftSource.matchScoring?.targetPoints ??
         current.matchScoring.targetPoints,
       winCondition: {
         ...current.matchScoring.winCondition,
-        ...(patch.winCondition || {}),
-        ...(patch.matchScoring?.winCondition || {}),
-        winByEnabled:
-          patch.winByEnabled ??
-          patch.winCondition?.winByEnabled ??
-          patch.matchScoring?.winCondition?.winByEnabled ??
-          current.matchScoring.winCondition.winByEnabled,
-        winByMargin:
-          patch.winByMargin ??
-          patch.winCondition?.winByMargin ??
-          patch.matchScoring?.winCondition?.winByMargin ??
-          current.matchScoring.winCondition.winByMargin,
-        pointCapEnabled:
-          patch.pointCapEnabled ??
-          patch.winCondition?.pointCapEnabled ??
-          patch.matchScoring?.winCondition?.pointCapEnabled ??
-          current.matchScoring.winCondition.pointCapEnabled,
-        pointCap:
-          patch.pointCap ??
-          patch.winCondition?.pointCap ??
-          patch.matchScoring?.winCondition?.pointCap ??
-          current.matchScoring.winCondition.pointCap,
+        ...(draftSource.winCondition || {}),
+        ...(draftSource.matchScoring?.winCondition || {}),
       },
       changeEnd: {
         ...current.matchScoring.changeEnd,
-        ...(patch.changeEnd || {}),
-        ...(patch.matchScoring?.changeEnd || {}),
-        changeEndsEnabled:
-          patch.changeEndsEnabled ??
-          patch.changeEnd?.changeEndsEnabled ??
-          patch.matchScoring?.changeEnd?.changeEndsEnabled ??
-          current.matchScoring.changeEnd.changeEndsEnabled,
-        changeEndsAtPoints:
-          patch.changeEndsAtPoints ??
-          patch.changeEnd?.changeEndsAtPoints ??
-          patch.matchScoring?.changeEnd?.changeEndsAtPoints ??
-          current.matchScoring.changeEnd.changeEndsAtPoints,
+        ...(draftSource.changeEnd || {}),
+        ...(draftSource.matchScoring?.changeEnd || {}),
       },
     },
     groupStage: {
       ...current.groupStage,
-      ...(patch.groupStage || {}),
+      ...(draftSource.groupStage || {}),
       groupCount:
-        patch.groupCount ??
-        patch.groupStage?.groupCount ??
+        draftSource.groupCount ??
+        draftSource.groupStage?.groupCount ??
         current.groupStage.groupCount,
-      groupStageEnabled:
-        patch.groupStageEnabled ??
-        patch.groupStage?.groupStageEnabled ??
-        current.groupStage.groupStageEnabled,
     },
     qualification: {
       ...current.qualification,
-      ...(patch.qualification || {}),
+      ...(draftSource.qualification || {}),
       directQualifiersPerGroup:
-        patch.qualifiersPerGroup ??
-        patch.qualification?.directQualifiersPerGroup ??
+        draftSource.qualifiersPerGroup ??
+        draftSource.qualification?.directQualifiersPerGroup ??
         current.qualification.directQualifiersPerGroup,
       totalQualifiers:
-        patch.totalQualifiers ??
-        patch.qualification?.totalQualifiers ??
+        draftSource.totalQualifiers ??
+        draftSource.qualification?.totalQualifiers ??
         current.qualification.totalQualifiers,
-      wildcardSlots:
-        patch.wildcardSlots ??
-        patch.qualification?.wildcardSlots ??
-        current.qualification.wildcardSlots,
     },
-    knockout: {
-      ...current.knockout,
-      ...(patch.knockout || {}),
-    },
+    knockout: { ...current.knockout, ...(draftSource.knockout || {}) },
     eligibility: {
       ...current.eligibility,
-      ...(patch.eligibility || {}),
-      maxLevel:
-        patch.maxLevel ??
-        patch.eligibility?.maxLevel ??
-        current.eligibility.maxLevel,
+      ...(draftSource.eligibility || {}),
+      minLevel: draftSource.minLevel ?? draftSource.eligibility?.minLevel ?? current.eligibility.minLevel,
+      maxLevel: draftSource.maxLevel ?? draftSource.eligibility?.maxLevel ?? current.eligibility.maxLevel,
+      minRating:
+        draftSource.minRating ?? draftSource.eligibility?.minRating ?? current.eligibility.minRating,
       maxRating:
-        patch.maxRating ??
-        patch.eligibility?.maxRating ??
-        current.eligibility.maxRating,
+        draftSource.maxRating ?? draftSource.eligibility?.maxRating ?? current.eligibility.maxRating,
     },
-    stageOverrides: patch.stageOverrides || patch.roundTargets || current.stageOverrides,
-    roundTargets: patch.roundTargets || current.roundTargets,
+    inGroupTieBreak: {
+      ...current.inGroupTieBreak,
+      ...(draftSource.inGroupTieBreak || {}),
+    },
+    crossGroupRanking: {
+      ...current.crossGroupRanking,
+      ...(draftSource.crossGroupRanking || {}),
+    },
+    walkover: { ...current.walkover, ...(draftSource.walkover || {}) },
+    checkIn: { ...current.checkIn, ...(draftSource.checkIn || {}) },
+    substitution: { ...current.substitution, ...(draftSource.substitution || {}) },
+    scheduleConstraints: {
+      ...current.scheduleConstraints,
+      ...(draftSource.scheduleConstraints || {}),
+    },
+    courtRequirement: {
+      ...current.courtRequirement,
+      ...(draftSource.courtRequirement || {}),
+    },
+    refereeRequirement: {
+      ...current.refereeRequirement,
+      ...(draftSource.refereeRequirement || {}),
+      byStage: {
+        ...current.refereeRequirement?.byStage,
+        ...(draftSource.refereeRequirement?.byStage || {}),
+      },
+    },
+    publication: { ...current.publication, ...(draftSource.publication || {}) },
+    stageOverrides: draftSource.stageOverrides || current.stageOverrides,
+    roundTargets: draftSource.roundTargets || current.roundTargets,
     updatedAt: new Date().toISOString(),
   };
 
@@ -551,21 +804,10 @@ export function patchEventContentCompetitionRules(tournament, eventId, patch = {
     if (String(event.id) !== String(scoped.eventId)) return event;
     return {
       ...event,
-      [CONTENT_COMPETITION_RULES_PROPERTY]: {
-        schemaVersion: nextRules.schemaVersion,
-        registrationMode: nextRules.registrationMode,
-        matchScoring: nextRules.matchScoring,
-        stageOverrides: nextRules.stageOverrides,
-        roundTargets: nextRules.roundTargets,
-        groupStage: nextRules.groupStage,
-        qualification: nextRules.qualification,
-        knockout: nextRules.knockout,
-        eligibility: nextRules.eligibility,
-        refereeRequirement: nextRules.refereeRequirement,
-        courtRequirement: nextRules.courtRequirement,
-        scheduleConstraints: nextRules.scheduleConstraints,
+      [CONTENT_COMPETITION_RULES_PROPERTY]: serializeContentCompetitionRulesForPersist({
+        ...nextRules,
         updatedAt: nextRules.updatedAt,
-      },
+      }),
     };
   });
 

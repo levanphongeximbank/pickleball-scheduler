@@ -94,12 +94,47 @@ function mapCompetitionUnit(event, registrationMode) {
   };
 }
 
-function buildStageOverrides(roundTargets = {}) {
+function buildStageOverridesFromContent(rules) {
   const overrides = {};
-  for (const [roundKey, stage] of Object.entries(ROUND_KEY_TO_STAGE)) {
-    const points = Number(roundTargets?.[roundKey]);
-    if (Number.isFinite(points) && points >= 1) {
-      overrides[stage] = { targetPoints: Math.floor(points) };
+  const stages = rules?.stageOverrides || {};
+  for (const [stage, entry] of Object.entries(stages)) {
+    if (!entry || entry.inheritBase === true) continue;
+    overrides[stage] = {
+      scoringMethod: mapScoringMethod(entry.scoringMethod || rules.matchScoring?.scoringMethod),
+      matchSeries: mapMatchSeries(
+        entry.matchSeries || entry.matchFormat || rules.matchScoring?.matchFormat
+      ),
+      targetPoints: Number(entry.targetPoints) || rules.matchScoring?.targetPoints,
+      winCondition: {
+        winByEnabled: entry.winCondition?.winByEnabled !== false,
+        winByMargin: Number(entry.winCondition?.winByMargin) || 2,
+        pointCapEnabled: Boolean(entry.winCondition?.pointCapEnabled),
+        pointCap:
+          entry.winCondition?.pointCap != null
+            ? Number(entry.winCondition.pointCap)
+            : null,
+      },
+      changeEnd: {
+        changeEndsEnabled: Boolean(entry.changeEnd?.changeEndsEnabled),
+        changeEndsAtPoints:
+          entry.changeEnd?.changeEndsAtPoints != null
+            ? Number(entry.changeEnd.changeEndsAtPoints)
+            : null,
+        changeEndsBetweenGames: entry.changeEnd?.changeEndsBetweenGames !== false,
+        decidingGameChangeEndsAt:
+          entry.changeEnd?.decidingGameChangeEndsAt != null
+            ? Number(entry.changeEnd.decidingGameChangeEndsAt)
+            : null,
+      },
+    };
+  }
+  // Compatibility: also accept flat roundTargets-only overrides
+  if (Object.keys(overrides).length === 0) {
+    for (const [roundKey, stage] of Object.entries(ROUND_KEY_TO_STAGE)) {
+      const points = Number(rules?.roundTargets?.[roundKey]);
+      if (Number.isFinite(points) && points >= 1) {
+        overrides[stage] = { targetPoints: Math.floor(points) };
+      }
     }
   }
   return overrides;
@@ -147,7 +182,16 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
     Number(rules.roundTargets?.[OFFICIAL_ROUND_SCORE_KEY.GROUP]) ||
     CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
 
-  const unit = mapCompetitionUnit(event, rules.registrationMode);
+  const unit = {
+    ...mapCompetitionUnit(event, rules.registrationMode),
+    minParticipants: null,
+    maxParticipants:
+      rules.capacity?.maxParticipants != null
+        ? Number(rules.capacity.maxParticipants)
+        : rules.capacity?.maxPairs != null
+          ? Number(rules.capacity.maxPairs)
+          : null,
+  };
   const scoringMethodRequested = mapScoringMethod(rules.matchScoring.scoringMethod);
   const matchSeriesRequested = mapMatchSeries(
     rules.matchScoring.matchSeries || rules.matchScoring.matchFormat
@@ -161,6 +205,8 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
       : source === CONTENT_RULES_SOURCE.LEGACY_COMPATIBILITY_DRAFT
         ? "settings.officialCompetition (legacy compatibility draft)"
         : "canonical.system.default";
+
+  const refByStage = rules.refereeRequirement?.byStage || {};
 
   const rawProfile = {
     schemaVersion: COMPETITION_RULES_PROFILE_SCHEMA_V1,
@@ -185,7 +231,6 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
             : null,
       },
       changeEnd: {
-        // CHANGE-END / đổi đầu sân — not physical court reassignment.
         changeEndsEnabled: Boolean(changeEnd.changeEndsEnabled),
         changeEndsAtPoints:
           changeEnd.changeEndsAtPoints != null &&
@@ -202,7 +247,7 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
             : null,
       },
     },
-    stageOverrides: buildStageOverrides(rules.roundTargets),
+    stageOverrides: buildStageOverridesFromContent(rules),
     groupStage: {
       groupStageEnabled: rules.groupStage.groupStageEnabled !== false,
       groupCount,
@@ -214,19 +259,45 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
       totalQualifiers,
       directQualifiersPerGroup,
     },
+    inGroupTieBreak: rules.inGroupTieBreak || undefined,
+    crossGroupRanking: rules.crossGroupRanking || undefined,
     knockout: {
       knockoutEnabled: rules.knockout.knockoutEnabled !== false,
       qualifierCount: totalQualifiers,
+      entryRound: rules.knockout.entryRound || undefined,
       pairingPolicy: rules.knockout.pairingPolicy || "CROSS_GROUP",
       avoidSameGroupFirstRound: rules.knockout.avoidSameGroupFirstRound !== false,
     },
+    walkover: rules.walkover || undefined,
+    checkIn: rules.checkIn || undefined,
+    scheduleConstraints: {
+      estimatedMatchDurationMinutes:
+        rules.scheduleConstraints?.estimatedMatchDurationMinutes ?? 45,
+      minimumRestMinutes: rules.scheduleConstraints?.minimumRestMinutes ?? 15,
+      stageScheduleWindows: {},
+    },
+    courtRequirement: {
+      venueId: null,
+      facilityClusterId: null,
+      physicalCourtIds: [],
+      stageCourtRequirements: rules.courtRequirement?.stageCourtRequirements || {},
+    },
     refereeRequirement: {
       byStage: {
-        [COMPETITION_RULES_STAGE.GROUP]: REFEREE_REQUIREMENT.OPTIONAL,
-        [COMPETITION_RULES_STAGE.SEMIFINAL]: REFEREE_REQUIREMENT.REQUIRED,
-        [COMPETITION_RULES_STAGE.FINAL]: REFEREE_REQUIREMENT.REQUIRED,
+        [COMPETITION_RULES_STAGE.GROUP]:
+          refByStage.GROUP || REFEREE_REQUIREMENT.OPTIONAL,
+        [COMPETITION_RULES_STAGE.ROUND_OF_16]:
+          refByStage.ROUND_OF_16 || REFEREE_REQUIREMENT.OPTIONAL,
+        [COMPETITION_RULES_STAGE.QUARTERFINAL]:
+          refByStage.QUARTERFINAL || REFEREE_REQUIREMENT.REQUIRED,
+        [COMPETITION_RULES_STAGE.SEMIFINAL]:
+          refByStage.SEMIFINAL || REFEREE_REQUIREMENT.REQUIRED,
+        [COMPETITION_RULES_STAGE.FINAL]:
+          refByStage.FINAL || REFEREE_REQUIREMENT.REQUIRED,
       },
+      fallbackPolicy: rules.refereeRequirement?.fallbackPolicy || "BLOCK_START",
     },
+    publication: rules.publication || undefined,
     metadata: {
       source: "official-open-adapter-b",
       persistedSource,
@@ -239,6 +310,10 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
       tournamentRuleInheritance: false,
       lifecycleEvidence: options.lifecycleEvidence || null,
       pr459AdmissionDeferred: true,
+      officialSeedingPolicy: rules.seedingPolicy || "NONE",
+      officialSubstitution: rules.substitution || null,
+      officialEligibility: rules.eligibility || null,
+      wildcardSlotsDerived: Number(rules.qualification?.wildcardSlots) || 0,
     },
   };
 

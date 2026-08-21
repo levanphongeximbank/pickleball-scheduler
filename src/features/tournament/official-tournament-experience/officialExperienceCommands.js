@@ -210,6 +210,7 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
             : OFFICIAL_MATCH_FORMAT.BEST_OF_1,
         targetPoints: Number(scoring.targetPoints) || rules?.matchScoring?.targetPoints || 11,
         roundTargets: rules?.roundTargets || null,
+        stageOverrides: rules?.stageOverrides || null,
         winByEnabled: win.winByEnabled !== false,
         winByMargin: Number(win.winByMargin) || 2,
         pointCapEnabled: win.pointCapEnabled === true,
@@ -220,6 +221,8 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
             ? Number(changeEnd.changeEndsAtPoints)
             : null,
         groupCount: Number(profile.groupStage?.groupCount) || rules?.groupStage?.groupCount || 4,
+        maxUnitsPerGroup: rules?.groupStage?.maxUnitsPerGroup ?? null,
+        allowUnevenGroups: rules?.groupStage?.allowUnevenGroups !== false,
         qualifiersPerGroup:
           Number(profile.qualification?.directQualifiersPerGroup) ||
           rules?.qualification?.directQualifiersPerGroup ||
@@ -230,8 +233,23 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
           null,
         groupStageEnabled: profile.groupStage?.groupStageEnabled !== false,
         knockoutEnabled: profile.knockout?.knockoutEnabled !== false,
+        pairingPolicy: rules?.knockout?.pairingPolicy,
+        avoidSameGroupFirstRound: rules?.knockout?.avoidSameGroupFirstRound,
+        minLevel: rules?.eligibility?.minLevel ?? null,
         maxLevel: rules?.eligibility?.maxLevel ?? null,
+        minRating: rules?.eligibility?.minRating ?? null,
         maxRating: rules?.eligibility?.maxRating ?? null,
+        capacity: rules?.capacity || null,
+        seedingPolicy: rules?.seedingPolicy || "NONE",
+        inGroupTieBreak: rules?.inGroupTieBreak || null,
+        crossGroupRanking: rules?.crossGroupRanking || null,
+        walkover: rules?.walkover || null,
+        checkIn: rules?.checkIn || null,
+        substitution: rules?.substitution || null,
+        scheduleConstraints: rules?.scheduleConstraints || null,
+        courtRequirement: rules?.courtRequirement || null,
+        refereeRequirement: rules?.refereeRequirement || null,
+        publication: rules?.publication || null,
       });
       return {
         ok: true,
@@ -246,7 +264,9 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
       };
     })(),
     eligibility: {
+      minLevel: rules?.eligibility?.minLevel ?? null,
       maxLevel: rules?.eligibility?.maxLevel ?? null,
+      minRating: rules?.eligibility?.minRating ?? null,
       maxRating: rules?.eligibility?.maxRating ?? null,
       scope: "CONTENT",
     },
@@ -404,12 +424,15 @@ export function buildOfficialSettingsSavePatch(tournament, draft = {}) {
 
     try {
       const patched = patchEventContentCompetitionRules(next, eventId, {
+        contentRules: draft.contentRules || draft,
         registrationMode: draft.registrationMode,
         scoringMethod,
         matchFormat,
         groupCount: draft.groupCount,
         qualifiersPerGroup: draft.qualifiersPerGroup,
+        totalQualifiers: draft.totalQualifiers,
         roundTargets: draft.roundTargets,
+        stageOverrides: draft.stageOverrides,
         targetPoints:
           draft.targetPoints ??
           draft.roundTargets?.group ??
@@ -421,7 +444,9 @@ export function buildOfficialSettingsSavePatch(tournament, draft = {}) {
         changeEndsEnabled: draft.changeEndsEnabled,
         changeEndsAtPoints: draft.changeEndsAtPoints,
         eligibility: {
+          minLevel: draft.minLevel,
           maxLevel: skillParsed.value,
+          minRating: draft.minRating,
           maxRating: ratingParsed.value,
         },
       });
