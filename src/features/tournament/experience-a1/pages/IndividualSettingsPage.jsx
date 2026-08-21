@@ -59,7 +59,6 @@ import {
   projectOfficialSettings,
 } from "../../official-tournament-experience/officialExperienceCommands.js";
 import {
-  buildContentRulesSummaryLines,
   normalizeContentCompetitionRules,
 } from "../../../individual-tournament/engines/officialContentCompetitionRules.js";
 import {
@@ -83,23 +82,23 @@ import {
 import { modeLabelVi, statusLabelVi } from "../../constants/tournamentLabels.js";
 
 const TABS = [
-  { id: "info", label: "Th?ng tin chung" },
-  { id: "format", label: "Thi?t k? th? th?c" },
-  { id: "rules", label: "Quy ??nh" },
-  { id: "fees", label: "L? ph? & Gi?i th??ng" },
-  { id: "schedule", label: "L?ch tr?nh" },
+  { id: "info", label: "Thông tin chung" },
+  { id: "format", label: "Thiết kế thể thức" },
+  { id: "rules", label: "Quy định" },
+  { id: "fees", label: "Lệ phí & Giải thưởng" },
+  { id: "schedule", label: "Lịch trình" },
 ];
 
 const OFFICIAL_MODE_LABELS = {
-  [OFFICIAL_MODE.OPEN]: "M? r?ng",
-  [OFFICIAL_MODE.AI_BALANCE]: "C?n b?ng AI",
+  [OFFICIAL_MODE.OPEN]: "Mở rộng",
+  [OFFICIAL_MODE.AI_BALANCE]: "Cân bằng AI",
 };
 
 const CONFIG_CARDS = [
-  { title: "?? tu?i", detail: "M? trang quy ??nh ?? tu?i hi?n c?.", path: "/tournament/config/age-rules" },
-  { title: "Gi?i t?nh", detail: "M? trang quy ??nh gi?i t?nh hi?n c?.", path: "/tournament/config/gender-rules" },
-  { title: "?i?u ki?n tham gia", detail: "M? trang ?i?u ki?n tham gia hi?n c?.", path: "/tournament/eligibility/check" },
-  { title: "M?u ?i?u l?", detail: "M? trang ?i?u l? hi?n c?.", path: "/tournament/config/regulations" },
+  { title: "Độ tuổi", detail: "Mở trang quy định độ tuổi hiện có.", path: "/tournament/config/age-rules" },
+  { title: "Giới tính", detail: "Mở trang quy định giới tính hiện có.", path: "/tournament/config/gender-rules" },
+  { title: "Điều kiện tham gia", detail: "Mở trang điều kiện tham gia hiện có.", path: "/tournament/eligibility/check" },
+  { title: "Mẫu điều lệ", detail: "Mở trang điều lệ hiện có.", path: "/tournament/config/regulations" },
 ];
 
 function configPath(path, tournamentId) {
@@ -111,13 +110,13 @@ function FormatDesigner({ steps, locked = false, emptyText }) {
   return (
     <Box>
       <ExperienceSectionTitle
-        action={locked ? <ExperienceStatusChip tone="success" label="?? KH?A" /> : null}
+        action={locked ? <ExperienceStatusChip tone="success" label="ĐÃ KHÓA" /> : null}
       >
-        Thi?t k? th? th?c
+        Thiết kế thể thức
       </ExperienceSectionTitle>
       {locked ? (
         <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.warning, mb: 1 }}>
-          C?c c?u h?nh ?nh h??ng thi ??u ?? kh?a v? n?i dung ?? c? tr?n. Kh?ng ??i th? th?c tr?n m?n n?y.
+          Các cấu hình ảnh hưởng thi đấu đã khóa vì nội dung đã có trận. Không đổi thể thức trên màn này.
         </Typography>
       ) : null}
       {steps.length === 0 ? (
@@ -146,7 +145,7 @@ function FormatDesigner({ steps, locked = false, emptyText }) {
                   borderColor: index === 0 ? TOURNAMENT_COLOR.primary : TOURNAMENT_COLOR.divider,
                 }}
               >
-                <Typography sx={{ fontSize: 11, color: TOURNAMENT_COLOR.textMuted }}>B??c {index + 1}</Typography>
+                <Typography sx={{ fontSize: 11, color: TOURNAMENT_COLOR.textMuted }}>Bước {index + 1}</Typography>
                 <Typography sx={{ fontWeight: 800, fontSize: 14 }}>{step.label}</Typography>
                 <Typography sx={{ fontSize: 11, color: TOURNAMENT_COLOR.textMuted }}>{step.vi}</Typography>
               </ExperienceOperatorCard>
@@ -174,8 +173,8 @@ function SettingsShell({ children, actions, contextLine }) {
       sx={{ width: "100%", minWidth: 0, overflowX: "hidden", bgcolor: TOURNAMENT_COLOR.pageBg }}
     >
       <ExperiencePageHeader
-        title="C?i ??t Gi?i ??u / N?i dung"
-        subtitle="C?i ??t gi?i ??u t?ch c?i ??t n?i dung"
+        title="Cài đặt Giải đấu / Nội dung"
+        subtitle="Cài đặt giải đấu tách cài đặt nội dung"
         contextLine={contextLine}
         actions={actions}
       />
@@ -331,7 +330,7 @@ export default function IndividualSettingsPage() {
   }, [selectedEvent, dirty]);
 
   useEffect(() => {
-    // Isolate form draft when switching N?i dung ? do not leak edits across events.
+    // Isolate form draft when switching Nội dung — do not leak edits across events.
     setDirty(false);
   }, [selectedEventId]);
 
@@ -339,7 +338,10 @@ export default function IndividualSettingsPage() {
     const raw = String(searchParams.get("tab") || "").trim();
     const nextTab = TABS.some((row) => row.id === raw) ? raw : "info";
     setTab(nextTab);
-  }, [searchParams]);
+    if (nextTab === "format" && selectedEventId) {
+      setScope("event");
+    }
+  }, [searchParams, selectedEventId]);
 
   const persist = async (patch, successText) => {
     setBusy(true);
@@ -347,7 +349,7 @@ export default function IndividualSettingsPage() {
     const result = await update(patch);
     setBusy(false);
     if (!result.ok) {
-      setMessage({ type: "error", text: result.error || "Kh?ng l?u ???c." });
+      setMessage({ type: "error", text: result.error || "Không lưu được." });
       return false;
     }
     setDirty(false);
@@ -405,13 +407,13 @@ export default function IndividualSettingsPage() {
 
   const handleSaveIdentity = async () => {
     if (official) {
-      // Tournament scope: identity only ? no competition-rules mutation.
+      // Tournament scope: identity only — no competition-rules mutation.
       const patch = buildIdentityPatch({
         name,
         hostClubName,
         officialMode,
       });
-      await persist(patch, "?? l?u th?ng tin gi?i (kh?ng g?m lu?t N?i dung).");
+      await persist(patch, "Đã lưu thông tin giải (không gồm luật Nội dung).");
       return;
     }
     const patch = buildIdentityPatch({
@@ -419,7 +421,7 @@ export default function IndividualSettingsPage() {
       hostClubName,
       officialMode: official ? officialMode : undefined,
     });
-    await persist(patch, "?? l?u th?ng tin gi?i.");
+    await persist(patch, "Đã lưu thông tin giải.");
   };
 
   const handleAddEvent = async () => {
@@ -430,10 +432,10 @@ export default function IndividualSettingsPage() {
       registrationMode: addRegistrationMode,
     });
     if (!built.ok) {
-      setMessage({ type: "error", text: built.error || "Kh?ng th?m ???c n?i dung." });
+      setMessage({ type: "error", text: built.error || "Không thêm được nội dung." });
       return;
     }
-    if (await persist(built.patch, "?? th?m n?i dung.")) {
+    if (await persist(built.patch, "Đã thêm nội dung.")) {
       const next = new URLSearchParams(searchParams);
       next.set("eventId", built.event.id);
       setSearchParams(next);
@@ -446,7 +448,7 @@ export default function IndividualSettingsPage() {
 
   const handleSaveEvent = async () => {
     if (!selectedEvent) {
-      setMessage({ type: "error", text: "H?y ch?n n?i dung tr??c khi l?u." });
+      setMessage({ type: "error", text: "Hãy chọn nội dung trước khi lưu." });
       return;
     }
     const result = buildUpdateEventPatch(tournament, selectedEvent.id, {
@@ -465,7 +467,7 @@ export default function IndividualSettingsPage() {
           officialAdapter?.commands?.saveSettings?.(tournament, draft) ||
           buildOfficialSettingsSavePatch(tournament, draft);
         if (!settingsBuilt.ok) {
-          setMessage({ type: "error", text: settingsBuilt.error || "Kh?ng l?u ???c th? th?c." });
+          setMessage({ type: "error", text: settingsBuilt.error || "Không lưu được thể thức." });
           return;
         }
         await persist(
@@ -474,12 +476,12 @@ export default function IndividualSettingsPage() {
             events: settingsBuilt.patch.events,
             settings: settingsBuilt.patch.settings,
           },
-          "?? l?u N?i dung + lu?t Content-owned (event.competitionRules)."
+          "Đã lưu Nội dung + luật Content-owned (event.competitionRules)."
         );
         return;
       }
     }
-    await persist(result.patch, "?? l?u n?i dung ?ang ch?n.");
+    await persist(result.patch, "Đã lưu nội dung đang chọn.");
   };
 
   const handlePrimarySave = () => {
@@ -497,11 +499,11 @@ export default function IndividualSettingsPage() {
   const headerActions = (
     <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: "wrap" }}>
       <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate(individualOverviewPath(tournamentId))} sx={outlinedActionSx}>
-        T?ng quan
+        {tab === "format" && official ? "Quay lại" : "Tổng quan"}
       </Button>
       {competitionLocked && scope === "event" ? (
         <Button variant="outlined" size="small" disabled sx={outlinedActionSx}>
-          Xem c?u h?nh
+          Xem cấu hình
         </Button>
       ) : (
         <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
@@ -513,7 +515,7 @@ export default function IndividualSettingsPage() {
             onClick={handlePrimarySave}
             sx={outlinedActionSx}
           >
-            L?u nh?p
+            Lưu nháp
           </Button>
         </PermissionGate>
       )}
@@ -525,11 +527,11 @@ export default function IndividualSettingsPage() {
         to={individualPublicTournamentPath(tournamentId)}
         sx={outlinedActionSx}
       >
-        Xem tr??c
+        Xem trước
       </Button>
       <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
         <Button variant="contained" size="small" disabled={busy} onClick={handlePrimarySave} sx={primaryActionSx}>
-          {competitionLocked && scope === "event" ? "C?p nh?t th?ng tin" : "C?p nh?t"}
+          {competitionLocked && scope === "event" ? "Cập nhật thông tin" : "Cập nhật"}
         </Button>
       </PermissionGate>
     </Stack>
@@ -538,7 +540,7 @@ export default function IndividualSettingsPage() {
   if (loading) {
     return (
       <SettingsShell>
-        <Alert severity="info">?ang t?i c?i ??t gi?i?</Alert>
+        <Alert severity="info">Đang tải cài đặt giải…</Alert>
       </SettingsShell>
     );
   }
@@ -553,7 +555,7 @@ export default function IndividualSettingsPage() {
     return (
       <SettingsShell>
         <ClubAssignmentBanner />
-        <Alert severity="warning">Kh?ng t?m th?y gi?i. Ch?n CLB tr?n thanh c?ng c? r?i m? l?i gi?i.</Alert>
+        <Alert severity="warning">Không tìm thấy giải. Chọn CLB trên thanh công cụ rồi mở lại giải.</Alert>
       </SettingsShell>
     );
   }
@@ -561,9 +563,9 @@ export default function IndividualSettingsPage() {
     return (
       <SettingsShell>
         <Alert severity="info">
-          C?i ??t n?y d?nh cho gi?i c? nh?n / ch?nh th?c.{" "}
+          Cài đặt này dành cho giải cá nhân / chính thức.{" "}
           <Button component={RouterLink} to="/tournament" size="small">
-            Quay l?i
+            Quay lại
           </Button>
         </Alert>
       </SettingsShell>
@@ -573,8 +575,8 @@ export default function IndividualSettingsPage() {
   const scheduleDate = tournament.courtSchedule?.date || "";
   const typeLabel = modeLabelVi(tournament.mode);
   const eventMeta = selectedEvent
-    ? `${EVENT_TYPE_LABELS[selectedEvent.eventType] || "N?i dung"} ? ${Array.isArray(selectedEvent.entries) ? selectedEvent.entries.length : 0} c?p ? ${statusLabelVi(selectedEvent.status) || "Ch?a c?u h?nh"}`
-    : "Ch?a ch?n n?i dung ?? c?u h?nh";
+    ? `${EVENT_TYPE_LABELS[selectedEvent.eventType] || "Nội dung"} • ${Array.isArray(selectedEvent.entries) ? selectedEvent.entries.length : 0} cặp • ${statusLabelVi(selectedEvent.status) || "Chưa cấu hình"}`
+    : "Chưa chọn nội dung để cấu hình";
 
   return (
     <SettingsShell
@@ -590,64 +592,67 @@ export default function IndividualSettingsPage() {
 
       <TournamentExperienceWorkspace
         rail={
+          tab === "format" && official && selectedEvent ? null : (
           <>
-            <CenterRightRailCard title="Ph?m vi c?u h?nh">
+            <CenterRightRailCard title="Phạm vi cấu hình">
               <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted, mb: 0.75 }}>
-                Gi?i ??u v? N?i dung l? hai ph?m vi ri?ng.
+                Giải đấu và Nội dung là hai phạm vi riêng.
               </Typography>
               <Stack spacing={0.6}>
                 <Typography sx={{ fontSize: 12.5 }}>
-                  <strong>Gi?i ??u</strong> = {tournament.name}
+                  <strong>Giải đấu</strong> = {tournament.name}
                 </Typography>
                 <Typography sx={{ fontSize: 12.5 }}>
-                  <strong>N?i dung</strong> = {scope === "event" ? selectedEvent?.name || "Ch?a ch?n ?? c?u h?nh" : "Ch?a ch?n ?? c?u h?nh"}
+                  <strong>Nội dung</strong> = {scope === "event" ? selectedEvent?.name || "Chưa chọn để cấu hình" : "Chưa chọn để cấu hình"}
                 </Typography>
               </Stack>
             </CenterRightRailCard>
             {competitionLocked && scope === "event" ? (
-              <CenterRightRailCard title="Tr?ng th?i c?u h?nh">
-                <ExperienceStatusChip tone="success" label="?? KH?A" />
+              <CenterRightRailCard title="Trạng thái cấu hình">
+                <ExperienceStatusChip tone="success" label="ĐÃ KHÓA" />
                 <Typography sx={{ fontSize: 12.5, mt: 0.75, fontWeight: 700 }}>
-                  N?i dung ?? b?t ??u thi ??u
+                  Nội dung đã bắt đầu thi đấu
                 </Typography>
                 <Typography sx={{ fontSize: 12.5, mt: 0.5 }}>
-                  C?c c?u h?nh ?nh h??ng thi ??u ?? kh?a. Ch? th?ng tin t?n / h?ng m?c c?n l?u ???c.
+                  Các cấu hình ảnh hưởng thi đấu đã khóa. Chỉ thông tin tên / hạng mục còn lưu được.
                 </Typography>
                 <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted, mt: 0.75 }}>
-                  Thay ??i th? th?c sau khi n?i dung ?? b?t ??u c?n quy tr?nh ?i?u ch?nh ri?ng ? ch?a c? tr?n m?n n?y.
+                  Thay đổi thể thức sau khi nội dung đã bắt đầu cần quy trình điều chỉnh riêng — chưa có trên màn này.
                 </Typography>
               </CenterRightRailCard>
             ) : (
-              <CenterRightRailCard title="M?c s?n s?ng">
+              <CenterRightRailCard title="Mức sẵn sàng">
                 <ExperienceStatusChip
                   tone={tournament.status === "draft" ? "info" : "success"}
-                  label={statusLabelVi(tournament.status) || "B?N NH?P"}
+                  label={statusLabelVi(tournament.status) || "BẢN NHÁP"}
                 />
                 <Typography sx={{ fontSize: 12.5, mt: 0.75 }}>
-                  L?u ch? c?p nh?t h? s? gi?i. Kh?ng kh?a ??ng k?, kh?ng c?ng b?, kh?ng ho?n t?t.
+                  Lưu chỉ cập nhật hồ sơ giải. Không khóa đăng ký, không công bố, không hoàn tất.
                 </Typography>
               </CenterRightRailCard>
             )}
-            <CenterRightRailCard title="T?c ??ng">
+            <CenterRightRailCard title="Tác động">
               <Typography sx={{ fontSize: 12.5 }}>
                 {competitionLocked && scope === "event"
-                  ? "C?u h?nh thi ??u ?? kh?a. Ch? th?ng tin kh?ng ??i th? th?c c? th? c?p nh?t."
-                  : "L?u nh?p kh?ng c?ng b? c?ng khai, kh?ng kh?a ??ng k?, kh?ng kh?a b?c th?m."}
+                  ? "Cấu hình thi đấu đã khóa. Chỉ thông tin không đổi thể thức có thể cập nhật."
+                  : "Lưu nháp không công bố công khai, không khóa đăng ký, không khóa bốc thăm."}
               </Typography>
             </CenterRightRailCard>
-            <CenterRightRailCard title="L?u g?n nh?t">
+            <CenterRightRailCard title="Lưu gần nhất">
               <Typography sx={{ fontSize: 12.5 }}>
                 {tournament.updatedAt
                   ? new Date(tournament.updatedAt).toLocaleString("vi-VN")
-                  : "Ch?a c? l?n l?u tr?n h? s?"}
+                  : "Chưa có lần lưu trên hồ sơ"}
               </Typography>
               <Typography sx={{ fontSize: 11, color: TOURNAMENT_COLOR.textMuted }}>
-                {busy ? "?ang l?u?" : "Ch?a C?p nh?t ch?nh th?c"}
+                {busy ? "Đang lưu…" : "Chưa Cập nhật chính thức"}
               </Typography>
             </CenterRightRailCard>
           </>
+          )
         }
       >
+        {!(tab === "format" && official && selectedEvent) ? (
         <ExperienceChipRow
           value={scope}
           onChange={(next) => {
@@ -658,13 +663,14 @@ export default function IndividualSettingsPage() {
             }
           }}
           items={[
-            { id: "tournament", label: "Gi?i ??u" },
-            { id: "event", label: "N?i dung" },
+            { id: "tournament", label: "Giải đấu" },
+            { id: "event", label: "Nội dung" },
           ]}
         />
-        {scope === "event" ? (
+        ) : null}
+        {scope === "event" && !(tab === "format" && official && selectedEvent) ? (
           <>
-            <Typography sx={{ fontSize: 12, fontWeight: 700, mb: 0.5 }}>Ch?n n?i dung</Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, mb: 0.5 }}>Chọn nội dung</Typography>
             {internal ? (
               <Alert severity="info" sx={{ mb: 1 }}>
                 {MULTI_CONTENT_LIMITATION_INTERNAL}
@@ -673,9 +679,9 @@ export default function IndividualSettingsPage() {
             {events.length === 0 ? (
               <Stack spacing={1.25} sx={{ mb: 1.5 }} data-testid="official-empty-event-state">
                 <Alert severity="info">
-                  Ch?a c? n?i dung thi ??u.
+                  Chưa có nội dung thi đấu.
                   <br />
-                  T?o n?i dung ??u ti?n ?? c?u h?nh ??ng k? v? th? th?c.
+                  Tạo nội dung đầu tiên để cấu hình đăng ký và thể thức.
                 </Alert>
                 {official ? (
                   <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
@@ -683,16 +689,16 @@ export default function IndividualSettingsPage() {
                       <TextField
                         size="small"
                         fullWidth
-                        label="T?n n?i dung"
+                        label="Tên nội dung"
                         value={addEventName}
                         onChange={(event) => setAddEventName(event.target.value)}
-                        placeholder="VD: ??i nam"
+                        placeholder="VD: Đôi nam"
                       />
                       <TextField
                         size="small"
                         fullWidth
                         select
-                        label="Lo?i n?i dung"
+                        label="Loại nội dung"
                         value={addEventType}
                         onChange={(event) => {
                           setAddEventType(event.target.value);
@@ -711,22 +717,22 @@ export default function IndividualSettingsPage() {
                         size="small"
                         fullWidth
                         select
-                        label="Ch? ?? ??ng k?"
+                        label="Chế độ đăng ký"
                         value={addRegistrationMode}
                         onChange={(event) => setAddRegistrationMode(event.target.value)}
                         disabled={officialMode === OFFICIAL_MODE.AI_BALANCE}
                         helperText={
                           officialMode === OFFICIAL_MODE.AI_BALANCE
-                            ? "AI Balance: ch? ??ng k? c? nh?n."
+                            ? "AI Balance: chỉ đăng ký cá nhân."
                             : undefined
                         }
                       >
-                        <MenuItem value={OFFICIAL_REGISTRATION_MODE.INDIVIDUAL}>C? nh?n</MenuItem>
+                        <MenuItem value={OFFICIAL_REGISTRATION_MODE.INDIVIDUAL}>Cá nhân</MenuItem>
                         <MenuItem
                           value={OFFICIAL_REGISTRATION_MODE.PAIR}
                           disabled={officialMode === OFFICIAL_MODE.AI_BALANCE}
                         >
-                          C?p c? ??nh
+                          Cặp cố định
                         </MenuItem>
                       </TextField>
                       <Button
@@ -736,13 +742,13 @@ export default function IndividualSettingsPage() {
                         sx={primaryActionSx}
                         data-testid="official-add-event-cta"
                       >
-                        + Th?m n?i dung
+                        + Thêm nội dung
                       </Button>
                     </Stack>
                   </PermissionGate>
                 ) : (
                   <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted }}>
-                    Ch?a c? n?i dung tr?n h? s?.
+                    Chưa có nội dung trên hồ sơ.
                   </Typography>
                 )}
               </Stack>
@@ -752,26 +758,28 @@ export default function IndividualSettingsPage() {
                 onChange={selectEvent}
                 items={events.map((item) => ({
                   id: item.id,
-                  label: item.name || EVENT_TYPE_LABELS[item.eventType] || "N?i dung",
+                  label: item.name || EVENT_TYPE_LABELS[item.eventType] || "Nội dung",
                 }))}
               />
             )}
           </>
         ) : null}
 
+        {!(tab === "format" && official && selectedEvent) ? (
         <ExperienceOperatorCard sx={{ mb: 1.5, bgcolor: TOURNAMENT_COLOR.primarySurface, borderColor: TOURNAMENT_COLOR.primary }}>
           <Typography sx={{ fontSize: 11, fontWeight: 700, color: TOURNAMENT_COLOR.primary, letterSpacing: 0.4 }}>
-            {scope === "tournament" ? "PH?M VI GI?I ??U" : "N?I DUNG THI ??U"}
+            {scope === "tournament" ? "PHẠM VI GIẢI ĐẤU" : "NỘI DUNG THI ĐẤU"}
           </Typography>
           <Typography sx={{ fontWeight: 800, fontSize: 16 }}>
-            {scope === "tournament" ? tournament.name : selectedEvent?.name || "Ch?a ch?n n?i dung"}
+            {scope === "tournament" ? tournament.name : selectedEvent?.name || "Chưa chọn nội dung"}
           </Typography>
           <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted }}>
             {scope === "tournament"
-              ? `${typeLabel} ? ${hostClubName || "Ch?a c? ??a ?i?m"} ? ${scheduleDate || "Ch?a c?u h?nh ng?y"}`
+              ? `${typeLabel} • ${hostClubName || "Chưa có địa điểm"} • ${scheduleDate || "Chưa cấu hình ngày"}`
               : eventMeta}
           </Typography>
         </ExperienceOperatorCard>
+        ) : null}
 
         <Tabs
           value={tab}
@@ -792,7 +800,7 @@ export default function IndividualSettingsPage() {
                 <TextField
                   size="small"
                   fullWidth
-                  label="T?n gi?i ??u"
+                  label="Tên giải đấu"
                   value={name}
                   onChange={(event) => {
                     setDirty(true);
@@ -801,13 +809,13 @@ export default function IndividualSettingsPage() {
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField size="small" fullWidth label="Lo?i gi?i" value={typeLabel} disabled />
+                <TextField size="small" fullWidth label="Loại giải" value={typeLabel} disabled />
               </Grid>
               <Grid size={{ xs: 12, md: 8 }}>
                 <TextField
                   size="small"
                   fullWidth
-                  label="C?m s?n / ??a ?i?m"
+                  label="Cụm sân / Địa điểm"
                   value={hostClubName}
                   onChange={(event) => {
                     setDirty(true);
@@ -816,7 +824,7 @@ export default function IndividualSettingsPage() {
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
-                <TextField size="small" fullWidth label="Hi?n th? c?ng khai" value="Ch?a c?u h?nh c?ng b?" disabled />
+                <TextField size="small" fullWidth label="Hiển thị công khai" value="Chưa cấu hình công bố" disabled />
               </Grid>
               {official ? (
                 <Grid size={{ xs: 12, md: 4 }}>
@@ -824,7 +832,7 @@ export default function IndividualSettingsPage() {
                     size="small"
                     fullWidth
                     select
-                    label="Ch? ?? gi?i"
+                    label="Chế độ giải"
                     value={officialMode}
                     onChange={(event) => {
                       setDirty(true);
@@ -840,14 +848,14 @@ export default function IndividualSettingsPage() {
                 </Grid>
               ) : null}
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField size="small" fullWidth label="Ng?y thi ??u tr?n h? s?" value={scheduleDate || "Ch?a c?u h?nh"} disabled />
+                <TextField size="small" fullWidth label="Ngày thi đấu trên hồ sơ" value={scheduleDate || "Chưa cấu hình"} disabled />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   size="small"
                   fullWidth
-                  label="C?p nh?t g?n nh?t"
-                  value={tournament.updatedAt ? new Date(tournament.updatedAt).toLocaleString("vi-VN") : "?"}
+                  label="Cập nhật gần nhất"
+                  value={tournament.updatedAt ? new Date(tournament.updatedAt).toLocaleString("vi-VN") : "—"}
                   disabled
                 />
               </Grid>
@@ -864,10 +872,10 @@ export default function IndividualSettingsPage() {
                 gradient={`linear-gradient(120deg, ${TOURNAMENT_COLOR.navy} 0%, #16325C 42%, ${TOURNAMENT_COLOR.primary} 100%)`}
               >
                 <Box sx={{ px: 2, py: 1.5 }}>
-                  <Typography sx={{ fontSize: 11, opacity: 0.75 }}>?nh / banner ??i di?n</Typography>
+                  <Typography sx={{ fontSize: 11, opacity: 0.75 }}>Ảnh / banner đại diện</Typography>
                   <Typography sx={{ fontWeight: 800, fontSize: 18 }}>{name || tournament.name}</Typography>
                   <Typography sx={{ fontSize: 12, opacity: 0.9 }}>
-                    {hostClubName || "Ch?a c? ??a ?i?m tr?n h? s?"}
+                    {hostClubName || "Chưa có địa điểm trên hồ sơ"}
                   </Typography>
                 </Box>
               </CenterIdentitySurface>
@@ -879,14 +887,14 @@ export default function IndividualSettingsPage() {
           selectedEvent ? (
             <Grid container spacing={1.25}>
               <Grid size={{ xs: 12, md: 8 }}>
-                <TextField size="small" fullWidth label="T?n n?i dung" value={eventName} onChange={(event) => setEventName(event.target.value)} />
+                <TextField size="small" fullWidth label="Tên nội dung" value={eventName} onChange={(event) => setEventName(event.target.value)} />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
                   size="small"
                   fullWidth
-                  label="Tr?ng th?i n?i dung"
-                  value={statusLabelVi(selectedEvent.status) || "Ch?a c?u h?nh"}
+                  label="Trạng thái nội dung"
+                  value={statusLabelVi(selectedEvent.status) || "Chưa cấu hình"}
                   disabled
                 />
               </Grid>
@@ -895,7 +903,7 @@ export default function IndividualSettingsPage() {
                   size="small"
                   fullWidth
                   select
-                  label="H?ng m?c"
+                  label="Hạng mục"
                   value={eventType}
                   onChange={(event) => setEventType(event.target.value)}
                   disabled={competitionLocked}
@@ -911,7 +919,7 @@ export default function IndividualSettingsPage() {
                 <TextField
                   size="small"
                   fullWidth
-                  label="S?c ch?a c?p / ??i"
+                  label="Sức chứa cặp / đội"
                   value={String(Array.isArray(selectedEvent.entries) ? selectedEvent.entries.length : 0)}
                   disabled
                 />
@@ -920,32 +928,23 @@ export default function IndividualSettingsPage() {
                 <TextField
                   size="small"
                   fullWidth
-                  label="Th? th?c thi ??u"
+                  label="Thể thức thi đấu"
                   value={
-                    official
-                      ? buildContentRulesSummaryLines(contentRulesDraft).join(" ? ")
-                      : selectedEvent.groups?.length && selectedEvent.bracket
-                        ? "V?ng b?ng + Lo?i tr?c ti?p"
-                        : selectedEvent.bracket
-                          ? "Lo?i tr?c ti?p"
-                          : selectedEvent.groups?.length
-                            ? "V?ng b?ng"
-                            : "Ch?a c?u h?nh"
+                    selectedEvent.groups?.length && selectedEvent.bracket
+                      ? "Vòng bảng + Loại trực tiếp"
+                      : selectedEvent.bracket
+                        ? "Loại trực tiếp"
+                        : selectedEvent.groups?.length
+                          ? "Vòng bảng"
+                          : "Chưa cấu hình"
                   }
                   disabled
-                  multiline={Boolean(official)}
-                  minRows={official ? 2 : 1}
-                  helperText={
-                    official
-                      ? "T?m t?t t? Content rules (ch? hi?n th? ? kh?ng ph?i SSOT th? hai)."
-                      : undefined
-                  }
                 />
               </Grid>
               {competitionLocked ? (
                 <Grid size={{ xs: 12 }}>
                   <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.warning }}>
-                    Th? th?c v? s?c ch?a ?? kh?a v? n?i dung ?? c? tr?n.
+                    Thể thức và sức chứa đã khóa vì nội dung đã có trận.
                   </Typography>
                 </Grid>
               ) : null}
@@ -955,7 +954,7 @@ export default function IndividualSettingsPage() {
                     <TextField
                       size="small"
                       select
-                      label="Th?m lo?i n?i dung"
+                      label="Thêm loại nội dung"
                       value={addEventType}
                       onChange={(event) => setAddEventType(event.target.value)}
                       sx={{ minWidth: 220 }}
@@ -968,7 +967,7 @@ export default function IndividualSettingsPage() {
                     </TextField>
                     <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
                       <Button variant="outlined" disabled={busy} onClick={handleAddEvent} sx={outlinedActionSx}>
-                        Th?m n?i dung
+                        Thêm nội dung
                       </Button>
                     </PermissionGate>
                   </Stack>
@@ -977,7 +976,7 @@ export default function IndividualSettingsPage() {
             </Grid>
           ) : (
             <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted }}>
-              H?y ch?n n?i dung ?? xem v? l?u th?ng tin.
+              Hãy chọn nội dung để xem và lưu thông tin.
             </Typography>
           )
         ) : null}
@@ -985,25 +984,16 @@ export default function IndividualSettingsPage() {
         {tab === "format" ? (
           official ? (
             selectedEvent ? (
-              <Stack spacing={1.25} data-testid="official-competition-settings">
-                <Alert severity="info">
-                  ?ang c?u h?nh N?i dung: {selectedEvent.name || selectedEvent.id}. Lu?t luu tr?n
-                  event.competitionRules (Content-owned). Kh?ng k? th?a lu?t Tournament.
-                </Alert>
-                {rulesBootstrapSource ? (
-                  <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>
-                    Ngu?n form: {rulesBootstrapSource}
-                    {rulesAdoption?.contentRulesSource
-                      ? ` ? ${rulesAdoption.contentRulesSource}`
-                      : ""}
-                    {dirty ? " ? ?ang ch?nh nh?p ? kh?ng ghi d? t? refresh n?n." : ""}
-                  </Typography>
-                ) : null}
+              <Box data-testid="official-competition-settings" sx={{ width: "100%", minWidth: 0 }}>
                 <OfficialContentFormatSettingsPanel
                   draft={contentRulesDraft}
                   setDraft={setContentDraft}
                   eventName={eventName}
                   eventType={eventType}
+                  eventId={selectedEvent.id}
+                  events={events}
+                  selectedEventId={selectedEventId}
+                  onSelectEvent={selectEvent}
                   onEventNameChange={(value) => {
                     setDirty(true);
                     setEventName(value);
@@ -1013,25 +1003,33 @@ export default function IndividualSettingsPage() {
                     setEventType(value);
                   }}
                   locked={competitionLocked}
-                  lockReason="C?c c?u h?nh ?nh hu?ng thi d?u d? kh?a v? n?i dung d? c? tr?n."
+                  lockReason="Các cấu hình ảnh hưởng thi đấu đã khóa vì nội dung đã có trận."
                   scoringCaps={scoringCaps}
                   officialMode={officialMode}
+                  rulesBootstrapSource={rulesBootstrapSource}
+                  rulesAdoption={rulesAdoption}
+                  dirty={dirty}
+                  busy={busy}
+                  lastSavedAt={tournament.updatedAt || selectedEvent.updatedAt || null}
+                  onBack={() => navigate(individualOverviewPath(tournamentId))}
+                  onSaveDraft={handlePrimarySave}
+                  onUpdate={handlePrimarySave}
                 />
-              </Stack>
+              </Box>
             ) : (
               <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted }}>
-                Th? th?c thu?c ph?m vi N?i dung. Ch?n N?i dung d? xem thi?t k? th? th?c.
+                Thể thức thuộc phạm vi Nội dung. Chọn Nội dung để xem thiết kế thể thức.
               </Typography>
             )
           ) : scope === "event" ? (
             <FormatDesigner
               steps={formatSteps}
               locked={competitionLocked}
-              emptyText="Chua c?u h?nh th? th?c tr?n h? so n?i dung n?y."
+              emptyText="Chưa cấu hình thể thức trên hồ sơ nội dung này."
             />
           ) : (
             <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted }}>
-              Th? th?c thu?c ph?m vi N?i dung. Ch?n N?i dung d? xem thi?t k? th? th?c.
+              Thể thức thuộc phạm vi Nội dung. Chọn Nội dung để xem thiết kế thể thức.
             </Typography>
           )
         ) : null}
@@ -1040,7 +1038,7 @@ export default function IndividualSettingsPage() {
           <Box>
             {competitionLocked && scope === "event" ? (
               <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.warning, mb: 1 }}>
-                Quy ??nh thi ??u ?? kh?a v? n?i dung ?ang c? tr?n.
+                Quy định thi đấu đã khóa vì nội dung đang có trận.
               </Typography>
             ) : null}
             <Grid container spacing={1.25}>
@@ -1050,7 +1048,7 @@ export default function IndividualSettingsPage() {
                     <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", justifyContent: "space-between" }}>
                       <Typography sx={{ fontWeight: 700, fontSize: 13.5 }}>{rule.title}</Typography>
                       {competitionLocked && scope === "event" ? (
-                        <ExperienceStatusChip tone="success" label="?? KH?A" />
+                        <ExperienceStatusChip tone="success" label="ĐÃ KHÓA" />
                       ) : null}
                     </Stack>
                     <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted, mt: 0.4 }}>{rule.detail}</Typography>
@@ -1060,7 +1058,7 @@ export default function IndividualSettingsPage() {
                       size="small"
                       sx={{ mt: 0.75, ...outlinedActionSx }}
                     >
-                      M? quy ??nh
+                      Mở quy định
                     </Button>
                   </ExperienceOperatorCard>
                 </Grid>
@@ -1073,25 +1071,25 @@ export default function IndividualSettingsPage() {
           <Grid container spacing={1.25}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <ExperienceOperatorCard>
-                <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>L? ph?</Typography>
-                <Typography sx={{ fontWeight: 800, fontSize: 16 }}>Ch?a c?u h?nh</Typography>
-                <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>Kh?ng c? l? ph? tr?n h? s? gi?i n?y.</Typography>
+                <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>Lệ phí</Typography>
+                <Typography sx={{ fontWeight: 800, fontSize: 16 }}>Chưa cấu hình</Typography>
+                <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>Không có lệ phí trên hồ sơ giải này.</Typography>
                 <Button
                   component={RouterLink}
                   to={configPath("/tournament/config/fee", tournament.id)}
                   size="small"
                   sx={{ mt: 0.75, ...outlinedActionSx }}
                 >
-                  M? l? ph?
+                  Mở lệ phí
                 </Button>
               </ExperienceOperatorCard>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <ExperienceOperatorCard>
-                <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>Gi?i th??ng</Typography>
-                <Typography sx={{ fontWeight: 800, fontSize: 16 }}>Ch?a c?u h?nh</Typography>
+                <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>Giải thưởng</Typography>
+                <Typography sx={{ fontWeight: 800, fontSize: 16 }}>Chưa cấu hình</Typography>
                 <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>
-                  C?ng b? gi?i th??ng kh?ng c? tr?n m?n n?y.
+                  Công bố giải thưởng không có trên màn này.
                 </Typography>
               </ExperienceOperatorCard>
             </Grid>
@@ -1102,12 +1100,12 @@ export default function IndividualSettingsPage() {
           <Grid container spacing={1.25}>
             <Grid size={{ xs: 12, md: 4 }}>
               <ExperienceOperatorCard>
-                <Typography sx={{ fontWeight: 800, mb: 0.75 }}>Ng?y tr?n h? s? s?n</Typography>
+                <Typography sx={{ fontWeight: 800, mb: 0.75 }}>Ngày trên hồ sơ sân</Typography>
                 <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted }}>
-                  {scheduleDate || "Ch?a c?u h?nh ng?y thi ??u"}
+                  {scheduleDate || "Chưa cấu hình ngày thi đấu"}
                 </Typography>
                 <Typography sx={{ fontSize: 11, color: TOURNAMENT_COLOR.textMuted, mt: 0.75 }}>
-                  Kh?ng ph?i m?n L?ch thi ??u & Ph?n s?n.
+                  Không phải màn Lịch thi đấu & Phân sân.
                 </Typography>
               </ExperienceOperatorCard>
             </Grid>
