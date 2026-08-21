@@ -287,7 +287,7 @@ describe("wave-o2-official-settings-registration-participants-01", () => {
     const adapter = resolveTournamentExperienceAdapter(officialTournament());
     assert.equal(adapter.commands.assignReferee, null);
     assert.equal(adapter.commands.scoreMatch, null);
-    assert.equal(adapter.wave, "O3");
+    assert.equal(adapter.wave, "O4");
 
     const overview = readFileSync(
       path.join(root, "src/features/tournament/experience-a1/pages/IndividualOverviewPage.jsx"),

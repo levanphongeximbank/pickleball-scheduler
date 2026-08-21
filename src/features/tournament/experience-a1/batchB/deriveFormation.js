@@ -356,8 +356,10 @@ function deriveOfficialFormationModel(tournament, { selectedEventId } = {}) {
     lockEnabled: false,
     lockHint:
       "Không có lệnh chốt cặp riêng — materialize drawEntries là checkpoint hiện có.",
-    drawEnabled: false,
-    drawHint: "Bốc thăm / chia bảng chưa mở trên Wave O3.",
+    drawEnabled: Boolean(pairingComplete || modeResolution.mode === PAIR_FORMATION_MODE.REGISTERED_PAIRS),
+    drawHint: pairingComplete || modeResolution.mode === PAIR_FORMATION_MODE.REGISTERED_PAIRS
+      ? "Mở Screen 07 Bốc thăm ghép cặp / đội (trình chiếu đơn vị đã hình thành)."
+      : "Cần hình thành cặp trước khi sang bốc thăm ghép.",
     createPairEnabled: false,
     createPairHint: "Ghép thủ công chưa có trên hệ thống này.",
     formPairsEnabled,

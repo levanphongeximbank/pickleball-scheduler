@@ -548,4 +548,6 @@ export const OFFICIAL_COMMAND_DELEGATION_MAP = Object.freeze({
   removeEntry: "event.entries filter persist → updateTournamentCommand",
   formPairs:
     "resolveOfficialPairFormationMode → formOfficialIndividualPairs(suggestOpenRandomEntriesFromPlayers|suggestBalancedEntriesFromIndividuals) → event.drawEntries",
+  presentPairDraw:
+    "listOfficialPairDrawUnits → buildPairingSteps (presentation only; mutates=false)",
 });

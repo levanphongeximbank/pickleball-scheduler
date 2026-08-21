@@ -34,6 +34,10 @@ import {
   projectOfficialSettings,
   resolveOfficialRegistrationPublicationStatus,
 } from "./officialExperienceCommands.js";
+import {
+  buildOfficialPresentPairDraw,
+  projectOfficialPairDraw,
+} from "./pairDrawProjection.js";
 
 function trim(value) {
   return value != null ? String(value).trim() : "";
@@ -203,6 +207,7 @@ export function projectOfficialTournamentExperience(tournament, options = {}) {
     registration: projectOfficialRegistration(tournament, options),
     participants: projectOfficialParticipants(tournament, options),
     pairFormation: projectOfficialPairFormation(tournament, options),
+    pairDraw: projectOfficialPairDraw(tournament, options),
   };
 }
 
@@ -221,7 +226,14 @@ export function createOfficialExperienceCommandBoundary() {
     removeEntry: buildOfficialRemoveEntryPatch,
     formPairs: buildOfficialFormPairsPatch,
     runPairing: buildOfficialFormPairsPatch,
-    // Deferred / not in O3
+    presentPairDraw: buildOfficialPresentPairDraw,
+    // No Pair Draw writer — lock/publish/recordDrawCreated are Group Draw (Screen 08).
+    createPairDraw: null,
+    lockPairDraw: null,
+    publishPairDraw: null,
+    reopenPairDraw: null,
+    regeneratePairDraw: null,
+    // Deferred / not in O4
     runGroupDraw: null,
     publishSchedule: null,
     scoreMatch: null,
@@ -236,7 +248,7 @@ export function createOfficialTournamentExperienceAdapter(tournament, options = 
   const projection = projectOfficialTournamentExperience(tournament, options);
   return Object.freeze({
     kind: "official-tournament-experience-adapter",
-    wave: "O3",
+    wave: "O4",
     projection,
     commands: createOfficialExperienceCommandBoundary(),
     project(nextTournament = tournament, nextOptions = options) {

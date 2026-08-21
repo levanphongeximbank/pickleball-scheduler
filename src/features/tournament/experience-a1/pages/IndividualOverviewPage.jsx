@@ -37,6 +37,7 @@ import {
   individualRegistrationPublicationPath,
   individualParticipantsPath,
   individualPairsPath,
+  individualPairDrawPath,
 } from "../routes.js";
 import CenterKpiCard from "../visual/CenterKpiCard.jsx";
 import CenterRightRailCard from "../visual/CenterRightRailCard.jsx";
@@ -200,6 +201,14 @@ export default function IndividualOverviewPage() {
                   sx={outlinedActionSx}
                 >
                   Hình thành cặp
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to={individualPairDrawPath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  Bốc thăm ghép
                 </Button>
                 <Button component={RouterLink} to={legacySetupTo} size="small" sx={outlinedActionSx}>
                   Setup đầy đủ (legacy)

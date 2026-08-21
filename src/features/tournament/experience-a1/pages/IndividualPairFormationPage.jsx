@@ -39,6 +39,7 @@ import {
   individualOverviewPath,
   individualParticipantsPath,
   individualPairsPath,
+  individualPairDrawPath,
   individualRegistrationPublicationPath,
 } from "../routes.js";
 import CenterKpiCard from "../visual/CenterKpiCard.jsx";
@@ -160,20 +161,36 @@ export default function IndividualPairFormationPage() {
             </Button>
           </span>
           {official ? (
-            <span title={model.formPairsHint}>
-              <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+            <>
+              <span title={model.formPairsHint}>
+                <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={!model.formPairsEnabled || busy}
+                    onClick={handleFormPairs}
+                    sx={primaryActionSx}
+                    data-testid="official-form-pairs-action"
+                  >
+                    {model.formPairsLabel}
+                  </Button>
+                </PermissionGate>
+              </span>
+              <span title={model.drawHint}>
                 <Button
-                  variant="contained"
+                  variant="outlined"
                   size="small"
-                  disabled={!model.formPairsEnabled || busy}
-                  onClick={handleFormPairs}
-                  sx={primaryActionSx}
-                  data-testid="official-form-pairs-action"
+                  disabled={!model.pairingComplete && model.pairFormationMode !== "REGISTERED_PAIRS"}
+                  onClick={() =>
+                    navigate(individualPairDrawPath(tournamentId, model.eventId || selectedEventId))
+                  }
+                  sx={outlinedActionSx}
+                  data-testid="official-goto-pair-draw"
                 >
-                  {model.formPairsLabel}
+                  Sang bốc thăm ghép
                 </Button>
-              </PermissionGate>
-            </span>
+              </span>
+            </>
           ) : (
             <span title={model.drawHint}>
               <Button variant="contained" size="small" disabled sx={primaryActionSx}>

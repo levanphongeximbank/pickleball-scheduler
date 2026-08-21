@@ -38,3 +38,9 @@ export {
   PAIR_FORMATION_MODE,
   resolveOfficialPairFormationMode,
 } from "./pairFormationModeResolver.js";
+export {
+  projectOfficialPairDraw,
+  buildOfficialPresentPairDraw,
+  listOfficialPairDrawUnits,
+  resolveOfficialPairDrawMutationGuards,
+} from "./pairDrawProjection.js";
