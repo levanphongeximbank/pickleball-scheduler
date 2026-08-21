@@ -94,10 +94,13 @@ Git blobs are LF. Eight historically certified functions store CRLF on Staging. 
 | `public.club_list_members(text)` | CERTIFIED_HISTORICAL_SOURCE_MATCH | `3089518678635910041656a1ae30cacd` | `02_APPLY_DESIGN.sql` | `a497610e6d2d905fe02b7aa2b67724ea` | PREDECESSOR | TARGET | CERTIFIED_MATCH |
 | `public.phase42_can_update_club(text)` | CERTIFIED_HISTORICAL_SOURCE_MATCH | `24f9f7e47c2dc0a166c6385811f6c43d` | `02_APPLY_DESIGN.sql` | `969ce4b24e48632045ae75f4e8b9ca14` | PREDECESSOR | TARGET | CERTIFIED_MATCH |
 | `public.phase42_can_assign_club_owner(text)` | CERTIFIED_HISTORICAL_SOURCE_MATCH | `509ea5949fa8389edd1c4827e1bf5779` | `02_APPLY_DESIGN.sql` | `17491a5d3df2b96da44f5bececdb257e` | PREDECESSOR | TARGET | CERTIFIED_MATCH |
-| `public.phase42_can_transfer_president(text)` | CERTIFIED_HISTORICAL_SOURCE_MATCH | `24f9f7e47c2dc0a166c6385811f6c43d` | `02_APPLY_DESIGN.sql` | `61dd0458b9240d5407394f6f8d492bf0` | PREDECESSOR | TARGET | CERTIFIED_MATCH |
+| `public.phase42_can_transfer_president(text)` | CERTIFIED_HISTORICAL_SOURCE_MATCH + PRODUCTION_LF_VARIANT | `24f9f7e47c2dc0a166c6385811f6c43d`, `14b3e8e88cc83b1824e3631d718b89e5` | `02_APPLY_DESIGN.sql` | `61dd0458b9240d5407394f6f8d492bf0` | PREDECESSOR_SET | TARGET | CERTIFIED_MATCH |
 | `public.club_add_member(uuid,text,uuid,text,integer)` | CERTIFIED_HISTORICAL_SOURCE_MATCH | `922df1b5d672f70150ae4010bb97bed0` | `02_APPLY_DESIGN.sql` | `484c609b937c029f03be7cb37fb03005` | PREDECESSOR | TARGET | CERTIFIED_MATCH |
 | `public.club_restore_member(uuid,text,uuid,integer)` | CERTIFIED_HISTORICAL_SOURCE_MATCH | `d24dbfa3f21e674f31ad509c655a7ef6` | `02_APPLY_DESIGN.sql` | `8391e0fbafc57917bdfcbd9401242c86` | PREDECESSOR | TARGET | CERTIFIED_MATCH |
-| `public.club_review_membership_request(uuid,uuid,text,text,integer)` | CERTIFIED_HISTORICAL_SOURCE_MATCH | `0b8ee11ef23090f8cd6e364ad2e6eb60` | `02_APPLY_DESIGN.sql` | `2ef9e0d87071bba93814ab20344539c1` | PREDECESSOR | TARGET | CERTIFIED_MATCH |
+| `public.club_review_membership_request(uuid,uuid,text,text,integer)` | CERTIFIED_HISTORICAL_SOURCE_MATCH + OWNER_ACCEPTED_SEMANTIC_VARIANT | `0b8ee11ef23090f8cd6e364ad2e6eb60`, `cd904d71c508e9ee1e4768396c515ab0` | `02_APPLY_DESIGN.sql` | `2ef9e0d87071bba93814ab20344539c1` | PREDECESSOR_SET | TARGET | CERTIFIED_MATCH |
+
+See also `08C_PRODUCTION_PREDECESSOR_VARIANT_AND_AUTHZ_LOCK.md` for the exact
+accepted predecessor SET model (no environment-name bypass; unknown hash aborts).
 
 Security attributes for all 10 live Staging functions (read-only recheck, project `qyewbxjsiiyufanzcjcq`):
 
