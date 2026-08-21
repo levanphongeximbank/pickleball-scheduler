@@ -654,5 +654,8 @@
   "tests/tournament-experience-wave-c.test.js",
   "tests/tournament-experience-wave-d.test.js",
   "tests/tournament-experience-wave-e.test.js",
-  "tests/tournament-experience-wave-f.test.js"
+  "tests/tournament-experience-wave-f.test.js",
+  "tests/wave-o1-official-canonical-experience-adoption-01.test.js",
+  "tests/wave-official-core13-assignment-cutover-01.test.js",
+  "tests/wave-official-tournament-bootstrap-remediation-01.test.js"
 ]

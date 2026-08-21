@@ -190,7 +190,11 @@ describe("wave-o1-official-canonical-experience-adoption", () => {
     );
     assert.equal(
       resolveTournamentCreateNavigatePath("official_tournament", "off-1", "ev"),
-      "/tournament/off-1/overview?eventId=ev"
+      "/tournament/off-1/settings"
+    );
+    assert.equal(
+      resolveTournamentCreateNavigatePath("official_tournament", "off-2"),
+      "/tournament/off-2/settings"
     );
   });
 

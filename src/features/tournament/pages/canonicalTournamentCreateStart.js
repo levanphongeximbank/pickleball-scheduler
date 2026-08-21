@@ -75,10 +75,11 @@ export function resolveTournamentCreateNavigatePath(mode, tournamentId, preselec
       : `/tournament/internal/${id}`;
   }
   if (mode === "official_tournament") {
-    // Wave O1: Official create → canonical Overview (eventId query semantics).
-    return preselectedEvent
-      ? `/tournament/${encodeURIComponent(id)}/overview?eventId=${encodeURIComponent(preselectedEvent)}`
-      : `/tournament/${encodeURIComponent(id)}/overview`;
+    // NEW_OFFICIAL_TOURNAMENT_BOOTSTRAP_REMEDIATION:
+    // Fresh Official create lands on Settings (not Overview).
+    // Do not append event TYPE as ?eventId= — events[] is empty at create; no events[0].
+    void preselectedEvent;
+    return `/tournament/${encodeURIComponent(id)}/settings`;
   }
   if (mode === "team_tournament") {
     return `/tournament/team/${id}`;

@@ -333,6 +333,11 @@ export default function IndividualRegistrationPublicationPage() {
         ]}
       />
       <BatchBEventPicker events={model.events} selectedEventId={selectedEventId || model.eventId} onSelect={selectEvent} />
+      {model.emptyEvents ? (
+        <Alert severity="warning" sx={{ mb: 1.5 }}>
+          Chưa có nội dung thi đấu. Tạo nội dung trong Cài đặt trước khi đăng ký.
+        </Alert>
+      ) : null}
       {model.needsEventChoice ? (
         <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted, mb: 1.5 }}>
           Chọn nội dung để xem đăng ký. Không lấy nội dung mặc định.

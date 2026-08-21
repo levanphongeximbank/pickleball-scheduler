@@ -193,6 +193,10 @@ export default function IndividualSettingsPage() {
   const [officialMode, setOfficialMode] = useState(OFFICIAL_MODE.OPEN);
   const [eventType, setEventType] = useState(EVENT_TYPE.MEN_DOUBLE);
   const [addEventType, setAddEventType] = useState(EVENT_TYPE.MEN_DOUBLE);
+  const [addEventName, setAddEventName] = useState("");
+  const [addRegistrationMode, setAddRegistrationMode] = useState(
+    OFFICIAL_REGISTRATION_MODE.INDIVIDUAL
+  );
   const [eventName, setEventName] = useState("");
   const [registrationMode, setRegistrationMode] = useState(OFFICIAL_REGISTRATION_MODE.INDIVIDUAL);
   const [groupCount, setGroupCount] = useState(4);
@@ -304,12 +308,23 @@ export default function IndividualSettingsPage() {
 
   const handleAddEvent = async () => {
     if (!official) return;
-    const { patch, event } = buildAddOfficialEventPatch(tournament, addEventType);
-    if (await persist(patch, "Đã thêm nội dung.")) {
+    const built = buildAddOfficialEventPatch(tournament, {
+      eventType: addEventType,
+      name: addEventName,
+      registrationMode: addRegistrationMode,
+    });
+    if (!built.ok) {
+      setMessage({ type: "error", text: built.error || "Không thêm được nội dung." });
+      return;
+    }
+    if (await persist(built.patch, "Đã thêm nội dung.")) {
       const next = new URLSearchParams(searchParams);
-      next.set("eventId", event.id);
+      next.set("eventId", built.event.id);
       setSearchParams(next);
       setScope("event");
+      setAddEventName("");
+      setEventName(built.event.name || "");
+      setEventType(built.event.eventType || addEventType);
     }
   };
 
@@ -518,9 +533,81 @@ export default function IndividualSettingsPage() {
               </Alert>
             ) : null}
             {events.length === 0 ? (
-              <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted, mb: 1 }}>
-                Chưa có nội dung trên hồ sơ.
-              </Typography>
+              <Stack spacing={1.25} sx={{ mb: 1.5 }} data-testid="official-empty-event-state">
+                <Alert severity="info">
+                  Chưa có nội dung thi đấu.
+                  <br />
+                  Tạo nội dung đầu tiên để cấu hình đăng ký và thể thức.
+                </Alert>
+                {official ? (
+                  <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+                    <Stack spacing={1.25} data-testid="official-add-event-form">
+                      <TextField
+                        size="small"
+                        fullWidth
+                        label="Tên nội dung"
+                        value={addEventName}
+                        onChange={(event) => setAddEventName(event.target.value)}
+                        placeholder="VD: Đôi nam"
+                      />
+                      <TextField
+                        size="small"
+                        fullWidth
+                        select
+                        label="Loại nội dung"
+                        value={addEventType}
+                        onChange={(event) => {
+                          setAddEventType(event.target.value);
+                          if (!addEventName.trim()) {
+                            setAddEventName(EVENT_TYPE_LABELS[event.target.value] || "");
+                          }
+                        }}
+                      >
+                        {EVENT_TYPE_OPTIONS.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        select
+                        label="Chế độ đăng ký"
+                        value={addRegistrationMode}
+                        onChange={(event) => setAddRegistrationMode(event.target.value)}
+                        disabled={officialMode === OFFICIAL_MODE.AI_BALANCE}
+                        helperText={
+                          officialMode === OFFICIAL_MODE.AI_BALANCE
+                            ? "AI Balance: chỉ đăng ký cá nhân."
+                            : undefined
+                        }
+                      >
+                        <MenuItem value={OFFICIAL_REGISTRATION_MODE.INDIVIDUAL}>Cá nhân</MenuItem>
+                        <MenuItem
+                          value={OFFICIAL_REGISTRATION_MODE.PAIR}
+                          disabled={officialMode === OFFICIAL_MODE.AI_BALANCE}
+                        >
+                          Cặp cố định
+                        </MenuItem>
+                      </TextField>
+                      <Button
+                        variant="contained"
+                        disabled={busy}
+                        onClick={handleAddEvent}
+                        sx={primaryActionSx}
+                        data-testid="official-add-event-cta"
+                      >
+                        + Thêm nội dung
+                      </Button>
+                    </Stack>
+                  </PermissionGate>
+                ) : (
+                  <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted }}>
+                    Chưa có nội dung trên hồ sơ.
+                  </Typography>
+                )}
+              </Stack>
             ) : (
               <ExperienceChipRow
                 value={selectedEvent?.id || ""}

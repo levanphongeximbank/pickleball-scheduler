@@ -313,8 +313,8 @@ export function buildOfficialEventMetaPatch(tournament, selectedEventId, eventPa
   return buildUpdateEventPatch(tournament, wanted, eventPatch);
 }
 
-export function buildOfficialAddEventPatch(tournament, eventType) {
-  return buildAddOfficialEventPatch(tournament, eventType);
+export function buildOfficialAddEventPatch(tournament, eventTypeOrOptions) {
+  return buildAddOfficialEventPatch(tournament, eventTypeOrOptions);
 }
 
 export function buildOfficialPublishRegistrationPatch(tournament) {
