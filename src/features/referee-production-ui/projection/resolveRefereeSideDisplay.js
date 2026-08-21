@@ -4,6 +4,7 @@
  */
 
 import { formatParticipantDisplayName, isRawTechnicalId } from "./formatRefereeUiLabels.js";
+import { REFEREE_MATCH_FORMAT } from "./projectCompetitionMatchFormat.js";
 
 const GENERATED_TEAM_LABEL_RE = /^đội\s+\d+$/i;
 
@@ -52,10 +53,35 @@ export function resolveAthleteDisplayName(participantId, names, side = {}) {
 }
 
 /**
+ * Presentation-only entry label. Durable identity is unchanged.
+ * Singles: avoid implying doubles/"Đội" geometry from generated unit labels.
+ * @param {string|null} entryLabel
+ * @param {string|null} matchFormat
+ * @param {object[]} members
+ */
+export function presentEntryLabel(entryLabel, matchFormat, members = []) {
+  const label = humanLabel(entryLabel);
+  if (!label) return null;
+  const format = String(matchFormat || "").trim().toUpperCase();
+  if (
+    (format === REFEREE_MATCH_FORMAT.SINGLES ||
+      format === REFEREE_MATCH_FORMAT.DREAMBREAKER) &&
+    isGeneratedTeamLabel(label)
+  ) {
+    // Keep durable "Đội N" out of operator geometry language for singles.
+    return members.length === 1 && members[0]?.displayName
+      ? null
+      : `Entry ${String(label).replace(/^đội\s+/i, "")}`;
+  }
+  return label;
+}
+
+/**
  * @param {object|null} side Adapter B participant side
  * @param {Record<string, string|object>} names participantNames directory
+ * @param {{ matchFormat?: string|null }} [options]
  */
-export function resolveRefereeSideDisplay(side, names = {}) {
+export function resolveRefereeSideDisplay(side, names = {}, options = {}) {
   const entryId = String(side?.entryId || side?.teamId || "").trim() || null;
   const entryLabel =
     humanLabel(lookupRaw(entryId, names)) ||
@@ -100,16 +126,22 @@ export function resolveRefereeSideDisplay(side, names = {}) {
         .map((row) => row.displayName || "Chưa có tên")
         .join(" / ")
     : null;
+  const presentationEntryLabel = presentEntryLabel(
+    entryLabel,
+    options.matchFormat,
+    members
+  );
 
   return Object.freeze({
     entryId,
     entryLabel,
+    presentationEntryLabel,
     members: Object.freeze(members),
     memberNames: Object.freeze(memberNames),
     memberLine,
     honestMemberLine,
     label:
-      entryLabel ||
+      presentationEntryLabel ||
       memberLine ||
       formatParticipantDisplayName(side?.displayName || side?.teamName),
   });

@@ -44,6 +44,14 @@ export { deriveOptimisticSubmitPointView } from "./projection/deriveOptimisticSu
 export { buildRefereeAssignmentCard } from "./projection/buildRefereeAssignmentCard.js";
 export { buildRefereeMatchView } from "./projection/buildRefereeMatchView.js";
 export { resolveRefereeSideDisplay } from "./projection/resolveRefereeSideDisplay.js";
+export {
+  REFEREE_MATCH_FORMAT,
+  projectCompetitionMatchFormat,
+  applySideOutDoublesOpeningPolicy,
+  logicalPositionForCourtSlot,
+  formatLogicalCourtPositionLabel,
+  serviceCourtFromScore,
+} from "./projection/projectCompetitionMatchFormat.js";
 
 export { createCanonicalRefereeApplicationClient } from "./application/createCanonicalRefereeApplicationClient.js";
 export { createBrowserRefereeApplicationClient } from "./application/createBrowserRefereeApplicationClient.js";

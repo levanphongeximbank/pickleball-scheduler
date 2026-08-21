@@ -19,6 +19,11 @@ import {
 } from "./formatRefereeUiLabels.js";
 import { resolveAuthoritativeMatchLifecycle } from "./resolveAuthoritativeMatchLifecycle.js";
 import { resolveRefereeSideDisplay } from "./resolveRefereeSideDisplay.js";
+import {
+  formatLogicalCourtPositionLabel,
+  projectCompetitionMatchFormat,
+  REFEREE_MATCH_FORMAT,
+} from "./projectCompetitionMatchFormat.js";
 
 function allowed(projection, action) {
   return (projection?.allowedActions || []).some((row) => row.action === action);
@@ -151,8 +156,26 @@ export function buildRefereeMatchView(input) {
   const sides = Array.isArray(input.participants?.sides) ? input.participants.sides : [];
   const sideA = sides[0] || null;
   const sideB = sides[1] || null;
-  const resolvedA = resolveRefereeSideDisplay(sideA, names);
-  const resolvedB = resolveRefereeSideDisplay(sideB, names);
+  const content = projectCompetitionMatchFormat({
+    competitionMode: input.competitionMode,
+    eventType: matchContext.eventType,
+    competitionContentCode: matchContext.competitionContentCode,
+    competitionContentLabel: matchContext.competitionContentLabel,
+    matchFormat: matchContext.matchFormat || courtProjection.matchFormat,
+    expectedPlayersPerSide:
+      matchContext.expectedPlayersPerSide ?? courtProjection.expectedPlayersPerSide,
+    isDreambreaker: matchContext.isDreambreaker === true || courtProjection.isDreambreaker,
+    discipline: matchContext.discipline,
+    disciplineName: matchContext.disciplineName,
+    matchType: matchContext.matchType,
+    sides,
+  });
+  const resolvedA = resolveRefereeSideDisplay(sideA, names, {
+    matchFormat: content.matchFormat,
+  });
+  const resolvedB = resolveRefereeSideDisplay(sideB, names, {
+    matchFormat: content.matchFormat,
+  });
   const leftPlayers = (courtProjection.sides?.left?.activePlayers || [])
     .map((p) => p.displayName)
     .filter(Boolean);
@@ -170,11 +193,11 @@ export function buildRefereeMatchView(input) {
       ? courtProjection.sides?.left?.participant?.displayName
       : courtProjection.sides?.right?.participant?.displayName;
   const sideAName =
-    resolvedA.entryLabel ||
+    resolvedA.presentationEntryLabel ||
     scoringSideAName ||
     formatParticipantDisplayName(sideA?.displayName || sideA?.teamName);
   const sideBName =
-    resolvedB.entryLabel ||
+    resolvedB.presentationEntryLabel ||
     scoringSideBName ||
     formatParticipantDisplayName(sideB?.displayName || sideB?.teamName);
 
@@ -199,7 +222,15 @@ export function buildRefereeMatchView(input) {
   const stageRound = [stageName, roundName ? (stageName ? roundName : `Vòng ${roundName}`) : null]
     .filter(Boolean)
     .join(" · ");
-  const contextRow = [courtLabel, competitionName, stageRound || null].filter(Boolean).join(" | ");
+  const contextRow = [
+    courtLabel,
+    competitionName,
+    formatCompetitionModeLabel(input.competitionMode),
+    content.competitionContentLabel,
+    stageRound || null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
 
   const points = scoreProjection?.points || null;
   const previousGames = readCompletedGames(scoreProjection);
@@ -218,8 +249,12 @@ export function buildRefereeMatchView(input) {
   const receivingResolved = findSlotPlayer(courtProjection.serving?.receiverPlayerId);
   const servingPlayer = servingResolved.player;
   const receivingPlayer = receivingResolved.player;
-  const servingCourtSlot = servingResolved.slot;
-  const receivingCourtSlot = receivingResolved.slot;
+  const servingCourtSlot =
+    courtProjection.serving?.servingCourtSlot || servingResolved.slot;
+  const receivingCourtSlot =
+    courtProjection.serving?.receivingCourtSlot || receivingResolved.slot;
+  const serviceCourt = courtProjection.serving?.serviceCourt || null;
+  const receiverCourt = courtProjection.serving?.receiverCourt || null;
 
   const operationHistory = projectMatchOperationHistory({
     scoreProjection,
@@ -288,9 +323,27 @@ export function buildRefereeMatchView(input) {
   const participantDisplay = Object.freeze({
     sideA: Object.freeze({
       entryId: resolvedA.entryId,
-      entryLabel: resolvedA.entryLabel,
+      entryLabel: resolvedA.presentationEntryLabel,
+      durableEntryLabel: resolvedA.entryLabel,
       label: sideAName,
-      members: resolvedA.members,
+      members: Object.freeze(
+        (resolvedA.members || []).map((row, index) => {
+          const fromCourt = (
+            courtProjection.sides?.left?.scoringSide === "SIDE_A"
+              ? courtProjection.sides?.left?.activePlayers
+              : courtProjection.sides?.right?.activePlayers
+          )?.find((p) => p.playerId === row.participantId);
+          return Object.freeze({
+            ...row,
+            logicalPosition:
+              fromCourt?.logicalPosition ||
+              (index === 0 ? "RIGHT" : index === 1 ? "LEFT" : null),
+            logicalPositionLabel:
+              fromCourt?.logicalPositionLabel ||
+              (index === 0 ? "Phải" : index === 1 ? "Trái" : null),
+          });
+        })
+      ),
       playerNames: Object.freeze(
         courtProjection.sides?.left?.scoringSide === "SIDE_A"
           ? leftPlayers.length
@@ -303,9 +356,27 @@ export function buildRefereeMatchView(input) {
     }),
     sideB: Object.freeze({
       entryId: resolvedB.entryId,
-      entryLabel: resolvedB.entryLabel,
+      entryLabel: resolvedB.presentationEntryLabel,
+      durableEntryLabel: resolvedB.entryLabel,
       label: sideBName,
-      members: resolvedB.members,
+      members: Object.freeze(
+        (resolvedB.members || []).map((row, index) => {
+          const fromCourt = (
+            courtProjection.sides?.left?.scoringSide === "SIDE_B"
+              ? courtProjection.sides?.left?.activePlayers
+              : courtProjection.sides?.right?.activePlayers
+          )?.find((p) => p.playerId === row.participantId);
+          return Object.freeze({
+            ...row,
+            logicalPosition:
+              fromCourt?.logicalPosition ||
+              (index === 0 ? "RIGHT" : index === 1 ? "LEFT" : null),
+            logicalPositionLabel:
+              fromCourt?.logicalPositionLabel ||
+              (index === 0 ? "Phải" : index === 1 ? "Trái" : null),
+          });
+        })
+      ),
       playerNames: Object.freeze(
         courtProjection.sides?.left?.scoringSide === "SIDE_B"
           ? leftPlayers.length
@@ -332,6 +403,16 @@ export function buildRefereeMatchView(input) {
     competitionMode: String(input.competitionMode || "").trim(),
     competitionModeLabel: formatCompetitionModeLabel(input.competitionMode),
     competitionName,
+    competitionContentCode: content.competitionContentCode,
+    competitionContentLabel: content.competitionContentLabel,
+    matchFormat: content.matchFormat,
+    expectedPlayersPerSide: content.expectedPlayersPerSide,
+    isSingles: content.matchFormat === REFEREE_MATCH_FORMAT.SINGLES,
+    isDoubles:
+      content.matchFormat === REFEREE_MATCH_FORMAT.DOUBLES ||
+      (content.matchFormat === REFEREE_MATCH_FORMAT.TEAM_SUBMATCH &&
+        content.expectedPlayersPerSide === 2),
+    isDreamBreaker: content.matchFormat === REFEREE_MATCH_FORMAT.DREAMBREAKER,
     adapterSelected: String(input.adapterSelected || input.competitionMode || "").trim(),
     stageName,
     roundName,
@@ -362,6 +443,8 @@ export function buildRefereeMatchView(input) {
       resume: capabilities.resume !== false,
       changeEnds: canChangeEnds,
       switchPositions: canSwitchPositions,
+      changeCourt: false,
+      physicalChangeCourtImplemented: false,
     }),
     currentScore,
     gameSummary: Object.freeze({
@@ -409,14 +492,26 @@ export function buildRefereeMatchView(input) {
           : receivingSideNow === "SIDE_A"
             ? sideAName
             : null,
-      serviceTurn: isSideOut ? courtProjection.serving?.serviceTurn ?? null : null,
-      showServiceTurn: isSideOut === true,
+      serviceTurn:
+        isSideOut && content.expectedPlayersPerSide === 2
+          ? courtProjection.serving?.serviceTurn ?? null
+          : isSideOut
+            ? courtProjection.serving?.serviceTurn ?? null
+            : null,
+      showServiceTurn:
+        isSideOut === true && Number(content.expectedPlayersPerSide) === 2,
       servingCourtSlot,
       receivingCourtSlot,
+      serviceCourt,
+      receiverCourt,
+      serviceCourtLabel: formatLogicalCourtPositionLabel(serviceCourt),
+      receiverCourtLabel: formatLogicalCourtPositionLabel(receiverCourt),
       serviceDirection:
-        servingCourtSlot && receivingCourtSlot
+        courtProjection.serving?.diagonalDirection ||
+        (servingCourtSlot && receivingCourtSlot
           ? `${servingCourtSlot} → ${receivingCourtSlot}`
-          : null,
+          : null),
+      diagonalDirection: courtProjection.serving?.diagonalDirection || null,
       gameLabel: policy.bestOfGames
         ? `${(scoreProjection?.currentGameIndex ?? 0) + 1} / Best of ${policy.bestOfGames}`
         : String((scoreProjection?.currentGameIndex ?? 0) + 1),
@@ -455,6 +550,7 @@ export function buildRefereeMatchView(input) {
       capabilities.resume !== false,
     canChangeEnds,
     canSwitchPositions,
+    canChangeCourt: false,
     canComplete: Boolean(scoreProjection?.calculatedMatchComplete),
     canCorrect,
     usesAdapterB: true,

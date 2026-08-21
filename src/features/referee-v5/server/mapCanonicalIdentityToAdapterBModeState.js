@@ -9,6 +9,7 @@ import {
   COMPETITION_REFEREE_MODE_VALUES,
   COMPETITION_TYPE_TO_REFEREE_MODE,
 } from "../../competition-engine/integration/referee/constants.js";
+import { projectCompetitionMatchFormat } from "../../competition-engine/integration/referee/adapters/shared/competitionContentProjection.js";
 import { createDailyPlayRefereeAdapter } from "../../competition-engine/integration/referee/adapters/DailyPlayRefereeAdapter.js";
 import { createInternalTournamentRefereeAdapter } from "../../competition-engine/integration/referee/adapters/InternalTournamentRefereeAdapter.js";
 import { createOfficialTournamentRefereeAdapter } from "../../competition-engine/integration/referee/adapters/OfficialTournamentRefereeAdapter.js";
@@ -87,6 +88,14 @@ function mapIndividualMatches(payload, row) {
       }
       const entryA = entriesById.get(text(match.entryAId));
       const entryB = entriesById.get(text(match.entryBId));
+      const participantIdsA = playerIds(match, entryA, "A");
+      const participantIdsB = playerIds(match, entryB, "B");
+      const eventType = text(event.eventType || match.eventType) || null;
+      const content = projectCompetitionMatchFormat({
+        eventType,
+        participantIdsA,
+        participantIdsB,
+      });
       matches[matchId] = {
         matchId,
         status: match.status || "READY_TO_START",
@@ -94,10 +103,15 @@ function mapIndividualMatches(payload, row) {
         stage: match.stage || event.stage || null,
         round: match.round ?? null,
         eventId: event.id || match.eventId || null,
+        eventType,
         entryAId: match.entryAId || null,
         entryBId: match.entryBId || null,
-        participantIdsA: playerIds(match, entryA, "A"),
-        participantIdsB: playerIds(match, entryB, "B"),
+        participantIdsA,
+        participantIdsB,
+        competitionContentCode: content.competitionContentCode,
+        competitionContentLabel: content.competitionContentLabel,
+        matchFormat: content.matchFormat,
+        expectedPlayersPerSide: content.expectedPlayersPerSide,
         scoringRules: scoringRules(match, event, payload, row),
         lineupsLocked:
           match.lineupsLocked === true || Boolean(match.entryAId && match.entryBId),
@@ -132,6 +146,13 @@ function mapDailyMatches(payload, row) {
       courtId: match.courtId || null,
       teamAPlayerIds: asArray(match.teamAPlayerIds).map(String),
       teamBPlayerIds: asArray(match.teamBPlayerIds).map(String),
+      matchType: match.matchType || daily.matchType || null,
+      ...projectCompetitionMatchFormat({
+        matchType: match.matchType || daily.matchType || null,
+        teamAPlayerIds: asArray(match.teamAPlayerIds),
+        teamBPlayerIds: asArray(match.teamBPlayerIds),
+        competitionMode: COMPETITION_REFEREE_MODE.DAILY_PLAY,
+      }),
       scoringRules: scoringRules(match, null, payload, row),
       lineupsLocked: match.lineupsLocked === true,
     };

@@ -28,6 +28,7 @@ function Marker({ player, slot }) {
         player.isReceiving ? " is-receiving-slot" : ""
       }`}
       data-testid={`court-slot-${slot}`}
+      data-logical-position={player.logicalPosition || ""}
     >
       <article
         className={`rp-marker${player.isServing ? " is-serving" : ""}${
@@ -37,6 +38,7 @@ function Marker({ player, slot }) {
         data-permanent-number="false"
         aria-label={[
           player.displayName,
+          player.logicalPositionLabel || player.logicalPosition,
           player.isServing ? "đang giao" : null,
           player.isReceiving ? "đỡ bóng" : null,
         ]
@@ -47,6 +49,11 @@ function Marker({ player, slot }) {
           <span className="rp-serve-star" data-testid="serving-indicator" aria-hidden="true">
             ★
           </span>
+        ) : null}
+        {player.logicalPositionLabel || player.logicalPosition ? (
+          <p className="rp-marker-pos" data-testid={`logical-pos-${player.playerId}`}>
+            {player.logicalPosition || player.logicalPositionLabel}
+          </p>
         ) : null}
         <p className="rp-marker-name">{shortName(player.displayName, player.playerId)}</p>
       </article>

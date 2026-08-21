@@ -8,6 +8,15 @@ import { projectDreamBreakerRotation } from "./projectDreamBreakerRotation.js";
 import { formatCanonicalScoreLine } from "./formatScoringPolicyLabel.js";
 import { resolveSideChangeRequiredAfterScoring } from "../../competition-engine/integration/referee/deriveCanonicalCourtAfterScoring.js";
 import { resolveAthleteDisplayName } from "./resolveRefereeSideDisplay.js";
+import {
+  LOGICAL_COURT_POSITION,
+  REFEREE_MATCH_FORMAT,
+  formatLogicalCourtPositionLabel,
+  logicalPositionForCourtSlot,
+  oppositeCourtPosition,
+  projectCompetitionMatchFormat,
+  serviceCourtFromScore,
+} from "./projectCompetitionMatchFormat.js";
 
 function nameOf(id, names, fallback) {
   if (!id) return fallback || null;
@@ -38,27 +47,53 @@ function playersForSide(side, names, activeOnlyId) {
   const source = (activeOnlyId ? [activeOnlyId] : ids).filter(
     (playerId) => playerId && playerId !== entryId
   );
-  return source.map((playerId) =>
+  return source.map((playerId, index) =>
     Object.freeze({
       playerId,
       displayName: resolveAthleteDisplayName(playerId, names, side) || playerId,
       permanentPlayerNumber: null,
+      logicalPosition:
+        index === 0
+          ? LOGICAL_COURT_POSITION.RIGHT
+          : index === 1
+            ? LOGICAL_COURT_POSITION.LEFT
+            : null,
+      logicalPositionLabel:
+        index === 0
+          ? formatLogicalCourtPositionLabel(LOGICAL_COURT_POSITION.RIGHT)
+          : index === 1
+            ? formatLogicalCourtPositionLabel(LOGICAL_COURT_POSITION.LEFT)
+            : null,
     })
   );
 }
 
-function slotPlayers(players, servingPlayerId, receiverPlayerId) {
+function slotPlayers(players, servingPlayerId, receiverPlayerId, endKey) {
   const top = players[0] || null;
   const bottom = players[1] || null;
-  function mark(player) {
+  function mark(player, slot) {
     if (!player) return null;
+    const logicalPosition = logicalPositionForCourtSlot(slot);
     return Object.freeze({
       ...player,
+      courtSlot: slot,
+      logicalPosition: logicalPosition || player.logicalPosition || null,
+      logicalPositionLabel:
+        formatLogicalCourtPositionLabel(logicalPosition || player.logicalPosition) ||
+        player.logicalPositionLabel ||
+        null,
       isServing: Boolean(servingPlayerId && player.playerId === servingPlayerId),
       isReceiving: Boolean(receiverPlayerId && player.playerId === receiverPlayerId),
+      endKey,
     });
   }
-  return { top: mark(top), bottom: mark(bottom) };
+  const topSlot = endKey === "left" ? COURT_SLOT.LEFT_TOP : COURT_SLOT.RIGHT_TOP;
+  const bottomSlot =
+    endKey === "left" ? COURT_SLOT.LEFT_BOTTOM : COURT_SLOT.RIGHT_BOTTOM;
+  return {
+    top: mark(top, topSlot),
+    bottom: mark(bottom, bottomSlot),
+  };
 }
 
 /**
@@ -83,22 +118,44 @@ export function projectCanonicalCourtView(input = {}) {
   const score = input.currentScore || {};
   const serve = score.serve || null;
   const courtState = input.courtState || {};
+  const matchContext = input.matchContext || {};
   const orientation = String(
     courtState.courtOrientation || COURT_ORIENTATION.STANDARD
   ).toUpperCase();
   const swapped = orientation === COURT_ORIENTATION.SWAPPED;
 
   const dreambreaker = projectDreamBreakerRotation({
-    matchContext: input.matchContext,
+    matchContext,
     modeState: input.modeState,
     participants,
     participantNames: names,
   });
 
+  const formatProjection = projectCompetitionMatchFormat({
+    competitionMode: matchContext.competitionMode || input.modeState?.competitionMode,
+    eventType: matchContext.eventType,
+    competitionContentCode: matchContext.competitionContentCode,
+    competitionContentLabel: matchContext.competitionContentLabel,
+    matchFormat: matchContext.matchFormat,
+    expectedPlayersPerSide: matchContext.expectedPlayersPerSide,
+    isDreambreaker: dreambreaker.isDreambreaker || matchContext.isDreambreaker === true,
+    discipline: matchContext.discipline,
+    disciplineName: matchContext.disciplineName,
+    matchType: matchContext.matchType,
+    sides,
+  });
+
+  const expectedPlayersPerSide = Number(formatProjection.expectedPlayersPerSide) || null;
   const singles =
-    !dreambreaker.isDreambreaker &&
-    (sideA.participantIds || []).length === 1 &&
-    (sideB.participantIds || []).length === 1;
+    formatProjection.matchFormat === REFEREE_MATCH_FORMAT.SINGLES ||
+    formatProjection.matchFormat === REFEREE_MATCH_FORMAT.DREAMBREAKER ||
+    (expectedPlayersPerSide === 1 && !dreambreaker.isDreambreaker
+      ? true
+      : !dreambreaker.isDreambreaker &&
+        expectedPlayersPerSide == null &&
+        (sideA.participantIds || []).length === 1 &&
+        (sideB.participantIds || []).length === 1);
+  const oneMarkerPerSide = singles || dreambreaker.isDreambreaker;
 
   const playersA = dreambreaker.isDreambreaker
     ? playersForSide(sideA, names, dreambreaker.sideAActivePlayer?.playerId)
@@ -109,17 +166,43 @@ export function projectCanonicalCourtView(input = {}) {
 
   const storedPositions = courtState.playerPositions || {};
   const orderedA = Array.isArray(storedPositions.sideA)
-    ? storedPositions.sideA.map((id) => playersA.find((p) => p.playerId === id) || {
-        playerId: id,
-        displayName: resolveAthleteDisplayName(id, names, sideA) || id,
-        permanentPlayerNumber: null,
+    ? storedPositions.sideA.map((id, index) => {
+        const found = playersA.find((p) => p.playerId === id);
+        const logicalPosition =
+          index === 0
+            ? LOGICAL_COURT_POSITION.RIGHT
+            : index === 1
+              ? LOGICAL_COURT_POSITION.LEFT
+              : null;
+        return (
+          found || {
+            playerId: id,
+            displayName: resolveAthleteDisplayName(id, names, sideA) || id,
+            permanentPlayerNumber: null,
+            logicalPosition,
+            logicalPositionLabel: formatLogicalCourtPositionLabel(logicalPosition),
+          }
+        );
       })
     : playersA;
   const orderedB = Array.isArray(storedPositions.sideB)
-    ? storedPositions.sideB.map((id) => playersB.find((p) => p.playerId === id) || {
-        playerId: id,
-        displayName: resolveAthleteDisplayName(id, names, sideB) || id,
-        permanentPlayerNumber: null,
+    ? storedPositions.sideB.map((id, index) => {
+        const found = playersB.find((p) => p.playerId === id);
+        const logicalPosition =
+          index === 0
+            ? LOGICAL_COURT_POSITION.RIGHT
+            : index === 1
+              ? LOGICAL_COURT_POSITION.LEFT
+              : null;
+        return (
+          found || {
+            playerId: id,
+            displayName: resolveAthleteDisplayName(id, names, sideB) || id,
+            permanentPlayerNumber: null,
+            logicalPosition,
+            logicalPositionLabel: formatLogicalCourtPositionLabel(logicalPosition),
+          }
+        );
       })
     : playersB;
 
@@ -149,8 +232,18 @@ export function projectCanonicalCourtView(input = {}) {
   const leftPlayers = swapped ? orderedB : orderedA;
   const rightPlayers = swapped ? orderedA : orderedB;
 
-  const leftSlots = slotPlayers(leftPlayers, resolvedServingPlayerId, receiverPlayerId);
-  const rightSlots = slotPlayers(rightPlayers, resolvedServingPlayerId, receiverPlayerId);
+  const leftSlots = slotPlayers(
+    leftPlayers,
+    resolvedServingPlayerId,
+    receiverPlayerId,
+    "left"
+  );
+  const rightSlots = slotPlayers(
+    rightPlayers,
+    resolvedServingPlayerId,
+    receiverPlayerId,
+    "right"
+  );
 
   const scoreLine = formatCanonicalScoreLine({
     scoringSystem: rules.scoringSystem,
@@ -177,6 +270,48 @@ export function projectCanonicalCourtView(input = {}) {
           : scoreLine.serviceTurn;
 
   const points = score.points || {};
+  const servingSidePoints =
+    servingSide === "SIDE_B"
+      ? Number(points.SIDE_B || 0)
+      : servingSide === "SIDE_A"
+        ? Number(points.SIDE_A || 0)
+        : 0;
+  const serviceCourt =
+    scoringSystem === "RALLY"
+      ? null
+      : serviceCourtFromScore(servingSidePoints);
+  const receiverCourt = serviceCourt ? oppositeCourtPosition(serviceCourt) : null;
+
+  let servingCourtSlot = null;
+  let receivingCourtSlot = null;
+  for (const [slot, player] of Object.entries({
+    [COURT_SLOT.LEFT_TOP]: leftSlots.top,
+    [COURT_SLOT.LEFT_BOTTOM]: oneMarkerPerSide ? null : leftSlots.bottom,
+    [COURT_SLOT.RIGHT_TOP]: rightSlots.top,
+    [COURT_SLOT.RIGHT_BOTTOM]: oneMarkerPerSide ? null : rightSlots.bottom,
+  })) {
+    if (player && player.playerId === resolvedServingPlayerId) servingCourtSlot = slot;
+    if (player && receiverPlayerId && player.playerId === receiverPlayerId) {
+      receivingCourtSlot = slot;
+    }
+  }
+  if (!receivingCourtSlot && receiverCourt && servingSide) {
+    // Diagonal: receiver on opposite end, opposite logical court
+    const receivingEndIsLeft =
+      (servingSide === "SIDE_A" && swapped) || (servingSide === "SIDE_B" && !swapped);
+    if (receivingEndIsLeft) {
+      receivingCourtSlot =
+        receiverCourt === LOGICAL_COURT_POSITION.RIGHT
+          ? COURT_SLOT.LEFT_TOP
+          : COURT_SLOT.LEFT_BOTTOM;
+    } else {
+      receivingCourtSlot =
+        receiverCourt === LOGICAL_COURT_POSITION.RIGHT
+          ? COURT_SLOT.RIGHT_BOTTOM
+          : COURT_SLOT.RIGHT_TOP;
+    }
+  }
+
   const sideChangeResolved = resolveSideChangeRequiredAfterScoring({
     priorCourt: courtState,
     priorPoints: points,
@@ -194,12 +329,29 @@ export function projectCanonicalCourtView(input = {}) {
     courtState.lineupConfigured === true ||
     Boolean(courtState.serverPlayerId || serve?.serverPlayerId);
 
+  const courtMarkers = {
+    [COURT_SLOT.LEFT_TOP]: leftSlots.top,
+    [COURT_SLOT.LEFT_BOTTOM]: oneMarkerPerSide ? null : leftSlots.bottom,
+    [COURT_SLOT.RIGHT_TOP]: rightSlots.top,
+    [COURT_SLOT.RIGHT_BOTTOM]: oneMarkerPerSide ? null : rightSlots.bottom,
+  };
+  const markerCount = Object.values(courtMarkers).filter(Boolean).length;
+
   return Object.freeze({
     courtOrientation: swapped ? COURT_ORIENTATION.SWAPPED : COURT_ORIENTATION.STANDARD,
-    geometry: dreambreaker.isDreambreaker || singles ? "SINGLES_OR_DB" : "DOUBLES",
-    isSingles: singles,
-    isDoubles: !singles && !dreambreaker.isDreambreaker,
+    geometry: oneMarkerPerSide ? "SINGLES_OR_DB" : "DOUBLES",
+    matchFormat: formatProjection.matchFormat,
+    expectedPlayersPerSide:
+      expectedPlayersPerSide || (oneMarkerPerSide ? 1 : 2),
+    competitionContentCode: formatProjection.competitionContentCode,
+    competitionContentLabel: formatProjection.competitionContentLabel,
+    isSingles: formatProjection.matchFormat === REFEREE_MATCH_FORMAT.SINGLES || singles,
+    isDoubles:
+      formatProjection.matchFormat === REFEREE_MATCH_FORMAT.DOUBLES ||
+      (formatProjection.matchFormat === REFEREE_MATCH_FORMAT.TEAM_SUBMATCH &&
+        !oneMarkerPerSide),
     isDreambreaker: dreambreaker.isDreambreaker,
+    markerCount,
     lineupConfigured,
     sides: Object.freeze({
       left: Object.freeze({
@@ -228,14 +380,20 @@ export function projectCanonicalCourtView(input = {}) {
       serverPlayerId: resolvedServingPlayerId,
       receiverPlayerId,
       serviceTurn: serviceTurn != null ? Number(serviceTurn) : null,
+      serviceCourt,
+      receiverCourt,
+      serviceCourtLabel: formatLogicalCourtPositionLabel(serviceCourt),
+      receiverCourtLabel: formatLogicalCourtPositionLabel(receiverCourt),
+      servingCourtSlot,
+      receivingCourtSlot,
+      diagonalDirection:
+        servingCourtSlot && receivingCourtSlot
+          ? `${servingCourtSlot} → ${receivingCourtSlot}`
+          : serviceCourt && receiverCourt
+            ? `${serviceCourt} → ${receiverCourt}`
+            : null,
     }),
-    court: Object.freeze({
-      [COURT_SLOT.LEFT_TOP]: leftSlots.top,
-      [COURT_SLOT.LEFT_BOTTOM]: singles || dreambreaker.isDreambreaker ? null : leftSlots.bottom,
-      [COURT_SLOT.RIGHT_TOP]: rightSlots.top,
-      [COURT_SLOT.RIGHT_BOTTOM]:
-        singles || dreambreaker.isDreambreaker ? null : rightSlots.bottom,
-    }),
+    court: Object.freeze(courtMarkers),
     sideChangeRequired,
     sideChangePolicy,
     lastSideChangeEventId: courtState.lastSideChangeEventId || null,

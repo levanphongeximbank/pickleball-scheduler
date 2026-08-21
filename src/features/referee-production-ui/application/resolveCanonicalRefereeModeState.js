@@ -10,6 +10,7 @@
  */
 
 import { COMPETITION_REFEREE_MODE } from "../../competition-engine/integration/referee/constants.js";
+import { projectCompetitionMatchFormat } from "../../competition-engine/integration/referee/adapters/shared/competitionContentProjection.js";
 
 function trim(value) {
   return String(value || "").trim();
@@ -89,6 +90,16 @@ export function normalizeIndividualTournamentMatch(match, event = null, payload 
     trim(match.court_id) ||
     null;
 
+  const participantIdsA = playerIdsForSide(match, entryA, "A");
+  const participantIdsB = playerIdsForSide(match, entryB, "B");
+  const eventType = trim(event?.eventType || match.eventType) || null;
+  const content = projectCompetitionMatchFormat({
+    eventType,
+    participantIdsA,
+    participantIdsB,
+    competitionMode: payload?.competitionMode || null,
+  });
+
   return {
     ...match,
     id: matchId,
@@ -99,11 +110,16 @@ export function normalizeIndividualTournamentMatch(match, event = null, payload 
     stage: match.stage || event?.stage || null,
     round: match.round ?? null,
     eventId: trim(event?.id) || trim(match.eventId) || null,
+    eventType,
     groupId: match.groupId || null,
     entryAId: match.entryAId || null,
     entryBId: match.entryBId || null,
-    participantIdsA: playerIdsForSide(match, entryA, "A"),
-    participantIdsB: playerIdsForSide(match, entryB, "B"),
+    participantIdsA,
+    participantIdsB,
+    competitionContentCode: content.competitionContentCode,
+    competitionContentLabel: content.competitionContentLabel,
+    matchFormat: content.matchFormat,
+    expectedPlayersPerSide: content.expectedPlayersPerSide,
     scoringRules: scoringRulesForMatch(match, event, payload),
     scoringFormat: match.scoringFormat || scoringRulesForMatch(match, event, payload),
     scheduledAt:
@@ -622,14 +638,30 @@ async function resolveTeamModeState(client, { tenantId, competitionId, matchId, 
     const lineupA = lineupIdsForDiscipline(lineupARoot, disciplineId);
     const lineupB = lineupIdsForDiscipline(lineupBRoot, disciplineId);
     allPlayerIds.push(...lineupA, ...lineupB);
+    const disciplineName = trim(discipline.name) || null;
+    const content = projectCompetitionMatchFormat({
+      competitionMode: COMPETITION_REFEREE_MODE.TEAM,
+      isDreambreaker,
+      isTeamSubmatch: true,
+      discipline: disciplineId || sub.discipline_external_id || null,
+      disciplineName,
+      lineupA,
+      lineupB,
+      matchId: externalId,
+    });
     return {
       id: externalId,
       subMatchId: externalId,
       status: sub.status || "READY_TO_START",
       discipline: sub.discipline_external_id || null,
+      disciplineName,
       isDreambreaker,
       lineupA,
       lineupB,
+      competitionContentCode: content.competitionContentCode,
+      competitionContentLabel: content.competitionContentLabel,
+      matchFormat: content.matchFormat,
+      expectedPlayersPerSide: content.expectedPlayersPerSide,
       lineupsLocked:
         lineupARoot?.status === "published" ||
         lineupARoot?.status === "locked" ||

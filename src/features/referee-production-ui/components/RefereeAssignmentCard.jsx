@@ -46,6 +46,11 @@ export default function RefereeAssignmentCard({ card }) {
             {card.competitionModeLabel}
           </p>
         ) : null}
+        {card.competitionContentLabel ? (
+          <p className="rp-card-content" data-testid="competition-content">
+            {card.competitionContentLabel}
+          </p>
+        ) : null}
         {stageRound ? (
           <p className="rp-card-stage" data-testid="stage-round">
             {stageRound}

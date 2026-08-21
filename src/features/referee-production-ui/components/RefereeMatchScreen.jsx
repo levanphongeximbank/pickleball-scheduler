@@ -99,7 +99,7 @@ function ServingStatusStrip({ serving, expectedVersion, compactVersion = true })
     serving.gameLabel;
   if (!hasAny) return null;
   const turnLabel =
-    serving.serviceTurn != null ? `Lượt ${serving.serviceTurn}` : "—";
+    serving.serviceTurn != null ? String(serving.serviceTurn) : "—";
   return (
     <div className="rp-serve-strip" data-testid="serving-status-strip">
       <span className="rp-serve-cell" data-testid="serve-team">
@@ -126,6 +126,24 @@ function ServingStatusStrip({ serving, expectedVersion, compactVersion = true })
           <span>
             Lượt giao
             <strong data-testid="service-turn-number">{turnLabel}</strong>
+          </span>
+        </span>
+      ) : null}
+      {serving.serviceCourtLabel ? (
+        <span className="rp-serve-cell" data-testid="service-court">
+          <SyncAltIcon className="rp-serve-icon rp-serve-icon-muted" fontSize="inherit" aria-hidden="true" />
+          <span>
+            Ô giao
+            <strong data-testid="service-court-label">{serving.serviceCourtLabel}</strong>
+          </span>
+        </span>
+      ) : null}
+      {serving.receiverCourtLabel ? (
+        <span className="rp-serve-cell" data-testid="receiver-court">
+          <SyncAltIcon className="rp-serve-icon rp-serve-icon-muted" fontSize="inherit" aria-hidden="true" />
+          <span>
+            Ô nhận
+            <strong data-testid="receiver-court-label">{serving.receiverCourtLabel}</strong>
           </span>
         </span>
       ) : null}
@@ -185,21 +203,32 @@ function OperationHistoryPanel({ history }) {
 }
 
 function SideIdentityBlock({ sideKey, entryLabel, members, playerNames, testId }) {
-  const names =
+  const rows =
     Array.isArray(members) && members.length
-      ? members.map((m) => m.displayName || m.name).filter(Boolean)
+      ? members.map((m) => ({
+          id: m.participantId || m.displayName || m.name,
+          name: m.displayName || m.name || "Chưa có tên",
+          position: m.logicalPositionLabel || null,
+        }))
       : Array.isArray(playerNames)
-        ? playerNames.filter(Boolean)
+        ? playerNames.filter(Boolean).map((name) => ({ id: name, name, position: null }))
         : [];
   return (
     <div className="rp-side-identity" data-testid={testId}>
       <span className="rp-side-identity-key">Side {sideKey}</span>
-      <strong className="rp-side-entry" data-testid={`${testId}-entry`}>
-        {entryLabel || `Đội ${sideKey}`}
-      </strong>
+      {entryLabel ? (
+        <strong className="rp-side-entry" data-testid={`${testId}-entry`}>
+          {entryLabel}
+        </strong>
+      ) : null}
       <ul className="rp-side-athletes" data-testid={`${testId}-athletes`}>
-        {names.length ? (
-          names.map((name) => <li key={name}>{name}</li>)
+        {rows.length ? (
+          rows.map((row) => (
+            <li key={row.id}>
+              {row.position ? <span className="rp-logical-pos">{row.position}</span> : null}
+              {row.name}
+            </li>
+          ))
         ) : (
           <li className="rp-side-athlete-empty">Chưa có tên VĐV</li>
         )}
@@ -226,10 +255,26 @@ function LineupSetupPanel({
   const initialSideB = (sideBSource.activePlayers || []).map((p) => p.playerId).filter(Boolean);
   const sideAKey = initialSideA.join("|");
   const sideBKey = initialSideB.join("|");
+  const isDoublesLineup =
+    view?.expectedPlayersPerSide === 2 ||
+    view?.isDoubles === true ||
+    court.geometry === "DOUBLES" ||
+    initialSideA.length >= 2 ||
+    initialSideB.length >= 2;
+  const isSideOut = view?.isSideOut === true;
+  const openingTurnDefault = (() => {
+    const fromCourt = Number(court.serving?.serviceTurn);
+    if (Number.isFinite(fromCourt) && fromCourt > 0) return fromCourt;
+    const fromMeta = Number(view?.scoringRules?.metadata?.openingServiceTurn);
+    if (isSideOut && isDoublesLineup) {
+      return Number.isFinite(fromMeta) && fromMeta > 0 ? fromMeta : 2;
+    }
+    return 1;
+  })();
   const [sideA, setSideA] = useState([]);
   const [sideB, setSideB] = useState([]);
   const [serverPlayerId, setServerPlayerId] = useState("");
-  const [serverNumber, setServerNumber] = useState(1);
+  const [serverNumber, setServerNumber] = useState(openingTurnDefault);
 
   useEffect(() => {
     if (!open) return;
@@ -240,10 +285,8 @@ function LineupSetupPanel({
     setServerPlayerId(
       court.serving?.serverPlayerId || nextA[0] || nextB[0] || ""
     );
-    setServerNumber(
-      Number(court.serving?.serviceTurn) > 0 ? Number(court.serving.serviceTurn) : 1
-    );
-  }, [open, view?.matchId, sideAKey, sideBKey, court.serving?.serverPlayerId, court.serving?.serviceTurn]);
+    setServerNumber(openingTurnDefault);
+  }, [open, view?.matchId, sideAKey, sideBKey, court.serving?.serverPlayerId, openingTurnDefault]);
 
   if (!open) return null;
 
@@ -252,11 +295,13 @@ function LineupSetupPanel({
     ...(left.activePlayers || []),
     ...(right.activePlayers || []),
   ]) {
-    if (p?.playerId) names[p.playerId] = p.displayName || "VĐV";
+    if (p?.playerId) {
+      names[p.playerId] = p.displayName || "VĐV";
+    }
   }
 
-  const labelA = sideASource.participant?.displayName || "Đội A";
-  const labelB = sideBSource.participant?.displayName || "Đội B";
+  const labelA = sideASource.participant?.displayName || "Bên A";
+  const labelB = sideBSource.participant?.displayName || "Bên B";
 
   const swap = (side) => {
     if (side === "A") setSideA((prev) => (prev.length >= 2 ? [prev[1], prev[0]] : prev));
@@ -269,20 +314,30 @@ function LineupSetupPanel({
   ];
 
   const canConfirm = Boolean(serverPlayerId) && !pending && !stale;
+  const positionLabel = (sideIds, index) => {
+    if (!isDoublesLineup) return null;
+    return index === 0 ? "RIGHT" : index === 1 ? "LEFT" : null;
+  };
 
   return (
     <section className="rp-lineup-panel" data-testid="lineup-setup-panel">
       <h2 className="rp-lineup-title">Sắp xếp đội hình (bắt buộc)</h2>
       <p className="rp-lineup-hint">
         Chọn vị trí VĐV trên sân và người giao bóng đầu tiên trước khi ghi điểm.
+        {isDoublesLineup ? " Vị trí: RIGHT / LEFT." : null}
       </p>
 
       <div className="rp-lineup-sides">
         <div className="rp-lineup-side" data-testid="lineup-side-a">
           <strong>{labelA}</strong>
           <ol data-testid="lineup-side-a-players">
-            {sideA.map((id) => (
+            {sideA.map((id, index) => (
               <li key={id} data-testid={`lineup-player-${id}`} data-participant-id={id}>
+                {positionLabel(sideA, index) ? (
+                  <span className="rp-logical-pos" data-testid={`lineup-pos-${id}`}>
+                    {positionLabel(sideA, index)}
+                  </span>
+                ) : null}{" "}
                 {names[id] || id}
               </li>
             ))}
@@ -295,15 +350,20 @@ function LineupSetupPanel({
               onClick={() => swap("A")}
               data-testid="btn-swap-side-a"
             >
-              Đổi vị trí đội này
+              Đổi RIGHT ↔ LEFT
             </button>
           ) : null}
         </div>
         <div className="rp-lineup-side" data-testid="lineup-side-b">
           <strong>{labelB}</strong>
           <ol data-testid="lineup-side-b-players">
-            {sideB.map((id) => (
+            {sideB.map((id, index) => (
               <li key={id} data-testid={`lineup-player-${id}`} data-participant-id={id}>
+                {positionLabel(sideB, index) ? (
+                  <span className="rp-logical-pos" data-testid={`lineup-pos-${id}`}>
+                    {positionLabel(sideB, index)}
+                  </span>
+                ) : null}{" "}
                 {names[id] || id}
               </li>
             ))}
@@ -316,7 +376,7 @@ function LineupSetupPanel({
               onClick={() => swap("B")}
               data-testid="btn-swap-side-b"
             >
-              Đổi vị trí đội này
+              Đổi RIGHT ↔ LEFT
             </button>
           ) : null}
         </div>
@@ -345,24 +405,29 @@ function LineupSetupPanel({
         </div>
       </fieldset>
 
-      <fieldset className="rp-lineup-fieldset">
-        <legend>Lượt giao</legend>
-        <div className="rp-lineup-turns" data-testid="lineup-turn-options">
-          {[1, 2].map((n) => (
-            <label key={n} className="rp-lineup-option">
-              <input
-                type="radio"
-                name="service-turn"
-                value={n}
-                checked={serverNumber === n}
-                onChange={() => setServerNumber(n)}
-                disabled={pending}
-              />
-              <span>Lượt {n}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      {isSideOut && isDoublesLineup ? (
+        <fieldset className="rp-lineup-fieldset">
+          <legend>Lượt giao</legend>
+          <div className="rp-lineup-turns" data-testid="lineup-turn-options">
+            {[1, 2].map((n) => (
+              <label key={n} className="rp-lineup-option">
+                <input
+                  type="radio"
+                  name="service-turn"
+                  value={n}
+                  checked={serverNumber === n}
+                  onChange={() => setServerNumber(n)}
+                  disabled={pending}
+                />
+                <span>Lượt {n}</span>
+              </label>
+            ))}
+          </div>
+          <p className="rp-lineup-hint" data-testid="opening-turn-hint">
+            Side-Out đôi: mở đầu mặc định 0-0-2.
+          </p>
+        </fieldset>
+      ) : null}
 
       <div className="rp-lineup-actions">
         {!view?.lineupRequired ? (
@@ -384,7 +449,7 @@ function LineupSetupPanel({
             onConfirm?.({
               playerPositions: { sideA, sideB },
               serverPlayerId,
-              serverNumber,
+              serverNumber: isSideOut && isDoublesLineup ? serverNumber : 1,
               servingSide: sideA.includes(serverPlayerId)
                 ? "SIDE_A"
                 : sideB.includes(serverPlayerId)
@@ -634,6 +699,12 @@ export default function RefereeMatchScreen({
               <span className="rp-match-context-item" data-testid="match-mode-label">
                 <GroupsIcon fontSize="inherit" aria-hidden="true" />
                 {view.competitionModeLabel}
+              </span>
+            ) : null}
+            {view.competitionContentLabel ? (
+              <span className="rp-match-context-item" data-testid="match-content-label">
+                <FlagIcon fontSize="inherit" aria-hidden="true" />
+                {view.competitionContentLabel}
               </span>
             ) : null}
             <span className="rp-match-context-item">

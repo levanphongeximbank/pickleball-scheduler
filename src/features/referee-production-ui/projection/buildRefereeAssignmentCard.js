@@ -18,6 +18,10 @@ import {
 } from "./formatRefereeUiLabels.js";
 import { resolveAssignmentHomeBucket } from "./buildRefereeHomeSummary.js";
 import { resolveRefereeSideDisplay } from "./resolveRefereeSideDisplay.js";
+import {
+  projectCompetitionMatchFormat,
+  REFEREE_MATCH_FORMAT,
+} from "./projectCompetitionMatchFormat.js";
 
 const LIVE_MATCH_STATUSES = new Set([
   MATCH_STATUS.IN_PROGRESS,
@@ -40,10 +44,10 @@ function pickMatchStatus(...candidates) {
   return live || normalized[0];
 }
 
-function cardSideFields(side, names) {
-  const resolved = resolveRefereeSideDisplay(side, names);
+function cardSideFields(side, names, matchFormat) {
+  const resolved = resolveRefereeSideDisplay(side, names, { matchFormat });
   const memberLine = resolved.memberLine;
-  const entryLabel = resolved.entryLabel;
+  const entryLabel = resolved.presentationEntryLabel;
   const primary =
     memberLine ||
     entryLabel ||
@@ -132,8 +136,31 @@ export function buildRefereeAssignmentCard(input) {
     action: action.action,
     acceptedOfficialResult: result.acceptedOfficialResult,
   });
-  const sideAFields = cardSideFields(sides[0], names);
-  const sideBFields = cardSideFields(sides[1], names);
+  const sideContent = projectCompetitionMatchFormat({
+    competitionMode,
+    eventType: matchContext.eventType,
+    competitionContentCode:
+      matchContext.competitionContentCode ||
+      assigned.competitionContentCode ||
+      null,
+    competitionContentLabel:
+      matchContext.competitionContentLabel ||
+      assigned.competitionContentLabel ||
+      null,
+    matchFormat: matchContext.matchFormat || null,
+    expectedPlayersPerSide: matchContext.expectedPlayersPerSide ?? null,
+    isDreambreaker: matchContext.isDreambreaker === true,
+    discipline: matchContext.discipline || null,
+    disciplineName: matchContext.disciplineName || null,
+    matchType: matchContext.matchType || null,
+    sides,
+  });
+  const sideAFields = cardSideFields(sides[0], names, sideContent.matchFormat);
+  const sideBFields = cardSideFields(sides[1], names, sideContent.matchFormat);
+  const roundLabel =
+    matchContext.round != null
+      ? `Vòng ${matchContext.round}`
+      : assignment.roundName || null;
 
   return Object.freeze({
     matchId: String(assignment.matchId || matchContext.matchId || "").trim(),
@@ -146,7 +173,15 @@ export function buildRefereeAssignmentCard(input) {
     competitionMode,
     competitionModeLabel: formatCompetitionModeLabel(competitionMode),
     competitionName,
+    competitionContentCode: sideContent.competitionContentCode,
+    competitionContentLabel: sideContent.competitionContentLabel,
+    matchFormat: sideContent.matchFormat,
+    expectedPlayersPerSide: sideContent.expectedPlayersPerSide,
+    isSingles: sideContent.matchFormat === REFEREE_MATCH_FORMAT.SINGLES,
+    isDoubles: sideContent.matchFormat === REFEREE_MATCH_FORMAT.DOUBLES,
+    isDreamBreaker: sideContent.matchFormat === REFEREE_MATCH_FORMAT.DREAMBREAKER,
     roundName: matchContext.round != null ? String(matchContext.round) : assignment.roundName || null,
+    roundLabel,
     stageName: matchContext.stage || assignment.stageName || null,
     courtId: assignment.courtId || matchContext.courtId || assigned.courtId || null,
     courtLabel,

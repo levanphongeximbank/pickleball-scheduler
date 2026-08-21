@@ -20,6 +20,7 @@ import {
   buildStandardLifecyclePolicy,
 } from "./policyBuilders.js";
 import { mapModeScoringRulesToCore16 } from "./scoringRulesMapper.js";
+import { projectCompetitionMatchFormat } from "./competitionContentProjection.js";
 
 /**
  * @param {object} options
@@ -45,6 +46,29 @@ export function createIndividualTournamentRefereeAdapterSurface({
     return { ...loaded, match };
   }
 
+  function contentForMatch(match) {
+    if (
+      match.competitionContentCode ||
+      match.matchFormat ||
+      match.expectedPlayersPerSide
+    ) {
+      return {
+        competitionContentCode: match.competitionContentCode || null,
+        competitionContentLabel: match.competitionContentLabel || null,
+        matchFormat: match.matchFormat || null,
+        expectedPlayersPerSide: match.expectedPlayersPerSide ?? null,
+      };
+    }
+    return projectCompetitionMatchFormat({
+      eventType: match.eventType || null,
+      participantIdsA: match.participantIdsA,
+      participantIdsB: match.participantIdsB,
+      competitionMode,
+      competitionContentCode: match.competitionContentCode,
+      competitionContentLabel: match.competitionContentLabel,
+    });
+  }
+
   function resolveScoringRules(match, state) {
     const raw =
       match.scoringRules ||
@@ -52,7 +76,11 @@ export function createIndividualTournamentRefereeAdapterSurface({
       state.scoringRules ||
       state.scoringFormat ||
       null;
-    return mapModeScoringRulesToCore16(raw);
+    const content = contentForMatch(match);
+    return mapModeScoringRulesToCore16(raw, {
+      matchFormat: content.matchFormat,
+      expectedPlayersPerSide: content.expectedPlayersPerSide,
+    });
   }
 
   return Object.freeze({
@@ -89,6 +117,7 @@ export function createIndividualTournamentRefereeAdapterSurface({
     },
     getMatchContext(request) {
       const { match, tenantId, competitionId } = load(request);
+      const content = contentForMatch(match);
       return freezeClone({
         matchId: match.matchId,
         competitionId,
@@ -100,12 +129,17 @@ export function createIndividualTournamentRefereeAdapterSurface({
         stage: match.stage || null,
         round: match.round ?? null,
         eventId: match.eventId || null,
+        eventType: match.eventType || content.competitionContentCode || null,
         groupId: match.groupId || null,
         parentMatchId: match.parentMatchId || null,
         childMatchIds: Array.isArray(match.childMatchIds)
           ? match.childMatchIds.map(String)
           : [],
         bracketMatchId: match.bracketMatchId || null,
+        competitionContentCode: content.competitionContentCode,
+        competitionContentLabel: content.competitionContentLabel,
+        matchFormat: content.matchFormat,
+        expectedPlayersPerSide: content.expectedPlayersPerSide,
       });
     },
     getParticipants(request) {

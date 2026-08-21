@@ -37,6 +37,7 @@ import {
   buildStandardLifecyclePolicy,
 } from "./shared/policyBuilders.js";
 import { mapModeScoringRulesToCore16 } from "./shared/scoringRulesMapper.js";
+import { projectCompetitionMatchFormat } from "./shared/competitionContentProjection.js";
 
 const MATCH_STATUS_FALLBACK = "READY_TO_START";
 
@@ -178,8 +179,33 @@ function resolveTeamMatch(state, matchId) {
   );
 }
 
+function teamContentForResolved(resolved) {
+  const { subMatch, matchup, isDreambreaker, matchId } = resolved;
+  const sides = Array.isArray(subMatch?.sides)
+    ? subMatch.sides
+    : Array.isArray(matchup?.sides)
+      ? matchup.sides
+      : [];
+  return projectCompetitionMatchFormat({
+    competitionMode: COMPETITION_REFEREE_MODE.TEAM,
+    isDreambreaker,
+    isTeamSubmatch: true,
+    discipline: subMatch?.discipline || null,
+    disciplineName: subMatch?.disciplineName || null,
+    competitionContentCode: subMatch?.competitionContentCode || null,
+    competitionContentLabel: subMatch?.competitionContentLabel || null,
+    matchFormat: subMatch?.matchFormat || null,
+    expectedPlayersPerSide: subMatch?.expectedPlayersPerSide ?? null,
+    lineupA: subMatch?.lineupA || matchup?.lineupA,
+    lineupB: subMatch?.lineupB || matchup?.lineupB,
+    sides,
+    matchId,
+  });
+}
+
 function resolveTeamScoringRules(resolved, state) {
   const { subMatch, matchup, isDreambreaker } = resolved;
+  const content = teamContentForResolved(resolved);
   const raw =
     subMatch?.scoringRules ||
     subMatch?.scoringFormat ||
@@ -197,14 +223,23 @@ function resolveTeamScoringRules(resolved, state) {
 
   if (raw == null && isDreambreaker) {
     // Documented Team DreamBreaker default projection (domain default), not Adapter authority
-    return mapModeScoringRulesToCore16({
-      scoringSystem: "RALLY",
-      pointsToWin: 21,
-      winBy: 2,
-      bestOfGames: 1,
-    });
+    return mapModeScoringRulesToCore16(
+      {
+        scoringSystem: "RALLY",
+        pointsToWin: 21,
+        winBy: 2,
+        bestOfGames: 1,
+      },
+      {
+        matchFormat: content.matchFormat,
+        expectedPlayersPerSide: content.expectedPlayersPerSide,
+      }
+    );
   }
-  return mapModeScoringRulesToCore16(raw);
+  return mapModeScoringRulesToCore16(raw, {
+    matchFormat: content.matchFormat,
+    expectedPlayersPerSide: content.expectedPlayersPerSide,
+  });
 }
 
 /**
@@ -273,6 +308,7 @@ export function createTeamTournamentRefereeAdapter(options = {}) {
         matchupId,
         subMatchId: isParent ? null : matchId,
       });
+      const content = teamContentForResolved(resolved);
 
       return freezeClone({
         matchId,
@@ -291,6 +327,12 @@ export function createTeamTournamentRefereeAdapter(options = {}) {
         matchupId,
         isParentMatchup: isParent,
         isDreambreaker,
+        discipline: subMatch?.discipline || null,
+        disciplineName: subMatch?.disciplineName || null,
+        competitionContentCode: content.competitionContentCode,
+        competitionContentLabel: content.competitionContentLabel,
+        matchFormat: content.matchFormat,
+        expectedPlayersPerSide: content.expectedPlayersPerSide,
         // Projection only — CORE-13 remains assignment authority
         effectiveRefereeAssignment: effective
           ? {

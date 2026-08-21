@@ -396,7 +396,7 @@ describe("match screen visual states @ ~390px", () => {
     expect(screen.getByTestId("serving-status-strip")).toBeInTheDocument();
     expect(screen.getByTestId("service-turn")).toHaveTextContent(/Lượt giao/);
     expect(screen.getByTestId("service-turn")).not.toHaveTextContent(/Người giao/);
-    expect(screen.getByTestId("service-turn-number")).toHaveTextContent("Lượt 2");
+    expect(screen.getByTestId("service-turn-number")).toHaveTextContent("2");
     expect(screen.getByTestId("serving-player-name")).toHaveTextContent("An");
     expect(screen.getByTestId("team-name-a")).toHaveTextContent("Đội 4");
     expect(screen.getByTestId("team-name-b")).toHaveTextContent("Đội 3");
