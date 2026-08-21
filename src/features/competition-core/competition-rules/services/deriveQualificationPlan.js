@@ -8,15 +8,7 @@
  *     + GROUP_DIRECT_QUALIFIER_SLOTS
  *     + WILDCARD_SLOTS
  *
- * Legacy-compatible:
- *   groupCount=4, totalKnockoutSlots=8, directKnockoutEntryCount=0,
- *   directQualifiersPerGroup=2
- *   → groupDirectQualifierSlots=8, wildcardSlots=0
- *
- * Extended:
- *   groupCount=3, totalKnockoutSlots=8, directKnockoutEntryCount=2,
- *   directQualifiersPerGroup=1
- *   → directKnockoutEntrySlots=2, groupDirectQualifierSlots=3, wildcardSlots=3
+ * Common numeric invariants are enforced before the group / no-group branch.
  */
 
 import { COMPETITION_RULES_ERROR_CODE } from "../constants/errorCodes.js";
@@ -53,23 +45,37 @@ export function deriveQualificationPlan(input = {}) {
     ) || 0
   );
 
+  // --- Common invariants (group and no-group) ---
+  if (totalKnockoutSlots < 1) {
+    return Object.freeze({
+      ok: false,
+      code: COMPETITION_RULES_ERROR_CODE.INVALID_QUALIFICATION,
+      message: "totalKnockoutSlots (totalQualifiers) must be >= 1",
+      details: Object.freeze({ totalKnockoutSlots }),
+    });
+  }
+  if (directKnockoutEntrySlots < 0) {
+    return Object.freeze({
+      ok: false,
+      code: COMPETITION_RULES_ERROR_CODE.INVALID_QUALIFICATION,
+      message: "directKnockoutEntrySlots must be >= 0",
+      details: Object.freeze({ directKnockoutEntrySlots }),
+    });
+  }
+  if (directKnockoutEntrySlots > totalKnockoutSlots) {
+    return Object.freeze({
+      ok: false,
+      code: COMPETITION_RULES_ERROR_CODE.IMPOSSIBLE_QUALIFICATION,
+      message: "directKnockoutEntrySlots exceed totalKnockoutSlots",
+      details: Object.freeze({
+        directKnockoutEntrySlots,
+        totalKnockoutSlots,
+      }),
+    });
+  }
+
   if (!groupStageEnabled) {
-    if (directKnockoutEntrySlots > totalKnockoutSlots && totalKnockoutSlots > 0) {
-      return Object.freeze({
-        ok: false,
-        code: COMPETITION_RULES_ERROR_CODE.IMPOSSIBLE_QUALIFICATION,
-        message:
-          "directKnockoutEntrySlots exceed totalKnockoutSlots",
-        details: Object.freeze({
-          directKnockoutEntrySlots,
-          totalKnockoutSlots,
-        }),
-      });
-    }
-    const remainingSlots = Math.max(
-      0,
-      totalKnockoutSlots - directKnockoutEntrySlots
-    );
+    const remainingSlots = totalKnockoutSlots - directKnockoutEntrySlots;
     return Object.freeze({
       ok: true,
       groupStageEnabled: false,
@@ -92,7 +98,7 @@ export function deriveQualificationPlan(input = {}) {
         note:
           "group stage disabled — remainingSlots are base no-group knockout population slots, not cross-group wildcards",
         formula:
-          "remainingSlots = max(0, totalKnockoutSlots - directKnockoutEntrySlots); wildcardSlots = 0",
+          "remainingSlots = totalKnockoutSlots - directKnockoutEntrySlots; wildcardSlots = 0",
       }),
     });
   }
@@ -105,28 +111,12 @@ export function deriveQualificationPlan(input = {}) {
       details: Object.freeze({ groupCount }),
     });
   }
-  if (totalKnockoutSlots < 1) {
-    return Object.freeze({
-      ok: false,
-      code: COMPETITION_RULES_ERROR_CODE.INVALID_QUALIFICATION,
-      message: "totalKnockoutSlots (totalQualifiers) must be >= 1",
-      details: Object.freeze({ totalKnockoutSlots }),
-    });
-  }
   if (directQualifiersPerGroup < 0) {
     return Object.freeze({
       ok: false,
       code: COMPETITION_RULES_ERROR_CODE.INVALID_QUALIFICATION,
       message: "directQualifiersPerGroup must be >= 0",
       details: Object.freeze({ directQualifiersPerGroup }),
-    });
-  }
-  if (directKnockoutEntrySlots < 0) {
-    return Object.freeze({
-      ok: false,
-      code: COMPETITION_RULES_ERROR_CODE.INVALID_QUALIFICATION,
-      message: "directKnockoutEntrySlots must be >= 0",
-      details: Object.freeze({ directKnockoutEntrySlots }),
     });
   }
 
@@ -138,18 +128,6 @@ export function deriveQualificationPlan(input = {}) {
   const remainingSlots = wildcardSlots;
   const requiresCrossGroupWildcardRanking = wildcardSlots > 0;
 
-  if (directKnockoutEntrySlots > totalKnockoutSlots) {
-    return Object.freeze({
-      ok: false,
-      code: COMPETITION_RULES_ERROR_CODE.IMPOSSIBLE_QUALIFICATION,
-      message:
-        "directKnockoutEntrySlots exceed totalKnockoutSlots",
-      details: Object.freeze({
-        directKnockoutEntrySlots,
-        totalKnockoutSlots,
-      }),
-    });
-  }
   if (groupDirectQualifierSlots + directKnockoutEntrySlots > totalKnockoutSlots) {
     return Object.freeze({
       ok: false,

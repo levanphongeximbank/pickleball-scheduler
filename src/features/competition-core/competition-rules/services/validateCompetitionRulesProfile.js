@@ -26,6 +26,7 @@ import {
 import { createCompetitionRulesProfile } from "../domain/competitionRulesProfile.js";
 import { deriveQualificationPlan } from "./deriveQualificationPlan.js";
 import { deriveKnockoutAdmissionPlan } from "./deriveKnockoutAdmissionPlan.js";
+import { validateKnockoutAdmissionRawInput } from "./validateKnockoutAdmissionRawInput.js";
 
 function issue(code, message, details = {}) {
   return Object.freeze({ code, message, details: Object.freeze({ ...details }) });
@@ -41,6 +42,13 @@ function capabilityExecution(id) {
  */
 export function validateCompetitionRulesProfile(raw, options = {}) {
   const issues = [];
+
+  // Fail-closed on EXPLICIT INVALID admission / qualification fields BEFORE
+  // normalization can erase them via enumOr / numeric defaults.
+  for (const rawIssue of validateKnockoutAdmissionRawInput(raw)) {
+    issues.push(rawIssue);
+  }
+
   const profile = createCompetitionRulesProfile(raw);
 
   if (options.requireTenant !== false && !profile.tenantId) {

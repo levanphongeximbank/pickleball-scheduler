@@ -1,4 +1,5 @@
 export { validateCompetitionRulesProfile } from "./validateCompetitionRulesProfile.js";
+export { validateKnockoutAdmissionRawInput } from "./validateKnockoutAdmissionRawInput.js";
 export { deriveQualificationPlan } from "./deriveQualificationPlan.js";
 export { deriveKnockoutAdmissionPlan } from "./deriveKnockoutAdmissionPlan.js";
 export {

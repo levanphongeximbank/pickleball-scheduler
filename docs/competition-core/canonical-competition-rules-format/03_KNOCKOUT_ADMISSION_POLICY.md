@@ -71,8 +71,19 @@ Canonical identity: `entryId` (seeding/standings vocabulary).
 
 **No-group slot accounting (`groupStageEnabled=false`):**
 
+- Common invariants apply first: `totalKnockoutSlots >= 1`,
+  `directKnockoutEntrySlots >= 0`, `directKnockoutEntrySlots <= totalKnockoutSlots`
 - `wildcardSlots=0`, `requiresCrossGroupWildcardRanking=false`
-- `remainingSlots = max(0, totalKnockoutSlots - directKnockoutEntrySlots)` — base knockout population slots, **not** cross-group wildcards.
+- `remainingSlots = totalKnockoutSlots - directKnockoutEntrySlots` — base knockout population slots, **not** cross-group wildcards
+
+**Raw input integrity (fail-closed):**
+
+- Omitted fields may receive canonical defaults
+- Explicit invalid enums / numbers / booleans / entrant identities MUST reject
+- `enumOr` must not hide `sourceCategory="BOGUS"`, `targetStage="BOGUS"`, `byePolicy="BOGUS"`, etc.
+- Per-entrant omitted `targetStage` / `sourceCategory` may inherit policy defaults
+- Explicit per-entrant invalid values reject
+- `displayName` alone is never identity
 
 ## Capability truth
 
