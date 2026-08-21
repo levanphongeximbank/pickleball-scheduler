@@ -156,37 +156,38 @@ function deriveInternalGroupDrawModel(tournament, { selectedEventId } = {}) {
 function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
   const scope = resolveBatchBEvent(tournament, selectedEventId);
   const projection = projectOfficialGroupDraw(tournament, { selectedEventId });
-  const units = projection.units || [];
-  const groups = Array.isArray(projection.groups) ? projection.groups : [];
-  const unitsById = new Map(units.map((unit) => [String(unit.id), unit]));
-
-  const assignedIds = new Set();
-  const groupCards = groups.map((group, index) => {
-    const groupEntries = Array.isArray(group.entries)
-      ? group.entries
-      : (group.entryIds || [])
-          .map((id) => unitsById.get(String(id)))
-          .filter(Boolean);
-    groupEntries.forEach((entry) => assignedIds.add(String(entry.id)));
-    const letter =
-      group.label ||
-      group.name ||
-      `Bảng ${String.fromCharCode(65 + (index % 26))}`;
-    return {
-      id: letter,
-      groupId: group.id,
-      count: groupEntries.length,
-      capacity: groupEntries.length || 0,
-      seedSummary: "Rating-neutral (Open Random)",
-      pairs: groupEntries.map((entry) => entry.name || entry.id),
-      entryIds: groupEntries.map((entry) => entry.id),
-      playerIdSets: groupEntries.map((entry) =>
-        (entry.playerIds || []).map(String).filter(Boolean)
-      ),
+  const metrics =
+    projection.metrics ||
+    {
+      totalUnits: 0,
+      assignedUnits: 0,
+      unassignedUnits: 0,
+      playerCount: 0,
+      progressNumerator: 0,
+      progressDenominator: 0,
+      drawComplete: false,
+      awaiting: [],
+      groupCards: [],
+      units: [],
+      source: null,
     };
+
+  const groups = Array.isArray(projection.groups) ? projection.groups : [];
+  const groupCards = metrics.groupCards || [];
+  const awaiting = metrics.awaiting || [];
+  const expectedTotal = metrics.progressDenominator;
+  const drawnCount = metrics.progressNumerator;
+  const publishStatus = projection.drawPublish?.status || DRAW_PUBLISH_STATUS.DRAFT;
+  const tournamentDrawLocked = Boolean(tournament && isDrawLocked(tournament));
+  const actionState = resolveDrawRoomActionState({
+    drawnCount,
+    expectedTotal,
+    contentLocked: tournamentDrawLocked,
+    constraintsPass: groups.length > 0 && awaiting.length === 0,
+    remainingNoun: "cặp chưa chia bảng",
+    lockAuthority: projection.lockEnabled,
   });
 
-  const awaiting = units.filter((unit) => !assignedIds.has(String(unit.id)));
   const ledger = [];
   groupCards.forEach((group) => {
     group.entryIds.forEach((entryId, index) => {
@@ -202,19 +203,6 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
       });
     });
   });
-
-  const expectedTotal = units.length;
-  const drawnCount = assignedIds.size;
-  const publishStatus = projection.drawPublish?.status || DRAW_PUBLISH_STATUS.DRAFT;
-  const tournamentDrawLocked = Boolean(tournament && isDrawLocked(tournament));
-  const actionState = resolveDrawRoomActionState({
-    drawnCount,
-    expectedTotal,
-    contentLocked: tournamentDrawLocked,
-    constraintsPass: groups.length > 0 && awaiting.length === 0,
-    remainingNoun: "cặp chưa chia bảng",
-    lockAuthority: projection.lockEnabled,
-  });
   const last = ledger[ledger.length - 1] || null;
 
   const readinessItems = [
@@ -224,11 +212,22 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
       note: projection.needsEventChoice ? "Chọn nội dung" : "Đạt",
     },
     {
-      label: "Đơn vị cạnh tranh sẵn sàng",
-      ready: projection.unitsReady,
-      note: projection.unitsReady
-        ? `${projection.unitCount} đơn vị (${projection.unitsSource})`
-        : projection.blocker?.error || "Thiếu cặp",
+      label: "Đơn vị cạnh tranh (cặp)",
+      ready: metrics.totalUnits > 0,
+      note:
+        metrics.totalUnits > 0
+          ? `${metrics.totalUnits} cặp (${metrics.source || projection.unitsSource || "units"})`
+          : projection.blocker?.error || "Thiếu cặp",
+    },
+    {
+      label: "VĐV (thành viên cặp)",
+      ready: metrics.playerCount > 0,
+      note: `${metrics.playerCount} VĐV — không dùng làm mẫu số chia bảng`,
+    },
+    {
+      label: "Đã bốc xong",
+      ready: metrics.drawComplete,
+      note: `${drawnCount}/${expectedTotal || 0}`,
     },
     {
       label: `groupCount cấu hình = ${projection.groupCount}`,
@@ -239,11 +238,6 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
       label: "Group Draw rating-neutral",
       ready: projection.ratingNeutral === true && projection.usesRating !== true,
       note: "buildOfficialOpenPlan / OPEN_RANDOM",
-    },
-    {
-      label: "Bảng đã tạo",
-      ready: groups.length > 0,
-      note: groups.length ? `${groups.length} bảng` : "Chưa chia",
     },
     {
       label: `Draw status: ${publishStatus}`,
@@ -268,16 +262,19 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
         : publishStatus === DRAW_PUBLISH_STATUS.LOCKED
           ? "ĐÃ KHÓA"
           : groups.length
-            ? "ĐÃ TẠO (DRAFT)"
+            ? metrics.drawComplete
+              ? "ĐÃ TẠO (DRAFT)"
+              : actionState.statusLabel
             : actionState.statusLabel,
     multiContentLimitation: MULTI_CONTENT_LIMITATION,
     drawnCount,
     expectedTotal,
+    playerCount: metrics.playerCount,
     awaiting: awaiting.map((entry) => ({
       id: entry.id,
       name: entry.name || entry.id,
       seed: "—",
-      pool: projection.unitsSource || "units",
+      pool: metrics.source || projection.unitsSource || "units",
       playerIds: (entry.playerIds || []).map(String),
     })),
     groupCards,
@@ -302,8 +299,9 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
         tone: "success",
       })),
     summary: {
-      totalPairs: units.length,
+      totalPairs: metrics.totalUnits,
       groups: groups.length,
+      playerCount: metrics.playerCount,
       method: "buildOfficialOpenPlan (OPEN_RANDOM)",
       seedRule: "Không dùng seed/rating/VPR/AI Balance cho chia bảng",
       groupCountConfig: projection.groupCount,
@@ -316,10 +314,10 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
         note: "Open + AI Balance dùng chung Group Draw rating-neutral",
       },
       {
-        label: "O5 persistence",
-        status: "groups + settings.draw",
+        label: "Competition unit",
+        status: "PAIR",
         tone: "info",
-        note: "Không ghi matches/schedule trên Wave O5",
+        note: "Mẫu số chia bảng = số cặp, không = số VĐV",
       },
       {
         label: "Publish status",
@@ -334,15 +332,15 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
       statusLabel:
         projection.blocker && !groups.length
           ? "CHƯA SẴN SÀNG"
-          : groups.length
+          : metrics.drawComplete
             ? publishStatus === DRAW_PUBLISH_STATUS.PUBLISHED
               ? "ĐÃ CÔNG BỐ"
               : publishStatus === DRAW_PUBLISH_STATUS.LOCKED
                 ? "ĐÃ KHÓA"
                 : "SẴN SÀNG"
             : actionState.statusLabel,
-      statusTone: groups.length && !projection.blocker ? "success" : "warning",
-      nextLifecycleDisabled: groups.length === 0,
+      statusTone: metrics.drawComplete && !projection.blocker ? "success" : "warning",
+      nextLifecycleDisabled: !metrics.drawComplete,
       lockDisabled: !projection.lockEnabled,
     },
     lockLabel: DRAW_LOCK_LABEL,
@@ -370,7 +368,7 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
     presentHint: projection.presentEnabled
       ? "Trình chiếu bảng đã lưu — không đổi membership."
       : "Chưa có bảng để trình chiếu.",
-    nextHint: groups.length
+    nextHint: metrics.drawComplete
       ? "Bước tiếp: Vòng bảng (chưa adopt O5)."
       : "Cần chia bảng trước.",
     blocker: projection.blocker,
@@ -378,16 +376,19 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
     ratingNeutral: projection.ratingNeutral,
     guards: projection.downstream,
     kpis: {
-      units: units.length,
+      units: metrics.totalUnits,
+      players: metrics.playerCount,
       groups: groups.length,
-      awaiting: awaiting.length,
+      awaiting: metrics.unassignedUnits,
       warnings: projection.blocker || (projection.downstream?.blockers || []).length ? 1 : 0,
     },
   };
 }
 
 export function deriveGroupDrawModel(tournament, { selectedEventId } = {}) {
-  if (isOfficialOpenFamily(tournament)) {
+  const officialShaped =
+    isOfficialOpenFamily(tournament) || Boolean(tournament?.officialMode);
+  if (officialShaped) {
     return deriveOfficialGroupDrawModel(tournament, { selectedEventId });
   }
   return deriveInternalGroupDrawModel(tournament, { selectedEventId });

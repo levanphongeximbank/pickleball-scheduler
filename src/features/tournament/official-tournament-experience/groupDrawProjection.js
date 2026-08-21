@@ -13,11 +13,15 @@
 import {
   assertOfficialGroupDrawAllowed,
   getOfficialGroupDrawUnits,
+  isOfficialPairShapedEntry,
+  listOfficialDrawEntries,
+  listOfficialRegistrationEntries,
   preserveOfficialRegistrationOnGroupDrawEvent,
   projectOfficialDrawSubsteps,
 } from "../../individual-tournament/engines/officialDrawOrchestrationEngine.js";
 import {
   getOfficialCompetitionSettings,
+  OFFICIAL_REGISTRATION_MODE,
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
 import {
   OFFICIAL_GROUP_DRAW_AUTHORITY,
@@ -43,13 +47,260 @@ import {
   summarizeGroups,
   DRAW_PUBLISH_STATUS,
 } from "../../../tournament/engines/publishDrawEngine.js";
+import { filterDrawEligibleEntries } from "../../individual-tournament/engines/withdrawalEngine.js";
 import { ratingMayInfluenceOpenPairingOrDraw } from "../official-open-adapter-b/activation.js";
 import { listTournamentEvents, resolveSelectedEvent } from "../experience-a1/deriveOverview.js";
 import { OFFICIAL_EXPERIENCE_AUTHORITY } from "./authorityLock.js";
-import { listOfficialPairDrawUnits } from "./pairDrawProjection.js";
 
 function trim(value) {
   return value != null ? String(value).trim() : "";
+}
+
+function playerIdsFingerprint(playerIds = []) {
+  return (Array.isArray(playerIds) ? playerIds : [])
+    .map(String)
+    .filter(Boolean)
+    .sort()
+    .join("|");
+}
+
+function uniqueByEntryId(entries = []) {
+  const seen = new Set();
+  const out = [];
+  for (const entry of entries) {
+    const id = trim(entry?.id);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(entry);
+  }
+  return out;
+}
+
+function collectPairUnitsFromGroups(groups = []) {
+  const pairs = [];
+  for (const group of groups) {
+    const embedded = Array.isArray(group?.entries) ? group.entries : [];
+    for (const entry of embedded) {
+      if (isOfficialPairShapedEntry(entry)) pairs.push(entry);
+    }
+  }
+  return uniqueByEntryId(pairs);
+}
+
+/**
+ * Single SSOT for Screen 08 competition units (pairs for doubles Events).
+ * Never treats individual registration players as Group Draw units when pair
+ * competition units exist.
+ *
+ * Priority:
+ * 1) getOfficialGroupDrawUnits (authoritative writer input)
+ * 2) persisted drawEntries (Open/AI Individual after Pair Formation)
+ * 3) registered pair entries (Open Pair)
+ * 4) pair-shaped members already on event.groups (read-only recovery)
+ */
+export function listOfficialGroupDrawCompetitionUnits(tournament, { selectedEventId } = {}) {
+  const events = listTournamentEvents(tournament);
+  const eventId = trim(selectedEventId);
+  if (events.length > 1 && !eventId) {
+    return {
+      ok: false,
+      units: [],
+      source: null,
+      playerCount: 0,
+      code: "EVENT_REQUIRED",
+      error: "Chọn nội dung trước khi chia bảng.",
+    };
+  }
+  const event = resolveSelectedEvent(events, eventId);
+  if (!event) {
+    return {
+      ok: false,
+      units: [],
+      source: null,
+      playerCount: 0,
+      code: "EVENT_NOT_FOUND",
+      error: "Không tìm thấy nội dung thi đấu.",
+    };
+  }
+
+  const registrations = listOfficialRegistrationEntries(event);
+  const playerCount = new Set(
+    registrations.flatMap((entry) => (entry?.playerIds || []).map(String).filter(Boolean))
+  ).size;
+
+  const authoritative = getOfficialGroupDrawUnits(tournament, event.id);
+  if (authoritative.ok && (authoritative.units || []).length > 0) {
+    const units = uniqueByEntryId(
+      (authoritative.units || []).filter(isOfficialPairShapedEntry)
+    );
+    if (units.length > 0) {
+      return {
+        ok: true,
+        units,
+        source: authoritative.source || "drawEntries",
+        playerCount,
+        substeps: authoritative.substeps || null,
+      };
+    }
+  }
+
+  const drawPairs = uniqueByEntryId(
+    listOfficialDrawEntries(event).filter(isOfficialPairShapedEntry)
+  );
+  if (drawPairs.length > 0) {
+    return {
+      ok: true,
+      units: drawPairs,
+      source: "drawEntries",
+      playerCount,
+      substeps: projectOfficialDrawSubsteps(tournament, event.id),
+    };
+  }
+
+  const competition = getOfficialCompetitionSettings(tournament);
+  if (competition.registrationMode === OFFICIAL_REGISTRATION_MODE.PAIR) {
+    const registeredPairs = uniqueByEntryId(
+      filterDrawEligibleEntries(registrations, tournament).filter(isOfficialPairShapedEntry)
+    );
+    if (registeredPairs.length > 0) {
+      return {
+        ok: true,
+        units: registeredPairs,
+        source: "entries",
+        playerCount,
+        substeps: projectOfficialDrawSubsteps(tournament, event.id),
+      };
+    }
+  }
+
+  const fromGroups = collectPairUnitsFromGroups(event.groups);
+  if (fromGroups.length > 0) {
+    return {
+      ok: true,
+      units: fromGroups,
+      source: "groups",
+      playerCount,
+      substeps: projectOfficialDrawSubsteps(tournament, event.id),
+      readOnlyRecovery: true,
+    };
+  }
+
+  return {
+    ok: false,
+    units: [],
+    source: null,
+    playerCount,
+    code: "UNITS_MISSING",
+    error: "Chưa có đơn vị cạnh tranh (cặp) để chia bảng.",
+    substeps: projectOfficialDrawSubsteps(tournament, event.id),
+  };
+}
+
+/**
+ * Read-only metrics: total / assigned / unassigned / progress from ONE unit list.
+ * Group membership is not mutated.
+ */
+export function projectOfficialGroupDrawUnitMetrics(tournament, { selectedEventId } = {}) {
+  const listed = listOfficialGroupDrawCompetitionUnits(tournament, { selectedEventId });
+  const events = listTournamentEvents(tournament);
+  const event = resolveSelectedEvent(events, trim(selectedEventId));
+  const groups = Array.isArray(event?.groups) ? event.groups : [];
+  const units = listed.units || [];
+  const unitsById = new Map(units.map((unit) => [String(unit.id), unit]));
+  const unitsByPlayers = new Map(
+    units.map((unit) => [playerIdsFingerprint(unit.playerIds), unit])
+  );
+
+  const assignedIds = new Set();
+  const duplicateIds = new Set();
+  const groupCards = groups.map((group, index) => {
+    const letter =
+      group.label ||
+      group.name ||
+      `Bảng ${String.fromCharCode(65 + (index % 26))}`;
+    const rawIds = [
+      ...(Array.isArray(group.entryIds) ? group.entryIds : []),
+      ...(Array.isArray(group.entries) ? group.entries.map((entry) => entry?.id) : []),
+    ]
+      .map((id) => trim(id))
+      .filter(Boolean);
+
+    const resolved = [];
+    const seenInGroup = new Set();
+    for (const id of rawIds) {
+      let unit = unitsById.get(id) || null;
+      if (!unit && Array.isArray(group.entries)) {
+        const embedded = group.entries.find((entry) => String(entry?.id) === id);
+        if (embedded) {
+          unit =
+            unitsByPlayers.get(playerIdsFingerprint(embedded.playerIds)) ||
+            (isOfficialPairShapedEntry(embedded) ? embedded : null);
+        }
+      }
+      if (!unit) continue;
+      const unitId = String(unit.id);
+      if (seenInGroup.has(unitId)) continue;
+      seenInGroup.add(unitId);
+      if (assignedIds.has(unitId)) duplicateIds.add(unitId);
+      assignedIds.add(unitId);
+      resolved.push(unit);
+    }
+
+    // Prefer embedded pair entries when entryIds empty but group.entries present
+    if (!resolved.length && Array.isArray(group.entries)) {
+      for (const embedded of group.entries) {
+        if (!isOfficialPairShapedEntry(embedded)) continue;
+        const unit =
+          unitsById.get(String(embedded.id)) ||
+          unitsByPlayers.get(playerIdsFingerprint(embedded.playerIds)) ||
+          embedded;
+        const unitId = String(unit.id);
+        if (seenInGroup.has(unitId)) continue;
+        seenInGroup.add(unitId);
+        if (assignedIds.has(unitId)) duplicateIds.add(unitId);
+        assignedIds.add(unitId);
+        resolved.push(unit);
+      }
+    }
+
+    return {
+      id: letter,
+      groupId: group.id,
+      count: resolved.length,
+      capacity: resolved.length || 0,
+      seedSummary: "Rating-neutral (Open Random)",
+      pairs: resolved.map((entry) => entry.name || entry.id),
+      entryIds: resolved.map((entry) => entry.id),
+      playerIdSets: resolved.map((entry) =>
+        (entry.playerIds || []).map(String).filter(Boolean)
+      ),
+    };
+  });
+
+  const awaiting = units.filter((unit) => !assignedIds.has(String(unit.id)));
+  const totalUnits = units.length;
+  const assignedUnits = assignedIds.size;
+  const unassignedUnits = awaiting.length;
+
+  return {
+    ok: listed.ok,
+    code: listed.code || null,
+    error: listed.error || null,
+    source: listed.source,
+    units,
+    totalUnits,
+    assignedUnits,
+    unassignedUnits,
+    playerCount: listed.playerCount || 0,
+    progressNumerator: assignedUnits,
+    progressDenominator: totalUnits,
+    drawComplete: totalUnits > 0 && unassignedUnits === 0 && groups.length > 0,
+    awaiting,
+    groupCards,
+    duplicateAssignmentEntryIds: [...duplicateIds],
+    groups,
+    readOnlyRecovery: listed.readOnlyRecovery === true,
+  };
 }
 
 function upsertEvent(events = [], nextEvent) {
@@ -162,8 +413,11 @@ export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
     officialMode: tournament?.officialMode,
   });
   const units = event
-    ? listOfficialPairDrawUnits(tournament, { selectedEventId: event.id })
-    : { ok: false, units: [], code: "EVENT_REQUIRED" };
+    ? listOfficialGroupDrawCompetitionUnits(tournament, { selectedEventId: event.id })
+    : { ok: false, units: [], code: "EVENT_REQUIRED", playerCount: 0 };
+  const metrics = event
+    ? projectOfficialGroupDrawUnitMetrics(tournament, { selectedEventId: event.id })
+    : null;
   const sub = event ? projectOfficialDrawSubsteps(tournament, event.id) : null;
   const competition = getOfficialCompetitionSettings(tournament);
   const publish = getDrawPublishStatus(tournament);
@@ -206,6 +460,8 @@ export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
     unitCount: units.units?.length || 0,
     unitsSource: units.source || null,
     units: units.units || [],
+    playerCount: units.playerCount || 0,
+    metrics,
     groups,
     groupCountCreated: groups.length,
     substeps: sub,

@@ -53,4 +53,6 @@ export {
   buildOfficialRegenerateGroupDrawPatch,
   buildOfficialPresentGroupDraw,
   resolveOfficialGroupDrawDownstreamGuards,
+  listOfficialGroupDrawCompetitionUnits,
+  projectOfficialGroupDrawUnitMetrics,
 } from "./groupDrawProjection.js";

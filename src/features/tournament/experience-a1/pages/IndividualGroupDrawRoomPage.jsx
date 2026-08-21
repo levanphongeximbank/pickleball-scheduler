@@ -335,7 +335,10 @@ export default function IndividualGroupDrawRoomPage() {
         {official ? (
           <Grid container spacing={1.25} sx={{ mb: 1.25 }}>
             <Grid size={{ xs: 6, md: 3 }}>
-              <CenterKpiCard label="Đơn vị" value={model.kpis.units} />
+              <CenterKpiCard label="Đơn vị (cặp)" value={model.kpis.units} />
+            </Grid>
+            <Grid size={{ xs: 6, md: 3 }}>
+              <CenterKpiCard label="VĐV" value={model.kpis.players ?? model.playerCount ?? 0} />
             </Grid>
             <Grid size={{ xs: 6, md: 3 }}>
               <CenterKpiCard label="Bảng" value={model.kpis.groups} />
@@ -345,12 +348,6 @@ export default function IndividualGroupDrawRoomPage() {
                 label="Chưa chia"
                 value={model.kpis.awaiting}
                 tone={model.kpis.awaiting ? "warning" : "success"}
-              />
-            </Grid>
-            <Grid size={{ xs: 6, md: 3 }}>
-              <CenterKpiCard
-                label="groupCount"
-                value={model.summary.groupCountConfig ?? "—"}
               />
             </Grid>
           </Grid>
@@ -366,7 +363,10 @@ export default function IndividualGroupDrawRoomPage() {
 
         <DrawPanel title="Cặp chờ chia bảng">
           <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.navyTextMuted, mb: 0.75 }}>
-            {model.summary.totalPairs} đơn vị • {model.summary.groups} bảng • {model.summary.method}
+            {model.summary.totalPairs} cặp
+            {model.summary.playerCount != null ? ` • ${model.summary.playerCount} VĐV` : ""}
+            {" • "}
+            {model.summary.groups} bảng • {model.summary.method}
           </Typography>
           {model.awaiting.length === 0 ? (
             <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.navyTextMuted }}>
