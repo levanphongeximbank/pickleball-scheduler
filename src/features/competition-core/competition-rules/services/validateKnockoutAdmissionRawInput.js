@@ -171,6 +171,29 @@ export function validateKnockoutAdmissionRawInput(raw) {
           );
         }
       }
+
+      // Conflicting explicit aliases for the same canonical slot total
+      if (
+        hasOwn(q, "totalKnockoutSlots") &&
+        hasOwn(q, "totalQualifiers") &&
+        isExplicitPositiveInt(q.totalKnockoutSlots) &&
+        isExplicitPositiveInt(q.totalQualifiers)
+      ) {
+        const a = Number(q.totalKnockoutSlots);
+        const b = Number(q.totalQualifiers);
+        if (a !== b) {
+          issues.push(
+            issue(
+              COMPETITION_RULES_ERROR_CODE.INVALID_QUALIFICATION,
+              "Conflicting explicit qualification.totalKnockoutSlots and qualification.totalQualifiers",
+              {
+                totalKnockoutSlots: q.totalKnockoutSlots,
+                totalQualifiers: q.totalQualifiers,
+              }
+            )
+          );
+        }
+      }
     }
   }
 
@@ -221,7 +244,7 @@ export function validateKnockoutAdmissionRawInput(raw) {
             issue(
               COMPETITION_RULES_ERROR_CODE.INVALID_GROUP_STAGE_BYPASS,
               "knockoutAdmission.groupStageBypass.entrants must be an array when supplied",
-              {}
+              { entrantsType: typeof bypass.entrants }
             )
           );
         } else {
@@ -234,6 +257,19 @@ export function validateKnockoutAdmissionRawInput(raw) {
               })
             );
           });
+          // enabled:false must not carry active bypass population
+          if (
+            bypass.enabled === false &&
+            bypass.entrants.length > 0
+          ) {
+            issues.push(
+              issue(
+                COMPETITION_RULES_ERROR_CODE.INVALID_GROUP_STAGE_BYPASS,
+                "groupStageBypass.enabled=false cannot include entrants (contradictory disabled configuration)",
+                { entrantCount: bypass.entrants.length }
+              )
+            );
+          }
         }
       }
     }
@@ -302,7 +338,7 @@ export function validateKnockoutAdmissionRawInput(raw) {
             issue(
               COMPETITION_RULES_ERROR_CODE.INVALID_DIRECT_KNOCKOUT_ENTRY,
               "knockoutAdmission.directKnockoutEntry.entrants must be an array when supplied",
-              {}
+              { entrantsType: typeof direct.entrants }
             )
           );
         } else {
@@ -316,6 +352,37 @@ export function validateKnockoutAdmissionRawInput(raw) {
               })
             );
           });
+        }
+      }
+
+      // enabled:false must not carry active direct-entry demand
+      if (direct.enabled === false) {
+        const countActive =
+          hasOwn(direct, "count") &&
+          isExplicitNonNegInt(direct.count) &&
+          Number(direct.count) > 0;
+        const entrantsActive =
+          Array.isArray(direct.entrants) && direct.entrants.length > 0;
+        const qualCount =
+          isPlainObject(raw.qualification) &&
+          hasOwn(raw.qualification, "directKnockoutEntryCount") &&
+          isExplicitNonNegInt(raw.qualification.directKnockoutEntryCount)
+            ? Number(raw.qualification.directKnockoutEntryCount)
+            : 0;
+        if (countActive || entrantsActive || qualCount > 0) {
+          issues.push(
+            issue(
+              COMPETITION_RULES_ERROR_CODE.INVALID_DIRECT_KNOCKOUT_ENTRY,
+              "directKnockoutEntry.enabled=false cannot include count>0, entrants, or qualification.directKnockoutEntryCount>0",
+              {
+                count: direct.count,
+                entrantCount: Array.isArray(direct.entrants)
+                  ? direct.entrants.length
+                  : 0,
+                qualificationDirectKnockoutEntryCount: qualCount,
+              }
+            )
+          );
         }
       }
     }

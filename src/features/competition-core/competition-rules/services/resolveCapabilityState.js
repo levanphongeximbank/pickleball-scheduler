@@ -153,13 +153,11 @@ export function resolveProfileCapabilityState(profileOrRaw) {
   );
   push(
     COMPETITION_RULES_CAPABILITY_ID.GROUP_STAGE_BYPASS,
-    profile.knockoutAdmission?.groupStageBypass?.enabled === true ||
-      (profile.knockoutAdmission?.groupStageBypass?.entrants || []).length > 0
+    profile.knockoutAdmission?.groupStageBypass?.enabled === true
   );
   push(
     COMPETITION_RULES_CAPABILITY_ID.DIRECT_KNOCKOUT_ENTRY,
-    profile.knockoutAdmission?.directKnockoutEntry?.enabled === true ||
-      Number(profile.qualification?.directKnockoutEntryCount) > 0
+    profile.knockoutAdmission?.directKnockoutEntry?.enabled === true
   );
   push(
     COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT_BYE,

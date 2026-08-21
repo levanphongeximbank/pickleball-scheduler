@@ -84,6 +84,10 @@ Canonical identity: `entryId` (seeding/standings vocabulary).
 - Per-entrant omitted `targetStage` / `sourceCategory` may inherit policy defaults
 - Explicit per-entrant invalid values reject
 - `displayName` alone is never identity
+- Explicit `directQualifiersPerGroup: 0` is preserved (does not become 2)
+- Conflicting explicit `totalKnockoutSlots` vs `totalQualifiers` reject
+- `enabled: false` with active count/entrants reject (disabled policies do not affect derivation)
+- Malformed `entrants` shapes (`{}`, number, string) return validation issues — never throw
 
 ## Capability truth
 

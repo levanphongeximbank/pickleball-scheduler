@@ -188,10 +188,35 @@ export function createDefaultGroupStagePolicy(overrides = {}) {
 }
 
 export function createDefaultQualificationPolicy(overrides = {}) {
+  const hasTotalKnockout = Object.prototype.hasOwnProperty.call(
+    overrides,
+    "totalKnockoutSlots"
+  );
+  const hasTotalQualifiers = Object.prototype.hasOwnProperty.call(
+    overrides,
+    "totalQualifiers"
+  );
+  const parsedKnockout = hasTotalKnockout
+    ? positiveIntOrNull(overrides.totalKnockoutSlots)
+    : null;
+  const parsedQualifiers = hasTotalQualifiers
+    ? positiveIntOrNull(overrides.totalQualifiers)
+    : null;
+
+  // Prefer totalKnockoutSlots; legacy totalQualifiers only when knockout slots omitted.
+  // Conflicting explicit aliases are rejected by validateKnockoutAdmissionRawInput —
+  // do not invent a third value here.
   const totalKnockoutSlots =
-    positiveIntOrNull(overrides.totalKnockoutSlots) ??
-    positiveIntOrNull(overrides.totalQualifiers) ??
-    8;
+    parsedKnockout ?? parsedQualifiers ?? 8;
+
+  const hasDirectPerGroup = Object.prototype.hasOwnProperty.call(
+    overrides,
+    "directQualifiersPerGroup"
+  );
+  const directQualifiersPerGroup = hasDirectPerGroup
+    ? nonNegIntOrNull(overrides.directQualifiersPerGroup) ?? 0
+    : 2;
+
   const directKnockoutEntryCount =
     nonNegIntOrNull(overrides.directKnockoutEntryCount) ?? 0;
   return {
@@ -200,10 +225,14 @@ export function createDefaultQualificationPolicy(overrides = {}) {
     /**
      * Backward-compatible alias — same value as totalKnockoutSlots.
      * Legacy profiles used totalQualifiers for the full knockout field size.
+     * Conflicting explicit alias pairs fail closed in raw validation.
      */
     totalQualifiers: totalKnockoutSlots,
-    directQualifiersPerGroup:
-      positiveIntOrNull(overrides.directQualifiersPerGroup) ?? 2,
+    /**
+     * Explicit 0 is preserved (groupDirectQualifierSlots = 0).
+     * Omitted → legacy default 2.
+     */
+    directQualifiersPerGroup,
     /** Count of DIRECT_KNOCKOUT_ENTRY slots (≠ group direct qualifiers ≠ bye). */
     directKnockoutEntryCount,
   };
@@ -315,27 +344,43 @@ export function createDefaultKnockoutAdmissionPolicy(overrides = {}) {
     KNOCKOUT_ENTRY_ROUND,
     null
   );
-  const entrants = normalizeDirectEntrants(directRaw.entrants, {
+  const entrantsRaw = Array.isArray(directRaw.entrants) ? directRaw.entrants : [];
+  const entrants = normalizeDirectEntrants(entrantsRaw, {
     defaultSource,
     defaultTargetStage,
   });
   const countFromField = nonNegIntOrNull(directRaw.count);
-  const count =
+  let count =
     countFromField != null
       ? countFromField
       : entrants.length > 0
         ? entrants.length
         : 0;
-  const enabled =
+  let enabled =
     typeof directRaw.enabled === "boolean"
       ? directRaw.enabled
       : count > 0 || entrants.length > 0;
 
-  const bypassEntrants = normalizeEntrantRefList(bypassRaw.entrants);
-  const bypassEnabled =
+  const bypassEntrantsRaw = Array.isArray(bypassRaw.entrants)
+    ? bypassRaw.entrants
+    : [];
+  let bypassEntrants = normalizeEntrantRefList(bypassEntrantsRaw);
+  let bypassEnabled =
     typeof bypassRaw.enabled === "boolean"
       ? bypassRaw.enabled
       : bypassEntrants.length > 0;
+
+  // Disabled policies must not affect derivation — clear active content.
+  // Contradictory enabled:false + count/entrants is rejected by raw validation.
+  if (enabled === false) {
+    count = 0;
+    // Keep empty entrants for disabled direct entry
+  }
+  const resolvedDirectEntrants = enabled === false ? [] : entrants;
+
+  if (bypassEnabled === false) {
+    bypassEntrants = [];
+  }
 
   const byePolicy = enumOr(byeRaw.byePolicy, BYE_POLICY, BYE_POLICY.NONE);
   const allocationShape =
@@ -363,7 +408,7 @@ export function createDefaultKnockoutAdmissionPolicy(overrides = {}) {
        * Distinct from bracket-wide knockout.entryRound (derived from qualifierCount).
        */
       targetStage: defaultTargetStage,
-      entrants,
+      entrants: resolvedDirectEntrants,
     },
     bye: {
       /**

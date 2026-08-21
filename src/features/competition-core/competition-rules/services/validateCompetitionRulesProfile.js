@@ -363,17 +363,22 @@ export function validateCompetitionRulesProfile(raw, options = {}) {
     );
   }
 
-  // Reject displayName-as-identity if present on raw admission entrants
+  // Reject displayName-as-identity if present on raw admission entrants.
+  // Never spread/iterate non-array entrants shapes (would throw TypeError).
   if (raw && typeof raw === "object" && raw.knockoutAdmission) {
     const rawAdmission = raw.knockoutAdmission;
-    const rawLists = [
-      ...(rawAdmission.groupStageBypass?.entrants || []),
-      ...(rawAdmission.directKnockoutEntry?.entrants || []),
-    ];
+    const rawLists = [];
+    if (Array.isArray(rawAdmission.groupStageBypass?.entrants)) {
+      rawLists.push(...rawAdmission.groupStageBypass.entrants);
+    }
+    if (Array.isArray(rawAdmission.directKnockoutEntry?.entrants)) {
+      rawLists.push(...rawAdmission.directKnockoutEntry.entrants);
+    }
     for (const item of rawLists) {
       if (
         item &&
         typeof item === "object" &&
+        !Array.isArray(item) &&
         item.displayName != null &&
         !item.entryId &&
         !item.participantId
@@ -605,13 +610,11 @@ export function validateCompetitionRulesProfile(raw, options = {}) {
         COMPETITION_RULES_CAPABILITY_ID.CROSS_GROUP_WILDCARD_RANKING,
       ],
       [
-        profile.knockoutAdmission.groupStageBypass.enabled === true ||
-          (profile.knockoutAdmission.groupStageBypass.entrants || []).length > 0,
+        profile.knockoutAdmission.groupStageBypass.enabled === true,
         COMPETITION_RULES_CAPABILITY_ID.GROUP_STAGE_BYPASS,
       ],
       [
-        profile.knockoutAdmission.directKnockoutEntry.enabled === true ||
-          profile.qualification.directKnockoutEntryCount > 0,
+        profile.knockoutAdmission.directKnockoutEntry.enabled === true,
         COMPETITION_RULES_CAPABILITY_ID.DIRECT_KNOCKOUT_ENTRY,
       ],
       [
