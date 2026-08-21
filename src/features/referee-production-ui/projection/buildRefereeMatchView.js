@@ -9,6 +9,7 @@ import { formatScoringPolicyLabel } from "./formatScoringPolicyLabel.js";
 import { projectCanonicalCourtView } from "./projectCanonicalCourtView.js";
 import { deriveCourtPresentation } from "./deriveCourtPresentation.js";
 import { projectResultStatus } from "./resultStatus.js";
+import { projectMatchOperationHistory } from "./projectMatchOperationHistory.js";
 import {
   formatCompetitionDisplayName,
   formatCompetitionModeLabel,
@@ -71,6 +72,7 @@ function playerNamesForSide(side, names) {
  *   stale?: boolean,
  *   preStart?: object|null,
  *   undoAvailability?: { undoAvailable?: boolean, reasonCode?: string|null, message?: string|null }|null,
+ *   scoreSession?: object|null,
  * }} input
  */
 export function buildRefereeMatchView(input) {
@@ -201,12 +203,30 @@ export function buildRefereeMatchView(input) {
 
   const points = scoreProjection?.points || null;
   const previousGames = readCompletedGames(scoreProjection);
-  const servingPlayer =
-    courtProjection.serving?.serverPlayerId != null
-      ? Object.values(courtProjection.court || {}).find(
-          (slot) => slot && slot.playerId === courtProjection.serving.serverPlayerId
-        ) || null
-      : null;
+  const courtEntries = Object.entries(courtProjection.court || {});
+  const findSlotPlayer = (playerId) => {
+    const id = String(playerId || "").trim();
+    if (!id) return { player: null, slot: null };
+    for (const [slot, player] of courtEntries) {
+      if (player && String(player.playerId) === id) {
+        return { player, slot };
+      }
+    }
+    return { player: null, slot: null };
+  };
+  const servingResolved = findSlotPlayer(courtProjection.serving?.serverPlayerId);
+  const receivingResolved = findSlotPlayer(courtProjection.serving?.receiverPlayerId);
+  const servingPlayer = servingResolved.player;
+  const receivingPlayer = receivingResolved.player;
+  const servingCourtSlot = servingResolved.slot;
+  const receivingCourtSlot = receivingResolved.slot;
+
+  const operationHistory = projectMatchOperationHistory({
+    scoreProjection,
+    scoreSession: input.scoreSession || assigned.scoreSession || null,
+    courtState: input.courtState || match.court || {},
+    matchStatus,
+  });
 
   const hasCourtPlayers =
     (courtProjection.sides?.left?.activePlayers || []).length > 0 ||
@@ -380,13 +400,29 @@ export function buildRefereeMatchView(input) {
             ? sideAName
             : null,
       servingPlayerName: servingPlayer?.displayName || null,
+      servingPlayerId: courtProjection.serving?.serverPlayerId || null,
+      receivingPlayerName: receivingPlayer?.displayName || null,
+      receivingPlayerId: courtProjection.serving?.receiverPlayerId || null,
+      receivingTeamName:
+        receivingSideNow === "SIDE_B"
+          ? sideBName
+          : receivingSideNow === "SIDE_A"
+            ? sideAName
+            : null,
       serviceTurn: isSideOut ? courtProjection.serving?.serviceTurn ?? null : null,
       showServiceTurn: isSideOut === true,
+      servingCourtSlot,
+      receivingCourtSlot,
+      serviceDirection:
+        servingCourtSlot && receivingCourtSlot
+          ? `${servingCourtSlot} → ${receivingCourtSlot}`
+          : null,
       gameLabel: policy.bestOfGames
         ? `${(scoreProjection?.currentGameIndex ?? 0) + 1} / Best of ${policy.bestOfGames}`
         : String((scoreProjection?.currentGameIndex ?? 0) + 1),
       changeEndAt: policy.changeEndAtLabel || null,
     }),
+    operationHistory,
     scoringSystem,
     isSideOut,
     isRally,

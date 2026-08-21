@@ -19,6 +19,7 @@ export {
   HOME_STATUS_FILTER,
   HOME_STATUS_FILTER_LABEL,
   buildRefereeHomeSummary,
+  buildHomeStatusFilterModel,
   filterAssignmentsByHomeStatus,
   filterAssignmentsByDateRange,
   selectUndatedAssignments,
@@ -27,8 +28,17 @@ export {
   resolveAssignmentHomeBucket,
   normalizeRefereeHomeCard,
 } from "./projection/buildRefereeHomeSummary.js";
+export {
+  HOME_TOURNAMENT_FILTER_ALL,
+  HOME_MODE_FILTER_ALL,
+  buildHomeTournamentOptions,
+  buildHomeModeOptions,
+  filterAssignmentsByTournament,
+  filterAssignmentsByCompetitionMode,
+} from "./projection/homePresentationFilters.js";
 export { projectDreamBreakerRotation } from "./projection/projectDreamBreakerRotation.js";
 export { projectCanonicalCourtView } from "./projection/projectCanonicalCourtView.js";
+export { projectMatchOperationHistory } from "./projection/projectMatchOperationHistory.js";
 export { deriveCourtPresentation } from "./projection/deriveCourtPresentation.js";
 export { deriveOptimisticSubmitPointView } from "./projection/deriveOptimisticSubmitPointView.js";
 export { buildRefereeAssignmentCard } from "./projection/buildRefereeAssignmentCard.js";

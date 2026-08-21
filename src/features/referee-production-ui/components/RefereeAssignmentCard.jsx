@@ -40,11 +40,18 @@ export default function RefereeAssignmentCard({ card }) {
         </span>
       </div>
 
-      {stageRound ? (
-        <p className="rp-card-stage" data-testid="stage-round">
-          {stageRound}
-        </p>
-      ) : null}
+      <div className="rp-card-stage-row">
+        {card.competitionModeLabel ? (
+          <p className="rp-card-mode" data-testid="competition-mode">
+            {card.competitionModeLabel}
+          </p>
+        ) : null}
+        {stageRound ? (
+          <p className="rp-card-stage" data-testid="stage-round">
+            {stageRound}
+          </p>
+        ) : null}
+      </div>
 
       <div className="rp-card-vs rp-card-vs-horizontal" data-testid="participants">
         <div className="rp-card-side" data-testid="participant-a">

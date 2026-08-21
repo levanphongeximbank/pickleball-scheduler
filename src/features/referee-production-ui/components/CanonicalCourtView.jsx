@@ -7,10 +7,13 @@ function shortName(displayName, playerId) {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const technicalRe = /^(c4\d{2}a101-|team-|sub-|entry-|p-)/i;
   if (raw && !uuidRe.test(raw) && !technicalRe.test(raw)) {
-    if (raw.length <= 14) return raw;
+    if (raw.length <= 18) return raw;
     const parts = raw.split(/\s+/);
-    if (parts.length >= 2) return `${parts[0]} ${parts[parts.length - 1]}`.slice(0, 14);
-    return raw.slice(0, 14);
+    if (parts.length >= 2) {
+      const compact = `${parts[0]} ${parts[parts.length - 1]}`;
+      return compact.length <= 18 ? compact : compact.slice(0, 18);
+    }
+    return raw.slice(0, 18);
   }
   const source = uuidRe.test(raw) ? raw : uuidRe.test(id) ? id : raw || id;
   if (uuidRe.test(source)) return source.slice(-8);

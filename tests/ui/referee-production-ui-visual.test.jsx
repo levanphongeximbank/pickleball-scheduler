@@ -101,7 +101,12 @@ function baseView(overrides = {}) {
       lifecycleState: "IN_PROGRESS",
       scoreProjection: {
         points: { SIDE_A: 1, SIDE_B: 0 },
-        serve: { servingSide: "SIDE_A", serverNumber: 2, serverPlayerId: "p1" },
+        serve: {
+          servingSide: "SIDE_A",
+          serverNumber: 2,
+          serverPlayerId: "p1",
+          receiverPlayerId: "p4",
+        },
         gamesWonInCurrentSet: { SIDE_A: 0, SIDE_B: 0 },
         currentGameIndex: 0,
         completedGames: [],
@@ -113,10 +118,28 @@ function baseView(overrides = {}) {
           : { serverPlayerId: "p1", receiverPlayerId: "p4" },
       },
     },
+    courtState: {
+      serverPlayerId: "p1",
+      receiverPlayerId: "p4",
+      sideChangeRequired: court.sideChangeRequired === true,
+    },
   });
   return {
     ...built,
     courtProjection: court,
+    servingStatus: {
+      ...built.servingStatus,
+      servingPlayerName:
+        court.serving?.serverPlayerId && NAMES[court.serving.serverPlayerId]
+          ? NAMES[court.serving.serverPlayerId]
+          : built.servingStatus?.servingPlayerName,
+      receivingPlayerName:
+        court.serving?.receiverPlayerId && NAMES[court.serving.receiverPlayerId]
+          ? NAMES[court.serving.receiverPlayerId]
+          : built.servingStatus?.receivingPlayerName,
+      serviceTurn: built.servingStatus?.serviceTurn ?? court.serving?.serviceTurn ?? 2,
+      showServiceTurn: built.isSideOut === true,
+    },
     ...overrides,
     canSwitchPositions: overrides.canSwitchPositions ?? true,
     canChangeEnds: overrides.canChangeEnds ?? true,
@@ -636,8 +659,8 @@ describe("match screen visual states @ ~390px", () => {
         />
       </MemoryRouter>
     );
-    expect(screen.getByTestId("change-ends-warning")).toHaveTextContent("ĐÃ ĐẾN ĐIỂM ĐỔI SÂN");
-    expect(screen.getByTestId("change-ends-policy")).toHaveTextContent(/Điểm đổi sân/);
+    expect(screen.getByTestId("change-ends-warning")).toHaveTextContent("ĐÃ ĐẾN ĐIỂM ĐỔI ĐẦU SÂN");
+    expect(screen.getByTestId("change-ends-policy")).toHaveTextContent(/Điểm đổi đầu sân/);
     expect(screen.getByTestId("change-ends-threshold")).toBeInTheDocument();
     expect(screen.queryByTestId("btn-change-ends")).not.toBeInTheDocument();
     expect(screen.getByTestId("canonical-court-view")).toHaveAttribute(
@@ -938,5 +961,123 @@ describe("remediation05: referee account / nav chrome", () => {
     await user.click(screen.getByTestId("referee-account-menu-trigger"));
     expect(await screen.findByTestId("referee-account-profile")).toBeInTheDocument();
     expect(screen.getByTestId("referee-account-logout")).toBeInTheDocument();
+  });
+});
+
+describe("UI lock reconciliation — home filters + console layout", () => {
+  const TODAY = new Date("2026-08-17T12:00:00+07:00");
+  const todayIso = "2026-08-17T10:00:00+07:00";
+
+  const sampleAssignments = [
+    {
+      competitionId: "comp-internal",
+      matchId: "m-1",
+      competitionMode: "INTERNAL",
+      competitionModeLabel: "Giải nội bộ",
+      matchStatus: "READY_TO_START",
+      competitionName: "Giải nội bộ CLB A",
+      participantA: "An / Bình",
+      participantAEntryLabel: "Đội 9",
+      participantAMemberLine: "An / Bình",
+      participantB: "Chi / Dũng",
+      participantBEntryLabel: "Đội 10",
+      participantBMemberLine: "Chi / Dũng",
+      courtLabel: "TT412 Sân 1",
+      scheduledTime: "10:00",
+      scheduledTimeRaw: todayIso,
+      action: "ENTER",
+      actionLabel: "VÀO TRẬN",
+      href: "/referee/match/m-1",
+    },
+    {
+      competitionId: "comp-team",
+      matchId: "m-2",
+      competitionMode: "TEAM",
+      competitionModeLabel: "Giải đồng đội",
+      matchStatus: "IN_PROGRESS",
+      competitionName: "Giải đồng đội 13/8/2026",
+      participantA: "Lan / Minh",
+      participantB: "Hà / Nam",
+      courtLabel: "Sân 2",
+      scheduledTime: "11:00",
+      scheduledTimeRaw: todayIso,
+      action: "CONTINUE",
+      actionLabel: "TIẾP TỤC",
+      href: "/referee/match/m-2",
+    },
+  ];
+
+  it("tournament + mode + status filters combine without mutating authority", async () => {
+    const user = userEvent.setup();
+    const frozen = structuredClone(sampleAssignments);
+    render(
+      <MemoryRouter>
+        <RefereeHome userLabel="Phong" now={TODAY} assignments={sampleAssignments} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId("home-tournament-filter")).toBeInTheDocument();
+    expect(screen.getByTestId("home-mode-filter")).toBeInTheDocument();
+    expect(screen.getAllByTestId("referee-assignment-card")).toHaveLength(2);
+
+    await user.selectOptions(screen.getByTestId("home-tournament-filter"), "comp-internal");
+    expect(screen.getAllByTestId("referee-assignment-card")).toHaveLength(1);
+    expect(screen.getByTestId("competition-name")).toHaveTextContent("Giải nội bộ CLB A");
+    expect(screen.getByTestId("meta-court")).toHaveTextContent("TT412 Sân 1");
+    expect(screen.getByTestId("participant-a-entry")).toHaveTextContent("Đội 9");
+    expect(screen.getByTestId("participant-a-members")).toHaveTextContent("An / Bình");
+
+    await user.selectOptions(screen.getByTestId("home-tournament-filter"), "ALL");
+    await user.selectOptions(screen.getByTestId("home-mode-filter"), "TEAM");
+    expect(screen.getAllByTestId("referee-assignment-card")).toHaveLength(1);
+    expect(screen.getByTestId("competition-name")).toHaveTextContent("Giải đồng đội");
+
+    await user.click(screen.getByTestId("filter-live"));
+    expect(screen.getAllByTestId("referee-assignment-card")).toHaveLength(1);
+
+    expect(sampleAssignments).toEqual(frozen);
+  });
+
+  it("match console exposes 3 zones, receiver, history, đổi đầu sân wording", () => {
+    render(
+      <MemoryRouter>
+        <div style={{ width: 1440 }}>
+          <RefereeMatchScreen view={baseView({ canChangeEnds: true, canSuspend: true })} />
+        </div>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId("referee-console-layout")).toBeInTheDocument();
+    expect(screen.getByTestId("console-zone-context")).toBeInTheDocument();
+    expect(screen.getByTestId("console-zone-score")).toBeInTheDocument();
+    expect(screen.getByTestId("console-zone-tools")).toBeInTheDocument();
+    expect(screen.getByTestId("side-identity-a-entry")).toBeInTheDocument();
+    expect(screen.getByTestId("side-identity-a-athletes")).toBeInTheDocument();
+    expect(screen.getByTestId("receiving-player-name")).toHaveTextContent("Dũng");
+    expect(screen.getByTestId("serving-player-name")).toHaveTextContent("An");
+    expect(screen.getByTestId("match-operation-history")).toBeInTheDocument();
+    expect(screen.getByTestId("btn-change-ends")).toHaveTextContent("Đổi đầu sân");
+    expect(screen.queryByText(/ĐỔI SÂN \/ ĐỔI ĐẦU SÂN/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("btn-change-court")).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/CHANGE_COURT/);
+  });
+
+  it("unsupported footer actions are hidden (not fake-enabled)", () => {
+    render(
+      <MemoryRouter>
+        <RefereeMatchScreen
+          view={baseView({
+            canSuspend: false,
+            canResume: false,
+            canCorrect: false,
+            canComplete: false,
+          })}
+        />
+      </MemoryRouter>
+    );
+    expect(screen.queryByTestId("btn-suspend")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("btn-correct")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("btn-complete")).not.toBeInTheDocument();
+    expect(screen.getByTestId("btn-footer-back")).toBeInTheDocument();
   });
 });

@@ -308,3 +308,46 @@ export function filterAssignmentsByHomeStatus(assignments = [], filterId = HOME_
   if (key === HOME_STATUS_FILTER.ALL) return list;
   return list.filter((card) => resolveAssignmentHomeBucket(card) === key);
 }
+
+/**
+ * Recompute status counters/tabs for a presentation-filtered board (date ∩ tournament ∩ mode).
+ * Does not re-query assignments — projection only.
+ * @param {object[]} board
+ */
+export function buildHomeStatusFilterModel(board = []) {
+  const list = Array.isArray(board) ? board : [];
+  let upcoming = 0;
+  let live = 0;
+  let done = 0;
+  for (const card of list) {
+    const bucket = resolveAssignmentHomeBucket(card);
+    if (bucket === HOME_STATUS_FILTER.LIVE) live += 1;
+    else if (bucket === HOME_STATUS_FILTER.DONE) done += 1;
+    else upcoming += 1;
+  }
+  return Object.freeze({
+    counters: Object.freeze({ upcoming, live, done }),
+    filters: Object.freeze([
+      Object.freeze({
+        id: HOME_STATUS_FILTER.ALL,
+        label: HOME_STATUS_FILTER_LABEL.ALL,
+        count: list.length,
+      }),
+      Object.freeze({
+        id: HOME_STATUS_FILTER.UPCOMING,
+        label: HOME_STATUS_FILTER_LABEL.UPCOMING,
+        count: upcoming,
+      }),
+      Object.freeze({
+        id: HOME_STATUS_FILTER.LIVE,
+        label: HOME_STATUS_FILTER_LABEL.LIVE,
+        count: live,
+      }),
+      Object.freeze({
+        id: HOME_STATUS_FILTER.DONE,
+        label: HOME_STATUS_FILTER_LABEL.DONE,
+        count: done,
+      }),
+    ]),
+  });
+}

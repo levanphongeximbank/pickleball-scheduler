@@ -599,6 +599,7 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
       preStart,
       actor,
       undoAvailability,
+      scoreSession,
     });
   }
 

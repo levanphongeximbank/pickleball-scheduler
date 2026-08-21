@@ -1,4 +1,4 @@
-/* Canonical production Referee UI — mobile-first (≈390–430px), mockup-aligned */
+/* Canonical production Referee UI — responsive lock (mobile → tablet → desktop 3-zone) */
 
 .rp-page {
   --rp-ink: #1b3a2a;
@@ -12,17 +12,24 @@
   --rp-a: #2e7d32;
   --rp-b: #c62828;
   --rp-accent: #1b5e20;
-  max-width: 430px;
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto;
   padding: 8px 12px 24px;
   box-sizing: border-box;
   color: var(--rp-ink);
   font-family: "Segoe UI", "Be Vietnam Pro", system-ui, sans-serif;
   background: #f7faf7;
+  overflow-x: hidden;
+}
+
+.rp-page-home {
+  max-width: 960px;
 }
 
 .rp-page-match {
   padding-top: 6px;
+  max-width: 1440px;
 }
 
 .rp-compact-chrome {
@@ -118,6 +125,13 @@
   margin-bottom: 10px;
 }
 
+.rp-home-select-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
 .rp-home-date-field {
   display: flex;
   flex-direction: column;
@@ -127,7 +141,8 @@
   color: var(--rp-muted);
 }
 
-.rp-home-date-field input[type="date"] {
+.rp-home-date-field input[type="date"],
+.rp-home-date-field select {
   border: 1px solid var(--rp-line);
   border-radius: 8px;
   padding: 8px 10px;
@@ -271,6 +286,20 @@
   color: var(--rp-muted);
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.rp-card-stage-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 4px 0 2px;
+}
+
+.rp-card-mode {
+  margin: 0;
+  color: var(--rp-green);
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
 .rp-card-vs {
@@ -1228,10 +1257,234 @@
 }
 
 .rp-qr-secondary {
-  max-width: 430px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 0 12px 16px;
   text-align: center;
+}
+
+/* --- Console zones + responsive lock --- */
+
+.rp-console {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.rp-zone {
+  min-width: 0;
+}
+
+.rp-zone-context {
+  order: 6;
+}
+
+.rp-zone-score {
+  order: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rp-zone-score .rp-scoreboard {
+  order: 1;
+}
+
+.rp-zone-score .rp-serve-strip {
+  order: 2;
+}
+
+.rp-zone-score .rp-court {
+  order: 3;
+}
+
+.rp-zone-score .rp-lineup-panel,
+.rp-zone-score .rp-btn-lineup,
+.rp-zone-score [data-testid="btn-start"] {
+  order: 4;
+}
+
+.rp-zone-score .rp-score-actions {
+  order: 5;
+}
+
+.rp-zone-tools {
+  order: 7;
+}
+
+.rp-footer-actions {
+  order: 5;
+}
+
+.rp-side-stack {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.rp-side-identity {
+  background: #fff;
+  border: 1px solid var(--rp-line);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.rp-side-identity-key {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--rp-muted);
+  text-transform: uppercase;
+}
+
+.rp-side-entry {
+  display: block;
+  margin: 2px 0 4px;
+  font-size: 0.92rem;
+  color: var(--rp-green);
+}
+
+.rp-side-athletes {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.rp-side-athlete-empty {
+  color: var(--rp-muted);
+  font-weight: 600;
+}
+
+.rp-technical-detail {
+  margin: 6px 0 0;
+  font-size: 0.72rem;
+  color: var(--rp-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rp-op-history {
+  border: 1px solid var(--rp-line);
+  border-radius: 12px;
+  padding: 10px;
+  margin: 6px 0 8px;
+  background: #fff;
+}
+
+.rp-op-history-title {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--rp-green);
+}
+
+.rp-op-history-list {
+  margin: 0;
+  padding-left: 18px;
+  max-height: 240px;
+  overflow: auto;
+  font-size: 0.78rem;
+}
+
+.rp-op-history-list li {
+  margin-bottom: 4px;
+}
+
+.rp-op-history-list span {
+  display: block;
+  color: var(--rp-muted);
+  font-weight: 600;
+}
+
+.rp-serve-icon-teal {
+  color: #00897b;
+}
+
+@media (max-width: 767px) {
+  .rp-page-home,
+  .rp-page-match {
+    max-width: 430px;
+  }
+
+  .rp-home-select-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .rp-footer-actions {
+    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1099px) {
+  .rp-console {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.9fr) minmax(340px, 1.4fr);
+    grid-template-areas:
+      "context score"
+      "tools score";
+    gap: 12px 16px;
+    align-items: start;
+  }
+
+  .rp-zone-context {
+    grid-area: context;
+    order: unset;
+  }
+
+  .rp-zone-score {
+    grid-area: score;
+    order: unset;
+  }
+
+  .rp-zone-tools {
+    grid-area: tools;
+    order: unset;
+  }
+
+  .rp-court {
+    max-height: 300px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .rp-console {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) minmax(420px, 1.7fr) minmax(260px, 1fr);
+    grid-template-areas: "context score tools";
+    gap: 14px 18px;
+    align-items: start;
+  }
+
+  .rp-zone-context {
+    grid-area: context;
+    order: unset;
+    position: sticky;
+    top: 56px;
+  }
+
+  .rp-zone-score {
+    grid-area: score;
+    order: unset;
+  }
+
+  .rp-zone-tools {
+    grid-area: tools;
+    order: unset;
+    position: sticky;
+    top: 56px;
+  }
+
+  .rp-court {
+    max-height: 340px;
+  }
+
+  .rp-score-num {
+    font-size: 3.2rem;
+  }
 }
 
 @media (min-width: 431px) {

@@ -84,7 +84,7 @@ export function formatScoringPolicyLabel(input = {}) {
           value: cap != null && Number.isFinite(cap) ? String(cap) : "Không",
         }),
         changeEndAt
-          ? Object.freeze({ key: "changeEnd", label: "Điểm đổi sân", value: changeEndAt })
+          ? Object.freeze({ key: "changeEnd", label: "Điểm đổi đầu sân", value: changeEndAt })
           : null,
         bestOf > 0
           ? Object.freeze({ key: "bestOf", label: "Thể thức", value: `Best of ${bestOf}` })

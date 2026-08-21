@@ -89,11 +89,12 @@ function RulesPanel({ rules }) {
   );
 }
 
-function ServingStatusStrip({ serving, expectedVersion }) {
+function ServingStatusStrip({ serving, expectedVersion, compactVersion = true }) {
   if (!serving) return null;
   const hasAny =
     serving.servingTeamName ||
     serving.servingPlayerName ||
+    serving.receivingPlayerName ||
     (serving.showServiceTurn && serving.serviceTurn != null) ||
     serving.gameLabel;
   if (!hasAny) return null;
@@ -110,12 +111,30 @@ function ServingStatusStrip({ serving, expectedVersion }) {
           </strong>
         </span>
       </span>
+      <span className="rp-serve-cell" data-testid="receive-player">
+        <PersonIcon className="rp-serve-icon rp-serve-icon-teal" fontSize="inherit" aria-hidden="true" />
+        <span>
+          Đỡ bóng
+          <strong data-testid="receiving-player-name">
+            {serving.receivingPlayerName || "—"}
+          </strong>
+        </span>
+      </span>
       {serving.showServiceTurn ? (
         <span className="rp-serve-cell" data-testid="service-turn">
           <PersonIcon className="rp-serve-icon rp-serve-icon-green" fontSize="inherit" aria-hidden="true" />
           <span>
             Lượt giao
             <strong data-testid="service-turn-number">{turnLabel}</strong>
+          </span>
+        </span>
+      ) : null}
+      {serving.serviceDirection ? (
+        <span className="rp-serve-cell" data-testid="service-direction">
+          <SyncAltIcon className="rp-serve-icon rp-serve-icon-muted" fontSize="inherit" aria-hidden="true" />
+          <span>
+            Hướng giao
+            <strong>{serving.serviceDirection}</strong>
           </span>
         </span>
       ) : null}
@@ -128,7 +147,7 @@ function ServingStatusStrip({ serving, expectedVersion }) {
           </span>
         </span>
       ) : null}
-      {expectedVersion != null ? (
+      {expectedVersion != null && !compactVersion ? (
         <span className="rp-serve-cell rp-serve-version" data-testid="serve-version">
           <InfoOutlinedIcon className="rp-serve-icon rp-serve-icon-info" fontSize="inherit" aria-hidden="true" />
           <span>
@@ -137,6 +156,54 @@ function ServingStatusStrip({ serving, expectedVersion }) {
           </span>
         </span>
       ) : null}
+    </div>
+  );
+}
+
+function OperationHistoryPanel({ history }) {
+  if (!history) return null;
+  const rows = Array.isArray(history.rows) ? history.rows : [];
+  return (
+    <section className="rp-op-history" data-testid="match-operation-history">
+      <h2 className="rp-op-history-title">Lịch sử trận</h2>
+      {rows.length === 0 ? (
+        <p className="rp-sub" data-testid="match-history-empty">
+          Chưa có sự kiện ghi điểm từ runtime.
+        </p>
+      ) : (
+        <ol className="rp-op-history-list" data-testid="match-history-list" data-source={history.source || "canonical"}>
+          {[...rows].reverse().map((row) => (
+            <li key={row.id} data-testid={`history-row-${row.kind}`} data-history-kind={row.kind}>
+              <strong>{row.label}</strong>
+              {row.detail ? <span>{row.detail}</span> : null}
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function SideIdentityBlock({ sideKey, entryLabel, members, playerNames, testId }) {
+  const names =
+    Array.isArray(members) && members.length
+      ? members.map((m) => m.displayName || m.name).filter(Boolean)
+      : Array.isArray(playerNames)
+        ? playerNames.filter(Boolean)
+        : [];
+  return (
+    <div className="rp-side-identity" data-testid={testId}>
+      <span className="rp-side-identity-key">Side {sideKey}</span>
+      <strong className="rp-side-entry" data-testid={`${testId}-entry`}>
+        {entryLabel || `Đội ${sideKey}`}
+      </strong>
+      <ul className="rp-side-athletes" data-testid={`${testId}-athletes`}>
+        {names.length ? (
+          names.map((name) => <li key={name}>{name}</li>)
+        ) : (
+          <li className="rp-side-athlete-empty">Chưa có tên VĐV</li>
+        )}
+      </ul>
     </div>
   );
 }
@@ -503,29 +570,7 @@ export default function RefereeMatchScreen({
             </span>
           ) : null}
         </div>
-        <div className="rp-match-context" data-testid="match-context-row">
-          <span className="rp-match-context-item">
-            <SportsTennisIcon fontSize="inherit" aria-hidden="true" />
-            {view.courtLabel || "Sân?"}
-          </span>
-          <span className="rp-meta-sep" aria-hidden="true">
-            |
-          </span>
-          <span className="rp-match-context-item">
-            <EmojiEventsIcon fontSize="inherit" aria-hidden="true" />
-            {view.competitionName}
-          </span>
-          <span className="rp-meta-sep" aria-hidden="true">
-            |
-          </span>
-          <span className="rp-match-context-item">
-            <AccountTreeIcon fontSize="inherit" aria-hidden="true" />
-            {view.stageRoundLabel || view.stageName || view.roundName || "—"}
-          </span>
-        </div>
       </header>
-
-      <RulesPanel rules={view.rulesPanel} />
 
       {view.resultStatus && view.resultStatus !== "NONE" ? (
         <Banner
@@ -574,102 +619,336 @@ export default function RefereeMatchScreen({
         </Banner>
       ) : null}
 
-      <section
-        className="rp-scoreboard"
-        data-testid="scoreboard"
-        data-orientation={presentation.courtOrientation}
-        data-left-scoring-side={leftScoring}
-        data-right-scoring-side={rightScoring}
-        aria-live="polite"
-      >
-        <div className="rp-scoreboard-trio" data-testid="current-game-score">
-          <div
-            className={`rp-score-side${
-              presentation.servingSide === leftScoring ? " is-serving" : ""
-            }`}
-          >
-            <GroupsIcon className="rp-score-side-icon" fontSize="small" aria-hidden="true" />
-            <div className="rp-score-team-name" data-testid="team-name-a">
-              {leftTeam}
-            </div>
-            {leftPlayersLine && leftPlayersLine !== leftTeam ? (
-              <div className="rp-score-label" data-testid="participant-names-a">
-                {leftPlayersLine}
-              </div>
-            ) : (
-              <div className="rp-score-label" data-testid="participant-names-a">
-                {leftPlayersLine || leftTeam}
-              </div>
-            )}
-          </div>
-          <div className="rp-score-center">
-            <span
-              className={`rp-score-num${pending && String(pendingAction || "").startsWith("point") ? " is-pending" : ""}`}
-              data-testid="score-a"
-            >
-              {scoreA}
+      <div className="rp-console" data-testid="referee-console-layout">
+        <aside className="rp-zone rp-zone-context" data-testid="console-zone-context">
+          <div className="rp-match-context" data-testid="match-context-row">
+            <span className="rp-match-context-item">
+              <SportsTennisIcon fontSize="inherit" aria-hidden="true" />
+              {view.courtLabel || "Sân?"}
             </span>
-            <span className="rp-score-colon" aria-hidden="true">
-              :
+            <span className="rp-match-context-item">
+              <EmojiEventsIcon fontSize="inherit" aria-hidden="true" />
+              {view.competitionName}
             </span>
-            <span
-              className={`rp-score-num${pending && String(pendingAction || "").startsWith("point") ? " is-pending" : ""}`}
-              data-testid="score-b"
-            >
-              {scoreB}
-            </span>
-            {pending && String(pendingAction || "").startsWith("point") ? (
-              <span className="rp-score-pending" data-testid="score-pending-hint">
-                Đang xác nhận...
+            {view.competitionModeLabel ? (
+              <span className="rp-match-context-item" data-testid="match-mode-label">
+                <GroupsIcon fontSize="inherit" aria-hidden="true" />
+                {view.competitionModeLabel}
               </span>
             ) : null}
-          </div>
-          <div
-            className={`rp-score-side rp-score-side-right${
-              presentation.servingSide === rightScoring ? " is-serving" : ""
-            }`}
-          >
-            <GroupsIcon className="rp-score-side-icon" fontSize="small" aria-hidden="true" />
-            <div className="rp-score-team-name" data-testid="team-name-b">
-              {rightTeam}
-            </div>
-            {rightPlayersLine && rightPlayersLine !== rightTeam ? (
-              <div className="rp-score-label" data-testid="participant-names-b">
-                {rightPlayersLine}
-              </div>
-            ) : (
-              <div className="rp-score-label" data-testid="participant-names-b">
-                {rightPlayersLine || rightTeam}
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <CanonicalCourtView courtProjection={court} />
-
-      <ServingStatusStrip serving={view.servingStatus} expectedVersion={versionLabel} />
-
-      <DreamBreakerPanel db={db} />
-
-      {changeEndAt ? (
-        <div className="rp-change-ends-section" data-testid="change-ends-section">
-          <div className="rp-change-ends-policy" data-testid="change-ends-policy">
-            <SyncAltIcon fontSize="inherit" aria-hidden="true" />
-            <span>
-              Điểm đổi sân: <strong data-testid="change-ends-threshold">{changeEndAt}</strong>
+            <span className="rp-match-context-item">
+              <AccountTreeIcon fontSize="inherit" aria-hidden="true" />
+              {view.stageRoundLabel || view.stageName || view.roundName || "—"}
             </span>
           </div>
-          {changeEndsRequired ? (
+
+          <div className="rp-side-stack" data-testid="match-side-identities">
+            <SideIdentityBlock
+              sideKey="A"
+              entryLabel={view.participantDisplay?.sideA?.entryLabel || view.participantDisplay?.sideA?.label}
+              members={view.participantDisplay?.sideA?.members}
+              playerNames={view.participantDisplay?.sideA?.playerNames}
+              testId="side-identity-a"
+            />
+            <SideIdentityBlock
+              sideKey="B"
+              entryLabel={view.participantDisplay?.sideB?.entryLabel || view.participantDisplay?.sideB?.label}
+              members={view.participantDisplay?.sideB?.members}
+              playerNames={view.participantDisplay?.sideB?.playerNames}
+              testId="side-identity-b"
+            />
+          </div>
+
+          <RulesPanel rules={view.rulesPanel} />
+          {versionLabel != null ? (
+            <p className="rp-technical-detail" data-testid="serve-version">
+              <InfoOutlinedIcon fontSize="inherit" aria-hidden="true" /> Version {versionLabel}
+            </p>
+          ) : null}
+        </aside>
+
+        <main className="rp-zone rp-zone-score" data-testid="console-zone-score">
+          <section
+            className="rp-scoreboard"
+            data-testid="scoreboard"
+            data-orientation={presentation.courtOrientation}
+            data-left-scoring-side={leftScoring}
+            data-right-scoring-side={rightScoring}
+            aria-live="polite"
+          >
+            <div className="rp-scoreboard-trio" data-testid="current-game-score">
+              <div
+                className={`rp-score-side${
+                  presentation.servingSide === leftScoring ? " is-serving" : ""
+                }`}
+              >
+                <GroupsIcon className="rp-score-side-icon" fontSize="small" aria-hidden="true" />
+                <div className="rp-score-team-name" data-testid="team-name-a">
+                  {leftTeam}
+                </div>
+                {leftPlayersLine && leftPlayersLine !== leftTeam ? (
+                  <div className="rp-score-label" data-testid="participant-names-a">
+                    {leftPlayersLine}
+                  </div>
+                ) : (
+                  <div className="rp-score-label" data-testid="participant-names-a">
+                    {leftPlayersLine || leftTeam}
+                  </div>
+                )}
+              </div>
+              <div className="rp-score-center">
+                <span
+                  className={`rp-score-num${pending && String(pendingAction || "").startsWith("point") ? " is-pending" : ""}`}
+                  data-testid="score-a"
+                >
+                  {scoreA}
+                </span>
+                <span className="rp-score-colon" aria-hidden="true">
+                  :
+                </span>
+                <span
+                  className={`rp-score-num${pending && String(pendingAction || "").startsWith("point") ? " is-pending" : ""}`}
+                  data-testid="score-b"
+                >
+                  {scoreB}
+                </span>
+                {pending && String(pendingAction || "").startsWith("point") ? (
+                  <span className="rp-score-pending" data-testid="score-pending-hint">
+                    Đang xác nhận...
+                  </span>
+                ) : null}
+              </div>
+              <div
+                className={`rp-score-side rp-score-side-right${
+                  presentation.servingSide === rightScoring ? " is-serving" : ""
+                }`}
+              >
+                <GroupsIcon className="rp-score-side-icon" fontSize="small" aria-hidden="true" />
+                <div className="rp-score-team-name" data-testid="team-name-b">
+                  {rightTeam}
+                </div>
+                {rightPlayersLine && rightPlayersLine !== rightTeam ? (
+                  <div className="rp-score-label" data-testid="participant-names-b">
+                    {rightPlayersLine}
+                  </div>
+                ) : (
+                  <div className="rp-score-label" data-testid="participant-names-b">
+                    {rightPlayersLine || rightTeam}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <ServingStatusStrip serving={view.servingStatus} expectedVersion={versionLabel} />
+
+          <CanonicalCourtView courtProjection={court} />
+
+          <DreamBreakerPanel db={db} />
+
+          <LineupSetupPanel
+            view={view}
+            open={lineupOpen || view.lineupRequired === true}
+            pending={pending}
+            stale={stale}
+            onClose={() => setLineupOpen(false)}
+            onConfirm={async (payload) => {
+              const result = await onConfigureLineup?.(payload);
+              if (result?.ok !== false) setLineupOpen(false);
+            }}
+          />
+
+          {view.canSwitchPositions || view.lineupRequired ? (
+            <button
+              type="button"
+              className={`rp-btn rp-btn-ghost rp-btn-lineup${view.lineupRequired ? " is-required" : ""}`}
+              disabled={pending || stale}
+              onClick={() => setLineupOpen(true)}
+              data-testid="btn-switch-positions"
+            >
+              <GroupsIcon fontSize="small" aria-hidden="true" />
+              Sắp xếp đội hình
+              {view.lineupRequired ? " *" : ""}
+            </button>
+          ) : null}
+
+          {view.canStart ? (
+            <button
+              type="button"
+              className="rp-btn rp-btn-primary rp-actions-wide"
+              disabled={pending || stale}
+              onClick={onStart}
+              data-testid="btn-start"
+            >
+              Bắt đầu trận
+            </button>
+          ) : null}
+
+          {view.canScore ? (
+            <div className="rp-score-actions" data-testid="score-actions">
+              {view.isSideOut ? (
+                <>
+                  {leftCanPoint ? (
+                    <button
+                      type="button"
+                      className="rp-btn rp-btn-a rp-actions-wide"
+                      disabled={pending || stale}
+                      onClick={leftPointHandler}
+                      data-testid={
+                        leftScoring === "SIDE_A" ? "btn-point-a" : "btn-point-b"
+                      }
+                      data-scoring-side={leftScoring}
+                      data-display-end="left"
+                    >
+                      {String(pendingAction || "").startsWith("point")
+                        ? "Đang xác nhận..."
+                        : pointLabel(leftName, leftScoring === "SIDE_B" ? "B" : "A")}
+                    </button>
+                  ) : null}
+                  {rightCanPoint ? (
+                    <button
+                      type="button"
+                      className="rp-btn rp-btn-b rp-actions-wide"
+                      disabled={pending || stale}
+                      onClick={rightPointHandler}
+                      data-testid={
+                        rightScoring === "SIDE_B" ? "btn-point-b" : "btn-point-a"
+                      }
+                      data-scoring-side={rightScoring}
+                      data-display-end="right"
+                    >
+                      {String(pendingAction || "").startsWith("point")
+                        ? "Đang xác nhận..."
+                        : pointLabel(rightName, rightScoring === "SIDE_A" ? "A" : "B")}
+                    </button>
+                  ) : null}
+                  {view.canChangeServe ? (
+                    <button
+                      type="button"
+                      className="rp-btn rp-btn-warn rp-actions-wide"
+                      disabled={pending || stale}
+                      onClick={onChangeServe}
+                      data-testid="btn-change-serve"
+                    >
+                      {pendingAction === "change-serve" ? "Đang xác nhận..." : "ĐỔI GIAO"}
+                    </button>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="rp-btn rp-btn-a"
+                    disabled={pending || stale || leftCanPoint === false}
+                    onClick={leftPointHandler}
+                    data-testid={leftScoring === "SIDE_A" ? "btn-point-a" : "btn-point-b"}
+                    data-scoring-side={leftScoring}
+                    data-display-end="left"
+                  >
+                    {String(pendingAction || "") === leftPendingKey
+                      ? "Đang xác nhận..."
+                      : pointLabel(leftName, leftScoring === "SIDE_B" ? "B" : "A")}
+                  </button>
+                  <button
+                    type="button"
+                    className="rp-btn rp-btn-b"
+                    disabled={pending || stale || rightCanPoint === false}
+                    onClick={rightPointHandler}
+                    data-testid={rightScoring === "SIDE_B" ? "btn-point-b" : "btn-point-a"}
+                    data-scoring-side={rightScoring}
+                    data-display-end="right"
+                  >
+                    {String(pendingAction || "") === rightPendingKey
+                      ? "Đang xác nhận..."
+                      : pointLabel(rightName, rightScoring === "SIDE_A" ? "A" : "B")}
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                className="rp-btn rp-btn-ghost rp-actions-wide rp-btn-undo"
+                disabled={pending || stale || view.canUndo !== true}
+                onClick={onUndoLastScoringAction}
+                data-testid="btn-undo-last-scoring-action"
+                aria-label="Hoàn tác lần ghi gần nhất"
+                title={
+                  view.canUndo === true
+                    ? "Hoàn tác lần ghi gần nhất"
+                    : view.undoAvailability?.message ||
+                      "Không thể hoàn tác lần ghi gần nhất"
+                }
+              >
+                {pendingAction === "undo"
+                  ? "Đang hoàn tác..."
+                  : "↶ Hoàn tác lần ghi gần nhất"}
+              </button>
+            </div>
+          ) : view.canUndo === true || pendingAction === "undo" ? (
+            <div className="rp-score-actions" data-testid="score-actions">
+              <button
+                type="button"
+                className="rp-btn rp-btn-ghost rp-actions-wide rp-btn-undo"
+                disabled={pending || stale || view.canUndo !== true}
+                onClick={onUndoLastScoringAction}
+                data-testid="btn-undo-last-scoring-action"
+                aria-label="Hoàn tác lần ghi gần nhất"
+              >
+                {pendingAction === "undo"
+                  ? "Đang hoàn tác..."
+                  : "↶ Hoàn tác lần ghi gần nhất"}
+              </button>
+            </div>
+          ) : null}
+        </main>
+
+        <aside className="rp-zone rp-zone-tools" data-testid="console-zone-tools">
+          <GameHistoryPanel summary={view.gameSummary} />
+          <OperationHistoryPanel history={view.operationHistory} />
+
+          {changeEndAt ? (
+            <div className="rp-change-ends-section" data-testid="change-ends-section">
+              <div className="rp-change-ends-policy" data-testid="change-ends-policy">
+                <SyncAltIcon fontSize="inherit" aria-hidden="true" />
+                <span>
+                  Điểm đổi đầu sân: <strong data-testid="change-ends-threshold">{changeEndAt}</strong>
+                </span>
+              </div>
+              {changeEndsRequired ? (
+                <div className="rp-change-ends-required" data-testid="change-ends-warning">
+                  <div className="rp-change-ends-copy-block">
+                    <p className="rp-change-ends-title">
+                      <FlagIcon fontSize="inherit" aria-hidden="true" /> ĐÃ ĐẾN ĐIỂM ĐỔI ĐẦU SÂN
+                    </p>
+                    <p className="rp-change-ends-copy">
+                      {view.isOptimisticPresentation
+                        ? "Đang chờ máy chủ xác nhận..."
+                        : "Vui lòng xác nhận sau khi hai bên đã đổi đầu sân (cùng sân thi đấu)."}
+                    </p>
+                  </div>
+                  {!confirmChangeEnds ? (
+                    <button
+                      type="button"
+                      className="rp-btn rp-btn-warn rp-btn-change-ends"
+                      disabled={changeEndConfirmBlocked}
+                      onClick={() => setConfirmChangeEnds(true)}
+                      data-testid="btn-change-ends-required"
+                    >
+                      <SyncAltIcon fontSize="inherit" aria-hidden="true" /> XÁC NHẬN ĐỔI ĐẦU SÂN
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : changeEndsRequired ? (
             <div className="rp-change-ends-required" data-testid="change-ends-warning">
               <div className="rp-change-ends-copy-block">
                 <p className="rp-change-ends-title">
-                  <FlagIcon fontSize="inherit" aria-hidden="true" /> ĐÃ ĐẾN ĐIỂM ĐỔI SÂN
+                  <FlagIcon fontSize="inherit" aria-hidden="true" /> ĐÃ ĐẾN ĐIỂM ĐỔI ĐẦU SÂN
                 </p>
                 <p className="rp-change-ends-copy">
                   {view.isOptimisticPresentation
                     ? "Đang chờ máy chủ xác nhận..."
-                    : "Vui lòng xác nhận sau khi hai bên đã đổi đầu sân."}
+                    : "Vui lòng xác nhận sau khi hai bên đã đổi đầu sân (cùng sân thi đấu)."}
                 </p>
               </div>
               {!confirmChangeEnds ? (
@@ -680,230 +959,50 @@ export default function RefereeMatchScreen({
                   onClick={() => setConfirmChangeEnds(true)}
                   data-testid="btn-change-ends-required"
                 >
-                  <SyncAltIcon fontSize="inherit" aria-hidden="true" /> XÁC NHẬN ĐỔI SÂN
+                  <SyncAltIcon fontSize="inherit" aria-hidden="true" /> XÁC NHẬN ĐỔI ĐẦU SÂN
                 </button>
               ) : null}
             </div>
           ) : null}
-        </div>
-      ) : changeEndsRequired ? (
-        <div className="rp-change-ends-required" data-testid="change-ends-warning">
-          <div className="rp-change-ends-copy-block">
-            <p className="rp-change-ends-title">
-              <FlagIcon fontSize="inherit" aria-hidden="true" /> ĐÃ ĐẾN ĐIỂM ĐỔI SÂN
-            </p>
-            <p className="rp-change-ends-copy">
-              {view.isOptimisticPresentation
-                ? "Đang chờ máy chủ xác nhận..."
-                : "Vui lòng xác nhận sau khi hai bên đã đổi đầu sân."}
-            </p>
-          </div>
-          {!confirmChangeEnds ? (
+
+          {confirmChangeEnds ? (
+            <div className="rp-confirm" data-testid="change-ends-confirm">
+              <p>Xác nhận đổi đầu sân? Hướng sân chỉ đổi sau khi máy chủ xác nhận (ACK).</p>
+              <div className="rp-confirm-actions">
+                <button
+                  type="button"
+                  className="rp-btn rp-btn-ghost"
+                  onClick={() => setConfirmChangeEnds(false)}
+                  data-testid="btn-change-ends-cancel"
+                >
+                  Huỷ
+                </button>
+                <button
+                  type="button"
+                  className="rp-btn rp-btn-warn"
+                  disabled={pending}
+                  onClick={handleConfirmChangeEnds}
+                  data-testid="btn-change-ends-confirm"
+                >
+                  XÁC NHẬN ĐỔI ĐẦU SÂN
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {showManualChangeEnds ? (
             <button
               type="button"
-              className="rp-btn rp-btn-warn rp-btn-change-ends"
-              disabled={changeEndConfirmBlocked}
+              className="rp-btn rp-btn-warn rp-actions-wide"
+              disabled={pending || stale}
               onClick={() => setConfirmChangeEnds(true)}
-              data-testid="btn-change-ends-required"
+              data-testid="btn-change-ends"
             >
-              <SyncAltIcon fontSize="inherit" aria-hidden="true" /> XÁC NHẬN ĐỔI SÂN
+              Đổi đầu sân
             </button>
           ) : null}
-        </div>
-      ) : null}
-
-      {confirmChangeEnds ? (
-        <div className="rp-confirm" data-testid="change-ends-confirm">
-          <p>Xác nhận đổi sân? Sân chỉ đổi sau khi máy chủ xác nhận (ACK).</p>
-          <div className="rp-confirm-actions">
-            <button
-              type="button"
-              className="rp-btn rp-btn-ghost"
-              onClick={() => setConfirmChangeEnds(false)}
-              data-testid="btn-change-ends-cancel"
-            >
-              Huỷ
-            </button>
-            <button
-              type="button"
-              className="rp-btn rp-btn-warn"
-              disabled={pending}
-              onClick={handleConfirmChangeEnds}
-              data-testid="btn-change-ends-confirm"
-            >
-              XÁC NHẬN ĐỔI SÂN
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      <GameHistoryPanel summary={view.gameSummary} />
-
-      <LineupSetupPanel
-        view={view}
-        open={lineupOpen || view.lineupRequired === true}
-        pending={pending}
-        stale={stale}
-        onClose={() => setLineupOpen(false)}
-        onConfirm={async (payload) => {
-          const result = await onConfigureLineup?.(payload);
-          if (result?.ok !== false) setLineupOpen(false);
-        }}
-      />
-
-      {view.canSwitchPositions || view.lineupRequired ? (
-        <button
-          type="button"
-          className={`rp-btn rp-btn-ghost rp-btn-lineup${view.lineupRequired ? " is-required" : ""}`}
-          disabled={pending || stale}
-          onClick={() => setLineupOpen(true)}
-          data-testid="btn-switch-positions"
-        >
-          <GroupsIcon fontSize="small" aria-hidden="true" />
-          Sắp xếp đội hình
-          {view.lineupRequired ? " *" : ""}
-        </button>
-      ) : null}
-
-      {showManualChangeEnds ? (
-        <button
-          type="button"
-          className="rp-btn rp-btn-warn rp-actions-wide"
-          disabled={pending || stale}
-          onClick={() => setConfirmChangeEnds(true)}
-          data-testid="btn-change-ends"
-        >
-          ĐỔI SÂN / ĐỔI ĐẦU SÂN
-        </button>
-      ) : null}
-
-      {view.canStart ? (
-        <button
-          type="button"
-          className="rp-btn rp-btn-primary rp-actions-wide"
-          disabled={pending || stale}
-          onClick={onStart}
-          data-testid="btn-start"
-        >
-          Bắt đầu trận
-        </button>
-      ) : null}
-
-      {view.canScore ? (
-        <div className="rp-score-actions" data-testid="score-actions">
-          {view.isSideOut ? (
-            <>
-              {leftCanPoint ? (
-                <button
-                  type="button"
-                  className="rp-btn rp-btn-a rp-actions-wide"
-                  disabled={pending || stale}
-                  onClick={leftPointHandler}
-                  data-testid={
-                    leftScoring === "SIDE_A" ? "btn-point-a" : "btn-point-b"
-                  }
-                  data-scoring-side={leftScoring}
-                  data-display-end="left"
-                >
-                  {String(pendingAction || "").startsWith("point")
-                    ? "Đang xác nhận..."
-                    : pointLabel(leftName, leftScoring === "SIDE_B" ? "B" : "A")}
-                </button>
-              ) : null}
-              {rightCanPoint ? (
-                <button
-                  type="button"
-                  className="rp-btn rp-btn-b rp-actions-wide"
-                  disabled={pending || stale}
-                  onClick={rightPointHandler}
-                  data-testid={
-                    rightScoring === "SIDE_B" ? "btn-point-b" : "btn-point-a"
-                  }
-                  data-scoring-side={rightScoring}
-                  data-display-end="right"
-                >
-                  {String(pendingAction || "").startsWith("point")
-                    ? "Đang xác nhận..."
-                    : pointLabel(rightName, rightScoring === "SIDE_A" ? "A" : "B")}
-                </button>
-              ) : null}
-              {view.canChangeServe ? (
-                <button
-                  type="button"
-                  className="rp-btn rp-btn-warn rp-actions-wide"
-                  disabled={pending || stale}
-                  onClick={onChangeServe}
-                  data-testid="btn-change-serve"
-                >
-                  {pendingAction === "change-serve" ? "Đang xác nhận..." : "ĐỔI GIAO"}
-                </button>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="rp-btn rp-btn-a"
-                disabled={pending || stale || leftCanPoint === false}
-                onClick={leftPointHandler}
-                data-testid={leftScoring === "SIDE_A" ? "btn-point-a" : "btn-point-b"}
-                data-scoring-side={leftScoring}
-                data-display-end="left"
-              >
-                {String(pendingAction || "") === leftPendingKey
-                  ? "Đang xác nhận..."
-                  : pointLabel(leftName, leftScoring === "SIDE_B" ? "B" : "A")}
-              </button>
-              <button
-                type="button"
-                className="rp-btn rp-btn-b"
-                disabled={pending || stale || rightCanPoint === false}
-                onClick={rightPointHandler}
-                data-testid={rightScoring === "SIDE_B" ? "btn-point-b" : "btn-point-a"}
-                data-scoring-side={rightScoring}
-                data-display-end="right"
-              >
-                {String(pendingAction || "") === rightPendingKey
-                  ? "Đang xác nhận..."
-                  : pointLabel(rightName, rightScoring === "SIDE_A" ? "A" : "B")}
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            className="rp-btn rp-btn-ghost rp-actions-wide rp-btn-undo"
-            disabled={pending || stale || view.canUndo !== true}
-            onClick={onUndoLastScoringAction}
-            data-testid="btn-undo-last-scoring-action"
-            aria-label="Hoàn tác lần ghi gần nhất"
-            title={
-              view.canUndo === true
-                ? "Hoàn tác lần ghi gần nhất"
-                : view.undoAvailability?.message ||
-                  "Không thể hoàn tác lần ghi gần nhất"
-            }
-          >
-            {pendingAction === "undo"
-              ? "Đang hoàn tác..."
-              : "↶ Hoàn tác lần ghi gần nhất"}
-          </button>
-        </div>
-      ) : view.canUndo === true || pendingAction === "undo" ? (
-        <div className="rp-score-actions" data-testid="score-actions">
-          <button
-            type="button"
-            className="rp-btn rp-btn-ghost rp-actions-wide rp-btn-undo"
-            disabled={pending || stale || view.canUndo !== true}
-            onClick={onUndoLastScoringAction}
-            data-testid="btn-undo-last-scoring-action"
-            aria-label="Hoàn tác lần ghi gần nhất"
-          >
-            {pendingAction === "undo"
-              ? "Đang hoàn tác..."
-              : "↶ Hoàn tác lần ghi gần nhất"}
-          </button>
-        </div>
-      ) : null}
+        </aside>
+      </div>
 
       <div className="rp-footer-actions" data-testid="match-footer-actions">
         <RouterLink className="rp-footer-btn" to="/referee" data-testid="btn-footer-back">
@@ -921,12 +1020,7 @@ export default function RefereeMatchScreen({
             <EditOutlinedIcon fontSize="small" aria-hidden="true" />
             Sửa
           </button>
-        ) : (
-          <span className="rp-footer-btn is-disabled" aria-hidden="true">
-            <EditOutlinedIcon fontSize="small" />
-            Sửa
-          </span>
-        )}
+        ) : null}
         {view.canSuspend ? (
           <button
             type="button"
@@ -949,12 +1043,7 @@ export default function RefereeMatchScreen({
             <PlayArrowIcon fontSize="small" aria-hidden="true" />
             Tiếp tục
           </button>
-        ) : (
-          <span className="rp-footer-btn is-disabled" aria-hidden="true">
-            <PauseCircleOutlinedIcon fontSize="small" />
-            Tạm dừng
-          </span>
-        )}
+        ) : null}
         {view.canComplete ? (
           <button
             type="button"
@@ -966,12 +1055,7 @@ export default function RefereeMatchScreen({
             <FlagIcon fontSize="small" aria-hidden="true" />
             KẾT THÚC TRẬN
           </button>
-        ) : (
-          <span className="rp-footer-btn rp-footer-btn-complete is-disabled" aria-hidden="true">
-            <FlagIcon fontSize="small" />
-            KẾT THÚC TRẬN
-          </span>
-        )}
+        ) : null}
       </div>
     </div>
   );

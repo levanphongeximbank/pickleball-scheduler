@@ -1375,14 +1375,25 @@ test("owner visual remediation — chrome suppress + participant-aware controls"
   assert.match(home, /home-date-from/);
   assert.match(home, /home-date-to/);
   assert.match(home, /home-status-filters/);
+  assert.match(home, /home-tournament-filter/);
+  assert.match(home, /home-mode-filter/);
   assert.match(match, /deriveCourtPresentation/);
   assert.match(match, /Điều hành trận/);
   assert.match(match, /match-rules-panel/);
+  assert.match(match, /referee-console-layout/);
+  assert.match(match, /console-zone-context/);
+  assert.match(match, /console-zone-score/);
+  assert.match(match, /console-zone-tools/);
   assert.match(match, /Sắp xếp đội hình/);
-  assert.match(match, /ĐỔI SÂN \/ ĐỔI ĐẦU SÂN/);
-  assert.match(match, /ĐÃ ĐẾN ĐIỂM ĐỔI SÂN/);
-  assert.match(match, /Điểm đổi sân/);
-  assert.match(match, /XÁC NHẬN ĐỔI SÂN/);
+  assert.match(match, /Đổi đầu sân/);
+  assert.match(match, /ĐÃ ĐẾN ĐIỂM ĐỔI ĐẦU SÂN/);
+  assert.match(match, /Điểm đổi đầu sân/);
+  assert.match(match, /XÁC NHẬN ĐỔI ĐẦU SÂN/);
+  assert.match(match, /receiving-player-name/);
+  assert.match(match, /match-operation-history/);
+  assert.doesNotMatch(match, /ĐỔI SÂN \/ ĐỔI ĐẦU SÂN/);
+  assert.doesNotMatch(match, /CHANGE_COURT/);
+  assert.doesNotMatch(css, /max-width:\s*430px;\s*\n\s*margin:\s*0 auto;/);
   assert.match(match, /rp-score-team-name/);
   assert.match(match, /pointLabel\(/);
   assert.match(match, /leftPointHandler/);
@@ -1998,7 +2009,7 @@ test("remediation06: change-end policy from sideSwitchAt (not hardcoded 11)", ()
   assert.equal(view.rulesPanel.changeEndAt, "6");
   assert.equal(
     view.rulesPanel.rows.find((r) => r.key === "changeEnd")?.label,
-    "Điểm đổi sân"
+    "Điểm đổi đầu sân"
   );
   assert.equal(view.courtProjection.sideChangeRequired, false);
 });
