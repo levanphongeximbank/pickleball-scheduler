@@ -9,6 +9,10 @@ import {
   IN_GROUP_TIEBREAK_CRITERION,
   CROSS_GROUP_RANKING_CRITERION,
   KNOCKOUT_PAIRING_POLICY,
+  KNOCKOUT_ENTRY_ROUND,
+  DIRECT_KNOCKOUT_ENTRY_SOURCE,
+  BYE_POLICY,
+  KNOCKOUT_BYE_ALLOCATION_SHAPE,
   RULE_CLASS,
   deriveKnockoutEntryRound,
   matchSeriesToBestOfGames,
@@ -21,6 +25,7 @@ import {
 } from "../constants/capability.js";
 import { createCompetitionRulesProfile } from "../domain/competitionRulesProfile.js";
 import { deriveQualificationPlan } from "./deriveQualificationPlan.js";
+import { deriveKnockoutAdmissionPlan } from "./deriveKnockoutAdmissionPlan.js";
 
 function issue(code, message, details = {}) {
   return Object.freeze({ code, message, details: Object.freeze({ ...details }) });
@@ -171,13 +176,205 @@ export function validateCompetitionRulesProfile(raw, options = {}) {
 
   const qualPlan = deriveQualificationPlan({
     groupCount: group.groupStageEnabled ? group.groupCount : 0,
+    totalKnockoutSlots: profile.qualification.totalKnockoutSlots,
     totalQualifiers: profile.qualification.totalQualifiers,
     directQualifiersPerGroup: profile.qualification.directQualifiersPerGroup,
+    directKnockoutEntryCount: profile.qualification.directKnockoutEntryCount,
     groupStageEnabled: group.groupStageEnabled,
   });
   if (!qualPlan.ok) {
     issues.push(
       issue(qualPlan.code, qualPlan.message, qualPlan.details || {})
+    );
+  }
+
+  // Knockout admission policy validation (fail-closed)
+  const admission = profile.knockoutAdmission;
+  if (
+    admission.directKnockoutEntry.count !==
+    profile.qualification.directKnockoutEntryCount
+  ) {
+    issues.push(
+      issue(
+        COMPETITION_RULES_ERROR_CODE.INVALID_KNOCKOUT_ADMISSION,
+        "qualification.directKnockoutEntryCount must equal knockoutAdmission.directKnockoutEntry.count",
+        {
+          qualificationCount: profile.qualification.directKnockoutEntryCount,
+          admissionCount: admission.directKnockoutEntry.count,
+        }
+      )
+    );
+  }
+  if (
+    admission.directKnockoutEntry.enabled &&
+    admission.directKnockoutEntry.count < 1
+  ) {
+    issues.push(
+      issue(
+        COMPETITION_RULES_ERROR_CODE.INVALID_DIRECT_KNOCKOUT_ENTRY,
+        "directKnockoutEntry.enabled requires count >= 1",
+        { count: admission.directKnockoutEntry.count }
+      )
+    );
+  }
+  if (
+    admission.directKnockoutEntry.targetStage != null &&
+    !Object.values(KNOCKOUT_ENTRY_ROUND).includes(
+      admission.directKnockoutEntry.targetStage
+    )
+  ) {
+    issues.push(
+      issue(
+        COMPETITION_RULES_ERROR_CODE.INVALID_DIRECT_KNOCKOUT_ENTRY,
+        "Invalid direct-entry targetStage (must be KNOCKOUT_ENTRY_ROUND vocabulary; distinct from knockout.entryRound)",
+        { targetStage: admission.directKnockoutEntry.targetStage }
+      )
+    );
+  }
+  if (
+    admission.directKnockoutEntry.sourceCategory != null &&
+    !Object.values(DIRECT_KNOCKOUT_ENTRY_SOURCE).includes(
+      admission.directKnockoutEntry.sourceCategory
+    )
+  ) {
+    issues.push(
+      issue(
+        COMPETITION_RULES_ERROR_CODE.INVALID_DIRECT_KNOCKOUT_ENTRY,
+        "Invalid direct-entry sourceCategory",
+        { sourceCategory: admission.directKnockoutEntry.sourceCategory }
+      )
+    );
+  }
+  if (
+    admission.directKnockoutEntry.entrants.length > 0 &&
+    !admission.directKnockoutEntry.sourceCategory &&
+    admission.directKnockoutEntry.entrants.some((e) => !e.sourceCategory)
+  ) {
+    issues.push(
+      issue(
+        COMPETITION_RULES_ERROR_CODE.INVALID_DIRECT_KNOCKOUT_ENTRY,
+        "direct-entry sourceCategory required when resolved entrants are supplied",
+        {}
+      )
+    );
+  }
+  const seenDirect = new Set();
+  for (const e of admission.directKnockoutEntry.entrants) {
+    if (!e.entryId) {
+      issues.push(
+        issue(
+          COMPETITION_RULES_ERROR_CODE.MISSING_ENTRANT_IDENTITY,
+          "Canonical entryId required for directKnockoutEntry entrants",
+          {}
+        )
+      );
+    } else if (seenDirect.has(e.entryId)) {
+      issues.push(
+        issue(
+          COMPETITION_RULES_ERROR_CODE.DUPLICATE_ENTRANT_REF,
+          "Duplicate entryId in directKnockoutEntry.entrants",
+          { entryId: e.entryId }
+        )
+      );
+    } else {
+      seenDirect.add(e.entryId);
+    }
+  }
+  const seenBypass = new Set();
+  for (const e of admission.groupStageBypass.entrants) {
+    if (!e.entryId) {
+      issues.push(
+        issue(
+          COMPETITION_RULES_ERROR_CODE.MISSING_ENTRANT_IDENTITY,
+          "Canonical entryId required for groupStageBypass entrants",
+          {}
+        )
+      );
+    } else if (seenBypass.has(e.entryId)) {
+      issues.push(
+        issue(
+          COMPETITION_RULES_ERROR_CODE.DUPLICATE_ENTRANT_REF,
+          "Duplicate entryId in groupStageBypass.entrants",
+          { entryId: e.entryId }
+        )
+      );
+    } else {
+      seenBypass.add(e.entryId);
+    }
+  }
+  if (
+    admission.groupStageBypass.enabled &&
+    admission.groupStageBypass.entrants.length === 0 &&
+    admission.directKnockoutEntry.entrants.length === 0
+  ) {
+    issues.push(
+      issue(
+        COMPETITION_RULES_ERROR_CODE.INVALID_GROUP_STAGE_BYPASS,
+        "groupStageBypass.enabled requires at least one canonical entrant entryId",
+        {}
+      )
+    );
+  }
+  if (!Object.values(BYE_POLICY).includes(admission.bye.byePolicy)) {
+    issues.push(
+      issue(
+        COMPETITION_RULES_ERROR_CODE.INVALID_BYE_POLICY,
+        "Invalid knockout byePolicy",
+        { byePolicy: admission.bye.byePolicy }
+      )
+    );
+  }
+  if (
+    !Object.values(KNOCKOUT_BYE_ALLOCATION_SHAPE).includes(
+      admission.bye.allocationShape
+    )
+  ) {
+    issues.push(
+      issue(
+        COMPETITION_RULES_ERROR_CODE.INVALID_BYE_POLICY,
+        "Unsupported BYE allocationShape for certified execution",
+        { allocationShape: admission.bye.allocationShape }
+      )
+    );
+  }
+
+  // Reject displayName-as-identity if present on raw admission entrants
+  if (raw && typeof raw === "object" && raw.knockoutAdmission) {
+    const rawAdmission = raw.knockoutAdmission;
+    const rawLists = [
+      ...(rawAdmission.groupStageBypass?.entrants || []),
+      ...(rawAdmission.directKnockoutEntry?.entrants || []),
+    ];
+    for (const item of rawLists) {
+      if (
+        item &&
+        typeof item === "object" &&
+        item.displayName != null &&
+        !item.entryId &&
+        !item.participantId
+      ) {
+        issues.push(
+          issue(
+            COMPETITION_RULES_ERROR_CODE.DISPLAY_NAME_IDENTITY_FORBIDDEN,
+            "displayName is not a canonical entrant identity",
+            { displayName: item.displayName }
+          )
+        );
+      }
+    }
+  }
+
+  // Plan-level consistency (no population context — slot math + internal refs)
+  const admissionPlan = qualPlan.ok
+    ? deriveKnockoutAdmissionPlan(profile)
+    : null;
+  if (admissionPlan && !admissionPlan.ok) {
+    issues.push(
+      issue(
+        admissionPlan.code,
+        admissionPlan.message,
+        admissionPlan.details || {}
+      )
     );
   }
 
@@ -257,14 +454,15 @@ export function validateCompetitionRulesProfile(raw, options = {}) {
       if (
         group.groupStageEnabled &&
         qualPlan.ok &&
-        ko.qualifierCount !== profile.qualification.totalQualifiers
+        ko.qualifierCount !== profile.qualification.totalKnockoutSlots
       ) {
         issues.push(
           issue(
             COMPETITION_RULES_ERROR_CODE.INVALID_KNOCKOUT,
-            "knockout.qualifierCount must equal qualification.totalQualifiers",
+            "knockout.qualifierCount must equal qualification.totalKnockoutSlots",
             {
               qualifierCount: ko.qualifierCount,
+              totalKnockoutSlots: profile.qualification.totalKnockoutSlots,
               totalQualifiers: profile.qualification.totalQualifiers,
             }
           )
@@ -381,6 +579,21 @@ export function validateCompetitionRulesProfile(raw, options = {}) {
           Number(qualPlan.wildcardSlots) > 0,
         COMPETITION_RULES_CAPABILITY_ID.CROSS_GROUP_WILDCARD_RANKING,
       ],
+      [
+        profile.knockoutAdmission.groupStageBypass.enabled === true ||
+          (profile.knockoutAdmission.groupStageBypass.entrants || []).length > 0,
+        COMPETITION_RULES_CAPABILITY_ID.GROUP_STAGE_BYPASS,
+      ],
+      [
+        profile.knockoutAdmission.directKnockoutEntry.enabled === true ||
+          profile.qualification.directKnockoutEntryCount > 0,
+        COMPETITION_RULES_CAPABILITY_ID.DIRECT_KNOCKOUT_ENTRY,
+      ],
+      [
+        profile.knockout.knockoutEnabled === true &&
+          profile.knockoutAdmission.bye.byePolicy !== BYE_POLICY.NONE,
+        COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT_BYE,
+      ],
     ];
     for (const [enabled, capId] of checks) {
       if (!enabled) continue;
@@ -406,5 +619,9 @@ export function validateCompetitionRulesProfile(raw, options = {}) {
     profile,
     issues: Object.freeze(issues),
     qualificationPlan: qualPlan.ok ? qualPlan : null,
+    knockoutAdmissionPlan:
+      admissionPlan && admissionPlan.ok
+        ? admissionPlan.knockoutAdmissionPlan
+        : null,
   });
 }

@@ -5,6 +5,8 @@ export {
   createDefaultCompetitionUnit,
   createDefaultGroupStagePolicy,
   createDefaultQualificationPolicy,
+  createDefaultKnockoutAdmissionPolicy,
+  normalizeCanonicalEntrantRef,
   createDefaultInGroupTieBreakPolicy,
   createDefaultCrossGroupRankingPolicy,
   createDefaultKnockoutPolicy,

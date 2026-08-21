@@ -55,6 +55,34 @@ export const KNOCKOUT_PAIRING_POLICY = Object.freeze({
 });
 
 /**
+ * Direct knockout admission source category — policy label only.
+ * Rules is NOT the authority for ranking/rating/federation/external data.
+ */
+export const DIRECT_KNOCKOUT_ENTRY_SOURCE = Object.freeze({
+  MANUAL_BY_AUTHORIZED_ORGANIZER: "MANUAL_BY_AUTHORIZED_ORGANIZER",
+  CANONICAL_RANKING: "CANONICAL_RANKING",
+  CANONICAL_RATING: "CANONICAL_RATING",
+  FEDERATION_SEED: "FEDERATION_SEED",
+  PRIOR_EVENT_QUALIFICATION: "PRIOR_EVENT_QUALIFICATION",
+  EXTERNAL_AUTHORITY: "EXTERNAL_AUTHORITY",
+});
+
+/**
+ * Knockout BYE allocation shape that shared CORE-08/09/CE execution supports.
+ * Distinct from DIRECT_KNOCKOUT_ENTRY and GROUP_STAGE_BYPASS.
+ */
+export const KNOCKOUT_BYE_ALLOCATION_SHAPE = Object.freeze({
+  SINGLE_ELIMINATION_POWER_OF_TWO_FIRST_ROUND:
+    "SINGLE_ELIMINATION_POWER_OF_TWO_FIRST_ROUND",
+});
+
+/**
+ * Re-export CORE-09 BYE_POLICY vocabulary for Rules policy modeling.
+ * Execution remains match-generation / draw-runtime / CE — not forked here.
+ */
+export { BYE_POLICY } from "../../match-generation/contracts/evaluatedMatchGenerationRules.js";
+
+/**
  * In-group tie-break criteria (policy labels).
  * Mapped to CORE-18 TIEBREAK_TYPE for execution composition.
  */

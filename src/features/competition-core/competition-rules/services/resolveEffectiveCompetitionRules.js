@@ -16,6 +16,8 @@ import {
 import { resolveStageMatchRules } from "./resolveStageMatchRules.js";
 import { resolveProfileCapabilityState } from "./resolveCapabilityState.js";
 import { composeCore01AuthorityContext } from "../adapters/core01Composition.js";
+import { deriveKnockoutAdmissionPlan } from "./deriveKnockoutAdmissionPlan.js";
+import { resolveKnockoutAdmissionPolicy } from "./resolveKnockoutAdmissionPolicy.js";
 
 /**
  * @param {object} [rawProfile]
@@ -58,14 +60,18 @@ export function resolveEffectiveCompetitionRules(rawProfile = {}, context = {}) 
 
   const qualificationPlan = deriveQualificationPlan({
     groupCount: profile.groupStage.groupCount,
+    totalKnockoutSlots: profile.qualification.totalKnockoutSlots,
     totalQualifiers: profile.qualification.totalQualifiers,
     directQualifiersPerGroup: profile.qualification.directQualifiersPerGroup,
+    directKnockoutEntryCount: profile.qualification.directKnockoutEntryCount,
     groupStageEnabled: profile.groupStage.groupStageEnabled,
   });
 
   const tieBreak = resolveTieBreakPolicy(profile);
   const wildcardRanking = resolveWildcardRankingPolicy(profile);
   const capability = resolveProfileCapabilityState(profile);
+  const knockoutAdmission = resolveKnockoutAdmissionPolicy(profile);
+  const knockoutAdmissionPlanResult = deriveKnockoutAdmissionPlan(profile);
 
   let stageRules = null;
   if (context.stage) {
@@ -101,6 +107,10 @@ export function resolveEffectiveCompetitionRules(rawProfile = {}, context = {}) 
     feasible,
     profile,
     qualificationPlan,
+    knockoutAdmissionPolicy: knockoutAdmission.knockoutAdmission,
+    knockoutAdmissionPlan: knockoutAdmissionPlanResult.ok
+      ? knockoutAdmissionPlanResult.knockoutAdmissionPlan
+      : null,
     tieBreak,
     wildcardRanking,
     stageRules,
@@ -119,6 +129,7 @@ export function resolveEffectiveCompetitionRules(rawProfile = {}, context = {}) 
       refereeAssignment: "CORE-13",
       matchLifecycle: "CORE-15",
       resultAcceptance: "CORE-17",
+      knockoutByeExecution: "CORE-08 / CORE-09 / CE",
     }),
   });
 }
