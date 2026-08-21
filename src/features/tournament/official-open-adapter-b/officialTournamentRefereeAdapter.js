@@ -20,6 +20,7 @@ import {
 import { failRefereeAdapter } from "../../competition-engine/integration/referee/errors.js";
 import { freezeClone } from "../../competition-engine/integration/referee/helpers.js";
 import { resolveOfficialMatchScoringRules } from "../../individual-tournament/engines/officialScoringRulesResolver.js";
+import { resolveOfficialCore16ScoringFormat } from "./officialOpenCore16LiveScoringBinding.js";
 import {
   listMyOfficialRefereeAssignmentsCommand,
   officialRefereeGetMatchCommand,
@@ -32,6 +33,7 @@ import {
 } from "../../competition-engine/operations/referee/assignment/index.js";
 import { resolveCanonicalRefereeIdFromRoster } from "../../individual-tournament/engines/core13AssignmentProjection.js";
 import { getSupabaseAuthClient } from "../../../auth/supabaseClient.js";
+import { mapModeScoringRulesToCore16 } from "../../competition-engine/integration/referee/adapters/shared/scoringRulesMapper.js";
 
 function createOfficialCore13AssignmentClient() {
   return createCompetitionRefereeAssignmentTrustedClient({
@@ -98,32 +100,46 @@ function isCore16ScoringRules(rules) {
   if (!rules || typeof rules !== "object") return false;
   const winBy = Number(rules.winBy);
   return (
-    (Boolean(rules.formatId) || Boolean(rules.schemaVersion)) &&
+    (Boolean(rules.formatId) || Boolean(rules.schemaVersion) || Boolean(rules.scoringSystem)) &&
     Number.isInteger(winBy) &&
     winBy >= 1
   );
 }
 
 function officialScoringRulesOrGap(tournament, match) {
+  const formatRes = resolveOfficialCore16ScoringFormat({
+    tournament,
+    match,
+    tenantId: tournament?.tenantId,
+    eventId: match?.eventId,
+  });
+  if (formatRes.ok) {
+    return assertScoringRulesPayload(formatRes.format);
+  }
   const official = resolveOfficialMatchScoringRules(tournament, match);
-  if (official.winByPolicyDeferred === true || official.winBy == null) {
+  if (official.winBy == null && official.winByPolicyDeferred === true) {
     failRefereeAdapter(
       SHARED_REFEREE_CONTRACT_CAPABILITY_GAP,
-      "CORE-16 cannot represent Official WIN_BY_POLICY_DEFERRED without fabricating winBy. Adapter B will not invent winBy=2.",
+      "Official CORE-16 format unresolved and win-by still deferred.",
       {
         winBy: official.winBy,
         winByPolicyDeferred: official.winByPolicyDeferred,
         scoringMethod: official.scoringMethod,
         targetPoints: official.targetPoints,
-        matchFormat: official.matchFormat,
-        gamesToWin: official.gamesToWin,
-        maximumGames: official.maximumGames,
-        tournamentName: tournament?.name || null,
+        formatError: formatRes.error || formatRes.code,
         contractId: COMPETITION_REFEREE_ADAPTER_CONTRACT_ID,
       }
     );
   }
-  return official;
+  return mapModeScoringRulesToCore16({
+    scoringSystem:
+      String(official.scoringMethod || "").toLowerCase() === "side_out"
+        ? "SIDE_OUT"
+        : "RALLY",
+    pointsToWin: official.targetPoints,
+    winBy: official.winBy ?? 2,
+    bestOfGames: official.bestOf || 1,
+  });
 }
 
 /**
@@ -216,14 +232,11 @@ export function createOfficialTournamentRefereeAdapter(options = {}) {
       {
         code: SHARED_REFEREE_CONTRACT_CAPABILITY_GAP,
         reason:
-          "CORE-16 createScoringFormat requires a positive integer winBy and cannot represent Official WIN_BY_POLICY_DEFERRED.",
+          "Change-end execution remains PARTIAL (CORE-16 hint + session ACK). Durable match_live_states scoring writes require Edge/service_role.",
         officialPolicy: Object.freeze({
-          scoringMethod: "rally",
-          matchFormat: "BEST_OF_1",
-          gamesToWin: 1,
-          maximumGames: 1,
-          winBy: null,
-          winByPolicyDeferred: true,
+          scoringBoundToCore16: true,
+          changeEndPartial: true,
+          bestOf3Unbound: true,
         }),
       },
     ]),

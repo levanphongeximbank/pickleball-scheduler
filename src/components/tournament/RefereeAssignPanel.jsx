@@ -29,10 +29,34 @@ import {
   executeOfficialCore13RefereeAssignment,
   OFFICIAL_CORE13_ASSIGNMENT_ACTIONS,
 } from "../../features/tournament/official-tournament-experience/officialCore13AssignmentCommands.js";
+import {
+  buildOfficialCore16RulesEnvelopeFromTournament,
+  buildOfficialRefereeUrlWithCore16Rules,
+} from "../../features/tournament/official-open-adapter-b/officialOpenCore16LiveScoringBinding.js";
 
 function formatTime(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("vi-VN");
+}
+
+function buildOfficialLiveRefereeUrl(tournament, matchLike, token) {
+  if (!token) return "";
+  const built = buildOfficialCore16RulesEnvelopeFromTournament(
+    tournament,
+    matchLike || {},
+    {
+      tenantId: tournament?.tenantId,
+      eventId: matchLike?.eventId,
+    }
+  );
+  if (built.ok) {
+    const path = buildOfficialRefereeUrlWithCore16Rules(token, built.envelope);
+    if (typeof window !== "undefined" && window.location?.origin) {
+      return `${window.location.origin}${path}`;
+    }
+    return path;
+  }
+  return buildRefereeUrl(token);
 }
 
 function refereeSelectValue(ref) {
@@ -298,7 +322,11 @@ export default function RefereeAssignPanel({
                 <TableCell>
                   {row.token ? (
                     <Typography variant="caption">
-                      {buildRefereeUrl(row.token)}
+                      {buildOfficialLiveRefereeUrl(
+                        tournament,
+                        { id: row.matchId, eventId, stage: row.stage },
+                        row.token
+                      )}
                     </Typography>
                   ) : (
                     "—"

@@ -40,6 +40,32 @@ export {
   OFFICIAL_CLASSIC_EXECUTION_BINDING,
 } from "./officialOpenCompetitionRules.js";
 
+export {
+  OFFICIAL_CORE16_LIVE_SCORING_BINDING_ID,
+  OFFICIAL_CORE16_LIVE_SCORING_BINDING_VERSION,
+  OFFICIAL_SIDEOUT_EXECUTION_BINDING,
+  OFFICIAL_SIDEOUT_EXECUTION_BINDING_GAP,
+  OFFICIAL_WIN_BY_EXECUTION_BINDING,
+  OFFICIAL_WIN_BY_EXECUTION_BINDING_GAP,
+  OFFICIAL_CHANGE_END_EXECUTION_BINDING,
+  OFFICIAL_CHANGE_END_EXECUTION_BINDING_GAP,
+  OFFICIAL_RALLY_EXECUTION_BINDING,
+  SCORING_PERSISTENCE_SSOT,
+  CLASSIC_LIVE_SCORE_WRITER_ROLE,
+  resolveOfficialCore16ScoringFormat,
+  createOfficialCore16LiveScoringSession,
+  applyOfficialCore16RallyOutcome,
+  undoOfficialCore16LastPoint,
+  confirmOfficialCore16ChangeEnds,
+  assertOfficialCore16TerminalForCommit,
+  projectOfficialCore16ScoringState,
+  buildOfficialCore16RulesEnvelopeFromTournament,
+  encodeOfficialCore16RulesQuery,
+  parseOfficialCore16RulesQuery,
+  buildOfficialRefereeUrlWithCore16Rules,
+  getOfficialCore16ExecutionBindingTruth,
+} from "./officialOpenCore16LiveScoringBinding.js";
+
 export { listOfficialOpenEligibleCourts } from "./court.js";
 
 export {

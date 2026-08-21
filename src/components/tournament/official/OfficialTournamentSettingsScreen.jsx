@@ -450,10 +450,14 @@ export default function OfficialTournamentSettingsScreen({
       </Grid>
       {!SIDEOUT_OPERATIONAL ? (
         <Alert severity="info">
-          Side-out cần trạng thái giao bóng trên live match (gói SQL riêng — không apply trong task
-          này).
+          Side-out chưa operational trên Official.
         </Alert>
-      ) : null}
+      ) : (
+        <Alert severity="success">
+          Side-out đã bind CORE-16 qua Adapter B. Link trọng tài cần kèm rules query (từ màn phân
+          công). Durable serve SSOT vẫn cần Edge match_live_states.
+        </Alert>
+      )}
       {!BEST_OF_3_OPERATIONAL ? (
         <Alert severity="info">{BEST_OF_3_SHARED_CAPABILITY_GAP}</Alert>
       ) : null}
@@ -461,10 +465,14 @@ export default function OfficialTournamentSettingsScreen({
         <Alert severity="info">
           Thắng cách (win-by) đang deferred — không hardcode winBy=2 trên Official classic.
         </Alert>
-      ) : null}
-      <Alert severity="info">
-        Đổi sân / change-end: CORE-16 có sideSwitchAt nhưng chưa nối Official classic live — không
-        cấu hình operable tại đây.
+      ) : (
+        <Alert severity="success">
+          Win-by do CORE-16 enforce (đích + thắng cách + point cap khi cấu hình).
+        </Alert>
+      )}
+      <Alert severity="warning">
+        Đổi sân / change-end: PARTIAL — phát hiện mốc + session ACK trên console trọng tài; chưa
+        durable court orientation SSOT. Không bật operable Settings control.
       </Alert>
 
       <Typography variant="subtitle1" fontWeight={700}>

@@ -26,7 +26,9 @@ export const OFFICIAL_EXPERIENCE_AUTHORITY = Object.freeze({
 });
 
 export const OFFICIAL_EXPERIENCE_AUTHORITY_MIGRATION = Object.freeze({
-  wave: "O6",
-  migrated: false,
-  note: "Authorities remain on existing Official/Open domain/runtime and CORE-* modules.",
+  wave: "CORE16_LIVE_SCORING_ADAPTER_B_BINDING_01",
+  migrated: true,
+  scoring: true,
+  note:
+    "Official live scoring commands bind CORE-16 via Adapter B translation. Classic tournament_match_live ±1 demoted to compatibility projection after CORE-16 ACK. Change-end PARTIAL. BO3 unbound. Durable match_live_states writes remain Edge-only.",
 });

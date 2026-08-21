@@ -1,15 +1,9 @@
 /**
  * Official scoring rules resolver — single authority for Organizer + Referee UI.
+ * Live point-by-point execution binds to CORE-16 via Official Adapter B.
  * Does not invent a second scoreboard engine.
  *
- * Side-out point-by-point is NOT operational on classic Official live path
- * (see SIDEOUT_OPERATIONAL in officialTournamentSettingsEngine).
- *
- * Match format BEST_OF_1 is the operable classic path (single game).
- * BEST_OF_3 is fail-closed until multi-game Official live/result exists.
- *
- * Win-by margin is NOT an Official authority today (matchEngine only rejects draws).
- * WIN_BY_POLICY_DEFERRED — do not copy Team/referee-v5 winBy=2.
+ * BEST_OF_3 remains fail-closed until multi-game Official live/result exists.
  */
 
 import { MATCH_STAGE } from "../../../models/tournament/constants.js";
@@ -35,8 +29,13 @@ import {
   createOfficialOpenCompetitionRulesSurface,
   resolveOfficialEffectiveCapability,
 } from "../../tournament/official-open-adapter-b/officialOpenCompetitionRules.js";
+import {
+  SCORING_SIDE,
+  createScoringFormat,
+  evaluateGameComplete,
+} from "../../competition-core/scoring/index.js";
 
-/** @deprecated Use SIDEOUT_OPERATIONAL === false */
+/** @deprecated Use SIDEOUT_OPERATIONAL */
 export const SIDEOUT_POINT_BY_POINT_RUNTIME_BLOCKED = !SIDEOUT_OPERATIONAL;
 
 export {
@@ -144,9 +143,22 @@ export function resolveOfficialMatchScoringRules(tournament, match = {}, options
   const winByCap = resolveOfficialEffectiveCapability("WIN_BY");
   const changeEndCap = resolveOfficialEffectiveCapability("CHANGE_END");
 
-  const scoringMethodOperational = OFFICIAL_SCORING_METHOD.RALLY;
+  const requestedMethod = String(
+    settings.scoringMethodRequested || settings.scoringMethod || ""
+  )
+    .trim()
+    .toLowerCase();
+  const scoringMethodOperational =
+    requestedMethod === OFFICIAL_SCORING_METHOD.SIDE_OUT &&
+    sideOutCap.effectiveSelectable === true
+      ? OFFICIAL_SCORING_METHOD.SIDE_OUT
+      : OFFICIAL_SCORING_METHOD.RALLY;
   const matchFormatOperational = OFFICIAL_MATCH_FORMAT.BEST_OF_1;
   const formatRules = deriveOfficialMatchFormatRules(matchFormatOperational);
+  const winBy =
+    winByCap.effectiveSelectable === true && WIN_BY_POLICY_DEFERRED !== true
+      ? 2
+      : null;
 
   return {
     roundKey,
@@ -160,13 +172,14 @@ export function resolveOfficialMatchScoringRules(tournament, match = {}, options
     gamesToWin: formatRules.gamesToWin,
     maximumGames: formatRules.maximumGames,
     matchFormatIsOperational: true,
-    winBy: null,
-    winByPolicyDeferred: WIN_BY_POLICY_DEFERRED,
+    winBy,
+    winByPolicyDeferred: WIN_BY_POLICY_DEFERRED === true,
     allowDraw: false,
-    changeEndsEnabled: false,
+    changeEndsEnabled: changeEndCap.effectiveSelectable === true,
     sideOutOperational: SIDEOUT_OPERATIONAL,
     sideOutRuntimeBlocked: !SIDEOUT_OPERATIONAL,
-    sideOutPointByPointEnforced: false,
+    sideOutPointByPointEnforced:
+      scoringMethodOperational === OFFICIAL_SCORING_METHOD.SIDE_OUT,
     bestOf3Operational: BEST_OF_3_OPERATIONAL,
     sideOutSelectable: sideOutCap.effectiveSelectable === true,
     bestOf3Selectable: bo3Cap.effectiveSelectable === true,
@@ -178,12 +191,13 @@ export function resolveOfficialMatchScoringRules(tournament, match = {}, options
     officialChangeEndBindingGap: changeEndCap.bindingGap === true,
     rulesSource,
     canonicalStage,
-    authority: "COMPATIBILITY_DELEGATES_ADAPTER_A_WHEN_BOUND",
+    authority: "CORE-16_VIA_OFFICIAL_ADAPTER_B",
     summaryLabel: formatOfficialMatchRulesSummary({
       scoringMethodLabel: OFFICIAL_SCORING_METHOD_LABELS[scoringMethodOperational],
       matchFormatLabel: OFFICIAL_MATCH_FORMAT_LABELS[matchFormatOperational],
       targetPoints,
       roundLabel: OFFICIAL_ROUND_SCORE_LABELS[roundKey] || roundKey,
+      winBy,
     }),
   };
 }
@@ -197,12 +211,14 @@ export function formatOfficialMatchRulesSummary({
   matchFormatLabel,
   targetPoints,
   roundLabel,
+  winBy,
 } = {}) {
   const parts = [];
   if (roundLabel) parts.push(String(roundLabel));
   if (scoringMethodLabel) parts.push(String(scoringMethodLabel));
   if (matchFormatLabel) parts.push(String(matchFormatLabel));
   if (targetPoints != null) parts.push(`Đích ${targetPoints} điểm`);
+  if (winBy != null) parts.push(`Thắng cách ${winBy}`);
   return parts.join(" · ");
 }
 
@@ -236,7 +252,13 @@ export function buildOfficialMatchRulesSummaryLines(tournament, match = {}, opti
       unavailable: true,
     });
   }
-  if (rules.winByPolicyDeferred) {
+  if (rules.winBySelectable && rules.winBy != null) {
+    lines.push({
+      key: "win_by",
+      label: "Thắng cách (win-by)",
+      value: `CORE-16 · thắng cách ${rules.winBy}`,
+    });
+  } else if (rules.winByPolicyDeferred) {
     lines.push({
       key: "win_by",
       label: "Thắng cách (win-by)",
@@ -247,8 +269,10 @@ export function buildOfficialMatchRulesSummaryLines(tournament, match = {}, opti
   lines.push({
     key: "change_end",
     label: "Đổi sân / change-end",
-    value: "Chưa có Official live wiring (CORE-16 sideSwitchAt chưa nối classic path)",
-    unavailable: true,
+    value: rules.changeEndSelectable
+      ? "CORE-16 / ops bound"
+      : "PARTIAL — session ACK only; durable court orientation chưa bind",
+    unavailable: !rules.changeEndSelectable,
   });
   return {
     summaryLabel: rules.summaryLabel,
@@ -258,10 +282,8 @@ export function buildOfficialMatchRulesSummaryLines(tournament, match = {}, opti
 }
 
 /**
- * Validate finished score against configured round target.
- * Does NOT invent a win-by margin (WIN_BY_POLICY_DEFERRED).
- * Aligns with classic Official matchEngine: reject draws; winner is higher score.
- * Additionally enforces Organizer-configured targetPoints when present.
+ * Validate finished score against CORE-16 win conditions when winBy is bound.
+ * Classic draw rejection preserved. Does not invent a second scoring engine.
  */
 export function validateOfficialFinishedScore(rules, scoreA, scoreB) {
   const a = Number(scoreA);
@@ -273,6 +295,31 @@ export function validateOfficialFinishedScore(rules, scoreA, scoreB) {
     return { ok: false, error: "Trận không được hòa." };
   }
   const target = Number(rules?.targetPoints) || CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
+  const winBy = rules?.winBy != null ? Number(rules.winBy) : null;
+  if (winBy != null && Number.isFinite(winBy) && winBy >= 1) {
+    try {
+      const format = createScoringFormat({
+        scoringSystem: "RALLY",
+        pointsToWin: target,
+        winBy,
+        maximumScore: rules.pointCap != null ? Number(rules.pointCap) : null,
+        bestOfGames: 1,
+      });
+      const result = evaluateGameComplete(
+        { [SCORING_SIDE.SIDE_A]: a, [SCORING_SIDE.SIDE_B]: b },
+        format
+      );
+      if (!result.complete) {
+        return {
+          ok: false,
+          error: `CORE-16: chưa đủ điều kiện thắng (đích ${target}, thắng cách ${winBy}).`,
+        };
+      }
+      return { ok: true, authority: "CORE-16" };
+    } catch {
+      // Fall through to classic target check
+    }
+  }
   const winner = Math.max(a, b);
   if (winner < target) {
     return {

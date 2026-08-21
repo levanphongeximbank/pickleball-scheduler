@@ -299,13 +299,14 @@ export function createOfficialOpenAdapterB(deps = {}) {
         adapter: "08_REFEREE",
         kind: SHARED_CONTRACT_CAPABILITY_GAP,
         reason:
-          "CORE-16 cannot represent Official WIN_BY_POLICY_DEFERRED without fabricating winBy.",
+          "CORE-16 live scoring binding is active for Official; change-end remains PARTIAL; durable match_live_states writes require Edge.",
       },
       {
         code: SHARED_CONTRACT_CAPABILITY_GAP,
         adapter: "08_REFEREE",
         kind: EXTERNAL_DEPENDENCY,
-        reason: "Shared Referee production runtime remains behind Contract A.",
+        reason:
+          "Official browser token path cannot compose privileged match_live_states commit RPCs (Edge/service_role only).",
       },
       ...(financeGap
         ? [

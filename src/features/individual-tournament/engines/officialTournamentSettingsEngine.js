@@ -90,11 +90,11 @@ export const CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT = Number(
 );
 
 /**
- * Official classic result authority (matchEngine.resolveWinnerFromScore) only
- * rejects draws / picks the higher score — it does NOT own a win-by margin.
- * Do not invent Official winBy=2 from Team/referee-v5.
+ * Win-by is enforced by CORE-16 via Official Adapter B live scoring binding.
+ * Classic matchEngine / official_open_validate_rally are demoted; they must not
+ * invent a second win-by authority. Deprecated flag kept false.
  */
-export const WIN_BY_POLICY_DEFERRED = true;
+export const WIN_BY_POLICY_DEFERRED = false;
 export const OFFICIAL_WIN_BY_DUPLICATE_AUTHORITY = false;
 
 export const DEFAULT_OFFICIAL_ROUND_TARGETS = Object.freeze({
@@ -113,25 +113,26 @@ export const DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP = 2;
  */
 export const INTENDED_NEW_TOURNAMENT_SCORING_METHOD = OFFICIAL_SCORING_METHOD.SIDE_OUT;
 export const DEFAULT_OFFICIAL_SCORING_METHOD = OFFICIAL_SCORING_METHOD.RALLY;
-export const SIDEOUT_DEFAULT_FOR_NEW_TOURNAMENT = false;
-export const SIDEOUT_BACKEND_PACKAGE_REQUIRED = true;
+export const SIDEOUT_DEFAULT_FOR_NEW_TOURNAMENT = true;
+export const SIDEOUT_BACKEND_PACKAGE_REQUIRED = false;
 export const SIDEOUT_SHARED_EXTRACTION_RECONCILE_AFTER_PR418 = false;
 export const SIDEOUT_BACKEND_PACKAGE_PATH =
   "docs/v5/migrations/official-open-sideout-runtime-01/";
 
 /**
- * Classic Official matchLiveSync / RefereeScoreboard has no serving-side state.
- * competition-core has pure SIDE_OUT progression, but Official live RPC only
- * stores score_a/score_b — structured service state requires SQL package.
- * Do not fake client-only Side-out against tournament_match_live.
+ * Side-out execution is bound to CORE-16 via Official Adapter B
+ * (officialOpenCore16LiveScoringBinding). Classic tournament_match_live ±1 is
+ * demoted to compatibility score projection after CORE-16 ACK.
+ * Durable serve SSOT remains match_live_states (Edge/service_role) — session
+ * projection until Official scoring Edge host exists. Do NOT apply
+ * docs/v5/migrations/official-open-sideout-runtime-01/ for this wave.
  */
-export const SIDEOUT_OPERATIONAL = false;
-export const SIDEOUT_SELECTION_FAIL_CLOSED = true;
+export const SIDEOUT_OPERATIONAL = true;
+export const SIDEOUT_SELECTION_FAIL_CLOSED = false;
 export const SIDEOUT_BACKEND_REQUIREMENT =
-  "Classic Official live path (matchLiveSync.adjustMatchLiveScore / referee_update_match_score) " +
-  "must gain canonical servingSide + serverNumber + scoringMethod + side-out transition authority " +
-  "via docs/v5/migrations/official-open-sideout-runtime-01/ before Side-out can be operable " +
-  "or the default for NEW Official tournaments.";
+  "CORE-16 Side-out commands are bound. Durable serve persistence uses canonical " +
+  "match_live_states via Edge (not tournament_match_live columns). Remaining gap: " +
+  "Official browser token path cannot call service_role commit RPCs.";
 
 /**
  * Normalize Organizer decimal level/rating input.

@@ -14,12 +14,14 @@ import {
   resolveCrossGroupWildcardRankingDemand,
 } from "../../competition-core/competition-rules/index.js";
 import { buildOfficialOpenCompetitionRulesProfile } from "./buildOfficialOpenCompetitionRulesProfile.js";
-import {
-  SIDEOUT_OPERATIONAL,
-  BEST_OF_3_OPERATIONAL,
-  WIN_BY_POLICY_DEFERRED,
-} from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
+import { BEST_OF_3_OPERATIONAL } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
 import { ADAPTER_B_STATUS, SHARED_CONTRACT_CAPABILITY_GAP } from "./constants.js";
+
+/** Keep gap strings local to avoid circular import with live scoring binding. */
+const SIDEOUT_DURABLE_GAP =
+  "DURABLE_MATCH_LIVE_STATES_EDGE_REQUIRED — browser token path cannot write match_live_states (service_role only); serve state is CORE-16 session projection until Official scoring Edge host exists.";
+const CHANGE_END_PARTIAL_GAP =
+  "CORE-16 emits ENDS_SWITCH_MILESTONE hint on RALLY only; confirmChangeEnds / orientation ACK is competition-engine ops (not CORE-16 state). Official binds detection+session ACK only — not durable court orientation SSOT.";
 
 const RANK = Object.freeze({
   [CAPABILITY_STATE.SUPPORTED]: 3,
@@ -35,8 +37,13 @@ function weakerState(a, b) {
 }
 
 /**
- * Official classic execution binding (not Adapter A truth).
+ * Official Adapter B → CORE-16 execution binding (not Adapter A truth).
  * EFFECTIVE = min(Adapter A, Official binding).
+ *
+ * Rally / Side-out / Win-by: CORE-16 commands wired via
+ * officialOpenCore16LiveScoringBinding (translation only).
+ * Change-end: PARTIAL (hint + session ACK; not CORE-16 state mutation).
+ * BO3: hard stop this wave.
  */
 export const OFFICIAL_CLASSIC_EXECUTION_BINDING = Object.freeze({
   [COMPETITION_RULES_CAPABILITY_ID.SCORING_METHOD_RALLY]: Object.freeze({
@@ -46,12 +53,12 @@ export const OFFICIAL_CLASSIC_EXECUTION_BINDING = Object.freeze({
   }),
   [COMPETITION_RULES_CAPABILITY_ID.SCORING_METHOD_SIDE_OUT]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
-    execution: SIDEOUT_OPERATIONAL
-      ? CAPABILITY_STATE.SUPPORTED
-      : CAPABILITY_STATE.UNSUPPORTED,
-    bindingGap: !SIDEOUT_OPERATIONAL,
-    bindingGapReason:
-      "Official classic live path (scoreA/scoreB + matchLiveSync) is not wired to canonical Side-out execution.",
+    execution: CAPABILITY_STATE.SUPPORTED,
+    // CORE-16 Side-out commands are wired; durable match_live_states Edge gap is
+    // reported separately and does not block effectiveSelectable.
+    bindingGap: false,
+    durablePersistenceGap: true,
+    bindingGapReason: SIDEOUT_DURABLE_GAP,
   }),
   [COMPETITION_RULES_CAPABILITY_ID.MATCH_SERIES_BEST_OF_1]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
@@ -69,19 +76,15 @@ export const OFFICIAL_CLASSIC_EXECUTION_BINDING = Object.freeze({
   }),
   [COMPETITION_RULES_CAPABILITY_ID.WIN_BY]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
-    execution: WIN_BY_POLICY_DEFERRED
-      ? CAPABILITY_STATE.UNSUPPORTED
-      : CAPABILITY_STATE.SUPPORTED,
-    bindingGap: WIN_BY_POLICY_DEFERRED === true,
-    bindingGapReason:
-      "Official classic matchEngine.resolveWinnerFromScore does not enforce win-by margin; CORE-16 binding gap.",
+    execution: CAPABILITY_STATE.SUPPORTED,
+    bindingGap: false,
+    bindingGapReason: null,
   }),
   [COMPETITION_RULES_CAPABILITY_ID.CHANGE_END]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
-    execution: CAPABILITY_STATE.UNSUPPORTED,
+    execution: CAPABILITY_STATE.PARTIAL,
     bindingGap: true,
-    bindingGapReason:
-      "Official classic live scoring has no change-end / side-switch state binding.",
+    bindingGapReason: CHANGE_END_PARTIAL_GAP,
   }),
   [COMPETITION_RULES_CAPABILITY_ID.CROSS_GROUP_WILDCARD_RANKING]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,

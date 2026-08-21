@@ -39,7 +39,10 @@ export default function RefereeAssignDialog({
   existingReferee,
   roster = [],
   requireCanonicalIdentity = true,
+  buildUrl = null,
 }) {
+  const resolveUrl = (token) =>
+    typeof buildUrl === "function" ? buildUrl(token) : buildRefereeUrl(token);
   const [name, setName] = useState("");
   const [selectedRosterEntry, setSelectedRosterEntry] = useState(null);
   const [url, setUrl] = useState("");
@@ -69,7 +72,7 @@ export default function RefereeAssignDialog({
     if (existingReferee?.token || existingReferee?.canonicalUserId) {
       setName(existingReferee.name || "");
       setRefereeName(existingReferee.name || "");
-      setUrl(existingReferee.token ? buildRefereeUrl(existingReferee.token) : "");
+      setUrl(existingReferee.token ? resolveUrl(existingReferee.token) : "");
       setSelectedRosterEntry(
         rosterItems.find(
           (entry) =>
@@ -121,7 +124,7 @@ export default function RefereeAssignDialog({
       }
       setRefereeName(selectedRosterEntry.name || "");
       if (result.token) {
-        setUrl(buildRefereeUrl(result.token));
+        setUrl(resolveUrl(result.token));
       }
       setMessage(
         result.core13
@@ -150,7 +153,7 @@ export default function RefereeAssignDialog({
     }
 
     setRefereeName(assigned.referee.name);
-    setUrl(buildRefereeUrl(assigned.token));
+    setUrl(resolveUrl(assigned.token));
     setMessage("Đã gán trọng tài. Gửi link hoặc QR bên dưới cho trọng tài.");
   };
 

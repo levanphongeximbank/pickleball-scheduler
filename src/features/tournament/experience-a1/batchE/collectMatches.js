@@ -50,7 +50,7 @@ export function projectEventMatches(tournament, selectedEventId = "all") {
         courtId: match.courtId != null ? String(match.courtId) : "",
         court: courtLabel(match, courtsMap),
         referee: refereeLabel(match),
-        refereeLaunchTo: refereeLaunchTo(match),
+        refereeLaunchTo: refereeLaunchTo(match, tournament),
         status: matchUiStatus(match),
         rawStatus: match.status,
         score: scoreLabel(match),

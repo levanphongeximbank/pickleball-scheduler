@@ -175,19 +175,28 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
     competitionUnit: unit,
     matchScoring: {
       // Profile preserves configured intent; effective selectable uses binding min().
+      // Win-by / point-cap / change-end policy projected for CORE-16 format binding.
       scoringMethod: scoringMethodRequested,
       matchSeries: matchSeriesRequested,
       targetPoints: defaultTarget,
       winCondition: {
-        // Official classic path does not execute win-by; profile still carries shared policy shape.
-        winByEnabled: false,
+        winByEnabled: true,
         winByMargin: 2,
-        pointCapEnabled: false,
-        pointCap: null,
+        pointCapEnabled: Boolean(blob.pointCapEnabled),
+        pointCap:
+          blob.pointCap != null && Number(blob.pointCap) >= 1
+            ? Math.floor(Number(blob.pointCap))
+            : null,
       },
       changeEnd: {
-        changeEndsEnabled: false,
-        changeEndsAtPoints: null,
+        // Policy may describe change-end; Official execution remains PARTIAL (session ACK).
+        changeEndsEnabled: Boolean(blob.changeEndsEnabled),
+        changeEndsAtPoints:
+          blob.changeEndsAtPoints != null && Number(blob.changeEndsAtPoints) >= 1
+            ? Math.floor(Number(blob.changeEndsAtPoints))
+            : scoringMethodRequested === SCORING_METHOD.RALLY
+              ? 11
+              : null,
         changeEndsBetweenGames: true,
         decidingGameChangeEndsAt: null,
       },

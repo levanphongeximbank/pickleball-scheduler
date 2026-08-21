@@ -14,7 +14,7 @@ import {
   stageLabel,
 } from "./matchPresentation.js";
 
-function toCard(match, event, entries, courtsMap, groups) {
+function toCard(match, event, entries, courtsMap, groups, tournament = null) {
   const group = groups.find((item) => String(item.id) === String(match.groupId));
   const a = entries.find((entry) => String(entry.id) === String(match.entryAId))?.name || "Chưa xác định";
   const b = entries.find((entry) => String(entry.id) === String(match.entryBId))?.name || "Chưa xác định";
@@ -48,7 +48,7 @@ function toCard(match, event, entries, courtsMap, groups) {
         }))
       : [],
     issues,
-    refereeLaunchTo: refereeLaunchTo(match),
+    refereeLaunchTo: refereeLaunchTo(match, tournament),
   };
 }
 
@@ -105,7 +105,7 @@ function deriveMatchCenterModelBase(
     const entries = resolveEntries(event);
     const groups = Array.isArray(event?.groups) ? event.groups : [];
     for (const match of eventMatches(event)) {
-      rows.push(toCard(match, event, entries, courtsMap, groups));
+      rows.push(toCard(match, event, entries, courtsMap, groups, tournament));
     }
   }
 
