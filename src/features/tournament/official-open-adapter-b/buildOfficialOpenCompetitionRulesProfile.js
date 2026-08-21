@@ -180,8 +180,11 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
       matchSeries: matchSeriesRequested,
       targetPoints: defaultTarget,
       winCondition: {
-        winByEnabled: true,
-        winByMargin: 2,
+        winByEnabled: blob.winByEnabled !== false,
+        winByMargin:
+          blob.winByMargin != null && Number(blob.winByMargin) >= 1
+            ? Math.floor(Number(blob.winByMargin))
+            : 2,
         pointCapEnabled: Boolean(blob.pointCapEnabled),
         pointCap:
           blob.pointCap != null && Number(blob.pointCap) >= 1

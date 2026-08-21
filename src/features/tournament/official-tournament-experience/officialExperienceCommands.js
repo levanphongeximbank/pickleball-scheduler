@@ -120,11 +120,17 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
       registrationMode: competition.registrationMode,
       groupCount: competition.groupCount,
       qualifiersPerGroup: competition.qualifiersPerGroup,
-      scoringMethod: competition.scoringMethod,
+      scoringMethod: competition.scoringMethodOperational || competition.scoringMethod,
       scoringMethodRequested: competition.scoringMethodRequested,
-      matchFormat: competition.matchFormat,
+      matchFormat: competition.matchFormatOperational || competition.matchFormat,
       matchFormatRequested: competition.matchFormatRequested,
       roundTargets: competition.roundTargets,
+      winByEnabled: competition.winByEnabled !== false,
+      winByMargin: competition.winByMargin || 2,
+      pointCapEnabled: competition.pointCapEnabled === true,
+      pointCap: competition.pointCap,
+      changeEndsEnabled: competition.changeEndsEnabled === true,
+      changeEndsAtPoints: competition.changeEndsAtPoints,
     },
     scoringCapabilities: {
       rally: resolveOfficialEffectiveCapability(
@@ -145,7 +151,9 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
       changeEnd: resolveOfficialEffectiveCapability(
         COMPETITION_RULES_CAPABILITY_ID.CHANGE_END
       ).effectiveSelectable,
-      sideOutBindingGap: !SIDEOUT_OPERATIONAL,
+      sideOutBindingGap: resolveOfficialEffectiveCapability(
+        COMPETITION_RULES_CAPABILITY_ID.SCORING_METHOD_SIDE_OUT
+      ).officialBinding?.durablePersistenceGap === true,
       bestOf3BindingGap: !BEST_OF_3_OPERATIONAL,
       source: "min(AdapterA, OfficialClassicBinding)",
     },
@@ -155,16 +163,63 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
           ok: false,
           code: "EVENT_REQUIRED",
           profileDerived: false,
+          formDraft: null,
         };
       }
       const surface = createOfficialOpenCompetitionRulesSurface({ tournament });
       const eventId = trim(selectedEventId) || String(events[0]?.id || "");
       const built = surface.buildProfile({ eventId });
       if (!built.ok) {
-        return { ok: false, code: built.code, error: built.error, profileDerived: false };
+        return {
+          ok: false,
+          code: built.code,
+          error: built.error,
+          profileDerived: false,
+          formDraft: null,
+        };
       }
+      const profile = built.profile;
+      const scoring = profile.matchScoring || {};
+      const win = scoring.winCondition || {};
+      const changeEnd = scoring.changeEnd || {};
       const plan = surface.deriveQualificationPlan({ eventId });
       const wildcard = surface.resolveWildcardRankingPolicy({ eventId });
+      const formDraft = Object.freeze({
+        source: "DERIVED_CANONICAL_DEFAULT_PROFILE",
+        persistedSource: built.persistedSource || "settings.officialCompetition",
+        eventId,
+        registrationMode: competition.registrationMode,
+        scoringMethod:
+          String(scoring.scoringMethod || "").toUpperCase() === "SIDE_OUT"
+            ? OFFICIAL_SCORING_METHOD.SIDE_OUT
+            : OFFICIAL_SCORING_METHOD.RALLY,
+        matchFormat:
+          String(scoring.matchSeries || "").toUpperCase() === "BEST_OF_3"
+            ? OFFICIAL_MATCH_FORMAT.BEST_OF_3
+            : OFFICIAL_MATCH_FORMAT.BEST_OF_1,
+        targetPoints: Number(scoring.targetPoints) || competition.roundTargets?.group || 11,
+        roundTargets: competition.roundTargets,
+        winByEnabled: win.winByEnabled !== false,
+        winByMargin: Number(win.winByMargin) || 2,
+        pointCapEnabled: win.pointCapEnabled === true,
+        pointCap: win.pointCap != null ? Number(win.pointCap) : null,
+        changeEndsEnabled: changeEnd.changeEndsEnabled === true,
+        changeEndsAtPoints:
+          changeEnd.changeEndsAtPoints != null
+            ? Number(changeEnd.changeEndsAtPoints)
+            : null,
+        groupCount: Number(profile.groupStage?.groupCount) || competition.groupCount || 4,
+        qualifiersPerGroup:
+          Number(profile.qualification?.directQualifiersPerGroup) ||
+          competition.qualifiersPerGroup ||
+          2,
+        totalQualifiers:
+          Number(profile.qualification?.totalQualifiers) ||
+          Number(plan?.totalQualifiers) ||
+          null,
+        groupStageEnabled: profile.groupStage?.groupStageEnabled !== false,
+        knockoutEnabled: profile.knockout?.knockoutEnabled !== false,
+      });
       return {
         ok: true,
         profileDerived: true,
@@ -173,6 +228,7 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
         qualification: plan,
         wildcardFailClosed: wildcard.failClosed === true,
         wildcardCode: wildcard.code || null,
+        formDraft,
       };
     })(),
     eligibility: {
@@ -307,6 +363,12 @@ export function buildOfficialSettingsSavePatch(tournament, draft = {}) {
       groupCount: draft.groupCount,
       qualifiersPerGroup: draft.qualifiersPerGroup,
       roundTargets: draft.roundTargets,
+      winByEnabled: draft.winByEnabled,
+      winByMargin: draft.winByMargin,
+      pointCapEnabled: draft.pointCapEnabled,
+      pointCap: draft.pointCap,
+      changeEndsEnabled: draft.changeEndsEnabled,
+      changeEndsAtPoints: draft.changeEndsAtPoints,
     });
   } catch (err) {
     return {

@@ -331,8 +331,8 @@ export function normalizeOfficialRegistrationMode(value, tournament = null, even
 export function normalizeOfficialScoringMethod(value, { allowSideOutPersist = false } = {}) {
   const raw = String(value || "").trim().toLowerCase();
   if (raw === OFFICIAL_SCORING_METHOD.SIDE_OUT || raw === "side-out" || raw === "SIDE_OUT") {
-    // Enum recognized for future backend wiring; not operable on classic Official path.
-    if (allowSideOutPersist && !SIDEOUT_SELECTION_FAIL_CLOSED) {
+    // Persist Side-out only when operational (or explicit allow). Otherwise fail-closed to Rally.
+    if ((allowSideOutPersist || SIDEOUT_OPERATIONAL) && !SIDEOUT_SELECTION_FAIL_CLOSED) {
       return OFFICIAL_SCORING_METHOD.SIDE_OUT;
     }
     return DEFAULT_OFFICIAL_SCORING_METHOD;
@@ -443,7 +443,10 @@ export function getOfficialCompetitionSettings(tournament) {
     scoringMethodRequested: requestedSideOut
       ? OFFICIAL_SCORING_METHOD.SIDE_OUT
       : normalizeOfficialScoringMethod(blob.scoringMethod),
-    scoringMethodOperational: DEFAULT_OFFICIAL_SCORING_METHOD,
+    scoringMethodOperational:
+      SIDEOUT_OPERATIONAL && requestedSideOut
+        ? OFFICIAL_SCORING_METHOD.SIDE_OUT
+        : DEFAULT_OFFICIAL_SCORING_METHOD,
     sideOutOperational: SIDEOUT_OPERATIONAL,
     matchFormat: normalizeOfficialMatchFormat(blob.matchFormat),
     matchFormatRequested: (() => {
@@ -459,6 +462,21 @@ export function getOfficialCompetitionSettings(tournament) {
     bestOf3Operational: BEST_OF_3_OPERATIONAL,
     ...deriveOfficialMatchFormatRules(blob.matchFormat),
     roundTargets: normalizeOfficialRoundTargets(blob.roundTargets),
+    winByEnabled: blob.winByEnabled !== false,
+    winByMargin:
+      blob.winByMargin != null && Number(blob.winByMargin) >= 1
+        ? Math.floor(Number(blob.winByMargin))
+        : 2,
+    pointCapEnabled: blob.pointCapEnabled === true,
+    pointCap:
+      blob.pointCap != null && Number(blob.pointCap) >= 1
+        ? Math.floor(Number(blob.pointCap))
+        : null,
+    changeEndsEnabled: blob.changeEndsEnabled === true,
+    changeEndsAtPoints:
+      blob.changeEndsAtPoints != null && Number(blob.changeEndsAtPoints) >= 1
+        ? Math.floor(Number(blob.changeEndsAtPoints))
+        : null,
     groupCount:
       blob.groupCount != null
         ? toPositiveInt(blob.groupCount, 4)
@@ -550,7 +568,9 @@ export function patchOfficialCompetitionSettings(tournament, patch = {}) {
       nextMode === OFFICIAL_REGISTRATION_MODE.PAIR
         ? nextMode
         : current.registrationMode,
-    scoringMethod: normalizeOfficialScoringMethod(requestedMethod),
+    scoringMethod: normalizeOfficialScoringMethod(requestedMethod, {
+      allowSideOutPersist: SIDEOUT_OPERATIONAL === true,
+    }),
     matchFormat: normalizeOfficialMatchFormat(requestedFormat),
     roundTargets: normalizeOfficialRoundTargets({
       ...current.roundTargets,
@@ -564,6 +584,37 @@ export function patchOfficialCompetitionSettings(tournament, patch = {}) {
       patch.qualifiersPerGroup != null
         ? toPositiveInt(patch.qualifiersPerGroup, current.qualifiersPerGroup)
         : current.qualifiersPerGroup,
+    winByEnabled:
+      patch.winByEnabled != null ? Boolean(patch.winByEnabled) : current.winByEnabled !== false,
+    winByMargin:
+      patch.winByMargin != null && Number(patch.winByMargin) >= 1
+        ? Math.floor(Number(patch.winByMargin))
+        : current.winByMargin || 2,
+    pointCapEnabled:
+      patch.pointCapEnabled != null
+        ? Boolean(patch.pointCapEnabled)
+        : current.pointCapEnabled === true,
+    pointCap: (() => {
+      const enabled =
+        patch.pointCapEnabled != null
+          ? Boolean(patch.pointCapEnabled)
+          : current.pointCapEnabled === true;
+      if (!enabled) return null;
+      if (patch.pointCap != null && Number(patch.pointCap) >= 1) {
+        return Math.floor(Number(patch.pointCap));
+      }
+      return current.pointCap != null && Number(current.pointCap) >= 1
+        ? Math.floor(Number(current.pointCap))
+        : null;
+    })(),
+    changeEndsEnabled:
+      patch.changeEndsEnabled != null
+        ? Boolean(patch.changeEndsEnabled)
+        : current.changeEndsEnabled === true,
+    changeEndsAtPoints:
+      patch.changeEndsAtPoints != null && Number(patch.changeEndsAtPoints) >= 1
+        ? Math.floor(Number(patch.changeEndsAtPoints))
+        : current.changeEndsAtPoints || null,
     updatedAt: new Date().toISOString(),
   };
 
