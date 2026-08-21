@@ -144,8 +144,8 @@ async function projectClassicLiveScores({
   let status = null;
 
   while (a !== targetA || b !== targetB) {
-    let team = null;
-    let delta = null;
+    let team;
+    let delta;
     if (a < targetA) {
       team = "A";
       delta = 1;

@@ -560,18 +560,21 @@ export function undoOfficialCore16LastPoint(session, input = {}) {
     return fail("SESSION_REQUIRED", "Cần CORE-16 scoring session.", {});
   }
   const events = Array.isArray(session.state.events) ? session.state.events : [];
-  const active = events.filter(
+  const activePointEvents = events.filter(
     (evt) =>
       evt &&
       !session.state.supersededEventIds?.includes(evt.eventId) &&
       String(evt.eventType || "").includes("POINT")
   );
-  // Prefer last RECORD_POINT-like event id from ledger
+  // Prefer last RECORD_POINT-like event id from ledger, then active point stream
   const ledger = Array.isArray(session.actionLedger) ? session.actionLedger : [];
   const lastScoring = [...ledger].reverse().find((row) => row.kind === "SCORING");
   const targetEventId =
     trim(input.targetEventId) ||
     lastScoring?.eventId ||
+    (activePointEvents.length
+      ? activePointEvents[activePointEvents.length - 1]?.eventId
+      : "") ||
     (events.length ? events[events.length - 1]?.eventId : "");
 
   if (!targetEventId) {

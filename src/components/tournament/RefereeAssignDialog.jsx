@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Autocomplete,
@@ -41,8 +41,11 @@ export default function RefereeAssignDialog({
   requireCanonicalIdentity = true,
   buildUrl = null,
 }) {
-  const resolveUrl = (token) =>
-    typeof buildUrl === "function" ? buildUrl(token) : buildRefereeUrl(token);
+  const resolveUrl = useCallback(
+    (token) =>
+      typeof buildUrl === "function" ? buildUrl(token) : buildRefereeUrl(token),
+    [buildUrl]
+  );
   const [name, setName] = useState("");
   const [selectedRosterEntry, setSelectedRosterEntry] = useState(null);
   const [url, setUrl] = useState("");
@@ -88,7 +91,7 @@ export default function RefereeAssignDialog({
     setRefereeName("");
     setUrl("");
     setSelectedRosterEntry(null);
-  }, [open, existingReferee, roster]);
+  }, [open, existingReferee, roster, resolveUrl]);
 
   const resolvedName = selectedRosterEntry?.name || name.trim();
   const canAssignCanonical = Boolean(
